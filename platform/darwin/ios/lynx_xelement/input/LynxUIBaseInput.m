@@ -82,6 +82,7 @@
     if (keyboardDisplayed) {
       if (self.view.isFirstResponder) {
         CGRect rectInRoot = [self.view convertRect:self.view.bounds toView:nil];
+        // TODO(xiamengfei.moonface): [ResizableWindowSize] Check whether this should use window or physical screen metrics.
         CGFloat bottomToScreen = UIScreen.mainScreen.bounds.size.height - CGRectGetMaxY(rectInRoot);
         CGFloat gap = self.keyboardHeight - bottomToScreen + self.avoidKeyboardSpacingInLynxView;
         if (self.avoidKeyboardDist == 0) {
@@ -766,15 +767,32 @@ LYNX_UI_METHOD(setSelectionRange) {
   return !self.readonly;
 }
 
-
 - (void)onWillShowKeyboard:(NSNotification *)notification {
-  
   CGRect keyboardFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
   
-  CGFloat keyboardHeight = keyboardFrame.size.height;
   
+  
+  id<UICoordinateSpace> screenCoordinateSpace = self.context.lynxContext.getLynxView.window.screen.coordinateSpace;
+
+  CGRect keyboardRectInApp = [self.context.lynxContext.getLynxView.window convertRect:keyboardFrame fromCoordinateSpace:screenCoordinateSpace];
+
+  CGRect overlap = CGRectIntersection(self.context.lynxContext.getLynxView.window.bounds, keyboardRectInApp);
+
+
+  CGFloat keyboardHeight = 0;
+  if (!CGRectIsNull(overlap)) {
+    if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad) {
+      keyboardHeight = overlap.size.height;
+    } else {
+      CGFloat gapBetweenAppWindowSizeOverKeyboardWindowSize = self.context.lynxContext.getLynxView.window.bounds.size.height - CGRectGetMaxY(keyboardFrame);
+      keyboardHeight = CGRectGetMaxY(self.context.lynxContext.getLynxView.window.bounds) - CGRectGetMinY(keyboardRectInApp) - gapBetweenAppWindowSizeOverKeyboardWindowSize/2;
+    }
+  }
+
+//  CGFloat keyboardHeight = keyboardFrame.size.height;
+
   CGFloat safeAreaBottom = 0;
-  
+
   if (@available(iOS 11.0, *)) {
     safeAreaBottom = self.view.safeAreaInsets.bottom;
   }
@@ -822,7 +840,7 @@ LYNX_UI_METHOD(setSelectionRange) {
   if ([node isKindOfClass:LynxUIBaseInputShadowNode.class]) {
     CGSize preSize = node.uiSize;
     
-    CGFloat width = self.view.bounds.size.width ? : UIScreen.mainScreen.bounds.size.width;
+    CGFloat width = self.view.bounds.size.width ? : self.context.screenMetrics.screenSize.width;
     [self.view sizeThatFits:CGSizeMake(0, 0)];
     CGSize updatedSize = [self.view sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
     // Measure an empty input as a single text line. UITextView's empty-text size may handle
