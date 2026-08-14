@@ -111,8 +111,8 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
   LynxSVGView *imageView = self.view;
   // Image inside could be blurry due to the screen resolution after scaling.
   CGSize devSize = imageView.frame.size;
-  devSize.width *= [UIScreen mainScreen].scale;
-  devSize.height *= [UIScreen mainScreen].scale;
+  devSize.width *= self.context.screenMetrics.scale;
+  devSize.height *= self.context.screenMetrics.scale;
   if (devSize.width == 0 || devSize.height == 0) {
     // Clear the dirty mark before return.
     [self.view setImage:nil];

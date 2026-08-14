@@ -12,9 +12,32 @@
 #import "LynxUIRenderer.h"
 #import "LynxUIRendererCreator.h"
 
+#include <cmath>
+
 @implementation LynxBaseConfigurator {
   LynxEmbeddedMode _embeddedMode;
   NSMutableDictionary<NSString*, LynxAliasFontInfo*>* _builderRegisteredAliasFontMap;
+}
+
+- (void)setScreenSize:(CGSize)screenSize {
+  if (!CGSizeEqualToSize(screenSize, CGSizeZero) &&
+      (!std::isfinite(screenSize.width) || !std::isfinite(screenSize.height))) {
+    _LogE(@"Non-finite Lynx screen size %@ will fall back to the next configuration source.",
+          NSStringFromCGSize(screenSize));
+  } else if (!CGSizeEqualToSize(screenSize, CGSizeZero) &&
+             (screenSize.width <= 0 || screenSize.height <= 0)) {
+    _LogW(@"Invalid partial Lynx screen size %@ will fall back as a whole.",
+          NSStringFromCGSize(screenSize));
+  }
+  _screenSize = screenSize;
+}
+
+- (void)setScreenScale:(CGFloat)screenScale {
+  if (!std::isfinite(screenScale)) {
+    _LogE(@"Non-finite Lynx screen scale %f will fall back to the next configuration source.",
+          screenScale);
+  }
+  _screenScale = screenScale;
 }
 
 - (id)init {

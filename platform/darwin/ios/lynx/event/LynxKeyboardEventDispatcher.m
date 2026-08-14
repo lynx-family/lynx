@@ -64,7 +64,26 @@
     NSValue *aValue = [userInfo objectForKey:UIKeyboardFrameEndUserInfoKey];
     keyboardRect = [aValue CGRectValue];
   }
-  int height = keyboardRect.size.height;
+  id<UICoordinateSpace> screenCoordinateSpace = _context.getLynxView.window.screen.coordinateSpace;
+
+  CGRect keyboardRectInApp = [_context.getLynxView.window convertRect:keyboardRect
+                                                  fromCoordinateSpace:screenCoordinateSpace];
+
+  CGRect overlap = CGRectIntersection(_context.getLynxView.window.bounds, keyboardRectInApp);
+
+  int height = 0;
+  if (!CGRectIsNull(overlap)) {
+    if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad) {
+      height = overlap.size.height;
+    } else {
+      CGFloat gapBetweenAppWindowSizeOverKeyboardWindowSize =
+          _context.getLynxView.window.bounds.size.height - CGRectGetMaxY(keyboardRect);
+      height = CGRectGetMaxY(_context.getLynxView.window.bounds) -
+               CGRectGetMinY(keyboardRectInApp) - gapBetweenAppWindowSizeOverKeyboardWindowSize / 2;
+    }
+  }
+
+  //  int height = keyboardRect.size.height;
   LLog(@"keyboard status is on");
   LLog(@"keyboard height is %d", height);
 

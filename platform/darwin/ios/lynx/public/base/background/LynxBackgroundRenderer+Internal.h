@@ -154,6 +154,10 @@ static inline CGColorRef LynxCreateDarkenColor(CGColorRef color, bool darken) {
 
 static inline CGSize LynxRoundViewSize(CGSize viewSize) {
   return CGSizeMake(
+      // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+      // physical screen metrics.
       round(viewSize.width * [UIScreen mainScreen].scale) / [UIScreen mainScreen].scale,
+      // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
+      // physical screen metrics.
       round(viewSize.height * [UIScreen mainScreen].scale) / [UIScreen mainScreen].scale);
 }
