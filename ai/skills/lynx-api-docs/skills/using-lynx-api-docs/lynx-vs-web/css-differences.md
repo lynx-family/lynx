@@ -1,6 +1,9 @@
 # Differences Between Lynx and Web CSS
 
-Lynx supports most commonly used CSS features, but there are several important differences.
+This guide covers broad Web-to-Lynx CSS migration for the installed package
+baseline. Exact implementation topics live under
+[CSS compatibility](../css/compatibility/) so this guide can remain a stable
+migration overview.
 
 ## Key Differences at a Glance
 
@@ -31,6 +34,12 @@ Lynx supports most commonly used CSS features, but there are several important d
 ### 2. Flex Shrinking and Content-Based Minimum Sizes
 
 `flex-shrink` takes effect only when the available space on the main axis is insufficient: width for `flex-direction: row`, or height for `flex-direction: column`. If the parent container has no explicit `width` or `height` and is not constrained by an outer layout, a maximum size, or the viewport, it expands to fit its content. No negative free space is created, so `flex-shrink` does not change the final size.
+
+This package baseline rejects negative `flex-shrink` longhand values. A rejected value
+processed directly by the property handler does not replace the value already
+stored in that parsed style map. This matches the non-negative grammar, but
+does not remove the deferred raw-style cascade limitation described in
+[Invalid declarations and the cascade](#invalid-declarations-and-the-cascade).
 
 The key difference between Lynx and the Web is the lower bound for main-axis shrinking. Web flex items default to `min-width: auto` or `min-height: auto`. Text, images, nested children, and other intrinsic content can therefore establish a content-based or `min-content` minimum size. Lynx does not automatically apply this protection when resolving `flex-shrink`; you must explicitly set `min-width`, `min-height`, or `flex-shrink: 0`. You can think of Lynx's default behavior as explicitly setting the flex item's main-axis minimum to `0` on the Web: similar to `min-width: 0` in a row or `min-height: 0` in a column.
 
@@ -230,27 +239,8 @@ Migration guidance:
 
 ### 5. Box Model
 
-**Default `box-sizing`**:
-
-```css
-/* Web default */
-box-sizing: content-box;
-
-/* Lynx default */
-box-sizing: border-box;
-```
-
-> **Note**: Lynx uses `border-box` by default, so `width` and `height` include padding and borders. This differs fundamentally from the Web default, `content-box`, where `width` and `height` apply only to the content box.
->
-> When migrating from the Web, you can preserve the original box-model behavior with a global reset:
->
-> ```css
-> * {
->   box-sizing: content-box;
-> }
-> ```
-
-Explicitly setting `box-sizing: border-box` or `box-sizing: content-box` controls box-model calculations, but does not eliminate differences caused by other Web layout dependencies. When migrating a page that relies on `float`, the browser's default `<body>` margin or line height, the containing block for absolute positioning, or min/max-size clamping, you must also rewrite those layout conditions. Otherwise, pixel-level differences may remain even when the box model is correct.
+For the default value, mode-dependent behavior, and explicit migration
+form, read [box model and compatibility mode](../css/compatibility/box-model.md).
 
 **Margin collapsing is not supported**:
 
@@ -552,6 +542,9 @@ text {
 }
 ```
 
+For line-height, word-spacing, decoration, and native painting behavior,
+read [text CSS compatibility](../css/compatibility/text.md).
+
 ### 10. Pseudo-elements
 
 **`::before` and `::after` are not supported**:
@@ -620,6 +613,9 @@ scroll-coordinator-header {
 - Fixed-positioned elements inside `scroll-view` interact incorrectly with scrollable content in the stacking order.
 - Overlay popups interact incorrectly with scrollable content in the stacking order.
 
+For transform-created stacking boundaries, read
+[transforms and stacking contexts](../css/compatibility/transforms-and-stacking.md).
+
 ### 12. Selector Limitations
 
 **Not supported**:
@@ -644,42 +640,9 @@ font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
 
 ### 14. Subset of 3D Transform Functions
 
-Web CSS supports `scale3d(x, y, z)` and `rotate3d(x, y, z, angle)`, but the Lynx transform parser does not currently recognize either function name. A declaration that contains an unsupported transform function is parsed as invalid. If it appears in `@keyframes`, the corresponding `transform` keyframe is not added to the animation curve.
-
-| Web syntax | Lynx status | Migration guidance |
-| --- | --- | --- |
-| `scale3d(x, y, z)` | ❌ Not supported | Use `scale(x, y)` when only XY scaling is required; use `matrix3d(...)` to express Z-axis scaling explicitly |
-| `rotate3d(x, y, z, angle)` | ❌ Not supported | Use `rotateX(...)`, `rotateY(...)`, or `rotateZ(...)` for single-axis rotation; use `matrix3d(...)` for arbitrary-axis rotation |
-| `translate3d(x, y, z)` | ✅ Supported | Use directly |
-| `matrix3d(...)` | ✅ Supported | Use as an explicit compatibility form for complex 3D transforms |
-
-```css
-/* ❌ Web syntax: Lynx does not recognize scale3d or rotate3d. */
-.card {
-  transform: scale3d(0.6, 0.6, 1) rotate3d(0, 1, 0, 180deg);
-}
-
-/* ✅ Lynx: split the transform into supported functions. */
-.card {
-  transform: scale(0.6, 0.6) rotateY(180deg);
-}
-```
-
-Take particular care when migrating animations:
-
-```css
-/* ❌ The transform keyframe fails to parse in Lynx. */
-@keyframes zoom {
-  0% { transform: scale3d(0.6, 0.6, 1); }
-  100% { transform: scale3d(1, 1, 1); }
-}
-
-/* ✅ Use scale(x, y). */
-@keyframes zoom {
-  0% { transform: scale(0.6, 0.6); }
-  100% { transform: scale(1, 1); }
-}
-```
+For the function matrix, invalid transform forms, and migration
+alternatives, read
+[transforms and stacking contexts](../css/compatibility/transforms-and-stacking.md).
 
 ### 15. The `steps(...)` Animation Timing Function
 
@@ -724,6 +687,20 @@ As on the Web, `animation-timing-function` inside a keyframe applies to the inte
 
 Here, `step-end` controls the interval from `80%` to `100%`, so the opacity remains unchanged until it jumps at the end of the interval.
 
+## Compatibility topics
+
+The following implementation details are intentionally split into focused
+references so an agent can retrieve one topic without loading this entire
+migration guide:
+
+- [Box model and compatibility mode](../css/compatibility/box-model.md)
+- [Transforms and stacking contexts](../css/compatibility/transforms-and-stacking.md)
+- [Filters](../css/compatibility/filters.md)
+- [Text CSS compatibility](../css/compatibility/text.md)
+- [Computed-style CSS text](../css/compatibility/computed-style.md)
+- [Invalid declarations and the cascade](../css/compatibility/invalid-declarations.md)
+- [Background and border painting](../css/compatibility/backgrounds-and-borders.md)
+
 ## Quick Migration Checklist
 
 When migrating from the Web to Lynx, check the following:
@@ -738,9 +715,15 @@ When migrating from the Web to Lynx, check the following:
 - [ ] If so, add `z-index: 0` to the parent to establish the same stacking context.
 - [ ] Remove every use of `::before` and `::after`; they are not supported.
 - [ ] Check for margin-collapsing dependencies.
-- [ ] Replace Web `scale3d()` and `rotate3d()` calls with Lynx-supported `scale()`, `rotateX/Y/Z()`, or `matrix3d()` calls.
+- [ ] Check the transform function matrix before migrating 3D transforms.
 - [ ] Add the step-position argument to `steps(n)`, for example `steps(n, end)`.
 - [ ] Test every `white-space` setting.
+- [ ] Use the focused compatibility topic for filters, text, computed-style
+      queries, or invalid generated declarations.
+- [ ] When `cover` must size against a border box, set
+      `background-origin: border-box` and the desired `background-clip` before
+      considering nested views.
+- [ ] Avoid thick patterned borders when pixel-identical Web geometry matters.
 
 ## Common Pitfalls
 

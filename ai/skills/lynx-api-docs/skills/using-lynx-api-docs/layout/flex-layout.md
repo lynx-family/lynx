@@ -186,7 +186,7 @@ A shorthand for `flex-direction` and `flex-wrap`.
 | `space-between` | Places the first and last items at opposite ends and distributes space evenly between items |
 | `space-around`  | Distributes space evenly around items            |
 | `space-evenly`  | Distributes space evenly between and around items |
-| `stretch`       | Stretches items (default in Lynx 2.1+)           |
+| `stretch`       | Stretches items                                  |
 
 ### `align-items`
 

@@ -487,10 +487,6 @@ const baseFontSize = viewportWidth >= 768 ? 18 : 16;
 }
 ```
 
-## Debugging Tips
-
-See `quick-reference.md` for CSS debugging snippets.
-
 #### 27. Performance Monitoring
 
 ```jsx

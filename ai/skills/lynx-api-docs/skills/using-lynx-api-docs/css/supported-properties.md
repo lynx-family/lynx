@@ -1,6 +1,9 @@
 # Supported CSS properties
 
-Lynx supports most commonly used CSS properties, along with several Lynx-specific extensions.
+This is the property registry for the installed package baseline. A property
+being accepted by the parser does not imply Web-compatible computed values or
+pixel-identical painting. Follow the linked compatibility topic for behavioral
+limits.
 
 ## Layout properties
 
@@ -32,6 +35,9 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 - `order`
 - `gap`, `row-gap`, `column-gap`
 
+`flex-shrink` accepts non-negative numbers. For the deferred-style caveat,
+see [invalid declarations and the cascade](./compatibility/invalid-declarations.md).
+
 ### Grid properties
 
 - `grid-template-columns`
@@ -50,10 +56,10 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 ### Linear layout properties (Lynx-specific)
 
 - `linear-orientation`
-- `linear-direction` - Lynx 2.2+
+- `linear-direction`
 - `linear-gravity`
 - `linear-layout-gravity`
-- `linear-cross-gravity` - Lynx 1.6+
+- `linear-cross-gravity`
 - `linear-weight`
 - `linear-weight-sum`
 
@@ -109,12 +115,17 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 - `border-end-start-radius`, `border-end-end-radius` - RTL support
 - `box-shadow`
 
+For platform-specific patterned-border geometry, see
+[background and border painting](./compatibility/backgrounds-and-borders.md).
+
 ### Box model
 
-- `box-sizing: border-box | content-box | auto` (defaults to `border-box`)
-  - Both explicit `border-box` and `content-box` values are supported. When migrating a Web layout, do not evaluate compatibility based on `box-sizing` alone. Pixel-level differences between Lynx and the Web may remain if the original page also relies on floats, the browser's default `body` margin or line height, the containing block for absolutely positioned elements, or min/max size clamping.
+- `box-sizing: border-box | content-box | auto`
 - `overflow: visible | hidden | scroll` (partial support)
 - `clip-path`
+
+For the `auto` default and page-mode behavior, see
+[box model and compatibility mode](./compatibility/box-model.md).
 
 ## Visual properties
 
@@ -166,7 +177,9 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
   ```
 
 - Small tiled bitmap backgrounds can produce seams of approximately 1 px at some Android display scale factors. For example, when a 15 px-wide image fills a 300 px container with `background-repeat: repeat-x`, Web browsers generally tile it without seams, while Lynx may expose the underlying background color at tile boundaries. For textures that must be strictly seamless, prefer a larger seamless asset or a solid-color background, or compose critical areas in separate `<image>` or `<view>` layers.
-- Use caution when a `background` shorthand contains an image layer but omits clip and origin values. The default value of the `background-clip` longhand is `border-box` in both Lynx and Web CSS, but an image layer parsed from the shorthand may be painted relative to the `padding-box`. If the element also uses `border-style: dotted` or `dashed`, the parent or sibling background may show through the transparent gaps in the border. If the color beneath the border must not show through, split the shorthand into longhands such as `background-image`, `background-repeat`, `background-position`, and `background-size`, and set `background-clip: border-box` explicitly. Alternatively, use a solid border or separate the outer background and border from the inner image using two `<view>` elements.
+- For `repeat-y`, origin/clip sizing, transparent borders, and patterned
+  border behavior, see
+  [background and border painting](./compatibility/backgrounds-and-borders.md).
 
 ### Color and opacity
 
@@ -176,9 +189,22 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 ### Transforms
 
 - `transform: translate, translateX, translateY, translate3d`
-- `transform: scale, scaleX, scaleY, scale3d`
-- `transform: rotate, rotateX, rotateY, rotateZ, rotate3d`
+- `transform: scale, scaleX, scaleY`
+- `transform: rotate, rotateX, rotateY, rotateZ`
+- `transform: skew, skewX, skewY`
+- `transform: matrix, matrix3d`
 - `transform-origin`
+
+For function and stacking-context limits, see
+[transforms and stacking contexts](./compatibility/transforms-and-stacking.md).
+
+### Filters
+
+- `filter` (partial support)
+- `backdrop-filter` is not a registered Lynx CSS property
+
+See [filters](./compatibility/filters.md) for the function subset and
+authoring alternatives.
 
 ### Transitions and animations
 
@@ -212,9 +238,14 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 
 - `color`
 - `text-align`
-- `text-decoration`
+- `text-decoration` (partial Web compatibility)
+- `text-decoration-thickness` (Android and iOS)
+- `text-shadow`
 - `text-overflow: clip | ellipsis`
 - `white-space: normal | nowrap`
+
+See [text CSS compatibility](./compatibility/text.md) for the line-height,
+spacing, decoration, platform, and painting limits.
 
 ### Lynx-specific text properties
 
@@ -227,6 +258,13 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 
 - `visibility: visible | hidden`
 - `display: none` (removes the element entirely)
+
+### Hit testing
+
+- `pointer-events: auto | none`
+
+This controls Lynx hit testing. It does not implement the full SVG
+`pointer-events` value set.
 
 ### Content clipping
 
@@ -256,17 +294,19 @@ The following Web CSS properties are **not supported** in Lynx:
 - ❌ `table-*` properties
 - ❌ `list-style-*` properties
 - ❌ `writing-mode`
+- ❌ `word-spacing`
+- ❌ `backdrop-filter`
+- ❌ `text-decoration-line`
+- ❌ `text-decoration-style`
+- ❌ `text-decoration-color` as an independently painted longhand
+
+## Computed-style query limitations
+
+For the getter allowlist and lossy serializers, see
+[computed-style CSS text](./compatibility/computed-style.md).
 
 ### Unsupported Grid properties
 
 - ❌ `grid-area`
 - ❌ Named grid lines: `[name] 1fr`
 - ❌ `subgrid`
-
-## Version history
-
-- **1.0:** Initial layout systems (Linear, Flex, and Grid)
-- **1.6:** Added `linear-cross-gravity` and the `stretch` value
-- **2.0:** Added Relative layout and `display: block/auto`
-- **2.1:** Added `justify-content: stretch` and expanded Grid support
-- **2.2:** Added `linear-direction` as the replacement for `linear-orientation`

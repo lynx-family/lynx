@@ -1,7 +1,7 @@
 {
   "name": "@lynx-js/lynx-api-docs",
-  "version": "0.3.8",
-  "description": "Install the public Lynx engine AI context bundle into a project and inject AGENTS.md references.",
+  "version": "4.3.0",
+  "description": "Install the public Lynx engine AI context bundle and expose it through project-local agent skills.",
   "keywords": [
     "lynx",
     "agent-skill",
@@ -23,6 +23,9 @@
   "files": [
     "cli.js",
     "CHANGELOG.md",
+    "evaluate.js",
+    "evaluations",
+    "generate-index.js",
     "LICENSE",
     "README.md",
     "package.json",
@@ -35,6 +38,8 @@
   "license": "Apache-2.0",
   "scripts": {
     "prepack": "node ./verify-package-layout.js",
+    "evaluate": "node ./evaluate.js",
+    "generate:index": "node ./generate-index.js",
     "test": "node ./test.js"
   }
 }

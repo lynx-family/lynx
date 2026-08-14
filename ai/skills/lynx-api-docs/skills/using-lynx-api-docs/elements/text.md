@@ -100,11 +100,18 @@ This guide covers the common `<text>` element usage for text rendering and inlin
 | `letter-spacing` | Character spacing |
 | `text-indent` | First-line indentation |
 | `text-align` | Horizontal alignment |
-| `text-decoration` | Underline or line-through decoration |
+| `text-decoration` | Partial shorthand for underline or line-through, style, color, and length thickness |
 | `white-space` | Line wrapping behavior |
 | `text-overflow` | Overflow display behavior |
 | `vertical-align` | Inline vertical alignment |
 | `text-shadow` | Text shadow |
+
+### Text compatibility limits
+
+For line-height, spacing, decoration, computed-style, and platform limits, read
+[text CSS compatibility](../css/compatibility/text.md). This element reference
+owns markup and element APIs; the CSS topic owns behavioral compatibility
+facts.
 
 ## Advanced Styling
 
@@ -130,8 +137,10 @@ This guide covers the common `<text>` element usage for text rendering and inlin
 
 - use `<text>` for all visible text instead of placing raw text directly in `<view>`
 - when exact wrapping behavior matters, set `white-space` explicitly instead of depending on implicit defaults
+- set an explicit `line-height` when Web-compatible vertical metrics matter
 - when using `text-overflow: ellipsis`, give the text a resolved width or `max-width`
 - nested `<text>` nodes inherit outer text styling unless overridden locally
+- keep portable decorations simple and on one `<text>` node
 
 ## Common Pattern
 

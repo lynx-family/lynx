@@ -258,7 +258,9 @@ display: linear; /* Lynx-specific */
 display: relative; /* Lynx-specific */
 ```
 
-Lynx 2.0+ accepts `display: block` as a compatibility value, but it resolves to a Lynx layout mode rather than Web block layout. Prefer an explicit layout mode when authoring new code.
+This package baseline accepts `display: block` as a compatibility value, but
+it resolves to a Lynx layout mode rather than Web block layout. Prefer an
+explicit layout mode when authoring new code.
 
 **Sizing nested elements**:
 
@@ -649,7 +651,8 @@ $spacing-unit: 8px;
 - [ ] Replace HTML tags with Lynx elements.
 - [ ] Wrap all text in `<text>` elements.
 - [ ] Remove `float` and `clear`.
-- [ ] Remove `display: inline` and `display: inline-block`; Lynx 2.0+ retains `display: block` and falls back to Flex or Linear layout.
+- [ ] Remove `display: inline` and `display: inline-block`; `display: block` is
+      only a compatibility value and falls back to Flex or Linear layout.
 - [ ] Replace `position: static` with `relative`.
 - [ ] Keep `max-content` and `fit-content`; replace `min-content` for width or height, and note that `flex-basis: min-content` degrades to `0px`.
 - [ ] Add `position` wherever `z-index` is used.

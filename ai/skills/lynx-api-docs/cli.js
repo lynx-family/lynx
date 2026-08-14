@@ -6,8 +6,6 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFAULT_DEST = '.ai/lynx-api-docs';
-const MANAGED_BLOCK_START = '<!-- BEGIN MANAGED BLOCK: @lynx-js/lynx-api-docs -->';
-const MANAGED_BLOCK_END = '<!-- END MANAGED BLOCK: @lynx-js/lynx-api-docs -->';
 const SKILL_SOURCE = 'skills/using-lynx-api-docs';
 const SKILL_DEST = '.agents/skills/using-lynx-api-docs';
 const SKILL_NAME = 'using-lynx-api-docs';
@@ -16,17 +14,6 @@ const PROJECT_AGENT_DIRS = {
   codex: '.codex/skills',
   trae: '.trae/skills',
 };
-const COPY_ROOTS = [
-  'AGENTS.md',
-  'best-practices.md',
-  'quick-reference.md',
-  'css',
-  'elements',
-  'examples',
-  'layout',
-  'lynx-vs-web',
-  'patterns',
-];
 
 function main() {
   try {
@@ -47,60 +34,28 @@ function main() {
     const projectRoot = fs.realpathSync(projectPath);
     const destRelative = normalizeRelativeDest(options.dest || DEFAULT_DEST);
     const destAbsolute = path.resolve(projectRoot, destRelative);
-    const agentsPath = path.join(projectRoot, 'AGENTS.md');
     const skillSourcePath = path.join(packageRoot, SKILL_SOURCE);
     const skillDestPath = path.join(projectRoot, SKILL_DEST);
-    const docsIndexSourcePath = resolveDocsIndexSource(packageRoot, skillSourcePath);
 
     ensurePathWithinRoot(projectRoot, destAbsolute, 'Docs destination');
-    ensurePathWithinRoot(projectRoot, agentsPath, 'AGENTS.md');
     ensurePathWithinRoot(projectRoot, skillDestPath, 'Skill destination');
-    ensureWritableParent(projectRoot, destAbsolute, agentsPath);
+    ensureWritableDestination(projectRoot, destAbsolute);
     ensureWritableSkillParent(projectRoot, skillDestPath);
 
     const ops = [];
+    queueCopy(skillSourcePath, destAbsolute, ops, projectRoot);
 
-    const skillOps = [];
-    if (fs.existsSync(skillSourcePath)) {
-      queueCopy(skillSourcePath, skillDestPath, skillOps, projectRoot);
-      queueCopy(
-        docsIndexSourcePath,
-        path.join(skillDestPath, 'README.md'),
-        skillOps,
-        projectRoot
-      );
-    }
-
-    for (const entry of COPY_ROOTS) {
-      const sourcePath = path.join(skillSourcePath, entry);
-      const targetPath = path.join(destAbsolute, entry);
-      queueCopy(sourcePath, targetPath, ops, projectRoot);
-    }
-    queueCopy(
-      docsIndexSourcePath,
-      path.join(destAbsolute, 'README.md'),
-      ops,
-      projectRoot
-    );
-
-    const agentsContent = renderAgentsContent(skillSourcePath, projectRoot, destAbsolute);
-    const currentAgentsContent = fs.existsSync(agentsPath)
-      ? fs.readFileSync(agentsPath, 'utf8')
-      : '';
-    const nextAgentsContent = upsertManagedBlock(currentAgentsContent, agentsContent);
-    const agentsChanged = nextAgentsContent !== currentAgentsContent;
-    const agentsAction = fs.existsSync(agentsPath) ? 'updated' : 'created';
-
-    const linkTargets = resolveLinkTargets(options, projectRoot, skillDestPath);
+    const linkTargets = resolveLinkTargets(options, projectRoot);
+    const allLinkTargets = [skillDestPath, ...linkTargets];
     const linkResults = [];
-    for (const target of linkTargets) {
+    for (const target of allLinkTargets) {
       if (isPathWithinRoot(projectRoot, target)) {
         ensurePathWithinRoot(projectRoot, path.dirname(target), 'Skill link parent');
       }
     }
 
     if (options.dryRun) {
-      printDryRunSummary(projectRoot, destRelative, ops, agentsChanged, agentsAction, skillOps, linkTargets);
+      printDryRunSummary(projectRoot, destRelative, ops, allLinkTargets);
       return;
     }
 
@@ -108,20 +63,11 @@ function main() {
       writeCopy(op);
     }
 
-    for (const op of skillOps) {
-      writeCopy(op);
+    for (const target of allLinkTargets) {
+      linkResults.push(linkSkill(destAbsolute, target));
     }
 
-    if (agentsChanged) {
-      ensurePathWithinRoot(projectRoot, agentsPath, 'AGENTS.md');
-      fs.writeFileSync(agentsPath, nextAgentsContent, 'utf8');
-    }
-
-    for (const target of linkTargets) {
-      linkResults.push(linkSkill(skillDestPath, target));
-    }
-
-    printSummary(projectRoot, destRelative, ops.length > 0, agentsChanged, agentsAction, skillOps, linkResults);
+    printSummary(projectRoot, destRelative, ops.some((op) => op.changed), linkResults);
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exitCode = 1;
@@ -158,15 +104,19 @@ function parseArgs(argv) {
     } else if (arg.startsWith('--dest=')) {
       options.dest = arg.slice('--dest='.length);
     } else if (arg === '--link-claude') {
+      options.linkAll = false;
       options.linkAgents.push('claude');
     } else if (arg === '--link-codex') {
+      options.linkAll = false;
       options.linkAgents.push('codex');
     } else if (arg === '--link-trae') {
+      options.linkAll = false;
       options.linkAgents.push('trae');
     } else if (arg === '--link-all') {
       options.linkAll = true;
     } else if (arg === '--no-link') {
       options.linkAll = false;
+      options.linkAgents = [];
     } else if (arg === '--skills-dir') {
       options.skillsDir = requireValue(args, ++i, '--skills-dir');
     } else if (arg.startsWith('--skills-dir=')) {
@@ -185,14 +135,6 @@ function requireValue(args, index, flag) {
     throw new Error(`Missing value for ${flag}.`);
   }
   return value;
-}
-
-function resolveDocsIndexSource(packageRoot, skillSourcePath) {
-  const packagedSkillReadme = path.join(skillSourcePath, 'README.md');
-  if (fs.existsSync(packagedSkillReadme)) {
-    return packagedSkillReadme;
-  }
-  return path.join(packageRoot, 'README.md');
 }
 
 function normalizeRelativeDest(dest) {
@@ -279,15 +221,10 @@ function nearestExistingPath(targetPath) {
   }
 }
 
-function ensureWritableParent(projectRoot, destAbsolute, agentsPath) {
+function ensureWritableDestination(projectRoot, destAbsolute) {
   const probeDir = nearestExistingDir(destAbsolute) || projectRoot;
   if (!isWritable(probeDir)) {
     throw new Error(`Project is not writable: ${probeDir}`);
-  }
-
-  const agentsParent = path.dirname(agentsPath);
-  if (!isWritable(agentsParent)) {
-    throw new Error(`Cannot write AGENTS.md in: ${agentsParent}`);
   }
 }
 
@@ -370,7 +307,7 @@ function writeCopy(op) {
   }
 }
 
-function resolveLinkTargets(options, projectRoot, skillDestPath) {
+function resolveLinkTargets(options, projectRoot) {
   const targets = [];
 
   if (options.skillsDir) {
@@ -396,6 +333,10 @@ function resolveLinkTargets(options, projectRoot, skillDestPath) {
 function linkSkill(sourcePath, targetPath) {
   if (!fs.existsSync(sourcePath)) {
     return { target: targetPath, status: 'skipped', reason: 'source skill not found' };
+  }
+
+  if (path.resolve(sourcePath) === path.resolve(targetPath)) {
+    return { target: targetPath, status: 'canonical' };
   }
 
   try {
@@ -455,86 +396,19 @@ function copyDirectory(sourcePath, targetPath) {
   fs.copyFileSync(sourcePath, targetPath);
 }
 
-function renderAgentsContent(sourcePath, projectRoot, destAbsolute) {
-  const relativeDest = toPosixPath(path.relative(projectRoot, destAbsolute));
-  const relativeDocsAgents = toPosixPath(path.relative(projectRoot, path.join(destAbsolute, 'AGENTS.md')));
-  const relativeReadme = toPosixPath(path.relative(projectRoot, path.join(destAbsolute, 'README.md')));
-  const sourceAgents = fs.readFileSync(path.join(sourcePath, 'AGENTS.md'), 'utf8');
-  const lines = sourceAgents.split('\n');
-
-  if (lines.length === 0) {
-    throw new Error('Vendored AGENTS.md is empty.');
-  }
-
-  lines[0] = `[Lynx API Docs Index]|root: ${relativeDest}`;
-  lines.splice(
-    2,
-    0,
-    `|entry: ${relativeDocsAgents}|index: ${relativeReadme}`
-  );
-
-  return lines.join('\n').trimEnd();
-}
-
-function upsertManagedBlock(currentContent, managedContent) {
-  const block = `${MANAGED_BLOCK_START}\n${managedContent}\n${MANAGED_BLOCK_END}`;
-  const pattern = new RegExp(
-    `${escapeRegExp(MANAGED_BLOCK_START)}[\\s\\S]*?${escapeRegExp(MANAGED_BLOCK_END)}`,
-    'm'
-  );
-  const matches = currentContent.match(
-    new RegExp(
-      `${escapeRegExp(MANAGED_BLOCK_START)}[\\s\\S]*?${escapeRegExp(MANAGED_BLOCK_END)}`,
-      'g'
-    )
-  );
-
-  if (matches && matches.length > 1) {
-    throw new Error('AGENTS.md contains multiple managed Lynx API docs blocks. Clean them up before rerunning.');
-  }
-
-  if (pattern.test(currentContent)) {
-    return currentContent.replace(pattern, block);
-  }
-
-  const trimmed = currentContent.trimEnd();
-  if (!trimmed) {
-    return `${block}\n`;
-  }
-
-  return `${trimmed}\n\n${block}\n`;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function toPosixPath(value) {
-  const normalized = value.replace(/[\\]+/g, '/');
-  return normalized || '.';
-}
-
-function printDryRunSummary(projectRoot, destRelative, ops, agentsChanged, agentsAction, skillOps, linkTargets) {
+function printDryRunSummary(projectRoot, destRelative, ops, linkTargets) {
   console.log(`Dry run for ${projectRoot}`);
   console.log(`Docs destination: ${destRelative}`);
   console.log(`Docs files to ${ops.some((op) => op.changed) ? 'write/update' : 'keep'}: ${ops.filter((op) => op.changed).length}/${ops.length}`);
-  console.log(`AGENTS.md: ${agentsChanged ? agentsAction : 'unchanged'}`);
-  if (skillOps.length > 0) {
-    console.log(`Skill: ${skillOps.some((op) => op.changed) ? 'to install/update' : 'unchanged'}`);
-  }
   for (const target of linkTargets) {
     console.log(`Skill link: ${target} (dry run)`);
   }
 }
 
-function printSummary(projectRoot, destRelative, docsChanged, agentsChanged, agentsAction, skillOps, linkResults) {
+function printSummary(projectRoot, destRelative, docsChanged, linkResults) {
   console.log(`Installed Lynx API docs into ${projectRoot}`);
   console.log(`Docs destination: ${destRelative}`);
   console.log(`Docs: ${docsChanged ? 'installed/updated' : 'already up to date'}`);
-  console.log(`AGENTS.md: ${agentsChanged ? agentsAction : 'already up to date'}`);
-  if (skillOps.length > 0) {
-    console.log(`Skill: ${skillOps.some((op) => op.changed) ? 'installed/updated' : 'already up to date'}`);
-  }
   for (const result of linkResults) {
     console.log(`Skill link: ${result.target} — ${result.status}${result.reason ? ` (${result.reason})` : ''}`);
   }
@@ -551,14 +425,15 @@ function printHelp() {
     'Defaults:',
     `  command: install`,
     `  destination: ${DEFAULT_DEST}`,
-    `  skill linking: all known project-local agents (use --no-link to skip)`,
+    `  primary skill: ${SKILL_DEST}`,
+    `  additional links: all known agent directories (use --no-link to skip)`,
     '',
     'Skill linking:',
     '  --link-claude    Link skill to <project>/.claude/skills/',
     '  --link-codex     Link skill to <project>/.codex/skills/',
     '  --link-trae      Link skill to <project>/.trae/skills/',
-    '  --link-all       Link skill to all known project-local agent dirs (default)',
-    '  --no-link        Skip linking to agent directories',
+    '  --link-all       Link skill to all known agent-specific dirs (default)',
+    '  --no-link        Skip additional agent-specific links',
     '  --skills-dir     Link skill to a custom skills directory',
   ].join('\n'));
 }

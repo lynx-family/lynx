@@ -217,7 +217,10 @@ Defines the start and end row lines of a grid item.
 
 ### `grid-column` / `grid-row` (Optional Shorthands)
 
-`grid-column` and `grid-row` are Grid placement shorthands. They are available only in Lynx 3.9+ when `enableGridPlacementShorthands: true` is enabled. For compatibility with the default configuration and older versions, the examples prefer `grid-column-start` and `grid-column-end`, and `grid-row-start` and `grid-row-end`.
+`grid-column` and `grid-row` are Grid placement shorthands. They are available
+when `enableGridPlacementShorthands: true` is enabled. The examples prefer
+`grid-column-start` and `grid-column-end`, and `grid-row-start` and
+`grid-row-end`, so they do not depend on that configuration.
 
 ```css
 .item {
@@ -314,7 +317,8 @@ The following features are **unsupported or not recommended for new code**:
 
 The following properties are available but **not recommended for new code**:
 
-- `grid-column` / `grid-row`: Requires Lynx 3.9+ with `enableGridPlacementShorthands: true`; default examples prefer `grid-*-start/end`.
+- `grid-column` / `grid-row`: Requires
+  `enableGridPlacementShorthands: true`; examples prefer `grid-*-start/end`.
 - `grid-column-span` / `grid-row-span`: Lynx-specific syntax; prefer `grid-*-start/end`.
 
 ⚠️ **Partial support:**

@@ -1,6 +1,8 @@
 # Unsupported CSS Features
 
-The following Web CSS features are either **unsupported** or **partially supported** in Lynx.
+The following Web CSS features are either **unsupported** or **partially
+supported** in the installed package baseline. Use the linked compatibility
+topics for implementation-specific details.
 
 ## ⚠️ Important: Selectors That Parse but Have No Effect
 
@@ -208,6 +210,10 @@ if (viewportWidth >= 768) {
 - ❌ `empty-cells`
 - ❌ `text-transform`
 - ❌ `word-spacing`
+- ❌ `text-decoration-line`
+- ❌ `text-decoration-style`
+- ❌ `text-decoration-color` as an independently painted longhand
+- ❌ `backdrop-filter`
 - ❌ `word-wrap` / `overflow-wrap`
 - ❌ `hyphens`
 - ❌ `tab-size`
@@ -221,6 +227,10 @@ if (viewportWidth >= 768) {
 - ❌ `scroll-snap-*`
 - ❌ `overscroll-behavior`
 - ❌ `transform-style`
+
+For the partial shorthand and filter subsets, read
+[text CSS compatibility](../css/compatibility/text.md) and
+[filters](../css/compatibility/filters.md).
 
 ### The `env()` Function
 
@@ -248,8 +258,12 @@ if (viewportWidth >= 768) {
 ### Grid Layout
 
 - ❌ Named grid lines: `grid-template-columns: [start] 1fr [end]`
-- ⚠️ The `grid-column` shorthand requires Lynx 3.9+ with `enableGridPlacementShorthands: true`; prefer `grid-column-start` and `grid-column-end` for compatibility
-- ⚠️ The `grid-row` shorthand requires Lynx 3.9+ with `enableGridPlacementShorthands: true`; prefer `grid-row-start` and `grid-row-end` for compatibility
+- ⚠️ The `grid-column` shorthand requires
+  `enableGridPlacementShorthands: true`; prefer `grid-column-start` and
+  `grid-column-end` when that configuration is not guaranteed
+- ⚠️ The `grid-row` shorthand requires `enableGridPlacementShorthands: true`;
+  prefer `grid-row-start` and `grid-row-end` when that configuration is not
+  guaranteed
 - ❌ The `grid-area` shorthand
 - ⚠️ `minmax()`: Basic usage is supported, but complex cases may behave differently from the Web
 
@@ -268,6 +282,8 @@ if (viewportWidth >= 768) {
 - ⚠️ `vertical-align`
 - ⚠️ `text-indent`
 - ⚠️ `letter-spacing`
+- ⚠️ Text CSS compatibility - See the
+  [text topic](../css/compatibility/text.md)
 - ⚠️ `user-select`
 
 ### Values
@@ -277,6 +293,19 @@ if (viewportWidth >= 768) {
 ### Transforms
 
 - ⚠️ `perspective`
+- ⚠️ Transform functions and stacking contexts - See the
+  [transform topic](../css/compatibility/transforms-and-stacking.md)
+
+### Computed-style CSS text
+
+- ⚠️ The query surface is not Web `getComputedStyle()`. See the
+  [computed-style topic](../css/compatibility/computed-style.md).
+
+### Painting geometry
+
+- ⚠️ Background origin/clip and patterned-border behavior require separate
+  evaluation. See
+  [background and border painting](../css/compatibility/backgrounds-and-borders.md).
 
 ## Alternatives
 

@@ -7,6 +7,7 @@ const path = require('path');
 const packageRoot = __dirname;
 const skillRoot = path.join(packageRoot, 'skills', 'using-lynx-api-docs');
 const packageJson = readJson(path.join(packageRoot, 'package.json'));
+const { generateIndex } = require('./generate-index.js');
 
 assert.strictEqual(packageJson.name, '@lynx-js/lynx-api-docs');
 assert.strictEqual(packageJson.license, 'Apache-2.0');
@@ -23,23 +24,31 @@ assert.deepStrictEqual(packageJson.repository, {
 for (const relativePath of [
   'cli.js',
   'CHANGELOG.md',
+  'evaluate.js',
+  'evaluations/cases.jsonl',
+  'generate-index.js',
   'LICENSE',
   'README.md',
-  'skills/using-lynx-api-docs/AGENTS.md',
-  'skills/using-lynx-api-docs/README.md',
+  'skills/using-lynx-api-docs/INDEX.md',
   'skills/using-lynx-api-docs/SKILL.md',
+  'skills/using-lynx-api-docs/topics.jsonl',
 ]) {
   assert.ok(fs.existsSync(path.join(packageRoot, relativePath)), `Missing ${relativePath}`);
 }
 
 assert.ok(!fs.existsSync(path.join(skillRoot, 'config')), 'Unexpected non-public config docs');
+assert.ok(!fs.existsSync(path.join(skillRoot, 'AGENTS.md')), 'Unexpected redundant skill entry');
 assert.ok(
   !fs.readdirSync(path.join(skillRoot, 'elements')).some((name) => /^x-.*\.md$/.test(name)),
   'Unexpected non-public element docs'
 );
 
+generateIndex(skillRoot, true);
+assert.ok(packageJson.files.includes('generate-index.js'));
+assert.strictEqual(packageJson.scripts['generate:index'], 'node ./generate-index.js');
+
 for (const filePath of listFiles(packageRoot)) {
-  if (!/\.(?:js|json|md|yml|yaml)$/.test(filePath)) {
+  if (!/\.(?:js|json|jsonl|md|yml|yaml)$/.test(filePath)) {
     continue;
   }
 
