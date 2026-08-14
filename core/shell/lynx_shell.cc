@@ -800,6 +800,10 @@ void LynxShell::RegisterNotificationCallbacks() {
                }
                const char* type = reinterpret_cast<const char*>(payload[1]);
                if (std::strcmp(type, "bts") == 0) {
+                 if (!this->runtime_actor_) {
+                   LOGI("No runtime actor, skip take snapshot");
+                   return;
+                 }
                  this->runtime_actor_->Act([&](auto& rt) {
                    const auto& group_id = rt->GetGroupId();
                    auto bts_js_executor = rt->GetJSExecutor();
@@ -871,24 +875,25 @@ void LynxShell::RegisterNotificationCallbacks() {
                    }
                  }
                });
-
-               this->runtime_actor_->Act([&](auto& rt) {
-                 const auto& group_id = rt->GetGroupId();
-                 auto bts_js_executor = rt->GetJSExecutor();
-                 if (bts_js_executor) {
-                   auto bts_rt = bts_js_executor->GetJSRuntime().Lock();
-                   if (bts_rt) {
-                     TRACE_EVENT_INSTANT(
-                         LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_BTS_VM, "group_id",
-                         group_id, "instance_id", this->instance_id_, "url",
-                         this->url_, "desc",
-                         bts_rt->getSharedVM()->GetDebugDescription(), "ptr",
-                         bts_rt->getSharedVM().get());
-                     base::NotificationCallback::Notify(
-                         runtime::kBTSReportMemoryInfo, 0);
+               if (this->runtime_actor_) {
+                 this->runtime_actor_->Act([&](auto& rt) {
+                   const auto& group_id = rt->GetGroupId();
+                   auto bts_js_executor = rt->GetJSExecutor();
+                   if (bts_js_executor) {
+                     auto bts_rt = bts_js_executor->GetJSRuntime().Lock();
+                     if (bts_rt) {
+                       TRACE_EVENT_INSTANT(
+                           LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_BTS_VM,
+                           "group_id", group_id, "instance_id",
+                           this->instance_id_, "url", this->url_, "desc",
+                           bts_rt->getSharedVM()->GetDebugDescription(), "ptr",
+                           bts_rt->getSharedVM().get());
+                       base::NotificationCallback::Notify(
+                           runtime::kBTSReportMemoryInfo, 0);
+                     }
                    }
-                 }
-               });
+                 });
+               }
              }}
 #endif
         });
