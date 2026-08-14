@@ -10,6 +10,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 import static org.junit.Assert.assertEquals
+import static org.junit.Assert.assertNull
 import static org.junit.Assert.assertTrue
 
 class LynxLibraryScannerTest {
@@ -50,6 +51,59 @@ class LynxLibraryScannerTest {
     }
 
     @Test
+    void supportsExplicitAndDisabledProviderClasses() {
+        File root = temporaryFolder.newFolder('app')
+        File explicitPackage = writeLibrary(
+            root, 'explicit-lib', 'com.example.explicit', null)
+        new File(explicitPackage, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.explicit",
+              "providerClassName": "com.example.provider.CustomProvider"
+            }
+          }
+        }'''
+        File napiPackage = writeLibrary(
+            root, 'napi-lib', 'com.example.napi', null)
+        new File(napiPackage, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.napi",
+              "providerClassName": null
+            }
+          }
+        }'''
+
+        List<LynxLibraryInfo> libraries = LynxLibraryScanner.scan(root)
+
+        assertEquals('com.example.provider.CustomProvider',
+            libraries.find { it.npmName == 'explicit-lib' }.providerClassName)
+        assertNull(libraries.find { it.npmName == 'napi-lib' }.providerClassName)
+    }
+
+    @Test
+    void rejectsInvalidProviderClassName() {
+        File root = temporaryFolder.newFolder('app')
+        File packageDir = writeLibrary(
+            root, 'bad-provider-lib', 'com.example.provider', null)
+        new File(packageDir, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.provider",
+              "providerClassName": "NotQualified"
+            }
+          }
+        }'''
+
+        try {
+            LynxLibraryScanner.scan(root)
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('platforms.android.providerClassName'))
+        }
+    }
+
+    @Test
     void parsesNodeApiAddons() {
         File root = temporaryFolder.newFolder('app')
         File packageDir = writeLibrary(root, 'napi-lib', 'com.example.napi', null)
@@ -80,7 +134,78 @@ class LynxLibraryScannerTest {
         assertEquals('demo_addon', addon.libraryName)
         assertEquals("lib${libraryName}.so".toString(), addon.sharedLibraryName)
         assertEquals(LynxLibraryScanner.canonicalOrAbsolute(jniLibsDir), addon.jniLibsDir)
+        assertTrue(addon.hasPrebuiltLibrary())
         assertTrue(!addon.required)
+    }
+
+    @Test
+    void treatsMissingJniLibsDirAsSourceBuiltAddon() {
+        File root = temporaryFolder.newFolder('app')
+        File packageDir = writeLibrary(root, 'source-napi-lib', 'com.example.source', null)
+        new File(packageDir, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.source",
+              "providerClassName": null,
+              "nodeApiAddons": [{
+                "name": "source_addon",
+                "libraryName": "source_addon",
+                "required": true
+              }]
+            }
+          }
+        }'''
+
+        LynxNodeApiAddonInfo addon =
+            LynxLibraryScanner.scan(root).first().nodeApiAddons.first()
+
+        assertNull(addon.jniLibsDir)
+        assertTrue(!addon.hasPrebuiltLibrary())
+    }
+
+    @Test
+    void rejectsEmptyNodeApiAddonJniLibsDir() {
+        File root = temporaryFolder.newFolder('app')
+        File packageDir = writeLibrary(root, 'bad-jni-dir-lib', 'com.example.invalid.jni', null)
+        new File(packageDir, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.invalid.jni",
+              "nodeApiAddons": [{"name": "demo", "jniLibsDir": "  "}]
+            }
+          }
+        }'''
+
+        try {
+            LynxLibraryScanner.scan(root)
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('nodeApiAddons[0].jniLibsDir'))
+            assertTrue(e.message.contains('must be a non-empty string'))
+        }
+    }
+
+    @Test
+    void rejectsInvalidNodeApiAddonRequiredType() {
+        File root = temporaryFolder.newFolder('app')
+        File packageDir = writeLibrary(
+            root, 'bad-required-lib', 'com.example.invalid.required', null)
+        new File(packageDir, 'lynx.lib.json').text = '''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.invalid.required",
+              "nodeApiAddons": [{"name": "demo", "required": "yes"}]
+            }
+          }
+        }'''
+
+        try {
+            LynxLibraryScanner.scan(root)
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('nodeApiAddons[0].required'))
+            assertTrue(e.message.contains('must be a boolean'))
+        }
     }
 
     @Test
