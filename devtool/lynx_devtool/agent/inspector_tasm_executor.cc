@@ -530,6 +530,20 @@ ComputedStyleMap BuildComputedStyleMap(tasm::Element* ptr) {
   }
   ReplaceDefaultComputedStyle(
       dict, ElementInspector::GetInlineStyleSheet(ptr).css_properties_);
+  const auto resolved_styles =
+      ElementInspector::GetCssByStyleMap(ptr, ptr->GetStylesForWorklet());
+  for (const auto& [name, value] : resolved_styles) {
+    dict.insert_or_assign(name, value);
+  }
+  if (ptr->computed_css_style() != nullptr) {
+    const auto* custom_properties =
+        ptr->computed_css_style()->GetCustomProperties();
+    if (custom_properties != nullptr) {
+      for (const auto& [name, value] : *custom_properties) {
+        dict.insert_or_assign(name.str(), value.AsStdString());
+      }
+    }
+  }
   return dict;
 }
 
