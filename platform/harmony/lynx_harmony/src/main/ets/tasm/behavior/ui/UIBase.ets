@@ -170,7 +170,11 @@ export abstract class UIBase {
   }
 
   setFocusedUI() {
-    this.nativeUI?.setFocusedUI();
+    if (this.nativeUI) {
+      this.nativeUI.setFocusedUI();
+    } else {
+      this.lynxContext.setFocusedUI?.(this.sign);
+    }
   }
 
   unsetFocusedUI() {
