@@ -6,7 +6,6 @@
 
 #include <array>
 #include <utility>
-#include <vector>
 
 #include "base/include/algorithm.h"
 #include "base/include/log/logging.h"
@@ -750,7 +749,19 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
       element_->MarkRefreshCSSStyles();
     }
   } else {
-    if (is_css_inline_variables_enabled) {
+    // Runtime edits can introduce parsed var() references even when the
+    // bundle uses legacy variables. Those references still need the inherited
+    // custom property map for substitution.
+    bool needs_variable_resolution = false;
+    if (!is_css_inline_variables_enabled) {
+      for (const auto& entry : styles) {
+        if (entry.second.NeedsVariableResolution()) {
+          needs_variable_resolution = true;
+          break;
+        }
+      }
+    }
+    if (is_css_inline_variables_enabled || needs_variable_resolution) {
       element_->CollectCustomProperties(element_->data_model());
     }
 

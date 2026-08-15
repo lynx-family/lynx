@@ -217,6 +217,39 @@ std::unique_ptr<SharedCSSFragment> MakeSelectorFragmentWithToken(
   return fragment;
 }
 
+TEST_F(CSSPatchingTest,
+       HandleCSSVariablesCollectsInheritedValuesWithoutInlineVariables) {
+  base::AutoReset<bool> inline_variables_scope(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_),
+      false);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  ASSERT_FALSE(child->IsCSSInlineVariablesEnabled());
+
+  CSSVariableMap variables;
+  variables.insert_or_assign(base::String("--opacity"), base::String("0.4"));
+  parent->UpdateMatchedCSSVariablesForDevTool(std::move(variables));
+
+  const auto resolve_opacity = [&]() {
+    StyleMap styles;
+    styles.insert_or_assign(kPropertyIDOpacity,
+                            ParseVariableValue("var(--opacity,0.25)",
+                                               manager->GetCSSParserConfigs()));
+    child->HandleCSSVariables(styles);
+    return styles;
+  };
+
+  ExpectNumberStyle(resolve_opacity(), kPropertyIDOpacity, 0.4);
+
+  variables.insert_or_assign(base::String("--opacity"), base::String("0.7"));
+  parent->UpdateMatchedCSSVariablesForDevTool(std::move(variables));
+  ExpectNumberStyle(resolve_opacity(), kPropertyIDOpacity, 0.7);
+
+  parent->UpdateMatchedCSSVariablesForDevTool({});
+  ExpectNumberStyle(resolve_opacity(), kPropertyIDOpacity, 0.25);
+}
+
 TEST_F(CSSPatchingTest, GetCSSStyleForFiber) {
   auto fiber_element =
       fml::AdoptRef<Element>(new Element(manager.get(), "view"));
