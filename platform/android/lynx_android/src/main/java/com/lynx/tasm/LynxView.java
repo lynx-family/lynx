@@ -84,7 +84,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   private final static String TAG = "LynxView";
   private boolean mIsAccessibilityDisabled = false;
   private boolean mDisableDrawChildHook = false;
-  private KeyboardEvent mKeyboardEvent;
+  private volatile KeyboardEvent mKeyboardEvent;
   /**
    * Unique identifier generated when LynxView is added to a LynxViewGroup,
    * assigned by the view group's ID generation mechanism.
@@ -164,14 +164,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
           (WindowManager) context.getSystemService(Context.WINDOW_SERVICE));
     }
 
-    // We try to get Choreographer of ui thread here. It used to be called on LynxEnv init, but in
-    // some cases RuntimeException will be thrown either because the timing is too early or file
-    // descriptor leaks. So instead we get Choreographer here to avoid RuntimeException. Actually,
-    // it will be executed only once because there is a null judgment in it. And there is no
-    // thread-safety concern because there will be only one Choreographer instance for ui thread.
-    VSyncMonitor.initUIThreadChoreographer();
     initLynxTemplateRender(context, builder);
-    mKeyboardEvent = new KeyboardEvent(getLynxContext());
     mDisableDrawChildHook = mLynxUIRender.disableBindDrawChildHook();
   }
 
@@ -1177,8 +1170,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     }
 
     if (changed && getLynxContext() != null && getLynxContext().useRelativeKeyboardHeightApi()) {
-      if (mKeyboardEvent.isStart()) {
-        mKeyboardEvent.detectKeyboardChangeAndSendEvent();
+      KeyboardEvent keyboardEvent = mKeyboardEvent;
+      if (keyboardEvent != null && keyboardEvent.isStart()) {
+        keyboardEvent.detectKeyboardChangeAndSendEvent();
       }
     }
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_LAYOUT_END);
@@ -1810,7 +1804,22 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   public KeyboardEvent getKeyboardEvent() {
-    return mKeyboardEvent;
+    KeyboardEvent keyboardEvent = mKeyboardEvent;
+    if (keyboardEvent != null) {
+      return keyboardEvent;
+    }
+
+    LynxContext lynxContext = getLynxContext();
+    if (lynxContext == null) {
+      return null;
+    }
+
+    synchronized (this) {
+      if (mKeyboardEvent == null) {
+        mKeyboardEvent = new KeyboardEvent(lynxContext);
+      }
+      return mKeyboardEvent;
+    }
   }
 
   /**
