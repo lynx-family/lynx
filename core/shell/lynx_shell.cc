@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/include/fml/thread.h"
 #include "base/include/no_destructor.h"
 #include "base/trace/native/trace_controller.h"
 #include "core/base/threading/thread_merger.h"
@@ -20,6 +21,7 @@
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/js_bundle_holder.h"
+#include "core/runtime/js/jsi/heap_snapshot.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/js/runtime_manager.h"
 #include "core/services/event_report/event_tracker.h"
@@ -1546,6 +1548,37 @@ void LynxShell::GetAllJsSourceAsync(
     }
     callback->InvokeWithValue(lepus::Value(std::move(dict)));
   });
+}
+
+bool LynxShell::TakeBTSHeapSnapshotToFileAsync(
+    std::string output_path,
+    base::MoveOnlyClosure<void, bool> completion_callback) {
+  if (output_path.empty() || IsDestroyed() || runtime_actor_ == nullptr ||
+      !enable_runtime_) {
+    return false;
+  }
+
+  static base::NoDestructor<fml::Thread> io_thread(fml::Thread::ThreadConfig(
+      "LynxHeapSnapshotIO", fml::Thread::ThreadPriority::LOW));
+  auto io_task_runner = io_thread->GetTaskRunner();
+
+  runtime_actor_->ActAsync(
+      [output_path = std::move(output_path),
+       completion_callback = std::move(completion_callback),
+       io_task_runner](auto& runtime) mutable {
+        auto snapshot = runtime->TakeHeapSnapshot();
+        io_task_runner->PostTask(
+            [output_path = std::move(output_path),
+             completion_callback = std::move(completion_callback),
+             snapshot = std::move(snapshot)]() mutable {
+              const bool success =
+                  snapshot != nullptr && snapshot->WriteToFile(output_path);
+              if (completion_callback) {
+                completion_callback(success);
+              }
+            });
+      });
+  return true;
 }
 
 void LynxShell::GetLynxElementRootSignAsync(

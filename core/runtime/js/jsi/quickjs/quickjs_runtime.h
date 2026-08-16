@@ -29,6 +29,7 @@ class RepeatingTimer;
 }
 namespace runtime {
 namespace js {
+
 class QuickjsRuntime : public Runtime, public JSIObserver {
  public:
   QuickjsRuntime();
@@ -79,6 +80,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
   LEPUSRuntime *getJSRuntime() const {
     return quickjs_runtime_wrapper_->Runtime();
   };
+  std::unique_ptr<HeapSnapshot> TakeHeapSnapshot() override;
   LEPUSValue valueRef(const Value &value);
   LEPUSClassID getFunctionClassID() const;
   LEPUSClassID getObjectClassID() const;

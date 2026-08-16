@@ -40,7 +40,8 @@ namespace lynx {
 namespace runtime {
 namespace js {
 class NapiEnvironment;
-}
+class HeapSnapshot;
+}  // namespace js
 }  // namespace runtime
 
 /*
@@ -141,6 +142,8 @@ class BTSRuntime final {
 
   base::UnsafeWeakPtr<runtime::js::Runtime> GetJSRuntimeWeak();
   int64_t GetRuntimeId() const { return instance_id_; }
+
+  std::unique_ptr<runtime::js::HeapSnapshot> TakeHeapSnapshot();
 
 #if ENABLE_NAPI_BINDING
   runtime::js::NapiEnvironment* GetNapiEnvironment() const {

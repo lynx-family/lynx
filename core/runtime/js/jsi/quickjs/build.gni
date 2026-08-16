@@ -8,6 +8,7 @@ lynx_jsi_quickjs_sources = [
   "quickjs_context_wrapper.h",
   "quickjs_exception.cc",
   "quickjs_exception.h",
+  "quickjs_heap_snapshot.cc",
   "quickjs_helper.cc",
   "quickjs_helper.h",
   "quickjs_host_function.cc",

@@ -39,6 +39,7 @@
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/page_options.h"
+#include "core/runtime/js/jsi/heap_snapshot.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/services/watch_dog/watch_dog.h"
 
@@ -354,6 +355,7 @@ class LYNX_EXPORT Runtime {
   virtual bool Valid() const { return true; }
 
   LYNX_EXPORT virtual ~Runtime() = default;
+  virtual std::unique_ptr<HeapSnapshot> TakeHeapSnapshot() { return nullptr; }
   void setCreatedType(JSRuntimeCreatedType type) { created_type_ = type; }
   JSRuntimeCreatedType getCreatedType() { return created_type_; }
 
