@@ -142,34 +142,5 @@ NSString *const TESTBENCH_ASSETS_SCHEME = @"asset://";
   }
   self.isStartTrace = NO;
   [self.traceHelper stopTrace];
-  [self renameLocalTraceFile];
-}
-
-- (void)renameLocalTraceFile {
-  static NSString *LYNX_TESTBENCH_TRACE = @"lynx-benchmark-trace";
-  NSString *documentsPath =
-      [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
-  NSArray<NSString *> *file_list =
-      [[NSFileManager defaultManager] contentsOfDirectoryAtPath:documentsPath error:NULL];
-  BOOL isExit = [[NSFileManager defaultManager]
-      fileExistsAtPath:[documentsPath stringByAppendingPathComponent:LYNX_TESTBENCH_TRACE]];
-  if (isExit) {
-    return;
-  }
-  for (NSString *file in file_list) {
-    if ([file hasPrefix:@"lynx-profile-trace"]) {
-      NSString *filePath = [documentsPath stringByAppendingPathComponent:file];
-      NSString *moveToPath = [documentsPath stringByAppendingPathComponent:LYNX_TESTBENCH_TRACE];
-      BOOL isSuccess = [[NSFileManager defaultManager] moveItemAtPath:filePath
-                                                               toPath:moveToPath
-                                                                error:nil];
-      if (isSuccess) {
-        NSLog(@"rename success");
-      } else {
-        NSLog(@"rename fail");
-      }
-      break;
-    }
-  }
 }
 @end

@@ -13,6 +13,12 @@
   LynxTraceController *_controller;
 }
 
+static NSString *TestBenchTraceFilePath() {
+  NSString *documentsPath =
+      [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
+  return [documentsPath stringByAppendingPathComponent:@"lynx-benchmark-trace"];
+}
+
 - (instancetype)init {
   self = [super init];
   if (self) {
@@ -23,14 +29,20 @@
 
 - (void)startTrace {
   if (_controller) {
-    [_controller startTracing:nullptr config:@{@"enable_compress" : @YES}];
+    [_controller
+        startTracing:nullptr
+              config:@{@"enable_compress" : @YES, @"trace_file" : TestBenchTraceFilePath()}];
   }
 }
 
 - (void)startTrace:(int)bufferSize {
   if (_controller) {
     [_controller startTracing:nullptr
-                       config:@{@"buffer_size" : @(bufferSize), @"enable_compress" : @YES}];
+                       config:@{
+                         @"buffer_size" : @(bufferSize),
+                         @"enable_compress" : @YES,
+                         @"trace_file" : TestBenchTraceFilePath()
+                       }];
   }
 }
 
