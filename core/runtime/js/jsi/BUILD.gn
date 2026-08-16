@@ -9,6 +9,7 @@ import("v8/v8.gni")
 
 jsi_sources = [
   "args_converter.h",
+  "heap_snapshot.h",
   "instrumentation.h",
   "jsi-inl.h",
   "jsi.cc",
