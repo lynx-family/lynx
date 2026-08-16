@@ -159,6 +159,8 @@ public interface ILynxViewConfigProvider {
 
   boolean isEnableMTSModule();
 
+  boolean isEnableLepusModule();
+
   /* resource fetcher related */
 
   /**

@@ -1135,8 +1135,11 @@ public class LynxTemplateRender
 
     if (null != mLynxContext && mLogicExecutor == null) {
       // lepus module need this module factory to init. when remove lepus module, this
-      // module setup will be removed.
-      setUpBackgroundThreadModuleFactory();
+      // module setup will be removed. The factory is required by the JS runtime, so it
+      // can only be skipped when both JS runtime and lepus module are disabled.
+      if (enableJSRuntime() || mLynxViewBuilder.isEnableLepusModule()) {
+        setUpBackgroundThreadModuleFactory();
+      }
       // only init LynxRuntime if enableJSRuntime is true.
       if (enableJSRuntime()) {
         mResourceLoader = new LynxResourceLoader(mLynxRuntimeOptions, mLynxViewBuilder.fetcher,
