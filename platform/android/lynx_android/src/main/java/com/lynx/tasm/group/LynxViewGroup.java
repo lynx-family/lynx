@@ -95,6 +95,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private int embeddedMode = EmbeddedMode.UNSET;
   private boolean hasPresetMeasureSpec = false;
   private boolean enableMTSModule;
+  private boolean enableLepusModule;
   private ILynxLogicExecutor logicExecutor;
   private String tapSlop = TouchEventDispatcher.mTapSlopDefault;
   private boolean enableSharedModule = false;
@@ -134,7 +135,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       LynxColorScheme colorScheme, boolean enablePreUpdateData,
       IUIRendererCreator uiRendererCreator, int embeddedMode, boolean hasPresetMeasureSpec,
       ILynxLogicExecutor logicExecutor, boolean enableMTSModule, String tapSlop,
-      boolean enableSharedModule) {
+      boolean enableSharedModule, boolean enableLepusModule) {
     this.mContext = context;
     this.url = url;
     this.templateBundle = bundle;
@@ -169,6 +170,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.hasPresetMeasureSpec = hasPresetMeasureSpec;
     this.logicExecutor = logicExecutor;
     this.enableMTSModule = enableMTSModule;
+    this.enableLepusModule = enableLepusModule;
     this.tapSlop = tapSlop;
     this.enableSharedModule = enableSharedModule;
 
@@ -353,6 +355,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   @Override
   public boolean isEnableMTSModule() {
     return this.enableMTSModule;
+  }
+
+  @Override
+  public boolean isEnableLepusModule() {
+    return this.enableLepusModule;
   }
 
   @Override

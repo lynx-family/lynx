@@ -104,7 +104,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private boolean mHasInited;
 
   public static synchronized void startPixelCopyHandlerThreadIfNecessary() {
-    if (mPixelCopyHandlerThread == null && LynxEnv.inst().isLynxDebugEnabled()) {
+    if (mPixelCopyHandlerThread == null) {
       mPixelCopyHandlerThread = new HandlerThread("PixelCopier");
       mPixelCopyHandlerThread.start();
     }
@@ -132,10 +132,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     lynxContext.setUIBodyView(body);
     mLynxContext = new WeakReference<>(lynxContext);
     mLongTaskMonitorEnabled = longTaskMonitorEnabled;
-
-    // Check if the handler thread is required and start it if it hasn't been started already.
-    // This is necessary for the devtool to take screenshot.
-    LynxUIRenderer.startPixelCopyHandlerThreadIfNecessary();
     mHasInited = true;
   }
 
@@ -674,6 +670,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
         // PixelCopy destination must match srcRect size: use a temporary bitmap
         Bitmap copyBitmap = Bitmap.createBitmap(copyWidth, copyHeight, Bitmap.Config.ARGB_8888);
 
+        LynxUIRenderer.startPixelCopyHandlerThreadIfNecessary();
         synchronized (mSyncObject) {
           PixelCopy.request(
               surface, srcRect, copyBitmap, new PixelCopy.OnPixelCopyFinishedListener() {
