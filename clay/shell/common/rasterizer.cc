@@ -18,6 +18,7 @@
 #include "base/include/fml/make_copyable.h"
 #include "base/include/fml/time/time_delta.h"
 #include "base/include/fml/time/time_point.h"
+#include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/persistent_cache.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/flow/compositor/compositor_state.h"
@@ -29,6 +30,7 @@
 #include "clay/ui/common/frame_timing_collector.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/resource/gpu_resource_cache.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
@@ -492,6 +494,13 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       compositor_service_->SubmitFrame(surface_->GetContextPtr(),
                                        std::move(frame),
                                        std::move(compositor_state));
+      if (!has_traced_first_successful_submit_) {
+        has_traced_first_successful_submit_ = true;
+        TRACE_EVENT_INSTANT(
+            "clay", CLAY_STARTUP_FIRST_FRAME_SUBMITTED, "frame_number",
+            frame_timings_recorder ? frame_timings_recorder->GetFrameNumber()
+                                   : 0);
+      }
       if (frame_timings_recorder) {
         frame_timings_recorder->RecordFrameTime(
             FrameTimingKey::kSubmitFrameEnd);
