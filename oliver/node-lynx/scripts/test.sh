@@ -33,8 +33,11 @@ pnpm run build
 cp "${NATIVE_ADDON}" "${PLATFORM_DIR}/"
 pnpm exec tsc --noEmit
 
+node test/publish_manifest_versions.js
 node test/cli_debug_router_no_initial_template.js
 node test/remote_template_smoke.js
 node test/local_template_dom_tree.js
+node test/shared_runtime_smoke.js
+node test/resource_root_boundaries.js
 node test/open_card_manager.js
 node test/protocol_smoke.js

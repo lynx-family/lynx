@@ -13,6 +13,14 @@ export interface HeadlessLynxViewOptions {
   timeoutMs?: number;
   renderer?: HeadlessRenderer;
   resourcesPath?: string;
+  /**
+   * Local roots searched synchronously by the native resource loader before it
+   * falls back to the asynchronous JavaScript fetcher. This is required by
+   * bundles that use synchronous `lynx.loadScript` calls.
+   */
+  resourceRootPaths?: string[];
+  /** Create the Lynx view in a shared BTS runtime group. */
+  groupName?: string;
   onErrorOccurred?: NativeErrorHandler;
 }
 
@@ -59,6 +67,7 @@ type NativeHeadlessLynxView = {
   ): void;
   _updateGlobalProps(globalProps: string): void;
   _invokeCDPFromSDK(cdpMsg: string): Promise<string>;
+  _evaluateScript(url: string, script: string): void;
   _sendTouchEvent(eventName: string, tag: number): void;
   _setErrorHandler(handler?: NativeErrorHandler): void;
   _waitForFrame(): Promise<void>;
@@ -82,7 +91,9 @@ export type NativeBinding = {
     width: number,
     height: number,
     devicePixelRatio: number,
-    resourceFetcher: ResourceFetcher
+    resourceFetcher: ResourceFetcher,
+    resourceRootPaths: string[],
+    groupName: string
   ) => NativeHeadlessLynxView;
   initGlobalEnv(): void;
   LynxEnv: {
@@ -460,7 +471,9 @@ export class HeadlessLynxView {
       width,
       height,
       devicePixelRatio,
-      defaultResourceFetcher
+      defaultResourceFetcher,
+      options.resourceRootPaths ?? [],
+      options.groupName ?? ''
     );
     if (options.onErrorOccurred) {
       this.native._setErrorHandler(options.onErrorOccurred);
@@ -521,6 +534,18 @@ export class HeadlessLynxView {
       this.timeoutMs,
       'invokeCDPFromSDK'
     );
+  }
+
+  /**
+   * Schedule JavaScript in this view's BTS runtime. Evaluation failures are
+   * reported through `onErrorOccurred`.
+   */
+  evaluateScript(url: string, script: string): void {
+    this.assertAlive();
+    if (!url || !script) {
+      throw new Error('evaluateScript requires a URL and script');
+    }
+    this.native._evaluateScript(url, script);
   }
 
   sendTouchEvent(eventName: string, tag: number): void {
