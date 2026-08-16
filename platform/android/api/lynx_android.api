@@ -7699,6 +7699,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIdSelector(String id);
   public UIGroup< UIBodyView > com.lynx.tasm.LynxView.getLynxUIRoot();
   public void com.lynx.tasm.LynxView.getLynxElementRoot(@NonNull LynxElementCallback< LynxElement > callback);
+  public void com.lynx.tasm.LynxView.takeBTSHeapSnapshot( @NonNull File outputFile, @Nullable LynxConsumer< Boolean > callback);
   public void com.lynx.tasm.LynxView.syncFlush();
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIndex(int index);
   public void com.lynx.tasm.LynxView.setOnClickListener(@Nullable OnClickListener listener);

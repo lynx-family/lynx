@@ -45,6 +45,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.CleanupReference;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.base.LynxPageLoadListener;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -3667,6 +3668,22 @@ public class LynxTemplateRender
     return mNativePtr != 0 ? nativeGetAllJsSource(mNativePtr, mNativeLifecycle) : null;
   }
 
+  boolean takeBTSHeapSnapshot(
+      @NonNull String outputPath, @Nullable LynxConsumer<Boolean> callback) {
+    if (!checkIfEnvPrepared() || mNativePtr == 0 || mNativeLifecycle == 0 || mIsDestroyed.get()
+        || mHasDestroy || mDestroying) {
+      return false;
+    }
+    return nativeTakeBTSHeapSnapshotToFile(mNativePtr, mNativeLifecycle, outputPath, callback);
+  }
+
+  @CalledByNative
+  static void dispatchBTSHeapSnapshotResult(LynxConsumer<Boolean> callback, boolean success) {
+    if (callback != null) {
+      callback.accept(success);
+    }
+  }
+
   public boolean enableJSRuntime() {
     return mEnableJSRuntime;
   }
@@ -4751,6 +4768,9 @@ public class LynxTemplateRender
   private static native Object nativeGetPageDataByKey(long ptr, long lifecycle, String[] keys);
 
   private static native JavaOnlyMap nativeGetAllJsSource(long ptr, long lifecycle);
+
+  private static native boolean nativeTakeBTSHeapSnapshotToFile(
+      long ptr, long lifecycle, String outputPath, Object callback);
 
   private static native void nativeQueryNativeMemoryUsageAsync(
       long ptr, long lifecycle, Object receiver);
