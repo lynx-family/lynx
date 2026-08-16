@@ -10,6 +10,7 @@
 #include "base/include/no_destructor.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/types/nlength.h"
+#include "core/renderer/tasm/config.h"
 
 #define CSS_UNDEFINED 0x7FFFFFF
 static constexpr float UNDEFINED = 10E20;
@@ -136,6 +137,10 @@ struct DefaultLayoutStyle {
   static const NLength SL_DEFAULT_RADIUS() { return SL_DEFAULT_ZEROLENGTH(); }
 
   static const NLength SL_DEFAULT_GRID_GAP() { return SL_DEFAULT_ZEROLENGTH(); }
+
+  static const NLength SL_DEFAULT_FLOW_TOLERANCE() {
+    return NLength::MakeUnitNLength(DEFAULT_FONT_SIZE_DP);
+  }
 
   static std::vector<NLength> SL_DEFAULT_GRID_TRACK() {
     static base::NoDestructor<std::vector<NLength>> l{std::vector<NLength>()};

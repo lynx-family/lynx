@@ -31,6 +31,12 @@ inline void ApplyPageConfigDerivedCompileOptions(
         doc[config::kEnableParseIntFlex].GetBool();
   }
 
+  if (doc.HasMember(config::kEnableGridLanes) &&
+      doc[config::kEnableGridLanes].IsBool()) {
+    compile_options.enable_grid_lanes_ =
+        doc[config::kEnableGridLanes].GetBool();
+  }
+
   if (doc.HasMember(config::kEnableCSSRule) &&
       doc[config::kEnableCSSRule].IsBool()) {
     bool v = doc[config::kEnableCSSRule].GetBool();

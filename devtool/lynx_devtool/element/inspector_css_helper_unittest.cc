@@ -194,6 +194,17 @@ TEST(InspectorCSSHelperTest, IsLegalTest) {
 
   std::string name4 = "outline-width", value4 = "blue";
   EXPECT_FALSE(lynx::devtool::InspectorCSSHelper::IsLegal(name4, value4));
+
+  EXPECT_TRUE(
+      lynx::devtool::InspectorCSSHelper::IsLegal("display", "grid-lanes"));
+  EXPECT_TRUE(
+      lynx::devtool::InspectorCSSHelper::IsLegal("flow-tolerance", "normal"));
+  EXPECT_TRUE(
+      lynx::devtool::InspectorCSSHelper::IsLegal("flow-tolerance", "infinite"));
+  EXPECT_TRUE(
+      lynx::devtool::InspectorCSSHelper::IsLegal("flow-tolerance", "10%"));
+  EXPECT_FALSE(
+      lynx::devtool::InspectorCSSHelper::IsLegal("flow-tolerance", "-1px"));
 }
 
 TEST(InspectorCSSHelperTest, IsAnimationLegalTest) {

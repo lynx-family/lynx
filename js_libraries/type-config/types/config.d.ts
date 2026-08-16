@@ -182,6 +182,19 @@ export interface Config {
   enableFlexBasisZeroPercent?: boolean;
 
   /**
+   * Controls whether the CSS parser accepts display grid-lanes and the flow-tolerance property.
+   *
+   * @Android
+   * @Harmony
+   * @iOS
+   *
+   * Since: LynxSDK 4.3
+   *
+   * @defaultValue false
+   */
+  enableGridLanes?: boolean;
+
+  /**
    * Controls whether the CSS parser accepts grid-column and grid-row shorthand syntax. When enabled, grid shorthand handlers parse placement shorthands into style values; when disabled, those shorthand declarations are rejected.
    *
    * @Android

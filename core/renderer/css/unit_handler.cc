@@ -42,6 +42,7 @@
 #include "core/renderer/css/parser/filter_handler.h"
 #include "core/renderer/css/parser/flex_flow_handler.h"
 #include "core/renderer/css/parser/flex_handler.h"
+#include "core/renderer/css/parser/flow_tolerance_handler.h"
 #include "core/renderer/css/parser/font_feature_settings_handler.h"
 #include "core/renderer/css/parser/font_length_handler.h"
 #include "core/renderer/css/parser/font_variation_settings_handler.h"
@@ -215,6 +216,7 @@ UnitHandler::UnitHandler() {
   EnumHandler::Register(interceptors_);
   FlexFlowHandler::Register(interceptors_);
   FlexHandler::Register(interceptors_);
+  FlowToleranceHandler::Register(interceptors_);
   FontLengthHandler::Register(interceptors_);
   FourSidesShorthandHandler::Register(interceptors_);
   GridPositionHandler::Register(interceptors_);

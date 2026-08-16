@@ -1,3 +1,6 @@
+## 0.0.19
+- Add the experimental `display: grid-lanes` value and `flow-tolerance` CSS property.
+
 ## 0.0.18
 - Add compat data for `border-radius` animations and the four physical corner longhands in `transition-property`.
 

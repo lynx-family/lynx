@@ -1695,6 +1695,17 @@ enableGridPlacementShorthands:
   author: renzhongyue
   since: '3.9'
   export: true
+enableGridLanes:
+  description: Controls whether the CSS parser accepts display grid-lanes and the flow-tolerance property.
+  defaultValue: 'false'
+  valueType: bool
+  author: Huxpro
+  since: '4.3'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: true
 enableFlexBasisZeroPercent:
   description: When enabled, flex-basis defaults to 0% instead of 0 when omitted in flex shorthand, matching web browser behavior.
   defaultValue: 'false'

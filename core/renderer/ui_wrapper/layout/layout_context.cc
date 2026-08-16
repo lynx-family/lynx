@@ -1204,6 +1204,10 @@ void LayoutContext::OnLayoutEvent(const starlight::LayoutObject* node,
       tasm::report::FeatureCounter::Instance()->Count(
           tasm::report::LynxFeature::CPP_USE_GRID_DISPLAY);
     } break;
+    case starlight::LayoutEventType::FeatureCountOnGridLanesDisplay: {
+      tasm::report::FeatureCounter::Instance()->Count(
+          tasm::report::LynxFeature::CPP_USE_GRID_LANES_DISPLAY);
+    } break;
     case starlight::LayoutEventType::FeatureCountOnRelativeDisplay: {
       tasm::report::FeatureCounter::Instance()->Count(
           tasm::report::LynxFeature::CPP_USE_RELATIVE_DISPLAY);

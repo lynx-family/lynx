@@ -969,6 +969,7 @@ RENDERER_FUNCTION_CC(LoadStyleSheet) {
         page_config->GetEnableFlexBasisZeroPercent();
     bundle_options.enable_grid_placement_shorthands_ =
         page_config->GetEnableGridPlacementShorthands();
+    bundle_options.enable_grid_lanes_ = page_config->GetEnableGridLanes();
     bundle_options.enable_css_rule_ = page_config->GetEnableCSSRule();
   }
 

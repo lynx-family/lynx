@@ -211,6 +211,27 @@ TEST_F(LynxBinaryConfigDecoderTest,
   EXPECT_EQ(output[kPropertyIDGridColumnEnd].AsNumber(), 4);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadEnableGridLanes) {
+  EXPECT_FALSE(page_config_->GetEnableGridLanes());
+  EXPECT_FALSE(page_config_->GetCSSParserConfigs().enable_grid_lanes);
+
+  StyleMap output;
+  EXPECT_FALSE(UnitHandler::Process(kPropertyIDDisplay,
+                                    lepus::Value("grid-lanes"), output,
+                                    page_config_->GetCSSParserConfigs()));
+  EXPECT_TRUE(output.empty());
+
+  config_decoder_->DecodePageConfig("{\n  \"enableGridLanes\" : true\n}",
+                                    page_config_);
+  EXPECT_TRUE(page_config_->GetEnableGridLanes());
+  EXPECT_TRUE(page_config_->GetCSSParserConfigs().enable_grid_lanes);
+
+  EXPECT_TRUE(UnitHandler::Process(kPropertyIDDisplay,
+                                   lepus::Value("grid-lanes"), output,
+                                   page_config_->GetCSSParserConfigs()));
+  EXPECT_TRUE(output.contains(kPropertyIDDisplay));
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, EnableLayoutOnlyEventThrough) {
   EXPECT_FALSE(page_config_->GetEnableLayoutOnlyEventThrough());
 
@@ -285,6 +306,7 @@ TEST_F(LynxBinaryConfigDecoderTest, CompileOptionsPropagatesDerivedCSSFlags) {
   EXPECT_FALSE(options.enable_parse_int_flex_);
   EXPECT_FALSE(options.enable_flex_basis_zero_percent_);
   EXPECT_FALSE(options.enable_grid_placement_shorthands_);
+  EXPECT_FALSE(options.enable_grid_lanes_);
 
   auto decoder =
       std::make_unique<LynxBinaryConfigDecoder>(options, "3.2", true, false);
@@ -293,13 +315,15 @@ TEST_F(LynxBinaryConfigDecoderTest, CompileOptionsPropagatesDerivedCSSFlags) {
       "{\n"
       "  \"enableParseIntFlex\": true,\n"
       "  \"enableFlexBasisZeroPercent\": true,\n"
-      "  \"enableGridPlacementShorthands\": true\n"
+      "  \"enableGridPlacementShorthands\": true,\n"
+      "  \"enableGridLanes\": true\n"
       "}",
       page_config_);
 
   EXPECT_TRUE(options.enable_parse_int_flex_);
   EXPECT_TRUE(options.enable_flex_basis_zero_percent_);
   EXPECT_TRUE(options.enable_grid_placement_shorthands_);
+  EXPECT_TRUE(options.enable_grid_lanes_);
 }
 
 }  // namespace test

@@ -65,6 +65,8 @@ static bool ToDisplayType(std::string_view str, int& result) {
     type = DisplayType::kBlock;
   } else if (str == "auto") {
     type = DisplayType::kAuto;
+  } else if (str == "grid-lanes") {
+    type = DisplayType::kGridLanes;
   } else {
     return false;
   }
@@ -806,6 +808,12 @@ HANDLER_IMPL() {
       break;
     default:
       break;
+  }
+
+  if (key == kPropertyIDDisplay &&
+      result == static_cast<int>(DisplayType::kGridLanes) &&
+      !configs.enable_grid_lanes) {
+    success = false;
   }
 
   CSS_HANDLER_FAIL_IF_NOT(success, configs.enable_css_strict_mode,

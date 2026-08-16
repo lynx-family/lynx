@@ -61,6 +61,7 @@ const std::unordered_set<CSSPropertyID>& GetComplexDynamicProps(
           kPropertyIDGridAutoColumns,
           kPropertyIDGridTemplateRows,
           kPropertyIDGridTemplateColumns,
+          kPropertyIDFlowTolerance,
       });
 
   const static base::NoDestructor<std::unordered_set<CSSPropertyID>>
@@ -84,6 +85,7 @@ const std::unordered_set<CSSPropertyID>& GetComplexDynamicProps(
           kPropertyIDGridAutoColumns,
           kPropertyIDGridTemplateRows,
           kPropertyIDGridTemplateColumns,
+          kPropertyIDFlowTolerance,
           kPropertyIDFilter,
       });
   if (fix_filter_dynamic_update_bug) {

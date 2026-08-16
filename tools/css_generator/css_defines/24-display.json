@@ -42,6 +42,11 @@
       "value": "auto",
       "version": "2.0",
       "desc": "lynx: flex, w3c block"
+    },
+    {
+      "value": "grid-lanes",
+      "version": "4.3",
+      "desc": "Creates a grid-lanes formatting context when enableGridLanes is enabled."
     }
   ],
   "compat_data": {
@@ -194,6 +199,38 @@
           }
         }
       },
+      "grid-lanes": {
+        "__compat": {
+          "description": "<code>grid-lanes</code>",
+          "status": {
+            "deprecated": false,
+            "experimental": true
+          },
+          "support": {
+            "android": {
+              "version_added": "4.3"
+            },
+            "ios": {
+              "version_added": "4.3"
+            },
+            "harmony": {
+              "version_added": "4.3"
+            },
+            "clay_android": {
+              "version_added": "4.3"
+            },
+            "clay_macos": {
+              "version_added": "4.3"
+            },
+            "clay_windows": {
+              "version_added": "4.3"
+            },
+            "web_lynx": {
+              "version_added": false
+            }
+          }
+        }
+      },
       "unsupported_value": {
         "__compat": {
           "description": "<code>inline</code> and <code>block</code>",
@@ -237,5 +274,5 @@
     }
   },
   "is_shorthand": false,
-  "formal_syntax": "flex | linear | none | grid | relative"
+  "formal_syntax": "flex | linear | none | grid | grid-lanes | relative"
 }

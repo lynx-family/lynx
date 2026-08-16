@@ -197,6 +197,7 @@ class CSSStringParser final {
 
   CSSValue ParseLength();
   void ParseLengthTo(CSSValue& target);
+  CSSValue ParseFlowTolerance();
 
   CSSValue ParseListGap();
 

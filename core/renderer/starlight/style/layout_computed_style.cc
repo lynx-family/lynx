@@ -79,6 +79,8 @@ DisplayType LayoutComputedStyle::GetDisplay(
     const LayoutConfigs& configs, const AttributesMap& attributes) const {
   const auto scroll = attributes.getScroll();
 
+  // Scroll containers retain the existing linear-layout override, including
+  // when their specified display value is grid-lanes.
   if (scroll.has_value() && *scroll && display_ != DisplayType::kNone) {
     return DisplayType::kLinear;
   }

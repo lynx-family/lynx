@@ -1,0 +1,48 @@
+{
+  "name": "flow-tolerance",
+  "id": 237,
+  "type": "complex",
+  "default_value": "normal",
+  "version": "4.3",
+  "author": "lynx",
+  "consumption_status": "layout-only",
+  "desc": "The `flow-tolerance` property controls how far grid-lanes items may shift between lanes. It only applies when `display: grid-lanes` is enabled.",
+  "keywords": ["normal", "infinite"],
+  "formal_syntax": "normal | <length-percentage [0,\u221e]> | infinite",
+  "is_shorthand": false,
+  "compat_data": {
+    "flow-tolerance": {
+      "__compat": {
+        "lynx_path": "api/css/properties/flow-tolerance",
+        "spec_url": "https://drafts.csswg.org/css-grid-3/#propdef-flow-tolerance",
+        "status": {
+          "deprecated": false,
+          "experimental": true
+        },
+        "support": {
+          "android": {
+            "version_added": "4.3"
+          },
+          "ios": {
+            "version_added": "4.3"
+          },
+          "harmony": {
+            "version_added": "4.3"
+          },
+          "clay_android": {
+            "version_added": "4.3"
+          },
+          "clay_macos": {
+            "version_added": "4.3"
+          },
+          "clay_windows": {
+            "version_added": "4.3"
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
+}

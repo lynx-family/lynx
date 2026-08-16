@@ -220,6 +220,7 @@ void LynxBinaryConfigDecoder::UpdateCSSConfigs(
       page_config->GetEnableFlexBasisZeroPercent();
   compile_options_.enable_grid_placement_shorthands_ =
       page_config->GetEnableGridPlacementShorthands();
+  compile_options_.enable_grid_lanes_ = page_config->GetEnableGridLanes();
   compile_options_.enable_css_rule_ = page_config->GetEnableCSSRule();
   auto configs =
       CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);

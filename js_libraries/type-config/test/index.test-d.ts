@@ -25,6 +25,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableFetchAPIStandardStreaming').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFixedNew').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableFlexBasisZeroPercent').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableGridLanes').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableGridPlacementShorthands').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableJsBindingApiThrowException').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableLayoutOnlyEventThrough').toEqualTypeOf<boolean | undefined>();

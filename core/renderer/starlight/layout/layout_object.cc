@@ -592,7 +592,8 @@ bool LayoutObject::CanReuseLayoutWithSameSizeAsGivenConstraint(
       if (is_horizontal != css_style_->IsRow(configs_, attr_map())) {
         return false;
       }
-    } else if (display == DisplayType::kRelative) {
+    } else if (display == DisplayType::kRelative ||
+               display == DisplayType::kGridLanes) {
       return false;
     }
   }
@@ -723,6 +724,9 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
       algorithm_ = new RelativeLayoutAlgorithm(this);
     } else if (type == DisplayType::kGrid) {
       SendLayoutEvent(LayoutEventType::FeatureCountOnGridDisplay);
+      algorithm_ = new GridLayoutAlgorithm(this);
+    } else if (type == DisplayType::kGridLanes) {
+      SendLayoutEvent(LayoutEventType::FeatureCountOnGridLanesDisplay);
       algorithm_ = new GridLayoutAlgorithm(this);
     }
 
