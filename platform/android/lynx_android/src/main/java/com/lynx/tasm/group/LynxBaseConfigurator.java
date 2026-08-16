@@ -103,6 +103,9 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected boolean hasEmbeddedModeSet = false;
   protected boolean enableMTSModule = false;
   protected boolean hasEnableMTSModuleSet = false;
+  // Default is true to keep the existing unconditional setup behavior.
+  protected boolean enableLepusModule = true;
+  protected boolean hasEnableLepusModuleSet = false;
 
   protected String tapSlop = TouchEventDispatcher.mTapSlopDefault;
   protected boolean hasTapSlopSet = false;
@@ -548,6 +551,12 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   public T setEnableMTSModule(boolean enable) {
     enableMTSModule = enable;
     hasEnableMTSModuleSet = true;
+    return (T) this;
+  }
+
+  public T setEnableLepusModule(boolean enable) {
+    enableLepusModule = enable;
+    hasEnableLepusModuleSet = true;
     return (T) this;
   }
 
