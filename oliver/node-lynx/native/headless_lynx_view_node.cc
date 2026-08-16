@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <memory>
@@ -29,6 +30,7 @@
 #include "platform/embedder/public/capi/lynx_log_capi.h"
 #include "platform/embedder/public/capi/lynx_windowless_renderer_capi.h"
 #include "platform/embedder/public/lynx_generic_resource_fetcher.h"
+#include "platform/embedder/public/lynx_group.h"
 #include "platform/embedder/public/lynx_load_meta.h"
 #include "platform/embedder/public/lynx_template_data.h"
 #include "platform/embedder/public/lynx_update_meta.h"
@@ -48,6 +50,7 @@
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/public/lynx_runtime_proxy.h"
 #include "oliver/node-lynx/native/headless_event_simulation_proxy.h"
 #include "oliver/node-lynx/native/windowed_lynx_view_mac.h"
 #include "third_party/debug_router/src/debug_router/native/core/debug_router_core.h"
@@ -88,6 +91,39 @@ void WriteNodeLynxLog(lynx_log_level_e level, const char* tag,
 }
 
 void DiscardNodeLynxLog(lynx_log_level_e, const char*, const char*) {}
+
+std::mutex& SharedGroupMutex() {
+  static std::mutex mutex;
+  return mutex;
+}
+
+std::unordered_map<std::string, std::weak_ptr<pub::LynxGroup>>& SharedGroups() {
+  static std::unordered_map<std::string, std::weak_ptr<pub::LynxGroup>> groups;
+  return groups;
+}
+
+std::shared_ptr<pub::LynxGroup> GetOrCreateSharedGroup(
+    const std::string& name) {
+  std::lock_guard<std::mutex> lock(SharedGroupMutex());
+  auto& groups = SharedGroups();
+  for (auto it = groups.begin(); it != groups.end();) {
+    if (it->second.expired()) {
+      it = groups.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  auto existing_it = groups.find(name);
+  if (existing_it != groups.end()) {
+    if (auto existing = existing_it->second.lock()) {
+      return existing;
+    }
+  }
+  auto group = std::make_shared<pub::LynxGroup>(name);
+  group->SetEnableJSGroupThread(true);
+  groups[name] = group;
+  return group;
+}
 
 enum class DestroyReason {
   kExplicit,
@@ -388,6 +424,114 @@ std::vector<uint8_t> ReadFile(const std::string& path) {
     return {};
   }
   return data;
+}
+
+std::string StripUrlSuffix(const std::string& value) {
+  size_t suffix = value.find_first_of("?#");
+  return suffix == std::string::npos ? value : value.substr(0, suffix);
+}
+
+int HexDigit(char value) {
+  if (value >= '0' && value <= '9') {
+    return value - '0';
+  }
+  if (value >= 'a' && value <= 'f') {
+    return value - 'a' + 10;
+  }
+  if (value >= 'A' && value <= 'F') {
+    return value - 'A' + 10;
+  }
+  return -1;
+}
+
+std::string DecodeUrlPath(const std::string& value) {
+  std::string result;
+  result.reserve(value.size());
+  for (size_t index = 0; index < value.size(); ++index) {
+    if (value[index] == '%' && index + 2 < value.size()) {
+      int high = HexDigit(value[index + 1]);
+      int low = HexDigit(value[index + 2]);
+      if (high >= 0 && low >= 0) {
+        result.push_back(static_cast<char>((high << 4) | low));
+        index += 2;
+        continue;
+      }
+    }
+    result.push_back(value[index]);
+  }
+  return result;
+}
+
+bool IsSafeRelativeResourcePath(const std::filesystem::path& path) {
+  if (path.empty() || path.is_absolute() || path.has_root_name() ||
+      path.has_root_directory()) {
+    return false;
+  }
+  for (const auto& component : path) {
+    if (component == "..") {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool IsPathDescendantOf(const std::filesystem::path& candidate,
+                        const std::filesystem::path& root) {
+  auto candidate_it = candidate.begin();
+  for (auto root_it = root.begin(); root_it != root.end();
+       ++root_it, ++candidate_it) {
+    if (candidate_it == candidate.end() || *candidate_it != *root_it) {
+      return false;
+    }
+  }
+  return candidate_it != candidate.end();
+}
+
+std::vector<uint8_t> ReadFileWithinRoot(
+    const std::string& root, const std::filesystem::path& relative_path) {
+  if (!IsSafeRelativeResourcePath(relative_path)) {
+    return {};
+  }
+
+  std::error_code error;
+  auto canonical_root = std::filesystem::canonical(root, error);
+  if (error || !std::filesystem::is_directory(canonical_root, error) || error) {
+    return {};
+  }
+
+  auto canonical_candidate =
+      std::filesystem::canonical(canonical_root / relative_path, error);
+  if (error || !std::filesystem::is_regular_file(canonical_candidate, error) ||
+      error || !IsPathDescendantOf(canonical_candidate, canonical_root)) {
+    return {};
+  }
+  return ReadFile(canonical_candidate.string());
+}
+
+std::vector<uint8_t> ReadLocalResource(
+    const std::string& original_url,
+    const std::vector<std::string>& root_paths) {
+  std::string relative_path = DecodeUrlPath(StripUrlSuffix(original_url));
+  if (HasUrlScheme(relative_path) ||
+      relative_path.find('\0') != std::string::npos) {
+    return {};
+  }
+  while (!relative_path.empty() &&
+         (relative_path[0] == '/' || relative_path[0] == '\\')) {
+    relative_path.erase(relative_path.begin());
+  }
+  std::filesystem::path resource_path(relative_path);
+  if (!IsSafeRelativeResourcePath(resource_path)) {
+    return {};
+  }
+
+  for (const auto& root : root_paths) {
+    auto data = ReadFileWithinRoot(root, resource_path);
+    if (!data.empty()) {
+      return data;
+    }
+  }
+  return {};
 }
 
 std::shared_ptr<pub::LynxTemplateData> MakeTemplateData(
@@ -1286,8 +1430,11 @@ napi_value ResourceFetchCallback(napi_env env, napi_callback_info info) {
 class HeadlessResourceFetcher final : public pub::LynxGenericResourceFetcher {
  public:
   HeadlessResourceFetcher(std::weak_ptr<ViewState> state,
-                          std::string resources_path)
-      : state_(std::move(state)), resources_path_(std::move(resources_path)) {}
+                          std::string resources_path,
+                          std::vector<std::string> resource_root_paths)
+      : state_(std::move(state)),
+        resources_path_(std::move(resources_path)),
+        resource_root_paths_(std::move(resource_root_paths)) {}
 
   void SetBaseUrl(std::string base_url) {
     std::lock_guard<std::mutex> lock(base_url_mutex_);
@@ -1309,6 +1456,7 @@ class HeadlessResourceFetcher final : public pub::LynxGenericResourceFetcher {
       std::shared_ptr<pub::resource::LynxResourceRequest> request,
       std::shared_ptr<pub::resource::LynxResourceResponse> response) override {
     std::string url = request->GetUrl() ? request->GetUrl() : "";
+    const std::string original_url = url;
     lynx_resource_type_e type = request->GetType();
     if (type == kLynxResourceTypeLynxCoreJS ||
         url.find("lynx_core.js") != std::string::npos) {
@@ -1325,6 +1473,12 @@ class HeadlessResourceFetcher final : public pub::LynxGenericResourceFetcher {
     {
       std::lock_guard<std::mutex> lock(base_url_mutex_);
       url = ResolveResourceUrl(url, base_url_);
+    }
+
+    auto local_data = ReadLocalResource(original_url, resource_root_paths_);
+    if (!local_data.empty()) {
+      CompleteResponseWithData(response, std::move(local_data));
+      return;
     }
 
     auto state = state_.lock();
@@ -1398,6 +1552,7 @@ class HeadlessResourceFetcher final : public pub::LynxGenericResourceFetcher {
  private:
   std::weak_ptr<ViewState> state_;
   std::string resources_path_;
+  std::vector<std::string> resource_root_paths_;
   std::mutex base_url_mutex_;
   std::string base_url_;
 };
@@ -1406,10 +1561,14 @@ class HeadlessLynxViewNode {
  public:
   HeadlessLynxViewNode(napi_env env, std::string resources_path, double width,
                        double height, double device_pixel_ratio,
-                       napi_value resource_fetcher, bool windowed = false,
+                       napi_value resource_fetcher,
+                       std::vector<std::string> resource_root_paths,
+                       std::string group_name = "", bool windowed = false,
                        WindowedLynxViewOptions window_options = {})
       : env_(env),
         resources_path_(std::move(resources_path)),
+        resource_root_paths_(std::move(resource_root_paths)),
+        group_name_(std::move(group_name)),
         width_(width),
         height_(height),
         device_pixel_ratio_(device_pixel_ratio),
@@ -1450,6 +1609,8 @@ class HeadlessLynxViewNode {
          nullptr, napi_default, nullptr},
         {"_invokeCDPFromSDK", nullptr, InvokeCDPFromSDK, nullptr, nullptr,
          nullptr, napi_default, nullptr},
+        {"_evaluateScript", nullptr, EvaluateScript, nullptr, nullptr, nullptr,
+         napi_default, nullptr},
         {"_sendTouchEvent", nullptr, SendTouchEvent, nullptr, nullptr, nullptr,
          napi_default, nullptr},
         {"_setErrorHandler", nullptr, SetErrorHandler, nullptr, nullptr,
@@ -1522,8 +1683,9 @@ class HeadlessLynxViewNode {
 
   static napi_value New(napi_env env, napi_callback_info info) {
     napi_value js_this = nullptr;
-    size_t argc = 5;
-    napi_value args[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
+    size_t argc = 7;
+    napi_value args[7] = {nullptr, nullptr, nullptr, nullptr,
+                          nullptr, nullptr, nullptr};
     napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
     if (argc < 5) {
@@ -1540,8 +1702,10 @@ class HeadlessLynxViewNode {
       return nullptr;
     }
 
-    auto* obj = new HeadlessLynxViewNode(env, GetString(env, args[0]), width,
-                                         height, dpr, args[4]);
+    auto* obj = new HeadlessLynxViewNode(
+        env, GetString(env, args[0]), width, height, dpr, args[4],
+        argc > 5 ? GetStringArray(env, args[5]) : std::vector<std::string>{},
+        argc > 6 ? GetString(env, args[6]) : "");
     napi_wrap(
         env, js_this, obj,
         [](napi_env, void* data, void*) {
@@ -1580,9 +1744,9 @@ class HeadlessLynxViewNode {
     window_options.resizable = argc > 6 ? GetBool(env, args[6], true) : true;
     window_options.visible = argc > 7 ? GetBool(env, args[7], true) : true;
 
-    auto* obj =
-        new HeadlessLynxViewNode(env, GetString(env, args[0]), width, height,
-                                 dpr, args[4], true, std::move(window_options));
+    auto* obj = new HeadlessLynxViewNode(env, GetString(env, args[0]), width,
+                                         height, dpr, args[4], {}, "", true,
+                                         std::move(window_options));
     if (!obj->window_host_) {
       delete obj;
       ThrowError(env, "WindowedLynxView is only supported on macOS");
@@ -1775,6 +1939,31 @@ class HeadlessLynxViewNode {
                          CreateError(env, "inspector is not enabled"));
 #endif
     return promise;
+  }
+
+  static napi_value EvaluateScript(napi_env env, napi_callback_info info) {
+    napi_value js_this = nullptr;
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+    auto* obj = Unwrap(env, js_this);
+    if (!obj || obj->destroyed_) {
+      ThrowError(env, "view is destroyed");
+      return nullptr;
+    }
+    std::string url = argc > 0 ? GetString(env, args[0]) : "";
+    std::string script = argc > 1 ? GetString(env, args[1]) : "";
+    if (url.empty() || script.empty()) {
+      ThrowError(env, "evaluateScript requires a URL and script");
+      return nullptr;
+    }
+    auto runtime_proxy = obj->TemplateRenderer()->GetRuntimeProxy();
+    if (!runtime_proxy) {
+      ThrowError(env, "Lynx runtime is unavailable");
+      return nullptr;
+    }
+    runtime_proxy->EvaluateScript(url, std::move(script), -1);
+    return GetUndefined(env);
   }
 
   static napi_value SendTouchEvent(napi_env env, napi_callback_info info) {
@@ -2167,8 +2356,8 @@ class HeadlessLynxViewNode {
     }
     state_->renderer = renderer_;
     client_ = std::make_shared<HeadlessClient>(state_);
-    fetcher_ =
-        std::make_shared<HeadlessResourceFetcher>(state_, resources_path_);
+    fetcher_ = std::make_shared<HeadlessResourceFetcher>(
+        state_, resources_path_, resource_root_paths_);
 
     pub::LynxView::Builder builder;
     builder.SetScreenSize(static_cast<float>(width_),
@@ -2178,6 +2367,10 @@ class HeadlessLynxViewNode {
                      static_cast<float>(height_));
     builder.SetWindowlessRenderer(renderer_);
     builder.SetGenericResourceFetcher(fetcher_);
+    if (!group_name_.empty()) {
+      group_ = GetOrCreateSharedGroup(group_name_);
+      builder.SetLynxGroup(group_);
+    }
     view_ = builder.Build();
     if (!view_ || !view_->Impl() || !view_->Impl()->lynx_template_renderer) {
       Destroy(DestroyReason::kFinalizer);
@@ -2289,6 +2482,8 @@ class HeadlessLynxViewNode {
 
   napi_env env_ = nullptr;
   std::string resources_path_;
+  std::vector<std::string> resource_root_paths_;
+  std::string group_name_;
   double width_ = 0;
   double height_ = 0;
   double device_pixel_ratio_ = 1;
@@ -2303,6 +2498,7 @@ class HeadlessLynxViewNode {
   std::shared_ptr<HeadlessResourceFetcher> fetcher_;
   std::unique_ptr<NodeLynxWindowHost> window_host_;
   std::unique_ptr<pub::LynxView> view_;
+  std::shared_ptr<pub::LynxGroup> group_;
   std::shared_ptr<pub::LynxTemplateData> global_props_;
 };
 
