@@ -33,6 +33,7 @@ class IntersectionObserverManager {
   void NotifyObservers();
   void NotifyTargetAttached(BaseView* view);
   void NotifyTargetDetached(BaseView* view);
+  void ReconcileExposureForTarget(BaseView* view);
 
   void RemoveExposeObserver(BaseView* view);
   bool UpdateExposeData(const char* attr_key, const clay::Value& value,

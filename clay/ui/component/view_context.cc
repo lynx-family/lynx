@@ -714,12 +714,21 @@ void ViewContext::OnFirstMeaningfulLayout() {
 
 void ViewContext::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                           std::vector<int32_t> remove_ids) {
+  auto* intersection_manager = page_view_->HasIntersectionObserverManager()
+                                   ? page_view_->intersection_observer_manager()
+                                   : nullptr;
   for (auto id : ready_ids) {
     auto view = FindViewByViewId(id);
     if (view) {
       view->OnLayoutFinish();
       view->OnNodeReady();
+      if (intersection_manager) {
+        intersection_manager->ReconcileExposureForTarget(view);
+      }
     }
+  }
+  if (intersection_manager && !ready_ids.empty()) {
+    page_view_->SendGlobalExposureEvent();
   }
 }
 

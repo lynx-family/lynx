@@ -166,6 +166,14 @@ void IntersectionObserverManager::NotifyTargetDetached(BaseView* view) {
   NotifyAllObserver(&IntersectionObserver::OnDetach, view);
 }
 
+void IntersectionObserverManager::ReconcileExposureForTarget(BaseView* view) {
+  if (exposure_stopped_ || !exposure_host_visible_ || !view ||
+      !view->attach_to_tree()) {
+    return;
+  }
+  NotifyExposures(&IntersectionObserver::CheckForIntersectionWithTarget, view);
+}
+
 void IntersectionObserverManager::NotifyExposures(
     void (IntersectionObserver::*ptr)(), BaseView* view) {
   for (auto& it : expose_observers_map_) {
