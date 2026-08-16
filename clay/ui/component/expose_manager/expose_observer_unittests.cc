@@ -117,6 +117,11 @@ class ExposeObserverTest : public ::testing::Test {
     return page_->intersection_observer_manager();
   }
 
+  void NotifyTargetReady(BaseView* target) {
+    manager()->ReconcileExposureForTarget(target);
+    page_->SendGlobalExposureEvent();
+  }
+
   const std::vector<std::string>& custom_events() const {
     return event_delegate_.custom_events();
   }
@@ -142,6 +147,67 @@ class ExposeObserverTest : public ::testing::Test {
   RecordingEventDelegate event_delegate_;
   std::unique_ptr<PageView> page_;
 };
+
+TEST_F(ExposeObserverTest, NodeReadyImmediatelyExposesVisibleTarget) {
+  View* target = AddVisibleObservedView(1);
+
+  NotifyTargetReady(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+
+  manager()->NotifyObservers();
+  page_->SendGlobalExposureEvent();
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, NodeReadyWaitsForValidBounds) {
+  View* target = AddObservedView(page_.get(), 1, 0, 0, 0, 0);
+
+  NotifyTargetReady(target);
+
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  target->SetBound(0, 0, 100, 100);
+  manager()->NotifyObservers();
+  page_->SendGlobalExposureEvent();
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, NodeReadyIgnoresDetachedTarget) {
+  auto target = std::make_unique<View>(1, page_.get());
+  target->SetBound(0, 0, 100, 100);
+  target->SetAttribute("exposure-id", Value("detached-target"));
+  target->AddEventCallback("uiappear");
+
+  NotifyTargetReady(target.get());
+
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+}
+
+TEST_F(ExposeObserverTest, NodeReadyRespectsExposureGates) {
+  manager()->SetExposureHostVisible(false);
+  View* target = AddVisibleObservedView(1);
+
+  NotifyTargetReady(target);
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  manager()->SetExposureHostVisible(true);
+  manager()->StopExposure(false);
+  NotifyTargetReady(target);
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  manager()->ResumeExposure();
+  NotifyTargetReady(target);
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
 
 TEST_F(ExposeObserverTest, StopWithoutEventPreservesVisibleState) {
   AddVisibleObservedView(1);
