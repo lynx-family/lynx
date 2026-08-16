@@ -72,13 +72,21 @@ export interface MarkdownSelectionChangeEvent {
 export interface MarkdownProps extends StandardProps {
   /**
    * Markdown source content.
-   * @since 2.16
+   * @Android 2.15
+   * @iOS 2.16
+   * @Harmony 3.1
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    */
   content: string;
 
   /**
    * Set the style of markdown.
-   * @since 2.16
+   * @Android 2.15
+   * @iOS 2.16
+   * @Harmony 3.1
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    */
   'markdown-style'?: object;
 
@@ -87,162 +95,235 @@ export interface MarkdownProps extends StandardProps {
    * none: no animation.
    * typewriter: typewriter animation.
    * line-expand: line expand animation.
+   * @Android 2.15
+   * @iOS 2.16
+   * @Harmony 3.1
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    * @defaultValue 'none'
-   * @since 2.16
    */
   'animation-type'?: 'none' | 'typewriter' | 'line-expand';
 
   /**
    * Velocity of animation.
    * When animation-type is typewriter, it is the number of characters typed per second.
+   * @Android 2.15
+   * @iOS 2.16
+   * @Harmony 3.1
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    * @defaultValue 1
-   * @since 2.16
    */
   'animation-velocity'?: number;
 
   /**
    * Maximum number of text lines.
    * A table row is counted as a line.
+   * @Android 2.15
+   * @iOS 2.16
+   * @Harmony 3.1
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    * @defaultValue -1 (no limit)
-   * @since 2.16
    */
   'text-maxline'?: number;
 
   /**
    * Animation will start at the given step.
+   * @Android 2.17
+   * @iOS 2.18
+   * @Harmony 3.1
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue 1
-   * @since 2.17
    */
   'initial-animation-step'?: number;
 
   /**
    * true: typewriter cursor will be hidden and drawEnd event will be triggered after the animation is complete.
    * false: typewriter cursor will be shown and drawEnd event will not be triggered.
+   * @Android 2.17
+   * @iOS 3.1
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue true
-   * @since 2.17
    */
   'content-complete'?: boolean;
 
   /**
    * Whether markdown height is equal to the content height typed by typewriter.
+   * @Android 2.17
+   * @iOS 2.18
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue false
-   * @since 2.17
    */
   'typewriter-dynamic-height'?: boolean;
 
   /**
    * Whether markdown content is selectable.
+   * @Android 2.17
+   * @iOS 2.18
+   * @Harmony 3.1
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue false
-   * @since 2.17
    */
   'text-selection'?: boolean;
 
   /**
    * Alias of text-selection.
+   * @Harmony 4.0
    * @defaultValue false
-   * @since 2.17
    */
   'enable-selection'?: boolean;
 
   /**
    * Whether text can break around punctuation.
+   * @Android 3.2
+   * @iOS 3.2
+   * @Harmony 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue false
-   * @since 2.17
    */
   'allow-break-around-punctuation'?: boolean;
 
   /**
    * Alias of allow-break-around-punctuation.
+   * @Harmony 4.0
    * @defaultValue false
-   * @since 2.17
    */
   'enable-break-around-punctuation'?: boolean;
 
   /**
    * The range of content to be parsed.
    * [start, end]
+   * @Android 2.18
+   * @iOS 3.1
+   * @Harmony 3.1
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue [0, int32_max]
-   * @since 2.18
    */
   'content-range'?: number[];
 
   /**
    * Additional effects.
-   * @since 2.18
+   * @Android 3.1
+   * @iOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   'markdown-effect'?: object;
 
   /**
    * Mark the content when the event or UI method is triggered.
-   * @since 3.1
+   * @Android 3.1
+   * @iOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   'content-id'?: string;
 
   /**
    * Height transition duration. Disable height transition if value less than or equal to 0.
+   * @Android 3.2
+   * @iOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue 0
-   * @since 3.2
    */
   'typewriter-height-transition-duration'?: number;
 
   /**
    * Control animation frame rate to improve performance.
+   * @Android 3.2
+   * @iOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue 15
-   * @since 3.2
    */
   'animation-frame-rate'?: number;
 
   /**
    * Draw start.
-   * @since 2.16
+   * @Android 2.15
+   * @iOS 2.16
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    */
   binddrawStart?: (e: BaseEvent) => void;
 
   /**
    * Draw end.
-   * @since 2.16
+   * @Android 2.15
+   * @iOS 2.16
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    */
   binddrawEnd?: (e: BaseEvent) => void;
 
   /**
    * Callback after each animation frame. Some animation steps may be skipped if animation velocity is too fast.
-   * @since 2.17
+   * @Android 2.17
+   * @iOS 2.18
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindanimationStep?: (e: BaseEvent<'bindanimationStep', MarkdownAnimationStepEvent>) => void;
 
   /**
    * Callback when text overflows.
-   * @since 2.17
+   * @Android 2.16
+   * @iOS 4.0
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    */
   bindoverflow?: (e: BaseEvent<'bindoverflow', MarkdownOverflowEvent>) => void;
 
   /**
    * Callback when link is clicked.
-   * @since 2.17
+   * @Android 2.15
+   * @iOS 2.16
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
    */
   bindlink?: (e: BaseEvent<'bindlink', MarkdownLinkEvent>) => void;
 
   /**
    * Callback when selection changes.
-   * @since 2.17
+   * @Android 2.17
+   * @iOS 3.1
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindselectionchange?: (e: BaseEvent<'bindselectionchange', MarkdownSelectionChangeEvent>) => void;
 
   /**
    * Callback when image is clicked.
-   * @since 3.1
+   * @Android 3.1
+   * @iOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindimageTap?: (e: BaseEvent<'bindimageTap', MarkdownImageTapEvent>) => void;
 
   /**
    * Callback when parse ends.
-   * @since 3.1
+   * @Android 3.1
+   * @iOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindparseEnd?: (e: BaseEvent<'bindparseEnd', MarkdownParseEndEvent>) => void;
 }
 
 /**
- * @since 2.17
+ * @Android 2.17
+ * @iOS 3.1
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface MarkdownPauseAnimationMethod extends BaseMethod {
   method: 'pauseAnimation';
@@ -255,7 +336,10 @@ export interface MarkdownPauseAnimationMethod extends BaseMethod {
 }
 
 /**
- * @since 2.17
+ * @Android 2.17
+ * @iOS 3.1
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface MarkdownResumeAnimationMethod extends BaseMethod {
   method: 'resumeAnimation';
@@ -269,7 +353,11 @@ export interface MarkdownResumeAnimationMethod extends BaseMethod {
 
 /**
  * Get parsed content.
- * @since 2.17
+ * @Android 2.17
+ * @iOS 2.18
+ * @Harmony 3.1
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface MarkdownGetContentMethod extends BaseMethod {
   method: 'getContent';
@@ -295,7 +383,11 @@ export interface MarkdownGetContentMethod extends BaseMethod {
 }
 
 /**
- * @since 2.17
+ * @Android 2.17
+ * @iOS 2.18
+ * @Harmony 3.1
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface MarkdownGetSelectedTextMethod extends BaseMethod {
   method: 'getSelectedText';
@@ -309,7 +401,11 @@ export interface MarkdownGetSelectedTextMethod extends BaseMethod {
 
 /**
  * Control text selection highlighting.
- * @since 2.17
+ * @Android 2.17
+ * @iOS 2.18
+ * @Harmony 3.1
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface MarkdownSetTextSelectionMethod extends BaseMethod {
   method: 'setTextSelection';
@@ -372,7 +468,8 @@ export interface MarkdownSetTextSelectionMethod extends BaseMethod {
 
 /**
  * Get index of the character at the given position.
- * @since 3.8
+ * @Android 4.0
+ * @iOS 4.0
  */
 export interface MarkdownGetCharIndexByPointMethod extends BaseMethod {
   method: 'getCharIndexByPoint';
@@ -403,7 +500,10 @@ export interface MarkdownGetCharIndexByPointMethod extends BaseMethod {
 
 /**
  * Get all images in the markdown.
- * @since 3.1
+ * @Android 3.1
+ * @iOS 3.2
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface MarkdownGetImagesMethod extends BaseMethod {
   method: 'getImages';
@@ -417,7 +517,11 @@ export interface MarkdownGetImagesMethod extends BaseMethod {
 
 /**
  * Get source ranges of the given tags.
- * @since 3.1
+ * @Android 3.1
+ * @iOS 3.2
+ * @Harmony 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface MarkdownGetParseResultMethod extends BaseMethod {
   method: 'getParseResult';

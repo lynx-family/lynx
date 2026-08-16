@@ -7,25 +7,30 @@ import { StandardProps } from '../props';
 export interface BlurViewProps extends StandardProps {
   /**
    * Gaussian blur radius.
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayHarmony 4.0
    * @defaultValue "0px"
-   * @Android
-   * @iOS
-   * @Harmony
    */
   'blur-radius'?: string;
 
   /**
    * The downsampling ratio of the blurred area is similar to reducing the blur of the background area first and then zooming in,
    * which slightly affects the blur effect, but can significantly improve performance.
+   * @Android 4.0
+   * @ClayAndroid 4.0
    * @defaultValue 6
-   * @Android
    */
   'blur-sampling'?: number;
 
   /**
    * Whether to automatically update blur.
+   * @Android 4.0
+   * @ClayAndroid 4.0
    * @defaultValue true
-   * @Android
    */
   'enable-auto-blur'?: boolean;
 
@@ -33,16 +38,16 @@ export interface BlurViewProps extends StandardProps {
    * The raw id of the Android Lynx view to capture and blur.
    * Only the overlap with the `<blur-view>` is used as the blur source.
    * When omitted or unresolved, Android uses the default parent capture path.
-   * @Android
-   * @since 3.9
+   * @Android 4.0
+   * @ClayAndroid 4.0
    */
   'android-capture-target'?: string;
 
   /**
    * Switches the Android internal blur-buffer refresh path.
-   * @Android
+   * @Android 4.0
+   * @ClayAndroid 4.0
    * @experimental
-   * @since 3.4
    */
   'experimental-update-blur-radius'?: boolean;
 
@@ -53,47 +58,48 @@ export interface BlurViewProps extends StandardProps {
    * extra-light: the brightness is brighter than the background;
    * glass: a visual effect that renders a glass material;
    * glass-container: a UIGlassContainerEffect renders multiple glass elements into a combined effect.
+   * @iOS 4.0
+   * @ClayIOS 4.0
    * @defaultValue 'light'
-   * @iOS
    */
   'blur-effect'?: 'light' | 'extra-light' | 'dark' | 'glass' | 'glass-container';
 
   /**
    * The spacing specifies the distance between elements at which they begin to merge.
+   * @iOS 4.0
+   * @ClayIOS 4.0
    * @defaultValue 0
-   * @iOS
    */
   'spacing'?: number;
 
   /**
    * Enables interactive behavior for the glass effect.
+   * @iOS 4.0
+   * @ClayIOS 4.0
    * @defaultValue false
-   * @iOS
-   * @since 3.8
    */
   'glass-interactive'?: boolean;
 
   /**
    * The user interface style adopted by `<blur-view>`.
+   * @iOS 4.1
    * @see {@link https://developer.apple.com/documentation/uikit/uiviewcontroller/overrideuserinterfacestyle?language=objc | Apple Developer Documentation}
-   * @iOS
-   * @since 4.1
    */
   'ios-user-interface-style'?: 'dark' | 'light';
 
   /**
    * A tint color applied to the glass effect.
+   * @iOS 4.0
+   * @ClayIOS 4.0
    * @defaultValue 'transparent'
-   * @iOS
-   * @since 3.8
    */
   'glass-tint-color'?: string;
 
   /**
    * The style of the glass effect.
+   * @iOS 4.0
+   * @ClayIOS 4.0
    * @defaultValue 'regular'
-   * @iOS
-   * @since 3.8
    */
   'glass-style'?: 'regular' | 'clear';
 }

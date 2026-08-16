@@ -11,12 +11,16 @@ import { StandardProps } from '../props';
 export interface ImageProps extends StandardProps {
   /**
    * Supports http/https/base64
+   * @Android 0.1
+   * @iOS 1.5
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue undefined
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 0.2
    */
   'src'?: string;
 
@@ -26,12 +30,16 @@ export interface ImageProps extends StandardProps {
    * `aspectFit`: Scales the image while preserving aspect ratio so that the long side is fully visible.
    * `aspectFill`: Scales the image while preserving aspect ratio, ensuring the short side fills the element.
    * `center`: Does not scale the image; image is centered.
+   * @Android 0.1
+   * @iOS 1.5
+   * @Harmony 2.15
+   * @Web
+   * @ClayAndroid 2.1
+   * @ClayIOS 2.8
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   * @ClayHarmony 2.14
    * @defaultValue 'scaleToFill'
-   * @since 0.2
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
    */
   'mode'?: 'scaleToFill' | 'aspectFit' | 'aspectFill' | 'center';
 
@@ -58,30 +66,41 @@ export interface ImageProps extends StandardProps {
    *
    * :::
    *
+   * @Android 1.5
+   * @ClayAndroid 3.5
+   * @ClayIOS 3.5
+   * @ClayMacOS 3.5
+   * @ClayWindows 3.5
+   * @ClayHarmony 4.0
    * @defaultValue "ARGB_8888"
-   * @Android
-   * @PC
-   * @since 1.4
    */
   'image-config'?: 'ARGB_8888' | 'RGB_565';
 
   /**
    * Placeholder image, used same as src
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 1.4
+   * @Android 1.4
+   * @iOS 1.5
+   * @Harmony 2.15
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   'placeholder'?: string;
 
   /**
    * Image blur radius
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 0.2
+   * @Android 0.1
+   * @iOS 1.5
+   * @Harmony 2.15
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   'blur-radius'?: string;
 
@@ -92,53 +111,60 @@ export interface ImageProps extends StandardProps {
    * Using cap-insets does not require the original image to be a 9-patch image.
    * :::
    *
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 1.4
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.14
    */
   'cap-insets'?: string;
 
   /**
    * Adjust the scale of stretchable area for 9patch images
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.14
    * @defaultValue 1
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 1.4
    */
   'cap-insets-scale'?: number;
 
   /**
-   * Number of times an animated image plays, 0 stands for infinite 
+   * Number of times an animated image plays, 0 stands for infinite
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.18
    * @defaultValue 0
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 1.4
    */
   'loop-count'?: number;
 
   /**
    * Image won't load if its size is 0, but will load if prefetch-width is set
+   * @Android 1.5
+   * @iOS 1.5
    * @defaultValue "0px"
    * @deprecated
-   * @iOS
-   * @Android
-   * @since 1.4
    */
   'prefetch-width'?: string;
 
   /**
    * Image won't load if its size is 0, but will load if prefetch-height is set
+   * @Android 1.5
+   * @iOS 1.5
    * @defaultValue "0px"
    * @deprecated
-   * @iOS
-   * @Android
-   * @since 1.4
    */
   'prefetch-height'?: string;
 
@@ -147,12 +173,16 @@ export interface ImageProps extends StandardProps {
    * the size of the `<image>` will be automatically adjusted
    * to match the image's original dimensions after the image is successfully loaded,
    * ensuring that the aspect ratio is maintained.
+   * @Android 2.0
+   * @iOS 1.5
+   * @Harmony 2.15
+   * @Web
+   * @ClayAndroid 2.18
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
+   * @ClayHarmony 2.15
    * @defaultValue false
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 2.6
    */
   'auto-size'?: boolean;
 
@@ -160,80 +190,109 @@ export interface ImageProps extends StandardProps {
    * When set to true, the `<image>` will only clear the previously displayed image resource after a new image has successfully loaded.
    * The default behavior is to clear the image resource before starting a new load.
    * This can resolve flickering issues when the image src is switched and reloaded. It is not recommended to enable this in scenarios where there is node reuse in views like lists.
+   * @Android 1.5
+   * @iOS 2.8
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
    * @defaultValue false
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 2.7
    */
   'defer-src-invalidation'?: boolean;
 
   /**
    * Specifies whether the animated image should start playing automatically once it is loaded.
+   * @Android 1.5
+   * @iOS 2.11
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 3.3
    * @defaultValue true
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 2.11
    */
   'autoplay'?: boolean;
 
   /**
    * Changes the color of all non-transparent pixels to the tint-color specified. The value is a `<color>`.
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 2.12
+   * @Android 1.5
+   * @iOS 2.11
+   * @Harmony 3.4
+   * @ClayAndroid 3.7
+   * @ClayIOS 3.7
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 3.1
    */
   'tint-color'?: string;
 
   /**
    * Image load success event
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 0.2
+   * @Android 0.1
+   * @iOS 1.5
+   * @Harmony 2.16
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindload?: (e: LoadEvent) => void;
 
   /**
    * Image load error event
-   * @iOS
-   * @Android
-   * @Harmony
-   * @PC
-   * @since 0.2
+   * @Android 0.1
+   * @iOS 1.5
+   * @Harmony 2.15
+   * @Web
+   * @ClayAndroid 2.1
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   binderror?: (e: ErrorEvent) => void;
 
   /**
    * Triggered when the animated image starts playing.
-   * @iOS
-   * @Android
-   * @Harmony
-   * @since 3.7
+   * @Android 2.11
+   * @iOS 3.2
+   * @Harmony 3.3
+   * @ClayAndroid 3.1
+   * @ClayIOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   * @ClayHarmony 3.3
    */
   bindstartplay?: (e: BaseEvent) => void;
 
   /**
    * Triggered when one loop of the animated image finishes playing.
-   * @iOS
-   * @Android
-   * @Harmony
-   * @since 3.7
+   * @Android 2.11
+   * @iOS 3.2
+   * @Harmony 3.3
+   * @ClayAndroid 3.1
+   * @ClayIOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   * @ClayHarmony 3.3
    */
   bindcurrentloopcomplete?: (e: BaseEvent) => void;
 
   /**
    * Triggered when the animated image finishes playing all `loop-count` loops. If `loop-count` is not set, this callback will not be triggered.
-   * @iOS
-   * @Android
-   * @Harmony
-   * @since 3.7
+   * @Android 2.11
+   * @iOS 3.2
+   * @Harmony 3.3
+   * @ClayAndroid 3.1
+   * @ClayIOS 3.2
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   * @ClayHarmony 3.3
    */
   bindfinalloopcomplete?: (e: BaseEvent) => void;
 }
@@ -243,10 +302,14 @@ export type ErrorEvent = BaseEvent<'error', ImageErrorEvent>;
 
 /**
  * Restart the animation playback method controlled by the front end, and the animation playback progress and loop count will be reset.
- * @iOS
- * @Android
- * @Harmony
- * @PC
+ * @Android 1.0
+ * @iOS 1.0
+ * @Harmony 3.4
+ * @ClayAndroid 1.5
+ * @ClayIOS 1.5
+ * @ClayMacOS 1.5
+ * @ClayWindows 1.5
+ * @ClayHarmony 2.18
  * @deprecated Deprecated. Some scenarios may not call back the call result. It is recommended to use resumeAnimation instead.
  */
 export interface ImageStartAnimMethod extends BaseMethod {
@@ -255,11 +318,14 @@ export interface ImageStartAnimMethod extends BaseMethod {
 
 /**
  * Resumes the animation, without resetting the loop-count.
- * @iOS
- * @Android
- * @Harmony
- * @PC
- * @since 2.11
+ * @Android 1.0
+ * @iOS 1.0
+ * @Harmony 3.4
+ * @ClayAndroid 1.5
+ * @ClayIOS 1.5
+ * @ClayMacOS 1.5
+ * @ClayWindows 1.5
+ * @ClayHarmony 2.18
  */
 export interface ImageResumeAnimMethod extends BaseMethod {
   method: 'resumeAnimation';
@@ -267,11 +333,14 @@ export interface ImageResumeAnimMethod extends BaseMethod {
 
 /**
  * Pauses the animation, without resetting the loop-count.
- * @iOS
- * @Android
- * @Harmony
- * @PC
- * @since 2.11
+ * @Android 1.0
+ * @iOS 1.0
+ * @Harmony 3.4
+ * @ClayAndroid 1.5
+ * @ClayIOS 1.5
+ * @ClayMacOS 1.5
+ * @ClayWindows 1.5
+ * @ClayHarmony 2.18
  */
 export interface ImagePauseAnimMethod extends BaseMethod {
   method: 'pauseAnimation';
@@ -279,11 +348,14 @@ export interface ImagePauseAnimMethod extends BaseMethod {
 
 /**
  * Stops the animation, and it will reset the loop-count.
- * @iOS
- * @Android
- * @Harmony
- * @PC
- * @since 2.11
+ * @Android 1.0
+ * @iOS 1.0
+ * @Harmony 3.4
+ * @ClayAndroid 1.5
+ * @ClayIOS 1.5
+ * @ClayMacOS 1.5
+ * @ClayWindows 1.5
+ * @ClayHarmony 2.18
  */
 export interface ImageStopAnimMethod extends BaseMethod {
   method: 'stopAnimation';

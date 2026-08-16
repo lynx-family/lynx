@@ -23,8 +23,11 @@ export interface FilterImageErrorEvent {
 export interface FilterImageProps extends StandardProps {
   /**
    * Supports http/https/base64
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.14
+   * @Web
    * @defaultValue ""
-   * @since 0.2
    */
   'src'?: string;
 
@@ -34,34 +37,49 @@ export interface FilterImageProps extends StandardProps {
    * aspectFit: Scales the image while preserving aspect ratio so that the long side is fully visible
    * aspectFill: Scales the image while preserving aspect ratio, ensuring the short side fills the element
    * center: Does not scale the image; image is centered
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.15
+   * @Web
    * @defaultValue "scaleToFill"
-   * @since 0.2
    */
   'mode'?: 'scaleToFill' | 'aspectFit' | 'aspectFill' | 'center';
 
   /**
    * Specifies the BoxBlur radius for the image
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.15
+   * @Web
    * @defaultValue "0px"
-   * @since 0.2
    */
   'blur-radius'?: string;
 
   /**
    * Specifies the shadow style for the image
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 3.1
+   * @Web
    * @defaultValue ""
-   * @since 0.2
    */
   'drop-shadow'?: string;
 
   /**
    * Image load success event
-   * @since 0.2
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.16
+   * @Web
    */
   'bindload'?: (e: FilterImageLoadEvent) => void;
 
   /**
    * Image load error event
-   * @since 0.2
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.15
+   * @Web
    */
   'binderror'?: (e: FilterImageErrorEvent) => void;
 }

@@ -11,126 +11,150 @@ import { StandardProps } from '../props';
 export interface TextProps extends StandardProps {
   /**
    * Maximum number of lines for text display
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
-   * @since 1.0
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.18
    */
   'text-maxline'?: string;
 
   /**
    * Maximum number of characters for text display
-   * @since 1.0
+   * @Android 1.4
+   * @iOS 2.18
+   * @Web
+   * @ClayAndroid 3.1
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.18
+   * @ClayWindows 2.18
+   * @ClayHarmony 2.18
    * @deprecated Suggest preprocessing the text content length.
    */
   'text-maxlength'?: string;
 
   /**
    * Whether font-size is affected by system font scaling
+   * @Android 0.1
+   * @iOS 1.5
    * @defaultValue false
    * @deprecated
-   * @since 1.6
    */
   'enable-font-scaling'?: boolean;
 
   /**
    * Baseline adjustment strategy in vertical direction; note: setting this value does not guarantee text centering
+   * @Android 1.4
+   * @iOS 2.18
    * @defaultValue ""
-   * @since 1.4
    * @deprecated Use the text-single-line-vertical-align attribute instead.
    */
   'text-vertical-align'?: 'bottom' | 'center' | 'top';
 
   /**
    * By default, if text truncation occurs, the color of the inserted ... will be specified by the style on the nearest inline-text. If this attribute is enabled, the color of ... will be specified by the style on the outermost text tag.
+   * @Android 1.5
+   * @iOS 1.5
+   * @Web
    * @defaultValue false
-   * @Android
-   * @web
-   * @iOS
-   * @since 2.0
    */
   'tail-color-convert'?: boolean;
 
   /**
    * Set single-line plain text to be centered and aligned within the line. Inline text settings are not supported. Recommended only when the default font doesn't meet center alignment needs, as it increases text measurement time.
+   * @Android 1.5
+   * @iOS 1.5
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
    * @defaultValue 'normal'
-   * @iOS
-   * @Android
-   * @PC
-   * @since 2.12
    */
   'text-single-line-vertical-align'?: 'normal' | 'bottom' | 'center' | 'top';
 
   /**
    * Enable additional spacing above and below the text on Android; recommended only in high language scenarios to avoid text truncation.
+   * @Android 1.5
    * @defaultValue false
-   * @Android
-   * @since 1.0
    */
   'include-font-padding'?: boolean;
 
   /**
    * Enable support for Emoji2 adaptation; requires androidx.emoji2 dependency.
+   * @Android 2.10
    * @defaultValue false
-   * @Android
-   * @since 2.9
    */
   'android-emoji-compat'?: boolean;
 
   /**
    * Enables fake bold for fonts when the default bold is not found.
+   * @Android 2.12
+   * @iOS 2.18
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @since 2.13
    */
   'text-fake-bold'?: boolean;
 
   /**
    * Sets whether to enable text selection.
+   * @Android 3.2
+   * @iOS 3.2
+   * @Harmony 4.0
+   * @Web
+   * @ClayAndroid 3.7
+   * @ClayIOS 3.7
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue false
-   * @Android
-   * @web
-   * @iOS
-   * @since 2.18
    */
   'text-selection'?: boolean;
 
   /**
    * Used to set whether to turn on the custom pop-up context menu after selection and copying. It takes effect after enabling text-selection.
+   * @Android 3.2
+   * @iOS 3.2
+   * @Harmony 4.0
+   * @Clay 4.0
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @since 2.18
    */
   'custom-context-menu'?: boolean;
 
   /**
    * Used to set whether to enable the custom text selection function. When it is enabled, the element will no longer handle the gesture logic related to selection and copying. It takes effect after enabling text-selection.
+   * @Android 3.2
+   * @iOS 3.2
+   * @Harmony 4.0
+   * @Clay 4.0
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @since 2.18
    */
   'custom-text-selection'?: boolean;
 
   /**
    * Text layout event
-   * @since 2.7
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.16
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindlayout?: (e: LayoutEvent) => void;
 
   /**
    * Text selection change event
-   * @Android
-   * @iOS
-   * @since 2.18
+   * @Android 2.17
+   * @iOS 3.1
+   * @Harmony 4.0
+   * @ClayAndroid 3.1
+   * @ClayIOS 3.1
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   * @ClayHarmony 4.0
    */
   bindselectionchange?: (e: SelectionChangeEvent) => void;
 }
@@ -168,9 +192,10 @@ interface Handle {
 
 /**
  * Sets the text selection.
- * @Android
- * @iOS
- * @since 2.18
+ * @Android 3.2
+ * @iOS 3.2
+ * @Harmony 4.0
+ * @Clay 4.0
  */
 interface SetTextSelectionMethod extends BaseMethod {
   method: 'setTextSelection';
@@ -218,10 +243,14 @@ interface SetTextSelectionMethod extends BaseMethod {
 
 /**
  * Gets the bounding rectangle of the text.
- * @Android
- * @iOS
- * @PC
- * @since 2.18
+ * @Android 3.2
+ * @iOS 3.2
+ * @Harmony 4.0
+ * @ClayAndroid 1.5
+ * @ClayIOS 1.5
+ * @ClayMacOS 1.5
+ * @ClayWindows 1.5
+ * @ClayHarmony 2.17
  */
 interface GetTextBoundingRectMethod extends BaseMethod {
   method: 'getTextBoundingRect';
@@ -249,9 +278,10 @@ interface GetTextBoundingRectMethod extends BaseMethod {
 
 /**
  * Gets the selected text.
- * @Android
- * @iOS
- * @since 2.18
+ * @Android 3.2
+ * @iOS 3.2
+ * @Harmony 4.0
+ * @Clay 4.0
  */
 interface GetSelectedTextMethod extends BaseMethod {
   method: 'getSelectedText';
