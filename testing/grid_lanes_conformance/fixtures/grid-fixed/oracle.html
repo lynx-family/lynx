@@ -1,0 +1,20 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 360px; height: 300px; }
+  * { box-sizing: border-box; }
+  .page { display: flex; flex-direction: column; width: 360px; height: 300px; padding: 20px; }
+  .grid { display: grid; width: 320px; height: 180px; padding: 8px; border: 2px solid #000; grid-template-columns: 100px 1fr; grid-template-rows: 60px 80px; column-gap: 12px; row-gap: 10px; }
+  .item { min-width: 0; min-height: 0; }
+  .a { margin: 3px; }
+  .b { padding: 5px; }
+  .c { border: 4px solid #000; }
+</style>
+<div class="page" data-test-tag="page">
+  <div class="grid" data-test-tag="grid">
+    <div class="item a" data-test-tag="a"></div>
+    <div class="item b" data-test-tag="b"></div>
+    <div class="item c" data-test-tag="c"></div>
+    <div class="item d" data-test-tag="d"></div>
+  </div>
+</div>

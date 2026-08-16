@@ -28,6 +28,20 @@ builder({
         "output": "out/Default_test_enable_trace",
         "type": "gn",
     },
+
+    "builder_for_starlight_geometry" :{
+        "args": [
+            "enable_lepusng_worklet=true",
+            "enable_unittests=true",
+            "enable_inspector=true",
+            "enable_napi_binding=true",
+            "enable_coverage=true",
+            "use_flutter_cxx=false",
+            "is_debug=false",
+        ],
+        "output": "out/Default",
+        "type": "gn",
+    },
 })
 
 coverage({
@@ -237,6 +251,13 @@ targets({
         "owners":["ZhaoSongGOO"],
         "coverage": True,
         "enable_parallel":True,
+    },
+    "starlight_geometry_unittest_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'builder_for_starlight_geometry',
     },
     "runtime_common_unittests_exec":{
         "cwd": ".",

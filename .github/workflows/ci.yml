@@ -337,6 +337,15 @@ jobs:
       - name: Run Linux Node Lynx Tests
         run: |
           tools/env.sh pnpm --filter @lynx-js/node-lynx run test
+      - name: Install Grid Lanes Browser Oracles
+        run: |
+          tools/env.sh pnpm --filter @lynx-js/grid-lanes-conformance run install:browsers
+      - name: Run Grid Lanes Conformance
+        run: |
+          tools/env.sh pnpm --filter @lynx-js/grid-lanes-conformance run build
+          tools/env.sh pnpm --filter @lynx-js/grid-lanes-conformance run test:unit
+          tools/env.sh pnpm --filter @lynx-js/grid-lanes-conformance run test:calibration
+          tools/env.sh pnpm --filter @lynx-js/grid-lanes-conformance run test
 
   linux-sdk-amd64-build:
     runs-on: lynx-ubuntu-22.04-large

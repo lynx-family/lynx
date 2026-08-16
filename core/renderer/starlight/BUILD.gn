@@ -158,7 +158,25 @@ unittest_set("starlight_testset") {
   ]
 }
 
+unittest_set("starlight_geometry_testset") {
+  public_configs = [ "../../:lynx_public_config" ]
+  sources = [
+    "../../services/replay/layout_tree_testbench.cc",
+    "layout/grid_geometry_unittest.cc",
+  ]
+  public_deps = [
+    ":starlight",
+    "../../../third_party/rapidjson:rapidjson",
+    "../dom:dom",
+  ]
+}
+
 unittest_exec("starlight_unittest_exec") {
   sources = []
   deps = [ ":starlight_testset" ]
+}
+
+unittest_exec("starlight_geometry_unittest_exec") {
+  sources = []
+  deps = [ ":starlight_geometry_testset" ]
 }

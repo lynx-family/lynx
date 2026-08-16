@@ -1,0 +1,44 @@
+* {
+  box-sizing: border-box;
+}
+.page {
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  height: 420px;
+  padding: 20px;
+}
+.lanes {
+  display: grid-lanes;
+  width: 320px;
+  grid-template-columns: repeat(3, 90px);
+  column-gap: 25px;
+  row-gap: 18px;
+  padding: 7px;
+  border: 3px solid #000000;
+}
+.item {
+  min-width: 0;
+  min-height: 0;
+}
+.item1 {
+  height: 54px;
+  margin: 4px;
+}
+.item2 {
+  height: 82px;
+}
+.item3 {
+  height: 64px;
+  padding: 5px;
+}
+.item4 {
+  height: 98px;
+}
+.item5 {
+  height: 46px;
+}
+.item6 {
+  height: 74px;
+  border: 2px solid #000000;
+}

@@ -1,0 +1,10 @@
+{
+  "name": "grid-spans",
+  "suite": "calibration",
+  "expectation": "pass",
+  "viewport": {
+    "width": 360,
+    "height": 320,
+    "devicePixelRatio": 1
+  }
+}

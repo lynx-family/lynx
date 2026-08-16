@@ -1,0 +1,26 @@
+{
+  "name": "@lynx-js/grid-lanes-conformance",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "node scripts/build-fixtures.js",
+    "install:browsers": "node scripts/install-browsers.js",
+    "test": "node scripts/run-conformance.js",
+    "test:calibration": "node scripts/run-conformance.js --suite calibration",
+    "test:seed": "node scripts/run-conformance.js --suite grid-lanes",
+    "test:unit": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@lynx-js/node-lynx": "workspace:*"
+  },
+  "devDependencies": {
+    "@lynx-js/qrcode-rsbuild-plugin": "0.3.6",
+    "@lynx-js/react": "0.107.0",
+    "@lynx-js/react-rsbuild-plugin": "0.9.8",
+    "@lynx-js/rspeedy": "0.9.3",
+    "@lynx-js/types": "3.3.0",
+    "@types/react": "18.3.18",
+    "playwright": "1.59.1"
+  }
+}

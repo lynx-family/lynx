@@ -1,0 +1,11 @@
+{
+  "name": "grid-lanes-spans",
+  "suite": "grid-lanes",
+  "expectation": "fail",
+  "source": "Adapted from WPT css/css-grid/masonry spanning-item placement",
+  "viewport": {
+    "width": 380,
+    "height": 440,
+    "devicePixelRatio": 1
+  }
+}

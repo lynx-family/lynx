@@ -1,0 +1,11 @@
+{
+  "name": "grid-lanes-auto-fill",
+  "suite": "grid-lanes",
+  "expectation": "fail",
+  "source": "Adapted from WPT css/css-grid/masonry auto-repeat sizing",
+  "viewport": {
+    "width": 420,
+    "height": 420,
+    "devicePixelRatio": 1
+  }
+}

@@ -1,0 +1,36 @@
+* {
+  box-sizing: border-box;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  height: 300px;
+  padding: 20px;
+}
+
+.grid {
+  display: grid;
+  width: 340px;
+  height: 200px;
+  grid-template-columns: repeat(3, 80px);
+  grid-template-rows: 80px;
+  justify-content: center;
+  align-content: center;
+  justify-items: center;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.item {
+  width: 44px;
+  height: 32px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.second {
+  justify-self: start;
+  align-self: end;
+}
