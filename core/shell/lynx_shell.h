@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/lynx_actor.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
@@ -284,6 +285,10 @@ class LynxShell {
   std::unordered_map<std::string, std::string> GetAllJsSource();
 
   void GetAllJsSourceAsync(std::unique_ptr<shell::PlatformCallBack> callback);
+
+  bool TakeBTSHeapSnapshotToFileAsync(
+      std::string output_path,
+      base::MoveOnlyClosure<void, bool> completion_callback);
 
   void GetLynxElementRootSignAsync(
       std::unique_ptr<shell::PlatformCallBack> callback);

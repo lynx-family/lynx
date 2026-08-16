@@ -37,6 +37,7 @@ import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
@@ -51,6 +52,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.core.LynxEngineProxy;
+import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.core.VSyncMonitor;
 import com.lynx.tasm.element.LynxElement;
 import com.lynx.tasm.element.LynxElementCallback;
@@ -63,6 +65,7 @@ import com.lynx.tasm.theme.LynxTheme;
 import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
+import java.io.File;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -1700,6 +1703,35 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
         callback.onResult(owner.element(sign));
       });
     });
+  }
+
+  /**
+   * @apidoc
+   * @brief Queues a QuickJS heap snapshot on the background scripting thread, then writes it to the
+   *     given file on a dedicated I/O thread.
+   * @param outputFile Absolute destination file. Its parent directory must already exist. Existing
+   *     file content is replaced.
+   * @param callback Receives true on a background thread if the snapshot is saved successfully, or
+   *     false if validation, scheduling, capture, or file output fails. May be null.
+   */
+  @AnyThread
+  public void takeBTSHeapSnapshot(
+      @NonNull File outputFile, @Nullable LynxConsumer<Boolean> callback) {
+    LynxTemplateRender templateRender = mLynxTemplateRender;
+    boolean accepted = false;
+    if (outputFile == null || !outputFile.isAbsolute()) {
+      LLog.e(TAG, "Heap snapshot output file must use an absolute path.");
+    } else if (templateRender == null) {
+      LLog.e(TAG, "Cannot take a heap snapshot after LynxView is destroyed.");
+    } else {
+      accepted = templateRender.takeBTSHeapSnapshot(outputFile.getAbsolutePath(), callback);
+      if (!accepted) {
+        LLog.e(TAG, "Failed to schedule a BTS heap snapshot.");
+      }
+    }
+    if (!accepted && callback != null) {
+      LynxThreadPool.getBriefIOExecutor().execute(() -> callback.accept(false));
+    }
   }
 
   @UiThread

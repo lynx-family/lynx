@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/include/string/string_utils.h"
+#include "base/trace/native/trace_event.h"
 #include "core/base/android/jni_helper.h"
 #include "core/base/thread/atomic_lifecycle.h"
 #include "core/public/lynx_extension_delegate.h"
@@ -27,6 +28,7 @@
 #include "core/shell/android/native_facade_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
+#include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
@@ -146,6 +148,16 @@ void DispatchNativeMemoryUsageResult(
       static_cast<jlong>(snapshot.background_thread_runtime_bytes_),
       j_group_id.Get());
   lynx::base::android::CheckException(env);
+}
+
+void DispatchBTSHeapSnapshotResult(ScopedGlobalJavaRef<jobject> callback,
+                                   bool success) {
+  if (callback.IsNull()) {
+    return;
+  }
+  JNIEnv* env = AttachCurrentThread();
+  Java_LynxTemplateRender_dispatchBTSHeapSnapshotResult(
+      env, callback.Get(), static_cast<jboolean>(success));
 }
 
 std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
@@ -1170,6 +1182,32 @@ jobject GetAllJsSource(JNIEnv* env, jclass jcaller, jlong ptr,
   }
   AtomicLifecycle::TryFree(lifecycle_ptr);
   return env->NewLocalRef(jni_map.jni_object());  // NOLINT
+}
+
+jboolean TakeBTSHeapSnapshotToFile(JNIEnv* env, jclass jcaller, jlong ptr,
+                                   jlong lifecycle, jstring output_path,
+                                   jobject callback) {
+  if (ptr == 0 || lifecycle == 0 || output_path == nullptr) {
+    return JNI_FALSE;
+  }
+  std::string native_output_path =
+      JNIConvertHelper::ConvertToString(env, output_path);
+  ScopedGlobalJavaRef<jobject> global_callback(env, callback);
+
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    return JNI_FALSE;
+  }
+
+  const bool accepted =
+      reinterpret_cast<LynxShell*>(ptr)->TakeBTSHeapSnapshotToFileAsync(
+          std::move(native_output_path),
+          [callback = std::move(global_callback)](bool success) mutable {
+            DispatchBTSHeapSnapshotResult(std::move(callback), success);
+          });
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+  return accepted ? JNI_TRUE : JNI_FALSE;
 }
 
 void QueryNativeMemoryUsageAsync(JNIEnv* env, jclass jcaller, jlong ptr,
