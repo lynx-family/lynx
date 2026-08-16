@@ -1,0 +1,39 @@
+* {
+  box-sizing: border-box;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  height: 320px;
+  padding: 18px;
+}
+
+.grid {
+  display: grid;
+  width: 324px;
+  height: 240px;
+  grid-template-columns: repeat(3, 100px);
+  grid-template-rows: repeat(3, 70px);
+  gap: 10px;
+}
+
+.grid > view {
+  min-width: 0;
+  min-height: 0;
+}
+
+.wide {
+  grid-column-start: 1;
+  grid-column-span: 2;
+}
+
+.tall {
+  grid-row-span: 2;
+}
+
+.last {
+  grid-column-start: 2;
+  grid-column-end: 4;
+}

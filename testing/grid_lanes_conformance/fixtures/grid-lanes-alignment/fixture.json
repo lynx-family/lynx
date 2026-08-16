@@ -1,0 +1,11 @@
+{
+  "name": "grid-lanes-alignment",
+  "suite": "grid-lanes",
+  "expectation": "fail",
+  "source": "Adapted from WPT css/css-grid/masonry grid-axis alignment",
+  "viewport": {
+    "width": 400,
+    "height": 440,
+    "devicePixelRatio": 1
+  }
+}

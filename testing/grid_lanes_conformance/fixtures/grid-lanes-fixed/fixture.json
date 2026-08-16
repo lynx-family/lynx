@@ -1,0 +1,11 @@
+{
+  "name": "grid-lanes-fixed",
+  "suite": "grid-lanes",
+  "expectation": "fail",
+  "source": "Adapted from WPT css/css-grid/masonry fixed-track placement",
+  "viewport": {
+    "width": 360,
+    "height": 420,
+    "devicePixelRatio": 1
+  }
+}

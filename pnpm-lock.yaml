@@ -308,6 +308,27 @@ importers:
       typescript: 5.8.3
       vitest: 2.1.9
 
+  testing/grid_lanes_conformance:
+    specifiers:
+      '@lynx-js/node-lynx': workspace:*
+      '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
+      '@lynx-js/react': 0.107.0
+      '@lynx-js/react-rsbuild-plugin': 0.9.8
+      '@lynx-js/rspeedy': 0.9.3
+      '@lynx-js/types': 3.3.0
+      '@types/react': 18.3.18
+      playwright: 1.59.1
+    dependencies:
+      '@lynx-js/node-lynx': link:../../oliver/node-lynx
+    devDependencies:
+      '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
+      '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
+      '@lynx-js/react-rsbuild-plugin': 0.9.8_@lynx-js+react@0.107.0
+      '@lynx-js/rspeedy': 0.9.3
+      '@lynx-js/types': 3.3.0
+      '@types/react': 18.3.18
+      playwright: 1.59.1
+
   testing/integration_test/test_script:
     specifiers:
       appium: 2.11.2
@@ -5484,6 +5505,14 @@ packages:
       universalify: 2.0.1
     dev: true
 
+  /fsevents/2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+    requiresBuild: true
+    dev: true
+    optional: true
+
   /fsevents/2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -7002,6 +7031,22 @@ packages:
     dependencies:
       find-up: 5.0.0
     dev: false
+
+  /playwright-core/1.59.1:
+    resolution: {integrity: sha512-HBV/RJg81z5BiiZ9yPzIiClYV/QMsDCKUyogwH9p3MCP6IYjUFu/MActgYAvK0oWyV9NlwM3GLBjADyWgydVyg==}
+    engines: {node: '>=18'}
+    hasBin: true
+    dev: true
+
+  /playwright/1.59.1:
+    resolution: {integrity: sha512-C8oWjPR3F81yljW9o5OxcWzfh6avkVwDD2VYdwIGqTkl+OGFISgypqzfu7dOe4QNLL2aqcWBmI3PMtLIK233lw==}
+    engines: {node: '>=18'}
+    hasBin: true
+    dependencies:
+      playwright-core: 1.59.1
+    optionalDependencies:
+      fsevents: 2.3.2
+    dev: true
 
   /plist/3.1.0:
     resolution: {integrity: sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ==}

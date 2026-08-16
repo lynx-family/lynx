@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 360px; height: 420px; }
+  * { box-sizing: border-box; }
+  .page { display: flex; flex-direction: column; width: 360px; height: 420px; padding: 20px; }
+  .lanes { display: grid-lanes; width: 320px; grid-template-columns: repeat(3, 96px); gap: 12px; }
+  .item { min-width: 0; min-height: 0; }
+  .item1 { height: 72px; } .item2 { height: 120px; } .item3 { height: 56px; }
+  .item4 { height: 90px; } .item5 { height: 44px; } .item6 { height: 110px; }
+</style>
+<div class="page" data-test-tag="page">
+  <div class="lanes" data-test-tag="lanes">
+    <div class="item item1" data-test-tag="item1"></div><div class="item item2" data-test-tag="item2"></div><div class="item item3" data-test-tag="item3"></div>
+    <div class="item item4" data-test-tag="item4"></div><div class="item item5" data-test-tag="item5"></div><div class="item item6" data-test-tag="item6"></div>
+  </div>
+</div>

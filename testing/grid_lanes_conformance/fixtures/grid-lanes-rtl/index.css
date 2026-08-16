@@ -1,0 +1,40 @@
+* {
+  box-sizing: border-box;
+}
+.page {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  height: 440px;
+  padding: 20px;
+}
+.lanes {
+  display: grid-lanes;
+  direction: lynx-rtl;
+  width: 340px;
+  grid-template-columns: repeat(3, 100px);
+  gap: 20px;
+}
+.item {
+  min-width: 0;
+  min-height: 0;
+}
+.item1 {
+  height: 74px;
+}
+.item2 {
+  height: 118px;
+}
+.item3 {
+  height: 52px;
+}
+.item4 {
+  height: 86px;
+  grid-column-start: 2;
+}
+.item5 {
+  height: 64px;
+}
+.item6 {
+  height: 100px;
+}

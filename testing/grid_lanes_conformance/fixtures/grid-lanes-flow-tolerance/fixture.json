@@ -1,0 +1,14 @@
+{
+  "name": "grid-lanes-flow-tolerance",
+  "suite": "grid-lanes",
+  "expectation": "fail",
+  "source": "Adapted from WPT css/css-grid/masonry item-tolerance ordering",
+  "subjectOmissions": [
+    "flow-tolerance is retained in oracle.html but omitted from index.css until M1 adds the property to the Lynx encoder"
+  ],
+  "viewport": {
+    "width": 360,
+    "height": 460,
+    "devicePixelRatio": 1
+  }
+}

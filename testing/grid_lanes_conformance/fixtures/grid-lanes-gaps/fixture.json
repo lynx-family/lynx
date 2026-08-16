@@ -1,0 +1,11 @@
+{
+  "name": "grid-lanes-gaps",
+  "suite": "grid-lanes",
+  "expectation": "fail",
+  "source": "Adapted from WPT css/css-grid/masonry row and column gap coverage",
+  "viewport": {
+    "width": 360,
+    "height": 420,
+    "devicePixelRatio": 1
+  }
+}

@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 360px; height: 460px; } * { box-sizing: border-box; }
+  .page { display: flex; flex-direction: column; width: 360px; height: 460px; padding: 20px; }
+  .lanes { display: grid-lanes; width: 320px; grid-template-columns: repeat(2, 150px); column-gap: 20px; row-gap: 8px; margin-bottom: 24px; }
+  .zero { flow-tolerance: 0; } .infinite { flow-tolerance: infinite; }
+  .item { min-width: 0; min-height: 0; }
+  .a1, .b1 { height: 80px; } .a2, .b2 { height: 82px; } .a3, .b3 { height: 48px; }
+</style>
+<div class="page" data-test-tag="page">
+  <div class="lanes zero" data-test-tag="zero"><div class="item a1" data-test-tag="a1"></div><div class="item a2" data-test-tag="a2"></div><div class="item a3" data-test-tag="a3"></div></div>
+  <div class="lanes infinite" data-test-tag="infinite"><div class="item b1" data-test-tag="b1"></div><div class="item b2" data-test-tag="b2"></div><div class="item b3" data-test-tag="b3"></div></div>
+</div>

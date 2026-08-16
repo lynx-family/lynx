@@ -1,0 +1,3 @@
+fixtures/*/dist
+node_modules
+quickjs_cache

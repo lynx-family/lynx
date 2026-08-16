@@ -1,0 +1,10 @@
+{
+  "name": "grid-alignment",
+  "suite": "calibration",
+  "expectation": "pass",
+  "viewport": {
+    "width": 380,
+    "height": 300,
+    "devicePixelRatio": 1
+  }
+}
