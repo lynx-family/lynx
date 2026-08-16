@@ -82,144 +82,180 @@ export type VideoBufferingEvent = BaseEvent<'bindbuffering', VideoBufferingEvent
 export interface VideoProps extends StandardProps {
   /**
    * Video source URL. Only online network URLs are supported.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @Web
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   src?: string;
 
   /**
    * Whether to loop playback.
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @Web
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @Harmony
    */
   loop?: boolean;
 
   /**
    * Playback volume from 0 to 1.
+   * @Android 4.1
+   * @iOS 4.1
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
    * @defaultValue 1.0
-   * @Android
-   * @iOS
-   * @Harmony
    */
   volume?: number;
 
   /**
    * Whether the video is muted.
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @Web
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @Harmony
    */
   muted?: boolean;
 
   /**
    * Playback speed from 0.1 to 2.0.
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    * @defaultValue 1.0
-   * @Android
-   * @iOS
-   * @Harmony
    */
   speed?: number;
 
   /**
    * Video scaling strategy.
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    * @defaultValue 'contain'
-   * @Android
-   * @iOS
-   * @Harmony
    */
   'object-fit'?: VideoObjectFit;
 
   /**
    * UIMethod execution mode.
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    * @defaultValue 'queue'
-   * @Android
-   * @iOS
-   * @Harmony
    */
   mode?: VideoUIMethodMode;
 
   /**
    * Minimum interval for timeupdate dispatch, in seconds.
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    * @defaultValue 0.33
-   * @Android
-   * @iOS
-   * @Harmony
    */
   'timeupdate-interval'?: number;
 
   /**
    * Fired when the first video frame has loaded.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
    */
   bindfirstframe?: (e: VideoFirstFrameEvent) => void;
 
   /**
    * Fired when video playback starts or resumes.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @Web
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
    */
   bindplaying?: (e: VideoPlayingEvent) => void;
 
   /**
    * Fired when video playback pauses.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    */
   bindpaused?: (e: VideoPausedEvent) => void;
 
   /**
    * Fired when video playback is stopped by the stop UIMethod.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    */
   bindstopped?: (e: VideoStoppedEvent) => void;
 
   /**
    * Fired when the playback position updates.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @Web
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
    */
   bindtimeupdate?: (e: VideoTimeUpdateEvent) => void;
 
   /**
    * Fired when video playback fully ends.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @Web
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
    */
   bindended?: (e: VideoEndedEvent) => void;
 
   /**
    * Fired at the end of each loop iteration.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    */
   bindlooped?: (e: VideoLoopedEvent) => void;
 
   /**
    * Fired when a video playback error occurs.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
+   * @Web
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   binderror?: (e: VideoErrorEvent) => void;
 
   /**
    * Fired while the video is buffering.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.1
+   * @iOS 4.1
+   * @Harmony 4.1
    */
   bindbuffering?: (e: VideoBufferingEvent) => void;
 }
@@ -260,9 +296,14 @@ export interface VideoBaseMethod extends BaseMethod {
 
 /**
  * Play the video.
- * @Android
- * @iOS
- * @Harmony
+ * @Android 4.1
+ * @iOS 4.1
+ * @Harmony 4.1
+ * @Web
+ * @ClayIOS 2.14
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
+ * @ClayHarmony 2.14
  */
 export interface VideoPlayMethod extends VideoBaseMethod {
   method: 'play';
@@ -270,9 +311,13 @@ export interface VideoPlayMethod extends VideoBaseMethod {
 
 /**
  * Pause video playback.
- * @Android
- * @iOS
- * @Harmony
+ * @Android 4.1
+ * @iOS 4.1
+ * @Harmony 4.1
+ * @Web
+ * @ClayIOS 2.14
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
  */
 export interface VideoPauseMethod extends VideoBaseMethod {
   method: 'pause';
@@ -280,9 +325,12 @@ export interface VideoPauseMethod extends VideoBaseMethod {
 
 /**
  * Stop video playback.
- * @Android
- * @iOS
- * @Harmony
+ * @Android 4.1
+ * @iOS 4.1
+ * @Harmony 4.1
+ * @ClayIOS 2.14
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
  */
 export interface VideoStopMethod extends VideoBaseMethod {
   method: 'stop';
@@ -290,9 +338,12 @@ export interface VideoStopMethod extends VideoBaseMethod {
 
 /**
  * Seek to the target playback position.
- * @Android
- * @iOS
- * @Harmony
+ * @Android 4.1
+ * @iOS 4.1
+ * @Harmony 4.1
+ * @ClayIOS 2.14
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
  */
 export interface VideoSeekMethod extends VideoBaseMethod {
   method: 'seek';

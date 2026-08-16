@@ -11,10 +11,8 @@ export interface RefreshStartRefresh {
   /**
    * Indicates whether the startrefresh event is triggered by manual drag
    * @Android
-   * @web
    * @iOS
    * @Harmony
-   * @Web
    **/
   isManual: boolean;
 }
@@ -23,20 +21,16 @@ export interface RefreshHeaderOffset {
   /**
    * Indicates if `<refresh-header>` is being dragged
    * @Android
-   * @web
    * @iOS
    * @Harmony
-   * @Web
    * @Clay
    **/
   isDragging: boolean;
   /**
    * The ratio of the pull-down movement distance to its own height
    * @Android
-   * @web
    * @iOS
    * @Harmony
-   * @Web
    * @Clay
    **/
   offsetPercent: number;
@@ -61,44 +55,35 @@ export interface RefreshStateChange {
 export interface RefreshProps extends StandardProps {
   /**
    * Determines if dragging down or calling autoStartRefresh can trigger the startrefresh event.
+   * @Android 3.8
+   * @iOS 3.8
+   * @Harmony 3.8
    * @defaultValue true
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @Web
-   * @Clay
    */
   'enable-refresh'?: boolean;
 
   /**
    * Triggered when enable-refresh is true, and dragging down or calling autoStartRefresh (enters refresh state).
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @Web
-   * @Clay
+   * @Android 3.8
+   * @iOS 3.8
+   * @Harmony 3.8
    */
   bindstartrefresh?: (e: RefreshStartRefreshEvent) => void;
 
 
   /**
    * Triggered during movement when `<refresh-header>` is exposed.
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @Web
-   * @Clay
+   * @Android 3.8
+   * @iOS 3.8
+   * @Harmony 3.8
    */
   bindheaderoffset?: (e: RefreshHeaderOffsetEvent) => void;
 
   /**
    * Triggered when `<refresh-header>` state changes.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.8
+   * @iOS 3.8
+   * @Harmony 3.8
    */
   bindrefreshstatechange?: (e: RefreshStateChangeEvent) => void;
 }
@@ -112,12 +97,9 @@ export interface RefreshHeaderProps extends StandardProps {}
 
 /**
  * Called after the startrefresh event to end the refresh state, making `<refresh-header>` rebound.
- * @Android
- * @web
- * @iOS
- * @Harmony
- * @Web
- * @Clay
+ * @Android 3.8
+ * @iOS 3.8
+ * @Harmony 3.8
  */
 export interface RefreshFinishRefreshMethod extends BaseMethod {
   method: 'finishRefresh';
@@ -127,12 +109,9 @@ export interface RefreshFinishRefreshMethod extends BaseMethod {
 
 /**
  * When enable-refresh is true, call this method to expose the entire `<refresh-header>`, triggering the startrefresh event, after which `<refresh-header>` will attach to the top edge of the refresh's viewport.
- * @Android
- * @web
- * @iOS
- * @Harmony
- * @Web
- * @Clay
+ * @Android 3.8
+ * @iOS 3.8
+ * @Harmony 3.8
  */
 export interface RefreshAutoStartRefreshMethod extends BaseMethod {
   method: 'autoStartRefresh';

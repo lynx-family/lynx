@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.5
+- Add/Update platform support annotations for Element attributes, events, and methods.
+
 ## 4.3.4
 - Remove deprecated `experimental-recycle-sticky-item` from `<list>` typings.
 

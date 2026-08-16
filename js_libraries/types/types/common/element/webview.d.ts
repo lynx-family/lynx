@@ -106,119 +106,146 @@ export interface WebviewUrlEvent {
 export interface WebviewProps extends Omit<StandardProps, 'binderror'> {
   /**
    * A string that represents the location of a resource on a remote server. Automatically trigger content refresh when the src changes
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   src?: string;
   /**
    * A string that represents the html content to load. Automatically trigger content refresh when the html changes. Priority lower than `src`.
-   * @Android
-   * @iOS
-   * @Harmony
-   * @since 3.6
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
    */
   html?: string;
   /**
    * Enable bounce effect
+   * @iOS 4.0
    * @defaultValue false
-   * @iOS
    */
   bounces?: boolean;
   /**
    * Enable scrollbar
+   * @iOS 4.0
    * @defaultValue false
-   * @iOS
    */
   'scroll-bar-enable'?: boolean;
   /**
    * Params for external webview implementation
-   * @Android
-   * @iOS
+   * @Android 4.0
+   * @iOS 4.0
    */
   params?: object;
   /**
    * Specify the type of webview, it could be a implementation of a webview inject from LynxService
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
    * @defaultValue 'default'
-   * @Android
-   * @iOS
-   * @Harmony
    */
   'webview-type'?: 'default' | string;
 
   /**
    * Enable WebView debugging in Android so that it can be debugged in Chrome DevTools
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'enable-debug'?: boolean;
   /**
    * Execute javascript when document ready
-   * @since Lynx 3.5
-   * @PC
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   initjs?: string;
   /**
    * Preset cookies
-   * @since Lynx 3.5
-   * @PC
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   cookies?: WebviewCookie[];
   /**
    * Whether enable offscreen rendering mode
-   * @since Lynx 3.5
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    * @defaultValue false
-   * @PC
    */
   'use-osr'?: boolean;
   /**
    * Load success event
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindload?: (e: BaseEvent<'load'>) => void;
   /**
    * Error event
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   binderror?: (e: BaseEvent<'error', WebviewErrorEvent>) => void;
   /**
    * Message post from javascript
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindmessage?: (e: BaseEvent<'message', WebviewMessageEvent>) => void;
   /**
    * open window event
-   * @since Lynx 3.5
-   * @PC
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindopenwindow?: (e: BaseEvent<'openwindow', WebviewUrlEvent>) => void;
   /**
    * location change event
-   * @since Lynx 3.5
-   * @PC
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.0
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
    */
   bindlocationchange?: (e: BaseEvent<'locationchange', WebviewUrlEvent>) => void;
 }
 
 /**
  * Reload the webview
- * @Android
- * @iOS
- * @PC
- * @Harmony
+ * @Android 4.0
+ * @iOS 4.0
+ * @Harmony 4.0
+ * @ClayAndroid 4.0
+ * @ClayIOS 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface WebviewReloadMethod extends BaseMethod {
   method: 'reload';
@@ -226,10 +253,13 @@ export interface WebviewReloadMethod extends BaseMethod {
 
 /**
  * Call js function
- * @Android
- * @iOS
- * @PC
- * @Harmony
+ * @Android 4.0
+ * @iOS 4.0
+ * @Harmony 4.0
+ * @ClayAndroid 4.0
+ * @ClayIOS 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface WebviewEvalMethod extends BaseMethod {
   method: 'eval';
@@ -247,8 +277,10 @@ export interface WebviewEvalMethod extends BaseMethod {
 
 /**
  * Write any unwritten cookies data to disk for webview
- * @since Lynx 3.5
- * @PC
+ * @ClayAndroid 4.0
+ * @ClayIOS 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface WebviewCookiesFlushStoreMethod extends BaseMethod {
   method: 'cookies.flushStore';
@@ -256,8 +288,10 @@ export interface WebviewCookiesFlushStoreMethod extends BaseMethod {
 
 /**
  * Removes the cookies matching url and name
- * @since Lynx 3.5
- * @PC
+ * @ClayAndroid 4.0
+ * @ClayIOS 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface WebviewCookiesRemoveMethod extends BaseMethod {
   method: 'cookies.remove';
@@ -277,8 +311,10 @@ export interface WebviewCookiesRemoveMethod extends BaseMethod {
 
 /**
  * Set a cookie to webview
- * @since Lynx 3.5
- * @PC
+ * @ClayAndroid 4.0
+ * @ClayIOS 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface WebviewCookiesSetMethod extends BaseMethod {
   method: 'cookies.set';
@@ -336,8 +372,10 @@ export interface WebviewCookiesSetMethod extends BaseMethod {
 
 /**
  * Get cookies from webview
- * @since Lynx 3.5
- * @PC
+ * @ClayAndroid 4.0
+ * @ClayIOS 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
  */
 export interface WebviewCookiesGetMethod extends BaseMethod {
   method: 'cookies.get';

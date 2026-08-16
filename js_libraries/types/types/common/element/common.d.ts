@@ -13,54 +13,48 @@ export interface ScrollbarProps {
   /**
    * Whether to display the scrollbar.
    * @defaultValue false
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'enable-scrollbar'?: boolean;
 
   /**
    * Whether to hide the scrollbar automatically when it is inactive.
    * @defaultValue true
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-auto-hide'?: boolean;
 
   /**
    * Width of the scrollbar track, in px.
    * @defaultValue 12
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-width'?: number;
 
   /**
    * Width of the scrollbar thumb, in px.
    * @defaultValue 8
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-thumb-width'?: number;
 
   /**
    * Minimum length of the scrollbar thumb, in px.
    * @defaultValue 18
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-thumb-min-length'?: number;
 
   /**
    * Corner radius of the scrollbar thumb, in px.
    * @defaultValue 4
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-thumb-radius'?: number;
 
@@ -68,9 +62,8 @@ export interface ScrollbarProps {
    * Color of the scrollbar thumb.
    * Supported formats are named colors, #RGB, #RRGGBB, #RRGGBBAA, and comma-separated rgb(), rgba(), hsl(), and hsla().
    * @defaultValue 'rgba(0, 0, 0, 0.4)'
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-thumb-color'?: string;
 
@@ -78,9 +71,8 @@ export interface ScrollbarProps {
    * Color of the scrollbar thumb while it is being dragged.
    * Supported formats are named colors, #RGB, #RRGGBB, #RRGGBBAA, and comma-separated rgb(), rgba(), hsl(), and hsla().
    * @defaultValue 'rgba(0, 0, 0, 0.8)'
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-thumb-active-color'?: string;
 
@@ -88,9 +80,8 @@ export interface ScrollbarProps {
    * Color of the scrollbar thumb while the pointer is hovering over it.
    * Supported formats are named colors, #RGB, #RRGGBB, #RRGGBBAA, and comma-separated rgb(), rgba(), hsl(), and hsla().
    * @defaultValue 'rgba(0, 0, 0, 0.8)'
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-thumb-hover-color'?: string;
 
@@ -98,18 +89,16 @@ export interface ScrollbarProps {
    * Color of the scrollbar track.
    * Supported formats are named colors, #RGB, #RRGGBB, #RRGGBBAA, and comma-separated rgb(), rgba(), hsl(), and hsla().
    * @defaultValue 'transparent'
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-track-color'?: string;
 
   /**
    * Delay before automatically hiding the scrollbar, in ms.
    * @defaultValue 1000
-   * @since 3.0
-   * @ClayWindows
-   * @ClayMacOS
+   * @ClayWindows 3.0
+   * @ClayMacOS 3.0
    */
   'scroll-bar-auto-hide-delay'?: number;
 }

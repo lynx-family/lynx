@@ -316,65 +316,57 @@ export interface BaseImageLoadEvent<T> extends BaseEventOrig<{}, T> {
 export interface ImageLoadEvent extends BaseImageLoadEvent<Target> {
   /**
    * Image start loading timestamp, Unit (ms).
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   load_start?: number;
 
   /**
    * Image loading completion timestamp, Unit (ms). It mainly includes image downloading and image decoding.
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   load_finish?: number;
 
   /**
    * Image loading duration (load_finish - load_start), Unit (ms).
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   cost?: number;
 
   /**
    * image URI.
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   src?: string;
 
   /**
    * image view width. Unit: (px)
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   view_width?: number,
 
   /**
    * image view height. Unit: (px)
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   view_height?: number;
 
   /**
    * Image memory size, Unit: Byte (B).
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   memory_cost?: number;
 
   /**
    * Source of image, network download, memory cache or disk cache.
-   * @Android
-   * @iOS
-   * @since 3.6
+   * @Android 3.6
+   * @iOS 3.6
    */
   origin?: number;
 }
@@ -644,17 +636,15 @@ export interface BaseEvent<T = string, D = any> {
 export interface LynxEvent<T> {
   /**
    * Listening for background image loading success.
-   * @Android
-   * @iOS
-   * @since 2.6
+   * @Android 2.6
+   * @iOS 2.6
    */
   BGLoad?: EventHandler<BaseImageLoadEvent<T>>;
 
   /**
    * Failed to load background image for listening.
-   * @Android
-   * @iOS
-   * @since 2.8
+   * @Android 2.8
+   * @iOS 2.8
    */
   BGError?: EventHandler<BaseImageErrorEvent<T>>;
 
@@ -915,48 +905,1803 @@ export interface LynxBindCatchEvent<T = any> {
 }
 
 type PrefixedEvent<E> = {
+/**
+   * @Android 0.1
+   * @iOS 0.1
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
   bind?: E;
+/**
+   * @Android 0.1
+   * @iOS 0.1
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
   catch?: E;
+/**
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.16
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
   'capture-bind'?: E;
+/**
+   * @Android 0.1
+   * @iOS 2.18
+   * @Harmony 2.16
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
   'capture-catch'?: E;
+/**
+   * @Android 2.6
+   * @iOS 2.6
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 2.6
+   * @ClayIOS 2.6
+   * @ClayMacOS 2.6
+   * @ClayWindows 2.6
+   * @ClayHarmony 2.17
+   */
   'global-bind'?: E;
 }
 
 // Helper interfaces for each event, providing explicit properties
 // for bind, catch, capture-bind, capture-catch, and global-bind prefixes.
-interface BGLoadProps<T> { bindbgload?: LynxEvent<T>['BGLoad']; catchbgload?: LynxEvent<T>['BGLoad']; 'capture-bindbgload'?: LynxEvent<T>['BGLoad']; 'capture-catchbgload'?: LynxEvent<T>['BGLoad']; 'global-bindbgload'?: LynxEvent<T>['BGLoad']; }
-interface BGErrorProps<T> { bindbgerror?: LynxEvent<T>['BGError']; catchbgerror?: LynxEvent<T>['BGError']; 'capture-bindbgerror'?: LynxEvent<T>['BGError']; 'capture-catchbgerror'?: LynxEvent<T>['BGError']; 'global-bindbgerror'?: LynxEvent<T>['BGError']; }
-interface TouchStartProps<T> { bindtouchstart?: LynxEvent<T>['TouchStart']; catchtouchstart?: LynxEvent<T>['TouchStart']; 'capture-bindtouchstart'?: LynxEvent<T>['TouchStart']; 'capture-catchtouchstart'?: LynxEvent<T>['TouchStart']; 'global-bindtouchstart'?: LynxEvent<T>['TouchStart']; }
-interface TouchMoveProps<T> { bindtouchmove?: LynxEvent<T>['TouchMove']; catchtouchmove?: LynxEvent<T>['TouchMove']; 'capture-bindtouchmove'?: LynxEvent<T>['TouchMove']; 'capture-catchtouchmove'?: LynxEvent<T>['TouchMove']; 'global-bindtouchmove'?: LynxEvent<T>['TouchMove']; }
-interface TouchCancelProps<T> { bindtouchcancel?: LynxEvent<T>['TouchCancel']; catchtouchcancel?: LynxEvent<T>['TouchCancel']; 'capture-bindtouchcancel'?: LynxEvent<T>['TouchCancel']; 'capture-catchtouchcancel'?: LynxEvent<T>['TouchCancel']; 'global-bindtouchcancel'?: LynxEvent<T>['TouchCancel']; }
-interface TouchEndProps<T> { bindtouchend?: LynxEvent<T>['TouchEnd']; catchtouchend?: LynxEvent<T>['TouchEnd']; 'capture-bindtouchend'?: LynxEvent<T>['TouchEnd']; 'capture-catchtouchend'?: LynxEvent<T>['TouchEnd']; 'global-bindtouchend'?: LynxEvent<T>['TouchEnd']; }
-interface LongPressProps<T> { bindlongpress?: LynxEvent<T>['LongPress']; catchlongpress?: LynxEvent<T>['LongPress']; 'capture-bindlongpress'?: LynxEvent<T>['LongPress']; 'capture-catchlongpress'?: LynxEvent<T>['LongPress']; 'global-bindlongpress'?: LynxEvent<T>['LongPress']; }
-interface TransitionStartProps<T> { bindtransitionstart?: LynxEvent<T>['TransitionStart']; catchtransitionstart?: LynxEvent<T>['TransitionStart']; 'capture-bindtransitionstart'?: LynxEvent<T>['TransitionStart']; 'capture-catchtransitionstart'?: LynxEvent<T>['TransitionStart']; 'global-bindtransitionstart'?: LynxEvent<T>['TransitionStart']; }
-interface TransitionCancelProps<T> { bindtransitioncancel?: LynxEvent<T>['TransitionCancel']; catchtransitioncancel?: LynxEvent<T>['TransitionCancel']; 'capture-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel']; 'capture-catchtransitioncancel'?: LynxEvent<T>['TransitionCancel']; 'global-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel']; }
-interface TransitionEndProps<T> { bindtransitionend?: LynxEvent<T>['TransitionEnd']; catchtransitionend?: LynxEvent<T>['TransitionEnd']; 'capture-bindtransitionend'?: LynxEvent<T>['TransitionEnd']; 'capture-catchtransitionend'?: LynxEvent<T>['TransitionEnd']; 'global-bindtransitionend'?: LynxEvent<T>['TransitionEnd']; }
-interface AnimationStartProps<T> { bindanimationstart?: LynxEvent<T>['AnimationStart']; catchanimationstart?: LynxEvent<T>['AnimationStart']; 'capture-bindanimationstart'?: LynxEvent<T>['AnimationStart']; 'capture-catchanimationstart'?: LynxEvent<T>['AnimationStart']; 'global-bindanimationstart'?: LynxEvent<T>['AnimationStart']; }
-interface AnimationIterationProps<T> { bindanimationiteration?: LynxEvent<T>['AnimationIteration']; catchanimationiteration?: LynxEvent<T>['AnimationIteration']; 'capture-bindanimationiteration'?: LynxEvent<T>['AnimationIteration']; 'capture-catchanimationiteration'?: LynxEvent<T>['AnimationIteration']; 'global-bindanimationiteration'?: LynxEvent<T>['AnimationIteration']; }
-interface AnimationCancelProps<T> { bindanimationcancel?: LynxEvent<T>['AnimationCancel']; catchanimationcancel?: LynxEvent<T>['AnimationCancel']; 'capture-bindanimationcancel'?: LynxEvent<T>['AnimationCancel']; 'capture-catchanimationcancel'?: LynxEvent<T>['AnimationCancel']; 'global-bindanimationcancel'?: LynxEvent<T>['AnimationCancel']; }
-interface AnimationEndProps<T> { bindanimationend?: LynxEvent<T>['AnimationEnd']; catchanimationend?: LynxEvent<T>['AnimationEnd']; 'capture-bindanimationend'?: LynxEvent<T>['AnimationEnd']; 'capture-catchanimationend'?: LynxEvent<T>['AnimationEnd']; 'global-bindanimationend'?: LynxEvent<T>['AnimationEnd']; }
-interface MouseDownProps<T> { bindmousedown?: LynxEvent<T>['MouseDown']; catchmousedown?: LynxEvent<T>['MouseDown']; 'capture-bindmousedown'?: LynxEvent<T>['MouseDown']; 'capture-catchmousedown'?: LynxEvent<T>['MouseDown']; 'global-bindmousedown'?: LynxEvent<T>['MouseDown']; }
-interface MouseUpProps<T> { bindmouseup?: LynxEvent<T>['MouseUp']; catchmouseup?: LynxEvent<T>['MouseUp']; 'capture-bindmouseup'?: LynxEvent<T>['MouseUp']; 'capture-catchmouseup'?: LynxEvent<T>['MouseUp']; 'global-bindmouseup'?: LynxEvent<T>['MouseUp']; }
-interface MouseMoveProps<T> { bindmousemove?: LynxEvent<T>['MouseMove']; catchmousemove?: LynxEvent<T>['MouseMove']; 'capture-bindmousemove'?: LynxEvent<T>['MouseMove']; 'capture-catchmousemove'?: LynxEvent<T>['MouseMove']; 'global-bindmousemove'?: LynxEvent<T>['MouseMove']; }
-interface MouseEnterProps<T> { bindmouseenter?: LynxEvent<T>['MouseEnter']; catchmouseenter?: LynxEvent<T>['MouseEnter']; 'capture-bindmouseenter'?: LynxEvent<T>['MouseEnter']; 'capture-catchmouseenter'?: LynxEvent<T>['MouseEnter']; 'global-bindmouseenter'?: LynxEvent<T>['MouseEnter']; }
-interface MouseLeaveProps<T> { bindmouseleave?: LynxEvent<T>['MouseLeave']; catchmouseleave?: LynxEvent<T>['MouseLeave']; 'capture-bindmouseleave'?: LynxEvent<T>['MouseLeave']; 'capture-catchmouseleave'?: LynxEvent<T>['MouseLeave']; 'global-bindmouseleave'?: LynxEvent<T>['MouseLeave']; }
-interface MouseClickProps<T> { bindmouseclick?: LynxEvent<T>['MouseClick']; catchmouseclick?: LynxEvent<T>['MouseClick']; 'capture-bindmouseclick'?: LynxEvent<T>['MouseClick']; 'capture-catchmouseclick'?: LynxEvent<T>['MouseClick']; 'global-bindmouseclick'?: LynxEvent<T>['MouseClick']; }
-interface MouseDblClickProps<T> { bindmousedblclick?: LynxEvent<T>['MouseDblClick']; catchmousedblclick?: LynxEvent<T>['MouseDblClick']; 'capture-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'capture-catchmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'global-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; }
-interface MouseLongPressProps<T> { bindmouselongpress?: LynxEvent<T>['MouseLongPress']; catchmouselongpress?: LynxEvent<T>['MouseLongPress']; 'capture-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'capture-catchmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'global-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; }
-interface WheelProps<T> { bindwheel?: LynxEvent<T>['Wheel']; catchwheel?: LynxEvent<T>['Wheel']; 'capture-bindwheel'?: LynxEvent<T>['Wheel']; 'capture-catchwheel'?: LynxEvent<T>['Wheel']; 'global-bindwheel'?: LynxEvent<T>['Wheel']; }
-interface ZoomProps<T> { bindzoom?: LynxEvent<T>['Zoom']; catchzoom?: LynxEvent<T>['Zoom']; 'capture-bindzoom'?: LynxEvent<T>['Zoom']; 'capture-catchzoom'?: LynxEvent<T>['Zoom']; 'global-bindzoom'?: LynxEvent<T>['Zoom']; }
-interface KeyDownProps<T> { bindkeydown?: LynxEvent<T>['KeyDown']; catchkeydown?: LynxEvent<T>['KeyDown']; 'capture-bindkeydown'?: LynxEvent<T>['KeyDown']; 'capture-catchkeydown'?: LynxEvent<T>['KeyDown']; 'global-bindkeydown'?: LynxEvent<T>['KeyDown']; }
-interface KeyUpProps<T> { bindkeyup?: LynxEvent<T>['KeyUp']; catchkeyup?: LynxEvent<T>['KeyUp']; 'capture-bindkeyup'?: LynxEvent<T>['KeyUp']; 'capture-catchkeyup'?: LynxEvent<T>['KeyUp']; 'global-bindkeyup'?: LynxEvent<T>['KeyUp']; }
-interface FocusProps<T> { bindfocus?: LynxEvent<T>['Focus']; catchfocus?: LynxEvent<T>['Focus']; 'capture-bindfocus'?: LynxEvent<T>['Focus']; 'capture-catchfocus'?: LynxEvent<T>['Focus']; 'global-bindfocus'?: LynxEvent<T>['Focus']; }
-interface BlurProps<T> { bindblur?: LynxEvent<T>['Blur']; catchblur?: LynxEvent<T>['Blur']; 'capture-bindblur'?: LynxEvent<T>['Blur']; 'capture-catchblur'?: LynxEvent<T>['Blur']; 'global-bindblur'?: LynxEvent<T>['Blur']; }
-interface LayoutChangeProps<T> { bindlayoutchange?: LynxEvent<T>['LayoutChange']; catchlayoutchange?: LynxEvent<T>['LayoutChange']; 'capture-bindlayoutchange'?: LynxEvent<T>['LayoutChange']; 'capture-catchlayoutchange'?: LynxEvent<T>['LayoutChange']; 'global-bindlayoutchange'?: LynxEvent<T>['LayoutChange']; }
-interface UIAppearProps<T> { binduiappear?: LynxEvent<T>['UIAppear']; catchuiappear?: LynxEvent<T>['UIAppear']; 'capture-binduiappear'?: LynxEvent<T>['UIAppear']; 'capture-catchuiappear'?: LynxEvent<T>['UIAppear']; 'global-binduiappear'?: LynxEvent<T>['UIAppear']; }
-interface UIDisappearProps<T> { binduidisappear?: LynxEvent<T>['UIDisappear']; catchuidisappear?: LynxEvent<T>['UIDisappear']; 'capture-binduidisappear'?: LynxEvent<T>['UIDisappear']; 'capture-catchuidisappear'?: LynxEvent<T>['UIDisappear']; 'global-binduidisappear'?: LynxEvent<T>['UIDisappear']; }
-interface AccessibilityActionProps<T> { bindaccessibilityaction?: LynxEvent<T>['AccessibilityAction']; catchaccessibilityaction?: LynxEvent<T>['AccessibilityAction']; 'capture-bindaccessibilityaction'?: LynxEvent<T>['AccessibilityAction']; 'capture-catchaccessibilityaction'?: LynxEvent<T>['AccessibilityAction']; 'global-bindaccessibilityaction'?: LynxEvent<T>['AccessibilityAction']; }
-interface TapProps<T> { bindtap?: LynxBindCatchEvent<T>['Tap']; catchtap?: LynxBindCatchEvent<T>['Tap']; 'capture-bindtap'?: LynxBindCatchEvent<T>['Tap']; 'capture-catchtap'?: LynxBindCatchEvent<T>['Tap']; 'global-bindtap'?: LynxBindCatchEvent<T>['Tap']; }
+interface BGLoadProps<T> {
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  bindbgload?: LynxEvent<T>['BGLoad'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  catchbgload?: LynxEvent<T>['BGLoad'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  'capture-bindbgload'?: LynxEvent<T>['BGLoad'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  'capture-catchbgload'?: LynxEvent<T>['BGLoad'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  'global-bindbgload'?: LynxEvent<T>['BGLoad']; }
+interface BGErrorProps<T> {
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  bindbgerror?: LynxEvent<T>['BGError'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  catchbgerror?: LynxEvent<T>['BGError'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  'capture-bindbgerror'?: LynxEvent<T>['BGError'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  'capture-catchbgerror'?: LynxEvent<T>['BGError'];
+  /**
+   * @Android 3.0
+   * @iOS 2.18
+   * @Harmony 3.8
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 4.1
+   */
+  'global-bindbgerror'?: LynxEvent<T>['BGError']; }
+interface TouchStartProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindtouchstart?: LynxEvent<T>['TouchStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchtouchstart?: LynxEvent<T>['TouchStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindtouchstart'?: LynxEvent<T>['TouchStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchtouchstart'?: LynxEvent<T>['TouchStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindtouchstart'?: LynxEvent<T>['TouchStart']; }
+interface TouchMoveProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindtouchmove?: LynxEvent<T>['TouchMove'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchtouchmove?: LynxEvent<T>['TouchMove'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindtouchmove'?: LynxEvent<T>['TouchMove'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchtouchmove'?: LynxEvent<T>['TouchMove'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindtouchmove'?: LynxEvent<T>['TouchMove']; }
+interface TouchCancelProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindtouchcancel?: LynxEvent<T>['TouchCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchtouchcancel?: LynxEvent<T>['TouchCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindtouchcancel'?: LynxEvent<T>['TouchCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchtouchcancel'?: LynxEvent<T>['TouchCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindtouchcancel'?: LynxEvent<T>['TouchCancel']; }
+interface TouchEndProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindtouchend?: LynxEvent<T>['TouchEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchtouchend?: LynxEvent<T>['TouchEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindtouchend'?: LynxEvent<T>['TouchEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchtouchend'?: LynxEvent<T>['TouchEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindtouchend'?: LynxEvent<T>['TouchEnd']; }
+interface LongPressProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindlongpress?: LynxEvent<T>['LongPress'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchlongpress?: LynxEvent<T>['LongPress'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindlongpress'?: LynxEvent<T>['LongPress'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchlongpress'?: LynxEvent<T>['LongPress'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindlongpress'?: LynxEvent<T>['LongPress']; }
+interface TransitionStartProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindtransitionstart?: LynxEvent<T>['TransitionStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchtransitionstart?: LynxEvent<T>['TransitionStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindtransitionstart'?: LynxEvent<T>['TransitionStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchtransitionstart'?: LynxEvent<T>['TransitionStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindtransitionstart'?: LynxEvent<T>['TransitionStart']; }
+interface TransitionCancelProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   */
+  bindtransitioncancel?: LynxEvent<T>['TransitionCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   */
+  catchtransitioncancel?: LynxEvent<T>['TransitionCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   */
+  'capture-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   */
+  'capture-catchtransitioncancel'?: LynxEvent<T>['TransitionCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   */
+  'global-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel']; }
+interface TransitionEndProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindtransitionend?: LynxEvent<T>['TransitionEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchtransitionend?: LynxEvent<T>['TransitionEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindtransitionend'?: LynxEvent<T>['TransitionEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchtransitionend'?: LynxEvent<T>['TransitionEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindtransitionend'?: LynxEvent<T>['TransitionEnd']; }
+interface AnimationStartProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindanimationstart?: LynxEvent<T>['AnimationStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchanimationstart?: LynxEvent<T>['AnimationStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindanimationstart'?: LynxEvent<T>['AnimationStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchanimationstart'?: LynxEvent<T>['AnimationStart'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindanimationstart'?: LynxEvent<T>['AnimationStart']; }
+interface AnimationIterationProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindanimationiteration?: LynxEvent<T>['AnimationIteration'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchanimationiteration?: LynxEvent<T>['AnimationIteration'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindanimationiteration'?: LynxEvent<T>['AnimationIteration'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchanimationiteration'?: LynxEvent<T>['AnimationIteration'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindanimationiteration'?: LynxEvent<T>['AnimationIteration']; }
+interface AnimationCancelProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindanimationcancel?: LynxEvent<T>['AnimationCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchanimationcancel?: LynxEvent<T>['AnimationCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindanimationcancel'?: LynxEvent<T>['AnimationCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchanimationcancel'?: LynxEvent<T>['AnimationCancel'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindanimationcancel'?: LynxEvent<T>['AnimationCancel']; }
+interface AnimationEndProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindanimationend?: LynxEvent<T>['AnimationEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchanimationend?: LynxEvent<T>['AnimationEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindanimationend'?: LynxEvent<T>['AnimationEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchanimationend'?: LynxEvent<T>['AnimationEnd'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindanimationend'?: LynxEvent<T>['AnimationEnd']; }
+interface MouseDownProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  bindmousedown?: LynxEvent<T>['MouseDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  catchmousedown?: LynxEvent<T>['MouseDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-bindmousedown'?: LynxEvent<T>['MouseDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-catchmousedown'?: LynxEvent<T>['MouseDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'global-bindmousedown'?: LynxEvent<T>['MouseDown']; }
+interface MouseUpProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  bindmouseup?: LynxEvent<T>['MouseUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  catchmouseup?: LynxEvent<T>['MouseUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-bindmouseup'?: LynxEvent<T>['MouseUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-catchmouseup'?: LynxEvent<T>['MouseUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'global-bindmouseup'?: LynxEvent<T>['MouseUp']; }
+interface MouseMoveProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  bindmousemove?: LynxEvent<T>['MouseMove'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  catchmousemove?: LynxEvent<T>['MouseMove'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-bindmousemove'?: LynxEvent<T>['MouseMove'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-catchmousemove'?: LynxEvent<T>['MouseMove'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'global-bindmousemove'?: LynxEvent<T>['MouseMove']; }
+interface MouseEnterProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  bindmouseenter?: LynxEvent<T>['MouseEnter'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  catchmouseenter?: LynxEvent<T>['MouseEnter'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-bindmouseenter'?: LynxEvent<T>['MouseEnter'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-catchmouseenter'?: LynxEvent<T>['MouseEnter'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'global-bindmouseenter'?: LynxEvent<T>['MouseEnter']; }
+interface MouseLeaveProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  bindmouseleave?: LynxEvent<T>['MouseLeave'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  catchmouseleave?: LynxEvent<T>['MouseLeave'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-bindmouseleave'?: LynxEvent<T>['MouseLeave'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-catchmouseleave'?: LynxEvent<T>['MouseLeave'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'global-bindmouseleave'?: LynxEvent<T>['MouseLeave']; }
+interface MouseClickProps<T> {
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  bindmouseclick?: LynxEvent<T>['MouseClick'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  catchmouseclick?: LynxEvent<T>['MouseClick'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-bindmouseclick'?: LynxEvent<T>['MouseClick'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-catchmouseclick'?: LynxEvent<T>['MouseClick'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'global-bindmouseclick'?: LynxEvent<T>['MouseClick']; }
+interface MouseDblClickProps<T> {
+  /**
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  bindmousedblclick?: LynxEvent<T>['MouseDblClick'];
+  /**
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  catchmousedblclick?: LynxEvent<T>['MouseDblClick'];
+  /**
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  'capture-bindmousedblclick'?: LynxEvent<T>['MouseDblClick'];
+  /**
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  'capture-catchmousedblclick'?: LynxEvent<T>['MouseDblClick'];
+  /**
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  'global-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; }
+interface MouseLongPressProps<T> {
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  bindmouselongpress?: LynxEvent<T>['MouseLongPress'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  catchmouselongpress?: LynxEvent<T>['MouseLongPress'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-bindmouselongpress'?: LynxEvent<T>['MouseLongPress'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-catchmouselongpress'?: LynxEvent<T>['MouseLongPress'];
+  /**
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'global-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; }
+interface WheelProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 4.1
+   */
+  bindwheel?: LynxEvent<T>['Wheel'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 4.1
+   */
+  catchwheel?: LynxEvent<T>['Wheel'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 4.1
+   */
+  'capture-bindwheel'?: LynxEvent<T>['Wheel'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 4.1
+   */
+  'capture-catchwheel'?: LynxEvent<T>['Wheel'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 4.1
+   */
+  'global-bindwheel'?: LynxEvent<T>['Wheel']; }
+interface ZoomProps<T> {
+  /**
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  bindzoom?: LynxEvent<T>['Zoom'];
+  /**
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  catchzoom?: LynxEvent<T>['Zoom'];
+  /**
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  'capture-bindzoom'?: LynxEvent<T>['Zoom'];
+  /**
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  'capture-catchzoom'?: LynxEvent<T>['Zoom'];
+  /**
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   */
+  'global-bindzoom'?: LynxEvent<T>['Zoom']; }
+interface KeyDownProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  bindkeydown?: LynxEvent<T>['KeyDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  catchkeydown?: LynxEvent<T>['KeyDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-bindkeydown'?: LynxEvent<T>['KeyDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-catchkeydown'?: LynxEvent<T>['KeyDown'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'global-bindkeydown'?: LynxEvent<T>['KeyDown']; }
+interface KeyUpProps<T> {
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  bindkeyup?: LynxEvent<T>['KeyUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  catchkeyup?: LynxEvent<T>['KeyUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-bindkeyup'?: LynxEvent<T>['KeyUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'capture-catchkeyup'?: LynxEvent<T>['KeyUp'];
+  /**
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 2.17
+   */
+  'global-bindkeyup'?: LynxEvent<T>['KeyUp']; }
+interface FocusProps<T> {
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  bindfocus?: LynxEvent<T>['Focus'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  catchfocus?: LynxEvent<T>['Focus'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-bindfocus'?: LynxEvent<T>['Focus'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-catchfocus'?: LynxEvent<T>['Focus'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'global-bindfocus'?: LynxEvent<T>['Focus']; }
+interface BlurProps<T> {
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  bindblur?: LynxEvent<T>['Blur'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  catchblur?: LynxEvent<T>['Blur'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-bindblur'?: LynxEvent<T>['Blur'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'capture-catchblur'?: LynxEvent<T>['Blur'];
+  /**
+   * @Android 2.16
+   * @iOS 3.5
+   * @Harmony 2.17
+   * @Web
+   * @ClayAndroid 4.0
+   * @ClayIOS 4.1
+   * @ClayMacOS 3.6
+   * @ClayWindows 3.6
+   * @ClayHarmony 2.17
+   */
+  'global-bindblur'?: LynxEvent<T>['Blur']; }
+interface LayoutChangeProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindlayoutchange?: LynxEvent<T>['LayoutChange'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchlayoutchange?: LynxEvent<T>['LayoutChange'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindlayoutchange'?: LynxEvent<T>['LayoutChange'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchlayoutchange'?: LynxEvent<T>['LayoutChange'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindlayoutchange'?: LynxEvent<T>['LayoutChange']; }
+interface UIAppearProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  binduiappear?: LynxEvent<T>['UIAppear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchuiappear?: LynxEvent<T>['UIAppear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-binduiappear'?: LynxEvent<T>['UIAppear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchuiappear'?: LynxEvent<T>['UIAppear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-binduiappear'?: LynxEvent<T>['UIAppear']; }
+interface UIDisappearProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  binduidisappear?: LynxEvent<T>['UIDisappear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchuidisappear?: LynxEvent<T>['UIDisappear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-binduidisappear'?: LynxEvent<T>['UIDisappear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchuidisappear'?: LynxEvent<T>['UIDisappear'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-binduidisappear'?: LynxEvent<T>['UIDisappear']; }
+interface AccessibilityActionProps<T> {
+  /**
+   * @Android 2.14
+   * @iOS 2.14
+   */
+  bindaccessibilityaction?: LynxEvent<T>['AccessibilityAction'];
+  /**
+   * @Android 2.14
+   * @iOS 2.14
+   */
+  catchaccessibilityaction?: LynxEvent<T>['AccessibilityAction'];
+  /**
+   * @Android 2.14
+   * @iOS 2.14
+   */
+  'capture-bindaccessibilityaction'?: LynxEvent<T>['AccessibilityAction'];
+  /**
+   * @Android 2.14
+   * @iOS 2.14
+   */
+  'capture-catchaccessibilityaction'?: LynxEvent<T>['AccessibilityAction'];
+  /**
+   * @Android 2.14
+   * @iOS 2.14
+   */
+  'global-bindaccessibilityaction'?: LynxEvent<T>['AccessibilityAction']; }
+interface TapProps<T> {
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  bindtap?: LynxBindCatchEvent<T>['Tap'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  catchtap?: LynxBindCatchEvent<T>['Tap'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-bindtap'?: LynxBindCatchEvent<T>['Tap'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'capture-catchtap'?: LynxBindCatchEvent<T>['Tap'];
+  /**
+   * @Android 1.0
+   * @iOS 1.0
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayIOS 1.5
+   * @ClayMacOS 1.5
+   * @ClayWindows 1.5
+   * @ClayHarmony 2.17
+   */
+  'global-bindtap'?: LynxBindCatchEvent<T>['Tap']; }
 interface LongTapProps<T> { bindlongtap?: LynxBindCatchEvent<T>['LongTap']; catchlongtap?: LynxBindCatchEvent<T>['LongTap']; 'capture-bindlongtap'?: LynxBindCatchEvent<T>['LongTap']; 'capture-catchlongtap'?: LynxBindCatchEvent<T>['LongTap']; 'global-bindlongtap'?: LynxBindCatchEvent<T>['LongTap']; }
 
 /**

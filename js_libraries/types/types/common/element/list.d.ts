@@ -58,7 +58,7 @@ export interface ListAttachedCell {
    * id of list item
    * @iOS
    * @Android
-   * @web
+   * @Web
    * @Harmony
    * @PC
    */
@@ -67,7 +67,7 @@ export interface ListAttachedCell {
    * item-key of list item
    * @iOS
    * @Android
-   * @web
+   * @Web
    * @Harmony
    * @PC
    */
@@ -76,7 +76,7 @@ export interface ListAttachedCell {
    * index of list item
    * @iOS
    * @Android
-   * @web
+   * @Web
    * @Harmony
    * @PC
    */
@@ -85,7 +85,7 @@ export interface ListAttachedCell {
    * left position of list item relative to list, in px
    * @iOS
    * @Android
-   * @web
+   * @Web
    * @Harmony
    * @PC
    */
@@ -94,7 +94,7 @@ export interface ListAttachedCell {
    * top position of list item relative to list, in px
    * @iOS
    * @Android
-   * @web
+   * @Web
    * @Harmony
    * @PC
    */
@@ -103,7 +103,7 @@ export interface ListAttachedCell {
    * right position of list item relative to list, in px
    * @iOS
    * @Android
-   * @web
+   * @Web
    * @Harmony
    * @PC
    */
@@ -112,7 +112,7 @@ export interface ListAttachedCell {
    * bottom position of list item relative to list, in px
    * @iOS
    * @Android
-   * @web
+   * @Web
    * @Harmony
    * @PC
    */
@@ -414,270 +414,356 @@ export interface ListItemSnapAlignment {
 export interface ListProps extends StandardProps, ScrollbarProps {
   /**
    * Sets the scrolling direction and layout direction.
+   * @Android 3.0
+   * @iOS 3.1
+   * @Harmony 3.0
+   * @Web
+   * @Clay 2.16
    * @defaultValue 'vertical'
-   * @iOS
-   * @Android
-   * @web
-   * @Harmony
-   * @PC
    */
   'scroll-orientation'?: 'vertical' | 'horizontal';
 
   /**
    * The number of columns or rows for the list, and only effective when list-type is 'flow' or 'waterfall'.
+   * @Android 1.4
+   * @iOS 2.16
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.16
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue 1
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'span-count'?: number;
 
   /**
    * layout type of the list
+   * @Android 1.4
+   * @iOS 2.18
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue  'single'
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'list-type'?: 'single' | 'flow' | 'waterfall';
 
   /**
    * Whether to allow scrolling for a list.
+   * @Android 1.6
+   * @iOS 1.6
+   * @Harmony 2.16
+   * @Web
+   * @ClayAndroid 2.16
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.16
+   * @ClayWindows 2.16
+   * @ClayHarmony 2.16
    * @defaultValue true
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'enable-scroll'?: boolean;
 
   /**
    * Indicates whether list can achieve nested scrolling with other scrollable containers. When enabled, the inner container scrolls first, followed by the outer container.
+   * @Android 2.14
+   * @iOS 2.16
+   * @Harmony 2.16
+   * @Clay 2.16
    * @defaultValue  false
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'enable-nested-scroll'?: boolean;
 
   /**
    * Declared on the list to control whether the list as a whole is allowed to be sticky at the top or bottom.
-   * @defaultValue  false
    * @Android
-   * @web
    * @iOS
    * @Harmony
-   * @PC
+   * @Web
+   * @Clay
+   * @since 1.6
+   * @defaultValue  false
    */
   sticky?: boolean;
 
   /**
    * The offset distance from the top or bottom of list for sticky positioning, in px.
+   * @Android 2.3
+   * @iOS 2.3
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue  0
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'sticky-offset'?: number;
 
   /**
    * Control whether list should produce bounces effect when scrolling past its content boundaries.
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @ClayAndroid 3.4
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.4
+   * @ClayWindows 3.4
+   * @ClayHarmony 2.18
    * @defaultValue  true
-   * @iOS
-   * @Harmony
-   * @PC
    */
   bounces?: boolean;
 
   /**
    * Specifies the node position to which list automatically scrolls after rendering.
+   * @Android 1.6
+   * @iOS 1.6
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue  0
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'initial-scroll-index'?: number;
 
   /**
    * Controls whether the scroll event callback parameters include the position information of the currently rendering node.
-   * @defaultValue  false
    * @Android
-   * @web
    * @iOS
    * @Harmony
-   * @PC
+   * @Web
+   * @Clay
+   * @since 3.1
+   * @defaultValue  false
    */
   'need-visible-item-info'?: boolean;
 
   /**
    * When scrolling down, when the number of remaining displayable child nodes at the bottom is first less than lower-threshold-item-count, a scrolltolower event is triggered. If lower-threshold-item-count is specified, lower-threshold is not effective.
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue  0
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'lower-threshold-item-count'?: number;
 
   /**
    * When scrolling up, when the number of remaining displayable child nodes at the top is first less than upper-threshold-item-count, a scrolltoupper event is triggered. If upper-threshold-item-count is specified, upper-threshold is not effective.
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue  0
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'upper-threshold-item-count'?: number;
 
   /**
    * Specify the callback frequency of the scroll event by passing in a value, which specifies how many milliseconds (ms) list will call the scroll callback event during scrolling.
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
+   * @Web
+   * @ClayAndroid 3.4
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.4
+   * @ClayWindows 3.4
+   * @ClayHarmony 2.14
    * @defaultValue  200
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'scroll-event-throttle'?: number;
 
   /**
    * Enable the paging effect, and after each scroll, the list-item will stop at a specified position. For list-type:single only.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 2.16
+   * @iOS 2.16
+   * @Harmony 2.18
+   * @Web
+   * @ClayAndroid 2.18
+   * @ClayIOS 2.16
    */
   'item-snap'?: ListItemSnapAlignment;
 
   /**
    * Controls whether the layoutcomplete event includes the node layout information before and after this layout, and the list Diff information that triggered this layout, and the current list scroll state information.
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @ClayAndroid 3.4
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.4
+   * @ClayWindows 3.4
+   * @ClayHarmony 2.15
    * @defaultValue  false
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'need-layout-complete-info'?: boolean;
 
   /**
    * Used to mark the unique identifier for this data source update, which will be returned in the layoutcomplete event callback.
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @ClayAndroid 3.4
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.4
+   * @ClayWindows 3.4
+   * @ClayHarmony 2.15
    * @defaultValue  -1
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'layout-id'?: number;
 
   /**
    * This attribute controls the number of nodes outside list that are preloaded.
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.4
+   * @ClayAndroid 3.4
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.4
+   * @ClayWindows 3.4
+   * @ClayHarmony 2.16
    * @defaultValue  0
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'preload-buffer-count'?: number;
 
   /**
    * Determine the strategy to search the reference anchor for removed on-screen children. If set to TO_START or TO_END, we will update reference anchor child for all removed on-screen children before consuming diff info. And in list layout pass, if no valid anchor child can be found from all on screen children, we use the reference anchor child in layout.
+   * @Android 4.0
+   * @iOS 4.0
+   * @Harmony 4.0
+   * @Clay 4.0
    * @defaultValue ListSearchRefAnchorStrategy.NONE
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'experimental-search-ref-anchor-strategy'?: ListSearchRefAnchorStrategy;
 
   /**
    * Whether to display the scroll bar of the list, with false on Harmony platform and true on other platforms.
+   * @iOS 2.18
+   * @Harmony 2.17
+   * @ClayAndroid 2.17
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.17
+   * @ClayWindows 2.17
+   * @ClayHarmony 2.17
    * @defaultValue undefined
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'scroll-bar-enable'?: boolean;
 
   /**
    * Whether to using operation from c++ list to insert list-item's platform view. The default value is false, but we recommend to set it to true in the case with MOST_ON_TASM or MULTI_THREAD thread strategy.
+   * @Android 3.5
+   * @iOS 4.0
+   * @Harmony 3.5
+   * @ClayAndroid 3.5
+   * @ClayIOS 4.0
+   * @ClayMacOS 3.5
+   * @ClayWindows 3.5
+   * @ClayHarmony 3.5
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
    */
   'enable-insert-platform-view-operation'?: boolean;
 
   /**
    * When the content size of a component is smaller than the component itself, decide whether to enable scrolling.
+   * @Harmony 3.4
    * @defaultValue false
-   * @Harmony
-   * @since 3.4
    */
   'harmony-scroll-edge-effect'?: boolean;
 
   /**
    * Scroll event.
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 1.3
+   * @iOS 2.18
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindscroll?: EventHandler<ListScrollEvent>;
 
   /**
    * Callback function for scrolling to the top.
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 1.3
+   * @iOS 2.18
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindscrolltoupper?: EventHandler<ListScrollToUpperEvent>;
 
   /**
    * Callback function for scrolling to the bottom.
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 1.3
+   * @iOS 2.18
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindscrolltolower?: EventHandler<ListScrollToLowerEvent>;
 
   /**
    * This callback function is triggered when the scrolling state of the list changes.
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 1.4
+   * @iOS 2.18
+   * @Harmony 2.16
+   * @ClayAndroid 2.17
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.17
+   * @ClayWindows 2.17
+   * @ClayHarmony 2.16
    */
   bindscrollstatechange?: EventHandler<ListScrollStateChangeEvent>;
 
   /**
    * This callback function will be triggered when the first screen of the list has finished rendering. On iOS, this callback function will be triggered when list has an update.
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 1.4
+   * @iOS 1.6
+   * @Harmony 2.14
+   * @Web
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindlayoutcomplete?: EventHandler<ListLayoutCompleteEvent>;
 
   /**
    * Snap callback
-   * @since 2.16
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 2.16
+   * @iOS 2.16
+   * @Harmony 2.18
+   * @Web
+   * @ClayAndroid 2.18
+   * @ClayIOS 2.18
    */
   bindsnap?: EventHandler<ListSnapEvent>;
 }
@@ -686,7 +772,7 @@ export interface ScrollToPositionParams {
   /**
    * Specify the index of the node to scroll to, with a value range of [0, itemCount).
    * @Android
-   * @web
+   * @Web
    * @iOS
    * @Harmony
    * @PC
@@ -700,7 +786,7 @@ export interface ScrollToPositionParams {
    *  "middle": Scroll to make the node fully visible in the list and align the center of the node with the center of the list. This is only supported in LynxSDK 2.12 and above.
    * @defaultValue 'top'
    * @Android
-   * @web
+   * @Web
    * @iOS
    * @Harmony
    * @PC
@@ -711,7 +797,7 @@ export interface ScrollToPositionParams {
    * Align the node with alignTo, and then move the node downward by a length of offset.
    * @defaultValue 0
    * @Android
-   * @web
+   * @Web
    * @iOS
    * @Harmony
    * @PC
@@ -720,11 +806,10 @@ export interface ScrollToPositionParams {
 
   /**
    * Specify the unique identifier of the node to scroll to. If `item-key` is specified, `index` will be ignored.
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @since 3.6
+   * @Android 3.6
+   * @Web
+   * @iOS 3.6
+   * @Harmony 3.6
    */
   itemKey?: string;
 
@@ -732,7 +817,7 @@ export interface ScrollToPositionParams {
    * Enable scroll animation during scroll.
    * @defaultValue  false
    * @Android
-   * @web
+   * @Web
    * @iOS
    * @Harmony
    * @PC
@@ -742,11 +827,15 @@ export interface ScrollToPositionParams {
 
 /**
  * Scroll the list to the specified position.
- * @Android
- * @web
- * @iOS
- * @Harmony
- * @PC
+ * @Android 1.3
+ * @iOS 2.18
+ * @Harmony 2.14
+ * @Web
+ * @ClayAndroid 2.14
+ * @ClayIOS 2.8
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
+ * @ClayHarmony 2.14
  */
 export interface ScrollToPositionMethod extends BaseMethod {
   method: 'scrollToPosition';
@@ -756,10 +845,12 @@ export interface ScrollToPositionMethod extends BaseMethod {
 
 /**
  * Automatic scrolling.
- * @Android
- * @web
- * @iOS
- * @Harmony
+ * @Android 2.8
+ * @iOS 2.18
+ * @Harmony 2.16
+ * @Web
+ * @ClayAndroid 3.1
+ * @ClayIOS 2.8
  */
 export interface AutoScrollMethod extends BaseMethod {
   method: 'autoScroll';
@@ -768,7 +859,7 @@ export interface AutoScrollMethod extends BaseMethod {
      * Start/stop automatic scrolling.
      * @defaultValue false
      * @Android
-     * @web
+     * @Web
      * @iOS
      * @Harmony
      */
@@ -777,7 +868,7 @@ export interface AutoScrollMethod extends BaseMethod {
     /**
      *  The distance of each second's scrolling, which supports positive and negative values. The unit of distance can be "px", "rpx", "ppx", or null (for iOS, the value must be greater than 1/screen.scale px).
      * @Android
-     * @web
+     * @Web
      * @iOS
      * @Harmony
      */
@@ -787,7 +878,7 @@ export interface AutoScrollMethod extends BaseMethod {
      * Whether to stop automatically when sliding to the bottom.
      * @defaultValue true
      * @Android
-     * @web
+     * @Web
      * @iOS
      * @Harmony
      */
@@ -797,11 +888,15 @@ export interface AutoScrollMethod extends BaseMethod {
 
 /**
  * Get the info of the currently displayed list item.
- * @Android
- * @web
- * @iOS
- * @Harmony
- * @PC
+ * @Android 1.4
+ * @iOS 2.18
+ * @Harmony 2.16
+ * @Web
+ * @ClayAndroid 2.15
+ * @ClayIOS 2.8
+ * @ClayMacOS 2.15
+ * @ClayWindows 2.15
+ * @ClayHarmony 2.15
  */
 export interface GetVisibleCellsMethod extends BaseMethod {
   method: 'getVisibleCells';
@@ -809,10 +904,11 @@ export interface GetVisibleCellsMethod extends BaseMethod {
 
 /**
  * Get scroll info
- * @Android
- * @iOS
- * @Harmony
- * @PC
+ * @Android 2.13
+ * @iOS 2.18
+ * @Harmony 4.0
+ * @ClayAndroid 3.1
+ * @ClayIOS 2.16
  */
 export interface GetScrollInfoMethod extends BaseMethod {
   method: 'getScrollInfo';
@@ -851,11 +947,10 @@ export interface GetScrollInfoMethod extends BaseMethod {
 
 /**
  * Scroll by specified offset
- * @Android
- * @web
- * @iOS
- * @Harmony
- * @PC
+ * @Android 1.4
+ * @iOS 2.18
+ * @Harmony 3.1
+ * @Web
  */
 export interface ScrollByMethod extends BaseMethod {
   method: 'scrollBy';
@@ -864,7 +959,7 @@ export interface ScrollByMethod extends BaseMethod {
     /**
      * Offset to scroll, in px.
      * @Android
-     * @web
+     * @Web
      * @iOS
      * @Harmony
      * @PC

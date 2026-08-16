@@ -4,11 +4,10 @@ import { StandardProps } from '../props';
 export interface InputFocusEvent {
   /**
    * Input content
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
    */
   value: string;
 }
@@ -16,11 +15,10 @@ export interface InputFocusEvent {
 export interface InputBlurEvent {
   /**
    * Input content
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
    */
   value: string;
 }
@@ -28,11 +26,10 @@ export interface InputBlurEvent {
 export interface InputConfirmEvent {
   /**
    * Input content
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
    */
   value: string;
 }
@@ -40,46 +37,41 @@ export interface InputConfirmEvent {
 export interface InputInputEvent {
   /**
    * Input content
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
    */
   value: string;
   /**
    * The start position of the selection
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
      * @Web
-   * @since 3.4
-   */
+     */
   selectionStart: number;
   /**
    * The end position of the selection
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
      * @Web
-   * @since 3.4
-   */
+     */
   selectionEnd: number;
   /**
    * Is composing or not
-   * @iOS
-   * @Android
-   * @Harmony
+   * @iOS 3.4
+   * @Android 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
    */
   isComposing?: boolean;
   /**
    * The type of input action, "paste" when pasting, "normal" otherwise
-   * @Android
-   * @iOS
-   * @Harmony
-   * @since 4.3
+   * @Android 4.3
+   * @iOS 4.3
+   * @Harmony 4.3
    */
   inputType?: 'paste' | 'normal';
 }
@@ -87,195 +79,235 @@ export interface InputInputEvent {
 export interface InputSelectionEvent {
   /**
    * The start position of the selection
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
      * @Web
-   * @since 3.4
-   */
+     */
   selectionStart: number;
   /**
    * The end position of the selection
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
      * @Web
-   * @since 3.4
-   */
+     */
   selectionEnd: number;
 }
 
 export interface InputProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'> {
   /**
    * Placeholder
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
+   * @ClayAndroid 3.9
+   * @ClayIOS 3.9
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.17
    */
   placeholder?: string
   /**
    * Initial input content. Only applies on the first render and does not trigger `bindinput`.
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 4.0
+   * @iOS 2.17
+   * @Harmony 4.0
+   * @ClayAndroid 2.14
    */
   'default-value'?: string;
   /**
    * The type of confirm button
-   * @defaultValue 'send'
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
+   * @ClayAndroid 3.4
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.4
+   * @ClayWindows 3.4
+   * @defaultValue 'send'
    */
   'confirm-type'?: 'send' | 'search' | 'go' | 'done' | 'next';
   /**
    * Max input length
-   * @defaultValue 140
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
+   * @ClayAndroid 2.18
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.17
+   * @defaultValue 140
    */
   maxlength?: number;
   /**
    * Readonly
-   * @defaultValue false
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.14
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.17
+   * @defaultValue false
    */
   readonly?: boolean;
   /**
    * Interaction enabled
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 3.0
+   * @Web
+   * @ClayAndroid 1.5
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    * @defaultValue false
-   * @Android
-   * @iOS
-   * @Harmony
-   * @since 3.5
    */
   disabled?: boolean;
   /**
    * Show soft input keyboard while focused
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
+   * @ClayAndroid 3.4
    * @defaultValue true
-   * @Android
-   * @iOS
-   * @Harmony
-   * @since 3.4
    */
   'show-soft-input-on-focus'?: boolean;
 
   /**
    * Filter the input content and process it in the form of regular expressions
-   * @defaultValue undefined
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
+   * @ClayAndroid 2.17
+   * @ClayHarmony 2.17
+   * @defaultValue undefined
    */
   'input-filter'?: string;
 
   /**
    * Input content type
-   * @defaultValue "text"
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 3.4
+   * @iOS 3.4
+   * @Harmony 3.4
    * @Web
-   * @since 3.4
+   * @ClayMacOS 3.4
+   * @ClayWindows 3.4
+   * @ClayHarmony 2.16
+   * @defaultValue "text"
    */
   type?: 'text' | 'number' | 'digit' | 'password' | 'tel' | 'email';
 
   /**
    * Auto correct input content on iOS
+   * @iOS 2.16
    * @defaultValue true
-   * @iOS
-   * @since 3.4
    */
   'ios-auto-correct'?: boolean;
 
   /**
    * Check spelling issue on iOS
-   * @defaultValue true
-   * @iOS
+   * @iOS 2.16
    * @Web
-   * @since 3.4
+   * @defaultValue true
    */
   'ios-spell-check'?: boolean;
 
   /**
    * Whether to enter the full-screen input mode when in landscape screen, in which the keyboard and input box will take up the entire screen
+   * @Android 2.16
+   * @ClayAndroid 2.16
    * @defaultValue true
-   * @Android
-   * @since 3.4
    */
   'android-fullscreen-mode'?: boolean;
 
   /**
    * Focused
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 2.16
    * @Web
-   * @since 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindfocus?: (e: BaseEvent<'bindfocus', InputFocusEvent>) => void;
 
   /**
    * Blurred
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 2.16
    * @Web
-   * @since 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.14
    */
   bindblur?: (e: BaseEvent<'bindblur', InputBlurEvent>) => void;
 
   /**
    * Confirm button clicked
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 2.17
    * @Web
-   * @since 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 2.8
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   * @ClayHarmony 2.17
    */
   bindconfirm?: (e: BaseEvent<'bindconfirm', InputConfirmEvent>) => void;
 
   /**
    * Input content changed
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 1.5
+   * @iOS 1.5
+   * @Harmony 2.8
    * @Web
-   * @since 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 2.8
+   * @ClayMacOS 2.8
+   * @ClayWindows 2.8
+   * @ClayHarmony 2.8
    */
   bindinput?: (e: BaseEvent<'bindinput', InputInputEvent>) => void;
 
   /**
    * Input selection changed
-   * @Android
-   * @iOS
-   * @Harmony
+   * @Android 1.5
+   * @iOS 2.16
+   * @Harmony 2.17
    * @Web
-   * @since 3.4
+   * @ClayAndroid 1.5
+   * @ClayIOS 2.16
    */
   bindselection?: (e: BaseEvent<'bindselection', InputSelectionEvent>) => void;
 }
 
 /**
  * Require focus
- * @Android
- * @iOS
- * @Harmony
+ * @Android 1.5
+ * @iOS 1.5
+ * @Harmony 2.16
  * @Web
- * @since 3.4
+ * @ClayAndroid 1.5
+ * @ClayIOS 2.8
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
+ * @ClayHarmony 2.14
  */
 export interface InputFocusMethod extends BaseMethod {
   method: 'focus';
@@ -283,11 +315,15 @@ export interface InputFocusMethod extends BaseMethod {
 
 /**
  * Release focus
- * @Android
- * @iOS
- * @Harmony
+ * @Android 1.5
+ * @iOS 1.5
+ * @Harmony 2.16
  * @Web
- * @since 3.4
+ * @ClayAndroid 1.5
+ * @ClayIOS 2.8
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
+ * @ClayHarmony 2.14
  */
 export interface InputBlurMethod extends BaseMethod {
   method: 'blur';
@@ -295,49 +331,49 @@ export interface InputBlurMethod extends BaseMethod {
 
 /**
  * Get input content
- * @Android
- * @iOS
- * @Harmony
+ * @Android 2.14
+ * @iOS 2.16
+ * @Harmony 2.16
  * @Web
- * @since 3.4
+ * @ClayAndroid 2.14
+ * @ClayIOS 2.14
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
+ * @ClayHarmony 2.17
  */
 export interface InputGetValueMethod extends BaseMethod {
   method: 'getValue';
   success?: Callback<{
     /**
      * Input content
-     * @Android
-     * @iOS
-     * @Harmony
+     * @Android 3.4
+     * @iOS 3.4
+     * @Harmony 3.4
      * @Web
-     * @since 3.4
      */
     value: string;
     /**
      * Begin position of the selection
-     * @Android
-     * @iOS
-     * @Harmony
+     * @Android 3.4
+     * @iOS 3.4
+     * @Harmony 3.4
      * @Web
-     * @since 3.4
      */
     selectionStart: number;
     /**
      * End position of the selection
-     * @Android
-     * @iOS
-     * @Harmony
+     * @Android 3.4
+     * @iOS 3.4
+     * @Harmony 3.4
      * @Web
-     * @since 3.4
      */
     selectionEnd: number;
     /**
      * Is composing or not, iOS only
-     * @Android
-     * @iOS
-     * @Harmony
+     * @Android 3.4
+     * @iOS 3.4
+     * @Harmony 3.4
      * @Web
-     * @since 3.4
      */
     isComposing: boolean;
   }>;
@@ -345,22 +381,25 @@ export interface InputGetValueMethod extends BaseMethod {
 
 /**
  *  Set input content
- * @Android
- * @iOS
- * @Harmony
+ * @Android 1.5
+ * @iOS 1.5
+ * @Harmony 2.16
  * @Web
- * @since 3.4
+ * @ClayAndroid 1.5
+ * @ClayIOS 2.8
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
+ * @ClayHarmony 2.14
  */
 export interface InputSetValueMethod extends BaseMethod {
   method: 'setValue';
   params: {
     /**
      * Input content
-     * @Android
-     * @iOS
-     * @Harmony
+     * @Android 3.4
+     * @iOS 3.4
+     * @Harmony 3.4
      * @Web
-     * @since 3.4
      */
     value: string;
   };
@@ -368,31 +407,33 @@ export interface InputSetValueMethod extends BaseMethod {
 
 /**
  * Set selection range
- * @Android
- * @iOS
- * @Harmony
+ * @Android 2.1
+ * @iOS 2.0
+ * @Harmony 2.16
  * @Web
- * @since 3.4
+ * @ClayAndroid 2.1
+ * @ClayIOS 2.8
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
+ * @ClayHarmony 2.14
  */
 export interface InputSetSelectionRangeMethod extends BaseMethod {
   method: 'setSelectionRange';
   params: {
     /**
      * Start position of the selection
-     * @Android
-     * @iOS
-     * @Harmony
+     * @Android 3.4
+     * @iOS 3.4
+     * @Harmony 3.4
      * @Web
-     * @since 3.4
      */
     selectionStart: number;
     /**
      * End position of the selection
-     * @Android
-     * @iOS
-     * @Harmony
+     * @Android 3.4
+     * @iOS 3.4
+     * @Harmony 3.4
      * @Web
-     * @since 3.4
      */
     selectionEnd: number;
   };

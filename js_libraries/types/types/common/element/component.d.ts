@@ -10,6 +10,14 @@ import { StandardProps } from '../props';
 export interface ComponentProps extends StandardProps {
   /**
    * Component name
+   * @Android 3.5
+   * @iOS 3.8
+   * @Harmony 4.1
+   * @ClayAndroid 4.0
+   * @ClayIOS 2.18
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   * @ClayHarmony 4.0
    */
   'is'?: string;
 

@@ -13,9 +13,9 @@ import { StandardProps } from '../props';
 export interface TitleBarViewProps extends StandardProps {
   /**
    * When set to true, the title bar view is able to move the window when dragged.
+   * @ClayMacOS 3.8
+   * @ClayWindows 3.8
    * @defaultValue false
-   * @ClayWindows
-   * @ClayMacOS
    */
   'moveable'?: boolean;
 }

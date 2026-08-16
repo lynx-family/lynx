@@ -17,11 +17,10 @@ export interface ViewPagerChange {
 
   /**
    * If this change event is caused by the user's dragging
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
-   * @since 2.18
+   * @Android 2.18
+   * @iOS 2.18
+   * @Harmony 2.18
+   * @PC 2.18
    */
   isDragged: boolean;
 }
@@ -40,68 +39,73 @@ export interface ViewPagerOffsetChange {
 export interface ViewPagerProps extends StandardProps {
   /**
    * UIView's tag, be used to identify the UIView of the UIGestureRecognizer which identified by `ios-recognized-gesture-class`. This property is designed to let an UIPanGesture work together with viewpager.
-   * @iOS
+   * @iOS 3.9
    * @defaultValue 0
    */
   'ios-recognized-view-tag'?: number;
 
   /**
    * UIGestureRecognizer's class name, be used to identify the UIGestureRecognizer which may be recognized simultaneously with viewpager. This property is designed to let an UIPanGesture work together with viewpager.
-   * @iOS
+   * @iOS 3.9
    */
   'ios-recognized-gesture-class'?: string;
 
   /**
    * Select the specified page at initialization, specifically referring to the first time when there are children.
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
-   * @since 2.17
+   * @Android 3.9
+   * @iOS 3.9
+   * @Harmony 3.9
+   * @ClayAndroid 3.9
+   * @ClayIOS 3.9
+   * @ClayMacOS 3.9
+   * @ClayWindows 3.9
    * @defaultValue 0
    */
   'initial-select-index'?: number;
 
   /**
    * Enable horizontal scroll gesture
-   * @Android
-   * @web
-   * @iOS
-   * @Harmony
-   * @PC
-   * @since 2.17
+   * @Android 3.9
+   * @iOS 3.9
+   * @Harmony 3.9
+   * @ClayAndroid 3.9
+   * @ClayIOS 3.9
+   * @ClayMacOS 3.9
+   * @ClayWindows 3.9
    * @defaultValue true
    */
   'enable-scroll'?: boolean;
 
   /**
    * Is a spring effect needed. Note that this effect is not available on Android. On PC, only macOS support this feature.
+   * @iOS 3.9
+   * @Harmony 3.9
+   * @ClayAndroid 3.9
+   * @ClayIOS 3.9
+   * @ClayMacOS 3.9
+   * @ClayWindows 3.9
    * @defaultValue true
-   * @iOS
-   * @Harmony
-   * @PC
    */
   bounces?: boolean;
 
   /**
    * When the finger touches within [0, value] from the left edge of the screen, it doesn't respond to the horizontal swipe gesture, but it can directly respond to the iOS right swipe to return gesture. However, it's not applicable to Android.
+   * @iOS 3.9
    * @defaultValue 0
-   * @iOS
    */
   'ios-gesture-offset'?: number;
 
   /**
    * When enabled, when sliding to the head or tail, it can respond to the horizontal swipe events of the outer container (horizontal UIScrollView)
-   * @iOS
+   * @iOS 3.9
    * @defaultValue false
    */
   'ios-gesture-direction'?: boolean;
 
   /**
    * Whether to enable the lazy load mode based on early exposure, it needs to be used in conjunction with the lazyComponent.
-   * @Android
-   * @iOS
+   * @Android 3.9
+   * @iOS 3.9
    * @experimental
    * @defaultValue false
    */
@@ -109,44 +113,51 @@ export interface ViewPagerProps extends StandardProps {
 
   /**
    * On Android, this attribute is used to control the interaction behavior when scrolling to the edges. Setting it to true enables the default bounce effect, while setting it to false disables the bounce effect. The default value is false.
-   * @Android
+   * @Android 3.9
    * @defaultValue false
    */
   'android-always-overscroll'?: boolean;
 
   /**
    * On Android, this attribute is used to control if at start/end of viewpager and set true, gesture can not pass to parent.
-   * @Android
+   * @Android 3.9
    * @defaultValue false
-   * @since 3.0
    */
   'android-force-can-scroll'?: boolean;
 
   /**
    * Page switch event, it will only be triggered when the UI completely switches to the next page (from 100% to 200%).
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 3.9
+   * @iOS 3.9
+   * @Harmony 3.9
+   * @ClayAndroid 3.9
+   * @ClayIOS 3.9
+   * @ClayMacOS 3.9
+   * @ClayWindows 3.9
    */
   bindchange?: (e: ViewPagerChangeEvent) => void;
 
   /**
    * Page switch event, it will be triggered when the page is about to switch, and at this time the UI has not switched to the next page yet, so the offset is still in the range of 0~100% (from page 0 to page 1) or 100%~200% (from page 1 to page 2).
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
-   * @since 2.17
+   * @Android 3.9
+   * @iOS 3.9
+   * @Harmony 3.9
+   * @ClayAndroid 3.9
+   * @ClayIOS 3.9
+   * @ClayMacOS 3.9
+   * @ClayWindows 3.9
    */
   bindwillchange?: (e: ViewPagerWillChangeEvent) => void;
 
   /**
    * Page switch progress callback, the range is the index of each page, for example, from page 0 to page 1, it's 0~1, from the first page to the second page, it's 1~2.
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
+   * @Android 3.9
+   * @iOS 3.9
+   * @Harmony 3.9
+   * @ClayAndroid 3.9
+   * @ClayIOS 3.9
+   * @ClayMacOS 3.9
+   * @ClayWindows 3.9
    */
   bindoffsetchange?: (e: ViewPagerOffsetChangeEvent) => void;
 }
@@ -159,11 +170,13 @@ export interface ViewPagerItemProps extends StandardProps {}
 
 /**
  * Slide to the specified page.
- * @Android
- * @web
- * @iOS
- * @Harmony
- * @PC
+ * @Android 3.9
+ * @iOS 3.9
+ * @Harmony 3.9
+ * @ClayAndroid 3.9
+ * @ClayIOS 3.9
+ * @ClayMacOS 3.9
+ * @ClayWindows 3.9
  */
 export interface ViewPagerSelectTabMethod extends BaseMethod {
   method: 'selectTab';
@@ -171,7 +184,6 @@ export interface ViewPagerSelectTabMethod extends BaseMethod {
     /**
      * The index to be scrolled to.
      * @Android
-     * @web
      * @iOS
      * @Harmony
      * @PC
@@ -181,7 +193,6 @@ export interface ViewPagerSelectTabMethod extends BaseMethod {
     /**
      * If a animation effect needed. The default setting is true.
      * @Android
-     * @web
      * @iOS
      * @Harmony
      * @PC

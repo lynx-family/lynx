@@ -12,10 +12,15 @@ export type ScrollViewParams = ScrollViewUIMethods | AutoScrollMethod;
 
 /**
  * Call this method to get the width, height, and position information of the target element.
- * @Android
- * @iOS
- * @Harmony
- * @PC
+ * @Android 1.1
+ * @iOS 2.18
+ * @Harmony 2.16
+ * @Web
+ * @ClayAndroid 2.14
+ * @ClayIOS 2.16
+ * @ClayMacOS 2.14
+ * @ClayWindows 2.14
+ * @ClayHarmony 2.14
  */
 interface BoundingClientRectMethod extends BaseMethod {
   method: 'boundingClientRect';
@@ -112,10 +117,10 @@ interface BoundingClientRectMethod extends BaseMethod {
 
 /**
  * Call this method to take a screenshot of the element.
- * @Android
- * @iOS
- * @Harmony
- * @PC
+ * @Android 2.3
+ * @iOS 2.18
+ * @Harmony 3.3
+ * @Clay 4.0
  */
 interface TakeScreenShotMethod extends BaseMethod {
   method: 'takeScreenshot';
@@ -153,7 +158,7 @@ interface TakeScreenShotMethod extends BaseMethod {
 
 /**
  * Set the element to require focus
- * @PC
+ * @Clay 4.0
  */
 interface SetFocusMethod extends BaseMethod {
   method: 'setFocus';
@@ -173,8 +178,8 @@ interface SetFocusMethod extends BaseMethod {
 
 /**
  * Call this method to request accessibility focus for the element.
- * @Android
- * @iOS
+ * @Android 2.8
+ * @iOS 2.18
  */
 interface RequestAccessibilityFocusMethod extends BaseMethod {
   method: 'requestAccessibilityFocus';
@@ -191,11 +196,15 @@ interface IsAnimatingMethod extends BaseMethod {
 
 /**
  * Call this method to scroll the element into the visible area.
- * @Android
- * @web
- * @iOS
- * @Harmony
- * @PC
+ * @Android 1.3
+ * @iOS 2.18
+ * @Harmony 2.17
+ * @Web
+ * @ClayAndroid 2.14
+ * @ClayIOS 4.0
+ * @ClayMacOS 4.0
+ * @ClayWindows 4.0
+ * @ClayHarmony 4.0
  */
 interface ScrollIntoViewMethod extends BaseMethod {
   method: 'scrollIntoView';
