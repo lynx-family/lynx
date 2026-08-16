@@ -638,6 +638,12 @@ public class LynxViewBuilder
   }
 
   @Override
+  public boolean isEnableLepusModule() {
+    return !hasEnableLepusModuleSet && lynxViewGroup != null ? lynxViewGroup.isEnableLepusModule()
+                                                             : enableLepusModule;
+  }
+
+  @Override
   public LynxBooleanOption isEnableGenericResourceFetcher() {
     if (lynxRuntimeOptions.isEnableGenericResourceFetcher() != LynxBooleanOption.UNSET) {
       return lynxRuntimeOptions.isEnableGenericResourceFetcher();
