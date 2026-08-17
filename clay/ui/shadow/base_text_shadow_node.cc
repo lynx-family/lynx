@@ -582,16 +582,19 @@ void BaseTextShadowNode::ProcessChildLayout(LayoutContext* context) {
     if (child->IsInlineTextShadowNode() || child->IsInlineImageShadowNode()) {
       child->UpdateLayoutStylesFromLynx();
     }
-    if (child->MarginLeft() > 0.f || child->PaddingLeft() > 0.f) {
+    const bool inline_image = child->IsInlineImageShadowNode();
+    if ((!inline_image && child->MarginLeft() > 0.f) ||
+        child->PaddingLeft() > 0.f) {
       static_cast<LayoutContextText*>(context)->AddFakePlaceholder(
-          child->MarginLeft() + child->PaddingLeft());
+          (inline_image ? 0.f : child->MarginLeft()) + child->PaddingLeft());
     }
 
     child->TextLayout(context);
 
-    if (child->MarginRight() > 0.f || child->PaddingRight() > 0.f) {
+    if ((!inline_image && child->MarginRight() > 0.f) ||
+        child->PaddingRight() > 0.f) {
       static_cast<LayoutContextText*>(context)->AddFakePlaceholder(
-          child->MarginRight() + child->PaddingRight());
+          (inline_image ? 0.f : child->MarginRight()) + child->PaddingRight());
     }
   }
 }

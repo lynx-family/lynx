@@ -46,9 +46,7 @@ class TestLayoutDelegate : public LayoutDelegate {
                                         int) override {
     return {measure_width, measure_height, 0.f};
   }
-  ClayLayoutStyles OnGetLayoutStyles(int32_t) override {
-    return ClayLayoutStyles();
-  }
+  ClayLayoutStyles OnGetLayoutStyles(int32_t) override { return layout_styles; }
 
   void ResetAlignState() {
     align_count = 0;
@@ -59,6 +57,7 @@ class TestLayoutDelegate : public LayoutDelegate {
 
   float measure_width = 0.f;
   float measure_height = 0.f;
+  ClayLayoutStyles layout_styles{};
   int align_count = 0;
   int32_t last_aligned_id = 0;
   float last_top = -1.f;
@@ -741,6 +740,42 @@ TEST_F_UI(TextTest, InlinePlaceholderGlyphRangesAreContiguous) {
   EXPECT_EQ(inline_image->EndGlyph(), inline_image->StartGlyph() + 1);
   EXPECT_EQ(inline_view->StartGlyph(), inline_image->EndGlyph());
   EXPECT_EQ(inline_view->EndGlyph(), inline_view->StartGlyph() + 1);
+}
+
+TEST_F_UI(TextTest, InlineImageMarginUsesOneMiddleAlignedPlaceholder) {
+  TestLayoutDelegate delegate;
+  delegate.layout_styles.width = 30.f;
+  delegate.layout_styles.height = 30.f;
+  delegate.layout_styles.margin_left = 10;
+  delegate.layout_styles.margin_top = 10;
+  delegate.layout_styles.margin_right = 10;
+  delegate.layout_styles.margin_bottom = 10;
+  owner_->SetLayoutDelegate(&delegate);
+  text_shadow_node_->SetLineHeight(20.f);
+  text_shadow_node_->UpdateLineHeight();
+  auto inline_image =
+      std::make_unique<InlineImageShadowNode>(owner_, std::string("image"), 7);
+  inline_image->SetVerticalAlign(VerticalAlignType::kVerticalAlignMiddle, 0);
+  inline_text_shadow_node_->AddChild(inline_image.get());
+  MeasureConstraint constraint{1000.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  TextRender text_render(text_shadow_node_.get());
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
+  auto context = text_shadow_node_->CreateLayoutContext(constraint);
+
+  text_render.Measure(constraint, &context);
+
+  ASSERT_NE(text_render.GetCacheParagraph(), nullptr);
+  auto placeholders =
+      text_render.GetCacheParagraph()->GetRectsForPlaceholders();
+  ASSERT_EQ(placeholders.size(), 1u);
+  EXPECT_FLOAT_EQ(placeholders.front().rect.Width(), 50.f);
+  EXPECT_FLOAT_EQ(placeholders.front().rect.Height(), 50.f);
+#if defined(CLAY_ENABLE_TTTEXT)
+  EXPECT_GE(context.measured_height_, 50.f);
+#endif
+  EXPECT_EQ(inline_image->EndGlyph(), inline_image->StartGlyph() + 1);
+  owner_->SetLayoutDelegate(nullptr);
 }
 
 TEST_F_UI(TextTest, CollapsedWhitespaceMappingsPointBackToRawUnicodeText) {
