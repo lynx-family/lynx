@@ -199,6 +199,53 @@ TEST_F(ListElementTest, ResolveEnableNativeListUsesListContainerName) {
   EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), list::kListContainer);
 }
 
+TEST_F(ListElementTest, ScrollViewNewArchRedirectsListContainerName) {
+  list_element_->SetAttribute(base::String(list::kCustomLisName),
+                              lepus::Value(list::kListContainer));
+  list_element_->SetAttribute(base::String(kScrollNewArch),
+                              lepus::Value(kTrue));
+
+  list_element_->ResolveEnableNativeList();
+  list_element_->ResolvePlatformNodeTag();
+
+  EXPECT_TRUE(list_element_->DisableListPlatformImplementation());
+  EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), kListScrollNewArch);
+}
+
+TEST_F(ListElementTest, ScrollViewNewArchRedirectsConfiguredListContainer) {
+  page_config_->SetEnableNativeList(TernaryBool::TRUE_VALUE);
+  list_element_->SetAttribute(base::String(kScrollNewArch),
+                              lepus::Value(kTrue));
+
+  list_element_->ResolveEnableNativeList();
+  list_element_->ResolvePlatformNodeTag();
+
+  EXPECT_TRUE(list_element_->DisableListPlatformImplementation());
+  EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), kListScrollNewArch);
+}
+
+TEST_F(ListElementTest, ScrollViewNewArchDefaultsToFalse) {
+  page_config_->SetEnableNativeList(TernaryBool::TRUE_VALUE);
+
+  list_element_->ResolveEnableNativeList();
+  list_element_->ResolvePlatformNodeTag();
+
+  EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), list::kListContainer);
+}
+
+TEST_F(ListElementTest, ScrollViewNewArchDoesNotRedirectCustomList) {
+  list_element_->SetAttribute(base::String(list::kCustomLisName),
+                              lepus::Value("my-list"));
+  list_element_->SetAttribute(base::String(kScrollNewArch),
+                              lepus::Value(kTrue));
+
+  list_element_->ResolveEnableNativeList();
+  list_element_->ResolvePlatformNodeTag();
+
+  EXPECT_FALSE(list_element_->DisableListPlatformImplementation());
+  EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), "my-list");
+}
+
 TEST_F(ListElementTest, ResolveEnableNativeListUsesCustomListNameFirst) {
   // custom-list-name has higher priority than config and env. A non
   // list-container value should keep the platform implementation even when the

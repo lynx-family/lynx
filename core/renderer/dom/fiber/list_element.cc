@@ -428,16 +428,25 @@ void ListElement::ResolvePlatformNodeTag() {
   auto it = attr_map.find(BASE_STATIC_STRING(list::kCustomLisName));
   if (it != attr_map.end()) {
     platform_node_tag_ = it->second.String();
-    return;
+  } else {
+    // Case 2: If get enable native list from config or env fallback, we modify
+    // platform_node_tag_ to "list-container".
+    const auto& config = element_manager_->GetConfig();
+    const auto enable_native_list_from_config =
+        config ? config->GetEnableNativeList() : TernaryBool::UNDEFINE_VALUE;
+    if (enable_native_list_from_config == TernaryBool::TRUE_VALUE ||
+        enable_native_list_only_from_env_) {
+      platform_node_tag_ = BASE_STATIC_STRING(list::kListContainer);
+    }
   }
-  // Case 2: If get enable native list from config or env fallback, we modify
-  // platform_node_tag_ to "list-container".
-  const auto& config = element_manager_->GetConfig();
-  const auto enable_native_list_from_config =
-      config ? config->GetEnableNativeList() : TernaryBool::UNDEFINE_VALUE;
-  if (enable_native_list_from_config == TernaryBool::TRUE_VALUE ||
-      enable_native_list_only_from_env_) {
-    platform_node_tag_ = BASE_STATIC_STRING(list::kListContainer);
+
+  // Only redirect an existing list-container to the dedicated list scroll tag.
+  // The property must not enable native list by itself.
+  auto scroll_new_arch_it = attr_map.find(BASE_STATIC_STRING(kScrollNewArch));
+  if (platform_node_tag_.IsEqual(list::kListContainer) &&
+      scroll_new_arch_it != attr_map.end() &&
+      scroll_new_arch_it->second.StdString() == kTrue) {
+    platform_node_tag_ = BASE_STATIC_STRING(kListScrollNewArch);
   }
 }
 
@@ -483,7 +492,8 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
             tasm::report::LynxFeature::CPP_ENABLE_NATIVE_LIST_FROM_ENV);
       }
       // add feature count for custom-list-name
-      if (platform_node_tag.IsEqual(BASE_STATIC_STRING(list::kListContainer))) {
+      if (platform_node_tag.IsEqual(BASE_STATIC_STRING(list::kListContainer)) ||
+          platform_node_tag.IsEqual(BASE_STATIC_STRING(kListScrollNewArch))) {
         // list-container
         tasm::report::FeatureCounter::Instance()->Count(
             tasm::report::LynxFeature::CPP_LIST_CONTAINER);
