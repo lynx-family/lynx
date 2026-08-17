@@ -1261,6 +1261,9 @@ void UIBase::CreateOrUpdateBackground() {
         std::make_unique<BackgroundDrawable>(weak_from_this(), false);
   }
   dirty_flags_ |= kFlagBackgroundChanged;
+  if (has_background_color_) {
+    dirty_flags_ |= kFlagBackgroundColor;
+  }
 }
 
 void UIBase::RequestLayout() {
