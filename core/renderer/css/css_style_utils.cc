@@ -1450,11 +1450,31 @@ void CSSStyleUtils::UpdateCSSKeyframes(
     }
     return;
   }
-  if (keyframes.Table()->size() < 2) {
+  auto table = keyframes.Table();
+  if (table->empty()) {
     return;
   }
+  if (table->size() < 2) {
+    bool has_border_radius = false;
+    const auto& frame = table->begin()->second;
+    if (frame.IsObject()) {
+      for (const auto& [property, _] : *frame.Table()) {
+        const auto id = tasm::CSSProperty::GetPropertyID(property);
+        if (id == tasm::kPropertyIDBorderRadius ||
+            id == tasm::kPropertyIDBorderTopLeftRadius ||
+            id == tasm::kPropertyIDBorderTopRightRadius ||
+            id == tasm::kPropertyIDBorderBottomRightRadius ||
+            id == tasm::kPropertyIDBorderBottomLeftRadius) {
+          has_border_radius = true;
+          break;
+        }
+      }
+    }
+    if (!has_border_radius) {
+      return;
+    }
+  }
   keyframes_map[name] = fml::MakeRefCounted<tasm::CSSKeyframesToken>(configs);
-  auto table = keyframes.Table();
   for (auto& iter : *table) {
     const std::string& per = iter.first.str();
     if (per.empty()) {

@@ -314,37 +314,32 @@ class KeyframedBackgroundPositionAnimationCurve
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
 
-//====transformOrigin keyframe ====
-class TransformOriginKeyframe : public gfx::Vec2Keyframe {
+//==== vec2 length keyframe ====
+class Vec2LengthKeyframe : public gfx::Vec2Keyframe {
  public:
-  static tasm::CSSValue GetTransformOriginKeyframeValue(
-      TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
-      const tasm::CSSValue& underlying_value);
-
-  static std::unique_ptr<TransformOriginKeyframe> Create(
+  static std::unique_ptr<Vec2LengthKeyframe> Create(
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
-  ~TransformOriginKeyframe() override = default;
+  ~Vec2LengthKeyframe() override = default;
 
-  tasm::CSSValue GetTransformOrigin() const { return transform_origin_; }
+  const tasm::CSSValue& GetValue() const { return value_; }
 
   bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                 tasm::Element* element);
 
   void NotifyUnitValuesUpdated(uint32_t css_value_pattern);
 
-  TransformOriginKeyframe(fml::TimeDelta time,
-                          std::unique_ptr<gfx::TimingFunction> timing_function);
+  Vec2LengthKeyframe(fml::TimeDelta time,
+                     std::unique_ptr<gfx::TimingFunction> timing_function);
 
  private:
-  tasm::CSSValue transform_origin_;
+  tasm::CSSValue value_;
 };
 
-class KeyframedTransformOriginAnimationCurve
-    : public TransformOriginAnimationCurve {
+class KeyframedVec2LengthAnimationCurve : public TransformOriginAnimationCurve {
  public:
-  static std::unique_ptr<KeyframedTransformOriginAnimationCurve> Create();
-  ~KeyframedTransformOriginAnimationCurve() override = default;
+  static std::unique_ptr<KeyframedVec2LengthAnimationCurve> Create();
+  ~KeyframedVec2LengthAnimationCurve() override = default;
 
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
