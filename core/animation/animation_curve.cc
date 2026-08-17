@@ -107,6 +107,10 @@ void AnimationCurve::NotifyUnitValuesUpdated(tasm::CSSValuePattern type) {
   }
 }
 
+tasm::CSSValue AnimationCurve::GetUnderlyingValue() const {
+  return underlying_value_;
+}
+
 std::unique_ptr<gfx::Keyframe> LayoutAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
   return LayoutKeyframe::Create(offset, nullptr);

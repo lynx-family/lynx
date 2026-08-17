@@ -33,8 +33,13 @@ class VSyncMonitor;
 namespace tasm {
 class Element;
 class CSSKeyframesToken;
+class CssMeasureContext;
 }  // namespace tasm
 namespace animation {
+
+base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForAnimation(
+    tasm::CSSPropertyID css_id, const starlight::CanonicalComputedValue& value,
+    const tasm::CssMeasureContext& context);
 
 const std::unordered_set<starlight::AnimationPropertyType>&
 GetLayoutPropertyTypeSet();
@@ -93,7 +98,15 @@ class CSSKeyframeManager : public AnimationDelegate {
       bool force_rebuild = false,
       const tasm::StyleMap* new_base_resolved_styles = nullptr,
       const tasm::StyleMap* new_underlying_layout_only_styles = nullptr,
-      const tasm::CustomPropertiesMap* new_base_custom_properties = nullptr);
+      const tasm::CustomPropertiesMap* new_base_custom_properties = nullptr,
+      const starlight::ComputedCSSStyle* new_base_style = nullptr);
+
+  void UpdateUnderlyingValue(tasm::CSSPropertyID id,
+                             const tasm::CSSValue& value);
+
+  void UpdateUnderlyingValueFromComputedStyle(
+      tasm::CSSPropertyID id,
+      const starlight::ComputedCSSStyle& computed_style);
 
   AnimationSampleForNewPipeline CollectAnimationUpdatesForNewPipeline(
       fml::TimePoint& time);
@@ -166,6 +179,10 @@ class CSSKeyframeManager : public AnimationDelegate {
       const tasm::StyleMap* new_underlying_layout_only_styles);
 
   void ClearPersistedFillStyle(const std::shared_ptr<Animation>& animation);
+
+  void UpdateUnderlyingValuesFromComputedStyle(
+      const starlight::ComputedCSSStyle& computed_style,
+      const tasm::StyleMap* underlying_layout_only_styles);
 
   base::InlineVector<starlight::AnimationData, 1> animation_data_;
   // The collection of animations running on the current element.

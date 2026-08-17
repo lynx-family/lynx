@@ -2132,6 +2132,7 @@ class Element : public lepus::RefCounted,
 
   bool has_transition_props_changed_{false};
   bool has_keyframe_props_changed_{false};
+  bool is_applying_animation_style_{false};
   bool has_non_flatten_attrs_{false};
 
   bool enable_class_change_transmit_{false};

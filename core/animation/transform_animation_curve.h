@@ -49,8 +49,6 @@ class KeyframedTransformAnimationCurve : public TransformAnimationCurve {
 //====Transform keyframe ====
 class TransformKeyframe : public lynx::gfx::Keyframe {
  public:
-  static transforms::TransformOperations GetTransformKeyframeValueInElement(
-      tasm::Element*);
   static std::unique_ptr<TransformKeyframe> Create(
       fml::TimeDelta time,
       std::unique_ptr<lynx::gfx::TimingFunction> timing_function);

@@ -275,6 +275,7 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   // Resolve the timestamp that should be sampled. Paused animations keep
   // sampling at pause_time_ so repeated resolves return a frozen style.
   fml::TimePoint sample_time = frame_time;
+  bool suppress_paused_dummy_side_effects = false;
   if (state_ == State::kPause) {
     // The new styling pipeline may resolve a paused animation with dummy time
     // during style recalculation. Reuse the last real sample instead of letting
@@ -283,12 +284,14 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
       pause_time_ = last_sample_time_;
       was_paused_ = true;
       keyframe_effect_->SetPauseTime(pause_time_);
-      result = last_sample_result_;
-      SuppressSampleSideEffects(result);
-      has_cached_sample_ = true;
-      cached_sample_time_ = pause_time_;
-      cached_sample_result_ = result;
-      return result;
+      if (has_cached_sample_) {
+        result = last_sample_result_;
+        SuppressSampleSideEffects(result);
+        cached_sample_time_ = pause_time_;
+        cached_sample_result_ = result;
+        return result;
+      }
+      suppress_paused_dummy_side_effects = true;
     }
     if (!was_paused_ || pause_time_ == fml::TimePoint::Min()) {
       pause_time_ = frame_time;
@@ -314,6 +317,9 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   has_last_sample_ = true;
   last_sample_time_ = sample_time;
   last_sample_result_ = result;
+  if (suppress_paused_dummy_side_effects) {
+    SuppressSampleSideEffects(result);
+  }
 
   // Keep lifecycle side effects consistent with the sampled state.
   if (state_ == State::kPause) {
@@ -334,6 +340,17 @@ void Animation::UpdateAnimationData(starlight::AnimationData& data) {
   animation_data_ = data;
   if (keyframe_effect_) {
     keyframe_effect_->UpdateAnimationData(&animation_data_);
+  }
+}
+
+void Animation::UpdateUnderlyingValue(AnimationCurve::CurveType type,
+                                      const tasm::CSSValue& value) {
+  if (!keyframe_effect_) {
+    return;
+  }
+  auto* model = keyframe_effect_->GetKeyframeModelByCurveType(type);
+  if (model != nullptr && model->animation_curve()->SetUnderlyingValue(value)) {
+    InvalidateSampleCache();
   }
 }
 

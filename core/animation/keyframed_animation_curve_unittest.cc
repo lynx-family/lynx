@@ -248,6 +248,30 @@ TEST_F(KeyframedAnimationCurveTest, TwoOpacityKeyframe) {
   EXPECT_FLOAT_EQ(0.0f, curve->GetValue(value3).AsNumber());
 }
 
+TEST_F(KeyframedAnimationCurveTest,
+       ToOnlyOpacityRepeatsFromStableUnderlyingStyle) {
+  auto test_element = InitFiberElement();
+  auto curve = KeyframedOpacityAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::OPACITY;
+  curve->SetElement(test_element.get());
+  curve->SetUnderlyingValue(
+      ::lynx::tasm::CSSValue(1.0f, ::lynx::tasm::CSSValuePattern::NUMBER));
+
+  curve->AddKeyframe(OpacityKeyframe::Create(fml::TimeDelta(), nullptr));
+  auto end_frame =
+      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  end_frame->SetOpacity(0.0f);
+  curve->AddKeyframe(std::move(end_frame));
+
+  fml::TimeDelta first_iteration_time = fml::TimeDelta::FromSecondsF(0.5f);
+  const auto first_iteration_value = curve->GetValue(first_iteration_time);
+  ASSERT_TRUE(test_element->computed_css_style()->SetValue(
+      ::lynx::tasm::kPropertyIDOpacity, first_iteration_value));
+
+  fml::TimeDelta second_iteration_time = fml::TimeDelta::FromSecondsF(0.5f);
+  EXPECT_EQ(first_iteration_value, curve->GetValue(second_iteration_time));
+}
+
 TEST_F(KeyframedAnimationCurveTest, OpacityKeyframeRejectsNonNumberLikeLegacy) {
   auto test_element = InitFiberElement();
 

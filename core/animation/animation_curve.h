@@ -141,6 +141,14 @@ class AnimationCurve : public gfx::AnimationCurve {
 
   void SetElement(tasm::Element* element) { element_ = element; }
 
+  bool SetUnderlyingValue(tasm::CSSValue value) {
+    if (underlying_value_ == value) {
+      return false;
+    }
+    underlying_value_ = std::move(value);
+    return true;
+  }
+
   template <typename T>
   void AddKeyframe(std::unique_ptr<T> keyframe) {
     auto callbacks = MakeKeyframeCallbacks(keyframe.get());
@@ -160,7 +168,10 @@ class AnimationCurve : public gfx::AnimationCurve {
   virtual tasm::CSSValue GetValue(fml::TimeDelta& t) const = 0;
 
  protected:
+  tasm::CSSValue GetUnderlyingValue() const;
+
   tasm::Element* element_{nullptr};
+  tasm::CSSValue underlying_value_;
   std::vector<KeyframeCallbacks> keyframe_callbacks_;
 };
 

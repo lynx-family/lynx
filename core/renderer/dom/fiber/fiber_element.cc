@@ -489,7 +489,7 @@ Element::SampleAnimationOverridesForNewPipeline(
     css_keyframe_manager_->SyncAnimationDataForNewPipeline(
         *animation_data, force_rebuild_keyframes,
         &new_base_style.GetResolvedValues(), &new_underlying_layout_only_styles,
-        new_base_style.GetCustomProperties());
+        new_base_style.GetCustomProperties(), &new_base_style);
     if (force_rebuild_keyframes) {
       has_keyframe_props_changed_ = false;
     }
