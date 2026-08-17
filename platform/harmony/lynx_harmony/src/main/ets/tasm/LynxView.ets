@@ -365,9 +365,6 @@ export struct LynxView {
     }
 
     this.templateLoaded = false;
-    if (shouldLoadTemplate) {
-      this.beforeLoadTemplate(this.context);
-    }
     this.loadingID++;
 
     this.prepareForLoadTemplate();
@@ -375,6 +372,7 @@ export struct LynxView {
     this.templateRenderer.setTiming(initStartTiming * 1000, TimingConstants.CREATE_LYNX_START);
     this.templateRenderer.setTiming(initEndTiming * 1000, TimingConstants.CREATE_LYNX_END);
     if (shouldLoadTemplate) {
+      this.beforeLoadTemplate(this.context);
       this.loadTemplate();
     }
   }
