@@ -5599,6 +5599,7 @@ public protocol LynxViewBaseLifecycle-p : <NSObjectNSObject> {
 }
 
 public class LynxViewBuilder : LynxBaseConfigurator {
+  public BOOL LynxViewBuilder::disableMTSPoolWarmup disableMTSPoolWarmup;
   public BOOL LynxViewBuilder::enableRadonCompatible enableRadonCompatible;
   public id<LynxDynamicComponentFetcher> LynxViewBuilder::fetcher fetcher;
   public BOOL LynxViewBuilder::enableLynxResourceServiceLoaderInjection enableLynxResourceServiceLoaderInjection;

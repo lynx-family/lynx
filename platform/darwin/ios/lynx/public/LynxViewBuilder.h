@@ -24,6 +24,12 @@ static NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE = @"lynx_enable_fe
 
 @interface LynxViewBuilder : LynxBaseConfigurator
 
+/**
+ * Disables automatic warmup of the MTS runtime pool during render setup.
+ * Defaults to NO.
+ */
+@property(nonatomic, assign) BOOL disableMTSPoolWarmup;
+
 // legacy props that needs to be removed.
 @property(nonatomic, assign) BOOL enableRadonCompatible;
 @property(nonatomic, nullable) id<LynxDynamicComponentFetcher> fetcher;
