@@ -8,7 +8,7 @@ import { LynxErrorLevel } from './gen/LynxSubErrorCode';
 import { LynxViewClient } from './LynxViewClient';
 import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
 import { LynxResourceProvider } from '../provider/LynxResourceProvider';
-import { LynxView, ThreadStrategyForRendering } from './LynxView';
+import { EmbeddedMode, LynxView, ThreadStrategyForRendering } from './LynxView';
 import { LynxBackgroundRuntimeOptions } from '../jsbridge/LynxBackgroundRuntimeOptions';
 import { LynxEnv } from './LynxEnv';
 import { TemplateBundle } from './TemplateBundle';
@@ -38,6 +38,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private moduleManager: LynxModuleManager;
   private sendableModuleManager: SendableLynxModuleManager;
   private readonly enableMultiAsyncThread: boolean;
+  private readonly embeddedMode: EmbeddedMode;
   private hasDestroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
 
@@ -50,7 +51,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     moduleManager: LynxModuleManager,
     sendableModuleManager: SendableLynxModuleManager,
     enableMultiAsyncThread?: boolean,
-    screenSize?: Size) {
+    screenSize?: Size,
+    embeddedMode: EmbeddedMode = EmbeddedMode.UNSET) {
     super();
     this.clients = clients;
     this.providers = providers;
@@ -63,6 +65,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.moduleManager = moduleManager;
     this.sendableModuleManager = sendableModuleManager;
     this.enableMultiAsyncThread = enableMultiAsyncThread ?? true;
+    this.embeddedMode = embeddedMode;
     if (screenSize) {
       LLog.i(TAG, `screen size, w: ${screenSize.width}, h: ${screenSize.height}`);
       this.displayInfo.updateDisplayInfo(screenSize.width, screenSize.height);
@@ -77,8 +80,12 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     if (this.backgroundRuntimeOptions.lynxGroup) {
       whiteBoard = this.backgroundRuntimeOptions.lynxGroup.getWhiteBoard();
     }
+    const nativePerfController =
+      (this.embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0
+        ? undefined
+        : this.perfController.native;
     this.nativeReset(uiDelegate, this.providers, this.displayInfo.screenWidth, this.displayInfo.screenHeight,
-      this.isHostRenderer, this.perfController.native, this.threadMode,
+      this.isHostRenderer, nativePerfController, this.threadMode,
       this.backgroundRuntimeOptions.getGroupID(),
       this.backgroundRuntimeOptions.getJSGroupThreadName(),
       this.backgroundRuntimeOptions.useQuickJSEngine(),
@@ -88,7 +95,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.enableJSRuntime,
       convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
-      this.enableMultiAsyncThread);
+      this.enableMultiAsyncThread, this.embeddedMode);
   }
 
   aboutToDisappear() {
