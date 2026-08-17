@@ -584,15 +584,8 @@ void ElementManager::RequestLayout(
 
   PipelineLayoutData layout_data;
   if (has_viewport_ready_ && root()->is_page()) {
-    if (options->need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);
-    }
-
     static_cast<PageElement *>(root())->Layout(options);
 
-    if (options->need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutEnd);
-    }
     layout_data = {.layout_triggered = true,
                    .pipeline_version = options->version,
                    .is_first_layout =

@@ -14,6 +14,8 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/timing_handler/timing.h"
+#include "core/services/timing_handler/timing_constants.h"
 
 namespace lynx {
 namespace tasm {
@@ -153,11 +155,21 @@ void PageElement::SetCSSID(int32_t id) {
  */
 void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_ELEMENT_LAYOUT);
+  if (options->need_timestamps) {
+    TimingCollector::Instance()->Mark(timing::kLayoutStart);
+  }
+
   DispatchLayoutBeforeRecursively();
 
   sl_node_->ReLayout(sl_node_->GetEnableFixedNew()
                          ? element_manager()->GetFixedNodeSet()
                          : nullptr);
+
+  UpdateLayoutInfoRecursively(options.get());
+
+  if (options->need_timestamps) {
+    TimingCollector::Instance()->Mark(timing::kLayoutEnd);
+  }
 
   if (auto* layout_context = element_manager()->layout_context()) {
     const auto& root_size = sl_node_->GetLayoutResult().size_;
@@ -167,8 +179,6 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   element_container()->AppendOptionsForTiming(options);
 
   element_container()->MarkLayoutUIOperationQueueFlushStartIfNeed();
-
-  UpdateLayoutInfoRecursively(options.get());
 
   element_container()->UpdateLayout(left_, top_, false);
 
