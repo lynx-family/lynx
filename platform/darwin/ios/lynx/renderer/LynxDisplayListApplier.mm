@@ -44,13 +44,14 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     return true;
   }
 
-  BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
-  BOOL positionChanged = !CGPointEqualToPoint(layer.position, offset);
-  if (!anchorPointChanged && !positionChanged) {
+  // Legacy LynxUI stores transform-origin in anchorPoint. Move its untransformed
+  // layout box without replacing that transform semantic.
+  CGPoint position = CGPointMake(offset.x + layer.anchorPoint.x * layer.bounds.size.width,
+                                 offset.y + layer.anchorPoint.y * layer.bounds.size.height);
+  if (CGPointEqualToPoint(layer.position, position)) {
     return false;
   }
-  layer.anchorPoint = CGPointZero;
-  layer.position = offset;
+  layer.position = position;
   return true;
 }
 

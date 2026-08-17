@@ -37,6 +37,9 @@ UIEdgeInsets UIEdgeInsetsFromLayoutMetrics(const float* metrics) {
 
 void LynxCUIApplyLayoutFrame(UIView* view, CGRect layout_frame) {
   if (CATransform3DIsIdentity(view.layer.transform)) {
+    // Keep ordinary UIView geometry for an untransformed renderer host. In
+    // particular, the page host is the LynxView itself and its parent may
+    // continue positioning it through center-based UIKit layout.
     view.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
     [view setFrame:layout_frame];
     return;
@@ -118,6 +121,7 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
 
     UIView<LynxRendererHost>* view = GetUIView();
     if (view != nil) {
+      LynxRenderer* renderer = view.renderer;
       constexpr int kFrameValueCount = 4;
       if (display_list_.GetContentFloatData() &&
           display_list_.GetContentFloatDataSize() >= kFrameValueCount) {
@@ -130,21 +134,29 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
             CGRectMake(frame[0] + display_list_.GetRenderOffset()[0],
                        frame[1] + display_list_.GetRenderOffset()[1], frame[2], frame[3]);
         layout_frame = ResolveLayoutFrame(layout_frame);
-        if (GetPlatformRendererType() == PlatformRendererType::kPage) {
+        bool is_page = GetPlatformRendererType() == PlatformRendererType::kPage;
+        if (is_page) {
           // Page is placed by its parent on the platform layer. Do not move it
           // using display-list coordinates.
-          layout_frame.origin = view.frame.origin;
+          // Keep its logical origin independently from transformed UIView geometry.
+          layout_frame.origin = [renderer rendererLayoutOrigin];
         }
         UpdateUIOwnerLayout(CGRectMake(frame[0], frame[1], frame[2], frame[3]));
         LynxCUIApplyLayoutFrame(view, layout_frame);
-        [[view renderer] onSetFrame:layout_frame];
+        if (is_page) {
+          // Lynx owns only the Page size. The native parent remains the sole
+          // authority for its position.
+          [renderer updateRendererLayoutSize:layout_frame.size];
+        } else {
+          [renderer updateRendererLayoutFrame:layout_frame];
+        }
 
         if ([view conformsToProtocol:@protocol(LUIBodyView)]) {
           ((UIView<LUIBodyView>*)view).intrinsicContentSize = CGSizeMake(frame[2], frame[3]);
         }
       }
 
-      [[view renderer] updateDisplayList:&display_list_];
+      [renderer updateDisplayList:&display_list_];
       [view setNeedsDisplay];
     }
   }
@@ -181,8 +193,6 @@ void PlatformRendererDarwin::OnRebuildSubRenderers() {
 
 void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
                                         bool should_update_ui_owner) {
-  // TODO(linxs): Support indexed insertion on iOS after mapping the
-  // platform renderer child index to the corresponding UIOwner/UIView child index.
   if (child == nullptr) {
     return;
   }
@@ -217,7 +227,45 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
   if (index < 0) {
     [view addSubview:child_view];
   } else {
-    [view insertSubview:child_view atIndex:index];
+    // Fragment display-list layers and native child-view layers share the same
+    // CALayer hierarchy. Using the renderer child index as a UIView index can
+    // therefore insert the view at the corresponding raw sublayer index. Find
+    // an attached renderer sibling and insert relative to that view instead.
+    UIView<LynxRendererHost>* previous_sibling_view = nil;
+    const auto& siblings = Children();
+    for (int sibling_index = index - 1; sibling_index >= 0; --sibling_index) {
+      auto* sibling_renderer = static_cast<PlatformRendererDarwin*>(siblings[sibling_index].get());
+      UIView<LynxRendererHost>* sibling_view = sibling_renderer->GetUIView();
+      if (sibling_view.superview == view) {
+        previous_sibling_view = sibling_view;
+        break;
+      }
+    }
+
+    if (previous_sibling_view != nil) {
+      [view insertSubview:child_view aboveSubview:previous_sibling_view];
+    } else {
+      UIView<LynxRendererHost>* next_sibling_view = nil;
+      for (size_t sibling_index = static_cast<size_t>(index); sibling_index < siblings.size();
+           ++sibling_index) {
+        auto* sibling_renderer =
+            static_cast<PlatformRendererDarwin*>(siblings[sibling_index].get());
+        UIView<LynxRendererHost>* sibling_view = sibling_renderer->GetUIView();
+        if (sibling_view.superview == view) {
+          next_sibling_view = sibling_view;
+          break;
+        }
+      }
+
+      if (next_sibling_view != nil) {
+        [view insertSubview:child_view belowSubview:next_sibling_view];
+        // Keep the next sibling's decoration layers grouped with its host after
+        // inserting another view immediately below that host layer.
+        [[next_sibling_view renderer] reattachHostDecorationLayers];
+      } else {
+        [view addSubview:child_view];
+      }
+    }
   }
   [[child_view renderer] reattachHostDecorationLayers];
 }

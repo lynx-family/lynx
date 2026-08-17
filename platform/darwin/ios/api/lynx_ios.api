@@ -3320,6 +3320,10 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer()::detachHostDecorationLayers();
   public void LynxRenderer()::reattachHostDecorationLayers();
   public void LynxRenderer()::syncHostDecorationLayers();
+  public CGPoint LynxRenderer()::rendererLayoutOrigin();
+  public void LynxRenderer()::updateRendererLayoutFrame:(CGRect frame);
+  public void LynxRenderer()::updateRendererLayoutSize:(CGSize size);
+  public void LynxRenderer()::updateRendererLayoutCenter:(CGPoint center);
   public void LynxRenderer()::updateLayoutOffsetIfNeeded:(CGPoint offset);
   public void LynxRenderer()::applySubtreeProperties:count:(const lynx::tasm::SubtreeProperty *properties, [count] size_t count);
   public void LynxRenderer()::applyTransform:(const float *transform);
