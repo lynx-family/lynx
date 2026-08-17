@@ -161,11 +161,10 @@ public class TextRenderer {
   }
 
   private boolean convertTailColor(SpannableStringBuilder text, int index) {
-    ForegroundColorSpan[] baseSpans = text.getSpans(0, 1, ForegroundColorSpan.class);
-    if (baseSpans == null || baseSpans.length == 0) {
+    Integer baseColor = mKey.getAttributes().mFontColor;
+    if (baseColor == null) {
       return false;
     }
-    int baseColor = baseSpans[0].getForegroundColor();
     text.setSpan(
         new ForegroundColorSpan(baseColor), index, text.length(), Spanned.SPAN_INCLUSIVE_EXCLUSIVE);
     return true;
