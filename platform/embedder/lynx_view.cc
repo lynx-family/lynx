@@ -59,18 +59,13 @@ class LynxViewEventSimulationTargetImpl final
  public:
   explicit LynxViewEventSimulationTargetImpl(lynx_view_t* view) : view_(view) {}
 
-  int GetNodeForLocation(int x, int y) override {
-    return view_->lynx_template_renderer->GetNodeForLocation(x, y);
-  }
-
-  void SendTouchEvent(const std::string& name, int tag, int x, int y) override {
-    view_->lynx_template_renderer->SendTouchEvent(name, tag, x, y, x, y, x, y);
-  }
-
-  void EmulateMouseEvent(const std::string& event_name, float x, float y,
-                         float delta_x, float delta_y) override {
-    view_->lynx_ui_renderer->EmulateMouseEvent(event_name.c_str(), x, y,
-                                               delta_x, delta_y);
+  void DispatchSyntheticPointerEvent(const std::string& event_type, int x,
+                                     int y, const std::string& button,
+                                     float delta_x, float delta_y,
+                                     int modifiers, int click_count) override {
+    view_->lynx_ui_renderer->DispatchSyntheticPointerEvent(
+        event_type.c_str(), x, y, button.c_str(), delta_x, delta_y, modifiers,
+        click_count);
   }
 
   void Focus(int node_id) override { view_->lynx_ui_renderer->Focus(node_id); }

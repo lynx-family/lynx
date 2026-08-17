@@ -12,6 +12,7 @@
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/platform/darwin/macos/framework/Source/ClayViewProvider_Internal.h"
+#include "clay/shell/platform/darwin/macos/framework/Source/FlutterEngine_Internal.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterTextInputPlugin.h"
 #include "clay/ui/component/view_context.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -432,6 +433,14 @@ void LynxUIRendererImpl::RegisterIMEHandler(void* handler, void* opaque) {
   }
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   [lynx_ui_renderer RegisterIMEHandler:handler arg:opaque];
+}
+
+void LynxUIRendererImpl::SendPointerEvent(const ClayPointerEvent& event) {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  [lynx_ui_renderer.clayViewProvider.engine sendPointerEvent:event];
 }
 
 void LynxUIRendererImpl::AddClient(LynxViewClients* client) {
