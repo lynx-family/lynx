@@ -22,6 +22,7 @@ import com.lynx.tasm.performance.timing.EmbeddedTimingCollector;
 import com.lynx.tasm.performance.timing.TimingConstants;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -127,6 +128,7 @@ public class PerformanceControllerTest {
       embeddedController.setEmbeddedMode(true);
       embeddedController.setInstanceId(instanceId);
       embeddedController.setPerformanceObserver(strongPerformanceObserver);
+      updateEmbeddedGenericInfo(instanceId);
       embeddedController.setEmbeddedTiming(
           TimingConstants.LOAD_BUNDLE_START, 2_000_000, "pipeline-id");
       embeddedController.setEmbeddedTiming(TimingConstants.PAINT_END, 2_100_000, "pipeline-id");
@@ -145,6 +147,8 @@ public class PerformanceControllerTest {
       Map<String, ? extends Object> props = receivedProps.get();
       assertEquals("pipeline", props.get("entryType"));
       assertEquals("loadBundle", props.get("name"));
+      assertEquals("embedded://page", props.get(LynxEventReporter.PROP_NAME_URL));
+      assertEquals("embedded://relative", props.get(LynxEventReporter.PROP_NAME_RELATIVE_PATH));
       assertEquals(40.123, ((Number) props.get("loadBundle")).doubleValue(), 0.0001);
       assertEquals(100.0, ((Number) props.get("lynxFcp")).doubleValue(), 0.0001);
       assertEquals(1, observerCount.get());
@@ -157,6 +161,16 @@ public class PerformanceControllerTest {
     } finally {
       LynxEventReporter.removeObserver(eventObserver);
     }
+  }
+
+  private void updateEmbeddedGenericInfo(int instanceId) throws Exception {
+    Map<String, Object> genericInfo = new HashMap<>();
+    genericInfo.put(LynxEventReporter.PROP_NAME_URL, "embedded://page");
+    genericInfo.put(LynxEventReporter.PROP_NAME_RELATIVE_PATH, "embedded://relative");
+    LynxEventReporter.updateGenericInfo(genericInfo, instanceId);
+    CountDownLatch genericInfoLatch = new CountDownLatch(1);
+    LynxEventReporter.runOnReportThread(genericInfoLatch::countDown);
+    assertTrue(genericInfoLatch.await(5, TimeUnit.SECONDS));
   }
 
   @Test

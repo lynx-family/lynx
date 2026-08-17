@@ -3959,6 +3959,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxShadowNodeOwner * LynxTemplateRender()::shadowNodeOwner();
   public LynxUIOwner * LynxTemplateRender()::uiOwner();
   public LynxPerformanceController * LynxTemplateRender()::performanceController();
+  public void LynxTemplateRender()::updateGenericInfoURL:(NSString *url);
   public void LynxTemplateRender()::setAttachLynxPageUICallback:(attachLynxPageUI callback);
   public void LynxTemplateRender()::updateFrame:(CGRect frame);
   public LynxViewBuilderBlock LynxTemplateRender()::getLynxViewBuilderBlock();
