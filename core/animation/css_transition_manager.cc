@@ -373,7 +373,7 @@ const char* ConvertAnimationPropertyTypeToString(
   }
 }
 
-base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
+base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForAnimation(
     tasm::CSSPropertyID css_id, const starlight::CanonicalComputedValue& value,
     const tasm::CssMeasureContext& context) {
   using Kind = starlight::CanonicalComputedValue::Kind;
@@ -560,6 +560,12 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
     default:
       return {};
   }
+}
+
+base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
+    tasm::CSSPropertyID css_id, const starlight::CanonicalComputedValue& value,
+    const tasm::CssMeasureContext& context) {
+  return ConvertCanonicalComputedValueForAnimation(css_id, value, context);
 }
 
 void CSSTransitionManager::setTransitionData(

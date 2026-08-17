@@ -47,17 +47,6 @@ void TransformKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
   }
 }
 
-transforms::TransformOperations
-TransformKeyframe::GetTransformKeyframeValueInElement(tasm::Element* element) {
-  tasm::CSSValue transform =
-      GetStyleInElement(tasm::kPropertyIDTransform, element);
-  if (transform.IsArray()) {
-    return transforms::TransformOperations(element, transform);
-  } else {
-    return transforms::TransformOperations(element);
-  }
-}
-
 bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
                                  const tasm::CSSValue& value,
                                  tasm::Element* element) {
@@ -128,22 +117,25 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
       static_cast<TransformKeyframe*>(keyframes_[i].get());
   TransformKeyframe* keyframe_next =
       static_cast<TransformKeyframe*>(keyframes_[i + 1].get());
-  auto transform_in_element = transforms::TransformOperations(nullptr);
+  // A synthesized endpoint must use the animation's underlying transform,
+  // rather than the final computed style that may contain the previous
+  // animation sample. The new styling pipeline keeps a separate live base
+  // style; the legacy pipeline uses the value captured when the curve is
+  // created.
+  tasm::CSSValue underlying_value;
+  auto underlying_transform = transforms::TransformOperations(nullptr);
+  if (keyframe->IsEmpty() || keyframe_next->IsEmpty()) {
+    underlying_value = GetUnderlyingValue();
+    underlying_transform =
+        transforms::TransformOperations(element_, underlying_value);
+  }
 
   if (std::fabs(progress - 0.0f) < std::numeric_limits<float>::epsilon()) {
-    return keyframe->IsEmpty()
-               ? GetStyleInElement(tasm::kPropertyIDTransform, element_)
-               : keyframe->CSSValue();
+    return keyframe->IsEmpty() ? underlying_value : keyframe->CSSValue();
   }
   if (std::fabs(progress - 1.0f) < std::numeric_limits<float>::epsilon()) {
-    return keyframe_next->IsEmpty()
-               ? GetStyleInElement(tasm::kPropertyIDTransform, element_)
-               : keyframe_next->CSSValue();
-  }
-
-  if (keyframe->IsEmpty() || keyframe_next->IsEmpty()) {
-    transform_in_element =
-        TransformKeyframe::GetTransformKeyframeValueInElement(element_);
+    return keyframe_next->IsEmpty() ? underlying_value
+                                    : keyframe_next->CSSValue();
   }
 
   // Keep transform keyframes in raw CSS form until sampling, then parse them
@@ -160,9 +152,9 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
   }
 
   transforms::TransformOperations& start_transform =
-      keyframe->IsEmpty() ? transform_in_element : *keyframe->Value();
+      keyframe->IsEmpty() ? underlying_transform : *keyframe->Value();
   transforms::TransformOperations& end_transform =
-      keyframe_next->IsEmpty() ? transform_in_element : *keyframe_next->Value();
+      keyframe_next->IsEmpty() ? underlying_transform : *keyframe_next->Value();
 
   transforms::TransformOperations blended_result =
       end_transform.Blend(start_transform, progress);

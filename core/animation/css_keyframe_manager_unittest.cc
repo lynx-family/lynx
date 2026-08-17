@@ -133,12 +133,38 @@ class CSSKeyframeManagerTest : public ::testing::Test {
         *element->keyframes_map_, name, lepus::Value(keyframes), configs);
   }
 
+  void UpdateToOnlyOpacityKeyframes(tasm::Element* element,
+                                    const base::String& name, double to) {
+    auto keyframes = lepus::Dictionary::Create();
+    keyframes->SetValue("0", lepus::Value(lepus::Dictionary::Create()));
+    auto to_frame = lepus::Dictionary::Create();
+    to_frame->SetValue("opacity", lepus::Value(to));
+    keyframes->SetValue("100", lepus::Value(to_frame));
+
+    lynx::tasm::CSSParserConfigs configs;
+    starlight::CSSStyleUtils::UpdateCSSKeyframes(
+        *element->keyframes_map_, name, lepus::Value(keyframes), configs);
+  }
+
   void UpdateLeftKeyframes(tasm::Element* element, const base::String& name,
                            const char* from, const char* to) {
     auto keyframes = lepus::Dictionary::Create();
     auto from_frame = lepus::Dictionary::Create();
     from_frame->SetValue("left", lepus::Value(from));
     keyframes->SetValue("0", lepus::Value(from_frame));
+    auto to_frame = lepus::Dictionary::Create();
+    to_frame->SetValue("left", lepus::Value(to));
+    keyframes->SetValue("100", lepus::Value(to_frame));
+
+    lynx::tasm::CSSParserConfigs configs;
+    starlight::CSSStyleUtils::UpdateCSSKeyframes(
+        *element->keyframes_map_, name, lepus::Value(keyframes), configs);
+  }
+
+  void UpdateToOnlyLeftKeyframes(tasm::Element* element,
+                                 const base::String& name, const char* to) {
+    auto keyframes = lepus::Dictionary::Create();
+    keyframes->SetValue("0", lepus::Value(lepus::Dictionary::Create()));
     auto to_frame = lepus::Dictionary::Create();
     to_frame->SetValue("left", lepus::Value(to));
     keyframes->SetValue("100", lepus::Value(to_frame));
@@ -237,6 +263,9 @@ class CSSKeyframeManagerTest : public ::testing::Test {
 
 TEST_F(CSSKeyframeManagerTest, ConstructModel) {
   auto test_element = manager->CreateFiberElement("view");
+  const auto underlying_opacity = CSSValue(0.75f, CSSValuePattern::NUMBER);
+  ASSERT_TRUE(test_element->computed_css_style()->SetValue(kPropertyIDOpacity,
+                                                           underlying_opacity));
   auto test_manager = InitTestKeyframeManager(test_element.get());
   auto test_curve = animation::KeyframedOpacityAnimationCurve::Create();
   auto test_type = animation::AnimationCurve::CurveType::OPACITY;
@@ -248,6 +277,140 @@ TEST_F(CSSKeyframeManagerTest, ConstructModel) {
             gfx::TimingFunction::Type::LINEAR);
   EXPECT_EQ(test_model->animation_curve()->scaled_duration(),
             test_animation->get_animation_data().duration / 1000.0);
+  EXPECT_EQ(test_model->animation_curve()->underlying_value_,
+            underlying_opacity);
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       NewPipelineRefreshesUnderlyingValueAfterBaseResetAndUpdate) {
+  auto test_element = InitElement();
+  auto* base_style = test_element->computed_css_style();
+  ASSERT_TRUE(base_style->SetValue(kPropertyIDOpacity,
+                                   CSSValue(0.5f, CSSValuePattern::NUMBER)));
+  UpdateToOnlyOpacityKeyframes(test_element.get(), base::String("test"), 0);
+
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("test"), 1000, 0, starlight::TimingFunctionData(), -1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SyncAnimationDataForNewPipeline(
+      animation_data, false, &base_style->GetResolvedValues(), nullptr, nullptr,
+      base_style);
+
+  auto start_time = TimePointFromMs(1000);
+  test_manager->CollectAnimationUpdatesForNewPipeline(start_time);
+  auto first_mid_time = TimePointFromMs(1500);
+  auto first_mid_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(first_mid_time);
+  const auto* first_mid_opacity =
+      FindSampledStyle(first_mid_sample, kPropertyIDOpacity);
+  ASSERT_NE(nullptr, first_mid_opacity);
+  EXPECT_NEAR(0.25, first_mid_opacity->AsNumber(), 0.001);
+
+  ASSERT_TRUE(base_style->ResetValue(kPropertyIDOpacity));
+  EXPECT_EQ(base_style->GetResolvedValues().end(),
+            base_style->GetResolvedValues().find(kPropertyIDOpacity));
+  test_manager->SyncAnimationDataForNewPipeline(
+      animation_data, false, &base_style->GetResolvedValues(), nullptr, nullptr,
+      base_style);
+  auto reset_mid_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(first_mid_time);
+  const auto* reset_mid_opacity =
+      FindSampledStyle(reset_mid_sample, kPropertyIDOpacity);
+  ASSERT_NE(nullptr, reset_mid_opacity);
+  EXPECT_NEAR(0.5, reset_mid_opacity->AsNumber(), 0.001);
+
+  ASSERT_TRUE(base_style->SetValue(kPropertyIDOpacity,
+                                   CSSValue(0.8f, CSSValuePattern::NUMBER)));
+  test_manager->SyncAnimationDataForNewPipeline(
+      animation_data, false, &base_style->GetResolvedValues(), nullptr, nullptr,
+      base_style);
+  auto updated_mid_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(first_mid_time);
+  const auto* updated_mid_opacity =
+      FindSampledStyle(updated_mid_sample, kPropertyIDOpacity);
+  ASSERT_NE(nullptr, updated_mid_opacity);
+  EXPECT_NEAR(0.4, updated_mid_opacity->AsNumber(), 0.001);
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       LegacyPipelineRefreshesUnderlyingValueAfterBaseResetAndUpdate) {
+  auto test_element = manager->CreateFiberElement("view");
+  ASSERT_TRUE(test_element->computed_css_style()->SetValue(
+      kPropertyIDOpacity, CSSValue(0.5f, CSSValuePattern::NUMBER)));
+  UpdateToOnlyOpacityKeyframes(test_element.get(), base::String("test"), 0);
+
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("test"), 1000, 0, starlight::TimingFunctionData(), -1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SetAnimationDataAndPlay(animation_data);
+
+  ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  auto* model = test_manager->animations_map()[base::String("test")]
+                    ->keyframe_effect()
+                    ->GetKeyframeModelByCurveType(
+                        animation::AnimationCurve::CurveType::OPACITY);
+  ASSERT_NE(nullptr, model);
+  auto* curve = static_cast<animation::KeyframedOpacityAnimationCurve*>(
+      model->animation_curve());
+  test_element->css_keyframe_manager_ = std::move(test_manager);
+
+  test_element->SetStyleInternal(kPropertyIDOpacity,
+                                 CSSValue(0.8f, CSSValuePattern::NUMBER));
+  auto mid_time = fml::TimeDelta::FromSecondsF(0.5);
+  EXPECT_NEAR(0.4, curve->GetValue(mid_time).AsNumber(), 0.001);
+
+  test_element->FlushAnimatedStyleInternal(
+      kPropertyIDOpacity, CSSValue(0.4f, CSSValuePattern::NUMBER));
+  EXPECT_NEAR(0.4, curve->GetValue(mid_time).AsNumber(), 0.001);
+
+  test_element->ResetStyleInternal(kPropertyIDOpacity);
+  EXPECT_NEAR(0.5, curve->GetValue(mid_time).AsNumber(), 0.001);
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       LegacyLayoutOnlyResetUsesDefaultUnderlyingValue) {
+  auto test_element = manager->CreateFiberElement("view");
+  ASSERT_FALSE(test_element->EnableLayoutInElementMode());
+  UpdateToOnlyLeftKeyframes(test_element.get(), base::String("test"), "100px");
+
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("test"), 1000, 0, starlight::TimingFunctionData(), -1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SetAnimationDataAndPlay(animation_data);
+
+  ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  auto* model = test_manager->animations_map()[base::String("test")]
+                    ->keyframe_effect()
+                    ->GetKeyframeModelByCurveType(
+                        animation::AnimationCurve::CurveType::LEFT);
+  ASSERT_NE(nullptr, model);
+  auto* curve = static_cast<animation::KeyframedLayoutAnimationCurve*>(
+      model->animation_curve());
+  test_element->css_keyframe_manager_ = std::move(test_manager);
+
+  test_element->SetStyleInternal(kPropertyIDLeft,
+                                 CSSValue(20.f, CSSValuePattern::PX));
+  const auto& resolved_values =
+      test_element->computed_css_style()->GetResolvedValues();
+  EXPECT_EQ(resolved_values.end(), resolved_values.find(kPropertyIDLeft));
+  auto mid_time = fml::TimeDelta::FromSecondsF(0.5);
+  EXPECT_NEAR(60.f, curve->GetValue(mid_time).AsNumber(), 0.001);
+
+  test_element->ResetStyleInternal(kPropertyIDLeft);
+  EXPECT_EQ(resolved_values.end(), resolved_values.find(kPropertyIDLeft));
+  EXPECT_NEAR(100.f, curve->GetValue(mid_time).AsNumber(), 0.001);
 }
 
 TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
@@ -676,6 +839,58 @@ TEST_F(CSSKeyframeManagerTest,
 
   ASSERT_NE(nullptr, paused_opacity);
   EXPECT_NEAR(mid_opacity->AsNumber(), paused_opacity->AsNumber(), 0.001);
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       PausedAnimationRefreshesUnderlyingValueAtFrozenSampleTime) {
+  auto test_element = InitElement();
+  auto* base_style = test_element->computed_css_style();
+  ASSERT_TRUE(base_style->SetValue(kPropertyIDOpacity,
+                                   CSSValue(0.5f, CSSValuePattern::NUMBER)));
+  UpdateToOnlyOpacityKeyframes(test_element.get(), base::String("test"), 0);
+
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> animation_data;
+  animation_data.emplace_back(InitAnimationData(
+      base::String("test"), 1000, 0, starlight::TimingFunctionData(), -1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SyncAnimationDataForNewPipeline(
+      animation_data, false, &base_style->GetResolvedValues(), nullptr, nullptr,
+      base_style);
+
+  auto start_time = TimePointFromMs(1000);
+  test_manager->CollectAnimationUpdatesForNewPipeline(start_time);
+  auto mid_time = TimePointFromMs(1500);
+  auto mid_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(mid_time);
+  const auto* mid_opacity =
+      FindSampledStyle(mid_sample, tasm::kPropertyIDOpacity);
+  ASSERT_NE(nullptr, mid_opacity);
+  EXPECT_NEAR(0.25, mid_opacity->AsNumber(), 0.001);
+  test_manager->TakePendingAnimationEventsForNewPipeline();
+
+  animation_data[0].play_state = starlight::AnimationPlayStateType::kPaused;
+  test_manager->SyncAnimationDataForNewPipeline(
+      animation_data, false, &base_style->GetResolvedValues(), nullptr, nullptr,
+      base_style);
+  auto dummy_time = animation::Animation::GetAnimationDummyStartTime();
+  test_manager->CollectAnimationUpdatesForNewPipeline(dummy_time);
+  test_manager->TakePendingAnimationEventsForNewPipeline();
+
+  ASSERT_TRUE(base_style->ResetValue(kPropertyIDOpacity));
+  test_manager->SyncAnimationDataForNewPipeline(
+      animation_data, false, &base_style->GetResolvedValues(), nullptr, nullptr,
+      base_style);
+  auto refreshed_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(dummy_time);
+  const auto* refreshed_opacity =
+      FindSampledStyle(refreshed_sample, tasm::kPropertyIDOpacity);
+
+  ASSERT_NE(nullptr, refreshed_opacity);
+  EXPECT_NEAR(0.5, refreshed_opacity->AsNumber(), 0.001);
+  EXPECT_TRUE(test_manager->TakePendingAnimationEventsForNewPipeline().empty());
 }
 
 TEST_F(CSSKeyframeManagerTest,

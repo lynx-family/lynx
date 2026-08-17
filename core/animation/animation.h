@@ -85,6 +85,9 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void UpdateAnimationData(starlight::AnimationData& data);
 
+  void UpdateUnderlyingValue(AnimationCurve::CurveType type,
+                             const tasm::CSSValue& value);
+
   starlight::AnimationData* animation_data() { return &animation_data_; }
   const starlight::AnimationData* animation_data() const {
     return &animation_data_;

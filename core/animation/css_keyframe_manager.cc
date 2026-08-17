@@ -80,12 +80,43 @@ CSSKeyframeManager::CSSKeyframeManager(tasm::Element* element) {
   element_ = element;
 }
 
+namespace {
+
+base::flex_optional<tasm::CSSValue> GetUnderlyingValueFromComputedStyle(
+    tasm::CSSPropertyID id, const starlight::ComputedCSSStyle& computed_style,
+    const tasm::StyleMap* underlying_layout_only_styles) {
+  if (underlying_layout_only_styles != nullptr) {
+    auto iter = underlying_layout_only_styles->find(id);
+    if (iter != underlying_layout_only_styles->end()) {
+      return iter->second;
+    }
+  }
+
+  const auto& resolved_values = computed_style.GetResolvedValues();
+  auto resolved_iter = resolved_values.find(id);
+  if (resolved_iter != resolved_values.end()) {
+    return resolved_iter->second;
+  }
+
+  auto canonical_value = computed_style.ExtractCanonicalComputedValue(id);
+  if (!canonical_value.has_value()) {
+    return {};
+  }
+  return ConvertCanonicalComputedValueForAnimation(
+      id, *canonical_value, computed_style.GetMeasureContext());
+}
+
+}  // namespace
+
 KeyframeModel* CSSKeyframeManager::ConstructModel(
     std::unique_ptr<AnimationCurve> curve, AnimationCurve::CurveType type,
     Animation* animation) {
   curve->SetElement(element_);
-  // add type here
   curve->type_ = type;
+  // Synthetic endpoints must use an unanimated snapshot instead of values
+  // written back by a preceding animation sample.
+  curve->SetUnderlyingValue(
+      GetStyleInElement(static_cast<tasm::CSSPropertyID>(type), element_));
   std::unique_ptr<KeyframeModel> new_keyframe_model =
       KeyframeModel::Create(std::move(curve));
   new_keyframe_model->UpdateAnimationData(&animation->get_animation_data());
@@ -366,12 +397,50 @@ void CSSKeyframeManager::SyncAnimationDataForNewPipeline(
     base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,
     const tasm::StyleMap* new_base_resolved_styles,
     const tasm::StyleMap* new_underlying_layout_only_styles,
-    const tasm::CustomPropertiesMap* new_base_custom_properties) {
+    const tasm::CustomPropertiesMap* new_base_custom_properties,
+    const starlight::ComputedCSSStyle* new_base_style) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               KEYFRAME_MANAGER_SYNC_ANIMATION_DATA_FOR_NEW_PIPELINE);
   SetAnimationDataAndPlayInternal(
       anim_data, force_rebuild, false, true, new_base_resolved_styles,
       new_underlying_layout_only_styles, new_base_custom_properties);
+  if (new_base_style != nullptr) {
+    UpdateUnderlyingValuesFromComputedStyle(*new_base_style,
+                                            new_underlying_layout_only_styles);
+  }
+}
+
+void CSSKeyframeManager::UpdateUnderlyingValue(tasm::CSSPropertyID id,
+                                               const tasm::CSSValue& value) {
+  const auto curve_type = static_cast<AnimationCurve::CurveType>(id);
+  for (auto& animation_iter : animations_map_) {
+    animation_iter.second->UpdateUnderlyingValue(curve_type, value);
+  }
+}
+
+void CSSKeyframeManager::UpdateUnderlyingValueFromComputedStyle(
+    tasm::CSSPropertyID id, const starlight::ComputedCSSStyle& computed_style) {
+  auto value = GetUnderlyingValueFromComputedStyle(id, computed_style, nullptr);
+  if (value.has_value()) {
+    UpdateUnderlyingValue(id, *value);
+  }
+}
+
+void CSSKeyframeManager::UpdateUnderlyingValuesFromComputedStyle(
+    const starlight::ComputedCSSStyle& computed_style,
+    const tasm::StyleMap* underlying_layout_only_styles) {
+  for (auto& animation_iter : animations_map_) {
+    for (auto& model :
+         animation_iter.second->keyframe_effect()->keyframe_models()) {
+      auto* curve = model->animation_curve();
+      auto value = GetUnderlyingValueFromComputedStyle(
+          static_cast<tasm::CSSPropertyID>(curve->Type()), computed_style,
+          underlying_layout_only_styles);
+      if (value.has_value()) {
+        animation_iter.second->UpdateUnderlyingValue(curve->Type(), *value);
+      }
+    }
+  }
 }
 
 AnimationSampleForNewPipeline

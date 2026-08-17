@@ -250,25 +250,6 @@ TEST_F(TransformAnimationCurveTest, CreateTransformKeyframe) {
   EXPECT_EQ(test_frame->Time(), fml::TimeDelta());
 }
 
-TEST_F(TransformAnimationCurveTest, GetTransformKeyframeValueInElement) {
-  auto element1 = manager->CreateFiberElement("view");
-  auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
-  lynx::tasm::StyleMap output1;
-  lynx::tasm::CSSParserConfigs configs;
-  auto impl1 =
-      lepus::Value("translate3D(1rem, 2rem, 3rem) scale(0.1) rotate(10deg)");
-  bool ret1 = lynx::tasm::UnitHandler::Process(id, impl1, output1, configs);
-  EXPECT_TRUE(ret1);
-  EXPECT_FALSE(output1.empty());
-  auto raw_value = output1[id];
-  element1->ConsumeStyle(output1, nullptr);
-  auto transform_in_element_1 =
-      TransformKeyframe::GetTransformKeyframeValueInElement(element1.get());
-  transforms::TransformOperations operations(element1.get(), raw_value);
-  EXPECT_EQ(operations.size(), static_cast<size_t>(3));
-  EXPECT_EQ(transform_in_element_1.size(), operations.size());
-}
-
 TEST_F(TransformAnimationCurveTest, SetValue) {
   auto test_element_ptr = InitTestElement();
   auto test_element = test_element_ptr.get();
@@ -402,6 +383,42 @@ TEST_F(TransformAnimationCurveTest, GetValue) {
   EXPECT_EQ(test_value3->get(0).Number(),
             (int)starlight::TransformType::kScale);
   EXPECT_FLOAT_EQ(test_value3->get(1).Number(), 1.1);
+}
+
+TEST_F(TransformAnimationCurveTest,
+       ToOnlyTransformRepeatsFromStableUnderlyingStyle) {
+  auto test_element_ptr = InitTestElement();
+  auto* test_element = test_element_ptr.get();
+  auto curve = KeyframedTransformAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::TRANSFORM;
+  curve->SetElement(test_element);
+  curve->SetUnderlyingValue(
+      GetStyleInElement(lynx::tasm::kPropertyIDTransform, test_element));
+
+  auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
+  auto start_frame = TransformKeyframe::Create(fml::TimeDelta(), nullptr);
+  curve->AddKeyframe(std::move(start_frame));
+
+  lynx::tasm::StyleMap output;
+  lynx::tasm::CSSParserConfigs configs;
+  ASSERT_TRUE(lynx::tasm::UnitHandler::Process(
+      id, lepus::Value("rotate(360deg)"), output, configs));
+  auto end_frame =
+      TransformKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  ASSERT_TRUE(end_frame->SetValue(id, output[id], test_element));
+  curve->AddKeyframe(std::move(end_frame));
+
+  fml::TimeDelta first_iteration_time = fml::TimeDelta::FromSecondsF(0.5f);
+  const auto first_iteration_value = curve->GetValue(first_iteration_time);
+
+  // The legacy new-animator path writes the sampled value into the final
+  // computed style. A missing keyframe must still read the underlying style on
+  // the next iteration instead of treating this animated value as its new
+  // starting point.
+  ASSERT_TRUE(
+      test_element->computed_css_style()->SetValue(id, first_iteration_value));
+  fml::TimeDelta second_iteration_time = fml::TimeDelta::FromSecondsF(0.5f);
+  EXPECT_EQ(first_iteration_value, curve->GetValue(second_iteration_time));
 }
 
 TEST_F(TransformAnimationCurveTest, MakeEmptyKeyframe) {

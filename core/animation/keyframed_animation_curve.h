@@ -45,7 +45,8 @@ class LayoutKeyframe : public gfx::LengthKeyframe {
  public:
   static std::pair<std::optional<gfx::LengthValue>, tasm::CSSValue>
   GetLayoutKeyframeValue(LayoutKeyframe* keyframe, tasm::CSSPropertyID id,
-                         tasm::Element* element);
+                         tasm::Element* element,
+                         const tasm::CSSValue& underlying_value);
   static std::unique_ptr<LayoutKeyframe> Create(
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
@@ -81,7 +82,7 @@ class OpacityKeyframe : public gfx::FloatKeyframe {
  public:
   constexpr static float kDefaultOpacity = 1.0f;
   static float GetOpacityKeyframeValue(OpacityKeyframe* keyframe,
-                                       tasm::Element* element);
+                                       const tasm::CSSValue& underlying_value);
 
   static std::unique_ptr<OpacityKeyframe> Create(
       fml::TimeDelta time,
@@ -111,7 +112,7 @@ class ColorKeyframe : public gfx::ColorKeyframe {
   constexpr static uint32_t kDefaultBackgroundColor = 0x0;
   constexpr static uint32_t kDefaultTextColor = 0xFF000000;
   static uint32_t GetColorKeyframeValue(ColorKeyframe*, tasm::CSSPropertyID id,
-                                        tasm::Element*);
+                                        const tasm::CSSValue& underlying_value);
   static std::unique_ptr<ColorKeyframe> Create(
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
@@ -154,7 +155,7 @@ class FloatKeyframe : public gfx::FloatKeyframe {
  public:
   constexpr static float kDefaultFloatValue = 0.0f;
   static float GetFloatKeyframeValue(FloatKeyframe*, tasm::CSSPropertyID id,
-                                     tasm::Element*);
+                                     const tasm::CSSValue& underlying_value);
   static std::unique_ptr<FloatKeyframe> Create(
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
@@ -179,9 +180,9 @@ class KeyframedFloatAnimationCurve : public FloatAnimationCurve {
 //====Filter keyframe ====
 class FilterKeyframe : public gfx::FilterKeyframe {
  public:
-  static tasm::CSSValue GetFilterKeyframeValue(FilterKeyframe* keyframe,
-                                               tasm::CSSPropertyID id,
-                                               tasm::Element* element);
+  static tasm::CSSValue GetFilterKeyframeValue(
+      FilterKeyframe* keyframe, tasm::CSSPropertyID id,
+      const tasm::CSSValue& underlying_value);
 
   static std::unique_ptr<FilterKeyframe> Create(
       fml::TimeDelta time,
@@ -219,9 +220,9 @@ class BoxShadowKeyframe : public gfx::Keyframe {
  public:
   using ShadowList = base::InlineVector<starlight::ShadowData, 1>;
 
-  static tasm::CSSValue GetBoxShadowKeyframeValue(BoxShadowKeyframe* keyframe,
-                                                  tasm::CSSPropertyID id,
-                                                  tasm::Element* element);
+  static tasm::CSSValue GetBoxShadowKeyframeValue(
+      BoxShadowKeyframe* keyframe, tasm::CSSPropertyID id,
+      const tasm::CSSValue& underlying_value);
 
   static std::unique_ptr<BoxShadowKeyframe> Create(
       fml::TimeDelta time,
@@ -276,7 +277,7 @@ class BackgroundPositionKeyframe : public gfx::Vec2Keyframe {
  public:
   static tasm::CSSValue GetBackgroundPositionKeyframeValue(
       BackgroundPositionKeyframe* keyframe, tasm::CSSPropertyID id,
-      tasm::Element* element);
+      const tasm::CSSValue& underlying_value);
 
   static std::unique_ptr<BackgroundPositionKeyframe> Create(
       fml::TimeDelta time,
@@ -318,7 +319,7 @@ class TransformOriginKeyframe : public gfx::Vec2Keyframe {
  public:
   static tasm::CSSValue GetTransformOriginKeyframeValue(
       TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
-      tasm::Element* element);
+      const tasm::CSSValue& underlying_value);
 
   static std::unique_ptr<TransformOriginKeyframe> Create(
       fml::TimeDelta time,
@@ -352,7 +353,7 @@ class KeyframedTransformOriginAnimationCurve
 class VisibilityKeyframe : public gfx::Keyframe {
  public:
   static starlight::VisibilityType GetVisibilityKeyframeValue(
-      VisibilityKeyframe* keyframe, tasm::Element* element);
+      VisibilityKeyframe* keyframe, const tasm::CSSValue& underlying_value);
 
   static std::unique_ptr<VisibilityKeyframe> Create(
       fml::TimeDelta time,

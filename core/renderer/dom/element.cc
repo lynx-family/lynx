@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "base/include/compiler_specific.h"
 #include "base/include/no_destructor.h"
 #include "base/include/path_utils.h"
@@ -551,6 +552,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
     if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
       UpdateFixedNodeSet();
     }
+    if (!is_applying_animation_style_ && css_keyframe_manager_ != nullptr) {
+      css_keyframe_manager_->UpdateUnderlyingValue(css_id, value);
+    }
     return;
   }
 
@@ -590,6 +594,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
   }
   if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
     UpdateFixedNodeSet();
+  }
+  if (!is_applying_animation_style_ && css_keyframe_manager_ != nullptr) {
+    css_keyframe_manager_->UpdateUnderlyingValue(css_id, value);
   }
 }
 
@@ -720,6 +727,10 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
     if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
       UpdateFixedNodeSet();
     }
+    if (!is_applying_animation_style_ && css_keyframe_manager_ != nullptr) {
+      css_keyframe_manager_->UpdateUnderlyingValueFromComputedStyle(
+          css_id, *computed_css_style());
+    }
     return processed;
   }
   has_layout_only_props_ = false;
@@ -733,6 +744,10 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
 
   if (css_id == kPropertyIDPosition && was_fixed != is_fixed_) {
     UpdateFixedNodeSet();
+  }
+  if (!is_applying_animation_style_ && css_keyframe_manager_ != nullptr) {
+    css_keyframe_manager_->UpdateUnderlyingValueFromComputedStyle(
+        css_id, *computed_css_style());
   }
   return processed;
 }
@@ -3351,6 +3366,8 @@ void Element::OnPatchFinish(std::shared_ptr<PipelineOptions>& option) {
 void Element::FlushAnimatedStyleInternal(tasm::CSSPropertyID id,
                                          const tasm::CSSValue& value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_FLUSH_ANIMATED_STYLE);
+  base::AutoReset<bool> animation_style_scope(&is_applying_animation_style_,
+                                              true);
   auto trans_id = ConvertRtlCSSPropertyID(id).second;
   if (value != CSSValue()) {
     SetStyleInternal(trans_id, value);
