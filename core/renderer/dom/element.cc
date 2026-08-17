@@ -2870,6 +2870,10 @@ Element* Element::FindFirstNonWrapperChildOrSibling() {
 // TODO: Place logic in Element for now. If other module need to apply
 // same logic, move it to css_property
 Element::DirectionMapping Element::CheckDirectionMapping(CSSPropertyID css_id) {
+  if (!CSSProperty::IsPropertyValid(css_id)) {
+    return DirectionMapping();
+  }
+
   static const base::NoDestructor<
       std::array<Element::DirectionMapping, kPropertyEnd>>
       kDirectionMappingProperty([]() {
