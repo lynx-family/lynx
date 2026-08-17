@@ -267,8 +267,13 @@ void UIDelegateHarmony::OnLynxCreate(
   lynx_context->OnLynxCreate(
       list_engine_proxy, engine_proxy, runtime_proxy, perf_controller_proxy,
       event_tracker_proxy, resource_loader, ui_task_runner, layout_task_runner);
-  node_owner_->SetTriggerLayoutCallback(
-      [layout_proxy]() { layout_proxy->TriggerLayout(); });
+  if (is_embedded_mode) {
+    node_owner_->SetTriggerLayoutCallback(
+        [engine_proxy]() { engine_proxy->TriggerLayout(); });
+  } else {
+    node_owner_->SetTriggerLayoutCallback(
+        [layout_proxy]() { layout_proxy->TriggerLayout(); });
+  }
 }
 
 void UIDelegateHarmony::OnUpdateScreenMetrics(float width, float height,

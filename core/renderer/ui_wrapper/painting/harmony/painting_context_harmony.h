@@ -17,6 +17,7 @@
 namespace lynx {
 namespace tasm {
 class LynxTemplateBundle;
+class TextMeasurerHarmony;
 
 class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
  public:
@@ -154,6 +155,7 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
 
  private:
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
+  std::unique_ptr<TextMeasurerHarmony> text_measurer_;
   void Enqueue(shell::UIOperation&& op);
 };
 
