@@ -5139,7 +5139,8 @@ void Element::UpdateDynamicElementStyleForNewPipeline(
       DynamicCSSStylesManager::kUpdateViewport |
       DynamicCSSStylesManager::kUpdateScreenMetrics |
       DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
-      DynamicCSSStylesManager::kUpdateColorScheme;
+      DynamicCSSStylesManager::kUpdateColorScheme |
+      DynamicCSSStylesManager::kUpdateReducedMotion;
   bool media_query_env_changed = false;
   if (is_component() &&
       ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
@@ -5247,7 +5248,8 @@ void Element::UpdateDynamicElementStyleRecursively(uint32_t style,
       DynamicCSSStylesManager::kUpdateViewport |
       DynamicCSSStylesManager::kUpdateScreenMetrics |
       DynamicCSSStylesManager::kUpdateRem | DynamicCSSStylesManager::kUpdateEm |
-      DynamicCSSStylesManager::kUpdateColorScheme;
+      DynamicCSSStylesManager::kUpdateColorScheme |
+      DynamicCSSStylesManager::kUpdateReducedMotion;
   if (is_component() &&
       ((style & kMediaQueryEnvMask) != 0 || (dirty_ & kDirtyFontSize))) {
     auto *fragment = GetRelatedCSSFragment();

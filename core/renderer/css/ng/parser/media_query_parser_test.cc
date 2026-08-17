@@ -164,6 +164,21 @@ TEST(MediaQueryParserTest, FeatureWithIdentValue) {
   EXPECT_EQ(feature.LeftValue().Text(), "landscape");
 }
 
+TEST(MediaQueryParserTest, PrefersReducedMotionValues) {
+  for (const std::string& value : {"reduce", "no-preference"}) {
+    auto set = MediaQueryParser::ParseMediaQuerySet(
+        "(prefers-reduced-motion: " + value + ")");
+    ASSERT_NE(set, nullptr);
+    ASSERT_EQ(set->Queries().size(), 1u);
+    const auto& feature = static_cast<const MediaQueryFeatureExpNode&>(
+                              *set->Queries()[0]->Condition())
+                              .Feature();
+    EXPECT_EQ(feature.Id(), MediaFeatureId::kPrefersReducedMotion);
+    EXPECT_EQ(feature.LeftValue().Type(), MediaFeatureType::kIdent);
+    EXPECT_EQ(feature.LeftValue().Text(), value);
+  }
+}
+
 TEST(MediaQueryParserTest, FeatureWithNumberValue) {
   auto set = MediaQueryParser::ParseMediaQuerySet("(color: 8)");
   ASSERT_NE(set, nullptr);

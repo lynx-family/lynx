@@ -218,6 +218,7 @@ public class LynxTemplateRender
 
   private Context mContext;
   @Keep private LynxDevtool mDevTool;
+  private LynxReducedMotionHelper mReducedMotionHelper;
 
   private long mInitStart;
   private long mInitEnd;
@@ -1149,6 +1150,7 @@ public class LynxTemplateRender
     if (colorScheme != LynxColorScheme.LIGHT) {
       nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, colorScheme.id(), true);
     }
+    startReducedMotionObserver();
     nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
 
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
@@ -2562,6 +2564,40 @@ public class LynxTemplateRender
     nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, scheme.id(), false);
   }
 
+  private void startReducedMotionObserver() {
+    Context applicationContext = LynxEnv.inst().getAppContext();
+    if (applicationContext == null && mContext != null) {
+      applicationContext = mContext.getApplicationContext();
+    }
+    if (applicationContext == null) {
+      return;
+    }
+    if (mReducedMotionHelper == null) {
+      mReducedMotionHelper =
+          LynxReducedMotionHelper.getInstance(applicationContext.getContentResolver());
+    }
+    mReducedMotionHelper.start(this);
+    updateReducedMotion(mReducedMotionHelper.isReducedMotionEnabled(), true);
+  }
+
+  private void stopReducedMotionObserver() {
+    if (mReducedMotionHelper != null) {
+      mReducedMotionHelper.stop(this);
+      mReducedMotionHelper = null;
+    }
+  }
+
+  void updateReducedMotion(boolean reducedMotion) {
+    updateReducedMotion(reducedMotion, false);
+  }
+
+  private void updateReducedMotion(boolean reducedMotion, boolean useActLite) {
+    if (!checkIfEnvPrepared() || mNativePtr == 0) {
+      return;
+    }
+    nativeUpdateReducedMotion(mNativePtr, mNativeLifecycle, reducedMotion, useActLite);
+  }
+
   public void destroy() {
     String eventName = "LynxTemplateRender.destroy";
     onTraceEventBegin(eventName);
@@ -3253,6 +3289,9 @@ public class LynxTemplateRender
       eventEmitter.registerEventFallback(this);
       mLynxContext.setEventEmitter(eventEmitter);
 
+      if (mReducedMotionHelper != null) {
+        updateReducedMotion(mReducedMotionHelper.isReducedMotionEnabled(), true);
+      }
       nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
     } else {
       createLynxEngine(lastInstanceId);
@@ -4213,6 +4252,7 @@ public class LynxTemplateRender
     if (!mIsDestroyed.compareAndSet(false, true)) {
       return;
     }
+    stopReducedMotionObserver();
     boolean shouldCacheLynxEngine = shouldCacheLynxEngine();
     unregisterMemoryUsageFetcherIfNeeded();
 
@@ -4681,6 +4721,9 @@ public class LynxTemplateRender
 
   private static native void nativeUpdateColorScheme(
       long ptr, long lifecycle, int scheme, boolean useActLite);
+
+  private static native void nativeUpdateReducedMotion(
+      long ptr, long lifecycle, boolean reducedMotion, boolean useActLite);
 
   // layout
   private static native void nativeUpdateViewport(long ptr, long lifecycle, int width,

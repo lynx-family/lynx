@@ -11194,9 +11194,12 @@ TEST_P(FiberElementTest,
       static_cast<int>(css::MediaPreferredColorScheme::kDark));
   EXPECT_EQ(observer->media_query_result_changed_count, 3);
 
+  manager->UpdateReducedMotion(true);
+  EXPECT_EQ(observer->media_query_result_changed_count, 4);
+
   manager->dom_tree_enabled_ = false;
   manager->UpdateScreenMetrics(200.0f, 400.0f);
-  EXPECT_EQ(observer->media_query_result_changed_count, 3);
+  EXPECT_EQ(observer->media_query_result_changed_count, 4);
 }
 
 TEST_P(FiberElementTest, InsertTypedPageTemplateChildBeforeAutomaticFlush) {
@@ -22212,6 +22215,78 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
                                   false);
 
   // Now the media query should match and width should be 200px
+  EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
+                               CSSPropertyID::kPropertyIDWidth,
+                               CSSValue(200, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnReducedMotionChange) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableNewStylingPipeline(true);
+  config->SetEnableStandardCSSSelector(true);
+  manager->SetConfig(config);
+  manager->GetLynxEnvConfig().UpdateViewport(375, SLMeasureModeDefinite, 812,
+                                             SLMeasureModeDefinite);
+
+  CSSParserTokenMap token_map;
+  std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, token_map, keyframes, font_faces);
+  fragment->SetEnableCSSSelector();
+
+  auto media_feature = css::MediaFeature(
+      css::MediaFeatureId::kPrefersReducedMotion, "prefers-reduced-motion",
+      css::MediaFeatureOperator::kNone,
+      css::MediaFeatureValue::Ident("reduce"));
+  auto feature_node =
+      fml::MakeRefCounted<css::MediaQueryFeatureExpNode>(media_feature);
+  auto media_query = fml::MakeRefCounted<css::MediaQuery>(
+      css::MediaQueryRestrictor::kNone, css::MediaQuery::kTypeAll,
+      feature_node);
+  std::vector<fml::RefPtr<const css::MediaQuery>> queries;
+  queries.push_back(std::move(media_query));
+  auto mq_set = fml::MakeRefCounted<css::MediaQuerySet>(std::move(queries));
+
+  auto condition_rule = fml::MakeRefCounted<css::ConditionRule>(fragment.get());
+  condition_rule->SetMediaQueries(std::move(mq_set));
+
+  auto selector_array = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector_array[0].SetValue("foo");
+  selector_array[0].SetMatch(css::LynxCSSSelector::MatchType::kClass);
+  selector_array[0].SetLastInTagHistory(true);
+  selector_array[0].SetLastInSelectorList(true);
+  CSSParserConfigs configs;
+  auto parse_token = fml::MakeRefCounted<CSSParseToken>(configs);
+  parse_token->SetAttribute(kPropertyIDWidth,
+                            CSSValue(200, CSSValuePattern::PX));
+  parse_token->MarkParsed();
+  condition_rule->AddStyleRule(fml::MakeRefCounted<css::StyleRule>(
+      std::move(selector_array), std::move(parse_token)));
+  fragment->AddConditionRule(std::move(condition_rule));
+
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+  page->MarkAttached();
+
+  auto child = manager->CreateFiberNode("view");
+  child->parent_component_element_ = page.get();
+  child->SetClasses(ClassList{base::String("foo")});
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(StyleMapHasValue(
+      child->computed_css_style()->GetResolvedValues(),
+      CSSPropertyID::kPropertyIDWidth, CSSValue(200, CSSValuePattern::PX)));
+
+  manager->GetLynxEnvConfig().SetPreferredReducedMotion(
+      css::MediaPreferredReducedMotion::kReduce);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateReducedMotion,
+                                  false);
+
   EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
                                CSSPropertyID::kPropertyIDWidth,
                                CSSValue(200, CSSValuePattern::PX)));

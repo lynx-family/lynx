@@ -305,6 +305,8 @@ bool MediaQueryEvaluator::EvalFeature(const MediaFeature& feature) const {
     case MediaFeatureId::kMaxDevicePixelRatio:
       return EvalNumericFeature(values_.DevicePixelRatio(), feature,
                                 MediaFeatureOperator::kLe, &ToNumber);
+    case MediaFeatureId::kPrefersReducedMotion:
+      return EvalReducedMotionFeature(feature);
     case MediaFeatureId::kUnknown:
       return EvalCustomFeature(feature);
   }
@@ -399,6 +401,24 @@ bool MediaQueryEvaluator::EvalColorSchemeFeature(
   const auto want = values_.PreferredColorScheme();
   if (v.Text() == "light") return want == MediaPreferredColorScheme::kLight;
   if (v.Text() == "dark") return want == MediaPreferredColorScheme::kDark;
+  return false;
+}
+
+bool MediaQueryEvaluator::EvalReducedMotionFeature(
+    const MediaFeature& feature) const {
+  if (feature.IsBoolean()) {
+    return values_.PreferredReducedMotion() ==
+           MediaPreferredReducedMotion::kReduce;
+  }
+  const auto& v = feature.LeftValue();
+  if (!v.IsIdent()) return false;
+  const auto want = values_.PreferredReducedMotion();
+  if (v.Text() == "reduce") {
+    return want == MediaPreferredReducedMotion::kReduce;
+  }
+  if (v.Text() == "no-preference") {
+    return want == MediaPreferredReducedMotion::kNoPreference;
+  }
   return false;
 }
 

@@ -44,6 +44,8 @@ TEST(MediaValuesTest, DefaultValues) {
   EXPECT_EQ(v.Hover(), MediaTristate::kUnknown);
   EXPECT_EQ(v.Pointer(), MediaTristate::kUnknown);
   EXPECT_EQ(v.PreferredColorScheme(), MediaPreferredColorScheme::kLight);
+  EXPECT_EQ(v.PreferredReducedMotion(),
+            MediaPreferredReducedMotion::kNoPreference);
 }
 
 TEST(MediaValuesTest, WithViewportFactory) {
@@ -685,6 +687,52 @@ TEST_F(MediaQueryEvaluatorTest, PrefersColorSchemeBoolean) {
   auto f = MakeFeature("prefers-color-scheme", MediaFeatureOperator::kNone,
                        MediaFeatureValue::Boolean());
   EXPECT_TRUE(evaluator_.EvalFeature(f));
+}
+
+// ---- prefers-reduced-motion -----------------------------------------------
+
+TEST_F(MediaQueryEvaluatorTest, PrefersReducedMotionDefaultsToNoPreference) {
+  MediaQueryEvaluator evaluator;
+  auto reduce =
+      MakeFeature("prefers-reduced-motion", MediaFeatureOperator::kNone,
+                  MediaFeatureValue::Ident("reduce"));
+  auto no_preference =
+      MakeFeature("prefers-reduced-motion", MediaFeatureOperator::kNone,
+                  MediaFeatureValue::Ident("no-preference"));
+  EXPECT_FALSE(evaluator.EvalFeature(reduce));
+  EXPECT_TRUE(evaluator.EvalFeature(no_preference));
+}
+
+TEST_F(MediaQueryEvaluatorTest, PrefersReducedMotionReduce) {
+  values_.SetPreferredReducedMotion(MediaPreferredReducedMotion::kReduce);
+  evaluator_.SetValues(values_);
+  auto f = MakeFeature("prefers-reduced-motion", MediaFeatureOperator::kNone,
+                       MediaFeatureValue::Ident("reduce"));
+  EXPECT_TRUE(evaluator_.EvalFeature(f));
+}
+
+TEST_F(MediaQueryEvaluatorTest, PrefersReducedMotionInvalidValueFailsClosed) {
+  values_.SetPreferredReducedMotion(MediaPreferredReducedMotion::kReduce);
+  evaluator_.SetValues(values_);
+  auto f = MakeFeature("prefers-reduced-motion", MediaFeatureOperator::kNone,
+                       MediaFeatureValue::Ident("less"));
+  EXPECT_FALSE(evaluator_.EvalFeature(f));
+}
+
+TEST_F(MediaQueryEvaluatorTest, PrefersReducedMotionComposesWithAnd) {
+  values_.SetPreferredReducedMotion(MediaPreferredReducedMotion::kReduce);
+  evaluator_.SetValues(values_);
+  auto set = MediaQueryParser::ParseMediaQuerySet(
+      "(prefers-reduced-motion: reduce) and (min-width: 300px)");
+  ASSERT_NE(set, nullptr);
+  EXPECT_TRUE(evaluator_.Eval(*set));
+}
+
+TEST_F(MediaQueryEvaluatorTest, PrefersReducedMotionComposesWithNot) {
+  auto set = MediaQueryParser::ParseMediaQuerySet(
+      "not (prefers-reduced-motion: reduce)");
+  ASSERT_NE(set, nullptr);
+  EXPECT_TRUE(evaluator_.Eval(*set));
 }
 
 // ---- color ----------------------------------------------------------------
