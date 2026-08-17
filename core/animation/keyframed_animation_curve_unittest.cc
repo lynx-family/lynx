@@ -709,7 +709,7 @@ TEST_F(KeyframedAnimationCurveTest, FilterKeyframeStoresRawAndResolvesRem) {
   EXPECT_TRUE(end_frame_ptr->HasResolvedValue());
 }
 
-TEST_F(KeyframedAnimationCurveTest, TransformOriginKeyframeResolvesRem) {
+TEST_F(KeyframedAnimationCurveTest, Vec2LengthKeyframeResolvesRem) {
   auto test_element = InitFiberElement();
   auto start_arr = lepus::CArray::Create();
   start_arr->emplace_back(1.f);
@@ -726,24 +726,24 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginKeyframeResolvesRem) {
   end_arr->emplace_back(
       static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PERCENT));
 
-  auto start_frame = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
+  auto start_frame = Vec2LengthKeyframe::Create(fml::TimeDelta(), nullptr);
   EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
                                     ::lynx::tasm::CSSValue(start_arr),
                                     test_element.get()));
   auto* start_frame_ptr = start_frame.get();
   EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
-            start_frame->transform_origin_.GetArray()->get(1).UInt32());
+            start_frame->value_.GetArray()->get(1).UInt32());
   EXPECT_FALSE(start_frame->HasResolvedValue());
 
-  auto end_frame = TransformOriginKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  auto end_frame =
+      Vec2LengthKeyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
   EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
                                   ::lynx::tasm::CSSValue(end_arr),
                                   test_element.get()));
   auto* end_frame_ptr = end_frame.get();
   EXPECT_FALSE(end_frame->HasResolvedValue());
 
-  auto curve = KeyframedTransformOriginAnimationCurve::Create();
+  auto curve = KeyframedVec2LengthAnimationCurve::Create();
   curve->type_ = AnimationCurve::CurveType::TRANSFORM_ORIGIN;
   curve->SetElement(test_element.get());
   curve->AddKeyframe(std::move(start_frame));
@@ -891,8 +891,8 @@ TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {
 }
 
 TEST_F(KeyframedAnimationCurveTest, TransformOriginInterPolateTest) {
-  std::unique_ptr<KeyframedTransformOriginAnimationCurve> curve(
-      KeyframedTransformOriginAnimationCurve::Create());
+  std::unique_ptr<KeyframedVec2LengthAnimationCurve> curve(
+      KeyframedVec2LengthAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::TRANSFORM_ORIGIN;
   auto test_element = InitFiberElement();
   curve->SetElement(test_element.get());
@@ -913,14 +913,14 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginInterPolateTest) {
   end_arr->emplace_back(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
 
-  auto test_frame1 = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->transform_origin_ = lynx::tasm::CSSValue(start_arr);
+  auto test_frame1 = Vec2LengthKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->value_ = lynx::tasm::CSSValue(start_arr);
   test_frame1->is_empty_ = false;
   curve->AddKeyframe(std::move(test_frame1));
 
-  auto test_frame2 = TransformOriginKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(2.f), nullptr);
-  test_frame2->transform_origin_ = lynx::tasm::CSSValue(end_arr);
+  auto test_frame2 =
+      Vec2LengthKeyframe::Create(fml::TimeDelta::FromSecondsF(2.f), nullptr);
+  test_frame2->value_ = lynx::tasm::CSSValue(end_arr);
   test_frame2->is_empty_ = false;
   curve->AddKeyframe(std::move(test_frame2));
 
@@ -952,6 +952,89 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginInterPolateTest) {
   EXPECT_FLOAT_EQ(0.f, result_3.get()->get(2).Number());
   EXPECT_FLOAT_EQ(static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT),
                   result_3.get()->get(3).Number());
+}
+
+TEST_F(KeyframedAnimationCurveTest, BorderRadiusInterPolatesComponents) {
+  auto curve = KeyframedVec2LengthAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::BORDER_TOP_LEFT_RADIUS;
+  auto test_element = InitFiberElement();
+  curve->SetElement(test_element.get());
+
+  auto make_value = [](float x, float y,
+                       ::lynx::tasm::CSSValuePattern pattern) {
+    auto array = lepus::CArray::Create();
+    array->emplace_back(x);
+    array->emplace_back(static_cast<uint32_t>(pattern));
+    array->emplace_back(y);
+    array->emplace_back(static_cast<uint32_t>(pattern));
+    return ::lynx::tasm::CSSValue(std::move(array));
+  };
+
+  auto start = Vec2LengthKeyframe::Create(fml::TimeDelta(), nullptr);
+  ASSERT_TRUE(
+      start->SetValue(::lynx::tasm::kPropertyIDBorderTopLeftRadius,
+                      make_value(10.f, 20.f, ::lynx::tasm::CSSValuePattern::PX),
+                      test_element.get()));
+  curve->AddKeyframe(std::move(start));
+
+  auto end =
+      Vec2LengthKeyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  ASSERT_TRUE(
+      end->SetValue(::lynx::tasm::kPropertyIDBorderTopLeftRadius,
+                    make_value(30.f, 60.f, ::lynx::tasm::CSSValuePattern::PX),
+                    test_element.get()));
+  curve->AddKeyframe(std::move(end));
+
+  fml::TimeDelta time = fml::TimeDelta::FromSecondsF(0.5f);
+  auto value = curve->GetValue(time).GetArray();
+  ASSERT_TRUE(value);
+  EXPECT_FLOAT_EQ(value->get(0).Number(), 20.f);
+  EXPECT_EQ(value->get(1).UInt32(),
+            static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::NUMBER));
+  EXPECT_FLOAT_EQ(value->get(2).Number(), 40.f);
+  EXPECT_EQ(value->get(3).UInt32(),
+            static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::NUMBER));
+}
+
+TEST_F(KeyframedAnimationCurveTest, BorderRadiusUsesDiscreteMixedUnits) {
+  auto curve = KeyframedVec2LengthAnimationCurve::Create();
+  curve->type_ = AnimationCurve::CurveType::BORDER_TOP_LEFT_RADIUS;
+  auto test_element = InitFiberElement();
+  curve->SetElement(test_element.get());
+
+  auto make_value = [](::lynx::tasm::CSSValuePattern pattern) {
+    auto array = lepus::CArray::Create();
+    array->emplace_back(10.f);
+    array->emplace_back(static_cast<uint32_t>(pattern));
+    array->emplace_back(20.f);
+    array->emplace_back(static_cast<uint32_t>(pattern));
+    return ::lynx::tasm::CSSValue(std::move(array));
+  };
+
+  auto start = Vec2LengthKeyframe::Create(fml::TimeDelta(), nullptr);
+  ASSERT_TRUE(start->SetValue(::lynx::tasm::kPropertyIDBorderTopLeftRadius,
+                              make_value(::lynx::tasm::CSSValuePattern::PX),
+                              test_element.get()));
+  curve->AddKeyframe(std::move(start));
+
+  auto end =
+      Vec2LengthKeyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  ASSERT_TRUE(end->SetValue(::lynx::tasm::kPropertyIDBorderTopLeftRadius,
+                            make_value(::lynx::tasm::CSSValuePattern::PERCENT),
+                            test_element.get()));
+  curve->AddKeyframe(std::move(end));
+
+  fml::TimeDelta before_midpoint = fml::TimeDelta::FromSecondsF(0.25f);
+  auto start_value = curve->GetValue(before_midpoint).GetArray();
+  ASSERT_TRUE(start_value);
+  EXPECT_EQ(start_value->get(1).UInt32(),
+            static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PX));
+
+  fml::TimeDelta after_midpoint = fml::TimeDelta::FromSecondsF(0.75f);
+  auto end_value = curve->GetValue(after_midpoint).GetArray();
+  ASSERT_TRUE(end_value);
+  EXPECT_EQ(end_value->get(1).UInt32(),
+            static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PERCENT));
 }
 
 TEST_F(KeyframedAnimationCurveTest, GetOnXAxisCurveTypeSet) {

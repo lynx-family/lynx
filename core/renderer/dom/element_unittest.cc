@@ -136,6 +136,23 @@ TEST_F(ElementTest, CheckWillDestroy) {
   EXPECT_TRUE(element->will_destroy());
 }
 
+TEST_F(ElementTest, WriteRenderStyleToBundleSupportsBorderRadius) {
+  auto element = manager->CreateFiberElement("view");
+  auto radius = lepus::CArray::Create();
+  radius->emplace_back(10.f);
+  radius->emplace_back(static_cast<uint32_t>(CSSValuePattern::NUMBER));
+  radius->emplace_back(20.f);
+  radius->emplace_back(static_cast<uint32_t>(CSSValuePattern::NUMBER));
+  CSSValue value(std::move(radius));
+
+  for (auto id :
+       {kPropertyIDBorderTopLeftRadius, kPropertyIDBorderTopRightRadius,
+        kPropertyIDBorderBottomRightRadius,
+        kPropertyIDBorderBottomLeftRadius}) {
+    EXPECT_TRUE(element->WriteRenderStyleToBundle(id, value));
+  }
+}
+
 TEST_F(ElementTest, GetCSSKeyframesToken) {
   auto element0 = manager->CreateFiberElement("view");
   EXPECT_TRUE(element0->GetCSSKeyframesToken("test") == nullptr);

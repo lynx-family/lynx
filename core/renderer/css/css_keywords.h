@@ -354,6 +354,11 @@ enum class TokenType {
   OFFSET_DISTANCE,      // offset-distance
   BACKGROUND_POSITION,  // background-position
   TRANSFORM_ORIGIN,     // transform-origin
+  BORDER_RADIUS,        // border-radius
+  BORDER_TOP_LEFT_RADIUS,
+  BORDER_TOP_RIGHT_RADIUS,
+  BORDER_BOTTOM_RIGHT_RADIUS,
+  BORDER_BOTTOM_LEFT_RADIUS,
   /* transition end*/
 
   /* timing function begin */

@@ -2720,6 +2720,16 @@ starlight::AnimationPropertyType CSSStringParser::TokenToTransitionType(
       return starlight::AnimationPropertyType::kBackgroundPosition;
     case TokenType::TRANSFORM_ORIGIN:
       return starlight::AnimationPropertyType::kTransformOrigin;
+    case TokenType::BORDER_RADIUS:
+      return starlight::AnimationPropertyType::kBorderRadius;
+    case TokenType::BORDER_TOP_LEFT_RADIUS:
+      return starlight::AnimationPropertyType::kBorderTopLeftRadius;
+    case TokenType::BORDER_TOP_RIGHT_RADIUS:
+      return starlight::AnimationPropertyType::kBorderTopRightRadius;
+    case TokenType::BORDER_BOTTOM_RIGHT_RADIUS:
+      return starlight::AnimationPropertyType::kBorderBottomRightRadius;
+    case TokenType::BORDER_BOTTOM_LEFT_RADIUS:
+      return starlight::AnimationPropertyType::kBorderBottomLeftRadius;
     default:
       UnitHandler::CSSWarning(false, configs.enable_css_strict_mode,
                               "Unsupported value: %s in transition-property "

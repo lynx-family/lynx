@@ -19,6 +19,15 @@ TEST(AnimationPropertyHandler, Handler) {
   std::vector<std::pair<std::string, starlight::AnimationPropertyType>> cases =
       {{"hello", starlight::AnimationPropertyType::kNone},
        {"width", starlight::AnimationPropertyType::kWidth},
+       {"border-radius", starlight::AnimationPropertyType::kBorderRadius},
+       {"border-top-left-radius",
+        starlight::AnimationPropertyType::kBorderTopLeftRadius},
+       {"border-top-right-radius",
+        starlight::AnimationPropertyType::kBorderTopRightRadius},
+       {"border-bottom-right-radius",
+        starlight::AnimationPropertyType::kBorderBottomRightRadius},
+       {"border-bottom-left-radius",
+        starlight::AnimationPropertyType::kBorderBottomLeftRadius},
        {"all", starlight::AnimationPropertyType::kAll}};
   StyleMap output;
   CSSParserConfigs configs;

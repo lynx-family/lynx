@@ -21,12 +21,15 @@
         },
         "support": {
           "android": {
+            "notes": "The new animator supports transitions and @keyframes for this shorthand and expands it to the four physical corner longhands. <code>px</code> endpoints and percentage endpoints animate per x/y component. <code>px</code>-to-percentage and mixed <code>calc()</code> endpoints are not animated. The legacy animator ignores border-radius animation.",
             "version_added": "1.0"
           },
           "ios": {
+            "notes": "The new animator supports transitions and @keyframes for this shorthand and expands it to the four physical corner longhands. <code>px</code> endpoints and percentage endpoints animate per x/y component. <code>px</code>-to-percentage and mixed <code>calc()</code> endpoints are not animated. The legacy animator ignores border-radius animation.",
             "version_added": "1.0"
           },
           "harmony": {
+            "notes": "The new animator supports transitions and @keyframes for this shorthand and expands it to the four physical corner longhands. <code>px</code> endpoints and percentage endpoints animate per x/y component. <code>px</code>-to-percentage and mixed <code>calc()</code> endpoints are not animated. The legacy animator ignores border-radius animation.",
             "version_added": "3.4"
           },
           "clay_android": {

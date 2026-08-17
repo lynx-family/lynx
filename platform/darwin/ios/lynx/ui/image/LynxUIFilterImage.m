@@ -18,6 +18,10 @@
 #import "LynxConvertUtils.h"
 #import "LynxUIContext+Internal.h"
 
+@interface LynxUI (BorderRadiusMaskUpdate)
+- (void)consumeScheduledBorderRadiusMaskUpdate;
+@end
+
 @interface LynxUIFilterImage ()
 @property(nonatomic, assign) UIViewContentMode resizeMode;
 @property(nonatomic) NSString* src;
@@ -59,7 +63,7 @@ LYNX_REGISTER_UI("filter-image")
   return image;
 }
 
-- (void)upateFrameWithoutLayerMask {
+- (void)updateFrameWithoutLayerMask {
   // Update bounds
   const UIEdgeInsets border = self.backgroundManager.borderWidth;
   CGFloat x = self.padding.left + border.left;
@@ -99,6 +103,7 @@ LYNX_REGISTER_UI("filter-image")
 }
 
 - (bool)updateLayerMaskOnFrameChanged {
+  [self consumeScheduledBorderRadiusMaskUpdate];
   // we do not need to run super, as overflow is not used for image,
   // border-radius will be processed by myself
   if (CGSizeEqualToSize(self.frame.size, CGSizeZero)) {
@@ -116,10 +121,12 @@ LYNX_REGISTER_UI("filter-image")
     shapeLayer.path = pathRef;
     CGPathRelease(pathRef);
     self.view.layer.mask = shapeLayer;
-  } else if (!(UIEdgeInsetsEqualToEdgeInsets(self.backgroundManager.borderWidth,
-                                             UIEdgeInsetsZero) &&
-               UIEdgeInsetsEqualToEdgeInsets(self.padding, UIEdgeInsetsZero))) {
-    [self upateFrameWithoutLayerMask];
+  } else {
+    self.view.layer.mask = nil;
+    if (!(UIEdgeInsetsEqualToEdgeInsets(self.backgroundManager.borderWidth, UIEdgeInsetsZero) &&
+          UIEdgeInsetsEqualToEdgeInsets(self.padding, UIEdgeInsetsZero))) {
+      [self updateFrameWithoutLayerMask];
+    }
   }
 
   return true;

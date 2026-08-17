@@ -33,6 +33,35 @@ Implement animations and transitions in Lynx.
 }
 ```
 
+### Border Radius
+
+With the new animator enabled, `border-radius` and the four physical corner
+longhands work in transitions and `@keyframes`. The shorthand expands to
+`border-top-left-radius`, `border-top-right-radius`,
+`border-bottom-right-radius`, and `border-bottom-left-radius`, so each corner
+can also animate independently.
+
+```css
+.panel {
+  overflow: hidden;
+  border-radius: 28px;
+  transition: border-radius 350ms ease;
+}
+
+.panel.is-open {
+  border-radius: 20px;
+}
+```
+
+Each corner's horizontal and vertical radius components interpolate
+independently. `px` endpoints animate with `px` endpoints, and
+percentage endpoints animate with percentage endpoints. `px` to
+percentage endpoints and mixed `calc()` values are rejected before the
+animation starts; the target style is applied without an intermediate snap.
+
+The legacy animator does not animate `border-radius`; when the new animator is
+disabled, these transition and keyframe properties are ignored as before.
+
 ## Keyframe Animations
 
 ### Fade In
@@ -103,6 +132,24 @@ Implement animations and transitions in Lynx.
 
 .spin {
   animation: spin 1s linear infinite;
+}
+```
+
+### Shape Morph
+
+```css
+@keyframes softenCorners {
+  from {
+    border-radius: 8% 16% / 12% 20%;
+  }
+  to {
+    border-radius: 40% 50% / 45% 60%;
+  }
+}
+
+.shape {
+  overflow: hidden;
+  animation: softenCorners 400ms ease forwards;
 }
 ```
 
