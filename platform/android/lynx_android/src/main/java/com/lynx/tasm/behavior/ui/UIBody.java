@@ -621,6 +621,10 @@ public class UIBody extends UIGroup<UIBodyView> {
       if (shouldDrawWithDisplayList()) {
         super.dispatchDraw(canvas);
         mRenderer.afterDispatchDraw(canvas);
+        ITimingCollector timingCollector = mTimingCollector.get();
+        if (timingCollector != null) {
+          timingCollector.markPaintEndTimingIfNeeded();
+        }
         return;
       }
 

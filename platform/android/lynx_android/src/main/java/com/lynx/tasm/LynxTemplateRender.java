@@ -3653,6 +3653,10 @@ public class LynxTemplateRender
     }
   }
 
+  boolean hasLogicExecutor() {
+    return mLogicExecutor != null;
+  }
+
   @Nullable
   public LynxBaseUI findUIByIndex(int index) {
     return (mLynxUIRender != null) ? mLynxUIRender.findLynxUIByIndex(index) : null;
