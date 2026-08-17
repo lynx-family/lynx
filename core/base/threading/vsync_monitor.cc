@@ -10,6 +10,7 @@
 #include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/utils/lynx_env.h"  // nogncheck
 
 namespace lynx {
 namespace base {
@@ -100,7 +101,8 @@ void VSyncMonitor::OnVSync(int64_t frame_start_time,
       self->OnVSyncInternal(frame_start_time, frame_target_time);
     }
   };
-  if (is_vsync_post_task_by_emergency_) {
+  if (is_vsync_post_task_by_emergency_ &&
+      tasm::LynxEnv::GetInstance().IsVSyncPostTaskByEmergency()) {
     runner_->PostEmergencyTask(std::move(task));
   } else {
     runner_->PostTask(std::move(task));
