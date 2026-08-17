@@ -228,11 +228,13 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
     shell_->UpdateColorScheme(static_cast<int>(_colorScheme), true);
   }
 
-  // Thread pool
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    lynx::tasm::LynxGlobalPool::GetInstance().PreparePool();
-  });
+  if (!_builder.disableMTSPoolWarmup) {
+    // Thread pool
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      lynx::tasm::LynxGlobalPool::GetInstance().PreparePool();
+    });
+  }
 }
 
 - (void)setUpEventHandler {
