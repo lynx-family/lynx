@@ -162,7 +162,9 @@ subspec_target("Framework") {
     }
   }
   frameworks = [
+    "CoreTelephony",
     "IOKit",
+    "SystemConfiguration",
     "UIKit",
     "WebKit",
   ]
