@@ -662,6 +662,14 @@ bool LynxEnv::EnableReadableStreamMemFix() {
   return GetBoolEnv(Key::ENABLE_READABLE_STREAM_MEM_FIX, true);
 }
 
+bool LynxEnv::EnablePromiseMemoryFix() {
+  return GetBoolEnv(Key::ENABLE_PROMISE_MEMORY_FIX, true);
+}
+
+bool LynxEnv::EnableCanvasEngineMemoryFix() {
+  return GetBoolEnv(Key::ENABLE_CANVAS_ENGINE_MEMORY_FIX, true);
+}
+
 bool LynxEnv::EnableElementApiNewRegistration() {
   return GetBoolEnv(Key::ENABLE_ELEMENT_API_NEW_REGISTRATION, false);
 }

@@ -909,21 +909,46 @@ export abstract class BaseApp<
     clearTimeout: LynxClearTimeout,
     lynx: NativeLynxProxy
   ) {
+    const enablePromiseMemoryFix =
+      this.params.pageConfigSubset?.enablePromiseMemoryFix ?? true;
+    const nativeAppId = this.nativeAppId;
+    const onUnhandled = enablePromiseMemoryFix
+      ? (id, reason: Error) => {
+          try {
+            if (reason) {
+              if (!reason.stack) {
+                reason = new Error(JSON.stringify(reason));
+              }
+              reason.name = 'unhandled rejection';
+
+              const app = nativeGlobal.multiApps[nativeAppId] as
+                | BaseApp
+                | undefined;
+              if (app) {
+                app.handleUserError(reason);
+              }
+            }
+          } catch (err) {
+            // just ignore
+          }
+        }
+      : (id, reason: Error) => {
+          try {
+            if (reason) {
+              if (!reason.stack) {
+                reason = new Error(JSON.stringify(reason));
+              }
+              reason.name = 'unhandled rejection';
+              this.handleUserError(reason);
+            }
+          } catch (err) {
+            // just ignore
+          }
+        };
+
     const PromiseConstructor = getPromiseMaybePolyfill(
       setTimeout,
-      (id, reason: Error) => {
-        try {
-          if (reason) {
-            if (!reason.stack) {
-              reason = new Error(JSON.stringify(reason));
-            }
-            reason.name = 'unhandled rejection';
-            this.handleUserError(reason);
-          }
-        } catch (err) {
-          // just ignore
-        }
-      },
+      onUnhandled,
       clearTimeout,
       lynx.queueMicrotask,
       this._params?.pageConfigSubset?.enableMicrotaskPromisePolyfill ?? false
