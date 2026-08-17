@@ -2228,10 +2228,6 @@ void App::OnAppReload(tasm::TemplateData init_data) {
     Scope scope(*rt);
     auto js_app = js_app_.getObject(*rt);
 
-    auto on_app_reload = js_app.getPropertyAsFunction(*rt, "onAppReload");
-    if (!on_app_reload) {
-      return;
-    }
     auto js_init_data = valueFromLepus(*rt, init_data.GetValue(),
                                        jsi_object_wrapper_manager_.get());
     if (!js_init_data) {
@@ -2246,6 +2242,21 @@ void App::OnAppReload(tasm::TemplateData init_data) {
       return;
     }
 
+    // A framework subscribed to the message event receives it there; the
+    // property call below stays for frameworks that did not subscribe.
+    auto payload = Array::createWithLength(*rt, 2);
+    if (payload &&
+        payload->setValueAtIndex(*rt, 0, Value(*rt, *js_init_data)) &&
+        payload->setValueAtIndex(*rt, 1, Value(*rt, options)) &&
+        DispatchAppEventMessage(runtime::kMessageEventTypeOnAppReload, *rt,
+                                Value(*rt, *payload))) {
+      return;
+    }
+
+    auto on_app_reload = js_app.getPropertyAsFunction(*rt, "onAppReload");
+    if (!on_app_reload) {
+      return;
+    }
     size_t count = 2;
     const Value args[2] = {std::move(*js_init_data), std::move(options)};
     on_app_reload->callWithThis(*rt, js_app, args, count);
@@ -2567,6 +2578,21 @@ void App::EraseApiCallBack(ApiCallBack callback) {
   api_callback_manager_.EraseWithCallback(callback);
 }
 
+bool App::DispatchAppEventMessage(const char* type, Runtime& rt,
+                                  Value payload) {
+  auto* proxy =
+      GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kCoreContext);
+  if (proxy == nullptr || !proxy->HasEventListener(type)) {
+    return false;
+  }
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+      type, runtime::ContextProxy::Type::kCoreContext,
+      runtime::ContextProxy::Type::kJSContext,
+      std::make_unique<pub::ValueImplPiper>(rt, payload));
+  proxy->DispatchEvent(std::move(event));
+  return true;
+}
+
 void App::NotifyUpdatePageData(uint64_t trace_flow_id) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_UPDATE_CARD_DATA,
               [trace_flow_id](lynx::perfetto::EventContext ctx) {
@@ -2586,10 +2612,6 @@ void App::NotifyUpdatePageData(uint64_t trace_flow_id) {
       LOGI("App::updateCardData" << this);
 
       Object js_app = js_app_.getObject(*rt);
-      auto publishEvent = js_app.getPropertyAsFunction(*rt, "updateCardData");
-      if (!publishEvent) {
-        continue;
-      }
       TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, LEPUS_VALUE_TO_JS_VALUE);
       auto jsValue = valueFromLepus(*rt, data.GetValue(),
                                     jsi_object_wrapper_manager_.get());
@@ -2617,6 +2639,21 @@ void App::NotifyUpdatePageData(uint64_t trace_flow_id) {
       }
 
       TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
+
+      // A framework subscribed to the message event receives it there; the
+      // property call below stays for frameworks that did not subscribe.
+      auto payload = Array::createWithLength(*rt, 2);
+      if (payload && payload->setValueAtIndex(*rt, 0, Value(*rt, *jsValue)) &&
+          payload->setValueAtIndex(*rt, 1, Value(*rt, options)) &&
+          DispatchAppEventMessage(runtime::kMessageEventTypeUpdateCardData, *rt,
+                                  Value(*rt, *payload))) {
+        continue;
+      }
+
+      auto publishEvent = js_app.getPropertyAsFunction(*rt, "updateCardData");
+      if (!publishEvent) {
+        continue;
+      }
       const Value args[2] = {std::move(*jsValue), std::move(options)};
       size_t count = 2;
       const Object& thisObj = js_app;
