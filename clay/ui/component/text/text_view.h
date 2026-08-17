@@ -122,13 +122,17 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void HideSelectionPopup();
   void ShowSelectionHandle(bool show_start_handle = true,
                            bool show_end_handle = true);
+  void SetSelectionBackgroundColor(Color selection_background_color);
   void SetSelectionHandleColor(Color selection_handle_color);
   void SetSelectionHandleSize(float selection_handle_size);
   void HideSelectionHandle();
-  void UpdateSelectionHandle(FloatPoint point,
-                             SelectionHandleView* handle_bar = nullptr);
+  void UpdateSelectionHandle(FloatPoint point, SelectionHandleView* handle_bar);
+  void UpdateSelectionHandleTypes();
+  void UpdateSelectionRange(int selection_start, int selection_end);
+  void ResetSelectionRange();
+  void ClearSelection();
 
-  FloatRect GetDisplayRect();
+  FloatRect GetDisplayRect(int* overflow = nullptr);
 
   void HandleCopy();
   void HandleSelectAll();
@@ -152,6 +156,9 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   FRIEND_TEST(TextSelectionTest, SelectWordCrossesNestedInlineTextBoundaries);
 
   void UpdateSelectionHandleLayout(SelectionHandleView* handle);
+  void BeginSelectionHandleDrag(const PointerEvent& event,
+                                SelectionHandleView* handle_bar);
+  void EndSelectionHandleDrag(SelectionHandleView* handle_bar);
 
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                     FloatPoint* relative_position,
@@ -179,11 +186,15 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   SelectionHandleView* end_selection_handle_ = nullptr;
   int selection_start_pos_ = -1;
   int selection_end_pos_ = -1;
+  bool is_in_selection_ = false;
   FloatPoint scroll_offset_;
+  FloatPoint selection_handle_drag_offset_;
+  SelectionHandleView* dragging_selection_handle_ = nullptr;
   Color selection_handle_color_ = Color::kTransparent();
   float selection_handle_size_ = 0;
 #endif
 
+  bool selection_direction_forward_ = true;
   bool custom_text_selection_ = false;
   bool custom_context_menu_ = false;
   uint32_t hot_key_tag_ = 0;

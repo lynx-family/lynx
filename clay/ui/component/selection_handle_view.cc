@@ -31,10 +31,25 @@ SelectionHandleView::SelectionHandleView(PageView* page_view,
   auto drag_recognizer =
       std::make_unique<DragGestureRecognizer>(page_view_->gesture_manager());
   drag_recognizer_ = drag_recognizer.get();
+  drag_recognizer_->SetDragDownCallback([this](const PointerEvent& point) {
+    if (handle_drag_down_function_) {
+      handle_drag_down_function_(point, this);
+    }
+  });
   drag_recognizer_->SetDragUpdateCallback(
       [this](const FloatPoint& point, const FloatSize& delta) {
         handle_bar_function_(point, this);
       });
+  drag_recognizer_->SetDragEndCallback([this](const Velocity&) {
+    if (handle_drag_end_function_) {
+      handle_drag_end_function_(this);
+    }
+  });
+  drag_recognizer_->SetDragCancelCallback([this]() {
+    if (handle_drag_end_function_) {
+      handle_drag_end_function_(this);
+    }
+  });
   AddGestureRecognizer(std::move(drag_recognizer));
 }
 
@@ -131,16 +146,6 @@ void SelectionHandleView::BuildSelectionHandle(float line_height,
   // Set fixed dimensions for the handle
   SetWidth(2 * selection_handle_radius_);
   SetHeight(2 * selection_handle_radius_ + line_height);
-}
-
-float SelectionHandleView::ProcessHandlePos(FloatPoint point, TextBox left_box,
-                                            TextBox right_box) {
-  if (type_ == TextSelectionHandleType::kLeft) {
-    return std::min<float>(0, point.y() - left_box.GetTop());
-  } else if (type_ == TextSelectionHandleType::kRight) {
-    return std::max<float>(0, point.y() - right_box.GetBottom());
-  }
-  return 0;
 }
 
 void SelectionHandleView::UpdatePosWithScroll(FloatPoint delta) {
