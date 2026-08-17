@@ -71,6 +71,8 @@ lynx_core_source_set("embedder") {
     "lynx_template_data.cc",
     "lynx_template_data_priv.h",
     "lynx_trace.cc",
+    "lynx_ui_renderer.cc",
+    "lynx_ui_renderer.h",
     "lynx_update_meta.cc",
     "lynx_update_meta_priv.h",
     "lynx_view.cc",
@@ -96,6 +98,7 @@ lynx_core_source_set("embedder") {
 
   deps = [
     ":public_headers",
+    "../../base/src:base_static",
     "../../core:lynx_native",
     "../../core/renderer/data:data",
     "./core:renderer",
@@ -251,6 +254,7 @@ if (enable_unittests) {
       "lynx_log_unittests.cc",
       "lynx_template_bundle_unittests.cc",
       "lynx_template_data_unittests.cc",
+      "lynx_ui_renderer_unittests.cc",
       "lynx_update_meta_unittests.cc",
       "lynx_value_unittest.cc",
       "lynx_view_builder_unittests.cc",

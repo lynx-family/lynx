@@ -206,6 +206,10 @@ lynx::tasm::UIDelegate* LynxUIRendererWindowless::GetUIDelegate() {
   return ui_delegate_.get();
 }
 
+void LynxUIRendererWindowless::SendPointerEvent(const ClayPointerEvent& event) {
+  headless_engine_->SendPointerEvents(&event, 1);
+}
+
 const char* LynxUIRendererWindowless::GetClipboardData() const {
   if (windowless_renderer_ && windowless_renderer_->get_clipboard_data) {
     return windowless_renderer_->get_clipboard_data(

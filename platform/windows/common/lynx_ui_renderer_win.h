@@ -50,6 +50,8 @@ class LynxUIRendererWin : public LynxUIRenderer {
   void AddClient(LynxViewClients* client) override;
 
  private:
+  void SendPointerEvent(const ClayPointerEvent& event) override;
+
   void AdjustWindowRect();
 
   std::unique_ptr<clay::FlutterWindowsEngine> engine_;

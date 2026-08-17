@@ -276,6 +276,10 @@ void LynxUIRendererWin::RegisterIMEHandler(void* handler, void* opaque) {
                reinterpret_cast<LPARAM>(opaque));
 }
 
+void LynxUIRendererWin::SendPointerEvent(const ClayPointerEvent& event) {
+  engine_->SendPointerEvent(event);
+}
+
 void LynxUIRendererWin::AdjustWindowRect() {
   HWND hwnd = reinterpret_cast<HWND>(GetNativeWindow());
   if (hwnd) {

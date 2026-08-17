@@ -4,9 +4,11 @@
 #ifndef PLATFORM_EMBEDDER_LYNX_UI_RENDERER_H_
 #define PLATFORM_EMBEDDER_LYNX_UI_RENDERER_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
+#include "clay/public/clay.h"
 #include "core/public/ui_delegate.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 
@@ -58,6 +60,12 @@ class LynxUIRenderer {
   virtual void EmulateMouseEvent(const char* event_name, float x, float y,
                                  float delta_x, float delta_y) {}
 
+  // Dispatches DevTool synthetic mouse input through Clay's pointer pipeline.
+  void DispatchSyntheticPointerEvent(const char* event_type, float x, float y,
+                                     const char* button, float delta_x,
+                                     float delta_y, int modifiers,
+                                     int click_count);
+
   virtual void Focus(int node_id) {}
 
   virtual void InsertText(const std::string& text) {}
@@ -77,6 +85,8 @@ class LynxUIRenderer {
   // TODO: Add more methods.
 
  protected:
+  virtual void SendPointerEvent(const ClayPointerEvent& event) {}
+
   float width_ = 0;
   float height_ = 0;
   float pixel_ratio_ = 1;
