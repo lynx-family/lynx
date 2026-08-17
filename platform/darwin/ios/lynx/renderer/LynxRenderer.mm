@@ -13,6 +13,20 @@
 
 #import "LynxFilterUtil.h"
 
+namespace {
+
+void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
+  CALayer* layer = view.layer;
+  if (layer == nil) {
+    return;
+  }
+
+  layer.anchorPoint = CGPointZero;
+  layer.position = layout_origin;
+}
+
+}  // namespace
+
 @implementation LynxRenderer {
   __weak UIView<LynxRendererHost>* _host;
   LynxDisplayListApplier* _applier;
@@ -20,6 +34,7 @@
 
   lynx::tasm::DisplayList* list_;
 
+  CGRect layout_frame_;
   int32_t sign_;
 }
 
@@ -31,6 +46,7 @@
     _host = host;
     sign_ = sign;
     _renderer_context = context;
+    layout_frame_ = host != nil ? host.frame : CGRectZero;
   }
   return self;
 }
@@ -94,21 +110,45 @@
 - (void)onSetFrame:(CGRect)frame {
 }
 
+- (CGPoint)rendererLayoutOrigin {
+  return layout_frame_.origin;
+}
+
+- (void)updateRendererLayoutFrame:(CGRect)frame {
+  layout_frame_ = frame;
+  [self onSetFrame:frame];
+}
+
+- (void)updateRendererLayoutSize:(CGSize)size {
+  layout_frame_.size = size;
+  [self onSetFrame:layout_frame_];
+}
+
+- (void)updateRendererLayoutCenter:(CGPoint)center {
+  layout_frame_.origin = CGPointMake(center.x - layout_frame_.size.width * 0.5f,
+                                     center.y - layout_frame_.size.height * 0.5f);
+  [self onSetFrame:layout_frame_];
+}
+
 - (void)updateLayoutOffsetIfNeeded:(CGPoint)offset {
   if (_host == nil) {
     return;
   }
 
+  CALayer* layer = _host.layer;
+  layout_frame_.origin = offset;
   CGRect layoutFrame;
-  if (CATransform3DIsIdentity(_host.layer.transform)) {
+  if (CATransform3DIsIdentity(layer.transform)) {
     layoutFrame = _host.frame;
-    if (CGPointEqualToPoint(layoutFrame.origin, offset)) {
+    BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
+    BOOL originChanged = !CGPointEqualToPoint(layoutFrame.origin, offset);
+    if (!anchorPointChanged && !originChanged) {
       return;
     }
     layoutFrame.origin = offset;
+    layer.anchorPoint = CGPointZero;
     [_host setFrame:layoutFrame];
   } else {
-    CALayer* layer = _host.layer;
     BOOL anchorPointChanged = !CGPointEqualToPoint(layer.anchorPoint, CGPointZero);
     BOOL positionChanged = !CGPointEqualToPoint(layer.position, offset);
     if (!anchorPointChanged && !positionChanged) {
@@ -119,7 +159,7 @@
     layer.position = offset;
   }
 
-  [self onSetFrame:layoutFrame];
+  [self updateRendererLayoutFrame:layoutFrame];
   [self syncHostDecorationLayers];
 }
 
@@ -207,7 +247,21 @@
   transform.m43 = m[14];  // m23 (translate Z)
   transform.m44 = m[15];  // m33
 
-  _host.layer.transform = transform;
+  CALayer* layer = _host.layer;
+  if (CATransform3DIsIdentity(transform)) {
+    // Restore ordinary UIKit geometry when a transform is removed. Keeping
+    // the top-left anchor would make a later parent-assigned center move the
+    // page by half of its size.
+    layer.transform = transform;
+    layer.anchorPoint = CGPointMake(0.5f, 0.5f);
+    [_host setFrame:layout_frame_];
+    return;
+  }
+
+  // FLR matrices already contain transform-origin. Restore the last renderer
+  // layout origin instead of deriving it from transformed UIView geometry.
+  UseTopLeftAnchorAtLayoutOrigin(_host, layout_frame_.origin);
+  layer.transform = transform;
 }
 
 - (void)applyOpacity:(float)opacity {
