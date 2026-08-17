@@ -143,6 +143,23 @@ constexpr const char kEnableReadableStreamMemFix[] =
     "enableReadableStreamMemoryFix";
 
 /**
+ * @name: enablePromiseMemoryFix
+ * @description: Enable the Lynx Promise memory fix
+ * @platform: Both
+ * @supportVersion: 4.2
+ **/
+constexpr const char kEnablePromiseMemoryFix[] = "enablePromiseMemoryFix";
+
+/**
+ * @name: enableCanvasEngineMemoryFix
+ * @description: Enable the Lynx canvas engine memory fix
+ * @platform: Both
+ * @supportVersion: 4.2
+ **/
+constexpr const char kEnableCanvasEngineMemoryFix[] =
+    "enableCanvasEngineMemoryFix";
+
+/**
  * Check if the given url indicates lynx_core.js.
  * @param url the url to check
  * @return true if the given url indicates lynx_core.js.
