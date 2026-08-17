@@ -65,6 +65,7 @@ class LYNX_EXPORT_FOR_DEVTOOL MediaQueryEvaluator {
   bool EvalHoverFeature(const MediaFeature& feature) const;
   bool EvalPointerFeature(const MediaFeature& feature) const;
   bool EvalColorSchemeFeature(const MediaFeature& feature) const;
+  bool EvalReducedMotionFeature(const MediaFeature& feature) const;
   bool EvalCustomFeature(const MediaFeature& feature) const;
 
   MediaValues values_;

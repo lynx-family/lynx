@@ -203,6 +203,13 @@ void LynxEngine::UpdateColorScheme(int scheme) {
   }
 }
 
+void LynxEngine::UpdateReducedMotion(bool reduced_motion) {
+  auto& client = tasm_->page_proxy()->element_manager();
+  if (client != nullptr) {
+    client->UpdateReducedMotion(reduced_motion);
+  }
+}
+
 void LynxEngine::SetFontScale(float scale) {
   auto& client = tasm_->page_proxy()->element_manager();
   if (client != nullptr) {

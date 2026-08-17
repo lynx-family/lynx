@@ -137,54 +137,41 @@ The CSS parser recognizes the following selectors without reporting an error, bu
 
 #### Media Queries: `@media` ⚠️
 
-**Important**: Lynx does **not support** the CSS `@media` rule.
+Lynx supports CSS media queries when the standard CSS rule path is enabled.
+Supported media features include viewport dimensions, orientation, resolution,
+aspect ratio, color, device pixel ratio, `prefers-color-scheme`, and
+`prefers-reduced-motion`. Conditions can use `and`, `or`, and `not`.
 
-- ❌ **Completely unsupported**: `@media (min-width: ...)` and `@media (max-width: ...)` have no effect at runtime
-- ❌ **Unsupported**: `@media print`
-- ❌ **Unsupported**: Other media types such as `@media speech` and `@media tty`
+`prefers-reduced-motion` accepts the standard `reduce` and `no-preference`
+values. It defaults to `no-preference` when no platform value is available.
+Android reads the system animator and transition animation scales; iOS reads
+the Reduce Motion accessibility setting. On Harmony API 23 and later, Lynx
+reads the system animation-reduction accessibility setting; earlier Harmony
+versions use the `no-preference` default. Changes are observed while a page is
+alive and cause affected media queries to be evaluated again.
 
-**Alternatives**:
-
-1. Use **`rem` with `vw`** for responsive adaptation; this is **recommended**.
-2. Use **viewport units**, `vw` and `vh`, for fluid layouts.
-3. Adjust styles dynamically with **JavaScript**.
-
-```css
-/* Recommended: use rem with vw instead of media queries. */
-page {
-  font-size: calc(100vw / 23.4375); /* 1rem = 16px at a width of 375px */
-}
-
-.container {
-  width: 100vw;
-  padding: 4vw; /* Adjusts automatically to the viewport width. */
-}
-
-.title {
-  font-size: 2.25rem; /* Approximately 36px at 375px; scales with screen width. */
-}
-
-/* Alternative: use vw directly. */
-.subtitle {
-  font-size: 4.8vw; /* Approximately 18px at a width of 375px */
-}
-```
-
-```javascript
-// Adjust styles dynamically with JavaScript.
-const viewportWidth = /* Obtain the viewport width. */;
-if (viewportWidth >= 768) {
-  // Apply styles for a large screen.
-}
-```
+To verify live updates, keep a page using the query open while changing the
+system setting. On Android, set the animator or transition animation scale to
+zero in Developer options. On iOS, toggle **Settings > Accessibility > Motion >
+Reduce Motion**. On Harmony API 23 and later, toggle the system animation
+reduction accessibility setting. The matched styles should update without
+reloading the page.
 
 ```css
-/* Use viewport units instead of media queries. */
-.container {
-  width: 100vw;
-  padding: 4vw; /* Adjusts automatically to the viewport width. */
+.hero {
+  transition: transform 500ms, opacity 500ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero {
+    transition: none;
+  }
 }
 ```
+
+Unsupported media types such as `print`, `speech`, and `tty` do not match.
+Viewport units remain useful for continuously fluid layouts that do not need
+discrete media-query breakpoints.
 
 #### Other At-rules
 

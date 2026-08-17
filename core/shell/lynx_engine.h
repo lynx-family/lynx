@@ -127,6 +127,8 @@ class LynxEngine {
 
   void UpdateColorScheme(int scheme);
 
+  void UpdateReducedMotion(bool reduced_motion);
+
   void UpdateScreenMetrics(float width, float height, float device_pixel_ratio);
 
   void UpdateViewport(float width, int32_t width_mode, float height,

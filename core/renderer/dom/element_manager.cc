@@ -804,6 +804,23 @@ void ElementManager::UpdateColorScheme(int scheme) {
   OnCSSMediaQueryResultChangedForInspector();
 }
 
+void ElementManager::UpdateReducedMotion(bool reduced_motion) {
+  auto value = reduced_motion ? css::MediaPreferredReducedMotion::kReduce
+                              : css::MediaPreferredReducedMotion::kNoPreference;
+  if (value == GetLynxEnvConfig().PreferredReducedMotion()) {
+    return;
+  }
+  GetLynxEnvConfig().SetPreferredReducedMotion(value);
+  if (root()) {
+    root()->UpdateDynamicElementStyle(
+        DynamicCSSStylesManager::kUpdateReducedMotion, false);
+    auto options = std::make_shared<PipelineOptions>();
+    RequestResolve(options);
+  }
+
+  OnCSSMediaQueryResultChangedForInspector();
+}
+
 void ElementManager::SetInspectorElementObserver(
     const std::shared_ptr<InspectorElementObserver>
         &inspector_element_observer) {

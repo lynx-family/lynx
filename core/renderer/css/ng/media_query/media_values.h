@@ -34,6 +34,13 @@ enum class MediaPreferredColorScheme {
   kDark,
 };
 
+// Maps to the `prefers-reduced-motion` media feature. The web-compatible
+// default is `no-preference` when the platform does not provide a value.
+enum class MediaPreferredReducedMotion {
+  kNoPreference,
+  kReduce,
+};
+
 class MediaValues {
  public:
   MediaValues() = default;
@@ -80,6 +87,12 @@ class MediaValues {
   void SetPreferredColorScheme(MediaPreferredColorScheme v) {
     preferred_color_scheme_ = v;
   }
+  MediaPreferredReducedMotion PreferredReducedMotion() const {
+    return preferred_reduced_motion_;
+  }
+  void SetPreferredReducedMotion(MediaPreferredReducedMotion v) {
+    preferred_reduced_motion_ = v;
+  }
 
   // ---- color -----------------------------------------------------------
   int ColorBitsPerComponent() const { return color_bits_per_component_; }
@@ -107,6 +120,8 @@ class MediaValues {
   MediaTristate pointer_ = MediaTristate::kUnknown;
   MediaPreferredColorScheme preferred_color_scheme_ =
       MediaPreferredColorScheme::kLight;
+  MediaPreferredReducedMotion preferred_reduced_motion_ =
+      MediaPreferredReducedMotion::kNoPreference;
   int color_bits_per_component_ = 8;
 };
 

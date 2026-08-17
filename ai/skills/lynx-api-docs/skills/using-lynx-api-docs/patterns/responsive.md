@@ -35,7 +35,8 @@ page {
 
 ## Use Viewport Units (`vw` and `vh`)
 
-> **Note:** Lynx does **not** support CSS `@media` queries. Use viewport units to create fluid layouts.
+> **Note:** Use viewport units for continuously fluid layouts. Standard CSS
+> media queries are also available when `enableCSSRule` is enabled.
 
 ```css
 /* Use vw instead of @media */
@@ -164,10 +165,10 @@ Combine this with conditional rendering:
 
 ## Common Pitfalls
 
-### Do Not Use `@media`
+### Use `@media` Only with `enableCSSRule`
 
 ```css
-/* ❌ Unsupported: this rule has no effect */
+/* Requires enableCSSRule. */
 @media (min-width: 768px) {
   .container {
     flex-direction: row;

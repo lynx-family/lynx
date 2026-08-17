@@ -200,6 +200,8 @@ export class LynxTemplateRenderer {
 
   updateColorScheme(scheme: number): void;
 
+  updateReducedMotion(enabled: boolean): void;
+
   nativeSetEnableBytecode(enableBytecode: boolean, sourceUrl: string): void;
 
   getPageDataByKey(keys: string[]): Object;

@@ -95,6 +95,7 @@ MediaFeatureId FeatureIdFromU32(uint32_t raw) {
     case MediaFeatureId::kDevicePixelRatio:
     case MediaFeatureId::kMinDevicePixelRatio:
     case MediaFeatureId::kMaxDevicePixelRatio:
+    case MediaFeatureId::kPrefersReducedMotion:
       return static_cast<MediaFeatureId>(raw);
   }
   return MediaFeatureId::kUnknown;
@@ -137,6 +138,7 @@ MediaFeatureId ResolveMediaFeatureId(const std::string& name) {
       {"device-pixel-ratio", MediaFeatureId::kDevicePixelRatio},
       {"min-device-pixel-ratio", MediaFeatureId::kMinDevicePixelRatio},
       {"max-device-pixel-ratio", MediaFeatureId::kMaxDevicePixelRatio},
+      {"prefers-reduced-motion", MediaFeatureId::kPrefersReducedMotion},
   };
   auto it = kMap.find(name);
   return it != kMap.end() ? it->second : MediaFeatureId::kUnknown;
@@ -194,6 +196,9 @@ MediaFeature MediaFeature::FromLepus(const lepus_value& value) {
   if (arr->size() < 5) return feature;
   feature.id_ = FeatureIdFromU32(arr->get(0).UInt32());
   feature.name_ = arr->get(1).StdString();
+  if (feature.id_ == MediaFeatureId::kUnknown && !feature.name_.empty()) {
+    feature.id_ = ResolveMediaFeatureId(feature.name_);
+  }
   feature.left_op_ = OperatorFromU32(arr->get(2).UInt32());
   feature.left_value_ = MediaFeatureValue::FromLepus(arr->get(3));
   const bool has_right = arr->get(4).Bool();
