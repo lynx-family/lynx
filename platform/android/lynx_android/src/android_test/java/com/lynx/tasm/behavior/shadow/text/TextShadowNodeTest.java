@@ -5,8 +5,11 @@ package com.lynx.tasm.behavior.shadow.text;
 
 import static org.mockito.Mockito.mock;
 
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.text.Layout;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import com.lynx.react.bridge.DynamicFromMap;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -134,5 +137,38 @@ public class TextShadowNodeTest {
     textShadowNode.measure(layoutNode, 300.f, MeasureMode.EXACTLY, 60.2f, MeasureMode.EXACTLY);
     Layout layout = textShadowNode.getTextRenderer().getTextLayout();
     Assert.assertEquals(layout.getLineCount(), 2);
+  }
+
+  @Test
+  public void testTailColorConvertUsesParagraphColorWithoutParagraphColorSpan() {
+    SpannableStringBuilder span =
+        new SpannableStringBuilder("prefix text red inline text red inline text red inline text");
+    int inlineStart = "prefix text ".length();
+    span.setSpan(new ForegroundColorSpan(Color.RED), inlineStart, span.length(),
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+    TextAttributes attributes = new TextAttributes();
+    attributes.mFontColor = Color.BLUE;
+    attributes.mFontSize = 20;
+    attributes.mMaxLineCount = 1;
+    attributes.mTextOverflow = StyleConstants.TEXTOVERFLOW_ELLIPSIS;
+
+    TextRenderer renderer = new TextRenderer(TestingUtils.getLynxContext(),
+        new TextRendererKey(span, attributes, MeasureMode.EXACTLY, MeasureMode.UNDEFINED, 120, 0, 0,
+            true, true, true));
+
+    Assert.assertTrue("test text should be truncated", renderer.getEllipsisCount() > 0);
+    Spanned renderedText = (Spanned) renderer.getTextLayout().getText();
+    boolean hasBlueTailSpan = false;
+    for (ForegroundColorSpan colorSpan :
+        renderedText.getSpans(0, renderedText.length(), ForegroundColorSpan.class)) {
+      if (colorSpan.getForegroundColor() == Color.BLUE
+          && renderedText.getSpanStart(colorSpan) > 0) {
+        hasBlueTailSpan = true;
+        break;
+      }
+    }
+
+    Assert.assertTrue("truncation tail should use the paragraph color", hasBlueTailSpan);
   }
 }
