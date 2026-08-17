@@ -54,6 +54,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (LynxPerformanceController *)performanceController;
 
+- (void)updateGenericInfoURL:(NSString *)url;
+
 - (void)setAttachLynxPageUICallback:(attachLynxPageUI)callback;
 
 /**
