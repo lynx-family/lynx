@@ -40,6 +40,8 @@ Android:
 - `android-full-screen`
 - `android-hide-navigation-bar`
 - `android-container-popup-tag`
+- `android-overlay-scope`: `fragment` ties the overlay to the AndroidX Fragment that owns the
+  page's LynxView; the default, `global`, preserves window-level behavior.
 - `android-adapt-edge-to-edge`
 - `android-navigation-bar-style`: `auto` inherits the host Activity navigation bar and is the default. `light` uses a white background with dark system controls, `dark` uses a black background with light system controls, and `transparent` removes the background while inheriting the host Activity control appearance. Missing and invalid values behave as `auto`.
 - `android-set-soft-input-mode`
@@ -75,6 +77,11 @@ Harmony native overlay handling covers `visible`, `events-pass-through`, and `mo
 ## Usage Notes
 
 - Toggle `visible` for deterministic show and dismiss behavior.
+- Use `android-overlay-scope="fragment"` in single-Activity hosts when an overlay must suspend
+  with its owning Fragment while still rendering outside the LynxView bounds. The owner must be
+  discoverable through `FragmentManager.findFragment(View)`. Resolution failures do not fall back
+  to global scope. Pass-through gestures stay within the owning Fragment host, and
+  `android-container-popup-tag` is ignored in this mode.
 - Bind `dismissoverlay` when the page needs to synchronize state after native dismissal.
 - Treat Android window/status-bar props as Android-only.
 - Treat iOS margin-adjustment props as iOS-only.
