@@ -164,6 +164,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_AUTO_NON_FLATTEN,
     ENABLE_FIBER_UPDATE_METADATA,
     JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
+    // TODO(yuyang.1024), remove the following two enums.
+    ENABLE_PROMISE_MEMORY_FIX,
+    ENABLE_CANVAS_ENGINE_MEMORY_FIX,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -349,6 +352,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             // NOLINT(harmony-trail-key): Android-only configuration.
             {Key::JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
              "js_coverage_page_sampling_basis_points"},
+            // TODO(yuyang.1024), remove the following two enums.
+            {Key::ENABLE_PROMISE_MEMORY_FIX, "enable_promise_memory_fix"},
+            {Key::ENABLE_CANVAS_ENGINE_MEMORY_FIX,
+             "enable_canvas_engine_memory_fix"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -524,6 +531,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableNewStylingPipeline();
   bool EnableFrameNativeData();
   bool EnableReadableStreamMemFix();
+  bool EnablePromiseMemoryFix();
+  bool EnableCanvasEngineMemoryFix();
   bool EnableHarmonyTextCustomEmoji();
   bool EnableElementApiNewRegistration();
   bool EnableElementInvokeUIMethodPendingTask();
