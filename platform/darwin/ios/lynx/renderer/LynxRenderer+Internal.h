@@ -17,6 +17,14 @@
 
 - (void)syncHostDecorationLayers;
 
+- (CGPoint)rendererLayoutOrigin;
+
+- (void)updateRendererLayoutFrame:(CGRect)frame;
+
+- (void)updateRendererLayoutSize:(CGSize)size;
+
+- (void)updateRendererLayoutCenter:(CGPoint)center;
+
 - (void)updateLayoutOffsetIfNeeded:(CGPoint)offset;
 
 // SubtreeProperties support

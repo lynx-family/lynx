@@ -17,6 +17,7 @@
 #import <Lynx/LynxLifecycleDispatcher.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxLogicExecutor.h>
+#import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxService.h>
@@ -388,7 +389,16 @@
 - (void)setFrame:(CGRect)frame {
   // TODO should update viewport here?
   [super setFrame:frame];
+  [self.renderer updateRendererLayoutFrame:frame];
   [_templateRender.lynxUIRenderer onSetFrame:frame];
+}
+
+- (void)setCenter:(CGPoint)center {
+  [super setCenter:center];
+  // The parent uses UIView center semantics even when the renderer has a
+  // transform. Convert it with the logical size instead of transformed layer
+  // geometry.
+  [self.renderer updateRendererLayoutCenter:center];
 }
 
 - (UIView*)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
