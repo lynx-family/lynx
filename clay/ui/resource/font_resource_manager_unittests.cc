@@ -2,9 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <atomic>
 #include <memory>
 #include <string>
 
+#include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/thread.h"
 #include "clay/fml/logging.h"
 #include "clay/fml/paths.h"
@@ -93,6 +95,67 @@ TEST_F(FontResourceManagerTest, FontCollectionTest) {
   EXPECT_NE(font_resource.data, nullptr);
 
   EXPECT_EQ((int)font_resource.length, 170760);
+}
+
+TEST_F(FontResourceManagerTest, DataUriReportsLoadingUntilDecodeCompletes) {
+  auto font_resource_manager = std::make_shared<FontResourceManager>();
+  auto load_task_runner = CreateNewThread("font-loader");
+  fml::AutoResetWaitableEvent task_started;
+  fml::AutoResetWaitableEvent allow_task_to_finish;
+  load_task_runner->PostTask([&]() {
+    task_started.Signal();
+    allow_task_to_finish.Wait();
+  });
+  task_started.Wait();
+
+  const std::string family_name = "async_data_uri_font";
+  std::atomic_bool callback_called = false;
+  font_resource_manager->LoadFontAsync(
+      load_task_runner, nullptr, nullptr, family_name,
+      {"data:font/ttf;base64,AA=="},
+      [&](bool success, const std::string&, const std::string&) {
+        callback_called = success;
+      });
+
+  EXPECT_TRUE(font_resource_manager->HasFontResourceLoading(family_name));
+  EXPECT_FALSE(font_resource_manager->HasFontResource(family_name));
+
+  allow_task_to_finish.Signal();
+  load_task_runner->PostSyncTask([]() {});
+
+  EXPECT_TRUE(callback_called.load());
+  EXPECT_FALSE(font_resource_manager->HasFontResourceLoading(family_name));
+  EXPECT_TRUE(font_resource_manager->HasFontResource(family_name));
+}
+
+TEST_F(FontResourceManagerTest, FontCallbackCanBeCancelled) {
+  const std::string family_name = "cancelled_font_callback";
+  bool callback_called = false;
+  const auto callback_id = font_collection_->RegisterCallback(
+      family_name, [&]() { callback_called = true; });
+
+  EXPECT_EQ(font_collection_->font_download_callback_.count(family_name), 1u);
+  font_collection_->UnregisterCallback(callback_id);
+  EXPECT_EQ(font_collection_->font_download_callback_.count(family_name), 0u);
+
+  font_collection_->OnLoadFontEnd(family_name);
+  EXPECT_FALSE(callback_called);
+}
+
+TEST_F(FontResourceManagerTest, FailedFontLoadClearsCallbacks) {
+  const std::string family_name = "failed_font_callback";
+  bool callback_called = false;
+  font_collection_->RegisterCallback(family_name,
+                                     [&]() { callback_called = true; });
+  auto load_task_runner = CreateNewThread("failed-font-loader");
+
+  font_collection_->PreLoadFontOnMem(load_task_runner, nullptr, nullptr,
+                                     family_name, {"data:font/ttf,invalid"});
+  load_task_runner->PostSyncTask([]() {});
+
+  EXPECT_EQ(font_collection_->font_download_callback_.count(family_name), 0u);
+  EXPECT_FALSE(callback_called);
+  EXPECT_FALSE(font_collection_->HasFontResourceLoading(family_name));
 }
 
 }  // namespace clay
