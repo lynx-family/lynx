@@ -2106,7 +2106,14 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
               tasm::LynxEnv::Key::ENABLE_RELEASE_APP_INSTANCE, true)) ||
       !page_config_subset.setProperty(
           *rt, runtime::kEnableReadableStreamMemFix,
-          tasm::LynxEnv::GetInstance().EnableReadableStreamMemFix())) {
+          tasm::LynxEnv::GetInstance().EnableReadableStreamMemFix()) ||
+      // TODO(yuyang.1024), remove these
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnablePromiseMemoryFix,
+          tasm::LynxEnv::GetInstance().EnablePromiseMemoryFix()) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableCanvasEngineMemoryFix,
+          tasm::LynxEnv::GetInstance().EnableCanvasEngineMemoryFix())) {
     HandleLoadAppFailed(" App::LoadApp error! page_config_subset init fail.");
     return;
   }
