@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "clay/public/style_types.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/component/keywords.h"
@@ -27,7 +28,7 @@ class Measurable;
 class CustomMeasurable;
 class TextUpdateBundle;
 
-class ShadowNode {
+class ShadowNode : public fml::EnableWeakFromThis<ShadowNode> {
  public:
   ShadowNode(ShadowNodeOwner* owner, std::string tag, int id);
   virtual ~ShadowNode() = default;
@@ -92,7 +93,7 @@ class ShadowNode {
 
   void RemoveAllChildren();
 
-  ShadowNode* Parent() { return parent_; }
+  ShadowNode* Parent() { return parent_.get(); }
 
   std::vector<ShadowNode*>& GetChildren() { return children_; }
 
@@ -156,7 +157,7 @@ class ShadowNode {
   ClayLayoutStyles styles_{};
   std::string tag_;
   std::string id_selector_;
-  ShadowNode* parent_ = nullptr;
+  fml::WeakPtr<ShadowNode> parent_;
   std::vector<ShadowNode*> children_;
   bool is_dirty_ = true;
   int id_;

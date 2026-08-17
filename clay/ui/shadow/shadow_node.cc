@@ -71,12 +71,12 @@ void ShadowNode::AddChild(ShadowNode* child, int index) {
     return;
   }
 
-  ShadowNode* parent = child->parent_;
+  ShadowNode* parent = child->parent_.get();
   if (parent) {
     parent->RemoveChild(child);
   }
 
-  child->parent_ = this;
+  child->parent_ = WeakFromThis();
   children_.insert(children_.begin() + index, child);
 }
 
@@ -87,13 +87,13 @@ void ShadowNode::RemoveChild(ShadowNode* child) {
     return;
   }
 
-  child->parent_ = nullptr;
+  child->parent_.reset();
   children_.erase(iter);
 }
 
 void ShadowNode::RemoveAllChildren() {
   for (auto* child : children_) {
-    child->parent_ = nullptr;
+    child->parent_.reset();
   }
   children_.clear();
 }
