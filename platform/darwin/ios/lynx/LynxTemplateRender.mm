@@ -718,6 +718,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (_enableReuseEngine && [_lynxEngine hasLoaded] &&
       [_lynxEngine isRunOnCurrentTemplateRender:self]) {
     // TODO(renzhongyue): attachUIBodyView
+    [self updateGenericInfoURL:_url];
     [self updateDataWithTemplateData:data];
     [_lynxEngine registerToReuse];
     return;
