@@ -29,6 +29,7 @@
 #import <Lynx/LynxSetModule.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender+Protected.h>
 #import <Lynx/LynxTextInfoModule.h>
 #import <Lynx/LynxUILayoutTick.h>
@@ -316,6 +317,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   [LynxEventReporter updateGenericInfo:@(_threadStrategyForRendering)
                                    key:kPropThreadMode
                             instanceId:_context.instanceId];
+  [self updateGenericInfoURL:_url];
   // TODO(chenyouhui): Move this function call to a more appropriate place.
   [LynxService(LynxServiceExtensionProtocol) onLynxViewSetup:_context
                                                        group:_runtimeOptions.group
