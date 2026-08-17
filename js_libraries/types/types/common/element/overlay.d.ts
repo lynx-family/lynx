@@ -72,6 +72,13 @@ export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
   'android-navigation-bar-style'?: 'auto' | 'light' | 'dark' | 'transparent';
 
   /**
+   * Scopes Android overlay visibility and pass-through routing to the Fragment that owns its LynxView.
+   * @Android
+   * @defaultValue 'global'
+   */
+  'android-overlay-scope'?: 'global' | 'fragment';
+
+  /**
    * Introduces the concept of layers, which are divided into four levels. The larger the layer, the closer it is to the bottom. By default, it is the first level. The layers are arranged in order from 1 to 4. The displayed layer is specified and is not affected by the order of display. Within each layer, the arrangement is based on the 'last in, first out' logic. The layer cannot be dynamically adjusted when the overlay is displayed, and can only be adjusted when it is hidden.     * @Android
    * @iOS
    * @Android

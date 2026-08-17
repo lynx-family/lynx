@@ -13,6 +13,8 @@ let a;
 {
   // Test overlay JSX element with various props
   <overlay visible={true} />;
+  <overlay android-overlay-scope="global" />;
+  <overlay android-overlay-scope="fragment" />;
   <overlay level={1} />;
   <overlay mode="window" />;
   <overlay mode="page" />;
@@ -23,6 +25,7 @@ let a;
   <overlay visible={false} level={2} mode="top" />;
 
   assertType<boolean | undefined>(a as IntrinsicElements['overlay']['visible']);
+  assertType<'global' | 'fragment' | undefined>(a as IntrinsicElements['overlay']['android-overlay-scope']);
   assertType<1 | 2 | 3 | 4 | undefined>(a as IntrinsicElements['overlay']['level']);
   assertType<boolean | undefined>(a as IntrinsicElements['overlay']['ios-enable-swipe-back']);
   assertType<'window' | 'top' | 'page' | string | undefined>(a as IntrinsicElements['overlay']['mode']);
@@ -31,6 +34,8 @@ let a;
   expectError(() => {
     // @ts-expect-error type error
     <overlay visible={'text'} />;
+    // @ts-expect-error type error
+    <overlay android-overlay-scope="activity" />;
     // @ts-expect-error type error
     <overlay level={5} />;
     // @ts-expect-error type error

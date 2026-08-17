@@ -2,6 +2,7 @@
 
 ## 4.3.1
 - Clarify that `android-navigation-bar-style="transparent"` requires `android-adapt-edge-to-edge={true}`.
+- Add `android-overlay-scope` to `<overlay>` typings.
 
 ## 4.3.0
 - Add missing `repeat`, `altKey`, `shiftKey`, `ctrlKey`, and `metaKey` fields to `BaseKeyEvent`.
