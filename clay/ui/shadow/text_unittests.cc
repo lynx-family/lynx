@@ -173,6 +173,21 @@ TEST_F_UI(TextTest, TextDecorationAttributeMapsLineStyleAndColor) {
   EXPECT_EQ(decoration.color, Color(0xff123456));
 }
 
+#if defined(CLAY_ENABLE_TTTEXT)
+TEST_F_UI(TextTest, TTTextInlineStrokeCanUseInheritedColor) {
+  EXPECT_FALSE(inline_text_shadow_node_->text_style_->text_color.has_value());
+
+  inline_text_shadow_node_->SetTextStrokeWidth(0.3);
+
+  EXPECT_FALSE(inline_text_shadow_node_->text_style_->text_color.has_value());
+
+  inline_text_shadow_node_->SetTextColor(Color(0xff123456));
+
+  EXPECT_EQ(inline_text_shadow_node_->text_style_->text_color,
+            Color(0xff123456));
+}
+#endif
+
 TEST_F_UI(TextTest, FontAndShadowSettersPreserveStyleMetadata) {
   text_shadow_node_->SetFontWeight(FontWeight::k700);
   text_shadow_node_->SetFontStyle(FontStyle::kItalic);

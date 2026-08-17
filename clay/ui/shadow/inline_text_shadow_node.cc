@@ -14,7 +14,11 @@ namespace clay {
 
 InlineTextShadowNode::InlineTextShadowNode(ShadowNodeOwner* owner,
                                            std::string tag, int id)
-    : BaseTextShadowNode(owner, tag, id) {}
+    : BaseTextShadowNode(owner, tag, id) {
+#if defined(CLAY_ENABLE_TTTEXT)
+  text_style_->text_color.reset();
+#endif
+}
 
 InlineTextShadowNode::~InlineTextShadowNode() = default;
 
@@ -32,7 +36,20 @@ void InlineTextShadowNode::LayoutRange(txt::Paragraph* paragraph) {
 
 void InlineTextShadowNode::TextLayout(LayoutContext* context) {
   range_in_paragraph_.clear();
+#if defined(CLAY_ENABLE_TTTEXT)
+  const bool use_default_text_color =
+      !text_style_->text_color.has_value() &&
+      text_style_->stroke_width.value_or(0.f) <= 0.f;
+  if (use_default_text_color) {
+    text_style_->text_color = Color::kBlack();
+  }
+#endif
   BaseTextShadowNode::TextLayout(context);
+#if defined(CLAY_ENABLE_TTTEXT)
+  if (use_default_text_color) {
+    text_style_->text_color.reset();
+  }
+#endif
 }
 
 }  // namespace clay
