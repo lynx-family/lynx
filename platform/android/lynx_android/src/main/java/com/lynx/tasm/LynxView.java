@@ -1549,7 +1549,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       return;
     }
     LynxContext context = mLynxTemplateRender.getLynxContext();
-    if (context == null || !context.isEmbeddedModeOn()) {
+    if (context == null || !context.isEmbeddedModeOn() || !mLynxTemplateRender.hasLogicExecutor()) {
       return;
     }
     UIThreadUtils.runOnUiThread(new Runnable() {
