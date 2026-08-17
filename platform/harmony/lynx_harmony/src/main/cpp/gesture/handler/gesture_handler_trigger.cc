@@ -263,16 +263,18 @@ void GestureHandlerTrigger::UpdateLastWinner(
 std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
     std::vector<std::weak_ptr<GestureArenaMember>>& competitor_chain_candidates,
     std::weak_ptr<GestureArenaMember> current) {
-  if ((!current.lock() && !last_winner_.lock()) ||
-      !competitor_chain_candidates.size()) {
+  auto current_member = current.lock();
+  const bool need_reCompete_last_winner = !current_member;
+  if (need_reCompete_last_winner) {
+    current_member = last_winner_.lock();
+  }
+  if (!current_member || competitor_chain_candidates.empty()) {
     return std::weak_ptr<GestureArenaMember>();
   }
 
-  bool need_reCompete_last_winner = false;
-  if (!current.lock() && last_winner_.lock()) {
-    need_reCompete_last_winner = true;
-    current = last_winner_;
-    ResetGestureHandlerAndSimultaneous(last_winner_);
+  if (need_reCompete_last_winner) {
+    current = current_member;
+    ResetGestureHandlerAndSimultaneous(current_member);
   }
 
   int state_current = GetCurrentMemberState(current);
@@ -288,14 +290,10 @@ std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
 
   auto it = std::find_if(
       competitor_chain_candidates.begin(), competitor_chain_candidates.end(),
-      [&current](const std::weak_ptr<GestureArenaMember>& elem) {
-        auto current_lock = current.lock();
+      [&current_member](const std::weak_ptr<GestureArenaMember>& elem) {
         auto elem_lock = elem.lock();
-        if (!current_lock || !elem_lock) {
-          return false;
-        }
-        return current_lock->GestureArenaMemberId() ==
-               elem_lock->GestureArenaMemberId();
+        return elem_lock && current_member->GestureArenaMemberId() ==
+                                elem_lock->GestureArenaMemberId();
       });
 
   if (it == competitor_chain_candidates.end()) {
@@ -303,15 +301,14 @@ std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
   }
 
   auto last_it =
-      std::find_if(competitor_chain_candidates.rbegin(),
-                   competitor_chain_candidates.rend(),
-                   [&current](const std::weak_ptr<GestureArenaMember>& elem) {
-                     auto current_lock = current.lock();
-                     auto elem_lock = elem.lock();
-                     return current_lock && elem_lock &&
-                            current_lock->GestureArenaMemberId() ==
-                                elem_lock->GestureArenaMemberId();
-                   })
+      std::find_if(
+          competitor_chain_candidates.rbegin(),
+          competitor_chain_candidates.rend(),
+          [&current_member](const std::weak_ptr<GestureArenaMember>& elem) {
+            auto elem_lock = elem.lock();
+            return elem_lock && current_member->GestureArenaMemberId() ==
+                                    elem_lock->GestureArenaMemberId();
+          })
           .base() -
       1;
 
@@ -329,15 +326,19 @@ std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
     return std::weak_ptr<GestureArenaMember>();
   }
 
-  int current_member_id = (*it).lock()->GestureArenaMemberId();
+  auto current_candidate = it->lock();
+  if (!current_candidate) {
+    return std::weak_ptr<GestureArenaMember>();
+  }
+  int current_member_id = current_candidate->GestureArenaMemberId();
 
   for (auto next_it = it + 1; next_it != competitor_chain_candidates.end();
        ++next_it) {
-    auto node = *next_it;
-    if (node.lock()->GestureArenaMemberId() == current_member_id) {
+    auto node = next_it->lock();
+    if (!node || node->GestureArenaMemberId() == current_member_id) {
       continue;
     }
-    if (duplicated_member_.lock() == node.lock()) {
+    if (duplicated_member_.lock() == node) {
       duplicated_member_.reset();
     } else {
       if (GetCurrentMemberState(node) != GestureConstants::LYNX_STATE_END) {
@@ -355,11 +356,11 @@ std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
 
   for (auto pre_it = competitor_chain_candidates.begin(); pre_it != it;
        ++pre_it) {
-    auto node = *pre_it;
-    if (node.lock()->GestureArenaMemberId() == current_member_id) {
+    auto node = pre_it->lock();
+    if (!node || node->GestureArenaMemberId() == current_member_id) {
       continue;
     }
-    if (duplicated_member_.lock() == node.lock()) {
+    if (duplicated_member_.lock() == node) {
       duplicated_member_.reset();
     } else {
       if (GetCurrentMemberState(node) != GestureConstants::LYNX_STATE_END) {
