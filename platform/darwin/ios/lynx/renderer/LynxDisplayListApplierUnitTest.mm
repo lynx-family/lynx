@@ -363,7 +363,7 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(CGRectEqualToRect(child.frame, CGRectMake(15.0f, 26.0f, 12.0f, 13.0f)));
 }
 
-- (void)testDrawViewUsesTopLeftAnchorForTransformedLegacyView {
+- (void)testDrawViewPreservesAnchorForTransformedLegacyView {
   LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
   [host createRendererWithSign:1 andContext:nil];
   UIView *child = [[UIView alloc] initWithFrame:CGRectMake(1.0f, 2.0f, 12.0f, 13.0f)];
@@ -382,8 +382,8 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   [applier applyDisplayList:&list];
   [applier applyDisplayList:&list];
 
-  XCTAssertTrue(CGPointEqualToPoint(child.layer.anchorPoint, CGPointZero));
-  XCTAssertTrue(CGPointEqualToPoint(child.layer.position, CGPointMake(15.0f, 26.0f)));
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.anchorPoint, CGPointMake(0.5f, 0.5f)));
+  XCTAssertTrue(CGPointEqualToPoint(child.layer.position, CGPointMake(21.0f, 32.5f)));
   XCTAssertTrue(CGSizeEqualToSize(child.layer.bounds.size, CGSizeMake(12.0f, 13.0f)));
 }
 
