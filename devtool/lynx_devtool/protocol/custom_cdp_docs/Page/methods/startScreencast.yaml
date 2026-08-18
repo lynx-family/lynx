@@ -1,0 +1,31 @@
+summary: Starts a screencast with the standard CDP options and an optional Lynx capture mode.
+parameters:
+  - name: mode
+    type: string
+    optional: true
+    enum: [fullscreen, lynxview]
+    description: Lynx-specific capture mode. Use fullscreen to capture the host screen or lynxview to capture the LynxView bounds.
+returns: []
+events: []
+notes:
+  - mode is a Lynx extension to the standard Page.startScreencast parameters.
+  - The selected mode is stored in process-wide DevTool screenshot status, not in ScreenshotRequest. Screenshot capture, hit testing, box-model calculation, and touch emulation read that status.
+  - When no mode has been stored, Android and iOS native implementations default to fullscreen, while Harmony native defaults to lynxview.
+  - Clay SDK implementations only support lynxview captures, so the mode parameter has no effect.
+  - Coordinate-sensitive CDP methods that also consume the stored mode include DOM.getNodeForLocation, DOM.getBoxModel, DOM.getDocumentWithBoxModel, and Input.emulateTouchFromMouseEvent.
+  - These consumers share the same mode so hit-testing coordinates and box-model results align with the active screencast frame.
+  - On platforms that support both modes, fullscreen paths use host screen or window coordinates and convert them to the target view when needed, while lynxview paths use LynxView-local coordinates.
+  - Only fullscreen and lynxview update the stored mode; omitting mode or passing any other value leaves the previously stored mode unchanged.
+examples:
+  - title: Start a LynxView screencast
+    request:
+      id: 1
+      method: Page.startScreencast
+      params:
+        format: png
+        maxWidth: 720
+        maxHeight: 1280
+        mode: lynxview
+    response:
+      id: 1
+      result: {}
