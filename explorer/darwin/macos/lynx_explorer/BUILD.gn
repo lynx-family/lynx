@@ -103,8 +103,6 @@ mac_app_bundle("lynx_explorer") {
     "LynxExplorer/module/LynxNodeAPIModule.mm",
     "LynxExplorer/runtime/ExampleLynxRuntimeLifecycleObserver.h",
     "LynxExplorer/runtime/ExampleLynxRuntimeLifecycleObserver.mm",
-    "LynxExplorer/service/LynxHttpService.h",
-    "LynxExplorer/service/LynxHttpService.mm",
   ]
   if (use_weak_suffix_napi) {
     defines += [ "USE_WEAK_SUFFIX_NAPI=1" ]
@@ -155,6 +153,7 @@ mac_app_bundle("lynx_explorer") {
   public_deps += [
     ":copy_dylib",
     "../../../../platform/darwin/macos:lynx_shared_library",
+    "../../../../platform/embedder/http_service:http_service",
     "../../../embedder/lynx_explorer:lynx_explorer_embedder",
   ]
   if (enable_testbench_replay) {

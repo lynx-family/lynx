@@ -158,9 +158,12 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
         }
         args_array->PushValueToArray(std::move(sub_arr_result));
       } else if (o.isArrayBuffer(*rt)) {
-        size_t length;
-        args_array->PushArrayBufferToArray(
-            pub::ValueUtils::ConvertPiperToArrayBuffer(*rt, o, length), length);
+        // Sequence the |length| out-param assignment before it is read as an
+        // argument; C++ argument evaluation order is unspecified.
+        size_t length = 0;
+        auto buffer =
+            pub::ValueUtils::ConvertPiperToArrayBuffer(*rt, o, length);
+        args_array->PushArrayBufferToArray(std::move(buffer), length);
       } else if (o.isFunction(*rt)) {
         auto function = o.getFunction(*rt);
         auto callback_id =
