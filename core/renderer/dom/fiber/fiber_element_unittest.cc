@@ -66,6 +66,7 @@
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/js_object.h"
+#include "core/runtime/lepus/vm_context.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
@@ -85,6 +86,37 @@ namespace tasm {
 namespace testing {
 
 namespace {
+class RecordingExternalMemoryContext : public lepus::VMContext {
+ public:
+  explicit RecordingExternalMemoryContext(runtime::MTSRuntime* runtime)
+      : lepus::VMContext(runtime) {}
+
+  void ReportExternalMemory(int64_t total_size, int64_t garbage_size) override {
+    ++report_count;
+    reported_total_size = total_size;
+    reported_garbage_size = garbage_size;
+  }
+
+  int report_count{0};
+  int64_t reported_total_size{0};
+  int64_t reported_garbage_size{0};
+};
+
+class RecordingExternalMemoryRuntime : public runtime::MTSRuntime {
+ public:
+  RecordingExternalMemoryRuntime()
+      : runtime::MTSRuntime(runtime::ContextType::VMContextType) {
+    auto context = std::make_unique<RecordingExternalMemoryContext>(this);
+    context_ = context.get();
+    mts_context_ = std::move(context);
+  }
+
+  RecordingExternalMemoryContext* context() { return context_; }
+
+ private:
+  RecordingExternalMemoryContext* context_{nullptr};
+};
+
 CSSValue parseTransformStringValue(const lepus::Value& value_str,
                                    const CSSParserConfigs& configs) {
   CSSStringParser parser = CSSStringParser::FromLepusString(value_str, configs);
@@ -13267,48 +13299,31 @@ TEST_P(FiberElementTest, InlineElementTest0) {
   EXPECT_TRUE(HasCaptureSignWithTag(image->impl_id(), "inline-image"));
 }
 
-TEST_P(FiberElementTest, InlineElementTest0_0) {
-  int32_t captured_element_memory_size = 0;
-  manager->vm_update_outer_obj_size_callback_ =
-      [&captured_element_memory_size](int32_t size) {
-        captured_element_memory_size = size;
-      };
-  auto page = manager->CreateFiberPage("page", 11);
+TEST_P(FiberElementTest, ExternalMemoryReportUsesOnlyDefaultRuntime) {
+  auto default_runtime = std::make_shared<RecordingExternalMemoryRuntime>();
+  auto component_runtime = std::make_shared<RecordingExternalMemoryRuntime>();
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetVm(default_runtime);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+  auto component_entry = std::make_shared<TemplateEntry>();
+  component_entry->SetVm(component_runtime);
+  tasm->template_entries_["component"] = component_entry;
+  manager->enable_fiber_element_memory_reporter_ = true;
 
-  // create text and insert it to page
-  auto text = manager->CreateFiberText("text");
-  text->MarkCanBeLayoutOnly(false);
+  auto detached_element = manager->CreateFiberNode("view");
+  const int64_t element_size = detached_element->GetMemoryUsage();
+  tasm->ReportExternalMemory({100, 40});
 
-  // create wrapper and insert it to text
-  auto wrapper = manager->CreateFiberWrapperElement();
-  wrapper->MarkCanBeLayoutOnly(false);
+  EXPECT_EQ(default_runtime->context()->report_count, 1);
+  EXPECT_EQ(default_runtime->context()->reported_total_size,
+            100 + element_size);
+  EXPECT_EQ(default_runtime->context()->reported_garbage_size,
+            40 + element_size);
+  EXPECT_EQ(component_runtime->context()->report_count, 0);
 
-  // create image and insert it to wrapper
-  auto image = manager->CreateFiberImage("image");
-  image->MarkCanBeLayoutOnly(false);
-
-  wrapper->InsertNode(image);
-  text->InsertNode(wrapper);
-  page->InsertNode(text);
-
-  auto options = std::make_shared<PipelineOptions>();
-  manager->OnPatchFinish(options, page.get());
-
-  EXPECT_TRUE(manager->total_memory_ > 0);
-  EXPECT_EQ(captured_element_memory_size, manager->total_memory_);
-
-  EXPECT_FALSE(text->is_inline_element());
-  EXPECT_TRUE(text->TendToFlatten());
-
-  EXPECT_TRUE(wrapper->is_inline_element());
-  EXPECT_FALSE(wrapper->TendToFlatten());
-
-  EXPECT_TRUE(image->is_inline_element());
-  EXPECT_FALSE(image->TendToFlatten());
-
-  EXPECT_TRUE(HasCaptureSignWithTag(page->impl_id(), "page"));
-  EXPECT_TRUE(HasCaptureSignWithTag(text->impl_id(), "text"));
-  EXPECT_TRUE(HasCaptureSignWithTag(image->impl_id(), "inline-image"));
+  manager->enable_fiber_element_memory_reporter_ = false;
+  tasm->ReportExternalMemory({200, 80});
+  EXPECT_EQ(default_runtime->context()->report_count, 1);
 }
 
 TEST_P(FiberElementTest, InlineElementTest1) {

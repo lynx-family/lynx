@@ -59,6 +59,17 @@ void PaintingContext::RemovePaintingNode(int parent, int child, int index,
   if (!is_move) {
     // only add child sign to remove_ids_ vector when it is not a move
     patching_node_remove_ids_.emplace_back(child);
+    EnqueueExternalMemoryReportRequest();
+  }
+}
+
+void PaintingContext::EnqueueExternalMemoryReportRequest() {
+  if (platform_impl_->HasEnableUIOperationBatching()) {
+    platform_impl_->RequestExternalMemoryReport();
+  } else {
+    Enqueue([platform_ref = platform_impl_->GetPlatformRef()]() {
+      platform_ref->RequestExternalMemoryReport();
+    });
   }
 }
 

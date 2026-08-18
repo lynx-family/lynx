@@ -41,10 +41,21 @@ struct MockNode {
 
 class MockPaintingContextPlatformRef : public PaintingCtxPlatformRef {
  public:
+  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
+                               std::vector<int32_t> remove_ids) override {
+    ready_ids_ = std::move(ready_ids);
+    remove_ids_ = std::move(remove_ids);
+  }
+  void RequestExternalMemoryReport() override {
+    ++external_memory_report_request_count_;
+  }
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override {
     reload_ids_ = std::move(reload_ids);
   }
+  std::vector<int32_t> ready_ids_;
+  std::vector<int32_t> remove_ids_;
   std::vector<int32_t> reload_ids_;
+  int external_memory_report_request_count_{0};
 };
 
 class MockPaintingContext : public PaintingContextPlatformImpl {
@@ -64,6 +75,15 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
 
   // TODO(liting.src): remove after painting context refactor.
   bool HasEnableUIOperationBatching() override { return true; }
+
+  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
+                               std::vector<int32_t> remove_ids) override {
+    platform_ref_->UpdateNodeReadyPatching(std::move(ready_ids),
+                                           std::move(remove_ids));
+  }
+  void RequestExternalMemoryReport() override {
+    platform_ref_->RequestExternalMemoryReport();
+  }
 
  private:
   std::mutex lock_;
