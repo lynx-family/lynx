@@ -21,6 +21,7 @@
 #include "base/include/fml/task_runner.h"
 #include "base/include/log/logging.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
+#include "core/public/external_memory_snapshot.h"
 #include "core/public/page_options.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/data/template_data.h"
@@ -327,6 +328,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
       std::unordered_map<std::string, std::string> mem_info) override;
 
   void TriggerVmGC();
+
+  void ReportExternalMemory(ExternalMemorySnapshot ui_snapshot);
 
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override;
 

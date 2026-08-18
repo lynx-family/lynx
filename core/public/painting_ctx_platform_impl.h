@@ -52,6 +52,10 @@ class PaintingCtxPlatformRef {
 
   virtual void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                        std::vector<int32_t> remove_ids) {}
+  // TODO(songshourui.null): Implement platform-specific reporting in follow-up
+  // changes.
+  // Requests a delayed, coalesced external-memory report from the UI backend.
+  virtual void RequestExternalMemoryReport() {}
   virtual void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {}
   virtual void UpdateEventInfo(bool has_touch_pseudo) {}
   virtual void UpdateFlattenStatus(int id, bool flatten) {}
@@ -188,6 +192,10 @@ class PaintingCtxPlatformImpl {
   // TODO(liting.src): remove this method after ui operation queue refactor.
   virtual void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                        std::vector<int32_t> remove_ids) {}
+  // TODO(songshourui.null): Forward this request through platform-specific
+  // operation queues in follow-up changes.
+  // Appends an external-memory report request to a batched UI operation stream.
+  virtual void RequestExternalMemoryReport() {}
 
   virtual void SetContextHasAttached() {}
   virtual void SetEnableVsyncAlignedFlush(bool enabled) {}

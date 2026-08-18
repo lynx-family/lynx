@@ -29,6 +29,7 @@
 #include "core/base/utils/any.h"
 #include "core/inspector/observer/inspector_element_observer.h"
 #include "core/inspector/style_sheet.h"
+#include "core/public/external_memory_snapshot.h"
 #include "core/public/page_options.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/prop_bundle.h"
@@ -125,6 +126,8 @@ class NodeManager {
   }
 
   size_t NodeCount() { return node_map_.size(); }
+
+  ExternalMemorySnapshot GetExternalMemorySnapshot() const;
 
   int32_t GetTotalMemoryUsage() const {
     if (node_map_.empty()) {
@@ -1326,11 +1329,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return disable_list_callback_if_detached_;
   }
 
-  void RegisterVMUpdateOuterObjSizeCallback(
-      base::MoveOnlyClosure<void, int> closure);
-
-  void UpdateElementMemoryUsage(int size);
-
   inline bool EnableFiberElementMemoryReport() {
     return enable_fiber_element_memory_reporter_;
   }
@@ -1339,8 +1337,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return (!is_memory_collecting_ &&
             tasm::performance::MemoryMonitor::Enable());
   }
-
-  int32_t CalcTotalMemoryUsageDiff();
 
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
 
@@ -1388,11 +1384,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   void TickListIfNeeded(const std::shared_ptr<PipelineOptions> &options);
 
-  /**
-   * call this function after exec OnPatchFinishForFiber
-   */
-  void DidPatchFinishForFiber();
-
   void PrepareComponentNodeForInspector(Element *component);
 
   std::unique_ptr<NodeManager> node_manager_;
@@ -1434,8 +1425,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Internal timeout in threaded element flush mode to enable force running on
   // thread-pool in unittests
   int32_t task_wait_timeout_{0};
-
-  int32_t total_memory_{0};
 
   std::atomic_int element_count_{0};
   std::atomic_int layout_only_element_count_{0};
@@ -1591,8 +1580,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   mutable std::shared_mutex resolved_intrinsic_font_faces_mutex_;
   std::unordered_set<const tasm::CSSFragment *>
       resolved_intrinsic_font_face_fragments_;
-
-  base::MoveOnlyClosure<void, int> vm_update_outer_obj_size_callback_{};
 
   ALLOW_UNUSED_TYPE int64_t record_id_{0};
   ALLOW_UNUSED_TYPE std::map<lynx::devtool::DevToolFunction,

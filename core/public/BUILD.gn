@@ -11,6 +11,7 @@ lynx_core_source_set("public") {
     "devtool/lynx_devtool_proxy.h",
     "devtool/lynx_inspector_owner.h",
     "event_tracker_proxy.h",
+    "external_memory_snapshot.h",
     "gesture_handler.h",
     "jsb/extension_module_factory.h",
     "jsb/lynx_extension_module.h",

@@ -284,8 +284,8 @@ class MTSRuntime : private MTSContextHolder,
 
   bool IsTracingGCEnabled() { return mts_context_->IsTracingGCEnabled(); }
 
-  void UpdateVMOuterObjSize(int size) {
-    return mts_context_->UpdateVMOuterObjSize(size);
+  void ReportExternalMemory(int64_t total_size, int64_t garbage_size) {
+    mts_context_->ReportExternalMemory(total_size, garbage_size);
   }
 
   bool EvalBinary(const uint8_t* buf, uint64_t size, Value& ret,

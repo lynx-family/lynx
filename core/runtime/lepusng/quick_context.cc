@@ -1409,12 +1409,13 @@ void QuickContext::EnableRuntimeLeakCheck(bool enable) {
 
 void QuickContext::BindCurrentThread() { LEPUS_PushObjectCheckTid(context()); }
 
-void QuickContext::UpdateVMOuterObjSize(int size) {
+void QuickContext::ReportExternalMemory(int64_t total_size,
+                                        int64_t garbage_size) {
   auto lepus_context = context();
   if (lepus_context != nullptr) {
     auto lepus_runtime = LEPUS_GetRuntime(lepus_context);
     if (lepus_runtime != nullptr) {
-      UpdateOuterObjSize(lepus_runtime, size);
+      LEPUS_ReportExternalSize(lepus_runtime, total_size, garbage_size);
     }
   }
 }

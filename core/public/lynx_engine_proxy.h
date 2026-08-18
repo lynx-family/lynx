@@ -10,6 +10,7 @@
 #include <string>
 
 #include "base/include/closure.h"
+#include "core/public/external_memory_snapshot.h"
 #include "core/public/list_data.h"
 #include "core/public/pub_value.h"
 
@@ -21,6 +22,10 @@ class LynxEngineProxy {
   virtual ~LynxEngineProxy() = default;
 
   virtual void DispatchTaskToLynxEngine(base::closure task) = 0;
+
+  // Forwards a platform UI memory snapshot to the engine thread.
+  virtual void ReportExternalMemory(
+      tasm::ExternalMemorySnapshot /* snapshot */) {}
 
   // Event
   virtual bool SendTouchEvent(const std::string& name, int32_t tag, float x,

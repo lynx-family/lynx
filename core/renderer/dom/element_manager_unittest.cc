@@ -185,24 +185,49 @@ TEST_F(ElementManagerTest, CreateFiberNode) {
   EXPECT_EQ(node->GetTag(), tag.str());
 }
 
-TEST_F(ElementManagerTest, TestCalcTotalMemoryDiff) {
+TEST_F(ElementManagerTest, ExternalMemorySnapshotUsesRepresentativeSize) {
   manager->config_->SetEnableFiberArch(true);
-  int32_t expected_total_memory = 0;
-  int32_t average_element_memory_size = 0;
+  EXPECT_EQ(manager->node_manager()->GetExternalMemorySnapshot().total_size, 0);
 
-  int32_t expect_counter = 10;
-  std::vector<fml::RefPtr<Element>> fiber_elements;
-  EXPECT_EQ(manager->total_memory_, 0);
-  for (int i = 0; i < expect_counter; i++) {
-    auto fiber_element = manager->CreateFiberNode("view");
-    average_element_memory_size = fiber_element->GetMemoryUsage();
-    fiber_elements.push_back(fiber_element);
-  }
+  auto page = manager->CreateFiberPage("page", 11);
+  auto attached = manager->CreateFiberNode("view");
+  auto detached = manager->CreateFiberNode("view");
+  page->InsertNode(attached);
 
-  expected_total_memory = average_element_memory_size * expect_counter;
-  auto total_memory_diff = manager->CalcTotalMemoryUsageDiff();
-  EXPECT_EQ(manager->total_memory_, expected_total_memory);
-  EXPECT_EQ(total_memory_diff, expected_total_memory);
+  const int64_t unit_size = attached->GetMemoryUsage();
+  auto snapshot = manager->node_manager()->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, 3 * unit_size);
+  EXPECT_EQ(snapshot.garbage_size, unit_size);
+
+  page->InsertNode(detached);
+  snapshot = manager->node_manager()->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, 3 * unit_size);
+  EXPECT_EQ(snapshot.garbage_size, 0);
+
+  page->RemoveNode(attached);
+  snapshot = manager->node_manager()->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, 3 * unit_size);
+  EXPECT_EQ(snapshot.garbage_size, unit_size);
+}
+
+TEST_F(ElementManagerTest, OnlyNonMoveRemovalRequestsExternalMemoryReport) {
+  auto* platform_ref = static_cast<MockPaintingContextPlatformRef*>(
+      manager->painting_context()->impl()->GetPlatformRef().get());
+
+  manager->painting_context()->RemovePaintingNode(1, 2, 0, true);
+  EXPECT_TRUE(platform_ref->remove_ids_.empty());
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 0);
+
+  manager->painting_context()->RemovePaintingNode(1, 3, 0, false);
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 1);
+  manager->painting_context()->RemovePaintingNode(1, 4, 1, false);
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 2);
+
+  manager->painting_context()->UpdateNodeReadyPatching();
+  ASSERT_EQ(platform_ref->remove_ids_.size(), 2U);
+  EXPECT_EQ(platform_ref->remove_ids_[0], 3);
+  EXPECT_EQ(platform_ref->remove_ids_[1], 4);
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 2);
 }
 
 TEST_F(ElementManagerTest, CreateFiberComponent) {

@@ -151,6 +151,37 @@ void CollectElementContainerForReplay(
 }  // namespace
 #pragma mark ElementManager
 
+ExternalMemorySnapshot NodeManager::GetExternalMemorySnapshot() const {
+  ExternalMemorySnapshot snapshot;
+  if (node_map_.empty()) {
+    return snapshot;
+  }
+
+  int64_t element_memory_size = 0;
+  int64_t live_element_count = 0;
+  int64_t detached_count = 0;
+  for (const auto &entry : node_map_) {
+    const auto *element = entry.second;
+    if (element != nullptr) {
+      ++live_element_count;
+      if (element->IsDetached()) {
+        ++detached_count;
+      }
+      if (element_memory_size == 0) {
+        element_memory_size = element->GetMemoryUsage();
+      }
+    }
+  }
+
+  if (element_memory_size == 0) {
+    return snapshot;
+  }
+
+  snapshot.total_size = live_element_count * element_memory_size;
+  snapshot.garbage_size = detached_count * element_memory_size;
+  return snapshot;
+}
+
 ElementManager::ElementManager(
     std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
     Delegate *delegate, const LynxEnvConfig &lynx_env_config,
@@ -647,12 +678,6 @@ EventResult ElementManager::FireElementWorkletAndRequestResolve(
              : element_manager_delegate_->FireElementWorkletAndRequestResolve(
                    component_id, entry_name, callback, script, event_detail,
                    task_handler, element_id, pipeline_options);
-}
-
-void ElementManager::DidPatchFinishForFiber() {
-  if (EnableFiberElementMemoryReport()) {
-    UpdateElementMemoryUsage(CalcTotalMemoryUsageDiff());
-  }
 }
 
 void ElementManager::EnqueuePostMTSRenderTask(base::closure task) {
@@ -1833,8 +1858,6 @@ void ElementManager::OnPatchFinishForFiber(
   if (element != nullptr && element->is_list_item()) {
     painting_context()->FlushImmediately();
   }
-
-  DidPatchFinishForFiber();
 }
 
 void ElementManager::EnqueueLevelOrderTask(
@@ -1928,24 +1951,6 @@ void ElementManager::SetEnableOptPushStyleToBundle(TernaryBool value) {
 
 bool ElementManager::CSSFragmentParsingOnTASMWorkerMTSRender() {
   return css_fragment_parsing_tasm_worker_thread_;
-}
-
-void ElementManager::RegisterVMUpdateOuterObjSizeCallback(
-    base::MoveOnlyClosure<void, int> closure) {
-  vm_update_outer_obj_size_callback_ = std::move(closure);
-}
-
-void ElementManager::UpdateElementMemoryUsage(int size) {
-  if (enable_fiber_element_memory_reporter_ &&
-      vm_update_outer_obj_size_callback_ != nullptr) {
-    vm_update_outer_obj_size_callback_(size);
-  }
-}
-
-int32_t ElementManager::CalcTotalMemoryUsageDiff() {
-  int32_t prev_total_memory = total_memory_;
-  total_memory_ = node_manager()->GetTotalMemoryUsage();
-  return total_memory_ - prev_total_memory;
 }
 
 namespace {

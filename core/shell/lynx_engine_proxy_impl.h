@@ -27,6 +27,8 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
 
   void DispatchTaskToLynxEngine(base::closure task) override;
 
+  void ReportExternalMemory(tasm::ExternalMemorySnapshot snapshot) override;
+
   bool SendTouchEvent(const std::string& name, int32_t tag, float x, float y,
                       float client_x, float client_y, float page_x,
                       float page_y, int64_t timestamp = 0) override;

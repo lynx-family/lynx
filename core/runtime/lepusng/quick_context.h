@@ -245,7 +245,7 @@ class QuickContext : private LEPUSRuntimeData,
   void RemoveRuntimeProfiler();
 #endif
 
-  virtual void UpdateVMOuterObjSize(int size) override;
+  void ReportExternalMemory(int64_t total_size, int64_t garbage_size) override;
 
   virtual bool IsTracingGCEnabled() override;
 

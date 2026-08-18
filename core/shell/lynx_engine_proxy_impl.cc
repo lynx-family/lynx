@@ -29,6 +29,19 @@ void LynxEngineProxyImpl::DispatchTaskToLynxEngine(base::closure task) {
       [task = std::move(task)](auto& engine) mutable { task(); });
 }
 
+void LynxEngineProxyImpl::ReportExternalMemory(
+    tasm::ExternalMemorySnapshot snapshot) {
+  if (engine_actor_ == nullptr) {
+    return;
+  }
+  engine_actor_->ActLite([snapshot](auto& engine) {
+    auto* tasm = engine->GetTasm();
+    if (tasm != nullptr) {
+      tasm->ReportExternalMemory(snapshot);
+    }
+  });
+}
+
 bool LynxEngineProxyImpl::SendTouchEvent(const std::string& name, int32_t tag,
                                          float x, float y, float client_x,
                                          float client_y, float page_x,

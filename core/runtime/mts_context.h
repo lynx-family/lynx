@@ -158,8 +158,9 @@ class MTSContext {
   virtual void SetDebugInfoURL(const std::string& url,
                                const std::string& file_name){};
 
-  // for memory gc
-  virtual void UpdateVMOuterObjSize(int size){};
+  // External memory snapshot for tracing GC.
+  virtual void ReportExternalMemory(int64_t /* total_size */,
+                                    int64_t /* garbage_size */){};
   virtual bool IsTracingGCEnabled() { return false; }
 
   virtual void BindCurrentThread() = 0;
