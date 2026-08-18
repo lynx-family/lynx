@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "base/include/no_destructor.h"
 #include "base/include/vector.h"
 #include "core/public/jsb/native_module_factory.h"
@@ -56,6 +57,10 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
   }
   virtual ~LynxModuleManager();
 
+  void SetLogContext(const base::LogContext &log_context);
+
+  const base::LogContext &GetLogContext() const { return log_context_; }
+
   void initBindingPtr(std::weak_ptr<LynxModuleManager> weak_manager,
                       const std::shared_ptr<ModuleDelegate> &delegate);
 
@@ -89,6 +94,7 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
       const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate);
 
  private:
+  base::LogContext log_context_;
   int64_t context_id_ = -1;
   LynxModuleProviderFunction BindingFunc(
       std::weak_ptr<LynxModuleManager> weak_manager,

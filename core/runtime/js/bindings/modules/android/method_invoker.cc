@@ -441,7 +441,8 @@ base::expected<jvalue, std::string> MethodInvoker::ExtractPubValue(
 }
 base::expected<std::unique_ptr<pub::Value>, base::LynxError>
 MethodInvoker::Invoke(
-    jobject module, const pub::Value* args, size_t args_count,
+    const base::LogContext& log_context, jobject module, const pub::Value* args,
+    size_t args_count,
     base::MoveOnlyClosure<
         base::expected<base::android::ScopedGlobalJavaRef<jobject>,
                        std::string>,
@@ -477,7 +478,9 @@ MethodInvoker::Invoke(
     return base::unexpected(std::move(error));
   }
 
-  LOGI("NativeModule: LynxModuleAndroid MethodInvoker::InvokeMethod, method: ("
+  LOGI(log_context
+       << " NativeModule: LynxModuleAndroid MethodInvoker::InvokeMethod, "
+          "method: ("
        << module_name_ << "." << method_name_ << "." << first_arg_str
        << ") will fire " << this);
 
@@ -514,7 +517,7 @@ MethodInvoker::Invoke(
       } else {
         // If the Callback parameter in JS is undefined, the Callback in
         // LynxModule will be converted to null.
-        LOGE(expected_callback.error().c_str());
+        LOGE(log_context << " " << expected_callback.error().c_str());
         ret = {.l = nullptr};
       }
     } else {
@@ -556,18 +559,26 @@ MethodInvoker::Invoke(
   }
   // Real Call Module Method!
   base::expected<std::unique_ptr<pub::Value>, base::LynxError> ret =
-      CallPlatformImplementation(env, module, java_arguments);
+      CallPlatformImplementation(log_context, env, module, java_arguments);
   if (!ret.has_value()) {
+    LOGE(log_context
+         << " NativeModule: LynxModuleAndroid MethodInvoker::InvokeMethod, "
+            "method: ("
+         << module_name_ << "." << method_name_ << "." << first_arg_str
+         << ") call platform implementation failed " << this);
     return base::unexpected(std::move(ret.error()));
   }
-  LOGI("NativeModules: LynxModuleAndroid MethodInvoker::InvokeMethod, method: ("
+  LOGI(log_context
+       << " NativeModules: LynxModuleAndroid MethodInvoker::InvokeMethod, "
+          "method: ("
        << module_name_ << "." << method_name_ << "." << first_arg_str
        << ") call platform implementation" << this)
   return ret;
 }
 
 base::expected<std::unique_ptr<pub::Value>, base::LynxError>
-MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
+MethodInvoker::CallPlatformImplementation(const base::LogContext& log_context,
+                                          JNIEnv* env, jobject module,
                                           jvalue* java_arguments) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, CALL_PLATFORM_IMPLEMENTATION);
 #define PRIMITIVE_CASE(METHOD)                                                 \
@@ -796,7 +807,8 @@ MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
               data, base::android::JavaValue::JavaValueType::TemplateData));
     }
     default:
-      LOGF("NativeModule: FireMethod Unknown Return Type: " << return_type);
+      LOGF(log_context << " NativeModule: FireMethod Unknown Return Type: "
+                       << return_type);
       std::string error_message = LynxModuleUtils::GenerateErrorMessage(
           module_name_, method_name_,
           std::string("FireMethod Unknown Return Type: ") +

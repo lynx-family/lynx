@@ -13,6 +13,7 @@
 
 #include "base/include/compiler_specific.h"
 #include "base/include/expected.h"
+#include "base/include/log/log_context.h"
 #include "core/runtime/js/bindings/modules/module_delegate.h"
 #include "core/runtime/js/jsi/jsi.h"
 
@@ -45,6 +46,12 @@ class LynxModule : public HostObject,
       : name_(name), delegate_(delegate) {}
   ~LynxModule() override = default;
   virtual void Destroy() = 0;
+
+  virtual void SetLogContext(const base::LogContext& log_context) {
+    log_context_ = log_context;
+  }
+
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   Value get(Runtime* rt, const PropNameID& prop) override;
 
@@ -93,6 +100,7 @@ class LynxModule : public HostObject,
 #endif  // ENABLE_TESTBENCH_RECORDER
 
  private:
+  base::LogContext log_context_;
   static const std::unordered_set<std::string>& MethodAllowList();
 };
 

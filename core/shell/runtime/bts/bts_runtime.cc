@@ -170,6 +170,9 @@ BTSRuntime::~BTSRuntime() { Destroy(); }
 
 void BTSRuntime::SetLogContext(const base::LogContext& context) {
   log_context_ = context;
+  if (js_executor_) {
+    js_executor_->SetLogContext(context);
+  }
 }
 
 void BTSRuntime::Init(
@@ -210,6 +213,7 @@ void BTSRuntime::Init(
   js_executor_ = std::make_unique<lynx::runtime::js::JSExecutor>(
       group_id_, module_manager, runtime_observer,
       runtime_flags_ & LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
+  js_executor_->SetLogContext(log_context_);
 
   InitExecutor(!(runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD),
                std::move(preload_js_paths));
@@ -800,8 +804,7 @@ void BTSRuntime::Destroy() {
     return;
   }
 
-  LOGI("LynxRuntime::Destroy, runtime_id: " << GetRuntimeId()
-                                            << " this: " << this);
+  LOGI(log_context_ << " LynxRuntime::Destroy this:" << this);
   state_ = State::kDestroying;
 
   // Firstly, clear all JSB callbacks that registered before destroy.

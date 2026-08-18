@@ -12,9 +12,16 @@ namespace lynx {
 namespace runtime {
 namespace js {
 LynxModuleManager::~LynxModuleManager() {
-  LOGI("NativeModule: ~LynxJSIModuleManager");
+  LOGI(GetLogContext() << " NativeModule: ~LynxJSIModuleManager");
   for (auto &module : module_map_) {
     module.second->Destroy();
+  }
+}
+
+void LynxModuleManager::SetLogContext(const base::LogContext &log_context) {
+  log_context_ = log_context;
+  for (auto &module : module_map_) {
+    module.second->SetLogContext(log_context);
   }
 }
 
@@ -46,6 +53,7 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
   if (native_module) {
     auto lynx_jsi_module =
         std::make_shared<LynxJSIModule>(name, delegate, native_module);
+    lynx_jsi_module->SetLogContext(log_context_);
     // set delegate & proxy
     native_module->SetDelegate(lynx_jsi_module);
     native_module->SetRuntimeProxy(runtime_proxy);
@@ -74,12 +82,15 @@ LynxModuleProviderFunction LynxModuleManager::BindingFunc(
     }
     // ptr == nullptr
     // issue: #1510
+    static const base::LogContext kUnavailableContext;
+    UNUSED_LOG_VARIABLE const auto &log_context =
+        manager ? manager->GetLogContext() : kUnavailableContext;
     if (!LynxModuleUtils::LynxModuleManagerAllowList::get().count(name)) {
-      LOGW("NativeModule: LynxJSIModule, try to find module: "
-           << name << "failed. manager: " << manager);
+      LOGW(log_context << " NativeModule: LynxJSIModule, try to find module: "
+                       << name << "failed. manager: " << manager);
     } else {
-      LOGV("NativeModule: LynxJSIModule, module: "
-           << name << " is not found but it is in the allow list");
+      LOGV(log_context << " NativeModule: LynxJSIModule, module: " << name
+                       << " is not found but it is in the allow list");
     }
     return std::shared_ptr<LynxModule>(nullptr);
   };

@@ -27,6 +27,9 @@ class MockNativeModule : public LynxNativeModule {
   ~MockNativeModule() override = default;
 
   const std::string& GetName() { return name_; }
+  const base::LogContext& GetLogContextForTest() const {
+    return GetLogContext();
+  }
 
   explicit MockNativeModule(std::string name)
       : LynxNativeModule(), name_(name) {}
@@ -63,6 +66,7 @@ class LynxModuleManagerTest : public ::testing::Test {
 
   void SetUp() override {
     module_manager_ = std::make_shared<LynxModuleManager>();
+    module_manager_->SetLogContext(log_context_);
     module_manager_->initBindingPtr(module_manager_, nullptr);
 
     auto platform_module_factory = std::make_unique<NativeModuleFactory>();
@@ -73,8 +77,9 @@ class LynxModuleManagerTest : public ::testing::Test {
         std::move(platform_module_factory));
 
     auto native_module_factory = std::make_unique<NativeModuleFactory>();
-    native_module_factory->Register("native_module", []() {
-      return std::make_shared<MockNativeModule>("native_module");
+    native_module_factory->Register("native_module", [this]() {
+      native_module_ = std::make_shared<MockNativeModule>("native_module");
+      return native_module_;
     });
     module_manager_->SetModuleFactory(std::move(native_module_factory));
     module_manager_->SetRecordID(12345);
@@ -83,6 +88,7 @@ class LynxModuleManagerTest : public ::testing::Test {
         std::make_shared<pub::LynxNativeModuleManager>();
     use_native_module_manager_ =
         std::make_shared<LynxModuleManager>(std::move(*native_module_manager));
+    use_native_module_manager_->SetLogContext(log_context_);
     use_native_module_manager_->initBindingPtr(use_native_module_manager_,
                                                nullptr);
     auto platform_module_factory_2 = std::make_unique<NativeModuleFactory>();
@@ -103,6 +109,8 @@ class LynxModuleManagerTest : public ::testing::Test {
 
   void TearDown() override {}
 
+  base::LogContext log_context_{1, 2, 3};
+  std::shared_ptr<MockNativeModule> native_module_;
   std::shared_ptr<LynxModuleManager> module_manager_;
   std::shared_ptr<LynxModuleManager> use_native_module_manager_;
 };
@@ -115,9 +123,16 @@ TEST_F(LynxModuleManagerTest, CheckPlatformFactory) {
 TEST_F(LynxModuleManagerTest, GetNativeModule) {
   auto module_1 = module_manager_->bindingPtr->GetModule("native_module");
   EXPECT_NE(module_1, nullptr);
+  EXPECT_NE(&module_1->GetLogContext(), &log_context_);
+  EXPECT_EQ(module_1->GetLogContext().runtime_id, log_context_.runtime_id);
+  ASSERT_NE(native_module_, nullptr);
+  EXPECT_EQ(native_module_->GetLogContextForTest().runtime_id,
+            log_context_.runtime_id);
   auto module_2 =
       use_native_module_manager_->bindingPtr->GetModule("native_module");
   EXPECT_NE(module_2, nullptr);
+  EXPECT_NE(&module_2->GetLogContext(), &log_context_);
+  EXPECT_EQ(module_2->GetLogContext().runtime_id, log_context_.runtime_id);
 }
 
 TEST_F(LynxModuleManagerTest, GetPlatformModule) {
@@ -132,6 +147,57 @@ TEST_F(LynxModuleManagerTest, GetPlatformModule) {
 TEST_F(LynxModuleManagerTest, GetRecordId) {
   EXPECT_EQ(module_manager_->record_id_, 12345);
   EXPECT_EQ(use_native_module_manager_->record_id_, 12345);
+}
+
+TEST_F(LynxModuleManagerTest, CopiesAndPropagatesLogContext) {
+  auto module = module_manager_->bindingPtr->GetModule("native_module");
+  ASSERT_NE(module, nullptr);
+  ASSERT_NE(native_module_, nullptr);
+
+  EXPECT_NE(&module_manager_->GetLogContext(), &log_context_);
+  log_context_ = {4, 5, 6};
+  EXPECT_EQ(module_manager_->GetLogContext().view_id, 1);
+  EXPECT_EQ(module_manager_->GetLogContext().engine_id, 2);
+  EXPECT_EQ(module_manager_->GetLogContext().runtime_id, 3);
+
+  module_manager_->SetLogContext(log_context_);
+  EXPECT_EQ(module_manager_->GetLogContext().view_id, 4);
+  EXPECT_EQ(module_manager_->GetLogContext().engine_id, 5);
+  EXPECT_EQ(module_manager_->GetLogContext().runtime_id, 6);
+  EXPECT_EQ(module->GetLogContext().view_id, 4);
+  EXPECT_EQ(module->GetLogContext().engine_id, 5);
+  EXPECT_EQ(module->GetLogContext().runtime_id, 6);
+  EXPECT_EQ(native_module_->GetLogContextForTest().view_id, 4);
+  EXPECT_EQ(native_module_->GetLogContextForTest().engine_id, 5);
+  EXPECT_EQ(native_module_->GetLogContextForTest().runtime_id, 6);
+}
+
+TEST_F(LynxModuleManagerTest, LateModuleUsesCurrentLogContext) {
+  const base::LogContext updated_context{4, 5, 6};
+  module_manager_->SetLogContext(updated_context);
+
+  auto module = module_manager_->bindingPtr->GetModule("platform_module");
+  ASSERT_NE(module, nullptr);
+  EXPECT_EQ(module->GetLogContext().view_id, updated_context.view_id);
+  EXPECT_EQ(module->GetLogContext().engine_id, updated_context.engine_id);
+  EXPECT_EQ(module->GetLogContext().runtime_id, updated_context.runtime_id);
+}
+
+TEST_F(LynxModuleManagerTest, RetainsSnapshotAfterSourceIsDestroyed) {
+  std::shared_ptr<LynxModule> module;
+  {
+    const base::LogContext transient_context{7, 8, 9};
+    module_manager_->SetLogContext(transient_context);
+    module = module_manager_->bindingPtr->GetModule("native_module");
+  }
+
+  ASSERT_NE(module, nullptr);
+  ASSERT_NE(native_module_, nullptr);
+  EXPECT_EQ(module_manager_->GetLogContext().view_id, 7);
+  EXPECT_EQ(module_manager_->GetLogContext().engine_id, 8);
+  EXPECT_EQ(module_manager_->GetLogContext().runtime_id, 9);
+  EXPECT_EQ(module->GetLogContext().runtime_id, 9);
+  EXPECT_EQ(native_module_->GetLogContextForTest().runtime_id, 9);
 }
 
 }  // namespace js

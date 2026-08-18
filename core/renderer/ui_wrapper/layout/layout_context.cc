@@ -349,8 +349,9 @@ void LayoutContext::UpdateLayoutNodeStyle(int32_t id, CSSPropertyID css_id,
                                           const tasm::CSSValue& value) {
   auto node = FindNodeById(id);
   if (node == nullptr || node->slnode() == nullptr) {
-    LOGE("[LayoutContext] UpdateLayoutNodeStyle for null, id :"
-         << id << " css_id: " << css_id << " value: " << value.AsJsonString());
+    LOGE(log_context_ << " [LayoutContext] UpdateLayoutNodeStyle for null, id :"
+                      << id << " css_id: " << css_id
+                      << " value: " << value.AsJsonString());
     LYNX_ERROR(error::E_LAYOUT_INTERNAL, "FindNodeById is null",
                "This error is caught by native, please ask Lynx for help");
     base::ErrorStorage::GetInstance().AddCustomInfoToError("id",
@@ -407,7 +408,9 @@ void LayoutContext::UpdateLayoutNodeByBundle(
                          : FindNodeById(id);
 
   if (!target_node) {
-    LOGE("[LayoutContext] UpdateLayoutNodeByBundle for null node, id :" << id);
+    LOGE(log_context_
+         << " [LayoutContext] UpdateLayoutNodeByBundle for null node, id :"
+         << id);
     return;
   }
 
@@ -512,7 +515,8 @@ void LayoutContext::InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
   } else {
     index = GetIndexForChild(parent, ref_node);
     if (index < 0) {
-      LOGE("LayoutContext::InsertLayoutNodeBefore can not find child!!");
+      LOGE(log_context_
+           << " LayoutContext::InsertLayoutNodeBefore can not find child!!");
       return;
     }
   }
@@ -524,7 +528,8 @@ void LayoutContext::RemoveLayoutNode(int32_t parent_id, int32_t child_id) {
   auto child = FindNodeById(child_id);
   int index = GetIndexForChild(parent, child);
   if (index < 0) {
-    LOGE("LayoutContext::RemoveLayoutNode can not find child!!");
+    LOGE(log_context_
+         << " LayoutContext::RemoveLayoutNode can not find child!!");
     return;
   }
   RemoveLayoutNodeAtIndex(parent_id, index);
@@ -552,7 +557,8 @@ void LayoutContext::UnlinkNodeFromParent(LayoutNode* node) {
   if (node == nullptr) return;
   auto parent = node->parent();
   if (parent != nullptr) {
-    LOGE("DestroyLayoutNodeBeforeRemoveFromParent tag:" << node->tag().str());
+    LOGE(log_context_ << " DestroyLayoutNodeBeforeRemoveFromParent tag:"
+                      << node->tag().str());
     int index = GetIndexForChild(parent, node);
     if (index >= 0) {
       RemoveLayoutNodeAtIndex(parent->id(), index);
@@ -562,7 +568,8 @@ void LayoutContext::UnlinkNodeFromParent(LayoutNode* node) {
 
 void LayoutContext::UnlinkNodeFromChildren(LayoutNode* node) {
   if (node == nullptr || node->children().empty()) return;
-  LOGE("DestroyLayoutNodeBeforeRemoveFromChildren tag:" << node->tag().str());
+  LOGE(log_context_ << " DestroyLayoutNodeBeforeRemoveFromChildren tag:"
+                    << node->tag().str());
   int count = static_cast<int>(node->children().size());
   for (int i = count - 1; i >= 0; --i) {
     RemoveLayoutNodeAtIndex(node->id(), i);
@@ -751,23 +758,23 @@ void LayoutContext::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   if (layout_paused_) {
     pipeline_options_for_paused_layouts_.emplace_back(options);
-    LOGI(
-        "[Layout] The layout has been paused and will be re-executed after "
-        "resuming."
-        << view_port_info_str);
+    LOGI(log_context_
+         << " [Layout] The layout has been paused and will be re-executed "
+            "after resuming."
+         << view_port_info_str);
     return;
   }
 
   if (root_ == nullptr || root_->slnode() == nullptr ||
       !root_->slnode()->IsDirty()) {
     if (root_ == nullptr || root_->slnode() == nullptr) {
-      LOGW(
-          "[Layout] Element or LayoutObject is not initialized "
-          "when Layout is called"
-          << view_port_info_str);
-    } else {
-      LOGD("[Layout] Root is clean when layout is called"
+      LOGW(log_context_
+           << " [Layout] Element or LayoutObject is not initialized when "
+              "Layout is called"
            << view_port_info_str);
+    } else {
+      LOGD(log_context_ << " [Layout] Root is clean when layout is called"
+                        << view_port_info_str);
     }
     SetLayoutEarlyExitTiming(options);
     delegate_->OnLayoutAfter(options);
@@ -775,10 +782,10 @@ void LayoutContext::Layout(const std::shared_ptr<PipelineOptions>& options) {
   }
   if (!enable_layout_ || !has_viewport_ready_) {
     layout_wanted_ = true;
-    LOGI(
-        "[Layout] Layout is disabled or view port isn't ready when "
-        "Layout is called"
-        << view_port_info_str);
+    LOGI(log_context_
+         << " [Layout] Layout is disabled or view port isn't ready when "
+            "Layout is called"
+         << view_port_info_str);
     SetLayoutEarlyExitTiming(options);
     delegate_->OnLayoutAfter(options);
     return;
@@ -800,23 +807,24 @@ void LayoutContext::Layout(const std::shared_ptr<PipelineOptions>& options) {
   }
 
   // Dispatch OnLayoutBefore
-  LOGD("[Layout] Layout start" << view_port_info_str);
+  LOGD(log_context_ << " [Layout] Layout start" << view_port_info_str);
   {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_CONTEXT_DISPATCH_BEFORE_RECURSIVE);
     DispatchLayoutBeforeRecursively(root_);
   }
   // CalculateLayout
-  LOGV("[Layout] Computing layout" << view_port_info_str);
+  LOGV(log_context_ << " [Layout] Computing layout" << view_port_info_str);
   {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, LAYOUT_CONTEXT_CALCULATE_LAYOUT);
     root_->CalculateLayout(GetFixedNodeSet());
   }
-  LOGV("[Layout] Updating layout result" << view_port_info_str);
+  LOGV(log_context_ << " [Layout] Updating layout result"
+                    << view_port_info_str);
   {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_CONTEXT_LAYOUT_RECURSIVE);
     LayoutRecursively(root(), options);
   }
-  LOGV("[Layout] Dispatch layout after" << view_port_info_str);
+  LOGV(log_context_ << " [Layout] Dispatch layout after" << view_port_info_str);
 
   if (options->need_timestamps) {
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutEnd);
@@ -880,13 +888,14 @@ void LayoutContext::Layout(const std::shared_ptr<PipelineOptions>& options) {
         ctx.event()->add_debug_annotations("viewport", view_port_info_str);
       });
   UNUSED_LOG_VARIABLE auto time_end = std::chrono::steady_clock::now();
-  LOGI("[Layout] layout finish with result size: "
-       << layout_result.size_.width_ << ", " << layout_result.size_.height_
-       << view_port_info_str << " Time taken: "
-       << std::chrono::duration_cast<std::chrono::nanoseconds>(time_end -
-                                                               time_begin)
-              .count()
-       << " ns");
+  LOGI(log_context_ << " [Layout] layout finish with result size: "
+                    << layout_result.size_.width_ << ", "
+                    << layout_result.size_.height_ << view_port_info_str
+                    << " Time taken: "
+                    << std::chrono::duration_cast<std::chrono::nanoseconds>(
+                           time_end - time_begin)
+                           .count()
+                    << " ns");
 }
 
 bool LayoutContext::ShouldSkipLayoutRecursively(LayoutNode* node) {
@@ -1108,7 +1117,7 @@ void LayoutContext::UpdateViewport(float width, int width_mode, float height,
                         ctx.event()->add_debug_annotations("viewport",
                                                            view_port_info_str);
                       });
-  LOGI("[Layout] UpdateViewport :" << view_port_info_str);
+  LOGI(log_context_ << " [Layout] UpdateViewport :" << view_port_info_str);
 
   if (SetViewportSizeToRootNode() || (root() && root()->slnode()->IsDirty())) {
     circular_layout_detector_.DetectCircularLayoutDependency();
