@@ -333,10 +333,12 @@ void LynxShell::OnLynxEngineBuilt(
     layout_mediator_->SetRuntimeActor(runtime_actor_);
     runtime_actor_->ActAsync(
         [facade_actor = facade_actor_, engine_actor = engine_actor_,
-         card_cached_data_mgr = card_cached_data_mgr_](auto& runtime) mutable {
+         card_cached_data_mgr = card_cached_data_mgr_,
+         page_options = page_options_](auto& runtime) mutable {
           if (!runtime) {
             return;
           }
+          runtime->SetPageOptions(page_options);
           auto* delegate = runtime->GetDelegate();
           if (!delegate) {
             return;
@@ -345,8 +347,6 @@ void LynxShell::OnLynxEngineBuilt(
               facade_actor, engine_actor, card_cached_data_mgr);
         });
   }
-
-  SetPageOptions(page_options_);
 }
 
 void LynxShell::RebuildLynxEngine(
