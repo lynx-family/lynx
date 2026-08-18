@@ -70,6 +70,43 @@ namespace clay {
 
 namespace {
 
+class AwaitFirstFrameState
+    : public std::enable_shared_from_this<AwaitFirstFrameState> {
+ public:
+  AwaitFirstFrameState(fml::RefPtr<fml::TaskRunner> callback_runner,
+                       std::function<void(fml::Status)> callback)
+      : callback_runner_(std::move(callback_runner)),
+        callback_(std::move(callback)) {}
+
+  void Complete(fml::Status status) {
+    if (completed_.exchange(true)) {
+      return;
+    }
+    auto callback = std::move(callback_);
+    fml::TaskRunner::RunNowOrPostTask(
+        callback_runner_,
+        [callback = std::move(callback), status]() { callback(status); });
+  }
+
+  void ScheduleTimeout(fml::TimeDelta delay) {
+    if (completed_.load()) {
+      return;
+    }
+    auto state = shared_from_this();
+    callback_runner_->PostDelayedTask(
+        [state]() {
+          state->Complete(
+              fml::Status(fml::StatusCode::kDeadlineExceeded, "timeout"));
+        },
+        delay);
+  }
+
+ private:
+  std::atomic<bool> completed_ = false;
+  fml::RefPtr<fml::TaskRunner> callback_runner_;
+  std::function<void(fml::Status)> callback_;
+};
+
 std::unique_ptr<Engine> CreateEngine(
     std::shared_ptr<clay::ServiceManager> service_manager,
     TaskRunners task_runners, Settings settings,
@@ -670,6 +707,10 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
   fml::RefPtr<OutputSurface> output_surface =
       platform_view_->GetOutputSurface();
   if (!output_surface) {
+    rasterizer_service_.Act(
+        [waiting_for_first_frame = waiting_for_first_frame_](auto&) {
+          waiting_for_first_frame->store(true);
+        });
     fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
                                       [engine = engine_->GetWeakPtr()] {
                                         if (engine) {
@@ -688,6 +729,9 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
                            reuse_existing_surface](auto& impl) mutable {
     bool success = false;
     auto* rasterizer = impl.GetRasterizer();
+    waiting_for_first_frame->store(true);
+    rasterizer->AddNextFrameCallback(
+        [waiting_for_first_frame]() { waiting_for_first_frame->store(false); });
     if (reuse_existing_surface && rasterizer->HasSurface() &&
         rasterizer->GetLastLayerTree()) {
       success = rasterizer->DrawLastLayerTree() == RasterStatus::kSuccess;
@@ -701,9 +745,6 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
         rasterizer->Setup(std::move(surface));
         success = true;
       }
-    }
-    if (success) {
-      waiting_for_first_frame->store(true);
     }
     fml::TaskRunner::RunNowOrPostTask(ui_task_runner, [engine, success] {
       if (engine) {
@@ -732,6 +773,8 @@ void Shell::OnPlatformViewSurfaceDestroyed() {
           GetServiceManager()->GetService<RasterFrameService>();
   raster_frame_service.Act(
       [](auto& impl) { impl.SetOutputSurfaceValid(false); });
+  rasterizer_service_.Act([waiting_for_first_frame = waiting_for_first_frame_](
+                              auto&) { waiting_for_first_frame->store(true); });
 
   task_runners_.GetUITaskRunner()->PostTask([engine = engine_->GetWeakPtr()]() {
     if (engine) {
@@ -757,7 +800,11 @@ void Shell::OnPlatformViewDestroyed() {
     }
   });
 
-  rasterizer_service_.Act([](auto& impl) { impl.GetRasterizer()->Teardown(); });
+  rasterizer_service_.Act(
+      [waiting_for_first_frame = waiting_for_first_frame_](auto& impl) {
+        impl.GetRasterizer()->Teardown();
+        waiting_for_first_frame->store(true);
+      });
 }
 
 // |PlatformView::Delegate|
@@ -1313,32 +1360,48 @@ fml::RefPtr<PaintImage> Shell::MakeRasterSnapshot(GrPicturePtr picture,
   return future.get().value_or(nullptr);
 }
 
-fml::Status Shell::WaitForFirstFrame(fml::TimeDelta timeout) {
+void Shell::AwaitFirstFrame(fml::TimeDelta timeout,
+                            fml::RefPtr<fml::TaskRunner> callback_runner,
+                            std::function<void(fml::Status)> callback) {
   FML_DCHECK(is_setup_);
-  if (!settings_.enable_sync_compositor &&
-      (task_runners_.GetUITaskRunner()->RunsTasksOnCurrentThread() ||
-       task_runners_.GetRasterTaskRunner()->RunsTasksOnCurrentThread())) {
-    return fml::Status(fml::StatusCode::kFailedPrecondition,
-                       "WaitForFirstFrame called from thread that can't wait "
-                       "because it is responsible for generating the frame.");
+  FML_DCHECK(callback);
+  if (!callback) {
+    return;
+  }
+  if (!callback_runner) {
+    callback(fml::Status(fml::StatusCode::kInvalidArgument,
+                         "callback_runner must not be null"));
+    return;
   }
 
-  // Check for overflow.
-  auto now = std::chrono::steady_clock::now();
-  auto max_duration = std::chrono::steady_clock::time_point::max() - now;
-  auto desired_duration = std::chrono::milliseconds(timeout.ToMilliseconds());
-  auto duration =
-      now + (desired_duration > max_duration ? max_duration : desired_duration);
-
-  std::unique_lock<std::mutex> lock(waiting_for_first_frame_mutex_);
-  bool success = waiting_for_first_frame_condition_.wait_until(
-      lock, duration, [&waiting_for_first_frame = waiting_for_first_frame_] {
-        return !waiting_for_first_frame->load();
+  auto state = std::make_shared<AwaitFirstFrameState>(
+      std::move(callback_runner), std::move(callback));
+  const auto start_time = fml::TimePoint::Now();
+  const bool should_schedule_timeout =
+      timeout < fml::TimePoint::Max() - start_time;
+  const bool schedule_timeout_after_registration =
+      should_schedule_timeout && timeout <= fml::TimeDelta::Zero();
+  rasterizer_service_.Act([waiting_for_first_frame = waiting_for_first_frame_,
+                           state,
+                           schedule_timeout_after_registration](auto& impl) {
+    auto* rasterizer = impl.GetRasterizer();
+    if (!waiting_for_first_frame->load()) {
+      state->Complete(fml::Status());
+    } else {
+      rasterizer->AddNextFrameCallback([waiting_for_first_frame, state]() {
+        waiting_for_first_frame->store(false);
+        state->Complete(fml::Status());
       });
-  if (success) {
-    return fml::Status();
-  } else {
-    return fml::Status(fml::StatusCode::kDeadlineExceeded, "timeout");
+    }
+
+    // Preserve the already-rendered result for zero-duration probes by
+    // resolving the first-frame state before posting the timeout.
+    if (schedule_timeout_after_registration) {
+      state->ScheduleTimeout(fml::TimeDelta::Zero());
+    }
+  });
+  if (should_schedule_timeout && !schedule_timeout_after_registration) {
+    state->ScheduleTimeout(timeout);
   }
 }
 
@@ -1464,14 +1527,16 @@ void Shell::CleanForRecycle() {
   }
 
   rasterizer_service_.Act(
-      [](auto& impl) mutable { impl.GetRasterizer()->CleanForRecycle(); });
+      [waiting_for_first_frame = waiting_for_first_frame_](auto& impl) mutable {
+        impl.GetRasterizer()->CleanForRecycle();
+        waiting_for_first_frame->store(true);
+      });
 
   clay::Puppet<clay::Owner::kPlatform, RasterFrameService>
       raster_frame_service =
           GetServiceManager()->GetService<RasterFrameService>();
   raster_frame_service.Act([](auto& impl) { impl.CleanForRecycle(); });
 
-  waiting_for_first_frame_->store(true);
   devtools_instrumentation_enabled_ = false;
   devtool_instrumentation_.reset();
 }

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <utility>
 
 #include "base/include/fml/concurrent_message_loop.h"
@@ -98,7 +99,11 @@ class Isolate : public GraphicsDelegate {
   bool IsPartialRepaintEnabled() const { return enable_partial_repaint_; }
 
  private:
-  std::shared_ptr<fml::ConcurrentMessageLoop> concurrent_message_loop_;
+  std::shared_ptr<fml::ConcurrentMessageLoop> GetOrCreateConcurrentMessageLoop()
+      const;
+
+  mutable std::once_flag concurrent_message_loop_once_;
+  mutable std::shared_ptr<fml::ConcurrentMessageLoop> concurrent_message_loop_;
   std::unique_ptr<GpuResourceCache> resource_cache_;
 #ifndef ENABLE_SKITY
   clay::SkiaConcurrentExecutor skia_concurrent_executor_;
