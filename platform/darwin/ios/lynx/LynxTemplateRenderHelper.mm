@@ -316,10 +316,12 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   [LynxEventReporter updateGenericInfo:@(_threadStrategyForRendering)
                                    key:kPropThreadMode
                             instanceId:_context.instanceId];
-  // TODO(chenyouhui): Move this function call to a more appropriate place.
-  [LynxService(LynxServiceExtensionProtocol) onLynxViewSetup:_context
-                                                       group:_runtimeOptions.group
-                                                      config:_config];
+  if (_enableJSRuntime) {
+    // TODO(chenyouhui): Move this function call to a more appropriate place.
+    [LynxService(LynxServiceExtensionProtocol) onLynxViewSetup:_context
+                                                         group:_runtimeOptions.group
+                                                        config:_config];
+  }
 }
 
 - (std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin>)setUpMainThreadModuleFactory {
