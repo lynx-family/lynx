@@ -66,7 +66,8 @@ void LynxModuleAndroid::Destroy() {
   scope_rts_.clear();
   scope_timing_collectors_.clear();
   scope_native_promise_rets_.clear();
-  LOGI("NativeModule: LynxModuleAndroid Destroy: " << module_name_);
+  LOGI(GetLogContext() << " NativeModule: LynxModuleAndroid Destroy: "
+                       << module_name_);
 }
 
 std::string LynxModuleAndroid::getName(jobject jni_object) {
@@ -83,18 +84,20 @@ base::expected<std::unique_ptr<pub::Value>, std::string>
 LynxModuleAndroid::InvokeMethod(const std::string& method_name,
                                 std::unique_ptr<pub::Value> args, size_t count,
                                 const CallbackMap& callbacks) {
+  const auto& log_context = GetLogContext();
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jobject> local_ref(wrapper_);
   if (local_ref.IsNull()) {
-    LOGE(
-        "NativeModule: LynxModuleAndroid InvokeMethod Failed: local_ref "
-        "isNull");
+    LOGE(log_context
+         << " NativeModule: LynxModuleAndroid InvokeMethod Failed: local_ref "
+            "isNull");
     return base::unexpected(
         "NativeModule: LynxModuleAndroid::InvokeMethod Failed: local_ref "
         "isNull");
   }
   if (method_invokers_.find(method_name) == method_invokers_.end()) {
-    LOGE("NativeModule: LynxModuleAndroid InvokeMethod. Method not found. "
+    LOGE(log_context
+         << " NativeModule: LynxModuleAndroid InvokeMethod. Method not found. "
          << method_name);
     return base::unexpected(
         "NativeModule: LynxModuleAndroid InvokeMethod. Method not found. " +
@@ -109,7 +112,8 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
 
   auto method_invoker = GetMethodInvoker(method_name, args.get(), count);
   if (method_invoker == nullptr) {
-    LOGE("NativeModule: LynxModuleAndroid InvokeMethod. Method not found. "
+    LOGE(log_context
+         << " NativeModule: LynxModuleAndroid InvokeMethod. Method not found. "
          << method_name);
     return base::unexpected(
         "NativeModule: LynxModuleAndroid InvokeMethod. Method not found. " +
@@ -143,6 +147,7 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
   };
   base::expected<std::unique_ptr<pub::Value>, base::LynxError> invoke_result =
       method_invoker->Invoke(
+          log_context,
           Java_LynxModuleWrapper_getModule(env, local_ref.Get()).Get(),
           args.get(), count, std::move(function_creator));
 
@@ -158,9 +163,10 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
     if (lock_delegate) {
       lock_delegate->OnErrorOccurred(module_name_, method_name, std::move(err));
     }
-    LOGE("NativeModule: Exception Happen In LynxModuleAndroid InvokeMethod: " +
-             module_name_
-         << "." << method_name << " , args: " << first_param_str);
+    LOGE(log_context << " NativeModule: Exception Happen In LynxModuleAndroid "
+                        "InvokeMethod: "
+                     << module_name_ << "." << method_name
+                     << " , args: " << first_param_str);
     return base::unexpected(std::move(error_message));
   }
   return std::move(invoke_result.value());
@@ -246,7 +252,8 @@ base::expected<Value, std::string> LynxModuleAndroid::CreateLynxNativePromise(
     const pub::Value* method_args, size_t args_count,
     const CallbackMap& callbacks) {
   const std::string method_name = invoker->GetMethodName();
-  LOGI("NativeModule: LynxModuleAndroid CreatePromise, got a |PROMISE| : ("
+  LOGI(GetLogContext()
+       << " NativeModule: LynxModuleAndroid CreatePromise, got a |PROMISE| : ("
        << module_name_ << " " << method_name << ") will fire " << this);
   // Got a Promise Class.
   Runtime* rt = GetScopeRuntime();
@@ -265,25 +272,30 @@ base::expected<Value, std::string> LynxModuleAndroid::CreateLynxNativePromise(
        method_args, args_count,
        module](Runtime& rt, const Value& thisVal, const Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
+    const auto& log_context = GetLogContext();
     const std::string& method_name = invoker->GetMethodName();
     const std::string& module_name = invoker->GetModuleName();
 
     Scope piper_scope(rt);
     // The following three exceptions should never be thrown unless JS wrong
     if (count != 2) {
-      LOGE("NativeModule: CreatePromise Arg Count Must Be 2.");
+      LOGE(log_context << " NativeModule: CreatePromise Arg Count Must Be 2.");
       return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
           "NativeModule: CreatePromise Arg Count Must Be 2."));
     }
 
     if (!(args)->isObject() || !(args)->getObject(rt).isFunction(rt)) {
-      LOGE("NativeModule: CreatePromise Parameter Should Be Two JS Function.");
+      LOGE(log_context
+           << " NativeModule: CreatePromise Parameter Should Be Two JS "
+              "Function.");
       return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
           "NativeModule: CreatePromise Parameter Should Be Two JS Function."));
     }
 
     if (!(args + 1)->isObject() || !(args + 1)->getObject(rt).isFunction(rt)) {
-      LOGE("NativeModule: CreatePromise Parameter Should Be Two JS Function.");
+      LOGE(log_context
+           << " NativeModule: CreatePromise Parameter Should Be Two JS "
+              "Function.");
       return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
           "NativeModule: CreatePromise Parameter Should Be Two JS Function."));
     }
@@ -296,13 +308,15 @@ base::expected<Value, std::string> LynxModuleAndroid::CreateLynxNativePromise(
         module_delegate->RegisterJSCallbackFunction(std::move(reject));
     if (resolve_callback_id == ModuleCallback::kInvalidCallbackId ||
         reject_callback_id == ModuleCallback::kInvalidCallbackId) {
-      LOGW("NativeModule: Create Promise Failed, LynxRuntime Has Destroyed");
+      LOGW(log_context
+           << " NativeModule: Create Promise Failed, LynxRuntime Has "
+              "Destroyed");
       return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
           "NativeModule: Create Promise Failed, LynxRuntime Has Destroyed"));
     }
-    LOGV("NativeModule:  Create Promise Success : ("
-         << module_name << " " << method_name << ")"
-         << " resolve callback id: " << resolve_callback_id);
+    LOGV(log_context << " NativeModule:  Create Promise Success : ("
+                     << module_name << " " << method_name << ")"
+                     << " resolve callback id: " << resolve_callback_id);
 
     ModuleCallbackAndroid::CallbackPair resolve_callback_pair =
         ModuleCallbackAndroid::CreateCallbackImpl(
@@ -338,15 +352,15 @@ base::expected<Value, std::string> LynxModuleAndroid::CreateLynxNativePromise(
     };
 
     auto ret =
-        invoker->Invoke(module, method_args, args_count,
+        invoker->Invoke(log_context, module, method_args, args_count,
                         std::move(function_creator), promise->GetJniObject());
     if (!ret.has_value()) {
       auto err_msg = ret.error().error_message_;
       auto error_message = BUILD_JSI_NATIVE_EXCEPTION(err_msg);
       return base::unexpected(std::move(error_message));
     }
-    LOGI("NativeModule:  |NATIVE_PROMISE| : ("
-         << module_name << " " << method_name << ") did fire " << this);
+    LOGI(log_context << " NativeModule:  |NATIVE_PROMISE| : (" << module_name
+                     << " " << method_name << ") did fire " << this);
     legacy_module_delegate_->OnMethodInvoked(module_name, method_name,
                                              error::E_SUCCESS);
     auto piper_value =

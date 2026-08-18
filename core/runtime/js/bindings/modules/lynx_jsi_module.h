@@ -30,6 +30,7 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
   ~LynxJSIModule() override;
 
   void Destroy() override;
+  void SetLogContext(const base::LogContext& log_context) override;
 
   base::expected<Value, JSINativeException> invokeMethod(
       const MethodMetadata& method, Runtime* rt, const Value* args,

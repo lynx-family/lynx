@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/java_only_map.h"
@@ -46,7 +47,8 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
                 const std::string& module_name, const std::string& method_name);
 
   base::expected<std::unique_ptr<pub::Value>, base::LynxError> Invoke(
-      jobject module, const pub::Value* args, size_t args_count,
+      const base::LogContext& log_context, jobject module,
+      const pub::Value* args, size_t args_count,
       base::MoveOnlyClosure<
           base::expected<base::android::ScopedGlobalJavaRef<jobject>,
                          std::string>,
@@ -88,8 +90,8 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
   base::expected<jvalue, std::string> ExtractPubValue(
       const base::android::JavaValue& args, int arg_index, char type);
   base::expected<std::unique_ptr<pub::Value>, base::LynxError>
-  CallPlatformImplementation(JNIEnv* env, jobject module,
-                             jvalue* java_arguments);
+  CallPlatformImplementation(const base::LogContext& log_context, JNIEnv* env,
+                             jobject module, jvalue* java_arguments);
   std::optional<base::LynxError> ReportPendingJniException();
   base::MoveOnlyClosure<bool, std::string,
                         const std::shared_ptr<base::android::JavaOnlyArray>>

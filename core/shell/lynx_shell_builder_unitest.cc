@@ -41,8 +41,14 @@ bool LogContextEquals(const base::LogContext& lhs,
 bool EngineTreeLogContextEquals(LynxEngine* engine,
                                 const base::LogContext& context) {
   auto* tasm = engine->GetTasm();
+  auto* element_manager = tasm->page_proxy()->element_manager().get();
   return LogContextEquals(engine->GetLogContext(), context) &&
-         LogContextEquals(tasm->GetLogContext(), context);
+         LogContextEquals(tasm->GetLogContext(), context) &&
+         LogContextEquals(element_manager->GetLogContext(), context) &&
+         LogContextEquals(element_manager->catalyzer()->GetLogContext(),
+                          context) &&
+         LogContextEquals(element_manager->painting_context()->GetLogContext(),
+                          context);
 }
 
 }  // namespace

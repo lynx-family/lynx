@@ -33,15 +33,14 @@ JSExecutor::JSExecutor(
   }
 }
 
-JSExecutor::~JSExecutor() { LOGI("lynx ~JSExecutor"); }
+JSExecutor::~JSExecutor() { LOGI(GetLogContext() << " lynx ~JSExecutor"); }
 
 void JSExecutor::Destroy() {
+  LOGI(GetLogContext() << " JSExecutor::Destroy");
   // must detroy all the runtime object before Runtime is destroyed
   module_manager_.reset();
 
   // Destroy the runtime in the JS thread
-  LOGI("JSExecutor::Destroy");
-
   if (js_runtime_) {
     js_runtime_->BeforeDestroy();
   }

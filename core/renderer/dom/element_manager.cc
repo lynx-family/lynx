@@ -256,6 +256,11 @@ ElementManager::~ElementManager() {
   }
 }
 
+void ElementManager::SetLogContext(const base::LogContext &log_context) {
+  log_context_ = log_context;
+  catalyzer_->SetLogContext(log_context);
+}
+
 std::shared_ptr<const css::CascadeLayerMap> ElementManager::GetCascadeLayerMap(
     CSSFragment *intrinsic_style_sheet) {
   {
@@ -355,7 +360,7 @@ void ElementManager::ReportElementStatistic() {
 }
 
 void ElementManager::WillDestroy() {
-  LOGE("ElementManager::WillDestroy this:" << this);
+  LOGE(GetLogContext() << " ElementManager::WillDestroy this:" << this);
   node_manager_->WillDestroy();
   EXEC_EXPR_FOR_INSPECTOR({ OnElementManagerWillDestroy(); });
 }
@@ -781,8 +786,8 @@ void ElementManager::ResolveGestures(AttributeHolder *node, Element *element) {
 }
 
 void ElementManager::UpdateScreenMetrics(float width, float height) {
-  LOGI("ElementManager::UpdateScreenMetrics width:" << width
-                                                    << ",height:" << height);
+  LOGI(GetLogContext() << " ElementManager::UpdateScreenMetrics width:" << width
+                       << ",height:" << height);
   GetLynxEnvConfig().UpdateScreenSize(width, height);
   // 0.update layout unit for computed_css_style template
   platform_computed_css_->SetLayoutUnit(
@@ -1670,7 +1675,8 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
     element = static_cast<Element *>(root());
   }
   if (!element) {
-    LOGE("ElementManager::OnPatchFinish failed since element is nullptr.");
+    LOGE(GetLogContext()
+         << " ElementManager::OnPatchFinish failed since element is nullptr.");
     return;
   }
 
@@ -1714,13 +1720,16 @@ void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
   } else {
     element = node_manager()->Get(target_node);
     if (element == nullptr) {
-      LOGE("ElementManager::ResolveStyle failed since target node is gone, id:"
+      LOGE(GetLogContext()
+           << " ElementManager::ResolveStyle failed since target node is gone, "
+              "id:"
            << target_node);
       return;
     }
   }
   if (!element) {
-    LOGE("ElementManager::OnPatchFinish failed since element is nullptr.");
+    LOGE(GetLogContext()
+         << " ElementManager::OnPatchFinish failed since element is nullptr.");
     return;
   }
   base::MoveOnlyClosure<void, bool> patch_finish_callback =

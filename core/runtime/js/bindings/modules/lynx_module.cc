@@ -88,12 +88,14 @@ Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
             size_t count) -> base::expected<Value, JSINativeException> {
           auto lock_module = weak_self.lock();
           if (!lock_module) {
-            LOGE("NativeModule: LynxJSIModule has been destroyed.");
+            LOGE(base::LogContext{}
+                 << " NativeModule: LynxJSIModule has been destroyed.");
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "NativeModule: LynxJSIModule has been destroyed."));
           }
           if (meta.get() == nullptr) {
-            LOGE("NativeModule: LynxJSIModule, module: "
+            LOGE(lock_module->GetLogContext()
+                 << " NativeModule: LynxJSIModule, module: "
                  << lock_module->name_
                  << " failed in invokeMethod(), method is a nullptr");
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
@@ -111,8 +113,9 @@ Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
     // AllowList For Special Methods
     // see issue: #1979
     if (!MethodAllowList().count(propNameUtf8)) {
-      LOGI("NativeModule: module: " << name_ << ", method: " << propNameUtf8
-                                    << " cannot be found in the method map");
+      LOGI(GetLogContext() << " NativeModule: module: " << name_
+                           << ", method: " << propNameUtf8
+                           << " cannot be found in the method map");
       delegate_->OnMethodInvoked(
           name_, propNameUtf8,
           error::E_NATIVE_MODULES_COMMON_FUNCTION_NOT_FOUND);
