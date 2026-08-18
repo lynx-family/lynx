@@ -245,4 +245,11 @@ if (enable_unittests) {
       ]
     }
   }
+
+  if (enable_clay && enable_inspector && (is_mac || is_win)) {
+    group("ui_tree_helper_unittests") {
+      testonly = true
+      deps = [ "../shell/common/devtool:ui_tree_helper_unittests" ]
+    }
+  }
 }
