@@ -24,12 +24,14 @@ import {
   LynxUpdateMeta,
   LynxUpdateMode
 } from '@lynx/lynx';
+import { LynxRecorderReplayOptions } from './LynxRecorderReplayOptions';
 import LynxRecorderReplayDataModule, { ReplaySharedData, ReplaySharedDataValue } from './ReplayDataModule';
 import {
   LoadComponentWithCallbackParams,
   LoadTemplateParams,
   SendGlobalEventParams,
   SetGlobalPropsParams,
+  SetThreadStrategyParams,
   UpdateDataByPreParsedDataParams,
   UpdateMetaDataParams,
   UpdateViewPortParams
@@ -179,6 +181,7 @@ export default struct LynxRecorderView {
   @State statusText: string = 'Loading...';
   private localLynxContext: LynxContext | undefined;
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
+  private replayOptions: LynxRecorderReplayOptions = new LynxRecorderReplayOptions();
 
   private isReplaySharedData(value: Object | string | number | boolean | null | undefined): boolean {
     return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
@@ -321,6 +324,9 @@ export default struct LynxRecorderView {
   private handleActionList() {
     let recordData: Map<string, object> = JSON.parse(this.data);
     let actions: Map<string, object>[] = recordData['Action List'];
+    let threadStrategyAction = actions.find((action) => action['Function Name'] === 'setThreadStrategy');
+    let threadStrategyParams = threadStrategyAction?.['Params'] as SetThreadStrategyParams | undefined;
+    this.replayOptions.applyRecordedEnableJSRuntime(threadStrategyParams?.enableJSRuntime);
     this.registerRecordedGenericResources(actions);
     let startTime: number | undefined;
     for (const action of actions) {
@@ -563,6 +569,7 @@ export default struct LynxRecorderView {
     this.resetReplayLoadState();
     this.upstreamGenericFetcher = this.genericFetcher;
     this.upstreamTemplateFetcher = this.templateFetcher;
+    this.replayOptions = new LynxRecorderReplayOptions(this.url);
     this.extraTiming.openTime = new Date().getTime();
     this.extraTiming.containerInitStart = new Date().getTime();
     this.extraTiming.containerInitEnd = new Date().getTime();
@@ -608,6 +615,8 @@ export default struct LynxRecorderView {
         LynxView({
           url: this.pageUrl,
           buffer: this.buffer,
+          embeddedMode: this.replayOptions.embeddedMode,
+          enableAirStrictMode: this.replayOptions.enableAirStrictMode,
           uiRendererCreator: this.uiRendererCreator,
           genericResourceFetcher: this.genericFetcher,
           mediaResourceFetcher: this.mediaFetcher,
