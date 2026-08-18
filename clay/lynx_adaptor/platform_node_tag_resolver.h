@@ -10,6 +10,7 @@
 
 #include "build/build_config.h"
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
+#include "clay/lynx_adaptor/video_engine_tag_priority.h"
 #include "clay/ui/common/attribute_utils.h"
 
 namespace lynx {
@@ -19,13 +20,10 @@ inline constexpr char kUsePlatformVideoAttribute[] = "use-platform-video";
 inline std::string ResolveClayPlatformNodeTag(
     const std::string& tag, const tasm::PropBundle* painting_data) {
 #if defined(OS_IOS) && defined(ENABLE_CLAY_CPP_VIDEO_ELEMENTS)
-  constexpr char kVideoEngineTag[] = "x-video-engine";
-  constexpr char kClayVideoEngineTag[] = "clay-video-engine";
-
-  if (tag != kVideoEngineTag) {
-    return tag;
-  }
-
+  // iOS video defaults to Clay's built-in clay-video-engine view; only the
+  // explicit use-platform-video opt-in keeps the platform x-video-engine view.
+  // The decision is delegated to the pure ResolveVideoEngineNodeTag so the
+  // priority can be unit tested from a host build.
   bool use_platform_video = false;
   auto* props = static_cast<const PropBundleImpl*>(painting_data);
   if (props) {
@@ -34,7 +32,8 @@ inline std::string ResolveClayPlatformNodeTag(
       use_platform_video = clay::attribute_utils::GetBool(iter->second, false);
     }
   }
-  return use_platform_video ? kVideoEngineTag : kClayVideoEngineTag;
+  return ResolveVideoEngineNodeTag(tag, /*clay_cpp_video_enabled=*/true,
+                                   use_platform_video);
 #endif
   return tag;
 }
