@@ -48,6 +48,7 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
 
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                std::vector<int32_t> remove_ids) override;
+  void RequestExternalMemoryReport(int64_t delay_ms) override;
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override;
 
   void UpdateEventInfo(bool has_touch_pseudo) override;
@@ -150,6 +151,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   // TODO(liting.src): remove this method after ui operation queue refactor.
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                std::vector<int32_t> remove_ids) override;
+  void RequestExternalMemoryReport(int64_t delay_ms) override;
   void SetContextHasAttached() override;
 
   void SetEnableVsyncAlignedFlush(bool enabled) override {
@@ -216,6 +218,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
     kUpdateLayoutPatching = 5,
     kTasmFinish = 6,
     kLayoutFinish = 7,
+    kRequestExternalMemoryReport = 8,
   };
 
   void Enqueue(shell::UIOperation op);

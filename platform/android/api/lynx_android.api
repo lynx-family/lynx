@@ -4926,6 +4926,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public Long com.lynx.tasm.behavior.LynxContext.getRuntimeId();
   public void com.lynx.tasm.behavior.LynxContext.setJSProxy(JSProxy proxy);
   public void com.lynx.tasm.behavior.LynxContext.setLayoutProxy(LynxLayoutProxy proxy);
+  public void com.lynx.tasm.behavior.LynxContext.setEngineProxy(LynxEngineProxy proxy);
   public JSModule com.lynx.tasm.behavior.LynxContext.getJSModule(String module);
   public void com.lynx.tasm.behavior.LynxContext.sendKeyEvent(int keyCode, String name);
   public void com.lynx.tasm.behavior.LynxContext.sendGlobalEvent(String name, JavaOnlyArray params);
@@ -5255,6 +5256,7 @@ public class com::lynx::tasm::core::LynxEngineProxy :  {
   public com.lynx.tasm.core.LynxEngineProxy.LynxEngineProxy(long nativeCreator);
   public void com.lynx.tasm.core.LynxEngineProxy.destroy();
   public void com.lynx.tasm.core.LynxEngineProxy.dispatchTaskToLynxEngine(Runnable runnable);
+  public void com.lynx.tasm.core.LynxEngineProxy.reportExternalMemory(long totalSize, long garbageSize);
   public void com.lynx.tasm.core.LynxEngineProxy.sendTouchEvent(LynxTouchEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendMultiTouchEvent(LynxTouchEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendCustomEvent(LynxCustomEvent event);
@@ -11699,6 +11701,7 @@ public class com::lynx::tasm::behavior::ui::UIShadowProxy : com.lynx.tasm.behavi
   public boolean com.lynx.tasm.behavior.ui.UIShadowProxy.isInsertViewCalled();
   public boolean com.lynx.tasm.behavior.ui.UIShadowProxy.isFlatten();
   public List< LynxBaseUI > com.lynx.tasm.behavior.ui.UIShadowProxy.getChildren();
+  public long com.lynx.tasm.behavior.ui.UIShadowProxy.getMemoryUsageBytes();
   public LynxBaseUI com.lynx.tasm.behavior.ui.UIShadowProxy.getChildAt(int index);
   public int com.lynx.tasm.behavior.ui.UIShadowProxy.getChildCount();
   public LynxBaseUI com.lynx.tasm.behavior.ui.UIShadowProxy.getChild();

@@ -210,7 +210,8 @@ TEST_F(ElementManagerTest, ExternalMemorySnapshotUsesRepresentativeSize) {
   EXPECT_EQ(snapshot.garbage_size, unit_size);
 }
 
-TEST_F(ElementManagerTest, OnlyNonMoveRemovalRequestsExternalMemoryReport) {
+TEST_F(ElementManagerTest,
+       NonMoveRemovalsRequestExternalMemoryReportOncePerPatching) {
   auto* platform_ref = static_cast<MockPaintingContextPlatformRef*>(
       manager->painting_context()->impl()->GetPlatformRef().get());
 
@@ -219,15 +220,19 @@ TEST_F(ElementManagerTest, OnlyNonMoveRemovalRequestsExternalMemoryReport) {
   EXPECT_EQ(platform_ref->external_memory_report_request_count_, 0);
 
   manager->painting_context()->RemovePaintingNode(1, 3, 0, false);
-  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 1);
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 0);
   manager->painting_context()->RemovePaintingNode(1, 4, 1, false);
-  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 2);
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 0);
 
   manager->painting_context()->UpdateNodeReadyPatching();
   ASSERT_EQ(platform_ref->remove_ids_.size(), 2U);
   EXPECT_EQ(platform_ref->remove_ids_[0], 3);
   EXPECT_EQ(platform_ref->remove_ids_[1], 4);
-  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 2);
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 1);
+  EXPECT_EQ(platform_ref->external_memory_report_delay_ms_, 1000);
+
+  manager->painting_context()->UpdateNodeReadyPatching();
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 1);
 }
 
 TEST_F(ElementManagerTest, CreateFiberComponent) {

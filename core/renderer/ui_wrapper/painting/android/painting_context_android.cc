@@ -190,6 +190,16 @@ void PaintingContextAndroidRef::UpdateNodeReadyPatching(
       env, local_ref.Get(), node_ready_ids.Get(), node_remove_ids.Get());
 }
 
+void PaintingContextAndroidRef::RequestExternalMemoryReport(int64_t delay_ms) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PaintingContext_requestExternalMemoryReport(
+      env, local_ref.Get(), static_cast<jlong>(delay_ms));
+}
+
 void PaintingContextAndroidRef::UpdateNodeReloadPatching(
     std::vector<int32_t> reload_ids) {
   if (reload_ids.empty()) {
@@ -1402,6 +1412,19 @@ void PaintingContextAndroid::UpdateNodeReadyPatching(
     }
     return;
   }
+}
+
+void PaintingContextAndroid::RequestExternalMemoryReport(int64_t delay_ms) {
+  if (ui_operation_batch_builder_) {
+    ui_operation_batch_builder_->putInt(
+        static_cast<int32_t>(UIOperationType::kRequestExternalMemoryReport));
+    ui_operation_batch_builder_->putLong(delay_ms);
+    return;
+  }
+
+  Enqueue([platform_ref = platform_ref_, delay_ms]() {
+    platform_ref->RequestExternalMemoryReport(delay_ms);
+  });
 }
 
 void PaintingContextAndroid::Enqueue(shell::UIOperation op) {
