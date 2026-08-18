@@ -4,8 +4,6 @@
 
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 
-#include <regex>
-
 #include "core/renderer/dom/element_manager.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
@@ -22,6 +20,15 @@ namespace devtool {
 extern const char* kLynxLocalUrl;
 extern const char* kLynxSecurityOrigin;
 extern const char* kLynxMimeType;
+
+namespace {
+
+bool IsValidScreencastMode(const std::string& mode) {
+  return mode == DevToolStatus::SCREENSHOT_MODE_FULLSCREEN ||
+         mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW;
+}
+
+}  // namespace
 
 InspectorUIExecutor::InspectorUIExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
@@ -126,8 +133,10 @@ void InspectorUIExecutor::StartScreencast(
   screen_request.every_nth_frame_ = params["everyNthFrame"].asInt();
   if (params["mode"].isString()) {
     std::string mode = params["mode"].asString();
-    lynx::devtool::DevToolStatus::GetInstance().SetStatus(
-        lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode, mode);
+    if (IsValidScreencastMode(mode)) {
+      lynx::devtool::DevToolStatus::GetInstance().SetStatus(
+          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode, mode);
+    }
   }
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
                             "devtool_platform_facade_ is null");
