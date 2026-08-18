@@ -61,14 +61,21 @@ void LynxDevToolMediator::Init(
 
   ui_task_runner_ = runners->GetUITaskRunner();
 
-  // Get the enabled state of the WhiteBoard and reset it after reloading.
+  // Preserve domain enabled states across reloads.
   bool white_board_enabled = false;
+  bool global_props_enabled = false;
+  uint64_t last_global_props_timestamp = 0;
   if (element_executor_ != nullptr) {
     white_board_enabled = element_executor_->IsWhiteBoardEnabled();
+    global_props_enabled = element_executor_->IsGlobalPropsEnabled();
+    last_global_props_timestamp =
+        element_executor_->GetLastGlobalPropsTimestamp();
   }
 
   element_executor_ = std::make_shared<InspectorTasmExecutor>(
       shared_from_this(), tasm, view_id_);
+  element_executor_->SetLastGlobalPropsTimestamp(last_global_props_timestamp);
+  element_executor_->SetGlobalPropsEnabled(global_props_enabled);
   ui_executor_ = std::make_shared<InspectorUIExecutor>(shared_from_this());
   ui_executor_->SetShell(shell);
   if (!devtool_executor_) {
@@ -101,9 +108,11 @@ void LynxDevToolMediator::Init(
   lepus_observer->SetConsolePostNeeded(!shell->IsRuntimeEnabled());
   lepus_observer->SetDevToolMediator(shared_from_this());
   tasm->SetLepusObserver(lepus_observer);
-  tasm::replay::ReplayController::SetDevToolObserver(
+  auto common_observer =
       std::make_shared<lynx::devtool::InspectorCommonObserverImpl>(
-          lynx_devtool_ng->GetCurrentSender(), shared_from_this()));
+          lynx_devtool_ng->GetCurrentSender(), shared_from_this());
+  tasm->SetInspectorCommonObserver(common_observer);
+  tasm::replay::ReplayController::SetDevToolObserver(common_observer);
 
   auto white_board_delegate = tasm->GetWhiteBoardDelegate();
   if (white_board_delegate != nullptr) {
@@ -981,6 +990,70 @@ void LynxDevToolMediator::SetUIStyle(
                     [ui_executor = ui_executor_, sender, message] {
                       ui_executor->SetUIStyle(sender, message);
                     });
+  }
+}
+
+void LynxDevToolMediator::GlobalPropsEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [executor = element_executor_, sender, message] {
+                      executor->GlobalPropsEnable(sender, message);
+                    });
+  } else {
+    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
+                              "GlobalProps target is unavailable");
+  }
+}
+
+void LynxDevToolMediator::GlobalPropsDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [executor = element_executor_, sender, message] {
+                      executor->GlobalPropsDisable(sender, message);
+                    });
+  } else {
+    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
+                              "GlobalProps target is unavailable");
+  }
+}
+
+void LynxDevToolMediator::GlobalPropsGet(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [executor = element_executor_, sender, message] {
+                      executor->GlobalPropsGet(sender, message);
+                    });
+  } else {
+    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
+                              "GlobalProps target is unavailable");
+  }
+}
+
+void LynxDevToolMediator::GlobalPropsReplace(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_,
+                    [executor = element_executor_, sender, message] {
+                      executor->GlobalPropsReplace(sender, message);
+                    });
+  } else {
+    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
+                              "GlobalProps target is unavailable");
+  }
+}
+
+void LynxDevToolMediator::GlobalPropsChanged() {
+  if (tasm_task_runner_) {
+    RunOnTaskRunner(tasm_task_runner_, [executor = element_executor_] {
+      executor->GlobalPropsChanged();
+    });
   }
 }
 

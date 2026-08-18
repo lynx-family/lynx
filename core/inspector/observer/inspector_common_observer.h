@@ -18,6 +18,7 @@ class InspectorCommonObserver {
   virtual void EndReplayTest(const std::string& file_path) = 0;
   virtual void SendLayoutTree() = 0;
   virtual void FlushLayoutTreeForReplayEnd(std::function<void()> callback) = 0;
+  virtual void OnGlobalPropsUpdated() {}
 };
 
 }  // namespace tasm

@@ -21,6 +21,7 @@
 #include "base/include/fml/task_runner.h"
 #include "base/include/log/log_context.h"
 #include "base/include/log/logging.h"
+#include "core/inspector/observer/inspector_common_observer.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
 #include "core/public/external_memory_snapshot.h"
 #include "core/public/page_options.h"
@@ -340,8 +341,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override;
 
-  void UpdateGlobalProps(const lepus::Value& data, bool need_render,
-                         std::shared_ptr<PipelineOptions>& pipeline_options);
+  LYNX_EXPORT_FOR_DEVTOOL void UpdateGlobalProps(
+      const lepus::Value& data, bool need_render,
+      std::shared_ptr<PipelineOptions>& pipeline_options);
 
   void SendTouchEvent(const std::string& name, const EventInfo& info);
   void SendCustomEvent(const std::string& name, int tag,
@@ -391,6 +393,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   LYNX_EXPORT_FOR_DEVTOOL void SetLepusObserver(
       const std::shared_ptr<lepus::InspectorLepusObserver>& observer);
+  LYNX_EXPORT_FOR_DEVTOOL void SetInspectorCommonObserver(
+      const std::shared_ptr<InspectorCommonObserver>& observer);
 
   lepus::Value GetComponentInfoMap(const std::string& entry_name) override;
   lepus::Value GetComponentPathMap(const std::string& entry_name) override;
@@ -1074,6 +1078,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   std::unordered_map<std::string, lepus::Value> lepus_event_listeners_;
 
   std::shared_ptr<lepus::InspectorLepusObserver> lepus_observer_;
+  std::shared_ptr<InspectorCommonObserver> inspector_common_observer_;
 
   std::string locale_;
 

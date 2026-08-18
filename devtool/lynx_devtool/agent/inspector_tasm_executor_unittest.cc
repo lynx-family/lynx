@@ -369,6 +369,15 @@ class InspectorTasmExecutorTest : public ::testing::Test {
     ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
   }
 
+  Json::Value ReceivedMessage() {
+    Json::Value message;
+    Json::Reader reader;
+    EXPECT_TRUE(reader.parse(
+        devtool::MockReceiver::GetInstance().received_message_.second,
+        message));
+    return message;
+  }
+
  private:
   std::shared_ptr<devtool::InspectorTasmExecutor> element_executor_;
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
@@ -379,6 +388,59 @@ class InspectorTasmExecutorTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>
       tasm_mediator_;
 };
+
+TEST_F(InspectorTasmExecutorTest, GlobalPropsEnableDisableCase) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 1;
+
+  element_executor_->GlobalPropsEnable(message_sender_, message);
+  EXPECT_TRUE(element_executor_->IsGlobalPropsEnabled());
+  Json::Value response = ReceivedMessage();
+  EXPECT_EQ(response["id"], 1);
+  EXPECT_TRUE(response["result"].isObject());
+
+  element_executor_->GlobalPropsDisable(message_sender_, message);
+  EXPECT_FALSE(element_executor_->IsGlobalPropsEnabled());
+}
+
+TEST_F(InspectorTasmExecutorTest, GlobalPropsGetWithoutTasmReturnsEmptyObject) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 3;
+
+  element_executor_->GlobalPropsGet(message_sender_, message);
+
+  Json::Value response = ReceivedMessage();
+  EXPECT_EQ(response["id"], 3);
+  EXPECT_TRUE(response["result"]["globalProps"].isObject());
+  EXPECT_TRUE(response["result"]["globalProps"].empty());
+  EXPECT_EQ(response["result"]["timestamp"].asUInt64(), 0u);
+}
+
+TEST_F(InspectorTasmExecutorTest, GlobalPropsReplaceRejectsInvalidParams) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 4;
+  Json::Value array(Json::ValueType::arrayValue);
+  message["params"]["globalProps"] = array;
+  element_executor_->GlobalPropsReplace(message_sender_, message);
+
+  Json::Value response = ReceivedMessage();
+  EXPECT_EQ(response["error"]["code"], devtool::kInvalidParams);
+  EXPECT_EQ(response["error"]["message"], "globalProps must be an object");
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       GlobalPropsChangedEmitsReplaceMarkerWithTimestamp) {
+  element_executor_->global_props_enabled_ = true;
+
+  element_executor_->GlobalPropsChanged();
+  FlushDevtoolTasks();
+
+  Json::Value event = ReceivedMessage();
+  EXPECT_EQ(event["method"], "GlobalProps.changed");
+  EXPECT_GT(event["params"]["timestamp"].asUInt64(), 0u);
+  EXPECT_EQ(event["params"]["changes"].size(), 1u);
+  EXPECT_EQ(event["params"]["changes"][0]["operation"], "replace");
+}
 
 TEST_F(InspectorTasmExecutorTest, SetDevtoolPlatformAbilityCase) {
   LOGI("InspectorTasmExecutorTest SetDevtoolPlatformAbilityCase start");

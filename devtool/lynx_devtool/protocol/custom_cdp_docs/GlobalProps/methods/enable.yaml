@@ -1,0 +1,19 @@
+summary: Enables GlobalProps change events for the current Lynx target.
+parameters: []
+returns: []
+events:
+  - name: GlobalProps.changed
+    description: Emitted for each authoritative update with a backend-generated timestamp and a single replace item. Call GlobalProps.get to read the complete current value.
+notes:
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM task runner.
+  - The operation is idempotent and returns an empty result object.
+  - Call GlobalProps.get after enabling to obtain the initial value and its timestamp; updates that happened before enable are not replayed.
+  - Returns a CDP error with code -32000 when the TASM target is unavailable.
+examples:
+  - title: Enable GlobalProps inspection
+    request:
+      id: 1
+      method: GlobalProps.enable
+    response:
+      id: 1
+      result: {}

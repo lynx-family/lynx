@@ -268,6 +268,9 @@ void TemplateAssembler::UpdateGlobalProps(
   LOGI(GetLogContext() << " UpdateGlobalProps " << data.GetLength()
                        << " this: " << this);
   global_props_ = data;
+  if (inspector_common_observer_) {
+    inspector_common_observer_->OnGlobalPropsUpdated();
+  }
   if (template_loaded_) {
     NotifyGlobalPropsChanged(data);
     UpdateGlobalPropsToContext(data);
@@ -309,6 +312,11 @@ void TemplateAssembler::SetLepusObserver(
   lepus_observer_ = observer;
   ForEachEntry(
       [&observer](const auto& entry) { entry->SetLepusObserver(observer); });
+}
+
+void TemplateAssembler::SetInspectorCommonObserver(
+    const std::shared_ptr<InspectorCommonObserver>& observer) {
+  inspector_common_observer_ = observer;
 }
 
 void TemplateAssembler::UpdateGlobalPropsWithDefaultProps(

@@ -37,5 +37,11 @@ void InspectorCommonObserverImpl::FlushLayoutTreeForReplayEnd(
   devtool_mediator->FlushLayoutTreeForReplayEnd(std::move(callback));
 }
 
+void InspectorCommonObserverImpl::OnGlobalPropsUpdated() {
+  auto devtool_mediator = mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
+  devtool_mediator->GlobalPropsChanged();
+}
+
 }  // namespace devtool
 }  // namespace lynx

@@ -1,0 +1,25 @@
+summary: Atomically replaces the complete authoritative GlobalProps object for the current Lynx target.
+parameters:
+  - name: globalProps
+    type: object
+    description: Complete replacement GlobalProps object. Keys omitted from this object are removed.
+returns: []
+events:
+  - name: GlobalProps.changed
+    description: Emits a single replace change item. The frontend must call GlobalProps.get to rebuild its full state. The replace item never carries field values.
+notes:
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM task runner.
+  - The value must be a JSON object; arrays, scalar values, and null are rejected.
+  - The update uses TemplateAssembler::UpdateGlobalProps so the TASM cache, MTS and BTS projections, and rendering follow the normal GlobalProps pipeline.
+  - Returns a CDP error with code -32000 when the TASM target is unavailable.
+examples:
+  - title: Replace GlobalProps
+    request:
+      id: 1
+      method: GlobalProps.replace
+      params:
+        globalProps:
+          theme: dark
+    response:
+      id: 1
+      result: {}

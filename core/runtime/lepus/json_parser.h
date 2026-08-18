@@ -33,7 +33,7 @@ std::string writeFile(const uint8_t* content, const char* file, int len,
                       size_t& pos);
 LYNX_EXPORT_FOR_DEVTOOL lepus_value
 jsonValueTolepusValue(const rapid_value& rapValue);
-lepus_value jsonValueTolepusValue(const char* json);
+LYNX_EXPORT_FOR_DEVTOOL lepus_value jsonValueTolepusValue(const char* json);
 std::string lepusValueToJSONString(const lepus_value& value,
                                    bool in_order = false);
 LYNX_EXPORT_FOR_DEVTOOL std::string lepusValueToString(const lepus_value& value,

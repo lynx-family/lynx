@@ -173,6 +173,13 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(LynxSendEventToVM)
   DECLARE_DEVTOOL_METHOD(GetScreenshot)
 
+  // GlobalProps domain -> tasm executor
+  DECLARE_DEVTOOL_METHOD(GlobalPropsEnable)
+  DECLARE_DEVTOOL_METHOD(GlobalPropsDisable)
+  DECLARE_DEVTOOL_METHOD(GlobalPropsGet)
+  DECLARE_DEVTOOL_METHOD(GlobalPropsReplace)
+  void GlobalPropsChanged();
+
   // Template domain
   DECLARE_DEVTOOL_METHOD(TemplateGetTemplateData)
   DECLARE_DEVTOOL_METHOD(TemplateGetTemplateJsInfo)
