@@ -354,6 +354,7 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   std::unique_ptr<FrameTimingsRecorder> last_recorder_;
   const std::shared_ptr<FixedRefreshRateStopwatch> raster_time_;
   const std::shared_ptr<FixedRefreshRateStopwatch> frame_total_time_;
+  bool has_traced_first_successful_submit_ = false;
 
   // WeakPtrFactory must be the last member.
   fml::WeakPtrFactory<Rasterizer> weak_factory_;

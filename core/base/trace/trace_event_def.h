@@ -29,6 +29,52 @@ static constexpr const char* const CLAY_LAYOUT_CONTEXT_CREATE_LAYOUT_NODE =
     "LayoutContextClay::CreateLayoutNode";
 static constexpr const char* const CLAY_PAINTING_CONTEXT_CREATE_PAINTING_NODE =
     "PaintingContextClay::CreatePaintingNode";
+static constexpr const char* const CLAY_STARTUP_IOS_LYNX_UI_RENDERER_INIT =
+    "ClayStartup::IOSLynxUIRendererInit";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_CLAY_HELPER =
+    "ClayStartup::IOSCreateClayHelper";
+static constexpr const char* const CLAY_STARTUP_IOS_ATTACH_CONTAINER_VIEW =
+    "ClayStartup::IOSAttachContainerView";
+static constexpr const char* const CLAY_STARTUP_IOS_GET_UI_DELEGATE =
+    "ClayStartup::IOSGetUIDelegate";
+static constexpr const char* const CLAY_STARTUP_IOS_VIEW_PROVIDER_SETUP =
+    "ClayStartup::IOSViewProviderSetup";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_PROJECT =
+    "ClayStartup::IOSCreateProject";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_ENGINE =
+    "ClayStartup::IOSCreateEngine";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_SHELL =
+    "ClayStartup::IOSCreateShell";
+static constexpr const char* const CLAY_STARTUP_IOS_SYNC_NATIVE_VIEW_TAGS =
+    "ClayStartup::IOSSyncNativeViewTags";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_UI_DELEGATE =
+    "ClayStartup::IOSCreateUIDelegate";
+static constexpr const char* const CLAY_STARTUP_UI_DELEGATE_ON_LYNX_CREATE =
+    "ClayStartup::UIDelegateOnLynxCreate";
+static constexpr const char* const CLAY_STARTUP_SHELL_CREATE =
+    "ClayStartup::ShellCreate";
+static constexpr const char* const CLAY_STARTUP_POST_SETUP_UI_SUBSYSTEM =
+    "ClayStartup::PostSetupUISubsystem";
+static constexpr const char* const CLAY_STARTUP_SETUP_UI_SUBSYSTEM =
+    "ClayStartup::SetupUISubsystem";
+static constexpr const char* const CLAY_STARTUP_POST_SETUP_RASTER_SUBSYSTEM =
+    "ClayStartup::PostSetupRasterSubsystem";
+static constexpr const char* const CLAY_STARTUP_SETUP_RASTER_SUBSYSTEM =
+    "ClayStartup::SetupRasterSubsystem";
+static constexpr const char* const CLAY_STARTUP_CREATE_WITH_SNAPSHOT =
+    "ClayStartup::CreateWithSnapshot";
+static constexpr const char* const CLAY_STARTUP_PLATFORM_VIEW_CREATED =
+    "ClayStartup::PlatformViewCreated";
+static constexpr const char* const CLAY_STARTUP_PLATFORM_SURFACE_CREATED =
+    "ClayStartup::PlatformSurfaceCreated";
+static constexpr const char* const CLAY_STARTUP_SETUP_OUTPUT_SURFACE =
+    "ClayStartup::SetupOutputSurface";
+static constexpr const char* const CLAY_STARTUP_OUTPUT_SURFACE_READY =
+    "ClayStartup::OutputSurfaceReady";
+static constexpr const char* const CLAY_STARTUP_FIRST_MEANINGFUL_LAYOUT =
+    "ClayStartup::FirstMeaningfulLayout";
+static constexpr const char* const CLAY_STARTUP_FIRST_FRAME_SUBMITTED =
+    "ClayStartup::FirstFrameSubmitted";
 static constexpr const char* const CLAY_NATIVE_VIEW_CONSTRUCTOR =
     "NativeView::NativeView";
 static constexpr const char* const CLAY_VIEW_CONTEXT_CREATE_VIEW =

@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
@@ -16,6 +17,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
+#include "core/base/trace/trace_event_def.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
@@ -80,6 +82,8 @@ void UIDelegateClay::OnLynxCreate(
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
     const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
     bool is_embedded_mode) {
+  TRACE_EVENT("clay", CLAY_STARTUP_UI_DELEGATE_ON_LYNX_CREATE, "instance_id",
+              instance_id, "embedded_mode", is_embedded_mode);
   perf_controller_ =
       std::make_shared<PerfControllerClay>(perf_controller_proxy, instance_id);
   if (platform_enable_fluency_monitor_.has_value()) {

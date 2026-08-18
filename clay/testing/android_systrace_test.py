@@ -18,6 +18,11 @@ BUILDROOT_DIR = os.path.abspath(
 
 PERFETTO_SESSION_KEY = 'session1'
 PERFETTO_TRACE_FILE = '/data/misc/perfetto-traces/trace'
+REQUIRED_STARTUP_EVENTS = (
+    'ClayStartup::ShellCreate',
+    'ClayStartup::SetupUISubsystem',
+    'ClayStartup::SetupRasterSubsystem',
+)
 PERFETTO_CONFIG = """
 write_into_file: true
 file_write_period_ms: 1000000000
@@ -94,19 +99,23 @@ def collect_and_validate_trace(adb_path='adb'):
       BUILDROOT_DIR, 'third_party', 'android_tools', 'trace_to_text',
       'trace_to_text'
   )
-  traceconv_output = subprocess.check_output([
+  trace_output = subprocess.check_output([
       traceconv, 'systrace', 'trace.pb'
   ],
                                              stderr=subprocess.STDOUT,
                                              universal_newlines=True)
 
   print('Trace output:')
-  print(traceconv_output)
+  print(trace_output)
 
-  if 'ShellSetupUISubsystem' in traceconv_output:
+  missing_events = [
+      event for event in REQUIRED_STARTUP_EVENTS if event not in trace_output
+  ]
+  if not missing_events:
     return 0
 
-  print('Trace did not contain ShellSetupUISubsystem, failing.')
+  print('Trace did not contain required Clay startup events: %s' %
+        ', '.join(missing_events))
   return 1
 
 
