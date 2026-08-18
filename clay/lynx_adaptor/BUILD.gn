@@ -5,6 +5,8 @@
 import("../common/config.gni")
 import("./native_module/build.gni")
 
+enable_clay_ui_tree = enable_clay && enable_inspector
+
 if (enable_unittests) {
   static_library("get_text_info_unittest_support") {
     testonly = true
@@ -74,6 +76,15 @@ source_set("lynx_adaptor") {
     "value_converter.h",
     "video_engine_tag_priority.h",
   ]
+  if (enable_clay_ui_tree) {
+    sources += [
+      "../shell/common/devtool/ui_tree_helper.cc",
+      "../shell/common/devtool/ui_tree_helper.h",
+      "ui_delegate_clay_ui_tree.cc",
+    ]
+  } else {
+    sources += [ "ui_delegate_clay_ui_tree_stub.cc" ]
+  }
   sources += rebase_path(clay_native_module_sources, "", "native_module")
 
   # lynx_websocket_module.cc requires boringssl
@@ -89,6 +100,12 @@ source_set("lynx_adaptor") {
     "../fml:fml",
     "../ui:ui",
   ]
+  if (enable_clay_ui_tree) {
+    public_deps += [
+      "../../third_party/rapidjson:rapidjson",
+      "../gfx",
+    ]
+  }
   if (use_clay_lynx_trail_hub_impl) {
     public_deps += [ ":lynx_trail_hub_impl_clay" ]
   }

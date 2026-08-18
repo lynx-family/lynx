@@ -5455,6 +5455,9 @@ public protocol LynxUIRendererProtocol-p : <NSObject> {
   public void LynxUIRendererProtocol-p::setImageFetcherInUIOwner:(id< LynxImageFetcher > imageFetcher);
   public void LynxUIRendererProtocol-p::setResourceFetcherInUIOwner:(id< LynxResourceFetcher > resourceFetcher);
   public void LynxUIRendererProtocol-p::updateScreenWidth:height:(CGFloat width,[height] CGFloat height);
+  public nullable NSString * LynxUIRendererProtocol-p::getLynxUITree();
+  public nullable NSString * LynxUIRendererProtocol-p::getUINodeInfo:(int nodeId);
+  public int LynxUIRendererProtocol-p::setUIStyle:withStyleName:withStyleContent:(int nodeId,[withStyleName] NSString *name,[withStyleContent] NSString *content);
   public void LynxUIRendererProtocol-p::updateScreenMetrics:(LynxScreenMetrics *screenMetrics);
   public void LynxUIRendererProtocol-p::updateViewportMetrics:(nullable LynxViewportMetrics *viewportMetrics);
   public void LynxUIRendererProtocol-p::pauseRootLayoutAnimation();

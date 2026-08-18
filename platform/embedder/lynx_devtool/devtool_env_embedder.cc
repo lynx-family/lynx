@@ -5,6 +5,7 @@
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 
 #include "base/include/no_destructor.h"
+#include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
@@ -22,6 +23,7 @@ DevToolEnvEmbedder& DevToolEnvEmbedder::GetInstance() {
 DevToolEnvEmbedder::DevToolEnvEmbedder() {
   debugrouter::common::DebugRouter::GetInstance().EnableAllSessions();
   devtool::DebugBridgeEmbedder::GetInstance();
+  SetAppInfo("sdkVersion", tasm::Config::GetCurrentLynxVersion());
   DevToolSettingsEmbedder::GetInstance().SyncToNative();
 
   auto& lifecycle = lynx::tasm::DevToolLifecycle::GetInstance();

@@ -9,7 +9,7 @@ parameters:
     description: Editable style name.
   - name: styleContent
     type: string
-    description: Style value string. frame, margin, and border use four comma or whitespace separated numbers. color styles use eight-digit RGBA hex values. visible uses true or false on Android and Darwin, while Harmony treats false and 0 as hidden.
+    description: Style value string. frame, margin, and border use four comma or whitespace separated numbers. color styles use eight-digit RGBA hex values. visible uses true or false on native Android, Darwin, and Clay renderers, while native Harmony also treats 0 as hidden.
 returns:
   - name: error
     type: object
@@ -30,7 +30,7 @@ notes:
   - The handler forwards params.UINodeId, params.styleName, and params.styleContent to DevToolPlatformFacade::SetUIStyle.
   - The response is an empty result object when the platform return value is not -1.
   - When the platform return value is -1, the response still uses result.error rather than a top-level CDP error.
-  - Android, Darwin, and Harmony support frame, margin, border, visible, background-color, and border-color, but unsupported or invalid inputs do not produce identical platform return values.
+  - Native Android, Darwin, native Harmony, and Clay renderers support frame, margin, border, visible, background-color, and border-color, but unsupported or invalid inputs do not produce identical platform return values.
   - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
 examples:
   - title: Update a UI frame

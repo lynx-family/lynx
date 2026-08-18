@@ -518,24 +518,42 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 }
 
 - (NSString*)getLynxUITree {
-  NSString* res;
+  id<LynxUIRendererProtocol> renderer = _lynxView.templateRender.lynxUIRenderer;
+  // Currently only the Clay renderer implements this optional operation.
+  // Non-Clay renderers fall back to _uiTreeHelper below.
+  if ([renderer respondsToSelector:@selector(getLynxUITree)]) {
+    return [renderer getLynxUITree];
+  }
+  NSString* res = nil;
   if (_uiTreeHelper) {
     res = [_uiTreeHelper getLynxUITree];
   }
   return res;
 }
 
-- (NSString*)getUINodeInfo:(int)id {
-  NSString* res;
+- (NSString*)getUINodeInfo:(int)nodeId {
+  id<LynxUIRendererProtocol> renderer = _lynxView.templateRender.lynxUIRenderer;
+  // Currently only the Clay renderer implements this optional operation.
+  // Non-Clay renderers fall back to _uiTreeHelper below.
+  if ([renderer respondsToSelector:@selector(getUINodeInfo:)]) {
+    return [renderer getUINodeInfo:nodeId];
+  }
+  NSString* res = nil;
   if (_uiTreeHelper) {
-    res = [_uiTreeHelper getUINodeInfo:id];
+    res = [_uiTreeHelper getUINodeInfo:nodeId];
   }
   return res;
 }
 
-- (int)setUIStyle:(int)id withStyleName:(NSString*)name withStyleContent:(NSString*)content {
+- (int)setUIStyle:(int)nodeId withStyleName:(NSString*)name withStyleContent:(NSString*)content {
+  id<LynxUIRendererProtocol> renderer = _lynxView.templateRender.lynxUIRenderer;
+  // Currently only the Clay renderer implements this optional operation.
+  // Non-Clay renderers fall back to _uiTreeHelper below.
+  if ([renderer respondsToSelector:@selector(setUIStyle:withStyleName:withStyleContent:)]) {
+    return [renderer setUIStyle:nodeId withStyleName:name withStyleContent:content];
+  }
   if (_uiTreeHelper) {
-    return [_uiTreeHelper setUIStyle:id withStyleName:name withStyleContent:content];
+    return [_uiTreeHelper setUIStyle:nodeId withStyleName:name withStyleContent:content];
   } else {
     return -1;
   }

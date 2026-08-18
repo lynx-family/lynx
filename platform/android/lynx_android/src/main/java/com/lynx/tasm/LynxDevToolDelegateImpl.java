@@ -109,4 +109,28 @@ public class LynxDevToolDelegateImpl implements IDevToolDelegate {
     }
     return null;
   }
+
+  @Override
+  public boolean isClayRenderer() {
+    ILynxUIRenderer renderer = getLynxUIRenderer();
+    return renderer != null && renderer.getRenderType() == ILynxUIRenderer.RenderType.CLAY;
+  }
+
+  @Override
+  public String getLynxUITree() {
+    LynxTemplateRender render = mRender.get();
+    return render != null ? render.getLynxUITree() : "";
+  }
+
+  @Override
+  public String getUINodeInfo(int id) {
+    LynxTemplateRender render = mRender.get();
+    return render != null ? render.getUINodeInfo(id) : "";
+  }
+
+  @Override
+  public int setUIStyle(int id, String name, String content) {
+    LynxTemplateRender render = mRender.get();
+    return render != null ? render.setUIStyle(id, name, content) : -1;
+  }
 }

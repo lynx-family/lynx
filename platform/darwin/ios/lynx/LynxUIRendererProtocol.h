@@ -117,6 +117,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 @optional
 
+// Currently only the Clay renderer implements these UI Tree operations.
+// DevTool checks each selector independently and invokes it on the UI thread;
+// unimplemented operations fall back to the native UI tree helper.
+- (nullable NSString *)getLynxUITree;
+
+- (nullable NSString *)getUINodeInfo:(int)nodeId;
+
+- (int)setUIStyle:(int)nodeId withStyleName:(NSString *)name withStyleContent:(NSString *)content;
+
 - (void)updateScreenMetrics:(LynxScreenMetrics *)screenMetrics;
 
 - (void)updateViewportMetrics:(nullable LynxViewportMetrics *)viewportMetrics;
