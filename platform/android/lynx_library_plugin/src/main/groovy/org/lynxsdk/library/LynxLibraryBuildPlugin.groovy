@@ -7,6 +7,7 @@ package org.lynxsdk.library
 import org.gradle.api.Plugin
 import org.gradle.api.GradleException
 import org.gradle.api.Project
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.compile.JavaCompile
 
 class LynxLibraryBuildPlugin implements Plugin<Project> {
@@ -73,6 +74,9 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
         File generatedDir = new File(
             project.buildDir, "generated/source/lynxLibraryRegistry/${variantName}")
         def taskProvider = project.tasks.register(taskName) { task ->
+            task.inputs.files(libraries.collect { it.manifestFile })
+                .withPropertyName('lynxLibraryManifests')
+                .withPathSensitivity(PathSensitivity.RELATIVE)
             task.outputs.dir(generatedDir)
             task.doLast {
                 File packageDir = new File(generatedDir,
