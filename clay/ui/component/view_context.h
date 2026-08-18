@@ -34,6 +34,7 @@
 #include "clay/ui/shadow/shadow_node.h"
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/window/viewport_metrics.h"
+#include "core/public/external_memory_snapshot.h"
 
 namespace clay {
 
@@ -250,6 +251,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
                                std::vector<int32_t> remove_ids);
 
   fml::RefPtr<fml::TaskRunner> GetUITaskRunner() const;
+  lynx::tasm::ExternalMemorySnapshot GetExternalMemorySnapshot();
+  void RequestExternalMemoryReport(int64_t delay_ms);
   const clay::TaskRunners& GetTaskRunners() const;
   const std::shared_ptr<ServiceManager>& GetServiceManager() const;
 
@@ -350,6 +353,9 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   std::unordered_map<std::string, int> component_id_to_ui_id_map_;
   std::unordered_map<std::string, NativeViewCompositionPreference>
       native_view_composition_preferences_;
+
+  std::unordered_set<int32_t> external_memory_report_candidate_ids_;
+  bool external_memory_report_pending_ = false;
 
   fml::WeakPtrFactory<ViewContext> weak_factory_;
   std::unique_ptr<CustomFilterDecoder> custom_filter_decoder_;

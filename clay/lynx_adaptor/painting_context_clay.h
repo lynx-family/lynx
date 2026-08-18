@@ -5,6 +5,7 @@
 #ifndef CLAY_LYNX_ADAPTOR_PAINTING_CONTEXT_CLAY_H_
 #define CLAY_LYNX_ADAPTOR_PAINTING_CONTEXT_CLAY_H_
 
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>
@@ -40,6 +41,7 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
                         float estimated_offset, bool scrolling) override;
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                std::vector<int32_t> remove_ids) override;
+  void RequestExternalMemoryReport(int64_t delay_ms) override;
   void InsertListItemPaintingNode(int list_sign, int child_sign) override;
   void RemoveListItemPaintingNode(int list_sign, int child_sign) override;
   void UpdateContentOffsetForListContainer(int32_t container_id,

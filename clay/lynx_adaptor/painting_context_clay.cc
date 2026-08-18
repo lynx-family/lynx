@@ -99,6 +99,10 @@ void PaintingContextClayRef::UpdateNodeReadyPatching(
   }
 }
 
+void PaintingContextClayRef::RequestExternalMemoryReport(int64_t delay_ms) {
+  view_context_->RequestExternalMemoryReport(delay_ms);
+}
+
 void PaintingContextClayRef::InsertListItemPaintingNode(int list_sign,
                                                         int child_sign) {
   view_context_->InsertListItemPaintingNode(list_sign, child_sign);

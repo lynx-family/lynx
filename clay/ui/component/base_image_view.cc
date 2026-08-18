@@ -85,6 +85,20 @@ BaseImageView::~BaseImageView() {
   TryCancelFetch(placeholder_, placeholder_fetch_id_);
 }
 
+int64_t BaseImageView::GetMemoryUsageBytes() {
+  int64_t size = BaseView::GetMemoryUsageBytes();
+  auto* render_image = GetRenderImage();
+  if (render_image->GetImage() != nullptr) {
+    size += static_cast<int64_t>(
+        render_image->GetImage()->GetGraphicsImageAllocSize());
+  }
+  if (render_image->GetPlaceholderImage() != nullptr) {
+    size += static_cast<int64_t>(
+        render_image->GetPlaceholderImage()->GetGraphicsImageAllocSize());
+  }
+  return size;
+}
+
 void BaseImageView::SetAttribute(const char* attr_c, const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
   switch (kw) {

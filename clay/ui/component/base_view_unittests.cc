@@ -3,11 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <vector>
 
 #include "clay/fml/logging.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view.h"
+#include "clay/ui/component/view_context.h"
 #include "clay/ui/gesture_handler/arena/gesture_arena_manager.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/rendering/render_container.h"
@@ -236,6 +238,40 @@ TEST_F_UI(BaseViewTest, DestroyDuringFlingRemovesExpiredCandidate) {
   winner_view->Destroy();
 }
 
+class ViewContextMemoryTest : public UITest {
+ protected:
+  class TestViewContext final : public ViewContext {
+   public:
+    using ViewContext::ViewContext;
+
+    void CreateViewForTesting(int id) {
+      auto* view = new View(id, page_view_);
+      view->SetDestructListener(
+          [this](BaseView* view) { view_map_.erase(view->id()); });
+      view_map_[id] = view;
+      ConsumeInitialAttributes(view);
+    }
+  };
+
+  void UISetUp() override {
+    view_context_ = std::make_shared<TestViewContext>(page_.get(), nullptr);
+  }
+
+  void UITearDown() override {
+    if (view_context_) {
+      view_context_->ResetPageView();
+    }
+    view_context_.reset();
+  }
+
+  std::shared_ptr<TestViewContext> view_context_;
+};
+
+class ExternalMemoryEventDelegate final : public testing::MockEventDelegate {
+ public:
+  MOCK_METHOD(void, OnExternalMemoryReport, (int64_t, int64_t), (override));
+};
+
 TEST_F_UI(BaseViewTest, TreeManipulation) {
   int view_id = 0;
   std::unique_ptr<BaseView> root =
@@ -260,6 +296,74 @@ TEST_F_UI(BaseViewTest, TreeManipulation) {
   root->DestroyAllChildren();
   root->Destroy();
   EXPECT_EQ(root->child_count(), 0u);
+}
+
+TEST_F_UI(ViewContextMemoryTest, ExternalMemoryConsumesRemovedNodeCandidates) {
+  ASSERT_TRUE(view_context_->CreateView(1, "page"));
+  view_context_->CreateViewForTesting(2);
+  view_context_->CreateViewForTesting(3);
+  const int64_t unit_size = sizeof(BaseView);
+
+  view_context_->AddView(2, 1, 0);
+  view_context_->AddView(3, 2, 0);
+  view_context_->UpdateNodeReadyPatching({}, {2});
+  auto snapshot = view_context_->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, 3 * unit_size);
+  EXPECT_EQ(snapshot.garbage_size, 0);
+
+  view_context_->RemoveView(2, 1, false);
+  view_context_->UpdateNodeReadyPatching({}, {2, 2});
+  view_context_->UpdateNodeReadyPatching({}, {999});
+  snapshot = view_context_->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, 3 * unit_size);
+  EXPECT_EQ(snapshot.garbage_size, 2 * unit_size);
+  EXPECT_EQ(view_context_->GetExternalMemorySnapshot().garbage_size, 0);
+
+  view_context_->AddView(2, 1, 0);
+  view_context_->RemoveView(2, 1, false);
+  view_context_->UpdateNodeReadyPatching({}, {2});
+  view_context_->AddView(2, 1, 0);
+  EXPECT_EQ(view_context_->GetExternalMemorySnapshot().garbage_size, 0);
+
+  view_context_->RemoveView(2, 1, false);
+  view_context_->UpdateNodeReadyPatching({}, {2});
+  ASSERT_TRUE(view_context_->DestroyView(2));
+  snapshot = view_context_->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, unit_size);
+  EXPECT_EQ(snapshot.garbage_size, 0);
+}
+
+TEST_F_UI(ViewContextMemoryTest, PendingReportSurvivesPageReset) {
+  auto task_runner = testing::TestTaskRunner::Create();
+  auto page = std::make_unique<PageView>(0, nullptr, task_runner);
+  auto view_context = std::make_shared<TestViewContext>(page.get(), nullptr);
+  ExternalMemoryEventDelegate delegate;
+  page->SetEventDelegate(&delegate);
+
+  EXPECT_CALL(delegate, OnExternalMemoryReport(0, 0)).Times(1);
+  view_context->RequestExternalMemoryReport(1000);
+  view_context->ResetPageView();
+  task_runner->AdvanceBy(fml::TimeDelta::FromMilliseconds(999));
+  task_runner->AdvanceBy(fml::TimeDelta::FromMilliseconds(1));
+
+  view_context.reset();
+  page.reset();
+}
+
+TEST_F_UI(ViewContextMemoryTest, PendingReportSkipsDestroyedPage) {
+  auto task_runner = testing::TestTaskRunner::Create();
+  auto page = std::make_unique<PageView>(0, nullptr, task_runner);
+  auto view_context = std::make_shared<TestViewContext>(page.get(), nullptr);
+  ExternalMemoryEventDelegate delegate;
+  page->SetEventDelegate(&delegate);
+
+  EXPECT_CALL(delegate, OnExternalMemoryReport(::testing::_, ::testing::_))
+      .Times(0);
+  view_context->RequestExternalMemoryReport(1000);
+  page.reset();
+  task_runner->AdvanceBy(fml::TimeDelta::FromMilliseconds(1000));
+
+  view_context.reset();
 }
 
 TEST_F_UI(BaseViewTest, HitTest) {
