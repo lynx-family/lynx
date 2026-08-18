@@ -282,6 +282,10 @@ if (enable_unittests) {
       "./lynx_service:lynx_service_unittests",
     ]
 
+    if (enable_inspector) {
+      deps += [ "./lynx_devtool:lynx_devtool" ]
+    }
+
     if (is_mac) {
       frameworks = [
         "IOSurface.framework",

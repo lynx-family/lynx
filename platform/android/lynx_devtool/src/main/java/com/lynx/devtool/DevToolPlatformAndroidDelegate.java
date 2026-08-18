@@ -197,6 +197,10 @@ public class DevToolPlatformAndroidDelegate {
 
   @CalledByNative
   public String getLynxUITree() {
+    // Clay uses the renderer delegate; non-Clay renderers use mUITreeHelper below.
+    if (mDevToolDelegate != null && mDevToolDelegate.isClayRenderer()) {
+      return mDevToolDelegate.getLynxUITree();
+    }
     if (mUITreeHelper != null) {
       return mUITreeHelper.getLynxUITree();
     }
@@ -205,6 +209,9 @@ public class DevToolPlatformAndroidDelegate {
 
   @CalledByNative
   public String getUINodeInfo(int id) {
+    if (mDevToolDelegate != null && mDevToolDelegate.isClayRenderer()) {
+      return mDevToolDelegate.getUINodeInfo(id);
+    }
     if (mUITreeHelper != null) {
       return mUITreeHelper.getUINodeInfo(id);
     }
@@ -213,6 +220,9 @@ public class DevToolPlatformAndroidDelegate {
 
   @CalledByNative
   public int setUIStyle(int id, String name, String content) {
+    if (mDevToolDelegate != null && mDevToolDelegate.isClayRenderer()) {
+      return mDevToolDelegate.setUIStyle(id, name, content);
+    }
     if (mUITreeHelper != null) {
       return mUITreeHelper.setUIStyle(id, name, content);
     }

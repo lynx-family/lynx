@@ -2450,6 +2450,10 @@ public interface com::lynx::devtoolwrapper::IDevToolDelegate {
   public int com.lynx.devtoolwrapper.IDevToolDelegate.getNodeForLocation(float x, float y, String mode);
   public float[] com.lynx.devtoolwrapper.IDevToolDelegate.getTransformValue(int id, float[] padBorderMarginLayout);
   public Bitmap com.lynx.devtoolwrapper.IDevToolDelegate.getBitmapOfView();
+  public default boolean com.lynx.devtoolwrapper.IDevToolDelegate.isClayRenderer();
+  public default String com.lynx.devtoolwrapper.IDevToolDelegate.getLynxUITree();
+  public default String com.lynx.devtoolwrapper.IDevToolDelegate.getUINodeInfo(int id);
+  public default int com.lynx.devtoolwrapper.IDevToolDelegate.setUIStyle(int id, String name, String content);
 }
 
 public interface com::lynx::tasm::behavior::ui::IDrawChildHook {
@@ -5144,6 +5148,10 @@ public class com::lynx::tasm::LynxDevToolDelegateImpl : com.lynx.devtoolwrapper.
   public int com.lynx.tasm.LynxDevToolDelegateImpl.getNodeForLocation(float x, float y, String mode);
   public float[] com.lynx.tasm.LynxDevToolDelegateImpl.getTransformValue(int id, float[] padBorderMarginLayout);
   public Bitmap com.lynx.tasm.LynxDevToolDelegateImpl.getBitmapOfView();
+  public boolean com.lynx.tasm.LynxDevToolDelegateImpl.isClayRenderer();
+  public String com.lynx.tasm.LynxDevToolDelegateImpl.getLynxUITree();
+  public String com.lynx.tasm.LynxDevToolDelegateImpl.getUINodeInfo(int id);
+  public int com.lynx.tasm.LynxDevToolDelegateImpl.setUIStyle(int id, String name, String content);
 }
 
 public class com::lynx::devtoolwrapper::LynxDevtoolGlobalHelper :  {

@@ -565,6 +565,39 @@ void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
       shell->GetPageOptions().IsEmbeddedModeOn());
 }
 
+jbyteArray StringToJavaByteArray(JNIEnv* env, const std::string& value) {
+  auto result = JNIConvertHelper::ConvertToJNIByteArray(env, value);
+  // Return a separate local reference that survives the scoped wrapper.
+  return static_cast<jbyteArray>(env->NewLocalRef(result.Get()));  // NOLINT
+}
+
+jbyteArray GetLynxUITree(JNIEnv* env, jclass jcaller, jlong ui_delegate_ptr) {
+  auto* ui_delegate =
+      reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
+  return StringToJavaByteArray(
+      env, ui_delegate ? ui_delegate->GetLynxUITree() : std::string());
+}
+
+jbyteArray GetUINodeInfo(JNIEnv* env, jclass jcaller, jlong ui_delegate_ptr,
+                         jint id) {
+  auto* ui_delegate =
+      reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
+  return StringToJavaByteArray(
+      env, ui_delegate ? ui_delegate->GetUINodeInfo(id) : std::string());
+}
+
+jint SetUIStyle(JNIEnv* env, jclass jcaller, jlong ui_delegate_ptr, jint id,
+                jstring name, jstring content) {
+  auto* ui_delegate =
+      reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
+  if (ui_delegate == nullptr) {
+    return -1;
+  }
+  return ui_delegate->SetUIStyle(
+      id, lynx::base::android::JNIConvertHelper::ConvertToString(env, name),
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, content));
+}
+
 void StartRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
