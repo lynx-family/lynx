@@ -72,6 +72,9 @@ class ComponentMould;
 class ElementManager;
 class I18n;
 class LynxGetUIResult;
+class MTSRenderer;
+class FiberMTSRenderer;
+class RadonMTSRenderer;
 class WhiteBoard;
 class WhiteBoardDelegate;
 class PipelineLifecycleObserver;
@@ -868,6 +871,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   friend class TemplateBinaryReader;
   friend class TemplateBinaryReaderSSR;
   friend class TemplateEntry;
+  friend class FiberMTSRenderer;
+  friend class RadonMTSRenderer;
 
   void ExecuteDataProcessor(TemplateData& data);
 
@@ -931,9 +936,6 @@ class TemplateAssembler final : public TemplateEntryHolder,
                       const UpdatePageOption& update_page_option,
                       std::shared_ptr<PipelineOptions>& pipeline_options);
   void DidRenderTemplate(std::shared_ptr<PipelineOptions>& pipeline_options);
-  void RenderTemplateForFiber(
-      const std::shared_ptr<TemplateEntry>& card, const TemplateData& data,
-      std::shared_ptr<PipelineOptions>& pipeline_options);
 
   void OnDataUpdatedByNative(TemplateData value, const bool reset = false);
 
@@ -959,10 +961,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   // only.
   TemplateData ProcessTemplateData(
       const std::shared_ptr<TemplateData>& template_data, bool first_screen);
-  TemplateData ProcessTemplateDataForFiber(
-      const std::shared_ptr<TemplateData>& template_data, bool first_screen);
-  TemplateData ProcessTemplateDataForRadon(
-      const std::shared_ptr<TemplateData>& template_data, bool first_screen);
+
+  void UpdateGlobalPropsState(const lepus::Value& global_props);
 
   // SSR and Hydration related methods.
   void UpdateGlobalPropsWithDefaultProps(
@@ -1017,6 +1017,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   }
 
   PageProxy page_proxy_;
+
+  std::unique_ptr<MTSRenderer> mts_renderer_;
 
   static thread_local TemplateAssembler* curr_;
 
