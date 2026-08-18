@@ -1228,6 +1228,7 @@ public interface com::lynx::tasm::element::LynxElement::Callback {
 }
 
 public interface com::lynx::tasm::NativeFacade::Callback {
+  public default void com.lynx.tasm.NativeFacade.Callback.onLogContextUpdated(long viewId, long engineId, long runtimeId);
   public void com.lynx.tasm.NativeFacade.Callback.onLoaded(int templateSize);
   public void com.lynx.tasm.NativeFacade.Callback.onSSRHydrateFinished();
   public void com.lynx.tasm.NativeFacade.Callback.onRuntimeReady();
@@ -10359,6 +10360,7 @@ public class com::lynx::tasm::gesture::handler::TapGestureHandler : com.lynx.tas
 
 public class com::lynx::tasm::LynxTemplateRender::TASMCallback : com.lynx.tasm.NativeFacade.Callback {
   public com.lynx.tasm.LynxTemplateRender.TASMCallback.TASMCallback();
+  public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onLogContextUpdated(long viewId, long engineId, long runtimeId);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onLoaded(int templateSize);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onSSRHydrateFinished();
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onRuntimeReady();

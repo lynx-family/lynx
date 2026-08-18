@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "core/public/painting_ctx_platform_impl.h"
@@ -46,6 +47,12 @@ class PaintingContext {
   virtual ~PaintingContext() = default;
 
   PaintingCtxPlatformImpl* impl() { return platform_impl_.get(); }
+
+  void SetLogContext(const base::LogContext& log_context) {
+    log_context_ = log_context;
+  }
+
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   void SetConfig(PaintingCtxPlatformImplConfig&& config) {
     platform_impl_->SetConfig(std::move(config));
@@ -274,6 +281,8 @@ class PaintingContext {
   }
 
   std::unique_ptr<PaintingCtxPlatformImpl> platform_impl_;
+
+  base::LogContext log_context_;
 
   PaintingContext(const PaintingContext&) = delete;
   PaintingContext& operator=(const PaintingContext&) = delete;

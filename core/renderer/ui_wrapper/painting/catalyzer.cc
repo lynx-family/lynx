@@ -29,6 +29,11 @@ Catalyzer::Catalyzer(std::unique_ptr<PaintingContext> painting_context,
     : painting_context_(std::move(painting_context)),
       instance_id_(instance_id) {}
 
+void Catalyzer::SetLogContext(const base::LogContext& log_context) {
+  log_context_ = log_context;
+  painting_context_->SetLogContext(log_context);
+}
+
 bool Catalyzer::NeedUpdateLayout() { return root_ && root_->need_update(); }
 
 void Catalyzer::UpdateLayoutRecursively() {

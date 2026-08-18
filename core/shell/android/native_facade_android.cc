@@ -116,6 +116,16 @@ jobject ConvertToJavaPerfTiming(
 }
 }  // namespace
 
+void NativeFacadeAndroid::OnLogContextUpdated(const base::LogContext& context) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onLogContextUpdated(env, local_ref.Get(),
+                                        static_cast<jlong>(context.view_id),
+                                        static_cast<jlong>(context.engine_id),
+                                        static_cast<jlong>(context.runtime_id));
+}
+
 void NativeFacadeAndroid::OnDataUpdated() {
   ScopedLocalJavaRef<jobject> local_ref(jni_object_);
   if (local_ref.IsNull()) return;

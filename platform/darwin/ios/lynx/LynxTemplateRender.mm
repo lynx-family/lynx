@@ -71,6 +71,7 @@
 #include <utility>
 
 #include "base/include/debug/backtrace.h"
+#include "base/include/log/logging.h"
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/public/lynx_extension_delegate.h"
 #include "core/public/pipeline_option.h"
@@ -465,8 +466,19 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)detachLynxEngine {
+  if (shell_) {
+    shell_->PrepareEngineHandoff();
+  }
   [self unregisterMemoryUsageFetcherIfNeeded];
   _lynxEngine = nil;
+}
+
+- (void)onLogContextUpdatedWithViewId:(int64_t)viewId
+                             engineId:(int64_t)engineId
+                            runtimeId:(int64_t)runtimeId {
+  self.logContext = [[LynxLogContext alloc] initWithViewId:viewId
+                                                  engineId:engineId
+                                                 runtimeId:runtimeId];
 }
 
 - (void)destroyLynxEngine {

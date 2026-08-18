@@ -9,6 +9,7 @@ namespace lynx {
 namespace shell {
 
 void LynxEngineWrapper::SetupCore(
+    const base::LogContext &log_context,
     const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>>
         &engine_actor,
     const std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::LayoutContext>>
@@ -19,6 +20,7 @@ void LynxEngineWrapper::SetupCore(
   this->layout_actor_ = layout_actor;
   this->tasm_mediator_ = tasm_mediator;
   this->layout_mediator_ = layout_mediator;
+  this->engine_context_.engine_id = log_context.engine_id;
   has_init_ = true;
 }
 
@@ -27,8 +29,7 @@ void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
       shell->runners_.GetTASMTaskRunner());
   shell->layout_actor_ = this->layout_actor_->TransferToNewActor(
       shell->runners_.GetLayoutTaskRunner());
-  shell->log_context_.engine_id =
-      shell->engine_actor_->Impl()->GetLogContext().engine_id;
+  shell->log_context_.engine_id = engine_context_.engine_id;
   shell->tasm_mediator_ = this->tasm_mediator_;
   shell->layout_mediator_ = this->layout_mediator_;
   shell->tasm_mediator_->SetShouldSendEventToMainThreadCache(

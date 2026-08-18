@@ -32,6 +32,8 @@ class NativeFacadeDarwin : public NativeFacade {
   NativeFacadeDarwin(NativeFacadeDarwin&& facade) = default;
   NativeFacadeDarwin& operator=(NativeFacadeDarwin&&) = default;
 
+  void OnLogContextUpdated(const base::LogContext& context) override;
+
   void OnDataUpdated() override;
 
   void OnPageChanged(bool is_first_screen) override;

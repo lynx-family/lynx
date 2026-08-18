@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "base/include/log/log_context.h"
 #include "base/include/timer/time_utils.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_trace_event_def.h"
@@ -33,8 +34,9 @@ struct JSTaskEnqueueRetInfo {
 class JSBlockingMonitor
     : public std::enable_shared_from_this<JSBlockingMonitor> {
  public:
-  explicit JSBlockingMonitor(PerformanceEventSender* observer)
-      : sender_(observer) {
+  explicit JSBlockingMonitor(PerformanceEventSender* observer,
+                             const base::LogContext& log_context)
+      : sender_(observer), log_context_(log_context) {
     last_report_time_ = GetNowTimeMs();
   };
   ~JSBlockingMonitor() = default;
@@ -46,6 +48,10 @@ class JSBlockingMonitor
   // Adds blocking time with a millisecond timestamp.
   // @param timestamp_ms The millisecond timestamp of the blocking event.
   void AddBlockingTime(int64_t duration_ms);
+
+  void SetLogContext(const base::LogContext& log_context) {
+    log_context_ = log_context;
+  }
 
   // Reports blocking information when setup event.
   // @param event entry
@@ -86,6 +92,7 @@ class JSBlockingMonitor
 
   void ReportWithTimer(int8_t index);
   PerformanceEventSender* sender_;
+  base::LogContext log_context_;
   int64_t total_blocking_time_ = 0;
   int64_t total_blocking_count_ = 0;
   int64_t last_report_time_ = 0;

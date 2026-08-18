@@ -7,6 +7,7 @@
 
 #include <any>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -29,8 +30,11 @@ struct MockNativeFacade : public NativeFacadeEmptyImpl {
   MockNativeFacade(const MockNativeFacade& facade) = delete;
   MockNativeFacade& operator=(const MockNativeFacade&) = delete;
 
-  MockNativeFacade(MockNativeFacade&& facade) = default;
-  MockNativeFacade& operator=(MockNativeFacade&&) = default;
+  MockNativeFacade(MockNativeFacade&& facade) = delete;
+  MockNativeFacade& operator=(MockNativeFacade&&) = delete;
+
+  void OnLogContextUpdated(const base::LogContext& context) override;
+  std::vector<base::LogContext> GetLogContextUpdates() const;
 
   void OnDataUpdated() override;
 
@@ -75,6 +79,10 @@ struct MockNativeFacade : public NativeFacadeEmptyImpl {
   operator bool() const { return result; }
 
   Result result;
+
+ private:
+  mutable std::mutex log_context_updates_mutex_;
+  std::vector<base::LogContext> log_context_updates_;
 };
 
 }  // namespace shell

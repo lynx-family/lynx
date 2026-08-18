@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "base/include/value/base_value.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/data/template_data.h"
@@ -41,6 +42,8 @@ class NativeFacade {
 
   NativeFacade(NativeFacade&& facade) = default;
   NativeFacade& operator=(NativeFacade&&) = default;
+
+  virtual void OnLogContextUpdated(const base::LogContext& context) = 0;
 
   virtual void OnDataUpdated() = 0;
 

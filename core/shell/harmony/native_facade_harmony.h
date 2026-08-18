@@ -29,6 +29,8 @@ class NativeFacadeHarmony : public shell::NativeFacade {
   NativeFacadeHarmony(NativeFacadeHarmony&& facade) = default;
   NativeFacadeHarmony& operator=(NativeFacadeHarmony&&) = default;
 
+  void OnLogContextUpdated(const base::LogContext& context) override;
+
   void OnDataUpdated() override;
 
   void OnPageChanged(bool is_first_screen) override;

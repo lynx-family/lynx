@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include "base/include/fml/time/time_point.h"
+#include "base/include/log/log_context.h"
 #include "base/include/log/logging.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
@@ -77,11 +78,14 @@ class MemoryMonitor {
   static uint32_t ScriptingEngineMode();
 
   explicit MemoryMonitor(PerformanceEventSender* observer,
+                         const base::LogContext& log_context,
                          int32_t instance_id = report::kUninitializedInstanceId)
-      : instance_id_(instance_id), sender_(observer) {
-    LOGI("[memory_monitor.h] new MemoryMonitor, this:"
-         << this << ", Enable:" << Enable()
-         << ", MemoryChangeThresholdMb:" << MemoryChangeThresholdMb());
+      : instance_id_(instance_id),
+        sender_(observer),
+        log_context_(log_context) {
+    LOGI(log_context_ << " [memory_monitor.h] new MemoryMonitor, this:" << this
+                      << ", Enable:" << Enable() << ", MemoryChangeThresholdMb:"
+                      << MemoryChangeThresholdMb());
   };
   ~MemoryMonitor();
   MemoryMonitor(const MemoryMonitor& timing) = delete;
@@ -89,9 +93,14 @@ class MemoryMonitor {
   MemoryMonitor(MemoryMonitor&& other) = delete;
   MemoryMonitor& operator=(MemoryMonitor&& other) = delete;
 
+  void SetLogContext(const base::LogContext& log_context) {
+    log_context_ = log_context;
+  }
+
  private:
   int32_t instance_id_ = report::kUninitializedInstanceId;
   PerformanceEventSender* sender_;
+  base::LogContext log_context_;
   std::unordered_map<MemoryCategory, MemoryRecord> memory_records_;
   int64_t last_reported_size_bytes_ = 0;
 

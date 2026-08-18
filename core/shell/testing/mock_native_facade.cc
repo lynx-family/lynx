@@ -21,6 +21,16 @@ MockNativeFacade::~MockNativeFacade() {
   }
 }
 
+void MockNativeFacade::OnLogContextUpdated(const base::LogContext& context) {
+  std::lock_guard<std::mutex> lock(log_context_updates_mutex_);
+  log_context_updates_.push_back(context);
+}
+
+std::vector<base::LogContext> MockNativeFacade::GetLogContextUpdates() const {
+  std::lock_guard<std::mutex> lock(log_context_updates_mutex_);
+  return log_context_updates_;
+}
+
 void MockNativeFacade::OnDataUpdated() {
   result.on_correct_thread = IsOnUIThread();
   arwe->Signal();

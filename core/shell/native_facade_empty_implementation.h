@@ -37,6 +37,8 @@ class NativeFacadeEmptyImpl : public NativeFacade {
   NativeFacadeEmptyImpl(NativeFacadeEmptyImpl&& facade) = default;
   NativeFacadeEmptyImpl& operator=(NativeFacadeEmptyImpl&&) = default;
 
+  void OnLogContextUpdated(const base::LogContext& context) override {}
+
   virtual void OnDataUpdated() override {}
 
   virtual void OnTasmFinishByNative() override {}

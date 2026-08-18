@@ -4,6 +4,7 @@
 
 #include "platform/embedder/core/lynx_template_renderer.h"
 
+#include "base/include/log/logging.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/event_tracker_proxy_impl.h"
@@ -121,6 +122,11 @@ int32_t LynxTemplateRenderer::GetInstanceId() {
     return shell::kUnknownInstanceId;
   }
   return shell_->GetInstanceId();
+}
+
+void LynxTemplateRenderer::OnLogContextUpdated(
+    const base::LogContext& context) {
+  log_context_ = context;
 }
 
 void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {

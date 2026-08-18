@@ -27,6 +27,15 @@
 namespace lynx {
 namespace shell {
 
+void NativeFacadeDarwin::OnLogContextUpdated(const base::LogContext& context) {
+  __strong id<TemplateRenderCallbackProtocol> render = _render;
+  if ([render respondsToSelector:@selector(onLogContextUpdatedWithViewId:engineId:runtimeId:)]) {
+    [render onLogContextUpdatedWithViewId:context.view_id
+                                 engineId:context.engine_id
+                                runtimeId:context.runtime_id];
+  }
+}
+
 void NativeFacadeDarwin::OnDataUpdated() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, NATIVE_FACADE_DARWIN_ON_DATA_UPDATED);
   __strong id<TemplateRenderCallbackProtocol> render = _render;

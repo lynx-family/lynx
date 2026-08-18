@@ -40,8 +40,9 @@ class PerformanceController : public PerformanceEventSender {
         log_context_(initial_context),
         instance_id_(instance_id),
         delegate_(std::move(delegate)),
-        js_blocking_monitor_(std::make_shared<JSBlockingMonitor>(this)),
-        memory_monitor_(this, instance_id),
+        js_blocking_monitor_(
+            std::make_shared<JSBlockingMonitor>(this, initial_context)),
+        memory_monitor_(this, initial_context, instance_id),
         timing_handler_(
             timing::TimingHandler(std::move(timing_delegate), this)) {}
   ~PerformanceController() override = default;
@@ -84,6 +85,8 @@ class PerformanceController : public PerformanceEventSender {
 
   void SetLogContext(const base::LogContext& context) {
     log_context_ = context;
+    js_blocking_monitor_->SetLogContext(context);
+    memory_monitor_.SetLogContext(context);
   }
   const base::LogContext& GetLogContext() const { return log_context_; }
 
