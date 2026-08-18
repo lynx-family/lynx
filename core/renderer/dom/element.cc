@@ -2594,6 +2594,17 @@ void Element::EnsureTagInfo() {
   }
 }
 
+void Element::UpdateNodeInfo(int32_t node_info) {
+  // Only refresh cached node info before the painting node is created. Initial
+  // node info is resolved lazily by EnsureTagInfo().
+  if (layout_node_type_ == kLayoutNodeTypeNotInit || has_painting_node_) {
+    return;
+  }
+  layout_node_type_ = (node_info & 0xFFFF);
+  create_node_async_ = ((node_info & 0x10000) > 0);
+  need_process_direction_ = ((node_info & 0x20000) > 0);
+}
+
 void Element::TransitionToNativeView() {
   // If already layout only or is virtual, do not need create ui for this
   // element.
