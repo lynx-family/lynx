@@ -1760,6 +1760,7 @@ class Element : public lepus::RefCounted,
   virtual void OnNodeAdded(Element* child);
   virtual void OnNodeRemoved(Element* child);
 
+  void UpdateNodeInfo(int32_t node_info);
   // Returns whether consuming the attribute should update the element.
   virtual bool SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);

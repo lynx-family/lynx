@@ -12280,6 +12280,100 @@ TEST_P(FiberElementTest, ListItemTest1) {
   EXPECT_FALSE(view_1->is_list_item());
 }
 
+TEST_P(FiberElementTest,
+       ImageNodeInfoRemainsCommonBeforeThreadedAttributeResolution) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto image = manager->CreateFiberImage("image");
+
+  image->PrepareSelfForThreadedElementResolution();
+
+  EXPECT_EQ(image->layout_node_type_, LayoutNodeType::COMMON);
+}
+
+TEST_P(FiberElementTest,
+       ImageAutoSizeUpdatesProvisionalNodeInfoAfterAttributeResolution) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->SetEnableLevelOrderTraversing(true);
+  auto image = manager->CreateFiberImage("image");
+  image->SetAttribute("auto-size", lepus::Value(true));
+
+  image->PrepareSelfForThreadedElementResolution();
+  EXPECT_EQ(image->layout_node_type_, LayoutNodeType::COMMON);
+
+  EXPECT_TRUE(image->ConsumeAllAttributes());
+  EXPECT_EQ(image->layout_node_type_, LayoutNodeType::CUSTOM);
+  EXPECT_TRUE(image->NeedCreateNodeAsync());
+}
+
+TEST_P(FiberElementTest,
+       ImageAutoSizeUpdatesProvisionalNodeInfoWithoutLevelOrder) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->SetEnableLevelOrderTraversing(false);
+  auto image = manager->CreateFiberImage("image");
+  image->SetAttribute("auto-size", lepus::Value(true));
+
+  image->PrepareSelfForThreadedElementResolution();
+  ASSERT_EQ(image->layout_node_type_, LayoutNodeType::COMMON);
+
+  EXPECT_TRUE(image->ConsumeAllAttributes());
+  EXPECT_EQ(image->layout_node_type_, LayoutNodeType::CUSTOM);
+  EXPECT_TRUE(image->NeedCreateNodeAsync());
+}
+
+TEST_P(FiberElementTest,
+       ImageAutoSizePreservesLazyNodeInfoBeforeTagResolution) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->SetEnableLevelOrderTraversing(false);
+  auto image = manager->CreateFiberImage("image");
+  image->SetAttribute("auto-size", lepus::Value(true));
+
+  EXPECT_TRUE(image->ConsumeAllAttributes());
+  EXPECT_EQ(image->layout_node_type_, Element::kLayoutNodeTypeNotInit);
+
+  image->EnsureTagInfo();
+  EXPECT_EQ(image->layout_node_type_, LayoutNodeType::CUSTOM);
+  EXPECT_TRUE(image->NeedCreateNodeAsync());
+}
+
+TEST_P(FiberElementTest, EnsureImageTagInfoAfterPaintingNodeCreation) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto image = manager->CreateFiberImage("image");
+  image->has_painting_node_ = true;
+
+  ASSERT_EQ(image->layout_node_type_, Element::kLayoutNodeTypeNotInit);
+  image->EnsureTagInfo();
+
+  EXPECT_EQ(image->layout_node_type_, LayoutNodeType::COMMON);
+}
+
+TEST_P(FiberElementTest, ResetImageAutoSizeUpdatesCustomNodeInfo) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto image = manager->CreateFiberImage("image");
+  image->SetAttribute("auto-size", lepus::Value(true));
+  EXPECT_TRUE(image->ConsumeAllAttributes());
+  image->EnsureTagInfo();
+  ASSERT_EQ(image->layout_node_type_, LayoutNodeType::CUSTOM);
+
+  image->ResetAttribute("auto-size");
+  EXPECT_EQ(image->layout_node_type_, LayoutNodeType::COMMON);
+  EXPECT_TRUE(image->NeedCreateNodeAsync());
+}
+
+TEST_P(FiberElementTest, ResolvedAutoSizeImageCloneRetainsCustomNodeInfo) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto image = manager->CreateFiberImage("image");
+  image->SetAttribute("auto-size", lepus::Value(true));
+  EXPECT_TRUE(image->ConsumeAllAttributes());
+  image->EnsureTagInfo();
+  ASSERT_EQ(image->layout_node_type_, LayoutNodeType::CUSTOM);
+
+  auto cloned_element = image->CloneElement(true);
+  auto* cloned_image = static_cast<ImageElement*>(cloned_element.get());
+
+  EXPECT_TRUE(cloned_image->has_auto_size_);
+  EXPECT_EQ(cloned_image->GetBuiltInNodeInfo(), kCustomBuiltInNodeInfo);
+}
+
 TEST_P(FiberElementTest, ImageTest0) {
   // create image and insert it to wrapper
   auto image = manager->CreateFiberImage("image");
