@@ -110,8 +110,12 @@ bool ImageElement::SetAttributeInternal(const base::String& key,
 void ImageElement::ProcessAttributeForLayoutInElement(
     const base::String& key, const lepus::Value& value) {
   if (key.IsEqual(kImageAutoSize)) {
-    has_auto_size_ = value.IsBool() && value.Bool();
-    paint_info_.auto_size = has_auto_size_;
+    const bool has_auto_size = value.IsBool() && value.Bool();
+    if (has_auto_size_ != has_auto_size) {
+      has_auto_size_ = has_auto_size;
+      UpdateNodeInfo(GetBuiltInNodeInfo());
+    }
+    paint_info_.auto_size = has_auto_size;
   } else if (key.IsEqual(kSrc)) {
     url_ = value.String();
   } else if (key.IsEqual(kImageMode)) {
@@ -145,7 +149,10 @@ void ImageElement::ResetAttribute(const base::String& key) {
     if (key.IsEqual(kSrc)) {
       url_ = base::String();
     } else if (key.IsEqual(kImageAutoSize)) {
-      has_auto_size_ = false;
+      if (has_auto_size_) {
+        has_auto_size_ = false;
+        UpdateNodeInfo(GetBuiltInNodeInfo());
+      }
       paint_info_.auto_size = false;
     } else if (key.IsEqual(kImageMode)) {
       paint_info_.mode = ImageFitMode::kScaleToFill;
