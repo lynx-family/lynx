@@ -36,13 +36,21 @@ class SelectionHandleView : public WithTypeInfo<SelectionHandleView, BaseView> {
 
   using HandleBarFunctionListener = std::function<void(
       const FloatPoint& position, SelectionHandleView* view)>;
+  using HandleDragDownListener =
+      std::function<void(const PointerEvent& event, SelectionHandleView* view)>;
+  using HandleDragEndListener = std::function<void(SelectionHandleView* view)>;
+
   void SetHandleMove(HandleBarFunctionListener&& handle_bar_function) {
     handle_bar_function_ = std::move(handle_bar_function);
   }
+  void SetHandleDragDown(HandleDragDownListener&& handle_drag_down_function) {
+    handle_drag_down_function_ = std::move(handle_drag_down_function);
+  }
+  void SetHandleDragEnd(HandleDragEndListener&& handle_drag_end_function) {
+    handle_drag_end_function_ = std::move(handle_drag_end_function);
+  }
 
   void BuildSelectionHandle(float line_height, FloatPoint offset);
-
-  float ProcessHandlePos(FloatPoint point, TextBox left_box, TextBox right_box);
 
   void UpdatePosWithScroll(FloatPoint delta);
 
@@ -62,6 +70,8 @@ class SelectionHandleView : public WithTypeInfo<SelectionHandleView, BaseView> {
   float origin_left_ = 0;
   FloatPoint scroll_offset_;
   HandleBarFunctionListener handle_bar_function_;
+  HandleDragDownListener handle_drag_down_function_;
+  HandleDragEndListener handle_drag_end_function_;
   DragGestureRecognizer* drag_recognizer_;
   TextSelectionHandleType type_;
 };

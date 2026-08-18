@@ -134,7 +134,33 @@ class TextSelectionTest : public UITest {
 
   void UITearDown() override { text_view_.reset(); }
 
+  void StartSelectionChangeCapture() {
+    selection_change_count_ = 0;
+    last_selection_change_payload_.clear();
+    custom_event_callback_ = [this](int view_id, const char* event_name,
+                                    clay::Value::Map payload) {
+      if (view_id == 1 && std::string(event_name) == "selectionchange") {
+        ++selection_change_count_;
+        last_selection_change_payload_ = std::move(payload);
+      }
+    };
+  }
+
+  void ExpectSelectionChange(int start, int end, const char* direction) {
+    ASSERT_EQ(selection_change_count_, 1);
+    EXPECT_EQ(GetNumber(last_selection_change_payload_.at("start")), start);
+    EXPECT_EQ(GetNumber(last_selection_change_payload_.at("end")), end);
+    EXPECT_EQ(last_selection_change_payload_.at("direction").GetString(),
+              direction);
+  }
+
+  void EnableTextSelection() {
+    text_view_->SetAttribute("text-selection", clay::Value(true));
+  }
+
   std::unique_ptr<TextView> text_view_;
+  int selection_change_count_ = 0;
+  clay::Value::Map last_selection_change_payload_;
 };
 
 }  // namespace
@@ -303,31 +329,61 @@ TEST_F_UI(TextSelectionTest,
 }
 #endif
 
-TEST_F_UI(TextSelectionTest, SelectionChangeEventReportsForwardUtf16Range) {
+TEST_F_UI(TextSelectionTest,
+          SetTextSelectionDispatchesForwardUtf16SelectionChange) {
   const std::u16string text = u"A\U0001F600\u4e2dB";
   text_view_->SetParagraph(CreateParagraph(text), text);
-  int event_count = 0;
-  int last_view_id = -1;
-  std::string last_event_name;
-  clay::Value::Map last_payload;
-  custom_event_callback_ = [&](int view_id, const char* event_name,
-                               clay::Value::Map payload) {
-    ++event_count;
-    last_view_id = view_id;
-    last_event_name = event_name;
-    last_payload = std::move(payload);
-  };
+  EnableTextSelection();
+  const auto selection_rects =
+      text_view_->GetRenderText()->GetTextLineRects(1, 4);
+  ASSERT_EQ(selection_rects.size(), 1u);
+  StartSelectionChangeCapture();
 
-  text_view_->SetAttribute("text-selection", clay::Value(true));
-  text_view_->GetRenderText()->SetSelection(TextRange(1, 4));
+  auto args = CreateLynxModuleValues(
+      {"startX", "startY", "endX", "endY", "showStartHandle", "showEndHandle"},
+      {clay::Value(static_cast<int>(selection_rects.front().left() + 1)),
+       clay::Value(static_cast<int>(selection_rects.front().Center().y())),
+       clay::Value(static_cast<int>(selection_rects.front().right() - 1)),
+       clay::Value(static_cast<int>(selection_rects.front().Center().y())),
+       clay::Value(false), clay::Value(false)});
+  text_view_->setTextSelection(args, [](LynxUIMethodResult, clay::Value) {});
 
-  ASSERT_EQ(event_count, 1);
-  EXPECT_EQ(last_view_id, 1);
-  EXPECT_EQ(last_event_name, "selectionchange");
-  EXPECT_EQ(GetNumber(last_payload.at("start")), 1.f);
-  EXPECT_EQ(GetNumber(last_payload.at("end")), 4.f);
-  EXPECT_EQ(last_payload.at("direction").GetString(), "forward");
+  ExpectSelectionChange(1, 4, "forward");
 }
+
+TEST_F_UI(TextSelectionTest,
+          SetTextSelectionDoesNotDispatchWhenTextSelectionIsDisabled) {
+  const std::u16string text = u"selection disabled";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  const auto selection_rects =
+      text_view_->GetRenderText()->GetTextLineRects(0, text.length());
+  ASSERT_EQ(selection_rects.size(), 1u);
+  StartSelectionChangeCapture();
+
+  auto args = CreateLynxModuleValues(
+      {"startX", "startY", "endX", "endY", "showStartHandle", "showEndHandle"},
+      {clay::Value(static_cast<int>(selection_rects.front().left() + 1)),
+       clay::Value(static_cast<int>(selection_rects.front().Center().y())),
+       clay::Value(static_cast<int>(selection_rects.front().right() - 1)),
+       clay::Value(static_cast<int>(selection_rects.front().Center().y())),
+       clay::Value(false), clay::Value(false)});
+  text_view_->setTextSelection(args, [](LynxUIMethodResult, clay::Value) {});
+
+  EXPECT_EQ(selection_change_count_, 0);
+}
+
+#ifdef ENABLE_CLAY_LITE
+TEST_F_UI(TextSelectionTest,
+          ClayLiteReportsBackwardProgrammaticSelectionDirection) {
+  EnableTextSelection();
+  StartSelectionChangeCapture();
+
+  text_view_->UpdateSelectionRange(4, 1);
+  text_view_->OnSelectionChanged(4, 1);
+
+  ExpectSelectionChange(4, 1, "backward");
+}
+#endif
 
 TEST_F_UI(TextSelectionTest,
           CustomTextSelectionBeforeEnableSuppressesBuiltInGesture) {
@@ -347,7 +403,55 @@ TEST_F_UI(TextSelectionTest,
       text_view_->HasDragGestureRecognizer(ScrollDirection::kVertical));
   EXPECT_FALSE(text_view_->HasLongPressGestureRecognizer());
   text_view_->GetRenderText()->SetSelection(TextRange(0, text.length()));
-  EXPECT_EQ(event_count, 1);
+  EXPECT_EQ(event_count, 0);
+}
+
+TEST_F_UI(TextSelectionTest, CommandSelectAllDispatchesSelectionChange) {
+  const std::u16string text = u"select all";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  EnableTextSelection();
+  StartSelectionChangeCapture();
+
+  text_view_->HandleCommandHotKey(KeyCode::kKeyA);
+
+  ExpectSelectionChange(0, text.length(), "forward");
+}
+
+TEST_F_UI(TextSelectionTest, PopupSelectAllDispatchesSelectionChange) {
+  const std::u16string text = u"select all";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  EnableTextSelection();
+  StartSelectionChangeCapture();
+
+  text_view_->HandleSelectAll();
+
+  ExpectSelectionChange(0, text.length(), "forward");
+}
+
+TEST_F_UI(TextSelectionTest, CopyDispatchesCollapsedSelectionChange) {
+  const std::u16string text = u"copy selection";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  EnableTextSelection();
+  text_view_->UpdateSelectionRange(2, 6);
+  text_view_->GetRenderText()->SetSelection(TextRange(2, 6));
+  StartSelectionChangeCapture();
+
+  text_view_->HandleCopy();
+
+  ExpectSelectionChange(6, 6, "forward");
+}
+
+TEST_F_UI(TextSelectionTest, LosingFocusDispatchesCollapsedSelectionChange) {
+  const std::u16string text = u"focus selection";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  EnableTextSelection();
+  text_view_->UpdateSelectionRange(1, 5);
+  text_view_->GetRenderText()->SetSelection(TextRange(1, 5));
+  StartSelectionChangeCapture();
+
+  text_view_->FocusHasChanged(false, true);
+
+  ExpectSelectionChange(5, 5, "forward");
 }
 
 #if !defined(OS_ANDROID) && !defined(OS_IOS)
@@ -532,6 +636,32 @@ TEST_F_UI(TextSelectionTest, SetTextSelectionHidesVisualStartHandle) {
 }
 
 #if defined(OS_WIN) || defined(OS_OSX)
+TEST_F_UI(TextSelectionTest, MouseDragDispatchesSelectionChanges) {
+  const std::u16string text = u"mouse selection";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  EnableTextSelection();
+  const auto start_rects = text_view_->GetRenderText()->GetTextLineRects(0, 1);
+  const auto end_rects = text_view_->GetRenderText()->GetTextLineRects(5, 6);
+  ASSERT_EQ(start_rects.size(), 1u);
+  ASSERT_EQ(end_rects.size(), 1u);
+  StartSelectionChangeCapture();
+
+  text_view_->PerformBeginSelection(
+      {start_rects.front().left() + 1, start_rects.front().Center().y()});
+  EXPECT_EQ(selection_change_count_, 1);
+  text_view_->PerformMoveSelection(
+      {end_rects.front().right() - 1, end_rects.front().Center().y()});
+
+  ASSERT_EQ(selection_change_count_, 2);
+  const auto range = text_view_->GetRenderText()->GetSelection();
+  EXPECT_LT(range.start(), range.end());
+  EXPECT_EQ(GetNumber(last_selection_change_payload_.at("start")),
+            range.start());
+  EXPECT_EQ(GetNumber(last_selection_change_payload_.at("end")), range.end());
+  EXPECT_EQ(last_selection_change_payload_.at("direction").GetString(),
+            "forward");
+}
+
 TEST_F_UI(TextSelectionTest, SelectWordSupportsMixedChineseEnglishAndEmoji) {
   const std::u16string text =
       u"\u4E2D\u6587 mixed \U0001F642 emoji \u6D4B\u8BD5 \U0001F680 end";

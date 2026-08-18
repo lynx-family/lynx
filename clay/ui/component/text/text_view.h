@@ -125,8 +125,9 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void SetSelectionHandleColor(Color selection_handle_color);
   void SetSelectionHandleSize(float selection_handle_size);
   void HideSelectionHandle();
-  void UpdateSelectionHandle(FloatPoint point,
-                             SelectionHandleView* handle_bar = nullptr);
+  void UpdateSelectionHandle(FloatPoint point, SelectionHandleView* handle_bar);
+  void UpdateSelectionHandleTypes();
+  void UpdateSelectionRange(int selection_start, int selection_end);
 
   FloatRect GetDisplayRect();
 
@@ -152,6 +153,9 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   FRIEND_TEST(TextSelectionTest, SelectWordCrossesNestedInlineTextBoundaries);
 
   void UpdateSelectionHandleLayout(SelectionHandleView* handle);
+  void BeginSelectionHandleDrag(const PointerEvent& event,
+                                SelectionHandleView* handle_bar);
+  void EndSelectionHandleDrag(SelectionHandleView* handle_bar);
 
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                     FloatPoint* relative_position,
@@ -172,18 +176,21 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
 #else
   DragGestureRecognizer* drag_recognizer_ = nullptr;
 #endif
+  int selection_start_pos_ = -1;
+  int selection_end_pos_ = -1;
 #ifndef ENABLE_CLAY_LITE
   SelectionPopupView* selection_popup_ = nullptr;
   OverlayView* selection_handle_container_ = nullptr;
   SelectionHandleView* start_selection_handle_ = nullptr;
   SelectionHandleView* end_selection_handle_ = nullptr;
-  int selection_start_pos_ = -1;
-  int selection_end_pos_ = -1;
   FloatPoint scroll_offset_;
+  FloatPoint selection_handle_drag_offset_;
+  SelectionHandleView* dragging_selection_handle_ = nullptr;
   Color selection_handle_color_ = Color::kTransparent();
   float selection_handle_size_ = 0;
 #endif
 
+  bool selection_direction_forward_ = true;
   bool custom_text_selection_ = false;
   bool custom_context_menu_ = false;
   uint32_t hot_key_tag_ = 0;

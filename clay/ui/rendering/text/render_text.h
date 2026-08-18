@@ -28,8 +28,6 @@ namespace clay {
 
 class TextPainter;
 
-using SelectionChangedCallback = std::function<void(int, int)>;
-
 class RenderText : public RenderBox {
  public:
   RenderText();
@@ -74,11 +72,6 @@ class RenderText : public RenderBox {
   FloatRect GetTextBoundingRect(int start, int end,
                                 const std::vector<FloatRect>& line_rect);
 
-  void SetSelectionChangedListener(
-      SelectionChangedCallback selection_changed_callback) {
-    selection_changed_callback_ = selection_changed_callback;
-  }
-
   bool IsCollapsed() { return select_start_ == select_end_; }
 
   TextBox GetLeftTextBox();
@@ -108,7 +101,6 @@ class RenderText : public RenderBox {
     fml::RefPtr<GraphicsImage> image;
   };
 
-  SelectionChangedCallback selection_changed_callback_;
   std::unordered_map<int, InlineEmojiRenderInfo> inline_emojis_;
 };
 

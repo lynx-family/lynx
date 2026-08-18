@@ -196,9 +196,6 @@ void RenderText::PaintInlineEmojis(GraphicsContext* graphics_context,
 void RenderText::SetSelection(const TextRange& range) {
   select_start_ = range.start();
   select_end_ = range.end();
-  if (selection_changed_callback_) {
-    selection_changed_callback_(select_start_, select_end_);
-  }
   pre_select_end_ = select_end_;
   MarkNeedsPaint();
 }
