@@ -87,6 +87,14 @@ if (enable_unittests) {
 
 lynx_core_source_set("js") {
   sources = js_sources
+  defines = []
+  if (is_harmony) {
+    if (current_cpu == "x64") {
+      defines += [ "LYNX_HARMONY_TARGET_X64=1" ]
+    } else {
+      defines += [ "LYNX_HARMONY_TARGET_X64=0" ]
+    }
+  }
 
   deps = [
     ":utils",
@@ -113,7 +121,7 @@ lynx_core_source_set("js") {
     deps += [ "napi:napi_loader_js" ]
   }
   if (is_android || is_ios) {
-    defines = [
+    defines += [
       "JS_SHARED_LIBRARY",
       "EMSCRIPTEN",
       "CONFIG_VERSION=\"2019-07-09\"",
