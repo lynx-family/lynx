@@ -1554,20 +1554,21 @@ public class LynxTemplateRender
   }
 
   private void updateGenericInfoURL(String url) {
-    if (mLynxContext == null || !mLynxContext.enableEventReporter()) {
+    if (mLynxContext == null) {
       return;
     }
+    int instanceId = mLynxContext.getInstanceId();
+    HashMap<String, Object> propMap = new HashMap<String, Object>();
+    propMap.put(LynxEventReporter.PROP_NAME_THREAD_MODE, mThreadStrategyForRendering.id());
     if (url != null) {
-      int instanceId = mLynxContext.getInstanceId();
-      HashMap<String, Object> propMap = new HashMap<String, Object>();
       propMap.put(LynxEventReporter.PROP_NAME_URL, url);
       // TODO(kechenglong): Remove relative_path.
       propMap.put(LynxEventReporter.PROP_NAME_RELATIVE_PATH, url);
-      LynxEventReporter.updateGenericInfo(propMap, instanceId);
       if (mReportHelper != null) {
         mReportHelper.reportLynxCrashContext(LynxInfoReportHelper.KEY_LAST_LYNX_URL, url);
       }
     }
+    LynxEventReporter.updateGenericInfo(propMap, instanceId);
   }
 
   public void renderTemplate(final byte[] template, final Map<String, Object> initData) {
@@ -1727,6 +1728,7 @@ public class LynxTemplateRender
         nativeReattachLynxEngineWrapper(mNativePtr, mNativeLifecycle, mLynxEngineRef.getNativePtr(),
             mEngineProxy != null ? mEngineProxy.getNativePtr() : 0);
         registerMemoryUsageFetcherIfNeeded();
+        updateGenericInfoURL(mUrl);
         if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
             && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
           attachEngineToUIThread();
@@ -1750,6 +1752,7 @@ public class LynxTemplateRender
         updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
             getLynxView().getCurrentHeightMeasureSpec(), false);
       }
+      updateGenericInfoURL(mUrl);
       dispatchOnPageStart(mUrl);
       updateData(data, true);
       onTraceEventEnd(eventName);
@@ -1898,6 +1901,7 @@ public class LynxTemplateRender
     }
 
     reloadAndInit();
+    updateGenericInfoURL(url);
     // waiting for hydrate
 
     mSSRHelper = new LynxSSRHelper();
