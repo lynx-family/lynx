@@ -37,6 +37,12 @@
   return native_engine_proxy_;
 }
 
+- (void)reportExternalMemoryWithTotalSize:(int64_t)totalSize garbageSize:(int64_t)garbageSize {
+  if (native_engine_proxy_) {
+    native_engine_proxy_->ReportExternalMemory({totalSize, garbageSize});
+  }
+}
+
 - (void)dispatchTaskToLynxEngine:(dispatch_block_t)task {
   if (native_engine_proxy_ && task) {
     native_engine_proxy_->DispatchTaskToLynxEngine([task]() { task(); });

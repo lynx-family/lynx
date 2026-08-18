@@ -91,7 +91,7 @@ void PaintingContext::DestroyPaintingNode(int parent, int child, int index) {
 
 void PaintingContext::UpdateNodeReadyPatching() {
   const bool should_request_external_memory_report =
-      !patching_node_remove_ids_.empty();
+      enable_external_memory_report_ && !patching_node_remove_ids_.empty();
   if (platform_impl_->HasEnableUIOperationBatching()) {
     platform_impl_->UpdateNodeReadyPatching(patching_node_ready_ids_,
                                             patching_node_remove_ids_);
@@ -103,8 +103,6 @@ void PaintingContext::UpdateNodeReadyPatching() {
                                             std::move(remove_ids));
     });
   }
-  // TODO(songshourui.null): Check enable_fiber_element_memory_report before
-  // scheduling the snapshot task.
   if (should_request_external_memory_report) {
     EnqueueExternalMemoryReportRequest(kExternalMemoryReportDelayMs);
   }

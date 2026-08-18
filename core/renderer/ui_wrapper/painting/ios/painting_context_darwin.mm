@@ -158,8 +158,15 @@ void PaintingContextDarwinRef::UpdateNodeReadyPatching(std::vector<int32_t> read
     [uiOwner_ onNodeReady:tag];
   }
   for (const auto& tag : remove_ids) {
+    [uiOwner_ cacheRemovedUIId:tag];
+  }
+  for (const auto& tag : remove_ids) {
     [uiOwner_ onNodeRemoved:tag];
   }
+}
+
+void PaintingContextDarwinRef::RequestExternalMemoryReport(int64_t delay_ms) {
+  [uiOwner_ requestExternalMemoryReport:delay_ms];
 }
 
 void PaintingContextDarwinRef::UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {

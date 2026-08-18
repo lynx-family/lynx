@@ -13,6 +13,8 @@
 #import <Lynx/LynxView+Internal.h>
 #import "JSModule+Internal.h"
 #import "LynxContext+Internal.h"
+#import "LynxContext+Private.h"
+#import "LynxEngineProxy+Native.h"
 
 NSString *const kDefaultComponentID = @"-1";
 
@@ -41,6 +43,10 @@ NSString *const kDefaultComponentID = @"-1";
 
 - (void)setLayoutProxy:(const std::shared_ptr<lynx::shell::LynxLayoutProxyDarwin> &)layout_proxy {
   layout_proxy_ = layout_proxy;
+}
+
+- (void)reportExternalMemoryWithTotalSize:(int64_t)totalSize garbageSize:(int64_t)garbageSize {
+  [_engineProxy reportExternalMemoryWithTotalSize:totalSize garbageSize:garbageSize];
 }
 
 - (void)sendGlobalEvent:(nonnull NSString *)name withParams:(nullable NSArray *)params {

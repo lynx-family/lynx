@@ -14,6 +14,7 @@ common_lynx_shared_sources = [
   "LynxBytecodeResponseBlock.mm",
   "LynxConfig.mm",
   "LynxConfigInfo.m",
+  "LynxContext+Private.h",
   "LynxContext.mm",
   "LynxEngineProxy+Native.h",
   "LynxEngineProxy.mm",

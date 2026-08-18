@@ -58,6 +58,10 @@ class PaintingContext {
     platform_impl_->SetConfig(std::move(config));
   }
 
+  void SetEnableExternalMemoryReport(bool enable) {
+    enable_external_memory_report_ = enable;
+  }
+
   inline void GetAbsolutePosition(int id, float* position) {
     platform_impl_->getAbsolutePosition(id, position);
   }
@@ -292,6 +296,8 @@ class PaintingContext {
   std::vector<int> patching_node_ready_ids_{};
   std::vector<int> patching_node_remove_ids_{};
   std::vector<int> patching_node_reload_ids_{};
+
+  bool enable_external_memory_report_{true};
 
   bool has_first_screen_ = false;
   // Pass the opions to the tasm thread through the tasm queue, and mount them

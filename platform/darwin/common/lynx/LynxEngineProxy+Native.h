@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)setNativeEngineProxy:(std::shared_ptr<lynx::shell::LynxEngineProxyDarwin>)proxy;
 - (const std::shared_ptr<lynx::shell::LynxEngineProxyDarwin>&)nativeProxy;
+- (void)reportExternalMemoryWithTotalSize:(int64_t)totalSize garbageSize:(int64_t)garbageSize;
 
 @end
 

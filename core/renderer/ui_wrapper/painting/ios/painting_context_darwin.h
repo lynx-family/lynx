@@ -8,6 +8,7 @@
 #import <Lynx/LynxPerformanceController.h>
 #import <Lynx/LynxUIOwner.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -39,6 +40,7 @@ class PaintingContextDarwinRef : public PaintingCtxPlatformRef {
 
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                std::vector<int32_t> remove_ids) override;
+  void RequestExternalMemoryReport(int64_t delay_ms) override;
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override;
 
   void UpdateEventInfo(bool has_touch_pseudo) override;

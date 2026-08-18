@@ -7,6 +7,8 @@
 
 #import <Lynx/LynxViewEnum.h>
 
+#include <stdint.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
 // Indicate that whether LynxUIOwner supports specific tagName, there are currently only three
@@ -16,6 +18,11 @@ typedef enum : NSInteger {
   LynxSupportedTag,
   LynxUnsupportedTag
 } TagSupportedState;
+
+typedef struct LynxExternalMemorySnapshot {
+  int64_t totalSize;
+  int64_t garbageSize;
+} LynxExternalMemorySnapshot;
 
 @interface LynxUIOwner (Private)
 
@@ -76,6 +83,10 @@ typedef enum : NSInteger {
 - (LynxThreadStrategyForRender)getThreadStrategyForRender;
 
 - (void)setFrameAppBundle:(LynxTemplateBundle*)bundle withTag:(NSInteger)sign;
+
+- (LynxExternalMemorySnapshot)getExternalMemorySnapshot;
+- (void)cacheRemovedUIId:(NSInteger)removeId;
+- (void)requestExternalMemoryReport:(int64_t)delayMs;
 
 @end
 
