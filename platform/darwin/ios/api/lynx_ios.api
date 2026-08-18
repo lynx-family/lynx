@@ -1171,6 +1171,7 @@ public class LynxContext : NSObject {
   public bool LynxContext()::isLayoutInElementModeOn isLayoutInElementModeOn;
   public bool LynxContext()::isTextServiceModeOn isTextServiceModeOn;
   public int32_t LynxContext()::instanceId instanceId;
+  public LynxEngineProxy* _Nullable LynxContext()::engineProxy engineProxy;
   public void LynxContext::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public nullable JSModule * LynxContext::getJSModule:(nonnull NSString *name);
   public nullable NSNumber * LynxContext::getLynxRuntimeId();
@@ -1190,6 +1191,7 @@ public class LynxContext : NSObject {
   public void LynxContext()::setJSProxy:(const std::shared_ptr< lynx::shell::JSProxyDarwin > &proxy);
   public void LynxContext()::setLayoutProxy:(const std::shared_ptr< lynx::shell::LynxLayoutProxyDarwin > &layout_proxy);
   public nullable NSDictionary * LynxContext()::extentionModules();
+  public void LynxContext()::reportExternalMemoryWithTotalSize:garbageSize:(int64_t totalSize, [garbageSize] int64_t garbageSize);
   public std::shared_ptr<lynx::shell::JSProxyDarwin> LynxContext()::proxy_ proxy_;
   public std::shared_ptr<lynx::shell::LynxLayoutProxyDarwin> LynxContext()::layout_proxy_ layout_proxy_;
 }
@@ -1478,6 +1480,7 @@ public class LynxEngineProxy : NSObject {
   public void LynxEngineProxy::queryLynxElement:queryType:argument:callback:(int32_t sign,[queryType] int32_t queryType,[argument] nullable NSString *argument,[callback] LynxEngineProxyQueryCallback callback);
   public void LynxEngineProxy()::setNativeEngineProxy:(std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > proxy);
   public const std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > & LynxEngineProxy()::nativeProxy();
+  public void LynxEngineProxy()::reportExternalMemoryWithTotalSize:garbageSize:(int64_t totalSize, [garbageSize] int64_t garbageSize);
 }
 
 public class LynxEnv : NSObject {
@@ -1821,6 +1824,11 @@ public protocol LynxExtensionModule-p : <NSObject> {
   public void * LynxExtensionModule-p::getExtensionDelegate();
   public void * LynxExtensionModule-p::onTemplateLoad:(NSString *url);
   public void LynxExtensionModule-p::setUp();
+}
+
+public struct LynxExternalMemorySnapshot {
+  public int64_t LynxExternalMemorySnapshot::totalSize totalSize;
+  public int64_t LynxExternalMemorySnapshot::garbageSize garbageSize;
 }
 
 public class LynxExternalResourceFetcherWrapper : NSObject {
@@ -5256,6 +5264,9 @@ public class LynxUIOwner : NSObject {
   public void LynxUIOwner(Private)::cleanupCreatedUIWithSign:(NSInteger sign);
   public LynxThreadStrategyForRender LynxUIOwner(Private)::getThreadStrategyForRender();
   public void LynxUIOwner(Private)::setFrameAppBundle:withTag:(LynxTemplateBundle *bundle, [withTag] NSInteger sign);
+  public LynxExternalMemorySnapshot LynxUIOwner(Private)::getExternalMemorySnapshot();
+  public void LynxUIOwner(Private)::cacheRemovedUIId:(NSInteger removeId);
+  public void LynxUIOwner(Private)::requestExternalMemoryReport:(int64_t delayMs);
 }
 
 public interface LynxUIOwner(Accessibility) {
@@ -5279,6 +5290,9 @@ public interface LynxUIOwner(Private) {
   public void LynxUIOwner(Private)::cleanupCreatedUIWithSign:(NSInteger sign);
   public LynxThreadStrategyForRender LynxUIOwner(Private)::getThreadStrategyForRender();
   public void LynxUIOwner(Private)::setFrameAppBundle:withTag:(LynxTemplateBundle *bundle,[withTag] NSInteger sign);
+  public LynxExternalMemorySnapshot LynxUIOwner(Private)::getExternalMemorySnapshot();
+  public void LynxUIOwner(Private)::cacheRemovedUIId:(NSInteger removeId);
+  public void LynxUIOwner(Private)::requestExternalMemoryReport:(int64_t delayMs);
 }
 
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
@@ -7483,4 +7497,5 @@ public enum TagSupportedState {
   LynxUnsupportedTag
 }
 
+  typedef struct LynxExternalMemorySnapshot LynxExternalMemorySnapshot
 

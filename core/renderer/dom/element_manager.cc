@@ -220,6 +220,8 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_LIST_CALLBACK_LEAK_BUG, false);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
+  painting_context()->SetEnableExternalMemoryReport(
+      enable_fiber_element_memory_reporter_);
   fix_radon_inline_convert_bug_ =
       LynxEnv::GetInstance().FixRadonInlineConvertBug();
   fix_dynamic_update_transition_consume_bug_ =

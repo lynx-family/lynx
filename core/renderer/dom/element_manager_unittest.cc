@@ -7,6 +7,8 @@
 
 #include "core/renderer/dom/element_manager.h"
 
+#include <mutex>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -32,6 +34,34 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+class ScopedExternalBoolEnv {
+ public:
+  ScopedExternalBoolEnv(LynxEnv::Key key, bool value) : key_(key) {
+    auto& env = LynxEnv::GetInstance();
+    std::lock_guard<std::recursive_mutex> lock(env.external_env_mutex_);
+    auto it = env.external_env_map_.find(key_);
+    if (it != env.external_env_map_.end()) {
+      previous_value_ = it->second;
+    }
+    env.external_env_map_[key_] =
+        value ? LynxEnv::kLocalEnvValueTrue : LynxEnv::kLocalEnvValueFalse;
+  }
+
+  ~ScopedExternalBoolEnv() {
+    auto& env = LynxEnv::GetInstance();
+    std::lock_guard<std::recursive_mutex> lock(env.external_env_mutex_);
+    if (previous_value_) {
+      env.external_env_map_[key_] = *previous_value_;
+    } else {
+      env.external_env_map_.erase(key_);
+    }
+  }
+
+ private:
+  LynxEnv::Key key_;
+  std::optional<std::string> previous_value_;
+};
 
 class RecordingMockPaintingContext : public MockPaintingContext {
  public:
@@ -61,7 +91,10 @@ class ElementManagerTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
   RecordingMockPaintingContext* painting_context = nullptr;
 
-  void SetUp() override {
+  void SetUp() override { CreateManager(); }
+
+  void CreateManager() {
+    manager.reset();
     LynxEnvConfig lynx_env_config(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
                                   kDefaultPhysicalPixelsPerLayoutUnit);
     tasm_mediator = std::make_shared<
@@ -233,6 +266,23 @@ TEST_F(ElementManagerTest,
 
   manager->painting_context()->UpdateNodeReadyPatching();
   EXPECT_EQ(platform_ref->external_memory_report_request_count_, 1);
+}
+
+TEST_F(ElementManagerTest, FeatureOffDoesNotRequestExternalMemoryReport) {
+  {
+    ScopedExternalBoolEnv feature(
+        LynxEnv::Key::ENABLE_FIBER_ELEMENT_MEMORY_REPORT, false);
+    CreateManager();
+  }
+  auto* platform_ref = static_cast<MockPaintingContextPlatformRef*>(
+      manager->painting_context()->impl()->GetPlatformRef().get());
+
+  manager->painting_context()->RemovePaintingNode(1, 2, 0, false);
+  manager->painting_context()->UpdateNodeReadyPatching();
+
+  ASSERT_EQ(platform_ref->remove_ids_.size(), 1U);
+  EXPECT_EQ(platform_ref->remove_ids_[0], 2);
+  EXPECT_EQ(platform_ref->external_memory_report_request_count_, 0);
 }
 
 TEST_F(ElementManagerTest, CreateFiberComponent) {

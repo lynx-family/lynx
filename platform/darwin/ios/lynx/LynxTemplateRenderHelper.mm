@@ -8,6 +8,7 @@
 #import <Lynx/LynxBaseConfigurator+Internal.h>
 #import <Lynx/LynxConfig+Internal.h>
 #import <Lynx/LynxContext+Internal.h>
+#import <Lynx/LynxContext+Private.h>
 #import <Lynx/LynxEngine.h>
 #import <Lynx/LynxEngineProxy+Native.h>
 #import <Lynx/LynxEngineProxy.h>
@@ -569,6 +570,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 
 - (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
   _context = [[LynxContext alloc] initWithContainerView:_containerView];
+  _context.engineProxy = _lynxEngineProxy;
   _context.enableJSRuntime = _enableJSRuntime;
   [_context setEmbeddedMode:_embeddedMode];
   [self setUpResourceProviderWithBuilder:builder];
