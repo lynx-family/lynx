@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <optional>
+#include <string>
+
 #include "platform/embedder/lynx_service/lynx_trail_service_priv.h"
 
 lynx_trail_service_t::~lynx_trail_service_t() {
@@ -34,26 +37,36 @@ LYNX_EXTERN_C void lynx_trail_service_bind(lynx_trail_service_t* trail_service,
   }
 }
 
+LYNX_EXTERN_C void lynx_trail_service_get_string_value(
+    lynx_trail_service_t* trail_service, const char* key,
+    lynx_trail_string_value_callback_func callback, void* user_data) {
+  if (!callback) {
+    return;
+  }
+
+  std::optional<std::string> value;
+  if (trail_service) {
+    trail_service->AddRef();
+    auto func =
+        trail_service->string_value_func.load(std::memory_order_acquire);
+    if (func && key) {
+      const char* raw_value = func(trail_service, key);
+      if (raw_value) {
+        value = raw_value;
+      }
+    }
+  }
+
+  callback(value ? value->c_str() : nullptr, user_data);
+  if (trail_service) {
+    trail_service->Release();
+  }
+}
+
 LYNX_EXTERN_C void lynx_trail_service_release(
     lynx_trail_service_t* trail_service) {
   if (!trail_service) {
     return;
   }
   trail_service->Release();
-}
-
-std::optional<std::string> lynx_trail_service_get_string_value(
-    lynx_trail_service_t* trail_service, const std::string& key) {
-  if (trail_service) {
-    auto func =
-        trail_service->string_value_func.load(std::memory_order_acquire);
-    if (!func) {
-      return std::nullopt;
-    }
-    const char* value = func(trail_service, key.c_str());
-    if (value) {
-      return value;
-    }
-  }
-  return std::nullopt;
 }

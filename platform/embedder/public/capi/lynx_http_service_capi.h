@@ -13,6 +13,10 @@ LYNX_EXTERN_C_BEGIN
 
 // Forward declaration of the lynx_http_request_t struct.
 typedef struct lynx_http_request_t lynx_http_request_t;
+// Creates an HTTP GET request for `url`.
+// The caller owns the returned object until it is passed to
+// `lynx_http_service_request`, which consumes it.
+LYNX_CAPI_EXPORT lynx_http_request_t* lynx_http_request_create(const char* url);
 // Retrieves the URL associated with the HTTP request. This function extracts
 // and returns the URL of the specified HTTP request. The caller should not free
 // the returned pointer.
@@ -47,6 +51,16 @@ LYNX_CAPI_EXPORT void lynx_http_request_release(lynx_http_request_t*);
 
 // Forward declaration of the lynx_http_response_t struct.
 typedef struct lynx_http_response_t lynx_http_response_t;
+// Defines a callback invoked when an HTTP response completes. The response and
+// its data remain owned by the HTTP service and are valid only during the
+// callback. `user_data` is passed through from `lynx_http_response_create`.
+typedef void (*lynx_http_response_callback_func)(lynx_http_response_t* response,
+                                                 void* user_data);
+// Creates an HTTP response object with a completion callback.
+// The caller owns the returned object until it is passed to
+// `lynx_http_service_request`, which consumes it.
+LYNX_CAPI_EXPORT lynx_http_response_t* lynx_http_response_create(
+    lynx_http_response_callback_func callback, void* user_data);
 // Sets the URL of an HTTP response. This function allows you to specify the URL
 // of the given HTTP response object.
 LYNX_CAPI_EXPORT void lynx_http_response_set_url(lynx_http_response_t*,
@@ -78,6 +92,12 @@ LYNX_CAPI_EXPORT void lynx_http_response_add_header(lynx_http_response_t*,
 LYNX_CAPI_EXPORT void lynx_http_response_set_body(
     lynx_http_response_t*, uint8_t* content, size_t length,
     void (*dtor)(uint8_t*, size_t, void*), void* opaque);
+// Retrieves the HTTP status code from a completed response.
+LYNX_CAPI_EXPORT int lynx_http_response_get_status_code(lynx_http_response_t*);
+// Retrieves the body from a completed response. The returned data is owned by
+// the response and is valid only during the response callback.
+LYNX_CAPI_EXPORT size_t lynx_http_response_get_body(lynx_http_response_t*,
+                                                    const uint8_t** data);
 // Triggers the callback associated with an HTTP response. This function invokes
 // the callback that is related to the specified HTTP response object. This
 // function must be called when the response is ready or failed.
@@ -105,6 +125,11 @@ LYNX_CAPI_EXPORT void* lynx_http_service_get_user_data(lynx_http_service_t*);
 // function will be invoked to process the request.
 LYNX_CAPI_EXPORT void lynx_http_service_bind(lynx_http_service_t*,
                                              lynx_http_request_func f);
+// Dispatches an HTTP request through the service. This function consumes both
+// `request` and `response`, including when the service has no bound handler.
+LYNX_CAPI_EXPORT void lynx_http_service_request(lynx_http_service_t*,
+                                                lynx_http_request_t* request,
+                                                lynx_http_response_t* response);
 // Releases the resources associated with an HTTP service.
 LYNX_CAPI_EXPORT void lynx_http_service_release(lynx_http_service_t*);
 

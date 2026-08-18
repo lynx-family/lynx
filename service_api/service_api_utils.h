@@ -11,18 +11,24 @@
 #endif
 
 #if defined(_WIN32)
+#if defined(LYNX_SERVICE_API_NEED_EXPORTS)
+#define LYNX_SERVICE_API_EXPORT __declspec(dllexport)
+#else
 #define LYNX_SERVICE_API_EXPORT
+#endif
+#define LYNX_SERVICE_API_CLASS_EXPORT
 #define LYNX_SERVICE_API_USED __declspec(noinline)
 #define LYNX_SERVICE_API_VAR_USED
 #else
 #define LYNX_SERVICE_API_EXPORT __attribute__((visibility("default")))
+#define LYNX_SERVICE_API_CLASS_EXPORT LYNX_SERVICE_API_EXPORT
 #define LYNX_SERVICE_API_USED __attribute__((noinline)) __attribute__((used))
 #define LYNX_SERVICE_API_VAR_USED __attribute__((used))
 #endif
 
 #define EXPORT_FUNC LYNX_SERVICE_API_EXPORT LYNX_SERVICE_API_USED
 #define EXPORT_VAR LYNX_SERVICE_API_EXPORT LYNX_SERVICE_API_VAR_USED
-#define EXPORT_CLASS LYNX_SERVICE_API_EXPORT
+#define EXPORT_CLASS LYNX_SERVICE_API_CLASS_EXPORT
 
 #define DYLIB_ENTRY(name) __attribute__((constructor)) void name()
 

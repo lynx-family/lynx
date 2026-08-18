@@ -94,7 +94,7 @@ Napi::Value Fetch(const Napi::CallbackInfo& info) {
   lynx_service_center_t* service_center = lynx_service_get_center_instance();
   lynx_http_service_t* http_service = reinterpret_cast<lynx_http_service_t*>(
       lynx_service_get_service(service_center, kServiceTypeHttp));
-  lynx_http_request_t* request = lynx_http_request_create(url);
+  lynx_http_request_t* request = lynx_http_request_create(url.c_str());
   request->method = method.empty() ? "GET" : method.c_str();
   // Add headers to the request.
   Napi::Array header_names = headers.GetPropertyNames();
@@ -114,12 +114,13 @@ Napi::Value Fetch(const Napi::CallbackInfo& info) {
       InvokeJSCallback>::New(env, "", 10, 1,
                              new FetchCallbackContext(resolve, reject),
                              ThreadSafeFunctionFinalizer);
-  lynx_http_response_t* response = lynx_http_response_create(
+  lynx_http_response_t* response = lynx_http_response_create_internal(
       [tsf = std::move(tsf)](lynx_http_response_t* origin_response) mutable {
         // The origin response will be released after this callback, create a
         // wrapped response to keep the content, should be released after js
         // callback.
-        lynx_http_response_t* response = lynx_http_response_create(nullptr);
+        lynx_http_response_t* response =
+            lynx_http_response_create_internal(nullptr);
         lynx_http_response_wrap(origin_response, response);
         if (tsf.NonBlockingCall(response) != napi_ok) {
           LOGW("LynxFetchModule::NonBlockingCall failed");

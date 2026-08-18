@@ -165,8 +165,8 @@ class EXPORT_CLASS _BaseRegistry {
     this->name_ = service_name;
   }
   const std::string& get_service_name() { return this->name_; }
-  void set_creator(std::function<_BaseService*()> c);
-  virtual _BaseService* get();
+  EXPORT_FUNC void set_creator(std::function<_BaseService*()> c);
+  EXPORT_FUNC virtual _BaseService* get();
 
  private:
   std::string name_{"<unnamed>"};
