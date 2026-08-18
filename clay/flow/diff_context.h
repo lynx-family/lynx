@@ -49,7 +49,8 @@ class DiffContext {
   explicit DiffContext(skity::Vec2 frame_size, double device_pixel_aspect_ratio,
                        PaintRegionMap& this_frame_paint_region_map,
                        const PaintRegionMap& last_frame_paint_region_map,
-                       bool has_raster_cache);
+                       bool has_raster_cache,
+                       uint64_t retained_preroll_generation = 0);
 
   // Starts a new subtree.
   void BeginSubtree();
@@ -166,6 +167,10 @@ class DiffContext {
   // frame layer tree.
   PaintRegion GetOldLayerPaintRegion(const Layer* layer) const;
 
+  uint64_t retained_preroll_generation() const {
+    return retained_preroll_generation_;
+  }
+
   // Whether or not a raster cache is being used. If so, we must snap
   // all transformations to physical pixels if the layer may be raster
   // cached.
@@ -250,6 +255,7 @@ class DiffContext {
   PaintRegionMap& this_frame_paint_region_map_;
   const PaintRegionMap& last_frame_paint_region_map_;
   bool has_raster_cache_;
+  uint64_t retained_preroll_generation_;
 
   void AddDamage(const skity::Rect& rect);
 

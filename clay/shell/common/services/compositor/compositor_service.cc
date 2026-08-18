@@ -83,7 +83,7 @@ bool CompositorService::SubmitFrame(
   }
 
   // background frame must come first since it's the "current" surface
-  background_frame->set_submit_info({.present_with_transaction = true});
+  background_frame->set_present_with_transaction(true);
   did_encode &= background_frame->Encode();
   submit_infos.push_back(background_frame->PrepareSubmit());
 
@@ -142,7 +142,7 @@ bool CompositorService::SubmitFrame(
     slice->second->render_into(overlay_canvas);
     CANVAS_RESTORE_TO_COUNT(overlay_canvas, restore_count);
 
-    frame->set_submit_info({.present_with_transaction = true});
+    frame->set_present_with_transaction(true);
     did_encode &= frame->Encode();
 
     platform_overlays[view_id] = OverlayData{

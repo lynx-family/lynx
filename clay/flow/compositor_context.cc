@@ -17,22 +17,28 @@ namespace clay {
 
 std::optional<skity::Rect> FrameDamage::ComputeClipRect(
     clay::LayerTree& layer_tree, bool has_raster_cache) {
+  layer_tree.BeginRetainedPreroll();
   if (layer_tree.root_layer()) {
     PaintRegionMap empty_paint_region_map;
-    DiffContext context(layer_tree.frame_size(),
-                        layer_tree.device_pixel_ratio(),
-                        layer_tree.paint_region_map(),
-                        prev_layer_tree_ ? prev_layer_tree_->paint_region_map()
-                                         : empty_paint_region_map,
-                        has_raster_cache);
+    DiffContext context(
+        layer_tree.frame_size(), layer_tree.device_pixel_ratio(),
+        layer_tree.paint_region_map(),
+        prev_layer_tree_ ? prev_layer_tree_->paint_region_map()
+                         : empty_paint_region_map,
+        has_raster_cache, layer_tree.retained_preroll_generation());
     context.PushCullRect(skity::Rect::MakeSize(layer_tree.frame_size()));
     {
       DiffContext::AutoSubtreeRestore subtree(&context);
       const Layer* prev_root_layer = nullptr;
-      if (!prev_layer_tree_ ||
+      const bool force_full_repaint =
+          layer_tree.HasPlatformViewLayer() ||
+          (prev_layer_tree_ && prev_layer_tree_->HasPlatformViewLayer());
+      if (force_full_repaint || !prev_layer_tree_ ||
           prev_layer_tree_->frame_size() != layer_tree.frame_size()) {
         // If there is no previous layer tree assume the entire frame must be
-        // repainted.
+        // repainted. Platform views also require a full preroll because their
+        // composition state is rebuilt every frame and must not be culled by
+        // framebuffer damage, including a frame that removes a previous view.
         context.MarkSubtreeDirty(
             skity::Rect::MakeSize(layer_tree.frame_size()));
       } else {
@@ -117,8 +123,10 @@ RasterStatus CompositorContext::ScopedFrame::Raster(
           ? frame_damage->ComputeClipRect(layer_tree, !ignore_raster_cache)
           : std::nullopt;
 
-  bool root_needs_readback = layer_tree.Preroll(
-      *this, ignore_raster_cache, clip_rect ? *clip_rect : kGiantRect);
+  const skity::Rect preroll_cull_rect =
+      clip_rect ? *clip_rect : skity::Rect::MakeSize(layer_tree.frame_size());
+  bool root_needs_readback =
+      layer_tree.Preroll(*this, ignore_raster_cache, preroll_cull_rect);
   bool needs_save_layer = root_needs_readback && !surface_supports_readback();
 
   if (before_draw_callback) {

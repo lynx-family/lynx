@@ -69,6 +69,11 @@ class LayerTree {
   const PaintRegionMap& paint_region_map() const { return paint_region_map_; }
   PaintRegionMap& paint_region_map() { return paint_region_map_; }
 
+  void BeginRetainedPreroll();
+  uint64_t retained_preroll_generation() const {
+    return retained_preroll_generation_;
+  }
+
   // The number of frame intervals missed after which the compositor must
   // trace the rasterized picture to a trace file. Specify 0 to disable all
   // tracing
@@ -106,6 +111,11 @@ class LayerTree {
 
   bool DoAnimations();
   bool HasAnimations() const;
+
+  bool HasPlatformViewLayer() const { return has_platform_view_layer_; }
+  void SetHasPlatformViewLayer(bool has_platform_view_layer) {
+    has_platform_view_layer_ = has_platform_view_layer;
+  }
 
   // When a layer_tree from ui get consumed by the Raster Thread. It shouldn't
   // be drawn in time to avoid repeat swap-buffer. Inside we will postpone it
@@ -171,8 +181,10 @@ class LayerTree {
   bool checkerboard_raster_cache_images_;
   bool checkerboard_offscreen_layers_;
   bool enable_leaf_layer_tracing_ = false;
+  bool has_platform_view_layer_ = false;
 
   PaintRegionMap paint_region_map_;
+  uint64_t retained_preroll_generation_ = 0;
 
   std::vector<RasterCacheItem*> raster_cache_items_;
 

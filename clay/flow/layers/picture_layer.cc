@@ -220,7 +220,7 @@ void PictureLayer::Paint(PaintContext& context) const {
 
   picture()->playback(context.canvas);
 #else
-  picture()->Draw(context.canvas);
+  picture()->Draw(context.canvas, context.state_stack.local_cull_rect());
 #endif  // ENABLE_SKITY
 
 #ifndef NDEBUG

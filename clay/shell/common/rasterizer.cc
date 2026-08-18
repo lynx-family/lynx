@@ -411,11 +411,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     // for accurate performance metrics.
     if (frame->framebuffer_info().supports_partial_repaint &&
         !layer_tree.is_leaf_layer_tracing_enabled()) {
-      // FIXME(haoyoufeng.aji) : partial repaint with platform view present
-      bool force_full_repaint = true;
-
       damage = std::make_unique<FrameDamage>();
-      if (frame->framebuffer_info().existing_damage && !force_full_repaint) {
+      if (frame->framebuffer_info().existing_damage) {
         damage->SetPreviousLayerTree(last_layer_tree_.get());
         damage->AddAdditionalDamage(*frame->framebuffer_info().existing_damage);
         damage->SetClipAlignment(

@@ -93,6 +93,10 @@ struct PrerollContext {
   // This flag will be set to true if one of the parent of the current layer has
   // a deferred image.
   bool has_deferred_image = false;
+  // This flag indicates that Preroll skipped part of the current subtree after
+  // an empty cull rect rejected it. Outputs produced by such a Preroll are
+  // damage-dependent and must not be reused as a complete subtree summary.
+  bool subtree_was_quick_rejected = false;
   // The list of flags that describe which rendering state attributes
   // (such as opacity, ColorFilter, ImageFilter) a given layer can
   // render itself without requiring the parent to perform a protective
@@ -106,6 +110,9 @@ struct PrerollContext {
   std::vector<RasterCacheItem*>* raster_cached_entries;
 
   std::function<void()> request_new_frame;
+
+  // Identifies unchanged retained layers for the current partial repaint.
+  uint64_t retained_preroll_generation = 0;
 };
 
 struct PaintContext {
@@ -191,6 +198,23 @@ class Layer {
   virtual void PreservePaintRegion(DiffContext* context);
 
   virtual void Preroll(PrerollContext* context) = 0;
+
+  // Saves the context values produced by this layer's most recent Preroll.
+  // raster_cache_entry_count_before is used to detect subtrees that must still
+  // be visited to maintain raster cache bookkeeping.
+  void SavePrerollSummary(const PrerollContext& context,
+                          size_t raster_cache_entry_count_before);
+
+  // Returns whether the saved summary can safely replace a Preroll call in
+  // the current context.
+  bool CanReusePrerollSummary(const PrerollContext& context) const;
+
+  // Restores the output values produced by the previous Preroll.
+  void RestorePrerollSummary(PrerollContext* context) const;
+
+  bool WasRetainedForPreroll(uint64_t generation) const {
+    return generation != 0 && retained_preroll_generation_ == generation;
+  }
 
   // Used during Preroll by layers that employ a saveLayer to manage the
   // PrerollContext settings with values affected by the saveLayer mechanism.
@@ -310,11 +334,27 @@ class Layer {
 #endif
 
  private:
+  struct PrerollSummary {
+    bool is_valid = false;
+    bool raster_cache_enabled = false;
+    bool has_raster_cache_entries = false;
+    bool surface_needs_readback = false;
+    bool has_platform_view = false;
+    bool has_drawable_image_layer = false;
+    bool has_punch_hole_layer = false;
+    bool has_running_picture_animation = false;
+    bool has_running_transform_animation = false;
+    bool has_deferred_image = false;
+    int renderable_state_flags = 0;
+  };
+
   skity::Rect paint_bounds_;
   uint64_t unique_id_;
   uint64_t original_layer_id_;
   bool subtree_has_platform_view_;
   bool subtree_has_punch_hole_;
+  PrerollSummary preroll_summary_;
+  uint64_t retained_preroll_generation_ = 0;
   std::shared_ptr<AnimationHost> animation_host_;
 
   static uint64_t NextUniqueID();
