@@ -110,6 +110,11 @@ class DisplayListBuilder {
 
   DisplayListBuilder& MarkRootNeedClipBounds();
 
+  DisplayListBuilder& BeginScrollContent(int id, PlatformRendererType type);
+
+  DisplayListBuilder& EndScrollContent(float content_width,
+                                       float content_height);
+
   // Build the final display list
   DisplayList Build();
 

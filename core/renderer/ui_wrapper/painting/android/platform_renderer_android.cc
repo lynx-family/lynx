@@ -11,6 +11,7 @@
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_scroll_android.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx::tasm {
@@ -132,7 +133,8 @@ bool PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
   if (type_ == PlatformRendererType::kText ||
       type_ == PlatformRendererType::kImage ||
       type_ == PlatformRendererType::kView ||
-      type_ == PlatformRendererType::kPage) {
+      type_ == PlatformRendererType::kPage ||
+      type_ == PlatformRendererType::kScroll) {
     return false;
   }
   if (type_ != PlatformRendererType::kUnknown) {
@@ -150,6 +152,10 @@ void PlatformRendererAndroid::CleanupAndroidView() {
 fml::RefPtr<PlatformRenderer> PlatformRendererAndroidFactory::CreateRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle>& init_data,
     const PlatformRendererInitConfig& init_config) {
+  if (type == PlatformRendererType::kScroll) {
+    return fml::MakeRefCounted<PlatformRendererScrollAndroid>(context_, id,
+                                                              type, init_data);
+  }
   return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, type,
                                                       init_data, init_config);
 }

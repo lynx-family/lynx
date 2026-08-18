@@ -4,16 +4,30 @@
 
 #include "core/renderer/dom/fiber/scroll_element.h"
 
+#include <memory>
+
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/scroll_fragment_behavior.h"
 
 namespace lynx {
 namespace tasm {
 
 void ScrollElement::OnNodeAdded(Element* child) {
   Element::OnNodeAdded(child);
-
+  if (enable_platform_renderer_.value_or(false)) {
+    child->MarkAsDirectChildOfCompatibleComponent(false);
+  }
   // Scroll's child should not be layout only.
   child->MarkCanBeLayoutOnly(false);
+}
+
+void ScrollElement::SetupFragmentBehavior(Fragment* fragment) {
+  if (enable_platform_renderer_.value_or(false)) {
+    fragment->SetBehavior(std::make_unique<ScrollFragmentBehavior>(fragment));
+  } else {
+    Element::SetupFragmentBehavior(fragment);
+  }
 }
 
 const StyleMap* ScrollElement::PeekCommittedStylesFromAttributes() const {
@@ -42,6 +56,15 @@ void ScrollElement::RemoveCommittedStyleFromAttributes(CSSPropertyID id) {
   if (committed_styles_from_attributes_->empty()) {
     committed_styles_from_attributes_.reset();
   }
+}
+
+ParallelFlushReturn ScrollElement::PrepareForCreateOrUpdate() {
+  if (!initial_resolved_) {
+    ResolvePlatformTagName();
+    ResolveEnablePlatformRenderer();
+    initial_resolved_ = true;
+  }
+  return Element::PrepareForCreateOrUpdate();
 }
 
 void ScrollElement::SetAttributeInternal(const base::String& key,
@@ -83,14 +106,11 @@ void ScrollElement::SetAttributeInternal(const base::String& key,
         kPropertyIDLinearOrientation,
         CSSValue(starlight::LinearOrientationType::kVerticalReverse));
     HandleLayoutNodeAttributeUpdate();
-  } else if (key.IsEquals(kScrollNewArch) && value_str == kTrue) {
-    platform_node_tag_ = BASE_STATIC_STRING(kScrollNewArch);
   }
 }
 
 void ScrollElement::ResetAttribute(const base::String& key) {
   Element::ResetAttribute(key);
-
   if (key.IsEquals(kScrollX) || key.IsEquals(kScrollY) ||
       key.IsEquals(kScrollOrientation) || key.IsEquals(kScrollXReverse) ||
       key.IsEquals(kScrollYReverse)) {
@@ -102,6 +122,28 @@ void ScrollElement::ResetAttribute(const base::String& key) {
 void ScrollElement::HandleLayoutNodeAttributeUpdate() {
   UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
                             lepus::Value(true));
+}
+
+void ScrollElement::ResolvePlatformTagName() {
+  const auto& attr_map = updated_attr_map();
+  auto it = attr_map.find(BASE_STATIC_STRING(kScrollNewArch));
+  if (it != attr_map.end() && it->second.StdString() == kTrue) {
+    platform_node_tag_ = BASE_STATIC_STRING(kScrollNewArch);
+  }
+}
+
+void ScrollElement::ResolveEnablePlatformRenderer() {
+  if (enable_platform_renderer_.has_value()) {
+    return;
+  }
+  enable_platform_renderer_ =
+      GetPlatformNodeTag().IsEqual(kElementScrollViewTag) &&
+      LynxEnv::GetInstance().EnablePlatformRendererScroll();
+  if (*enable_platform_renderer_) {
+    for (const auto& child : scoped_children_) {
+      child->MarkAsDirectChildOfCompatibleComponent(false);
+    }
+  }
 }
 
 }  // namespace tasm

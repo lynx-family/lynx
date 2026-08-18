@@ -88,6 +88,10 @@ class FragmentBehavior {
 
   virtual void OnUpdateLayout(const LayoutInfoForDraw& layout_result) {}
 
+  virtual void BeforeDrawChildren(DisplayListBuilder& display_list_builder) {}
+
+  virtual void AfterDrawChildren(DisplayListBuilder& display_list_builder) {}
+
   Fragment* fragment() { return fragment_; }
 
   NativePaintingContext* painting_context() { return painting_context_; }

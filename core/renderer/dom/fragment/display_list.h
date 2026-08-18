@@ -35,6 +35,8 @@ enum class DisplayListOpType : int32_t {
   kLinearGradient = 12,
   kBoxShadow = 13,
   kBackgroundImage = 14,
+  kScrollContentBegin = 15,
+  kScrollContentEnd = 16,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -187,6 +189,14 @@ typedef struct DisplayListItem {
       float blur_radius;
       int32_t clip_mode;
     } box_shadow;
+    struct {
+      int32_t id;
+      int32_t type;
+    } scroll_content_begin;
+    struct {
+      float width;
+      float height;
+    } scroll_content_end;
   } payload;
 } DisplayListItem;
 
@@ -268,6 +278,12 @@ static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_box_index) ==
 static_assert(offsetof(DisplayListItem, payload.box_shadow.color) == 12);
 static_assert(offsetof(DisplayListItem, payload.box_shadow.blur_radius) == 16);
 static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_mode) == 20);
+static_assert(offsetof(DisplayListItem, payload.scroll_content_begin.id) == 4);
+static_assert(offsetof(DisplayListItem, payload.scroll_content_begin.type) ==
+              8);
+static_assert(offsetof(DisplayListItem, payload.scroll_content_end.width) == 4);
+static_assert(offsetof(DisplayListItem, payload.scroll_content_end.height) ==
+              8);
 static_assert(std::is_standard_layout<DisplayListItem>::value,
               "DisplayListItem must be standard layout for JNI");
 static_assert(

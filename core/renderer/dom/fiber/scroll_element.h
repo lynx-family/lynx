@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_DOM_FIBER_SCROLL_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_SCROLL_ELEMENT_H_
 
+#include <optional>
+
 #include "core/renderer/dom/element.h"
 
 namespace lynx {
@@ -32,6 +34,8 @@ class ScrollElement : public Element {
 
   bool is_scroll_view() const override { return true; }
 
+  void SetupFragmentBehavior(Fragment* fragment) override;
+
   const StyleMap* PeekCommittedStylesFromAttributes() const override;
 
  protected:
@@ -44,12 +48,19 @@ class ScrollElement : public Element {
   void RemoveCommittedStyleFromAttributes(CSSPropertyID id) override;
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
+  ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
   ScrollElement(const ScrollElement& element, bool clone_resolved_props)
       : Element(element, clone_resolved_props) {}
 
  private:
   void HandleLayoutNodeAttributeUpdate();
+  void ResolvePlatformTagName();
+  void ResolveEnablePlatformRenderer();
+
+ private:
+  bool initial_resolved_{false};
+  std::optional<bool> enable_platform_renderer_;
   base::String platform_node_tag_{BASE_STATIC_STRING(kElementScrollViewTag)};
   base::auto_create_optional<StyleMap> committed_styles_from_attributes_;
 };

@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_root_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_scroll_darwin.h"
 
 #import <Lynx/LynxComponentRegistry.h>
 
@@ -19,6 +20,8 @@ fml::RefPtr<PlatformRenderer> PlatformRendererDarwinFactory::CreateRenderer(
     const PlatformRendererInitConfig& init_config) {
   if (type == PlatformRendererType::kPage) {
     return fml::MakeRefCounted<PlatformRendererRootDarwin>(context_, id, type);
+  } else if (type == PlatformRendererType::kScroll) {
+    return fml::MakeRefCounted<PlatformRendererScrollDarwin>(context_, id, type, init_data);
   }
   return fml::MakeRefCounted<PlatformRendererDarwin>(context_, id, type, init_data, init_config);
 }

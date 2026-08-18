@@ -134,6 +134,11 @@ class Fragment : public BaseElementContainer {
   int32_t DefinePaddingBox(DisplayListBuilder& display_list_builder);
   int32_t DefineContentBox(DisplayListBuilder& display_list_builder);
 
+  const base::InlineVector<Fragment*, kChildrenInlineVectorSize>& children()
+      const {
+    return children_;
+  }
+
   void SetTextBundle(intptr_t bundle);
 
  protected:
