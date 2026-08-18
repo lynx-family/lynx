@@ -55,7 +55,7 @@ class PaintingCtxPlatformRef {
   // TODO(songshourui.null): Implement platform-specific reporting in follow-up
   // changes.
   // Requests a delayed, coalesced external-memory report from the UI backend.
-  virtual void RequestExternalMemoryReport() {}
+  virtual void RequestExternalMemoryReport(int64_t) {}
   virtual void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {}
   virtual void UpdateEventInfo(bool has_touch_pseudo) {}
   virtual void UpdateFlattenStatus(int id, bool flatten) {}
@@ -195,7 +195,7 @@ class PaintingCtxPlatformImpl {
   // TODO(songshourui.null): Forward this request through platform-specific
   // operation queues in follow-up changes.
   // Appends an external-memory report request to a batched UI operation stream.
-  virtual void RequestExternalMemoryReport() {}
+  virtual void RequestExternalMemoryReport(int64_t) {}
 
   virtual void SetContextHasAttached() {}
   virtual void SetEnableVsyncAlignedFlush(bool enabled) {}

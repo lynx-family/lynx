@@ -40,6 +40,7 @@ import com.lynx.tasm.behavior.ui.UIExposure;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.frame.LynxFrameView;
 import com.lynx.tasm.core.JSProxy;
+import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.core.LynxLayoutProxy;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.fluency.FluencyTraceHelper;
@@ -83,6 +84,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private WeakReference<JSProxy> mJSProxy;
   private WeakReference<PerformanceController> mPerfController = null;
 
+  private WeakReference<LynxEngineProxy> mEngineProxy;
   private WeakReference<LynxLayoutProxy> mLayoutProxy;
   private UIBody mUIBody;
   private Map<String, FontFace> mParsedFontFace;
@@ -799,6 +801,18 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public void setLayoutProxy(LynxLayoutProxy proxy) {
     mLayoutProxy = new WeakReference<>(proxy);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void setEngineProxy(LynxEngineProxy proxy) {
+    mEngineProxy = proxy == null ? null : new WeakReference<>(proxy);
+  }
+
+  void reportExternalMemory(long totalSize, long garbageSize) {
+    LynxEngineProxy proxy = mEngineProxy == null ? null : mEngineProxy.get();
+    if (proxy != null) {
+      proxy.reportExternalMemory(totalSize, garbageSize);
+    }
   }
 
   public JSModule getJSModule(String module) {

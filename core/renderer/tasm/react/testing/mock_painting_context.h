@@ -46,8 +46,9 @@ class MockPaintingContextPlatformRef : public PaintingCtxPlatformRef {
     ready_ids_ = std::move(ready_ids);
     remove_ids_ = std::move(remove_ids);
   }
-  void RequestExternalMemoryReport() override {
+  void RequestExternalMemoryReport(int64_t delay_ms) override {
     ++external_memory_report_request_count_;
+    external_memory_report_delay_ms_ = delay_ms;
   }
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override {
     reload_ids_ = std::move(reload_ids);
@@ -56,6 +57,7 @@ class MockPaintingContextPlatformRef : public PaintingCtxPlatformRef {
   std::vector<int32_t> remove_ids_;
   std::vector<int32_t> reload_ids_;
   int external_memory_report_request_count_{0};
+  int64_t external_memory_report_delay_ms_{0};
 };
 
 class MockPaintingContext : public PaintingContextPlatformImpl {
@@ -81,8 +83,8 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
     platform_ref_->UpdateNodeReadyPatching(std::move(ready_ids),
                                            std::move(remove_ids));
   }
-  void RequestExternalMemoryReport() override {
-    platform_ref_->RequestExternalMemoryReport();
+  void RequestExternalMemoryReport(int64_t delay_ms) override {
+    platform_ref_->RequestExternalMemoryReport(delay_ms);
   }
 
  private:

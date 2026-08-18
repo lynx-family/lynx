@@ -268,7 +268,7 @@ class PaintingContext {
 
  private:
   void Enqueue(shell::UIOperation op, bool high_priority = false);
-  void EnqueueExternalMemoryReportRequest();
+  void EnqueueExternalMemoryReportRequest(int64_t delay_ms);
   void EnqueueHighPriorityUIOperation(shell::UIOperation op) {
     Enqueue(std::move(op), true);
   }

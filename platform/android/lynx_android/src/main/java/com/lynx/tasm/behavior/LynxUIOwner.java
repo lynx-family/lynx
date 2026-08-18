@@ -90,6 +90,7 @@ public class LynxUIOwner {
   private final List<ForegroundListener> mForegroundListeners;
   private final HashMap<Integer, LynxBaseUI> mUIHolder;
   private final HashMap<Integer, LynxBaseUI> mTextChildUIHolder;
+  private final HashSet<Integer> mRemovedUIIds;
 
   // Hold the UI that exec the boundingClientRect method in the layout process. Call the UI's
   // uiOwnerDidPerformLayout method after exec performLayout.
@@ -149,6 +150,7 @@ public class LynxUIOwner {
     mForegroundListeners = new ArrayList<>();
     mUIHolder = new HashMap<>();
     mTextChildUIHolder = new HashMap<>();
+    mRemovedUIIds = new HashSet<>();
     mComponentIdToUiIdHolder = new HashMap<>();
     mRootSign = -1;
     mUIBody = new UIBody(mContext, body);
@@ -1277,6 +1279,47 @@ public class LynxUIOwner {
       }
     }
     return records;
+  }
+
+  void cacheRemovedUIIds(int[] removeIds) {
+    for (int removeId : removeIds) {
+      mRemovedUIIds.add(removeId);
+    }
+  }
+
+  long[] getExternalMemorySnapshot() {
+    try {
+      long totalSize = 0;
+      for (LynxBaseUI ui : mUIHolder.values()) {
+        if (ui != null) {
+          totalSize += ui.getMemoryUsageBytes();
+        }
+      }
+
+      long garbageSize = 0;
+      for (int removeId : mRemovedUIIds) {
+        LynxBaseUI ui = mUIHolder.get(removeId);
+        if (ui != null && ui.getParent() == null) {
+          garbageSize += getMemoryUsageBytesRecursively(ui);
+        }
+      }
+      return new long[] {totalSize, garbageSize};
+    } finally {
+      mRemovedUIIds.clear();
+    }
+  }
+
+  void reportExternalMemory() {
+    long[] snapshot = getExternalMemorySnapshot();
+    mContext.reportExternalMemory(snapshot[0], snapshot[1]);
+  }
+
+  private long getMemoryUsageBytesRecursively(LynxBaseUI ui) {
+    long size = ui.getMemoryUsageBytes();
+    for (LynxBaseUI child : ui.getChildren()) {
+      size += getMemoryUsageBytesRecursively(child);
+    }
+    return size;
   }
 
   public void performLayout() {

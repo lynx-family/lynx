@@ -10,6 +10,7 @@ import static org.mockito.Mockito.spy;
 
 import android.graphics.Rect;
 import android.os.Build;
+import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
@@ -17,6 +18,9 @@ import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.behavior.ui.UIShadowProxy;
+import com.lynx.tasm.behavior.ui.view.UIView;
+import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -25,6 +29,29 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class LynxUIOwnerTest {
+  private static final String MEMORY_UI_TAG = "memory-ui";
+
+  static final class MemoryUI extends UIView {
+    MemoryUI(LynxContext context) {
+      super(context);
+    }
+
+    @Override
+    public long getMemoryUsageBytes() {
+      return 10;
+    }
+  }
+
+  private static final class MemoryUIBehavior extends Behavior {
+    MemoryUIBehavior() {
+      super(MEMORY_UI_TAG);
+    }
+
+    @Override
+    public LynxUI createUI(LynxContext context) {
+      return new MemoryUI(context);
+    }
+  }
   private LynxUI mLynxUI = null;
   private LynxContext mContext;
   private LynxView mLynxView;
@@ -98,5 +125,77 @@ public class LynxUIOwnerTest {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testExternalMemoryRemovedIdCandidatesAreConsumed() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      List<Behavior> behaviors = new BuiltInBehavior().create();
+      behaviors.add(new MemoryUIBehavior());
+      LynxContext contextSpy = spy(mContext);
+      LynxUIOwner uiOwner =
+          new LynxUIOwner(contextSpy, new BehaviorRegistry(behaviors), mUIBody.getBodyView());
+      contextSpy.setLynxUIOwner(uiOwner);
+
+      uiOwner.createViewInternal(1, LynxConstants.ROOT_TAG_NAME, null, null, false, 0, null);
+      uiOwner.createViewInternal(2, MEMORY_UI_TAG, null, null, false, 0, null);
+      uiOwner.createViewInternal(3, MEMORY_UI_TAG, null, null, false, 0, null);
+      uiOwner.insert(1, 2, 0);
+      uiOwner.insert(2, 3, 0);
+      uiOwner.cacheRemovedUIIds(new int[] {2, 2, 3});
+      long[] snapshot = uiOwner.getExternalMemorySnapshot();
+      assertEquals(20, snapshot[0]);
+      assertEquals(0, snapshot[1]);
+
+      uiOwner.remove(1, 2);
+      uiOwner.cacheRemovedUIIds(new int[] {2, 2, 3});
+      snapshot = uiOwner.getExternalMemorySnapshot();
+      assertEquals(20, snapshot[0]);
+      assertEquals(20, snapshot[1]);
+      assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
+
+      uiOwner.cacheRemovedUIIds(new int[] {2});
+      uiOwner.insert(1, 2, 0);
+      assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
+
+      uiOwner.createViewInternal(4, MEMORY_UI_TAG, null, null, false, 0, null);
+      uiOwner.insert(1, 4, 1);
+      uiOwner.remove(1, 2);
+      uiOwner.cacheRemovedUIIds(new int[] {2, 2, 3});
+      uiOwner.remove(1, 4);
+      uiOwner.cacheRemovedUIIds(new int[] {4, 4});
+      snapshot = uiOwner.getExternalMemorySnapshot();
+      assertEquals(30, snapshot[0]);
+      assertEquals(30, snapshot[1]);
+      assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
+    });
+  }
+
+  @Test
+  public void testExternalMemoryShadowProxyDelegation() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext contextSpy = spy(mContext);
+      LynxUIOwner uiOwner = new LynxUIOwner(
+          contextSpy, new BehaviorRegistry(new BuiltInBehavior().create()), mUIBody.getBodyView());
+      contextSpy.setLynxUIOwner(uiOwner);
+
+      MemoryUI memoryUI = new MemoryUI(contextSpy);
+      memoryUI.setSign(1, MEMORY_UI_TAG);
+      MemoryUI descendant = new MemoryUI(contextSpy);
+      descendant.setSign(2, MEMORY_UI_TAG);
+      memoryUI.insertChild(descendant, 0);
+      UIShadowProxy proxy = new UIShadowProxy(contextSpy, memoryUI);
+      uiOwner.createViewInternal(100, LynxConstants.ROOT_TAG_NAME, null, null, false, 0, null);
+      uiOwner.setNode(1, proxy);
+      uiOwner.setNode(2, descendant);
+      uiOwner.insert(100, 1, 0);
+
+      assertEquals(20, uiOwner.getExternalMemorySnapshot()[0]);
+      assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
+
+      uiOwner.remove(100, 1);
+      uiOwner.cacheRemovedUIIds(new int[] {1});
+      assertEquals(20, uiOwner.getExternalMemorySnapshot()[1]);
+    });
   }
 }

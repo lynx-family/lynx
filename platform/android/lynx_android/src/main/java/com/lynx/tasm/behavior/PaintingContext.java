@@ -41,6 +41,7 @@ import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.UIThreadUtils;
+import java.lang.ref.WeakReference;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,6 +84,7 @@ class UIOperationType {
   public static final int UPDATE_LAYOUT_PATCHING = 5;
   public static final int TASM_FINISH = 6;
   public static final int LAYOUT_FINISH = 7;
+  public static final int REQUEST_EXTERNAL_MEMORY_REPORT = 8;
 }
 
 class CreateViewAsyncStatus {
@@ -102,6 +104,8 @@ public final class PaintingContext implements IPaintingContext {
   private final LynxUIOwner mUIOwner;
   private TextLayout mTextLayout;
   private boolean mDestroyed;
+  private boolean mExternalMemoryReportPending;
+  private final Runnable mExternalMemoryReportTask;
   private ConcurrentHashMap<String, Boolean> mNeedCreateNodeAsyncCache;
   // TODO: If more hashmap is needed in the future, we need to merge them into one.
   private ConcurrentHashMap<String, Boolean> mNeedProcessDirectionCache;
@@ -113,6 +117,8 @@ public final class PaintingContext implements IPaintingContext {
   public PaintingContext(LynxUIOwner uiOwner, int threadStrategy) {
     mUIOwner = uiOwner;
     mDestroyed = false;
+    mExternalMemoryReportPending = false;
+    mExternalMemoryReportTask = new ExternalMemoryReportTask(this);
     mNeedCreateNodeAsyncCache = new ConcurrentHashMap<String, Boolean>();
     mNeedProcessDirectionCache = new ConcurrentHashMap<String, Boolean>();
 
@@ -288,6 +294,8 @@ public final class PaintingContext implements IPaintingContext {
   @Override
   public void destroy() {
     mDestroyed = true;
+    mExternalMemoryReportPending = false;
+    UIThreadUtils.removeCallbacks(mExternalMemoryReportTask, null);
     for (Page page : mTextraPages.values()) {
       if (page != null) {
         page.destroy();
@@ -673,6 +681,9 @@ public final class PaintingContext implements IPaintingContext {
           // isFirstScreen is useless now, just pass true. Should delete later.
           FinishLayoutOperation(listComponentId, operationId, true);
         } break;
+        case UIOperationType.REQUEST_EXTERNAL_MEMORY_REPORT: {
+          requestExternalMemoryReport(iterator.next().getLong());
+        } break;
         default:
           LLog.e(TAG, "flushUIOperationBatch with unknown UIOperationType: " + operation);
           return;
@@ -1026,6 +1037,39 @@ public final class PaintingContext implements IPaintingContext {
     updateNodeRemovePatching(removeIds);
   }
 
+  private static final class ExternalMemoryReportTask implements Runnable {
+    private final WeakReference<PaintingContext> mContext;
+
+    ExternalMemoryReportTask(PaintingContext context) {
+      mContext = new WeakReference<>(context);
+    }
+
+    @Override
+    public void run() {
+      PaintingContext context = mContext.get();
+      if (context != null) {
+        context.reportExternalMemory();
+      }
+    }
+  }
+
+  @CalledByNative
+  private void requestExternalMemoryReport(long delayMs) {
+    if (mDestroyed || mExternalMemoryReportPending) {
+      return;
+    }
+    mExternalMemoryReportPending = true;
+    UIThreadUtils.runOnUiThread(mExternalMemoryReportTask, delayMs);
+  }
+
+  private void reportExternalMemory() {
+    mExternalMemoryReportPending = false;
+    if (mDestroyed) {
+      return;
+    }
+    mUIOwner.reportExternalMemory();
+  }
+
   private void updateNodeReadyPatching(int[] readyIds) {
     for (int sign : readyIds) {
       Page page = mTextraPages.get(sign);
@@ -1037,6 +1081,7 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   private void updateNodeRemovePatching(int[] removeIds) {
+    mUIOwner.cacheRemovedUIIds(removeIds);
     for (int sign : removeIds) {
       Page page = mTextraPages.remove(sign);
       if (page != null) {

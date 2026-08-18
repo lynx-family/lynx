@@ -4163,6 +4163,7 @@ public class LynxTemplateRender
     if (mLynxContext == null) {
       LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
     } else {
+      mLynxContext.setEngineProxy(mEngineProxy);
       mLayoutProxy = new LynxLayoutProxy(mNativePtr);
       mLynxContext.setLayoutProxy(mLayoutProxy);
     }

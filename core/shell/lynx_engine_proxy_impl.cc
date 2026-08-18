@@ -34,7 +34,9 @@ void LynxEngineProxyImpl::ReportExternalMemory(
   if (engine_actor_ == nullptr) {
     return;
   }
-  engine_actor_->ActLite([snapshot](auto& engine) {
+  // Reporting may synchronously trigger GC and enqueue UI teardown operations,
+  // so keep the LynxEngine actor's post-invocation flush.
+  engine_actor_->Act([snapshot](auto& engine) {
     auto* tasm = engine->GetTasm();
     if (tasm != nullptr) {
       tasm->ReportExternalMemory(snapshot);
