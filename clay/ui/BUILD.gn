@@ -214,6 +214,10 @@ if (enable_unittests) {
       "testing/test_utils_unittests.cc",
     ]
 
+    if (is_android && is_headless) {
+      sources += [ "platform/native_view_tags_unittests.cc" ]
+    }
+
     public_configs = [
       "../:export_dynamic_symbols",
       "../:config",
