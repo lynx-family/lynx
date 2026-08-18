@@ -353,6 +353,14 @@ bool LynxWindowlessRenderer::GetAcceleratedPaintInfo(
     ClaySharedImageRef shared_image = nullptr;
     bool r = ClaySharedImageSinkUpdateFront(sink_ref_, nullptr, &shared_image);
     if (r && shared_image) {
+      ClayFenceSyncRef fence_sync = ClaySharedImageGetFenceSync(shared_image);
+      if (fence_sync) {
+        bool wait_success = ClayFenceSyncClientWait(fence_sync);
+        ClayDestroyFenceSync(fence_sync);
+        if (!wait_success) {
+          return false;
+        }
+      }
       paint_info->struct_size = sizeof(lynx_accelerated_paint_info_t);
       ClaySize size;
       ClaySharedImageGetSize(shared_image, &size);

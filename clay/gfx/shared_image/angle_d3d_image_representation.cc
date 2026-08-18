@@ -15,6 +15,7 @@
 
 #include <vector>
 
+#include "base/include/closure.h"
 #include "clay/common/graphics/gl/scoped_framebuffer_binder.h"
 #include "clay/common/graphics/gl/scoped_texture_binder.h"
 #include "clay/fml/logging.h"
@@ -24,6 +25,26 @@
 #include "clay/gfx/shared_image/utils/functions_angle.h"
 
 namespace clay {
+namespace {
+
+void ClearGLErrors(FunctionsAngle* functions_angle) {
+  GLenum error = GL_NO_ERROR;
+  while ((error = functions_angle->glGetError()) != GL_NO_ERROR) {
+    FML_LOG(WARNING) << "Discarding pre-existing GL error: " << error;
+  }
+}
+
+bool CheckGLErrors(FunctionsAngle* functions_angle, const char* operation) {
+  bool success = true;
+  GLenum error = GL_NO_ERROR;
+  while ((error = functions_angle->glGetError()) != GL_NO_ERROR) {
+    FML_LOG(ERROR) << operation << " failed with GL error: " << error;
+    success = false;
+  }
+  return success;
+}
+
+}  // namespace
 
 AngleD3DImageRepresentation::AngleD3DImageRepresentation(
     fml::RefPtr<D3DTextureImageBacking> backing,
@@ -235,8 +256,16 @@ std::optional<uint32_t> AngleD3DImageRepresentation::GetTexFromD3D9Texture() {
     return {};
   }
 
-  GLuint texture;
+  ClearGLErrors(functions_angle_.get());
+  GLuint texture = 0;
   functions_angle_->glGenTextures(1, &texture);
+  if (!CheckGLErrors(functions_angle_.get(), "glGenTextures") || texture == 0) {
+    if (texture != 0) {
+      functions_angle_->glDeleteTextures(1, &texture);
+    }
+    FML_LOG(ERROR) << "Failed to generate texture.";
+    return {};
+  }
   clay::ScopedTextureBinder scoped_texture_binder(GL_TEXTURE_2D, texture,
                                                   gl_api_windows_.get());
   functions_angle_->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
@@ -247,10 +276,8 @@ std::optional<uint32_t> AngleD3DImageRepresentation::GetTexFromD3D9Texture() {
                                     GL_CLAMP_TO_EDGE);
   functions_angle_->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
                                     GL_CLAMP_TO_EDGE);
-  GLenum error = functions_angle_->glGetError();
-  if (error != GL_NO_ERROR) {
+  if (!CheckGLErrors(functions_angle_.get(), "Initializing texture")) {
     functions_angle_->glDeleteTextures(1, &texture);
-    FML_LOG(ERROR) << "GL generate and initialize texture failed: " << error;
     return {};
   }
 
@@ -308,14 +335,20 @@ std::optional<uint32_t> AngleD3DImageRepresentation::GetTexFromD3D11Texture() {
 
   const EGLint attribs[] = {EGL_TEXTURE_INTERNAL_FORMAT_ANGLE, internal_format,
                             EGL_NONE};
-  egl_image_ = functions_angle_->eglCreateImageKHR(
+  EGLint egl_error = functions_angle_->eglGetError();
+  if (egl_error != EGL_SUCCESS) {
+    FML_LOG(WARNING) << "Discarding pre-existing EGL error: " << egl_error;
+  }
+  EGLImageKHR egl_image = functions_angle_->eglCreateImageKHR(
       egl_display_, EGL_NO_CONTEXT, EGL_D3D11_TEXTURE_ANGLE,
       static_cast<EGLClientBuffer>(d3d11_texture_.Get()), attribs);
-  if (egl_image_ == EGL_NO_IMAGE_KHR) {
-    FML_LOG(ERROR) << "Failed to create egl image.";
+  egl_error = functions_angle_->eglGetError();
+  if (egl_image == EGL_NO_IMAGE_KHR) {
+    FML_LOG(ERROR) << "Failed to create egl image: " << egl_error;
     return {};
   }
-  EGLint egl_error = functions_angle_->eglGetError();
+  fml::ScopedCleanupClosure destroy_egl_image(
+      [&]() { functions_angle_->eglDestroyImageKHR(egl_display_, egl_image); });
   if (egl_error != EGL_SUCCESS) {
     FML_LOG(ERROR) << "eglCreateImageKHR failed: " << egl_error;
     return {};
@@ -329,8 +362,16 @@ std::optional<uint32_t> AngleD3DImageRepresentation::GetTexFromD3D11Texture() {
     return {};
   }
 
-  GLuint texture;
+  ClearGLErrors(functions_angle_.get());
+  GLuint texture = 0;
   functions_angle_->glGenTextures(1, &texture);
+  if (!CheckGLErrors(functions_angle_.get(), "glGenTextures") || texture == 0) {
+    if (texture != 0) {
+      functions_angle_->glDeleteTextures(1, &texture);
+    }
+    FML_LOG(ERROR) << "Failed to generate texture.";
+    return {};
+  }
   clay::ScopedTextureBinder scoped_texture_binder(GL_TEXTURE_2D, texture,
                                                   gl_api_windows_.get());
   functions_angle_->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
@@ -341,21 +382,20 @@ std::optional<uint32_t> AngleD3DImageRepresentation::GetTexFromD3D11Texture() {
                                     GL_CLAMP_TO_EDGE);
   functions_angle_->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
                                     GL_CLAMP_TO_EDGE);
-  GLenum error = functions_angle_->glGetError();
-  if (error != GL_NO_ERROR) {
+  if (!CheckGLErrors(functions_angle_.get(), "Initializing texture")) {
     functions_angle_->glDeleteTextures(1, &texture);
-    FML_LOG(ERROR) << "GL generate and initialize texture failed: " << error;
     return {};
   }
 
-  glEGLImageTargetTexture2DOESProc(GL_TEXTURE_2D, egl_image_);
-  egl_error = functions_angle_->eglGetError();
-  if (egl_error != EGL_SUCCESS) {
+  ClearGLErrors(functions_angle_.get());
+  glEGLImageTargetTexture2DOESProc(GL_TEXTURE_2D, egl_image);
+  if (!CheckGLErrors(functions_angle_.get(), "glEGLImageTargetTexture2DOES")) {
     functions_angle_->glDeleteTextures(1, &texture);
-    FML_LOG(ERROR) << "glEGLImageTargetTexture2DOES failed: " << egl_error;
     return {};
   }
 
+  egl_image_ = egl_image;
+  destroy_egl_image.Release();
   return texture;
 }
 
