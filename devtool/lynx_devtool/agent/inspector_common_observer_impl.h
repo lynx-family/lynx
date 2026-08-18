@@ -27,6 +27,7 @@ class InspectorCommonObserverImpl
   void EndReplayTest(const std::string& file_path) override;
   void SendLayoutTree() override;
   void FlushLayoutTreeForReplayEnd(std::function<void()> callback) override;
+  void OnGlobalPropsUpdated() override;
 
  private:
   std::weak_ptr<MessageSender> sender_;

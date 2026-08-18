@@ -298,6 +298,26 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: third_party/quickjs/src/src/inspector/protocols.cc
+  - name: GlobalProps
+    origin: lynx-extension
+    scope: instance
+    methods:
+      - name: disable
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_global_props_agent.cc
+      - name: enable
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_global_props_agent.cc
+      - name: get
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_global_props_agent.cc
+      - name: replace
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_global_props_agent.cc
   - name: HeapProfiler
     origin: standard
     scope: instance

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/include/log/logging.h"
+#include "base/include/timer/time_utils.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_fragment.h"
@@ -23,7 +24,9 @@
 #include "core/renderer/css/ng/style/rule_set.h"
 #include "core/renderer/css/ng/supports/supports_evaluator.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/runtime/lepus/json_parser.h"
 #include "core/services/replay/replay_controller.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -47,6 +50,36 @@ namespace devtool {
   } while (0)
 
 namespace {
+
+Json::Value GetGlobalProps(tasm::TemplateAssembler* tasm) {
+  Json::Value global_props(Json::ValueType::objectValue);
+  if (tasm == nullptr) {
+    return global_props;
+  }
+
+  const lepus::Value lepus_global_props = tasm->GetGlobalProps();
+  if (!lepus_global_props.IsObject()) {
+    return global_props;
+  }
+
+  Json::Reader reader;
+  if (!reader.parse(lepus::lepusValueToString(lepus_global_props),
+                    global_props) ||
+      !global_props.isObject()) {
+    return Json::Value(Json::ValueType::objectValue);
+  }
+  return global_props;
+}
+
+void UpdateGlobalProps(tasm::TemplateAssembler* tasm,
+                       const Json::Value& global_props) {
+  auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
+  pipeline_options->pipeline_origin = tasm::timing::kUpdateGlobalProps;
+  Json::FastWriter writer;
+  tasm->UpdateGlobalProps(
+      lepus::jsonValueTolepusValue(writer.write(global_props).c_str()), true,
+      pipeline_options);
+}
 
 std::string TrimConditionText(const std::string& text) {
   const size_t start = text.find_first_not_of(" \t\n\r\f\v");
@@ -81,16 +114,6 @@ ConditionTextEditRequest ParseConditionTextEditRequest(
   return {params["styleSheetId"].asString(), range["startLine"].asInt(),
           NormalizeConditionTextForParser(params["text"].asString(), at_rule),
           range.isObject() && range.isMember("startLine")};
-}
-
-void SendConditionTextEditError(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message, int code, const char* error_message) {
-  Json::Value response(Json::ValueType::objectValue);
-  response["error"]["code"] = code;
-  response["error"]["message"] = error_message;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
 }
 
 void SendConditionTextEditResult(
@@ -1792,6 +1815,69 @@ void InspectorTasmExecutor::DOM_Focus(
   sender->SendMessage("CDP", response);
 }
 
+void InspectorTasmExecutor::GlobalPropsEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  global_props_enabled_ = true;
+  sender->SendOKResponse(message["id"].asInt64());
+}
+
+void InspectorTasmExecutor::GlobalPropsDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  global_props_enabled_ = false;
+  sender->SendOKResponse(message["id"].asInt64());
+}
+
+void InspectorTasmExecutor::GlobalPropsGet(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  Json::Value response(Json::ValueType::objectValue);
+  response["id"] = message["id"].asInt64();
+  response["result"]["globalProps"] = GetGlobalProps(tasm_);
+  response["result"]["timestamp"] =
+      Json::Value::UInt64(last_global_props_timestamp_ms_);
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorTasmExecutor::GlobalPropsReplace(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const Json::Value& global_props = message["params"]["globalProps"];
+  if (!global_props.isObject()) {
+    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
+                              "globalProps must be an object");
+    return;
+  }
+  if (tasm_ == nullptr) {
+    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
+                              "GlobalProps.replace is unavailable");
+    return;
+  }
+
+  UpdateGlobalProps(tasm_, global_props);
+  sender->SendOKResponse(message["id"].asInt64());
+}
+
+void InspectorTasmExecutor::GlobalPropsChanged() {
+  const uint64_t current_time = base::CurrentSystemTimeMilliseconds();
+  last_global_props_timestamp_ms_ =
+      std::max(current_time, last_global_props_timestamp_ms_ + 1);
+
+  if (!global_props_enabled_) {
+    return;
+  }
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
+
+  Json::Value event(Json::ValueType::objectValue);
+  event["method"] = "GlobalProps.changed";
+  event["params"]["timestamp"] =
+      Json::Value::UInt64(last_global_props_timestamp_ms_);
+  event["params"]["changes"][0]["operation"] = "replace";
+  devtool_mediator->SendCDPEvent(event);
+}
+
 void InspectorTasmExecutor::WhiteBoardEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
@@ -1967,6 +2053,22 @@ void InspectorTasmExecutor::SetWhiteBoardEnabled(bool enable) {
   if (white_board_inspector_delegate_ != nullptr) {
     white_board_inspector_delegate_->SetEnabled(enable);
   }
+}
+
+bool InspectorTasmExecutor::IsGlobalPropsEnabled() const {
+  return global_props_enabled_;
+}
+
+void InspectorTasmExecutor::SetGlobalPropsEnabled(bool enable) {
+  global_props_enabled_ = enable;
+}
+
+uint64_t InspectorTasmExecutor::GetLastGlobalPropsTimestamp() const {
+  return last_global_props_timestamp_ms_;
+}
+
+void InspectorTasmExecutor::SetLastGlobalPropsTimestamp(uint64_t timestamp) {
+  last_global_props_timestamp_ms_ = timestamp;
 }
 
 // Enable CSS debugging, get all style sheet of current page
@@ -2399,8 +2501,8 @@ void InspectorTasmExecutor::SetMediaText(
   Element* root = element_root_;
   if (!root || request.style_sheet_id.empty() || !request.has_valid_range ||
       request.condition_index < 0) {
-    SendConditionTextEditError(sender, message, kInvalidParams,
-                               "Invalid media query location");
+    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
+                              "Invalid media query location");
     return;
   }
 
@@ -2409,8 +2511,8 @@ void InspectorTasmExecutor::SetMediaText(
       root, request.style_sheet_id, request.condition_index,
       &css::ConditionRule::HasStructuredMediaQuery);
   if (!target) {
-    SendConditionTextEditError(sender, message, kServerError,
-                               "Media rule not found");
+    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
+                              "Media rule not found");
     return;
   }
 
@@ -2439,15 +2541,15 @@ void InspectorTasmExecutor::SetSupportsText(
   Element* root = element_root_;
   if (!root || request.style_sheet_id.empty() || !request.has_valid_range ||
       request.condition_index < 0) {
-    SendConditionTextEditError(sender, message, kInvalidParams,
-                               "Invalid supports rule location");
+    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
+                              "Invalid supports rule location");
     return;
   }
 
   auto supports_condition = css::SupportsConditionParser::Parse(request.text);
   if (!supports_condition) {
-    SendConditionTextEditError(sender, message, kInvalidParams,
-                               "Invalid supports condition");
+    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
+                              "Invalid supports condition");
     return;
   }
 
@@ -2455,8 +2557,8 @@ void InspectorTasmExecutor::SetSupportsText(
       root, request.style_sheet_id, request.condition_index,
       &css::ConditionRule::HasStructuredSupportsRules);
   if (!target) {
-    SendConditionTextEditError(sender, message, kServerError,
-                               "Supports rule not found");
+    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
+                              "Supports rule not found");
     return;
   }
 

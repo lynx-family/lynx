@@ -74,6 +74,15 @@ class DevToolMediatorTest : public ::testing::Test {
     devtool_mediator_->default_task_runner_ = devtool_thread_->GetTaskRunner();
   }
 
+  // Drain all tasks queued on the tasm runner without terminating its message
+  // loop (unlike tasm_thread_->Join(), which can only be called once).
+  void FlushTasmTasks() {
+    std::promise<void> p;
+    auto f = p.get_future();
+    devtool_mediator_->tasm_task_runner_->PostTask([&p]() { p.set_value(); });
+    ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+  }
+
  private:
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
   std::shared_ptr<devtool::MessageSender> message_sender_;
@@ -671,6 +680,99 @@ TEST_F(DevToolMediatorTest, SetTag) {
   devtool_mediator_->js_debugger_ = js_debugger;
   devtool_mediator_->SetTag(test_tag);
   EXPECT_EQ(js_debugger->GetInspectorRuntimeObserver()->GetTag(), test_tag);
+}
+
+TEST_F(DevToolMediatorTest, GlobalPropsCommandsRunOnTasmThreadCase) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 1;
+
+  devtool_mediator_->GlobalPropsEnable(message_sender_, message);
+  FlushTasmTasks();
+  EXPECT_TRUE(devtool_mediator_->element_executor_->IsGlobalPropsEnabled());
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 1);
+  EXPECT_TRUE(res["result"].isObject());
+
+  devtool_mediator_->GlobalPropsDisable(message_sender_, message);
+  FlushTasmTasks();
+  EXPECT_FALSE(devtool_mediator_->element_executor_->IsGlobalPropsEnabled());
+
+  message["id"] = 2;
+  devtool_mediator_->GlobalPropsGet(message_sender_, message);
+  FlushTasmTasks();
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 2);
+  // Fixture constructs the executor without a tasm, so global props is empty.
+  EXPECT_TRUE(res["result"]["globalProps"].isObject());
+  EXPECT_TRUE(res["result"]["globalProps"].empty());
+  EXPECT_EQ(res["result"]["timestamp"].asUInt64(), 0u);
+
+  Json::Value replace_message(Json::ValueType::objectValue);
+  replace_message["id"] = 3;
+  replace_message["params"]["globalProps"]["key"] = "value";
+  devtool_mediator_->GlobalPropsReplace(message_sender_, replace_message);
+  FlushTasmTasks();
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 3);
+  // Fixture's executor has no tasm, so replace reports the unavailable error.
+  EXPECT_EQ(res["error"]["code"].asInt(), devtool::kServerError);
+  EXPECT_EQ(res["error"]["message"], "GlobalProps.replace is unavailable");
+}
+
+TEST_F(DevToolMediatorTest, GlobalPropsCommandsWhenTasmRunnerUnavailableCase) {
+  auto runner = devtool_mediator_->tasm_task_runner_;
+  devtool_mediator_->tasm_task_runner_ = nullptr;
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 7;
+  std::vector<std::function<void()>> commands = {
+      [&] { devtool_mediator_->GlobalPropsEnable(message_sender_, message); },
+      [&] { devtool_mediator_->GlobalPropsDisable(message_sender_, message); },
+      [&] { devtool_mediator_->GlobalPropsGet(message_sender_, message); },
+      [&] { devtool_mediator_->GlobalPropsReplace(message_sender_, message); },
+  };
+
+  for (auto& command : commands) {
+    command();
+    Json::Value res;
+    Json::Reader reader;
+    ASSERT_TRUE(reader.parse(
+        devtool::MockReceiver::GetInstance().received_message_.second, res));
+    EXPECT_EQ(res["error"]["code"].asInt(), devtool::kServerError);
+    EXPECT_EQ(res["error"]["message"], "GlobalProps target is unavailable");
+    EXPECT_EQ(res["id"], 7);
+    devtool::MockReceiver::GetInstance().ResetAll();
+  }
+
+  devtool_mediator_->tasm_task_runner_ = runner;
+}
+
+TEST_F(DevToolMediatorTest, GlobalPropsChangedUpdatesTimestampCase) {
+  // The timestamp advances even when the domain is disabled.
+  devtool_mediator_->GlobalPropsChanged();
+  FlushTasmTasks();
+  EXPECT_GT(devtool_mediator_->element_executor_->GetLastGlobalPropsTimestamp(),
+            0u);
+
+  // When enabled, a GlobalProps.changed event is emitted.
+  devtool::MockReceiver::GetInstance().ResetAll();
+  devtool_mediator_->element_executor_->global_props_enabled_ = true;
+  devtool_mediator_->GlobalPropsChanged();
+  FlushTasmTasks();
+
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["method"], "GlobalProps.changed");
+  EXPECT_GT(res["params"]["timestamp"].asUInt64(), 0u);
+  EXPECT_EQ(res["params"]["changes"].size(), 1u);
+  EXPECT_EQ(res["params"]["changes"][0]["operation"], "replace");
 }
 
 }  // namespace testing

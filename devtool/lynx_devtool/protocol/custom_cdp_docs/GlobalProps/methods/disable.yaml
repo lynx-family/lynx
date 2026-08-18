@@ -1,0 +1,17 @@
+summary: Disables GlobalProps change events for the current Lynx target.
+parameters: []
+returns: []
+events: []
+notes:
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM task runner.
+  - The operation is idempotent and returns an empty result object.
+  - GlobalProps.get and replace remain available after events are disabled.
+  - Returns a CDP error with code -32000 when the TASM target is unavailable.
+examples:
+  - title: Disable GlobalProps inspection
+    request:
+      id: 1
+      method: GlobalProps.disable
+    response:
+      id: 1
+      result: {}

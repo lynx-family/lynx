@@ -1,0 +1,25 @@
+summary: Returns the complete authoritative GlobalProps object for the current Lynx target.
+parameters: []
+returns:
+  - name: globalProps
+    type: object
+    description: Complete current GlobalProps value read from TemplateAssembler. An empty or not-yet-initialized value is returned as an empty object.
+  - name: timestamp
+    type: number
+    description: Backend-generated timestamp of the most recent applied GlobalProps change, monotonically increasing within the target. The frontend uses it to order GlobalProps.changed events against this response, e.g. while refetching after a replace marker. Zero when no change has been observed.
+events: []
+notes:
+  - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM task runner.
+  - The response is serialized before it leaves the TASM task runner.
+  - Returns a CDP error with code -32000 when the TASM target is unavailable.
+examples:
+  - title: Get current GlobalProps
+    request:
+      id: 1
+      method: GlobalProps.get
+    response:
+      id: 1
+      result:
+        globalProps:
+          theme: dark
+        timestamp: 1786956000123
