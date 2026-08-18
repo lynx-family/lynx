@@ -136,6 +136,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   int32_t GetInstanceId();
   base::LynxEntityId GetViewId() const { return log_context_.view_id; }
+  void OnLogContextUpdated(const base::LogContext& context);
 
   void Reset(bool wait_for_runtime_detach = true);
 

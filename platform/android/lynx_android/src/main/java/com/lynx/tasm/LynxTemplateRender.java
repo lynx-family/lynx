@@ -1019,8 +1019,7 @@ public class LynxTemplateRender
     mLoader = new LynxResourceLoader(null, mLynxViewBuilder.fetcher, this,
         mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
-    mNativeFacade = new NativeFacade(mEnableJSRuntime);
-    mNativeFacade.setCallback(new TASMCallback());
+    mNativeFacade = new NativeFacade(mEnableJSRuntime, new TASMCallback());
     DisplayMetrics screenMetrics = mLynxContext.getScreenMetrics();
     long runtimeWrapperPtr = (mRuntime == null) ? 0 : mRuntime.getNativePtr();
     long whiteBoardPtr = (mGroup == null) ? 0 : mGroup.getWhiteBoardPtr();
@@ -1483,6 +1482,10 @@ public class LynxTemplateRender
     }
     mLogContext = new LynxLogContext(
         nativeGenerateViewId(), LynxLogContext.UNAVAILABLE_ID, LynxLogContext.UNAVAILABLE_ID);
+  }
+
+  LynxLogContext getLogContextSnapshot() {
+    return mLogContext;
   }
 
   /**
@@ -3399,6 +3402,11 @@ public class LynxTemplateRender
     private static final String DEFAULT_ENTRY = "__Card__";
 
     public TASMCallback() {}
+
+    @Override
+    public void onLogContextUpdated(long viewId, long engineId, long runtimeId) {
+      mLogContext = new LynxLogContext(viewId, engineId, runtimeId);
+    }
 
     void setEmbeddedTiming(String key, long usTimestamp, String pipelineID) {
       mPerformanceController.setEmbeddedTiming(key, usTimestamp, pipelineID);

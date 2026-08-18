@@ -177,6 +177,8 @@ uint32_t MemoryMonitor::ScriptingEngineMode() {
 }
 
 MemoryMonitor::~MemoryMonitor() {
+  LOGI(log_context_ << " [memory_monitor.cc] release MemoryMonitor, this:"
+                    << this);
   // Clear records and report 0 memory usage.
   memory_records_.clear();
   bool enable = Enable();

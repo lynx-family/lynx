@@ -121,6 +121,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (long)initEndTiming;
 
 @optional
+- (void)onLogContextUpdatedWithViewId:(int64_t)viewId
+                             engineId:(int64_t)engineId
+                            runtimeId:(int64_t)runtimeId;
+
 - (BOOL)enableAirStrictMode;
 
 - (void)invokeUIMethod:(NSString *_Nonnull)method_string

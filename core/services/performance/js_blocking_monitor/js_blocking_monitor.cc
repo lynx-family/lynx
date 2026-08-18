@@ -106,7 +106,7 @@ void JSBlockingMonitor::ReportWithTimer(int8_t index) {
 }
 
 void JSBlockingMonitor::ReportBlockingInfo(const std::string& stage) {
-  LOGI("ReportBlockingInfo stage:" << stage);
+  LOGI(log_context_ << " ReportBlockingInfo stage:" << stage);
   if (!Enable() || sender_ == nullptr || total_blocking_time_ == 0 ||
       total_blocking_count_ == 0) {
     return;

@@ -15,6 +15,10 @@ NativeFacadeImpl::NativeFacadeImpl(LynxTemplateRenderer* renderer)
 
 NativeFacadeImpl::~NativeFacadeImpl() {}
 
+void NativeFacadeImpl::OnLogContextUpdated(const base::LogContext& context) {
+  renderer_->OnLogContextUpdated(context);
+}
+
 void NativeFacadeImpl::OnDataUpdated() { renderer_->OnDataUpdated(); }
 
 void NativeFacadeImpl::OnPageChanged(bool is_first_screen) {

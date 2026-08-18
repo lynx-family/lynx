@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import com.lynx.BuildConfig;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.lepus.LynxLepusModule;
@@ -47,6 +46,8 @@ import java.util.Map;
 @SuppressWarnings("JniMissingFunction")
 public class NativeFacade implements EventEmitter.LynxEventReporter {
   public interface Callback {
+    default void onLogContextUpdated(long viewId, long engineId, long runtimeId) {}
+
     void onLoaded(int templateSize);
 
     void onSSRHydrateFinished();
@@ -118,6 +119,19 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   public NativeFacade(boolean enableJSRuntime) {
     mEnableJSRuntime = enableJSRuntime;
+  }
+
+  NativeFacade(boolean enableJSRuntime, Callback callback) {
+    this(enableJSRuntime);
+    mCallback = callback;
+  }
+
+  @CalledByNative
+  private void onLogContextUpdated(long viewId, long engineId, long runtimeId) {
+    Callback callback = mCallback;
+    if (callback != null) {
+      callback.onLogContextUpdated(viewId, engineId, runtimeId);
+    }
   }
 
   public void setCallback(Callback callback) {

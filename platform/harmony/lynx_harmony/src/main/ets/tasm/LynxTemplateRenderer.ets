@@ -26,7 +26,7 @@ const TAG = 'LynxTemplateRenderer';
 
 
 export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
-  private readonly logContext: LynxLogContext;
+  private logContext: LynxLogContext;
   private clients: LynxViewClient[];
   private url?: string;
   private perfController?: PerformanceController;
@@ -99,6 +99,14 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
       this.enableMultiAsyncThread, this.logContext.viewId, this.embeddedMode);
+  }
+
+  getLogContext(): LynxLogContext {
+    return this.logContext;
+  }
+
+  onLogContextUpdated(viewId: number, engineId: number, runtimeId: number): void {
+    this.logContext = new LynxLogContext(viewId, engineId, runtimeId);
   }
 
   aboutToDisappear() {

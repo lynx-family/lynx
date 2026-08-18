@@ -186,6 +186,10 @@ void LynxShell::PublishLogContextToNonEngineHolders(
     perf_controller_actor_->ActLite(
         [context](auto& controller) { controller->SetLogContext(context); });
   }
+  if (facade_actor_) {
+    facade_actor_->ActLite(
+        [context](auto& facade) { facade->OnLogContextUpdated(context); });
+  }
 }
 
 void LynxShell::PublishLogContextIfReady() {
@@ -204,6 +208,29 @@ void LynxShell::PublishLogContextIfReady() {
         [context](auto& layout) { layout->SetLogContext(context); });
   }
   PublishLogContextToNonEngineHolders(context);
+}
+
+void LynxShell::PrepareEngineHandoff() {
+  const auto current = log_context_;
+  if (current.engine_id == base::kUnavailableLynxEntityId) {
+    return;
+  }
+
+  log_context_.engine_id = base::kUnavailableLynxEntityId;
+  PublishLogContextToNonEngineHolders(log_context_);
+
+  base::LogContext engine_context;
+  engine_context.engine_id = current.engine_id;
+  if (engine_actor_) {
+    engine_actor_->ActLite([engine_context](auto& engine) {
+      engine->SetLogContext(engine_context);
+    });
+  }
+  if (layout_actor_) {
+    layout_actor_->ActLite([engine_context](auto& layout) {
+      layout->SetLogContext(engine_context);
+    });
+  }
 }
 
 void LynxShell::BuildLynxEngine(
@@ -401,6 +428,11 @@ void LynxShell::RebuildLynxEngine(
   BuildLynxEngine(std::move(tasm_platform_invoker), std::move(layout_context),
                   std::move(painting_context));
   OnLynxEngineBuilt(prop_bundle_creator_, std::move(native_module_manager));
+}
+
+void LynxShell::ReattachLynxEngineWrapper(LynxEngineWrapper* engine_wrapper) {
+  engine_wrapper->BindShell(this);
+  PublishLogContextIfReady();
 }
 
 void LynxShell::Destroy() {

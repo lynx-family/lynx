@@ -77,6 +77,7 @@ LayoutContext::LayoutContext(
   if (platform_impl_) {
     platform_impl_->SetLayoutNodeManager(this);
   }
+  LOGI(log_context_ << " LayoutContext create this:" << this);
 }
 
 void LayoutContext::SetLogContext(const base::LogContext& context) {
@@ -84,6 +85,7 @@ void LayoutContext::SetLogContext(const base::LogContext& context) {
 }
 
 LayoutContext::~LayoutContext() {
+  LOGI(log_context_ << " LayoutContext release this:" << this);
   if (platform_impl_ != nullptr) {
     DestroyPlatformNodesIfNeeded();
     platform_impl_->Destroy();

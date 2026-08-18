@@ -214,6 +214,10 @@ class LynxShell {
 
   base::LogContext GetLogContextSnapshot() const { return log_context_; }
 
+  void ReattachLynxEngineWrapper(LynxEngineWrapper* engine_wrapper);
+
+  void PrepareEngineHandoff();
+
   void SetBindWithEngineWrapper(bool bind) { bind_with_engine_wrapper_ = bind; }
 
   void UpdateViewport(float width, int32_t width_mode, float height,

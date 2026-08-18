@@ -14,6 +14,10 @@ NativeFacadeHarmony::NativeFacadeHarmony(LynxTemplateRenderer* renderer)
 
 NativeFacadeHarmony::~NativeFacadeHarmony() {}
 
+void NativeFacadeHarmony::OnLogContextUpdated(const base::LogContext& context) {
+  renderer_->OnLogContextUpdated(context);
+}
+
 void NativeFacadeHarmony::OnDataUpdated() { renderer_->OnDataUpdated(); }
 
 void NativeFacadeHarmony::OnPageChanged(bool is_first_screen) {

@@ -1694,7 +1694,7 @@ void ReattachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   auto* engine_wrapper =
       reinterpret_cast<lynx::shell::LynxEngineWrapper*>(engine_ptr);
-  engine_wrapper->BindShell(shell);
+  shell->ReattachLynxEngineWrapper(engine_wrapper);
   if (proxy_ptr != 0) {
     lynx::shell::LynxEngineProxyAndroid* engine_proxy =
         reinterpret_cast<lynx::shell::LynxEngineProxyAndroid*>(proxy_ptr);
@@ -1710,7 +1710,8 @@ void DetachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
   if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
     return;
   }
-  // TODO(huangweiwu): Support active unbinding from LynxEngine
+  auto* shell = reinterpret_cast<LynxShell*>(ptr);
+  shell->PrepareEngineHandoff();
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 

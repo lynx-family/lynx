@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/shell/layout_mediator.h"
@@ -25,6 +26,7 @@ class LynxEngineWrapper {
   ~LynxEngineWrapper() = default;
 
   void SetupCore(
+      const base::LogContext& log_context,
       const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>>&
           engine_actor_,
       const std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::LayoutContext>>&
@@ -47,6 +49,7 @@ class LynxEngineWrapper {
       layout_actor_;
   TasmMediator* tasm_mediator_{nullptr};
   LayoutMediator* layout_mediator_{nullptr};
+  base::LogContext engine_context_;
 };
 
 }  // namespace shell

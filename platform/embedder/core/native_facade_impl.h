@@ -30,6 +30,8 @@ class NativeFacadeImpl : public shell::NativeFacade {
   NativeFacadeImpl(NativeFacadeImpl&& facade) = default;
   NativeFacadeImpl& operator=(NativeFacadeImpl&&) = default;
 
+  void OnLogContextUpdated(const base::LogContext& context) override;
+
   void OnDataUpdated() override;
 
   void OnPageChanged(bool is_first_screen) override;

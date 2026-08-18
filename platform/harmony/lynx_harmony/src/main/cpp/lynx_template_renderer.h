@@ -121,6 +121,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void OnEventCapture(long target_id, bool is_catch, int64_t event_id);
   void OnEventBubble(long target_id, bool is_catch, int64_t event_id);
   void OnEventFire(long target_id, bool is_stop, int64_t event_id);
+  void OnLogContextUpdated(const base::LogContext& context);
   void OnPageConfigDecoded(const std::shared_ptr<tasm::PageConfig>& config);
   lepus::Value TriggerLepusMethod(const std::string& method_name,
                                   const lepus::Value& args);

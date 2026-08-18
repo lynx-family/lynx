@@ -700,6 +700,21 @@ void LynxTemplateRenderer::OnEventFire(long target_id, bool is_stop,
   }
 }
 
+void LynxTemplateRenderer::OnLogContextUpdated(
+    const base::LogContext& context) {
+  base::NapiHandleScope scope(env_);
+  napi_value params[3];
+  napi_create_int64(env_, context.view_id, &params[0]);
+  napi_create_int64(env_, context.engine_id, &params[1]);
+  napi_create_int64(env_, context.runtime_id, &params[2]);
+  const auto status = base::NapiUtil::InvokeJsMethod(
+      env_, template_renderer_ref_, "onLogContextUpdated", 3, params);
+  if (status != napi_ok) {
+    LOGE("Failed to update Harmony LogContext "
+         << context << ": " << base::NapiUtil::StatusToString(status));
+  }
+}
+
 #define DECLARE_NAPI_METHOD(name, func) \
   { name, 0, func, 0, 0, 0, napi_default, 0 }
 

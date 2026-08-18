@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "core/base/lynx_export.h"
 #include "core/public/prop_bundle.h"
 
@@ -28,6 +29,9 @@ class Catalyzer {
   virtual ~Catalyzer() = default;
 
   inline PaintingContext* painting_context() { return painting_context_.get(); }
+
+  void SetLogContext(const base::LogContext& log_context);
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   inline void set_root(Element* root) { root_ = root; }
   inline Element* get_root() { return root_; }
@@ -62,6 +66,7 @@ class Catalyzer {
   Catalyzer(const Catalyzer&) = delete;
   Catalyzer& operator=(const Catalyzer&) = delete;
   const int32_t instance_id_;
+  base::LogContext log_context_;
 };
 
 }  // namespace tasm

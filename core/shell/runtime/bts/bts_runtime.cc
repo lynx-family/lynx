@@ -178,8 +178,8 @@ void BTSRuntime::Init(
     const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>&
         runtime_observer,
     std::vector<std::string> preload_js_paths) {
-  LOGI("Init LynxRuntime group_id: " << group_id_ << " runtime_id: "
-                                     << GetRuntimeId() << " this:" << this);
+  LOGI(log_context_ << " Init LynxRuntime group_id:" << group_id_
+                    << " this:" << this);
 
   tasm::TimingCollector::Scope<runtime::TemplateDelegate> scope(
       delegate_.get());
@@ -213,9 +213,9 @@ void BTSRuntime::Init(
 
   InitExecutor(!(runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD),
                std::move(preload_js_paths));
-  LOGI("js_runtime_type :" << static_cast<int32_t>(
-                                  js_executor_->getJSRuntimeType())
-                           << " " << this);
+  LOGI(log_context_ << " js_runtime_type:"
+                    << static_cast<int32_t>(js_executor_->getJSRuntimeType())
+                    << " this:" << this);
 
 #if ENABLE_NAPI_BINDING
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, PREPARE_NAPI_ENV);
@@ -231,7 +231,7 @@ void BTSRuntime::Init(
 #if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
 #endif
-  LOGI(" lynxRuntime:" << this << " create APP " << app_.get());
+  LOGI(log_context_ << " LynxRuntime:" << this << " create APP " << app_.get());
   AddEventListeners();
 
   if ((runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD) == 0) {
@@ -360,7 +360,7 @@ void BTSRuntime::UpdateState(State state) {
     }
     default: {
       // TODO
-      LOGE("unkown runtime state.");
+      LOGE(log_context_ << " unknown runtime state.");
       break;
     }
   }
@@ -383,8 +383,7 @@ void BTSRuntime::PrepareNapiEnvironment() {
                                             *raw_runtime, delegate_.get());
   if (proxy) {
     proxy->SetJSRuntime(std::move(runtime));
-    LOGI("napi attaching with proxy: " << proxy.get()
-                                       << ", id: " << GetRuntimeId());
+    LOGI(log_context_ << " napi attaching with proxy: " << proxy.get());
     napi_environment_->SetRuntimeProxy(std::move(proxy));
     napi_environment_->Attach();
   }
@@ -417,8 +416,8 @@ void BTSRuntime::PrepareRestrictedNapiEnvironment() {
               std::move(base_proxy));
     }
   }
-  LOGI("napi attaching with restricted proxy: " << proxy.get()
-                                                << ", id: " << GetRuntimeId());
+  LOGI(log_context_ << " napi attaching with restricted proxy: "
+                    << proxy.get());
   if (proxy != nullptr) {
     napi_restricted_environment_->SetRuntimeProxy(std::move(proxy));
     napi_restricted_environment_->Attach();
@@ -426,7 +425,7 @@ void BTSRuntime::PrepareRestrictedNapiEnvironment() {
 }
 
 void BTSRuntime::RegisterNapiModules() {
-  LOGI("napi registering module");
+  LOGI(log_context_ << " napi registering module");
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
               RUNTIME_LIFECYCLE_OBSERVER_RUNTIME_ATTACH);
   napi_env env = static_cast<napi_env>(napi_environment_->proxy()->Env());
@@ -475,7 +474,7 @@ void BTSRuntime::OnSsrRuntimeReady() {
   if (state_ != State::kSsrRuntimeReady) {
     return;
   }
-  LOGI("lynx ssr runtime ready");
+  LOGI(log_context_ << " lynx ssr runtime ready");
   for (const auto& task : ssr_global_event_cached_tasks_) {
     task();
   }
@@ -490,7 +489,7 @@ void BTSRuntime::CallJSFunction(const std::string& module_id,
   QueueOrExecTask([this, module_id, method_id, arguments]() {
     auto* js_runtime = GetJSRuntimeWeak().Lock();
     if (!js_runtime) {
-      LOGE("js_runtime is nullptr!");
+      LOGE(log_context_ << " js_runtime is nullptr!");
       return;
     }
     runtime::js::Scope scope(*js_runtime);
@@ -529,10 +528,9 @@ void BTSRuntime::CallJSCallback(
   uint64_t callback_call_start_time = base::CurrentSystemTimeMilliseconds();
   js_executor_->invokeCallback(callback, &iterator->second);
   callback->ReportLynxErrors(delegate_.get());
-  LOGV(
-      "LynxModule, LynxRuntime::CallJSCallback did invoke "
-      "callback, id: "
-      << callback->callback_id());
+  LOGV(log_context_
+       << " LynxModule, LynxRuntime::CallJSCallback did invoke callback, id: "
+       << callback->callback_id());
   callbacks_.erase(iterator);
 
   if (callback->timing_collector_ != nullptr) {
@@ -633,7 +631,7 @@ void BTSRuntime::CallFunction(const std::string& module_id,
   }
   auto* js_runtime = GetJSRuntimeWeak().Lock();
   if (!js_runtime) {
-    LOGW("js_runtime is nullptr!");
+    LOGW(log_context_ << " js_runtime is nullptr!");
     return;
   }
 #if ENABLE_TESTBENCH_RECORDER
@@ -722,7 +720,7 @@ void BTSRuntime::OnJSSourcePrepared(
         page_options_, tasm::timing::kLoadJSTask, url);
     tasm::TimingCollector::Scope<runtime::TemplateDelegate> scope(
         delegate_.get(), pipeline_options);
-    LOGI("lynx runtime loadApp, napi id:" << GetRuntimeId());
+    LOGI(log_context_ << " lynx runtime loadApp");
     template_url_ = url;
     // TODO(huzhanbo): This is needed by Lynx Network now, will be removed
     // after we fully switch to it.
@@ -739,8 +737,8 @@ void BTSRuntime::OnJSSourcePrepared(
            tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
            page_options_.GetDebuggable());
       js_runtime->SetCircularDataCheckFlag(enable_circular_data_check);
-      LOGI("[LynxRuntime] circular data check flag: "
-           << enable_circular_data_check);
+      LOGI(log_context_ << " [LynxRuntime] circular data check flag: "
+                        << enable_circular_data_check);
       // set enable_js_binding_api_throw_exception
       js_runtime->SetEnableJsBindingApiThrowException(
           bundle.enable_js_binding_api_throw_exception);
@@ -765,7 +763,7 @@ void BTSRuntime::OnJSSourcePrepared(
           if (wrapper) {
             auto napi_environment = wrapper->GetNapiEnvironment();
             if (napi_environment) {
-              LOGI("register icu on shared context.");
+              LOGI(log_context_ << " register icu on shared context.");
               tasm::I18n::Bind(reinterpret_cast<intptr_t>(
                   static_cast<napi_env>(napi_environment->proxy()->Env())));
             }
@@ -853,8 +851,7 @@ void BTSRuntime::Destroy() {
 }
 
 void BTSRuntime::DestroyAppAndNapi() {
-  LOGI("LynxRuntime::DestroyAppAndNapi, runtime_id: " << GetRuntimeId()
-                                                      << " this: " << this);
+  LOGI(log_context_ << " LynxRuntime::DestroyAppAndNapi this:" << this);
   // Releasing app_ runs App teardown before NAPI detaches.
   app_ = nullptr;
 #if ENABLE_NAPI_BINDING
@@ -865,12 +862,12 @@ void BTSRuntime::DestroyAppAndNapi() {
   }
   // Detach napi environments in reverse order.
   if (napi_restricted_environment_) {
-    LOGI("restricted napi detaching runtime, id: " << GetRuntimeId());
+    LOGI(log_context_ << " restricted napi detaching runtime");
     napi_restricted_environment_->Detach();
     napi_restricted_environment_.reset();
   }
   if (napi_environment_) {
-    LOGI("napi detaching runtime, id: " << GetRuntimeId());
+    LOGI(log_context_ << " napi detaching runtime");
     napi_environment_->Detach();
     napi_environment_.reset();
   }
@@ -917,7 +914,7 @@ void BTSRuntime::EvaluateScriptStandalone(
     std::string url, runtime::js::JsContent script,
     std::shared_ptr<const runtime::js::JsBundle> bundle,
     tasm::PackageInstanceDSL runtime_type, uint64_t trace_flow_id) {
-  LOGI("EvaluateScriptStandalone, url: " << url);
+  LOGI(log_context_ << " EvaluateScriptStandalone, url: " << url);
   if (state_ != State::kJsCoreLoaded) {
     delegate_->OnErrorOccurred(base::LynxError(
         error::E_BTS_RUNTIME_ERROR,
@@ -986,7 +983,7 @@ void BTSRuntime::OnRuntimeReady() {
     return;
   }
 
-  LOGI("lynx runtime ready");
+  LOGI(log_context_ << " lynx runtime ready");
 
   delegate_->OnRuntimeReady();
 
@@ -1050,6 +1047,8 @@ void BTSRuntime::AddEventListeners() {
 }
 
 void BTSRuntime::OnJSIException(const runtime::js::JSIException& exception) {
+  LOGE(log_context_ << " BTSRuntime::OnJSIException code:"
+                    << exception.errorCode());
   if (state_ == State::kDestroying || !app_) {
     if (delegate_) {
       auto error = base::LynxError(
@@ -1100,8 +1099,8 @@ int64_t BTSRuntime::GenerateRuntimeId() {
 void BTSRuntime::SetEnableBytecode(bool enable,
                                    const std::string& bytecode_source_url) {
   QueueOrExecAppTask([this, enable, bytecode_source_url]() {
-    LOGI("LynxRuntime::SetEnableBytecode, enable: "
-         << enable << " bytecode_source_url: " << bytecode_source_url);
+    LOGI(log_context_ << " LynxRuntime::SetEnableBytecode, enable: " << enable
+                      << " bytecode_source_url: " << bytecode_source_url);
     if (auto* rt = GetJSRuntimeWeak().Lock()) {
       rt->SetEnableUserBytecode(enable);
       rt->SetBytecodeSourceUrl(bytecode_source_url);
