@@ -61,8 +61,15 @@ class InvokeScope {
 };
 
 LynxJSIModule::~LynxJSIModule() = default;
+void LynxJSIModule::SetLogContext(const base::LogContext& log_context) {
+  LynxModule::SetLogContext(log_context);
+  if (native_module_) {
+    native_module_->SetLogContext(log_context);
+  }
+}
+
 void LynxJSIModule::Destroy() {
-  LOGI("NativeModule: LynxJSIModule Destroy " << name_);
+  LOGI(GetLogContext() << " NativeModule: LynxJSIModule Destroy " << name_);
   if (native_module_) {
     native_module_->Destroy();
     native_module_ = nullptr;
@@ -73,6 +80,8 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     const MethodMetadata& method, Runtime* rt, const Value* args,
     size_t count) {
   uint64_t call_func_start = lynx::base::CurrentSystemTimeMilliseconds();
+  LOGI(GetLogContext() << " NativeModule: invoke " << name_ << "."
+                       << method.name);
   Scope scope(*rt);
 #if ENABLE_TESTBENCH_RECORDER
   std::vector<int64_t> callback_ids;
@@ -270,6 +279,13 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   timing_collector->EndCallFunc(call_func_start);
   if (!invoke_info.has_error) {
     delegate_->OnMethodInvoked(name_, method.name, error::E_SUCCESS);
+  }
+  if (response.has_value()) {
+    LOGI(GetLogContext() << " NativeModule: invoke complete " << name_ << "."
+                         << method.name);
+  } else {
+    LOGE(GetLogContext() << " NativeModule: invoke failed " << name_ << "."
+                         << method.name);
   }
   return response;
 }

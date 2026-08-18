@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "core/base/lynx_export.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
@@ -45,6 +46,15 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   ~JSExecutor();
   JSExecutor(const JSExecutor&) = delete;
   JSExecutor& operator=(const JSExecutor&) = delete;
+
+  void SetLogContext(const base::LogContext& log_context) {
+    log_context_ = log_context;
+    if (module_manager_) {
+      module_manager_->SetLogContext(log_context);
+    }
+  }
+
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   void Destroy();
 
@@ -92,6 +102,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   }
 
  private:
+  base::LogContext log_context_;
   std::string group_id_;
   std::shared_ptr<InspectorRuntimeObserverNG> runtime_observer_ng_;
   std::shared_ptr<LynxModuleManager> module_manager_;

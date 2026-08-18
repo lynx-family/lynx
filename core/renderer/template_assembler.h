@@ -824,6 +824,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void SetLogContext(const base::LogContext& log_context) {
     log_context_ = log_context;
+    if (page_proxy_.element_manager()) {
+      page_proxy_.element_manager()->SetLogContext(log_context);
+    }
   }
 
   const base::LogContext& GetLogContext() const { return log_context_; }

@@ -13,6 +13,7 @@
 #include "base/include/closure.h"
 #include "base/include/debug/lynx_error.h"
 #include "base/include/expected.h"
+#include "base/include/log/log_context.h"
 #include "core/base/lynx_export.h"
 #include "core/public/jsb/lynx_module_callback.h"
 #include "core/public/lynx_runtime_proxy.h"
@@ -92,6 +93,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
   void SetRuntimeProxy(std::weak_ptr<shell::LynxRuntimeProxy> proxy) {
     runtime_proxy_ = proxy;
   }
+  void SetLogContext(const base::LogContext& log_context) {
+    log_context_ = log_context;
+  }
 
   // The `context_id_` is used to associate with `LynxContext`, which is linked
   // to the corresponding `Context` through `findContext` in
@@ -113,6 +117,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
 #endif
 
  protected:
+  const base::LogContext& GetLogContext() const { return log_context_; }
+
   // The `context_id_` is used to associate with `LynxContext`, which is linked
   // to the corresponding `Context` through `findContext` in
   // `LynxModuleWrapper`.
@@ -121,6 +127,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
   std::weak_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
   NativeModuleMethods methods_;
   std::shared_ptr<pub::PubValueFactory> value_factory_;
+
+ private:
+  base::LogContext log_context_;
 };
 
 }  // namespace runtime
