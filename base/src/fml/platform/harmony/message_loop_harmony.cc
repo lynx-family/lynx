@@ -8,7 +8,6 @@
 #include <uv.h>
 
 #include "base/include/fml/platform/linux/timerfd.h"
-#include "base/include/platform/harmony/napi_util.h"
 
 // temporarily workaround to compile without logging
 #undef LOGE
@@ -25,20 +24,6 @@ fml::RefPtr<MessageLoopImpl> MessageLoopImpl::Create(void* platform_loop) {
 }
 
 static constexpr int kClockType = CLOCK_MONOTONIC;
-
-napi_value MessageLoopHarmony::NapiCall(napi_env env, napi_callback_info info) {
-  void* data = nullptr;
-  napi_get_cb_info(env, info, nullptr, nullptr, nullptr, &data);
-  static_cast<MessageLoopHarmony*>(data)->RunExpiredTasksNow();
-  return nullptr;
-}
-
-void MessageLoopHarmony::SetupNapiCallback(napi_env env) {
-  env_ = env;
-  napi_value fn{};
-  napi_create_function(env_, nullptr, 0, NapiCall, this, &fn);
-  napi_create_reference(env_, fn, 1, &top_level_callback_);
-}
 
 MessageLoopHarmony::MessageLoopHarmony(void* platform_loop)
     : timer_fd_(timerfd_create(kClockType, TFD_NONBLOCK | TFD_CLOEXEC)),
@@ -103,14 +88,7 @@ void MessageLoopHarmony::WakeUp(fml::TimePoint time_point) {
 
 void MessageLoopHarmony::OnEventFired() {
   if (TimerDrain(timer_fd_.get())) {
-    if (top_level_callback_) {
-      base::NapiHandleScope scope(env_);
-      napi_value fn{};
-      napi_get_reference_value(env_, top_level_callback_, &fn);
-      napi_call_function(env_, nullptr, fn, 0, nullptr, nullptr);
-    } else {
-      RunExpiredTasksNow();
-    }
+    RunExpiredTasksNow();
   }
 }
 
