@@ -45,6 +45,7 @@
 #include "clay/shell/common/pointer_data_to_event.h"
 #include "clay/shell/common/services/platform_const_service.h"
 #include "clay/shell/common/shell_common_rendering_backend.h"
+#include "core/base/trace/trace_event_def.h"
 #ifndef ENABLE_SKITY
 #include "clay/shell/common/skia_event_tracer_impl.h"
 #else  // ENABLE_SKITY
@@ -151,6 +152,8 @@ std::unique_ptr<Shell> Shell::Create(
   TRACE_EVENT("clay", "Shell::Create");
 
   PerformInitializationTasks(settings);
+  TRACE_EVENT("clay", CLAY_STARTUP_SHELL_CREATE, "gpu_disabled",
+              is_gpu_disabled);
   auto resource_cache_limit_calculator =
       std::make_shared<ResourceCacheLimitCalculator>(
           settings.resource_cache_max_bytes_threshold);
@@ -198,10 +201,20 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
   // create clay engine
   std::promise<std::unique_ptr<Engine>> engine_promise;
   auto engine_future = engine_promise.get_future();
+  const uint64_t ui_startup_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT_INSTANT("clay", CLAY_STARTUP_POST_SETUP_UI_SUBSYSTEM,
+                      [ui_startup_flow_id](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(ui_startup_flow_id);
+                      });
   fml::TaskRunner::RunNowOrPostTask(
       shell->GetTaskRunners().GetUITaskRunner(),
       fml::MakeCopyable([shell = shell.get(), service_manager, &engine_promise,
-                         unref_queue, &on_create_engine]() mutable {
+                         unref_queue, &on_create_engine,
+                         startup_flow_id = ui_startup_flow_id]() mutable {
+        TRACE_EVENT("clay", CLAY_STARTUP_SETUP_UI_SUBSYSTEM,
+                    [startup_flow_id](lynx::perfetto::EventContext ctx) {
+                      ctx.event()->add_terminating_flow_ids(startup_flow_id);
+                    });
         TRACE_EVENT("clay", "ShellSetupUISubsystem");
         const auto& task_runners = shell->GetTaskRunners();
 
@@ -238,11 +251,23 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
   });
 
   // Create the rasterizer on the raster thread.
+  const uint64_t raster_startup_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT_INSTANT(
+      "clay", CLAY_STARTUP_POST_SETUP_RASTER_SUBSYSTEM,
+      [raster_startup_flow_id](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(raster_startup_flow_id);
+      });
   fml::TaskRunner::RunNowOrPostTask(
       task_runners.GetRasterTaskRunner(),
       [service_manager, on_create_rasterizer, render_settings, unref_queue,
+       startup_flow_id = raster_startup_flow_id,
        page_id = static_cast<uint32_t>(
            shell->GetEngine()->GetPageView()->PageUniqueId())]() {
+        TRACE_EVENT("clay", CLAY_STARTUP_SETUP_RASTER_SUBSYSTEM, "page_id",
+                    page_id,
+                    [startup_flow_id](lynx::perfetto::EventContext ctx) {
+                      ctx.event()->add_terminating_flow_ids(startup_flow_id);
+                    });
         TRACE_EVENT("clay", "ShellSetupGPUSubsystem");
         std::unique_ptr<Rasterizer> rasterizer(
             on_create_rasterizer(service_manager));
@@ -282,6 +307,7 @@ std::unique_ptr<Shell> Shell::CreateWithSnapshot(
   // This must come first as it initializes tracing.
   PerformInitializationTasks(settings);
 
+  TRACE_EVENT("clay", CLAY_STARTUP_CREATE_WITH_SNAPSHOT);
   TRACE_EVENT("clay", "Shell::CreateWithSnapshot");
 
   const bool callbacks_valid =
@@ -641,6 +667,7 @@ fml::WeakPtr<PlatformView> Shell::GetPlatformView() {
 
 // |PlatformView::Delegate|
 void Shell::OnPlatformViewCreated() {
+  TRACE_EVENT_INSTANT("clay", CLAY_STARTUP_PLATFORM_VIEW_CREATED);
   TRACE_EVENT("clay", "Shell::OnPlatformViewCreated");
 
   fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
@@ -655,11 +682,14 @@ void Shell::OnPlatformViewCreated() {
 
 // |PlatformView::Delegate|
 void Shell::OnPlatformViewSurfaceCreated() {
+  TRACE_EVENT_INSTANT("clay", CLAY_STARTUP_PLATFORM_SURFACE_CREATED);
   TRACE_EVENT("clay", "Shell::OnPlatformViewSurfaceCreated");
   SetupOutputSurface(true);
 }
 
 void Shell::SetupOutputSurface(bool reuse_existing_surface) {
+  TRACE_EVENT("clay", CLAY_STARTUP_SETUP_OUTPUT_SURFACE, "reuse_surface",
+              reuse_existing_surface);
   fml::RefPtr<OutputSurface> output_surface =
       platform_view_->GetOutputSurface();
   if (!output_surface) {
@@ -697,6 +727,8 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
     }
     if (success) {
       waiting_for_first_frame->store(true);
+      TRACE_EVENT_INSTANT("clay", CLAY_STARTUP_OUTPUT_SURFACE_READY,
+                          "reused_surface", reuse_existing_surface);
     }
     fml::TaskRunner::RunNowOrPostTask(ui_task_runner, [engine, success] {
       if (engine) {
