@@ -82,7 +82,7 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
   auto perfControllerDarwin =
       std::make_unique<performance::PerformanceControllerDarwin>(self.controller);
   auto perfController = std::make_unique<performance::PerformanceController>(
-      std::make_unique<MockPerformanceSender>(), nullptr, 0);
+      lynx::base::LogContext{}, std::make_unique<MockPerformanceSender>(), nullptr, 0);
   perfController->SetPlatformImpl(std::move(perfControllerDarwin));
   _actor = std::make_shared<PerformanceControllerActor>(
       std::move(perfController), performance::PerformanceController::GetTaskRunner());

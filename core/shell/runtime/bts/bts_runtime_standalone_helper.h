@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/log/log_context.h"
 #include "base/include/lynx_actor.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/lynx_resource_loader.h"
@@ -105,11 +106,16 @@ class BTSRuntimeStandalone {
 
   int32_t GetRuntimeId() const { return runtime_id_; }
 
+  const base::LogContext& GetCreationLogContext() const {
+    return creation_context_;
+  }
+
   const std::string& GroupName() const { return group_name_; }
 
  private:
   BTSRuntimeStandalone(
       std::string group_name, int32_t runtime_id,
+      const base::LogContext& creation_context,
       std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor,
       std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
           perf_controller_actor,
@@ -119,6 +125,7 @@ class BTSRuntimeStandalone {
       std::unique_ptr<StandaloneBundleProxy> js_bundle_proxy,
       std::shared_ptr<tasm::JsBundleHolderImpl> js_bundle_holder)
       : runtime_id_(runtime_id),
+        creation_context_(creation_context),
         runtime_actor_(runtime_actor),
         perf_controller_actor_(perf_controller_actor),
         native_runtime_facade_(native_runtime_facade),
@@ -129,6 +136,7 @@ class BTSRuntimeStandalone {
 
   std::string group_name_;
   int32_t runtime_id_;
+  const base::LogContext creation_context_;
   std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;
   // will be bind to LynxShell when LynxBackgroundRuntime is attached to
   // LynxView

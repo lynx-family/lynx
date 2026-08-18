@@ -137,6 +137,16 @@ LynxShellBuilder& LynxShellBuilder::SetRuntimeActor(
   return *this;
 }
 
+LynxShellBuilder& LynxShellBuilder::SetRuntimeCreationContext(
+    const base::LogContext* creation_context) {
+  if (creation_context) {
+    runtime_creation_context_ = *creation_context;
+  } else {
+    runtime_creation_context_.reset();
+  }
+  return *this;
+}
+
 LynxShellBuilder& LynxShellBuilder::SetPerfControllerActor(
     const std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>&
         perf_actor) {
@@ -223,8 +233,8 @@ LynxShell* LynxShellBuilder::build() {
 
       perf_controller =
           std::make_unique<tasm::performance::PerformanceController>(
-              std::move(performance_mediator), std::move(timing_mediator),
-              shell->instance_id_);
+              shell->GetLogContextSnapshot(), std::move(performance_mediator),
+              std::move(timing_mediator), shell->instance_id_);
 
       perf_controller->GetTimingHandler().SetEnableJSRuntime(
           this->shell_option_.enable_js_);
@@ -249,6 +259,7 @@ LynxShell* LynxShellBuilder::build() {
     loader_->SetPerfControllerActor(shell->perf_controller_actor_);
   }
   shell->runtime_actor_ = runtime_actor_;
+  shell->runtime_creation_context_ = runtime_creation_context_;
 
   shell->engine_build_options_.lynx_env_config_ = lynx_env_config_;
   shell->engine_build_options_.lazy_bundle_loader_ = loader_;

@@ -14,6 +14,7 @@
 #include "base/include/closure.h"
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/debug/lynx_error.h"
+#include "base/include/log/log_context.h"
 #include "base/include/vector.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -67,7 +68,8 @@ uint32_t CalcRuntimeFlags(bool force_reload_js_core, bool use_quickjs_engine,
 
 class BTSRuntime final {
  public:
-  BTSRuntime(const std::string& group_id, int32_t instance_id,
+  BTSRuntime(const std::string& group_id,
+             const base::LogContext& initial_context, int32_t instance_id,
              std::unique_ptr<runtime::TemplateDelegate> delegate,
              const std::string& bytecode_source_url, uint32_t runtime_flags,
              const tasm::PageOptions& page_options);
@@ -142,6 +144,9 @@ class BTSRuntime final {
 
   base::UnsafeWeakPtr<runtime::js::Runtime> GetJSRuntimeWeak();
   int64_t GetRuntimeId() const { return instance_id_; }
+
+  void SetLogContext(const base::LogContext& context);
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   std::unique_ptr<runtime::js::HeapSnapshot> TakeHeapSnapshot();
 
@@ -258,6 +263,7 @@ class BTSRuntime final {
 
   static int64_t GenerateRuntimeId();
 
+  base::LogContext log_context_;
   const std::string group_id_;
   const int32_t instance_id_;
   const std::unique_ptr<runtime::TemplateDelegate> delegate_;

@@ -59,10 +59,11 @@ void CollectDirtyNodeForList(LayoutNode* node,
 }  // namespace
 
 LayoutContext::LayoutContext(
-    std::unique_ptr<Delegate> delegate,
+    const base::LogContext& initial_context, std::unique_ptr<Delegate> delegate,
     std::unique_ptr<LayoutCtxPlatformImpl> platform_impl,
     const LynxEnvConfig& lynx_env_config, const PageOptions& page_options)
-    : platform_impl_(std::move(platform_impl)),
+    : log_context_(initial_context),
+      platform_impl_(std::move(platform_impl)),
       delegate_(std::move(delegate)),
       root_(nullptr),
       viewport_(),
@@ -76,6 +77,10 @@ LayoutContext::LayoutContext(
   if (platform_impl_) {
     platform_impl_->SetLayoutNodeManager(this);
   }
+}
+
+void LayoutContext::SetLogContext(const base::LogContext& context) {
+  log_context_ = context;
 }
 
 LayoutContext::~LayoutContext() {

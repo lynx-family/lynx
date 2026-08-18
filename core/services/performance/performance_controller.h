@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "base/include/lynx_actor.h"
 #include "core/public/pub_value.h"
 #include "core/services/event_report/event_tracker.h"
@@ -31,10 +32,12 @@ class PerformanceControllerPlatformImpl;
 class PerformanceController : public PerformanceEventSender {
  public:
   PerformanceController(
+      const base::LogContext& initial_context,
       std::unique_ptr<PerformanceEventSender> delegate,
       std::unique_ptr<timing::TimingHandlerDelegate> timing_delegate,
       int32_t instance_id)
       : PerformanceEventSender(std::make_shared<pub::PubValueFactoryDefault>()),
+        log_context_(initial_context),
         instance_id_(instance_id),
         delegate_(std::move(delegate)),
         js_blocking_monitor_(std::make_shared<JSBlockingMonitor>(this)),
@@ -79,12 +82,18 @@ class PerformanceController : public PerformanceEventSender {
 
   int32_t GetInstanceId() { return instance_id_; }
 
+  void SetLogContext(const base::LogContext& context) {
+    log_context_ = context;
+  }
+  const base::LogContext& GetLogContext() const { return log_context_; }
+
   PerformanceController(const PerformanceController&) = delete;
   PerformanceController& operator=(const PerformanceController&) = delete;
   PerformanceController(PerformanceController&&) = delete;
   PerformanceController& operator=(PerformanceController&&) = delete;
 
  private:
+  base::LogContext log_context_;
   int32_t instance_id_ = report::kUninitializedInstanceId;
   std::unique_ptr<PerformanceEventSender> delegate_;
   std::unique_ptr<PerformanceControllerPlatformImpl> platform_impl_;

@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/log_context.h"
 #include "base/include/no_destructor.h"
 #include "core/event/event_dispatch_result.h"
 #include "core/public/prop_bundle.h"
@@ -61,16 +62,15 @@ class LynxEngine {
     virtual void StopRecording(const lepus::Value& value) = 0;
   };
 
-  explicit LynxEngine(
+  LynxEngine(
       std::unique_ptr<tasm::TemplateAssembler> tasm,
       std::unique_ptr<Delegate> delegate,
       const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
-      int32_t instance_id)
-      : tasm_(std::move(tasm)),
-        delegate_(std::move(delegate)),
-        card_cached_data_mgr_(card_cached_data_mgr),
-        instance_id_(instance_id) {}
+      const base::LogContext& initial_context, int32_t instance_id);
   ~LynxEngine();
+
+  void SetLogContext(const base::LogContext& context);
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   void Init();
 
@@ -355,6 +355,7 @@ class LynxEngine {
   void TriggerVmGC() { tasm_->TriggerVmGC(); }
 
  private:
+  base::LogContext log_context_;
   std::unique_ptr<tasm::TemplateAssembler> tasm_;
   std::unique_ptr<Delegate> delegate_;
   std::shared_ptr<LynxCardCacheDataManager> card_cached_data_mgr_;

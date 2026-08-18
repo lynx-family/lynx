@@ -6,6 +6,7 @@
 #define CORE_SHELL_LYNX_SHELL_BUILDER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "core/public/layout_ctx_platform_impl.h"
@@ -70,6 +71,9 @@ class LynxShellBuilder {
   LynxShellBuilder& SetRuntimeActor(
       const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor);
 
+  LynxShellBuilder& SetRuntimeCreationContext(
+      const base::LogContext* creation_context);
+
   LynxShellBuilder& SetPerfControllerActor(
       const std::shared_ptr<
           LynxActor<tasm::performance::PerformanceController>>& perf_actor);
@@ -133,6 +137,7 @@ class LynxShellBuilder {
   base::ThreadStrategyForRendering strategy_;
 
   std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_{};
+  std::optional<base::LogContext> runtime_creation_context_;
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
       perf_controller_actor_{};
   std::unique_ptr<tasm::performance::PerformanceControllerPlatformImpl>

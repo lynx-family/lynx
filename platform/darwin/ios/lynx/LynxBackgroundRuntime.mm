@@ -187,6 +187,10 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   return _runtime_standalone_bundle->GetPerfControllerActor();
 }
 
+- (const lynx::base::LogContext*)runtimeCreationLogContext {
+  return &_runtime_standalone_bundle->GetCreationLogContext();
+}
+
 - (LynxDevtool*)devtool {
   return _devTool;
 }

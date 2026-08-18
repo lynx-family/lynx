@@ -144,12 +144,15 @@ class JSRuntimeDelegateImpl : public runtime::js::JSRuntimeDelegate {
 
 thread_local std::string* BTSRuntime::js_core_source_ = nullptr;
 
-BTSRuntime::BTSRuntime(const std::string& group_id, int32_t instance_id,
+BTSRuntime::BTSRuntime(const std::string& group_id,
+                       const base::LogContext& initial_context,
+                       int32_t instance_id,
                        std::unique_ptr<runtime::TemplateDelegate> delegate,
                        const std::string& bytecode_source_url,
                        uint32_t runtime_flags,
                        const tasm::PageOptions& page_options)
-    : group_id_(group_id),
+    : log_context_(initial_context),
+      group_id_(group_id),
       instance_id_(instance_id),
       delegate_(std::move(delegate)),
       bytecode_source_url_(bytecode_source_url),
@@ -164,6 +167,10 @@ BTSRuntime::BTSRuntime(const std::string& group_id, int32_t instance_id,
 }
 
 BTSRuntime::~BTSRuntime() { Destroy(); }
+
+void BTSRuntime::SetLogContext(const base::LogContext& context) {
+  log_context_ = context;
+}
 
 void BTSRuntime::Init(
     const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
