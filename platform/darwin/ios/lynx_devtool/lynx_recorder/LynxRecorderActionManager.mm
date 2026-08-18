@@ -24,6 +24,25 @@
 
 static const int kVirtual = 1 << 2;
 
+@interface LynxRecorderReplayConfig (RuntimeOptions)
+@property(nonatomic, readonly, nullable) NSNumber* enableBTSOverride;
+@end
+
+static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplayConfig* config,
+                                    NSDictionary* threadStrategyData) {
+  NSNumber* enableBTSOverride = config.enableBTSOverride;
+  NSNumber* recordedEnableJSRuntime = threadStrategyData[@"enableJSRuntime"];
+  if (enableBTSOverride == nil && recordedEnableJSRuntime == nil && !config.enableAirStrictMode) {
+    return;
+  }
+  BOOL enableJSRuntime = enableBTSOverride != nil ? enableBTSOverride.boolValue
+                                                  : (recordedEnableJSRuntime == nil ||
+                                                     recordedEnableJSRuntime.boolValue) &&
+                                                        !config.enableAirStrictMode;
+  [builder setEnableJSRuntime:enableJSRuntime];
+  [builder setEnableAirStrictMode:!enableJSRuntime];
+}
+
 // record some action, which must be called again when page reload
 @interface ReloadAction : NSObject
 @property NSInteger interval;
@@ -632,12 +651,7 @@ static const int kVirtual = 1 << 2;
                    [self getThreadStrategy:(int32_t)schema_thread_strategy
                        testBenchThreadStrategy:[strongSelf->_threadStrategyData[@"threadStrategy"]
                                                    intValue]]];
-      if ([strongSelf->_threadStrategyData valueForKey:@"enableJSRuntime"]) {
-        BOOL enableJSRuntime = [strongSelf->_threadStrategyData[@"enableJSRuntime"] boolValue] &&
-                               ![_replayConfig enableAirStrictMode];
-        [builder setEnableJSRuntime:enableJSRuntime];
-        [builder setEnableAirStrictMode:!enableJSRuntime];
-      }
+      ConfigureRuntimeOptions(builder, strongSelf->_replayConfig, strongSelf->_threadStrategyData);
 
       builder.fetcher = strongSelf->_dynamicComponentFetcher;
 
@@ -812,11 +826,7 @@ static const int kVirtual = 1 << 2;
         setThreadStrategyForRender:
             [self getThreadStrategy:(int32_t)schema_thread_strategy
                 testBenchThreadStrategy:[self->_threadStrategyData[@"threadStrategy"] intValue]]];
-    if ([self->_threadStrategyData valueForKey:@"enableJSRuntime"]) {
-      BOOL enableJSRuntime = ![_replayConfig enableAirStrictMode];
-      [builder setEnableJSRuntime:enableJSRuntime];
-      [builder setEnableAirStrictMode:!enableJSRuntime];
-    }
+    ConfigureRuntimeOptions(builder, self->_replayConfig, self->_threadStrategyData);
 
     builder.fetcher = self->_dynamicComponentFetcher;
 

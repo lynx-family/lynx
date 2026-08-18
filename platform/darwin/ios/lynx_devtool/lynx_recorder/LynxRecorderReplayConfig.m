@@ -6,6 +6,10 @@
 #import <LynxDevtool/LynxRecorderReplayConfig.h>
 #import <LynxDevtool/LynxRecorderURLAnalyzer.h>
 
+@interface LynxRecorderReplayConfig ()
+@property(nonatomic, nullable) NSNumber* enableBTSOverride;
+@end
+
 @implementation LynxRecorderReplayConfig
 
 - (id)initWithProductUrl:(NSString*)url {
@@ -23,6 +27,9 @@
     _enablePreDecode = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
                                                                   forKey:@"enablePreDecode"
                                                             defaultValue:NO];
+    NSString* enableBTS = [LynxRecorderURLAnalyzer getQueryStringParameter:baseURL
+                                                                    forKey:@"enable_bts"];
+    _enableBTSOverride = enableBTS == nil ? nil : @(![enableBTS isEqualToString:@"0"]);
     _enableAirStrictMode = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
                                                                       forKey:@"enableAirStrict"
                                                                 defaultValue:NO];
