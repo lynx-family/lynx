@@ -512,6 +512,9 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
     return;
   }
 
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+
   NSUInteger headerIndex = [self.children indexOfObject:self.header];
   NSUInteger slotIndex = [self.children indexOfObject:self.slot];
   NSUInteger headerViewIndex = [[self.scrollCoordinator subviews] indexOfObject:self.header.view];
@@ -598,6 +601,8 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
   }
 
   [self.slot updateManagerRelated];
+
+  [CATransaction commit];
 }
 
 - (void)onNodeReady {
