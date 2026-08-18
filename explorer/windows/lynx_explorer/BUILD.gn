@@ -71,6 +71,7 @@ executable("lynx_explorer") {
     ":copy_dll",
     ":copy_icu",
     ":copy_resources",
+    "../../../platform/embedder/http_service:http_service",
     "../../../platform/windows:windows",
     "../../embedder/lynx_explorer:lynx_explorer_embedder",
 

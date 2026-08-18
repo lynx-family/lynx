@@ -7,9 +7,9 @@
 #import "LynxWindowController.h"
 #import "ViewController.h"
 #include "explorer/darwin/macos/lynx_explorer/LynxExplorer/module/LynxDemoModule.h"
-#include "explorer/darwin/macos/lynx_explorer/LynxExplorer/service/LynxHttpService.h"
 #include "explorer/embedder/lynx_explorer/module/lynx_demo_extension_module.h"
 #include "lynx_env.h"
+#include "platform/embedder/http_service/lynx_http_service_impl.h"
 
 #if defined(LYNX_NODE_API_ADDON_USE_HEADER)
 #include LYNX_NODE_API_ADDON_USE_HEADER
@@ -49,7 +49,7 @@
 
   // Init LynxServices
   lynx::pub::LynxServiceCenter::GetInstance().RegisterService(
-      std::make_shared<lynx::service::LynxHttpServiceImpl>());
+      std::make_shared<lynx::embedder::LynxHttpServiceImpl>());
 
   self.window.contentViewController = [[ViewController alloc] initWithUrl:nil];
 }
