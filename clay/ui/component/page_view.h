@@ -566,6 +566,7 @@ class PageView : public BaseView,
   void EnsureSemanticsOwner();
   BaseView* GetFirstNonAnonymousHitTestTarget(
       const HitTestResult& result) const;
+  bool HitTestContainsSelectionControl(const HitTestResult& result) const;
   void ResignFirstResponderIfNeeded(BaseView* current_responder);
 
   void UnRegisterUploadTask();
