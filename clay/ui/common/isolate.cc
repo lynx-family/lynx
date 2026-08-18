@@ -33,20 +33,10 @@ Isolate& Isolate::Instance() {
 }
 
 Isolate::Isolate()
-    : concurrent_message_loop_(
-#if defined(OS_ANDROID) || defined(OS_HARMONY)
-          fml::ConcurrentMessageLoop::Create(
-              Setter, std::max(std::thread::hardware_concurrency() / 2, 1u))
-#else
-          fml::ConcurrentMessageLoop::Create(
-              std::max(std::thread::hardware_concurrency() / 2, 1u))
-#endif
-              )
 #ifndef ENABLE_SKITY
-      ,
-      skia_concurrent_executor_(
-          [runner = concurrent_message_loop_->GetTaskRunner()](
-              fml::closure work) { runner->PostTask(std::move(work)); })
+    : skia_concurrent_executor_([this](fml::closure work) {
+        GetOrCreateConcurrentMessageLoop()->PostTask(std::move(work));
+      })
 #endif  // ENABLE_SKITY
 {
   // Setting the executor.
@@ -72,11 +62,27 @@ std::shared_ptr<txt::FontCollection> Isolate::GetTxtFontCollection() {
 
 std::shared_ptr<fml::ConcurrentTaskRunner>
 Isolate::GetConcurrentWorkerTaskRunner() const {
-  return concurrent_message_loop_->GetTaskRunner();
+  return GetOrCreateConcurrentMessageLoop()->GetTaskRunner();
 }
 
 std::shared_ptr<fml::ConcurrentMessageLoop>
 Isolate::GetConcurrentMessageLoop() {
+  return GetOrCreateConcurrentMessageLoop();
+}
+
+std::shared_ptr<fml::ConcurrentMessageLoop>
+Isolate::GetOrCreateConcurrentMessageLoop() const {
+  std::call_once(concurrent_message_loop_once_, [this]() {
+    const auto worker_count =
+        std::max(std::thread::hardware_concurrency() / 2, 1u);
+#if defined(OS_ANDROID) || defined(OS_HARMONY)
+    concurrent_message_loop_ =
+        fml::ConcurrentMessageLoop::Create(Setter, worker_count);
+#else
+    concurrent_message_loop_ =
+        fml::ConcurrentMessageLoop::Create(worker_count);
+#endif
+  });
   return concurrent_message_loop_;
 }
 

@@ -256,18 +256,21 @@ class Shell final : public PlatformView::Delegate,
                        std::function<void(ScreenshotData)> callback);
 
   //----------------------------------------------------------------------------
-  /// @brief      Pauses the calling thread until the first frame is presented.
+  /// @brief      Invokes a callback after the first frame is presented or the
+  ///             timeout expires, without blocking the calling thread.
   ///
   /// @param[in]  timeout  The duration to wait before timing out. If this
-  ///                      duration would cause an overflow when added to
-  ///                      std::chrono::steady_clock::now(), this method will
-  ///                      wait indefinitely for the first frame.
+  ///                      duration would overflow a TimePoint, no timeout is
+  ///                      scheduled.
+  /// @param[in]  callback_runner  The runner on which callback is invoked. If
+  ///                             null, callback is invoked synchronously with
+  ///                             kInvalidArgument.
+  /// @param[in]  callback  Receives kOk after the first frame or
+  ///                       kDeadlineExceeded after a timeout. Must not be null.
   ///
-  /// @return     'kOk' when the first frame has been presented before the
-  ///             timeout successfully, 'kFailedPrecondition' if called from the
-  ///             GPU or UI thread, 'kDeadlineExceeded' if there is a timeout.
-  ///
-  fml::Status WaitForFirstFrame(fml::TimeDelta timeout);
+  void AwaitFirstFrame(fml::TimeDelta timeout,
+                       fml::RefPtr<fml::TaskRunner> callback_runner,
+                       std::function<void(fml::Status)> callback);
 
   //----------------------------------------------------------------------------
   /// @brief      Used by embedders to reload the system fonts in
@@ -476,10 +479,9 @@ class Shell final : public PlatformView::Delegate,
   bool is_added_to_service_protocol_ = false;
   uint64_t next_pointer_flow_id_ = 0;
 
+  // Reset for each output surface and cleared by its first rendered frame.
   std::shared_ptr<std::atomic<bool>> waiting_for_first_frame_ =
       std::make_shared<std::atomic<bool>>(true);
-  std::mutex waiting_for_first_frame_mutex_;
-  std::condition_variable waiting_for_first_frame_condition_;
   std::shared_ptr<std::atomic<bool>> screenshot =
       std::make_shared<std::atomic<bool>>(true);
 
