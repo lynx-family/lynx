@@ -5304,6 +5304,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.addResourceProvider(String key, LynxResourceProvider provider);
   public Map< String, LynxResourceProvider > com.lynx.tasm.LynxEnv.getResourceProvider();
   public synchronized boolean com.lynx.tasm.LynxEnv.initNativeLibraries(INativeLibraryLoader loader);
+  public synchronized boolean com.lynx.tasm.LynxEnv.initNativeLibraries(INativeLibraryLoader loader, @Nullable Context context);
   public void com.lynx.tasm.LynxEnv.loadNativeLynxLibrary(INativeLibraryLoader nativeLibraryLoader);
   public void com.lynx.tasm.LynxEnv.addBehaviors(@NonNull List< Behavior > behaviors);
   public void com.lynx.tasm.LynxEnv.addBehavior(@NonNull Behavior behavior);

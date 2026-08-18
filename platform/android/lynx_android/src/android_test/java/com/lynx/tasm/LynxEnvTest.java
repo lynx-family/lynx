@@ -9,8 +9,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Application;
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.SharedPreferences;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +72,38 @@ public class LynxEnvTest {
 
     assertEquals(1, env.mInitDevtoolComponentAttachSwitchCount);
     assertEquals(1, env.mInitNativeLibrariesCount);
+  }
+
+  @Test
+  public void debugLibrarySelectionOnlyAppliesBeforeLynxEnvInit() {
+    Application application = ApplicationProvider.getApplicationContext();
+    DevToolSettings settings = DevToolSettings.inst();
+    settings.init(application);
+    boolean previousLynxDebug = settings.bootstrap().isLynxDebugEnabled();
+    boolean previousDebugMode = settings.isDebugModeEnabled();
+    try {
+      LynxEnv env = new LynxEnv();
+      settings.bootstrap().setLynxDebugEnabled(false);
+      settings.setDebugModeEnabled(false);
+      assertFalse(env.shouldLoadDebugLynxLibraryBeforeInit(application));
+
+      settings.setDebugModeEnabled(true);
+      assertFalse(env.shouldLoadDebugLynxLibraryBeforeInit(null));
+      assertTrue(env.shouldLoadDebugLynxLibraryBeforeInit(application));
+      Context invalidContext = new ContextWrapper(application) {
+        @Override
+        public SharedPreferences getSharedPreferences(String name, int mode) {
+          throw new IllegalStateException("SharedPreferences unavailable");
+        }
+      };
+      assertFalse(env.shouldLoadDebugLynxLibraryBeforeInit(invalidContext));
+
+      env.mContext = application;
+      assertFalse(env.shouldLoadDebugLynxLibraryBeforeInit(application));
+    } finally {
+      settings.bootstrap().setLynxDebugEnabled(previousLynxDebug);
+      settings.setDebugModeEnabled(previousDebugMode);
+    }
   }
 
   @Test
