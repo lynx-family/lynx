@@ -603,7 +603,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   }
 
   void SetEnableNativeListFromShell(bool enable) {
-    enable_native_list_ = enable;
+    // Fragment-layer rendering requires native-list support regardless of the
+    // shell-provided default.
+    enable_native_list_ = enable || page_options_.IsFragmentLayerRender();
   }
 
   bool GetEnableNativeListFromShell() const { return enable_native_list_; }

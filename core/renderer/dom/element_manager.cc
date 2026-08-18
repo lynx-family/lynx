@@ -137,6 +137,7 @@ ElementManager::ElementManager(
       settings_enable_use_mapbuffer_for_ui_op_(
           LynxEnv::GetInstance().EnableUseMapBufferForUIProps()),
       lynx_env_config_(lynx_env_config),
+      page_options_(page_options),
       delegate_(delegate),
       vsync_monitor_(vsync_monitor),
       platform_layout_context_(std::move(platform_layout_context)),
