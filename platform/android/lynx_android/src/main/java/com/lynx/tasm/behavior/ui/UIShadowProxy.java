@@ -166,6 +166,11 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   }
 
   @Override
+  public long getMemoryUsageBytes() {
+    return mChild == null ? super.getMemoryUsageBytes() : mChild.getMemoryUsageBytes();
+  }
+
+  @Override
   public LynxBaseUI getChildAt(int index) {
     return mChild.mChildren.get(index);
   }

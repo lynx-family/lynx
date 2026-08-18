@@ -244,6 +244,17 @@ void DispatchTaskToLynxEngine(JNIEnv *env, jobject jcaller, jlong ptr,
   });
 }
 
+void ReportExternalMemory(JNIEnv *env, jobject jcaller, jlong ptr,
+                          jlong total_size, jlong garbage_size) {
+  if (!ptr) {
+    return;
+  }
+  auto *engine_proxy =
+      reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+  engine_proxy->ReportExternalMemory(
+      {static_cast<int64_t>(total_size), static_cast<int64_t>(garbage_size)});
+}
+
 namespace lynx {
 namespace shell {
 

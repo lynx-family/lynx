@@ -4,6 +4,7 @@
 
 package com.lynx.tasm.core;
 
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.common.LepusBuffer;
@@ -46,6 +47,19 @@ public final class LynxEngineProxy {
         }
 
         nativeDispatchTaskToLynxEngine(mNativePtr, runnable);
+      }
+    });
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void reportExternalMemory(long totalSize, long garbageSize) {
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        if (mNativePtr == 0) {
+          return;
+        }
+        nativeReportExternalMemory(mNativePtr, totalSize, garbageSize);
       }
     });
   }
@@ -260,6 +274,8 @@ public final class LynxEngineProxy {
   private native void nativeDestroy(long nativePtr);
 
   private native void nativeDispatchTaskToLynxEngine(long nativePtr, Runnable runnable);
+
+  private native void nativeReportExternalMemory(long nativePtr, long totalSize, long garbageSize);
 
   private native void nativeSendTouchEvent(long nativePtr, String name, int tag, float clientX,
       float clientY, float pageX, float pageY, float viewX, float viewY, long timestamp);

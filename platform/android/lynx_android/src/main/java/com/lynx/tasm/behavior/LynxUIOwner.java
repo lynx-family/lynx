@@ -13,6 +13,7 @@ import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityMutationH
 import android.graphics.Rect;
 import android.os.Build;
 import android.text.TextUtils;
+import android.util.SparseBooleanArray;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -90,6 +91,7 @@ public class LynxUIOwner {
   private final List<ForegroundListener> mForegroundListeners;
   private final HashMap<Integer, LynxBaseUI> mUIHolder;
   private final HashMap<Integer, LynxBaseUI> mTextChildUIHolder;
+  private final List<int[]> mRemovedUIIdPatches;
 
   // Hold the UI that exec the boundingClientRect method in the layout process. Call the UI's
   // uiOwnerDidPerformLayout method after exec performLayout.
@@ -147,6 +149,7 @@ public class LynxUIOwner {
     mForegroundListeners = new ArrayList<>();
     mUIHolder = new HashMap<>();
     mTextChildUIHolder = new HashMap<>();
+    mRemovedUIIdPatches = new ArrayList<>();
     mComponentIdToUiIdHolder = new HashMap<>();
     mRootSign = -1;
     mUIBody = new UIBody(mContext, body);
@@ -1272,6 +1275,54 @@ public class LynxUIOwner {
       }
     }
     return records;
+  }
+
+  void cacheRemovedUIIds(int[] removeIds) {
+    if (removeIds.length > 0) {
+      mRemovedUIIdPatches.add(removeIds);
+    }
+  }
+
+  long[] getExternalMemorySnapshot() {
+    try {
+      long totalSize = 0;
+      for (LynxBaseUI ui : mUIHolder.values()) {
+        if (ui != null) {
+          totalSize += ui.getMemoryUsageBytes();
+        }
+      }
+
+      long garbageSize = 0;
+      SparseBooleanArray visitedRemovedUIIds = new SparseBooleanArray();
+      for (int[] removeIds : mRemovedUIIdPatches) {
+        for (int removeId : removeIds) {
+          if (visitedRemovedUIIds.indexOfKey(removeId) >= 0) {
+            continue;
+          }
+          visitedRemovedUIIds.put(removeId, true);
+          LynxBaseUI ui = mUIHolder.get(removeId);
+          if (ui != null && ui.getParent() == null) {
+            garbageSize += getMemoryUsageBytesRecursively(ui);
+          }
+        }
+      }
+      return new long[] {totalSize, garbageSize};
+    } finally {
+      mRemovedUIIdPatches.clear();
+    }
+  }
+
+  void reportExternalMemory() {
+    long[] snapshot = getExternalMemorySnapshot();
+    mContext.reportExternalMemory(snapshot[0], snapshot[1]);
+  }
+
+  private long getMemoryUsageBytesRecursively(LynxBaseUI ui) {
+    long size = ui.getMemoryUsageBytes();
+    for (LynxBaseUI child : ui.getChildren()) {
+      size += getMemoryUsageBytesRecursively(child);
+    }
+    return size;
   }
 
   public void performLayout() {

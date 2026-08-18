@@ -9,6 +9,12 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+// TODO(songshourui.null): Add a dedicated scheduling switch and configurable
+// delay for external-memory reporting.
+constexpr int64_t kExternalMemoryReportDelayMs = 1000;
+}  // namespace
+
 void PaintingContext::SetUIOperationQueue(
     const std::shared_ptr<shell::DynamicUIOperationQueue>& queue) {
   ui_operation_queue_ = queue;
@@ -59,16 +65,15 @@ void PaintingContext::RemovePaintingNode(int parent, int child, int index,
   if (!is_move) {
     // only add child sign to remove_ids_ vector when it is not a move
     patching_node_remove_ids_.emplace_back(child);
-    EnqueueExternalMemoryReportRequest();
   }
 }
 
-void PaintingContext::EnqueueExternalMemoryReportRequest() {
+void PaintingContext::EnqueueExternalMemoryReportRequest(int64_t delay_ms) {
   if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->RequestExternalMemoryReport();
+    platform_impl_->RequestExternalMemoryReport(delay_ms);
   } else {
-    Enqueue([platform_ref = platform_impl_->GetPlatformRef()]() {
-      platform_ref->RequestExternalMemoryReport();
+    Enqueue([platform_ref = platform_impl_->GetPlatformRef(), delay_ms]() {
+      platform_ref->RequestExternalMemoryReport(delay_ms);
     });
   }
 }
@@ -85,6 +90,8 @@ void PaintingContext::DestroyPaintingNode(int parent, int child, int index) {
 }
 
 void PaintingContext::UpdateNodeReadyPatching() {
+  const bool should_request_external_memory_report =
+      !patching_node_remove_ids_.empty();
   if (platform_impl_->HasEnableUIOperationBatching()) {
     platform_impl_->UpdateNodeReadyPatching(patching_node_ready_ids_,
                                             patching_node_remove_ids_);
@@ -95,6 +102,11 @@ void PaintingContext::UpdateNodeReadyPatching() {
       platform_ref->UpdateNodeReadyPatching(std::move(ready_ids),
                                             std::move(remove_ids));
     });
+  }
+  // TODO(songshourui.null): Check enable_fiber_element_memory_report before
+  // scheduling the snapshot task.
+  if (should_request_external_memory_report) {
+    EnqueueExternalMemoryReportRequest(kExternalMemoryReportDelayMs);
   }
 
   patching_node_ready_ids_.clear();
