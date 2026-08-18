@@ -37,6 +37,7 @@ void MockLayer::Diff(DiffContext* context, const Layer* old_layer) {
 }
 
 void MockLayer::Preroll(PrerollContext* context) {
+  ++preroll_count_;
   context->state_stack.fill(&parent_mutators_);
   parent_matrix_ = context->state_stack.transform_4x4();
   parent_cull_rect_ = context->state_stack.local_cull_rect();
