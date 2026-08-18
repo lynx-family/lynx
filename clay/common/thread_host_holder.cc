@@ -33,7 +33,7 @@ void ThreadHostHolder::SetMask(uint64_t mask, const std::string& thread_label,
   clay::ThreadHost::ThreadHostConfig host_config(name_prefix, mask, setter);
 
   if (mask & ThreadHost::Type::Platform) {
-    host_config.io_config = fml::Thread::ThreadConfig(
+    host_config.platform_config = fml::Thread::ThreadConfig(
         clay::ThreadHost::ThreadHostConfig::MakeThreadName(
             clay::ThreadHost::Type::Platform, name_prefix),
         fml::Thread::ThreadPriority::LOW);
@@ -61,7 +61,7 @@ void ThreadHostHolder::SetMask(uint64_t mask, const std::string& thread_label,
   }
 
   if (mask & ThreadHost::Type::Profiler) {
-    host_config.io_config = fml::Thread::ThreadConfig(
+    host_config.profiler_config = fml::Thread::ThreadConfig(
         clay::ThreadHost::ThreadHostConfig::MakeThreadName(
             clay::ThreadHost::Type::Profiler, name_prefix),
         fml::Thread::ThreadPriority::LOW);
