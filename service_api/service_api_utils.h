@@ -10,13 +10,21 @@
 #include <service_api/service_lazy_load.h>
 #endif
 
-#define EXPORT_FUNC                                                \
-  __attribute__((visibility("default"))) __attribute__((noinline)) \
-  __attribute__((used))
-#define EXPORT_VAR __attribute__((visibility("default"))) __attribute__((used))
-#define EXPORT_CLASS __attribute__((visibility("default")))
+#if defined(_WIN32)
+#define LYNX_SERVICE_API_EXPORT
+#define LYNX_SERVICE_API_USED __declspec(noinline)
+#define LYNX_SERVICE_API_VAR_USED
+#else
+#define LYNX_SERVICE_API_EXPORT __attribute__((visibility("default")))
+#define LYNX_SERVICE_API_USED __attribute__((noinline)) __attribute__((used))
+#define LYNX_SERVICE_API_VAR_USED __attribute__((used))
+#endif
 
-#define DYLIB_ENTRY(name) __attribute__((constructor)) EXPORT_FUNC void name()
+#define EXPORT_FUNC LYNX_SERVICE_API_EXPORT LYNX_SERVICE_API_USED
+#define EXPORT_VAR LYNX_SERVICE_API_EXPORT LYNX_SERVICE_API_VAR_USED
+#define EXPORT_CLASS LYNX_SERVICE_API_EXPORT
+
+#define DYLIB_ENTRY(name) __attribute__((constructor)) void name()
 
 #if defined(OS_IOS)
 #define _LYNX_SERVICE_ENTRY_FUNC(name) SERVICE_LAZY_LOAD_CPP(name)
