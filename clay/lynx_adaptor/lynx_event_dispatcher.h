@@ -92,6 +92,8 @@ class LynxEventDispatcher : public EventDelegate {
 
   void CallJSIntersectionObserver(int observer_id, int callback_id,
                                   clay::Value params) override;
+  void OnExternalMemoryReport(int64_t total_size,
+                              int64_t garbage_size) override;
 
  private:
   std::shared_ptr<lynx::shell::LynxEngineProxy> engine_proxy_ = nullptr;

@@ -73,6 +73,7 @@ class EventDelegate {
   virtual void OnCallJSApiCallback(int callback_id, clay::Value value) = 0;
   virtual void CallJSIntersectionObserver(int observer_id, int callback_id,
                                           clay::Value params) = 0;
+  virtual void OnExternalMemoryReport(int64_t, int64_t) {}
 };
 
 }  // namespace clay

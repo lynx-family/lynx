@@ -449,6 +449,13 @@ void LynxEventDispatcher::OnFirstMeaningfulPaint() {
   engine_proxy_->OnFirstMeaningfulPaint();
 }
 
+void LynxEventDispatcher::OnExternalMemoryReport(int64_t total_size,
+                                                 int64_t garbage_size) {
+  if (engine_proxy_) {
+    engine_proxy_->ReportExternalMemory({total_size, garbage_size});
+  }
+}
+
 void LynxEventDispatcher::OnOverlayEvent(int view_id, const char* overlay_id,
                                          int overlay_count,
                                          const char** overlay_ids,

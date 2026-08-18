@@ -11,12 +11,14 @@
 #include <string>
 #include <utility>
 
+#include "base/include/fml/time/time_delta.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/sticky_info.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"
+#include "clay/ui/component/base_image_view.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/intersection_observer_manager.h"
@@ -68,6 +70,22 @@ static bool IsInternalPlatformViewTag(const std::string& tag) {
   // Let internal platform-view registrations override Clay C++ entries.
   const auto& tags = InternalPlatformViewTags();
   return tags.find(tag) != tags.end();
+}
+
+static int64_t GetExternalMemoryUsageBytes(BaseView* view) {
+  return view->Is<BaseImageView>()
+             ? static_cast<BaseImageView*>(view)->GetMemoryUsageBytes()
+             : view->GetMemoryUsageBytes();
+}
+
+static int64_t GetExternalMemoryUsageBytesRecursively(BaseView* view) {
+  int64_t size = GetExternalMemoryUsageBytes(view);
+  for (auto* child : view->GetChildren()) {
+    if (child != nullptr) {
+      size += GetExternalMemoryUsageBytesRecursively(child);
+    }
+  }
+  return size;
 }
 
 ViewContext::ViewContext(PageView* root, ShadowNodeOwner* shadow_node_owner)
@@ -722,6 +740,8 @@ void ViewContext::OnFirstMeaningfulLayout() {
 
 void ViewContext::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                           std::vector<int32_t> remove_ids) {
+  external_memory_report_candidate_ids_.insert(remove_ids.begin(),
+                                               remove_ids.end());
   auto* intersection_manager = page_view_->HasIntersectionObserverManager()
                                    ? page_view_->intersection_observer_manager()
                                    : nullptr;
@@ -738,6 +758,56 @@ void ViewContext::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
   if (intersection_manager && !ready_ids.empty()) {
     page_view_->SendGlobalExposureEvent();
   }
+}
+
+lynx::tasm::ExternalMemorySnapshot ViewContext::GetExternalMemorySnapshot() {
+  lynx::tasm::ExternalMemorySnapshot snapshot;
+  for (int32_t id : external_memory_report_candidate_ids_) {
+    auto it = view_map_.find(id);
+    if (it != view_map_.end() && it->second != nullptr &&
+        it->second->Parent() == nullptr) {
+      snapshot.garbage_size +=
+          GetExternalMemoryUsageBytesRecursively(it->second);
+    }
+  }
+  for (const auto& entry : view_map_) {
+    auto* view = entry.second;
+    if (view == nullptr) {
+      continue;
+    }
+    snapshot.total_size += GetExternalMemoryUsageBytes(view);
+  }
+  external_memory_report_candidate_ids_.clear();
+  return snapshot;
+}
+
+void ViewContext::RequestExternalMemoryReport(int64_t delay_ms) {
+  auto task_runner = GetUITaskRunner();
+  if (external_memory_report_pending_ || task_runner == nullptr) {
+    return;
+  }
+  FML_DCHECK(task_runner->RunsTasksOnCurrentThread());
+  external_memory_report_pending_ = true;
+  task_runner->PostDelayedTask(
+      [weak_self = GetWeakPtr(), weak_page = page_view_->GetWeakPtr()]() {
+        auto strong_self = weak_self.lock();
+        if (!strong_self) {
+          return;
+        }
+        strong_self->external_memory_report_pending_ = false;
+        auto* page_view = static_cast<PageView*>(weak_page.get());
+        if (page_view == nullptr) {
+          strong_self->external_memory_report_candidate_ids_.clear();
+          return;
+        }
+        const auto snapshot = strong_self->GetExternalMemorySnapshot();
+        auto* delegate = page_view->GetEventDelegate();
+        if (delegate != nullptr) {
+          delegate->OnExternalMemoryReport(snapshot.total_size,
+                                           snapshot.garbage_size);
+        }
+      },
+      fml::TimeDelta::FromMilliseconds(delay_ms));
 }
 
 void ViewContext::ConsumeInitialAttributes(BaseView* view) {
