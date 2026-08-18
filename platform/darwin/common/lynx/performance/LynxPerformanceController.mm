@@ -20,6 +20,7 @@ using namespace lynx::shell;
 using namespace lynx::tasm;
 
 @interface LynxEmbeddedTimingCollector (Internal)
+@property(nonatomic, weak, nullable) id setupTimingTarget;
 - (void)setInstanceId:(int32_t)instanceId;
 @end
 
@@ -41,6 +42,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   id<LynxServiceEventReporterProtocol> _reporter;
   LynxEmbeddedTimingCollector* _embeddedCollector;
   BOOL _embeddedModeEnabled;
+  __weak id _embeddedSetupTimingTarget;
 }
 
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
@@ -64,11 +66,17 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   _embeddedModeEnabled = enabled;
   if (enabled) {
     _embeddedCollector = [[LynxEmbeddedTimingCollector alloc] initWithObserver:_observer];
+    _embeddedCollector.setupTimingTarget = _embeddedSetupTimingTarget;
     auto actorPtr = _nativeWeakActorPtr.lock();
     if (actorPtr) {
       [_embeddedCollector setInstanceId:actorPtr->GetInstanceId()];
     }
   }
+}
+
+- (void)setEmbeddedSetupTimingTarget:(id)target {
+  _embeddedSetupTimingTarget = target;
+  _embeddedCollector.setupTimingTarget = target;
 }
 
 #pragma mark - LynxMemoryMonitorProtocol

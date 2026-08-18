@@ -59,6 +59,9 @@
 
 @property(nonatomic, assign) NSInteger performanceEventCount;
 @property(nonatomic, strong, nullable) LynxPerformanceEntry *lastEntry;
+@property(nonatomic, assign) NSInteger setupTimingCount;
+@property(nonatomic, strong, nullable) NSDictionary *lastSetupTimingInfo;
+@property(nonatomic, strong, nullable) XCTestExpectation *setupTimingExpectation;
 
 @end
 
@@ -67,6 +70,12 @@
 - (void)onPerformanceEvent:(nonnull LynxPerformanceEntry *)entry {
   self.performanceEventCount += 1;
   self.lastEntry = entry;
+}
+
+- (void)lynxView:(LynxView *)lynxView onSetup:(NSDictionary *)info {
+  self.setupTimingCount += 1;
+  self.lastSetupTimingInfo = info;
+  [self.setupTimingExpectation fulfill];
 }
 
 @end
@@ -405,6 +414,38 @@
   XCTAssertEqualObjects(emitter.lastEvent.params[@"mode"], @"embedded");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"entryType"], @"pipeline");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"name"], @"loadBundle");
+}
+
+- (void)testFrameViewEmbeddedModeDispatchesSetupTimingThroughRenderLifecycle {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:104
+                                                eventSet:[NSSet set]
+                                                 emitter:nil];
+  [frameView setEmbeddedMode:LynxEmbeddedModeBase];
+  LynxPerformanceEventClientTester *frameClient = [[LynxPerformanceEventClientTester alloc] init];
+  [[frameView getLifecycleDispatcher] addLifecycleClient:frameClient];
+
+  LynxTemplateRender *render = [self ensureRenderForFrameView:frameView];
+  LynxPerformanceController *controller = [render performanceController];
+  XCTAssertNotNil(controller);
+  frameClient.setupTimingExpectation = [self expectationWithDescription:@"embedded onSetup"];
+
+  [controller setTiming:1000 key:@(lynx::tasm::timing::kLoadBundleStart) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+
+  [controller setTiming:3000 key:@(lynx::tasm::timing::kPaintEnd) pipelineID:nil];
+  [self waitForExpectationsWithTimeout:5 handler:nil];
+
+  XCTAssertEqual(frameClient.setupTimingCount, 1);
+  XCTAssertEqualObjects(frameClient.lastSetupTimingInfo[@"setup_timing"][@"load_template_start"],
+                        @1.0);
+  XCTAssertEqualObjects(frameClient.lastSetupTimingInfo[@"setup_timing"][@"draw_end"], @3.0);
+  XCTAssertEqualObjects(frameClient.lastSetupTimingInfo[@"metrics"][@"lynx_fcp"], @2.0);
+
+  [controller setTiming:4000 key:@(lynx::tasm::timing::kPaintEnd) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 1);
 }
 
 - (void)testFrameViewDispatchesLayoutChangeCustomEventWhenIntrinsicSizeChanges {

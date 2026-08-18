@@ -396,6 +396,7 @@ public class LynxTemplateRender
     // Set embedded mode for PerformanceController
     mPerformanceController.setEmbeddedMode(EmbeddedMode.isBaseModeEnable(mEmbeddedMode));
     mPerformanceController.setPerformanceObserver(mClientV2);
+    mPerformanceController.setTimingClient(mClient);
 
     mEnableReuseEngine = EmbeddedMode.isEnginePoolEnable(mEmbeddedMode) && mTemplateBundle != null;
 

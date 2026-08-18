@@ -6,15 +6,21 @@ package com.lynx.tasm.performance.timing;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
+import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.LynxViewClient;
 import com.lynx.tasm.LynxViewClientGroupV2;
 import com.lynx.tasm.LynxViewClientV2;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 public class EmbeddedTimingCollectorTest {
@@ -78,12 +84,55 @@ public class EmbeddedTimingCollectorTest {
     assertEquals(TimingConstants.LOAD_BUNDLE, observer.mEntries.get(0).name);
   }
 
+  @Test
+  public void dispatchesSetupTimingWhenPaintEnds() throws Exception {
+    EmbeddedTimingCollector collector = new EmbeddedTimingCollector();
+    RecordingObserver observer = new RecordingObserver();
+    RecordingTimingClient timingClient = new RecordingTimingClient();
+    collector.setObserver(new WeakReference<>(observer));
+    collector.setTimingClient(new WeakReference<>(timingClient));
+
+    collector.markTiming(TimingConstants.LOAD_BUNDLE_START, 1000);
+    assertTrue(timingClient.mSetupTimingEvents.isEmpty());
+    assertFalse(collector.hasEmitLoadBundleEvent());
+
+    collector.markTiming(TimingConstants.PAINT_END, 3000);
+
+    assertTrue(timingClient.mSetupTimingLatch.await(5, TimeUnit.SECONDS));
+    assertEquals(1, timingClient.mSetupTimingEvents.size());
+    Map<String, Object> timingInfo = timingClient.mSetupTimingEvents.get(0);
+    JavaOnlyMap setupTiming = (JavaOnlyMap) timingInfo.get("setup_timing");
+    JavaOnlyMap metrics = (JavaOnlyMap) timingInfo.get("metrics");
+    assertNotNull(setupTiming);
+    assertNotNull(metrics);
+    assertEquals(1.0, (Double) setupTiming.get("load_template_start"), 0.0);
+    assertEquals(3.0, (Double) setupTiming.get("draw_end"), 0.0);
+    assertEquals(2.0, (Double) metrics.get("lynx_fcp"), 0.0);
+    assertEquals(false, timingInfo.get("has_reload"));
+    assertEquals(1, observer.mEntries.size());
+    assertTrue(collector.hasEmitLoadBundleEvent());
+
+    collector.markTiming(TimingConstants.PAINT_END, 4000);
+    assertEquals(1, timingClient.mSetupTimingEvents.size());
+  }
+
   private static class RecordingObserver extends LynxViewClientV2 {
     private final List<PerformanceEntry> mEntries = new ArrayList<>();
 
     @Override
     public void onPerformanceEvent(@NonNull PerformanceEntry entry) {
       mEntries.add(entry);
+    }
+  }
+
+  private static class RecordingTimingClient extends LynxViewClient {
+    private final List<Map<String, Object>> mSetupTimingEvents = new ArrayList<>();
+    private final CountDownLatch mSetupTimingLatch = new CountDownLatch(1);
+
+    @Override
+    public void onTimingSetup(Map<String, Object> timingInfo) {
+      mSetupTimingEvents.add(timingInfo);
+      mSetupTimingLatch.countDown();
     }
   }
 }

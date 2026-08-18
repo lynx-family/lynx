@@ -20,6 +20,7 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxViewClient;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.base.CalledByNative;
@@ -56,6 +57,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private EmbeddedTimingCollector mEmbeddedTimingCollector;
   private volatile long mNativePerformanceActorPtr = 0;
   private WeakReference<IPerformanceObserver> mObserver;
+  private WeakReference<LynxViewClient> mTimingClient;
   private WeakReference<ILynxEventReporterService> mEventReporterService;
   private boolean mUseEmbeddedMode = false;
   private JavaOnlyMap mHostPlatformTiming;
@@ -85,6 +87,14 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       mEmbeddedTimingCollector = new EmbeddedTimingCollector();
       mEmbeddedTimingCollector.setObserver(mObserver);
       mEmbeddedTimingCollector.setInstanceId(mInstanceId);
+      mEmbeddedTimingCollector.setTimingClient(mTimingClient);
+    }
+  }
+
+  public void setTimingClient(LynxViewClient timingClient) {
+    mTimingClient = new WeakReference<>(timingClient);
+    if (mEmbeddedTimingCollector != null) {
+      mEmbeddedTimingCollector.setTimingClient(mTimingClient);
     }
   }
 

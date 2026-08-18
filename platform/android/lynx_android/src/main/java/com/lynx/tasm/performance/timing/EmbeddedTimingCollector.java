@@ -6,6 +6,7 @@ package com.lynx.tasm.performance.timing;
 
 import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.LynxViewClient;
 import com.lynx.tasm.LynxViewClientGroupV2;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.performance.IPerformanceObserver;
@@ -25,22 +26,35 @@ public class EmbeddedTimingCollector {
   private static final String PERFORMANCE_ENTRY_PIPELINE_EVENT =
       "lynxsdk_performance_entry_pipeline";
   private static final String LYNX_FCP = "lynxFcp";
+  private static final String SETUP_TIMING = "setup_timing";
+  private static final String UPDATE_TIMINGS = "update_timings";
+  private static final String METRICS = "metrics";
+  private static final String HAS_RELOAD = "has_reload";
+  private static final String LOAD_BUNDLE_START_POLYFILL = "load_template_start";
+  private static final String PAINT_END_POLYFILL = "draw_end";
+  private static final String LYNX_FCP_POLYFILL = "lynx_fcp";
 
   private long mLoadBundleStartUs = -1;
   private long mLoadBundleEndUs = -1;
   private final ArrayList<Long> mUpdateDataStartUsList = new ArrayList<>();
   private long mPaintEndUs = -1;
   private boolean mHasEmitLoadBundleEvent = false;
+  private boolean mHasEmitSetupTiming = false;
   private boolean mHasReportedLoadBundleEvent = false;
   private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
 
   private WeakReference<IPerformanceObserver> mObserver;
+  private WeakReference<LynxViewClient> mTimingClient;
 
   /**
    * Set timing observer for event callbacks
    */
   public void setObserver(WeakReference<IPerformanceObserver> observer) {
     mObserver = observer;
+  }
+
+  public void setTimingClient(WeakReference<LynxViewClient> timingClient) {
+    mTimingClient = timingClient;
   }
 
   public void setInstanceId(int instanceId) {
@@ -60,9 +74,11 @@ public class EmbeddedTimingCollector {
     switch (key) {
       case TimingConstants.LOAD_BUNDLE_START:
         mLoadBundleStartUs = usTimestamp;
+        emitSetupTimingIfReady();
         break;
       case LOAD_BUNDLE_END:
         mLoadBundleEndUs = usTimestamp;
+        emitSetupTimingIfReady();
         emitLoadBundleObserverIfReady(getObserver());
         reportLoadBundleIfReady();
         break;
@@ -71,6 +87,7 @@ public class EmbeddedTimingCollector {
         break;
       case TimingConstants.PAINT_END:
         mPaintEndUs = usTimestamp;
+        emitSetupTimingIfReady();
         IPerformanceObserver observer = getObserver();
         emitLoadBundleObserverIfReady(observer);
         emitUpdateDataIfReady(observer);
@@ -80,6 +97,39 @@ public class EmbeddedTimingCollector {
         // Ignore other timing points in embedded mode
         break;
     }
+  }
+
+  private void emitSetupTimingIfReady() {
+    if (mHasEmitSetupTiming) {
+      return;
+    }
+    WeakReference<LynxViewClient> timingClient = mTimingClient;
+    if (timingClient == null || timingClient.get() == null) {
+      return;
+    }
+    if (mLoadBundleStartUs < 0 || mPaintEndUs < mLoadBundleStartUs) {
+      return;
+    }
+    mHasEmitSetupTiming = true;
+
+    JavaOnlyMap setupTiming = new JavaOnlyMap();
+    setupTiming.putDouble(LOAD_BUNDLE_START_POLYFILL, (double) mLoadBundleStartUs / 1000);
+    setupTiming.putDouble(PAINT_END_POLYFILL, (double) mPaintEndUs / 1000);
+
+    JavaOnlyMap metrics = new JavaOnlyMap();
+    metrics.putDouble(LYNX_FCP_POLYFILL, (double) (mPaintEndUs - mLoadBundleStartUs) / 1000);
+
+    JavaOnlyMap timingInfo = new JavaOnlyMap();
+    timingInfo.putMap(SETUP_TIMING, setupTiming);
+    timingInfo.putMap(UPDATE_TIMINGS, new JavaOnlyMap());
+    timingInfo.putMap(METRICS, metrics);
+    timingInfo.putBoolean(HAS_RELOAD, false);
+    LynxEventReporter.runOnReportThread(() -> {
+      LynxViewClient client = timingClient.get();
+      if (client != null) {
+        client.onTimingSetup(timingInfo.asHashMap());
+      }
+    });
   }
 
   /** Notify the external observer after the first paint, preserving the existing contract. */
