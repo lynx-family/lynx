@@ -25,13 +25,17 @@ namespace shell {
 void BTSRuntimeMediator::AttachToLynxShell(
     const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
     const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,
-    const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr) {
+    const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
+    const std::shared_ptr<tasm::LazyBundleLoader>& engine_bundle_loader) {
   // attach LynxShell's actor to BTSRuntimeMediator, so the Mediator is fully
   // functional.
   facade_actor_ = facade_actor;
   engine_actor_ = engine_actor;
-  // TODO(chenyouhui): Use LynxResourceLoader directly.
-  external_resource_loader_->SetEngineActor(engine_actor);
+  if (engine_bundle_loader && engine_bundle_loader != lazy_bundle_loader_) {
+    lazy_bundle_loader_->SetBundleManager(
+        engine_bundle_loader->GetBundleManager());
+  }
+  lazy_bundle_loader_->SetEngineActor(engine_actor);
   card_cached_data_mgr_ = card_cached_data_mgr;
   // attach NativeFacadeActor to TimingActor, so the TmingHandler is fully
   // functional.
@@ -104,8 +108,8 @@ std::string BTSRuntimeMediator::GetLynxJSAsset(const std::string& name) {
 
 runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
     const std::string& bundle_name, const std::string& name, long timeout) {
-  LOGE("GetJSContent with externalResourceLoader: " << name);
-  auto info = external_resource_loader_->LoadScript(name, timeout);
+  LOGE("GetJSContent from resource loader: " << name);
+  auto info = lazy_bundle_loader_->LoadScript(name, timeout);
   std::string external_resource_content("");
   runtime::js::JsContent::Type type(runtime::js::JsContent::Type::ERROR);
   if (info.Success()) {
@@ -144,41 +148,20 @@ void BTSRuntimeMediator::GetComponentContextDataAsync(
 
 bool BTSRuntimeMediator::LoadDynamicComponentFromJS(
     const std::string& url, const runtime::js::ApiCallBack& callback,
-    const std::vector<std::string>& ids,
-    std::optional<tasm::LynxTemplateBundle> template_bundle) {
+    const std::vector<std::string>& ids) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "LoadDynamicComponentFromJS not supported on runtime standalone mode");
     return true;
   }
 
-  if (template_bundle) {
-    auto callback_info =
-        tasm::LazyBundleLoader::CallBackInfo{std::string(url),
-                                             {},
-                                             std::move(template_bundle),
-                                             std::nullopt,
-                                             true,
-                                             callback.id(),
-                                             std::vector<std::string>(ids)};
-    if (!engine_actor_) {
-      LOGE("LoadDynamicComponentFromJS:engine_actor is null");
-      return false;
-    }
-    engine_actor_->Act(
-        [callback_info = std::move(callback_info)](auto& engine) mutable {
-          engine->DidLoadComponentFromJS(std::move(callback_info));
-        });
-    return false;
-  }
-
-  external_resource_loader_->LoadLazyBundle(url, callback.id(), ids);
+  lazy_bundle_loader_->LoadLazyBundle(url, callback.id(), ids);
   return false;
 }
 
 void BTSRuntimeMediator::LoadScriptAsync(const std::string& url,
                                          runtime::js::ApiCallBack callback) {
-  external_resource_loader_->LoadScriptAsync(url, callback.id());
+  lazy_bundle_loader_->LoadScriptAsync(url, callback.id());
 }
 
 void BTSRuntimeMediator::AddFont(const lepus::Value& font,
@@ -658,14 +641,14 @@ event::DispatchEventResult BTSRuntimeMediator::DispatchMessageEvent(
 }
 
 std::string BTSRuntimeMediator::LoadJSSource(const std::string& name) {
-  auto result = external_resource_loader_->LoadJSSource(name);
+  auto result = lazy_bundle_loader_->LoadJSSource(name);
   std::string str(result.begin(), result.end());
   return str;
 }
 
 std::shared_ptr<runtime::js::Buffer> BTSRuntimeMediator::LoadBytecode(
     const std::string& url) {
-  auto info = external_resource_loader_->LoadByteCode(url, 5 /* 5s timeout */);
+  auto info = lazy_bundle_loader_->LoadByteCode(url, 5 /* 5s timeout */);
   std::shared_ptr<runtime::js::Buffer> buffer;
   if (info.Success()) {
     buffer = std::make_shared<runtime::js::ByteBuffer>(std::move(info.data));

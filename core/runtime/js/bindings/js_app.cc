@@ -3141,7 +3141,6 @@ void App::QueryComponent(const std::string& url, ApiCallBack callback,
               });
 
   auto holder = weak_js_bundle_holder_.lock();
-  std::optional<tasm::LynxTemplateBundle> template_bundle = std::nullopt;
   if (holder) {
     auto js_bundle = holder->GetJSBundleFromBT(url);
     if (js_bundle) {
@@ -3152,10 +3151,9 @@ void App::QueryComponent(const std::string& url, ApiCallBack callback,
                                      {{kHasReady, lepus::Value(true)}})));
       return;
     }
-    template_bundle = holder->GetTemplateBundleFromBT(url);
   }
 
-  delegate_->LoadDynamicComponentFromJS(url, callback, ids, template_bundle);
+  delegate_->LoadDynamicComponentFromJS(url, callback, ids);
 }
 
 void App::AddFont(const lepus::Value& font, ApiCallBack callback) {

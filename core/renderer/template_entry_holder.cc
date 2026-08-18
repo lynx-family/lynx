@@ -82,12 +82,10 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE,
                 "url", url);
     preload_template_bundles_.try_emplace(url, bundle);
-    TryPostTemplateBundle(url, bundle);
   }
 
-  // TODO: It's reasonable that using component_loader as bundle_manager
-  // so we need to insert pre registered bundle into bundle manager.
-  // refactoring it later!
+  // Keep pre-registered bundles in the shared BundleManager so both engine and
+  // runtime loading paths observe the same cache.
   if (component_loader_) {
     component_loader_->InsertTemplateBundle(url, std::move(bundle));
   }
@@ -99,13 +97,6 @@ void TemplateEntryHolder::TryPostJSBundle(const std::string& url,
   // from the Engine Thread except for the first screen.
   if (bundle.EnableFiberArch() && js_bundle_holder_) {
     js_bundle_holder_->InsertJSBundle(url, bundle.GetJsBundle());
-  }
-}
-
-void TemplateEntryHolder::TryPostTemplateBundle(
-    const std::string& url, const LynxTemplateBundle& bundle) {
-  if (bundle.EnableFiberArch() && js_bundle_holder_) {
-    js_bundle_holder_->InsertTemplateBundle(url, bundle);
   }
 }
 

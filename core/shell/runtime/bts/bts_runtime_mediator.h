@@ -15,8 +15,8 @@
 #include "base/include/closure.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
-#include "core/resource/external_resource/external_resource_loader.h"
 #include "core/resource/lazy_bundle/bundle_resource_info.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/template_delegate.h"
 #include "core/runtime/js/update_data_type.h"
@@ -35,10 +35,6 @@ class JsBundleHolder;
 }  // namespace js
 }  // namespace runtime
 
-namespace tasm {
-class LazyBundleLoader;
-}  // namespace tasm
-
 namespace shell {
 
 class BTSRuntime;
@@ -54,24 +50,23 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
           performance_controller_actor,
       const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
       const fml::RefPtr<fml::TaskRunner>& js_runner,
-      std::unique_ptr<ExternalResourceLoader> external_resource_loader)
+      std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader)
       : facade_actor_(facade_actor),
         engine_actor_(engine_actor),
         perf_controller_actor_(performance_controller_actor),
         card_cached_data_mgr_(card_cached_data_mgr),
         js_runner_(js_runner),
-        external_resource_loader_(std::shared_ptr<ExternalResourceLoader>(
-            std::move(external_resource_loader))) {
+        lazy_bundle_loader_(std::move(lazy_bundle_loader)) {
     runtime_standalone_mode_ =
         !facade_actor || !engine_actor || !card_cached_data_mgr;
-    // TODO(chenyouhui): Use LynxResourceLoader directly.
-    external_resource_loader_->SetEngineActor(engine_actor);
+    lazy_bundle_loader_->SetEngineActor(engine_actor);
   }
   ~BTSRuntimeMediator() override = default;
   void AttachToLynxShell(
       const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
       const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,
-      const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr);
+      const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
+      const std::shared_ptr<tasm::LazyBundleLoader>& engine_bundle_loader);
 
   void OnRuntimeGC(
       std::unordered_map<std::string, std::string> mem_info) override;
@@ -88,10 +83,9 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void GetComponentContextDataAsync(const std::string& component_id,
                                     const std::string& key,
                                     runtime::js::ApiCallBack callback) override;
-  bool LoadDynamicComponentFromJS(
-      const std::string& url, const runtime::js::ApiCallBack& callback,
-      const std::vector<std::string>& ids,
-      std::optional<tasm::LynxTemplateBundle> template_bundle) override;
+  bool LoadDynamicComponentFromJS(const std::string& url,
+                                  const runtime::js::ApiCallBack& callback,
+                                  const std::vector<std::string>& ids) override;
   void LoadScriptAsync(const std::string& url,
                        runtime::js::ApiCallBack callback) override;
   void AddFont(const lepus::Value& font,
@@ -166,11 +160,6 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void SetJsBundleHolder(
       const std::weak_ptr<runtime::js::JsBundleHolder>& holder) {
     weak_js_bundle_holder_ = holder;
-  }
-
-  void SetLazyBundleLoader(
-      const std::shared_ptr<tasm::LazyBundleLoader>& lazy_bundle_loader) {
-    lazy_bundle_loader_ = lazy_bundle_loader;
   }
 
   void SetCSSVariables(
@@ -269,8 +258,6 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   // for vsync
   std::shared_ptr<runtime::IVSyncObserver> vsync_observer_{nullptr};
 
-  // ExternalResourceLoader will use weak_from_this() internally
-  std::shared_ptr<ExternalResourceLoader> external_resource_loader_;
   std::weak_ptr<runtime::js::JsBundleHolder> weak_js_bundle_holder_;
   std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;

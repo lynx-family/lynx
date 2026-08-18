@@ -336,7 +336,9 @@ void LynxShell::OnLynxEngineBuilt(
     layout_mediator_->SetRuntimeActor(runtime_actor_);
     runtime_actor_->ActAsync(
         [facade_actor = facade_actor_, engine_actor = engine_actor_,
-         card_cached_data_mgr = card_cached_data_mgr_](auto& runtime) mutable {
+         card_cached_data_mgr = card_cached_data_mgr_,
+         engine_bundle_loader =
+             engine_build_options_.lazy_bundle_loader_](auto& runtime) mutable {
           if (!runtime) {
             return;
           }
@@ -345,7 +347,8 @@ void LynxShell::OnLynxEngineBuilt(
             return;
           }
           static_cast<BTSRuntimeMediator*>(delegate)->AttachToLynxShell(
-              facade_actor, engine_actor, card_cached_data_mgr);
+              facade_actor, engine_actor, card_cached_data_mgr,
+              engine_bundle_loader);
         });
   }
 
@@ -513,13 +516,23 @@ void LynxShell::InitRuntime(
   }
   fml::RefPtr<fml::TaskRunner> js_task_runner;
   js_task_runner = runners_.GetJSTaskRunner();
-  auto external_resource_loader =
-      std::make_unique<ExternalResourceLoader>(resource_loader);
-  auto external_resource_loader_ptr = external_resource_loader.get();
+  auto lazy_bundle_loader = engine_build_options_.lazy_bundle_loader_;
+  if (!lazy_bundle_loader) {
+    lazy_bundle_loader =
+        std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+    lazy_bundle_loader->SetEngineActor(engine_actor_);
+    lazy_bundle_loader->SetPerfControllerActor(perf_controller_actor_);
+    engine_build_options_.lazy_bundle_loader_ = lazy_bundle_loader;
+    engine_actor_->Act(
+        [lazy_bundle_loader](const std::unique_ptr<LynxEngine>& engine) {
+          if (engine && engine->GetTasm()) {
+            engine->GetTasm()->SetLazyBundleLoader(lazy_bundle_loader);
+          }
+        });
+  }
   auto delegate = std::make_unique<BTSRuntimeMediator>(
       facade_actor_, engine_actor_, perf_controller_actor_,
-      card_cached_data_mgr_, js_task_runner,
-      std::move(external_resource_loader));
+      card_cached_data_mgr_, js_task_runner, lazy_bundle_loader);
 #if ENABLE_TESTBENCH_RECORDER
   delegate->SetRecordID(record_id);
 #endif
@@ -536,7 +549,7 @@ void LynxShell::InitRuntime(
 
   OnRuntimeCreate();
   on_runtime_actor_created(runtime_actor_);
-  external_resource_loader_ptr->SetRuntimeActor(runtime_actor_);
+  lazy_bundle_loader->SetRuntimeActor(runtime_actor_);
   tasm_mediator_->SetRuntimeActor(runtime_actor_);
   layout_mediator_->SetRuntimeActor(runtime_actor_);
 
@@ -599,25 +612,28 @@ void LynxShell::AttachRuntime() {
 
     auto enqueue_info =
         tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-    runtime_actor_->ActAsync([facade_actor = facade_actor_,
-                              engine_actor = engine_actor_,
-                              card_cached_data_mgr = card_cached_data_mgr_,
-                              weak_js_bundle_holder = GetWeakJsBundleHolder(),
-                              enqueue_info, flow_id](auto& runtime) mutable {
-      runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-      (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
-                      // warning.
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_RUNTIME,
-                  [flow_id](lynx::perfetto::EventContext ctx) {
-                    ctx.event()->add_terminating_flow_ids(flow_id);
-                  });
+    runtime_actor_->ActAsync(
+        [facade_actor = facade_actor_, engine_actor = engine_actor_,
+         card_cached_data_mgr = card_cached_data_mgr_,
+         engine_bundle_loader = engine_build_options_.lazy_bundle_loader_,
+         weak_js_bundle_holder = GetWeakJsBundleHolder(), enqueue_info,
+         flow_id](auto& runtime) mutable {
+          runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+          (void)flow_id;  // Explicitly reference `flow_id` to suppress the
+                          // compiler warning.
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_RUNTIME,
+                      [flow_id](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_terminating_flow_ids(flow_id);
+                      });
 
-      runtime->TransitionToFullRuntime();
-      runtime->SetJsBundleHolder(weak_js_bundle_holder);
-      static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
-          ->AttachToLynxShell(std::move(facade_actor), std::move(engine_actor),
-                              std::move(card_cached_data_mgr));
-    });
+          runtime->TransitionToFullRuntime();
+          runtime->SetJsBundleHolder(weak_js_bundle_holder);
+          static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
+              ->AttachToLynxShell(std::move(facade_actor),
+                                  std::move(engine_actor),
+                                  std::move(card_cached_data_mgr),
+                                  std::move(engine_bundle_loader));
+        });
   }
 }
 
