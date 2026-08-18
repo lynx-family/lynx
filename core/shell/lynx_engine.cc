@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
@@ -54,7 +55,31 @@ inline std::string& GetCoreJS() {
 
 }  // namespace
 
+LynxEngine::LynxEngine(
+    std::unique_ptr<tasm::TemplateAssembler> tasm,
+    std::unique_ptr<Delegate> delegate,
+    const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
+    const base::LogContext& initial_context, int32_t instance_id)
+    : log_context_(initial_context),
+      tasm_(std::move(tasm)),
+      delegate_(std::move(delegate)),
+      card_cached_data_mgr_(card_cached_data_mgr),
+      instance_id_(instance_id) {
+  if (tasm_) {
+    tasm_->SetLogContext(log_context_);
+  }
+  LOGI(log_context_ << " LynxEngine create this:" << this);
+}
+
+void LynxEngine::SetLogContext(const base::LogContext& context) {
+  log_context_ = context;
+  if (tasm_) {
+    tasm_->SetLogContext(context);
+  }
+}
+
 LynxEngine::~LynxEngine() {
+  LOGI(log_context_ << " LynxEngine release this:" << this);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENGINE_DESTRUCTOR);
   // TODO(heshan): now is nullptr when run unittest, in fact cannot be nullptr
   // when runtime, will remove when LynxEngine no longer be a wrapper for tasm

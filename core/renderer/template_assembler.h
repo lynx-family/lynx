@@ -19,6 +19,7 @@
 #include "base/include/closure.h"
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/fml/task_runner.h"
+#include "base/include/log/log_context.h"
 #include "base/include/log/logging.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
 #include "core/public/external_memory_snapshot.h"
@@ -821,6 +822,12 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   inline int32_t GetInstanceId() { return instance_id_; }
 
+  void SetLogContext(const base::LogContext& log_context) {
+    log_context_ = log_context;
+  }
+
+  const base::LogContext& GetLogContext() const { return log_context_; }
+
   void SetSupportComponentJS(bool support) override {
     support_component_js_ = support;
   }
@@ -1041,6 +1048,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   std::string platform_config_json_string_;
 
   const int32_t instance_id_;
+
+  base::LogContext log_context_;
 
   lepus::Value default_processor_;
   std::unordered_map<std::string, lepus::Value> processor_with_name_;

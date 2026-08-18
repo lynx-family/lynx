@@ -238,7 +238,8 @@ TemplateAssembler::TemplateAssembler(
 }
 
 TemplateAssembler::~TemplateAssembler() {
-  LOGI("TemplateAssembler::Release url:" << url_ << " this:" << this);
+  LOGI(GetLogContext() << " TemplateAssembler::Release url:" << url_
+                       << " this:" << this);
 };
 
 void TemplateAssembler::TriggerVmGC() {
@@ -263,7 +264,8 @@ void TemplateAssembler::UpdateGlobalProps(
                                                    ConcatenateTableKeys(data));
               });
   PipelineScope pipeline_scope(this, pipeline_options);
-  LOGI("UpdateGlobalProps " << data.GetLength() << " this: " << this);
+  LOGI(GetLogContext() << " UpdateGlobalProps " << data.GetLength()
+                       << " this: " << this);
   global_props_ = data;
   if (template_loaded_) {
     NotifyGlobalPropsChanged(data);
@@ -339,8 +341,8 @@ bool TemplateAssembler::OnLoadTemplate(
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBundleStart);
 
   // print log
-  LOGI("start TemplateAssembler::LoadTemplate, url:"
-       << url_ << " len: " << source_size_ << " this:" << this);
+  LOGI(GetLogContext() << " start TemplateAssembler::LoadTemplate, url:" << url_
+                       << " len: " << source_size_ << " this:" << this);
 
   if (EnableEventReporter()) {
     // record source size
@@ -833,8 +835,8 @@ void TemplateAssembler::DidLoadTemplate() {
   is_loading_template_ = false;
 
   // print log
-  LOGI("end TemplateAssembler::LoadTemplate, url:" << url_
-                                                   << " len: " << source_size_);
+  LOGI(GetLogContext() << " end TemplateAssembler::LoadTemplate, url:" << url_
+                       << " len: " << source_size_);
 
   // timing actions
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBundleEnd);
@@ -1166,8 +1168,8 @@ void TemplateAssembler::ReloadTemplate(
   }
 
   // print log
-  LOGI("start TemplateAssembler::ReloadTemplate, url:"
-       << url_ << " len: " << source_size_ << " this:" << this);
+  LOGI(GetLogContext() << " start TemplateAssembler::ReloadTemplate, url:"
+                       << url_ << " len: " << source_size_ << " this:" << this);
 
   is_loading_template_ = true;
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, LYNX_RELOAD_TEMPLATE,
@@ -1247,7 +1249,7 @@ void TemplateAssembler::ReloadTemplate(
   SendFontScaleChanged(font_scale_);
   delegate_.OnTasmFinishByNative();
   is_loading_template_ = false;
-  LOGI("end TemplateAssembler::ReloadTemplate");
+  LOGI(GetLogContext() << " end TemplateAssembler::ReloadTemplate");
   if (card && card->GetVm()) {
     card->GetVm()->UpdateGCTiming(false);
   }
@@ -2031,7 +2033,8 @@ void TemplateAssembler::TriggerWorkletFunction(
 }
 
 void TemplateAssembler::Destroy() {
-  LOGI("TemplateAssembler::Destroy url:" << url_ << " this:" << this);
+  LOGI(GetLogContext() << " TemplateAssembler::Destroy url:" << url_
+                       << " this:" << this);
 
   EnsureOnLayoutReadyHooksFinish();
 
@@ -2329,12 +2332,12 @@ void TemplateAssembler::UpdateDataByPreParsedData(
     return;
   }
 
-  LOGI("TemplateAssembler::UpdateDataByPreParsedData url:"
-       << url_ << " this:" << this
-       << " reset:" << update_page_option.reset_page_data
-       << " state:" << (template_loaded_ ? "after" : "before")
-       << " loadTemplate enablePreUpdateData:"
-       << this->enable_pre_update_data_);
+  LOGI(GetLogContext() << " TemplateAssembler::UpdateDataByPreParsedData url:"
+                       << url_ << " this:" << this
+                       << " reset:" << update_page_option.reset_page_data
+                       << " state:" << (template_loaded_ ? "after" : "before")
+                       << " loadTemplate enablePreUpdateData:"
+                       << this->enable_pre_update_data_);
 
   // pre-painting means to invoke js lifecycle in updateData.
   // we should consider engine reuse the same.
@@ -3512,8 +3515,9 @@ void TemplateAssembler::RenderPageWithSSRData(
   }
 #endif
 
-  LOGI("start TemplateAssembler::RenderPageWithSSRData, this:"
-       << this << ", url:" << url_);
+  LOGI(GetLogContext()
+       << " start TemplateAssembler::RenderPageWithSSRData, this:" << this
+       << ", url:" << url_);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kRenderPageStartSSR);
 
   Scope scope(this);
@@ -3534,8 +3538,8 @@ void TemplateAssembler::RenderPageWithSSRData(
   }
 
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kRenderPageEndSSR);
-  LOGI("end TemplateAssembler::RenderPageWithSSRData, this:" << this << ", url:"
-                                                             << url_);
+  LOGI(GetLogContext() << " end TemplateAssembler::RenderPageWithSSRData, this:"
+                       << this << ", url:" << url_);
 }
 
 Themed& TemplateAssembler::Themed() { return page_proxy_.themed(); }

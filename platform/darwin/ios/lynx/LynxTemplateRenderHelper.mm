@@ -62,6 +62,10 @@
 #include "core/shell/perf_controller_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 
+@interface LynxBackgroundRuntime (LogContextInternal)
+- (const lynx::base::LogContext*)runtimeCreationLogContext;
+@end
+
 namespace {
 
 bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painting_context) {
@@ -176,6 +180,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
               static_cast<lynx::base::ThreadStrategyForRendering>(_threadStrategyForRendering))
           .SetPropBundleCreator(ui_delegate->CreatePropBundleCreator())
           .SetRuntimeActor(_runtime ? _runtime.runtimeActor : nullptr)
+          .SetRuntimeCreationContext(_runtime ? [_runtime runtimeCreationLogContext] : nullptr)
           .SetPerfControllerActor(_runtime ? _runtime.perfControllerActor : nullptr)
           .SetPerformanceControllerPlatform(
               _performanceController

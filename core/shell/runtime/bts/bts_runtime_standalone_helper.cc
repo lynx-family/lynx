@@ -14,6 +14,7 @@
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/performance_mediator.h"
 #include "core/shell/common/shell_trace_event_def.h"
+#include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/runtime/bts/bts_runtime_mediator.h"
 
@@ -39,6 +40,9 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
     const lepus::Value* global_props, bool debuggable,
     bool long_task_monitor_disabled) {
   auto instance_id = lynx::shell::LynxShell::NextInstanceId();
+  const base::LogContext creation_context{base::kUnavailableLynxEntityId,
+                                          base::kUnavailableLynxEntityId,
+                                          GenerateLynxEntityId()};
   lynx::fml::RefPtr<lynx::fml::TaskRunner> js_task_runner =
       lynx::base::TaskRunnerManufactor::GetJSRunner(group_name);
   auto native_runtime_facade =
@@ -68,8 +72,8 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
   auto performance_actor =
       std::make_shared<LynxActor<tasm::performance::PerformanceController>>(
           std::make_unique<tasm::performance::PerformanceController>(
-              std::move(perf_mediator), std::move(timing_mediator),
-              instance_id),
+              creation_context, std::move(perf_mediator),
+              std::move(timing_mediator), instance_id),
           tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
           instance_id);
 
@@ -105,8 +109,8 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
   page_options.SetDebuggable(debuggable);
 
   auto runtime = std::make_unique<BTSRuntime>(
-      group_id, instance_id, std::move(delegate), bytecode_source_url,
-      runtime_flag, page_options);
+      group_id, creation_context, instance_id, std::move(delegate),
+      bytecode_source_url, runtime_flag, page_options);
   auto runtime_actor = std::make_shared<LynxActor<BTSRuntime>>(
       std::move(runtime), js_task_runner, instance_id, true);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor);
@@ -134,9 +138,9 @@ BTSRuntimeStandalone::InitRuntimeStandalone(
         runtime->SetJsBundleHolder(weak_js_bundle_holder);
       });
   return std::unique_ptr<BTSRuntimeStandalone>(new BTSRuntimeStandalone(
-      group_name, instance_id, runtime_actor, performance_actor,
-      native_runtime_facade, white_board_delegate, lazy_bundle_loader,
-      std::move(js_bundle_proxy), js_bundle_holder));
+      group_name, instance_id, creation_context, runtime_actor,
+      performance_actor, native_runtime_facade, white_board_delegate,
+      lazy_bundle_loader, std::move(js_bundle_proxy), js_bundle_holder));
 }
 
 void BTSRuntimeStandalone::EvaluateScript(std::string url, std::string script) {

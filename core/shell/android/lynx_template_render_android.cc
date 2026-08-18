@@ -394,6 +394,11 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong view_id,
               (runtime_wrapper != nullptr)
                   ? runtime_wrapper->BTSRuntimeStandalone().GetRuntimeActor()
                   : nullptr)
+          .SetRuntimeCreationContext(
+              runtime_wrapper != nullptr
+                  ? &runtime_wrapper->BTSRuntimeStandalone()
+                         .GetCreationLogContext()
+                  : nullptr)
           .SetPerfControllerActor((runtime_wrapper != nullptr)
                                       ? runtime_wrapper->BTSRuntimeStandalone()
                                             .GetPerfControllerActor()

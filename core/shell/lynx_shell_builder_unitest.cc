@@ -40,6 +40,7 @@ class LynxShellBuilderTest : public ::testing::Test {
     loader_ = std::make_shared<lynx::tasm::MockLazyBundleLoader>();
 
     option_ = std::make_unique<lynx::shell::ShellOption>();
+    option_->view_id_ = 17;
 
     shell_builder_ = std::make_unique<LynxShellBuilder>();
   }
@@ -89,6 +90,22 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
 
   shell_->runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       nullptr, shell_->runners_.GetUITaskRunner());
+
+  const auto shell_context = shell_->GetLogContextSnapshot();
+  EXPECT_EQ(shell_context.view_id, option_->view_id_);
+  EXPECT_NE(shell_context.engine_id, base::kUnavailableLynxEntityId);
+  EXPECT_EQ(shell_context.runtime_id, base::kUnavailableLynxEntityId);
+  EXPECT_EQ(shell_->engine_actor_->Impl()->GetLogContext().engine_id,
+            shell_context.engine_id);
+  EXPECT_EQ(shell_->layout_actor_->Impl()->GetLogContext().engine_id,
+            shell_context.engine_id);
+  EXPECT_NE(&shell_->engine_actor_->Impl()->GetLogContext(),
+            &shell_->engine_actor_->Impl()->GetTasm()->GetLogContext());
+  const auto& performance_context =
+      shell_->perf_controller_actor_->Impl()->GetLogContext();
+  EXPECT_EQ(performance_context.view_id, shell_context.view_id);
+  EXPECT_EQ(performance_context.engine_id, base::kUnavailableLynxEntityId);
+  EXPECT_EQ(performance_context.runtime_id, base::kUnavailableLynxEntityId);
 
   // SetNativeFacade() test
   EXPECT_EQ(reinterpret_cast<intptr_t>(shell_->facade_actor_->Impl()), facade_);
@@ -154,6 +171,82 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
 
   ASSERT_EQ(shell_->GetTasm()->GetDevicePixelRatio(), 1.75f);
   ASSERT_EQ(element_manager->GetLynxEnvConfig().DevicePixelRatio(), 1.75f);
+}
+
+TEST_F(LynxShellBuilderTest, InitRuntimePublishesCompleteLogContext) {
+  auto facade = std::make_unique<MockNativeFacade>();
+  auto painting_context =
+      std::make_unique<lynx::tasm::PaintingContextPlatformImpl>();
+  auto painting_context_creator = [&](lynx::shell::LynxShell*) {
+    return std::move(painting_context);
+  };
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::move(facade))
+                   .SetPaintingContextCreator(painting_context_creator)
+                   .SetLynxEnvConfig(*lynx_env_config_)
+                   .SetLazyBundleLoader(loader_)
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetShellOption(*option_)
+                   .build());
+
+  shell_->InitRuntime(
+      "group", nullptr, nullptr,
+      [](const std::shared_ptr<LynxActor<BTSRuntime>>&) {}, {},
+      LynxRuntimeFlags::PENDING_JS_TASK, "");
+
+  const auto context = shell_->GetLogContextSnapshot();
+  EXPECT_NE(context.runtime_id, base::kUnavailableLynxEntityId);
+  EXPECT_EQ(shell_->engine_actor_->ActSync([](auto& engine) {
+    return engine->GetLogContext().runtime_id;
+  }),
+            context.runtime_id);
+  EXPECT_EQ(shell_->engine_actor_->ActSync([](auto& engine) {
+    return engine->GetTasm()->GetLogContext().runtime_id;
+  }),
+            context.runtime_id);
+  EXPECT_EQ(shell_->layout_actor_->ActSync([](auto& layout) {
+    return layout->GetLogContext().runtime_id;
+  }),
+            context.runtime_id);
+  EXPECT_EQ(shell_->runtime_actor_->ActSync([](auto& runtime) {
+    return runtime->GetLogContext().runtime_id;
+  }),
+            context.runtime_id);
+  EXPECT_EQ(shell_->perf_controller_actor_->ActSync([](auto& controller) {
+    return controller->GetLogContext().runtime_id;
+  }),
+            context.runtime_id);
+}
+
+TEST_F(LynxShellBuilderTest,
+       AttachRuntimeWithoutCreationContextPreservesLegacyContext) {
+  auto facade = std::make_unique<MockNativeFacade>();
+  auto painting_context =
+      std::make_unique<lynx::tasm::PaintingContextPlatformImpl>();
+  auto painting_context_creator = [&](lynx::shell::LynxShell*) {
+    return std::move(painting_context);
+  };
+  auto runtime_actor = std::make_shared<LynxActor<BTSRuntime>>(
+      nullptr, MockRunnerManufactor::GetHookJsTaskRunner(), kUnknownInstanceId,
+      false);
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::move(facade))
+                   .SetPaintingContextCreator(painting_context_creator)
+                   .SetLynxEnvConfig(*lynx_env_config_)
+                   .SetLazyBundleLoader(loader_)
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetShellOption(*option_)
+                   .SetRuntimeActor(runtime_actor)
+                   .build());
+
+  ASSERT_FALSE(shell_->runtime_creation_context_);
+  shell_->AttachRuntime();
+
+  EXPECT_EQ(shell_->runtime_actor_, runtime_actor);
+  EXPECT_EQ(shell_->GetLogContextSnapshot().runtime_id,
+            base::kUnavailableLynxEntityId);
 }
 
 TEST_F(LynxShellBuilderTest,

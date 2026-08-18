@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/log/log_context.h"
 #include "core/public/layout_ctx_platform_impl.h"
 #include "core/public/layout_node_manager.h"
 #include "core/public/page_options.h"
@@ -75,11 +76,15 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
     virtual void OnFirstMeaningfulLayout() = 0;
   };
 
-  LayoutContext(std::unique_ptr<Delegate> delegate,
+  LayoutContext(const base::LogContext& initial_context,
+                std::unique_ptr<Delegate> delegate,
                 std::unique_ptr<LayoutCtxPlatformImpl> platform_impl,
                 const LynxEnvConfig& lynx_env_config,
                 const PageOptions& page_options);
   virtual ~LayoutContext();
+
+  void SetLogContext(const base::LogContext& context);
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   // used for platform
   void SetMeasureFunc(int32_t id,
@@ -261,6 +266,7 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
   bool IfNeedsUpdateLayoutInfo(LayoutNode* node);
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
 
+  base::LogContext log_context_;
   std::shared_ptr<LayoutCtxPlatformImpl> platform_impl_;
   std::unique_ptr<Delegate> delegate_;
   LayoutNode* root_;

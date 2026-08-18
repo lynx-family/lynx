@@ -46,6 +46,7 @@ class LynxShellTest : public ::testing::Test {
     // FIXME(heshan): tricky, here must ensure manufactor not create thread
     // POSIX thread exit may cause crash...
     lynx::shell::ShellOption option;
+    option.view_id_ = 18;
     shell_.reset(
         lynx::shell::LynxShellBuilder()
             .SetNativeFacade(std::unique_ptr<NativeFacade>(facade_))

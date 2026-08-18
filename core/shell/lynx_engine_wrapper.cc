@@ -27,6 +27,8 @@ void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
       shell->runners_.GetTASMTaskRunner());
   shell->layout_actor_ = this->layout_actor_->TransferToNewActor(
       shell->runners_.GetLayoutTaskRunner());
+  shell->log_context_.engine_id =
+      shell->engine_actor_->Impl()->GetLogContext().engine_id;
   shell->tasm_mediator_ = this->tasm_mediator_;
   shell->layout_mediator_ = this->layout_mediator_;
   shell->tasm_mediator_->SetShouldSendEventToMainThreadCache(
