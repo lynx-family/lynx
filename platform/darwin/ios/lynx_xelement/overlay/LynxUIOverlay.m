@@ -154,6 +154,10 @@ LYNX_LAZY_REGISTER_UI("overlay")
 - (void)onNodeReady {
   [super onNodeReady];
 
+  if (!self.context.rootUI) {
+    return;
+  }
+
   // Overlay's frame must be equal to UIScreen
   self.view.frame = [LynxUIOverlayShadowNode windowBounds];
 
