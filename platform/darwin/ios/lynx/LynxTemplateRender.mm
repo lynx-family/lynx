@@ -271,6 +271,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   // enable js default yes
   _enableJSRuntime = _enableAirStrictMode ? NO : builder.enableJSRuntime;
   _enableMTSModule = builder.enableMTSModule;
+  _enableLepusModule = builder.enableLepusModule;
   _needPendingUIOperation = builder.enableUIOperationQueue;
   _lynxEngineProxy = [[LynxEngineProxy alloc] init];
   _enablePendingJSTaskOnLayout = builder.enablePendingJSTaskOnLayout;
@@ -2805,6 +2806,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.colorScheme = self->_colorScheme;
     builder.enablePreUpdateData = YES;
     builder.enableMultiAsyncThread = self->_builder.enableMultiAsyncThread;
+    builder.enableLepusModule = self->_enableLepusModule;
     builder.fetcher = self->_fetcher;
     builder.enableGenericResourceFetcher =
         self->_enableGenericResourceFetcher ? LynxBooleanOptionTrue : LynxBooleanOptionFalse;

@@ -32,6 +32,8 @@
   BOOL _hasBackgroundJsRuntimeTypeSet;
   BOOL _hasEnableBytecodeSet;
   BOOL _hasBytecodeUrlSet;
+  BOOL _enableLepusModule;
+  BOOL _hasEnableLepusModuleSet;
 }
 
 @property(nonatomic, nullable) LynxConfig* config;
@@ -52,6 +54,11 @@
 // Run the hydration process in a async thread.
 @property(nonatomic, assign) BOOL enableAsyncHydration;
 @property(nonatomic, assign) BOOL enableMTSModule;
+/**
+ * Control whether Lepus modules are initialized for this LynxView.
+ * The default value is YES to preserve existing behavior.
+ */
+@property(nonatomic, assign) BOOL enableLepusModule;
 @property(nonatomic, assign) CGFloat fontScale;
 @property(nonatomic, assign) LynxColorScheme colorScheme;
 @property(nonatomic, assign) LynxBooleanOption enableGenericResourceFetcher;
