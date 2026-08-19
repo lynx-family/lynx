@@ -265,7 +265,11 @@ void PageView::InitManagers() {
       [this](const PointerEvent& event, const HitTestResult& result) {
         isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
             event, result);
+#if defined(OS_WIN) || defined(OS_MAC)
+        if (IsTouchLikePointerDevice(event.device)) {
+#else
         if (event.device == PointerEvent::DeviceType::kTouch) {
+#endif
           auto* target = GetFirstNonAnonymousHitTestTarget(result);
           ActivateTouchPseudoStatus(event.pointer_id, target);
         }
@@ -2376,6 +2380,24 @@ ClayEventType ToClayEventType(const PointerEvent& event,
                               bool align_mouse_event_with_w3c) {
   return ToClayEventType(event.type, event.device, align_mouse_event_with_w3c);
 }
+
+#if defined(OS_WIN) || defined(OS_MAC)
+ClayPointerDeviceKind ToClayPointerDeviceKind(
+    PointerEvent::DeviceType device_type) {
+  switch (device_type) {
+    case PointerEvent::DeviceType::kMouse:
+      return kClayPointerDeviceKindMouse;
+    case PointerEvent::DeviceType::kTouch:
+      return kClayPointerDeviceKindTouch;
+    case PointerEvent::DeviceType::kStylus:
+    case PointerEvent::DeviceType::kInvertedStylus:
+      return kClayPointerDeviceKindStylus;
+    case PointerEvent::DeviceType::kTrackpad:
+      return kClayPointerDeviceKindTrackpad;
+  }
+  return kClayPointerDeviceKindTouch;
+}
+#endif
 
 ClayEventType ToClayEventType(KeyEventType type) {
   if (type == KeyEventType::kDown || type == KeyEventType::kRepeat) {

@@ -62,7 +62,8 @@ lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
                       lepus::Value(message_event->GetOriginString()));
   }
   if (event->event_type() == event::Event::EventType::kTouchEvent ||
-      event->event_type() == event::Event::EventType::kCustomEvent) {
+      event->event_type() == event::Event::EventType::kCustomEvent ||
+      event->event_type() == event::Event::EventType::kPointerEvent) {
     event->HandleEventBaseDetail();
     auto event_detail = lepus::Value::Clone(event->detail());
     BASE_STATIC_STRING_DECL(kEventRef, "ref");
