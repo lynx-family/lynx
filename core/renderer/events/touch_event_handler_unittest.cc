@@ -8,6 +8,7 @@
 #include "core/renderer/events/touch_event_handler.h"
 
 #include "base/include/value/base_value.h"
+#include "core/event/pointer_event.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
 #include "core/renderer/events/closure_event_listener.h"
@@ -197,6 +198,186 @@ TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {
   ASSERT_TRUE(received_params.IsArray());
   ASSERT_EQ(received_params.Array()->size(), 1U);
   EXPECT_EQ(received_params.Array()->get(0), info);
+}
+
+TEST_F(TouchEventHandlerTest, HandleAllPointerEventsWithRefactoredDispatcher) {
+  auto page_config = std::make_shared<PageConfig>();
+  page_config->SetEnableEventHandleRefactor(true);
+  tasm_->page_config_ = page_config;
+  tasm_->page_proxy()->element_manager()->SetConfig(page_config);
+
+  auto parent =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  auto target =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  auto related_target =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  parent->MarkAttached();
+  target->MarkAttached();
+  related_target->MarkAttached();
+  related_target->SetIdSelector("related");
+  parent->InsertNode(target);
+
+  constexpr const char* kPointerEvents[] = {
+      "pointerdown",  "pointermove",  "pointerup",   "pointercancel",
+      "pointerenter", "pointerleave", "pointerover", "pointerout",
+  };
+  std::unordered_map<std::string, int> call_counts;
+  std::unordered_map<std::string, lepus::Value> received_details;
+  for (const auto* name : kPointerEvents) {
+    target->AddEventListener(
+        name, std::make_shared<event::ClosureEventListener>(
+                  [name, &call_counts, &received_details](lepus::Value args) {
+                    ++call_counts[name];
+                    received_details.insert_or_assign(
+                        name, lepus::Value::Clone(args.Array()->get(1)));
+                  }));
+  }
+
+  int parent_enter_count = 0;
+  int parent_over_count = 0;
+  parent->AddEventListener(
+      "pointerenter",
+      std::make_shared<event::ClosureEventListener>(
+          [&parent_enter_count](lepus::Value) { ++parent_enter_count; }));
+  parent->AddEventListener(
+      "pointerover",
+      std::make_shared<event::ClosureEventListener>(
+          [&parent_over_count](lepus::Value) { ++parent_over_count; }));
+
+  for (const auto* name : kPointerEvents) {
+    auto params = lepus::Dictionary::Create();
+    params->SetValue("pointerId", 3);
+    params->SetValue("pointerType", "mouse");
+    params->SetValue("timestamp", 1234);
+    params->SetValue(event::kPointerRelatedTargetSign,
+                     related_target->impl_id());
+    touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", name,
+                                            target->impl_id(), params);
+    ASSERT_EQ(call_counts[name], 1);
+    const auto& detail = received_details.at(name);
+    ASSERT_TRUE(detail.IsTable());
+    EXPECT_EQ(detail.Table()->GetValue("type").StdString(), name);
+    EXPECT_EQ(detail.Table()->GetValue("pointerId").Number(), 3);
+    EXPECT_EQ(detail.Table()->GetValue("pointerType").StdString(), "mouse");
+    EXPECT_EQ(detail.Table()->GetValue("timestamp").Number(), 1234);
+    EXPECT_EQ(detail.Table()->GetValue("width").Number(), 1);
+    EXPECT_EQ(detail.Table()->GetValue("height").Number(), 1);
+    EXPECT_EQ(detail.Table()->GetValue("pressure").Number(), 0);
+    EXPECT_FALSE(detail.Table()->Contains(event::kPointerRelatedTargetSign));
+    const auto& related = detail.Table()->GetValue("relatedTarget");
+    ASSERT_TRUE(related.IsTable());
+    EXPECT_EQ(related.Table()->GetValue("id").StdString(), "related");
+  }
+
+  EXPECT_EQ(parent_enter_count, 0);
+  EXPECT_EQ(parent_over_count, 1);
+}
+
+TEST_F(TouchEventHandlerTest, HandlePointerEventWithLegacyDispatcher) {
+  auto element =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  element->MarkAttached();
+  constexpr const char* kPointerEvents[] = {
+      "pointerdown",  "pointermove",  "pointerup",   "pointercancel",
+      "pointerenter", "pointerleave", "pointerover", "pointerout",
+  };
+  for (const auto* name : kPointerEvents) {
+    auto params = lepus::Dictionary::Create();
+    params->SetValue(event::kPointerRelatedTargetSign,
+                     event::kInvalidPointerRelatedTargetSign);
+    params->SetValue("timestamp", 1234);
+    touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", name,
+                                            element->impl_id(), params);
+    EXPECT_EQ(params->GetValue("type").StdString(), name);
+    EXPECT_EQ(params->GetValue("width").Number(), 1);
+    EXPECT_EQ(params->GetValue("height").Number(), 1);
+    EXPECT_EQ(params->GetValue("pressure").Number(), 0);
+    EXPECT_EQ(params->GetValue("timestamp").Number(), 1234);
+    EXPECT_FALSE(params->Contains(event::kPointerRelatedTargetSign));
+  }
+}
+
+TEST_F(TouchEventHandlerTest,
+       LegacyPointerBoundaryEventsCaptureWithoutBubbling) {
+  auto* manager = tasm_->page_proxy()->element_manager().get();
+  auto outer = manager->CreateFiberElement("view");
+  auto component = manager->CreateFiberComponent("component-id", 1, "entry",
+                                                 "Component", "/component");
+  auto bubble_parent = manager->CreateFiberElement("view");
+  auto capture_parent = manager->CreateFiberElement("view");
+  auto target = manager->CreateFiberElement("view");
+  outer->MarkAttached();
+  component->MarkAttached();
+  bubble_parent->MarkAttached();
+  capture_parent->MarkAttached();
+  target->MarkAttached();
+  outer->InsertNode(component);
+  component->InsertNode(bubble_parent);
+  bubble_parent->InsertNode(capture_parent);
+  capture_parent->InsertNode(target);
+  for (auto* element :
+       {bubble_parent.get(), capture_parent.get(), target.get()}) {
+    element->SetParentComponentUniqueIdForFiber(component->impl_id());
+  }
+
+  capture_parent->SetJSEventHandler("pointerenter", "capture-bind",
+                                    "captureEnter");
+  capture_parent->SetJSEventHandler("pointerleave", "capture-bind",
+                                    "captureLeave");
+  for (const auto* name : {"pointerenter", "pointerleave"}) {
+    bubble_parent->SetJSEventHandler(name, "bindEvent", "bubble");
+    outer->SetJSEventHandler(name, "capture-bind", "outerCapture");
+    touch_event_handler_->HandleBubbleEvent(
+        tasm_.get(), "", name, target->impl_id(), lepus::Dictionary::Create());
+  }
+
+  const auto& output = delegate_->DumpDelegate();
+  EXPECT_NE(output.find("captureEnter"), std::string::npos);
+  EXPECT_NE(output.find("captureLeave"), std::string::npos);
+  EXPECT_EQ(output.find("bubble"), std::string::npos);
+  EXPECT_EQ(output.find("outerCapture"), std::string::npos);
+}
+
+TEST_F(TouchEventHandlerTest, NonComposedPointerEventStopsAtComponentBoundary) {
+  auto page_config = std::make_shared<PageConfig>();
+  page_config->SetEnableEventHandleRefactor(true);
+  tasm_->page_config_ = page_config;
+  tasm_->page_proxy()->element_manager()->SetConfig(page_config);
+
+  auto outer =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  auto component = tasm_->page_proxy()->element_manager()->CreateFiberComponent(
+      "component-id", 1, "entry", "Component", "/component");
+  auto target =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement("view");
+  outer->MarkAttached();
+  component->MarkAttached();
+  target->MarkAttached();
+  outer->InsertNode(component);
+  target->SetParentComponentUniqueIdForFiber(component->impl_id());
+  component->InsertNode(target);
+
+  int enter_count = 0;
+  int over_count = 0;
+  outer->AddEventListener("pointerenter",
+                          std::make_shared<event::ClosureEventListener>(
+                              [&enter_count](lepus::Value) { ++enter_count; },
+                              event::EventListener::Options(true)));
+  outer->AddEventListener("pointerover",
+                          std::make_shared<event::ClosureEventListener>(
+                              [&over_count](lepus::Value) { ++over_count; },
+                              event::EventListener::Options(true)));
+
+  touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", "pointerenter",
+                                          target->impl_id(),
+                                          lepus::Dictionary::Create());
+  touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", "pointerover",
+                                          target->impl_id(),
+                                          lepus::Dictionary::Create());
+
+  EXPECT_EQ(enter_count, 0);
+  EXPECT_EQ(over_count, 1);
 }
 
 TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent0) {
