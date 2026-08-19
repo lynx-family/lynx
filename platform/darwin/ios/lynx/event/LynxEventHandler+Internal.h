@@ -27,6 +27,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeEventGestures;
 - (void)markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent *)event;
 
+- (void)handleFocusOnView:(UIView *)view
+            withContainer:(UIView *)container
+                 andPoint:(CGPoint)point
+                 andEvent:(nullable UIEvent *)event
+              ignoreFocus:(BOOL)ignoreFocus;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -189,6 +189,7 @@ enum class PlatformEventPropName : int32_t {
   kEventThrough = 16,
   kEventThroughActiveRegions = 17,
   kEventsPassThrough = 18,
+  kIgnoreFocus = 19,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
@@ -249,6 +250,9 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   }
   if (name == "events-pass-through") {
     return PlatformEventPropName::kEventsPassThrough;
+  }
+  if (name == "ignore-focus") {
+    return PlatformEventPropName::kIgnoreFocus;
   }
   return PlatformEventPropName::kUnknown;
 }
@@ -311,6 +315,9 @@ inline std::string_view PlatformEventPropNameToString(
   }
   if (name == PlatformEventPropName::kEventsPassThrough) {
     return "events-pass-through";
+  }
+  if (name == PlatformEventPropName::kIgnoreFocus) {
+    return "ignore-focus";
   }
   return "";
 }

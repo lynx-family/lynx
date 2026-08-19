@@ -183,9 +183,16 @@
     if (![rootView isKindOfClass:LynxView.class]) {
       return view;
     }
+    NSInteger eventRootSign = [self.uiDelegate getSign];
     LynxTemplateRender *templateRender = ((LynxView *)rootView).templateRender;
-    BOOL platformEventThrough =
-        [templateRender IsPlatformEventTargetEventThrough:[self.uiDelegate getSign] point:point];
+    BOOL ignoreFocus = [templateRender IsPlatformEventTargetIgnoreFocus:eventRootSign point:point];
+    [self.eventHandler handleFocusOnView:view
+                           withContainer:self
+                                andPoint:point
+                                andEvent:event
+                             ignoreFocus:ignoreFocus];
+    BOOL platformEventThrough = [templateRender IsPlatformEventTargetEventThrough:eventRootSign
+                                                                            point:point];
     if (platformEventThrough) {
       return nil;
     }
