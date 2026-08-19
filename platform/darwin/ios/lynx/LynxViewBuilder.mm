@@ -145,6 +145,13 @@
   return [super enableMTSModule];
 }
 
+- (BOOL)enableLepusModule {
+  if (!_hasEnableLepusModuleSet && _lynxViewGroup) {
+    return _lynxViewGroup.enableLepusModule;
+  }
+  return [super enableLepusModule];
+}
+
 - (CGFloat)fontScale {
   if (_lynxViewGroup) {
     return _lynxViewGroup.fontScale;
