@@ -173,9 +173,14 @@ if (enable_unittests) {
 
   executable("clay_unittests") {
     testonly = true
+    if (is_win || is_mac) {
+      defines = [ "CLAY_TEST_HAS_DESKTOP_POINTER_LIFECYCLE=1" ]
+    } else {
+      defines = [ "CLAY_TEST_HAS_DESKTOP_POINTER_LIFECYCLE=0" ]
+    }
     configs += [ ":text_layout_reuse_test_defines" ]
     if (is_win) {
-      defines = [ "_USE_MATH_DEFINES" ]
+      defines += [ "_USE_MATH_DEFINES" ]
     }
     sources = [
       "common/attribute_utils_unittests.cc",
@@ -202,6 +207,7 @@ if (enable_unittests) {
       "event/focus_isolate_unittests.cc",
       "event/focus_manager_unittests.cc",
       "event/gesture_event_unittests.cc",
+      "event/pointer_data_to_event_unittests.cc",
       "gesture/gesture_manager_unittests.cc",
       "gesture/mouse_region_manager_unittests.cc",
       "gesture/velocity_tracker_unittests.cc",
