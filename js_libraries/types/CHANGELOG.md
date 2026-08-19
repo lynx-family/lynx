@@ -5,6 +5,7 @@
 - Add structured `MarkdownTextAttachment` typings for `text-mark-attachments`, including range, click target, background, and border styles.
 - Complete missing Element property declarations with platform versions and default values.
 - Add `InlineImageProps` for `<inline-image>` while preserving `NoProps` for `<inline-truncation>`.
+- Add desktop PointerEvent payload fields and bindings, available when `enableEventHandleRefactor` is enabled. CSS `pointer-events` remains independent of this setting.
 
 ## 4.4.1
 
