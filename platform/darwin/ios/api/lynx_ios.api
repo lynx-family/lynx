@@ -4044,6 +4044,7 @@ public protocol LynxTemplateRenderProtocol-p : <NSObject> {
   public void LynxTemplateRenderProtocol-p::clearForDestroy();
   public void LynxTemplateRenderProtocol-p::loadTemplate:(nonnull LynxLoadMeta *meta);
   public void LynxTemplateRenderProtocol-p::loadTemplate:withURL:initData:(nonnull NSData *tem,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
+  public void LynxTemplateRenderProtocol-p::loadLynxML:withURL:initData:(nonnull NSString *source,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxTemplateRenderProtocol-p::loadTemplateBundle:withURL:initData:(nonnull LynxTemplateBundle *bundle,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxTemplateRenderProtocol-p::loadTemplateWithoutLynxView:withURL:initData:(NSData *_Nonnull tem,[withURL] NSString *_Nonnull url,[initData] LynxTemplateData *_Nullable data);
   public void LynxTemplateRenderProtocol-p::updateMetaData:(nonnull LynxUpdateMeta *meta);
@@ -5527,6 +5528,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::loadTemplateFromURL:initData:(nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxView::loadTemplate:withURL:(nonnull NSData *tem,[withURL] nonnull NSString *url);
   public void LynxView::loadTemplate:withURL:initData:(nonnull NSData *tem,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
+  public void LynxView::loadLynxML:withURL:initData:(nonnull NSString *source,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxView::loadTemplateBundle:withURL:initData:(nonnull LynxTemplateBundle *bundle,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxView::loadSSRData:withURL:initData:(nonnull NSData *tem,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxView::loadSSRDataFromURL:initData:(nonnull NSString *url,[initData] nullable LynxTemplateData *data);

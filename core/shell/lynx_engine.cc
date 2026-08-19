@@ -91,6 +91,21 @@ void LynxEngine::LoadTemplate(
   tasm_->LoadTemplate(url, std::move(source), template_data, pipeline_options);
 }
 
+void LynxEngine::LoadLynxML(
+    const std::string& url, std::string source,
+    const std::shared_ptr<tasm::TemplateData>& template_data,
+    std::shared_ptr<tasm::PipelineOptions> pipeline_options) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENGINE_LOAD_TEMPLATE, "url", url,
+              INSTANCE_ID, instance_id_);
+  tasm::TimingCollector::Scope<Delegate> scope(delegate_.get(),
+                                               pipeline_options);
+  tasm::TimingCollector::Instance()->Mark(tasm::timing::kFfiEnd);
+  tasm::timing::LongTaskMonitor::Scope longTaskScope(
+      tasm_->GetPageOptions(), tasm::timing::kLoadTemplateTask,
+      tasm::timing::kTaskNameLynxEngineLoadTemplate);
+  tasm_->LoadLynxML(url, std::move(source), template_data, pipeline_options);
+}
+
 void LynxEngine::LoadTemplateBundle(
     const std::string& url, tasm::LynxTemplateBundle template_bundle,
     const std::shared_ptr<tasm::TemplateData>& template_data,

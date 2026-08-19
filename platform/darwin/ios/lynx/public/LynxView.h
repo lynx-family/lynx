@@ -128,6 +128,24 @@
             initData:(nullable LynxTemplateData*)data;
 
 /**
+ * EXPERIMENTAL API!
+ * @apidoc
+ * @brief Loads a LynxML source document with initial template data.
+ *
+ * LynxML is a single-file template format that packs the main-thread script,
+ * background-thread script, and style of a card into one XML-like document.
+ * The source is parsed and built into a template bundle at load time.
+ * Both this API and the LynxML format are experimental and may change in
+ * future releases.
+ * @param source The complete contents of the LynxML file.
+ * @param url The URL used to resolve resources referenced by the template.
+ * @param data The initial data used to render the first screen.
+ */
+- (void)loadLynxML:(nonnull NSString*)source
+           withURL:(nonnull NSString*)url
+          initData:(nullable LynxTemplateData*)data;
+
+/**
  * Load LynxView with a pre-decoded template.js
  * Load LynxView with a pre-decoded template.js with [LynxTemplateBundle initWithTemplate], it can
  *be used for LynxTemplateBundle reuse.

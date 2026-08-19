@@ -922,6 +922,42 @@ void TemplateAssembler::LoadTemplate(
   ClearCacheData();
 }
 
+void TemplateAssembler::LoadLynxML(
+    const std::string& url, std::string source,
+    const std::shared_ptr<TemplateData>& template_data,
+    std::shared_ptr<PipelineOptions>& pipeline_options) {
+  source_size_ = source.size();
+  url_ = url;
+  pre_painting_ = pipeline_options->enable_pre_painting;
+  if (pre_painting_) {
+    page_proxy_.SetPrePaintingStage(PrePaintingStage::kStartPrePainting);
+  }
+  LoadTemplateInternal(
+      url, template_data, pipeline_options,
+      [this, source = std::move(source)](
+          const std::shared_ptr<TemplateEntry>& card_entry) mutable {
+        auto report_decode_error =
+            [this, &card_entry](const std::string& error_message) {
+              auto message = ConstructDecodeErrorMessage(
+                  true, card_entry->GetName(), error_message);
+              ReportError(base::LynxError(error::E_APP_BUNDLE_LOAD_PARSE_FAILED,
+                                          std::move(message)));
+            };
+        std::string error_message =
+            card_entry->template_bundle().FromLynxML(source);
+        if (!error_message.empty()) {
+          report_decode_error(error_message);
+          return false;
+        }
+        if (!card_entry->InitWithPageConfigger(this, page_options_)) {
+          report_decode_error(card_entry->GetErrorMsg());
+          return false;
+        }
+        return true;
+      });
+  ClearCacheData();
+}
+
 // LoadTemplate function will execute the following functions in sequence
 // 1. OnLoadTemplate
 // 2. OnDecodeTemplate

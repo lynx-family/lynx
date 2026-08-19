@@ -270,6 +270,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
                     const std::shared_ptr<TemplateData>& template_data,
                     std::shared_ptr<PipelineOptions>& pipeline_options);
 
+  void LoadLynxML(const std::string& url, std::string source,
+                  const std::shared_ptr<TemplateData>& template_data,
+                  std::shared_ptr<PipelineOptions>& pipeline_options);
+
   void LoadTemplateBundle(const std::string& url,
                           LynxTemplateBundle template_bundle,
                           const std::shared_ptr<TemplateData>& template_data,
