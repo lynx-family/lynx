@@ -438,6 +438,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float ContentInsetTop() const;
 
   virtual bool CanAcceptEvent() const;
+  bool AcceptsPointerEvents() const;
   virtual BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                             FloatPoint* relative_position,
                                             int platform_try_hit_id = -1);
@@ -800,6 +801,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool is_interactable_ = true;
   bool should_block_native_event_ = false;
   bool has_intersection_observer_ = false;
+  std::optional<bool> pointer_events_enabled_;
   std::optional<bool> event_through_;
   struct EventThroughSizeValue {
     double value = 0.0;
