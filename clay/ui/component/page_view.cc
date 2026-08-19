@@ -263,7 +263,7 @@ void PageView::InitManagers() {
       [this](const PointerEvent& event, const HitTestResult& result) {
         isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
             event, result);
-        if (event.device != PointerEvent::DeviceType::kTouch &&
+        if (!IsTouchLikePointerDevice(event.device) &&
             event.device != PointerEvent::DeviceType::kMouse) {
           return;
         }
@@ -948,9 +948,7 @@ void PageView::MarkTapSuppressedPointersForFlingStop(
   }
   for (const auto& event : events) {
     if (event.type == PointerEvent::EventType::kDownEvent &&
-        (event.device == PointerEvent::DeviceType::kTouch ||
-         event.device == PointerEvent::DeviceType::kStylus ||
-         event.device == PointerEvent::DeviceType::kInvertedStylus)) {
+        IsTouchLikePointerDevice(event.device)) {
       fling_stop_tap_suppressed_pointer_ids_.insert(event.pointer_id);
     }
   }
@@ -1024,7 +1022,7 @@ void PageView::SetupIsolatedGestures() {
             event.pointer_id)) {
       return;
     }
-    if (event.device == PointerEvent::DeviceType::kTouch) {
+    if (IsTouchLikePointerDevice(event.device)) {
       ReportTopViewEvent(event, kClayEventTypeTap);
     } else {
       ReportTopViewEvent(event, kClayEventTypeMouseClick);
@@ -1041,7 +1039,7 @@ void PageView::SetupIsolatedGestures() {
       isolated_gesture_detector_.gesture_manager());
   long_press_recognizer->SetLongPressStartCallback(
       [this](const PointerEvent& event) {
-        if (event.device == PointerEvent::DeviceType::kTouch) {
+        if (IsTouchLikePointerDevice(event.device)) {
           ReportTopViewEvent(event, kClayEventTypeLongPress);
         } else {  // mouse
           ReportTopViewEvent(event, kClayEventTypeMouseLongPress);
@@ -1151,7 +1149,9 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
   }
 
   switch (event.device) {
-    case PointerEvent::DeviceType::kTouch: {
+    case PointerEvent::DeviceType::kTouch:
+    case PointerEvent::DeviceType::kStylus:
+    case PointerEvent::DeviceType::kInvertedStylus: {
       if (type == kClayEventTypeTouchStart) {
         FML_DCHECK(touch_view_map_.find(event.pointer_id) ==
                    touch_view_map_.end());
@@ -1275,9 +1275,6 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         }
       }
     } break;
-    default:
-      // TODO(Chenfeng Pan): report event from *[Inverted]Stylus*
-      break;
   }
 }
 
@@ -2246,7 +2243,7 @@ void PageView::HandleGestureEvent(int sign, uint32_t gesture_id,
 ClayEventType ToClayEventType(PointerEvent::EventType event_type,
                               PointerEvent::DeviceType device,
                               bool align_mouse_event_with_w3c) {
-  if (device == PointerEvent::DeviceType::kTouch) {
+  if (IsTouchLikePointerDevice(device)) {
     switch (event_type) {
       case PointerEvent::EventType::kSignalEvent:
         return kClayEventTypeWheel;
@@ -2269,6 +2266,11 @@ ClayEventType ToClayEventType(PointerEvent::EventType event_type,
         return kClayEventTypeWheel;
       case PointerEvent::EventType::kPanZoomEndEvent:
         return kClayEventTypeUnknown;
+#if defined(OS_WIN) || defined(OS_MAC)
+      case PointerEvent::EventType::kAddEvent:
+      case PointerEvent::EventType::kRemoveEvent:
+        return kClayEventTypeUnknown;
+#endif
     }
   } else if (device == PointerEvent::DeviceType::kTrackpad) {
     switch (event_type) {
