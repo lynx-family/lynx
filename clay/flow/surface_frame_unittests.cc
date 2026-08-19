@@ -27,4 +27,29 @@ TEST(FlowTest, SurfaceFrameDoesNotSubmitInDtor) {
   surface_frame.reset();
 }
 
+TEST(FlowTest, SettingPresentWithTransactionPreservesDamage) {
+  SurfaceFrame::FramebufferInfo framebuffer_info;
+  SurfaceFrame surface_frame(
+      /*surface=*/nullptr, framebuffer_info,
+      /*encode_callback=*/
+      [](SurfaceFrame& frame, clay::GrCanvas*) {
+        EXPECT_EQ(frame.submit_info().frame_damage,
+                  skity::Rect::MakeLTRB(10, 20, 30, 40));
+        EXPECT_EQ(frame.submit_info().buffer_damage,
+                  skity::Rect::MakeLTRB(0, 0, 100, 100));
+        EXPECT_TRUE(frame.submit_info().present_with_transaction);
+        return true;
+      },
+      /*submit_callback=*/[](const SurfaceFrame::SubmitInfo&) { return true; },
+      skity::Vec2{800, 600});
+
+  SurfaceFrame::SubmitInfo submit_info;
+  submit_info.frame_damage = skity::Rect::MakeLTRB(10, 20, 30, 40);
+  submit_info.buffer_damage = skity::Rect::MakeLTRB(0, 0, 100, 100);
+  surface_frame.set_submit_info(submit_info);
+  surface_frame.set_present_with_transaction(true);
+
+  EXPECT_TRUE(surface_frame.Encode());
+}
+
 }  // namespace clay

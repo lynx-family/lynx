@@ -123,6 +123,9 @@ class SurfaceFrame {
   void set_submit_info(const SubmitInfo& submit_info) {
     submit_info_ = submit_info;
   }
+  void set_present_with_transaction(bool present_with_transaction) {
+    submit_info_.present_with_transaction = present_with_transaction;
+  }
   const SubmitInfo& submit_info() const { return submit_info_; }
 
   void SetPreparedCallback(const PreparedCallback& callback) {
