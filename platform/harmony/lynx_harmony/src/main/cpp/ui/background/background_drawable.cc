@@ -998,6 +998,13 @@ void BackgroundDrawable::UpdateBounds(float left, float top, float width,
                                       float padding_top, float padding_right,
                                       float padding_bottom,
                                       float scale_density) {
+  // Updating an image layer can synchronously redirect its URL and destroy the
+  // owning UI. Keep the UI and its background hierarchy alive until this
+  // update completes; UIBase::OnNodeReady checks its weak pointer afterward.
+  auto ui_base_self = ui_base_.lock();
+  if (!ui_base_self) {
+    return;
+  }
   scale_density_ = scale_density;
   left_ = left * scale_density_;
   top_ = top * scale_density_;
