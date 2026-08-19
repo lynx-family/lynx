@@ -1015,9 +1015,13 @@ void UIBase::SetOpacity(const lepus::Value& value) {
 }
 
 void UIBase::SetOverlap(const lepus::Value& value) {
-  bool v = value.Bool();
-  if (value.IsNil()) {
-    v = true;
+  bool v = true;
+  if (value.IsBool()) {
+    v = value.Bool();
+  } else if (value.IsString()) {
+    v = value.StdString() != "false";
+  } else if (!value.IsNil()) {
+    v = value.Bool();
   }
   overlap_ = v;
   dirty_flags_ |= kFlagRenderGroup;
