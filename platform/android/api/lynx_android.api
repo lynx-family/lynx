@@ -7478,7 +7478,6 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public int com.lynx.tasm.behavior.LynxUIOwner.getTagInfo(String tagName);
   public int com.lynx.tasm.behavior.LynxUIOwner.getRootSign();
   public void com.lynx.tasm.behavior.LynxUIOwner.setRootSign(int sign);
-  public void com.lynx.tasm.behavior.LynxUIOwner.reportCreateAsyncSuccessEvent(int sign, String tagName, boolean isSuccess, int status);
   public void com.lynx.tasm.behavior.LynxUIOwner.reportCreateViewConfig(int sign, String tagName, boolean createAsync);
   public void com.lynx.tasm.behavior.LynxUIOwner.setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback);
   public void com.lynx.tasm.behavior.LynxUIOwner.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer valueArray);
