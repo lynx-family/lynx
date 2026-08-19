@@ -198,5 +198,79 @@ TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
   EXPECT_THAT(views_enter, ElementsAre(0, 2, 3));
 #endif
 }
+
+#if defined(OS_WIN) || defined(OS_MAC)
+TEST_F_UI(MouseRegionManagerTest, OrdersPointerLifecycleBeforeLegacyMouse) {
+  auto& root = page_;
+  auto* child = new View(1, root.get());
+  root->AddChild(child);
+  root->SetBound(0, 0, 1000, 1000);
+  child->SetBound(0, 0, 400, 400);
+  child->OnLayoutUpdated();
+  root->SetAlignMouseEventWithW3C(true);
+
+  std::vector<std::string> records;
+  pointer_event_callback_ = [&records](const std::string& event_name,
+                                       int view_id, int, ClayPointerDeviceKind,
+                                       bool is_primary, int button, int buttons,
+                                       float, float, float, int64_t, int) {
+    records.push_back("pointer:" + event_name + ":" + std::to_string(view_id) +
+                      ":" + std::to_string(button) + ":" +
+                      std::to_string(buttons) + ":" +
+                      (is_primary ? "primary" : "secondary"));
+  };
+  mouse_event_callback_ = [&records](const std::string& event_name,
+                                     int view_id) {
+    records.push_back("mouse:" + event_name + ":" + std::to_string(view_id));
+  };
+
+  PointerEvent event(PointerEvent::EventType::kAddEvent);
+  event.device = PointerEvent::DeviceType::kMouse;
+  event.pointer_id = 10;
+  event.device_id = 10;
+  event.position = {50, 50};
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerover:1:-1:0:primary",
+                                   "pointer:pointerenter:0:-1:0:primary",
+                                   "pointer:pointerenter:1:-1:0:primary"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kHoverEvent;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointermove:1:-1:0:primary",
+                                   "mouse:mouseenter:1", "mouse:mousemove:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kDownEvent;
+  event.buttons = PointerEvent::MouseButton::kPrimary;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerdown:1:0:1:primary",
+                                   "mouse:mousedown:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kMoveEvent;
+  event.buttons = PointerEvent::MouseButton::kPrimary |
+                  PointerEvent::MouseButton::kSecondary;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointermove:1:2:3:primary",
+                                   "mouse:mousemove:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kUpEvent;
+  event.buttons = 0;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerup:1:0:0:primary",
+                                   "mouse:mouseup:1", "mouse:mouseclick:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kRemoveEvent;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerout:1:-1:0:primary",
+                                   "pointer:pointerleave:1:-1:0:primary",
+                                   "pointer:pointerleave:0:-1:0:primary",
+                                   "mouse:mouseleave:1"));
+}
+
+#endif
 }  // namespace testing
 }  // namespace clay
