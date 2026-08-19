@@ -219,6 +219,7 @@ loop
 speed
 low-quality
 user-interaction-enabled
+pointer-events
 block-native-event
 consume-slide-event
 select

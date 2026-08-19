@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
@@ -2855,6 +2856,15 @@ bool BaseView::IsPointInsideHitSlop(const FloatPoint& point_by_self) const {
          point_by_self.y() <= height_ + hit_slop_bottom_;
 }
 
+bool BaseView::AcceptsPointerEvents() const {
+  if (pointer_events_mode_ != PointerEventsMode::kUnset) {
+    return pointer_events_mode_ == PointerEventsMode::kAuto;
+  }
+  // Independent subtrees do not inherit pointer-events from their host.
+  return IsIndependentSubViewTree() || parent_ == nullptr ||
+         parent_->AcceptsPointerEvents();
+}
+
 bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (!CanAcceptEvent()) {
     return false;
@@ -2892,6 +2902,9 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
 
   if (beyond_self) {
     return founded;
+  }
+  if (!founded && !AcceptsPointerEvents()) {
+    return false;
   }
   should_pass_event_for_hittest_ = ShouldPassEventToNativeAt(event.position);
   result.emplace_back(GetHitTestTargetWeakPtr());
@@ -3113,7 +3126,7 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
   }
 
   // An internally created view (with an id < 0) cannot be the event target.
-  if (is_point_inside && !IsAnonymousView()) {
+  if (is_point_inside && !IsAnonymousView() && AcceptsPointerEvents()) {
     if (IsIndependentSubViewTree() && CanEventsPassThroughToViewsBehind()) {
       return nullptr;
     }
@@ -3262,6 +3275,15 @@ bool BaseView::HandleCommonAttribute(const char* attr,
       SetNextFocusFallback(utils::GetBool(value));
     case KeywordID::kUserInteractionEnabled:
       SetInteractable(utils::GetBool(value, true));
+      break;
+    case KeywordID::kPointerEvents:
+      if (value.IsNull()) {
+        pointer_events_mode_ = PointerEventsMode::kUnset;
+      } else {
+        pointer_events_mode_ = utils::GetInt(value) == 0
+                                   ? PointerEventsMode::kAuto
+                                   : PointerEventsMode::kNone;
+      }
       break;
     case KeywordID::kBlockNativeEvent:
       SetBlockNativeEvent(utils::GetBool(value));

@@ -236,6 +236,7 @@ enum class KeywordID {
   kSpeed,
   kLowQuality,
   kUserInteractionEnabled,
+  kPointerEvents,
   kBlockNativeEvent,
   kConsumeSlideEvent,
   kSelect,
