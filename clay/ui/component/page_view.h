@@ -499,7 +499,7 @@ class PageView : public BaseView,
     enable_mouse_drag_scroll_ = enabled;
   }
   bool IsPointerAllowedForDragScroll(const PointerEvent& event) const {
-    return event.device == PointerEvent::DeviceType::kTouch ||
+    return IsTouchLikePointerDevice(event.device) ||
            event.device == PointerEvent::DeviceType::kTrackpad ||
            (event.device == PointerEvent::DeviceType::kMouse &&
             enable_mouse_drag_scroll_);
