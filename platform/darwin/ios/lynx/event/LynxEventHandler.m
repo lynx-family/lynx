@@ -1267,10 +1267,21 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
       withContainer:(UIView*)container
            andPoint:(CGPoint)point
            andEvent:(UIEvent*)event {
+  [self handleFocusOnView:view
+            withContainer:container
+                 andPoint:point
+                 andEvent:event
+              ignoreFocus:[target ignoreFocus]];
+}
+
+- (void)handleFocusOnView:(UIView*)view
+            withContainer:(UIView*)container
+                 andPoint:(CGPoint)point
+                 andEvent:(UIEvent*)event
+              ignoreFocus:(BOOL)ignoreFocus {
   if ([self needEndEditing:view] &&
       ![[[[view superview] superview] superview] isKindOfClass:[UITextView class]] &&
-      ![target ignoreFocus] &&
-      ![self tapOnUICalloutBarButton:container withPoint:point andEvent:event]) {
+      !ignoreFocus && ![self tapOnUICalloutBarButton:container withPoint:point andEvent:event]) {
     // To free our touch handler from being blocked, dispatch endEditing asynchronously.
     // TODO(hexionghui): Use resignFirstResponder and becomeFirstResponder to replace endEditing.
     __weak UIView* weakView = container;

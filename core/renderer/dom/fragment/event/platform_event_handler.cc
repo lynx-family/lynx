@@ -47,7 +47,6 @@ bool PlatformEventHandler::OnInputEvent(
     fml::RefPtr<PlatformEventTarget> target_tree, int int_event_data[],
     float float_event_data[]) {
   target_tree_ = target_tree;
-  event_handler_state_ = kStateNone;
   // int_event_data: [event_type, action_type, event_source, pointer_count, ...]
   int event_type = int_event_data[0];
   switch (event_type) {
@@ -85,20 +84,18 @@ bool PlatformEventHandler::OnInputEvent(
   }
   if (EventThrough()) {
     LOGI("PlatformEventHandler::OnInputEvent EventThrough")
-    event_handler_state_ = kStateEventThrough;
     return false;
   }
 
   // TODO(hexionghui): forward event to gesture.
 
-  event_handler_state_ = kStateNone;
   return true;
 }
 
 void PlatformEventHandler::OnTap() {
   float root_point[2] = {first_pointer_down_point_[0],
                          first_pointer_down_point_[1]};
-  if (!first_pointer_moved_ && CanRespondTap(first_target_)) {
+  if (CanRespondFocus()) {
     DispatchGestureEvent(EVENT_TAP, root_point);
   }
   auto click_target =
@@ -156,22 +153,6 @@ void PlatformEventHandler::DispatchPointerEvent(
   platform_ref_->GetEventEmitter()->SendEvent(first_target_->Sign(), event);
 }
 
-void PlatformEventHandler::OnGestureRecognized(int sign) {
-  gesture_recognized_target_set_.insert(sign);
-}
-
-void PlatformEventHandler::SetFocusedTarget(
-    fml::RefPtr<PlatformEventTarget> focused_target) {
-  focused_target_ = focused_target;
-}
-
-void PlatformEventHandler::UnsetFocusedTarget(
-    fml::RefPtr<PlatformEventTarget> focused_target) {
-  if (focused_target_ == focused_target) {
-    focused_target_ = nullptr;
-  }
-}
-
 bool PlatformEventHandler::EventThrough() {
   if (!first_target_) {
     return false;
@@ -181,8 +162,6 @@ bool PlatformEventHandler::EventThrough() {
   GetTargetPoint(first_target_, target_point, first_pointer_down_point_);
   return first_target_->EventThrough(target_point);
 }
-
-int PlatformEventHandler::EventHandlerState() { return event_handler_state_; }
 
 void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {}
 
@@ -205,8 +184,14 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
          (hit_target ? std::to_string(hit_target->Sign()) : "null"))
     float down_point[2] = {pointer_x, pointer_y};
     if (pointer_id == 0) {
+      ResetFocusInfo();
       first_target_ = hit_target;
       memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
+      if (hit_target != nullptr) {
+        hit_target_sign_ = hit_target->Sign();
+        renderer_host_sign_ = hit_target->RendererHostSign();
+        ignore_focus_ = hit_target->IgnoreFocus();
+      }
     }
     target_pointer_map_.insert_or_assign(
         pointer_id, PlatformEventTargetDetail(hit_target, down_point));
@@ -315,7 +300,6 @@ void PlatformEventHandler::OnPointerDown(PlatformPointerEvent& event) {
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     if (event.PointerID()[i] == 0) {
-      gesture_recognized_target_set_.clear();
       event_target_chain_.clear();
       first_pointer_moved_ = false;
       first_pointer_outside_ = false;
@@ -383,7 +367,6 @@ void PlatformEventHandler::OnPointerUp(PlatformPointerEvent& event) {
   for (int i = 0; i < num; ++i) {
     if (event.PointerID()[i] == 0) {
       ResetClickEnv();
-      UpdateFocusedTarget();
       DeactivatePseudoStatus(LynxPseudoStatus::kAll);
       break;
     }
@@ -396,7 +379,6 @@ void PlatformEventHandler::OnPointerCancel(PlatformPointerEvent& event) {
     if (event.PointerID()[i] == 0) {
       ResetClickEnv();
       scroll_offset_for_tap_.clear();
-      UpdateFocusedTarget();
       DeactivatePseudoStatus(LynxPseudoStatus::kAll);
       break;
     }
@@ -450,17 +432,14 @@ fml::RefPtr<PlatformEventTarget> PlatformEventHandler::FindTarget(
   return target_tree_->HitTest(point);
 }
 
-void PlatformEventHandler::UpdateFocusedTarget() {
-  if (first_target_ && !first_target_->IgnoreFocus()) {
-    if (focused_target_) {
-      if (focused_target_ != first_target_) {
-        focused_target_->OnFocusChange(false, first_target_->Focusable());
-      }
-    }
-    first_target_->OnFocusChange(
-        true, focused_target_ && focused_target_->Focusable());
-    focused_target_ = first_target_;
-  }
+void PlatformEventHandler::ResetFocusInfo() {
+  hit_target_sign_ = -1;
+  renderer_host_sign_ = -1;
+  ignore_focus_ = false;
+}
+
+bool PlatformEventHandler::CanRespondFocus() {
+  return !first_pointer_moved_ && CanRespondTap(first_target_);
 }
 
 bool PlatformEventHandler::CanRespondTap(
@@ -470,18 +449,6 @@ bool PlatformEventHandler::CanRespondTap(
   }
   if (HasScrollContainerScrolledForTap()) {
     return false;
-  }
-  if (gesture_recognized_target_set_.empty()) {
-    return true;
-  }
-
-  while (target && target->ParentTarget() != target) {
-    if (gesture_recognized_target_set_.find(target->Sign()) !=
-        gesture_recognized_target_set_.end()) {
-      // it means that a node in the event response chain is scrolling.
-      return false;
-    }
-    target = target->ParentTarget();
   }
   return true;
 }

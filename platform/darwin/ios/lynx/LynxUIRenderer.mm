@@ -454,11 +454,12 @@ static id<LynxServiceTextProtocol> getTextService() {
   return NO;
 }
 
-- (int)GetPlatformEventHandlerState {
+- (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point {
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
-    return platform_ref->GetPlatformEventHandlerState();
+    return platform_ref->IsPlatformEventTargetIgnoreFocus(static_cast<int32_t>(rootSign), point.x,
+                                                          point.y);
   }
-  return 0;
+  return NO;
 }
 
 - (LynxGestureArenaManager *)getGestureArenaManager {

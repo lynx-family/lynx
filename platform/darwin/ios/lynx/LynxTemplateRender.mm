@@ -1455,11 +1455,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return NO;
 }
 
-- (int)GetPlatformEventHandlerState {
+- (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point {
   if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
-    return [(LynxUIRenderer*)_lynxUIRenderer GetPlatformEventHandlerState];
+    return [(LynxUIRenderer*)_lynxUIRenderer IsPlatformEventTargetIgnoreFocus:rootSign point:point];
   }
-  return 0;
+  return NO;
 }
 
 #pragma mark - Life Cycle
