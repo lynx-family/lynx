@@ -25,6 +25,7 @@ struct CallbackData {
       : callback(c), delegate(d) {}
   std::shared_ptr<runtime::LynxModuleCallback> callback;
   std::weak_ptr<runtime::LynxNativeModule::Delegate> delegate;
+  bool invoked = false;
 #if ENABLE_TRACE_PERFETTO
   std::string module_name;
   std::string method_name;
@@ -80,15 +81,32 @@ napi_value NativeModuleHarmony::InvokePlatformMethod(
     // corresponding callback instance can be found in the callback map using
     // the current index.
     if (value.IsInt64() && callbacks.find(i) != callbacks.end()) {
-      auto callback_data = new CallbackData(callbacks.at(i), delegate);
+      auto callback_data =
+          std::make_unique<CallbackData>(callbacks.at(i), delegate);
 #if ENABLE_TRACE_PERFETTO
       callback_data->module_name = module_name;
       callback_data->method_name = method_name;
       callback_data->flow_id = flow_id;
       callback_data->first_arg = first_arg;
 #endif
-      napi_create_function(env, "callback", 9, NativeModuleHarmony::Callback,
-                           callback_data, &argv[i]);
+      napi_status status = napi_create_function(
+          env, "callback", NAPI_AUTO_LENGTH, NativeModuleHarmony::Callback,
+          callback_data.get(), &argv[i]);
+      if (status != napi_ok || argv[i] == nullptr) {
+        return nullptr;
+      }
+      // Add a finalizer to release the native CallbackData when the JS function
+      // is garbage collected.
+      status = napi_add_finalizer(
+          env, argv[i], callback_data.get(),
+          [](napi_env env, void* finalize_data, void* finalize_hint) {
+            delete static_cast<CallbackData*>(finalize_data);
+          },
+          nullptr, nullptr);
+      if (status != napi_ok) {
+        return nullptr;
+      }
+      callback_data.release();
     } else {
       argv[i] = base::NapiConvertHelper::CreateNapiValue(env, value);
     }
@@ -212,9 +230,7 @@ napi_value NativeModuleHarmony::Callback(napi_env env,
   if (status != napi_ok) {
     return js_this;
   }
-  auto delegate = data->delegate.lock();
-  if (!delegate) {
-    delete data;
+  if (std::exchange(data->invoked, true)) {
     return js_this;
   }
   TRACE_EVENT(
@@ -225,6 +241,13 @@ napi_value NativeModuleHarmony::Callback(napi_env env,
         ctx.event()->add_debug_annotations("arg0", data->first_arg);
         ctx.event()->add_flow_ids(data->flow_id);
       });
+
+  auto delegate = data->delegate.lock();
+  if (!delegate) {
+    // If delegate is gone, we can't invoke callback. The finalizer will clean
+    // up data.
+    return js_this;
+  }
 
   napi_value* dynamic_args = nullptr;
   if (argc > STATIC_ARG_SIZE) {
@@ -259,7 +282,6 @@ napi_value NativeModuleHarmony::Callback(napi_env env,
   if (dynamic_args != nullptr) {
     delete[] dynamic_args;
   }
-  delete data;
   return js_this;
 }
 
