@@ -229,6 +229,232 @@ TEST_F_UI(MouseRegionManagerTest, MouseAddDoesNotEnterLegacyRegions) {
   EXPECT_THAT(buttons, ElementsAre(PointerEvent::kPrimary));
   EXPECT_EQ(hover_count, 0);
 }
+
+TEST_F_UI(MouseRegionManagerTest, BatchedMousePreservesLegacyOrder) {
+  page_->SetBound(0, 0, 400, 200);
+  for (int id : {1, 2}) {
+    auto* view = new View(id, page_.get());
+    page_->AddChild(view);
+    view->SetBound((id - 1) * 200, 0, 200, 200);
+  }
+  std::vector<std::string> records;
+  mouse_event_callback_ = [&](const std::string& name, int id) {
+    records.push_back(name + ":" + std::to_string(id));
+  };
+  for (bool enabled : {false, true}) {
+    SCOPED_TRACE(enabled);
+    page_->SetEnablePointerEvents(enabled);
+    page_->mouse_region_manager()->Reset();
+    records.clear();
+    page_->SetAlignMouseEventWithW3C(true);
+    PointerEvent first(PointerEvent::EventType::kHoverEvent);
+    first.timestamp = enabled ? 800000 : 400000;
+    first.device = PointerEvent::kMouse;
+    first.position = {50, 50};
+    auto second = first;
+    second.position = {250, 50};
+    page_->DispatchPointerEvent({first, second});
+    EXPECT_THAT(records,
+                ElementsAre("mouseenter:1", "mouseleave:1", "mouseenter:2",
+                            "mousemove:1", "mousemove:2"));
+
+    page_->SetAlignMouseEventWithW3C(false);
+    first.type = PointerEvent::EventType::kDownEvent;
+    first.position = second.position;
+    first.buttons = PointerEvent::kPrimary;
+    page_->DispatchPointerEvent({first});
+    records.clear();
+    first.type = PointerEvent::EventType::kMoveEvent;
+    second = first;
+    second.type = PointerEvent::EventType::kUpEvent;
+    second.buttons = 0;
+    page_->DispatchPointerEvent({first, second});
+    EXPECT_THAT(records,
+                ElementsAre("mouseover:2", "mouseover:2", "mousemove:2",
+                            "mouseup:2", "mouseclick:2"));
+  }
+}
+
+TEST_F_UI(MouseRegionManagerTest, BatchedPenMatchesSequentialLegacyDispatch) {
+  page_->SetBound(0, 0, 400, 200);
+  auto* child = new View(1, page_.get());
+  page_->AddChild(child);
+  child->SetBound(0, 0, 400, 200);
+  find_view_by_id_callback_ = [child](int id) -> BaseView* {
+    return id == child->id() ? child : nullptr;
+  };
+  std::vector<std::string> records;
+  mouse_event_callback_ = [&](const std::string& name, int) {
+    records.push_back(name);
+  };
+  touch_event_callback_ = [&](const std::string& name, int) {
+    records.push_back(name);
+  };
+  const auto dispatch = [&](bool batched) {
+    PointerEvent event(PointerEvent::EventType::kDownEvent);
+    event.device = PointerEvent::kStylus;
+    event.dispatch_mode =
+        PointerEvent::DispatchMode::kPenWithTouchCompatibility;
+    event.position = {50, 50};
+    event.buttons = PointerEvent::kPrimary;
+    page_->DispatchPointerEvent({event});
+    records.clear();
+    event.type = PointerEvent::EventType::kMoveEvent;
+    auto up = event;
+    up.type = PointerEvent::EventType::kUpEvent;
+    up.buttons = 0;
+    if (batched) {
+      page_->DispatchPointerEvent({event, up});
+    } else {
+      page_->DispatchPointerEvent({event});
+      page_->DispatchPointerEvent({up});
+    }
+    return records;
+  };
+  for (bool enabled : {false, true}) {
+    SCOPED_TRACE(enabled);
+    page_->SetEnablePointerEvents(enabled);
+    const auto sequential = dispatch(false);
+    EXPECT_THAT(sequential, ElementsAre("mouseover", "touchmove", "mouseover",
+                                        "touchend", "tap", "mouseleave"));
+    EXPECT_EQ(dispatch(true), sequential);
+  }
+}
+
+TEST_F_UI(MouseRegionManagerTest, DisabledPointerEventsSkipNewHitTesting) {
+  class CountingView : public View {
+   public:
+    using View::View;
+    BaseView* GetTopViewToAcceptEvent(const FloatPoint& point,
+                                      FloatPoint* relative,
+                                      int platform_try_hit_id = -1) override {
+      ++queries;
+      return View::GetTopViewToAcceptEvent(point, relative,
+                                           platform_try_hit_id);
+    }
+    int queries = 0;
+  };
+  page_->SetBound(0, 0, 200, 200);
+  page_->SetAlignMouseEventWithW3C(true);
+  auto* child = new CountingView(1, page_.get());
+  page_->AddChild(child);
+  child->SetBound(0, 0, 200, 200);
+  std::vector<std::string> pointers;
+  pointer_event_callback_ =
+      [&](const std::string& name, int, int, ClayPointerDeviceKind, bool, int,
+          int, float, float, float, int64_t, int) { pointers.push_back(name); };
+  PointerEvent event(PointerEvent::EventType::kHoverEvent);
+  event.device = PointerEvent::kMouse;
+  event.pointer_id = event.device_id = 7;
+  event.position = {50, 50};
+  page_->DispatchPointerEvent({event});
+  EXPECT_EQ(child->queries, 2);
+  EXPECT_TRUE(pointers.empty());
+  EXPECT_EQ(page_->mouse_region_manager()->GetLastPointerEvent(event), nullptr);
+
+  FloatPoint relative;
+  child->SetAttribute("pointer-events", Value(uint32_t{1}));
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent(event.position, &relative),
+            page_.get());
+  child->SetAttribute("pointer-events", Value(uint32_t{0}));
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent(event.position, &relative), child);
+
+  page_->SetEnablePointerEvents(true);
+  child->queries = 0;
+  page_->DispatchPointerEvent({event});
+  EXPECT_EQ(child->queries, 4);
+  EXPECT_THAT(pointers, ElementsAre("pointerover", "pointerenter",
+                                    "pointerenter", "pointermove"));
+  EXPECT_NE(page_->mouse_region_manager()->GetLastPointerEvent(event), nullptr);
+  pointers.clear();
+  std::vector<std::string> mouse;
+  mouse_event_callback_ = [&](const std::string& name, int) {
+    mouse.push_back(name);
+  };
+  child->SetBound(300, 0, 200, 200);
+  page_->SetEnablePointerEvents(false);
+  DoAnimation(20);
+  EXPECT_TRUE(pointers.empty());
+  EXPECT_EQ(page_->mouse_region_manager()->GetLastPointerEvent(event), nullptr);
+  child->SetBound(0, 0, 200, 200);
+  child->queries = 0;
+  page_->DispatchPointerEvent({event});
+  EXPECT_EQ(child->queries, 2);
+  EXPECT_TRUE(pointers.empty());
+  EXPECT_THAT(mouse, ElementsAre("mousemove"));
+}
+
+TEST_F_UI(MouseRegionManagerTest, OrdersPointerLifecycleBeforeLegacyMouse) {
+  auto& root = page_;
+  root->SetEnablePointerEvents(true);
+  auto* child = new View(1, root.get());
+  root->AddChild(child);
+  root->SetBound(0, 0, 1000, 1000);
+  child->SetBound(0, 0, 400, 400);
+  child->OnLayoutUpdated();
+  root->SetAlignMouseEventWithW3C(true);
+
+  std::vector<std::string> records;
+  pointer_event_callback_ = [&records](const std::string& event_name,
+                                       int view_id, int, ClayPointerDeviceKind,
+                                       bool is_primary, int button, int buttons,
+                                       float, float, float, int64_t, int) {
+    records.push_back("pointer:" + event_name + ":" + std::to_string(view_id) +
+                      ":" + std::to_string(button) + ":" +
+                      std::to_string(buttons) + ":" +
+                      (is_primary ? "primary" : "secondary"));
+  };
+  mouse_event_callback_ = [&records](const std::string& event_name,
+                                     int view_id) {
+    records.push_back("mouse:" + event_name + ":" + std::to_string(view_id));
+  };
+
+  PointerEvent event(PointerEvent::EventType::kAddEvent);
+  event.device = PointerEvent::DeviceType::kMouse;
+  event.pointer_id = 10;
+  event.device_id = 10;
+  event.position = {50, 50};
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerover:1:-1:0:primary",
+                                   "pointer:pointerenter:0:-1:0:primary",
+                                   "pointer:pointerenter:1:-1:0:primary"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kHoverEvent;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointermove:1:-1:0:primary",
+                                   "mouse:mouseenter:1", "mouse:mousemove:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kDownEvent;
+  event.buttons = PointerEvent::MouseButton::kPrimary;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerdown:1:0:1:primary",
+                                   "mouse:mousedown:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kMoveEvent;
+  event.buttons = PointerEvent::MouseButton::kPrimary |
+                  PointerEvent::MouseButton::kSecondary;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointermove:1:2:3:primary",
+                                   "mouse:mousemove:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kUpEvent;
+  event.buttons = 0;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerup:1:0:0:primary",
+                                   "mouse:mouseup:1", "mouse:mouseclick:1"));
+
+  records.clear();
+  event.type = PointerEvent::EventType::kRemoveEvent;
+  root->DispatchPointerEvent({event});
+  EXPECT_THAT(records, ElementsAre("pointer:pointerout:1:-1:0:primary",
+                                   "pointer:pointerleave:1:-1:0:primary",
+                                   "pointer:pointerleave:0:-1:0:primary",
+                                   "mouse:mouseleave:1"));
+}
 #endif
 }  // namespace testing
 }  // namespace clay

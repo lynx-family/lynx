@@ -418,12 +418,16 @@ void MouseRegionManager::ForceUpdateCursor() {
 
 #if defined(OS_WIN) || defined(OS_MAC)
 void MouseRegionManager::Reset() {
+  prev_chain_.clear();
+  ResetPointerEvents();
+}
+
+void MouseRegionManager::ResetPointerEvents() {
   if (pending_refresh_root_) {
     pending_refresh_root_->page_view()->GetAnimationHandler()->RemoveCallback(
         this);
     pending_refresh_root_ = {};
   }
-  prev_chain_.clear();
   pointer_chains_.clear();
   last_pointer_events_.clear();
   implicitly_captured_pointers_.clear();

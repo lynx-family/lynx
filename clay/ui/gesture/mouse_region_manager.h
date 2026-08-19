@@ -65,6 +65,7 @@ class MouseRegionManager
   void ForceUpdateCursor();
 #if defined(OS_WIN) || defined(OS_MAC)
   void Reset();
+  void ResetPointerEvents();
 #endif
 
  private:
