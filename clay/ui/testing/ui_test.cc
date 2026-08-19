@@ -190,7 +190,7 @@ void UITest::ResetAnimationTime() {
 
 void UITest::DoAnimation(int ms) {
   auto last_frame_time =
-      page_->GetAnimationHandler()->GetLastAnimationFrameTime();
+      page_->GetAnimationHandler()->GetCurrentAnimationTime();
   if (last_frame_time < 0) {
     last_frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
     // The animation will be started in the next frame.

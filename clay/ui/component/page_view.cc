@@ -393,20 +393,13 @@ bool PageView::BeginFrame(
     scoped_layout_timing.MarkRecordEnd();
   }
 
-  const uint64_t lifecycle_wakeup_id =
-      std::exchange(pending_lifecycle_wakeup_id_, 0);
   if (animation_handler_->GetAnimationCount() > 0) {
     TRACE_EVENT("clay", "Clay::Animation");
     ScopedTimingRecorder scoped_animation_timing(
         *recorder, FrameTimingKey::kDoAnimationStart,
         FrameTimingKey::kDoAnimationEnd);
-    const int64_t frame_time =
-        recorder->GetVsyncTargetTime().ToEpochDelta().ToMilliseconds();
-    const bool lifecycle_only =
-        lifecycle_wakeup_id != 0 && animation_handler_->IsLifecycleCallbackDue(
-                                        frame_time, lifecycle_wakeup_id);
-    bool has_visible_animation =
-        animation_handler_->DoAnimationFrame(frame_time, lifecycle_only);
+    bool has_visible_animation = animation_handler_->DoAnimationFrame(
+        recorder->GetVsyncTargetTime().ToEpochDelta().ToMilliseconds());
     if (has_visible_animation) {
       RequestNewFrame();
     }
@@ -1472,31 +1465,16 @@ void PageView::SetupAnimationCallback() {
       RequestNewFrame();
       return;
     }
-    const uint64_t lifecycle_schedule_id =
-        animation_handler_->GetLifecycleScheduleId();
     auto task_runner = task_runners_.GetUITaskRunner();
     if (!task_runner) {
       return;
     }
     task_runner->PostDelayedTask(
-        [weak = GetWeakPtr(), lifecycle_schedule_id]() {
+        [weak = GetWeakPtr()]() {
           if (!weak) {
             return;
           }
           auto* page_view = static_cast<PageView*>(weak.get());
-          auto* handler = page_view->animation_handler_.get();
-          const int64_t current_time =
-              fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-          if (!handler->IsLifecycleCallbackDue(current_time,
-                                               lifecycle_schedule_id)) {
-            if (handler->IsLifecycleScheduleCurrent(lifecycle_schedule_id)) {
-              // A delayed task may run slightly before its deadline. Schedule
-              // the remaining interval instead of losing the lifecycle wakeup.
-              handler->RescheduleLifecycleCallback(current_time);
-            }
-            return;
-          }
-          page_view->pending_lifecycle_wakeup_id_ = lifecycle_schedule_id;
           page_view->RequestNewFrame();
         },
         fml::TimeDelta::FromMilliseconds(delay));

@@ -303,10 +303,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetEnableNewAnimator(bool enable) { enable_new_animator_ = enable; }
   bool IsInteractable() const { return is_interactable_; }
   const TransformOperations& GetTransformOps() const { return transform_ops_; }
-  TransformOperations GetPresentationTransformOps() const;
   FloatPoint GetTransformOrigin() const;
   Transform GetTransform() const;
-  Transform GetPresentationTransform() const;
 
   bool ConsumeSlideEvent(float angle) override;
 
@@ -611,12 +609,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void GetProperty(ClayAnimationPropertyType type, Color& value);
   void GetProperty(ClayAnimationPropertyType type, TransformOperations& value);
   void GetProperty(ClayAnimationPropertyType type, FilterOperations& value);
-  bool GetPresentationProperty(ClayAnimationPropertyType type,
-                               float& value) const;
-  bool GetPresentationProperty(ClayAnimationPropertyType type,
-                               Color& value) const;
-  bool GetPresentationProperty(ClayAnimationPropertyType type,
-                               TransformOperations& value) const;
   // SetProperty will modify value without triggering transition animation.
   virtual void SetProperty(ClayAnimationPropertyType type, float value,
                            bool skip_update_for_raster_animation);

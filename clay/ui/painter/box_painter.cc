@@ -428,19 +428,15 @@ void BoxPainter::PaintBackground(GraphicsContext* context,
                                  const FloatRect& paint_rect) {
   bool has_visible_color = (background.background_color.Alpha() != 0);
   bool has_image = !background.images.empty();
-  const bool has_raster_color_animation =
-      render_object_->HasBackgroundColorRasterAnimation();
-  if (!has_visible_color && !has_image && !has_raster_color_animation) {
+  if (!has_visible_color && !has_image) {
     return;
   }
 
   bool has_border = render_object_->HasBorder();
   bool has_radius = has_border && render_object_->Border().HasBorderRadius();
 
-  // Keep a transparent color draw operation when the background color is
-  // animated on the raster thread. It is the backing operation whose color is
-  // updated by the raster animator.
-  if (has_visible_color || has_raster_color_animation) {
+  // if background is not transparent, draw color background
+  if (has_visible_color) {
     class Paint paint;
     paint.setColor(background.background_color);
 #if defined(ENABLE_ANTIALIAS)
@@ -469,7 +465,7 @@ void BoxPainter::PaintBackground(GraphicsContext* context,
         context->ClipRect(padding_rect, GrClipOp::kDifference, false);
       }
     }
-    if (has_raster_color_animation) {
+    if (render_object_->HasBackgroundColorRasterAnimation()) {
       FML_DCHECK(render_object_->HasValidID());
       paint.setDynamicOpType(DynamicOpType::kSetBackgroundColor);
     }

@@ -123,7 +123,7 @@ bool AnimationMutator::HasAnimationRunning() const {
 bool AnimationMutator::DoAnimationFrame(int64_t frame_time) {
   bool stopped = true;
   for (auto& mgr : transition_managers_) {
-    for (auto& animator : mgr->GetStartedAnimators()) {
+    for (auto& animator : mgr->GetRunningAnimators()) {
       stopped &= animator->DoAnimationFrame(frame_time);
     }
   }

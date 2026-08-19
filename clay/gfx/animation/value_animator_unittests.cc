@@ -5,7 +5,6 @@
 #include <memory>
 #include <vector>
 
-#include "base/include/fml/time/time_point.h"
 #include "clay/gfx/animation/animator_listener_adapter.h"
 #include "clay/gfx/animation/value_animator.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -42,22 +41,13 @@ class RecordingAnimatorListener : public AnimatorListenerAdapter {
  public:
   void OnAnimationStart(Animator& animation) override { start_count_++; }
   void OnAnimationEnd(Animator& animation) override { end_count_++; }
-  void OnAnimationCancel(Animator& animation) override { cancel_count_++; }
-  void OnAnimationRepeat(Animator& animation) override { repeat_count_++; }
-  void OnAnimationRemove(Animator& animation) override { remove_count_++; }
 
   int start_count() const { return start_count_; }
   int end_count() const { return end_count_; }
-  int cancel_count() const { return cancel_count_; }
-  int repeat_count() const { return repeat_count_; }
-  int remove_count() const { return remove_count_; }
 
  private:
   int start_count_ = 0;
   int end_count_ = 0;
-  int cancel_count_ = 0;
-  int repeat_count_ = 0;
-  int remove_count_ = 0;
 };
 
 class RecordingFractionListener : public AnimatorUpdateListener {
@@ -104,39 +94,27 @@ TEST(ValueAnimatorTest, AnimatorUpdateEvents) {
   EXPECT_EQ(handler->GetAnimationCount(), 0);
 }
 
-TEST(ValueAnimatorTest, ForwardsFillRetainsAnimatorUntilFillIsRemoved) {
-  for (bool pause_before_removing_fill : {false, true}) {
-    SCOPED_TRACE(pause_before_removing_fill);
-    AnimationHandler handler;
+TEST(ValueAnimatorTest, ForwardsFillDoesNotRequestFrameAfterVisibleEnd) {
+  MockAnimatorUpdateListener update_listener;
+  EXPECT_CALL(update_listener, OnAnimationUpdate(::testing::_)).Times(4);
 
-    AnimationData data;
-    data.duration = 16;
-    data.fill_mode = ClayAnimationFillModeType::kForwards;
-    ValueAnimator animator(data);
-    animator.SetAnimationHandler(&handler);
-    RecordingAnimatorListener lifecycle_listener;
-    animator.AddListener(&lifecycle_listener);
-    animator.Start();
+  std::unique_ptr<AnimationHandler> handler =
+      std::make_unique<AnimationHandler>();
 
-    handler.DoAnimationFrame(0);
-    EXPECT_FALSE(handler.DoAnimationFrame(16));
-    EXPECT_FALSE(handler.DoAnimationFrame(32));
-    EXPECT_TRUE(animator.IsStarted());
-    EXPECT_EQ(handler.GetAnimationCount(), 1);
-    EXPECT_EQ(lifecycle_listener.end_count(), 1);
-    EXPECT_EQ(lifecycle_listener.remove_count(), 0);
+  ValueAnimator animator;
+  animator.SetAnimationHandler(handler.get());
+  animator.SetDuration(16);
+  animator.SetFillMode(ValueAnimator::kForwards);
+  animator.AddUpdateListener(&update_listener);
+  animator.Start();
 
-    if (pause_before_removing_fill) {
-      animator.Pause();
-    }
-    data.fill_mode = ClayAnimationFillModeType::kNone;
-    animator.UpdateAnimationData(data, 32);
-
-    EXPECT_FALSE(animator.IsStarted());
-    EXPECT_EQ(handler.GetAnimationCount(), 0);
-    EXPECT_EQ(lifecycle_listener.end_count(), 1);
-    EXPECT_EQ(lifecycle_listener.remove_count(), 1);
-  }
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+  handler->DoAnimationFrame(0);
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+  EXPECT_FALSE(handler->DoAnimationFrame(16));
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
+  EXPECT_FALSE(handler->DoAnimationFrame(32));
+  EXPECT_EQ(handler->GetAnimationCount(), 1);
 }
 
 TEST(ValueAnimatorTest, EndListenerFlagIsSetBeforeCallback) {
@@ -251,156 +229,6 @@ TEST(ValueAnimatorTest, LifecycleOnlyModeSkipsPerFrameValueUpdates) {
   EXPECT_FALSE(handler.DoAnimationFrame(1100));
   EXPECT_EQ(fraction_listener.update_count(), 0);
   EXPECT_EQ(lifecycle_listener.end_count(), 1);
-}
-
-TEST(ValueAnimatorTest, LifecycleOnlyStartUsesFirstFrameAfterIdle) {
-  AnimationHandler handler;
-  std::vector<int64_t> requested_delays;
-  handler.SetAnimationCallback([&requested_delays](int64_t delay) {
-    requested_delays.push_back(delay);
-  });
-
-  handler.DoAnimationFrame(1000);
-
-  ValueAnimator animator;
-  animator.SetAnimationHandler(&handler);
-  animator.SetDuration(100);
-  animator.SetFrameUpdateMode(ValueAnimator::FrameUpdateMode::kLifecycleOnly);
-
-  RecordingAnimatorListener listener;
-  animator.AddListener(&listener);
-  animator.Start();
-
-  ASSERT_EQ(requested_delays.size(), 1u);
-  EXPECT_EQ(requested_delays.front(), -1);
-  EXPECT_EQ(listener.start_count(), 1);
-
-  EXPECT_FALSE(handler.DoAnimationFrame(10000));
-  EXPECT_EQ(listener.end_count(), 0);
-  ASSERT_EQ(requested_delays.size(), 2u);
-  EXPECT_EQ(requested_delays.back(), 100);
-
-  EXPECT_FALSE(handler.DoAnimationFrame(10100, true));
-  EXPECT_EQ(listener.end_count(), 1);
-}
-
-TEST(ValueAnimatorTest, LifecycleWakeSchedulesNextBoundary) {
-  AnimationHandler handler;
-  std::vector<int64_t> requested_delays;
-  handler.SetAnimationCallback([&requested_delays](int64_t delay) {
-    requested_delays.push_back(delay);
-  });
-
-  ValueAnimator animator;
-  animator.SetAnimationHandler(&handler);
-  animator.SetDuration(100);
-  animator.SetStartDelay(50);
-  animator.SetFrameUpdateMode(ValueAnimator::FrameUpdateMode::kLifecycleOnly);
-
-  RecordingAnimatorListener listener;
-  animator.AddListener(&listener);
-  animator.Start();
-
-  EXPECT_FALSE(handler.DoAnimationFrame(1000));
-  EXPECT_EQ(listener.start_count(), 0);
-  ASSERT_EQ(requested_delays.size(), 2u);
-  EXPECT_EQ(requested_delays.back(), 50);
-
-  EXPECT_FALSE(handler.DoAnimationFrame(1050, true));
-  EXPECT_EQ(listener.start_count(), 1);
-  EXPECT_EQ(listener.end_count(), 0);
-  ASSERT_EQ(requested_delays.size(), 3u);
-  EXPECT_EQ(requested_delays.back(), 100);
-
-  EXPECT_FALSE(handler.DoAnimationFrame(1150, true));
-  EXPECT_EQ(listener.end_count(), 1);
-}
-
-TEST(ValueAnimatorTest, LifecycleFrameReportsAllCrossedRepeats) {
-  ValueAnimator animator;
-  animator.SetDuration(100);
-  animator.SetRepeatCount(3);
-
-  RecordingAnimatorListener listener;
-  animator.AddListener(&listener);
-  animator.Start();
-
-  animator.DoAnimationFrame(1000, false);
-  animator.DoAnimationFrame(1350, false);
-  EXPECT_EQ(listener.repeat_count(), 3);
-  EXPECT_EQ(listener.end_count(), 0);
-
-  animator.DoAnimationFrame(1400, false);
-  EXPECT_EQ(listener.end_count(), 1);
-}
-
-TEST(ValueAnimatorTest, CancelDuringDelayDoesNotEmitStart) {
-  ValueAnimator animator;
-  animator.SetDuration(100);
-  animator.SetStartDelay(50);
-
-  RecordingAnimatorListener listener;
-  animator.AddListener(&listener);
-  animator.Start();
-  animator.DoAnimationFrame(1000, false);
-  animator.Cancel();
-
-  EXPECT_EQ(listener.start_count(), 0);
-  EXPECT_EQ(listener.cancel_count(), 1);
-  EXPECT_EQ(listener.end_count(), 0);
-}
-
-TEST(ValueAnimatorTest, PresentationFractionHonorsFillAndDirection) {
-  AnimationHandler handler;
-  ValueAnimator animator;
-  animator.SetAnimationHandler(&handler);
-  animator.SetDuration(100);
-  animator.SetStartDelay(50);
-  animator.SetRepeatCount(1);
-  animator.SetRepeatMode(ValueAnimator::kAlternateReverse);
-  animator.SetFillMode(ValueAnimator::kBoth);
-  animator.SetInterpolator(LinearInterpolator::Create());
-
-  animator.Start();
-  handler.DoAnimationFrame(1000);
-
-  ASSERT_TRUE(animator.GetPresentationFraction(1025).has_value());
-  EXPECT_FLOAT_EQ(*animator.GetPresentationFraction(1025), 1.f);
-  ASSERT_TRUE(animator.GetPresentationFraction(1100).has_value());
-  EXPECT_FLOAT_EQ(*animator.GetPresentationFraction(1100), 0.5f);
-  ASSERT_TRUE(animator.GetPresentationFraction(1200).has_value());
-  EXPECT_FLOAT_EQ(*animator.GetPresentationFraction(1200), 0.5f);
-  ASSERT_TRUE(animator.GetPresentationFraction(1250).has_value());
-  EXPECT_FLOAT_EQ(*animator.GetPresentationFraction(1250), 1.f);
-}
-
-TEST(ValueAnimatorTest, LifecyclePauseResumeUsesCurrentClock) {
-  AnimationHandler handler;
-  const int64_t current_time =
-      fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-  const int64_t first_frame_time = current_time - 50;
-
-  ValueAnimator animator;
-  animator.SetAnimationHandler(&handler);
-  animator.SetDuration(100);
-  animator.SetFrameUpdateMode(ValueAnimator::FrameUpdateMode::kLifecycleOnly);
-  animator.SetInterpolator(LinearInterpolator::Create());
-  animator.Start();
-  handler.DoAnimationFrame(first_frame_time);
-
-  animator.Pause();
-  ASSERT_TRUE(animator.GetPresentationFraction(current_time).has_value());
-  EXPECT_NEAR(*animator.GetPresentationFraction(current_time), 0.5f, 0.05f);
-
-  const int64_t later_time = current_time + 5000;
-  ASSERT_TRUE(animator.GetPresentationFraction(later_time).has_value());
-  EXPECT_NEAR(*animator.GetPresentationFraction(later_time), 0.5f, 0.05f);
-
-  animator.Resume();
-  ASSERT_TRUE(animator.GetPresentationFraction(current_time).has_value());
-  EXPECT_NEAR(*animator.GetPresentationFraction(current_time), 0.5f, 0.05f);
-  handler.DoAnimationFrame(first_frame_time + 200, true);
-  EXPECT_FALSE(animator.IsStarted());
 }
 
 }  // namespace testing

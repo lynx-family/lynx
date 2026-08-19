@@ -65,14 +65,6 @@ class KeyframesManager {
 
   bool HasAnimationForType(ClayAnimationPropertyType type) const;
 
-  bool GetPresentationValue(ClayAnimationPropertyType type,
-                            int64_t current_time, float& value) const;
-  bool GetPresentationValue(ClayAnimationPropertyType type,
-                            int64_t current_time, Color& value) const;
-  bool GetPresentationValue(ClayAnimationPropertyType type,
-                            int64_t current_time,
-                            TransformOperations& value) const;
-
   std::unique_ptr<KeyframesManager> CloneForRasterAnimation(
       ClayAnimationPropertyType type, AnimatorTarget* target) const;
 

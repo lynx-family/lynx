@@ -634,8 +634,7 @@ void BaseView::SetOpacity(float opacity) {
   float old_opacity;
   GetProperty(ClayAnimationPropertyType::kOpacity, old_opacity);
 
-  if (old_opacity == opacity && !TransitionMgr()->IsAnimationRunning(
-                                    ClayAnimationPropertyType::kOpacity)) {
+  if (old_opacity == opacity) {
     return;
   }
   TransitionTo(ClayAnimationPropertyType::kOpacity, opacity);
@@ -643,9 +642,6 @@ void BaseView::SetOpacity(float opacity) {
 
 float BaseView::Opacity() {
   float res;
-  if (GetPresentationProperty(ClayAnimationPropertyType::kOpacity, res)) {
-    return res;
-  }
   GetProperty(ClayAnimationPropertyType::kOpacity, res);
   return res;
 }
@@ -916,9 +912,7 @@ void BaseView::SetBackgroundColor(const Color& color) {
     return;
   }
   if (render_object()->HasBackground() &&
-      render_object()->Background().background_color == color &&
-      !TransitionMgr()->IsAnimationRunning(
-          ClayAnimationPropertyType::kBackgroundColor)) {
+      render_object()->Background().background_color == color) {
     return;
   }
   TransitionTo(ClayAnimationPropertyType::kBackgroundColor, color);
@@ -2171,42 +2165,6 @@ void BaseView::GetProperty(ClayAnimationPropertyType type,
   }
 }
 
-bool BaseView::GetPresentationProperty(ClayAnimationPropertyType type,
-                                       float& value) const {
-  const int64_t current_time =
-      page_view_->GetAnimationHandler()->GetCurrentAnimationTime();
-  if (keyframes_mgr_ &&
-      keyframes_mgr_->GetPresentationValue(type, current_time, value)) {
-    return true;
-  }
-  return transition_mgr_ &&
-         transition_mgr_->GetPresentationValue(type, current_time, value);
-}
-
-bool BaseView::GetPresentationProperty(ClayAnimationPropertyType type,
-                                       Color& value) const {
-  const int64_t current_time =
-      page_view_->GetAnimationHandler()->GetCurrentAnimationTime();
-  if (keyframes_mgr_ &&
-      keyframes_mgr_->GetPresentationValue(type, current_time, value)) {
-    return true;
-  }
-  return transition_mgr_ &&
-         transition_mgr_->GetPresentationValue(type, current_time, value);
-}
-
-bool BaseView::GetPresentationProperty(ClayAnimationPropertyType type,
-                                       TransformOperations& value) const {
-  const int64_t current_time =
-      page_view_->GetAnimationHandler()->GetCurrentAnimationTime();
-  if (keyframes_mgr_ &&
-      keyframes_mgr_->GetPresentationValue(type, current_time, value)) {
-    return true;
-  }
-  return transition_mgr_ &&
-         transition_mgr_->GetPresentationValue(type, current_time, value);
-}
-
 AnimationHandler* BaseView::GetAnimationHandler() {
   return page_view_->GetAnimationHandler();
 }
@@ -2340,9 +2298,11 @@ void BaseView::SetTransform(const TransformOperations& ops,
   TransformOperations old_ops;
   GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
   constexpr float tolerance = 0.001;
-  if (old_ops.ApproximatelyEqual(ops, tolerance) &&
-      !TransitionMgr()->IsAnimationRunning(
-          ClayAnimationPropertyType::kTransform)) {
+  if (old_ops.ApproximatelyEqual(ops, tolerance)) {
+    if (TransitionMgr()->IsAnimationRunning(
+            ClayAnimationPropertyType::kTransform)) {
+      TransitionMgr()->CancelAnimator(ClayAnimationPropertyType::kTransform);
+    }
     SetProperty(ClayAnimationPropertyType::kTransform, ops, false);
     return;
   }
@@ -2355,9 +2315,11 @@ void BaseView::SetTransform(const std::vector<TransformRaw>& transform_raw) {
   TransformOperations old_ops;
   GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
   constexpr float tolerance = 0.001;
-  if (old_ops.ApproximatelyEqual(ops, tolerance) &&
-      !TransitionMgr()->IsAnimationRunning(
-          ClayAnimationPropertyType::kTransform)) {
+  if (old_ops.ApproximatelyEqual(ops, tolerance)) {
+    if (TransitionMgr()->IsAnimationRunning(
+            ClayAnimationPropertyType::kTransform)) {
+      TransitionMgr()->CancelAnimator(ClayAnimationPropertyType::kTransform);
+    }
     SetProperty(ClayAnimationPropertyType::kTransform, ops, false);
     return;
   }
@@ -2448,22 +2410,6 @@ Transform BaseView::GetTransform() const {
   } else {
     return Transform();
   }
-}
-
-TransformOperations BaseView::GetPresentationTransformOps() const {
-  TransformOperations transform = transform_ops_;
-  GetPresentationProperty(ClayAnimationPropertyType::kTransform, transform);
-  return transform;
-}
-
-Transform BaseView::GetPresentationTransform() const {
-  TransformOperations transform;
-  if (post_translation_.has_value()) {
-    transform.AppendTranslate(post_translation_->x(), post_translation_->y(),
-                              0.f);
-  }
-  transform.Append(GetPresentationTransformOps());
-  return transform.Apply();
 }
 
 FloatPoint BaseView::GetTransformOrigin() const {
@@ -2761,7 +2707,7 @@ bool BaseView::CanAcceptEvent() const {
     return false;
   }
   auto origin = GetTransformOrigin();
-  Transform transform(GetPresentationTransformOps()
+  Transform transform(GetTransformOps()
                           .Apply()
                           .matrix()
                           .PreTranslate(-origin.x(), -origin.y())
@@ -3048,7 +2994,7 @@ FloatPoint BaseView::GetPointBySelf(const FloatPoint& point_by_page) const {
   }
 
   auto origin = GetTransformOrigin();
-  Transform transform(GetPresentationTransformOps()
+  Transform transform(GetTransformOps()
                           .Apply()
                           .matrix()
                           .PreTranslate(-origin.x(), -origin.y())
@@ -3730,7 +3676,9 @@ std::vector<float> BaseView::TransformFromViewToRootView(
     BaseView* view, float& in_out_location_x, float& in_out_location_y) {
   auto float_point = FloatPoint(in_out_location_x, in_out_location_y);
   Transform transform = Transform();
-  transform = view->GetPresentationTransform();
+  if (view->render_object()->HasTransform()) {
+    transform = view->render_object()->GetTransform();
+  }
   if (!transform.IsIdentity()) {
     transform.TransformPoint(&float_point);
   }
@@ -3743,7 +3691,7 @@ std::vector<float> BaseView::TransformFromViewToRootView(
     float_point.SetY(float_point.y() + view->Top() -
                      parent_view->render_object()->ScrollTop());
 
-    auto parent_transform = parent_view->GetPresentationTransform();
+    auto parent_transform = parent_view->GetTransform();
     if (!parent_transform.IsIdentity()) {
       parent_transform.TransformPoint(&float_point);
     }
@@ -4009,10 +3957,10 @@ std::u16string BaseView::GetAccessibilityLabel() const {
 }
 
 Transform BaseView::AccumulateTransformFromView(BaseView* view) const {
-  Transform total_transform = GetPresentationTransform();
+  Transform total_transform = render_object()->GetTransform();
   BaseView* parent = Parent();
   while (view != parent && parent) {
-    total_transform.ConcatTransform(parent->GetPresentationTransform());
+    total_transform.ConcatTransform(parent->GetTransform());
     parent = parent->Parent();
   }
   return total_transform;

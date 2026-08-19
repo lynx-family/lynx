@@ -6,13 +6,7 @@
 
 #include <algorithm>
 
-#include "base/include/fml/time/time_point.h"
-
 namespace clay {
-
-int64_t AnimationHandler::GetCurrentAnimationTime() const {
-  return fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-}
 
 /**
  * Register to get a callback on the next frame after the delay.
@@ -45,17 +39,16 @@ void AnimationHandler::RemoveCallback(AnimationFrameCallback* callback) {
     callback_list_dirty_ = true;
   }
 
-  const bool callback_removed = callback_delay_time_map_.erase(callback) > 0;
-  if (callback_removed && scheduled_lifecycle_time_ >= 0) {
-    RescheduleLifecycleCallback(GetCurrentAnimationTime());
+  auto it = callback_delay_time_map_.find(callback);
+  if (it != callback_delay_time_map_.end()) {
+    callback_delay_time_map_.erase(it);
   }
 }
 
 bool AnimationHandler::DoAnimationFrame(int64_t frame_time,
                                         bool lifecycle_only) {
-  if (lifecycle_only || (scheduled_lifecycle_time_ >= 0 &&
-                         frame_time >= scheduled_lifecycle_time_)) {
-    InvalidateLifecycleSchedule();
+  if (lifecycle_only) {
+    scheduled_lifecycle_time_ = -1;
   }
   const int64_t current_time = frame_time;
   last_frame_time_ = frame_time;
@@ -165,9 +158,7 @@ void AnimationHandler::ScheduleLifecycleCallbackAt(int64_t next_lifecycle_time,
   }
 
   if (next_lifecycle_time < 0) {
-    if (scheduled_lifecycle_time_ >= 0) {
-      InvalidateLifecycleSchedule();
-    }
+    scheduled_lifecycle_time_ = -1;
     return;
   }
 
@@ -176,7 +167,6 @@ void AnimationHandler::ScheduleLifecycleCallbackAt(int64_t next_lifecycle_time,
     return;
   }
 
-  InvalidateLifecycleSchedule();
   scheduled_lifecycle_time_ = next_lifecycle_time;
   animation_callback_(
       std::max(static_cast<int64_t>(0), next_lifecycle_time - current_time));
