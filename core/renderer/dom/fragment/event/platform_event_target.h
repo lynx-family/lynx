@@ -103,6 +103,7 @@ class PlatformEventTarget
 
   int32_t RootId() const { return root_id_; }
   int32_t Sign() const { return sign_; }
+  int32_t RendererHostSign() const { return renderer_host_sign_; }
   float Left() const { return left_; }
   float Top() const { return top_; }
   float Width() const { return width_; }
@@ -183,8 +184,6 @@ class PlatformEventTarget
   void OffResponseChain();
   bool IsOnResponseChain() const;
 
-  void OnFocusChange(bool has_focus, bool is_focus_transition);
-  bool Focusable() const;
   void OnPseudoStatusChanged(LynxPseudoStatus pre_status,
                              LynxPseudoStatus current_status);
   LynxPseudoStatus GetPseudoStatus() const;
@@ -241,6 +240,7 @@ class PlatformEventTarget
   void SetPlatformRendererType(PlatformRendererType type) {
     platform_renderer_type_ = type;
   }
+  void SetRendererHostSign(int32_t sign) { renderer_host_sign_ = sign; }
   void SetScrollContainer(bool is_scroll_container) {
     is_scroll_container_ = is_scroll_container;
   }
@@ -258,6 +258,7 @@ class PlatformEventTarget
   void SetEventsPassThrough(LynxEventPropStatus value) {
     events_pass_through_ = value;
   }
+  void SetIgnoreFocus(LynxEventPropStatus value) { ignore_focus_ = value; }
 
  private:
   void UpdateScrollOffsetIfNeeded();
@@ -275,6 +276,7 @@ class PlatformEventTarget
   // target props
   int32_t root_id_;
   int32_t sign_;
+  int32_t renderer_host_sign_{-1};
   float left_{0.f};
   float top_{0.f};
   float width_{0.f};
@@ -305,6 +307,7 @@ class PlatformEventTarget
   LynxEventPropStatus enable_exposure_ui_clip_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus events_pass_through_{LynxEventPropStatus::kUndefined};
+  LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
   std::vector<EventThroughRegion> event_through_active_regions_;
   std::string id_selector_;
   std::string exposure_id_;

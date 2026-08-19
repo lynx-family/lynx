@@ -10,7 +10,6 @@
 #include <limits>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "core/renderer/dom/fragment/event/platform_event_target.h"
@@ -24,11 +23,6 @@ class NativePaintingCtxPlatformRef;
 
 class PlatformEventHandler {
  public:
-  enum EventHandlerState {
-    kStateNone = 0,
-    kStateEventThrough = 1,
-  };
-
   class PlatformEventTargetDetail {
    public:
     PlatformEventTargetDetail(fml::RefPtr<PlatformEventTarget> target,
@@ -57,12 +51,11 @@ class PlatformEventHandler {
   void DispatchPointerEvent(const std::string& name,
                             const lepus::Value& target_pointer_map);
 
-  void OnGestureRecognized(int sign);
-  void SetFocusedTarget(fml::RefPtr<PlatformEventTarget> focused_target);
-  void UnsetFocusedTarget(fml::RefPtr<PlatformEventTarget> focused_target);
-
   bool EventThrough();
-  int EventHandlerState();
+  int32_t HitTargetSign() const { return hit_target_sign_; }
+  int32_t RendererHostSign() const { return renderer_host_sign_; }
+  bool IgnoreFocus() const { return ignore_focus_; }
+  bool CanRespondFocus();
 
   void SetTapSlop(const std::string& tap_slop);
   void SetLongPressDuration(int32_t long_press_duration);
@@ -88,7 +81,7 @@ class PlatformEventHandler {
 
   void DispatchGestureEvent(const std::string& name, float root_point[2]);
   fml::RefPtr<PlatformEventTarget> FindTarget(float pointer_x, float pointer_y);
-  void UpdateFocusedTarget();
+  void ResetFocusInfo();
   bool CanRespondTap(fml::RefPtr<PlatformEventTarget> target);
   void ActivePseudoStatus();
   void DeactivatePseudoStatus(LynxPseudoStatus status);
@@ -102,15 +95,15 @@ class PlatformEventHandler {
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
 
   // state
-  int event_handler_state_{kStateNone};
   fml::RefPtr<PlatformEventTarget> target_tree_{nullptr};
   fml::RefPtr<PlatformEventTarget> first_target_{nullptr};
-  fml::RefPtr<PlatformEventTarget> focused_target_{nullptr};
   std::vector<fml::RefPtr<PlatformEventTarget>> event_target_chain_;
   std::deque<fml::RefPtr<PlatformEventTarget>> click_target_chain_;
   std::unordered_map<int, PlatformEventTargetDetail> target_pointer_map_;
-  std::unordered_set<int> gesture_recognized_target_set_;
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offset_for_tap_;
+  int32_t hit_target_sign_{-1};
+  int32_t renderer_host_sign_{-1};
+  bool ignore_focus_{false};
   bool has_pointer_moved_{false};
   bool first_pointer_moved_{false};
   bool first_pointer_outside_{false};

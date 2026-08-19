@@ -16,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
                            offsetX:(CGFloat)offsetX
                            offsetY:(CGFloat)offsetY;
 - (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point;
-- (int)GetPlatformEventHandlerState;
+- (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point;
 
 @end
 
