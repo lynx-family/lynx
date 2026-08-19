@@ -127,7 +127,9 @@ void ModuleFactoryDarwin::registerModule(NSString *name, Class<LynxModule> cls, 
     wrapper.namescope = [((NSDictionary *)param) objectForKey:@"namescope"];
   }
   modulesClasses_[name] = wrapper;
-  _LogI(@"NativeModule: LynxModule, module: %@ registered with param (address): %p", cls, param);
+  LOGV("NativeModule: LynxModule, module: " << base::SafeStringConvert([[cls name] UTF8String])
+                                            << " registered with param (address): "
+                                            << reinterpret_cast<std::uintptr_t>(param));
 }
 
 void ModuleFactoryDarwin::registerMethodAuth(LynxMethodBlock block) {
