@@ -1052,7 +1052,7 @@ bool Value::MarkConst() const {
       return true;
     case lynx_value_object: {
       RefType ref_type = static_cast<RefType>(value_.tag);
-      if (ref_type < RefType::kJSIObject) {
+      if (IsNonJSRefType(ref_type)) {
         reinterpret_cast<lepus::RefCounted*>(value_.val_ptr)
             ->js_object_cache.reset();
       }

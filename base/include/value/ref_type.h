@@ -35,7 +35,12 @@ enum class RefType : int32_t {
   kClosure,
   kCDate,
   kRegExp,
+  kElementTemplate,
 };
+
+inline bool IsNonJSRefType(RefType type) {
+  return type < RefType::kJSIObject || type == RefType::kElementTemplate;
+}
 
 }  // namespace lepus
 }  // namespace lynx
