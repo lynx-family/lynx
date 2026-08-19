@@ -100,6 +100,55 @@ clay::Value CreateExposeArray(
 static constexpr int64_t kEventStateUpdateDelayTime = 1000;
 static constexpr int64_t kEventStateUpdateIntervalTime = 100;
 
+#if defined(OS_WIN) || defined(OS_MAC)
+int ToWebButton(int64_t changed_buttons) {
+  if (changed_buttons & PointerEvent::MouseButton::kPrimary) {
+    return 0;
+  }
+  if (changed_buttons & PointerEvent::MouseButton::kSecondary) {
+    return 2;
+  }
+  if (changed_buttons & PointerEvent::MouseButton::kMiddle) {
+    return 1;
+  }
+  if (changed_buttons & PointerEvent::MouseButton::kBack) {
+    return 3;
+  }
+  if (changed_buttons & PointerEvent::MouseButton::kForward) {
+    return 4;
+  }
+  for (int button = 5; button < 63; ++button) {
+    if (changed_buttons & (int64_t{1} << button)) {
+      return button;
+    }
+  }
+  return -1;
+}
+
+const char* PointerEventTypeToString(PointerEvent::EventType type) {
+  switch (type) {
+    case PointerEvent::EventType::kDownEvent:
+      return "pointerdown";
+    case PointerEvent::EventType::kMoveEvent:
+    case PointerEvent::EventType::kHoverEvent:
+      return "pointermove";
+    case PointerEvent::EventType::kUpEvent:
+      return "pointerup";
+    case PointerEvent::EventType::kCancel:
+      return "pointercancel";
+    default:
+      return nullptr;
+  }
+}
+
+PointerEvent::DeviceType PrimaryPointerDeviceType(
+    PointerEvent::DeviceType device) {
+  return device == PointerEvent::DeviceType::kInvertedStylus
+             ? PointerEvent::DeviceType::kStylus
+             : device;
+}
+#endif
+
 #ifdef ENABLE_ACCESSIBILITY
 constexpr float kA11yScrollPageRatio = 0.8f;
 
@@ -248,6 +297,12 @@ void PageView::OnDestroy() {
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
   touch_view_map_.clear();
+#if defined(OS_WIN) || defined(OS_MAC)
+  pointer_view_map_.clear();
+  primary_pointer_ids_.clear();
+  active_pointer_ids_.clear();
+  mouse_region_manager_->Reset();
+#endif
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
@@ -891,22 +946,53 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
 
   MarkTapSuppressedPointersForFlingStop(events);
   bool consumed = gesture_manager_->HandlePointerEvents(this, events);
+#if defined(OS_WIN) || defined(OS_MAC)
+  for (PointerEvent& event : events) {
+    PointerEvent web_event = event;
+    if (event.device == PointerEvent::DeviceType::kMouse ||
+        event.device == PointerEvent::DeviceType::kStylus ||
+        event.device == PointerEvent::DeviceType::kInvertedStylus) {
+      web_event.pointer_id = event.device_id;
+    }
+    PreparePointerEvent(web_event);
+    mouse_region_manager_->HandlePointerEventBefore(this, web_event);
+
+    const bool report_event =
+        consumed || event.type == PointerEvent::EventType::kHoverEvent;
+    if (report_event) {
+      ReportPointerEvent(web_event);
+    }
+
+    mouse_region_manager_->HandlePointerEventAfter(this, web_event);
+    if (event.type != PointerEvent::EventType::kAddEvent) {
+      mouse_region_manager_->HandleEvent(this, event);
+    }
+    if (report_event && event.type != PointerEvent::EventType::kAddEvent &&
+        event.type != PointerEvent::EventType::kRemoveEvent) {
+      ReportTopViewEvent(event);
+    }
+    FinishPointerEvent(web_event);
+  }
+#else
 #if defined(ENABLE_MOUSE_TRACKING)
   mouse_region_manager_->HandleEvents(this, events);
+#endif
 #endif
 
   // For Lynx event&gesture report
   if (consumed) {
     // if not consumed by clay elements, it should not be consumed by lynx as
     // well.
+#if !defined(OS_WIN) && !defined(OS_MAC)
     ReportTopViewRawEvents(events);
+#endif
     auto isolated_events = FilterTapSuppressedPointerEvents(events);
     if (!isolated_events.empty()) {
       isolated_gesture_detector_.DispatchPointerEvent(
           isolated_events, gesture_manager_->GetHitTestResponsiveResult());
     }
   } else {
-#if defined(ENABLE_MOUSE_TRACKING)
+#if !defined(OS_WIN) && !defined(OS_MAC) && defined(ENABLE_MOUSE_TRACKING)
     for (PointerEvent& event : events) {
       if (event.type == PointerEvent::EventType::kHoverEvent) {
         ReportTopViewEvent(event);
@@ -1012,6 +1098,123 @@ void PageView::ReportTopViewRawEvents(const std::vector<PointerEvent>& events) {
     ReportTopViewEvent(event);
   }
 }
+
+#if defined(OS_WIN) || defined(OS_MAC)
+void PageView::PreparePointerEvent(PointerEvent& event) {
+  const auto* previous = mouse_region_manager_->GetLastPointerEvent(event);
+  if (event.type == PointerEvent::EventType::kCancel) {
+    event.pressure = previous ? previous->NormalizedPressure() : 0.0;
+    event.pressure_min = 0.0;
+    event.pressure_max = 1.0;
+    event.buttons = 0;
+    event.button = -1;
+  } else {
+    const auto buttons = previous ? previous->buttons : 0;
+    event.button = ToWebButton(buttons ^ event.buttons);
+  }
+
+  if (event.device == PointerEvent::DeviceType::kMouse ||
+      event.device == PointerEvent::DeviceType::kTrackpad) {
+    event.is_primary = true;
+    return;
+  }
+
+  const bool starts_pointer =
+      event.type == PointerEvent::EventType::kDownEvent ||
+      ((event.device == PointerEvent::DeviceType::kStylus ||
+        event.device == PointerEvent::DeviceType::kInvertedStylus) &&
+       event.type == PointerEvent::EventType::kAddEvent);
+  const auto primary_device = PrimaryPointerDeviceType(event.device);
+  auto& active_pointers = active_pointer_ids_[primary_device];
+  if (starts_pointer) {
+    if (active_pointers.empty()) {
+      primary_pointer_ids_.insert_or_assign(primary_device, event.pointer_id);
+    }
+    active_pointers.insert(event.pointer_id);
+  }
+  auto primary = primary_pointer_ids_.find(primary_device);
+  event.is_primary = primary == primary_pointer_ids_.end() ||
+                     primary->second == event.pointer_id;
+}
+
+void PageView::FinishPointerEvent(const PointerEvent& event) {
+  const auto key = std::make_pair(event.device, event.pointer_id);
+  if (event.type == PointerEvent::EventType::kUpEvent ||
+      event.type == PointerEvent::EventType::kCancel ||
+      event.type == PointerEvent::EventType::kRemoveEvent) {
+    pointer_view_map_.erase(key);
+  }
+
+  const bool ends_pointer =
+      event.type == PointerEvent::EventType::kCancel ||
+      (event.device == PointerEvent::DeviceType::kTouch &&
+       event.type == PointerEvent::EventType::kUpEvent) ||
+      ((event.device == PointerEvent::DeviceType::kStylus ||
+        event.device == PointerEvent::DeviceType::kInvertedStylus) &&
+       event.type == PointerEvent::EventType::kRemoveEvent);
+  if (!ends_pointer) {
+    return;
+  }
+
+  const auto primary_device = PrimaryPointerDeviceType(event.device);
+  auto active = active_pointer_ids_.find(primary_device);
+  if (active == active_pointer_ids_.end()) {
+    return;
+  }
+  active->second.erase(event.pointer_id);
+  if (active->second.empty()) {
+    active_pointer_ids_.erase(active);
+    primary_pointer_ids_.erase(primary_device);
+  }
+}
+
+void PageView::ReportPointerEvent(const PointerEvent& event) {
+  const char* event_name = PointerEventTypeToString(event.type);
+  if (!event_name || !event_delegate_) {
+    return;
+  }
+
+  const auto key = std::make_pair(event.device, event.pointer_id);
+  const bool has_implicit_capture = IsTouchLikePointerDevice(event.device);
+  BaseView* top_view = nullptr;
+  FloatPoint transformed_position;
+
+  if (has_implicit_capture &&
+      event.type != PointerEvent::EventType::kDownEvent &&
+      event.type != PointerEvent::EventType::kHoverEvent) {
+    auto target = pointer_view_map_.find(key);
+    if (target != pointer_view_map_.end()) {
+      top_view = target->second.get();
+    }
+    if (top_view && top_view->attach_to_tree()) {
+      transformed_position = top_view->GetPointBySelf(event.position);
+    } else {
+      pointer_view_map_.erase(key);
+      mouse_region_manager_->RefreshPointerEventTarget(this, event);
+      top_view = GetTopViewToAcceptEvent(event.position, &transformed_position);
+    }
+  } else {
+    top_view = GetTopViewToAcceptEvent(event.position, &transformed_position);
+  }
+
+  if (!top_view || top_view->IsAnonymousView() || !top_view->attach_to_tree()) {
+    return;
+  }
+
+  if (has_implicit_capture &&
+      event.type == PointerEvent::EventType::kDownEvent) {
+    pointer_view_map_.insert_or_assign(key, top_view->GetWeakPtr());
+  }
+
+  event_delegate_->OnPointerEvent(
+      event_name, top_view->GetCallbackId(), event.pointer_id,
+      ToClayPointerDeviceKind(event.device), event.is_primary, event.button,
+      event.buttons, event.ContactWidth(), event.ContactHeight(),
+      event.NormalizedPressure(), transformed_position.x(),
+      transformed_position.y(), event.position.x(), event.position.y(),
+      event.timestamp / 1000, -1);
+}
+#endif
 
 void PageView::SetupIsolatedGestures() {
   auto tap_recognizer = std::make_unique<TapGestureRecognizer>(
@@ -1833,6 +2036,12 @@ void PageView::ResetPageView(bool recycle) {
   animation_handler_->ClearCallbacks();
   SetupAnimationCallback();
   touch_view_map_.clear();
+#if defined(OS_WIN) || defined(OS_MAC)
+  pointer_view_map_.clear();
+  primary_pointer_ids_.clear();
+  active_pointer_ids_.clear();
+  mouse_region_manager_->Reset();
+#endif
   fling_stop_tap_suppressed_pointer_ids_.clear();
   isolated_gesture_detector_.ClearScrollTapSuppressionStates();
   active_fling_count_ = 0;

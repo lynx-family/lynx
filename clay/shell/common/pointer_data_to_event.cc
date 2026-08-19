@@ -146,6 +146,13 @@ std::vector<clay::PointerEvent> GetEventsFromPointerDataPacket(
         } break;
 
         case clay::PointerData::Change::kAdd:
+#if defined(OS_WIN) || defined(OS_MAC)
+          if (UsesStablePointerLifecycle(raw_data.kind)) {
+            auto& event =
+                events.emplace_back(clay::PointerEvent::EventType::kAddEvent);
+            CopyToEvent(&event, raw_data);
+          }
+#endif
           break;
         case clay::PointerData::Change::kHover: {
           // on iOS, a kAdd/kHover event could be synthesized.
@@ -156,12 +163,27 @@ std::vector<clay::PointerEvent> GetEventsFromPointerDataPacket(
         } break;
 
         case clay::PointerData::Change::kRemove: {
+#if defined(OS_WIN) || defined(OS_MAC)
+          if (UsesStablePointerLifecycle(raw_data.kind)) {
+            auto& event = events.emplace_back(
+                clay::PointerEvent::EventType::kRemoveEvent);
+            CopyToEvent(&event, raw_data);
+          } else {
+            auto& event =
+                events.emplace_back(clay::PointerEvent::EventType::kCancel);
+            CopyToEvent(&event, raw_data);
+            event.position.SetX(0.f);
+            event.position.SetY(0.f);
+            event.down = false;
+          }
+#else
           auto& event =
               events.emplace_back(clay::PointerEvent::EventType::kCancel);
           CopyToEvent(&event, raw_data);
           event.position.SetX(0.f);
           event.position.SetY(0.f);
           event.down = false;
+#endif
         } break;
         case clay::PointerData::Change::kPanZoomStart: {
           events.emplace_back(
