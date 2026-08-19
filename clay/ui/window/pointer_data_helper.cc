@@ -48,6 +48,8 @@ PointerData::DeviceKind PointerDataHelper::ToPointerDataKind(
       return PointerData::DeviceKind::kTouch;
     case kClayPointerDeviceKindStylus:
       return PointerData::DeviceKind::kStylus;
+    case kClayPointerDeviceKindInvertedStylus:
+      return PointerData::DeviceKind::kInvertedStylus;
     case kClayPointerDeviceKindTrackpad:
       return PointerData::DeviceKind::kTrackpad;
   }
