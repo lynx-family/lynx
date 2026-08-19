@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "base/include/fml/thread.h"
+#include "build/build_config.h"
+#include "clay/shell/common/pointer_data_to_event.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
@@ -173,6 +175,28 @@ TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
   EXPECT_THAT(views_leave, ElementsAre(4));
   EXPECT_THAT(views_enter, ElementsAre());
   clear();
+
+#if defined(OS_WIN) || defined(OS_MAC)
+  PointerData data{};
+  data.kind = PointerData::DeviceKind::kMouse;
+  data.change = PointerData::Change::kRemove;
+  data.physical_x = 200;
+  data.physical_y = 600;
+  PointerDataPacket packet(1);
+  packet.SetPointerData(0, data);
+  root->DispatchPointerEvent(GetEventsFromPointerDataPacket(&packet));
+  EXPECT_THAT(views_leave, ElementsAre(3, 2, 0));
+  EXPECT_THAT(views_enter, ElementsAre());
+  clear();
+
+  root->DispatchPointerEvent(GetEventsFromPointerDataPacket(&packet));
+  EXPECT_THAT(views_leave, ElementsAre());
+  EXPECT_THAT(views_enter, ElementsAre());
+
+  root->DispatchPointerEvent(CreateHoverPointer(200, 600));
+  EXPECT_THAT(views_leave, ElementsAre());
+  EXPECT_THAT(views_enter, ElementsAre(0, 2, 3));
+#endif
 }
 }  // namespace testing
 }  // namespace clay
