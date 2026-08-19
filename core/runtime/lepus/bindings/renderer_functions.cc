@@ -91,6 +91,7 @@
 #include "core/runtime/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/lepus/tasks/lepus_raf_manager.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/feature_count/feature_counter.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_delegate.h"
@@ -3910,6 +3911,10 @@ RENDERER_FUNCTION_CC(FiberCloneElement) {
 
   const std::shared_ptr<CSSStyleSheetManager>& style_sheet_manager =
       self->style_sheet_manager(DEFAULT_ENTRY_NAME);
+  // Count the usage of __CloneElement. If the feature counter of the next
+  // release shows no usage, remove the element clone related logic.
+  report::FeatureCounter::Instance()->Count(
+      report::LynxFeature::CPP_ELEMENT_CLONE);
   return lepus::Value(TreeResolver::CloneElements(element, style_sheet_manager,
                                                   clone_resolved_props, depth));
 }
