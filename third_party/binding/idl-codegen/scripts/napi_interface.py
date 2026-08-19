@@ -424,6 +424,7 @@ k_command_buffer_init = {
     'method_index': 1,
     'remote_method_index': 1,
     'remote_type_id': 3001,
+    'reserved_remote_type_ids': set(),
     'methods': [],
     'remote_methods': [],
     'constants': [],
@@ -586,6 +587,13 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
 
             add_buffered_method(interface, method, ptr_name, command_buffer_context, overloads_child_only, not method_is_remote_only, buffer_commands_for_remote)
 
+        fixed_remote_type_id = command_buffer_context[
+            'fixed_remote_type_ids'].get(interface.name)
+        while command_buffer_context['remote_type_id'] in command_buffer_context[
+                'reserved_remote_type_ids']:
+            command_buffer_context['remote_type_id'] += 1
+        remote_type_id = fixed_remote_type_id or command_buffer_context[
+            'remote_type_id']
         command_buffer_context['interfaces'].append({
             'type_name': interface.name,
             'parent': interface.parent,
@@ -594,10 +602,10 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
             'overloads_child_only': overloads_child_only,
             'has_remote': buffer_commands_for_remote,
             'remote_only': remote_only,
-            'remote_type_id': command_buffer_context['remote_type_id'],
+            'remote_type_id': remote_type_id,
             'remote_constructor_num': len(constructors),
         })
-        if buffer_commands_for_remote:
+        if buffer_commands_for_remote and fixed_remote_type_id is None:
             command_buffer_context['remote_type_id'] += 1
 
     for method in methods:
@@ -666,6 +674,12 @@ def init_command_buffer_context(component, metadata):
     command_buffer_context['buffering_disabled_methods'] = metadata.get('buffering_disabled_methods', [])
     command_buffer_context['flushed_within_frame_methods'] = metadata.get('flushed_within_frame_methods', [])
     command_buffer_context['fixed_remote_method_ids'] = metadata.get('fixed_remote_method_ids', '')
+    command_buffer_context['fixed_remote_type_ids'] = metadata.get(
+        'fixed_remote_type_ids', {})
+    command_buffer_context['reserved_remote_type_ids'].update(
+        command_buffer_context['fixed_remote_type_ids'].values())
+    k_command_buffer_init['reserved_remote_type_ids'].update(
+        command_buffer_context['fixed_remote_type_ids'].values())
 
 
 def finish_command_buffer():
