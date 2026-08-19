@@ -11,7 +11,9 @@
 #include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/gesture_handler/arena/gesture_arena_manager.h"
@@ -22,6 +24,13 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
+
+namespace {
+
+constexpr uint32_t kPointerEventsAuto = 0;
+constexpr uint32_t kPointerEventsNone = 1;
+
+}  // namespace
 
 PointerEvent CreateDownPointer(float x, float y) {
   PointerEvent event(PointerEvent::EventType::kDownEvent);
@@ -734,6 +743,95 @@ TEST_F_UI(BaseViewTest, InvalidEventThroughActiveRegionsClearPreviousValue) {
   EXPECT_TRUE(cleared_result.front()->ShouldPassEventToNative());
 
   page_->RemoveChild(view.get());
+}
+
+TEST_F_UI(BaseViewTest, PointerEventsSelectEligibleHitTarget) {
+  auto* fallback = new View(1, page_.get());
+  auto* top = new View(2, page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(top);
+
+  fallback->SetBound(0, 0, 200, 200);
+  top->SetBound(0, 0, 200, 200);
+  fallback->OnLayoutUpdated();
+  top->OnLayoutUpdated();
+
+  auto expect_target = [&](int expected_id) {
+    HitTestResult result;
+    EXPECT_TRUE(page_->HitTest(CreateDownPointer(50, 50), result));
+    ASSERT_FALSE(result.empty());
+    EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(), expected_id);
+
+    FloatPoint relative_position;
+    auto* target = page_->GetTopViewToAcceptEvent({50, 50}, &relative_position);
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(target->id(), expected_id);
+  };
+
+  expect_target(2);
+
+  top->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+  expect_target(1);
+
+  auto* child = new View(3, page_.get());
+  top->AddChild(child);
+  child->SetBound(0, 0, 200, 200);
+  child->OnLayoutUpdated();
+  expect_target(1);
+
+  child->SetAttribute("pointer-events", clay::Value(kPointerEventsAuto));
+  expect_target(3);
+
+  child->SetAttribute("pointer-events", clay::Value::Null());
+  expect_target(1);
+}
+
+TEST_F_UI(BaseViewTest, PointerEventsInheritanceStopsAtOverlay) {
+  auto* overlay = new OverlayView(1, page_.get());
+  auto* child = new View(2, page_.get());
+  overlay->AddChild(child);
+  page_->AddChild(overlay);
+
+  overlay->SetBound(0, 0, 200, 200);
+  child->SetBound(0, 0, 200, 200);
+  overlay->OnLayoutUpdated();
+  child->OnLayoutUpdated();
+  page_->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+
+  HitTestResult result;
+  EXPECT_TRUE(page_->HitTest(CreateDownPointer(50, 50), result));
+  ASSERT_FALSE(result.empty());
+  EXPECT_EQ(result.front().get(), child);
+
+  FloatPoint relative_position;
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position),
+            child);
+
+  overlay->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+  result.clear();
+  EXPECT_FALSE(page_->HitTest(CreateDownPointer(50, 50), result));
+  EXPECT_TRUE(result.empty());
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position),
+            nullptr);
+}
+
+TEST_F_UI(BaseViewTest, TextPointerEventsAffectMouseTarget) {
+  auto* fallback = new View(1, page_.get());
+  auto* text = new TextView(2, page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(text);
+
+  fallback->SetBound(0, 0, 200, 200);
+  text->SetBound(0, 0, 200, 200);
+  fallback->OnLayoutUpdated();
+  text->OnLayoutUpdated();
+
+  FloatPoint relative_position;
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position), text);
+
+  text->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position),
+            fallback);
 }
 
 class BaseViewWithChildrenTest : public UITest {
