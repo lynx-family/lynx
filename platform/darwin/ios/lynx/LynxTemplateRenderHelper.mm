@@ -200,7 +200,17 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   std::shared_ptr<lynx::shell::JSProxyDarwin> js_proxy;
   if (_lynxViewGroup.logicExecutor == nil) {
     [self setUpLynxContextWithLastInstanceId:lastInstanceId];
-    auto native_module_manager = [self setUpModuleManager];
+    BOOL use_shared_module_factory =
+        _lynxViewGroup != nil && _lynxViewGroup.enableSharedModule && _lynxViewGroup.config != nil;
+    // The shared-module path owns a separate factory lifecycle and historically returns before
+    // per-view MTS wrappers are copied. Keep that behavior unchanged in this optimization.
+    if (_enableMTSModule && _config && !use_shared_module_factory) {
+      [self setUpMTSUserModules];
+    }
+    std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager;
+    if (_enableJSRuntime || _enableLepusModule) {
+      native_module_manager = [self setUpModuleManager];
+    }
     if (_enableJSRuntime) {
       [self setUpRuntimeWithModuleManager:native_module_manager];
       const auto& actor = shell_->GetRuntimeActor();
@@ -355,6 +365,13 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   return module_factory;
 }
 
+- (void)setUpMTSUserModules {
+  auto main_thread_module_factory = main_thread_module_factory_.lock();
+  if (main_thread_module_factory) {
+    main_thread_module_factory->addWrappers([_builder getModuleWrapper]);
+  }
+}
+
 - (std::shared_ptr<lynx::pub::LynxNativeModuleManager>)setUpModuleManager {
   std::shared_ptr<lynx::runtime::js::ModuleFactoryDarwin> module_factory;
   // TODO(zhangqun.29):Merge with the initialization of the Common Module
@@ -435,15 +452,6 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   }
   module_factory_ = module_factory;
 
-  // setup mts user modules
-  // If enable MTS module, merge MTS user modules with bts thread module factory.
-  if (_enableMTSModule && _config) {
-    auto main_thread_module_factory = main_thread_module_factory_.lock();
-    if (main_thread_module_factory) {
-      main_thread_module_factory->addWrappers([_builder getModuleWrapper]);
-    }
-  }
-
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
   if (_config != globalConfig && globalConfig) {
     module_factory->parent = globalConfig.moduleFactoryPtr;
@@ -474,7 +482,9 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   [_extra addEntriesFromDictionary:[module_factory->extraWrappers() copy]];
 
   [self setUpBuiltModuleWithFactory:module_factory.get()];
-  [self setUpLepusModulesWithFactory:module_factory.get()];
+  if (_enableLepusModule) {
+    [self setUpLepusModulesWithFactory:module_factory.get()];
+  }
 
   if (!_enableJSRuntime) {
     return nullptr;

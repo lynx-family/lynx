@@ -67,6 +67,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _enableReuseEngine;
   BOOL _isEngineInitFromReusePool;
   BOOL _enableMTSModule;
+  BOOL _enableLepusModule;
   BOOL _isMemoryCollecting;
 
   LynxViewBuilder* _builder;

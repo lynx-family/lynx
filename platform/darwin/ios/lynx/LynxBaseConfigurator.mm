@@ -36,8 +36,19 @@
     _threadStrategy = LynxThreadStrategyForRenderAllOnUI;
     _hasThreadStrategySet = NO;
     _hasPendingJsTaskSet = NO;
+    _enableLepusModule = YES;
+    _hasEnableLepusModuleSet = NO;
   }
   return self;
+}
+
+- (BOOL)enableLepusModule {
+  return _enableLepusModule;
+}
+
+- (void)setEnableLepusModule:(BOOL)enableLepusModule {
+  _enableLepusModule = enableLepusModule;
+  _hasEnableLepusModuleSet = YES;
 }
 
 - (LynxEmbeddedMode)getEmbeddedMode {
