@@ -2,7 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <algorithm>
+#include <chrono>
 #include <condition_variable>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 
 #define private public
 #include "core/services/recorder/testbench_base_recorder.h"
@@ -11,6 +17,8 @@
 #include <mutex>
 
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#include "third_party/modp_b64/modp_b64.h"
+#include "third_party/zlib/zlib.h"
 
 namespace lynx {
 namespace tasm {
@@ -26,6 +34,59 @@ void wait(fml::Thread& thread) {
   });
   condition.wait(lock);
 }
+
+namespace {
+
+// Reverses CompressToBase64String's encode half (base64 -> compressed bytes).
+std::string DecodeBase64(const std::string& input) {
+  std::string out(lynx_modp_b64_decode_len(input.size()), '\0');
+  const size_t decoded_len = lynx_modp_b64_decode(
+      &out[0], input.c_str(), static_cast<int>(input.size()));
+  if (decoded_len == MODP_B64_ERROR) {
+    return "";
+  }
+  out.resize(decoded_len);
+  return out;
+}
+
+// Reverses CompressToBase64String's compress half (zlib wrapper stream).
+// Grows the output buffer until the payload fits.
+std::string ZlibDecompress(const std::string& compressed) {
+  if (compressed.empty()) {
+    return "";
+  }
+  std::string out(compressed.size() * 8 + 1024, '\0');
+  for (int attempt = 0; attempt < 8; ++attempt) {
+    uLongf dest_len = static_cast<uLongf>(out.size());
+    const int ret =
+        uncompress(reinterpret_cast<Bytef*>(&out[0]), &dest_len,
+                   reinterpret_cast<const Bytef*>(compressed.data()),
+                   static_cast<uLong>(compressed.size()));
+    if (ret == Z_OK) {
+      out.resize(dest_len);
+      return out;
+    }
+    if (ret != Z_BUF_ERROR) {
+      return "";
+    }
+    out.resize(out.size() * 4);
+  }
+  return "";
+}
+
+int64_t NowMillis() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+
+std::string ReadFileContent(const std::string& path) {
+  std::ifstream in(path, std::ios::binary);
+  return std::string((std::istreambuf_iterator<char>(in)),
+                     std::istreambuf_iterator<char>());
+}
+
+}  // namespace
 
 TEST(TestBenchBaseRecorder, RecordScripts) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
@@ -362,6 +423,164 @@ TEST(TestBenchBaseRecorder, RecordComponent) {
   ASSERT_TRUE(component.HasMember(kComponentType));
   EXPECT_EQ(component[kComponentType].GetInt(), type);
   ark.Clear();
+}
+
+TEST(TestBenchBaseRecorder, CompressToBase64String) {
+  const std::string source =
+      "recorder codec round-trip payload with utf8 chars "
+      "\xe4\xb8\xad\xe6\x96\x87 "
+      "and symbols";
+  const std::string encoded = TestBenchBaseRecorder::CompressToBase64String(
+      source.data(), source.size());
+  EXPECT_FALSE(encoded.empty());
+  EXPECT_EQ(ZlibDecompress(DecodeBase64(encoded)), source);
+
+  // Empty input still yields a valid, decodable encoding.
+  const std::string empty_encoded =
+      TestBenchBaseRecorder::CompressToBase64String("", 0);
+  EXPECT_FALSE(empty_encoded.empty());
+  EXPECT_EQ(ZlibDecompress(DecodeBase64(empty_encoded)), "");
+
+  // Multi-megabyte payload.
+  std::string large(4u * 1024 * 1024, 'x');
+  large.append("tail");
+  EXPECT_EQ(
+      ZlibDecompress(DecodeBase64(TestBenchBaseRecorder::CompressToBase64String(
+          large.data(), large.size()))),
+      large);
+}
+
+TEST(TestBenchBaseRecorder, WriteRecordJsonRoundTrip) {
+  rapidjson::Document doc(rapidjson::kObjectType);
+  rapidjson::Document::AllocatorType& allocator = doc.GetAllocator();
+  rapidjson::Value action_list(rapidjson::kArrayType);
+  doc.AddMember(rapidjson::StringRef(kActionList), action_list, allocator);
+
+  const std::string path = (std::filesystem::temp_directory_path() /
+                            "lynx_recorder_write_record_json_roundtrip.json")
+                               .string();
+  std::remove(path.c_str());
+  ASSERT_TRUE(TestBenchBaseRecorder::WriteRecordJson(path, doc));
+
+  const std::string encoded = ReadFileContent(path);
+  ASSERT_FALSE(encoded.empty());
+  const std::string plain = ZlibDecompress(DecodeBase64(encoded));
+  ASSERT_FALSE(plain.empty());
+  rapidjson::Document parsed;
+  parsed.Parse(plain.c_str());
+  ASSERT_FALSE(parsed.HasParseError());
+  ASSERT_TRUE(parsed.IsObject());
+  EXPECT_TRUE(parsed.HasMember(kActionList));
+  std::remove(path.c_str());
+
+  // Unwritable path fails without crashing.
+  EXPECT_FALSE(TestBenchBaseRecorder::WriteRecordJson(
+      "/nonexistent_dir_for_lynx_ut/sub/file.json", doc));
+}
+
+TEST(TestBenchBaseRecorder, RecordTime) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  const int64_t before = NowMillis();
+  rapidjson::Document doc(rapidjson::kObjectType);
+  ark.RecordTime(doc);
+  const int64_t after = NowMillis();
+
+  ASSERT_TRUE(doc.IsObject());
+  EXPECT_EQ(doc.MemberCount(), 2);
+  ASSERT_TRUE(doc.HasMember(kParamRecordTime));
+  EXPECT_TRUE(doc[kParamRecordTime].IsString());
+  const int64_t seconds = std::stoll(doc[kParamRecordTime].GetString());
+  EXPECT_GE(seconds, before / 1000 - 1);
+  EXPECT_LE(seconds, after / 1000 + 1);
+
+  ASSERT_TRUE(doc.HasMember(kParamRecordMillisecond));
+  ASSERT_TRUE(doc[kParamRecordMillisecond].IsInt64());
+  const int64_t millis = doc[kParamRecordMillisecond].GetInt64();
+  EXPECT_GE(millis, before);
+  EXPECT_LE(millis, after);
+  // Both fields come from the same clock sample.
+  EXPECT_EQ(seconds, millis / 1000);
+}
+
+TEST(TestBenchBaseRecorder, EndRecordOutput) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  wait(ark.thread_);
+  ark.Clear();
+  wait(ark.thread_);
+  const std::string temp_dir = std::filesystem::temp_directory_path().string();
+  ark.SetRecorderPath(temp_dir);
+  ark.StartRecord();
+
+  const int64_t recorded_id = 4242;
+  const int64_t bare_id = 4243;
+  ark.AddLynxViewSessionID(recorded_id, 777);
+  rapidjson::Value params(rapidjson::kObjectType);
+  ark.RecordAction("TestFunction", params, recorded_id);
+  ark.RecordAction("TestFunction", params, bare_id);
+  wait(ark.thread_);
+
+  std::vector<std::string> filenames;
+  std::vector<int64_t> sessions;
+  ark.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& ids) {
+        filenames = files;
+        sessions = ids;
+      });
+  wait(ark.thread_);
+
+  ASSERT_EQ(filenames.size(), 2u);
+  ASSERT_EQ(sessions.size(), 2u);
+  for (size_t i = 0; i < filenames.size(); ++i) {
+    const int64_t expected_id = sessions[i] == 777 ? recorded_id : bare_id;
+    EXPECT_EQ(filenames[i],
+              temp_dir + "/" + std::to_string(expected_id) + ".json");
+    const std::string encoded = ReadFileContent(filenames[i]);
+    EXPECT_FALSE(encoded.empty());
+    const std::string plain = ZlibDecompress(DecodeBase64(encoded));
+    EXPECT_FALSE(plain.empty());
+    std::remove(filenames[i].c_str());
+  }
+  std::vector<int64_t> sorted_sessions = sessions;
+  std::sort(sorted_sessions.begin(), sorted_sessions.end());
+  EXPECT_EQ(sorted_sessions[0], -1);
+  EXPECT_EQ(sorted_sessions[1], 777);
+
+  // EndRecord stops recording and clears the tables.
+  EXPECT_FALSE(ark.is_recording_);
+  EXPECT_TRUE(ark.lynx_view_table_.empty());
+  EXPECT_TRUE(ark.session_ids_.empty());
+}
+
+TEST(TestBenchBaseRecorder, EndRecordSkipsFailedWrites) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  wait(ark.thread_);
+  ark.Clear();
+  wait(ark.thread_);
+  // Unwritable directory: WriteRecordJson fails, so the shell must not be
+  // reported in the recordingComplete payload at all.
+  ark.SetRecorderPath("/nonexistent_dir_for_lynx_ut");
+  ark.StartRecord();
+
+  rapidjson::Value params(rapidjson::kObjectType);
+  ark.RecordAction("TestFunction", params, 1);
+  wait(ark.thread_);
+
+  std::vector<std::string> filenames;
+  std::vector<int64_t> sessions;
+  ark.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& ids) {
+        filenames = files;
+        sessions = ids;
+      });
+  wait(ark.thread_);
+
+  EXPECT_TRUE(filenames.empty());
+  EXPECT_TRUE(sessions.empty());
+  EXPECT_FALSE(ark.is_recording_);
+  EXPECT_TRUE(ark.lynx_view_table_.empty());
+
+  // Restore a writable path for any later tests on this singleton.
+  ark.SetRecorderPath(std::filesystem::temp_directory_path().string());
 }
 
 }  // namespace recorder
