@@ -82,6 +82,11 @@ ClayEventType ToClayEventType(PointerEvent::EventType event_type,
 ClayEventType ToClayEventType(const PointerEvent& event,
                               bool align_mouse_event_with_w3c);
 
+#if defined(OS_WIN) || defined(OS_MAC)
+ClayPointerDeviceKind ToClayPointerDeviceKind(
+    PointerEvent::DeviceType device_type);
+#endif
+
 ClayEventType ToClayEventType(KeyEventType type);
 
 class PageView : public BaseView,

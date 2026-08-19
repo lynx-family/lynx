@@ -46,6 +46,14 @@ class LynxEventDispatcher : public EventDelegate {
   void OnMouseEvent(const std::string& event_name, int view_id, int button,
                     int buttons, float scale, float x, float y, float page_x,
                     float page_y) override;
+#if defined(OS_WIN) || defined(OS_MAC)
+  void OnPointerEvent(const std::string& event_name, int view_id,
+                      int pointer_id, ClayPointerDeviceKind device_kind,
+                      bool is_primary, int button, int buttons, float width,
+                      float height, float pressure, float x, float y,
+                      float page_x, float page_y, int64_t timestamp,
+                      int related_target_sign) override;
+#endif
   void OnWheelEvent(const std::string& event_name, int view_id, float x,
                     float y, float page_x, float page_y, float delta_x,
                     float delta_y) override;
