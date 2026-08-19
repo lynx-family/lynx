@@ -735,7 +735,7 @@ void ListContainerView::SetMaxContent(float value) {
 
 void ListContainerView::HandleEvent(const PointerEvent& event) {
   if (snap_factor_ >= 0 &&
-      (event.device == PointerEvent::DeviceType::kTouch ||
+      (IsTouchLikePointerDevice(event.device) ||
        event.device == PointerEvent::DeviceType::kMouse ||
        event.device == PointerEvent::DeviceType::kTrackpad)) {
     DetectSnapScroll(event.type);
