@@ -1,5 +1,5 @@
 import { assertType, describe, expect, expectTypeOf, it } from 'vitest';
-import { StandardProps, Target, TouchEvent, MainThread, AnimationEvent, MouseEvent } from '../../types';
+import { StandardProps, Target, TouchEvent, MainThread, AnimationEvent, MouseEvent, PointerEvent } from '../../types';
 
 describe('Test Basic Event Binding', () => {
   it('Test event bind', () => {
@@ -106,5 +106,27 @@ describe('Test Mouse Events', () => {
     expectTypeOf<StandardProps['bindmouseleave']>().parameter(0).toEqualTypeOf<MouseEvent>();
     expectTypeOf<StandardProps['main-thread:bindmouseenter']>().parameter(0).toEqualTypeOf<MainThread.MouseEvent>();
     expectTypeOf<StandardProps['main-thread:bindmouseleave']>().parameter(0).toEqualTypeOf<MainThread.MouseEvent>();
+  });
+});
+
+describe('Test Pointer Events', () => {
+  it('pointer boundary event bind', () => {
+    expectTypeOf<StandardProps['bindpointerover']>().exclude(undefined).toExtend<(e: PointerEvent) => void>();
+    expectTypeOf<StandardProps['bindpointerenter']>().exclude(undefined).toExtend<(e: PointerEvent) => void>();
+    expectTypeOf<StandardProps['bindpointerout']>().exclude(undefined).toExtend<(e: PointerEvent) => void>();
+    expectTypeOf<StandardProps['bindpointerleave']>().exclude(undefined).toExtend<(e: PointerEvent) => void>();
+    expectTypeOf<StandardProps['main-thread:bindpointerenter']>().exclude(undefined).toExtend<(e: MainThread.PointerEvent) => void>();
+  });
+
+  it('pointer boundary event related target', () => {
+    expectTypeOf<StandardProps['bindpointerover']>().parameter(0).toHaveProperty('relatedTarget').toEqualTypeOf<Target | null>();
+    expectTypeOf<StandardProps['main-thread:bindpointerover']>().parameter(0).toHaveProperty('relatedTarget').toEqualTypeOf<MainThread.Element | null>();
+  });
+
+  it('pointer event geometry and pressure', () => {
+    expectTypeOf<StandardProps['bindpointermove']>().parameter(0).toHaveProperty('offsetX').toEqualTypeOf<number>();
+    expectTypeOf<StandardProps['bindpointermove']>().parameter(0).toHaveProperty('width').toEqualTypeOf<number>();
+    expectTypeOf<StandardProps['bindpointermove']>().parameter(0).toHaveProperty('height').toEqualTypeOf<number>();
+    expectTypeOf<StandardProps['bindpointermove']>().parameter(0).toHaveProperty('pressure').toEqualTypeOf<number>();
   });
 });
