@@ -4,22 +4,40 @@
 
 #include "clay/ui/component/expose_manager/expose_observer.h"
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
 #include "base/include/string/string_utils.h"
+#include "base/trace/native/trace_event.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/intersection_observer.h"
+#include "clay/ui/component/intersection_observer_manager.h"
 #include "clay/ui/component/page_view.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
 namespace {
 namespace utils = attribute_utils;
+
+std::string GetTraceDataSetValue(
+    const clay::Value& data_set,
+    std::initializer_list<const char*> candidate_keys) {
+  const auto& map = utils::GetMap(data_set);
+  for (const auto* key : candidate_keys) {
+    auto value = utils::GetCString(utils::GetMapItem(map, key), "");
+    if (!value.empty()) {
+      return value;
+    }
+  }
+  return "";
+}
+
 FloatRect BoundingRectWithScroll(BaseView* view) {
   auto location = view->AbsoluteLocationWithScroll();
   return FloatRect(location.x(), location.y(), view->Width(), view->Height());
@@ -78,17 +96,31 @@ void ExposeObserver::StopExposure(bool send_event) {
       send_event && expose_attrs_.expose_state == kExposed;
   expose_attrs_.exposure_stoped = true;
   if (should_notify_disappear) {
-    NotifyExposureEvent(false);
+    NotifyExposureEvent(false, "stop_exposure", 0);
   }
 }
 
 void ExposeObserver::ResumeExposure() { expose_attrs_.exposure_stoped = false; }
 
 void ExposeObserver::SetExposureHostVisible(bool visible) {
+  TRACE_EVENT("clay", CLAY_EXPOSE_OBSERVER_SET_HOST_VISIBLE, "visible", visible,
+              "previous_visible", exposure_host_visible_, "view_id",
+              attached_view_ ? attached_view_->id() : -1);
   exposure_host_visible_ = visible;
 }
 
-void ExposeObserver::NotifyAppearEvent(bool appear) {
+bool ExposeObserver::TryNotifyAppearWithoutGeometry(const char* reason) {
+  if (!available_ || !root_ || expose_attrs_.exposure_stoped ||
+      !exposure_host_visible_ ||
+      !expose_attrs_.exposure_should_notify_appear_ || IsExposed()) {
+    return false;
+  }
+  NotifyExposureEvent(true, reason, 1.0);
+  return true;
+}
+
+void ExposeObserver::NotifyAppearEvent(
+    bool appear, const ExposureEventTraceInfo& trace_info) {
   if (attached_view_ && attached_view_->page_view()) {
     const char* event_name = appear ? "uiappear" : "uidisappear";
     clay::Value::Map params;
@@ -106,12 +138,36 @@ void ExposeObserver::NotifyAppearEvent(bool appear) {
         CloneClayValue(attached_view_->GetDataSet());
     params[detail_attr::kDataSetCompat] =
         CloneClayValue(attached_view_->GetDataSet());
-    attached_view_->page_view()->SendCustomEvent(
-        attached_view_->GetCallbackId(), event_name, std::move(params));
+    const auto& data_set = attached_view_->GetDataSet();
+    auto page_root_id = GetTraceDataSetValue(
+        data_set, {"pageRootId", "page-root-id", "page_root_id"});
+    if (!page_root_id.empty()) {
+      auto page_view_id = GetTraceDataSetValue(
+          data_set, {"pageViewId", "page-view-id", "page_view_id"});
+      auto route_id =
+          GetTraceDataSetValue(data_set, {"routeId", "route-id", "route_id"});
+      auto square_root_id = GetTraceDataSetValue(
+          data_set, {"squareRootId", "square-root-id", "square_root_id"});
+      auto run_id =
+          GetTraceDataSetValue(data_set, {"runId", "run-id", "run_id"});
+      TRACE_EVENT_INSTANT(
+          "lynx", LYNX_EXPOSURE_DISPATCH_CUSTOM_EVENT, "renderer", "clay",
+          "event_name", event_name, "sign", attached_view_->GetCallbackId(),
+          "page_view_id", page_view_id.c_str(), "route_id", route_id.c_str(),
+          "page_root_id", page_root_id.c_str(), "square_root_id",
+          square_root_id.c_str(), "run_id", run_id.c_str(),
+          "exposure_episode_id", trace_info.exposure_episode_id,
+          "exposure_transition_index", trace_info.exposure_transition_index,
+          "exposure_event_index", trace_info.exposure_event_index,
+          "exposure_trigger_source", trace_info.exposure_trigger_source);
+    }
+    attached_view_->page_view()->SendCustomEventWithTraceInfo(
+        attached_view_->GetCallbackId(), event_name, std::move(params),
+        trace_info);
   }
 }
 
-void ExposeObserver::NotifyGlobalEvent(bool appear) {
+void ExposeObserver::NotifyGlobalEvent(bool appear, uint64_t trace_flow_id) {
   if (!attached_view_ || !attached_view_->page_view()) {
     return;
   }
@@ -128,17 +184,65 @@ void ExposeObserver::NotifyGlobalEvent(bool appear) {
                   clay::Value(attached_view_->GetCallbackId()));
   params->emplace(detail_attr::kUniqueId,
                   clay::Value(attached_view_->GetCallbackId()));
-  attached_view_->page_view()->AddGlobalExposureEvent(appear, std::move(params),
-                                                      attached_view_);
+  attached_view_->page_view()->AddGlobalExposureEvent(
+      appear, std::move(params), attached_view_, trace_flow_id);
 }
 
-void ExposeObserver::NotifyExposureEvent(bool appear) {
-  if (expose_attrs_.exposure_should_notify_appear_ ||
-      expose_attrs_.exposure_should_notify_disappear_) {
-    NotifyAppearEvent(appear);
+void ExposeObserver::NotifyExposureEvent(bool appear, const char* reason,
+                                         double intersection_ratio) {
+  const auto previous_state = expose_attrs_.expose_state;
+  const bool has_custom_event = expose_attrs_.exposure_should_notify_appear_ ||
+                                expose_attrs_.exposure_should_notify_disappear_;
+  const bool has_global_event = !expose_attrs_.exposure_id.empty();
+  const uint64_t global_event_flow_id = has_global_event ? TRACE_FLOW_ID() : 0;
+  const auto trace_info = manager_->RecordExposureTransition(
+      attached_view_, appear, has_custom_event, reason);
+  if (appear) {
+    TRACE_EVENT_INSTANT(
+        "clay", CLAY_EXPOSURE, "view_id",
+        attached_view_ ? attached_view_->id() : -1, "reason", reason,
+        "previous_state", previous_state, "intersection_ratio",
+        intersection_ratio, "is_detaching", is_detaching_, "host_visible",
+        exposure_host_visible_, "custom_event", has_custom_event,
+        "global_event", has_global_event, "exposure_episode_id",
+        trace_info.exposure_episode_id, "exposure_transition_index",
+        trace_info.exposure_transition_index, "exposure_event_index",
+        trace_info.exposure_event_index, "exposure_trigger_source",
+        trace_info.exposure_trigger_source, "clay_page_view_id",
+        trace_info.clay_page_view_id, "direct_page_child",
+        trace_info.direct_page_child, "page_child_index",
+        trace_info.page_child_index,
+        [global_event_flow_id](lynx::perfetto::EventContext ctx) {
+          if (global_event_flow_id != 0) {
+            ctx.event()->add_flow_ids(global_event_flow_id);
+          }
+        });
+  } else {
+    TRACE_EVENT_INSTANT(
+        "clay", CLAY_DISEXPOSURE, "view_id",
+        attached_view_ ? attached_view_->id() : -1, "reason", reason,
+        "previous_state", previous_state, "intersection_ratio",
+        intersection_ratio, "is_detaching", is_detaching_, "host_visible",
+        exposure_host_visible_, "custom_event", has_custom_event,
+        "global_event", has_global_event, "exposure_episode_id",
+        trace_info.exposure_episode_id, "exposure_transition_index",
+        trace_info.exposure_transition_index, "exposure_event_index",
+        trace_info.exposure_event_index, "exposure_trigger_source",
+        trace_info.exposure_trigger_source, "clay_page_view_id",
+        trace_info.clay_page_view_id, "direct_page_child",
+        trace_info.direct_page_child, "page_child_index",
+        trace_info.page_child_index,
+        [global_event_flow_id](lynx::perfetto::EventContext ctx) {
+          if (global_event_flow_id != 0) {
+            ctx.event()->add_flow_ids(global_event_flow_id);
+          }
+        });
   }
-  if (!expose_attrs_.exposure_id.empty()) {
-    NotifyGlobalEvent(appear);
+  if (has_custom_event) {
+    NotifyAppearEvent(appear, trace_info);
+  }
+  if (has_global_event) {
+    NotifyGlobalEvent(appear, global_event_flow_id);
   } else {
     FML_DLOG(ERROR) << " fail notify by exposure id null, view "
                     << attached_view_
@@ -155,7 +259,8 @@ void ExposeObserver::NotifyTarget() {
   if (it != map.end()) {
     attribute_utils::TryGetNum(it->second, ratio, 0);
   }
-  NotifyExposureEvent(ratio > 0);
+  NotifyExposureEvent(ratio > 0, is_detaching_ ? "detach" : "intersection",
+                      ratio);
 }
 
 void ExposeObserver::CheckForIntersectionWithTarget() {
@@ -171,6 +276,8 @@ void ExposeObserver::CheckForIntersectionWithTarget() {
   if (!exposure_host_visible_ && !is_detaching_) {
     return;
   }
+  TRACE_EVENT("clay", CLAY_EXPOSE_OBSERVER_CHECK_INTERSECTION, "view_id",
+              attached_view_->id());
   now_entry_ = std::make_unique<IntersectionObserverEntry>();
 
   FloatRect target_rect =

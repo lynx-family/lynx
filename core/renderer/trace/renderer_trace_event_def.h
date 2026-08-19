@@ -1085,6 +1085,14 @@ inline constexpr const char* const LAYOUT_CONTEXT_CREATE_NODE =
     "LayoutContext.CreateLayoutNode";
 inline constexpr const char* const LAYOUT_CONTEXT_UPDATE_MEASURE =
     "UpdateMeasure";
+inline constexpr const char* const LAYOUT_OBJECT_MEASURE_FUNC =
+    "LayoutObject::MeasureFunc";
+inline constexpr const char* const LAYOUT_OBJECT_REMEASURE_FUNC =
+    "LayoutObject::RemeasureFunc";
+inline constexpr const char* const LAYOUT_OBJECT_SIZE_DETERMINATION =
+    "LayoutObject::SizeDetermination";
+inline constexpr const char* const LAYOUT_CONTEXT_UPDATE_LAYOUT_INFO =
+    "LayoutContext::UpdateLayoutInfo";
 inline constexpr const char* const LAYOUT_CONTEXT_UPDATE_ALIGNMENT =
     "UpdateAlignment";
 inline constexpr const char* const LAYOUT_CONTEXT_REMOVE_ALGORITHM_RECURSIVE =
@@ -1317,6 +1325,8 @@ inline constexpr const char* const
 inline constexpr const char* const UI_OPERATION_QUEUE_UPDATE_LAYOUT_TASK =
     "UIOperationQueue::UpdateLayoutTask";
 inline constexpr const char* const DUMP_UI_TREE_LAYOUT = "DumpUITreeLayout";
+inline constexpr const char* const BASE_ELEMENT_CONTAINER_ON_FIRST_SCREEN =
+    "BaseElementContainer::OnFirstScreen";
 
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 

@@ -73,6 +73,7 @@
 #include "clay/ui/rendering/render_page.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
 #include "clay/version/version.h"
+#include "core/base/trace/trace_event_def.h"
 
 #ifdef ENABLE_SCREENSHOT_SERVICE
 #include "clay/shell/common/services/screenshot_service.h"
@@ -267,6 +268,8 @@ void PageView::OnDestroy() {
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
+  exposure_event_flow_ids_.clear();
+  disexposure_event_flow_ids_.clear();
   overlay_manager_ = nullptr;
 }
 
@@ -403,8 +406,14 @@ bool PageView::BeginFrame(
     TRACE_EVENT("clay", "Clay::Layout");
     ScopedTimingRecorder scoped_layout_timing(
         *recorder, FrameTimingKey::kLayoutStart, FrameTimingKey::kLayoutEnd);
-    LayoutInternal();
-    LayoutUpdated();
+    {
+      TRACE_EVENT("clay", CLAY_PAGE_VIEW_LAYOUT_DIRTY_ROOTS);
+      LayoutInternal();
+    }
+    {
+      TRACE_EVENT("clay", CLAY_PAGE_VIEW_LAYOUT_UPDATED_TREE);
+      LayoutUpdated();
+    }
     scoped_layout_timing.MarkRecordEnd();
   }
 
@@ -507,17 +516,90 @@ void PageView::SetRenderDelegate(RenderDelegate* delegate) {
   render_delegate_ = delegate;
 }
 
+void PageView::SendCustomEventWithTraceInfo(
+    int id, const char* event_name, clay::Value::Map params,
+    const ExposureEventTraceInfo& trace_info) {
+  (void)trace_info;
+  TRACE_EVENT(
+      "clay", CLAY_PAGE_VIEW_DISPATCH_EXPOSURE_CUSTOM_EVENT,
+      [id, event_name, &trace_info](lynx::perfetto::EventContext context) {
+        context.event()->add_debug_annotations("event_name", event_name);
+        context.event()->add_debug_annotations("view_id", std::to_string(id));
+        context.event()->add_debug_annotations(
+            "exposure_episode_id",
+            std::to_string(trace_info.exposure_episode_id));
+        context.event()->add_debug_annotations(
+            "exposure_transition_index",
+            std::to_string(trace_info.exposure_transition_index));
+        context.event()->add_debug_annotations(
+            "exposure_event_index",
+            std::to_string(trace_info.exposure_event_index));
+        context.event()->add_debug_annotations(
+            "clay_page_view_id", std::to_string(trace_info.clay_page_view_id));
+        context.event()->add_debug_annotations(
+            "direct_page_child", std::to_string(trace_info.direct_page_child));
+        context.event()->add_debug_annotations(
+            "page_child_index", std::to_string(trace_info.page_child_index));
+        context.event()->add_debug_annotations(
+            "exposure_trigger_source", trace_info.exposure_trigger_source);
+        context.event()->add_debug_annotations(
+            "exposure_transition_reason",
+            trace_info.exposure_transition_reason);
+      });
+  if (event_delegate_) {
+    event_delegate_->OnSendCustomEvent(id, event_name, std::move(params));
+  }
+}
+
 void PageView::SendGlobalExposureEvent() {
+  if (exposure_event_arr_.empty() && disexposure_event_arr_.empty()) {
+    return;
+  }
+  TRACE_EVENT("clay", CLAY_PAGE_VIEW_SEND_GLOBAL_EXPOSURE_EVENT,
+              "exposure_count", exposure_event_arr_.size(), "disexposure_count",
+              disexposure_event_arr_.size());
   if (event_delegate_) {
     if (!exposure_event_arr_.empty()) {
-      auto params =
-          CreateExposeArray(exposure_event_arr_, exposure_event_data_set_);
-      event_delegate_->OnSendGlobalEvent("exposure", std::move(params));
+      clay::Value params;
+      {
+        TRACE_EVENT("clay", CLAY_PAGE_VIEW_BUILD_EXPOSURE_BATCH, "event_count",
+                    exposure_event_arr_.size());
+        params =
+            CreateExposeArray(exposure_event_arr_, exposure_event_data_set_);
+      }
+      {
+        TRACE_EVENT("clay", CLAY_PAGE_VIEW_DISPATCH_EXPOSURE_BATCH,
+                    "event_count", params.GetArray().size(),
+                    [flow_ids = exposure_event_flow_ids_](
+                        lynx::perfetto::EventContext ctx) {
+                      for (const auto flow_id : flow_ids) {
+                        ctx.event()->add_terminating_flow_ids(flow_id);
+                      }
+                    });
+        event_delegate_->OnSendGlobalEvent("exposure", std::move(params));
+      }
+      exposure_event_flow_ids_.clear();
     }
     if (!disexposure_event_arr_.empty()) {
-      auto params = CreateExposeArray(disexposure_event_arr_,
-                                      disexposure_event_data_set_);
-      event_delegate_->OnSendGlobalEvent("disexposure", std::move(params));
+      clay::Value params;
+      {
+        TRACE_EVENT("clay", CLAY_PAGE_VIEW_BUILD_DISEXPOSURE_BATCH,
+                    "event_count", disexposure_event_arr_.size());
+        params = CreateExposeArray(disexposure_event_arr_,
+                                   disexposure_event_data_set_);
+      }
+      {
+        TRACE_EVENT("clay", CLAY_PAGE_VIEW_DISPATCH_DISEXPOSURE_BATCH,
+                    "event_count", params.GetArray().size(),
+                    [flow_ids = disexposure_event_flow_ids_](
+                        lynx::perfetto::EventContext ctx) {
+                      for (const auto flow_id : flow_ids) {
+                        ctx.event()->add_terminating_flow_ids(flow_id);
+                      }
+                    });
+        event_delegate_->OnSendGlobalEvent("disexposure", std::move(params));
+      }
+      disexposure_event_flow_ids_.clear();
     }
   }
 }
@@ -604,13 +686,19 @@ void PageView::Paint() {
     frame_timing_collector_->BeginRecord(Perf::kFirstPaintCost);
   }
 
-  renderer_->Paint();
+  {
+    TRACE_EVENT("clay", CLAY_PAGE_VIEW_PAINT_RENDERER);
+    renderer_->Paint();
+  }
 
   if (frame_timing_collector_ &&
       frame_timing_collector_->IsRecordingFirstFramePerf()) {
     frame_timing_collector_->EndRecord(Perf::kFirstPaintCost);
   }
-  ReportAfterPaint();
+  {
+    TRACE_EVENT("clay", CLAY_PAGE_VIEW_REPORT_AFTER_PAINT);
+    ReportAfterPaint();
+  }
 }
 
 void PageView::ReportAfterPaint() {
@@ -677,7 +765,14 @@ void PageView::CompositeFrame(
           });
     }
   }
-  if (!render_delegate_->Raster(std::move(layer_tree), std::move(recorder))) {
+  bool raster_succeeded = false;
+  {
+    TRACE_EVENT("clay", CLAY_PAGE_VIEW_HANDOFF_TO_RASTER, "has_layer_tree",
+                layer_tree != nullptr);
+    raster_succeeded =
+        render_delegate_->Raster(std::move(layer_tree), std::move(recorder));
+  }
+  if (!raster_succeeded) {
     // If the raster fails, we request a new frame to try to fix it and ensure
     // that the next raster is not skipped.
     force_raster_ = true;
@@ -1826,20 +1921,28 @@ void PageView::ResetPageView(bool recycle) {
 
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
+  exposure_event_flow_ids_.clear();
+  disexposure_event_flow_ids_.clear();
   RequestPaintBase();
 }
 
 void PageView::AddGlobalExposureEvent(bool exposure,
                                       std::unique_ptr<clay::Value::Map> params,
-                                      BaseView* view) {
+                                      BaseView* view, uint64_t trace_flow_id) {
   if (exposure) {
     // should keep following vector size equal
     exposure_event_arr_.emplace_back(std::move(params));
     exposure_event_data_set_.push_back(view->GetWeakPtr());
+    if (trace_flow_id != 0) {
+      exposure_event_flow_ids_.push_back(trace_flow_id);
+    }
   } else {
     // should keep following vector size equal
     disexposure_event_arr_.emplace_back(std::move(params));
     disexposure_event_data_set_.push_back(view->GetWeakPtr());
+    if (trace_flow_id != 0) {
+      disexposure_event_flow_ids_.push_back(trace_flow_id);
+    }
   }
 }
 

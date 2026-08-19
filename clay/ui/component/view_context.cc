@@ -390,6 +390,13 @@ void ViewContext::TextMeasure(int id, float width, TextMeasureMode width_mode,
 
   Measurable* measurable = node->GetMeasurable();
   CustomMeasurable* custom_measurable = node->GetCustomMeasurable();
+  const char* measure_type = measurable          ? "measurable"
+                             : custom_measurable ? "custom_measurable"
+                                                 : "unsupported";
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_TEXT_MEASURE, "id", id, "tag",
+              node->GetName().c_str(), "measure_type", measure_type, "width",
+              width, "width_mode", static_cast<int>(width_mode), "height",
+              height, "height_mode", static_cast<int>(height_mode));
   if (measurable) {
     MeasureResult result;
     measurable->Measure({width, width_mode, height, height_mode}, result);
@@ -450,6 +457,10 @@ void ViewContext::SetBounds(int id, float left, float top, float width,
   view->SetBound(
       GetPageView()->RoundPixels(left), GetPageView()->RoundPixels(top),
       GetPageView()->RoundPixels(width), GetPageView()->RoundPixels(height));
+  if (page_view_->HasIntersectionObserverManager()) {
+    page_view_->intersection_observer_manager()
+        ->TryReconcileLargeExposureTargetAfterLayout(view);
+  }
 }
 
 void ViewContext::SetPaddings(int id, float padding_left, float padding_top,
@@ -1089,6 +1100,8 @@ std::vector<float> ViewContext::GetRectToLynxView(int64_t id) {
 }
 
 void ViewContext::StopExposure(bool send_event) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_STOP_EXPOSURE, "send_event", send_event,
+              "has_page_view", page_view_ != nullptr);
   if (page_view_) {
     auto intersection_manager = page_view_->intersection_observer_manager();
     if (intersection_manager) {
@@ -1098,6 +1111,8 @@ void ViewContext::StopExposure(bool send_event) {
 }
 
 void ViewContext::ResumeExposure() {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_RESUME_EXPOSURE, "has_page_view",
+              page_view_ != nullptr);
   if (page_view_) {
     auto intersection_manager = page_view_->intersection_observer_manager();
     if (intersection_manager) {
@@ -1107,6 +1122,8 @@ void ViewContext::ResumeExposure() {
 }
 
 void ViewContext::SetExposureHostVisible(bool visible) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_SET_EXPOSURE_HOST_VISIBLE, "visible",
+              visible, "has_page_view", page_view_ != nullptr);
   if (page_view_) {
     auto intersection_manager = page_view_->intersection_observer_manager();
     if (intersection_manager) {
