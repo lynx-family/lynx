@@ -160,6 +160,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
                                 SelectionHandleView* handle_bar);
   void EndSelectionHandleDrag(SelectionHandleView* handle_bar);
 
+  bool HitTestChildren(const PointerEvent& event,
+                       HitTestResult& result) override;
   BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                     FloatPoint* relative_position,
                                     int platform_try_hit_id = -1) override;

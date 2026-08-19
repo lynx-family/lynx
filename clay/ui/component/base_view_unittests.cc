@@ -12,6 +12,8 @@
 #include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/native_view.h"
+#include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
@@ -24,6 +26,13 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
+
+namespace {
+
+constexpr uint32_t kPointerEventsAuto = 0;
+constexpr uint32_t kPointerEventsNone = 1;
+
+}  // namespace
 
 PointerEvent CreateDownPointer(float x, float y) {
   PointerEvent event(PointerEvent::EventType::kDownEvent);
@@ -837,6 +846,249 @@ TEST_F_UI(BaseViewTest, TextViewHitSlopExpandsTopEventTarget) {
       text.get());
 
   page_->RemoveChild(text.get());
+}
+
+TEST_F_UI(BaseViewTest, PointerEventsSelectEligibleHitTarget) {
+  auto* fallback = new View(1, page_.get());
+  auto* top = new View(2, page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(top);
+
+  fallback->SetBound(0, 0, 200, 200);
+  top->SetBound(0, 0, 200, 200);
+  fallback->OnLayoutUpdated();
+  top->OnLayoutUpdated();
+
+  auto expect_target = [&](int expected_id) {
+    for (auto device : {PointerEvent::kTouch, PointerEvent::kMouse}) {
+      SCOPED_TRACE(device);
+      auto event = CreateDownPointer(50, 50);
+      event.device = device;
+      HitTestResult result;
+      EXPECT_TRUE(page_->HitTest(event, result));
+      ASSERT_FALSE(result.empty());
+      EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(),
+                expected_id);
+    }
+
+    FloatPoint relative_position;
+    auto* target = page_->GetTopViewToAcceptEvent({50, 50}, &relative_position);
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(target->id(), expected_id);
+  };
+
+  expect_target(2);
+
+  top->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+  expect_target(1);
+
+  auto* child = new View(3, page_.get());
+  top->AddChild(child);
+  child->SetBound(0, 0, 200, 200);
+  child->OnLayoutUpdated();
+  expect_target(1);
+
+  child->SetAttribute("pointer-events", clay::Value(kPointerEventsAuto));
+  expect_target(3);
+
+  child->SetAttribute("pointer-events", clay::Value::Null());
+  expect_target(1);
+}
+
+TEST_F_UI(BaseViewTest, PointerEventsInheritanceStopsAtOverlay) {
+  auto* overlay = new OverlayView(1, page_.get());
+  auto* child = new View(2, page_.get());
+  overlay->AddChild(child);
+  page_->AddChild(overlay);
+
+  overlay->SetBound(0, 0, 200, 200);
+  child->SetBound(0, 0, 200, 200);
+  overlay->OnLayoutUpdated();
+  child->OnLayoutUpdated();
+  page_->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+
+  HitTestResult result;
+  EXPECT_TRUE(page_->HitTest(CreateDownPointer(50, 50), result));
+  ASSERT_FALSE(result.empty());
+  EXPECT_EQ(result.front().get(), child);
+
+  FloatPoint relative_position;
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position),
+            child);
+
+  overlay->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+  result.clear();
+  EXPECT_FALSE(page_->HitTest(CreateDownPointer(50, 50), result));
+  EXPECT_TRUE(result.empty());
+  EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position),
+            nullptr);
+}
+
+TEST_F_UI(BaseViewTest, TextPointerEventsAffectHitTargets) {
+  auto* fallback = new View(1, page_.get());
+  auto* text = new TextView(2, page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(text);
+
+  fallback->SetBound(0, 0, 300, 300);
+  text->SetBound(0, 0, 200, 200);
+  text->SetAttribute("hit-slop", Value("20px"));
+  fallback->OnLayoutUpdated();
+  text->OnLayoutUpdated();
+
+  auto expect_target = [&](BaseView* expected) {
+    for (auto position : {FloatPoint(50, 50), FloatPoint(210, 50)}) {
+      HitTestResult result;
+      EXPECT_TRUE(page_->HitTest(CreateDownPointer(position.x(), position.y()),
+                                 result));
+      ASSERT_FALSE(result.empty());
+      EXPECT_EQ(result.front().get(), expected);
+      FloatPoint relative_position;
+      EXPECT_EQ(page_->GetTopViewToAcceptEvent(position, &relative_position),
+                expected);
+    }
+  };
+
+  expect_target(text);
+  text->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+  expect_target(fallback);
+  text->SetAttribute("pointer-events", clay::Value::Null());
+  expect_target(text);
+}
+
+TEST_F_UI(BaseViewTest, PointerEventsPreserveTouchLifecycle) {
+  auto* fallback = new View(1, page_.get());
+  auto* parent = new View(2, page_.get());
+  auto* child = new View(3, page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(parent);
+  parent->AddChild(child);
+  for (auto* view : {fallback, parent, child}) {
+    view->SetBound(0, 0, 200, 200);
+    view->OnLayoutUpdated();
+  }
+  find_view_by_id_callback_ = [fallback, parent, child](int id) -> BaseView* {
+    for (auto* view : {fallback, parent, child}) {
+      if (view->id() == id) {
+        return view;
+      }
+    }
+    return nullptr;
+  };
+  std::vector<std::string> records;
+  touch_event_callback_ = [&records](const std::string& name, int id) {
+    records.push_back(name + ":" + std::to_string(id));
+  };
+  auto expect_tap = [&](int id) {
+    records.clear();
+    DispatchTapEvent({50, 50});
+    auto suffix = ":" + std::to_string(id);
+    EXPECT_EQ(records,
+              (std::vector<std::string>{"touchstart" + suffix,
+                                        "touchend" + suffix, "tap" + suffix}));
+  };
+  expect_tap(3);
+  parent->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  expect_tap(1);
+  child->SetAttribute("pointer-events", Value(kPointerEventsAuto));
+  expect_tap(3);
+
+  for (auto ending :
+       {PointerEvent::EventType::kUpEvent, PointerEvent::EventType::kCancel}) {
+    SCOPED_TRACE(static_cast<int>(ending));
+    records.clear();
+    auto event =
+        CreatePointer(7, PointerEvent::EventType::kDownEvent, {50, 50});
+    page_->DispatchPointerEvent({event});
+    child->SetAttribute("pointer-events", Value(kPointerEventsNone));
+    event.type = PointerEvent::EventType::kMoveEvent;
+    event.position = {250, 50};
+    event.delta = FloatSize(200, 0);
+    page_->DispatchPointerEvent({event});
+    event.type = ending;
+    page_->DispatchPointerEvent({event});
+    const auto terminal = ending == PointerEvent::EventType::kUpEvent
+                              ? "touchend:3"
+                              : "touchcancel:3";
+    EXPECT_EQ(records, (std::vector<std::string>{"touchstart:3", "touchmove:3",
+                                                 terminal}));
+    expect_tap(1);
+    child->SetAttribute("pointer-events", Value(kPointerEventsAuto));
+  }
+
+  records.clear();
+  auto first = CreatePointer(7, PointerEvent::EventType::kDownEvent, {50, 50});
+  page_->DispatchPointerEvent({first});
+  child->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  auto second = CreatePointer(8, PointerEvent::EventType::kDownEvent, {50, 50});
+  page_->DispatchPointerEvent({second});
+  first.type = second.type = PointerEvent::EventType::kCancel;
+  page_->DispatchPointerEvent({first, second});
+  EXPECT_EQ(records,
+            (std::vector<std::string>{"touchstart:3", "touchstart:1",
+                                      "touchcancel:3", "touchcancel:1"}));
+}
+
+TEST_F_UI(BaseViewTest, PointerEventsControlNativeViewTouchTarget) {
+  auto* fallback = new View(1, page_.get());
+  auto* native = new NativeView(2, "test-platform", page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(native);
+  fallback->SetBound(0, 0, 200, 200);
+  native->SetBound(0, 0, 200, 200);
+  fallback->OnLayoutUpdated();
+  native->OnLayoutUpdated();
+
+  auto expect_target = [&](BaseView* target, int native_id) {
+    HitTestResult result;
+    EXPECT_TRUE(page_->HitTest(CreateDownPointer(50, 50), result));
+    ASSERT_FALSE(result.empty());
+    EXPECT_EQ(result.front().get(), target);
+    bool has_hit_target = false;
+    EXPECT_EQ(page_->GetHitTestingTargetNativeViewId({50, 50}, native->id(),
+                                                     &has_hit_target),
+              native_id);
+    EXPECT_TRUE(has_hit_target);
+  };
+  expect_target(native, 2);
+  native->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  expect_target(fallback, -1);
+  native->SetAttribute("pointer-events", Value::Null());
+  expect_target(native, 2);
+
+  page_->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  bool has_hit_target = true;
+  EXPECT_EQ(page_->GetHitTestingTargetNativeViewId({50, 50}, native->id(),
+                                                   &has_hit_target),
+            -1);
+  EXPECT_FALSE(has_hit_target);
+  EXPECT_FALSE(native->AcceptsPointerEvents());
+  native->SetAttribute("pointer-events", Value(kPointerEventsAuto));
+  expect_target(native, 2);
+}
+
+TEST_F_UI(BaseViewTest, PointerEventsControlTouchScroll) {
+  auto* scroll = new ScrollView(1, ScrollDirection::kVertical, page_.get());
+  auto* content = new View(2, page_.get());
+  auto* cover = new View(3, page_.get());
+  page_->AddChild(scroll);
+  scroll->AddChild(content, 0);
+  page_->AddChild(cover);
+  scroll->SetBound(0, 0, 200, 200);
+  content->SetBound(0, 0, 200, 600);
+  cover->SetBound(0, 0, 200, 200);
+  scroll->OnLayoutUpdated();
+  cover->OnLayoutUpdated();
+
+  DispatchDragEvent({50, 150}, {50, 50}, false);
+  EXPECT_FLOAT_EQ(scroll->GetScrollOffset().y(), 0);
+  cover->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  scroll->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  DispatchDragEvent({50, 150}, {50, 50}, false);
+  EXPECT_FLOAT_EQ(scroll->GetScrollOffset().y(), 0);
+  content->SetAttribute("pointer-events", Value(kPointerEventsAuto));
+  DispatchDragEvent({50, 150}, {50, 50}, false);
+  EXPECT_GT(scroll->GetScrollOffset().y(), 0);
 }
 
 class BaseViewWithChildrenTest : public UITest {

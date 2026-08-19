@@ -735,6 +735,24 @@ void TextView::FocusHasChanged(bool focused, bool is_leaf) {
   }
 }
 
+bool TextView::HitTestChildren(const PointerEvent& event,
+                               HitTestResult& result) {
+  if (BaseView::HitTestChildren(event, result)) {
+    return true;
+  }
+  if (AcceptsPointerEvents()) {
+    return false;
+  }
+  auto point = GetPointBySelf(event.position);
+  if (point.x() <= 0 || point.x() > Width() || point.y() <= 0 ||
+      point.y() > Height()) {
+    return false;
+  }
+  // Inline glyphs have paragraph geometry instead of BaseView bounds.
+  FloatPoint relative_position;
+  return GetTopViewToAcceptEvent(event.position, &relative_position) != nullptr;
+}
+
 BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
                                             FloatPoint* relative_position,
                                             int platform_try_hit_id) {
@@ -774,7 +792,7 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
 
   BaseView* target = this;
   if (is_outside_x || is_outside_y) {
-    if (!is_inside_hit_slop) {
+    if (!is_inside_hit_slop || !AcceptsPointerEvents()) {
       return nullptr;
     }
     *relative_position = point_by_self;
@@ -785,9 +803,18 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
     *relative_position = point_by_paragraph;
     target = GetViewAtPosition(point_by_paragraph, position, relative_position,
                                platform_try_hit_id);
-    target = target ?: this;
+    while (target && target != this && !target->AcceptsPointerEvents()) {
+      target = target->Parent();
+      *relative_position = point_by_paragraph;
+    }
+    if (!target || !target->AcceptsPointerEvents()) {
+      if (!AcceptsPointerEvents()) {
+        return nullptr;
+      }
+      target = this;
+      *relative_position = point_by_paragraph;
+    }
   }
-
   for (BaseView* view = target; view; view = view->Parent()) {
     const auto event_through = view->CanEventThrough();
     if (event_through.has_value()) {
