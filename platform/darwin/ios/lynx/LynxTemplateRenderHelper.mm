@@ -79,6 +79,10 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
     (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>>&)engineActor;
 @end
 
+@interface LynxPerformanceController (EmbeddedTimingClient)
+- (void)setEmbeddedTimingClient:(nullable id<TemplateRenderCallbackProtocol>)client;
+@end
+
 @implementation LynxTemplateRender (Helper)
 
 - (void)setUpShadowNodeOwner {
@@ -143,6 +147,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
         painting_context->GetPlatformRef().get(), _performanceController);
     _context.perfController = _performanceController;
     if ((_embeddedMode & LynxEmbeddedModeBase) != 0) {
+      [_performanceController setEmbeddedTimingClient:self];
       [_performanceController setEmbeddedModeEnabled:YES];
     }
   }
