@@ -2674,7 +2674,10 @@ bool Element::IsEventPathCatch(event::EventTarget* target,
     return true;
   }
 
-  if (event && event->from_frontend() && target != this) {
+  if (event &&
+      (event->from_frontend() ||
+       event->event_type() == event::Event::EventType::kPointerEvent) &&
+      target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();
     if (this == root_component && !event->composed()) {
@@ -2697,7 +2700,10 @@ bool Element::IsEventPathCatch(event::EventTarget* target,
 }
 
 bool Element::IsEventPathSkip(event::EventTarget* target, event::Event* event) {
-  if (event && event->from_frontend() && target != this) {
+  if (event &&
+      (event->from_frontend() ||
+       event->event_type() == event::Event::EventType::kPointerEvent) &&
+      target != this) {
     auto root_component =
         static_cast<Element*>(target)->GetParentComponentElement();
     if (GetParentComponentElement() != root_component && !event->composed()) {
