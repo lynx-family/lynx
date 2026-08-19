@@ -85,14 +85,6 @@ class UIOperationType {
   public static final int LAYOUT_FINISH = 7;
 }
 
-class CreateViewAsyncStatus {
-  public static final int UNKOWN = -1;
-  public static final int FUTURE_CANCEL_SUCCESS = 0;
-  public static final int FUTURE_CANCEL_FAIL = 1;
-  public static final int FUTURE_DONE = 2;
-  public static final int FUTURE_DONE_EXCEPTION = 3;
-}
-
 public final class PaintingContext implements IPaintingContext {
   private static final String TAG = "lynx_PaintingContext";
   private static final int STICKY_INFO_COUNT = 10;
@@ -533,21 +525,14 @@ public final class PaintingContext implements IPaintingContext {
       ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners,
       boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors) {
     Runnable runnable = null;
-    int status = CreateViewAsyncStatus.UNKOWN;
 
     if (!future.isDone()) {
-      if (future.cancel(true)) {
-        status = CreateViewAsyncStatus.FUTURE_CANCEL_SUCCESS;
-      } else {
-        status = CreateViewAsyncStatus.FUTURE_CANCEL_FAIL;
-      }
+      future.cancel(true);
       LLog.i(TAG, "createViewAsync not done, will create on ui thread, tagName:" + tagName);
     } else {
       try {
         runnable = future.get();
-        status = CreateViewAsyncStatus.FUTURE_DONE;
       } catch (InterruptedException | ExecutionException e) {
-        status = CreateViewAsyncStatus.FUTURE_DONE_EXCEPTION;
         String errorMessage = "createViewAsync failed, tagName:" + tagName + ", error:" + e;
         LLog.e(TAG, errorMessage);
         mUIOwner.getContext().handleException(new Exception(errorMessage));
@@ -556,12 +541,10 @@ public final class PaintingContext implements IPaintingContext {
 
     if (runnable != null) {
       runnable.run();
-      mUIOwner.reportCreateAsyncSuccessEvent(sign, tagName, true, status);
       return true;
     } else {
       mUIOwner.createView(sign, tagName, initialProps, initialStyles, eventListeners, isFlatten,
           nodeIndex, gestureDetectors);
-      mUIOwner.reportCreateAsyncSuccessEvent(sign, tagName, false, status);
       return false;
     }
   }

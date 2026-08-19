@@ -97,8 +97,6 @@ public class LynxUIOwner {
   private static final String LYNXSDK_COMPONENT_STATISTIC_EVENT = "lynxsdk_component_statistic";
 
   private static final String LYNXSDK_ASYNC_CREATE_CONFIG = "lynxsdk_async_create_config";
-  private static final String LYNXSDK_ASYNC_CREATE_SUCCESS_EVENT =
-      "lynxsdk_async_create_success_event";
   /**
    * mComponentIdToUiIdHolder is used to map radon component id/fiber component id to element id.
    * Because unlike virtual component id, radon/fiber component id is not equal to element id.
@@ -611,7 +609,6 @@ public class LynxUIOwner {
       if (TraceEvent.isTracingStarted()) {
         TraceEvent.endSection(traceEvent);
       }
-      reportCreateAsyncSuccessEvent(sign, tagName, true, CreateViewAsyncStatus.FUTURE_DONE);
       final StylesDiffMap styleMap = styles;
       return new Runnable() {
         @Override
@@ -652,8 +649,6 @@ public class LynxUIOwner {
               nodeIndex, gestureDetectors);
         }
       };
-      reportCreateAsyncSuccessEvent(
-          sign, tagName, false, CreateViewAsyncStatus.FUTURE_DONE_EXCEPTION);
       return runnable;
     }
   }
@@ -2054,31 +2049,6 @@ public class LynxUIOwner {
 
   public void setRootSign(int sign) {
     mRootSign = sign;
-  }
-
-  @RestrictTo(RestrictTo.Scope.LIBRARY)
-  public void reportCreateAsyncSuccessEvent(
-      int sign, String tagName, boolean isSuccess, int status) {
-    if (mContext == null || !mContext.enableEventReporter()) {
-      return;
-    }
-    if (mEnableReportCreateAsync) {
-      LynxBaseUI ui = getNode(sign);
-      String uiName = null;
-      if (ui != null) {
-        uiName = ui.getClass().getSimpleName();
-      }
-      String finalUiName = uiName;
-      LynxEventReporter.onEvent(
-          LYNXSDK_ASYNC_CREATE_SUCCESS_EVENT, getContext().getInstanceId(), () -> {
-            Map<String, Object> props = new HashMap<>();
-            props.put("tag_name", tagName);
-            props.put("class_name", finalUiName);
-            props.put("success", isSuccess);
-            props.put("status", status);
-            return props;
-          });
-    }
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
