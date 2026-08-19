@@ -16,6 +16,17 @@ void LynxHttpServiceImpl::Request(std::shared_ptr<pub::LynxHttpRequest> http_req
   NSMutableURLRequest *nsRequest = [NSMutableURLRequest requestWithURL:url];
   nsRequest.HTTPMethod = [NSString stringWithUTF8String:http_request->GetMethod().c_str()];
 
+  const auto& headers = http_request->GetHeaders();
+  for (const auto& header : headers) {
+    [nsRequest setValue:[NSString stringWithUTF8String:header.second.c_str()]
+     forHTTPHeaderField:[NSString stringWithUTF8String:header.first.c_str()]];
+  }
+
+  const auto& body = http_request->GetBody();
+  if (!body.empty()) {
+    nsRequest.HTTPBody = [NSData dataWithBytes:body.data() length:body.size()];
+  }
+
   NSURLSession *session = [NSURLSession sharedSession];
   NSURLSessionDataTask *dataTask =
       [session dataTaskWithRequest:nsRequest
