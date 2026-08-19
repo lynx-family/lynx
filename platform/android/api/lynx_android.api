@@ -3193,8 +3193,8 @@ public interface com::lynx::tasm::behavior::IPaintingContext {
   public boolean com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformLongPress();
   public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformTap();
+  public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformFocus();
   public boolean com.lynx.tasm.behavior.IPaintingContext.isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY);
-  public int com.lynx.tasm.behavior.IPaintingContext.getPlatformEventHandlerState();
 }
 
 public interface com::lynx::tasm::performance::IPerformanceObserver {
@@ -8312,10 +8312,10 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformLongPress();
   public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformTap();
+  public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformFocus();
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setPlatformEventRootActive(int rootSign, boolean active);
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY);
-  public int com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformEventHandlerState();
   public List< MeaningfulPaintingArea > com.lynx.tasm.behavior.render.NativePaintingContext.getMeaningfulPaintingAreas();
 }
 
@@ -8691,8 +8691,8 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public boolean com.lynx.tasm.behavior.PaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public void com.lynx.tasm.behavior.PaintingContext.dispatchPlatformLongPress();
   public void com.lynx.tasm.behavior.PaintingContext.dispatchPlatformTap();
+  public void com.lynx.tasm.behavior.PaintingContext.dispatchPlatformFocus();
   public boolean com.lynx.tasm.behavior.PaintingContext.isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY);
-  public int com.lynx.tasm.behavior.PaintingContext.getPlatformEventHandlerState();
   public void com.lynx.tasm.behavior.PaintingContext.rebuildViewTree();
   public void com.lynx.tasm.behavior.PaintingContext.updateLayout(int sign, float x, float y, float width, float height, float paddingLeft, float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop, float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky, float maxHeight, int nodeIndex, boolean displayNone);
   public void com.lynx.tasm.behavior.PaintingContext.updateProps(int sign, boolean tendToFlatten, PropBundle bundle, ReadableMapBuffer styles);
@@ -8880,11 +8880,6 @@ public class com::lynx::tasm::utils::PixelUtils :  {
 public class abstract com::lynx::tasm::PlatformCallBack :  {
   public final double com.lynx.tasm.PlatformCallBack.InvalidId InvalidId;
   public abstract void com.lynx.tasm.PlatformCallBack.onSuccess(Object data);
-}
-
-public class com::lynx::tasm::behavior::render::PlatformRendererContext::PlatformEventHandlerState :  {
-  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformEventHandlerState.kNone kNone;
-  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformEventHandlerState.kEventThrough kEventThrough;
 }
 
 public class com::lynx::tasm::behavior::PlatformExtraBundleHolder :  {

@@ -237,15 +237,29 @@ bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
                                   EnableEventThroughInheritFromPage());
 }
 
+bool NativePaintingCtxPlatformRef::IsPlatformEventTargetIgnoreFocus(
+    int32_t event_target_root_id, float point_x, float point_y) {
+  auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
+  if (event_target_tree == nullptr) {
+    return false;
+  }
+
+  float root_point[2] = {point_x, point_y};
+  auto hit_target = event_target_tree->HitTest(root_point);
+  return hit_target != nullptr && hit_target->IgnoreFocus();
+}
+
+std::array<int32_t, 4> NativePaintingCtxPlatformRef::GetPlatformFocusInfo() {
+  return {event_handler_->HitTargetSign(), event_handler_->RendererHostSign(),
+          event_handler_->IgnoreFocus() ? 1 : 0,
+          event_handler_->CanRespondFocus() ? 1 : 0};
+}
+
 bool NativePaintingCtxPlatformRef::EnableEventThroughInheritFromPage() const {
   auto *engine = engine_actor_ ? engine_actor_->Impl() : nullptr;
   auto *tasm = engine ? engine->GetTasm() : nullptr;
   auto config = tasm ? tasm->GetPageConfig() : nullptr;
   return config && config->GetEnableEventThroughInheritFromPage();
-}
-
-int NativePaintingCtxPlatformRef::GetPlatformEventHandlerState() {
-  return event_handler_->EventHandlerState();
 }
 
 void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,

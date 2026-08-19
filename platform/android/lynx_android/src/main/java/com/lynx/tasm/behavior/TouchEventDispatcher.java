@@ -1289,6 +1289,7 @@ public class TouchEventDispatcher {
     if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
       updateLongPressTimeout();
     } else if (ev.getActionMasked() == MotionEvent.ACTION_UP) {
+      paintingContext.dispatchPlatformFocus();
       paintingContext.dispatchPlatformTap();
     }
 

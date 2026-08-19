@@ -26,7 +26,7 @@ public interface IPaintingContext {
 
   void dispatchPlatformTap();
 
-  boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY);
+  void dispatchPlatformFocus();
 
-  int getPlatformEventHandlerState();
+  boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY);
 }

@@ -352,13 +352,11 @@ public final class PaintingContext implements IPaintingContext {
   public void dispatchPlatformTap() {}
 
   @Override
-  public boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY) {
-    return false;
-  }
+  public void dispatchPlatformFocus() {}
 
   @Override
-  public int getPlatformEventHandlerState() {
-    return 0;
+  public boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY) {
+    return false;
   }
 
   @CalledByNative
