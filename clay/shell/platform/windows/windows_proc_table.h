@@ -27,15 +27,20 @@ class WindowsProcTable {
   // Available in Windows 8 and newer, otherwise returns false.
   virtual BOOL GetPointerType(UINT32 pointer_id,
                               POINTER_INPUT_TYPE* pointer_type);
+  virtual BOOL GetPointerInfo(UINT32 pointer_id, POINTER_INFO* pointer_info);
+  bool SupportsPointerInput() const { return get_pointer_info_.has_value(); }
 
  private:
   using GetPointerType_ = BOOL __stdcall(UINT32 pointerId,
                                          POINTER_INPUT_TYPE* pointerType);
+  using GetPointerInfo_ = BOOL __stdcall(UINT32 pointer_id,
+                                         POINTER_INFO* pointer_info);
 
   // The User32.dll library, used to resolve functions at runtime.
   fml::RefPtr<fml::NativeLibrary> user32_;
 
   std::optional<GetPointerType_*> get_pointer_type_;
+  std::optional<GetPointerInfo_*> get_pointer_info_;
 
   BASE_DISALLOW_COPY_AND_ASSIGN(WindowsProcTable);
 };
