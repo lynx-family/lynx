@@ -316,6 +316,44 @@ TEST_P(TextElementTest, TestResolveStyleValue) {
   EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->color, 4278190080);
 }
 
+TEST_P(TextElementTest, WordBreakReachesTextMeasurerUnderLayoutInElement) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  // word-break must be recognized as a text-measurer-wanted property. Otherwise
+  // it is never recorded into property_bits_ under LayoutInElement, and the
+  // platform text layout (e.g. TextLayoutDarwin::ApplyTextStyle) iterates
+  // property_bits_ and therefore never consumes word-break. That is exactly why
+  // word-break:break-all had no effect on iOS text when LayoutInElement was on.
+  EXPECT_EQ(IsTextMeasurerWanted(kPropertyIDWordBreak), 1);
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto text = manager->CreateFiberText("text");
+
+  auto raw_text = manager->CreateFiberRawText();
+  raw_text->SetText(lepus::Value("text-content"));
+
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  text->SetRawInlineStyles(base::String("word-break:break-all;"));
+
+  page->FlushActionsAsRoot();
+
+  // Under LayoutInElement, word-break must be flagged in property_bits_ so the
+  // platform text layout iterates over it, and the resolved value must be
+  // break-all.
+  EXPECT_TRUE(text->property_bits_.Has(kPropertyIDWordBreak));
+  ASSERT_TRUE(text->computed_css_style()->GetTextAttributes().has_value());
+  EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->word_break,
+            starlight::WordBreakType::kBreakAll);
+}
+
 TEST_P(TextElementTest, ResetTextMaxlineClearsLayoutInElementProp) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);

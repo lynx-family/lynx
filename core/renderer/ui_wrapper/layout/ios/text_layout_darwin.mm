@@ -338,6 +338,9 @@ void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* 
         case kPropertyIDLetterSpacing:
           textStyle.letterSpacing = text_attributes->letter_spacing;
           break;
+        case kPropertyIDWordBreak:
+          textStyle.wordBreak = static_cast<LynxWordBreakType>(text_attributes->word_break);
+          break;
         case kPropertyIDTextDecoration:
           if (text_attributes->underline_decoration) {
             textStyle.underLine = NSUnderlineStyleAttributeName;
