@@ -6,6 +6,7 @@
 #define CLAY_UI_COMPONENT_PAGE_VIEW_H_
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -555,6 +556,11 @@ class PageView : public BaseView,
   void DeactivateTouchPseudoStatus(int pointer_id);
   // Report the deepest leaf view in the position to lynx.
   void ReportTopViewRawEvents(const std::vector<PointerEvent>& events);
+#if defined(OS_WIN) || defined(OS_MAC)
+  void PreparePointerEvent(PointerEvent& event);
+  void FinishPointerEvent(const PointerEvent& event);
+  void ReportPointerEvent(const PointerEvent& event);
+#endif
   // Report pointer event with specified type
   void ReportTopViewEvent(const PointerEvent& event, ClayEventType type);
   // Report pointer event with the type deduced by event.device and
@@ -594,6 +600,11 @@ class PageView : public BaseView,
   bool force_raster_ = false;
   int button_state_ = 0;   // the one button changed recently
   int buttons_state_ = 0;  // bit field, all buttons pressed
+#if defined(OS_WIN) || defined(OS_MAC)
+  std::map<PointerEvent::DeviceType, int> primary_pointer_ids_;
+  std::map<PointerEvent::DeviceType, std::unordered_set<int>>
+      active_pointer_ids_;
+#endif
   RenderPhase render_phase_ = RenderPhase::kIdle;
   const clay::TaskRunners task_runners_;
 
@@ -639,6 +650,10 @@ class PageView : public BaseView,
   // touch end or cancel events from clearing the active view chain.
   std::optional<int> active_touch_pointer_id_;
   std::vector<fml::WeakPtr<BaseView>> active_touch_views_;
+#if defined(OS_WIN) || defined(OS_MAC)
+  std::map<std::pair<PointerEvent::DeviceType, int>, fml::WeakPtr<BaseView>>
+      pointer_view_map_;
+#endif
   std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
   int active_fling_count_ = 0;
 
