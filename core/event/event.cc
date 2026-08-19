@@ -130,7 +130,8 @@ bool Event::IsCaptureBubbleEvent() {
          event_type_ == EventType::kCustomEvent ||
          event_type_ == EventType::kMouseEvent ||
          event_type_ == EventType::kWheelEvent ||
-         event_type_ == EventType::kKeyboardEvent;
+         event_type_ == EventType::kKeyboardEvent ||
+         event_type_ == EventType::kPointerEvent;
 }
 
 }  // namespace event
