@@ -240,6 +240,7 @@ void UIDelegateClay::OnPageConfigDecoded(
     view_context_->SetEnableSyncXElementRegistry(
         config->GetSyncXElementRegistry());
     page_view->SetAlignMouseEventWithW3C(config->GetAlignMouseEventWithW3C());
+    page_view->SetEnablePointerEvents(config->GetEnableEventHandleRefactor());
     page_view->SetEnableMouseDragScroll(config->GetEnableMouseDragScroll());
     // Set exposure props.
     int observer_frame_rate = config->GetObserverFrameRate();
