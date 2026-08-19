@@ -24,6 +24,13 @@ namespace {
 static RestrictedValue TestCFunction(VMContext* ctx) {
   return RestrictedValue("test");
 }
+
+class ElementTemplateRefForTest : public lepus::RefCounted {
+ public:
+  lepus::RefType GetRefType() const override {
+    return lepus::RefType::kElementTemplate;
+  }
+};
 }  // namespace
 
 class RestrictedValueTest : public ::testing::Test {
@@ -326,6 +333,16 @@ TEST_F(RestrictedValueTest, RestrictedValueRefCounted) {
     auto r1 = v5.RefCounted();
     ASSERT_TRUE(r1);
   }
+}
+
+TEST_F(RestrictedValueTest, RestrictedValueElementTemplateRefCounted) {
+  auto element_template_ref = fml::AdoptRef(new ElementTemplateRefForTest());
+  fml::RefPtr<lepus::RefCounted> ref_counted = element_template_ref;
+  RestrictedValue value(ref_counted);
+  ASSERT_TRUE(value.IsRefCounted());
+  ASSERT_TRUE(value.RefCounted());
+  ASSERT_EQ(value.Type(), Value_RefCounted);
+  ASSERT_EQ(value.RefCounted()->GetRefType(), lepus::RefType::kElementTemplate);
 }
 
 TEST_F(RestrictedValueTest, RestrictedValuePointer) {

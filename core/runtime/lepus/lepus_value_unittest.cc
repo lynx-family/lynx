@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <memory>
+
 #include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/base_value.h"
@@ -24,6 +26,13 @@ static lepus::Value TestCFunction(runtime::MTSContext* ctx, lepus::Value*,
                                   int) {
   return lepus::Value("test");
 }
+
+class ElementTemplateRefForTest : public lepus::RefCounted {
+ public:
+  lepus::RefType GetRefType() const override {
+    return lepus::RefType::kElementTemplate;
+  }
+};
 }  // namespace
 
 class LepusValueTest : public ::testing::Test {
@@ -1126,6 +1135,30 @@ TEST_F(LepusValueTest, LepusValueToJSValue) {
     LEPUS_FreeValue(quick_ctx_.context(), ret6);
     LEPUS_FreeValue(quick_ctx_.context(), ret8);
   }
+}
+
+TEST_F(LepusValueTest, LepusValueElementTemplateRefCounted) {
+  auto element_template_ref = fml::AdoptRef(new ElementTemplateRefForTest());
+  fml::RefPtr<lepus::RefCounted> ref_counted = element_template_ref;
+  lepus::Value value(ref_counted);
+  ASSERT_TRUE(value.IsRefCounted());
+  ASSERT_EQ(value.Type(), Value_RefCounted);
+
+  for (bool deep_convert : {false, true}) {
+    LEPUSValue js_value = lepus::LEPUSValueHelper::ToJsValue(
+        quick_ctx_.context(), value, deep_convert);
+    lepus::Value roundtrip = MK_JS_LEPUS_VALUE(quick_ctx_.context(), js_value);
+    ASSERT_TRUE(roundtrip.IsRefCounted());
+    ASSERT_EQ(roundtrip.RefCounted()->GetRefType(),
+              lepus::RefType::kElementTemplate);
+    ASSERT_EQ(roundtrip.RefCounted().get(), element_template_ref.get());
+    LEPUS_FreeValue(quick_ctx_.context(), js_value);
+  }
+
+  element_template_ref->js_object_cache =
+      std::make_unique<lepus::Value>(lepus::Value("cached"));
+  ASSERT_TRUE(value.MarkConst());
+  ASSERT_EQ(element_template_ref->js_object_cache, nullptr);
 }
 
 TEST_F(LepusValueTest, LepusValueLepusRefStorage) {

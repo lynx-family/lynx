@@ -237,7 +237,7 @@ struct RestrictedValue {
 
   BASE_INLINE bool IsRefCounted() const {
     return value_.type == lynx_value_object &&
-           value_.tag < static_cast<int32_t>(RefType::kJSIObject);
+           IsNonJSRefType(static_cast<lepus::RefType>(value_.tag));
   }
 
   BASE_INLINE bool IsInt32() const { return value_.type == lynx_value_int32; }

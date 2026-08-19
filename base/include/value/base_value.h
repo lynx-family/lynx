@@ -278,7 +278,7 @@ class BASE_EXPORT Value {
 
   inline bool IsRefCounted() const {
     return value_.type == lynx_value_object &&
-           value_.tag < static_cast<int32_t>(RefType::kJSIObject);
+           IsNonJSRefType(static_cast<RefType>(value_.tag));
   }
 
   inline bool IsInt32() const { return value_.type == lynx_value_int32; }
