@@ -1208,8 +1208,30 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
             wheel_target_ = nullptr;
           }
         } else {
+          int mouse_button = button_state_;
+          if (align_mouse_event_with_w3c_) {
+            switch (button_state_) {
+              case PointerEvent::kPrimary:
+                mouse_button = 0;
+                break;
+              case PointerEvent::kMiddle:
+                mouse_button = 1;
+                break;
+              case PointerEvent::kSecondary:
+                mouse_button = 2;
+                break;
+              case PointerEvent::kBack:
+                mouse_button = 3;
+                break;
+              case PointerEvent::kForward:
+                mouse_button = 4;
+                break;
+              default:
+                break;
+            }
+          }
           event_delegate_->OnMouseEvent(
-              EventTypeToString(type), top_view->id(), button_state_,
+              EventTypeToString(type), top_view->id(), mouse_button,
               buttons_state_, 1, transformed_position.x(),
               transformed_position.y(), position.x(), position.y());
         }
