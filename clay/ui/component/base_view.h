@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
+#include "build/build_config.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
 #include "clay/gfx/animation/animator_target.h"
@@ -120,6 +121,11 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   virtual void OnMouseHoverChange();
   void OnMouseEvent(const ClayEventType type, const PointerEvent& event);
+#if defined(OS_WIN) || defined(OS_MAC)
+  void OnPointerBoundaryEvent(const std::string& event_name,
+                              const PointerEvent& event,
+                              int related_target_sign);
+#endif
 
   // For some internally created view events, the callback id needs to be
   // returned.
@@ -837,6 +843,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void DirtyChildrenPaintingOrder() { sorted_children_.clear(); }
   void RebuildSortedChildrenIfNeeded();
   void NotifyBoundChangeIfNeeded(const FloatRect& old_bounds);
+  void SchedulePointerEventTargetRefresh();
   void DrawClipPath(bool is_clip_path);
 #if OS_IOS
   bool HasBoundsTransition();
