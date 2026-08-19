@@ -625,6 +625,7 @@ public class LynxBaseConfigurator : NSObject {
   public BOOL LynxBaseConfigurator::enableVSyncAlignedMessageLoop enableVSyncAlignedMessageLoop;
   public BOOL LynxBaseConfigurator::enableAsyncHydration enableAsyncHydration;
   public BOOL LynxBaseConfigurator::enableMTSModule enableMTSModule;
+  public BOOL LynxBaseConfigurator::enableLepusModule enableLepusModule;
   public CGFloat LynxBaseConfigurator::fontScale fontScale;
   public LynxColorScheme LynxBaseConfigurator::colorScheme colorScheme;
   public LynxBooleanOption LynxBaseConfigurator::enableGenericResourceFetcher enableGenericResourceFetcher;
