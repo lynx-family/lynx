@@ -148,6 +148,10 @@ class LynxShell {
                     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
                     const std::shared_ptr<tasm::TemplateData>& template_data);
 
+  void LoadLynxML(const std::string& url, std::string source,
+                  std::shared_ptr<tasm::PipelineOptions> pipeline_options,
+                  const std::shared_ptr<tasm::TemplateData>& template_data);
+
   void LoadTemplateBundle(
       const std::string& url, tasm::LynxTemplateBundle template_bundle,
       std::shared_ptr<tasm::PipelineOptions> pipeline_options,

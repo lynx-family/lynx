@@ -902,6 +902,28 @@ void LynxShell::RegisterNotificationCallbacks() {
   }
 }
 
+void LynxShell::LoadLynxML(
+    const std::string& url, std::string source,
+    std::shared_ptr<tasm::PipelineOptions> pipeline_options,
+    const std::shared_ptr<tasm::TemplateData>& template_data) {
+  if (!pipeline_options) {
+    pipeline_options = std::make_shared<tasm::PipelineOptions>();
+    pipeline_options->need_timestamps = true;
+    pipeline_options->pipeline_origin = tasm::timing::kLoadBundle;
+    OnPipelineStart(pipeline_options->pipeline_id,
+                    pipeline_options->pipeline_origin,
+                    pipeline_options->pipeline_start_timestamp);
+  }
+
+  EnsureTemplateDataThreadSafe(template_data);
+  engine_actor_->Act(
+      [url, source = std::move(source), template_data,
+       pipeline_options = std::move(pipeline_options)](auto& engine) mutable {
+        engine->LoadLynxML(url, std::move(source), template_data,
+                           std::move(pipeline_options));
+      });
+}
+
 void LynxShell::MarkDirty() {
   if (is_destroyed_) {
     return;

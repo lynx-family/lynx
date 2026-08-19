@@ -67,6 +67,20 @@ NS_ASSUME_NONNULL_BEGIN
              withURL:(nonnull NSString*)url
             initData:(nullable LynxTemplateData*)data;
 
+@optional
+/**
+ * EXPERIMENTAL API!
+ * Loads a LynxML source document with initial template data.
+ * LynxML is a single-file template format that packs the main-thread script,
+ * background-thread script, and style of a card into one XML-like document.
+ * Both this API and the LynxML format are experimental and may change in
+ * future releases.
+ */
+- (void)loadLynxML:(nonnull NSString*)source
+           withURL:(nonnull NSString*)url
+          initData:(nullable LynxTemplateData*)data;
+
+@required
 - (void)loadTemplateBundle:(nonnull LynxTemplateBundle*)bundle
                    withURL:(nonnull NSString*)url
                   initData:(nullable LynxTemplateData*)data;

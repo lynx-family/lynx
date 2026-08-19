@@ -622,6 +622,18 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self internalLoadTemplate:tem withUrl:url initData:data];
 }
 
+- (void)loadLynxML:(NSString*)source withURL:(NSString*)url initData:(LynxTemplateData*)data {
+  if (source == nil || url == nil) {
+    _LogE(@"LynxTemplateRender loadLynxML with empty source or url in render %p", self);
+    return;
+  }
+
+  [self updateUrl:url];
+  [self dispatchViewDidStartLoading];
+  [self->_devTool attachDebugBridge:url];
+  [self internalLoadLynxML:source withURL:url initData:data];
+}
+
 - (void)loadTemplateFromURL:(NSString*)url initData:(LynxTemplateData*)data {
   if (nil == url) {
     _LogE(@"LynxTemplateRender loadTemplateFromURL url is empty! in render %p", self);
@@ -854,6 +866,47 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                      rawStack:nil];
           }
         }
+      }
+      withErrorCallback:^(NSString* msg, NSString* stack) {
+        __strong LynxTemplateRender* strongSelf = weakSelf;
+        [strongSelf reportError:ECLynxAppBundleLoadException withMsg:msg rawStack:stack];
+      }];
+}
+
+- (void)internalLoadLynxML:(NSString*)source
+                   withURL:(NSString*)url
+                  initData:(LynxTemplateData*)data {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INTERNAL_LOAD_TEMPLATE, "url", [url UTF8String]);
+  auto pipeline_options = std::make_shared<lynx::tasm::PipelineOptions>();
+  pipeline_options->pipeline_origin = lynx::tasm::timing::kLoadBundle;
+  pipeline_options->need_timestamps = YES;
+  [self onPipelineStart:pipeline_options->pipeline_id
+              pipelineOrigin:pipeline_options->pipeline_origin
+      pipelineStartTimestamp:pipeline_options->pipeline_start_timestamp];
+  [self markTiming:lynx::tasm::timing::kLoadBundleStart
+        pipelineID:pipeline_options->pipeline_id.c_str()];
+
+  pipeline_options->enable_pre_painting = _enablePrePainting;
+  pipeline_options->enable_dump_element_tree = _enableDumpElement;
+
+  __weak LynxTemplateRender* weakSelf = self;
+  [self
+      executeNativeOpSafely:^() {
+        [self prepareForLoadTemplateWithUrl:url initData:data];
+        std::shared_ptr<lynx::tasm::TemplateData> ptr(nullptr);
+        if (data != nil) {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_CREATE_TEMPLATE_DATA);
+          auto value = *LynxGetLepusValueFromTemplateData(data);
+          ptr = std::make_shared<lynx::tasm::TemplateData>(
+              value, data.isReadOnly, data.processorName ? data.processorName.UTF8String : "");
+          ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
+        }
+        [self markTiming:lynx::tasm::timing::kFfiStart
+              pipelineID:pipeline_options->pipeline_id.c_str()];
+        self->shell_->LoadLynxML(lynx::base::SafeStringConvert([url UTF8String]),
+                                 lynx::base::SafeStringConvert([source UTF8String]),
+                                 pipeline_options, ptr);
+        _hasStartedLoad = YES;
       }
       withErrorCallback:^(NSString* msg, NSString* stack) {
         __strong LynxTemplateRender* strongSelf = weakSelf;
