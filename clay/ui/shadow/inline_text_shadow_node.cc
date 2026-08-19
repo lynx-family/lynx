@@ -14,7 +14,9 @@ namespace clay {
 
 InlineTextShadowNode::InlineTextShadowNode(ShadowNodeOwner* owner,
                                            std::string tag, int id)
-    : BaseTextShadowNode(owner, tag, id) {}
+    : BaseTextShadowNode(owner, tag, id) {
+  text_style_->text_color.reset();
+}
 
 InlineTextShadowNode::~InlineTextShadowNode() = default;
 
