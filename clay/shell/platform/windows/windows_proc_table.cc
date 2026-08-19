@@ -13,9 +13,18 @@ WindowsProcTable::WindowsProcTable() {
   user32_ = fml::NativeLibrary::Create("user32.dll");
   get_pointer_type_ =
       user32_->ResolveFunction<GetPointerType_*>("GetPointerType");
+  get_pointer_pen_info_ =
+      user32_->ResolveFunction<GetPointerPenInfo_*>("GetPointerPenInfo");
 }
 
 WindowsProcTable::~WindowsProcTable() { user32_ = nullptr; }
+
+BOOL WindowsProcTable::GetPointerPenInfo(UINT32 pointer_id,
+                                         POINTER_PEN_INFO* pen_info) {
+  return get_pointer_pen_info_.has_value()
+             ? get_pointer_pen_info_.value()(pointer_id, pen_info)
+             : FALSE;
+}
 
 BOOL WindowsProcTable::GetPointerType(UINT32 pointer_id,
                                       POINTER_INPUT_TYPE* pointer_type) {

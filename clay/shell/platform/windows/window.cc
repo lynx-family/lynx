@@ -324,6 +324,11 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
       if (GetTouchInputInfo(touch_input_handle, num_points,
                             touch_points_.data(), sizeof(TOUCHINPUT))) {
         for (const auto& touch : touch_points_) {
+          if ((touch.dwFlags & TOUCHEVENTF_PEN) &&
+              windows_proc_table_->SupportsPointerInput()) {
+            // WM_POINTER owns pen input; WM_TOUCH would duplicate it here.
+            continue;
+          }
           // Generate a mapped ID for the Windows-provided touch ID
           auto touch_id = touch_id_generator_.GetGeneratedId(touch.dwID);
 
@@ -384,6 +389,16 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
       if (device_kind == kClayPointerDeviceKindMouse) {
         OnPointerLeave(mouse_x_, mouse_y_, device_kind,
                        kDefaultPointerDeviceId);
+      }
+      break;
+    case WM_POINTERENTER:
+    case WM_POINTERDOWN:
+    case WM_POINTERUPDATE:
+    case WM_POINTERUP:
+    case WM_POINTERLEAVE:
+    case WM_POINTERCAPTURECHANGED:
+      if (HandlePenPointerMessage(message, wparam)) {
+        return 0;
       }
       break;
     case WM_SETCURSOR: {
@@ -579,6 +594,84 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
   }
 
   return Win32DefWindowProc(window_handle_, message, wparam, result_lparam);
+}
+
+bool Window::HandlePenPointerMessage(UINT message, WPARAM wparam) {
+  const UINT32 pointer_id = GET_POINTERID_WPARAM(wparam);
+  if (message == WM_POINTERCAPTURECHANGED) {
+    auto it = pen_pointers_.find(pointer_id);
+    if (it == pen_pointers_.end()) {
+      return false;
+    }
+    // Keep a released pen alive for hover when capture changes.
+    if (it->second.buttons != 0) {
+      OnPointerLeave(it->second.x, it->second.y, it->second.device_kind,
+                     pointer_id);
+      pen_pointers_.erase(it);
+    }
+    return true;
+  }
+
+  POINTER_PEN_INFO pen_info;
+  if (!windows_proc_table_->GetPointerPenInfo(pointer_id, &pen_info)) {
+    return false;
+  }
+  const auto& info = pen_info.pointerInfo;
+  const auto device_kind = (pen_info.penFlags & PEN_FLAG_INVERTED)
+                               ? kClayPointerDeviceKindInvertedStylus
+                               : kClayPointerDeviceKindStylus;
+  POINT point = info.ptPixelLocation;
+  ScreenToClient(window_handle_, &point);
+  auto [it, inserted] = pen_pointers_.try_emplace(pointer_id);
+  auto& state = it->second;
+  if (inserted) {
+    state.device_kind = device_kind;
+  }
+  state.x = point.x;
+  state.y = point.y;
+  if (message == WM_POINTERLEAVE ||
+      (info.pointerFlags & POINTER_FLAG_CANCELED)) {
+    OnPointerLeave(state.x, state.y, state.device_kind, pointer_id);
+    pen_pointers_.erase(pointer_id);
+    return true;
+  }
+  if (state.buttons == 0 && state.device_kind != device_kind) {
+    OnPointerLeave(state.x, state.y, state.device_kind, pointer_id);
+    state.device_kind = device_kind;
+  }
+  if (message == WM_POINTERENTER &&
+      (info.pointerFlags & POINTER_FLAG_INCONTACT)) {
+    return true;
+  }
+
+  const int buttons = info.pointerFlags &
+                      (POINTER_FLAG_FIRSTBUTTON | POINTER_FLAG_SECONDBUTTON);
+  const std::pair<int, UINT> button_messages[] = {
+      {POINTER_FLAG_FIRSTBUTTON, WM_LBUTTONDOWN},
+      {POINTER_FLAG_SECONDBUTTON, WM_RBUTTONDOWN},
+  };
+  for (const auto& [flag, button] : button_messages) {
+    if ((buttons & flag) && !(state.buttons & flag)) {
+      OnPointerDown(state.x, state.y, state.device_kind, pointer_id, button);
+    }
+  }
+  for (const auto& [flag, button] : button_messages) {
+    if (!(buttons & flag) && (state.buttons & flag)) {
+      OnPointerUp(state.x, state.y, state.device_kind, pointer_id, button);
+    }
+  }
+  if (buttons == state.buttons) {
+    int modifiers = 0;
+    if (info.dwKeyStates & POINTER_MOD_CTRL) {
+      modifiers |= kControl;
+    }
+    if (info.dwKeyStates & POINTER_MOD_SHIFT) {
+      modifiers |= kShift;
+    }
+    OnPointerMove(state.x, state.y, state.device_kind, pointer_id, modifiers);
+  }
+  state.buttons = buttons;
+  return true;
 }
 
 UINT Window::GetCurrentDPI() { return current_dpi_; }
