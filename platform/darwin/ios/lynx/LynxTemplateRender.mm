@@ -280,6 +280,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   // enable js default yes
   _enableJSRuntime = _enableAirStrictMode ? NO : builder.enableJSRuntime;
   _enableMTSModule = builder.enableMTSModule;
+  _enableLepusModule = builder.enableLepusModule;
   _needPendingUIOperation = builder.enableUIOperationQueue;
   _lynxEngineProxy = [[LynxEngineProxy alloc] init];
   _enablePendingJSTaskOnLayout = builder.enablePendingJSTaskOnLayout;
