@@ -843,9 +843,18 @@ void UIBase::OnPropUpdate(const std::string& name, const lepus::Value& value) {
 void UIBase::OnNodeReady() {
   if (((dirty_flags_ & (kFlagFrameChanged | kFlagBackgroundChanged)) != 0) &&
       background_drawable_) {
+    // UpdateBounds may synchronously redirect a background image URL. That
+    // ArkTS call can process a microtask which destroys this UI instance.
+    auto weak_self = weak_from_this();
     background_drawable_->UpdateBounds(
         0, 0, width_, height_, padding_left_, padding_top_, padding_right_,
         padding_bottom_, context_->ScaledDensity());
+    if (weak_self.expired()) {
+      LOGE(
+          "UIBase was destroyed during the synchronous ArkTS call to "
+          "ShouldRedirectUrl");
+      return;
+    }
     background_drawable_->AdjustBorder();
     if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
       FrameDidChanged();
