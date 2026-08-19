@@ -93,6 +93,18 @@ class TestBenchBaseRecorder {
                           int64_t record_id,
                           rapidjson::Document::AllocatorType& allocator);
   void Clear();
+
+  // Compresses size bytes with zlib and base64-encodes the compressed bytes.
+  // Returns the encoded string, or an empty string when compression fails.
+  // Shared by WriteRecordJson, RecordScripts and RecordDebugInfo.
+  static std::string CompressToBase64String(const char* data, size_t size);
+
+  // Writes one shell's record json (serialize + zlib compress + base64) to
+  // recorder{shell_id}.json. Returns true on success. Extracted from
+  // EndRecord so it is independently unit-testable; the doc must already
+  // contain Config.
+  static bool WriteRecordJson(const std::string& filename,
+                              rapidjson::Value& doc);
 };
 
 }  // namespace recorder
