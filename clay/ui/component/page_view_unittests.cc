@@ -4,12 +4,38 @@
 
 #include <array>
 #include <memory>
+#include <string>
 
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
+#include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
+
+namespace {
+
+class TestPageView : public PageView {
+ public:
+  using PageView::PageView;
+  using PageView::ReportTopViewEvent;
+};
+
+class RecordingEventDelegate : public testing::MockEventDelegate {
+ public:
+  void OnMouseEvent(const std::string&, int, int button, int buttons, float,
+                    float, float, float, float) override {
+    button_ = button;
+    buttons_ = buttons;
+    calls_++;
+  }
+
+  int button_ = -1;
+  int buttons_ = -1;
+  int calls_ = 0;
+};
+
+}  // namespace
 
 TEST(PageViewTest, EmptyKeyframesData) {
   std::unique_ptr<PageView> page_view =
@@ -154,6 +180,46 @@ TEST(PageViewTest, AncestorTouchTargetDoesNotPreserveFocusedChild) {
 
   EXPECT_FALSE(page_view->ShouldPreserveFocusForTouchTarget(parent));
   EXPECT_TRUE(page_view->ShouldPreserveFocusForTouchTarget(child));
+}
+
+TEST(PageViewTest, AlignsMouseButtonWithW3C) {
+  TestPageView page_view(0, nullptr, nullptr);
+  RecordingEventDelegate event_delegate;
+  page_view.SetEventDelegate(&event_delegate);
+  page_view.SetBound(0, 0, 100, 100);
+
+  struct TestCase {
+    int buttons;
+    int aligned_button;
+  };
+  constexpr std::array<TestCase, 5> kTestCases = {{
+      {PointerEvent::kPrimary, 0},
+      {PointerEvent::kSecondary, 2},
+      {PointerEvent::kMiddle, 1},
+      {PointerEvent::kBack, 3},
+      {PointerEvent::kForward, 4},
+  }};
+
+  for (bool aligned : {false, true}) {
+    page_view.SetAlignMouseEventWithW3C(aligned);
+    for (const auto& test_case : kTestCases) {
+      event_delegate.calls_ = 0;
+      PointerEvent event(PointerEvent::EventType::kDownEvent);
+      event.device = PointerEvent::DeviceType::kMouse;
+      event.position = {1, 1};
+      event.buttons = test_case.buttons;
+      page_view.ReportTopViewEvent(event, kClayEventTypeMouseDown);
+      const int expected_button =
+          aligned ? test_case.aligned_button : test_case.buttons;
+      EXPECT_EQ(event_delegate.button_, expected_button);
+      EXPECT_EQ(event_delegate.buttons_, test_case.buttons);
+      event.buttons = 0;
+      page_view.ReportTopViewEvent(event, kClayEventTypeMouseUp);
+      EXPECT_EQ(event_delegate.button_, expected_button);
+      EXPECT_EQ(event_delegate.buttons_, 0);
+      EXPECT_EQ(event_delegate.calls_, 2);
+    }
+  }
 }
 
 }  // namespace clay
