@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.PointF;
 import android.view.MotionEvent;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
@@ -20,6 +21,12 @@ import java.util.List;
  * by the pipeline.
  */
 public class NativePaintingContext implements IPaintingContext {
+  private static final int PLATFORM_FOCUS_INFO_SIZE = 4;
+  private static final int PLATFORM_FOCUS_TARGET_SIGN_INDEX = 0;
+  private static final int PLATFORM_FOCUS_RENDERER_HOST_SIGN_INDEX = 1;
+  private static final int PLATFORM_FOCUS_IGNORE_INDEX = 2;
+  private static final int PLATFORM_FOCUS_CAN_RESPOND_INDEX = 3;
+
   private long mNativePtr = 0;
 
   @NonNull private final PlatformRendererContext mPlatformRendererContext;
@@ -128,6 +135,24 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   @Override
+  public void dispatchPlatformFocus() {
+    if (mNativePtr == 0 || mDestroyed) {
+      return;
+    }
+    handlePlatformFocusInfo(nativeGetPlatformFocusInfo(mNativePtr));
+  }
+
+  void handlePlatformFocusInfo(@Nullable int[] focusInfo) {
+    if (focusInfo == null || focusInfo.length < PLATFORM_FOCUS_INFO_SIZE
+        || focusInfo[PLATFORM_FOCUS_IGNORE_INDEX] != 0
+        || focusInfo[PLATFORM_FOCUS_CAN_RESPOND_INDEX] == 0) {
+      return;
+    }
+    mPlatformRendererContext.updatePlatformFocus(focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX],
+        focusInfo[PLATFORM_FOCUS_RENDERER_HOST_SIGN_INDEX]);
+  }
+
+  @Override
   public boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY) {
     if (mNativePtr == 0 || mDestroyed) {
       return false;
@@ -164,14 +189,6 @@ public class NativePaintingContext implements IPaintingContext {
     nativeSetPlatformEventRootOffset(mNativePtr, rootSign, offsetX, offsetY);
   }
 
-  @Override
-  public int getPlatformEventHandlerState() {
-    if (mDestroyed || mNativePtr == 0) {
-      return 0;
-    }
-    return nativeGetPlatformEventHandlerState(mNativePtr);
-  }
-
   public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
     if (mDestroyed || mNativePtr == 0) {
       return new ArrayList<>();
@@ -193,6 +210,8 @@ public class NativePaintingContext implements IPaintingContext {
 
   native void nativeDispatchPlatformTap(long nativePtr);
 
+  native int[] nativeGetPlatformFocusInfo(long nativePtr);
+
   native void nativeSetPlatformEventRootActive(long nativePtr, int rootSign, boolean active);
 
   native void nativeSetPlatformEventRootOffset(
@@ -200,8 +219,6 @@ public class NativePaintingContext implements IPaintingContext {
 
   native boolean nativeIsPlatformEventTargetEventThrough(
       long nativePtr, int rootSign, float pointX, float pointY);
-
-  native int nativeGetPlatformEventHandlerState(long nativePtr);
 
   native void nativeDestroy(long nativePtr);
 
