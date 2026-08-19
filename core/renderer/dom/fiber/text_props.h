@@ -137,6 +137,7 @@ static const uint8_t kUtf8ToUtf16Units[256] = {
   V(FontFamily, 1)                        \
   V(LineHeight, 1)                        \
   V(LetterSpacing, 1)                     \
+  V(WordBreak, 1)                         \
   V(TextAlign, 1)                         \
   V(VerticalAlign, 1)                     \
   V(TextDecoration, 1)                    \
