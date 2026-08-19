@@ -12,6 +12,8 @@ namespace clay {
 
 class MockDelegate : public clay::RenderDelegate {
  public:
+  explicit MockDelegate(UITest* uitest) : uitest_(uitest) {}
+
   void ScheduleFrame() override {}
   void ForceBeginFrame() override {}
   void OnFirstMeaningfulLayout() override {}
@@ -63,12 +65,19 @@ class MockDelegate : public clay::RenderDelegate {
   void FilterInputAsync(
       const std::string& input, const std::string& pattern,
       std::function<void(const std::string&)> callback) override {}
-  BaseView* FindViewById(int view_id) override { return nullptr; }
+  BaseView* FindViewById(int view_id) override {
+    return uitest_->find_view_by_id_callback_
+               ? uitest_->find_view_by_id_callback_(view_id)
+               : nullptr;
+  }
   ShadowNode* FindShadowNodeById(int node_id) override { return nullptr; }
 
   void RegisterDrawableImage(
       std::shared_ptr<DrawableImage> drawable_image) override {}
   void UnregisterDrawableImage(int64_t id) override {}
+
+ private:
+  UITest* uitest_;
 };
 
 class MockEventDelegate : public clay::EventDelegate {
@@ -245,7 +254,7 @@ void UITest::InvokeUIMethod(
 
 void UITest::SetUp() {
   ui_thread_ = std::make_unique<fml::Thread>("ui");
-  delegate_ = std::make_unique<MockDelegate>();
+  delegate_ = std::make_unique<MockDelegate>(this);
   event_delegate_ = std::make_unique<MockEventDelegate>(this);
   auto font_collection = FontCollection::Instance();
   font_collection->SetupDefaultFontManager(0);
