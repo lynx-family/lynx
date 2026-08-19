@@ -41,6 +41,7 @@ class BorderRadius {
    */
   void SetRadius(CornerPosition position, const lepus::Value& value,
                  int offset = 0);
+  void SetRadius(CornerPosition position, float radius_x, float radius_y);
 
  private:
   PlatformLength radius_[8];

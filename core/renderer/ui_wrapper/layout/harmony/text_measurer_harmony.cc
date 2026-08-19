@@ -576,8 +576,14 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
 
   paragraph->SetMeasuredSize(result.width_, result.height_, result.baseline_);
   paragraph->SetText(builder.GetText());
-  paragraphs_[element->impl_id()] = std::move(paragraph);
-  inline_placeholders_[element->impl_id()] = std::move(placeholder_infos);
+  const int32_t id = element->impl_id();
+  auto paragraph_it =
+      paragraphs_.insert_or_assign(id, std::move(paragraph)).first;
+  inline_placeholders_.insert_or_assign(id, std::move(placeholder_infos));
+  if (element->EnableFragmentLayerRender()) {
+    text_element->SetTextBundle(
+        reinterpret_cast<intptr_t>(paragraph_it->second.get()));
+  }
   return result;
 }
 

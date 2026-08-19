@@ -41,11 +41,14 @@
 
 namespace lynx {
 namespace tasm {
+class DisplayList;
 class PropBundleHarmony;
 
 namespace harmony {
 class LynxContext;
 class GestureArenaManager;
+class LynxRenderer;
+class LynxRendererContext;
 class UIStickyScroller;
 
 static constexpr const char* const kFluencyScrollEvent = "scroll";
@@ -102,6 +105,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                             const float* paddings, const float* margins,
                             const float* sticky, float max_height,
                             uint32_t node_index);
+  void UpdateLayoutOffsetIfNeeded(float left, float top);
   virtual void OnLayoutUpdated() {}
   virtual void SetParent(UIBase* parent);
   UIBase* Parent() const { return parent_; };
@@ -115,6 +119,12 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void OnOverlayDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
+  void AttachFragmentLayerRenderer(std::shared_ptr<LynxRendererContext> context,
+                                   int32_t sign);
+  void DetachFragmentLayerRenderer();
+  void UpdateFragmentLayerDisplayList(DisplayList display_list);
+  void OnAttachedToFragmentLayerTree();
+  void OnFragmentLayerChildrenChanged();
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();
@@ -379,6 +389,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
 
   std::unique_ptr<BackgroundDrawable> background_drawable_{nullptr};
   std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
+  std::unique_ptr<LynxRenderer> renderer_;
   std::vector<std::string> events_;
   ArkUI_NodeType node_type_;
   starlight::ImageRenderingType rendering_type_{
