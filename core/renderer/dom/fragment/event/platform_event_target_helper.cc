@@ -145,6 +145,10 @@ void SetEventThrough(PlatformEventTarget* target, const lepus::Value& value) {
   target->SetEventThrough(EventPropValueToStatus(value));
 }
 
+void SetIgnoreFocus(PlatformEventTarget* target, const lepus::Value& value) {
+  target->SetIgnoreFocus(EventPropValueToStatus(value));
+}
+
 bool ParseEventThroughSizeValue(
     const lepus::Value& value,
     PlatformEventTarget::EventThroughSizeValue* result) {
@@ -297,6 +301,7 @@ GetEventPropSetterMap() {
           {PlatformEventPropName::kEventThroughActiveRegions,
            &SetEventThroughActiveRegions},
           {PlatformEventPropName::kEventsPassThrough, &SetEventsPassThrough},
+          {PlatformEventPropName::kIgnoreFocus, &SetIgnoreFocus},
       };
   return map;
 }
@@ -536,6 +541,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         const auto type = static_cast<PlatformRendererType>(begin.type);
         auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
             this, tree_root_id, sign, begin.x, begin.y, begin.w, begin.h);
+        event_target->SetRendererHostSign(page_renderer->GetId());
         event_target->SetPlatformRendererType(type);
         event_target->SetScrollContainer(IsScrollContainer(type, sign));
         event_target->SetOverflow(begin.overflow_x != 0, begin.overflow_y != 0);

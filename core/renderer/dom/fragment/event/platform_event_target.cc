@@ -264,11 +264,6 @@ void PlatformEventTarget::OffResponseChain() {}
 
 bool PlatformEventTarget::IsOnResponseChain() const { return false; }
 
-void PlatformEventTarget::OnFocusChange(bool has_focus,
-                                        bool is_focus_transition) {}
-
-bool PlatformEventTarget::Focusable() const { return true; }
-
 void PlatformEventTarget::OnPseudoStatusChanged(
     LynxPseudoStatus pre_status, LynxPseudoStatus current_status) {}
 
@@ -341,7 +336,26 @@ float PlatformEventTarget::ConvertEventThroughSizeValue(
   return value.value;
 }
 
-bool PlatformEventTarget::IgnoreFocus() const { return false; }
+bool PlatformEventTarget::IgnoreFocus() const {
+  if (ignore_focus_ == LynxEventPropStatus::kEnable) {
+    return true;
+  }
+  if (ignore_focus_ == LynxEventPropStatus::kDisable) {
+    return false;
+  }
+
+  // An event root does not inherit ignore-focus from another event root. A
+  // descendant may only inherit from a parent in the same event target tree.
+  if (IsRoot()) {
+    return false;
+  }
+  auto parent = ParentTarget();
+  if (parent == nullptr || parent.get() == this ||
+      parent->RootId() != RootId()) {
+    return false;
+  }
+  return parent->IgnoreFocus();
+}
 
 LynxPointerEventsValue PlatformEventTarget::PointerEvents() const {
   return LynxPointerEventsValue::kAuto;

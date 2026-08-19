@@ -12,6 +12,7 @@
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxErrorBehavior.h>
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxHeroTransition.h>
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
@@ -27,6 +28,7 @@
 #import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIRendererProtocol.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
@@ -437,11 +439,24 @@
     UIView* view = [super hitTest:point withEvent:event];
     self.nestedScrollViewsChain =
         [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:view];
-    [_templateRender.lynxUIRenderer handleFocus:touchTarget
-                                         onView:view
-                                  withContainer:self
-                                       andPoint:point
-                                       andEvent:event];
+    id<LynxUIRendererProtocol> uiRenderer = _templateRender.lynxUIRenderer;
+    LynxEventHandler* eventHandler = uiRenderer.uiOwner.uiContext.eventHandler;
+    if (uiRenderer.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
+      BOOL ignoreFocus =
+          eventHandler != nil &&
+          [_templateRender IsPlatformEventTargetIgnoreFocus:eventHandler.eventRootSign point:point];
+      [eventHandler handleFocusOnView:view
+                        withContainer:self
+                             andPoint:point
+                             andEvent:event
+                          ignoreFocus:ignoreFocus];
+    } else {
+      [uiRenderer handleFocus:touchTarget
+                       onView:view
+                withContainer:self
+                     andPoint:point
+                     andEvent:event];
+    }
     // If target eventThrough, return nil to let event through LynxView.
     CGPoint targetPoint = point;
     if (touchTarget.view) {

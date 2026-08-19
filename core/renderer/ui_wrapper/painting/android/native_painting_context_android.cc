@@ -190,6 +190,30 @@ jboolean IsPlatformEventTargetEventThrough(JNIEnv *env, jobject /*jcaller*/,
              : JNI_FALSE;
 }
 
+jintArray GetPlatformFocusInfo(JNIEnv *env, jobject /*jcaller*/,
+                               jlong nativePtr) {
+  if (nativePtr == 0) {
+    return nullptr;
+  }
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return nullptr;
+  }
+
+  auto focus_info = platform_ref->GetPlatformFocusInfo();
+  auto result = env->NewIntArray(static_cast<jsize>(focus_info.size()));
+  if (result == nullptr) {
+    return nullptr;
+  }
+  env->SetIntArrayRegion(result, 0, static_cast<jsize>(focus_info.size()),
+                         focus_info.data());
+  return result;
+}
+
 jintArray GetMeaningfulPaintingAreaRecords(JNIEnv *env, jobject /*jcaller*/,
                                            jlong nativePtr) {
   if (nativePtr == 0) {
@@ -213,25 +237,6 @@ jintArray GetMeaningfulPaintingAreaRecords(JNIEnv *env, jobject /*jcaller*/,
   env->SetIntArrayRegion(result, 0, static_cast<jsize>(records.size()),
                          records.data());
   return result;
-}
-
-jint GetPlatformEventHandlerState(JNIEnv *env, jobject /*jcaller*/,
-                                  jlong nativePtr) {
-  // Get the NativePaintingCtxAndroid instance from the native pointer
-  if (nativePtr == 0) {
-    return 0;
-  }
-
-  lynx::tasm::NativePaintingCtxAndroid *context =
-      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
-
-  auto platform_ref =
-      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
-          context->GetPlatformRef());
-  if (platform_ref == nullptr) {
-    return 0;
-  }
-  return platform_ref->GetPlatformEventHandlerState();
 }
 
 void Destroy(JNIEnv *env, jobject /*jcaller*/, jlong nativePtr) {
