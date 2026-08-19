@@ -5,7 +5,9 @@
 #import "LynxEmbeddedTimingCollector.h"
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
+#import <Lynx/TemplateRenderCallbackProtocol.h>
 #include "core/services/timing_handler/timing_constants.h"
+#include "core/services/timing_handler/timing_constants_deprecated.h"
 
 static NSString* const kEmbeddedPerformanceEntryPipelineEvent =
     @"lynxsdk_performance_entry_pipeline";
@@ -18,8 +20,10 @@ static NSString* const kEmbeddedLynxFCP = @"lynxFcp";
 @property(nonatomic, assign) uint64_t paintEndUs;
 @property(nonatomic, strong) NSMutableArray<NSNumber*>* updateDataStartUsList;
 @property(nonatomic, assign) BOOL hasEmitLoadBundleEvent;
+@property(nonatomic, assign) BOOL hasEmitSetupTiming;
 @property(nonatomic, assign) BOOL hasReportedLoadBundleEvent;
 @property(nonatomic, assign) int32_t instanceId;
+@property(nonatomic, weak, nullable) id<TemplateRenderCallbackProtocol> embeddedTimingClient;
 
 @end
 
@@ -43,8 +47,10 @@ static NSString* const kEmbeddedLynxFCP = @"lynxFcp";
 - (void)setTiming:(uint64_t)timestamp key:(NSString*)key {
   if ([key isEqualToString:@(lynx::tasm::timing::kLoadBundleStart)]) {
     self.loadBundleStartUs = timestamp;
+    [self emitSetupTimingIfReady];
   } else if ([key isEqualToString:@(lynx::tasm::timing::kLoadBundleEnd)]) {
     self.loadBundleEndUs = timestamp;
+    [self emitSetupTimingIfReady];
     [self emitLoadBundleObserverIfReady:YES];
     [self reportLoadBundleIfReady];
   } else if ([key isEqualToString:@(lynx::tasm::timing::kUpdateTriggeredByNative)]) {
@@ -56,9 +62,50 @@ static NSString* const kEmbeddedLynxFCP = @"lynxFcp";
 }
 
 - (void)onPaintEnd {
+  [self emitSetupTimingIfReady];
   [self emitLoadBundleObserverIfReady:NO];
   [self emitUpdateDataIfReady];
   [self reportLoadBundleIfReady];
+}
+
+- (void)emitSetupTimingIfReady {
+  id<TemplateRenderCallbackProtocol> embeddedTimingClient = self.embeddedTimingClient;
+  if (self.hasEmitSetupTiming || embeddedTimingClient == nil) {
+    return;
+  }
+  if (self.loadBundleStartUs == 0 || self.loadBundleEndUs < self.loadBundleStartUs ||
+      self.paintEndUs < self.loadBundleEndUs) {
+    return;
+  }
+  self.hasEmitSetupTiming = YES;
+  uint64_t loadBundleStartUs = self.loadBundleStartUs;
+  uint64_t loadBundleEndUs = self.loadBundleEndUs;
+  uint64_t paintEndUs = self.paintEndUs;
+  __weak id<TemplateRenderCallbackProtocol> weakTimingClient = embeddedTimingClient;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    id<TemplateRenderCallbackProtocol> timingClient = weakTimingClient;
+    if (timingClient == nil) {
+      return;
+    }
+
+    double loadBundleStartMs = (double)loadBundleStartUs / 1000.0;
+    double loadBundleEndMs = (double)loadBundleEndUs / 1000.0;
+    double paintEndMs = (double)paintEndUs / 1000.0;
+    NSDictionary* timingInfo = @{
+      @(lynx::tasm::timing::kSetupTiming) : @{
+        @(lynx::tasm::timing::kLoadBundleStartPolyfill) : @(loadBundleStartMs),
+        @(lynx::tasm::timing::kLoadBundleEndPolyfill) : @(loadBundleEndMs),
+        @(lynx::tasm::timing::kPaintEndPolyfill) : @(paintEndMs),
+      },
+      @(lynx::tasm::timing::kExtraTiming) : @{},
+      @(lynx::tasm::timing::kUpdateTimings) : @{},
+      @(lynx::tasm::timing::kMetrics) : @{
+        @(lynx::tasm::timing::kLynxFCPPolyfill) : @(paintEndMs - loadBundleStartMs),
+      },
+      @(lynx::tasm::timing::kHasReload) : @NO,
+    };
+    [timingClient onTimingSetup:timingInfo];
+  });
 }
 
 - (void)emitLoadBundleObserverIfReady:(BOOL)dispatchOnReportThread {

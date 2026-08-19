@@ -1727,6 +1727,7 @@ public class com::lynx::tasm::EmbeddedMode :  {
 
 public class com::lynx::tasm::performance::timing::EmbeddedTimingCollector :  {
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setObserver(WeakReference< IPerformanceObserver > observer);
+  public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setEmbeddedTimingClient(WeakReference< LynxViewClient > timingClient);
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setInstanceId(int instanceId);
   public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasEmitLoadBundleEvent();
   public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasPendingUpdateEvent();
@@ -8819,6 +8820,7 @@ public interface com::lynx::tasm::behavior::PatchFinishListener {
 public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm.performance.memory.IMemoryMonitor, com.lynx.tasm.performance.timing.ITimingCollector {
   public void com.lynx.tasm.performance.PerformanceController.setEmbeddedMode(boolean useEmbeddedMode);
   public boolean com.lynx.tasm.performance.PerformanceController.isEmbeddedMode();
+  public void com.lynx.tasm.performance.PerformanceController.setEmbeddedTimingClient(LynxViewClient timingClient);
   public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
   public void com.lynx.tasm.performance.PerformanceController.setInstanceId(int instanceId);
   public int com.lynx.tasm.performance.PerformanceController.getInstanceId();
