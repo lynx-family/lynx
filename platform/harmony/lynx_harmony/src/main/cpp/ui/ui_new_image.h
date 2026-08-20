@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/public/lynx_resource_loader.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
@@ -117,8 +118,7 @@ class UINewImage : public UIBase,
   bool LoadImage();
   void LoadImageFromService(const std::string& url,
                             const std::string& placeholder,
-                            std::vector<std::string> fallback_urls = {},
-                            std::string file_cache_name = {});
+                            pub::LynxImageResponseOptions options = {});
   void LoadImageWithTransform(const std::string& url,
                               const std::string& placeholder);
 

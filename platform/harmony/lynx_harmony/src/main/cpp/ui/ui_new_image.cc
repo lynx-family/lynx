@@ -394,8 +394,7 @@ void UINewImage::LoadImageWithTransform(const std::string& url,
               image_url = response.path;
             }
             ui_image->LoadImageFromService(image_url, placeholder,
-                                           std::move(response.fallback_paths),
-                                           std::move(response.file_cache_name));
+                                           std::move(response.image_options));
           }
         });
   } else {
@@ -548,8 +547,7 @@ void UINewImage::SetEvents(const std::vector<lepus::Value>& events) {
 
 void UINewImage::LoadImageFromService(const std::string& url,
                                       const std::string& placeholder,
-                                      std::vector<std::string> fallback_urls,
-                                      std::string file_cache_name) {
+                                      pub::LynxImageResponseOptions options) {
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "rawSrc", src_.c_str());
   OH_ArkUI_NodeUtils_AddCustomProperty(node_, "src", url.c_str());
@@ -569,8 +567,11 @@ void UINewImage::LoadImageFromService(const std::string& url,
   ImageRequestInfo info{
       .url = url,
       .placeholder = placeholder,
-      .fallback_urls = std::move(fallback_urls),
-      .file_cache_name = std::move(file_cache_name),
+      .fallback_urls = std::move(options.fallback_paths),
+      .file_cache_name = std::move(options.file_cache_name),
+      .use_highest_priority = options.use_highest_priority,
+      .mapped_memory_cache_key = std::move(options.mapped_memory_cache_key),
+      .mapped_file_cache_key = std::move(options.mapped_file_cache_key),
   };
   using ImageEffect = LynxImageEffectProcessor::ImageEffect;
   std::vector<std::unique_ptr<ImageProcessor>> processors;
