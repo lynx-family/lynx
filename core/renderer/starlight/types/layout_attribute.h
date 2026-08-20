@@ -19,6 +19,7 @@ enum class LayoutAttribute {
   // Indicates that the LayoutNode is list and needs to invoke
   // OnListElementUpdated() when it's layout updated.
   kListContainer,
+  kPropagateMinConstraints,
 };
 
 enum class ListComponentType : uint32_t {
@@ -35,6 +36,16 @@ class AttributesMap {
   }
 
   std::optional<bool> getScroll() const { return scroll_; }
+
+  // Whether a box passes its incoming minimum constraints to its content. An
+  // unset value has the same effect as false.
+  bool setPropagateMinConstraints(const std::optional<bool>& newValue) {
+    return setAttribute(propagate_min_constraints_, newValue);
+  }
+
+  std::optional<bool> getPropagateMinConstraints() const {
+    return propagate_min_constraints_;
+  }
 
   bool setColumnCount(const std::optional<int>& newValue) {
     return setAttribute(column_count_, newValue);
@@ -60,6 +71,7 @@ class AttributesMap {
   }
 
   std::optional<bool> scroll_;
+  std::optional<bool> propagate_min_constraints_;
   std::optional<int> column_count_;
   std::optional<int> list_comp_type_;
 };

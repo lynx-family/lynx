@@ -61,6 +61,10 @@ void LayoutNode::ConsumeAttribute(starlight::LayoutAttribute key,
     changed = sl_node_.attr_map().setListCompType(
         new_value.IsNumber() ? std::optional<int>(new_value.Number())
                              : std::nullopt);
+  } else if (key == starlight::LayoutAttribute::kPropagateMinConstraints) {
+    changed = sl_node_.attr_map().setPropagateMinConstraints(
+        new_value.IsBool() ? std::optional<bool>(new_value.Bool())
+                           : std::nullopt);
   } else if (key == starlight::LayoutAttribute::kListContainer &&
              value.IsBool()) {
     is_list_container_ = value.Bool();
