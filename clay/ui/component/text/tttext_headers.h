@@ -5,12 +5,6 @@
 #ifndef CLAY_UI_COMPONENT_TEXT_TTTEXT_HEADERS_H_
 #define CLAY_UI_COMPONENT_TEXT_TTTEXT_HEADERS_H_
 
-#if defined(OS_WIN) && defined(DrawText)
-// WinUser.h aliases DrawText to DrawTextA/DrawTextW, which breaks Textra's
-// ICanvasHelper virtual method declarations.
-#undef DrawText
-#endif
-
 #if defined(OS_IOS)
 #import <textra/font_info.h>
 #import <textra/fontmgr_collection.h>
@@ -36,9 +30,6 @@
 #include <textra/icu_wrapper.h>
 #include <textra/macro.h>
 #include <textra/painter.h>
-#if defined(OS_WIN) && defined(DrawText)
-#undef DrawText
-#endif
 #ifdef ENABLE_SKITY
 #include <textra/platform/skity/skity_canvas_helper.h>
 #include <textra/platform/skity/skity_font_manager.h>
@@ -50,9 +41,4 @@
 #include <textra/style.h>
 #include <textra/text_layout.h>
 #endif
-
-#if defined(OS_WIN) && defined(DrawText)
-#undef DrawText
-#endif
-
 #endif  // CLAY_UI_COMPONENT_TEXT_TTTEXT_HEADERS_H_
