@@ -20,6 +20,7 @@ import {
   TemplateProviderResult,
   LLog,
   LynxExtraTiming,
+  MeasureMode,
   LynxUIRendererCreator,
   LynxUpdateMeta,
   LynxUpdateMode
@@ -181,6 +182,9 @@ export default struct LynxRecorderView {
   @State ready: boolean = false;
   @State statusText: string = 'Loading...';
   private localLynxContext: LynxContext | undefined;
+  private viewportWidth: number = 0;
+  private viewportHeight: number = 0;
+  private loadPending: boolean = false;
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
   private replayOptions: LynxRecorderReplayOptions = new LynxRecorderReplayOptions();
 
@@ -269,6 +273,33 @@ export default struct LynxRecorderView {
     if (this.ready) {
       this.statusText = '';
     }
+    this.tryLoadTemplate();
+  }
+
+  private tryLoadTemplate(): void {
+    if (!this.loadPending || !this.ready || !this.localLynxContext ||
+      !Number.isFinite(this.viewportWidth) || !Number.isFinite(this.viewportHeight) ||
+      this.viewportWidth <= 0 || this.viewportHeight <= 0) {
+      return;
+    }
+
+    this.loadPending = false;
+    const context = this.localLynxContext;
+    context.loadTemplate(this.pageUrl, undefined, this.buffer,
+      new MetaData(this.templateData, this.globalProps));
+    context.setExtraTiming(this.extraTiming);
+  }
+
+  private onLynxViewAreaChange(newValue: Area): void {
+    const width = newValue.width as number;
+    const height = newValue.height as number;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return;
+    }
+
+    this.viewportWidth = width;
+    this.viewportHeight = height;
+    this.tryLoadTemplate();
   }
 
   aboutToDisappear(): void {
@@ -524,10 +555,15 @@ export default struct LynxRecorderView {
     this.loadFromUrl = false;
     this.templateData = undefined;
     this.templateDataReady = false;
+    this.localLynxContext = undefined;
+    this.viewportWidth = 0;
+    this.viewportHeight = 0;
+    this.loadPending = false;
     this.statusText = 'Loading...';
   }
 
   private loadTemplate(params: LoadTemplateParams) {
+    this.loadPending = false;
     this.loadFromUrl = false;
     let sanitizedUrl = this.sanitizeRecordedUrl(params.url);
     this.pageUrl = sanitizedUrl.length > 0 ? sanitizedUrl : LynxRecorderEnv.RECORDER_URL_PREFIX;
@@ -563,9 +599,11 @@ export default struct LynxRecorderView {
     }
     this.templateData = new TemplateData(params.templateData);
     this.templateDataReady = true;
+    this.loadPending = true;
   }
 
   private loadTemplateBundle(params: LoadTemplateParams) {
+    this.loadPending = false;
     let sanitizedUrl = this.sanitizeRecordedUrl(params.url);
     this.pageUrl = sanitizedUrl.length > 0 ? sanitizedUrl : LynxRecorderEnv.RECORDER_URL_PREFIX;
     this.templateData = new TemplateData(params.templateData);
@@ -596,6 +634,7 @@ export default struct LynxRecorderView {
         return;
       }
       this.loadFromUrl = true;
+      this.loadPending = true;
       return;
     }
 
@@ -613,6 +652,7 @@ export default struct LynxRecorderView {
       LLog.e(TAG, `loadTemplateBundle decodeSync failed: ${error}`);
       return;
     }
+    this.loadPending = true;
   }
 
   async aboutToAppear() {
@@ -664,8 +704,7 @@ export default struct LynxRecorderView {
 
       if (this.ready) {
         LynxView({
-          url: this.pageUrl,
-          buffer: this.buffer,
+          url: '',
           embeddedMode: this.replayOptions.embeddedMode,
           enableAirStrictMode: this.replayOptions.enableAirStrictMode,
           uiRendererCreator: this.uiRendererCreator,
@@ -674,11 +713,18 @@ export default struct LynxRecorderView {
           templateResourceFetcher: this.templateFetcher,
           modules: this.jsbModule,
           metaData: new MetaData(this.templateData, this.globalProps),
+          beforeLoadTemplate: (context: LynxContext) => {
+            context.updateViewport(this.viewportWidth, MeasureMode.DEFINITE,
+              this.viewportHeight, MeasureMode.DEFINITE);
+          },
           onCreate: (context) => {
             this.localLynxContext = context;
-            this.localLynxContext.setExtraTiming(this.extraTiming);
+            this.tryLoadTemplate();
           }
         })
+          .onAreaChange((_oldValue: Area, newValue: Area) => {
+            this.onLynxViewAreaChange(newValue);
+          })
       } else {
           Text(this.statusText).fontSize(24).textAlign(TextAlign.Center).padding(24)
       }
