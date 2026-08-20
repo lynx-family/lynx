@@ -1,6 +1,13 @@
 require 'json'
 
+if ENV['COCOAPODS_LOCAL_SOURCE_REPO'] && !ENV['COCOAPODS_LOCAL_SOURCE_REPO'].empty?
+  source 'file://' + ENV['COCOAPODS_LOCAL_SOURCE_REPO']
+end
 source 'https://cdn.cocoapods.org/'
+
+$sources_file = File.expand_path('Podfile.flatten', __dir__)
+require_relative '../../../../tools/ios_tools/source_list'
+
 project './LynxExplorer.xcodeproj'
 
 canonical_path = lambda do |value, base|
@@ -202,39 +209,39 @@ target 'LynxExplorer' do
     :output_dir => File.join(__dir__, 'generated/lynx-library')
   )
 
-  pod 'AnimaX', '1.1.0', :subspecs => [
+  use_pod 'AnimaX', :subspecs => [
     'Core',
     'Framework',
     'Textra',
     'RenderBackend/Skity',
   ]
-  pod 'skity', '1.1.0-alpha.3'
-  pod 'LynxTextra', '0.1.5'
+  use_pod 'skity'
+  use_pod 'LynxTextra'
 
   pod 'XElement', :path => '../../../..', :subspecs => [
     'AnimaX',
     'Behavior',
   ]
 
-  pod 'PrimJS', '4.2.0-alpha.0', :subspecs => ['quickjs', 'napi']
-  pod 'LynxWeakNodeAPI', '0.0.6', :subspecs => ['core', 'primjs_bridge']
+  use_pod 'PrimJS', :subspecs => ['quickjs', 'napi']
+  use_pod 'LynxWeakNodeAPI', :subspecs => ['core', 'primjs_bridge']
   if ENV['LYNX_NODE_API_ADDON_POD_PATH'] && ENV['LYNX_NODE_API_ADDON_POD_NAME']
     pod ENV['LYNX_NODE_API_ADDON_POD_NAME'], :path => ENV['LYNX_NODE_API_ADDON_POD_PATH']
   end
 
-  pod 'SDWebImage','5.15.5'
-  pod 'SDWebImageWebPCoder', '0.11.0'
+  use_pod 'SDWebImage'
+  use_pod 'SDWebImageWebPCoder'
 
-  pod 'DebugRouter', '5.0.15'
-  pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
-  pod 'MJRefresh', '3.6.1'
+  use_pod 'DebugRouter'
+  use_pod 'DebugRouter/MessageTransceiverEnable'
+  use_pod 'MJRefresh'
 
   if sparkling_mode == 'enable_sparkling'
     # Sparkling/Application and SparklingMethod currently leave these
     # transitive versions open. Pin the graph at the verified versions while
     # the source override is active; Podfile.lock is intentionally generated.
-    pod 'SnapKit', '5.7.1'
-    pod 'Mantle', '2.2.0'
+    use_pod 'SnapKit'
+    use_pod 'Mantle'
     pod 'Sparkling', :path => sparkling_pod_paths.fetch('Sparkling')
     pod 'SparklingMacro', :path => sparkling_pod_paths.fetch('SparklingMacro')
     pod 'SparklingMethod', :path => sparkling_pod_paths.fetch('SparklingMethod'),
