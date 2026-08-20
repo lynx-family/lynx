@@ -380,6 +380,8 @@ export class TemplateBundle {
 
   nativeAsyncParseTemplate(template: ArrayBuffer): Promise<string> | undefined;
 
+  nativeIsValid(): boolean;
+
   nativeGetExtraInfo(): Record<string, Object>;
 
   nativeGetContainsElementTree(): boolean;
