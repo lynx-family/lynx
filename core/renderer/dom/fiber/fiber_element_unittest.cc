@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <initializer_list>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -15,9 +17,11 @@
 #include <vector>
 
 #include "base/include/auto_reset.h"
+#include "base/include/debug/lynx_error.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/event/event_dispatcher.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -348,6 +352,37 @@ const lepus::Value* DatasetValue(const Element* element,
     return nullptr;
   }
   return &it->second;
+}
+
+void ExpectChildOrder(const fml::RefPtr<Element>& parent,
+                      std::initializer_list<Element*> expected) {
+  ASSERT_EQ(parent->GetChildCount(), expected.size());
+  size_t index = 0;
+  for (auto* child : expected) {
+    EXPECT_EQ(parent->GetChildAt(index), child) << "child index " << index;
+    ++index;
+  }
+}
+
+void ExpectElementAPIError() {
+  const auto& stored_error = base::ErrorStorage::GetInstance().GetError();
+  ASSERT_NE(stored_error, nullptr);
+  EXPECT_EQ(stored_error->error_code_, error::E_ELEMENT_API_ERROR);
+}
+
+std::shared_ptr<runtime::MTSRuntime> CreateRendererRuntime(
+    TemplateAssembler* template_assembler) {
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  if (renderer_runtime == nullptr) {
+    return nullptr;
+  }
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+  return renderer_runtime;
 }
 }  // namespace
 
@@ -11768,6 +11803,303 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsUpdateMaterializedTargets) {
   ASSERT_EQ(slot_parent->children().size(), 2u);
   EXPECT_EQ(slot_parent->children()[0].get(), second.get());
   EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
+}
+
+TEST_P(FiberElementTest, ElementIndexAPIsInsertAndRemoveChildrenByIndex) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto parent = manager->CreateFiberView();
+  auto leading = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto third = manager->CreateFiberView();
+  auto trailing = manager->CreateFiberView();
+  parent->InsertNode(first);
+  parent->InsertNode(third);
+
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value insert_middle_args[] = {lepus::Value(parent),
+                                       lepus::Value(second), lepus::Value(1)};
+  RendererFunctions::FiberInsertElementAt(renderer_context, insert_middle_args,
+                                          3);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent, {first.get(), second.get(), third.get()});
+
+  lepus::Value insert_begin_args[] = {lepus::Value(parent),
+                                      lepus::Value(leading), lepus::Value(0)};
+  RendererFunctions::FiberInsertElementAt(renderer_context, insert_begin_args,
+                                          3);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent,
+                   {leading.get(), first.get(), second.get(), third.get()});
+
+  lepus::Value insert_end_args[] = {lepus::Value(parent),
+                                    lepus::Value(trailing), lepus::Value(4)};
+  RendererFunctions::FiberInsertElementAt(renderer_context, insert_end_args, 3);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent, {leading.get(), first.get(), second.get(),
+                            third.get(), trailing.get()});
+
+  lepus::Value remove_args[] = {lepus::Value(parent), lepus::Value(1),
+                                lepus::Value(2)};
+  RendererFunctions::FiberRemoveElementsAt(renderer_context, remove_args, 3);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent, {leading.get(), third.get(), trailing.get()});
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, ElementIndexAPIsMoveByPreChangeCoordinates) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto parent = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto third = manager->CreateFiberView();
+  auto fourth = manager->CreateFiberView();
+  auto fifth = manager->CreateFiberView();
+  parent->InsertNode(first);
+  parent->InsertNode(second);
+  parent->InsertNode(third);
+  parent->InsertNode(fourth);
+  parent->InsertNode(fifth);
+
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value move_range_forward_args[] = {
+      lepus::Value(parent), lepus::Value(1), lepus::Value(5), lepus::Value(2)};
+  RendererFunctions::FiberMoveElements(renderer_context,
+                                       move_range_forward_args, 4);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent, {first.get(), fourth.get(), fifth.get(),
+                            second.get(), third.get()});
+
+  lepus::Value move_range_backward_args[] = {
+      lepus::Value(parent), lepus::Value(3), lepus::Value(1), lepus::Value(2)};
+  RendererFunctions::FiberMoveElements(renderer_context,
+                                       move_range_backward_args, 4);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent, {first.get(), second.get(), third.get(),
+                            fourth.get(), fifth.get()});
+
+  lepus::Value move_single_forward_args[] = {
+      lepus::Value(parent), lepus::Value(1), lepus::Value(3), lepus::Value(1)};
+  RendererFunctions::FiberMoveElements(renderer_context,
+                                       move_single_forward_args, 4);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent, {first.get(), third.get(), second.get(),
+                            fourth.get(), fifth.get()});
+
+  lepus::Value move_single_backward_args[] = {
+      lepus::Value(parent), lepus::Value(2), lepus::Value(1), lepus::Value(1)};
+  RendererFunctions::FiberMoveElements(renderer_context,
+                                       move_single_backward_args, 4);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ExpectChildOrder(parent, {first.get(), second.get(), third.get(),
+                            fourth.get(), fifth.get()});
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, ElementIndexAPIsValidateNoOpsBeforeReturning) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto parent = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto third = manager->CreateFiberView();
+  auto fourth = manager->CreateFiberView();
+  parent->InsertNode(first);
+  parent->InsertNode(second);
+  parent->InsertNode(third);
+  parent->InsertNode(fourth);
+
+  auto expect_unchanged_without_error = [&](auto&& call) {
+    base::ErrorStorage::GetInstance().Reset();
+    call();
+    EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+    ExpectChildOrder(parent,
+                     {first.get(), second.get(), third.get(), fourth.get()});
+  };
+
+  expect_unchanged_without_error([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(4),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberRemoveElementsAt(renderer_context, args, 3);
+  });
+  expect_unchanged_without_error([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(0),
+                           lepus::Value(1), lepus::Value(1)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  expect_unchanged_without_error([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(1),
+                           lepus::Value(1), lepus::Value(2)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  expect_unchanged_without_error([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(3),
+                           lepus::Value(0), lepus::Value(0)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  expect_unchanged_without_error([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(1),
+                           lepus::Value(3), lepus::Value(2)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, ElementIndexAPIsRejectInvalidArgumentsAtomically) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto parent = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto third = manager->CreateFiberView();
+  auto detached = manager->CreateFiberView();
+  parent->InsertNode(first);
+  parent->InsertNode(second);
+  parent->InsertNode(third);
+
+  auto expect_rejected = [&](auto&& call) {
+    base::ErrorStorage::GetInstance().Reset();
+    call();
+    ExpectElementAPIError();
+    ExpectChildOrder(parent, {first.get(), second.get(), third.get()});
+    base::ErrorStorage::GetInstance().Reset();
+  };
+
+  std::vector<lepus::Value> invalid_numbers;
+  invalid_numbers.emplace_back("1");
+  invalid_numbers.emplace_back(true);
+  invalid_numbers.emplace_back(-1);
+
+  for (const auto& invalid : invalid_numbers) {
+    expect_rejected([&]() {
+      lepus::Value args[] = {lepus::Value(parent), lepus::Value(detached),
+                             invalid};
+      return RendererFunctions::FiberInsertElementAt(renderer_context, args, 3);
+    });
+    expect_rejected([&]() {
+      lepus::Value args[] = {lepus::Value(parent), invalid, lepus::Value(0)};
+      return RendererFunctions::FiberRemoveElementsAt(renderer_context, args,
+                                                      3);
+    });
+    expect_rejected([&]() {
+      lepus::Value args[] = {lepus::Value(parent), lepus::Value(0), invalid};
+      return RendererFunctions::FiberRemoveElementsAt(renderer_context, args,
+                                                      3);
+    });
+    expect_rejected([&]() {
+      lepus::Value args[] = {lepus::Value(parent), invalid, lepus::Value(0),
+                             lepus::Value(0)};
+      return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+    });
+    expect_rejected([&]() {
+      lepus::Value args[] = {lepus::Value(parent), lepus::Value(0), invalid,
+                             lepus::Value(0)};
+      return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+    });
+    expect_rejected([&]() {
+      lepus::Value args[] = {lepus::Value(parent), lepus::Value(0),
+                             lepus::Value(0), invalid};
+      return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+    });
+  }
+
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(false), lepus::Value(detached),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberInsertElementAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(false),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberInsertElementAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(false), lepus::Value(0),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberRemoveElementsAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(false), lepus::Value(0),
+                           lepus::Value(0), lepus::Value(0)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+
+  auto non_element = lepus::Dictionary::Create();
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(non_element), lepus::Value(detached),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberInsertElementAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(non_element),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberInsertElementAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(non_element), lepus::Value(0),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberRemoveElementsAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(non_element), lepus::Value(0),
+                           lepus::Value(0), lepus::Value(0)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(detached),
+                           lepus::Value(4)};
+    return RendererFunctions::FiberInsertElementAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(4),
+                           lepus::Value(0)};
+    return RendererFunctions::FiberRemoveElementsAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(2),
+                           lepus::Value(2)};
+    return RendererFunctions::FiberRemoveElementsAt(renderer_context, args, 3);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(4),
+                           lepus::Value(0), lepus::Value(0)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(2),
+                           lepus::Value(0), lepus::Value(2)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(0),
+                           lepus::Value(4), lepus::Value(1)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  expect_rejected([&]() {
+    lepus::Value args[] = {lepus::Value(parent), lepus::Value(0),
+                           lepus::Value(1), lepus::Value(2)};
+    return RendererFunctions::FiberMoveElements(renderer_context, args, 4);
+  });
+  base::ErrorStorage::GetInstance().Reset();
 }
 
 TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {
