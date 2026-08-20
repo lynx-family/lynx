@@ -306,6 +306,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // entry and stay reserved for the platform-view path.
   void SyncNativeViewTags(std::unordered_set<std::string> tags,
                           std::unordered_set<std::string> bootstrap_tags = {});
+
+  void SetPlatformViewTagOverrides(std::unordered_set<std::string> tags);
   void SyncNativeViewCompositionPreferences(
       std::unordered_map<std::string, NativeViewCompositionPreference>
           composition_preferences);
@@ -348,6 +350,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // In method invokeUIMethod, we need to use this map and radon(js) component
   // id to find related views.
   std::unordered_map<std::string, int> component_id_to_ui_id_map_;
+  std::unordered_set<std::string> platform_view_tag_overrides_;
   std::unordered_map<std::string, NativeViewCompositionPreference>
       native_view_composition_preferences_;
 
