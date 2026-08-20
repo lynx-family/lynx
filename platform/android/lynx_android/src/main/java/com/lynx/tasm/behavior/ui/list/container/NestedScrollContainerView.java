@@ -27,7 +27,7 @@ import androidx.core.view.ScrollingView;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
-import com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper;
+import com.lynx.tasm.behavior.ui.scroll.utils.ScrollSnapHelper;
 import java.util.ArrayList;
 
 public class NestedScrollContainerView
