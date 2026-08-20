@@ -28,6 +28,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,6 +39,14 @@ public class PerformanceControllerTest {
   @Before
   public void setUp() {
     performanceController = spy(new PerformanceController());
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    FSPTracer fspTracer = getFSPTracer();
+    if (fspTracer != null) {
+      fspTracer.stop();
+    }
   }
 
   @Test
@@ -203,15 +212,11 @@ public class PerformanceControllerTest {
   }
 
   @Test
-  public void stopFSPTracerByUserInteractionUsesPageConfig() throws Exception {
+  public void stopFSPTracerByUserInteractionIgnoresCurrentPageConfig() throws Exception {
     FSPTracer fspTracer = mock(FSPTracer.class);
     setField(PerformanceController.class, performanceController, "mFSPTracer", fspTracer);
 
     performanceController.onPageConfigDecoded(createPageConfig(false));
-    performanceController.stopFSPTracerByUserInteraction();
-    verify(fspTracer, never()).cancelledByUserInteraction();
-
-    performanceController.onPageConfigDecoded(createPageConfig(true));
     performanceController.stopFSPTracerByUserInteraction();
     verify(fspTracer).cancelledByUserInteraction();
   }

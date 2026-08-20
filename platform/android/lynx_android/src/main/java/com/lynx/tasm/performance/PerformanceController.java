@@ -213,7 +213,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
 
   @UiThread
   public void stopFSPTracerByUserInteraction() {
-    if (!isFSPEnabled() || mFSPTracer == null) {
+    if (mFSPTracer == null) {
       return;
     }
     mFSPTracer.cancelledByUserInteraction();
