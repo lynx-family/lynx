@@ -611,14 +611,36 @@ LynxResourceLoaderHarmony::CallbackHandler::HandlePathRequestCallback(
       napi_value fallback_urls = nullptr;
       if (GetNamedProperty(env, argv[1], "fallbackUrls", &fallback_urls) &&
           base::NapiUtil::IsArray(env, fallback_urls)) {
-        base::NapiUtil::ConvertToArrayString(env, fallback_urls,
-                                             response.fallback_paths);
+        base::NapiUtil::ConvertToArrayString(
+            env, fallback_urls, response.image_options.fallback_paths);
       }
       napi_value file_cache_name = nullptr;
       if (GetNamedProperty(env, argv[1], "fileCacheName", &file_cache_name) &&
           base::NapiUtil::NapiIsType(env, file_cache_name, napi_string)) {
-        response.file_cache_name =
+        response.image_options.file_cache_name =
             base::NapiUtil::ConvertToString(env, file_cache_name);
+      }
+      napi_value use_highest_priority = nullptr;
+      if (GetNamedProperty(env, argv[1], "useHighestPriority",
+                           &use_highest_priority) &&
+          base::NapiUtil::NapiIsType(env, use_highest_priority, napi_boolean)) {
+        response.image_options.use_highest_priority =
+            base::NapiUtil::ConvertToBoolean(env, use_highest_priority);
+      }
+      napi_value mapped_file_cache_key = nullptr;
+      if (GetNamedProperty(env, argv[1], "mappedFileCacheKey",
+                           &mapped_file_cache_key) &&
+          base::NapiUtil::NapiIsType(env, mapped_file_cache_key, napi_string)) {
+        response.image_options.mapped_file_cache_key =
+            base::NapiUtil::ConvertToString(env, mapped_file_cache_key);
+      }
+      napi_value mapped_memory_cache_key = nullptr;
+      if (GetNamedProperty(env, argv[1], "mappedMemoryCacheKey",
+                           &mapped_memory_cache_key) &&
+          base::NapiUtil::NapiIsType(env, mapped_memory_cache_key,
+                                     napi_string)) {
+        response.image_options.mapped_memory_cache_key =
+            base::NapiUtil::ConvertToString(env, mapped_memory_cache_key);
       }
     } else {
       response.path = base::NapiUtil::ConvertToString(env, argv[1]);
