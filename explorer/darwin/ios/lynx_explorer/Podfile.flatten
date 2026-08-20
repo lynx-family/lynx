@@ -1,0 +1,19 @@
+# CocoaPods components consumed by the LynxExplorer that live outside
+# this repository. Each line follows the format used by
+# lynx/tools/ios_tools/prepare_cocoapods_sources.py:
+#
+#   <source_url>:<PodName>:<Version> pod [auto]
+#
+# The source URL matches a `source` declared in Podfile. For the CocoaPods
+# trunk index the correct value is https://cdn.cocoapods.org/.
+https://cdn.cocoapods.org/:PrimJS:4.2.0-alpha.0 pod
+https://cdn.cocoapods.org/:AnimaX:1.1.0 pod
+https://cdn.cocoapods.org/:skity:1.1.0-alpha.3 pod
+https://cdn.cocoapods.org/:LynxTextra:0.1.5 pod
+https://cdn.cocoapods.org/:LynxWeakNodeAPI:0.0.6 pod
+https://cdn.cocoapods.org/:SDWebImage:5.15.5 pod
+https://cdn.cocoapods.org/:SDWebImageWebPCoder:0.11.0 pod
+https://cdn.cocoapods.org/:DebugRouter:5.0.15 pod
+https://cdn.cocoapods.org/:MJRefresh:3.6.1 pod
+https://cdn.cocoapods.org/:SnapKit:5.7.1 pod
+https://cdn.cocoapods.org/:Mantle:2.2.0 pod

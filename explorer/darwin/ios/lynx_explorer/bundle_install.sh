@@ -136,6 +136,16 @@ popd
 export COCOAPODS_CONVERT_GIT_TO_HTTP=false
 export LANG=en_US.UTF-8
 pushd "$script_dir"
+
+source_list="$script_dir/Podfile.flatten"
+if [[ -f "$source_list" ]] && grep -qE '^[[:space:]]*[^#[:space:]]' "$source_list"; then
+    source_cache_dir="$HOME/.cocoapods/spec-repo-lynx-explorer"
+    python3 "$root_dir/tools/ios_tools/prepare_cocoapods_sources.py" \
+        --source-list "$source_list" \
+        --cache-dir "$source_cache_dir"
+    export COCOAPODS_LOCAL_SOURCE_REPO="$source_cache_dir/.git"
+fi
+
 pod deintegrate "$project_name"
 pod install
 python3 "$script_dir/scripts/verify_sparkling_ownership.py" \
