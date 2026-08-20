@@ -4,9 +4,12 @@ Date: Fri, 19 Sep 2025 11:43:57 +0800
 Subject: [PATCH] [Infra] Adaption for lynx.
 
 ---
- BUILD.gn               | 8 ++++++++
- src/Device/Blitter.cpp | 7 +++++++
- 2 files changed, 15 insertions(+)
+ BUILD.gn                                                          | 8 ++++++++
+ src/Device/Blitter.cpp                                            | 7 +++++++
+ third_party/SPIRV-Tools/source/util/small_vector.h                | 2 +-
+ .../llvm-10.0/llvm/include/llvm/Demangle/ItaniumDemangle.h        | 2 ++
+ third_party/llvm-10.0/llvm/include/llvm/Demangle/Utility.h        | 1 +
+ 5 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/BUILD.gn b/BUILD.gn
 index da23872ce..490c56e1f 100644
@@ -57,6 +60,49 @@ index 2a04a3c36..2c5e5d6db 100644
  		if(dest->is3DSlice())
  		{
  			extent.depth = 1;  // The 3D image is instead interpreted as a 2D image with layers
+diff --git a/third_party/SPIRV-Tools/source/util/small_vector.h b/third_party/SPIRV-Tools/source/util/small_vector.h
+index 648a34824..cc8db5797 100644
+--- a/third_party/SPIRV-Tools/source/util/small_vector.h
++++ b/third_party/SPIRV-Tools/source/util/small_vector.h
+@@ -467,7 +467,7 @@ class SmallVector {
+ 
+   // The actual data used to store the array elements.  It must never be used
+   // directly, but must only be accessed through |small_data_|.
+-  typename std::aligned_storage<sizeof(T), std::alignment_of<T>::value>::type
++  typename std::aligned_storage<sizeof(T), alignof(T)>::type
+       buffer[small_size];
+ 
+   // A pointer to a vector that is used to store the elements of the vector when
+diff --git a/third_party/llvm-10.0/llvm/include/llvm/Demangle/ItaniumDemangle.h b/third_party/llvm-10.0/llvm/include/llvm/Demangle/ItaniumDemangle.h
+index 376e0efea..25619107b 100644
+--- a/third_party/llvm-10.0/llvm/include/llvm/Demangle/ItaniumDemangle.h
++++ b/third_party/llvm-10.0/llvm/include/llvm/Demangle/ItaniumDemangle.h
+@@ -21,12 +21,14 @@
+ #include "DemangleConfig.h"
+ #include "StringView.h"
+ #include "Utility.h"
++#include <algorithm>
+ #include <cassert>
+ #include <cctype>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+ #include <numeric>
++#include <type_traits>
+ #include <utility>
+ 
+ #define FOR_EACH_NODE_KIND(X) \
+diff --git a/third_party/llvm-10.0/llvm/include/llvm/Demangle/Utility.h b/third_party/llvm-10.0/llvm/include/llvm/Demangle/Utility.h
+index 04e1936eb..972fc240c 100644
+--- a/third_party/llvm-10.0/llvm/include/llvm/Demangle/Utility.h
++++ b/third_party/llvm-10.0/llvm/include/llvm/Demangle/Utility.h
+@@ -17,6 +17,7 @@
+ #include <cstdint>
+ #include <cstdlib>
+ #include <cstring>
++#include <exception>
+ #include <iterator>
+ #include <limits>
+ 
 -- 
 2.49.0
-

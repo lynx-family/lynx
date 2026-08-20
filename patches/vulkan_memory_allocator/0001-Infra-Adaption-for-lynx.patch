@@ -1,0 +1,26 @@
+From 7de5cc0 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Thu, 20 Aug 2026 16:27:23 +0800
+Subject: [PATCH] [Infra] Adaption for lynx.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+---
+ include/vk_mem_alloc.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/vk_mem_alloc.h b/include/vk_mem_alloc.h
+index 90410b5..bacd7d5 100644
+--- a/include/vk_mem_alloc.h
++++ b/include/vk_mem_alloc.h
+@@ -2568,6 +2568,7 @@ VMA_CALL_PRE void VMA_CALL_POST vmaFreeStatsString(
+ #include <cstdint>=0D
+ #include <cstdlib>=0D
+ #include <cstring>=0D
++#include <stdio.h>=0D
+ #include <utility>=0D
+ #include <type_traits>=0D
+ =0D
+-- 
+2.49.0
