@@ -99,6 +99,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1690,6 +1691,38 @@ public class LynxTemplateRender
     onTraceEventEnd(eventName);
   }
 
+  @AnyThread
+  void loadLynxML(final String source, final String url, final TemplateData initialData) {
+    if (mHasDestroy || source == null || url == null) {
+      return;
+    }
+    String eventName = "LynxTemplateRender.loadLynxML";
+    onTraceEventBegin(eventName);
+    if ((!mAsyncRender || reload) && !UIThreadUtils.isOnUiThread()) {
+      UIThreadUtils.runOnUiThread(new Runnable() {
+        @Override
+        public void run() {
+          loadLynxML(source, url, initialData);
+        }
+      });
+      onTraceEventEnd(eventName);
+      return;
+    }
+
+    TimingOption timingOption = TimingOption.createTimingOption(TimingConstants.LOAD_BUNDLE,
+        TimingConstants.LOAD_BUNDLE_START, mPerformanceController.isEmbeddedMode());
+    if (mPerformanceController.isEmbeddedMode()) {
+      mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
+    }
+    setUrl(url);
+    renderLynxML(source, url, initialData, timingOption);
+    LLog.i(TAG, formatLynxMessage("renderLynxML"));
+    if (initialData != null) {
+      postRenderOrUpdateData(initialData);
+    }
+    onTraceEventEnd(eventName);
+  }
+
   // init lynxEngine with info in LynxLoadMeta
   private void initLynxEngineWithLoadMeta(LynxLoadMeta loadMeta) {
     if (mNativePtr != 0) {
@@ -1766,6 +1799,24 @@ public class LynxTemplateRender
     }
     onTraceEventEnd(eventName);
     return false;
+  }
+
+  private void renderLynxML(
+      String source, String url, TemplateData initialData, TimingOption timingOption) {
+    if (mLynxContext == null) {
+      LLog.e(TAG, "renderLynxML with null LynxContext");
+      return;
+    }
+
+    if (mLynxContext.isEmbeddedModeOn() && getLynxView() != null && (mBodyView instanceof LynxView)
+        && getLynxView().getCurrentWidthMeasureSpec() >= 0
+        && getLynxView().getCurrentHeightMeasureSpec() >= 0) {
+      updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
+          getLynxView().getCurrentHeightMeasureSpec(), false);
+    }
+
+    prepareLynxEngineIfNeeded();
+    loadLynxMLInternal(source, initialData, url, new TASMCallback(), timingOption);
   }
 
   private void renderWithLoadMeta(final LynxLoadMeta metaData, TimingOption timingOption) {
@@ -3909,6 +3960,44 @@ public class LynxTemplateRender
         timingOption, callback);
   }
 
+  private void loadLynxMLInternal(String source, TemplateData initData, String url,
+      NativeFacade.Callback callback, TimingOption timingOption) {
+    NativeFacade facade = mNativeFacade;
+    long nativePtr = mNativePtr;
+    long nativeLifecycle = mNativeLifecycle;
+    if (facade == null || nativePtr == 0 || nativeLifecycle == 0) {
+      LLog.e(TAG, "Load LynxML before inited");
+      return;
+    }
+    if (source == null) {
+      LLog.e(TAG, "Load LynxML with null source");
+      return;
+    }
+
+    if (mDevTool != null) {
+      mDevTool.attachToDebugBridge(url);
+    }
+    facade.setUrl(url);
+    facade.setCallback(callback);
+    byte[] sourceBytes = source.getBytes(StandardCharsets.UTF_8);
+    facade.setSize(sourceBytes.length);
+
+    long initDataNativePtr = 0;
+    String processorName = null;
+    boolean readOnly = false;
+    if (initData != null) {
+      initData.flush();
+      initDataNativePtr = initData.getNativePtr();
+      processorName = initData.processorName();
+      readOnly = initData.isReadOnly();
+      initData.markConsumed();
+    }
+
+    timingOption.markTiming(TimingConstants.FFI_START);
+    nativeLoadLynxML(nativePtr, nativeLifecycle, url, sourceBytes, initDataNativePtr, readOnly,
+        processorName, initData, timingOption.toJavaOnlyMap());
+  }
+
   private void loadTemplateBundle(TemplateBundle bundle, String url, TemplateData initData,
       boolean isPrePainting, int options, NativeFacade.Callback callback,
       TimingOption timingOption) {
@@ -4667,6 +4756,10 @@ public class LynxTemplateRender
   private static native void nativeLoadTemplateByPreParsedData(long ptr, long lifecycle, String url,
       byte[] temp, boolean isPrePainting, boolean enableRecycleTemplateBundle, long data,
       boolean readOnly, String processorName, TemplateData templateData, int options,
+      ReadableMap timingOption);
+
+  private static native void nativeLoadLynxML(long ptr, long lifecycle, String url, byte[] source,
+      long data, boolean readOnly, String processorName, TemplateData templateData,
       ReadableMap timingOption);
 
   // FIXME(songshourui.null): only use templateData later
