@@ -16,6 +16,9 @@ export interface LynxRedirectResult {
   url: string;
   fallbackUrls?: Array<string>;
   fileCacheName?: string;
+  useHighestPriority?: boolean;
+  mappedFileCacheKey?: string;
+  mappedMemoryCacheKey?: string;
 }
 
 export type LynxRedirectCallbackResult = string | LynxRedirectResult;

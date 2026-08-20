@@ -8,6 +8,7 @@
 
 #include "base/include/string/string_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
+#include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_knife_option_compat.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_service_harmony.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_transform.h"
 
@@ -103,6 +104,7 @@ void ImageServiceNode::FetchImage(tasm::harmony::ImageRequestInfo info) {
     option->transformation =
         std::make_shared<ImageTransform>(std::move(info.processors));
   }
+  ImageKnifeOptionCompat::Apply(option.get(), info);
 
   image_knife_node_->Update(std::move(option));
 }
