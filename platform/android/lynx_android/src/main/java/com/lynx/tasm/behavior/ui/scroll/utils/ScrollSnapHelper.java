@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-package com.lynx.tasm.behavior.ui.scroll;
+package com.lynx.tasm.behavior.ui.scroll.utils;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
