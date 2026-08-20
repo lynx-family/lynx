@@ -147,6 +147,9 @@ deps = {
         "type": "git",
         "url": "https://chromium.googlesource.com/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git",
         "commit": revision.VULKAN_MEMORY_ALLOCATOR,
+        "patches": [
+            os.path.join(root_dir, 'patches', 'vulkan_memory_allocator', '*.patch')
+        ],
         "ignore_in_git": True,
     },
     "third_party/vulkan-deps": {
