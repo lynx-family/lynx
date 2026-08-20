@@ -49,7 +49,6 @@
 #include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
-#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -218,18 +217,6 @@ void ApplyEventResult(fml::RefPtr<event::Event> event, EventResult result) {
              static_cast<int>(EventResult::kStopPropagationBit)) {
     event->set_is_stop_propagation(true);
   }
-}
-
-Element *ResolveTemplateRootForAction(Element *element) {
-  if (element == nullptr) {
-    return nullptr;
-  }
-  if (!element->is_template()) {
-    return element;
-  }
-
-  auto root = static_cast<TemplateElement *>(element)->GetRoot();
-  return root != nullptr ? root.get() : element;
 }
 
 bool IsTransitionRelevantLayoutOnlyStyle(CSSPropertyID id) {
@@ -3052,6 +3039,7 @@ void Element::FlushActionsAsRoot() {
 
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   ParallelFlushAsRoot();
+  element_manager()->DrainPendingElementTemplateChildMounts(this);
   FlushActions();
 }
 
@@ -3275,7 +3263,7 @@ void Element::PrepareChildren() {
               });
   for (auto iter = scoped_children_.begin(); iter != scoped_children_.end();
        ++iter) {
-    auto *element_child = ReplaceTemplateChildIfNeeded(iter);
+    auto *element_child = iter->get();
 
     if (NeedPropagateInheritedDirtyFlag(false)) {
       // mark propagateInherited when necessary
@@ -3290,44 +3278,6 @@ void Element::PrepareChildren() {
       element_child->PrepareChildren();
     }
   }
-}
-
-Element *Element::ReplaceTemplateChildIfNeeded(
-    base::InlineVector<fml::RefPtr<Element>,
-                       kChildrenInlineVectorSize>::iterator child_iter) {
-  auto *child = child_iter->get();
-  if (!child->is_template()) {
-    return child;
-  }
-
-  auto *template_child = static_cast<TemplateElement *>(child);
-  auto root = template_child->GetRoot();
-  if (root == nullptr || root.get() == template_child) {
-    return child;
-  }
-
-  // Template nodes should hand over child preparation to the materialized root
-  // so the rest of the flush walks the real rendered subtree.
-  fml::RefPtr<TemplateElement> template_ref(template_child);
-  EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr) {
-    element_manager()->OnElementNodeRemovedForInspector(template_child);
-  });
-  OnNodeRemoved(template_child);
-  TreeResolver::NotifyNodeRemoved(this, template_child);
-  template_child->set_parent(nullptr);
-
-  // TODO(songshourui.null): Keep logical_children_ aligned with the
-  // materialized template root when this becomes observable.
-
-  *child_iter = root;
-  auto *root_element = root.get();
-  OnNodeAdded(root_element);
-  TreeResolver::NotifyNodeInserted(this, root_element);
-  root_element->set_parent(this);
-  EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr) {
-    element_manager()->OnElementNodeAddedForInspector(root_element);
-  });
-  return root_element;
 }
 
 void Element::PrepareChildForInsertion(Element *child) {
@@ -3383,8 +3333,8 @@ void Element::PrepareAndGenerateChildrenActions() {
     for (const auto &param : action_param_list_) {
       switch (param.type_) {
         case Action::kInsertChildAct: {
-          auto *param_child = ResolveTemplateRootForAction(param.child_.get());
-          auto *param_ref = ResolveTemplateRootForAction(param.ref_node_);
+          auto *param_child = param.child_.get();
+          auto *param_ref = param.ref_node_;
           PrepareChildForInsertion(param_child);
           if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
             HandleInsertChildAction(param_child, static_cast<int>(param.index_),
@@ -3399,7 +3349,7 @@ void Element::PrepareAndGenerateChildrenActions() {
         } break;
 
         case Action::kRemoveChildAct: {
-          auto *param_child = ResolveTemplateRootForAction(param.child_.get());
+          auto *param_child = param.child_.get();
           if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
             HandleRemoveChildAction(param_child);
           } else {
@@ -3408,7 +3358,7 @@ void Element::PrepareAndGenerateChildrenActions() {
         } break;
 
         case Action::kRemoveIntergenerationAct: {
-          auto *param_child = ResolveTemplateRootForAction(param.child_.get());
+          auto *param_child = param.child_.get();
           if (param_child->parent() == this) {
             break;
           }

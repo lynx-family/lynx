@@ -258,10 +258,7 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
 
   lepus::Value value = tasm_->CallLepusMethod(component_at_index_, args);
 
-  return element_manager_ != nullptr
-             ? element_manager_->ResolveTemplateElementRootIdForList(
-                   static_cast<int32_t>(value.Number()))
-             : static_cast<int32_t>(value.Number());
+  return static_cast<int32_t>(value.Number());
 }
 
 void ListElement::ComponentAtIndexes(
@@ -316,13 +313,9 @@ void ListElement::EnqueueComponent(int32_t sign) {
   if (!enqueue_component_.IsCallable()) {
     return;
   }
-  auto resolved_sign =
-      element_manager_ != nullptr
-          ? element_manager_->ResolveTemplateElementShellIdForList(sign)
-          : sign;
   std::vector<lepus::Value> args = {
       lepus::Value(fml::RefPtr<ListElement>(this)), lepus::Value(impl_id()),
-      lepus::Value(resolved_sign)};
+      lepus::Value(sign)};
   tasm_->CallLepusMethod(enqueue_component_, args);
 }
 

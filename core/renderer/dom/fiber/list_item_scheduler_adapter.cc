@@ -115,6 +115,8 @@ void ListItemSchedulerAdapter::ResolveElementTree(
                                                        std::to_string(impl_id));
                   });
               batch_resolving_tree_ = true;
+              render_root_->element_manager()
+                  ->DrainPendingElementTemplateChildMounts(render_root_);
               render_root_->FlushActions();
               batch_resolving_tree_ = false;
               promise.set_value(
@@ -131,6 +133,8 @@ void ListItemSchedulerAdapter::ResolveElementTree(
             list::BatchRenderStrategy::kAsyncResolveProperty) {
       // Invoke resolve element tree directly after consuming resolve property
       // reduce tasks.
+      render_root_->element_manager()->DrainPendingElementTemplateChildMounts(
+          render_root_);
       render_root_->FlushActions();
     }
   }

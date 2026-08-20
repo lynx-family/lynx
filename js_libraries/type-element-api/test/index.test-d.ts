@@ -4,10 +4,12 @@ import type {
   AnimationTimingOptions,
   Keyframe,
   ElementRef,
+  ElementTemplateHandle,
   ComponentElementRef,
   PageElementRef,
   ListElementRef,
   ViewElementRef,
+  SerializedCompiledTemplateInstance,
   SerializedTemplateInstance,
   SerializableValue,
   SerializedTypedTemplateInstance,
@@ -20,6 +22,8 @@ import type {
   ElementEventType,
   ElementEventListenerOptions,
 } from '../types/index';
+
+const shouldEvaluateTypeOnlyBranches: boolean = false;
 
 describe('Test Animation Types', () => {
   it('should have correct AnimationOperation type', () => {
@@ -56,6 +60,8 @@ describe('Test Element API Types', () => {
     expectTypeOf<PageElementRef>().toEqualTypeOf<ComponentElementRef>();
     expectTypeOf<ListElementRef>().toEqualTypeOf<ElementRef>();
     expectTypeOf<ViewElementRef>().toEqualTypeOf<ElementRef>();
+    expectTypeOf<ElementTemplateHandle>().not.toMatchTypeOf<ElementRef>();
+    expectTypeOf<ElementRef>().not.toMatchTypeOf<ElementTemplateHandle>();
   });
 
   it('should have correct global functions available', () => {
@@ -67,10 +73,13 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __CreateText>().toBeFunction();
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();
     expectTypeOf<typeof __CreateElementTemplate>().toBeFunction();
+    expectTypeOf<typeof __CreateTypedElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeFunction();
     expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeFunction();
     expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SerializeElementTemplate>().toBeFunction();
+    expectTypeOf<typeof __MarkTemplateElement>().toBeFunction();
+    expectTypeOf<typeof __IsTemplateElement>().toBeFunction();
   });
 
   it('should test __ElementAnimate function signature', () => {
@@ -98,37 +107,69 @@ describe('Test Element API Types', () => {
   });
 
   it('should test element template api signatures', () => {
-    const child = {} as ElementRef;
-    expectTypeOf<typeof __CreateElementTemplate>().toBeCallableWith('todo_card', 'path/to/bundle.js', ['width: 320px;', { completed: false }], [[child]], 'template-uid', {
-      cachedItems: [child],
+    const child = {} as ElementTemplateHandle;
+    const ordinaryElement = {} as ElementRef;
+    expectTypeOf<typeof __MarkTemplateElement>().toBeCallableWith(ordinaryElement);
+    expectTypeOf<typeof __IsTemplateElement>().toBeCallableWith(ordinaryElement);
+    expectTypeOf<typeof __CreateElementTemplate>().toBeCallableWith('todo_card', 'path/to/bundle.js', ['width: 320px;', { completed: false }], [[child]], 101, {
+      cachedItems: ['child'],
       enabled: true,
     });
-    const template = {} as ElementRef;
+    const sparseChildSlots: Parameters<typeof __CreateElementTemplate>[3] = [[child], null, undefined];
+    expectTypeOf<typeof __CreateElementTemplate>().toBeCallableWith('todo_card', null, null, sparseChildSlots, 102);
+    const template = {} as ElementTemplateHandle;
 
-    expectTypeOf<typeof __CreateElementTemplate>().returns.toEqualTypeOf<ElementRef>();
+    expectTypeOf<typeof __CreateElementTemplate>().returns.toEqualTypeOf<ElementTemplateHandle>();
     expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeCallableWith(template, 0, { completed: true });
     expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeCallableWith(template, 1, child, null);
     expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeCallableWith(template, 1, child);
     expectTypeOf<typeof __SerializeElementTemplate>().returns.toEqualTypeOf<SerializedTemplateInstance>();
 
-    const serialized = {} as SerializedTemplateInstance;
-    assertType<SerializedTemplateInstance>(serialized);
-    assertType<SerializedTemplateInstance[][] | null | undefined>(serialized.elementSlots);
-    assertType<Record<string, any> | null | undefined>(serialized.options);
-    assertType<number | string>(serialized.uid);
+    // @ts-expect-error ET insertion rejects ordinary Element handles.
+    const invalidChildSlot: Parameters<typeof __InsertNodeToElementTemplate>[2] = ordinaryElement;
+    if (shouldEvaluateTypeOnlyBranches) {
+      // @ts-expect-error Compiled ET childSlots reject ordinary Element handles.
+      __CreateElementTemplate('todo_card', null, null, [[ordinaryElement]], 108);
+      // @ts-expect-error Typed ET childSlots reject ordinary Element handles.
+      __CreateTypedElementTemplate('view', null, [[ordinaryElement]], 109);
+      // @ts-expect-error Ordinary Element APIs reject ET handles.
+      __GetElementUniqueID(template);
+      // @ts-expect-error Ordinary tree operations reject ET handles.
+      __AppendElement(ordinaryElement, template);
+      // @ts-expect-error Template-scope markers operate on ordinary Elements.
+      __MarkTemplateElement(template);
+      // @ts-expect-error Template-scope queries operate on ordinary Elements.
+      __IsTemplateElement(template);
+      // Generic options remain type-broad.
+      __CreateElementTemplate('todo_card', null, null, null, 103, { child });
+      // @ts-expect-error Core ET UIDs are numeric-only.
+      __CreateElementTemplate('todo_card', null, null, null, 'string-uid');
+      // @ts-expect-error Core ET UIDs are numeric-only.
+      __CreateTypedElementTemplate('view', null, null, 'string-uid');
+    }
+    void invalidChildSlot;
 
-    expectTypeOf<typeof __CreateTypedElementTemplate>().toBeCallableWith('list', { 'enable-layout': true }, [[child]], 1001, { recycled: [child] });
-    const typed = {} as ElementRef;
-    expectTypeOf<typeof __CreateTypedElementTemplate>().returns.toEqualTypeOf<ElementRef>();
-    expectTypeOf<typeof __CreateTypedElementTemplate>().toBeCallableWith('raw-text', null, null, 'typed-uid');
+    expectTypeOf<SerializedCompiledTemplateInstance['childSlots']>().toEqualTypeOf<(SerializedTemplateInstance[] | null | undefined)[] | null | undefined>();
+    expectTypeOf<SerializedCompiledTemplateInstance['options']>().toEqualTypeOf<Record<string, any> | null | undefined>();
+    expectTypeOf<SerializedCompiledTemplateInstance['uid']>().toEqualTypeOf<number>();
+
+    const typed = {} as ElementTemplateHandle;
+    expectTypeOf<typeof __CreateTypedElementTemplate>().toBeCallableWith('raw-text', null, null, 104);
     expectTypeOf<typeof __SerializeElementTemplate>().toBeCallableWith(typed);
+    if (shouldEvaluateTypeOnlyBranches) {
+      const typedTemplate = __CreateTypedElementTemplate('raw-text', null, null, 105);
+      expectTypeOf(typedTemplate).toEqualTypeOf<ElementTemplateHandle>();
+      const listTemplate = __CreateTypedElementTemplate('list', null, null, 106);
+      expectTypeOf(listTemplate).toEqualTypeOf<undefined>();
+      const dynamicTag = '' as string;
+      const dynamicTemplate = __CreateTypedElementTemplate(dynamicTag, null, null, 107);
+      expectTypeOf(dynamicTemplate).toEqualTypeOf<ElementTemplateHandle | undefined>();
+    }
 
-    const serializedTyped = {} as SerializedTemplateInstance;
-    assertType<SerializedTemplateInstance>(serializedTyped);
     expectTypeOf<SerializedTypedTemplateInstance['attributes']>().toEqualTypeOf<Record<string, SerializableValue> | null | undefined>();
-    assertType<SerializedTemplateInstance[][] | null | undefined>(serializedTyped.elementSlots);
-    assertType<Record<string, any> | null | undefined>(serializedTyped.options);
-    assertType<number | string>(serializedTyped.uid);
+    expectTypeOf<SerializedTypedTemplateInstance['childSlots']>().toEqualTypeOf<(SerializedTemplateInstance[] | null | undefined)[] | null | undefined>();
+    expectTypeOf<SerializedTypedTemplateInstance['options']>().toEqualTypeOf<Record<string, any> | null | undefined>();
+    expectTypeOf<SerializedTypedTemplateInstance['uid']>().toEqualTypeOf<number>();
   });
 
   it('should test event api signatures', () => {
