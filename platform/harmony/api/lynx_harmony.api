@@ -545,6 +545,7 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
 
 export interface TemplateProviderResult {
   binary?: ArrayBuffer;
+  bundle?: TemplateBundle;
 }
 
 export class LynxResourceRequest {
@@ -1067,6 +1068,7 @@ export class TemplateBundle extends lynx.TemplateBundle {
   public static async fromTemplateAsyncWithOption(template: ArrayBuffer, option: TemplateBundleOption): Promise<TemplateBundle>;
   public getExtraInfo(): Map<string, Object>;
   public isElementBundleValid(): boolean;
+  public isValid(): boolean;
   public getTemplateSize(): number;
   public postJsCacheGenerationTask(bytecodeSourceUrl: string, useV8: boolean): void;
   public getErrorMessage(): string;
