@@ -43,6 +43,9 @@ struct ImageRequestInfo {
   std::unordered_map<std::string, std::string> custom_param;
   std::vector<std::string> fallback_urls;
   std::string file_cache_name;
+  bool use_highest_priority = false;
+  std::string mapped_memory_cache_key;
+  std::string mapped_file_cache_key;
 };
 
 enum class LynxImageOrigin : int32_t {
