@@ -64,9 +64,7 @@ void ResourceLoaderEmbedder::Load(
     url = intercept_->ShouldInterceptUrl(src, false);
   }
   url::UriSchemeType scheme_type = url::ParseUriScheme(url);
-  if (scheme_type == url::UriSchemeType::kNet) {
-    LoadByNet(url, callback, resource_type);
-  } else if (scheme_type == url::UriSchemeType::kLocalFile) {
+  if (scheme_type == url::UriSchemeType::kLocalFile) {
     fml::TaskRunner::RunNowOrPostTask(
         ui_task_runner_,
         [url = std::move(url), callback = std::move(callback)]() {
@@ -80,9 +78,7 @@ void ResourceLoaderEmbedder::Load(
           }
         });
   } else {
-    fml::TaskRunner::RunNowOrPostTask(
-        ui_task_runner_,
-        [callback = std::move(callback)]() { callback(nullptr, 0); });
+    LoadByNet(url, callback, resource_type);
   }
 }
 
