@@ -1523,8 +1523,8 @@ napi_value LynxTemplateRenderer::LoadTemplateBundle(napi_env env,
 
   LynxTemplateBundleHarmony* bundle = nullptr;
   status = napi_unwrap(env, args[1], reinterpret_cast<void**>(&bundle));
-  if (bundle == nullptr) {
-    LOGE("get template bundle nullptr");
+  if (status != napi_ok || bundle == nullptr || !bundle->IsValid()) {
+    LOGE("get invalid template bundle");
     return nullptr;
   }
 

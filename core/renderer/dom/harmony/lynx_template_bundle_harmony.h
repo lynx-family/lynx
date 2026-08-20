@@ -21,6 +21,7 @@ class LynxTemplateBundleHarmony {
   LynxTemplateBundleHarmony() : bundle_(nullptr), weak_factory_(this){};
   ~LynxTemplateBundleHarmony() = default;
 
+  bool IsValid() const { return bundle_ != nullptr; }
   tasm::LynxTemplateBundle& GetBundle() { return *bundle_; };
   void SetBundle(tasm::LynxTemplateBundle bundle);
 
@@ -28,6 +29,7 @@ class LynxTemplateBundleHarmony {
   static napi_value New(napi_env env, napi_callback_info info);
   static napi_value ParseTemplate(napi_env env, napi_callback_info info);
   static napi_value AsyncParseTemplate(napi_env env, napi_callback_info info);
+  static napi_value GetIsValid(napi_env env, napi_callback_info info);
   static napi_value GetExtraInfo(napi_env env, napi_callback_info info);
   static napi_value GetContainsElementTree(napi_env env,
                                            napi_callback_info info);
