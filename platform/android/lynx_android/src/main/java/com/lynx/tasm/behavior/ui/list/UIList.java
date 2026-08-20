@@ -48,6 +48,7 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityDelegate;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.accessibility.LynxNodeProvider;
+import com.lynx.tasm.behavior.ui.scroll.utils.ScrollContainerDrawHelper;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.event.EventsListener;

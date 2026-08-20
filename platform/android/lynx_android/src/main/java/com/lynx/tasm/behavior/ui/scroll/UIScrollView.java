@@ -41,6 +41,7 @@ import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.list.UIList;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
+import com.lynx.tasm.behavior.ui.scroll.utils.ScrollSnapHelper;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.event.*;
 import com.lynx.tasm.gesture.GestureArenaMember;

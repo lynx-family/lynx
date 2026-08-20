@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-package com.lynx.tasm.behavior.ui.list.container;
+package com.lynx.tasm.behavior.ui.scroll.utils;
 
 import android.content.Context;
 import android.view.Choreographer;
@@ -10,23 +10,23 @@ import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.UnitUtils;
 
-public abstract class UIListAutoScroller {
+public abstract class AutoScroller {
   private boolean mStart = false;
   protected int mAutoRatePerFrame = 0;
   private boolean mAutoStopOnBounds = true;
   private Choreographer.FrameCallback mFrameCallback = null;
 
-  abstract void onAutoScrollError(String msg);
+  protected abstract void onAutoScrollError(String msg);
 
-  abstract void onAutoScrollStart();
+  protected abstract void onAutoScrollStart();
 
-  abstract void onAutoScrollEnd();
+  protected abstract void onAutoScrollEnd();
 
   // TODO(xiamengfei.moonface) Abstract the interfaces of canScroll and scrollBy for a scrollable
   // container.
-  abstract boolean canScroll(int distance);
+  protected abstract boolean canScroll(int distance);
 
-  abstract void scrollBy(int distance);
+  protected abstract void scrollBy(int distance);
 
   public void setAutoScrollParams(boolean start, boolean autoStopOnBounds) {
     mStart = start;

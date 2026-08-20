@@ -40,7 +40,8 @@ import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
-import com.lynx.tasm.behavior.ui.scroll.ScrollSnapHelper;
+import com.lynx.tasm.behavior.ui.scroll.utils.AutoScroller;
+import com.lynx.tasm.behavior.ui.scroll.utils.ScrollSnapHelper;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.ComponentView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
@@ -74,7 +75,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private static final boolean DEBUG = false;
   private static final int DEFAULT_FADE_IN_ANIMATION_DURATION = 100;
   private boolean mIsVertical = true;
-  private UIListAutoScroller mAutoScroller = null;
+  private AutoScroller mAutoScroller = null;
   private JavaOnlyArray mItemKeys = new JavaOnlyArray();
   private final HashMap<String, Integer> mItemKeyMap = new HashMap<>();
   private boolean mEnableListSticky = false;
@@ -1236,14 +1237,14 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     // AutoScroller.
 
     if (mAutoScroller == null) {
-      mAutoScroller = new UIListAutoScroller() {
+      mAutoScroller = new AutoScroller() {
         @Override
-        void onAutoScrollError(String msg) {
+        protected void onAutoScrollError(String msg) {
           callback.invoke(LynxUIMethodConstants.UNKNOWN, msg);
         }
 
         @Override
-        void onAutoScrollStart() {
+        protected void onAutoScrollStart() {
           mView.mIsDuringAutoScroll = true;
           if (mScrollToCallback != null) {
             // Note: Here need temporarily store lastScrollToCallback and reset mScrollToCallback to
@@ -1260,13 +1261,13 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         }
 
         @Override
-        boolean canScroll(int distance) {
+        protected boolean canScroll(int distance) {
           return ((distance > 0 && getView().canScrollBy(1))
               || (distance < 0 && getView().canScrollBy(-1)));
         }
 
         @Override
-        void scrollBy(int distance) {
+        protected void scrollBy(int distance) {
           if (mIsVertical) {
             getView().scrollBy(0, distance);
           } else {
@@ -1275,7 +1276,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         }
 
         @Override
-        void onAutoScrollEnd() {
+        protected void onAutoScrollEnd() {
           mView.mIsDuringAutoScroll = false;
           mView.setScrollState(SCROLL_STATE_IDLE);
         }
