@@ -76,6 +76,8 @@ class TextTest : public UITest {
   void UISetUp() override {
     owner_ =
         new ShadowNodeOwner(fml::MessageLoop::GetCurrent().GetTaskRunner());
+    view_context_ = std::make_unique<ViewContext>(page_.get(), owner_);
+    owner_->SetViewContext(view_context_.get());
     text_shadow_node_ =
         std::make_unique<TextShadowNode>(owner_, std::string("text"), -1);
     raw_text_shadow_node_ = std::make_unique<RawTextShadowNode>(
@@ -90,9 +92,12 @@ class TextTest : public UITest {
     text_shadow_node_.reset();
     raw_text_shadow_node_.reset();
     inline_text_shadow_node_.reset();
+    owner_->SetViewContext(nullptr);
+    view_context_.reset();
     delete owner_;
   }
   ShadowNodeOwner* owner_;
+  std::unique_ptr<ViewContext> view_context_;
   std::unique_ptr<TextShadowNode> text_shadow_node_;
   std::unique_ptr<InlineTextShadowNode> inline_text_shadow_node_;
   std::unique_ptr<RawTextShadowNode> raw_text_shadow_node_;
@@ -374,6 +379,39 @@ TEST_F_UI(TextTest, GetLineInfoIsEmptyBeforeParagraphLayout) {
   TextRender text_render(text_shadow_node_.get());
 
   EXPECT_TRUE(text_render.GetLineInfo().empty());
+}
+
+TEST_F_UI(TextTest, LayoutEventReportsLogicalPixelSize) {
+  auto metrics = page_->GetViewportMetrics();
+  metrics.device_pixel_ratio = 2;
+  page_->SetViewportMetrics(metrics);
+  text_shadow_node_->AddEventCallback(event_attr::kEventLayout);
+  raw_text_shadow_node_->SetText("layout event");
+  MeasureConstraint constraint{200.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  const auto result = text_shadow_node_->Measure(constraint);
+  clay::Value::Map event_params;
+  custom_event_callback_ = [&](int, const char* event_name,
+                               clay::Value::Map params) {
+    if (event_attr::kEventLayout == std::string(event_name)) {
+      event_params = std::move(params);
+    }
+  };
+
+  text_shadow_node_->OnLayout(result.width, TextMeasureMode::kDefinite,
+                              result.height, TextMeasureMode::kDefinite,
+                              {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f});
+
+  ASSERT_FALSE(event_params.empty());
+  const auto& size = event_params.at("size").GetMap();
+  const auto get_number = [](const clay::Value& value) {
+    return value.IsDouble() ? value.GetDouble()
+                            : static_cast<double>(value.GetFloat());
+  };
+  EXPECT_DOUBLE_EQ(get_number(size.at("width")),
+                   page_->ConvertTo<kPixelTypeLogical>(result.width));
+  EXPECT_DOUBLE_EQ(get_number(size.at("height")),
+                   page_->ConvertTo<kPixelTypeLogical>(result.height));
 }
 
 TEST_F_UI(TextTest, GetTextInfoHonorsDefaultAndExplicitMaxLine) {

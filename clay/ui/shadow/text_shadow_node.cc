@@ -84,10 +84,12 @@ void TextShadowNode::OnLayout(float width, TextMeasureMode width_mode,
     clay::Value::Map map;
     map["lineCount"] = clay::Value(static_cast<int>(lines_size));
     map["lines"] = clay::Value(std::move(array));
+    auto* page_view = owner_->GetViewContext()->GetPageView();
     map["size"] = clay::Value(CreateClayMap(
-        {"width", "height"}, paragraph->GetMaxWidth(), paragraph->GetHeight()));
-    owner_->GetViewContext()->GetPageView()->SendCustomEvent(
-        id(), event_attr::kEventLayout, std::move(map));
+        {"width", "height"},
+        page_view->ConvertTo<kPixelTypeLogical>(paragraph->GetMaxWidth()),
+        page_view->ConvertTo<kPixelTypeLogical>(paragraph->GetHeight())));
+    page_view->SendCustomEvent(id(), event_attr::kEventLayout, std::move(map));
   }
 
   UpdateBundleData();
