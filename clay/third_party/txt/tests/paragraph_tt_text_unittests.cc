@@ -158,6 +158,22 @@ TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
 }
 #endif
 
+TEST(ParagraphTTTextTest, DefaultPlaceholderUsesAlphabeticBaseline) {
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(nullptr, paragraph_style);
+  tttext::Style style;
+  PlaceholderRun placeholder;
+  placeholder.width = 10;
+  placeholder.height = 1;
+
+  EXPECT_EQ(placeholder.alignment, PlaceholderAlignment::kBaseline);
+  EXPECT_EQ(placeholder.baseline, TextBaseline::kAlphabetic);
+  paragraph.AddPlaceholder(style, placeholder, false);
+
+  EXPECT_EQ(paragraph.GetTextSize(), 1u);
+  EXPECT_EQ(paragraph.paragraph_->GetCharCount(), 1u);
+}
+
 }  // namespace txt
 
 int main(int argc, char** argv) {
