@@ -61,12 +61,6 @@ class LynxEnvConfig {
   void SetPreferredColorScheme(css::MediaPreferredColorScheme scheme) {
     preferred_color_scheme_ = scheme;
   }
-  css::MediaPreferredReducedMotion PreferredReducedMotion() const {
-    return preferred_reduced_motion_;
-  }
-  void SetPreferredReducedMotion(css::MediaPreferredReducedMotion preference) {
-    preferred_reduced_motion_ = preference;
-  }
 
   float DevicePixelRatio() const {
     return layouts_unit_per_px_ * physical_pixels_per_layout_unit_;
@@ -102,8 +96,6 @@ class LynxEnvConfig {
   bool font_scale_sp_only_ = false;
   css::MediaPreferredColorScheme preferred_color_scheme_ =
       css::MediaPreferredColorScheme::kLight;
-  css::MediaPreferredReducedMotion preferred_reduced_motion_ =
-      css::MediaPreferredReducedMotion::kNoPreference;
   // Currently, layout unit is equal to default unit used by platform
   // On iOS one layout unit equals to one ios point
   // On Android one layout unit equals to one physical pixel

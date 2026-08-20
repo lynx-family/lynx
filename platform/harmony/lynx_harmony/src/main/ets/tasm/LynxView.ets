@@ -49,13 +49,6 @@ import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { ILynxDevToolService } from './service/ILynxDevToolService';
 import { LynxImageConfig } from './image/LynxImageConfig';
 import { registerGlobalLynxModules } from '../library/LynxLibraryRegistry';
-import {
-  AnimationReduceStateChangeCallback,
-  isAnimationReduceAvailable,
-  isAnimationReduceEnabled,
-  offAnimationReduceStateChange,
-  onAnimationReduceStateChange,
-} from './ReducedMotionCompatibility';
 
 export enum MeasureMode {
   INDEFINITE = 0,
@@ -222,13 +215,11 @@ export struct LynxView {
   private keyboardHeightChangeCallback?: (height: number) => void;
   private keyboardWillShowCallback?: (keyboardInfo: window.KeyboardInfo) => void;
   private keyboardWillHideCallback?: (keyboardInfo: window.KeyboardInfo) => void;
-  private animationReduceStateChangeCallback?: AnimationReduceStateChangeCallback;
   private pendingKeyboardAnimationOption?: AnimateParam;
   private activeKeyboardAnimationOption?: AnimateParam;
   private loadingID: number = 0;
   private fontScale: number = 1.0;
   private colorScheme: ColorScheme = ColorScheme.LIGHT;
-  private reducedMotionEnabled: boolean = false;
   private enableMultiAsyncThread: boolean = true;
   onCreate: (context: LynxContext) => void = ((context: LynxContext) => {
   });
@@ -457,9 +448,6 @@ export struct LynxView {
     if (this.colorScheme != ColorScheme.LIGHT) {
       this.context.updateColorScheme(this.colorScheme);
     }
-    if (this.reducedMotionEnabled) {
-      this.templateRenderer.updateReducedMotion(true);
-    }
 
     this.nodeController?.updateNode(this.uiRenderer, this.fitContentHeight && !!this.experimentalFixFitContent);
     if (!this.enableAirStrictMode) {
@@ -496,7 +484,6 @@ export struct LynxView {
       this.uiRendererCreator ? this.uiRendererCreator.createNodeController() : new CAPINodeController()
     this.setupLogBox();
     this.context.setLynxView(this);
-    this.startReducedMotionObserver();
     if (this.hasLoadSource()) {
       this.reInitTemplateRenderer(true);
     }
@@ -556,7 +543,6 @@ export struct LynxView {
   aboutToDisappear() {
     LLog.d(TAG, 'aboutToDisappear.')
     this.hasAppeared = false;
-    this.stopReducedMotionObserver();
     this.perfController?.destroy();
     this.perfController = undefined;
     this.uiRenderer?.aboutToDisappear();
@@ -596,36 +582,6 @@ export struct LynxView {
       extensionService.onLynxViewDestroy(this.context);
     }
     this.context.aboutToDisappear();
-  }
-
-  private startReducedMotionObserver(): void {
-    if (this.animationReduceStateChangeCallback !== undefined ||
-      !isAnimationReduceAvailable()) {
-      return;
-    }
-    try {
-      this.reducedMotionEnabled = isAnimationReduceEnabled();
-      this.animationReduceStateChangeCallback = (enabled: boolean): void => {
-        this.reducedMotionEnabled = enabled;
-        this.templateRenderer?.updateReducedMotion(enabled);
-      };
-      onAnimationReduceStateChange(this.animationReduceStateChangeCallback);
-    } catch (e) {
-      this.animationReduceStateChangeCallback = undefined;
-      LLog.e(TAG, `Failed to observe animation reduce state. Code: ${e.code}, message: ${e.message}`);
-    }
-  }
-
-  private stopReducedMotionObserver(): void {
-    if (this.animationReduceStateChangeCallback === undefined) {
-      return;
-    }
-    try {
-      offAnimationReduceStateChange(this.animationReduceStateChangeCallback);
-    } catch (e) {
-      LLog.e(TAG, `Failed to stop observing animation reduce state. Code: ${e.code}, message: ${e.message}`);
-    }
-    this.animationReduceStateChangeCallback = undefined;
   }
 
   private getDefaultKeyboardAnimationOption(): AnimateParam {

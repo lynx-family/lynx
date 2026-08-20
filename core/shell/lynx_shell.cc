@@ -1268,17 +1268,6 @@ void LynxShell::UpdateColorScheme(int scheme, bool use_act_lite) {
   }
 }
 
-void LynxShell::UpdateReducedMotion(bool reduced_motion, bool use_act_lite) {
-  auto update_reduced_motion = [reduced_motion](auto& engine) {
-    engine->UpdateReducedMotion(reduced_motion);
-  };
-  if (use_act_lite) {
-    engine_actor_->ActLite(std::move(update_reduced_motion));
-  } else {
-    engine_actor_->Act(std::move(update_reduced_motion));
-  }
-}
-
 void LynxShell::SetFontScale(float scale) {
   engine_actor_->ActLite(
       [scale](auto& engine) { engine->SetFontScale(scale); });

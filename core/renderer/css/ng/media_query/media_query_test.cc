@@ -167,30 +167,6 @@ TEST(MediaFeatureTest, ToFromLepusRoundtripSimple) {
   EXPECT_FALSE(restored.HasRightBound());
 }
 
-TEST(MediaFeatureTest, PrefersReducedMotionIdRoundtrip) {
-  auto original =
-      MakeFeature("prefers-reduced-motion", MediaFeatureOperator::kNone,
-                  MediaFeatureValue::Ident("reduce"));
-  auto restored = MediaFeature::FromLepus(original.ToLepus());
-  EXPECT_EQ(restored.Id(), MediaFeatureId::kPrefersReducedMotion);
-  EXPECT_EQ(restored.Name(), "prefers-reduced-motion");
-  EXPECT_EQ(restored.LeftValue().Text(), "reduce");
-}
-
-TEST(MediaFeatureTest, PrefersReducedMotionRestoresUnknownIdFromName) {
-  auto arr = lepus::CArray::Create();
-  arr->emplace_back(static_cast<uint32_t>(MediaFeatureId::kUnknown));
-  arr->emplace_back(std::string("prefers-reduced-motion"));
-  arr->emplace_back(static_cast<uint32_t>(MediaFeatureOperator::kNone));
-  arr->emplace_back(MediaFeatureValue::Ident("reduce").ToLepus());
-  arr->emplace_back(false);
-
-  auto restored = MediaFeature::FromLepus(lepus_value(std::move(arr)));
-  EXPECT_EQ(restored.Id(), MediaFeatureId::kPrefersReducedMotion);
-  EXPECT_EQ(restored.Name(), "prefers-reduced-motion");
-  EXPECT_EQ(restored.LeftValue().Text(), "reduce");
-}
-
 TEST(MediaFeatureTest, ToFromLepusRoundtripRange) {
   auto original = MakeFeature(
       "width", MediaFeatureOperator::kGt,

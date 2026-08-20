@@ -887,7 +887,6 @@ StyleResolver::BuildMediaQueryEvaluator(ElementManager* element_manager,
     values = css::MediaValues::WithViewport(width, height,
                                             env_config.DevicePixelRatio());
     values.SetPreferredColorScheme(env_config.PreferredColorScheme());
-    values.SetPreferredReducedMotion(env_config.PreferredReducedMotion());
     if (Element* root = element_manager->root()) {
       values.SetRootFontSize(root->GetFontSize() / layout_unit);
     }

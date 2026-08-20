@@ -389,7 +389,7 @@ If the Web layout's essential behavior depends on Table Layout itself, such as t
 ## Responsive Grids
 
 ```css
-/* Use @media with enableCSSRule, or use viewport units or JavaScript. */
+/* Note: Lynx does not support @media. Use viewport units or update the layout dynamically with JavaScript. */
 
 /* Mobile/default: one column */
 .grid {

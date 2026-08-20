@@ -37,7 +37,6 @@
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/PaintingContextProxy.h>
-#import <UIKit/UIAccessibility.h>
 #import "LynxLogContext+Internal.h"
 #import "LynxTraceEventDef.h"
 
@@ -234,9 +233,6 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   shell_->SetFontScale(_fontScale);
   if (_colorScheme != LynxColorSchemeLight) {
     shell_->UpdateColorScheme(static_cast<int>(_colorScheme), true);
-  }
-  if (UIAccessibilityIsReduceMotionEnabled()) {
-    shell_->UpdateReducedMotion(true, true);
   }
 
   if (!_builder.disableMTSPoolWarmup) {

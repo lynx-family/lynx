@@ -128,8 +128,6 @@ enum class MediaFeatureId : uint8_t {
   kDevicePixelRatio = 29,
   kMinDevicePixelRatio = 30,
   kMaxDevicePixelRatio = 31,
-
-  kPrefersReducedMotion = 32,
 };
 
 // Map a lowercased feature name to its enum id. Returns kUnknown for

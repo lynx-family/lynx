@@ -301,7 +301,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void UpdateScreenMetrics(float width, float height);
   void UpdateFontScale(float font_scale);
   void UpdateColorScheme(int scheme);
-  void UpdateReducedMotion(bool reduced_motion);
   void UpdateViewport(float width, SLMeasureMode width_mode_, float height,
                       SLMeasureMode height_mode, bool need_layout);
 

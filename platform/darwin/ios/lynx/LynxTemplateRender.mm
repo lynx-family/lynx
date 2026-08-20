@@ -33,7 +33,6 @@
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView.h>
-#import <UIKit/UIAccessibility.h>
 #import "LynxAccessibilityModule.h"
 #import "LynxBaseConfigurator+Internal.h"
 #import "LynxCallStackUtil.h"
@@ -209,11 +208,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
     /// UIRender + LynxShell + Event
     [self setUpWithBuilder:builder screenSize:screenSize];
-    [[NSNotificationCenter defaultCenter]
-        addObserver:self
-           selector:@selector(reducedMotionStatusDidChange:)
-               name:UIAccessibilityReduceMotionStatusDidChangeNotification
-             object:nil];
 
     // Update info
     [self updateNativeTheme];
@@ -505,10 +499,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)dealloc {
-  [[NSNotificationCenter defaultCenter]
-      removeObserver:self
-                name:UIAccessibilityReduceMotionStatusDidChangeNotification
-              object:nil];
   [self destroyStaticPageHost];
   [self unregisterMemoryUsageFetcherIfNeeded];
   if (_lynxEngine == nil) {
@@ -1636,13 +1626,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     return;
   }
   shell_->UpdateColorScheme(static_cast<int>(scheme));
-}
-
-- (void)reducedMotionStatusDidChange:(NSNotification*)notification {
-  if (shell_->IsDestroyed()) {
-    return;
-  }
-  shell_->UpdateReducedMotion(UIAccessibilityIsReduceMotionEnabled());
 }
 
 - (void)pauseRootLayoutAnimation {

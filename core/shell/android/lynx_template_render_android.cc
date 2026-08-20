@@ -1038,19 +1038,6 @@ void UpdateColorScheme(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
-void UpdateReducedMotion(JNIEnv* env, jclass jcaller, jlong ptr,
-                         jlong lifecycle, jboolean reduced_motion,
-                         jboolean use_act_lite) {
-  AtomicLifecycle* lifecycle_ptr =
-      reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
-    return;
-  }
-  reinterpret_cast<LynxShell*>(ptr)->UpdateReducedMotion(
-      static_cast<bool>(reduced_motion), static_cast<bool>(use_act_lite));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
-}
-
 void SyncFetchLayoutResult(JNIEnv* env, jclass jcaller, jlong ptr,
                            jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =

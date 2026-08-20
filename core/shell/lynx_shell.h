@@ -206,8 +206,6 @@ class LynxShell {
 
   void UpdateColorScheme(int scheme, bool use_act_lite = false);
 
-  void UpdateReducedMotion(bool reduced_motion, bool use_act_lite = false);
-
   void SetFontScale(float scale);
 
   void SetPlatformConfig(std::string platform_config_json_string);
