@@ -72,15 +72,20 @@ struct LynxResourceResponse {
   bool Success() const { return err_code == 0; }
 };
 
+struct LynxImageResponseOptions {
+  std::vector<std::string> fallback_paths;
+  std::string file_cache_name;
+  bool use_highest_priority = false;
+  std::string mapped_file_cache_key;
+  std::string mapped_memory_cache_key;
+};
+
 struct LynxPathResponse {
   std::string path;
   int32_t err_code = 0;
   std::string err_msg;
   ResourceLoadTiming timing;
-  // Fallback paths to be used when the primary path is invalid or fails to
-  // download.
-  std::vector<std::string> fallback_paths;
-  std::string file_cache_name;
+  LynxImageResponseOptions image_options;
 
   bool Success() const { return err_code == 0; }
 };

@@ -10,6 +10,8 @@ lynx_image_service_sources =
                   "src/main/cpp/entry.cc",
                   "src/main/cpp/image_service_harmony.cc",
                   "src/main/cpp/image_service_harmony.h",
+                  "src/main/cpp/image_knife_option_compat.cc",
+                  "src/main/cpp/image_knife_option_compat.h",
                   "src/main/cpp/image_service_node.cc",
                   "src/main/cpp/image_service_node.h",
                   "src/main/cpp/image_transform.cc",
