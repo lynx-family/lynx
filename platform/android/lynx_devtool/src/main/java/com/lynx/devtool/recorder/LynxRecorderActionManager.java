@@ -239,6 +239,7 @@ public class LynxRecorderActionManager {
   private boolean mCreateWhenReload;
   private int mBackgroundColor;
   private boolean mLandScape;
+  @Nullable private Boolean mEnableBTSOverride;
   private boolean mEnableAirStrictMode;
   private boolean mEnableSizeOptimization;
   private boolean mForbidTimeFreeze;
@@ -800,6 +801,7 @@ public class LynxRecorderActionManager {
 
     mDelayEndInterval = queryMap.getInt("delayEndInterval", 3500);
 
+    mEnableBTSOverride = parseEnableBTSOverride(queryMap);
     mEnableAirStrictMode = queryMap.getBoolean("enableAirStrict", false);
 
     mLandScape = queryMap.getBoolean("landscape", false);
@@ -838,6 +840,18 @@ public class LynxRecorderActionManager {
     mForbidTimeFreeze = queryMap.getBoolean("forbidTimeFreeze", false);
 
     create();
+  }
+
+  @Nullable
+  static Boolean parseEnableBTSOverride(QueryMapUtils queryMap) {
+    String enableBTS = queryMap.getString("enable_bts");
+    return enableBTS == null ? null : !"0".equals(enableBTS);
+  }
+
+  static boolean resolveEnableBTS(@Nullable Boolean enableBTSOverride,
+      boolean recordedEnableJSRuntime, boolean enableAirStrictMode) {
+    return enableBTSOverride != null ? enableBTSOverride
+                                     : recordedEnableJSRuntime && !enableAirStrictMode;
   }
 
   private void create() {
@@ -1231,19 +1245,15 @@ public class LynxRecorderActionManager {
   }
 
   private boolean enableJSRuntime() {
-    if (mThreadStrategyData == null) {
-      return true;
-    }
-    boolean enableJSRuntime = true;
-    if (mThreadStrategyData.has("enableJSRuntime")) {
+    boolean recordedEnableJSRuntime = true;
+    if (mThreadStrategyData != null && mThreadStrategyData.has("enableJSRuntime")) {
       try {
-        enableJSRuntime =
-            mThreadStrategyData.getBoolean("enableJSRuntime") && !mEnableAirStrictMode;
+        recordedEnableJSRuntime = mThreadStrategyData.getBoolean("enableJSRuntime");
       } catch (JSONException e) {
-        e.printStackTrace();
+        Log.e(TAG, "Failed to read recorded enableJSRuntime.", e);
       }
     }
-    return enableJSRuntime;
+    return resolveEnableBTS(mEnableBTSOverride, recordedEnableJSRuntime, mEnableAirStrictMode);
   }
 
   private boolean enableAir() {
