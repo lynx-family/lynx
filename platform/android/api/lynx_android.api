@@ -7669,6 +7669,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.renderTemplate(byte[] template, TemplateData templateData);
   public void com.lynx.tasm.LynxView.renderTemplateBundle( @NonNull TemplateBundle bundle, TemplateData templateData, String baseUrl);
   public void com.lynx.tasm.LynxView.loadTemplate(@NonNull LynxLoadMeta meta);
+  public void com.lynx.tasm.LynxView.loadLynxML(@NonNull String source, @NonNull String url, @Nullable TemplateData data);
   public void com.lynx.tasm.LynxView.renderSSR( @NonNull byte[] data, @NonNull String ssrUrl, final Map< String, Object > injectedData);
   public void com.lynx.tasm.LynxView.renderSSR( @NonNull byte[] data, @NonNull String ssrUrl, final TemplateData templateData);
   public void com.lynx.tasm.LynxView.renderSSRUrl(@NonNull String ssrUrl, final TemplateData templateData);
