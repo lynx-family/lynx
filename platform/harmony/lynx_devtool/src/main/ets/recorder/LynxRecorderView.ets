@@ -24,12 +24,14 @@ import {
   LynxUpdateMeta,
   LynxUpdateMode
 } from '@lynx/lynx';
+import { LynxRecorderReplayOptions } from './LynxRecorderReplayOptions';
 import LynxRecorderReplayDataModule, { ReplaySharedData, ReplaySharedDataValue } from './ReplayDataModule';
 import {
   LoadComponentWithCallbackParams,
   LoadTemplateParams,
   SendGlobalEventParams,
   SetGlobalPropsParams,
+  SetThreadStrategyParams,
   UpdateDataByPreParsedDataParams,
   UpdateMetaDataParams,
   UpdateViewPortParams
@@ -165,6 +167,7 @@ export default struct LynxRecorderView {
   private data: string = '';
   private pageUrl: string = LynxRecorderEnv.RECORDER_URL_PREFIX;
   private buffer: ArrayBuffer | undefined;
+  private preloadedSource: ArrayBuffer | undefined;
   private bufferReady: boolean = false;
   private loadFromUrl: boolean = false;
   private templateData: TemplateData | undefined;
@@ -179,6 +182,7 @@ export default struct LynxRecorderView {
   @State statusText: string = 'Loading...';
   private localLynxContext: LynxContext | undefined;
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
+  private replayOptions: LynxRecorderReplayOptions = new LynxRecorderReplayOptions();
 
   private isReplaySharedData(value: Object | string | number | boolean | null | undefined): boolean {
     return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
@@ -224,6 +228,42 @@ export default struct LynxRecorderView {
     });
   }
 
+  private sourceOverrideUrl(): string {
+    try {
+      let urlObject = Url.URL.parseURL(this.url);
+      return this.sanitizeRecordedUrl(urlObject.params.get('source'));
+    } catch (error) {
+      LLog.e(TAG, `parse source override failed: ${error}`);
+      return '';
+    }
+  }
+
+  private downloadSourceOverride() {
+    let sourceUrl = this.sourceOverrideUrl();
+    if (sourceUrl.length === 0) {
+      this.download();
+      return;
+    }
+
+    let httpRequest = http.createHttp();
+    httpRequest.request(
+      sourceUrl, {
+      maxLimit: 20 * 1024 * 1024,
+      expectDataType: http.HttpDataType.ARRAY_BUFFER,
+    }, (err: BusinessError, data: http.HttpResponse) => {
+      let source = data?.result as ArrayBuffer | undefined;
+      if (err || data?.responseCode !== 200 || source === undefined || source.byteLength === 0) {
+        this.statusText = 'Replay failed: source template download failed.';
+        LLog.e(TAG, 'source override download failed. url=' + sourceUrl +
+          ', code=' + data?.responseCode + ', error=' + JSON.stringify(err));
+      } else {
+        this.preloadedSource = source.slice(0, source.byteLength);
+        this.download();
+      }
+      httpRequest.destroy();
+    });
+  }
+
   private changeReadyState() {
     this.ready = (this.bufferReady || this.loadFromUrl) && this.templateDataReady && this.jsbModuleReady;
     if (this.ready) {
@@ -243,6 +283,7 @@ export default struct LynxRecorderView {
       this.jsbModule.clear()
     }
     this.recordedGenericResources.clear();
+    this.preloadedSource = undefined;
     this.genericFetcher = this.upstreamGenericFetcher;
     this.mediaFetcher = undefined;
     this.templateFetcher = this.upstreamTemplateFetcher;
@@ -321,6 +362,9 @@ export default struct LynxRecorderView {
   private handleActionList() {
     let recordData: Map<string, object> = JSON.parse(this.data);
     let actions: Map<string, object>[] = recordData['Action List'];
+    let threadStrategyAction = actions.find((action) => action['Function Name'] === 'setThreadStrategy');
+    let threadStrategyParams = threadStrategyAction?.['Params'] as SetThreadStrategyParams | undefined;
+    this.replayOptions.applyRecordedEnableJSRuntime(threadStrategyParams?.enableJSRuntime);
     this.registerRecordedGenericResources(actions);
     let startTime: number | undefined;
     for (const action of actions) {
@@ -489,6 +533,13 @@ export default struct LynxRecorderView {
     this.pageUrl = sanitizedUrl.length > 0 ? sanitizedUrl : LynxRecorderEnv.RECORDER_URL_PREFIX;
     let base64Engine = new util.Base64Helper();
     let rawSource = this.sanitizeBase64Source(params.source);
+    if (this.preloadedSource !== undefined) {
+      this.buffer = this.preloadedSource.slice(0, this.preloadedSource.byteLength);
+      this.bufferReady = true;
+      this.templateData = new TemplateData(params.templateData);
+      this.templateDataReady = true;
+      return;
+    }
     if (rawSource.length === 0) {
       this.buffer = undefined;
       this.bufferReady = false;
@@ -519,6 +570,12 @@ export default struct LynxRecorderView {
     this.pageUrl = sanitizedUrl.length > 0 ? sanitizedUrl : LynxRecorderEnv.RECORDER_URL_PREFIX;
     this.templateData = new TemplateData(params.templateData);
     this.templateDataReady = true;
+    if (this.preloadedSource !== undefined) {
+      this.loadFromUrl = false;
+      this.buffer = this.preloadedSource.slice(0, this.preloadedSource.byteLength);
+      this.bufferReady = true;
+      return;
+    }
 
     let rawSource = this.sanitizeBase64Source(params.source);
     if (rawSource.length === 0) {
@@ -563,11 +620,12 @@ export default struct LynxRecorderView {
     this.resetReplayLoadState();
     this.upstreamGenericFetcher = this.genericFetcher;
     this.upstreamTemplateFetcher = this.templateFetcher;
+    this.replayOptions = new LynxRecorderReplayOptions(this.url);
     this.extraTiming.openTime = new Date().getTime();
     this.extraTiming.containerInitStart = new Date().getTime();
     this.extraTiming.containerInitEnd = new Date().getTime();
     this.extraTiming.prepareTemplateStart = new Date().getTime();
-    this.download();
+    this.downloadSourceOverride();
     this.extraTiming.prepareTemplateEnd = new Date().getTime();
   }
 
@@ -608,6 +666,7 @@ export default struct LynxRecorderView {
         LynxView({
           url: this.pageUrl,
           buffer: this.buffer,
+          enableAirStrictMode: this.replayOptions.enableAirStrictMode,
           uiRendererCreator: this.uiRendererCreator,
           genericResourceFetcher: this.genericFetcher,
           mediaResourceFetcher: this.mediaFetcher,
