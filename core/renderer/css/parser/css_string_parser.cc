@@ -25,6 +25,7 @@
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/parser/css_string_scanner.h"
+#include "core/renderer/css/parser/flow_tolerance_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/starlight/style/css_type.h"
 
@@ -251,6 +252,34 @@ void CSSStringParser::ParseLengthTo(CSSValue &target) {
   if (!AtEnd()) {
     target = CSSValue();
   }
+}
+
+CSSValue CSSStringParser::ParseFlowTolerance() {
+  Advance();
+  if (Check(TokenType::NORMAL)) {
+    Consume(TokenType::NORMAL);
+    return AtEnd() ? CSSValue(FlowToleranceHandler::Keyword::kNormal)
+                   : CSSValue();
+  }
+  if (Check(TokenType::INFINITE)) {
+    Consume(TokenType::INFINITE);
+    return AtEnd() ? CSSValue(FlowToleranceHandler::Keyword::kInfinite)
+                   : CSSValue();
+  }
+
+  Token token;
+  if (!LengthOrPercentageValue(token) || !AtEnd() ||
+      token.type == TokenType::AUTO || token.type == TokenType::ENV ||
+      token.type == TokenType::FIT_CONTENT ||
+      token.type == TokenType::MAX_CONTENT) {
+    return CSSValue();
+  }
+
+  CSSValue result = TokenToLength(token);
+  if (result.IsEmpty() || (!result.IsCalc() && result.GetNumber() < 0)) {
+    return CSSValue();
+  }
+  return result;
 }
 
 CSSValue CSSStringParser::ParseSingleBorderRadius() {

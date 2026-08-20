@@ -4,6 +4,7 @@
 
 #include "core/renderer/css/computed_css_style.h"
 
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/css/css_debug_msg.h"
 #include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/parser/flow_tolerance_handler.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/color.h"
 
@@ -691,7 +693,12 @@ ComputedCSSStyle::ComputedCSSStyle(float layouts_unit_per_px,
                       layouts_unit_per_px * DEFAULT_FONT_SIZE_DP,
                       layouts_unit_per_px * DEFAULT_FONT_SIZE_DP, LayoutUnit(),
                       LayoutUnit()),
-      caret_gradient_(DefaultCaretGradient()) {}
+      caret_gradient_(DefaultCaretGradient()) {
+  auto* grid_data = layout_computed_style_.grid_data_.Access();
+  grid_data->flow_tolerance_ =
+      NLength::MakeUnitNLength(length_context_.cur_node_font_size_);
+  grid_data->flow_tolerance_is_normal_ = true;
+}
 
 ComputedCSSStyle::ComputedCSSStyle(const ComputedCSSStyle& o)
     : layout_computed_style_(o.layout_computed_style_),
@@ -835,6 +842,10 @@ void ComputedCSSStyle::Reset() {
   const float default_font_size =
       length_context_.layouts_unit_per_px_ * DEFAULT_FONT_SIZE_DP;
   SetFontSize(default_font_size, default_font_size);
+  auto* grid_data = layout_computed_style_.grid_data_.Access();
+  grid_data->flow_tolerance_ =
+      NLength::MakeUnitNLength(length_context_.cur_node_font_size_);
+  grid_data->flow_tolerance_is_normal_ = true;
 }
 
 bool ComputedCSSStyle::SetValue(tasm::CSSPropertyID id,
@@ -1423,6 +1434,45 @@ bool ComputedCSSStyle::SetDisplay(const tasm::CSSValue& value,
       value, reset, layout_computed_style_.display_,
       DefaultLayoutStyle::SL_DEFAULT_DISPLAY, "display must be a enum!",
       parser_configs_);
+}
+
+bool ComputedCSSStyle::SetFlowTolerance(const tasm::CSSValue& value,
+                                        const bool reset) {
+  auto* grid_data = layout_computed_style_.grid_data_.Access();
+  auto& flow_tolerance = grid_data->flow_tolerance_;
+  const auto old_value = flow_tolerance;
+  const auto old_is_normal = grid_data->flow_tolerance_is_normal_;
+  if (reset) {
+    flow_tolerance =
+        NLength::MakeUnitNLength(length_context_.cur_node_font_size_);
+    grid_data->flow_tolerance_is_normal_ = true;
+  } else if (value.IsEnum()) {
+    const auto keyword = value.GetEnum<tasm::FlowToleranceHandler::Keyword>();
+    if (keyword == tasm::FlowToleranceHandler::Keyword::kNormal) {
+      flow_tolerance =
+          NLength::MakeUnitNLength(length_context_.cur_node_font_size_);
+      grid_data->flow_tolerance_is_normal_ = true;
+    } else if (keyword == tasm::FlowToleranceHandler::Keyword::kInfinite) {
+      flow_tolerance =
+          NLength::MakeUnitNLength(std::numeric_limits<float>::infinity());
+      grid_data->flow_tolerance_is_normal_ = false;
+    } else {
+      return false;
+    }
+  } else {
+    const auto parsed =
+        CSSStyleUtils::ToLength(value, length_context_, parser_configs_);
+    if (!parsed.second ||
+        (parsed.first.IsPercent() && parsed.first.GetRawValue() < 0) ||
+        (!parsed.first.ContainsPercentage() &&
+         parsed.first.NumericLength().GetFixedPart() < 0)) {
+      return false;
+    }
+    flow_tolerance = parsed.first;
+    grid_data->flow_tolerance_is_normal_ = false;
+  }
+  return old_value != flow_tolerance ||
+         old_is_normal != grid_data->flow_tolerance_is_normal_;
 }
 
 bool ComputedCSSStyle::SetLinearOrientation(const tasm::CSSValue& value,

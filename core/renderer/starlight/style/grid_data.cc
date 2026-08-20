@@ -27,6 +27,8 @@ GridData::GridData()
           DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK()),
       grid_column_gap_(DefaultLayoutStyle::SL_DEFAULT_GRID_GAP()),
       grid_row_gap_(DefaultLayoutStyle::SL_DEFAULT_GRID_GAP()),
+      flow_tolerance_(DefaultLayoutStyle::SL_DEFAULT_FLOW_TOLERANCE()),
+      flow_tolerance_is_normal_(true),
       justify_self_(DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_SELF),
       justify_items_(DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_ITEMS),
       grid_auto_flow_(DefaultLayoutStyle::SL_DEFAULT_GRID_AUTO_FLOW),
@@ -56,6 +58,8 @@ GridData::GridData(const GridData& data)
           data.grid_auto_rows_max_track_sizing_function_),
       grid_column_gap_(data.grid_column_gap_),
       grid_row_gap_(data.grid_row_gap_),
+      flow_tolerance_(data.flow_tolerance_),
+      flow_tolerance_is_normal_(data.flow_tolerance_is_normal_),
       justify_self_(data.justify_self_),
       justify_items_(data.justify_items_),
       grid_auto_flow_(data.grid_auto_flow_),
@@ -85,6 +89,8 @@ void GridData::Reset() {
       DefaultLayoutStyle::SL_DEFAULT_GRID_TRACK();
   grid_column_gap_ = DefaultLayoutStyle::SL_DEFAULT_GRID_GAP();
   grid_row_gap_ = DefaultLayoutStyle::SL_DEFAULT_GRID_GAP();
+  flow_tolerance_ = DefaultLayoutStyle::SL_DEFAULT_FLOW_TOLERANCE();
+  flow_tolerance_is_normal_ = true;
   justify_items_ = DefaultLayoutStyle::SL_DEFAULT_JUSTIFY_ITEMS;
   grid_auto_flow_ = DefaultLayoutStyle::SL_DEFAULT_GRID_AUTO_FLOW;
   grid_row_span_ = DefaultLayoutStyle::SL_DEFAULT_GRID_SPAN;

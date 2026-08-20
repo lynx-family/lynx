@@ -42,6 +42,8 @@ class GridData : public fml::RefCountedThreadSafeStorage {
 
   NLength grid_column_gap_;
   NLength grid_row_gap_;
+  NLength flow_tolerance_;
+  bool flow_tolerance_is_normal_;
 
   JustifyType justify_self_;
   JustifyType justify_items_;

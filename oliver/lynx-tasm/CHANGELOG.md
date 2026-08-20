@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.53
+* Support encoding `display: grid-lanes` and the `flow-tolerance` CSS property.
+
 # 0.0.52
 * Support serializing decoded CSS descriptors into CSS text.
 

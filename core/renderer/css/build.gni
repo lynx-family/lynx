@@ -146,6 +146,8 @@ lynx_css_core_sources = [
   "parser/flex_flow_handler.h",
   "parser/flex_handler.cc",
   "parser/flex_handler.h",
+  "parser/flow_tolerance_handler.cc",
+  "parser/flow_tolerance_handler.h",
   "parser/font_feature_settings_handler.cc",
   "parser/font_feature_settings_handler.h",
   "parser/font_length_handler.cc",

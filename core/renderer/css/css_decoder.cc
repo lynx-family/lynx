@@ -14,6 +14,7 @@
 #include "base/include/value/table.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/css/css_color.h"
+#include "core/renderer/css/parser/flow_tolerance_handler.h"
 #include "core/style/timing_function_data.h"
 #include "core/style/transform_raw_data.h"
 
@@ -122,6 +123,14 @@ std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
 std::string CSSDecoder::CSSValueEnumToString(
     const CSSPropertyID id, const lynx::tasm::CSSValue &value) {
   switch (id) {
+    case lynx::tasm::kPropertyIDFlowTolerance:
+      switch (value.GetEnum<FlowToleranceHandler::Keyword>()) {
+        case FlowToleranceHandler::Keyword::kNormal:
+          return "normal";
+        case FlowToleranceHandler::Keyword::kInfinite:
+          return "infinite";
+      }
+      return "";
     case lynx::tasm::kPropertyIDTop:
     case lynx::tasm::kPropertyIDLeft:
     case lynx::tasm::kPropertyIDRight:

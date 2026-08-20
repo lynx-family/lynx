@@ -163,6 +163,9 @@ class LayoutComputedStyle {
     return grid_data_->grid_column_gap_;
   }
   const NLength& GetGridRowGap() const { return grid_data_->grid_row_gap_; }
+  const NLength& GetFlowTolerance() const {
+    return grid_data_->flow_tolerance_;
+  }
   GridAutoFlowType GetGridAutoFlow() const {
     return grid_data_->grid_auto_flow_;
   }
@@ -354,6 +357,18 @@ class LayoutComputedStyle {
   }
   SUPPORTED_LAYOUT_PROPERTY(SET_LAYOUT_PROPERTY)
 #undef SET_LAYOUT_PROPERTY
+
+  LYNX_EXPORT bool SetFlowTolerance(const NLength& value,
+                                    const bool reset = false) {
+    auto* grid_data = grid_data_.Access();
+    const NLength old_value = grid_data->flow_tolerance_;
+    const bool old_is_normal = grid_data->flow_tolerance_is_normal_;
+    grid_data->flow_tolerance_ =
+        reset ? DefaultLayoutStyle::SL_DEFAULT_FLOW_TOLERANCE() : value;
+    grid_data->flow_tolerance_is_normal_ = reset;
+    return old_value != grid_data->flow_tolerance_ ||
+           old_is_normal != grid_data->flow_tolerance_is_normal_;
+  }
 
   float PhysicalPixelsPerLayoutUnit() const {
     return physical_pixels_per_layout_unit_;

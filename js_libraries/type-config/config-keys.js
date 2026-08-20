@@ -21,6 +21,7 @@ const configKeys = [
   'enableFetchAPIStandardStreaming',
   'enableFixedNew',
   'enableFlexBasisZeroPercent',
+  'enableGridLanes',
   'enableGridPlacementShorthands',
   'enableJsBindingApiThrowException',
   'enableLayoutOnlyEventThrough',

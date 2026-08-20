@@ -11,7 +11,7 @@ export type CSSProperties = Modify<
   {
     position?: 'absolute' | 'relative' | 'fixed' | 'sticky';
     boxSizing?: 'border-box' | 'content-box' | 'auto';
-    display?: 'none' | 'flex' | 'grid' | 'linear' | 'relative' | 'block' | 'auto';
+    display?: 'none' | 'flex' | 'grid' | 'linear' | 'relative' | 'block' | 'auto' | 'grid-lanes';
     overflow?: 'hidden' | 'visible' | (string & {});
     whiteSpace?: 'normal' | 'nowrap';
     textAlign?: 'left' | 'center' | 'right' | 'start' | 'end';
@@ -112,6 +112,7 @@ export type CSSProperties = Modify<
     XCaretHeight?: number | (string & {});
     XCaretRadius?: number | (string & {});
     pointerEvents?: 'auto' | 'none';
+    flowTolerance?: 'normal' | 'infinite' | (string & {});
   }
 >;
 

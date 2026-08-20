@@ -20,6 +20,7 @@ enum class LayoutEventType {
   LayoutStyleError,
   FeatureCountOnGridDisplay,
   FeatureCountOnRelativeDisplay,
+  FeatureCountOnGridLanesDisplay,
 };
 
 }

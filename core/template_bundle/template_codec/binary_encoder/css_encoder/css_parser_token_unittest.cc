@@ -12,6 +12,7 @@
 #include "core/base/thread/once_task.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/template_bundle/template_codec/generator/page_config_compile_options_helper.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/rapidjson/document.h"
 
@@ -310,6 +311,58 @@ TEST(CSSParseTokenEncoder, ImportantParsing) {
                 .find(tasm::kPropertyIDWidth)
                 ->second.GetPattern(),
             tasm::CSSValuePattern::PX);
+}
+
+TEST(CSSParseTokenEncoder, GridLanesPropertiesRequireFeatureFlag) {
+  rapidjson::Document doc;
+  doc.SetObject();
+  rapidjson::Value style(rapidjson::kArrayType);
+  for (const auto& [name, value] : {std::pair{"display", "grid-lanes"},
+                                    std::pair{"flow-tolerance", "12px"}}) {
+    rapidjson::Value entry(rapidjson::kObjectType);
+    entry.AddMember("name", rapidjson::Value(name, doc.GetAllocator()),
+                    doc.GetAllocator());
+    entry.AddMember("value", rapidjson::Value(value, doc.GetAllocator()),
+                    doc.GetAllocator());
+    style.PushBack(entry, doc.GetAllocator());
+  }
+
+  rapidjson::Value style_vars(rapidjson::kObjectType);
+  tasm::CompileOptions options;
+  options.enable_css_parser_ = true;
+  options.target_sdk_version_ = "4.3";
+  std::string rule = ".test";
+
+  encoder::CSSParseToken disabled(style, rule, "", style_vars, options);
+  EXPECT_FALSE(disabled.GetAttributes().contains(tasm::kPropertyIDDisplay));
+  EXPECT_FALSE(
+      disabled.GetAttributes().contains(tasm::kPropertyIDFlowTolerance));
+
+  options.enable_grid_lanes_ = true;
+  encoder::CSSParseToken enabled(style, rule, "", style_vars, options);
+  ASSERT_TRUE(enabled.GetAttributes().contains(tasm::kPropertyIDDisplay));
+  EXPECT_EQ(enabled.GetAttributes()
+                .find(tasm::kPropertyIDDisplay)
+                ->second.GetEnum<starlight::DisplayType>(),
+            starlight::DisplayType::kGridLanes);
+  ASSERT_TRUE(enabled.GetAttributes().contains(tasm::kPropertyIDFlowTolerance));
+  EXPECT_EQ(enabled.GetAttributes()
+                .find(tasm::kPropertyIDFlowTolerance)
+                ->second.GetPattern(),
+            tasm::CSSValuePattern::PX);
+}
+
+TEST(CSSParseTokenEncoder, GridLanesFlagComesFromPageConfig) {
+  tasm::CompileOptions options;
+  EXPECT_FALSE(options.enable_grid_lanes_);
+
+  tasm::ApplyPageConfigDerivedCompileOptions(options,
+                                             R"({"enableGridLanes":true})");
+
+  EXPECT_TRUE(options.enable_grid_lanes_);
+  EXPECT_TRUE(
+      tasm::CSSParserConfigs::GetCSSParserConfigsByComplierOptions(options)
+          .enable_grid_lanes);
 }
 
 }  // namespace encoder

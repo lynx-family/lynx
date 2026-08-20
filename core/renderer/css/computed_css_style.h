@@ -227,6 +227,10 @@ class ComputedCSSStyle {
     }
     length_context_.cur_node_font_size_ = cur_node_font_size;
     length_context_.root_node_font_size_ = root_node_font_size;
+    if (layout_computed_style_.grid_data_->flow_tolerance_is_normal_) {
+      layout_computed_style_.grid_data_.Access()->flow_tolerance_ =
+          NLength::MakeUnitNLength(cur_node_font_size);
+    }
     return true;
   }
 

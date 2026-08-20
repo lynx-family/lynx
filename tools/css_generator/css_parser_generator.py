@@ -104,6 +104,7 @@ def check_and_get_defines():
     # Overwrite property_index.json when all check passed
     with open(os.path.join("./", "property_index.json"), "w", encoding="utf-8") as f:
         json.dump(mid_json, f, ensure_ascii=False, indent=4)
+        f.write("\n")
 
     # Return combined_data
     combined_data = []

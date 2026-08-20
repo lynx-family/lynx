@@ -7,11 +7,14 @@
 
 #include "core/renderer/css/computed_css_style.h"
 
+#include <cmath>
+#include <limits>
 #include <unordered_set>
 #include <utility>
 #include <variant>
 
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/parser/flow_tolerance_handler.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -94,6 +97,78 @@ TEST(ComputedCSSStyleTest, ResetClearsOptionalStateAndDirtyBits) {
   EXPECT_TRUE(style.BackgroundColorToLepus().IsEmpty());
   EXPECT_TRUE(style.GetResolvedValues().empty());
   EXPECT_TRUE(style.IsClean());
+}
+
+TEST(ComputedCSSStyleTest, StoresAndResetsFlowTolerance) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  style.SetFontSize(20.f, DEFAULT_FONT_SIZE_DP);
+
+  EXPECT_EQ(style.GetLayoutComputedStyle()->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(20.f));
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDFlowTolerance,
+                             CSSValue(12.0, CSSValuePattern::PX), false));
+  EXPECT_EQ(style.GetLayoutComputedStyle()->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(12.f));
+  style.SetFontSize(24.f, DEFAULT_FONT_SIZE_DP);
+  EXPECT_EQ(style.GetLayoutComputedStyle()->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(12.f));
+
+  EXPECT_TRUE(style.SetValue(CSSPropertyID::kPropertyIDFlowTolerance,
+                             CSSValue(10.0, CSSValuePattern::PERCENT), false));
+  EXPECT_EQ(style.GetLayoutComputedStyle()->GetFlowTolerance(),
+            starlight::NLength::MakePercentageNLength(10.f));
+
+  EXPECT_TRUE(style.SetValue(
+      CSSPropertyID::kPropertyIDFlowTolerance,
+      CSSValue(tasm::FlowToleranceHandler::Keyword::kInfinite), false));
+  EXPECT_TRUE(std::isinf(
+      style.GetLayoutComputedStyle()->GetFlowTolerance().GetRawValue()));
+
+  EXPECT_TRUE(style.ResetValue(CSSPropertyID::kPropertyIDFlowTolerance));
+  EXPECT_EQ(style.GetLayoutComputedStyle()->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(24.f));
+
+  EXPECT_FALSE(style.SetValue(
+      CSSPropertyID::kPropertyIDFlowTolerance,
+      CSSValue(tasm::FlowToleranceHandler::Keyword::kNormal), false));
+  EXPECT_EQ(style.GetLayoutComputedStyle()->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(24.f));
+  style.SetFontSize(28.f, DEFAULT_FONT_SIZE_DP);
+  EXPECT_EQ(style.GetLayoutComputedStyle()->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(28.f));
+}
+
+TEST(ComputedCSSStyleTest, DirectFlowToleranceSetterTracksNormalState) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  style.SetFontSize(20.f, DEFAULT_FONT_SIZE_DP);
+  auto* layout_style = style.GetLayoutComputedStyle();
+
+  EXPECT_TRUE(layout_style->SetFlowTolerance(
+      starlight::NLength::MakeUnitNLength(14.f)));
+  style.SetFontSize(24.f, DEFAULT_FONT_SIZE_DP);
+  EXPECT_EQ(layout_style->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(14.f));
+
+  EXPECT_TRUE(layout_style->SetFlowTolerance(
+      starlight::NLength::MakePercentageNLength(10.f)));
+  style.SetFontSize(26.f, DEFAULT_FONT_SIZE_DP);
+  EXPECT_EQ(layout_style->GetFlowTolerance(),
+            starlight::NLength::MakePercentageNLength(10.f));
+
+  EXPECT_TRUE(
+      layout_style->SetFlowTolerance(starlight::NLength::MakeUnitNLength(
+          std::numeric_limits<float>::infinity())));
+  style.SetFontSize(27.f, DEFAULT_FONT_SIZE_DP);
+  EXPECT_TRUE(std::isinf(layout_style->GetFlowTolerance().GetRawValue()));
+
+  EXPECT_TRUE(
+      layout_style->SetFlowTolerance(layout_style->GetFlowTolerance(), true));
+  EXPECT_EQ(layout_style->GetFlowTolerance(),
+            starlight::DefaultLayoutStyle::SL_DEFAULT_FLOW_TOLERANCE());
+  style.SetFontSize(28.f, DEFAULT_FONT_SIZE_DP);
+  EXPECT_EQ(layout_style->GetFlowTolerance(),
+            starlight::NLength::MakeUnitNLength(28.f));
 }
 
 TEST(ComputedCSSStyleTest, StoresTextDecorationExtensionValues) {

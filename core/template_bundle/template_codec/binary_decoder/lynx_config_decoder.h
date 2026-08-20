@@ -798,6 +798,11 @@ class LynxConfigDecoder final {
       page_config->SetEnableGridPlacementShorthands(true);
     }
 
+    if (doc.HasMember(config::kEnableGridLanes) &&
+        doc[config::kEnableGridLanes].IsBool()) {
+      page_config->SetEnableGridLanes(doc[config::kEnableGridLanes].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableFlexBasisZeroPercent) &&
         doc[config::kEnableFlexBasisZeroPercent].IsBool()) {
       page_config->SetEnableFlexBasisZeroPercent(

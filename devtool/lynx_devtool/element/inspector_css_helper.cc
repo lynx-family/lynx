@@ -404,6 +404,7 @@ bool InspectorCSSHelper::IsLegal(const std::string& name,
   }
 
   lynx::tasm::CSSParserConfigs configs;
+  configs.enable_grid_lanes = true;
   lynx::tasm::CSSStringParser variable_parser{
       value.c_str(), static_cast<uint32_t>(value.length()), configs};
   if (variable_parser.ParseVariable().IsVariable()) {

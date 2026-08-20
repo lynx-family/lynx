@@ -62,6 +62,23 @@ TEST(EnumHandler, Handler) {
 
   // other cases see before @link{process}.
 }
+
+TEST(EnumHandler, GridLanesRequiresFeatureFlag) {
+  const auto id = CSSPropertyID::kPropertyIDDisplay;
+  const auto input = lepus::Value("grid-lanes");
+  StyleMap output;
+  CSSParserConfigs configs;
+
+  EXPECT_FALSE(UnitHandler::Process(id, input, output, configs));
+  EXPECT_TRUE(output.empty());
+
+  configs.enable_grid_lanes = true;
+  EXPECT_TRUE(UnitHandler::Process(id, input, output, configs));
+  ASSERT_TRUE(output.contains(id));
+  EXPECT_EQ(output[id].GetEnum<starlight::DisplayType>(),
+            starlight::DisplayType::kGridLanes);
+  EXPECT_EQ(static_cast<int>(starlight::DisplayType::kGridLanes), 7);
+}
 }  // namespace test
 
 }  // namespace tasm

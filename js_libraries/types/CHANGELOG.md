@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.4
+- Add `display: grid-lanes` and `flow-tolerance` CSS typings.
+
 ## 4.3.3
 - Add `border-radius` and its four physical corner longhands to `transition-property` typings.
 

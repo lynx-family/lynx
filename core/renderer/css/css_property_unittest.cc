@@ -4,6 +4,7 @@
 #include "core/renderer/css/css_property.h"
 
 #include "core/renderer/css/css_property_id.h"
+#include "core/renderer/css/layout_property.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -137,6 +138,11 @@ TEST(CSSProperty, IsCustomProperty) {
   EXPECT_TRUE(CSSProperty::IsCustomProperty("--x", 3));
   EXPECT_FALSE(CSSProperty::IsCustomProperty("custom-property", 15));
   EXPECT_TRUE(CSSProperty::IsCustomProperty("--custom-property", 17));
+}
+
+TEST(CSSProperty, GridLanesPropertiesAreLayoutOnly) {
+  EXPECT_TRUE(LayoutProperty::IsLayoutOnly(kPropertyIDDisplay));
+  EXPECT_TRUE(LayoutProperty::IsLayoutOnly(kPropertyIDFlowTolerance));
 }
 }  // namespace test
 }  // namespace tasm

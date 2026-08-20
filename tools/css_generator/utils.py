@@ -621,6 +621,9 @@ namespace LengthHandler {
 
 bool Handle(CSSPropertyID key, const lepus::Value &input, StyleMap &output,
             const CSSParserConfigs &configs);
+void CheckLengthUnitValid(CSSPropertyID key, const lepus::Value &input,
+                          const CSSValue &css_value,
+                          const CSSParserConfigs &configs);
 // help parse length css
 bool Process(const lepus::Value &input, CSSValue &css_value,
              const CSSParserConfigs &configs);
