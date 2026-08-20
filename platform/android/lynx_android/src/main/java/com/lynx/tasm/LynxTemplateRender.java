@@ -413,7 +413,7 @@ public class LynxTemplateRender
     mRuntime = builder.lynxBackgroundRuntime;
     mTemplateProvider = builder.templateProvider;
     mEnableSyncFlush = mLynxViewConfigProvider.isEnableSyncFlush();
-    mEnableJSRuntime = mLogicExecutor == null && mLynxViewConfigProvider.isEnableJSRuntime();
+    mEnableJSRuntime = mLynxViewConfigProvider.isEnableJSRuntime();
     mEnableGenericResourceFetcher =
         checkEnableGenericResourceFetcher(mLynxViewConfigProvider.isEnableGenericResourceFetcher());
     mEnableAirStrictMode = mLynxViewConfigProvider.isEnableAirStrictMode();
@@ -1015,7 +1015,7 @@ public class LynxTemplateRender
     mLoader = new LynxResourceLoader(null, mLynxViewBuilder.fetcher, this,
         mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
-    mNativeFacade = new NativeFacade(mEnableJSRuntime);
+    mNativeFacade = new NativeFacade(mLynxViewBuilder.isEnableJSRuntime());
     mNativeFacade.setCallback(new TASMCallback());
     DisplayMetrics screenMetrics = mLynxContext.getScreenMetrics();
     long runtimeWrapperPtr = (mRuntime == null) ? 0 : mRuntime.getNativePtr();
@@ -1033,7 +1033,7 @@ public class LynxTemplateRender
         mPerformanceController.isEmbeddedMode() ? null : mPerformanceController, mLoader,
         mThreadStrategyForRendering.id(), mLynxViewConfigProvider.isEnableLayoutSafepoint(),
         mLynxViewBuilder.enableLayoutOnly, screenMetrics.widthPixels, screenMetrics.heightPixels,
-        screenMetrics.density, LynxEnv.inst().getLocale(), mEnableJSRuntime,
+        screenMetrics.density, LynxEnv.inst().getLocale(), mLynxViewBuilder.isEnableJSRuntime(),
         mLynxViewConfigProvider.isEnableMultiAsyncThread(),
         mLynxViewConfigProvider.isEnablePreUpdateData(), enableVSyncAligned,
         mLynxViewConfigProvider.isEnableAsyncHydration(),
@@ -1167,7 +1167,7 @@ public class LynxTemplateRender
   }
 
   private void notifyExtensionModulesTemplateLoad(String url) {
-    if (!mEnableJSRuntime) {
+    if (!mLynxViewBuilder.isEnableJSRuntime()) {
       LLog.e(TAG, "notifyExtensionModulesTemplateLoad failed, isEnableJSRuntime is false");
       return;
     }
