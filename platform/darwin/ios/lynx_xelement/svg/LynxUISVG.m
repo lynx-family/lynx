@@ -11,8 +11,21 @@
 #import <ServalSVG/SrSVG.h>
 #import <XElement/LynxUISVG.h>
 
+static NSString *_Nullable LynxSVGColorFromCSSValue(id _Nullable value) {
+  if (![value isKindOfClass:NSNumber.class]) {
+    return nil;
+  }
+
+  uint32_t argb = [value unsignedIntValue];
+  return [NSString stringWithFormat:@"rgba(%u,%u,%u,%.6f)", (argb >> 16) & 0xFF, (argb >> 8) & 0xFF,
+                                    argb & 0xFF, ((argb >> 24) & 0xFF) / 255.0];
+}
+
 @interface LynxUISVG ()
 @property(nonatomic, strong) SrSVG *srSvg;
+@property(nonatomic, copy, nullable) NSString *cssColor;
+@property(nonatomic, copy, nullable) NSString *currentColor;
+@property(nonatomic, assign) BOOL hasCurrentColor;
 @end
 
 @implementation LynxUISVG
@@ -56,12 +69,35 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
 }
 
 LYNX_PROP_SETTER("current-color", setColor, NSString *) {
+  BOOL nextHasCurrentColor = !requestReset;
   NSString *nextColor = nil;
-  if ([value isKindOfClass:[NSString class]]) {
+  if (nextHasCurrentColor && [value isKindOfClass:[NSString class]]) {
     NSString *trimmedColor = [(NSString *)value
         stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     nextColor = trimmedColor.length != 0 ? trimmedColor : nil;
   }
+  if (nextHasCurrentColor == self.hasCurrentColor &&
+      ((nextColor == nil && self.currentColor == nil) ||
+       [nextColor isEqualToString:self.currentColor])) {
+    return;
+  }
+  self.hasCurrentColor = nextHasCurrentColor;
+  self.currentColor = nextColor;
+  [self updateResolvedColor];
+}
+
+LYNX_PROP_SETTER("color", setCSSColor, id) {
+  NSString *nextColor = requestReset ? nil : LynxSVGColorFromCSSValue(value);
+  if ((nextColor == nil && self.cssColor == nil) || [nextColor isEqualToString:self.cssColor]) {
+    return;
+  }
+  self.cssColor = nextColor;
+  [self updateResolvedColor];
+}
+
+- (void)updateResolvedColor {
+  // An explicit current-color, including an empty value, suppresses the CSS fallback.
+  NSString *nextColor = self.hasCurrentColor ? self.currentColor : self.cssColor;
   if ((nextColor == nil && _color == nil) || [nextColor isEqualToString:_color]) {
     return;
   }
