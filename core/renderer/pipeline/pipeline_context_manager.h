@@ -36,7 +36,7 @@ class PipelineContextManager {
   void RemoveObserver(PipelineLifecycleObserver* observer);
   bool AdvanceLifecycleTo(PipelineContext* context, LifecycleState state);
 
-  void ResetCurrentPipelineContext() { current_pipeline_context_ = nullptr; }
+  void ResetCurrentPipelineContext();
 
   void SetOnCreateHook(base::closure hook) {
     on_create_hook_ = std::move(hook);
