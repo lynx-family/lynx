@@ -8,7 +8,6 @@
 #ifndef CLAY_UI_RESOURCE_FONT_COLLECTION_H_
 #define CLAY_UI_RESOURCE_FONT_COLLECTION_H_
 
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -23,7 +22,6 @@
 namespace clay {
 
 using FontDownloadCallback = std::function<void()>;
-using FontDownloadCallbackId = uint64_t;
 
 class ResourceLoaderIntercept;
 class ServiceManager;
@@ -54,10 +52,8 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
                         const std::string& font_family,
                         std::vector<std::string> urls);
 
-  FontDownloadCallbackId RegisterCallback(const std::string& font_family,
-                                          const FontDownloadCallback& callback);
-
-  void UnregisterCallback(FontDownloadCallbackId callback_id);
+  void RegisterCallback(const std::string& font_family,
+                        const FontDownloadCallback& callback);
 
   bool HasFontResource(const std::string& font_family);
 
@@ -94,21 +90,12 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
 
   FontCollection();
 
-  struct PendingFontDownloadCallback {
-    FontDownloadCallbackId id;
-    FontDownloadCallback callback;
-  };
-
-  FontDownloadCallbackId next_font_download_callback_id_ = 0;
-  std::unordered_multimap<std::string, PendingFontDownloadCallback>
+  std::unordered_multimap<std::string, FontDownloadCallback>
       font_download_callback_;
 
   FRIEND_TEST(FontResourceManagerTest, GetLocalResourceTest);
   FRIEND_TEST(FontResourceManagerTest, DISABLED_GetNetWorkResourceTest);
   FRIEND_TEST(FontResourceManagerTest, FontCollectionTest);
-  FRIEND_TEST(FontResourceManagerTest, FontCallbackCanBeCancelled);
-  FRIEND_TEST(FontResourceManagerTest, FailedFontLoadClearsCallbacks);
-  FRIEND_TEST(TextTest, FontCallbacksAreDeduplicatedAndCancelled);
 
   BASE_DISALLOW_COPY_AND_ASSIGN(FontCollection);
 };

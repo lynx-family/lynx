@@ -25,7 +25,6 @@ class BaseTextShadowNode : public ShadowNode {
 
  public:
   BaseTextShadowNode(ShadowNodeOwner* owner, std::string tag, int id);
-  ~BaseTextShadowNode() override;
 
   void OnLayout(float width, TextMeasureMode width_mode, float height,
                 TextMeasureMode height_mode,
@@ -117,12 +116,9 @@ class BaseTextShadowNode : public ShadowNode {
 
  protected:
  private:
-  void CancelPendingFontCallbacks();
   void ResetTextColorAndGradient();
 
   fml::WeakPtrFactory<BaseTextShadowNode> weak_factory_;
-  std::string requested_font_family_;
-  std::vector<uint64_t> pending_font_callback_ids_;
   RichType rich_type_ = RichType::kNone;
 };
 

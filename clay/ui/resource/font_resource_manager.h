@@ -10,7 +10,6 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
@@ -19,8 +18,8 @@
 
 namespace clay {
 
-using FontCallback = std::function<void(
-    bool success, const std::string& font_family, const std::string& url)>;
+using FontCallback =
+    std::function<void(const std::string& font_family, const std::string& url)>;
 class ResourceLoaderIntercept;
 class ServiceManager;
 
@@ -48,7 +47,7 @@ class FontResourceManager
 
   void SetCallback(const FontCallback& callback);
 
-  bool HasFontResourceLoading(const std::string& font_family);
+  bool HasFontResourceLoading(std::string font_family);
 
  private:
   void OnDownloadEnd(
@@ -69,7 +68,6 @@ class FontResourceManager
   std::map<std::string, std::shared_ptr<ResourceLoader>> font_loader_map_;
   std::map<std::string, RawResource> font_resource_map_;
   std::map<std::string, FontCallback> font_call_back_map_;
-  std::unordered_set<std::string> loading_font_families_;
 };
 
 }  // namespace clay

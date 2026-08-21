@@ -59,8 +59,6 @@ void FontResourceManager::DownloadFont(
       url, load_task_runner, intercept, service_manager);
   if (!resource_loader) {
     FML_LOG(ERROR) << "create ResourceLoader fail";
-    OnDownloadEnd(false, url_index, font_family, {0, nullptr}, load_task_runner,
-                  intercept, service_manager);
     return;
   }
   resource_loader->Load(
@@ -96,7 +94,6 @@ void FontResourceManager::OnDownloadEnd(
   auto iter = font_url_map_.find(font_family);
   if (iter == font_url_map_.end()) {
     FML_DLOG(ERROR) << "Unable to get font for family: " << font_family;
-    loading_font_families_.erase(font_family);
     return;
   }
 
@@ -108,13 +105,8 @@ void FontResourceManager::OnDownloadEnd(
     unsigned int index = url_index + 1;
     if (index >= url_vec.size()) {
       FML_DLOG(ERROR) << "Unable to get font for family: " << font_family;
-      auto callback_iter = font_call_back_map_.find(font_family);
-      if (callback_iter != font_call_back_map_.end()) {
-        callback_iter->second(false, font_family, std::string());
-      }
       font_call_back_map_.erase(font_family);
       font_loader_map_.erase(font_family);
-      loading_font_families_.erase(font_family);
       return;
     } else {
       DownloadFont(load_task_runner, intercept, service_manager, url_vec[index],
@@ -129,17 +121,14 @@ void FontResourceManager::OnDownloadEnd(
   // second : callback
   auto callback_iter = font_call_back_map_.find(font_family);
   if (callback_iter != font_call_back_map_.end()) {
-    callback_iter->second(true, font_family, url_vec[url_index]);
+    callback_iter->second(font_family, url_vec[url_index]);
   }
   font_call_back_map_.erase(font_family);
   font_loader_map_.erase(font_family);
-  loading_font_families_.erase(font_family);
 }
 
-bool FontResourceManager::HasFontResourceLoading(
-    const std::string& font_family) {
-  return loading_font_families_.find(font_family) !=
-         loading_font_families_.end();
+bool FontResourceManager::HasFontResourceLoading(std::string font_family) {
+  return font_loader_map_.find(font_family) != font_loader_map_.end();
 }
 
 void FontResourceManager::LoadFontAsync(
@@ -160,7 +149,6 @@ void FontResourceManager::LoadFontAsync(
 
   font_url_map_.emplace(font_family, std::move(url_vec));
   font_call_back_map_.emplace(font_family, callback);
-  loading_font_families_.emplace(font_family);
 
   const int url_index = 0;
   const std::string& first_url = font_url_map_[font_family][url_index];

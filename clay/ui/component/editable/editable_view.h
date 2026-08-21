@@ -5,7 +5,6 @@
 #ifndef CLAY_UI_COMPONENT_EDITABLE_EDITABLE_VIEW_H_
 #define CLAY_UI_COMPONENT_EDITABLE_EDITABLE_VIEW_H_
 
-#include <cstdint>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -280,7 +279,6 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   int32_t callback_id_ = -1;
   bool is_multiline_;
   bool layout_root_candidate_;
-  uint64_t pending_font_callback_id_ = 0;
 };
 
 class UndoStack {
