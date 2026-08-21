@@ -8,7 +8,6 @@
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIContext.h>
-#import <Lynx/LynxUIFilterImage.h>
 #import <Lynx/LynxUIView.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -28,23 +27,6 @@
 
 @interface LynxUIContext (NewStickyUnitTest)
 - (void)setEnableNewSticky:(BOOL)enable;
-@end
-
-@interface LynxUI (BorderRadiusMaskUpdateUnitTest)
-- (void)scheduleBorderRadiusMaskUpdate;
-- (void)consumeScheduledBorderRadiusMaskUpdate;
-@end
-
-@interface LynxUIMaskUpdateCounter : LynxUI
-@property(nonatomic, assign) NSInteger maskUpdateCount;
-@end
-
-@implementation LynxUIMaskUpdateCounter
-- (bool)updateLayerMaskOnFrameChanged {
-  [self consumeScheduledBorderRadiusMaskUpdate];
-  self.maskUpdateCount += 1;
-  return true;
-}
 @end
 
 @interface LynxUIUnitTest : XCTestCase
@@ -113,62 +95,6 @@
   XCTAssert(copyChild.frame.size.width == 50);
   XCTAssert(copyChild.frame.size.height == 50);
   XCTAssert(copyChild.backgroundManager.backgroundColor == child.backgroundManager.backgroundColor);
-}
-
-- (void)testBorderRadiusUpdateRefreshesNonUniformOverflowMask {
-  LynxUIView *ui = [[LynxUIView alloc] init];
-  [ui updateFrame:CGRectMake(0, 0, 100, 80)
-              withPadding:UIEdgeInsetsZero
-                   border:UIEdgeInsetsZero
-      withLayoutAnimation:NO];
-  [LynxPropsProcessor updateProp:@1 withKey:@"overflow" forUI:ui];
-  [ui onNodeReadyForUIOwner];
-
-  [LynxPropsProcessor
-      updateProp:@[ @10, @0, @20, @0, @30, @0, @40, @0, @50, @0, @60, @0, @70, @0, @80, @0 ]
-         withKey:@"border-radius"
-           forUI:ui];
-  [LynxPropsProcessor updateProp:@[ @25, @0, @35, @0 ] withKey:@"border-top-left-radius" forUI:ui];
-  [ui onNodeReadyForUIOwner];
-
-  XCTAssertNotNil(ui.view.layer.mask);
-}
-
-- (void)testBorderRadiusMaskUpdateCoalescesAndImmediateUpdateCancelsPendingBlock {
-  LynxUIMaskUpdateCounter *ui = [[LynxUIMaskUpdateCounter alloc] init];
-
-  [ui scheduleBorderRadiusMaskUpdate];
-  [ui scheduleBorderRadiusMaskUpdate];
-  XCTAssertEqual(ui.nodeReadyBlockArray.count, 1U);
-  [ui onNodeReadyForUIOwner];
-  XCTAssertEqual(ui.maskUpdateCount, 1);
-
-  [ui scheduleBorderRadiusMaskUpdate];
-  XCTAssertEqual(ui.nodeReadyBlockArray.count, 1U);
-  [ui updateLayerMaskOnFrameChanged];
-  [ui onNodeReadyForUIOwner];
-  XCTAssertEqual(ui.maskUpdateCount, 2);
-}
-
-- (void)testFilterImageBorderRadiusUpdateClearsMaskAtZero {
-  LynxUIFilterImage *ui = [[LynxUIFilterImage alloc] init];
-  [ui updateFrame:CGRectMake(0, 0, 100, 80)
-              withPadding:UIEdgeInsetsZero
-                   border:UIEdgeInsetsZero
-      withLayoutAnimation:NO];
-
-  [LynxPropsProcessor
-      updateProp:@[ @10, @0, @10, @0, @10, @0, @10, @0, @10, @0, @10, @0, @10, @0, @10, @0 ]
-         withKey:@"border-radius"
-           forUI:ui];
-  [ui onNodeReadyForUIOwner];
-  XCTAssertNotNil(ui.view.layer.mask);
-
-  [LynxPropsProcessor updateProp:@[ @0, @0, @0, @0, @0, @0, @0, @0, @0, @0, @0, @0, @0, @0, @0, @0 ]
-                         withKey:@"border-radius"
-                           forUI:ui];
-  [ui onNodeReadyForUIOwner];
-  XCTAssertNil(ui.view.layer.mask);
 }
 
 - (void)testGestureInterfaces {

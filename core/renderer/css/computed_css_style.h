@@ -5,7 +5,6 @@
 #ifndef CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_H_
 #define CORE_RENDERER_CSS_COMPUTED_CSS_STYLE_H_
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -91,17 +90,15 @@ struct CanonicalComputedValue {
     kTransformOrigin,
     kBoxShadow,
     kTextGradient,
-    kBorderRadius,
   };
 
   using TransformValue = base::InlineVector<TransformRawData, 1>;
   using BackgroundPositionValue = base::InlineVector<NLength, 1>;
   using BoxShadowValue = base::InlineVector<ShadowData, 1>;
-  using BorderRadiusValue = std::array<NLength, 2>;
   using Storage =
       std::variant<float, uint32_t, NLength, TransformValue, FilterData,
                    BackgroundPositionValue, TransformOriginData, BoxShadowValue,
-                   int32_t, lepus::Value, BorderRadiusValue>;
+                   int32_t, lepus::Value>;
 
   static constexpr std::size_t kFloatIndex = 0;
   static constexpr std::size_t kColorIndex = 1;
@@ -113,7 +110,6 @@ struct CanonicalComputedValue {
   static constexpr std::size_t kBoxShadowIndex = 7;
   static constexpr std::size_t kEnumIndex = 8;
   static constexpr std::size_t kTextGradientIndex = 9;
-  static constexpr std::size_t kBorderRadiusIndex = 10;
 
   static CanonicalComputedValue Number(float value) {
     return CanonicalComputedValue(Kind::kNumber, value);
@@ -160,10 +156,6 @@ struct CanonicalComputedValue {
   static CanonicalComputedValue TextGradient(const lepus::Value& value) {
     return CanonicalComputedValue(Kind::kTextGradient,
                                   Storage(lepus::Value::Clone(value)));
-  }
-
-  static CanonicalComputedValue BorderRadius(const BorderRadiusValue& value) {
-    return CanonicalComputedValue(Kind::kBorderRadius, value);
   }
 
   Kind kind() const { return kind_; }

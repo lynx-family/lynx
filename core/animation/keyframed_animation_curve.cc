@@ -512,7 +512,7 @@ tasm::CSSValue InterpolateVec2CSSValue(
     const std::optional<RawVec2Value>& start_raw,
     const std::optional<RawVec2Value>& end_raw, KeyframeType* keyframe,
     KeyframeType* keyframe_next, double progress, tasm::Element* element,
-    Vec2CSSValueEncoding encoding, bool discrete_at_midpoint = false) {
+    Vec2CSSValueEncoding encoding) {
   if (start_css_value == tasm::CSSValue() ||
       end_css_value == tasm::CSSValue()) {
     return start_css_value;
@@ -532,8 +532,7 @@ tasm::CSSValue InterpolateVec2CSSValue(
   auto end_value = GetResolvedVec2Value(keyframe_next, *end_raw, element);
   if (!start_value || !end_value || start_value->x.tag != end_value->x.tag ||
       start_value->y.tag != end_value->y.tag) {
-    return discrete_at_midpoint && progress >= 0.5 ? end_css_value
-                                                   : start_css_value;
+    return start_css_value;
   }
 
   auto out = gfx::InterpolateVec2Tagged(*start_value, *end_value, progress,
@@ -1333,31 +1332,42 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
 
 //====== BackgroundPositionAnimator end =======
 
-//====== Vec2LengthAnimator start =======
-Vec2LengthKeyframe::Vec2LengthKeyframe(
+//====== TransformOriginAnimator start =======
+TransformOriginKeyframe::TransformOriginKeyframe(
     fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
     : gfx::Vec2Keyframe(time, std::move(timing_function)) {}
 
-std::unique_ptr<Vec2LengthKeyframe> Vec2LengthKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
-  return std::make_unique<Vec2LengthKeyframe>(time, std::move(timing_function));
+tasm::CSSValue TransformOriginKeyframe::GetTransformOriginKeyframeValue(
+    TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
+    const tasm::CSSValue& underlying_value) {
+  if (keyframe && !keyframe->IsEmpty()) {
+    return keyframe->GetTransformOrigin();
+  }
+  return underlying_value;
 }
 
-bool Vec2LengthKeyframe::SetValue(tasm::CSSPropertyID id,
-                                  const tasm::CSSValue& value,
-                                  tasm::Element* element) {
-  auto keyframe_value = HandleCSSVariableValueIfNeed(id, value, element);
-  if (!ParseRawTransformOriginValue(keyframe_value)) {
+std::unique_ptr<TransformOriginKeyframe> TransformOriginKeyframe::Create(
+    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
+  return std::make_unique<TransformOriginKeyframe>(time,
+                                                   std::move(timing_function));
+}
+
+bool TransformOriginKeyframe::SetValue(tasm::CSSPropertyID id,
+                                       const tasm::CSSValue& value,
+                                       tasm::Element* element) {
+  auto keyframe_transform_origin_value =
+      HandleCSSVariableValueIfNeed(id, value, element);
+  if (!keyframe_transform_origin_value.IsArray()) {
     return false;
   }
-  value_ = keyframe_value;
+  transform_origin_ = keyframe_transform_origin_value;
   ClearResolvedValue();
   MarkNonEmpty();
   return true;
 }
 
-void Vec2LengthKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
-  auto raw = ParseRawTransformOriginValue(value_);
+void TransformOriginKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
+  auto raw = ParseRawTransformOriginValue(transform_origin_);
   auto updated_pattern = static_cast<tasm::CSSValuePattern>(type);
   if (raw && (raw->x_pattern == updated_pattern ||
               raw->y_pattern == updated_pattern)) {
@@ -1365,12 +1375,12 @@ void Vec2LengthKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
   }
 }
 
-std::unique_ptr<KeyframedVec2LengthAnimationCurve>
-KeyframedVec2LengthAnimationCurve::Create() {
-  return std::make_unique<KeyframedVec2LengthAnimationCurve>();
+std::unique_ptr<KeyframedTransformOriginAnimationCurve>
+KeyframedTransformOriginAnimationCurve::Create() {
+  return std::make_unique<KeyframedTransformOriginAnimationCurve>();
 }
 
-tasm::CSSValue KeyframedVec2LengthAnimationCurve::GetValue(
+tasm::CSSValue KeyframedTransformOriginAnimationCurve::GetValue(
     fml::TimeDelta& t) const {
   auto sampling = gfx::ComputeKeyframedProgress(keyframes_, timing_function(),
                                                 scaled_duration(), t);
@@ -1381,29 +1391,30 @@ tasm::CSSValue KeyframedVec2LengthAnimationCurve::GetValue(
   size_t i = sampling.index;
   double progress = sampling.progress;
 
-  Vec2LengthKeyframe* keyframe =
-      static_cast<Vec2LengthKeyframe*>(keyframes_[i].get());
-  Vec2LengthKeyframe* keyframe_next =
-      static_cast<Vec2LengthKeyframe*>(keyframes_[i + 1].get());
+  TransformOriginKeyframe* keyframe =
+      static_cast<TransformOriginKeyframe*>(keyframes_[i].get());
+  TransformOriginKeyframe* keyframe_next =
+      static_cast<TransformOriginKeyframe*>(keyframes_[i + 1].get());
   tasm::CSSValue underlying_value;
   if (keyframe->IsEmpty() || keyframe_next->IsEmpty()) {
     underlying_value = GetUnderlyingValue();
   }
 
-  const tasm::CSSValue& start_value =
-      keyframe->IsEmpty() ? underlying_value : keyframe->GetValue();
-  const tasm::CSSValue& end_value =
-      keyframe_next->IsEmpty() ? underlying_value : keyframe_next->GetValue();
+  tasm::CSSValue start_transform_origin =
+      TransformOriginKeyframe::GetTransformOriginKeyframeValue(
+          keyframe, tasm::kPropertyIDTransformOrigin, underlying_value);
+  tasm::CSSValue end_transform_origin =
+      TransformOriginKeyframe::GetTransformOriginKeyframeValue(
+          keyframe_next, tasm::kPropertyIDTransformOrigin, underlying_value);
 
-  auto start_raw = ParseRawTransformOriginValue(start_value);
-  auto end_raw = ParseRawTransformOriginValue(end_value);
-  return InterpolateVec2CSSValue(
-      start_value, end_value, start_raw, end_raw, keyframe, keyframe_next,
-      progress, element_, Vec2CSSValueEncoding::kTransformOrigin,
-      type_ != AnimationCurve::CurveType::TRANSFORM_ORIGIN);
+  auto start_raw = ParseRawTransformOriginValue(start_transform_origin);
+  auto end_raw = ParseRawTransformOriginValue(end_transform_origin);
+  return InterpolateVec2CSSValue(start_transform_origin, end_transform_origin,
+                                 start_raw, end_raw, keyframe, keyframe_next,
+                                 progress, element_,
+                                 Vec2CSSValueEncoding::kTransformOrigin);
 }
-
-//====== Vec2LengthAnimator end =======
+//====== TransformOriginAnimator end =======
 
 //====== VisibilityAnimator start =======
 VisibilityKeyframe::VisibilityKeyframe(

@@ -22,11 +22,6 @@
     "bottom",
     "transform",
     "box-shadow",
-    "border-radius",
-    "border-top-left-radius",
-    "border-top-right-radius",
-    "border-bottom-right-radius",
-    "border-bottom-left-radius",
     "all"
   ],
   "desc": "The transition-property CSS property sets the CSS properties to which a transition effect should be applied.",
@@ -98,31 +93,6 @@
             },
             "clay_windows": {
               "version_added": "4.2"
-            },
-            "web_lynx": {
-              "version_added": true
-            }
-          }
-        }
-      },
-      "border-radius": {
-        "__compat": {
-          "status": {
-            "deprecated": false,
-            "experimental": false
-          },
-          "support": {
-            "android": {
-              "notes": "The new animator supports <code>border-radius</code> and its four physical corner longhands. <code>px</code> endpoints and percentage endpoints animate component by component; <code>px</code>-to-percentage and mixed <code>calc()</code> endpoints do not transition.",
-              "version_added": true
-            },
-            "ios": {
-              "notes": "The new animator supports <code>border-radius</code> and its four physical corner longhands. <code>px</code> endpoints and percentage endpoints animate component by component; <code>px</code>-to-percentage and mixed <code>calc()</code> endpoints do not transition.",
-              "version_added": true
-            },
-            "harmony": {
-              "notes": "The new animator supports <code>border-radius</code> and its four physical corner longhands. <code>px</code> endpoints and percentage endpoints animate component by component; <code>px</code>-to-percentage and mixed <code>calc()</code> endpoints do not transition.",
-              "version_added": true
             },
             "web_lynx": {
               "version_added": true

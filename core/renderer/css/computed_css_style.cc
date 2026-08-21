@@ -118,11 +118,6 @@ bool CanonicalComputedValue::operator==(
       const auto* rhs_value = std::get_if<kTextGradientIndex>(&rhs.storage_);
       return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
     }
-    case Kind::kBorderRadius: {
-      const auto* lhs = std::get_if<kBorderRadiusIndex>(&storage_);
-      const auto* rhs_value = std::get_if<kBorderRadiusIndex>(&rhs.storage_);
-      return lhs != nullptr && rhs_value != nullptr && *lhs == *rhs_value;
-    }
   }
 
   return false;
@@ -5241,10 +5236,6 @@ bool ComputedCSSStyle::SupportsCanonicalComputedValue(tasm::CSSPropertyID id) {
     case tasm::kPropertyIDOffsetDistance:
     case tasm::kPropertyIDBackgroundPosition:
     case tasm::kPropertyIDVisibility:
-    case tasm::kPropertyIDBorderTopLeftRadius:
-    case tasm::kPropertyIDBorderTopRightRadius:
-    case tasm::kPropertyIDBorderBottomRightRadius:
-    case tasm::kPropertyIDBorderBottomLeftRadius:
       return true;
     default:
       return false;
@@ -5389,39 +5380,6 @@ ComputedCSSStyle::ExtractCanonicalComputedValue(tasm::CSSPropertyID id) const {
     }
     case tasm::kPropertyIDVisibility:
       return CanonicalComputedValue::Enum(static_cast<int32_t>(visibility_));
-    case tasm::kPropertyIDBorderTopLeftRadius:
-    case tasm::kPropertyIDBorderTopRightRadius:
-    case tasm::kPropertyIDBorderBottomRightRadius:
-    case tasm::kPropertyIDBorderBottomLeftRadius: {
-      const auto* border_data =
-          layout_computed_style_.surround_data_.border_data_
-              ? &*layout_computed_style_.surround_data_.border_data_
-              : nullptr;
-      CanonicalComputedValue::BorderRadiusValue radius = {
-          DefaultLayoutStyle::SL_DEFAULT_RADIUS(),
-          DefaultLayoutStyle::SL_DEFAULT_RADIUS()};
-      if (border_data != nullptr) {
-        switch (id) {
-          case tasm::kPropertyIDBorderTopLeftRadius:
-            radius = {border_data->radius_x_top_left,
-                      border_data->radius_y_top_left};
-            break;
-          case tasm::kPropertyIDBorderTopRightRadius:
-            radius = {border_data->radius_x_top_right,
-                      border_data->radius_y_top_right};
-            break;
-          case tasm::kPropertyIDBorderBottomRightRadius:
-            radius = {border_data->radius_x_bottom_right,
-                      border_data->radius_y_bottom_right};
-            break;
-          default:
-            radius = {border_data->radius_x_bottom_left,
-                      border_data->radius_y_bottom_left};
-            break;
-        }
-      }
-      return CanonicalComputedValue::BorderRadius(radius);
-    }
     default:
       return {};
   }

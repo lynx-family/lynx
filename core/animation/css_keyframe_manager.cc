@@ -60,49 +60,6 @@ void SyncAnimationRawCustomPropertySet(
   }
 }
 
-bool IsBorderRadiusCurveType(AnimationCurve::CurveType type) {
-  return type == AnimationCurve::CurveType::BORDER_TOP_LEFT_RADIUS ||
-         type == AnimationCurve::CurveType::BORDER_TOP_RIGHT_RADIUS ||
-         type == AnimationCurve::CurveType::BORDER_BOTTOM_RIGHT_RADIUS ||
-         type == AnimationCurve::CurveType::BORDER_BOTTOM_LEFT_RADIUS;
-}
-
-void SetImplicitKeyframeUnderlyingValues(
-    Animation* animation, const tasm::StyleMap* base_resolved_styles,
-    tasm::Element* element) {
-  if (animation == nullptr || animation->keyframe_effect() == nullptr) {
-    return;
-  }
-  for (const auto& model : animation->keyframe_effect()->keyframe_models()) {
-    if (model == nullptr) {
-      continue;
-    }
-    auto type = model->animation_curve()->Type();
-    if (!IsBorderRadiusCurveType(type)) {
-      continue;
-    }
-    const auto id = static_cast<tasm::CSSPropertyID>(type);
-    tasm::CSSValue value;
-    if (base_resolved_styles != nullptr) {
-      auto iter = base_resolved_styles->find(id);
-      if (iter != base_resolved_styles->end()) {
-        value = iter->second;
-      } else {
-        value = CSSKeyframeManager::GetDefaultValue(
-            starlight::AnimationPropertyType::kBorderTopLeftRadius);
-      }
-    } else {
-      value = GetStyleInElement(id, element);
-    }
-    if (value.IsEmpty()) {
-      value = CSSKeyframeManager::GetDefaultValue(
-          starlight::AnimationPropertyType::kBorderTopLeftRadius);
-    }
-    static_cast<KeyframedVec2LengthAnimationCurve*>(model->animation_curve())
-        ->SetUnderlyingValue(value);
-  }
-}
-
 }  // namespace
 
 const std::unordered_set<starlight::AnimationPropertyType>&
@@ -276,23 +233,10 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
     }
   } else if (type == AnimationCurve::CurveType::TRANSFORM_ORIGIN) {
     if (!has_model) {
-      new_curve = KeyframedVec2LengthAnimationCurve::Create();
+      new_curve = KeyframedTransformOriginAnimationCurve::Create();
     }
     if (!init_keyframe([&]() {
-          return Vec2LengthKeyframe::Create(
-              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
-        })) {
-      return false;
-    }
-  } else if (type == AnimationCurve::CurveType::BORDER_TOP_LEFT_RADIUS ||
-             type == AnimationCurve::CurveType::BORDER_TOP_RIGHT_RADIUS ||
-             type == AnimationCurve::CurveType::BORDER_BOTTOM_RIGHT_RADIUS ||
-             type == AnimationCurve::CurveType::BORDER_BOTTOM_LEFT_RADIUS) {
-    if (!has_model) {
-      new_curve = KeyframedVec2LengthAnimationCurve::Create();
-    }
-    if (!init_keyframe([&]() {
-          return Vec2LengthKeyframe::Create(
+          return TransformOriginKeyframe::Create(
               fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
         })) {
       return false;
@@ -348,10 +292,6 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
   if (anim_data.size() == animation_data_.size() &&
       std::equal(anim_data.begin(), anim_data.end(), animation_data_.begin()) &&
       !force_rebuild) {
-    for (const auto& animation : animations_map_) {
-      SetImplicitKeyframeUnderlyingValues(animation.second.get(),
-                                          new_base_resolved_styles, element_);
-    }
     return;
   }
   animation_data_ = anim_data;
@@ -439,8 +379,6 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
   }
 
   for (auto& active_ani_iter : temp_active_animations_map_) {
-    SetImplicitKeyframeUnderlyingValues(active_ani_iter.second.get(),
-                                        new_base_resolved_styles, element_);
     if (active_ani_iter.second->animation_data()->play_state ==
         starlight::AnimationPlayStateType::kPaused) {
       active_ani_iter.second->Pause();
@@ -453,10 +391,6 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
   animations_map_.merge(temp_keep_animations_map_);
   temp_keep_animations_map_.clear();
   temp_active_animations_map_.clear();
-  for (const auto& animation : animations_map_) {
-    SetImplicitKeyframeUnderlyingValues(animation.second.get(),
-                                        new_base_resolved_styles, element_);
-  }
 }
 
 void CSSKeyframeManager::SyncAnimationDataForNewPipeline(
@@ -1078,15 +1012,6 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
                           tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kBoxShadow) {
     return tasm::CSSValue(lepus::CArray::Create());
-  } else if (type >= starlight::AnimationPropertyType::kBorderTopLeftRadius &&
-             type <=
-                 starlight::AnimationPropertyType::kBorderBottomLeftRadius) {
-    auto array = lepus::CArray::Create();
-    array->emplace_back(0.f);
-    array->emplace_back(static_cast<uint32_t>(tasm::CSSValuePattern::NUMBER));
-    array->emplace_back(0.f);
-    array->emplace_back(static_cast<uint32_t>(tasm::CSSValuePattern::NUMBER));
-    return tasm::CSSValue(std::move(array));
   }
   return tasm::CSSValue();
 }
@@ -1165,21 +1090,6 @@ GetPolymericPropertyIDToAnimationPropertyTypeMap(
              starlight::AnimationPropertyType::kPaddingBottom},
         });
     return *kIDPropertyPaddingMap;
-  } else if (polymeric_type ==
-             starlight::AnimationPropertyType::kBorderRadius) {
-    static const base::NoDestructor<std::unordered_map<
-        tasm::CSSPropertyID, starlight::AnimationPropertyType>>
-        kIDPropertyBorderRadiusMap({
-            {tasm::kPropertyIDBorderTopLeftRadius,
-             starlight::AnimationPropertyType::kBorderTopLeftRadius},
-            {tasm::kPropertyIDBorderTopRightRadius,
-             starlight::AnimationPropertyType::kBorderTopRightRadius},
-            {tasm::kPropertyIDBorderBottomRightRadius,
-             starlight::AnimationPropertyType::kBorderBottomRightRadius},
-            {tasm::kPropertyIDBorderBottomLeftRadius,
-             starlight::AnimationPropertyType::kBorderBottomLeftRadius},
-        });
-    return *kIDPropertyBorderRadiusMap;
   } else {
     static const base::NoDestructor<std::unordered_map<
         tasm::CSSPropertyID, starlight::AnimationPropertyType>>

@@ -73,21 +73,6 @@ ConvertLengthToTransitionArrayComponent(const starlight::NLength& length) {
   }
 }
 
-base::flex_optional<tasm::CSSValue> ConvertBorderRadiusForTransition(
-    const starlight::CanonicalComputedValue::BorderRadiusValue& radius) {
-  auto x = ConvertLengthToTransitionArrayComponent(radius[0]);
-  auto y = ConvertLengthToTransitionArrayComponent(radius[1]);
-  if (!x || !y) {
-    return {};
-  }
-  auto array = lepus::CArray::Create();
-  array->emplace_back(std::move(x->value));
-  array->emplace_back(static_cast<uint32_t>(x->pattern));
-  array->emplace_back(std::move(y->value));
-  array->emplace_back(static_cast<uint32_t>(y->pattern));
-  return tasm::CSSValue(std::move(array));
-}
-
 base::flex_optional<TransitionArrayLengthComponent>
 ConvertComputedTransformLengthToRawComponent(const starlight::NLength& length) {
   switch (length.GetType()) {
@@ -383,16 +368,6 @@ const char* ConvertAnimationPropertyTypeToString(
       return "background-position";
     case starlight::AnimationPropertyType::kTransformOrigin:
       return "transform-origin";
-    case starlight::AnimationPropertyType::kBorderTopLeftRadius:
-      return "border-top-left-radius";
-    case starlight::AnimationPropertyType::kBorderTopRightRadius:
-      return "border-top-right-radius";
-    case starlight::AnimationPropertyType::kBorderBottomRightRadius:
-      return "border-bottom-right-radius";
-    case starlight::AnimationPropertyType::kBorderBottomLeftRadius:
-      return "border-bottom-left-radius";
-    case starlight::AnimationPropertyType::kBorderRadius:
-      return "border-radius";
     default:
       return "";
   }
@@ -442,19 +417,6 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForAnimation(
               std::get_if<starlight::CanonicalComputedValue::kFloatIndex>(
                   &value.storage())) {
         return tasm::CSSValue(*resolved_length, tasm::CSSValuePattern::NUMBER);
-      }
-      return {};
-    case tasm::kPropertyIDBorderTopLeftRadius:
-    case tasm::kPropertyIDBorderTopRightRadius:
-    case tasm::kPropertyIDBorderBottomRightRadius:
-    case tasm::kPropertyIDBorderBottomLeftRadius:
-      if (value.kind() != Kind::kBorderRadius) {
-        return {};
-      }
-      if (const auto* radius = std::get_if<
-              starlight::CanonicalComputedValue::kBorderRadiusIndex>(
-              &value.storage())) {
-        return ConvertBorderRadiusForTransition(*radius);
       }
       return {};
     case tasm::kPropertyIDOpacity:
@@ -638,8 +600,7 @@ void CSSTransitionManager::SyncTransitionData(
     } else if (property == starlight::AnimationPropertyType::kBorderWidth ||
                property == starlight::AnimationPropertyType::kBorderColor ||
                property == starlight::AnimationPropertyType::kPadding ||
-               property == starlight::AnimationPropertyType::kMargin ||
-               property == starlight::AnimationPropertyType::kBorderRadius) {
+               property == starlight::AnimationPropertyType::kMargin) {
       const auto& poly_transition_props_map =
           GetPolymericPropertyIDToAnimationPropertyTypeMap(property);
       for (const auto& iterator : poly_transition_props_map) {
@@ -870,26 +831,9 @@ bool CSSTransitionManager::UpdateTransitionAnimator(
     tasm::CSSValue start_value, tasm::CSSValue end_value,
     bool play_handles_initial_frame) {
   const auto& configs = element()->element_manager()->GetCSSParserConfigs();
-  bool start_valid = IsValueValid(property_type, start_value, configs);
-  bool end_valid = IsValueValid(property_type, end_value, configs);
-  bool compatible = true;
-  if (start_valid && end_valid &&
-      property_type >= starlight::AnimationPropertyType::kBorderTopLeftRadius &&
-      property_type <=
-          starlight::AnimationPropertyType::kBorderBottomLeftRadius &&
-      !start_value.IsVariable() && !end_value.IsVariable()) {
-    auto start = start_value.GetArray();
-    auto end = end_value.GetArray();
-    compatible = (start->get(1).UInt32() ==
-                  static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT)) ==
-                     (end->get(1).UInt32() ==
-                      static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT)) &&
-                 (start->get(3).UInt32() ==
-                  static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT)) ==
-                     (end->get(3).UInt32() ==
-                      static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT));
-  }
-  if (!start_valid || !end_valid || !compatible || start_value == end_value ||
+  if (!IsValueValid(property_type, start_value, configs) ||
+      !IsValueValid(property_type, end_value, configs) ||
+      start_value == end_value ||
       (previous_end_values_.contains(css_id) &&
        end_value == previous_end_values_[css_id])) {
     if (play_handles_initial_frame) {
@@ -1017,37 +961,6 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
     case starlight::AnimationPropertyType::kTransformOrigin: {
       if (!value.IsArray() && !value.IsVariable()) {
         return false;
-      }
-      return true;
-    }
-    case starlight::AnimationPropertyType::kBorderTopLeftRadius:
-    case starlight::AnimationPropertyType::kBorderTopRightRadius:
-    case starlight::AnimationPropertyType::kBorderBottomRightRadius:
-    case starlight::AnimationPropertyType::kBorderBottomLeftRadius: {
-      if (value.IsVariable()) {
-        return true;
-      }
-      if (!value.IsArray() || value.GetArray()->size() != 4) {
-        return false;
-      }
-      auto array = value.GetArray();
-      for (size_t i = 0; i < 4; i += 2) {
-        auto pattern =
-            static_cast<tasm::CSSValuePattern>(array->get(i + 1).Number());
-        if (pattern == tasm::CSSValuePattern::CALC) {
-          return false;
-        }
-        auto parse_result = starlight::CSSStyleUtils::ToLength(
-            tasm::CSSValue(array->get(i), pattern),
-            CSSKeyframeManager::GetLengthContext(element()), configs);
-        if (!parse_result.second) {
-          return false;
-        }
-        auto component =
-            ConvertLengthToTransitionArrayComponent(parse_result.first);
-        if (!component) {
-          return false;
-        }
       }
       return true;
     }

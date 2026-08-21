@@ -2421,10 +2421,6 @@ bool Element::WriteRenderStyleToBundle(tasm::CSSPropertyID id,
     case kPropertyIDOpacity:
     case kPropertyIDOffsetDistance:
     case kPropertyIDTransformOrigin:
-    case kPropertyIDBorderTopLeftRadius:
-    case kPropertyIDBorderTopRightRadius:
-    case kPropertyIDBorderBottomRightRadius:
-    case kPropertyIDBorderBottomLeftRadius:
     case kPropertyIDVisibility:
       return computed_css_style()->SetValue(id, value);
     default:

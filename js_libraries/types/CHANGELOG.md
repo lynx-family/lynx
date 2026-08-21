@@ -1,8 +1,5 @@
 # CHANGELOG
 
-## 4.3.3
-- Add `border-radius` and its four physical corner longhands to `transition-property` typings.
-
 ## 4.3.2
 - Add `android-overlay-scope` to `<overlay>` typings.
 

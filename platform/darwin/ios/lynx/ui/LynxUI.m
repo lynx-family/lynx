@@ -153,7 +153,6 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 
   // Indicate whether the UI needs to trigger a redraw.
   BOOL _needDisplay;
-  BOOL _borderRadiusMaskUpdateScheduled;
 
   BOOL _userInteractionEnabled;
   // angles to consume slide events
@@ -779,23 +778,6 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   _needDisplay = YES;
 }
 
-- (void)scheduleBorderRadiusMaskUpdate {
-  if (_borderRadiusMaskUpdateScheduled) {
-    return;
-  }
-  _borderRadiusMaskUpdateScheduled = YES;
-  [self.nodeReadyBlockArray addObject:^(LynxUI* ui) {
-    if (!ui->_borderRadiusMaskUpdateScheduled) {
-      return;
-    }
-    [ui updateLayerMaskOnFrameChanged];
-  }];
-}
-
-- (void)consumeScheduledBorderRadiusMaskUpdate {
-  _borderRadiusMaskUpdateScheduled = NO;
-}
-
 - (void)onNodeReadyForUIOwner {
   if (_readyBlockArray) {
     NSArray* blockArray = _readyBlockArray;
@@ -857,7 +839,6 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 - (bool)updateLayerMaskOnFrameChanged {
   // TODO(renzhongyue): modify this function such that it can run on the async thread.
   LYNX_ASSERT_ON_MAIN_THREAD;
-  [self consumeScheduledBorderRadiusMaskUpdate];
 
   if (_clipPath) {
     CAShapeLayer* mask = [[CAShapeLayer alloc] init];
@@ -2374,7 +2355,6 @@ LYNX_PROP_DEFINE("direction", setLynxDirection, LynxDirectionType) {
       _backgroundManager.borderRadiusRaw = borderRadius;                             \
       _backgroundManager.borderRadius = borderRadius;                                \
       [self markNeedDisplay];                                                        \
-      [self scheduleBorderRadiusMaskUpdate];                                         \
     }                                                                                \
   }
 
@@ -2410,7 +2390,6 @@ LYNX_PROP_DEFINE("border-radius", setBorderRadius, NSArray*) {
     _backgroundManager.borderRadius = borderRadius;
     _backgroundManager.borderRadiusRaw = borderRadius;
     [self markNeedDisplay];
-    [self scheduleBorderRadiusMaskUpdate];
   }
 }
 

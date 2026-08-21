@@ -196,25 +196,6 @@ TEST(TransitionShorthandHandler, Handler) {
   }
 }
 
-TEST(TransitionShorthandHandler, BorderRadiusKeepsOtherLayers) {
-  StyleMap output;
-  CSSParserConfigs configs;
-
-  EXPECT_TRUE(UnitHandler::Process(
-      CSSPropertyID::kPropertyIDTransition,
-      lepus::Value("border-radius 300ms ease, width 500ms linear"), output,
-      configs));
-
-  auto properties =
-      output[CSSPropertyID::kPropertyIDTransitionProperty].GetArray();
-  ASSERT_TRUE(properties);
-  ASSERT_EQ(properties->size(), 2U);
-  EXPECT_EQ(properties->get(0).Number(),
-            static_cast<int>(starlight::AnimationPropertyType::kBorderRadius));
-  EXPECT_EQ(properties->get(1).Number(),
-            static_cast<int>(starlight::AnimationPropertyType::kWidth));
-}
-
 TEST(TransitionShorthandHandler, Negative) {
   auto id = CSSPropertyID::kPropertyIDTransition;
   StyleMap output;

@@ -228,10 +228,6 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
   LynxImagePlayStatePaused,
 };
 
-@interface LynxUI (BorderRadiusMaskUpdate)
-- (void)consumeScheduledBorderRadiusMaskUpdate;
-@end
-
 @interface LynxUIImage () <LynxMeasureDelegate>
 @property(nonatomic, assign) UIViewContentMode resizeMode;
 @property(nonatomic, assign) BOOL coverStart;
@@ -611,15 +607,7 @@ LYNX_REGISTER_UI("image")
 }
 
 - (bool)updateLayerMaskOnFrameChanged {
-  [self consumeScheduledBorderRadiusMaskUpdate];
   self.view.clipsToBounds = YES;  // image'clipsToBounds should always be YES
-  if ([self isAnimated]) {
-    if (self.clipPath == nil && !LynxHasBorderRadii(self.backgroundManager.borderRadius)) {
-      self.view.layer.mask = nil;
-      return true;
-    }
-    return [self superUpdateLayerMaskOnFrameChanged];
-  }
   BOOL supportsProcessor = LynxImageFetchherSupportsProcessor(self.context.imageFetcher);
   return [self updateLayerMaskOnFrameChangedInner:!supportsProcessor URL:_src];
 }

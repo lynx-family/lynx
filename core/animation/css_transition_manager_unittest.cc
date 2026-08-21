@@ -73,16 +73,6 @@ tasm::CSSValue MakeBoxShadowValue(float h_offset, float v_offset, float blur,
   return tasm::CSSValue(std::move(group));
 }
 
-tasm::CSSValue MakeBorderRadiusValue(float x, float y,
-                                     CSSValuePattern pattern) {
-  auto array = lepus::CArray::Create();
-  array->emplace_back(x);
-  array->emplace_back(static_cast<uint32_t>(pattern));
-  array->emplace_back(y);
-  array->emplace_back(static_cast<uint32_t>(pattern));
-  return tasm::CSSValue(std::move(array));
-}
-
 float GetBoxShadowLength(const tasm::CSSValue& value, const char* key) {
   auto shadow = value.GetArray()->get(0).Table();
   auto length = shadow->GetValue(key).Array();
@@ -293,28 +283,6 @@ TEST_F(CSSTransitionManagerTest,
   EXPECT_EQ(array->get(3).Number(), static_cast<int>(CSSValuePattern::PERCENT));
 }
 
-TEST_F(CSSTransitionManagerTest,
-       ConvertsCanonicalBorderRadiusPairForTransition) {
-  starlight::CanonicalComputedValue::BorderRadiusValue radius = {
-      starlight::NLength::MakePercentageNLength(25.f),
-      starlight::NLength::MakePercentageNLength(50.f)};
-  auto converted = animation::ConvertCanonicalComputedValueForTransition(
-      kPropertyIDBorderTopLeftRadius,
-      starlight::CanonicalComputedValue::BorderRadius(radius),
-      MakeTransitionMeasureContext());
-
-  ASSERT_TRUE(converted.has_value());
-  auto array = converted->GetArray();
-  ASSERT_TRUE(array);
-  ASSERT_EQ(array->size(), 4U);
-  EXPECT_FLOAT_EQ(array->get(0).Number(), 25.f);
-  EXPECT_EQ(array->get(1).UInt32(),
-            static_cast<uint32_t>(CSSValuePattern::PERCENT));
-  EXPECT_FLOAT_EQ(array->get(2).Number(), 50.f);
-  EXPECT_EQ(array->get(3).UInt32(),
-            static_cast<uint32_t>(CSSValuePattern::PERCENT));
-}
-
 TEST_F(CSSTransitionManagerTest, ConvertsCanonicalTransformForTransition) {
   starlight::CanonicalComputedValue::TransformValue transform;
   starlight::TransformRawData translate;
@@ -513,85 +481,6 @@ TEST_F(CSSTransitionManagerTest, setTransitionData) {
   // property_type_value check
   EXPECT_TRUE(test_manager->property_types().size() ==
               transition_props_map.size());
-}
-
-TEST_F(CSSTransitionManagerTest, BorderRadiusTransitionExpandsToCorners) {
-  auto test_element = InitElement();
-  auto test_manager = InitTestTransitionManager(test_element.get());
-  test_manager->setTransitionData(
-      InitTransitionData(starlight::AnimationPropertyType::kBorderRadius, 300,
-                         0, starlight::TimingFunctionData()));
-
-  EXPECT_EQ(test_manager->transition_data().size(), 4U);
-  EXPECT_TRUE(test_manager->NeedsTransition(kPropertyIDBorderTopLeftRadius));
-  EXPECT_TRUE(test_manager->NeedsTransition(kPropertyIDBorderTopRightRadius));
-  EXPECT_TRUE(
-      test_manager->NeedsTransition(kPropertyIDBorderBottomRightRadius));
-  EXPECT_TRUE(test_manager->NeedsTransition(kPropertyIDBorderBottomLeftRadius));
-}
-
-TEST_F(CSSTransitionManagerTest,
-       BorderRadiusTransitionRejectsMixedUnitsBeforeCreation) {
-  auto test_element = InitElement();
-  auto test_manager = InitTestTransitionManager(test_element.get());
-  test_manager->setTransitionData(
-      InitTransitionData(starlight::AnimationPropertyType::kBorderTopLeftRadius,
-                         300, 0, starlight::TimingFunctionData()));
-  test_element->RecordElementPreviousStyle(
-      kPropertyIDBorderTopLeftRadius,
-      MakeBorderRadiusValue(10.f, 20.f, CSSValuePattern::PX));
-
-  EXPECT_FALSE(test_manager->ConsumeCSSProperty(
-      kPropertyIDBorderTopLeftRadius,
-      MakeBorderRadiusValue(50.f, 75.f, CSSValuePattern::PERCENT)));
-  EXPECT_FALSE(test_manager->animations_map().count(
-      base::String("border-top-left-radius")));
-}
-
-TEST_F(CSSTransitionManagerTest,
-       NewPipelineBorderRadiusStartsFromDisplayedPercentPair) {
-  auto test_element = InitElement();
-  auto test_manager = InitTestTransitionManager(test_element.get());
-
-  starlight::ComputedCSSStyle previous_base_style{1.f, 1.f};
-  starlight::ComputedCSSStyle previous_final_style{1.f, 1.f};
-  starlight::ComputedCSSStyle new_base_style{1.f, 1.f};
-  SetTransitionProperties(
-      new_base_style, {starlight::AnimationPropertyType::kBorderTopLeftRadius});
-  ASSERT_TRUE(previous_base_style.SetValue(
-      kPropertyIDBorderTopLeftRadius,
-      MakeBorderRadiusValue(10.f, 20.f, CSSValuePattern::PERCENT)));
-  ASSERT_TRUE(previous_final_style.SetValue(
-      kPropertyIDBorderTopLeftRadius,
-      MakeBorderRadiusValue(30.f, 40.f, CSSValuePattern::PERCENT)));
-  ASSERT_TRUE(new_base_style.SetValue(
-      kPropertyIDBorderTopLeftRadius,
-      MakeBorderRadiusValue(70.f, 80.f, CSSValuePattern::PERCENT)));
-
-  tasm::StyleMap empty_layout_only_styles;
-  test_manager->UpdateTransitionsForNewPipeline(
-      previous_base_style, previous_final_style, new_base_style,
-      empty_layout_only_styles, empty_layout_only_styles);
-
-  const base::String transition_name("border-top-left-radius");
-  ASSERT_TRUE(test_manager->animations_map().count(transition_name));
-  const auto* start = FindTransitionKeyframeValue(
-      test_manager.get(), transition_name, 0.f, kPropertyIDBorderTopLeftRadius);
-  ASSERT_NE(start, nullptr);
-  auto start_array = start->GetArray();
-  ASSERT_TRUE(start_array);
-  EXPECT_FLOAT_EQ(start_array->get(0).Number(), 30.f);
-  EXPECT_FLOAT_EQ(start_array->get(2).Number(), 40.f);
-  EXPECT_EQ(start_array->get(1).UInt32(),
-            static_cast<uint32_t>(CSSValuePattern::PERCENT));
-
-  const auto* end = FindTransitionKeyframeValue(
-      test_manager.get(), transition_name, 1.f, kPropertyIDBorderTopLeftRadius);
-  ASSERT_NE(end, nullptr);
-  auto end_array = end->GetArray();
-  ASSERT_TRUE(end_array);
-  EXPECT_FLOAT_EQ(end_array->get(0).Number(), 70.f);
-  EXPECT_FLOAT_EQ(end_array->get(2).Number(), 80.f);
 }
 
 TEST_F(CSSTransitionManagerTest, NoNeedUpdateExistingAnimator) {

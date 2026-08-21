@@ -1789,16 +1789,6 @@ std::string CSSDecoder::ToAnimationPropertyType(
       return "background-position";
     case starlight::AnimationPropertyType::kTransformOrigin:
       return "transform-origin";
-    case starlight::AnimationPropertyType::kBorderTopLeftRadius:
-      return "border-top-left-radius";
-    case starlight::AnimationPropertyType::kBorderTopRightRadius:
-      return "border-top-right-radius";
-    case starlight::AnimationPropertyType::kBorderBottomRightRadius:
-      return "border-bottom-right-radius";
-    case starlight::AnimationPropertyType::kBorderBottomLeftRadius:
-      return "border-bottom-left-radius";
-    case starlight::AnimationPropertyType::kBorderRadius:
-      return "border-radius";
   }
 }
 

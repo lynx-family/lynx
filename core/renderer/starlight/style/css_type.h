@@ -138,11 +138,6 @@ enum class AnimationPropertyType : uint32_t {
   kOffsetDistance,
   kBackgroundPosition,
   kTransformOrigin,
-  kBorderTopLeftRadius,
-  kBorderTopRightRadius,
-  kBorderBottomRightRadius,
-  kBorderBottomLeftRadius,
-  kBorderRadius,
   kAll = 1 << 18,
   kLegacyAll_1 = kOpacity | kWidth | kHeight | kBackgroundColor | kVisibility |
                  kLeft | kTop | kRight | kBottom | kTransform,
