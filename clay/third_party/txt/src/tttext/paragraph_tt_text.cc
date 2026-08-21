@@ -9,6 +9,7 @@
 #include <textra/text_layout.h>
 #include <textra/text_line.h>
 #include <algorithm>
+#include <optional>
 #include "base/include/string/string_utils.h"
 #include "clay/third_party/txt/src/txt/placeholder_run.h"
 #ifdef ENABLE_SKITY
@@ -87,15 +88,20 @@ class ClaySkityCanvasHelper final : public tttext::SkityCanvasHelper {
 
 class TTShapeRun : public tttext::RunDelegate {
  public:
-  TTShapeRun(const PlaceholderRun& span, const tttext::Style& style) {
+  TTShapeRun(const PlaceholderRun& span,
+             const tttext::Style& style,
+             const std::optional<tttext::FontInfo>& font_info) {
     FML_DCHECK(span.baseline == TextBaseline::kAlphabetic);
     if (span.alignment == PlaceholderAlignment::kMiddle) {
       float text_size = style.GetTextSize();
       if (text_size <= 0) {
         text_size = static_cast<float>(span.height);
       }
-      const float text_ascent = text_size * 0.75f;
-      const float text_descent = text_size - text_ascent;
+      const float text_ascent =
+          font_info.has_value() ? -font_info->GetAscent() : text_size * 0.75f;
+      const float text_descent = font_info.has_value()
+                                     ? font_info->GetDescent()
+                                     : text_size - text_ascent;
       const float middle = (text_ascent - text_descent) / 2.f;
       ascent_ = -std::max(0.f, middle + static_cast<float>(span.height) / 2.f);
       descent_ = std::max(0.f, -middle + static_cast<float>(span.height) / 2.f);
@@ -115,6 +121,34 @@ class TTShapeRun : public tttext::RunDelegate {
   float descent_;
   float advance_;
 };
+
+namespace {
+
+std::optional<tttext::FontInfo> ResolveFontInfo(
+    const std::shared_ptr<FontCollection>& font_collection,
+    const tttext::Style& style) {
+  if (font_collection == nullptr || style.GetTextSize() <= 0) {
+    return std::nullopt;
+  }
+#ifdef ENABLE_SKITY
+  auto tt_font_collection = font_collection->GetIFontCollection();
+  auto* tt_font_collection_ptr = &tt_font_collection;
+#else
+  auto tt_font_collection = font_collection->CreateTTFontCollection();
+  auto* tt_font_collection_ptr = tt_font_collection.get();
+#endif
+  if (tt_font_collection_ptr == nullptr) {
+    return std::nullopt;
+  }
+  auto typefaces =
+      tt_font_collection_ptr->findTypefaces(style.GetFontDescriptor());
+  if (typefaces.empty() || typefaces.front() == nullptr) {
+    return std::nullopt;
+  }
+  return typefaces.front()->GetFontInfo(style.GetTextSize());
+}
+
+}  // namespace
 
 ParagraphTTText::ParagraphTTText(
     std::shared_ptr<FontCollection> font_collection,
@@ -411,7 +445,8 @@ void ParagraphTTText::UpdateForegroundPaint(size_t start,
 void ParagraphTTText::AddPlaceholder(tttext::Style& style,
                                      PlaceholderRun& span,
                                      bool is_float) {
-  auto delegate = std::make_unique<TTShapeRun>(span, style);
+  auto font_info = ResolveFontInfo(font_collection_, style);
+  auto delegate = std::make_unique<TTShapeRun>(span, style, font_info);
   placeholder_pos_.push_back(paragraph_->GetCharCount());
   index_mapper_.AppendText(u"\uFFFC");
   paragraph_->AddShapeRun(&style, std::move(delegate), is_float);
