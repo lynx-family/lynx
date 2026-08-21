@@ -163,6 +163,7 @@ void Engine::SetupDefaultFontManager() {
       settings_.font_initialization_data);
 }
 
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
 void Engine::OnDefaultFontManagerReady() {
   TRACE_EVENT("clay", "Engine::OnDefaultFontManagerReady");
 
@@ -170,6 +171,7 @@ void Engine::OnDefaultFontManagerReady() {
     ScheduleLayout();
   }
 }
+#endif
 
 bool Engine::DispatchPointerEvent(std::vector<clay::PointerEvent> events) {
   return page_view_->DispatchPointerEvent(std::move(events));

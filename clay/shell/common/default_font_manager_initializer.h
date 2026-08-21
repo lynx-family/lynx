@@ -16,8 +16,9 @@ namespace clay {
 
 class Engine;
 
-// Coordinates process-wide default font manager initialization and notifies
-// every engine that laid out a page while initialization was in progress.
+// Coordinates process-wide Windows Skia default font manager initialization
+// and notifies every engine that laid out a page while initialization was in
+// progress.
 class DefaultFontManagerInitializer {
  public:
   static DefaultFontManagerInitializer& Instance();
