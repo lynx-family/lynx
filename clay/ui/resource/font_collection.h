@@ -15,7 +15,6 @@
 #include <utility>
 #include <vector>
 
-#include "clay/gfx/rendering_backend.h"
 #include "clay/ui/resource/asset_font_manager_clay.h"
 #include "clay/ui/resource/font_resource_manager.h"
 #include "clay/ui/ui_rendering_backend.h"
@@ -45,8 +44,6 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
   std::shared_ptr<txt::FontCollection> GetFontCollection() const;
 
   void SetupDefaultFontManager(uint32_t font_initialization_data);
-
-  void SetDefaultFontManager(GrFontMgrPtr font_manager);
 
   void PreLoadFontOnMem(fml::RefPtr<fml::TaskRunner> load_task_runner,
                         std::shared_ptr<ResourceLoaderIntercept> intercept,

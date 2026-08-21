@@ -60,6 +60,7 @@ void ShadowNodeOwner::MarkDirty(ShadowNode* node) const {
   }
 }
 
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
 bool ShadowNodeOwner::InvalidateLaidOutTextNodes() {
   bool invalidated = false;
   for (const auto& entry : shadow_node_map_) {
@@ -76,6 +77,7 @@ bool ShadowNodeOwner::InvalidateLaidOutTextNodes() {
   }
   return invalidated;
 }
+#endif
 
 ClayLayoutStyles ShadowNodeOwner::GetLayoutStyles(ShadowNode* node) const {
   if (layout_delegate_) {

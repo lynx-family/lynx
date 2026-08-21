@@ -57,7 +57,9 @@ class ShadowNodeOwner {
   void ClearNodes();
 
   void MarkDirty(ShadowNode* node) const;
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
   bool InvalidateLaidOutTextNodes();
+#endif
   ClayLayoutStyles GetLayoutStyles(ShadowNode* node) const;
   MeasureResult MeasureNativeNode(ShadowNode* node,
                                   const MeasureConstraint& constraint) const;

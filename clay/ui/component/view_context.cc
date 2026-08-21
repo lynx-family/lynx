@@ -447,9 +447,11 @@ void ViewContext::SetShadowNodeAttribute(int id, const char* attr,
 
 void ViewContext::ScheduleLayout() { shadow_node_owner_->ScheduleLayout(); }
 
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
 bool ViewContext::InvalidateLaidOutTextNodes() {
   return shadow_node_owner_->InvalidateLaidOutTextNodes();
 }
+#endif
 
 void ViewContext::Alignment(int id) {
   auto node = shadow_node_owner_->GetNode(id);
