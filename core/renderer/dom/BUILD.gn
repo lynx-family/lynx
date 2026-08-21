@@ -101,6 +101,7 @@ unittest_set("dom_testset") {
     "fiber/pseudo_element_unittest.cc",
     "fiber/raw_text_element_unittest.cc",
     "fiber/scroll_element_unittest.cc",
+    "fiber/template_element_unittest.cc",
     "fiber/text_element_unittest.cc",
     "fragment/fragment_unittest.cc",
     "fragment/text_fragment_behavior_unittest.cc",
