@@ -7,7 +7,6 @@
 
 #include <limits>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -82,9 +81,6 @@ class TextRender {
   void FlexInlineFontSize(bool shrink_or_expand, float font_size,
                           ShadowNode* shadow_node);
 
-  void HandleHeightOverflow(const MeasureConstraint& constraint,
-                            ShadowLayoutContextMeasure* context);
-
   // support inline-truncation
   void HandleInlineTruncation(const MeasureConstraint& constraint,
                               ShadowLayoutContextMeasure* context);
@@ -107,7 +103,6 @@ class TextRender {
   int measured_width_;
   int measured_height_;
   std::unique_ptr<txt::Paragraph> cache_paragraph_;
-  std::optional<MeasureConstraint> height_ellipsis_constraint_;
   size_t end_glyph_position_ = 0;
   TextDirection truncation_direction_ = TextDirection::kLtr;
   // Override ellipsis count for inline truncation because line metrics are

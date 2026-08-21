@@ -309,11 +309,6 @@ TextAlignment TextRender::EffectAlign() {
 void TextRender::Measure(const MeasureConstraint& constraint,
                          ShadowLayoutContextMeasure* context) {
   inline_truncation_hidden_count_ = -1;
-  if (height_ellipsis_constraint_.has_value() &&
-      !(*height_ellipsis_constraint_ == constraint)) {
-    height_ellipsis_constraint_.reset();
-    update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
-  }
   BuildTextLayout(constraint, context);
 
   if (constraint.width_mode == TextMeasureMode::kIndefinite &&
@@ -337,7 +332,6 @@ void TextRender::Measure(const MeasureConstraint& constraint,
 
   if (cache_paragraph_) {
     HandleAutoSize(constraint, context);
-    HandleHeightOverflow(constraint, context);
     HandleInlineTruncation(constraint, context);
   }
 }
@@ -767,57 +761,6 @@ void TextRender::FlexInlineFontSize(bool shrink_or_expand, float font_size,
   }
 }
 
-void TextRender::HandleHeightOverflow(const MeasureConstraint& constraint,
-                                      ShadowLayoutContextMeasure* context) {
-  if (!cache_paragraph_) {
-    return;
-  }
-  if (measure_node_->text_style_->overflow != TextOverflow::kEllipsis ||
-      HasInlineTruncationShadowNode(measure_node_)) {
-    return;
-  }
-  if (constraint.height_mode == MeasureMode::kIndefinite ||
-      !constraint.height.has_value()) {
-    return;
-  }
-  if (measure_node_->text_style_->white_space == WhiteSpace::kNoWrap) {
-    return;
-  }
-  if (context->measured_height_ <= *constraint.height) {
-    return;
-  }
-  auto& line_metrics = cache_paragraph_->GetLineMetrics();
-  const size_t line_count = line_metrics.size();
-  if (line_count <= 1) {
-    return;
-  }
-  uint32_t fit_lines = 1;
-  for (size_t i = 1; i < line_count; ++i) {
-    if (line_metrics[i].baseline + line_metrics[i].descent <=
-        *constraint.height + kLayoutTolerance) {
-      ++fit_lines;
-    } else {
-      break;
-    }
-  }
-  if (fit_lines >= line_count) {
-    return;
-  }
-  const std::optional<uint32_t> original_max_lines =
-      measure_node_->text_style_->max_lines;
-  if (original_max_lines.has_value()) {
-    fit_lines = std::min(fit_lines, *original_max_lines);
-  }
-  if (original_max_lines == fit_lines) {
-    return;
-  }
-  measure_node_->text_style_->max_lines = fit_lines;
-  update_flag_ = TextUpdateFlag::kUpdateFlagStyle;
-  BuildTextLayout(constraint, context);
-  measure_node_->text_style_->max_lines = original_max_lines;
-  height_ellipsis_constraint_ = constraint;
-}
-
 void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
                                         ShadowLayoutContextMeasure* context) {
   for (auto child : measure_node_->GetChildren()) {
@@ -849,20 +792,12 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         auto end_dx = truncation_direction_ == TextDirection::kRtl
                           ? truncation_size.width()
                           : truncation_layout_width - truncation_size.width();
-        auto end_dy = cache_paragraph_->GetHeight();
-        if (constraint.height_mode != MeasureMode::kIndefinite) {
-          const double visible_bottom = std::min<double>(
-              cache_paragraph_->GetHeight(), constraint.height.value_or(0));
-          const auto visible_line = std::find_if(
-              line_metrics.rbegin(), line_metrics.rend(),
-              [visible_bottom](const auto& line_metric) {
-                return line_metric.baseline + line_metric.descent <=
-                       visible_bottom + kLayoutTolerance;
-              });
-          end_dy = visible_line == line_metrics.rend()
-                       ? line_metrics.front().baseline
-                       : visible_line->baseline;
-        }
+        auto last_line_height = line_metrics.back().height;
+        auto end_dy = constraint.height_mode == MeasureMode::kIndefinite
+                          ? cache_paragraph_->GetHeight()
+                          : std::min<double>(cache_paragraph_->GetHeight(),
+                                             constraint.height.value_or(0)) -
+                                last_line_height + kLayoutTolerance;
         auto end_glyph_index =
             cache_paragraph_->GetGlyphPositionAtCoordinate(end_dx, end_dy);
         auto end_glyph_boxes =
