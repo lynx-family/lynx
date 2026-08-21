@@ -199,21 +199,21 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
       if (animationListener != null) {
         animatedDrawable.setAnimationListener(new BaseAnimationListener() {
           @Override
-          public void onAnimationStart(AnimatedDrawable2 drawable) {
+          public void onAnimationStart(Drawable drawable) {
             animationListener.onAnimationStart(drawable);
           }
 
           @Override
-          public void onAnimationStop(AnimatedDrawable2 drawable) {
-            if (drawable.isRunning()) {
+          public void onAnimationStop(Drawable drawable) {
+            if (animatedDrawable.isRunning()) {
               animationListener.onAnimationCurrentLoop(drawable);
               animationListener.onAnimationFinalLoop(drawable);
             }
           }
 
           @Override
-          public void onAnimationRepeat(AnimatedDrawable2 drawable) {
-            if (drawable.isRunning()) {
+          public void onAnimationRepeat(Drawable drawable) {
+            if (animatedDrawable.isRunning()) {
               animationListener.onAnimationCurrentLoop(drawable);
             }
           }

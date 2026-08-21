@@ -11,7 +11,6 @@ import com.facebook.cache.common.MultiCacheKey;
 import com.facebook.cache.common.SimpleCacheKey;
 import com.facebook.common.references.CloseableReference;
 import com.facebook.imagepipeline.bitmaps.PlatformBitmapFactory;
-import com.facebook.imagepipeline.nativecode.Bitmaps;
 import com.facebook.imagepipeline.request.BasePostprocessor;
 import com.facebook.imagepipeline.request.Postprocessor;
 import com.lynx.tasm.image.model.BitmapPostProcessor;
@@ -40,12 +39,9 @@ public class MultiPostProcessor implements Postprocessor {
             bitmapFactory.createBitmapInternal(sourceBitmap.getWidth(), sourceBitmap.getHeight(),
                 sourceBitmapConfig != null ? sourceBitmapConfig
                                            : BasePostprocessor.FALLBACK_BITMAP_CONFIGURATION);
-        if (nextBitmap.get().getConfig() == sourceBitmap.getConfig()) {
-          Bitmaps.copyBitmap(nextBitmap.get(), sourceBitmap);
-        } else {
-          Canvas canvas = new Canvas(nextBitmap.get());
-          canvas.drawBitmap(sourceBitmap, 0, 0, null);
-        }
+        // Canvas copy keeps this class free of the native imagepipeline module
+        Canvas canvas = new Canvas(nextBitmap.get());
+        canvas.drawBitmap(sourceBitmap, 0, 0, null);
         p.process(prevBitmap != null ? prevBitmap.get() : sourceBitmap, nextBitmap.get());
         CloseableReference.closeSafely(prevBitmap);
         prevBitmap = CloseableReference.cloneOrNull(nextBitmap);

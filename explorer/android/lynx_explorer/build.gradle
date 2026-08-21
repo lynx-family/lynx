@@ -139,11 +139,11 @@ dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'androidx.core:core:1.6.0'
-    implementation 'com.facebook.fresco:fresco:2.3.0'
-    implementation 'com.facebook.fresco:animated-gif:2.3.0'
-    implementation 'com.facebook.fresco:animated-webp:2.3.0'
-    implementation 'com.facebook.fresco:webpsupport:2.3.0'
-    implementation 'com.facebook.fresco:animated-base:2.3.0'
+    implementation 'com.facebook.fresco:fresco:3.7.0'
+    implementation 'com.facebook.fresco:animated-gif:3.7.0'
+    implementation 'com.facebook.fresco:animated-webp:3.7.0'
+    implementation 'com.facebook.fresco:webpsupport:3.7.0'
+    implementation 'com.facebook.fresco:animated-base:3.7.0'
 
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation "com.squareup.okhttp3:okhttp:4.9.0"
