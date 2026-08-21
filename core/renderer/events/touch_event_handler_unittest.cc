@@ -226,6 +226,51 @@ TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent3) {
   touch_event_handler_->HandleTriggerComponentEvent(tasm_.get(), "xxxx", obj);
 }
 
+TEST_F(TouchEventHandlerTest, FireElementWorkletInvokesCallableHandler) {
+  tasm_->page_config_ = std::make_shared<PageConfig>();
+  tasm_->page_config_->enable_fiber_arch_ = true;
+
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(runtime, nullptr);
+  runtime->Initialize();
+  runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm_.get())));
+
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] =
+      "var callbackCount = 0;"
+      "(function(event) {"
+      "  callbackCount += event.detail;"
+      "  return {eventReturnResult: 1};"
+      "})";
+  ASSERT_TRUE(runtime->EvalBuf(kCallbackSource, sizeof(kCallbackSource) - 1,
+                               callback, "callable_event.js"));
+  ASSERT_TRUE(callback.IsCallable());
+
+  EventHandler handler("bindEvent", "tap", lepus::Value(), callback,
+                       runtime.get());
+  EventHandler copied_handler(handler);
+  EXPECT_TRUE(copied_handler.lepus_function().IsCallable());
+  EventHandler assigned_handler("bindEvent", "tap", lepus::Value(), nullptr);
+  assigned_handler = handler;
+  EXPECT_TRUE(assigned_handler.lepus_function().IsCallable());
+  EXPECT_TRUE(assigned_handler.lepus_object().IsCallable());
+  EXPECT_EQ(assigned_handler.lepus_context(), runtime.get());
+  TouchEventHandler::EventContext event_context{};
+  event_context.event_type = EventType::kTouch;
+  event_context.event_name = "tap";
+
+  lepus::Value event_value(lepus::Dictionary::Create());
+  event_value.SetProperty("detail", lepus::Value(3));
+  const auto result = touch_event_handler_->FireElementWorklet(
+      event_context, "", "", tasm_.get(), &copied_handler, event_value, 1);
+
+  EXPECT_EQ(result, EventResult::kStopPropagationBit);
+  EXPECT_EQ(runtime->GetGlobalData("callbackCount"), lepus::Value(3));
+}
+
 TEST_F(TouchEventHandlerTest, TestHandlerTriggerGestureEvent) {
   lepus::Value obj(lepus::Dictionary::Create());
   obj.SetProperty("componentId", lepus::Value("1"));

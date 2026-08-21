@@ -680,6 +680,16 @@ EventResult ElementManager::FireElementWorkletAndRequestResolve(
                    task_handler, element_id, pipeline_options);
 }
 
+EventResult ElementManager::CallMTSClosureAndRequestResolve(
+    runtime::MTSRuntime *runtime_context, const lepus::Value &callback,
+    const lepus::Value &event_detail,
+    std::shared_ptr<PipelineOptions> &pipeline_options) const {
+  return element_manager_delegate_ == nullptr
+             ? EventResult::kDefault
+             : element_manager_delegate_->CallMTSClosureAndRequestResolve(
+                   runtime_context, callback, event_detail, pipeline_options);
+}
+
 void ElementManager::EnqueuePostMTSRenderTask(base::closure task) {
   if (task == nullptr) {
     return;

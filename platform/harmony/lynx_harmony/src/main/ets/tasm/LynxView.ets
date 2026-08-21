@@ -475,6 +475,17 @@ export struct LynxView {
     return this.windowStage ? this.windowStage.getMainWindow() : window.getLastWindow(getContext(this));
   }
 
+  private resolveCurrentWindowBeforeRendererSetup(): void {
+    if (!this.windowStage) {
+      return;
+    }
+    try {
+      this.currentWindow = this.windowStage.getMainWindowSync();
+    } catch (err) {
+      LLog.w(TAG, `Failed to getMainWindowSync. Code: ${err.code}, message: ${err.message}`);
+    }
+  }
+
   aboutToAppear() {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_CREATE);
     this.hasAppeared = true;
@@ -484,6 +495,7 @@ export struct LynxView {
       this.uiRendererCreator ? this.uiRendererCreator.createNodeController() : new CAPINodeController()
     this.setupLogBox();
     this.context.setLynxView(this);
+    this.resolveCurrentWindowBeforeRendererSetup();
     if (this.hasLoadSource()) {
       this.reInitTemplateRenderer(true);
     }

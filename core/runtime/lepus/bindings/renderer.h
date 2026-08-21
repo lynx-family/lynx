@@ -241,6 +241,10 @@ constexpr static const char* kCFunctionAddEvent = "__AddEvent";
 constexpr static const char* kCFunctionSetEvents = "__SetEvents";
 constexpr static const char* kCFunctionGetEvent = "__GetEvent";
 constexpr static const char* kCFunctionGetEvents = "__GetEvents";
+constexpr static const char* kCFunctionSetModifierToElement =
+    "__SetModifierToElement";
+constexpr static const char* kCFunctionGetElementGeometry =
+    "__GetElementGeometry";
 constexpr static const char* kCFunctionSetID = "__SetID";
 constexpr static const char* kCFunctionGetID = "__GetID";
 constexpr static const char* kCFunctionAddDataset = "__AddDataset";

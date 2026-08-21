@@ -779,44 +779,52 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
   }
 
   if (callback.IsCallable()) {
-    SetLepusEventHandler(name, type, lepus_script, callback);
+    auto *callback_context = lepus_context;
+    if (callback_context == nullptr && manager != nullptr) {
+      callback_context = manager->GetEntryRuntime(context_name);
+    }
+    SetCallableEventHandler(name, type, callback, callback_context);
     if (should_sync_listener) {
       remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
 #if ENABLE_LEPUSNG_WORKLET
       auto callback_value = callback;
-      auto script_value = lepus_script;
       AddEventListener(
           event_name,
           std::make_unique<event::ClosureEventListener>(
-              [element = this, callback_value,
-               script_value](lepus::Value args) {
+              [element = this, callback_value, callback_context,
+               context_name](lepus::Value args) {
                 const auto &args_array = args.Array();
                 if (!args.IsArray() || args_array->size() != 3) {
                   return;
                 }
-                const auto &event_info = args_array->get(0);
                 const auto &event_detail = args_array->get(1);
                 auto event = fml::static_ref_ptr_cast<event::Event>(
                     args_array->get(2).RefCounted());
-                const auto &event_info_array = event_info.Array();
-                if (!event_info.IsArray() || event_info_array->size() != 3) {
+                auto *context = callback_context;
+                if (context == nullptr) {
+                  auto *manager = element->element_manager();
+                  if (manager != nullptr) {
+                    context = manager->GetEntryRuntime(context_name);
+                  }
+                }
+                if (context == nullptr) {
                   return;
                 }
-                const auto &component_id = event_info_array->get(0).StdString();
-                const auto &entry_name = event_info_array->get(1).StdString();
-                int32_t element_id = event_info_array->get(2).Int32();
                 auto *manager = element->element_manager();
                 if (manager == nullptr) {
                   return;
                 }
-
-                auto task_handler =
-                    std::make_shared<worklet::LepusApiHandler>();
-                auto current_option = std::make_shared<PipelineOptions>();
-                EventResult result =
-                    manager->FireElementWorkletAndRequestResolve(
-                        component_id, entry_name, callback_value, script_value,
-                        event_detail, task_handler, element_id, current_option);
+                auto pipeline_options = std::make_shared<PipelineOptions>();
+                auto *manager_delegate = manager->element_manager_delegate();
+                auto *current_pipeline =
+                    manager_delegate == nullptr
+                        ? nullptr
+                        : manager_delegate->GetCurrentPipelineContext();
+                if (current_pipeline != nullptr) {
+                  pipeline_options = current_pipeline->GetOptions();
+                }
+                const auto result = manager->CallMTSClosureAndRequestResolve(
+                    context, callback_value, event_detail, pipeline_options);
                 ApplyEventResult(event, result);
               },
               event_options, event::ClosureEventListener::ClosureType::kCore));

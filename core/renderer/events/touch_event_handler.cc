@@ -1520,12 +1520,25 @@ EventResult TouchEventHandler::FireElementWorklet(
 
   EventResult result = EventResult::kDefault;
   if (tasm && tasm->EnableFiberArch()) {
-    // trigger worklet in fiber
-    LOGI("Fire Fiber Element Worklet " << GetEventType(context.event_type)
-                                       << ": " << context.event_name);
-    auto call_result_value = TriggerFiberElementWorklet(
-        tasm, handler->lepus_object(), value, element_id, context.event_type,
-        handler->lepus_context());
+    std::optional<lepus::Value> call_result_value;
+    if (handler->lepus_object().IsCallable()) {
+      LOGI("Fire Fiber Element Callback " << GetEventType(context.event_type)
+                                          << ": " << context.event_name);
+      auto *callback_context = handler->lepus_context();
+      if (callback_context == nullptr) {
+        LOGE("Fire Fiber Element Callback failed since context is null.");
+      } else {
+        call_result_value = callback_context->CallClosure(
+            handler->lepus_object(), lepus_value::ShallowCopy(value));
+      }
+    } else {
+      // trigger worklet in fiber
+      LOGI("Fire Fiber Element Worklet " << GetEventType(context.event_type)
+                                         << ": " << context.event_name);
+      call_result_value = TriggerFiberElementWorklet(
+          tasm, handler->lepus_object(), value, element_id, context.event_type,
+          handler->lepus_context());
+    }
 
     BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
     if (call_result_value.has_value() && call_result_value->IsObject()) {

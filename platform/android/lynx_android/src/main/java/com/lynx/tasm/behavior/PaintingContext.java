@@ -810,16 +810,37 @@ public final class PaintingContext implements IPaintingContext {
 
   @CalledByNative
   public float[] getRectToWindow(int sign) {
-    float[] res = new float[] {0, 0, 0, 0};
-    LynxBaseUI ui = mUIOwner.getNode(sign);
-    if (ui != null) {
-      Rect re = ui.getRectToWindow();
-      res[0] = re.left;
-      res[1] = re.top;
-      res[2] = re.width();
-      res[3] = re.height();
+    if (UIThreadUtils.isOnUiThread()) {
+      return getRectToWindowOnUiThread(sign);
     }
-    return res;
+    final float[] fallback = new float[0];
+    AtomicReference<float[]> result = new AtomicReference<>(fallback);
+    CountDownLatch latch = new CountDownLatch(1);
+    UIThreadUtils.postAtFrontOfQueueOnUiThread(() -> {
+      try {
+        result.set(getRectToWindowOnUiThread(sign));
+      } finally {
+        latch.countDown();
+      }
+    });
+    try {
+      if (!latch.await(UI_THREAD_QUERY_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+        return fallback;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return fallback;
+    }
+    return result.get();
+  }
+
+  private float[] getRectToWindowOnUiThread(int sign) {
+    LynxBaseUI ui = mUIOwner.getNode(sign);
+    if (ui == null) {
+      return new float[0];
+    }
+    Rect re = ui.getRectToWindow();
+    return new float[] {re.left, re.top, re.width(), re.height()};
   }
 
   @CalledByNative
@@ -828,16 +849,12 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   private float[] getRectToLynxViewOnUiThread(int sign) {
-    float[] res = new float[] {0, 0, 0, 0};
     LynxBaseUI ui = mUIOwner.getNode(sign);
-    if (ui != null) {
-      Rect re = ui.getBoundingClientRect();
-      res[0] = re.left;
-      res[1] = re.top;
-      res[2] = re.width();
-      res[3] = re.height();
+    if (ui == null) {
+      return new float[0];
     }
-    return res;
+    Rect re = ui.getBoundingClientRect();
+    return new float[] {re.left, re.top, re.width(), re.height()};
   }
 
   @CalledByNative
@@ -870,7 +887,7 @@ public final class PaintingContext implements IPaintingContext {
     if (UIThreadUtils.isOnUiThread()) {
       return toScreen ? getRectToScreenOnUiThread(sign) : getRectToLynxViewOnUiThread(sign);
     }
-    final float[] fallback = toScreen ? new float[] {0, 0, -1, -1} : new float[] {0, 0, 0, 0};
+    final float[] fallback = toScreen ? new float[] {0, 0, -1, -1} : new float[0];
     AtomicReference<float[]> result = new AtomicReference<>(fallback);
     CountDownLatch latch = new CountDownLatch(1);
     UIThreadUtils.postAtFrontOfQueueOnUiThread(() -> {

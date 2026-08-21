@@ -529,14 +529,22 @@ std::string PaintingContextDarwin::GetUITree() {
 
 std::vector<float> PaintingContextDarwin::GetRectToWindow(int id) {
   std::vector<float> res;
-  LynxUI* ui = [uiOwner_ findUIBySign:id];
-  if (ui != NULL) {
-    CGRect re = [ui getRectToWindow];
-    int scale = UIScreen.mainScreen.scale;
-    res.push_back(re.origin.x * scale);
-    res.push_back(re.origin.y * scale);
-    res.push_back(re.size.width * scale);
-    res.push_back(re.size.height * scale);
+  __block CGRect rect = CGRectZero;
+  __block CGFloat scale = 1;
+  __block BOOL found = NO;
+  RunOnMainThreadSync(^{
+    LynxUI* ui = [uiOwner_ findUIBySign:id];
+    if (ui != NULL) {
+      rect = [ui getRectToWindow];
+      scale = UIScreen.mainScreen.scale;
+      found = YES;
+    }
+  });
+  if (found) {
+    res.push_back(rect.origin.x * scale);
+    res.push_back(rect.origin.y * scale);
+    res.push_back(rect.size.width * scale);
+    res.push_back(rect.size.height * scale);
   }
   return res;
 }

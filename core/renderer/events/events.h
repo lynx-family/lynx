@@ -87,6 +87,15 @@ class EventHandler {
       : EventHandler(false, type, name, base::String(), lepus_script,
                      lepus_function, lepus::Value(), std::nullopt, nullptr) {}
 
+  // Constructor for callable Fiber events. Keep the callback in the
+  // traditional Lepus slot for __GetEvent(s), and also retain the originating
+  // runtime for direct invocation in the Fiber event path.
+  EventHandler(const base::String& type, const base::String& name,
+               const lepus::Value& lepus_script,
+               const lepus::Value& lepus_function, runtime::MTSRuntime* context)
+      : EventHandler(false, type, name, base::String(), lepus_script,
+                     lepus_function, lepus_function, std::nullopt, context) {}
+
   // Constructor for lepus events with object param, The main scenario is
   // element worklet in fiber.
   EventHandler(const base::String& type, const base::String& name,

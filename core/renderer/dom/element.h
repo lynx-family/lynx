@@ -13,6 +13,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -314,6 +315,7 @@ class Element : public lepus::RefCounted,
   uint32_t NodeIndex() const { return node_index_; }
 
   std::vector<float> ScrollBy(float width, float height);
+  std::vector<float> GetRectToWindow();
   std::vector<float> GetRectToLynxView();
   std::vector<float> GetRectToScreen();
   void Invoke(const std::string& method, const pub::Value& params,
@@ -437,6 +439,10 @@ class Element : public lepus::RefCounted,
   LYNX_EXPORT_FOR_DEVTOOL virtual void SetAttribute(
       const base::String& key, const lepus::Value& value,
       bool need_update_data_model = true);
+  // Tracks attributes written by the Modifier receiver separately so its next
+  // clear does not remove attributes owned by other Element APIs.
+  void SetModifierAttribute(const base::String& key, const lepus::Value& value);
+  void RemoveAllModifierAttributes();
   virtual void ResetAttribute(const base::String& key);
   void WillConsumeAttribute(const base::String& key, const lepus::Value& value);
 
@@ -497,6 +503,14 @@ class Element : public lepus::RefCounted,
   void SetLepusEventHandler(const base::String& name, const base::String& type,
                             const lepus::Value& script,
                             const lepus::Value& callback);
+
+  /**
+   * Element API for adding a callable Fiber event with its owning runtime.
+   */
+  void SetCallableEventHandler(const base::String& name,
+                               const base::String& type,
+                               const lepus::Value& callback,
+                               runtime::MTSRuntime* context);
 
   /**
    * Element API for adding worklet event
@@ -2347,6 +2361,8 @@ class Element : public lepus::RefCounted,
   AttrUMap updated_attr_map_;
   base::auto_create_optional<BuiltinAttrMap> builtin_attr_map_;
   base::auto_create_optional<base::Vector<base::String>> reset_attr_vec_;
+  base::auto_create_optional<std::unordered_set<base::String>>
+      modifier_attribute_names_;
 
   fml::RefPtr<lepus::Dictionary> config_;
 

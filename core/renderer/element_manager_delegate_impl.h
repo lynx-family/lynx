@@ -78,6 +78,11 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
       int32_t element_id,
       std::shared_ptr<PipelineOptions> &pipeline_options) override;
 
+  EventResult CallMTSClosureAndRequestResolve(
+      runtime::MTSRuntime *runtime_context, const lepus::Value &callback,
+      const lepus::Value &event_detail,
+      std::shared_ptr<PipelineOptions> &pipeline_options) override;
+
   void OnLayoutAfter(PipelineLayoutData &data) override;
 
  private:

@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/harmony/painting_context_harmony.h"
 
+#include <cmath>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -328,21 +329,70 @@ void PaintingContextHarmony::ResumeExposure() {
 std::vector<float> PaintingContextHarmony::getWindowSize(int id) { return {}; }
 
 std::vector<float> PaintingContextHarmony::GetRectToWindow(int id) {
-  return {};
+  auto* ui_owner = GetUIOwner();
+  if (ui_owner == nullptr) {
+    return {};
+  }
+  auto* context = ui_owner->Context();
+  auto runner = ui_owner->GetUITaskRunner();
+  if (context == nullptr || !context->HasWindowInfo() || !runner) {
+    return {};
+  }
+
+  float result[4] = {0.f, 0.f, 0.f, 0.f};
+  bool found_ui = false;
+  auto task = base::MoveOnlyClosure<void>([platform_ref = platform_ref_,
+                                           &result, &found_ui, id]() mutable {
+    auto harmony_ref =
+        std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+    auto* owner = harmony_ref == nullptr ? nullptr : harmony_ref->GetUIOwner();
+    auto* context = owner == nullptr ? nullptr : owner->Context();
+    auto* ui = owner == nullptr ? nullptr : owner->FindUIBySign(id);
+    if (context == nullptr || ui == nullptr || !context->HasWindowInfo()) {
+      return;
+    }
+
+    float screen_rect[4] = {0.f, 0.f, 0.f, 0.f};
+    ui->GetBoundingClientRect(screen_rect, true);
+    const float density = context->ScaledDensity();
+    if (!std::isfinite(density) || density <= 0.f) {
+      return;
+    }
+    result[0] = screen_rect[0] * density - context->WindowLeftPx();
+    result[1] = screen_rect[1] * density - context->WindowTopPx();
+    result[2] = (screen_rect[2] - screen_rect[0]) * density;
+    result[3] = (screen_rect[3] - screen_rect[1]) * density;
+    found_ui = true;
+  });
+  RunOnUITaskSync(runner, std::move(task));
+  return found_ui ? std::vector<float>(result, result + 4)
+                  : std::vector<float>();
 }
 
 std::vector<float> PaintingContextHarmony::GetRectToLynxView(int64_t id) {
-  float result[4] = {0, 0, 0, 0};
-  auto task = base::MoveOnlyClosure<void>(
-      [platform_ref = platform_ref_, &result, id]() mutable {
-        auto harmony_ref =
-            std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
-        auto ui = harmony_ref->GetUIOwner()->FindUIBySign(id);
-        if (ui) {
-          ui->GetBoundingClientRect(result, false);
-        }
-      });
-  GetUIOwner()->GetUITaskRunner()->PostSyncTask(std::move(task));
+  auto* ui_owner = GetUIOwner();
+  if (ui_owner == nullptr || !ui_owner->GetUITaskRunner()) {
+    return {};
+  }
+
+  float result[4] = {0.f, 0.f, 0.f, 0.f};
+  bool found_ui = false;
+  auto task = base::MoveOnlyClosure<void>([platform_ref = platform_ref_,
+                                           &result, &found_ui, id]() mutable {
+    auto harmony_ref =
+        std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+    auto* owner = harmony_ref == nullptr ? nullptr : harmony_ref->GetUIOwner();
+    auto* ui = owner == nullptr ? nullptr : owner->FindUIBySign(id);
+    if (ui == nullptr) {
+      return;
+    }
+    ui->GetBoundingClientRect(result, false);
+    found_ui = true;
+  });
+  RunOnUITaskSync(ui_owner->GetUITaskRunner(), std::move(task));
+  if (!found_ui) {
+    return {};
+  }
   result[2] = result[2] - result[0];
   result[3] = result[3] - result[1];
   return std::vector<float>(result, result + 4);

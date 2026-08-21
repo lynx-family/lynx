@@ -122,6 +122,8 @@
   V(FiberSetEvents)                     \
   V(FiberGetEvent)                      \
   V(FiberGetEvents)                     \
+  V(FiberSetModifierToElement)          \
+  V(FiberGetElementGeometry)            \
   V(FiberSetID)                         \
   V(FiberGetID)                         \
   V(FiberAddDataset)                    \

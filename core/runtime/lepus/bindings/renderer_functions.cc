@@ -6,6 +6,8 @@
 
 #include <assert.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <deque>
 #include <limits>
@@ -4362,7 +4364,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberAddEvent);
   element->FiberAddEvent(type->String(), name->String(), *callback,
-                         LEPUS_CONTEXT()->name());
+                         LEPUS_CONTEXT()->name(), LEPUS_CONTEXT());
 
   ON_NODE_MODIFIED(element);
   RETURN_UNDEFINED();
@@ -4572,7 +4574,8 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
   }
 
   std::string context_name = LEPUS_CONTEXT()->name();
-  ForEachLepusValue(*callbacks, [&element, context_name](
+  auto* runtime_context = LEPUS_CONTEXT();
+  ForEachLepusValue(*callbacks, [&element, context_name, runtime_context](
                                     const lepus::Value& index,
                                     const lepus::Value& value) {
     BASE_STATIC_STRING_DECL(kName, "name");
@@ -4627,7 +4630,7 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
     } else if (callback.IsString() || callback.IsCallable() ||
                callback.IsObject()) {
       element->FiberAddEvent(type.String(), name.String(), callback,
-                             context_name);
+                             context_name, runtime_context);
     } else {
       LOGW("FiberSetEvents' " << value.Number()
                               << " parameter must contain callback, and "
@@ -4638,6 +4641,244 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
 
   ON_NODE_MODIFIED(element);
   RETURN_UNDEFINED();
+}
+
+// Modifier JavaScript IR operation codes shared with the JavaScript producer.
+namespace {
+constexpr int kModifierOpConcat = 1;
+constexpr int kModifierOpStyleNumber = 2;
+constexpr int kModifierOpStyleString = 3;
+constexpr int kModifierOpAttribute = 4;
+constexpr int kModifierOpEvent = 5;
+
+// Cap total visited nodes (not per-path depth) so a malformed cyclic or
+// branching `concat` chain stays bounded while long linear chains still apply.
+constexpr int kMaxModifierNodeVisits = 512;
+
+// Applies one Modifier IR node, recursing into `previous` (and concat
+// `left`/`right`) first for head-to-tail order; unknown/empty ops are skipped.
+void ApplyModifierNode(const lepus::Value& node, Element* element,
+                       const std::string& context_name,
+                       runtime::MTSRuntime* runtime_context, bool deep_convert,
+                       int& remaining_visits) {
+  if (remaining_visits <= 0 || !node.IsObject()) {
+    return;
+  }
+  --remaining_visits;
+
+  BASE_STATIC_STRING_DECL(kOp, "op");
+  const auto& op_value = node.GetProperty(kOp);
+  if (!op_value.IsNumber()) {
+    BASE_STATIC_STRING_DECL(kPrevious, "previous");
+    ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
+                      runtime_context, deep_convert, remaining_visits);
+    return;
+  }
+
+  switch (static_cast<int>(op_value.Number())) {
+    case kModifierOpConcat: {
+      BASE_STATIC_STRING_DECL(kLeft, "left");
+      BASE_STATIC_STRING_DECL(kRight, "right");
+      ApplyModifierNode(node.GetProperty(kLeft), element, context_name,
+                        runtime_context, deep_convert, remaining_visits);
+      ApplyModifierNode(node.GetProperty(kRight), element, context_name,
+                        runtime_context, deep_convert, remaining_visits);
+      break;
+    }
+    case kModifierOpStyleNumber:
+    case kModifierOpStyleString: {
+      BASE_STATIC_STRING_DECL(kPrevious, "previous");
+      BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
+      BASE_STATIC_STRING_DECL(kValue, "value");
+      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
+                        runtime_context, deep_convert, remaining_visits);
+      auto id = static_cast<CSSPropertyID>(
+          static_cast<int32_t>(node.GetProperty(kPropertyId).Number()));
+      // Forward the raw number/string verbatim, like __AddInlineStyle; the CSS
+      // handler for `id` decides length vs. unitless resolution.
+      const auto& value = node.GetProperty(kValue);
+      const bool has_expected_type =
+          (op_value.Number() == kModifierOpStyleNumber && value.IsNumber()) ||
+          (op_value.Number() == kModifierOpStyleString && value.IsString());
+      if (CSSProperty::IsPropertyValid(id) && has_expected_type) {
+        element->SetStyle(id, value.ToLepusValue());
+      }
+      break;
+    }
+    case kModifierOpAttribute: {
+      BASE_STATIC_STRING_DECL(kPrevious, "previous");
+      BASE_STATIC_STRING_DECL(kName, "name");
+      BASE_STATIC_STRING_DECL(kValue, "value");
+      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
+                        runtime_context, deep_convert, remaining_visits);
+      const auto& name = node.GetProperty(kName);
+      const auto& value = node.GetProperty(kValue);
+      if (name.IsString() &&
+          (value.IsString() || value.IsNumber() || value.IsBool())) {
+        element->SetModifierAttribute(name.String(),
+                                      value.ToLepusValue(deep_convert));
+      }
+      break;
+    }
+    case kModifierOpEvent: {
+      BASE_STATIC_STRING_DECL(kPrevious, "previous");
+      BASE_STATIC_STRING_DECL(kEventName, "eventName");
+      BASE_STATIC_STRING_DECL(kEventType, "eventType");
+      BASE_STATIC_STRING_DECL(kCallback, "callback");
+      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
+                        runtime_context, deep_convert, remaining_visits);
+      const auto& event_name = node.GetProperty(kEventName);
+      if (!event_name.IsString() || event_name.String().empty()) {
+        ElementAPIError(
+            "FiberSetModifierToElement: eventName should be a non-empty "
+            "String");
+        break;
+      }
+      const auto& event_type = node.GetProperty(kEventType);
+      if (!event_type.IsString()) {
+        ElementAPIError(
+            "FiberSetModifierToElement: eventType should be a String");
+        break;
+      }
+      const auto& type = event_type.StdString();
+      if (type != kEventBindEvent && type != kEventCatchEvent &&
+          type != kEventCaptureBind && type != kEventCaptureCatch) {
+        ElementAPIError(
+            "FiberSetModifierToElement: unsupported local event type: %s",
+            type.c_str());
+        break;
+      }
+      const auto& callback = node.GetProperty(kCallback);
+      if (!callback.IsCallable()) {
+        ElementAPIError(
+            "FiberSetModifierToElement: event callback should be callable");
+        break;
+      }
+      element->FiberAddEvent(event_type.String(), event_name.String(), callback,
+                             context_name, runtime_context);
+      break;
+    }
+    default: {
+      // Unknown op: skip without aborting the rest of the chain.
+      BASE_STATIC_STRING_DECL(kPrevious, "previous");
+      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
+                        runtime_context, deep_convert, remaining_visits);
+      break;
+    }
+  }
+}
+}  // namespace
+
+// Applies a whole Modifier chain (the plain-JS IR tail node) to a fiber
+// element, clearing prior modifier styles/attributes/events first; null clears.
+RENDERER_FUNCTION_CC(FiberSetModifierToElement) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_MODIFIER_TO_ELEMENT);
+  // parameter size = 2
+  // [0] RefCounted -> element
+  // [1] Object | Null | Undefined -> modifier chain tail node
+  CHECK_ARGC_GE(FiberSetModifierToElement, 2);
+  CONVERT_ARG(arg0, 0);
+  CONVERT_ARG(arg1, 1);
+
+  auto element = GetFiberElementFromValue(*arg0);
+  if (element == nullptr) {
+    ElementAPIError(
+        "FiberSetModifierToElement: param 0 should be a Fiber Element");
+    RETURN_UNDEFINED();
+  }
+  if (!arg1->IsObject() && !arg1->IsEmpty()) {
+    ElementAPIError(
+        "FiberSetModifierToElement: param 1 should be an Object, null or "
+        "undefined");
+    RETURN_UNDEFINED();
+  }
+  CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetModifierToElement);
+
+  // Clear-then-apply keeps modifier-owned styles, attributes, and events in
+  // sync with the current chain.
+  element->RemoveAllInlineStyles();
+  element->RemoveAllModifierAttributes();
+  auto* manager = element->element_manager();
+  if (manager != nullptr && manager->EnableEventHandleRefactor()) {
+    element->GetEventListenerMap()->Clear();
+  }
+  element->RemoveAllEvents();
+
+  if (arg1->IsObject()) {
+    const bool deep_convert =
+        manager != nullptr && manager->GetEnableParallelElement();
+    int remaining_visits = kMaxModifierNodeVisits;
+    ApplyModifierNode(*arg1, element.get(), LEPUS_CONTEXT()->name(),
+                      LEPUS_CONTEXT(), deep_convert, remaining_visits);
+  }
+
+  ON_NODE_MODIFIED(element);
+  RETURN_UNDEFINED();
+}
+
+namespace {
+constexpr size_t kGeometryRectValueCount = 4;
+
+bool IsValidGeometryRect(const std::vector<float>& rect) {
+  return rect.size() == kGeometryRectValueCount &&
+         std::all_of(rect.begin(), rect.end(),
+                     [](float value) { return std::isfinite(value); }) &&
+         rect[2] >= 0.f && rect[3] >= 0.f;
+}
+
+lepus::Value MakeGeometryRect(const std::vector<float>& rect, float scale) {
+  BASE_STATIC_STRING_DECL(kX, "x");
+  BASE_STATIC_STRING_DECL(kY, "y");
+  BASE_STATIC_STRING_DECL(kWidth, "width");
+  BASE_STATIC_STRING_DECL(kHeight, "height");
+  auto result = lepus::Dictionary::Create();
+  result->SetValue(kX, rect[0] / scale);
+  result->SetValue(kY, rect[1] / scale);
+  result->SetValue(kWidth, rect[2] / scale);
+  result->SetValue(kHeight, rect[3] / scale);
+  return lepus::Value(std::move(result));
+}
+}  // namespace
+
+// Returns one synchronous geometry snapshot for a live Fiber Element. Window
+// coordinates are physical pixels; LynxView coordinates are logical CSS
+// pixels. Missing or destroyed platform UI returns undefined.
+RENDERER_FUNCTION_CC(FiberGetElementGeometry) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_GET_ELEMENT_GEOMETRY);
+  CHECK_ARGC_GE(FiberGetElementGeometry, 1);
+  CONVERT_ARG(arg0, 0);
+
+  auto element = GetFiberElementFromValue(*arg0);
+  if (element == nullptr || element->will_destroy()) {
+    RETURN_UNDEFINED();
+  }
+  auto* manager = element->element_manager();
+  if (manager == nullptr) {
+    RETURN_UNDEFINED();
+  }
+
+  const auto window_rect = element->GetRectToWindow();
+  const auto lynx_view_rect = element->GetRectToLynxView();
+  const auto& env_config = manager->GetLynxEnvConfig();
+  const float layouts_unit_per_css_pixel = env_config.LayoutsUnitPerPx();
+  const float device_pixel_ratio = env_config.DevicePixelRatio();
+  if (!IsValidGeometryRect(window_rect) ||
+      !IsValidGeometryRect(lynx_view_rect) ||
+      !std::isfinite(layouts_unit_per_css_pixel) ||
+      layouts_unit_per_css_pixel <= 0.f || !std::isfinite(device_pixel_ratio) ||
+      device_pixel_ratio <= 0.f) {
+    RETURN_UNDEFINED();
+  }
+
+  BASE_STATIC_STRING_DECL(kWindowRect, "windowRect");
+  BASE_STATIC_STRING_DECL(kLynxViewRect, "lynxViewRect");
+  BASE_STATIC_STRING_DECL(kDevicePixelRatio, "devicePixelRatio");
+  auto result = lepus::Dictionary::Create();
+  result->SetValue(kWindowRect, MakeGeometryRect(window_rect, 1.f));
+  result->SetValue(kLynxViewRect, MakeGeometryRect(lynx_view_rect,
+                                                   layouts_unit_per_css_pixel));
+  result->SetValue(kDevicePixelRatio, device_pixel_ratio);
+  RETURN(lepus::Value(std::move(result)));
 }
 
 // The function takes three parameters, element, event name and event type. When

@@ -39,6 +39,19 @@ export interface PipelineOptions {
   needTimestamps: boolean
 }
 
+export interface ElementGeometryRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ElementGeometrySnapshot {
+  windowRect: ElementGeometryRect;
+  lynxViewRect: ElementGeometryRect;
+  devicePixelRatio: number;
+}
+
 export interface SelectorParams {
   onlyCurrentComponent?: boolean;
 }
@@ -257,6 +270,8 @@ declare global {
 
   function __GetChildren(current: ElementRef): ElementRef[];
 
+  function __GetElementGeometry(current: ElementRef): ElementGeometrySnapshot | undefined;
+
   function __FirstElement(current: ElementRef): ElementRef;
 
   function __LastElement(current: ElementRef): ElementRef;
@@ -290,6 +305,8 @@ declare global {
   function __AddEvent(node: ElementRef, type: string, name: string, func: string | Object | undefined): void;
 
   function __SetEvents(node: ElementRef, events: Record<string, unknown>[] | undefined): void;
+
+  function __SetModifierToElement(node: ElementRef, modifier: object | null | undefined): void;
 
   function __GetEvent(node: ElementRef, name: string, type: string): Record<string, any>;
 

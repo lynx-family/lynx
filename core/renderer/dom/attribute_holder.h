@@ -219,6 +219,15 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
             name, std::make_unique<EventHandler>(type, name, script, func));
   }
 
+  void SetCallableEvent(const base::String& type, const base::String& name,
+                        const lepus::Value& func,
+                        runtime::MTSRuntime* context) {
+    (type == kGlobalBind ? events_->global_bind_events_
+                         : events_->static_events())
+        .insert_or_assign(name, std::make_unique<EventHandler>(
+                                    type, name, lepus::Value(), func, context));
+  }
+
   void SetWorkletEvent(const base::String& type, const base::String& name,
                        const lepus::Value& worklet_info,
                        runtime::MTSRuntime* ctx) {

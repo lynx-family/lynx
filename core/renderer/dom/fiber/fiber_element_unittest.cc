@@ -349,6 +349,27 @@ const lepus::Value* DatasetValue(const Element* element,
   }
   return &it->second;
 }
+
+void ExpectElementAPIError() {
+  const auto& stored_error = base::ErrorStorage::GetInstance().GetError();
+  ASSERT_NE(stored_error, nullptr);
+  EXPECT_EQ(stored_error->error_code_, error::E_ELEMENT_API_ERROR);
+}
+
+std::shared_ptr<runtime::MTSRuntime> CreateRendererRuntime(
+    TemplateAssembler* template_assembler) {
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  if (renderer_runtime == nullptr) {
+    return nullptr;
+  }
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+  return renderer_runtime;
+}
 }  // namespace
 
 static std::unordered_map<std::string, uint32_t> kTestColorMap = {
@@ -11765,6 +11786,535 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsUpdateMaterializedTargets) {
   ASSERT_EQ(slot_parent->children().size(), 2u);
   EXPECT_EQ(slot_parent->children()[0].get(), second.get());
   EXPECT_EQ(slot_parent->children()[1].get(), sentinel.get());
+}
+
+TEST_P(FiberElementTest, SetModifierToElementAppliesStylesAndAttributes) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto element = manager->CreateFiberView();
+
+  // A real JavaScript IR object with numeric/string styles and all supported
+  // primitive attribute value types.
+  std::string modifier_source =
+      "({op:4,name:'data-index',value:7,previous:"
+      "{op:4,name:'data-enabled',value:true,previous:"
+      "{op:4,name:'data-role',value:'card',previous:"
+      "{op:3,propertyId:";
+  modifier_source +=
+      std::to_string(static_cast<int32_t>(kPropertyIDBackgroundColor));
+  modifier_source += ",value:'#ff0000',previous:{op:2,propertyId:";
+  modifier_source += std::to_string(static_cast<int32_t>(kPropertyIDWidth));
+  modifier_source += ",value:100}}}}})";
+
+  lepus::Value modifier;
+  ASSERT_TRUE(renderer_context->EvalBuf(modifier_source.c_str(),
+                                        modifier_source.size(), modifier,
+                                        "modifier_styles_and_attributes.js"));
+  ASSERT_TRUE(modifier.IsJSTable());
+
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value args[] = {lepus::Value(element), modifier};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  ASSERT_TRUE(element->current_raw_inline_styles_.has_value());
+  EXPECT_EQ(element->current_raw_inline_styles_->at(kPropertyIDWidth),
+            lepus::Value(100.0));
+  EXPECT_EQ(element->current_raw_inline_styles_->at(kPropertyIDBackgroundColor),
+            lepus::Value("#ff0000"));
+  EXPECT_FALSE(
+      element->current_raw_inline_styles_->at(kPropertyIDWidth).IsJSValue());
+  EXPECT_FALSE(
+      element->current_raw_inline_styles_->at(kPropertyIDBackgroundColor)
+          .IsJSValue());
+  EXPECT_EQ(element->data_model_->attributes().at("data-role"),
+            lepus::Value("card"));
+  EXPECT_EQ(element->data_model_->attributes().at("data-enabled"),
+            lepus::Value(true));
+  EXPECT_EQ(element->data_model_->attributes().at("data-index"),
+            lepus::Value(7));
+  EXPECT_FALSE(element->data_model_->attributes().at("data-role").IsJSValue());
+  EXPECT_FALSE(element->data_model_->attributes().at("data-index").IsJSValue());
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest,
+       SetModifierToElementClearsOnlyModifierOwnedAttributes) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto element = manager->CreateFiberView();
+  element->SetAttribute("element-owned", lepus::Value("keep"));
+
+  auto attribute = lepus::Dictionary::Create();
+  attribute->SetValue("op", lepus::Value(4));
+  attribute->SetValue("name", lepus::Value("accessibility-label"));
+  attribute->SetValue("value", lepus::Value("news card"));
+
+  lepus::Value set_args[] = {lepus::Value(element), lepus::Value(attribute)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, set_args, 2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_EQ(element->data_model_->attributes().count("accessibility-label"),
+            1u);
+
+  lepus::Value clear_args[] = {lepus::Value(element), lepus::Value()};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, clear_args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_EQ(element->data_model_->attributes().count("accessibility-label"),
+            0u);
+  EXPECT_EQ(element->data_model_->attributes().at("element-owned"),
+            lepus::Value("keep"));
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest,
+       SetModifierToElementKeepsRetainedAttributeInPropBundle) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  auto make_modifier = [](const std::string& value) {
+    auto node = lepus::Dictionary::Create();
+    node->SetValue("op", lepus::Value(4));  // attribute
+    node->SetValue("name", lepus::Value("accessibility-label"));
+    node->SetValue("value", lepus::Value(value));
+    return lepus::Value(node);
+  };
+
+  // First recomposition applies the attribute and flushes it to the platform.
+  lepus::Value first_args[] = {lepus::Value(element), make_modifier("first")};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, first_args, 2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  page->FlushActionsAsRoot();
+
+  // Attribute resets share one pending vector. Queue duplicate resets to make
+  // sure the later Modifier write cancels every earlier reset for this key.
+  element->SetAttribute("accessibility-label", lepus::Value());
+  element->SetAttribute("accessibility-label", lepus::Value());
+
+  // Re-applying the same key must cancel the pending resets above; otherwise
+  // ConsumeAllAttributes (updates before resets) wipes it from the prop bundle.
+  lepus::Value second_args[] = {lepus::Value(element), make_modifier("second")};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, second_args,
+                                               2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  page->FlushActionsAsRoot();
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->impl());
+  painting_context->Flush();
+
+  auto* painting_node =
+      painting_context->node_map_.at(element->impl_id()).get();
+  auto iter = painting_node->props_.find("accessibility-label");
+  ASSERT_NE(iter, painting_node->props_.end());
+  EXPECT_EQ(iter->second.StdString(), "second");
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, SetModifierToElementAppliesChainsInDeclarationOrder) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto element = manager->CreateFiberView();
+
+  // A `then` concat of two chains that both declare width. The right chain is
+  // declared last, so its value must win (last-write-wins).
+  auto outer_width = lepus::Dictionary::Create();
+  outer_width->SetValue("op", lepus::Value(2));
+  outer_width->SetValue("propertyId",
+                        lepus::Value(static_cast<int32_t>(kPropertyIDWidth)));
+  outer_width->SetValue("value", lepus::Value(10.0));
+
+  auto inner_width = lepus::Dictionary::Create();
+  inner_width->SetValue("op", lepus::Value(2));
+  inner_width->SetValue("propertyId",
+                        lepus::Value(static_cast<int32_t>(kPropertyIDWidth)));
+  inner_width->SetValue("value", lepus::Value(20.0));
+
+  auto inner_height = lepus::Dictionary::Create();
+  inner_height->SetValue("op", lepus::Value(2));
+  inner_height->SetValue("propertyId",
+                         lepus::Value(static_cast<int32_t>(kPropertyIDHeight)));
+  inner_height->SetValue("value", lepus::Value(30.0));
+  inner_height->SetValue("previous", lepus::Value(inner_width));
+
+  auto concat = lepus::Dictionary::Create();
+  concat->SetValue("op", lepus::Value(1));  // concat
+  concat->SetValue("left", lepus::Value(outer_width));
+  concat->SetValue("right", lepus::Value(inner_height));
+
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value args[] = {lepus::Value(element), lepus::Value(concat)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  ASSERT_TRUE(element->current_raw_inline_styles_.has_value());
+  EXPECT_EQ(element->current_raw_inline_styles_->at(kPropertyIDWidth),
+            lepus::Value(20.0));
+  EXPECT_EQ(element->current_raw_inline_styles_->at(kPropertyIDHeight),
+            lepus::Value(30.0));
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest,
+       SetModifierToElementBindsSupportedLocalEventsAndReplacesThem) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] = "(function() {})";
+  ASSERT_TRUE(renderer_context->EvalBuf(kCallbackSource,
+                                        sizeof(kCallbackSource) - 1, callback,
+                                        "modifier_event.js"));
+  ASSERT_TRUE(callback.IsCallable());
+
+  auto element = manager->CreateFiberView();
+  lepus::Value modifier;
+  const std::pair<const char*, const char*> events[] = {
+      {"tap", kEventBindEvent},
+      {"feedback", kEventCatchEvent},
+      {"layoutchange", kEventCaptureBind},
+      {"ready", kEventCaptureCatch},
+  };
+  for (const auto& [name, type] : events) {
+    auto event = lepus::Dictionary::Create();
+    event->SetValue("op", lepus::Value(5));
+    event->SetValue("eventName", lepus::Value(name));
+    event->SetValue("eventType", lepus::Value(type));
+    event->SetValue("callback", callback);
+    if (!modifier.IsEmpty()) {
+      event->SetValue("previous", modifier);
+    }
+    modifier = lepus::Value(std::move(event));
+  }
+
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value bind_args[] = {lepus::Value(element), modifier};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, bind_args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  for (const auto& [name, type] : events) {
+    auto event = element->event_map().find(name);
+    ASSERT_NE(event, element->event_map().end());
+    EXPECT_EQ(event->second->type(), type);
+    EXPECT_FALSE(event->second->is_js_event());
+    EXPECT_TRUE(event->second->lepus_function().IsCallable());
+    EXPECT_TRUE(event->second->lepus_object().IsCallable());
+    EXPECT_EQ(event->second->lepus_context(), renderer_runtime.get());
+  }
+
+  auto replacement = lepus::Dictionary::Create();
+  replacement->SetValue("op", lepus::Value(5));
+  replacement->SetValue("eventName", lepus::Value("tap"));
+  replacement->SetValue("eventType", lepus::Value(kEventCatchEvent));
+  replacement->SetValue("callback", callback);
+  lepus::Value replacement_args[] = {lepus::Value(element),
+                                     lepus::Value(replacement)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context,
+                                               replacement_args, 2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ASSERT_EQ(element->event_map().size(), 1u);
+  auto replacement_event = element->event_map().find("tap");
+  ASSERT_NE(replacement_event, element->event_map().end());
+  EXPECT_EQ(replacement_event->second->type(), kEventCatchEvent);
+
+  // A null modifier clears the complete local event set.
+  lepus::Value clear_args[] = {lepus::Value(element), lepus::Value()};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, clear_args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_TRUE(element->event_map().empty());
+  EXPECT_TRUE(element->lepus_event_map().empty());
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest,
+       CallableEventHandlerRunsInsidePipelineAndRequestsResolve) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+
+  auto pipeline_options = std::make_shared<PipelineOptions>();
+  ASSERT_NE(tasm->CreateAndUpdateCurrentPipelineContext(pipeline_options),
+            nullptr);
+
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] =
+      "(function() { return {eventReturnResult: 1}; })";
+  ASSERT_TRUE(renderer_context->EvalBuf(kCallbackSource,
+                                        sizeof(kCallbackSource) - 1, callback,
+                                        "callable_event_pipeline.js"));
+
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+
+  auto modifier = lepus::Dictionary::Create();
+  modifier->SetValue("op", lepus::Value(5));
+  modifier->SetValue("eventName", lepus::Value("tap"));
+  modifier->SetValue("eventType", lepus::Value(kEventBindEvent));
+  modifier->SetValue("callback", callback);
+  lepus::Value args[] = {lepus::Value(element), lepus::Value(modifier)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, args, 2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  auto event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  auto dispatch_result = event::EventDispatcher::DispatchEvent(*element, event);
+
+  EXPECT_TRUE(dispatch_result.consumed);
+  EXPECT_TRUE(event->is_stop_propagation());
+  EXPECT_TRUE(pipeline_options->has_layout);
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, SetModifierToElementRejectsInvalidEventNodes) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] = "(function() {})";
+  ASSERT_TRUE(renderer_context->EvalBuf(kCallbackSource,
+                                        sizeof(kCallbackSource) - 1, callback,
+                                        "invalid_modifier_event.js"));
+
+  auto element = manager->CreateFiberView();
+  auto expect_rejected = [&](const char* name, const char* type,
+                             const lepus::Value& event_callback) {
+    auto event = lepus::Dictionary::Create();
+    event->SetValue("op", lepus::Value(5));
+    event->SetValue("eventName", lepus::Value(name));
+    event->SetValue("eventType", lepus::Value(type));
+    event->SetValue("callback", event_callback);
+
+    base::ErrorStorage::GetInstance().Reset();
+    lepus::Value args[] = {lepus::Value(element), lepus::Value(event)};
+    RendererFunctions::FiberSetModifierToElement(renderer_context, args, 2);
+    ExpectElementAPIError();
+    EXPECT_TRUE(element->event_map().empty());
+    EXPECT_TRUE(element->lepus_event_map().empty());
+  };
+
+  expect_rejected("", kEventBindEvent, callback);
+  expect_rejected("tap", kEventGlobalBind, callback);
+  expect_rejected("tap", "capture-bindEvent", callback);
+  expect_rejected("tap", kEventBindEvent, lepus::Value("not-callable"));
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, SetModifierToElementRejectsInvalidArguments) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto element = manager->CreateFiberView();
+
+  // A RefCounted value whose RefType is not kElement is rejected.
+  base::ErrorStorage::GetInstance().Reset();
+  fml::RefPtr<lepus::RefCounted> non_element =
+      fml::MakeRefCounted<event::TouchEvent>("tap");
+  lepus::Value non_element_args[] = {lepus::Value(non_element),
+                                     lepus::Value(lepus::Dictionary::Create())};
+  RendererFunctions::FiberSetModifierToElement(renderer_context,
+                                               non_element_args, 2);
+  {
+    const auto& stored_error = base::ErrorStorage::GetInstance().GetError();
+    ASSERT_NE(stored_error, nullptr);
+    EXPECT_EQ(stored_error->error_code_, error::E_ELEMENT_API_ERROR);
+  }
+  base::ErrorStorage::GetInstance().Reset();
+
+  // A modifier of a non-object, non-empty type is rejected without clearing
+  // styles or events that are already applied.
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] = "(function() {})";
+  ASSERT_TRUE(renderer_context->EvalBuf(kCallbackSource,
+                                        sizeof(kCallbackSource) - 1, callback,
+                                        "retained_modifier_click.js"));
+  auto retained_width = lepus::Dictionary::Create();
+  retained_width->SetValue("op", lepus::Value(2));
+  retained_width->SetValue(
+      "propertyId", lepus::Value(static_cast<int32_t>(kPropertyIDWidth)));
+  retained_width->SetValue("value", lepus::Value(42.0));
+  auto retained_click = lepus::Dictionary::Create();
+  retained_click->SetValue("op", lepus::Value(5));
+  retained_click->SetValue("eventName", lepus::Value("tap"));
+  retained_click->SetValue("eventType", lepus::Value(kEventBindEvent));
+  retained_click->SetValue("callback", callback);
+  retained_click->SetValue("previous", lepus::Value(retained_width));
+  lepus::Value retained_args[] = {lepus::Value(element),
+                                  lepus::Value(retained_click)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, retained_args,
+                                               2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value bad_modifier_args[] = {lepus::Value(element),
+                                      lepus::Value("not-a-modifier")};
+  RendererFunctions::FiberSetModifierToElement(renderer_context,
+                                               bad_modifier_args, 2);
+  {
+    const auto& stored_error = base::ErrorStorage::GetInstance().GetError();
+    ASSERT_NE(stored_error, nullptr);
+    EXPECT_EQ(stored_error->error_code_, error::E_ELEMENT_API_ERROR);
+  }
+  ASSERT_TRUE(element->current_raw_inline_styles_.has_value());
+  EXPECT_EQ(element->current_raw_inline_styles_->at(kPropertyIDWidth),
+            lepus::Value(42.0));
+  EXPECT_EQ(element->event_map().count("tap"), 1u);
+
+  // An unknown tail op is skipped without dropping supported previous nodes.
+  base::ErrorStorage::GetInstance().Reset();
+  auto supported_width = lepus::Dictionary::Create();
+  supported_width->SetValue("op", lepus::Value(2));
+  supported_width->SetValue(
+      "propertyId", lepus::Value(static_cast<int32_t>(kPropertyIDWidth)));
+  supported_width->SetValue("value", lepus::Value(77.0));
+  auto unknown = lepus::Dictionary::Create();
+  unknown->SetValue("op", lepus::Value(9999));
+  unknown->SetValue("previous", lepus::Value(supported_width));
+  lepus::Value unknown_args[] = {lepus::Value(element), lepus::Value(unknown)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, unknown_args,
+                                               2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ASSERT_TRUE(element->current_raw_inline_styles_.has_value());
+  EXPECT_EQ(element->current_raw_inline_styles_->at(kPropertyIDWidth),
+            lepus::Value(77.0));
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest,
+       GetElementGeometryNormalizesUnitsAndRejectsUnavailableElements) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto element = manager->CreateFiberView();
+  auto& env_config = manager->GetLynxEnvConfig();
+  env_config.layouts_unit_per_px_ = 2.f;
+  env_config.physical_pixels_per_layout_unit_ = 1.5;
+  platform_impl_->SetGeometryRects({100.f, 200.f, 300.f, 400.f},
+                                   {20.f, 40.f, 60.f, 80.f});
+
+  lepus::Value args[] = {lepus::Value(element)};
+  auto result =
+      RendererFunctions::FiberGetElementGeometry(renderer_context, args, 1);
+  ASSERT_TRUE(result.IsTable());
+  const auto& window_rect = result.GetProperty("windowRect");
+  ASSERT_TRUE(window_rect.IsTable());
+  EXPECT_FLOAT_EQ(window_rect.GetProperty("x").Number(), 100.f);
+  EXPECT_FLOAT_EQ(window_rect.GetProperty("y").Number(), 200.f);
+  EXPECT_FLOAT_EQ(window_rect.GetProperty("width").Number(), 300.f);
+  EXPECT_FLOAT_EQ(window_rect.GetProperty("height").Number(), 400.f);
+
+  const auto& lynx_view_rect = result.GetProperty("lynxViewRect");
+  ASSERT_TRUE(lynx_view_rect.IsTable());
+  EXPECT_FLOAT_EQ(lynx_view_rect.GetProperty("x").Number(), 10.f);
+  EXPECT_FLOAT_EQ(lynx_view_rect.GetProperty("y").Number(), 20.f);
+  EXPECT_FLOAT_EQ(lynx_view_rect.GetProperty("width").Number(), 30.f);
+  EXPECT_FLOAT_EQ(lynx_view_rect.GetProperty("height").Number(), 40.f);
+  EXPECT_FLOAT_EQ(result.GetProperty("devicePixelRatio").Number(), 3.f);
+
+  platform_impl_->SetGeometryRects({}, {});
+  EXPECT_TRUE(
+      RendererFunctions::FiberGetElementGeometry(renderer_context, args, 1)
+          .IsEmpty());
+
+  platform_impl_->SetGeometryRects({100.f, 200.f, -1.f, 400.f},
+                                   {20.f, 40.f, 60.f, 80.f});
+  EXPECT_TRUE(
+      RendererFunctions::FiberGetElementGeometry(renderer_context, args, 1)
+          .IsEmpty());
+  platform_impl_->SetGeometryRects(
+      {std::numeric_limits<float>::quiet_NaN(), 200.f, 300.f, 400.f},
+      {20.f, 40.f, 60.f, 80.f});
+  EXPECT_TRUE(
+      RendererFunctions::FiberGetElementGeometry(renderer_context, args, 1)
+          .IsEmpty());
+
+  // A real zero-sized UI is available geometry and must not be confused with
+  // a platform lookup failure, which is represented by an empty vector.
+  platform_impl_->SetGeometryRects({0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f});
+  auto zero_size_result =
+      RendererFunctions::FiberGetElementGeometry(renderer_context, args, 1);
+  ASSERT_TRUE(zero_size_result.IsTable());
+  EXPECT_FLOAT_EQ(
+      zero_size_result.GetProperty("windowRect").GetProperty("width").Number(),
+      0.f);
+  EXPECT_FLOAT_EQ(zero_size_result.GetProperty("lynxViewRect")
+                      .GetProperty("height")
+                      .Number(),
+                  0.f);
+
+  lepus::Value invalid_args[] = {lepus::Value("not-an-element")};
+  EXPECT_TRUE(RendererFunctions::FiberGetElementGeometry(renderer_context,
+                                                         invalid_args, 1)
+                  .IsEmpty());
+
+  platform_impl_->SetGeometryRects({100.f, 200.f, 300.f, 400.f},
+                                   {20.f, 40.f, 60.f, 80.f});
+  element->set_will_destroy(true);
+  EXPECT_TRUE(
+      RendererFunctions::FiberGetElementGeometry(renderer_context, args, 1)
+          .IsEmpty());
+  element->set_will_destroy(false);
+}
+
+TEST_P(FiberElementTest, SetModifierToElementBoundsCyclicConcat) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  static constexpr char kCyclicModifierSource[] =
+      "(function(){var node={op:1};node.left=node;node.right=node;return "
+      "node;})()";
+  lepus::Value modifier;
+  ASSERT_TRUE(renderer_context->EvalBuf(kCyclicModifierSource,
+                                        sizeof(kCyclicModifierSource) - 1,
+                                        modifier, "cyclic_modifier.js"));
+
+  auto element = manager->CreateFiberView();
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value args[] = {lepus::Value(element), modifier};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  base::ErrorStorage::GetInstance().Reset();
 }
 
 TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {

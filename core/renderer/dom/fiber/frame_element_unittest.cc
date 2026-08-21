@@ -183,6 +183,13 @@ class RecordingElementManagerDelegate : public ElementManagerDelegate {
     return EventResult::kDefault;
   }
 
+  EventResult CallMTSClosureAndRequestResolve(
+      runtime::MTSRuntime* runtime_context, const lepus::Value& callback,
+      const lepus::Value& event_detail,
+      std::shared_ptr<PipelineOptions>& pipeline_options) override {
+    return EventResult::kDefault;
+  }
+
   void OnLayoutAfter(PipelineLayoutData& data) override {}
 
   void ResetTriggeredLepusEvent() {

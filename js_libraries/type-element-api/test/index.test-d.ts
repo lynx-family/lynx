@@ -19,6 +19,7 @@ import type {
   ElementEventRef,
   ElementEventType,
   ElementEventListenerOptions,
+  ElementGeometrySnapshot,
 } from '../types/index';
 
 describe('Test Animation Types', () => {
@@ -166,5 +167,14 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __DispatchEvent>().returns.toBeBoolean();
     expectTypeOf<typeof __StopPropagation>().toBeCallableWith(event);
     expectTypeOf<typeof __StopImmediatePropagation>().toBeCallableWith(event);
+  });
+
+  it('should test modifier and geometry api signatures', () => {
+    const element = {} as ElementRef;
+
+    expectTypeOf<typeof __SetModifierToElement>().toBeCallableWith(element, {});
+    expectTypeOf<typeof __SetModifierToElement>().toBeCallableWith(element, null);
+    expectTypeOf<typeof __GetElementGeometry>().toBeCallableWith(element);
+    expectTypeOf<typeof __GetElementGeometry>().returns.toEqualTypeOf<ElementGeometrySnapshot | undefined>();
   });
 });

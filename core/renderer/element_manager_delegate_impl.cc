@@ -10,14 +10,15 @@
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/pipeline/pipeline_context.h"
+#include "core/renderer/pipeline/pipeline_scope.h"
 #include "core/renderer/template_assembler.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/template_bundle/lynx_template_bundle.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 
 #if ENABLE_LEPUSNG_WORKLET
-#include "core/renderer/pipeline/pipeline_scope.h"
 #include "core/renderer/worklet/lepus_element.h"
-#include "core/shell/runtime/mts/mts_runtime.h"
 #endif
 
 namespace lynx {
@@ -179,6 +180,33 @@ EventResult ElementManagerDelegateImpl::FireElementWorkletAndRequestResolve(
 #else
   return EventResult::kDefault;
 #endif
+}
+
+EventResult ElementManagerDelegateImpl::CallMTSClosureAndRequestResolve(
+    runtime::MTSRuntime *runtime_context, const lepus::Value &callback,
+    const lepus::Value &event_detail,
+    std::shared_ptr<PipelineOptions> &pipeline_options) {
+  if (tasm_ == nullptr || runtime_context == nullptr ||
+      !callback.IsCallable()) {
+    return EventResult::kDefault;
+  }
+
+  PipelineScope pipeline_scope(tasm_, pipeline_options);
+  const auto call_result = runtime_context->CallClosure(
+      callback, lepus_value::ShallowCopy(event_detail));
+  EventResult result = EventResult::kDefault;
+  BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
+  if (call_result.IsObject()) {
+    result = static_cast<EventResult>(
+        call_result.GetProperty(kEventResult).Number());
+  }
+
+  auto *page_proxy = tasm_->page_proxy();
+  if (page_proxy != nullptr && page_proxy->element_manager() != nullptr) {
+    page_proxy->element_manager()->SetNeedsLayout();
+    page_proxy->element_manager()->RequestResolve(pipeline_options);
+  }
+  return result;
 }
 
 void ElementManagerDelegateImpl::OnLayoutAfter(PipelineLayoutData &data) {

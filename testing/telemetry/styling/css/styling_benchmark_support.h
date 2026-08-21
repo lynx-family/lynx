@@ -190,6 +190,12 @@ class NoOpElementManagerDelegate : public ElementManagerDelegate {
       std::shared_ptr<PipelineOptions>& pipeline_options) override {
     return static_cast<EventResult>(0);
   }
+  EventResult CallMTSClosureAndRequestResolve(
+      runtime::MTSRuntime* runtime_context, const lepus::Value& callback,
+      const lepus::Value& event_detail,
+      std::shared_ptr<PipelineOptions>& pipeline_options) override {
+    return static_cast<EventResult>(0);
+  }
   void OnLayoutAfter(PipelineLayoutData& data) override {}
 };
 

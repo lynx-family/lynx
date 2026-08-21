@@ -11,6 +11,8 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 
@@ -33,6 +35,12 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
 
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info);
+
+  void SetGeometryRects(std::vector<float> window_rect,
+                        std::vector<float> lynx_view_rect) {
+    window_rect_ = std::move(window_rect);
+    lynx_view_rect_ = std::move(lynx_view_rect);
+  }
 
   std::unordered_map<int, std::string> captured_create_tags_map_;
   std::unordered_set<int> captured_remove_signs_;
@@ -60,6 +68,14 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
 
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
 
+  std::vector<float> GetRectToWindow(int /*id*/) override {
+    return window_rect_;
+  }
+
+  std::vector<float> GetRectToLynxView(int64_t /*id*/) override {
+    return lynx_view_rect_;
+  }
+
   int32_t GetTagInfo(const std::string& tag_name) override;
 
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
@@ -72,6 +88,8 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
   bool flush_{false};
   std::unordered_map<int, std::unique_ptr<MockNode>> node_map_;
   std::unordered_map<std::string, lepus::Value> keyframes_;
+  std::vector<float> window_rect_;
+  std::vector<float> lynx_view_rect_;
   std::unordered_map<std::string, int32_t> mock_virtuality_map = {
       {"inline-text", LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL},
       {"view", LayoutNodeType::COMMON},

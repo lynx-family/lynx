@@ -1248,6 +1248,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
       int32_t element_id,
       std::shared_ptr<PipelineOptions> &pipeline_options) const;
+  EventResult CallMTSClosureAndRequestResolve(
+      runtime::MTSRuntime *runtime_context, const lepus::Value &callback,
+      const lepus::Value &event_detail,
+      std::shared_ptr<PipelineOptions> &pipeline_options) const;
 
   void SetLayoutTick(
       base::MoveOnlyClosure<void, const std::shared_ptr<PipelineOptions>>
