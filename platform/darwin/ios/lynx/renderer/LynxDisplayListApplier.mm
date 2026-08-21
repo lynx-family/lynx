@@ -144,14 +144,18 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
     switch (op) {
       case DisplayListOpType::kBegin: {
-        bool record_offset = _view.renderer.sign != item.payload.begin.id;
+        // The first Begin describes the host renderer's frame, which is
+        // already represented by the host UIView. Every nested Begin is in
+        // the host's local coordinate space and must be applied, including a
+        // text content Begin that intentionally reuses the host text sign.
+        bool record_offset = !sign_stack_.empty();
         sign_stack_.emplace(item.payload.begin.id);
 
-        x_stack_.emplace(item.payload.begin.x);
-        if (record_offset) left_offset_ += x_stack_.top();
+        x_stack_.emplace(record_offset ? item.payload.begin.x : 0.f);
+        left_offset_ += x_stack_.top();
 
-        y_stack_.emplace(item.payload.begin.y);
-        if (record_offset) top_offset_ += y_stack_.top();
+        y_stack_.emplace(record_offset ? item.payload.begin.y : 0.f);
+        top_offset_ += y_stack_.top();
         break;
       }
       case DisplayListOpType::kEnd: {
@@ -460,6 +464,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   _refLayer = nil;
   _hostDecorationRefLayer = nil;
   sign_stack_ = std::stack<int32_t>();
+  x_stack_ = std::stack<float>();
+  y_stack_ = std::stack<float>();
 
   // Clear previous clip state
   if (_view) {
