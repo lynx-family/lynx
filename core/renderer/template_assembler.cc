@@ -1590,8 +1590,11 @@ void TemplateAssembler::SetPageConfig(
     // see `SetPageConfig` called by `LoadTemplate/LoadComponent`
     // in template_assembler.cc
 
-    if (page_config_->GetEnableUnifiedPipeline() == TernaryBool::TRUE_VALUE) {
-      pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+    const auto enable_unified_pipeline =
+        page_config_->GetEnableUnifiedPipeline();
+    if (enable_unified_pipeline != TernaryBool::UNDEFINE_VALUE) {
+      pipeline_context_manager_->SetEnableUnifiedPixelPipeline(
+          enable_unified_pipeline == TernaryBool::TRUE_VALUE);
     }
   }
 }
