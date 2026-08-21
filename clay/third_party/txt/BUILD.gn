@@ -444,7 +444,10 @@ if (enable_unittests) {
              ] + txt_common_executable_deps
 
       if (enable_skity) {
-        deps += [ "../../third_party/skity:skity_lib" ]
+        deps += [
+          ":txt_fixtures",
+          "../../third_party/skity:skity_lib",
+        ]
       }
 
       if (is_mac) {
