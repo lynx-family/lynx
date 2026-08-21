@@ -8,6 +8,8 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/trace/native/trace_event.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace tasm {
@@ -54,8 +56,23 @@ PipelineContext* PipelineContextManager::CreateAndUpdateCurrentPipelineContext(
          0);
   pipeline_contexts_.emplace(pipeline_context->GetVersion(),
                              std::move(pipeline_context));
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_PIPELINE_CONTEXT_START,
+                      "pipeline_id", pipeline_options->pipeline_id,
+                      "pipeline_version",
+                      current_pipeline_context_->GetVersion().ToString());
 
   return current_pipeline_context_;
+}
+
+void PipelineContextManager::ResetCurrentPipelineContext() {
+  if (current_pipeline_context_ == nullptr) {
+    return;
+  }
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, LYNX_PIPELINE_CONTEXT_END, "pipeline_id",
+      current_pipeline_context_->GetOptions()->pipeline_id, "pipeline_version",
+      current_pipeline_context_->GetVersion().ToString());
+  current_pipeline_context_ = nullptr;
 }
 
 PipelineContext* PipelineContextManager::GetPipelineContextByVersion(
