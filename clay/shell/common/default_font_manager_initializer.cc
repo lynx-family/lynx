@@ -57,7 +57,8 @@ void DefaultFontManagerInitializer::Request(
                                             default_font_manager)]() mutable {
       // FontCollection is process-wide, so install the manager and
       // invalidate its caches exactly once.
-      font_collection->SetDefaultFontManager(std::move(default_font_manager));
+      font_collection->GetFontCollection()->SetDefaultFontManager(
+          std::move(default_font_manager));
       font_collection->ClearFontFamilyCache();
 
       std::vector<PendingEngine> pending_engines;

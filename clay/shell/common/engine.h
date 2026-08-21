@@ -128,7 +128,9 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
 
   void SetViewportMetrics(const ViewportMetrics& metrics);
   void SetupDefaultFontManager();
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
   void OnDefaultFontManagerReady();
+#endif
   bool DispatchPointerEvent(std::vector<clay::PointerEvent> events);
   void DispatchKeyEvent(std::unique_ptr<clay::KeyEvent> event,
                         std::function<void(bool /* handled */)> callback);

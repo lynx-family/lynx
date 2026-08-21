@@ -26,7 +26,9 @@
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
 #include "clay/shell/common/default_font_manager_initializer.h"
+#endif
 #include "clay/shell/common/services/animation_event_service_impl.h"
 #include "clay/shell/common/services/sync_compositor_service.h"
 #include "clay/ui/common/frame_timing_collector.h"
@@ -595,9 +597,11 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
   weak_engine_ = engine_->GetWeakPtr();
   weak_platform_view_ = platform_view_->GetWeakPtr();
 
-  // Setup the time-consuming default font manager right after engine created.
+  // Initialize the default font manager right after the engine is created.
+  // Windows Skia creates it asynchronously because DirectWrite setup can be
+  // expensive. Other backends keep synchronous initialization.
   if (!settings_.prefetched_default_font_manager) {
-#if defined(OS_WIN)
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
     DefaultFontManagerInitializer::Instance().Request(
         weak_engine_, task_runners_.GetIOTaskRunner(),
         task_runners_.GetUITaskRunner(), settings_.font_initialization_data);
@@ -608,7 +612,7 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
                                           engine->SetupDefaultFontManager();
                                         }
                                       });
-#endif  // defined(OS_WIN)
+#endif  // defined(OS_WIN) && !defined(ENABLE_SKITY)
   }
 
   // Create FrameTimingCollector and set to engine

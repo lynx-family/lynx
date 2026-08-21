@@ -140,7 +140,9 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
                               const clay::Value& value);
 
   void ScheduleLayout();
+#if defined(OS_WIN) && !defined(ENABLE_SKITY)
   bool InvalidateLaidOutTextNodes();
+#endif
 
   void Alignment(int id);
 
