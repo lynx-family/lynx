@@ -387,6 +387,41 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(CGSizeEqualToSize(child.layer.bounds.size, CGSizeMake(12.0f, 13.0f)));
 }
 
+- (void)testNestedTextContentOffsetAlignsTextLayerWithInlineView {
+  LynxMockView *host = [[LynxMockView alloc] initWithRendererContext:nil];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *inlineView = [[LynxMockView alloc] initWithRendererContext:nil];
+  inlineView.frame = CGRectMake(0.0f, 0.0f, 58.0f, 16.0f);
+  [inlineView createRendererWithSign:2 andContext:nil];
+  [host addSubview:inlineView];
+
+  id mockTextRenderer = OCMClassMock([LynxTextRenderer class]);
+  id mockTextRenderManager = OCMClassMock([LynxTextRenderManager class]);
+  OCMStub([mockTextRenderManager takeTextRender:1]).andReturn(mockTextRenderer);
+  id mockContext = OCMClassMock([LynxRendererContext class]);
+  OCMStub([mockContext textRenderManager]).andReturn(mockTextRenderManager);
+
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:mockContext];
+  DisplayList list;
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kText), 12.0f, 14.0f, 200.0f,
+              40.0f);
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kText), 8.0f, 6.0f, 184.0f,
+              28.0f);
+  AppendRecordBox(list, 0.0f, 0.0f, 184.0f, 28.0f);
+  AppendText(list, 1, 0);
+  AppendEnd(list);
+  AppendDrawView(list, 2, 8.0f, 6.0f);
+  AppendEnd(list);
+
+  [applier applyDisplayList:&list];
+
+  CALayer *textLayer = host.layer.sublayers.firstObject;
+  XCTAssertNotNil(textLayer);
+  XCTAssertTrue(CGRectEqualToRect(textLayer.frame, CGRectMake(8.0f, 6.0f, 184.0f, 28.0f)));
+  XCTAssertTrue(CGRectEqualToRect(inlineView.frame, CGRectMake(8.0f, 6.0f, 58.0f, 16.0f)));
+}
+
 - (void)testProcessContentOperationsWithUnknownOp {
   id mockUIView = OCMClassMock([LynxMockView class]);
   id mockContext = OCMClassMock([LynxRendererContext class]);
