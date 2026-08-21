@@ -256,6 +256,10 @@ inline constexpr const char* const FROM_BINARY = "FromBinary";
 inline constexpr const char* const DATA_PROCESSOR = "dataProcessor";
 
 /** PIPELINE_START  */
+inline constexpr const char* const LYNX_PIPELINE_CONTEXT_START =
+    "PipelineContext.Start";
+inline constexpr const char* const LYNX_PIPELINE_CONTEXT_END =
+    "PipelineContext.End";
 inline constexpr const char* const LYNX_PIPELINE_RUN_PIXEL = "RunPixelPipeline";
 inline constexpr const char* const LYNX_PIPELINE_ON_LAYOUT_AFTER =
     "OnLayoutAfter";

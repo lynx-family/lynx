@@ -12,6 +12,7 @@
 #include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
 #include "core/renderer/pipeline/pipeline_scope_unittest.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace tasm {
@@ -117,6 +118,24 @@ TEST_F(PipelineScopeTest, TestTemplateAssemblerPipelineObserver) {
     context->RequestResolve();
   }
   EXPECT_EQ(observer->on_changed_count, count_before_remove);
+}
+
+TEST_F(PipelineScopeTest, TestPageConfigOverridesUnifiedPipelineNativeConfig) {
+  EXPECT_TRUE(tasm_->pipeline_context_manager_->enable_unified_pixel_pipeline_);
+
+  auto page_config = std::make_shared<PageConfig>();
+  page_config->SetEnableUnifiedPipeline(TernaryBool::FALSE_VALUE);
+  tasm_->SetPageConfig(page_config);
+  EXPECT_FALSE(
+      tasm_->pipeline_context_manager_->enable_unified_pixel_pipeline_);
+
+  page_config->SetEnableUnifiedPipeline(TernaryBool::TRUE_VALUE);
+  tasm_->SetPageConfig(page_config);
+  EXPECT_TRUE(tasm_->pipeline_context_manager_->enable_unified_pixel_pipeline_);
+
+  page_config->SetEnableUnifiedPipeline(TernaryBool::UNDEFINE_VALUE);
+  tasm_->SetPageConfig(page_config);
+  EXPECT_TRUE(tasm_->pipeline_context_manager_->enable_unified_pixel_pipeline_);
 }
 }  // namespace test
 }  // namespace tasm
