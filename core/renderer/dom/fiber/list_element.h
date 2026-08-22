@@ -196,7 +196,7 @@ class ListElement : public Element, public tasm::ListNode {
                     const std::string& current_entry) override {
     return false;
   }
-  void SetAttributeInternal(const base::String& key,
+  bool SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
   void ResetAttribute(const base::String& key) override;
   void CacheCommittedStyleFromAttributes(CSSPropertyID id,

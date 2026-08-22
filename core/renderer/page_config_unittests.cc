@@ -97,6 +97,35 @@ TEST(PageConfigTest, EnableElementApiNewRegistration) {
       LynxEnv::Key::ENABLE_ELEMENT_API_NEW_REGISTRATION);
 }
 
+TEST(PageConfigTest, EnableSimpleStyleNoPatchOptimization) {
+  auto& env = LynxEnv::GetInstance();
+  env.external_env_map_.erase(
+      LynxEnv::Key::ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION);
+
+  rapidjson::Document empty_doc;
+  empty_doc.Parse("{}");
+  auto default_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(default_config, empty_doc, "");
+  EXPECT_FALSE(default_config->GetEnableSimpleStyleNoPatchOptimization());
+
+  env.external_env_map_
+      [LynxEnv::Key::ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION] = "true";
+  auto settings_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(settings_config, empty_doc, "");
+  EXPECT_TRUE(settings_config->GetEnableSimpleStyleNoPatchOptimization());
+
+  rapidjson::Document explicit_false_doc;
+  explicit_false_doc.Parse("{\"enableSimpleStyleNoPatchOptimization\": false}");
+  auto explicit_false_config = std::make_shared<PageConfig>();
+  LynxConfigDecoder::DecodePageConfig(explicit_false_config, explicit_false_doc,
+                                      "");
+  EXPECT_FALSE(
+      explicit_false_config->GetEnableSimpleStyleNoPatchOptimization());
+
+  env.external_env_map_.erase(
+      LynxEnv::Key::ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION);
+}
+
 TEST(PageConfigTest, EnableEventTargetInfoNodeIndex) {
   std::shared_ptr<PageConfig> page_config = std::make_shared<PageConfig>();
   EXPECT_FALSE(page_config->GetEnableEventTargetInfoNodeIndex());
