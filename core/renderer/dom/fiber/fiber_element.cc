@@ -1204,6 +1204,14 @@ void Element::DispatchAsyncResolveProperty() {
 
 #pragma region simple styling
 
+void Element::MarkSimpleStyleDirty(uint32_t dirty_bits) {
+  if (!element_manager_ ||
+      !element_manager_->EnableSimpleStyleNoPatchOptimization()) {
+    dirty_bits |= kDirtyForceUpdate;
+  }
+  MarkDirty(dirty_bits);
+}
+
 void Element::SetStyleObjects(
     std::unique_ptr<style::StyleObject *, style::StyleObjectArrayDeleter>
         style_objects) {
@@ -1211,7 +1219,7 @@ void Element::SetStyleObjects(
 
   style_objects_ = std::move(style_objects);
 
-  MarkDirty(kDirtyForceUpdate | kDirtyStyleObjects);
+  MarkSimpleStyleDirty(kDirtyStyleObjects);
 }
 
 void Element::ReplaceDynamicSimpleStyles(
@@ -1225,7 +1233,7 @@ void Element::ReplaceDynamicSimpleStyles(
   }
 
   dynamic_simple_object_ = std::move(new_style_object);
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+  MarkSimpleStyleDirty(kDirtyDynamicStyleObjects);
 }
 
 void Element::AddDynamicSimpleStyles(tasm::StyleMap &&new_styles) {
@@ -1245,12 +1253,12 @@ void Element::AddDynamicSimpleStyles(tasm::StyleMap &&new_styles) {
   if (!dynamic_simple_object_) {
     dynamic_simple_object_ =
         style::CreateDynamicStyleObjectRef(std::move(new_styles));
-    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    MarkSimpleStyleDirty(kDirtyDynamicStyleObjects);
     return;
   }
 
   dynamic_simple_object_->MergeStyleMap(std::move(new_styles));
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+  MarkSimpleStyleDirty(kDirtyDynamicStyleObjects);
 }
 
 void Element::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
@@ -1270,7 +1278,7 @@ void Element::RemoveDynamicSimpleStyleKV(tasm::CSSPropertyID id) {
   if (dynamic_simple_object_->Properties().empty()) {
     dynamic_simple_object_ = nullptr;
   }
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+  MarkSimpleStyleDirty(kDirtyDynamicStyleObjects);
 }
 
 void Element::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
@@ -1286,12 +1294,12 @@ void Element::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
     dynamic_styles.insert_or_assign(id, std::move(value));
     dynamic_simple_object_ =
         style::CreateDynamicStyleObjectRef(std::move(dynamic_styles));
-    MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+    MarkSimpleStyleDirty(kDirtyDynamicStyleObjects);
     return;
   }
 
   dynamic_simple_object_->UpdateStyleMap(id, std::move(value));
-  MarkDirty(kDirtyForceUpdate | kDirtyDynamicStyleObjects);
+  MarkSimpleStyleDirty(kDirtyDynamicStyleObjects);
 }
 
 void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
@@ -1307,14 +1315,22 @@ void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
 
   if (value.IsEmpty()) {
     if (id == kPropertyIDFontSize) {
+      const auto previous_font_size = GetFontSize();
       ResetFontSize();
+      if (base::FloatsNotEqual(previous_font_size, GetFontSize())) {
+        MarkDirty(kDirtyForceUpdate);
+      }
     }
     ResetStyleInternal(id);
     return;
   }
 
   if (id == kPropertyIDFontSize) {
+    const auto previous_font_size = GetFontSize();
     SetFontSize(value);
+    if (base::FloatsNotEqual(previous_font_size, GetFontSize())) {
+      MarkDirty(kDirtyForceUpdate);
+    }
     dirty_ &= ~kDirtyFontSize;
   } else {
     SetStyleInternal(id, value);
@@ -1372,7 +1388,10 @@ void Element::FinalizeSimpleStyleUpdate() {
   }
   EXEC_EXPR_FOR_INSPECTOR(
       element_manager()->OnElementNodeSetForInspector(this););
-  MarkDirty(kDirtyForceUpdate);
+  if (!element_manager_->EnableSimpleStyleNoPatchOptimization() ||
+      prop_bundle_ || layout_bundle_ || computed_css_style()->IsDirty()) {
+    MarkDirty(kDirtyForceUpdate);
+  }
 }
 
 void Element::UpdateSimpleStyles(tasm::StyleMap &&style_map) {
@@ -3771,8 +3790,7 @@ bool Element::ConsumeAllAttributes() {
                   UpdateTraceDebugInfo(ctx.event());
                 });
     for (const auto &attr : updated_attr_map_) {
-      SetAttributeInternal(attr.first, attr.second);
-      need_update = true;
+      need_update |= SetAttributeInternal(attr.first, attr.second);
     }
     if (reset_attr_vec_.has_value()) {
       for (const auto &attr : *reset_attr_vec_) {
@@ -3859,13 +3877,13 @@ void Element::MarkHasLayoutOnlyPropsIfNecessary(
   has_layout_only_props_ = false;
 }
 
-void Element::SetAttributeInternal(const base::String &key,
+bool Element::SetAttributeInternal(const base::String &key,
                                    const lepus::Value &value) {
   if (key.IsEqual(kLazyBundleUrl)) {
     if (value.IsString()) {
       set_entry_name(value.String());
     }
-    return;
+    return true;
   }
 
   WillConsumeAttribute(key, value);
@@ -3942,6 +3960,7 @@ void Element::SetAttributeInternal(const base::String &key,
     }
     SetStyle(attr_styles);
 #endif
+  return true;
 }
 
 void Element::SetNativeProps(

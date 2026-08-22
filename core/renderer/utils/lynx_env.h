@@ -155,6 +155,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
     JS_CALL_NATIVE_FREQUENCY_COOLDOWN_MS,
     ENABLE_NEW_STYLING_PIPELINE,
+    ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION,
     ENABLE_FRAME_NATIVE_DATA,
     ENABLE_READABLE_STREAM_MEM_FIX,
     ENABLE_ELEMENT_API_NEW_REGISTRATION,
@@ -335,6 +336,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
              "enable_animation_forward_update_preservation"},
             {Key::ENABLE_NEW_STYLING_PIPELINE, "enable_new_styling_pipeline"},
+            {Key::ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION,
+             "enable_simple_style_no_patch_optimization"},
             {Key::ENABLE_FRAME_NATIVE_DATA, "enable_frame_native_data"},
             {Key::ENABLE_READABLE_STREAM_MEM_FIX,
              "enable_readable_stream_mem_fix"},
@@ -525,6 +528,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixFiberReinsertDetachFromOldRenderParent();
   bool EnableAnimationForwardUpdatePreservation();
   bool EnableNewStylingPipeline();
+  bool EnableSimpleStyleNoPatchOptimization();
   bool EnableFrameNativeData();
   bool EnableReadableStreamMemFix();
   bool EnablePromiseMemoryFix();
