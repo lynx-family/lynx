@@ -76,6 +76,48 @@ TEST_F(RawTextElementTest, SetText) {
               lepus::Value("text-content"));
 }
 
+TEST_F(RawTextElementTest, SetSameTextSkipsLayoutInElementInvalidation) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  auto raw_text = manager->CreateFiberRawText();
+  raw_text->SetText(lepus::Value("text-content"));
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+  page->FlushActionsAsRoot();
+  text->EnsureSLNode();
+
+  ASSERT_NE(text->slnode(), nullptr);
+  text->slnode()->is_dirty_ = false;
+  ASSERT_FALSE(text->slnode()->IsDirty());
+
+  raw_text->SetText(lepus::Value("text-content"));
+
+  EXPECT_FALSE(text->slnode()->IsDirty());
+
+  raw_text->SetAttribute(RawTextElement::kTextAttr,
+                         lepus::Value("text-content"));
+
+  EXPECT_NE(raw_text->dirty() & Element::kDirtyAttr, 0);
+  EXPECT_EQ(raw_text->updated_attr_map_.size(), 1u);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(text->slnode()->IsDirty());
+  EXPECT_TRUE(raw_text->updated_attr_map_.empty());
+
+  raw_text->SetAttribute(RawTextElement::kTextAttr,
+                         lepus::Value("updated-text-content"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(text->slnode()->IsDirty());
+  EXPECT_TRUE(raw_text->content().IsEqual("updated-text-content"));
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

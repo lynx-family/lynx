@@ -783,6 +783,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   bool EnablePropertyBasedSimpleStyle() const {
     return enable_property_based_simple_style_;
   }
+  bool EnableSimpleStyleNoPatchOptimization() const {
+    return enable_simple_style_no_patch_optimization_;
+  }
 
   void InsertDirtyContext(BaseElementContainer *stacking_context) {
     dirty_stacking_contexts_.insert(stacking_context);
@@ -1499,6 +1502,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_property_based_simple_style_{false};
+  bool enable_simple_style_no_patch_optimization_{false};
 
   bool fix_list_callback_leak_flag_{true};
 

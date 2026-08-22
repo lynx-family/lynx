@@ -44,7 +44,7 @@ void ScrollElement::RemoveCommittedStyleFromAttributes(CSSPropertyID id) {
   }
 }
 
-void ScrollElement::SetAttributeInternal(const base::String& key,
+bool ScrollElement::SetAttributeInternal(const base::String& key,
                                          const lepus::Value& value) {
   Element::SetAttributeInternal(key, value);
 
@@ -86,6 +86,7 @@ void ScrollElement::SetAttributeInternal(const base::String& key,
   } else if (key.IsEquals(kScrollNewArch) && value_str == kTrue) {
     platform_node_tag_ = BASE_STATIC_STRING(kScrollNewArch);
   }
+  return true;
 }
 
 void ScrollElement::ResetAttribute(const base::String& key) {

@@ -654,6 +654,10 @@ bool LynxEnv::EnableNewStylingPipeline() {
   return GetBoolEnv(Key::ENABLE_NEW_STYLING_PIPELINE, false);
 }
 
+bool LynxEnv::EnableSimpleStyleNoPatchOptimization() {
+  return GetBoolEnv(Key::ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION, false);
+}
+
 bool LynxEnv::EnableFrameNativeData() {
   return GetBoolEnv(Key::ENABLE_FRAME_NATIVE_DATA, false);
 }

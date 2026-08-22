@@ -49,7 +49,7 @@ class ImageElement : public Element {
 
   void OnNodeAdded(Element* child) override;
 
-  void SetAttributeInternal(const base::String& key,
+  bool SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 
   void ProcessAttributeForLayoutInElement(const base::String& key,
