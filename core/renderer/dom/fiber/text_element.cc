@@ -98,24 +98,25 @@ base::String TextElement::ConvertContent(const lepus::Value value) {
   return result;
 }
 
-void TextElement::SetAttributeInternal(const base::String& key,
+bool TextElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
-  bool processed = EnableLayoutInElementMode()
-                       ? ProcessAttributeForLayoutInElement(key, value)
-                       : ProcessAttributeForNormalLayoutMode(key, value);
-  if (!processed) {
-    Element::SetAttributeInternal(key, value);
+  if (EnableLayoutInElementMode()) {
+    return ProcessAttributeForLayoutInElement(key, value);
+  } else if (ProcessAttributeForNormalLayoutMode(key, value)) {
+    return true;
   }
+  return Element::SetAttributeInternal(key, value);
 }
 
 void TextElement::ResetAttribute(const base::String& key) {
   if (!EnableLayoutInElementMode() && key.IsEqual(kTextOverflowAttr)) {
     RemoveStyleFromAttributes(kPropertyIDTextOverflow);
   }
-  if (!EnableLayoutInElementMode() ||
-      !ProcessAttributeForLayoutInElement(key, lepus::Value(), true)) {
-    Element::ResetAttribute(key);
+  if (EnableLayoutInElementMode()) {
+    ProcessAttributeForLayoutInElement(key, lepus::Value(), true);
+    return;
   }
+  Element::ResetAttribute(key);
 }
 
 const StyleMap* TextElement::PeekCommittedStylesFromAttributes() const {
@@ -150,7 +151,11 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
                                                      const lepus::Value& value,
                                                      bool is_reset) {
   if (key.IsEqual(kTextAttr)) {
-    content_ = !is_reset ? ConvertContent(value) : base::String();
+    auto content = !is_reset ? ConvertContent(value) : base::String();
+    if (content_.IsEqual(content)) {
+      return false;
+    }
+    content_ = std::move(content);
     content_utf16_length_ =
         GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
     MarkLayoutDirty();
@@ -159,18 +164,29 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
   }
 
   if (key.IsEqual(kTextMaxlineAttr)) {
-    EnsureTextProps();
     if (is_reset) {
+      if (!text_props_ || !text_props_->text_max_line.has_value()) {
+        return false;
+      }
       text_props_->text_max_line.reset();
     } else {
-      text_props_->text_max_line =
+      const int text_max_line =
           value.IsNumber() ? value.Number() : std::stoi(value.StdString());
+      if (text_props_ && text_props_->text_max_line == text_max_line) {
+        return false;
+      }
+      EnsureTextProps();
+      text_props_->text_max_line = text_max_line;
     }
     MarkLayoutDirty();
     element_container_->InvalidateForRedraw();
     return true;
   }
-  return false;
+  if (is_reset) {
+    Element::ResetAttribute(key);
+    return true;
+  }
+  return Element::SetAttributeInternal(key, value);
 }
 
 bool TextElement::ProcessAttributeForNormalLayoutMode(

@@ -348,6 +348,42 @@ TEST_P(TextElementTest, ResetTextMaxlineClearsLayoutInElementProp) {
   EXPECT_FALSE(text->text_props_->text_max_line.has_value());
 }
 
+TEST_P(TextElementTest, SameTextAttributesDoNotInvalidateLayoutInElement) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto layout_text = manager->CreateFiberText("text");
+  layout_text->SetAttribute("text", lepus::Value("text-content"));
+  layout_text->SetAttribute("text-maxline", lepus::Value(1));
+  page->InsertNode(layout_text);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(layout_text->content_.IsEqual("text-content"));
+  ASSERT_NE(layout_text->text_props_, nullptr);
+  ASSERT_EQ(layout_text->text_props_->text_max_line, 1);
+  layout_text->EnsureSLNode();
+  layout_text->slnode()->is_dirty_ = false;
+
+  layout_text->SetAttribute("text", lepus::Value("text-content"));
+  layout_text->SetAttribute("text-maxline", lepus::Value(1));
+
+  EXPECT_NE(layout_text->dirty() & Element::kDirtyAttr, 0);
+  EXPECT_EQ(layout_text->updated_attr_map_.size(), 2u);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(layout_text->slnode()->IsDirty());
+  EXPECT_TRUE(layout_text->updated_attr_map_.empty());
+
+  layout_text->SetAttribute("text-maxline", lepus::Value(2));
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(layout_text->slnode()->IsDirty());
+  EXPECT_EQ(layout_text->text_props_->text_max_line, 2);
+}
+
 TEST_P(TextElementTest, TestMeasureCase0) {
   if (enable_parallel_element_flush_strategy > 0) {
     GTEST_SKIP();

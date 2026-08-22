@@ -18,10 +18,16 @@ void RawTextElement::SetText(const lepus::Value& text) {
     SetAttribute(BASE_STATIC_STRING(kTextAttr), text);
   } else {
     if (text.IsString()) {
+      if (content_.IsEqual(text.String())) {
+        return;
+      }
       content_ = text.String();
     } else if (text.IsNumber()) {
       std::stringstream stream;
       stream << text.Number();
+      if (content_.IsEqual(stream.str())) {
+        return;
+      }
       content_ = stream.str();
     }
     content_utf16_length_ =
@@ -31,19 +37,23 @@ void RawTextElement::SetText(const lepus::Value& text) {
   }
 }
 
-void RawTextElement::SetAttributeInternal(const base::String& key,
+bool RawTextElement::SetAttributeInternal(const base::String& key,
                                           const lepus::Value& value) {
   if (EnableLayoutInElementMode()) {
     // TODO(songshourui.null): we may need other attributes here.
     if (key.IsEqual(kTextAttr)) {
-      content_ = value.String();
+      const auto& content = value.String();
+      if (content_.IsEqual(content)) {
+        return false;
+      }
+      content_ = content;
       content_utf16_length_ =
           GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
       element_container_->InvalidateForRedraw();
-      return;
+      return true;
     }
   }
-  Element::SetAttributeInternal(key, value);
+  return Element::SetAttributeInternal(key, value);
 }
 
 ParallelFlushReturn RawTextElement::PrepareForCreateOrUpdate() {
