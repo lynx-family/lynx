@@ -78,26 +78,23 @@ void FrameElement::ResetAttribute(const base::String& key) {
   Element::ResetAttribute(key);
 }
 
-void FrameElement::SetAttributeInternal(const base::String& key,
+bool FrameElement::SetAttributeInternal(const base::String& key,
                                         const lepus::Value& value) {
   if (!ShouldUseFrameNativeData(element_manager())) {
-    Element::SetAttributeInternal(key, value);
-    return;
+    return Element::SetAttributeInternal(key, value);
   }
   if (key.IsEqual(kFrameData)) {
     auto* transfer_value = data_ ? new lepus::Value(*data_) : nullptr;
-    Element::SetAttributeInternal(
+    return Element::SetAttributeInternal(
         key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
-    return;
   }
   if (key.IsEqual(kGlobalProps)) {
     auto* transfer_value =
         global_props_ ? new lepus::Value(*global_props_) : nullptr;
-    Element::SetAttributeInternal(
+    return Element::SetAttributeInternal(
         key, lepus::Value(reinterpret_cast<int64_t>(transfer_value)));
-    return;
   }
-  Element::SetAttributeInternal(key, value);
+  return Element::SetAttributeInternal(key, value);
 }
 
 void FrameElement::OnSetSrc(const base::String& key,

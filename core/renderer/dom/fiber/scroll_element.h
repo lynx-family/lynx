@@ -42,7 +42,7 @@ class ScrollElement : public Element {
   void CacheCommittedStyleFromAttributes(CSSPropertyID id,
                                          const lepus::Value& value) override;
   void RemoveCommittedStyleFromAttributes(CSSPropertyID id) override;
-  void SetAttributeInternal(const base::String& key,
+  bool SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 
   ScrollElement(const ScrollElement& element, bool clone_resolved_props)

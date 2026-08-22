@@ -889,6 +889,15 @@ class LynxConfigDecoder final {
           doc[config::kEnablePropertyBasedSimpleStyle].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableSimpleStyleNoPatchOptimization) &&
+        doc[config::kEnableSimpleStyleNoPatchOptimization].IsBool()) {
+      page_config->SetEnableSimpleStyleNoPatchOptimization(
+          doc[config::kEnableSimpleStyleNoPatchOptimization].GetBool());
+    } else {
+      page_config->SetEnableSimpleStyleNoPatchOptimization(
+          LynxEnv::GetInstance().EnableSimpleStyleNoPatchOptimization());
+    }
+
     if (doc.HasMember(config::kEnableUnifyFixedBehavior) &&
         doc[config::kEnableUnifyFixedBehavior].IsBool()) {
       page_config->SetEnableUnifyFixedBehavior(

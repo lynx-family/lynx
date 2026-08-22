@@ -1733,7 +1733,8 @@ class Element : public lepus::RefCounted,
   virtual void OnNodeAdded(Element* child);
   virtual void OnNodeRemoved(Element* child);
 
-  virtual void SetAttributeInternal(const base::String& key,
+  // Returns whether consuming the attribute should update the element.
+  virtual bool SetAttributeInternal(const base::String& key,
                                     const lepus::Value& value);
   virtual void MarkHasLayoutOnlyPropsIfNecessary(
       const base::String& attribute_key);
@@ -1766,6 +1767,7 @@ class Element : public lepus::RefCounted,
   void ApplyDynamicSimpleStylesWithoutTail(
       const tasm::StyleMap& dynamic_style_map,
       const tasm::StyleMap& base_style_map);
+  void MarkSimpleStyleDirty(uint32_t dirty_bits);
 
   void HandleKeyframePropsChange();
   void FinalizeSimpleStyleUpdate();

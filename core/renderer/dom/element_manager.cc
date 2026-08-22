@@ -1190,6 +1190,8 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
     }
     enable_property_based_simple_style_ =
         config_->GetEnablePropertyBasedSimpleStyle();
+    enable_simple_style_no_patch_optimization_ =
+        config_->GetEnableSimpleStyleNoPatchOptimization();
     enable_animation_forward_update_preservation_ =
         config_->GetEnableAnimationForwardUpdatePreservation();
     enable_new_styling_pipeline_ = config_->GetEnableNewStylingPipeline();

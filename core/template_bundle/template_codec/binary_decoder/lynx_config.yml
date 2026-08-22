@@ -1866,6 +1866,17 @@ enablePropertyBasedSimpleStyle:
   readNative: false
   author: 'zhongyr'
   since: '3.5'
+enableSimpleStyleNoPatchOptimization:
+  description: Controls whether SimpleStyle updates can skip the legacy forced patch when style resolution produces no effective prop, layout, computed-style, or font-size change. When enabled, equivalent SimpleStyle replays remain no-ops while real changes still force an update; when disabled, every SimpleStyle mutation preserves the legacy forced-update behavior. If omitted, the value falls back to settings.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  author: 'linxiaosong'
+  since: '4.3'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableUnifyFixedBehavior:
   description: Controls unified fixed-position behavior across old and new fixed paths. When enabled, fixed elements use the unified container and layout handling even when the new fixed switch is off; when disabled, old and new fixed paths remain separate.
   defaultValue: 'false'

@@ -130,6 +130,20 @@ style::DynamicStyleObjectRef MakeDynamicStyleObjectRef(StyleMap style_map) {
       new style::DynamicStyleObject(std::move(style_map)));
 }
 
+std::unique_ptr<style::StyleObject*, style::StyleObjectArrayDeleter>
+MakeSimpleStyleObjectList(CSSPropertyID id, const CSSValue& value) {
+  StyleMap style_map;
+  style_map.insert_or_assign(id, value);
+
+  auto* style_object = new style::StyleObject(std::move(style_map));
+  style_object->AddRef();
+
+  auto list = style::CreateStyleObjectArray(2);
+  list.get()[0] = style_object;
+  list.get()[1] = nullptr;
+  return list;
+}
+
 fml::TimePoint TimePointFromMs(int64_t ms) {
   return fml::TimePoint::FromTicks(ms * 1000 * 1000);
 }
@@ -829,6 +843,110 @@ TEST_P(FiberElementTest, TestSetOverflow) {
   EXPECT_FALSE(page->computed_css_style()->IsOverflowHidden());
   EXPECT_FALSE(page->computed_css_style()->IsOverflowX());
   EXPECT_TRUE(page->computed_css_style()->IsOverflowY());
+}
+
+TEST_P(FiberElementTest, ReapplyingEquivalentSimpleStylesDoesNotForceUpdate) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->config_->SetEnableSimpleStyleNoPatchOptimization(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+  };
+  auto captured_bundle_count = [&]() {
+    return std::count(tasm_mediator.captured_ids_.begin(),
+                      tasm_mediator.captured_ids_.end(), view->impl_id());
+  };
+
+  view->SetStyleObjects(
+      MakeSimpleStyleObjectList(CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.5, CSSValuePattern::NUMBER)));
+  flush();
+  manager->need_layout_ = false;
+  const auto bundle_count = captured_bundle_count();
+
+  view->SetStyleObjects(
+      MakeSimpleStyleObjectList(CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.5, CSSValuePattern::NUMBER)));
+  flush();
+
+  EXPECT_FALSE(manager->need_layout_);
+  EXPECT_EQ(captured_bundle_count(), bundle_count);
+
+  view->SetStyleObjects(
+      MakeSimpleStyleObjectList(CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.7, CSSValuePattern::NUMBER)));
+  flush();
+
+  EXPECT_TRUE(manager->need_layout_);
+  EXPECT_GT(captured_bundle_count(), bundle_count);
+  const auto& props = platform_impl_->node_map_.at(view->impl_id())->props_;
+  const auto opacity_key =
+      CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity);
+  ASSERT_TRUE(props.find(opacity_key) != props.end());
+  EXPECT_NEAR(props.at(opacity_key).Number(), 0.7, 1e-6);
+}
+
+TEST_P(FiberElementTest, EquivalentSimpleStylesKeepLegacyForceUpdateByDefault) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->SetConfig(manager->config_);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  view->SetStyleObjects(
+      MakeSimpleStyleObjectList(CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.5, CSSValuePattern::NUMBER)));
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+  manager->need_layout_ = false;
+
+  view->SetStyleObjects(
+      MakeSimpleStyleObjectList(CSSPropertyID::kPropertyIDOpacity,
+                                CSSValue(0.5, CSSValuePattern::NUMBER)));
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  EXPECT_TRUE(manager->need_layout_);
+}
+
+TEST_P(FiberElementTest,
+       SimpleStyleFontSizeChangeStillUpdatesInLayoutInElement) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnablePropertyBasedSimpleStyle(true);
+  manager->config_->SetEnableSimpleStyleNoPatchOptimization(true);
+  manager->SetConfig(manager->config_);
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  view->SetStyleObjects(MakeSimpleStyleObjectList(
+      CSSPropertyID::kPropertyIDFontSize, CSSValue(20, CSSValuePattern::PX)));
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+  manager->need_layout_ = false;
+
+  view->SetStyleObjects(MakeSimpleStyleObjectList(
+      CSSPropertyID::kPropertyIDFontSize, CSSValue(24, CSSValuePattern::PX)));
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  EXPECT_TRUE(manager->need_layout_);
+  EXPECT_NEAR(view->GetFontSize(), 24, 1e-6);
 }
 
 TEST_P(FiberElementTest, DynamicSimpleStyleLayer_KVOrderingAndNilRestoresBase) {

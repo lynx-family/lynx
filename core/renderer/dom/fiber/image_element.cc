@@ -96,7 +96,7 @@ void ImageElement::ConvertToInlineElement() {
   Element::ConvertToInlineElement();
 }
 
-void ImageElement::SetAttributeInternal(const base::String& key,
+bool ImageElement::SetAttributeInternal(const base::String& key,
                                         const lepus::Value& value) {
   // TODO(songshourui.null): we can process image's attribute in C++ to optimize
   // the performance.
@@ -104,7 +104,7 @@ void ImageElement::SetAttributeInternal(const base::String& key,
     ProcessAttributeForLayoutInElement(key, value);
     attr_map_[key] = value;
   }
-  Element::SetAttributeInternal(key, value);
+  return Element::SetAttributeInternal(key, value);
 }
 
 void ImageElement::ProcessAttributeForLayoutInElement(

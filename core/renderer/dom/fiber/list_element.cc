@@ -578,7 +578,7 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
   return Element::PrepareForCreateOrUpdate();
 }
 
-void ListElement::SetAttributeInternal(const base::String& key,
+bool ListElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
   if (!DisableListPlatformImplementation() ||
       (UseDecoupledList() && list_mediator_->ResolveAttribute(key, value)) ||
@@ -617,6 +617,7 @@ void ListElement::SetAttributeInternal(const base::String& key,
       SetListOrientation(starlight::LinearOrientationType::kHorizontal);
     }
   }
+  return true;
 }
 
 void ListElement::SetListOrientation(
