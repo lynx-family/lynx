@@ -213,6 +213,7 @@ group("lynx_native") {
     "base",
     "build:build",
     "event",
+    "observer",
     "renderer:tasm_group",
     "renderer/css",
     "renderer/data:data",
