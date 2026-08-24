@@ -269,6 +269,10 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererImpl::~LynxUIRendererImpl() {
+  if (lynx_ui_renderer_) {
+    LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+    [lynx_ui_renderer.clayViewProvider setParent:nil];
+  }
   ui_delegate_.reset();
   if (lynx_ui_renderer_) {
     (void)(__bridge_transfer id)lynx_ui_renderer_;
