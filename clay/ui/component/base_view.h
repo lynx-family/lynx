@@ -749,6 +749,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   // FIXME(baiqiang): remove focus&text list then move to component
   std::string item_key_;
   bool attach_to_tree_ = false;
+  bool direct_page_child_first_add_exposure_attempted_ = false;
   std::optional<bool> ignore_focus_;
   BaseView* parent_ = nullptr;
   PageView* page_view_ = nullptr;
