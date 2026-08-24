@@ -342,17 +342,6 @@ bool Element::NewPipelineStyleMutationPlan::NeedsSemanticCommit() const {
          font_size_context_changed || root_font_size_context_changed;
 }
 
-event::EventListener::Options GetEventListenerOptions(
-    const base::String &type) {
-  const bool is_capture = type.str() == EVENT_TYPE_CAPTURE;
-  const bool is_capture_catch = type.str() == EVENT_TYPE_CAPTURE_CATCH;
-  const bool is_bubble_catch = type.str() == EVENT_TYPE_CATCH;
-  const bool is_global_bind = type.str() == EVENT_TYPE_GLOBAL;
-  return event::EventListener::Options(
-      is_capture || is_capture_catch, false, false, false,
-      is_capture_catch || is_bubble_catch, is_global_bind);
-}
-
 Element::NewPipelineStyleResolveResult Element::ResolveComputedStyles(
     const starlight::ComputedCSSStyle *previous_final_style,
     double old_font_size, double old_root_font_size) {
