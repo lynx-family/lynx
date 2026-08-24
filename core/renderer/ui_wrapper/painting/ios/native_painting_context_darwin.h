@@ -18,6 +18,7 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
 @protocol LUIBodyView;
+@class LynxComponentScopeRegistry;
 
 namespace lynx {
 namespace tasm {
@@ -25,7 +26,8 @@ namespace tasm {
 class PaintImage;
 class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePaintingContext {
  public:
-  NativePaintingCtxDarwin(LynxUIOwner *owner, void *textra);
+  NativePaintingCtxDarwin(LynxUIOwner *owner, LynxComponentScopeRegistry *component_registry,
+                          void *textra);
   ~NativePaintingCtxDarwin() override = default;
 
   NativePaintingCtxDarwin(const NativePaintingCtxDarwin &) = delete;

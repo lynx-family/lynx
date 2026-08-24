@@ -7,6 +7,7 @@
 #import <Lynx/DevToolOverlayDelegate.h>
 #import <Lynx/LUIConfigAdapter.h>
 #import <Lynx/ListNodeInfoFetcher.h>
+#import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEventHandler+Internal.h>
@@ -85,6 +86,7 @@ static id<LynxServiceTextProtocol> getTextService() {
   __weak LynxContext *_lynxContext;
   LynxProviderRegistry *_providerRegistry;
   std::unique_ptr<lynx::tasm::UIDelegate> ui_delegate_;
+  LynxComponentScopeRegistry *_componentRegistry;
   LynxUIOwner *_uiOwner;
 
   void *_textra;
@@ -107,6 +109,7 @@ static id<LynxServiceTextProtocol> getTextService() {
     _lynxContext = context;
     _containerView = containerView;
     _providerRegistry = providerRegistry;
+    _componentRegistry = builder.config.componentRegistry;
     _textra = 0;
     _enableGenericResourceLoader =
         [self checkEnableGenericResourceFetcher:builder.enableGenericResourceFetcher];
@@ -121,7 +124,7 @@ static id<LynxServiceTextProtocol> getTextService() {
       [[LynxScreenMetrics alloc] initWithScreenSize:builder.screenSize
                                               scale:[UIScreen mainScreen].scale];
   _uiOwner = [[LynxUIOwner alloc] initWithContainerView:_containerView
-                                      componentRegistry:builder.config.componentRegistry
+                                      componentRegistry:_componentRegistry
                                           screenMetrics:screenMetrics
                                            errorHandler:_containerView
                                                uiConfig:nil
@@ -182,7 +185,7 @@ static id<LynxServiceTextProtocol> getTextService() {
     _textra = [textService createTextLayoutAPIFromContext:_uiOwner];
   }
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateDarwin>(
-      _uiOwner, _lynxContext.isFragmentLayerRenderOn, _textra,
+      _uiOwner, _componentRegistry, _lynxContext.isFragmentLayerRenderOn, _textra,
       [[LynxEnv sharedInstance] enableCreateUIAsync], owner);
 }
 

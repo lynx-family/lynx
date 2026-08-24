@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContainerView.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
@@ -24,6 +25,12 @@
 @end
 
 @interface LynxRendererUnitTest : XCTestCase
+@end
+
+@interface LynxScopedRendererHost : LynxContainerView
+@end
+
+@implementation LynxScopedRendererHost
 @end
 
 @implementation LynxRendererUnitTest
@@ -248,6 +255,17 @@
   XCTAssertEqualObjects(parentView.subviews, (@[ firstView, secondView, insertedView, thirdView ]));
   XCTAssertLessThan([parentView.layer.sublayers indexOfObject:insertedView.layer],
                     [parentView.layer.sublayers indexOfObject:thirdView.layer]);
+}
+
+- (void)testPlatformRendererDarwinUsesScopedRendererHostRegistry {
+  NSString* tagName = @"scoped-renderer-host-for-platform-renderer-test";
+  LynxComponentScopeRegistry* registry = [LynxComponentScopeRegistry new];
+  [registry registerRendererHost:LynxScopedRendererHost.class withName:tagName];
+  lynx::tasm::PlatformRendererContextDarwin context(nil, nil, registry);
+
+  lynx::tasm::PlatformRendererDarwin renderer(&context, 13, lynx::base::String(tagName.UTF8String));
+
+  XCTAssertTrue([renderer.GetUIView() isKindOfClass:LynxScopedRendererHost.class]);
 }
 
 - (void)testPlatformRendererDarwinUsesTopLeftAnchorForTransformedLayout {
