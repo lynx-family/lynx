@@ -468,7 +468,7 @@ void ListElement::ResolveEnableDecoupledList() {
 ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
   const auto& attr_map = updated_attr_map();
   // Use optional to make sure only run once.
-  if (AttrDirty() && !disable_list_platform_implementation_) {
+  if (!disable_list_platform_implementation_) {
     // Resolve whether to use native list.
     ResolveEnableNativeList();
     // Resolve platform node tag.

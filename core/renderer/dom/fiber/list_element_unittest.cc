@@ -324,6 +324,38 @@ TEST_F(ListElementTest, ResolveEnableNativeListUsesEnvFalseFallback) {
   EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), list::kList);
 }
 
+TEST_F(ListElementTest,
+       PrepareForCreateOrUpdateUsesNativeListEnvWithoutAttributes) {
+  ScopedExternalBoolEnv enable_native_list_env(LynxEnv::Key::ENABLE_NATIVE_LIST,
+                                               true);
+  page_config_->SetEnableNativeList(TernaryBool::UNDEFINE_VALUE);
+
+  ASSERT_TRUE(manager_->GetEnableNativeListFromEnv());
+  ASSERT_FALSE(list_element_->AttrDirty());
+
+  list_element_->PrepareForCreateOrUpdate();
+
+  EXPECT_TRUE(list_element_->DisableListPlatformImplementation());
+  EXPECT_TRUE(list_element_->enable_native_list_only_from_env_);
+  EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), list::kListContainer);
+}
+
+TEST_F(ListElementTest,
+       PrepareForCreateOrUpdateUsesPageConfigWithoutAttributes) {
+  ScopedExternalBoolEnv enable_native_list_env(LynxEnv::Key::ENABLE_NATIVE_LIST,
+                                               false);
+  page_config_->SetEnableNativeList(TernaryBool::TRUE_VALUE);
+
+  ASSERT_FALSE(manager_->GetEnableNativeListFromEnv());
+  ASSERT_FALSE(list_element_->AttrDirty());
+
+  list_element_->PrepareForCreateOrUpdate();
+
+  EXPECT_TRUE(list_element_->DisableListPlatformImplementation());
+  EXPECT_FALSE(list_element_->enable_native_list_only_from_env_);
+  EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), list::kListContainer);
+}
+
 TEST_F(ListElementTest, NewStylingInternalListReplaysListAxisGap) {
   auto list = CreateNewStylingNativeList(false);
 
