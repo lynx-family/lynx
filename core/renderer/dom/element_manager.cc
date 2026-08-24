@@ -26,6 +26,7 @@
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/component_element.h"
+#include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
@@ -710,6 +711,53 @@ void ElementManager::FirePostMTSRenderTasks() {
   }
 
   PostTaskBatchToConcurrentLoop(batch);
+}
+
+void ElementManager::EnqueuePendingElementTemplateChildMounts(
+    ElementTemplateInstance &instance) {
+  if (instance.pending_child_mounts_enqueued_) {
+    return;
+  }
+  instance.pending_child_mounts_enqueued_ = true;
+  pending_element_template_child_mounts_.emplace_back(instance.WeakFromThis());
+}
+
+void ElementManager::DrainPendingElementTemplateChildMounts(
+    Element *flush_root) {
+  if (pending_element_template_child_mounts_.empty()) {
+    return;
+  }
+
+  auto pending_instances = std::move(pending_element_template_child_mounts_);
+  pending_element_template_child_mounts_.clear();
+  base::Vector<fml::WeakPtr<ElementTemplateInstance>> out_of_scope_instances;
+  while (!pending_instances.empty()) {
+    for (const auto &weak_instance : pending_instances) {
+      auto instance = fml::RefPtr<ElementTemplateInstance>(weak_instance.get());
+      if (instance == nullptr) {
+        continue;
+      }
+      instance->pending_child_mounts_enqueued_ = false;
+      if (!instance->HasPendingChildMounts()) {
+        continue;
+      }
+      auto result = instance->FlushPendingChildMounts(flush_root);
+      if (result ==
+          ElementTemplateInstance::FlushPendingChildMountsResult::kOutOfScope) {
+        out_of_scope_instances.emplace_back(weak_instance);
+      }
+    }
+
+    pending_instances = std::move(pending_element_template_child_mounts_);
+    pending_element_template_child_mounts_.clear();
+  }
+
+  for (const auto &weak_instance : out_of_scope_instances) {
+    auto instance = fml::RefPtr<ElementTemplateInstance>(weak_instance.get());
+    if (instance != nullptr && instance->HasPendingChildMounts()) {
+      EnqueuePendingElementTemplateChildMounts(*instance);
+    }
+  }
 }
 
 void ElementManager::PrepareComponentNodeForInspector(Element *component) {
