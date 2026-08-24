@@ -1002,6 +1002,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void HandleSimpleStyleKeyframes(const std::shared_ptr<TemplateEntry>& card);
 
+  void DispatchScreenMetricsChanged(float width, float height,
+                                    float device_pixel_ratio);
+
   template <
       class... Args,
       class = std::enable_if_t<

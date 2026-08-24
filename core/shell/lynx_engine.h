@@ -5,6 +5,7 @@
 #ifndef CORE_SHELL_LYNX_ENGINE_H_
 #define CORE_SHELL_LYNX_ENGINE_H_
 
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>
@@ -15,6 +16,7 @@
 #include "base/include/log/log_context.h"
 #include "base/include/no_destructor.h"
 #include "core/event/event_dispatch_result.h"
+#include "core/public/lynx_engine_proxy.h"
 #include "core/public/prop_bundle.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/data/template_data.h"
@@ -191,6 +193,15 @@ class LynxEngine {
   // that represent the specified element and its ancestor elements in the DOM
   // hierarchy. The elements should not affected by the z-index attribute.
   std::list<int32_t> GetAncestorElements(int32_t tag);
+
+  void UpdateElementPositionState(std::vector<ElementPositionUpdate> updates);
+
+  void UpdatePageCoordinateSnapshot(float window_x, float window_y,
+                                    bool has_window_offset, float screen_x,
+                                    float screen_y, bool has_screen_offset,
+                                    bool force_position_change);
+
+  void TriggerPositionChangeEvents();
 
   void ScrollByListContainer(int32_t tag, float content_offset_x,
                              float content_offset_y, float original_x,

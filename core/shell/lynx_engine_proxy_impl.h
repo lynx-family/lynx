@@ -5,10 +5,12 @@
 #ifndef CORE_SHELL_LYNX_ENGINE_PROXY_IMPL_H_
 #define CORE_SHELL_LYNX_ENGINE_PROXY_IMPL_H_
 
+#include <atomic>
 #include <functional>
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/value/base_value.h"
 #include "core/public/lynx_engine_proxy.h"
@@ -57,6 +59,14 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
 
   void StartEventFire(bool is_stop, int64_t event_id) override;
 
+  void UpdateElementPositionState(
+      std::vector<ElementPositionUpdate> updates) override;
+
+  void UpdatePageCoordinateSnapshot(float window_x, float window_y,
+                                    bool has_window_offset, float screen_x,
+                                    float screen_y, bool has_screen_offset,
+                                    bool force_position_change) override;
+
   void ScrollByListContainer(int32_t tag, float x, float y, float original_x,
                              float original_y) override;
 
@@ -93,8 +103,17 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
   void QueryLynxElement(int32_t sign, int32_t query_type, std::string argument,
                         std::function<void(lepus::Value)> callback);
 
+ private:
+  void RequestPositionChangeEventTrigger(
+      const std::shared_ptr<shell::LynxActor<shell::LynxEngine>>& actor);
+
  protected:
+  void ResetEngineActor(
+      const std::shared_ptr<shell::LynxActor<shell::LynxEngine>>& actor);
+
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
+  std::shared_ptr<std::atomic_bool> position_change_delay_requested_ =
+      std::make_shared<std::atomic_bool>(false);
 };
 
 }  // namespace shell

@@ -20,6 +20,10 @@ constexpr const static char* kEventCatchEvent = "catchEvent";
 constexpr const static char* kEventCaptureBind = "capture-bind";
 constexpr const static char* kEventCaptureCatch = "capture-catch";
 constexpr const static char* kEventGlobalBind = "global-bindEvent";
+// Element event dispatched after all layout UI operations in the corresponding
+// batch have completed on the platform UI thread and the latest page position
+// has been captured.
+constexpr const static char* kEventPositionChange = "positionchange";
 
 struct EventOption {
   // Determines whether the event can bubble. Default value is false.

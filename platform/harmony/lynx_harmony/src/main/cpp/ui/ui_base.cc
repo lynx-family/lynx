@@ -749,6 +749,8 @@ void UIBase::ApplyStickyTranslate() {
       current_translate[2]);
   sticky_info_->translate_x = sticky_info_->new_translate_x;
   sticky_info_->translate_y = sticky_info_->new_translate_y;
+  SyncStickyTranslationToEngine(sticky_info_->translate_x,
+                                sticky_info_->translate_y);
   sticky_info_->new_translate_x = 0.f;
   sticky_info_->new_translate_y = 0.f;
 }
@@ -762,6 +764,7 @@ void UIBase::ResetStickyTranslate() {
     sticky_info_->new_translate_y = 0.f;
     sticky_info_->translate_x = 0.f;
     sticky_info_->translate_y = 0.f;
+    SyncStickyTranslationToEngine(0.f, 0.f);
     return;
   }
   float current_translate[3] = {0.f, 0.f, 0.f};
@@ -776,6 +779,17 @@ void UIBase::ResetStickyTranslate() {
   sticky_info_->new_translate_y = 0.f;
   sticky_info_->translate_x = 0.f;
   sticky_info_->translate_y = 0.f;
+  SyncStickyTranslationToEngine(0.f, 0.f);
+}
+
+void UIBase::SyncStickyTranslationToEngine(float translation_x,
+                                           float translation_y) {
+  if (!context_) {
+    return;
+  }
+  context_->UpdateElementPositionState(
+      Sign(), shell::ElementPositionUpdateType::kStickyTranslation,
+      translation_x, translation_y);
 }
 
 bool UIBase::CheckStickyOnParentScroll(float scroll_left, float scroll_top) {

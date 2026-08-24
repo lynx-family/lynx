@@ -261,6 +261,9 @@ void NativePaintingCtxDarwin::FinishLayoutOperation(
           if (options->has_layout) {
             [ui_owner layoutDidFinish];
           }
+          if (options->needs_page_coordinate_snapshot) {
+            [ui_owner updatePageCoordinateSnapshot:YES];
+          }
           if (options->native_update_data_order_ == queue->GetNativeUpdateDataOrder()) {
             queue->UpdateStatus(shell::UIOperationStatus::ALL_FINISH);
           }

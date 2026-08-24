@@ -8,6 +8,8 @@ import type {
   PageElementRef,
   ListElementRef,
   ViewElementRef,
+  Point,
+  Rect,
   SerializedTemplateInstance,
   SerializableValue,
   SerializedTypedTemplateInstance,
@@ -66,11 +68,39 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __CreateView>().toBeFunction();
     expectTypeOf<typeof __CreateText>().toBeFunction();
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();
+    expectTypeOf<typeof __ConvertPoint>().toBeFunction();
+    expectTypeOf<typeof __ConvertRect>().toBeFunction();
+    expectTypeOf<typeof __ConvertPointToWindow>().toBeFunction();
+    expectTypeOf<typeof __ConvertRectToWindow>().toBeFunction();
+    expectTypeOf<typeof __ConvertPointToScreen>().toBeFunction();
+    expectTypeOf<typeof __ConvertRectToScreen>().toBeFunction();
     expectTypeOf<typeof __CreateElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeFunction();
     expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeFunction();
     expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SerializeElementTemplate>().toBeFunction();
+  });
+
+  it('should test __ConvertPoint function signature', () => {
+    const from = {} as ElementRef;
+    const to = {} as ElementRef;
+    expectTypeOf<typeof __ConvertPoint>().returns.toEqualTypeOf<Point | undefined>();
+    expectTypeOf<typeof __ConvertPoint>().toBeCallableWith(1, 2, from, to);
+  });
+
+  it('should test global coordinate conversion function signatures', () => {
+    const from = {} as ElementRef;
+    const to = {} as ElementRef;
+    expectTypeOf<typeof __ConvertRect>().returns.toEqualTypeOf<Rect | undefined>();
+    expectTypeOf<typeof __ConvertRect>().toBeCallableWith(0, 0, 10, 20, from, to, true);
+    expectTypeOf<typeof __ConvertPointToWindow>().returns.toEqualTypeOf<Point | undefined>();
+    expectTypeOf<typeof __ConvertPointToWindow>().toBeCallableWith(1, 2, from);
+    expectTypeOf<typeof __ConvertRectToWindow>().returns.toEqualTypeOf<Rect | undefined>();
+    expectTypeOf<typeof __ConvertRectToWindow>().toBeCallableWith(0, 0, 10, 20, from, false);
+    expectTypeOf<typeof __ConvertPointToScreen>().returns.toEqualTypeOf<Point | undefined>();
+    expectTypeOf<typeof __ConvertPointToScreen>().toBeCallableWith(1, 2, from);
+    expectTypeOf<typeof __ConvertRectToScreen>().returns.toEqualTypeOf<Rect | undefined>();
+    expectTypeOf<typeof __ConvertRectToScreen>().toBeCallableWith(0, 0, 10, 20, from, true);
   });
 
   it('should test __ElementAnimate function signature', () => {

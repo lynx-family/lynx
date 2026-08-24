@@ -777,6 +777,9 @@ void PaintingContextDarwin::FinishLayoutOperation(const std::shared_ptr<Pipeline
       if (options->has_layout) {
         [uiOwner layoutDidFinish];
       }
+      if (options->needs_page_coordinate_snapshot) {
+        [uiOwner updatePageCoordinateSnapshot:YES];
+      }
       if (options->native_update_data_order_ == queue->GetNativeUpdateDataOrder()) {
         queue->UpdateStatus(shell::UIOperationStatus::ALL_FINISH);
       }

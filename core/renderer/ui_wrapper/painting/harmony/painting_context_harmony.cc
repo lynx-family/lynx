@@ -146,8 +146,10 @@ void PaintingContextHarmonyRef::UpdateLayout(
 }
 
 void PaintingContextHarmonyRef::OnLayoutFinish(int32_t list_comp_id,
-                                               int64_t operation_id) {
-  ui_owner_->OnLayoutFinish(list_comp_id, operation_id);
+                                               int64_t operation_id,
+                                               bool needs_coordinate_snapshot) {
+  ui_owner_->OnLayoutFinish(list_comp_id, operation_id,
+                            needs_coordinate_snapshot);
 }
 
 void PaintingContextHarmonyRef::StopExposure(const lepus::Value& options) {
@@ -292,7 +294,8 @@ void PaintingContextHarmony::FinishLayoutOperation(
   Enqueue([platform_ref = platform_ref_, options]() {
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
-    harmony_ref->OnLayoutFinish(options->list_comp_id_, options->operation_id);
+    harmony_ref->OnLayoutFinish(options->list_comp_id_, options->operation_id,
+                                options->needs_page_coordinate_snapshot);
   });
 }
 

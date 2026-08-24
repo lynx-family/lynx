@@ -291,6 +291,9 @@ void LayoutMediator::HandlePendingLayoutTask(
   catalyzer->painting_context()->UpdateNodeReadyPatching();
 
   // ensure FinishLayoutOperation in the end before Flush
+  if (root != nullptr) {
+    root->element_manager()->PreparePositionChangeObservation(options);
+  }
   if (root && root->EnableFragmentLayerRender()) {
     root->element_container()->FinishLayoutOperation(options);
   } else {

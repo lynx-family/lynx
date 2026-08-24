@@ -112,6 +112,9 @@ struct PipelineOptions {
   // TODO(heshan):put to a new struct like LayoutResultBundle
   // which may just consumed by FinishLayoutOperation
   bool has_layout = false;
+  // Whether this pipeline needs to capture the page coordinate snapshot after
+  // its queued layout UI operations have completed.
+  bool needs_page_coordinate_snapshot = false;
   // true if need call DispatchLayoutUpdates
   bool trigger_layout_ = true;
   // Whether mark entire tree dirty or not.

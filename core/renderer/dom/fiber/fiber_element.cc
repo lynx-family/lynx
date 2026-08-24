@@ -1031,6 +1031,9 @@ void Element::OnNodeRemoved(Element *child) {
 Element::~Element() {
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DESTRUCTOR, "id", id_);
   if (ShouldDestroy()) {
+    if (has_position_change_listener_) {
+      element_manager_->OnPositionChangeListenerRemoved(impl_id());
+    }
     element_manager_->EraseGlobalBindElementId(global_bind_event_map(),
                                                impl_id());
     element_manager()->NotifyElementDestroy(this);

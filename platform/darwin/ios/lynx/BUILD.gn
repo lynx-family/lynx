@@ -199,6 +199,7 @@ subspec_target("lynx") {
     "base/background/LynxBackgroundUtils.m",
     "base/background/LynxBoxShadowLayer.m",
     "event/LynxEventDetail.m",
+    "event/LynxEventEmitter+Internal.h",
     "event/LynxEventEmitter.mm",
     "event/LynxEventHandler+Internal.h",
     "event/LynxEventHandler.m",
@@ -443,6 +444,7 @@ subspec_target("lynx") {
 
     # Extension module headers
     "LynxTemplateRender+Internal.h",
+    "event/LynxEventEmitter+Internal.h",
     "event/LynxEventHandler+Internal.h",
     "ui/LynxUI+Private.h",
     "ui/LynxUIContext+Internal.h",

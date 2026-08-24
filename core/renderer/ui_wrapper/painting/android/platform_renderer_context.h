@@ -86,7 +86,8 @@ class PlatformRendererContext {
   void FinishTasmOperation(int64_t operation_id);
 
   void FinishLayoutOperation(int32_t component_id, int64_t operation_id,
-                             bool is_first_screen);
+                             bool is_first_screen,
+                             bool needs_coordinate_snapshot);
 
   void OnNodeReady(const std::vector<int32_t>& ids);
 

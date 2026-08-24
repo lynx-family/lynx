@@ -221,6 +221,35 @@ void LynxContext::HandleCustomEvent(const CustomEvent& custom_event) const {
                                  custom_event.ParamName());
 }
 
+void LynxContext::BeginElementPositionStateBatch() {
+  ++element_position_state_batch_depth_;
+}
+
+void LynxContext::UpdateElementPositionState(
+    int32_t tag, shell::ElementPositionUpdateType type, float x, float y) {
+  element_position_state_updates_.push_back({tag, type, x, y});
+  if (element_position_state_batch_depth_ == 0) {
+    EndElementPositionStateBatch();
+  }
+}
+
+void LynxContext::EndElementPositionStateBatch() {
+  if (element_position_state_batch_depth_ > 0) {
+    --element_position_state_batch_depth_;
+    if (element_position_state_batch_depth_ > 0) {
+      return;
+    }
+  }
+  if (element_position_state_updates_.empty()) {
+    return;
+  }
+  auto updates = std::move(element_position_state_updates_);
+  element_position_state_updates_.clear();
+  if (engine_proxy_) {
+    engine_proxy_->UpdateElementPositionState(std::move(updates));
+  }
+}
+
 void LynxContext::OnPseudoStatusChanged(int id, PseudoStatus pre_status,
                                         PseudoStatus current_status) const {
   if (!engine_proxy_) {

@@ -39,6 +39,8 @@ class UIRoot : public UIView {
   EventTarget::LynxPageUIMap* ChildrenLynxPageUI() override;
   void SetChildrenLynxPageUI(EventTarget::LynxPageUIMap children) override;
   bool IsChildLynxPageUI() const { return is_child_lynx_page_ui_; }
+  void EnsurePositionChangeObservation();
+  bool IsAttachedToViewTree() const { return is_root_attached_; }
 
  protected:
   UIRoot(LynxContext* context, int sign, const std::string& tag);
@@ -48,6 +50,7 @@ class UIRoot : public UIView {
   bool is_child_lynx_page_ui_{false};
   bool is_root_attached_{false};
   bool is_root_visible_{false};
+  bool is_position_change_observation_started_{false};
   ArkUI_NodeHandle root_proxy_{nullptr};
   ArkUI_NodeHandle normal_sibling_{nullptr};
   ArkUI_NodeHandle transparent_sibling_{nullptr};

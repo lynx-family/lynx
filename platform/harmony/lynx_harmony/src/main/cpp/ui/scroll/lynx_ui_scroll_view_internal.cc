@@ -97,12 +97,19 @@ void LynxUIScrollViewInternal::OnScrollStateChanged(
 }
 
 void LynxUIScrollViewInternal::ScrollViewDidScroll() {
+  context_->BeginElementPositionStateBatch();
+  float scroll_offset[2] = {0, 0};
+  scroll_view_->GetScrollOffset(scroll_offset);
+  context_->UpdateElementPositionState(
+      Sign(), shell::ElementPositionUpdateType::kScrollOffset, scroll_offset[0],
+      scroll_offset[1]);
+  UpdateStickyItems();
+  context_->EndElementPositionStateBatch();
   if (!is_first_render_) {
     context_->NotifyUIScroll();
     TryToSendScrollEvent();
     UpdateScrollPosition();
   }
-  UpdateStickyItems();
 }
 
 void LynxUIScrollViewInternal::UpdateStickyItems() {
@@ -117,6 +124,8 @@ void LynxUIScrollViewInternal::UpdateStickyItems() {
             child->sticky_info_->translate_y, 0);
         NodeManager::Instance().SetAttributeWithNumberValue(child->DrawNode(),
                                                             NODE_Z_INDEX, 1);
+        child->SyncStickyTranslationToEngine(child->sticky_info_->translate_x,
+                                             child->sticky_info_->translate_y);
       }
     }
   }

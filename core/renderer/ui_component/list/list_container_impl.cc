@@ -209,6 +209,7 @@ void ListContainerImpl::FlushPatching() {
       should_flush_finish_layout_ = false;
       auto options = std::make_shared<PipelineOptions>();
       options->has_layout = true;
+      element_->element_manager()->PreparePositionChangeObservation(options);
       element_->element_container()->FinishLayoutOperation(options);
     }
     element_->element_container()->FlushImmediately();

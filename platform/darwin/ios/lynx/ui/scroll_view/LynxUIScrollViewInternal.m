@@ -5,6 +5,7 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxBaseScrollView+Internal.h>
 #import <Lynx/LynxBaseScrollView+Public.h>
+#import <Lynx/LynxEventEmitter+Internal.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIScrollViewInternal.h>
@@ -24,6 +25,9 @@
 @property(nonatomic, assign) CGPoint lastContentOffset;
 @property(nonatomic, assign) BOOL atUpper;
 @property(nonatomic, assign) BOOL atLower;
+
+- (void)updateScrollPosition;
+- (void)updateSticky:(CGPoint)contentOffset;
 
 @end
 
@@ -58,6 +62,18 @@
 }
 
 - (void)scrollViewDidScroll:(LynxBaseScrollView *)scrollView {
+  LynxEventEmitter *eventEmitter = self.ui.context.eventEmitter;
+  [eventEmitter beginElementPositionStateBatch];
+  @try {
+    CGPoint contentOffset = self.ui.view.contentOffset;
+    [eventEmitter updateElementPositionState:self.ui.sign
+                                        type:LynxElementPositionUpdateScrollOffset
+                                           x:contentOffset.x
+                                           y:contentOffset.y];
+    [self updateSticky:[scrollView getScrollOffset]];
+  } @finally {
+    [eventEmitter endElementPositionStateBatch];
+  }
   [self tryToSendScrollEvent];
   [self updateScrollPosition];
 }
@@ -105,7 +121,6 @@
 
   _atUpper = atUpper;
   _atLower = atLower;
-
   BOOL isUpperEdge = scrollOffset <= scrollRange[0];
   BOOL isLowerEdge = scrollOffset >= scrollRange[1];
   if (isUpperEdge) {
@@ -117,8 +132,6 @@
   if (!isUpperEdge && !isLowerEdge) {
     [self sendScrollEvent:@"scrolltonormalstate" params:nil];
   }
-
-  [self updateSticky:[scrollView getScrollOffset]];
 }
 
 - (void)updateSticky:(CGPoint)contentOffset {
@@ -382,6 +395,7 @@ LYNX_PROP_DEFINE("scroll-event-throttle", setScrollEventThrottle, NSNumber *) {
     _lastContentSize = contentSize;
   }
   [self flushFirstRenderOperations];
+  [_eventHelper updateSticky:[self.view getScrollOffset]];
   [_eventHelper updateScrollPosition];
 }
 

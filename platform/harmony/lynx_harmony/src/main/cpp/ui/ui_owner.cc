@@ -320,7 +320,8 @@ void UIOwner::UpdateLayout(int sign, float left, float top, float width,
   }
 }
 
-void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id) {
+void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id,
+                             bool needs_coordinate_snapshot) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_ON_LAYOUT_FINISH);
 
   for (const auto& layout_changed_node : layout_changed_nodes_) {
@@ -332,6 +333,10 @@ void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id) {
   layout_changed_nodes_.clear();
 
   NotifyIntrinsicContentSizeChangedIfNeeded();
+
+  if (needs_coordinate_snapshot) {
+    UpdatePageCoordinateSnapshot(true);
+  }
 
   // For `<list>`
   if (operation_id == 0) {
@@ -350,6 +355,52 @@ void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id) {
     UIBase* child = child_iterator->second.get();
     list_view->OnLayoutFinish(child, operation_id);
   }
+}
+
+void UIOwner::UpdatePageCoordinateSnapshot(bool force_position_change) {
+  auto engine_proxy =
+      context_ != nullptr ? context_->GetEngineProxy() : nullptr;
+  UIRoot* root = Root();
+  if (engine_proxy == nullptr || context_ == nullptr) {
+    return;
+  }
+  if (force_position_change && !position_change_observation_started_) {
+    position_change_observation_started_ = true;
+    if (root != nullptr) {
+      root->EnsurePositionChangeObservation();
+    }
+  }
+  if (root == nullptr || root->GetProxyNode() == nullptr) {
+    engine_proxy->UpdatePageCoordinateSnapshot(0.f, 0.f, false, 0.f, 0.f, false,
+                                               force_position_change);
+    return;
+  }
+  if (!root->IsAttachedToViewTree()) {
+    engine_proxy->UpdatePageCoordinateSnapshot(0.f, 0.f, false, 0.f, 0.f, false,
+                                               force_position_change);
+    return;
+  }
+
+  float scaled_density = context_->ScaledDensity();
+  if (!std::isfinite(scaled_density) || scaled_density <= 0.f) {
+    scaled_density = 1.f;
+  }
+  float screen_offset[2] = {0.f, 0.f};
+  root->GetOffsetToScreen(screen_offset);
+  const float screen_x = screen_offset[0];
+  const float screen_y = screen_offset[1];
+  const bool has_screen_offset =
+      std::isfinite(screen_x) && std::isfinite(screen_y);
+  const bool has_window_offset = has_screen_offset && context_->HasWindowInfo();
+  const float window_x =
+      has_window_offset ? screen_x - context_->WindowLeftPx() / scaled_density
+                        : 0.f;
+  const float window_y =
+      has_window_offset ? screen_y - context_->WindowTopPx() / scaled_density
+                        : 0.f;
+  engine_proxy->UpdatePageCoordinateSnapshot(
+      window_x, window_y, has_window_offset, screen_x, screen_y,
+      has_screen_offset, force_position_change);
 }
 
 void UIOwner::NotifyIntrinsicContentSizeChangedIfNeeded() {
@@ -1119,10 +1170,19 @@ void UIOwner::ResumeExposure() { ui_observer_->ResumeExposure(); }
 
 void UIOwner::OnRootAttachedToViewTree() {
   ui_observer_->OnRootAttachedToViewTree();
+  if (position_change_observation_started_) {
+    if (auto* root = Root(); root != nullptr) {
+      root->EnsurePositionChangeObservation();
+    }
+    UpdatePageCoordinateSnapshot(false);
+  }
 }
 
 void UIOwner::OnRootDetachedFromViewTree() {
   ui_observer_->OnRootDetachedFromViewTree();
+  if (position_change_observation_started_) {
+    UpdatePageCoordinateSnapshot(false);
+  }
 }
 
 void UIOwner::SetObserverFrameRate(const lepus::Value& options) {

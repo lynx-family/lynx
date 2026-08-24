@@ -431,9 +431,9 @@ void NativePaintingCtxAndroid::FinishLayoutOperation(
 
   if (view_manager_) {
     Enqueue([view_manager = view_manager_, options]() {
-      view_manager->FinishLayoutOperation(options->list_comp_id_,
-                                          options->operation_id,
-                                          options->is_first_screen);
+      view_manager->FinishLayoutOperation(
+          options->list_comp_id_, options->operation_id,
+          options->is_first_screen, options->needs_page_coordinate_snapshot);
     });
   }
 

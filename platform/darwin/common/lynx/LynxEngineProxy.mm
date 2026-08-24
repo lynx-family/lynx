@@ -83,6 +83,25 @@
   }
 }
 
+- (void)updateElementPositionState:(std::vector<lynx::shell::ElementPositionUpdate>)updates {
+  if (native_engine_proxy_) {
+    native_engine_proxy_->UpdateElementPositionState(std::move(updates));
+  }
+}
+
+- (void)updatePageCoordinateSnapshotWithWindowX:(float)windowX
+                                        windowY:(float)windowY
+                                hasWindowOffset:(BOOL)hasWindowOffset
+                                        screenX:(float)screenX
+                                        screenY:(float)screenY
+                                hasScreenOffset:(BOOL)hasScreenOffset
+                            forcePositionChange:(BOOL)forcePositionChange {
+  if (native_engine_proxy_) {
+    native_engine_proxy_->UpdatePageCoordinateSnapshot(
+        windowX, windowY, hasWindowOffset, screenX, screenY, hasScreenOffset, forcePositionChange);
+  }
+}
+
 - (void)sendGestureEvent:(int)gestureId event:(LynxCustomEvent *)event {
   if (native_engine_proxy_ && event) {
     native_engine_proxy_->SendGestureEvent((int)event.targetSign, gestureId,

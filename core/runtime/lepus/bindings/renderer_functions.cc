@@ -6,6 +6,7 @@
 
 #include <assert.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <deque>
 #include <limits>
@@ -24,6 +25,7 @@
 #include "base/include/string/string_utils.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_trace_event_def.h"
 #include "core/build/gen/lynx_sub_error_code.h"
@@ -34,6 +36,7 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
@@ -115,6 +118,88 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+lepus::Value MakePointValue(float x, float y) {
+  BASE_STATIC_STRING_DECL(kX, "x");
+  BASE_STATIC_STRING_DECL(kY, "y");
+  auto result = lepus::Dictionary::Create();
+  result->SetValue(kX, x);
+  result->SetValue(kY, y);
+  return lepus::Value(std::move(result));
+}
+
+lepus::Value MakeRectValue(const base::geometry::FloatRect& rect,
+                           float layouts_unit_per_px) {
+  if (!std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+    return {};
+  }
+  const float left = rect.X() / layouts_unit_per_px;
+  const float top = rect.Y() / layouts_unit_per_px;
+  const float right = rect.MaxX() / layouts_unit_per_px;
+  const float bottom = rect.MaxY() / layouts_unit_per_px;
+  if (!std::isfinite(left) || !std::isfinite(top) || !std::isfinite(right) ||
+      !std::isfinite(bottom)) {
+    return {};
+  }
+  BASE_STATIC_STRING_DECL(kLeft, "left");
+  BASE_STATIC_STRING_DECL(kTop, "top");
+  BASE_STATIC_STRING_DECL(kRight, "right");
+  BASE_STATIC_STRING_DECL(kBottom, "bottom");
+  BASE_STATIC_STRING_DECL(kWidth, "width");
+  BASE_STATIC_STRING_DECL(kHeight, "height");
+  auto result = lepus::Dictionary::Create();
+  result->SetValue(kLeft, left);
+  result->SetValue(kTop, top);
+  result->SetValue(kRight, right);
+  result->SetValue(kBottom, bottom);
+  result->SetValue(kWidth, right - left);
+  result->SetValue(kHeight, bottom - top);
+  return lepus::Value(std::move(result));
+}
+
+lepus::Value MakePagePointValue(double x, double y, Element* from,
+                                PageCoordinateSpace space) {
+  if (from == nullptr || !std::isfinite(x) || !std::isfinite(y)) {
+    return {};
+  }
+  const float layouts_unit_per_px = from->GetLayoutsUnitPerPx();
+  if (!std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+    return {};
+  }
+  auto converted = ConvertPointToPageCoordinate(
+      {static_cast<float>(x) * layouts_unit_per_px,
+       static_cast<float>(y) * layouts_unit_per_px},
+      from, space);
+  if (!converted.has_value()) {
+    return {};
+  }
+  return MakePointValue(converted->X() / layouts_unit_per_px,
+                        converted->Y() / layouts_unit_per_px);
+}
+
+lepus::Value MakePageRectValue(double left, double top, double right,
+                               double bottom, Element* from, bool clip_bounds,
+                               PageCoordinateSpace space) {
+  if (from == nullptr || !std::isfinite(left) || !std::isfinite(top) ||
+      !std::isfinite(right) || !std::isfinite(bottom) || right < left ||
+      bottom < top) {
+    return {};
+  }
+  const float layouts_unit_per_px = from->GetLayoutsUnitPerPx();
+  if (!std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+    return {};
+  }
+  auto converted = ConvertRectToPageCoordinate(
+      {{static_cast<float>(left) * layouts_unit_per_px,
+        static_cast<float>(top) * layouts_unit_per_px},
+       {static_cast<float>(right - left) * layouts_unit_per_px,
+        static_cast<float>(bottom - top) * layouts_unit_per_px}},
+      from, clip_bounds, space);
+  if (!converted.has_value()) {
+    return {};
+  }
+  return MakeRectValue(*converted, layouts_unit_per_px);
+}
 
 template <class... Args>
 lepus::Value RenderFatal(runtime::MTSRuntime* ctx, const char* fmt,
@@ -3704,6 +3789,173 @@ RENDERER_FUNCTION_CC(FiberGetChildren) {
     ary->emplace_back(c);
   }
   RETURN(lepus::Value(std::move(ary)));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertPoint) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_POINT);
+  CHECK_ARGC_GE(FiberConvertPoint, 4);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(x, 0, Number, FiberConvertPoint);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(y, 1, Number, FiberConvertPoint);
+  CONVERT_ARG(from_value, 2);
+  CONVERT_ARG(to_value, 3);
+
+  auto from = GetFiberElementFromValue(*from_value);
+  auto to = GetFiberElementFromValue(*to_value);
+  if (from == nullptr || to == nullptr) {
+    ElementAPIError(
+        "FiberConvertPoint params 2 and 3 should be Fiber Elements");
+    RETURN_UNDEFINED();
+  }
+  if (from->element_manager() == nullptr ||
+      from->element_manager() != to->element_manager()) {
+    RETURN_UNDEFINED();
+  }
+
+  const float layouts_unit_per_px = from->GetLayoutsUnitPerPx();
+  // Element layout geometry is stored in layout units, while Element API
+  // coordinates are expressed in CSS pixels.
+  const auto converted = ConvertPointBetweenElements(
+      {static_cast<float>(x->Number()) * layouts_unit_per_px,
+       static_cast<float>(y->Number()) * layouts_unit_per_px},
+      from.get(), to.get());
+  if (!converted.has_value()) {
+    RETURN_UNDEFINED();
+  }
+
+  RETURN(MakePointValue(converted->X() / layouts_unit_per_px,
+                        converted->Y() / layouts_unit_per_px));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertRect) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_RECT);
+  CHECK_ARGC_GE(FiberConvertRect, 7);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(left, 0, Number, FiberConvertRect);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(top, 1, Number, FiberConvertRect);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(right, 2, Number, FiberConvertRect);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(bottom, 3, Number, FiberConvertRect);
+  CONVERT_ARG(from_value, 4);
+  CONVERT_ARG(to_value, 5);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(clip_bounds, 6, Bool, FiberConvertRect);
+
+  auto from = GetFiberElementFromValue(*from_value);
+  auto to = GetFiberElementFromValue(*to_value);
+  if (from == nullptr || to == nullptr) {
+    ElementAPIError("FiberConvertRect params 4 and 5 should be Fiber Elements");
+    RETURN_UNDEFINED();
+  }
+  if (from->element_manager() == nullptr ||
+      from->element_manager() != to->element_manager()) {
+    RETURN_UNDEFINED();
+  }
+
+  const double input_left = left->Number();
+  const double input_top = top->Number();
+  const double input_right = right->Number();
+  const double input_bottom = bottom->Number();
+  const float layouts_unit_per_px = from->GetLayoutsUnitPerPx();
+  if (!std::isfinite(input_left) || !std::isfinite(input_top) ||
+      !std::isfinite(input_right) || !std::isfinite(input_bottom) ||
+      input_right < input_left || input_bottom < input_top ||
+      !std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+    RETURN_UNDEFINED();
+  }
+
+  auto converted = ConvertRectBetweenElements(
+      {{static_cast<float>(input_left) * layouts_unit_per_px,
+        static_cast<float>(input_top) * layouts_unit_per_px},
+       {static_cast<float>(input_right - input_left) * layouts_unit_per_px,
+        static_cast<float>(input_bottom - input_top) * layouts_unit_per_px}},
+      from.get(), to.get(), clip_bounds->Bool());
+  if (!converted.has_value()) {
+    RETURN_UNDEFINED();
+  }
+  RETURN(MakeRectValue(*converted, layouts_unit_per_px));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertPointToWindow) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_POINT_TO_WINDOW);
+  CHECK_ARGC_GE(FiberConvertPointToWindow, 3);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(x, 0, Number,
+                                        FiberConvertPointToWindow);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(y, 1, Number,
+                                        FiberConvertPointToWindow);
+  CONVERT_ARG(from_value, 2);
+  auto from = GetFiberElementFromValue(*from_value);
+  if (from == nullptr) {
+    ElementAPIError(
+        "FiberConvertPointToWindow param 2 should be a Fiber Element");
+    RETURN_UNDEFINED();
+  }
+  RETURN(MakePagePointValue(x->Number(), y->Number(), from.get(),
+                            PageCoordinateSpace::kWindow));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertRectToWindow) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_RECT_TO_WINDOW);
+  CHECK_ARGC_GE(FiberConvertRectToWindow, 6);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(left, 0, Number,
+                                        FiberConvertRectToWindow);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(top, 1, Number,
+                                        FiberConvertRectToWindow);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(right, 2, Number,
+                                        FiberConvertRectToWindow);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(bottom, 3, Number,
+                                        FiberConvertRectToWindow);
+  CONVERT_ARG(from_value, 4);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(clip_bounds, 5, Bool,
+                                        FiberConvertRectToWindow);
+  auto from = GetFiberElementFromValue(*from_value);
+  if (from == nullptr) {
+    ElementAPIError(
+        "FiberConvertRectToWindow param 4 should be a Fiber Element");
+    RETURN_UNDEFINED();
+  }
+  RETURN(MakePageRectValue(left->Number(), top->Number(), right->Number(),
+                           bottom->Number(), from.get(), clip_bounds->Bool(),
+                           PageCoordinateSpace::kWindow));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertPointToScreen) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_POINT_TO_SCREEN);
+  CHECK_ARGC_GE(FiberConvertPointToScreen, 3);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(x, 0, Number,
+                                        FiberConvertPointToScreen);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(y, 1, Number,
+                                        FiberConvertPointToScreen);
+  CONVERT_ARG(from_value, 2);
+  auto from = GetFiberElementFromValue(*from_value);
+  if (from == nullptr) {
+    ElementAPIError(
+        "FiberConvertPointToScreen param 2 should be a Fiber Element");
+    RETURN_UNDEFINED();
+  }
+  RETURN(MakePagePointValue(x->Number(), y->Number(), from.get(),
+                            PageCoordinateSpace::kScreen));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertRectToScreen) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_RECT_TO_SCREEN);
+  CHECK_ARGC_GE(FiberConvertRectToScreen, 6);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(left, 0, Number,
+                                        FiberConvertRectToScreen);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(top, 1, Number,
+                                        FiberConvertRectToScreen);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(right, 2, Number,
+                                        FiberConvertRectToScreen);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(bottom, 3, Number,
+                                        FiberConvertRectToScreen);
+  CONVERT_ARG(from_value, 4);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(clip_bounds, 5, Bool,
+                                        FiberConvertRectToScreen);
+  auto from = GetFiberElementFromValue(*from_value);
+  if (from == nullptr) {
+    ElementAPIError(
+        "FiberConvertRectToScreen param 4 should be a Fiber Element");
+    RETURN_UNDEFINED();
+  }
+  RETURN(MakePageRectValue(left->Number(), top->Number(), right->Number(),
+                           bottom->Number(), from.get(), clip_bounds->Bool(),
+                           PageCoordinateSpace::kScreen));
 }
 
 RENDERER_FUNCTION_CC(FiberIsTemplateElement) {

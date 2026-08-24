@@ -11,6 +11,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 namespace lynx {
 namespace tasm {
 namespace harmony {
@@ -74,6 +75,10 @@ UIRoot::~UIRoot() {
                                               NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_EVENT_ON_DETACH);
+  if (is_position_change_observation_started_) {
+    NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
+                                                NODE_EVENT_ON_AREA_CHANGE);
+  }
   NodeManager::Instance().UnregisterNodeEvent(
       root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE);
   NodeManager::Instance().DisposeNode(root_proxy_);
@@ -121,6 +126,10 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
   } else if (event_type == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
     context_->OnRootDetachedFromViewTree();
+  } else if (event_type == NODE_EVENT_ON_AREA_CHANGE) {
+    if (auto* ui_owner = context_->GetUIOwner(); ui_owner != nullptr) {
+      ui_owner->UpdatePageCoordinateSnapshot(false);
+    }
   } else if (event_type == NODE_ON_TOUCH_INTERCEPT) {
     context_->OnTouchEvent(OH_ArkUI_NodeEvent_GetInputEvent(event),
                            context_->Root());
@@ -237,6 +246,15 @@ void UIRoot::GetOffsetToScreen(float offset_screen[2]) {
   float scaled_density = context_->ScaledDensity();
   offset_screen[0] = page_offset.x / scaled_density;
   offset_screen[1] = page_offset.y / scaled_density;
+}
+
+void UIRoot::EnsurePositionChangeObservation() {
+  if (is_position_change_observation_started_) {
+    return;
+  }
+  is_position_change_observation_started_ = true;
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_,
+                                            NODE_EVENT_ON_AREA_CHANGE, this);
 }
 
 }  // namespace harmony

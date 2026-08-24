@@ -473,6 +473,15 @@ void UIScroll::OnNodeEvent(ArkUI_NodeEvent* event) {
   if (type == NODE_SCROLL_EVENT_ON_SCROLL_START) {
     HandleScrollStartEvent();
   } else if (type == NODE_SCROLL_EVENT_ON_SCROLL) {
+    context_->BeginElementPositionStateBatch();
+    const auto& offset = GetScrollOffset();
+    context_->UpdateElementPositionState(
+        Sign(), shell::ElementPositionUpdateType::kScrollOffset, offset.first,
+        offset.second);
+    if (enable_sticky_) {
+      UpdateStickyOnScroll();
+    }
+    context_->EndElementPositionStateBatch();
     GestureRecognized();
     auto* component_event = OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
     HandleScrollEvent(component_event->data[0].f32,
@@ -489,16 +498,18 @@ void UIScroll::OnNodeEvent(ArkUI_NodeEvent* event) {
       component_event->data[1].f32 = 0.f;
     }
   } else if (type == NODE_SCROLL_EVENT_ON_DID_SCROLL) {
-    // Note: In the case of that the content size has changed which leads to the
-    // scroll view set a new content offset, only
-    // NODE_SCROLL_EVENT_ON_DID_SCROLL event is triggered by system, so we need
-    // to handle translation for sticky child nodes here. At the same time,
-    // considering if the NODE_SCROLL_EVENT_ON_SCROLL is triggered, the
-    // NODE_SCROLL_EVENT_ON_DID_SCROLL will definitely be triggered as well, so
-    // we uniformly update sticky here.
+    context_->BeginElementPositionStateBatch();
+    const auto& offset = GetScrollOffset();
+    context_->UpdateElementPositionState(
+        Sign(), shell::ElementPositionUpdateType::kScrollOffset, offset.first,
+        offset.second);
+    // A content-size change can update the scroll offset while only triggering
+    // NODE_SCROLL_EVENT_ON_DID_SCROLL, so keep this as the fallback sticky
+    // synchronization path.
     if (enable_sticky_) {
       UpdateStickyOnScroll();
     }
+    context_->EndElementPositionStateBatch();
   } else {
     UIBase::OnNodeEvent(event);
   }
@@ -741,6 +752,8 @@ void UIScroll::OnScrollSticky(float x_offset, float y_offset) {
             child->sticky_info_->translate_y, 0);
         NodeManager::Instance().SetAttributeWithNumberValue(child->DrawNode(),
                                                             NODE_Z_INDEX, 1);
+        child->SyncStickyTranslationToEngine(0.f,
+                                             child->sticky_info_->translate_y);
       }
     }
   }

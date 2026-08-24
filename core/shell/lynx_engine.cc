@@ -475,8 +475,45 @@ std::list<int32_t> LynxEngine::GetAncestorElements(int32_t tag) {
   return elements;
 }
 
-// (TODO)fangzhou.fz: Putting these list-related methods here directly is
-// inappropriate.
+void LynxEngine::UpdateElementPositionState(
+    std::vector<ElementPositionUpdate> updates) {
+  if (tasm_ == nullptr || tasm_->page_proxy() == nullptr) {
+    return;
+  }
+  auto& client = tasm_->page_proxy()->element_manager();
+  if (client == nullptr) {
+    return;
+  }
+  client->UpdateElementPositionState(std::move(updates));
+}
+
+void LynxEngine::UpdatePageCoordinateSnapshot(float window_x, float window_y,
+                                              bool has_window_offset,
+                                              float screen_x, float screen_y,
+                                              bool has_screen_offset,
+                                              bool force_position_change) {
+  if (tasm_ == nullptr || tasm_->page_proxy() == nullptr) {
+    return;
+  }
+  auto* client = tasm_->page_proxy()->element_manager().get();
+  if (client == nullptr) {
+    return;
+  }
+  client->UpdatePageCoordinateSnapshot(window_x, window_y, has_window_offset,
+                                       screen_x, screen_y, has_screen_offset,
+                                       force_position_change);
+}
+
+void LynxEngine::TriggerPositionChangeEvents() {
+  if (tasm_ == nullptr || tasm_->page_proxy() == nullptr) {
+    return;
+  }
+  auto* client = tasm_->page_proxy()->element_manager().get();
+  if (client != nullptr) {
+    client->TriggerPositionChangeEvents();
+  }
+}
+
 void LynxEngine::ScrollByListContainer(int32_t tag, float content_offset_x,
                                        float content_offset_y, float original_x,
                                        float original_y) {
@@ -489,6 +526,7 @@ void LynxEngine::ScrollByListContainer(int32_t tag, float content_offset_x,
   }
   lynx::tasm::Element* element = client->node_manager()->Get(tag);
   if (element != nullptr) {
+    element->UpdateScrollOffset(original_x, original_y);
     element->ScrollByListContainer(content_offset_x, content_offset_y,
                                    original_x, original_y);
   }

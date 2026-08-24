@@ -167,6 +167,16 @@ constexpr static const char* kCFunctionReplaceElements = "__ReplaceElements";
 constexpr static const char* kCFunctionSwapElement = "__SwapElement";
 constexpr static const char* kCFunctionGetParent = "__GetParent";
 constexpr static const char* kCFunctionGetChildren = "__GetChildren";
+constexpr static const char* kCFunctionConvertPoint = "__ConvertPoint";
+constexpr static const char* kCFunctionConvertRect = "__ConvertRect";
+constexpr static const char* kCFunctionConvertPointToWindow =
+    "__ConvertPointToWindow";
+constexpr static const char* kCFunctionConvertRectToWindow =
+    "__ConvertRectToWindow";
+constexpr static const char* kCFunctionConvertPointToScreen =
+    "__ConvertPointToScreen";
+constexpr static const char* kCFunctionConvertRectToScreen =
+    "__ConvertRectToScreen";
 constexpr static const char* kCFunctionCloneElement = "__CloneElement";
 constexpr static const char* kCFunctionElementIsEqual = "__ElementIsEqual";
 constexpr static const char* kCFunctionUpdateIfNodeIndex =

@@ -523,6 +523,15 @@ class Element : public lepus::RefCounted,
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event);
 
+  bool AddEventListener(
+      const std::string& type,
+      std::shared_ptr<event::EventListener> listener) override;
+  bool RemoveEventListener(
+      const std::string& type,
+      std::shared_ptr<event::EventListener> listener) override;
+  bool RemoveEventListeners(const std::string& type) override;
+  void ClearEventListeners();
+
   /**
    * Element API for removing specific event
    * @param name the removed event's name
@@ -534,6 +543,10 @@ class Element : public lepus::RefCounted,
    * Element API for removing all events
    */
   void RemoveAllEvents();
+
+  bool HasPositionChangeListener() const {
+    return has_position_change_listener_;
+  }
 
   void FiberAddEvent(const base::String& type, const base::String& name,
                      const lepus::Value& callback,
@@ -1546,6 +1559,18 @@ class Element : public lepus::RefCounted,
 
   virtual float GetLayoutsUnitPerPx() override;
 
+  // Updates the latest platform scroll position in layout units. The value is
+  // consumed on the engine thread by Element point conversion.
+  void UpdateScrollOffset(float x, float y);
+  float scroll_offset_x() const { return scroll_offset_x_; }
+  float scroll_offset_y() const { return scroll_offset_y_; }
+
+  // Updates the latest platform-applied sticky translation in layout units.
+  // The value is consumed on the engine thread by Element point conversion.
+  void UpdateStickyTranslation(float x, float y);
+  float sticky_translation_x() const { return sticky_translation_x_; }
+  float sticky_translation_y() const { return sticky_translation_y_; }
+
   /**
    * Get computed style value by property key.
    * @param key the CSS property name
@@ -2136,6 +2161,7 @@ class Element : public lepus::RefCounted,
   bool fixed_changed_{false};
 
   bool has_event_listener_{false};
+  bool has_position_change_listener_{false};
 
   bool has_transition_props_changed_{false};
   bool has_keyframe_props_changed_{false};
@@ -2210,6 +2236,10 @@ class Element : public lepus::RefCounted,
   float height_{0};
   float top_{0};
   float left_{0};
+  float scroll_offset_x_{0};
+  float scroll_offset_y_{0};
+  float sticky_translation_x_{0};
+  float sticky_translation_y_{0};
   std::array<float, 4> borders_{};
   std::array<float, 4> margins_{};
   std::array<float, 4> paddings_{};

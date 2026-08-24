@@ -5,9 +5,11 @@
 #ifndef CORE_PUBLIC_LYNX_ENGINE_PROXY_H_
 #define CORE_PUBLIC_LYNX_ENGINE_PROXY_H_
 
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "core/public/external_memory_snapshot.h"
@@ -16,6 +18,18 @@
 
 namespace lynx {
 namespace shell {
+
+enum class ElementPositionUpdateType : uint8_t {
+  kScrollOffset,
+  kStickyTranslation,
+};
+
+struct ElementPositionUpdate {
+  int32_t element_id;
+  ElementPositionUpdateType type;
+  float x;
+  float y;
+};
 
 class LynxEngineProxy {
  public:
@@ -56,6 +70,20 @@ class LynxEngineProxy {
   virtual void StartEventBubble(int64_t event_id) = 0;
 
   virtual void StartEventFire(bool is_stop, int64_t event_id) = 0;
+
+  // Atomically synchronizes platform-owned position state before dependent
+  // position-change events are dispatched on the engine thread.
+  virtual void UpdateElementPositionState(
+      std::vector<ElementPositionUpdate> updates) = 0;
+
+  // Synchronizes Page-root offsets captured after layout UI operations have
+  // completed on the platform UI thread. Coordinates use platform layout
+  // units; availability is tracked independently for window and screen spaces.
+  virtual void UpdatePageCoordinateSnapshot(float window_x, float window_y,
+                                            bool has_window_offset,
+                                            float screen_x, float screen_y,
+                                            bool has_screen_offset,
+                                            bool force_position_change) = 0;
 
   // List
   // TODO(chenyouhui): Split the list interface into its own public API.

@@ -54,6 +54,7 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.animation.AnimationConstant;
 import com.lynx.tasm.animation.AnimationInfo;
@@ -1309,9 +1310,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     if (res && mSticky != null) {
       trans = new PointF(mSticky.x, mSticky.y);
     }
-    if (mBackgroundManager != null) {
-      mBackgroundManager.setPostTranslate(trans);
-    }
+    applyStickyTranslation(trans);
     return res;
   }
 
@@ -1322,17 +1321,24 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     if (mSticky != null) {
       trans = new PointF(mSticky.x, mSticky.y);
     }
-    if (mBackgroundManager != null) {
-      mBackgroundManager.setPostTranslate(trans);
-    }
+    applyStickyTranslation(trans);
     return ret;
   }
 
   @Override
   public void setStickyTranslate(PointF trans) {
     super.setStickyTranslate(trans);
+    applyStickyTranslation(trans);
+  }
+
+  private void applyStickyTranslation(@Nullable PointF trans) {
     if (mBackgroundManager != null) {
       mBackgroundManager.setPostTranslate(trans);
+    }
+    if (mContext != null && mContext.getEventEmitter() != null) {
+      mContext.getEventEmitter().updateElementPositionState(getSign(),
+          EventEmitter.ELEMENT_POSITION_UPDATE_STICKY_TRANSLATION, trans == null ? 0.f : trans.x,
+          trans == null ? 0.f : trans.y);
     }
   }
 

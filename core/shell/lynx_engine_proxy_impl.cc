@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/time/time_delta.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
@@ -16,6 +17,10 @@
 
 namespace lynx {
 namespace shell {
+
+namespace {
+constexpr int64_t kPositionChangeEventDelayMs = 50;
+}  // namespace
 
 void LynxEngineProxyImpl::DispatchTaskToLynxEngine(base::closure task) {
   if (engine_actor_ == nullptr) {
@@ -197,6 +202,67 @@ void LynxEngineProxyImpl::ScrollByListContainer(int32_t tag, float x, float y,
   engine_actor_->Act([tag, x, y, original_x, original_y](auto& engine) {
     engine->ScrollByListContainer(tag, x, y, original_x, original_y);
   });
+}
+
+void LynxEngineProxyImpl::UpdateElementPositionState(
+    std::vector<ElementPositionUpdate> updates) {
+  if (engine_actor_ == nullptr) {
+    LOGE("UpdateElementPositionState failed since engine_actor_ is nullptr");
+    return;
+  }
+  auto actor = engine_actor_;
+  actor->ActAsync([updates = std::move(updates)](auto& engine) mutable {
+    engine->UpdateElementPositionState(std::move(updates));
+  });
+  RequestPositionChangeEventTrigger(actor);
+}
+
+void LynxEngineProxyImpl::UpdatePageCoordinateSnapshot(
+    float window_x, float window_y, bool has_window_offset, float screen_x,
+    float screen_y, bool has_screen_offset, bool force_position_change) {
+  if (engine_actor_ == nullptr) {
+    LOGE("UpdatePageCoordinateSnapshot failed since engine_actor_ is nullptr");
+    return;
+  }
+  auto actor = engine_actor_;
+  actor->ActAsync([window_x, window_y, has_window_offset, screen_x, screen_y,
+                   has_screen_offset, force_position_change](auto& engine) {
+    engine->UpdatePageCoordinateSnapshot(window_x, window_y, has_window_offset,
+                                         screen_x, screen_y, has_screen_offset,
+                                         force_position_change);
+  });
+  RequestPositionChangeEventTrigger(actor);
+}
+
+void LynxEngineProxyImpl::RequestPositionChangeEventTrigger(
+    const std::shared_ptr<shell::LynxActor<shell::LynxEngine>>& actor) {
+  bool expected = false;
+  if (!position_change_delay_requested_->compare_exchange_strong(expected,
+                                                                 true)) {
+    return;
+  }
+
+  std::weak_ptr<std::atomic_bool> weak_state = position_change_delay_requested_;
+  actor->GetRunner()->PostDelayedTask(
+      [weak_state, actor]() {
+        auto state = weak_state.lock();
+        if (state == nullptr) {
+          return;
+        }
+        state->store(false);
+        actor->ActAsync(
+            [](auto& engine) { engine->TriggerPositionChangeEvents(); });
+      },
+      fml::TimeDelta::FromMilliseconds(kPositionChangeEventDelayMs));
+}
+
+void LynxEngineProxyImpl::ResetEngineActor(
+    const std::shared_ptr<shell::LynxActor<shell::LynxEngine>>& actor) {
+  if (engine_actor_ == actor) {
+    return;
+  }
+  engine_actor_ = actor;
+  position_change_delay_requested_ = std::make_shared<std::atomic_bool>(false);
 }
 
 void LynxEngineProxyImpl::ScrollToPosition(int32_t tag, int index, float offset,

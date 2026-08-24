@@ -63,9 +63,10 @@ void PubUIOwner::UpdateLayout(int sign, float left, float top, float width,
                           sticky, max_height, node_index);
 }
 
-void PubUIOwner::OnLayoutFinish(int32_t component_id,
-                                int64_t operation_id) const {
-  ui_owner_->OnLayoutFinish(component_id, operation_id);
+void PubUIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id,
+                                bool needs_coordinate_snapshot) const {
+  ui_owner_->OnLayoutFinish(component_id, operation_id,
+                            needs_coordinate_snapshot);
 }
 
 void PubUIOwner::AttachPageRoot(napi_env env, napi_value root_content) const {

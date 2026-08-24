@@ -7,6 +7,7 @@ import android.content.Context;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -61,16 +62,35 @@ public class LynxUIScrollViewInternal
 
   @Override
   public void scrollViewDidScroll(LynxBaseScrollViewScrolling scrollView) {
-    tryToSendScrollEvent();
+    int[] currentOffset = scrollView.getScrollOffset();
+    EventEmitter eventEmitter = getLynxContext().getEventEmitter();
+    if (eventEmitter != null) {
+      eventEmitter.beginElementPositionStateBatch();
+    }
+    try {
+      syncScrollOffsetToEngine(currentOffset);
+      updateSticky();
+    } finally {
+      if (eventEmitter != null) {
+        eventEmitter.endElementPositionStateBatch();
+      }
+    }
+    tryToSendScrollEvent(currentOffset);
     updateScrollPosition();
-    updateSticky();
   }
 
-  private void tryToSendScrollEvent() {
+  private void syncScrollOffsetToEngine(int[] currentOffset) {
+    LynxContext context = getLynxContext();
+    if (context.getEventEmitter() != null) {
+      context.getEventEmitter().updateElementPositionState(getSign(),
+          EventEmitter.ELEMENT_POSITION_UPDATE_SCROLL_OFFSET, currentOffset[0], currentOffset[1]);
+    }
+  }
+
+  private void tryToSendScrollEvent(int[] currentOffset) {
     if (mThrottle != 0) {
       long currentTime = System.currentTimeMillis();
       if (currentTime - mLastUpdateTime >= mThrottle) {
-        int[] currentOffset = mView.getScrollOffset();
         HashMap<String, Object> params = new HashMap<>();
         params.put("deltaX", PixelUtils.pxToDip(currentOffset[0] - mLastContentOffset[0]));
         params.put("deltaY", PixelUtils.pxToDip(currentOffset[1] - mLastContentOffset[1]));
@@ -79,7 +99,6 @@ public class LynxUIScrollViewInternal
         mLastUpdateTime = currentTime;
       }
     } else {
-      int[] currentOffset = mView.getScrollOffset();
       HashMap<String, Object> params = new HashMap<>();
       params.put("deltaX", PixelUtils.pxToDip(currentOffset[0] - mLastContentOffset[0]));
       params.put("deltaY", PixelUtils.pxToDip(currentOffset[1] - mLastContentOffset[1]));

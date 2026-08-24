@@ -25,6 +25,8 @@ import java.util.ArrayList;
 
 public abstract class EventEmitter {
   private static final String TAG = "EventEmitter";
+  public static final int ELEMENT_POSITION_UPDATE_SCROLL_OFFSET = 0;
+  public static final int ELEMENT_POSITION_UPDATE_STICKY_TRANSLATION = 1;
 
   public interface ITestTapTrack {
     void onTap();
@@ -99,4 +101,10 @@ public abstract class EventEmitter {
   public void startEventCapture(long eventID) {}
   public void startEventBubble(long eventID) {}
   public void startEventFire(boolean isStop, long eventID) {}
+  public void beginElementPositionStateBatch() {}
+  public void updateElementPositionState(int sign, int type, float x, float y) {}
+  public void endElementPositionStateBatch() {}
+
+  public void updatePageCoordinateSnapshot(float windowX, float windowY, boolean hasWindowOffset,
+      float screenX, float screenY, boolean hasScreenOffset, boolean forcePositionChange) {}
 }

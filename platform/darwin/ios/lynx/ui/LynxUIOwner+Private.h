@@ -87,6 +87,9 @@ typedef struct LynxExternalMemorySnapshot {
 - (LynxExternalMemorySnapshot)getExternalMemorySnapshot;
 - (void)cacheRemovedUIId:(NSInteger)removeId;
 - (void)requestExternalMemoryReport:(int64_t)delayMs;
+// Captures the Page root origin after the corresponding queued layout UI
+// operations have completed, then forwards it to the engine thread.
+- (void)updatePageCoordinateSnapshot:(BOOL)forcePositionChange;
 
 @end
 

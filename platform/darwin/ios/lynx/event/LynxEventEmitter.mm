@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxEngineProxy.h>
+#import <Lynx/LynxEngineProxy+Native.h>
 #import <Lynx/LynxEventDetail.h>
-#import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxEventEmitter+Internal.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateData+Converter.h>
@@ -19,6 +19,7 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 
 @interface LynxEventEmitter ()
 - (BOOL)consumeDispatchInCurrentLynxPageOnly:(LynxTouchEvent*)event;
+- (void)flushElementPositionStateBatch;
 @end
 
 @implementation LynxEventEmitter {
@@ -27,6 +28,8 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
   onLynxEvent eventReporter_;
   dispatch_block_t intersectionObserver_;
   int64_t eventID_;
+  NSUInteger positionUpdateBatchDepth_;
+  std::vector<lynx::shell::ElementPositionUpdate> positionUpdates_;
 }
 
 - (instancetype)initWithLynxEngineProxy:(LynxEngineProxy*)engineProxy {
@@ -151,6 +154,67 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 
 - (void)sendCustomEvent:(LynxCustomEvent*)event {
   [self dispatchCustomEvent:event];
+}
+
+- (void)beginElementPositionStateBatch {
+  positionUpdateBatchDepth_++;
+}
+
+- (void)updateElementPositionState:(NSInteger)tag
+                              type:(LynxElementPositionUpdateType)type
+                                 x:(CGFloat)x
+                                 y:(CGFloat)y {
+  lynx::shell::ElementPositionUpdateType updateType;
+  switch (type) {
+    case LynxElementPositionUpdateScrollOffset:
+      updateType = lynx::shell::ElementPositionUpdateType::kScrollOffset;
+      break;
+    case LynxElementPositionUpdateStickyTranslation:
+      updateType = lynx::shell::ElementPositionUpdateType::kStickyTranslation;
+      break;
+    default:
+      return;
+  }
+  positionUpdates_.push_back(
+      {static_cast<int32_t>(tag), updateType, static_cast<float>(x), static_cast<float>(y)});
+  if (positionUpdateBatchDepth_ == 0) {
+    [self flushElementPositionStateBatch];
+  }
+}
+
+- (void)endElementPositionStateBatch {
+  if (positionUpdateBatchDepth_ == 0) {
+    return;
+  }
+  positionUpdateBatchDepth_--;
+  if (positionUpdateBatchDepth_ == 0) {
+    [self flushElementPositionStateBatch];
+  }
+}
+
+- (void)flushElementPositionStateBatch {
+  if (positionUpdates_.empty()) {
+    return;
+  }
+  auto updates = std::move(positionUpdates_);
+  positionUpdates_.clear();
+  [_engineProxy updateElementPositionState:std::move(updates)];
+}
+
+- (void)updatePageCoordinateSnapshotWithWindowX:(CGFloat)windowX
+                                        windowY:(CGFloat)windowY
+                                hasWindowOffset:(BOOL)hasWindowOffset
+                                        screenX:(CGFloat)screenX
+                                        screenY:(CGFloat)screenY
+                                hasScreenOffset:(BOOL)hasScreenOffset
+                            forcePositionChange:(BOOL)forcePositionChange {
+  [_engineProxy updatePageCoordinateSnapshotWithWindowX:static_cast<float>(windowX)
+                                                windowY:static_cast<float>(windowY)
+                                        hasWindowOffset:hasWindowOffset
+                                                screenX:static_cast<float>(screenX)
+                                                screenY:static_cast<float>(screenY)
+                                        hasScreenOffset:hasScreenOffset
+                                    forcePositionChange:forcePositionChange];
 }
 
 - (void)onPseudoStatusChanged:(int32_t)tag

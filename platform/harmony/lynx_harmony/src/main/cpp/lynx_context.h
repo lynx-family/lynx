@@ -15,6 +15,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
@@ -105,6 +106,14 @@ class LynxContext {
   const std::shared_ptr<shell::LynxEngineProxy>& GetEngineProxy() {
     return engine_proxy_;
   }
+
+  void BeginElementPositionStateBatch();
+
+  void UpdateElementPositionState(int32_t tag,
+                                  shell::ElementPositionUpdateType type,
+                                  float x, float y);
+
+  void EndElementPositionStateBatch();
 
   void ResetNodeOwner() {
     std::unique_lock<std::shared_mutex> guard(node_owner_shared_mutex_);
@@ -430,6 +439,8 @@ class LynxContext {
   bool enable_harmony_visible_area_change_for_exposure_{false};
   bool enable_exposure_when_reload_{false};
   bool enable_transformed_touch_position_{false};
+  uint32_t element_position_state_batch_depth_{0};
+  std::vector<shell::ElementPositionUpdate> element_position_state_updates_;
 };
 
 }  // namespace harmony

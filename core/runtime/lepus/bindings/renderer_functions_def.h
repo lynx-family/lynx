@@ -90,6 +90,12 @@
   V(FiberSwapElement)                   \
   V(FiberGetParent)                     \
   V(FiberGetChildren)                   \
+  V(FiberConvertPoint)                  \
+  V(FiberConvertRect)                   \
+  V(FiberConvertPointToWindow)          \
+  V(FiberConvertRectToWindow)           \
+  V(FiberConvertPointToScreen)          \
+  V(FiberConvertRectToScreen)           \
   V(FiberCloneElement)                  \
   V(FiberMarkTemplateElement)           \
   V(FiberIsTemplateElement)             \

@@ -16,6 +16,7 @@
 #import <Lynx/LynxConverter+Transform.h>
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxEvent.h>
+#import <Lynx/LynxEventEmitter+Internal.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxGestureArenaMember.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
@@ -467,7 +468,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     if (_sticky) {
       // sticky item is not sticky item or has illegal, need to reset sticky translate.
       [self removeSelfFromStickyScrollerIfNeeded];
-      [self.backgroundManager setPostTranslate:CGPointZero];
+      [self applyStickyTranslation:CGPointZero];
     }
     _sticky = nil;
     return;
@@ -496,7 +497,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     // Has no valid sticky scroller, need to reset sticky translate.
     // But we no need to clear sticky info.
     [self removeSelfFromStickyScrollerIfNeeded];
-    [self.backgroundManager setPostTranslate:CGPointZero];
+    [self applyStickyTranslation:CGPointZero];
   }
 }
 
@@ -541,8 +542,16 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   [super onNodeRemoved];
   if (self.context.enableNewSticky) {
     [self removeSelfFromStickyScrollerIfNeeded];
-    [self.backgroundManager setPostTranslate:CGPointZero];
+    [self applyStickyTranslation:CGPointZero];
   }
+}
+
+- (void)applyStickyTranslation:(CGPoint)translation {
+  [self.backgroundManager setPostTranslate:translation];
+  [self.context.eventEmitter updateElementPositionState:self.sign
+                                                   type:LynxElementPositionUpdateStickyTranslation
+                                                      x:translation.x
+                                                      y:translation.y];
 }
 
 - (void)calculateStickyTranslateWithOffset:(CGFloat)offset
@@ -591,7 +600,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   trailingRange.valid = trailingRange.end > 0.f;
   if (!leadingRange.valid && !trailingRange.valid) {
     // If neither the leading range nor the trailing range is valid, keep the original position.
-    [self.backgroundManager setPostTranslate:CGPointZero];
+    [self applyStickyTranslation:CGPointZero];
     return;
   }
 
@@ -638,7 +647,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   } else {
     trans.x = translation;
   }
-  [self.backgroundManager setPostTranslate:trans];
+  [self applyStickyTranslation:trans];
 }
 
 - (void)checkStickyOnParentScroll:(CGFloat)offsetX withOffsetY:(CGFloat)offsetY {
@@ -671,7 +680,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
       trans.x = 0;
     }
   }
-  [self.backgroundManager setPostTranslate:trans];
+  [self applyStickyTranslation:trans];
 }
 
 - (void)updateFrameWithoutLayoutAnimation:(CGRect)frame

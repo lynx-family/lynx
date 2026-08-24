@@ -118,6 +118,41 @@ public final class LynxEngineProxy {
     });
   }
 
+  public void updateElementPositionState(
+      final int[] elementIds, final int[] types, final float[] values) {
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        if (mNativePtr == 0) {
+          LLog.e(TAG, "updateElementPositionState failed since mNativePtr is null");
+          return;
+        }
+        if (elementIds == null || types == null || values == null
+            || elementIds.length != types.length || values.length != elementIds.length * 2) {
+          LLog.e(TAG, "updateElementPositionState received invalid arrays");
+          return;
+        }
+        nativeUpdateElementPositionState(mNativePtr, elementIds, types, values);
+      }
+    });
+  }
+
+  public void updatePageCoordinateSnapshot(final float windowX, final float windowY,
+      final boolean hasWindowOffset, final float screenX, final float screenY,
+      final boolean hasScreenOffset, final boolean forcePositionChange) {
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        if (mNativePtr == 0) {
+          LLog.e(TAG, "updatePageCoordinateSnapshot failed since mNativePtr is null");
+          return;
+        }
+        nativeUpdatePageCoordinateSnapshot(mNativePtr, windowX, windowY, hasWindowOffset, screenX,
+            screenY, hasScreenOffset, forcePositionChange);
+      }
+    });
+  }
+
   /**
    * Sends a gesture event with specified details asynchronously.
    *
@@ -285,6 +320,13 @@ public final class LynxEngineProxy {
 
   private native void nativeSendCustomEvent(
       long nativePtr, String name, int tag, ByteBuffer params, int length, String paramsName);
+
+  private native void nativeUpdateElementPositionState(
+      long nativePtr, int[] elementIds, int[] types, float[] values);
+
+  private native void nativeUpdatePageCoordinateSnapshot(long nativePtr, float windowX,
+      float windowY, boolean hasWindowOffset, float screenX, float screenY, boolean hasScreenOffset,
+      boolean forcePositionChange);
 
   private native void nativeSendGestureEvent(
       long nativePtr, String name, int tag, int gestureId, ByteBuffer params, int length);

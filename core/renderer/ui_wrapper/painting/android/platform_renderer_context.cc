@@ -213,9 +213,9 @@ void PlatformRendererContext::FinishTasmOperation(int64_t operation_id) {
       env, local_ref.Get(), static_cast<jlong>(operation_id));
 }
 
-void PlatformRendererContext::FinishLayoutOperation(int32_t component_id,
-                                                    int64_t operation_id,
-                                                    bool is_first_screen) {
+void PlatformRendererContext::FinishLayoutOperation(
+    int32_t component_id, int64_t operation_id, bool is_first_screen,
+    bool needs_coordinate_snapshot) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -223,7 +223,7 @@ void PlatformRendererContext::FinishLayoutOperation(int32_t component_id,
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_finishLayoutOperation(
       env, local_ref.Get(), component_id, static_cast<jlong>(operation_id),
-      is_first_screen);
+      is_first_screen, needs_coordinate_snapshot);
 }
 
 void PlatformRendererContext::OnNodeReady(const std::vector<int32_t>& ids) {

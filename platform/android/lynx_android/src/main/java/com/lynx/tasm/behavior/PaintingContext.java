@@ -661,8 +661,9 @@ public final class PaintingContext implements IPaintingContext {
         case UIOperationType.LAYOUT_FINISH: {
           int listComponentId = iterator.next().getInt();
           long operationId = iterator.next().getLong();
+          boolean needsCoordinateSnapshot = iterator.next().getInt() != 0;
           // isFirstScreen is useless now, just pass true. Should delete later.
-          FinishLayoutOperation(listComponentId, operationId, true);
+          FinishLayoutOperation(listComponentId, operationId, true, needsCoordinateSnapshot);
         } break;
         case UIOperationType.REQUEST_EXTERNAL_MEMORY_REPORT: {
           requestExternalMemoryReport(iterator.next().getLong());
@@ -741,8 +742,12 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @CalledByNative
-  public void FinishLayoutOperation(int componentId, long operationId, boolean isFirstScreen) {
+  public void FinishLayoutOperation(
+      int componentId, long operationId, boolean isFirstScreen, boolean needsCoordinateSnapshot) {
     mUIOwner.onLayoutFinish(componentId, operationId);
+    if (needsCoordinateSnapshot) {
+      mUIOwner.updatePageCoordinateSnapshot(true);
+    }
   }
 
   @CalledByNative

@@ -7,6 +7,7 @@
 
 #define private public
 #define protect public
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -30,6 +31,8 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
   void ResetCapturedRemoveSigns();
 
   bool HasCapturedRemoveSign(int id);
+
+  void SetLayoutOperationCallback(std::function<void()> callback);
 
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info);
@@ -72,6 +75,7 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
   bool flush_{false};
   std::unordered_map<int, std::unique_ptr<MockNode>> node_map_;
   std::unordered_map<std::string, lepus::Value> keyframes_;
+  std::function<void()> layout_operation_callback_;
   std::unordered_map<std::string, int32_t> mock_virtuality_map = {
       {"inline-text", LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL},
       {"view", LayoutNodeType::COMMON},

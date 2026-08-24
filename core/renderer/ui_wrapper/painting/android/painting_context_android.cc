@@ -952,6 +952,8 @@ void PaintingContextAndroid::FinishLayoutOperation(
         static_cast<int32_t>(UIOperationType::kLayoutFinish));
     ui_operation_batch_builder_->putInt(options->list_comp_id_);
     ui_operation_batch_builder_->putLong(options->operation_id);
+    ui_operation_batch_builder_->putInt(
+        options->needs_page_coordinate_snapshot ? 1 : 0);
   } else {
     Enqueue([impl = impl_, options = options]() {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
@@ -964,7 +966,7 @@ void PaintingContextAndroid::FinishLayoutOperation(
       JNIEnv* env = base::android::AttachCurrentThread();
       Java_PaintingContext_FinishLayoutOperation(
           env, local_ref.Get(), options->list_comp_id_, options->operation_id,
-          options->is_first_screen);
+          options->is_first_screen, options->needs_page_coordinate_snapshot);
     });
   }
 

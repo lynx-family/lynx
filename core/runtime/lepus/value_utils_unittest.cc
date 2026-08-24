@@ -247,6 +247,16 @@ TEST(RenderBindingFunctionRegistration,
 
   ASSERT_TRUE(function.IsCFunction());
   EXPECT_EQ(lepus::CFunctionType_Default, function.GetCFunctionType());
+  EXPECT_TRUE(vm->GetGlobalData(tasm::kCFunctionConvertPoint).IsCFunction());
+  EXPECT_TRUE(vm->GetGlobalData(tasm::kCFunctionConvertRect).IsCFunction());
+  EXPECT_TRUE(
+      vm->GetGlobalData(tasm::kCFunctionConvertPointToWindow).IsCFunction());
+  EXPECT_TRUE(
+      vm->GetGlobalData(tasm::kCFunctionConvertRectToWindow).IsCFunction());
+  EXPECT_TRUE(
+      vm->GetGlobalData(tasm::kCFunctionConvertPointToScreen).IsCFunction());
+  EXPECT_TRUE(
+      vm->GetGlobalData(tasm::kCFunctionConvertRectToScreen).IsCFunction());
 }
 
 TEST(RenderBindingFunctionRegistration,
@@ -260,11 +270,34 @@ TEST(RenderBindingFunctionRegistration,
   LEPUSContext* ctx = qctx->context();
   LEPUSValue function = qctx->SearchGlobalData(tasm::kCFunctionSetAttribute);
   ASSERT_TRUE(LEPUS_IsFunction(ctx, function));
+  LEPUSValue convert_point =
+      qctx->SearchGlobalData(tasm::kCFunctionConvertPoint);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_point));
+  LEPUSValue convert_rect = qctx->SearchGlobalData(tasm::kCFunctionConvertRect);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_rect));
+  LEPUSValue convert_point_to_window =
+      qctx->SearchGlobalData(tasm::kCFunctionConvertPointToWindow);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_point_to_window));
+  LEPUSValue convert_rect_to_window =
+      qctx->SearchGlobalData(tasm::kCFunctionConvertRectToWindow);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_rect_to_window));
+  LEPUSValue convert_point_to_screen =
+      qctx->SearchGlobalData(tasm::kCFunctionConvertPointToScreen);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_point_to_screen));
+  LEPUSValue convert_rect_to_screen =
+      qctx->SearchGlobalData(tasm::kCFunctionConvertRectToScreen);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_rect_to_screen));
 
   LEPUSValue length = LEPUS_GetPropertyStr(ctx, function, "length");
   ASSERT_FALSE(LEPUS_IsException(length));
   EXPECT_EQ(0, LEPUS_VALUE_GET_INT(length));
   FreeLEPUSValueIfNeeded(ctx, length);
+  FreeLEPUSValueIfNeeded(ctx, convert_rect_to_screen);
+  FreeLEPUSValueIfNeeded(ctx, convert_point_to_screen);
+  FreeLEPUSValueIfNeeded(ctx, convert_rect_to_window);
+  FreeLEPUSValueIfNeeded(ctx, convert_point_to_window);
+  FreeLEPUSValueIfNeeded(ctx, convert_rect);
+  FreeLEPUSValueIfNeeded(ctx, convert_point);
   FreeLEPUSValueIfNeeded(ctx, function);
 }
 

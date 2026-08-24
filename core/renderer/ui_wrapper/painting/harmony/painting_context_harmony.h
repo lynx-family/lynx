@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_PAINTING_CONTEXT_HARMONY_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_PAINTING_CONTEXT_HARMONY_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -60,7 +61,8 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
                     const float* paddings, const float* margins,
                     const float* borders, const float* sticky, float max_height,
                     uint32_t node_index, bool display_none);
-  void OnLayoutFinish(int32_t list_comp_id, int64_t operation_id);
+  void OnLayoutFinish(int32_t list_comp_id, int64_t operation_id,
+                      bool needs_coordinate_snapshot);
   void StopExposure(const lepus::Value& options);
   void ResumeExposure();
   void UpdateExtraData(

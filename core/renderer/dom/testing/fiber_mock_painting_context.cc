@@ -93,6 +93,11 @@ bool FiberMockPaintingContext::HasCapturedRemoveSign(int id) {
   return captured_remove_signs_.find(id) != captured_remove_signs_.end();
 }
 
+void FiberMockPaintingContext::SetLayoutOperationCallback(
+    std::function<void()> callback) {
+  layout_operation_callback_ = std::move(callback);
+}
+
 void FiberMockPaintingContext::DestroyPaintingNode(int parent, int child,
                                                    int index) {
   EnqueueOperation([this, parent, child]() -> void {
@@ -135,6 +140,9 @@ void FiberMockPaintingContext::UpdateLayout(
     const float* sticky, float max_height, uint32_t node_index,
     bool /*display_none*/) {
   EnqueueOperation([this, x, y, width, height, tag]() -> void {
+    if (layout_operation_callback_) {
+      layout_operation_callback_();
+    }
     if (node_map_.find(tag) == node_map_.end()) {
       return;
     }

@@ -31,6 +31,7 @@
 #include "core/inspector/observer/inspector_element_observer.h"
 #include "core/inspector/style_sheet.h"
 #include "core/public/external_memory_snapshot.h"
+#include "core/public/lynx_engine_proxy.h"
 #include "core/public/page_options.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/prop_bundle.h"
@@ -189,6 +190,21 @@ class ComponentManager {
  private:
   std::unordered_map<std::string, Element *> component_map_;
 };
+
+// Page-root offsets captured on the platform UI thread after a completed
+// layout UI-operation batch. Values use the same layout unit as Element
+// geometry; renderer bindings normalize them to CSS pixels.
+// TODO: Refresh this snapshot when the native host moves without a Lynx layout.
+struct PageCoordinateSnapshot {
+  float window_x{0.f};
+  float window_y{0.f};
+  float screen_x{0.f};
+  float screen_y{0.f};
+  bool has_window_offset{false};
+  bool has_screen_offset{false};
+};
+
+using PositionChangeEventElementIds = base::LinearFlatSet<int32_t>;
 
 class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
  public:
@@ -1162,6 +1178,33 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   fml::RefPtr<PageElement> GetPageElementRef() const { return fiber_page_; }
 
+  void UpdateElementPositionState(
+      std::vector<shell::ElementPositionUpdate> updates);
+
+  void UpdatePageCoordinateSnapshot(float window_x, float window_y,
+                                    bool has_window_offset, float screen_x,
+                                    float screen_y, bool has_screen_offset,
+                                    bool force_position_change);
+
+  const PageCoordinateSnapshot &GetPageCoordinateSnapshot() const {
+    return page_coordinate_snapshot_;
+  }
+
+  // Tracks live positionchange subscriptions. Every successful listener
+  // registration requests a forced Page snapshot so that the newly added
+  // listener receives an initial event.
+  void OnPositionChangeListenerAdded(int32_t element_id);
+  void OnPositionChangeListenerRemoved(int32_t element_id);
+
+  // Requests a Page snapshot after a completed layout while at least one
+  // Element is observing position changes.
+  void PreparePositionChangeObservation(
+      const std::shared_ptr<PipelineOptions> &options);
+
+  // Dispatches one coalesced positionchange batch if any platform-owned
+  // position state changed since the previous trigger.
+  void TriggerPositionChangeEvents();
+
   bool CheckResolvedKeyframes(const std::string &unique_id) {
     return resolved_keyframes_set_.find(unique_id) !=
            resolved_keyframes_set_.end();
@@ -1514,6 +1557,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   starlight::LayoutConfigs layout_configs_;
 
   fml::RefPtr<PageElement> fiber_page_;
+
+  PageCoordinateSnapshot page_coordinate_snapshot_;
+  PositionChangeEventElementIds position_change_listener_ids_;
+  bool position_change_dirty_{false};
 
   Delegate *delegate_;
   ElementManagerDelegate *element_manager_delegate_{nullptr};

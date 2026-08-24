@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/string/string_utils.h"
@@ -141,6 +142,61 @@ static void SendCustomEvent(JNIEnv *env, jobject jcaller, jlong ptr,
       lynx::base::android::JNIConvertHelper::ConvertToString(env, params_name));
 }
 
+static void UpdateElementPositionState(JNIEnv *env, jobject jcaller, jlong ptr,
+                                       jintArray element_ids, jintArray types,
+                                       jfloatArray values) {
+  auto *engine_proxy =
+      reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+  if (engine_proxy == nullptr || element_ids == nullptr || types == nullptr ||
+      values == nullptr) {
+    return;
+  }
+  const jsize update_count = env->GetArrayLength(element_ids);
+  if (env->GetArrayLength(types) != update_count ||
+      env->GetArrayLength(values) != update_count * 2) {
+    return;
+  }
+  std::vector<jint> native_ids(update_count);
+  std::vector<jint> native_types(update_count);
+  std::vector<jfloat> native_values(update_count * 2);
+  env->GetIntArrayRegion(element_ids, 0, update_count, native_ids.data());
+  env->GetIntArrayRegion(types, 0, update_count, native_types.data());
+  env->GetFloatArrayRegion(values, 0, update_count * 2, native_values.data());
+  std::vector<lynx::shell::ElementPositionUpdate> updates;
+  updates.reserve(update_count);
+  for (jsize index = 0; index < update_count; ++index) {
+    lynx::shell::ElementPositionUpdateType type;
+    if (native_types[index] ==
+        static_cast<jint>(
+            lynx::shell::ElementPositionUpdateType::kScrollOffset)) {
+      type = lynx::shell::ElementPositionUpdateType::kScrollOffset;
+    } else if (native_types[index] ==
+               static_cast<jint>(lynx::shell::ElementPositionUpdateType::
+                                     kStickyTranslation)) {
+      type = lynx::shell::ElementPositionUpdateType::kStickyTranslation;
+    } else {
+      continue;
+    }
+    updates.push_back({static_cast<int32_t>(native_ids[index]), type,
+                       native_values[index * 2], native_values[index * 2 + 1]});
+  }
+  engine_proxy->UpdateElementPositionState(std::move(updates));
+}
+
+static void UpdatePageCoordinateSnapshot(
+    JNIEnv *env, jobject jcaller, jlong ptr, jfloat window_x, jfloat window_y,
+    jboolean has_window_offset, jfloat screen_x, jfloat screen_y,
+    jboolean has_screen_offset, jboolean force_position_change) {
+  auto *engine_proxy =
+      reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+  if (engine_proxy == nullptr) {
+    return;
+  }
+  engine_proxy->UpdatePageCoordinateSnapshot(
+      window_x, window_y, has_window_offset, screen_x, screen_y,
+      has_screen_offset, force_position_change);
+}
+
 static void SendGestureEvent(JNIEnv *env, jobject jcaller, jlong ptr,
                              jstring name, jint tag, jint gesture_id,
                              jobject params, jint length) {
@@ -260,9 +316,7 @@ namespace shell {
 
 void LynxEngineProxyAndroid::ResetActor(
     const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &actor) {
-  if (engine_actor_ != actor) {
-    engine_actor_ = actor;
-  }
+  ResetEngineActor(actor);
 }
 
 void LynxEngineProxyAndroid::InvokeLepusApiCallback(

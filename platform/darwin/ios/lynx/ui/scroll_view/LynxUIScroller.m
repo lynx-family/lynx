@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxEventEmitter+Internal.h>
 #import <Lynx/LynxLayoutStyle.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Fluency.h>
@@ -909,51 +910,69 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 #pragma mark - UIScrollViewDelegate
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-  if (scrollView == self.view &&
-      ![scrollView respondToScrollViewDidScroll:((LynxScrollView *)scrollView).gestureConsumer]) {
-    return;
+  BOOL updatesElementPosition = scrollView == self.view;
+  LynxEventEmitter *eventEmitter = self.context.eventEmitter;
+  if (updatesElementPosition) {
+    [eventEmitter beginElementPositionStateBatch];
   }
-  // Notify scroll-view did scroll.
-  [self.context.observer notifyScroll:nil];
-  [self triggerSubviewsImpression];
-  if ([self.view respondsToSelector:@selector(triggerNestedScrollView:)]) {
-    if (self.view.enableNested && !_nestedUpdated) {
-      _nestedUpdated = YES;
-      if (!self.view.parentScrollView &&
-          (!scrollView.childrenScrollView || scrollView.childrenScrollView.count == 0)) {
-        [self.view updateChildren];
+  @try {
+    if (scrollView == self.view) {
+      CGPoint contentOffset = self.view.contentOffset;
+      [eventEmitter updateElementPositionState:self.sign
+                                          type:LynxElementPositionUpdateScrollOffset
+                                             x:contentOffset.x
+                                             y:contentOffset.y];
+    }
+    if (scrollView == self.view &&
+        ![scrollView respondToScrollViewDidScroll:((LynxScrollView *)scrollView).gestureConsumer]) {
+      return;
+    }
+    // Notify scroll-view did scroll.
+    [self.context.observer notifyScroll:nil];
+    [self triggerSubviewsImpression];
+    if ([self.view respondsToSelector:@selector(triggerNestedScrollView:)]) {
+      if (self.view.enableNested && !_nestedUpdated) {
+        _nestedUpdated = YES;
+        if (!self.view.parentScrollView &&
+            (!scrollView.childrenScrollView || scrollView.childrenScrollView.count == 0)) {
+          [self.view updateChildren];
+        }
       }
     }
-  }
-  [scrollView triggerNestedScrollView:_enableScrollY];
-  CGFloat scrollTop = scrollView.contentOffset.y;
-  CGFloat scrollLeft = scrollView.contentOffset.x;
-  if (self.context.enableNewSticky) {
-    [self refreshStickyChildrenWithOffsetX:scrollLeft OffsetY:scrollTop];
-  } else {
-    [self onScrollSticky:scrollLeft withOffsetY:scrollTop];
-  }
-
-  [self sendScrollEvent:scrollView];
-  [self updateLayerMaskOnFrameChanged];
-
-  if (self.context != nil) {
-    if (self.view.isDragging || self.view.isDecelerating) {
-      [self.context onGestureRecognizedByUI:self];
+    [scrollView triggerNestedScrollView:_enableScrollY];
+    CGFloat scrollTop = scrollView.contentOffset.y;
+    CGFloat scrollLeft = scrollView.contentOffset.x;
+    if (self.context.enableNewSticky) {
+      [self refreshStickyChildrenWithOffsetX:scrollLeft OffsetY:scrollTop];
+    } else {
+      [self onScrollSticky:scrollLeft withOffsetY:scrollTop];
     }
-    [self postFluencyEventWithInfo:[self infoWithScrollView:scrollView
-                                                   selector:@selector(scrollerDidScroll:)]];
-  }
 
-  for (id<LynxUIScrollerDelegate> delegate in _scrollerDelegates) {
-    if ([delegate respondsToSelector:@selector(scrollerDidScroll:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SCROLLER_DELEGATE_DID_SCROLL);
-      [delegate scrollerDidScroll:scrollView];
-      LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
+    [self sendScrollEvent:scrollView];
+    [self updateLayerMaskOnFrameChanged];
+
+    if (self.context != nil) {
+      if (self.view.isDragging || self.view.isDecelerating) {
+        [self.context onGestureRecognizedByUI:self];
+      }
+      [self postFluencyEventWithInfo:[self infoWithScrollView:scrollView
+                                                     selector:@selector(scrollerDidScroll:)]];
     }
-  }
-  if (_upperBounceUI || _lowerBounceUI) {
-    [self triggerBounceWhileScroll:scrollView];
+
+    for (id<LynxUIScrollerDelegate> delegate in _scrollerDelegates) {
+      if ([delegate respondsToSelector:@selector(scrollerDidScroll:)]) {
+        LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SCROLLER_DELEGATE_DID_SCROLL);
+        [delegate scrollerDidScroll:scrollView];
+        LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
+      }
+    }
+    if (_upperBounceUI || _lowerBounceUI) {
+      [self triggerBounceWhileScroll:scrollView];
+    }
+  } @finally {
+    if (updatesElementPosition) {
+      [eventEmitter endElementPositionStateBatch];
+    }
   }
 }
 

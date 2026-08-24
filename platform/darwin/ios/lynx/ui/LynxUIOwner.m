@@ -1,12 +1,15 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+#include <math.h>
+
 #import <Lynx/LUIErrorHandling.h>
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContext+Private.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxEventEmitter+Internal.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxFontFaceManager.h>
@@ -48,6 +51,8 @@
 // TODO(zhengsenyao): For white-screen problem investigation of preLayout, remove it later.
 // constant defined in LynxContext.m
 extern NSString* const kDefaultComponentID;
+
+static const CFTimeInterval kPositionChangeSnapshotInterval = 0.1;
 
 #pragma mark LynxUIContext (Internal)
 
@@ -127,12 +132,81 @@ extern NSString* const kDefaultComponentID;
 @implementation LynxUIOwner {
   BOOL _enableDetailLog;
   LynxEmbeddedMode _embeddedMode;
+  BOOL _positionChangeObservationStarted;
+  CADisplayLink* _positionChangeDisplayLink;
+  CFTimeInterval _lastPositionChangeSnapshotTimestamp;
 }
 
 - (void)attachContainerView:(UIView<LUIBodyView>* _Nonnull)containerView {
   _containerView = containerView;
   _uiContext.rootView = containerView;
   _uiContext.errorHandler = containerView;
+  [self updatePositionChangeObservationState];
+}
+
+- (void)updatePageCoordinateSnapshot:(BOOL)forcePositionChange {
+  if (forcePositionChange && !_positionChangeObservationStarted) {
+    _positionChangeObservationStarted = YES;
+    [self updatePositionChangeObservationState];
+  }
+  LynxEventEmitter* eventEmitter = self.uiContext.eventEmitter;
+  UIView* rootView = self.rootUI.view;
+  UIWindow* window = rootView.window;
+  if (eventEmitter == nil) {
+    return;
+  }
+  if (rootView == nil || window == nil) {
+    [eventEmitter updatePageCoordinateSnapshotWithWindowX:0
+                                                  windowY:0
+                                          hasWindowOffset:NO
+                                                  screenX:0
+                                                  screenY:0
+                                          hasScreenOffset:NO
+                                      forcePositionChange:forcePositionChange];
+    return;
+  }
+  CGPoint windowOrigin = [rootView convertPoint:CGPointZero toView:window];
+  CGPoint screenOrigin = [window convertPoint:windowOrigin toWindow:nil];
+  BOOL hasWindowOffset = isfinite(windowOrigin.x) && isfinite(windowOrigin.y);
+  BOOL hasScreenOffset = isfinite(screenOrigin.x) && isfinite(screenOrigin.y);
+  [eventEmitter updatePageCoordinateSnapshotWithWindowX:windowOrigin.x
+                                                windowY:windowOrigin.y
+                                        hasWindowOffset:hasWindowOffset
+                                                screenX:screenOrigin.x
+                                                screenY:screenOrigin.y
+                                        hasScreenOffset:hasScreenOffset
+                                    forcePositionChange:forcePositionChange];
+}
+
+- (void)updatePositionChangeObservationState {
+  BOOL shouldObserve = _positionChangeObservationStarted && self.rootUI.view.window != nil;
+  if (!shouldObserve) {
+    [self stopPositionChangeObservation];
+    return;
+  }
+  if (_positionChangeDisplayLink != nil) {
+    return;
+  }
+  _positionChangeDisplayLink =
+      [CADisplayLink displayLinkWithTarget:[LynxWeakProxy proxyWithTarget:self]
+                                  selector:@selector(positionChangeDisplayLinkDidFire:)];
+  [_positionChangeDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+}
+
+- (void)stopPositionChangeObservation {
+  [_positionChangeDisplayLink invalidate];
+  _positionChangeDisplayLink = nil;
+  _lastPositionChangeSnapshotTimestamp = 0;
+}
+
+- (void)positionChangeDisplayLinkDidFire:(CADisplayLink*)displayLink {
+  CFTimeInterval timestamp = displayLink.timestamp;
+  if (_lastPositionChangeSnapshotTimestamp > 0 &&
+      timestamp - _lastPositionChangeSnapshotTimestamp < kPositionChangeSnapshotInterval) {
+    return;
+  }
+  _lastPositionChangeSnapshotTimestamp = timestamp;
+  [self updatePageCoordinateSnapshot:NO];
 }
 
 - (instancetype)initWithContainerView:(UIView<LUIBodyView>*)containerView
@@ -245,6 +319,7 @@ extern NSString* const kDefaultComponentID;
 }
 
 - (void)dealloc {
+  [self stopPositionChangeObservation];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -1123,6 +1198,8 @@ extern NSString* const kDefaultComponentID;
 }
 
 - (void)reset {
+  _positionChangeObservationStarted = NO;
+  [self stopPositionChangeObservation];
   [_uiContext.uiExposure destroyExposure];
   if ([_uiContext.intersectionManager enableNewIntersectionObserver]) {
     [_uiContext.intersectionManager destroyIntersectionObserver];
@@ -1375,6 +1452,10 @@ extern NSString* const kDefaultComponentID;
   }
   if (!windowIsNil) {
     [self resumeAnimation];
+  }
+  [self updatePositionChangeObservationState];
+  if (windowIsNil && _positionChangeObservationStarted) {
+    [self updatePageCoordinateSnapshot:NO];
   }
 }
 

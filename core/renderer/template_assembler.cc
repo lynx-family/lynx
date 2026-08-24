@@ -2716,7 +2716,37 @@ void TemplateAssembler::OnScreenMetricsSet(float width, float height,
   }
   // update element tree and layout tree
   client->UpdateScreenMetrics(width, height);
+  DispatchScreenMetricsChanged(width, height, device_pixel_ratio);
   return;
+}
+
+void TemplateAssembler::DispatchScreenMetricsChanged(float width, float height,
+                                                     float device_pixel_ratio) {
+  auto engine_context_proxy =
+      GetContextProxy(runtime::ContextProxy::Type::kEngine);
+  if (engine_context_proxy == nullptr ||
+      !engine_context_proxy->HasEventListener(
+          runtime::kMessageEventTypeScreenMetricsChanged)) {
+    return;
+  }
+
+  BASE_STATIC_STRING_DECL(kWidth, "width");
+  BASE_STATIC_STRING_DECL(kHeight, "height");
+  BASE_STATIC_STRING_DECL(kPixelRatio, "pixelRatio");
+  auto metrics = lepus::Dictionary::Create();
+  metrics->SetValue(kWidth, width);
+  metrics->SetValue(kHeight, height);
+  metrics->SetValue(kPixelRatio, device_pixel_ratio);
+
+  auto event_args = lepus::CArray::Create();
+  event_args->emplace_back(std::move(metrics));
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+      runtime::kMessageEventTypeScreenMetricsChanged,
+      runtime::ContextProxy::Type::kEngine,
+      runtime::ContextProxy::Type::kCoreContext,
+      std::make_unique<pub::ValueImplLepus>(
+          lepus::Value(std::move(event_args))));
+  engine_context_proxy->DispatchEvent(std::move(event));
 }
 
 void TemplateAssembler::UpdateViewport(float width, int32_t width_mode,

@@ -30,6 +30,7 @@ import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxViewClient;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
@@ -178,8 +179,19 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
 
       @Override
       public void onScrollChanged(int l, int t, int oldl, int oldt) {
-        if (mEnableSticky) {
-          updateStickyOnScroll();
+        EventEmitter eventEmitter = getLynxContext().getEventEmitter();
+        if (eventEmitter != null) {
+          eventEmitter.beginElementPositionStateBatch();
+        }
+        try {
+          syncScrollOffsetToEngine();
+          if (mEnableSticky) {
+            updateStickyOnScroll();
+          }
+        } finally {
+          if (eventEmitter != null) {
+            eventEmitter.endElementPositionStateBatch();
+          }
         }
 
         if (mEnableScrollEvent) {
@@ -216,6 +228,15 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
       }
     });
     return view;
+  }
+
+  private void syncScrollOffsetToEngine() {
+    LynxContext context = getLynxContext();
+    if (context.getEventEmitter() != null) {
+      context.getEventEmitter().updateElementPositionState(getSign(),
+          EventEmitter.ELEMENT_POSITION_UPDATE_SCROLL_OFFSET, mView.getRealScrollX(),
+          mView.getRealScrollY());
+    }
   }
 
   protected void recognizeGestureInternal(int state) {

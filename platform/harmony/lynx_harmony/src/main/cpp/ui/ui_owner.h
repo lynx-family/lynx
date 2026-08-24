@@ -61,7 +61,9 @@ class UIOwner {
   }
 
   LynxContext* Context() const { return context_.get(); }
-  void OnLayoutFinish(int32_t component_id, int64_t operation_id);
+  void OnLayoutFinish(int32_t component_id, int64_t operation_id,
+                      bool needs_coordinate_snapshot);
+  void UpdatePageCoordinateSnapshot(bool force_position_change);
   void UpdateContentOffsetForListContainer(int32_t container_id,
                                            float content_size, float delta_x,
                                            float delta_y,
@@ -301,6 +303,7 @@ class UIOwner {
   std::string id_;
 
   bool destroyed_ = false;
+  bool position_change_observation_started_ = false;
   float last_intrinsic_content_width_{0.f};
   float last_intrinsic_content_height_{0.f};
 

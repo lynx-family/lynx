@@ -900,6 +900,34 @@ inline constexpr const char* const FIBER_GET_PARENT = "FiberGetParent";
  */
 inline constexpr const char* const FIBER_GET_CHILDREN = "FiberGetChildren";
 /**
+ * @trace_description: Convert a point between two Fiber elements.
+ */
+inline constexpr const char* const FIBER_CONVERT_POINT = "FiberConvertPoint";
+/**
+ * @trace_description: Convert a rect between two Fiber elements.
+ */
+inline constexpr const char* const FIBER_CONVERT_RECT = "FiberConvertRect";
+/**
+ * @trace_description: Convert a point from a Fiber element to window space.
+ */
+inline constexpr const char* const FIBER_CONVERT_POINT_TO_WINDOW =
+    "FiberConvertPointToWindow";
+/**
+ * @trace_description: Convert a rect from a Fiber element to window space.
+ */
+inline constexpr const char* const FIBER_CONVERT_RECT_TO_WINDOW =
+    "FiberConvertRectToWindow";
+/**
+ * @trace_description: Convert a point from a Fiber element to screen space.
+ */
+inline constexpr const char* const FIBER_CONVERT_POINT_TO_SCREEN =
+    "FiberConvertPointToScreen";
+/**
+ * @trace_description: Convert a rect from a Fiber element to screen space.
+ */
+inline constexpr const char* const FIBER_CONVERT_RECT_TO_SCREEN =
+    "FiberConvertRectToScreen";
+/**
  * @trace_description: Check whether the element is a template element.
  */
 inline constexpr const char* const FIBER_IS_TEMPLATE_ELEMENT =

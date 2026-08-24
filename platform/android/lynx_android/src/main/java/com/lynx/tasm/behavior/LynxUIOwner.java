@@ -14,6 +14,8 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.SparseBooleanArray;
+import android.view.View;
+import android.view.ViewTreeObserver;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -24,6 +26,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
 import com.lynx.tasm.BehaviorClassWarmer;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.LynxError;
@@ -131,6 +134,12 @@ public class LynxUIOwner {
 
   private TextMeasurer mTextMeasurer;
   private IPaintingContext mPaintingContext;
+  private boolean mPositionChangeObservationStarted;
+  private UIBodyView mPositionChangeObservedView;
+  private ViewTreeObserver mPositionChangeViewTreeObserver;
+  private final View.OnAttachStateChangeListener mPositionChangeAttachStateListener;
+  private final ViewTreeObserver.OnGlobalLayoutListener mPositionChangeGlobalLayoutListener;
+  private final ViewTreeObserver.OnScrollChangedListener mPositionChangeScrollChangedListener;
 
   public LynxUIOwner(
       LynxContext context, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body) {
@@ -157,6 +166,40 @@ public class LynxUIOwner {
     mIsFirstLayout = true;
     mIsRootLayoutAnimationRunning = true;
     mCachedBoundingClientRectUI = new HashSet<>();
+    WeakReference<LynxUIOwner> weakOwner = new WeakReference<>(this);
+    mPositionChangeAttachStateListener = new View.OnAttachStateChangeListener() {
+      @Override
+      public void onViewAttachedToWindow(View view) {
+        LynxUIOwner owner = weakOwner.get();
+        if (owner == null) {
+          return;
+        }
+        owner.ensurePositionChangeObservation();
+        owner.updatePageCoordinateSnapshot(false);
+      }
+
+      @Override
+      public void onViewDetachedFromWindow(View view) {
+        LynxUIOwner owner = weakOwner.get();
+        if (owner == null) {
+          return;
+        }
+        owner.removePositionChangeViewTreeObservation();
+        owner.updatePageCoordinateSnapshot(false);
+      }
+    };
+    mPositionChangeGlobalLayoutListener = () -> {
+      LynxUIOwner owner = weakOwner.get();
+      if (owner != null) {
+        owner.updatePageCoordinateSnapshot(false);
+      }
+    };
+    mPositionChangeScrollChangedListener = () -> {
+      LynxUIOwner owner = weakOwner.get();
+      if (owner != null) {
+        owner.updatePageCoordinateSnapshot(false);
+      }
+    };
     mEnableReportCreateAsync =
         LynxEnv.getBooleanFromExternalEnv(LynxEnvKey.ENABLE_REPORT_CREATE_ASYNC_TAG, false);
     mCreateNodeConfigHasReportedMark = new HashMap<String, Boolean>();
@@ -176,6 +219,7 @@ public class LynxUIOwner {
    */
   public void attachUIBodyView(@Nullable UIBodyView view) {
     mUIBody.attachUIBodyView(view, mContext);
+    ensurePositionChangeObservation();
     if (isContextFree()) {
       while (!mCreateNodeAsyncTasks.isEmpty()) {
         FutureTask<Runnable> task = mCreateNodeAsyncTasks.poll();
@@ -1146,6 +1190,7 @@ public class LynxUIOwner {
 
   public void destroy() {
     TraceEvent.beginSection(TraceEventDef.UI_OWNER_DESTORY);
+    removePositionChangeObservation();
     for (Map.Entry<Integer, LynxBaseUI> e : mUIHolder.entrySet()) {
       if (!(e.getValue() instanceof LynxBaseUI)) {
         // In some unknown case, e.getValue() is instance of java.lang.Double.
@@ -1219,6 +1264,81 @@ public class LynxUIOwner {
         TraceEvent.endSection(traceEvent);
       }
     }
+  }
+
+  private void ensurePositionChangeObservation() {
+    if (!mPositionChangeObservationStarted || mUIBody == null) {
+      return;
+    }
+    UIBodyView rootView = mUIBody.getBodyView();
+    if (rootView == null) {
+      return;
+    }
+    if (rootView != mPositionChangeObservedView) {
+      if (mPositionChangeObservedView != null) {
+        mPositionChangeObservedView.removeOnAttachStateChangeListener(
+            mPositionChangeAttachStateListener);
+      }
+      removePositionChangeViewTreeObservation();
+      mPositionChangeObservedView = rootView;
+      rootView.addOnAttachStateChangeListener(mPositionChangeAttachStateListener);
+    }
+    if (!rootView.isAttachedToWindow()) {
+      return;
+    }
+    ViewTreeObserver observer = rootView.getViewTreeObserver();
+    if (!observer.isAlive() || observer == mPositionChangeViewTreeObserver) {
+      return;
+    }
+    removePositionChangeViewTreeObservation();
+    mPositionChangeViewTreeObserver = observer;
+    observer.addOnGlobalLayoutListener(mPositionChangeGlobalLayoutListener);
+    observer.addOnScrollChangedListener(mPositionChangeScrollChangedListener);
+  }
+
+  private void removePositionChangeObservation() {
+    if (mPositionChangeObservedView != null) {
+      mPositionChangeObservedView.removeOnAttachStateChangeListener(
+          mPositionChangeAttachStateListener);
+      mPositionChangeObservedView = null;
+    }
+    removePositionChangeViewTreeObservation();
+  }
+
+  private void removePositionChangeViewTreeObservation() {
+    ViewTreeObserver observer = mPositionChangeViewTreeObserver;
+    mPositionChangeViewTreeObserver = null;
+    if (observer == null || !observer.isAlive()) {
+      return;
+    }
+    observer.removeOnGlobalLayoutListener(mPositionChangeGlobalLayoutListener);
+    observer.removeOnScrollChangedListener(mPositionChangeScrollChangedListener);
+  }
+
+  public void updatePageCoordinateSnapshot(boolean forcePositionChange) {
+    if (mContext == null) {
+      return;
+    }
+    if (forcePositionChange && !mPositionChangeObservationStarted) {
+      mPositionChangeObservationStarted = true;
+      ensurePositionChangeObservation();
+    }
+    EventEmitter eventEmitter = mContext.getEventEmitter();
+    UIBodyView rootView = mUIBody == null ? null : mUIBody.getBodyView();
+    if (eventEmitter == null) {
+      return;
+    }
+    if (rootView == null || !rootView.isAttachedToWindow()) {
+      eventEmitter.updatePageCoordinateSnapshot(0, 0, false, 0, 0, false, forcePositionChange);
+      return;
+    }
+    ensurePositionChangeObservation();
+    int[] windowLocation = new int[2];
+    int[] screenLocation = new int[2];
+    rootView.getLocationInWindow(windowLocation);
+    rootView.getLocationOnScreen(screenLocation);
+    eventEmitter.updatePageCoordinateSnapshot(windowLocation[0], windowLocation[1], true,
+        screenLocation[0], screenLocation[1], true, forcePositionChange);
   }
 
   private int getSignFromOperationId(long operationId) {

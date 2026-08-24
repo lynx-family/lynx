@@ -715,12 +715,16 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen) {
+  public void finishLayoutOperation(
+      int componentId, long operationId, boolean isFirstScreen, boolean needsCoordinateSnapshot) {
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     if (owner == null) {
       return;
     }
     owner.onLayoutFinish(componentId, operationId);
+    if (needsCoordinateSnapshot) {
+      owner.updatePageCoordinateSnapshot(true);
+    }
   }
 
   @CalledByNative

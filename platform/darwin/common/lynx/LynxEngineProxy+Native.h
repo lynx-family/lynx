@@ -20,6 +20,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setNativeEngineProxy:(std::shared_ptr<lynx::shell::LynxEngineProxyDarwin>)proxy;
 - (const std::shared_ptr<lynx::shell::LynxEngineProxyDarwin>&)nativeProxy;
 - (void)reportExternalMemoryWithTotalSize:(int64_t)totalSize garbageSize:(int64_t)garbageSize;
+- (void)updateElementPositionState:(std::vector<lynx::shell::ElementPositionUpdate>)updates;
+- (void)updatePageCoordinateSnapshotWithWindowX:(float)windowX
+                                        windowY:(float)windowY
+                                hasWindowOffset:(BOOL)hasWindowOffset
+                                        screenX:(float)screenX
+                                        screenY:(float)screenY
+                                hasScreenOffset:(BOOL)hasScreenOffset
+                            forcePositionChange:(BOOL)forcePositionChange;
 
 @end
 

@@ -14,6 +14,8 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/timing_handler/timing.h"
+#include "core/services/timing_handler/timing_constants.h"
 
 namespace lynx {
 namespace tasm {
@@ -153,6 +155,10 @@ void PageElement::SetCSSID(int32_t id) {
  */
 void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_ELEMENT_LAYOUT);
+  if (options->need_timestamps) {
+    TimingCollector::Instance()->Mark(timing::kLayoutStart);
+  }
+
   DispatchLayoutBeforeRecursively();
 
   sl_node_->ReLayout(sl_node_->GetEnableFixedNew()
@@ -186,7 +192,12 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   // finish, because iOS extended renderers update their UIOwner layout from the
   // display list.
   if (!EnableFragmentLayerRender()) {
+    element_manager()->PreparePositionChangeObservation(options);
     element_container()->FinishLayoutOperation(options);
+  }
+
+  if (options->need_timestamps) {
+    TimingCollector::Instance()->Mark(timing::kLayoutEnd);
   }
 
   if (!options->enable_unified_pixel_pipeline) {

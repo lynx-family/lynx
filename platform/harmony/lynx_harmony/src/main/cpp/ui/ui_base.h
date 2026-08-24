@@ -228,6 +228,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                                           float max_offset);
   void ApplyStickyTranslate();
   void ResetStickyTranslate();
+  void SyncStickyTranslationToEngine(float translation_x, float translation_y);
   virtual bool IsVisible();
   virtual bool IsScrollable();
   virtual bool IsList() const { return false; }

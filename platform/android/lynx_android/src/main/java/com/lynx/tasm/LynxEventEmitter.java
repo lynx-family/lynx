@@ -56,6 +56,20 @@ public class LynxEventEmitter extends EventEmitter {
       }
     }
 
+    void updateElementPositionState(int[] elementIds, int[] types, float[] values) {
+      if (mEngineProxy != null) {
+        mEngineProxy.updateElementPositionState(elementIds, types, values);
+      }
+    }
+
+    void updatePageCoordinateSnapshot(float windowX, float windowY, boolean hasWindowOffset,
+        float screenX, float screenY, boolean hasScreenOffset, boolean forcePositionChange) {
+      if (mEngineProxy != null) {
+        mEngineProxy.updatePageCoordinateSnapshot(windowX, windowY, hasWindowOffset, screenX,
+            screenY, hasScreenOffset, forcePositionChange);
+      }
+    }
+
     void sendGestureEvent(final String name, final int tag, int gestureId, final ByteBuffer params,
         final int length) {
       if (mEngineProxy != null) {
@@ -106,6 +120,10 @@ public class LynxEventEmitter extends EventEmitter {
   final ArrayList<LynxEventObserver> mEventObservers = new ArrayList<>();
 
   final Handler mHandler = new Handler(Looper.getMainLooper());
+  private final ArrayList<Integer> mPositionUpdateElementIds = new ArrayList<>();
+  private final ArrayList<Integer> mPositionUpdateTypes = new ArrayList<>();
+  private final ArrayList<Float> mPositionUpdateValues = new ArrayList<>();
+  private int mPositionUpdateBatchDepth = 0;
 
   public LynxEventEmitter(LynxEngineProxy engineProxy) {
     super();
@@ -272,6 +290,65 @@ public class LynxEventEmitter extends EventEmitter {
       mEngineProxy.onPseudoStatusChanged(sign, preStatus, currentStatus);
     } else {
       LLog.e(TAG, "onPseudoStatusChanged id: " + sign + " failed since mEngineProxy is null.");
+    }
+  }
+
+  @Override
+  public void beginElementPositionStateBatch() {
+    mPositionUpdateBatchDepth++;
+  }
+
+  @Override
+  public void updateElementPositionState(int sign, int type, float x, float y) {
+    mPositionUpdateElementIds.add(sign);
+    mPositionUpdateTypes.add(type);
+    mPositionUpdateValues.add(x);
+    mPositionUpdateValues.add(y);
+    if (mPositionUpdateBatchDepth == 0) {
+      flushElementPositionStateBatch();
+    }
+  }
+
+  @Override
+  public void endElementPositionStateBatch() {
+    if (mPositionUpdateBatchDepth == 0) {
+      return;
+    }
+    mPositionUpdateBatchDepth--;
+    if (mPositionUpdateBatchDepth == 0) {
+      flushElementPositionStateBatch();
+    }
+  }
+
+  private void flushElementPositionStateBatch() {
+    if (mEngineProxy == null || mPositionUpdateElementIds.isEmpty()) {
+      mPositionUpdateElementIds.clear();
+      mPositionUpdateTypes.clear();
+      mPositionUpdateValues.clear();
+      return;
+    }
+    int updateCount = mPositionUpdateElementIds.size();
+    int[] elementIds = new int[updateCount];
+    int[] types = new int[updateCount];
+    float[] values = new float[updateCount * 2];
+    for (int index = 0; index < updateCount; index++) {
+      elementIds[index] = mPositionUpdateElementIds.get(index);
+      types[index] = mPositionUpdateTypes.get(index);
+      values[index * 2] = mPositionUpdateValues.get(index * 2);
+      values[index * 2 + 1] = mPositionUpdateValues.get(index * 2 + 1);
+    }
+    mPositionUpdateElementIds.clear();
+    mPositionUpdateTypes.clear();
+    mPositionUpdateValues.clear();
+    mEngineProxy.updateElementPositionState(elementIds, types, values);
+  }
+
+  @Override
+  public void updatePageCoordinateSnapshot(float windowX, float windowY, boolean hasWindowOffset,
+      float screenX, float screenY, boolean hasScreenOffset, boolean forcePositionChange) {
+    if (mEngineProxy != null) {
+      mEngineProxy.updatePageCoordinateSnapshot(windowX, windowY, hasWindowOffset, screenX, screenY,
+          hasScreenOffset, forcePositionChange);
     }
   }
 

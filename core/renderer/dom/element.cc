@@ -1094,6 +1094,58 @@ event::DispatchEventResult Element::DispatchMessageEvent(
   return delegate->DispatchMessageEvent(std::move(event));
 }
 
+bool Element::AddEventListener(const std::string& type,
+                               std::shared_ptr<event::EventListener> listener) {
+  const bool added = EventTarget::AddEventListener(type, std::move(listener));
+  // Position-change subscription tracking intentionally covers EventTarget
+  // listeners only. Event binding paths are converging on AddEventListener, so
+  // legacy handler maps are not inspected here.
+  if (added && type == kEventPositionChange) {
+    has_position_change_listener_ = true;
+    if (element_manager_ != nullptr) {
+      element_manager_->OnPositionChangeListenerAdded(impl_id());
+    }
+  }
+  return added;
+}
+
+bool Element::RemoveEventListener(
+    const std::string& type, std::shared_ptr<event::EventListener> listener) {
+  const bool removed =
+      EventTarget::RemoveEventListener(type, std::move(listener));
+  if (removed && type == kEventPositionChange) {
+    const bool was_listening = has_position_change_listener_;
+    auto* listeners = GetEventListenerMap()->Find(type);
+    has_position_change_listener_ = listeners != nullptr && !listeners->empty();
+    if (was_listening && !has_position_change_listener_ &&
+        element_manager_ != nullptr) {
+      element_manager_->OnPositionChangeListenerRemoved(impl_id());
+    }
+  }
+  return removed;
+}
+
+bool Element::RemoveEventListeners(const std::string& type) {
+  const bool removed = EventTarget::RemoveEventListeners(type);
+  if (type == kEventPositionChange) {
+    const bool was_listening = has_position_change_listener_;
+    has_position_change_listener_ = false;
+    if (was_listening && element_manager_ != nullptr) {
+      element_manager_->OnPositionChangeListenerRemoved(impl_id());
+    }
+  }
+  return removed;
+}
+
+void Element::ClearEventListeners() {
+  const bool was_listening = has_position_change_listener_;
+  GetEventListenerMap()->Clear();
+  has_position_change_listener_ = false;
+  if (was_listening && element_manager_ != nullptr) {
+    element_manager_->OnPositionChangeListenerRemoved(impl_id());
+  }
+}
+
 void Element::RemoveEvent(const base::String& name, const base::String& type) {
   data_model_->RemoveEvent(name, type);
   MarkDirty(kDirtyEvent);
@@ -2832,6 +2884,16 @@ bool Element::GetEnableMultiTouchParamsCompatible() {
 
 float Element::GetLayoutsUnitPerPx() {
   return element_manager_->GetLynxEnvConfig().LayoutsUnitPerPx();
+}
+
+void Element::UpdateScrollOffset(float x, float y) {
+  scroll_offset_x_ = x;
+  scroll_offset_y_ = y;
+}
+
+void Element::UpdateStickyTranslation(float x, float y) {
+  sticky_translation_x_ = x;
+  sticky_translation_y_ = y;
 }
 
 starlight::LayoutResultForRendering Element::layout_result() {

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -15,9 +16,11 @@
 #include <vector>
 
 #include "base/include/auto_reset.h"
+#include "base/include/debug/lynx_error.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/event/event_dispatcher.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -32,6 +35,7 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
@@ -69,6 +73,8 @@
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/timing_handler/timing.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/lynx_ui_operation_queue.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/tasm_operation_queue.h"
@@ -3076,6 +3082,48 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
 }
 
+TEST_P(FiberElementTest, LayoutTimingEndsBeforePlatformLayoutWork) {
+  static constexpr char kPlatformLayoutUpdated[] = "testPlatformLayoutUpdated";
+  class TimingRecorder {
+   public:
+    void SetTiming(Timing timing) {
+      timing_ = std::make_unique<Timing>(std::move(timing));
+    }
+
+    std::unique_ptr<Timing> timing_;
+  };
+
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, false);
+
+  platform_impl_->SetLayoutOperationCallback(
+      [] { TimingCollector::Instance()->Mark(kPlatformLayoutUpdated); });
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->need_timestamps = true;
+  options->pipeline_id = "layout-timing-test";
+  TimingRecorder recorder;
+  {
+    TimingCollector::Scope<TimingRecorder> scope(&recorder, options);
+    manager->RequestLayout(options);
+  }
+
+  ASSERT_NE(recorder.timing_, nullptr);
+  std::vector<TimingKey> timing_keys;
+  for (const auto& entry : recorder.timing_->timings_) {
+    timing_keys.emplace_back(entry.first);
+  }
+  EXPECT_EQ(timing_keys,
+            (std::vector<TimingKey>{timing::kLayoutStart, timing::kLayoutEnd,
+                                    kPlatformLayoutUpdated}));
+}
+
 TEST_P(FiberElementTest, PageElementLayoutUpdatesPlatformRootSize) {
   manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
       static_cast<int32_t>(manager->page_options_.embedded_mode_) |
@@ -3307,6 +3355,559 @@ TEST_P(FiberElementTest,
 
   parent->RemoveLayoutNode(child.get());
   EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest, ConvertPointUsesLayoutTreeAndSkipsVirtualNodes) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto wrapper = manager->CreateFiberNode("inline-text");
+  auto source = manager->CreateFiberView();
+  auto target = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(wrapper);
+  wrapper->InsertNode(source);
+  parent->InsertNode(target);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(wrapper->is_virtual());
+  ASSERT_EQ(source->slnode()->ParentLayoutObject(), parent->slnode());
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  target->UpdateLayout(50.f, 80.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto in_parent =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), parent.get());
+  ASSERT_TRUE(in_parent.has_value());
+  EXPECT_FLOAT_EQ(in_parent->X(), 15.f);
+  EXPECT_FLOAT_EQ(in_parent->Y(), 27.f);
+
+  auto in_page =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), page.get());
+  ASSERT_TRUE(in_page.has_value());
+  EXPECT_FLOAT_EQ(in_page->X(), 115.f);
+  EXPECT_FLOAT_EQ(in_page->Y(), 227.f);
+
+  auto in_target =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), target.get());
+  ASSERT_TRUE(in_target.has_value());
+  EXPECT_FLOAT_EQ(in_target->X(), -35.f);
+  EXPECT_FLOAT_EQ(in_target->Y(), -53.f);
+
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  EXPECT_FALSE(
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), target.get())
+          .has_value());
+}
+
+TEST_P(FiberElementTest, ConvertRectUsesFourCornersAndClipsLayoutAncestors) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto source = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  CSSParserConfigs configs;
+  auto hidden = UnitHandler::Process(kPropertyIDOverflow,
+                                     lepus::Value("hidden"), configs);
+  auto visible = UnitHandler::Process(kPropertyIDOverflow,
+                                      lepus::Value("visible"), configs);
+  parent->computed_css_style()->SetValue(kPropertyIDOverflow,
+                                         hidden.at(kPropertyIDOverflow));
+  source->computed_css_style()->SetValue(kPropertyIDOverflow,
+                                         visible.at(kPropertyIDOverflow));
+
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(100.f, 200.f, 100.f, 100.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(10.f, 20.f, 50.f, 40.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto converted = ConvertRectBetweenElements({{5.f, 7.f}, {20.f, 10.f}},
+                                              source.get(), page.get(), false);
+  ASSERT_TRUE(converted.has_value());
+  EXPECT_FLOAT_EQ(converted->X(), 115.f);
+  EXPECT_FLOAT_EQ(converted->Y(), 227.f);
+  EXPECT_FLOAT_EQ(converted->MaxX(), 135.f);
+  EXPECT_FLOAT_EQ(converted->MaxY(), 237.f);
+
+  auto clipped = ConvertRectBetweenElements({{-50.f, -50.f}, {500.f, 500.f}},
+                                            source.get(), page.get(), true);
+  ASSERT_TRUE(clipped.has_value());
+  EXPECT_FLOAT_EQ(clipped->X(), 100.f);
+  EXPECT_FLOAT_EQ(clipped->Y(), 200.f);
+  EXPECT_FLOAT_EQ(clipped->MaxX(), 200.f);
+  EXPECT_FLOAT_EQ(clipped->MaxY(), 300.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesLatestNestedScrollOffsets) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto outer = manager->CreateFiberScrollView("scroll-view");
+  auto inner = manager->CreateFiberScrollView("scroll-view");
+  auto source = manager->CreateFiberView();
+  outer->SetAttribute("scroll-y", lepus::Value(true));
+  inner->SetAttribute("scroll-y", lepus::Value(true));
+  page->InsertNode(outer);
+  outer->InsertNode(inner);
+  inner->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(outer->slnode()->attr_map().getScroll().value_or(false));
+  ASSERT_TRUE(inner->slnode()->attr_map().getScroll().value_or(false));
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  outer->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                      0.f);
+  inner->UpdateLayout(10.f, 20.f, 200.f, 300.f, {0.f}, {0.f}, {0.f}, nullptr,
+                      0.f);
+  source->UpdateLayout(2.f, 4.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto initial =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(initial.has_value());
+  EXPECT_FLOAT_EQ(initial->X(), 113.f);
+  EXPECT_FLOAT_EQ(initial->Y(), 225.f);
+
+  outer->UpdateScrollOffset(3.f, 5.f);
+  inner->UpdateScrollOffset(7.f, 11.f);
+  auto scrolled =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(scrolled.has_value());
+  EXPECT_FLOAT_EQ(scrolled->X(), 103.f);
+  EXPECT_FLOAT_EQ(scrolled->Y(), 209.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesLatestListScrollOffset) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  auto source = manager->CreateFiberView();
+  page->InsertNode(list);
+  list->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  list->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  source->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  list->UpdateScrollOffset(3.f, 5.f);
+
+  auto converted =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(converted.has_value());
+  EXPECT_FLOAT_EQ(converted->X(), 108.f);
+  EXPECT_FLOAT_EQ(converted->Y(), 216.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesPlatformStickyTranslation) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto sticky = manager->CreateFiberView();
+  auto source = manager->CreateFiberView();
+  scroll->SetAttribute("scroll-y", lepus::Value(true));
+  sticky->SetStyle(kPropertyIDPosition, lepus::Value("sticky"));
+  sticky->SetStyle(kPropertyIDTop, lepus::Value("0px"));
+  page->InsertNode(scroll);
+  scroll->InsertNode(sticky);
+  sticky->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(sticky->is_sticky());
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  scroll->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  sticky->UpdateLayout(10.f, 20.f, 200.f, 100.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(2.f, 4.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto inside_sticky =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), sticky.get());
+  ASSERT_TRUE(inside_sticky.has_value());
+  EXPECT_FLOAT_EQ(inside_sticky->X(), 3.f);
+  EXPECT_FLOAT_EQ(inside_sticky->Y(), 5.f);
+
+  scroll->UpdateScrollOffset(0.f, 50.f);
+  sticky->UpdateStickyTranslation(7.f, 50.f);
+  auto in_page =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(in_page.has_value());
+  EXPECT_FLOAT_EQ(in_page->X(), 120.f);
+  EXPECT_FLOAT_EQ(in_page->Y(), 225.f);
+
+  auto in_source =
+      ConvertPointBetweenElements({120.f, 225.f}, page.get(), source.get());
+  ASSERT_TRUE(in_source.has_value());
+  EXPECT_FLOAT_EQ(in_source->X(), 1.f);
+  EXPECT_FLOAT_EQ(in_source->Y(), 1.f);
+
+  sticky->UpdateStickyTranslation(0.f, 0.f);
+  auto reset =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(reset.has_value());
+  EXPECT_FLOAT_EQ(reset->X(), 113.f);
+  EXPECT_FLOAT_EQ(reset->Y(), 175.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointUsesLayoutRootForNewFixed) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->config_->layout_configs_.enable_fixed_new_ = true;
+  manager->layout_configs_.enable_fixed_new_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto fixed = manager->CreateFiberView();
+  fixed->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+  page->InsertNode(parent);
+  parent->InsertNode(fixed);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(fixed->slnode()->IsNewFixed());
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  fixed->UpdateLayout(30.f, 40.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                      0.f);
+
+  auto in_page =
+      ConvertPointBetweenElements({5.f, 7.f}, fixed.get(), page.get());
+  ASSERT_TRUE(in_page.has_value());
+  EXPECT_FLOAT_EQ(in_page->X(), 35.f);
+  EXPECT_FLOAT_EQ(in_page->Y(), 47.f);
+
+  auto in_fixed =
+      ConvertPointBetweenElements({35.f, 47.f}, page.get(), fixed.get());
+  ASSERT_TRUE(in_fixed.has_value());
+  EXPECT_FLOAT_EQ(in_fixed->X(), 5.f);
+  EXPECT_FLOAT_EQ(in_fixed->Y(), 7.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesTransformsAndRejectsSingularOnes) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto source = manager->CreateFiberView();
+  auto target = manager->CreateFiberView();
+  auto singular_target = manager->CreateFiberView();
+  parent->SetStyle(kPropertyIDTransform, lepus::Value("scale(0)"));
+  parent->SetStyle(kPropertyIDTransformOrigin, lepus::Value("0px 0px"));
+  source->SetStyle(kPropertyIDTransform, lepus::Value("scale(2)"));
+  source->SetStyle(kPropertyIDTransformOrigin, lepus::Value("0px 0px"));
+  target->SetStyle(kPropertyIDTransform, lepus::Value("scale(2)"));
+  target->SetStyle(kPropertyIDTransformOrigin, lepus::Value("0px 0px"));
+  singular_target->SetStyle(kPropertyIDTransform, lepus::Value("scale(0)"));
+  singular_target->SetStyle(kPropertyIDTransformOrigin,
+                            lepus::Value("0px 0px"));
+  page->InsertNode(parent);
+  parent->InsertNode(source);
+  parent->InsertNode(target);
+  parent->InsertNode(singular_target);
+  page->FlushActionsAsRoot();
+
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(0.f, 0.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  target->UpdateLayout(50.f, 80.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  singular_target->UpdateLayout(50.f, 80.f, 100.f, 50.f, {0.f}, {0.f}, {0.f},
+                                nullptr, 0.f);
+
+  auto in_parent =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), parent.get());
+  ASSERT_TRUE(in_parent.has_value());
+  EXPECT_FLOAT_EQ(in_parent->X(), 20.f);
+  EXPECT_FLOAT_EQ(in_parent->Y(), 34.f);
+
+  auto in_target =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), target.get());
+  ASSERT_TRUE(in_target.has_value());
+  EXPECT_FLOAT_EQ(in_target->X(), -15.f);
+  EXPECT_FLOAT_EQ(in_target->Y(), -23.f);
+
+  EXPECT_FALSE(ConvertPointBetweenElements({5.f, 7.f}, source.get(),
+                                           singular_target.get())
+                   .has_value());
+}
+
+TEST_P(FiberElementTest, ConvertPointBindingUsesCssPixelsAndValidatesElements) {
+  LynxEnvConfig lynx_env_config(kWidth, kHeight, 2.f, 1.0);
+  auto local_manager = std::make_unique<ElementManager>(
+      std::make_unique<FiberMockPaintingContext>(), &tasm_mediator,
+      lynx_env_config);
+  auto* local_manager_ptr = local_manager.get();
+  auto local_tasm = std::make_shared<TemplateAssembler>(
+      tasm_mediator, std::move(local_manager), &tasm_mediator, 0);
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  local_manager_ptr->SetConfig(config);
+  local_manager_ptr->page_options_.SetEmbeddedMode(
+      EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(renderer_runtime, nullptr);
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(local_tasm.get())));
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto page = local_manager_ptr->CreateFiberPage("page", 0);
+  auto target = local_manager_ptr->CreateFiberView();
+  auto detached = local_manager_ptr->CreateFiberView();
+  page->InsertNode(target);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  target->UpdateLayout(20.f, 40.f, 200.f, 100.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  lepus::Value args[] = {lepus::Value(15.f), lepus::Value(27.f),
+                         lepus::Value(page), lepus::Value(target)};
+  auto converted =
+      RendererFunctions::FiberConvertPoint(renderer_context, args, 4);
+  ASSERT_TRUE(converted.IsObject());
+  EXPECT_FLOAT_EQ(converted.GetProperty("x").Number(), 5.f);
+  EXPECT_FLOAT_EQ(converted.GetProperty("y").Number(), 7.f);
+
+  lepus::Value rect_args[] = {lepus::Value(15.f), lepus::Value(27.f),
+                              lepus::Value(25.f), lepus::Value(32.f),
+                              lepus::Value(page), lepus::Value(target),
+                              lepus::Value(false)};
+  auto converted_rect =
+      RendererFunctions::FiberConvertRect(renderer_context, rect_args, 7);
+  ASSERT_TRUE(converted_rect.IsObject());
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("left").Number(), 5.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("top").Number(), 7.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("right").Number(), 15.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("bottom").Number(), 12.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("width").Number(), 10.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("height").Number(), 5.f);
+
+  lepus::Value point_to_window_args[] = {lepus::Value(5.f), lepus::Value(7.f),
+                                         lepus::Value(target)};
+  EXPECT_TRUE(RendererFunctions::FiberConvertPointToWindow(
+                  renderer_context, point_to_window_args, 3)
+                  .IsNil());
+
+  local_manager_ptr->UpdatePageCoordinateSnapshot(0.f, 0.f, false, 500.f, 600.f,
+                                                  true, false);
+  EXPECT_TRUE(RendererFunctions::FiberConvertPointToWindow(
+                  renderer_context, point_to_window_args, 3)
+                  .IsNil());
+  auto point_on_screen_without_window =
+      RendererFunctions::FiberConvertPointToScreen(renderer_context,
+                                                   point_to_window_args, 3);
+  ASSERT_TRUE(point_on_screen_without_window.IsObject());
+  EXPECT_FLOAT_EQ(point_on_screen_without_window.GetProperty("x").Number(),
+                  265.f);
+  EXPECT_FLOAT_EQ(point_on_screen_without_window.GetProperty("y").Number(),
+                  327.f);
+
+  local_manager_ptr->UpdatePageCoordinateSnapshot(300.f, 400.f, true, 500.f,
+                                                  600.f, true, false);
+  auto point_in_window = RendererFunctions::FiberConvertPointToWindow(
+      renderer_context, point_to_window_args, 3);
+  ASSERT_TRUE(point_in_window.IsObject());
+  EXPECT_FLOAT_EQ(point_in_window.GetProperty("x").Number(), 165.f);
+  EXPECT_FLOAT_EQ(point_in_window.GetProperty("y").Number(), 227.f);
+
+  auto point_on_screen = RendererFunctions::FiberConvertPointToScreen(
+      renderer_context, point_to_window_args, 3);
+  ASSERT_TRUE(point_on_screen.IsObject());
+  EXPECT_FLOAT_EQ(point_on_screen.GetProperty("x").Number(), 265.f);
+  EXPECT_FLOAT_EQ(point_on_screen.GetProperty("y").Number(), 327.f);
+
+  lepus::Value rect_to_window_args[] = {
+      lepus::Value(0.f), lepus::Value(0.f),    lepus::Value(10.f),
+      lepus::Value(5.f), lepus::Value(target), lepus::Value(false)};
+  auto rect_in_window = RendererFunctions::FiberConvertRectToWindow(
+      renderer_context, rect_to_window_args, 6);
+  ASSERT_TRUE(rect_in_window.IsObject());
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("left").Number(), 160.f);
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("top").Number(), 220.f);
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("right").Number(), 170.f);
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("bottom").Number(), 225.f);
+
+  auto rect_on_screen = RendererFunctions::FiberConvertRectToScreen(
+      renderer_context, rect_to_window_args, 6);
+  ASSERT_TRUE(rect_on_screen.IsObject());
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("left").Number(), 260.f);
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("top").Number(), 320.f);
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("right").Number(), 270.f);
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("bottom").Number(), 325.f);
+
+  lepus::Value detached_args[] = {lepus::Value(15.f), lepus::Value(27.f),
+                                  lepus::Value(page), lepus::Value(detached)};
+  EXPECT_TRUE(
+      RendererFunctions::FiberConvertPoint(renderer_context, detached_args, 4)
+          .IsNil());
+
+  lepus::Value non_finite_args[] = {
+      lepus::Value(std::numeric_limits<double>::infinity()), lepus::Value(0.f),
+      lepus::Value(page), lepus::Value(target)};
+  EXPECT_TRUE(
+      RendererFunctions::FiberConvertPoint(renderer_context, non_finite_args, 4)
+          .IsNil());
+
+  base::ErrorStorage::GetInstance().Reset();
+  fml::RefPtr<lepus::RefCounted> non_element =
+      fml::MakeRefCounted<event::TouchEvent>("tap");
+  lepus::Value invalid_args[] = {lepus::Value(15.f), lepus::Value(27.f),
+                                 lepus::Value(non_element),
+                                 lepus::Value(target)};
+  EXPECT_TRUE(
+      RendererFunctions::FiberConvertPoint(renderer_context, invalid_args, 4)
+          .IsNil());
+  const auto& stored_error = base::ErrorStorage::GetInstance().GetError();
+  ASSERT_NE(stored_error, nullptr);
+  EXPECT_EQ(stored_error->error_code_, error::E_ELEMENT_API_ERROR);
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, PageCoordinateSnapshotOnlyReportsWindowOffsetChanges) {
+  manager->UpdatePageCoordinateSnapshot(10.f, 20.f, true, 30.f, 40.f, true,
+                                        false);
+  EXPECT_TRUE(manager->position_change_dirty_);
+
+  manager->position_change_dirty_ = false;
+  manager->UpdatePageCoordinateSnapshot(10.f, 20.f, true, 50.f, 60.f, true,
+                                        false);
+  EXPECT_FALSE(manager->position_change_dirty_);
+
+  manager->UpdatePageCoordinateSnapshot(11.f, 20.f, true, 50.f, 60.f, true,
+                                        false);
+  EXPECT_TRUE(manager->position_change_dirty_);
+
+  manager->position_change_dirty_ = false;
+  manager->UpdatePageCoordinateSnapshot(11.f, 20.f, true, 50.f, 60.f, true,
+                                        true);
+  EXPECT_TRUE(manager->position_change_dirty_);
+}
+
+TEST_P(FiberElementTest, PositionChangeEventsTrackLiveListenersAndDirtyState) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  auto first_listener =
+      std::make_shared<event::ClosureEventListener>([](lepus::Value) {});
+  auto second_listener =
+      std::make_shared<event::ClosureEventListener>([](lepus::Value) {});
+  element->AddEventListener(kEventPositionChange, first_listener);
+  element->AddEventListener(kEventPositionChange, second_listener);
+  EXPECT_TRUE(element->HasPositionChangeListener());
+  ASSERT_EQ(manager->position_change_listener_ids_.size(), 1U);
+  EXPECT_TRUE(
+      manager->position_change_listener_ids_.contains(element->impl_id()));
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->PreparePositionChangeObservation(options);
+  EXPECT_TRUE(options->needs_page_coordinate_snapshot);
+
+  const std::string before_initial_event = tasm_mediator.DumpDelegate();
+  manager->UpdatePageCoordinateSnapshot(0.f, 0.f, true, 0.f, 0.f, true, true);
+  manager->TriggerPositionChangeEvents();
+  EXPECT_EQ(tasm_mediator.DumpDelegate(),
+            before_initial_event + "SendNativeCustomEvent\n");
+  EXPECT_FALSE(manager->position_change_dirty_);
+
+  const std::string before_screen_change = tasm_mediator.DumpDelegate();
+  manager->UpdatePageCoordinateSnapshot(0.f, 0.f, true, 10.f, 20.f, true,
+                                        false);
+  manager->TriggerPositionChangeEvents();
+  EXPECT_EQ(tasm_mediator.DumpDelegate(), before_screen_change);
+
+  const std::string before_window_change = tasm_mediator.DumpDelegate();
+  manager->UpdatePageCoordinateSnapshot(5.f, 6.f, true, 10.f, 20.f, true,
+                                        false);
+  manager->TriggerPositionChangeEvents();
+  EXPECT_EQ(tasm_mediator.DumpDelegate(),
+            before_window_change + "SendNativeCustomEvent\n");
+
+  element->RemoveEventListener(kEventPositionChange, first_listener);
+  EXPECT_TRUE(element->HasPositionChangeListener());
+  EXPECT_EQ(manager->position_change_listener_ids_.size(), 1U);
+  element->RemoveEventListener(kEventPositionChange, second_listener);
+  EXPECT_FALSE(element->HasPositionChangeListener());
+  EXPECT_TRUE(manager->position_change_listener_ids_.empty());
+
+  element->AddEventListener(
+      kEventPositionChange,
+      std::make_shared<event::ClosureEventListener>([](lepus::Value) {}));
+  EXPECT_TRUE(element->HasPositionChangeListener());
+  element->RemoveEventListeners(kEventPositionChange);
+  EXPECT_FALSE(element->HasPositionChangeListener());
+
+  element->AddEventListener(
+      kEventPositionChange,
+      std::make_shared<event::ClosureEventListener>([](lepus::Value) {}));
+  EXPECT_TRUE(element->HasPositionChangeListener());
+  element->ClearEventListeners();
+  EXPECT_FALSE(element->HasPositionChangeListener());
+}
+
+TEST_P(FiberElementTest, PositionChangeEventsAreGlobalAndSkipDetachedElements) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  page->InsertNode(first);
+  page->InsertNode(second);
+  page->FlushActionsAsRoot();
+
+  first->AddEventListener(
+      kEventPositionChange,
+      std::make_shared<event::ClosureEventListener>([](lepus::Value) {}));
+  second->AddEventListener(
+      kEventPositionChange,
+      std::make_shared<event::ClosureEventListener>([](lepus::Value) {}));
+  second->MarkDetached();
+
+  const std::string before = tasm_mediator.DumpDelegate();
+  manager->UpdateElementPositionState(
+      {{first->impl_id(), shell::ElementPositionUpdateType::kScrollOffset, 10.f,
+        20.f}});
+  manager->TriggerPositionChangeEvents();
+  EXPECT_EQ(tasm_mediator.DumpDelegate(), before + "SendNativeCustomEvent\n");
+
+  second->MarkAttached();
+  const std::string before_reattach = tasm_mediator.DumpDelegate();
+  manager->UpdateElementPositionState(
+      {{first->impl_id(), shell::ElementPositionUpdateType::kScrollOffset, 11.f,
+        20.f}});
+  manager->TriggerPositionChangeEvents();
+  EXPECT_EQ(tasm_mediator.DumpDelegate(), before_reattach +
+                                              "SendNativeCustomEvent\n"
+                                              "SendNativeCustomEvent\n");
 }
 
 TEST_P(FiberElementTest,

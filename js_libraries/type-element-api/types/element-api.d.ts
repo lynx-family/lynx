@@ -39,6 +39,20 @@ export interface PipelineOptions {
   needTimestamps: boolean
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
 export interface SelectorParams {
   onlyCurrentComponent?: boolean;
 }
@@ -262,6 +276,67 @@ declare global {
   function __GetParent(current: ElementRef): ElementRef;
 
   function __GetChildren(current: ElementRef): ElementRef[];
+
+  /**
+   * Converts a point from one Element's local border-box coordinates to
+   * another Element's local border-box coordinates. Returns undefined when
+   * Element-owned layout is unavailable or the Elements are disconnected.
+   */
+  function __ConvertPoint(
+    x: number,
+    y: number,
+    fromElement: ElementRef,
+    toElement: ElementRef,
+  ): Point | undefined;
+
+  /**
+   * Converts a rect and returns the axis-aligned bounding box of its converted
+   * corners. Coordinates are CSS pixels. clipBounds additionally clips against
+   * layout ancestors.
+   */
+  function __ConvertRect(
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+    fromElement: ElementRef,
+    toElement: ElementRef,
+    clipBounds: boolean,
+  ): Rect | undefined;
+
+  /** Converts a point from Element-local coordinates to window coordinates. */
+  function __ConvertPointToWindow(
+    x: number,
+    y: number,
+    fromElement: ElementRef,
+  ): Point | undefined;
+
+  /** Converts a rect from Element-local coordinates to window coordinates. */
+  function __ConvertRectToWindow(
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+    fromElement: ElementRef,
+    clipBounds: boolean,
+  ): Rect | undefined;
+
+  /** Converts a point from Element-local coordinates to screen coordinates. */
+  function __ConvertPointToScreen(
+    x: number,
+    y: number,
+    fromElement: ElementRef,
+  ): Point | undefined;
+
+  /** Converts a rect from Element-local coordinates to screen coordinates. */
+  function __ConvertRectToScreen(
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+    fromElement: ElementRef,
+    clipBounds: boolean,
+  ): Rect | undefined;
 
   function __FirstElement(current: ElementRef): ElementRef;
 

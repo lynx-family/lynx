@@ -38,6 +38,19 @@ public class LynxEventEmitterTest {
   int mPseudoPreStatus = -1;
   int mPseudoCurrentStatus = -1;
 
+  int[] mPositionUpdateElementIds = null;
+  int[] mPositionUpdateTypes = null;
+  float[] mPositionUpdateValues = null;
+  int mPositionUpdateCallCount = 0;
+
+  float mWindowX = Float.NaN;
+  float mWindowY = Float.NaN;
+  boolean mHasWindowOffset = false;
+  float mScreenX = Float.NaN;
+  float mScreenY = Float.NaN;
+  boolean mHasScreenOffset = false;
+  boolean mForcePositionChange = false;
+
   boolean mLynxEventReporterReturn = false;
   LynxEvent mLynxEvent = null;
   LynxInternalEvent mLynxInternalEvent = null;
@@ -100,6 +113,26 @@ public class LynxEventEmitterTest {
       mPseudoPreStatus = preStatus;
       mPseudoCurrentStatus = currentStatus;
     }
+
+    @Override
+    void updateElementPositionState(int[] elementIds, int[] types, float[] values) {
+      mPositionUpdateElementIds = elementIds;
+      mPositionUpdateTypes = types;
+      mPositionUpdateValues = values;
+      mPositionUpdateCallCount++;
+    }
+
+    @Override
+    void updatePageCoordinateSnapshot(float windowX, float windowY, boolean hasWindowOffset,
+        float screenX, float screenY, boolean hasScreenOffset, boolean forcePositionChange) {
+      mWindowX = windowX;
+      mWindowY = windowY;
+      mHasWindowOffset = hasWindowOffset;
+      mScreenX = screenX;
+      mScreenY = screenY;
+      mHasScreenOffset = hasScreenOffset;
+      mForcePositionChange = forcePositionChange;
+    }
   }
 
   class MockTestTapTrack implements EventEmitter.ITestTapTrack {
@@ -133,6 +166,11 @@ public class LynxEventEmitterTest {
     mPseudoID = -1;
     mPseudoPreStatus = -1;
     mPseudoCurrentStatus = -1;
+
+    mPositionUpdateElementIds = null;
+    mPositionUpdateTypes = null;
+    mPositionUpdateValues = null;
+    mPositionUpdateCallCount = 0;
 
     mLynxEventReporterReturn = false;
     mLynxEvent = null;
@@ -307,6 +345,41 @@ public class LynxEventEmitterTest {
     mEventEmitter.onPseudoStatusChanged(11, 1, 2);
     assertEquals(mPseudoPreStatus, 1);
     assertEquals(mPseudoCurrentStatus, 2);
+  }
+
+  @Test
+  public void testUpdateElementPositionStateBatch() {
+    mEventEmitter.beginElementPositionStateBatch();
+    mEventEmitter.updateElementPositionState(
+        11, EventEmitter.ELEMENT_POSITION_UPDATE_SCROLL_OFFSET, 12.5f, 13.5f);
+    mEventEmitter.updateElementPositionState(
+        21, EventEmitter.ELEMENT_POSITION_UPDATE_STICKY_TRANSLATION, 22.5f, 23.5f);
+    assertEquals(0, mPositionUpdateCallCount);
+    mEventEmitter.endElementPositionStateBatch();
+
+    assertEquals(1, mPositionUpdateCallCount);
+    assertEquals(2, mPositionUpdateElementIds.length);
+    assertEquals(11, mPositionUpdateElementIds[0]);
+    assertEquals(21, mPositionUpdateElementIds[1]);
+    assertEquals(EventEmitter.ELEMENT_POSITION_UPDATE_SCROLL_OFFSET, mPositionUpdateTypes[0]);
+    assertEquals(EventEmitter.ELEMENT_POSITION_UPDATE_STICKY_TRANSLATION, mPositionUpdateTypes[1]);
+    assertEquals(12.5f, mPositionUpdateValues[0], 0.0f);
+    assertEquals(13.5f, mPositionUpdateValues[1], 0.0f);
+    assertEquals(22.5f, mPositionUpdateValues[2], 0.0f);
+    assertEquals(23.5f, mPositionUpdateValues[3], 0.0f);
+  }
+
+  @Test
+  public void testUpdatePageCoordinateSnapshot() {
+    mEventEmitter.updatePageCoordinateSnapshot(1.5f, 2.5f, true, 3.5f, 4.5f, true, true);
+
+    assertEquals(1.5f, mWindowX, 0.0f);
+    assertEquals(2.5f, mWindowY, 0.0f);
+    assertEquals(true, mHasWindowOffset);
+    assertEquals(3.5f, mScreenX, 0.0f);
+    assertEquals(4.5f, mScreenY, 0.0f);
+    assertEquals(true, mHasScreenOffset);
+    assertEquals(true, mForcePositionChange);
   }
 
   @Test

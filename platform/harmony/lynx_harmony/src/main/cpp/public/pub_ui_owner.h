@@ -38,7 +38,8 @@ class LYNX_EXPORT PubUIOwner {
                     const float* paddings, const float* margins,
                     const float* sticky, float max_height,
                     uint32_t node_index) const;
-  void OnLayoutFinish(int32_t component_id, int64_t operation_id) const;
+  void OnLayoutFinish(int32_t component_id, int64_t operation_id,
+                      bool needs_coordinate_snapshot) const;
   void AttachPageRoot(napi_env env, napi_value root_content) const;
   UIOwner* Owner() const { return ui_owner_.get(); }
   napi_env Env() const { return env_; }

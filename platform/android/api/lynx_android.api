@@ -1757,6 +1757,8 @@ public enum com::lynx::tasm::event::LynxEventDetail::EVENT_TYPE {
 }
 
 public class abstract com::lynx::tasm::EventEmitter :  {
+  public final int com.lynx.tasm.EventEmitter.ELEMENT_POSITION_UPDATE_SCROLL_OFFSET ELEMENT_POSITION_UPDATE_SCROLL_OFFSET;
+  public final int com.lynx.tasm.EventEmitter.ELEMENT_POSITION_UPDATE_STICKY_TRANSLATION ELEMENT_POSITION_UPDATE_STICKY_TRANSLATION;
   public com.lynx.tasm.EventEmitter.EventEmitter();
   public abstract void com.lynx.tasm.EventEmitter.sendTouchEvent(LynxTouchEvent event);
   public abstract boolean com.lynx.tasm.EventEmitter.onLynxEvent(LynxEvent event);
@@ -1778,6 +1780,10 @@ public class abstract com::lynx::tasm::EventEmitter :  {
   public void com.lynx.tasm.EventEmitter.startEventCapture(long eventID);
   public void com.lynx.tasm.EventEmitter.startEventBubble(long eventID);
   public void com.lynx.tasm.EventEmitter.startEventFire(boolean isStop, long eventID);
+  public void com.lynx.tasm.EventEmitter.beginElementPositionStateBatch();
+  public void com.lynx.tasm.EventEmitter.updateElementPositionState(int sign, int type, float x, float y);
+  public void com.lynx.tasm.EventEmitter.endElementPositionStateBatch();
+  public void com.lynx.tasm.EventEmitter.updatePageCoordinateSnapshot(float windowX, float windowY, boolean hasWindowOffset, float screenX, float screenY, boolean hasScreenOffset, boolean forcePositionChange);
 }
 
 public class com::lynx::tasm::event::EventsListener :  {
@@ -5261,6 +5267,8 @@ public class com::lynx::tasm::core::LynxEngineProxy :  {
   public void com.lynx.tasm.core.LynxEngineProxy.sendTouchEvent(LynxTouchEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendMultiTouchEvent(LynxTouchEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendCustomEvent(LynxCustomEvent event);
+  public void com.lynx.tasm.core.LynxEngineProxy.updateElementPositionState(final int[] elementIds, final int[] types, final float[] values);
+  public void com.lynx.tasm.core.LynxEngineProxy.updatePageCoordinateSnapshot(final float windowX, final float windowY, final boolean hasWindowOffset, final float screenX, final float screenY, final boolean hasScreenOffset, final boolean forcePositionChange);
   public void com.lynx.tasm.core.LynxEngineProxy.sendGestureEvent(final String name, final int tag, int gestureId, final ByteBuffer params, final int length);
   public void com.lynx.tasm.core.LynxEngineProxy.onPseudoStatusChanged(final int id, final int preStatus, final int currentStatus);
   public void com.lynx.tasm.core.LynxEngineProxy.invokeLepusApiCallback(int callbackID, String entryName, Object data);
@@ -5649,6 +5657,10 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
   public void com.lynx.tasm.LynxEventEmitter.sendCustomEvent(LynxCustomEvent event);
   public void com.lynx.tasm.LynxEventEmitter.sendGestureEvent(int gestureId, LynxCustomEvent event);
   public void com.lynx.tasm.LynxEventEmitter.onPseudoStatusChanged(int sign, int preStatus, int currentStatus);
+  public void com.lynx.tasm.LynxEventEmitter.beginElementPositionStateBatch();
+  public void com.lynx.tasm.LynxEventEmitter.updateElementPositionState(int sign, int type, float x, float y);
+  public void com.lynx.tasm.LynxEventEmitter.endElementPositionStateBatch();
+  public void com.lynx.tasm.LynxEventEmitter.updatePageCoordinateSnapshot(float windowX, float windowY, boolean hasWindowOffset, float screenX, float screenY, boolean hasScreenOffset, boolean forcePositionChange);
   public void com.lynx.tasm.LynxEventEmitter.setTestTapTracker(ITestTapTrack track);
   public void com.lynx.tasm.LynxEventEmitter.sendLayoutEvent();
   public void com.lynx.tasm.LynxEventEmitter.setInPreLoad(boolean preload);
@@ -7445,6 +7457,7 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public void com.lynx.tasm.behavior.LynxUIOwner.destroy();
   public void com.lynx.tasm.behavior.LynxUIOwner.onTasmFinish(long operationId);
   public void com.lynx.tasm.behavior.LynxUIOwner.onLayoutFinish(int componentID, long operationId);
+  public void com.lynx.tasm.behavior.LynxUIOwner.updatePageCoordinateSnapshot(boolean forcePositionChange);
   public void com.lynx.tasm.behavior.LynxUIOwner.performMeasure();
   public HashMap< String, MemoryRecord > com.lynx.tasm.behavior.LynxUIOwner.getMemoryUsage();
   public void com.lynx.tasm.behavior.LynxUIOwner.performLayout();
@@ -8711,7 +8724,7 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public void com.lynx.tasm.behavior.PaintingContext.stopExposure(ReadableMap options);
   public void com.lynx.tasm.behavior.PaintingContext.resumeExposure();
   public void com.lynx.tasm.behavior.PaintingContext.validate(int sign);
-  public void com.lynx.tasm.behavior.PaintingContext.FinishLayoutOperation(int componentId, long operationId, boolean isFirstScreen);
+  public void com.lynx.tasm.behavior.PaintingContext.FinishLayoutOperation(int componentId, long operationId, boolean isFirstScreen, boolean needsCoordinateSnapshot);
   public void com.lynx.tasm.behavior.PaintingContext.updateExtraData(int signature, Object data);
   public void com.lynx.tasm.behavior.PaintingContext.updateTextBundle(int sign, long textBundle);
   public void com.lynx.tasm.behavior.PaintingContext.destroyTextBundle(int sign);
@@ -8928,7 +8941,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyImage(int imageKey);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateTextBundle(int sign, long textBundle);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyTextBundle(final int sign);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.finishLayoutOperation(int componentId, long operationId, boolean isFirstScreen, boolean needsCoordinateSnapshot);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.onNodeReadyBatch(int[] signs);
   public TextLayout com.lynx.tasm.behavior.render.PlatformRendererContext.getTextLayout();
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);

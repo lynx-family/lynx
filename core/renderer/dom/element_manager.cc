@@ -5,12 +5,14 @@
 #include "core/renderer/dom/element_manager.h"
 
 #include <array>
+#include <cmath>
 #include <memory>
 #include <mutex>
 #include <utility>
 #include <vector>
 
 #include "base/include/debug/lynx_assert.h"
+#include "base/include/float_comparison.h"
 #include "base/include/log/logging.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
@@ -39,6 +41,7 @@
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
+#include "core/renderer/events/events.h"
 #include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
@@ -584,15 +587,8 @@ void ElementManager::RequestLayout(
 
   PipelineLayoutData layout_data;
   if (has_viewport_ready_ && root()->is_page()) {
-    if (options->need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);
-    }
-
     static_cast<PageElement *>(root())->Layout(options);
 
-    if (options->need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutEnd);
-    }
     layout_data = {.layout_triggered = true,
                    .pipeline_version = options->version,
                    .is_first_layout =
@@ -617,6 +613,7 @@ void ElementManager::RequestLayout(
     if (layout_data.layout_triggered) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
       root()->element_container()->CastToFragment()->Draw();
+      PreparePositionChangeObservation(options);
       root()->element_container()->FinishLayoutOperation(options);
     }
     root()->element_container()->Flush();
@@ -1050,6 +1047,114 @@ void ElementManager::SendNativeCustomEvent(const std::string &name, int tag,
                                            const lepus::Value &param_value,
                                            const std::string &param_name) {
   delegate_->SendNativeCustomEvent(name, tag, param_value, param_name);
+}
+
+void ElementManager::OnPositionChangeListenerAdded(int32_t element_id) {
+  if (element_id < 0) {
+    return;
+  }
+  position_change_listener_ids_.insert(element_id);
+  auto *current_context =
+      element_manager_delegate_ == nullptr
+          ? nullptr
+          : element_manager_delegate_->GetCurrentPipelineContext();
+  if (current_context != nullptr) {
+    const auto &options = current_context->GetOptions();
+    if (options != nullptr) {
+      options->needs_page_coordinate_snapshot = true;
+    }
+    current_context->RequestFlushUIOperation();
+  }
+}
+
+void ElementManager::OnPositionChangeListenerRemoved(int32_t element_id) {
+  position_change_listener_ids_.erase(element_id);
+}
+
+void ElementManager::UpdateElementPositionState(
+    std::vector<shell::ElementPositionUpdate> updates) {
+  std::map<std::pair<int32_t, shell::ElementPositionUpdateType>,
+           shell::ElementPositionUpdate>
+      final_updates;
+  for (const auto &update : updates) {
+    final_updates[{update.element_id, update.type}] = update;
+  }
+
+  for (const auto &entry : final_updates) {
+    const auto &update = entry.second;
+    auto *element = node_manager()->Get(update.element_id);
+    if (element == nullptr) {
+      continue;
+    }
+    bool changed = false;
+    if (update.type == shell::ElementPositionUpdateType::kScrollOffset) {
+      changed = base::FloatsNotEqual(element->scroll_offset_x(), update.x) ||
+                base::FloatsNotEqual(element->scroll_offset_y(), update.y);
+      if (changed) {
+        element->UpdateScrollOffset(update.x, update.y);
+      }
+    } else {
+      changed =
+          base::FloatsNotEqual(element->sticky_translation_x(), update.x) ||
+          base::FloatsNotEqual(element->sticky_translation_y(), update.y);
+      if (changed) {
+        element->UpdateStickyTranslation(update.x, update.y);
+      }
+    }
+    position_change_dirty_ = position_change_dirty_ || changed;
+  }
+}
+
+void ElementManager::UpdatePageCoordinateSnapshot(
+    float window_x, float window_y, bool has_window_offset, float screen_x,
+    float screen_y, bool has_screen_offset, bool force_position_change) {
+  const bool window_offset_changed =
+      page_coordinate_snapshot_.has_window_offset != has_window_offset ||
+      (has_window_offset &&
+       (base::FloatsNotEqual(page_coordinate_snapshot_.window_x, window_x) ||
+        base::FloatsNotEqual(page_coordinate_snapshot_.window_y, window_y)));
+  page_coordinate_snapshot_.window_x = window_x;
+  page_coordinate_snapshot_.window_y = window_y;
+  page_coordinate_snapshot_.screen_x = screen_x;
+  page_coordinate_snapshot_.screen_y = screen_y;
+  page_coordinate_snapshot_.has_window_offset = has_window_offset;
+  page_coordinate_snapshot_.has_screen_offset = has_screen_offset;
+  position_change_dirty_ =
+      position_change_dirty_ || window_offset_changed || force_position_change;
+}
+
+void ElementManager::PreparePositionChangeObservation(
+    const std::shared_ptr<PipelineOptions> &options) {
+  if (options == nullptr || position_change_listener_ids_.empty()) {
+    return;
+  }
+  options->needs_page_coordinate_snapshot = true;
+}
+
+void ElementManager::TriggerPositionChangeEvents() {
+  if (!position_change_dirty_) {
+    return;
+  }
+  position_change_dirty_ = false;
+
+  const PositionChangeEventElementIds element_ids =
+      position_change_listener_ids_;
+  for (int32_t element_id : element_ids) {
+    auto *element = node_manager()->Get(element_id);
+    if (element == nullptr || element->IsDetached() ||
+        !element->HasPositionChangeListener()) {
+      continue;
+    }
+    float layouts_unit_per_px = element->GetLayoutsUnitPerPx();
+    if (!std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+      layouts_unit_per_px = 1.f;
+    }
+    auto detail = lepus::Dictionary::Create();
+    detail->SetValue("width", element->width() / layouts_unit_per_px);
+    detail->SetValue("height", element->height() / layouts_unit_per_px);
+    SendNativeCustomEvent(kEventPositionChange, element_id,
+                          lepus::Value(std::move(detail)), "detail");
+  }
 }
 
 void ElementManager::UpdateLayoutNodeStyle(int32_t id,
@@ -1822,6 +1927,7 @@ void ElementManager::OnPatchFinishForFiber(
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
       root()->element_container()->CastToFragment()->Draw();
     }
+    PreparePositionChangeObservation(options);
     if (root() && root()->EnableFragmentLayerRender()) {
       root()->element_container()->FinishLayoutOperation(options);
       root()->element_container()->Flush();

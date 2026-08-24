@@ -262,6 +262,7 @@ void ListMediator::FlushPatching(bool should_flush_finish_layout) {
   if (should_flush_finish_layout) {
     auto options = std::make_shared<PipelineOptions>();
     options->has_layout = true;
+    list_element_->element_manager()->PreparePositionChangeObservation(options);
     list_element_->element_container()->FinishLayoutOperation(options);
   }
   list_element_->element_container()->FlushImmediately();
