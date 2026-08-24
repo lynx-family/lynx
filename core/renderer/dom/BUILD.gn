@@ -93,6 +93,7 @@ unittest_set("dom_testset") {
     "element_unittest.cc",
     "element_vsync_proxy_unittest.cc",
     "fiber/block_element_unittest.cc",
+    "fiber/element_template_instance_unittest.cc",
     "fiber/fiber_element_unittest.cc",
     "fiber/fiber_node_info_unittest.cc",
     "fiber/frame_element_unittest.cc",
