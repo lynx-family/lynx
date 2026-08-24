@@ -179,9 +179,19 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private final LynxFrameRecorder.FrameCallback mFrameCallback = new ContextFrameCallback(this);
 
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
+    this(base, screenMetrics, false);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  protected LynxContext(
+      Context base, DisplayMetrics screenMetrics, boolean takeScreenMetricsOwnership) {
     super(base);
-    mVirtualScreenMetrics = new DisplayMetrics();
-    mVirtualScreenMetrics.setTo(screenMetrics);
+    if (takeScreenMetricsOwnership) {
+      mVirtualScreenMetrics = screenMetrics;
+    } else {
+      mVirtualScreenMetrics = new DisplayMetrics();
+      mVirtualScreenMetrics.setTo(screenMetrics);
+    }
     if (sLynxTextService == null) {
       sLynxTextService = LynxServiceCenter.inst().getService(ILynxTextService.class);
     }
@@ -1576,12 +1586,19 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public void setInstanceId(int instanceId) {
+    setInstanceId(instanceId, true);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setInstanceId(int instanceId, boolean syncFrameRecorderCallback) {
     if (mInstanceId != INSTANCE_ID_DEFAULT && mInstanceId != instanceId) {
       LynxFrameRecorder.inst().stopRecording(mInstanceId);
       LynxFrameRecorder.inst().clearFrameCallback(mInstanceId);
     }
     this.mInstanceId = instanceId;
-    syncFrameRecorderCallback();
+    if (syncFrameRecorderCallback) {
+      syncFrameRecorderCallback();
+    }
   }
 
   private void syncFrameRecorderCallback() {
@@ -1681,6 +1698,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public void runOnLayoutThread(Runnable runnable) {
     if (runnable == null) {
+      return;
+    }
+    if (mLayoutProxy == null) {
       return;
     }
     LynxLayoutProxy layoutProxy = mLayoutProxy.get();

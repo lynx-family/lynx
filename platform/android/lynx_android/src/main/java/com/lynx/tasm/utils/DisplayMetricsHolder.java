@@ -8,6 +8,7 @@
 package com.lynx.tasm.utils;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.Display;
@@ -60,19 +61,6 @@ public class DisplayMetricsHolder {
   public final static float DEFAULT_SCREEN_SCALE = 1;
 
   /**
-   * @deprecated Use {@link #setScreenDisplayMetrics(DisplayMetrics)} instead. See comment above as
-   *    to why this is not correct to use.
-   */
-  private static void setWindowDisplayMetrics(DisplayMetrics displayMetrics) {
-    synchronized (DisplayMetricsHolder.class) {
-      if (sWindowDisplayMetrics == null) {
-        sWindowDisplayMetrics = new DisplayMetrics();
-      }
-      sWindowDisplayMetrics.setTo(displayMetrics);
-    }
-  }
-
-  /**
    * @deprecated Use {@link com.lynx.tasm.LynxView#updateScreenMetrics(int, int)}instead. See
    *     comment above as
    *      to why this is not correct to use.
@@ -117,61 +105,41 @@ public class DisplayMetricsHolder {
           "updateOrInitDisplayMetrics context parameter is null, fallback to updateOrInitDisplayMetrics by ApplicationContext");
       context = LynxEnv.inst().getAppContext();
     }
-    updateWindowDisplayMetrics(context, densityOverride);
-
-    boolean needUpdateScreenMetrics = shouldUpdateScreenMetrics(context, densityOverride);
+    Resources resources = context.getResources();
+    DisplayMetrics windowDisplayMetrics = resources.getDisplayMetrics();
+    int orientation = resources.getConfiguration().orientation;
+    boolean needUpdateScreenMetrics;
+    boolean cacheInvalid;
+    synchronized (DisplayMetricsHolder.class) {
+      if (sWindowDisplayMetrics == null) {
+        sWindowDisplayMetrics = new DisplayMetrics();
+      }
+      sWindowDisplayMetrics.setTo(windowDisplayMetrics);
+      if (densityOverride != null) {
+        sWindowDisplayMetrics.density = densityOverride;
+      }
+      needUpdateScreenMetrics = sScreenDisplayMetrics == null || sOrientation != orientation
+          || sScaleDensity != windowDisplayMetrics.scaledDensity || !hasNativeUpdateDeviceInfo
+          || (densityOverride != null && sScreenDisplayMetrics.density != densityOverride);
+      cacheInvalid = isCacheInvalid;
+    }
     // When other views call this method, the cache becomes invalid, so we must use the system's
     // interface to get real screen displayMetrics.
-    if (needUpdateScreenMetrics || isCacheInvalid) {
-      updateScreenDisplayMetrics(context, densityOverride);
-      // cache is valid again.
-      isCacheInvalid = false;
+    if (needUpdateScreenMetrics || cacheInvalid) {
+      updateScreenDisplayMetrics(context, windowDisplayMetrics, densityOverride, orientation);
     }
-
-    updateCurrentProps(context);
 
     return needUpdateScreenMetrics;
   }
 
-  private static void updateWindowDisplayMetrics(Context context, Float densityOverride) {
-    DisplayMetrics windowDM = context.getResources().getDisplayMetrics();
-    if (densityOverride != null) {
-      windowDM.density = densityOverride;
-    }
-    DisplayMetricsHolder.setWindowDisplayMetrics(windowDM);
-  }
-
-  private static void updateScreenDisplayMetrics(Context context, Float densityOverride) {
-    DisplayMetrics displayMetrics = getRealScreenDisplayMetrics(context);
+  private static void updateScreenDisplayMetrics(Context context,
+      DisplayMetrics windowDisplayMetrics, Float densityOverride, int orientation) {
+    DisplayMetrics displayMetrics = getRealScreenDisplayMetrics(context, windowDisplayMetrics);
     if (densityOverride != null) {
       displayMetrics.density = densityOverride;
     }
-    DisplayMetricsHolder.setScreenDisplayMetrics(displayMetrics);
-  }
-
-  private static boolean isScaleDensityChange(DisplayMetrics windowDisplayMetrics) {
-    return sScaleDensity != windowDisplayMetrics.scaledDensity;
-  }
-
-  private static boolean isDensityChanged(Float densityOverride) {
-    return sScreenDisplayMetrics != null && densityOverride != null
-        && sScreenDisplayMetrics.density != densityOverride;
-  }
-
-  private static boolean isOrientationChanged(Context context) {
-    return sOrientation != context.getResources().getConfiguration().orientation;
-  }
-
-  private static void updateCurrentProps(Context context) {
-    sScaleDensity = context.getResources().getDisplayMetrics().scaledDensity;
-    sOrientation = context.getResources().getConfiguration().orientation;
-  }
-
-  private static boolean shouldUpdateScreenMetrics(Context context, Float densityOverride) {
-    DisplayMetrics windowDM = context.getResources().getDisplayMetrics();
-    return DisplayMetricsHolder.getScreenDisplayMetrics() == null || isOrientationChanged(context)
-        || isScaleDensityChange(windowDM) || !hasNativeUpdateDeviceInfo
-        || isDensityChanged(densityOverride);
+    DisplayMetricsHolder.setScreenDisplayMetrics(
+        displayMetrics, windowDisplayMetrics.scaledDensity, orientation);
   }
 
   /**
@@ -180,10 +148,14 @@ public class DisplayMetricsHolder {
    * @return metrics of real screen
    */
   public static DisplayMetrics getRealScreenDisplayMetrics(Context context) {
+    return getRealScreenDisplayMetrics(context, getWindowDisplayMetrics());
+  }
+
+  private static DisplayMetrics getRealScreenDisplayMetrics(
+      Context context, @Nullable DisplayMetrics windowDisplayMetrics) {
     DisplayMetrics screenDisplayMetrics = new DisplayMetrics();
-    DisplayMetrics windowDM = getWindowDisplayMetrics();
-    if (windowDM != null) {
-      screenDisplayMetrics.setTo(getWindowDisplayMetrics());
+    if (windowDisplayMetrics != null) {
+      screenDisplayMetrics.setTo(windowDisplayMetrics);
     }
     WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
     Assertions.assertNotNull(wm, "WindowManager is null!");
@@ -241,10 +213,14 @@ public class DisplayMetricsHolder {
    *     comment above as
    *      to why this is not correct to use.
    */
-  private static void setScreenDisplayMetrics(DisplayMetrics dm) {
+  private static void setScreenDisplayMetrics(
+      DisplayMetrics dm, float scaleDensity, int orientation) {
     boolean isNativeLibraryLoaded = LynxEnv.inst().isNativeLibraryLoaded();
     synchronized (DisplayMetricsHolder.class) {
       sScreenDisplayMetrics = dm;
+      sScaleDensity = scaleDensity;
+      sOrientation = orientation;
+      isCacheInvalid = false;
       if (isNativeLibraryLoaded) {
         hasNativeUpdateDeviceInfo = true;
         nativeUpdateDevice(dm.widthPixels, dm.heightPixels, dm.density);

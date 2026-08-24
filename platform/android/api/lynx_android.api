@@ -5023,6 +5023,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public Map com.lynx.tasm.behavior.LynxContext.getContextData();
   public int com.lynx.tasm.behavior.LynxContext.getInstanceId();
   public void com.lynx.tasm.behavior.LynxContext.setInstanceId(int instanceId);
+  public void com.lynx.tasm.behavior.LynxContext.setInstanceId(int instanceId, boolean syncFrameRecorderCallback);
   public void com.lynx.tasm.behavior.LynxContext.setInPreLoad(boolean preload);
   public void com.lynx.tasm.behavior.LynxContext.setEnableImageResourceHint(boolean enable);
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableImageResourceHint();
@@ -7761,6 +7762,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setUri(@Nullable Uri uri);
   public Uri com.lynx.tasm.LynxViewBuilder.getUri();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.insertLynxViewConfig(String key, String value);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableNativeLifecycleOptimization(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxViewGroup(ILynxViewGroup group);
   public LynxGroup com.lynx.tasm.LynxViewBuilder.getLynxGroup();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxModuleExtraData(Object data);

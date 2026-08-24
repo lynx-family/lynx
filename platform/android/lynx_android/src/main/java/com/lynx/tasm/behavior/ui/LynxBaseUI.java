@@ -2305,16 +2305,21 @@ public abstract class LynxBaseUI
 
   @LynxProp(name = PropsConstants.INTERSECTION_OBSERVERS)
   public void setIntersectionObservers(@Nullable ReadableArray observers) {
-    mContext.getIntersectionObserverManager().removeAttachedIntersectionObserver(this);
+    LynxIntersectionObserverManager intersectionObserverManager =
+        mContext.getIntersectionObserverManager();
+    if (intersectionObserverManager == null) {
+      return;
+    }
+    intersectionObserverManager.removeAttachedIntersectionObserver(this);
     if (observers == null || !mEvents.containsKey("intersection")) {
       return;
     }
     for (int idx = 0; idx < observers.size(); idx++) {
       ReadableMap propsObject = observers.getMap(idx);
       if (propsObject != null) {
-        LynxIntersectionObserver observer = new LynxIntersectionObserver(
-            mContext.getIntersectionObserverManager(), propsObject, this);
-        mContext.getIntersectionObserverManager().addIntersectionObserver(observer);
+        LynxIntersectionObserver observer =
+            new LynxIntersectionObserver(intersectionObserverManager, propsObject, this);
+        intersectionObserverManager.addIntersectionObserver(observer);
       }
     }
   }
