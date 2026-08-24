@@ -19,10 +19,12 @@
 #include "clay/ui/component/intersection_observer.h"
 
 namespace clay {
+class PageView;
+
 class IntersectionObserverManager {
  public:
-  explicit IntersectionObserverManager(BaseView* page_view)
-      : page_view_(page_view) {}
+  explicit IntersectionObserverManager(PageView* owner_page_view)
+      : owner_page_view_(owner_page_view) {}
   ~IntersectionObserverManager() = default;
 
   void AddObserver(std::unique_ptr<IntersectionObserver> observer);
@@ -51,7 +53,7 @@ class IntersectionObserverManager {
   void SetExposureUIMarginEnabled(bool enabled);
   bool GetExposureUIMarginEnabled() { return exposure_ui_margin_enabled_; }
 
-  BaseView* page_view() { return page_view_; }
+  PageView* page_view() { return owner_page_view_; }
 
  private:
   int64_t expose_min_time_gap_ms_ = 1000 / 20;
@@ -60,7 +62,7 @@ class IntersectionObserverManager {
   bool exposure_host_visible_ = true;
   int64_t last_expose_time_ = -1;
 
-  BaseView* page_view_;
+  PageView* owner_page_view_;
   std::list<std::unique_ptr<IntersectionObserver>> intersection_observers_;
   std::unordered_map<const BaseView*, std::unique_ptr<ExposeObserver>>
       expose_observers_map_;
