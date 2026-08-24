@@ -151,9 +151,20 @@ bool ViewContext::CreateView(int id, const std::string& tag_name) {
     page_view_->SetID(id);
     return true;
   }
-  const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
   BaseView* view = nullptr;
-  view = ViewRegistry::GetInstance()->CreateView(id, resolved_tag, page_view_);
+  if (platform_view_tag_overrides_.find(tag_name) !=
+      platform_view_tag_overrides_.end()) {
+    view = new NativeView(id, tag_name, page_view_);
+    if (UNLIKELY(!static_cast<NativeView*>(view)->IsNativeViewAvailable())) {
+      view->Destroy();
+      delete view;
+      view = nullptr;
+    }
+  } else {
+    const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
+    view =
+        ViewRegistry::GetInstance()->CreateView(id, resolved_tag, page_view_);
+  }
 
   if (!view) {
     FML_DLOG(ERROR) << "unsupported view type: " << tag_name
@@ -332,9 +343,16 @@ ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
               tag_name.c_str());
   CTX_LOG << "CreateLayoutNode id:" << id << " tag:" << tag_name;
 
-  const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
-  auto node = ViewRegistry::GetInstance()->CreateShadowNode(
-      id, shadow_node_owner_, resolved_tag);
+  ShadowNode* node = nullptr;
+  if (platform_view_tag_overrides_.find(tag_name) !=
+      platform_view_tag_overrides_.end()) {
+    node = GetShadowNodeCreator<NativeViewShadowNode>()(id, shadow_node_owner_,
+                                                        tag_name);
+  } else {
+    const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
+    node = ViewRegistry::GetInstance()->CreateShadowNode(id, shadow_node_owner_,
+                                                         resolved_tag);
+  }
   if (node) {
     shadow_node_owner_->AddNode(id, node);
   } else if (allow_inline) {
@@ -348,6 +366,11 @@ ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
 }
 
 int32_t ViewContext::GetTagInfo(const std::string& tag_name) {
+  constexpr int32_t kTagInfoCustom = 1 << 2;
+  if (platform_view_tag_overrides_.find(tag_name) !=
+      platform_view_tag_overrides_.end()) {
+    return kTagInfoCustom;
+  }
   const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
   return ViewRegistry::GetInstance()->GetTagInfo(resolved_tag, page_view_);
 }
@@ -1188,6 +1211,11 @@ void ViewContext::SyncNativeViewTags(
         },
         GetShadowNodeCreator<NativeViewShadowNode>(), true);
   }
+}
+
+void ViewContext::SetPlatformViewTagOverrides(
+    std::unordered_set<std::string> tags) {
+  platform_view_tag_overrides_ = std::move(tags);
 }
 
 std::vector<float> ViewContext::GetRectToLynxView(int64_t id) {
