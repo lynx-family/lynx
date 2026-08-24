@@ -35,6 +35,9 @@ class RecordingEventDelegate final : public EventDelegate {
   const std::vector<CustomEvent>& custom_events_by_target() const {
     return custom_events_by_target_;
   }
+  const std::vector<EventDispatchOptions>& custom_event_options() const {
+    return custom_event_options_;
+  }
   const std::vector<std::string>& global_events() const {
     return global_events_;
   }
@@ -42,6 +45,13 @@ class RecordingEventDelegate final : public EventDelegate {
                          Value::Map) override {
     custom_events_.push_back(event_name);
     custom_events_by_target_.emplace_back(callback_id, event_name);
+  }
+  void OnSendCustomEventWithOptions(
+      int callback_id, const std::string& event_name, Value::Map,
+      const EventDispatchOptions& options) override {
+    custom_events_.push_back(event_name);
+    custom_events_by_target_.emplace_back(callback_id, event_name);
+    custom_event_options_.push_back(options);
   }
   void OnSendGlobalEvent(const std::string& event_name, Value) override {
     global_events_.push_back(event_name);
@@ -76,6 +86,7 @@ class RecordingEventDelegate final : public EventDelegate {
  private:
   std::vector<std::string> custom_events_;
   std::vector<CustomEvent> custom_events_by_target_;
+  std::vector<EventDispatchOptions> custom_event_options_;
   std::vector<std::string> global_events_;
 };
 
@@ -144,6 +155,10 @@ class ExposeObserverTest : public ::testing::Test {
         }));
   }
 
+  const std::vector<EventDispatchOptions>& custom_event_options() const {
+    return event_delegate_.custom_event_options();
+  }
+
   RecordingEventDelegate event_delegate_;
   std::unique_ptr<PageView> page_;
 };
@@ -154,12 +169,25 @@ TEST_F(ExposeObserverTest, NodeReadyImmediatelyExposesVisibleTarget) {
   NotifyTargetReady(target);
 
   EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  ASSERT_EQ(custom_event_options().size(), 1u);
+  EXPECT_TRUE(custom_event_options()[0].emergency);
   EXPECT_EQ(global_events(), Events({"exposure"}));
 
   manager()->NotifyObservers();
   page_->SendGlobalExposureEvent();
   EXPECT_EQ(custom_events(), Events({"uiappear"}));
   EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, StructuralAttestationRejectsLaterPageChildren) {
+  page_->AddChild(new View(99, page_.get()));
+  View* target = AddVisibleObservedView(1);
+
+  NotifyTargetReady(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  ASSERT_EQ(custom_event_options().size(), 1u);
+  EXPECT_FALSE(custom_event_options()[0].emergency);
 }
 
 TEST_F(ExposeObserverTest, NodeReadyWaitsForValidBounds) {
@@ -251,6 +279,9 @@ TEST_F(ExposeObserverTest, StopWithEventFlushesPairedEventsInSameTask) {
   manager()->StopExposure(true);
 
   EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
+  ASSERT_EQ(custom_event_options().size(), 2u);
+  EXPECT_TRUE(custom_event_options()[0].emergency);
+  EXPECT_FALSE(custom_event_options()[1].emergency);
   EXPECT_EQ(global_events(), Events({"exposure", "disexposure"}));
 }
 

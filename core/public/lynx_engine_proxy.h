@@ -16,6 +16,12 @@
 namespace lynx {
 namespace shell {
 
+struct CustomEventDispatchOptions {
+  // Emergency tasks are selected before normal ready tasks at the next
+  // message-loop boundary. They never preempt a task that is already running.
+  bool emergency{false};
+};
+
 class LynxEngineProxy {
  public:
   virtual ~LynxEngineProxy() = default;
@@ -34,6 +40,13 @@ class LynxEngineProxy {
   virtual void SendCustomEvent(const std::string& name, int32_t tag,
                                const pub::Value& params,
                                const std::string& params_name) = 0;
+
+  virtual void SendCustomEventWithOptions(
+      const std::string& name, int32_t tag, const pub::Value& params,
+      const std::string& params_name,
+      const CustomEventDispatchOptions& options) {
+    SendCustomEvent(name, tag, params, params_name);
+  }
 
   virtual void SendGestureEvent(int tag, int gesture_id, std::string name,
                                 const pub::Value& params) = 0;
