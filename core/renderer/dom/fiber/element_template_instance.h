@@ -33,7 +33,8 @@ class ElementTemplateInstance : public lepus::RefCounted {
   }
   void SetTypedTag(const base::String& typed_tag);
   bool IsTypedTemplate() const { return !typed_tag_.empty(); }
-  void SetRootAttributes(const lepus::Value& attributes);
+  // Typed-only attributes; compiled instances use attribute slots.
+  void SetAttributes(const lepus::Value& attributes);
   void SetAttributeSlots(const lepus::Value& attribute_slots);
   void InitializeChildSlots(const lepus::Value& child_slots);
   void SetOptions(const lepus::Value& options);
@@ -42,6 +43,7 @@ class ElementTemplateInstance : public lepus::RefCounted {
   fml::RefPtr<Element> GetRoot();
   lepus::Value Serialize() const;
 
+  void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
   void InsertNodeIntoChildSlot(uint32_t slot_index, const lepus::Value& child,
                                const lepus::Value& ref_node);
   void RemoveNodeFromChildSlot(uint32_t slot_index, const lepus::Value& child);
@@ -55,12 +57,13 @@ class ElementTemplateInstance : public lepus::RefCounted {
       TemplateEntry* entry);
   void MaterializeRoot();
   void InitGeneratedElementTree(const lepus::Value& prepared_attribute_slots,
-                                uint32_t prepared_attribute_slots_generation,
-                                const lepus::Value& prepared_root_attributes,
-                                uint32_t prepared_root_attributes_generation);
+                                uint32_t prepared_attribute_slots_generation);
   void InitTypedRoot();
   bool IsMaterialized() const { return result_ != nullptr; }
   fml::RefPtr<Element> PeekMaterializedRoot() const;
+
+  void ApplyAttributeSlotToTarget(uint32_t slot_index,
+                                  const lepus::Value& previous_attribute_slots);
 
   lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
   bool EraseChildFromSlotStorage(uint32_t slot_index,
@@ -74,8 +77,7 @@ class ElementTemplateInstance : public lepus::RefCounted {
   base::String bundle_url_;
   base::String typed_tag_;
 
-  lepus::Value root_attributes_;
-  uint32_t root_attributes_generation_{0};
+  // Typed instances store their complete attribute object in slot 0.
   lepus::Value attribute_slots_;
   uint32_t attribute_slots_generation_{0};
   lepus::Value child_slots_;
