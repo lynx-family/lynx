@@ -85,6 +85,8 @@ class ExposeObserverTest : public ::testing::Test {
     page_ = std::make_unique<PageView>(0, nullptr, nullptr);
     page_->SetEventDelegate(&event_delegate_);
     page_->SetBound(0, 0, 1000, 1000);
+    manager()->SetDirectPageChildFirstAddExposureEnabledForTesting(true);
+    manager()->SetLargeExposureTargetAfterLayoutEnabledForTesting(true);
   }
 
   void TearDown() override { page_->DestroyAllChildren(); }
@@ -111,6 +113,16 @@ class ExposeObserverTest : public ::testing::Test {
     manager()->StopExposure(false);
     manager()->ResumeExposure();
     manager()->NotifyObservers();
+  }
+
+  View* AddObservedChild(BaseView* parent, int id) {
+    auto* target = new View(id, page_.get());
+    parent->AddChild(target);
+    target->SetAttribute("exposure-id",
+                         Value("visible-target-" + std::to_string(id)));
+    target->AddEventCallback("uiappear");
+    target->AddEventCallback("uidisappear");
+    return target;
   }
 
   IntersectionObserverManager* manager() {
@@ -204,6 +216,198 @@ TEST_F(ExposeObserverTest, NodeReadyRespectsExposureGates) {
   EXPECT_TRUE(global_events().empty());
 
   manager()->ResumeExposure();
+  NotifyTargetReady(target);
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest,
+       DirectPageChildWithUIAppearExposesOnFirstAddWithoutLayout) {
+  auto* target = new View(1, page_.get());
+  target->SetAttribute("exposure-id", Value("direct-child"));
+  target->AddEventCallback("uiappear");
+  target->AddEventCallback("uidisappear");
+
+  page_->AddChild(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, FeatureDisabledUsesNodeReadyFallback) {
+  manager()->SetDirectPageChildFirstAddExposureEnabledForTesting(false);
+  auto* target = new View(1, page_.get());
+  target->SetAttribute("exposure-id", Value("direct-child"));
+  target->AddEventCallback("uiappear");
+  page_->AddChild(target);
+
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  target->SetBound(0, 0, 100, 100);
+  NotifyTargetReady(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest,
+       DirectPageChildWithoutUIAppearUsesNodeReadyFallback) {
+  auto* target = new View(1, page_.get());
+  target->SetAttribute("exposure-id", Value("direct-child"));
+  page_->AddChild(target);
+
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  target->AddEventCallback("uiappear");
+  target->SetBound(0, 0, 100, 100);
+  NotifyTargetReady(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, NestedObservedChildUsesNodeReadyFallback) {
+  auto* wrapper = new View(1, page_.get());
+  page_->AddChild(wrapper);
+  auto* target = new View(2, page_.get());
+  target->SetAttribute("exposure-id", Value("nested-child"));
+  target->AddEventCallback("uiappear");
+  wrapper->AddChild(target);
+
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  wrapper->SetBound(0, 0, 100, 100);
+  target->SetBound(0, 0, 100, 100);
+  NotifyTargetReady(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, DirectPageChildFastPathIsOneShotAcrossReattach) {
+  auto* target = new View(1, page_.get());
+  target->SetAttribute("exposure-id", Value("direct-child"));
+  target->AddEventCallback("uiappear");
+  target->AddEventCallback("uidisappear");
+  page_->AddChild(target);
+
+  page_->RemoveChild(target);
+  page_->AddChild(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
+
+  target->SetBound(0, 0, 100, 100);
+  NotifyTargetReady(target);
+  EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear", "uiappear"}));
+}
+
+TEST_F(ExposeObserverTest,
+       HostHiddenFirstAddReconcilesImmediatelyWhenHostBecomesVisible) {
+  manager()->SetExposureHostVisible(false);
+  auto* target = new View(1, page_.get());
+  target->SetAttribute("exposure-id", Value("direct-child"));
+  target->AddEventCallback("uiappear");
+  target->AddEventCallback("uidisappear");
+  page_->AddChild(target);
+
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  manager()->SetExposureHostVisible(true);
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+
+  manager()->NotifyObservers();
+  page_->SendGlobalExposureEvent();
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest,
+       HostVisibleDoesNotPromoteFirstAddMissingUIAppearCallback) {
+  manager()->SetExposureHostVisible(false);
+  auto* target = new View(1, page_.get());
+  target->SetAttribute("exposure-id", Value("direct-child"));
+  page_->AddChild(target);
+  target->AddEventCallback("uiappear");
+
+  manager()->SetExposureHostVisible(true);
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  target->SetBound(0, 0, 100, 100);
+  NotifyTargetReady(target);
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, LargeDirectChildExposesAfterLayout) {
+  View* target = AddObservedView(1);
+  target->SetBound(0, 0, 800, 800);
+
+  EXPECT_TRUE(manager()->TryReconcileLargeExposureTargetAfterLayout(target));
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+
+  EXPECT_FALSE(manager()->TryReconcileLargeExposureTargetAfterLayout(target));
+  NotifyTargetReady(target);
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, LargeNestedTargetExposesWhenWrapperChainIsReady) {
+  auto* wrapper = new View(1, page_.get());
+  page_->AddChild(wrapper);
+  wrapper->SetBound(0, 0, 1000, 1000);
+  View* target = AddObservedChild(wrapper, 2);
+  target->SetBound(0, 0, 800, 800);
+
+  EXPECT_TRUE(manager()->TryReconcileLargeExposureTargetAfterLayout(target));
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, LargeNestedTargetWaitsForWrapperLayout) {
+  auto* wrapper = new View(1, page_.get());
+  page_->AddChild(wrapper);
+  View* target = AddObservedChild(wrapper, 2);
+  target->SetBound(0, 0, 800, 800);
+
+  EXPECT_FALSE(manager()->TryReconcileLargeExposureTargetAfterLayout(target));
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  wrapper->SetBound(0, 0, 1000, 1000);
+  EXPECT_TRUE(manager()->TryReconcileLargeExposureTargetAfterLayout(wrapper));
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, HalfViewportTargetUsesNodeReadyFallback) {
+  View* target = AddObservedView(1);
+  target->SetBound(0, 0, 1000, 500);
+
+  EXPECT_FALSE(manager()->TryReconcileLargeExposureTargetAfterLayout(target));
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  NotifyTargetReady(target);
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest, LargeTargetFeatureDisabledUsesNodeReadyFallback) {
+  manager()->SetLargeExposureTargetAfterLayoutEnabledForTesting(false);
+  View* target = AddObservedView(1);
+  target->SetBound(0, 0, 800, 800);
+
+  EXPECT_FALSE(manager()->TryReconcileLargeExposureTargetAfterLayout(target));
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
   NotifyTargetReady(target);
   EXPECT_EQ(custom_events(), Events({"uiappear"}));
   EXPECT_EQ(global_events(), Events({"exposure"}));

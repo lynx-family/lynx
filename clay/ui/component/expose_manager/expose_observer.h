@@ -65,6 +65,19 @@ class ExposeObserver : public IntersectionObserver {
 
   void CheckForIntersectionWithTarget() override;
 
+  bool HasUIAppearCallback() const {
+    return expose_attrs_.exposure_should_notify_appear_;
+  }
+
+  bool IsExposed() const {
+    return expose_attrs_.expose_state == ExposureState::kExposed;
+  }
+
+  // This fast path is restricted to a PageView's direct child on its first
+  // insertion. It bypasses geometry while preserving the normal exposure
+  // state machine and event payload.
+  bool TryNotifyAppearWithoutGeometry();
+
  protected:
   bool IsOfType(ObserverType type) const override {
     return type == IntersectionObserver::kExposeObserver;

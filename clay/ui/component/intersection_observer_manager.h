@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "clay/ui/component/base_view.h"
@@ -20,8 +21,7 @@
 namespace clay {
 class IntersectionObserverManager {
  public:
-  explicit IntersectionObserverManager(BaseView* page_view)
-      : page_view_(page_view) {}
+  explicit IntersectionObserverManager(BaseView* page_view);
   ~IntersectionObserverManager() = default;
 
   void AddObserver(std::unique_ptr<IntersectionObserver> observer);
@@ -34,6 +34,8 @@ class IntersectionObserverManager {
   void NotifyTargetAttached(BaseView* view);
   void NotifyTargetDetached(BaseView* view);
   void ReconcileExposureForTarget(BaseView* view);
+  bool TryNotifyDirectPageChildOnFirstAdd(BaseView* view);
+  bool TryReconcileLargeExposureTargetAfterLayout(BaseView* view);
 
   void RemoveExposeObserver(BaseView* view);
   bool UpdateExposeData(const char* attr_key, const clay::Value& value,
@@ -50,20 +52,33 @@ class IntersectionObserverManager {
 
   BaseView* page_view() { return page_view_; }
 
+  void SetDirectPageChildFirstAddExposureEnabledForTesting(bool enabled) {
+    direct_page_child_first_add_exposure_enabled_ = enabled;
+  }
+  void SetLargeExposureTargetAfterLayoutEnabledForTesting(bool enabled) {
+    large_exposure_target_after_layout_enabled_ = enabled;
+  }
+
  private:
   int64_t expose_min_time_gap_ms_ = 1000 / 20;
   bool exposure_ui_margin_enabled_ = false;
   bool exposure_stopped_ = false;
   bool exposure_host_visible_ = true;
+  bool direct_page_child_first_add_exposure_enabled_ = false;
+  bool large_exposure_target_after_layout_enabled_ = false;
   int64_t last_expose_time_ = -1;
 
   BaseView* page_view_;
   std::list<std::unique_ptr<IntersectionObserver>> intersection_observers_;
   std::unordered_map<const BaseView*, std::unique_ptr<ExposeObserver>>
       expose_observers_map_;
+  std::unordered_set<BaseView*> layout_fast_path_candidate_views_;
+  std::unordered_set<BaseView*> layout_fast_path_attempted_views_;
+  std::unordered_set<BaseView*> host_hidden_first_add_pending_views_;
 
-  void EraseExposeObserver(const BaseView* view = nullptr,
+  void EraseExposeObserver(BaseView* view = nullptr,
                            const ExposeObserver* target = nullptr);
+  bool TryReconcileDeferredDirectPageChildAfterHostVisible(BaseView* view);
 
   template <class T>
   void EraseObserver(std::list<T>& container, BaseView* attached_view,

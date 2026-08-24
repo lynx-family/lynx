@@ -21,6 +21,10 @@ namespace setting {
 LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
                  "clay_precompile_skity_shaders");
 LYNX_SETTING_KEY(MERGE_CLAY_THREAD_POOL, bool, "merge_clay_thread_pool");
+LYNX_SETTING_KEY(CLAY_ENABLE_DIRECT_PAGE_CHILD_FIRST_ADD_EXPOSURE, bool,
+                 "clay_enable_direct_page_child_first_add_exposure", true);
+LYNX_SETTING_KEY(CLAY_ENABLE_LARGE_EXPOSURE_TARGET_AFTER_LAYOUT, bool,
+                 "clay_enable_large_exposure_target_after_layout", true);
 
 }  // namespace setting
 }  // namespace clay

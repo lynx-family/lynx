@@ -88,6 +88,16 @@ void ExposeObserver::SetExposureHostVisible(bool visible) {
   exposure_host_visible_ = visible;
 }
 
+bool ExposeObserver::TryNotifyAppearWithoutGeometry() {
+  if (!available_ || !root_ || expose_attrs_.exposure_stoped ||
+      !exposure_host_visible_ ||
+      !expose_attrs_.exposure_should_notify_appear_ || IsExposed()) {
+    return false;
+  }
+  NotifyExposureEvent(true);
+  return true;
+}
+
 void ExposeObserver::NotifyAppearEvent(bool appear) {
   if (attached_view_ && attached_view_->page_view()) {
     const char* event_name = appear ? "uiappear" : "uidisappear";
