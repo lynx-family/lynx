@@ -204,9 +204,7 @@ jobs:
           path: |
             ~/.cocoapods/repos/trunk
             ~/Library/Caches/CocoaPods
-          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile') }}
-          restore-keys: |
-            cocoapods-ios-explorer-${{ runner.os }}-
+          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile', 'lynx/explorer/darwin/ios/lynx_explorer/Podfile.flatten') }}
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Install iOS Dependencies
@@ -790,9 +788,7 @@ jobs:
           path: |
             ~/.cocoapods/repos/trunk
             ~/Library/Caches/CocoaPods
-          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile') }}
-          restore-keys: |
-            cocoapods-ios-explorer-${{ runner.os }}-
+          key: cocoapods-ios-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/darwin/ios/lynx_explorer/Podfile', 'lynx/explorer/darwin/ios/lynx_explorer/Podfile.flatten') }}
       - name: Build Explorer App
         uses: ./lynx/.github/actions/ios-explorer-build
         with:
@@ -850,11 +846,11 @@ jobs:
             ~/.cocoapods/repos/trunk
             ~/Library/Caches/CocoaPods
           # This cache is for third-party pods' trunk/spec and download artifacts.
-          # The Podfile rewrite below only pins Lynx pods to a local source, so the
-          # original demo Podfile/Podfile.lock is sufficient to key third-party cache.
-          key: cocoapods-ios-integration-${{ runner.os }}-${{ hashFiles('demo/ios/HelloLynxObjc/Podfile', 'demo/ios/HelloLynxObjc/Podfile.lock') }}
-          restore-keys: |
-            cocoapods-ios-integration-${{ runner.os }}-
+          # The Podfile rewrite below only pins Lynx pods to a local source, but
+          # Lynx podspec transitive dependencies resolved from trunk are expected
+          # to stay in sync with explorer Podfile.flatten. Include that file so
+          # child dependency version changes also invalidate this third-party cache.
+          key: cocoapods-ios-integration-${{ runner.os }}-${{ hashFiles('demo/ios/HelloLynxObjc/Podfile', 'demo/ios/HelloLynxObjc/Podfile.lock', 'lynx/explorer/darwin/ios/lynx_explorer/Podfile.flatten') }}
       - name: Build the Demo Project
         run: |-
           cd $GITHUB_WORKSPACE
