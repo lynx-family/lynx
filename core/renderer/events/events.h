@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
+#include "core/event/event_listener.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -20,6 +21,17 @@ constexpr const static char* kEventCatchEvent = "catchEvent";
 constexpr const static char* kEventCaptureBind = "capture-bind";
 constexpr const static char* kEventCaptureCatch = "capture-catch";
 constexpr const static char* kEventGlobalBind = "global-bindEvent";
+
+inline event::EventListener::Options GetEventListenerOptions(
+    const base::String& type) {
+  const bool is_capture = type.IsEqual(kEventCaptureBind);
+  const bool is_capture_catch = type.IsEqual(kEventCaptureCatch);
+  const bool is_bubble_catch = type.IsEqual(kEventCatchEvent);
+  const bool is_global_bind = type.IsEqual(kEventGlobalBind);
+  return event::EventListener::Options(
+      is_capture || is_capture_catch, false, false, false,
+      is_capture_catch || is_bubble_catch, is_global_bind);
+}
 
 struct EventOption {
   // Determines whether the event can bubble. Default value is false.

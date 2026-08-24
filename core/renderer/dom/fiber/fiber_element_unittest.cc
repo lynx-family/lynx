@@ -301,6 +301,36 @@ const lepus::Value* DatasetValue(const Element* element,
   }
   return &it->second;
 }
+
+void ExpectElementAPIError() {
+  const auto& stored_error = base::ErrorStorage::GetInstance().GetError();
+  ASSERT_NE(stored_error, nullptr);
+  EXPECT_EQ(stored_error->error_code_, error::E_ELEMENT_API_ERROR);
+}
+
+std::shared_ptr<runtime::MTSRuntime> CreateRendererRuntime(
+    TemplateAssembler* template_assembler) {
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  if (renderer_runtime == nullptr) {
+    return nullptr;
+  }
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(template_assembler)));
+  return renderer_runtime;
+}
+
+void SetDefaultEntryRuntime(
+    TemplateAssembler* template_assembler,
+    const std::shared_ptr<runtime::MTSRuntime>& runtime) {
+  auto entry = std::make_shared<TemplateEntry>();
+  entry->SetVm(runtime);
+  entry->SetName(DEFAULT_ENTRY_NAME);
+  template_assembler->template_entries_[DEFAULT_ENTRY_NAME] = std::move(entry);
+}
 }  // namespace
 
 static std::unordered_map<std::string, uint32_t> kTestColorMap = {
@@ -20736,6 +20766,273 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
   EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
                                CSSPropertyID::kPropertyIDWidth,
                                CSSValue(200, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest,
+       SetModifierToElementBindsSupportedLocalEventsAndReplacesThem) {
+  EXPECT_FALSE(manager->EnableEventHandleRefactor());
+
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] =
+      "(function() { globalThis.modifierEventCount += 1; })";
+  renderer_runtime->SetGlobalData("modifierEventCount", lepus::Value(0));
+  ASSERT_TRUE(renderer_context->EvalBuf(kCallbackSource,
+                                        sizeof(kCallbackSource) - 1, callback,
+                                        "modifier_event.js"));
+  ASSERT_TRUE(callback.IsCallable());
+
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  lepus::Value modifier;
+  const std::pair<const char*, const char*> events[] = {
+      {"tap", kEventBindEvent},
+      {"feedback", kEventCatchEvent},
+      {"ready", kEventCaptureBind},
+      {"custom", kEventCaptureCatch},
+  };
+  for (const auto& [name, type] : events) {
+    auto event = lepus::Dictionary::Create();
+    event->SetValue("op", lepus::Value(6));
+    event->SetValue("eventName", lepus::Value(name));
+    event->SetValue("eventType", lepus::Value(type));
+    event->SetValue("callback", callback);
+    if (!modifier.IsEmpty()) {
+      event->SetValue("previous", modifier);
+    }
+    modifier = lepus::Value(std::move(event));
+  }
+
+  base::ErrorStorage::GetInstance().Reset();
+  lepus::Value bind_args[] = {lepus::Value(element), modifier};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, bind_args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  for (const auto& [name, type] : events) {
+    auto event = element->event_map().find(name);
+    ASSERT_NE(event, element->event_map().end());
+    EXPECT_TRUE(event->second->type().empty());
+    EXPECT_TRUE(event->second->is_js_event());
+    EXPECT_TRUE(event->second->function().empty());
+    EXPECT_TRUE(event->second->lepus_function().IsEmpty());
+    EXPECT_TRUE(event->second->lepus_object().IsEmpty());
+    EXPECT_EQ(event->second->lepus_context(), nullptr);
+
+    auto* listeners = element->GetEventListenerMap()->Find(name);
+    ASSERT_NE(listeners, nullptr);
+    ASSERT_EQ(listeners->size(), 1u);
+    const bool is_capture =
+        type == kEventCaptureBind || type == kEventCaptureCatch;
+    const bool is_catch =
+        type == kEventCatchEvent || type == kEventCaptureCatch;
+    EXPECT_EQ(listeners->front()->GetOptions().IsCapture(), is_capture);
+    EXPECT_EQ(listeners->front()->GetOptions().IsCatch(), is_catch);
+  }
+
+  auto first_event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  EXPECT_TRUE(
+      event::EventDispatcher::DispatchEvent(*element, first_event).consumed);
+  EXPECT_EQ(renderer_runtime->GetGlobalData("modifierEventCount"),
+            lepus::Value(1));
+
+  lepus::Value replacement_callback;
+  static constexpr char kReplacementCallbackSource[] =
+      "(function() {"
+      "  globalThis.modifierEventCount += 10;"
+      "})";
+  ASSERT_TRUE(renderer_context->EvalBuf(
+      kReplacementCallbackSource, sizeof(kReplacementCallbackSource) - 1,
+      replacement_callback, "replacement_modifier_event.js"));
+  auto replacement = lepus::Dictionary::Create();
+  replacement->SetValue("op", lepus::Value(6));
+  replacement->SetValue("eventName", lepus::Value("tap"));
+  replacement->SetValue("eventType", lepus::Value(kEventCatchEvent));
+  replacement->SetValue("callback", replacement_callback);
+  lepus::Value replacement_args[] = {lepus::Value(element),
+                                     lepus::Value(replacement)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context,
+                                               replacement_args, 2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  ASSERT_EQ(element->event_map().size(), 1u);
+  auto replacement_event = element->event_map().find("tap");
+  ASSERT_NE(replacement_event, element->event_map().end());
+  EXPECT_TRUE(replacement_event->second->type().empty());
+  EXPECT_TRUE(replacement_event->second->function().empty());
+  EXPECT_TRUE(replacement_event->second->lepus_function().IsEmpty());
+  auto* replacement_listeners = element->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(replacement_listeners, nullptr);
+  ASSERT_EQ(replacement_listeners->size(), 1u);
+  EXPECT_TRUE(replacement_listeners->front()->GetOptions().IsCatch());
+
+  auto replaced_event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  EXPECT_TRUE(
+      event::EventDispatcher::DispatchEvent(*element, replaced_event).consumed);
+  EXPECT_EQ(renderer_runtime->GetGlobalData("modifierEventCount"),
+            lepus::Value(11));
+
+  // A null modifier clears the complete local event set.
+  lepus::Value clear_args[] = {lepus::Value(element), lepus::Value()};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, clear_args, 2);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_TRUE(element->event_map().empty());
+  EXPECT_TRUE(element->lepus_event_map().empty());
+  auto* cleared_listeners = element->GetEventListenerMap()->Find("tap");
+  EXPECT_TRUE(cleared_listeners == nullptr || cleared_listeners->empty());
+  auto cleared_event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  EXPECT_FALSE(
+      event::EventDispatcher::DispatchEvent(*element, cleared_event).consumed);
+  EXPECT_EQ(renderer_runtime->GetGlobalData("modifierEventCount"),
+            lepus::Value(11));
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, SetModifierToElementBindsClickThroughEventListener) {
+  EXPECT_FALSE(manager->EnableEventHandleRefactor());
+
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+
+  renderer_runtime->SetGlobalData("modifierClickCount", lepus::Value(0));
+  renderer_runtime->SetGlobalData("modifierHasChangedTouches",
+                                  lepus::Value(false));
+  renderer_runtime->SetGlobalData("modifierHasElementRef", lepus::Value(false));
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] =
+      "(function(event) {"
+      "  globalThis.modifierClickCount += 1;"
+      "  globalThis.modifierHasChangedTouches ="
+      "      Array.isArray(event.changedTouches) &&"
+      "      event.changedTouches.length === 1;"
+      "  globalThis.modifierHasElementRef ="
+      "      event.currentTarget != null &&"
+      "      event.currentTarget.elementRefptr != null;"
+      "})";
+  ASSERT_TRUE(renderer_context->EvalBuf(kCallbackSource,
+                                        sizeof(kCallbackSource) - 1, callback,
+                                        "modifier_click.js"));
+
+  auto click = lepus::Dictionary::Create();
+  click->SetValue("op", lepus::Value(5));
+  click->SetValue("callbackKind", lepus::Value(1));
+  click->SetValue("callback", callback);
+
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  lepus::Value args[] = {lepus::Value(element), lepus::Value(click)};
+  RendererFunctions::FiberSetModifierToElement(renderer_context, args, 2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  auto tap = element->event_map().find("tap");
+  ASSERT_NE(tap, element->event_map().end());
+  EXPECT_TRUE(tap->second->lepus_function().IsEmpty());
+  auto* listeners = element->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(listeners, nullptr);
+  ASSERT_EQ(listeners->size(), 1u);
+  EXPECT_FALSE(listeners->front()->GetOptions().IsCatch());
+
+  auto event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  EXPECT_TRUE(event::EventDispatcher::DispatchEvent(*element, event).consumed);
+  EXPECT_EQ(renderer_runtime->GetGlobalData("modifierClickCount"),
+            lepus::Value(1));
+  EXPECT_EQ(renderer_runtime->GetGlobalData("modifierHasChangedTouches"),
+            lepus::Value(true));
+  EXPECT_EQ(renderer_runtime->GetGlobalData("modifierHasElementRef"),
+            lepus::Value(true));
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest,
+       SetModifierToElementInvokesCallbackInRegistrationRuntime) {
+  auto registration_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(registration_runtime, nullptr);
+  auto* registration_context =
+      runtime::MTSRuntime::ToQuickContext(registration_runtime.get());
+  ASSERT_NE(registration_context, nullptr);
+
+  auto unrelated_entry_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(unrelated_entry_runtime, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), unrelated_entry_runtime);
+
+  registration_runtime->SetGlobalData("modifierOwnerCount", lepus::Value(0));
+  unrelated_entry_runtime->SetGlobalData("modifierOwnerCount", lepus::Value(0));
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] =
+      "(function() { globalThis.modifierOwnerCount += 1; })";
+  ASSERT_TRUE(registration_context->EvalBuf(
+      kCallbackSource, sizeof(kCallbackSource) - 1, callback,
+      "modifier_registration.js"));
+
+  auto click = lepus::Dictionary::Create();
+  click->SetValue("op", lepus::Value(5));
+  click->SetValue("callbackKind", lepus::Value(1));
+  click->SetValue("callback", callback);
+
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  lepus::Value args[] = {lepus::Value(element), lepus::Value(click)};
+  RendererFunctions::FiberSetModifierToElement(registration_context, args, 2);
+  ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  auto event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  EXPECT_TRUE(event::EventDispatcher::DispatchEvent(*element, event).consumed);
+  EXPECT_EQ(registration_runtime->GetGlobalData("modifierOwnerCount"),
+            lepus::Value(1));
+  EXPECT_EQ(unrelated_entry_runtime->GetGlobalData("modifierOwnerCount"),
+            lepus::Value(0));
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, SetModifierToElementRejectsInvalidEventNodes) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(renderer_runtime, nullptr);
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  lepus::Value callback;
+  static constexpr char kCallbackSource[] = "(function() {})";
+  ASSERT_TRUE(renderer_context->EvalBuf(kCallbackSource,
+                                        sizeof(kCallbackSource) - 1, callback,
+                                        "invalid_modifier_event.js"));
+
+  auto element = manager->CreateFiberView();
+  auto expect_rejected = [&](const char* name, const char* type,
+                             const lepus::Value& event_callback) {
+    auto event = lepus::Dictionary::Create();
+    event->SetValue("op", lepus::Value(6));
+    event->SetValue("eventName", lepus::Value(name));
+    event->SetValue("eventType", lepus::Value(type));
+    event->SetValue("callback", event_callback);
+
+    base::ErrorStorage::GetInstance().Reset();
+    lepus::Value args[] = {lepus::Value(element), lepus::Value(event)};
+    RendererFunctions::FiberSetModifierToElement(renderer_context, args, 2);
+    ExpectElementAPIError();
+    EXPECT_TRUE(element->event_map().empty());
+    EXPECT_TRUE(element->lepus_event_map().empty());
+  };
+
+  expect_rejected("", kEventBindEvent, callback);
+  expect_rejected("tap", kEventGlobalBind, callback);
+  expect_rejected("tap", "capture-bindEvent", callback);
+  expect_rejected("tap", kEventBindEvent, lepus::Value("not-callable"));
+  base::ErrorStorage::GetInstance().Reset();
 }
 
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
