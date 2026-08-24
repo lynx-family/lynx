@@ -4324,6 +4324,9 @@ void Element::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
     } else if (key == starlight::LayoutAttribute::kListCompType) {
       changed = sl_node_->attr_map().setListCompType(
           value.IsNumber() ? std::optional<int>(value.Number()) : std::nullopt);
+    } else if (key == starlight::LayoutAttribute::kPropagateMinConstraints) {
+      changed = sl_node_->attr_map().setPropagateMinConstraints(
+          value.IsBool() ? std::optional<bool>(value.Bool()) : std::nullopt);
     }
 
     if (changed) {

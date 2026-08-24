@@ -11,7 +11,7 @@ export type CSSProperties = Modify<
   {
     position?: 'absolute' | 'relative' | 'fixed' | 'sticky';
     boxSizing?: 'border-box' | 'content-box' | 'auto';
-    display?: 'none' | 'flex' | 'grid' | 'linear' | 'relative' | 'block' | 'auto';
+    display?: 'none' | 'flex' | 'grid' | 'linear' | 'relative' | 'block' | 'box' | 'auto';
     overflow?: 'hidden' | 'visible' | (string & {});
     whiteSpace?: 'normal' | 'nowrap';
     textAlign?: 'left' | 'center' | 'right' | 'start' | 'end';
