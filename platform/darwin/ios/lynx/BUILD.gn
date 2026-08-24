@@ -110,8 +110,13 @@ subspec_target("Framework") {
   ]
   flatten_deps = framework_podspec_deps
   frameworks = [
-    "UIKit",
+    "Accelerate",
+    "CoreGraphics",
+    "CoreImage",
+    "CoreText",
     "NaturalLanguage",
+    "QuartzCore",
+    "UIKit",
   ]
   if (!use_flatten_deps) {
     dependency = Framework_deps
