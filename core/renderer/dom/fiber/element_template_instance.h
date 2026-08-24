@@ -5,11 +5,15 @@
 #define CORE_RENDERER_DOM_FIBER_ELEMENT_TEMPLATE_INSTANCE_H_
 
 #include "base/include/value/ref_counted_class.h"
+#include "core/base/thread/once_task.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/fiber/generated_elements_result.h"
 
 namespace lynx {
 namespace tasm {
 
+class TemplateAssembler;
+class TemplateEntry;
 class ElementTemplateInstanceSerializer;
 class ElementTemplateInstance : public lepus::RefCounted {
  public:
@@ -20,6 +24,7 @@ class ElementTemplateInstance : public lepus::RefCounted {
     return lepus::RefType::kElementTemplate;
   }
 
+  void SetTASM(TemplateAssembler* tasm) { tasm_ = tasm; }
   void SetTemplateKey(const base::String& template_key) {
     template_key_ = template_key;
   }
@@ -34,6 +39,7 @@ class ElementTemplateInstance : public lepus::RefCounted {
   void SetOptions(const lepus::Value& options);
   void SetUid(const lepus::Value& uid);
 
+  fml::RefPtr<Element> GetRoot();
   lepus::Value Serialize() const;
 
   void InsertNodeIntoChildSlot(uint32_t slot_index, const lepus::Value& child,
@@ -43,11 +49,27 @@ class ElementTemplateInstance : public lepus::RefCounted {
  private:
   friend class ElementTemplateInstanceSerializer;
 
+  void RequestMaterializationRecursively();
+  void EnsureCreateElementTreeTaskScheduled();
+  base::OnceTaskRefptr<GeneratedElementsResult> CreateElementTreeTask(
+      TemplateEntry* entry);
+  void MaterializeRoot();
+  void InitGeneratedElementTree(const lepus::Value& prepared_attribute_slots,
+                                uint32_t prepared_attribute_slots_generation,
+                                const lepus::Value& prepared_root_attributes,
+                                uint32_t prepared_root_attributes_generation);
+  void InitTypedRoot();
+  bool IsMaterialized() const { return result_ != nullptr; }
+  fml::RefPtr<Element> PeekMaterializedRoot() const;
+
   lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
   bool EraseChildFromSlotStorage(uint32_t slot_index,
                                  const lepus::Value& child);
   void ClearLogicalChildParentLinks();
 
+  ElementManager* element_manager_{nullptr};
+  TemplateAssembler* tasm_{nullptr};
+  TemplateEntry* entry_{nullptr};
   base::String template_key_;
   base::String bundle_url_;
   base::String typed_tag_;
@@ -61,6 +83,15 @@ class ElementTemplateInstance : public lepus::RefCounted {
   lepus::Value uid_;
   ElementTemplateInstance* logical_parent_{nullptr};
   uint32_t logical_parent_slot_index_{0};
+
+  bool materialization_requested_{false};
+  base::OnceTaskRefptr<GeneratedElementsResult> create_element_tree_task_{
+      nullptr};
+  fml::RefPtr<Element> result_{nullptr};
+  base::Vector<fml::RefPtr<Element>> attribute_slot_targets_;
+  base::Vector<fml::RefPtr<Element>> event_attribute_slot_targets_;
+  base::Vector<fml::RefPtr<Element>> static_event_targets_;
+  base::Vector<ElementSlotMountPoint> element_slot_targets_;
 };
 
 }  // namespace tasm
