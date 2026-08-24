@@ -6,7 +6,7 @@ import {
   WindowedOpenCardManager,
 } from './open-card-manager';
 import { HeadlessLynxView } from './headless-lynx-view';
-import { LynxEnv } from './lynx-env';
+import { LynxEnv, LynxLogLevel } from './lynx-env';
 import { WindowedLynxView } from './windowed-lynx-view';
 
 type TemplateKind = 'path' | 'url';
@@ -28,6 +28,7 @@ type CliOptions = {
   title: string;
   debugRouter: boolean;
   debugRouterSchema?: string;
+  logLevel?: LynxLogLevel;
 };
 
 const DEFAULT_WIDTH = 390;
@@ -55,6 +56,7 @@ Options:
   --title <text>                   Preview window title.
   --debug-router-schema <schema>   Connect debug-router with the given schema.
   --no-debug-router                Disable preview debug-router startup. Requires a template input.
+  --log-level <level>              Lynx log level: verbose, debug, info, warning, error, fatal, or silent.
   --timeout <ms>                   Load and frame timeout. Defaults to ${DEFAULT_TIMEOUT_MS}.
   --screenshot-delay <ms>          Delay after first frame before screenshot. Defaults to ${DEFAULT_SCREENSHOT_DELAY_MS}.
   -h, --help                       Show this help message.`);
@@ -106,6 +108,22 @@ function parseNonNegativeNumber(value: string, name: string): number {
   return parsed;
 }
 
+function parseLogLevel(value: string): LynxLogLevel {
+  const levels: LynxLogLevel[] = [
+    'verbose',
+    'debug',
+    'info',
+    'warning',
+    'error',
+    'fatal',
+    'silent',
+  ];
+  if (!levels.includes(value as LynxLogLevel)) {
+    throw new Error(`logLevel must be one of: ${levels.join(', ')}`);
+  }
+  return value as LynxLogLevel;
+}
+
 function isHttpUrl(value: string): boolean {
   return value.startsWith('http://') || value.startsWith('https://');
 }
@@ -133,6 +151,7 @@ function parseArgs(argv: string[]): CliOptions | undefined {
   let title = 'Node Lynx Preview';
   let debugRouter = true;
   let debugRouterSchema: string | undefined;
+  let logLevel: LynxLogLevel | undefined;
 
   const setTemplate = (value: string, kind: TemplateKind): void => {
     if (initialTemplate) {
@@ -212,6 +231,12 @@ function parseArgs(argv: string[]): CliOptions | undefined {
       }
     } else if (arg === '--no-debug-router') {
       debugRouter = false;
+    } else if (arg === '--log-level' || arg.startsWith('--log-level=')) {
+      const result = readOptionValue(args, index, arg);
+      logLevel = parseLogLevel(result.value);
+      if (result.consumed) {
+        index++;
+      }
     } else if (arg === '--timeout' || arg.startsWith('--timeout=')) {
       const result = readOptionValue(args, index, arg);
       timeoutMs = parsePositiveNumber(result.value, 'timeoutMs');
@@ -255,6 +280,7 @@ function parseArgs(argv: string[]): CliOptions | undefined {
     title,
     debugRouter,
     debugRouterSchema,
+    logLevel,
   };
 }
 
@@ -485,6 +511,10 @@ export async function runNodeLynxCli(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   if (!options) {
     return;
+  }
+
+  if (options.logLevel) {
+    LynxEnv.setLogLevel(options.logLevel);
   }
 
   if (options.mode === 'preview') {

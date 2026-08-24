@@ -6,6 +6,24 @@ const packageJson = require('../package.json');
 
 export type OpenCardCallback = (url: string) => void;
 export type ClosePageCallback = () => void;
+export type LynxLogLevel =
+  | 'verbose'
+  | 'debug'
+  | 'info'
+  | 'warning'
+  | 'error'
+  | 'fatal'
+  | 'silent';
+
+const LOG_LEVEL_VALUES: Record<LynxLogLevel, number> = {
+  verbose: 0,
+  debug: 1,
+  info: 2,
+  warning: 3,
+  error: 4,
+  fatal: 5,
+  silent: 6,
+};
 
 export class LynxEnv {
   static init(): void {
@@ -37,6 +55,13 @@ export class LynxEnv {
     optionValues: Array<string>
   ): void {
     loadNodeLynxNativeBinding().LynxEnv.setAppInfo(optionKeys, optionValues);
+  }
+
+  static setLogLevel(level: LynxLogLevel): void {
+    if (!Object.prototype.hasOwnProperty.call(LOG_LEVEL_VALUES, level)) {
+      throw new Error(`unsupported Lynx log level: ${String(level)}`);
+    }
+    loadNodeLynxNativeBinding().LynxEnv.setLogLevel(LOG_LEVEL_VALUES[level]);
   }
 
   static connectDevtools(schema: string): boolean {

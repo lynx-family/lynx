@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/node-lynx",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Run Lynx bundles in Node.js for screenshots, preview windows, and test automation.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

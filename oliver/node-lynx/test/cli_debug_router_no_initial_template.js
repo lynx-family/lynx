@@ -19,6 +19,7 @@ const state = {
   clearOpenCardCallbackCalls: 0,
   setClosePageCallbackCalls: 0,
   clearClosePageCallbackCalls: 0,
+  setLogLevelCalls: [],
   headlessViewConstructed: 0,
   windowedViewConstructed: 0,
   headlessScreenshotCalls: 0,
@@ -78,6 +79,9 @@ const mockLynxEnv = {
   },
   setAppInfo() {
     state.setAppInfoCalls += 1;
+  },
+  setLogLevel(level) {
+    state.setLogLevelCalls.push(level);
   },
   connectDevtools() {
     state.connectDevtoolsCalls += 1;
@@ -289,12 +293,42 @@ async function testRenderPassesScreenshotDelay() {
   }
 }
 
+async function testSetsNativeLogLevel() {
+  const outputPath = path.join(
+    os.tmpdir(),
+    `node-lynx-cli-log-level-${process.pid}.png`
+  );
+  try {
+    const result = await runCli([
+      'render',
+      '--no-debug-router',
+      '--template',
+      path.join(PACKAGE_ROOT, 'package.json'),
+      '--output',
+      outputPath,
+      '--log-level',
+      'error',
+    ]);
+
+    assert.strictEqual(result.code, 0, result.stderr);
+    assert.deepStrictEqual(result.state.setLogLevelCalls, ['error']);
+
+    const invalid = await runCli(['--log-level', 'quiet']);
+    assert.strictEqual(invalid.code, 1);
+    assert.match(invalid.stderr, /logLevel must be one of/);
+    assert.deepStrictEqual(invalid.state.setLogLevelCalls, []);
+  } finally {
+    await rm(outputPath, { force: true });
+  }
+}
+
 async function main() {
   await testRenderWaitsForOpenCardWithoutInitialView();
   await testImplicitRenderWaitsForOpenCardWithoutInitialView();
   await testPreviewWaitsForOpenCardWithoutInitialWindow();
   await testNoTemplateStillRequiresDebugRouter();
   await testRenderPassesScreenshotDelay();
+  await testSetsNativeLogLevel();
 }
 
 main()

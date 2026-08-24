@@ -77,6 +77,9 @@ Rules:
   OpenCard. `--no-debug-router` requires an initial template input.
 - Use `--debug-router-schema <schema>` to connect DebugRouter with an explicit
   schema.
+- Use `--log-level error` to hide verbose, debug, info, and warning Lynx logs,
+  or `--log-level silent` to hide all Lynx logger output. When omitted, Lynx
+  keeps its default level.
 - Prefer passing a real template URL when the bundle uses URL-relative
   resources.
 
@@ -155,6 +158,14 @@ Useful APIs:
 - `waitForFrame()` waits until a frame has been submitted.
 - `screenshot({ settleMs })` returns a PNG buffer.
 - `destroy()` releases the native view. Always call it in a `finally` block.
+
+Lynx logging is process-wide. Set the minimum level before creating a view:
+
+```js
+const { LynxEnv } = require('@lynx-js/node-lynx');
+
+LynxEnv.setLogLevel('error');
+```
 
 ## Windowed Preview
 
