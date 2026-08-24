@@ -36,6 +36,8 @@ lynx_core_source_set("fragment") {
     "page_fragment_behavior.h",
     "platform_extended_fragment_behavior.cc",
     "platform_extended_fragment_behavior.h",
+    "scroll_fragment_behavior.cc",
+    "scroll_fragment_behavior.h",
     "text_fragment_behavior.cc",
     "text_fragment_behavior.h",
     "view_fragment_behavior.cc",

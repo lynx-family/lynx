@@ -1,14 +1,18 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+#include <mutex>
+#include <optional>
+#include <string>
+#include <utility>
+
 #define private public
 #define protected public
-
-#include "core/renderer/dom/fiber/scroll_element.h"
 
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/page_element.h"
+#include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -24,6 +28,34 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+class ScopedScrollExternalBoolEnv {
+ public:
+  ScopedScrollExternalBoolEnv(LynxEnv::Key key, bool value) : key_(key) {
+    auto& env = LynxEnv::GetInstance();
+    std::lock_guard<std::recursive_mutex> lock(env.external_env_mutex_);
+    auto it = env.external_env_map_.find(key_);
+    if (it != env.external_env_map_.end()) {
+      previous_value_ = it->second;
+    }
+    env.external_env_map_[key_] =
+        value ? LynxEnv::kLocalEnvValueTrue : LynxEnv::kLocalEnvValueFalse;
+  }
+
+  ~ScopedScrollExternalBoolEnv() {
+    auto& env = LynxEnv::GetInstance();
+    std::lock_guard<std::recursive_mutex> lock(env.external_env_mutex_);
+    if (previous_value_) {
+      env.external_env_map_[key_] = *previous_value_;
+    } else {
+      env.external_env_map_.erase(key_);
+    }
+  }
+
+ private:
+  LynxEnv::Key key_;
+  std::optional<std::string> previous_value_;
+};
 
 class ScrollElementTest : public ::testing::Test {
  public:
@@ -129,6 +161,85 @@ TEST_F(ScrollElementTest, TestChildInsert0) {
   EXPECT_TRUE(wrapper->IsLayoutOnly());
   // Scroll's child should not be layout only.
   EXPECT_FALSE(child_view_1->IsLayoutOnly());
+}
+
+// Verifies how the scroll platform renderer env affects each scroll path.
+TEST_F(ScrollElementTest, PlatformRendererEnvOnlyAppliesToDefaultScrollView) {
+  ScopedScrollExternalBoolEnv enable_platform_renderer_scroll(
+      LynxEnv::Key::ENABLE_PLATFORM_RENDERER_SCROLL, true);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto create_scroll_with_child = [this, &page](const base::String& tag,
+                                                bool enable_new_arch) {
+    auto scroll = manager->CreateFiberScrollView(tag);
+    auto child = manager->CreateFiberView();
+    scroll->InsertNode(child);
+    // Element::OnNodeAdded initially marks the child as a direct child of a
+    // compatible component.
+    EXPECT_TRUE(child->is_direct_child_of_compatible_component());
+    if (enable_new_arch) {
+      scroll->SetAttribute(kScrollNewArch, lepus::Value(kTrue));
+    }
+    page->InsertNode(scroll);
+    return std::make_pair(scroll, child);
+  };
+
+  // Case 1: The default scroll-view enables its dedicated platform renderer
+  // and marks its child as not being a direct child of a compatible component.
+  auto [scroll, scroll_child] = create_scroll_with_child(
+      BASE_STATIC_STRING(kElementScrollViewTag), false);
+
+  // Case 2: A scroll-view using scroll-view-new-arch keeps the new-arch path
+  // and its child's compatible-component flag.
+  auto [new_arch_scroll, new_arch_child] =
+      create_scroll_with_child(BASE_STATIC_STRING(kElementScrollViewTag), true);
+
+  // Case 3: x-scroll-view does not enable the dedicated platform renderer and
+  // keeps its child's compatible-component flag.
+  auto [x_scroll, x_scroll_child] = create_scroll_with_child(
+      BASE_STATIC_STRING(kElementXScrollViewTag), false);
+
+  // Case 4: x-nested-scroll-view does not enable the dedicated platform
+  // renderer and keeps its child's compatible-component flag.
+  auto [x_nested_scroll, x_nested_scroll_child] = create_scroll_with_child(
+      BASE_STATIC_STRING(kElementXNestedScrollViewTag), false);
+
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(scroll->enable_platform_renderer_.has_value());
+  EXPECT_TRUE(*scroll->enable_platform_renderer_);
+  EXPECT_FALSE(scroll_child->is_direct_child_of_compatible_component());
+
+  ASSERT_TRUE(new_arch_scroll->enable_platform_renderer_.has_value());
+  EXPECT_FALSE(*new_arch_scroll->enable_platform_renderer_);
+  EXPECT_TRUE(new_arch_child->is_direct_child_of_compatible_component());
+
+  ASSERT_TRUE(x_scroll->enable_platform_renderer_.has_value());
+  EXPECT_FALSE(*x_scroll->enable_platform_renderer_);
+  EXPECT_TRUE(x_scroll_child->is_direct_child_of_compatible_component());
+
+  ASSERT_TRUE(x_nested_scroll->enable_platform_renderer_.has_value());
+  EXPECT_FALSE(*x_nested_scroll->enable_platform_renderer_);
+  EXPECT_TRUE(x_nested_scroll_child->is_direct_child_of_compatible_component());
+}
+
+TEST_F(ScrollElementTest,
+       PlatformRendererEnvDisabledKeepsDefaultScrollViewCompatible) {
+  ScopedScrollExternalBoolEnv enable_platform_renderer_scroll(
+      LynxEnv::Key::ENABLE_PLATFORM_RENDERER_SCROLL, false);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll =
+      manager->CreateFiberScrollView(BASE_STATIC_STRING(kElementScrollViewTag));
+  auto child = manager->CreateFiberView();
+  scroll->InsertNode(child);
+  page->InsertNode(scroll);
+
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(scroll->enable_platform_renderer_.has_value());
+  EXPECT_FALSE(*scroll->enable_platform_renderer_);
+  EXPECT_TRUE(child->is_direct_child_of_compatible_component());
 }
 
 }  // namespace testing

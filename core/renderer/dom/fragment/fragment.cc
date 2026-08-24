@@ -1284,8 +1284,14 @@ void Fragment::FlushPendingNodeReadyIfNeeded() {
 }
 
 void Fragment::DrawChildren(DisplayListBuilder& display_list_builder) {
+  if (behavior_) {
+    behavior_->BeforeDrawChildren(display_list_builder);
+  }
   for (const auto& child : children_) {
     child->Draw(display_list_builder);
+  }
+  if (behavior_) {
+    behavior_->AfterDrawChildren(display_list_builder);
   }
 }
 

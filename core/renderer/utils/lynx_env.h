@@ -147,6 +147,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_FIBER_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
     ENABLE_LIST_NEW_ARCHITECTURE,
     FIX_LIST_WITH_SYNC_FLUSH,
+    ENABLE_PLATFORM_RENDERER_SCROLL,
     ENABLE_FETCH_API_STANDARD_STREAMING,
     ENABLE_RELEASE_APP_INSTANCE,
     ENABLE_JS_CALL_TIMEOUT_GUARD,
@@ -334,6 +335,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_FILTER_DYNAMIC_UPDATE_BUG,
              "fix_filter_dynamic_update_bug"},
             {Key::FIX_LIST_WITH_SYNC_FLUSH, "fix_list_with_sync_flush"},
+            {Key::ENABLE_PLATFORM_RENDERER_SCROLL,
+             "enable_platform_renderer_scroll"},
             {Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
              "enable_animation_forward_update_preservation"},
             {Key::ENABLE_NEW_STYLING_PIPELINE, "enable_new_styling_pipeline"},
@@ -525,6 +528,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
   bool FixListWithSyncFlush();
+  bool EnablePlatformRendererScroll();
   bool FixOldFixedInsertSelfUseRenderParent();
   bool FixFiberReinsertDetachFromOldRenderParent();
   bool EnableAnimationForwardUpdatePreservation();

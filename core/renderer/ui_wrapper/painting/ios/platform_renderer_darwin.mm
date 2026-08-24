@@ -377,7 +377,8 @@ bool PlatformRendererDarwin::ShouldCreatePlatformExtendedRenderer(
     return true;
   }
   if (type_ == PlatformRendererType::kText || type_ == PlatformRendererType::kImage ||
-      type_ == PlatformRendererType::kView || type_ == PlatformRendererType::kPage) {
+      type_ == PlatformRendererType::kView || type_ == PlatformRendererType::kPage ||
+      type_ == PlatformRendererType::kScroll) {
     return false;
   }
   if (type_ != PlatformRendererType::kUnknown) {

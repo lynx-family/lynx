@@ -688,6 +688,10 @@ bool LynxEnv::FixListWithSyncFlush() {
   return GetBoolEnv(Key::FIX_LIST_WITH_SYNC_FLUSH, false);
 }
 
+bool LynxEnv::EnablePlatformRendererScroll() {
+  return GetBoolEnv(Key::ENABLE_PLATFORM_RENDERER_SCROLL, false);
+}
+
 bool LynxEnv::EnableNativeList() {
   return GetBoolEnv(Key::ENABLE_NATIVE_LIST, false);
 }

@@ -72,6 +72,7 @@ export enum LynxTrailKey {
   ENABLE_USE_CONTEXT_POOL = 'enable_use_context_pool',
   ENABLE_LIST_NEW_ARCHITECTURE = 'enable_list_new_architecture',
   FIX_LIST_WITH_SYNC_FLUSH = 'fix_list_with_sync_flush',
+  ENABLE_PLATFORM_RENDERER_SCROLL = 'enable_platform_renderer_scroll',
   FORCE_USE_SHADER_REPLACE_BLIT_WORKAROUND_CANVAS = 'force_use_shader_replace_blit_workaround_canvas',
   TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS = 'try_to_fix_native_window_leak_harmony_canvas',
   FIX_LIST_CALLBACK_LEAK_BUG = 'fix_list_callback_leak',

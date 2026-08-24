@@ -248,5 +248,25 @@ DisplayListBuilder& DisplayListBuilder::Filter(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::BeginScrollContent(
+    int id, PlatformRendererType type) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kScrollContentBegin;
+  item.payload.scroll_content_begin.id = id;
+  item.payload.scroll_content_begin.type = static_cast<int32_t>(type);
+  display_list_.AppendItem(item);
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::EndScrollContent(float content_width,
+                                                         float content_height) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kScrollContentEnd;
+  item.payload.scroll_content_end.width = content_width;
+  item.payload.scroll_content_end.height = content_height;
+  display_list_.AppendItem(item);
+  return *this;
+}
+
 }  // namespace tasm
 }  // namespace lynx

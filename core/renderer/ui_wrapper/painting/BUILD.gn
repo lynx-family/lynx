@@ -19,6 +19,8 @@ ui_wrapper_painting_shared_sources = [
   "platform_renderer.h",
   "platform_renderer_impl.cc",
   "platform_renderer_impl.h",
+  "platform_renderer_scroll.cc",
+  "platform_renderer_scroll.h",
 ]
 
 ui_wrapper_painting_shared_deps = [
@@ -45,6 +47,8 @@ if (!enable_unittests) {
       "android/platform_renderer_android.h",
       "android/platform_renderer_context.cc",
       "android/platform_renderer_context.h",
+      "android/platform_renderer_scroll_android.cc",
+      "android/platform_renderer_scroll_android.h",
       "android/ui_delegate_android.cc",
       "android/ui_delegate_android.h",
     ]
@@ -75,6 +79,8 @@ if (!enable_unittests) {
       "ios/platform_renderer_darwin_factory.mm",
       "ios/platform_renderer_root_darwin.h",
       "ios/platform_renderer_root_darwin.mm",
+      "ios/platform_renderer_scroll_darwin.h",
+      "ios/platform_renderer_scroll_darwin.mm",
       "ios/ui_delegate_darwin.h",
       "ios/ui_delegate_darwin.mm",
     ]
@@ -91,6 +97,8 @@ unittest_set("platform_renderer_testset") {
   sources = [
     "platform_renderer_impl.cc",
     "platform_renderer_impl_unittest.cc",
+    "platform_renderer_scroll.cc",
+    "platform_renderer_scroll_unittest.cc",
   ]
   public_deps = [
     "../../../../base/src:base_values",
