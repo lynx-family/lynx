@@ -45,9 +45,11 @@ std::array<float, 4> CopyMetrics(const float *source) {
 
 }  // namespace
 
-NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner, void *textra)
-    : context_(
-          std::make_unique<PlatformRendererContextDarwin>([owner tryGetContainerView], owner)) {
+NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner,
+                                                 LynxComponentScopeRegistry *component_registry,
+                                                 void *textra)
+    : context_(std::make_unique<PlatformRendererContextDarwin>([owner tryGetContainerView], owner,
+                                                               component_registry)) {
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
       std::make_unique<PlatformRendererDarwinFactory>(context_.get()));
 

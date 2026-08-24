@@ -5,13 +5,15 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 
 #import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxUIOwner.h>
 
 namespace lynx {
 namespace tasm {
-PlatformRendererContextDarwin::PlatformRendererContextDarwin(UIView<LUIBodyView>* container_view,
-                                                             LynxUIOwner* ui_owner)
-    : ui_owner_(ui_owner) {
+PlatformRendererContextDarwin::PlatformRendererContextDarwin(
+    UIView<LUIBodyView>* container_view, LynxUIOwner* ui_owner,
+    LynxComponentScopeRegistry* component_registry)
+    : ui_owner_(ui_owner), component_registry_(component_registry) {
   renderer_context_ = [[LynxRendererContext alloc] init];
   renderer_context_.bodyView = container_view;
 }
@@ -19,6 +21,7 @@ PlatformRendererContextDarwin::PlatformRendererContextDarwin(UIView<LUIBodyView>
 PlatformRendererContextDarwin::~PlatformRendererContextDarwin() {
   renderer_context_ = nil;
   ui_owner_ = nil;
+  component_registry_ = nil;
 }
 
 CGPoint PlatformRendererContextDarwin::GetRootViewLocationOnScreen() {
