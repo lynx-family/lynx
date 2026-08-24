@@ -5,6 +5,7 @@
 #include "core/shell/lynx_engine.h"
 
 #include <memory>
+#include <mutex>
 
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
@@ -46,10 +47,32 @@ inline bool MergeCacheDataOp(lepus::Value& target,
   return true;
 }
 
-// ensure access on tasm thread
-inline std::string& GetCoreJS() {
-  static base::NoDestructor<std::string> core_js;
-  return *core_js;
+// The core.js source is a process-wide singleton shared by all LynxEngine
+// instances. Since each engine runs on its own TASM thread, concurrent read
+// and write across engines can race on the same std::string. The storage and
+// its mutex are kept private here so all access goes through the two helpers
+// below, which lock internally.
+struct CoreJSStore {
+  std::mutex mutex;
+  std::string value;
+};
+
+inline CoreJSStore& GetCoreJSStore() {
+  static base::NoDestructor<CoreJSStore> store;
+  return *store;
+}
+
+// Returns a copy so the caller never holds a reference to the shared buffer.
+inline std::string GetCoreJS() {
+  auto& store = GetCoreJSStore();
+  std::lock_guard<std::mutex> lock(store.mutex);
+  return store.value;
+}
+
+inline void SetCoreJS(std::string core_js) {
+  auto& store = GetCoreJSStore();
+  std::lock_guard<std::mutex> lock(store.mutex);
+  store.value.assign(std::move(core_js));
 }
 
 }  // namespace
@@ -637,7 +660,7 @@ void LynxEngine::GetComponentContextDataAsync(
 }
 
 void LynxEngine::UpdateCoreJS(std::string core_js) {
-  GetCoreJS().assign(std::move(core_js));
+  SetCoreJS(std::move(core_js));
 }
 
 void LynxEngine::UpdateI18nResource(const std::string& key,
