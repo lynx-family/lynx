@@ -10,6 +10,8 @@ fiber_shared_sources = [
   "block_element.h",
   "component_element.cc",
   "component_element.h",
+  "element_template_instance.cc",
+  "element_template_instance.h",
   "fiber_element.cc",
   "fiber_element_imperative_animation.cc",
   "fiber_node_info.cc",
