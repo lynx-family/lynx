@@ -209,7 +209,9 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                           addDetail("selectionStart", selectionStart)
                           addDetail("selectionEnd", selectionEnd)
                           addDetail("isComposing", mView?.inputConnection()?.hasComposingText(it))
+                          addDetail("inputType", if (mView.mPasting) "paste" else "normal")
                         })
+                        mView.mPasting = false
                       }
                     }
                 }

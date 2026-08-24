@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.3
+- Add `inputType` to the `<input>` and `<textarea>` input event typings to distinguish paste from normal input.
+
 ## 4.3.2
 - Add `android-overlay-scope` to `<overlay>` typings.
 

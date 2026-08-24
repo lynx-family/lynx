@@ -26,7 +26,7 @@ class UIBaseInput : public UIView {
   void OnNodeEvent(ArkUI_NodeEvent* event) override;
   void OnFocusChange(bool has_focus, bool is_focus_transition) override;
   float OnArkUILayoutChanged();
-  void SendInputEvent() const;
+  void SendInputEvent();
   void SendSelectionChangeEvent(int32_t start, int32_t end) const;
   void SendConfirmEvent() const;
   void SendFocusEvent() const;
@@ -41,6 +41,7 @@ class UIBaseInput : public UIView {
   bool keyboard_event_observer_registered_{false};
   bool default_value_consumed_{false};
   bool should_suppress_default_value_events_{false};
+  bool is_pasting_{false};
 
   float computed_height_{INPUT_UNDEFINED_FLOAT};
   float max_height_{INPUT_UNDEFINED_FLOAT};
@@ -79,6 +80,9 @@ class UIBaseInput : public UIView {
     return static_cast<ArkUI_NodeEventType>(-1);
   }
   virtual ArkUI_NodeEventType GetOnWillDeleteEventType() const {
+    return static_cast<ArkUI_NodeEventType>(-1);
+  }
+  virtual ArkUI_NodeEventType GetOnPasteEventType() const {
     return static_cast<ArkUI_NodeEventType>(-1);
   }
 

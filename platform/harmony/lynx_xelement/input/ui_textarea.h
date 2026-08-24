@@ -36,6 +36,7 @@ class UITextArea : public UIBaseInput {
   ArkUI_NodeAttributeType GetBlurOnSubmitAttributeType() const override;
   ArkUI_NodeEventType GetOnWillInsertEventType() const override;
   ArkUI_NodeEventType GetOnWillDeleteEventType() const override;
+  ArkUI_NodeEventType GetOnPasteEventType() const override;
 
  private:
   int32_t current_lines_{0};

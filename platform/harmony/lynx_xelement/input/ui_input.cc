@@ -131,6 +131,9 @@ UIInput::UIInput(LynxContext* context, ArkUI_NodeType type, int sign,
   NodeManager::Instance().RegisterNodeEvent(input_node_,
                                             NODE_TEXT_INPUT_ON_SUBMIT, this);
 
+  NodeManager::Instance().RegisterNodeEvent(input_node_, GetOnPasteEventType(),
+                                            this);
+
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, NODE_TEXT_INPUT_PLACEHOLDER_COLOR, INPUT_DEFAULT_COLOR);
 }
@@ -150,6 +153,8 @@ UIInput::~UIInput() {
                                               GetOnWillInsertEventType());
   NodeManager::Instance().UnregisterNodeEvent(input_node_,
                                               GetOnWillDeleteEventType());
+  NodeManager::Instance().UnregisterNodeEvent(input_node_,
+                                              GetOnPasteEventType());
 }
 
 void UIInput::OnNodeEvent(ArkUI_NodeEvent* event) {
@@ -208,6 +213,10 @@ ArkUI_NodeEventType UIInput::GetOnWillInsertEventType() const {
 
 ArkUI_NodeEventType UIInput::GetOnWillDeleteEventType() const {
   return NODE_TEXT_INPUT_ON_WILL_DELETE;
+}
+
+ArkUI_NodeEventType UIInput::GetOnPasteEventType() const {
+  return NODE_TEXT_INPUT_ON_PASTE;
 }
 
 }  // namespace harmony

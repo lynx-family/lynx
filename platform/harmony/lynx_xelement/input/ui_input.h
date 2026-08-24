@@ -34,6 +34,7 @@ class UIInput : public UIBaseInput {
   ArkUI_NodeAttributeType GetBlurOnSubmitAttributeType() const override;
   ArkUI_NodeEventType GetOnWillInsertEventType() const override;
   ArkUI_NodeEventType GetOnWillDeleteEventType() const override;
+  ArkUI_NodeEventType GetOnPasteEventType() const override;
 };
 
 }  // namespace harmony
