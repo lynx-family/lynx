@@ -279,10 +279,11 @@ class PageView : public BaseView,
     SendCustomEvent(id, event_name, CreateClayMap(keys, args...));
   }
 
-  void SendCustomEvent(int id, const char* event_name,
-                       clay::Value::Map params) {
+  void SendCustomEvent(int id, const char* event_name, clay::Value::Map params,
+                       const EventDispatchOptions& options = {}) {
     if (event_delegate_) {
-      event_delegate_->OnSendCustomEvent(id, event_name, std::move(params));
+      event_delegate_->OnSendCustomEventWithOptions(id, event_name,
+                                                    std::move(params), options);
     }
   }
 

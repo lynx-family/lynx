@@ -82,6 +82,12 @@ bool LynxEngineProxyImpl::SendTouchEvent(const std::string& name,
 void LynxEngineProxyImpl::SendCustomEvent(const std::string& name, int32_t tag,
                                           const pub::Value& params,
                                           const std::string& params_name) {
+  SendCustomEventWithOptions(name, tag, params, params_name, {});
+}
+
+void LynxEngineProxyImpl::SendCustomEventWithOptions(
+    const std::string& name, int32_t tag, const pub::Value& params,
+    const std::string& params_name, const CustomEventDispatchOptions& options) {
   if (engine_actor_ == nullptr) {
     LOGE(
         "LynxEngineProxy::SendCustomEvent failed since engine_actor_ is "
@@ -89,9 +95,14 @@ void LynxEngineProxyImpl::SendCustomEvent(const std::string& name, int32_t tag,
     return;
   }
   auto params_value = pub::ValueUtils::ConvertValueToLepusValue(params);
-  engine_actor_->Act([name, tag, params_value, params_name](auto& engine) {
+  auto dispatch = [name, tag, params_value, params_name](auto& engine) {
     engine->SendCustomEvent(name, tag, params_value, params_name);
-  });
+  };
+  if (options.emergency) {
+    engine_actor_->ActEmergency(std::move(dispatch));
+  } else {
+    engine_actor_->Act(std::move(dispatch));
+  }
 }
 
 void LynxEngineProxyImpl::SendGestureEvent(int tag, int gesture_id,
