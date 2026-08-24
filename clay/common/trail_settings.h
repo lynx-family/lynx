@@ -18,6 +18,10 @@ namespace setting {
 // LYNX_SETTING_KEY(CLAY_ENABLE_FEATURE_A, bool, "clay_enable_feature_a");
 // LYNX_SETTING_KEY(CLAY_ENABLE_FEATURE_B, bool, "clay_enable_feature_b", true);
 
+LYNX_SETTING_KEY(CLAY_FORCE_IGNORE_RASTER_CACHE, bool,
+                 "clay_force_ignore_raster_cache", false);
+LYNX_SETTING_KEY(CLAY_IOS_FULL_PAGE_BUFFER_COUNT, long,
+                 "clay_ios_full_page_buffer_count", 3);
 LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
                  "clay_precompile_skity_shaders");
 LYNX_SETTING_KEY(OPT_THREAD, bool, "opt_thread");
