@@ -7100,6 +7100,25 @@ TEST_P(FiberElementTest, FragmentLayerRenderFlattenIgnoresEventListenerFlag) {
 }
 
 TEST_P(FiberElementTest,
+       FragmentLayerRenderStyleOnlyTransformCreatesPlatformLayer) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(view->HasUIPrimitive());
+  ASSERT_FALSE(view->prop_bundle_);
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("translateX(10px)"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(view->prop_bundle_);
+  EXPECT_TRUE(view->HasUIPrimitive());
+}
+
+TEST_P(FiberElementTest,
        ResolveSimpleStylesHandlesPendingKeyframeChangesFromStyleRemoval) {
   manager->SetEnableSimpleStyle(true);
 
