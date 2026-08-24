@@ -18,6 +18,9 @@ OverlayViewManager::OverlayViewManager(FlutterWindowsEngine* engine)
 std::shared_ptr<OverlayViewController> OverlayViewManager::CreateView(
     int64_t overlay_id, OverlayWindowType type,
     const OverlayWindowCreationRequest& request, HWND parent_handle) {
+  if (auto existing_view = GetView(overlay_id)) {
+    return existing_view;
+  }
   auto view = std::make_shared<OverlayViewController>(
       engine_, type, request.preferred_size, parent_handle, L"ClayOverlayView");
   {
