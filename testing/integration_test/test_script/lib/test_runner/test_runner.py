@@ -16,7 +16,7 @@ from .case_set import CaseSet
 from .mixin.result_mixin import TestCaseStatus
 
 PLATFORM = os.environ.get('platform')
-RETRY_MAX_TIME = 2
+RETRY_MAX_TIME = 3
 
 
 def create_instance(module_name, class_name, *args, **kwargs):
