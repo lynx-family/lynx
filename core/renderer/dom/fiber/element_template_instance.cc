@@ -4,10 +4,18 @@
 
 #include "core/renderer/dom/fiber/element_template_instance.h"
 
+#include <future>
 #include <utility>
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "base/trace/native/trace_event.h"
+#include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/tree_resolver.h"
+#include "core/renderer/template_assembler.h"
+#include "core/renderer/template_entry.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
 namespace tasm {
@@ -22,6 +30,8 @@ static constexpr const char kTemplateAttributeSlots[] = "attributeSlots";
 static constexpr const char kTemplateChildSlots[] = "childSlots";
 static constexpr const char kTemplateOptions[] = "options";
 static constexpr const char kTemplateUid[] = "uid";
+static constexpr const char kDefaultPageComponentId[] = "0";
+static constexpr int32_t kDefaultPageCSSId = 0;
 static constexpr uint32_t kTypedTemplateRootChildSlotIndex = 0;
 
 fml::RefPtr<ElementTemplateInstance> ResolveElementTemplateInstanceValue(
@@ -78,6 +88,21 @@ lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots) {
                                    : CopyTemplateValueForStorage(slot));
   }
   return lepus::Value(std::move(copied_slots));
+}
+
+fml::RefPtr<Element> CreateTypedRootElement(ElementManager* manager,
+                                            TemplateAssembler* tasm,
+                                            const base::String& tag) {
+  if (tag.IsEqual(kElementPageTag)) {
+    auto page = manager->CreateFiberPage(
+        BASE_STATIC_STRING(kDefaultPageComponentId), kDefaultPageCSSId);
+    if (tasm != nullptr) {
+      page->set_style_sheet_manager(
+          tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME));
+    }
+    return page;
+  }
+  return manager->CreateFiberElement(tag);
 }
 
 }  // namespace
@@ -167,7 +192,8 @@ class ElementTemplateInstanceSerializer {
 
 ElementTemplateInstance::ElementTemplateInstance(
     ElementManager* element_manager)
-    : bundle_url_(BASE_STATIC_STRING(kDefaultTemplateBundleUrl)) {}
+    : element_manager_(element_manager),
+      bundle_url_(BASE_STATIC_STRING(kDefaultTemplateBundleUrl)) {}
 
 ElementTemplateInstance::~ElementTemplateInstance() {
   ClearLogicalChildParentLinks();
@@ -237,6 +263,147 @@ void ElementTemplateInstance::SetOptions(const lepus::Value& options) {
 }
 
 void ElementTemplateInstance::SetUid(const lepus::Value& uid) { uid_ = uid; }
+
+void ElementTemplateInstance::RequestMaterializationRecursively() {
+  if (materialization_requested_) {
+    return;
+  }
+  materialization_requested_ = true;
+  EnsureCreateElementTreeTaskScheduled();
+  if (!child_slots_.IsArrayOrJSArray()) {
+    return;
+  }
+
+  for (size_t slot_index = 0;
+       slot_index < static_cast<size_t>(child_slots_.GetLength());
+       ++slot_index) {
+    auto slot_children =
+        child_slots_.GetProperty(static_cast<uint32_t>(slot_index));
+    if (!slot_children.IsArrayOrJSArray()) {
+      continue;
+    }
+    for (size_t child_index = 0;
+         child_index < static_cast<size_t>(slot_children.GetLength());
+         ++child_index) {
+      auto child = ResolveElementTemplateInstanceValue(
+          slot_children.GetProperty(static_cast<uint32_t>(child_index)));
+      if (child != nullptr) {
+        child->RequestMaterializationRecursively();
+      }
+    }
+  }
+}
+
+void ElementTemplateInstance::EnsureCreateElementTreeTaskScheduled() {
+  if (IsTypedTemplate() || result_ != nullptr ||
+      create_element_tree_task_ != nullptr) {
+    return;
+  }
+  if (entry_ == nullptr && tasm_ != nullptr) {
+    entry_ = tasm_->FindEntry(bundle_url_.str()).get();
+  }
+
+  create_element_tree_task_ = CreateElementTreeTask(entry_);
+  element_manager_->EnqueuePostMTSRenderTask(
+      base::closure([task = create_element_tree_task_]() { task->Run(); }));
+}
+
+base::OnceTaskRefptr<GeneratedElementsResult>
+ElementTemplateInstance::CreateElementTreeTask(TemplateEntry* entry) {
+  std::promise<GeneratedElementsResult> promise;
+  auto future = promise.get_future();
+  auto template_key = template_key_;
+  return fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
+      [entry, template_key = std::move(template_key),
+       promise = std::move(promise)]() mutable {
+        GeneratedElementsResult generated;
+        if (entry != nullptr) {
+          auto& info = entry->GetElementTemplateInfo(template_key.str());
+          generated = TreeResolver::GenerateElementsFromTemplateInfo(info);
+        }
+        promise.set_value(std::move(generated));
+      },
+      std::move(future));
+}
+
+void ElementTemplateInstance::MaterializeRoot() {
+  if (IsMaterialized()) {
+    return;
+  }
+
+  if (IsTypedTemplate()) {
+    InitTypedRoot();
+    return;
+  }
+
+  if (create_element_tree_task_ == nullptr) {
+    EnsureCreateElementTreeTaskScheduled();
+    if (create_element_tree_task_ == nullptr) {
+      return;
+    }
+  }
+
+  create_element_tree_task_->Run();
+  auto generated = create_element_tree_task_->GetFuture().get();
+  create_element_tree_task_ = nullptr;
+  if (generated.result_ == nullptr) {
+    return;
+  }
+  result_ = std::move(generated.result_);
+  attribute_slot_targets_ = std::move(generated.attribute_slot_targets_);
+  event_attribute_slot_targets_ =
+      std::move(generated.event_attribute_slot_targets_);
+  static_event_targets_ = std::move(generated.static_event_targets_);
+  element_slot_targets_ = std::move(generated.element_slot_targets_);
+
+  InitGeneratedElementTree(attribute_slots_, attribute_slots_generation_,
+                           root_attributes_, root_attributes_generation_);
+}
+
+void ElementTemplateInstance::InitGeneratedElementTree(
+    const lepus::Value& prepared_attribute_slots,
+    uint32_t prepared_attribute_slots_generation,
+    const lepus::Value& prepared_root_attributes,
+    uint32_t prepared_root_attributes_generation) {
+  if (result_ == nullptr || entry_ == nullptr) {
+    return;
+  }
+  auto* root = element_manager_->root();
+  TreeResolver::InitElementTree(result_, root != nullptr ? root->impl_id() : -1,
+                                element_manager_,
+                                entry_->GetStyleSheetManager());
+}
+
+void ElementTemplateInstance::InitTypedRoot() {
+  if (!IsTypedTemplate() || result_ != nullptr) {
+    return;
+  }
+
+  result_ = CreateTypedRootElement(element_manager_, tasm_, typed_tag_);
+  if (result_ == nullptr) {
+    return;
+  }
+  result_->MarkTemplateElement();
+  auto* root = element_manager_->root();
+  if (root != nullptr) {
+    result_->SetParentComponentUniqueIdRecursively(root->impl_id());
+  }
+
+  element_slot_targets_.clear();
+  element_slot_targets_.push_back(ElementSlotMountPoint{result_, nullptr});
+}
+
+fml::RefPtr<Element> ElementTemplateInstance::GetRoot() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_GET_ROOT, "template_key",
+              template_key_.str(), "bundle_url", bundle_url_.str());
+  RequestMaterializationRecursively();
+  MaterializeRoot();
+  return result_;
+}
+
+fml::RefPtr<Element> ElementTemplateInstance::PeekMaterializedRoot() const {
+  return result_;
+}
 
 lepus::Value ElementTemplateInstance::GetOrCreateMutableChildSlot(
     uint32_t slot_index) {

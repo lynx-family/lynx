@@ -2,14 +2,22 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#define private public
+#define protected public
+
 #include "core/renderer/dom/fiber/element_template_instance.h"
 
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <type_traits>
 
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
+#include "core/renderer/template_assembler.h"
+#include "core/renderer/template_entry.h"
+#include "core/renderer/utils/base/element_template_info.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -448,6 +456,44 @@ TEST_P(ElementTemplateInstanceTest,
                 .GetProperty(0)
                 .GetLength(),
             0);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       ElementTemplateInstanceMaterializesCompiledRoot) {
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  auto template_info = std::make_shared<ElementTemplateInfo>();
+  template_info->exist_ = true;
+  template_info->key_ = "root_template";
+
+  auto root_info = ElementInfo();
+  root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  auto sentinel_info = ElementInfo();
+  sentinel_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  sentinel_info.attrs_[base::String("id")] = lepus::Value("sentinel");
+  root_info.children_.emplace_back(std::move(sentinel_info));
+  template_info->elements_.emplace_back(std::move(root_info));
+  default_entry->template_bundle_.element_template_infos_["root_template"] =
+      std::move(template_info);
+
+  auto root = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  root->SetTASM(tasm.get());
+  root->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
+  root->SetTemplateKey(base::String("root_template"));
+
+  EXPECT_EQ(root->PeekMaterializedRoot(), nullptr);
+
+  auto resolved = root->GetRoot();
+  ASSERT_NE(resolved, nullptr);
+  EXPECT_TRUE(resolved->is_view());
+  EXPECT_TRUE(resolved->IsTemplateElement());
+  ASSERT_EQ(resolved->children().size(), 1u);
+  auto* sentinel = static_cast<Element*>(resolved->children()[0].get());
+  ASSERT_NE(sentinel, nullptr);
+  EXPECT_TRUE(sentinel->is_view());
 }
 
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
