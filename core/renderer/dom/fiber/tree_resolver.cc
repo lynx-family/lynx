@@ -356,7 +356,8 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
 
 void ClearPreviousTemplateSpreadAttributes(
     Element* element, const TemplateAttributes& template_attributes,
-    const lepus::Value& previous_attribute_slots) {
+    const lepus::Value& previous_attribute_slots,
+    TemplateAttributeApplyMode mode) {
   if (!previous_attribute_slots.IsArrayOrJSArray()) {
     return;
   }
@@ -370,17 +371,17 @@ void ClearPreviousTemplateSpreadAttributes(
     if (!previous_value.IsObject()) {
       continue;
     }
-    tasm::ForEachLepusValue(
-        previous_value, [element](const auto& key, const auto&) {
-          if (RemoveTemplateDataAttribute(element, key.String())) {
-            return;
-          }
-          // Re-apply previous spread keys with an empty value to clear keys
-          // that disappeared from the current spread object. data-* is handled
-          // above because __AddDataset preserves empty values.
-          ApplyTemplateAttributeValue(element, key.String(), lepus::Value(),
-                                      TemplateAttributeApplyMode::kAll);
-        });
+    tasm::ForEachLepusValue(previous_value, [element, mode](const auto& key,
+                                                            const auto&) {
+      if (mode != TemplateAttributeApplyMode::kEventOnly &&
+          RemoveTemplateDataAttribute(element, key.String())) {
+        return;
+      }
+      // Re-apply previous spread keys with an empty value to clear keys
+      // that disappeared from the current spread object. data-* is handled
+      // above because __AddDataset preserves empty values.
+      ApplyTemplateAttributeValue(element, key.String(), lepus::Value(), mode);
+    });
   }
 }
 
@@ -394,10 +395,10 @@ void ApplyTemplateAttributesToElementInternal(
   const auto& template_attributes = element->template_attributes();
   const bool rebuild_static_attributes = previous_attribute_slots != nullptr;
   DCHECK(!rebuild_static_attributes ||
-         mode == TemplateAttributeApplyMode::kAll);
+         mode != TemplateAttributeApplyMode::kEventOnly);
   if (rebuild_static_attributes) {
     ClearPreviousTemplateSpreadAttributes(element, *template_attributes,
-                                          *previous_attribute_slots);
+                                          *previous_attribute_slots, mode);
   }
   bool has_applied_spread = false;
   for (const auto& attr : *template_attributes) {
@@ -443,6 +444,14 @@ void TreeResolver::ApplyTemplateNonEventAttributesToElement(
     Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(
       element, nullptr, attribute_slots,
+      TemplateAttributeApplyMode::kNonEventOnly);
+}
+
+void TreeResolver::ApplyTemplateNonEventAttributesToElement(
+    Element* element, const lepus::Value& previous_attribute_slots,
+    const lepus::Value& attribute_slots) {
+  ApplyTemplateAttributesToElementInternal(
+      element, &previous_attribute_slots, attribute_slots,
       TemplateAttributeApplyMode::kNonEventOnly);
 }
 

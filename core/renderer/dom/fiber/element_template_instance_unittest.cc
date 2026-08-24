@@ -24,7 +24,44 @@ namespace lynx {
 namespace tasm {
 namespace testing {
 
-class ElementTemplateInstanceTest : public FiberElementTest {};
+namespace {
+const lepus::Value* DatasetValue(const Element* element,
+                                 const base::String& key) {
+  auto it = element->data_model_->dataset().find(key);
+  if (it == element->data_model_->dataset().end()) {
+    return nullptr;
+  }
+  return &it->second;
+}
+}  // namespace
+
+class ElementTemplateInstanceTest : public FiberElementTest {
+ protected:
+  fml::RefPtr<ElementTemplateInstance> CreateCompiledSpreadInstance() {
+    auto entry = std::make_shared<TemplateEntry>();
+    entry->SetName(DEFAULT_ENTRY_NAME);
+    tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+
+    auto info = std::make_shared<ElementTemplateInfo>();
+    info->exist_ = true;
+    info->key_ = "spread_template";
+    auto root_info = ElementInfo();
+    root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+    root_info.attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                      lepus::Value(), 0}});
+    info->elements_.emplace_back(std::move(root_info));
+    entry->template_bundle_.element_template_infos_["spread_template"] = info;
+
+    auto instance = fml::AdoptRef<ElementTemplateInstance>(
+        new ElementTemplateInstance(manager));
+    instance->SetTASM(tasm.get());
+    instance->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
+    instance->SetTemplateKey(base::String("spread_template"));
+    return instance;
+  }
+};
 
 TEST_P(ElementTemplateInstanceTest, UsesIndependentLepusRefType) {
   auto instance = fml::AdoptRef<ElementTemplateInstance>(
@@ -209,6 +246,103 @@ TEST_P(ElementTemplateInstanceTest,
 
   instance->SetUid(lepus::Value(std::numeric_limits<double>::quiet_NaN()));
   EXPECT_TRUE(std::isnan(instance->Serialize().GetProperty("uid").Number()));
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       ElementTemplateEntryPointsUseBaselineStoragePolicy) {
+  auto nested = lepus::Dictionary::Create();
+  nested->SetValue(base::String("value"), lepus::Value("before"));
+
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue(base::String("payload"), lepus::Value(nested));
+  auto options = lepus::Dictionary::Create();
+  options->SetValue(base::String("payload"), lepus::Value(nested));
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value(nested));
+
+  auto typed = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  typed->SetTypedTag(base::String("view"));
+  typed->SetRootAttributes(lepus::Value(attributes));
+  typed->SetOptions(lepus::Value(options));
+
+  auto compiled = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  compiled->SetTemplateKey(base::String("template"));
+  compiled->SetAttributeSlots(lepus::Value(attribute_slots));
+  compiled->SetAttributeSlot(1, lepus::Value(nested));
+
+  nested->SetValue(base::String("value"), lepus::Value("after"));
+  attributes->SetValue(base::String("late"), lepus::Value(true));
+  options->SetValue(base::String("late"), lepus::Value(true));
+  attribute_slots->set(0, lepus::Value("after"));
+
+  auto typed_serialized = typed->Serialize();
+  EXPECT_EQ(typed_serialized.GetProperty("attributes")
+                .GetProperty("payload")
+                .GetProperty("value")
+                .StdString(),
+            "before");
+  EXPECT_FALSE(typed_serialized.GetProperty("attributes").Contains("late"));
+  EXPECT_EQ(typed_serialized.GetProperty("options")
+                .GetProperty("payload")
+                .GetProperty("value")
+                .StdString(),
+            "after");
+  EXPECT_TRUE(typed_serialized.GetProperty("options").Contains("late"));
+
+  auto serialized_slots = compiled->Serialize().GetProperty("attributeSlots");
+  EXPECT_EQ(serialized_slots.GetProperty(0).GetProperty("value").StdString(),
+            "before");
+  EXPECT_EQ(serialized_slots.GetProperty(1).GetProperty("value").StdString(),
+            "before");
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       TypedElementTemplateAppliesRootAttributesAsSpread) {
+  auto root = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  root->SetTypedTag(base::String("view"));
+
+  auto initial_attributes = lepus::Dictionary::Create();
+  initial_attributes->SetValue(base::String("data-test"),
+                               lepus::Value("before"));
+  initial_attributes->SetValue(base::String("data-stale"),
+                               lepus::Value("stale"));
+  root->SetRootAttributes(lepus::Value(initial_attributes));
+  EXPECT_EQ(root->result_, nullptr);
+
+  auto updated_attributes = lepus::Dictionary::Create();
+  updated_attributes->SetValue(base::String("data-test"),
+                               lepus::Value("after"));
+  updated_attributes->SetValue(base::String("data-added"),
+                               lepus::Value("added"));
+  updated_attributes->SetValue(base::String("bindtap"), lepus::Value("onTap"));
+  root->SetRootAttributes(lepus::Value(updated_attributes));
+  EXPECT_EQ(root->result_, nullptr);
+
+  auto resolved = root->GetRoot();
+  ASSERT_NE(resolved, nullptr);
+  ASSERT_NE(DatasetValue(resolved.get(), "test"), nullptr);
+  EXPECT_EQ(DatasetValue(resolved.get(), "test")->StdString(), "after");
+  ASSERT_NE(DatasetValue(resolved.get(), "added"), nullptr);
+  EXPECT_EQ(DatasetValue(resolved.get(), "added")->StdString(), "added");
+  EXPECT_EQ(DatasetValue(resolved.get(), "stale"), nullptr);
+  EXPECT_EQ(resolved->event_map().count("tap"), 1u);
+
+  auto reset_attributes = lepus::Dictionary::Create();
+  reset_attributes->SetValue(base::String("data-added"),
+                             lepus::Value("updated"));
+  root->SetRootAttributes(lepus::Value(reset_attributes));
+
+  EXPECT_EQ(DatasetValue(resolved.get(), "test"), nullptr);
+  ASSERT_NE(DatasetValue(resolved.get(), "added"), nullptr);
+  EXPECT_EQ(DatasetValue(resolved.get(), "added")->StdString(), "updated");
+  EXPECT_EQ(resolved->event_map().count("tap"), 0u);
+
+  root->SetRootAttributes(lepus::Value(lepus::Dictionary::Create()));
+  EXPECT_EQ(DatasetValue(resolved.get(), "added"), nullptr);
+  EXPECT_TRUE(root->Serialize().GetProperty("attributes").IsEmpty());
 }
 
 TEST_P(ElementTemplateInstanceTest,
@@ -470,6 +604,10 @@ TEST_P(ElementTemplateInstanceTest,
 
   auto root_info = ElementInfo();
   root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  root_info.attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0}});
   auto sentinel_info = ElementInfo();
   sentinel_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
   sentinel_info.attrs_[base::String("id")] = lepus::Value("sentinel");
@@ -478,11 +616,15 @@ TEST_P(ElementTemplateInstanceTest,
   default_entry->template_bundle_.element_template_infos_["root_template"] =
       std::move(template_info);
 
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("compiled-value"));
+
   auto root = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));
   root->SetTASM(tasm.get());
   root->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
   root->SetTemplateKey(base::String("root_template"));
+  root->SetAttributeSlots(lepus::Value(attribute_slots));
 
   EXPECT_EQ(root->PeekMaterializedRoot(), nullptr);
 
@@ -490,10 +632,117 @@ TEST_P(ElementTemplateInstanceTest,
   ASSERT_NE(resolved, nullptr);
   EXPECT_TRUE(resolved->is_view());
   EXPECT_TRUE(resolved->IsTemplateElement());
+  auto* test_data = DatasetValue(resolved.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "compiled-value");
   ASSERT_EQ(resolved->children().size(), 1u);
   auto* sentinel = static_cast<Element*>(resolved->children()[0].get());
   ASSERT_NE(sentinel, nullptr);
   EXPECT_TRUE(sentinel->is_view());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       ElementTemplateStaticEventsSyncAfterAttach) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  auto template_info = std::make_shared<ElementTemplateInfo>();
+  template_info->exist_ = true;
+  template_info->key_ = "event_template";
+
+  auto target_info = ElementInfo();
+  target_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  target_info.attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("bindtap"),
+                    lepus::Value("onStaticTap"), 0}});
+  template_info->elements_.emplace_back(std::move(target_info));
+  default_entry->template_bundle_.element_template_infos_["event_template"] =
+      std::move(template_info);
+
+  auto root = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  root->SetTASM(tasm.get());
+  root->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
+  root->SetTemplateKey(base::String("event_template"));
+
+  auto resolved = root->GetRoot();
+
+  ASSERT_NE(resolved, nullptr);
+  EXPECT_EQ(resolved->element_manager(), manager);
+  auto* listeners = resolved->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(listeners, nullptr);
+  ASSERT_EQ(listeners->size(), 1u);
+  EXPECT_FALSE(listeners->front()->GetOptions().IsCapture());
+  EXPECT_FALSE(listeners->front()->GetOptions().IsCatch());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       CompiledAttributesUpdatedAfterPrepareUseLatestState) {
+  auto instance = CreateCompiledSpreadInstance();
+  auto initial_slot = lepus::Dictionary::Create();
+  initial_slot->SetValue(base::String("data-slot-stale"), lepus::Value("old"));
+  instance->SetAttributeSlot(0, lepus::Value(initial_slot));
+  auto initial_root = lepus::Dictionary::Create();
+  initial_root->SetValue(base::String("data-root-stale"), lepus::Value("old"));
+  instance->SetRootAttributes(lepus::Value(initial_root));
+
+  // Finish detached preparation before updating either logical snapshot.
+  instance->RequestMaterializationRecursively();
+  instance->create_element_tree_task_->Run();
+
+  auto latest_slot = lepus::Dictionary::Create();
+  latest_slot->SetValue(base::String("data-slot-current"), lepus::Value("new"));
+  instance->SetAttributeSlot(0, lepus::Value(latest_slot));
+  auto latest_root = lepus::Dictionary::Create();
+  latest_root->SetValue(base::String("data-root-current"), lepus::Value("new"));
+  instance->SetRootAttributes(lepus::Value(latest_root));
+
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "slot-stale"), nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "root-stale"), nullptr);
+  ASSERT_NE(DatasetValue(root.get(), "slot-current"), nullptr);
+  ASSERT_NE(DatasetValue(root.get(), "root-current"), nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "slot-current")->StdString(), "new");
+  EXPECT_EQ(DatasetValue(root.get(), "root-current")->StdString(), "new");
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       MaterializedCompiledSpreadClearsRemovedKeys) {
+  auto instance = CreateCompiledSpreadInstance();
+  auto initial = lepus::Dictionary::Create();
+  initial->SetValue(base::String("data-stale"), lepus::Value("old"));
+  initial->SetValue(base::String("data-current"), lepus::Value("before"));
+  instance->SetAttributeSlot(0, lepus::Value(initial));
+  auto root_attributes = lepus::Dictionary::Create();
+  root_attributes->SetValue(base::String("data-root"), lepus::Value("root"));
+  instance->SetRootAttributes(lepus::Value(root_attributes));
+
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  ASSERT_NE(DatasetValue(root.get(), "stale"), nullptr);
+  ASSERT_NE(DatasetValue(root.get(), "current"), nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "current")->StdString(), "before");
+
+  auto updated = lepus::Dictionary::Create();
+  updated->SetValue(base::String("data-current"), lepus::Value("after"));
+  instance->SetAttributeSlot(0, lepus::Value(updated));
+
+  EXPECT_EQ(DatasetValue(root.get(), "stale"), nullptr);
+  ASSERT_NE(DatasetValue(root.get(), "current"), nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "current")->StdString(), "after");
+  ASSERT_NE(DatasetValue(root.get(), "root"), nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "root")->StdString(), "root");
+
+  instance->SetAttributeSlot(0, lepus::Value(lepus::Dictionary::Create()));
+  EXPECT_EQ(DatasetValue(root.get(), "current"), nullptr);
+  EXPECT_NE(DatasetValue(root.get(), "root"), nullptr);
 }
 
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,

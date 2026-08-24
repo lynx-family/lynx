@@ -24,7 +24,7 @@ struct PreparedElementSlotInsertion {
 
 // Aggregated output of one Element Template materialization task.
 //
-// The task always produces a detached single-root tree plus two slot target
+// The task always produces a detached single-root tree plus its slot target
 // tables:
 // - attribute_slot_targets_[i] records the element affected by attrSlotIndex=i
 // - event_attribute_slot_targets_[i] records targets whose runtime slot may
@@ -33,9 +33,11 @@ struct PreparedElementSlotInsertion {
 //   the generated tree
 // - static_event_targets_ records elements whose static event attrs need
 //   listener replay after the generated tree is attached
+// - prepared_attribute_slots_ and its generation identify the logical snapshot
+//   used by the detached-tree task so the consumer can apply later changes
 //
-// The result is returned from the async task first, then moved into
-// TemplateElement on the consuming thread.
+// The result is returned from the async task first, then moved into its logical
+// Element Template owner on the consuming thread.
 struct GeneratedElementsResult {
   fml::RefPtr<Element> result_;
   base::Vector<fml::RefPtr<Element>> attribute_slot_targets_;
@@ -43,6 +45,8 @@ struct GeneratedElementsResult {
   base::Vector<fml::RefPtr<Element>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
+  lepus::Value prepared_attribute_slots_;
+  uint32_t attribute_slots_generation_{0};
   lepus::Value prepared_root_attributes_;
   uint32_t root_attributes_generation_{0};
 };
