@@ -18,7 +18,16 @@ from core.base.summary import Summary
 
 
 class NativeUTContainer(Container):
-    def __init__(self, builder, coverage, test_type, gtest_filter=None, coverage_file=None, coverage_format="text", silent=False):
+    def __init__(
+        self,
+        builder,
+        coverage,
+        test_type,
+        gtest_filter=None,
+        coverage_file=None,
+        coverage_format="text",
+        silent=False,
+    ):
         super().__init__()
         self.parallel_queue = []
         self.serial_queue = []
@@ -40,7 +49,9 @@ class NativeUTContainer(Container):
         self.observers.append(OwnersObserver())
 
     def before_test(self, targets, filter: str):
-        coverage = CoverageFactory(self.coverage_init_params, self.coverage_file, self.coverage_format)
+        coverage = CoverageFactory(
+            self.coverage_init_params, self.coverage_file, self.coverage_format
+        )
         if coverage.is_err():
             return coverage
 
@@ -52,7 +63,9 @@ class NativeUTContainer(Container):
         for t in targets.keys():
             if filter != "all" and t != filter:
                 continue
-            result = TargetFactory(self.test_type, targets[t], t, self.gtest_filter, self.silent)
+            result = TargetFactory(
+                self.test_type, targets[t], t, self.gtest_filter, self.silent
+            )
             if result.is_err():
                 return result
             target = result.get_value()
@@ -64,6 +77,25 @@ class NativeUTContainer(Container):
                 else False
             )
             self.add_targets(target, enable_parallel)
+        # Guard against a silent no-op: when --target names a target that does
+        # not exist or is disabled, both queues stay empty and test() /
+        # after_test() would return Ok(), making app.py print "success!" with
+        # nothing built or run.
+        if not self.serial_queue and not self.parallel_queue:
+            if filter == "all":
+                return Err(
+                    Constants.TARGET_BUILD_ERR,
+                    "No enabled targets to run. Check that at least one target "
+                    "has 'enable: true' in the template.",
+                )
+            available = ", ".join(
+                t for t in targets.keys() if targets[t].get("enable", True)
+            )
+            return Err(
+                Constants.TARGET_BUILD_ERR,
+                f"Target '{filter}' not found or disabled. "
+                f"Available enabled targets: {available}",
+            )
         for target in self.serial_queue:
             result = self.builder_manager.build(target)
             if result.is_err():

@@ -67,6 +67,25 @@ class AndroidUTContainer(Container):
                 continue
             self.targets.append(target)
 
+        # Guard against a silent no-op: when --target names a target that does
+        # not exist or is disabled, self.targets stays empty and test() /
+        # after_test() would return Ok(), making app.py print "success!" with
+        # nothing built or run.
+        if not self.targets:
+            if filter == "all":
+                return Err(
+                    Constants.TARGET_BUILD_ERR,
+                    "No enabled targets to run. Check that at least one target "
+                    "has 'enable: true' in the template.",
+                )
+            available = ", ".join(
+                t for t in targets.keys() if targets[t].get("enable", True)
+            )
+            return Err(
+                Constants.TARGET_BUILD_ERR,
+                f"Target '{filter}' not found or disabled. "
+                f"Available enabled targets: {available}",
+            )
         for target in self.targets:
             result = self.builder_manager.build(target)
             if result.is_err():
