@@ -90,6 +90,7 @@ export type NativeBinding = {
     setAppInfo(optionKeys: string[], optionValues: string[]): void;
     setClosePageCallback(callback?: (() => void) | null): void;
     setDevtoolSwitch(key: string, value: boolean): void;
+    setLogLevel(level: number): void;
     setOpenCardCallback(callback?: ((url: string) => void) | null): void;
   };
 };

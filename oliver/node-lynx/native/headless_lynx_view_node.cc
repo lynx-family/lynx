@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <functional>
@@ -25,6 +26,7 @@
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
+#include "platform/embedder/public/capi/lynx_log_capi.h"
 #include "platform/embedder/public/capi/lynx_windowless_renderer_capi.h"
 #include "platform/embedder/public/lynx_generic_resource_fetcher.h"
 #include "platform/embedder/public/lynx_load_meta.h"
@@ -58,7 +60,34 @@ namespace node {
 namespace {
 
 constexpr int kLocalErrorCode = -1;
+constexpr int kSilentLogLevel = LYNX_LOG_FATAL + 1;
 constexpr uint64_t kExplicitDestroyGracePeriodMs = 1000;
+
+const char* LogLevelName(lynx_log_level_e level) {
+  switch (level) {
+    case LYNX_LOG_VERBOSE:
+      return "VERBOSE";
+    case LYNX_LOG_DEBUG:
+      return "DEBUG";
+    case LYNX_LOG_INFO:
+      return "INFO";
+    case LYNX_LOG_WARNING:
+      return "WARNING";
+    case LYNX_LOG_ERROR:
+      return "ERROR";
+    case LYNX_LOG_FATAL:
+      return "FATAL";
+  }
+  return "UNKNOWN";
+}
+
+void WriteNodeLynxLog(lynx_log_level_e level, const char* tag,
+                      const char* message) {
+  std::fprintf(stdout, "%s/%s %s", tag ? tag : "lynx", LogLevelName(level),
+               message ? message : "");
+}
+
+void DiscardNodeLynxLog(lynx_log_level_e, const char*, const char*) {}
 
 enum class DestroyReason {
   kExplicit,
@@ -2283,6 +2312,8 @@ class LynxEnvNode {
     napi_property_descriptor properties[] = {
         {"setDevtoolSwitch", nullptr, SetDevtoolSwitch, nullptr, nullptr,
          nullptr, napi_static, nullptr},
+        {"setLogLevel", nullptr, SetLogLevel, nullptr, nullptr, nullptr,
+         napi_static, nullptr},
         {"setAppInfo", nullptr, SetAppInfo, nullptr, nullptr, nullptr,
          napi_static, nullptr},
         {"connectDevtools", nullptr, ConnectDevtools, nullptr, nullptr, nullptr,
@@ -2325,6 +2356,27 @@ class LynxEnvNode {
     bool value = argc > 1 ? GetBool(env, args[1]) : false;
     embedder::DevToolEnvEmbedder::GetInstance().SetDevToolSwitch(key, value);
 #endif
+    return GetUndefined(env);
+  }
+
+  static napi_value SetLogLevel(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    double level = -1;
+    if (argc == 0 || !GetDouble(env, args[0], &level) ||
+        level < LYNX_LOG_VERBOSE || level > kSilentLogLevel ||
+        level != static_cast<int>(level)) {
+      ThrowError(env, "setLogLevel expects an integer between 0 and 6");
+      return GetUndefined(env);
+    }
+    if (level == kSilentLogLevel) {
+      lynx_log_set_minimum_level(LYNX_LOG_FATAL);
+      lynx_log_init(DiscardNodeLynxLog);
+    } else {
+      lynx_log_set_minimum_level(static_cast<lynx_log_level_e>(level));
+      lynx_log_init(WriteNodeLynxLog);
+    }
     return GetUndefined(env);
   }
 
