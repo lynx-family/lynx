@@ -13,15 +13,18 @@
 
 #include "core/public/ui_delegate.h"
 
+@class LynxComponentScopeRegistry;
+
 namespace lynx {
 namespace tasm {
 
 class UIDelegateDarwin : public UIDelegate {
  public:
-  UIDelegateDarwin(LynxUIOwner* ui_owner, bool use_native_painting_context,
-                   void* textra, bool enable_create_ui_async,
+  UIDelegateDarwin(LynxUIOwner* ui_owner, LynxComponentScopeRegistry* component_registry,
+                   bool use_native_painting_context, void* textra, bool enable_create_ui_async,
                    LynxShadowNodeOwner* shadow_node_owner)
       : ui_owner_(ui_owner),
+        component_registry_(component_registry),
         use_native_painting_context_(use_native_painting_context),
         textra_(textra),
         enable_create_ui_async_(enable_create_ui_async),
@@ -34,25 +37,24 @@ class UIDelegateDarwin : public UIDelegate {
 
   bool UsesLogicalPixels() const override { return true; }
 
-  std::unique_ptr<runtime::NativeModuleFactory> GetCustomModuleFactory()
-      override {
+  std::unique_ptr<runtime::NativeModuleFactory> GetCustomModuleFactory() override {
     // TODO(chenyouhui): Implement this after unify lepus module and js module.
     return nullptr;
   }
-  void OnLynxCreate(
-      const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
-      const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
-      const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
-      const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
-      const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
-      const std::shared_ptr<shell::EventTrackerProxy>& event_tracker_proxy,
-      const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
-      const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
-      const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
-      int32_t instance_id, bool is_embedded_mode = false) override;
+  void OnLynxCreate(const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
+                    const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
+                    const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
+                    const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
+                    const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
+                    const std::shared_ptr<shell::EventTrackerProxy>& event_tracker_proxy,
+                    const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
+                    const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
+                    const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
+                    bool is_embedded_mode = false) override;
 
  private:
   __weak LynxUIOwner* ui_owner_;
+  __strong LynxComponentScopeRegistry* component_registry_;
   bool use_native_painting_context_;
   void* textra_{nullptr};
   bool enable_create_ui_async_;

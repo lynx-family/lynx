@@ -51,7 +51,7 @@
                                                   componentRegistry:nil
                                                       screenMetrics:nil];
   auto nativePaintingContext =
-      std::make_unique<lynx::tasm::NativePaintingCtxDarwin>(uiOwner, nullptr);
+      std::make_unique<lynx::tasm::NativePaintingCtxDarwin>(uiOwner, nil, nullptr);
   lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
   auto queue = std::make_shared<lynx::shell::DynamicUIOperationQueue>(
       lynx::base::ThreadStrategyForRendering::ALL_ON_UI,
