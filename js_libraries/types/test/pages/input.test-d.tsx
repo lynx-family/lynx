@@ -189,6 +189,7 @@ function noop() {}
       assertType<number>(e.detail.selectionStart);
       assertType<number>(e.detail.selectionEnd);
       assertType<boolean | undefined>(e.detail.isComposing);
+      assertType<'paste' | 'normal' | undefined>(e.detail.inputType);
       expectError(() => {
         // @ts-expect-error type error
         assertType<number>(e.detail.value);
@@ -198,6 +199,8 @@ function noop() {}
         assertType<string>(e.detail.selectionEnd);
         // @ts-expect-error type error
         assertType<number>(e.detail.isComposing);
+        // @ts-expect-error type error
+        assertType<boolean>(e.detail.inputType);
       });
     }}
   />;
@@ -207,6 +210,7 @@ function noop() {}
       assertType<number>(e.detail.selectionStart);
       assertType<number>(e.detail.selectionEnd);
       assertType<boolean | undefined>(e.detail.isComposing);
+      assertType<'paste' | 'normal' | undefined>(e.detail.inputType);
       expectError(() => {
         // @ts-expect-error type error
         assertType<number>(e.detail.value);
@@ -216,6 +220,8 @@ function noop() {}
         assertType<string>(e.detail.selectionEnd);
         // @ts-expect-error type error
         assertType<number>(e.detail.isComposing);
+        // @ts-expect-error type error
+        assertType<boolean>(e.detail.inputType);
       });
     }}
   />;

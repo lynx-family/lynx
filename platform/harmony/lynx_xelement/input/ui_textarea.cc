@@ -67,6 +67,8 @@ UITextArea::UITextArea(LynxContext* context, ArkUI_NodeType type, int sign,
                                             GetOnWillInsertEventType(), this);
   NodeManager::Instance().RegisterNodeEvent(input_node_,
                                             GetOnWillDeleteEventType(), this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_, GetOnPasteEventType(),
+                                            this);
 
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, NODE_TEXT_AREA_PLACEHOLDER_COLOR, INPUT_DEFAULT_COLOR);
@@ -85,6 +87,8 @@ UITextArea::~UITextArea() {
                                               GetOnWillInsertEventType());
   NodeManager::Instance().UnregisterNodeEvent(input_node_,
                                               GetOnWillDeleteEventType());
+  NodeManager::Instance().UnregisterNodeEvent(input_node_,
+                                              GetOnPasteEventType());
 }
 
 void UITextArea::FrameDidChanged() {
@@ -242,6 +246,10 @@ ArkUI_NodeEventType UITextArea::GetOnWillInsertEventType() const {
 
 ArkUI_NodeEventType UITextArea::GetOnWillDeleteEventType() const {
   return NODE_TEXT_AREA_ON_WILL_DELETE;
+}
+
+ArkUI_NodeEventType UITextArea::GetOnPasteEventType() const {
+  return NODE_TEXT_AREA_ON_PASTE;
 }
 
 }  // namespace harmony

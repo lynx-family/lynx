@@ -39,6 +39,14 @@ export interface TextAreaInputEvent {
    * @since 3.4
    */
   isComposing?: boolean;
+  /**
+   * The type of input action, "paste" when pasting, "normal" otherwise
+   * @Android
+   * @iOS
+   * @Harmony
+   * @since 4.3
+   */
+  inputType?: 'paste' | 'normal';
 }
 
 export interface TextAreaFocusEvent {

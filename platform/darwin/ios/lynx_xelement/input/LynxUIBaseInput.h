@@ -86,7 +86,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)didApplyOverflowReplacementForInput:(id<UITextInput>)input;
 
 - (NSString *)filterString:(NSString *)source withMaxLength:(NSInteger)maxLength;
-
 @end
 
 NS_ASSUME_NONNULL_END

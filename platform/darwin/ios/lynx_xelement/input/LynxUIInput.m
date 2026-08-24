@@ -20,6 +20,7 @@
 @interface LynxTextFieldLite : UITextField
 
 @property(nonatomic, assign) UIEdgeInsets padding;
+@property(nonatomic, assign) BOOL pasting;
 
 @end
 
@@ -30,6 +31,11 @@
 }
 
 - (void)scrollTextFieldToVisibleIfNecessary {
+}
+
+- (void)paste:(id)sender {
+  self.pasting = YES;
+  [super paste:sender];
 }
 
 - (void)setPadding:(UIEdgeInsets)padding {

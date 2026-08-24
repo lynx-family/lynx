@@ -452,6 +452,8 @@ void UIBaseInput::OnNodeEvent(ArkUI_NodeEvent* event) {
         {.i32 = readonly_ ? 0 : 1},
     };
     OH_ArkUI_NodeEvent_SetReturnNumberValue(event, value, 1);
+  } else if (type == GetOnPasteEventType()) {
+    is_pasting_ = true;
   }
 }
 
@@ -601,7 +603,7 @@ int32_t UIBaseInput::MeasureTextHeight(float font_size, float max_width,
   return height;
 }
 
-void UIBaseInput::SendInputEvent() const {
+void UIBaseInput::SendInputEvent() {
   const auto value = NodeManager::Instance().GetAttribute<std::string>(
       input_node_, GetTextAttributeType());
 
@@ -619,8 +621,10 @@ void UIBaseInput::SendInputEvent() const {
   param->SetValue("selectionStart", selectionStart);
   param->SetValue("selectionEnd", selectionEnd);
   param->SetValue("isComposing", false);
+  param->SetValue("inputType", std::string(is_pasting_ ? "paste" : "normal"));
   CustomEvent event{Sign(), "input", "detail", lepus_value(param)};
   context_->SendEvent(event);
+  is_pasting_ = false;
 }
 
 void UIBaseInput::SendSelectionChangeEvent(const int32_t start,
