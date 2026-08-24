@@ -4,6 +4,9 @@
 #ifndef CORE_RENDERER_DOM_FIBER_ELEMENT_TEMPLATE_INSTANCE_H_
 #define CORE_RENDERER_DOM_FIBER_ELEMENT_TEMPLATE_INSTANCE_H_
 
+#include <cstddef>
+
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/ref_counted_class.h"
 #include "core/base/thread/once_task.h"
 #include "core/renderer/dom/element.h"
@@ -15,7 +18,9 @@ namespace tasm {
 class TemplateAssembler;
 class TemplateEntry;
 class ElementTemplateInstanceSerializer;
-class ElementTemplateInstance : public lepus::RefCounted {
+class ElementTemplateInstance
+    : public lepus::RefCounted,
+      public fml::EnableWeakFromThis<ElementTemplateInstance> {
  public:
   explicit ElementTemplateInstance(ElementManager* element_manager);
   ~ElementTemplateInstance() override;
@@ -49,6 +54,7 @@ class ElementTemplateInstance : public lepus::RefCounted {
   void RemoveNodeFromChildSlot(uint32_t slot_index, const lepus::Value& child);
 
  private:
+  friend class ElementManager;
   friend class ElementTemplateInstanceSerializer;
 
   void RequestMaterializationRecursively();
@@ -64,6 +70,29 @@ class ElementTemplateInstance : public lepus::RefCounted {
 
   void ApplyAttributeSlotToTarget(uint32_t slot_index,
                                   const lepus::Value& previous_attribute_slots);
+
+  // Child materialization and physical placement.
+  void MountInitialChildSlots();
+  bool MountChildSlot(uint32_t slot_index, bool resolve_compiled_children);
+  void MountMaterializedChildBefore(
+      const ElementSlotMountPoint& mount_point,
+      const fml::RefPtr<ElementTemplateInstance>& child,
+      const fml::RefPtr<Element>& child_root,
+      const fml::RefPtr<Element>& insertion_reference);
+  void UnmountMaterializedChild(
+      uint32_t slot_index, const fml::RefPtr<ElementTemplateInstance>& child);
+  fml::RefPtr<Element> FindChildInsertionReference(
+      uint32_t slot_index, size_t first_sibling_index) const;
+
+  // Pending first-mount scheduling for unresolved compiled children.
+  enum class FlushPendingChildMountsResult {
+    kDoNotRequeue,
+    kOutOfScope,
+  };
+  bool HasPendingChildMounts() const;
+  void SchedulePendingChildMounts();
+  FlushPendingChildMountsResult FlushPendingChildMounts(Element* flush_root);
+  bool IsMaterializedRootInFlushScope(Element* flush_root) const;
 
   lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
   bool EraseChildFromSlotStorage(uint32_t slot_index,
@@ -94,6 +123,10 @@ class ElementTemplateInstance : public lepus::RefCounted {
   base::Vector<fml::RefPtr<Element>> event_attribute_slot_targets_;
   base::Vector<fml::RefPtr<Element>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
+
+  // Pending first mounts owned by ElementManager's scoped weak drain.
+  base::Vector<uint32_t> pending_child_mount_slots_;
+  bool pending_child_mounts_enqueued_{false};
 };
 
 }  // namespace tasm
