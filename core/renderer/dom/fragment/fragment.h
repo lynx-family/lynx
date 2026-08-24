@@ -143,9 +143,14 @@ class Fragment : public BaseElementContainer {
 
  private:
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
+  Fragment* EnclosingStackingContextFromElementParent();
+  void ZIndexChanged();
   void UpdateBorderRadiusAccordingToLayoutInfo();
   void UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
 
+  void RefreshDrawingOffsetsRecursively();
+  void RefreshDrawingOffsetsRecursively(float left, float top);
+  void UpdateDrawingOffset();
   void DrawBorder(DisplayListBuilder& display_list_builder);
   void DrawClip(DisplayListBuilder& display_list_builder);
 
@@ -221,7 +226,12 @@ class Fragment : public BaseElementContainer {
   base::Vector<BackgroundImageResource> background_image_resources_;
   bool event_bundle_dirty_{false};
 
+  // Translation already present on the parent display-list canvas between
+  // the nearest platform renderer and this fragment.
   float render_offset_[2] = {0, 0};
+  // This fragment's position relative to its actual Fragment parent. It may
+  // differ from the layout offset when z-index changes the Fragment tree.
+  float drawing_offset_[2] = {0, 0};
 
   int32_t draw_node_capacity_{0};
 };

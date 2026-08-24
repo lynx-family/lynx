@@ -3889,9 +3889,20 @@ void Element::PerformElementContainerCreateOrUpdate(bool need_update,
     FlushProps();
     dirty_ &= ~kDirtyCreated;
   } else if (need_update || dirty_ & kDirtyForceUpdate) {
-    if (prop_bundle_) {
+    if (EnableFragmentLayerRender()) {
+      // FLR bypasses UpdateLayoutNodeProps() below, so keep a customized
+      // layout node synchronized when this update carries a PropBundle.
+      if (prop_bundle_ && customized_layout_node_) {
+        customized_layout_node_->UpdateLayoutNodeProps(prop_bundle_);
+      }
+      if (!is_virtual()) {
+        // FLR consumes styles from ComputedCSSStyle directly, so a style-only
+        // update may not create a PropBundle. Always update the Fragment to
+        // re-evaluate whether it needs a platform layer.
+        element_container()->UpdatePaintingNode(TendToFlatten(), prop_bundle_);
+      }
+    } else if (prop_bundle_) {
       UpdateLayoutNodeProps(prop_bundle_);
-
       if (!is_virtual()) {
         UpdateFiberElement();
       }
