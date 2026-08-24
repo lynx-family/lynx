@@ -30,13 +30,23 @@ class ElementTemplateInstance : public lepus::RefCounted {
   bool IsTypedTemplate() const { return !typed_tag_.empty(); }
   void SetRootAttributes(const lepus::Value& attributes);
   void SetAttributeSlots(const lepus::Value& attribute_slots);
+  void InitializeChildSlots(const lepus::Value& child_slots);
   void SetOptions(const lepus::Value& options);
   void SetUid(const lepus::Value& uid);
 
   lepus::Value Serialize() const;
 
+  void InsertNodeIntoChildSlot(uint32_t slot_index, const lepus::Value& child,
+                               const lepus::Value& ref_node);
+  void RemoveNodeFromChildSlot(uint32_t slot_index, const lepus::Value& child);
+
  private:
   friend class ElementTemplateInstanceSerializer;
+
+  lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
+  bool EraseChildFromSlotStorage(uint32_t slot_index,
+                                 const lepus::Value& child);
+  void ClearLogicalChildParentLinks();
 
   base::String template_key_;
   base::String bundle_url_;
@@ -49,6 +59,8 @@ class ElementTemplateInstance : public lepus::RefCounted {
   lepus::Value child_slots_;
   lepus::Value options_;
   lepus::Value uid_;
+  ElementTemplateInstance* logical_parent_{nullptr};
+  uint32_t logical_parent_slot_index_{0};
 };
 
 }  // namespace tasm
