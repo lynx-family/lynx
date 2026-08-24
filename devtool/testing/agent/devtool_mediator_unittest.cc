@@ -16,11 +16,15 @@
 
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/fiber/block_element.h"
+#include "core/renderer/lynx_env_config.h"
+#include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/recorder/testbench_base_recorder.h"
 #include "core/services/replay/replay_controller.h"
 #include "core/services/replay/testbench_test_replay.h"
+#include "core/shell/lynx_shell_builder.h"
+#include "core/shell/native_facade_empty_implementation.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
@@ -34,6 +38,26 @@
 
 namespace lynx {
 namespace testing {
+
+class QueuedTaskRunner : public fml::TaskRunner {
+ public:
+  QueuedTaskRunner() : fml::TaskRunner(nullptr) {}
+
+  bool RunsTasksOnCurrentThread() override { return false; }
+  void PostTask(base::closure task) override {
+    tasks_.push_back(std::move(task));
+  }
+
+  void RunPendingTasks() {
+    auto tasks = std::move(tasks_);
+    for (auto& task : tasks) {
+      task();
+    }
+  }
+
+ private:
+  std::vector<base::closure> tasks_;
+};
 
 // Notice: If you find some case is not stable, Please check that the thread is
 // same as mediator using
@@ -102,6 +126,44 @@ TEST_F(DevToolMediatorTest, InspectorDetachedCase) {
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"method\" : \"Inspector.detached\",\n   \"params\" : {\n   "
             "   \"reason\" : \"\"\n   }\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, DOMEnableSurvivesReloadBeforeQueuedTaskRuns) {
+  auto old_runner = fml::MakeRefCounted<QueuedTaskRunner>();
+  devtool_mediator_->tasm_task_runner_ = old_runner;
+  auto old_executor = devtool_mediator_->element_executor_;
+  Json::Value command;
+  command["id"] = 1;
+  command["params"]["useCompression"] = true;
+  command["params"]["compressionThreshold"] = 512;
+
+  devtool_mediator_->DOM_Enable(message_sender_, command);
+  EXPECT_FALSE(old_executor->dom_enabled_);
+
+  auto painting_context_creator = [](shell::LynxShell*) {
+    return std::make_unique<tasm::PaintingContextPlatformImpl>();
+  };
+  tasm::LynxEnvConfig env_config(60, 90, 1.f, 1.f);
+  shell::ShellOption option;
+  option.view_id_ = 19;
+  std::unique_ptr<shell::LynxShell> shell(
+      shell::LynxShellBuilder()
+          .SetNativeFacade(std::make_unique<shell::NativeFacadeEmptyImpl>())
+          .SetPaintingContextCreator(painting_context_creator)
+          .SetLynxEnvConfig(env_config)
+          .SetEnableElementManagerVsyncMonitor(true)
+          .SetStrategy(base::ThreadStrategyForRendering::ALL_ON_UI)
+          .SetShellOption(option)
+          .build());
+
+  devtool_mediator_->Init(shell.get(), devtools_ng_);
+  EXPECT_TRUE(devtool_mediator_->element_executor_->dom_enabled_);
+  EXPECT_TRUE(devtool_mediator_->element_executor_->dom_use_compression_);
+  EXPECT_EQ(devtool_mediator_->element_executor_->dom_compression_threshold_,
+            512);
+
+  old_runner->RunPendingTasks();
+  EXPECT_TRUE(devtool_mediator_->element_executor_->dom_enabled_);
 }
 
 TEST_F(DevToolMediatorTest, RecordStartCase) {

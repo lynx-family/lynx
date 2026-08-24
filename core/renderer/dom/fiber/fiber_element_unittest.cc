@@ -226,6 +226,14 @@ class RecordingInspectorElementObserver final
                                 const lepus::Value& properties) override {}
   void OnSetNativeProps(Element* ptr, const std::string& name,
                         const std::string& value, bool is_style) override {}
+  void OnAddInlineStyle(int32_t backend_node_id, CSSPropertyID property_id,
+                        const lepus::Value& value) override {
+    ++add_inline_style_count;
+    recorded_backend_node_id = backend_node_id;
+    recorded_property_id = property_id;
+    recorded_value = value.StdString();
+  }
+  void OnFiberFlushElementTree() override { ++flush_count; }
   void OnCSSMediaQueryResultChanged() override {
     ++media_query_result_changed_count;
   }
@@ -246,6 +254,11 @@ class RecordingInspectorElementObserver final
   }
 
   int media_query_result_changed_count = 0;
+  int add_inline_style_count = 0;
+  int flush_count = 0;
+  int32_t recorded_backend_node_id = 0;
+  CSSPropertyID recorded_property_id = CSSPropertyID::kPropertyStart;
+  std::string recorded_value;
 };
 
 bool LayoutBundleHasResetStyle(
@@ -17340,6 +17353,51 @@ TEST_P(FiberElementTest, UnifiedPipelineFiberFlushMergesResolveTargets) {
 
   EXPECT_TRUE(options->resolve_requested);
   EXPECT_EQ(options->target_node, parent->impl_id());
+}
+
+TEST_P(FiberElementTest,
+       InspectorElementObserverReceivesInlineStyleFlushHooks) {
+  auto observer = std::make_shared<RecordingInspectorElementObserver>();
+  manager->SetInspectorElementObserver(observer);
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+
+  constexpr auto property_id = CSSPropertyID::kPropertyIDTransform;
+  lepus::Value style_args[] = {lepus::Value(view),
+                               lepus::Value(static_cast<int32_t>(property_id)),
+                               lepus::Value("translateX(12px)")};
+  RendererFunctions::FiberAddInlineStyle(
+      mts_ctx, style_args, static_cast<int>(std::size(style_args)));
+
+  EXPECT_EQ(observer->add_inline_style_count, 1);
+  EXPECT_EQ(observer->recorded_backend_node_id, view->impl_id());
+  EXPECT_EQ(observer->recorded_property_id, property_id);
+  EXPECT_EQ(observer->recorded_value, "translateX(12px)");
+
+  lepus::Value flush_args[] = {lepus::Value(view)};
+  RendererFunctions::FiberFlushElementTree(
+      mts_ctx, flush_args, static_cast<int>(std::size(flush_args)));
+
+  auto async_options = lepus::Value(lepus::Dictionary::Create());
+  async_options.SetProperty("asyncFlush", lepus::Value(true));
+  lepus::Value async_flush_args[] = {lepus::Value(view), async_options};
+  RendererFunctions::FiberFlushElementTree(
+      mts_ctx, async_flush_args, static_cast<int>(std::size(async_flush_args)));
+
+  EXPECT_EQ(observer->flush_count, 2);
 }
 
 TEST_P(FiberElementTest, TestTransitionInResetMapAndUpdateMap) {

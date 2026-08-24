@@ -369,6 +369,19 @@ class InspectorTasmExecutorTest : public ::testing::Test {
     ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
   }
 
+  fml::RefPtr<tasm::Element> CreateInlineStyleUpdateTarget() {
+    if (element_executor_->element_root_ == nullptr) {
+      auto page = manager_->CreateFiberPage("page", 0);
+      manager_->SetFiberPageElement(page);
+      devtool::ElementInspector::InitForInspector(std::make_tuple(page.get()));
+      element_executor_->element_root_ = page.get();
+    }
+    auto target = manager_->CreateFiberElement("view");
+    devtool::ElementInspector::InitForInspector(std::make_tuple(target.get()));
+    element_executor_->element_root_->InsertNode(target);
+    return target;
+  }
+
  private:
   std::shared_ptr<devtool::InspectorTasmExecutor> element_executor_;
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
@@ -379,6 +392,114 @@ class InspectorTasmExecutorTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>
       tasm_mediator_;
 };
+
+TEST_F(InspectorTasmExecutorTest,
+       InlineStyleUpdatesFlushedReportsFinalValuesPerFlush) {
+  auto first_target = CreateInlineStyleUpdateTarget();
+  auto second_target = CreateInlineStyleUpdateTarget();
+  auto event_sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = event_sender;
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+
+  Json::Value command(Json::ValueType::objectValue);
+  command["id"] = 301;
+  element_executor_->DOM_Enable(response_sender, command);
+
+  element_executor_->OnAddInlineStyle(first_target->impl_id(),
+                                      tasm::kPropertyIDTransform,
+                                      lepus::Value("translateX(4px)"));
+  element_executor_->OnAddInlineStyle(first_target->impl_id(),
+                                      tasm::kPropertyIDTransform,
+                                      lepus::Value("translateX(12px)"));
+  element_executor_->OnAddInlineStyle(first_target->impl_id(),
+                                      tasm::kPropertyIDOpacity, lepus::Value());
+  element_executor_->OnAddInlineStyle(
+      first_target->impl_id(), tasm::kPropertyIDWidth, lepus::Value(12.5));
+  element_executor_->OnAddInlineStyle(
+      second_target->impl_id(), tasm::kPropertyIDOpacity, lepus::Value("0.8"));
+  element_executor_->OnFiberFlushElementTree();
+
+  element_executor_->OnAddInlineStyle(
+      second_target->impl_id(), tasm::kPropertyIDWidth, lepus::Value("100px"));
+  element_executor_->OnFiberFlushElementTree();
+  FlushDevtoolTasks();
+
+  ASSERT_EQ(event_sender->json_messages_.size(), 2U);
+  const Json::Value& event = event_sender->json_messages_[0].second;
+  EXPECT_EQ(event["method"].asString(), "DOM.inlineStyleUpdatesFlushed");
+  EXPECT_FALSE(event.isMember("id"));
+  EXPECT_GT(event["params"]["timestamp"].asDouble(), 0);
+  const Json::Value& node_updates = event["params"]["nodeUpdates"];
+  ASSERT_EQ(node_updates.size(), 2U);
+
+  bool saw_transform = false;
+  bool saw_opacity_removal = false;
+  bool saw_numeric_width = false;
+  bool saw_second_target = false;
+  for (const Json::Value& node_update : node_updates) {
+    if (node_update["backendNodeId"].asInt() == first_target->impl_id()) {
+      for (const Json::Value& property : node_update["properties"]) {
+        if (property["name"].asString() == "transform") {
+          saw_transform = property["value"].asString() == "translateX(12px)";
+        } else if (property["name"].asString() == "opacity") {
+          saw_opacity_removal =
+              property["removed"].asBool() && !property.isMember("value");
+        } else if (property["name"].asString() == "width") {
+          saw_numeric_width = property["value"].asString() == "12.5";
+        }
+      }
+    } else if (node_update["backendNodeId"].asInt() ==
+               second_target->impl_id()) {
+      saw_second_target =
+          node_update["properties"].size() == 1U &&
+          node_update["properties"][0]["value"].asString() == "0.8";
+    }
+  }
+  EXPECT_TRUE(saw_transform);
+  EXPECT_TRUE(saw_opacity_removal);
+  EXPECT_TRUE(saw_numeric_width);
+  EXPECT_TRUE(saw_second_target);
+
+  const Json::Value& second_event = event_sender->json_messages_[1].second;
+  ASSERT_EQ(second_event["params"]["nodeUpdates"].size(), 1U);
+  EXPECT_EQ(second_event["params"]["nodeUpdates"][0]["backendNodeId"].asInt(),
+            second_target->impl_id());
+  EXPECT_EQ(second_event["params"]["nodeUpdates"][0]["properties"][0]["value"]
+                .asString(),
+            "100px");
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       InlineStyleUpdatesFlushedDropsPendingValuesOnDisableAndNavigation) {
+  auto target = CreateInlineStyleUpdateTarget();
+  auto event_sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = event_sender;
+  auto response_sender = std::make_shared<RecordingMessageSender>();
+
+  Json::Value command(Json::ValueType::objectValue);
+  command["id"] = 311;
+  element_executor_->DOM_Enable(response_sender, command);
+  element_executor_->OnAddInlineStyle(target->impl_id(),
+                                      tasm::kPropertyIDTransform,
+                                      lepus::Value("translateX(4px)"));
+  command["id"] = 312;
+  element_executor_->DOM_Disable(response_sender, command);
+  command["id"] = 313;
+  element_executor_->DOM_Enable(response_sender, command);
+  element_executor_->OnFiberFlushElementTree();
+
+  element_executor_->OnAddInlineStyle(target->impl_id(),
+                                      tasm::kPropertyIDTransform,
+                                      lepus::Value("translateX(8px)"));
+  element_executor_->OnDocumentUpdated();
+  element_executor_->OnFiberFlushElementTree();
+  FlushDevtoolTasks();
+
+  for (const auto& event : event_sender->json_messages_) {
+    EXPECT_NE(event.second["method"].asString(),
+              "DOM.inlineStyleUpdatesFlushed");
+  }
+}
 
 TEST_F(InspectorTasmExecutorTest, SetDevtoolPlatformAbilityCase) {
   LOGI("InspectorTasmExecutorTest SetDevtoolPlatformAbilityCase start");

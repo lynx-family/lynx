@@ -12,6 +12,8 @@
 #include <vector>
 
 #include "base/include/log/logging.h"
+#include "base/include/timer/time_utils.h"
+#include "base/include/value/base_value.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_fragment.h"
@@ -695,6 +697,21 @@ void SendStyleSheetChanged(InspectorTasmExecutor* executor,
 
 }  // namespace
 
+void InspectorTasmExecutor::SetDOMState(bool enable,
+                                        const Json::Value& message) {
+  dom_enabled_ = enable;
+  if (!enable) {
+    return;
+  }
+  const Json::Value& params = message["params"];
+  if (params.isMember("useCompression")) {
+    dom_use_compression_ = params["useCompression"].asBool();
+  }
+  if (params.isMember("compressionThreshold")) {
+    dom_compression_threshold_ = params["compressionThreshold"].asInt();
+  }
+}
+
 InspectorTasmExecutor::InspectorTasmExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator, int view_id)
     : dom_use_compression_(false),
@@ -772,8 +789,15 @@ void InspectorTasmExecutor::SendDOMEventMsg(const DomCdpEvent& event_name,
 }
 
 void InspectorTasmExecutor::OnDocumentUpdated() {
-  Json::Value msg(Json::ValueType::objectValue);
-  SendDOMEventMsg(DomCdpEvent::DOCUMENT_UPDATED, -1, "", -1);
+  pending_inline_style_updates_.clear();
+  auto* element_manager =
+      tasm_ == nullptr ? nullptr : tasm_->page_proxy()->element_manager().get();
+  if (element_manager == nullptr && element_root_ != nullptr) {
+    element_manager = element_root_->element_manager();
+  }
+  if (element_manager == nullptr || element_manager->IsDomTreeEnabled()) {
+    SendDOMEventMsg(DomCdpEvent::DOCUMENT_UPDATED, -1, "", -1);
+  }
 }
 
 void InspectorTasmExecutor::OnElementNodeAdded(lynx::tasm::Element* ptr) {
@@ -915,8 +939,79 @@ void InspectorTasmExecutor::OnElementDataModelSet(lynx::tasm::Element* ptr) {
 }
 
 void InspectorTasmExecutor::OnElementManagerWillDestroy() {
+  pending_inline_style_updates_.clear();
   tasm_ = nullptr;
   element_root_ = nullptr;
+}
+
+void InspectorTasmExecutor::OnAddInlineStyle(
+    int32_t backend_node_id, lynx::tasm::CSSPropertyID property_id,
+    const lynx::lepus::Value& value) {
+  if (!dom_enabled_) {
+    return;
+  }
+
+  auto& pending_value =
+      pending_inline_style_updates_[{backend_node_id, property_id}];
+  if (value.IsEmpty()) {
+    pending_value.reset();
+  } else if (value.IsNumber()) {
+    pending_value = lynx::tasm::CSSDecoder::NumberToString(value.Number());
+  } else if (value.IsBool()) {
+    pending_value = value.Bool() ? "true" : "false";
+  } else {
+    pending_value = value.ToString();
+  }
+}
+
+void InspectorTasmExecutor::OnFiberFlushElementTree() {
+  if (!dom_enabled_ || pending_inline_style_updates_.empty()) {
+    return;
+  }
+
+  Json::Value params(Json::ValueType::objectValue);
+  params["timestamp"] =
+      static_cast<double>(lynx::base::CurrentTimeMilliseconds()) / 1000.0;
+  Json::Value node_updates(Json::ValueType::arrayValue);
+  Json::Value node_update(Json::ValueType::objectValue);
+  int32_t current_backend_node_id = -1;
+  for (const auto& [key, pending_value] : pending_inline_style_updates_) {
+    const auto& [backend_node_id, property_id] = key;
+    if (backend_node_id != current_backend_node_id) {
+      if (current_backend_node_id != -1) {
+        node_updates.append(std::move(node_update));
+        node_update = Json::Value(Json::ValueType::objectValue);
+      }
+      current_backend_node_id = backend_node_id;
+      node_update["backendNodeId"] = backend_node_id;
+      node_update["properties"] = Json::Value(Json::ValueType::arrayValue);
+    }
+    Json::Value property_update(Json::ValueType::objectValue);
+    property_update["name"] =
+        lynx::tasm::CSSProperty::GetPropertyName(property_id).str();
+    if (!pending_value.has_value()) {
+      property_update["removed"] = true;
+    } else {
+      property_update["value"] = *pending_value;
+    }
+    node_update["properties"].append(std::move(property_update));
+  }
+  node_updates.append(std::move(node_update));
+  params["nodeUpdates"] = std::move(node_updates);
+  pending_inline_style_updates_.clear();
+
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  if (devtool_mediator == nullptr) {
+    return;
+  }
+  Json::Value msg(Json::ValueType::objectValue);
+  msg["method"] = "DOM.inlineStyleUpdatesFlushed";
+  msg["params"] = std::move(params);
+  devtool_mediator->RunOnDevToolThread(
+      [devtool_mediator, msg]() mutable {
+        devtool_mediator->SendCDPEvent(msg);
+      },
+      true);
 }
 
 void InspectorTasmExecutor::DiffID(lynx::tasm::Element* ptr) {
@@ -1180,13 +1275,7 @@ InspectorTasmExecutor::GetFunctionForElementMap() {
 void InspectorTasmExecutor::DOM_Enable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  Json::Value params = message["params"];
-  if (params.isMember("useCompression")) {
-    dom_use_compression_ = params["useCompression"].asBool();
-  }
-  if (params.isMember("compressionThreshold")) {
-    dom_compression_threshold_ = params["compressionThreshold"].asInt();
-  }
+  SetDOMState(true, message);
 
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content(Json::ValueType::objectValue);
@@ -1198,6 +1287,8 @@ void InspectorTasmExecutor::DOM_Enable(
 void InspectorTasmExecutor::DOM_Disable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
+  dom_enabled_ = false;
+  pending_inline_style_updates_.clear();
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content(Json::ValueType::objectValue);
   response["result"] = content;

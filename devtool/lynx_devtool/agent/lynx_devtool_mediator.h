@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
@@ -269,12 +270,18 @@ class LynxDevToolMediator
       const std::shared_ptr<WhiteBoardInspectorDelegate>& inspector_delegate);
 
  private:
+  void DispatchDOMStateChange(bool enable,
+                              const std::shared_ptr<MessageSender>& sender,
+                              const Json::Value& message);
   bool RunOnUIThread(lynx::base::closure&& closure, bool run_now = true);
 
   lynx::fml::RefPtr<lynx::fml::TaskRunner> tasm_task_runner_;
   lynx::fml::RefPtr<lynx::fml::TaskRunner> ui_task_runner_;
   lynx::fml::RefPtr<lynx::fml::TaskRunner> js_task_runner_;
 
+  std::mutex dom_state_mutex_;
+  bool dom_enabled_{false};
+  Json::Value dom_enable_message_;
   std::shared_ptr<InspectorTasmExecutor> element_executor_;
   std::shared_ptr<InspectorUIExecutor> ui_executor_;
   std::shared_ptr<InspectorDefaultExecutor> devtool_executor_;

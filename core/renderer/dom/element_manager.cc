@@ -370,7 +370,7 @@ void ElementManager::WillDestroy() {
 
 void ElementManager::OnDocumentUpdated() {
   EXEC_EXPR_FOR_INSPECTOR({
-    if (inspector_element_observer_ && IsDomTreeEnabled()) {
+    if (inspector_element_observer_) {
       inspector_element_observer_->OnDocumentUpdated();
     }
   });
@@ -378,7 +378,7 @@ void ElementManager::OnDocumentUpdated() {
 
 void ElementManager::OnElementManagerWillDestroy() {
   EXEC_EXPR_FOR_INSPECTOR({
-    if (inspector_element_observer_ && IsDomTreeEnabled()) {
+    if (inspector_element_observer_) {
       inspector_element_observer_->OnElementManagerWillDestroy();
     }
   });

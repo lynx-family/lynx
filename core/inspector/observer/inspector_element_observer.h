@@ -5,6 +5,7 @@
 #ifndef CORE_INSPECTOR_OBSERVER_INSPECTOR_ELEMENT_OBSERVER_H_
 #define CORE_INSPECTOR_OBSERVER_INSPECTOR_ELEMENT_OBSERVER_H_
 
+#include <cstdint>
 #include <map>
 #include <string>
 
@@ -12,9 +13,14 @@
 #include "core/renderer/dom/element.h"
 
 namespace lynx {
+namespace lepus {
+class Value;
+}  // namespace lepus
+
 namespace tasm {
 
 class Element;
+enum CSSPropertyID : int32_t;
 
 class InspectorElementObserver {
  public:
@@ -42,6 +48,10 @@ class InspectorElementObserver {
                                         const lepus::Value &properties) = 0;
   virtual void OnSetNativeProps(Element *ptr, const std::string &name,
                                 const std::string &value, bool is_style) = 0;
+  virtual void OnAddInlineStyle(int32_t backend_node_id,
+                                CSSPropertyID property_id,
+                                const lepus::Value &value) {}
+  virtual void OnFiberFlushElementTree() {}
   virtual std::map<lynx::devtool::DevToolFunction,
                    std::function<void(const base::any &)>>
   GetDevToolFunction() = 0;
