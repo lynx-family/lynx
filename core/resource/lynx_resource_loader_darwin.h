@@ -45,7 +45,6 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
  private:
   using CopyableClosure =
       fml::internal::CopyableLambda<base::MoveOnlyClosure<void, pub::LynxResourceResponse&>>;
-  void LoadResourceInternalSync(const pub::LynxResourceRequest& request, CopyableClosure callback);
 
   NSData* LoadJSSource(const std::string& name);
   NSData* LoadLynxJSAsset(const std::string& name, NSURL& bundleUrl, NSURL& debugBundleUrl);
@@ -80,7 +79,8 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
    * Try to fetch template by FetcherWrapper, it will use builtin resourceService or registered
    * dynamicComponentFetcher
    */
-  bool FetchTemplateByFetcherWrapper(const std::string& url, CopyableClosure callback);
+  bool FetchTemplateByFetcherWrapper(const std::string& url, CopyableClosure callback,
+                                     bool request_in_current_thread);
 
   static void FetchExternalResourceComplete(NSData* data, NSError* error, NSString* nsUrl,
                                             id<LynxErrorReceiverProtocol> weakErrorReceiver,
