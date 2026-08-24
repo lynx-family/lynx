@@ -21,6 +21,7 @@ lynx_core_source_set("events") {
   public_deps = [
     "../../../third_party/rapidjson",
     "../../base",
+    "../../event",
     "../../runtime/lepus:lepus",
     "../trace:renderer_trace",
   ]
@@ -36,7 +37,10 @@ lynx_core_source_set("events_tasm") {
     "events.h",
   ]
 
-  public_deps = [ "../../../third_party/rapidjson" ]
+  public_deps = [
+    "../../../third_party/rapidjson",
+    "../../event",
+  ]
 
   if (enable_lepusng_worklet) {
     public_deps += [ "../worklet:worklet" ]

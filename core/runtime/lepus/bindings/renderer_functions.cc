@@ -4823,6 +4823,7 @@ constexpr int kModifierOpStyleNumber = 2;
 constexpr int kModifierOpStyleString = 3;
 constexpr int kModifierOpAttribute = 4;
 constexpr int kModifierOpCallback = 5;
+constexpr int kModifierOpEvent = 6;
 
 constexpr int kModifierCallbackKindClick = 1;
 
@@ -4830,11 +4831,33 @@ constexpr int kModifierCallbackKindClick = 1;
 // branching `concat` chain stays bounded while long linear chains still apply.
 constexpr int kMaxModifierNodeVisits = 512;
 
+void AddModifierEventListener(Element* element, const base::String& name,
+                              const base::String& type,
+                              const lepus::Value& callback,
+                              runtime::MTSRuntime* registration_context) {
+  element->SetJSEventHandler(name, base::String(), base::String());
+  element->AddEventListener(
+      name.str(),
+      std::make_unique<event::ClosureEventListener>(
+          [callback, registration_context](lepus::Value args) {
+            if (!args.IsArray() || args.Array()->size() != 3) {
+              return;
+            }
+            if (registration_context == nullptr) {
+              return;
+            }
+            registration_context->CallClosure(
+                callback, lepus_value::ShallowCopy(args.Array()->get(1)));
+          },
+          GetEventListenerOptions(type),
+          event::ClosureEventListener::ClosureType::kCore, callback));
+}
+
 // Applies one Modifier IR node, recursing into `previous` (and concat
 // `left`/`right`) first for head-to-tail order; unknown/empty ops are skipped.
 void ApplyModifierNode(const lepus::Value& node, Element* element,
-                       const std::string& context_name, bool deep_convert,
-                       int& remaining_visits) {
+                       runtime::MTSRuntime* registration_context,
+                       bool deep_convert, int& remaining_visits) {
   if (remaining_visits <= 0 || !node.IsObject()) {
     return;
   }
@@ -4844,8 +4867,8 @@ void ApplyModifierNode(const lepus::Value& node, Element* element,
   const auto& op_value = node.GetProperty(kOp);
   if (!op_value.IsNumber()) {
     BASE_STATIC_STRING_DECL(kPrevious, "previous");
-    ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
-                      deep_convert, remaining_visits);
+    ApplyModifierNode(node.GetProperty(kPrevious), element,
+                      registration_context, deep_convert, remaining_visits);
     return;
   }
 
@@ -4853,9 +4876,9 @@ void ApplyModifierNode(const lepus::Value& node, Element* element,
     case kModifierOpConcat: {
       BASE_STATIC_STRING_DECL(kLeft, "left");
       BASE_STATIC_STRING_DECL(kRight, "right");
-      ApplyModifierNode(node.GetProperty(kLeft), element, context_name,
+      ApplyModifierNode(node.GetProperty(kLeft), element, registration_context,
                         deep_convert, remaining_visits);
-      ApplyModifierNode(node.GetProperty(kRight), element, context_name,
+      ApplyModifierNode(node.GetProperty(kRight), element, registration_context,
                         deep_convert, remaining_visits);
       break;
     }
@@ -4864,8 +4887,8 @@ void ApplyModifierNode(const lepus::Value& node, Element* element,
       BASE_STATIC_STRING_DECL(kPrevious, "previous");
       BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
       BASE_STATIC_STRING_DECL(kValue, "value");
-      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
-                        deep_convert, remaining_visits);
+      ApplyModifierNode(node.GetProperty(kPrevious), element,
+                        registration_context, deep_convert, remaining_visits);
       auto id = static_cast<CSSPropertyID>(
           static_cast<int32_t>(node.GetProperty(kPropertyId).Number()));
       // Forward the raw number/string verbatim, like __AddInlineStyle; the CSS
@@ -4883,8 +4906,8 @@ void ApplyModifierNode(const lepus::Value& node, Element* element,
       BASE_STATIC_STRING_DECL(kPrevious, "previous");
       BASE_STATIC_STRING_DECL(kName, "name");
       BASE_STATIC_STRING_DECL(kValue, "value");
-      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
-                        deep_convert, remaining_visits);
+      ApplyModifierNode(node.GetProperty(kPrevious), element,
+                        registration_context, deep_convert, remaining_visits);
       const auto& name = node.GetProperty(kName);
       const auto& value = node.GetProperty(kValue);
       if (name.IsString() &&
@@ -4898,8 +4921,8 @@ void ApplyModifierNode(const lepus::Value& node, Element* element,
       BASE_STATIC_STRING_DECL(kPrevious, "previous");
       BASE_STATIC_STRING_DECL(kCallbackKind, "callbackKind");
       BASE_STATIC_STRING_DECL(kCallback, "callback");
-      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
-                        deep_convert, remaining_visits);
+      ApplyModifierNode(node.GetProperty(kPrevious), element,
+                        registration_context, deep_convert, remaining_visits);
       const auto& callback = node.GetProperty(kCallback);
       if (!callback.IsCallable()) {
         break;
@@ -4909,15 +4932,55 @@ void ApplyModifierNode(const lepus::Value& node, Element* element,
         // A click maps to a bubbling "tap" binding (tasm::kEventBindEvent).
         BASE_STATIC_STRING_DECL(kBindEvent, "bindEvent");
         BASE_STATIC_STRING_DECL(kTap, "tap");
-        element->FiberAddEvent(kBindEvent, kTap, callback, context_name);
+        AddModifierEventListener(element, kTap, kBindEvent, callback,
+                                 registration_context);
       }
+      break;
+    }
+    case kModifierOpEvent: {
+      BASE_STATIC_STRING_DECL(kPrevious, "previous");
+      BASE_STATIC_STRING_DECL(kEventName, "eventName");
+      BASE_STATIC_STRING_DECL(kEventType, "eventType");
+      BASE_STATIC_STRING_DECL(kCallback, "callback");
+      ApplyModifierNode(node.GetProperty(kPrevious), element,
+                        registration_context, deep_convert, remaining_visits);
+      const auto& event_name = node.GetProperty(kEventName);
+      if (!event_name.IsString() || event_name.String().empty()) {
+        ElementAPIError(
+            "FiberSetModifierToElement: eventName should be a non-empty "
+            "String");
+        break;
+      }
+      const auto& event_type = node.GetProperty(kEventType);
+      if (!event_type.IsString()) {
+        ElementAPIError(
+            "FiberSetModifierToElement: eventType should be a String");
+        break;
+      }
+      const auto& type = event_type.StdString();
+      if (type != kEventBindEvent && type != kEventCatchEvent &&
+          type != kEventCaptureBind && type != kEventCaptureCatch) {
+        ElementAPIError(
+            "FiberSetModifierToElement: unsupported local event type: %s",
+            type.c_str());
+        break;
+      }
+      const auto& callback = node.GetProperty(kCallback);
+      if (!callback.IsCallable()) {
+        ElementAPIError(
+            "FiberSetModifierToElement: event callback should be callable");
+        break;
+      }
+      AddModifierEventListener(element, event_name.String(),
+                               event_type.String(), callback,
+                               registration_context);
       break;
     }
     default: {
       // Unknown op: skip without aborting the rest of the chain.
       BASE_STATIC_STRING_DECL(kPrevious, "previous");
-      ApplyModifierNode(node.GetProperty(kPrevious), element, context_name,
-                        deep_convert, remaining_visits);
+      ApplyModifierNode(node.GetProperty(kPrevious), element,
+                        registration_context, deep_convert, remaining_visits);
       break;
     }
   }
@@ -4954,17 +5017,15 @@ RENDERER_FUNCTION_CC(FiberSetModifierToElement) {
   element->RemoveAllInlineStyles();
   element->RemoveAllModifierAttributes();
   auto* manager = element->element_manager();
-  if (manager != nullptr && manager->EnableEventHandleRefactor()) {
-    element->GetEventListenerMap()->Clear();
-  }
+  element->GetEventListenerMap()->Clear();
   element->RemoveAllEvents();
 
   if (arg1->IsObject()) {
     const bool deep_convert =
         manager != nullptr && manager->GetEnableParallelElement();
     int remaining_visits = kMaxModifierNodeVisits;
-    ApplyModifierNode(*arg1, element.get(), LEPUS_CONTEXT()->name(),
-                      deep_convert, remaining_visits);
+    ApplyModifierNode(*arg1, element.get(), LEPUS_CONTEXT(), deep_convert,
+                      remaining_visits);
   }
 
   ON_NODE_MODIFIED(element);
