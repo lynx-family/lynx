@@ -23,8 +23,9 @@ typedef void (^LoadedBlock)(NSData* _Nullable data, NSError* _Nullable error);
 /**
  * url: uri to load fetch resource;
  * block: callback for resource loading process;
+ * sync: need to call component_fetcher synchronously;
  */
-- (BOOL)fetchResource:(NSString*)url withLoadedBlock:(LoadedBlock)block;
+- (BOOL)fetchResource:(NSString*)url withLoadedBlock:(LoadedBlock)block sync:(BOOL)sync;
 
 @end
 
