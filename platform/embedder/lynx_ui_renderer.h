@@ -10,6 +10,7 @@
 
 #include "clay/public/clay.h"
 #include "core/public/ui_delegate.h"
+#include "platform/embedder/core/lynx_template_renderer.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 
 namespace lynx {
@@ -40,6 +41,8 @@ class LynxUIRenderer {
   virtual NativeWindow GetNativeWindow() = 0;
 
   virtual void SetPixelRatio(float pixel_ratio) { pixel_ratio_ = pixel_ratio; }
+  virtual void SetTemplateRendererSettings(
+      const LynxTemplateRenderer::Settings& settings) {}
   virtual void SetFrame(float x, float y, float width, float height) {
     width_ = width;
     height_ = height;

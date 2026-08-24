@@ -8,6 +8,8 @@ ui_shadow_sources = [
   "base_text_shadow_node.h",
   "bundle.h",
   "icu_substitute.h",
+  "frame_shadow_node.cc",
+  "frame_shadow_node.h",
   "image_shadow_node.cc",
   "image_shadow_node.h",
   "inline_image_shadow_node.cc",

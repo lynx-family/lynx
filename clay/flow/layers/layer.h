@@ -45,6 +45,7 @@ class PictureLayer;
 #endif  // ENABLE_SKITY
 class PunchHoleLayer;
 class DrawableImageLayer;
+class FrameSurfaceLayer;
 class RasterCacheItem;
 
 static constexpr skity::Rect kGiantRect =
@@ -317,6 +318,9 @@ class Layer {
   virtual const PictureLayer* as_picture_layer() const { return nullptr; }
 
   virtual const DrawableImageLayer* as_drawable_image_layer() const {
+    return nullptr;
+  }
+  virtual const FrameSurfaceLayer* as_frame_surface_layer() const {
     return nullptr;
   }
   virtual const PunchHoleLayer* as_punch_hole_layer() const { return nullptr; }

@@ -156,6 +156,7 @@ class DiffContext {
   // Adds the region to current damage. Used for removed layers, where instead
   // of diffing the layer its paint region is directly added to damage.
   void AddDamage(const PaintRegion& damage);
+  void AddLocalDamageRect(const skity::Rect& rect);
 
   // Associates the paint region with specified layer and current layer tree.
   // The paint region can not be stored directly in layer itself, because same
@@ -257,7 +258,7 @@ class DiffContext {
   bool has_raster_cache_;
   uint64_t retained_preroll_generation_;
 
-  void AddDamage(const skity::Rect& rect);
+  void AddDamageRect(const skity::Rect& rect);
 
   void AlignRect(skity::Rect& rect, int horizontal_alignment,
                  int vertical_clip_alignment) const;

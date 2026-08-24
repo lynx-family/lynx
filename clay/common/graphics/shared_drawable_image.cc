@@ -74,6 +74,13 @@ void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
   if (image_sink_->Capacity() == 1) {
     [[maybe_unused]] bool update_success = Update();
   } else if (!freeze) {
+    if (image_sink_->update_front_mode() ==
+        SharedImageSink::UpdateFrontMode::kLatest) {
+      if (frame_consume_cnt_ < frame_produce_cnt_ && Update()) {
+        frame_consume_cnt_ = frame_produce_cnt_;
+      }
+      return;
+    }
     // TODO(youfeng) request a raster frame instead drain all images
     while (frame_consume_cnt_ < frame_produce_cnt_) {
       if (!Update()) {

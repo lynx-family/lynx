@@ -131,6 +131,12 @@ class FlutterWindow : public Window, public WindowBindingHandler {
   bool NeedsVSync() override;
 
  private:
+  // Clay pointer events use the implicit view's physical coordinates, while
+  // Win32 child-window messages use coordinates local to the child.
+  void ConvertPointToParentWindow(double* x, double* y);
+
+  HWND parent_hwnd_ = nullptr;
+
   // A pointer to a FlutterWindowsView that can be used to update engine
   // windowing and input state.
   WindowBindingHandlerDelegate* binding_handler_delegate_;

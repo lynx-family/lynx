@@ -114,6 +114,8 @@ source_set("flutter_windows_source") {
     "keyboard_manager.h",
     "keyboard_utils.cc",
     "keyboard_utils.h",
+    "overlay_platform_plugin_win.cc",
+    "overlay_platform_plugin_win.h",
     "overlay_view_controller.cc",
     "overlay_view_controller.h",
     "overlay_view_manager_service.cc",

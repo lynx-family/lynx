@@ -49,6 +49,9 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
 
   void RegisterIMEHandler(void* handler, void* opaque) override {}
 
+  void SetTemplateRendererSettings(
+      const LynxTemplateRenderer::Settings& settings) override;
+
   /* headless delegate */
   const char* GetClipboardData() const override;
   void SetClipboardData(const char* data) override;

@@ -13,6 +13,8 @@ ui_compositing_sources = [
   "pending_effect_layer.h",
   "pending_external_view_layer.cc",
   "pending_external_view_layer.h",
+  "pending_frame_surface_layer.cc",
+  "pending_frame_surface_layer.h",
   "pending_layer.cc",
   "pending_layer.h",
   "pending_offset_layer.cc",

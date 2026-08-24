@@ -17,6 +17,8 @@ ui_rendering_sources = [
   "render_external_content.h",
   "render_external_view.cc",
   "render_external_view.h",
+  "render_frame.cc",
+  "render_frame.h",
   "render_image.cc",
   "render_image.h",
   "render_list.cc",

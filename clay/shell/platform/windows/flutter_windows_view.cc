@@ -181,6 +181,20 @@ uint32_t FlutterWindowsView::GetFrameBufferId(size_t width, size_t height) {
   return kWindowFrameBufferID;
 }
 
+void FlutterWindowsView::PrepareSurfaceSize(size_t width, size_t height) {
+  std::unique_lock<std::mutex> lock(resize_mutex_);
+  if (!surface_ || !surface_->IsValid()) {
+    return;
+  }
+  if (SurfaceWillUpdate(surface_->width(), surface_->height(), width, height) ||
+      SurfaceWillUpdate(resize_target_width_, resize_target_height_, width,
+                        height)) {
+    resize_status_ = ResizeState::kResizeStarted;
+    resize_target_width_ = width;
+    resize_target_height_ = height;
+  }
+}
+
 void FlutterWindowsView::SetDamageRegion(const clay::Rect& region) {
   if (!surface_) {
     return;

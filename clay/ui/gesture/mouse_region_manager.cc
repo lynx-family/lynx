@@ -45,6 +45,10 @@ void MouseRegionManager::RegisterHoverCallback(BaseView* target,
                                                HoverCallback callback) {
   mouse_region_routes_[target].on_hover = callback;
 }
+void MouseRegionManager::RegisterHoverTrackingCallback(
+    BaseView* target, HoverTrackingCallback callback) {
+  mouse_region_routes_[target].on_hover_tracking = callback;
+}
 
 void MouseRegionManager::UnregisterCallback(BaseView* target) {
   // TODO(yangliu): support multi callbacks
@@ -105,8 +109,17 @@ void MouseRegionManager::HandleEvent(BaseView* root,
 
   if (prev_chain_ == view_chain) {
     // stay in the same mouse region
+    auto target_iter = view_chain.begin();
+    while (target_iter != view_chain.end()) {
+      auto route_iter = mouse_region_routes_.find(target_iter->get());
+      if (route_iter != mouse_region_routes_.end() &&
+          route_iter->second.on_hover_tracking) {
+        route_iter->second.on_hover_tracking(event);
+      }
+      ++target_iter;
+    }
     if (!root->page_view()->AlignMouseEventWithW3C()) {
-      auto target_iter = view_chain.begin();
+      target_iter = view_chain.begin();
       while (target_iter != view_chain.end()) {
         auto route_iter = mouse_region_routes_.find(target_iter->get());
         if (route_iter != mouse_region_routes_.end() &&
