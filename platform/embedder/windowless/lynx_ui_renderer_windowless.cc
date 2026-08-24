@@ -7,14 +7,17 @@
 #include <cassert>
 #include <cstdio>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/timer/time_utils.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_view_service_embedder.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/ui/component/view_context.h"
+#include "clay/ui/event/key_codes.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
@@ -204,6 +207,38 @@ void LynxUIRendererWindowless::RegisterNativeView(
 
 lynx::tasm::UIDelegate* LynxUIRendererWindowless::GetUIDelegate() {
   return ui_delegate_.get();
+}
+
+void LynxUIRendererWindowless::Focus(int node_id) {
+  auto* view_context =
+      static_cast<clay::ViewContext*>(headless_engine_->GetViewContext());
+  view_context->InvokeUIMethod(
+      node_id, "focus", {},
+      [node_id](clay::LynxUIMethodResult code, clay::Value) {
+        if (code != clay::LynxUIMethodResult::kSuccess) {
+          LOGW("DOM.focus failed for nodeId: " << node_id << ", code: "
+                                               << static_cast<int>(code));
+        }
+      });
+}
+
+void LynxUIRendererWindowless::InsertText(const std::string& text) {
+  if (text.empty()) {
+    return;
+  }
+  ClayKeyEvent event{
+      .struct_size = sizeof(ClayKeyEvent),
+      .timestamp = static_cast<double>(base::CurrentTimeMicroseconds()),
+      .type = kClayKeyEventTypeDown,
+      .physical = clay::keycodes::kPhysicalKeyA,
+      .logical = clay::keycodes::kLogicalUnidentified,
+      .character = text.c_str(),
+      .synthesized = true,
+  };
+  headless_engine_->SendKeyEvent(&event, nullptr, nullptr);
+  event.type = kClayKeyEventTypeUp;
+  event.character = nullptr;
+  headless_engine_->SendKeyEvent(&event, nullptr, nullptr);
 }
 
 void LynxUIRendererWindowless::SendPointerEvent(const ClayPointerEvent& event) {

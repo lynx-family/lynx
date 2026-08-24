@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_WINDOWLESS_LYNX_UI_RENDERER_WINDOWLESS_H_
 
 #include <memory>
+#include <string>
 #include <thread>
 
 #include "clay/lynx_adaptor/ui_delegate_clay.h"
@@ -46,6 +47,9 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
                           void* opaque) override;
 #endif
   lynx::tasm::UIDelegate* GetUIDelegate() override;
+
+  void Focus(int node_id) override;
+  void InsertText(const std::string& text) override;
 
   void RegisterIMEHandler(void* handler, void* opaque) override {}
 
