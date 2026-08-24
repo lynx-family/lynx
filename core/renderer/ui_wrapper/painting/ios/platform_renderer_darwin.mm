@@ -322,7 +322,10 @@ void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& ini
   if (IsPlatformExtendedRenderer()) {
     base::String extended_tag_name = GetExtendedRendererTagName();
     NSString* tagName = [NSString stringWithUTF8String:extended_tag_name.str().c_str()];
-    Class hostClass = [LynxComponentRegistry rendererHostClassWithName:tagName];
+    LynxComponentScopeRegistry* componentRegistry = context_->GetComponentRegistry();
+    Class hostClass = componentRegistry != nil
+                          ? [componentRegistry rendererHostClassWithName:tagName]
+                          : [LynxComponentRegistry rendererHostClassWithName:tagName];
     auto initial_prop_bundle = CreateDarwinPropBundle(init_data);
     NSDictionary* initial_props = initial_prop_bundle ? initial_prop_bundle->dictionary() : nil;
 
