@@ -450,6 +450,10 @@ void ViewContext::SetBounds(int id, float left, float top, float width,
   view->SetBound(
       GetPageView()->RoundPixels(left), GetPageView()->RoundPixels(top),
       GetPageView()->RoundPixels(width), GetPageView()->RoundPixels(height));
+  if (page_view_->HasIntersectionObserverManager()) {
+    page_view_->intersection_observer_manager()
+        ->TryReconcileLargeExposureTargetAfterLayout(view);
+  }
 }
 
 void ViewContext::SetPaddings(int id, float padding_left, float padding_top,

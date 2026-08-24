@@ -5,6 +5,7 @@
 #include "clay/ui/component/intersection_observer_manager.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <utility>
 
@@ -15,6 +16,22 @@
 #include "clay/ui/component/page_view.h"
 
 namespace clay {
+
+namespace {
+
+constexpr double kLargeExposureTargetViewportAreaRatio = 0.5;
+
+bool HasValidPositiveArea(const BaseView* view) {
+  return view && std::isfinite(view->Width()) &&
+         std::isfinite(view->Height()) && view->Width() > 0 &&
+         view->Height() > 0;
+}
+
+double Area(const BaseView* view) {
+  return static_cast<double>(view->Width()) * view->Height();
+}
+
+}  // namespace
 
 void IntersectionObserverManager::StopExposure(bool send_event) {
   // Do not return only because exposure is already stopped. stop(false) keeps
@@ -73,20 +90,43 @@ void IntersectionObserverManager::SetExposureHostVisible(bool visible) {
     it.second->SetExposureHostVisible(visible);
   }
 
+  bool deferred_target_notified = false;
+  if (visible && !host_hidden_first_add_pending_views_.empty()) {
+    const std::vector<BaseView*> pending_targets(
+        host_hidden_first_add_pending_views_.begin(),
+        host_hidden_first_add_pending_views_.end());
+    host_hidden_first_add_pending_views_.clear();
+    for (auto* target : pending_targets) {
+      if (TryReconcileDeferredDirectPageChildAfterHostVisible(target)) {
+        deferred_target_notified = true;
+      }
+    }
+  }
+
   if (visible && !expose_observers_map_.empty()) {
     last_expose_time_ = -1;
     page_view_->page_view()->RequestPaint();
   }
+  if (deferred_target_notified) {
+    page_view_->page_view()->SendGlobalExposureEvent();
+  }
 }
 
 void IntersectionObserverManager::EraseExposeObserver(
-    const BaseView* view, const ExposeObserver* target) {
+    BaseView* view, const ExposeObserver* target) {
   if (view) {
+    layout_fast_path_candidate_views_.erase(view);
+    layout_fast_path_attempted_views_.erase(view);
+    host_hidden_first_add_pending_views_.erase(view);
     expose_observers_map_.erase(view);
   } else if (target) {
     for (auto iter = expose_observers_map_.begin();
          iter != expose_observers_map_.end();) {
       if ((iter->second).get() == target) {
+        auto* attached_view = iter->second->GetAttachedView();
+        layout_fast_path_candidate_views_.erase(attached_view);
+        layout_fast_path_attempted_views_.erase(attached_view);
+        host_hidden_first_add_pending_views_.erase(attached_view);
         iter = expose_observers_map_.erase(iter);
         return;
       } else {
@@ -101,8 +141,7 @@ void IntersectionObserverManager::RemoveObserver(
   if (target->IsOfType(IntersectionObserver::kIntersectionObserver)) {
     EraseObserver(intersection_observers_, nullptr, target);
   } else if (target->IsOfType(IntersectionObserver::kExposeObserver)) {
-    expose_observers_map_.erase(target->GetAttachedView());
-    EraseExposeObserver(nullptr, static_cast<const ExposeObserver*>(target));
+    EraseExposeObserver(target->GetAttachedView());
   }
 }
 
@@ -163,15 +202,180 @@ void IntersectionObserverManager::NotifyTargetAttached(BaseView* view) {
 }
 
 void IntersectionObserverManager::NotifyTargetDetached(BaseView* view) {
+  layout_fast_path_candidate_views_.erase(view);
+  layout_fast_path_attempted_views_.erase(view);
+  host_hidden_first_add_pending_views_.erase(view);
   NotifyAllObserver(&IntersectionObserver::OnDetach, view);
 }
 
 void IntersectionObserverManager::ReconcileExposureForTarget(BaseView* view) {
+  if (view) {
+    layout_fast_path_candidate_views_.erase(view);
+    layout_fast_path_attempted_views_.insert(view);
+  }
   if (exposure_stopped_ || !exposure_host_visible_ || !view ||
       !view->attach_to_tree()) {
     return;
   }
   NotifyExposures(&IntersectionObserver::CheckForIntersectionWithTarget, view);
+}
+
+bool IntersectionObserverManager::TryNotifyDirectPageChildOnFirstAdd(
+    BaseView* target) {
+  const bool direct_page_child =
+      target && page_view_ && target->Parent() == page_view_;
+  auto observer_it = expose_observers_map_.find(target);
+  auto* observer = observer_it == expose_observers_map_.end()
+                       ? nullptr
+                       : observer_it->second.get();
+  const bool has_uiappear = observer && observer->HasUIAppearCallback();
+
+  if (!direct_page_child) {
+    return false;
+  }
+  if (!observer) {
+    return false;
+  }
+  if (!has_uiappear) {
+    return false;
+  }
+  if (!target->attach_to_tree()) {
+    return false;
+  }
+  if (exposure_stopped_) {
+    return false;
+  }
+  if (!exposure_host_visible_) {
+    host_hidden_first_add_pending_views_.insert(target);
+    return false;
+  }
+  host_hidden_first_add_pending_views_.erase(target);
+  layout_fast_path_candidate_views_.erase(target);
+  layout_fast_path_attempted_views_.insert(target);
+  if (observer->IsExposed()) {
+    page_view_->page_view()->SendGlobalExposureEvent();
+    return true;
+  }
+  if (!observer->TryNotifyAppearWithoutGeometry()) {
+    return false;
+  }
+
+  page_view_->page_view()->SendGlobalExposureEvent();
+  return true;
+}
+
+bool IntersectionObserverManager::
+    TryReconcileDeferredDirectPageChildAfterHostVisible(BaseView* target) {
+  const bool direct_page_child =
+      target && page_view_ && target->Parent() == page_view_;
+  auto observer_it = expose_observers_map_.find(target);
+  auto* observer = observer_it == expose_observers_map_.end()
+                       ? nullptr
+                       : observer_it->second.get();
+  const bool has_uiappear = observer && observer->HasUIAppearCallback();
+
+  if (!direct_page_child) {
+    return false;
+  }
+  if (!observer) {
+    return false;
+  }
+  if (!has_uiappear) {
+    return false;
+  }
+  if (!target->attach_to_tree()) {
+    return false;
+  }
+  if (exposure_stopped_) {
+    return false;
+  }
+  if (!exposure_host_visible_) {
+    return false;
+  }
+  layout_fast_path_candidate_views_.erase(target);
+  layout_fast_path_attempted_views_.insert(target);
+  if (observer->IsExposed()) {
+    return false;
+  }
+
+  if (!observer->TryNotifyAppearWithoutGeometry()) {
+    return false;
+  }
+
+  return true;
+}
+
+bool IntersectionObserverManager::TryReconcileLargeExposureTargetAfterLayout(
+    BaseView* layout_view) {
+  if (!layout_view || !page_view_ || expose_observers_map_.empty() ||
+      !HasValidPositiveArea(page_view_)) {
+    return false;
+  }
+
+  const double page_area = Area(page_view_);
+  if (HasExposeObserver(layout_view) &&
+      layout_fast_path_attempted_views_.count(layout_view) == 0 &&
+      HasValidPositiveArea(layout_view) &&
+      Area(layout_view) > page_area * kLargeExposureTargetViewportAreaRatio) {
+    layout_fast_path_candidate_views_.insert(layout_view);
+  }
+  if (layout_fast_path_candidate_views_.empty()) {
+    return false;
+  }
+
+  // An observed target may receive layout before a full-screen wrapper. Only
+  // recheck the target when its own or one of its ancestors' bounds changes;
+  // unrelated layout updates do not scan the pending candidates.
+  bool reconciled = false;
+  const std::vector<BaseView*> candidates(
+      layout_fast_path_candidate_views_.begin(),
+      layout_fast_path_candidate_views_.end());
+  for (auto* target : candidates) {
+    if (!HasExposeObserver(target) ||
+        layout_fast_path_attempted_views_.count(target) != 0) {
+      layout_fast_path_candidate_views_.erase(target);
+      continue;
+    }
+
+    bool relevant_layout_update = layout_view == target;
+    for (auto* ancestor = target->Parent(); !relevant_layout_update && ancestor;
+         ancestor = ancestor->Parent()) {
+      relevant_layout_update = ancestor == layout_view;
+      if (ancestor == page_view_) {
+        break;
+      }
+    }
+    if (!relevant_layout_update) {
+      continue;
+    }
+
+    const bool attached = target->attach_to_tree();
+    bool large_ready_ancestor_chain = attached;
+    BaseView* current = target;
+    while (large_ready_ancestor_chain && current && current != page_view_) {
+      if (!HasValidPositiveArea(current) ||
+          Area(current) <= page_area * kLargeExposureTargetViewportAreaRatio) {
+        large_ready_ancestor_chain = false;
+        break;
+      }
+      current = current->Parent();
+    }
+
+    const bool page_descendant = current == page_view_;
+    const bool eligible = !exposure_stopped_ && exposure_host_visible_ &&
+                          large_ready_ancestor_chain && page_descendant;
+    if (!eligible) {
+      continue;
+    }
+
+    ReconcileExposureForTarget(target);
+    reconciled = true;
+  }
+
+  if (reconciled) {
+    page_view_->page_view()->SendGlobalExposureEvent();
+  }
+  return reconciled;
 }
 
 void IntersectionObserverManager::NotifyExposures(
