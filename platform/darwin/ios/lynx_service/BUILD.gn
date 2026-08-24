@@ -68,11 +68,11 @@ subspec_target("Image") {
   dependency = lynx_dependency
   dependency += [ [
         "SDWebImage",
-        "5.15.5",
+        "~> 5.19",
       ] ]
   dependency += [ [
         "SDWebImageWebPCoder",
-        "0.11.0",
+        "~> 0.14",
       ] ]
   dependency += [ [
         "LynxServiceAPI",

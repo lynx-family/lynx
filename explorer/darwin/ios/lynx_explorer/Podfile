@@ -222,8 +222,8 @@ target 'LynxExplorer' do
     pod ENV['LYNX_NODE_API_ADDON_POD_NAME'], :path => ENV['LYNX_NODE_API_ADDON_POD_PATH']
   end
 
-  pod 'SDWebImage','5.15.5'
-  pod 'SDWebImageWebPCoder', '0.11.0'
+  pod 'SDWebImage', '~> 5.19'
+  pod 'SDWebImageWebPCoder', '~> 0.14'
 
   pod 'DebugRouter', '5.0.15'
   pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
