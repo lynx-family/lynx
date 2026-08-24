@@ -78,7 +78,6 @@ public class ScrollCoordinatorAppBarLayout
     private boolean shouldBlockNestedScroll;
     private Field cachedFlingRunnableField;
     private Method scrollMethod;
-    private Method getDownNestedScrollRange;
     private Method updateAccessibilityActions;
 
     public Behavior() {
@@ -265,12 +264,7 @@ public class ScrollCoordinatorAppBarLayout
                   "scroll", CoordinatorLayout.class, View.class, int.class, int.class, int.class);
               scrollMethod.setAccessible(true);
             }
-            if (getDownNestedScrollRange == null) {
-              Class appBarClass = child.getClass().getSuperclass().getSuperclass();
-              getDownNestedScrollRange = appBarClass.getDeclaredMethod("getDownNestedScrollRange");
-              getDownNestedScrollRange.setAccessible(true);
-            }
-            int downRange = (int) getDownNestedScrollRange.invoke(child);
+            int downRange = child.getTotalScrollRange();
             consumed[1] = (int) scrollMethod.invoke(
                 this, coordinatorLayout, child, dyUnconsumed, -downRange, 0);
           }
