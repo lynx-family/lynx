@@ -7,6 +7,8 @@ import("../../Lynx.gni")
 
 # recorder_shared_sources
 recorder_shared_sources = [
+  "fixture_writer.cc",
+  "fixture_writer.h",
   "lynxview_init_recorder.cc",
   "lynxview_init_recorder.h",
   "native_module_recorder.cc",
