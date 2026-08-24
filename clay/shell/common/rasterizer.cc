@@ -20,6 +20,9 @@
 #include "base/include/fml/time/time_point.h"
 #include "clay/common/graphics/persistent_cache.h"
 #include "clay/common/service/service_manager.h"
+#if defined(OS_ANDROID) || defined(OS_IOS)
+#include "clay/common/trail_settings.h"
+#endif
 #include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/compositor_context.h"
 #include "clay/flow/frame_timings.h"
@@ -425,9 +428,20 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
 
     last_memory_strategy_ =
         render_settings_ && render_settings_->ShouldLowMemoryUsage();
-    bool ignore_raster_cache =
-        last_memory_strategy_ || !surface_->EnableRasterCache() ||
-        (render_settings_ && render_settings_->IgnoreRasterCache());
+#if defined(OS_ANDROID) || defined(OS_IOS)
+    const bool force_ignore_raster_cache =
+        clay::setting::CLAY_FORCE_IGNORE_RASTER_CACHE.value();
+#else
+    const bool force_ignore_raster_cache = false;
+#endif
+    bool ignore_raster_cache;
+    if (force_ignore_raster_cache) {
+      ignore_raster_cache = true;
+    } else {
+      ignore_raster_cache =
+          last_memory_strategy_ || !surface_->EnableRasterCache() ||
+          (render_settings_ && render_settings_->IgnoreRasterCache());
+    }
 
     bool last_ignore_raster_cache =
         last_ignore_raster_cache_.load(std::memory_order_relaxed);
