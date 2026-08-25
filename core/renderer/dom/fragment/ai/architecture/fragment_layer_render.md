@@ -122,8 +122,8 @@ Like `DisplayListItem`, its size and offsets are ABI-checked.
 `DisplayListBuilder` exposes the fluent recording API used by fragments:
 
 ```cpp
-DisplayListBuilder builder(render_offset_x, render_offset_y);
-builder.Begin(id, type, x, y, width, height)
+DisplayListBuilder builder;
+builder.Begin(id, type, resolved_offset_x, resolved_offset_y, width, height)
     .Fill(color, clip_index)
     .DrawText(text_id, box_index)
     .End();
@@ -137,6 +137,68 @@ resource.
 
 Subtree property methods append only to `subtree_properties_`; they do not add
 content items.
+
+### 3.1 Restacking geometry
+
+Geometry crosses two independent trees before display-list recording:
+
+1. The layout tree contributes each element's local layout offset. The
+   restacking collector accumulates these offsets into layout-to-root space.
+2. The fragment stacking tree contributes paint-parent edges. The resolver
+   converts each layout-to-root position into one offset relative to its paint
+   parent.
+3. Display-list recording consumes only the resolved geometry. It does not
+   walk ancestors or maintain another recursively accumulated offset.
+
+For a flattened fragment, the geometry parent is its direct fragment parent.
+For a platform-backed fragment, it is the nearest platform-backed ancestor,
+because `kDrawView` and the child platform display list both use that coordinate
+space. New/unified fixed layout results are already page-root relative, so
+layout-to-root collection resets at that edge instead of adding the logical
+parent offset again. A fragment that is transiently not reachable from the
+layout tree invalidates its resolved geometry and skips that paint subtree
+until a later successful restack, instead of publishing zero or stale offsets.
+
+For a platform-backed fragment, restacking also derives the platform adapter
+values from that same resolved edge:
+
+```text
+paint_offset + platform_embedding_offset = offset_to_parent
+```
+
+The root `kBegin` uses `paint_offset`; `DisplayList::render_offset` carries
+`platform_embedding_offset`. The latter is the translation contributed only by
+flattened fragments on the current StackingTree path before `kDrawView`, not by
+every ancestor in the LayoutTree. Android lays out the native child at their
+sum and cancels `platform_embedding_offset` while dispatching the child canvas,
+so an active display-list translation is not applied twice and a hoisted
+ancestor is not cancelled after it has left the paint path. These values are
+published as part of `ResolvedStackingGeometry` and participate in the same
+change comparison; they are not independent mutable geometry.
+
+Restacking is invalidated only when one of its inputs changes: a local layout
+offset, a fragment stacking edge, or a platform-renderer boundary. Resolution
+compares the new parent and offset with the previous result before publishing
+it. An unchanged result causes no node-ready update and no redraw. A changed
+result invalidates only the fragment's paint root and, when needed, the paint
+root that embeds it. Content redraw propagation stops at the nearest
+platform-backed paint root.
+
+During a layout pipeline, layout-to-root collection remains one LayoutTree
+pass, but geometry resolution is fused into the existing FragmentTree platform
+layout synchronization. It does not add another FragmentTree pass on first
+screen. Each collection receives a generation number; fragments record the
+generation that reached them, so resolution can validate LayoutTree
+reachability without first clearing a valid bit across the whole tree. A style
+or stacking-edge update that does not trigger layout still uses the standalone
+restacking fallback before drawing. That no-layout path sorts dirty stacking
+contexts before recording the display list and publishes node-ready updates
+from changed native renderer geometry before the layout-finished notification.
+
+For managed fragments, invalidation and draw entry resolve the restacking root
+directly through the ElementManager page fragment. Parent-chain traversal is
+reserved for standalone FragmentTrees that are not installed as Element
+containers.
 
 ## 4. Reading a Display List
 
