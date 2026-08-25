@@ -198,14 +198,16 @@ class Element : public lepus::RefCounted,
   struct ActionParam {
     ActionParam(Action type, Element* parent, const fml::RefPtr<Element>& child,
                 int from, Element* ref_node, bool is_fixed = false,
-                bool has_z_index = false)
+                bool has_z_index = false,
+                fml::RefPtr<Element> source_parent = nullptr)
         : type_(type),
           parent_(parent),
           child_(child),
           index_(from),
           ref_node_(ref_node),
           is_fixed_(is_fixed),
-          has_z_index_(has_z_index) {}
+          has_z_index_(has_z_index),
+          source_parent_(std::move(source_parent)) {}
     Action type_;
     Element* parent_;
     fml::RefPtr<Element> child_;
@@ -213,6 +215,7 @@ class Element : public lepus::RefCounted,
     Element* ref_node_;
     bool is_fixed_;
     bool has_z_index_;
+    fml::RefPtr<Element> source_parent_;
   };
 
   void AppendActionParam(ActionParam action_param) {
@@ -845,6 +848,11 @@ class Element : public lepus::RefCounted,
   virtual void InsertNodeBeforeInternal(const fml::RefPtr<Element>& child,
                                         Element* ref_node,
                                         bool update_logical_children);
+  // Reparents a rendered child from a distinct parent to this Element. The
+  // caller guarantees that child and index belong to the same valid scoped
+  // tree. The target retains the render source until the deferred platform
+  // remove-and-insert operations have been generated.
+  void MoveNodeToIndex(const fml::RefPtr<Element>& child, int32_t index);
   virtual void ReplaceElements(
       const base::Vector<fml::RefPtr<Element>>& inserted,
       const base::Vector<fml::RefPtr<Element>>& removed,
@@ -2382,6 +2390,16 @@ class Element : public lepus::RefCounted,
   std::unique_ptr<SLNode> sl_node_{nullptr};
 
  private:
+  // Updates logical and scoped ownership without enqueueing platform actions.
+  void AttachNodeToElementTree(const fml::RefPtr<Element>& child,
+                               Element* ref_node, int32_t index,
+                               bool update_logical_children);
+  void DetachNodeFromElementTree(const fml::RefPtr<Element>& child,
+                                 int32_t index, bool update_logical_children);
+  // Returns the original render source, consuming a pending move when repeated
+  // moves are coalesced before a flush.
+  fml::RefPtr<Element> TakeMoveSourceParent(const fml::RefPtr<Element>& child);
+
   void AttachToElementManagerInner(
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,

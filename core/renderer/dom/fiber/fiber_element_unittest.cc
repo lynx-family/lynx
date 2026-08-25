@@ -3481,6 +3481,188 @@ TEST_P(FiberElementTest, InsertNodeBefore) {
   EXPECT_EQ(parent->GetChildAt(1), element.get());
 }
 
+TEST_P(FiberElementTest, MoveNodeToIndexReparentBetweenViewParents) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto source = manager->CreateFiberView();
+  auto target = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto anchor = manager->CreateFiberView();
+  for (const auto& element : {source, target, child, anchor}) {
+    element->MarkCanBeLayoutOnly(false);
+  }
+
+  page->InsertNode(source);
+  page->InsertNode(target);
+  source->InsertNode(child);
+  target->InsertNode(anchor);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const int32_t child_id = child->impl_id();
+  const int32_t source_id = source->impl_id();
+  auto source_weak = source->WeakFromThis();
+  platform_impl_->ResetCapturedRemoveSigns();
+
+  target->MoveNodeToIndex(child, 0);
+  EXPECT_EQ(source->GetChildCount(), 0u);
+  EXPECT_EQ(source->logical_children().size(), 0u);
+  ASSERT_EQ(target->GetChildCount(), 2u);
+  ASSERT_EQ(target->logical_children().size(), 2u);
+  EXPECT_EQ(target->GetChildAt(0), child.get());
+  EXPECT_EQ(target->GetChildAt(1), anchor.get());
+  EXPECT_EQ(target->logical_children()[0].get(), child.get());
+  EXPECT_EQ(target->logical_children()[1].get(), anchor.get());
+  EXPECT_EQ(child->parent(), target.get());
+  EXPECT_EQ(child->render_parent(), source.get());
+
+  const auto source_remove = std::find_if(
+      source->action_param_list_.begin(), source->action_param_list_.end(),
+      [&child](const Element::ActionParam& param) {
+        return param.type_ == Element::Action::kRemoveChildAct &&
+               param.child_.get() == child.get();
+      });
+  EXPECT_EQ(source_remove, source->action_param_list_.end());
+  EXPECT_EQ(std::count_if(target->action_param_list_.begin(),
+                          target->action_param_list_.end(),
+                          [&child](const Element::ActionParam& param) {
+                            return param.type_ == Element::Action::kMoveAct &&
+                                   param.child_.get() == child.get();
+                          }),
+            1);
+
+  const auto target_move = std::find_if(
+      target->action_param_list_.begin(), target->action_param_list_.end(),
+      [&child](const Element::ActionParam& param) {
+        return param.type_ == Element::Action::kMoveAct &&
+               param.child_.get() == child.get();
+      });
+  ASSERT_NE(target_move, target->action_param_list_.end());
+  EXPECT_EQ(target_move->parent_, target.get());
+  EXPECT_EQ(target_move->index_, 0);
+  EXPECT_EQ(target_move->ref_node_, anchor.get());
+  EXPECT_EQ(target_move->source_parent_.get(), source.get());
+
+  page->RemoveNode(source, false);
+  source = nullptr;
+  EXPECT_TRUE(source_weak);
+
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(child->render_parent(), target.get());
+  EXPECT_FALSE(source_weak);
+  platform_impl_->Flush();
+
+  EXPECT_EQ(child->impl_id(), child_id);
+  EXPECT_EQ(platform_impl_->node_map_.count(source_id), 0u);
+  ASSERT_EQ(platform_impl_->node_map_.count(child_id), 1u);
+  ASSERT_NE(platform_impl_->node_map_.at(child_id)->parent_, nullptr);
+  EXPECT_EQ(platform_impl_->node_map_.at(child_id)->parent_->id_,
+            target->impl_id());
+  EXPECT_FALSE(platform_impl_->HasCapturedRemoveSign(child_id));
+}
+
+TEST_P(FiberElementTest, MoveNodeToIndexCoalescesBeforeFlush) {
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto source = manager->CreateFiberView();
+  auto intermediate = manager->CreateFiberView();
+  auto target = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto intermediate_anchor = manager->CreateFiberView();
+  auto target_anchor = manager->CreateFiberView();
+  for (const auto& element : {source, intermediate, target, child,
+                              intermediate_anchor, target_anchor}) {
+    element->MarkCanBeLayoutOnly(false);
+  }
+
+  page->InsertNode(source);
+  page->InsertNode(intermediate);
+  page->InsertNode(target);
+  source->InsertNode(child);
+  intermediate->InsertNode(intermediate_anchor);
+  target->InsertNode(target_anchor);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const int32_t child_id = child->impl_id();
+  platform_impl_->ResetCapturedRemoveSigns();
+
+  intermediate->MoveNodeToIndex(child, 1);
+  auto intermediate_move =
+      std::find_if(intermediate->action_param_list_.begin(),
+                   intermediate->action_param_list_.end(),
+                   [&child](const Element::ActionParam& param) {
+                     return param.type_ == Element::Action::kMoveAct &&
+                            param.child_.get() == child.get();
+                   });
+  ASSERT_NE(intermediate_move, intermediate->action_param_list_.end());
+  EXPECT_EQ(intermediate_move->source_parent_.get(), source.get());
+  EXPECT_EQ(child->parent(), intermediate.get());
+  EXPECT_EQ(child->render_parent(), source.get());
+
+  target->MoveNodeToIndex(child, 0);
+  intermediate_move =
+      std::find_if(intermediate->action_param_list_.begin(),
+                   intermediate->action_param_list_.end(),
+                   [&child](const Element::ActionParam& param) {
+                     return param.type_ == Element::Action::kMoveAct &&
+                            param.child_.get() == child.get();
+                   });
+  EXPECT_EQ(intermediate_move, intermediate->action_param_list_.end());
+  EXPECT_EQ(std::count_if(intermediate->action_param_list_.begin(),
+                          intermediate->action_param_list_.end(),
+                          [&child](const Element::ActionParam& param) {
+                            return param.type_ == Element::Action::kMoveAct &&
+                                   param.child_.get() == child.get();
+                          }),
+            0);
+  EXPECT_EQ(source->GetChildCount(), 0u);
+  EXPECT_EQ(source->logical_children().size(), 0u);
+  ASSERT_EQ(intermediate->GetChildCount(), 1u);
+  ASSERT_EQ(intermediate->logical_children().size(), 1u);
+  EXPECT_EQ(intermediate->GetChildAt(0), intermediate_anchor.get());
+  EXPECT_EQ(intermediate->logical_children()[0].get(),
+            intermediate_anchor.get());
+  ASSERT_EQ(target->GetChildCount(), 2u);
+  ASSERT_EQ(target->logical_children().size(), 2u);
+  EXPECT_EQ(target->GetChildAt(0), child.get());
+  EXPECT_EQ(target->GetChildAt(1), target_anchor.get());
+  EXPECT_EQ(target->logical_children()[0].get(), child.get());
+  EXPECT_EQ(target->logical_children()[1].get(), target_anchor.get());
+  EXPECT_EQ(child->parent(), target.get());
+  EXPECT_EQ(child->render_parent(), source.get());
+  EXPECT_EQ(std::count_if(target->action_param_list_.begin(),
+                          target->action_param_list_.end(),
+                          [&child](const Element::ActionParam& param) {
+                            return param.type_ == Element::Action::kMoveAct &&
+                                   param.child_.get() == child.get();
+                          }),
+            1);
+
+  const auto target_move = std::find_if(
+      target->action_param_list_.begin(), target->action_param_list_.end(),
+      [&child](const Element::ActionParam& param) {
+        return param.type_ == Element::Action::kMoveAct &&
+               param.child_.get() == child.get();
+      });
+  ASSERT_NE(target_move, target->action_param_list_.end());
+  EXPECT_EQ(target_move->parent_, target.get());
+  EXPECT_EQ(target_move->index_, 0);
+  EXPECT_EQ(target_move->ref_node_, target_anchor.get());
+  EXPECT_EQ(target_move->source_parent_.get(), source.get());
+
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(child->render_parent(), target.get());
+  platform_impl_->Flush();
+
+  EXPECT_EQ(child->impl_id(), child_id);
+  ASSERT_EQ(platform_impl_->node_map_.count(child_id), 1u);
+  ASSERT_NE(platform_impl_->node_map_.at(child_id)->parent_, nullptr);
+  EXPECT_EQ(platform_impl_->node_map_.at(child_id)->parent_->id_,
+            target->impl_id());
+  EXPECT_FALSE(platform_impl_->HasCapturedRemoveSign(child_id));
+}
+
 TEST_P(FiberElementTest, SetStyle) {
   auto page = manager->CreateFiberPage("page", 11);
   manager->SetFiberPageElement(page);
