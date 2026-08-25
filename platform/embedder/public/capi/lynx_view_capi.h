@@ -61,6 +61,15 @@ LYNX_CAPI_EXPORT void lynx_view_register_runtime_lifecycle_observer(
 LYNX_CAPI_EXPORT void lynx_view_load_template(lynx_view_t*,
                                               lynx_load_meta_t* data);
 
+// EXPERIMENTAL API.
+// Loads a LynxML source document with initial template data. LynxML is a
+// single-file template format that is parsed and built into a template bundle
+// at load time. Both this API and the LynxML format may change in future
+// releases. The initial data may be null.
+LYNX_CAPI_EXPORT void lynx_view_load_lynx_ml(
+    lynx_view_t*, const char* source, const char* url,
+    lynx_template_data_t* initial_data);
+
 // Using LynxUpdateMeta to update LynxView, it is the main entrance for the
 // client to update template data.
 LYNX_CAPI_EXPORT void lynx_view_update_data(lynx_view_t*,

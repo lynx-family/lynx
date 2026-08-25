@@ -309,6 +309,39 @@ void LynxTemplateRenderer::LoadTemplate(
   shell_->LoadTemplate(url, std::move(source), options, init_data);
 }
 
+void LynxTemplateRenderer::LoadLynxML(
+    const std::string& url, std::string source,
+    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
+    const std::shared_ptr<tasm::TemplateData>& init_data) {
+  if (inspector_owner_) {
+    inspector_owner_->OnLoaded(url);
+  }
+
+  std::shared_ptr<tasm::PipelineOptions> options = nullptr;
+  if (!pipeline_options) {
+    options = std::make_shared<tasm::PipelineOptions>();
+    options->need_timestamps = true;
+    options->pipeline_origin = tasm::timing::kLoadBundle;
+    shell_->OnPipelineStart(options->pipeline_id, options->pipeline_origin,
+                            options->pipeline_start_timestamp);
+  } else {
+    options = pipeline_options;
+  }
+
+  UpdateGenericInfoWithUrl(url);
+  if (perf_controller_proxy_) {
+    perf_controller_proxy_->MarkTiming(
+        tasm::timing::TimestampKey(tasm::timing::kLoadBundleStart),
+        options->pipeline_id);
+    perf_controller_proxy_->MarkTiming(
+        tasm::timing::TimestampKey(tasm::timing::kFfiStart),
+        options->pipeline_id);
+  }
+
+  options->enable_pre_painting = false;
+  shell_->LoadLynxML(url, std::move(source), options, init_data);
+}
+
 void LynxTemplateRenderer::LoadTemplateBundle(
     const std::string& url, tasm::LynxTemplateBundle template_bundle,
     const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
