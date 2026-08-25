@@ -74,6 +74,13 @@ TEST_F(TaskRunnerManufactorTest, DefaultMultiThreadMode) {
             multi_thread_mode_manufactor.GetTASMTaskRunner()->GetLoop());
 }
 
+TEST_F(TaskRunnerManufactorTest, DisableJSThreadUsesUIRunner) {
+  TaskRunnerManufactor manufactor = TaskRunnerManufactor(
+      ALL_ON_UI, false, false, false, false, false, "Group1");
+  ASSERT_EQ(manufactor.GetJSTaskRunner()->GetLoop(),
+            manufactor.GetUITaskRunner()->GetLoop());
+}
+
 TEST_F(TaskRunnerManufactorTest, MultiTASMThreadMode) {
   TaskRunnerManufactor multi_tasm_manufactor_1 =
       TaskRunnerManufactor(MULTI_THREADS, true, false);
@@ -117,15 +124,15 @@ TEST_F(TaskRunnerManufactorTest, MultiLayoutThreadModeAndCache) {
 
 TEST_F(TaskRunnerManufactorTest, MultiJSGroupThreadMode) {
   TaskRunnerManufactor single_js_thread =
-      TaskRunnerManufactor(ALL_ON_UI, false, false, false, false, "");
-  TaskRunnerManufactor multi_js_thread_1 =
-      TaskRunnerManufactor(ALL_ON_UI, false, false, false, false, "Group1");
-  TaskRunnerManufactor multi_js_thread_2 =
-      TaskRunnerManufactor(ALL_ON_UI, false, false, false, false, "Group2");
-  TaskRunnerManufactor multi_js_thread_3 =
-      TaskRunnerManufactor(ALL_ON_UI, false, false, false, false, "Group3");
-  TaskRunnerManufactor multi_js_thread_temp_1 =
-      TaskRunnerManufactor(ALL_ON_UI, false, false, false, false, "Group1");
+      TaskRunnerManufactor(ALL_ON_UI, false, false, false, false, true, "");
+  TaskRunnerManufactor multi_js_thread_1 = TaskRunnerManufactor(
+      ALL_ON_UI, false, false, false, false, true, "Group1");
+  TaskRunnerManufactor multi_js_thread_2 = TaskRunnerManufactor(
+      ALL_ON_UI, false, false, false, false, true, "Group2");
+  TaskRunnerManufactor multi_js_thread_3 = TaskRunnerManufactor(
+      ALL_ON_UI, false, false, false, false, true, "Group3");
+  TaskRunnerManufactor multi_js_thread_temp_1 = TaskRunnerManufactor(
+      ALL_ON_UI, false, false, false, false, true, "Group1");
   ASSERT_NE(single_js_thread.GetJSTaskRunner()->GetLoop(),
             multi_js_thread_1.GetLayoutTaskRunner()->GetLoop());
   ASSERT_NE(single_js_thread.GetJSTaskRunner()->GetLoop(),
