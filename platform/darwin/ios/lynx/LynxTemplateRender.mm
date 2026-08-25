@@ -276,6 +276,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _enableAirStrictMode = builder.enableAirStrictMode;
   // enable js default yes
   _enableJSRuntime = _enableAirStrictMode ? NO : builder.enableJSRuntime;
+  _shouldSendEventToMainThread = YES;
   _enableMTSModule = builder.enableMTSModule;
   _enableLepusModule = builder.enableLepusModule;
   _needPendingUIOperation = builder.enableUIOperationQueue;
@@ -2518,6 +2519,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self updateMemoryUsage];
 }
 
+- (void)onShouldSendEventToMainThreadChanged:(BOOL)enable {
+  _shouldSendEventToMainThread = enable;
+}
+
 - (void)onTasmFinishByNative {
   [_delegate templateRenderOnTasmFinishByNative:self];
 }
@@ -2643,7 +2648,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (BOOL)shouldSendEventToMainThread {
-  return shell_ != nullptr && !shell_->IsDestroyed() && shell_->ShouldSendEventToMainThread();
+  return !_isDestroyed && _shouldSendEventToMainThread;
 }
 
 - (void)preloadLazyBundles:(NSArray* _Nonnull)urls {

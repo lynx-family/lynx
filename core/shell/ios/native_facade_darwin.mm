@@ -152,6 +152,13 @@ void NativeFacadeDarwin::OnConfigUpdated(const lepus::Value& data) {
   }
 }
 
+void NativeFacadeDarwin::OnShouldSendEventToMainThreadChanged(bool enable) {
+  __strong id<TemplateRenderCallbackProtocol> render = _render;
+  if ([render respondsToSelector:@selector(onShouldSendEventToMainThreadChanged:)]) {
+    [render onShouldSendEventToMainThreadChanged:enable];
+  }
+}
+
 void NativeFacadeDarwin::OnUpdateDataWithoutChange() {}
 
 void NativeFacadeDarwin::TriggerLepusMethodAsync(const std::string& js_method_name,

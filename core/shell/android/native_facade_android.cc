@@ -264,6 +264,14 @@ void NativeFacadeAndroid::OnConfigUpdated(const Value& data) {
   }
 }
 
+void NativeFacadeAndroid::OnShouldSendEventToMainThreadChanged(bool enable) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onShouldSendEventToMainThreadChanged(env, local_ref.Get(),
+                                                         enable);
+}
+
 void NativeFacadeAndroid::OnUpdateDataWithoutChange() {
   ScopedLocalJavaRef<jobject> local_ref(jni_object_);
   if (local_ref.IsNull()) return;
