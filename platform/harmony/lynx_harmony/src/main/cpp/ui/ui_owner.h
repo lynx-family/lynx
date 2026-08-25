@@ -143,6 +143,7 @@ class UIOwner {
   void SetEnableMultiTouch(bool enable_multi_touch);
   void SetTapSlop(const std::string& tap_slop);
   void SetHasTouchPseudo(bool has_touch_pseudo);
+  void SetEnableFiberTargetOnlyDestroy(bool enable);
   void SetLongPressDuration(int32_t long_press_duration);
   void SendEvent(const LynxEvent& event) const;
   bool StartEventGenerate(const TouchEvent& touch_event) const;
@@ -247,6 +248,7 @@ class UIOwner {
   static napi_value SetLynxImageConfig(napi_env env, napi_callback_info info);
 
   void DestroySubTree(UIBase* root);
+  void DestroyTarget(UIBase* target);
   void OnNodeRemovedRecursively(UIBase* root);
   void MarkHasUIOperations(UIBase* ui);
   void MarkHasUIOperationsBottomUp(UIBase* ui);
@@ -301,6 +303,7 @@ class UIOwner {
   std::string id_;
 
   bool destroyed_ = false;
+  bool enable_fiber_target_only_destroy_ = false;
   float last_intrinsic_content_width_{0.f};
   float last_intrinsic_content_height_{0.f};
 

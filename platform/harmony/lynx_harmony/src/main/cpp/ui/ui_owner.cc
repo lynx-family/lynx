@@ -218,6 +218,16 @@ void UIOwner::DestroyUI(int parent, int child, int index) {
   }
   UIBase* ui = child_it->second.get();
   MarkHasUIOperationsBottomUp(ui);
+  if (enable_fiber_target_only_destroy_) {
+    // Fiber may move descendants after their former parent is destroyed. Keep
+    // those descendants alive in the holder, but detach every direct child so
+    // neither the C++ tree nor the ArkUI tree retains the destroyed target.
+    for (auto* direct_child : ui->Children()) {
+      direct_child->RemoveFromParent();
+    }
+    DestroyTarget(ui);
+    return;
+  }
   DestroySubTree(ui);
 }
 
@@ -252,18 +262,22 @@ void UIOwner::DestroySubTree(UIBase* root) {
   for (auto* child : root->Children()) {
     DestroySubTree(child);
   }
-  if (root == root_.get()) {
+  DestroyTarget(root);
+}
+
+void UIOwner::DestroyTarget(UIBase* target) {
+  if (target == root_.get()) {
     root_ui_created_ = false;
   }
-  root->OnDestroy();
-  root->RemoveFromParent();
-  AddOrRemoveUIFromExclusiveSet(root->Sign(), false);
-  ResetKeyboardAvoidingTargetIfNeeded(root->Sign());
-  keyboard_event_observers_.erase(root->Sign());
-  if (root->NeedWindowStateChangeEvent()) {
-    window_state_listeners_.erase(root);
+  target->OnDestroy();
+  target->RemoveFromParent();
+  AddOrRemoveUIFromExclusiveSet(target->Sign(), false);
+  ResetKeyboardAvoidingTargetIfNeeded(target->Sign());
+  keyboard_event_observers_.erase(target->Sign());
+  if (target->NeedWindowStateChangeEvent()) {
+    window_state_listeners_.erase(target);
   }
-  ui_holder_.erase(root->Sign());
+  ui_holder_.erase(target->Sign());
 }
 
 UIRoot* UIOwner::Root() {
@@ -1205,6 +1219,10 @@ void UIOwner::SetTapSlop(const std::string& tap_slop) {
 
 void UIOwner::SetHasTouchPseudo(bool has_touch_pseudo) {
   event_dispatcher_->SetHasTouchPseudo(has_touch_pseudo);
+}
+
+void UIOwner::SetEnableFiberTargetOnlyDestroy(bool enable) {
+  enable_fiber_target_only_destroy_ = enable;
 }
 
 void UIOwner::SetLongPressDuration(int32_t long_press_duration) {

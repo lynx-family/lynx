@@ -123,6 +123,13 @@ void LynxContext::SetHasTouchPseudo(bool has_touch_pseudo) {
   ui_owner_->SetHasTouchPseudo(has_touch_pseudo);
 }
 
+void LynxContext::SetEnableFiberTargetOnlyDestroy(bool enable) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->SetEnableFiberTargetOnlyDestroy(enable);
+}
+
 void LynxContext::SetEnableHarmonyNewOverlay(bool enable_new_overlay) {
   enable_harmony_new_overlay_ = enable_new_overlay;
 }
