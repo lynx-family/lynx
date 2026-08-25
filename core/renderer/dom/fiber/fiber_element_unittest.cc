@@ -32,6 +32,7 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
@@ -3337,6 +3338,303 @@ TEST_P(FiberElementTest,
 
   parent->RemoveLayoutNode(child.get());
   EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest, ConvertPointUsesLayoutTreeAndSkipsVirtualNodes) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto wrapper = manager->CreateFiberNode("inline-text");
+  auto source = manager->CreateFiberView();
+  auto target = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(wrapper);
+  wrapper->InsertNode(source);
+  parent->InsertNode(target);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(wrapper->is_virtual());
+  ASSERT_EQ(source->slnode()->ParentLayoutObject(), parent->slnode());
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  target->UpdateLayout(50.f, 80.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto in_parent =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), parent.get());
+  ASSERT_TRUE(in_parent.has_value());
+  EXPECT_FLOAT_EQ(in_parent->X(), 15.f);
+  EXPECT_FLOAT_EQ(in_parent->Y(), 27.f);
+
+  auto in_page =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), page.get());
+  ASSERT_TRUE(in_page.has_value());
+  EXPECT_FLOAT_EQ(in_page->X(), 115.f);
+  EXPECT_FLOAT_EQ(in_page->Y(), 227.f);
+
+  auto in_target =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), target.get());
+  ASSERT_TRUE(in_target.has_value());
+  EXPECT_FLOAT_EQ(in_target->X(), -35.f);
+  EXPECT_FLOAT_EQ(in_target->Y(), -53.f);
+
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  EXPECT_FALSE(
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), target.get())
+          .has_value());
+}
+
+TEST_P(FiberElementTest, ConvertRectUsesFourCornersAndClipsLayoutAncestors) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto source = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  CSSParserConfigs configs;
+  auto hidden = UnitHandler::Process(kPropertyIDOverflow,
+                                     lepus::Value("hidden"), configs);
+  auto visible = UnitHandler::Process(kPropertyIDOverflow,
+                                      lepus::Value("visible"), configs);
+  parent->computed_css_style()->SetValue(kPropertyIDOverflow,
+                                         hidden.at(kPropertyIDOverflow));
+  source->computed_css_style()->SetValue(kPropertyIDOverflow,
+                                         visible.at(kPropertyIDOverflow));
+
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(100.f, 200.f, 100.f, 100.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(10.f, 20.f, 50.f, 40.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto converted = ConvertRectBetweenElements({{5.f, 7.f}, {20.f, 10.f}},
+                                              source.get(), page.get(), false);
+  ASSERT_TRUE(converted.has_value());
+  EXPECT_FLOAT_EQ(converted->X(), 115.f);
+  EXPECT_FLOAT_EQ(converted->Y(), 227.f);
+  EXPECT_FLOAT_EQ(converted->MaxX(), 135.f);
+  EXPECT_FLOAT_EQ(converted->MaxY(), 237.f);
+
+  auto clipped = ConvertRectBetweenElements({{-50.f, -50.f}, {500.f, 500.f}},
+                                            source.get(), page.get(), true);
+  ASSERT_TRUE(clipped.has_value());
+  EXPECT_FLOAT_EQ(clipped->X(), 100.f);
+  EXPECT_FLOAT_EQ(clipped->Y(), 200.f);
+  EXPECT_FLOAT_EQ(clipped->MaxX(), 200.f);
+  EXPECT_FLOAT_EQ(clipped->MaxY(), 300.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesLatestNestedScrollOffsets) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto outer = manager->CreateFiberScrollView("scroll-view");
+  auto inner = manager->CreateFiberScrollView("scroll-view");
+  auto source = manager->CreateFiberView();
+  outer->SetAttribute("scroll-y", lepus::Value(true));
+  inner->SetAttribute("scroll-y", lepus::Value(true));
+  page->InsertNode(outer);
+  outer->InsertNode(inner);
+  inner->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(outer->slnode()->attr_map().getScroll().value_or(false));
+  ASSERT_TRUE(inner->slnode()->attr_map().getScroll().value_or(false));
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  outer->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                      0.f);
+  inner->UpdateLayout(10.f, 20.f, 200.f, 300.f, {0.f}, {0.f}, {0.f}, nullptr,
+                      0.f);
+  source->UpdateLayout(2.f, 4.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto initial =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(initial.has_value());
+  EXPECT_FLOAT_EQ(initial->X(), 113.f);
+  EXPECT_FLOAT_EQ(initial->Y(), 225.f);
+
+  outer->UpdateScrollOffset(3.f, 5.f);
+  inner->UpdateScrollOffset(7.f, 11.f);
+  auto scrolled =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(scrolled.has_value());
+  EXPECT_FLOAT_EQ(scrolled->X(), 103.f);
+  EXPECT_FLOAT_EQ(scrolled->Y(), 209.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesLatestListScrollOffset) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  auto source = manager->CreateFiberView();
+  page->InsertNode(list);
+  list->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  list->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  source->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  list->UpdateScrollOffset(3.f, 5.f);
+
+  auto converted =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(converted.has_value());
+  EXPECT_FLOAT_EQ(converted->X(), 108.f);
+  EXPECT_FLOAT_EQ(converted->Y(), 216.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesPlatformStickyTranslation) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto sticky = manager->CreateFiberView();
+  auto source = manager->CreateFiberView();
+  scroll->SetAttribute("scroll-y", lepus::Value(true));
+  sticky->SetStyle(kPropertyIDPosition, lepus::Value("sticky"));
+  sticky->SetStyle(kPropertyIDTop, lepus::Value("0px"));
+  page->InsertNode(scroll);
+  scroll->InsertNode(sticky);
+  sticky->InsertNode(source);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(sticky->is_sticky());
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  scroll->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  sticky->UpdateLayout(10.f, 20.f, 200.f, 100.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(2.f, 4.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  auto inside_sticky =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), sticky.get());
+  ASSERT_TRUE(inside_sticky.has_value());
+  EXPECT_FLOAT_EQ(inside_sticky->X(), 3.f);
+  EXPECT_FLOAT_EQ(inside_sticky->Y(), 5.f);
+
+  scroll->UpdateScrollOffset(0.f, 50.f);
+  sticky->UpdateStickyTranslation(7.f, 50.f);
+  auto in_page =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(in_page.has_value());
+  EXPECT_FLOAT_EQ(in_page->X(), 120.f);
+  EXPECT_FLOAT_EQ(in_page->Y(), 225.f);
+
+  auto in_source =
+      ConvertPointBetweenElements({120.f, 225.f}, page.get(), source.get());
+  ASSERT_TRUE(in_source.has_value());
+  EXPECT_FLOAT_EQ(in_source->X(), 1.f);
+  EXPECT_FLOAT_EQ(in_source->Y(), 1.f);
+
+  sticky->UpdateStickyTranslation(0.f, 0.f);
+  auto reset =
+      ConvertPointBetweenElements({1.f, 1.f}, source.get(), page.get());
+  ASSERT_TRUE(reset.has_value());
+  EXPECT_FLOAT_EQ(reset->X(), 113.f);
+  EXPECT_FLOAT_EQ(reset->Y(), 175.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointUsesLayoutRootForNewFixed) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->config_->layout_configs_.enable_fixed_new_ = true;
+  manager->layout_configs_.enable_fixed_new_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto fixed = manager->CreateFiberView();
+  fixed->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+  page->InsertNode(parent);
+  parent->InsertNode(fixed);
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(fixed->slnode()->IsNewFixed());
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  fixed->UpdateLayout(30.f, 40.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                      0.f);
+
+  auto in_page =
+      ConvertPointBetweenElements({5.f, 7.f}, fixed.get(), page.get());
+  ASSERT_TRUE(in_page.has_value());
+  EXPECT_FLOAT_EQ(in_page->X(), 35.f);
+  EXPECT_FLOAT_EQ(in_page->Y(), 47.f);
+
+  auto in_fixed =
+      ConvertPointBetweenElements({35.f, 47.f}, page.get(), fixed.get());
+  ASSERT_TRUE(in_fixed.has_value());
+  EXPECT_FLOAT_EQ(in_fixed->X(), 5.f);
+  EXPECT_FLOAT_EQ(in_fixed->Y(), 7.f);
+}
+
+TEST_P(FiberElementTest, ConvertPointAppliesTransformsAndRejectsSingularOnes) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto source = manager->CreateFiberView();
+  auto target = manager->CreateFiberView();
+  auto singular_target = manager->CreateFiberView();
+  parent->SetStyle(kPropertyIDTransform, lepus::Value("scale(0)"));
+  parent->SetStyle(kPropertyIDTransformOrigin, lepus::Value("0px 0px"));
+  source->SetStyle(kPropertyIDTransform, lepus::Value("scale(2)"));
+  source->SetStyle(kPropertyIDTransformOrigin, lepus::Value("0px 0px"));
+  target->SetStyle(kPropertyIDTransform, lepus::Value("scale(2)"));
+  target->SetStyle(kPropertyIDTransformOrigin, lepus::Value("0px 0px"));
+  singular_target->SetStyle(kPropertyIDTransform, lepus::Value("scale(0)"));
+  singular_target->SetStyle(kPropertyIDTransformOrigin,
+                            lepus::Value("0px 0px"));
+  page->InsertNode(parent);
+  parent->InsertNode(source);
+  parent->InsertNode(target);
+  parent->InsertNode(singular_target);
+  page->FlushActionsAsRoot();
+
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  parent->UpdateLayout(0.f, 0.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  source->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  target->UpdateLayout(50.f, 80.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  singular_target->UpdateLayout(50.f, 80.f, 100.f, 50.f, {0.f}, {0.f}, {0.f},
+                                nullptr, 0.f);
+
+  auto in_parent =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), parent.get());
+  ASSERT_TRUE(in_parent.has_value());
+  EXPECT_FLOAT_EQ(in_parent->X(), 20.f);
+  EXPECT_FLOAT_EQ(in_parent->Y(), 34.f);
+
+  auto in_target =
+      ConvertPointBetweenElements({5.f, 7.f}, source.get(), target.get());
+  ASSERT_TRUE(in_target.has_value());
+  EXPECT_FLOAT_EQ(in_target->X(), -15.f);
+  EXPECT_FLOAT_EQ(in_target->Y(), -23.f);
+
+  EXPECT_FALSE(ConvertPointBetweenElements({5.f, 7.f}, source.get(),
+                                           singular_target.get())
+                   .has_value());
 }
 
 TEST_P(FiberElementTest,

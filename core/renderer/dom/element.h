@@ -1554,6 +1554,18 @@ class Element : public lepus::RefCounted,
 
   virtual float GetLayoutsUnitPerPx() override;
 
+  // Updates the latest platform scroll position in layout units. The value is
+  // consumed on the engine thread by Element point conversion.
+  void UpdateScrollOffset(float x, float y);
+  float scroll_offset_x() const { return scroll_offset_x_; }
+  float scroll_offset_y() const { return scroll_offset_y_; }
+
+  // Updates the latest platform-applied sticky translation in layout units.
+  // The value is consumed on the engine thread by Element point conversion.
+  void UpdateStickyTranslation(float x, float y);
+  float sticky_translation_x() const { return sticky_translation_x_; }
+  float sticky_translation_y() const { return sticky_translation_y_; }
+
   /**
    * Get computed style value by property key.
    * @param key the CSS property name
@@ -2218,6 +2230,10 @@ class Element : public lepus::RefCounted,
   float height_{0};
   float top_{0};
   float left_{0};
+  float scroll_offset_x_{0};
+  float scroll_offset_y_{0};
+  float sticky_translation_x_{0};
+  float sticky_translation_y_{0};
   std::array<float, 4> borders_{};
   std::array<float, 4> margins_{};
   std::array<float, 4> paddings_{};
