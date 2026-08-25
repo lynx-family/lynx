@@ -33,30 +33,32 @@ std::string TasmPlatformInvokerHarmony::TranslateResourceForTheme(
 lepus::Value TasmPlatformInvokerHarmony::TriggerLepusMethod(
     const std::string& method_name, const lepus::Value& args) {
   lepus::Value ret;
-  ui_task_runner_->PostSyncTask(
-      [weak_flag = weak_flag_, method_name, args, &ret]() {
-        auto flag = weak_flag.lock();
-        auto* renderer =
-            flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
-        if (!renderer) {
-          return;
-        }
-        ret = renderer->TriggerLepusMethod(method_name, args);
-      });
+  ui_task_runner_->PostSyncTask([weak_flag = weak_flag_, method_name,
+                                 safe_args = lepus::Value::ShallowCopy(args),
+                                 &ret]() {
+    auto flag = weak_flag.lock();
+    auto* renderer =
+        flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
+    if (!renderer) {
+      return;
+    }
+    ret = renderer->TriggerLepusMethod(method_name, safe_args);
+  });
   return ret;
 }
 
 void TasmPlatformInvokerHarmony::TriggerLepusMethodAsync(
     const std::string& method_name, const lepus::Value& args) {
   fml::TaskRunner::RunNowOrPostTask(
-      ui_task_runner_, [weak_flag = weak_flag_, method_name, args]() {
+      ui_task_runner_, [weak_flag = weak_flag_, method_name,
+                        safe_args = lepus::Value::ShallowCopy(args)]() {
         auto flag = weak_flag.lock();
         auto* renderer =
             flag ? flag->renderer.load(std::memory_order_acquire) : nullptr;
         if (!renderer) {
           return;
         }
-        renderer->TriggerLepusMethodAsync(method_name, args);
+        renderer->TriggerLepusMethodAsync(method_name, safe_args);
       });
 }
 
