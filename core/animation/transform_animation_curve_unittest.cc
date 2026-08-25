@@ -251,6 +251,9 @@ TEST_F(TransformAnimationCurveTest, CreateTransformKeyframe) {
 }
 
 TEST_F(TransformAnimationCurveTest, GetTransformKeyframeValueInElement) {
+  auto config = std::make_shared<::lynx::tasm::PageConfig>();
+  config->SetEnableNewStylingPipeline(true);
+  manager->SetConfig(config);
   auto element1 = manager->CreateFiberElement("view");
   auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
   lynx::tasm::StyleMap output1;
