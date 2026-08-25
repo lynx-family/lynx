@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -16,7 +17,11 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
+#include "core/renderer/events/closure_event_listener.h"
+#include "core/renderer/events/events.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "core/runtime/mts_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
 namespace tasm {
@@ -25,11 +30,17 @@ namespace {
 
 // Modifier IR operation codes shared with the JavaScript and native producers.
 constexpr int kModifierOpConcat = 1;
+constexpr int kModifierOpStyleNumber = 2;
+constexpr int kModifierOpStyleString = 3;
+constexpr int kModifierOpAttribute = 4;
+constexpr int kModifierOpCallback = 5;
+constexpr int kModifierOpEvent = 6;
 constexpr int kModifierOpPadding = 7;
 constexpr int kModifierOpSize = 8;
 constexpr int kModifierOpFill = 9;
 constexpr int kModifierOpAspectRatio = 10;
 
+constexpr int kModifierCallbackKindClick = 1;
 constexpr int kLayoutModifierAxisWidth = 1;
 constexpr int kLayoutModifierAxisHeight = 1 << 1;
 constexpr int kLayoutModifierAllAxes =
@@ -44,6 +55,13 @@ BASE_STATIC_STRING_DECL(kOp, "op");
 BASE_STATIC_STRING_DECL(kPrevious, "previous");
 BASE_STATIC_STRING_DECL(kLeft, "left");
 BASE_STATIC_STRING_DECL(kRight, "right");
+BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
+BASE_STATIC_STRING_DECL(kValue, "value");
+BASE_STATIC_STRING_DECL(kName, "name");
+BASE_STATIC_STRING_DECL(kCallbackKind, "callbackKind");
+BASE_STATIC_STRING_DECL(kCallback, "callback");
+BASE_STATIC_STRING_DECL(kEventName, "eventName");
+BASE_STATIC_STRING_DECL(kEventType, "eventType");
 BASE_STATIC_STRING_DECL(kSpecifiedAxes, "specifiedAxes");
 BASE_STATIC_STRING_DECL(kStart, "start");
 BASE_STATIC_STRING_DECL(kTop, "top");
@@ -53,15 +71,22 @@ BASE_STATIC_STRING_DECL(kWidth, "width");
 BASE_STATIC_STRING_DECL(kHeight, "height");
 BASE_STATIC_STRING_DECL(kFraction, "fraction");
 BASE_STATIC_STRING_DECL(kRatio, "ratio");
+BASE_STATIC_STRING_DECL(kTapEventName, "tap");
+BASE_STATIC_STRING_DECL(kBindEventType, "bindEvent");
 
 struct ModifierOperation {
   int op{0};
   size_t carrier_index{0};
   size_t target_frame_index{kNoModifierFrame};
+  CSSPropertyID style_id{kPropertyStart};
   int specified_axes{0};
   int applied_axes{0};
   bool apply_aspect_ratio{false};
   std::array<double, 4> layout_values{};
+  base::String name;
+  base::String event_type;
+  lepus::Value value;
+  lepus::Value callback;
 };
 
 struct ModifierFramePlan {
@@ -100,6 +125,44 @@ bool ReadFiniteNumberProperty(const lepus::Value& node, const base::String& key,
   }
   *result = value.Number();
   return true;
+}
+
+bool IsParentDataStyle(CSSPropertyID id) {
+  switch (id) {
+    case kPropertyIDMinWidth:
+    case kPropertyIDMinHeight:
+    case kPropertyIDFlexGrow:
+    case kPropertyIDFlexShrink:
+    case kPropertyIDFlexBasis:
+    case kPropertyIDAlignSelf:
+    case kPropertyIDJustifySelf:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsBoundaryStyle(CSSPropertyID id) {
+  switch (id) {
+    case kPropertyIDBackgroundColor:
+    case kPropertyIDBoxShadow:
+    case kPropertyIDBorderWidth:
+    case kPropertyIDBorderColor:
+    case kPropertyIDBorderStyle:
+    case kPropertyIDBorderRadius:
+    case kPropertyIDBorderTopLeftRadius:
+    case kPropertyIDBorderTopRightRadius:
+    case kPropertyIDBorderBottomLeftRadius:
+    case kPropertyIDBorderBottomRightRadius:
+    case kPropertyIDBorderStartStartRadius:
+    case kPropertyIDBorderStartEndRadius:
+    case kPropertyIDBorderEndStartRadius:
+    case kPropertyIDBorderEndEndRadius:
+    case kPropertyIDOverflow:
+      return true;
+    default:
+      return false;
+  }
 }
 
 bool IsLayoutOperation(int op) {
@@ -169,6 +232,70 @@ bool ParseLayoutOperation(const lepus::Value& node,
 bool ParseModifierOperation(const lepus::Value& node,
                             ModifierOperation* operation, std::string* error) {
   switch (operation->op) {
+    case kModifierOpStyleNumber:
+    case kModifierOpStyleString: {
+      int property_id = 0;
+      if (!ReadIntegerProperty(node, kPropertyId, &property_id)) {
+        *error = "propertyId should be an integer";
+        return false;
+      }
+      auto id = static_cast<CSSPropertyID>(property_id);
+      operation->value = node.GetProperty(kValue);
+      const auto value = operation->value.ToLepusValue();
+      const bool expected_type =
+          (operation->op == kModifierOpStyleNumber && value.IsNumber() &&
+           std::isfinite(value.Number())) ||
+          (operation->op == kModifierOpStyleString && value.IsString());
+      if (!CSSProperty::IsPropertyValid(id) || !expected_type) {
+        *error = "invalid style property or value";
+        return false;
+      }
+      operation->style_id = id;
+      return true;
+    }
+    case kModifierOpAttribute: {
+      const auto name = ReadModifierProperty(node, kName);
+      operation->value = node.GetProperty(kValue);
+      const auto value = operation->value.ToLepusValue();
+      if (!name.IsString() || name.String().empty() ||
+          (!value.IsString() && !value.IsNumber() && !value.IsBool())) {
+        *error = "invalid attribute name or value";
+        return false;
+      }
+      operation->name = name.String();
+      return true;
+    }
+    case kModifierOpCallback: {
+      int callback_kind = 0;
+      operation->callback = node.GetProperty(kCallback);
+      if (!ReadIntegerProperty(node, kCallbackKind, &callback_kind) ||
+          callback_kind != kModifierCallbackKindClick ||
+          !operation->callback.ToLepusValue().IsCallable()) {
+        *error = "unsupported callback kind or callback";
+        return false;
+      }
+      return true;
+    }
+    case kModifierOpEvent: {
+      const auto event_name = ReadModifierProperty(node, kEventName);
+      const auto event_type = ReadModifierProperty(node, kEventType);
+      operation->callback = node.GetProperty(kCallback);
+      if (!event_name.IsString() || event_name.String().empty() ||
+          !event_type.IsString() ||
+          !operation->callback.ToLepusValue().IsCallable()) {
+        *error = "invalid event name, type, or callback";
+        return false;
+      }
+      const auto& type = event_type.StdString();
+      if (type != kEventBindEvent && type != kEventCatchEvent &&
+          type != kEventCaptureBind && type != kEventCaptureCatch) {
+        *error = "unsupported local event type";
+        return false;
+      }
+      operation->name = event_name.String();
+      operation->event_type = event_type.String();
+      return true;
+    }
     case kModifierOpPadding:
     case kModifierOpSize:
     case kModifierOpFill:
@@ -305,6 +432,16 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
         default:
           break;
       }
+    } else if (operation.op == kModifierOpCallback ||
+               operation.op == kModifierOpEvent) {
+      operation.target_frame_index = target_frame_index;
+    } else if (operation.op == kModifierOpStyleNumber ||
+               operation.op == kModifierOpStyleString) {
+      if (IsParentDataStyle(operation.style_id) && plan->frame_count != 0) {
+        operation.target_frame_index = 0;
+      } else if (IsBoundaryStyle(operation.style_id)) {
+        operation.target_frame_index = target_frame_index;
+      }
     }
   }
   if (!plan->frame_child_constrained_axes.empty() &&
@@ -312,6 +449,15 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     plan->owner_uses_layout_box = true;
   }
   return true;
+}
+
+Element* OperationTarget(
+    const ModifierOperation& operation, Element* owner,
+    const std::vector<fml::RefPtr<ModifierElement>>& frames) {
+  if (operation.target_frame_index == kNoModifierFrame) {
+    return owner;
+  }
+  return frames[operation.target_frame_index].get();
 }
 
 Element* LayoutCarrierAt(
@@ -414,8 +560,77 @@ void ApplyLayoutChildConstraints(
 void ClearModifierOwnedProperties(Element* element) {
   element->RemoveAllInlineStyles();
   element->RemoveAllModifierAttributes();
+  // Modifier click/local events are always registered as callable listeners
+  // (see AddModifierEventListener), so the listener map must be cleared
+  // unconditionally on replacement, independent of EnableEventHandleRefactor().
   element->GetEventListenerMap()->Clear();
   element->RemoveAllEvents();
+}
+
+// Registers a Modifier click/local event callback directly as a callable event
+// listener, mirroring the base branch's FiberSetModifierToElement behavior. The
+// closure is dispatched through registration_context so the callback fires in
+// the runtime that registered it, independent of the default entry runtime.
+void AddModifierEventListener(Element* element, const base::String& name,
+                              const base::String& type,
+                              const lepus::Value& callback,
+                              runtime::MTSRuntime* registration_context) {
+  element->SetJSEventHandler(name, base::String(), base::String());
+  element->AddEventListener(
+      name.str(),
+      std::make_unique<event::ClosureEventListener>(
+          [callback, registration_context](lepus::Value args) {
+            if (!args.IsArray() || args.Array()->size() != 3) {
+              return;
+            }
+            if (registration_context == nullptr) {
+              return;
+            }
+            registration_context->CallClosure(
+                callback, lepus_value::ShallowCopy(args.Array()->get(1)));
+          },
+          GetEventListenerOptions(type),
+          event::ClosureEventListener::ClosureType::kCore, callback));
+}
+
+void ApplyNonLayoutOperation(
+    const ModifierOperation& operation, Element* owner,
+    const std::vector<fml::RefPtr<ModifierElement>>& frames,
+    runtime::MTSRuntime* registration_context, bool deep_convert) {
+  Element* target = OperationTarget(operation, owner, frames);
+  switch (operation.op) {
+    case kModifierOpStyleNumber:
+    case kModifierOpStyleString:
+      target->SetStyle(operation.style_id, operation.value.ToLepusValue());
+      break;
+    case kModifierOpAttribute:
+      owner->SetModifierAttribute(operation.name,
+                                  operation.value.ToLepusValue(deep_convert));
+      break;
+    case kModifierOpCallback:
+      // A click maps to a bubbling "tap" binding (tasm::kEventBindEvent).
+      AddModifierEventListener(target, kTapEventName, kBindEventType,
+                               operation.callback, registration_context);
+      break;
+    case kModifierOpEvent:
+      AddModifierEventListener(target, operation.name, operation.event_type,
+                               operation.callback, registration_context);
+      break;
+    default:
+      break;
+  }
+}
+
+void ApplyNonLayoutOperations(
+    const ModifierFramePlan& plan, Element* owner,
+    const std::vector<fml::RefPtr<ModifierElement>>& frames,
+    runtime::MTSRuntime* registration_context, bool deep_convert) {
+  for (const auto& operation : plan.operations) {
+    if (!IsLayoutOperation(operation.op)) {
+      ApplyNonLayoutOperation(operation, owner, frames, registration_context,
+                              deep_convert);
+    }
+  }
 }
 
 void NotifyNodeCreated(Element* node) {
@@ -490,13 +705,15 @@ bool ValidateMountRoot(Element* owner, Element* current_mount_root,
   return true;
 }
 
-fml::RefPtr<Element> InstallModifierFramePlan(const ModifierFramePlan& plan,
-                                              Element* owner,
-                                              Element* current_mount_root) {
+fml::RefPtr<Element> InstallModifierFramePlan(
+    const ModifierFramePlan& plan, Element* owner, Element* current_mount_root,
+    runtime::MTSRuntime* registration_context, bool deep_convert) {
   if (plan.frame_count == 0 && current_mount_root == owner) {
     const std::vector<fml::RefPtr<ModifierElement>> frames;
     ClearModifierOwnedProperties(owner);
     ApplyLayoutOperations(plan, frames, owner);
+    ApplyNonLayoutOperations(plan, owner, frames, registration_context,
+                             deep_convert);
     return fml::RefPtr<Element>(owner);
   }
 
@@ -525,6 +742,8 @@ fml::RefPtr<Element> InstallModifierFramePlan(const ModifierFramePlan& plan,
   ClearModifierOwnedProperties(owner);
 
   ApplyLayoutOperations(plan, frames, owner);
+  ApplyNonLayoutOperations(plan, owner, frames, registration_context,
+                           deep_convert);
   ApplyLayoutChildConstraints(plan, frames, owner);
 
   if (frames.empty()) {
@@ -557,6 +776,9 @@ ModifierElement::ModifierElement(ElementManager* manager)
     : Element(manager, BASE_STATIC_STRING(kElementViewTag)) {
   SetStyle(kPropertyIDDisplay, lepus::Value("box"));
   SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
+  if (manager != nullptr) {
+    SetDefaultOverflow(manager->GetDefaultOverflowVisible());
+  }
 }
 
 bool ComposeModifierApplicator::ValidateTopology(ComposeElementHandle* handle,
@@ -573,7 +795,7 @@ bool ComposeModifierApplicator::ValidateTopology(ComposeElementHandle* handle,
 
 ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     ComposeElementHandle* handle, const lepus::Value& modifier_tail,
-    runtime::MTSRuntime*) {
+    runtime::MTSRuntime* registration_context) {
   if (handle == nullptr || handle->content_element() == nullptr ||
       handle->mount_root() == nullptr) {
     return {false, 0,
@@ -585,6 +807,7 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   }
   auto owner = handle->content_element();
   auto current_mount_root = handle->mount_root();
+  auto* manager = owner->element_manager();
 
   ModifierFramePlan plan;
   size_t error_position = 0;
@@ -592,8 +815,9 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     return {false, error_position, std::move(error)};
   }
 
-  auto mount_root =
-      InstallModifierFramePlan(plan, owner.get(), current_mount_root.get());
+  auto mount_root = InstallModifierFramePlan(
+      plan, owner.get(), current_mount_root.get(), registration_context,
+      manager->GetEnableParallelElement());
   handle->SetMountRoot(std::move(mount_root));
   return {true, 0, {}};
 }

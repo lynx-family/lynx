@@ -8,6 +8,8 @@ import type {
   PageElementRef,
   ListElementRef,
   ViewElementRef,
+  ComposeElementKind,
+  ComposeElementRef,
   SerializedTemplateInstance,
   SerializableValue,
   SerializedTypedTemplateInstance,
@@ -57,6 +59,19 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __CreateComponent>().toBeCallableWith(1, 'component-id', 2, '', 'component-name', 'component/path', {}, { nodeIndex: 42 });
     expectTypeOf<typeof __CreateView>().toBeFunction();
     expectTypeOf<typeof __CreateText>().toBeFunction();
+    const composeNode = {} as ComposeElementRef;
+    const pageNode = {} as PageElementRef;
+    const rawNode = {} as ElementRef;
+    expectTypeOf<typeof __CreateCompose>().toBeCallableWith(1, 1 as ComposeElementKind);
+    expectTypeOf<typeof __CreateCompose>().returns.toEqualTypeOf<ComposeElementRef>();
+    expectTypeOf<ComposeElementRef>().not.toEqualTypeOf<ElementRef>();
+    expectTypeOf<typeof __SetComposeModifier>().toBeCallableWith(composeNode, null);
+    expectTypeOf<typeof __SetComposeModifier>().returns.toBeVoid();
+    expectTypeOf<typeof __InsertElementAt>().toBeCallableWith(pageNode, composeNode, 0);
+    expectTypeOf<typeof __InsertElementAt>().toBeCallableWith(composeNode, composeNode, 0);
+    expectTypeOf<typeof __InsertElementAt>().toBeCallableWith(composeNode, rawNode, 0);
+    expectTypeOf<typeof __SetAttribute>().toBeCallableWith(composeNode, 'text', 'hello');
+    expectTypeOf<typeof __SetAttribute>().toBeCallableWith(composeNode, 'accessibility-label', null);
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();
     expectTypeOf<typeof __CreateElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeFunction();

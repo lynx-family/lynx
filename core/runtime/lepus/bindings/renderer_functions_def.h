@@ -69,6 +69,7 @@
   V(FiberCreateComponent)               \
   V(FiberCreateList)                    \
   V(FiberCreateView)                    \
+  V(FiberCreateCompose)                 \
   V(FiberCreateScrollView)              \
   V(FiberCreateText)                    \
   V(FiberCreateImage)                   \
@@ -125,7 +126,7 @@
   V(FiberSetEvents)                     \
   V(FiberGetEvent)                      \
   V(FiberGetEvents)                     \
-  V(FiberSetModifierToElement)          \
+  V(FiberSetComposeModifier)            \
   V(FiberSetID)                         \
   V(FiberGetID)                         \
   V(FiberAddDataset)                    \
