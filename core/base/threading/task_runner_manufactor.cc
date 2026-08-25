@@ -286,6 +286,7 @@ TaskRunnerManufactor::TaskRunnerManufactor(ThreadStrategyForRendering strategy,
                                            bool enable_multi_layout_thread,
                                            bool enable_vsync_aligned_msg_loop,
                                            bool enable_async_thread_cache,
+                                           bool enable_js_thread,
                                            std::string js_group_thread_name)
     : thread_strategy_(strategy),
       enable_multi_tasm_thread_(enable_multi_tasm_thread),
@@ -299,27 +300,27 @@ TaskRunnerManufactor::TaskRunnerManufactor(ThreadStrategyForRendering strategy,
   switch (strategy) {
     case ALL_ON_UI: {
       StartUIThread(enable_vsync_aligned_msg_loop);
-      StartJSThread();
+      StartJSThread(enable_js_thread);
       CreateTASMRunner(ui_task_runner_->GetLoop(),
                        enable_vsync_aligned_msg_loop);
       layout_task_runner_ = tasm_task_runner_;
     } break;
     case MOST_ON_TASM: {
       StartUIThread(enable_vsync_aligned_msg_loop);
-      StartJSThread();
+      StartJSThread(enable_js_thread);
       CreateTASMRunner(StartTASMThread(), enable_vsync_aligned_msg_loop);
       layout_task_runner_ = tasm_task_runner_;
     } break;
     case PART_ON_LAYOUT: {
       StartUIThread(enable_vsync_aligned_msg_loop);
-      StartJSThread();
+      StartJSThread(enable_js_thread);
       CreateTASMRunner(ui_task_runner_->GetLoop(),
                        enable_vsync_aligned_msg_loop);
       StartLayoutThread(enable_multi_layout_thread);
     } break;
     case MULTI_THREADS: {
       StartUIThread(enable_vsync_aligned_msg_loop);
-      StartJSThread();
+      StartJSThread(enable_js_thread);
       CreateTASMRunner(StartTASMThread(), enable_vsync_aligned_msg_loop);
       StartLayoutThread(enable_multi_layout_thread);
     } break;
@@ -441,7 +442,11 @@ void TaskRunnerManufactor::StartLayoutThread(bool enable_multi_layout_thread) {
   }
 }
 
-void TaskRunnerManufactor::StartJSThread() {
+void TaskRunnerManufactor::StartJSThread(bool enable_js_thread) {
+  if (!enable_js_thread) {
+    js_task_runner_ = ui_task_runner_;
+    return;
+  }
 #if LYNX_ENABLE_FROZEN_MODE
   js_task_runner_ = ui_task_runner_;
 #else
