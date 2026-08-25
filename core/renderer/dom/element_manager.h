@@ -1411,6 +1411,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       std::shared_ptr<PipelineOptions> &option,
       base::MoveOnlyClosure<void, bool> patch_finish_callback,
       Element *root = nullptr);
+  void UpdateDirtyStackingContexts();
   void WillDestroy();
   void ReportElementStatistic();
   ElementManager(const ElementManager &) = delete;

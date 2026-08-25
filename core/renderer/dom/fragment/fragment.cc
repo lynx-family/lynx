@@ -104,6 +104,7 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   }
   behavior_->CreatePlatformRenderer(actual_init_data, init_config);
   has_platform_renderer_ = true;
+  InvalidateRestacking();
   return true;
 }
 
@@ -143,58 +144,92 @@ void Fragment::StyleChanged() {
   // z-index and fixed state, and then only move the element itself.
   // 2. Then, based on the current and previous stacking context states,
   // determine whether to move the descendant stacking context fragment.
-  if (element()->is_fixed() != was_position_fixed() ||
-      element()->ZIndex() != old_z_index()) {
+  const bool previous_fixed = was_position_fixed();
+  const int32_t previous_z_index = old_z_index();
+  const bool current_fixed = element()->is_fixed();
+  const int32_t current_z_index = element()->ZIndex();
+  if (current_fixed != previous_fixed || current_z_index != previous_z_index) {
     auto* target_parent = fragment_parent();
 
-    set_was_position_fixed(element()->is_fixed());
-    set_old_z_index(element()->ZIndex());
-
-    if (was_position_fixed()) {
+    if (current_fixed) {
       // If it is a fixed element, the parent should be the root fragment.
       target_parent = element_manager()->root()->fragment_impl();
-    } else if (old_z_index() != 0) {
+    } else if (current_z_index != 0) {
       // If z-index is not 0, the parent should be the nearest stacking
-      // context fragment.
-      target_parent = EnclosingStackingContextNode()->CastToFragment();
+      // context ancestor. Start from the Element parent: the current element
+      // becomes a stacking context as soon as z-index changes and must never
+      // select itself as its new parent.
+      target_parent = ResolveEnclosingStackingContextParent();
     } else {
       // If it is not fixed and z-index is 0, the parent should be the
       // fragment corresponding to the element's parent.
-      target_parent = element()->parent()->fragment_impl();
+      target_parent = element()->parent() != nullptr
+                          ? element()->parent()->fragment_impl()
+                          : nullptr;
+    }
+    if (target_parent == nullptr) {
+      LOGE("Fragment style change has no valid stacking parent: " << id());
+      return;
     }
 
-    // If the parent has changed, the element needs to be moved.
-    if (target_parent != fragment_parent()) {
-      fragment_parent()->RemoveChild(this);
+    Fragment* previous_parent = fragment_parent();
+    const bool keeps_stacking_parent = target_parent == previous_parent;
+    size_t previous_paint_index = 0;
+    if (keeps_stacking_parent) {
+      // Batched insertions may have left one paint bucket pending. Normalize it
+      // once before applying the common single-node z-index update locally.
+      target_parent->UpdateZIndexList();
+      previous_paint_index = target_parent->PaintOrderIndex(this);
+    }
+    if (previous_parent != nullptr) {
+      previous_parent->RemoveFromPaintOrderBucket(this);
+    }
 
-      Element* ref = nullptr;
-      if (old_z_index() != 0) {
-        if (element()->next_render_sibling() != nullptr) {
-          ref = element()->next_render_sibling();
-        }
-        // If the child is not fixed and z-index is 0, insert it to the first
-        // reliable sibling.
-        while (ref != nullptr && !ref->fragment_impl()->IsReliableSibling()) {
-          ref = ref->next_render_sibling();
-        }
+    set_was_position_fixed(current_fixed);
+    set_old_z_index(current_z_index);
+
+    // Only a node returning to normal flow needs a render sibling. Hoisted
+    // z/fixed nodes are appended to their stacking parent and sorted there.
+    Element* ref = nullptr;
+    if (!current_fixed && current_z_index == 0 &&
+        element()->next_render_sibling() != nullptr) {
+      ref = element()->next_render_sibling();
+    }
+    while (ref != nullptr &&
+           (ref->fragment_impl() == nullptr ||
+            !ref->fragment_impl()->IsReliableSibling() ||
+            ref->fragment_impl()->fragment_parent() != target_parent)) {
+      ref = ref->next_render_sibling();
+    }
+
+    if (!keeps_stacking_parent) {
+      ReparentStackingNode(target_parent,
+                           ref != nullptr ? ref->fragment_impl() : nullptr);
+    } else {
+      // Keep children_ in structural/document order. A single style update
+      // only moves this node inside the relevant paint bucket.
+      target_parent->InsertIntoPaintOrderBucket(this);
+      if (previous_paint_index != target_parent->PaintOrderIndex(this)) {
+        target_parent->InvalidateForRedraw();
       }
-      target_parent->AddChildBefore(
-          this, ref != nullptr ? ref->fragment_impl() : nullptr);
     }
 
     Fragment* fragment_from_element_parent =
-        element()->parent()->fragment_impl();
-    if (old_z_index() == 0) {
-      fragment_from_element_parent->z_children_.erase(this);
-    } else {
-      fragment_from_element_parent->z_children_.insert(this);
+        element()->parent() != nullptr ? element()->parent()->fragment_impl()
+                                       : nullptr;
+    if (fragment_from_element_parent != nullptr) {
+      if (current_z_index == 0) {
+        fragment_from_element_parent->z_children_.erase(this);
+      } else {
+        fragment_from_element_parent->z_children_.insert(this);
+      }
+      if (!current_fixed) {
+        fragment_from_element_parent->fixed_children_.erase(this);
+      } else {
+        fragment_from_element_parent->fixed_children_.insert(this);
+      }
     }
-    if (!was_position_fixed()) {
-      fragment_from_element_parent->fixed_children_.erase(this);
-    } else {
-      fragment_from_element_parent->fixed_children_.insert(this);
-    }
-    set_fragment_from_element_parent(old_z_index() != 0 || was_position_fixed()
+    set_fragment_from_element_parent(current_z_index != 0 || current_fixed
                                          ? fragment_from_element_parent
                                          : nullptr);
   }
@@ -205,9 +240,7 @@ void Fragment::StyleChanged() {
 
     set_was_stacking_context(element()->IsStackingContextNode());
     Fragment* target_parent =
-        was_stacking_context()
-            ? this
-            : EnclosingStackingContextNode()->CastToFragment();
+        was_stacking_context() ? this : ResolveEnclosingStackingContextParent();
     MoveDirectStackingChildren(target_parent, this);
   }
 }
@@ -220,62 +253,179 @@ void Fragment::UpdateZIndexList() {
     return;
   }
 
-  // If do not need sort z-index child and fixed child, we should not update
-  // z-index list.
-  if (!NeedSortZChild() && !NeedSortFixedChild()) {
+  if (paint_order_buckets_ == nullptr) {
+    ResetDirtyState(kNeedSortZChild);
+    ResetDirtyState(kNeedSortFixedChild);
     return;
   }
 
-  // Sorts the children based on their stacking context.
-  // The sorting order is as follows:
-  // 1. Nodes with a negative z-index, sorted by z-index.
-  // 2. Nodes with a z-index of 0 that are not fixed, maintaining their relative
-  //    order.
-  // 3. Nodes with a z-index of 0 that are fixed, sorted by CompareElementOrder.
-  // 4. Nodes with a positive z-index, sorted by z-index.
-  // If the order of children changes after sorting, NeedRedraw is marked.
-  auto get_group = [](const Fragment* fragment) {
-    int z_index = fragment->old_z_index();
-    if (z_index < 0) {
-      return 0;  // Group 0: negative z-index
-    }
-    if (z_index > 0) {
-      return 3;  // Group 3: positive z-index
-    }
-    // z-index is 0
-    if (fragment->was_position_fixed()) {
-      return 2;  // Group 2: fixed
-    }
-    return 1;  // Group 1: not fixed
-  };
+  if (!NeedSortZChild() && !NeedSortFixedChild() &&
+      !paint_order_buckets_->negative_z_dirty &&
+      !paint_order_buckets_->fixed_zero_dirty &&
+      !paint_order_buckets_->positive_z_dirty) {
+    return;
+  }
 
-  auto comparator = [&](const Fragment* a, const Fragment* b) {
-    int group_a = get_group(a);
-    int group_b = get_group(b);
-
-    if (group_a != group_b) {
-      return group_a < group_b;
-    }
-
-    // Same group, sort within the group
-    switch (group_a) {
-      case 0:  // negative z-index
-      case 3:  // positive z-index
-        return a->old_z_index() < b->old_z_index();
-      case 2:  // fixed, z-index 0
-        return BaseElementContainer::CompareElementOrder(a->element(),
-                                                         b->element()) < 0;
-      case 1:  // not fixed, z-index 0
-      default:
-        return false;
-    }
-  };
-
-  std::stable_sort(children_.begin(), children_.end(), comparator);
-  InvalidateForRedraw();
+  if (paint_order_buckets_->negative_z_dirty) {
+    std::stable_sort(paint_order_buckets_->negative_z.begin(),
+                     paint_order_buckets_->negative_z.end(), ZPaintOrderLess);
+    paint_order_buckets_->negative_z_dirty = false;
+  }
+  if (paint_order_buckets_->positive_z_dirty) {
+    std::stable_sort(paint_order_buckets_->positive_z.begin(),
+                     paint_order_buckets_->positive_z.end(), ZPaintOrderLess);
+    paint_order_buckets_->positive_z_dirty = false;
+  }
+  if (paint_order_buckets_->fixed_zero_dirty) {
+    std::stable_sort(paint_order_buckets_->fixed_zero.begin(),
+                     paint_order_buckets_->fixed_zero.end(), DocumentOrderLess);
+    paint_order_buckets_->fixed_zero_dirty = false;
+  }
 
   ResetDirtyState(kNeedSortZChild);
   ResetDirtyState(kNeedSortFixedChild);
+}
+
+Fragment::PaintOrderGroup Fragment::PaintGroupFor(const Fragment* child) {
+  if (child->old_z_index() < 0) {
+    return PaintOrderGroup::kNegativeZ;
+  }
+  if (child->old_z_index() > 0) {
+    return PaintOrderGroup::kPositiveZ;
+  }
+  return child->was_position_fixed() ? PaintOrderGroup::kFixedZero
+                                     : PaintOrderGroup::kNormalFlow;
+}
+
+bool Fragment::ZPaintOrderLess(const Fragment* left, const Fragment* right) {
+  if (left->old_z_index() != right->old_z_index()) {
+    return left->old_z_index() < right->old_z_index();
+  }
+  return DocumentOrderLess(left, right);
+}
+
+bool Fragment::DocumentOrderLess(const Fragment* left, const Fragment* right) {
+  return BaseElementContainer::CompareElementOrder(left->element(),
+                                                   right->element()) < 0;
+}
+
+void Fragment::AppendToPaintOrderBucket(Fragment* child) {
+  if (PaintGroupFor(child) == PaintOrderGroup::kNormalFlow) {
+    return;
+  }
+  if (paint_order_buckets_ == nullptr) {
+    paint_order_buckets_ = std::make_unique<PaintOrderBuckets>();
+  }
+  switch (PaintGroupFor(child)) {
+    case PaintOrderGroup::kNegativeZ:
+      paint_order_buckets_->negative_z.emplace_back(child);
+      paint_order_buckets_->negative_z_dirty = true;
+      MarkDirtyState(kNeedSortZChild);
+      break;
+    case PaintOrderGroup::kFixedZero:
+      paint_order_buckets_->fixed_zero.emplace_back(child);
+      paint_order_buckets_->fixed_zero_dirty = true;
+      MarkDirtyState(kNeedSortFixedChild);
+      break;
+    case PaintOrderGroup::kPositiveZ:
+      paint_order_buckets_->positive_z.emplace_back(child);
+      paint_order_buckets_->positive_z_dirty = true;
+      MarkDirtyState(kNeedSortZChild);
+      break;
+    case PaintOrderGroup::kNormalFlow:
+      break;
+  }
+}
+
+void Fragment::InsertIntoPaintOrderBucket(Fragment* child) {
+  if (PaintGroupFor(child) == PaintOrderGroup::kNormalFlow) {
+    return;
+  }
+  if (paint_order_buckets_ == nullptr) {
+    paint_order_buckets_ = std::make_unique<PaintOrderBuckets>();
+  }
+  PaintOrderBucket* bucket = nullptr;
+  bool (*less)(const Fragment*, const Fragment*) = nullptr;
+  switch (PaintGroupFor(child)) {
+    case PaintOrderGroup::kNegativeZ:
+      bucket = &paint_order_buckets_->negative_z;
+      less = ZPaintOrderLess;
+      break;
+    case PaintOrderGroup::kFixedZero:
+      bucket = &paint_order_buckets_->fixed_zero;
+      less = DocumentOrderLess;
+      break;
+    case PaintOrderGroup::kPositiveZ:
+      bucket = &paint_order_buckets_->positive_z;
+      less = ZPaintOrderLess;
+      break;
+    case PaintOrderGroup::kNormalFlow:
+      return;
+  }
+  bucket->insert(std::lower_bound(bucket->begin(), bucket->end(), child, less),
+                 child);
+}
+
+void Fragment::RemoveFromPaintOrderBucket(Fragment* child) {
+  if (paint_order_buckets_ == nullptr) {
+    return;
+  }
+  PaintOrderBucket* bucket = nullptr;
+  switch (PaintGroupFor(child)) {
+    case PaintOrderGroup::kNegativeZ:
+      bucket = &paint_order_buckets_->negative_z;
+      break;
+    case PaintOrderGroup::kFixedZero:
+      bucket = &paint_order_buckets_->fixed_zero;
+      break;
+    case PaintOrderGroup::kPositiveZ:
+      bucket = &paint_order_buckets_->positive_z;
+      break;
+    case PaintOrderGroup::kNormalFlow:
+      return;
+  }
+  if (auto it = std::find(bucket->begin(), bucket->end(), child);
+      it != bucket->end()) {
+    bucket->erase(it);
+  }
+  if (paint_order_buckets_->negative_z.empty() &&
+      paint_order_buckets_->fixed_zero.empty() &&
+      paint_order_buckets_->positive_z.empty()) {
+    paint_order_buckets_.reset();
+  }
+}
+
+size_t Fragment::PaintOrderIndex(const Fragment* target) const {
+  size_t index = 0;
+  auto find_in_bucket = [&](const PaintOrderBucket& bucket) {
+    for (const auto* child : bucket) {
+      if (child == target) {
+        return true;
+      }
+      ++index;
+    }
+    return false;
+  };
+  if (paint_order_buckets_ != nullptr &&
+      find_in_bucket(paint_order_buckets_->negative_z)) {
+    return index;
+  }
+  for (const auto* child : children_) {
+    if (PaintGroupFor(child) != PaintOrderGroup::kNormalFlow) {
+      continue;
+    }
+    if (child == target) {
+      return index;
+    }
+    ++index;
+  }
+  if (paint_order_buckets_ != nullptr) {
+    if (find_in_bucket(paint_order_buckets_->fixed_zero) ||
+        find_in_bucket(paint_order_buckets_->positive_z)) {
+      return index;
+    }
+  }
+  return children_.size();
 }
 
 void Fragment::CreatePaintingNode(
@@ -331,8 +481,24 @@ void Fragment::FinishLayoutOperation(
 
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
-  InvalidateForRedraw();
+  const auto& old_layout = layout_info_.layout_result;
+  const bool offset_changed =
+      old_layout.offset_ != layout_result_for_rendering.offset_;
+  const bool draw_geometry_changed =
+      !layout_geometry_initialized_ ||
+      old_layout.size_.width_ != layout_result_for_rendering.size_.width_ ||
+      old_layout.size_.height_ != layout_result_for_rendering.size_.height_ ||
+      old_layout.padding_ != layout_result_for_rendering.padding_ ||
+      old_layout.border_ != layout_result_for_rendering.border_;
+
+  if (draw_geometry_changed) {
+    InvalidateForRedraw();
+  }
+  if (offset_changed || !layout_geometry_initialized_) {
+    InvalidateRestacking();
+  }
   layout_info_.layout_result = std::move(layout_result_for_rendering);
+  layout_geometry_initialized_ = true;
   UpdateBorderRadiusAccordingToLayoutInfo();
   MarkNodeReadyIfNeeded();
 }
@@ -1205,6 +1371,10 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
 }
 
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
+  RestackIfNeeded();
+  if (!stacking_geometry_.valid) {
+    return;
+  }
   MarkHasExposureEventIfNeeded();
 
   // Only a fragment backed by a platform layer can skip full draw when its
@@ -1228,6 +1398,11 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
+  RestackIfNeeded();
+  if (!stacking_geometry_.valid) {
+    return;
+  }
+
   if (element()->IsShadowNodeVirtual() || element()->display_none()) {
     // No contents to be rendered for virtual shadow nodes.
     return;
@@ -1240,12 +1415,12 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
 
   box_recorder_.Reset();
   const auto* computed_style = element()->computed_css_style();
+  DCHECK(stacking_geometry_.valid);
   display_list_builder.Begin(
       id(),
       behavior_ == nullptr ? PlatformRendererType::kUnknown
                            : behavior_->GetType(),
-      layout_info_.layout_result.offset_.X(),
-      layout_info_.layout_result.offset_.Y(),
+      stacking_geometry_.paint_offset.X(), stacking_geometry_.paint_offset.Y(),
       layout_info_.layout_result.size_.width_,
       layout_info_.layout_result.size_.height_, computed_style->IsOverflowX(),
       computed_style->IsOverflowY(), ShouldSyncLayoutOnlyToEventTarget());
@@ -1284,7 +1459,34 @@ void Fragment::FlushPendingNodeReadyIfNeeded() {
 }
 
 void Fragment::DrawChildren(DisplayListBuilder& display_list_builder) {
-  for (const auto& child : children_) {
+  // ElementManager normally flushes dirty stacking contexts before drawing.
+  // Keep direct/standalone Fragment draws correct as well.
+  UpdateZIndexList();
+  if (paint_order_buckets_ == nullptr) {
+    for (auto* child : children_) {
+      child->Draw(display_list_builder);
+    }
+    return;
+  }
+
+  for (auto* child : paint_order_buckets_->negative_z) {
+    child->Draw(display_list_builder);
+  }
+  const size_t special_child_count = paint_order_buckets_->negative_z.size() +
+                                     paint_order_buckets_->fixed_zero.size() +
+                                     paint_order_buckets_->positive_z.size();
+  if (special_child_count != children_.size()) {
+    for (auto* child : children_) {
+      if (PaintGroupFor(child) != PaintOrderGroup::kNormalFlow) {
+        continue;
+      }
+      child->Draw(display_list_builder);
+    }
+  }
+  for (auto* child : paint_order_buckets_->fixed_zero) {
+    child->Draw(display_list_builder);
+  }
+  for (auto* child : paint_order_buckets_->positive_z) {
     child->Draw(display_list_builder);
   }
 }
@@ -1306,11 +1508,18 @@ void Fragment::ReconstructEventTargetTreeForExposure() const {
 }
 
 void Fragment::Draw() {
+  RestackIfNeeded();
+  if (!stacking_geometry_.valid) {
+    return;
+  }
+
   // XXX: Maybe this part could run parallely with parent displayList
   // generation. The shared totally different context.
 
   //  Collect own displayList.
-  DisplayListBuilder builder{render_offset_[0], render_offset_[1]};
+  DCHECK(stacking_geometry_.valid);
+  DisplayListBuilder builder{stacking_geometry_.platform_embedding_offset.X(),
+                             stacking_geometry_.platform_embedding_offset.Y()};
 
   if (draw_node_capacity_ > 0) {
     builder.Reserve(draw_node_capacity_);
@@ -1326,11 +1535,12 @@ void Fragment::Draw() {
     // content / sublayers / event-target state instead of keeping the previous
     // frame.
     const auto* computed_style = element()->computed_css_style();
+    DCHECK(stacking_geometry_.valid);
     builder.Begin(id(),
                   behavior_ == nullptr ? PlatformRendererType::kUnknown
                                        : behavior_->GetType(),
-                  layout_info_.layout_result.offset_.X(),
-                  layout_info_.layout_result.offset_.Y(),
+                  stacking_geometry_.paint_offset.X(),
+                  stacking_geometry_.paint_offset.Y(),
                   layout_info_.layout_result.size_.width_,
                   layout_info_.layout_result.size_.height_,
                   computed_style->IsOverflowX(), computed_style->IsOverflowY(),
@@ -1345,13 +1555,18 @@ void Fragment::Draw() {
 }
 
 void Fragment::Draw(DisplayListBuilder& display_list_builder) {
+  RestackIfNeeded();
+  if (!stacking_geometry_.valid) {
+    return;
+  }
+
   if (has_platform_renderer_) {
     // A platform child is not drawn through the parent's nested Begin stack.
     // Pass its final local offset so DrawView can update the native child
     // position without changing the size owned by the child's display list.
-    display_list_builder.DrawView(
-        id(), layout_info_.layout_result.offset_.X() + render_offset_[0],
-        layout_info_.layout_result.offset_.Y() + render_offset_[1]);
+    DCHECK(stacking_geometry_.valid);
+    display_list_builder.DrawView(id(), stacking_geometry_.offset_to_parent.X(),
+                                  stacking_geometry_.offset_to_parent.Y());
     // The view got its own display list.
     Draw();
     return;
@@ -1425,26 +1640,43 @@ void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
 
   InvalidateForRedraw();
 
-  if (child->was_position_fixed()) {
-    // Mark need resort children.
-    MarkDirtyState(kNeedSortFixedChild);
-  }
-
-  if (child->old_z_index() != 0) {
-    // Mark need resort children.
-    MarkDirtyState(kNeedSortZChild);
-  }
-
   if (sibling == nullptr) {
-    children_.emplace_back(child);
+    // Hoisted z/fixed fragments frequently arrive without a structural
+    // sibling. Keep children_ in document order independently of paint order.
+    if (PaintGroupFor(child) == PaintOrderGroup::kNormalFlow ||
+        children_.empty() || !DocumentOrderLess(child, children_.back())) {
+      children_.emplace_back(child);
+    } else {
+      auto it = std::find_if(children_.begin(), children_.end(),
+                             [child](const Fragment* current) {
+                               return DocumentOrderLess(child, current);
+                             });
+      children_.insert(it, child);
+    }
   } else {
     if (auto it = std::find(children_.begin(), children_.end(), sibling);
         it != children_.end()) {
       children_.insert(it, child);
+    } else {
+      // Keep the tree internally consistent even if a stale caller supplied a
+      // sibling from another stacking parent. Recover document order without
+      // coupling structural storage to paint sorting.
+      if (children_.empty() || !DocumentOrderLess(child, children_.back())) {
+        children_.emplace_back(child);
+      } else {
+        auto insertion =
+            std::find_if(children_.begin(), children_.end(),
+                         [child](const Fragment* current) {
+                           return DocumentOrderLess(child, current);
+                         });
+        children_.insert(insertion, child);
+      }
     }
   }
 
   child->set_parent(this);
+  AppendToPaintOrderBucket(child);
+  InvalidateRestacking();
 }
 
 void Fragment::RemoveSelf() {
@@ -1470,6 +1702,7 @@ void Fragment::RemoveChild(Fragment* child) {
     LOGE("Fragment RemoveChild Error: child's parent is not this fragment");
   }
 
+  RemoveFromPaintOrderBucket(child);
   child->set_parent(nullptr);
 
   auto it = std::find(children_.begin(), children_.end(), child);
@@ -1478,7 +1711,32 @@ void Fragment::RemoveChild(Fragment* child) {
 
     // Mark self need redraw when remove child.
     InvalidateForRedraw();
+    InvalidateRestacking();
   }
+}
+
+void Fragment::ReparentStackingNode(Fragment* target_parent,
+                                    Fragment* sibling) {
+  if (target_parent == nullptr) {
+    LOGE("Fragment reparent rejected because target parent is null: " << id());
+    return;
+  }
+  for (Fragment* ancestor = target_parent; ancestor != nullptr;
+       ancestor = ancestor->fragment_parent()) {
+    if (ancestor == this) {
+      LOGE("Fragment reparent rejected because it would create a cycle: "
+           << id());
+      return;
+    }
+  }
+  if (target_parent == fragment_parent()) {
+    return;
+  }
+
+  if (fragment_parent() != nullptr) {
+    fragment_parent()->RemoveChild(this);
+  }
+  target_parent->AddChildBefore(this, sibling);
 }
 
 void Fragment::ReinsertDescendantsToCorrectParent() {
@@ -1487,8 +1745,8 @@ void Fragment::ReinsertDescendantsToCorrectParent() {
         if (!current->fixed_children_.empty()) {
           for (auto* fixed_child : current->fixed_children_) {
             if (fixed_child->fragment_parent() == nullptr) {
-              manager->root()->fragment_impl()->AddChildBefore(fixed_child,
-                                                               nullptr);
+              fixed_child->ReparentStackingNode(
+                  manager->root()->fragment_impl(), nullptr);
               // Recursively reinsert the fixed child's descendants. but do not
               // handle z-index since fixed child must be stacking context node.
               f(fixed_child, false);
@@ -1504,9 +1762,8 @@ void Fragment::ReinsertDescendantsToCorrectParent() {
         if (need_handle_z_children) {
           for (auto* z_child : current->z_children_) {
             if (z_child->fragment_parent() == nullptr) {
-              z_child->EnclosingStackingContextNode()
-                  ->CastToFragment()
-                  ->AddChildBefore(z_child, nullptr);
+              z_child->ReparentStackingNode(
+                  z_child->ResolveEnclosingStackingContextParent(), nullptr);
               // Recursively reinsert the z-child's descendants. but do not
               // handle z-index since z-child must be stacking context node.
               f(z_child, false);
@@ -1561,19 +1818,298 @@ void Fragment::RemoveDescendantsFromCurrentParent() {
 }
 
 void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
-  for (auto* z_child : root->z_children_) {
-    z_child->fragment_parent()->RemoveChild(z_child);
-    parent->AddChildBefore(z_child, nullptr);
+  if (parent == nullptr || root == nullptr) {
+    return;
   }
-  for (auto* child : root->children_) {
+
+  // Reparenting a nested z child can erase it from an ancestor's children_.
+  // Traverse snapshots so mutations never invalidate the active iteration.
+  const auto children_snapshot = root->children_;
+  // Reparenting does not change the logical parent's z_children_ set, so it is
+  // safe and cheaper to iterate that set directly.
+  for (auto* z_child : root->z_children_) {
+    z_child->ReparentStackingNode(parent, nullptr);
+  }
+
+  for (auto* child : children_snapshot) {
+    // Hoisted nodes are already represented by a z/fixed set, and an existing
+    // stacking context owns its descendants independently.
+    if (child->fragment_from_element_parent() != nullptr ||
+        child->was_stacking_context()) {
+      continue;
+    }
     MoveDirectStackingChildren(parent, child);
   }
 }
 
+void Fragment::InvalidateForRedraw() {
+  // A platform-backed fragment owns an independent display list. Rebuilding
+  // ancestors above that paint root cannot change its contents and only causes
+  // redundant display-list generation and platform invalidation.
+  Fragment* current = this;
+  while (current != nullptr) {
+    if (current->NeedRedraw()) {
+      return;
+    }
+    current->MarkDirtyState(kNeedRedraw);
+    if (current->has_platform_renderer_) {
+      return;
+    }
+    current = current->fragment_parent();
+  }
+}
+
+void Fragment::InvalidateRestacking() {
+  RestackingRoot()->needs_restacking_ = true;
+}
+
+Fragment* Fragment::RestackingRoot() {
+  if (fragment_parent() == nullptr) {
+    return this;
+  }
+
+  // Managed FragmentTrees have one fixed root: the page Element's fragment.
+  // Resolve it through ElementManager in O(1) instead of walking the fragment
+  // parent chain on every layout/style invalidation and draw entry.
+  if (element()->fragment_impl() == this) {
+    Element* root_element = element_manager()->root();
+    Fragment* page_fragment =
+        root_element != nullptr ? root_element->fragment_impl() : nullptr;
+    if (page_fragment != nullptr) {
+      DCHECK(page_fragment->fragment_parent() == nullptr);
+      return page_fragment;
+    }
+  }
+
+  // Unit tests and a few embedders construct independent FragmentTrees that
+  // are not installed as Element containers. Keep that compatibility path out
+  // of the managed-tree hot path.
+  Fragment* root_fragment = this;
+  while (root_fragment->fragment_parent() != nullptr) {
+    root_fragment = root_fragment->fragment_parent();
+  }
+  return root_fragment;
+}
+
+Fragment* Fragment::PaintRoot() {
+  Fragment* current = this;
+  while (current != nullptr && !current->has_platform_renderer_) {
+    current = current->fragment_parent();
+  }
+  return current != nullptr ? current : this;
+}
+
+void Fragment::MarkPaintRootDirty(Fragment* fragment) {
+  if (fragment == nullptr) {
+    return;
+  }
+  fragment->PaintRoot()->MarkDirtyState(kNeedRedraw);
+}
+
+Fragment* Fragment::ResolveStackingGeometryParent() const {
+  Fragment* resolved_parent = fragment_parent();
+  if (!has_platform_renderer_) {
+    return resolved_parent;
+  }
+  while (resolved_parent != nullptr &&
+         !resolved_parent->has_platform_renderer_) {
+    resolved_parent = resolved_parent->fragment_parent();
+  }
+  return resolved_parent;
+}
+
+Fragment* Fragment::ResolveEnclosingStackingContextParent() const {
+  for (Element* ancestor = element() != nullptr ? element()->parent() : nullptr;
+       ancestor != nullptr; ancestor = ancestor->parent()) {
+    if (ancestor->IsStackingContextNode() &&
+        ancestor->fragment_impl() != nullptr) {
+      return ancestor->fragment_impl();
+    }
+  }
+  LOGE("No stacking context ancestor found for fragment " << id());
+  return nullptr;
+}
+
+void Fragment::CollectLayoutOffsetsToRoot(
+    Element* current, base::geometry::FloatPoint parent_offset,
+    uint64_t restacking_generation) {
+  if (current == nullptr) {
+    return;
+  }
+
+  Fragment* current_fragment = current->fragment_impl();
+  base::geometry::FloatPoint local_offset(current->left(), current->top());
+  if (current_fragment != nullptr) {
+    local_offset = current_fragment->layout_info_.layout_result.offset_;
+    // New/unified fixed layout results are already page-root relative even
+    // though the Element remains under its logical parent in the render tree.
+    current_fragment->layout_offset_to_root_ =
+        current->IsFixedNewOrUnified() ? local_offset
+                                       : parent_offset + local_offset;
+    current_fragment->layout_offset_generation_ = restacking_generation;
+    parent_offset = current_fragment->layout_offset_to_root_;
+  } else {
+    parent_offset = current->IsFixedNewOrUnified()
+                        ? local_offset
+                        : parent_offset + local_offset;
+  }
+
+  for (Element* child = current->first_render_child(); child != nullptr;
+       child = child->next_render_sibling()) {
+    CollectLayoutOffsetsToRoot(child, parent_offset, restacking_generation);
+  }
+}
+
+bool Fragment::ResolveStackingGeometry(
+    base::geometry::FloatPoint active_paint_offset,
+    uint64_t restacking_generation, bool flush_node_ready,
+    base::geometry::FloatPoint* child_active_paint_offset) {
+  auto invalidate_unreachable_geometry = [this]() {
+    if (!stacking_geometry_.valid) {
+      return;
+    }
+    Fragment* previous_parent = stacking_geometry_.parent;
+    stacking_geometry_.valid = false;
+    MarkPaintRootDirty(this);
+    MarkPaintRootDirty(previous_parent);
+  };
+  if (layout_offset_generation_ != restacking_generation) {
+    LOGE("Restacking failed: fragment " << id()
+                                        << " is not reachable in LayoutTree");
+    invalidate_unreachable_geometry();
+    return false;
+  }
+
+  Fragment* resolved_parent = ResolveStackingGeometryParent();
+  base::geometry::FloatPoint parent_offset_to_root(0.f, 0.f);
+  if (resolved_parent != nullptr) {
+    if (resolved_parent->layout_offset_generation_ != restacking_generation) {
+      LOGE("Restacking failed: geometry parent " << resolved_parent->id()
+                                                 << " of fragment " << id()
+                                                 << " is not reachable in "
+                                                    "LayoutTree");
+      invalidate_unreachable_geometry();
+      return false;
+    }
+    parent_offset_to_root = resolved_parent->layout_offset_to_root_;
+  }
+
+  ResolvedStackingGeometry resolved{
+      .parent = resolved_parent,
+      .offset_to_parent = layout_offset_to_root_ - parent_offset_to_root,
+      .paint_offset = layout_offset_to_root_ - parent_offset_to_root,
+      .platform_embedding_offset = base::geometry::FloatPoint(0.f, 0.f),
+      .valid = true};
+  if (has_platform_renderer_) {
+    // Only flattened fragments on the current StackingTree path have already
+    // translated the parent canvas when it reaches this fragment's DrawView.
+    // The platform must cancel exactly that active paint translation. Layout
+    // ancestors skipped by a hoist are not on this path and must not be
+    // cancelled. This preserves the invariant:
+    //   paint_offset + platform_embedding_offset == offset_to_parent.
+    resolved.platform_embedding_offset = active_paint_offset;
+    resolved.paint_offset =
+        resolved.offset_to_parent - resolved.platform_embedding_offset;
+  }
+  const bool changed =
+      !stacking_geometry_.valid ||
+      stacking_geometry_.parent != resolved.parent ||
+      stacking_geometry_.offset_to_parent != resolved.offset_to_parent ||
+      stacking_geometry_.paint_offset != resolved.paint_offset ||
+      stacking_geometry_.platform_embedding_offset !=
+          resolved.platform_embedding_offset;
+  if (changed) {
+    stacking_geometry_ = resolved;
+    // This fragment's Begin changes. For platform-backed fragments the
+    // embedding DrawView in the platform parent changes as well.
+    MarkPaintRootDirty(this);
+    MarkPaintRootDirty(resolved_parent);
+    MarkNodeReadyIfNeeded();
+  }
+  if (flush_node_ready) {
+    FlushPendingNodeReadyIfNeeded();
+  }
+
+  *child_active_paint_offset =
+      has_platform_renderer_ ? base::geometry::FloatPoint(0.f, 0.f)
+                             : active_paint_offset + resolved.paint_offset;
+  return true;
+}
+
+void Fragment::ResolveStackingGeometryRecursively(
+    base::geometry::FloatPoint active_paint_offset,
+    uint64_t restacking_generation, bool flush_node_ready) {
+  base::geometry::FloatPoint child_active_paint_offset;
+  if (!ResolveStackingGeometry(active_paint_offset, restacking_generation,
+                               flush_node_ready, &child_active_paint_offset)) {
+    return;
+  }
+  for (auto* child : children_) {
+    child->ResolveStackingGeometryRecursively(
+        child_active_paint_offset, restacking_generation, flush_node_ready);
+  }
+}
+
+uint64_t Fragment::PrepareRestacking() {
+  DCHECK(fragment_parent() == nullptr);
+  ++restacking_generation_;
+  if (restacking_generation_ == 0) {
+    // Generation zero means "not collected" on every Fragment.
+    ++restacking_generation_;
+  }
+
+  // A few embedders construct a Fragment directly instead of installing it as
+  // the Element's container. Such a standalone fragment is its complete
+  // layout tree, so resolve its one local edge without consulting an unrelated
+  // Element-owned fragment.
+  if (element()->fragment_impl() != this) {
+    layout_offset_to_root_ = layout_info_.layout_result.offset_;
+    layout_offset_generation_ = restacking_generation_;
+  } else {
+    CollectLayoutOffsetsToRoot(element(), base::geometry::FloatPoint(0.f, 0.f),
+                               restacking_generation_);
+  }
+  return restacking_generation_;
+}
+
+void Fragment::RestackIfNeeded() {
+  Fragment* root_fragment = RestackingRoot();
+  if (root_fragment != this) {
+    root_fragment->RestackIfNeeded();
+    return;
+  }
+  if (!needs_restacking_) {
+    return;
+  }
+  const uint64_t generation = PrepareRestacking();
+  // Clear before resolving so a re-entrant mutation schedules another pass
+  // instead of being overwritten when this pass completes.
+  needs_restacking_ = false;
+  ResolveStackingGeometryRecursively(base::geometry::FloatPoint(0.f, 0.f),
+                                     generation, true);
+}
+
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {
-  layout_info_.layout_result.offset_.SetX(left);
-  layout_info_.layout_result.offset_.SetY(top);
-  UpdateRenderOffsetRecursively(0, 0, this);
+  const base::geometry::FloatPoint updated_offset(left, top);
+  if (layout_info_.layout_result.offset_ != updated_offset) {
+    layout_info_.layout_result.offset_ = updated_offset;
+    InvalidateRestacking();
+  }
+  // Page layout already performs a full FragmentTree traversal to synchronize
+  // platform layout. Resolve stacking geometry in that same traversal instead
+  // of adding a second first-screen FragmentTree pass.
+  if (fragment_parent() == nullptr && needs_restacking_) {
+    const uint64_t generation = PrepareRestacking();
+    // Platform layout synchronization and behavior callbacks run during the
+    // fused traversal. Preserve any re-entrant invalidation they trigger.
+    needs_restacking_ = false;
+    UpdateLayoutRecursively(this, generation);
+  } else {
+    // Transition/layout updates can start below the root. Preserve their
+    // existing behavior by resolving the complete stacking tree first.
+    RestackIfNeeded();
+    UpdateLayoutRecursively(this);
+  }
 }
 
 void Fragment::UpdateLayoutWithoutChange() {
@@ -1631,21 +2167,19 @@ void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
   }
 }
 
-void Fragment::UpdateRenderOffsetRecursively(float left, float top,
-                                             Fragment* root) {
-  float child_offset_x = left + layout_info_.layout_result.offset_.X();
-  float child_offset_y = top + layout_info_.layout_result.offset_.Y();
+void Fragment::UpdateLayoutRecursively(
+    Fragment* draw_root, uint64_t restacking_generation,
+    base::geometry::FloatPoint active_paint_offset) {
+  base::geometry::FloatPoint child_active_paint_offset = active_paint_offset;
+  if (restacking_generation != 0 &&
+      !ResolveStackingGeometry(active_paint_offset, restacking_generation,
+                               false, &child_active_paint_offset)) {
+    restacking_generation = 0;
+  }
+
   if (has_platform_renderer_) {
-    if (render_offset_[0] != left || render_offset_[1] != top) {
-      MarkNodeReadyIfNeeded();
-    }
-    render_offset_[0] = left;
-    render_offset_[1] = top;
-
-    child_offset_x = 0;
-    child_offset_y = 0;
-
     draw_node_capacity_ = kDefaultDrawNodeCapacity;
+    draw_root = this;
 
     if (ShouldSyncNativePlatformRenderer()) {
       painting_context()->UpdateLayout(
@@ -1658,8 +2192,8 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top,
           layout_info_.layout_result.border_.data(), nullptr, nullptr, 0.f,
           element()->NodeIndex(), element()->display_none());
     }
-  } else if (root != nullptr) {
-    root->draw_node_capacity_++;
+  } else if (draw_root != nullptr) {
+    draw_root->draw_node_capacity_++;
   }
 
   if (behavior_) {
@@ -1668,8 +2202,8 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top,
   FlushPendingNodeReadyIfNeeded();
 
   for (auto* child : children_) {
-    child->UpdateRenderOffsetRecursively(child_offset_x, child_offset_y,
-                                         has_platform_renderer_ ? this : root);
+    child->UpdateLayoutRecursively(draw_root, restacking_generation,
+                                   child_active_paint_offset);
   }
 }
 
