@@ -83,13 +83,17 @@ void FontCollection::PreLoadFontOnMem(
   }
 
   FontCallback callback = [weak = weak_from_this()](
-                              const std::string& font_family,
+                              bool success, const std::string& font_family,
                               const std::string& url) {
     // first : register font
     // One font family may specify multiple fonts, supporting matching the most
     // appropriate font to show, now we only use one font
     auto self = weak.lock();
     if (!self) {
+      return;
+    }
+    if (!success) {
+      self->font_download_callback_.erase(font_family);
       return;
     }
     const std::string str = "not use";
@@ -102,10 +106,24 @@ void FontCollection::PreLoadFontOnMem(
                                         std::move(urls), callback);
 }
 
-void FontCollection::RegisterCallback(const std::string& font_family,
-                                      const FontDownloadCallback& callback) {
-  if (HasFontResourceLoading(font_family)) {
-    font_download_callback_.emplace(font_family, callback);
+FontDownloadCallbackId FontCollection::RegisterCallback(
+    const std::string& font_family, const FontDownloadCallback& callback) {
+  const auto callback_id = ++next_font_download_callback_id_;
+  font_download_callback_.emplace(
+      font_family, PendingFontDownloadCallback{callback_id, callback});
+  return callback_id;
+}
+
+void FontCollection::UnregisterCallback(FontDownloadCallbackId callback_id) {
+  if (callback_id == 0) {
+    return;
+  }
+  for (auto it = font_download_callback_.begin();
+       it != font_download_callback_.end(); ++it) {
+    if (it->second.id == callback_id) {
+      font_download_callback_.erase(it);
+      return;
+    }
   }
 }
 
@@ -135,13 +153,16 @@ void FontCollection::ClearFontFamilyCache() {
 
 void FontCollection::OnLoadFontEnd(const std::string& font_family) {
   auto range = font_download_callback_.equal_range(font_family);
+  std::vector<FontDownloadCallback> callbacks;
+  for (auto it = range.first; it != range.second; ++it) {
+    callbacks.emplace_back(std::move(it->second.callback));
+  }
+  font_download_callback_.erase(range.first, range.second);
   collection_->ClearFontFamilyCache();
 
-  for (auto it = range.first; it != range.second; ++it) {
-    it->second();
+  for (const auto& callback : callbacks) {
+    callback();
   }
-
-  font_download_callback_.erase(font_family);
 }
 
 bool FontCollection::IfSystemFontFamily(std::string& font_family) {

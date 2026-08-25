@@ -227,6 +227,10 @@ EditableView::EditableView(int id, int callback_id, std::string tag,
 }
 
 EditableView::~EditableView() {
+  auto font_collection = Isolate::Instance().GetFontCollection();
+  if (font_collection) {
+    font_collection->UnregisterCallback(pending_font_callback_id_);
+  }
   page_view()->StopInput(this);
   if (text_editing_controller_) {
     text_editing_controller_->RemoveObserver(this);
@@ -551,10 +555,15 @@ void EditableView::SetFontFamily(const std::string& font_family) {
     }
   }
   if (text_style_.font_family != new_font_family) {
+    auto font_collection = Isolate::Instance().GetFontCollection();
+    if (font_collection) {
+      font_collection->UnregisterCallback(pending_font_callback_id_);
+    }
+    pending_font_callback_id_ = 0;
     text_style_.font_family = new_font_family;
     text_style_.strut_font_families.clear();
     text_style_.strut_font_families.emplace_back(new_font_family);
-    MarkDirty();
+    MarkNeedsLayout();
     RelayoutWhenSetFontFamily(new_font_family);
   }
 }
@@ -591,13 +600,13 @@ void EditableView::RelayoutWhenSetFontFamily(const std::string& font_family) {
   auto font_collection = Isolate::Instance().GetFontCollection();
 
   if (font_collection) {
-    font_collection->RegisterCallback(font_family,
-                                      [self = weak_factory_.GetWeakPtr()]() {
-                                        if (!self) {
-                                          return;
-                                        }
-                                        self->MarkDirty();
-                                      });
+    pending_font_callback_id_ = font_collection->RegisterCallback(
+        font_family, [self = weak_factory_.GetWeakPtr()]() {
+          if (!self) {
+            return;
+          }
+          self->MarkNeedsLayout();
+        });
   }
 }
 
