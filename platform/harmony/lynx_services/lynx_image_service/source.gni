@@ -16,6 +16,8 @@ lynx_image_service_sources =
                   "src/main/cpp/image_service_node.h",
                   "src/main/cpp/image_transform.cc",
                   "src/main/cpp/image_transform.h",
+                  "src/main/cpp/svg_image_loader.cc",
+                  "src/main/cpp/svg_image_loader.h",
                 ])
 
 template("lynx_image_service_source_set") {

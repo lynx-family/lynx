@@ -16,6 +16,7 @@
 #include "base/include/platform/harmony/napi_util.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_data.h"
 #include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/image_service_node.h"
+#include "platform/harmony/lynx_services/lynx_image_service/src/main/cpp/svg_image_loader.h"
 
 namespace lynx {
 namespace service {
@@ -79,6 +80,15 @@ napi_value ImageServiceHarmony::Constructor(napi_env env,
                                             napi_callback_info info) {
   napi_value js_this = nullptr;
   return js_this;
+}
+
+std::shared_ptr<tasm::harmony::SvgImageLoader>
+ImageServiceHarmony::CreateSvgImageLoader(
+    std::unique_ptr<tasm::harmony::SvgResourceFetcher> resource_fetcher,
+    std::function<void()> invalidation_callback, float density) {
+  return std::make_shared<SvgImageLoaderImpl>(this, std::move(resource_fetcher),
+                                              std::move(invalidation_callback),
+                                              density);
 }
 
 }  // namespace service

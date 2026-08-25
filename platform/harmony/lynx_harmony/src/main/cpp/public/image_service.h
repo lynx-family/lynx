@@ -7,6 +7,7 @@
 
 #include <arkui/native_node.h>
 #include <multimedia/image_framework/image/pixelmap_native.h>
+#include <native_drawing/drawing_types.h>
 
 #include <functional>
 #include <memory>
@@ -82,6 +83,19 @@ class AnimationListener {
   virtual void OnAnimationFinish() = 0;
 };
 
+using ImageDataCallback =
+    std::function<void(const std::shared_ptr<ImageData>&)>;
+using ImageSuccessCallback = std::function<void(float, float)>;
+using ImageFailedCallback = std::function<void(int, const std::string&)>;
+using SvgResourceCompletionCallback =
+    std::function<void(int, const std::string&, std::vector<uint8_t>)>;
+
+struct SvgResourceFetcher {
+  virtual ~SvgResourceFetcher() = default;
+  virtual void Fetch(const std::string& source,
+                     SvgResourceCompletionCallback completion) = 0;
+};
+
 struct ImageNode {
   virtual ~ImageNode() = default;
   virtual ArkUI_NodeHandle GetNodeHandle() = 0;
@@ -99,18 +113,32 @@ struct ImageNode {
   virtual void Clear() = 0;
 };
 
+struct SvgImageLoader {
+  virtual ~SvgImageLoader() = default;
+  virtual void FetchSvgImage(const ImageRequestInfo& info,
+                             ImageSuccessCallback on_load_success,
+                             ImageFailedCallback on_load_failed) = 0;
+  virtual void UpdateLayout(float width, float height, float padding_left,
+                            float padding_top, float padding_right,
+                            float padding_bottom) = 0;
+  virtual void Render(OH_Drawing_Canvas* canvas) = 0;
+};
+
 class ImageService {
  public:
+  using ImageDataCallback = ::lynx::tasm::harmony::ImageDataCallback;
+  using ImageSuccessCallback = ::lynx::tasm::harmony::ImageSuccessCallback;
+  using ImageFailedCallback = ::lynx::tasm::harmony::ImageFailedCallback;
+
   virtual ~ImageService() = default;
   virtual std::unique_ptr<ImageNode> CreateImageNode() = 0;
-  using ImageDataCallback =
-      std::function<void(const std::shared_ptr<ImageData>&)>;
-  using ImageSuccessCallback = std::function<void(float, float)>;
-  using ImageFailedCallback = std::function<void(int, const std::string&)>;
   virtual void DecodeImage(const ImageRequestInfo& info,
                            ImageDataCallback callback,
                            ImageSuccessCallback on_load_success,
                            ImageFailedCallback on_load_failed) = 0;
+  virtual std::shared_ptr<SvgImageLoader> CreateSvgImageLoader(
+      std::unique_ptr<SvgResourceFetcher> resource_fetcher,
+      std::function<void()> invalidation_callback, float density) = 0;
 };
 
 }  // namespace harmony
