@@ -336,10 +336,6 @@ void Fragment::UpdatePaintingNode(
   MarkNodeReadyIfNeeded();
 }
 
-void Fragment::OnFirstScreen() {
-  painting_context()->impl()->CastToNativeCtx()->OnFirstScreen();
-}
-
 void Fragment::OnNodeReady() {
   if (!ShouldSyncNativePlatformRenderer()) {
     pending_node_ready_ = false;
@@ -347,16 +343,6 @@ void Fragment::OnNodeReady() {
   }
   pending_node_ready_ = false;
   painting_context()->OnNodeReady(id());
-}
-
-void Fragment::FinishTasmOperation(
-    const std::shared_ptr<PipelineOptions>& options) {
-  painting_context()->impl()->CastToNativeCtx()->FinishTasmOperation(options);
-}
-
-void Fragment::FinishLayoutOperation(
-    const std::shared_ptr<PipelineOptions>& options) {
-  painting_context()->impl()->CastToNativeCtx()->FinishLayoutOperation(options);
 }
 
 void Fragment::UpdateLayout(

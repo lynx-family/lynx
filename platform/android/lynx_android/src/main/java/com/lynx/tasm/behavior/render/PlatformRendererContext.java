@@ -39,6 +39,7 @@ import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -814,6 +815,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     owner.onLayoutFinish(componentId, operationId);
+  }
+
+  @CalledByNative
+  void setNeedMarkPaintEndTiming(String pipelineId) {
+    PerformanceController perfController = mContext != null ? mContext.getPerfController() : null;
+    if (perfController != null) {
+      perfController.setNeedMarkPaintEndTiming(pipelineId);
+    }
   }
 
   @CalledByNative

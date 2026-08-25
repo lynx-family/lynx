@@ -101,8 +101,6 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
 #pragma region NativePaintingContext
 
-  void OnFirstScreen() override;
-
   void CreatePlatformRenderer(
       int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
       const PlatformRendererInitConfig &init_config = PlatformRendererInitConfig()) override;
@@ -132,7 +130,6 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
   template <typename F>
   void Enqueue(F &&func);
 
-  bool has_first_screen_ = false;
   std::shared_ptr<std::atomic_bool> event_target_tree_update_enqueued_ =
       std::make_shared<std::atomic_bool>(false);
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;

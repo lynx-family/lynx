@@ -395,6 +395,9 @@
   [controller setTiming:1000 key:@(lynx::tasm::timing::kLoadBundleStart) pipelineID:nil];
   XCTAssertNil(emitter.lastEvent);
 
+  [controller setTiming:1500 key:@(lynx::tasm::timing::kLoadBundleEnd) pipelineID:nil];
+  XCTAssertNil(emitter.lastEvent);
+
   [controller setTiming:2000 key:@(lynx::tasm::timing::kPaintEnd) pipelineID:nil];
 
   XCTAssertNotNil(emitter.lastEvent);

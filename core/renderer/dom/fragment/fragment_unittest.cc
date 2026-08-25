@@ -219,6 +219,10 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
                 ->GetDisplayList();
   }
 
+  void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override {
+    paint_end_pipeline_ids.push_back(pipeline_id);
+  }
+
   void UseCurrentThreadAsTaskRunnerForTest() {
     fml::MessageLoop::EnsureInitializedForCurrentThread();
     event_target_task_runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
@@ -227,6 +231,7 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
   std::unordered_set<int32_t> scrollable_signs;
   std::vector<int32_t> destroyed_image_keys;
+  std::vector<tasm::PipelineID> paint_end_pipeline_ids;
 
  protected:
   void DestroyImageOnPlatformThread(int32_t image_key) override {
@@ -260,7 +265,6 @@ class TestNativePaintingContext : public NativePaintingContext {
 
   void SetPlatformRef(TestNativePaintingCtxPlatformRef* ref) { ref_ = ref; }
 
-  void OnFirstScreen() override {}
   void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) override {}
   void FinishLayoutOperation(
@@ -341,6 +345,16 @@ class NativeMockPaintingContext : public MockPaintingContext,
   }
 
   NativePaintingContext* CastToNativeCtx() override { return this; }
+
+  void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {
+    TestNativePaintingContext::FinishTasmOperation(options);
+  }
+
+  void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {
+    TestNativePaintingContext::FinishLayoutOperation(options);
+  }
 
   TestNativePaintingCtxPlatformRef* GetNativePlatformRef() {
     return static_cast<TestNativePaintingCtxPlatformRef*>(platform_ref_.get());
@@ -2418,11 +2432,16 @@ TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
   fragment->has_platform_renderer_ = true;
 
   auto options = std::make_shared<PipelineOptions>();
+  options->need_timestamps = true;
   native_context->operations.clear();
   page->Layout(options);
 
   EXPECT_TRUE(options->has_layout);
   EXPECT_TRUE(native_context->operations.empty());
+  ASSERT_EQ(manager->painting_context()->options_for_timing_.size(), 1u);
+  auto additional_options = std::make_shared<PipelineOptions>();
+  additional_options->need_timestamps = true;
+  manager->painting_context()->AppendOptionsForTiming(additional_options);
 
   fragment->Draw();
   fragment->FinishLayoutOperation(options);
@@ -2430,6 +2449,10 @@ TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
   ASSERT_EQ(native_context->operations.size(), 2u);
   EXPECT_EQ(native_context->operations[0], "update_display_list");
   EXPECT_EQ(native_context->operations[1], "finish_layout");
+  EXPECT_TRUE(manager->painting_context()->options_for_timing_.empty());
+  EXPECT_THAT(native_ref->paint_end_pipeline_ids,
+              ::testing::ElementsAre(options->pipeline_id,
+                                     additional_options->pipeline_id));
 }
 
 }  // namespace tasm
