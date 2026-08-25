@@ -52,6 +52,8 @@ struct MockNativeFacade : public NativeFacadeEmptyImpl {
 
   void OnConfigUpdated(const lepus::Value& data) override;
 
+  void OnShouldSendEventToMainThreadChanged(bool enable) override;
+
   void OnUpdateDataWithoutChange() override;
 
   std::shared_ptr<fml::AutoResetWaitableEvent> arwe =

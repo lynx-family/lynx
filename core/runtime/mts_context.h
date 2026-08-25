@@ -89,8 +89,6 @@ class MTSContext {
   virtual void TriggerVmGC() {}
   virtual int64_t GetCurrentHeapSizeBytes() { return 0; }
 
-  virtual bool EnableSendEventToMainThread() const { return false; }
-
   virtual void RegisterGlobalFunction(const RenderBindingFunction* funcs,
                                       size_t size) = 0;
   virtual void RegisterObjectFunction(lepus::Value& obj,

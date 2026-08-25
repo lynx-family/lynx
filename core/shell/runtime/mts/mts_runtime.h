@@ -164,6 +164,21 @@ class MTSRuntime : private MTSContextHolder,
                 (std::is_same_v<
                      Value, std::remove_cv_t<std::remove_reference_t<Args>>> &&
                  ...)>>
+  Value TryCall(const base::String& name, const Args&... args) {
+    // TODO(songshourui.null): Support querying top-level functions in RTS and
+    // RTS Native contexts.
+    Value function;
+    if (!GetTopLevelVariableByName(name, &function) || !function.IsCallable()) {
+      return Value();
+    }
+    return Call(name, args...);
+  }
+
+  template <class... Args,
+            class = std::enable_if_t<
+                (std::is_same_v<
+                     Value, std::remove_cv_t<std::remove_reference_t<Args>>> &&
+                 ...)>>
   Value CallInPauseSuppressionMode(const base::String& name, Args&&... args) {
     constexpr auto n_args = sizeof...(args);
     const Value* p_args[n_args] = {&args...};

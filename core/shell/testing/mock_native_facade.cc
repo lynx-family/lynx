@@ -81,6 +81,12 @@ void MockNativeFacade::OnConfigUpdated(const lepus::Value& data) {
   arwe->Signal();
 }
 
+void MockNativeFacade::OnShouldSendEventToMainThreadChanged(bool enable) {
+  result.on_correct_thread = IsOnUIThread();
+  result["should_send_event_to_main_thread"] = enable;
+  arwe->Signal();
+}
+
 void MockNativeFacade::OnUpdateDataWithoutChange() {
   result.on_correct_thread = IsOnUIThread();
   arwe->Signal();

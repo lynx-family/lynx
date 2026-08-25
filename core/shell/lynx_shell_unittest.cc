@@ -25,6 +25,7 @@
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/testing/mock_native_facade.h"
 #include "core/shell/testing/mock_runner_manufactor.h"
+#include "core/template_bundle/lynx_template_bundle.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -146,6 +147,41 @@ TEST_F(LynxShellTest, OnConfigUpdated) {
   arwe_->Wait();
   ASSERT_TRUE(*facade_);
   ASSERT_EQ(std::any_cast<lepus::Value>((*facade_)["data"]), data);
+}
+
+TEST_F(LynxShellTest, OnShouldSendEventToMainThreadChanged) {
+  tasm_mediator_->OnShouldSendEventToMainThreadChanged(false);
+  arwe_->Wait();
+  ASSERT_TRUE(*facade_);
+  ASSERT_FALSE(
+      std::any_cast<bool>((*facade_)["should_send_event_to_main_thread"]));
+}
+
+TEST_F(LynxShellTest, LoadTemplateResetsShouldSendEventToMainThread) {
+  auto set_should_send_event_to_main_thread = [this](bool enable) {
+    tasm_mediator_->OnShouldSendEventToMainThreadChanged(enable);
+    arwe_->Wait();
+    ASSERT_EQ(
+        std::any_cast<bool>((*facade_)["should_send_event_to_main_thread"]),
+        enable);
+  };
+  auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
+  shell_->engine_actor_->enable_ = false;
+
+  set_should_send_event_to_main_thread(false);
+  shell_->LoadTemplate("url", {}, pipeline_options, nullptr);
+  arwe_->Wait();
+  EXPECT_TRUE(
+      std::any_cast<bool>((*facade_)["should_send_event_to_main_thread"]));
+
+  set_should_send_event_to_main_thread(false);
+  shell_->LoadTemplateBundle("url", tasm::LynxTemplateBundle(),
+                             pipeline_options, nullptr);
+  arwe_->Wait();
+  EXPECT_TRUE(
+      std::any_cast<bool>((*facade_)["should_send_event_to_main_thread"]));
+
+  shell_->engine_actor_->enable_ = true;
 }
 
 TEST_F(LynxShellTest, OnUpdateDataWithoutChange) {

@@ -223,8 +223,6 @@ void LynxShell::BuildEngineActor(
       facade_actor_, card_cached_data_mgr_, layout_actor_,
       std::move(tasm_platform_invoker), perf_controller_actor_);
   tasm_mediator->SetPageOptions(page_options_);
-  tasm_mediator->SetShouldSendEventToMainThreadCache(
-      should_send_event_to_main_thread_cache_);
   tasm_mediator_ = tasm_mediator.get();
   auto element_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::move(painting_context), tasm_mediator.get(),
@@ -241,6 +239,7 @@ void LynxShell::BuildEngineActor(
       *tasm_mediator, std::move(element_manager), tasm_mediator.get(),
       instance_id_, engine_build_options_.enable_unified_pipeline_,
       page_options_);
+  tasm->SetEnableBTSRuntime(enable_runtime_);
   tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
   if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
     tasm->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);
@@ -371,8 +370,6 @@ void LynxShell::Destroy() {
   LOGI("LynxShell Destroy, this:" << this);
 
   is_destroyed_ = true;
-  should_send_event_to_main_thread_cache_->store(false,
-                                                 std::memory_order_relaxed);
 
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::RecorderController::RemoveRecord(
@@ -651,11 +648,17 @@ void LynxShell::ResetNativeUpdateDataOrderForLoad(
   pipeline_options->native_update_data_order_ = 0;
 }
 
+void LynxShell::ResetShouldSendEventToMainThread() {
+  facade_actor_->ActSync(
+      [](auto& facade) { facade->OnShouldSendEventToMainThreadChanged(true); });
+}
+
 void LynxShell::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
   url_ = url;
+  ResetShouldSendEventToMainThread();
 
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
   if (!pipeline_options) {
@@ -738,6 +741,7 @@ void LynxShell::LoadTemplateBundle(
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
   url_ = url;
+  ResetShouldSendEventToMainThread();
 
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
   if (!pipeline_options) {
