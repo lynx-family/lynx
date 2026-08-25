@@ -413,8 +413,6 @@ void NativePaintingCtxAndroid::Flush() { queue_->Flush(); }
 
 void NativePaintingCtxAndroid::HandleValidate(int tag) {}
 
-void NativePaintingCtxAndroid::OnFirstScreen() { has_first_screen_ = true; }
-
 void NativePaintingCtxAndroid::FinishTasmOperation(
     const std::shared_ptr<PipelineOptions> &options) {
   if (view_manager_) {
@@ -430,10 +428,6 @@ void NativePaintingCtxAndroid::FinishTasmOperation(
 
 void NativePaintingCtxAndroid::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions> &options) {
-  if (!has_first_screen_) {
-    return;
-  }
-
   if (view_manager_) {
     Enqueue([view_manager = view_manager_, options]() {
       view_manager->FinishLayoutOperation(options->list_comp_id_,

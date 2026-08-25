@@ -73,8 +73,11 @@ public class PerformanceControllerTest {
     assertNull(receivedEntry.get());
 
     collector.markTiming(TimingConstants.PAINT_END, 1_100_000);
-    assertSame(callingThread, observerThread.get());
+    assertNull(receivedEntry.get());
+
+    collector.markTiming("loadBundleEnd", 1_040_000);
     assertTrue(entryLatch.await(5, TimeUnit.SECONDS));
+    assertNotSame(callingThread, observerThread.get());
     assertTrue(collector.hasEmitLoadBundleEvent());
 
     PerformanceEntry entry = receivedEntry.get();
@@ -82,11 +85,10 @@ public class PerformanceControllerTest {
     assertEquals("pipeline", entry.entryType);
     assertEquals(TimingConstants.LOAD_BUNDLE, entry.name);
     assertEquals(1000.0, ((Number) entry.toHashMap().get("loadBundleStart")).doubleValue(), 0.0);
-    assertFalse(entry.toHashMap().containsKey("loadBundleEnd"));
+    assertEquals(1040.0, ((Number) entry.toHashMap().get("loadBundleEnd")).doubleValue(), 0.0);
     assertEquals(
         1100.0, ((Number) entry.toHashMap().get(TimingConstants.PAINT_END)).doubleValue(), 0.0);
 
-    collector.markTiming("loadBundleEnd", 1_040_000);
     collector.markTiming(TimingConstants.PAINT_END, 1_200_000);
     CountDownLatch drainLatch = new CountDownLatch(1);
     LynxEventReporter.runOnReportThread(drainLatch::countDown);
@@ -133,15 +135,12 @@ public class PerformanceControllerTest {
           TimingConstants.LOAD_BUNDLE_START, 2_000_000, "pipeline-id");
       embeddedController.setEmbeddedTiming(TimingConstants.PAINT_END, 2_100_000, "pipeline-id");
 
-      assertEquals(0, entryLatch.getCount());
-      assertTrue(entryLatch.await(5, TimeUnit.SECONDS));
+      assertEquals(1, entryLatch.getCount());
       assertEquals(1, eventLatch.getCount());
 
-      // Ignore later draws once the observer event has been emitted and no update is pending.
-      // The native loadBundleEnd timing may arrive later, but its timestamp is before paintEnd.
-      embeddedController.markPaintEndTimingIfNeeded();
       embeddedController.setEmbeddedTiming("loadBundleEnd", 2_040_123, "pipeline-id");
 
+      assertTrue(entryLatch.await(5, TimeUnit.SECONDS));
       assertTrue(eventLatch.await(5, TimeUnit.SECONDS));
       assertNotSame(Looper.getMainLooper().getThread(), reportThread.get());
       Map<String, ? extends Object> props = receivedProps.get();

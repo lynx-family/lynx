@@ -12,6 +12,7 @@
 #include "base/include/fml/message_loop.h"
 #import "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
 #import "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
+#include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 
 @interface painting_context_darwin_UnitTest : XCTestCase {
@@ -52,15 +53,18 @@
                                                       screenMetrics:nil];
   auto nativePaintingContext =
       std::make_unique<lynx::tasm::NativePaintingCtxDarwin>(uiOwner, nil, nullptr);
+  auto* nativePaintingContextPtr = nativePaintingContext.get();
+  auto sharedPaintingContext =
+      std::make_unique<lynx::tasm::PaintingContext>(std::move(nativePaintingContext));
   lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
   auto queue = std::make_shared<lynx::shell::DynamicUIOperationQueue>(
       lynx::base::ThreadStrategyForRendering::ALL_ON_UI,
       lynx::fml::MessageLoop::GetCurrent().GetTaskRunner());
-  nativePaintingContext->SetUIOperationQueue(queue);
+  sharedPaintingContext->SetUIOperationQueue(queue);
 
   id performanceController = OCMClassMock([LynxPerformanceController class]);
   lynx::tasm::PaintingContextDarwinUtils::SetPerformanceController(
-      nativePaintingContext->GetPlatformRef().get(), performanceController);
+      nativePaintingContextPtr->GetPlatformRef().get(), performanceController);
 
   auto options = std::make_shared<lynx::tasm::PipelineOptions>();
   options->need_timestamps = true;
@@ -68,8 +72,9 @@
   NSString* pipelineID = [NSString stringWithUTF8String:options->pipeline_id.c_str()];
   OCMExpect([performanceController markTiming:kTimingPaintEnd pipelineID:pipelineID]);
 
-  nativePaintingContext->OnFirstScreen();
-  nativePaintingContext->FinishLayoutOperation(options);
+  sharedPaintingContext->OnFirstScreen();
+  sharedPaintingContext->AppendOptionsForTiming(options);
+  sharedPaintingContext->FinishLayoutOperation(options);
   queue->ForceFlush();
 
   OCMVerifyAllWithDelay(performanceController, 1.0);

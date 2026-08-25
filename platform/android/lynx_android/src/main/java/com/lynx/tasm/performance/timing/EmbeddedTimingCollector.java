@@ -62,7 +62,7 @@ public class EmbeddedTimingCollector {
         break;
       case LOAD_BUNDLE_END:
         mLoadBundleEndUs = usTimestamp;
-        emitLoadBundleObserverIfReady(getObserver());
+        emitLoadBundleObserverIfReady(getObserver(), true);
         reportLoadBundleIfReady();
         break;
       case TimingConstants.UPDATE_DATA_START:
@@ -71,7 +71,7 @@ public class EmbeddedTimingCollector {
       case TimingConstants.PAINT_END:
         mPaintEndUs = usTimestamp;
         IPerformanceObserver observer = getObserver();
-        emitLoadBundleObserverIfReady(observer);
+        emitLoadBundleObserverIfReady(observer, false);
         emitUpdateDataIfReady(observer);
         reportLoadBundleIfReady();
         break;
@@ -81,12 +81,14 @@ public class EmbeddedTimingCollector {
     }
   }
 
-  /** Notify the external observer after the first paint, preserving the existing contract. */
-  private void emitLoadBundleObserverIfReady(IPerformanceObserver observer) {
+  /** Notify the external observer after all load bundle timing points are available. */
+  private void emitLoadBundleObserverIfReady(
+      IPerformanceObserver observer, boolean dispatchOnReportThread) {
     if (mHasEmitLoadBundleEvent) {
       return;
     }
-    if (mLoadBundleStartUs < 0 || mPaintEndUs < mLoadBundleStartUs) {
+    if (mLoadBundleStartUs < 0 || mLoadBundleEndUs < mLoadBundleStartUs
+        || mPaintEndUs < mLoadBundleEndUs) {
       return;
     }
     mHasEmitLoadBundleEvent = true;
@@ -94,11 +96,30 @@ public class EmbeddedTimingCollector {
       return;
     }
 
+    final long loadBundleStartUs = mLoadBundleStartUs;
+    final long loadBundleEndUs = mLoadBundleEndUs;
+    final long paintEndUs = mPaintEndUs;
+    if (dispatchOnReportThread) {
+      WeakReference<IPerformanceObserver> observerRef = new WeakReference<>(observer);
+      LynxEventReporter.runOnReportThread(() -> {
+        IPerformanceObserver currentObserver = observerRef.get();
+        if (currentObserver != null) {
+          emitLoadBundleObserver(currentObserver, loadBundleStartUs, loadBundleEndUs, paintEndUs);
+        }
+      });
+    } else {
+      emitLoadBundleObserver(observer, loadBundleStartUs, loadBundleEndUs, paintEndUs);
+    }
+  }
+
+  private static void emitLoadBundleObserver(IPerformanceObserver observer, long loadBundleStartUs,
+      long loadBundleEndUs, long paintEndUs) {
     JavaOnlyMap entryMap = new JavaOnlyMap();
     entryMap.put("entryType", "pipeline");
     entryMap.put("name", TimingConstants.LOAD_BUNDLE);
-    entryMap.put(TimingConstants.LOAD_BUNDLE_START, (double) mLoadBundleStartUs / 1000);
-    entryMap.put(TimingConstants.PAINT_END, (double) mPaintEndUs / 1000);
+    entryMap.put(TimingConstants.LOAD_BUNDLE_START, (double) loadBundleStartUs / 1000);
+    entryMap.put(LOAD_BUNDLE_END, (double) loadBundleEndUs / 1000);
+    entryMap.put(TimingConstants.PAINT_END, (double) paintEndUs / 1000);
     observer.onPerformanceEvent(PerformanceEntryConverter.makePerformanceEntry(entryMap));
   }
 
