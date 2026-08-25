@@ -177,14 +177,25 @@ class Fragment : public BaseElementContainer {
  private:
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
   void UpdateBorderRadiusAccordingToLayoutInfo();
-  void UpdateLayoutRecursively(Fragment* draw_root);
+  void UpdateLayoutRecursively(
+      Fragment* draw_root, uint64_t restacking_generation = 0,
+      base::geometry::FloatPoint active_paint_offset = {0.f, 0.f});
 
   void InvalidateRestacking();
+  Fragment* RestackingRoot();
+  uint64_t PrepareRestacking();
   void CollectLayoutOffsetsToRoot(Element* current,
-                                  base::geometry::FloatPoint parent_offset);
+                                  base::geometry::FloatPoint parent_offset,
+                                  uint64_t restacking_generation);
+  bool ResolveStackingGeometry(
+      base::geometry::FloatPoint active_paint_offset,
+      uint64_t restacking_generation, bool flush_node_ready,
+      base::geometry::FloatPoint* child_active_paint_offset);
   void ResolveStackingGeometryRecursively(
-      base::geometry::FloatPoint active_paint_offset);
+      base::geometry::FloatPoint active_paint_offset,
+      uint64_t restacking_generation, bool flush_node_ready);
   Fragment* ResolveStackingGeometryParent() const;
+  Fragment* ResolveEnclosingStackingContextParent() const;
   Fragment* PaintRoot();
   static void MarkPaintRootDirty(Fragment* fragment);
   void ReparentStackingNode(Fragment* target_parent, Fragment* sibling);
@@ -267,11 +278,12 @@ class Fragment : public BaseElementContainer {
   // Resolver input. This belongs to the LayoutTree coordinate space and is
   // never read by drawing code.
   base::geometry::FloatPoint layout_offset_to_root_{0.f, 0.f};
-  bool layout_offset_to_root_valid_{false};
+  uint64_t layout_offset_generation_{0};
 
   ResolvedStackingGeometry stacking_geometry_;
   bool layout_geometry_initialized_{false};
   bool needs_restacking_{true};
+  uint64_t restacking_generation_{0};
 
   int32_t draw_node_capacity_{0};
 };
