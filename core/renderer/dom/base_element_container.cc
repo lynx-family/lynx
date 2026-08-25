@@ -219,6 +219,16 @@ void BaseElementContainer::MarkDirtyState(DirtyState state) {
   }
 }
 
+void BaseElementContainer::InvalidateForRedraw() {
+  if (NeedRedraw()) {
+    return;
+  }
+  MarkDirtyState(kNeedRedraw);
+  if (parent()) {
+    parent()->InvalidateForRedraw();
+  }
+}
+
 bool BaseElementContainer::IsRootContainer() const {
   return element()->is_page();
 }
