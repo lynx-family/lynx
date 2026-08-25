@@ -4,6 +4,18 @@
 
 export interface ElementRef extends Record<string, unknown> { }
 
+declare const composeElementRefBrand: unique symbol;
+
+export interface ComposeElementRef {
+  readonly [composeElementRefBrand]: never;
+}
+
+export enum ComposeElementKind {
+  View = 1,
+  Text = 2,
+  Image = 3,
+}
+
 export interface ComponentElementRef extends ElementRef { }
 
 export interface PageElementRef extends ComponentElementRef { }
@@ -206,6 +218,11 @@ declare global {
 
   function __CreateView(parentComponentUniId: number, info?: ElementInfo): ViewElementRef;
 
+  function __CreateCompose(
+    parentComponentUniId: number,
+    kind: ComposeElementKind,
+  ): ComposeElementRef;
+
   function __CreateScrollView(parentComponentUniId: number, info?: ElementInfo): ScrollElementRef;
 
   function __CreateText(parentComponentUniId: number, info?: ElementInfo): TextElementRef;
@@ -247,11 +264,24 @@ declare global {
 
   function __InsertElementBefore(parent: ElementRef, current: ElementRef, marker?: ElementRef): ElementRef;
 
-  function __InsertElementAt(parent: ElementRef, current: ElementRef, index: number): void;
+  function __InsertElementAt(
+    parent: ElementRef | ComposeElementRef,
+    current: ElementRef | ComposeElementRef,
+    index: number,
+  ): void;
 
-  function __RemoveElementsAt(parent: ElementRef, index: number, count: number): void;
+  function __RemoveElementsAt(
+    parent: ElementRef | ComposeElementRef,
+    index: number,
+    count: number,
+  ): void;
 
-  function __MoveElements(parent: ElementRef, from: number, to: number, count: number): void;
+  function __MoveElements(
+    parent: ElementRef | ComposeElementRef,
+    from: number,
+    to: number,
+    count: number,
+  ): void;
 
   function __SwapElement(left: ElementRef, right: ElementRef): void;
 
@@ -271,7 +301,11 @@ declare global {
 
   function __GetTag(node: ElementRef): string;
 
-  function __SetAttribute(current: ElementRef, attrName: string, value: any): void;
+  function __SetAttribute(
+    current: ElementRef | ComposeElementRef,
+    attrName: string,
+    value: any,
+  ): void;
 
   function __AddClass(current: ElementRef, className: string): void;
 
@@ -297,7 +331,10 @@ declare global {
 
   function __SetEvents(node: ElementRef, events: Record<string, unknown>[] | undefined): void;
 
-  function __SetModifierToElement(node: ElementRef, modifier: object | null | undefined): void;
+  function __SetComposeModifier(
+    owner: ComposeElementRef,
+    modifier: object | null | undefined,
+  ): void;
 
   function __GetEvent(node: ElementRef, name: string, type: string): Record<string, any>;
 

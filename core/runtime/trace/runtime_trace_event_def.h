@@ -774,6 +774,7 @@ inline constexpr const char* const FIBER_CREATE_COMPONENT =
  * @trace_description: Create a Fiber view element.
  */
 inline constexpr const char* const FIBER_CREATE_VIEW = "FiberCreateView";
+inline constexpr const char* const FIBER_CREATE_COMPOSE = "FiberCreateCompose";
 /**
  * @trace_description: Create a Fiber list element.
  */
@@ -1036,8 +1037,8 @@ inline constexpr const char* const FIBER_ADD_EVENT = "FiberAddEvent";
 /**
  * @trace_description: Apply a Compose Modifier chain to a Fiber element.
  */
-inline constexpr const char* const FIBER_SET_MODIFIER_TO_ELEMENT =
-    "FiberSetModifierToElement";
+inline constexpr const char* const FIBER_SET_COMPOSE_MODIFIER =
+    "FiberSetComposeModifier";
 /**
  * @trace_description: Create a gesture detector instance for a Fiber element.
  */
