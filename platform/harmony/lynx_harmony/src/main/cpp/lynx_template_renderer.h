@@ -113,6 +113,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       bool is_logbox_only);
   void OnThemeUpdatedByJs(
       const std::unordered_map<std::string, std::string>& theme);
+  void OnShouldSendEventToMainThreadChanged(bool enable);
   void OnReloadTemplate(const std::string& url,
                         const std::vector<uint8_t>& source,
                         const std::shared_ptr<tasm::TemplateData>& data);
@@ -276,6 +277,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::LynxShell> shell_;
   tasm::UIDelegate* ui_delegate_{nullptr};
   bool is_host_renderer_{true};
+  bool should_send_event_to_main_thread_{true};
   int32_t window_id_{-1};
   int32_t window_left_px_{0};
   int32_t window_top_px_{0};

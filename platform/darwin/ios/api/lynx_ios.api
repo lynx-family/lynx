@@ -5896,6 +5896,7 @@ public protocol TemplateRenderCallbackProtocol-p : <LynxErrorReceiverProtocol> {
   public long TemplateRenderCallbackProtocol-p::initEndTiming();
   public void TemplateRenderCallbackProtocol-p::onLogContextUpdatedWithViewId:engineId:runtimeId:(int64_t viewId,[engineId] int64_t engineId,[runtimeId] int64_t runtimeId);
   public BOOL TemplateRenderCallbackProtocol-p::enableAirStrictMode();
+  public void TemplateRenderCallbackProtocol-p::onShouldSendEventToMainThreadChanged:(BOOL enable);
   public void TemplateRenderCallbackProtocol-p::invokeUIMethod:params:callback:toNode:(NSString *_Nonnull method_string,[params] NSDictionary *_Nonnull params,[callback] int callback,[toNode] int node);
   public void TemplateRenderCallbackProtocol-p::onSSRHydrateFinished:(NSString *url);
   public void TemplateRenderCallbackProtocol-p::onTemplateBundleReady:(LynxTemplateBundle *bundle);

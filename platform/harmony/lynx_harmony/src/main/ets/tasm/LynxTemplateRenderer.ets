@@ -33,6 +33,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private providers: (LynxResourceProvider | undefined)[];
   private isHostRenderer: boolean;
   private enableJSRuntime: boolean;
+  private shouldSendEventToMainThreadEnabled: boolean = true;
   private readonly threadMode: ThreadStrategyForRendering;
   private backgroundRuntimeOptions: LynxBackgroundRuntimeOptions;
   private lynxView?: LynxView;
@@ -147,6 +148,20 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.clients.forEach(client => client.onFirstScreen());
     } else {
       this.clients.forEach(client => client.onPageUpdate());
+    }
+  }
+
+  onShouldSendEventToMainThreadChanged(enable: boolean) {
+    this.shouldSendEventToMainThreadEnabled = enable;
+  }
+
+  override shouldSendEventToMainThread(): boolean {
+    return !this.hasDestroyed && this.shouldSendEventToMainThreadEnabled;
+  }
+
+  sendGlobalEvent(name: string, params: Object[]) {
+    if (this.enableJSRuntime) {
+      this.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);
     }
   }
 

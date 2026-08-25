@@ -121,6 +121,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _hasRendered;
   NSString* _url;
   BOOL _enableJSRuntime;
+  BOOL _shouldSendEventToMainThread;
   LynxDevtool* _devTool;
   BOOL _enablePrePainting;
   BOOL _enableDumpElement;

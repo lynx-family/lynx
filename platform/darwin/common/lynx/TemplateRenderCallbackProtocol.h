@@ -127,6 +127,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)enableAirStrictMode;
 
+- (void)onShouldSendEventToMainThreadChanged:(BOOL)enable;
+
 - (void)invokeUIMethod:(NSString *_Nonnull)method_string
                 params:(NSDictionary *_Nonnull)params
               callback:(int)callback

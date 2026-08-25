@@ -113,6 +113,8 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   private boolean mEnableJSRuntime = true;
 
+  private boolean mShouldSendEventToMainThread = true;
+
   private boolean mEnableDispatchCustomEventForUI = false;
 
   private LynxModuleFactory mModuleFactory = null;
@@ -168,6 +170,10 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   public boolean getEnableJSRuntime() {
     return mEnableJSRuntime;
+  }
+
+  boolean shouldSendEventToMainThread() {
+    return mShouldSendEventToMainThread;
   }
 
   public void setModuleFactory(LynxModuleFactory moduleFactory) {
@@ -319,6 +325,11 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
     if (mCallback != null) {
       mCallback.onPageChanged(isFirstScreen);
     }
+  }
+
+  @CalledByNative
+  private void onShouldSendEventToMainThreadChanged(boolean enable) {
+    mShouldSendEventToMainThread = enable;
   }
 
   @CalledByNative

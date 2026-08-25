@@ -84,6 +84,8 @@ class NativeFacade {
 
   virtual void OnConfigUpdated(const lepus::Value& data) = 0;
 
+  virtual void OnShouldSendEventToMainThreadChanged(bool enable) {}
+
   virtual void TriggerLepusMethodAsync(const std::string& method_name,
                                        const lepus::Value& argus) = 0;
 

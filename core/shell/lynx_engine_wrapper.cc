@@ -32,21 +32,22 @@ void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
   shell->log_context_.engine_id = engine_context_.engine_id;
   shell->tasm_mediator_ = this->tasm_mediator_;
   shell->layout_mediator_ = this->layout_mediator_;
-  shell->tasm_mediator_->SetShouldSendEventToMainThreadCache(
-      shell->should_send_event_to_main_thread_cache_);
-  auto tasm = shell->engine_actor_->Impl()->GetTasm();
-  if (tasm) {
-    // ResetMediatorActor replays the cached main-thread event state to the
-    // rebound actors. Restore the cache from TASM first, otherwise the rebound
-    // performance actor may observe the default false state until the next
-    // should-send-event update.
-    shell->should_send_event_to_main_thread_cache_->store(
-        tasm->ShouldSendEventToMainThread(), std::memory_order_relaxed);
-  }
   shell->tasm_mediator_->ResetMediatorActor(shell->layout_actor_,
                                             shell->facade_actor_,
                                             shell->perf_controller_actor_);
+  auto tasm = shell->engine_actor_->Impl()->GetTasm();
   if (tasm) {
+    const bool enable_bts = shell->enable_runtime_;
+    auto *tasm_mediator = shell->tasm_mediator_;
+    shell->engine_actor_->Act([enable_bts, tasm_mediator](auto &engine) {
+      auto *tasm = engine->GetTasm();
+      if (!tasm) {
+        return;
+      }
+      tasm->SetEnableBTSRuntime(enable_bts);
+      tasm_mediator->OnShouldSendEventToMainThreadChanged(
+          tasm->ShouldSendEventToMainThread());
+    });
     tasm->page_proxy()
         ->element_manager()
         ->painting_context()

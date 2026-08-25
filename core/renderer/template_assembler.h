@@ -567,14 +567,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
                             CompileOptionAirMode::AIR_MODE_STRICT);
   }
 
-  bool ShouldSendEventToMainThread() const {
-    return should_send_event_to_main_thread_.load(std::memory_order_relaxed);
-  }
-
-  void SetShouldSendEventToMainThread(bool enable) {
-    should_send_event_to_main_thread_.store(enable, std::memory_order_relaxed);
-    delegate_.OnShouldSendEventToMainThreadChanged(enable);
-  }
+  bool ShouldSendEventToMainThread();
 
   bool IsRTSRuntime(const std::shared_ptr<runtime::MTSRuntime>& context) const {
     return context &&
@@ -583,6 +576,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   bool ShouldPostDataToJs(
       const std::shared_ptr<runtime::MTSRuntime>& context) const {
+    if (!enable_bts_runtime_) {
+      return false;
+    }
     // RTS VM and native runtimes execute the static page app without a JS app
     // runtime, so posting data to JS would only create an unused runtime
     // bundle and task.
@@ -596,12 +592,12 @@ class TemplateAssembler final : public TemplateEntryHolder,
       if (air_mode == CompileOptionAirMode::AIR_MODE_FIBER ||
           air_mode == CompileOptionAirMode::AIR_MODE_STRICT) {
         if (IsEmbeddedModeOn() && !GetPageOptions().HasLogicExecutor()) {
-          return true;
+          return enable_bts_runtime_;
         }
         return false;
       }
     }
-    return true;
+    return enable_bts_runtime_;
   }
 
   const lepus::Value& GetDefaultProcessor() { return default_processor_; }
@@ -840,6 +836,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
     target_sdk_version_ = targetSdkVersion;
   }
   void SetDefaultLepusNG(bool value) { default_use_lepus_ng_ = value; }
+  void SetEnableBTSRuntime(bool enable) { enable_bts_runtime_ = enable; }
 
   void SetPageOptions(const PageOptions& options) {
     page_options_ = options;
@@ -1013,7 +1010,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void DispatchEventFromEngineToCoreContext(
       const std::shared_ptr<runtime::MTSRuntime>& context,
       const std::string& func_name, const std::string& event_name,
-      const Args&... args) {
+      bool try_call, const Args&... args) {
     auto engine_context_proxy =
         GetContextProxy(runtime::ContextProxy::Type::kEngine);
     if (engine_context_proxy != nullptr &&
@@ -1030,6 +1027,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
           std::make_unique<pub::ValueImplLepus>(
               lepus::Value(std::move(event_args))));
       engine_context_proxy->DispatchEvent(std::move(event));
+    } else if (try_call) {
+      context->TryCall(func_name, args...);
     } else {
       context->Call(func_name, args...);
     }
@@ -1079,6 +1078,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   std::string locale_;
 
   PageOptions page_options_;
+  bool enable_bts_runtime_{true};
 
   TemplateAssembler(const TemplateAssembler&) = delete;
   TemplateAssembler& operator=(const TemplateAssembler&) = delete;
@@ -1117,7 +1117,6 @@ class TemplateAssembler final : public TemplateEntryHolder,
   bool can_use_snapshot_;
   bool template_loaded_;
   std::atomic<bool> has_load_page_;
-  std::atomic_bool should_send_event_to_main_thread_{false};
   bool destroyed_;
   bool is_loading_template_;
   bool enable_pre_update_data_{false};

@@ -64,6 +64,8 @@ class NativeFacadeHarmony : public shell::NativeFacade {
 
   void OnConfigUpdated(const lepus::Value& data) override;
 
+  void OnShouldSendEventToMainThreadChanged(bool enable) override;
+
   void OnUpdateDataWithoutChange() override;
 
   void TriggerLepusMethodAsync(const std::string& js_method_name,

@@ -750,11 +750,10 @@ export struct LynxView {
     if (!this.templateRenderer) {
       return;
     }
-    if (this.enableAirStrictMode || this.templateRenderer.shouldSendEventToMainThread()) {
+    if (this.templateRenderer.shouldSendEventToMainThread()) {
       this.templateRenderer.triggerEventBus(name, params);
-    } else {
-      this.templateRenderer.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);
     }
+    this.templateRenderer.sendGlobalEvent(name, params);
   }
 
   private reportLynxError(error: LynxError) {
