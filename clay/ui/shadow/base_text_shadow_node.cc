@@ -43,6 +43,8 @@ BaseTextShadowNode::BaseTextShadowNode(ShadowNodeOwner* owner, std::string tag,
                                        int id)
     : ShadowNode(owner, tag, id), weak_factory_(this) {}
 
+BaseTextShadowNode::~BaseTextShadowNode() { CancelPendingFontCallbacks(); }
+
 void BaseTextShadowNode::AddChild(ShadowNode* node) {
   AddChild(node, ChildCount());
 }
@@ -365,6 +367,8 @@ void BaseTextShadowNode::SetTextBackgroundColor(const Color& color) {
 
 void BaseTextShadowNode::SetFontFamily(const std::string& font_family) {
   EnsureDefaultStyle();
+  CancelPendingFontCallbacks();
+  requested_font_family_ = font_family;
   auto font_collection = Isolate::Instance().GetFontCollection();
   std::string_view str_view = font_family;
   std::vector<std::string> font_families;
@@ -382,14 +386,19 @@ void BaseTextShadowNode::SetFontFamily(const std::string& font_family) {
             new_font_family, "\"", lynx::base::TrimPositions::TRIM_ALL);
       }
     }
-    if (font_collection->HasFontResourceLoading(new_font_family)) {
-      RelayoutWhenSetFontFamily(new_font_family);
-    } else if (font_collection->HasFontResource(new_font_family)) {
+    if (font_collection->HasFontResource(new_font_family)) {
       text_style_->font_family = new_font_family;
       break;
+    } else if (font_collection->HasFontResourceLoading(new_font_family)) {
+      // A downloadable font declared with the same family name as a system
+      // font must take precedence once it is available. Keep observing the
+      // custom font while temporarily resolving the remaining fallbacks.
+      RelayoutWhenSetFontFamily(new_font_family);
     } else if (font_collection->IfSystemFontFamily(new_font_family)) {
       text_style_->font_family = new_font_family;
       break;
+    } else {
+      RelayoutWhenSetFontFamily(new_font_family);
     }
   }
   MarkDirty();
@@ -592,15 +601,29 @@ void BaseTextShadowNode::RelayoutWhenSetFontFamily(
   auto font_collection = Isolate::Instance().GetFontCollection();
 
   if (font_collection) {
-    font_collection->RegisterCallback(
-        font_family, [self = weak_factory_.GetWeakPtr(), font_family]() {
+    const std::string requested_font_family = requested_font_family_;
+    pending_font_callback_ids_.emplace_back(font_collection->RegisterCallback(
+        font_family,
+        [self = weak_factory_.GetWeakPtr(), requested_font_family]() {
           if (!self) {
             return;
           }
-          self->text_style_->font_family = font_family;
-          self->MarkDirty();
-        });
+          if (self->requested_font_family_ != requested_font_family) {
+            return;
+          }
+          self->SetFontFamily(requested_font_family);
+        }));
   }
+}
+
+void BaseTextShadowNode::CancelPendingFontCallbacks() {
+  auto font_collection = Isolate::Instance().GetFontCollection();
+  if (font_collection) {
+    for (const auto callback_id : pending_font_callback_ids_) {
+      font_collection->UnregisterCallback(callback_id);
+    }
+  }
+  pending_font_callback_ids_.clear();
 }
 
 void BaseTextShadowNode::MeasureInlineView(

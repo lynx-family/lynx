@@ -10,12 +10,16 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/synchronization/waitable_event.h"
+#include "base/include/fml/thread.h"
 #include "clay/fml/icu_util.h"
 #include "clay/public/layout_delegate.h"
 #include "clay/public/style_types.h"
 #include "clay/public/value.h"
+#include "clay/third_party/txt/src/txt/platform.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/text/raw_text_view.h"
+#include "clay/ui/resource/font_collection.h"
 #include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/inline_truncation_shadow_node.h"
@@ -63,6 +67,12 @@ class TestLayoutDelegate : public LayoutDelegate {
 
 class TextTest : public UITest {
  protected:
+  void LoadDataUriFont(const std::string& family_name) {
+    FontCollection::Instance()->PreLoadFontOnMem(
+        fml::MessageLoop::GetCurrent().GetTaskRunner(), nullptr, nullptr,
+        family_name, {"data:font/ttf;base64,AA=="});
+  }
+
   void UISetUp() override {
     owner_ =
         new ShadowNodeOwner(fml::MessageLoop::GetCurrent().GetTaskRunner());
@@ -113,6 +123,121 @@ TEST_F_UI(TextTest, EffectAlignResolvesLogicalAlignmentByDirection) {
   EXPECT_EQ(text_shadow_node_->text_style_->text_direction,
             TextDirection::kLtr);
   EXPECT_EQ(text_render.EffectAlign(), TextAlignment::kLeft);
+}
+
+TEST_F_UI(TextTest, ExistingTextsResolveFontLoadedAfterStyleUpdate) {
+  const std::string family_name = "font_loaded_after_existing_text";
+  auto second_text =
+      std::make_unique<TextShadowNode>(owner_, std::string("text"), -1);
+
+  text_shadow_node_->SetFontFamily(family_name);
+  second_text->SetFontFamily(family_name);
+  ASSERT_TRUE(text_shadow_node_->text_style_.has_value());
+  EXPECT_NE(text_shadow_node_->text_style_->font_family, family_name);
+  ASSERT_TRUE(second_text->text_style_.has_value());
+  EXPECT_NE(second_text->text_style_->font_family, family_name);
+
+  LoadDataUriFont(family_name);
+
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, family_name);
+  EXPECT_EQ(second_text->text_style_->font_family, family_name);
+}
+
+TEST_F_UI(TextTest, FontCallbacksAreDeduplicatedAndCancelled) {
+  const std::string family_name = "deduplicated_font_callback";
+  auto font_collection = FontCollection::Instance();
+
+  text_shadow_node_->SetFontFamily(family_name);
+  text_shadow_node_->SetFontFamily(family_name);
+  EXPECT_EQ(font_collection->font_download_callback_.count(family_name), 1u);
+
+  auto second_text =
+      std::make_unique<TextShadowNode>(owner_, std::string("text"), -1);
+  second_text->SetFontFamily(family_name);
+  EXPECT_EQ(font_collection->font_download_callback_.count(family_name), 2u);
+  second_text.reset();
+  EXPECT_EQ(font_collection->font_download_callback_.count(family_name), 1u);
+
+  LoadDataUriFont(family_name);
+  EXPECT_EQ(font_collection->font_download_callback_.count(family_name), 0u);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, family_name);
+}
+
+TEST_F_UI(TextTest, StaleFontLoadDoesNotOverrideCurrentFontRequest) {
+  const std::string old_family = "old_async_font";
+  const std::string current_family = "current_async_font";
+
+  text_shadow_node_->SetFontFamily(old_family);
+  text_shadow_node_->SetFontFamily(current_family);
+  LoadDataUriFont(old_family);
+
+  EXPECT_NE(text_shadow_node_->text_style_->font_family, old_family);
+
+  LoadDataUriFont(current_family);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, current_family);
+}
+
+TEST_F_UI(TextTest, AsyncFallbackCompletionKeepsFontFamilyPriority) {
+  const std::string preferred_family = "preferred_async_font";
+  const std::string fallback_family = "fallback_async_font";
+
+  text_shadow_node_->SetFontFamily(preferred_family + ", " + fallback_family);
+  LoadDataUriFont(fallback_family);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, fallback_family);
+
+  LoadDataUriFont(preferred_family);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, preferred_family);
+}
+
+TEST_F_UI(TextTest, AsyncFallbackCannotOverrideLoadedPreferredFamily) {
+  const std::string preferred_family = "preferred_async_font_first";
+  const std::string fallback_family = "fallback_async_font_second";
+
+  text_shadow_node_->SetFontFamily(preferred_family + ", " + fallback_family);
+  LoadDataUriFont(preferred_family);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, preferred_family);
+
+  LoadDataUriFont(fallback_family);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, preferred_family);
+}
+
+TEST_F_UI(TextTest, LoadingAssetFontPrecedesSameNamedSystemFont) {
+  auto font_collection = FontCollection::Instance();
+  std::string family_name;
+  for (auto candidate : txt::GetDefaultFontFamilies()) {
+    if (font_collection->IfSystemFontFamily(candidate)) {
+      family_name = std::move(candidate);
+      break;
+    }
+  }
+  const std::string fallback_family = "same_named_system_font_fallback";
+  ASSERT_FALSE(family_name.empty());
+  ASSERT_TRUE(font_collection->IfSystemFontFamily(family_name));
+  LoadDataUriFont(fallback_family);
+
+  fml::Thread load_thread("blocked-font-loader");
+  auto load_task_runner = load_thread.GetTaskRunner();
+  fml::AutoResetWaitableEvent task_started;
+  fml::AutoResetWaitableEvent allow_task_to_finish;
+  load_task_runner->PostTask([&]() {
+    task_started.Signal();
+    allow_task_to_finish.Wait();
+  });
+  task_started.Wait();
+
+  font_collection->PreLoadFontOnMem(load_task_runner, nullptr, nullptr,
+                                    family_name, {"data:font/ttf,invalid"});
+  ASSERT_TRUE(font_collection->HasFontResourceLoading(family_name));
+
+  text_shadow_node_->SetFontFamily(family_name + ", " + fallback_family);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, fallback_family);
+
+  allow_task_to_finish.Signal();
+  load_task_runner->PostSyncTask([]() {});
+
+  EXPECT_FALSE(font_collection->HasFontResourceLoading(family_name));
+  EXPECT_FALSE(font_collection->HasFontResource(family_name));
+  EXPECT_EQ(text_shadow_node_->text_style_->font_family, fallback_family);
 }
 
 #if defined(CLAY_ENABLE_SKSHAPER)
