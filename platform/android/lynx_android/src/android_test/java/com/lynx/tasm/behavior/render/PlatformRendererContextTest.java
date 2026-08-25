@@ -25,6 +25,7 @@ import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.image.ScalingUtils;
+import com.lynx.tasm.performance.PerformanceController;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -120,6 +121,16 @@ public class PlatformRendererContextTest {
     UIBody.UIBodyView newBodyView = mock(UIBody.UIBodyView.class);
     rendererContext.setRootView(newBodyView);
     assertEquals(newBodyView, rendererContext.mRootView.get());
+  }
+
+  @Test
+  public void testSetNeedMarkPaintEndTiming() {
+    PerformanceController performanceController = mock(PerformanceController.class);
+    when(mockLynxContext.getPerfController()).thenReturn(performanceController);
+
+    rendererContext.setNeedMarkPaintEndTiming("pipeline-id");
+
+    verify(performanceController).setNeedMarkPaintEndTiming("pipeline-id");
   }
 
   @Test

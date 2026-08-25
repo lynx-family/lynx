@@ -226,6 +226,19 @@ void PlatformRendererContext::FinishLayoutOperation(int32_t component_id,
       is_first_screen);
 }
 
+void PlatformRendererContext::SetNeedMarkPaintEndTiming(
+    const tasm::PipelineID& pipeline_id) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jstring> pipeline_id_ref =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, pipeline_id);
+  Java_PlatformRendererContext_setNeedMarkPaintEndTiming(env, local_ref.Get(),
+                                                         pipeline_id_ref.Get());
+}
+
 void PlatformRendererContext::OnNodeReady(const std::vector<int32_t>& ids) {
   if (ids.empty()) {
     return;

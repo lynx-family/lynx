@@ -105,6 +105,13 @@ bool NativePaintingCtxAndroidRef::IsPlatformRendererScrollable(int32_t sign) {
   return context->IsRendererHostScrollable(sign);
 }
 
+void NativePaintingCtxAndroidRef::SetNeedMarkPaintEndTiming(
+    const tasm::PipelineID& pipeline_id) {
+  if (view_manager_) {
+    view_manager_->SetNeedMarkPaintEndTiming(pipeline_id);
+  }
+}
+
 void NativePaintingCtxAndroidRef::InvokePlatformViewUIMethod(
     int32_t id, const std::string& method, const lepus::Value& params,
     base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) {

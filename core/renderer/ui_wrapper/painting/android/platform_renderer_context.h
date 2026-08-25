@@ -88,6 +88,8 @@ class PlatformRendererContext {
   void FinishLayoutOperation(int32_t component_id, int64_t operation_id,
                              bool is_first_screen);
 
+  void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id);
+
   void OnNodeReady(const std::vector<int32_t>& ids);
 
   int32_t GetTagInfo(const std::string& tag_name);

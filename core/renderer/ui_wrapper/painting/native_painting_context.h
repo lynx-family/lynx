@@ -20,7 +20,6 @@ class NativePaintingContext {
  public:
   NativePaintingContext() = default;
   virtual ~NativePaintingContext() = default;
-  virtual void OnFirstScreen() = 0;
   virtual void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) = 0;
   virtual void FinishLayoutOperation(

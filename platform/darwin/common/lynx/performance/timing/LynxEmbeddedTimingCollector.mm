@@ -45,7 +45,7 @@ static NSString* const kEmbeddedLynxFCP = @"lynxFcp";
     self.loadBundleStartUs = timestamp;
   } else if ([key isEqualToString:@(lynx::tasm::timing::kLoadBundleEnd)]) {
     self.loadBundleEndUs = timestamp;
-    [self emitLoadBundleObserverIfReady];
+    [self emitLoadBundleObserverIfReady:YES];
     [self reportLoadBundleIfReady];
   } else if ([key isEqualToString:@(lynx::tasm::timing::kUpdateTriggeredByNative)]) {
     [self.updateDataStartUsList addObject:@(timestamp)];
@@ -56,30 +56,57 @@ static NSString* const kEmbeddedLynxFCP = @"lynxFcp";
 }
 
 - (void)onPaintEnd {
-  [self emitLoadBundleObserverIfReady];
+  [self emitLoadBundleObserverIfReady:NO];
   [self emitUpdateDataIfReady];
   [self reportLoadBundleIfReady];
 }
 
-- (void)emitLoadBundleObserverIfReady {
+- (void)emitLoadBundleObserverIfReady:(BOOL)dispatchOnReportThread {
   if (self.hasEmitLoadBundleEvent) {
     return;
   }
-  if (self.loadBundleStartUs == 0 || self.paintEndUs < self.loadBundleStartUs) {
+  if (self.loadBundleStartUs == 0 || self.loadBundleEndUs < self.loadBundleStartUs ||
+      self.paintEndUs < self.loadBundleEndUs) {
     return;
   }
   self.hasEmitLoadBundleEvent = YES;
-  double loadBundleStartMs = (double)self.loadBundleStartUs / 1000.0;
-  double paintEndMs = (double)self.paintEndUs / 1000.0;
-  NSDictionary* entryDict = @{
-    @(lynx::tasm::timing::kEntryType) : @(lynx::tasm::timing::kEntryTypePipeline),
-    @(lynx::tasm::timing::kEntryName) : @(lynx::tasm::timing::kLoadBundle),
-    @(lynx::tasm::timing::kLoadBundleStart) : @(loadBundleStartMs),
-    @(lynx::tasm::timing::kPipelineStart) : @(loadBundleStartMs),
-    @(lynx::tasm::timing::kPaintEnd) : @(paintEndMs)
-  };
-  LynxPerformanceEntry* entry = [LynxPerformanceEntryConverter makePerformanceEntry:entryDict];
-  [_observer onPerformanceEvent:entry];
+  id<LynxPerformanceObserverProtocol> observer = self.observer;
+  if (observer == nil) {
+    return;
+  }
+  uint64_t loadBundleStartUs = self.loadBundleStartUs;
+  uint64_t loadBundleEndUs = self.loadBundleEndUs;
+  uint64_t paintEndUs = self.paintEndUs;
+  void (^emitTask)(id<LynxPerformanceObserverProtocol>) =
+      ^(id<LynxPerformanceObserverProtocol> currentObserver) {
+        double loadBundleStartMs = (double)loadBundleStartUs / 1000.0;
+        double loadBundleEndMs = (double)loadBundleEndUs / 1000.0;
+        double paintEndMs = (double)paintEndUs / 1000.0;
+        NSDictionary* entryDict = @{
+          @(lynx::tasm::timing::kEntryType) : @(lynx::tasm::timing::kEntryTypePipeline),
+          @(lynx::tasm::timing::kEntryName) : @(lynx::tasm::timing::kLoadBundle),
+          @(lynx::tasm::timing::kLoadBundleStart) : @(loadBundleStartMs),
+          @(lynx::tasm::timing::kLoadBundleEnd) : @(loadBundleEndMs),
+          @(lynx::tasm::timing::kPipelineStart) : @(loadBundleStartMs),
+          @(lynx::tasm::timing::kPaintEnd) : @(paintEndMs)
+        };
+        LynxPerformanceEntry* entry =
+            [LynxPerformanceEntryConverter makePerformanceEntry:entryDict];
+        [currentObserver onPerformanceEvent:entry];
+      };
+  if (dispatchOnReportThread) {
+    __weak id<LynxPerformanceObserverProtocol> weakObserver = observer;
+    [LynxEventReporter
+        delayRunOnReportThread:^{
+          id<LynxPerformanceObserverProtocol> strongObserver = weakObserver;
+          if (strongObserver != nil) {
+            emitTask(strongObserver);
+          }
+        }
+                       delayMs:0];
+  } else {
+    emitTask(observer);
+  }
 }
 
 - (void)reportLoadBundleIfReady {

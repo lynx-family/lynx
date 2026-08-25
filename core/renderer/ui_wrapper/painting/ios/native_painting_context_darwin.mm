@@ -249,10 +249,6 @@ void NativePaintingCtxDarwin::FinishTasmOperation(const std::shared_ptr<Pipeline
 
 void NativePaintingCtxDarwin::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions> &options) {
-  if (!has_first_screen_) {
-    return;
-  }
-
   __weak LynxUIOwner *ui_owner = context_ != nullptr ? context_->GetUIOwner() : nil;
   Enqueue(
       [ui_owner, weak_queue = std::weak_ptr<shell::DynamicUIOperationQueue>(queue_), options]() {
@@ -267,12 +263,6 @@ void NativePaintingCtxDarwin::FinishLayoutOperation(
         }
       });
 
-  if (options->need_timestamps && !options->pipeline_id.empty()) {
-    Enqueue([ref = platform_ref_, pipeline_id = options->pipeline_id]() {
-      ref->SetNeedMarkPaintEndTiming(pipeline_id);
-    });
-  }
-
   if (queue_ != nullptr &&
       options->native_update_data_order_ == queue_->GetNativeUpdateDataOrder()) {
     queue_->UpdateStatus(shell::UIOperationStatus::LAYOUT_FINISH);
@@ -280,8 +270,6 @@ void NativePaintingCtxDarwin::FinishLayoutOperation(
 }
 
 void NativePaintingCtxDarwin::Flush() { queue_->Flush(); }
-
-void NativePaintingCtxDarwin::OnFirstScreen() { has_first_screen_ = true; }
 
 void NativePaintingCtxDarwin::CreatePlatformRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
