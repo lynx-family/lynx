@@ -28,9 +28,12 @@ class ComposeModifierApplicator final {
     std::string error_message;
   };
 
+  // registration_context is the MTS runtime that owns the Modifier callbacks;
+  // it dispatches click and local event closures so a callback fires in the
+  // runtime that registered it rather than the default entry runtime.
   static ApplyResult Apply(ComposeElementHandle* handle,
                            const lepus::Value& modifier_tail,
-                           runtime::MTSRuntime*);
+                           runtime::MTSRuntime* registration_context);
 
   static bool ValidateTopology(ComposeElementHandle* handle,
                                std::string* error_message);

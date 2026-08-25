@@ -110,6 +110,7 @@ LEPUSValue LEPUSValueHelper::ToJsValue(LEPUSContext* ctx, const lynx_value& val,
             return RefCountedToJSValue(
                 ctx, *reinterpret_cast<lepus::RefCounted*>(val.val_ptr));
           }
+        case RefType::kComposeElementHandle:
         case RefType::kJSIObject... RefType::kEvent:
           return CreateLepusRef(
               ctx, reinterpret_cast<lepus::RefCounted*>(val.val_ptr),
