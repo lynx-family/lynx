@@ -2835,6 +2835,16 @@ float Element::GetLayoutsUnitPerPx() {
   return element_manager_->GetLynxEnvConfig().LayoutsUnitPerPx();
 }
 
+void Element::UpdateScrollOffset(float x, float y) {
+  scroll_offset_x_ = x;
+  scroll_offset_y_ = y;
+}
+
+void Element::UpdateStickyTranslation(float x, float y) {
+  sticky_translation_x_ = x;
+  sticky_translation_y_ = y;
+}
+
 starlight::LayoutResultForRendering Element::layout_result() {
   auto layout_result = starlight::LayoutResultForRendering();
   layout_result.size_ = FloatSize(width(), height());
