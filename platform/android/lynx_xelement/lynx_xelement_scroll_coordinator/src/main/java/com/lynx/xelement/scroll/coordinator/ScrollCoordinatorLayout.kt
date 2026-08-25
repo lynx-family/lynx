@@ -58,6 +58,7 @@ class ScrollCoordinatorLayout(
   private var cachedScrollableView: View? = null
   private var cachedNonScrollableRoot: View? = null
   private var clampingSlotBoundary = false
+  private var adaptToEmptySlot = false
   private val slotScrollChangedListener =
     ViewTreeObserver.OnScrollChangedListener { cachedNonScrollableRoot = null }
   private val offsetStateRestorer =
@@ -172,6 +173,9 @@ class ScrollCoordinatorLayout(
   }
 
   private fun getNonScrollableSlotScrollRange(scrollTarget: View? = null): Int {
+    if (!adaptToEmptySlot) {
+      return NO_SLOT_BOUNDARY
+    }
     val totalScrollRange = appBarLayoutView.totalScrollRange
     val currentSlotView = slotView
     if (currentSlotView == null || currentSlotView.height <= 0) {
@@ -610,6 +614,13 @@ class ScrollCoordinatorLayout(
   fun setNestedScrollAsChild(enabled: Boolean) {
     nestedScrollAsChild = enabled
     isNestedScrollingEnabled = enabled
+  }
+
+  fun setAdaptToEmptySlot(enabled: Boolean) {
+    adaptToEmptySlot = enabled
+    if (enabled) {
+      clampNonScrollableSlotBoundary()
+    }
   }
 
   override fun onStartNestedScroll(child: View, target: View, axes: Int, type: Int): Boolean {
