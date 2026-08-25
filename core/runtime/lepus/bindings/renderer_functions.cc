@@ -35,11 +35,14 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/block_element.h"
+#include "core/renderer/dom/fiber/compose_element_handle.h"
+#include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/modifier_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -157,6 +160,49 @@ fml::RefPtr<Element> GetFiberElementFromValue(const lepus::Value& value) {
     return nullptr;
   }
   return fml::static_ref_ptr_cast<Element>(value.RefCounted());
+}
+
+inline fml::RefPtr<Element> GetComposeContentOrFiberElementFromValue(
+    const lepus::Value& value) {
+  auto reference = value.RefCounted();
+  if (reference->GetRefType() == lepus::RefType::kComposeElementHandle) {
+    return fml::static_ref_ptr_cast<ComposeElementHandle>(reference)
+        ->content_element();
+  }
+  return fml::static_ref_ptr_cast<Element>(reference);
+}
+
+inline fml::RefPtr<Element> GetComposeMountRootOrFiberElementFromValue(
+    const lepus::Value& value) {
+  auto reference = value.RefCounted();
+  if (reference->GetRefType() == lepus::RefType::kComposeElementHandle) {
+    return fml::static_ref_ptr_cast<ComposeElementHandle>(reference)
+        ->mount_root();
+  }
+  return fml::static_ref_ptr_cast<Element>(reference);
+}
+
+bool ParseComposeElementKind(const lepus::Value& value, const char* function,
+                             ComposeElementKind* result) {
+  if (!value.IsNumber() || !std::isfinite(value.Number()) ||
+      std::trunc(value.Number()) != value.Number() ||
+      value.Number() < std::numeric_limits<int32_t>::min() ||
+      value.Number() > std::numeric_limits<int32_t>::max()) {
+    ElementAPIError("%s kind should be an integer", function);
+    return false;
+  }
+
+  const auto kind = static_cast<ComposeElementKind>(value.Number());
+  switch (kind) {
+    case ComposeElementKind::kView:
+    case ComposeElementKind::kText:
+    case ComposeElementKind::kImage:
+      *result = kind;
+      return true;
+    default:
+      ElementAPIError("%s kind should be View, Text or Image", function);
+      return false;
+  }
 }
 
 TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
@@ -2838,6 +2884,42 @@ RENDERER_FUNCTION_CC(FiberCreateView) {
   RETURN(lepus::Value(std::move(element)));
 }
 
+RENDERER_FUNCTION_CC(FiberCreateCompose) {
+  // Use a scoped trace event so every early-return validation path stays
+  // balanced; the create notification carries no extra end-time arguments.
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_COMPOSE);
+  CHECK_ARGC_GE(FiberCreateCompose, 2);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, Number, FiberCreateCompose);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Number, FiberCreateCompose);
+
+  ComposeElementKind kind;
+  if (!ParseComposeElementKind(*arg1, "FiberCreateCompose", &kind)) {
+    RETURN_UNDEFINED();
+  }
+  auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
+  fml::RefPtr<Element> content_element;
+  switch (kind) {
+    case ComposeElementKind::kView:
+      content_element = manager->CreateFiberView();
+      break;
+    case ComposeElementKind::kText:
+      content_element =
+          manager->CreateFiberText(BASE_STATIC_STRING(kElementTextTag));
+      break;
+    case ComposeElementKind::kImage:
+      content_element =
+          manager->CreateFiberImage(BASE_STATIC_STRING(kElementImageTag));
+      break;
+  }
+
+  content_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(arg0->Number()));
+  ON_NODE_CREATE(content_element);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(kind, std::move(content_element)));
+  RETURN(lepus::Value(std::move(handle)));
+}
+
 RENDERER_FUNCTION_CC(FiberCreateList) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_LIST);
   // parameter size >= 3
@@ -3228,13 +3310,11 @@ RENDERER_FUNCTION_CC(FiberInsertElementAt) {
                                         FiberInsertElementAt);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberInsertElementAt);
 
-  auto parent = GetFiberElementFromValue(*arg0);
-  auto child = GetFiberElementFromValue(*arg1);
-  if (parent == nullptr || child == nullptr) {
-    ElementAPIError("FiberInsertElementAt parent and child should be Element");
-    RETURN_UNDEFINED();
-  }
-
+  // A handle parent resolves to its Content Element, while a handle child
+  // resolves to its current physical mount root. The single RefType branch in
+  // each resolver is dispatch, not validation; callers own the reference ABI.
+  auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
+  auto child = GetComposeMountRootOrFiberElementFromValue(*arg1);
   const auto index = static_cast<int32_t>(arg2->Number());
   const int64_t child_count = static_cast<int64_t>(parent->GetChildCount());
   if (index < 0 || static_cast<int64_t>(index) > child_count) {
@@ -3261,11 +3341,7 @@ RENDERER_FUNCTION_CC(FiberRemoveElementsAt) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Number, FiberRemoveElementsAt);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberRemoveElementsAt);
 
-  auto parent = GetFiberElementFromValue(*arg0);
-  if (parent == nullptr) {
-    ElementAPIError("FiberRemoveElementsAt parent should be Element");
-    RETURN_UNDEFINED();
-  }
+  auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
 
   const auto index = static_cast<int32_t>(arg1->Number());
   const auto count = static_cast<int32_t>(arg2->Number());
@@ -3314,11 +3390,7 @@ RENDERER_FUNCTION_CC(FiberMoveElements) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberMoveElements);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg3, 3, Number, FiberMoveElements);
 
-  auto parent = GetFiberElementFromValue(*arg0);
-  if (parent == nullptr) {
-    ElementAPIError("FiberMoveElements parent should be Element");
-    RETURN_UNDEFINED();
-  }
+  auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
 
   const auto from = static_cast<int32_t>(arg1->Number());
   const auto to = static_cast<int32_t>(arg2->Number());
@@ -4160,7 +4232,7 @@ RENDERER_FUNCTION_CC(FiberSetAttribute) {
   // [2] any -> value
   CHECK_ARGC_GE(FiberSetAttribute, 3);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberSetAttribute);
-  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
   uint32_t type = static_cast<uint32_t>(arg1->Number());
@@ -4816,219 +4888,39 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
   RETURN_UNDEFINED();
 }
 
-// Modifier JavaScript IR operation codes shared with the JavaScript producer.
-namespace {
-constexpr int kModifierOpConcat = 1;
-constexpr int kModifierOpStyleNumber = 2;
-constexpr int kModifierOpStyleString = 3;
-constexpr int kModifierOpAttribute = 4;
-constexpr int kModifierOpCallback = 5;
-constexpr int kModifierOpEvent = 6;
-
-constexpr int kModifierCallbackKindClick = 1;
-
-// Cap total visited nodes (not per-path depth) so a malformed cyclic or
-// branching `concat` chain stays bounded while long linear chains still apply.
-constexpr int kMaxModifierNodeVisits = 512;
-
-void AddModifierEventListener(Element* element, const base::String& name,
-                              const base::String& type,
-                              const lepus::Value& callback,
-                              runtime::MTSRuntime* registration_context) {
-  element->SetJSEventHandler(name, base::String(), base::String());
-  element->AddEventListener(
-      name.str(),
-      std::make_unique<event::ClosureEventListener>(
-          [callback, registration_context](lepus::Value args) {
-            if (!args.IsArray() || args.Array()->size() != 3) {
-              return;
-            }
-            if (registration_context == nullptr) {
-              return;
-            }
-            registration_context->CallClosure(
-                callback, lepus_value::ShallowCopy(args.Array()->get(1)));
-          },
-          GetEventListenerOptions(type),
-          event::ClosureEventListener::ClosureType::kCore, callback));
-}
-
-// Applies one Modifier IR node, recursing into `previous` (and concat
-// `left`/`right`) first for head-to-tail order; unknown/empty ops are skipped.
-void ApplyModifierNode(const lepus::Value& node, Element* element,
-                       runtime::MTSRuntime* registration_context,
-                       bool deep_convert, int& remaining_visits) {
-  if (remaining_visits <= 0 || !node.IsObject()) {
-    return;
-  }
-  --remaining_visits;
-
-  BASE_STATIC_STRING_DECL(kOp, "op");
-  const auto& op_value = node.GetProperty(kOp);
-  if (!op_value.IsNumber()) {
-    BASE_STATIC_STRING_DECL(kPrevious, "previous");
-    ApplyModifierNode(node.GetProperty(kPrevious), element,
-                      registration_context, deep_convert, remaining_visits);
-    return;
-  }
-
-  switch (static_cast<int>(op_value.Number())) {
-    case kModifierOpConcat: {
-      BASE_STATIC_STRING_DECL(kLeft, "left");
-      BASE_STATIC_STRING_DECL(kRight, "right");
-      ApplyModifierNode(node.GetProperty(kLeft), element, registration_context,
-                        deep_convert, remaining_visits);
-      ApplyModifierNode(node.GetProperty(kRight), element, registration_context,
-                        deep_convert, remaining_visits);
-      break;
-    }
-    case kModifierOpStyleNumber:
-    case kModifierOpStyleString: {
-      BASE_STATIC_STRING_DECL(kPrevious, "previous");
-      BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
-      BASE_STATIC_STRING_DECL(kValue, "value");
-      ApplyModifierNode(node.GetProperty(kPrevious), element,
-                        registration_context, deep_convert, remaining_visits);
-      auto id = static_cast<CSSPropertyID>(
-          static_cast<int32_t>(node.GetProperty(kPropertyId).Number()));
-      // Forward the raw number/string verbatim, like __AddInlineStyle; the CSS
-      // handler for `id` decides length vs. unitless resolution.
-      const auto& value = node.GetProperty(kValue);
-      const bool has_expected_type =
-          (op_value.Number() == kModifierOpStyleNumber && value.IsNumber()) ||
-          (op_value.Number() == kModifierOpStyleString && value.IsString());
-      if (CSSProperty::IsPropertyValid(id) && has_expected_type) {
-        element->SetStyle(id, value.ToLepusValue());
-      }
-      break;
-    }
-    case kModifierOpAttribute: {
-      BASE_STATIC_STRING_DECL(kPrevious, "previous");
-      BASE_STATIC_STRING_DECL(kName, "name");
-      BASE_STATIC_STRING_DECL(kValue, "value");
-      ApplyModifierNode(node.GetProperty(kPrevious), element,
-                        registration_context, deep_convert, remaining_visits);
-      const auto& name = node.GetProperty(kName);
-      const auto& value = node.GetProperty(kValue);
-      if (name.IsString() &&
-          (value.IsString() || value.IsNumber() || value.IsBool())) {
-        element->SetModifierAttribute(name.String(),
-                                      value.ToLepusValue(deep_convert));
-      }
-      break;
-    }
-    case kModifierOpCallback: {
-      BASE_STATIC_STRING_DECL(kPrevious, "previous");
-      BASE_STATIC_STRING_DECL(kCallbackKind, "callbackKind");
-      BASE_STATIC_STRING_DECL(kCallback, "callback");
-      ApplyModifierNode(node.GetProperty(kPrevious), element,
-                        registration_context, deep_convert, remaining_visits);
-      const auto& callback = node.GetProperty(kCallback);
-      if (!callback.IsCallable()) {
-        break;
-      }
-      if (static_cast<int>(node.GetProperty(kCallbackKind).Number()) ==
-          kModifierCallbackKindClick) {
-        // A click maps to a bubbling "tap" binding (tasm::kEventBindEvent).
-        BASE_STATIC_STRING_DECL(kBindEvent, "bindEvent");
-        BASE_STATIC_STRING_DECL(kTap, "tap");
-        AddModifierEventListener(element, kTap, kBindEvent, callback,
-                                 registration_context);
-      }
-      break;
-    }
-    case kModifierOpEvent: {
-      BASE_STATIC_STRING_DECL(kPrevious, "previous");
-      BASE_STATIC_STRING_DECL(kEventName, "eventName");
-      BASE_STATIC_STRING_DECL(kEventType, "eventType");
-      BASE_STATIC_STRING_DECL(kCallback, "callback");
-      ApplyModifierNode(node.GetProperty(kPrevious), element,
-                        registration_context, deep_convert, remaining_visits);
-      const auto& event_name = node.GetProperty(kEventName);
-      if (!event_name.IsString() || event_name.String().empty()) {
-        ElementAPIError(
-            "FiberSetModifierToElement: eventName should be a non-empty "
-            "String");
-        break;
-      }
-      const auto& event_type = node.GetProperty(kEventType);
-      if (!event_type.IsString()) {
-        ElementAPIError(
-            "FiberSetModifierToElement: eventType should be a String");
-        break;
-      }
-      const auto& type = event_type.StdString();
-      if (type != kEventBindEvent && type != kEventCatchEvent &&
-          type != kEventCaptureBind && type != kEventCaptureCatch) {
-        ElementAPIError(
-            "FiberSetModifierToElement: unsupported local event type: %s",
-            type.c_str());
-        break;
-      }
-      const auto& callback = node.GetProperty(kCallback);
-      if (!callback.IsCallable()) {
-        ElementAPIError(
-            "FiberSetModifierToElement: event callback should be callable");
-        break;
-      }
-      AddModifierEventListener(element, event_name.String(),
-                               event_type.String(), callback,
-                               registration_context);
-      break;
-    }
-    default: {
-      // Unknown op: skip without aborting the rest of the chain.
-      BASE_STATIC_STRING_DECL(kPrevious, "previous");
-      ApplyModifierNode(node.GetProperty(kPrevious), element,
-                        registration_context, deep_convert, remaining_visits);
-      break;
-    }
-  }
-}
-}  // namespace
-
-// Applies a whole Compose Modifier chain (the plain-JS IR tail node) to a fiber
-// element, clearing prior modifier styles/attributes/events first; null clears.
-RENDERER_FUNCTION_CC(FiberSetModifierToElement) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_MODIFIER_TO_ELEMENT);
+// Adapts the LEPUS binding to ModifierElement. The owner retains its physical
+// root entirely in native code; callers keep only the stable opaque handle.
+RENDERER_FUNCTION_CC(FiberSetComposeModifier) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_COMPOSE_MODIFIER);
   // parameter size = 2
-  // [0] RefCounted -> element
+  // [0] RefCounted -> Modifier owner element
   // [1] Object | Null | Undefined -> modifier chain tail node
-  CHECK_ARGC_GE(FiberSetModifierToElement, 2);
+  CHECK_ARGC_GE(FiberSetComposeModifier, 2);
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG(arg1, 1);
 
-  auto element = GetFiberElementFromValue(*arg0);
-  if (element == nullptr) {
-    ElementAPIError(
-        "FiberSetModifierToElement: param 0 should be a Fiber Element");
-    RETURN_UNDEFINED();
-  }
+  auto handle =
+      fml::static_ref_ptr_cast<ComposeElementHandle>(arg0->RefCounted());
   if (!arg1->IsObject() && !arg1->IsEmpty()) {
     ElementAPIError(
-        "FiberSetModifierToElement: param 1 should be an Object, null or "
+        "FiberSetComposeModifier: param 1 should be an Object, null or "
         "undefined");
     RETURN_UNDEFINED();
   }
-  CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetModifierToElement);
+  auto owner = handle->content_element();
+  CHECK_ILLEGAL_ATTRIBUTE_CONFIG(owner, FiberSetComposeModifier);
 
-  // Clear-then-apply keeps modifier-owned styles, attributes, and events in
-  // sync with the current chain.
-  element->RemoveAllInlineStyles();
-  element->RemoveAllModifierAttributes();
-  auto* manager = element->element_manager();
-  element->GetEventListenerMap()->Clear();
-  element->RemoveAllEvents();
-
-  if (arg1->IsObject()) {
-    const bool deep_convert =
-        manager != nullptr && manager->GetEnableParallelElement();
-    int remaining_visits = kMaxModifierNodeVisits;
-    ApplyModifierNode(*arg1, element.get(), LEPUS_CONTEXT(), deep_convert,
-                      remaining_visits);
+  auto result =
+      ComposeModifierApplicator::Apply(handle.get(), *arg1, LEPUS_CONTEXT());
+  if (!result.success) {
+    ElementAPIError(
+        "FiberSetComposeModifier: invalid Modifier plan for owner %d at "
+        "chain position %zu: %s",
+        owner->impl_id(), result.error_position, result.error_message.c_str());
+    RETURN_UNDEFINED();
   }
 
-  ON_NODE_MODIFIED(element);
+  ON_NODE_MODIFIED(owner);
   RETURN_UNDEFINED();
 }
 
