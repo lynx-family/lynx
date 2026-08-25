@@ -122,8 +122,8 @@ Like `DisplayListItem`, its size and offsets are ABI-checked.
 `DisplayListBuilder` exposes the fluent recording API used by fragments:
 
 ```cpp
-DisplayListBuilder builder(render_offset_x, render_offset_y);
-builder.Begin(id, type, x, y, width, height)
+DisplayListBuilder builder;
+builder.Begin(id, type, resolved_offset_x, resolved_offset_y, width, height)
     .Fill(color, clip_index)
     .DrawText(text_id, box_index)
     .End();
@@ -137,6 +137,92 @@ resource.
 
 Subtree property methods append only to `subtree_properties_`; they do not add
 content items.
+
+### 3.1 Paint order
+
+`Fragment::children_` preserves structural/document order and is never sorted
+for painting. Fragment maintains separate cached buckets for negative z-index,
+fixed zero-z-index, and positive z-index children. `DrawChildren` emits the
+negative bucket, normal-flow entries from `children_`, the fixed bucket, and
+the positive bucket. The resulting DisplayList order is the source of truth
+for both native View insertion and hit-test tree reconstruction. Bucket storage
+is allocated lazily, so fragments without special children keep the direct
+`children_` draw path and pay only one nullable pointer of per-fragment state.
+
+Batched structural insertion sorts only the affected bucket. A z-index or
+fixed change that retains the same stacking parent removes and reinserts that
+single fragment locally; redraw is requested only when its final paint index
+changes. Lists that disable the platform list implementation bypass these
+buckets entirely and emit `children_` in structural order, preserving the
+custom list's existing ordering contract.
+
+### 3.2 Restacking geometry
+
+Geometry crosses two independent trees before display-list recording:
+
+1. The layout tree contributes each element's local layout offset. The existing
+   layout-info traversal maintains persistent layout-to-root offsets and
+   propagates changes only through affected logical subtrees.
+2. The fragment stacking tree contributes paint-parent edges. The resolver
+   converts each layout-to-root position into one offset relative to its paint
+   parent.
+3. Display-list recording consumes only the resolved geometry. It does not
+   walk ancestors or maintain another recursively accumulated offset.
+
+For a flattened fragment, the geometry parent is its direct fragment parent.
+For a platform-backed fragment, it is the nearest platform-backed ancestor,
+because `kDrawView` and the child platform display list both use that coordinate
+space. New/unified fixed layout results are already page-root relative, so
+layout-to-root collection resets at that edge instead of adding the logical
+parent offset again. A fragment that is transiently not reachable from the
+layout tree invalidates its resolved geometry and skips that paint subtree
+until a later successful restack, instead of publishing zero or stale offsets.
+
+For a platform-backed fragment, restacking also derives the platform adapter
+values from that same resolved edge:
+
+```text
+paint_offset + platform_embedding_offset = offset_to_parent
+```
+
+The root `kBegin` uses `paint_offset`; `DisplayList::render_offset` carries
+`platform_embedding_offset`. The latter is the translation contributed only by
+flattened fragments on the current StackingTree path before `kDrawView`, not by
+every ancestor in the LayoutTree. Android lays out the native child at their
+sum and cancels `platform_embedding_offset` while dispatching the child canvas,
+so an active display-list translation is not applied twice and a hoisted
+ancestor is not cancelled after it has left the paint path. These values are
+published as part of `ResolvedStackingGeometry` and participate in the same
+change comparison; they are not independent mutable geometry.
+
+Restacking is invalidated only when one of its inputs changes: a local layout
+offset, fixed-coordinate semantics, a fragment stacking edge, or a
+platform-renderer boundary. Resolution compares the new parent and offset with
+the previous result before publishing it. An unchanged result causes no
+node-ready update and no redraw. The resolver carries the nearest
+platform-backed paint root down the traversal and caches it in the resolved
+geometry. A changed result can therefore invalidate the fragment's paint root
+and the root that embeds it in O(1), without a parent-chain lookup for every
+changed descendant.
+
+During a layout pipeline, `Element::UpdateLayoutInfoRecursively` updates the
+persistent layout-to-root cache while it performs its existing LayoutTree
+work. If an ancestor offset changes, only that logical subtree is forced to
+refresh. Geometry resolution is then fused into the existing FragmentTree
+platform-layout synchronization, so first screen gains neither a second
+LayoutTree pass nor another FragmentTree pass. Direct Fragment updates that
+bypass the Element traversal refresh only their affected logical subtree when
+the layout parent's cached root offset is available. They retain a correctness
+fallback that collects the complete LayoutTree only when that parent state is
+not yet available. A style or stacking-edge update with valid cached layout
+offsets skips collection entirely. The no-layout path also sorts dirty stacking
+contexts before recording the display list and publishes node-ready updates
+from changed native renderer geometry before the layout-finished notification.
+
+For managed fragments, invalidation and draw entry resolve the restacking root
+directly through the ElementManager page fragment. Parent-chain traversal is
+reserved for standalone FragmentTrees that are not installed as Element
+containers.
 
 ## 4. Reading a Display List
 

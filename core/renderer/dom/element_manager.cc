@@ -609,7 +609,8 @@ void ElementManager::RequestLayout(
   if (root()->EnableFragmentLayerRender()) {
     if (layout_data.layout_triggered) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
-      root()->element_container()->CastToFragment()->Draw();
+      auto *root_fragment = root()->element_container()->CastToFragment();
+      root_fragment->Draw();
       root()->element_container()->FinishLayoutOperation(options);
     }
     root()->element_container()->Flush();
@@ -1809,13 +1810,19 @@ void ElementManager::OnPatchFinishForFiber(
     // and don't trigger layout, so we need to invoke OnComponentFinish to
     // notify list that child has been rendered.
     OnListComponentUpdated(options);
+    UpdateDirtyStackingContexts();
     // Even if no layout is needed, we should still repaint if fragments are
     // dirty. Repaint should not be bound to relayout.
     if (root() && root()->EnableFragmentLayerRender()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
-      root()->element_container()->CastToFragment()->Draw();
+      auto *root_fragment = root()->element_container()->CastToFragment();
+      root_fragment->Draw();
     }
     if (root() && root()->EnableFragmentLayerRender()) {
+      // Standalone restacking can update native renderer geometry without a
+      // layout traversal. Publish the node-ready batch before layout-finished,
+      // matching the ordering used by PageElement's layout path.
+      root()->element_container()->UpdateNodeReadyPatching();
       root()->element_container()->FinishLayoutOperation(options);
       root()->element_container()->Flush();
     } else {
@@ -1825,15 +1832,8 @@ void ElementManager::OnPatchFinishForFiber(
     patch_finish_callback(false);
   } else {
     LOGI("ElementManager::OnPatchFinishForFiber WithPatch!");
-    {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST);
-      // sort z-index children
-      for (const auto &context : dirty_stacking_contexts_) {
-        context->UpdateZIndexList();
-      }
-    }
+    UpdateDirtyStackingContexts();
     PatchEventRelatedInfo();
-    dirty_stacking_contexts_.clear();
     if (need_layout_ && !(options->has_layout)) {
       options->has_layout = need_layout_;
     }
@@ -1847,6 +1847,14 @@ void ElementManager::OnPatchFinishForFiber(
   if (element != nullptr && element->is_list_item()) {
     painting_context()->FlushImmediately();
   }
+}
+
+void ElementManager::UpdateDirtyStackingContexts() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST);
+  for (const auto &context : dirty_stacking_contexts_) {
+    context->UpdateZIndexList();
+  }
+  dirty_stacking_contexts_.clear();
 }
 
 void ElementManager::EnqueueLevelOrderTask(
