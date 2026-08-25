@@ -368,6 +368,11 @@ open class LynxUIScrollCoordinator(
     coordinatorLayout.setNestedScrollAsChild(enable)
   }
 
+  @LynxProp(name = "android-adapt-to-empty-slot", defaultBoolean = false)
+  fun setAdaptToEmptySlot(enable: Boolean) {
+    coordinatorLayout.setAdaptToEmptySlot(enable)
+  }
+
   override fun consumeGesture(consumeGesture: Boolean) {
     mView.setConsumeGesture(consumeGesture)
   }
