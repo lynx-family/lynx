@@ -210,6 +210,10 @@ export abstract class BaseApp<
       }
 
       this.lynx = this.createLynx(lynx, promiseCtor);
+      this.lynx.__initData = {
+        ...(this.params?.initData as Record<string, unknown> | undefined),
+        ...(this.params?.updateData as Record<string, unknown> | undefined),
+      };
       this.setupJSModule();
       this.setupIntersectionApi();
       this.setupFetchAPI(promiseCtor);
