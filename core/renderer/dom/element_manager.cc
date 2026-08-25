@@ -29,6 +29,7 @@
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/modifier_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -1413,6 +1414,10 @@ fml::RefPtr<ComponentElement> ElementManager::CreateFiberComponent(
 fml::RefPtr<ViewElement> ElementManager::CreateFiberView() {
   auto res = fml::AdoptRef<ViewElement>(new ViewElement(this));
   return res;
+}
+
+fml::RefPtr<ModifierElement> ElementManager::CreateFiberModifierElement() {
+  return fml::AdoptRef<ModifierElement>(new ModifierElement(this));
 }
 
 fml::RefPtr<ImageElement> ElementManager::CreateFiberImage(

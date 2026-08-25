@@ -1357,6 +1357,8 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_wrapper() const { return false; }
 
+  virtual bool is_modifier() const { return false; }
+
   virtual bool is_component() const { return false; }
 
   virtual bool is_scroll_view() const { return false; }
