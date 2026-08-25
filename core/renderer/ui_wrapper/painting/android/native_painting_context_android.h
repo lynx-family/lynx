@@ -101,8 +101,6 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 
   bool EnableUIOperationQueue() override { return true; }
 
-  void OnFirstScreen() override;
-
 #pragma region NativePaintingContext
 
   void CreatePlatformRenderer(int id, PlatformRendererType type,
@@ -137,7 +135,6 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
     queue_->EnqueueUIOperation(std::move(op));
   }
 
-  bool has_first_screen_ = false;
   std::shared_ptr<std::atomic_bool> event_target_tree_update_enqueued_ =
       std::make_shared<std::atomic_bool>(false);
   // TODO(renzhongyue): Raw pointer here because the lifetime of view_manager_
