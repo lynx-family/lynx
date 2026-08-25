@@ -152,6 +152,8 @@ class LynxContext {
 
   void SetHasTouchPseudo(bool has_touch_pseudo);
 
+  void SetEnableFiberTargetOnlyDestroy(bool enable);
+
   void SetLongPressDuration(int32_t long_press_duration);
 
   LYNX_EXPORT void SendEvent(const LynxEvent& event) const;

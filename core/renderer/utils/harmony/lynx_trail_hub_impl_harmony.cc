@@ -81,7 +81,8 @@ napi_value LynxTrailHubImplHarmony::Init(napi_env env, napi_value exports) {
 std::optional<std::string> LynxTrailHubImplHarmony::GetStringForTrailKey(
     const std::string& key) {
   auto value = InternalTrailMap().GetValue(key);
-  LOGI("GetString: " << *value << ", ForTrailKey: " << key);
+  LOGI("GetString: " << (value.has_value() ? *value : "<unset>")
+                     << ", ForTrailKey: " << key);
   return value;
 }
 

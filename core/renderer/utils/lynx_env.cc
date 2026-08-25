@@ -702,6 +702,10 @@ bool LynxEnv::FixFiberReinsertDetachFromOldRenderParent() {
                     true);
 }
 
+bool LynxEnv::FixHarmonyFiberDestroyTargetOnly() {
+  return GetBoolEnv(Key::FIX_HARMONY_FIBER_DESTROY_TARGET_ONLY, true);
+}
+
 bool LynxEnv::EnableAnimationForwardUpdatePreservation() {
   return GetBoolEnv(Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION, false);
 }
