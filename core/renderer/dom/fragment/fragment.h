@@ -76,12 +76,7 @@ class Fragment : public BaseElementContainer {
       bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;
 
-  void OnFirstScreen() override;
   void OnNodeReady() override;
-  void FinishTasmOperation(
-      const std::shared_ptr<PipelineOptions>& options) override;
-  void FinishLayoutOperation(
-      const std::shared_ptr<PipelineOptions>& options) override;
 
   bool CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data);
   void HandleAttributes(const fml::RefPtr<PropBundle>& painting_data) const;

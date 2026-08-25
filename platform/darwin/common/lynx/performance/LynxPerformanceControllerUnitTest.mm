@@ -253,15 +253,17 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
   [self.controller setEmbeddedModeEnabled:YES];
   NSThread *callingThread = [NSThread currentThread];
   __block BOOL observerCalled = NO;
+  __block NSThread *observerThread = nil;
 
   XCTestExpectation *performanceExpectation =
       [self expectationWithDescription:@"Embedded performance entry should be reported"];
   OCMExpect([self.mockObserver
       onPerformanceEvent:[OCMArg checkWithBlock:^BOOL(LynxPerformanceEntry *entry) {
-        XCTAssertEqual([NSThread currentThread], callingThread);
+        observerThread = [NSThread currentThread];
         XCTAssertEqualObjects(entry.entryType, @"pipeline");
         XCTAssertEqualObjects(entry.name, @"loadBundle");
-        XCTAssertNil([entry rawDictionary][@(timing::kLoadBundleEnd)]);
+        XCTAssertEqualWithAccuracy([[entry rawDictionary][@(timing::kLoadBundleEnd)] doubleValue],
+                                   1040.123, 0.0001);
         observerCalled = YES;
         [performanceExpectation fulfill];
         return YES;
@@ -274,26 +276,22 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
   [LynxEventReporter addEventReportObserver:eventObserver];
 
   [self.controller setTiming:1000000 key:@(timing::kLoadBundleStart) pipelineID:nil];
+  [self.controller setTiming:1040123 key:@(timing::kLoadBundleEnd) pipelineID:nil];
+  XCTAssertFalse(observerCalled);
+  XCTAssertNil(eventObserver.props);
+
   [self.controller setTiming:1100000 key:@(timing::kPaintEnd) pipelineID:nil];
-
   XCTAssertTrue(observerCalled);
-  [self waitForExpectations:@[ performanceExpectation ] timeout:5.0];
+  XCTAssertEqual(observerThread, callingThread);
+  [self waitForExpectations:@[ performanceExpectation, eventExpectation ] timeout:5.0];
   OCMVerifyAll(self.mockObserver);
-  XCTAssertNil(eventObserver.props);
-
-  // A resource load can produce an early paint before the actual template load starts.
-  [self.controller setTiming:2000000 key:@(timing::kLoadBundleStart) pipelineID:nil];
-  [self.controller setTiming:2040123 key:@(timing::kLoadBundleEnd) pipelineID:nil];
-  XCTAssertNil(eventObserver.props);
-  [self.controller setTiming:2100000 key:@(timing::kPaintEnd) pipelineID:nil];
-  [self waitForExpectations:@[ eventExpectation ] timeout:5.0];
   XCTAssertFalse(eventObserver.reportedOnMainThread);
   XCTAssertEqualObjects(eventObserver.props[@"entryType"], @"pipeline");
   XCTAssertEqualObjects(eventObserver.props[@"name"], @"loadBundle");
   XCTAssertEqualWithAccuracy([eventObserver.props[@"lynxFcp"] doubleValue], 100.0, 0.0);
   XCTAssertEqualWithAccuracy([eventObserver.props[@"loadBundle"] doubleValue], 40.123, 0.0001);
 
-  [self.controller setTiming:2050000 key:@(timing::kLoadBundleEnd) pipelineID:nil];
+  [self.controller setTiming:1050000 key:@(timing::kLoadBundleEnd) pipelineID:nil];
   XCTestExpectation *drainExpectation =
       [self expectationWithDescription:@"Embedded report thread should drain"];
   [LynxEventReporter
@@ -310,13 +308,16 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
   [self.controller setEmbeddedModeEnabled:YES];
   NSThread *callingThread = [NSThread currentThread];
   __block BOOL observerCalled = NO;
+  __block NSThread *observerThread = nil;
 
   XCTestExpectation *performanceExpectation = [self
       expectationWithDescription:@"Out-of-order embedded performance entry should be reported"];
   OCMExpect([self.mockObserver
       onPerformanceEvent:[OCMArg checkWithBlock:^BOOL(LynxPerformanceEntry *entry) {
-        XCTAssertEqual([NSThread currentThread], callingThread);
+        observerThread = [NSThread currentThread];
         XCTAssertEqualObjects(entry.name, @"loadBundle");
+        XCTAssertEqualWithAccuracy([[entry rawDictionary][@(timing::kLoadBundleEnd)] doubleValue],
+                                   2040.123, 0.0001);
         observerCalled = YES;
         [performanceExpectation fulfill];
         return YES;
@@ -335,8 +336,9 @@ class MockPerformanceSender : public performance::PerformanceEventSender {
   XCTAssertNil(eventObserver.props);
 
   [self.controller setTiming:2040123 key:@(timing::kLoadBundleEnd) pipelineID:nil];
-  XCTAssertTrue(observerCalled);
   [self waitForExpectations:@[ performanceExpectation, eventExpectation ] timeout:5.0];
+  XCTAssertTrue(observerCalled);
+  XCTAssertNotEqual(observerThread, callingThread);
   OCMVerifyAll(self.mockObserver);
   XCTAssertFalse(eventObserver.reportedOnMainThread);
   XCTAssertEqualWithAccuracy([eventObserver.props[@"loadBundle"] doubleValue], 40.123, 0.0001);
