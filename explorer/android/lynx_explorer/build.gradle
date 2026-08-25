@@ -152,7 +152,7 @@ dependencies {
     implementation 'org.lynxsdk.lynx:v8so:11.1.277.4'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'org.lynxsdk.lynx:lynxtextra:0.2.0'
-    implementation "org.lynxsdk.lynx:serval_markdown:0.2.4"
+    implementation "org.lynxsdk.lynx:serval_markdown:0.2.5"
 
     implementation project(':LynxAndroid')
     implementation project(':LynxBase')

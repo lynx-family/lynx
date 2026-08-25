@@ -36,7 +36,7 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "androidx.appcompat:appcompat:1.0.0"
-    compileOnly "org.lynxsdk.lynx:serval_markdown:0.2.4"
+    compileOnly "org.lynxsdk.lynx:serval_markdown:0.2.5"
     //remove this after.
     compileOnly('com.facebook.fresco:fresco:1.10.0')
 }
