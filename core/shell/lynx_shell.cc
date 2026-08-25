@@ -134,7 +134,7 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
                // conflicts with thread merge now.
                shell_option.enable_multi_tasm_thread_ &&
                    !DoAsyncHydration(strategy, shell_option),
-               shell_option.js_group_thread_name_),
+               shell_option.enable_js_, shell_option.js_group_thread_name_),
       instance_id_(shell_option.instance_id_ != kUnknownInstanceId
                        ? shell_option.instance_id_
                        : NextInstanceId()),
