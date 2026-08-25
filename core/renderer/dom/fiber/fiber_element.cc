@@ -71,6 +71,7 @@
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
 #include "core/renderer/starlight/types/layout_attribute.h"
+#include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -638,9 +639,7 @@ Element::Element(ElementManager *manager, const base::String &tag,
 
 void Element::FiberAddEvent(const base::String &type, const base::String &name,
                             const lepus::Value &callback,
-                            const std::string &context_name,
-                            runtime::MTSRuntime *lepus_context,
-                            const lepus::Value &lepus_script) {
+                            const std::string &context_name) {
   auto event_options = GetEventListenerOptions(type);
   auto event_name = name.str();
   auto *manager = element_manager();
@@ -666,17 +665,14 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
   if (callback.IsString()) {
     SetJSEventHandler(name, type, callback.String());
     if (should_sync_listener) {
-      remove_event_listener(event::ClosureEventListener::ClosureType::kJS);
       auto handler_name = callback.StdString();
-      if (handler_name.empty()) {
-        return;
-      }
       const bool should_handle_air_fiber_event =
           manager != nullptr && !manager->IsEmbeddedModeOn() &&
           manager->IsAirModeFiberEnabled();
       const bool support_component_js = manager->SupportComponentJS();
       auto *default_vm_context = manager->GetDefaultEntryRuntime();
       auto default_entry_name = manager->GetDefaultEntryLogicalName();
+      remove_event_listener(event::ClosureEventListener::ClosureType::kJS);
       AddEventListener(
           event_name,
           std::make_unique<event::ClosureEventListener>(
@@ -767,17 +763,15 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
   }
 
   if (callback.IsCallable()) {
-    SetLepusEventHandler(name, type, lepus_script, callback);
-    if (should_sync_listener) {
-      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
+    SetLepusEventHandler(name, type, lepus::Value(), callback);
 #if ENABLE_LEPUSNG_WORKLET
+    if (should_sync_listener) {
       auto callback_value = callback;
-      auto script_value = lepus_script;
+      remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
       AddEventListener(
           event_name,
           std::make_unique<event::ClosureEventListener>(
-              [element = this, callback_value,
-               script_value](lepus::Value args) {
+              [element = this, callback_value](lepus::Value args) {
                 const auto &args_array = args.Array();
                 if (!args.IsArray() || args_array->size() != 3) {
                   return;
@@ -803,13 +797,13 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
                 auto current_option = std::make_shared<PipelineOptions>();
                 EventResult result =
                     manager->FireElementWorkletAndRequestResolve(
-                        component_id, entry_name, callback_value, script_value,
-                        event_detail, task_handler, element_id, current_option);
+                        component_id, entry_name, callback_value, event_detail,
+                        task_handler, element_id, current_option);
                 ApplyEventResult(event, result);
               },
               event_options, event::ClosureEventListener::ClosureType::kCore));
-#endif  // ENABLE_LEPUSNG_WORKLET
     }
+#endif  // ENABLE_LEPUSNG_WORKLET
     return;
   }
 
@@ -819,33 +813,21 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
     const auto &obj_type = callback.GetProperty(kType).StdString();
     const auto &value = callback.GetProperty(kValue);
 
-    if (obj_type != tasm::kWorklet) {
-      LOGW("FiberAddEvent's object callback type must be worklet.");
-      return;
-    }
-    if (lepus_context != nullptr) {
-      SetWorkletEventHandler(name, type, value, lepus_context);
-    } else {
+    if (obj_type == tasm::kWorklet) {
       SetWorkletEventHandler(name, type, value, context_name);
     }
     if (should_sync_listener) {
       auto worklet_value = value;
       remove_event_listener(event::ClosureEventListener::ClosureType::kCore);
-      if (worklet_value.IsEmpty()) {
-        return;
-      }
       AddEventListener(
           event_name,
           std::make_unique<event::ClosureEventListener>(
-              [element = this, context_name, lepus_context,
-               worklet_value](lepus::Value args) {
+              [element = this, context_name, worklet_value](lepus::Value args) {
                 auto *manager = element->element_manager();
-                if (manager == nullptr) {
+                if (manager == nullptr || worklet_value.IsEmpty()) {
                   return;
                 }
-                auto *context = lepus_context != nullptr
-                                    ? lepus_context
-                                    : manager->GetEntryRuntime(context_name);
+                auto *context = manager->GetEntryRuntime(context_name);
                 if (context == nullptr) {
                   return;
                 }
@@ -890,46 +872,6 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
   LOGW(
       "FiberAddEvent's 3rd parameter must be undefined, null, string or "
       "callable.");
-}
-
-void Element::FiberAddPiperEvent(
-    const base::String &type, const base::String &name,
-    std::vector<std::pair<base::String, lepus::Value>> piper_event_content) {
-  data_model_->SetStaticEvent(type, name, piper_event_content);
-
-  auto *manager = element_manager();
-  if (manager == nullptr || !manager->EnableEventHandleRefactor()) {
-    return;
-  }
-
-  const auto event_options = GetEventListenerOptions(type);
-  const auto event_name = name.str();
-  auto remove_event_listener =
-      [this, &event_name,
-       &event_options](event::ClosureEventListener::ClosureType closure_type) {
-        RemoveEventListener(
-            event_name, std::make_unique<event::ClosureEventListener>(
-                            [](lepus::Value) {}, event_options, closure_type));
-      };
-  remove_event_listener(event::ClosureEventListener::ClosureType::kJS);
-  if (piper_event_content.empty()) {
-    return;
-  }
-
-  AddEventListener(
-      event_name,
-      std::make_unique<event::ClosureEventListener>(
-          [element = this,
-           piper_event_content = std::move(piper_event_content)](lepus::Value) {
-            auto *manager = element->element_manager();
-            if (manager == nullptr) {
-              return;
-            }
-            for (const auto &event : piper_event_content) {
-              manager->TriggerLepusBridgeAsync(event.first.str(), event.second);
-            }
-          },
-          event_options, event::ClosureEventListener::ClosureType::kJS));
 }
 
 void Element::AttachToElementManager(

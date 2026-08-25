@@ -621,24 +621,16 @@ std::string ElementManager::GetDefaultEntryLogicalName() const {
              : element_manager_delegate_->GetDefaultEntryLogicalName();
 }
 
-void ElementManager::TriggerLepusBridgeAsync(
-    const std::string &method_name, const lepus::Value &arguments) const {
-  if (element_manager_delegate_ != nullptr) {
-    element_manager_delegate_->TriggerLepusBridgeAsync(method_name, arguments);
-  }
-}
-
 EventResult ElementManager::FireElementWorkletAndRequestResolve(
     const std::string &component_id, const std::string &entry_name,
-    const lepus::Value &callback, const lepus::Value &script,
-    const lepus::Value &event_detail,
+    const lepus::Value &callback, const lepus::Value &event_detail,
     const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
     int32_t element_id,
     std::shared_ptr<PipelineOptions> &pipeline_options) const {
   return element_manager_delegate_ == nullptr
              ? EventResult::kDefault
              : element_manager_delegate_->FireElementWorkletAndRequestResolve(
-                   component_id, entry_name, callback, script, event_detail,
+                   component_id, entry_name, callback, event_detail,
                    task_handler, element_id, pipeline_options);
 }
 

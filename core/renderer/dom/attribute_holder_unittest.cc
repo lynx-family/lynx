@@ -4,7 +4,6 @@
 
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/events/gesture.h"
-#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -185,32 +184,6 @@ TEST_F(AttributeHolderTest, CheckGestureDetector) {
   // Expectation: After removal, the size of gesture_detectors vector in the
   // RadonNode should be 0
   EXPECT_EQ(node.gesture_detectors().size(), static_cast<size_t>(0));
-}
-
-TEST_F(AttributeHolderTest, CopyPreservesWorkletEventHandlerState) {
-  auto context = runtime::MTSRuntime::CreateContext(
-      runtime::ContextType::LepusNGContextType);
-  ASSERT_TRUE(context);
-
-  EventHandler handler("bindEvent", "tap", lepus::Value("worklet"),
-                       context.get());
-  EventHandler copied_handler(handler);
-  EXPECT_EQ(copied_handler.lepus_object().String().str(), "worklet");
-  EXPECT_EQ(copied_handler.lepus_context(), context.get());
-
-  EventHandler assigned_handler("bindEvent", "tap", "onTap");
-  assigned_handler = handler;
-  EXPECT_EQ(assigned_handler.lepus_object().String().str(), "worklet");
-  EXPECT_EQ(assigned_handler.lepus_context(), context.get());
-
-  AttributeHolder holder;
-  holder.SetWorkletEvent("bindEvent", "tap", lepus::Value("worklet"),
-                         context.get());
-  AttributeHolder copied_holder(holder);
-  auto copied_event = copied_holder.lepus_events().find("tap");
-  ASSERT_NE(copied_event, copied_holder.lepus_events().end());
-  EXPECT_EQ(copied_event->second->lepus_object().String().str(), "worklet");
-  EXPECT_EQ(copied_event->second->lepus_context(), context.get());
 }
 
 }  // namespace testing
