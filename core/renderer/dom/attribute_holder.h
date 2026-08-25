@@ -44,9 +44,10 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     }
 
     if (holder.events_.has_value()) {
-      CopyEvents(holder.static_events(), events_->static_events());
-      CopyEvents(holder.lepus_events(), events_->lepus_events_);
-      CopyEvents(holder.global_bind_events(), events_->global_bind_events_);
+      for (auto& static_event : holder.events_->static_events_) {
+        SetStaticEvent(static_event.second->type(), static_event.second->name(),
+                       static_event.second->function());
+      }
     }
   }
 
@@ -479,12 +480,6 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   void UpdateInlineStyleChangedVars(CSSVariableMap* changed_css_vars);
 
  protected:
-  static void CopyEvents(const EventMap& source, EventMap& destination) {
-    for (const auto& [name, handler] : source) {
-      destination.emplace(name, std::make_unique<EventHandler>(*handler));
-    }
-  }
-
   ClassList classes_;
   StyleMap inline_styles_;
   AttrMap attributes_;

@@ -67,8 +67,10 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
   bool DecodeIDSelectorSection(fml::RefPtr<Element>& element);
   bool DecodeInlineStylesSection(fml::RefPtr<Element>& element);
   bool DecodeClassesSection(fml::RefPtr<Element>& element);
-  bool DecodeEventsSection(fml::RefPtr<Element>& element);
-  bool DecodePiperEventsSection(fml::RefPtr<Element>& element);
+  bool DecodeEventsSection(TemplateAssembler* tasm,
+                           fml::RefPtr<Element>& element);
+  bool DecodePiperEventsSection(TemplateAssembler* tasm,
+                                fml::RefPtr<Element>& element);
   bool DecodeAttributesSection(fml::RefPtr<Element>& element);
   bool DecodeDatasetSection(fml::RefPtr<Element>& element);
   bool DecodeParsedStylesSection(fml::RefPtr<Element>& element);

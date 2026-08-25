@@ -102,10 +102,27 @@ class EventHandler {
                      lepus::Value(), lepus::Value(), piper_event_vec, nullptr) {
   }
 
-  EventHandler(const EventHandler& other) = default;
+  EventHandler(const EventHandler& other) {
+    this->is_js_event_ = other.is_js_event_;
+    this->type_ = other.type_;
+    this->name_ = other.name_;
+    this->function_ = other.function_;
+    this->lepus_script_ = other.lepus_script_;
+    this->lepus_function_ = other.lepus_function_;
+    this->piper_event_vec_ = other.piper_event_vec_;
+  }
   virtual ~EventHandler() {}
 
-  EventHandler& operator=(const EventHandler& other) = default;
+  EventHandler& operator=(const EventHandler& other) {
+    this->is_js_event_ = other.is_js_event_;
+    this->type_ = other.type_;
+    this->name_ = other.name_;
+    this->function_ = other.function_;
+    this->lepus_script_ = other.lepus_script_;
+    this->lepus_function_ = other.lepus_function_;
+    this->piper_event_vec_ = other.piper_event_vec_;
+    return *this;
+  }
 
   bool is_js_event() const { return is_js_event_; }
   bool is_piper_event() const { return piper_event_vec_.has_value(); }

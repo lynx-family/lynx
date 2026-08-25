@@ -111,14 +111,6 @@ void ElementManagerDelegateImpl::TriggerLepusGlobalEvent(
   tasm_->TriggerLepusGlobalEvent(event, info);
 }
 
-void ElementManagerDelegateImpl::TriggerLepusBridgeAsync(
-    const std::string &method_name, const lepus::Value &arguments) {
-  if (tasm_ == nullptr) {
-    return;
-  }
-  tasm_->TriggerLepusBridgeAsync(method_name, arguments);
-}
-
 event::DispatchEventResult ElementManagerDelegateImpl::DispatchMessageEvent(
     fml::RefPtr<runtime::MessageEvent> event) {
   if (tasm_ == nullptr) {
@@ -161,8 +153,7 @@ std::string ElementManagerDelegateImpl::GetDefaultEntryLogicalName() const {
 
 EventResult ElementManagerDelegateImpl::FireElementWorkletAndRequestResolve(
     const std::string &component_id, const std::string &entry_name,
-    const lepus::Value &callback, const lepus::Value &script,
-    const lepus::Value &event_detail,
+    const lepus::Value &callback, const lepus::Value &event_detail,
     const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
     int32_t element_id, std::shared_ptr<PipelineOptions> &pipeline_options) {
 #if ENABLE_LEPUSNG_WORKLET
@@ -171,7 +162,7 @@ EventResult ElementManagerDelegateImpl::FireElementWorkletAndRequestResolve(
   }
   PipelineScope pipeline_scope(tasm_, pipeline_options);
   EventResult result = worklet::LepusElement::FireElementWorklet(
-      component_id, entry_name, tasm_, callback, script, event_detail,
+      component_id, entry_name, tasm_, callback, lepus::Value(), event_detail,
       task_handler, element_id, EventType::kTouch);
   tasm_->page_proxy()->element_manager()->SetNeedsLayout();
   tasm_->page_proxy()->element_manager()->RequestResolve(pipeline_options);

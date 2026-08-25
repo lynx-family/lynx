@@ -1236,12 +1236,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   runtime::MTSRuntime *GetDefaultEntryRuntime() const;
   runtime::MTSRuntime *GetEntryRuntime(const std::string &entry_name) const;
   std::string GetDefaultEntryLogicalName() const;
-  void TriggerLepusBridgeAsync(const std::string &method_name,
-                               const lepus::Value &arguments) const;
   EventResult FireElementWorkletAndRequestResolve(
       const std::string &component_id, const std::string &entry_name,
-      const lepus::Value &callback, const lepus::Value &script,
-      const lepus::Value &event_detail,
+      const lepus::Value &callback, const lepus::Value &event_detail,
       const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
       int32_t element_id,
       std::shared_ptr<PipelineOptions> &pipeline_options) const;
