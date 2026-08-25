@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <string_view>
-#include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
@@ -238,38 +237,6 @@ bool ApplyTemplateEventAttribute(Element* element, const base::String& key,
   // always registered under the default entry context.
   element->FiberAddEvent(event_type, event_name, value, DEFAULT_ENTRY_NAME);
   return true;
-}
-
-struct JSEventBinding {
-  base::String type;
-  base::String name;
-  base::String callback;
-};
-
-void SyncJSEventListenersAfterAttach(Element* element) {
-  auto* manager = element->element_manager();
-  if (manager == nullptr || !manager->EnableEventHandleRefactor()) {
-    return;
-  }
-
-  std::vector<JSEventBinding> event_bindings;
-  auto collect_event_bindings = [&event_bindings](const auto& events) {
-    for (const auto& event : events) {
-      const auto* handler = event.second.get();
-      if (!handler->is_js_event() || handler->is_piper_event()) {
-        continue;
-      }
-      event_bindings.push_back(
-          {handler->type(), handler->name(), handler->function()});
-    }
-  };
-  collect_event_bindings(element->data_model()->static_events());
-  collect_event_bindings(element->data_model()->global_bind_events());
-
-  for (const auto& event : event_bindings) {
-    element->FiberAddEvent(event.type, event.name, lepus::Value(event.callback),
-                           DEFAULT_ENTRY_NAME);
-  }
 }
 
 bool ApplyTemplateListCallbackAttribute(Element* element,
@@ -729,7 +696,6 @@ void TreeResolver::InitElementTree(
     const std::shared_ptr<CSSStyleSheetManager>& style_manager) {
   element->ApplyFunctionRecursive([manager, style_manager](Element* e) {
     e->AttachToElementManager(manager, style_manager, false);
-    SyncJSEventListenersAfterAttach(e);
   });
   element->SetParentComponentUniqueIdRecursively(pid);
 }
@@ -743,7 +709,6 @@ lepus::Value TreeResolver::InitElementTree(
   for (auto& element : elements) {
     element->ApplyFunctionRecursive([manager, style_manager](Element* e) {
       e->AttachToElementManager(manager, style_manager, false);
-      SyncJSEventListenersAfterAttach(e);
     });
     element->SetParentComponentUniqueIdRecursively(pid);
     ary->emplace_back(element);

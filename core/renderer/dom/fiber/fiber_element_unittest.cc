@@ -5,7 +5,6 @@
 #define private public
 #define protected public
 
-#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <map>
@@ -51,16 +50,12 @@
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
-#include "core/renderer/dom/vdom/radon/radon_base.h"
-#include "core/renderer/dom/vdom/radon/radon_node.h"
-#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/renderer/starlight/types/layout_attribute.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
-#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
@@ -76,7 +71,6 @@
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/shared_css_fragment.h"
 #include "core/template_bundle/template_codec/generator/ttml_holder.h"
-#include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -160,24 +154,6 @@ std::map<std::string, lepus::Value>* PaintingPropsFor(ElementManager* manager,
     return nullptr;
   }
   return &node_it->second->props_;
-}
-
-size_t CountClosureEventListeners(
-    const event::EventListenerVector* listeners,
-    event::ClosureEventListener::ClosureType closure_type) {
-  if (listeners == nullptr) {
-    return 0;
-  }
-  return std::count_if(
-      listeners->begin(), listeners->end(),
-      [closure_type](const std::shared_ptr<event::EventListener>& listener) {
-        if (listener->type() !=
-            event::EventListener::Type::kClosureEventListener) {
-          return false;
-        }
-        return static_cast<event::ClosureEventListener*>(listener.get())
-                   ->closure_type() == closure_type;
-      });
 }
 
 class RecordingInspectorElementObserver final
@@ -527,259 +503,6 @@ TEST_P(FiberElementTest, LoadStyleSheetUsesBundleCSSRuleConfig) {
       fml::static_ref_ptr_cast<SharedCSSFragmentWrapper>(result.RefCounted());
   ASSERT_TRUE(wrapper);
   EXPECT_TRUE(wrapper->fragment_->enable_css_rule());
-}
-
-TEST_P(FiberElementTest,
-       CreateDynamicVirtualComponentInitializesTasmForEventRegistration) {
-  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
-      runtime::ContextType::LepusNGContextType);
-  ASSERT_TRUE(lepus_ctx);
-  lepus_ctx->Initialize();
-  lepus_ctx->SetGlobalData(
-      BASE_STATIC_STRING(tasm::kTemplateAssembler),
-      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
-  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
-  ASSERT_TRUE(mts_ctx);
-
-  lepus::Value undefined(lepus::Value::kCreateAsUndefinedTag);
-  lepus::Value argv[] = {lepus::Value(1),
-                         lepus::Value(static_cast<void*>(tasm.get())),
-                         std::move(undefined), lepus::Value(1)};
-  auto result = RendererFunctions::CreateDynamicVirtualComponent(
-      mts_ctx, argv, static_cast<int>(std::size(argv)));
-
-  ASSERT_TRUE(result.IsCPointer());
-  std::unique_ptr<RadonBase> component(
-      static_cast<RadonBase*>(result.CPoint()));
-  EXPECT_EQ(component->tasm_, tasm.get());
-
-  tasm->page_config_->SetEnableEventHandleRefactor(true);
-  auto* component_node = static_cast<RadonNode*>(component.get());
-  component_node->SetStaticEvent("bind", "tap", "onTap");
-  ASSERT_TRUE(component_node->CreateElementIfNeeded());
-  component_node->DispatchFirstTime();
-
-  auto* listeners =
-      component_node->element()->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(listeners, nullptr);
-  EXPECT_EQ(listeners->size(), 1u);
-}
-
-TEST_P(FiberElementTest, FiberSetEventsRestoresPiperEventListener) {
-  tasm->page_config_->SetEnableEventHandleRefactor(true);
-  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
-      runtime::ContextType::LepusNGContextType);
-  ASSERT_TRUE(lepus_ctx);
-  lepus_ctx->Initialize();
-  lepus_ctx->SetGlobalData(
-      BASE_STATIC_STRING(tasm::kTemplateAssembler),
-      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
-  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
-  ASSERT_TRUE(mts_ctx);
-
-  auto piper_event = lepus::Dictionary::Create();
-  piper_event->SetValue(
-      BASE_STATIC_STRING(PiperEventContent::kPiperFunctionName),
-      lepus::Value("piperHandler"));
-  piper_event->SetValue(BASE_STATIC_STRING(PiperEventContent::kPiperFuncArgs),
-                        lepus::Value(lepus::Dictionary::Create()));
-  auto piper_events = lepus::CArray::Create();
-  piper_events->emplace_back(lepus::Value(std::move(piper_event)));
-
-  auto event = lepus::Dictionary::Create();
-  event->SetValue("name", lepus::Value("tap"));
-  event->SetValue("type", lepus::Value("bindEvent"));
-  event->SetValue("piperEventContent", lepus::Value(std::move(piper_events)));
-  auto events = lepus::CArray::Create();
-  events->emplace_back(lepus::Value(std::move(event)));
-
-  auto page = manager->CreateFiberPage("0", 0);
-  fml::RefPtr<lepus::RefCounted> page_ref = page;
-  lepus::Value argv[] = {lepus::Value(page_ref),
-                         lepus::Value(std::move(events))};
-  RendererFunctions::FiberSetEvents(mts_ctx, argv,
-                                    static_cast<int>(std::size(argv)));
-
-  auto event_iter = page->event_map().find("tap");
-  ASSERT_NE(event_iter, page->event_map().end());
-  EXPECT_TRUE(event_iter->second->is_piper_event());
-  auto* listeners = page->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(listeners, nullptr);
-  EXPECT_EQ(listeners->size(), 1u);
-
-  listeners->front()->Invoke(fml::MakeRefCounted<runtime::MessageEvent>(
-      runtime::ContextProxy::Type::kCoreContext,
-      runtime::ContextProxy::Type::kJSContext,
-      std::make_unique<pub::ValueImplLepus>(lepus::Value())));
-  EXPECT_NE(tasm_mediator.DumpDelegate().find("TriggerLepusMethodAsync"),
-            std::string::npos);
-}
-
-TEST_P(FiberElementTest, FiberAddEventPreservesDifferentListenerTypes) {
-  tasm->page_config_->SetEnableEventHandleRefactor(true);
-  auto page = manager->CreateFiberPage("page", 11);
-  auto worklet_info = lepus::Dictionary::Create();
-  worklet_info->SetValue("type", lepus::Value(tasm::kWorklet));
-  worklet_info->SetValue("value", lepus::Value("worklet"));
-
-  page->FiberAddEvent("bindEvent", "tap", lepus::Value(worklet_info),
-                      DEFAULT_ENTRY_NAME);
-  page->FiberAddEvent("bindEvent", "tap", lepus::Value("onTap"),
-                      DEFAULT_ENTRY_NAME);
-
-  auto* listeners = page->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(listeners, nullptr);
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kJS),
-            1u);
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kCore),
-            1u);
-
-  page->FiberAddEvent("bindEvent", "tap", lepus::Value("onTapAgain"),
-                      DEFAULT_ENTRY_NAME);
-  listeners = page->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(listeners, nullptr);
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kJS),
-            1u);
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kCore),
-            1u);
-
-  page->FiberAddEvent("bindEvent", "tap", lepus::Value(), DEFAULT_ENTRY_NAME);
-  listeners = page->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(listeners, nullptr);
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kJS),
-            0u);
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kCore),
-            0u);
-  EXPECT_EQ(page->event_map().find("tap"), page->event_map().end());
-  EXPECT_NE(page->lepus_event_map().find("tap"), page->lepus_event_map().end());
-
-  worklet_info->SetValue("value", lepus::Value());
-  page->FiberAddEvent("bindEvent", "tap", lepus::Value(worklet_info),
-                      DEFAULT_ENTRY_NAME);
-  listeners = page->GetEventListenerMap()->Find("tap");
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kJS),
-            0u);
-  EXPECT_EQ(CountClosureEventListeners(
-                listeners, event::ClosureEventListener::ClosureType::kCore),
-            0u);
-  auto worklet_event = page->lepus_event_map().find("tap");
-  ASSERT_NE(worklet_event, page->lepus_event_map().end());
-  EXPECT_TRUE(worklet_event->second->lepus_object().IsEmpty());
-}
-
-TEST_P(FiberElementTest, RadonEventListenersPreserveDifferentClosureTypes) {
-  tasm->page_config_->SetEnableEventHandleRefactor(true);
-  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
-      runtime::ContextType::LepusNGContextType);
-  ASSERT_TRUE(lepus_ctx);
-  lepus_ctx->Initialize();
-  lepus_ctx->SetGlobalData(
-      BASE_STATIC_STRING(tasm::kTemplateAssembler),
-      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
-  const std::string source =
-      "let runWorklet = (_worklet, _params, _options) => "
-      "({eventReturnResult: 1});";
-  lepus::BytecodeGenerator::GenerateBytecode(lepus_ctx->GetMTSContext(), source,
-                                             lepus_ctx->GetSdkVersion(), "");
-  ASSERT_TRUE(lepus_ctx->Execute(nullptr));
-
-  RadonNode mixed_node(tasm->page_proxy(), "view", 1);
-  mixed_node.SetTasm(tasm.get());
-  mixed_node.SetStaticEvent("bindEvent", "tap", "onTap");
-  mixed_node.SetWorkletEvent("bindEvent", "tap", lepus::Value("worklet"),
-                             lepus_ctx.get());
-  auto cloned_base = radon_factory::Copy(mixed_node);
-  auto* cloned_node = static_cast<RadonNode*>(cloned_base.get());
-  cloned_node->SetTasm(tasm.get());
-
-  ASSERT_TRUE(mixed_node.CreateElementIfNeeded());
-  mixed_node.DispatchFirstTime();
-  auto* mixed_listeners =
-      mixed_node.element()->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(mixed_listeners, nullptr);
-  EXPECT_EQ(CountClosureEventListeners(
-                mixed_listeners, event::ClosureEventListener::ClosureType::kJS),
-            1u);
-  EXPECT_EQ(
-      CountClosureEventListeners(
-          mixed_listeners, event::ClosureEventListener::ClosureType::kCore),
-      1u);
-
-  auto cloned_worklet = cloned_node->lepus_events().find("tap");
-  ASSERT_NE(cloned_worklet, cloned_node->lepus_events().end());
-  EXPECT_EQ(cloned_worklet->second->lepus_context(), lepus_ctx.get());
-  EXPECT_EQ(cloned_worklet->second->lepus_object().String().str(), "worklet");
-
-  ASSERT_TRUE(cloned_node->CreateElementIfNeeded());
-  cloned_node->DispatchFirstTime();
-  auto* cloned_listeners =
-      cloned_node->element()->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(cloned_listeners, nullptr);
-  EXPECT_EQ(
-      CountClosureEventListeners(cloned_listeners,
-                                 event::ClosureEventListener::ClosureType::kJS),
-      1u);
-  EXPECT_EQ(
-      CountClosureEventListeners(
-          cloned_listeners, event::ClosureEventListener::ClosureType::kCore),
-      1u);
-
-  auto core_listener = std::find_if(
-      cloned_listeners->begin(), cloned_listeners->end(),
-      [](const std::shared_ptr<event::EventListener>& listener) {
-        return listener->type() ==
-                   event::EventListener::Type::kClosureEventListener &&
-               static_cast<event::ClosureEventListener*>(listener.get())
-                       ->closure_type() ==
-                   event::ClosureEventListener::ClosureType::kCore;
-      });
-  ASSERT_NE(core_listener, cloned_listeners->end());
-  auto propagated_event = fml::MakeRefCounted<event::TouchEvent>("tap");
-  auto args = lepus::CArray::Create();
-  args->emplace_back(lepus::Value(lepus::CArray::Create()));
-  args->emplace_back(lepus::Value(lepus::Dictionary::Create()));
-  args->emplace_back(propagated_event);
-  (*core_listener)
-      ->Invoke(fml::MakeRefCounted<runtime::MessageEvent>(
-          runtime::ContextProxy::Type::kCoreContext,
-          runtime::ContextProxy::Type::kJSContext,
-          std::make_unique<pub::ValueImplLepus>(
-              lepus::Value(std::move(args)))));
-  EXPECT_TRUE(propagated_event->is_stop_propagation());
-
-  RadonNode empty_worklet_node(tasm->page_proxy(), "view", 2);
-  empty_worklet_node.SetTasm(tasm.get());
-  empty_worklet_node.SetStaticEvent("bindEvent", "tap", "onTap");
-  empty_worklet_node.SetWorkletEvent("bindEvent", "tap", lepus::Value(),
-                                     lepus_ctx.get());
-  ASSERT_TRUE(empty_worklet_node.CreateElementIfNeeded());
-  empty_worklet_node.DispatchFirstTime();
-  auto* empty_worklet_listeners =
-      empty_worklet_node.element()->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(empty_worklet_listeners, nullptr);
-  EXPECT_EQ(
-      CountClosureEventListeners(empty_worklet_listeners,
-                                 event::ClosureEventListener::ClosureType::kJS),
-      1u);
-  EXPECT_EQ(CountClosureEventListeners(
-                empty_worklet_listeners,
-                event::ClosureEventListener::ClosureType::kCore),
-            0u);
-
-  RadonNode empty_callback_node(tasm->page_proxy(), "view", 3);
-  empty_callback_node.SetTasm(tasm.get());
-  empty_callback_node.SetStaticEvent("bindEvent", "tap", "");
-  ASSERT_TRUE(empty_callback_node.CreateElementIfNeeded());
-  empty_callback_node.DispatchFirstTime();
-  EXPECT_EQ(empty_callback_node.element()->GetEventListenerMap()->Find("tap"),
-            nullptr);
 }
 
 TEST_P(FiberElementTest, TestSetOverflow) {
@@ -10833,48 +10556,6 @@ TEST_P(FiberElementTest, FromTemplateInfoTest) {
   EXPECT_EQ(ref_0_0 && ref_0_0->IsRefCounted(), true);
   auto ref_0_0_0 = map->GetValueOrNull("0_0_0");
   EXPECT_EQ(ref_0_0_0 && ref_0_0_0->IsRefCounted(), true);
-}
-
-TEST_P(FiberElementTest, ElementInfoEventsSyncAfterAttach) {
-  manager->config_->SetEnableEventHandleRefactor(true);
-  manager->SetConfig(manager->config_);
-  tasm->page_config_ = manager->config_;
-
-  ElementTemplateInfo template_info;
-  template_info.exist_ = true;
-  template_info.key_ = "event_template";
-
-  ElementInfo element_info;
-  element_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
-  element_info.events_.push_back(
-      {base::String("bindEvent"), base::String("tap"), base::String("onTap")});
-  element_info.events_.push_back({base::String("global-bindEvent"),
-                                  base::String("custom"),
-                                  base::String("onCustom")});
-  template_info.elements_.emplace_back(std::move(element_info));
-
-  auto elements = TreeResolver::FromTemplateInfo(template_info);
-  ASSERT_EQ(elements.size(), 1u);
-  auto target = elements.front();
-  EXPECT_EQ(target->element_manager(), nullptr);
-  EXPECT_EQ(target->GetEventListenerMap()->Find("tap"), nullptr);
-  EXPECT_EQ(target->GetEventListenerMap()->Find("custom"), nullptr);
-
-  auto result = TreeResolver::InitElementTree(
-      std::move(elements), 0, manager,
-      tasm->style_sheet_manager(DEFAULT_ENTRY_NAME));
-  auto root = result.GetProperty(0);
-  ASSERT_TRUE(root.IsRefCounted());
-  target = fml::static_ref_ptr_cast<Element>(root.RefCounted());
-
-  EXPECT_EQ(
-      CountClosureEventListeners(target->GetEventListenerMap()->Find("tap"),
-                                 event::ClosureEventListener::ClosureType::kJS),
-      1u);
-  EXPECT_EQ(
-      CountClosureEventListeners(target->GetEventListenerMap()->Find("custom"),
-                                 event::ClosureEventListener::ClosureType::kJS),
-      1u);
 }
 
 TEST_P(FiberElementTest, SerializeTemplateElementRecursively) {
