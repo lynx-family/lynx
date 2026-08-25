@@ -172,6 +172,19 @@ void Fragment::StyleChanged() {
       return;
     }
 
+    Fragment* previous_parent = fragment_parent();
+    const bool keeps_stacking_parent = target_parent == previous_parent;
+    size_t previous_paint_index = 0;
+    if (keeps_stacking_parent) {
+      // Batched insertions may have left one paint bucket pending. Normalize it
+      // once before applying the common single-node z-index update locally.
+      target_parent->UpdateZIndexList();
+      previous_paint_index = target_parent->PaintOrderIndex(this);
+    }
+    if (previous_parent != nullptr) {
+      previous_parent->RemoveFromPaintOrderBucket(this);
+    }
+
     set_was_position_fixed(current_fixed);
     set_old_z_index(current_z_index);
 
@@ -189,18 +202,15 @@ void Fragment::StyleChanged() {
       ref = ref->next_render_sibling();
     }
 
-    if (target_parent != fragment_parent()) {
+    if (!keeps_stacking_parent) {
       ReparentStackingNode(target_parent,
                            ref != nullptr ? ref->fragment_impl() : nullptr);
     } else {
-      // A z-index/fixed value can change its sort group without changing its
-      // stacking parent.
-      if (previous_z_index != current_z_index &&
-          (previous_z_index != 0 || current_z_index != 0)) {
-        target_parent->MarkDirtyState(kNeedSortZChild);
-      }
-      if (previous_fixed != current_fixed) {
-        target_parent->MarkDirtyState(kNeedSortFixedChild);
+      // Keep children_ in structural/document order. A single style update
+      // only moves this node inside the relevant paint bucket.
+      target_parent->InsertIntoPaintOrderBucket(this);
+      if (previous_paint_index != target_parent->PaintOrderIndex(this)) {
+        target_parent->InvalidateForRedraw();
       }
     }
 
@@ -243,70 +253,179 @@ void Fragment::UpdateZIndexList() {
     return;
   }
 
-  // If do not need sort z-index child and fixed child, we should not update
-  // z-index list.
-  if (!NeedSortZChild() && !NeedSortFixedChild()) {
+  if (paint_order_buckets_ == nullptr) {
+    ResetDirtyState(kNeedSortZChild);
+    ResetDirtyState(kNeedSortFixedChild);
     return;
   }
 
-  // Sorts the children based on their stacking context.
-  // The sorting order is as follows:
-  // 1. Nodes with a negative z-index, sorted by z-index.
-  // 2. Nodes with a z-index of 0 that are not fixed, maintaining their relative
-  //    order.
-  // 3. Nodes with a z-index of 0 that are fixed, sorted by CompareElementOrder.
-  // 4. Nodes with a positive z-index, sorted by z-index.
-  // If the order of children changes after sorting, NeedRedraw is marked.
-  auto get_group = [](const Fragment* fragment) {
-    int z_index = fragment->old_z_index();
-    if (z_index < 0) {
-      return 0;  // Group 0: negative z-index
-    }
-    if (z_index > 0) {
-      return 3;  // Group 3: positive z-index
-    }
-    // z-index is 0
-    if (fragment->was_position_fixed()) {
-      return 2;  // Group 2: fixed
-    }
-    return 1;  // Group 1: not fixed
-  };
+  if (!NeedSortZChild() && !NeedSortFixedChild() &&
+      !paint_order_buckets_->negative_z_dirty &&
+      !paint_order_buckets_->fixed_zero_dirty &&
+      !paint_order_buckets_->positive_z_dirty) {
+    return;
+  }
 
-  auto comparator = [&](const Fragment* a, const Fragment* b) {
-    int group_a = get_group(a);
-    int group_b = get_group(b);
-
-    if (group_a != group_b) {
-      return group_a < group_b;
-    }
-
-    // Same group, sort within the group
-    switch (group_a) {
-      case 0:  // negative z-index
-      case 3:  // positive z-index
-        if (a->old_z_index() != b->old_z_index()) {
-          return a->old_z_index() < b->old_z_index();
-        }
-        return BaseElementContainer::CompareElementOrder(a->element(),
-                                                         b->element()) < 0;
-      case 2:  // fixed, z-index 0
-        return BaseElementContainer::CompareElementOrder(a->element(),
-                                                         b->element()) < 0;
-      case 1:  // not fixed, z-index 0
-      default:
-        return false;
-    }
-  };
-
-  const auto previous_order = children_;
-  std::stable_sort(children_.begin(), children_.end(), comparator);
-  if (!std::equal(previous_order.begin(), previous_order.end(),
-                  children_.begin(), children_.end())) {
-    InvalidateForRedraw();
+  if (paint_order_buckets_->negative_z_dirty) {
+    std::stable_sort(paint_order_buckets_->negative_z.begin(),
+                     paint_order_buckets_->negative_z.end(), ZPaintOrderLess);
+    paint_order_buckets_->negative_z_dirty = false;
+  }
+  if (paint_order_buckets_->positive_z_dirty) {
+    std::stable_sort(paint_order_buckets_->positive_z.begin(),
+                     paint_order_buckets_->positive_z.end(), ZPaintOrderLess);
+    paint_order_buckets_->positive_z_dirty = false;
+  }
+  if (paint_order_buckets_->fixed_zero_dirty) {
+    std::stable_sort(paint_order_buckets_->fixed_zero.begin(),
+                     paint_order_buckets_->fixed_zero.end(), DocumentOrderLess);
+    paint_order_buckets_->fixed_zero_dirty = false;
   }
 
   ResetDirtyState(kNeedSortZChild);
   ResetDirtyState(kNeedSortFixedChild);
+}
+
+Fragment::PaintOrderGroup Fragment::PaintGroupFor(const Fragment* child) {
+  if (child->old_z_index() < 0) {
+    return PaintOrderGroup::kNegativeZ;
+  }
+  if (child->old_z_index() > 0) {
+    return PaintOrderGroup::kPositiveZ;
+  }
+  return child->was_position_fixed() ? PaintOrderGroup::kFixedZero
+                                     : PaintOrderGroup::kNormalFlow;
+}
+
+bool Fragment::ZPaintOrderLess(const Fragment* left, const Fragment* right) {
+  if (left->old_z_index() != right->old_z_index()) {
+    return left->old_z_index() < right->old_z_index();
+  }
+  return DocumentOrderLess(left, right);
+}
+
+bool Fragment::DocumentOrderLess(const Fragment* left, const Fragment* right) {
+  return BaseElementContainer::CompareElementOrder(left->element(),
+                                                   right->element()) < 0;
+}
+
+void Fragment::AppendToPaintOrderBucket(Fragment* child) {
+  if (PaintGroupFor(child) == PaintOrderGroup::kNormalFlow) {
+    return;
+  }
+  if (paint_order_buckets_ == nullptr) {
+    paint_order_buckets_ = std::make_unique<PaintOrderBuckets>();
+  }
+  switch (PaintGroupFor(child)) {
+    case PaintOrderGroup::kNegativeZ:
+      paint_order_buckets_->negative_z.emplace_back(child);
+      paint_order_buckets_->negative_z_dirty = true;
+      MarkDirtyState(kNeedSortZChild);
+      break;
+    case PaintOrderGroup::kFixedZero:
+      paint_order_buckets_->fixed_zero.emplace_back(child);
+      paint_order_buckets_->fixed_zero_dirty = true;
+      MarkDirtyState(kNeedSortFixedChild);
+      break;
+    case PaintOrderGroup::kPositiveZ:
+      paint_order_buckets_->positive_z.emplace_back(child);
+      paint_order_buckets_->positive_z_dirty = true;
+      MarkDirtyState(kNeedSortZChild);
+      break;
+    case PaintOrderGroup::kNormalFlow:
+      break;
+  }
+}
+
+void Fragment::InsertIntoPaintOrderBucket(Fragment* child) {
+  if (PaintGroupFor(child) == PaintOrderGroup::kNormalFlow) {
+    return;
+  }
+  if (paint_order_buckets_ == nullptr) {
+    paint_order_buckets_ = std::make_unique<PaintOrderBuckets>();
+  }
+  PaintOrderBucket* bucket = nullptr;
+  bool (*less)(const Fragment*, const Fragment*) = nullptr;
+  switch (PaintGroupFor(child)) {
+    case PaintOrderGroup::kNegativeZ:
+      bucket = &paint_order_buckets_->negative_z;
+      less = ZPaintOrderLess;
+      break;
+    case PaintOrderGroup::kFixedZero:
+      bucket = &paint_order_buckets_->fixed_zero;
+      less = DocumentOrderLess;
+      break;
+    case PaintOrderGroup::kPositiveZ:
+      bucket = &paint_order_buckets_->positive_z;
+      less = ZPaintOrderLess;
+      break;
+    case PaintOrderGroup::kNormalFlow:
+      return;
+  }
+  bucket->insert(std::lower_bound(bucket->begin(), bucket->end(), child, less),
+                 child);
+}
+
+void Fragment::RemoveFromPaintOrderBucket(Fragment* child) {
+  if (paint_order_buckets_ == nullptr) {
+    return;
+  }
+  PaintOrderBucket* bucket = nullptr;
+  switch (PaintGroupFor(child)) {
+    case PaintOrderGroup::kNegativeZ:
+      bucket = &paint_order_buckets_->negative_z;
+      break;
+    case PaintOrderGroup::kFixedZero:
+      bucket = &paint_order_buckets_->fixed_zero;
+      break;
+    case PaintOrderGroup::kPositiveZ:
+      bucket = &paint_order_buckets_->positive_z;
+      break;
+    case PaintOrderGroup::kNormalFlow:
+      return;
+  }
+  if (auto it = std::find(bucket->begin(), bucket->end(), child);
+      it != bucket->end()) {
+    bucket->erase(it);
+  }
+  if (paint_order_buckets_->negative_z.empty() &&
+      paint_order_buckets_->fixed_zero.empty() &&
+      paint_order_buckets_->positive_z.empty()) {
+    paint_order_buckets_.reset();
+  }
+}
+
+size_t Fragment::PaintOrderIndex(const Fragment* target) const {
+  size_t index = 0;
+  auto find_in_bucket = [&](const PaintOrderBucket& bucket) {
+    for (const auto* child : bucket) {
+      if (child == target) {
+        return true;
+      }
+      ++index;
+    }
+    return false;
+  };
+  if (paint_order_buckets_ != nullptr &&
+      find_in_bucket(paint_order_buckets_->negative_z)) {
+    return index;
+  }
+  for (const auto* child : children_) {
+    if (PaintGroupFor(child) != PaintOrderGroup::kNormalFlow) {
+      continue;
+    }
+    if (child == target) {
+      return index;
+    }
+    ++index;
+  }
+  if (paint_order_buckets_ != nullptr) {
+    if (find_in_bucket(paint_order_buckets_->fixed_zero) ||
+        find_in_bucket(paint_order_buckets_->positive_z)) {
+      return index;
+    }
+  }
+  return children_.size();
 }
 
 void Fragment::CreatePaintingNode(
@@ -1340,7 +1459,34 @@ void Fragment::FlushPendingNodeReadyIfNeeded() {
 }
 
 void Fragment::DrawChildren(DisplayListBuilder& display_list_builder) {
-  for (const auto& child : children_) {
+  // ElementManager normally flushes dirty stacking contexts before drawing.
+  // Keep direct/standalone Fragment draws correct as well.
+  UpdateZIndexList();
+  if (paint_order_buckets_ == nullptr) {
+    for (auto* child : children_) {
+      child->Draw(display_list_builder);
+    }
+    return;
+  }
+
+  for (auto* child : paint_order_buckets_->negative_z) {
+    child->Draw(display_list_builder);
+  }
+  const size_t special_child_count = paint_order_buckets_->negative_z.size() +
+                                     paint_order_buckets_->fixed_zero.size() +
+                                     paint_order_buckets_->positive_z.size();
+  if (special_child_count != children_.size()) {
+    for (auto* child : children_) {
+      if (PaintGroupFor(child) != PaintOrderGroup::kNormalFlow) {
+        continue;
+      }
+      child->Draw(display_list_builder);
+    }
+  }
+  for (auto* child : paint_order_buckets_->fixed_zero) {
+    child->Draw(display_list_builder);
+  }
+  for (auto* child : paint_order_buckets_->positive_z) {
     child->Draw(display_list_builder);
   }
 }
@@ -1494,30 +1640,42 @@ void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
 
   InvalidateForRedraw();
 
-  if (child->was_position_fixed()) {
-    // Mark need resort children.
-    MarkDirtyState(kNeedSortFixedChild);
-  }
-
-  if (child->old_z_index() != 0) {
-    // Mark need resort children.
-    MarkDirtyState(kNeedSortZChild);
-  }
-
   if (sibling == nullptr) {
-    children_.emplace_back(child);
+    // Hoisted z/fixed fragments frequently arrive without a structural
+    // sibling. Keep children_ in document order independently of paint order.
+    if (PaintGroupFor(child) == PaintOrderGroup::kNormalFlow ||
+        children_.empty() || !DocumentOrderLess(child, children_.back())) {
+      children_.emplace_back(child);
+    } else {
+      auto it = std::find_if(children_.begin(), children_.end(),
+                             [child](const Fragment* current) {
+                               return DocumentOrderLess(child, current);
+                             });
+      children_.insert(it, child);
+    }
   } else {
     if (auto it = std::find(children_.begin(), children_.end(), sibling);
         it != children_.end()) {
       children_.insert(it, child);
     } else {
       // Keep the tree internally consistent even if a stale caller supplied a
-      // sibling from another stacking parent. Sorting restores z/fixed order.
-      children_.emplace_back(child);
+      // sibling from another stacking parent. Recover document order without
+      // coupling structural storage to paint sorting.
+      if (children_.empty() || !DocumentOrderLess(child, children_.back())) {
+        children_.emplace_back(child);
+      } else {
+        auto insertion =
+            std::find_if(children_.begin(), children_.end(),
+                         [child](const Fragment* current) {
+                           return DocumentOrderLess(child, current);
+                         });
+        children_.insert(insertion, child);
+      }
     }
   }
 
   child->set_parent(this);
+  AppendToPaintOrderBucket(child);
   InvalidateRestacking();
 }
 
@@ -1544,6 +1702,7 @@ void Fragment::RemoveChild(Fragment* child) {
     LOGE("Fragment RemoveChild Error: child's parent is not this fragment");
   }
 
+  RemoveFromPaintOrderBucket(child);
   child->set_parent(nullptr);
 
   auto it = std::find(children_.begin(), children_.end(), child);

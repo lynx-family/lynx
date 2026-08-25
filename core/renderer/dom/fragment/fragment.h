@@ -145,6 +145,30 @@ class Fragment : public BaseElementContainer {
 
   void DrawChildren(DisplayListBuilder& display_list_builder);
 
+  enum class PaintOrderGroup : uint8_t {
+    kNegativeZ,
+    kNormalFlow,
+    kFixedZero,
+    kPositiveZ,
+  };
+  using PaintOrderBucket = base::InlineVector<Fragment*, 2>;
+  struct PaintOrderBuckets {
+    PaintOrderBucket negative_z;
+    PaintOrderBucket fixed_zero;
+    PaintOrderBucket positive_z;
+    bool negative_z_dirty{false};
+    bool fixed_zero_dirty{false};
+    bool positive_z_dirty{false};
+  };
+
+  static PaintOrderGroup PaintGroupFor(const Fragment* child);
+  static bool ZPaintOrderLess(const Fragment* left, const Fragment* right);
+  static bool DocumentOrderLess(const Fragment* left, const Fragment* right);
+  void AppendToPaintOrderBucket(Fragment* child);
+  void InsertIntoPaintOrderBucket(Fragment* child);
+  void RemoveFromPaintOrderBucket(Fragment* child);
+  size_t PaintOrderIndex(const Fragment* child) const;
+
   void AddChildBefore(Fragment* child, Fragment* sibling);
 
   void RemoveSelf();
@@ -253,6 +277,11 @@ class Fragment : public BaseElementContainer {
 
   // TODO(zhongyr): children management methods.
   base::InlineVector<Fragment*, kChildrenInlineVectorSize> children_;
+
+  // Paint order is independent from the structural FragmentTree order in
+  // children_. Normal-flow children are read directly from children_; only
+  // groups that require z/fixed ordering are cached here.
+  std::unique_ptr<PaintOrderBuckets> paint_order_buckets_;
 
   // Store the children fragment with z-index, which's parent may not equal to
   // this but the corresponding element's parent is current fragment's element.
