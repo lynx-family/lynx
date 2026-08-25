@@ -18,6 +18,7 @@
 #include "base/include/fml/message_loop.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -539,6 +540,59 @@ TEST_F(FragmentDrawTest, RestackingKeepsNewFixedOffsetRootRelative) {
             starlight::FloatPoint(7.f, 8.f));
 }
 
+TEST_F(FragmentDrawTest,
+       FixedTransitionInvalidatesRootOffsetWithUnchangedStackingParent) {
+  manager->config_->SetEnableFixedNew(true);
+  auto page = manager->CreateFiberPage("0", 0);
+  auto offset_parent = manager->CreateFiberView();
+  auto changing_child = manager->CreateFiberView();
+  changing_child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(4));
+
+  page->InsertNode(offset_parent);
+  offset_parent->InsertNode(changing_child);
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* parent_fragment = offset_parent->fragment_impl();
+  auto* child_fragment = changing_child->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(parent_fragment, nullptr);
+  ASSERT_NE(child_fragment, nullptr);
+  ASSERT_EQ(child_fragment->fragment_parent(), page_fragment);
+
+  starlight::LayoutResultForRendering page_layout;
+  starlight::LayoutResultForRendering parent_layout;
+  parent_layout.offset_ = starlight::FloatPoint(50.f, 60.f);
+  starlight::LayoutResultForRendering child_layout;
+  child_layout.offset_ = starlight::FloatPoint(7.f, 8.f);
+  page_fragment->UpdateLayout(page_layout);
+  parent_fragment->UpdateLayout(parent_layout);
+  child_fragment->UpdateLayout(child_layout);
+  page_fragment->RestackIfNeeded();
+  ASSERT_EQ(child_fragment->stacking_geometry_.offset_to_parent,
+            starlight::FloatPoint(57.f, 68.f));
+
+  // z-index already hoisted the child to the page. Switching to fixed keeps
+  // that same Fragment parent and the same numeric local layout result, but
+  // changes the result from ancestor-relative to page-root-relative.
+  changing_child->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                           lepus::Value("fixed"));
+  page->FlushActionsAsRoot();
+
+  ASSERT_TRUE(changing_child->IsFixedNewOrUnified());
+  ASSERT_EQ(child_fragment->fragment_parent(), page_fragment);
+  ASSERT_TRUE(page_fragment->needs_restacking_);
+  ASSERT_FALSE(page_fragment->needs_layout_offset_collection_);
+  ASSERT_EQ(child_fragment->layout_offset_to_root_,
+            starlight::FloatPoint(7.f, 8.f));
+  page_fragment->RestackIfNeeded();
+
+  EXPECT_EQ(child_fragment->layout_offset_to_root_,
+            starlight::FloatPoint(7.f, 8.f));
+  EXPECT_EQ(child_fragment->stacking_geometry_.offset_to_parent,
+            starlight::FloatPoint(7.f, 8.f));
+}
+
 TEST_F(FragmentDrawTest, InitialRestackingSharesRootLayoutSyncTraversal) {
   auto page = manager->CreateFiberPage("0", 0);
   auto flattened_parent = manager->CreateFiberView();
@@ -573,18 +627,151 @@ TEST_F(FragmentDrawTest, InitialRestackingSharesRootLayoutSyncTraversal) {
 
   EXPECT_FALSE(page_fragment->needs_restacking_);
   EXPECT_NE(page_fragment->restacking_generation_, 0u);
-  EXPECT_EQ(page_fragment->layout_offset_generation_,
-            page_fragment->restacking_generation_);
-  EXPECT_EQ(parent_fragment->layout_offset_generation_,
-            page_fragment->restacking_generation_);
-  EXPECT_EQ(child_fragment->layout_offset_generation_,
-            page_fragment->restacking_generation_);
+  EXPECT_TRUE(page_fragment->layout_offset_valid_);
+  EXPECT_TRUE(parent_fragment->layout_offset_valid_);
+  EXPECT_TRUE(child_fragment->layout_offset_valid_);
+  EXPECT_FALSE(page_fragment->needs_layout_offset_collection_);
   EXPECT_EQ(child_fragment->stacking_geometry_.offset_to_parent,
             starlight::FloatPoint(57.f, 68.f));
 
   const uint64_t generation = page_fragment->restacking_generation_;
   page_fragment->RestackIfNeeded();
   EXPECT_EQ(page_fragment->restacking_generation_, generation);
+}
+
+TEST_F(FragmentDrawTest,
+       LayoutInfoTraversalCachesOffsetsWithoutARestackElementWalk) {
+  constexpr size_t kDepth = 128;
+  auto page = manager->CreateFiberPage("0", 0);
+  Element* parent = page.get();
+  std::vector<fml::RefPtr<Element>> descendants;
+  descendants.reserve(kDepth);
+  for (size_t i = 0; i < kDepth; ++i) {
+    auto child = manager->CreateFiberView();
+    parent->InsertNode(child);
+    parent = child.get();
+    descendants.emplace_back(std::move(child));
+  }
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_TRUE(page_fragment->needs_layout_offset_collection_);
+  auto options = std::make_shared<PipelineOptions>();
+
+  // This is the Element traversal PageElement already runs after Starlight.
+  // It must leave every Fragment offset reusable by the following restack.
+  page->UpdateLayoutInfoRecursively(options.get());
+
+  EXPECT_FALSE(page_fragment->needs_layout_offset_collection_);
+  EXPECT_TRUE(page_fragment->layout_offset_valid_);
+  for (const auto& element : descendants) {
+    ASSERT_NE(element->fragment_impl(), nullptr);
+    EXPECT_TRUE(element->fragment_impl()->layout_offset_valid_);
+  }
+
+  // A sentinel on the deepest cached result guards against reintroducing a
+  // full ElementTree collection in the root Fragment layout entry.
+  auto* deepest_fragment = descendants.back()->fragment_impl();
+  const starlight::FloatPoint sentinel(123.f, 456.f);
+  deepest_fragment->layout_offset_to_root_ = sentinel;
+  page_fragment->needs_restacking_ = true;
+  page_fragment->UpdateLayout(0.f, 0.f, false);
+  EXPECT_EQ(deepest_fragment->layout_offset_to_root_, sentinel);
+}
+
+TEST_F(FragmentDrawTest,
+       DirectLayoutUpdateRefreshesOnlyTheAffectedLogicalSubtree) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto unrelated = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(child);
+  page->InsertNode(unrelated);
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* parent_fragment = parent->fragment_impl();
+  auto* child_fragment = child->fragment_impl();
+  auto* unrelated_fragment = unrelated->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(parent_fragment, nullptr);
+  ASSERT_NE(child_fragment, nullptr);
+  ASSERT_NE(unrelated_fragment, nullptr);
+
+  starlight::LayoutResultForRendering page_layout;
+  starlight::LayoutResultForRendering parent_layout;
+  parent_layout.offset_ = starlight::FloatPoint(10.f, 20.f);
+  starlight::LayoutResultForRendering child_layout;
+  child_layout.offset_ = starlight::FloatPoint(3.f, 4.f);
+  starlight::LayoutResultForRendering unrelated_layout;
+  unrelated_layout.offset_ = starlight::FloatPoint(30.f, 40.f);
+  page_fragment->UpdateLayout(page_layout);
+  parent_fragment->UpdateLayout(parent_layout);
+  child_fragment->UpdateLayout(child_layout);
+  unrelated_fragment->UpdateLayout(unrelated_layout);
+  page_fragment->RestackIfNeeded();
+  ASSERT_FALSE(page_fragment->needs_layout_offset_collection_);
+
+  parent_layout.offset_ = starlight::FloatPoint(11.f, 21.f);
+  parent_fragment->UpdateLayout(parent_layout);
+
+  EXPECT_FALSE(page_fragment->needs_layout_offset_collection_);
+  EXPECT_EQ(parent_fragment->layout_offset_to_root_,
+            starlight::FloatPoint(11.f, 21.f));
+  EXPECT_EQ(child_fragment->layout_offset_to_root_,
+            starlight::FloatPoint(14.f, 25.f));
+  EXPECT_EQ(unrelated_fragment->layout_offset_to_root_,
+            starlight::FloatPoint(30.f, 40.f));
+}
+
+TEST_F(FragmentDrawTest,
+       LogicalReparentRefreshesCachedOffsetsWithoutNumericLayoutChange) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto old_parent = manager->CreateFiberView();
+  auto new_parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  page->InsertNode(old_parent);
+  page->InsertNode(new_parent);
+  old_parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* old_parent_fragment = old_parent->fragment_impl();
+  auto* new_parent_fragment = new_parent->fragment_impl();
+  auto* child_fragment = child->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(old_parent_fragment, nullptr);
+  ASSERT_NE(new_parent_fragment, nullptr);
+  ASSERT_NE(child_fragment, nullptr);
+
+  starlight::LayoutResultForRendering page_layout;
+  starlight::LayoutResultForRendering old_parent_layout;
+  old_parent_layout.offset_ = starlight::FloatPoint(10.f, 20.f);
+  starlight::LayoutResultForRendering new_parent_layout;
+  new_parent_layout.offset_ = starlight::FloatPoint(50.f, 60.f);
+  starlight::LayoutResultForRendering child_layout;
+  child_layout.offset_ = starlight::FloatPoint(3.f, 4.f);
+  page_fragment->UpdateLayout(page_layout);
+  old_parent_fragment->UpdateLayout(old_parent_layout);
+  new_parent_fragment->UpdateLayout(new_parent_layout);
+  child_fragment->UpdateLayout(child_layout);
+  page_fragment->RestackIfNeeded();
+  ASSERT_EQ(child_fragment->layout_offset_to_root_,
+            starlight::FloatPoint(13.f, 24.f));
+
+  old_parent->RemoveNode(child);
+  new_parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  ASSERT_EQ(child_fragment->fragment_parent(), new_parent_fragment);
+  EXPECT_FALSE(page_fragment->needs_layout_offset_collection_);
+  EXPECT_EQ(child_fragment->layout_offset_to_root_,
+            starlight::FloatPoint(53.f, 64.f));
+  page_fragment->RestackIfNeeded();
+  EXPECT_EQ(child_fragment->stacking_geometry_.offset_to_parent,
+            starlight::FloatPoint(3.f, 4.f));
 }
 
 TEST_F(FragmentDrawTest, RestackingRootIsPageForManagedFragments) {
@@ -1001,6 +1188,57 @@ TEST_F(FragmentDrawTest, PaintBucketsPreserveStructuralDocumentOrder) {
                   positive_one_fragment->id(), positive_two_fragment->id()));
 }
 
+TEST_F(FragmentDrawTest,
+       CustomListPaintOrderBypassUsesStructuralDisplayListOrder) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto list = manager->CreateFiberList(nullptr, "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  auto positive = manager->CreateFiberView();
+  auto negative = manager->CreateFiberView();
+  list->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  positive->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  negative->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+
+  page->InsertNode(list);
+  list->InsertNode(positive);
+  list->InsertNode(negative);
+  page->FlushActionsAsRoot();
+
+  // The custom/native list implementation owns child ordering. Its display
+  // list must preserve structural insertion order even though paint buckets
+  // were populated while the Fragment tree was assembled.
+  list->disable_list_platform_implementation_ = true;
+  auto* page_fragment = page->fragment_impl();
+  auto* list_fragment = list->fragment_impl();
+  auto* positive_fragment = positive->fragment_impl();
+  auto* negative_fragment = negative->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(list_fragment, nullptr);
+  ASSERT_NE(positive_fragment, nullptr);
+  ASSERT_NE(negative_fragment, nullptr);
+  ASSERT_EQ(positive_fragment->fragment_parent(), list_fragment);
+  ASSERT_EQ(negative_fragment->fragment_parent(), list_fragment);
+  ASSERT_NE(list_fragment->paint_order_buckets_, nullptr);
+  EXPECT_THAT(list_fragment->children_,
+              ::testing::ElementsAre(positive_fragment, negative_fragment));
+
+  list_fragment->has_platform_renderer_ = true;
+  positive_fragment->has_platform_renderer_ = true;
+  negative_fragment->has_platform_renderer_ = true;
+  page_fragment->InvalidateRestacking();
+  page_fragment->RestackIfNeeded();
+  DisplayListBuilder builder;
+  list_fragment->DrawFull(builder);
+  std::vector<int32_t> view_ids;
+  for (const auto& item : CollectDisplayListItems(builder.Build())) {
+    if (item.type == DisplayListOpType::kDrawView) {
+      view_ids.emplace_back(item.payload.draw_view.view_id);
+    }
+  }
+  EXPECT_THAT(view_ids, ::testing::ElementsAre(positive_fragment->id(),
+                                               negative_fragment->id()));
+}
+
 TEST_F(FragmentDrawTest, LocalZIndexResortInvalidatesOnlyOnOrderChange) {
   auto page = manager->CreateFiberPage("0", 0);
   auto first = manager->CreateFiberView();
@@ -1224,6 +1462,46 @@ TEST_F(FragmentDrawTest, RestackingInvalidatesOnlyChangedPaintRoots) {
   EXPECT_TRUE(page_fragment->NeedRedraw());
   EXPECT_TRUE(changed_fragment->NeedRedraw());
   EXPECT_FALSE(unchanged_fragment->NeedRedraw());
+}
+
+TEST_F(FragmentDrawTest, DeepRestackingCarriesResolvedPaintRootLinearly) {
+  constexpr size_t kDepth = 128;
+  auto page = manager->CreateFiberPage("0", 0);
+  Element* parent = page.get();
+  std::vector<fml::RefPtr<Element>> descendants;
+  descendants.reserve(kDepth);
+  for (size_t i = 0; i < kDepth; ++i) {
+    auto child = manager->CreateFiberView();
+    parent->InsertNode(child);
+    parent = child.get();
+    descendants.emplace_back(std::move(child));
+  }
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  page_fragment->has_platform_renderer_ = true;
+  starlight::LayoutResultForRendering page_layout;
+  page_fragment->UpdateLayout(page_layout);
+  for (const auto& element : descendants) {
+    auto* fragment = element->fragment_impl();
+    ASSERT_NE(fragment, nullptr);
+    fragment->has_platform_renderer_ = false;
+    starlight::LayoutResultForRendering layout;
+    layout.offset_ = starlight::FloatPoint(1.f, 1.f);
+    fragment->UpdateLayout(layout);
+  }
+  auto* deepest_fragment = descendants.back()->fragment_impl();
+  deepest_fragment->has_platform_renderer_ = true;
+
+  page_fragment->RestackIfNeeded();
+
+  EXPECT_EQ(page_fragment->stacking_geometry_.paint_root, page_fragment);
+  for (size_t i = 0; i + 1 < descendants.size(); ++i) {
+    EXPECT_EQ(descendants[i]->fragment_impl()->stacking_geometry_.paint_root,
+              page_fragment);
+  }
+  EXPECT_EQ(deepest_fragment->stacking_geometry_.paint_root, deepest_fragment);
 }
 
 TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {

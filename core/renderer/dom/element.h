@@ -1677,6 +1677,10 @@ class Element : public lepus::RefCounted,
    */
   bool IfNeedsUpdateLayoutInfo();
   void UpdateLayoutInfoRecursively(PipelineOptions* options);
+  void UpdateLayoutInfoRecursivelyInternal(
+      PipelineOptions* options,
+      base::geometry::FloatPoint layout_parent_offset_to_root,
+      bool force_layout_offset_update, Fragment* fragment_root);
   void UpdateLayoutInfo();
 
   virtual fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const {

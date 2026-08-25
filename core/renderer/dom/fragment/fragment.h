@@ -39,6 +39,10 @@ class Fragment;
 // state.
 struct ResolvedStackingGeometry {
   Fragment* parent{nullptr};
+  // Nearest platform-backed owner of this fragment's display-list content.
+  // Restacking carries it down the tree instead of rediscovering it by
+  // walking the Fragment parent chain for every changed descendant.
+  Fragment* paint_root{nullptr};
   base::geometry::FloatPoint offset_to_parent{0.f, 0.f};
   base::geometry::FloatPoint paint_offset{0.f, 0.f};
   base::geometry::FloatPoint platform_embedding_offset{0.f, 0.f};
@@ -164,6 +168,7 @@ class Fragment : public BaseElementContainer {
   static PaintOrderGroup PaintGroupFor(const Fragment* child);
   static bool ZPaintOrderLess(const Fragment* left, const Fragment* right);
   static bool DocumentOrderLess(const Fragment* left, const Fragment* right);
+  bool ShouldBypassPaintOrderBuckets() const;
   void AppendToPaintOrderBucket(Fragment* child);
   void InsertIntoPaintOrderBucket(Fragment* child);
   void RemoveFromPaintOrderBucket(Fragment* child);
@@ -199,29 +204,37 @@ class Fragment : public BaseElementContainer {
   bool is_fragment() const override { return true; }
 
  private:
+  friend class Element;
+
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
   void UpdateBorderRadiusAccordingToLayoutInfo();
   void UpdateLayoutRecursively(
       Fragment* draw_root, uint64_t restacking_generation = 0,
-      base::geometry::FloatPoint active_paint_offset = {0.f, 0.f});
+      base::geometry::FloatPoint active_paint_offset = {0.f, 0.f},
+      Fragment* active_paint_root = nullptr);
 
   void InvalidateRestacking();
+  void InvalidateLayoutOffsetCache();
   Fragment* RestackingRoot();
   uint64_t PrepareRestacking();
   void CollectLayoutOffsetsToRoot(Element* current,
-                                  base::geometry::FloatPoint parent_offset,
-                                  uint64_t restacking_generation);
+                                  base::geometry::FloatPoint parent_offset);
+  bool CacheLayoutOffsetToRoot(base::geometry::FloatPoint parent_offset);
+  bool RefreshLayoutOffsetSubtree();
+  void FinishIncrementalLayoutOffsetUpdate(Fragment* restacking_root,
+                                           bool collection_was_pending);
+  void FinishLayoutOffsetCollection();
   bool ResolveStackingGeometry(
       base::geometry::FloatPoint active_paint_offset,
-      uint64_t restacking_generation, bool flush_node_ready,
-      base::geometry::FloatPoint* child_active_paint_offset);
+      Fragment* active_paint_root, bool flush_node_ready,
+      base::geometry::FloatPoint* child_active_paint_offset,
+      Fragment** child_active_paint_root);
   void ResolveStackingGeometryRecursively(
       base::geometry::FloatPoint active_paint_offset,
-      uint64_t restacking_generation, bool flush_node_ready);
+      Fragment* active_paint_root, bool flush_node_ready);
   Fragment* ResolveStackingGeometryParent() const;
   Fragment* ResolveEnclosingStackingContextParent() const;
-  Fragment* PaintRoot();
-  static void MarkPaintRootDirty(Fragment* fragment);
+  static void MarkResolvedPaintRootDirty(Fragment* paint_root);
   void ReparentStackingNode(Fragment* target_parent, Fragment* sibling);
 
   void DrawBorder(DisplayListBuilder& display_list_builder);
@@ -307,11 +320,17 @@ class Fragment : public BaseElementContainer {
   // Resolver input. This belongs to the LayoutTree coordinate space and is
   // never read by drawing code.
   base::geometry::FloatPoint layout_offset_to_root_{0.f, 0.f};
-  uint64_t layout_offset_generation_{0};
+  int32_t layout_parent_id_for_cached_offset_{-1};
+  bool layout_offset_valid_{false};
 
   ResolvedStackingGeometry stacking_geometry_;
   bool layout_geometry_initialized_{false};
   bool needs_restacking_{true};
+  // The regular Element layout-info traversal maintains persistent root
+  // offsets. A full LayoutTree fallback is only needed when a direct Fragment
+  // update bypasses that traversal.
+  bool needs_layout_offset_collection_{true};
+  bool updating_layout_offset_cache_{false};
   uint64_t restacking_generation_{0};
 
   int32_t draw_node_capacity_{0};

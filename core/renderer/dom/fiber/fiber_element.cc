@@ -5580,11 +5580,40 @@ void Element::MarkLayoutDirtyLite() {
  * Reference {@link LayoutContext#LayoutRecursively }
  */
 void Element::UpdateLayoutInfoRecursively(PipelineOptions *options) {
-  if (!is_wrapper()) {
-    if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
-      return;
+  Fragment *fragment_root = nullptr;
+  if (EnableFragmentLayerRender()) {
+    Fragment *candidate = fragment_impl();
+    if (candidate != nullptr && candidate->fragment_parent() == nullptr) {
+      fragment_root = candidate;
     }
+  }
+  const bool force_layout_offset_update =
+      fragment_root != nullptr &&
+      fragment_root->needs_layout_offset_collection_;
+  if (fragment_root != nullptr) {
+    fragment_root->updating_layout_offset_cache_ = true;
+  }
+  UpdateLayoutInfoRecursivelyInternal(
+      options, base::geometry::FloatPoint(0.f, 0.f), force_layout_offset_update,
+      fragment_root);
+  if (fragment_root != nullptr) {
+    fragment_root->updating_layout_offset_cache_ = false;
+    fragment_root->FinishLayoutOffsetCollection();
+  }
+}
 
+void Element::UpdateLayoutInfoRecursivelyInternal(
+    PipelineOptions *options,
+    base::geometry::FloatPoint layout_parent_offset_to_root,
+    bool force_layout_offset_update, Fragment *fragment_root) {
+  const bool has_layout_node = !is_wrapper() && sl_node_ != nullptr;
+  const bool layout_dirty = has_layout_node && sl_node_->IsDirty();
+  if (!is_wrapper() && !layout_dirty && !force_layout_offset_update) {
+    return;
+  }
+
+  const base::geometry::FloatPoint previous_local_offset(left_, top_);
+  if (layout_dirty) {
     if (IfNeedsUpdateLayoutInfo()) {
       UpdateLayoutInfo();
     }
@@ -5592,8 +5621,32 @@ void Element::UpdateLayoutInfoRecursively(PipelineOptions *options) {
     sl_node_->MarkUpdated();
   }
 
+  base::geometry::FloatPoint layout_offset_to_root =
+      layout_parent_offset_to_root;
+  bool descendant_offset_update = force_layout_offset_update;
+  if (has_layout_node) {
+    Fragment *fragment = fragment_root != nullptr ? fragment_impl() : nullptr;
+    const base::geometry::FloatPoint local_offset =
+        fragment != nullptr ? fragment->layout_info_.layout_result.offset_
+                            : base::geometry::FloatPoint(left_, top_);
+    layout_offset_to_root = IsFixedNewOrUnified()
+                                ? local_offset
+                                : layout_parent_offset_to_root + local_offset;
+    if (fragment != nullptr) {
+      const bool fragment_offset_changed =
+          fragment->CacheLayoutOffsetToRoot(layout_parent_offset_to_root);
+      descendant_offset_update =
+          force_layout_offset_update || fragment_offset_changed;
+    } else {
+      descendant_offset_update =
+          force_layout_offset_update || previous_local_offset != local_offset;
+    }
+  }
+
   for (auto &child : scoped_children_) {
-    child->UpdateLayoutInfoRecursively(options);
+    child->UpdateLayoutInfoRecursivelyInternal(options, layout_offset_to_root,
+                                               descendant_offset_update,
+                                               fragment_root);
   }
 
   // A dirty child can change the list's content layout, so collect dirty list
