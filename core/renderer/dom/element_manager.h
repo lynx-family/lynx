@@ -75,6 +75,7 @@ class Element;
 class ComponentElement;
 class ImageElement;
 class ListElement;
+class ModifierElement;
 class NoneElement;
 class ScrollElement;
 class TextElement;
@@ -1001,6 +1002,12 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
    * @return the refCounted type
    */
   fml::RefPtr<ViewElement> CreateFiberView();
+
+  /**
+   * create an internal Compose Modifier frame element
+   * @return the refCounted type
+   */
+  fml::RefPtr<ModifierElement> CreateFiberModifierElement();
 
   /**
    * create Text Element
