@@ -14,16 +14,17 @@ function validateBaseUrl(url) {
   }
   
 export class URL {
-    _url;
+    _urlWithoutQuery;
+    _search;
+    _hash;
+    _hasSearch;
     _searchParamsInstance = null;
   
     constructor(url, base) {
       let baseUrl = null;
+      let resolvedUrl = String(url);
       if (!base || validateBaseUrl(url)) {
-        this._url = url;
-        if (!this._url.endsWith('/')) {
-          this._url += '/';
-        }
+        this._setUrl(resolvedUrl);
       } else {
         if (typeof base === 'string') {
           baseUrl = base;
@@ -36,14 +37,41 @@ export class URL {
         if (baseUrl.endsWith('/')) {
           baseUrl = baseUrl.slice(0, baseUrl.length - 1);
         }
-        if (!url.startsWith('/')) {
-          url = `/${url}`;
+        if (!resolvedUrl.startsWith('/')) {
+          resolvedUrl = `/${resolvedUrl}`;
         }
-        if (baseUrl.endsWith(url)) {
-          url = '';
+        if (baseUrl.endsWith(resolvedUrl)) {
+          resolvedUrl = '';
         }
-        this._url = `${baseUrl}${url}`;
+        this._setUrl(`${baseUrl}${resolvedUrl}`);
       }
+    }
+
+    _setUrl(url) {
+      const hashIndex = url.indexOf('#');
+      this._hash = '';
+      if (hashIndex !== -1) {
+        this._hash = url.slice(hashIndex);
+        url = url.slice(0, hashIndex);
+      }
+
+      const searchIndex = url.indexOf('?');
+      this._search = '';
+      this._hasSearch = false;
+      if (searchIndex !== -1) {
+        this._search = url.slice(searchIndex + 1);
+        this._hasSearch = true;
+        url = url.slice(0, searchIndex);
+      }
+
+      this._urlWithoutQuery = this._normalizeUrlWithoutQuery(url);
+    }
+
+    _normalizeUrlWithoutQuery(url) {
+      if (/^(?:(?:https?|ftp):)?\/\/[^/?#]+$/.test(url)) {
+        return `${url}/`;
+      }
+      return url;
     }
 
     get href() {
@@ -52,7 +80,7 @@ export class URL {
   
     get searchParams() {
       if (this._searchParamsInstance == null) {
-        this._searchParamsInstance = new URLSearchParams();
+        this._searchParamsInstance = new URLSearchParams(this._search);
       }
       return this._searchParamsInstance;
     }
@@ -62,13 +90,18 @@ export class URL {
     }
   
     toString() {
-      if (this._searchParamsInstance === null) {
-        return this._url;
+      let searchString = this._search;
+      let hasSearch = this._hasSearch;
+      if (this._searchParamsInstance !== null) {
+        searchString = this._searchParamsInstance.toString();
+        hasSearch = searchString.length > 0;
       }
-  
-      const instanceString = this._searchParamsInstance.toString();
-      const separator = this._url.indexOf('?') > -1 ? '&' : '?';
-      return this._url + separator + instanceString;
+
+      return (
+        this._urlWithoutQuery +
+        (hasSearch ? `?${searchString}` : '') +
+        this._hash
+      );
     }
   }
   
