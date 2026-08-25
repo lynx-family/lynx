@@ -156,6 +156,28 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
   ASSERT_EQ(element_manager->GetLynxEnvConfig().DevicePixelRatio(), 1.75f);
 }
 
+TEST_F(LynxShellBuilderTest, DisableJSRuntimeUsesUIRunnerForJS) {
+  auto facade = std::make_unique<MockNativeFacade>();
+  auto painting_context =
+      std::make_unique<lynx::tasm::PaintingContextPlatformImpl>();
+  auto painting_context_creator = [&](lynx::shell::LynxShell* shell) {
+    return std::move(painting_context);
+  };
+  option_->enable_js_ = false;
+
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::move(facade))
+                   .SetPaintingContextCreator(painting_context_creator)
+                   .SetLynxEnvConfig(*lynx_env_config_)
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetShellOption(*option_)
+                   .build());
+
+  EXPECT_EQ(shell_->runners_.GetJSTaskRunner()->GetLoop(),
+            shell_->runners_.GetUITaskRunner()->GetLoop());
+}
+
 TEST_F(LynxShellBuilderTest,
        LynxShellBuilderDisableForceLayoutOnBackgroundThreadTest) {
   auto facade = std::make_unique<MockNativeFacade>();
