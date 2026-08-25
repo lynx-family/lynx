@@ -83,6 +83,10 @@ void NativeFacadeHarmony::OnConfigUpdated(const lepus::Value& data) {
   }
 }
 
+void NativeFacadeHarmony::OnShouldSendEventToMainThreadChanged(bool enable) {
+  renderer_->OnShouldSendEventToMainThreadChanged(enable);
+}
+
 void NativeFacadeHarmony::TriggerLepusMethodAsync(
     const std::string& js_method_name, const lepus::Value& args) {
   renderer_->TriggerLepusMethodAsync(js_method_name, args);

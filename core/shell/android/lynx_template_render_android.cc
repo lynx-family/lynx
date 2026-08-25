@@ -1103,19 +1103,6 @@ void TriggerEventBus(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
-jboolean ShouldSendEventToMainThread(JNIEnv* env, jclass jcaller, jlong ptr,
-                                     jlong lifecycle) {
-  AtomicLifecycle* lifecycle_ptr =
-      reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
-    return false;
-  }
-  auto* shell = reinterpret_cast<LynxShell*>(ptr);
-  bool result = shell->ShouldSendEventToMainThread();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
-  return result;
-}
-
 void OnPseudoStatusChanged(JNIEnv* env, jclass jcaller, jlong ptr, jint tag,
                            jint pre, jint current) {
   reinterpret_cast<LynxShell*>(ptr)->OnPseudoStatusChanged(

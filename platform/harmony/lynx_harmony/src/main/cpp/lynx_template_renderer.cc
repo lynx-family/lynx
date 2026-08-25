@@ -514,8 +514,7 @@ int32_t LynxTemplateRenderer::GetInstanceId() const {
 }
 
 bool LynxTemplateRenderer::ShouldSendEventToMainThread() const {
-  return shell_ && !shell_->IsDestroyed() &&
-         shell_->ShouldSendEventToMainThread();
+  return shell_ && !shell_->IsDestroyed() && should_send_event_to_main_thread_;
 }
 
 void LynxTemplateRenderer::UpdateFontScale(float font_scale) {
@@ -620,6 +619,16 @@ void LynxTemplateRenderer::OnThemeUpdatedByJs(
   param[0] = base::NapiUtil::CreateMap(env_, theme);
   base::NapiUtil::AsyncInvokeJsMethod(env_, template_renderer_ref_,
                                       "onThemeUpdatedByJs", 1, param);
+}
+
+void LynxTemplateRenderer::OnShouldSendEventToMainThreadChanged(bool enable) {
+  should_send_event_to_main_thread_ = enable;
+  base::NapiHandleScope scope(env_);
+  napi_value param[1];
+  napi_get_boolean(env_, enable, &param[0]);
+  base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_,
+                                 "onShouldSendEventToMainThreadChanged", 1,
+                                 param);
 }
 
 void LynxTemplateRenderer::OnTemplateBundleReady(

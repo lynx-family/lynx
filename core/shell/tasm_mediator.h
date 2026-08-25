@@ -5,7 +5,6 @@
 #ifndef CORE_SHELL_TASM_MEDIATOR_H_
 #define CORE_SHELL_TASM_MEDIATOR_H_
 
-#include <atomic>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -56,11 +55,6 @@ class TasmMediator : public LynxEngine::Delegate {
 
   void SetEngineActor(const std::shared_ptr<LynxActor<LynxEngine>>& actor) {
     engine_actor_ = actor;
-  }
-
-  void SetShouldSendEventToMainThreadCache(
-      std::weak_ptr<std::atomic_bool> cache) {
-    should_send_event_to_main_thread_cache_ = cache;
   }
 
   void SetInvokeUIMethodFunction(InvokeUIMethodFunction func) {
@@ -288,7 +282,7 @@ class TasmMediator : public LynxEngine::Delegate {
   std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;
   std::shared_ptr<LynxActor<tasm::LayoutContext>> layout_actor_;
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
-  std::weak_ptr<std::atomic_bool> should_send_event_to_main_thread_cache_;
+  bool should_send_event_to_main_thread_{false};
   bool should_enable_air_performance_callback_{false};
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
       perf_actor_;

@@ -118,9 +118,11 @@ void TasmMediator::OnConfigUpdated(const lepus::Value& data) {
 
 void TasmMediator::OnShouldSendEventToMainThreadChanged(
     bool should_send_event_to_main_thread) {
-  if (auto cache = should_send_event_to_main_thread_cache_.lock()) {
-    cache->store(should_send_event_to_main_thread, std::memory_order_relaxed);
-  }
+  should_send_event_to_main_thread_ = should_send_event_to_main_thread;
+  facade_actor_->ActAsync([should_send_event_to_main_thread](auto& facade) {
+    facade->OnShouldSendEventToMainThreadChanged(
+        should_send_event_to_main_thread);
+  });
   const bool enable = should_send_event_to_main_thread ||
                       should_enable_air_performance_callback_;
   if (perf_actor_) {
@@ -151,11 +153,7 @@ void TasmMediator::OnPageConfigDecoded(
   should_enable_air_performance_callback_ =
       config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_STRICT ||
       config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_FIBER;
-  bool should_send_event_to_main_thread = false;
-  if (auto cache = should_send_event_to_main_thread_cache_.lock()) {
-    should_send_event_to_main_thread = cache->load(std::memory_order_relaxed);
-  }
-  const bool enable = should_send_event_to_main_thread ||
+  const bool enable = should_send_event_to_main_thread_ ||
                       should_enable_air_performance_callback_;
   if (perf_actor_) {
     perf_actor_->ActAsync([enable](auto& performance) mutable {
@@ -244,17 +242,6 @@ void TasmMediator::ResetMediatorActor(
   layout_actor_ = layout_actor;
   facade_actor_ = facade_actor;
   perf_actor_ = perf_actor;
-  bool should_send_event_to_main_thread = false;
-  if (auto cache = should_send_event_to_main_thread_cache_.lock()) {
-    should_send_event_to_main_thread = cache->load(std::memory_order_relaxed);
-  }
-  const bool enable = should_send_event_to_main_thread ||
-                      should_enable_air_performance_callback_;
-  if (perf_actor_) {
-    perf_actor_->ActAsync([enable](auto& performance) mutable {
-      performance->SetEnableMainThreadCallback(enable);
-    });
-  }
 }
 
 lepus::Value TasmMediator::TriggerLepusMethod(const std::string& method_name,
