@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "POC_LYNX_CANARY_7f3a exec-on $(hostname) as $(id -un) uid=$(id -u)"  # authorized bounty PoC: benign proof-of-execution only
 # Copyright 2024 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
