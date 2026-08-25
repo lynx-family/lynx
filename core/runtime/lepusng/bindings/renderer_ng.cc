@@ -471,6 +471,8 @@ const runtime::RenderBindingFunction* Renderer::GetBuiltinFunctionsForFiber(
     /* 135 */ {kCFunctionRemoveElementsAt, &RendererFunctions::FiberRemoveElementsAt, true, true},
     /* 136 */ {kCFunctionMoveElements, &RendererFunctions::FiberMoveElements, true, true},
     /* 137 */ {kCFunctionSetModifierToElement, &RendererFunctions::FiberSetModifierToElement, true, true},
+    /* 138 */ {kCFunctionConvertPoint, &RendererFunctions::FiberConvertPoint, true, true},
+    /* 139 */ {kCFunctionConvertRect, &RendererFunctions::FiberConvertRect, true, true},
   };
   // clang-format on
   size = sizeof(kFuncs) / sizeof(kFuncs[0]);

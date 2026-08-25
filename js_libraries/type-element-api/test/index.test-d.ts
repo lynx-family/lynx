@@ -8,6 +8,8 @@ import type {
   PageElementRef,
   ListElementRef,
   ViewElementRef,
+  Point,
+  Rect,
   SerializedTemplateInstance,
   SerializableValue,
   SerializedTypedTemplateInstance,
@@ -66,11 +68,31 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __CreateView>().toBeFunction();
     expectTypeOf<typeof __CreateText>().toBeFunction();
     expectTypeOf<typeof __ElementAnimate>().toBeFunction();
+    expectTypeOf<typeof __ConvertPoint>().toBeFunction();
+    expectTypeOf<typeof __ConvertRect>().toBeFunction();
     expectTypeOf<typeof __CreateElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeFunction();
     expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeFunction();
     expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SerializeElementTemplate>().toBeFunction();
+  });
+
+  it('should test __ConvertPoint function signature', () => {
+    const from = {} as ElementRef;
+    const to = {} as ElementRef;
+    expectTypeOf<typeof __ConvertPoint>().returns.toEqualTypeOf<Point | undefined>();
+    expectTypeOf<typeof __ConvertPoint>().toBeCallableWith(1, 2, from, to, 0);
+    expectTypeOf<typeof __ConvertPoint>().toBeCallableWith(1, 2, from, undefined, 1);
+    expectTypeOf<typeof __ConvertPoint>().toBeCallableWith(1, 2, from, undefined, 2);
+  });
+
+  it('should test __ConvertRect function signature', () => {
+    const from = {} as ElementRef;
+    const to = {} as ElementRef;
+    expectTypeOf<typeof __ConvertRect>().returns.toEqualTypeOf<Rect | undefined>();
+    expectTypeOf<typeof __ConvertRect>().toBeCallableWith(0, 0, 10, 20, from, to, true, 0);
+    expectTypeOf<typeof __ConvertRect>().toBeCallableWith(0, 0, 10, 20, from, undefined, false, 1);
+    expectTypeOf<typeof __ConvertRect>().toBeCallableWith(0, 0, 10, 20, from, undefined, true, 2);
   });
 
   it('should test __ElementAnimate function signature', () => {

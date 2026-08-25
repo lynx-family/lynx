@@ -6,6 +6,7 @@
 
 #include <assert.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <deque>
 #include <limits>
@@ -24,6 +25,7 @@
 #include "base/include/string/string_utils.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_trace_event_def.h"
 #include "core/build/gen/lynx_sub_error_code.h"
@@ -34,6 +36,7 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
@@ -157,6 +160,24 @@ fml::RefPtr<Element> GetFiberElementFromValue(const lepus::Value& value) {
     return nullptr;
   }
   return fml::static_ref_ptr_cast<Element>(value.RefCounted());
+}
+
+base::flex_optional<CoordinateSpace> GetCoordinateSpace(
+    const lepus::Value& value) {
+  if (!value.IsNumber()) {
+    return {};
+  }
+  const double number = value.Number();
+  if (number == static_cast<int32_t>(CoordinateSpace::kElement)) {
+    return CoordinateSpace::kElement;
+  }
+  if (number == static_cast<int32_t>(CoordinateSpace::kWindow)) {
+    return CoordinateSpace::kWindow;
+  }
+  if (number == static_cast<int32_t>(CoordinateSpace::kScreen)) {
+    return CoordinateSpace::kScreen;
+  }
+  return {};
 }
 
 TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
@@ -3704,6 +3725,61 @@ RENDERER_FUNCTION_CC(FiberGetChildren) {
     ary->emplace_back(c);
   }
   RETURN(lepus::Value(std::move(ary)));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertPoint) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_POINT);
+  CHECK_ARGC_GE(FiberConvertPoint, 5);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(x, 0, Number, FiberConvertPoint);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(y, 1, Number, FiberConvertPoint);
+  CONVERT_ARG(from_value, 2);
+  CONVERT_ARG(to_value, 3);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(coordinate_space, 4, Number,
+                                        FiberConvertPoint);
+
+  auto from = GetFiberElementFromValue(*from_value);
+  auto space = GetCoordinateSpace(*coordinate_space);
+  if (!space.has_value()) {
+    RETURN_UNDEFINED();
+  }
+  auto to = GetFiberElementFromValue(*to_value);
+  if (from == nullptr ||
+      (*space == CoordinateSpace::kElement && to == nullptr)) {
+    ElementAPIError(
+        "FiberConvertPoint params 2 and 3 should be Fiber Elements");
+    RETURN_UNDEFINED();
+  }
+  RETURN(ConvertPointForElementAPI(x->Number(), y->Number(), from.get(),
+                                   to.get(), *space));
+}
+
+RENDERER_FUNCTION_CC(FiberConvertRect) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CONVERT_RECT);
+  CHECK_ARGC_GE(FiberConvertRect, 8);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(left, 0, Number, FiberConvertRect);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(top, 1, Number, FiberConvertRect);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(right, 2, Number, FiberConvertRect);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(bottom, 3, Number, FiberConvertRect);
+  CONVERT_ARG(from_value, 4);
+  CONVERT_ARG(to_value, 5);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(clip_bounds, 6, Bool, FiberConvertRect);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(coordinate_space, 7, Number,
+                                        FiberConvertRect);
+
+  auto from = GetFiberElementFromValue(*from_value);
+  auto space = GetCoordinateSpace(*coordinate_space);
+  if (!space.has_value()) {
+    RETURN_UNDEFINED();
+  }
+  auto to = GetFiberElementFromValue(*to_value);
+  if (from == nullptr ||
+      (*space == CoordinateSpace::kElement && to == nullptr)) {
+    ElementAPIError("FiberConvertRect params 4 and 5 should be Fiber Elements");
+    RETURN_UNDEFINED();
+  }
+  RETURN(ConvertRectForElementAPI(left->Number(), top->Number(),
+                                  right->Number(), bottom->Number(), from.get(),
+                                  to.get(), clip_bounds->Bool(), *space));
 }
 
 RENDERER_FUNCTION_CC(FiberIsTemplateElement) {

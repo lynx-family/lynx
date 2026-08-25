@@ -900,6 +900,14 @@ inline constexpr const char* const FIBER_GET_PARENT = "FiberGetParent";
  */
 inline constexpr const char* const FIBER_GET_CHILDREN = "FiberGetChildren";
 /**
+ * @trace_description: Convert a point between two Fiber elements.
+ */
+inline constexpr const char* const FIBER_CONVERT_POINT = "FiberConvertPoint";
+/**
+ * @trace_description: Convert a rect between two Fiber elements.
+ */
+inline constexpr const char* const FIBER_CONVERT_RECT = "FiberConvertRect";
+/**
  * @trace_description: Check whether the element is a template element.
  */
 inline constexpr const char* const FIBER_IS_TEMPLATE_ELEMENT =

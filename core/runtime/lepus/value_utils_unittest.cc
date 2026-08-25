@@ -247,6 +247,8 @@ TEST(RenderBindingFunctionRegistration,
 
   ASSERT_TRUE(function.IsCFunction());
   EXPECT_EQ(lepus::CFunctionType_Default, function.GetCFunctionType());
+  EXPECT_TRUE(vm->GetGlobalData(tasm::kCFunctionConvertPoint).IsCFunction());
+  EXPECT_TRUE(vm->GetGlobalData(tasm::kCFunctionConvertRect).IsCFunction());
 }
 
 TEST(RenderBindingFunctionRegistration,
@@ -260,11 +262,18 @@ TEST(RenderBindingFunctionRegistration,
   LEPUSContext* ctx = qctx->context();
   LEPUSValue function = qctx->SearchGlobalData(tasm::kCFunctionSetAttribute);
   ASSERT_TRUE(LEPUS_IsFunction(ctx, function));
+  LEPUSValue convert_point =
+      qctx->SearchGlobalData(tasm::kCFunctionConvertPoint);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_point));
+  LEPUSValue convert_rect = qctx->SearchGlobalData(tasm::kCFunctionConvertRect);
+  EXPECT_TRUE(LEPUS_IsFunction(ctx, convert_rect));
 
   LEPUSValue length = LEPUS_GetPropertyStr(ctx, function, "length");
   ASSERT_FALSE(LEPUS_IsException(length));
   EXPECT_EQ(0, LEPUS_VALUE_GET_INT(length));
   FreeLEPUSValueIfNeeded(ctx, length);
+  FreeLEPUSValueIfNeeded(ctx, convert_rect);
+  FreeLEPUSValueIfNeeded(ctx, convert_point);
   FreeLEPUSValueIfNeeded(ctx, function);
 }
 

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.0.11
+
+### Patch Changes
+
+- Add Element point and rect coordinate conversion APIs.
+
 ## 0.0.10
 
 ### Patch Changes

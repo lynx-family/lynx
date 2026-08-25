@@ -1090,6 +1090,17 @@ void ElementManager::AddFontFace(const lepus::Value &font) {
   delegate_->SetFontFaces(map);
 }
 
+void ElementManager::UpdatePageCoordinateSnapshot(
+    float window_x, float window_y, bool has_window_offset, float screen_x,
+    float screen_y, bool has_screen_offset, bool) {
+  page_coordinate_snapshot_.window_x = window_x;
+  page_coordinate_snapshot_.window_y = window_y;
+  page_coordinate_snapshot_.screen_x = screen_x;
+  page_coordinate_snapshot_.screen_y = screen_y;
+  page_coordinate_snapshot_.has_window_offset = has_window_offset;
+  page_coordinate_snapshot_.has_screen_offset = has_screen_offset;
+}
+
 bool ElementManager::HasIntrinsicFontFacesResolved(
     const tasm::CSSFragment *fragment) const {
   std::shared_lock<std::shared_mutex> lock(

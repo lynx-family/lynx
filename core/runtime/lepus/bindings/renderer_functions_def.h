@@ -90,6 +90,8 @@
   V(FiberSwapElement)                   \
   V(FiberGetParent)                     \
   V(FiberGetChildren)                   \
+  V(FiberConvertPoint)                  \
+  V(FiberConvertRect)                   \
   V(FiberCloneElement)                  \
   V(FiberMarkTemplateElement)           \
   V(FiberIsTemplateElement)             \

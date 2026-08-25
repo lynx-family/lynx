@@ -7,7 +7,10 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <utility>
 
+#include "base/include/string/string_utils.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/public/common_constants.h"
 #include "core/renderer/css/computed_css_style.h"
@@ -42,6 +45,32 @@ Element* FindLayoutParent(Element* element, Element* root) {
     }
   }
   return nullptr;
+}
+
+base::flex_optional<base::geometry::FloatPoint> GetPageCoordinateOffset(
+    Element* element, CoordinateSpace space) {
+  if (element == nullptr || element->element_manager() == nullptr) {
+    return {};
+  }
+  const auto& snapshot =
+      element->element_manager()->GetPageCoordinateSnapshot();
+  switch (space) {
+    case CoordinateSpace::kWindow:
+      if (snapshot.has_window_offset && std::isfinite(snapshot.window_x) &&
+          std::isfinite(snapshot.window_y)) {
+        return base::geometry::FloatPoint(snapshot.window_x, snapshot.window_y);
+      }
+      break;
+    case CoordinateSpace::kScreen:
+      if (snapshot.has_screen_offset && std::isfinite(snapshot.screen_x) &&
+          std::isfinite(snapshot.screen_y)) {
+        return base::geometry::FloatPoint(snapshot.screen_x, snapshot.screen_y);
+      }
+      break;
+    case CoordinateSpace::kElement:
+      break;
+  }
+  return {};
 }
 
 bool BuildPathToRoot(Element* element, Element* root,
@@ -140,6 +169,44 @@ void IntersectAxisAlignedBounds(base::geometry::FloatRect& rect,
     }
   }
   rect = {{left, top}, {right - left, bottom - top}};
+}
+
+lepus::Value MakePointValue(float x, float y) {
+  BASE_STATIC_STRING_DECL(kX, "x");
+  BASE_STATIC_STRING_DECL(kY, "y");
+  auto result = lepus::Dictionary::Create();
+  result->SetValue(kX, x);
+  result->SetValue(kY, y);
+  return lepus::Value(std::move(result));
+}
+
+lepus::Value MakeRectValue(const base::geometry::FloatRect& rect,
+                           float layouts_unit_per_px) {
+  if (!std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+    return {};
+  }
+  const float left = rect.X() / layouts_unit_per_px;
+  const float top = rect.Y() / layouts_unit_per_px;
+  const float right = rect.MaxX() / layouts_unit_per_px;
+  const float bottom = rect.MaxY() / layouts_unit_per_px;
+  if (!std::isfinite(left) || !std::isfinite(top) || !std::isfinite(right) ||
+      !std::isfinite(bottom)) {
+    return {};
+  }
+  BASE_STATIC_STRING_DECL(kLeft, "left");
+  BASE_STATIC_STRING_DECL(kTop, "top");
+  BASE_STATIC_STRING_DECL(kRight, "right");
+  BASE_STATIC_STRING_DECL(kBottom, "bottom");
+  BASE_STATIC_STRING_DECL(kWidth, "width");
+  BASE_STATIC_STRING_DECL(kHeight, "height");
+  auto result = lepus::Dictionary::Create();
+  result->SetValue(kLeft, left);
+  result->SetValue(kTop, top);
+  result->SetValue(kRight, right);
+  result->SetValue(kBottom, bottom);
+  result->SetValue(kWidth, right - left);
+  result->SetValue(kHeight, bottom - top);
+  return lepus::Value(std::move(result));
 }
 
 }  // namespace
@@ -282,6 +349,109 @@ base::flex_optional<base::geometry::FloatRect> ConvertRectBetweenElements(
     IntersectAxisAlignedBounds(result, *clip, clip_x, clip_y);
   }
   return result;
+}
+
+base::flex_optional<base::geometry::FloatPoint> ConvertPointToPageCoordinate(
+    const base::geometry::FloatPoint& point, Element* from,
+    CoordinateSpace space) {
+  if (from == nullptr || from->element_manager() == nullptr) {
+    return {};
+  }
+  auto* root = from->element_manager()->root();
+  auto offset = GetPageCoordinateOffset(from, space);
+  if (root == nullptr || !offset.has_value()) {
+    return {};
+  }
+  auto converted = ConvertPointBetweenElements(point, from, root);
+  if (!converted.has_value()) {
+    return {};
+  }
+  converted->SetX(converted->X() + offset->X());
+  converted->SetY(converted->Y() + offset->Y());
+  return converted;
+}
+
+base::flex_optional<base::geometry::FloatRect> ConvertRectToPageCoordinate(
+    const base::geometry::FloatRect& rect, Element* from, bool clip_bounds,
+    CoordinateSpace space) {
+  if (from == nullptr || from->element_manager() == nullptr) {
+    return {};
+  }
+  auto* root = from->element_manager()->root();
+  auto offset = GetPageCoordinateOffset(from, space);
+  if (root == nullptr || !offset.has_value()) {
+    return {};
+  }
+  auto converted = ConvertRectBetweenElements(rect, from, root, clip_bounds);
+  if (!converted.has_value()) {
+    return {};
+  }
+  converted->Move(offset->X(), offset->Y());
+  return converted;
+}
+
+lepus::Value ConvertPointForElementAPI(double x, double y, Element* from,
+                                       Element* to, CoordinateSpace space) {
+  if (from == nullptr || !std::isfinite(x) || !std::isfinite(y)) {
+    return {};
+  }
+  const float layouts_unit_per_px = from->GetLayoutsUnitPerPx();
+  if (!std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+    return {};
+  }
+
+  const base::geometry::FloatPoint input{
+      static_cast<float>(x) * layouts_unit_per_px,
+      static_cast<float>(y) * layouts_unit_per_px};
+  base::flex_optional<base::geometry::FloatPoint> converted;
+  switch (space) {
+    case CoordinateSpace::kElement:
+      converted = ConvertPointBetweenElements(input, from, to);
+      break;
+    case CoordinateSpace::kWindow:
+    case CoordinateSpace::kScreen:
+      converted = ConvertPointToPageCoordinate(input, from, space);
+      break;
+  }
+  if (!converted.has_value()) {
+    return {};
+  }
+  return MakePointValue(converted->X() / layouts_unit_per_px,
+                        converted->Y() / layouts_unit_per_px);
+}
+
+lepus::Value ConvertRectForElementAPI(double left, double top, double right,
+                                      double bottom, Element* from, Element* to,
+                                      bool clip_bounds, CoordinateSpace space) {
+  if (from == nullptr || !std::isfinite(left) || !std::isfinite(top) ||
+      !std::isfinite(right) || !std::isfinite(bottom) || right < left ||
+      bottom < top) {
+    return {};
+  }
+  const float layouts_unit_per_px = from->GetLayoutsUnitPerPx();
+  if (!std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0.f) {
+    return {};
+  }
+
+  const base::geometry::FloatRect input{
+      {static_cast<float>(left) * layouts_unit_per_px,
+       static_cast<float>(top) * layouts_unit_per_px},
+      {static_cast<float>(right - left) * layouts_unit_per_px,
+       static_cast<float>(bottom - top) * layouts_unit_per_px}};
+  base::flex_optional<base::geometry::FloatRect> converted;
+  switch (space) {
+    case CoordinateSpace::kElement:
+      converted = ConvertRectBetweenElements(input, from, to, clip_bounds);
+      break;
+    case CoordinateSpace::kWindow:
+    case CoordinateSpace::kScreen:
+      converted = ConvertRectToPageCoordinate(input, from, clip_bounds, space);
+      break;
+  }
+  if (!converted.has_value()) {
+    return {};
+  }
+  return MakeRectValue(*converted, layouts_unit_per_px);
 }
 
 }  // namespace tasm

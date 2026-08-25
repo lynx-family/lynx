@@ -39,6 +39,20 @@ export interface PipelineOptions {
   needTimestamps: boolean
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
 export interface SelectorParams {
   onlyCurrentComponent?: boolean;
 }
@@ -262,6 +276,36 @@ declare global {
   function __GetParent(current: ElementRef): ElementRef;
 
   function __GetChildren(current: ElementRef): ElementRef[];
+
+  /**
+   * Converts a point from Element-local border-box coordinates to element,
+   * window, or screen coordinates. coordinateSpace is 0 for element, 1 for
+   * window, and 2 for screen. toElement is required only for element space.
+   */
+  function __ConvertPoint(
+    x: number,
+    y: number,
+    fromElement: ElementRef,
+    toElement: ElementRef | undefined,
+    coordinateSpace: number,
+  ): Point | undefined;
+
+  /**
+   * Converts a rect from Element-local border-box coordinates and returns the
+   * axis-aligned bounding box of its converted corners. Coordinates are CSS
+   * pixels. coordinateSpace is 0 for element, 1 for window, and 2 for screen.
+   * toElement is required only for element space.
+   */
+  function __ConvertRect(
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+    fromElement: ElementRef,
+    toElement: ElementRef | undefined,
+    clipBounds: boolean,
+    coordinateSpace: number,
+  ): Rect | undefined;
 
   function __FirstElement(current: ElementRef): ElementRef;
 

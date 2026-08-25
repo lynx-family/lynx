@@ -191,6 +191,19 @@ class ComponentManager {
   std::unordered_map<std::string, Element *> component_map_;
 };
 
+// Page-root offsets captured on the platform UI thread after a completed
+// layout UI-operation batch. Values use the same layout unit as Element
+// geometry; renderer bindings normalize them to CSS pixels.
+// TODO: Refresh this snapshot when the native host moves without a Lynx layout.
+struct PageCoordinateSnapshot {
+  float window_x{0.f};
+  float window_y{0.f};
+  float screen_x{0.f};
+  float screen_y{0.f};
+  bool has_window_offset{false};
+  bool has_screen_offset{false};
+};
+
 class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
  public:
   class Delegate {
@@ -1169,6 +1182,15 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   fml::RefPtr<PageElement> GetPageElementRef() const { return fiber_page_; }
 
+  void UpdatePageCoordinateSnapshot(float window_x, float window_y,
+                                    bool has_window_offset, float screen_x,
+                                    float screen_y, bool has_screen_offset,
+                                    bool force_position_change);
+
+  const PageCoordinateSnapshot &GetPageCoordinateSnapshot() const {
+    return page_coordinate_snapshot_;
+  }
+
   bool CheckResolvedKeyframes(const std::string &unique_id) {
     return resolved_keyframes_set_.find(unique_id) !=
            resolved_keyframes_set_.end();
@@ -1521,6 +1543,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   starlight::LayoutConfigs layout_configs_;
 
   fml::RefPtr<PageElement> fiber_page_;
+
+  PageCoordinateSnapshot page_coordinate_snapshot_;
 
   Delegate *delegate_;
   ElementManagerDelegate *element_manager_delegate_{nullptr};

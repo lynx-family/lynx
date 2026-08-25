@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -15,9 +16,11 @@
 #include <vector>
 
 #include "base/include/auto_reset.h"
+#include "base/include/debug/lynx_error.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/event/event_dispatcher.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -70,6 +73,8 @@
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/timing_handler/timing.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/lynx_ui_operation_queue.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/tasm_operation_queue.h"
@@ -3635,6 +3640,185 @@ TEST_P(FiberElementTest, ConvertPointAppliesTransformsAndRejectsSingularOnes) {
   EXPECT_FALSE(ConvertPointBetweenElements({5.f, 7.f}, source.get(),
                                            singular_target.get())
                    .has_value());
+}
+
+TEST_P(FiberElementTest, ConvertPointBindingUsesCssPixelsAndValidatesElements) {
+  LynxEnvConfig lynx_env_config(kWidth, kHeight, 2.f, 1.0);
+  auto local_manager = std::make_unique<ElementManager>(
+      std::make_unique<FiberMockPaintingContext>(), &tasm_mediator,
+      lynx_env_config);
+  auto* local_manager_ptr = local_manager.get();
+  auto local_tasm = std::make_shared<TemplateAssembler>(
+      tasm_mediator, std::move(local_manager), &tasm_mediator, 0);
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  local_manager_ptr->SetConfig(config);
+  local_manager_ptr->page_options_.SetEmbeddedMode(
+      EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(renderer_runtime, nullptr);
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(
+          static_cast<runtime::MTSRuntime::Delegate*>(local_tasm.get())));
+  auto* renderer_context =
+      runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(renderer_context, nullptr);
+
+  auto page = local_manager_ptr->CreateFiberPage("page", 0);
+  auto target = local_manager_ptr->CreateFiberView();
+  auto detached = local_manager_ptr->CreateFiberView();
+  page->InsertNode(target);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  target->UpdateLayout(20.f, 40.f, 200.f, 100.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+
+  lepus::Value args[] = {
+      lepus::Value(15.f), lepus::Value(27.f), lepus::Value(page),
+      lepus::Value(target),
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kElement))};
+  auto converted =
+      RendererFunctions::FiberConvertPoint(renderer_context, args, 5);
+  ASSERT_TRUE(converted.IsObject());
+  EXPECT_FLOAT_EQ(converted.GetProperty("x").Number(), 5.f);
+  EXPECT_FLOAT_EQ(converted.GetProperty("y").Number(), 7.f);
+
+  lepus::Value rect_args[] = {
+      lepus::Value(15.f),
+      lepus::Value(27.f),
+      lepus::Value(25.f),
+      lepus::Value(32.f),
+      lepus::Value(page),
+      lepus::Value(target),
+      lepus::Value(false),
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kElement))};
+  auto converted_rect =
+      RendererFunctions::FiberConvertRect(renderer_context, rect_args, 8);
+  ASSERT_TRUE(converted_rect.IsObject());
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("left").Number(), 5.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("top").Number(), 7.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("right").Number(), 15.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("bottom").Number(), 12.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("width").Number(), 10.f);
+  EXPECT_FLOAT_EQ(converted_rect.GetProperty("height").Number(), 5.f);
+
+  lepus::Value point_to_page_args[] = {
+      lepus::Value(5.f), lepus::Value(7.f), lepus::Value(target),
+      lepus::Value(),
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kWindow))};
+  EXPECT_TRUE(RendererFunctions::FiberConvertPoint(renderer_context,
+                                                   point_to_page_args, 5)
+                  .IsNil());
+
+  local_manager_ptr->UpdatePageCoordinateSnapshot(0.f, 0.f, false, 500.f, 600.f,
+                                                  true, false);
+  EXPECT_TRUE(RendererFunctions::FiberConvertPoint(renderer_context,
+                                                   point_to_page_args, 5)
+                  .IsNil());
+  point_to_page_args[4] =
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kScreen));
+  auto point_on_screen_without_window = RendererFunctions::FiberConvertPoint(
+      renderer_context, point_to_page_args, 5);
+  ASSERT_TRUE(point_on_screen_without_window.IsObject());
+  EXPECT_FLOAT_EQ(point_on_screen_without_window.GetProperty("x").Number(),
+                  265.f);
+  EXPECT_FLOAT_EQ(point_on_screen_without_window.GetProperty("y").Number(),
+                  327.f);
+
+  local_manager_ptr->UpdatePageCoordinateSnapshot(300.f, 400.f, true, 500.f,
+                                                  600.f, true, false);
+  point_to_page_args[4] =
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kWindow));
+  auto point_in_window = RendererFunctions::FiberConvertPoint(
+      renderer_context, point_to_page_args, 5);
+  ASSERT_TRUE(point_in_window.IsObject());
+  EXPECT_FLOAT_EQ(point_in_window.GetProperty("x").Number(), 165.f);
+  EXPECT_FLOAT_EQ(point_in_window.GetProperty("y").Number(), 227.f);
+
+  point_to_page_args[4] =
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kScreen));
+  auto point_on_screen = RendererFunctions::FiberConvertPoint(
+      renderer_context, point_to_page_args, 5);
+  ASSERT_TRUE(point_on_screen.IsObject());
+  EXPECT_FLOAT_EQ(point_on_screen.GetProperty("x").Number(), 265.f);
+  EXPECT_FLOAT_EQ(point_on_screen.GetProperty("y").Number(), 327.f);
+
+  lepus::Value rect_to_page_args[] = {
+      lepus::Value(0.f),
+      lepus::Value(0.f),
+      lepus::Value(10.f),
+      lepus::Value(5.f),
+      lepus::Value(target),
+      lepus::Value(),
+      lepus::Value(false),
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kWindow))};
+  auto rect_in_window = RendererFunctions::FiberConvertRect(
+      renderer_context, rect_to_page_args, 8);
+  ASSERT_TRUE(rect_in_window.IsObject());
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("left").Number(), 160.f);
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("top").Number(), 220.f);
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("right").Number(), 170.f);
+  EXPECT_FLOAT_EQ(rect_in_window.GetProperty("bottom").Number(), 225.f);
+
+  rect_to_page_args[7] =
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kScreen));
+  auto rect_on_screen = RendererFunctions::FiberConvertRect(
+      renderer_context, rect_to_page_args, 8);
+  ASSERT_TRUE(rect_on_screen.IsObject());
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("left").Number(), 260.f);
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("top").Number(), 320.f);
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("right").Number(), 270.f);
+  EXPECT_FLOAT_EQ(rect_on_screen.GetProperty("bottom").Number(), 325.f);
+
+  point_to_page_args[4] = lepus::Value(3);
+  EXPECT_TRUE(RendererFunctions::FiberConvertPoint(renderer_context,
+                                                   point_to_page_args, 5)
+                  .IsNil());
+  point_to_page_args[4] =
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kElement));
+  EXPECT_TRUE(RendererFunctions::FiberConvertPoint(renderer_context,
+                                                   point_to_page_args, 5)
+                  .IsNil());
+  rect_to_page_args[7] = lepus::Value(3);
+  EXPECT_TRUE(RendererFunctions::FiberConvertRect(renderer_context,
+                                                  rect_to_page_args, 8)
+                  .IsNil());
+
+  lepus::Value detached_args[] = {
+      lepus::Value(15.f), lepus::Value(27.f), lepus::Value(page),
+      lepus::Value(detached),
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kElement))};
+  EXPECT_TRUE(
+      RendererFunctions::FiberConvertPoint(renderer_context, detached_args, 5)
+          .IsNil());
+
+  lepus::Value non_finite_args[] = {
+      lepus::Value(std::numeric_limits<double>::infinity()), lepus::Value(0.f),
+      lepus::Value(page), lepus::Value(target),
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kElement))};
+  EXPECT_TRUE(
+      RendererFunctions::FiberConvertPoint(renderer_context, non_finite_args, 5)
+          .IsNil());
+
+  base::ErrorStorage::GetInstance().Reset();
+  fml::RefPtr<lepus::RefCounted> non_element =
+      fml::MakeRefCounted<event::TouchEvent>("tap");
+  lepus::Value invalid_args[] = {
+      lepus::Value(15.f), lepus::Value(27.f), lepus::Value(non_element),
+      lepus::Value(target),
+      lepus::Value(static_cast<int32_t>(CoordinateSpace::kElement))};
+  EXPECT_TRUE(
+      RendererFunctions::FiberConvertPoint(renderer_context, invalid_args, 5)
+          .IsNil());
+  const auto& stored_error = base::ErrorStorage::GetInstance().GetError();
+  ASSERT_NE(stored_error, nullptr);
+  EXPECT_EQ(stored_error->error_code_, error::E_ELEMENT_API_ERROR);
+  base::ErrorStorage::GetInstance().Reset();
 }
 
 TEST_P(FiberElementTest,
