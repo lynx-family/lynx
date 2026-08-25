@@ -153,8 +153,11 @@ Geometry crosses two independent trees before display-list recording:
 For a flattened fragment, the geometry parent is its direct fragment parent.
 For a platform-backed fragment, it is the nearest platform-backed ancestor,
 because `kDrawView` and the child platform display list both use that coordinate
-space. A fragment that is not reachable from the layout tree fails resolution
-instead of silently mixing coordinate spaces.
+space. New/unified fixed layout results are already page-root relative, so
+layout-to-root collection resets at that edge instead of adding the logical
+parent offset again. A fragment that is transiently not reachable from the
+layout tree invalidates its resolved geometry and skips that paint subtree
+until a later successful restack, instead of publishing zero or stale offsets.
 
 For a platform-backed fragment, restacking also derives the platform adapter
 values from that same resolved edge:
@@ -180,6 +183,22 @@ it. An unchanged result causes no node-ready update and no redraw. A changed
 result invalidates only the fragment's paint root and, when needed, the paint
 root that embeds it. Content redraw propagation stops at the nearest
 platform-backed paint root.
+
+During a layout pipeline, layout-to-root collection remains one LayoutTree
+pass, but geometry resolution is fused into the existing FragmentTree platform
+layout synchronization. It does not add another FragmentTree pass on first
+screen. Each collection receives a generation number; fragments record the
+generation that reached them, so resolution can validate LayoutTree
+reachability without first clearing a valid bit across the whole tree. A style
+or stacking-edge update that does not trigger layout still uses the standalone
+restacking fallback before drawing. That no-layout path sorts dirty stacking
+contexts before recording the display list and publishes node-ready updates
+from changed native renderer geometry before the layout-finished notification.
+
+For managed fragments, invalidation and draw entry resolve the restacking root
+directly through the ElementManager page fragment. Parent-chain traversal is
+reserved for standalone FragmentTrees that are not installed as Element
+containers.
 
 ## 4. Reading a Display List
 
