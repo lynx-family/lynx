@@ -23,6 +23,9 @@ class ImageServiceHarmony : public tasm::harmony::ImageService {
   ~ImageServiceHarmony() override = default;
 
   std::unique_ptr<tasm::harmony::ImageNode> CreateImageNode() override;
+  std::shared_ptr<tasm::harmony::SvgImageLoader> CreateSvgImageLoader(
+      std::unique_ptr<tasm::harmony::SvgResourceFetcher> resource_fetcher,
+      std::function<void()> invalidation_callback, float density) override;
   void DecodeImage(const tasm::harmony::ImageRequestInfo& info,
                    ImageDataCallback callback,
                    ImageSuccessCallback on_load_success,
