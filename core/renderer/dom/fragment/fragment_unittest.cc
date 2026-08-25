@@ -860,6 +860,7 @@ TEST_F(FragmentDrawTest, ZIndexChangesNeverCreateOrCorruptStackingTree) {
   // Element parent, restoring both membership and render order.
   change_z_index(0);
   EXPECT_EQ(child_fragment->fragment_parent(), parent_fragment);
+  EXPECT_EQ(page_fragment->paint_order_buckets_, nullptr);
   EXPECT_EQ(std::count(page_fragment->children_.begin(),
                        page_fragment->children_.end(), child_fragment),
             0);
@@ -914,6 +915,129 @@ TEST_F(FragmentDrawTest, NoLayoutPatchSortsChangedNonzeroZIndex) {
   EXPECT_FALSE(callback_reported_layout);
   EXPECT_TRUE(manager->dirty_stacking_contexts_.empty());
   EXPECT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+
+  first_fragment->has_platform_renderer_ = true;
+  second_fragment->has_platform_renderer_ = true;
+  page_fragment->InvalidateRestacking();
+  page_fragment->RestackIfNeeded();
+  DisplayListBuilder builder;
+  page_fragment->DrawFull(builder);
+  std::vector<int32_t> view_ids;
+  for (const auto& item : CollectDisplayListItems(builder.Build())) {
+    if (item.type == DisplayListOpType::kDrawView) {
+      view_ids.emplace_back(item.payload.draw_view.view_id);
+    }
+  }
+  EXPECT_THAT(view_ids, ::testing::ElementsAre(second_fragment->id(),
+                                               first_fragment->id()));
+}
+
+TEST_F(FragmentDrawTest, PaintBucketsPreserveStructuralDocumentOrder) {
+  manager->config_->SetEnableFixedNew(true);
+  auto page = manager->CreateFiberPage("0", 0);
+  auto positive_two = manager->CreateFiberView();
+  auto normal = manager->CreateFiberView();
+  auto negative_one = manager->CreateFiberView();
+  auto fixed_zero = manager->CreateFiberView();
+  auto negative_three = manager->CreateFiberView();
+  auto positive_one = manager->CreateFiberView();
+  positive_two->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  negative_one->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  fixed_zero->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                       lepus::Value("fixed"));
+  negative_three->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-3));
+  positive_one->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+
+  page->InsertNode(positive_two);
+  page->InsertNode(normal);
+  page->InsertNode(negative_one);
+  page->InsertNode(fixed_zero);
+  page->InsertNode(negative_three);
+  page->InsertNode(positive_one);
+  page->FlushActionsAsRoot();
+  manager->UpdateDirtyStackingContexts();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* positive_two_fragment = positive_two->fragment_impl();
+  auto* normal_fragment = normal->fragment_impl();
+  auto* negative_one_fragment = negative_one->fragment_impl();
+  auto* fixed_zero_fragment = fixed_zero->fragment_impl();
+  auto* negative_three_fragment = negative_three->fragment_impl();
+  auto* positive_one_fragment = positive_one->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  EXPECT_THAT(
+      page_fragment->children_,
+      ::testing::ElementsAre(positive_two_fragment, normal_fragment,
+                             negative_one_fragment, fixed_zero_fragment,
+                             negative_three_fragment, positive_one_fragment));
+  ASSERT_NE(page_fragment->paint_order_buckets_, nullptr);
+  EXPECT_THAT(
+      page_fragment->paint_order_buckets_->negative_z,
+      ::testing::ElementsAre(negative_three_fragment, negative_one_fragment));
+  EXPECT_THAT(page_fragment->paint_order_buckets_->fixed_zero,
+              ::testing::ElementsAre(fixed_zero_fragment));
+  EXPECT_THAT(
+      page_fragment->paint_order_buckets_->positive_z,
+      ::testing::ElementsAre(positive_one_fragment, positive_two_fragment));
+
+  for (auto* fragment : page_fragment->children_) {
+    fragment->has_platform_renderer_ = true;
+  }
+  page_fragment->InvalidateRestacking();
+  page_fragment->RestackIfNeeded();
+  DisplayListBuilder builder;
+  page_fragment->DrawFull(builder);
+  std::vector<int32_t> view_ids;
+  for (const auto& item : CollectDisplayListItems(builder.Build())) {
+    if (item.type == DisplayListOpType::kDrawView) {
+      view_ids.emplace_back(item.payload.draw_view.view_id);
+    }
+  }
+  EXPECT_THAT(view_ids,
+              ::testing::ElementsAre(
+                  negative_three_fragment->id(), negative_one_fragment->id(),
+                  normal_fragment->id(), fixed_zero_fragment->id(),
+                  positive_one_fragment->id(), positive_two_fragment->id()));
+}
+
+TEST_F(FragmentDrawTest, LocalZIndexResortInvalidatesOnlyOnOrderChange) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  second->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(3));
+  page->InsertNode(first);
+  page->InsertNode(second);
+  page->FlushActionsAsRoot();
+  manager->UpdateDirtyStackingContexts();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* second_fragment = second->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+
+  first->computed_css_style()->SetValue(CSSPropertyID::kPropertyIDZIndex,
+                                        CSSValue(2, CSSValuePattern::NUMBER));
+  first_fragment->StyleChanged();
+
+  EXPECT_FALSE(page_fragment->NeedRedraw());
+  EXPECT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+  ASSERT_NE(page_fragment->paint_order_buckets_, nullptr);
+  EXPECT_THAT(page_fragment->paint_order_buckets_->positive_z,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+
+  first->computed_css_style()->SetValue(CSSPropertyID::kPropertyIDZIndex,
+                                        CSSValue(4, CSSValuePattern::NUMBER));
+  first_fragment->StyleChanged();
+
+  EXPECT_TRUE(page_fragment->NeedRedraw());
+  EXPECT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+  ASSERT_NE(page_fragment->paint_order_buckets_, nullptr);
+  EXPECT_THAT(page_fragment->paint_order_buckets_->positive_z,
               ::testing::ElementsAre(second_fragment, first_fragment));
 }
 

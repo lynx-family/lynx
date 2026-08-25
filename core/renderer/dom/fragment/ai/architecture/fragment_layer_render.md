@@ -138,7 +138,23 @@ resource.
 Subtree property methods append only to `subtree_properties_`; they do not add
 content items.
 
-### 3.1 Restacking geometry
+### 3.1 Paint order
+
+`Fragment::children_` preserves structural/document order and is never sorted
+for painting. Fragment maintains separate cached buckets for negative z-index,
+fixed zero-z-index, and positive z-index children. `DrawChildren` emits the
+negative bucket, normal-flow entries from `children_`, the fixed bucket, and
+the positive bucket. The resulting DisplayList order is the source of truth
+for both native View insertion and hit-test tree reconstruction. Bucket storage
+is allocated lazily, so fragments without special children keep the direct
+`children_` draw path and pay only one nullable pointer of per-fragment state.
+
+Batched structural insertion sorts only the affected bucket. A z-index or
+fixed change that retains the same stacking parent removes and reinserts that
+single fragment locally; redraw is requested only when its final paint index
+changes.
+
+### 3.2 Restacking geometry
 
 Geometry crosses two independent trees before display-list recording:
 
