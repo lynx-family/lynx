@@ -343,6 +343,17 @@ LYNX_EXTERN_C void lynx_view_load_template(lynx_view_t* view,
   }
 }
 
+LYNX_EXTERN_C void lynx_view_load_lynx_ml(lynx_view_t* view, const char* source,
+                                          const char* url,
+                                          lynx_template_data_t* initial_data) {
+  if (!source || !url) {
+    return;
+  }
+  view->lynx_template_renderer->LoadLynxML(
+      url, source, nullptr,
+      initial_data ? initial_data->template_data : nullptr);
+}
+
 LYNX_EXTERN_C void lynx_view_update_data(lynx_view_t* view,
                                          lynx_update_meta_t* update_meta) {
   if (!update_meta->update_data && !update_meta->global_props) {

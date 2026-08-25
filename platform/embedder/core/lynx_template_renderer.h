@@ -157,6 +157,10 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
       const std::shared_ptr<tasm::TemplateData>& data = nullptr,
       bool enable_recycle_template_bundle = false);
+  void LoadLynxML(
+      const std::string& url, std::string source,
+      const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
+      const std::shared_ptr<tasm::TemplateData>& data = nullptr);
   void LoadTemplateBundle(
       const std::string& url, tasm::LynxTemplateBundle template_bundle,
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
