@@ -104,6 +104,14 @@ public class TextShadowNodeTest {
   }
 
   @Test
+  public void testIntegralFontWeightVariationHasNoDecimalSuffix() {
+    textShadowNode.setFontVariationSettings(JavaOnlyArray.of("wght", 400));
+
+    Assert.assertEquals(
+        "'wght' 400", textShadowNode.getTextAttributes().getFontVariationSettings());
+  }
+
+  @Test
   public void testFontVariationSettingsWithOpticalSizingUsesCommaSeparator() {
     textShadowNode.setFontVariationSettings(JavaOnlyArray.of("wdth", 700));
     textShadowNode.getTextAttributes().setFontSize(14.0f);
