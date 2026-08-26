@@ -3424,10 +3424,10 @@ std::optional<lepus_value> App::ParseJSValueToLepusValue(
   if (rt) {
     // only React dsl support parse js function
     // TT dsl don't support use js function as the prroperties of component
-    JSValueCircularArray pre_object_vector;
+    CircularDataChecker checker(*rt);
     auto lepus_value_opt =
         ParseJSValue(*rt, data, jsi_object_wrapper_manager_.get(), component_id,
-                     card_bundle_.target_sdk_version, pre_object_vector);
+                     card_bundle_.target_sdk_version, checker);
     if (!lepus_value_opt) {
       return std::optional<lepus_value>();
     }

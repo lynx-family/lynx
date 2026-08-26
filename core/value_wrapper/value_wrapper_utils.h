@@ -59,13 +59,11 @@ class ValueUtils {
   static std::unique_ptr<Value> ConvertPiperArrayToPubValue(
       runtime::js::Runtime& rt, const runtime::js::Array& arr,
       const std::shared_ptr<PubValueFactory>& factory,
-      lynx::runtime::js::JSValueCircularArray& pre_object_vector,
-      int depth = 0);
+      lynx::runtime::js::CircularDataChecker& checker);
   static std::unique_ptr<Value> ConvertPiperObjectToPubValue(
       runtime::js::Runtime& rt, const runtime::js::Object& obj,
       const std::shared_ptr<PubValueFactory>& factory,
-      lynx::runtime::js::JSValueCircularArray& pre_object_vector,
-      int depth = 0);
+      lynx::runtime::js::CircularDataChecker& checker);
 
   // Some tricky logic for BigInt, such as { "id" : 8913891381287328398 }
   // will exist on js { "id" : { "__lynx_val__" : "8913891381287328398" }},
