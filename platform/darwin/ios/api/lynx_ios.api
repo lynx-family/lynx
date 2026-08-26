@@ -4416,6 +4416,21 @@ public class LynxTouchHandler : UIGestureRecognizer {
 public class LynxTouchHandlerUnitTest : XCTestCase {
 }
 
+public protocol LynxTransferListener-p : <NSObject> {
+  public BOOL LynxTransferListener-p::onCreate:view:dataset:(NSString *transferId,[view] UIView *view,[dataset] NSDictionary *dataset);
+  public void LynxTransferListener-p::onDatasetUpdate:dataset:(NSString *transferId,[dataset] NSDictionary *dataset);
+  public void LynxTransferListener-p::onRemove:view:(NSString *transferId,[view] UIView *view);
+}
+
+public class LynxTransferManager : NSObject {
+  public void LynxTransferManager::registerTransferListener:(id< LynxTransferListener > listener);
+  public void LynxTransferManager::unregisterTransferListener:(id< LynxTransferListener > listener);
+  public void LynxTransferManager::dispatchTransferCreate:view:dataset:(NSString *transferId,[view] UIView *view,[dataset] NSDictionary *dataset);
+  public void LynxTransferManager::dispatchTransferDatasetUpdate:dataset:(UIView *view,[dataset] NSDictionary *dataset);
+  public void LynxTransferManager::dispatchTransferRemove:view:(NSString *transferId,[view] UIView *view);
+  public void LynxTransferManager::clearTransfers();
+}
+
 public class LynxTransformOriginRaw : NSObject {
   public float LynxTransformOriginRaw::p0 p0;
   public float LynxTransformOriginRaw::p1 p1;
@@ -5610,6 +5625,8 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::resumeRootLayoutAnimation();
   public void LynxView::resetAnimation();
   public void LynxView::restartAnimation();
+  public void LynxView::registerTransferListener:(nonnull id< LynxTransferListener > listener);
+  public void LynxView::unregisterTransferListener:(nonnull id< LynxTransferListener > listener);
   public void LynxView::setTheme:(nonnull LynxTheme *theme);
   public nullable LynxTheme * LynxView::theme();
   public void LynxView::setNeedPendingUIOperation:(BOOL needPendingUIOperation);

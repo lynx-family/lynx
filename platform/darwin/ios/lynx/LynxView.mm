@@ -27,6 +27,7 @@
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTransferListener.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIRendererProtocol.h>
@@ -34,6 +35,7 @@
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxFeatureCounter.h"
 #import "LynxTraceEventDef.h"
+#import "LynxTransferManager.h"
 #import "LynxView+Protected.h"
 
 #include "base/include/lynx_actor.h"
@@ -50,6 +52,10 @@
   } while (0)
 
 @interface LynxView () <LynxTemplateRenderDelegate>
+
+@property(nonatomic, strong) LynxTransferManager* transferManager;
+- (void)initTransferStorage;
+- (void)clearTransfers;
 
 @end
 
@@ -94,6 +100,7 @@
   _dispatchingIntrinsicContentSizeChange = NO;
   if (self) {
     [self initLifecycleDispatcher];
+    [self initTransferStorage];
   }
   _templateRender = [[LynxTemplateRender alloc] initWithBuilderBlock:block lynxView:self];
   _lifecycleDispatcher.instanceId = [_templateRender instanceId];
@@ -106,8 +113,13 @@
   self = [super initWithFrame:CGRectZero];
   self.accessibilityLabel = @"lynxview";
   [self initLifecycleDispatcher];
+  [self initTransferStorage];
 
   return self;
+}
+
+- (void)initTransferStorage {
+  self.transferManager = [LynxTransferManager new];
 }
 
 - (void)initLifecycleDispatcher {
@@ -124,6 +136,7 @@
 
 - (void)clearForDestroy {
   _LogI(@"Lynxview %p: clearForDestroy", self);
+  [self clearTransfers];
   [self clearModuleForDestroy];
   if (_dispatchingIntrinsicContentSizeChange) {
     _LogI(@"Warning!!!! you possibly call clearForDestroy inside of layoutDidFinish call stack");
@@ -154,6 +167,32 @@
   // need set nil here, else call _templateRender after clearForDestroy
   // will cause crash in LynxShell
   _templateRender = nil;
+}
+
+- (void)registerTransferListener:(nonnull id<LynxTransferListener>)listener {
+  [self.transferManager registerTransferListener:listener];
+}
+
+- (void)unregisterTransferListener:(nonnull id<LynxTransferListener>)listener {
+  [self.transferManager unregisterTransferListener:listener];
+}
+
+- (void)dispatchTransferCreate:(NSString*)transferId
+                          view:(UIView*)view
+                       dataset:(NSDictionary*)dataset {
+  [self.transferManager dispatchTransferCreate:transferId view:view dataset:dataset];
+}
+
+- (void)dispatchTransferDatasetUpdate:(UIView*)view dataset:(NSDictionary*)dataset {
+  [self.transferManager dispatchTransferDatasetUpdate:view dataset:dataset];
+}
+
+- (void)dispatchTransferRemove:(NSString*)transferId view:(UIView*)view {
+  [self.transferManager dispatchTransferRemove:transferId view:view];
+}
+
+- (void)clearTransfers {
+  [self.transferManager clearTransfers];
 }
 
 - (void)resetViewAndLayer {
