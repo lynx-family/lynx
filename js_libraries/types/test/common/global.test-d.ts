@@ -21,6 +21,7 @@ import {
   ContextProxy,
   MessageEvent,
   DispatchEventResult,
+  LynxNapiLoader,
 } from '../../types/index';
 
 describe('Global Variable Type Test ', () => {
@@ -110,6 +111,7 @@ describe('Global Variable Type Test ', () => {
     expectTypeOf(lynx.getDevtool).returns.toEqualTypeOf<ContextProxy>();
     expectTypeOf(lynx.getNative).returns.toEqualTypeOf<ContextProxy>();
     expectTypeOf(lynx.getEngine).returns.toEqualTypeOf<ContextProxy>();
+    expectTypeOf(lynx.getModuleLoader).returns.toEqualTypeOf<LynxNapiLoader>();
   });
 
   it('ContextProxy Method Types Check', () => {
