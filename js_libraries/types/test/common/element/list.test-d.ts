@@ -257,16 +257,6 @@ describe('ListItemProps type test', () => {
     });
   });
 
-  it('check experimental-recycle-sticky-item', () => {
-    assertType<ListProps>({
-      'experimental-recycle-sticky-item': true,
-    });
-    assertType<ListProps>({
-      // @ts-expect-error
-      'experimental-recycle-sticky-item': 0,
-    });
-  });
-
   it('check harmony-scroll-edge-effect', () => {
     assertType<ListProps>({
       'harmony-scroll-edge-effect': true,

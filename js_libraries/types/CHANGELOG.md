@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.4
+- Remove deprecated `experimental-recycle-sticky-item` from `<list>` typings.
+
 ## 4.3.3
 - Add `inputType` to the `<input>` and `<textarea>` input event typings to distinguish paste from normal input.
 
