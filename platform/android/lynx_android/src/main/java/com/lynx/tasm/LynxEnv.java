@@ -206,6 +206,8 @@ public class LynxEnv {
 
   private boolean mEnableLazyInitA11y = true;
 
+  private volatile boolean mEnablePlatformObservability = false;
+
   private boolean mEnableTextLayoutCache = true;
 
   // FSP related fields
@@ -1485,6 +1487,33 @@ public class LynxEnv {
 
   public boolean enableLazyInitA11y() {
     return this.mEnableLazyInitA11y;
+  }
+
+  /**
+   * Globally enables platform-native observability for subsequently created Lynx views.
+   *
+   * <p>When enabled, Android exposes Lynx UI through delegate-based virtual accessibility nodes
+   * even if system accessibility is disabled. A page-level {@code enableA11y} configuration still
+   * selects the View-based accessibility implementation and takes precedence.
+   *
+   * <p>This switch makes the node tree available for discovery and location. It does not bypass
+   * system accessibility checks for every accessibility interaction. Automation clients can use
+   * actions advertised by a node or use the exposed bounds to inject platform input. In the
+   * delegate-based implementation, {@code ACTION_CLICK} is advertised only for nodes with {@code
+   * accessibility-enable-tap=true}, while accessibility focus and hover remain controlled by system
+   * accessibility state.
+   *
+   * <p>This should be configured before creating a LynxView.
+   */
+  @AnyThread
+  public void enablePlatformObservability(boolean enable) {
+    mEnablePlatformObservability = enable;
+  }
+
+  /** Returns whether platform-native observability is globally enabled. */
+  @AnyThread
+  public boolean isPlatformObservabilityEnabled() {
+    return mEnablePlatformObservability;
   }
 
   protected void initEnableGenericResourceFetcher() {
