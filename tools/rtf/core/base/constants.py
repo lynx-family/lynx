@@ -26,3 +26,4 @@ class Constants(AutoEnum):
     ANDROID_EMULATOR_PREPARE_ERR = auto()
     ANDROID_REAL_DEVICE_PREPARE_ERR = auto()
     PLUGIN_BUILD_ERR = auto()
+    TARGET_SELECTION_ERR = auto()
