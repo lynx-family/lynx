@@ -6,9 +6,19 @@
 
 #include <memory>
 
+#include "base/include/value/base_string.h"
 #include "core/renderer/worklet/lepus_lynx.h"
+#include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_lynx.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
+
+namespace {
+
+void* GetQuickContextNapiEnv(lynx::lepus::QuickContext* quick_context) {
+  return quick_context->napi_env();
+}
+
+}  // namespace
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/primjs_napi_defines.h"
@@ -16,6 +26,24 @@
 
 namespace lynx {
 namespace worklet {
+namespace {
+
+constexpr char kGetModuleLoader[] = "getModuleLoader";
+
+lepus::Value GetModuleLoader(runtime::MTSContext* context, lepus::Value*, int) {
+  auto* quick_context = static_cast<lepus::QuickContext*>(context);
+  auto env = reinterpret_cast<napi_env>(GetQuickContextNapiEnv(quick_context));
+  if (env == nullptr) {
+    return lepus::Value(lepus::Value::kCreateAsUndefinedTag);
+  }
+  Napi::HandleScope scope(env);
+  Napi::Object loader = Napi::Env(env).Loader();
+  return MK_JS_LEPUS_VALUE(
+      quick_context->context(),
+      *reinterpret_cast<LEPUSValue*>(static_cast<napi_value>(loader)));
+}
+
+}  // namespace
 
 NapiLoaderUI::NapiLoaderUI(runtime::MTSRuntime* context) : context_(context) {}
 
@@ -26,6 +54,13 @@ void NapiLoaderUI::OnAttach(Napi::Env env) {
     delegate->OnNapiEnvironmentAttached(
         reinterpret_cast<void*>(static_cast<napi_env>(env)));
   }
+
+  context_->SetPropertyToLynx(
+      BASE_STATIC_STRING(kGetModuleLoader),
+      MK_JS_LEPUS_VALUE(
+          runtime::MTSRuntime::ToQuickContext(context_)->context(),
+          runtime::MTSRuntime::ToQuickContext(context_)->NewBindingFunction(
+              &GetModuleLoader)));
 
   // Set Lynx To Napi Env
   lynx_ = LepusLynx::Create(
@@ -89,9 +124,9 @@ void NapiLoaderUI::SetNapiEnvToLEPUSContext(Napi::Env env) {
   if (quick_context == nullptr) {
     return;
   }
-  quick_context->set_napi_env(
-      reinterpret_cast<void*>(static_cast<napi_env>(env)));
-  NapiEnvToContextMap()[static_cast<napi_env>(env)] = quick_context;
+  auto use_env = static_cast<napi_env>(env);
+  quick_context->set_napi_env(reinterpret_cast<void*>(use_env));
+  NapiEnvToContextMap()[use_env] = quick_context;
 }
 
 }  // namespace worklet
