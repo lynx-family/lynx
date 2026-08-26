@@ -7,6 +7,7 @@
 #define protected public
 
 #include <memory>
+#include <mutex>
 
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -26,9 +27,27 @@
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#include "third_party/napi/include/napi_module.h"
 
 namespace lynx {
 namespace base {
+namespace {
+
+int g_module_load_count = 0;
+std::once_flag g_module_registration_once;
+
+napi_value InitMTSModuleLoaderTest(napi_env env, napi_value exports) {
+  ++g_module_load_count;
+  Napi::Object exports_object(env, exports);
+  exports_object.Set("message", Napi::String::New(env, "hello from MTS"));
+  return exports;
+}
+
+napi_module g_mts_module_loader_test = {NAPI_MODULE_VERSION, __FILE__,
+                                        InitMTSModuleLoaderTest,
+                                        "mts_module_loader_test", nullptr};
+
+}  // namespace
 
 class WorkletAPITest : public ::testing::Test {
  protected:
@@ -66,6 +85,7 @@ class WorkletAPITest : public ::testing::Test {
     // Create default entry and set it to tasm
     auto default_entry = std::make_shared<tasm::TemplateEntry>();
     default_entry->SetVm(ctx_);
+    ctx_->RegisterLynx(false);
     default_entry->AttachNapiEnvironment();
     tasm_->template_entries_[tasm::DEFAULT_ENTRY_NAME] = default_entry;
 
@@ -139,6 +159,64 @@ TEST_F(WorkletAPITest, TestLepusLynxTriggerLepusBridgeSync) {
 
   EXPECT_EQ(delegate_->DumpDelegate(), "TriggerLepusMethod\n");
 }
+
+TEST_F(WorkletAPITest, TestLynxGetModuleLoader) {
+  g_module_load_count = 0;
+  std::call_once(g_module_registration_once,
+                 []() { napi_module_register_xx(&g_mts_module_loader_test); });
+
+  std::string js_source = R"(
+    const module = lynx.getModuleLoader().load("mts_module_loader_test");
+    if (module.message !== "hello from MTS") {
+      throw new Error("unexpected MTS Node-API module export");
+    }
+  )";
+
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
+  EXPECT_TRUE(ctx_->Execute(nullptr));
+  EXPECT_EQ(g_module_load_count, 1);
+}
+
+class WorkletAPIDetachTest : public WorkletAPITest,
+                             public ::testing::WithParamInterface<bool> {};
+
+TEST_P(WorkletAPIDetachTest, TestLynxGetModuleLoaderAfterDetach) {
+  auto default_entry = tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME);
+  auto component_entry = std::make_shared<tasm::TemplateEntry>();
+  component_entry->SetVm(ctx_);
+  component_entry->AttachNapiEnvironment();
+  tasm_->template_entries_["component_entry"] = component_entry;
+
+  auto* quick_context = runtime::MTSRuntime::ToQuickContext(ctx_.get());
+  EXPECT_EQ(quick_context->napi_env(),
+            static_cast<napi_env>(
+                component_entry->napi_environment()->proxy()->Env()));
+
+  // Cover detaching both the older and the most recently attached environment.
+  auto detached_entry = GetParam() ? component_entry : default_entry;
+  auto attached_entry = GetParam() ? default_entry : component_entry;
+  auto detached_env = detached_entry->napi_environment()->proxy()->Env();
+  auto attached_env = attached_entry->napi_environment()->proxy()->Env();
+  detached_entry->DetachNapiEnvironment();
+
+  EXPECT_EQ(quick_context->napi_env(), nullptr);
+  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(detached_env),
+            nullptr);
+  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(attached_env),
+            quick_context);
+
+  std::string js_source = R"(
+    if (lynx.getModuleLoader() !== undefined) {
+      throw new Error("MTS Node-API module loader is available after detach");
+    }
+  )";
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
+  EXPECT_TRUE(ctx_->Execute(nullptr));
+}
+
+INSTANTIATE_TEST_SUITE_P(DetachOrder, WorkletAPIDetachTest, ::testing::Bool());
 
 // Test case for the LepusGesture API
 TEST_F(WorkletAPITest, TestLepusGestureAPI) {
