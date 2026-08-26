@@ -867,6 +867,18 @@ public class TextHelper {
     return formatDoubleToString(num);
   }
 
+  static void appendDoubleWithoutRedundantDecimal(StringBuilder builder, double value) {
+    // Omit a redundant ".0" for integral values while preserving fractional values.
+    if (value < Long.MAX_VALUE && value > Long.MIN_VALUE) {
+      long integerValue = (long) value;
+      if (value == integerValue) {
+        builder.append(integerValue);
+        return;
+      }
+    }
+    builder.append(value);
+  }
+
   public static void updateTextPaintColor(
       TextPaint textPaint, boolean isDrawStroke, int color, int strokeColor, float strokeWidth) {
     if (isDrawStroke) {
