@@ -275,7 +275,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _originLynxViewConfig = builder.lynxViewConfig;
   _enableAirStrictMode = builder.enableAirStrictMode;
   // enable js default yes
-  _enableJSRuntime = _enableAirStrictMode ? NO : builder.enableJSRuntime;
+  _enableJSRuntime = _logicExecutor == nil && (_enableAirStrictMode ? NO : builder.enableJSRuntime);
   _enableMTSModule = builder.enableMTSModule;
   _enableLepusModule = builder.enableLepusModule;
   _needPendingUIOperation = builder.enableUIOperationQueue;
