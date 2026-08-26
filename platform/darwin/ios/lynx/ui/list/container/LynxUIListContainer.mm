@@ -17,6 +17,8 @@
 
 #import <Lynx/LynxUIContext+Internal.h>
 
+#import "LynxListStickyManager.h"
+
 #import "core/public/list_container_proxy.h"
 #import "core/public/list_engine_proxy.h"
 
@@ -119,7 +121,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 
 @end
 
-@interface LynxUIListContainer () {
+@interface LynxUIListContainer () <LynxListStickyManagerOwner> {
   std::unique_ptr<lynx::shell::ListContainerProxy> _listContainerProxy;
 }
 @property(nonatomic, assign) BOOL verticalOrientation;
@@ -129,23 +131,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 // True if this setContentOffset is triggered by onNodeReady
 @property(nonatomic, assign) BOOL shouldBlockScrollByListContainer;
 @property(nonatomic, assign) CGPoint previousContentOffset;
-// Sticky properties
-@property(nonatomic, assign) BOOL enableListSticky;
-@property(nonatomic, assign) CGFloat stickyOffset;
-@property(nonatomic, strong) NSArray<NSNumber *> *stickyTopIndexes;
-@property(nonatomic, strong) NSMutableDictionary<NSNumber *, LynxUIComponent *> *stickyTopItems;
-@property(nonatomic, strong) NSArray<NSNumber *> *stickyBottomIndexes;
-@property(nonatomic, strong) NSMutableDictionary<NSNumber *, LynxUIComponent *> *stickyBottomItems;
-@property(nonatomic, assign) BOOL updateStickyForDiff;
-@property(nonatomic, strong) NSMutableSet<NSString *> *stickyTopItemKeySet;
-@property(nonatomic, strong) NSMutableSet<NSString *> *stickyBottomItemKeySet;
-@property(nonatomic, strong)
-    NSMutableDictionary<NSString *, LynxUIComponent *> *stickyTopListItemDict;
-@property(nonatomic, strong)
-    NSMutableDictionary<NSString *, LynxUIComponent *> *stickyBottomListItemDict;
-@property(nonatomic, weak) LynxUI *prevStickyStartItem;
-@property(nonatomic, weak) LynxUI *prevStickyEndItem;
-@property(nonatomic, assign) BOOL enableRecycleStickyItem;
+@property(nonatomic, strong) LynxListStickyManager *stickyManager;
 @property(nonatomic, assign) BOOL enableFadeInAnimation;
 @property(nonatomic, assign) BOOL enableBatchRender;
 @property(nonatomic, assign) BOOL enableInsertPlatformViewOperation;
@@ -155,7 +141,6 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, assign) BOOL isInAutoScroll;
 @property(nonatomic, assign) LynxListScrollState currentScrollState;
 @property(nonatomic, assign) BOOL enableNeedVisibleItemInfo;
-@property(nonatomic, assign) BOOL updatingStickyAfterLayout;
 @property(nonatomic, assign) NSInteger pagingMaxSnapCount;
 // Experimental
 @property(nonatomic, assign) BOOL disableFilterScroll;
@@ -174,25 +159,18 @@ LYNX_REGISTER_UI("list-container")
 - (instancetype)init {
   self = [super init];
   if (self) {
-    _stickyTopItems = [NSMutableDictionary dictionary];
-    _stickyBottomItems = [NSMutableDictionary dictionary];
+    _stickyManager = [[LynxListStickyManager alloc] initWithOwner:self];
     _verticalOrientation = YES;  // Default Vertical
     self.enableScrollY = YES;
     _pagingAlignFactor = kInvalidSnapFactor;
     _pagingMaxSnapCount = kDefaultMaxSnapCount;
     _updateAnimationFadeInDuration = kFadeInAnimationDefaultDuration;
     _maxFlingDistanceRatio = -1;
-    _enableRecycleStickyItem = YES;
     _listNativeStateCache = [NSMutableDictionary dictionary];
     _initialFlushPropCache = [NSMutableDictionary dictionary];
     _enableBatchRender = NO;
     _enableInsertPlatformViewOperation = NO;
     _currentScrollState = LynxListScrollStateIdle;
-    _updateStickyForDiff = YES;
-    _stickyTopItemKeySet = [NSMutableSet set];
-    _stickyBottomItemKeySet = [NSMutableSet set];
-    _stickyTopListItemDict = [NSMutableDictionary dictionary];
-    _stickyBottomListItemDict = [NSMutableDictionary dictionary];
   }
   return self;
 }
@@ -285,8 +263,7 @@ LYNX_REGISTER_UI("list-container")
     _targetDelta = CGPointZero;
   }
   _shouldBlockScrollByListContainer = NO;
-  [self updateStickyTops];
-  [self updateStickyBottoms];
+  [self.stickyManager updateStickyItems];
 }
 
 - (void)detachedFromWindow {
@@ -311,92 +288,15 @@ LYNX_REGISTER_UI("list-container")
   }
   LynxUIComponent *componentChild = (LynxUIComponent *)child;
   componentChild.layoutObserver = self;
-
-  if (self.enableListSticky && !self.updateStickyForDiff) {
-    NSInteger indexFromItemKey = [self getIndexFromItemKey:componentChild.itemKey];
-
-    [self updateStickyInfoForInsertedChild:componentChild
-                               stickyItems:self.stickyTopItems
-                             stickyIndexes:self.stickyTopIndexes
-                                     index:indexFromItemKey];
-
-    [self updateStickyInfoForInsertedChild:componentChild
-                               stickyItems:self.stickyBottomItems
-                             stickyIndexes:self.stickyBottomIndexes
-                                     index:indexFromItemKey];
-  }
 }
 
 - (void)removeChild:(id)child atIndex:(NSInteger)index {
   [super removeChild:child atIndex:index];
-  if (self.enableListSticky && !self.updateStickyForDiff) {
-    [self updateStickyInfoForDeletedChild:child stickyItems:self.stickyTopItems];
-    [self updateStickyInfoForDeletedChild:child stickyItems:self.stickyBottomItems];
-  }
 }
 
 - (void)propsDidUpdate {
   [super propsDidUpdate];
-  if (self.enableListSticky && self.updateStickyForDiff) {
-    [self.stickyTopItemKeySet removeAllObjects];
-    [self.stickyBottomItemKeySet removeAllObjects];
-    // Generate sticky item key set
-    [self updateStickyItemKeySet:self.stickyTopItemKeySet
-               andStickyItemDict:self.stickyTopListItemDict
-                     withIndexes:self.stickyTopIndexes];
-    [self updateStickyItemKeySet:self.stickyBottomItemKeySet
-               andStickyItemDict:self.stickyBottomListItemDict
-                     withIndexes:self.stickyBottomIndexes];
-  }
-}
-
-- (void)updateStickyItemKeySet:(NSMutableSet<NSString *> *)stickyItemKeySet
-             andStickyItemDict:(NSMutableDictionary<NSString *, LynxUIComponent *> *)stickyItemDict
-                   withIndexes:(NSArray<NSNumber *> *)stickyIndexes {
-  // Generate item key set
-  [stickyIndexes
-      enumerateObjectsUsingBlock:^(NSNumber *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
-        NSInteger index = obj.integerValue;
-        if (index >= 0 && (NSUInteger)index < self.itemKeys.count) {
-          [stickyItemKeySet addObject:self.itemKeys[index]];
-        }
-      }];
-  if (stickyItemDict.count) {
-    // Remove item from sticky dict if not sticky.
-    [[stickyItemDict copy]
-        enumerateKeysAndObjectsUsingBlock:^(NSString *_Nonnull key, LynxUIComponent *_Nonnull obj,
-                                            BOOL *_Nonnull stop) {
-          if (key != nil && obj != nil && ![stickyItemKeySet containsObject:key]) {
-            [self resetStickyItem:obj];
-            [stickyItemDict removeObjectForKey:key];
-          }
-        }];
-  }
-}
-
-- (void)updateStickyAfterLayoutIfNeeded:(LynxUIComponent *)component {
-  if (!self.enableListSticky) {
-    return;
-  }
-  if (self.updatingStickyAfterLayout) {
-    return;
-  }
-  BOOL isStickyRelevant = NO;
-  if (component.itemKey) {
-    isStickyRelevant = [self.stickyTopItemKeySet containsObject:component.itemKey] ||
-                       [self.stickyBottomItemKeySet containsObject:component.itemKey];
-  }
-  if (!isStickyRelevant) {
-    isStickyRelevant =
-        (self.prevStickyStartItem == component) || (self.prevStickyEndItem == component);
-  }
-  if (!isStickyRelevant) {
-    return;
-  }
-  self.updatingStickyAfterLayout = YES;
-  [self updateStickyTops];
-  [self updateStickyBottoms];
-  self.updatingStickyAfterLayout = NO;
+  [self.stickyManager propsDidUpdate];
 }
 
 #pragma mark component update
@@ -410,73 +310,7 @@ LYNX_REGISTER_UI("list-container")
            adjustLayersFrame:YES];
     wrapper.layer.zPosition = component.zIndex;
   }
-  if (self.enableListSticky && self.updateStickyForDiff) {
-    // This callback is invoked by component's onNodeReady(), which means
-    // component has valid item-key info, so handle component's item-key changed
-    // for sticky.
-    NSString *itemKey = component.itemKey;
-    if (itemKey != nil) {
-      if ([self.stickyTopItemKeySet containsObject:itemKey]) {
-        // Update sticky top list item dict.
-        [self updateStickyItemDictWithItem:component
-                            stickyItemDict:self.stickyTopListItemDict
-                                  isSticky:YES];
-      } else if ([self.stickyBottomItemKeySet containsObject:itemKey]) {
-        // Update sticky bottom list item dict.
-        [self updateStickyItemDictWithItem:component
-                            stickyItemDict:self.stickyBottomListItemDict
-                                  isSticky:YES];
-      } else {
-        // Not sticky top or bottom list item, remove it from dict.
-        [self updateStickyItemDictWithItem:component
-                            stickyItemDict:self.stickyTopListItemDict
-                                  isSticky:NO];
-        [self updateStickyItemDictWithItem:component
-                            stickyItemDict:self.stickyBottomListItemDict
-                                  isSticky:NO];
-      }
-    }
-  }
-
-  [self updateStickyAfterLayoutIfNeeded:component];
-}
-
-- (void)updateStickyItemDictWithItem:(LynxUIComponent *)component
-                      stickyItemDict:
-                          (NSMutableDictionary<NSString *, LynxUIComponent *> *)stickyItemDict
-                            isSticky:(BOOL)isSticky {
-  if (component && component.itemKey) {
-    if (isSticky) {
-      NSString *newUpdatedItemKey = component.itemKey;
-      if (stickyItemDict[newUpdatedItemKey] == component) {
-        // No need to update sticky item dict.
-        return;
-      }
-      [[stickyItemDict copy]
-          enumerateKeysAndObjectsUsingBlock:^(NSString *_Nonnull key, LynxUIComponent *_Nonnull obj,
-                                              BOOL *_Nonnull stop) {
-            if (![newUpdatedItemKey isEqualToString:key] && obj == component) {
-              // Delete old and insert new <item-key, list-item> pair to finish
-              // updating item-key.
-              [stickyItemDict removeObjectForKey:key];
-              [stickyItemDict setObject:component forKey:newUpdatedItemKey];
-              *stop = YES;
-            }
-          }];
-    } else {
-      // The component is not sticky top or bottom list item, remove it from dict.
-      [[stickyItemDict copy]
-          enumerateKeysAndObjectsUsingBlock:^(NSString *_Nonnull key, LynxUIComponent *_Nonnull obj,
-                                              BOOL *_Nonnull stop) {
-            if (obj == component) {
-              // Delete old <item-key, list-item> pair.
-              [stickyItemDict removeObjectForKey:key];
-              [self resetStickyItem:component];
-              *stop = YES;
-            }
-          }];
-    }
-  }
+  [self.stickyManager didLayoutComponent:component];
 }
 
 - (void)onAsyncComponentLayoutUpdated:(LynxUIComponent *)component
@@ -515,59 +349,11 @@ LYNX_REGISTER_UI("list-container")
     }
     [self.delegate insertListComponent:component wrapper:wrapper];
   }
-  if (self.enableListSticky) {
-    if (self.updateStickyForDiff) {
-      // This method is invoked in FinishLayoutOperation or by c++ list element
-      // which means component has valid item-key info.
-      NSString *itemKey = component.itemKey;
-      if (itemKey != nil) {
-        // Add <item-key, list-item> to dict if current component is sticky
-        // item.
-        if ([self.stickyTopItemKeySet containsObject:itemKey]) {
-          [self.stickyTopListItemDict setObject:component forKey:itemKey];
-        } else if ([self.stickyBottomItemKeySet containsObject:itemKey]) {
-          [self.stickyBottomListItemDict setObject:component forKey:itemKey];
-        }
-      }
-    } else {
-      NSInteger indexFromItemKey = [self getIndexFromItemKey:component.itemKey];
-      [self updateStickyInfoForUpdatedChild:component
-                                stickyItems:self.stickyTopItems
-                              stickyIndexes:self.stickyTopIndexes
-                                      index:indexFromItemKey];
-
-      [self updateStickyInfoForUpdatedChild:component
-                                stickyItems:self.stickyBottomItems
-                              stickyIndexes:self.stickyBottomIndexes
-                                      index:indexFromItemKey];
-    }
-  }
+  [self.stickyManager didAttachComponent:component];
 }
 
 - (void)removeListComponent:(LynxUIComponent *)component {
-  if (self.enableListSticky) {
-    if (self.updateStickyForDiff) {
-      NSString *itemKey = component.itemKey;
-      if (itemKey != nil) {
-        // Remove <item-key, list-item> from dict if current component is sticky
-        // item.
-        if ([self.stickyTopListItemDict objectForKey:itemKey]) {
-          [self.stickyTopListItemDict removeObjectForKey:itemKey];
-          if (self.enableRecycleStickyItem) {
-            [self resetStickyItem:component];
-          }
-        } else if ([self.stickyBottomListItemDict objectForKey:itemKey]) {
-          [self.stickyBottomListItemDict removeObjectForKey:itemKey];
-          if (self.enableRecycleStickyItem) {
-            [self resetStickyItem:component];
-          }
-        }
-      }
-    } else {
-      [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyTopItems];
-      [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyBottomItems];
-    }
-  }
+  [self.stickyManager willDetachComponent:component];
   if (component.view.superview.superview == self.view) {
     [component.view.superview removeFromSuperview];
     [component.view removeFromSuperview];
@@ -631,9 +417,8 @@ LYNX_PROP_SETTER("item-snap", setPagingAlignment, NSDictionary *) {
 }
 
 LYNX_PROP_SETTER("list-container-info", setStickyInfo, NSDictionary *) {
-  _stickyTopIndexes = value[@"stickyStart"];
-  _stickyBottomIndexes = value[@"stickyEnd"];
   _itemKeys = value[@"itemkeys"];
+  [self.stickyManager setStickyStartIndexes:value[@"stickyStart"] endIndexes:value[@"stickyEnd"]];
 }
 
 LYNX_PROP_SETTER("experimental-batch-render-strategy", setBatchRenderStrategy, NSInteger) {
@@ -664,13 +449,9 @@ LYNX_PROP_SETTER("ios-scrolls-to-top", iosScrollsToTop, BOOL) {
 }
 
 // Sticky for horizontal layout is not supported.
-LYNX_PROP_SETTER("sticky", setEnableSticky, BOOL) { self.enableListSticky = value; }
+LYNX_PROP_SETTER("sticky", setEnableSticky, BOOL) { self.stickyManager.enabled = value; }
 
-LYNX_PROP_SETTER("experimental-recycle-sticky-item", setEnableRecycleStickyItem, BOOL) {
-  self.enableRecycleStickyItem = value;
-}
-
-LYNX_PROP_SETTER("sticky-offset", setStickyOffset, CGFloat) { self.stickyOffset = value; }
+LYNX_PROP_SETTER("sticky-offset", setStickyOffset, CGFloat) { self.stickyManager.offset = value; }
 
 LYNX_PROP_SETTER("enable-fade-in-animation", setEnableFadeInAnimation, BOOL) {
   self.enableFadeInAnimation = value;
@@ -687,10 +468,6 @@ LYNX_PROP_SETTER("enable-insert-platform-view-operation", setEnableInsertPlatfor
 
 LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
   self.enableNeedVisibleItemInfo = value;
-}
-
-LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, BOOL) {
-  self.updateStickyForDiff = value;
 }
 
 - (void)setEnableScroll:(BOOL)value requestReset:(BOOL)requestReset {
@@ -752,304 +529,6 @@ LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, 
       break;
   }
   self.currentScrollState = scrollState;
-}
-
-#pragma mark sticky
-
-- (void)updateStickyInfoForInsertedChild:(LynxUIComponent *)child
-                             stickyItems:
-                                 (NSMutableDictionary<NSNumber *, LynxUIComponent *> *)stickyItems
-                           stickyIndexes:(NSArray<NSNumber *> *)stickyIndexes
-                                   index:(NSInteger)indexFromItemKey {
-  if (!self.enableListSticky) {
-    return;
-  }
-
-  // Insert child to sticky array
-
-  [stickyIndexes
-      enumerateObjectsUsingBlock:^(NSNumber *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
-        if (obj.integerValue == indexFromItemKey) {
-          stickyItems[@(indexFromItemKey)] = child;
-        }
-      }];
-}
-
-- (void)updateStickyInfoForDeletedChild:(LynxUIComponent *)child
-                            stickyItems:
-                                (NSMutableDictionary<NSNumber *, LynxUIComponent *> *)stickyItems {
-  if (!self.enableListSticky) {
-    return;
-  }
-
-  // Remove child from sticky array
-
-  [[stickyItems copy] enumerateKeysAndObjectsUsingBlock:^(
-                          NSNumber *_Nonnull key, LynxUI *_Nonnull obj, BOOL *_Nonnull stop) {
-    if (obj == child) {
-      if (self.enableRecycleStickyItem) {
-        [self resetStickyItem:child];
-      }
-      [stickyItems removeObjectForKey:key];
-      *stop = YES;
-    }
-  }];
-}
-
-- (void)updateStickyInfoForUpdatedChild:(LynxUIComponent *)child
-                            stickyItems:
-                                (NSMutableDictionary<NSNumber *, LynxUIComponent *> *)stickyItems
-                          stickyIndexes:(NSArray<NSNumber *> *)stickyIndexes
-                                  index:(NSInteger)indexFromItemKey {
-  if (!self.enableListSticky) {
-    return;
-  }
-
-  // Update child in sticky array
-
-  // TODO(xiamengfei.moonface): Handle recycle sticky later
-
-  [stickyIndexes
-      enumerateObjectsUsingBlock:^(NSNumber *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
-        if (obj.integerValue == indexFromItemKey) {
-          stickyItems[@(indexFromItemKey)] = child;
-
-        } else if (stickyItems[obj] == child) {
-          [stickyItems removeObjectForKey:obj];
-        }
-      }];
-}
-
-- (void)resetStickyItem:(LynxUIComponent *)component {
-  if (component.view && component.view.superview) {
-    component.view.superview.frame = component.frame;
-    component.view.frame = [LynxListContainerComponentWrapper getAlignedFrame:component.frame];
-    component.view.superview.layer.zPosition = component.zIndex;
-  }
-}
-
-- (LynxUIComponent *)getStickyItemWithIndex:(NSNumber *)indexValue isStickyTop:(BOOL)isStickyTop {
-  LynxUIComponent *component = nil;
-  if (self.updateStickyForDiff) {
-    NSMutableDictionary<NSString *, LynxUIComponent *> *stickyItemDict =
-        isStickyTop ? self.stickyTopListItemDict : self.stickyBottomListItemDict;
-    NSInteger index = indexValue.integerValue;
-    if (index >= 0 && (NSUInteger)index < self.itemKeys.count) {
-      NSString *itemKey = self.itemKeys[index];
-      if (itemKey != nil) {
-        component = stickyItemDict[itemKey];
-      }
-    }
-  } else {
-    NSMutableDictionary<NSNumber *, LynxUIComponent *> *stickyItems =
-        isStickyTop ? self.stickyTopItems : self.stickyBottomItems;
-    component = stickyItems[indexValue];
-  }
-  return component;
-}
-
-- (void)updateStickyTops {
-  if (!self.enableListSticky) {
-    return;
-  }
-
-  // TODO(xiamengfei.monface) Support sticky with bounces for iOS
-
-  CGFloat offset = (self.verticalOrientation ? MAX(0, self.view.contentOffset.y)
-                                             : MAX(0, self.view.contentOffset.x)) +
-                   self.stickyOffset;
-
-  LynxUI *stickyStartItem = nil;
-  LynxUI *nextStickyStartItem = nil;
-
-  // enumerate from bottom to top to find sticky top item
-  for (NSNumber *startIndex in self.stickyTopIndexes.reverseObjectEnumerator) {
-    LynxUIComponent *startItem = [self getStickyItemWithIndex:startIndex isStickyTop:YES];
-    if (!startItem) {
-      continue;
-    }
-    CGFloat startOffset =
-        self.verticalOrientation ? CGRectGetMinY(startItem.frame) : CGRectGetMinX(startItem.frame);
-    if (startOffset > offset) {
-      // cache potential next sticky item
-      nextStickyStartItem = startItem;
-      // hold its position
-      [self resetStickyItem:(LynxUIComponent *)startItem];
-    } else if (stickyStartItem) {
-      // sticky top item found, hold upper sticky top's position
-      [self resetStickyItem:(LynxUIComponent *)startItem];
-    } else {
-      stickyStartItem = startItem;
-    }
-  }
-
-  if (stickyStartItem) {
-    if (self.prevStickyStartItem != stickyStartItem) {
-      if (self.verticalOrientation) {
-        [self.scrollEventManager sendScrollEvent:LynxEventStickyTop
-                                      scrollView:self.view
-                                          detail:@{
-                                            @"top" : ((LynxUIComponent *)stickyStartItem).itemKey,
-                                          }];
-      }
-
-      [self.scrollEventManager sendScrollEvent:LynxEventStickyStart
-                                    scrollView:self.view
-                                        detail:@{
-                                          @"start" : ((LynxUIComponent *)stickyStartItem).itemKey,
-                                        }];
-      self.prevStickyStartItem = stickyStartItem;
-    }
-
-    CGFloat stickyStartOffset = offset;
-
-    if (nextStickyStartItem) {
-      CGFloat nextStickyStartItemDistanceFromOffset = 0;
-      CGFloat squashStickyStartDelta = 0;
-
-      if (self.verticalOrientation) {
-        nextStickyStartItemDistanceFromOffset = CGRectGetMinY(nextStickyStartItem.frame) - offset;
-
-        squashStickyStartDelta =
-            CGRectGetHeight(stickyStartItem.frame) - nextStickyStartItemDistanceFromOffset;
-      } else {
-        nextStickyStartItemDistanceFromOffset = CGRectGetMinX(nextStickyStartItem.frame) - offset;
-
-        squashStickyStartDelta =
-            CGRectGetWidth(stickyStartItem.frame) - nextStickyStartItemDistanceFromOffset;
-      }
-
-      if (squashStickyStartDelta > 0) {
-        // need push sticky top item to upper
-        stickyStartOffset -= squashStickyStartDelta;
-      }
-    }
-
-    if (self.verticalOrientation) {
-      stickyStartItem.view.superview.frame = {{
-                                                  stickyStartItem.frame.origin.x,
-                                                  stickyStartOffset,
-                                              },
-                                              stickyStartItem.frame.size};
-    } else {
-      stickyStartItem.view.superview.frame = {{
-                                                  stickyStartOffset,
-                                                  stickyStartItem.frame.origin.y,
-
-                                              },
-                                              stickyStartItem.frame.size};
-    }
-
-    stickyStartItem.view.frame =
-        [LynxListContainerComponentWrapper getAlignedFrame:stickyStartItem.frame];
-    [self.view bringSubviewToFront:stickyStartItem.view.superview];
-    stickyStartItem.view.superview.layer.zPosition = NSIntegerMax;
-  }
-}
-
-- (void)updateStickyBottoms {
-  if (!self.enableListSticky) {
-    return;
-  }
-  CGFloat offset = 0;
-
-  if (self.verticalOrientation) {
-    offset = MIN(self.view.contentOffset.y,
-                 MAX(0, self.view.contentSize.height - self.view.frame.size.height)) +
-             CGRectGetHeight(self.view.frame) - self.stickyOffset;
-  } else {
-    offset = MIN(self.view.contentOffset.x,
-                 MAX(0, self.view.contentSize.width - self.view.frame.size.width)) +
-             CGRectGetWidth(self.view.frame) - self.stickyOffset;
-  }
-
-  LynxUI *stickyEndItem = nil;
-  LynxUI *nextStickyEndItem = nil;
-
-  // enumerate from top to bottom to find sticky top item
-  for (NSNumber *endIndex in self.stickyBottomIndexes) {
-    LynxUIComponent *endComponent = [self getStickyItemWithIndex:endIndex isStickyTop:NO];
-    if (!endComponent) {
-      continue;
-    }
-    CGFloat curOffset = self.verticalOrientation ? CGRectGetMaxY(endComponent.frame)
-                                                 : CGRectGetMaxX(endComponent.frame);
-
-    if (curOffset < offset) {
-      // cache potential next sticky item
-      nextStickyEndItem = endComponent;
-      // hold its position
-      [self resetStickyItem:(LynxUIComponent *)endComponent];
-    } else if (stickyEndItem) {
-      // sticky bottom item found, hold upper sticky top's position
-      [self resetStickyItem:(LynxUIComponent *)endComponent];
-    } else {
-      stickyEndItem = endComponent;
-    }
-  }
-
-  if (stickyEndItem) {
-    if (self.prevStickyEndItem != stickyEndItem) {
-      if (self.verticalOrientation) {
-        [self.scrollEventManager sendScrollEvent:LynxEventStickyBottom
-                                      scrollView:self.view
-                                          detail:@{
-                                            @"bottom" : ((LynxUIComponent *)stickyEndItem).itemKey,
-                                          }];
-      }
-
-      [self.scrollEventManager sendScrollEvent:LynxEventStickyEnd
-                                    scrollView:self.view
-                                        detail:@{
-                                          @"end" : ((LynxUIComponent *)stickyEndItem).itemKey,
-                                        }];
-
-      self.prevStickyEndItem = stickyEndItem;
-    }
-
-    CGFloat stickyStartOffset =
-        offset - (self.verticalOrientation ? CGRectGetHeight(stickyEndItem.frame)
-                                           : CGRectGetWidth(stickyEndItem.frame));
-
-    if (nextStickyEndItem) {
-      CGFloat nextStickyEndItemDistanceFromOffset = 0;
-      CGFloat squashStickyEndDelta = 0;
-
-      if (self.verticalOrientation) {
-        nextStickyEndItemDistanceFromOffset = offset - CGRectGetMaxY(nextStickyEndItem.frame);
-        squashStickyEndDelta =
-            CGRectGetHeight(stickyEndItem.frame) - nextStickyEndItemDistanceFromOffset;
-      } else {
-        nextStickyEndItemDistanceFromOffset = offset - CGRectGetMaxX(nextStickyEndItem.frame);
-        squashStickyEndDelta =
-            CGRectGetWidth(stickyEndItem.frame) - nextStickyEndItemDistanceFromOffset;
-      }
-
-      if (squashStickyEndDelta > 0) {
-        stickyStartOffset += squashStickyEndDelta;
-      }
-    }
-
-    if (self.verticalOrientation) {
-      stickyEndItem.view.superview.frame = {{
-                                                stickyEndItem.frame.origin.x,
-                                                stickyStartOffset,
-                                            },
-                                            stickyEndItem.frame.size};
-    } else {
-      stickyEndItem.view.superview.frame = {{
-                                                stickyStartOffset,
-                                                stickyEndItem.frame.origin.y,
-
-                                            },
-                                            stickyEndItem.frame.size};
-    }
-
-    stickyEndItem.view.frame =
-        [LynxListContainerComponentWrapper getAlignedFrame:stickyEndItem.frame];
-    [self.view bringSubviewToFront:stickyEndItem.view.superview];
-    stickyEndItem.view.superview.layer.zPosition = NSIntegerMax;
-  }
 }
 
 #pragma mark scroll methods
@@ -1372,8 +851,7 @@ LYNX_UI_METHOD(getVisibleCells) {
                                        originalY:self.view.contentOffset.y];
     }
 
-    [self updateStickyTops];
-    [self updateStickyBottoms];
+    [self.stickyManager updateStickyItems];
   }
 }
 
@@ -1786,7 +1264,8 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (id<LynxEventTarget>)findHitTestTarget:(CGPoint)point withEvent:(UIEvent *)event {
-  __block id<LynxEventTarget> hitTarget = [self findHitTargetInStickyItems:point withEvent:event];
+  __block id<LynxEventTarget> hitTarget = [self.stickyManager findHitTargetAtPoint:point
+                                                                         withEvent:event];
   if (hitTarget) {
     return hitTarget;
   }
@@ -1841,7 +1320,7 @@ LYNX_UI_METHOD(getVisibleCells) {
   if (self.context.enableEventRefactor) {
     return [self findHitTestTarget:point withEvent:event] ?: self;
   } else {
-    id<LynxEventTarget> target = [self findHitTargetInStickyItems:point withEvent:event];
+    id<LynxEventTarget> target = [self.stickyManager findHitTargetAtPoint:point withEvent:event];
     if (target) {
       return target;
     }
@@ -1852,47 +1331,22 @@ LYNX_UI_METHOD(getVisibleCells) {
   }
 }
 
-- (id<LynxEventTarget>)findHitTargetInStickyItems:(CGPoint)point withEvent:(UIEvent *)event {
-  __block id<LynxEventTarget> hitTarget;
-  if (self.updateStickyForDiff) {
-    hitTarget = [self findHitTargetInStickyItemDict:self.stickyTopListItemDict
-                                            atPoint:point
-                                          withEvent:event];
-    if (hitTarget) {
-      return hitTarget;
-    }
-    hitTarget = [self findHitTargetInStickyItemDict:self.stickyBottomListItemDict
-                                            atPoint:point
-                                          withEvent:event];
-  } else {
-    hitTarget = [self findHitTargetInStickyItemDict:self.stickyTopItems
-                                            atPoint:point
-                                          withEvent:event];
-    if (hitTarget) {
-      return hitTarget;
-    }
-    hitTarget = [self findHitTargetInStickyItemDict:self.stickyBottomItems
-                                            atPoint:point
-                                          withEvent:event];
-  }
-  return hitTarget;
+#pragma mark LynxListStickyManagerOwner
+
+- (UIScrollView *)scrollViewForListStickyManager {
+  return self.view;
 }
 
-- (id<LynxEventTarget>)findHitTargetInStickyItemDict:(NSDictionary *)stickyItemDict
-                                             atPoint:(CGPoint)point
-                                           withEvent:(UIEvent *)event {
-  __block id<LynxEventTarget> hitTarget;
-  [stickyItemDict enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, LynxUI *_Nonnull obj,
-                                                      BOOL *_Nonnull stop) {
-    CGPoint pointInCell = [obj.view convertPoint:point fromView:self.view];
-    if ([obj containsPoint:pointInCell inHitTestFrame:obj.view.bounds]) {
-      hitTarget = [obj hitTest:pointInCell withEvent:event];
-      if (hitTarget) {
-        *stop = YES;
-      }
-    }
-  }];
-  return hitTarget;
+- (BOOL)isVerticalForListStickyManager {
+  return self.verticalOrientation;
+}
+
+- (NSArray<NSString *> *)itemKeysForListStickyManager {
+  return self.itemKeys;
+}
+
+- (LynxScrollEventManager *)eventManagerForListStickyManager {
+  return self.scrollEventManager;
 }
 
 @end

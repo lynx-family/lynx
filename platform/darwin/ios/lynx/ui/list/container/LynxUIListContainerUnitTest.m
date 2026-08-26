@@ -7,11 +7,13 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxVersion.h>
 #import <XCTest/XCTest.h>
+#import "LynxListStickyManager.h"
 #import "LynxUI+Gesture.h"
 
 @interface LynxUIListContainer (Testing)
 @property(nonatomic, assign) CGFloat pagingAlignFactor;
 @property(nonatomic, assign) CGFloat pagingAlignOffset;
+@property(nonatomic, strong) LynxListStickyManager *stickyManager;
 @end
 
 @interface LynxListUIContainerUnitTest : XCTestCase
@@ -50,6 +52,17 @@
   }
                          withKey:@"item-snap"
                            forUI:list];
+}
+
+- (void)testStickyPropertiesAreForwardedToManager {
+  LynxUIListContainer *list = [self setUpList];
+  XCTAssertNotNil(list.stickyManager);
+
+  [LynxPropsProcessor updateProp:@YES withKey:@"sticky" forUI:list];
+  [LynxPropsProcessor updateProp:@12.5 withKey:@"sticky-offset" forUI:list];
+
+  XCTAssertTrue(list.stickyManager.enabled);
+  XCTAssertEqualWithAccuracy(list.stickyManager.offset, 12.5, 0.001);
 }
 
 @end

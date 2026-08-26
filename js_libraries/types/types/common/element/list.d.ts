@@ -610,16 +610,6 @@ export interface ListProps extends StandardProps, ScrollbarProps {
   'scroll-bar-enable'?: boolean;
 
   /**
-   * The property to control whether recycle sticky item. The default value is true if sdk version >= 3.4 and false if sdk version < 3.4.
-   * @defaultValue false
-   * @Android
-   * @iOS
-   * @Harmony
-   * @PC
-   */
-  'experimental-recycle-sticky-item'?: boolean;
-
-  /**
    * Whether to using operation from c++ list to insert list-item's platform view. The default value is false, but we recommend to set it to true in the case with MOST_ON_TASM or MULTI_THREAD thread strategy.
    * @defaultValue false
    * @Android

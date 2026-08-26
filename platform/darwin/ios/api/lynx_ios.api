@@ -2856,6 +2856,27 @@ public class LynxListScrollEventEmitterHelper : NSObject {
   public NSString * LynxListScrollEventEmitterHelper::fetchScrollEvent:(UIScrollView *scrollView);
 }
 
+public class LynxListStickyManager : NSObject {
+  public BOOL LynxListStickyManager::enabled enabled;
+  public CGFloat LynxListStickyManager::offset offset;
+  public instancetype LynxListStickyManager::initWithOwner:(id< LynxListStickyManagerOwner > NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxListStickyManager::NS_UNAVAILABLE();
+  public void LynxListStickyManager::setStickyStartIndexes:endIndexes:(nullable NSArray< NSNumber * > *startIndexes,[endIndexes] nullable NSArray< NSNumber * > *endIndexes);
+  public void LynxListStickyManager::propsDidUpdate();
+  public void LynxListStickyManager::didLayoutComponent:(LynxUIComponent *component);
+  public void LynxListStickyManager::didAttachComponent:(LynxUIComponent *component);
+  public void LynxListStickyManager::willDetachComponent:(LynxUIComponent *component);
+  public void LynxListStickyManager::updateStickyItems();
+  public nullable id< LynxEventTarget > LynxListStickyManager::findHitTargetAtPoint:withEvent:(CGPoint point,[withEvent] nullable UIEvent *event);
+}
+
+public protocol LynxListStickyManagerOwner-p : <NSObject> {
+  public UIScrollView * LynxListStickyManagerOwner-p::scrollViewForListStickyManager();
+  public BOOL LynxListStickyManagerOwner-p::isVerticalForListStickyManager();
+  public nullable NSArray< NSString * > * LynxListStickyManagerOwner-p::itemKeysForListStickyManager();
+  public nullable LynxScrollEventManager * LynxListStickyManagerOwner-p::eventManagerForListStickyManager();
+}
+
 public class LynxListVerticalLayoutManager : LynxListLayoutManager {
 }
 
