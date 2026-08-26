@@ -208,7 +208,7 @@ std::optional<lepus_value> ParseJSValue(
     Runtime& runtime, const Value& value,
     JSIObjectWrapperManager* jsi_object_wrapper_manager,
     const std::string& jsi_object_group_id, const std::string& targetSDKVersion,
-    JSValueCircularArray& pre_object_vector, int depth) {
+    CircularDataChecker& checker, const std::string& segment) {
   Scope scope(runtime);
   if (value.isNull()) {
     return lepus::Value();
@@ -227,14 +227,13 @@ std::optional<lepus_value> ParseJSValue(
     return std::nullopt;
   } else {
     Object obj = value.getObject(runtime);
-    if (CheckIsCircularJSObjectIfNecessaryAndReportError(
-            runtime, obj, pre_object_vector, depth, "ParseJSValue!")) {
+    if (checker.CheckAndReport(obj, segment, "ParseJSValue")) {
       return std::optional<lepus_value>();
     }
     // As Object is Movable, not copyable, do not push the Object you will use
     // later to vector! You need clone a new one.
-    ScopedJSObjectPushPopHelper scoped_push_pop_helper(
-        pre_object_vector, value.getObject(runtime));
+    CircularDataChecker::ScopedPath scoped_path(
+        checker, value.getObject(runtime), segment);
     if (obj.isArray(runtime)) {
       Array array = obj.getArray(runtime);
       auto size_opt = array.size(runtime);
@@ -250,7 +249,7 @@ std::optional<lepus_value> ParseJSValue(
         }
         auto value_opt = ParseJSValue(
             runtime, *item_opt, jsi_object_wrapper_manager, jsi_object_group_id,
-            targetSDKVersion, pre_object_vector, depth + 1);
+            targetSDKVersion, checker, CircularDataChecker::IndexSegment(i));
         if (!value_opt) {
           LOGE("Error happened in ParseJSValue, array index: " << i);
           return std::optional<lepus_value>();
@@ -314,9 +313,10 @@ std::optional<lepus_value> ParseJSValue(
                                        targetSDKVersion, LYNX_VERSION_2_3)) {
           continue;
         }
-        auto value_opt = ParseJSValue(
-            runtime, *prop, jsi_object_wrapper_manager, jsi_object_group_id,
-            targetSDKVersion, pre_object_vector, depth + 1);
+        auto value_opt =
+            ParseJSValue(runtime, *prop, jsi_object_wrapper_manager,
+                         jsi_object_group_id, targetSDKVersion, checker,
+                         CircularDataChecker::KeySegment(key.str()));
         if (!value_opt) {
           LOGE("Error happened in ParseJSValue, key: " << key.str());
           return std::optional<lepus_value>();
@@ -339,17 +339,54 @@ bool IsCircularJSObject(Runtime& runtime, const Object& object,
   return false;
 }
 
-bool CheckIsCircularJSObjectIfNecessaryAndReportError(
-    Runtime& runtime, const Object& object,
-    const JSValueCircularArray& pre_object_vector, int depth,
-    const char* message) {
-  if ((runtime.IsEnableCircularDataCheck() ||
-       runtime.IsCircularDataCheckUnset()) &&
-      IsCircularJSObject(runtime, object, pre_object_vector)) {
-    runtime.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-        std::string("Find circular JS data in ") + message));
-    LOGE("Find circular JS data in " << message);
-    return true;
+std::string CircularDataChecker::KeySegment(const std::string& key) {
+  // Quote keys that contain path separators so a key like "a.b" cannot be
+  // confused with two nested keys "a" and "b" in the rendered path.
+  if (key.find_first_of(".[]") != std::string::npos) {
+    return std::string(".[\"") + key + "\"]";
+  }
+  return std::string(".") + key;
+}
+
+std::string CircularDataChecker::IndexSegment(size_t index) {
+  return std::string("[") + std::to_string(index) + "]";
+}
+
+std::string CircularDataChecker::CurrentPath() const {
+  std::string path;
+  for (const auto& frame : frames_) {
+    path += frame.segment;
+  }
+  return path;
+}
+
+std::string CircularDataChecker::PathUpTo(size_t index) const {
+  std::string path;
+  for (size_t i = 0; i <= index && i < frames_.size(); ++i) {
+    path += frames_[i].segment;
+  }
+  return path;
+}
+
+bool CircularDataChecker::CheckAndReport(const Object& object,
+                                         const std::string& segment,
+                                         const char* context) {
+  if (!runtime_.IsEnableCircularDataCheck() &&
+      !runtime_.IsCircularDataCheckUnset()) {
+    return false;
+  }
+  for (size_t i = 0; i < frames_.size(); ++i) {
+    if (Object::strictEquals(runtime_, frames_[i].object, object)) {
+      // The path that closes the cycle is the current traversal path plus the
+      // segment used to reach `object`; the ancestor it points back to is the
+      // path up to the matching frame.
+      std::string message = std::string("Find circular JS data in ") + context +
+                            ", path: " + CurrentPath() + segment +
+                            ", references: " + PathUpTo(i);
+      runtime_.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(message));
+      LOGE(message);
+      return true;
+    }
   }
   return false;
 }

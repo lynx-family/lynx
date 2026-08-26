@@ -158,9 +158,9 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
       Object o = arg->getObject(*rt);
       if (o.isArray(*rt)) {
         auto sub_arr = o.getArray(*rt);
-        JSValueCircularArray pre_object_vector;
+        CircularDataChecker checker(*rt);
         auto sub_arr_result = pub::ValueUtils::ConvertPiperArrayToPubValue(
-            *rt, sub_arr, value_factory_, pre_object_vector);
+            *rt, sub_arr, value_factory_, checker);
         if (!sub_arr_result) {
           return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
               "ConvertPiperArrayToPubValue failed, find circular reference"));
@@ -197,9 +197,9 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
           args_array->PushBigIntToArray(r);
           continue;
         }
-        JSValueCircularArray pre_object_vector;
+        CircularDataChecker checker(*rt);
         auto dict = pub::ValueUtils::ConvertPiperObjectToPubValue(
-            *rt, o, value_factory_, pre_object_vector);
+            *rt, o, value_factory_, checker);
         if (!dict) {
           return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
               "ConvertPiperObjectToPubValue failed, find circular reference"));

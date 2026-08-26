@@ -134,9 +134,9 @@ void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const Value *args,
       Object o = arg->getObject(*rt);
       if (o.isArray(*rt)) {
         auto sub_arr = o.getArray(*rt);
-        JSValueCircularArray pre_object_vector;
+        CircularDataChecker checker(*rt);
         auto sub_arr_result = pub::ValueUtils::ConvertPiperArrayToPubValue(
-            *rt, sub_arr, value_factory, pre_object_vector);
+            *rt, sub_arr, value_factory, checker);
         if (sub_arr_result) {
           args_array->PushValueToArray(std::move(sub_arr_result));
         }
@@ -166,9 +166,9 @@ void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const Value *args,
           args_array->PushBigIntToArray(r);
           continue;
         }
-        JSValueCircularArray pre_object_vector;
+        CircularDataChecker checker(*rt);
         auto dict = pub::ValueUtils::ConvertPiperObjectToPubValue(
-            *rt, o, value_factory, pre_object_vector);
+            *rt, o, value_factory, checker);
         if (dict) {
           args_array->PushValueToArray(std::move(dict));
         }

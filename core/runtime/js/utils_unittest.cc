@@ -18,6 +18,7 @@ namespace lynx {
 namespace runtime {
 namespace js {
 namespace test {
+using runtime::js::CircularDataChecker;
 using runtime::js::ConvertPiperValueToStringVector;
 using runtime::js::EvaluatePreloadSources;
 using runtime::js::JSIObjectWrapperManager;
@@ -159,7 +160,7 @@ TEST_P(UtilTests, ConvertPiperValueToStringVector) {
 }
 
 TEST_P(UtilTests, ParseNullJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
@@ -167,13 +168,13 @@ TEST_P(UtilTests, ParseNullJSValueTest) {
   js::Value null_data = js::Value::null();
   auto lepus_value_opt =
       ParseJSValue(rt, null_data, jsi_object_wrapper_manager.get(),
-                   jsi_object_group_id, target_sdk_version, pre_object_vector);
+                   jsi_object_group_id, target_sdk_version, checker);
   EXPECT_TRUE(lepus_value_opt.has_value());
   EXPECT_TRUE(lepus_value_opt->IsNil());
 }
 
 TEST_P(UtilTests, ParseUndefinedJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
@@ -181,38 +182,38 @@ TEST_P(UtilTests, ParseUndefinedJSValueTest) {
   js::Value undefined_data = js::Value::undefined();
   auto lepus_value_opt =
       ParseJSValue(rt, undefined_data, jsi_object_wrapper_manager.get(),
-                   jsi_object_group_id, target_sdk_version, pre_object_vector);
+                   jsi_object_group_id, target_sdk_version, checker);
   EXPECT_TRUE(lepus_value_opt.has_value());
   EXPECT_TRUE(lepus_value_opt->IsUndefined());
 }
 
 TEST_P(UtilTests, ParseBoolJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
 
   {
     js::Value true_data(true);
-    auto lepus_value_opt = ParseJSValue(
-        rt, true_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, true_data, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsTrue());
   }
 
   {
     js::Value false_data(false);
-    auto lepus_value_opt = ParseJSValue(
-        rt, false_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, false_data, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsFalse());
   }
 }
 
 TEST_P(UtilTests, ParseNumberJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
@@ -220,9 +221,9 @@ TEST_P(UtilTests, ParseNumberJSValueTest) {
   {
     int foo = 10;
     js::Value int_data(foo);
-    auto lepus_value_opt = ParseJSValue(
-        rt, int_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, int_data, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsNumber());
     EXPECT_EQ(lepus_value_opt->Number(), foo);
@@ -231,9 +232,9 @@ TEST_P(UtilTests, ParseNumberJSValueTest) {
   {
     double foo = 10.0;
     js::Value double_data(foo);
-    auto lepus_value_opt = ParseJSValue(
-        rt, double_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, double_data, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsDouble());
     EXPECT_EQ(lepus_value_opt->Double(), foo);
@@ -241,7 +242,7 @@ TEST_P(UtilTests, ParseNumberJSValueTest) {
 }
 
 TEST_P(UtilTests, ParseStringJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
@@ -249,9 +250,9 @@ TEST_P(UtilTests, ParseStringJSValueTest) {
     std::string foo_str = "foo";
     auto foo = js::String::createFromAscii(rt, foo_str);
     js::Value string_data(foo);
-    auto lepus_value_opt = ParseJSValue(
-        rt, string_data, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, string_data, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsString());
     EXPECT_EQ(lepus_value_opt->ToString(), foo_str);
@@ -259,7 +260,7 @@ TEST_P(UtilTests, ParseStringJSValueTest) {
 }
 
 TEST_P(UtilTests, ParseSymbolJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
@@ -272,16 +273,16 @@ function makeSymbol() {
     auto symbol_opt = make_symbol.call(rt);
     EXPECT_TRUE(symbol_opt.has_value());
     EXPECT_TRUE(symbol_opt->isSymbol());
-    auto lepus_value_opt = ParseJSValue(
-        rt, *symbol_opt, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, *symbol_opt, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     // TODO(liyanbo): support symbol type.
     EXPECT_FALSE(lepus_value_opt.has_value());
   }
 }
 
 TEST_P(UtilTests, ParseArrayJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
@@ -291,7 +292,7 @@ TEST_P(UtilTests, ParseArrayJSValueTest) {
         rt, empty_array_json, sizeof(empty_array_json) - 1);
     auto lepus_value_opt = ParseJSValue(
         rt, *empty_array_data_opt, jsi_object_wrapper_manager.get(),
-        jsi_object_group_id, target_sdk_version, pre_object_vector);
+        jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsArray());
     EXPECT_EQ(lepus_value_opt->Array()->size(), 0);
@@ -302,9 +303,9 @@ TEST_P(UtilTests, ParseArrayJSValueTest) {
     uint8_t array_json[] = "[\"foo\", true, 10, null, {}]";
     auto array_data_opt =
         js::Value::createFromJsonUtf8(rt, array_json, sizeof(array_json) - 1);
-    auto lepus_value_opt = ParseJSValue(
-        rt, *array_data_opt, jsi_object_wrapper_manager.get(),
-        jsi_object_group_id, target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, *array_data_opt, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     std::stringstream ss;
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsArray());
@@ -337,16 +338,16 @@ TEST_P(UtilTests, ParseArrayJSValueTest) {
 }
 
 TEST_P(UtilTests, ParseBigIntJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
   {
     auto big_int_opt = js::BigInt::createWithString(rt, "1234567890");
     EXPECT_TRUE(big_int_opt.has_value());
-    auto lepus_value_opt = ParseJSValue(
-        rt, *big_int_opt, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, *big_int_opt, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsInt64());
     EXPECT_EQ(lepus_value_opt->Int64(), 1234567890);
@@ -366,7 +367,7 @@ TEST_P(UtilTests, ParseBigIntJSValueTest) {
 }
 
 TEST_P(UtilTests, ParseFunctionJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
@@ -378,16 +379,16 @@ function make() {
   auto func_opt = make_func.call(rt);
   EXPECT_TRUE(func_opt.has_value());
   {
-    auto lepus_value_opt = ParseJSValue(
-        rt, *func_opt, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, *func_opt, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsJSObject());
   }
   {
     auto lepus_value_opt =
         ParseJSValue(rt, *func_opt, nullptr, jsi_object_group_id,
-                     target_sdk_version, pre_object_vector);
+                     target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsNil());
   }
@@ -395,7 +396,7 @@ function make() {
 }
 
 TEST_P(UtilTests, ParseObjectJSValueTest) {
-  JSValueCircularArray pre_object_vector;
+  CircularDataChecker checker(rt);
   const std::string jsi_object_group_id = "1";
   auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
   js::Function make_func = function(R"(
@@ -409,9 +410,9 @@ function make() {
   EXPECT_TRUE(obj_opt->isObject());
   {
     const std::string target_sdk_version = LYNX_VERSION_1_6.ToString();
-    auto lepus_value_opt = ParseJSValue(
-        rt, *obj_opt, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsObject());
     auto table = lepus_value_opt->Table();
@@ -424,9 +425,9 @@ function make() {
 
   {
     const std::string target_sdk_version = LYNX_VERSION_2_3.ToString();
-    auto lepus_value_opt = ParseJSValue(
-        rt, *obj_opt, jsi_object_wrapper_manager.get(), jsi_object_group_id,
-        target_sdk_version, pre_object_vector);
+    auto lepus_value_opt =
+        ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                     jsi_object_group_id, target_sdk_version, checker);
     EXPECT_TRUE(lepus_value_opt.has_value());
     EXPECT_TRUE(lepus_value_opt->IsObject());
     auto table = lepus_value_opt->Table();
@@ -439,6 +440,217 @@ function make() {
     auto bar_value = table->GetValue("bar");
     EXPECT_TRUE(bar_value.IsUndefined());
   }
+}
+
+// When a circular reference is detected, ParseJSValue should report a single
+// JSI exception whose message carries the full property path that closes the
+// cycle together with the ancestor it points back to, instead of a static
+// conversion-site tag. This is what lets the crash/error report be searchable
+// without digging through logs.
+TEST_P(UtilTests, ParseCircularObjectReportsPath) {
+  CircularDataChecker checker(rt);
+  const std::string jsi_object_group_id = "1";
+  auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
+  const std::string target_sdk_version = LYNX_VERSION_2_3.ToString();
+
+  // root.user.friends[1].parent -> root.user (a cycle nested in an array).
+  js::Function make_func = function(R"(
+function make() {
+  const user = { name: "a", friends: [] };
+  const friend = { name: "b" };
+  friend.parent = user;
+  user.friends.push({ name: "c" });
+  user.friends.push(friend);
+  return { user: user };
+}
+)");
+  auto obj_opt = make_func.call(rt);
+  ASSERT_TRUE(obj_opt.has_value());
+  ASSERT_TRUE(obj_opt->isObject());
+
+  std::string reported_message;
+  EXPECT_CALL(*exception_handler_, OnJSIException(::testing::_))
+      .WillOnce([&reported_message](const JSIException& e) {
+        reported_message = e.message();
+      });
+
+  auto lepus_value_opt =
+      ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                   jsi_object_group_id, target_sdk_version, checker);
+  EXPECT_FALSE(lepus_value_opt.has_value());
+  EXPECT_NE(reported_message.find("Find circular JS data in ParseJSValue"),
+            std::string::npos);
+  EXPECT_NE(reported_message.find("path: .user.friends[1].parent"),
+            std::string::npos);
+  EXPECT_NE(reported_message.find("references: .user"), std::string::npos);
+}
+
+// A key containing path separators must be quoted so the rendered path stays
+// unambiguous, e.g. a key "a.b" cannot be confused with nested keys a -> b.
+TEST_P(UtilTests, ParseCircularObjectQuotesSpecialKey) {
+  CircularDataChecker checker(rt);
+  const std::string jsi_object_group_id = "1";
+  auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
+  const std::string target_sdk_version = LYNX_VERSION_2_3.ToString();
+
+  js::Function make_func = function(R"(
+function make() {
+  const root = {};
+  root["a.b"] = root;
+  return root;
+}
+)");
+  auto obj_opt = make_func.call(rt);
+  ASSERT_TRUE(obj_opt.has_value());
+  ASSERT_TRUE(obj_opt->isObject());
+
+  std::string reported_message;
+  EXPECT_CALL(*exception_handler_, OnJSIException(::testing::_))
+      .WillOnce([&reported_message](const JSIException& e) {
+        reported_message = e.message();
+      });
+
+  auto lepus_value_opt =
+      ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                   jsi_object_group_id, target_sdk_version, checker);
+  EXPECT_FALSE(lepus_value_opt.has_value());
+  EXPECT_NE(reported_message.find("path: .[\"a.b\"]"), std::string::npos);
+}
+
+// A direct self-reference on the root object should render the closing path as
+// `.self` and point back to the root (empty path).
+TEST_P(UtilTests, ParseCircularRootSelfReference) {
+  CircularDataChecker checker(rt);
+  const std::string jsi_object_group_id = "1";
+  auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
+  const std::string target_sdk_version = LYNX_VERSION_2_3.ToString();
+
+  js::Function make_func = function(R"(
+function make() {
+  const root = { name: "a" };
+  root.self = root;
+  return root;
+}
+)");
+  auto obj_opt = make_func.call(rt);
+  ASSERT_TRUE(obj_opt.has_value());
+  ASSERT_TRUE(obj_opt->isObject());
+
+  std::string reported_message;
+  EXPECT_CALL(*exception_handler_, OnJSIException(::testing::_))
+      .WillOnce([&reported_message](const JSIException& e) {
+        reported_message = e.message();
+      });
+
+  auto lepus_value_opt =
+      ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                   jsi_object_group_id, target_sdk_version, checker);
+  EXPECT_FALSE(lepus_value_opt.has_value());
+  EXPECT_NE(reported_message.find("path: .self"), std::string::npos);
+  // The root has no incoming segment, so it points back to an empty path.
+  EXPECT_NE(reported_message.find("references: "), std::string::npos);
+}
+
+// A cycle where the array element points back to an ancestor array should
+// render array indices in the path (`.list[0].items[1]`).
+TEST_P(UtilTests, ParseCircularArrayReportsIndexPath) {
+  CircularDataChecker checker(rt);
+  const std::string jsi_object_group_id = "1";
+  auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
+  const std::string target_sdk_version = LYNX_VERSION_2_3.ToString();
+
+  // root.list[0].items[1] -> root.list (an array closing back on itself).
+  js::Function make_func = function(R"(
+function make() {
+  const list = [];
+  const node = { items: [ { v: 1 } ] };
+  node.items.push(list);
+  list.push(node);
+  return { list: list };
+}
+)");
+  auto obj_opt = make_func.call(rt);
+  ASSERT_TRUE(obj_opt.has_value());
+  ASSERT_TRUE(obj_opt->isObject());
+
+  std::string reported_message;
+  EXPECT_CALL(*exception_handler_, OnJSIException(::testing::_))
+      .WillOnce([&reported_message](const JSIException& e) {
+        reported_message = e.message();
+      });
+
+  auto lepus_value_opt =
+      ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                   jsi_object_group_id, target_sdk_version, checker);
+  EXPECT_FALSE(lepus_value_opt.has_value());
+  EXPECT_NE(reported_message.find("path: .list[0].items[1]"),
+            std::string::npos);
+  EXPECT_NE(reported_message.find("references: .list"), std::string::npos);
+}
+
+// A DAG (the same object referenced by two sibling keys) is not a cycle and
+// must not be reported: the checker only tracks ancestors on the current path,
+// so a sibling that pops off the stack should be converted normally.
+TEST_P(UtilTests, ParseSharedSiblingIsNotCircular) {
+  CircularDataChecker checker(rt);
+  const std::string jsi_object_group_id = "1";
+  auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
+  const std::string target_sdk_version = LYNX_VERSION_2_3.ToString();
+
+  js::Function make_func = function(R"(
+function make() {
+  const shared = { v: 1 };
+  return { a: shared, b: shared };
+}
+)");
+  auto obj_opt = make_func.call(rt);
+  ASSERT_TRUE(obj_opt.has_value());
+  ASSERT_TRUE(obj_opt->isObject());
+
+  EXPECT_CALL(*exception_handler_, OnJSIException(::testing::_)).Times(0);
+
+  auto lepus_value_opt =
+      ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                   jsi_object_group_id, target_sdk_version, checker);
+  ASSERT_TRUE(lepus_value_opt.has_value());
+  ASSERT_TRUE(lepus_value_opt->IsObject());
+  auto table = lepus_value_opt->Table();
+  EXPECT_EQ(table->size(), 2);
+  EXPECT_TRUE(table->GetValue("a").IsObject());
+  EXPECT_TRUE(table->GetValue("b").IsObject());
+}
+
+// When circular-data check is disabled, ParseJSValue must not report any
+// circular exception. A non-circular payload is used so the traversal still
+// terminates.
+TEST_P(UtilTests, ParseCircularCheckDisabledDoesNotReport) {
+  CircularDataChecker checker(rt);
+  const std::string jsi_object_group_id = "1";
+  auto jsi_object_wrapper_manager = std::make_shared<JSIObjectWrapperManager>();
+  const std::string target_sdk_version = LYNX_VERSION_2_3.ToString();
+
+  rt.SetCircularDataCheckFlag(false);
+
+  js::Function make_func = function(R"(
+function make() {
+  const shared = { v: 1 };
+  return { a: shared, b: shared };
+}
+)");
+  auto obj_opt = make_func.call(rt);
+  ASSERT_TRUE(obj_opt.has_value());
+  ASSERT_TRUE(obj_opt->isObject());
+
+  EXPECT_CALL(*exception_handler_, OnJSIException(::testing::_)).Times(0);
+
+  auto lepus_value_opt =
+      ParseJSValue(rt, *obj_opt, jsi_object_wrapper_manager.get(),
+                   jsi_object_group_id, target_sdk_version, checker);
+  EXPECT_TRUE(lepus_value_opt.has_value());
+  EXPECT_TRUE(lepus_value_opt->IsObject());
+
+  // Restore the default so the flag change does not leak to other assertions.
+  rt.SetCircularDataCheckFlag(true);
 }
 
 }  // namespace test

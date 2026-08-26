@@ -485,11 +485,11 @@ TEST_P(AppTest, LoadAppTest) {
       lepus::Value(), tasm::PackageInstanceDSL::TT,
       tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
-  JSValueCircularArray pre_obj_{};
+  runtime::js::CircularDataChecker checker_(*runtime);
   // check equal
   auto lepus_args = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr, "", "",
-      pre_obj_);
+      checker_);
 
   EXPECT_EQ(data1, lepus_args.GetProperty("updateData"));
   EXPECT_EQ(lepus::Value(processor_name_1.c_str()),
@@ -518,13 +518,13 @@ TEST_P(AppTest, OnAppReloadTest) {
   app->OnAppReload(std::move(template_data_1));
 
   // check equal
-  JSValueCircularArray pre_obj_{};
+  runtime::js::CircularDataChecker checker_(*runtime);
   auto lepus_args_0 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[0][0]), nullptr, "", "",
-      pre_obj_);
+      checker_);
   auto lepus_args_1 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr, "", "",
-      pre_obj_);
+      checker_);
 
   EXPECT_EQ(data1, lepus_args_0);
   EXPECT_EQ(lepus::Value(processor_name_1.c_str()),
@@ -569,13 +569,13 @@ TEST_P(AppTest, NotifyUpdatePageData) {
   // check equal
   EXPECT_EQ(mock_js_app_->call_count, 3);
 
-  JSValueCircularArray pre_obj_{};
+  runtime::js::CircularDataChecker checker_(*runtime);
   auto lepus_args_0_0 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[0][0]), nullptr, "", "",
-      pre_obj_);
+      checker_);
   auto lepus_args_0_1 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[0][1]), nullptr, "", "",
-      pre_obj_);
+      checker_);
 
   EXPECT_EQ(data1, lepus_args_0_0);
   EXPECT_EQ(lepus::Value(processor_name_1.c_str()),
@@ -583,10 +583,10 @@ TEST_P(AppTest, NotifyUpdatePageData) {
 
   auto lepus_args_1_0 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[1][0]), nullptr, "", "",
-      pre_obj_);
+      checker_);
   auto lepus_args_1_1 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[1][1]), nullptr, "", "",
-      pre_obj_);
+      checker_);
 
   EXPECT_EQ(data2, lepus_args_1_0);
   EXPECT_EQ(lepus::Value(processor_name_2.c_str()),
@@ -594,10 +594,10 @@ TEST_P(AppTest, NotifyUpdatePageData) {
 
   auto lepus_args_2_0 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[2][0]), nullptr, "", "",
-      pre_obj_);
+      checker_);
   auto lepus_args_2_1 = *runtime::js::ParseJSValue(
       *runtime, std::move(mock_js_app_->args_ary[2][1]), nullptr, "", "",
-      pre_obj_);
+      checker_);
 
   EXPECT_EQ(data3, lepus_args_2_0);
   EXPECT_EQ(lepus::Value(processor_name_3.c_str()),

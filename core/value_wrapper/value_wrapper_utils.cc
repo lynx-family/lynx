@@ -297,7 +297,7 @@ std::unique_ptr<uint8_t[]> ValueUtils::ConvertPiperToArrayBuffer(
 std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
     runtime::js::Runtime& rt, const runtime::js::Array& arr,
     const std::shared_ptr<PubValueFactory>& factory,
-    runtime::js::JSValueCircularArray& pre_object_vector, int depth) {
+    runtime::js::CircularDataChecker& checker) {
   lynx::runtime::js::Scope scope(rt);
   auto result = factory->CreateArray();
   std::optional<size_t> size = arr.size(rt);
@@ -319,19 +319,20 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
       result->PushStringToArray(ov->getString(rt).utf8(rt));
     } else if (ov->isObject()) {
       lynx::runtime::js::Object o = ov->getObject(rt);
-      if (lynx::runtime::js::CheckIsCircularJSObjectIfNecessaryAndReportError(
-              rt, o, pre_object_vector, depth,
-              "ConvertPiperArrayToPubValue!")) {
+      auto index_segment =
+          runtime::js::CircularDataChecker::IndexSegment(index);
+      if (checker.CheckAndReport(o, index_segment,
+                                 "ConvertPiperArrayToPubValue")) {
         LOGE("Error happened in ConvertPiperArrayToPubValue, array index: "
              << index);
         return nullptr;
       }
-      lynx::runtime::js::ScopedJSObjectPushPopHelper scoped_push_pop_helper(
-          pre_object_vector, ov->getObject(rt));
+      runtime::js::CircularDataChecker::ScopedPath scoped_path(
+          checker, ov->getObject(rt), index_segment);
       if (o.isArray(rt)) {
         auto sub_arr = o.getArray(rt);
-        auto sub_arr_result = ConvertPiperArrayToPubValue(
-            rt, sub_arr, factory, pre_object_vector, depth + 1);
+        auto sub_arr_result =
+            ConvertPiperArrayToPubValue(rt, sub_arr, factory, checker);
         if (!sub_arr_result) {
           LOGE("Error happened in ConvertPiperArrayToPubValue, array index: "
                << index);
@@ -356,8 +357,7 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
           result->PushBigIntToArray(r);
           continue;
         }
-        auto dict = ConvertPiperObjectToPubValue(rt, o, factory,
-                                                 pre_object_vector, depth + 1);
+        auto dict = ConvertPiperObjectToPubValue(rt, o, factory, checker);
         if (!dict) {
           LOGE("Error happened in ConvertPiperArrayToPubValue, array index: "
                << index);
@@ -374,7 +374,7 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
 std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
     runtime::js::Runtime& rt, const runtime::js::Object& obj,
     const std::shared_ptr<PubValueFactory>& factory,
-    runtime::js::JSValueCircularArray& pre_object_vector, int depth) {
+    runtime::js::CircularDataChecker& checker) {
   lynx::runtime::js::Scope scope(rt);
   auto result = factory->CreateMap();
   auto array = obj.getPropertyNames(rt);
@@ -408,18 +408,18 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
       result->PushStringToMap(key, ov->getString(rt).utf8(rt));
     } else if (ov->isObject()) {
       lynx::runtime::js::Object o = ov->getObject(rt);
-      if (lynx::runtime::js::CheckIsCircularJSObjectIfNecessaryAndReportError(
-              rt, o, pre_object_vector, depth,
-              "ConvertPiperObjectToPubValue!")) {
+      auto key_segment = runtime::js::CircularDataChecker::KeySegment(key);
+      if (checker.CheckAndReport(o, key_segment,
+                                 "ConvertPiperObjectToPubValue")) {
         LOGE("Error happened in ConvertPiperObjectToPubValue, key: " << key);
         return nullptr;
       }
-      lynx::runtime::js::ScopedJSObjectPushPopHelper scoped_push_pop_helper(
-          pre_object_vector, ov->getObject(rt));
+      runtime::js::CircularDataChecker::ScopedPath scoped_path(
+          checker, ov->getObject(rt), key_segment);
       if (o.isArray(rt)) {
         auto sub_arr = o.getArray(rt);
-        auto sub_arr_result = ConvertPiperArrayToPubValue(
-            rt, sub_arr, factory, pre_object_vector, depth + 1);
+        auto sub_arr_result =
+            ConvertPiperArrayToPubValue(rt, sub_arr, factory, checker);
         if (!sub_arr_result) {
           LOGE("Error happened in ConvertPiperObjectToPubValue, key: " << key);
           return nullptr;
@@ -443,8 +443,7 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
           result->PushBigIntToMap(key, r);
           continue;
         }
-        auto dict = ConvertPiperObjectToPubValue(rt, o, factory,
-                                                 pre_object_vector, depth + 1);
+        auto dict = ConvertPiperObjectToPubValue(rt, o, factory, checker);
         if (!dict) {
           LOGE("Error happened in ConvertPiperObjectToPubValue, key: " << key);
           return nullptr;
