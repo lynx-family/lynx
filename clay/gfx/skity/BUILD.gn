@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//${lynx_dir}/build_overrides/skity_lib.gni")
 import("../../common/config.gni")
 
 source_set("skity") {
@@ -31,7 +32,7 @@ source_set("skity") {
     public_deps += [ "//third_party/skia" ]
   } else {
     if (is_win || is_mac) {
-      public_deps += [ "//clay/third_party/skity:skity_lib" ]
+      public_deps += skity_lib_deps
     }
   }
 }
