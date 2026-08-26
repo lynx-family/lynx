@@ -729,14 +729,23 @@ fml::RefPtr<Element> InstallModifierFramePlan(
     frames.push_back(CreateFrame(owner));
   }
 
+  // When replacing a mounted, non-empty frame chain, move the attached owner
+  // from the old innermost frame to the new innermost frame. First mounts,
+  // detached chains, and zero-frame plans keep the existing remove-and-insert
+  // path.
+  const bool move_attached_owner =
+      external_parent != nullptr && current_mount_root != owner &&
+      !frames.empty() && owner->render_parent() != nullptr;
+
   if (external_parent != nullptr) {
     NotifyNodeRemoved(old_root.get());
     external_parent->RemoveNode(old_root, false);
   }
   if (current_mount_root != owner) {
-    auto owner_ref = fml::RefPtr<Element>(owner);
     NotifyNodeRemoved(owner);
-    owner->parent()->RemoveNode(owner_ref, false);
+    if (!move_attached_owner) {
+      owner->parent()->RemoveNode(fml::RefPtr<Element>(owner), false);
+    }
   }
 
   ClearModifierOwnedProperties(owner);
@@ -755,8 +764,18 @@ fml::RefPtr<Element> InstallModifierFramePlan(
     return owner_ref;
   }
 
-  fml::RefPtr<Element> new_root(owner);
-  for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
+  fml::RefPtr<Element> new_root;
+  auto frame = frames.rbegin();
+  if (move_attached_owner) {
+    (*frame)->MoveNodeToIndex(fml::RefPtr<Element>(owner), 0);
+    NotifyNodeAdded(owner);
+    new_root = *frame;
+    ++frame;
+  } else {
+    new_root = fml::RefPtr<Element>(owner);
+  }
+
+  for (auto it = frame; it != frames.rend(); ++it) {
     auto frame = fml::RefPtr<Element>(*it);
     frame->InsertNode(new_root);
     NotifyNodeAdded(new_root.get());
