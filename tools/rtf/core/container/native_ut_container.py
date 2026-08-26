@@ -40,19 +40,21 @@ class NativeUTContainer(Container):
         self.observers.append(OwnersObserver())
 
     def before_test(self, targets, filter: str):
-        coverage = CoverageFactory(self.coverage_init_params, self.coverage_file, self.coverage_format)
-        if coverage.is_err():
-            return coverage
+        if filter != "all" and filter not in targets:
+            return Err(
+                Constants.TARGET_SELECTION_ERR,
+                (
+                    f"Target {filter} was not found in the native-ut template. "
+                    "Run 'rtf native-ut list --names <name>' to see available targets"
+                ),
+            )
 
-        self.coverage = coverage.get_value()
-
-        result = self.builder_manager.pre_action()
-        if result.is_err():
-            return result
         for t in targets.keys():
             if filter != "all" and t != filter:
                 continue
-            result = TargetFactory(self.test_type, targets[t], t, self.gtest_filter, self.silent)
+            result = TargetFactory(
+                self.test_type, targets[t], t, self.gtest_filter, self.silent
+            )
             if result.is_err():
                 return result
             target = result.get_value()
@@ -64,6 +66,26 @@ class NativeUTContainer(Container):
                 else False
             )
             self.add_targets(target, enable_parallel)
+
+        if not self.serial_queue and not self.parallel_queue:
+            target_description = (
+                f"Target {filter} is disabled"
+                if filter != "all"
+                else "No enabled native-ut targets were found"
+            )
+            return Err(Constants.TARGET_SELECTION_ERR, target_description)
+
+        coverage = CoverageFactory(
+            self.coverage_init_params, self.coverage_file, self.coverage_format
+        )
+        if coverage.is_err():
+            return coverage
+
+        self.coverage = coverage.get_value()
+
+        result = self.builder_manager.pre_action()
+        if result.is_err():
+            return result
         for target in self.serial_queue:
             result = self.builder_manager.build(target)
             if result.is_err():
