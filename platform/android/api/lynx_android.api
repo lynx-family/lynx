@@ -5431,6 +5431,8 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.enableCheckAccessFromNonUIThread();
   public boolean com.lynx.tasm.LynxEnv.enableTextLayoutCache();
   public boolean com.lynx.tasm.LynxEnv.enableLazyInitA11y();
+  public void com.lynx.tasm.LynxEnv.enablePlatformObservability(boolean enable);
+  public boolean com.lynx.tasm.LynxEnv.isPlatformObservabilityEnabled();
   public boolean com.lynx.tasm.LynxEnv.enableFSP();
   public HashMap< String, String > com.lynx.tasm.LynxEnv.getFSPConfig();
   public boolean com.lynx.tasm.LynxEnv.isFspScreenshotEnabled();

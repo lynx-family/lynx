@@ -8,6 +8,7 @@ import static com.lynx.jsbridge.LynxAccessibilityModule.MSG;
 import static com.lynx.jsbridge.LynxAccessibilityModule.MSG_MUTATION_STYLES;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -16,6 +17,7 @@ import android.view.MotionEvent;
 import android.view.accessibility.AccessibilityManager;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.PropsConstants;
@@ -25,6 +27,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -46,6 +49,7 @@ public class LynxAccessibilityWrapperTest {
 
   @Before
   public void setUp() throws Exception {
+    LynxEnv.inst().enablePlatformObservability(false);
     mContext = TestingUtils.getLynxContext();
     mUIBody = new UIBody(mContext, new UIBody.UIBodyView(mContext));
     mWrapper = new LynxAccessibilityWrapper(mUIBody);
@@ -63,6 +67,11 @@ public class LynxAccessibilityWrapperTest {
           public void onTouchExplorationEnable(boolean enable) {}
         });
     mMutationHelper = new LynxAccessibilityMutationHelper();
+  }
+
+  @After
+  public void tearDown() {
+    LynxEnv.inst().enablePlatformObservability(false);
   }
 
   @Test
@@ -97,6 +106,34 @@ public class LynxAccessibilityWrapperTest {
     assertNotNull(getField(spyWrapper3, "mMutationHelper"));
     assertNotNull(getField(spyWrapper3, "mHelper"));
     verify(spyHelper).setConfigEnableAccessibilityElement(true);
+  }
+
+  @Test
+  public void globalPlatformObservabilityUsesDelegate() {
+    LynxEnv.inst().enablePlatformObservability(true);
+    LynxAccessibilityWrapper spyWrapper = spy(new LynxAccessibilityWrapper(mUIBody));
+    when(spyWrapper.isSystemAccessibilityEnable()).thenReturn(false);
+
+    spyWrapper.onPageConfigDecoded(generatePageConfig(true, true, false, false, false));
+
+    assertTrue(LynxEnv.inst().isPlatformObservabilityEnabled());
+    assertTrue(spyWrapper.enableDelegate());
+    assertFalse(spyWrapper.enableHelper());
+    assertNotNull(getField(spyWrapper, "mDelegate"));
+  }
+
+  @Test
+  public void pageEnableA11yTakesPriorityOverPlatformObservability() {
+    LynxEnv.inst().enablePlatformObservability(true);
+    LynxAccessibilityWrapper spyWrapper = spy(new LynxAccessibilityWrapper(mUIBody));
+    when(spyWrapper.isSystemAccessibilityEnable()).thenReturn(true);
+
+    spyWrapper.onPageConfigDecoded(generatePageConfig(true, true, false, false, true));
+
+    assertTrue(spyWrapper.enableHelper());
+    assertFalse(spyWrapper.enableDelegate());
+    assertNotNull(getField(spyWrapper, "mHelper"));
+    assertNull(getField(spyWrapper, "mDelegate"));
   }
 
   @Test
