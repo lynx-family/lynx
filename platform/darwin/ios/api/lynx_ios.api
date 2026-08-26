@@ -4441,6 +4441,17 @@ public class LynxTouchHandler : UIGestureRecognizer {
 public class LynxTouchHandlerUnitTest : XCTestCase {
 }
 
+public class LynxTransferHostView : UIView {
+}
+
+public class LynxTransferShadowNode : LynxCustomMeasureShadowNode {
+  public void LynxTransferShadowNode::updateHostConstraintsWithWidth:widthMode:height:heightMode:(CGFloat width,[widthMode] LynxMeasureMode widthMode,[height] CGFloat height,[heightMode] LynxMeasureMode heightMode);
+}
+
+public class LynxTransferWrapperView : UIView {
+  public instancetype LynxTransferWrapperView::initWithTransfer:(LynxUITransfer *transfer);
+}
+
 public class LynxTransformOriginRaw : NSObject {
   public float LynxTransformOriginRaw::p0 p0;
   public float LynxTransformOriginRaw::p1 p1;
@@ -4659,6 +4670,7 @@ public class LynxUI : <__covariant V UIView> {
   public CGRect LynxUI()::getHitTestFrame();
   public CGRect LynxUI()::getHitTestFrameWithFrame:(CGRect frame);
   public CGPoint LynxUI()::getHitTestPoint:(CGPoint inPoint);
+  public UIView * LynxUI()::childrenContainerView();
   public BOOL LynxUI()::enableExposureUIMargin();
   public void LynxUI()::setImplicitAnimation();
   public void LynxUI()::scrollIntoViewWithSmooth:blockType:inlineType:callback:(BOOL isSmooth, [blockType] NSString *blockType, [inlineType] NSString *inlineType, [callback] LynxUIMethodCallbackBlock callback);
@@ -5481,6 +5493,9 @@ public class LynxUIText : LynxUI, <LynxTextView> {
   public LynxTextRenderer* LynxUIText::renderer renderer;
   public CALayer * LynxUIText::getOverflowLayer();
   public BOOL LynxUIText::enableLayerRender();
+}
+
+public class LynxUITransfer : LynxUIView {
 }
 
 public class LynxUIUnitTestUtils : NSObject {
