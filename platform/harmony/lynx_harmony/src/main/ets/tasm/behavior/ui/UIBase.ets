@@ -103,6 +103,12 @@ export abstract class UIBase {
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }
 
+  attachToPlatformView(uiContext: UIContext): FrameNode | null {
+    this.logicalPixels = true;
+    this.uiContext = uiContext;
+    return this.getFrameNode(uiContext);
+  }
+
   sendGlobalEvent(name: string, params: Object[]) {
     this.lynxContext.sendGlobalEvent(name, params);
   }
