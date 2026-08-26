@@ -7,8 +7,8 @@
 
 #include "clay/gfx/geometry/box_shadow_operations.h"
 #include "clay/gfx/geometry/filter_operations.h"
-#include "clay/gfx/geometry/transform_operations.h"
 #include "clay/gfx/style/color.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace clay {
 
@@ -33,12 +33,12 @@ class TypeEvaluator<Color> {
 };
 
 template <>
-class TypeEvaluator<TransformOperations> {
+class TypeEvaluator<lynx::gfx::TransformOperations> {
  public:
-  static TransformOperations Evaluate(float fraction,
-                                      const TransformOperations& start_value,
-                                      const TransformOperations& end_value) {
-    return end_value.Blend(start_value, fraction);
+  static lynx::gfx::TransformOperations Evaluate(
+      float fraction, const lynx::gfx::TransformOperations& start_value,
+      const lynx::gfx::TransformOperations& end_value) {
+    return end_value.Blend(start_value, fraction, 0.0f, 0.0f);
   }
 };
 

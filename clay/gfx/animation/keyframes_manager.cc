@@ -10,6 +10,7 @@
 
 #include "clay/gfx/animation/animation_properties_util.h"
 #include "clay/gfx/animation/animator_target.h"
+#include "clay/gfx/geometry/transform.h"
 #include "clay/public/clay.h"
 
 namespace clay {
@@ -25,15 +26,24 @@ bool IsSame(const AnimationData& lhs, const AnimationData& rhs) {
 }
 
 bool CanRunLifecycleOnly(const KeyframesManager::KeyframeAnimation& animation,
-                         const AnimatorTarget* target) {
+                         AnimatorTarget* target) {
   if (!target || animation.keyframes_map.empty()) {
     return false;
   }
-  return std::all_of(animation.keyframes_map.begin(),
-                     animation.keyframes_map.end(),
-                     [target](const auto& keyframes) {
-                       return target->CanRunAnimationOnRaster(keyframes.first);
-                     });
+  return std::all_of(
+      animation.keyframes_map.begin(), animation.keyframes_map.end(),
+      [target](const auto& keyframes) {
+        if (!target->CanRunAnimationOnRaster(keyframes.first)) {
+          return false;
+        }
+        if (keyframes.first != ClayAnimationPropertyType::kTransform) {
+          return true;
+        }
+        lynx::gfx::TransformOperations underlying_value;
+        target->GetProperty(keyframes.first, underlying_value);
+        return static_cast<const TransformKeyframeSet*>(keyframes.second.get())
+            ->DoesNotAnimateStackingZ(GetTranslateZ(underlying_value));
+      });
 }
 
 template <typename KeyframeSetType, typename ValueType>
@@ -145,9 +155,9 @@ bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
                                                            current_time, value);
 }
 
-bool KeyframesManager::GetPresentationValue(ClayAnimationPropertyType type,
-                                            int64_t current_time,
-                                            TransformOperations& value) const {
+bool KeyframesManager::GetPresentationValue(
+    ClayAnimationPropertyType type, int64_t current_time,
+    lynx::gfx::TransformOperations& value) const {
   return SampleKeyframePresentationValue<TransformKeyframeSet>(
       animations_, type, current_time, value);
 }

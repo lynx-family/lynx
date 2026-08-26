@@ -6,8 +6,10 @@
 #define CLAY_GFX_GEOMETRY_TRANSFORM_H_
 
 #include <string>
+#include <vector>
 
 #include "clay/gfx/geometry/float_vector2d.h"
+#include "gfx/geometry/transform_operations.h"
 #include "skity/geometry/matrix.hpp"
 
 namespace clay {
@@ -17,6 +19,14 @@ class FloatPoint;
 class FloatPoint3d;
 class Quaternion;
 class FloatVector3d;
+struct TransformRaw;
+
+lynx::gfx::TransformOperations ResolveTransform(
+    const std::vector<TransformRaw>& transform_raw, float width, float height);
+float GetTranslateZ(const lynx::gfx::TransformOperations& operations);
+skity::Matrix ApplyTransform(const lynx::gfx::TransformOperations& operations,
+                             float perspective, float origin_x, float origin_y,
+                             float offset_x, float offset_y);
 
 // 4x4 transformation matrix. Transform is cheap and explicitly allows
 // copy/assign.

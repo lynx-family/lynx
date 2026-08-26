@@ -8,6 +8,7 @@
 #include <sstream>
 
 #include "clay/gfx/geometry/filter_operations.h"
+#include "clay/gfx/geometry/transform.h"
 #include "clay/gfx/style/length.h"
 
 namespace clay {
@@ -157,20 +158,22 @@ std::string RawTransformKeyframe::ToString() const {
 #endif
 
 std::unique_ptr<TransformKeyframe> TransformKeyframe::Create(
-    float fraction, const TransformOperations& value,
+    float fraction, const lynx::gfx::TransformOperations& value,
     std::unique_ptr<Interpolator> interpolator) {
   return std::unique_ptr<TransformKeyframe>(
       new TransformKeyframe(fraction, value, std::move(interpolator)));
 }
 
-TransformKeyframe::TransformKeyframe(float fraction,
-                                     const TransformOperations& value,
-                                     std::unique_ptr<Interpolator> interpolator)
+TransformKeyframe::TransformKeyframe(
+    float fraction, const lynx::gfx::TransformOperations& value,
+    std::unique_ptr<Interpolator> interpolator)
     : Keyframe(fraction, std::move(interpolator)), value_(value) {}
 
 TransformKeyframe::~TransformKeyframe() = default;
 
-const TransformOperations& TransformKeyframe::Value() const { return value_; }
+const lynx::gfx::TransformOperations& TransformKeyframe::Value() const {
+  return value_;
+}
 
 std::unique_ptr<TransformKeyframe> TransformKeyframe::Clone() const {
   std::unique_ptr<Interpolator> func;
@@ -183,8 +186,9 @@ std::unique_ptr<TransformKeyframe> TransformKeyframe::Clone() const {
 #ifndef NDEBUG
 std::string TransformKeyframe::ToString() const {
   std::ostringstream os;
-  os << "TransformKeyframe: fraction=" << GetFraction()
-     << " value=" << Value().Apply().ToString();
+  os << "TransformKeyframe: fraction=" << GetFraction() << " value="
+     << Transform(ApplyTransform(Value(), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f))
+            .ToString();
   return os.str();
 }
 #endif

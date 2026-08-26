@@ -147,6 +147,11 @@ TEST_F(RenderObjectTest, BoxModel) {
 }
 
 TEST_F(RenderObjectTest, PaintOrder) {
+  const auto translate_z = [](float value) {
+    lynx::gfx::TransformOperations result;
+    result.AppendTranslate({}, {}, {value, lynx::gfx::LengthUnit::kNumber});
+    return result;
+  };
   // Initial state.
   EXPECT_EQ(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting(), true);
   const auto& sorted1 = nodeList[1]->GetSortedChildrenForTesting();
@@ -168,8 +173,7 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting(), false);
 
   // Set translate-z = 1 for node 4.
-  TransformOperations transform3;
-  transform3.AppendTranslate(0, 0, 1);
+  auto transform3 = translate_z(1.0f);
   nodeList[4]->SetTransformOperations(transform3);
   EXPECT_EQ(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting(), true);
   const auto& sorted3 = nodeList[1]->GetSortedChildrenForTesting();
@@ -196,8 +200,7 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(sorted5[3], nodeList[4].get());
 
   // Set translate-z = 1 for obj.
-  TransformOperations transform6;
-  transform6.AppendTranslate(0, 0, 1);
+  auto transform6 = translate_z(1.0f);
   obj->SetTransformOperations(transform6);
   const auto& sorted6 = nodeList[1]->GetSortedChildrenForTesting();
   EXPECT_EQ(sorted6[0], nodeList[5].get());
@@ -206,8 +209,7 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(sorted6[3], obj.get());
 
   // Set translate-z = 0 for obj and node 4.
-  TransformOperations transform7;
-  transform7.AppendTranslate(0, 0, 0);
+  auto transform7 = translate_z(0.0f);
   nodeList[4]->SetTransformOperations(transform7);
   obj->SetTransformOperations(transform7);
   EXPECT_EQ(nodeList[1]->ChildrenPaintingOrderIsDirtyForTesting(), true);
@@ -226,8 +228,7 @@ TEST_F(RenderObjectTest, PaintOrder) {
   EXPECT_EQ(sorted8[2], obj.get());
 
   // Update root node‘s painting order shouldn't trigger a crash.
-  TransformOperations transform8;
-  transform8.AppendTranslate(0, 0, 1);
+  auto transform8 = translate_z(1.0f);
   auto* root = nodeList[0].get();
   root->SetTransformOperations(transform8);
   root->SetPaintingOrder(1);

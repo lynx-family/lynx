@@ -53,6 +53,8 @@ source_set("gfx") {
     "../fml:fml",
   ]
 
+  public_deps = [ "../../gfx:gfx" ]
+
   configs += [ "../:config" ]
 
   if (enable_skity) {

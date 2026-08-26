@@ -35,8 +35,8 @@ void BaseViewAnimationMutator::GetProperty(ClayAnimationPropertyType type,
   view_->GetProperty(type, value);
 }
 
-void BaseViewAnimationMutator::GetProperty(ClayAnimationPropertyType type,
-                                           TransformOperations& value) {
+void BaseViewAnimationMutator::GetProperty(
+    ClayAnimationPropertyType type, lynx::gfx::TransformOperations& value) {
   view_->GetProperty(type, value);
 }
 
@@ -58,7 +58,7 @@ void BaseViewAnimationMutator::SetProperty(
 }
 
 void BaseViewAnimationMutator::SetProperty(
-    ClayAnimationPropertyType type, const TransformOperations& value,
+    ClayAnimationPropertyType type, const lynx::gfx::TransformOperations& value,
     bool skip_update_for_raster_animation) {
   view_->SetProperty(type, value, skip_update_for_raster_animation);
 }

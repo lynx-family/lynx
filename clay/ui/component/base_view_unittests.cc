@@ -483,6 +483,11 @@ class BaseViewWithChildrenTest : public UITest {
 };
 
 TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
+  const auto translate_z = [](float value) {
+    lynx::gfx::TransformOperations result;
+    result.AppendTranslate({}, {}, {value, lynx::gfx::LengthUnit::kNumber});
+    return result;
+  };
   // Initial state.
   EXPECT_EQ(ChildrenPaintingOrderIsDirtyForTesting(nodeList[1].get()), true);
   const auto& sorted1 = GetSortedChildrenForTesting(nodeList[1].get());
@@ -504,8 +509,7 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(ChildrenPaintingOrderIsDirtyForTesting(nodeList[1].get()), false);
 
   // Set translate-z = 1 for node 4.
-  TransformOperations transform3;
-  transform3.AppendTranslate(0, 0, 1);
+  auto transform3 = translate_z(1.0f);
   nodeList[4]->SetProperty(ClayAnimationPropertyType::kTransform, transform3,
                            false);
   EXPECT_EQ(ChildrenPaintingOrderIsDirtyForTesting(nodeList[1].get()), true);
@@ -533,8 +537,7 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(sorted5[3], nodeList[4].get());
 
   // Set translate-z = 1 for obj.
-  TransformOperations transform6;
-  transform6.AppendTranslate(0, 0, 1);
+  auto transform6 = translate_z(1.0f);
   obj->SetProperty(ClayAnimationPropertyType::kTransform, transform6, false);
   const auto& sorted6 = GetSortedChildrenForTesting(nodeList[1].get());
   EXPECT_EQ(sorted6[0], nodeList[5].get());
@@ -543,8 +546,7 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(sorted6[3], obj);
 
   // Set translate-z = 0 for obj and node 4.
-  TransformOperations transform7;
-  transform7.AppendTranslate(0, 0, 0);
+  auto transform7 = translate_z(0.0f);
   nodeList[4]->SetProperty(ClayAnimationPropertyType::kTransform, transform7,
                            false);
   obj->SetProperty(ClayAnimationPropertyType::kTransform, transform7, false);
@@ -564,8 +566,7 @@ TEST_F_UI(BaseViewWithChildrenTest, PaintOrder) {
   EXPECT_EQ(sorted8[2], obj);
 
   // Update root node‘s painting order shouldn't trigger a crash.
-  TransformOperations transform8;
-  transform8.AppendTranslate(0, 0, 1);
+  auto transform8 = translate_z(1.0f);
   auto* root = nodeList[0].get();
   root->SetProperty(ClayAnimationPropertyType::kTransform, transform8, false);
   root->SetPaintingOrder(1);

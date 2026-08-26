@@ -590,7 +590,8 @@ void ViewContext::AppendShadow(int id, const Shadow& shadow) {
   view->AppendShadow(shadow);
 }
 
-void ViewContext::SetTransform(int id, const TransformOperations& ops,
+void ViewContext::SetTransform(int id,
+                               const lynx::gfx::TransformOperations& ops,
                                const FloatPoint& origin) {
   FIND_VIEW_WITH_ID_OR_RET;
   view->SetTransform(ops, origin);

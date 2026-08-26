@@ -26,7 +26,7 @@ class AnimatorTarget {
   virtual void GetProperty(ClayAnimationPropertyType type, float& value) {}
   virtual void GetProperty(ClayAnimationPropertyType type, Color& value) {}
   virtual void GetProperty(ClayAnimationPropertyType type,
-                           TransformOperations& value) {}
+                           lynx::gfx::TransformOperations& value) {}
   virtual void GetProperty(ClayAnimationPropertyType type,
                            FilterOperations& value) {}
   virtual void GetProperty(ClayAnimationPropertyType type,
@@ -37,7 +37,7 @@ class AnimatorTarget {
   virtual void SetProperty(ClayAnimationPropertyType type, const Color& value,
                            bool skip_update_for_raster_animation) {}
   virtual void SetProperty(ClayAnimationPropertyType type,
-                           const TransformOperations& value,
+                           const lynx::gfx::TransformOperations& value,
                            bool skip_update_for_raster_animation) {}
 
   virtual void SetProperty(ClayAnimationPropertyType type,

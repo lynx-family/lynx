@@ -23,7 +23,6 @@
 #include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/geometry/path.h"
 #include "clay/gfx/geometry/transform.h"
-#include "clay/gfx/geometry/transform_operations.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/borders_data.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -1933,7 +1932,7 @@ void BaseView::TransitionTo(ClayAnimationPropertyType type,
 }
 
 void BaseView::TransitionTo(ClayAnimationPropertyType type,
-                            const TransformOperations& value) {
+                            const lynx::gfx::TransformOperations& value) {
   switch (type) {
     case ClayAnimationPropertyType::kTransform:
       if (IsTransitionAnimationReady() && TransitionMgr()->Enabled(type) &&
@@ -2036,21 +2035,24 @@ void BaseView::SetOffsetRotate(float rotate) {
   render_object()->SetOffsetRotate(rotate);
 }
 
-void BaseView::SetTransformOperations(const TransformOperations& value,
-                                      bool is_from_animation) {
+void BaseView::SetTransformOperations(
+    const lynx::gfx::TransformOperations& value, bool is_from_animation) {
   transform_ops_ = value;
 #ifdef ENABLE_ACCESSIBILITY
   Transform old_transform = GetTransform();
 #endif
   float old_translate_z = render_object()->GetTranslateZ();
   if (post_translation_.has_value()) {
-    TransformOperations transform;
-    transform.AppendTranslate(post_translation_->x(), post_translation_->y(),
-                              0);
-    transform.Append(value);
+    lynx::gfx::TransformOperations transform;
+    transform.AppendTranslate(
+        {post_translation_->x(), lynx::gfx::LengthUnit::kNumber},
+        {post_translation_->y(), lynx::gfx::LengthUnit::kNumber}, {});
+    for (const auto& operation : value.GetOperations()) {
+      transform.Append(operation);
+    }
     render_object()->SetTransformOperations(transform, is_from_animation);
   } else {
-    render_object()->SetTransformOperations(transform_ops_, is_from_animation);
+    render_object()->SetTransformOperations(value, is_from_animation);
   }
 #ifdef ENABLE_ACCESSIBILITY
   Transform new_transform = GetTransform();
@@ -2093,7 +2095,7 @@ void BaseView::SetFilterOperations(const FilterOperations& value) {
 }
 
 void BaseView::SetProperty(ClayAnimationPropertyType type,
-                           const TransformOperations& value,
+                           const lynx::gfx::TransformOperations& value,
                            bool skip_update_for_raster_animation) {
   skip_update_for_raster_animation =
       skip_update_for_raster_animation && IsRasterAnimationEnabled();
@@ -2155,7 +2157,7 @@ void BaseView::GetProperty(ClayAnimationPropertyType type, Color& value) {
 }
 
 void BaseView::GetProperty(ClayAnimationPropertyType type,
-                           TransformOperations& value) {
+                           lynx::gfx::TransformOperations& value) {
   switch (type) {
     case ClayAnimationPropertyType::kTransform:
       value = transform_ops_;
@@ -2204,8 +2206,9 @@ bool BaseView::GetPresentationProperty(ClayAnimationPropertyType type,
          transition_mgr_->GetPresentationValue(type, current_time, value);
 }
 
-bool BaseView::GetPresentationProperty(ClayAnimationPropertyType type,
-                                       TransformOperations& value) const {
+bool BaseView::GetPresentationProperty(
+    ClayAnimationPropertyType type,
+    lynx::gfx::TransformOperations& value) const {
   const int64_t current_time =
       page_view_->GetAnimationHandler()->GetCurrentAnimationTime();
   if (keyframes_mgr_ &&
@@ -2341,12 +2344,12 @@ void BaseView::SetTransition(const clay::Value::Array& array) {
   TransitionMgr()->UpdateData(transitions);
 }
 
-void BaseView::SetTransform(const TransformOperations& ops,
+void BaseView::SetTransform(const lynx::gfx::TransformOperations& ops,
                             const FloatPoint& origin) {
   SetTransformOrigin(
       std::make_optional<TransformOrigin>(origin.x(), origin.y()));
 
-  TransformOperations old_ops;
+  lynx::gfx::TransformOperations old_ops;
   GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
   constexpr float tolerance = 0.001;
   if (old_ops.ApproximatelyEqual(ops, tolerance) &&
@@ -2360,8 +2363,8 @@ void BaseView::SetTransform(const TransformOperations& ops,
 
 void BaseView::SetTransform(const std::vector<TransformRaw>& transform_raw) {
   transform_raw_ = transform_raw;
-  auto ops = clay::TransformOperations(*transform_raw_, width_, height_);
-  TransformOperations old_ops;
+  auto ops = ResolveTransform(*transform_raw_, width_, height_);
+  lynx::gfx::TransformOperations old_ops;
   GetProperty(ClayAnimationPropertyType::kTransform, old_ops);
   constexpr float tolerance = 0.001;
   if (old_ops.ApproximatelyEqual(ops, tolerance) &&
@@ -2459,20 +2462,17 @@ Transform BaseView::GetTransform() const {
   }
 }
 
-TransformOperations BaseView::GetPresentationTransformOps() const {
-  TransformOperations transform = transform_ops_;
+lynx::gfx::TransformOperations BaseView::GetPresentationTransformOps() const {
+  lynx::gfx::TransformOperations transform = transform_ops_;
   GetPresentationProperty(ClayAnimationPropertyType::kTransform, transform);
   return transform;
 }
 
 Transform BaseView::GetPresentationTransform() const {
-  TransformOperations transform;
-  if (post_translation_.has_value()) {
-    transform.AppendTranslate(post_translation_->x(), post_translation_->y(),
-                              0.f);
-  }
-  transform.Append(GetPresentationTransformOps());
-  return transform.Apply();
+  const float offset_x = post_translation_ ? post_translation_->x() : 0.0f;
+  const float offset_y = post_translation_ ? post_translation_->y() : 0.0f;
+  return Transform(ApplyTransform(GetPresentationTransformOps(), 0.0f, 0.0f,
+                                  0.0f, offset_x, offset_y));
 }
 
 FloatPoint BaseView::GetTransformOrigin() const {
@@ -2733,11 +2733,10 @@ void BaseView::OnContentSizeChanged(const FloatRect& old_rect,
                                ClayAnimationPropertyType::kTransform)) {
       transition_mgr_->UpdateAnimationValue(
           ClayAnimationPropertyType::kTransform,
-          clay::TransformOperations(*transform_raw_, width_, height_));
+          ResolveTransform(*transform_raw_, width_, height_));
     } else {
       SetProperty(ClayAnimationPropertyType::kTransform,
-                  clay::TransformOperations(*transform_raw_, width_, height_),
-                  false);
+                  ResolveTransform(*transform_raw_, width_, height_), false);
     }
   }
 
@@ -2770,11 +2769,8 @@ bool BaseView::CanAcceptEvent() const {
     return false;
   }
   auto origin = GetTransformOrigin();
-  Transform transform(GetPresentationTransformOps()
-                          .Apply()
-                          .matrix()
-                          .PreTranslate(-origin.x(), -origin.y())
-                          .PostTranslate(origin.x(), origin.y()));
+  Transform transform(ApplyTransform(GetPresentationTransformOps(), 0.0f,
+                                     origin.x(), origin.y(), 0.0f, 0.0f));
   // If transform is not invertible, it means the view is not visible with
   // 2D transform.
   return transform.IsInvertible();
@@ -3057,11 +3053,8 @@ FloatPoint BaseView::GetPointBySelf(const FloatPoint& point_by_page) const {
   }
 
   auto origin = GetTransformOrigin();
-  Transform transform(GetPresentationTransformOps()
-                          .Apply()
-                          .matrix()
-                          .PreTranslate(-origin.x(), -origin.y())
-                          .PostTranslate(origin.x(), origin.y()));
+  Transform transform(ApplyTransform(GetPresentationTransformOps(), 0.0f,
+                                     origin.x(), origin.y(), 0.0f, 0.0f));
   if (!transform.IsIdentity()) {
     /*
      * transform direction:
@@ -3865,9 +3858,13 @@ void BaseView::CheckStickyOnParentScrollAndReset(int left, int top) {
   }
   post_translation_->SetX(sticky_->offset_x);
   post_translation_->SetY(sticky_->offset_y);
-  TransformOperations transform_ops;
-  transform_ops.AppendTranslate(sticky_->offset_x, sticky_->offset_y, 0);
-  transform_ops.Append(transform_ops_);
+  lynx::gfx::TransformOperations transform_ops;
+  transform_ops.AppendTranslate(
+      {sticky_->offset_x, lynx::gfx::LengthUnit::kNumber},
+      {sticky_->offset_y, lynx::gfx::LengthUnit::kNumber}, {});
+  for (const auto& operation : transform_ops_.GetOperations()) {
+    transform_ops.Append(operation);
+  }
   float old_translate_z = render_object()->GetTranslateZ();
   render_object()->SetTransformOperations(transform_ops, false);
   if (std::abs(render_object()->GetTranslateZ() - old_translate_z) > 1e-6) {

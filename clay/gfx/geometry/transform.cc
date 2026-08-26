@@ -7,6 +7,8 @@
 
 #include "clay/gfx/geometry/transform.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -17,7 +19,11 @@
 #include "clay/gfx/geometry/float_vector3d.h"
 #include "clay/gfx/geometry/math_util.h"
 #include "clay/gfx/geometry/quaternion.h"
+#include "clay/gfx/geometry/transform_raw.h"
 #include "clay/gfx/geometry/transform_util.h"
+#include "clay/public/style_types.h"
+#include "gfx/geometry/matrix44.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace clay {
 
@@ -54,7 +60,128 @@ skity::Matrix EulerToMatrix(float alpha, float beta, float gamma) {
                        0, 0, 0, 0, 1);
 }
 
+lynx::gfx::LengthValue Number(float value) {
+  return {value, lynx::gfx::LengthUnit::kNumber};
+}
+
+std::array<double, 16> ToMatrixData(const double matrix[16]) {
+  std::array<double, 16> result;
+  std::copy_n(matrix, result.size(), result.begin());
+  return result;
+}
+
+skity::Matrix ToSkityMatrix(const lynx::gfx::Matrix44& matrix) {
+  const float* value = matrix.Data();
+  return {value[0],  value[1],  value[2],  value[3], value[4],  value[5],
+          value[6],  value[7],  value[8],  value[9], value[10], value[11],
+          value[12], value[13], value[14], value[15]};
+}
+
 }  // namespace
+
+lynx::gfx::TransformOperations ResolveTransform(
+    const std::vector<TransformRaw>& transform_raw, float width, float height) {
+  lynx::gfx::TransformOperations result;
+  for (const auto& raw : transform_raw) {
+    const auto value = [&](size_t index, float percentage_base = 0.0f) {
+      return raw.values[index].GetValue(percentage_base);
+    };
+    switch (static_cast<ClayTransformType>(raw.type)) {
+      case ClayTransformType::kTranslate:
+        result.AppendTranslate(Number(value(0, width)),
+                               Number(value(1, height)), {});
+        break;
+      case ClayTransformType::kTranslateX:
+        result.AppendTranslate(Number(value(0, width)), {}, {});
+        break;
+      case ClayTransformType::kTranslateY:
+        result.AppendTranslate({}, Number(value(0, height)), {});
+        break;
+      case ClayTransformType::kTranslateZ:
+        result.AppendTranslate({}, {}, Number(value(0)));
+        break;
+      case ClayTransformType::kTranslate3d:
+        result.AppendTranslate(Number(value(0, width)),
+                               Number(value(1, height)), Number(value(2)));
+        break;
+      case ClayTransformType::kRotateX:
+        result.AppendRotate(lynx::gfx::TransformOperation::kRotateX, value(0));
+        break;
+      case ClayTransformType::kRotateY:
+        result.AppendRotate(lynx::gfx::TransformOperation::kRotateY, value(0));
+        break;
+      case ClayTransformType::kRotate:
+      case ClayTransformType::kRotateZ:
+        result.AppendRotate(lynx::gfx::TransformOperation::kRotateZ, value(0));
+        break;
+      case ClayTransformType::kScale:
+        result.AppendScale(value(0), value(1));
+        break;
+      case ClayTransformType::kScaleX:
+        result.AppendScale(value(0), 1.0f);
+        break;
+      case ClayTransformType::kScaleY:
+        result.AppendScale(1.0f, value(0));
+        break;
+      case ClayTransformType::kSkew:
+        result.AppendSkew(value(0), value(1));
+        break;
+      case ClayTransformType::kSkewX:
+        result.AppendSkew(value(0), 0.0f);
+        break;
+      case ClayTransformType::kSkewY:
+        result.AppendSkew(0.0f, value(0));
+        break;
+      case ClayTransformType::kMatrix:
+      case ClayTransformType::kMatrix3d:
+        result.AppendMatrix(
+            raw.type == static_cast<int>(ClayTransformType::kMatrix)
+                ? lynx::gfx::TransformOperation::kMatrix
+                : lynx::gfx::TransformOperation::kMatrix3d,
+            ToMatrixData(raw.matrix));
+        break;
+      case ClayTransformType::kNone:
+        break;
+    }
+  }
+  return result;
+}
+
+float GetTranslateZ(const lynx::gfx::TransformOperations& operations) {
+  float result = 0.0f;
+  for (const auto& operation : operations.GetOperations()) {
+    if (operation.type == lynx::gfx::TransformOperation::kTranslate) {
+      const float translate_z = operation.translate.z.Resolve(0.0f);
+      if (std::abs(translate_z) > 1e-6f) {
+        result += translate_z;
+      }
+    }
+  }
+  return result;
+}
+
+skity::Matrix ApplyTransform(const lynx::gfx::TransformOperations& operations,
+                             float perspective, float origin_x, float origin_y,
+                             float offset_x, float offset_y) {
+  lynx::gfx::Matrix44 matrix;
+  if (std::abs(perspective) > 1e-6f) {
+    matrix.setRC(3, 2, -1.0f / perspective);
+  }
+  for (const auto& operation : operations.GetOperations()) {
+    if (operation.type == lynx::gfx::TransformOperation::kTranslate) {
+      lynx::gfx::Matrix44 translation;
+      translation.preTranslate(operation.translate.x.Resolve(0.0f),
+                               operation.translate.y.Resolve(0.0f), 0.0f);
+      matrix.preConcat(translation);
+    } else {
+      matrix.preConcat(operation.GetMatrix(0.0f, 0.0f));
+    }
+  }
+  return ToSkityMatrix(matrix)
+      .PreTranslate(-origin_x, -origin_y)
+      .PostTranslate(origin_x, origin_y)
+      .PostTranslate(offset_x, offset_y);
+}
 
 Transform::Transform(float col1row1, float col2row1, float col3row1,
                      float col4row1, float col1row2, float col2row2,

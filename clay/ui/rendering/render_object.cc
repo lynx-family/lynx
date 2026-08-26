@@ -567,15 +567,17 @@ bool RenderObject::HasTransformOperations() const {
   return transform_.has_value();
 }
 
-void RenderObject::SetTransformOperations(const TransformOperations& transform,
-                                          bool defer_invalidation) {
-  const bool value_changed =
-      !transform_ ||
-      !transform_->ApproximatelyEqual(
-          transform, TransformOperations::kApproximatelyEqualTolerance);
+void RenderObject::SetTransformOperations(
+    const lynx::gfx::TransformOperations& transform, bool defer_invalidation) {
+  constexpr float kTolerance = 1e-3f;
+  const bool operations_changed =
+      transform_ ? !transform_->ApproximatelyEqual(transform, kTolerance)
+                 : !transform.IsIdentity();
+  const float translate_z = clay::GetTranslateZ(transform);
+  const bool stacking_changed = std::abs(translate_z_ - translate_z) > 1e-6f;
+  const bool value_changed = operations_changed || stacking_changed;
   if (value_changed) {
-    float translate_z = transform.GetTranslateZ();
-    if (std::abs(translate_z_ - translate_z) > 1e-6) {
+    if (stacking_changed) {
       // translate_z_ changes.
       translate_z_ = translate_z;
       if (auto* parent = static_cast<RenderObject*>(Parent())) {
@@ -942,9 +944,15 @@ void RenderObject::SetOffsetDistance(float distance) {
 }
 
 void RenderObject::UpdateOffsetTransform(const skity::Matrix& matrix) {
-  Transform transform(matrix);
-  TransformOperations transform_ops;
-  transform_ops.AppendMatrix(transform);
+  std::array<double, 16> matrix_data;
+  for (int column = 0; column < 4; ++column) {
+    for (int row = 0; row < 4; ++row) {
+      matrix_data[column * 4 + row] = matrix.Get(row, column);
+    }
+  }
+  lynx::gfx::TransformOperations transform_ops;
+  transform_ops.AppendMatrix(lynx::gfx::TransformOperation::kMatrix,
+                             matrix_data);
 
   offset_transform_ = transform_ops;
 }

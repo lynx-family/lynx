@@ -14,12 +14,12 @@
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/flow/raster_cache.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
-#include "clay/gfx/geometry/transform_operations.h"
 #include "clay/gfx/gpu_object.h"
 #include "clay/gfx/picture.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/color_filter.h"
 #include "clay/gfx/style/image_filter.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace clay {
 class AnimationHost;
@@ -52,10 +52,10 @@ class FrameBuilder {
 
   std::unique_ptr<Picture> GeneratePicture(const skity::Rect& bounds);
 
-  void PushTransformOperations(const TransformOperations& transform,
+  void PushTransformOperations(const lynx::gfx::TransformOperations& transform,
                                double origin_x, double origin_y,
                                double offset_x, double offset_y,
-                               PendingLayer* old_layer);
+                               float perspective, PendingLayer* old_layer);
   void PushStaticTransform(skity::Matrix transform, PendingLayer* old_layer);
   void PushOffset(double dx, double dy, PendingLayer* old_layer);
   void PushScrollOffset(double x, double y, double scroll_x, double scroll_y,
