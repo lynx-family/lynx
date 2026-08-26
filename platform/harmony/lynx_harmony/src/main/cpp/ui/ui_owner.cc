@@ -34,6 +34,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_text.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 
 namespace lynx {
@@ -161,6 +162,20 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   MarkHasUIOperationsBottomUp(ui);
 
   // XXX: Move the tag to builder's map to static map or gperf.
+}
+
+UIBase* UIOwner::CreateFragmentLayerHost(int sign) {
+  if (context_ == nullptr) {
+    return nullptr;
+  }
+  if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    return it->second.get();
+  }
+  auto ui = std::shared_ptr<UIBase>(UIView::Make(context_.get(), sign, "view"));
+  auto* result = ui.get();
+  ui_holder_[sign] = std::move(ui);
+  MarkHasUIOperationsBottomUp(result);
+  return result;
 }
 
 void UIOwner::InsertUI(int parent, int child, int index) {
