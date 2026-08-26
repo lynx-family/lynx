@@ -35,6 +35,31 @@ std::vector<ModifierElement*> CollectModifierFrames(Element* root,
   return frames;
 }
 
+lepus::Value MakePaddingChain(size_t frame_count, double value) {
+  lepus::Value previous;
+  for (size_t index = 0; index < frame_count; ++index) {
+    auto background = lepus::Dictionary::Create();
+    background->SetValue("op", lepus::Value(3));
+    background->SetValue(
+        "propertyId",
+        lepus::Value(static_cast<int32_t>(kPropertyIDBackgroundColor)));
+    background->SetValue("value", lepus::Value("#010101"));
+    if (!previous.IsEmpty()) {
+      background->SetValue("previous", previous);
+    }
+
+    auto padding = lepus::Dictionary::Create();
+    padding->SetValue("op", lepus::Value(7));
+    padding->SetValue("start", lepus::Value(value + index));
+    padding->SetValue("top", lepus::Value(value + index));
+    padding->SetValue("end", lepus::Value(value + index));
+    padding->SetValue("bottom", lepus::Value(value + index));
+    padding->SetValue("previous", lepus::Value(background));
+    previous = lepus::Value(padding);
+  }
+  return previous;
+}
+
 }  // namespace
 
 class ModifierElementTest : public FiberElementTest {};
@@ -124,6 +149,142 @@ TEST_P(ModifierElementTest, KeepsPhysicalRootsPrivateToEachOwner) {
             1u);
   EXPECT_EQ(CollectModifierFrames(second_root.get(), second_owner.get()).size(),
             1u);
+}
+
+TEST_P(ModifierElementTest, ReparentAttachedFramesThroughTargetOwnedMove) {
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  auto owner = manager->CreateFiberView();
+  owner->MarkCanBeLayoutOnly(false);
+  const int32_t owner_id = owner->impl_id();
+  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
+      ComposeElementKind::kView, fml::RefPtr<Element>(owner)));
+
+  auto initial_result =
+      ComposeModifierApplicator::Apply(handle.get(), MakePaddingChain(1, 4.0),
+                                       /*registration_context=*/nullptr);
+  ASSERT_TRUE(initial_result.success) << initial_result.error_message;
+  page->InsertNode(handle->mount_root());
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto apply_and_flush = [&](size_t frame_count, double value) {
+    const auto old_frames =
+        CollectModifierFrames(handle->mount_root().get(), owner.get());
+    ASSERT_FALSE(old_frames.empty());
+    auto* old_source = old_frames.back();
+    auto old_source_weak = old_source->WeakFromThis();
+    std::vector<int32_t> old_frame_ids;
+    for (auto* frame : old_frames) {
+      old_frame_ids.push_back(frame->impl_id());
+    }
+
+    platform_impl_->ResetCapturedRemoveSigns();
+    auto result = ComposeModifierApplicator::Apply(
+        handle.get(), MakePaddingChain(frame_count, value),
+        /*registration_context=*/nullptr);
+    ASSERT_TRUE(result.success) << result.error_message;
+
+    const auto new_frames =
+        CollectModifierFrames(handle->mount_root().get(), owner.get());
+    ASSERT_EQ(new_frames.size(), frame_count);
+    auto* new_source = new_frames.back();
+    EXPECT_EQ(owner->parent(), new_source);
+    EXPECT_EQ(owner->render_parent(), old_source);
+    EXPECT_TRUE(old_source_weak);
+
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(owner->render_parent(), new_source);
+    EXPECT_FALSE(old_source_weak);
+    platform_impl_->Flush();
+
+    EXPECT_EQ(owner->impl_id(), owner_id);
+    EXPECT_EQ(platform_impl_->node_map_.count(owner_id), 1u);
+    ASSERT_EQ(platform_impl_->node_map_.count(new_source->impl_id()), 1u);
+    EXPECT_EQ(platform_impl_->node_map_.at(owner_id)->parent_->id_,
+              new_source->impl_id());
+    EXPECT_FALSE(platform_impl_->HasCapturedRemoveSign(owner_id));
+    for (const auto old_frame_id : old_frame_ids) {
+      EXPECT_EQ(platform_impl_->node_map_.count(old_frame_id), 0u);
+    }
+  };
+
+  apply_and_flush(1, 8.0);
+  apply_and_flush(2, 12.0);
+  apply_and_flush(3, 16.0);
+  apply_and_flush(2, 20.0);
+  apply_and_flush(1, 24.0);
+}
+
+TEST_P(ModifierElementTest, CoalescesPendingMovesBeforeSingleFlush) {
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  auto owner = manager->CreateFiberView();
+  owner->MarkCanBeLayoutOnly(false);
+  const int32_t owner_id = owner->impl_id();
+  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
+      ComposeElementKind::kView, fml::RefPtr<Element>(owner)));
+
+  auto initial_result =
+      ComposeModifierApplicator::Apply(handle.get(), MakePaddingChain(1, 4.0),
+                                       /*registration_context=*/nullptr);
+  ASSERT_TRUE(initial_result.success) << initial_result.error_message;
+  page->InsertNode(handle->mount_root());
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  const auto initial_frames =
+      CollectModifierFrames(handle->mount_root().get(), owner.get());
+  ASSERT_EQ(initial_frames.size(), 1u);
+  auto* initial_source = initial_frames.back();
+  auto initial_source_weak = initial_source->WeakFromThis();
+  const int32_t initial_frame_id = initial_source->impl_id();
+
+  auto intermediate_result =
+      ComposeModifierApplicator::Apply(handle.get(), MakePaddingChain(2, 8.0),
+                                       /*registration_context=*/nullptr);
+  ASSERT_TRUE(intermediate_result.success) << intermediate_result.error_message;
+  const auto intermediate_frames =
+      CollectModifierFrames(handle->mount_root().get(), owner.get());
+  ASSERT_EQ(intermediate_frames.size(), 2u);
+  auto* intermediate_source = intermediate_frames.back();
+  auto intermediate_source_weak = intermediate_source->WeakFromThis();
+  std::vector<int32_t> intermediate_frame_ids;
+  for (auto* frame : intermediate_frames) {
+    intermediate_frame_ids.push_back(frame->impl_id());
+  }
+  EXPECT_TRUE(initial_source_weak);
+
+  auto final_result =
+      ComposeModifierApplicator::Apply(handle.get(), MakePaddingChain(1, 12.0),
+                                       /*registration_context=*/nullptr);
+  ASSERT_TRUE(final_result.success) << final_result.error_message;
+  const auto final_frames =
+      CollectModifierFrames(handle->mount_root().get(), owner.get());
+  ASSERT_EQ(final_frames.size(), 1u);
+  auto* final_source = final_frames.back();
+
+  EXPECT_EQ(owner->parent(), final_source);
+  EXPECT_EQ(owner->render_parent(), initial_source);
+  EXPECT_TRUE(initial_source_weak);
+
+  platform_impl_->ResetCapturedRemoveSigns();
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(owner->render_parent(), final_source);
+  EXPECT_FALSE(initial_source_weak);
+  EXPECT_FALSE(intermediate_source_weak);
+  platform_impl_->Flush();
+
+  EXPECT_EQ(owner->impl_id(), owner_id);
+  EXPECT_EQ(platform_impl_->node_map_.count(owner_id), 1u);
+  ASSERT_EQ(platform_impl_->node_map_.count(final_source->impl_id()), 1u);
+  EXPECT_EQ(platform_impl_->node_map_.at(owner_id)->parent_->id_,
+            final_source->impl_id());
+  EXPECT_EQ(platform_impl_->node_map_.count(initial_frame_id), 0u);
+  for (const auto intermediate_frame_id : intermediate_frame_ids) {
+    EXPECT_EQ(platform_impl_->node_map_.count(intermediate_frame_id), 0u);
+  }
+  EXPECT_FALSE(platform_impl_->HasCapturedRemoveSign(owner_id));
 }
 
 TEST_P(ModifierElementTest, AcceptsComposeModifierSingletonAsChainEnd) {
