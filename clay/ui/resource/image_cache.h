@@ -14,6 +14,9 @@
 
 #include "base/include/fml/task_runner.h"
 #include "clay/common/sys_info.h"
+#if defined(OS_ANDROID) || defined(OS_IOS)
+#include "clay/common/trail_settings.h"
+#endif
 #include "clay/gfx/graphics_isolate.h"
 #include "clay/gfx/image/image.h"
 
@@ -57,6 +60,11 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
 #if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
+    if (!IsImageCacheEnabled()) {
+      ClearCacheInternal();
+      return;
+    }
+
     size_t bytes = image->GetGraphicsImageAllocSize();
     if (bytes > kMaxItemBytes || bytes == 0) {
       FML_LOG(INFO) << "image bytes is " + std::to_string(bytes);
@@ -83,6 +91,11 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
                                const std::string& identifier) {
 #if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
+
+    if (!IsImageCacheEnabled()) {
+      ClearCacheInternal();
+      return nullptr;
+    }
 
     auto found = cache_map_.find(cache_key_hash);
     if (found == cache_map_.end()) {
@@ -111,6 +124,11 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
 #if defined(ENABLE_PLATFORM_DECODE) || OS_WIN || OS_MAC
     FML_DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
 
+    if (!IsImageCacheEnabled()) {
+      ClearCacheInternal();
+      return nullptr;
+    }
+
     auto found = cache_map_.find(cache_key_hash);
     if (found == cache_map_.end()) {
       return nullptr;
@@ -137,6 +155,14 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
   }
 
  private:
+  bool IsImageCacheEnabled() const {
+#if defined(OS_ANDROID) || defined(OS_IOS)
+    return !setting::CLAY_DISABLE_IMAGE_MEM_CACHE.value();
+#else
+    return true;
+#endif
+  }
+
   void CleanTo(size_t bytes) {
     std::vector<std::shared_ptr<T>> images;
     size_t cleaned_items = 0;
@@ -165,6 +191,11 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
     }
   }
   void PruneOldImages() {
+    if (!IsImageCacheEnabled()) {
+      ClearCacheInternal();
+      return;
+    }
+
     std::vector<std::shared_ptr<T>> images;
     size_t cleaned_items = 0;
 
