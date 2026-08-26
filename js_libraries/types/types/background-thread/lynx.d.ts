@@ -202,5 +202,5 @@ export interface Lynx extends CommonLynx {
    * @description Dynamic add font
    * @since 2.12
    */
-  addFont(fontFace: FontFace, callback?: () => void): void;
+  addFont(fontFace: FontFace, callback?: (error?: Error) => void): void;
 }

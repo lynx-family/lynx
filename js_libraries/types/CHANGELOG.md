@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.6
+- Report asynchronous font loading failures through the `lynx.addFont` callback.
+
 ## 4.3.5
 - Add/Update platform support annotations for Element attributes, events, and methods.
 

@@ -43,6 +43,8 @@ class LayoutContextClay : public LayoutCtxPlatformImpl,
   void OnLayoutBefore(int tag) override;
   void ScheduleLayout() override;
   void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override;
+  void AddFontFace(const CSSFontFaceRuleMap& fontfaces,
+                   std::function<void(bool)> callback) override;
   void InsertLayoutNode(int parent, int child, int index) override;
   void RemoveLayoutNode(int parent, int child, int index) override;
   void OnLayout(int tag, float left, float top, float width, float height,

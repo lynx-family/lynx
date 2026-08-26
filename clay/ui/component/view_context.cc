@@ -905,8 +905,11 @@ BaseView* ViewContext::FindViewByRefIdSelector(std::string_view ref_id_selector,
 }
 
 void ViewContext::SetFontFace(const char* font_family, const char* src[],
-                              int size) {
+                              int size, std::function<void(bool)> completion) {
   if (size < 1) {
+    if (completion) {
+      completion(false);
+    }
     return;
   }
 
@@ -919,7 +922,7 @@ void ViewContext::SetFontFace(const char* font_family, const char* src[],
   font_collection->PreLoadFontOnMem(
       page_view_->GetTaskRunner(), page_view_->GetResourceLoaderIntercept(),
       page_view_->GetServiceManager(), std::string(font_family),
-      std::move(src_vec));
+      std::move(src_vec), std::move(completion));
 }
 
 void ViewContext::GetAbsolutePosition(int id, float& top, float& left) {

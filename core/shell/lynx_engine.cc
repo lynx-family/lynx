@@ -743,8 +743,7 @@ void LynxEngine::ReloadFromJS(runtime::UpdateDataTask task) {
 
 void LynxEngine::AddFont(const lepus::Value& font,
                          runtime::js::ApiCallBack callback) {
-  tasm_->AddFont(font);
-  delegate_->CallJSApiCallback(std::move(callback));
+  tasm_->AddFont(font, std::move(callback));
 }
 
 void LynxEngine::FetchBundle(

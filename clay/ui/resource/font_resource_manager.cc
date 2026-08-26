@@ -5,6 +5,7 @@
 #include "clay/ui/resource/font_resource_manager.h"
 
 #include <utility>
+#include <vector>
 
 #include "base/include/fml/task_runner.h"
 #include "base/include/string/string_utils.h"
@@ -28,6 +29,11 @@ RawResource FontResourceManager::GetResource(const std::string& family_name) {
   }
 
   return iter->second;
+}
+
+void FontResourceManager::RemoveResource(const std::string& family_name) {
+  font_resource_map_.erase(family_name);
+  font_url_map_.erase(family_name);
 }
 
 void FontResourceManager::DownloadFont(
@@ -85,7 +91,7 @@ void FontResourceManager::DownloadFont(
                             load_task_runner, intercept, service_manager);
       },
       ResourceType::kFont, true);
-  font_loader_map_.emplace(font_family, std::move(resource_loader));
+  font_loader_map_[font_family] = std::move(resource_loader);
 }
 
 void FontResourceManager::OnDownloadEnd(
@@ -108,13 +114,19 @@ void FontResourceManager::OnDownloadEnd(
     unsigned int index = url_index + 1;
     if (index >= url_vec.size()) {
       FML_DLOG(ERROR) << "Unable to get font for family: " << font_family;
-      auto callback_iter = font_call_back_map_.find(font_family);
-      if (callback_iter != font_call_back_map_.end()) {
-        callback_iter->second(false, font_family, std::string());
+      std::vector<FontCallback> callbacks;
+      auto callback_range = font_call_back_map_.equal_range(font_family);
+      for (auto callback = callback_range.first;
+           callback != callback_range.second; ++callback) {
+        callbacks.emplace_back(std::move(callback->second));
       }
-      font_call_back_map_.erase(font_family);
+      font_call_back_map_.erase(callback_range.first, callback_range.second);
       font_loader_map_.erase(font_family);
       loading_font_families_.erase(font_family);
+      font_url_map_.erase(font_family);
+      for (const auto& callback : callbacks) {
+        callback(false, font_family, std::string());
+      }
       return;
     } else {
       DownloadFont(load_task_runner, intercept, service_manager, url_vec[index],
@@ -127,13 +139,19 @@ void FontResourceManager::OnDownloadEnd(
   font_resource_map_.emplace(font_family, data);
 
   // second : callback
-  auto callback_iter = font_call_back_map_.find(font_family);
-  if (callback_iter != font_call_back_map_.end()) {
-    callback_iter->second(true, font_family, url_vec[url_index]);
+  const std::string loaded_url = url_vec[url_index];
+  std::vector<FontCallback> callbacks;
+  auto callback_range = font_call_back_map_.equal_range(font_family);
+  for (auto callback = callback_range.first; callback != callback_range.second;
+       ++callback) {
+    callbacks.emplace_back(std::move(callback->second));
   }
-  font_call_back_map_.erase(font_family);
+  font_call_back_map_.erase(callback_range.first, callback_range.second);
   font_loader_map_.erase(font_family);
   loading_font_families_.erase(font_family);
+  for (const auto& callback : callbacks) {
+    callback(true, font_family, loaded_url);
+  }
 }
 
 bool FontResourceManager::HasFontResourceLoading(
@@ -148,18 +166,32 @@ void FontResourceManager::LoadFontAsync(
     std::shared_ptr<ServiceManager> service_manager,
     const std::string& font_family, std::vector<std::string> url_vec,
     const FontCallback& callback) {
-  // first : find cache , avoid reloading
-  if (font_url_map_.find(font_family) != font_url_map_.end()) {
+  if (HasFontResource(font_family)) {
+    if (callback) {
+      callback(true, font_family, std::string());
+    }
     return;
   }
 
-  // second : cache src
   if (url_vec.empty()) {
+    if (callback) {
+      callback(false, font_family, std::string());
+    }
     return;
   }
 
+  if (HasFontResourceLoading(font_family)) {
+    if (callback) {
+      font_call_back_map_.emplace(font_family, callback);
+    }
+    return;
+  }
+
+  font_url_map_.erase(font_family);
   font_url_map_.emplace(font_family, std::move(url_vec));
-  font_call_back_map_.emplace(font_family, callback);
+  if (callback) {
+    font_call_back_map_.emplace(font_family, callback);
+  }
   loading_font_families_.emplace(font_family);
 
   const int url_index = 0;
@@ -218,12 +250,14 @@ void FontResourceManager::LoadFontSync(const std::string& font_family,
   font_url_map_.emplace(font_family, std::move(url_vec));
 
   int index = -1;
+  bool success = false;
   for (auto& one_url : font_url_map_[font_family]) {
     ++index;
     if (url::ParseUriScheme(one_url) == url::UriSchemeType::kData) {
       auto data = DecodeBase64Str(one_url);
       if (data.length > 0) {
         OnDownloadEnd(true, index, font_family, data, nullptr);
+        success = true;
         break;
       }
       continue;
@@ -233,15 +267,19 @@ void FontResourceManager::LoadFontSync(const std::string& font_family,
         ResourceLoaderFactory::Create(one_url, nullptr);
     if (!loader) {
       FML_LOG(ERROR) << "create ResourceLoader fail";
-      return;
+      continue;
     }
     auto data = loader->LoadSync(one_url, ResourceType::kFont);
     if (data.length > 0) {
       OnDownloadEnd(true, index, font_family, data, nullptr);
+      success = true;
       break;
     }
   }
 
+  if (!success) {
+    font_url_map_.erase(font_family);
+  }
   return;
 }
 

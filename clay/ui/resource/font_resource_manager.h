@@ -32,6 +32,7 @@ class FontResourceManager
   ~FontResourceManager();
 
   RawResource GetResource(const std::string& font_family);
+  void RemoveResource(const std::string& font_family);
 
   void LoadFontAsync(fml::RefPtr<fml::TaskRunner> load_task_runner,
                      std::shared_ptr<ResourceLoaderIntercept> intercept,
@@ -68,7 +69,7 @@ class FontResourceManager
   std::map<std::string, std::vector<std::string>> font_url_map_;
   std::map<std::string, std::shared_ptr<ResourceLoader>> font_loader_map_;
   std::map<std::string, RawResource> font_resource_map_;
-  std::map<std::string, FontCallback> font_call_back_map_;
+  std::multimap<std::string, FontCallback> font_call_back_map_;
   std::unordered_set<std::string> loading_font_families_;
 };
 

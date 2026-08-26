@@ -14,7 +14,7 @@ import {
   ContextProxy,
 } from '@lynx-js/types';
 
-export interface NativeLynxProxy extends BackgroundLynx {
+export interface NativeLynxProxy extends Omit<BackgroundLynx, 'addFont'> {
   __globalProps: GlobalProps;
   __presetData: Record<string, unknown>;
 
@@ -33,7 +33,7 @@ export interface NativeLynxProxy extends BackgroundLynx {
   QueryComponent(source: string, callback: (result: any) => void): void;
   addFont(
     font: { src: string; 'font-family': string },
-    callback: (err?: Error) => void
+    callback: (success: boolean) => void
   ): void;
   getTextInfo(text: string, info: TextInfo): TextMetrics;
   getDevtool(): ContextProxy;

@@ -215,6 +215,8 @@ class TasmMediator : public LynxEngine::Delegate {
   void UpdateLayoutNodeAttribute(int32_t id, starlight::LayoutAttribute key,
                                  const lepus::Value& value) override;
   void SetFontFaces(const tasm::CSSFontFaceRuleMap& fontfaces) override;
+  void AddFontFace(const tasm::CSSFontFaceRuleMap& fontfaces,
+                   runtime::js::ApiCallBack callback) override;
 
   void UpdateLayoutNodeByBundle(
       int32_t id, std::unique_ptr<tasm::LayoutBundle> bundle) override;

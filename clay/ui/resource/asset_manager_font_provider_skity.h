@@ -25,7 +25,7 @@ class AssetManagerFontStyleSet : public skity::FontStyleSet {
 
   ~AssetManagerFontStyleSet() override;
 
-  void RegisterAsset(const std::string& file_path);
+  bool RegisterAsset(const std::string& file_path);
 
   int Count() override;
 
@@ -61,7 +61,7 @@ class AssetManagerFontProvider : public txt::FontAssetProvider {
       std::shared_ptr<FontResourceManager> font_resource_manager);
   ~AssetManagerFontProvider() override;
 
-  void RegisterAsset(const std::string& family_name,
+  bool RegisterAsset(const std::string& family_name,
                      const std::string& file_path);
 
   // |FontAssetProvider|

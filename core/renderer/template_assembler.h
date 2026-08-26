@@ -297,7 +297,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void ReloadFromJS(const runtime::UpdateDataTask& task,
                     std::shared_ptr<PipelineOptions>& pipeline_options);
 
-  void AddFont(const lepus::Value& font);
+  void AddFont(const lepus::Value& font, runtime::js::ApiCallBack callback);
 
   // Invoked if engine thread switched;
   void BindMTSRuntimeThread();

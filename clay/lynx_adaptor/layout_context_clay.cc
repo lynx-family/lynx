@@ -267,6 +267,41 @@ void LayoutContextClay::SetFontFaces(const CSSFontFaceRuleMap& fontfaces) {
   }
 }
 
+void LayoutContextClay::AddFontFace(const CSSFontFaceRuleMap& fontfaces,
+                                    std::function<void(bool)> callback) {
+  if (fontfaces.size() != 1) {
+    if (callback) {
+      callback(false);
+    }
+    return;
+  }
+  const auto& font_face = *fontfaces.begin();
+  if (font_face.second.empty()) {
+    if (callback) {
+      callback(false);
+    }
+    return;
+  }
+  const auto& src_map = font_face.second[0]->second;
+  auto src = src_map.find("src");
+  if (src == src_map.end()) {
+    if (callback) {
+      callback(false);
+    }
+    return;
+  }
+
+  auto src_vec = ParseFontFaceSrcAttr(src->second);
+  std::vector<const char*> src_data;
+  src_data.reserve(src_vec.size());
+  for (const auto& value : src_vec) {
+    src_data.emplace_back(value.c_str());
+  }
+  view_context_->SetFontFace(font_face.first.c_str(), src_data.data(),
+                             static_cast<int>(src_data.size()),
+                             std::move(callback));
+}
+
 LayoutResult LayoutContextClay::MeasureImpl(int sign, int width, int width_mode,
                                             int height, int height_mode) {
   float out_width = 0.f;

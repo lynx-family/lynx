@@ -724,6 +724,11 @@ void LayoutContext::SetFontFaces(const CSSFontFaceRuleMap& fontfaces) {
   platform_impl_->SetFontFaces(fontfaces);
 }
 
+void LayoutContext::AddFontFace(const CSSFontFaceRuleMap& fontfaces,
+                                std::function<void(bool)> callback) {
+  platform_impl_->AddFontFace(fontfaces, std::move(callback));
+}
+
 void LayoutContext::SetLayoutEarlyExitTiming(
     const std::shared_ptr<PipelineOptions>& options) {
   if (options->need_timestamps) {
