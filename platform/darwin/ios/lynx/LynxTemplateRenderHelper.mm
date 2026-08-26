@@ -45,6 +45,7 @@
 #include "base/include/lynx_actor.h"
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/public/lynx_extension_delegate.h"
+#include "core/public/page_options.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
@@ -65,6 +66,10 @@
 
 @interface LynxBackgroundRuntime (LogContextInternal)
 - (const lynx::base::LogContext*)runtimeCreationLogContext;
+@end
+
+@protocol LynxFirstTimeoutScaleProvider <NSObject>
+- (BOOL)getFirstTimeoutScaleTargetDelayMs:(int32_t*)targetDelayMs factor:(double*)factor;
 @end
 
 namespace {
@@ -553,6 +558,16 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   option.page_options_.SetInstanceID(option.instance_id_);
   option.page_options_.SetEmbeddedMode(static_cast<lynx::tasm::EmbeddedMode>(_embeddedMode));
   option.page_options_.SetDebuggable(_debuggable);
+  // Experimental first-timeout scaling; scheduled to be removed on 2026-10-30.
+  if ([_lynxUIRenderer respondsToSelector:@selector(getFirstTimeoutScaleTargetDelayMs:factor:)]) {
+    int32_t target_delay_ms = 0;
+    double factor = 0.0;
+    if ([(id<LynxFirstTimeoutScaleProvider>)_lynxUIRenderer
+            getFirstTimeoutScaleTargetDelayMs:&target_delay_ms
+                                       factor:&factor]) {
+      option.page_options_.SetFirstTimeoutScale(target_delay_ms, factor);
+    }
+  }
   return option;
 }
 
