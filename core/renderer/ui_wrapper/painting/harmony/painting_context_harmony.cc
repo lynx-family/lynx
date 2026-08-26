@@ -105,12 +105,11 @@ void PaintingContextHarmonyRef::ListCellDisappear(int sign, bool isExist,
 
 void PaintingContextHarmonyRef::UpdateNodeReadyPatching(
     std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
-  for (int node_ready_id : ready_ids) {
-    ui_owner_->OnNodeReady(node_ready_id);
-  }
-  for (int node_remove_id : remove_ids) {
-    ui_owner_->OnNodeRemoved(node_remove_id);
-  }
+  ui_owner_->UpdateNodeReadyPatching(ready_ids, remove_ids);
+}
+
+void PaintingContextHarmonyRef::RequestExternalMemoryReport(int64_t delay_ms) {
+  ui_owner_->RequestExternalMemoryReport(delay_ms);
 }
 
 void PaintingContextHarmonyRef::SetNeedMarkPaintEndTiming(

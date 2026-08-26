@@ -34,6 +34,7 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
 
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
                                std::vector<int32_t> remove_ids) override;
+  void RequestExternalMemoryReport(int64_t delay_ms) override;
   void UpdateEventInfo(bool has_touch_pseudo) override;
   void InsertListItemPaintingNode(int list_sign, int child_sign) override;
   void RemoveListItemPaintingNode(int list_sign, int child_sign) override;

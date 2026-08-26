@@ -33,6 +33,8 @@ class UIFlattenImage : public UIBase,
 
   const std::string& GetPlaceholder() { return place_holder_; };
 
+  int64_t GetMemoryUsageBytes() const override;
+
  protected:
   UIFlattenImage(LynxContext* context, int sign, const std::string& tag);
   ~UIFlattenImage() override = default;
