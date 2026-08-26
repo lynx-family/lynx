@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.1.0
+
+### Minor Changes
+
+- Add explicit `stable`, `experimental`, and `internal` declaration entry points. The package root now exposes the stable API surface; consumers of other APIs must opt into the corresponding entry point.
+- Add experimental indexed child mutation APIs and the Compose modifier API.
+
 ## 0.0.10
 
 ### Patch Changes
