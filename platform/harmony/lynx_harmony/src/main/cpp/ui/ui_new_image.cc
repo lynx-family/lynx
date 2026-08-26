@@ -4,16 +4,14 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
-#include <filemanagement/file_uri/oh_file_uri.h>
 #include <native_drawing/drawing_color_filter.h>
 
-#include <cstdlib>
+#include <string_view>
 #include <utility>
 
 #include "base/include/float_comparison.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/trace/native/trace_event.h"
-#include "clay/ui/component/component_constants.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/parser/css_string_parser.h"
@@ -31,6 +29,43 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+namespace {
+class SvgResourceFetcherImpl final : public SvgResourceFetcher {
+ public:
+  explicit SvgResourceFetcherImpl(
+      std::shared_ptr<pub::LynxResourceLoader> resource_loader)
+      : resource_loader_(std::move(resource_loader)) {}
+
+  void Fetch(const std::string& source,
+             SvgResourceCompletionCallback completion) override {
+    if (!resource_loader_) {
+      LOGE("SVG resource loader is unavailable.");
+      return;
+    }
+    auto request =
+        pub::LynxResourceRequest{source, pub::LynxResourceType::kSvg};
+    resource_loader_->LoadResource(
+        request, [completion = std::move(completion)](
+                     pub::LynxResourceResponse& response) mutable {
+          completion(response.err_code, response.err_msg,
+                     std::move(response.data));
+        });
+  }
+
+ private:
+  std::shared_ptr<pub::LynxResourceLoader> resource_loader_;
+};
+
+bool IsSvgSource(const std::string& source) {
+  if (base::BeginsWith(source, "data:image/svg+xml;base64,")) {
+    return true;
+  }
+  std::string_view path(source);
+  path = path.substr(0, path.find_first_of("?#"));
+  return base::EndsWithIgnoreSourceCase(path, ".svg");
+}
+}  // namespace
 
 using ImagePropSetter = void (UINewImage::*)(const lepus::Value& value);
 std::unordered_map<std::string, ImagePropSetter> UINewImage::prop_setters_ = {
@@ -82,6 +117,14 @@ void UINewImage::OnDrawBehind(OH_Drawing_Canvas* canvas,
                              -top * context_->ScaledDensity());
   UIBase::OnDrawBehind(canvas, node);
   OH_Drawing_CanvasRestore(canvas);
+}
+
+void UINewImage::OnOverlayDraw(OH_Drawing_Canvas* canvas,
+                               ArkUI_NodeHandle node) {
+  if (node == Node() && svg_image_loader_) {
+    svg_image_loader_->Render(canvas);
+  }
+  UIBase::OnOverlayDraw(canvas, node);
 }
 
 void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
@@ -440,6 +483,81 @@ bool UINewImage::LoadImage() {
   return true;
 }
 
+bool UINewImage::UpdateSvgImageLoader() {
+  if (!IsSvgSource(src_)) {
+    svg_image_loader_.reset();
+    return false;
+  }
+  if (!svg_image_loader_) {
+    auto resource_fetcher =
+        std::make_unique<SvgResourceFetcherImpl>(context_->GetResourceLoader());
+    svg_image_loader_ = UIOwner::image_service->CreateSvgImageLoader(
+        std::move(resource_fetcher),
+        [weak_self = weak_from_this()] {
+          if (auto self = weak_self.lock()) {
+            NodeManager::Instance().Invalidate(self->Node());
+          }
+        },
+        context_->ScaledDensity());
+  }
+  constexpr uint32_t kSvgLayoutFlags = image::kFlagSrcChanged |
+                                       image::kFlagFrameSizeChanged |
+                                       image::kFlagPaddingChanged;
+  if (svg_image_loader_ && (dirty_flags_ & kSvgLayoutFlags) != 0) {
+    svg_image_loader_->UpdateLayout(width_, height_, image_padding_left_,
+                                    image_padding_top_, image_padding_right_,
+                                    image_padding_bottom_);
+  }
+  return svg_image_loader_ != nullptr;
+}
+
+bool UINewImage::LoadSvgImage() {
+  if (width_ <= 0 || height_ <= 0 || src_.empty()) {
+    LOGE("LoadImage empty size, src: " << src_);
+    return true;
+  }
+  if (!svg_overlay_event_registered_) {
+    NodeManager::Instance().RegisterNodeCustomEvent(
+        Node(), ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
+    svg_overlay_event_registered_ = true;
+  }
+
+  std::string final_src = src_;
+  if (!SkipRedirection()) {
+    auto weak_self = weak_from_this();
+    final_src =
+        LynxImageHelper::GetRedirectUrl(src_, context_->GetResourceLoader());
+    if (weak_self.expired()) {
+      LOGE(
+          "UIImage was destroyed during the first synchronous ArkTS call to "
+          "ShouldRedirectUrl");
+      return false;
+    }
+  }
+  if (final_src.empty()) {
+    LOGE("LoadImage empty source return");
+    return true;
+  }
+
+  has_src_ = true;
+  ImageRequestInfo info{.url = final_src};
+  svg_image_loader_->FetchSvgImage(
+      info,
+      [weak_self = weak_from_this()](float width, float height) {
+        if (auto self = weak_self.lock()) {
+          auto image = std::static_pointer_cast<UINewImage>(self);
+          image->OnImageLoadSuccess(width, height);
+        }
+      },
+      [weak_self = weak_from_this()](int code, const std::string& message) {
+        if (auto self = weak_self.lock()) {
+          auto image = std::static_pointer_cast<UINewImage>(self);
+          image->OnImageLoadFailure(code, message);
+        }
+      });
+  return true;
+}
+
 void UINewImage::OnNodeReady() {
   UIBase::OnNodeReady();
   if (!init_listener_) {
@@ -448,15 +566,16 @@ void UINewImage::OnNodeReady() {
     image_node_->InitImageLoadListener(weak_self);
     init_listener_ = true;
   }
-
+  const bool use_svg_loader = UpdateSvgImageLoader();
   if ((dirty_flags_ & (image::kFlagSrcChanged | image::kFlagPlaceholderChanged |
                        image::kFlagEffectChanged)) != 0 ||
       (effect_flags_ != 0 &&
        (dirty_flags_ & image::kFlagFrameSizeChanged) != 0)) {
-    if (!defer_src_invalidation_) {
+    if (!defer_src_invalidation_ || use_svg_loader) {
       image_node_->Clear();
     }
-    if (!LoadImage()) {
+    const bool is_alive = use_svg_loader ? LoadSvgImage() : LoadImage();
+    if (!is_alive) {
       return;
     }
   }
