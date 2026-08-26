@@ -198,6 +198,22 @@ UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
   }
 }
 
+int64_t UIBase::EstimateRasterMemoryUsageBytes(float width, float height) {
+  // RGBA8888 stores four 8-bit channels for each pixel.
+  static constexpr int64_t kRgba8888BytesPerPixel = 4;
+  if (!std::isfinite(width) || !std::isfinite(height) || width <= 0.f ||
+      height <= 0.f) {
+    return 0;
+  }
+  const double bytes =
+      static_cast<double>(width) * height * kRgba8888BytesPerPixel;
+  const double max_bytes =
+      static_cast<double>(std::numeric_limits<int64_t>::max() - sizeof(UIBase));
+  return bytes < max_bytes
+             ? static_cast<int64_t>(bytes)
+             : std::numeric_limits<int64_t>::max() - sizeof(UIBase);
+}
+
 void UIBase::InitNode(ArkUI_NodeHandle node) {
   if (node_) {
     return;

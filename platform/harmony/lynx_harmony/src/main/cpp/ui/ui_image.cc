@@ -40,6 +40,11 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+int64_t UIImage::GetMemoryUsageBytes() const {
+  return UIBase::GetMemoryUsageBytes() +
+         EstimateRasterMemoryUsageBytes(image_width_, image_height_);
+}
+
 using ImagePropSetter = void (UIImage::*)(const lepus::Value& value);
 std::unordered_map<std::string, ImagePropSetter> UIImage::prop_setters_ = {
     {"src", &UIImage::UpdateImageSource},

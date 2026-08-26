@@ -31,6 +31,8 @@ class UIImage : public UIBase {
 
   void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
 
+  int64_t GetMemoryUsageBytes() const override;
+
   bool HasContent() override { return true; }
 
  protected:

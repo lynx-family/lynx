@@ -42,6 +42,8 @@ class UINewImage : public UIBase,
   void OnAnimationFinish() override;
   bool NeedMonitorInfo() override;
 
+  int64_t GetMemoryUsageBytes() const override;
+
  protected:
   UINewImage(LynxContext* context, int sign, const std::string& tag);
   ~UINewImage() override;
