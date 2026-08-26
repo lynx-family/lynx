@@ -17,6 +17,12 @@
 namespace lynx {
 namespace runtime {
 namespace js {
+
+// Only used by the LynxML template-bundle builder. Wraps app-service source
+// code in the return-by-function format expected by Lynx Core's card loading
+// path.
+void AddAppServiceWrapForJsContent(std::string &js_content);
+
 // A `JsContent` represents content of a js file, either source code or
 // bytecode.
 class JsContent {

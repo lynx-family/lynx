@@ -8,7 +8,10 @@ import("../Lynx.gni")
 # constant_share_sources
 
 lynx_core_source_set("template_bundle") {
-  deps = [ "lynxml:lynxml_parser" ]
+  deps = [
+    "../runtime/js:js_common",
+    "lynxml:lynxml_parser",
+  ]
 
   sources = [
     "lynx_template_bundle.cc",
