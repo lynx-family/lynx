@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/geometry/point.h"
 #include "base/include/value/base_string.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/box_model_recorder.h"
@@ -21,6 +22,28 @@ class ComputedCSSStyle;
 namespace tasm {
 
 using starlight::LayoutResultForRendering;
+
+class Fragment;
+
+// The only resolved geometry consumed by fragment painting. |offset_to_parent|
+// is expressed in the coordinate space of |parent|. For flattened fragments
+// the parent is the direct fragment parent; for platform-backed fragments it
+// is the nearest platform-backed ancestor.
+//
+// A platform-backed fragment is represented by both a native child view and
+// its own root display list. Some platforms position that child using
+//   paint_offset + platform_embedding_offset
+// and cancel |platform_embedding_offset| while dispatching the child canvas.
+// These two values are derived here from |offset_to_parent| and the active
+// StackingTree paint path; they are not a second recursively maintained offset
+// state.
+struct ResolvedStackingGeometry {
+  Fragment* parent{nullptr};
+  base::geometry::FloatPoint offset_to_parent{0.f, 0.f};
+  base::geometry::FloatPoint paint_offset{0.f, 0.f};
+  base::geometry::FloatPoint platform_embedding_offset{0.f, 0.f};
+  bool valid{false};
+};
 
 // Combines layout results and rendering styles to generate display content
 // via DisplayList. Owned by an element; lifetime must not exceed that element.
@@ -66,6 +89,8 @@ class Fragment : public BaseElementContainer {
                     bool transition_view = false) override;
   void UpdateLayoutWithoutChange() override;
 
+  void InvalidateForRedraw() override;
+
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override {}
   void StyleChanged() override;
   void UpdateZIndexList() override;
@@ -98,6 +123,10 @@ class Fragment : public BaseElementContainer {
 
   void Draw(DisplayListBuilder& display_list_builder);
 
+  // Resolves LayoutTree coordinates onto StackingTree/paint edges. This is a
+  // distinct pipeline phase and is a no-op until an input edge is invalidated.
+  void RestackIfNeeded();
+
   void OnDraw(DisplayListBuilder& display_list_builder);
 
   void SetEventProp(PlatformEventPropName name, const lepus::Value& value);
@@ -128,6 +157,10 @@ class Fragment : public BaseElementContainer {
 
   const auto& LayoutResult() const { return layout_info_; }
 
+  const ResolvedStackingGeometry& stacking_geometry() const {
+    return stacking_geometry_;
+  }
+
   bool ShouldSyncLayoutOnlyToEventTarget() const;
 
   int32_t DefineBorderBox(DisplayListBuilder& display_list_builder);
@@ -146,11 +179,18 @@ class Fragment : public BaseElementContainer {
   Fragment* EnclosingStackingContextFromElementParent();
   void ZIndexChanged();
   void UpdateBorderRadiusAccordingToLayoutInfo();
-  void UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
+  void UpdateLayoutRecursively(Fragment* draw_root);
 
-  void RefreshDrawingOffsetsRecursively();
-  void RefreshDrawingOffsetsRecursively(float left, float top);
-  void UpdateDrawingOffset();
+  void InvalidateRestacking();
+  void CollectLayoutOffsetsToRoot(Element* current,
+                                  base::geometry::FloatPoint parent_offset);
+  void ResolveStackingGeometryRecursively(
+      base::geometry::FloatPoint active_paint_offset);
+  Fragment* ResolveStackingGeometryParent() const;
+  Fragment* PaintRoot();
+  static void MarkPaintRootDirty(Fragment* fragment);
+  void ReparentStackingNode(Fragment* target_parent, Fragment* sibling);
+
   void DrawBorder(DisplayListBuilder& display_list_builder);
   void DrawClip(DisplayListBuilder& display_list_builder);
 
@@ -226,12 +266,14 @@ class Fragment : public BaseElementContainer {
   base::Vector<BackgroundImageResource> background_image_resources_;
   bool event_bundle_dirty_{false};
 
-  // Translation already present on the parent display-list canvas between
-  // the nearest platform renderer and this fragment.
-  float render_offset_[2] = {0, 0};
-  // This fragment's position relative to its actual Fragment parent. It may
-  // differ from the layout offset when z-index changes the Fragment tree.
-  float drawing_offset_[2] = {0, 0};
+  // Resolver input. This belongs to the LayoutTree coordinate space and is
+  // never read by drawing code.
+  base::geometry::FloatPoint layout_offset_to_root_{0.f, 0.f};
+  bool layout_offset_to_root_valid_{false};
+
+  ResolvedStackingGeometry stacking_geometry_;
+  bool layout_geometry_initialized_{false};
+  bool needs_restacking_{true};
 
   int32_t draw_node_capacity_{0};
 };

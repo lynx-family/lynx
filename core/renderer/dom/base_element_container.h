@@ -62,16 +62,9 @@ class BaseElementContainer {
 
   void MarkDirtyState(DirtyState state);
 
-  // Marks this container as needing a full redraw, propagating to ancestors.
-  void InvalidateForRedraw() {
-    if (NeedRedraw()) {
-      return;
-    }
-    MarkDirtyState(kNeedRedraw);
-    if (parent()) {
-      parent()->InvalidateForRedraw();
-    }
-  }
+  // Marks this container as needing a full redraw. Fragment overrides this to
+  // stop propagation at the owning paint root.
+  virtual void InvalidateForRedraw();
 
   // Marks this container as needing subtree property update (e.g., transform,
   // opacity). This is a lighter-weight invalidation than full redraw.

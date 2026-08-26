@@ -610,7 +610,9 @@ void ElementManager::RequestLayout(
   if (root()->EnableFragmentLayerRender()) {
     if (layout_data.layout_triggered) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
-      root()->element_container()->CastToFragment()->Draw();
+      auto *root_fragment = root()->element_container()->CastToFragment();
+      root_fragment->RestackIfNeeded();
+      root_fragment->Draw();
       root()->element_container()->FinishLayoutOperation(options);
     }
     root()->element_container()->Flush();
@@ -1818,7 +1820,9 @@ void ElementManager::OnPatchFinishForFiber(
     // dirty. Repaint should not be bound to relayout.
     if (root() && root()->EnableFragmentLayerRender()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
-      root()->element_container()->CastToFragment()->Draw();
+      auto *root_fragment = root()->element_container()->CastToFragment();
+      root_fragment->RestackIfNeeded();
+      root_fragment->Draw();
     }
     if (root() && root()->EnableFragmentLayerRender()) {
       root()->element_container()->FinishLayoutOperation(options);
