@@ -13,6 +13,7 @@
 
 #include "base/include/auto_reset.h"
 #include "clay/flow/animation/animation_mutator.h"
+#include "clay/gfx/geometry/transform.h"
 
 namespace clay {
 
@@ -36,9 +37,13 @@ TransformLayer::TransformLayer(const skity::Matrix& transform)
   }
 }
 
-TransformLayer::TransformLayer(const clay::TransformOperations& transform,
-                               skity::Vec2 origin, skity::Vec2 offset)
-    : transform_(transform), origin_(origin), offset_(offset) {}
+TransformLayer::TransformLayer(const lynx::gfx::TransformOperations& transform,
+                               skity::Vec2 origin, skity::Vec2 offset,
+                               float perspective)
+    : transform_(transform),
+      origin_(origin),
+      offset_(offset),
+      perspective_(perspective) {}
 
 void TransformLayer::Diff(DiffContext* context, const Layer* old_layer) {
   DiffContext::AutoSubtreeRestore subtree(context);
@@ -94,12 +99,8 @@ skity::Matrix TransformLayer::GetMatrix() const {
   if (HasAnimation()) {
     const std::shared_ptr<AnimationMutator>& mutator = GetAnimationMutator();
     if (mutator->asTransform()) {
-      clay::TransformOperations transform = mutator->asTransform()->transform();
-      return transform.Apply()
-          .matrix()
-          .PreTranslate(-origin_.x, -origin_.y)
-          .PostTranslate(origin_.x, origin_.y)
-          .PostTranslate(offset_.x, offset_.y);
+      return ApplyTransform(mutator->asTransform()->transform(), perspective_,
+                            origin_.x, origin_.y, offset_.x, offset_.y);
     } else if (mutator->asScrollOffset()) {
       return mutator->asScrollOffset()->transform();
     } else {
@@ -111,18 +112,15 @@ skity::Matrix TransformLayer::GetMatrix() const {
   if (std::holds_alternative<skity::Matrix>(transform_)) {
     return std::get<skity::Matrix>(transform_);
   } else {
-    clay::TransformOperations transform =
-        std::get<clay::TransformOperations>(transform_);
-    return transform.Apply()
-        .matrix()
-        .PreTranslate(-origin_.x, -origin_.y)
-        .PostTranslate(origin_.x, origin_.y)
-        .PostTranslate(offset_.x, offset_.y);
+    const auto& transform =
+        std::get<lynx::gfx::TransformOperations>(transform_);
+    return ApplyTransform(transform, perspective_, origin_.x, origin_.y,
+                          offset_.x, offset_.y);
   }
 }
 
-clay::TransformOperations TransformLayer::GetTransform() const {
-  return std::get<clay::TransformOperations>(transform_);
+lynx::gfx::TransformOperations TransformLayer::GetTransform() const {
+  return std::get<lynx::gfx::TransformOperations>(transform_);
 }
 
 #ifndef NDEBUG

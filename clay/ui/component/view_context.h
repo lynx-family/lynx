@@ -35,6 +35,7 @@
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/window/viewport_metrics.h"
 #include "core/public/external_memory_snapshot.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace clay {
 
@@ -70,7 +71,6 @@ using NetLoadCallback = std::function<void(
     const char* headers[], size_t headers_size, size_t request_seq,
     ClayNetLoadResultCallback result_callback)>;
 
-class TransformOperations;
 class PageView;
 struct BackgroundData;
 class ServiceManager;
@@ -222,7 +222,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   void AddShadowNodeEventProp(int id, const char* event);
 
-  void SetTransform(int id, const TransformOperations& ops,
+  void SetTransform(int id, const lynx::gfx::TransformOperations& ops,
                     const FloatPoint& origin);
 
   void SetTransition(int id,

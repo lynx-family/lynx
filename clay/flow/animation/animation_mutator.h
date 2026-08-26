@@ -16,7 +16,7 @@
 #include "clay/gfx/animation/animator_target.h"
 #include "clay/gfx/animation/keyframes_manager.h"
 #include "clay/gfx/animation/transition_manager.h"
-#include "clay/gfx/geometry/transform_operations.h"
+#include "gfx/geometry/transform_operations.h"
 #ifndef ENABLE_SKITY
 #include "clay/gfx/skia/picture_skia.h"
 #endif
@@ -97,7 +97,7 @@ class AnimationMutator : public clay::AnimatorTarget,
 class TransformMutator : public AnimationMutator {
  public:
   TransformMutator(const clay::ElementId& element_id, uint64_t layer_id,
-                   const clay::TransformOperations& transform)
+                   const lynx::gfx::TransformOperations& transform)
       : AnimationMutator(element_id, layer_id), transform_(transform) {}
 
   AnimationMutatorType GetType() const override {
@@ -105,16 +105,16 @@ class TransformMutator : public AnimationMutator {
   }
   TransformMutator* asTransform() override { return this; }
 
-  const clay::TransformOperations& transform() const { return transform_; }
+  const lynx::gfx::TransformOperations& transform() const { return transform_; }
 
  private:
   void GetProperty(ClayAnimationPropertyType type,
-                   clay::TransformOperations& value) override;
+                   lynx::gfx::TransformOperations& value) override;
   void SetProperty(ClayAnimationPropertyType type,
-                   const clay::TransformOperations& value,
+                   const lynx::gfx::TransformOperations& value,
                    bool skip_update_for_raster_animation) override;
 
-  clay::TransformOperations transform_;
+  lynx::gfx::TransformOperations transform_;
 };
 
 class OpacityMutator : public AnimationMutator {

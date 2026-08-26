@@ -177,15 +177,15 @@ TEST_F_UI(KeyFrameTest, TransformKeyframeCalcResolvesOnClone) {
 
   auto start_value = transform_set->GetValue(0.f);
   ASSERT_EQ(start_value.size(), 1u);
-  EXPECT_FLOAT_EQ(start_value.at(0).translate.x, 110.f);
+  EXPECT_FLOAT_EQ(start_value.GetOperations()[0].translate.x.value, 110.f);
 
   auto mid_value = transform_set->GetValue(0.5f);
   ASSERT_EQ(mid_value.size(), 1u);
-  EXPECT_FLOAT_EQ(mid_value.at(0).translate.x, 120.f);
+  EXPECT_FLOAT_EQ(mid_value.GetOperations()[0].translate.x.value, 120.f);
 
   auto end_value = transform_set->GetValue(1.f);
   ASSERT_EQ(end_value.size(), 1u);
-  EXPECT_FLOAT_EQ(end_value.at(0).translate.x, 130.f);
+  EXPECT_FLOAT_EQ(end_value.GetOperations()[0].translate.x.value, 130.f);
 }
 
 TEST_F_UI(KeyFrameTest, TransitionStartsAfterNodeReady) {
@@ -1102,8 +1102,9 @@ TEST_F_UI(KeyFrameTest, HitTestUsesRasterTransformPresentationValue) {
   animator_view_->SetTransition({transition});
   animator_view_->OnNodeReady();
 
-  TransformOperations target_transform;
-  target_transform.AppendTranslate(100.f, 0.f, 0.f);
+  lynx::gfx::TransformOperations target_transform;
+  target_transform.AppendTranslate({100.0f, lynx::gfx::LengthUnit::kNumber}, {},
+                                   {});
   animator_view_->SetTransform(target_transform, FloatPoint(0.f, 0.f));
   const int64_t start_time =
       fml::TimePoint::Now().ToEpochDelta().ToMilliseconds() - 50000;

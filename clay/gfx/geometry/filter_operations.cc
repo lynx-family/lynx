@@ -5,12 +5,12 @@
 #include "clay/gfx/geometry/filter_operations.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <utility>
 
 #include "clay/fml/logging.h"
-#include "clay/gfx/geometry/transform_operation.h"
 
 namespace clay {
 
