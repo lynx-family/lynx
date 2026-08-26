@@ -607,6 +607,7 @@ export abstract class UIBase {
   scrollY(): number;
   updateExtraData(data: Object): void;
   attachToNative(uiContext: UIContext, context: number[]): void;
+  attachToPlatformView(uiContext: UIContext): FrameNode | null;
   sendGlobalEvent(name: string, params: Object[]): void;
   sendCustomEvent(name: string, params: Object, paramName: string): void;
   update(props: Object, events: EventHandlerArray[]): void;
