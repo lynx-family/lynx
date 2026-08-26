@@ -125,12 +125,26 @@ struct PageOptions {
 
   bool HasLogicExecutor() const { return has_logic_executor_; }
 
+  // Experimental first-timeout scaling; scheduled to be removed on 2026-10-30.
+  void SetFirstTimeoutScale(int32_t target_delay_ms, double factor) {
+    first_timeout_target_delay_ms_ = target_delay_ms;
+    first_timeout_factor_ = factor;
+  }
+
+  int32_t GetFirstTimeoutTargetDelayMs() const {
+    return first_timeout_target_delay_ms_;
+  }
+
+  double GetFirstTimeoutFactor() const { return first_timeout_factor_; }
+
  private:
   int32_t instance_id_{kUnknownInstanceID};
   bool debuggable_{false};
   bool long_task_disabled_{false};
   EmbeddedMode embedded_mode_{UNSET};
   bool has_logic_executor_{false};
+  int32_t first_timeout_target_delay_ms_{0};
+  double first_timeout_factor_{0.0};
 };
 
 }  // namespace tasm

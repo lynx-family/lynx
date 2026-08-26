@@ -364,6 +364,7 @@ class App {
   std::shared_ptr<LynxProxy> lynx_proxy_;
   std::string url_;
   tasm::PageOptions page_options_;
+  bool first_timeout_consumed_{false};
   Value ssr_global_event_emitter_;
   std::unique_ptr<GCPauseSuppressionMode> gc_pause_suppression_mode_{nullptr};
 
