@@ -1076,15 +1076,20 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   return nil;
 }
 
+- (UIView*)childrenContainerView {
+  return self.view;
+}
+
 - (void)insertChild:(LynxUI*)child atIndex:(NSInteger)index {
+  UIView* containerView = [self childrenContainerView];
   // main layer and its super layer
   CALayer* mainLayer = child.view.layer;
-  CALayer* superLayer = self.view.layer;
+  CALayer* superLayer = containerView.layer;
   LynxBackgroundManager* mgr = [child backgroundManager];
 
   // insert the child & its view into the proper position;
   [self didInsertChild:child atIndex:index];
-  [self.view insertSubview:[child view] atIndex:index];
+  [containerView insertSubview:[child view] atIndex:index];
 
   // adjust its layer's position
   // if the current LynxUI is not at the beginning of children
@@ -1101,7 +1106,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
         [superLayer.sublayers indexOfObject:mainLayer]) {
       // view operations
       [child.view removeFromSuperview];
-      [self.view insertSubview:child.view aboveSubview:siblingUI.view];
+      [containerView insertSubview:child.view aboveSubview:siblingUI.view];
       // layer operations
       [mainLayer removeFromSuperlayer];
       [superLayer insertSublayer:mainLayer above:[siblingUI topLayer]];
@@ -1122,7 +1127,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
         [superLayer.sublayers indexOfObject:mainLayer]) {
       // view operations
       [child.view removeFromSuperview];
-      [self.view insertSubview:child.view belowSubview:siblingUI.view];
+      [containerView insertSubview:child.view belowSubview:siblingUI.view];
       // layer operations
       [mainLayer removeFromSuperlayer];
       [superLayer insertSublayer:mainLayer below:[siblingUI bottomLayer]];
