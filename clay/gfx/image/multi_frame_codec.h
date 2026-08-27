@@ -6,6 +6,7 @@
 #define CLAY_GFX_IMAGE_MULTI_FRAME_CODEC_H_
 
 #include <memory>
+#include <mutex>
 
 #include "base/include/fml/macros.h"
 #include "base/include/fml/task_runner.h"
@@ -31,23 +32,19 @@ class MultiFrameCodec : public Codec {
   void NextFrame(const CodecCallback& callback) override;
 
  private:
-  // Captures the state shared between the IO and UI task runners.
-  //
-  // Decoding occurs on the IO task runner. Since it is possible for the UI
-  // object to be collected independently of the IO task runner work, it is not
-  // safe for this state to live directly on the MultiFrameCodec.
-  // Instead, the MultiFrameCodec creates this object when it is constructed,
-  // shares it with the IO task runner's decoding work, and sets the live_
-  // member to false when it is destructed.
+  // Captures the state shared between the codec owner and concurrent decoding
+  // workers. Posted tasks use a weak reference so the state can be collected
+  // independently when the codec is destroyed.
   struct State {
     explicit State(std::shared_ptr<SkCodecImageGenerator> generator);
 
     const std::shared_ptr<SkCodecImageGenerator> generator_;
     const int frame_count_;
 
-    // The non-const members and functions below here are only read or written
-    // to on the IO thread. They are not safe to access or write on the UI
-    // thread.
+    // Decoding runs on a concurrent worker pool. Serialize access to the
+    // generator and the frame state for each codec instance.
+    std::mutex mutex_;
+
     int next_frame_index_;
 
     // The last decoded frame that's required to decode any subsequent frames.
@@ -61,7 +58,7 @@ class MultiFrameCodec : public Codec {
     void GetNextFrameAndInvokeCallback(const CodecCallback& callback);
   };
 
-  // Shared across the UI and IO task runners.
+  // Shared between the codec owner and concurrent decoding workers.
   std::shared_ptr<State> state_;
 
   FML_FRIEND_MAKE_REF_COUNTED(MultiFrameCodec);
