@@ -1338,6 +1338,14 @@ enableHarmonyNewOverlay:
   author: AdrianLCA
   supportPlatform:
     - HarmonyOS
+disableHarmonyNewImage:
+  description: Controls whether Harmony image elements disable the newer image implementation for the current page. When enabled, Harmony image elements use the legacy implementation even if the global new-image setting is enabled; when disabled, the global setting determines the implementation.
+  defaultValue: 'false'
+  valueType: bool
+  since: '4.3'
+  author: liubb0516
+  supportPlatform:
+    - HarmonyOS
 enableCheckLocalImage:
   description: Controls whether Android image loading checks local-resource URLs before applying redirect handling. When enabled, page config forwards the local-image check flag to Android image code so local resources can choose the correct redirect path; when disabled, that extra local-resource check is bypassed.
   defaultValue: 'true'

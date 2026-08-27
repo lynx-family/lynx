@@ -610,6 +610,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableHarmonyNewOverlay].GetBool());
     }
 
+    if (doc.HasMember(config::kDisableHarmonyNewImage) &&
+        doc[config::kDisableHarmonyNewImage].IsBool()) {
+      page_config->SetDisableHarmonyNewImage(
+          doc[config::kDisableHarmonyNewImage].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableCheckLocalImage) &&
         doc[config::kEnableCheckLocalImage].IsBool()) {
       page_config->SetEnableCheckLocalImage(

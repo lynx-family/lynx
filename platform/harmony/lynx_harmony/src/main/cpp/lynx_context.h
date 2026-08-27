@@ -146,6 +146,10 @@ class LynxContext {
 
   bool GetEnableHarmonyNewOverlay() { return enable_harmony_new_overlay_; }
 
+  void SetDisableHarmonyNewImage(bool disable_harmony_new_image);
+
+  bool GetDisableHarmonyNewImage() const { return disable_harmony_new_image_; }
+
   void SetEnableMultiTouch(bool enable_multi_touch);
 
   void SetTapSlop(const std::string& tap_slop);
@@ -404,6 +408,7 @@ class LynxContext {
   bool enable_text_overflow_{false};
   bool enable_new_sticky_{false};
   bool enable_harmony_new_overlay_{false};
+  bool disable_harmony_new_image_{false};
   EmbeddedMode embedded_mode_{EmbeddedMode::UNSET};
 
   std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_{nullptr};

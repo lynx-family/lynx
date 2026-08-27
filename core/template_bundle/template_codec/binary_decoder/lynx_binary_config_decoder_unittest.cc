@@ -81,6 +81,13 @@ TEST_F(LynxBinaryConfigDecoderTest, ReadEnableAsyncResolveSubtree) {
               TernaryBool::TRUE_VALUE);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadDisableHarmonyNewImage) {
+  EXPECT_FALSE(page_config_->GetDisableHarmonyNewImage());
+  config_decoder_->DecodePageConfig("{\n  \"disableHarmonyNewImage\" : true\n}",
+                                    page_config_);
+  EXPECT_TRUE(page_config_->GetDisableHarmonyNewImage());
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, ReadEnableParseIntFlex) {
   EXPECT_FALSE(page_config_->GetEnableParseIntFlex());
   EXPECT_FALSE(page_config_->GetCSSParserConfigs().enable_parse_int_flex);

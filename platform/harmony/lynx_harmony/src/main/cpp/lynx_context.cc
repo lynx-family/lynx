@@ -134,6 +134,10 @@ void LynxContext::SetEnableHarmonyNewOverlay(bool enable_new_overlay) {
   enable_harmony_new_overlay_ = enable_new_overlay;
 }
 
+void LynxContext::SetDisableHarmonyNewImage(bool disable_harmony_new_image) {
+  disable_harmony_new_image_ = disable_harmony_new_image;
+}
+
 void LynxContext::SetLongPressDuration(int32_t long_press_duration) {
   if (!ui_owner_) {
     return;

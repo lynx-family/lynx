@@ -114,7 +114,8 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   static bool enable_new_image = LynxEnv::GetInstance().EnableHarmonyNewImage();
   if ((tag == "image" || tag == "origin-image" || tag == "inline-image" ||
        tag == "x-inline-image") &&
-      enable_new_image && image_service) {
+      enable_new_image && !context_->GetDisableHarmonyNewImage() &&
+      image_service) {
     ui = UINewImage::Make(context_.get(), sign, tag);
   } else if ((tag == "image") && (painting_data->Contains("autoplay") ||
                                   painting_data->Contains("loop-count"))) {

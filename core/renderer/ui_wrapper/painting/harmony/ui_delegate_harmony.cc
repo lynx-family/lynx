@@ -305,6 +305,8 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     lynx_context->SetEnableHarmonyNewOverlay(
         config->GetEnableHarmonyNewOverlay() ||
         LynxEnv::GetInstance().EnableHarmonyNewOverlay());
+    lynx_context->SetDisableHarmonyNewImage(
+        config->GetDisableHarmonyNewImage());
     if (config->GetEnableNewGesture() && ui_owner_) {
       ui_owner_->InitGestureArenaManager(lynx_context.get());
     }
