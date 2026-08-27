@@ -914,6 +914,7 @@ subspec_target("template_bundle") {
   deps = [
     "../../../../core/template_bundle:template_bundle",
     "../../../../core/template_bundle/lynxml:lynxml_parser",
+    "../../../../core/template_bundle/lynxml:lynxml_style_parser",
     "../../../../core/template_bundle/template_codec:magic_number",
     "../../../../core/template_bundle/template_codec:template_decoder",
     "../../../../core/template_bundle/template_codec/binary_decoder:binary_decoder",

@@ -14,6 +14,22 @@ lynx_core_source_set("lynxml_parser") {
   ]
 }
 
+lynx_core_source_set("lynxml_style_parser") {
+  sources = [
+    "lynxml_style_parser.cc",
+    "lynxml_style_parser.h",
+  ]
+  public_deps = [ "../template_codec:template_decoder" ]
+
+  # Oliver compiles the CSS sources directly into encoder_common. Depending on
+  # the CSS target as well would link those sources twice.
+  if (is_oliver) {
+    check_includes = false
+  } else {
+    public_deps += [ "../../renderer/css:css" ]
+  }
+}
+
 unittest_set("lynxml_parser_testset") {
   sources = [
     "lynxml_parser_unittest.cc",
