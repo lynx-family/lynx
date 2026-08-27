@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/timer/time_utils.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/page_fragment_behavior.h"
@@ -154,9 +155,27 @@ void PageElement::SetCSSID(int32_t id) {
  * Reference {@link LayoutContext#Layout }
  */
 void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
+  LayoutImpl(options, true, nullptr, nullptr);
+}
+
+void PageElement::LayoutWithoutFlushingUIOperations(
+    const std::shared_ptr<PipelineOptions>& options,
+    uint64_t& layout_start_timestamp, uint64_t& layout_end_timestamp) {
+  LayoutImpl(options, false, &layout_start_timestamp, &layout_end_timestamp);
+}
+
+void PageElement::LayoutImpl(const std::shared_ptr<PipelineOptions>& options,
+                             bool flush_ui_operations,
+                             uint64_t* layout_start_timestamp,
+                             uint64_t* layout_end_timestamp) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_ELEMENT_LAYOUT);
   if (options->need_timestamps) {
-    TimingCollector::Instance()->Mark(timing::kLayoutStart);
+    const auto timestamp = base::CurrentSystemTimeMicroseconds();
+    if (layout_start_timestamp != nullptr) {
+      *layout_start_timestamp = timestamp;
+    } else {
+      TimingCollector::Instance()->Mark(timing::kLayoutStart, timestamp);
+    }
   }
 
   DispatchLayoutBeforeRecursively();
@@ -168,7 +187,12 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   UpdateLayoutInfoRecursively(options.get());
 
   if (options->need_timestamps) {
-    TimingCollector::Instance()->Mark(timing::kLayoutEnd);
+    const auto timestamp = base::CurrentSystemTimeMicroseconds();
+    if (layout_end_timestamp != nullptr) {
+      *layout_end_timestamp = timestamp;
+    } else {
+      TimingCollector::Instance()->Mark(timing::kLayoutEnd, timestamp);
+    }
   }
 
   if (auto* layout_context = element_manager()->layout_context()) {
@@ -199,7 +223,7 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
     element_container()->FinishLayoutOperation(options);
   }
 
-  if (!options->enable_unified_pixel_pipeline) {
+  if (flush_ui_operations && !options->enable_unified_pixel_pipeline) {
     element_container()->Flush();
   }
 }

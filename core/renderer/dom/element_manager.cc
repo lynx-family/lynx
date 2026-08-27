@@ -5,6 +5,7 @@
 #include "core/renderer/dom/element_manager.h"
 
 #include <array>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -577,15 +578,52 @@ void ElementManager::RequestLayout(
     layout_node_manager_->DestroyPlatformLayoutNodes();
   }
 
+  const bool should_overlap_layout_with_ui_operations =
+      IsLayoutUIOperationOverlapModeOn() &&
+      ShouldRunLayoutConcurrentWithUIOperations();
+  const bool should_defer_ui_operation_flush =
+      !has_viewport_ready_ && root() != nullptr && root()->is_page() &&
+      should_overlap_layout_with_ui_operations &&
+      painting_context()->HasPendingUIOperations();
+
   auto *current_context =
       element_manager_delegate_->GetCurrentPipelineContext();
-  if (current_context) {
+  if (current_context && !should_defer_ui_operation_flush) {
     current_context->RequestFlushUIOperation();
   }
 
   PipelineLayoutData layout_data;
   if (has_viewport_ready_ && root()->is_page()) {
-    static_cast<PageElement *>(root())->Layout(options);
+    auto page = GetPageElementRef();
+    if (should_overlap_layout_with_ui_operations &&
+        painting_context()->HasPendingUIOperations()) {
+      uint64_t layout_start_timestamp = 0;
+      uint64_t layout_end_timestamp = 0;
+      std::promise<void> layout_promise;
+      auto layout_future = layout_promise.get_future();
+      base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+          [page, options, &layout_start_timestamp, &layout_end_timestamp,
+           layout_promise = std::move(layout_promise)]() mutable {
+            TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                        "ElementManager::LayoutConcurrentWithUIOperations");
+            page->LayoutWithoutFlushingUIOperations(
+                options, layout_start_timestamp, layout_end_timestamp);
+            layout_promise.set_value();
+          },
+          base::ConcurrentTaskType::HIGH_PRIORITY);
+      painting_context()->Flush();
+      layout_future.get();
+      if (options->need_timestamps) {
+        auto *timing_collector = TimingCollector::Instance();
+        timing_collector->Mark(timing::kLayoutStart, layout_start_timestamp);
+        timing_collector->Mark(timing::kLayoutEnd, layout_end_timestamp);
+      }
+      if (!options->enable_unified_pixel_pipeline) {
+        painting_context()->Flush();
+      }
+    } else {
+      page->Layout(options);
+    }
 
     layout_data = {.layout_triggered = true,
                    .pipeline_version = options->version,
@@ -595,7 +633,8 @@ void ElementManager::RequestLayout(
     // When unified pipeline is disabled, force Flush as a fallback.
     // Layout will trigger flush; this only compensates when layout is not
     // invoked.
-    if (!options->enable_unified_pixel_pipeline) {
+    if (!options->enable_unified_pixel_pipeline &&
+        !should_defer_ui_operation_flush) {
       painting_context()->Flush();
     }
     layout_data = {.layout_triggered = false,
@@ -613,7 +652,9 @@ void ElementManager::RequestLayout(
       root()->element_container()->CastToFragment()->Draw();
       root()->element_container()->FinishLayoutOperation(options);
     }
-    root()->element_container()->Flush();
+    if (!should_defer_ui_operation_flush) {
+      root()->element_container()->Flush();
+    }
   }
 }
 

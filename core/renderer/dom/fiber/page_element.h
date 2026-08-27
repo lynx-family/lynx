@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_DOM_FIBER_PAGE_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_PAGE_ELEMENT_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "core/renderer/dom/fiber/component_element.h"
@@ -45,6 +46,16 @@ class PageElement : public ComponentElement {
 
  protected:
   PageElement(const PageElement& element, bool clone_resolved_props);
+
+ private:
+  friend class ElementManager;
+
+  void LayoutWithoutFlushingUIOperations(
+      const std::shared_ptr<PipelineOptions>& options,
+      uint64_t& layout_start_timestamp, uint64_t& layout_end_timestamp);
+  void LayoutImpl(const std::shared_ptr<PipelineOptions>& options,
+                  bool flush_ui_operations, uint64_t* layout_start_timestamp,
+                  uint64_t* layout_end_timestamp);
 };
 
 }  // namespace tasm

@@ -144,6 +144,8 @@ class PaintingContext {
 
   inline void FlushImmediately() { platform_impl_->FlushImmediately(); }
 
+  bool HasPendingUIOperations();
+
   inline void HandleValidate(int tag) { platform_impl_->HandleValidate(tag); }
 
   inline std::vector<float> getBoundingClientOrigin(int id) {
