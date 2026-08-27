@@ -127,6 +127,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_OPTIMIZE_HAS_OPACITY,
     DISABLE_JS_MODE_STRIP,
     ENABLE_PLATFORM_DATA_FIX,
+    ENABLE_PLATFORM_DATA_ASYNC_CONSUME_ACTIONS,
     ENABLE_QUICKJS_THREAD_CHECKER,
     ENABLE_LEVEL_ORDER_TRAVERSING,
     LYNX_DEBUG_ENABLED,
@@ -304,6 +305,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_OPTIMIZE_HAS_OPACITY, "enable_optimize_has_opacity"},
             {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
             {Key::ENABLE_PLATFORM_DATA_FIX, "enable_platform_data_fix"},
+            // NOLINT(harmony-trail-key): iOS-only configuration.
+            {Key::ENABLE_PLATFORM_DATA_ASYNC_CONSUME_ACTIONS,
+             "enable_platform_data_async_consume_actions"},
             {Key::ENABLE_QUICKJS_THREAD_CHECKER,
              "enable_quickjs_thread_checker"},
             {Key::ENABLE_LEVEL_ORDER_TRAVERSING,
@@ -514,6 +518,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableOptimizeHasOpacity();
   bool DisableJSModeStrip();
   bool EnablePlatformDataFix();
+  bool EnablePlatformDataAsyncConsumeActions();
   bool EnableListNewArchitecture();
   bool EnableQuickJsThreadChecker();
   bool EnableLevelOrderTraversing();
