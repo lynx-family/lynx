@@ -150,12 +150,7 @@ void FrameBuilder::PushTransformOperations(
   auto layer = std::make_shared<clay::TransformLayer>(
       transform, skity::Vec2(origin_x, origin_y),
       skity::Vec2(offset_x, offset_y), perspective);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 
   PendingLayer* owned_layer = FindOwnedLayer(old_layer);
   if (owned_layer && owned_layer->owner_->HasRasterAnimation()) {
@@ -172,23 +167,13 @@ void FrameBuilder::PushTransformOperations(
 void FrameBuilder::PushStaticTransform(skity::Matrix transform,
                                        PendingLayer* old_layer) {
   auto layer = std::make_shared<clay::TransformLayer>(transform);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushOffset(double dx, double dy, PendingLayer* old_layer) {
   skity::Matrix sk_matrix = skity::Matrix::Translate(dx, dy);
   auto layer = std::make_shared<clay::TransformLayer>(sk_matrix);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushScrollOffset(
@@ -199,11 +184,7 @@ void FrameBuilder::PushScrollOffset(
   skity::Matrix sk_matrix =
       skity::Matrix::Translate(x + scroll_x, y + scroll_y);
   auto layer = std::make_shared<clay::TransformLayer>(sk_matrix);
-  PushLayer(layer);
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 
   PendingLayer* owned_layer = FindOwnedLayer(old_layer);
   if (owned_layer) {
@@ -233,12 +214,7 @@ PendingLayer* FrameBuilder::FindOwnedLayer(PendingLayer* layer) const {
 void FrameBuilder::PushOpacity(int alpha, double dx, double dy,
                                PendingLayer* old_layer) {
   auto layer = std::make_shared<clay::OpacityLayer>(alpha, skity::Vec2(dx, dy));
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 
   PendingLayer* owned_layer = FindOwnedLayer(old_layer);
   if (owned_layer && owned_layer->owner_->HasRasterAnimation()) {
@@ -254,23 +230,13 @@ void FrameBuilder::PushOpacity(int alpha, double dx, double dy,
 void FrameBuilder::PushColorFilter(std::shared_ptr<ColorFilter> color_filter,
                                    PendingLayer* old_layer) {
   auto layer = std::make_shared<clay::ColorFilterLayer>(color_filter);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushImageFilter(std::shared_ptr<ImageFilter> image_filter,
                                    PendingLayer* old_layer) {
   auto layer = std::make_shared<clay::ImageFilterLayer>(image_filter);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushShaderMask(std::shared_ptr<ColorSource> color_source,
@@ -279,12 +245,7 @@ void FrameBuilder::PushShaderMask(std::shared_ptr<ColorSource> color_source,
                                   PendingLayer* old_layer) {
   auto layer = std::make_shared<clay::ShaderMaskLayer>(color_source, mask_rect,
                                                        blend_mode);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushPictureMask(std::shared_ptr<Picture> picture,
@@ -293,60 +254,35 @@ void FrameBuilder::PushPictureMask(std::shared_ptr<Picture> picture,
                                    PendingLayer* old_layer) {
   auto layer = std::make_shared<clay::ShaderMaskLayer>(mask_rect, blend_mode,
                                                        std::move(picture));
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushBackdropFilter(std::shared_ptr<ImageFilter> filter,
                                       PendingLayer* old_layer) {
   auto layer =
       std::make_shared<clay::BackdropFilterLayer>(filter, BlendMode::kSrcOver);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushClipRect(const FloatRect& clip_rect, int clip_behavior,
                                 PendingLayer* old_layer) {
   clay::Clip behavior = static_cast<clay::Clip>(clip_behavior);
   auto layer = std::make_shared<clay::ClipRectLayer>(clip_rect, behavior);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushClipRRect(const FloatRoundedRect& clip_rrect,
                                  int clip_behavior, PendingLayer* old_layer) {
   clay::Clip behavior = static_cast<clay::Clip>(clip_behavior);
   auto layer = std::make_shared<clay::ClipRRectLayer>(clip_rrect, behavior);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::PushClipPath(const GrPath& path, int clip_behavior,
                                 PendingLayer* old_layer) {
   clay::Clip behavior = static_cast<clay::Clip>(clip_behavior);
   auto layer = std::make_shared<clay::ClipPathLayer>(path, behavior);
-  PushLayer(layer);
-
-  if (old_layer->ReuseLayer()) {
-    layer->AssignOldLayer(old_layer->ReuseLayer().get());
-  }
-  old_layer->RetainLayer(layer);
+  PushAndRetainLayer(layer, old_layer);
 }
 
 void FrameBuilder::Pop() { PopLayer(); }
@@ -434,6 +370,16 @@ void FrameBuilder::AddLayer(std::shared_ptr<clay::Layer> layer) {
 void FrameBuilder::PushLayer(std::shared_ptr<clay::ContainerLayer> layer) {
   AddLayer(layer);
   layer_stack_.push_back(std::move(layer));
+}
+
+void FrameBuilder::PushAndRetainLayer(
+    const std::shared_ptr<clay::ContainerLayer>& layer,
+    PendingLayer* pending_layer) {
+  PushLayer(layer);
+  if (auto reuse_layer = pending_layer->ReuseLayer()) {
+    layer->AssignOldLayer(reuse_layer.get());
+  }
+  pending_layer->RetainLayer(layer);
 }
 
 void FrameBuilder::PopLayer() {
