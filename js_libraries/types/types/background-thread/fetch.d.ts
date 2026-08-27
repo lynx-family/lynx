@@ -132,6 +132,14 @@ export interface RequestInit {
   lynxExtension?: LynxExtension;
 }
 
+export type ResponseType =
+  | 'basic'
+  | 'cors'
+  | 'default'
+  | 'error'
+  | 'opaque'
+  | 'opaqueredirect';
+
 /**
  * @description This Fetch API interface represents the response to a request.
  * @see https://developer.mozilla.org/docs/Web/API/Response
@@ -163,6 +171,12 @@ export interface Response extends Body {
    */
   readonly statusText: string;
   /**
+   * @description type
+   * @see https://developer.mozilla.org/docs/Web/API/Response/type
+   * @since 2.18
+   */
+  readonly type: ResponseType;
+  /**
    * @description url
    * @see https://developer.mozilla.org/docs/Web/API/Response/url
    * @since 2.18
@@ -190,4 +204,6 @@ export interface Response extends Body {
 export declare var Response: {
   prototype: Response;
   new(body?: BodyInit | null, init?: ResponseInit): Response;
+  error(): Response;
+  json(data: any, init?: ResponseInit): Response;
 };

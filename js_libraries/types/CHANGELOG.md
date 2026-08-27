@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.5
+- Add Fetch API typings for `Response.type`, `Response.json()`, and `Response.error()`.
+
 ## 4.3.4
 - Remove deprecated `experimental-recycle-sticky-item` from `<list>` typings.
 

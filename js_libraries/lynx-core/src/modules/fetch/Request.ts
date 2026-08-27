@@ -4,12 +4,22 @@
 
 import { BodyMixin } from './BodyMixin';
 import { Headers } from './Headers';
-import { AbortController, AbortSignal } from './AbortController';
+import { AbortSignal } from './AbortController';
 
 type RequestLynxExtension = Record<string, any>;
 
 interface RequestInitInner extends RequestInit {
   lynxExtension?: RequestLynxExtension;
+}
+
+const FORBIDDEN_METHODS = ['CONNECT', 'TRACE', 'TRACK'];
+
+function hasBody(body?: BodyInit | null): boolean {
+  return body !== undefined && body !== null;
+}
+
+function isForbiddenMethod(method: string): boolean {
+  return FORBIDDEN_METHODS.indexOf(method.toUpperCase()) !== -1;
 }
 
 export class Request extends BodyMixin {
@@ -64,7 +74,14 @@ export class Request extends BodyMixin {
     this._method = options.method || this.method || 'GET';
     this._method = this._method.toUpperCase();
 
-    if ((this.method === 'GET' || this.method === 'HEAD') && options.body) {
+    if (isForbiddenMethod(this.method)) {
+      throw new TypeError(`'${this.method}' HTTP method is unsupported.`);
+    }
+
+    if (
+      (this.method === 'GET' || this.method === 'HEAD') &&
+      hasBody(options.body)
+    ) {
       throw new TypeError('Body not allowed for GET or HEAD requests');
     }
 
@@ -74,23 +91,6 @@ export class Request extends BodyMixin {
     this._signal = this._signal || AbortSignal.__create();
 
     this._lynxExtension = options.lynxExtension || {};
-
-    if (!this._headers.get('Content-Type')) {
-      if (typeof options.body === 'string') {
-        this._headers.set('Content-Type', 'text/plain;charset=UTF-8');
-      } else if (
-        globalThis.URLSearchParams &&
-        options.body instanceof URLSearchParams
-      ) {
-        this._headers.set(
-          'Content-Type',
-          'application/x-www-form-urlencoded;charset=UTF-8'
-        );
-      } else if (options.body instanceof ArrayBuffer) {
-      } else {
-        this._headers.set('Content-Type', 'text/plain;charset=UTF-8');
-      }
-    }
 
     this.setBody(options.body);
   }
