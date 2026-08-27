@@ -135,6 +135,8 @@ class FrameBuilder {
 
   void AddLayer(std::shared_ptr<clay::Layer> layer);
   void PushLayer(std::shared_ptr<clay::ContainerLayer> layer);
+  void PushAndRetainLayer(const std::shared_ptr<clay::ContainerLayer>& layer,
+                          PendingLayer* pending_layer);
   void PopLayer();
 
   // Finish building the layer tree.

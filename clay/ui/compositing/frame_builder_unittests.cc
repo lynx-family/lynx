@@ -8,10 +8,12 @@
 #include "base/include/fml/task_runner.h"
 #include "clay/flow/layers/layer.h"
 #include "clay/flow/layers/layer_tree.h"
+#include "clay/flow/layers/transform_layer.h"
 #include "clay/gfx/gpu_object.h"
 #include "clay/gfx/picture.h"
 #include "clay/testing/thread_test.h"
 #include "clay/ui/compositing/frame_builder.h"
+#include "clay/ui/compositing/pending_container_layer.h"
 #include "clay/ui/compositing/pending_picture_layer.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkRect.h"
@@ -82,6 +84,24 @@ TEST_F(FrameBuilderTest, BuildFrame) {
 
   FinishBuild();
   EXPECT_TRUE(GetFrameBuilder()->TakeLayerTree());
+}
+
+TEST_F(FrameBuilderTest, PushAndRetainLayerPreservesReplacementIdentity) {
+  PendingContainerLayer pending_layer;
+  auto old_layer =
+      std::make_shared<TransformLayer>(skity::Matrix::Translate(10.0f, 20.0f));
+  pending_layer.RetainLayer(old_layer);
+
+  GetFrameBuilder()->PushStaticTransform(skity::Matrix::Translate(30.0f, 40.0f),
+                                         &pending_layer);
+
+  auto retained_layer = pending_layer.ReuseLayer();
+  ASSERT_NE(retained_layer, nullptr);
+  EXPECT_NE(retained_layer, old_layer);
+  EXPECT_TRUE(retained_layer->IsReplacing(nullptr, old_layer.get()));
+  auto root_layer = std::static_pointer_cast<ContainerLayer>(RootLayer());
+  ASSERT_FALSE(root_layer->layers().empty());
+  EXPECT_EQ(root_layer->layers().back(), retained_layer);
 }
 
 }  // namespace clay
