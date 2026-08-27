@@ -178,6 +178,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value GenerateViewId(napi_env env, napi_callback_info info);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);
   static napi_value InitGlobalEnv(napi_env env, napi_callback_info info);
+  static napi_value SetupHarmonyMessageLoopPromiseMicrotask(
+      napi_env env, napi_callback_info info);
   static napi_value RegisterImageService(napi_env env, napi_callback_info info);
   static napi_value SetEmojiResourceFetcher(napi_env env,
                                             napi_callback_info info);
