@@ -9,8 +9,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import androidx.annotation.NonNull;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.image.LynxImageConfig;
+import com.lynx.tasm.image.LynxImageRequestDelegate;
+import com.lynx.tasm.image.LynxImageRequestOptions;
+import com.lynx.tasm.image.LynxImageRequestResult;
+import com.lynx.tasm.image.model.ImageRequestInfo;
 import java.util.HashMap;
 import org.junit.After;
 import org.junit.Before;
@@ -58,5 +63,25 @@ public class LynxImageConfigTest {
 
     imageConfig.setEnableImageLoadCallback(true);
     assertTrue(imageConfig.getEnableImageLoadCallback());
+
+    Object callerContext = new Object();
+    LynxImageRequestDelegate delegate = new LynxImageRequestDelegate() {
+      @Override
+      public Object getImageCallerContext() {
+        return callerContext;
+      }
+
+      @Override
+      public LynxImageRequestOptions prepareImageRequest(@NonNull ImageRequestInfo requestInfo) {
+        return null;
+      }
+
+      @Override
+      public void onImageRequestFinished(
+          @NonNull ImageRequestInfo requestInfo, @NonNull LynxImageRequestResult result) {}
+    };
+    imageConfig.setImageRequestDelegate(delegate);
+    assertEquals(delegate, imageConfig.getImageRequestDelegate());
+    assertEquals(callerContext, delegate.getImageCallerContext());
   }
 }

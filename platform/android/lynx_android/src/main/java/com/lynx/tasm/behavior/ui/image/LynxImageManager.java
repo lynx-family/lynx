@@ -48,6 +48,9 @@ import com.lynx.tasm.image.ImageEventHelper;
 import com.lynx.tasm.image.ImageUtils;
 import com.lynx.tasm.image.LynxImageConfig;
 import com.lynx.tasm.image.LynxImageMediaFetcherProxy;
+import com.lynx.tasm.image.LynxImageRequestDelegate;
+import com.lynx.tasm.image.LynxImageRequestOptions;
+import com.lynx.tasm.image.LynxImageRequestResult;
 import com.lynx.tasm.image.LynxScaleTypeDrawable;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.tasm.image.model.AnimationListener;
@@ -116,6 +119,10 @@ public class LynxImageManager implements Drawable.Callback {
   private final LynxContext mContext;
 
   private final LynxImageLoader mImageLoader;
+
+  private final @Nullable LynxImageRequestDelegate mImageRequestDelegate;
+
+  private final @Nullable Object mImageCallerContext;
 
   private String mSrc;
 
@@ -396,6 +403,7 @@ public class LynxImageManager implements Drawable.Callback {
       onImageLoadSuccess(mImageWidth, mImageHeight);
       reportImageSuccess(imageInfo);
       invalidate();
+      onImageRequestFinished(requestInfo, 0, null);
     }
 
     @Override
@@ -414,6 +422,9 @@ public class LynxImageManager implements Drawable.Callback {
       lynxError.setRootCause(error);
       onImageLoadError(lynxError, categoryCode, errorCode);
       reportImageFailure(errorCode, error);
+      if (mCurImageRequest != null) {
+        onImageRequestFinished(mCurImageRequest, errorCode, throwable);
+      }
     }
 
     @Override
@@ -481,6 +492,15 @@ public class LynxImageManager implements Drawable.Callback {
         (mContext.getMediaResourceFetcher() != null || mContext.getAsyncImageInterceptor() != null);
     mEnableCheckLocalImage = mContext.isEnableCheckLocalImage();
     LynxImageConfig imageConfig = mContext.getLynxImageConfig();
+    mImageRequestDelegate = imageConfig == null ? null : imageConfig.getImageRequestDelegate();
+    Object callerContext = mContext.getFrescoCallerContext();
+    if (mImageRequestDelegate != null) {
+      Object imageCallerContext = mImageRequestDelegate.getImageCallerContext();
+      if (imageCallerContext != null) {
+        callerContext = imageCallerContext;
+      }
+    }
+    mImageCallerContext = callerContext;
     if (imageConfig != null) {
       mEnableProgressiveRendering = imageConfig.getEnableProgressiveRendering();
       if (imageConfig.getImageCustomParam() != null) {
@@ -1056,7 +1076,7 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
-  private ImageRequestInfo createImageRequest(int width, int height, String url) {
+  private ImageRequestInfo createImageRequest(int width, int height, String url, boolean isSrc) {
     if (TextUtils.isEmpty(url)) {
       return null;
     }
@@ -1065,7 +1085,7 @@ public class LynxImageManager implements Drawable.Callback {
         .setResizeWidth(width)
         .setResizeHeight(height)
         .setLoopCount(mLoopCount)
-        .setCallerContext(mContext.getFrescoCallerContext())
+        .setCallerContext(mImageCallerContext)
         .setEnableAnimationAutoPlay(mAutoPlay)
         .setEnableDownSampling(!mDisableDefaultResize && !mAutoSize)
         .setEnableAsyncRequest(mEnableAsyncRequest)
@@ -1103,6 +1123,21 @@ public class LynxImageManager implements Drawable.Callback {
     if (mRegionToDecode != null) {
       builder.setRegionToDecode(mRegionToDecode);
     }
+    if (isSrc) {
+      LynxImageRequestOptions requestOptions = prepareImageRequest(builder.build());
+      if (requestOptions != null) {
+        if (!TextUtils.isEmpty(requestOptions.getFinalUrl())) {
+          builder.setUrl(requestOptions.getFinalUrl());
+        }
+        if (requestOptions.getFallbackUrls() != null) {
+          builder.setFallbackUrls(requestOptions.getFallbackUrls());
+        }
+        if (requestOptions.getUseRGB565()) {
+          builder.setBitmapConfig(
+              mImageSRScale <= 0 ? Bitmap.Config.RGB_565 : Bitmap.Config.ARGB_8888);
+        }
+      }
+    }
     return builder.build();
   }
 
@@ -1111,7 +1146,7 @@ public class LynxImageManager implements Drawable.Callback {
         (mEnableAllLoopEvent || mEnableStartPlayEvent || mEnableCurrentLoopEvent)
         ? mAnimationListener
         : null;
-    ImageRequestInfo requestInfo = createImageRequest(width, height, mSrc);
+    ImageRequestInfo requestInfo = createImageRequest(width, height, mSrc, true);
     if (requestInfo != null) {
       mCurImageRequest = requestInfo;
       mStartTimeStamp = System.currentTimeMillis();
@@ -1119,11 +1154,32 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
+  private LynxImageRequestOptions prepareImageRequest(@NonNull ImageRequestInfo requestInfo) {
+    if (mImageRequestDelegate == null || !isHttpImageRequest(requestInfo)) {
+      return null;
+    }
+    return mImageRequestDelegate.prepareImageRequest(requestInfo);
+  }
+
+  private void onImageRequestFinished(
+      @NonNull ImageRequestInfo requestInfo, int errorCode, @Nullable Throwable throwable) {
+    if (mImageRequestDelegate == null || !isHttpImageRequest(requestInfo)) {
+      return;
+    }
+    mImageRequestDelegate.onImageRequestFinished(
+        requestInfo, new LynxImageRequestResult(errorCode, throwable));
+  }
+
+  private static boolean isHttpImageRequest(@NonNull ImageRequestInfo requestInfo) {
+    String url = requestInfo.getUrl();
+    return url != null && url.startsWith(HTTP_PREFIX);
+  }
+
   public void tryFetchPlaceholderFromService(int width, int height) {
     if (mImageDrawable != null) {
       return;
     }
-    ImageRequestInfo requestInfo = createImageRequest(width, height, mPlaceholder);
+    ImageRequestInfo requestInfo = createImageRequest(width, height, mPlaceholder, false);
     if (requestInfo != null) {
       mCurPlaceholderRequest = requestInfo;
       mImageLoader.fetchImage(requestInfo, mPlaceHolderListener, null, mContext);

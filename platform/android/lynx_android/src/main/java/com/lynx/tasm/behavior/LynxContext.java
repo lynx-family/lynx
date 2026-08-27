@@ -1633,12 +1633,10 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return mImageCustomParams;
   }
 
-  @RestrictTo(RestrictTo.Scope.LIBRARY)
   public void setLynxImageConfig(LynxImageConfig imageConfig) {
     mLynxImageConfig = imageConfig;
   }
 
-  @RestrictTo(RestrictTo.Scope.LIBRARY)
   public LynxImageConfig getLynxImageConfig() {
     return mLynxImageConfig;
   }
