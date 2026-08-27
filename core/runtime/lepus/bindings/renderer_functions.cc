@@ -4417,7 +4417,20 @@ RENDERER_FUNCTION_CC(FiberAddInlineStyle) {
   if (UNLIKELY(id == CSSPropertyID::kPropertyStart)) {
     id = CSSProperty::GetPropertyID(arg1->String());
   }
-  element->SetStyle(id, arg2->ToLepusValue());
+  const lepus::Value value = arg2->ToLepusValue();
+  element->SetStyle(id, value);
+
+  // TODO(luochangan.adrian): Consider merging this observation path into
+  // DOM.attributeModified, but changing its emission timing may be a breaking
+  // change.
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (CSSProperty::IsPropertyValid(id)) {
+      auto* observer = element->element_manager()->inspector_element_observer();
+      if (observer != nullptr) {
+        observer->OnAddInlineStyle(element->impl_id(), id, value);
+      }
+    }
+  });
 
   ON_NODE_MODIFIED(element);
   RETURN_UNDEFINED();
@@ -5509,6 +5522,14 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
         if (element) {
           element->AsyncResolveSubtreeProperty();
         }
+        EXEC_EXPR_FOR_INSPECTOR({
+          auto* observer = self->page_proxy()
+                               ->element_manager()
+                               ->inspector_element_observer();
+          if (observer != nullptr) {
+            observer->OnFiberFlushElementTree();
+          }
+        });
         RETURN_UNDEFINED();
       }
     }
@@ -5572,6 +5593,13 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
                         ctx.event()->add_debug_annotations(
                             PIPELINE_ID, current_option->pipeline_id);
                       });
+  EXEC_EXPR_FOR_INSPECTOR({
+    auto* observer =
+        self->page_proxy()->element_manager()->inspector_element_observer();
+    if (observer != nullptr) {
+      observer->OnFiberFlushElementTree();
+    }
+  });
   RETURN_UNDEFINED();
 }
 

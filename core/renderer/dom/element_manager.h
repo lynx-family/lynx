@@ -312,6 +312,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   LYNX_EXPORT_FOR_DEVTOOL void SetInspectorElementObserver(
       const std::shared_ptr<InspectorElementObserver>
           &inspector_element_observer);
+  InspectorElementObserver *inspector_element_observer() const {
+    return inspector_element_observer_.get();
+  }
 
   void OnUpdateViewport(float width, int width_mode, float height,
                         int height_mode, bool need_layout);
