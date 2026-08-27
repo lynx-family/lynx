@@ -8,18 +8,11 @@
 #include <memory>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
-
-// Keep this include after fiber_mock_painting_context.h. That test header
-// exposes private members before pulling in transitive renderer headers.
-// clang-format off
-#include "core/renderer/dom/fiber/compose_element_handle.h"
-// clang-format on
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -133,24 +126,7 @@ class FiberElementTest : public ::testing::TestWithParam<std::tuple<int, int>> {
                                   double root_node_font_size, double font_scale,
                                   int32_t count = 1);
 
-  fml::RefPtr<ComposeElementHandle> ComposeHandleFor(
-      const fml::RefPtr<Element>& element) {
-    auto it = compose_test_handles_.find(element.get());
-    if (it != compose_test_handles_.end()) {
-      return it->second;
-    }
-    const auto kind = element->is_text()    ? ComposeElementKind::kText
-                      : element->is_image() ? ComposeElementKind::kImage
-                                            : ComposeElementKind::kView;
-    auto handle = fml::AdoptRef<ComposeElementHandle>(
-        new ComposeElementHandle(kind, fml::RefPtr<Element>(element)));
-    compose_test_handles_[element.get()] = handle;
-    return handle;
-  }
-
  protected:
-  std::unordered_map<Element*, fml::RefPtr<ComposeElementHandle>>
-      compose_test_handles_;
   std::tuple<int, int> current_parameter_;
   int32_t thread_strategy;
   int32_t enable_parallel_element_flush_strategy;

@@ -16,6 +16,7 @@ namespace lynx {
 namespace tasm {
 
 class ComposeModifierApplicator;
+class ElementManager;
 
 enum class ComposeElementKind : int32_t {
   kView = 1,
@@ -28,9 +29,7 @@ enum class ComposeElementKind : int32_t {
 // physical node that should be inserted into its external parent.
 class ComposeElementHandle final : public lepus::RefCounted {
  public:
-  ComposeElementHandle(ComposeElementKind, fml::RefPtr<Element> content_element)
-      : content_element_(std::move(content_element)),
-        mount_root_(content_element_) {}
+  ComposeElementHandle(ElementManager* manager, ComposeElementKind kind);
 
   void ReleaseSelf() const override { delete this; }
   lepus::RefType GetRefType() const override {
