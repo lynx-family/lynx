@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.image;
 
+import androidx.annotation.Nullable;
 import java.util.Map;
 
 public class LynxImageConfig {
@@ -39,6 +40,9 @@ public class LynxImageConfig {
    * When enabled, LynxViewLifecycleV2 clients receive image load events.
    */
   private boolean mEnableImageLoadCallback = false;
+
+  /** Delegate used to customize and observe main image requests in this LynxView. */
+  private @Nullable LynxImageRequestDelegate mImageRequestDelegate;
 
   public boolean getEnableImageResourceHint() {
     return mEnableImageResourceHint;
@@ -78,5 +82,14 @@ public class LynxImageConfig {
 
   public boolean getEnableImageLoadCallback() {
     return mEnableImageLoadCallback;
+  }
+
+  public void setImageRequestDelegate(@Nullable LynxImageRequestDelegate imageRequestDelegate) {
+    mImageRequestDelegate = imageRequestDelegate;
+  }
+
+  @Nullable
+  public LynxImageRequestDelegate getImageRequestDelegate() {
+    return mImageRequestDelegate;
   }
 }

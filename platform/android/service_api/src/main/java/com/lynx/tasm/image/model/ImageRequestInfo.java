@@ -12,6 +12,8 @@ import java.util.Objects;
 public class ImageRequestInfo {
   private final String mUrl;
 
+  private final List<String> mFallbackUrls;
+
   private final int mResizeWidth;
 
   private final int mResizeHeight;
@@ -68,6 +70,7 @@ public class ImageRequestInfo {
 
   public ImageRequestInfo(ImageRequestInfoBuilder builder) {
     mUrl = builder.getUrl();
+    mFallbackUrls = builder.getFallbackUrls();
     mResizeWidth = builder.getResizeWidth();
     mEnableAsyncRequest = builder.isEnableAsyncRequest();
     mDiskCacheChoice = builder.getDiskCacheChoice();
@@ -95,6 +98,11 @@ public class ImageRequestInfo {
 
   public String getUrl() {
     return mUrl;
+  }
+
+  /** Returns fallback URLs in request order, or {@code null} when none were provided. */
+  public List<String> getFallbackUrls() {
+    return mFallbackUrls;
   }
 
   public int getResizeWidth() {
@@ -212,6 +220,8 @@ public class ImageRequestInfo {
       return false;
     if (!Objects.equals(mUrl, that.mUrl))
       return false;
+    if (!Objects.equals(mFallbackUrls, that.mFallbackUrls))
+      return false;
     if (mConfig != that.mConfig)
       return false;
     if (!Objects.equals(mRegionToDecode, that.mRegionToDecode))
@@ -222,6 +232,7 @@ public class ImageRequestInfo {
   @Override
   public int hashCode() {
     int result = mUrl != null ? mUrl.hashCode() : 0;
+    result = 31 * result + (mFallbackUrls != null ? mFallbackUrls.hashCode() : 0);
     result = 31 * result + mResizeWidth;
     result = 31 * result + mResizeHeight;
     result = 31 * result + (mConfig != null ? mConfig.hashCode() : 0);

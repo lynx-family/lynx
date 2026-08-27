@@ -11,6 +11,8 @@ import java.util.Map;
 public class ImageRequestInfoBuilder {
   private String mUrl;
 
+  private List<String> mFallbackUrls;
+
   private int mResizeWidth;
 
   private int mResizeHeight;
@@ -102,6 +104,16 @@ public class ImageRequestInfoBuilder {
   public ImageRequestInfoBuilder setUrl(String url) {
     mUrl = url;
     return this;
+  }
+
+  /** Sets fallback URLs to try in order after the primary URL fails. */
+  public ImageRequestInfoBuilder setFallbackUrls(List<String> fallbackUrls) {
+    mFallbackUrls = fallbackUrls;
+    return this;
+  }
+
+  List<String> getFallbackUrls() {
+    return mFallbackUrls;
   }
 
   public ImageRequestInfoBuilder setResizeWidth(int width) {
