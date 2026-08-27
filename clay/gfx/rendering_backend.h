@@ -5,6 +5,7 @@
 #ifndef CLAY_GFX_RENDERING_BACKEND_H_
 #define CLAY_GFX_RENDERING_BACKEND_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "clay/gfx/geometry/float_rounded_rect.h"
@@ -143,6 +144,45 @@ using GrFontMgrPtr = sk_sp<SkFontMgr>;
 using GrRect = SkRect;
 using GrBlurStyle = SkBlurStyle;
 using GrPicturePtr = sk_sp<SkPicture>;
+
+class GrSoftwareSurface {
+ public:
+  GrSoftwareSurface(uint32_t width, uint32_t height)
+      : surface_(SkSurface::MakeRasterN32Premul(width, height)) {}
+
+  bool IsValid() const { return surface_ != nullptr; }
+  GrCanvas* GetCanvas() const {
+    return surface_ ? surface_->getCanvas() : nullptr;
+  }
+  void Clear(GrColor color) const {
+    if (auto* canvas = GetCanvas()) {
+      canvas->clear(color);
+    }
+  }
+  void DrawPicture(const GrPicturePtr& picture) const {
+    if (auto* canvas = GetCanvas()) {
+      canvas->drawPicture(picture);
+    }
+  }
+  void Flush() const {
+    if (auto* canvas = GetCanvas()) {
+      canvas->flush();
+    }
+  }
+  GrColor GetPixelColor(uint32_t x, uint32_t y) {
+    SkPixmap pixels;
+    if (!surface_ || !surface_->peekPixels(&pixels)) {
+      return 0;
+    }
+    return pixels.getColor(x, y);
+  }
+  uint8_t GetPixelAlpha(uint32_t x, uint32_t y) {
+    return SkColorGetA(GetPixelColor(x, y));
+  }
+
+ private:
+  GrSurfacePtr surface_;
+};
 
 // FUNCTIONS
 // GrContext
@@ -388,6 +428,42 @@ using GrFontMgrPtr = std::shared_ptr<skity::FontManager>;
 using GrRect = skity::Rect;
 using GrBlurStyle = skity::BlurStyle;
 using GrPicturePtr = std::shared_ptr<skity::DisplayList>;
+
+class GrSoftwareSurface {
+ public:
+  GrSoftwareSurface(uint32_t width, uint32_t height)
+      : bitmap_(width, height, skity::AlphaType::kPremul_AlphaType,
+                skity::ColorType::kRGBA),
+        canvas_(skity::Canvas::MakeSoftwareCanvas(&bitmap_)) {}
+
+  bool IsValid() const { return canvas_ != nullptr; }
+  GrCanvas* GetCanvas() const { return canvas_.get(); }
+  void Clear(GrColor color) const {
+    if (canvas_) {
+      canvas_->Clear(color);
+    }
+  }
+  void DrawPicture(const GrPicturePtr& picture) const {
+    if (canvas_ && picture) {
+      picture->Draw(canvas_.get());
+    }
+  }
+  void Flush() const {
+    if (canvas_) {
+      canvas_->Flush();
+    }
+  }
+  GrColor GetPixelColor(uint32_t x, uint32_t y) {
+    return bitmap_.GetPixel(x, y);
+  }
+  uint8_t GetPixelAlpha(uint32_t x, uint32_t y) {
+    return ColorGetA(GetPixelColor(x, y));
+  }
+
+ private:
+  GrBitmap bitmap_;
+  std::unique_ptr<GrCanvas> canvas_;
+};
 
 // FUNCTIONS
 // GrContext

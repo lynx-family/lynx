@@ -58,6 +58,12 @@ void PendingEffectLayer::AddToFrame(FrameBuilder* builder,
     builder->PushShaderMask(color_source_, mask_rect, blend_mode_, this);
     AddChildrenToFrame(builder);
     builder->Pop();
+  } else if (picture_) {
+    FloatRect mask_rect = mask_rect_.value();
+    mask_rect.Move(offset.x(), offset.y());
+    builder->PushPictureMask(picture_, mask_rect, blend_mode_, this);
+    AddChildrenToFrame(builder);
+    builder->Pop();
   }
 }
 

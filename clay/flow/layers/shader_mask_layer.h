@@ -12,6 +12,7 @@
 #include <string>
 
 #include "clay/flow/layers/cacheable_layer.h"
+#include "clay/gfx/picture.h"
 #include "clay/gfx/style/color_source.h"
 
 namespace clay {
@@ -20,6 +21,8 @@ class ShaderMaskLayer : public CacheableContainerLayer {
  public:
   ShaderMaskLayer(std::shared_ptr<clay::ColorSource> color_source,
                   const skity::Rect& mask_rect, clay::BlendMode blend_mode);
+  ShaderMaskLayer(const skity::Rect& mask_rect, clay::BlendMode blend_mode,
+                  std::shared_ptr<clay::Picture> picture);
 
   void Diff(DiffContext* context, const Layer* old_layer) override;
 
@@ -33,6 +36,8 @@ class ShaderMaskLayer : public CacheableContainerLayer {
 
  private:
   std::shared_ptr<clay::ColorSource> color_source_;
+  std::shared_ptr<clay::Picture> picture_;
+  bool is_picture_mask_ = false;
   skity::Rect mask_rect_;
   clay::BlendMode blend_mode_;
 

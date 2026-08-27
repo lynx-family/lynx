@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
@@ -91,6 +92,16 @@ class PendingEffectLayer : public PendingContainerLayer {
   void SetShaderMask(std::shared_ptr<ColorSource> color_source,
                      const FloatRect& mask_rect, BlendMode blend_mode) {
     color_source_ = color_source;
+    picture_ = nullptr;
+    blend_mode_ = blend_mode;
+    mask_rect_ = mask_rect;
+    MarkNeedsAddToFrame();
+  }
+
+  void SetPictureMask(std::shared_ptr<Picture> picture,
+                      const FloatRect& mask_rect, BlendMode blend_mode) {
+    picture_ = std::move(picture);
+    color_source_ = nullptr;
     blend_mode_ = blend_mode;
     mask_rect_ = mask_rect;
     MarkNeedsAddToFrame();
@@ -108,8 +119,9 @@ class PendingEffectLayer : public PendingContainerLayer {
   // For opacity effect.
   std::optional<int> opacity_ = std::nullopt;
 
-  // For shader mask
+  // For shader and picture masks.
   std::shared_ptr<ColorSource> color_source_;
+  std::shared_ptr<Picture> picture_;
   std::optional<FloatRect> mask_rect_;
   BlendMode blend_mode_ = BlendMode::kClear;
 

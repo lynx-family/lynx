@@ -92,6 +92,10 @@ class PaintingContext {
                       const FloatRect& mask_rect, BlendMode blend_mode,
                       const FloatPoint& offset,
                       const PaintingContextCallback& painter);
+  void PushPictureMask(std::shared_ptr<Picture> picture,
+                       const FloatRect& mask_rect, BlendMode blend_mode,
+                       const FloatPoint& offset,
+                       const PaintingContextCallback& painter);
 
   // Container layer will contain picture layer and other layer subtree.
   void PushContainer(const FloatPoint& offset,

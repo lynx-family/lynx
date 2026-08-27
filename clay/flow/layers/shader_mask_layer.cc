@@ -23,12 +23,23 @@ ShaderMaskLayer::ShaderMaskLayer(
       mask_rect_(mask_rect),
       blend_mode_(blend_mode) {}
 
+ShaderMaskLayer::ShaderMaskLayer(const skity::Rect& mask_rect,
+                                 clay::BlendMode blend_mode,
+                                 std::shared_ptr<clay::Picture> picture)
+    : CacheableContainerLayer(
+          RasterCacheUtil::kMinimumRendersBeforeCachingFilterLayer),
+      picture_(std::move(picture)),
+      is_picture_mask_(true),
+      mask_rect_(mask_rect),
+      blend_mode_(blend_mode) {}
+
 void ShaderMaskLayer::Diff(DiffContext* context, const Layer* old_layer) {
   DiffContext::AutoSubtreeRestore subtree(context);
   auto* prev = static_cast<const ShaderMaskLayer*>(old_layer);
   if (!context->IsSubtreeDirty()) {
     FML_DCHECK(prev);
-    if (color_source_ != prev->color_source_ ||
+    if (color_source_ != prev->color_source_ || picture_ != prev->picture_ ||
+        is_picture_mask_ != prev->is_picture_mask_ ||
         mask_rect_ != prev->mask_rect_ || blend_mode_ != prev->blend_mode_) {
       context->MarkSubtreeDirty(context->GetOldLayerPaintRegion(old_layer));
     }
@@ -73,18 +84,28 @@ void ShaderMaskLayer::Paint(PaintContext& context) const {
       return;
     }
   }
-  auto shader_rect =
-      skity::Rect::MakeWH(mask_rect_.Width(), mask_rect_.Height());
-
   mutator.saveLayer(paint_bounds());
   PaintChildren(context);
   clay::GrPaint paint;
   PAINT_SET_BLEND_MODE(paint, blend_mode_);
-  if (color_source_) {
-    PAINT_SET_SHADER(paint, color_source_->gr_object());
+  if (!is_picture_mask_) {
+    auto shader_rect =
+        skity::Rect::MakeWH(mask_rect_.Width(), mask_rect_.Height());
+    if (color_source_) {
+      PAINT_SET_SHADER(paint, color_source_->gr_object());
+    }
+    CANVAS_TRANSLATE(context.canvas, mask_rect_.Left(), mask_rect_.Top());
+    CANVAS_DRAW_RECT(context.canvas, shader_rect, paint);
+  } else if (picture_) {
+    CANVAS_SAVELAYER(context.canvas, mask_rect_, paint);
+    CANVAS_TRANSLATE(context.canvas, mask_rect_.Left(), mask_rect_.Top());
+#ifndef ENABLE_SKITY
+    context.canvas->drawPicture(picture_->picture()->raw());
+#else
+    picture_->picture()->raw()->Draw(context.canvas);
+#endif
+    CANVAS_RESTORE(context.canvas);
   }
-  CANVAS_TRANSLATE(context.canvas, mask_rect_.Left(), mask_rect_.Top());
-  CANVAS_DRAW_RECT(context.canvas, shader_rect, paint);
 }
 
 }  // namespace clay

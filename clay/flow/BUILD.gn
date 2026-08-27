@@ -225,6 +225,7 @@ if (enable_unittests) {
       #"layers/physical_shape_layer_unittests.cc",
       "layers/platform_view_layer_unittests.cc",
       "layers/punch_hole_layer_unittests.cc",
+      "layers/shader_mask_layer_picture_unittests.cc",
       "layers/shader_mask_layer_unittests.cc",
       "layers/transform_layer_unittests.cc",
       "mutators_stack_unittests.cc",
@@ -262,6 +263,31 @@ if (enable_unittests) {
 
     if (enable_skity) {
       sources -= [ "layers/shader_mask_layer_unittests.cc" ]
+    }
+  }
+
+  if (enable_skity && (is_mac || is_win)) {
+    executable("shader_mask_layer_picture_unittests") {
+      testonly = true
+      sources = [ "layers/shader_mask_layer_picture_unittests.cc" ]
+
+      deps = [
+        ":flow",
+        "../../base/src:base_static",
+        "../common/graphics",
+        "../gfx",
+        "../testing",
+      ]
+
+      configs += [ "../:config" ]
+
+      if (is_mac) {
+        frameworks = [
+          "AppKit.framework",
+          "CoreGraphics.framework",
+          "CoreText.framework",
+        ]
+      }
     }
   }
 }

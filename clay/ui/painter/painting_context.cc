@@ -431,6 +431,16 @@ void PaintingContext::PushShaderMask(std::shared_ptr<ColorSource> color_source,
   PushLayer(effect_layer, painter, offset);
 }
 
+void PaintingContext::PushPictureMask(std::shared_ptr<Picture> picture,
+                                      const FloatRect& mask_rect,
+                                      BlendMode blend_mode,
+                                      const FloatPoint& offset,
+                                      const PaintingContextCallback& painter) {
+  PendingEffectLayer* effect_layer = new PendingEffectLayer();
+  effect_layer->SetPictureMask(std::move(picture), mask_rect, blend_mode);
+  PushLayer(effect_layer, painter, offset);
+}
+
 void PaintingContext::PushContainer(const FloatPoint& offset,
                                     const PaintingContextCallback& painter) {
   PendingContainerLayer* container_layer = new PendingContainerLayer();

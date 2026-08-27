@@ -287,6 +287,20 @@ void FrameBuilder::PushShaderMask(std::shared_ptr<ColorSource> color_source,
   old_layer->RetainLayer(layer);
 }
 
+void FrameBuilder::PushPictureMask(std::shared_ptr<Picture> picture,
+                                   const FloatRect& mask_rect,
+                                   BlendMode blend_mode,
+                                   PendingLayer* old_layer) {
+  auto layer = std::make_shared<clay::ShaderMaskLayer>(mask_rect, blend_mode,
+                                                       std::move(picture));
+  PushLayer(layer);
+
+  if (old_layer->ReuseLayer()) {
+    layer->AssignOldLayer(old_layer->ReuseLayer().get());
+  }
+  old_layer->RetainLayer(layer);
+}
+
 void FrameBuilder::PushBackdropFilter(std::shared_ptr<ImageFilter> filter,
                                       PendingLayer* old_layer) {
   auto layer =
