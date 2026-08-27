@@ -246,10 +246,16 @@ class ViewContextMemoryTest : public UITest {
 
     void CreateViewForTesting(int id) {
       auto* view = new View(id, page_view_);
-      view->SetDestructListener(
-          [this](BaseView* view) { view_map_.erase(view->id()); });
+      view->SetDestructListener([this](BaseView* view) {
+        external_memory_report_candidate_ids_.erase(view->id());
+        view_map_.erase(view->id());
+      });
       view_map_[id] = view;
       ConsumeInitialAttributes(view);
+    }
+
+    size_t ExternalMemoryCandidateCountForTesting() const {
+      return external_memory_report_candidate_ids_.size();
     }
   };
 
@@ -298,7 +304,7 @@ TEST_F_UI(BaseViewTest, TreeManipulation) {
   EXPECT_EQ(root->child_count(), 0u);
 }
 
-TEST_F_UI(ViewContextMemoryTest, ExternalMemoryConsumesRemovedNodeCandidates) {
+TEST_F_UI(ViewContextMemoryTest, ExternalMemoryTracksRemovedNodeCandidates) {
   ASSERT_TRUE(view_context_->CreateView(1, "page"));
   view_context_->CreateViewForTesting(2);
   view_context_->CreateViewForTesting(3);
@@ -312,12 +318,13 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryConsumesRemovedNodeCandidates) {
   EXPECT_EQ(snapshot.garbage_size, 0);
 
   view_context_->RemoveView(2, 1, false);
-  view_context_->UpdateNodeReadyPatching({}, {2, 2});
-  view_context_->UpdateNodeReadyPatching({}, {999});
+  view_context_->UpdateNodeReadyPatching({}, {2, 2, 3});
   snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, 3 * unit_size);
   EXPECT_EQ(snapshot.garbage_size, 2 * unit_size);
-  EXPECT_EQ(view_context_->GetExternalMemorySnapshot().garbage_size, 0);
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 2u);
+  EXPECT_EQ(view_context_->GetExternalMemorySnapshot().garbage_size,
+            2 * unit_size);
 
   view_context_->AddView(2, 1, 0);
   view_context_->RemoveView(2, 1, false);
@@ -328,6 +335,7 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryConsumesRemovedNodeCandidates) {
   view_context_->RemoveView(2, 1, false);
   view_context_->UpdateNodeReadyPatching({}, {2});
   ASSERT_TRUE(view_context_->DestroyView(2));
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
   snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, unit_size);
   EXPECT_EQ(snapshot.garbage_size, 0);

@@ -159,8 +159,10 @@ bool ViewContext::CreateView(int id, const std::string& tag_name) {
     view = new View(id, page_view_);
   }
 
-  view->SetDestructListener(
-      [this](BaseView* view) { view_map_.erase(view->id()); });
+  view->SetDestructListener([this](BaseView* view) {
+    external_memory_report_candidate_ids_.erase(view->id());
+    view_map_.erase(view->id());
+  });
   view_map_[id] = view;
   ConsumeInitialAttributes(view_map_[id]);
   return true;
@@ -283,6 +285,7 @@ bool ViewContext::DestroyView(int id) {
 
   BaseView* view = target->second;
   if (view->IsDelayDestroy()) {
+    external_memory_report_candidate_ids_.erase(id);
     view_map_.erase(id);
     return true;
   }
@@ -765,13 +768,19 @@ void ViewContext::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
 
 lynx::tasm::ExternalMemorySnapshot ViewContext::GetExternalMemorySnapshot() {
   lynx::tasm::ExternalMemorySnapshot snapshot;
-  for (int32_t id : external_memory_report_candidate_ids_) {
-    auto it = view_map_.find(id);
-    if (it != view_map_.end() && it->second != nullptr &&
-        it->second->Parent() == nullptr) {
-      snapshot.garbage_size +=
-          GetExternalMemoryUsageBytesRecursively(it->second);
+  // Keep candidates for the lifetime of their holder entries. Parented
+  // candidates may belong to a detached candidate subtree, so skip them
+  // without discarding them.
+  for (int32_t candidate : external_memory_report_candidate_ids_) {
+    auto view = view_map_.find(candidate);
+    if (view == view_map_.end() || view->second == nullptr) {
+      continue;
     }
+    if (view->second->Parent() != nullptr) {
+      continue;
+    }
+    snapshot.garbage_size +=
+        GetExternalMemoryUsageBytesRecursively(view->second);
   }
   for (const auto& entry : view_map_) {
     auto* view = entry.second;
@@ -780,7 +789,6 @@ lynx::tasm::ExternalMemorySnapshot ViewContext::GetExternalMemorySnapshot() {
     }
     snapshot.total_size += GetExternalMemoryUsageBytes(view);
   }
-  external_memory_report_candidate_ids_.clear();
   return snapshot;
 }
 
@@ -800,7 +808,6 @@ void ViewContext::RequestExternalMemoryReport(int64_t delay_ms) {
         strong_self->external_memory_report_pending_ = false;
         auto* page_view = static_cast<PageView*>(weak_page.get());
         if (page_view == nullptr) {
-          strong_self->external_memory_report_candidate_ids_.clear();
           return;
         }
         const auto snapshot = strong_self->GetExternalMemorySnapshot();

@@ -31,6 +31,10 @@
 
 @end
 
+@interface LynxUIOwner (ExternalMemoryUnitTest)
+@property(nonatomic, readonly) NSSet<NSNumber *> *externalMemoryReportCandidateIds;
+@end
+
 @interface LynxUIOwnerUnitTest : XCTestCase
 @property(nonatomic, strong) LynxUIOwner *uiOwner;
 @end
@@ -63,7 +67,7 @@
   XCTAssert([self.uiOwner getTagInfo:@"xxxx"] == 0);
 }
 
-- (void)testExternalMemoryRemovedNodeCandidatesAreConsumed {
+- (void)testExternalMemoryRemovedNodeCandidatesTrackDetachedLifetime {
   LynxComponentScopeRegistry *registry = [LynxComponentScopeRegistry new];
   [LynxComponentScopeRegistry registerBuiltInBehaviors:registry];
   self.uiOwner = [[LynxUIOwner alloc] initWithContainerView:[LynxView new]
@@ -111,22 +115,23 @@
   LynxExternalMemorySnapshot detached = [self.uiOwner getExternalMemorySnapshot];
   XCTAssertEqual(detached.totalSize, attached.totalSize);
   XCTAssertEqual(detached.garbageSize, [parent memoryUsageBytes] + [child memoryUsageBytes]);
-  XCTAssertEqual([self.uiOwner getExternalMemorySnapshot].garbageSize, 0);
+  XCTAssertEqual(self.uiOwner.externalMemoryReportCandidateIds.count, 2U);
+  XCTAssertEqual([self.uiOwner getExternalMemorySnapshot].garbageSize, detached.garbageSize);
 
   [self.uiOwner insertNode:2 toParent:1 atIndex:0];
-  [self.uiOwner detachNode:2];
-  [self.uiOwner cacheRemovedUIId:2];
-  [self.uiOwner onNodeRemoved:2];
-  [self.uiOwner insertNode:2 toParent:1 atIndex:0];
   XCTAssertEqual([self.uiOwner getExternalMemorySnapshot].garbageSize, 0);
+  XCTAssertEqual(self.uiOwner.externalMemoryReportCandidateIds.count, 2U);
 
   [self.uiOwner detachNode:2];
   [self.uiOwner cacheRemovedUIId:2];
+  [self.uiOwner cacheRemovedUIId:3];
   [self.uiOwner onNodeRemoved:2];
   [self.uiOwner recycleNode:3];
+  XCTAssertEqual(self.uiOwner.externalMemoryReportCandidateIds.count, 1U);
   [self.uiOwner recycleNode:2];
   XCTAssertNil([self.uiOwner findUIBySign:2]);
   XCTAssertNil([self.uiOwner findUIBySign:3]);
+  XCTAssertEqual(self.uiOwner.externalMemoryReportCandidateIds.count, 0U);
   LynxExternalMemorySnapshot destroyed = [self.uiOwner getExternalMemorySnapshot];
   XCTAssertEqual(destroyed.totalSize, [root memoryUsageBytes]);
   XCTAssertEqual(destroyed.garbageSize, 0);

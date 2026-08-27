@@ -10,6 +10,7 @@ import static org.mockito.Mockito.spy;
 
 import android.graphics.Rect;
 import android.os.Build;
+import android.util.SparseBooleanArray;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxView;
@@ -22,6 +23,7 @@ import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.testing.base.TestingUtils;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.After;
@@ -52,6 +54,17 @@ public class LynxUIOwnerTest {
       return new MemoryUI(context);
     }
   }
+
+  private static int getExternalMemoryCandidateCount(LynxUIOwner uiOwner) {
+    try {
+      Field field = LynxUIOwner.class.getDeclaredField("mRemovedUICandidateIds");
+      field.setAccessible(true);
+      return ((SparseBooleanArray) field.get(uiOwner)).size();
+    } catch (NoSuchFieldException | IllegalAccessException exception) {
+      throw new AssertionError(exception);
+    }
+  }
+
   private LynxUI mLynxUI = null;
   private LynxContext mContext;
   private LynxView mLynxView;
@@ -128,7 +141,7 @@ public class LynxUIOwnerTest {
   }
 
   @Test
-  public void testExternalMemoryRemovedIdCandidatesAreConsumed() {
+  public void testExternalMemoryRemovedIdCandidatesFollowUILifetime() {
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
       List<Behavior> behaviors = new BuiltInBehavior().create();
       behaviors.add(new MemoryUIBehavior());
@@ -152,21 +165,34 @@ public class LynxUIOwnerTest {
       snapshot = uiOwner.getExternalMemorySnapshot();
       assertEquals(20, snapshot[0]);
       assertEquals(20, snapshot[1]);
-      assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
+      assertEquals(20, uiOwner.getExternalMemorySnapshot()[1]);
+      assertEquals(2, getExternalMemoryCandidateCount(uiOwner));
 
-      uiOwner.cacheRemovedUIIds(new int[] {2});
       uiOwner.insert(1, 2, 0);
       assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
+      assertEquals(2, getExternalMemoryCandidateCount(uiOwner));
+      uiOwner.remove(1, 2);
+      assertEquals(20, uiOwner.getExternalMemorySnapshot()[1]);
 
       uiOwner.createViewInternal(4, MEMORY_UI_TAG, null, null, false, 0, null);
-      uiOwner.insert(1, 4, 1);
-      uiOwner.remove(1, 2);
+      uiOwner.insert(1, 4, 0);
       uiOwner.cacheRemovedUIIds(new int[] {2, 2, 3});
       uiOwner.remove(1, 4);
       uiOwner.cacheRemovedUIIds(new int[] {2, 4, 4});
       snapshot = uiOwner.getExternalMemorySnapshot();
       assertEquals(30, snapshot[0]);
       assertEquals(30, snapshot[1]);
+      assertEquals(30, uiOwner.getExternalMemorySnapshot()[1]);
+
+      uiOwner.destroy(-1, 4);
+      assertEquals(2, getExternalMemoryCandidateCount(uiOwner));
+      snapshot = uiOwner.getExternalMemorySnapshot();
+      assertEquals(20, snapshot[0]);
+      assertEquals(20, snapshot[1]);
+
+      uiOwner.destroy(-1, 2);
+      uiOwner.destroy(-1, 3);
+      assertEquals(0, getExternalMemoryCandidateCount(uiOwner));
       assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
     });
   }
