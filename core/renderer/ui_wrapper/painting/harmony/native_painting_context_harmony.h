@@ -13,15 +13,23 @@
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
-namespace lynx::tasm {
+namespace lynx {
+namespace tasm {
 
-// Harmony NativePaintingContext skeleton. Runtime wiring and platform
-// operations are introduced in follow-up changes.
+class TextMeasurerHarmony;
+
+namespace harmony {
+class LynxContext;
+class LynxRendererContext;
+}  // namespace harmony
+
 class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
                                  public NativePaintingContext {
  public:
   NativePaintingCtxHarmony();
-  ~NativePaintingCtxHarmony() override = default;
+  explicit NativePaintingCtxHarmony(
+      const std::shared_ptr<harmony::LynxContext>& context);
+  ~NativePaintingCtxHarmony() override;
 
   NativePaintingCtxHarmony(const NativePaintingCtxHarmony&) = delete;
   NativePaintingCtxHarmony& operator=(const NativePaintingCtxHarmony&) = delete;
@@ -92,8 +100,12 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
   void EnqueueDisplayList(int id, DisplayList list) override;
   void EnqueueDisplayLists(DisplayListUpdateBatch batch) override {}
   void EnqueueReconstructEventTargetTreeRecursively() override {}
+
+ private:
+  std::shared_ptr<harmony::LynxRendererContext> renderer_context_;
 };
 
-}  // namespace lynx::tasm
+}  // namespace tasm
+}  // namespace lynx
 
 #endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_NATIVE_PAINTING_CONTEXT_HARMONY_H_

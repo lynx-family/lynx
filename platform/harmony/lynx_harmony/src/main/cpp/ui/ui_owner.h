@@ -43,8 +43,12 @@ class UIOwner {
   using UICreatorFunc = UIBase* (*)(LynxContext*, int, const std::string&);
   using AttachLynxPageUICallback = std::function<void(UIBase*)>;
   static napi_value Init(napi_env env, napi_value exports);
-  void CreateUI(int sign, const std::string& tag,
-                PropBundleHarmony* painting_data, uint32_t node_index);
+  void CreateUI(
+      int sign, const std::string& tag, PropBundleHarmony* painting_data,
+      uint32_t node_index,
+      std::shared_ptr<LynxRendererContext> renderer_context = nullptr);
+  UIBase* CreateFragmentLayerRootHost(int sign);
+  UIBase* CreateFragmentLayerHost(int sign);
   UIBase* CreateJSUI(int sign, const std::string& tag);
   void InsertUI(int parent, int child, int index);
   void RemoveUI(int parent, int child, int index, bool is_move);
