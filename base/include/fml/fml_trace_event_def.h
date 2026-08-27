@@ -13,5 +13,10 @@ static constexpr const char* const MESSAGE_LOOP_FLUSH_VASYNC_ALIGNED_TASKS =
     "MessageLoop::FlushVSyncAlignedTasks";
 static constexpr const char* const MESSAGE_LOOP_IMPL_BIND =
     "MessageLoopImpl::Bind";
+static constexpr const char* const
+    MESSAGE_LOOP_HARMONY_RUN_EXPIRED_TASKS_IN_MICROTASK =
+        "MessageLoopHarmony::RunExpiredTasksInMicrotask";
+static constexpr const char* const MESSAGE_LOOP_HARMONY_SETUP_NAPI_CALLBACK =
+    "MessageLoopHarmony::SetupNapiCallback";
 
 #endif  // BASE_INCLUDE_FML_FML_TRACE_EVENT_DEF_H_
