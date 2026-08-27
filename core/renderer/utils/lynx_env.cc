@@ -583,7 +583,7 @@ bool LynxEnv::EnableHarmonyDrawBehind() {
 }
 
 bool LynxEnv::EnableHarmonyNewImage() {
-  return GetBoolEnv(Key::ENABLE_HARMONY_NEW_IMAGE, true);
+  return GetBoolEnv(Key::ENABLE_HARMONY_NEW_IMAGE, false);
 }
 
 bool LynxEnv::EnableHarmonyGestureInterrupterUserData() {
