@@ -93,7 +93,8 @@ class RenderText : public RenderBox {
   TextAlignment text_paint_align_ = TextAlignment::kLeft;
 
  private:
-  void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset);
+  void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset,
+                 bool as_mask = false);
   void PaintInlineEmojis(GraphicsContext* graphics_context, double x_offset,
                          double y_offset);
 

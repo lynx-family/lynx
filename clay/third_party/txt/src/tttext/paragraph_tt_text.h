@@ -59,9 +59,11 @@ class ParagraphTTText : public Paragraph {
   void Layout(double width) override;
 
   void Paint(SkCanvas* canvas, double x, double y) override;
+  void PaintMask(SkCanvas* canvas, double x, double y);
 
 #ifdef ENABLE_SKITY
   void Paint(clay::GraphicsCanvas* canvas, double x, double y);
+  void PaintMask(clay::GraphicsCanvas* canvas, double x, double y);
 #endif
 
   std::vector<TextBox> GetRectsForRange(

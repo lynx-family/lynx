@@ -18,8 +18,11 @@
 
 #include <algorithm>
 #include <numeric>
+#include <vector>
+
 #include "include/core/SkPaint.h"
 #include "skity/geometry/rect.hpp"
+#include "third_party/skia/modules/skparagraph/src/ParagraphImpl.h"  // nogncheck
 
 namespace txt {
 
@@ -47,6 +50,30 @@ txt::FontStyle GetTxtFontStyle(SkFontStyle::Slant font_slant) {
 
 ParagraphSkia::ParagraphSkia(std::unique_ptr<skt::Paragraph> paragraph)
     : paragraph_(std::move(paragraph)) {}
+
+void ParagraphSkia::PaintMask(SkCanvas* canvas, double x, double y) {
+  auto* paragraph = static_cast<skt::ParagraphImpl*>(paragraph_.get());
+  auto styles = paragraph->styles();
+  std::vector<skt::TextStyle> original_styles;
+  original_styles.reserve(styles.size());
+
+  SkPaint mask_paint;
+  mask_paint.setColor(SK_ColorWHITE);
+  for (auto& block : styles) {
+    original_styles.emplace_back(block.fStyle);
+    block.fStyle.setForegroundColor(mask_paint);
+  }
+
+  // Reset cached text blobs so the opaque foreground is used for this draw.
+  paragraph->updateForegroundPaint({});
+  paragraph_->paint(canvas, x, y);
+
+  for (size_t i = 0; i < styles.size(); ++i) {
+    styles[i].fStyle = std::move(original_styles[i]);
+  }
+  // Do not let the temporary mask paint leak into subsequent normal paints.
+  paragraph->updateForegroundPaint({});
+}
 
 double ParagraphSkia::GetMaxWidth() {
   return SkScalarToDouble(paragraph_->getMaxWidth());

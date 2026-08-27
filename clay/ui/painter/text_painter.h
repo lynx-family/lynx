@@ -88,6 +88,8 @@ class TextPainter {
   bool CanPaint() const { return paragraph_ != nullptr; }
   void Paint(GraphicsContext* context, double x_offset = 0,
              double y_offset = 0);
+  void PaintMask(GraphicsContext* context, double x_offset = 0,
+                 double y_offset = 0);
 
   // Finds the first and last glyphs that define a word containing the glyph at
   // index offset.

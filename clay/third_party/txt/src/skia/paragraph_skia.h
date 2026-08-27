@@ -35,7 +35,8 @@ namespace txt {
 // Implementation of Paragraph based on Skia's text layout module.
 class ParagraphSkia : public Paragraph {
  public:
-  explicit ParagraphSkia(std::unique_ptr<skia::textlayout::Paragraph> paragraph);
+  explicit ParagraphSkia(
+      std::unique_ptr<skia::textlayout::Paragraph> paragraph);
 
   virtual ~ParagraphSkia() = default;
 
@@ -61,6 +62,7 @@ class ParagraphSkia : public Paragraph {
 
   void Paint(SkCanvas* canvas, double x, double y) override;
 
+  void PaintMask(SkCanvas* canvas, double x, double y);
 
   std::vector<TextBox> GetRectsForRange(
       size_t start,

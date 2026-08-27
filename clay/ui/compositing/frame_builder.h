@@ -71,6 +71,9 @@ class FrameBuilder {
   void PushShaderMask(std::shared_ptr<ColorSource> color_source,
                       const FloatRect& mask_rect, BlendMode blend_mode,
                       PendingLayer* old_layer);
+  void PushPictureMask(std::shared_ptr<Picture> picture,
+                       const FloatRect& mask_rect, BlendMode blend_mode,
+                       PendingLayer* old_layer);
   void PushBackdropFilter(std::shared_ptr<ImageFilter>,
                           PendingLayer* old_layer);
   void PushClipRect(const FloatRect& clip_rect, int clip_behavior,

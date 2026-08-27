@@ -237,6 +237,25 @@ void TextPainter::Paint(GraphicsContext* context, double x_offset,
   }
 }
 
+void TextPainter::PaintMask(GraphicsContext* context, double x_offset,
+                            double y_offset) {
+  if (!paragraph_) {
+    return;
+  }
+#ifndef ENABLE_SKITY
+#if CLAY_ENABLE_SKSHAPER
+  static_cast<txt::ParagraphSkia*>(paragraph_)
+      ->PaintMask(context->GetGrCanvas(), x_offset, y_offset);
+#elif CLAY_ENABLE_TTTEXT
+  static_cast<txt::ParagraphTTText*>(paragraph_)
+      ->PaintMask(context->GetGrCanvas(), x_offset, y_offset);
+#endif
+#else
+  static_cast<txt::ParagraphTTText*>(paragraph_)
+      ->PaintMask(context->Canvas(), x_offset, y_offset);
+#endif
+}
+
 size_t TextPainter::GetTextSize() {
   if (paragraph_ == nullptr) {
     return 0;

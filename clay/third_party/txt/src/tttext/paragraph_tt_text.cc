@@ -29,24 +29,57 @@ namespace {
 // raster color animation without changing TTText's rendering behavior.
 class ClaySkityCanvasHelper final : public tttext::SkityCanvasHelper {
  public:
-  explicit ClaySkityCanvasHelper(clay::GraphicsCanvas* canvas)
-      : tttext::SkityCanvasHelper(canvas->GetGrCanvas()), canvas_(canvas) {}
+  explicit ClaySkityCanvasHelper(clay::GraphicsCanvas* canvas,
+                                 bool paint_as_mask = false)
+      : tttext::SkityCanvasHelper(canvas->GetGrCanvas()),
+        canvas_(canvas),
+        paint_as_mask_(paint_as_mask) {}
 
-  void DrawGlyphs(const tttext::ITypefaceHelper* font, uint32_t glyph_count,
-                  const uint16_t* glyphs, const char* text,
-                  uint32_t text_bytes, float ox, float oy, float* pos_x,
-                  float* pos_y, tttext::Painter* painter) override {
+  void DrawGlyphs(const tttext::ITypefaceHelper* font,
+                  uint32_t glyph_count,
+                  const uint16_t* glyphs,
+                  const char* text,
+                  uint32_t text_bytes,
+                  float ox,
+                  float oy,
+                  float* pos_x,
+                  float* pos_y,
+                  tttext::Painter* painter) override {
     if (glyph_count == 0) {
       return;
     }
-    tttext::SkityCanvasHelper::DrawGlyphs(
-        font, glyph_count, glyphs, text, text_bytes, ox, oy, pos_x, pos_y,
-        painter);
+
+    if (!paint_as_mask_) {
+      tttext::SkityCanvasHelper::DrawGlyphs(font, glyph_count, glyphs, text,
+                                            text_bytes, ox, oy, pos_x, pos_y,
+                                            painter);
+      canvas_->OnDrawDynamicTextBlob();
+      return;
+    }
+
+    auto* skity_painter = static_cast<tttext::SkityPainter*>(painter);
+    // A foreground painter bypasses Painter's fill color in SkityCanvasHelper.
+    // Detach it while drawing the mask so every glyph is opaque white.
+    auto platform_painter = std::move(skity_painter->platform_painter_);
+    const auto fill_color = painter->GetFillColor();
+    const auto stroke_color = painter->GetStrokeColor();
+    const auto shadows = painter->GetShadowList();
+    painter->SetFillColor(tttext::TTColor::WHITE);
+    painter->SetStrokeColor(tttext::TTColor::UNDEFINED);
+    painter->SetShadowList({});
+    tttext::SkityCanvasHelper::DrawGlyphs(font, glyph_count, glyphs, text,
+                                          text_bytes, ox, oy, pos_x, pos_y,
+                                          painter);
+    painter->SetFillColor(fill_color);
+    painter->SetStrokeColor(stroke_color);
+    painter->SetShadowList(shadows);
+    skity_painter->platform_painter_ = std::move(platform_painter);
     canvas_->OnDrawDynamicTextBlob();
   }
 
  private:
   clay::GraphicsCanvas* canvas_;
+  bool paint_as_mask_;
 };
 
 }  // namespace
@@ -154,10 +187,9 @@ void ParagraphTTText::Layout(double width) {
         tttext::ParagraphHorizontalAlignment::kLeft);
   }
   auto layout_halign = paragraph_style.GetHorizontalAlign();
-  auto width_mode =
-      layout_halign == tttext::ParagraphHorizontalAlignment::kLeft
-          ? tttext::LayoutMode::kAtMost
-          : tttext::LayoutMode::kDefinite;
+  auto width_mode = layout_halign == tttext::ParagraphHorizontalAlignment::kLeft
+                        ? tttext::LayoutMode::kAtMost
+                        : tttext::LayoutMode::kDefinite;
   region_ = std::make_unique<tttext::LayoutRegion>(
       width, std::numeric_limits<float>::max(), width_mode,
       tttext::LayoutMode::kAtMost);
@@ -211,11 +243,36 @@ void ParagraphTTText::Paint(SkCanvas* canvas, double x, double y) {
 #endif
 }
 
+void ParagraphTTText::PaintMask(SkCanvas* canvas, double x, double y) {
+#ifdef ENABLE_SKITY
+  FML_DCHECK(false);
+#else
+  paragraph_->SaveStyle();
+  tttext::Style mask_style;
+  mask_style.SetForegroundColor(tttext::TTColor(0xFFFFFFFF));
+  mask_style.SetForegroundPainter(nullptr);
+  paragraph_->ApplyStyleInRange(mask_style, 0, paragraph_->GetCharCount());
+  Paint(canvas, x, y);
+  paragraph_->RestoreStyle();
+#endif
+}
+
 #ifdef ENABLE_SKITY
 void ParagraphTTText::Paint(clay::GraphicsCanvas* canvas, double x, double y) {
   canvas->Save();
   canvas->Translate(x, y);
   ClaySkityCanvasHelper helper(canvas);
+  tttext::LayoutDrawer drawer(&helper);
+  drawer.DrawLayoutPage(region_.get());
+  canvas->Restore();
+}
+
+void ParagraphTTText::PaintMask(clay::GraphicsCanvas* canvas,
+                                double x,
+                                double y) {
+  canvas->Save();
+  canvas->Translate(x, y);
+  ClaySkityCanvasHelper helper(canvas, true);
   tttext::LayoutDrawer drawer(&helper);
   drawer.DrawLayoutPage(region_.get());
   canvas->Restore();

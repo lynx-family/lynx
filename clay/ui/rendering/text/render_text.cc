@@ -14,8 +14,6 @@
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/rendering_backend.h"
-#include "clay/gfx/style/color_source.h"
-#include "clay/gfx/style/tile_mode.h"
 #include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/text_style.h"
@@ -91,24 +89,20 @@ void RenderText::Paint(PaintingContext& context, const FloatPoint& offset) {
 
     GraphicsContext child_context(
         context.GetGraphicsContext()->GetUnrefQueue());
-    skity::Rect rect = skity::Rect::MakeXYWH(0, 0, Width(), Height());
+    skity::Rect rect =
+        skity::Rect::MakeXYWH(0, 0, ContentWidth(), ContentHeight());
     child_context.BeginRecording(rect);
     FloatPoint paint_offset = offset + PaintOffset();
     // Draw text into a mask that can be used to clip background.
-    PaintText(&child_context, paint_offset);
+    // Keep the mask picture in local coordinates. It will be positioned by the
+    // mask layer on the raster thread.
+    PaintText(&child_context, FloatPoint(), true);
     auto picture = child_context.FinishRecording();
-    // TODO(Jinsong): Generate a Lazy PaintImage to avoid blocking.
-    auto image = renderer_->renderer_client()->MakeRasterSnapshot(
-        picture->picture()->raw(),
-        skity::Vec2(ContentWidth(), ContentHeight()));
-
-    if (image) {
-      auto gradient_shader = std::make_shared<ImageColorSource>(
-          image, TileMode::kDecal, TileMode::kDecal);
-      context.PushShaderMask(gradient_shader,
-                             FloatRect(paint_offset.x(), paint_offset.y(),
-                                       ClientWidth(), ClientHeight()),
-                             BlendMode::kDstIn, offset, painter);
+    if (picture && !picture->IsEmpty()) {
+      context.PushPictureMask(std::shared_ptr<Picture>(std::move(picture)),
+                              FloatRect(paint_offset.x(), paint_offset.y(),
+                                        ClientWidth(), ClientHeight()),
+                              BlendMode::kDstIn, offset, painter);
       return;
     }
   }
@@ -124,7 +118,7 @@ void RenderText::Paint(PaintingContext& context, const FloatPoint& offset) {
 }
 
 void RenderText::PaintText(GraphicsContext* graphics_context,
-                           const FloatPoint& offset) {
+                           const FloatPoint& offset, bool as_mask) {
   GraphicsContext::AutoRestore saver(graphics_context, true);
   graphics_context->Translate(offset.x(), offset.y());
   bool needs_clip_x = Overflow() == CSSProperty::OVERFLOW_Y ||
@@ -161,11 +155,19 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
   }
   if (HasColorRasterAnimation()) {
     graphics_context->Canvas()->OnDrawDynamicTextBlobsStart();
-    painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
+    if (as_mask) {
+      painter_->PaintMask(graphics_context, x_offset, line_spacing_offset_);
+    } else {
+      painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
+    }
     PaintInlineEmojis(graphics_context, x_offset, line_spacing_offset_);
     graphics_context->Canvas()->OnDrawDynamicTextBlobsEnd();
   } else {
-    painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
+    if (as_mask) {
+      painter_->PaintMask(graphics_context, x_offset, line_spacing_offset_);
+    } else {
+      painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
+    }
     PaintInlineEmojis(graphics_context, x_offset, line_spacing_offset_);
   }
   if (select_end_ != select_start_) {
