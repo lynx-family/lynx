@@ -1123,6 +1123,14 @@ public enum com::lynx::tasm::behavior::BoxModelOffset {
   public com.lynx.tasm.behavior.BoxModelOffset.LAYOUT_BOTTOM LAYOUT_BOTTOM;
 }
 
+public class com::lynx::tasm::image::LynxImageRequestOptions::Builder :  {
+  public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setFinalUrl(@NonNull String finalUrl);
+  public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setFallbackUrls(@NonNull List< String > fallbackUrls);
+  public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setUseRGB565(boolean useRGB565);
+  public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setPriority(@NonNull @RequestPriority String priority);
+  public LynxImageRequestOptions com.lynx.tasm.image.LynxImageRequestOptions.Builder.build();
+}
+
 public class com::lynx::tasm::LynxConfigInfo::Builder :  {
   public com.lynx.tasm.LynxConfigInfo.Builder.Builder();
   public LynxConfigInfo com.lynx.tasm.LynxConfigInfo.Builder.buildLynxConfigInfo();
@@ -2945,6 +2953,7 @@ public interface com::lynx::tasm::image::model::ImageLoadListener {
 public class com::lynx::tasm::image::model::ImageRequestInfo :  {
   public com.lynx.tasm.image.model.ImageRequestInfo.ImageRequestInfo(ImageRequestInfoBuilder builder);
   public String com.lynx.tasm.image.model.ImageRequestInfo.getUrl();
+  public List< String > com.lynx.tasm.image.model.ImageRequestInfo.getFallbackUrls();
   public int com.lynx.tasm.image.model.ImageRequestInfo.getResizeWidth();
   public int com.lynx.tasm.image.model.ImageRequestInfo.getResizeHeight();
   public int com.lynx.tasm.image.model.ImageRequestInfo.getLoopCount();
@@ -2983,6 +2992,7 @@ public class com::lynx::tasm::image::model::ImageRequestInfoBuilder :  {
   public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnablePremultiplied();
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setEnablePremultiplied(boolean mEnablePremultiplied);
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setUrl(String url);
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setFallbackUrls(List< String > fallbackUrls);
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setResizeWidth(int width);
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setResizeHeight(int height);
   public void com.lynx.tasm.image.model.ImageRequestInfoBuilder.setCustomParam(Map< String, String > customParam);
@@ -5960,6 +5970,8 @@ public class com::lynx::tasm::image::LynxImageConfig :  {
   public Map< String, String > com.lynx.tasm.image.LynxImageConfig.getImageCustomParam();
   public void com.lynx.tasm.image.LynxImageConfig.setEnableImageLoadCallback(boolean enableImageLoadCallback);
   public boolean com.lynx.tasm.image.LynxImageConfig.getEnableImageLoadCallback();
+  public void com.lynx.tasm.image.LynxImageConfig.setImageRequestDelegate(@Nullable LynxImageRequestDelegate imageRequestDelegate);
+  public LynxImageRequestDelegate com.lynx.tasm.image.LynxImageConfig.getImageRequestDelegate();
 }
 
 public interface com::lynx::tasm::image::model::LynxImageFetcher {
@@ -6070,6 +6082,29 @@ public class com::lynx::tasm::image::LynxImageMediaFetcherProxy : com.lynx.tasm.
   public String com.lynx.tasm.image.LynxImageMediaFetcherProxy.shouldRedirectUrl(LynxResourceRequest request);
   public OptionalBool com.lynx.tasm.image.LynxImageMediaFetcherProxy.isLocalResource(String url);
   public void com.lynx.tasm.image.LynxImageMediaFetcherProxy.fetchImage(LynxResourceRequest request, LynxResourceCallback< Closeable > callback);
+}
+
+public interface com::lynx::tasm::image::LynxImageRequestDelegate {
+  public default Object com.lynx.tasm.image.LynxImageRequestDelegate.getImageCallerContext();
+  public default LynxImageRequestOptions com.lynx.tasm.image.LynxImageRequestDelegate.prepareImageRequest(@NonNull ImageRequestInfo requestInfo);
+  public default void com.lynx.tasm.image.LynxImageRequestDelegate.onImageRequestFinished( @NonNull ImageRequestInfo requestInfo, @NonNull LynxImageRequestResult result);
+}
+
+public class com::lynx::tasm::image::LynxImageRequestOptions :  {
+  public final String com.lynx.tasm.image.LynxImageRequestOptions.PRIORITY_LOW PRIORITY_LOW;
+  public final String com.lynx.tasm.image.LynxImageRequestOptions.PRIORITY_MEDIUM PRIORITY_MEDIUM;
+  public final String com.lynx.tasm.image.LynxImageRequestOptions.PRIORITY_HIGH PRIORITY_HIGH;
+  public static Builder com.lynx.tasm.image.LynxImageRequestOptions.newBuilder();
+  public String com.lynx.tasm.image.LynxImageRequestOptions.getFinalUrl();
+  public List< String > com.lynx.tasm.image.LynxImageRequestOptions.getFallbackUrls();
+  public boolean com.lynx.tasm.image.LynxImageRequestOptions.getUseRGB565();
+  public String com.lynx.tasm.image.LynxImageRequestOptions.getPriority();
+}
+
+public class com::lynx::tasm::image::LynxImageRequestResult :  {
+  public com.lynx.tasm.image.LynxImageRequestResult.LynxImageRequestResult(int errorCode, @Nullable Throwable throwable);
+  public int com.lynx.tasm.image.LynxImageRequestResult.getErrorCode();
+  public Throwable com.lynx.tasm.image.LynxImageRequestResult.getThrowable();
 }
 
 public class com::lynx::tasm::event::LynxImpressionEvent : com.lynx.tasm.event.LynxCustomEvent {
@@ -9711,6 +9746,9 @@ public enum com::lynx::tasm::behavior::ILynxUIRenderer::RenderType {
 }
 
 public interface com::lynx::tasm::provider::LynxResRequest::ReqMethod {
+}
+
+public interface com::lynx::tasm::image::LynxImageRequestOptions::RequestPriority {
 }
 
 public class com::lynx::tasm::core::ResManager :  {
