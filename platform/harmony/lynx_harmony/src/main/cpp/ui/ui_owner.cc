@@ -36,6 +36,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_text.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 
 namespace lynx {
@@ -108,7 +109,8 @@ UIBase* UIOwner::CreateJSUI(int sign, const std::string& tag) {
 }
 
 void UIOwner::CreateUI(int sign, const std::string& tag,
-                       PropBundleHarmony* painting_data, uint32_t node_index) {
+                       PropBundleHarmony* painting_data, uint32_t node_index,
+                       std::shared_ptr<LynxRendererContext> renderer_context) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_CREATE_UI + tag);
   UIBase* ui = nullptr;
   static bool enable_new_image = LynxEnv::GetInstance().EnableHarmonyNewImage();
@@ -146,6 +148,9 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   if (is_root_ui && attach_lynx_page_ui_callback_) {
     attach_lynx_page_ui_callback_(ui);
   }
+  if (renderer_context != nullptr && ui->Node() != nullptr) {
+    ui->AttachFragmentLayerRenderer(std::move(renderer_context), sign);
+  }
   UpdateComponentIdMap(ui, painting_data);
   ui->UpdateProps(painting_data);
   const auto& events = painting_data->GetEvents();
@@ -163,6 +168,36 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   MarkHasUIOperationsBottomUp(ui);
 
   // XXX: Move the tag to builder's map to static map or gperf.
+}
+
+UIBase* UIOwner::CreateFragmentLayerRootHost(int sign) {
+  if (context_ == nullptr) {
+    return nullptr;
+  }
+  auto* root = Root();
+  ui_holder_[sign] = root_;
+  if (!root_ui_created_) {
+    root_ui_created_ = true;
+    if (attach_lynx_page_ui_callback_) {
+      attach_lynx_page_ui_callback_(root);
+    }
+  }
+  return root;
+}
+
+UIBase* UIOwner::CreateFragmentLayerHost(int sign) {
+  if (context_ == nullptr) {
+    return nullptr;
+  }
+  if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    return it->second.get();
+  }
+  auto host =
+      std::shared_ptr<UIBase>(UIView::Make(context_.get(), sign, "view"));
+  auto* result = host.get();
+  ui_holder_[sign] = std::move(host);
+  MarkHasUIOperationsBottomUp(result);
+  return result;
 }
 
 void UIOwner::InsertUI(int parent, int child, int index) {

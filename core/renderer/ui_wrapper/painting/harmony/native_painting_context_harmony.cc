@@ -4,9 +4,33 @@
 
 #include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_harmony.h"
 
-namespace lynx::tasm {
+#include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_platform_harmony_ref.h"
+#include "core/renderer/ui_wrapper/painting/harmony/platform_renderer_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
+
+namespace lynx {
+namespace tasm {
 
 NativePaintingCtxHarmony::NativePaintingCtxHarmony() = default;
+
+NativePaintingCtxHarmony::NativePaintingCtxHarmony(
+    const std::shared_ptr<harmony::LynxContext>& context) {
+  if (context == nullptr) {
+    return;
+  }
+  renderer_context_ = std::make_shared<harmony::LynxRendererContext>(context);
+  platform_ref_ = std::make_shared<NativePaintingCtxPlatformHarmonyRef>(
+      std::make_unique<PlatformRendererHarmonyFactory>(renderer_context_));
+}
+
+NativePaintingCtxHarmony::~NativePaintingCtxHarmony() {
+  if (auto ref = std::static_pointer_cast<NativePaintingCtxPlatformRef>(
+          platform_ref_)) {
+    ref->Destroy();
+  }
+  platform_ref_.reset();
+  renderer_context_.reset();
+}
 
 std::unique_ptr<pub::Value> NativePaintingCtxHarmony::GetTextInfo(
     const std::string& content, const pub::Value& info) {
@@ -73,4 +97,5 @@ fml::RefPtr<PaintImage> NativePaintingCtxHarmony::CreateImage(
 void NativePaintingCtxHarmony::UpdatePlatformEventBundle(
     int id, PlatformEventBundle bundle) {}
 
-}  // namespace lynx::tasm
+}  // namespace tasm
+}  // namespace lynx
