@@ -7,7 +7,6 @@
 #if defined(OS_OSX)
 #else
 #include <EGL/egl.h>
-#include <GLES/gl.h>
 #endif
 
 #include <utility>

@@ -279,6 +279,6 @@ deps = {
         "url": "https://github.com/lynx-family/serval-kit.git",
         "commit": revision.SERVALKIT,
         "ignore_in_git": True,
-        "condition": system in ['windows', 'darwin'],
+        "condition": system in ['windows', 'darwin', 'linux'],
     },
 }

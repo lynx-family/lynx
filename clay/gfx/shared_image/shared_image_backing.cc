@@ -28,10 +28,13 @@
 #elif OS_HARMONY
 #include "clay/gfx/shared_image/native_image_image_backing.h"
 #elif OS_LINUX
+#if !defined(ENABLE_SKITY)
+#include "clay/gfx/shared_image/epoxy_shm_image_backing.h"
+#endif
+// ANGLE SHM is shared by both Skia and Skity software configurations.
 #if defined(ENABLE_SOFTWARE_RENDERING)
 #include "clay/gfx/shared_image/angle_software_shm_image_backing.h"
 #endif
-#include "clay/gfx/shared_image/epoxy_shm_image_backing.h"
 #endif
 
 namespace clay {
@@ -128,15 +131,18 @@ fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
                                                         gfx_handle);
   }
 #elif OS_LINUX
+#if !defined(ENABLE_SKITY)
   if (type == BackingType::kShmImage) {
     return fml::MakeRefCounted<EpoxyShmImageBacking>(pixel_format, size,
                                                      std::nullopt);
-  } else if (type == BackingType::kAngleShmImage) {
+  }
+#endif
 #if defined(ENABLE_SOFTWARE_RENDERING)
+  if (type == BackingType::kAngleShmImage) {
     return fml::MakeRefCounted<AngleSoftwareShmImageBacking>(pixel_format,
                                                              size);
-#endif
   }
+#endif
 #endif
 
   FML_LOG(ERROR) << "Unable to Create SharedImageBacking with type: "

@@ -89,13 +89,16 @@ source_set("skity_lib") {
   sources += wgsl_cross_sources
   sources += pugixml_static_sources
   sources += skity_codec_sources
-
   deps = [
     "//third_party/libjpeg-turbo:turbojpeg",
     "//third_party/libpng",
     "//third_party/libwebp",
     "//third_party/zlib",
   ]
+  if (is_linux) {
+    defines = [ "JSON_USE_EXCEPTION=0" ]
+    deps += [ "../../../third_party/jsoncpp:jsoncpp" ]
+  }
 
   public_configs = [ ":skity_config" ]
 }

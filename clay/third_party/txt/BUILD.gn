@@ -25,9 +25,7 @@ if (flutter_use_fontconfig) {
 
 config("txt_config") {
   visibility = [ ":*" ]
-  include_dirs = [
-    "src",
-  ]
+  include_dirs = [ "src" ]
 }
 
 config("allow_posix_names") {
@@ -132,9 +130,7 @@ source_set("txt") {
     "src/utils/WindowsUtils.h",
   ]
 
-  include_dirs = [
-    "src",
-  ]
+  include_dirs = [ "src" ]
   deps = []
 
   if (enable_skity) {
@@ -148,13 +144,13 @@ source_set("txt") {
     ]
   } else {
     sources += [
-      "src/txt/run_metrics.h",
-      "src/txt/paint_record.cc",
-      "src/txt/paint_record.h",
-      "src/txt/font_collection_skia.cc",
-      "src/txt/font_collection_skia.h",
       "src/txt/asset_font_manager_skia.cc",
       "src/txt/asset_font_manager_skia.h",
+      "src/txt/font_collection_skia.cc",
+      "src/txt/font_collection_skia.h",
+      "src/txt/paint_record.cc",
+      "src/txt/paint_record.h",
+      "src/txt/run_metrics.h",
       "src/txt/test_font_manager.cc",
       "src/txt/test_font_manager.h",
       "src/txt/typeface_font_asset_provider_skia.cc",
@@ -194,13 +190,15 @@ source_set("txt") {
 
   if (is_mac || is_ios) {
     sources += [ "src/txt/platform_mac.mm" ]
-    deps += [
-      "../../fml:fml",
-    ]
+    deps += [ "../../fml:fml" ]
   } else if (is_android) {
     sources += [ "src/txt/platform_android.cc" ]
   } else if (is_linux) {
-    sources += [ "src/txt/platform_linux.cc" ]
+    if (enable_skity) {
+      sources += [ "src/txt/platform.cc" ]
+    } else {
+      sources += [ "src/txt/platform_linux.cc" ]
+    }
   } else if (is_harmony) {
     sources += [ "src/txt/platform_harmony.cc" ]
   } else if (is_fuchsia) {
@@ -270,31 +268,25 @@ source_set("txt") {
       "src/tttext/tttext_headers.h",
     ]
 
-    include_dirs += [
-      "src/tttext/",
-    ]
+    include_dirs += [ "src/tttext/" ]
 
     if (!(is_android && enable_skity)) {
       public_deps += [ "//third_party/textlayout/src:textlayout" ]
       public_configs += [ "//third_party/textlayout/src:textlayout_public" ]
     }
 
-    public_deps -= [
-      "//third_party/harfbuzz",
-    ]
+    public_deps -= [ "//third_party/harfbuzz" ]
     if (!is_mac && !is_win) {
-      public_deps -= [
-        "//third_party/icu",
-      ]
+      public_deps -= [ "//third_party/icu" ]
     }
   }
 }
 
 if (enable_unittests) {
   txt_common_executable_deps = [
+    "../../../base/src:base_static",
     "../../fml:fml",  # For ICU initialization.
     "../../fml:icu_util",
-    "../../../base/src:base_static",
   ]
 
   test_fixtures("txt_fixtures") {
