@@ -38,12 +38,18 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
 @implementation LynxTemplateDataUpdateAction
 @end
 
+@interface LynxTemplateData ()
+- (NSArray*)copyUpdateActions:(BOOL)consumeSourceActions;
+- (lynx::lepus::Value)getDataForJSThreadInner;
+@end
+
 @implementation LynxTemplateData {
   lynx::lepus::Value value_;
   lynx::lepus::Value value_for_js_;
   NSString* _processorName;
   BOOL _readOnly;
   NSMutableArray<LynxTemplateDataUpdateAction*>* _updateActions;
+  NSObject* _jsDataLock;
   BOOL _useBoolLiterals;
 }
 
@@ -53,6 +59,7 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
     _readOnly = false;
 
     _updateActions = [[NSMutableArray alloc] init];
+    _jsDataLock = [NSObject new];
   }
   return self;
 }
@@ -63,6 +70,7 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
     _processorName = nil;
     _readOnly = YES;
     _updateActions = [[NSMutableArray alloc] init];
+    _jsDataLock = [NSObject new];
 
     LynxTemplateDataUpdateAction* action = [[LynxTemplateDataUpdateAction alloc] init];
     action.type = LynxTemplateDataActionTypeLepusSeed;
@@ -101,9 +109,26 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
 }
 
 - (NSArray*)copyUpdateActions {
+  return [self copyUpdateActions:NO];
+}
+
+- (NSArray*)copyUpdateActions:(BOOL)consumeSourceActions {
   NSMutableArray* array = [NSMutableArray new];
-  @synchronized(_updateActions) {
-    [array addObjectsFromArray:_updateActions];
+  @synchronized(_jsDataLock) {
+    if (!value_for_js_.IsNil()) {
+      LynxTemplateDataUpdateAction* action = [[LynxTemplateDataUpdateAction alloc] init];
+      action.type = LynxTemplateDataActionTypeLepusSeed;
+      action->seed_value_ = lynx::lepus::Value::ShallowCopy(value_for_js_);
+      [array addObject:action];
+    }
+    @synchronized(_updateActions) {
+      [array addObjectsFromArray:_updateActions];
+    }
+  }
+  if (consumeSourceActions) {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+      [self getDataForJSThread];
+    });
   }
   return array;
 }
@@ -219,7 +244,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     return;
   }
 
-  [self addObjectToUpdateActions:[inputData copyUpdateActions]];
+  [self addObjectToUpdateActions:[inputData copyUpdateActions:YES]];
   [self updateWithLepusValue:inputData->value_];
 }
 
@@ -355,8 +380,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   data->value_ = lynx::lepus::Value::Clone(base_value);
   data->_processorName = self.processorName;
   data->_readOnly = self.isReadOnly;
-  data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
-  [data addObjectToUpdateActions:[self copyUpdateActions]];
+  [data addObjectToUpdateActions:[self copyUpdateActions:YES]];
   return data;
 }
 
@@ -368,15 +392,19 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   return _processorName;
 }
 
-// GetTemplateDataForJSThread just needs to copy the updateActions.
 - (LynxTemplateData*)getTemplateDataForJSThread {
   LynxTemplateData* data = [[LynxTemplateData alloc] init];
-  data->value_for_js_ = lynx::lepus::Value::Clone(value_for_js_);
-  [data addObjectToUpdateActions:[self copyUpdateActions]];
+  [data addObjectToUpdateActions:[self copyUpdateActions:NO]];
   return data;
 }
 
 - (lynx::lepus::Value)getDataForJSThread {
+  @synchronized(_jsDataLock) {
+    return [self getDataForJSThreadInner];
+  }
+}
+
+- (lynx::lepus::Value)getDataForJSThreadInner {
   NSArray* array = [self obtainUpdateActions];
 
   // Init value_for_js_ or update _updateActions to value_for_js_.
@@ -410,7 +438,9 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
         break;
       }
       case LynxTemplateDataActionTypeLepusSeed: {
-        if (value_for_js_.IsNil()) {
+        if (value_for_js_.IsTable() && action->seed_value_.IsTable()) {
+          LynxViewDataManager::UpdateData(value_for_js_, action->seed_value_);
+        } else {
           value_for_js_ = lynx::lepus::Value::Clone(action->seed_value_);
         }
         break;
