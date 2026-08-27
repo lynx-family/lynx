@@ -289,10 +289,21 @@ class TestNativePaintingContext : public NativePaintingContext {
                                            init_config);
     }
   }
-  void UpdateDisplayList(int id, DisplayList list) override {
+  void EnqueueDisplayList(int id, DisplayList list) override {
     operations.emplace_back("update_display_list");
     if (ref_) {
       ref_->UpdateDisplayList(id, std::move(list));
+    }
+  }
+  void EnqueueDisplayLists(DisplayListUpdateBatch batch) override {
+    display_list_batch_sizes.push_back(batch.size());
+    display_list_batch_capacities.push_back(batch.capacity());
+    auto& ids = display_list_batch_ids.emplace_back();
+    for (const auto& update : batch) {
+      ids.push_back(update.id);
+    }
+    for (auto& update : batch) {
+      EnqueueDisplayList(update.id, std::move(update.display_list));
     }
   }
   fml::RefPtr<PaintImage> CreateImage(
@@ -313,7 +324,8 @@ class TestNativePaintingContext : public NativePaintingContext {
   }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
-  void ReconstructEventTargetTreeRecursively() override {
+  void EnqueueReconstructEventTargetTreeRecursively() override {
+    operations.emplace_back("reconstruct_event_target_tree");
     if (ref_) {
       ref_->ReconstructEventTargetTreeRecursively();
     }
@@ -325,6 +337,9 @@ class TestNativePaintingContext : public NativePaintingContext {
   }
 
   std::vector<std::string> operations;
+  std::vector<size_t> display_list_batch_sizes;
+  std::vector<size_t> display_list_batch_capacities;
+  std::vector<std::vector<int>> display_list_batch_ids;
   std::vector<CreatedImage> created_images_;
   bool fail_image_creation_{false};
 
@@ -431,6 +446,51 @@ TEST_F(FragmentDrawTest, DrawViewRecordsFinalOffsetWithRenderOffset) {
   EXPECT_FLOAT_EQ(view_item.payload.draw_view.offset_x, 15.f);
   EXPECT_FLOAT_EQ(view_item.payload.draw_view.offset_y, 26.f);
   EXPECT_FALSE(reader.HasNext());
+}
+
+TEST_F(FragmentDrawTest, DrawSubmitsPlatformLayersInOneBatch) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto child = manager->CreateFiberView();
+  child->MarkAsDirectChildOfCompatibleComponent(true);
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* child_fragment = child->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(child_fragment, nullptr);
+  ASSERT_TRUE(page_fragment->has_platform_renderer_);
+
+  auto* native_context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  native_context->GetNativePlatformRef()->CreatePlatformRenderer(
+      child_fragment->id(), PlatformRendererType::kView, nullptr);
+  child_fragment->has_platform_renderer_ = true;
+  page_fragment->UpdateLayout(0, 0);
+  ASSERT_EQ(page_fragment->PlatformLayerCount(), 2u);
+  native_context->display_list_batch_sizes.clear();
+  native_context->display_list_batch_capacities.clear();
+  native_context->display_list_batch_ids.clear();
+  native_context->operations.clear();
+  manager->MarkNeedReconstructEventTargetTreeForExposure();
+
+  manager->Repaint();
+
+  ASSERT_THAT(native_context->display_list_batch_sizes,
+              ::testing::ElementsAre(2u));
+  EXPECT_THAT(native_context->display_list_batch_capacities,
+              ::testing::ElementsAre(2u));
+  ASSERT_EQ(native_context->display_list_batch_ids.size(), 1u);
+  EXPECT_THAT(
+      native_context->display_list_batch_ids[0],
+      ::testing::ElementsAre(child_fragment->id(), page_fragment->id()));
+  EXPECT_THAT(
+      native_context->operations,
+      ::testing::ElementsAre("update_display_list", "update_display_list",
+                             "reconstruct_event_target_tree"));
 }
 
 TEST_F(FragmentDrawTest, ZIndexChangeKeepsLayerOffsetWithoutRelayout) {
@@ -565,11 +625,19 @@ TEST_F(FragmentDrawTest, ZIndexCreatesLayerWithOffsetWithoutRelayout) {
   set_layout(layer.get(), layer_fragment, 3.f, 5.f);
   page_fragment->UpdateLayout(0.f, 0.f);
 
+  auto* native_context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  native_context->display_list_batch_sizes.clear();
+  native_context->display_list_batch_capacities.clear();
   layer->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
   page->FlushActionsAsRoot();
   auto update_options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(update_options);
-  page_fragment->Draw();
+  manager->Repaint();
+  EXPECT_THAT(native_context->display_list_batch_sizes,
+              ::testing::ElementsAre(2u));
+  EXPECT_THAT(native_context->display_list_batch_capacities,
+              ::testing::ElementsAre(2u));
   ASSERT_TRUE(layer_fragment->has_platform_renderer_);
   ASSERT_EQ(layer_fragment->fragment_parent(), page_fragment);
   ASSERT_EQ(layer_fragment->fragment_from_element_parent(), inner_fragment);
@@ -2051,12 +2119,18 @@ TEST_F(FragmentTest, TestDrawNodeCapacity) {
   EXPECT_TRUE(root->element_container()->is_fragment());
   static_cast<Fragment*>(root->element_container())->UpdateLayout(0, 0);
   EXPECT_EQ(
+      static_cast<Fragment*>(root->element_container())->PlatformLayerCount(),
+      1u);
+  EXPECT_EQ(
       static_cast<Fragment*>(root->element_container())->draw_node_capacity_,
       5);
 
   static_cast<Fragment*>(root_child_0->element_container())
       ->has_platform_renderer_ = true;
   static_cast<Fragment*>(root->element_container())->UpdateLayout(0, 0);
+  EXPECT_EQ(
+      static_cast<Fragment*>(root->element_container())->PlatformLayerCount(),
+      2u);
   EXPECT_EQ(
       static_cast<Fragment*>(root->element_container())->draw_node_capacity_,
       2);

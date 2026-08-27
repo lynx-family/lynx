@@ -546,11 +546,19 @@ void NativePaintingCtxAndroid::CreatePlatformRenderer(
   });
 }
 
-void NativePaintingCtxAndroid::UpdateDisplayList(int id,
-                                                 DisplayList display_list) {
+void NativePaintingCtxAndroid::EnqueueDisplayList(int id,
+                                                  DisplayList display_list) {
   Enqueue([ref = platform_ref_, id, dl = std::move(display_list)]() mutable {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
         ->UpdateDisplayList(id, std::move(dl));
+  });
+}
+
+void NativePaintingCtxAndroid::EnqueueDisplayLists(
+    DisplayListUpdateBatch batch) {
+  Enqueue([ref = platform_ref_, batch = std::move(batch)]() mutable {
+    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
+        ->UpdateDisplayLists(std::move(batch));
   });
 }
 
@@ -565,7 +573,7 @@ void NativePaintingCtxAndroid::UpdatePlatformEventBundle(
   });
 }
 
-void NativePaintingCtxAndroid::ReconstructEventTargetTreeRecursively() {
+void NativePaintingCtxAndroid::EnqueueReconstructEventTargetTreeRecursively() {
   auto platform_ref =
       std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
   if (platform_ref && platform_ref->HasScheduledEventTargetTreeUpdate()) {

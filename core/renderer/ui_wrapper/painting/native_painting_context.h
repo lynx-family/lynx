@@ -5,19 +5,33 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_NATIVE_PAINTING_CONTEXT_H_
 
+#include <cstddef>
 #include <memory>
 
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
 namespace lynx::tasm {
-class DisplayList;
 class PlatformEventBundle;
 class NativePaintingContext {
  public:
+  class ScopedDisplayListBatch {
+   public:
+    ScopedDisplayListBatch(NativePaintingContext* context, size_t capacity);
+    ~ScopedDisplayListBatch();
+
+    ScopedDisplayListBatch(const ScopedDisplayListBatch&) = delete;
+    ScopedDisplayListBatch& operator=(const ScopedDisplayListBatch&) = delete;
+
+   private:
+    NativePaintingContext* context_;
+    DisplayListUpdateBatch batch_;
+  };
+
   NativePaintingContext() = default;
   virtual ~NativePaintingContext() = default;
   virtual void FinishTasmOperation(
@@ -34,16 +48,28 @@ class NativePaintingContext {
       const fml::RefPtr<PropBundle>& init_data,
       const PlatformRendererInitConfig& init_config =
           PlatformRendererInitConfig()) = 0;
-  virtual void UpdateDisplayList(int id, DisplayList list) = 0;
+  void UpdateDisplayList(int id, DisplayList list);
   virtual fml::RefPtr<PaintImage> CreateImage(
       int id, base::String src, const ImagePaintInfo& paint_info, float width,
       float height, int32_t event_mask = 0,
       bool disable_default_resize = false) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
-  virtual void ReconstructEventTargetTreeRecursively() = 0;
+  void ReconstructEventTargetTreeRecursively();
   virtual void UpdatePlatformEventBundle(int id,
                                          PlatformEventBundle bundle) = 0;
+
+ protected:
+  virtual void EnqueueDisplayList(int id, DisplayList list) = 0;
+  virtual void EnqueueDisplayLists(DisplayListUpdateBatch batch) = 0;
+  virtual void EnqueueReconstructEventTargetTreeRecursively() = 0;
+
+ private:
+  void BeginDisplayListBatch(DisplayListUpdateBatch* batch);
+  void EndDisplayListBatch(DisplayListUpdateBatch* batch);
+  void SubmitDisplayListBatch();
+
+  DisplayListUpdateBatch* current_display_list_batch_{nullptr};
 };
 
 }  // namespace lynx::tasm

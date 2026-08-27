@@ -108,13 +108,14 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
       int id, const base::String &tag_name, const fml::RefPtr<PropBundle> &init_data,
       const PlatformRendererInitConfig &init_config = PlatformRendererInitConfig()) override;
 
-  void UpdateDisplayList(int id, DisplayList display_list) override;
+  void EnqueueDisplayList(int id, DisplayList display_list) override;
+  void EnqueueDisplayLists(DisplayListUpdateBatch batch) override;
 
   void UpdateTextBundle(int id, intptr_t bundle) override;
 
   void DestroyTextBundle(int id) override;
 
-  void ReconstructEventTargetTreeRecursively() override;
+  void EnqueueReconstructEventTargetTreeRecursively() override;
 
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) override;
 

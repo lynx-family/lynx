@@ -17,6 +17,7 @@
 #include "base/include/vector.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/prop_bundle.h"
+#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
@@ -35,7 +36,6 @@ class Event;
 
 namespace tasm {
 
-class DisplayList;
 class PlatformEventTargetExposure;
 
 class NativePaintingCtxPlatformRef
@@ -59,6 +59,7 @@ class NativePaintingCtxPlatformRef
       const PlatformRendererInitConfig &init_config =
           PlatformRendererInitConfig());
   void UpdateDisplayList(int id, DisplayList &&display_list);
+  void UpdateDisplayLists(DisplayListUpdateBatch &&batch);
   void UpdateLayoutMetrics(int id, float left, float top, float width,
                            float height, const float *paddings,
                            const float *margins, const float *borders);

@@ -306,10 +306,17 @@ void NativePaintingCtxDarwin::CreatePlatformExtendedRenderer(
   });
 }
 
-void NativePaintingCtxDarwin::UpdateDisplayList(int id, DisplayList display_list) {
-  Enqueue([ref = platform_ref_, id, dl = std::move(display_list)]() {
+void NativePaintingCtxDarwin::EnqueueDisplayList(int id, DisplayList display_list) {
+  Enqueue([ref = platform_ref_, id, dl = std::move(display_list)]() mutable {
     std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->UpdateDisplayList(
-        id, std::move(const_cast<DisplayList &>(dl)));
+        id, std::move(dl));
+  });
+}
+
+void NativePaintingCtxDarwin::EnqueueDisplayLists(DisplayListUpdateBatch batch) {
+  Enqueue([ref = platform_ref_, batch = std::move(batch)]() mutable {
+    std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)->UpdateDisplayLists(
+        std::move(batch));
   });
 }
 
@@ -332,7 +339,7 @@ void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
   });
 }
 
-void NativePaintingCtxDarwin::ReconstructEventTargetTreeRecursively() {
+void NativePaintingCtxDarwin::EnqueueReconstructEventTargetTreeRecursively() {
   auto platform_ref = std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
   if (platform_ref && platform_ref->HasScheduledEventTargetTreeUpdate()) {
     return;

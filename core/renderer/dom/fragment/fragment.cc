@@ -104,6 +104,10 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   }
   behavior_->CreatePlatformRenderer(actual_init_data, init_config);
   has_platform_renderer_ = true;
+  auto* root = element_manager()->root();
+  if (root != nullptr && root->fragment_impl() != nullptr) {
+    root->fragment_impl()->platform_layer_count_++;
+  }
   return true;
 }
 
@@ -1586,7 +1590,7 @@ void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {
   layout_info_.layout_result.offset_.SetX(left);
   layout_info_.layout_result.offset_.SetY(top);
-  UpdateRenderOffsetRecursively(0, 0, this);
+  platform_layer_count_ = UpdateRenderOffsetRecursively(0, 0, this);
 }
 
 void Fragment::UpdateLayoutWithoutChange() {
@@ -1644,8 +1648,9 @@ void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
   }
 }
 
-void Fragment::UpdateRenderOffsetRecursively(float left, float top,
-                                             Fragment* root) {
+size_t Fragment::UpdateRenderOffsetRecursively(float left, float top,
+                                               Fragment* root) {
+  size_t platform_layer_count = has_platform_renderer_ ? 1 : 0;
   UpdateDrawingOffset();
   float child_offset_x = left + drawing_offset_[0];
   float child_offset_y = top + drawing_offset_[1];
@@ -1682,9 +1687,10 @@ void Fragment::UpdateRenderOffsetRecursively(float left, float top,
   FlushPendingNodeReadyIfNeeded();
 
   for (auto* child : children_) {
-    child->UpdateRenderOffsetRecursively(child_offset_x, child_offset_y,
-                                         has_platform_renderer_ ? this : root);
+    platform_layer_count += child->UpdateRenderOffsetRecursively(
+        child_offset_x, child_offset_y, has_platform_renderer_ ? this : root);
   }
+  return platform_layer_count;
 }
 
 void Fragment::UpdateDrawingOffset() {

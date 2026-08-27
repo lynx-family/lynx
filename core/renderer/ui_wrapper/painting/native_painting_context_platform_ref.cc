@@ -87,6 +87,13 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
   layer->UpdateDisplayList(std::move(display_list));
 }
 
+void NativePaintingCtxPlatformRef::UpdateDisplayLists(
+    DisplayListUpdateBatch &&batch) {
+  for (auto &update : batch) {
+    UpdateDisplayList(update.id, std::move(update.display_list));
+  }
+}
+
 void NativePaintingCtxPlatformRef::UpdateLayoutMetrics(
     int id, float left, float top, float width, float height,
     const float *paddings, const float *margins, const float *borders) {
