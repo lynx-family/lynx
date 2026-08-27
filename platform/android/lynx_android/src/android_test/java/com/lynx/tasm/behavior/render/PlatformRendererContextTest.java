@@ -26,6 +26,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.tasm.performance.PerformanceController;
+import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -327,6 +328,38 @@ public class PlatformRendererContextTest {
     verify(owner).updateLayout(eq(1), eq(6), eq(8), eq(3), eq(4), eq(7), eq(8), eq(9), eq(10),
         eq(11), eq(12), eq(13), eq(14), eq(15), eq(16), eq(17), eq(18), isNull(), isNull(), eq(0f),
         eq(1));
+  }
+
+  @Test
+  public void testUpdatePlatformRendererFrameSyncsPageRootLayoutWithoutUIOwner() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout view = spy(new FrameLayout(context));
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    IRendererHost host = createHost(view, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    UIBody uiBody = TestingUtils.getUIBody(TestingUtils.getLynxContext());
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(mockLynxContext.getUIBody()).thenReturn(uiBody);
+    when(owner.getRootSign()).thenReturn(1);
+    when(owner.getNode(1)).thenReturn(uiBody);
+
+    rendererContext.updatePlatformRendererFrame(
+        1, true, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18);
+
+    // The page root only syncs the minimal layout fields, without the UIOwner layout path.
+    assertEquals(6, uiBody.getLeft());
+    assertEquals(8, uiBody.getTop());
+    assertEquals(3, uiBody.getWidth());
+    assertEquals(4, uiBody.getHeight());
+    assertEquals(3, uiBody.getLatestWidth());
+    assertEquals(4, uiBody.getLatestHeight());
+    verify(owner, never())
+        .updateLayout(anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(),
+            anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(),
+            anyInt(), anyInt(), any(), any(), anyFloat(), anyInt());
   }
 
   @Test
