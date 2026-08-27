@@ -7,12 +7,14 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxVersion.h>
 #import <XCTest/XCTest.h>
+#import "LynxListItemHelper.h"
 #import "LynxListStickyManager.h"
 #import "LynxUI+Gesture.h"
 
 @interface LynxUIListContainer (Testing)
 @property(nonatomic, assign) CGFloat pagingAlignFactor;
 @property(nonatomic, assign) CGFloat pagingAlignOffset;
+@property(nonatomic, strong) LynxListItemHelper *itemHelper;
 @property(nonatomic, strong) LynxListStickyManager *stickyManager;
 @end
 
@@ -63,6 +65,29 @@
 
   XCTAssertTrue(list.stickyManager.enabled);
   XCTAssertEqualWithAccuracy(list.stickyManager.offset, 12.5, 0.001);
+}
+
+- (void)testItemOperationsAreForwardedToHelper {
+  LynxUIListContainer *list = [self setUpList];
+  XCTAssertNotNil(list.itemHelper);
+  [LynxPropsProcessor updateProp:@{@"itemkeys" : @[ @"first", @"second" ]}
+                         withKey:@"list-container-info"
+                           forUI:list];
+
+  LynxUIComponent *component = [[LynxUIComponent alloc] init];
+  component.itemKey = @"second";
+  [component updateFrame:CGRectMake(0, 20, 100, 40)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+  [list insertListComponent:component];
+
+  XCTAssertEqual([list getIndexFromItemKey:@"second"], 1);
+  XCTAssertEqualObjects([list.visibleCells valueForKeyPath:@"holdingUI.itemKey"], (@[ @"second" ]));
+  XCTAssertTrue(CGRectEqualToRect(component.view.frame, CGRectMake(0, 0, 100, 40)));
+
+  [list removeListComponent:component];
+  XCTAssertEqual(list.visibleCells.count, 0U);
 }
 
 @end

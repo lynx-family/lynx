@@ -17,6 +17,7 @@
 
 #import <Lynx/LynxUIContext+Internal.h>
 
+#import "LynxListItemHelper.h"
 #import "LynxListStickyManager.h"
 
 #import "core/public/list_container_proxy.h"
@@ -36,42 +37,10 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
   LynxListScrollStateScrollAnimation = 4,
 };
 
+@interface LynxListContainerComponentWrapper () <LynxListItemWrapper>
+@end
+
 @implementation LynxListContainerComponentWrapper
-
-- (void)addListItemView:(UIView *)listItemView
-              withFrame:(CGRect)frame
-           addSubLayers:(BOOL)addSubLayers
-      adjustLayersFrame:(BOOL)adjustLayersFrame {
-  self.frame = frame;
-  listItemView.frame = [LynxListContainerComponentWrapper getAlignedFrame:frame];
-  [self addSubview:listItemView];
-  if (self.holdingUI && self.holdingUI.backgroundManager) {
-    LynxBackgroundManager *backgroundManager = self.holdingUI.backgroundManager;
-    // Move the borderLayer and backgroundLayer of the ListItemView to the wrapperView.
-    if (addSubLayers) {
-      // Note: If list-item is new created, all layers are added to WrapperView's layer in
-      // OnNodeReady(), but if list-item is reused we need to execute add sub layers.
-      CALayer *listItemViewLayer = self.holdingUI.view.layer;
-      if (backgroundManager.borderLayer) {
-        [backgroundManager.borderLayer removeFromSuperlayer];
-        [self.layer insertSublayer:backgroundManager.borderLayer above:listItemViewLayer];
-      }
-      if (backgroundManager.backgroundLayer) {
-        [backgroundManager.backgroundLayer removeFromSuperlayer];
-        [self.layer insertSublayer:backgroundManager.backgroundLayer below:listItemViewLayer];
-      }
-    }
-    // Adjust all related layers (background, border and mask layers).
-    if (adjustLayersFrame) {
-      NSValue *value = [NSValue valueWithCGRect:listItemView.frame];
-      [self.holdingUI setLayerValue:value forKeyPath:@"frame" forAllLayers:YES];
-    }
-  }
-}
-
-+ (CGRect)getAlignedFrame:(CGRect)frame {
-  return CGRectMake(0, 0, frame.size.width, frame.size.height);
-}
 
 @end
 
@@ -121,7 +90,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 
 @end
 
-@interface LynxUIListContainer () <LynxListStickyManagerOwner> {
+@interface LynxUIListContainer () <LynxListItemHelperOwner, LynxListStickyManagerOwner> {
   std::unique_ptr<lynx::shell::ListContainerProxy> _listContainerProxy;
 }
 @property(nonatomic, assign) BOOL verticalOrientation;
@@ -131,6 +100,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 // True if this setContentOffset is triggered by onNodeReady
 @property(nonatomic, assign) BOOL shouldBlockScrollByListContainer;
 @property(nonatomic, assign) CGPoint previousContentOffset;
+@property(nonatomic, strong) LynxListItemHelper *itemHelper;
 @property(nonatomic, strong) LynxListStickyManager *stickyManager;
 @property(nonatomic, assign) BOOL enableFadeInAnimation;
 @property(nonatomic, assign) BOOL enableBatchRender;
@@ -159,6 +129,7 @@ LYNX_REGISTER_UI("list-container")
 - (instancetype)init {
   self = [super init];
   if (self) {
+    _itemHelper = [[LynxListItemHelper alloc] initWithOwner:self];
     _stickyManager = [[LynxListStickyManager alloc] initWithOwner:self];
     _verticalOrientation = YES;  // Default Vertical
     self.enableScrollY = YES;
@@ -304,10 +275,7 @@ LYNX_REGISTER_UI("list-container")
   LynxListContainerComponentWrapper *wrapper =
       (LynxListContainerComponentWrapper *)component.view.superview;
   if ([wrapper isKindOfClass:LynxListContainerComponentWrapper.class]) {
-    [wrapper addListItemView:component.view
-                   withFrame:component.frame
-                addSubLayers:NO
-           adjustLayersFrame:YES];
+    [self.itemHelper updateLayoutForComponent:component inWrapper:wrapper];
     wrapper.layer.zPosition = component.zIndex;
   }
   [self.stickyManager didLayoutComponent:component];
@@ -328,10 +296,7 @@ LYNX_REGISTER_UI("list-container")
     LynxListContainerComponentWrapper *wrapper = [[LynxListContainerComponentWrapper alloc] init];
     wrapper.holdingUI = component;
     [component.view removeFromSuperview];
-    [wrapper addListItemView:component.view
-                   withFrame:component.frame
-                addSubLayers:YES
-           adjustLayersFrame:NO];
+    [self.itemHelper attachComponent:component toWrapper:wrapper];
     [self.view addSubview:wrapper];
     wrapper.layer.zPosition = component.zIndex;
     // Invoke fade-in animation.
@@ -1149,88 +1114,15 @@ LYNX_UI_METHOD(getVisibleCells) {
 
 #pragma mark utils
 - (NSInteger)getIndexFromItemKey:(NSString *)itemKey {
-  __block NSInteger target = -1;
-  [self.itemKeys
-      enumerateObjectsUsingBlock:^(NSString *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
-        if ([obj isEqualToString:itemKey]) {
-          target = idx;
-          *stop = YES;
-        }
-      }];
-  return target;
-}
-
-- (BOOL)isVisibleCellVertical:(UIView *)cellView {
-  CGFloat minY = CGRectGetMinY(cellView.frame);
-  CGFloat maxY = CGRectGetMaxY(cellView.frame);
-  CGFloat offsetMinY = self.view.contentOffset.y;
-  CGFloat offsetMaxY = offsetMinY + CGRectGetHeight(self.view.frame);
-  return ((minY <= offsetMinY && maxY >= offsetMinY) ||
-          (minY <= offsetMaxY && maxY >= offsetMaxY) || (minY >= offsetMinY && maxY <= offsetMaxY));
-}
-
-- (BOOL)isVisibleCellHorizontal:(UIView *)cellView {
-  CGFloat minX = CGRectGetMinX(cellView.frame);
-  CGFloat maxX = CGRectGetMaxX(cellView.frame);
-  CGFloat offsetMinX = self.view.contentOffset.x;
-  CGFloat offsetMaxX = offsetMinX + CGRectGetWidth(self.view.frame);
-  return ((minX <= offsetMinX && maxX >= offsetMinX) ||
-          (minX <= offsetMaxX && maxX >= offsetMaxX) || (minX >= offsetMinX && maxX <= offsetMaxX));
+  return [self.itemHelper indexForItemKey:itemKey];
 }
 
 - (NSArray<LynxListContainerComponentWrapper *> *)visibleCells {
-  NSMutableArray<LynxListContainerComponentWrapper *> *attachedCells = [NSMutableArray array];
-  [self.view.subviews
-      enumerateObjectsUsingBlock:^(__kindof LynxListContainerComponentWrapper *_Nonnull obj,
-                                   NSUInteger idx, BOOL *_Nonnull stop) {
-        if ([obj isKindOfClass:LynxListContainerComponentWrapper.class]) {
-          if (self.verticalOrientation ? [self isVisibleCellVertical:obj]
-                                       : [self isVisibleCellHorizontal:obj]) {
-            [attachedCells addObject:obj];
-          }
-        }
-      }];
-
-  [attachedCells
-      sortUsingComparator:^NSComparisonResult(LynxListContainerComponentWrapper *_Nonnull lhs,
-                                              LynxListContainerComponentWrapper *_Nonnull rhs) {
-        NSInteger lhsPosition = [self getIndexFromItemKey:lhs.holdingUI.itemKey];
-        NSInteger rhsPosition = [self getIndexFromItemKey:rhs.holdingUI.itemKey];
-
-        if (lhsPosition < rhsPosition) {
-          return NSOrderedAscending;
-        }
-
-        if (lhsPosition > rhsPosition) {
-          return NSOrderedDescending;
-        }
-
-        return NSOrderedSame;
-      }];
-
-  return attachedCells;
+  return (NSArray<LynxListContainerComponentWrapper *> *)self.itemHelper.visibleItemWrappers;
 }
 
 - (NSArray<NSDictionary *> *)visibleCellsInfo {
-  NSMutableArray<NSDictionary *> *attachedCells = [NSMutableArray array];
-  [self.visibleCells
-      enumerateObjectsUsingBlock:^(__kindof LynxListContainerComponentWrapper *_Nonnull obj,
-                                   NSUInteger idx, BOOL *_Nonnull stop) {
-        CGFloat cellTop = obj.frame.origin.y - self.view.contentOffset.y;
-        CGFloat cellLeft = obj.frame.origin.x - self.view.contentOffset.x;
-        [attachedCells addObject:@{
-          @"id" : (obj.holdingUI.idSelector ?: @"unknown"),
-          @"position" : @([self getIndexFromItemKey:obj.holdingUI.itemKey]),
-          @"index" : @([self getIndexFromItemKey:obj.holdingUI.itemKey]),
-          @"itemKey" : obj.holdingUI.itemKey ?: @"",
-          @"top" : @(cellTop),
-          @"bottom" : @(cellTop + obj.frame.size.height),
-          @"left" : @(cellLeft),
-          @"right" : @(cellLeft + obj.frame.size.width),
-        }];
-      }];
-
-  return attachedCells;
+  return self.itemHelper.visibleItemInfo;
 }
 
 - (CGFloat)contentOffsetXRTL:(CGFloat)contentOffsetX {
@@ -1264,55 +1156,15 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (id<LynxEventTarget>)findHitTestTarget:(CGPoint)point withEvent:(UIEvent *)event {
-  __block id<LynxEventTarget> hitTarget = [self.stickyManager findHitTargetAtPoint:point
-                                                                         withEvent:event];
+  id<LynxEventTarget> hitTarget = [self.stickyManager findHitTargetAtPoint:point withEvent:event];
   if (hitTarget) {
     return hitTarget;
   }
-  // if the zIndex of cells are assigned according to their index
-  // we then use containsPoints to test each cell form the max zIndex to the min
-  // zIndex.
-  NSArray<LynxListContainerComponentWrapper *> *visibleCells = self.view.subviews;
-  NSArray<LynxListContainerComponentWrapper *> *visibleCellsSortedByZIndexReversely =
-      [visibleCells sortedArrayUsingComparator:^NSComparisonResult(
-                        id<LynxListCell> _Nonnull cellA, id<LynxListCell> _Nonnull cellB) {
-        NSInteger ZPositionA = ((UIView *)cellA).layer.zPosition;
-        NSInteger ZPositionB = ((UIView *)cellB).layer.zPosition;
-        if (ZPositionA < ZPositionB) {
-          return NSOrderedDescending;
-        } else {
-          return NSOrderedAscending;
-        }
-        return NSOrderedSame;
-      }];
-  [visibleCellsSortedByZIndexReversely
-      enumerateObjectsUsingBlock:^(LynxListContainerComponentWrapper *_Nonnull obj, NSUInteger idx,
-                                   BOOL *_Nonnull stop) {
-        if ([obj isKindOfClass:[LynxListContainerComponentWrapper class]]) {
-          CGPoint pointInCell = [obj.holdingUI.view convertPoint:point fromView:self.view];
-          if ([obj.holdingUI containsPoint:pointInCell inHitTestFrame:obj.bounds]) {
-            hitTarget = [obj.holdingUI hitTest:pointInCell withEvent:event];
-            if (hitTarget) {
-              *stop = YES;
-            }
-          }
-        }
-      }];
-  return hitTarget;
+  return [self.itemHelper findHitTargetAtPoint:point withEvent:event];
 }
 
 - (LynxListContainerComponentWrapper *)visibleWrapperAtPoint:(CGPoint)point {
-  __block LynxListContainerComponentWrapper *target;
-  [self.view.subviews enumerateObjectsUsingBlock:^(LynxListContainerComponentWrapper *obj,
-                                                   NSUInteger idx, BOOL *_Nonnull stop) {
-    CGPoint pointInLayer = [self.view convertPoint:point toView:obj];
-    BOOL contains = [obj.layer containsPoint:pointInLayer];
-    if (contains) {
-      target = obj;
-      *stop = YES;
-    }
-  }];
-  return target;
+  return (LynxListContainerComponentWrapper *)[self.itemHelper firstSubviewAtPoint:point];
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
@@ -1329,6 +1181,20 @@ LYNX_UI_METHOD(getVisibleCells) {
     return [wrapper.holdingUI hitTest:[self.view convertPoint:point toView:wrapper.holdingUI.view]
                             withEvent:event];
   }
+}
+
+#pragma mark LynxListItemHelperOwner
+
+- (UIScrollView *)scrollViewForListItemHelper {
+  return self.view;
+}
+
+- (BOOL)isVerticalForListItemHelper {
+  return self.verticalOrientation;
+}
+
+- (NSArray<NSString *> *)itemKeysForListItemHelper {
+  return self.itemKeys;
 }
 
 #pragma mark LynxListStickyManagerOwner
