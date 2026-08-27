@@ -105,7 +105,7 @@ void JSUIBase::SetFrameNode(ArkUI_NodeHandle frame_node) {
 }
 
 napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
-  size_t argc = 20;
+  size_t argc = 21;
   /** 0 - js ref
    *  1 - context ptr array
    *  2 - FrameNode napi_value
@@ -126,6 +126,7 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
    *  17 - isScrollable func ref
    *  18 - scrollX func ref
    *  19 - scrollY func ref
+   *  20 - layout placeholder bool
    */
   napi_value argv[argc];
   napi_value js_this;
@@ -144,8 +145,11 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   napi_get_value_bool(env, argv[12], &has_customized_layout);
   bool need_window_state_change_event = false;
   napi_get_value_bool(env, argv[14], &need_window_state_change_event);
-  auto* ui = new JSUIBase(context, node, sign, tag, has_customized_layout,
-                          need_window_state_change_event);
+  bool is_layout_placeholder = false;
+  napi_get_value_bool(env, argv[20], &is_layout_placeholder);
+  auto* ui =
+      new JSUIBase(context, node, sign, tag, has_customized_layout,
+                   need_window_state_change_event, is_layout_placeholder);
   ui->env_ = env;
   napi_create_reference(env, argv[0], 1, &ui->js_ref_);
   napi_create_reference(env, argv[5], 1, &ui->js_update_);
@@ -505,6 +509,10 @@ void JSUIBase::UpdateLayout(float left, float top, float width, float height,
                             const float* paddings, const float* margins,
                             const float* sticky, float max_height,
                             uint32_t node_index) {
+  if (is_layout_placeholder_) {
+    width = 0;
+    height = 0;
+  }
   UIBase::UpdateLayout(left, top, width, height, paddings, margins, sticky,
                        max_height, node_index);
   base::NapiHandleScope scope(env_);

@@ -50,6 +50,10 @@ export abstract class UIBase {
     return false;
   }
 
+  protected isLayoutPlaceholder(): boolean {
+    return false;
+  }
+
   focusable(): boolean {
     return false;
   }
@@ -93,7 +97,8 @@ export abstract class UIBase {
         this.dispose,
         this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
         this.needWindowStateChangeEvent(),
-        this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY);
+        this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY,
+        this.isLayoutPlaceholder());
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }
