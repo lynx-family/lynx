@@ -76,6 +76,20 @@ void InspectorElementObserverImpl::OnSetNativeProps(lynx::tasm::Element *ptr,
   element_executor->OnSetNativeProps(ptr, name, value, is_style);
 }
 
+void InspectorElementObserverImpl::OnAddInlineStyle(
+    int32_t backend_node_id, lynx::tasm::CSSPropertyID property_id,
+    const lynx::lepus::Value &value) {
+  auto element_executor = element_executor_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
+  element_executor->OnAddInlineStyle(backend_node_id, property_id, value);
+}
+
+void InspectorElementObserverImpl::OnFiberFlushElementTree() {
+  auto element_executor = element_executor_wp_.lock();
+  CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
+  element_executor->OnFiberFlushElementTree();
+}
+
 void InspectorElementObserverImpl::OnCSSStyleSheetAdded(
     lynx::tasm::Element *ptr) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,

@@ -29,6 +29,10 @@ class InspectorElementObserverImpl
                                 const std::string& name,
                                 const std::string& value,
                                 bool is_style) override;
+  void OnAddInlineStyle(int32_t backend_node_id,
+                        lynx::tasm::CSSPropertyID property_id,
+                        const lynx::lepus::Value& value) override;
+  void OnFiberFlushElementTree() override;
 
   virtual void OnCSSStyleSheetAdded(lynx::tasm::Element* ptr) override;
   virtual void OnCSSMediaQueryResultChanged() override;
