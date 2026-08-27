@@ -2591,6 +2591,18 @@ public abstract class LynxBaseUI
     mLatestSize.y = height;
   }
 
+  /**
+   * Syncs only the layout frame fields without triggering any layout lifecycle callbacks
+   * (onLayoutUpdated, layoutchange event, etc.). Used by the fragment layer renderer's
+   * page root, whose content is laid out by the Renderer directly on the UIBodyView.
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public final void syncLayoutFrame(int left, int top, int width, int height) {
+    setPosition(left, top);
+    mWidth = width;
+    mHeight = height;
+  }
+
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public final int getLatestWidth() {
     return mLatestSize.x;

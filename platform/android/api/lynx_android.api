@@ -4439,6 +4439,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public final boolean com.lynx.tasm.behavior.ui.LynxBaseUI.shouldDoTransform();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.updateLayout(int left, int top, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth, Rect bound);
   public final void com.lynx.tasm.behavior.ui.LynxBaseUI.updateLayoutSize(int width, int height);
+  public final void com.lynx.tasm.behavior.ui.LynxBaseUI.syncLayoutFrame(int left, int top, int width, int height);
   public final int com.lynx.tasm.behavior.ui.LynxBaseUI.getLatestWidth();
   public final int com.lynx.tasm.behavior.ui.LynxBaseUI.getLatestHeight();
   public final boolean com.lynx.tasm.behavior.ui.LynxBaseUI.hasSizeChanged();
