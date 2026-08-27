@@ -3014,17 +3014,6 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
     return nullptr;
   }
 
-  bool clip_x = (GetOverflow() == CSSProperty::OVERFLOW_Y);
-  bool clip_y = (GetOverflow() == CSSProperty::OVERFLOW_X);
-  if (clip_x && (point_by_self.x() < -hit_slop_left_ ||
-                 point_by_self.x() > width_ + hit_slop_right_)) {
-    return nullptr;
-  }
-  if (clip_y && (point_by_self.y() < -hit_slop_top_ ||
-                 point_by_self.y() > height_ + hit_slop_bottom_)) {
-    return nullptr;
-  }
-
   BaseView* view = nullptr;
 
   RebuildSortedChildrenIfNeeded();

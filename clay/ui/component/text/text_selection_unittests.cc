@@ -732,9 +732,7 @@ TEST_F_UI(TextSelectionTest, SelectWordCrossesNestedInlineTextBoundaries) {
   const auto& english_rect = english_boxes.front().rect;
   FloatPoint english_point((english_rect.Left() + english_rect.Right()) / 2,
                            (english_rect.Top() + english_rect.Bottom()) / 2);
-  FloatPoint relative_position;
-  EXPECT_EQ(text_view_->GetViewAtPosition(english_point, english_point,
-                                          &relative_position),
+  EXPECT_EQ(text_view_->GetViewAtPosition(english_point, english_point),
             english_inner.get());
   EXPECT_EQ(text_view_->SelectWord(7), TextRange(3, 12));
   EXPECT_EQ(text_view_->GetRenderText()->GetSelectionString(), u"selection");
@@ -742,8 +740,7 @@ TEST_F_UI(TextSelectionTest, SelectWordCrossesNestedInlineTextBoundaries) {
   const auto& chinese_rect = chinese_boxes.front().rect;
   FloatPoint chinese_point((chinese_rect.Left() + chinese_rect.Right()) / 2,
                            (chinese_rect.Top() + chinese_rect.Bottom()) / 2);
-  EXPECT_EQ(text_view_->GetViewAtPosition(chinese_point, chinese_point,
-                                          &relative_position),
+  EXPECT_EQ(text_view_->GetViewAtPosition(chinese_point, chinese_point),
             chinese_inner.get());
   auto chinese_boundary = text_view_->SelectWord(16);
   EXPECT_GE(chinese_boundary.start(), 15u);
