@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/platform/harmony/message_loop_harmony.h"
 #include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
@@ -25,6 +26,7 @@
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
 #include "core/renderer/utils/base/base_def.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
@@ -784,6 +786,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   napi_set_named_property(env, exports, export_class.c_str(), cons);
 
   NAPI_CREATE_FUNCTION(env, exports, "initGlobalEnv", InitGlobalEnv);
+  NAPI_CREATE_FUNCTION(env, exports, "setupHarmonyMessageLoopPromiseMicrotask",
+                       SetupHarmonyMessageLoopPromiseMicrotask);
   NAPI_CREATE_FUNCTION(env, exports, "registerImageService",
                        RegisterImageService);
   NAPI_CREATE_FUNCTION(env, exports, "setEmojiResourceFetcher",
@@ -907,6 +911,25 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
   });
 
   return nullptr;
+}
+
+napi_value LynxTemplateRenderer::SetupHarmonyMessageLoopPromiseMicrotask(
+    napi_env env, napi_callback_info info) {
+  static std::once_flag setup_once_flag;
+  static bool enabled = false;
+  std::call_once(setup_once_flag, [env]() {
+    enabled =
+        tasm::LynxEnv::GetInstance().EnableHarmonyMessageLoopPromiseMicrotask();
+    if (enabled) {
+      auto* ui_loop = static_cast<fml::MessageLoopHarmony*>(
+          base::UIThread::GetRunner()->GetLoop().get());
+      ui_loop->SetupNapiCallback(env);
+    }
+  });
+
+  napi_value result;
+  napi_get_boolean(env, enabled, &result);
+  return result;
 }
 
 napi_value LynxTemplateRenderer::RegisterImageService(napi_env env,
