@@ -33,6 +33,13 @@ source_set("headless") {
     deps += [ "../../../../gfx:gfx" ]
   }
 
+  if (is_linux && enable_skity) {
+    deps += [
+      "../common/desktop/codec",
+      "../common/desktop/svg",
+    ]
+  }
+
   if (shell_enable_gl) {
     sources += [
       "gl/clay_headless_renderer_gl.cc",

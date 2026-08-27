@@ -78,8 +78,9 @@ class ClayHeadlessSwiftShaderManager {
         EGL_PLATFORM_ANGLE_DEVICE_TYPE_SWIFTSHADER_ANGLE,
         EGL_NONE,
     };
-    display_ = eglGetPlatformDisplay(EGL_PLATFORM_ANGLE_ANGLE,
-                                     EGL_DEFAULT_DISPLAY, display_attributes);
+    display_ = eglGetPlatformDisplay(
+        EGL_PLATFORM_ANGLE_ANGLE, reinterpret_cast<void*>(EGL_DEFAULT_DISPLAY),
+        display_attributes);
     if (display_ == EGL_NO_DISPLAY) {
       LogEglError("Failed to get the ANGLE SwiftShader display");
       return false;
