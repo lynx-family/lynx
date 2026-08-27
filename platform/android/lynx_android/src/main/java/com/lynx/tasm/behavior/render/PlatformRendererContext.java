@@ -660,13 +660,26 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
 
     LynxUIOwner owner = mContext.getLynxUIOwner();
-    if (owner != null && owner.getNode(sign) != null) {
-      int layoutLeft = left + dx;
-      int layoutTop = top + dy;
-      owner.updateLayout(sign, layoutLeft, layoutTop, width, height, paddingLeft, paddingTop,
-          paddingRight, paddingBottom, marginLeft, marginTop, marginRight, marginBottom,
-          borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth, null, null, 0,
-          sign);
+    if (owner != null) {
+      LynxBaseUI ui = owner.getNode(sign);
+      if (ui != null) {
+        int layoutLeft = left + dx;
+        int layoutTop = top + dy;
+        if (sign == owner.getRootSign() && ui == mContext.getUIBody()) {
+          // The page root's content is laid out by the Renderer directly on the UIBodyView,
+          // so it must not go through the legacy UIOwner layout path. Only sync the minimal
+          // layout data on the UIBody without running any layout lifecycle: the fields are
+          // still read by the FSP snapshot, the intersection observer, accessibility bounds
+          // and requestUIInfo.
+          ui.updateLayoutSize(width, height);
+          ui.syncLayoutFrame(layoutLeft, layoutTop, width, height);
+        } else {
+          owner.updateLayout(sign, layoutLeft, layoutTop, width, height, paddingLeft, paddingTop,
+              paddingRight, paddingBottom, marginLeft, marginTop, marginRight, marginBottom,
+              borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth, null, null, 0,
+              sign);
+        }
+      }
     }
 
     host.requestLayoutForRenderer();
