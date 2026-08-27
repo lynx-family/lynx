@@ -21,10 +21,11 @@ class PlatformDataDarwin : public PlatformData {
 
   virtual void ShallowCopy() override;
 
-  virtual ~PlatformDataDarwin() override = default;
+  virtual ~PlatformDataDarwin() override;
 
  private:
   void EnsureConvertData() override;
+  void ConsumeActionsAsync(LynxTemplateData* data);
 
   LynxTemplateData* _data;
 };
