@@ -2757,6 +2757,28 @@ public protocol LynxListEventsProtocol-p : <NSObject> {
 public class LynxListHorizontalLayoutManager : LynxListLayoutManager {
 }
 
+public class LynxListItemHelper : NSObject {
+  public instancetype LynxListItemHelper::initWithOwner:(id< LynxListItemHelperOwner > NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxListItemHelper::NS_UNAVAILABLE();
+  public void LynxListItemHelper::attachComponent:toWrapper:(LynxUIComponent *component,[toWrapper] UIView< LynxListItemWrapper > *wrapper);
+  public void LynxListItemHelper::updateLayoutForComponent:inWrapper:(LynxUIComponent *component,[inWrapper] UIView< LynxListItemWrapper > *wrapper);
+  public NSInteger LynxListItemHelper::indexForItemKey:(nullable NSString *itemKey);
+  public NSArray< UIView< LynxListItemWrapper > * > * LynxListItemHelper::visibleItemWrappers();
+  public NSArray< NSDictionary * > * LynxListItemHelper::visibleItemInfo();
+  public nullable id< LynxEventTarget > LynxListItemHelper::findHitTargetAtPoint:withEvent:(CGPoint point,[withEvent] nullable UIEvent *event);
+  public nullable UIView * LynxListItemHelper::firstSubviewAtPoint:(CGPoint point);
+}
+
+public protocol LynxListItemHelperOwner-p : <NSObject> {
+  public UIScrollView * LynxListItemHelperOwner-p::scrollViewForListItemHelper();
+  public BOOL LynxListItemHelperOwner-p::isVerticalForListItemHelper();
+  public nullable NSArray< NSString * > * LynxListItemHelperOwner-p::itemKeysForListItemHelper();
+}
+
+public protocol LynxListItemWrapper-p : <NSObject> {
+  public LynxUIComponent* LynxListItemWrapper-p::holdingUI holdingUI;
+}
+
 public class LynxListLayoutManager : NSObject, <LynxListLayoutProtocol> {
   public NSMutableArray<LynxListLayoutModelLight *>* LynxListLayoutManager::models models;
   public NSInteger LynxListLayoutManager::firstInvalidIndex firstInvalidIndex;
