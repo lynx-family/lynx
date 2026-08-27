@@ -37,6 +37,7 @@
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
+#include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
@@ -160,26 +161,6 @@ fml::RefPtr<Element> GetFiberElementFromValue(const lepus::Value& value) {
     return nullptr;
   }
   return fml::static_ref_ptr_cast<Element>(value.RefCounted());
-}
-
-inline fml::RefPtr<Element> GetComposeContentOrFiberElementFromValue(
-    const lepus::Value& value) {
-  auto reference = value.RefCounted();
-  if (reference->GetRefType() == lepus::RefType::kComposeElementHandle) {
-    return fml::static_ref_ptr_cast<ComposeElementHandle>(reference)
-        ->content_element();
-  }
-  return fml::static_ref_ptr_cast<Element>(reference);
-}
-
-inline fml::RefPtr<Element> GetComposeMountRootOrFiberElementFromValue(
-    const lepus::Value& value) {
-  auto reference = value.RefCounted();
-  if (reference->GetRefType() == lepus::RefType::kComposeElementHandle) {
-    return fml::static_ref_ptr_cast<ComposeElementHandle>(reference)
-        ->mount_root();
-  }
-  return fml::static_ref_ptr_cast<Element>(reference);
 }
 
 bool ParseComposeElementKind(const lepus::Value& value, const char* function,
@@ -2897,26 +2878,12 @@ RENDERER_FUNCTION_CC(FiberCreateCompose) {
     RETURN_UNDEFINED();
   }
   auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
-  fml::RefPtr<Element> content_element;
-  switch (kind) {
-    case ComposeElementKind::kView:
-      content_element = manager->CreateFiberView();
-      break;
-    case ComposeElementKind::kText:
-      content_element =
-          manager->CreateFiberText(BASE_STATIC_STRING(kElementTextTag));
-      break;
-    case ComposeElementKind::kImage:
-      content_element =
-          manager->CreateFiberImage(BASE_STATIC_STRING(kElementImageTag));
-      break;
-  }
-
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager.get(), kind));
+  auto content_element = handle->content_element();
   content_element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));
   ON_NODE_CREATE(content_element);
-  auto handle = fml::AdoptRef<ComposeElementHandle>(
-      new ComposeElementHandle(kind, std::move(content_element)));
   RETURN(lepus::Value(std::move(handle)));
 }
 

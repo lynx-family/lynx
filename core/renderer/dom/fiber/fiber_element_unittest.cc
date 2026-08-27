@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include "base/include/auto_reset.h"
@@ -34,6 +35,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
+#include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -21385,7 +21387,9 @@ TEST_P(FiberElementTest,
 
   auto page = manager->CreateFiberPage("page", 1);
   manager->SetFiberPageElement(page);
-  auto element = manager->CreateFiberView();
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto element = handle->content_element();
   page->InsertNode(element);
   lepus::Value modifier;
   const std::pair<const char*, const char*> events[] = {
@@ -21407,8 +21411,7 @@ TEST_P(FiberElementTest,
   }
 
   base::ErrorStorage::GetInstance().Reset();
-  lepus::Value bind_args[] = {lepus::Value(ComposeHandleFor(element)),
-                              modifier};
+  lepus::Value bind_args[] = {lepus::Value(handle), modifier};
   RendererFunctions::FiberSetComposeModifier(renderer_context, bind_args, 2);
   EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
 
@@ -21452,7 +21455,7 @@ TEST_P(FiberElementTest,
   replacement->SetValue("eventName", lepus::Value("tap"));
   replacement->SetValue("eventType", lepus::Value(kEventCatchEvent));
   replacement->SetValue("callback", replacement_callback);
-  lepus::Value replacement_args[] = {lepus::Value(ComposeHandleFor(element)),
+  lepus::Value replacement_args[] = {lepus::Value(handle),
                                      lepus::Value(replacement)};
   RendererFunctions::FiberSetComposeModifier(renderer_context, replacement_args,
                                              2);
@@ -21475,8 +21478,7 @@ TEST_P(FiberElementTest,
             lepus::Value(11));
 
   // A null modifier clears the complete local event set.
-  lepus::Value clear_args[] = {lepus::Value(ComposeHandleFor(element)),
-                               lepus::Value()};
+  lepus::Value clear_args[] = {lepus::Value(handle), lepus::Value()};
   RendererFunctions::FiberSetComposeModifier(renderer_context, clear_args, 2);
   EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
   EXPECT_TRUE(element->event_map().empty());
@@ -21527,7 +21529,9 @@ TEST_P(FiberElementTest, SetComposeModifierBindsClickThroughEventListener) {
 
   auto page = manager->CreateFiberPage("page", 1);
   manager->SetFiberPageElement(page);
-  auto element = manager->CreateFiberView();
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto element = handle->content_element();
   page->InsertNode(element);
 
   auto modifier = lepus::Dictionary::Create();
@@ -21535,8 +21539,7 @@ TEST_P(FiberElementTest, SetComposeModifierBindsClickThroughEventListener) {
   modifier->SetValue("eventName", lepus::Value("tap"));
   modifier->SetValue("eventType", lepus::Value(kEventBindEvent));
   modifier->SetValue("callback", callback);
-  lepus::Value args[] = {lepus::Value(ComposeHandleFor(element)),
-                         lepus::Value(modifier)};
+  lepus::Value args[] = {lepus::Value(handle), lepus::Value(modifier)};
   RendererFunctions::FiberSetComposeModifier(renderer_context, args, 2);
   ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
 
@@ -21587,10 +21590,11 @@ TEST_P(FiberElementTest,
 
   auto page = manager->CreateFiberPage("page", 1);
   manager->SetFiberPageElement(page);
-  auto element = manager->CreateFiberView();
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto element = handle->content_element();
   page->InsertNode(element);
-  lepus::Value args[] = {lepus::Value(ComposeHandleFor(element)),
-                         lepus::Value(click)};
+  lepus::Value args[] = {lepus::Value(handle), lepus::Value(click)};
   RendererFunctions::FiberSetComposeModifier(registration_context, args, 2);
   ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
 
@@ -21616,7 +21620,9 @@ TEST_P(FiberElementTest, SetComposeModifierRejectsInvalidEventNodes) {
                                         sizeof(kCallbackSource) - 1, callback,
                                         "invalid_modifier_event.js"));
 
-  auto element = manager->CreateFiberView();
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto element = handle->content_element();
   auto expect_rejected = [&](const char* name, const char* type,
                              const lepus::Value& event_callback) {
     auto event = lepus::Dictionary::Create();
@@ -21626,8 +21632,7 @@ TEST_P(FiberElementTest, SetComposeModifierRejectsInvalidEventNodes) {
     event->SetValue("callback", event_callback);
 
     base::ErrorStorage::GetInstance().Reset();
-    lepus::Value args[] = {lepus::Value(ComposeHandleFor(element)),
-                           lepus::Value(event)};
+    lepus::Value args[] = {lepus::Value(handle), lepus::Value(event)};
     RendererFunctions::FiberSetComposeModifier(renderer_context, args, 2);
     ExpectElementAPIError();
     EXPECT_TRUE(element->event_map().empty());

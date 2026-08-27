@@ -9,6 +9,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
+#include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -20,6 +21,13 @@ namespace tasm {
 namespace testing {
 
 namespace {
+
+fml::RefPtr<ComposeElementHandle> CreateComposeHandle(
+    ElementManager* manager,
+    ComposeElementKind kind = ComposeElementKind::kView) {
+  return fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, kind));
+}
 
 std::vector<ModifierElement*> CollectModifierFrames(Element* root,
                                                     Element* owner) {
@@ -77,6 +85,28 @@ TEST_P(ModifierElementTest, UsesDefaultElementBehaviorWithViewTag) {
   EXPECT_EQ(styles->at(kPropertyIDBoxSizing), lepus::Value("border-box"));
 }
 
+TEST_P(ModifierElementTest, ResolvesFiberAndComposeElements) {
+  auto element = manager->CreateFiberView();
+  lepus::Value element_value{fml::RefPtr<Element>(element)};
+  EXPECT_EQ(GetComposeContentOrFiberElementFromValue(element_value), element);
+  EXPECT_EQ(GetComposeMountRootOrFiberElementFromValue(element_value), element);
+
+  auto handle = CreateComposeHandle(manager);
+  auto content = handle->content_element();
+  lepus::Value handle_value{handle};
+  EXPECT_EQ(GetComposeContentOrFiberElementFromValue(handle_value), content);
+  EXPECT_EQ(GetComposeMountRootOrFiberElementFromValue(handle_value), content);
+
+  auto result =
+      ComposeModifierApplicator::Apply(handle.get(), MakePaddingChain(1, 1.0),
+                                       /*registration_context=*/nullptr);
+  ASSERT_TRUE(result.success) << result.error_message;
+  EXPECT_EQ(GetComposeContentOrFiberElementFromValue(handle_value), content);
+  EXPECT_EQ(GetComposeMountRootOrFiberElementFromValue(handle_value),
+            handle->mount_root());
+  EXPECT_NE(handle->mount_root(), content);
+}
+
 TEST_P(ModifierElementTest, MaterializesOnlyPaddingAsDetachedFrame) {
   auto padding = lepus::Dictionary::Create();
   padding->SetValue("op", lepus::Value(7));
@@ -92,9 +122,8 @@ TEST_P(ModifierElementTest, MaterializesOnlyPaddingAsDetachedFrame) {
   size->SetValue("height", lepus::Value(50.0));
   size->SetValue("previous", lepus::Value(padding));
 
-  auto owner = manager->CreateFiberView();
-  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
-      ComposeElementKind::kView, fml::RefPtr<Element>(owner)));
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
   auto result = ComposeModifierApplicator::Apply(
       handle.get(), lepus::Value(size), /*registration_context=*/nullptr);
   ASSERT_TRUE(result.success) << result.error_message;
@@ -124,19 +153,15 @@ TEST_P(ModifierElementTest, KeepsPhysicalRootsPrivateToEachOwner) {
   padding->SetValue("end", lepus::Value(1.0));
   padding->SetValue("bottom", lepus::Value(1.0));
 
-  auto first_owner = manager->CreateFiberView();
-  auto first_handle =
-      fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
-          ComposeElementKind::kView, fml::RefPtr<Element>(first_owner)));
+  auto first_handle = CreateComposeHandle(manager);
+  auto first_owner = first_handle->content_element();
   auto first_result = ComposeModifierApplicator::Apply(
       first_handle.get(), lepus::Value(padding),
       /*registration_context=*/nullptr);
   ASSERT_TRUE(first_result.success) << first_result.error_message;
 
-  auto second_owner = manager->CreateFiberView();
-  auto second_handle =
-      fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
-          ComposeElementKind::kView, fml::RefPtr<Element>(second_owner)));
+  auto second_handle = CreateComposeHandle(manager);
+  auto second_owner = second_handle->content_element();
   auto second_result = ComposeModifierApplicator::Apply(
       second_handle.get(), lepus::Value(padding),
       /*registration_context=*/nullptr);
@@ -154,11 +179,10 @@ TEST_P(ModifierElementTest, KeepsPhysicalRootsPrivateToEachOwner) {
 TEST_P(ModifierElementTest, ReparentAttachedFramesThroughTargetOwnedMove) {
   auto page = manager->CreateFiberPage("page", 0);
   manager->SetFiberPageElement(page);
-  auto owner = manager->CreateFiberView();
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
   owner->MarkCanBeLayoutOnly(false);
   const int32_t owner_id = owner->impl_id();
-  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
-      ComposeElementKind::kView, fml::RefPtr<Element>(owner)));
 
   auto initial_result =
       ComposeModifierApplicator::Apply(handle.get(), MakePaddingChain(1, 4.0),
@@ -219,11 +243,10 @@ TEST_P(ModifierElementTest, ReparentAttachedFramesThroughTargetOwnedMove) {
 TEST_P(ModifierElementTest, CoalescesPendingMovesBeforeSingleFlush) {
   auto page = manager->CreateFiberPage("page", 0);
   manager->SetFiberPageElement(page);
-  auto owner = manager->CreateFiberView();
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
   owner->MarkCanBeLayoutOnly(false);
   const int32_t owner_id = owner->impl_id();
-  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
-      ComposeElementKind::kView, fml::RefPtr<Element>(owner)));
 
   auto initial_result =
       ComposeModifierApplicator::Apply(handle.get(), MakePaddingChain(1, 4.0),
@@ -296,9 +319,8 @@ TEST_P(ModifierElementTest, AcceptsComposeModifierSingletonAsChainEnd) {
   size->SetValue("height", lepus::Value(0.0));
   size->SetValue("previous", lepus::Value(compose_modifier));
 
-  auto owner = manager->CreateFiberView();
-  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
-      ComposeElementKind::kView, fml::RefPtr<Element>(owner)));
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
   auto result = ComposeModifierApplicator::Apply(
       handle.get(), lepus::Value(size), /*registration_context=*/nullptr);
 
@@ -317,13 +339,28 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   padding->SetValue("end", lepus::Value(2.0));
   padding->SetValue("bottom", lepus::Value(2.0));
 
-  std::vector<std::pair<ComposeElementKind, fml::RefPtr<Element>>> owners = {
-      {ComposeElementKind::kView, manager->CreateFiberView()},
-      {ComposeElementKind::kText, manager->CreateFiberText("text")},
-      {ComposeElementKind::kImage, manager->CreateFiberImage("image")}};
-  for (const auto& [kind, owner] : owners) {
-    auto handle = fml::AdoptRef<ComposeElementHandle>(
-        new ComposeElementHandle(kind, fml::RefPtr<Element>(owner)));
+  const ComposeElementKind kinds[] = {ComposeElementKind::kView,
+                                      ComposeElementKind::kText,
+                                      ComposeElementKind::kImage};
+  for (const auto kind : kinds) {
+    auto handle = CreateComposeHandle(manager, kind);
+    auto owner = handle->content_element();
+    ASSERT_NE(owner, nullptr);
+    EXPECT_EQ(handle->mount_root(), owner);
+    switch (kind) {
+      case ComposeElementKind::kView:
+        EXPECT_TRUE(owner->is_view());
+        EXPECT_TRUE(owner->GetTag().IsEqual(kElementViewTag));
+        break;
+      case ComposeElementKind::kText:
+        EXPECT_TRUE(owner->is_text());
+        EXPECT_TRUE(owner->GetTag().IsEqual(kElementTextTag));
+        break;
+      case ComposeElementKind::kImage:
+        EXPECT_TRUE(owner->is_image());
+        EXPECT_TRUE(owner->GetTag().IsEqual(kElementImageTag));
+        break;
+    }
     auto result = ComposeModifierApplicator::Apply(
         handle.get(), lepus::Value(padding), /*registration_context=*/nullptr);
     ASSERT_TRUE(result.success) << result.error_message;
@@ -342,9 +379,8 @@ TEST_P(ModifierElementTest,
   padding->SetValue("end", lepus::Value(3.0));
   padding->SetValue("bottom", lepus::Value(3.0));
 
-  auto owner = manager->CreateFiberView();
-  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
-      ComposeElementKind::kView, fml::RefPtr<Element>(owner)));
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
   auto result = ComposeModifierApplicator::Apply(
       handle.get(), lepus::Value(padding), /*registration_context=*/nullptr);
   ASSERT_TRUE(result.success) << result.error_message;
