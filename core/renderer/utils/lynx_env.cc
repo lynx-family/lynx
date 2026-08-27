@@ -624,6 +624,10 @@ bool LynxEnv::EnablePlatformDataFix() {
   return enable_platform_data_fix;
 }
 
+bool LynxEnv::EnablePlatformDataAsyncConsumeActions() {
+  return GetBoolEnv(Key::ENABLE_PLATFORM_DATA_ASYNC_CONSUME_ACTIONS, true);
+}
+
 bool LynxEnv::EnableQuickJsThreadChecker() {
   static bool enable_quickjs_thread_checker =
       GetBoolEnv(Key::ENABLE_QUICKJS_THREAD_CHECKER, false);

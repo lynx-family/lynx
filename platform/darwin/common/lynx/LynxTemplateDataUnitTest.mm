@@ -475,11 +475,60 @@
   [data updateDouble:3.0 forKey:@"key3"];
   [data updateDouble:4.0 forKey:@"key4"];
 
+  NSUInteger sourceActionCount = [data copyUpdateActions].count;
   LynxTemplateData* copiedTemplateData = [data getTemplateDataForJSThread];
+  XCTAssertGreaterThan(sourceActionCount, 0u);
+  XCTAssertEqual([data copyUpdateActions].count, sourceActionCount);
+  XCTAssertEqual([copiedTemplateData copyUpdateActions].count, sourceActionCount);
   lynx::lepus::Value copiedValue = [copiedTemplateData getDataForJSThread];
 
   lynx::lepus::Value value = [data getDataForJSThread];
   XCTAssertEqual(value, copiedValue);
+}
+
+- (void)testGetTemplateDataForJSThreadWithExistingJSDataAndPendingActions {
+  LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:@{@"consumed" : @1}];
+  [data getDataForJSThread];
+  [data updateInteger:2 forKey:@"pending"];
+
+  LynxTemplateData* copiedTemplateData = [data getTemplateDataForJSThread];
+  lynx::lepus::Value copiedValue = [copiedTemplateData getDataForJSThread];
+  lynx::lepus::Value value = [data getDataForJSThread];
+
+  XCTAssertEqual(value, copiedValue);
+  XCTAssertEqual(copiedValue.GetProperty("consumed").Number(), 1);
+  XCTAssertEqual(copiedValue.GetProperty("pending").Number(), 2);
+}
+
+- (void)testDeepCloneConsumesSourceUpdateActionsAsynchronously {
+  LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:@{}];
+  [data updateInteger:1 forKey:@"key1"];
+  [data updateInteger:2 forKey:@"key2"];
+
+  LynxTemplateData* clonedData = [data deepClone];
+  NSPredicate* actionsConsumed =
+      [NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary* bindings) {
+        (void)bindings;
+        return [(LynxTemplateData*)evaluatedObject copyUpdateActions].count == 1;
+      }];
+  [self expectationForPredicate:actionsConsumed evaluatedWithObject:data handler:nil];
+  [self waitForExpectationsWithTimeout:2 handler:nil];
+
+  XCTAssertEqual([data copyUpdateActions].count, 1u);
+  XCTAssertEqual(*LynxGetLepusValueFromTemplateData(data), [data getDataForJSThread]);
+  XCTAssertEqual(*LynxGetLepusValueFromTemplateData(clonedData), [clonedData getDataForJSThread]);
+}
+
+- (void)testUpdateWithTemplateDataCopiesConsumedJSData {
+  LynxTemplateData* source = [[LynxTemplateData alloc] initWithDictionary:@{}];
+  [source updateInteger:1 forKey:@"source"];
+  [source getDataForJSThread];
+  XCTAssertEqual([source copyUpdateActions].count, 1u);
+
+  LynxTemplateData* target = [[LynxTemplateData alloc] initWithDictionary:@{@"target" : @2}];
+  [target updateWithTemplateData:source];
+
+  XCTAssertEqual(*LynxGetLepusValueFromTemplateData(target), [target getDataForJSThread]);
 }
 
 - (void)testGetTemplateDataForJSThreadWithLepusSeed {
