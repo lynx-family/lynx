@@ -75,10 +75,23 @@ source_set("headless") {
     }
 
     if (is_linux) {
-      sources += [
-        "gl/clay_headless_renderer_epoxy.cc",
-        "gl/clay_headless_renderer_epoxy.h",
-      ]
+      if (enable_software_rendering && enable_skity) {
+        sources += [
+          "gl/clay_headless_renderer_swiftshader.cc",
+          "gl/clay_headless_renderer_swiftshader.h",
+        ]
+        configs += [ "//third_party/angle:gl_prototypes" ]
+        deps += [
+          "//third_party/angle:includes",
+          "//third_party/angle:libEGL_static",
+          "//third_party/angle:libGLESv2_static",
+        ]
+      } else {
+        sources += [
+          "gl/clay_headless_renderer_epoxy.cc",
+          "gl/clay_headless_renderer_epoxy.h",
+        ]
+      }
     }
 
     if (is_harmony || is_android) {

@@ -12,9 +12,14 @@
 
 #include "angle_gl.h"
 #include "clay/fml/logging.h"
+#if defined(ENABLE_SKITY)
+#include "clay/gfx/shared_image/angle_software_gl_image_representation.h"
+#endif
 #include "clay/gfx/shared_image/angle_sw_shm_image_representation.h"
 #ifndef ENABLE_SKITY
 #include "clay/gfx/shared_image/skia_shm_image_representation.h"
+#else
+#include "clay/gfx/shared_image/skity_shm_image_representation.h"
 #endif
 
 namespace clay {
@@ -59,6 +64,12 @@ AngleSoftwareShmImageBacking::CreateRepresentation(
     const ClaySharedImageRepresentationConfig* config) {
   ClaySharedImageRepresentationType type = config->type;
   switch (type) {
+#if defined(ENABLE_SKITY)
+    case kClaySharedImageRepresentationTypeGL: {
+      return fml::MakeRefCounted<AngleSoftwareGLImageRepresentation>(
+          fml::Ref(this));
+    }
+#endif
     case ClaySharedImageRepresentationType::
         kClaySharedImageRepresentationTypeShm: {
       return fml::MakeRefCounted<AngleSwShmImageRepresentation>(fml::Ref(this));
@@ -82,8 +93,9 @@ AngleSoftwareShmImageBacking::CreateSkiaRepresentation(
 #else
 fml::RefPtr<SkityImageRepresentation>
 AngleSoftwareShmImageBacking::CreateSkityRepresentation(
-    skity::GPUContext* skity_context) override {
-  return nullptr;
+    skity::GPUContext* skity_context) {
+  return fml::MakeRefCounted<SkityShmImageRepresentation>(
+      fml::MakeRefCounted<AngleSwShmImageRepresentation>(fml::Ref(this)));
 }
 #endif  // ENABLE_SKITY
 

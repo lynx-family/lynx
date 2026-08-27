@@ -300,7 +300,13 @@ ClayHeadlessRendererConfig* LynxWindowlessRenderer::GetRendererConfig() {
 #elif defined(OS_WIN)
       backing_type = kClaySharedImageBackingTypeD3DTexture;
 #elif defined(OS_LINUX)
+#if defined(ENABLE_SKITY) && defined(ENABLE_SOFTWARE_RENDERING)
+      // Linux Skity currently renders through ANGLE SwiftShader and therefore
+      // requires an ANGLE-owned SHM backing.
+      backing_type = kClaySharedImageBackingTypeAngleShmImage;
+#else
       backing_type = kClaySharedImageBackingTypeShmImage;
+#endif
 #elif defined(OS_HARMONY)
       backing_type = kClaySharedImageBackingTypeNativeImage;
 #else

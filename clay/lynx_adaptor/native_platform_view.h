@@ -61,6 +61,7 @@ class CLAY_EXPORT NativePlatformView {
 #if defined(OS_WIN)
     return kClaySharedImageBackingTypeD3DTexture;
 #elif defined(OS_LINUX)
+    // ANGLE SHM is shared by both Skia and Skity software configurations.
 #if defined(ENABLE_SOFTWARE_RENDERING)
     return kClaySharedImageBackingTypeAngleShmImage;
 #else

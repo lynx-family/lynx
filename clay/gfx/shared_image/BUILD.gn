@@ -4,6 +4,11 @@
 
 import("../../common/config.gni")
 
+# Linux Skity currently supports only software rendering through ANGLE
+# SwiftShader.
+assert(!is_linux || !enable_skity || enable_software_rendering,
+       "Linux Skity requires enable_software_rendering=true.")
+
 if (!enable_skity) {
   import("//third_party/skia/gn/skia.gni")
 }
@@ -50,6 +55,7 @@ source_set("shared_image") {
   }
 
   if (enable_skity) {
+    deps += [ "../skity" ]
     if (is_android || is_win) {
       sources += [
         "skity_gl_image_representation.cc",
@@ -187,24 +193,39 @@ source_set("shared_image") {
   }
 
   if (is_linux) {
-    sources += [
-      "epoxy_shm_image_backing.cc",
-      "epoxy_shm_image_backing.h",
-      "epoxy_shm_image_representation.cc",
-      "epoxy_shm_image_representation.h",
-      "linux_shm_image_representation.cc",
-      "linux_shm_image_representation.h",
-    ]
+    if (!enable_skity) {
+      sources += [
+        "epoxy_shm_image_backing.cc",
+        "epoxy_shm_image_backing.h",
+        "epoxy_shm_image_representation.cc",
+        "epoxy_shm_image_representation.h",
+        "linux_shm_image_representation.cc",
+        "linux_shm_image_representation.h",
+      ]
+    }
 
+    # The ANGLE SHM backing is shared by existing Skia software paths and the
+    # Skity SwiftShader path.
     if (enable_software_rendering) {
       sources += [
         "angle_software_shm_image_backing.cc",
         "angle_software_shm_image_backing.h",
         "angle_sw_shm_image_representation.cc",
         "angle_sw_shm_image_representation.h",
-        "skia_shm_image_representation.cc",
-        "skia_shm_image_representation.h",
       ]
+      if (!enable_skity) {
+        sources += [
+          "skia_shm_image_representation.cc",
+          "skia_shm_image_representation.h",
+        ]
+      } else {
+        sources += [
+          "angle_software_gl_image_representation.cc",
+          "angle_software_gl_image_representation.h",
+          "skity_shm_image_representation.cc",
+          "skity_shm_image_representation.h",
+        ]
+      }
       deps += [
         "//third_party/angle:includes",
         "//third_party/angle:libEGL_static",
