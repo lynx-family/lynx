@@ -56,7 +56,7 @@ void LynxDevToolMediator::Init(
   devtool_wp_ = lynx_devtool_ng;
   auto* runners = shell->GetRunners();
   tasm::TemplateAssembler* tasm = shell->GetTasm();
-  tasm_task_runner_ = runners->GetTASMTaskRunner();
+  auto tasm_task_runner = runners->GetTASMTaskRunner();
   js_task_runner_ = runners->GetJSTaskRunner();
 
   ui_task_runner_ = runners->GetUITaskRunner();
@@ -72,10 +72,16 @@ void LynxDevToolMediator::Init(
         element_executor_->GetLastGlobalPropsTimestamp();
   }
 
-  element_executor_ = std::make_shared<InspectorTasmExecutor>(
+  auto element_executor = std::make_shared<InspectorTasmExecutor>(
       shared_from_this(), tasm, view_id_);
-  element_executor_->SetLastGlobalPropsTimestamp(last_global_props_timestamp);
-  element_executor_->SetGlobalPropsEnabled(global_props_enabled);
+  element_executor->SetLastGlobalPropsTimestamp(last_global_props_timestamp);
+  element_executor->SetGlobalPropsEnabled(global_props_enabled);
+  {
+    std::lock_guard<std::mutex> lock(dom_state_mutex_);
+    tasm_task_runner_ = std::move(tasm_task_runner);
+    element_executor->SetDOMState(dom_enabled_, dom_enable_message_);
+    element_executor_ = element_executor;
+  }
   ui_executor_ = std::make_shared<InspectorUIExecutor>(shared_from_this());
   ui_executor_->SetShell(shell);
   if (!devtool_executor_) {
@@ -98,7 +104,7 @@ void LynxDevToolMediator::Init(
 
   // shell set element observer in tasm thread;
   shell->SetInspectorElementObserver(
-      std::make_shared<InspectorElementObserverImpl>(element_executor_));
+      std::make_shared<InspectorElementObserverImpl>(element_executor));
   shell->SetHierarchyObserver(
       std::make_shared<lynx::devtool::HierarchyObserverImpl>(ui_executor_));
   auto runtime_observer = js_debugger_->GetInspectorRuntimeObserver();
@@ -117,9 +123,9 @@ void LynxDevToolMediator::Init(
   auto white_board_delegate = tasm->GetWhiteBoardDelegate();
   if (white_board_delegate != nullptr) {
     const auto& inspector_delegate =
-        element_executor_->GetWhiteBoardInspectorDelegate();
+        element_executor->GetWhiteBoardInspectorDelegate();
     InitWhiteBoardInspector(white_board_delegate, inspector_delegate);
-    element_executor_->SetWhiteBoardEnabled(white_board_enabled);
+    element_executor->SetWhiteBoardEnabled(white_board_enabled);
   }
 
   // When using background runtime, `OnAttached()` is called before `Init()`, so
@@ -264,23 +270,41 @@ void LynxDevToolMediator::QuerySelectorAll(
 void LynxDevToolMediator::DOM_Enable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->DOM_Enable(sender, message);
-                    });
-  }
+  DispatchDOMStateChange(true, sender, message);
 }
 
 void LynxDevToolMediator::DOM_Disable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->DOM_Disable(sender, message);
-                    });
+  DispatchDOMStateChange(false, sender, message);
+}
+
+void LynxDevToolMediator::DispatchDOMStateChange(
+    bool enable, const std::shared_ptr<MessageSender>& sender,
+    const Json::Value& message) {
+  lynx::fml::RefPtr<lynx::fml::TaskRunner> runner;
+  std::shared_ptr<InspectorTasmExecutor> element_executor;
+  {
+    std::lock_guard<std::mutex> lock(dom_state_mutex_);
+    if (!tasm_task_runner_) {
+      return;
+    }
+    if (enable) {
+      dom_enabled_ = true;
+      dom_enable_message_ = message;
+    } else {
+      dom_enabled_ = false;
+    }
+    runner = tasm_task_runner_;
+    element_executor = element_executor_;
   }
+  RunOnTaskRunner(runner, [element_executor, sender, message, enable]() {
+    if (enable) {
+      element_executor->DOM_Enable(sender, message);
+    } else {
+      element_executor->DOM_Disable(sender, message);
+    }
+  });
 }
 
 void LynxDevToolMediator::GetDocument(
