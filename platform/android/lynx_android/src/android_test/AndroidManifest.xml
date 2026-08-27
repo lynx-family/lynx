@@ -15,7 +15,9 @@
             android:value="com.lynx.testing.base.instrumentation.LynxInstrumentTestListener" />
     </instrumentation>
 
-    <application>
+    <!-- Byte Buddy/Mockito generates dex code at runtime. Isolated class shards
+         still need the AVD's large heap to avoid hiding assertions behind OOMs. -->
+    <application android:largeHeap="true">
         <provider
             android:name="com.lynx.tasm.resourceprovider.TestContentProvider"
             android:authorities="com.lynx.test.resourceprovider"
