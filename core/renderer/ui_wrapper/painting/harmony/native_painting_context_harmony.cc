@@ -62,7 +62,7 @@ void NativePaintingCtxHarmony::CreatePlatformExtendedRenderer(
     const fml::RefPtr<PropBundle>& init_data,
     const PlatformRendererInitConfig& init_config) {}
 
-void NativePaintingCtxHarmony::UpdateDisplayList(int id, DisplayList list) {}
+void NativePaintingCtxHarmony::EnqueueDisplayList(int id, DisplayList list) {}
 
 fml::RefPtr<PaintImage> NativePaintingCtxHarmony::CreateImage(
     int id, base::String src, const ImagePaintInfo& paint_info, float width,

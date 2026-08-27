@@ -44,6 +44,7 @@
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -609,8 +610,7 @@ void ElementManager::RequestLayout(
 
   if (root()->EnableFragmentLayerRender()) {
     if (layout_data.layout_triggered) {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
-      root()->element_container()->CastToFragment()->Draw();
+      Repaint();
       root()->element_container()->FinishLayoutOperation(options);
     }
     root()->element_container()->Flush();
@@ -1817,8 +1817,7 @@ void ElementManager::OnPatchFinishForFiber(
     // Even if no layout is needed, we should still repaint if fragments are
     // dirty. Repaint should not be bound to relayout.
     if (root() && root()->EnableFragmentLayerRender()) {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
-      root()->element_container()->CastToFragment()->Draw();
+      Repaint();
     }
     if (root() && root()->EnableFragmentLayerRender()) {
       root()->element_container()->FinishLayoutOperation(options);
@@ -1852,6 +1851,16 @@ void ElementManager::OnPatchFinishForFiber(
   if (element != nullptr && element->is_list_item()) {
     painting_context()->FlushImmediately();
   }
+}
+
+void ElementManager::Repaint() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
+  auto *native_context = painting_context()->impl()->CastToNativeCtx();
+  DCHECK(native_context != nullptr);
+  auto *root_fragment = root()->element_container()->CastToFragment();
+  NativePaintingContext::ScopedDisplayListBatch display_list_batch(
+      native_context, root_fragment->PlatformLayerCount());
+  root_fragment->Draw();
 }
 
 void ElementManager::EnqueueLevelOrderTask(

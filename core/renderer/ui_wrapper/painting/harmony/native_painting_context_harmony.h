@@ -80,15 +80,18 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
       const fml::RefPtr<PropBundle>& init_data,
       const PlatformRendererInitConfig& init_config =
           PlatformRendererInitConfig()) override;
-  void UpdateDisplayList(int id, DisplayList list) override;
   fml::RefPtr<PaintImage> CreateImage(
       int id, base::String src, const ImagePaintInfo& paint_info, float width,
       float height, int32_t event_mask = 0,
       bool disable_default_resize = false) override;
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
-  void ReconstructEventTargetTreeRecursively() override {}
   void UpdatePlatformEventBundle(int id, PlatformEventBundle bundle) override;
+
+ protected:
+  void EnqueueDisplayList(int id, DisplayList list) override;
+  void EnqueueDisplayLists(DisplayListUpdateBatch batch) override {}
+  void EnqueueReconstructEventTargetTreeRecursively() override {}
 };
 
 }  // namespace lynx::tasm

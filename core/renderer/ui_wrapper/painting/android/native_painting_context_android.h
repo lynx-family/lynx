@@ -113,7 +113,8 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
       const PlatformRendererInitConfig &init_config =
           PlatformRendererInitConfig()) override;
 
-  void UpdateDisplayList(int id, DisplayList display_list) override;
+  void EnqueueDisplayList(int id, DisplayList display_list) override;
+  void EnqueueDisplayLists(DisplayListUpdateBatch batch) override;
 
   void UpdatePlatformEventBundle(int32_t id,
                                  PlatformEventBundle bundle) override;
@@ -127,7 +128,7 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 
   void DestroyTextBundle(int id) override;
 
-  void ReconstructEventTargetTreeRecursively() override;
+  void EnqueueReconstructEventTargetTreeRecursively() override;
 #pragma endregion  // NativePaintingContext
 
  private:

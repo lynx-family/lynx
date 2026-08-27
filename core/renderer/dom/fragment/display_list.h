@@ -374,6 +374,13 @@ class DisplayList {
   bool root_need_clip_bounds_{false};
 };
 
+struct DisplayListUpdate {
+  int id;
+  DisplayList display_list;
+};
+
+using DisplayListUpdateBatch = base::Vector<DisplayListUpdate>;
+
 }  // namespace tasm
 }  // namespace lynx
 

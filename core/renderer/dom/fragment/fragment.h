@@ -4,6 +4,7 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_H_
 #define CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_H_
 
+#include <cstddef>
 #include <memory>
 
 #include "base/include/value/base_string.h"
@@ -111,6 +112,8 @@ class Fragment : public BaseElementContainer {
 
   void DrawChildren(DisplayListBuilder& display_list_builder);
 
+  size_t PlatformLayerCount() const { return platform_layer_count_; }
+
   void AddChildBefore(Fragment* child, Fragment* sibling);
 
   void RemoveSelf();
@@ -141,7 +144,7 @@ class Fragment : public BaseElementContainer {
   Fragment* EnclosingStackingContextFromElementParent();
   void ZIndexChanged();
   void UpdateBorderRadiusAccordingToLayoutInfo();
-  void UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
+  size_t UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
 
   void RefreshDrawingOffsetsRecursively();
   void RefreshDrawingOffsetsRecursively(float left, float top);
@@ -229,6 +232,8 @@ class Fragment : public BaseElementContainer {
   float drawing_offset_[2] = {0, 0};
 
   int32_t draw_node_capacity_{0};
+
+  size_t platform_layer_count_{0};
 };
 
 // Computes the outset-adjusted border radius for box-shadow spread
