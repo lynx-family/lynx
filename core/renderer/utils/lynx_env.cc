@@ -650,6 +650,10 @@ bool LynxEnv::EnableHarmonyTextCustomEmoji() {
   return GetBoolEnv(Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI, true);
 }
 
+bool LynxEnv::EnableHarmonyMessageLoopPromiseMicrotask() {
+  return GetBoolEnv(Key::ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK, true);
+}
+
 bool LynxEnv::EnableUnifyFixedBehavior() {
   return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_BEHAVIOR, false);
 }

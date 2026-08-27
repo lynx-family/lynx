@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/platform/harmony/message_loop_harmony.h"
 #include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
@@ -25,6 +26,7 @@
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
 #include "core/renderer/utils/base/base_def.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
@@ -897,6 +899,12 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
     uv_loop_t* loop;
     napi_get_uv_event_loop(env, &loop);
     lynx::base::UIThread::Init(loop);
+    if (tasm::LynxEnv::GetInstance()
+            .EnableHarmonyMessageLoopPromiseMicrotask()) {
+      auto* ui_loop = static_cast<fml::MessageLoopHarmony*>(
+          base::UIThread::GetRunner()->GetLoop().get());
+      ui_loop->SetupNapiCallback(env);
+    }
 
     size_t argc = 1;
     napi_value args[1] = {nullptr};
