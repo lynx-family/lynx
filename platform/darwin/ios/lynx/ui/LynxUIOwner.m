@@ -864,6 +864,7 @@ extern NSString* const kDefaultComponentID;
                      [UI_OWNER_REMOVE stringByAppendingString:node.tagName ?: @""])
 
   [_uiHolder removeObjectForKey:@(node.sign)];
+  [_externalMemoryReportCandidateIds removeObject:@(node.sign)];
   [self removeLynxUIFromNameLynxUIMap:node];
   [_uiContext removeUIFromExposedMap:node];
   [node removeChildrenExposureUI];
@@ -1143,6 +1144,7 @@ extern NSString* const kDefaultComponentID;
 - (void)releaseUI {
   _hasRootAttached = NO;
   [_uiHolder removeAllObjects];
+  [_externalMemoryReportCandidateIds removeAllObjects];
   [_uisThatHasNewLayout removeAllObjects];
   [_uisThatHasOperations removeAllObjects];
   [_a11yIDHolder removeAllObjects];
@@ -1196,15 +1198,17 @@ extern NSString* const kDefaultComponentID;
     (void)stop;
     snapshot.totalSize += [ui memoryUsageBytes];
   }];
-  @try {
-    for (NSNumber* sign in _externalMemoryReportCandidateIds) {
-      LynxUI* ui = uiHolderSnapshot[sign];
-      if (ui != nil && ui.parent == nil) {
-        snapshot.garbageSize += [self externalMemoryUsageRecursively:ui];
-      }
+  // Keep candidates for the lifetime of their holder entries. Parented candidates may belong to a
+  // detached candidate subtree, so skip them without discarding them.
+  for (NSNumber* sign in _externalMemoryReportCandidateIds) {
+    LynxUI* ui = uiHolderSnapshot[sign];
+    if (ui == nil) {
+      continue;
     }
-  } @finally {
-    [_externalMemoryReportCandidateIds removeAllObjects];
+    if (ui.parent != nil) {
+      continue;
+    }
+    snapshot.garbageSize += [self externalMemoryUsageRecursively:ui];
   }
   return snapshot;
 }
@@ -1235,7 +1239,6 @@ extern NSString* const kDefaultComponentID;
         }
         strongSelf.externalMemoryReportPending = NO;
         if (strongSelf.uiContext.lynxContext.hasLynxViewDestroyed) {
-          [strongSelf.externalMemoryReportCandidateIds removeAllObjects];
           return;
         }
         LynxExternalMemorySnapshot snapshot = [strongSelf getExternalMemorySnapshot];

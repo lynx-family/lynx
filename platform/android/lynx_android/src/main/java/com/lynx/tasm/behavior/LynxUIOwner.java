@@ -91,7 +91,7 @@ public class LynxUIOwner {
   private final List<ForegroundListener> mForegroundListeners;
   private final HashMap<Integer, LynxBaseUI> mUIHolder;
   private final HashMap<Integer, LynxBaseUI> mTextChildUIHolder;
-  private final List<int[]> mRemovedUIIdPatches;
+  private final SparseBooleanArray mRemovedUICandidateIds;
 
   // Hold the UI that exec the boundingClientRect method in the layout process. Call the UI's
   // uiOwnerDidPerformLayout method after exec performLayout.
@@ -149,7 +149,7 @@ public class LynxUIOwner {
     mForegroundListeners = new ArrayList<>();
     mUIHolder = new HashMap<>();
     mTextChildUIHolder = new HashMap<>();
-    mRemovedUIIdPatches = new ArrayList<>();
+    mRemovedUICandidateIds = new SparseBooleanArray();
     mComponentIdToUiIdHolder = new HashMap<>();
     mRootSign = -1;
     mUIBody = new UIBody(mContext, body);
@@ -1097,7 +1097,7 @@ public class LynxUIOwner {
       mTranslateZParentHolder.remove(child);
       // if child has no parent still need to be removed
       removeFromDrawList(child);
-      mUIHolder.remove(childTag);
+      removeUIFromHolder(childTag);
       mContext.removeUIFromExposedMap(child);
       child.destroy();
       insertA11yMutationEvent(MUTATION_ACTION_DETACH, child);
@@ -1229,7 +1229,7 @@ public class LynxUIOwner {
     for (int i = 0; i < node.getChildren().size(); i++) {
       LynxBaseUI child = node.getChildAt(i);
       child.destroy();
-      mUIHolder.remove(child.getSign());
+      removeUIFromHolder(child.getSign());
       mTranslateZParentHolder.remove(child);
       mContext.removeUIFromExposedMap(child);
       destroyChildrenRecursively(child);
@@ -1278,38 +1278,34 @@ public class LynxUIOwner {
   }
 
   void cacheRemovedUIIds(int[] removeIds) {
-    if (removeIds.length > 0) {
-      mRemovedUIIdPatches.add(removeIds);
+    for (int removeId : removeIds) {
+      mRemovedUICandidateIds.put(removeId, true);
     }
   }
 
   long[] getExternalMemorySnapshot() {
-    try {
-      long totalSize = 0;
-      for (LynxBaseUI ui : mUIHolder.values()) {
-        if (ui != null) {
-          totalSize += ui.getMemoryUsageBytes();
-        }
+    long totalSize = 0;
+    for (LynxBaseUI ui : mUIHolder.values()) {
+      if (ui != null) {
+        totalSize += ui.getMemoryUsageBytes();
       }
-
-      long garbageSize = 0;
-      SparseBooleanArray visitedRemovedUIIds = new SparseBooleanArray();
-      for (int[] removeIds : mRemovedUIIdPatches) {
-        for (int removeId : removeIds) {
-          if (visitedRemovedUIIds.indexOfKey(removeId) >= 0) {
-            continue;
-          }
-          visitedRemovedUIIds.put(removeId, true);
-          LynxBaseUI ui = mUIHolder.get(removeId);
-          if (ui != null && ui.getParent() == null) {
-            garbageSize += getMemoryUsageBytesRecursively(ui);
-          }
-        }
-      }
-      return new long[] {totalSize, garbageSize};
-    } finally {
-      mRemovedUIIdPatches.clear();
     }
+
+    long garbageSize = 0;
+    // Keep candidates for the lifetime of their holder entries. Parented candidates may belong to
+    // a detached candidate subtree, so skip them without discarding them.
+    for (int i = 0; i < mRemovedUICandidateIds.size(); ++i) {
+      int removeId = mRemovedUICandidateIds.keyAt(i);
+      LynxBaseUI ui = mUIHolder.get(removeId);
+      if (ui == null) {
+        continue;
+      }
+      if (ui.getParent() != null) {
+        continue;
+      }
+      garbageSize += getMemoryUsageBytesRecursively(ui);
+    }
+    return new long[] {totalSize, garbageSize};
   }
 
   void reportExternalMemory() {
@@ -1379,6 +1375,11 @@ public class LynxUIOwner {
     if (mUIHolder != null) {
       mUIHolder.put(sign, ui);
     }
+  }
+
+  private LynxBaseUI removeUIFromHolder(int sign) {
+    mRemovedUICandidateIds.delete(sign);
+    return mUIHolder.remove(sign);
   }
 
   /**
@@ -1489,6 +1490,7 @@ public class LynxUIOwner {
         value.destroy();
       }
       mUIHolder.clear();
+      mRemovedUICandidateIds.clear();
       mTranslateZParentHolder.clear();
     }
     if (mUIBody != null) {
