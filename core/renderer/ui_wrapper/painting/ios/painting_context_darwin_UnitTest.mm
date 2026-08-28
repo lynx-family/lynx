@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
+#import <Lynx/LynxImageLoadOptions.h>
+#import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxPerformanceController.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIOwner.h>
@@ -22,6 +24,23 @@
 @end
 
 @implementation painting_context_darwin_UnitTest
+
+- (NSMutableArray<NSDictionary<NSString*, id>*>*)captureImageRequestsWithLoaderMock:(id)loaderMock {
+  NSMutableArray<NSDictionary<NSString*, id>*>* requests = [NSMutableArray new];
+  OCMStub(ClassMethod([loaderMock sharedInstance])).andReturn(loaderMock);
+  void (^captureRequest)(NSInvocation*) = ^(NSInvocation* invocation) {
+    __unsafe_unretained LynxImageLoadOptions* options = nil;
+    [invocation getArgument:&options atIndex:2];
+    [requests addObject:@{
+      @"type" : @(options.imageURL.type),
+      @"url" : options.imageURL.url.absoluteString,
+    }];
+    dispatch_block_t cancelBlock = nil;
+    [invocation setReturnValue:&cancelBlock];
+  };
+  OCMStub([loaderMock loadImageWithOptions:[OCMArg any]]).andDo(captureRequest);
+  return requests;
+}
 
 - (void)setUp {
   LynxUIOwner* uiOwner = [[LynxUIOwner alloc] initWithContainerView:nil
@@ -78,6 +97,51 @@
   queue->ForceFlush();
 
   OCMVerifyAllWithDelay(performanceController, 1.0);
+}
+
+- (void)testNativePaintingContextRequestsSourceOnceWithoutPlaceholder {
+  LynxUIOwner* uiOwner = [[LynxUIOwner alloc] initWithContainerView:nil
+                                                  componentRegistry:nil
+                                                      screenMetrics:nil];
+  auto nativePaintingContext =
+      std::make_unique<lynx::tasm::NativePaintingCtxDarwin>(uiOwner, nil, nullptr);
+  id loaderMock = OCMClassMock([LynxImageLoader class]);
+  NSMutableArray<NSDictionary<NSString*, id>*>* requests =
+      [self captureImageRequestsWithLoaderMock:loaderMock];
+
+  lynx::tasm::ImagePaintInfo paintInfo;
+  auto paintImage = nativePaintingContext->CreateImage(
+      1, lynx::base::String("https://example.com/source.png"), paintInfo, 100, 80, 0);
+
+  XCTAssertNotEqual(paintImage, nullptr);
+  XCTAssertEqual(requests.count, 1u);
+  XCTAssertEqual([requests.firstObject[@"type"] integerValue], LynxImageRequestSrc);
+  XCTAssertEqualObjects(requests.firstObject[@"url"], @"https://example.com/source.png");
+  [loaderMock stopMocking];
+}
+
+- (void)testNativePaintingContextRequestsDistinctPlaceholder {
+  LynxUIOwner* uiOwner = [[LynxUIOwner alloc] initWithContainerView:nil
+                                                  componentRegistry:nil
+                                                      screenMetrics:nil];
+  auto nativePaintingContext =
+      std::make_unique<lynx::tasm::NativePaintingCtxDarwin>(uiOwner, nil, nullptr);
+  id loaderMock = OCMClassMock([LynxImageLoader class]);
+  NSMutableArray<NSDictionary<NSString*, id>*>* requests =
+      [self captureImageRequestsWithLoaderMock:loaderMock];
+
+  lynx::tasm::ImagePaintInfo paintInfo;
+  paintInfo.placeholder = lynx::base::String("https://example.com/placeholder.png");
+  auto paintImage = nativePaintingContext->CreateImage(
+      1, lynx::base::String("https://example.com/source.png"), paintInfo, 100, 80, 0);
+
+  XCTAssertNotEqual(paintImage, nullptr);
+  XCTAssertEqual(requests.count, 2u);
+  XCTAssertEqual([requests[0][@"type"] integerValue], LynxImageRequestSrc);
+  XCTAssertEqualObjects(requests[0][@"url"], @"https://example.com/source.png");
+  XCTAssertEqual([requests[1][@"type"] integerValue], LynxImageRequestPlaceholder);
+  XCTAssertEqualObjects(requests[1][@"url"], @"https://example.com/placeholder.png");
+  [loaderMock stopMocking];
 }
 
 @end

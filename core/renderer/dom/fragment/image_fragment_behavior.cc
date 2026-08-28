@@ -43,7 +43,11 @@ void ImageFragmentBehavior::OnAttributeUpdate(const fml::RefPtr<PropBundle>&) {
     return;
   }
 
-  if (UpdateImageIfNeeded(fragment_->LayoutResult())) {
+  const auto* image_element = static_cast<ImageElement*>(fragment_->element());
+  const auto& current_src = image_element->src();
+  if (image_url_ != current_src ||
+      (!current_src.empty() &&
+       image_paint_info_ != image_element->paint_info())) {
     fragment_->InvalidateForRedraw();
   }
 }
@@ -85,6 +89,7 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
 }
 
 void ImageFragmentBehavior::OnDraw(DisplayListBuilder& display_list_builder) {
+  UpdateImageIfNeeded(fragment_->LayoutResult());
   if (!paint_image_) {
     return;
   }
