@@ -1482,6 +1482,22 @@ bool ComputedCSSStyle::SetBoxSizing(const tasm::CSSValue& value,
   return old_value != layout_computed_style_.box_sizing_;
 }
 
+bool ComputedCSSStyle::SetXBoxPropagateMinConstraints(
+    const tasm::CSSValue& value, const bool reset) {
+  return CSSStyleUtils::ComputeBoolStyle(
+      value, reset, layout_computed_style_.x_box_propagate_min_constraints_,
+      DefaultLayoutStyle::SL_DEFAULT_X_BOX_PROPAGATE_MIN_CONSTRAINTS,
+      "-x-box-propagate-min-constraints must be a bool!", parser_configs_);
+}
+
+bool ComputedCSSStyle::SetXBoxMatchParentSize(const tasm::CSSValue& value,
+                                              const bool reset) {
+  return CSSStyleUtils::ComputeBoolStyle(
+      value, reset, layout_computed_style_.x_box_match_parent_size_,
+      DefaultLayoutStyle::SL_DEFAULT_X_BOX_MATCH_PARENT_SIZE,
+      "-x-box-match-parent-size must be a bool!", parser_configs_);
+}
+
 bool ComputedCSSStyle::SetRelativeId(const tasm::CSSValue& value,
                                      const bool reset) {
   return CSSStyleUtils::ComputeIntStyle(
