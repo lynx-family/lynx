@@ -168,6 +168,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_PROMISE_MEMORY_FIX,
     ENABLE_CANVAS_ENGINE_MEMORY_FIX,
     ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
+    ENABLE_ANIMATION_ROUTING,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -365,6 +366,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             // NOLINT(harmony-trail-key): iOS-only configuration.
             {Key::ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
              "enable_platform_thread_scheduling_policy"},
+            {Key::ENABLE_ANIMATION_ROUTING, "enable_animation_routing"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());

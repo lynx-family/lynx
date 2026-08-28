@@ -341,7 +341,9 @@ TEST_F(ElementTest, Animate_Array) {
       animation_data, true);
   auto rebuilt_animation =
       element->css_keyframe_manager_->animations_map_["name1"];
-  EXPECT_NE(web_animation, rebuilt_animation);
+  // Rebuilding replaces the effect while preserving the logical animation and
+  // its origin, even after the imperative animation metadata is removed.
+  EXPECT_EQ(web_animation, rebuilt_animation);
   EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
             rebuilt_animation->GetOrigin());
 

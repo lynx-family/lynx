@@ -21,6 +21,7 @@
 #include "core/public/text_layout_impl.h"
 #include "core/public/timing_key.h"
 #include "core/public/ui_operation_queue_interface.h"
+#include "gfx/animation/platform_animation.h"
 
 namespace lynx {
 
@@ -164,6 +165,10 @@ class PaintingCtxPlatformImpl {
                                          PlatformExtraBundle* bundle) {}
 
   virtual void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) = 0;
+  // Submit after the target node's creation and property updates, on the same
+  // UI operation queue. Backends without animation routing ignore commands.
+  virtual void ApplyPlatformAnimationCommands(
+      int id, std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {}
   virtual void Flush() = 0;
   virtual void FlushImmediately() { Flush(); };
   virtual void HandleValidate(int tag) = 0;
@@ -195,6 +200,12 @@ class PaintingCtxPlatformImpl {
   virtual bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) = 0;
 
   virtual bool NeedAnimationProps() = 0;
+
+  virtual const gfx::AnimationBackendCapabilities&
+  GetPlatformAnimationCapabilities() {
+    static const gfx::AnimationBackendCapabilities capabilities;
+    return capabilities;
+  }
 
   virtual void UpdateLayoutPatching() {}
   virtual void OnFirstScreen() {}

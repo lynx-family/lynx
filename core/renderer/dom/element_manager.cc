@@ -212,6 +212,14 @@ ElementManager::ElementManager(
   platform_computed_css_->SetCSSParserConfigs(GetCSSParserConfigs());
   task_runner_ = std::make_shared<tasm::TasmWorkerTaskRunner>();
   enable_new_animator_fiber_ = LynxEnv::GetInstance().EnableNewAnimatorFiber();
+  // Capture the routing policy once per page. Settings updates must not switch
+  // execution backends for animations that are already running. When disabled,
+  // the existing New Animator configuration continues to select the executor.
+  supports_platform_animation_routing_ =
+      LynxEnv::GetInstance().GetBoolEnv(LynxEnv::Key::ENABLE_ANIMATION_ROUTING,
+                                        false) &&
+      painting_context()->GetPlatformAnimationCapabilities().backend !=
+          gfx::AnimationBackendType::kNone;
   enable_new_animator_radon_ = false;
   // TODO(songshourui.null): The following temporary configs are being
   // introduced with the responsive bugfix to avoid breaks. These configs will

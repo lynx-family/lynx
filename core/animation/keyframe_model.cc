@@ -38,9 +38,15 @@ void KeyframeModel::UpdateAnimationData(starlight::AnimationData* data) {
     gfx_model_->SetAnimationData(nullptr);
     return;
   }
+  const auto new_data = ToGfxAnimationData(*data);
+  // Compare against the owned snapshot: callers may have already mutated data.
+  const bool animation_timing_changed =
+      !(gfx_animation_data_.timing_func == new_data.timing_func);
   animation_data_ = data;
-  gfx_animation_data_ = ToGfxAnimationData(*animation_data_);
+  gfx_animation_data_ = new_data;
   gfx_model_->SetAnimationData(&gfx_animation_data_);
+  curve()->UpdateAnimationTiming(gfx_animation_data_.timing_func,
+                                 animation_timing_changed);
 }
 
 void KeyframeModel::EnsureFromAndToKeyframe() {
