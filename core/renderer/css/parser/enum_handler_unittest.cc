@@ -62,22 +62,6 @@ TEST(EnumHandler, Handler) {
 
   // other cases see before @link{process}.
 }
-
-TEST(EnumHandler, DisplayXBox) {
-  auto id = CSSPropertyID::kPropertyIDDisplay;
-  CSSParserConfigs configs;
-
-  StyleMap output;
-  EXPECT_TRUE(
-      UnitHandler::Process(id, lepus::Value("-x-box"), output, configs));
-  ASSERT_FALSE(output.find(id) == output.end());
-  EXPECT_EQ(static_cast<starlight::DisplayType>(output[id].GetNumber()),
-            starlight::DisplayType::kXBox);
-
-  output.clear();
-  EXPECT_FALSE(UnitHandler::Process(id, lepus::Value("box"), output, configs));
-  EXPECT_TRUE(output.empty());
-}
 }  // namespace test
 
 }  // namespace tasm

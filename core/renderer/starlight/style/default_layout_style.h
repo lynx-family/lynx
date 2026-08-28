@@ -50,8 +50,6 @@ struct DefaultLayoutStyle {
   static constexpr float SL_DEFAULT_BORDER_RADIUS = 0.0f;
 
   static constexpr bool SL_DEFAULT_RELATIVE_LAYOUT_ONCE = true;
-  static constexpr bool SL_DEFAULT_X_BOX_PROPAGATE_MIN_CONSTRAINTS = false;
-  static constexpr bool SL_DEFAULT_X_BOX_MATCH_PARENT_SIZE = false;
 
   static constexpr FlexDirectionType SL_DEFAULT_FLEX_DIRECTION =
       FlexDirectionType::kRow;

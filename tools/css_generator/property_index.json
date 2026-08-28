@@ -1,6 +1,6 @@
 [
     {
-        "count": 238
+        "count": 236
     },
     {
         "id": 1,
@@ -945,13 +945,5 @@
     {
         "id": 236,
         "name": "-x-text-decoration-gap"
-    },
-    {
-        "id": 237,
-        "name": "-x-box-propagate-min-constraints"
-    },
-    {
-        "id": 238,
-        "name": "-x-box-match-parent-size"
     }
 ]

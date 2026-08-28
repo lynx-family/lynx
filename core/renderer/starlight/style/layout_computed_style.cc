@@ -58,8 +58,6 @@ void LayoutComputedStyle::CopyFrom(const LayoutComputedStyle& o) {
   display_ = o.display_;
   position_ = o.position_;
   direction_ = o.direction_;
-  x_box_propagate_min_constraints_ = o.x_box_propagate_min_constraints_;
-  x_box_match_parent_size_ = o.x_box_match_parent_size_;
   physical_pixels_per_layout_unit_ = o.physical_pixels_per_layout_unit_;
 }
 
@@ -75,10 +73,6 @@ void LayoutComputedStyle::Reset() {
   display_ = DefaultLayoutStyle::SL_DEFAULT_DISPLAY;
   direction_ = DefaultLayoutStyle::SL_DEFAULT_DIRECTION;
   box_sizing_ = DefaultLayoutStyle::SL_DEFAULT_BOX_SIZING;
-  x_box_propagate_min_constraints_ =
-      DefaultLayoutStyle::SL_DEFAULT_X_BOX_PROPAGATE_MIN_CONSTRAINTS;
-  x_box_match_parent_size_ =
-      DefaultLayoutStyle::SL_DEFAULT_X_BOX_MATCH_PARENT_SIZE;
 }
 
 DisplayType LayoutComputedStyle::GetDisplay(

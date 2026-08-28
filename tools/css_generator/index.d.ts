@@ -884,22 +884,6 @@ export interface Properties {
    */
   gridRow?: 'auto' | (number & {}) | (string & {}) | undefined;
   /**
-   * Specify whether a box passes its effective minimum constraints to its in-flow children.
-   *
-   * **Syntax**: `true | false`
-   *
-   * @see https://lynxjs.org/api/css/properties/-x-box-propagate-min-constraints
-   */
-  XBoxPropagateMinConstraints?: 'false' | 'true' | undefined;
-  /**
-   * Specify whether a box child matches the resolved size of its parent without contributing to the parent's automatic size.
-   *
-   * **Syntax**: `true | false`
-   *
-   * @see https://lynxjs.org/api/css/properties/-x-box-match-parent-size
-   */
-  XBoxMatchParentSize?: 'false' | 'true' | undefined;
-  /**
    * The opacity CSS property sets the opacity of an element.
    *
    * **Syntax**: `<number>`
@@ -910,11 +894,11 @@ export interface Properties {
   /**
    * In Lynx, the `display` only determines the internal display type of the element (how to layout the child elements), and does not determine the external display type (whether the element is considered a block-level element or an inline-level element).
    *
-   * **Syntax**: `flex | linear | none | grid | relative | -x-box`
+   * **Syntax**: `flex | linear | none | grid | relative`
    *
    * @see https://lynxjs.org/api/css/properties/display
    */
-  display?: '-x-box' | 'flex' | 'grid' | 'linear' | 'none' | 'relative' | undefined;
+  display?: 'flex' | 'grid' | 'linear' | 'none' | 'relative' | undefined;
   /**
    * The overflow property specifies whether to clip the content when the content of an element is too big.
    *
