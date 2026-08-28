@@ -5,6 +5,7 @@
 #include "core/runtime/common/napi/napi_runtime_proxy_jsvm.h"
 
 #include <memory>
+#include <utility>
 
 #include "core/runtime/js/jsi/jsvm/jsvm_runtime.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
@@ -15,14 +16,15 @@ namespace runtime {
 namespace js {
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSVM::Create(
     const std::shared_ptr<JSVMContextWrapper>& context,
-    runtime::TemplateDelegate* delegate) {
-  return std::make_unique<NapiRuntimeProxyJSVM>(context, delegate);
+    std::shared_ptr<DelegateObserver> delegate_observer) {
+  return std::make_unique<NapiRuntimeProxyJSVM>(context,
+                                                std::move(delegate_observer));
 }
 
 NapiRuntimeProxyJSVM::NapiRuntimeProxyJSVM(
     const std::shared_ptr<JSVMContextWrapper>& context,
-    runtime::TemplateDelegate* delegate)
-    : NapiRuntimeProxy(delegate),
+    std::shared_ptr<DelegateObserver> delegate_observer)
+    : NapiRuntimeProxy(std::move(delegate_observer)),
       jsvm_env_(context->getEnv()),
       vm_(context->getJSVM()) {}
 
@@ -45,12 +47,13 @@ void NapiRuntimeProxyJSVM::Detach() {
 }
 
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSVMFactoryImpl::Create(
-    Runtime& runtime, runtime::TemplateDelegate* delegate) {
+    Runtime& runtime, std::shared_ptr<DelegateObserver> delegate_observer) {
   LOGI("Creating napi proxy jsvm");
   auto* jsvm_runtime = static_cast<JSVMRuntime*>(&runtime);
   auto jsvm_context = std::static_pointer_cast<JSVMContextWrapper>(
       jsvm_runtime->getSharedContext());
-  return NapiRuntimeProxyJSVM::Create(jsvm_context, delegate);
+  return NapiRuntimeProxyJSVM::Create(jsvm_context,
+                                      std::move(delegate_observer));
 }
 }  // namespace js
 }  // namespace runtime
