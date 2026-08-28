@@ -65,6 +65,12 @@ export interface ScrollCoordinatorProps extends StandardProps {
    */
   'enable-scroll-bar'?: boolean;
   /**
+   * Adapt the Android coordinator offset when the active slot is empty or is shorter than the app bar and cannot scroll vertically.
+   * @defaultValue false
+   * @Android
+   */
+  'android-adapt-to-empty-slot'?: boolean;
+  /**
    * Android foldview is based on CoordinateLayout, but it only implements NestedScrollingParent, so it not support to nested scroll as child in other scrolling widget, set this property true to make it work.
    * @Android 3.9
    * @defaultValue false
