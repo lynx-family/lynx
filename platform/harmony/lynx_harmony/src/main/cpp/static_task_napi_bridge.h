@@ -6,7 +6,6 @@
 
 #include <node_api.h>
 
-#include <mutex>
 #include <string>
 
 namespace lynx {
@@ -19,9 +18,6 @@ class StaticTaskNapiBridge {
                                 const std::string& module_info,
                                 const std::string& class_name,
                                 std::intptr_t native_context_ptr);
-
- private:
-  static napi_env env_;
 };
 
 }  // namespace harmony
