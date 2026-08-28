@@ -19,9 +19,9 @@ class NapiRuntimeProxyV8 : public NapiRuntimeProxy {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
       std::shared_ptr<V8ContextWrapper> context,
-      runtime::TemplateDelegate *delegate = nullptr);
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr);
   NapiRuntimeProxyV8(std::shared_ptr<V8ContextWrapper> context,
-                     runtime::TemplateDelegate *delegate);
+                     std::shared_ptr<DelegateObserver> delegate_observer);
 
   void Attach() override;
   void Detach() override;
@@ -34,7 +34,8 @@ class NapiRuntimeProxyV8 : public NapiRuntimeProxy {
 class NapiRuntimeProxyV8FactoryImpl : public NapiRuntimeProxyV8Factory {
  public:
   std::unique_ptr<NapiRuntimeProxy> Create(
-      Runtime &runtime, runtime::TemplateDelegate *delegate = nullptr);
+      Runtime &runtime,
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr);
 };
 
 }  // namespace js

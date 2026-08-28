@@ -41,12 +41,12 @@ namespace runtime {
 namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxy::Create(
-    Runtime &runtime, runtime::TemplateDelegate *delegate) {
+    Runtime &runtime, std::shared_ptr<DelegateObserver> delegate_observer) {
   switch (runtime.type()) {
     case JSRuntimeType::v8: {
       LOGI("Creating napi proxy using v8 factory: " << s_factory);
       if (s_factory) {
-        return s_factory->Create(runtime, delegate);
+        return s_factory->Create(runtime, std::move(delegate_observer));
       }
       return nullptr;
     }
@@ -56,7 +56,8 @@ std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxy::Create(
       auto *jsc_runtime = static_cast<JSCRuntime *>(&runtime);
       auto context = jsc_runtime->getSharedContext();
       auto jsc_context = std::static_pointer_cast<JSCContextWrapper>(context);
-      return NapiRuntimeProxyJSC::Create(jsc_context, delegate);
+      return NapiRuntimeProxyJSC::Create(jsc_context,
+                                         std::move(delegate_observer));
 #else
       return nullptr;
 #endif
@@ -68,12 +69,12 @@ std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxy::Create(
       auto qjs_context =
           std::static_pointer_cast<QuickjsContextWrapper>(context);
       return NapiRuntimeProxyQuickjs::Create(qjs_context->getContext(),
-                                             delegate);
+                                             std::move(delegate_observer));
     }
     case JSRuntimeType::jsvm: {
       LOGI("Creating napi proxy using jsvm factory: " << s_jsvm_factory);
       if (s_jsvm_factory) {
-        return s_jsvm_factory->Create(runtime, delegate);
+        return s_jsvm_factory->Create(runtime, std::move(delegate_observer));
       }
       return nullptr;
     }
@@ -95,9 +96,9 @@ void PostNAPIJSTask(napi_foreground_cb js_cb, void *data, void *task_ctx) {
   }
 }
 
-NapiRuntimeProxy::NapiRuntimeProxy(runtime::TemplateDelegate *delegate)
-    : env_(napi_new_env()) {
-  delegate_observer_ = std::make_shared<DelegateObserver>(delegate);
+NapiRuntimeProxy::NapiRuntimeProxy(
+    std::shared_ptr<DelegateObserver> delegate_observer)
+    : env_(napi_new_env()), delegate_observer_(std::move(delegate_observer)) {
   napi_runtime_configuration runtime_conf = napi_create_runtime_configuration();
   napi_runtime_config_foreground_handler(runtime_conf, PostNAPIJSTask,
                                          &delegate_observer_);

@@ -17,7 +17,7 @@ class NapiRuntimeProxyQuickjsFactory {
  public:
   LYNX_EXPORT virtual std::unique_ptr<NapiRuntimeProxy> Create(
       base::UnsafeWeakPtr<Runtime> runtime,
-      runtime::TemplateDelegate *delegate = nullptr) = 0;
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr) = 0;
 };
 
 }  // namespace js
