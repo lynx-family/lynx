@@ -112,7 +112,7 @@ class PlatformHandler {
   // Sets the clipboard's plain text to |text|.
   void SetPlainText(const std::string& text);
   // Gets plain text from the clipboard.
-  const std::string& GetPlainText() const;
+  std::string GetPlainText() const;
 
  private:
   // A reference to the Flutter engine.
@@ -123,8 +123,6 @@ class PlatformHandler {
   // unnecessarily. See flutter/flutter#103205.
   std::function<std::unique_ptr<ScopedClipboardInterface>()>
       scoped_clipboard_provider_;
-
-  mutable std::string last_clipboard_text_;
 };
 
 // A public interface for ScopedClipboard, so that it can be injected into
