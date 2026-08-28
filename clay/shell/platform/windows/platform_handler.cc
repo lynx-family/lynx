@@ -141,8 +141,7 @@ void PlatformHandler::SetPlainText(const std::string& text) {
                    << set_result;
   }
 }
-const std::string& PlatformHandler::GetPlainText() const {
-  last_clipboard_text_.clear();
+std::string PlatformHandler::GetPlainText() const {
   const FlutterWindowsView* view = engine_->view();
   if (view == nullptr) {
     FML_LOG(ERROR) << "Clipboard is not available in Windows headless mode";
@@ -164,9 +163,7 @@ const std::string& PlatformHandler::GetPlainText() const {
                    << std::get<int>(get_string_result);
     return std::string();
   }
-  last_clipboard_text_ =
-      fml::WideStringToUtf8(std::get<std::wstring>(get_string_result));
-  return last_clipboard_text_;
+  return fml::WideStringToUtf8(std::get<std::wstring>(get_string_result));
 }
 
 }  // namespace clay
