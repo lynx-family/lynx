@@ -53,7 +53,7 @@ void DestroyTextBundlePointer(void *bundle) {
   [imageManager setEventMask:eventMask];
   [imageManager updatePaintInfo:paintInfo];
   [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
-  [imageManager requestImage:sourceURL withType:LynxImageRequestPlaceholder];
+  [imageManager requestImage:placeholderURL withType:LynxImageRequestPlaceholder];
   @synchronized(self) {
     // TODO(songshourui.null): Reset or destroy the previous manager when the same image id is
     // replaced, so any pending request cannot update stale targets after ownership is finalized.

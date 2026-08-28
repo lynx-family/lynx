@@ -154,6 +154,9 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     _cancelBlocks[@(type)]();
     _cancelBlocks[@(type)] = nil;
   }
+  if (imageURL.url == nil || imageURL.url.absoluteString.length == 0) {
+    return;
+  }
 
   LynxImageLoadOptions* options = [[LynxImageLoadOptions alloc] init];
   CGSize targetSize = imageURL.imageSize;
