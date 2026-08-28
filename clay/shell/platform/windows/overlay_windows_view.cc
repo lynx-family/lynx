@@ -5,10 +5,13 @@
 
 #include "clay/shell/platform/windows/overlay_windows_view.h"
 
+#include <Windows.h>
+
 #include <memory>
 #include <utility>
 
 #include "clay/shell/platform/windows/flutter_window.h"
+#include "clay/shell/platform/windows/flutter_windows_engine.h"
 
 namespace clay {
 
@@ -27,6 +30,22 @@ void OverlayWindowsView::SendWindowMetrics(size_t width, size_t height,
   // Intentionally empty.
   // Overlays act as secondary views; forwarding this would incorrectly
   // override the engine's primary layout dimensions.
+}
+
+void OverlayWindowsView::ConvertPointerPosition(double* x, double* y) {
+  FlutterWindowsEngine* engine = GetEngine();
+  FlutterWindowsView* implicit_view = engine ? engine->view() : nullptr;
+  HWND source_window = GetWindowHandle();
+  HWND target_window =
+      implicit_view ? implicit_view->GetWindowHandle() : nullptr;
+  if (!source_window || !target_window || source_window == target_window) {
+    return;
+  }
+
+  POINT point = {static_cast<LONG>(*x), static_cast<LONG>(*y)};
+  MapWindowPoints(source_window, target_window, &point, 1);
+  *x = point.x;
+  *y = point.y;
 }
 
 void OverlayWindowsView::Destroy() {
