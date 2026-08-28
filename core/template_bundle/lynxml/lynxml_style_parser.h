@@ -19,21 +19,19 @@ struct LynxMLStyleParseResult {
   // Whether parsing completed successfully.
   bool success = false;
 
-  // The parsed CSS fragment. This may be null when the source produces no
-  // style rules.
+  // The parsed CSS fragment. This is null when parsing fails.
   std::unique_ptr<SharedCSSFragment> fragment;
 
   // The parsing error. This is empty when success is true.
   std::string error;
 };
 
-// Parses the contents of a LynxML <style> source block. Each parser instance
-// may be parsed at most once and may not be copied or moved.
+// Parses the contents of a LynxML <style> source block. Parser instances may
+// not be copied or moved.
 class LynxMLStyleParser {
  public:
   // Creates a parser for style using the supplied template compile options.
-  LynxMLStyleParser(const std::string& style,
-                    const CompileOptions& compile_options);
+  LynxMLStyleParser(std::string style, const CompileOptions& compile_options);
   ~LynxMLStyleParser() = default;
 
   LynxMLStyleParser(const LynxMLStyleParser&) = delete;
@@ -42,13 +40,11 @@ class LynxMLStyleParser {
   LynxMLStyleParser& operator=(LynxMLStyleParser&&) = delete;
 
   // Parses the style source and returns either a CSS fragment or an error.
-  // Calling this more than once returns an error.
   LynxMLStyleParseResult Parse();
 
  private:
   std::string style_;
   CompileOptions compile_options_;
-  bool parsed_ = false;
 };
 
 // Parses a LynxML style source without retaining a parser object.

@@ -24,6 +24,15 @@ podspec_target("lynx_podspec") {
       git = "https://github.com/lynx-family/lynx.git"
     }
     requires_arc = true
+    if (use_flatten_deps) {
+      # These implementation headers are excluded from source_files below to
+      # avoid duplicate CocoaPods header outputs. Keep them in release archives
+      # so their source-directory includes still resolve for published Pods.
+      preserve_paths = [
+        "core/renderer/css/ng/parser/css_parser_token.h",
+        "third_party/double-conversion/double-conversion/utils.h",
+      ]
+    }
     default_subspec = "Framework"
     compiler_flags = [
       "-Wall",
@@ -789,12 +798,32 @@ subspec_target("zlib") {
 }
 
 subspec_target("amoeba") {
+  if (use_flatten_deps) {
+    # Avoid duplicate CocoaPods header outputs while keeping the excluded
+    # implementation headers reachable from their source directories.
+    pattern_exclude_files = [
+      "../../../../core/renderer/css/ng/parser/css_parser_token.h",
+      "../../../../third_party/double-conversion/double-conversion/utils.h",
+    ]
+    pod_target_xcconfig = {
+      HEADER_SEARCH_PATHS = [
+        "//PODS_TARGET_SRCROOT",
+        "//PODS_TARGET_SRCROOT/third_party/double-conversion",
+      ]
+    }
+  } else {
+    header_mappings_dir = "."
+  }
+
   sources =
       [ "../../../../core/renderer/css/ng/selector/lynx_css_selector_impl.cc" ]
   deps = [
     "../../../../core/renderer/css",
+    "../../../../core/renderer/css:css_parser",
     "../../../../core/renderer/simple_styling",
   ]
+  flatten_deps =
+      [ "../../../../third_party/double-conversion:DoubleConversion" ]
 }
 
 subspec_target("animation") {
@@ -922,6 +951,9 @@ subspec_target("template_bundle") {
     "../../../../core/template_bundle/template_codec:template_decoder",
     "../../../../core/template_bundle/template_codec/binary_decoder:binary_decoder",
   ]
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Native/amoeba" ]
+  }
 }
 
 subspec_target("third_party") {

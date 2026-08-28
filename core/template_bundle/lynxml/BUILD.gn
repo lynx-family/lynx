@@ -15,18 +15,17 @@ lynx_core_source_set("lynxml_parser") {
 }
 
 lynx_core_source_set("lynxml_style_parser") {
+  check_includes = false
   sources = [
     "lynxml_style_parser.cc",
     "lynxml_style_parser.h",
   ]
-  public_deps = [ "../template_codec:template_decoder" ]
 
   # Oliver compiles the CSS sources directly into encoder_common. Depending on
-  # the CSS target as well would link those sources twice.
-  if (is_oliver) {
-    check_includes = false
-  } else {
-    public_deps += [ "../../renderer/css:css" ]
+  # the CSS targets as well would link those sources twice.
+  if (!is_oliver) {
+    deps = [ "../../renderer/css:css_parser" ]
+    public_deps = [ "../../renderer/css:css" ]
   }
 }
 
@@ -34,8 +33,18 @@ unittest_set("lynxml_parser_testset") {
   sources = [
     "lynxml_parser_unittest.cc",
     "lynxml_source_observer_unittest.cc",
+    "lynxml_style_parser_unittest.cc",
   ]
-  public_deps = [ ":lynxml_parser" ]
+  deps = [
+    "../../renderer:tasm_group",
+    "../../renderer/dom:renderer_dom",
+    "../../runtime/lepus/bindings:bindings",
+    "../../shell/testing:mock_tasm_delegate_testset",
+  ]
+  public_deps = [
+    ":lynxml_parser",
+    ":lynxml_style_parser",
+  ]
 }
 
 unittest_exec("lynxml_parser_unittest_exec") {

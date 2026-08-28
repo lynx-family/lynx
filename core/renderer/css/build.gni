@@ -66,6 +66,7 @@ lynx_css_core_sources = [
   "ng/selector/lynx_css_selector.h",
   "ng/selector/lynx_css_selector_extra_data.cc",
   "ng/selector/lynx_css_selector_extra_data.h",
+  "ng/selector/lynx_css_selector_impl.cc",
   "ng/selector/lynx_css_selector_list.cc",
   "ng/selector/lynx_css_selector_list.h",
   "ng/style/cascade_layer.h",
@@ -207,10 +208,6 @@ lynx_css_core_sources = [
   "unit_handler.h",
 ]
 
-if (!enable_unittests && !enable_inspector) {
-  lynx_css_core_sources += [ "ng/selector/lynx_css_selector_empty.cc" ]
-}
-
 if (is_android) {
   lynx_css_core_sources += [
     "android/css_color_utils.cc",
@@ -254,7 +251,9 @@ lynx_css_parser_sources = [
   "ng/parser/css_parser_token.cc",
   "ng/parser/css_parser_token.h",
   "ng/parser/css_parser_token_range.cc",
+  "ng/parser/css_parser_token_range.h",
   "ng/parser/css_parser_token_stream.cc",
+  "ng/parser/css_parser_token_stream.h",
   "ng/parser/css_tokenizer.cc",
   "ng/parser/css_tokenizer.h",
   "ng/parser/css_tokenizer_codepoints.cc",
@@ -264,13 +263,14 @@ lynx_css_parser_sources = [
   "ng/parser/font_face_parser.h",
   "ng/parser/media_query_parser.cc",
   "ng/parser/media_query_parser.h",
+  "ng/parser/number_parsing_options.h",
   "ng/parser/string_to_number.cc",
+  "ng/parser/string_to_number.h",
   "ng/parser/supports_condition_parser.cc",
   "ng/parser/supports_condition_parser.h",
   "ng/selector/css_parser_context.h",
   "ng/selector/css_selector_parser.cc",
   "ng/selector/css_selector_parser.h",
-  "ng/selector/lynx_css_selector_impl.cc",
 ]
 lynx_css_parser_sources_path = get_path_info(lynx_css_parser_sources, "abspath")
 
@@ -289,9 +289,5 @@ lynx_css_extra_sources = [
   "css_variable_handler.cc",
   "css_variable_handler.h",
 ]
-
-if (!enable_unittests && !enable_inspector) {
-  lynx_css_extra_sources += [ "ng/selector/lynx_css_selector_empty.cc" ]
-}
 
 lynx_css_extra_sources_path = get_path_info(lynx_css_extra_sources, "abspath")
