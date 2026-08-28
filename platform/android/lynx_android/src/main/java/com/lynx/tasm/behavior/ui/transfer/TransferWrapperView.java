@@ -4,7 +4,10 @@
 package com.lynx.tasm.behavior.ui.transfer;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.view.MotionEvent;
 import android.view.ViewTreeObserver;
+import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.behavior.ui.UIExposure;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 
@@ -69,6 +72,16 @@ final class TransferWrapperView extends AndroidView {
   }
 
   @Override
+  public boolean dispatchTouchEvent(MotionEvent ev) {
+    TouchEventDispatcher eventDispatcher = mTransferView.getTouchEventDispatcher();
+    boolean consumed = eventDispatcher.onTouchEvent(ev, mTransferView);
+    if (consumed && !eventDispatcher.consumeSlideEvent(ev)) {
+      super.dispatchTouchEvent(ev);
+    }
+    return consumed;
+  }
+
+  @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
     mTransferView.updateHostConstraints(widthMeasureSpec, heightMeasureSpec);
 
@@ -88,5 +101,11 @@ final class TransferWrapperView extends AndroidView {
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     super.onLayout(changed, l, t, r, b);
     mTransferView.layout();
+  }
+
+  @Override
+  protected void dispatchDraw(Canvas canvas) {
+    super.dispatchDraw(canvas);
+    mTransferView.sendTransferDrawEndEvent();
   }
 }
