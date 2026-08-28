@@ -228,6 +228,9 @@ class BoxShadowKeyframe : public gfx::Keyframe {
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
   ~BoxShadowKeyframe() override = default;
+  gfx::KeyframeValueType ValueType() const override {
+    return gfx::KeyframeValueType::kBoxShadow;
+  }
 
   const tasm::CSSValue& GetBoxShadow() const { return box_shadow_; }
   bool HasResolvedValue() const { return has_resolved_value_; }
@@ -359,6 +362,9 @@ class VisibilityKeyframe : public gfx::Keyframe {
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
   ~VisibilityKeyframe() override = default;
+  gfx::KeyframeValueType ValueType() const override {
+    return gfx::KeyframeValueType::kEnum;
+  }
 
   bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                 tasm::Element* element);

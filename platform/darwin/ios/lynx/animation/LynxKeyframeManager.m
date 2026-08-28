@@ -7,9 +7,17 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI.h>
 
+@interface LynxKeyframeAnimator (TypedKeyframes)
+- (void)applyAnimationInfo:(LynxAnimationInfo*)info
+           parsedKeyframes:(LynxKeyframeParsedData*)parsedKeyframes
+                generation:(uint32_t)generation;
+@end
+
 @implementation LynxKeyframeManager {
   NSArray<LynxAnimationInfo*>* _infos;
   NSMutableDictionary<NSString*, LynxKeyframeAnimator*>* _animators;
+  NSMutableDictionary<NSNumber*, LynxKeyframeAnimator*>* _platformAnimators;
+  NSMutableDictionary<NSNumber*, NSNumber*>* _platformGenerations;
 }
 
 - (instancetype)initWithUI:(LynxUI*)ui {
@@ -18,6 +26,8 @@
     _ui = ui;
     _infos = nil;
     _animators = nil;
+    _platformAnimators = [[NSMutableDictionary alloc] init];
+    _platformGenerations = [[NSMutableDictionary alloc] init];
     _autoResumeAnimation = YES;
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(resumeAnimation)
@@ -37,6 +47,44 @@
           animator.autoResumeAnimation = autoResume;
         }];
   }
+  [_platformAnimators enumerateKeysAndObjectsUsingBlock:^(
+                          NSNumber* key, LynxKeyframeAnimator* animator, BOOL* stop) {
+    animator.autoResumeAnimation = autoResume;
+  }];
+}
+
+- (void)applyAnimationInfo:(LynxAnimationInfo*)info
+           parsedKeyframes:(LynxKeyframeParsedData*)parsedKeyframes
+               animationID:(uint64_t)animationID
+                generation:(uint32_t)generation
+                    cancel:(BOOL)cancel {
+  if (_platformAnimators == nil) {
+    _platformAnimators = [[NSMutableDictionary alloc] init];
+    _platformGenerations = [[NSMutableDictionary alloc] init];
+  }
+  NSNumber* key = @(animationID);
+  NSNumber* currentGeneration = _platformGenerations[key];
+  if (currentGeneration != nil && generation < currentGeneration.unsignedIntValue) {
+    return;
+  }
+
+  LynxKeyframeAnimator* animator = _platformAnimators[key];
+  if (cancel) {
+    [animator destroy];
+    [_platformAnimators removeObjectForKey:key];
+    _platformGenerations[key] = @(generation);
+    return;
+  }
+  if (currentGeneration != nil && generation == currentGeneration.unsignedIntValue) {
+    return;
+  }
+  if (animator == nil) {
+    animator = [[LynxKeyframeAnimator alloc] initWithUI:_ui];
+    animator.autoResumeAnimation = _autoResumeAnimation;
+    _platformAnimators[key] = animator;
+  }
+  _platformGenerations[key] = @(generation);
+  [animator applyAnimationInfo:info parsedKeyframes:parsedKeyframes generation:generation];
 }
 
 - (void)setAnimations:(NSArray<LynxAnimationInfo*>*)infos {
@@ -88,35 +136,40 @@
 }
 
 - (void)notifyBGLayerAdded {
-  if (_animators == nil) {
-    return;
-  }
   [_animators
       enumerateKeysAndObjectsUsingBlock:^(id key, LynxKeyframeAnimator* animator, BOOL* stop) {
         [animator notifyBGLayerAdded];
       }];
+  [_platformAnimators enumerateKeysAndObjectsUsingBlock:^(
+                          NSNumber* key, LynxKeyframeAnimator* animator, BOOL* stop) {
+    [animator notifyBGLayerAdded];
+  }];
 }
 
 - (void)notifyPropertyUpdated:(NSString*)name value:(id)value {
-  if (_animators == nil) {
-    return;
-  }
   [_animators
       enumerateKeysAndObjectsUsingBlock:^(id key, LynxKeyframeAnimator* animator, BOOL* stop) {
         [animator notifyPropertyUpdated:name value:value];
       }];
+  [_platformAnimators enumerateKeysAndObjectsUsingBlock:^(
+                          NSNumber* key, LynxKeyframeAnimator* animator, BOOL* stop) {
+    [animator notifyPropertyUpdated:name value:value];
+  }];
 }
 
 - (void)endAllAnimation {
-  if (_animators == nil) {
-    return;
-  }
   [_animators
       enumerateKeysAndObjectsUsingBlock:^(id key, LynxKeyframeAnimator* animator, BOOL* stop) {
         [animator destroy];
       }];
   _animators = nil;
   _infos = nil;
+  [_platformAnimators enumerateKeysAndObjectsUsingBlock:^(
+                          NSNumber* key, LynxKeyframeAnimator* animator, BOOL* stop) {
+    [animator destroy];
+  }];
+  _platformAnimators = nil;
+  _platformGenerations = nil;
 }
 
 // Only use for list to reset cell keyframe animation when it prepare for reusing cell.
@@ -153,29 +206,36 @@
       }
     }
   }
+  for (LynxKeyframeAnimator* animator in _platformAnimators.allValues) {
+    if ([animator isRunning]) {
+      return YES;
+    }
+  }
   return NO;
 }
 
 - (void)detachFromUI {
   _ui = nil;
-  if (_animators == nil) {
-    return;
-  }
   [_animators
       enumerateKeysAndObjectsUsingBlock:^(id key, LynxKeyframeAnimator* animator, BOOL* stop) {
         [animator detachFromUI];
       }];
+  [_platformAnimators enumerateKeysAndObjectsUsingBlock:^(
+                          NSNumber* key, LynxKeyframeAnimator* animator, BOOL* stop) {
+    [animator detachFromUI];
+  }];
 }
 
 - (void)attachToUI:(LynxUI*)ui {
   _ui = ui;
-  if (_animators == nil) {
-    return;
-  }
   [_animators
       enumerateKeysAndObjectsUsingBlock:^(id key, LynxKeyframeAnimator* animator, BOOL* stop) {
         [animator attachToUI:ui];
       }];
+  [_platformAnimators enumerateKeysAndObjectsUsingBlock:^(
+                          NSNumber* key, LynxKeyframeAnimator* animator, BOOL* stop) {
+    [animator attachToUI:ui];
+  }];
 }
 
 @end

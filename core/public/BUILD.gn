@@ -48,4 +48,5 @@ lynx_core_source_set("public") {
     "vsync_monitor_platform_impl.h",
     "vsync_observer_interface.h",
   ]
+  public_deps = [ "../../gfx:gfx" ]
 }

@@ -49,11 +49,15 @@ class Keyframe {
   virtual ~Keyframe() = default;
 
   fml::TimeDelta Time() const { return time_; }
+  double Offset() const { return time_.ToSecondsF(); }
   const TimingFunction* timing_function() const {
     return timing_function_.get();
   }
 
   bool IsEmpty() const { return is_empty_; }
+  virtual KeyframeValueType ValueType() const {
+    return KeyframeValueType::kUnknown;
+  }
 
  protected:
   Keyframe(fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
@@ -74,6 +78,10 @@ class FloatKeyframe : public Keyframe {
       fml::TimeDelta time,
       std::unique_ptr<TimingFunction> timing_function = nullptr) {
     return std::make_unique<FloatKeyframe>(time, std::move(timing_function));
+  }
+
+  KeyframeValueType ValueType() const override {
+    return KeyframeValueType::kFloat;
   }
 
   FloatKeyframe(fml::TimeDelta time,
@@ -100,6 +108,10 @@ class ColorKeyframe : public Keyframe {
       fml::TimeDelta time,
       std::unique_ptr<TimingFunction> timing_function = nullptr) {
     return std::make_unique<ColorKeyframe>(time, std::move(timing_function));
+  }
+
+  KeyframeValueType ValueType() const override {
+    return KeyframeValueType::kColor;
   }
 
   ColorKeyframe(fml::TimeDelta time,
@@ -145,6 +157,9 @@ class IntKeyframe : public Keyframe {
 
 class LengthKeyframe : public Keyframe {
  public:
+  KeyframeValueType ValueType() const override {
+    return KeyframeValueType::kLength;
+  }
   bool HasResolvedValue() const { return has_resolved_value_; }
   const LengthValue& ResolvedValue() const { return resolved_value_; }
 
@@ -168,6 +183,9 @@ class LengthKeyframe : public Keyframe {
 
 class Vec2Keyframe : public Keyframe {
  public:
+  KeyframeValueType ValueType() const override {
+    return KeyframeValueType::kVec2;
+  }
   bool HasResolvedValue() const { return has_resolved_value_; }
   const Vec2Tagged& ResolvedValue() const { return resolved_value_; }
 
@@ -202,6 +220,10 @@ class TransformKeyframe : public Keyframe {
                     std::unique_ptr<TimingFunction> timing_function)
       : Keyframe(time, std::move(timing_function)) {}
 
+  KeyframeValueType ValueType() const override {
+    return KeyframeValueType::kTransform;
+  }
+
   bool HasResolvedValue() const { return has_resolved_value_; }
   const TransformOperations& ResolvedValue() const { return resolved_value_; }
 
@@ -227,6 +249,9 @@ class TransformKeyframe : public Keyframe {
 
 class FilterKeyframe : public Keyframe {
  public:
+  KeyframeValueType ValueType() const override {
+    return KeyframeValueType::kFilter;
+  }
   bool HasResolvedValue() const { return has_resolved_value_; }
   const FilterValue& ResolvedValue() const { return resolved_value_; }
 

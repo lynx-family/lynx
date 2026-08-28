@@ -580,6 +580,7 @@ void CSSTransitionManager::SyncTransitionData(
   property_types_.clear();
   base::LinearFlatMap<base::String, std::shared_ptr<Animation>>
       active_animations_map;
+  PlatformTransitionMap active_platform_animations;
 
   for (auto proxy : transition_data) {
     starlight::AnimationPropertyType property = proxy.property();
@@ -595,7 +596,8 @@ void CSSTransitionManager::SyncTransitionData(
           GetPropertyIDToAnimationPropertyTypeMap();
       for (const auto& iterator : transition_props_map) {
         SetTransitionDataInternal(iterator.second, duration, delay, tf,
-                                  active_animations_map);
+                                  active_animations_map,
+                                  active_platform_animations);
       }
     } else if (property == starlight::AnimationPropertyType::kBorderWidth ||
                property == starlight::AnimationPropertyType::kBorderColor ||
@@ -605,11 +607,13 @@ void CSSTransitionManager::SyncTransitionData(
           GetPolymericPropertyIDToAnimationPropertyTypeMap(property);
       for (const auto& iterator : poly_transition_props_map) {
         SetTransitionDataInternal(iterator.second, duration, delay, tf,
-                                  active_animations_map);
+                                  active_animations_map,
+                                  active_platform_animations);
       }
     } else {
       SetTransitionDataInternal(property, duration, delay, tf,
-                                active_animations_map);
+                                active_animations_map,
+                                active_platform_animations);
     }
   }
 
@@ -621,13 +625,19 @@ void CSSTransitionManager::SyncTransitionData(
     }
   }
   animations_map_.swap(active_animations_map);
+  for (auto& [name, animation] : platform_transition_animations_) {
+    QueuePlatformAnimationCommands(animation,
+                                   gfx::PlatformAnimationCommandType::kCancel);
+  }
+  platform_transition_animations_.swap(active_platform_animations);
 }
 
 void CSSTransitionManager::SetTransitionDataInternal(
     starlight::AnimationPropertyType property, long duration, long delay,
     const starlight::TimingFunctionData& timing_func,
     base::LinearFlatMap<base::String, std::shared_ptr<Animation>>&
-        active_animations_map) {
+        active_animations_map,
+    PlatformTransitionMap& active_platform_animations) {
   // 1. Constructor animation_data according to transition_data
   property_types_.emplace(static_cast<unsigned int>(property));
   auto& animation_data = transition_data_[static_cast<unsigned int>(property)];
@@ -649,6 +659,13 @@ void CSSTransitionManager::SetTransitionDataInternal(
     // parameter of existing animator.
     active_animations_map[animation_data.name] = animation->second;
     animations_map_.erase(animation);
+  }
+  auto platform_animation =
+      platform_transition_animations_.find(animation_data.name);
+  if (platform_animation != platform_transition_animations_.end()) {
+    active_platform_animations.insert_or_assign(
+        animation_data.name, std::move(platform_animation->second));
+    platform_transition_animations_.erase(platform_animation);
   }
 }
 
@@ -795,11 +812,17 @@ void CSSTransitionManager::TryToStopTransitionAnimator(
     return;
   }
   const auto& animation_iterator = animations_map_.find(data->second.name);
-  if (animation_iterator == animations_map_.end()) {
-    return;
+  if (animation_iterator != animations_map_.end()) {
+    animation_iterator->second->Destroy();
+    animations_map_.erase(animation_iterator);
   }
-  animation_iterator->second->Destroy();
-  animations_map_.erase(animation_iterator);
+  auto platform_animation =
+      platform_transition_animations_.find(data->second.name);
+  if (platform_animation != platform_transition_animations_.end()) {
+    QueuePlatformAnimationCommands(platform_animation->second,
+                                   gfx::PlatformAnimationCommandType::kCancel);
+    platform_transition_animations_.erase(platform_animation);
+  }
 }
 
 void CSSTransitionManager::TryToStopTransitionAnimatorWithPendingCleanup(
@@ -810,11 +833,17 @@ void CSSTransitionManager::TryToStopTransitionAnimatorWithPendingCleanup(
     return;
   }
   const auto& animation_iterator = animations_map_.find(data->second.name);
-  if (animation_iterator == animations_map_.end()) {
-    return;
+  if (animation_iterator != animations_map_.end()) {
+    PrepareTransitionRemovalCleanup(animation_iterator->second);
+    animations_map_.erase(animation_iterator);
   }
-  PrepareTransitionRemovalCleanup(animation_iterator->second);
-  animations_map_.erase(animation_iterator);
+  auto platform_animation =
+      platform_transition_animations_.find(data->second.name);
+  if (platform_animation != platform_transition_animations_.end()) {
+    QueuePlatformAnimationCommands(platform_animation->second,
+                                   gfx::PlatformAnimationCommandType::kCancel);
+    platform_transition_animations_.erase(platform_animation);
+  }
 }
 
 void CSSTransitionManager::PrepareTransitionRemovalCleanup(
@@ -862,22 +891,46 @@ bool CSSTransitionManager::UpdateTransitionAnimator(
       tasm::CSSKeyframesContent{{0.f, std::move(start_shared_style_map)},
                                 {1.f, std::move(end_shared_style_map)}};
 
-  if (animations_map_.count(data->second.name)) {
+  auto existing_core_animation = animations_map_.find(data->second.name);
+  if (existing_core_animation != animations_map_.end()) {
     // If a transition animation is replaced by another identical transition
     // animation (both animate the same properties), then this transition
     // animation does not require clearing effect and applying the end effect.
     if (play_handles_initial_frame) {
-      animations_map_[data->second.name]->Destroy(false);
+      existing_core_animation->second->Destroy(false);
     } else {
-      auto existing_animation = animations_map_[data->second.name];
-      PrepareTransitionRemovalCleanup(existing_animation);
-      animations_map_.erase(data->second.name);
+      PrepareTransitionRemovalCleanup(existing_core_animation->second);
     }
+    animations_map_.erase(existing_core_animation);
   }
-  std::shared_ptr<Animation> animation = CreateAnimation(data->second);
-  if (animation == nullptr) {
+  auto build_result = BuildAnimation(data->second);
+  auto platform_animation =
+      platform_transition_animations_.find(data->second.name);
+  if (build_result.platform_animation.has_value()) {
+    auto& new_platform_animation = *build_result.platform_animation;
+    auto command_type = gfx::PlatformAnimationCommandType::kHandoff;
+    if (platform_animation != platform_transition_animations_.end()) {
+      new_platform_animation.animation_id =
+          platform_animation->second.animation_id;
+      new_platform_animation.generation = platform_animation->second.generation;
+      new_platform_animation.handed_off = platform_animation->second.handed_off;
+      command_type = gfx::PlatformAnimationCommandType::kUpdate;
+    }
+    QueuePlatformAnimationCommands(new_platform_animation, command_type);
+    platform_transition_animations_.insert_or_assign(
+        data->second.name, std::move(new_platform_animation));
+    return true;
+  }
+
+  if (platform_animation != platform_transition_animations_.end()) {
+    QueuePlatformAnimationCommands(platform_animation->second,
+                                   gfx::PlatformAnimationCommandType::kCancel);
+    platform_transition_animations_.erase(platform_animation);
+  }
+  if (build_result.core_animation == nullptr) {
     return false;
   }
+  std::shared_ptr<Animation> animation = std::move(build_result.core_animation);
   animation->BindDelegate(this);
   animation->SetTransitionFlag();
   animation->Play(play_handles_initial_frame);

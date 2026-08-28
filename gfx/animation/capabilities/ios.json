@@ -1,0 +1,107 @@
+{
+  "backend": "ios",
+  "capabilities": [
+    {
+      "kind": "keyframe",
+      "property": "opacity",
+      "valueType": "float",
+      "supportsPerKeyframeTiming": false,
+      "timingFunctions": [
+        "linear",
+        "ease",
+        "ease-in",
+        "ease-out",
+        "ease-in-out",
+        "ease-in-ease-out",
+        "square-bezier",
+        "cubic-bezier"
+      ]
+    },
+    {
+      "kind": "keyframe",
+      "property": "transform",
+      "valueType": "transform",
+      "supportsPerKeyframeTiming": false,
+      "timingFunctions": [
+        "linear",
+        "ease",
+        "ease-in",
+        "ease-out",
+        "ease-in-out",
+        "ease-in-ease-out",
+        "square-bezier",
+        "cubic-bezier"
+      ],
+      "valueFeatures": {
+        "operations": {
+          "translate": {
+            "axes": ["x", "y", "z"],
+            "units": ["number"]
+          },
+          "rotate": {
+            "axes": ["x", "y", "z"]
+          },
+          "scale": {
+            "axes": ["x", "y"]
+          },
+          "skew": {
+            "axes": ["x", "y"]
+          },
+          "matrix": {
+            "dimensions": ["2d", "3d"]
+          }
+        }
+      }
+    },
+    {
+      "kind": "transition",
+      "property": "opacity",
+      "valueType": "float",
+      "timingFunctions": [
+        "linear",
+        "ease",
+        "ease-in",
+        "ease-out",
+        "ease-in-out",
+        "ease-in-ease-out",
+        "square-bezier",
+        "cubic-bezier"
+      ]
+    },
+    {
+      "kind": "transition",
+      "property": "transform",
+      "valueType": "transform",
+      "timingFunctions": [
+        "linear",
+        "ease",
+        "ease-in",
+        "ease-out",
+        "ease-in-out",
+        "ease-in-ease-out",
+        "square-bezier",
+        "cubic-bezier"
+      ],
+      "valueFeatures": {
+        "operations": {
+          "translate": {
+            "axes": ["x", "y", "z"],
+            "units": ["number"]
+          },
+          "rotate": {
+            "axes": ["x", "y", "z"]
+          },
+          "scale": {
+            "axes": ["x", "y"]
+          },
+          "skew": {
+            "axes": ["x", "y"]
+          },
+          "matrix": {
+            "dimensions": ["2d", "3d"]
+          }
+        }
+      }
+    }
+  ]
+}
