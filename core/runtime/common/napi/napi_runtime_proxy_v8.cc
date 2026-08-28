@@ -18,15 +18,15 @@ namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyV8::Create(
     std::shared_ptr<V8ContextWrapper> context,
-    runtime::TemplateDelegate *delegate) {
+    std::shared_ptr<DelegateObserver> delegate_observer) {
   return std::unique_ptr<NapiRuntimeProxy>(
-      new NapiRuntimeProxyV8(std::move(context), delegate));
+      new NapiRuntimeProxyV8(std::move(context), std::move(delegate_observer)));
 }
 
 NapiRuntimeProxyV8::NapiRuntimeProxyV8(
     std::shared_ptr<V8ContextWrapper> context,
-    runtime::TemplateDelegate *delegate)
-    : NapiRuntimeProxy(delegate), context_(context) {}
+    std::shared_ptr<DelegateObserver> delegate_observer)
+    : NapiRuntimeProxy(std::move(delegate_observer)), context_(context) {}
 
 void NapiRuntimeProxyV8::Attach() {
   auto ctx = context_.lock();
@@ -47,11 +47,11 @@ void NapiRuntimeProxyV8::Detach() {
 }
 
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyV8FactoryImpl::Create(
-    Runtime &runtime, runtime::TemplateDelegate *delegate) {
+    Runtime &runtime, std::shared_ptr<DelegateObserver> delegate_observer) {
   auto *v8_runtime = static_cast<V8Runtime *>(&runtime);
   auto context = v8_runtime->getSharedContext();
   auto v8_context = std::static_pointer_cast<V8ContextWrapper>(context);
-  return NapiRuntimeProxyV8::Create(v8_context, delegate);
+  return NapiRuntimeProxyV8::Create(v8_context, std::move(delegate_observer));
 }
 
 }  // namespace js

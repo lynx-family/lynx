@@ -17,9 +17,9 @@ class NapiRuntimeProxyJSC : public NapiRuntimeProxy {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
       std::shared_ptr<JSCContextWrapper> context,
-      runtime::TemplateDelegate *delegate = nullptr);
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr);
   NapiRuntimeProxyJSC(std::shared_ptr<JSCContextWrapper> context,
-                      runtime::TemplateDelegate *delegate);
+                      std::shared_ptr<DelegateObserver> delegate_observer);
 
   void Attach() override;
   void Detach() override;

@@ -382,9 +382,12 @@ void BTSRuntime::PrepareNapiEnvironment() {
           }));
   auto runtime = GetJSRuntimeWeak();
   auto* raw_runtime = runtime.Lock();
-  auto proxy = raw_runtime == nullptr ? nullptr
-                                      : runtime::js::NapiRuntimeProxy::Create(
-                                            *raw_runtime, delegate_.get());
+  auto delegate_observer = std::make_shared<runtime::js::DelegateObserver>(
+      fml::MessageLoop::GetCurrent().GetTaskRunner());
+  auto proxy = raw_runtime == nullptr
+                   ? nullptr
+                   : runtime::js::NapiRuntimeProxy::Create(
+                         *raw_runtime, std::move(delegate_observer));
   if (proxy) {
     proxy->SetJSRuntime(std::move(runtime));
     LOGI(log_context_ << " napi attaching with proxy: " << proxy.get());
@@ -409,10 +412,12 @@ void BTSRuntime::PrepareRestrictedNapiEnvironment() {
       std::make_unique<runtime::js::NapiEnvironment::Delegate>());
   auto runtime = GetJSRuntimeWeak();
   auto* raw_runtime = runtime.Lock();
+  auto delegate_observer = std::make_shared<runtime::js::DelegateObserver>(
+      fml::MessageLoop::GetCurrent().GetTaskRunner());
   std::unique_ptr<runtime::js::RestrictedNapiRuntimeProxyDecorator> proxy;
   if (raw_runtime != nullptr) {
-    auto base_proxy =
-        runtime::js::NapiRuntimeProxy::Create(*raw_runtime, delegate_.get());
+    auto base_proxy = runtime::js::NapiRuntimeProxy::Create(
+        *raw_runtime, std::move(delegate_observer));
     if (base_proxy) {
       base_proxy->SetJSRuntime(std::move(runtime));
       proxy =
