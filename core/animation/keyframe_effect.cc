@@ -79,6 +79,37 @@ void KeyframeEffect::SetPauseTime(fml::TimePoint& time) {
   custom_property_run_state_ = gfx::TimingRunState::PAUSED;
 }
 
+void KeyframeEffect::RestoreTiming(fml::TimePoint start_time,
+                                   fml::TimePoint sample_time,
+                                   gfx::KeyframeModel::RunState run_state) {
+  gfx_effect_->SetStartTime(start_time);
+  for (auto& model : keyframe_models_) {
+    model->gfx_model_->RestoreTiming(start_time, run_state);
+    // Do not replay iterations that elapsed in the previous executor.
+    model->gfx_model_->TrimTimeToCurrentIteration(
+        sample_time, gfx_effect_->current_iteration_count_);
+  }
+  custom_property_run_state_ = static_cast<gfx::TimingRunState>(run_state);
+  auto data = ToGfxAnimationData(*animation_->animation_data());
+  auto trimmed = gfx::TrimTimeToCurrentIteration(
+      CreateCustomPropertyTimingInput(*animation_, data,
+                                      custom_property_run_state_),
+      sample_time, 0);
+  custom_property_current_iteration_count_ = trimmed.current_iteration_count;
+}
+
+fml::TimeDelta KeyframeEffect::CurrentTime(fml::TimePoint sample_time) const {
+  if (!keyframe_models_.empty()) {
+    return keyframe_models_.front()
+        ->gfx_model_->ConvertMonotonicTimeToLocalTime(sample_time);
+  }
+  auto data = ToGfxAnimationData(*animation_->animation_data());
+  return gfx::ConvertMonotonicTimeToLocalTime(
+      CreateCustomPropertyTimingInput(*animation_, data,
+                                      custom_property_run_state_),
+      sample_time);
+}
+
 void KeyframeEffect::AddKeyframeModel(
     std::unique_ptr<KeyframeModel> keyframe_model) {
   if (!keyframe_model) {

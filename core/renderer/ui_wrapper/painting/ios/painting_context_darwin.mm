@@ -18,10 +18,12 @@
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_animation_darwin.h"
 #include "core/renderer/utils/ios/text_utils_ios.h"
 #include "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "gfx/animation/capabilities/ios_animation_capabilities_generated.h"
 
 #import <Lynx/AbsLynxUIScroller.h>
 #import <Lynx/LynxComponentRegistry.h>
@@ -277,6 +279,16 @@ void PaintingContextDarwin::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data)
   });
 }
 
+void PaintingContextDarwin::ApplyPlatformAnimationCommands(
+    int id, std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {
+  __weak LynxUIOwner* uiOwner = uiOwner_;
+  // Use the regular queue without a separate flush, so these commands follow
+  // node updates in the existing painting batch.
+  Enqueue([uiOwner, id, commands = std::move(commands)]() {
+    lynx::tasm::ApplyPlatformAnimationCommands([uiOwner findUIBySign:id], commands);
+  });
+}
+
 void PaintingContextDarwin::SetUIOperationQueue(
     const std::shared_ptr<shell::UIOperationQueueInterface>& queue) {
   queue_ = std::static_pointer_cast<shell::DynamicUIOperationQueue>(queue);
@@ -352,6 +364,10 @@ void PaintingContextDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
                 lepusEventSet:lepusEventSet
            gestureDetectorSet:gestureDetectorSet];
   });
+}
+
+const gfx::AnimationBackendCapabilities& PaintingContextDarwin::GetPlatformAnimationCapabilities() {
+  return gfx::GetIOSAnimationBackendCapabilities();
 }
 
 void PaintingContextDarwin::UpdateLayout(int sign, float x, float y, float width, float height,
