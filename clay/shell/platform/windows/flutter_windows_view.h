@@ -187,6 +187,9 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   void MoveWindow();
 
  protected:
+  // Maps window-local coordinates into the engine's coordinate space.
+  virtual void ConvertPointerPosition(double* x, double* y) {}
+
   virtual void NotifyWinEventWrapper(DWORD event, HWND hwnd, LONG idObject,
                                      LONG idChild);
 
