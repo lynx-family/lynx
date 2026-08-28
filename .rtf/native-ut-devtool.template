@@ -2,6 +2,12 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+# NOTE: every builder below owns a distinct output directory. `gn gen` rewrites
+# a directory wholesale, so two builds that share one and disagree on their args
+# invalidate each other: the second `gn gen` drops the first one's targets, and
+# the first build's later `ninja` calls fail with `unknown target`. This template
+# must in particular not share `out/Default` with `native-ut-lynx.template`,
+# whose default builder uses different args.
 builder({
     "default" :{
         "args": [
@@ -13,7 +19,7 @@ builder({
             "enable_inspector=true",
             "use_flutter_cxx=false",
         ],
-        "output": "out/Default",
+        "output": "out/Default_devtool",
         "type": "gn",
     },
     "build_for_element_test":{
