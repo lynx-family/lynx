@@ -2,6 +2,11 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+# NOTE: every builder below must own a distinct output directory. `gn gen`
+# rewrites a directory wholesale and RTF generates all builders up front, so two
+# builders sharing one directory means the last one silently wins: the other
+# builder's args are dropped and its targets are built with the wrong
+# configuration.
 builder({
     "default" :{
         "args": [
@@ -39,7 +44,7 @@ builder({
             "use_flutter_cxx=false",
             "is_debug=false",
         ],
-        "output": "out/Default",
+        "output": "out/Default_starlight_geometry",
         "type": "gn",
     },
 })
