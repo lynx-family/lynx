@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.2.2
+- Add `-x-box` to the supported `display` values.
+
 ## 4.2.1
 - Add `android-navigation-bar-style` to `<overlay>` typings.
 

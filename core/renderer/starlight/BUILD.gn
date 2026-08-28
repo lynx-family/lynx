@@ -8,6 +8,8 @@ import("../../../testing/test.gni")
 starlight_layout_sources = [
   "layout/box_info.cc",
   "layout/box_info.h",
+  "layout/box_layout_algorithm.cc",
+  "layout/box_layout_algorithm.h",
   "layout/cache_manager.cc",
   "layout/cache_manager.h",
   "layout/container_node.cc",
