@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
+#include "base/include/fml/task_runner.h"
 #include "core/base/lynx_export.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/jsi/jsi.h"
-#include "core/runtime/js/template_delegate.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 #ifdef USE_PRIMJS_NAPI
@@ -28,15 +28,16 @@ class NapiRuntimeProxyJSVMFactory;
 
 class DelegateObserver {
  public:
-  DelegateObserver(runtime::TemplateDelegate* delegate) : delegate_(delegate) {}
+  DelegateObserver(fml::RefPtr<fml::TaskRunner> js_runner)
+      : js_runner_(std::move(js_runner)) {}
   void PostJSTask(base::closure closure) {
-    if (delegate_) {
-      delegate_->RunOnJSThread(std::move(closure));
+    if (js_runner_) {
+      js_runner_->PostTask(std::move(closure));
     }
   }
 
  private:
-  runtime::TemplateDelegate* delegate_;
+  fml::RefPtr<fml::TaskRunner> js_runner_;
 };
 
 class LYNX_EXPORT NapiRuntimeProxyInterface {
@@ -55,8 +56,9 @@ class LYNX_EXPORT NapiRuntimeProxyInterface {
 class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
-      Runtime& runtime, runtime::TemplateDelegate* delegate = nullptr);
-  NapiRuntimeProxy(runtime::TemplateDelegate* delegate);
+      Runtime& runtime,
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr);
+  NapiRuntimeProxy(std::shared_ptr<DelegateObserver> delegate_observer);
   virtual ~NapiRuntimeProxy();
 
   void Attach() override;

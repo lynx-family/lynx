@@ -19,9 +19,9 @@ class NapiRuntimeProxyJSVM : public NapiRuntimeProxy {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
       const std::shared_ptr<JSVMContextWrapper>& context,
-      runtime::TemplateDelegate* delegate = nullptr);
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr);
   NapiRuntimeProxyJSVM(const std::shared_ptr<JSVMContextWrapper>& context,
-                       runtime::TemplateDelegate* delegate);
+                       std::shared_ptr<DelegateObserver> delegate_observer);
   void Attach() override;
   void Detach() override;
 
@@ -34,7 +34,8 @@ class NapiRuntimeProxyJSVM : public NapiRuntimeProxy {
 class NapiRuntimeProxyJSVMFactoryImpl : public NapiRuntimeProxyJSVMFactory {
  public:
   std::unique_ptr<NapiRuntimeProxy> Create(
-      Runtime& runtime, runtime::TemplateDelegate* delegate = nullptr) override;
+      Runtime& runtime,
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr);
 };
 }  // namespace js
 }  // namespace runtime

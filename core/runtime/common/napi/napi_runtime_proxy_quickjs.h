@@ -17,9 +17,10 @@ namespace js {
 class NapiRuntimeProxyQuickjs : public NapiRuntimeProxy {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
-      LEPUSContext* context, runtime::TemplateDelegate* delegate = nullptr);
+      LEPUSContext* context,
+      std::shared_ptr<DelegateObserver> delegate_observer = nullptr);
   NapiRuntimeProxyQuickjs(LEPUSContext* context,
-                          runtime::TemplateDelegate* delegate);
+                          std::shared_ptr<DelegateObserver> delegate_observer);
 
   void Attach() override;
   void Detach() override;
