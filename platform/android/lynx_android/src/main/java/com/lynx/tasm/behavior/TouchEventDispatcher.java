@@ -19,8 +19,10 @@ import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewConfiguration;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
@@ -35,10 +37,12 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.behavior.ui.utils.ViewHelper;
 import com.lynx.tasm.event.LynxEventDetail;
 import com.lynx.tasm.event.LynxEventDetail.EVENT_TYPE;
 import com.lynx.tasm.event.LynxTouchEvent;
@@ -88,6 +92,24 @@ public class TouchEventDispatcher {
     }
   }
 
+  private static class PayloadPointSet {
+    private final Point mPagePoint;
+    private final Point mClientPoint;
+
+    PayloadPointSet(Point pagePoint, Point clientPoint) {
+      mPagePoint = pagePoint;
+      mClientPoint = clientPoint;
+    }
+
+    Point getPagePoint() {
+      return mPagePoint;
+    }
+
+    Point getClientPoint() {
+      return mClientPoint;
+    }
+  }
+
   private LynxUIOwner mUIOwner;
   private GestureRecognizer mDetector;
   private EventTarget mActiveUI;
@@ -127,6 +149,7 @@ public class TouchEventDispatcher {
   private long mTimestamp = 0;
 
   private Point mTargetPoint;
+  @Nullable private View mTouchEventSource;
   // record first index of multi touch event
   private LynxTouchEvent mFirstLynxTouchEvent;
   private EventTarget mPreTarget;
@@ -220,6 +243,18 @@ public class TouchEventDispatcher {
     if (mDetector != null) {
       mDetector.updateTouchSlop(context);
     }
+  }
+
+  /**
+   * Sets the view that should be treated as the source view of touch events.
+   *
+   * <p>After this is set, events received by {@link TouchEventDispatcher#onTouchEvent} are treated
+   * as if they were triggered from {@code view}. This is primarily used by special containers such
+   * as transfer views so payload coordinates like page/client points can be derived from the actual
+   * event source view.
+   */
+  public void setTouchEventSource(@Nullable View view) {
+    mTouchEventSource = view;
   }
 
   // TODO(hexionghui): Delete this, use the same method with paramenter instead.
@@ -330,6 +365,10 @@ public class TouchEventDispatcher {
             if (target.hasConsumeSlideEventAngles()) {
               mCanConsumeSlideEvent = true;
             }
+            // External touch sources keep slide handling within their active event root.
+            if (mTouchEventSource != null && target == mActiveEventRootUI) {
+              break;
+            }
             target = target.parent();
           }
         }
@@ -380,6 +419,9 @@ public class TouchEventDispatcher {
         while (target != null && target.parent() != target) {
           if (target.consumeSlideEvent((float) angle)) {
             mConsumeSlideEvent = EventTarget.EnableStatus.Enable;
+            break;
+          }
+          if (mTouchEventSource != null && target == mActiveEventRootUI) {
             break;
           }
           target = target.parent();
@@ -830,15 +872,23 @@ public class TouchEventDispatcher {
   private void dispatchEvent(EventTarget target, String eventName, MotionEvent ev) {
     recordTouchFrame(eventName, ev);
     mTargetPoint = convertToViewPoint(mActiveUI, new Point(ev.getX(0), ev.getY(0)));
-    LynxTouchEvent.Point pagePoint = new LynxTouchEvent.Point(ev.getX(0), ev.getY(0));
+    LynxTouchEvent.Point touchEventPoint = new LynxTouchEvent.Point(ev.getX(0), ev.getY(0));
+    LynxTouchEvent.Point pagePoint = touchEventPoint;
     PointF point = LynxUIHelper.convertPointFromUIToScreen(
         mUIOwner.getRootUI(), new PointF(pagePoint.getX(), pagePoint.getY()));
     LynxTouchEvent.Point clientPoint = new Point(point.x, point.y);
+    if (mTouchEventSource != null) {
+      PayloadPointSet sourcePoints = resolvePayloadPointsFromTouchEventSource(pagePoint);
+      if (sourcePoints != null) {
+        pagePoint = sourcePoints.getPagePoint();
+        clientPoint = sourcePoints.getClientPoint();
+      }
+    }
     mFirstLynxTouchEvent =
         new LynxTouchEvent(target.getSign(), eventName, clientPoint, pagePoint, mTargetPoint);
     if (mUIOwner.getContext().getEnableCurrentTargetTouchPosition()) {
       mFirstLynxTouchEvent.setCurrentTargetPointMap(
-          buildCurrentTargetPointMap(target, pagePoint, eventName));
+          buildCurrentTargetPointMap(target, touchEventPoint, eventName));
     }
     mFirstLynxTouchEvent.setMotionEvent(ev);
     mFirstLynxTouchEvent.setTarget(mActiveUI);
@@ -1423,6 +1473,13 @@ public class TouchEventDispatcher {
     PointF point = LynxUIHelper.convertPointFromUIToScreen(
         mUIOwner.getRootUI(), new PointF(pagePoint.getX(), pagePoint.getY()));
     LynxTouchEvent.Point clientPoint = new Point(point.x, point.y);
+    if (mTouchEventSource != null) {
+      PayloadPointSet sourcePoints = resolvePayloadPointsFromTouchEventSource(pagePoint);
+      if (sourcePoints != null) {
+        pagePoint = sourcePoints.getPagePoint();
+        clientPoint = sourcePoints.getClientPoint();
+      }
+    }
 
     event.add(ev.getPointerId(index));
     event.add(clientPoint.getX());
@@ -1448,6 +1505,13 @@ public class TouchEventDispatcher {
       EventTarget activeUI, LynxTouchEvent.Point pagePoint) {
     if (activeUI instanceof LynxBaseUI) {
       LynxBaseUI ui = (LynxBaseUI) activeUI;
+      if (mTouchEventSource != null) {
+        LynxTouchEvent.Point pointFromTouchEventSource =
+            convertToViewPointFromTouchEventSource(ui, pagePoint);
+        if (pointFromTouchEventSource != null) {
+          return pointFromTouchEventSource;
+        }
+      }
       if (mUIOwner.getContext().getEnableTransformedTouchPosition()) {
         PointF viewPos = LynxUIHelper.convertPointFromUIToAnotherUI(
             mUIOwner.getRootUI(), ui, new PointF(pagePoint.getX(), pagePoint.getY()));
@@ -1487,18 +1551,66 @@ public class TouchEventDispatcher {
     return LynxUIOwner.hasResponseChainEvent(current.getEvents(), eventName);
   }
 
+  @Nullable
+  private LynxTouchEvent.Point convertToViewPointFromTouchEventSource(
+      LynxBaseUI ui, LynxTouchEvent.Point pointInTouchEventSource) {
+    if (!ui.isFlatten() && ui instanceof LynxUI && ((LynxUI) ui).getView() != null) {
+      PointF pointInTargetView =
+          ViewHelper.convertPointFromViewToAnother(mTouchEventSource, ((LynxUI) ui).getView(),
+              new PointF(pointInTouchEventSource.getX(), pointInTouchEventSource.getY()));
+      return new Point(pointInTargetView.x, pointInTargetView.y);
+    }
+    if (ui.isFlatten() && ui.getDrawParent() instanceof LynxUI
+        && ((LynxUI) ui.getDrawParent()).getView() != null) {
+      View drawParentView = ((LynxUI) ui.getDrawParent()).getView();
+      PointF pointInDrawParent =
+          ViewHelper.convertPointFromViewToAnother(mTouchEventSource, drawParentView,
+              new PointF(pointInTouchEventSource.getX(), pointInTouchEventSource.getY()));
+      return new Point(pointInDrawParent.x + drawParentView.getScrollX() - ui.getOriginLeft(),
+          pointInDrawParent.y + drawParentView.getScrollY() - ui.getOriginTop());
+    }
+    return null;
+  }
+
   private LynxTouchEvent initialFirstLynxTouchEvent(
       EventTarget activeUI, String type, MotionEvent ev) {
-    LynxTouchEvent.Point pagePoint = new LynxTouchEvent.Point(ev.getX(), ev.getY());
+    LynxTouchEvent.Point touchEventPoint = new LynxTouchEvent.Point(ev.getX(), ev.getY());
+    LynxTouchEvent.Point pagePoint = touchEventPoint;
     PointF point = LynxUIHelper.convertPointFromUIToScreen(
         mUIOwner.getRootUI(), new PointF(pagePoint.getX(), pagePoint.getY()));
     LynxTouchEvent.Point clientPoint = new Point(point.x, point.y);
+    if (mTouchEventSource != null) {
+      PayloadPointSet sourcePoints = resolvePayloadPointsFromTouchEventSource(pagePoint);
+      if (sourcePoints != null) {
+        pagePoint = sourcePoints.getPagePoint();
+        clientPoint = sourcePoints.getClientPoint();
+      }
+    }
     LynxTouchEvent event =
         new LynxTouchEvent(activeUI.getSign(), type, clientPoint, pagePoint, mTargetPoint);
     if (mUIOwner.getContext().getEnableCurrentTargetTouchPosition()) {
-      event.setCurrentTargetPointMap(buildCurrentTargetPointMap(activeUI, pagePoint, type));
+      event.setCurrentTargetPointMap(buildCurrentTargetPointMap(activeUI, touchEventPoint, type));
     }
     return event;
+  }
+
+  @Nullable
+  private PayloadPointSet resolvePayloadPointsFromTouchEventSource(
+      LynxTouchEvent.Point localPoint) {
+    if (mTouchEventSource == null || mUIOwner == null || mUIOwner.getRootUI() == null
+        || mUIOwner.getRootUI().getView() == null) {
+      return null;
+    }
+    View rootView = mUIOwner.getRootUI().getView();
+    PointF screenPoint = LynxUIHelper.convertPointInViewToScreen(
+        mTouchEventSource, new PointF(localPoint.getX(), localPoint.getY()));
+    PointF rootOriginOnScreen =
+        LynxUIHelper.convertPointInViewToScreen(rootView, new PointF(0.0f, 0.0f));
+    PointF clientOriginOnScreen =
+        LynxUIHelper.convertPointInViewToScreen(rootView.getRootView(), new PointF(0.0f, 0.0f));
+    return new PayloadPointSet(
+        new Point(screenPoint.x - rootOriginOnScreen.x, screenPoint.y - rootOriginOnScreen.y),
+        new Point(screenPoint.x - clientOriginOnScreen.x, screenPoint.y - clientOriginOnScreen.y));
   }
 
   private EventEmitter eventEmitter() {
