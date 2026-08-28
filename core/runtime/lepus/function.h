@@ -143,12 +143,19 @@ class Function : public fml::RefCountedThreadSafeStorage {
   LYNX_EXPORT_FOR_DEVTOOL int64_t GetFunctionId();
 
   fml::WeakRefPtr<Function> GetChildFunction(long index) {
+    if (unlikely(index < 0 ||
+                 static_cast<std::size_t>(index) >= child_functions_.size())) {
+      return nullptr;
+    }
     return fml::WeakRefPtr<Function>(child_functions_[index].get());
   }
 
   const auto& GetChildFunction() { return child_functions_; }
 
   inline Value* GetConstValue(std::size_t index) {
+    if (unlikely(index >= const_values_.size())) {
+      return nullptr;
+    }
     return &const_values_[index];
   }
 

@@ -164,6 +164,8 @@ class BaseBinaryReader : public BinaryReader {
 
  protected:
 #if !ENABLE_JUST_LEPUSNG
+  bool ValidateFunctionBytecode(Function& function, size_t instruction_count);
+
   // for serialize/deserialize
   std::unordered_map<fml::RefPtr<Function>, int> func_map;
   std::vector<fml::RefPtr<Function>> func_vec;

@@ -106,8 +106,99 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
     DECODE_FUNCTION(function, child_function);
   }
 
+  ERROR_UNLESS(ValidateFunctionBytecode(*function, op_code_count));
+
   if (parent.get() != nullptr) {
     parent->AddChildFunction(function);
+  }
+  return true;
+}
+
+bool BaseBinaryReader::ValidateFunctionBytecode(Function& function,
+                                                size_t instruction_count) {
+  const size_t const_count = function.GetConstValue().size();
+  const size_t child_count = function.GetChildFunction().size();
+
+  const auto fail = [this](const char* kind, size_t index, size_t limit) {
+    error_message_ = "Invalid Lepus bytecode " + std::string(kind) + " index " +
+                     std::to_string(index) + " (limit " +
+                     std::to_string(limit) + ").";
+    return false;
+  };
+
+  for (size_t pc = 0; pc < instruction_count; ++pc) {
+    const Instruction instruction = function.GetOpCodes()[pc];
+    const long opcode = Instruction::GetOpCode(instruction);
+
+    size_t packed_operand_count = 0;
+    switch (opcode) {
+      case TypeOp_CallRandom:
+      case TypeOp_NewArrayRandom:
+        packed_operand_count =
+            static_cast<size_t>(Instruction::GetParamB(instruction)) / 4;
+        break;
+      case TypeOp_CallRandom1:
+      case TypeOp_CallRandom2:
+      case TypeOp_CallRandom3:
+      case TypeOp_NewArrayRandom1:
+      case TypeOp_NewArrayRandom2:
+      case TypeOp_NewArrayRandom3:
+        packed_operand_count =
+            static_cast<size_t>(Instruction::GetParamB(instruction)) / 4 + 1;
+        break;
+      default:
+        break;
+    }
+    const size_t remaining_instruction_count = instruction_count - pc - 1;
+    if (packed_operand_count > remaining_instruction_count) {
+      error_message_ = "Invalid Lepus bytecode packed operand count " +
+                       std::to_string(packed_operand_count) +
+                       " (remaining instructions " +
+                       std::to_string(remaining_instruction_count) + ").";
+      return false;
+    }
+    if (packed_operand_count != 0) {
+      pc += packed_operand_count;
+      continue;
+    }
+
+    switch (opcode) {
+      case TypeOp_LoadConst:
+      case TypeOp_LoadConstAndClone: {
+        const size_t index =
+            static_cast<size_t>(Instruction::GetParamBx(instruction));
+        if (index >= const_count) {
+          return fail("constant", index, const_count);
+        }
+        break;
+      }
+      case TypeOp_SetObjectConstString: {
+        const size_t index =
+            static_cast<size_t>(Instruction::GetParamB(instruction));
+        if (index >= const_count) {
+          return fail("constant", index, const_count);
+        }
+        break;
+      }
+      case TypeOp_GetTableConstString: {
+        const size_t index =
+            static_cast<size_t>(Instruction::GetParamC(instruction));
+        if (index >= const_count) {
+          return fail("constant", index, const_count);
+        }
+        break;
+      }
+      case TypeOp_Closure: {
+        const size_t index =
+            static_cast<size_t>(Instruction::GetParamBx(instruction));
+        if (index >= child_count) {
+          return fail("child function", index, child_count);
+        }
+        break;
+      }
+      default:
+        break;
+    }
   }
   return true;
 }
