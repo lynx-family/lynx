@@ -41,6 +41,7 @@ struct lynx_view_t {
       resource_fetcher_holder = nullptr;
   lynx_vsync_monitor_t* custom_vsync_monitor = nullptr;
   std::shared_ptr<lynx::tasm::TemplateData> global_props = nullptr;
+  bool has_loaded_template = false;
   void* user_data = nullptr;
   std::string devtool_target_url;
   std::string webview2_fixed_runtime_path;

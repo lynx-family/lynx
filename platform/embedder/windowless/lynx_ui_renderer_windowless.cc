@@ -89,10 +89,11 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 
   auto* view_context =
       static_cast<clay::ViewContext*>(headless_engine_->GetViewContext());
-  auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
-      lynx::LynxModuleFactory::CreateModuleFactory(view_context));
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateClay>(
-      view_context, std::move(module_factory));
+      view_context, [view_context]() {
+        return std::unique_ptr<lynx::runtime::NativeModuleFactory>(
+            lynx::LynxModuleFactory::CreateModuleFactory(view_context));
+      });
 
 #if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
     defined(OS_HARMONY)
