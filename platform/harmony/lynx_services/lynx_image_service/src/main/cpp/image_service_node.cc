@@ -46,6 +46,7 @@ static tasm::harmony::LynxImageOrigin GetImageOrigin(
 ImageServiceNode::ImageServiceNode(ImageServiceHarmony* service)
     : ImageNode(), service_(service) {
   auto option = std::make_shared<ImageKnifePro::ImageKnifeOption>();
+  ImageKnifeOptionCompat::SetEnableVisibleAreaControl(option.get(), false);
   image_knife_animator_option_ =
       std::make_shared<ImageKnifePro::AnimatorOption>();
   image_knife_node_ =
