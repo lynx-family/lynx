@@ -348,6 +348,19 @@ void LynxShell::OnLynxEngineBuilt(
     return;
   }
 
+#if ENABLE_TESTBENCH_RECORDER
+  // Recorder actions are grouped by their LynxShell ID. Bind the engine-side
+  // recorder state here so views without a JS runtime and reused engines do
+  // not fall back to stale or default record IDs.
+  const int64_t record_id = reinterpret_cast<int64_t>(this);
+  engine_actor_->ActLite(
+      [record_id](auto& engine) { engine->SetRecordID(record_id); });
+  layout_actor_->ActLite(
+      [record_id](auto& layout) { layout->SetRecordId(record_id); });
+  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
+      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
+#endif
+
   ui_operation_queue_->SetErrorCallback(
       [facade_actor = facade_actor_](base::LynxError error) {
         facade_actor->Act([error = std::move(error)](auto& facade) mutable {
@@ -379,6 +392,9 @@ void LynxShell::OnLynxEngineBuilt(
                          element_manager->catalyzer());
 
   if (native_module_manager != nullptr) {
+#if ENABLE_TESTBENCH_RECORDER
+    native_module_manager->SetRecordID(record_id);
+#endif
     native_module_manager->SetEngineActor(engine_actor_);
     native_module_manager->SetFacadeActor(facade_actor_);
     tasm->CreateModuleManager(std::move(native_module_manager));
@@ -565,14 +581,8 @@ void LynxShell::InitRuntime(
   }
 
 #if ENABLE_TESTBENCH_RECORDER
-  int64_t record_id = reinterpret_cast<int64_t>(this);
-  engine_actor_->ActLite(
-      [record_id](auto& engine) { engine->SetRecordID(record_id); });
-  layout_actor_->ActLite(
-      [record_id](auto& layout) { layout->SetRecordId(record_id); });
+  const int64_t record_id = reinterpret_cast<int64_t>(this);
   native_module_manager->SetRecordID(record_id);
-  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
-      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
 #endif
   std::shared_ptr<base::VSyncMonitor> vsync_monitor;
   if (vsync_monitor_platform_impl) {

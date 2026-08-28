@@ -293,7 +293,7 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
   PageOptions page_options_;
 
 #if ENABLE_TESTBENCH_RECORDER
-  int64_t record_id_;
+  int64_t record_id_{0};
 #endif
 
   CalculatedViewport calculated_viewport_;

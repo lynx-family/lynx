@@ -4,6 +4,7 @@
 #
 
 import("../../../testing/test.gni")
+import("../../Lynx.gni")
 
 group("shell_tests") {
   testonly = true
@@ -55,6 +56,9 @@ mocktest_exec("shell_unittests_exec") {
     ":shell_testset",
     "../../renderer/dom:dom",
   ]
+  if (enable_testbench_recorder) {
+    deps += [ "../../services/recorder:recorder" ]
+  }
 }
 
 unittest_set("mock_tasm_delegate_testset") {

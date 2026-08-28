@@ -233,6 +233,38 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
   ASSERT_EQ(element_manager->GetLynxEnvConfig().DevicePixelRatio(), 1.75f);
 }
 
+#if ENABLE_TESTBENCH_RECORDER
+TEST_F(LynxShellBuilderTest, RecorderIdIsInitializedWithoutJSRuntime) {
+  option_->enable_js_ = false;
+  auto facade = std::make_unique<MockNativeFacade>();
+  auto painting_context_creator = [](LynxShell*) {
+    return std::make_unique<tasm::PaintingContextPlatformImpl>();
+  };
+
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::move(facade))
+                   .SetPaintingContextCreator(painting_context_creator)
+                   .SetLynxEnvConfig(*lynx_env_config_)
+                   .SetLazyBundleLoader(loader_)
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetShellOption(*option_)
+                   .SetNativeModuleManager(
+                       std::make_unique<pub::LynxNativeModuleManager>())
+                   .build());
+
+  ASSERT_NE(shell_, nullptr);
+  EXPECT_FALSE(shell_->IsRuntimeEnabled());
+  EXPECT_EQ(shell_->GetRuntimeActor(), nullptr);
+
+  const int64_t record_id = reinterpret_cast<int64_t>(shell_.get());
+  ASSERT_EQ(shell_->GetTasm()->GetRecordID(), record_id);
+  EXPECT_EQ(shell_->layout_actor_->Impl()->record_id_, record_id);
+  ASSERT_NE(shell_->GetTasm()->lepus_module_manager_, nullptr);
+  EXPECT_EQ(shell_->GetTasm()->lepus_module_manager_->record_id_, record_id);
+}
+#endif
+
 TEST_F(LynxShellBuilderTest, InitRuntimePublishesCompleteLogContext) {
   auto facade = std::make_unique<MockNativeFacade>();
   auto* facade_ptr = facade.get();
