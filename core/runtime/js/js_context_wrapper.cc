@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/runtime/js/js_context_wrapper.h"
 
+#include "base/include/fml/message_loop.h"
 #include "base/lynx_trace_categories.h"
 #include "base/trace/native/trace_event.h"
 #include "core/inspector/console_message_postman.h"
@@ -139,7 +140,10 @@ void SharedJSContextWrapper::InitNapi(
     TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
     return;
   }
-  auto proxy = runtime::js::NapiRuntimeProxy::Create(*runtime, nullptr);
+  auto delegate_observer = std::make_shared<runtime::js::DelegateObserver>(
+      fml::MessageLoop::GetCurrent().GetTaskRunner());
+  auto proxy = runtime::js::NapiRuntimeProxy::Create(
+      *runtime, std::move(delegate_observer));
   if (proxy) {
     proxy->SetJSRuntime(std::move(js_runtime));
     proxy->MarkSafeNapi();
