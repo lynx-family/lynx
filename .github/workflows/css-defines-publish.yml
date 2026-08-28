@@ -1,6 +1,12 @@
 name: css_defines_publish
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The npm tag to publish with.'
+        required: false
+        default: 'latest'
 
 jobs:
   css-defines-publish:
@@ -54,7 +60,7 @@ jobs:
         if: steps.check-published.outputs.already-published != 'true'
         run: |-
           cd $GITHUB_WORKSPACE/lynx/tools/css_generator
-          npm publish --access public --provenance
+          npm publish --access public --provenance --tag "${{ github.event.inputs.tag }}"
 
   notify-website:
     needs: css-defines-publish
