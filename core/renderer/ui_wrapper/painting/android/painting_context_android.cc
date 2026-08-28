@@ -177,14 +177,10 @@ void PaintingContextAndroidRef::UpdateNodeReadyPatching(
   }
 
   JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedLocalJavaRef<jintArray> node_ready_ids(
-      env, env->NewIntArray(ready_ids.size()));
-  env->SetIntArrayRegion(node_ready_ids.Get(), 0, ready_ids.size(),
-                         &ready_ids[0]);
-  base::android::ScopedLocalJavaRef<jintArray> node_remove_ids(
-      env, env->NewIntArray(remove_ids.size()));
-  env->SetIntArrayRegion(node_remove_ids.Get(), 0, remove_ids.size(),
-                         &remove_ids[0]);
+  auto node_ready_ids =
+      base::android::JNIHelper::ConvertToJNIIntArray(env, ready_ids);
+  auto node_remove_ids =
+      base::android::JNIHelper::ConvertToJNIIntArray(env, remove_ids);
 
   Java_PaintingContext_updateNodeReadyPatching(
       env, local_ref.Get(), node_ready_ids.Get(), node_remove_ids.Get());

@@ -271,17 +271,21 @@ ExternalMemorySnapshot UIOwner::GetExternalMemorySnapshot() {
   }
   // Keep candidates for the lifetime of their holder entries. Parented
   // candidates may belong to a detached candidate subtree, so skip them
-  // without discarding them.
-  for (int32_t candidate : external_memory_report_candidate_ids_) {
-    const auto ui = ui_holder_.find(candidate);
+  // without discarding them. Prune candidates whose holder entries are gone.
+  for (auto candidate_it = external_memory_report_candidate_ids_.begin();
+       candidate_it != external_memory_report_candidate_ids_.end();) {
+    const auto ui = ui_holder_.find(*candidate_it);
     if (ui == ui_holder_.end() || ui->second == nullptr) {
+      candidate_it = external_memory_report_candidate_ids_.erase(candidate_it);
       continue;
     }
     if (ui->second->Parent() != nullptr) {
+      ++candidate_it;
       continue;
     }
     snapshot.garbage_size +=
         GetExternalMemoryUsageRecursively(ui->second.get());
+    ++candidate_it;
   }
   return snapshot;
 }
