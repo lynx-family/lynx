@@ -18,12 +18,14 @@
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_animation_darwin.h"
 #include "core/renderer/utils/ios/text_utils_ios.h"
 #include "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
 #include "core/services/feature_count/feature.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "gfx/animation/capabilities/ios_animation_capabilities_generated.h"
 
 #import <Lynx/AbsLynxUIScroller.h>
 #import <Lynx/LynxComponentRegistry.h>
@@ -336,6 +338,7 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
   NSString* tagName = [[NSString alloc] initWithUTF8String:tag.c_str()];
   // TODO(renzhongyue): Remove copy, we now own the shared_ptr of prop bundle here.
   NSDictionary* props = pda->dictionary();
+  auto animation_commands = pda->TakePlatformAnimationCommands();
   __weak LynxUIOwner* uiOwner = uiOwner_;
 
   // When enable_create_ui_async_, use createUIAsyncWithSign and createUISyncWithSign to create ui,
@@ -372,19 +375,20 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
 
       base::TaskRunnerManufactor::PostTaskToConcurrentLoop([async_task]() { async_task->Run(); },
                                                            base::ConcurrentTaskType::HIGH_PRIORITY);
-      Enqueue([async_task, uiOwner, sign, tagName, props]() {
+      Enqueue([async_task, uiOwner, sign, tagName, props, animation_commands]() {
         TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_ASYNC);
 
         async_task->Run();
         LynxUI* ui = async_task->GetFuture().get();
         ui.view = [ui createView];
         [uiOwner processUIOnMainThread:ui withSign:sign tagName:tagName props:props];
+        ApplyPlatformAnimationCommands([uiOwner findUIBySign:sign], animation_commands);
       });
     } else {
       // Sync create ui if the class does not support async creating.
       Enqueue([uiOwner, sign, tagName, clazz, state, eventSet = pda->event_set(),
                lepusEventSet = pda->lepus_event_set(), props, node_index,
-               gestureDetectorSet = pda->gesture_detector_set()]() {
+               gestureDetectorSet = pda->gesture_detector_set(), animation_commands]() {
         TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_SYNC);
 
         [uiOwner createUISyncWithSign:sign
@@ -396,6 +400,7 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
                                 props:props
                             nodeIndex:node_index
                    gestureDetectorSet:gestureDetectorSet];
+        ApplyPlatformAnimationCommands([uiOwner findUIBySign:sign], animation_commands);
       });
     }
     return;
@@ -403,7 +408,7 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
 
   Enqueue([uiOwner, sign, tagName, eventSet = pda->event_set(),
            lepusEventSet = pda->lepus_event_set(), props, node_index,
-           gestureDetectorSet = pda->gesture_detector_set()]() {
+           gestureDetectorSet = pda->gesture_detector_set(), animation_commands]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE);
 
     [uiOwner createUIWithSign:sign
@@ -413,16 +418,18 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
                         props:props
                     nodeIndex:node_index
            gestureDetectorSet:gestureDetectorSet];
+    ApplyPlatformAnimationCommands([uiOwner findUIBySign:sign], animation_commands);
   });
 }
 
 void PaintingContextDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
                                                const fml::RefPtr<PropBundle>& painting_data) {
   PropBundleDarwin* pda = static_cast<PropBundleDarwin*>(painting_data.get());
+  auto animation_commands = pda->TakePlatformAnimationCommands();
   __weak LynxUIOwner* uiOwner = uiOwner_;
   Enqueue([uiOwner, id, props = pda->dictionary(), eventSet = pda->event_set(),
-           lepusEventSet = pda->lepus_event_set(),
-           gestureDetectorSet = pda->gesture_detector_set()]() {
+           lepusEventSet = pda->lepus_event_set(), gestureDetectorSet = pda->gesture_detector_set(),
+           animation_commands]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_UPDATE_PAINTING_NODE);
 
     [uiOwner updateUIWithSign:id
@@ -430,7 +437,12 @@ void PaintingContextDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
                      eventSet:eventSet
                 lepusEventSet:lepusEventSet
            gestureDetectorSet:gestureDetectorSet];
+    ApplyPlatformAnimationCommands([uiOwner findUIBySign:id], animation_commands);
   });
+}
+
+const gfx::AnimationBackendCapabilities& PaintingContextDarwin::GetPlatformAnimationCapabilities() {
+  return gfx::GetIOSAnimationBackendCapabilities();
 }
 
 void PaintingContextDarwin::UpdateLayout(int sign, float x, float y, float width, float height,

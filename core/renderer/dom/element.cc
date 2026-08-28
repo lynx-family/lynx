@@ -1638,6 +1638,7 @@ void Element::ResetPropBundle() {
 
     prop_bundle_ = nullptr;
   }
+  platform_animation_commands_.reset();
 }
 
 void Element::PushToBundle(CSSPropertyID id) {
@@ -2241,6 +2242,15 @@ void Element::SetPlaceHolderStylesInternal(
 
 bool Element::GetEnableZIndex() { return element_manager_->GetEnableZIndex(); }
 
+bool Element::supports_platform_animation_routing() const {
+  return IsFiberArch() && element_manager_ != nullptr &&
+         element_manager_->SupportsPlatformAnimationRouting();
+}
+
+bool Element::use_cpp_animation_builder() const {
+  return enable_new_animator_ || supports_platform_animation_routing();
+}
+
 void Element::SetDataToNativeKeyframeAnimator(bool from_resume) {
   if (element_manager_->IsPause()) {
     element_manager_->AddPausedAnimationElement(this);
@@ -2286,7 +2296,8 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
                                std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_TICK_ALL_ANIMATION);
 
-  if (element_manager_->EnableNewStylingPipeline() && enable_new_animator_) {
+  if (element_manager_->EnableNewStylingPipeline() &&
+      use_cpp_animation_builder()) {
     RequireFlush();
     SetAnimationSampleTimeForNewPipeline(frame_time);
     MarkStyleDirty();
@@ -2294,7 +2305,8 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
     options->target_node = this->impl_id();
     return true;
   }
-  if (element_manager_->EnableNewStylingPipeline() && !enable_new_animator_) {
+  if (element_manager_->EnableNewStylingPipeline() &&
+      !use_cpp_animation_builder()) {
     return false;
   }
 
@@ -2305,6 +2317,7 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
     css_keyframe_manager_->TickAllAnimation(frame_time);
   }
   auto [need_layout, has_pending_bundle] = FlushAnimatedStyle();
+  has_pending_bundle |= HasPendingPlatformAnimationCommands();
   bool need_mark_props_dirty = need_layout;
   if (element_manager_->FixNewAnimatorFlushBug()) {
     // FIXME(linxs): remove this settings in next version
@@ -2330,6 +2343,28 @@ Element::TakeAnimationSampleTimeForNewPipeline() {
   auto sample_time = std::move(animation_sample_time_for_new_pipeline_);
   animation_sample_time_for_new_pipeline_ = std::nullopt;
   return sample_time;
+}
+
+void Element::QueuePlatformAnimationCommand(
+    gfx::PlatformAnimationCommand command) {
+  PreparePropBundleIfNeed();
+  if (!platform_animation_commands_) {
+    platform_animation_commands_ =
+        std::make_shared<gfx::PlatformAnimationCommandBatch>();
+  }
+  platform_animation_commands_->push_back(std::move(command));
+  prop_bundle_->SetPlatformAnimationCommands(platform_animation_commands_);
+}
+
+bool Element::PrepareForPlatformAnimation() {
+  if (IsShadowNodeVirtual()) {
+    return false;
+  }
+  // A platform-only animation will not sample a render property in Core, so
+  // it cannot rely on FlushAnimatedStyle() to promote a layout-only element.
+  // Disable layout-only before the pending prop bundle is committed.
+  MarkCanBeLayoutOnly(false);
+  return true;
 }
 
 void Element::DispatchAnimationEventsForNewPipeline(
@@ -2461,7 +2496,7 @@ bool Element::ShouldConsumeTransitionStylesInAdvance() {
 }
 
 bool Element::ShouldUseLegacyTransitionInterception() const {
-  return enable_new_animator_ && element_manager_ != nullptr &&
+  return use_cpp_animation_builder() && element_manager_ != nullptr &&
          !element_manager_->EnableNewStylingPipeline();
 }
 

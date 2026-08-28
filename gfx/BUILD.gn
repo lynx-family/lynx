@@ -16,6 +16,24 @@ gfx_builds_shared_library = (is_android || is_harmony) && !is_headless
 
 gfx_public_deps = [ "../base/src:base_log_headers" ]
 
+animation_capability_generator =
+    "animation/capabilities/generate_animation_capabilities.py"
+ios_animation_capability_json = "animation/capabilities/ios.json"
+ios_animation_capability_header =
+    "animation/capabilities/ios_animation_capabilities_generated.h"
+exec_script(animation_capability_generator,
+            [
+              "--input",
+              rebase_path(ios_animation_capability_json),
+              "--output",
+              rebase_path(ios_animation_capability_header),
+            ],
+            "",
+            [
+              animation_capability_generator,
+              ios_animation_capability_json,
+            ])
+
 config("gfx_public_config") {
   include_dirs = [ ".." ]
 }
@@ -51,7 +69,10 @@ if (gfx_builds_shared_library) {
 }
 
 unittest_exec("animation_keyframe_unittests_exec") {
-  sources = [ "animation/animation_keyframe_unittest.cc" ]
+  sources = [
+    "animation/animation_keyframe_unittest.cc",
+    "animation/capabilities/ios_animation_capabilities_unittest.cc",
+  ]
   deps = [
     ":gfx_sources",
     "//third_party/googletest:gtest",

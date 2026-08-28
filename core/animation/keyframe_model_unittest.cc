@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "core/animation/keyframe_model.h"
+
 #include <limits>
 #include <memory>
 
@@ -14,6 +16,31 @@ namespace lynx {
 namespace animation {
 namespace tasm {
 namespace test {
+
+TEST(KeyframeModelTest, ExplicitIntervalTimingNeedsNoOptIn) {
+  auto curve = KeyframedOpacityAnimationCurve::Create();
+  for (double offset : {0.0, 0.5, 1.0}) {
+    auto frame =
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                   gfx::LinearTimingFunction::Create());
+    frame->SetValue(static_cast<float>(offset));
+    curve->AddKeyframe(std::move(frame));
+  }
+  auto model = KeyframeModel::Create(std::move(curve));
+  starlight::AnimationData data;
+  data.timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+  // No manager or routing setup: explicit interval timing must override the
+  // animation timing on every C++ Animator curve, including duration updates.
+  for (long duration : {1000L, 2000L}) {
+    data.duration = duration;
+    model->UpdateAnimationData(&data);
+    for (double progress : {0.25, 0.5, 0.75}) {
+      auto time = fml::TimeDelta::FromSecondsF(duration / 1000.0 * progress);
+      EXPECT_NEAR(model->animation_curve()->GetValue(time).AsNumber(), progress,
+                  1e-6);
+    }
+  }
+}
 
 std::unique_ptr<gfx::KeyframeModel> InitTestModel() {
   auto test_curve = KeyframedOpacityAnimationCurve::Create();

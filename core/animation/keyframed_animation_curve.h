@@ -173,6 +173,9 @@ class BoxShadowKeyframe : public gfx::Keyframe {
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
   ~BoxShadowKeyframe() override = default;
+  gfx::KeyframeValueType ValueType() const override {
+    return gfx::KeyframeValueType::kBoxShadow;
+  }
 
   const tasm::CSSValue& GetBoxShadow() const { return box_shadow_; }
   bool HasResolvedValue() const { return has_resolved_value_; }

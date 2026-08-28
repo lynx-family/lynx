@@ -160,6 +160,11 @@ class AnimationCurve : public gfx::AnimationCurve {
 
   void NotifyUnitValuesUpdated(tasm::CSSValuePattern);
 
+  // Animation timing applies to each property interval, never to the effect
+  // timeline. Only frames sourced from the animation follow timing updates.
+  void UpdateAnimationTiming(const gfx::TimingFunctionData& timing,
+                             bool animation_timing_changed);
+
   std::unique_ptr<gfx::Keyframe> MakeEmptyKeyframe(
       const fml::TimeDelta& offset) override = 0;
 
