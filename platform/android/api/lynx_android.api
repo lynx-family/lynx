@@ -4900,6 +4900,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableFiberArch();
   public boolean com.lynx.tasm.behavior.LynxContext.getCssAlignWithLegacyW3c();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnableNewGesture();
+  public boolean com.lynx.tasm.behavior.LynxContext.getEnableMultiTouch();
+  public boolean com.lynx.tasm.behavior.LynxContext.isEnablePlatformGesture();
   public FluencyTraceHelper com.lynx.tasm.behavior.LynxContext.getFluencyTraceHelper();
   public DisplayMetrics com.lynx.tasm.behavior.LynxContext.getScreenMetrics();
   public void com.lynx.tasm.behavior.LynxContext.updateScreenSize(int screenWidth, int screenHeight);
@@ -10850,6 +10852,7 @@ public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
   public final float com.lynx.tasm.behavior.TouchEventDispatcher.mTapSlopFloatDefault mTapSlopFloatDefault;
   public com.lynx.tasm.behavior.TouchEventDispatcher.TouchEventDispatcher(@NonNull LynxUIOwner owner);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.attachContext(Context context);
+  public void com.lynx.tasm.behavior.TouchEventDispatcher.setTouchEventSource(@Nullable View view);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.onGestureRecognized();
   public void com.lynx.tasm.behavior.TouchEventDispatcher.setGestureArenaManager(GestureArenaManager manager);
   public void com.lynx.tasm.behavior.TouchEventDispatcher.onGestureRecognized(LynxBaseUI ui);
@@ -11888,6 +11891,7 @@ public class com::lynx::tasm::utils::UIThreadUtils :  {
 public class com::lynx::tasm::behavior::ui::transfer::UITransfer : com::lynx::tasm::behavior::ui::UIGroup< TransferHostView > {
   public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context);
   public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context, Object params);
+  public TouchEventDispatcher com.lynx.tasm.behavior.ui.transfer.UITransfer.getTouchEventDispatcher();
   public void com.lynx.tasm.behavior.ui.transfer.UITransfer.setTransferId(String transferId);
   public boolean com.lynx.tasm.behavior.ui.transfer.UITransfer.canHaveFlattenChild();
   public boolean com.lynx.tasm.behavior.ui.transfer.UITransfer.isExternalExposureRoot();
