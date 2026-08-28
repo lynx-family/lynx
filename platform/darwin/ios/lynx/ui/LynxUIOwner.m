@@ -1199,10 +1199,12 @@ extern NSString* const kDefaultComponentID;
     snapshot.totalSize += [ui memoryUsageBytes];
   }];
   // Keep candidates for the lifetime of their holder entries. Parented candidates may belong to a
-  // detached candidate subtree, so skip them without discarding them.
-  for (NSNumber* sign in _externalMemoryReportCandidateIds) {
+  // detached candidate subtree, so skip them without discarding them. Prune candidates whose
+  // holder entries are already gone.
+  for (NSNumber* sign in [_externalMemoryReportCandidateIds copy]) {
     LynxUI* ui = uiHolderSnapshot[sign];
     if (ui == nil) {
+      [_externalMemoryReportCandidateIds removeObject:sign];
       continue;
     }
     if (ui.parent != nil) {

@@ -39,6 +39,17 @@ JNIHelper::ConvertToJNIByteArray(JNIEnv* env, runtime::js::Runtime* rt,
   return ScopedLocalJavaRef(env, jni_byte_array);
 }
 
+ScopedLocalJavaRef<jintArray> JNIHelper::ConvertToJNIIntArray(
+    JNIEnv* env, const std::vector<int32_t>& values) {
+  ScopedLocalJavaRef<jintArray> result(
+      env, env->NewIntArray(static_cast<jsize>(values.size())));
+  if (!values.empty()) {
+    env->SetIntArrayRegion(result.Get(), 0, static_cast<jsize>(values.size()),
+                           values.data());
+  }
+  return result;
+}
+
 ScopedLocalJavaRef<jobject> JNIHelper::ConvertSTLStringMapToJavaMap(
     JNIEnv* env, const std::unordered_map<std::string, std::string>& map) {
   if (map.empty()) {

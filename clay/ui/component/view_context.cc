@@ -770,17 +770,21 @@ lynx::tasm::ExternalMemorySnapshot ViewContext::GetExternalMemorySnapshot() {
   lynx::tasm::ExternalMemorySnapshot snapshot;
   // Keep candidates for the lifetime of their holder entries. Parented
   // candidates may belong to a detached candidate subtree, so skip them
-  // without discarding them.
-  for (int32_t candidate : external_memory_report_candidate_ids_) {
-    auto view = view_map_.find(candidate);
+  // without discarding them. Prune candidates whose holder entries are gone.
+  for (auto candidate_it = external_memory_report_candidate_ids_.begin();
+       candidate_it != external_memory_report_candidate_ids_.end();) {
+    auto view = view_map_.find(*candidate_it);
     if (view == view_map_.end() || view->second == nullptr) {
+      candidate_it = external_memory_report_candidate_ids_.erase(candidate_it);
       continue;
     }
     if (view->second->Parent() != nullptr) {
+      ++candidate_it;
       continue;
     }
     snapshot.garbage_size +=
         GetExternalMemoryUsageBytesRecursively(view->second);
+    ++candidate_it;
   }
   for (const auto& entry : view_map_) {
     auto* view = entry.second;

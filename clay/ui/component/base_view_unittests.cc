@@ -341,6 +341,16 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryTracksRemovedNodeCandidates) {
   EXPECT_EQ(snapshot.garbage_size, 0);
 }
 
+TEST_F_UI(ViewContextMemoryTest, ExternalMemoryPrunesMissingNodeCandidates) {
+  view_context_->UpdateNodeReadyPatching({}, {404, 405});
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 2u);
+
+  auto snapshot = view_context_->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, 0);
+  EXPECT_EQ(snapshot.garbage_size, 0);
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
+}
+
 TEST_F_UI(ViewContextMemoryTest, PendingReportSurvivesPageReset) {
   auto task_runner = testing::TestTaskRunner::Create();
   auto page = std::make_unique<PageView>(0, nullptr, task_runner);
