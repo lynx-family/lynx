@@ -16,15 +16,15 @@ namespace js {
 // static
 std::unique_ptr<NapiRuntimeProxy> NapiRuntimeProxyJSC::Create(
     std::shared_ptr<JSCContextWrapper> context,
-    runtime::TemplateDelegate *delegate) {
-  return std::unique_ptr<NapiRuntimeProxy>(
-      new NapiRuntimeProxyJSC(std::move(context), delegate));
+    std::shared_ptr<DelegateObserver> delegate_observer) {
+  return std::unique_ptr<NapiRuntimeProxy>(new NapiRuntimeProxyJSC(
+      std::move(context), std::move(delegate_observer)));
 }
 
 NapiRuntimeProxyJSC::NapiRuntimeProxyJSC(
     std::shared_ptr<JSCContextWrapper> context,
-    runtime::TemplateDelegate *delegate)
-    : NapiRuntimeProxy(delegate), context_(context) {}
+    std::shared_ptr<DelegateObserver> delegate_observer)
+    : NapiRuntimeProxy(std::move(delegate_observer)), context_(context) {}
 
 void NapiRuntimeProxyJSC::Attach() {
   auto ctx = context_.lock();
