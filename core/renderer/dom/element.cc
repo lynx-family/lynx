@@ -202,6 +202,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
       has_placeholder_(element.has_placeholder_),
       trigger_global_event_(element.trigger_global_event_),
       enable_new_animator_(element.enable_new_animator_),
+      has_explicit_new_animator_attr_(element.has_explicit_new_animator_attr_),
       has_layout_only_props_(element.has_layout_only_props_),
       can_has_layout_only_children_(element.can_has_layout_only_children_),
       need_process_direction_(element.need_process_direction_),
@@ -305,9 +306,11 @@ void Element::AttachToElementManagerInner(
   manager->node_manager()->Record(id_, this);
 
   arch_type_ = manager->GetEnableFiberArch() ? FiberArch : RadonArch;
-  enable_new_animator_ = IsFiberArch()
-                             ? manager->GetEnableNewAnimatorForFiber()
-                             : manager->GetEnableNewAnimatorForRadon();
+  if (!has_explicit_new_animator_attr_) {
+    enable_new_animator_ = IsFiberArch()
+                               ? manager->GetEnableNewAnimatorForFiber()
+                               : manager->GetEnableNewAnimatorForRadon();
+  }
 
   if (IsRadonArch()) {
     enable_extended_layout_only_opt_ =
@@ -822,6 +825,7 @@ bool Element::ResetTransitionStylesInAdvance(
 
 void Element::ResetAttribute(const base::String& key) {
   CheckGlobalBindTarget(key);
+  CheckNewAnimatorAttr(key, lepus::Value());
   has_layout_only_props_ = false;
 
   PreparePropBundleIfNeed();
@@ -1646,6 +1650,7 @@ void Element::ResetPropBundle() {
 
     prop_bundle_ = nullptr;
   }
+  platform_animation_commands_.reset();
 }
 
 void Element::PushToBundle(CSSPropertyID id) {
@@ -1965,13 +1970,19 @@ void Element::CheckNewAnimatorAttr(const base::String& key,
       // For FiberArch.
       if (value.IsBool()) {
         enable_new_animator_ = value.Bool();
+        has_explicit_new_animator_attr_ = true;
       } else if (value.IsString()) {
         const std::string& val_str = value.StdString();
         if (val_str == "false") {
           enable_new_animator_ = false;
+          has_explicit_new_animator_attr_ = true;
         } else if (val_str == "true") {
           enable_new_animator_ = true;
+          has_explicit_new_animator_attr_ = true;
         }
+      } else if (value.IsNil()) {
+        has_explicit_new_animator_attr_ = false;
+        enable_new_animator_ = element_manager_->GetEnableNewAnimatorForFiber();
       }
     } else {
       // For RadonArch.
@@ -2250,6 +2261,16 @@ void Element::SetPlaceHolderStylesInternal(
 
 bool Element::GetEnableZIndex() { return element_manager_->GetEnableZIndex(); }
 
+bool Element::supports_platform_animation_routing() const {
+  return IsFiberArch() && !has_explicit_new_animator_attr_ &&
+         element_manager_ != nullptr &&
+         element_manager_->SupportsPlatformAnimationRouting();
+}
+
+bool Element::use_cpp_animation_builder() const {
+  return enable_new_animator_ || supports_platform_animation_routing();
+}
+
 void Element::SetDataToNativeKeyframeAnimator(bool from_resume) {
   if (element_manager_->IsPause()) {
     element_manager_->AddPausedAnimationElement(this);
@@ -2295,7 +2316,8 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
                                std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_TICK_ALL_ANIMATION);
 
-  if (element_manager_->EnableNewStylingPipeline() && enable_new_animator_) {
+  if (element_manager_->EnableNewStylingPipeline() &&
+      use_cpp_animation_builder()) {
     RequireFlush();
     SetAnimationSampleTimeForNewPipeline(frame_time);
     MarkStyleDirty();
@@ -2303,7 +2325,8 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
     options->target_node = this->impl_id();
     return true;
   }
-  if (element_manager_->EnableNewStylingPipeline() && !enable_new_animator_) {
+  if (element_manager_->EnableNewStylingPipeline() &&
+      !use_cpp_animation_builder()) {
     return false;
   }
 
@@ -2314,6 +2337,7 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
     css_keyframe_manager_->TickAllAnimation(frame_time);
   }
   auto [need_layout, has_pending_bundle] = FlushAnimatedStyle();
+  has_pending_bundle |= HasPendingPlatformAnimationCommands();
   bool need_mark_props_dirty = need_layout;
   if (element_manager_->FixNewAnimatorFlushBug()) {
     // FIXME(linxs): remove this settings in next version
@@ -2339,6 +2363,28 @@ Element::TakeAnimationSampleTimeForNewPipeline() {
   auto sample_time = std::move(animation_sample_time_for_new_pipeline_);
   animation_sample_time_for_new_pipeline_ = std::nullopt;
   return sample_time;
+}
+
+void Element::QueuePlatformAnimationCommand(
+    gfx::PlatformAnimationCommand command) {
+  PreparePropBundleIfNeed();
+  if (!platform_animation_commands_) {
+    platform_animation_commands_ =
+        std::make_shared<gfx::PlatformAnimationCommandBatch>();
+  }
+  platform_animation_commands_->push_back(std::move(command));
+  prop_bundle_->SetPlatformAnimationCommands(platform_animation_commands_);
+}
+
+bool Element::PrepareForPlatformAnimation() {
+  if (IsShadowNodeVirtual()) {
+    return false;
+  }
+  // A platform-only animation will not sample a render property in Core, so
+  // it cannot rely on FlushAnimatedStyle() to promote a layout-only element.
+  // Disable layout-only before the pending prop bundle is committed.
+  MarkCanBeLayoutOnly(false);
+  return true;
 }
 
 void Element::DispatchAnimationEventsForNewPipeline(
@@ -2470,7 +2516,7 @@ bool Element::ShouldConsumeTransitionStylesInAdvance() {
 }
 
 bool Element::ShouldUseLegacyTransitionInterception() const {
-  return enable_new_animator_ && element_manager_ != nullptr &&
+  return use_cpp_animation_builder() && element_manager_ != nullptr &&
          !element_manager_->EnableNewStylingPipeline();
 }
 

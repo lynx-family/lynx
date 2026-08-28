@@ -138,6 +138,9 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
 
   bool NeedAnimationProps() override { return false; }
 
+  const gfx::AnimationBackendCapabilities& GetPlatformAnimationCapabilities()
+      override;
+
   static lepus::Value GetUITreeRecursive(LynxUI* ui);
   std::string GetUITree();
 

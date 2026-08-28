@@ -7,6 +7,7 @@
 #import <Foundation/Foundation.h>
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "core/public/prop_bundle.h"
@@ -79,6 +80,13 @@ class PropBundleDarwin : public PropBundle {
 
   void ResetEventHandler() override;
   void ResetGestureDetector() override;
+  void SetPlatformAnimationCommands(
+      std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) override {
+    platform_animation_commands_ = std::move(commands);
+  }
+  std::shared_ptr<gfx::PlatformAnimationCommandBatch> TakePlatformAnimationCommands() {
+    return std::move(platform_animation_commands_);
+  }
   fml::RefPtr<PropBundle> ShallowCopy() override;
 
   inline NSDictionary* dictionary() { return [propMap copy]; }
@@ -100,6 +108,9 @@ class PropBundleDarwin : public PropBundle {
   NSMutableSet* eventSet;
   NSMutableSet* lepusEventSet;
   NSMutableSet* gestureDetectorSet;
+  // Lifecycle commands are one-shot and therefore are not copied by
+  // ShallowCopy().
+  std::shared_ptr<gfx::PlatformAnimationCommandBatch> platform_animation_commands_;
 };
 
 }  // namespace tasm
