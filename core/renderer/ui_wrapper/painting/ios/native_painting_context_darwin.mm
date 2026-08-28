@@ -44,6 +44,23 @@ std::array<float, 4> CopyMetrics(const float *source) {
   return result;
 }
 
+LynxURL *CreateImageURL(const base::String &url, CGSize image_size,
+                        LynxImageRequestType request_type) {
+  if (url.empty()) {
+    return nil;
+  }
+  NSString *url_string = [[NSString alloc] initWithUTF8String:url.c_str()];
+  NSURL *ns_url = [[NSURL alloc] initWithString:url_string];
+  if (ns_url == nil) {
+    return nil;
+  }
+  LynxURL *image_url = [[LynxURL alloc] init];
+  image_url.url = ns_url;
+  image_url.imageSize = image_size;
+  image_url.type = request_type;
+  return image_url;
+}
+
 }  // namespace
 
 NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner,
@@ -349,14 +366,15 @@ fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::Strin
                                                              int32_t event_mask,
                                                              bool disable_default_resize) {
   static_cast<void>(disable_default_resize);
-  LynxURL *sourceUrl = [[LynxURL alloc] init];
-  sourceUrl.url = [[NSURL alloc] initWithString:[[NSString alloc] initWithUTF8String:src.c_str()]];
-  sourceUrl.imageSize = CGSizeMake(width, height);
+  CGSize image_size = CGSizeMake(width, height);
+  LynxURL *source_url = CreateImageURL(src, image_size, LynxImageRequestSrc);
+  LynxURL *placeholder_url =
+      CreateImageURL(paint_info.placeholder, image_size, LynxImageRequestPlaceholder);
   int32_t image_key = GenerateUniqueImageKey();
 
   [context_->GetRendererContext() createImageManager:id
-                                       withSourceURL:sourceUrl
-                                   andPlaceholderURL:nil
+                                       withSourceURL:source_url
+                                   andPlaceholderURL:placeholder_url
                                            paintInfo:paint_info
                                            eventMask:event_mask
                                             imageKey:image_key];
