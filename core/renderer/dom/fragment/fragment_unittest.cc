@@ -1737,16 +1737,17 @@ TEST_F(FragmentTest, ImageModeUpdateRecreatesOnlyForEffectiveChanges) {
 
   element->SetAttributeInternal("mode", lepus::Value("aspectFill"));
   fragment.UpdatePaintingNode(true, nullptr);
+  EXPECT_EQ(native_painting_context.created_images_.size(), 1u);
+  EXPECT_TRUE(fragment.NeedRedraw());
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
   ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
   EXPECT_EQ(native_painting_context.created_images_.back().mode,
             ImageFitMode::kAspectFill);
-  EXPECT_TRUE(fragment.NeedRedraw());
-
-  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
-  EXPECT_EQ(native_painting_context.created_images_.size(), 2u);
 
   element->SetAttributeInternal("mode", lepus::Value("unsupported"));
   fragment.UpdatePaintingNode(true, nullptr);
+  EXPECT_EQ(native_painting_context.created_images_.size(), 2u);
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
   ASSERT_EQ(native_painting_context.created_images_.size(), 3u);
   EXPECT_EQ(native_painting_context.created_images_.back().mode,
             ImageFitMode::kScaleToFill);
@@ -1781,9 +1782,11 @@ TEST_F(FragmentTest, ImageBlurRadiusUpdateRecreatesImage) {
   element->SetAttributeInternal("blur-radius", lepus::Value("5px"));
   fragment.UpdatePaintingNode(true, nullptr);
 
+  EXPECT_EQ(native_painting_context.created_images_.size(), 1u);
+  EXPECT_TRUE(fragment.NeedRedraw());
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
   ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
   EXPECT_EQ(native_painting_context.created_images_.back().blur_radius, "5px");
-  EXPECT_TRUE(fragment.NeedRedraw());
 }
 
 TEST_F(FragmentTest, ImagePaintInfoAttributesReachNativePaintingContext) {
@@ -1843,24 +1846,23 @@ TEST_F(FragmentTest, ImageSrcUpdateInvalidatesWithoutDuplicateImageCreation) {
             ImageFitMode::kScaleToFill);
   ASSERT_FALSE(fragment.NeedRedraw());
 
-  // When: src changes and the same-size update, layout, and draw path runs.
+  // When: src changes on a repaint-only update without a layout pass.
   element->SetAttributeInternal("src", lepus::Value("image-src://updated"));
   fragment.UpdatePaintingNode(true, nullptr);
 
-  // Then: the attribute update has already refreshed and invalidated the image.
+  // Then: the attribute update only invalidates; draw performs one request.
   EXPECT_TRUE(fragment.NeedRedraw());
-  ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
-  EXPECT_EQ(native_painting_context.created_images_.back().src,
-            "image-src://updated");
-  const int32_t updated_image_key =
-      native_painting_context.created_images_.back().image_key;
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
 
-  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
   DisplayListBuilder updated_builder;
   fragment.OnDraw(updated_builder);
   DisplayList updated_list = updated_builder.Build();
 
   EXPECT_EQ(native_painting_context.created_images_.size(), 2u);
+  EXPECT_EQ(native_painting_context.created_images_.back().src,
+            "image-src://updated");
+  const int32_t updated_image_key =
+      native_painting_context.created_images_.back().image_key;
   EXPECT_FALSE(fragment.NeedRedraw());
   ASSERT_EQ(updated_list.Images().size(), 1u);
   ASSERT_NE(updated_list.Images()[0], nullptr);
@@ -1886,15 +1888,15 @@ TEST_F(FragmentTest, ImageSrcUpdateRecreatesForChangedLayoutSize) {
   // When: src changes before the following layout changes the content size.
   element->SetAttributeInternal("src", lepus::Value("image-src://updated"));
   fragment.UpdatePaintingNode(true, nullptr);
-  ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
 
   starlight::LayoutResultForRendering updated_layout;
   updated_layout.size_ = FloatSize(120.f, 80.f);
   fragment.UpdateLayout(updated_layout);
   fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
 
-  // Then: the image is recreated once with the updated dimensions and retained.
-  ASSERT_EQ(native_painting_context.created_images_.size(), 3u);
+  // Then: the image is recreated once with the final dimensions and retained.
+  ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
   const auto& updated_image = native_painting_context.created_images_.back();
   EXPECT_EQ(updated_image.src, "image-src://updated");
   EXPECT_FLOAT_EQ(updated_image.width, 120.f);
@@ -1903,6 +1905,7 @@ TEST_F(FragmentTest, ImageSrcUpdateRecreatesForChangedLayoutSize) {
   DisplayListBuilder updated_builder;
   fragment.OnDraw(updated_builder);
   DisplayList updated_list = updated_builder.Build();
+  EXPECT_EQ(native_painting_context.created_images_.size(), 2u);
   ASSERT_EQ(updated_list.Images().size(), 1u);
   ASSERT_NE(updated_list.Images()[0], nullptr);
   EXPECT_EQ(updated_list.Images()[0]->image_key_, updated_image.image_key);
@@ -1955,14 +1958,15 @@ TEST_F(FragmentTest, ImageSrcResetCreatesEmptyReplacement) {
   element->ResetAttribute(BASE_STATIC_STRING(kSrc));
   fragment.UpdatePaintingNode(true, nullptr);
 
-  // Then: an empty replacement clears the old retained image and redraws.
-  ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
-  EXPECT_TRUE(native_painting_context.created_images_.back().src.empty());
+  // Then: draw creates one empty replacement and clears the retained image.
+  ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
   EXPECT_TRUE(fragment.NeedRedraw());
 
   DisplayListBuilder updated_builder;
   fragment.OnDraw(updated_builder);
   DisplayList updated_list = updated_builder.Build();
+  ASSERT_EQ(native_painting_context.created_images_.size(), 2u);
+  EXPECT_TRUE(native_painting_context.created_images_.back().src.empty());
   ASSERT_EQ(updated_list.Images().size(), 1u);
   ASSERT_NE(updated_list.Images()[0], nullptr);
   EXPECT_EQ(updated_list.Images()[0]->image_key_,
