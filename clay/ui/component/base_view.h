@@ -597,8 +597,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void CheckStickyOnParentScrollAndReset(int left, int top);
 
   void SetEventThrough(bool event_through) { event_through_ = event_through; }
-  // this means whether the entire page through the touch events.
+  // Returns the explicit value, or nullopt to inherit.
   std::optional<bool> CanEventThrough() const { return event_through_; }
+  bool ShouldPassEventToNativeInherited() const;
   // this means whether this view node pass through the events to the nodes
   // behind it.
   virtual bool CanEventsPassThroughToViewsBehind() const { return false; }
