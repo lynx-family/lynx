@@ -7,6 +7,10 @@
 
 #include "devtool/base_devtool/native/js_inspect/inspector_client_delegate_base_impl_unittest.h"
 
+#include <condition_variable>
+#include <future>
+#include <mutex>
+
 #include "base/include/fml/thread.h"
 #include "core/base/json/json_util.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -30,7 +34,6 @@ class InspectorClientDelegateBaseImplTest : public ::testing::Test {
   }
 
  private:
-  std::vector<double> repeating_timer_test_;
   std::shared_ptr<MockInspectorClientDelegateBaseImpl> v8_delegate_;
   std::shared_ptr<MockInspectorClientDelegateBaseImpl> qjs_delegate_;
   std::shared_ptr<MockInspectorClientDelegateBaseImpl> rts_delegate_;
@@ -38,22 +41,55 @@ class InspectorClientDelegateBaseImplTest : public ::testing::Test {
 };
 
 TEST_F(InspectorClientDelegateBaseImplTest, StartRepeatingTimer) {
+  struct TimerTestState {
+    std::mutex mutex;
+    std::condition_variable callback_cv;
+    size_t callback_count = 0;
+    bool data_matches = true;
+  };
+  auto state = std::make_shared<TimerTestState>();
   base::NoDestructor<lynx::fml::Thread> thread("test");
-  thread->GetTaskRunner()->PostTask([delegate = v8_delegate_, test = this] {
+  thread->GetTaskRunner()->PostTask([delegate = v8_delegate_, state] {
     delegate->StartRepeatingTimer(
         0.1,
-        [delegate](void* data) {
-          auto* test =
-              reinterpret_cast<InspectorClientDelegateBaseImplTest*>(data);
-          test->repeating_timer_test_.emplace_back(delegate->CurrentTimeMS());
+        [state](void* data) {
+          auto* callback_state = reinterpret_cast<TimerTestState*>(data);
+          {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            state->data_matches =
+                state->data_matches && callback_state == state.get();
+            ++state->callback_count;
+          }
+          state->callback_cv.notify_one();
         },
-        reinterpret_cast<void*>(test));
+        state.get());
   });
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  thread->GetTaskRunner()->PostTask([delegate = v8_delegate_, test = this] {
-    delegate->CancelTimer(reinterpret_cast<void*>(test));
-  });
-  EXPECT_FALSE(repeating_timer_test_.empty());
+
+  bool callback_received = false;
+  {
+    std::unique_lock<std::mutex> lock(state->mutex);
+    callback_received = state->callback_cv.wait_for(
+        lock, std::chrono::seconds(2),
+        [&state] { return state->callback_count > 0; });
+  }
+
+  auto cancel_complete = std::make_shared<std::promise<void>>();
+  auto cancel_complete_future = cancel_complete->get_future();
+  thread->GetTaskRunner()->PostTask(
+      [delegate = v8_delegate_, state, cancel_complete] {
+        delegate->CancelTimer(state.get());
+        cancel_complete->set_value();
+      });
+  const auto cancel_status =
+      cancel_complete_future.wait_for(std::chrono::seconds(2));
+
+  EXPECT_TRUE(callback_received);
+  EXPECT_EQ(cancel_status, std::future_status::ready);
+  {
+    std::lock_guard<std::mutex> lock(state->mutex);
+    EXPECT_TRUE(state->data_matches);
+    EXPECT_GT(state->callback_count, 0U);
+  }
 }
 
 // Only test the logic not covered by ScriptManagerNGTest.
