@@ -50,9 +50,11 @@ TEST_F(InspectorClientDelegateBaseImplTest, StartRepeatingTimer) {
         reinterpret_cast<void*>(test));
   });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  thread->GetTaskRunner()->PostTask([delegate = v8_delegate_, test = this] {
+  thread->GetTaskRunner()->PostSyncTask([delegate = v8_delegate_, test = this] {
     delegate->CancelTimer(reinterpret_cast<void*>(test));
   });
+  EXPECT_EQ(v8_delegate_->timed_task_ids_.count(reinterpret_cast<void*>(this)),
+            0u);
   EXPECT_FALSE(repeating_timer_test_.empty());
 }
 
