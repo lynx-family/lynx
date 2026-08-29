@@ -283,6 +283,19 @@ void LynxShell::OnLynxEngineBuilt(
     return;
   }
 
+#if ENABLE_TESTBENCH_RECORDER
+  const int64_t record_id = reinterpret_cast<int64_t>(this);
+  engine_actor_->ActLite(
+      [record_id](auto& engine) { engine->SetRecordID(record_id); });
+  layout_actor_->ActLite(
+      [record_id](auto& layout) { layout->SetRecordId(record_id); });
+  if (native_module_manager != nullptr) {
+    native_module_manager->SetRecordID(record_id);
+  }
+  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
+      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
+#endif
+
   ui_operation_queue_->SetErrorCallback(
       [facade_actor = facade_actor_](base::LynxError error) {
         facade_actor->Act([error = std::move(error)](auto& facade) mutable {
@@ -494,14 +507,10 @@ void LynxShell::InitRuntime(
   }
 
 #if ENABLE_TESTBENCH_RECORDER
-  int64_t record_id = reinterpret_cast<int64_t>(this);
-  engine_actor_->ActLite(
-      [record_id](auto& engine) { engine->SetRecordID(record_id); });
-  layout_actor_->ActLite(
-      [record_id](auto& layout) { layout->SetRecordId(record_id); });
-  native_module_manager->SetRecordID(record_id);
-  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
-      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
+  const int64_t record_id = reinterpret_cast<int64_t>(this);
+  if (native_module_manager != nullptr) {
+    native_module_manager->SetRecordID(record_id);
+  }
 #endif
   std::shared_ptr<base::VSyncMonitor> vsync_monitor;
   if (vsync_monitor_platform_impl) {
