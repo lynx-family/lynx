@@ -4,6 +4,7 @@
 #
 
 import("../../../testing/test.gni")
+import("../../Lynx.gni")
 
 group("shell_tests") {
   testonly = true
@@ -40,6 +41,9 @@ mocktest_set("shell_testset") {
     "../../../third_party/quickjs",
     "../../runtime/common/napi:napi_binding_quickjs",
   ]
+  if (enable_testbench_recorder) {
+    deps += [ "../../services/recorder:recorder" ]
+  }
   deps += [
     "../../../third_party/napi:env",
     "../../../third_party/napi:quickjs",
