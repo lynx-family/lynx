@@ -242,6 +242,7 @@ subspec_target("Native") {
     "../../../../devtool/lynx_devtool/common",
     "../../../../devtool/lynx_devtool/config",
     "../../../../devtool/lynx_devtool/element",
+    "../../../../devtool/lynx_devtool/input:input_types",
     "../../../../devtool/lynx_devtool/message_handler",
     "../../../../devtool/lynx_devtool/recorder",
     "../../../../devtool/lynx_devtool/shared_data",
