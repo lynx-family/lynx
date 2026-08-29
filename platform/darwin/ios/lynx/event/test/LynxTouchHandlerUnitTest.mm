@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <OCMock/OCMock.h>
+#import <UIKit/UIGestureRecognizerSubclass.h>
 #import <XCTest/XCTest.h>
 
 #include <deque>
@@ -12,6 +13,7 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxUI+Internal.h>
@@ -301,6 +303,87 @@
   // Verify touchesBegan
   [touchHandler touchesBegan:touches withEvent:event];
   OCMVerify([touchHandler touchesBeganInner:touches withEvent:event]);
+}
+
+// A system interaction (e.g. a dismissing UIMenu on iOS 26+) can take a recognizer's
+// touches away without delivering touchesEnded / touchesCancelled — UIKit then only
+// calls reset. The engine must treat that as the end of the in-flight sequence,
+// otherwise _touches never empties and every later touch is dropped as an "extra
+// finger" of the dead sequence.
+- (void)testResetEndsStrandedTouchSequence {
+  LynxEventHandler* mockEventHandler = OCMClassMock([LynxEventHandler class]);
+  id<LynxEventTarget> mockTarget = OCMProtocolMock(@protocol(LynxEventTarget));
+  OCMStub([mockEventHandler touchTarget]).andReturn(mockTarget);
+  [[[[mockEventHandler stub] ignoringNonObjectArgs] andReturn:mockTarget]
+      hitTestInner:CGPointZero
+         withEvent:[OCMArg any]];
+  LynxTouchHandler* handler = [[LynxTouchHandler alloc] initWithEventHandler:mockEventHandler];
+
+  UITouch* mockTouch = OCMClassMock([UITouch class]);
+  OCMStub([mockTouch locationInView:OCMArg.any]).andReturn(CGPointMake(10, 20));
+  UIEvent* mockEvent = OCMClassMock([UIEvent class]);
+
+  [handler touchesBegan:[NSSet setWithObject:mockTouch] withEvent:mockEvent];
+  XCTAssertTrue(handler.target == mockTarget);
+
+  // UIKit takes the touches away: no touchesEnded / touchesCancelled, only reset.
+  [handler reset];
+
+  OCMVerify([mockTarget dispatchTouch:LynxEventTouchCancel
+                              touches:OCMArg.any
+                            withEvent:OCMArg.any]);
+  XCTAssertNil(handler.target);
+  XCTAssertTrue(handler.preTarget == mockTarget);
+
+  // The next touch must start a fresh sequence instead of being treated as an
+  // extra finger of the stranded one.
+  UITouch* nextTouch = OCMClassMock([UITouch class]);
+  OCMStub([nextTouch locationInView:OCMArg.any]).andReturn(CGPointMake(30, 40));
+  [handler touchesBegan:[NSSet setWithObject:nextTouch] withEvent:mockEvent];
+  XCTAssertTrue(handler.target == mockTarget);
+}
+
+// Even if reset is never delivered, a touchesBegan that arrives while a dead touch is
+// still tracked must end the stranded sequence first and then start a fresh one.
+- (void)testTouchesBeganFlushesStrandedTouchSequence {
+  LynxEventHandler* mockEventHandler = OCMClassMock([LynxEventHandler class]);
+  id<LynxEventTarget> strandedTarget = OCMProtocolMock(@protocol(LynxEventTarget));
+  OCMStub([mockEventHandler touchTarget]).andReturn(strandedTarget);
+  [[[[mockEventHandler stub] ignoringNonObjectArgs] andReturn:strandedTarget]
+      hitTestInner:CGPointZero
+         withEvent:[OCMArg any]];
+  LynxTouchHandler* handler = [[LynxTouchHandler alloc] initWithEventHandler:mockEventHandler];
+
+  UITouch* strandedTouch = OCMClassMock([UITouch class]);
+  OCMStub([strandedTouch locationInView:OCMArg.any]).andReturn(CGPointMake(10, 20));
+  OCMStub([strandedTouch phase]).andReturn(UITouchPhaseEnded);
+  UIEvent* strandedEvent = OCMClassMock([UIEvent class]);
+  [handler touchesBegan:[NSSet setWithObject:strandedTouch] withEvent:strandedEvent];
+  XCTAssertTrue(handler.target == strandedTarget);
+
+  // A new touch arrives; the tracked touch is no longer alive in the new event.
+  id<LynxEventTarget> freshTarget = OCMProtocolMock(@protocol(LynxEventTarget));
+  OCMStub([mockEventHandler touchTarget]).andReturn(freshTarget);
+  [[[[mockEventHandler stub] ignoringNonObjectArgs] andReturn:freshTarget]
+      hitTestInner:CGPointZero
+         withEvent:[OCMArg any]];
+  UITouch* freshTouch = OCMClassMock([UITouch class]);
+  OCMStub([freshTouch locationInView:OCMArg.any]).andReturn(CGPointMake(30, 40));
+  OCMStub([freshTouch phase]).andReturn(UITouchPhaseBegan);
+  UIEvent* freshEvent = OCMClassMock([UIEvent class]);
+  OCMStub([freshEvent allTouches]).andReturn([NSSet setWithObject:freshTouch]);
+
+  [handler touchesBegan:[NSSet setWithObject:freshTouch] withEvent:freshEvent];
+
+  // The stranded sequence was closed with touchcancel…
+  OCMVerify([strandedTarget dispatchTouch:LynxEventTouchCancel
+                                  touches:OCMArg.any
+                                withEvent:OCMArg.any]);
+  // …and the new touch started a fresh sequence on the new target.
+  OCMVerify([freshTarget dispatchTouch:LynxEventTouchStart
+                               touches:OCMArg.any
+                             withEvent:OCMArg.any]);
+  XCTAssertTrue(handler.target == freshTarget);
 }
 
 - (NSInteger)getGestureArenaMemberId {

@@ -245,6 +245,67 @@
   [_outerGestures removeAllObjects];
 }
 
+- (void)reset {
+  [super reset];
+  [self cancelStrandedTouchSequence];
+}
+
+- (void)cancelStrandedTouchSequence {
+  if ([_touches count] == 0) {
+    return;
+  }
+  _LogI(@"LynxTouchHandler: cancelStrandedTouchSequence %p: ", _eventHandler.rootView);
+  if (_touchBegin && !_touchEndOrCancel) {
+    _timestamp = [[NSDate date] timeIntervalSince1970];
+    NSSet<UITouch*>* touches = [_touches copy];
+    if (!_enableMultiTouch) {
+      if (_target != nil) {
+        [self dispatchEvent:LynxEventTouchCancel
+                   toTarget:_target
+                      touch:[self findFirstTouchByTimestamp:touches]];
+      }
+    } else {
+      NSMutableDictionary* dict = [NSMutableDictionary new];
+      for (UITouch* touch in touches) {
+        [self addMap:dict touch:touch];
+      }
+      [self dispatchTouchAndEvent:LynxEventTouchCancel params:dict];
+    }
+    [_target dispatchTouch:LynxEventTouchCancel touches:touches withEvent:_event];
+
+    LynxRootUI* childLynxPage =
+        _eventHandler.touchTarget
+            .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+    if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+        childLynxPage.view.isChildLynxPage) {
+      [childLynxPage.context.eventHandler.touchRecognizer touchesCancelledInner:touches
+                                                                      withEvent:_event];
+    }
+  }
+  [self onTouchEndOrCancel];
+  [self resetTouchEnv];
+}
+
+- (BOOL)flushStrandedTouchesIfNeeded:(UIEvent*)event {
+  if ([_touches count] == 0) {
+    return NO;
+  }
+  BOOL hasStrandedTouch = NO;
+  NSSet<UITouch*>* aliveTouches = [event allTouches];
+  for (UITouch* touch in _touches) {
+    if (touch.phase == UITouchPhaseBegan || touch.phase == UITouchPhaseEnded ||
+        touch.phase == UITouchPhaseCancelled || ![aliveTouches containsObject:touch]) {
+      hasStrandedTouch = YES;
+      break;
+    }
+  }
+  if (!hasStrandedTouch) {
+    return NO;
+  }
+  [self cancelStrandedTouchSequence];
+  return YES;
+}
+
 - (BOOL)isTouchMoving {
   return _touchMoving;
 }
@@ -652,6 +713,7 @@
 }
 
 - (void)touchesBeganInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  [self flushStrandedTouchesIfNeeded:event];
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:
               [NSString stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
