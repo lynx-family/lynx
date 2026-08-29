@@ -895,8 +895,11 @@ jobs:
           retry_wait_seconds: 5
           timeout_minutes: 5
           command: |
+            set -e
             pushd $GITHUB_WORKSPACE
-            git clone https://github.com/appium/WebDriverAgent.git
+            rm -rf WebDriverAgent
+            git clone --depth 1 --branch v16.9.3 https://github.com/appium/WebDriverAgent.git
+            test "$(git -C WebDriverAgent rev-parse HEAD)" = "54fc1a254632911fdc48e2b6fbcca2481d27d223"
             xcodebuild build-for-testing \
               -project ./WebDriverAgent/WebDriverAgent.xcodeproj \
               -scheme WebDriverAgentRunner \
