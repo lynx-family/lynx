@@ -435,6 +435,15 @@ void LynxTemplateRenderer::LoadTemplateBundle(
   shell_->LoadTemplateBundle(url, bundle, pipeline_options, template_data);
 }
 
+bool LynxTemplateRenderer::RegisterLazyBundle(
+    const std::string& url, const lynx::tasm::LynxTemplateBundle& bundle) {
+  if (!shell_) {
+    return false;
+  }
+  shell_->RegisterLazyBundle(url, bundle);
+  return true;
+}
+
 std::shared_ptr<tasm::PipelineOptions>
 LynxTemplateRenderer::ProcessLoadTemplateTimingOption(
     napi_env env, napi_value arg, std::string pipeline_origin) {
@@ -729,6 +738,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("loadTemplate", LoadTemplate),
       DECLARE_NAPI_METHOD("reloadTemplate", ReloadTemplate),
       DECLARE_NAPI_METHOD("loadTemplateBundle", LoadTemplateBundle),
+      DECLARE_NAPI_METHOD("registerLazyBundle", RegisterLazyBundle),
       DECLARE_NAPI_METHOD("updateViewport", UpdateViewport),
       DECLARE_NAPI_METHOD("updateScreenMetrics", UpdateScreenMetrics),
       DECLARE_NAPI_METHOD("nativeSetWindowInfo", NativeSetWindowInfo),
@@ -1545,6 +1555,33 @@ napi_value LynxTemplateRenderer::LoadTemplateBundle(napi_env env,
   obj->LoadTemplateBundle(std::move(url), bundle->GetBundle(), pipeline_options,
                           template_data, enable_dump_element_tree);
   return nullptr;
+}
+
+napi_value LynxTemplateRenderer::RegisterLazyBundle(napi_env env,
+                                                    napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  bool success = false;
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (argc == 2 &&
+      CheckNapiUnwrapObject(status, obj, "RegisterLazyBundle failed")) {
+    const std::string url = base::NapiUtil::ConvertToString(env, args[0]);
+    LynxTemplateBundleHarmony* bundle = nullptr;
+    status = napi_unwrap(env, args[1], reinterpret_cast<void**>(&bundle));
+    if (!url.empty() && status == napi_ok && bundle != nullptr &&
+        bundle->IsValid()) {
+      success = obj->RegisterLazyBundle(url, bundle->GetBundle());
+    }
+  }
+
+  napi_value result = nullptr;
+  napi_get_boolean(env, success, &result);
+  return result;
 }
 
 napi_value LynxTemplateRenderer::GetAllTimingInfo(napi_env env,

@@ -1048,10 +1048,14 @@
   RUN_RENDER_SAFELY([_templateRender preloadLazyBundles:urls];);
 }
 
-- (BOOL)registerDynamicComponent:(nonnull NSString*)url bundle:(nonnull LynxTemplateBundle*)bundle {
+- (BOOL)registerLazyBundle:(nonnull NSString*)url bundle:(nonnull LynxTemplateBundle*)bundle {
   _LogI(@"LynxView %p: registerLazyBundle: %@", self, url);
   RUN_RENDER_SAFELY(return [_templateRender registerLazyBundle:url bundle:bundle];);
   return NO;
+}
+
+- (BOOL)registerDynamicComponent:(nonnull NSString*)url bundle:(nonnull LynxTemplateBundle*)bundle {
+  return [self registerLazyBundle:url bundle:bundle];
 }
 
 #pragma mark - Bytecode

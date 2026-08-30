@@ -7726,6 +7726,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.resetData(TemplateData data);
   public void com.lynx.tasm.LynxView.reloadTemplate(TemplateData data);
   public void com.lynx.tasm.LynxView.reloadTemplate(TemplateData data, TemplateData globalProps);
+  public boolean com.lynx.tasm.LynxView.registerLazyBundle(@NonNull String url, @NonNull TemplateBundle bundle);
   public boolean com.lynx.tasm.LynxView.registerDynamicComponent(@NonNull String url, @NonNull TemplateBundle bundle);
   public Map< String, Object > com.lynx.tasm.LynxView.getPageDataByKey(String[] keys);
   public void com.lynx.tasm.LynxView.updateGlobalProps(@NonNull Map< String, Object > props);

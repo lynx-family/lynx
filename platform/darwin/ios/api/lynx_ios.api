@@ -5680,7 +5680,8 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::attachEngineToUIThread();
   public void LynxView::detachEngineFromUIThread();
   public void LynxView::preloadDynamicComponents:("LynxTemplateResourceFetcher", ios(6.0, API_TO_BE_DEPRECATED) API_DEPRECATED_WITH_REPLACEMENT);
-  public BOOL LynxView::registerDynamicComponent:bundle:(nonnull NSString *url,[bundle] "LynxTemplateResourceFetcher", ios(6.0, API_TO_BE_DEPRECATED) API_DEPRECATED_WITH_REPLACEMENT);
+  public BOOL LynxView::registerLazyBundle:bundle:(nonnull NSString *url,[bundle] nonnull LynxTemplateBundle *bundle);
+  public BOOL LynxView::registerDynamicComponent:bundle:(nonnull NSString *url,[bundle] "registerLazyBundle:bundle:", ios(6.0, API_TO_BE_DEPRECATED) API_DEPRECATED_WITH_REPLACEMENT);
   public void LynxView::setEnableUserBytecode:url:(BOOL enableUserBytecode,[url] nonnull NSString *url);
   public void LynxView::attachTemplateRender:(LynxTemplateRender *_Nullable templateRender);
   public void LynxView::processRender();
