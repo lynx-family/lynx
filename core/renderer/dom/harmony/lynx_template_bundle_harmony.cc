@@ -83,6 +83,7 @@ napi_value LynxTemplateBundleHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_STATIC_FUNCTION("nativeParseTemplate", ParseTemplate),
       DECLARE_NAPI_STATIC_FUNCTION("nativeAsyncParseTemplate",
                                    AsyncParseTemplate),
+      DECLARE_NAPI_STATIC_FUNCTION("nativeIsValid", GetIsValid),
       DECLARE_NAPI_STATIC_FUNCTION("nativeGetExtraInfo", GetExtraInfo),
       DECLARE_NAPI_STATIC_FUNCTION("nativeGetContainsElementTree",
                                    GetContainsElementTree),
@@ -124,6 +125,24 @@ napi_value LynxTemplateBundleHarmony::New(napi_env env,
     return nullptr;
   }
   return js_this;
+}
+
+napi_value LynxTemplateBundleHarmony::GetIsValid(napi_env env,
+                                                 napi_callback_info info) {
+  napi_value js_this = nullptr;
+  napi_status status =
+      napi_get_cb_info(env, info, nullptr, nullptr, &js_this, nullptr);
+
+  LynxTemplateBundleHarmony* bundle = nullptr;
+  if (status == napi_ok) {
+    status = napi_unwrap(env, js_this, reinterpret_cast<void**>(&bundle));
+  }
+
+  napi_value result = nullptr;
+  napi_get_boolean(env,
+                   status == napi_ok && bundle != nullptr && bundle->IsValid(),
+                   &result);
+  return result;
 }
 
 napi_value LynxTemplateBundleHarmony::ParseTemplate(napi_env env,

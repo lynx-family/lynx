@@ -153,6 +153,8 @@ export class LynxTemplateRenderer {
   loadTemplateBundle(url: string, bundle: TemplateBundle, processor?: string, templateData?: Object, readOnly?: boolean,
     enableDumpElementTree?: boolean, timingOption?: Object)
 
+  registerLazyBundle(url: string, bundle: TemplateBundle): boolean;
+
   updateViewport(width: number, widthMode: number, height: number, heightMode: number): void;
 
   updateScreenMetrics(width: number, height: number, scale: number): void;
@@ -381,6 +383,8 @@ export class TemplateBundle {
   nativeParseTemplate(template: ArrayBuffer): string | undefined;
 
   nativeAsyncParseTemplate(template: ArrayBuffer): Promise<string> | undefined;
+
+  nativeIsValid(): boolean;
 
   nativeGetExtraInfo(): Record<string, Object>;
 
