@@ -4,7 +4,7 @@
 
 import lynx from 'liblynx.so';
 import { LynxError } from './LynxError';
-import { LynxErrorLevel } from './gen/LynxSubErrorCode';
+import { LynxErrorLevel, LynxSubErrorCode } from './gen/LynxSubErrorCode';
 import { LynxViewClient } from './LynxViewClient';
 import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
 import { LynxResourceProvider } from '../provider/LynxResourceProvider';
@@ -174,13 +174,17 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string,
     customInfo: Record<string, string>, logboxOnly: boolean) {
     let err = new LynxError(LynxErrorLevel[level], errorCode, message, suggestion, LynxError.NATIVE_ERROR, customInfo);
-    err.setTemplateUrl(this.url);
-    this.lynxView?.logBox?.reportError(err);
+    this.dispatchError(err, logboxOnly);
+  }
+
+  private dispatchError(error: LynxError, logboxOnly: boolean) {
+    error.setTemplateUrl(this.url);
+    this.lynxView?.logBox?.reportError(error);
     if (logboxOnly) {
       return;
     }
     this.clients.forEach(client => {
-      client.onReceivedError(err);
+      client.onReceivedError(error);
     });
   }
 
@@ -268,6 +272,37 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   isDestroyed(): boolean {
     return this.hasDestroyed;
+  }
+
+  public registerLazyBundle(url: string, bundle: TemplateBundle): boolean {
+    let errorMessage: string | undefined;
+    let rootCause: string | undefined;
+    if (!url) {
+      errorMessage = 'url is empty';
+    } else if (!bundle) {
+      errorMessage = 'bundle is null';
+    } else if (!bundle.isValid()) {
+      errorMessage = 'bundle is invalid';
+      rootCause = bundle.getErrorMessage();
+    } else if (this.isDestroyed()) {
+      return false;
+    } else if (!super.registerLazyBundle(url, bundle)) {
+      errorMessage = 'input bundle is not from a valid template bundle.';
+    }
+
+    if (!errorMessage) {
+      return true;
+    }
+
+    const customInfo: Record<string, Object> = { 'component_url': url };
+    if (rootCause) {
+      customInfo['root_cause'] = rootCause;
+    }
+    this.dispatchError(LynxError.createLynxError(
+      LynxSubErrorCode.E_LAZY_BUNDLE_LOAD_BAD_BUNDLE,
+      errorMessage,
+      customInfo), false);
+    return false;
   }
 
   setPlatformConfig(config: string) {

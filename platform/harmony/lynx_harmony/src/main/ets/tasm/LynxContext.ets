@@ -300,6 +300,23 @@ export class LynxContext implements IContext {
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RE_INIT_TEMPLATE);
   }
 
+  /**
+   * Registers a parsed lazy bundle for the specified URL.
+   *
+   * The registered bundle is used when a lazy bundle with the same URL is requested.
+   * @apidoc
+   * @param url URL of the lazy bundle.
+   * @param bundle Parsed lazy bundle.
+   * @returns Whether the lazy bundle was registered successfully.
+   */
+  public registerLazyBundle(url: string, bundle: TemplateBundle): boolean {
+    LLog.i(TAG, 'register lazy bundle with TemplateBundle: ' + url);
+    if (!this.renderer) {
+      return false;
+    }
+    return this.renderer.registerLazyBundle(url, bundle);
+  }
+
   public reload(data: MetaData) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RELOAD);
     let timingOption: TimingOption = new TimingOption(TimingConstants.RELOAD_BUNDLE_FROM_NATIVE);
