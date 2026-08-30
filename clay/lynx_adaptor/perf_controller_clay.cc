@@ -282,7 +282,7 @@ void PerfControllerClay::EndFluencyMonitor(int id) {
             return;
           }
 
-          shell::ReportEvent event;
+          shell::PerfReportEvent event;
           event.event_name = std::string(kLynxFluencyEvent);
 
           // string props

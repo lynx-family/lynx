@@ -15,6 +15,12 @@
 namespace lynx {
 namespace shell {
 
+#if defined(ReportEvent)
+#define LYNX_CORE_PUBLIC_PERF_CONTROLLER_PROXY_RESTORE_REPORT_EVENT_MACRO_
+#pragma push_macro("ReportEvent")
+#undef ReportEvent
+#endif
+
 /**
  * @brief Event struct containing different types of property
  */
@@ -24,6 +30,15 @@ struct ReportEvent {
   std::unordered_map<std::string, int> int_props;
   std::unordered_map<std::string, double> double_props;
 };
+
+// Windows defines ReportEvent as a macro. Use this alias in declarations that
+// can be parsed after Windows headers while retaining the existing public type.
+using PerfReportEvent = ReportEvent;
+
+#if defined(LYNX_CORE_PUBLIC_PERF_CONTROLLER_PROXY_RESTORE_REPORT_EVENT_MACRO_)
+#pragma pop_macro("ReportEvent")
+#undef LYNX_CORE_PUBLIC_PERF_CONTROLLER_PROXY_RESTORE_REPORT_EVENT_MACRO_
+#endif
 
 class PerfControllerProxy {
  public:
@@ -77,7 +92,7 @@ class PerfControllerProxy {
    * @param instance_id The instanceId of a lynx view
    * @param event The event to be reported
    */
-  virtual void OnEvent(int32_t instance_id, ReportEvent& event) = 0;
+  virtual void OnEvent(int32_t instance_id, PerfReportEvent& event) = 0;
 };
 
 }  // namespace shell

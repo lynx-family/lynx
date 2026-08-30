@@ -78,15 +78,15 @@ void PlatformOverlayWin::PrepareSurface(const OverlayData& data) {
       if (view == nullptr) {
         view = manager_->CreateView(view_id, OverlayWindowType::kChild, request,
                                     engine_->view()->GetWindowHandle());
-      } else {
-        manager_->RemoveView(view_id);
-        view = manager_->CreateView(view_id, OverlayWindowType::kChild, request,
-                                    engine_->view()->GetWindowHandle());
       }
       view_id_.store(view_id);
       latch.CountDown();
     });
     latch.Wait();
+  }
+  auto view = manager_->GetView(view_id);
+  if (view) {
+    view->PrepareSurfaceSize(width, height);
   }
 }
 

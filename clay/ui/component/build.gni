@@ -144,6 +144,13 @@ if (is_mac || is_win) {
   ]
 }
 
+if (is_win) {
+  ui_component_sources += [
+    "cover_view_platform_delegate.cc",
+    "cover_view_platform_delegate.h",
+  ]
+}
+
 if (enable_svg) {
   ui_component_sources += [
     "svg_image_view.cc",
