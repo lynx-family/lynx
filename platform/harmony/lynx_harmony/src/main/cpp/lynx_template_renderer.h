@@ -76,6 +76,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       const std::shared_ptr<lynx::tasm::PipelineOptions>& pipeline_options,
       const std::shared_ptr<lynx::tasm::TemplateData>& template_data,
       bool enable_dump_element_tree);
+  bool RegisterLazyBundle(const std::string& url,
+                          const lynx::tasm::LynxTemplateBundle& bundle);
   void UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
                       lepus::Value global_props,
                       shell::LynxUpdateMode update_mode);
@@ -197,6 +199,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value LoadTemplate(napi_env env, napi_callback_info info);
   static napi_value ReloadTemplate(napi_env env, napi_callback_info info);
   static napi_value LoadTemplateBundle(napi_env env, napi_callback_info info);
+  static napi_value RegisterLazyBundle(napi_env env, napi_callback_info info);
   static napi_value UpdateViewport(napi_env env, napi_callback_info info);
   static napi_value UpdateScreenMetrics(napi_env env, napi_callback_info info);
   static napi_value NativeSetWindowInfo(napi_env env, napi_callback_info info);
