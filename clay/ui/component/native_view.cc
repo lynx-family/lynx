@@ -101,8 +101,12 @@ bool NativeView::ShouldIgnoreForTouchHitTest(int platform_try_hit_id) const {
 }
 
 bool NativeView::HitTest(const PointerEvent& event, HitTestResult& result) {
+#if OS_IOS
+  if (ShouldIgnoreForTouchHitTest()) {
+#else
   if (event.device == PointerEvent::DeviceType::kTouch &&
       ShouldIgnoreForTouchHitTest()) {
+#endif
     return false;
   }
   return BaseView::HitTest(event, result);

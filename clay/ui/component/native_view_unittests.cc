@@ -176,7 +176,7 @@ TEST_F_UI(MapMarkerViewTest, SnapshotPreservesRootWhenChildOverflows) {
   EXPECT_FLOAT_EQ(size.height(), 140.f);
 }
 
-TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
+TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledPointerSequenceInHitTest) {
   auto* background_view = new View(1, page_.get());
   auto* native_view = new NativeView(2, "test-platform", page_.get());
   page_->AddChild(background_view);
@@ -209,6 +209,7 @@ TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
   }
 
   native_view->UpdateTouchDispatchState(false, /* action= */ 0);
+  EXPECT_TRUE(native_view->IsInteractable());
 
   {
     HitTestResult result;
@@ -216,6 +217,25 @@ TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
     ASSERT_FALSE(result.empty());
     EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(),
               background_view->id());
+  }
+
+  for (auto type : {PointerEvent::EventType::kDownEvent,
+                    PointerEvent::EventType::kSignalEvent}) {
+    auto event = CreateMouseDownPointer(50.f, 50.f);
+    event.type = type;
+    if (type == PointerEvent::EventType::kSignalEvent) {
+      event.signal_kind = PointerEvent::SignalKind::kScroll;
+    }
+    HitTestResult result;
+    page_->HitTest(event, result);
+    ASSERT_FALSE(result.empty());
+#if OS_IOS
+    EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(),
+              background_view->id());
+#else
+    EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(),
+              native_view->id());
+#endif
   }
 
   {
@@ -231,6 +251,17 @@ TEST_F_UI(NativeViewHitTestTest, IgnoreUnhandledTouchSequenceInHitTest) {
               background_view->id());
   }
 
+  native_view->UpdateTouchDispatchState(true, /* action= */ 0);
+
+  {
+    HitTestResult result;
+    page_->HitTest(CreateMouseDownPointer(50.f, 50.f), result);
+    ASSERT_FALSE(result.empty());
+    EXPECT_EQ(static_cast<BaseView*>(result.front().get())->id(),
+              native_view->id());
+  }
+
+  native_view->UpdateTouchDispatchState(false, /* action= */ 0);
   native_view->UpdateTouchDispatchState(true, /* action= */ 1);
 
   {
