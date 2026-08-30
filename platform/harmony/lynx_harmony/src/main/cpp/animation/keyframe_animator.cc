@@ -51,7 +51,7 @@ ArkUIAnimation::ArkUIAnimation(KeyframeAnimator* animator,
       break;
     case starlight::TimingFunctionType::kSquareBezier:
       curve = OH_ArkUI_Curve_CreateCubicBezierCurve(info.GetX1(), info.GetY1(),
-                                                    0, 0);
+                                                    1, 1);
       break;
     case starlight::TimingFunctionType::kCubicBezier:
       curve = OH_ArkUI_Curve_CreateCubicBezierCurve(info.GetX1(), info.GetY1(),

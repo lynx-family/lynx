@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <string>
 #include <unordered_map>
@@ -261,6 +262,23 @@ UIBase::~UIBase() {
   NodeManager::Instance().DisposeNode(node_);
 }
 
+bool UIBase::HasLayoutTransition() {
+  return transition_manager_ && transition_manager_->HasLayoutTransition();
+}
+void UIBase::ApplyLayoutTransition(float left, float top, float width,
+                                   float height, const float* paddings,
+                                   const float* margins, const float* sticky,
+                                   float max_height, uint32_t node_index) {
+  if (first_layout_) {
+    UpdateLayout(left, top, width, height, paddings, margins, sticky,
+                 max_height, node_index);
+  } else {
+    transition_manager_->ApplyLayoutTransition(left, top, width, height,
+                                               paddings, margins, sticky,
+                                               max_height, node_index);
+  }
+}
+
 bool UIBase::CanDrawBehind() {
   static bool can_draw_behind =
       OH_GetSdkApiVersion() >= kDrawBehindVersion &&
@@ -425,6 +443,7 @@ void UIBase::RemoveNode(UIBase* child) {
 }
 
 void UIBase::FrameDidChanged() {
+  LOGE("UIBase::FrameDidChanged baiqiang width: " << width_);
   NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_WIDTH,
                                                       width_);
   NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_HEIGHT,
@@ -434,6 +453,13 @@ void UIBase::FrameDidChanged() {
                                                         left_, top_);
   }
   UpdateDrawNodeFrame();
+}
+
+void UIBase::InitTransitionAnimator(const lepus::Value& value) {
+  if (!transition_manager_) {
+    transition_manager_ = std::make_unique<TransitionManager>(this);
+  }
+  transition_manager_->InitializeFromConfig(value);
 }
 
 void UIBase::Destroy() {
@@ -878,13 +904,6 @@ void UIBase::OnNodeReady() {
     Invalidate();
   }
 
-  if ((dirty_flags_ & kFlagBackgroundColor) != 0) {
-    if (background_drawable_) {
-      background_drawable_->SetBackgroundColor(background_color_);
-      Invalidate();
-    }
-  }
-
   if (NeedDrawNode()) {
     InitDrawNode();
   }
@@ -964,16 +983,7 @@ void UIBase::OnNodeReady() {
   }
 
   if ((dirty_flags_ & kFlagBackgroundColor) != 0) {
-    if (background_drawable_) {
-      if (has_background_color_) {
-        NodeManager::Instance().ResetAttribute(Node(), NODE_BACKGROUND_COLOR);
-        has_background_color_ = false;
-      }
-    } else {
-      has_background_color_ = true;
-      NodeManager::Instance().SetAttributeWithNumberValue(
-          Node(), NODE_BACKGROUND_COLOR, background_color_);
-    }
+    ApplyBackgroundColor();
   }
   if (has_background_color_ && ShouldDrawOverlayShadowWithDrawNode()) {
     NodeManager::Instance().ResetAttribute(Node(), NODE_BACKGROUND_COLOR);
@@ -983,7 +993,14 @@ void UIBase::OnNodeReady() {
   // Attribute for accessibility
   OnNodeReadyForAccessibility();
 
+  if (transition_manager_) {
+    transition_manager_->StartTransitions();
+  }
+
   dirty_flags_ = 0;
+  if (first_layout_) {
+    first_layout_ = false;
+  }
 
   if (exposure_event_updated_) {
     context_->AddUIToExposedMap(this);
@@ -1024,7 +1041,14 @@ void UIBase::SetReactRef(const lepus::Value& value) {
 }
 
 void UIBase::SetBackgroundColor(const lepus::Value& value) {
-  background_color_ = static_cast<uint32_t>(value.Number());
+  if (!first_layout_ && transition_manager_ &&
+      transition_manager_->ContainsTransition(
+          starlight::AnimationPropertyType::kBackgroundColor)) {
+    transition_manager_->ApplyPropertyTransition(
+        starlight::AnimationPropertyType::kBackgroundColor, value);
+    return;
+  }
+  background_color_ = value.IsNil() ? 0 : static_cast<uint32_t>(value.Number());
   dirty_flags_ |= kFlagBackgroundColor;
 }
 
@@ -1035,6 +1059,13 @@ void UIBase::SetOpacity(const lepus::Value& value) {
   }
   opacity_ = opacity;
   dirty_flags_ |= kFlagRenderGroup;
+  if (!first_layout_ && transition_manager_ &&
+      transition_manager_->ContainsTransition(
+          starlight::AnimationPropertyType::kOpacity)) {
+    transition_manager_->ApplyPropertyTransition(
+        starlight::AnimationPropertyType::kOpacity, value);
+    return;
+  }
   NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(), NODE_OPACITY,
                                                       opacity);
 }
@@ -1067,13 +1098,55 @@ void UIBase::SetVisibility(const lepus::Value& value) {
       DrawNode(), NODE_VISIBILITY, static_cast<int32_t>(visibility));
 }
 
+void UIBase::UpdateBackgroundColor(uint32_t color) {
+  background_color_ = color;
+  ApplyBackgroundColor();
+}
+
+void UIBase::ApplyBackgroundColor() {
+  if (background_drawable_) {
+    if (has_background_color_) {
+      NodeManager::Instance().ResetAttribute(Node(), NODE_BACKGROUND_COLOR);
+      has_background_color_ = false;
+    }
+    background_drawable_->SetBackgroundColor(background_color_);
+    Invalidate();
+    return;
+  }
+  has_background_color_ = true;
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      Node(), NODE_BACKGROUND_COLOR, background_color_);
+}
+
 void UIBase::SetTransform(const lepus::Value& value) {
+  if (!first_layout_ && transition_manager_ &&
+      transition_manager_->ContainsTransition(
+          starlight::AnimationPropertyType::kTransform)) {
+    if (value.IsNil()) {
+      pending_transform_ = nullptr;
+    } else {
+      pending_transform_ = std::make_unique<Transform>(value);
+    }
+    transition_manager_->ApplyPropertyTransition(
+        starlight::AnimationPropertyType::kTransform, value);
+    return;
+  }
   if (value.IsNil()) {
     transform_ = nullptr;
   } else {
     transform_ = std::make_unique<Transform>(value);
   }
   dirty_flags_ |= kFlagTransformChanged;
+}
+
+void UIBase::FinishTransformTransition() {
+  transform_ = std::move(pending_transform_);
+  NodeManager::Instance().ResetAttribute(DrawNode(), NODE_TRANSLATE);
+  NodeManager::Instance().ResetAttribute(DrawNode(), NODE_ROTATE_ANGLE);
+  NodeManager::Instance().ResetAttribute(DrawNode(), NODE_SCALE);
+  dirty_flags_ |= kFlagTransformChanged;
+  ApplyTransform();
+  Invalidate();
 }
 
 void UIBase::SetTransformOrigin(const lepus::Value& value) {
@@ -3702,8 +3775,7 @@ void UIBase::SetAnimationProperty(AnimationProperty type, float value) {
     case AnimationProperty::kTranslateZ: {
       float trans[3] = {0.f};
       NodeManager::Instance().GetAttributeValues(
-          DrawNode(), NODE_TRANSLATE_WITH_PERCENT, &trans[0], &trans[1],
-          &trans[2]);
+          DrawNode(), NODE_TRANSLATE, &trans[0], &trans[1], &trans[2]);
       trans[static_cast<int>(type) -
             static_cast<int>(AnimationProperty::kTranslateX)] = value;
       NodeManager::Instance().SetAttributeWithNumberValue(
@@ -3737,13 +3809,30 @@ void UIBase::SetAnimationProperty(AnimationProperty type, float value) {
   }
 }
 
+void UIBase::SetTransformProperty(float translate_x, float translate_y,
+                                  float translate_z, float rotate_x,
+                                  float rotate_y, float rotate_z, float scale_x,
+                                  float scale_y) {
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      DrawNode(), NODE_TRANSLATE, translate_x, translate_y, translate_z);
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      DrawNode(), NODE_ROTATE_ANGLE, rotate_x, rotate_y, rotate_z, 0);
+  NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(), NODE_SCALE,
+                                                      scale_x, scale_y);
+}
+
 void UIBase::SendAnimationEvent(const char* event, const std::string& name) {
   if (std::find(events_.begin(), events_.end(), event) == events_.end()) {
     return;
   }
   auto ret = lepus::Dictionary::Create();
-  ret->SetValue("animation_type", "keyframe-animation");
-  ret->SetValue("animation_name", name);
+  if (event && (strcmp(event, "transitionstart") == 0 ||
+                strcmp(event, "transitionend") == 0)) {
+    ret->SetValue("animation_type", "transition-" + name);
+  } else {
+    ret->SetValue("animation_type", "keyframe-animation");
+    ret->SetValue("animation_name", name);
+  }
   CustomEvent custom_event = {sign_, event, "detail", lepus_value(ret)};
   context_->SendEvent(custom_event);
 }

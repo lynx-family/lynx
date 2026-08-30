@@ -42,6 +42,13 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+namespace {
+constexpr const char kPropAnimation[] = "animation";
+constexpr const char kPropTransition[] = "transition";
+constexpr const char kPropAutoplay[] = "autoplay";
+constexpr const char kPropLoopCount[] = "loop-count";
+}  // namespace
+
 ImageService* UIOwner::image_service = nullptr;
 
 napi_value UIOwner::Init(napi_env env, napi_value exports) {
@@ -116,8 +123,8 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
        tag == "x-inline-image") &&
       enable_new_image && image_service) {
     ui = UINewImage::Make(context_.get(), sign, tag);
-  } else if ((tag == "image") && (painting_data->Contains("autoplay") ||
-                                  painting_data->Contains("loop-count"))) {
+  } else if ((tag == "image") && (painting_data->Contains(kPropAutoplay) ||
+                                  painting_data->Contains(kPropLoopCount))) {
     ui = UIFlattenImage::Make(context_.get(), sign, tag);
   } else if ((tag == "x-overlay-ng" || tag == "overlay") &&
              context_->GetEnableHarmonyNewOverlay()) {
@@ -152,8 +159,11 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   if (events) {
     ui->SetEvents(events.value());
   }
-  if (painting_data->Contains("animation")) {
-    ui->SetAnimation(painting_data->GetProps().at("animation"));
+  if (painting_data->Contains(kPropAnimation)) {
+    ui->SetAnimation(painting_data->GetProps().at(kPropAnimation));
+  }
+  if (painting_data->Contains(kPropTransition)) {
+    ui->InitTransitionAnimator(painting_data->GetProps().at(kPropTransition));
   }
 
   const auto& gestures = painting_data->GetGestureDetectors();
@@ -205,8 +215,11 @@ void UIOwner::UpdateUI(int sign, PropBundleHarmony* props) {
     if (gestures) {
       ui->SetGestureDetectors(gestures.value());
     }
-    if (props->Contains("animation")) {
-      ui->SetAnimation(props->GetProps().at("animation"));
+    if (props->Contains(kPropAnimation)) {
+      ui->SetAnimation(props->GetProps().at(kPropAnimation));
+    }
+    if (props->Contains(kPropTransition)) {
+      ui->InitTransitionAnimator(props->GetProps().at(kPropTransition));
     }
 
     ui_observer_->NotifyUIPropsChange();
@@ -373,8 +386,14 @@ void UIOwner::UpdateLayout(int sign, float left, float top, float width,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_UPDATE_LAYOUT);
   if (const auto& it = ui_holder_.find(sign); it != ui_holder_.end()) {
     UIBase* ui = it->second.get();
-    ui->UpdateLayout(left, top, width, height, paddings, margins, sticky,
-                     max_height, node_index);
+    if (ui->HasLayoutTransition()) {
+      ui->ApplyLayoutTransition(left, top, width, height, paddings, margins,
+                                sticky, max_height, node_index);
+    } else {
+      ui->UpdateLayout(left, top, width, height, paddings, margins, sticky,
+                       max_height, node_index);
+    }
+
     ui->UpdateSticky(sticky);
     ui_observer_->NotifyUILayout();
     MarkHasUIOperationsBottomUp(ui);

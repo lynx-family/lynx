@@ -26,6 +26,7 @@
 #include "core/renderer/ui_wrapper/common/harmony/platform_extra_bundle_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_animator.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/animation/transition_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/gesture_arena_member.h"
@@ -89,6 +90,11 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
          const std::string& tag, bool has_customized_layout = false);
   void InitNode(ArkUI_NodeHandle node);
   ~UIBase() override;
+  bool HasLayoutTransition();
+  void ApplyLayoutTransition(float left, float top, float width, float height,
+                             const float* paddings, const float* margins,
+                             const float* sticky, float max_height,
+                             uint32_t node_index);
   static bool CanDrawBehind();
   ArkUI_NodeHandle Node() const { return node_; }
   ArkUI_NodeHandle DrawNode() const { return draw_node_ ? draw_node_ : node_; }
@@ -212,6 +218,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
     return background_drawable_ ? background_drawable_->GetBorderBottomColor()
                                 : 0;
   }
+  uint32_t GetBackgroundColor() const { return background_color_; }
+  void UpdateBackgroundColor(uint32_t color);
   bool HasCustomizedLayout() const { return has_customized_layout_; }
   virtual bool HasJSObject() { return false; }
   NativeNodeContent* NodeContent() const { return node_content_.get(); }
@@ -334,7 +342,13 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   const lepus::Value& GetKeyframes(const std::string& name);
   float GetArkUIProperty(AnimationProperty type) const;
   void SetAnimationProperty(AnimationProperty type, float value);
+  void SetTransformProperty(float translate_x, float translate_y,
+                            float translate_z, float rotate_x, float rotate_y,
+                            float rotate_z, float scale_x, float scale_y);
   void SendAnimationEvent(const char* event, const std::string& name);
+  void FinishTransformTransition();
+  virtual void FrameDidChanged();
+  void InitTransitionAnimator(const lepus::Value& value);
 
  protected:
   static int64_t EstimateRasterMemoryUsageBytes(float width, float height);
@@ -348,7 +362,6 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void InsertNode(UIBase* child, int index);
   virtual void RemoveNode(UIBase* child);
   virtual bool DefaultOverflowValue() { return false; }
-  virtual void FrameDidChanged();
   virtual void ScrollIntoView(bool smooth, const UIBase* target,
                               const std::string& block,
                               const std::string& inline_value) {}
@@ -410,6 +423,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetIdSelector(const lepus::Value& value);
   void SetReactRef(const lepus::Value& value);
   void SetBackgroundColor(const lepus::Value& value);
+  void ApplyBackgroundColor();
   void SetOpacity(const lepus::Value& value);
   void SetOverlap(const lepus::Value& value);
   void SetVisibility(const lepus::Value& value);
@@ -540,6 +554,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   static std::unordered_map<std::string, UIMethod> ui_method_map_;
   std::unique_ptr<BorderRadius> border_radius_;
   std::unique_ptr<Transform> transform_;
+  std::unique_ptr<Transform> pending_transform_;
 
   std::string tag_;
   uint32_t dirty_flags_{0};
@@ -625,6 +640,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
         : pixel_map(pixel_map), format(format), callback(std::move(callback)) {}
   };
   std::unique_ptr<KeyframeManager> keyframe_manager_;
+  std::unique_ptr<TransitionManager> transition_manager_;
+  bool first_layout_{true};
 };
 
 }  // namespace harmony
