@@ -150,6 +150,15 @@ export class TemplateBundle extends lynx.TemplateBundle {
   }
 
   /**
+   * Whether the current `TemplateBundle` contains a valid native bundle.
+   * @apidoc
+   * @returns True if the native bundle is valid, otherwise false.
+   */
+  public isValid(): boolean {
+    return this.nativeIsValid();
+  }
+
+  /**
    * Get the size of current template.
    * @apidoc
    * @returns Template size.

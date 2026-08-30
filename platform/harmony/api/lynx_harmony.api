@@ -334,6 +334,7 @@ export class LynxContext implements IContext {
   public updateScreenMetrics(width: number, height: number): void;
   updateCustomData(data: Record<string, Object>): void;
   public loadTemplate(url: string, bundle: TemplateBundle, buffer: ArrayBuffer, metaData: MetaData): void;
+  public registerLazyBundle(url: string, bundle: TemplateBundle): boolean;
   public reload(data: MetaData): void;
   public getAllTimingInfo(): void;
   public setExtraTiming(extraTiming: LynxExtraTiming): void;
@@ -545,6 +546,7 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
 
 export interface TemplateProviderResult {
   binary?: ArrayBuffer;
+  bundle?: TemplateBundle;
 }
 
 export class LynxResourceRequest {
@@ -1067,6 +1069,7 @@ export class TemplateBundle extends lynx.TemplateBundle {
   public static async fromTemplateAsyncWithOption(template: ArrayBuffer, option: TemplateBundleOption): Promise<TemplateBundle>;
   public getExtraInfo(): Map<string, Object>;
   public isElementBundleValid(): boolean;
+  public isValid(): boolean;
   public getTemplateSize(): number;
   public postJsCacheGenerationTask(bytecodeSourceUrl: string, useV8: boolean): void;
   public getErrorMessage(): string;
