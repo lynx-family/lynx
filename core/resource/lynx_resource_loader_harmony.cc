@@ -17,6 +17,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/resource/lynx_info_reporter_helper_harmony.h"
 #include "core/resource/lynx_resource_setting.h"
@@ -27,7 +28,7 @@ constexpr int32_t LocalErrorCode = -1;
 static constexpr const char* LocalErrorMsg = "Get provider error";
 static constexpr const char* TemplateFetchErrorMsg = "fetch template failed";
 static constexpr const char* TemplateFetchEmptyBinaryMsg =
-    "fetch binary is undefined";
+    "both bundle and binary are undefined";
 
 bool GetNamedProperty(napi_env env, napi_value object, const char* name,
                       napi_value* property) {
@@ -548,19 +549,32 @@ LynxResourceLoaderHarmony::CallbackHandler::HandleTemplateRequestCallback(
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->callback_(response);
   } else {
-    napi_value result_binary = nullptr;
-    if (!GetNamedProperty(env, argv[1], "binary", &result_binary) ||
-        !base::NapiUtil::IsArrayBuffer(env, result_binary) ||
-        !base::NapiUtil::ConvertToArrayBuffer(env, result_binary,
-                                              response.data) ||
-        response.data.empty()) {
-      response.err_code = lynx::error::E_APP_BUNDLE_LOAD_BAD_RESPONSE;
-      response.err_msg = TemplateFetchEmptyBinaryMsg;
-      response.timing.response_trigger_callback =
-          base::CurrentTimeMicroseconds();
-      callback_handler->callback_(response);
-      delete callback_handler;
-      return js_this;
+    napi_value result_bundle = nullptr;
+    LynxTemplateBundleHarmony* template_bundle = nullptr;
+    if (GetNamedProperty(env, argv[1], "bundle", &result_bundle) &&
+        base::NapiUtil::NapiIsType(env, result_bundle, napi_object)) {
+      napi_unwrap(env, result_bundle,
+                  reinterpret_cast<void**>(&template_bundle));
+    }
+    if (template_bundle != nullptr && template_bundle->IsValid()) {
+      // The fetcher returns a TemplateBundle directly, consume it without
+      // decoding the template binary again.
+      response.bundle = &template_bundle->GetBundle();
+    } else {
+      napi_value result_binary = nullptr;
+      if (!GetNamedProperty(env, argv[1], "binary", &result_binary) ||
+          !base::NapiUtil::IsArrayBuffer(env, result_binary) ||
+          !base::NapiUtil::ConvertToArrayBuffer(env, result_binary,
+                                                response.data) ||
+          response.data.empty()) {
+        response.err_code = lynx::error::E_APP_BUNDLE_LOAD_BAD_RESPONSE;
+        response.err_msg = TemplateFetchEmptyBinaryMsg;
+        response.timing.response_trigger_callback =
+            base::CurrentTimeMicroseconds();
+        callback_handler->callback_(response);
+        delete callback_handler;
+        return js_this;
+      }
     }
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->callback_(response);

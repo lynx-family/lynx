@@ -9,10 +9,11 @@ import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceC
 import { ILynxSecurityService, LynxTasmType, SecurityResult } from '../tasm/service/ILynxSecurityService';
 import { LLog } from '../base/LLog';
 import { LynxSubErrorCode } from '../tasm/gen/LynxSubErrorCode';
+import { TemplateBundle } from '../tasm/TemplateBundle';
 
 export interface TemplateProviderResult {
   binary?: ArrayBuffer;
-  // TODO(nihao.royal): support returning TemplateBundle
+  bundle?: TemplateBundle;
 }
 
 const TAG = 'LynxTemplateResourceFetcher';
@@ -31,7 +32,7 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
    *
    * @apidoc
    * @param request Request to obtain the contents of Bundle and Lazy Bundle
-   * @param callback Response with the requiring content file in ArrayBuffer type.
+   * @param callback Response with the requiring content file in ArrayBuffer or TemplateBundle type.
    */
   abstract fetchTemplate(request: LynxResourceRequest,
     callback: AsyncCallback<TemplateProviderResult>);
@@ -80,7 +81,19 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
             return;
           }
 
-          if (fetchResult?.binary && fetchResult.binary.byteLength > 0) {
+          if (fetchResult?.bundle) {
+            // The TemplateBundle has already been verified when it was created
+            // via TemplateBundle.fromTemplate, check its native validity here.
+            if (!fetchResult.bundle.isValid()) {
+              const bundleErrorMessage = fetchResult.bundle.getErrorMessage();
+              const errorMessage = bundleErrorMessage.length > 0
+                ? bundleErrorMessage
+                : "invalid TemplateBundle";
+              LLog.e(TAG, `fetch template failed, bundle error message: ${errorMessage}`);
+              fetchAndVerifyError =
+                this.buildFetchAndVerifyError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE, errorMessage);
+            }
+          } else if (fetchResult?.binary && fetchResult.binary.byteLength > 0) {
             let securityService = LynxServiceCenter.getService<ILynxSecurityService>(LynxServiceType.Security);
             let securityResult: SecurityResult = { verified: true };
             if (securityService != undefined) {
@@ -95,7 +108,7 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
                 this.buildFetchAndVerifyError(LynxSubErrorCode.E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE, errorMessage);
             }
           } else {
-            const errorMessage = "fetch binary is undefined";
+            const errorMessage = "both bundle and binary are undefined";
             LLog.e(TAG, `fetch template failed, ${errorMessage}`);
             fetchAndVerifyError =
               this.buildFetchAndVerifyError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE, errorMessage);
