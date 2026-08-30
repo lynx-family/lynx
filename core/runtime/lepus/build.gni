@@ -8,6 +8,7 @@ lynx_lepus_common_sources = [
   "//${lynx_dir}/core/runtime/lepus/binary_input_stream.cc",
   "base_api.h",
   "base_binary_reader.h",
+  "base_binary_reader_impl.cc",
   "binary_input_stream.h",
   "binary_reader.cc",
   "binary_reader.h",
