@@ -160,6 +160,12 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(LogDisable)
   DECLARE_DEVTOOL_METHOD(LogClear)
 
+  // methods of Network domain -> devtool executor
+  DECLARE_DEVTOOL_METHOD(NetworkEnable)
+  DECLARE_DEVTOOL_METHOD(NetworkDisable)
+  DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
+  DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
+
   // events of Log domain -> devtool executor
   virtual void SendLogEntryAddedEvent(
       const lynx::runtime::js::ConsoleMessage& message);
