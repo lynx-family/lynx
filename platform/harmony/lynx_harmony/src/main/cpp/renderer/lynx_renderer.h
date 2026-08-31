@@ -17,10 +17,12 @@ namespace tasm {
 namespace harmony {
 class LynxDisplayListApplier;
 class LynxRendererContext;
+class UIBase;
 
 class LynxRenderer {
  public:
-  LynxRenderer(std::shared_ptr<LynxRendererContext> context, int32_t sign);
+  LynxRenderer(std::shared_ptr<LynxRendererContext> context, int32_t sign,
+               std::weak_ptr<UIBase> host);
   ~LynxRenderer();
   int32_t Sign() const { return sign_; }
   void UpdateDisplayList(DisplayList display_list);
@@ -28,6 +30,7 @@ class LynxRenderer {
 
  private:
   std::shared_ptr<LynxRendererContext> context_;
+  std::weak_ptr<UIBase> host_;
   int32_t sign_{0};
   std::unique_ptr<LynxDisplayListApplier> display_list_applier_;
   DisplayList display_list_;

@@ -1395,7 +1395,8 @@ void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
 
 void UIBase::AttachFragmentLayerRenderer(
     std::shared_ptr<LynxRendererContext> context, int32_t sign) {
-  renderer_ = std::make_unique<LynxRenderer>(std::move(context), sign);
+  renderer_ = std::make_unique<LynxRenderer>(std::move(context), sign,
+                                             weak_from_this());
   if (!CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
     InitDrawNode();
   }

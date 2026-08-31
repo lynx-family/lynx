@@ -7,16 +7,23 @@
 
 #include <native_drawing/drawing_canvas.h>
 
+#include <memory>
+#include <vector>
+
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/rounded_rectangle.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
 class LynxRendererContext;
+class BackgroundDrawable;
+class UIBase;
 
 class LynxDisplayListApplier {
  public:
-  explicit LynxDisplayListApplier(LynxRendererContext* context);
+  LynxDisplayListApplier(LynxRendererContext* context,
+                         std::weak_ptr<UIBase> host);
   ~LynxDisplayListApplier();
 
   void ApplyDisplayList(const DisplayList& display_list,
@@ -27,6 +34,10 @@ class LynxDisplayListApplier {
                                 OH_Drawing_Canvas* canvas, float density);
 
   LynxRendererContext* context_{nullptr};
+  std::weak_ptr<UIBase> host_;
+  std::vector<RoundedRectangle> boxes_;
+  std::unique_ptr<BackgroundDrawable> fill_drawable_;
+  std::unique_ptr<BackgroundDrawable> border_drawable_;
 };
 
 }  // namespace harmony

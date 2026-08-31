@@ -12,8 +12,8 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 LynxRenderer::LynxRenderer(std::shared_ptr<LynxRendererContext> context,
-                           int32_t sign)
-    : context_(std::move(context)), sign_(sign) {}
+                           int32_t sign, std::weak_ptr<UIBase> host)
+    : context_(std::move(context)), host_(std::move(host)), sign_(sign) {}
 
 LynxRenderer::~LynxRenderer() = default;
 
@@ -21,7 +21,7 @@ void LynxRenderer::UpdateDisplayList(DisplayList display_list) {
   display_list_ = std::move(display_list);
   if (!display_list_applier_) {
     display_list_applier_ =
-        std::make_unique<LynxDisplayListApplier>(context_.get());
+        std::make_unique<LynxDisplayListApplier>(context_.get(), host_);
   }
 }
 

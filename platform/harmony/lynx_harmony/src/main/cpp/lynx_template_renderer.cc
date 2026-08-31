@@ -173,13 +173,6 @@ void LynxTemplateRenderer::SetUpLynxShell(
       runtime_wrapper ? runtime_wrapper->RuntimeStandalone().GetRuntimeId()
                       : -1;
   auto mode = static_cast<tasm::EmbeddedMode>(embedded_mode);
-  if ((mode & tasm::EmbeddedMode::FRAGMENT_LAYER_RENDER) != 0) {
-    // TODO: Remove this fallback after Harmony supports fragment layer
-    // rendering through NativePaintingContext.
-    mode = static_cast<tasm::EmbeddedMode>(
-        static_cast<int32_t>(mode) &
-        ~static_cast<int32_t>(tasm::EmbeddedMode::FRAGMENT_LAYER_RENDER));
-  }
   shell_option.page_options_.SetEmbeddedMode(mode);
   auto lynx_context =
       static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
