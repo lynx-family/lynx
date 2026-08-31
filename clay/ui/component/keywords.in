@@ -283,6 +283,7 @@ enable-system-overlay
 enable-zoom-gesture
 end-frame
 events-pass-through
+experimental-optimize-load-key
 experimental-sync-load
 extra-info
 facing

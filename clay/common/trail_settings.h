@@ -26,6 +26,8 @@ LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
                  "clay_precompile_skity_shaders");
 LYNX_SETTING_KEY(CLAY_DISABLE_IMAGE_MEM_CACHE, bool,
                  "clay_disable_image_mem_cache", false);
+LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
+                 "clay_ios_use_tt_video_engine", false);
 LYNX_SETTING_KEY(MERGE_CLAY_THREAD_POOL, bool, "merge_clay_thread_pool");
 // Experimental settings; scheduled to be removed on 2026-10-30.
 LYNX_SETTING_KEY(CLAY_FIRST_TIMEOUT_TARGET_DELAY_MS, long,
