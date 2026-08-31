@@ -540,8 +540,33 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
   }
 
   FloatPoint point_by_self = GetPointBySelf(position);
-  if (point_by_self.x() < 0 || point_by_self.x() > Width() ||
-      point_by_self.y() < 0 || point_by_self.y() > Height()) {
+  bool is_outside_x = point_by_self.x() < 0 || point_by_self.x() > Width();
+  bool is_outside_y = point_by_self.y() < 0 || point_by_self.y() > Height();
+
+  // Inline views are mounted BaseView children and their bounds are the final
+  // geometry used for painting. Prefer that real view tree for hit testing so
+  // a stale/missing paragraph placeholder rect cannot turn an inline-view tap
+  // into a TextView tap. Limit the result to mapped inline-view subtrees so
+  // inline text and other TextView children keep their existing glyph-based
+  // hit-test behavior.
+  bool permits_x = !is_outside_x || (GetOverflow() & CSSProperty::OVERFLOW_X);
+  bool permits_y = !is_outside_y || (GetOverflow() & CSSProperty::OVERFLOW_Y);
+  if (!inline_views_index_.empty() && permits_x && permits_y) {
+    FloatPoint inline_relative_position;
+    BaseView* candidate = BaseView::GetTopViewToAcceptEvent(
+        position, &inline_relative_position, platform_try_hit_id);
+    if (candidate && candidate != this) {
+      for (BaseView* node = candidate; node && node != this;
+           node = node->Parent()) {
+        if (inline_views_index_.find(node->id()) != inline_views_index_.end()) {
+          *relative_position = inline_relative_position;
+          return candidate;
+        }
+      }
+    }
+  }
+
+  if (is_outside_x || is_outside_y) {
     return nullptr;
   }
 
@@ -549,13 +574,17 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
   point_by_paragraph.Move(-BorderLeft() - PaddingLeft(),
                           -BorderTop() - PaddingTop());
   *relative_position = point_by_paragraph;
-  BaseView* view = nullptr;
-  view = GetViewAtPosition(point_by_paragraph, position, platform_try_hit_id);
-  return view ?: this;
+  BaseView* view = GetViewAtPosition(point_by_paragraph, position,
+                                     relative_position, platform_try_hit_id);
+  if (view) {
+    return view;
+  }
+  return this;
 }
 
 BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
                                       const FloatPoint& point_by_page,
+                                      FloatPoint* relative_position,
                                       int platform_try_hit_id) {
   auto paragraph = GetRenderText()->GetPainter()->GetParagraph();
   if (!paragraph) {
@@ -588,10 +617,13 @@ BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
         if (!view) {
           return nullptr;
         }
-        FloatPoint relative_position;
         auto top_view = view->GetTopViewToAcceptEvent(
-            point_by_page, &relative_position, platform_try_hit_id);
-        return top_view ? top_view : view;
+            point_by_page, relative_position, platform_try_hit_id);
+        if (top_view) {
+          return top_view;
+        }
+        *relative_position = view->GetPointBySelf(point_by_page);
+        return view;
       }
     }
     return nullptr;
