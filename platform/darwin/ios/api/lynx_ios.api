@@ -3186,6 +3186,7 @@ public class LynxPerformanceController : NSObject, <LynxTimingCollectorProtocol>
   public instancetype LynxPerformanceController::initWithObserver:(id< LynxPerformanceObserverProtocol > observer);
   public void LynxPerformanceController::setEmbeddedModeEnabled:(BOOL enable);
   public void LynxPerformanceController()::setNativeActor:(const std::shared_ptr< PerformanceControllerActor > &nativeActor);
+  public void LynxPerformanceController()::setInstanceId:(int32_t instanceId);
 }
 
 public class LynxPerformanceEntry : NSObject {
