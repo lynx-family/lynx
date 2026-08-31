@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "clay/gfx/style/color.h"
@@ -147,12 +148,22 @@ InternalTextView* SelectionPopupView::CreateTextViewByText(
   }
   MeasureResult result;
   text_view->Measure(
-      {FromLogical(kDefaultMenuItemSize.width()), TextMeasureMode::kAtMost,
+      {std::nullopt, TextMeasureMode::kIndefinite,
        FromLogical(kDefaultMenuItemSize.height()), TextMeasureMode::kAtMost},
       result);
   text_view->SetContentWidth(result.width);
   text_view->SetContentHeight(result.height);
   return text_view;
+}
+
+void SelectionPopupView::UpdatePosition() {
+  FloatPoint offset = GetPositionForChild(
+      FloatSize(bounds_width_, bounds_height_), FloatSize(width_, height_));
+  SetX(offset.x());
+  SetY(offset.y());
+  origin_top_ = Top();
+  origin_left_ = Left();
+  Invalidate();
 }
 
 FloatPoint SelectionPopupView::GetPositionForChild(FloatSize size,

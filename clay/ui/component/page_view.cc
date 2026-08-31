@@ -58,6 +58,8 @@
 #endif
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
+#include "clay/ui/component/selection_handle_view.h"
+#include "clay/ui/component/selection_popup_view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/event_utils.h"
 #include "clay/ui/event/gesture_event.h"
@@ -275,6 +277,9 @@ void PageView::InitManagers() {
         }
         if (!IsTouchLikePointerDevice(event.device) &&
             event.device != PointerEvent::DeviceType::kMouse) {
+          return;
+        }
+        if (HitTestContainsSelectionControl(result)) {
           return;
         }
         ResignFirstResponderIfNeeded(GetFirstNonAnonymousHitTestTarget(result));
@@ -2245,6 +2250,18 @@ BaseView* PageView::GetFirstNonAnonymousHitTestTarget(
     }
   }
   return nullptr;
+}
+
+bool PageView::HitTestContainsSelectionControl(
+    const HitTestResult& result) const {
+  for (const auto& target : result) {
+    auto* view = static_cast<BaseView*>(target.get());
+    if (view &&
+        (view->Is<SelectionPopupView>() || view->Is<SelectionHandleView>())) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool PageView::ShouldPreserveFocusForTouchTarget(BaseView* target) {
