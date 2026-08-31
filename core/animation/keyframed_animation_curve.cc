@@ -580,6 +580,12 @@ starlight::VisibilityType GetVisibilityKeyframeValue(
   return starlight::VisibilityType::kVisible;
 }
 
+tasm::CSSValue GetCSSVec2KeyframeValue(CSSVec2Keyframe* keyframe,
+                                       const tasm::CSSValue& underlying_value) {
+  return keyframe && !keyframe->IsEmpty() ? keyframe->CSSValue()
+                                          : underlying_value;
+}
+
 }  // namespace
 
 tasm::CSSValue BuildBoxShadowCSSValue(
@@ -1173,41 +1179,36 @@ tasm::CSSValue KeyframedBoxShadowAnimationCurve::GetValue(
 
 //====== BackgroundPositionAnimator begin =======
 
-BackgroundPositionKeyframe::BackgroundPositionKeyframe(
+CSSVec2Keyframe::CSSVec2Keyframe(
     fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
     : gfx::Vec2Keyframe(time, std::move(timing_function)) {}
 
-tasm::CSSValue BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
-    BackgroundPositionKeyframe* keyframe, tasm::CSSPropertyID id,
-    const tasm::CSSValue& underlying_value) {
-  if (keyframe && !keyframe->IsEmpty()) {
-    return keyframe->GetBackgroundPosition();
-  }
-  return underlying_value;
-}
-
-std::unique_ptr<BackgroundPositionKeyframe> BackgroundPositionKeyframe::Create(
+std::unique_ptr<CSSVec2Keyframe> CSSVec2Keyframe::Create(
     fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
-  return std::make_unique<BackgroundPositionKeyframe>(
-      time, std::move(timing_function));
+  return std::make_unique<CSSVec2Keyframe>(time, std::move(timing_function));
 }
 
-bool BackgroundPositionKeyframe::SetValue(tasm::CSSPropertyID id,
-                                          const tasm::CSSValue& value,
-                                          tasm::Element* element) {
-  auto keyframe_background_position_value =
-      HandleCSSVariableValueIfNeed(id, value, element);
-  if (!keyframe_background_position_value.IsArray()) {
+bool CSSVec2Keyframe::SetValue(tasm::CSSPropertyID id,
+                               const tasm::CSSValue& value,
+                               tasm::Element* element) {
+  auto resolved_value = HandleCSSVariableValueIfNeed(id, value, element);
+  if (!resolved_value.IsArray()) {
     return false;
   }
-  background_position_ = keyframe_background_position_value;
+  css_value_ = std::move(resolved_value);
+  property_id_ = id;
   ClearResolvedValue();
   MarkNonEmpty();
   return true;
 }
 
-void BackgroundPositionKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
-  auto raw = ParseRawBackgroundPositionValue(background_position_);
+void CSSVec2Keyframe::NotifyUnitValuesUpdated(uint32_t type) {
+  std::optional<RawVec2Value> raw;
+  if (property_id_ == tasm::kPropertyIDBackgroundPosition) {
+    raw = ParseRawBackgroundPositionValue(css_value_);
+  } else if (property_id_ == tasm::kPropertyIDTransformOrigin) {
+    raw = ParseRawTransformOriginValue(css_value_);
+  }
   auto updated_pattern = static_cast<tasm::CSSValuePattern>(type);
   if (raw && (raw->x_pattern == updated_pattern ||
               raw->y_pattern == updated_pattern)) {
@@ -1239,21 +1240,17 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
   size_t i = sampling.index;
   double progress = sampling.progress;
 
-  BackgroundPositionKeyframe* keyframe =
-      static_cast<BackgroundPositionKeyframe*>(keyframes_[i].get());
-  BackgroundPositionKeyframe* keyframe_next =
-      static_cast<BackgroundPositionKeyframe*>(keyframes_[i + 1].get());
+  auto* keyframe = static_cast<CSSVec2Keyframe*>(keyframes_[i].get());
+  auto* keyframe_next = static_cast<CSSVec2Keyframe*>(keyframes_[i + 1].get());
   tasm::CSSValue underlying_value;
   if (keyframe->IsEmpty() || keyframe_next->IsEmpty()) {
     underlying_value = GetUnderlyingValue();
   }
 
   tasm::CSSValue start_background_position =
-      BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
-          keyframe, tasm::kPropertyIDBackgroundPosition, underlying_value);
+      GetCSSVec2KeyframeValue(keyframe, underlying_value);
   tasm::CSSValue end_background_position =
-      BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
-          keyframe_next, tasm::kPropertyIDBackgroundPosition, underlying_value);
+      GetCSSVec2KeyframeValue(keyframe_next, underlying_value);
 
   auto start_raw = ParseRawBackgroundPositionValue(start_background_position);
   auto end_raw = ParseRawBackgroundPositionValue(end_background_position);
@@ -1266,48 +1263,6 @@ tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
 //====== BackgroundPositionAnimator end =======
 
 //====== TransformOriginAnimator start =======
-TransformOriginKeyframe::TransformOriginKeyframe(
-    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
-    : gfx::Vec2Keyframe(time, std::move(timing_function)) {}
-
-tasm::CSSValue TransformOriginKeyframe::GetTransformOriginKeyframeValue(
-    TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
-    const tasm::CSSValue& underlying_value) {
-  if (keyframe && !keyframe->IsEmpty()) {
-    return keyframe->GetTransformOrigin();
-  }
-  return underlying_value;
-}
-
-std::unique_ptr<TransformOriginKeyframe> TransformOriginKeyframe::Create(
-    fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function) {
-  return std::make_unique<TransformOriginKeyframe>(time,
-                                                   std::move(timing_function));
-}
-
-bool TransformOriginKeyframe::SetValue(tasm::CSSPropertyID id,
-                                       const tasm::CSSValue& value,
-                                       tasm::Element* element) {
-  auto keyframe_transform_origin_value =
-      HandleCSSVariableValueIfNeed(id, value, element);
-  if (!keyframe_transform_origin_value.IsArray()) {
-    return false;
-  }
-  transform_origin_ = keyframe_transform_origin_value;
-  ClearResolvedValue();
-  MarkNonEmpty();
-  return true;
-}
-
-void TransformOriginKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
-  auto raw = ParseRawTransformOriginValue(transform_origin_);
-  auto updated_pattern = static_cast<tasm::CSSValuePattern>(type);
-  if (raw && (raw->x_pattern == updated_pattern ||
-              raw->y_pattern == updated_pattern)) {
-    ClearResolvedValue();
-  }
-}
-
 std::unique_ptr<KeyframedTransformOriginAnimationCurve>
 KeyframedTransformOriginAnimationCurve::Create() {
   return std::make_unique<KeyframedTransformOriginAnimationCurve>();
@@ -1324,21 +1279,17 @@ tasm::CSSValue KeyframedTransformOriginAnimationCurve::GetValue(
   size_t i = sampling.index;
   double progress = sampling.progress;
 
-  TransformOriginKeyframe* keyframe =
-      static_cast<TransformOriginKeyframe*>(keyframes_[i].get());
-  TransformOriginKeyframe* keyframe_next =
-      static_cast<TransformOriginKeyframe*>(keyframes_[i + 1].get());
+  auto* keyframe = static_cast<CSSVec2Keyframe*>(keyframes_[i].get());
+  auto* keyframe_next = static_cast<CSSVec2Keyframe*>(keyframes_[i + 1].get());
   tasm::CSSValue underlying_value;
   if (keyframe->IsEmpty() || keyframe_next->IsEmpty()) {
     underlying_value = GetUnderlyingValue();
   }
 
   tasm::CSSValue start_transform_origin =
-      TransformOriginKeyframe::GetTransformOriginKeyframeValue(
-          keyframe, tasm::kPropertyIDTransformOrigin, underlying_value);
+      GetCSSVec2KeyframeValue(keyframe, underlying_value);
   tasm::CSSValue end_transform_origin =
-      TransformOriginKeyframe::GetTransformOriginKeyframeValue(
-          keyframe_next, tasm::kPropertyIDTransformOrigin, underlying_value);
+      GetCSSVec2KeyframeValue(keyframe_next, underlying_value);
 
   auto start_raw = ParseRawTransformOriginValue(start_transform_origin);
   auto end_raw = ParseRawTransformOriginValue(end_transform_origin);

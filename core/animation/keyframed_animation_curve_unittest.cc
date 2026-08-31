@@ -708,17 +708,17 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginKeyframeResolvesRem) {
   end_arr->emplace_back(
       static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PERCENT));
 
-  auto start_frame = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
+  auto start_frame = CSSVec2Keyframe::Create(fml::TimeDelta(), nullptr);
   EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
                                     ::lynx::tasm::CSSValue(start_arr),
                                     test_element.get()));
   auto* start_frame_ptr = start_frame.get();
   EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
-            start_frame->transform_origin_.GetArray()->get(1).UInt32());
+            start_frame->css_value_.GetArray()->get(1).UInt32());
   EXPECT_FALSE(start_frame->HasResolvedValue());
 
-  auto end_frame = TransformOriginKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  auto end_frame =
+      CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
   EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
                                   ::lynx::tasm::CSSValue(end_arr),
                                   test_element.get()));
@@ -746,6 +746,12 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginKeyframeResolvesRem) {
   EXPECT_EQ(gfx::UnitTag::kNumber, start_frame_ptr->ResolvedValue().x.tag);
   EXPECT_EQ(gfx::UnitTag::kPercent, start_frame_ptr->ResolvedValue().y.tag);
   EXPECT_TRUE(end_frame_ptr->HasResolvedValue());
+  start_frame_ptr->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::EM));
+  EXPECT_TRUE(start_frame_ptr->HasResolvedValue());
+  start_frame_ptr->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  EXPECT_FALSE(start_frame_ptr->HasResolvedValue());
 }
 
 TEST_F(KeyframedAnimationCurveTest, BackgroundPositionKeyframeResolvesUnits) {
@@ -774,22 +780,18 @@ TEST_F(KeyframedAnimationCurveTest, BackgroundPositionKeyframeResolvesUnits) {
   auto end_outer = lepus::CArray::Create();
   end_outer->emplace_back(std::move(end_position));
 
-  auto start_frame =
-      BackgroundPositionKeyframe::Create(fml::TimeDelta(), nullptr);
+  auto start_frame = CSSVec2Keyframe::Create(fml::TimeDelta(), nullptr);
   EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDBackgroundPosition,
                                     ::lynx::tasm::CSSValue(start_outer),
                                     test_element.get()));
   auto* start_frame_ptr = start_frame.get();
-  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
-            start_frame->background_position_.GetArray()
-                ->get(0)
-                .Array()
-                ->get(0)
-                .UInt32());
+  EXPECT_EQ(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
+      start_frame->css_value_.GetArray()->get(0).Array()->get(0).UInt32());
   EXPECT_FALSE(start_frame->HasResolvedValue());
 
-  auto end_frame = BackgroundPositionKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  auto end_frame =
+      CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
   EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDBackgroundPosition,
                                   ::lynx::tasm::CSSValue(end_outer),
                                   test_element.get()));
@@ -826,6 +828,9 @@ TEST_F(KeyframedAnimationCurveTest, BackgroundPositionKeyframeResolvesUnits) {
                   end_frame_ptr->ResolvedValue().x.value);
   EXPECT_FLOAT_EQ(context.root_node_font_size_ * 4.f,
                   end_frame_ptr->ResolvedValue().y.value);
+  start_frame_ptr->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  EXPECT_FALSE(start_frame_ptr->HasResolvedValue());
 }
 
 TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {
@@ -895,14 +900,14 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginInterPolateTest) {
   end_arr->emplace_back(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
 
-  auto test_frame1 = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->transform_origin_ = lynx::tasm::CSSValue(start_arr);
+  auto test_frame1 = CSSVec2Keyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->css_value_ = lynx::tasm::CSSValue(start_arr);
   test_frame1->is_empty_ = false;
   curve->AddKeyframe(std::move(test_frame1));
 
-  auto test_frame2 = TransformOriginKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(2.f), nullptr);
-  test_frame2->transform_origin_ = lynx::tasm::CSSValue(end_arr);
+  auto test_frame2 =
+      CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(2.f), nullptr);
+  test_frame2->css_value_ = lynx::tasm::CSSValue(end_arr);
   test_frame2->is_empty_ = false;
   curve->AddKeyframe(std::move(test_frame2));
 

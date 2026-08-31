@@ -67,13 +67,8 @@ KeyframeCallbacks MakeKeyframeCallbacks(BoxShadowKeyframe* keyframe) {
   return {keyframe, nullptr, NotifyUnitValuesUpdated<BoxShadowKeyframe>};
 }
 
-KeyframeCallbacks MakeKeyframeCallbacks(BackgroundPositionKeyframe* keyframe) {
-  return {keyframe, nullptr,
-          NotifyUnitValuesUpdated<BackgroundPositionKeyframe>};
-}
-
-KeyframeCallbacks MakeKeyframeCallbacks(TransformOriginKeyframe* keyframe) {
-  return {keyframe, nullptr, NotifyUnitValuesUpdated<TransformOriginKeyframe>};
+KeyframeCallbacks MakeKeyframeCallbacks(CSSVec2Keyframe* keyframe) {
+  return {keyframe, nullptr, NotifyUnitValuesUpdated<CSSVec2Keyframe>};
 }
 
 KeyframeCallbacks MakeKeyframeCallbacks(TransformKeyframe* keyframe) {
@@ -139,12 +134,12 @@ std::unique_ptr<gfx::Keyframe> FilterAnimationCurve::MakeEmptyKeyframe(
 std::unique_ptr<gfx::Keyframe>
 BackgroundPositionAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
-  return BackgroundPositionKeyframe::Create(offset, nullptr);
+  return CSSVec2Keyframe::Create(offset, nullptr);
 }
 
 std::unique_ptr<gfx::Keyframe> TransformOriginAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
-  return TransformOriginKeyframe::Create(offset, nullptr);
+  return CSSVec2Keyframe::Create(offset, nullptr);
 }
 
 std::unique_ptr<gfx::Keyframe> VisibilityAnimationCurve::MakeEmptyKeyframe(
