@@ -8,6 +8,7 @@
 #import <Lynx/LynxVersion.h>
 #import <XCTest/XCTest.h>
 #import "LynxListItemHelper.h"
+#import "LynxListScrollHelper.h"
 #import "LynxListStickyManager.h"
 #import "LynxUI+Gesture.h"
 
@@ -15,7 +16,12 @@
 @property(nonatomic, assign) CGFloat pagingAlignFactor;
 @property(nonatomic, assign) CGFloat pagingAlignOffset;
 @property(nonatomic, strong) LynxListItemHelper *itemHelper;
+@property(nonatomic, strong) LynxListScrollHelper *scrollHelper;
 @property(nonatomic, strong) LynxListStickyManager *stickyManager;
+- (CGFloat)clampToValidScrollEdge:(BOOL)isVertical;
+- (void)updateScrollInfoWithEstimatedOffset:(CGFloat)estimatedOffset
+                                     smooth:(BOOL)smooth
+                                  scrolling:(BOOL)scrolling;
 @end
 
 @interface LynxListUIContainerUnitTest : XCTestCase
@@ -88,6 +94,19 @@
 
   [list removeListComponent:component];
   XCTAssertEqual(list.visibleCells.count, 0U);
+}
+
+- (void)testScrollOperationsAreForwardedToHelper {
+  LynxUIListContainer *list = [self setUpList];
+  XCTAssertNotNil(list.scrollHelper);
+  list.view.contentOffset = CGPointMake(0, UIScreen.mainScreen.bounds.size.height * 10);
+
+  XCTAssertEqualWithAccuracy([list clampToValidScrollEdge:YES],
+                             UIScreen.mainScreen.bounds.size.height * 4, 0.001);
+
+  [list updateScrollInfoWithEstimatedOffset:100 smooth:NO scrolling:NO];
+
+  XCTAssertEqualWithAccuracy(list.view.contentOffset.y, 100, 0.001);
 }
 
 @end

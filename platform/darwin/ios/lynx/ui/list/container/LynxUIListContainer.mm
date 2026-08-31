@@ -18,14 +18,12 @@
 #import <Lynx/LynxUIContext+Internal.h>
 
 #import "LynxListItemHelper.h"
+#import "LynxListScrollHelper.h"
 #import "LynxListStickyManager.h"
 
 #import "core/public/list_container_proxy.h"
 #import "core/public/list_engine_proxy.h"
 
-#include <math.h>
-
-static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
 static const CGFloat kInvalidSnapFactor = -1;
 static const CGFloat kFadeInAnimationDefaultDuration = 0.1;
 static const CGFloat kLynxListAutomaticMaxFlingRatio = CGFLOAT_MAX;
@@ -44,7 +42,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 
 @end
 
-@interface LynxListContainerView : LynxScrollView
+@interface LynxListContainerView : LynxScrollView <LynxListScrollHelperView>
 @property(nonatomic, assign) BOOL scrollToLower;
 @property(nonatomic, assign) BOOL verticalOrientation;
 @property(nonatomic, assign) CGFloat scrollEstimatedOffset;
@@ -63,25 +61,10 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 }
 
 - (void)setContentOffset:(CGPoint)contentOffset {
-  if (_scrollEstimatedOffset != kLynxListContainerInvalidScrollEstimatedOffset) {
-    // Ensure that our offset does not exceed the estimated value.
-
-    if (_verticalOrientation) {
-      if (_scrollToLower && contentOffset.y > _scrollEstimatedOffset) {
-        contentOffset.y = _scrollEstimatedOffset;
-      }
-      if (!_scrollToLower && contentOffset.y < _scrollEstimatedOffset) {
-        contentOffset.y = _scrollEstimatedOffset;
-      }
-    } else {
-      if (_scrollToLower && contentOffset.x > _scrollEstimatedOffset) {
-        contentOffset.x = _scrollEstimatedOffset;
-      }
-      if (!_scrollToLower && contentOffset.x < _scrollEstimatedOffset) {
-        contentOffset.x = _scrollEstimatedOffset;
-      }
-    }
-  }
+  contentOffset = [LynxListScrollHelper contentOffset:contentOffset
+                         constrainedToEstimatedOffset:_scrollEstimatedOffset
+                                             vertical:_verticalOrientation
+                                        scrollToLower:_scrollToLower];
 
   if (self.contentOffset.y != contentOffset.y || self.contentOffset.x != contentOffset.x) {
     [super setContentOffset:contentOffset];
@@ -90,17 +73,19 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 
 @end
 
-@interface LynxUIListContainer () <LynxListItemHelperOwner, LynxListStickyManagerOwner> {
+@interface LynxUIListContainer () <LynxListItemHelperOwner,
+                                   LynxListScrollHelperOwner,
+                                   LynxListStickyManagerOwner> {
   std::unique_ptr<lynx::shell::ListContainerProxy> _listContainerProxy;
 }
 @property(nonatomic, assign) BOOL verticalOrientation;
 @property(nonatomic, strong) NSArray<NSString *> *itemKeys;
 @property(nonatomic, copy) LynxUIMethodCallbackBlock scrollToCallback;
-@property(nonatomic, assign) NSInteger scrollRequestId;
 // True if this setContentOffset is triggered by onNodeReady
 @property(nonatomic, assign) BOOL shouldBlockScrollByListContainer;
 @property(nonatomic, assign) CGPoint previousContentOffset;
 @property(nonatomic, strong) LynxListItemHelper *itemHelper;
+@property(nonatomic, strong) LynxListScrollHelper *scrollHelper;
 @property(nonatomic, strong) LynxListStickyManager *stickyManager;
 @property(nonatomic, assign) BOOL enableFadeInAnimation;
 @property(nonatomic, assign) BOOL enableBatchRender;
@@ -130,6 +115,7 @@ LYNX_REGISTER_UI("list-container")
   self = [super init];
   if (self) {
     _itemHelper = [[LynxListItemHelper alloc] initWithOwner:self];
+    _scrollHelper = [[LynxListScrollHelper alloc] initWithOwner:self];
     _stickyManager = [[LynxListStickyManager alloc] initWithOwner:self];
     _verticalOrientation = YES;  // Default Vertical
     self.enableScrollY = YES;
@@ -157,7 +143,7 @@ LYNX_REGISTER_UI("list-container")
   scrollView.bounces = YES;
   scrollView.enableNested = NO;
   scrollView.verticalOrientation = YES;
-  scrollView.scrollEstimatedOffset = kLynxListContainerInvalidScrollEstimatedOffset;
+  scrollView.scrollEstimatedOffset = LynxListScrollInvalidEstimatedOffset;
   scrollView.ui = self;
   if (@available(iOS 11.0, *)) {
     scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -199,38 +185,10 @@ LYNX_REGISTER_UI("list-container")
     _needAdjustContentOffset = NO;
     // Avoid adjustContentOffsetIfnecessary called from system
     _shouldBlockScrollByListContainer = YES;
-    CGPoint contentOffsetBeforeSizeChange = _previousContentOffset;
-
-    BOOL contentSizeChanged = NO;
-    BOOL deltaChanged = NO;
-
-    if (_verticalOrientation) {
-      contentSizeChanged = _targetContentSize != self.view.contentSize.height;
-      deltaChanged = _targetDelta.y != 0;
-      CGFloat contentWidth = self.frame.size.width - self.padding.left - self.padding.right;
-      self.view.contentSize = CGSizeMake(contentWidth, _targetContentSize);
-    } else {
-      contentSizeChanged = _targetContentSize != self.view.contentSize.width;
-      deltaChanged = _targetDelta.x != 0;
-      CGFloat contentHeight = self.frame.size.height - self.padding.top - self.padding.bottom;
-      self.view.contentSize = CGSizeMake(_targetContentSize, contentHeight);
-    }
-    // contentSize change may cause contentOffset adjustment by system call.
-    _previousContentOffset = CGPointMake(contentOffsetBeforeSizeChange.x + _targetDelta.x,
-                                         contentOffsetBeforeSizeChange.y + _targetDelta.y);
-
-    // The filtering logic here has a relatively big risk because the
-    // contentOffset might be modified externally through KVO. However, if there
-    // is no filtering, incorrect behavior will occur in the refresh scenario.
-    // TODO(xiamengfei.moonface): Use a way similar to Android to replace
-    // MJRefresh to implement the pull-down refreshing.
-    if (self.disableFilterScroll || (contentSizeChanged || deltaChanged)) {
-      [self.view setLynxListAdjustingContentOffset:YES];
-      self.view.contentOffset = CGPointMake(
-          self.isRtl ? [self contentOffsetXRTL:_previousContentOffset.x] : _previousContentOffset.x,
-          _previousContentOffset.y);
-      [self.view setLynxListAdjustingContentOffset:NO];
-    }
+    _previousContentOffset = [self.scrollHelper applyContentSize:_targetContentSize
+                                                     offsetDelta:_targetDelta
+                                           previousContentOffset:_previousContentOffset
+                                          disableScrollFiltering:self.disableFilterScroll];
     _targetDelta = CGPointZero;
   }
   _shouldBlockScrollByListContainer = NO;
@@ -711,59 +669,9 @@ LYNX_UI_METHOD(scrollToPosition) {
 - (void)updateScrollInfoWithEstimatedOffset:(CGFloat)estimatedOffset
                                      smooth:(BOOL)smooth
                                   scrolling:(BOOL)scrolling {
-  // ListElement flush scrolling to platform
-  ((LynxListContainerView *)(self.view)).scrollEstimatedOffset = estimatedOffset;
-  if (!scrolling) {
-    // Scroll will begin !
-
-    // Workaround Logic: Stop current scroll if 600ms has passed
-    NSInteger scrollRequestId = ++self.scrollRequestId;
-    __weak __typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (600 * NSEC_PER_MSEC)),
-                   dispatch_get_main_queue(), ^{
-                     // Ensure that our scroll will be finished. It should be
-                     // finished in 300ms, accroding to UIKit.
-
-                     if (scrollRequestId == weakSelf.scrollRequestId &&
-                         ((LynxListContainerView *)(weakSelf.view)).scrollEstimatedOffset !=
-                             kLynxListContainerInvalidScrollEstimatedOffset) {
-                       [weakSelf scrollStopped];
-                     }
-                   });
-
-    ((LynxListContainerView *)(self.view)).scrollToLower =
-        self.verticalOrientation ? (estimatedOffset > self.view.contentOffset.y)
-                                 : (estimatedOffset > self.view.contentOffset.x);
-
-    CGPoint target =
-        CGPointMake(self.verticalOrientation ? self.view.contentOffset.x : estimatedOffset,
-                    self.verticalOrientation ? estimatedOffset : self.view.contentOffset.y);
-
-    if (smooth && !CGPointEqualToPoint(self.view.contentOffset, target)) {
-      [self setScrollState:LynxListScrollStateScrollAnimation];
-    }
-
-    // Trigger scroll
-    [self.view setContentOffset:target animated:smooth];
-
-    LynxUIMethodCallbackBlock callback = self.scrollToCallback;
-
-    if (callback && smooth) {
-      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (600 * NSEC_PER_MSEC)),
-                     dispatch_get_main_queue(), ^{
-                       if (callback == weakSelf.scrollToCallback) {
-                         callback(kUIMethodSuccess, nil);
-                         weakSelf.scrollToCallback = nil;
-                       }
-                     });
-    } else {
-      ((LynxListContainerView *)(self.view)).scrollEstimatedOffset =
-          kLynxListContainerInvalidScrollEstimatedOffset;
-      [self setScrollState:LynxListScrollStateIdle];
-      // Send extra scrollend event in non smooth mode
-      [self sendScrollEndEvent];
-    }
-  }
+  [self.scrollHelper updateScrollInfoWithEstimatedOffset:estimatedOffset
+                                                  smooth:smooth
+                                               scrolling:scrolling];
 }
 
 LYNX_UI_METHOD(getVisibleCells) {
@@ -821,40 +729,23 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (void)updatePreviousContentOffset {
-  _previousContentOffset = CGPointMake(
-      self.isRtl ? [self contentOffsetXRTL:self.view.contentOffset.x] : self.view.contentOffset.x,
-      self.view.contentOffset.y);
+  _previousContentOffset = self.scrollHelper.normalizedContentOffset;
 }
 
 - (CGFloat)clampToValidScrollEdge:(BOOL)isVertical {
-  // The `contentInset` should not be took into account, cause that ListElement
-  // will not recognize this iOS only feat
-  if (isVertical) {
-    CGFloat validOffsetY = MAX(0, self.view.contentOffset.y);
-    validOffsetY = MIN(validOffsetY, [self orientationMaxScrollableDistance]);
-    return validOffsetY;
-  } else {
-    CGFloat validOffsetX =
-        self.isRtl ? [self contentOffsetXRTL:self.view.contentOffset.x] : self.view.contentOffset.x;
-    validOffsetX = MAX(0, validOffsetX);
-    validOffsetX = MIN(validOffsetX, [self orientationMaxScrollableDistance]);
-    return validOffsetX;
-  }
+  return [self.scrollHelper clampedContentOffsetForVerticalAxis:isVertical];
 }
 
 - (CGFloat)orientationMaxScrollableDistance {
-  // The `contentInset` is not took into account, for ListElement only
-  return MAX(0, self.verticalOrientation ? self.view.contentSize.height - self.frame.size.height
-                                         : self.view.contentSize.width - self.frame.size.width);
+  return self.scrollHelper.orientationMaxScrollableDistance;
 }
 
 - (CGFloat)orientationSize {
-  return self.verticalOrientation ? self.view.frame.origin.y + self.view.frame.size.height
-                                  : self.view.frame.origin.x + self.view.frame.size.width;
+  return self.scrollHelper.orientationSize;
 }
 
 - (CGFloat)orientationContentSize {
-  return self.verticalOrientation ? self.view.contentSize.height : self.view.contentSize.width;
+  return self.scrollHelper.orientationContentSize;
 }
 
 #pragma mark scroll delegate
@@ -1002,44 +893,11 @@ LYNX_UI_METHOD(getVisibleCells) {
                         lower:(CGFloat)lower
                          size:(CGFloat)size
                        height:(CGFloat)height {
-  offset = MIN(offset, size - height);
-  offset = MAX(offset, lower);
-  return offset;
+  return [self.scrollHelper clampContentOffset:offset lower:lower size:size viewportSize:height];
 }
 
 - (CGFloat)getAvailableScrollOffsetFromSubviews:(BOOL)forward offset:(CGFloat)offset {
-  if (self.view.subviews.count == 0) {
-    return offset;
-  }
-  __block CGFloat max = CGFLOAT_MIN;
-  __block CGFloat min = CGFLOAT_MAX;
-  BOOL vertical = self.verticalOrientation;
-  if (forward) {
-    CGFloat contentSize = vertical ? self.view.contentSize.height : self.view.contentSize.width;
-    CGFloat paddingEnd = vertical ? self.padding.bottom : self.padding.right;
-    [self.view.subviews enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull obj, NSUInteger idx,
-                                                     BOOL *_Nonnull stop) {
-      if ([obj isKindOfClass:LynxListContainerComponentWrapper.class]) {
-        max = MAX(max, vertical ? CGRectGetMaxY(obj.frame) : CGRectGetMaxX(obj.frame));
-      }
-    }];
-    if (fabs(max + paddingEnd - contentSize) < CGFLOAT_EPSILON) {
-      max = contentSize;
-    }
-    max = max - (vertical ? self.view.frame.size.height : self.view.frame.size.width);
-  } else {
-    CGFloat paddingStart = vertical ? self.padding.top : self.padding.left;
-    [self.view.subviews enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull obj, NSUInteger idx,
-                                                     BOOL *_Nonnull stop) {
-      if ([obj isKindOfClass:LynxListContainerComponentWrapper.class]) {
-        min = MIN(min, vertical ? CGRectGetMinY(obj.frame) : CGRectGetMinX(obj.frame));
-      }
-    }];
-    if (fabs(min - paddingStart) < CGFLOAT_EPSILON) {
-      min = 0.f;
-    }
-  }
-  return forward ? max : min;
+  return [self.scrollHelper availableScrollOffsetFromSubviewsForward:forward currentOffset:offset];
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
@@ -1047,14 +905,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
-  [self scrollStopped];
-  if (self.scrollToCallback) {
-    self.scrollToCallback(kUIMethodSuccess, nil);
-    self.scrollToCallback = nil;
-  }
-  if (!self.isInScrollToPosition) {
-    [self setScrollState:LynxListScrollStateIdle];
-  }
+  [self.scrollHelper finishProgrammaticScrollRequest];
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
@@ -1068,30 +919,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (void)scrollStopped {
-  if (((LynxListContainerView *)(self.view)).scrollEstimatedOffset ==
-      kLynxListContainerInvalidScrollEstimatedOffset) {
-    return;
-  }
-
-  // Mark finish scroll and notify ListElement to stop updating offset to
-  // platform
-
-  ((LynxListContainerView *)(self.view)).scrollEstimatedOffset =
-      kLynxListContainerInvalidScrollEstimatedOffset;
-
-  auto fetcher = self.context.fetcher;
-
-  // LynxShell and NodeInfoFetcher has been destroyed, just return.
-  if (fetcher == nil) {
-    LLogError(@"LynxShell has been destroyed,when invoking scrollStopped()");
-    return;
-  }
-
-  if (_listContainerProxy) {
-    _listContainerProxy->ScrollStopped(static_cast<int32_t>(self.sign));
-  } else {
-    [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
-  }
+  [self.scrollHelper stopProgrammaticScroll];
 }
 
 #pragma mark native storage
@@ -1126,8 +954,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (CGFloat)contentOffsetXRTL:(CGFloat)contentOffsetX {
-  // Caltulate RTL contentOffset
-  return MAX(self.view.contentSize.width - contentOffsetX - self.view.frame.size.width, 0.f);
+  return [self.scrollHelper contentOffsetXForRTL:contentOffsetX];
 }
 
 - (void)sendScrollEndEvent {
@@ -1180,6 +1007,85 @@ LYNX_UI_METHOD(getVisibleCells) {
     if (!wrapper) return self;
     return [wrapper.holdingUI hitTest:[self.view convertPoint:point toView:wrapper.holdingUI.view]
                             withEvent:event];
+  }
+}
+
+#pragma mark LynxListScrollHelperOwner
+
+- (UIScrollView<LynxListScrollHelperView> *)scrollViewForListScrollHelper {
+  return (UIScrollView<LynxListScrollHelperView> *)self.view;
+}
+
+- (BOOL)isVerticalForListScrollHelper {
+  return self.verticalOrientation;
+}
+
+- (BOOL)isRTLForListScrollHelper {
+  return self.isRtl;
+}
+
+- (CGRect)listFrameForListScrollHelper {
+  return self.frame;
+}
+
+- (UIEdgeInsets)listPaddingForListScrollHelper {
+  return self.padding;
+}
+
+- (BOOL)listScrollHelperShouldDeferCompletionForSmoothScroll:(BOOL)smooth
+                                              needsAnimation:(BOOL)needsAnimation {
+  (void)needsAnimation;
+  // Keep list-container compatibility: historically only a smooth scroll with a method callback
+  // waited for UIKit or the timeout fallback. Every other request completed immediately.
+  return smooth && self.scrollToCallback != nil;
+}
+
+- (id)listScrollHelperCompletionToken {
+  return self.scrollToCallback;
+}
+
+- (BOOL)listScrollHelperShouldFinishTimeoutForPendingScroll {
+  // Keep list-container compatibility: its timeout without a matching method callback only stops
+  // the pending C++ scroll; it does not run the animated-completion event path.
+  return NO;
+}
+
+- (void)listScrollHelperWillStartScrollAnimation {
+  [self setScrollState:LynxListScrollStateScrollAnimation];
+}
+
+- (void)listScrollHelperDidStopProgrammaticScroll {
+  auto fetcher = self.context.fetcher;
+  // LynxShell and NodeInfoFetcher has been destroyed, just return.
+  if (fetcher == nil) {
+    LLogError(@"LynxShell has been destroyed,when invoking scrollStopped()");
+    return;
+  }
+
+  if (_listContainerProxy) {
+    _listContainerProxy->ScrollStopped(static_cast<int32_t>(self.sign));
+  } else {
+    [fetcher scrollStopped:static_cast<int32_t>(self.sign)];
+  }
+}
+
+- (void)listScrollHelperDidFinishProgrammaticScrollWithReason:
+    (LynxListProgrammaticScrollCompletionReason)reason {
+  if (reason == LynxListProgrammaticScrollCompletionReasonImmediate) {
+    [self setScrollState:LynxListScrollStateIdle];
+    // Keep list-container compatibility by sending an extra scrollend event for requests that do
+    // not wait for an animated completion.
+    [self sendScrollEndEvent];
+    return;
+  }
+
+  if (self.scrollToCallback) {
+    self.scrollToCallback(kUIMethodSuccess, nil);
+    self.scrollToCallback = nil;
+  }
+  if (reason == LynxListProgrammaticScrollCompletionReasonAnimationEnded &&
+      !self.isInScrollToPosition) {
+    [self setScrollState:LynxListScrollStateIdle];
   }
 }
 
