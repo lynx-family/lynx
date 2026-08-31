@@ -7,12 +7,13 @@
 
 TEST(LynxHttpRequest, Create) {
   lynx_http_request_t* request = lynx_http_request_create("test_url");
-  EXPECT_TRUE(request != nullptr);
+  ASSERT_NE(request, nullptr);
   EXPECT_STREQ(lynx_http_request_get_url(request), "test_url");
+  EXPECT_STREQ(lynx_http_request_get_method(request), "GET");
 
   request->headers["key1"] = "value1";
   request->headers["key2"] = "value2";
-  EXPECT_EQ(lynx_http_request_get_header_count(request), 2);
+  EXPECT_EQ(lynx_http_request_get_header_count(request), 2u);
 
   const char* header_key = nullptr;
   const char* header_value = nullptr;
@@ -24,7 +25,16 @@ TEST(LynxHttpRequest, Create) {
   EXPECT_STREQ(header_key, "key2");
   EXPECT_STREQ(header_value, "value2");
 
-  EXPECT_STREQ(lynx_http_request_get_method(request), "GET");
+  const uint8_t* body = nullptr;
+  EXPECT_EQ(lynx_http_request_get_body(request, &body), 0u);
+
+  lynx_http_request_release(request);
+}
+
+TEST(LynxHttpRequest, NullUrlCreatesEmptyUrl) {
+  lynx_http_request_t* request = lynx_http_request_create(nullptr);
+  ASSERT_NE(request, nullptr);
+  EXPECT_STREQ(lynx_http_request_get_url(request), "");
 
   lynx_http_request_release(request);
 }

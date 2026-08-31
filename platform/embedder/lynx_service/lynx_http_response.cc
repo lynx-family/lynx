@@ -7,10 +7,22 @@
 #include <cstring>
 #include <utility>
 
-lynx_http_response_t* lynx_http_response_create(HttpResponseCallback callback) {
+lynx_http_response_t* lynx_http_response_create_internal(
+    HttpResponseCallback callback) {
   auto* response = new lynx_http_response_t();
   response->callback = callback;
   return response;
+}
+
+LYNX_EXTERN_C lynx_http_response_t* lynx_http_response_create(
+    lynx_http_response_callback_func callback, void* user_data) {
+  HttpResponseCallback internal_callback = nullptr;
+  if (callback) {
+    internal_callback = [callback, user_data](lynx_http_response_t* response) {
+      callback(response, user_data);
+    };
+  }
+  return lynx_http_response_create_internal(std::move(internal_callback));
 }
 
 void lynx_http_response_release_body(lynx_http_response_t* response) {
@@ -83,6 +95,19 @@ LYNX_EXTERN_C void lynx_http_response_set_body(
     response->body.content = new uint8_t[length];
     memcpy(response->body.content, content, length);
   }
+}
+
+LYNX_EXTERN_C int lynx_http_response_get_status_code(
+    lynx_http_response_t* response) {
+  return response ? response->status_code : -1;
+}
+
+LYNX_EXTERN_C size_t lynx_http_response_get_body(lynx_http_response_t* response,
+                                                 const uint8_t** body) {
+  if (body) {
+    *body = response ? response->body.content : nullptr;
+  }
+  return response ? response->body.length : 0;
 }
 
 LYNX_EXTERN_C void lynx_http_response_callback(lynx_http_response_t* response) {
