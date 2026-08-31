@@ -549,11 +549,18 @@ void ElementManager::RequestLayout(
   if (has_viewport_ready_ && root()->is_page()) {
     static_cast<PageElement *>(root())->Layout(options);
 
+    const bool is_first_layout = pending_first_layout_ ||
+                                 options->is_first_screen ||
+                                 options->is_reuse_engine;
+    pending_first_layout_ = false;
+
     layout_data = {.layout_triggered = true,
                    .pipeline_version = options->version,
-                   .is_first_layout =
-                       options->is_first_screen || options->is_reuse_engine};
+                   .is_first_layout = is_first_layout};
   } else {
+    pending_first_layout_ |=
+        options->is_first_screen || options->is_reuse_engine;
+
     // When unified pipeline is disabled, force Flush as a fallback.
     // Layout will trigger flush; this only compensates when layout is not
     // invoked.
@@ -891,6 +898,9 @@ void ElementManager::OnUpdateViewport(float width, int width_mode, float height,
   viewport_.UpdateViewport(width, width_mode, height, height_mode);
   has_viewport_ready_ = true;
 
+  // TODO(songshourui.null): Handle a deferred initial layout when the first
+  // viewport matches the page's default constraints, such as an INDEFINITE
+  // viewport, and SetViewportSizeToRootNode() returns false.
   if (SetViewportSizeToRootNode()) {
     if (need_layout) {
       TickLayout(std::make_shared<PipelineOptions>());
