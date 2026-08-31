@@ -609,6 +609,9 @@ void BTSRuntimeMediator::ResetTimingBeforeReload() {
 }
 
 void BTSRuntimeMediator::AddJSBlockingTime(uint64_t enqueue_time) {
+  if (!perf_controller_actor_) {
+    return;
+  }
   if (tasm::performance::JSBlockingMonitor::Enable()) {
     int64_t duration =
         tasm::performance::JSBlockingMonitor::GetNowTimeMs() - enqueue_time;

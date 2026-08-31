@@ -447,8 +447,10 @@ void LynxShell::Destroy() {
       reinterpret_cast<int64_t>(this));
 #endif
 
-  perf_controller_actor_->ActAsync(
-      [](auto& performance_controller) { performance_controller = nullptr; });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync(
+        [](auto& performance_controller) { performance_controller = nullptr; });
+  }
 
   facade_actor_->Act([instance_id = instance_id_](auto& facade) {
     facade = nullptr;
@@ -766,9 +768,11 @@ void LynxShell::LoadTemplate(
 
   EnsureTemplateDataThreadSafe(template_data);
   hydration_pending_ = false;
-  perf_controller_actor_->ActAsync([url](auto& performance) {
-    performance->GetTimingHandler().SetURL(url);
-  });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync([url](auto& performance) {
+      performance->GetTimingHandler().SetURL(url);
+    });
+  }
   engine_actor_->Act([url, source = std::move(source), template_data,
                       pipeline_options = std::move(pipeline_options),
                       need_to_merge_back,
@@ -944,9 +948,11 @@ void LynxShell::RegisterNotificationCallbacks() {
              [this](const std::string& tag, [[maybe_unused]] intptr_t data) {
                // Add trace record to supplement information about pages that
                // existed before the trace started.
-               this->perf_controller_actor_->ActAsync([](auto& performance) {
-                 performance->GetMemoryMonitor().ReportMemory(true);
-               });
+               if (this->perf_controller_actor_) {
+                 this->perf_controller_actor_->ActAsync([](auto& performance) {
+                   performance->GetMemoryMonitor().ReportMemory(true);
+                 });
+               }
 
                this->engine_actor_->Act([&](auto& engine) {
                  auto default_entry = engine->GetTasm()->FindTemplateEntry(
@@ -1820,10 +1826,12 @@ void LynxShell::DetachEngineFromUIThread() {
 
 void LynxShell::OnThreadStrategyUpdated() {
   runners_.OnThreadStrategyUpdated(current_strategy_);
-  perf_controller_actor_->ActAsync(
-      [current_strategy = current_strategy_](auto& performance) {
-        performance->GetTimingHandler().SetThreadStrategy(current_strategy);
-      });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync(
+        [current_strategy = current_strategy_](auto& performance) {
+          performance->GetTimingHandler().SetThreadStrategy(current_strategy);
+        });
+  }
   engine_actor_->Act([current_strategy = current_strategy_](auto& engine) {
     engine->GetTasm()->page_proxy()->element_manager()->SetThreadStrategy(
         current_strategy);
@@ -1942,6 +1950,9 @@ void LynxShell::DispatchMessageEvent(fml::RefPtr<runtime::MessageEvent> event) {
 void LynxShell::SetTiming(uint64_t us_timestamp,
                           tasm::timing::TimestampKey timing_key,
                           tasm::PipelineID pipeline_id) const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [us_timestamp, timing_key = std::move(timing_key),
        pipeline_id = std::move(pipeline_id)](auto& performance) mutable {
@@ -1951,6 +1962,9 @@ void LynxShell::SetTiming(uint64_t us_timestamp,
 }
 
 LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
+  if (!perf_controller_actor_) {
+    return lepus::Value();
+  }
   return perf_controller_actor_->ActSync([](auto& performance) {
     auto all_timing_info = performance->GetTimingHandler().GetAllTimingInfo();
     lepus::Value lepus_all_info =
@@ -1962,6 +1976,9 @@ LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
 
 LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllPerformanceEntries()
     const {
+  if (!perf_controller_actor_) {
+    return lepus::Value();
+  }
   return perf_controller_actor_->ActSync([](auto& performance) {
     auto all_performance_entries = performance->GetAllPerformanceEntries();
     return pub::ValueUtils::ConvertValueToLepusValue(*all_performance_entries);
@@ -1969,6 +1986,9 @@ LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllPerformanceEntries()
 }
 
 void LynxShell::SetSSRTimingData(std::string url, uint64_t data_size) const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [url = std::move(url), data_size](auto& performance) {
         performance->GetTimingHandler().SetSSRTimingData(url, data_size);
@@ -1976,6 +1996,9 @@ void LynxShell::SetSSRTimingData(std::string url, uint64_t data_size) const {
 }
 
 void LynxShell::ClearPipelineTimingInfo() const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync([](auto& performance) {
     performance->GetTimingHandler().ClearPipelineTimingInfo();
   });
@@ -1995,15 +2018,20 @@ void LynxShell::OnPipelineStart(
             "pipeline_start_timestamp",
             std::to_string(pipeline_start_timestamp));
       });
-  perf_controller_actor_->ActAsync(
-      [pipeline_id, pipeline_origin,
-       pipeline_start_timestamp](auto& performance) {
-        performance->GetTimingHandler().OnPipelineStart(
-            pipeline_id, pipeline_origin, pipeline_start_timestamp);
-      });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync(
+        [pipeline_id, pipeline_origin,
+         pipeline_start_timestamp](auto& performance) {
+          performance->GetTimingHandler().OnPipelineStart(
+              pipeline_id, pipeline_origin, pipeline_start_timestamp);
+        });
+  }
 }
 
 void LynxShell::ResetTimingBeforeReload() const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [](auto& performance) { performance->ResetStateBeforeReload(); });
 }
