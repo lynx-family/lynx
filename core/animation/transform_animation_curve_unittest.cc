@@ -194,12 +194,8 @@ TEST_F(TransformAnimationCurveTest, GetStyleInElement) {
   std::unique_ptr<KeyframedOpacityAnimationCurve> curve(
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
-  auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  auto raw_value =
-      lynx::tasm::CSSValue(1.0f, lynx::tasm::CSSValuePattern::NUMBER);
-  auto y_id = lynx::tasm::CSSPropertyID::kPropertyIDOpacity;
-  bool set_success1 = test_frame1->SetValue(y_id, raw_value, test_element);
-  EXPECT_EQ(set_success1, true);
+  auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(1.0f);
   EXPECT_EQ(test_frame1->IsEmpty(), false);
   auto w_id = lynx::tasm::CSSPropertyID::kPropertyIDTop;
   auto result_value2 = GetStyleInElement(w_id, test_element);
@@ -293,7 +289,7 @@ TEST_F(TransformAnimationCurveTest, SetValueWithoutElementDefersResolve) {
   EXPECT_TRUE(lynx::tasm::UnitHandler::Process(id, impl1, output1, configs));
   ASSERT_TRUE(output1[id].IsArray());
   EXPECT_TRUE(test_frame->SetValue(id, output1[id], test_element));
-  EXPECT_NE(test_frame->Value(), nullptr);
+  EXPECT_TRUE(test_frame->HasResolvedValue());
 
   lynx::tasm::StyleMap output2;
   auto impl2 = lepus::Value("scale(1.1)");
@@ -301,11 +297,11 @@ TEST_F(TransformAnimationCurveTest, SetValueWithoutElementDefersResolve) {
   ASSERT_TRUE(output2[id].IsArray());
   EXPECT_TRUE(test_frame->SetValue(id, output2[id], nullptr));
   EXPECT_FALSE(test_frame->IsEmpty());
-  EXPECT_EQ(test_frame->Value(), nullptr);
+  EXPECT_FALSE(test_frame->HasResolvedValue());
 
   EXPECT_TRUE(test_frame->EnsureResolvedValue(id, test_element));
-  ASSERT_NE(test_frame->Value(), nullptr);
-  EXPECT_EQ(test_frame->Value()->size(), static_cast<size_t>(1));
+  ASSERT_TRUE(test_frame->HasResolvedValue());
+  EXPECT_EQ(test_frame->ResolvedValue().size(), static_cast<size_t>(1));
 }
 
 TEST_F(TransformAnimationCurveTest, NotificationsReResolveRawCSSValue) {
@@ -321,28 +317,31 @@ TEST_F(TransformAnimationCurveTest, NotificationsReResolveRawCSSValue) {
       id, lepus::Value("translateX(calc(10px + 50%))"), output, configs));
   ASSERT_TRUE(output[id].IsArray());
   ASSERT_TRUE(test_frame->SetValue(id, output[id], test_element));
-  ASSERT_NE(test_frame->Value(), nullptr);
-  ASSERT_EQ(test_frame->Value()->size(), 1u);
+  ASSERT_TRUE(test_frame->HasResolvedValue());
+  ASSERT_EQ(test_frame->ResolvedValue().size(), 1u);
   EXPECT_FLOAT_EQ(
-      test_frame->Value()->GetOperations()[0].translate.x.Resolve(100.0f),
+      test_frame->ResolvedValue().GetOperations()[0].translate.x.Resolve(
+          100.0f),
       60.0f);
 
   test_element->UpdateLayout(0, 0, 200, 100, {0}, {0}, {0}, nullptr, 0);
   test_frame->NotifyElementSizeUpdated();
-  EXPECT_EQ(test_frame->Value(), nullptr);
+  EXPECT_FALSE(test_frame->HasResolvedValue());
   EXPECT_TRUE(test_frame->EnsureResolvedValue(id, test_element));
-  ASSERT_NE(test_frame->Value(), nullptr);
+  ASSERT_TRUE(test_frame->HasResolvedValue());
   EXPECT_FLOAT_EQ(
-      test_frame->Value()->GetOperations()[0].translate.x.Resolve(200.0f),
+      test_frame->ResolvedValue().GetOperations()[0].translate.x.Resolve(
+          200.0f),
       110.0f);
 
   test_frame->NotifyUnitValuesUpdated(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
-  EXPECT_EQ(test_frame->Value(), nullptr);
+  EXPECT_FALSE(test_frame->HasResolvedValue());
   EXPECT_TRUE(test_frame->EnsureResolvedValue(id, test_element));
-  ASSERT_NE(test_frame->Value(), nullptr);
+  ASSERT_TRUE(test_frame->HasResolvedValue());
   EXPECT_FLOAT_EQ(
-      test_frame->Value()->GetOperations()[0].translate.x.Resolve(200.0f),
+      test_frame->ResolvedValue().GetOperations()[0].translate.x.Resolve(
+          200.0f),
       110.0f);
 }
 
@@ -358,14 +357,13 @@ TEST_F(TransformAnimationCurveTest,
   ASSERT_TRUE(lynx::tasm::UnitHandler::Process(
       id, lepus::Value("scale(2) translateX(50%)"), output, configs));
   ASSERT_TRUE(test_frame->SetValue(id, output[id], test_element));
-  ASSERT_NE(test_frame->Value(), nullptr);
-  const auto* cached_value = test_frame->Value();
+  ASSERT_TRUE(test_frame->HasResolvedValue());
 
   test_frame->NotifyElementSizeUpdated();
-  EXPECT_EQ(test_frame->Value(), cached_value);
+  EXPECT_TRUE(test_frame->HasResolvedValue());
   test_frame->NotifyUnitValuesUpdated(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::REM));
-  EXPECT_EQ(test_frame->Value(), cached_value);
+  EXPECT_TRUE(test_frame->HasResolvedValue());
 }
 
 TEST_F(TransformAnimationCurveTest,
@@ -380,17 +378,16 @@ TEST_F(TransformAnimationCurveTest,
   ASSERT_TRUE(lynx::tasm::UnitHandler::Process(
       id, lepus::Value("translateX(1rem)"), output, configs));
   ASSERT_TRUE(test_frame->SetValue(id, output[id], test_element));
-  ASSERT_NE(test_frame->Value(), nullptr);
-  const auto* cached_value = test_frame->Value();
+  ASSERT_TRUE(test_frame->HasResolvedValue());
 
   test_frame->NotifyElementSizeUpdated();
-  EXPECT_EQ(test_frame->Value(), cached_value);
+  EXPECT_TRUE(test_frame->HasResolvedValue());
   test_frame->NotifyUnitValuesUpdated(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::EM));
-  EXPECT_EQ(test_frame->Value(), cached_value);
+  EXPECT_TRUE(test_frame->HasResolvedValue());
   test_frame->NotifyUnitValuesUpdated(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::REM));
-  EXPECT_EQ(test_frame->Value(), nullptr);
+  EXPECT_FALSE(test_frame->HasResolvedValue());
 }
 
 TEST_F(TransformAnimationCurveTest, CreateTransformAnimationCurve) {

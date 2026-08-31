@@ -27,9 +27,12 @@ class GFX_EXPORT TransformOperations {
 
   TransformOperations() = default;
   TransformOperations(const TransformOperations& other);
+  TransformOperations(TransformOperations&& other) noexcept = default;
   ~TransformOperations() = default;
 
   TransformOperations& operator=(const TransformOperations& other);
+  TransformOperations& operator=(TransformOperations&& other) noexcept =
+      default;
 
   Matrix44 ApplyRemaining(size_t start, float reference_width,
                           float reference_height) const;

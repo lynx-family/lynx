@@ -17,11 +17,9 @@
 #include "base/include/fml/time/time_delta.h"
 #include "core/animation/animation_curve.h"
 #include "core/renderer/css/css_property.h"
-#include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "gfx/animation/animation_keyframe.h"
 #include "gfx/animation/animation_utils.h"
 #include "gfx/animation/timing_function.h"
-#include "gfx/geometry/transform_operations.h"
 
 namespace lynx {
 
@@ -48,7 +46,7 @@ class KeyframedTransformAnimationCurve : public TransformAnimationCurve {
 };
 
 //====Transform keyframe ====
-class TransformKeyframe : public lynx::gfx::Keyframe {
+class TransformKeyframe : public lynx::gfx::TransformKeyframe {
  public:
   static std::unique_ptr<TransformKeyframe> Create(
       fml::TimeDelta time,
@@ -60,10 +58,6 @@ class TransformKeyframe : public lynx::gfx::Keyframe {
 
   bool EnsureResolvedValue(tasm::CSSPropertyID id, tasm::Element* element);
 
-  const gfx::TransformOperations* Value() const {
-    return value_ ? &value_->operations : nullptr;
-  };
-
   void NotifyElementSizeUpdated();
 
   void NotifyUnitValuesUpdated(uint32_t css_value_pattern);
@@ -74,8 +68,9 @@ class TransformKeyframe : public lynx::gfx::Keyframe {
   tasm::CSSValue CSSValue() { return css_value_; }
 
  private:
-  std::unique_ptr<transforms::ResolvedTransformOperations> value_;
   tasm::CSSValue css_value_;
+  bool depends_on_element_size_{false};
+  uint32_t unit_dependencies_{0};
 };
 
 }  // namespace animation
