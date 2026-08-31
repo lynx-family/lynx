@@ -833,6 +833,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableEventTargetInfoNodeIndex].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableCurrentTargetTouchPosition) &&
+        doc[config::kEnableCurrentTargetTouchPosition].IsBool()) {
+      page_config->SetEnableCurrentTargetTouchPosition(
+          doc[config::kEnableCurrentTargetTouchPosition].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableFrontendCustomEventBubbleCompatible) &&
         doc[config::kEnableFrontendCustomEventBubbleCompatible].IsBool()) {
       page_config->SetEnableFrontendCustomEventBubbleCompatible(
