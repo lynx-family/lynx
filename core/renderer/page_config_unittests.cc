@@ -136,6 +136,16 @@ TEST(PageConfigTest, EnableEventTargetInfoNodeIndex) {
   EXPECT_TRUE(page_config->GetEnableEventTargetInfoNodeIndex());
 }
 
+TEST(PageConfigTest, EnableCurrentTargetTouchPosition) {
+  std::shared_ptr<PageConfig> page_config = std::make_shared<PageConfig>();
+  EXPECT_FALSE(page_config->GetEnableCurrentTargetTouchPosition());
+
+  rapidjson::Document doc;
+  doc.Parse("{\n  \"enableCurrentTargetTouchPosition\" : true\n}");
+  LynxConfigDecoder::DecodePageConfig(page_config, doc, "");
+  EXPECT_TRUE(page_config->GetEnableCurrentTargetTouchPosition());
+}
+
 TEST(PageConfigTest, EnableFrontendCustomEventBubbleCompatible) {
   std::shared_ptr<PageConfig> default_config = std::make_shared<PageConfig>();
   EXPECT_TRUE(default_config->GetEnableFrontendCustomEventBubbleCompatible());
