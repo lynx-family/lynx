@@ -22,6 +22,7 @@
 #import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxIntersectionObserverModule.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxPerformanceController+Native.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxResourceModule.h>
 #import <Lynx/LynxService.h>
@@ -185,6 +186,8 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
           .SetUseInvokeUIMethodFunction(_lynxUIRenderer.useInvokeUIMethodFunction)
           .SetLynxEngineWrapper(_lynxEngine ? [_lynxEngine getEngineNative] : nullptr)
           .build());
+
+  [_performanceController setInstanceId:shell_->GetInstanceId()];
 
   [_lynxEngineProxy setNativeEngineProxy:std::make_shared<lynx::shell::LynxEngineProxyDarwin>(
                                              shell_->GetEngineActor())];

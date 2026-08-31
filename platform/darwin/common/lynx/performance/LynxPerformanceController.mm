@@ -41,6 +41,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   id<LynxServiceEventReporterProtocol> _reporter;
   LynxEmbeddedTimingCollector* _embeddedCollector;
   BOOL _embeddedModeEnabled;
+  int32_t _instanceId;
 }
 
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
@@ -48,6 +49,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
     _observer = observer;
     _fspTracer = [[LynxFSPTracer alloc] init];
     _embeddedModeEnabled = NO;
+    _instanceId = ::kUnknownInstanceId;
   }
   return self;
 }
@@ -58,6 +60,10 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   if (nativeActor) {
     [_embeddedCollector setInstanceId:nativeActor->GetInstanceId()];
   }
+}
+
+- (void)setInstanceId:(int32_t)instanceId {
+  _instanceId = instanceId;
 }
 
 - (void)setEmbeddedModeEnabled:(BOOL)enabled {
