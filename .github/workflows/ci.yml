@@ -15,6 +15,9 @@ defaults:
   run:
     working-directory: lynx
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   darwin-impact-check:
     runs-on: lynx-ubuntu-22.04-medium
@@ -22,8 +25,9 @@ jobs:
       darwin: ${{ steps.filter.outputs.darwin }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           fetch-depth: 0
           path: lynx
       - name: Check whether Darwin jobs are affected
@@ -86,12 +90,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           fetch-depth: 2
           ref: ${{ github.event.pull_request.head.sha }}
           path: lynx
@@ -137,8 +142,9 @@ jobs:
     runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
@@ -153,11 +159,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -173,11 +180,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -195,11 +203,12 @@ jobs:
     runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Setup CocoaPods cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: |
             ~/.cocoapods/repos/trunk
@@ -208,7 +217,7 @@ jobs:
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Install iOS Dependencies
-        uses: nick-fields/retry@v4
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
         with:
           timeout_minutes: 20
           max_attempts: 3
@@ -239,11 +248,12 @@ jobs:
     runs-on: lynx-ubuntu-22.04-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '3.1'
       - name: Test
@@ -274,11 +284,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -298,8 +309,9 @@ jobs:
     runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
@@ -321,11 +333,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -350,11 +363,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -380,8 +394,9 @@ jobs:
     runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
@@ -400,11 +415,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -422,17 +438,18 @@ jobs:
     runs-on: lynx-ubuntu-22.04-physical-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Setup gradle cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-android-unittests-check
@@ -446,11 +463,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Setup gradle cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-android-explorer-build
@@ -471,11 +489,12 @@ jobs:
           git config --global http.sslBackend "schannel"
         working-directory: ./
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -492,11 +511,12 @@ jobs:
     runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -504,7 +524,7 @@ jobs:
         with:
           cache-backend: 'lynx-infra'
       - name: Setup gradle cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-android-sdk-release
@@ -532,11 +552,12 @@ jobs:
     runs-on: lynx-ubuntu-22.04-physical-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -549,12 +570,12 @@ jobs:
           pnpm install appium-espresso-driver@4.0.0 -w
           popd
       - name: Setup Java SDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           java-version: 17
           distribution: 'zulu'
       - name: Gradle Wrapper Cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: ~/.gradle/wrapper/dists
           key: gradle-8.7-${{ runner.os }}
@@ -640,7 +661,7 @@ jobs:
             exit 1
           fi
       - name: Run Android E2E Test
-        uses: nick-fields/retry@v4
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
         with:
           max_attempts: 2
           retry_wait_seconds: 5
@@ -713,8 +734,9 @@ jobs:
     runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Integeration Demo Source Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           repository: lynx-family/integrating-lynx-demo-projects
           ref: f8230ca6aa1c9e629e30272971d0c03450b13e8e
           path: lynx
@@ -731,21 +753,21 @@ jobs:
           name: android-sdk-release
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Setup Java SDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           java-version: 17
           distribution: 'zulu'
       - name: Gradle Wrapper Cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: ~/.gradle/wrapper/dists
           key: gradle-wrapper-${{ runner.os }}
       - name: Setup cache action
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-integration-deps-${{ runner.os }}
@@ -770,8 +792,9 @@ jobs:
         shell: bash
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Build Explorer App
         uses: ./lynx/.github/actions/harmony-explorer-build
@@ -786,11 +809,12 @@ jobs:
         arch: [arm64, x86_64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Setup CocoaPods cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: |
             ~/.cocoapods/repos/trunk
@@ -818,8 +842,9 @@ jobs:
       POD_VERSION: '0.0.1-alpha.1'
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           fetch-depth: 2
           ref: ${{ github.event.pull_request.head.sha }}
           path: lynx
@@ -828,7 +853,7 @@ jobs:
       - name: Install brew runtime dependencies
         run: brew install openssl@3 readline libyaml gmp
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '4.0.5'
       - name: Prepare cocoapods publish source
@@ -847,13 +872,14 @@ jobs:
           git config --global user.email "lynx.authors@users.noreply.github.com"
           python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
       - name: Download the Demo Project
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: demo
           repository: lynx-family/integrating-lynx-demo-projects
           ref: 0ab9340e1e560f07d3d4c4331f8b62b0702d067a
       - name: Setup CocoaPods cache
-        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
         with:
           path: |
             ~/.cocoapods/repos/trunk
@@ -891,8 +917,9 @@ jobs:
     runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
@@ -902,7 +929,7 @@ jobs:
           sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
           echo "SDK_VERSION=$sdkVersion" >> $GITHUB_ENV
       - name: Build WebDriverAgent
-        uses: nick-fields/retry@v4
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
         with:
           max_attempts: 2
           retry_wait_seconds: 5
@@ -985,7 +1012,7 @@ jobs:
             exit 1
           fi
       - name: Run iOS E2E Test
-        uses: nick-fields/retry@v4
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
         with:
           max_attempts: 2
           retry_wait_seconds: 5
@@ -1063,8 +1090,9 @@ jobs:
     runs-on: lynx-darwin-15.6.1-medium
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Build Clay Example
         uses: ./lynx/.github/actions/clay-macos-build
@@ -1084,8 +1112,9 @@ jobs:
         arch: [arm64, x64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Build macOS Explorer
         uses: ./lynx/.github/actions/macos-explorer-build

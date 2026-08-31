@@ -15,25 +15,32 @@ jobs:
     if: github.event.action == 'opened' # Only run for 'opened' event
     steps:
       - name: Add 'status:need triage' label to new issues
-        uses: actions-ecosystem/action-add-labels@bd52874380e3909a1ac983768df6976535ece7f8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: status:need triage
+          script: |
+            await github.rest.issues.addLabels({
+              ...context.issue,
+              labels: ['status:need triage'],
+            })
 
   update-label-assigned:
     timeout-minutes: 30
     runs-on: lynx-ubuntu-22.04-mini
     if: github.event.action == 'assigned' # Only run for 'assigned' event
     steps:
-      # We won't check if the label exists. We are counting on the robustness of the actions.
-      - name: Remove 'status:need triage' label
-        uses: actions-ecosystem/action-remove-labels@v1
+      - name: Update status labels
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: status:need triage
-
-      - name: Add 'status:assigned' label
-        uses: actions-ecosystem/action-add-labels@bd52874380e3909a1ac983768df6976535ece7f8
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: status:assigned
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                ...context.issue,
+                name: 'status:need triage',
+              })
+            } catch (error) {
+              if (error.status !== 404) throw error
+            }
+            await github.rest.issues.addLabels({
+              ...context.issue,
+              labels: ['status:assigned'],
+            })
