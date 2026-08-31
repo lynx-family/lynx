@@ -2881,6 +2881,45 @@ public class LynxListScrollEventEmitterHelper : NSObject {
   public NSString * LynxListScrollEventEmitterHelper::fetchScrollEvent:(UIScrollView *scrollView);
 }
 
+public class LynxListScrollHelper : NSObject {
+  public instancetype LynxListScrollHelper::initWithOwner:(id< LynxListScrollHelperOwner > NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxListScrollHelper::NS_UNAVAILABLE();
+  public CGPoint LynxListScrollHelper::normalizedContentOffset();
+  public CGFloat LynxListScrollHelper::clampedContentOffsetForVerticalAxis:(BOOL isVertical);
+  public CGFloat LynxListScrollHelper::orientationMaxScrollableDistance();
+  public CGFloat LynxListScrollHelper::orientationSize();
+  public CGFloat LynxListScrollHelper::orientationContentSize();
+  public CGFloat LynxListScrollHelper::clampContentOffset:lower:size:viewportSize:(CGFloat offset,[lower] CGFloat lower,[size] CGFloat size,[viewportSize] CGFloat viewportSize);
+  public CGFloat LynxListScrollHelper::availableScrollOffsetFromSubviewsForward:currentOffset:(BOOL forward,[currentOffset] CGFloat currentOffset);
+  public CGFloat LynxListScrollHelper::contentOffsetXForRTL:(CGFloat contentOffsetX);
+  public CGPoint LynxListScrollHelper::applyContentSize:offsetDelta:previousContentOffset:disableScrollFiltering:(CGFloat targetContentSize,[offsetDelta] CGPoint targetDelta,[previousContentOffset] CGPoint previousContentOffset,[disableScrollFiltering] BOOL disableScrollFiltering);
+  public void LynxListScrollHelper::updateScrollInfoWithEstimatedOffset:smooth:scrolling:(CGFloat estimatedOffset,[smooth] BOOL smooth,[scrolling] BOOL scrolling);
+  public void LynxListScrollHelper::invalidateProgrammaticScrollRequest();
+  public void LynxListScrollHelper::finishProgrammaticScrollRequest();
+  public BOOL LynxListScrollHelper::stopProgrammaticScroll();
+  public CGPoint LynxListScrollHelper::contentOffset:constrainedToEstimatedOffset:vertical:scrollToLower:(CGPoint contentOffset,[constrainedToEstimatedOffset] CGFloat estimatedOffset,[vertical] BOOL vertical,[scrollToLower] BOOL scrollToLower);
+}
+
+public protocol LynxListScrollHelperOwner-p : <NSObject> {
+  public UIScrollView< LynxListScrollHelperView > * LynxListScrollHelperOwner-p::scrollViewForListScrollHelper();
+  public BOOL LynxListScrollHelperOwner-p::isVerticalForListScrollHelper();
+  public BOOL LynxListScrollHelperOwner-p::isRTLForListScrollHelper();
+  public CGRect LynxListScrollHelperOwner-p::listFrameForListScrollHelper();
+  public UIEdgeInsets LynxListScrollHelperOwner-p::listPaddingForListScrollHelper();
+  public BOOL LynxListScrollHelperOwner-p::listScrollHelperShouldDeferCompletionForSmoothScroll:needsAnimation:(BOOL smooth,[needsAnimation] BOOL needsAnimation);
+  public nullable id LynxListScrollHelperOwner-p::listScrollHelperCompletionToken();
+  public BOOL LynxListScrollHelperOwner-p::listScrollHelperShouldFinishTimeoutForPendingScroll();
+  public void LynxListScrollHelperOwner-p::listScrollHelperWillStartScrollAnimation();
+  public void LynxListScrollHelperOwner-p::listScrollHelperDidStopProgrammaticScroll();
+  public void LynxListScrollHelperOwner-p::listScrollHelperDidFinishProgrammaticScrollWithReason:(LynxListProgrammaticScrollCompletionReason reason);
+}
+
+public protocol LynxListScrollHelperView-p : <NSObject> {
+  public BOOL LynxListScrollHelperView-p::scrollToLower scrollToLower;
+  public CGFloat LynxListScrollHelperView-p::scrollEstimatedOffset scrollEstimatedOffset;
+  public BOOL LynxListScrollHelperView-p::adjustingContentOffsetInternally adjustingContentOffsetInternally;
+}
+
 public class LynxListStickyManager : NSObject {
   public BOOL LynxListStickyManager::enabled enabled;
   public CGFloat LynxListStickyManager::offset offset;
@@ -7544,6 +7583,14 @@ public enum LynxInterceptGestureState {
   LynxInterceptGestureStateTrue
 }
 
+
+public enum LynxListProgrammaticScrollCompletionReason {
+  LynxListProgrammaticScrollCompletionReasonImmediate
+  LynxListProgrammaticScrollCompletionReasonAnimationEnded
+  LynxListProgrammaticScrollCompletionReasonTimeout
+}
+
+  public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT const CGFloat LynxListScrollInvalidEstimatedOffset LynxListScrollInvalidEstimatedOffset;
 
   typedef struct LBSPathConsumer LBSPathConsumer
   public CGPathRef LBSCreatePathFromData(const char *data);
