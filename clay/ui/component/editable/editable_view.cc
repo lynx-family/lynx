@@ -1350,13 +1350,14 @@ bool EditableView::ApplyHotKey(const KeyEvent* key_event) {
     // Only handle second hot key down and repeat.
     if (hot_key_tag_ == kTagCommand) {
       HandleCommandHotKey(key_code);
+    } else if (hot_key_tag_ == (kTagCommand | kTagShift)) {
+      HandleCommandShiftHotKey(key_code);
     } else if (hot_key_tag_ == kTagControl) {
       HandleCtrlHotKey(key_code);
     } else if (hot_key_tag_ == kTagShift) {
       return HandleShiftHotKey(key_code);
     }
-    // Do not respond to multiple modifier key combination, like 'command' +
-    // 'control' + key.
+    // Do not respond to unsupported multiple modifier key combinations.
   }
   return true;
 }
@@ -1388,6 +1389,16 @@ void EditableView::UpdateHotKeyTag(LogicalKeyboardKey key_code, bool is_up) {
 
 void EditableView::HandleCommandHotKey(LogicalKeyboardKey key_code) {
   HandleWinCtrlAndMacCommandHotKey(key_code);
+}
+
+void EditableView::HandleCommandShiftHotKey(LogicalKeyboardKey key_code) {
+  switch (key_code) {
+    case KeyCode::kKeyZ:
+      text_editing_history_state_->Redo();
+      break;
+    default:
+      break;
+  }
 }
 
 void EditableView::HandleCtrlHotKey(LogicalKeyboardKey key_code) {
