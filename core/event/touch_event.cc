@@ -22,7 +22,8 @@ bool TouchEvent::long_press_consumed_ = false;
 
 TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
                        float page_x, float page_y, float client_x,
-                       float client_y, int64_t time_stamp)
+                       float client_y, int64_t time_stamp,
+                       TouchEventTargetPoints current_target_points)
     : Event(event_name, time_stamp, EventType::kTouchEvent, Capture::kYes,
             Bubbles::kYes, Cancelable::kYes, ComposedMode::kScoped,
             PhaseType::kNone),
@@ -32,7 +33,8 @@ TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
       page_y_(page_y),
       client_x_(client_x),
       client_y_(client_y),
-      identifier_(GetNextUniqueTouchEventID()) {
+      identifier_(GetNextUniqueTouchEventID()),
+      current_target_points_(std::move(current_target_points)) {
   event_type_ = EventType::kTouchEvent;
 }
 
@@ -44,6 +46,42 @@ TouchEvent::TouchEvent(const std::string& event_name,
       is_multi_touch_(true),
       targets_touches_(targets_touches) {
   event_type_ = EventType::kTouchEvent;
+}
+
+void TouchEvent::HandleEventBaseDetail(bool is_core_event) {
+  Event::HandleEventBaseDetail(is_core_event);
+  if (current_target_points_.empty() || !current_target_ ||
+      !detail_.IsTable()) {
+    return;
+  }
+
+  BASE_STATIC_STRING_DECL(kChangedTouches, "changedTouches");
+  BASE_STATIC_STRING_DECL(kCurrentTargetX, "currentTargetX");
+  BASE_STATIC_STRING_DECL(kCurrentTargetY, "currentTargetY");
+  const lepus::Value& changed_touches =
+      detail_.Table()->GetValue(kChangedTouches);
+  if (!changed_touches.IsArrayOrJSArray() || changed_touches.GetLength() == 0) {
+    return;
+  }
+  lepus::Value mutable_changed_touches = lepus::Value::Clone(changed_touches);
+  lepus::Value touch = mutable_changed_touches.GetProperty(0);
+  if (!touch.IsTable()) {
+    return;
+  }
+
+  touch.Table()->Erase(kCurrentTargetX);
+  touch.Table()->Erase(kCurrentTargetY);
+  const std::string current_target_id = current_target_->GetUniqueID();
+  const float layouts_unit_per_px = current_target_->GetLayoutsUnitPerPx();
+  for (const auto& point : current_target_points_) {
+    if (std::to_string(point.element_id) == current_target_id) {
+      touch.Table()->SetValue(kCurrentTargetX, point.x / layouts_unit_per_px);
+      touch.Table()->SetValue(kCurrentTargetY, point.y / layouts_unit_per_px);
+      break;
+    }
+  }
+  detail_.Table()->SetValue(kChangedTouches,
+                            std::move(mutable_changed_touches));
 }
 
 void TouchEvent::HandleEventCustomDetail() {
