@@ -131,6 +131,9 @@ class UIOwner {
   UIIntersectionObserver* GetUIIntersectionObserver(
       int intersection_observer_id);
   void NotifyUIScroll();
+  void UpdatePositionChangeListener(int32_t sign, bool listens);
+  void RequestPositionChangeEvents();
+  void DispatchPositionChangeEventsNow();
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
   void EmulateTouch(const std::string& event_type, int x, int y,
@@ -241,6 +244,8 @@ class UIOwner {
   LynxImageConfig* GetLynxImageConfig() const;
 
  private:
+  struct PositionChangeDispatchState;
+
   static const std::unordered_map<std::string, UICreatorFunc> behaviors_;
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value AttachPageRoot(napi_env env, napi_callback_info info);
@@ -275,6 +280,7 @@ class UIOwner {
   float CalculateKeyboardAvoidDistance(UIBase* owner);
   float GetKeyboardAvoidingScreenBottom();
   void ResetKeyboardAvoidingTargetIfNeeded(int32_t sign);
+  bool IsAttachedToRoot(UIBase* ui) const;
 
   int GetJSNodeType(int sign, const std::string& tag) const;
   static constexpr int32_t kInvalidKeyboardAvoidingSign = -2;
@@ -284,6 +290,8 @@ class UIOwner {
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> layout_changed_nodes_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> keyboard_event_observers_;
   std::unordered_set<UIBase*> window_state_listeners_;
+  std::unordered_set<int32_t> position_change_listeners_;
+  std::shared_ptr<PositionChangeDispatchState> position_change_dispatch_state_;
 
   napi_env env_{nullptr};
   napi_ref js_this_{nullptr};
