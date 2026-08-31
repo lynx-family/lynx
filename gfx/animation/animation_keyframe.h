@@ -16,6 +16,7 @@
 #include "base/include/fml/time/time_delta.h"
 #include "gfx/animation/timing_function.h"
 #include "gfx/geometry/length.h"
+#include "gfx/geometry/transform_operations.h"
 
 namespace lynx {
 namespace gfx {
@@ -69,13 +70,21 @@ class Keyframe {
 
 class FloatKeyframe : public Keyframe {
  public:
-  float Value() const { return value_; }
+  static std::unique_ptr<FloatKeyframe> Create(
+      fml::TimeDelta time,
+      std::unique_ptr<TimingFunction> timing_function = nullptr) {
+    return std::make_unique<FloatKeyframe>(time, std::move(timing_function));
+  }
 
- protected:
   FloatKeyframe(fml::TimeDelta time,
                 std::unique_ptr<TimingFunction> timing_function)
       : Keyframe(time, std::move(timing_function)) {}
 
+  float Value() const { return value_; }
+
+  void SetValue(float value) { SetFloatValue(value); }
+
+ protected:
   void SetFloatValue(float value) {
     value_ = value;
     MarkNonEmpty();
@@ -87,13 +96,21 @@ class FloatKeyframe : public Keyframe {
 
 class ColorKeyframe : public Keyframe {
  public:
-  uint32_t Value() const { return value_; }
+  static std::unique_ptr<ColorKeyframe> Create(
+      fml::TimeDelta time,
+      std::unique_ptr<TimingFunction> timing_function = nullptr) {
+    return std::make_unique<ColorKeyframe>(time, std::move(timing_function));
+  }
 
- protected:
   ColorKeyframe(fml::TimeDelta time,
                 std::unique_ptr<TimingFunction> timing_function)
       : Keyframe(time, std::move(timing_function)) {}
 
+  uint32_t Value() const { return value_; }
+
+  void SetValue(uint32_t value) { SetColorValue(value); }
+
+ protected:
   void SetColorValue(uint32_t value) {
     value_ = value;
     MarkNonEmpty();
@@ -101,6 +118,29 @@ class ColorKeyframe : public Keyframe {
 
  private:
   uint32_t value_{0};
+};
+
+class IntKeyframe : public Keyframe {
+ public:
+  static std::unique_ptr<IntKeyframe> Create(
+      fml::TimeDelta time,
+      std::unique_ptr<TimingFunction> timing_function = nullptr) {
+    return std::make_unique<IntKeyframe>(time, std::move(timing_function));
+  }
+
+  IntKeyframe(fml::TimeDelta time,
+              std::unique_ptr<TimingFunction> timing_function)
+      : Keyframe(time, std::move(timing_function)) {}
+
+  int32_t Value() const { return value_; }
+
+  void SetValue(int32_t value) {
+    value_ = value;
+    MarkNonEmpty();
+  }
+
+ private:
+  int32_t value_{0};
 };
 
 class LengthKeyframe : public Keyframe {
@@ -147,6 +187,42 @@ class Vec2Keyframe : public Keyframe {
  private:
   bool has_resolved_value_{false};
   Vec2Tagged resolved_value_{};
+};
+
+class TransformKeyframe : public Keyframe {
+ public:
+  static std::unique_ptr<TransformKeyframe> Create(
+      fml::TimeDelta time,
+      std::unique_ptr<TimingFunction> timing_function = nullptr) {
+    return std::make_unique<TransformKeyframe>(time,
+                                               std::move(timing_function));
+  }
+
+  TransformKeyframe(fml::TimeDelta time,
+                    std::unique_ptr<TimingFunction> timing_function)
+      : Keyframe(time, std::move(timing_function)) {}
+
+  bool HasResolvedValue() const { return has_resolved_value_; }
+  const TransformOperations& ResolvedValue() const { return resolved_value_; }
+
+  void SetResolvedValue(const TransformOperations& value) {
+    resolved_value_ = value;
+    has_resolved_value_ = true;
+    MarkNonEmpty();
+  }
+
+  void SetResolvedValue(TransformOperations&& value) {
+    resolved_value_ = std::move(value);
+    has_resolved_value_ = true;
+    MarkNonEmpty();
+  }
+
+ protected:
+  void ClearResolvedValue() { has_resolved_value_ = false; }
+
+ private:
+  bool has_resolved_value_{false};
+  TransformOperations resolved_value_{};
 };
 
 class FilterKeyframe : public Keyframe {

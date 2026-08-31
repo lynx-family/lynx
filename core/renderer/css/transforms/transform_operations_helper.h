@@ -26,12 +26,6 @@ struct ResolvedTransformOperations {
   gfx::TransformOperations operations;
   bool depends_on_element_size{false};
   uint32_t unit_dependencies{0};
-
-  bool DependsOnElementSize() const { return depends_on_element_size; }
-
-  bool DependsOnUnit(tasm::CSSValuePattern pattern) const {
-    return (unit_dependencies & (1u << static_cast<uint32_t>(pattern))) != 0;
-  }
 };
 
 // CSS-facing conversions only. Transform storage and math live in gfx/geometry.

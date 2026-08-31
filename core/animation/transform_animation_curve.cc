@@ -47,18 +47,19 @@ std::unique_ptr<TransformKeyframe> TransformKeyframe::Create(
 
 TransformKeyframe::TransformKeyframe(
     fml::TimeDelta time, std::unique_ptr<gfx::TimingFunction> timing_function)
-    : gfx::Keyframe(time, std::move(timing_function)) {}
+    : gfx::TransformKeyframe(time, std::move(timing_function)) {}
 
 void TransformKeyframe::NotifyElementSizeUpdated() {
-  if (value_ && value_->DependsOnElementSize()) {
-    value_.reset();
+  if (HasResolvedValue() && depends_on_element_size_) {
+    ClearResolvedValue();
   }
 }
 
 void TransformKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
-  if (value_ && type < static_cast<uint32_t>(tasm::CSSValuePattern::COUNT) &&
-      value_->DependsOnUnit(static_cast<tasm::CSSValuePattern>(type))) {
-    value_.reset();
+  if (HasResolvedValue() &&
+      type < static_cast<uint32_t>(tasm::CSSValuePattern::COUNT) &&
+      (unit_dependencies_ & (1u << type)) != 0) {
+    ClearResolvedValue();
   }
 }
 
@@ -66,23 +67,24 @@ bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
                                  const tasm::CSSValue& value,
                                  tasm::Element* element) {
   css_value_ = value;
+  ClearResolvedValue();
+  depends_on_element_size_ = false;
+  unit_dependencies_ = 0;
   auto keyframe_transform_value = value;
   if (element != nullptr) {
     keyframe_transform_value = HandleCSSVariableValueIfNeed(id, value, element);
   }
   if (!keyframe_transform_value.IsArray()) {
-    value_.reset();
     return false;
   }
   if (element != nullptr) {
     auto resolved =
         ResolveTransformForElement(keyframe_transform_value, element);
-    value_ = resolved
-                 ? std::make_unique<transforms::ResolvedTransformOperations>(
-                       std::move(*resolved))
-                 : nullptr;
-  } else {
-    value_.reset();
+    if (resolved) {
+      depends_on_element_size_ = resolved->depends_on_element_size;
+      unit_dependencies_ = resolved->unit_dependencies;
+      SetResolvedValue(std::move(resolved->operations));
+    }
   }
   MarkNonEmpty();
   return true;
@@ -90,7 +92,7 @@ bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
 
 bool TransformKeyframe::EnsureResolvedValue(tasm::CSSPropertyID id,
                                             tasm::Element* element) {
-  if (value_) {
+  if (HasResolvedValue()) {
     return true;
   }
   auto keyframe_transform_value =
@@ -102,8 +104,9 @@ bool TransformKeyframe::EnsureResolvedValue(tasm::CSSPropertyID id,
   if (!resolved) {
     return false;
   }
-  value_ = std::make_unique<transforms::ResolvedTransformOperations>(
-      std::move(*resolved));
+  depends_on_element_size_ = resolved->depends_on_element_size;
+  unit_dependencies_ = resolved->unit_dependencies;
+  SetResolvedValue(std::move(resolved->operations));
   return true;
 }
 
@@ -177,9 +180,10 @@ tasm::CSSValue KeyframedTransformAnimationCurve::GetValue(
   }
 
   const gfx::TransformOperations& start_transform =
-      keyframe->IsEmpty() ? underlying_transform : *keyframe->Value();
+      keyframe->IsEmpty() ? underlying_transform : keyframe->ResolvedValue();
   const gfx::TransformOperations& end_transform =
-      keyframe_next->IsEmpty() ? underlying_transform : *keyframe_next->Value();
+      keyframe_next->IsEmpty() ? underlying_transform
+                               : keyframe_next->ResolvedValue();
 
   const auto layout_result = element_->layout_result();
   gfx::TransformOperations blended_result =
