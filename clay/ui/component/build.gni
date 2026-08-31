@@ -133,6 +133,7 @@ ui_component_sources = [
   "view_registry.h",
   "view_tree_observer.cc",
   "view_tree_observer.h",
+  "xelement_tag_mapping.h",
 ]
 
 if (is_mac || is_win) {

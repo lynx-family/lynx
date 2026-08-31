@@ -27,6 +27,7 @@
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
+#include "clay/ui/component/xelement_tag_mapping.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "clay/ui/shadow/bundle.h"
 #ifdef ENABLE_NET_LOADER
@@ -150,8 +151,9 @@ bool ViewContext::CreateView(int id, const std::string& tag_name) {
     page_view_->SetID(id);
     return true;
   }
+  const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
   BaseView* view = nullptr;
-  view = ViewRegistry::GetInstance()->CreateView(id, tag_name, page_view_);
+  view = ViewRegistry::GetInstance()->CreateView(id, resolved_tag, page_view_);
 
   if (!view) {
     FML_DLOG(ERROR) << "unsupported view type: " << tag_name
@@ -330,8 +332,9 @@ ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
               tag_name.c_str());
   CTX_LOG << "CreateLayoutNode id:" << id << " tag:" << tag_name;
 
+  const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
   auto node = ViewRegistry::GetInstance()->CreateShadowNode(
-      id, shadow_node_owner_, tag_name);
+      id, shadow_node_owner_, resolved_tag);
   if (node) {
     shadow_node_owner_->AddNode(id, node);
   } else if (allow_inline) {
@@ -345,7 +348,21 @@ ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
 }
 
 int32_t ViewContext::GetTagInfo(const std::string& tag_name) {
-  return ViewRegistry::GetInstance()->GetTagInfo(tag_name, page_view_);
+  const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
+  return ViewRegistry::GetInstance()->GetTagInfo(resolved_tag, page_view_);
+}
+
+std::string ViewContext::ResolveRegisteredXElementTag(
+    const std::string& tag_name) const {
+  if (!enable_sync_xelement_registry_) {
+    return tag_name;
+  }
+  const auto resolved_tag = ResolveXElementTag(tag_name);
+  if (ViewRegistry::GetInstance()->HasView(resolved_tag) ||
+      IsInternalPlatformViewTag(resolved_tag)) {
+    return resolved_tag;
+  }
+  return tag_name;
 }
 
 void ViewContext::AddShadowNode(int id, int parent_id, int index) {

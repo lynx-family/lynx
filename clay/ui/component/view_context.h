@@ -115,6 +115,10 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   int32_t GetTagInfo(const std::string& tag_name);
 
+  void SetEnableSyncXElementRegistry(bool enable) {
+    enable_sync_xelement_registry_ = enable;
+  }
+
   void AddShadowNode(int id, int parent_id, int index);
 
   void RemoveShadowNode(int id);
@@ -343,6 +347,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // missing for now.
   void ConsumeInitialAttributes(BaseView* view);
 
+  std::string ResolveRegisteredXElementTag(const std::string& tag_name) const;
+
   PageView* page_view_;
 
   std::unordered_map<int, BaseView*> view_map_;
@@ -359,6 +365,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   std::unordered_set<int32_t> external_memory_report_candidate_ids_;
   bool external_memory_report_pending_ = false;
+  bool enable_sync_xelement_registry_ = false;
 
   fml::WeakPtrFactory<ViewContext> weak_factory_;
   std::unique_ptr<CustomFilterDecoder> custom_filter_decoder_;
