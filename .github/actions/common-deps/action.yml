@@ -34,7 +34,7 @@ runs:
 
     - name: Setup cache action
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
       with:
         path: ~/.habitat_cache
         key: hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
@@ -43,7 +43,7 @@ runs:
 
     - name: Setup cache action
       if: ${{ inputs.cache-backend == 'github' }}
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/.habitat_cache
         key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
@@ -58,7 +58,7 @@ runs:
 
     - name: Python Requirements Cache
       if: ${{ inputs.cache-backend == 'lynx-infra' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
       with:
         path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
         key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/tools/vpython_tools/requirements.txt', 'lynx/testing/integration_test/test_script/requirements.txt') }}
@@ -67,7 +67,7 @@ runs:
 
     - name: Cache pnpm Dependencies
       if: ${{ inputs.cache-backend == 'lynx-infra' && inputs.cache-key-prefix == '' }}
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
       with:
         # set pnpm store path to a specific value since we can't get it via `pnpm store path` before pnpm is setup.
         path: ~/.local/share/pnpm/store
@@ -76,7 +76,7 @@ runs:
           pnpm-${{ runner.os }}-
 
     - name: Install Python dependencies
-      uses: nick-fields/retry@v4
+      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
       with:
         max_attempts: 3
         retry_wait_seconds: 3

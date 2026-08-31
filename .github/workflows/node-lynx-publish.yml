@@ -8,18 +8,23 @@ on:
         required: false
         default: 'latest'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   node-lynx-linux-build:
     runs-on: lynx-ubuntu-22.04-large
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version-file: 'lynx/.node-version'
+
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
@@ -41,7 +46,7 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx
           tools/env.sh pnpm --filter @lynx-js/node-lynx run test
       - name: Upload Linux Node Lynx Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: node-lynx-linux-x64
           path: lynx/oliver/node-lynx/platform/linux-x64/node_lynx.node
@@ -52,12 +57,14 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version-file: 'lynx/.node-version'
+
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
@@ -83,7 +90,7 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx
           tools/env.sh pnpm --filter @lynx-js/node-lynx run test
       - name: Upload Darwin Node Lynx Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: node-lynx-darwin-arm64
           path: lynx/oliver/node-lynx/platform/darwin-arm64/node_lynx.node
@@ -100,24 +107,26 @@ jobs:
       id-token: write
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version-file: 'lynx/.node-version'
+
           registry-url: 'https://registry.npmjs.org'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
           target: tasm
       - name: Download Linux Node Lynx Artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: node-lynx-linux-x64
           path: lynx/oliver/node-lynx/platform/linux-x64
       - name: Download Darwin Node Lynx Artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: node-lynx-darwin-arm64
           path: lynx/oliver/node-lynx/platform/darwin-arm64

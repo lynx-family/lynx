@@ -19,21 +19,23 @@ jobs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1.4.1
+        uses: kielabokkie/ssh-key-and-known-hosts-action@ff80dac93ba2346f20dbc7f331286c400f0109f7 # v1.6.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
           ssh-host: github.com
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version-file: 'lynx/.node-version'
+
           registry-url: 'https://registry.npmjs.org'
       - name: Build
         run: |-
@@ -68,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger lynx-website sync
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: lynx-family/lynx-website
