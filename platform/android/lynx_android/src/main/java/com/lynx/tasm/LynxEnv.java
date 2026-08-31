@@ -192,6 +192,8 @@ public class LynxEnv {
 
   protected final Object mLazyInitLock = new Object();
 
+  private volatile boolean mShouldEnableAllDevToolSessions = false;
+
   private static ILynxDevToolService devtoolService = null;
   private static ILynxDevToolService getDevtoolService() {
     if (devtoolService == null) {
@@ -772,11 +774,28 @@ public class LynxEnv {
     return hasInit.get() && mIsNativeLibraryLoaded && mIsNativeUIThreadInited;
   }
 
+  /**
+   * Applies the development DevTool bootstrap profile before {@link #init}.
+   *
+   * <p>The DevTool service is initialized during {@link #init}, so this method only stores the
+   * request to enable all DevTool sessions.
+   */
+  public void prepareDevToolForDevelopmentBeforeInit() {
+    DevToolSettings.inst().bootstrap().applyDevelopmentDefaultsIfUnset();
+    mShouldEnableAllDevToolSessions = true;
+  }
+
   protected void initDevtoolEnv() {
     if (isLynxDebugEnabled() && mContext != null) {
       try {
-        if (getDevtoolService() != null) {
-          getDevtoolService().devtoolEnvInit(mContext);
+        ILynxDevToolService devToolService = getDevtoolService();
+        if (devToolService != null) {
+          devToolService.devtoolEnvInit(mContext);
+          if (mShouldEnableAllDevToolSessions) {
+            // Run the pre-init request after DevTool env initialization succeeds.
+            devToolService.enableAllSessions();
+            mShouldEnableAllDevToolSessions = false;
+          }
         } else {
           LLog.w(TAG, "DevtoolService not yet registered when initDevtoolEnv");
         }
