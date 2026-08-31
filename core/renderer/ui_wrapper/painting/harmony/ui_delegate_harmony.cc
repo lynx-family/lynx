@@ -319,6 +319,8 @@ void UIDelegateHarmony::OnPageConfigDecoded(
         config->GetEnableExposureWhenReload());
     lynx_context->SetEnableTransformedTouchPosition(
         config->GetEnableTransformedTouchPosition());
+    lynx_context->SetEnableCurrentTargetTouchPosition(
+        config->GetEnableCurrentTargetTouchPosition());
   }
 }
 

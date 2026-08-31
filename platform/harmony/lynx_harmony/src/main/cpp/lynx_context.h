@@ -131,11 +131,7 @@ class LynxContext {
   }
 
   void SetWindowInfo(int32_t window_id, int32_t window_left_px,
-                     int32_t window_top_px) {
-    window_id_ = window_id;
-    window_left_px_ = window_left_px;
-    window_top_px_ = window_top_px;
-  }
+                     int32_t window_top_px);
 
   bool HasWindowInfo() const { return window_id_ >= 0; }
   int32_t WindowId() const { return window_id_; }
@@ -205,6 +201,11 @@ class LynxContext {
       bool enable_transformed_touch_position);
 
   BASE_EXPORT bool EnableTransformedTouchPosition();
+
+  void SetEnableCurrentTargetTouchPosition(
+      bool enable_current_target_touch_position);
+
+  bool EnableCurrentTargetTouchPosition() const;
 
   void CallJSApiCallbackWithValue(int32_t callback_id,
                                   const lepus::Value& params) const;
@@ -426,6 +427,7 @@ class LynxContext {
   bool enable_harmony_visible_area_change_for_exposure_{false};
   bool enable_exposure_when_reload_{false};
   bool enable_transformed_touch_position_{false};
+  bool enable_current_target_touch_position_{false};
 };
 
 }  // namespace harmony

@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "core/base/lynx_export.h"
+#include "core/public/event/touch_event_data.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
@@ -181,6 +182,10 @@ class EventDispatcher {
 
   void GetTargetPoint(EventTarget* active_target, float target_point[2],
                       float page_point[2]);
+
+  lynx::event::TouchEventTargetPoints GetCurrentTargetPoints(
+      EventTarget* active_target, float page_point[2],
+      const std::string& event_name);
 
   void GetPagePoint(float page_point[2], float node_point[2]);
 

@@ -1,6 +1,7 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:ignore positionchange
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
@@ -25,6 +26,7 @@
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
@@ -351,27 +353,64 @@ void UIBase::UpdateLayout(float left, float top, float width, float height,
 
 void UIBase::SendLayoutChangeEvent() {
   if (has_layout_change_event_) {
-    float result[4] = {0, 0, width_, height_};
-    auto ret = lepus::Dictionary::Create();
-    GetBoundingClientRect(result);
-    ret->SetValue("id", id_selector_);
-    ret->SetValue("left", result[0]);
-    ret->SetValue("top", result[1]);
-    ret->SetValue("right", result[2]);
-    ret->SetValue("bottom", result[3]);
-    ret->SetValue("width", result[2] - result[0]);
-    ret->SetValue("height", result[3] - result[1]);
-    ret->SetValue("dataset", dataset_);
-    // Only UIFrame needs extra layoutchange detail. Adding a virtual method to
-    // UIBase would increase binary size; use a type check until more subclasses
-    // share this need, at which point a virtual override is more appropriate.
-    if (tag_ == UIFrame::kTag) {
-      static_cast<UIFrame*>(this)->BuildLayoutChangeEventDetail(*ret);
-    }
-    CustomEvent layout_change_event = {sign_, "layoutchange", "detail",
-                                       lepus::Value(std::move(ret))};
-    context_->SendEvent(layout_change_event);
+    SendPositionEvent("layoutchange", false);
   }
+}
+
+void UIBase::SendPositionChangeEvent() {
+  SendPositionEvent("positionchange", true);
+}
+
+void UIBase::SendPositionEvent(const char* event_name,
+                               bool require_window_position) {
+  float result[4] = {0, 0, width_, height_};
+  auto ret = lepus::Dictionary::Create();
+  GetBoundingClientRect(result);
+  ret->SetValue("id", id_selector_);
+  ret->SetValue("left", result[0]);
+  ret->SetValue("top", result[1]);
+  ret->SetValue("right", result[2]);
+  ret->SetValue("bottom", result[3]);
+  ret->SetValue("width", result[2] - result[0]);
+  ret->SetValue("height", result[3] - result[1]);
+  auto* root = context_->Root();
+  const bool has_window_position = root != nullptr &&
+                                   root->IsAttachedToViewTree() &&
+                                   context_->HasWindowInfo();
+  if (has_window_position) {
+    float root_screen_offset[2] = {0.f, 0.f};
+    root->GetOffsetToScreen(root_screen_offset);
+    float scaled_density = context_->ScaledDensity();
+    if (!std::isfinite(scaled_density) || scaled_density <= 0.f) {
+      scaled_density = 1.f;
+    }
+    const float window_x = result[0] + root_screen_offset[0] -
+                           context_->WindowLeftPx() / scaled_density;
+    const float window_y = result[1] + root_screen_offset[1] -
+                           context_->WindowTopPx() / scaled_density;
+    if (require_window_position) {
+      const std::array<float, 4> rect = {
+          window_x, window_y, result[2] - result[0], result[3] - result[1]};
+      if (last_position_change_rect_ == rect) {
+        return;
+      }
+      last_position_change_rect_ = rect;
+    }
+    ret->SetValue("windowX", window_x);
+    ret->SetValue("windowY", window_y);
+  } else if (require_window_position) {
+    return;
+  }
+  ret->SetValue("dataset", dataset_);
+  // Only UIFrame needs extra layoutchange detail. Adding a virtual method to
+  // UIBase would increase binary size; use a type check until more subclasses
+  // share this need, at which point a virtual override is more appropriate.
+  if (tag_ == UIFrame::kTag) {
+    static_cast<UIFrame*>(this)->BuildLayoutChangeEventDetail(*ret);
+  }
+  CustomEvent event = {sign_, event_name, "detail",
+                       lepus::Value(std::move(ret))};
+  context_->SendEvent(event);
 }
 
 void UIBase::SetParent(UIBase* parent) { parent_ = parent; }
@@ -1977,12 +2016,20 @@ void UIBase::SetImageRendering(const lepus::Value& value) {
 
 void UIBase::SetEvents(const std::vector<lepus::Value>& events) {
   events_.clear();
+  response_chain_events_.clear();
+  bool has_position_change_event = false;
   for (const auto& e : events) {
     if (!e.IsArray()) {
       continue;
     }
     const auto& name = e.Array()->get(0).StdString();
     events_.emplace_back(name);
+    const bool is_global_bind =
+        e.Array()->size() > 1 &&
+        e.Array()->get(1).StdString() == tasm::kEventGlobalBind;
+    if (!is_global_bind) {
+      response_chain_events_.emplace_back(name);
+    }
     if (!has_appear_event_) {
       has_appear_event_ = name == "uiappear";
     }
@@ -1995,7 +2042,18 @@ void UIBase::SetEvents(const std::vector<lepus::Value>& events) {
     if (!has_layout_change_event_ && name == "layoutchange") {
       has_layout_change_event_ = true;
     }
+    has_position_change_event |= !is_global_bind && name == "positionchange";
   }
+  last_position_change_rect_.reset();
+  if (context_ != nullptr && context_->GetUIOwner() != nullptr) {
+    context_->GetUIOwner()->UpdatePositionChangeListener(
+        sign_, has_position_change_event);
+  }
+}
+
+bool UIBase::HasResponseChainEvent(const std::string& event_name) const {
+  return std::find(response_chain_events_.begin(), response_chain_events_.end(),
+                   event_name) != response_chain_events_.end();
 }
 
 UIBase* UIBase::FindViewById(const std::string& id, bool by_ref_id,
