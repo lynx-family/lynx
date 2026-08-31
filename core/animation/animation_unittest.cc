@@ -66,15 +66,14 @@ class AnimationTest : public ::testing::Test {
         animation::KeyframedOpacityAnimationCurve::Create());
 
     // keyframe 0% opacity 1
-    auto test_frame1 =
-        animation::OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-    test_frame1->SetOpacity(0.0f);
+    auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame1->SetValue(0.0f);
     test_curve->AddKeyframe(std::move(test_frame1));
     test_curve->type_ = animation::AnimationCurve::CurveType::OPACITY;
     // keyframe 100% opacity 0
-    auto test_frame2 = animation::OpacityKeyframe::Create(
-        fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame2->SetOpacity(1.0f);
+    auto test_frame2 =
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame2->SetValue(1.0f);
     test_curve->AddKeyframe(std::move(test_frame2));
     std::unique_ptr<animation::KeyframeModel> new_model =
         animation::KeyframeModel::Create(std::move(test_curve));

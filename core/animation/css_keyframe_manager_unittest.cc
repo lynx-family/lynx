@@ -72,14 +72,13 @@ class CSSKeyframeManagerTest : public ::testing::Test {
     std::unique_ptr<animation::KeyframedOpacityAnimationCurve> test_curve(
         animation::KeyframedOpacityAnimationCurve::Create());
 
-    auto test_frame1 =
-        animation::OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-    test_frame1->SetOpacity(1.0f);
+    auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame1->SetValue(1.0f);
     test_curve->AddKeyframe(std::move(test_frame1));
     test_curve->type_ = animation::AnimationCurve::CurveType::OPACITY;
-    auto test_frame2 = animation::OpacityKeyframe::Create(
-        fml::TimeDelta::FromSecondsF(4.0), nullptr);
-    test_frame2->SetOpacity(0.0f);
+    auto test_frame2 =
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(4.0), nullptr);
+    test_frame2->SetValue(0.0f);
     test_curve->AddKeyframe(std::move(test_frame2));
     std::unique_ptr<animation::KeyframeModel> new_model =
         animation::KeyframeModel::Create(std::move(test_curve));
@@ -487,6 +486,24 @@ TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
   EXPECT_EQ(init_success4, false);
 }
 
+TEST_F(CSSKeyframeManagerTest, OpacityKeyframeRejectsNonNumberLikeLegacy) {
+  auto test_element = manager->CreateFiberElement("view");
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  const auto type = animation::AnimationCurve::CurveType::OPACITY;
+  const auto id = tasm::kPropertyIDOpacity;
+
+  auto rem_animation = InitTestAnimation();
+  EXPECT_FALSE(test_manager->InitCurveAndModelAndKeyframe(
+      type, rem_animation.get(), 0.0, gfx::LinearTimingFunction::Create(), id,
+      tasm::CSSValue(2.f, tasm::CSSValuePattern::REM)));
+
+  auto calc_animation = InitTestAnimation();
+  EXPECT_FALSE(test_manager->InitCurveAndModelAndKeyframe(
+      type, calc_animation.get(), 0.0, gfx::LinearTimingFunction::Create(), id,
+      tasm::CSSValue("calc(1rem + 10px)", tasm::CSSValuePattern::CALC,
+                     tasm::CSSValueType::DEFAULT)));
+}
+
 TEST_F(CSSKeyframeManagerTest, GetDefaultValue) {
   auto test_element = InitElement();
   auto test_manager = InitTestKeyframeManager(test_element.get());
@@ -496,15 +513,13 @@ TEST_F(CSSKeyframeManagerTest, GetDefaultValue) {
 
   auto default_value2 =
       test_manager->GetDefaultValue(starlight::AnimationPropertyType::kOpacity);
-  EXPECT_EQ(default_value2,
-            tasm::CSSValue(animation::OpacityKeyframe::kDefaultOpacity,
-                           tasm::CSSValuePattern::NUMBER));
+  EXPECT_EQ(default_value2, tasm::CSSValue(animation::kDefaultOpacity,
+                                           tasm::CSSValuePattern::NUMBER));
 
   auto default_value3 = test_manager->GetDefaultValue(
       starlight::AnimationPropertyType::kBackgroundColor);
-  EXPECT_EQ(default_value3,
-            tasm::CSSValue(animation::ColorKeyframe::kDefaultBackgroundColor,
-                           tasm::CSSValuePattern::NUMBER));
+  EXPECT_EQ(default_value3, tasm::CSSValue(animation::kDefaultBackgroundColor,
+                                           tasm::CSSValuePattern::NUMBER));
 
   auto default_value4 =
       test_manager->GetDefaultValue(starlight::AnimationPropertyType::kNone);
@@ -1173,7 +1188,7 @@ TEST_F(CSSKeyframeManagerTest,
       model->animation_curve());
   ASSERT_EQ(2U, curve->keyframes_.size());
   auto* from_keyframe =
-      static_cast<animation::OpacityKeyframe*>(curve->keyframes_[0].get());
+      static_cast<gfx::FloatKeyframe*>(curve->keyframes_[0].get());
   EXPECT_FLOAT_EQ(0.8f, from_keyframe->Value());
 }
 
@@ -1208,7 +1223,7 @@ TEST_F(
       model->animation_curve());
   ASSERT_EQ(2U, curve->keyframes_.size());
   auto* from_keyframe =
-      static_cast<animation::OpacityKeyframe*>(curve->keyframes_[0].get());
+      static_cast<gfx::FloatKeyframe*>(curve->keyframes_[0].get());
   EXPECT_FLOAT_EQ(0.8f, from_keyframe->Value());
 }
 

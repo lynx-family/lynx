@@ -232,13 +232,13 @@ TEST_F(KeyframedAnimationCurveTest, TwoOpacityKeyframe) {
   std::unique_ptr<KeyframedOpacityAnimationCurve> curve(
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
-  auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetOpacity(1.0f);
+  auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame2));
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
   fml::TimeDelta value2 = fml::TimeDelta::FromSecondsF(0.5f);
@@ -257,10 +257,10 @@ TEST_F(KeyframedAnimationCurveTest,
   curve->SetUnderlyingValue(
       ::lynx::tasm::CSSValue(1.0f, ::lynx::tasm::CSSValuePattern::NUMBER));
 
-  curve->AddKeyframe(OpacityKeyframe::Create(fml::TimeDelta(), nullptr));
+  curve->AddKeyframe(gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr));
   auto end_frame =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  end_frame->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  end_frame->SetValue(0.0f);
   curve->AddKeyframe(std::move(end_frame));
 
   fml::TimeDelta first_iteration_time = fml::TimeDelta::FromSecondsF(0.5f);
@@ -272,41 +272,23 @@ TEST_F(KeyframedAnimationCurveTest,
   EXPECT_EQ(first_iteration_value, curve->GetValue(second_iteration_time));
 }
 
-TEST_F(KeyframedAnimationCurveTest, OpacityKeyframeRejectsNonNumberLikeLegacy) {
-  auto test_element = InitFiberElement();
-
-  auto rem_frame = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  EXPECT_FALSE(rem_frame->SetValue(
-      ::lynx::tasm::kPropertyIDOpacity,
-      ::lynx::tasm::CSSValue(2.f, ::lynx::tasm::CSSValuePattern::REM),
-      test_element.get()));
-
-  auto calc_frame = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  EXPECT_FALSE(calc_frame->SetValue(
-      ::lynx::tasm::kPropertyIDOpacity,
-      ::lynx::tasm::CSSValue("calc(1rem + 10px)",
-                             ::lynx::tasm::CSSValuePattern::CALC,
-                             ::lynx::tasm::CSSValueType::DEFAULT),
-      test_element.get()));
-}
-
 // Tests that a opacity animation with three keyframes works as expected.
 TEST_F(KeyframedAnimationCurveTest, ThreeOpacityKeyframe) {
   std::unique_ptr<KeyframedOpacityAnimationCurve> curve(
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
-  auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetOpacity(1.0f);
+  auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetOpacity(0.4f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(0.4f);
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame3->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame3->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame3));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -327,23 +309,23 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedOpacityKeyTimes) {
   std::unique_ptr<KeyframedOpacityAnimationCurve> curve(
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
-  auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetOpacity(0.0f);
+  auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame3->SetOpacity(1.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame3->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame3));
 
   auto test_frame4 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame4->SetOpacity(1.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame4->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame4));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -369,13 +351,13 @@ TEST_F(KeyframedAnimationCurveTest, TwoColorKeyFrame) {
       KeyframedColorAnimationCurve::Create(
           starlight::XAnimationColorInterpolationType::kSRGB));
   curve->type_ = AnimationCurve::CurveType::BGCOLOR;
-  auto test_frame1 = ColorKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetColor(4294901760);
+  auto test_frame1 = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(4294901760);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetColor(4278255360);
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(4278255360);
   curve->AddKeyframe(std::move(test_frame2));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -398,18 +380,18 @@ TEST_F(KeyframedAnimationCurveTest, ThreeColorKeyFrame) {
       KeyframedColorAnimationCurve::Create(
           starlight::XAnimationColorInterpolationType::kSRGB));
   curve->type_ = AnimationCurve::CurveType::BGCOLOR;
-  auto test_frame1 = ColorKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetColor(4294901760);  // ARGB(255, 255, 0, 0)
+  auto test_frame1 = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(4294901760);  // ARGB(255, 255, 0, 0)
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetColor(4278255360);  // ARGB(255, 0, 255, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(4278255360);  // ARGB(255, 0, 255, 0)
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame3->SetColor(4278190335);  // ARGB(255, 0, 0, 255)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame3->SetValue(4278190335);  // ARGB(255, 0, 0, 255)
   curve->AddKeyframe(std::move(test_frame3));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -441,23 +423,23 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedColorKeyFrame) {
       KeyframedColorAnimationCurve::Create(
           starlight::XAnimationColorInterpolationType::kSRGB));
   curve->type_ = AnimationCurve::CurveType::BGCOLOR;
-  auto test_frame1 = ColorKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetColor(4282384384);  // ARGB(255, 64, 0, 0)
+  auto test_frame1 = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(4282384384);  // ARGB(255, 64, 0, 0)
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetColor(4282384384);  // ARGB(255, 64, 0, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(4282384384);  // ARGB(255, 64, 0, 0)
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame3->SetColor(4290772992);  // ARGB(255, 192, 0, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame3->SetValue(4290772992);  // ARGB(255, 192, 0, 0)
   curve->AddKeyframe(std::move(test_frame3));
 
   auto test_frame4 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame4->SetColor(4290772992);  // ARGB(255, 192, 0, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame4->SetValue(4290772992);  // ARGB(255, 192, 0, 0)
   curve->AddKeyframe(std::move(test_frame4));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -536,13 +518,13 @@ TEST_F(KeyframedAnimationCurveTest, UnsortedKeyframes) {
 TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
   {
     std::vector<std::unique_ptr<gfx::Keyframe>> keyframes;
-    auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-    test_frame1->SetOpacity(1.0f);
+    auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame1->SetValue(1.0f);
     keyframes.emplace_back(std::move(test_frame1));
 
     auto test_frame2 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame2->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame2->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame2));
     auto s1 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 0,
                                             fml::TimeDelta::FromSecondsF(1));
@@ -550,8 +532,8 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
     EXPECT_TRUE(s1.progress == 1.0);
 
     auto test_frame3 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame3->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame3->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame3));
     auto s2 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 1,
                                             fml::TimeDelta::FromSecondsF(1));
@@ -562,13 +544,13 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
 
   {
     std::vector<std::unique_ptr<gfx::Keyframe>> keyframes;
-    auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-    test_frame1->SetOpacity(1.0f);
+    auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame1->SetValue(1.0f);
     keyframes.emplace_back(std::move(test_frame1));
 
     auto test_frame2 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame2->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame2->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame2));
     auto s3 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 2,
                                             fml::TimeDelta::FromSecondsF(0.5));
@@ -576,8 +558,8 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
     EXPECT_TRUE(s3.progress == 0.25);
 
     auto test_frame3 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame3->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame3->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame3));
     auto s4 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 2,
                                             fml::TimeDelta::FromSecondsF(2));
@@ -599,7 +581,7 @@ TEST_F(KeyframedAnimationCurveTest, MakeEmptyKeyframe) {
 
   auto test_curve2 = KeyframedOpacityAnimationCurve::Create();
   auto test_frame3 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
   auto test_frame4 =
       test_curve2->KeyframedOpacityAnimationCurve::MakeEmptyKeyframe(
           fml::TimeDelta::FromSecondsF(2.0));
@@ -609,7 +591,7 @@ TEST_F(KeyframedAnimationCurveTest, MakeEmptyKeyframe) {
   auto test_curve3 = KeyframedColorAnimationCurve::Create(
       starlight::XAnimationColorInterpolationType::kSRGB);
   auto test_frame5 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
   auto test_frame6 =
       test_curve3->KeyframedColorAnimationCurve::MakeEmptyKeyframe(
           fml::TimeDelta::FromSecondsF(2.0));

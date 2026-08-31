@@ -40,6 +40,11 @@ tasm::CSSValue BuildBoxShadowCSSValue(
 
 const std::unordered_set<AnimationCurve::CurveType>& GetOnXAxisCurveTypeSet();
 
+inline constexpr float kDefaultOpacity = 1.0f;
+inline constexpr uint32_t kDefaultBackgroundColor = 0x0;
+inline constexpr uint32_t kDefaultTextColor = 0xFF000000;
+inline constexpr float kDefaultFloatValue = 0.0f;
+
 //====Layout keyframe ====
 class LayoutKeyframe : public gfx::LengthKeyframe {
  public:
@@ -77,27 +82,6 @@ class KeyframedLayoutAnimationCurve : public LayoutAnimationCurve {
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
 
-//====Opacity keyframe ====
-class OpacityKeyframe : public gfx::FloatKeyframe {
- public:
-  constexpr static float kDefaultOpacity = 1.0f;
-  static float GetOpacityKeyframeValue(OpacityKeyframe* keyframe,
-                                       const tasm::CSSValue& underlying_value);
-
-  static std::unique_ptr<OpacityKeyframe> Create(
-      fml::TimeDelta time,
-      std::unique_ptr<gfx::TimingFunction> timing_function);
-  ~OpacityKeyframe() override = default;
-
-  void SetOpacity(float opacity) { SetFloatValue(opacity); }
-
-  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
-                tasm::Element* element);
-
-  OpacityKeyframe(fml::TimeDelta time,
-                  std::unique_ptr<gfx::TimingFunction> timing_function);
-};
-
 class KeyframedOpacityAnimationCurve : public OpacityAnimationCurve {
  public:
   static std::unique_ptr<KeyframedOpacityAnimationCurve> Create();
@@ -106,26 +90,6 @@ class KeyframedOpacityAnimationCurve : public OpacityAnimationCurve {
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
 
-//====Color keyframe ====
-class ColorKeyframe : public gfx::ColorKeyframe {
- public:
-  constexpr static uint32_t kDefaultBackgroundColor = 0x0;
-  constexpr static uint32_t kDefaultTextColor = 0xFF000000;
-  static uint32_t GetColorKeyframeValue(ColorKeyframe*, tasm::CSSPropertyID id,
-                                        const tasm::CSSValue& underlying_value);
-  static std::unique_ptr<ColorKeyframe> Create(
-      fml::TimeDelta time,
-      std::unique_ptr<gfx::TimingFunction> timing_function);
-  ~ColorKeyframe() override = default;
-
-  void SetColor(uint32_t color) { SetColorValue(color); }
-
-  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
-                tasm::Element* element);
-
-  ColorKeyframe(fml::TimeDelta time,
-                std::unique_ptr<gfx::TimingFunction> timing_function);
-};
 class KeyframedColorAnimationCurve : public ColorAnimationCurve {
  public:
   KeyframedColorAnimationCurve(starlight::XAnimationColorInterpolationType type)
@@ -150,25 +114,6 @@ class KeyframedColorAnimationCurve : public ColorAnimationCurve {
       starlight::XAnimationColorInterpolationType::kAuto;
 };
 
-//====Float keyframe ====
-class FloatKeyframe : public gfx::FloatKeyframe {
- public:
-  constexpr static float kDefaultFloatValue = 0.0f;
-  static float GetFloatKeyframeValue(FloatKeyframe*, tasm::CSSPropertyID id,
-                                     const tasm::CSSValue& underlying_value);
-  static std::unique_ptr<FloatKeyframe> Create(
-      fml::TimeDelta time,
-      std::unique_ptr<gfx::TimingFunction> timing_function);
-  ~FloatKeyframe() override = default;
-
-  void SetFloat(float value) { SetFloatValue(value); }
-
-  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
-                tasm::Element* element);
-
-  FloatKeyframe(fml::TimeDelta time,
-                std::unique_ptr<gfx::TimingFunction> timing_function);
-};
 class KeyframedFloatAnimationCurve : public FloatAnimationCurve {
  public:
   static std::unique_ptr<KeyframedFloatAnimationCurve> Create();
@@ -347,29 +292,6 @@ class KeyframedTransformOriginAnimationCurve
   ~KeyframedTransformOriginAnimationCurve() override = default;
 
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
-};
-
-//====visibility keyframe ====
-class VisibilityKeyframe : public gfx::Keyframe {
- public:
-  static starlight::VisibilityType GetVisibilityKeyframeValue(
-      VisibilityKeyframe* keyframe, const tasm::CSSValue& underlying_value);
-
-  static std::unique_ptr<VisibilityKeyframe> Create(
-      fml::TimeDelta time,
-      std::unique_ptr<gfx::TimingFunction> timing_function);
-  ~VisibilityKeyframe() override = default;
-
-  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
-                tasm::Element* element);
-
-  starlight::VisibilityType Visibility() const { return visibility_; }
-
-  VisibilityKeyframe(fml::TimeDelta time,
-                     std::unique_ptr<gfx::TimingFunction> timing_function);
-
- private:
-  starlight::VisibilityType visibility_{starlight::VisibilityType::kVisible};
 };
 
 class KeyframedVisibilityAnimationCurve : public VisibilityAnimationCurve {
