@@ -9,8 +9,8 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <vector>
 
+#include "core/public/event/touch_event_data.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/lynx_event.h"
@@ -49,6 +49,15 @@ class TouchEvent : public LynxEvent {
 
   void GetClientPoint(float client_point[2]) const;
 
+  void SetCurrentTargetPoints(
+      lynx::event::TouchEventTargetPoints current_target_points) {
+    current_target_points_ = std::move(current_target_points);
+  }
+
+  const lynx::event::TouchEventTargetPoints& CurrentTargetPoints() const {
+    return current_target_points_;
+  }
+
   int64_t TimeStamp() const { return time_stamp_; }
 
   void SetTimeStamp(int64_t time_stamp) { time_stamp_ = time_stamp; }
@@ -72,6 +81,7 @@ class TouchEvent : public LynxEvent {
   int64_t time_stamp_{0};
   bool is_multi_touch_{false};
   lepus::Value target_touch_map_;
+  lynx::event::TouchEventTargetPoints current_target_points_;
   std::weak_ptr<EventTarget> target_;
 };
 

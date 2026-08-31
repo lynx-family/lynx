@@ -42,6 +42,16 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+void LynxContext::SetWindowInfo(int32_t window_id, int32_t window_left_px,
+                                int32_t window_top_px) {
+  window_id_ = window_id;
+  window_left_px_ = window_left_px;
+  window_top_px_ = window_top_px;
+  if (ui_owner_ != nullptr) {
+    ui_owner_->RequestPositionChangeEvents();
+  }
+}
+
 std::unordered_map<std::string, LynxContext::NodeInfo>&
 LynxContext::GetCAPINodeInfoMap() {
   static base::NoDestructor<
@@ -191,7 +201,8 @@ void LynxContext::HandleTouchEvent(const TouchEvent& touch_event) const {
   }
   engine_proxy_->SendTouchEvent(
       touch_event.Name(), touch_event.ID(), target_point[0], target_point[1],
-      client_point[0], client_point[1], page_point[0], page_point[1]);
+      client_point[0], client_point[1], page_point[0], page_point[1],
+      touch_event.TimeStamp(), touch_event.CurrentTargetPoints());
 }
 
 void LynxContext::HandleMultiTouchEvent(const TouchEvent& touch_event) const {
@@ -342,6 +353,15 @@ void LynxContext::SetEnableTransformedTouchPosition(
 
 bool LynxContext::EnableTransformedTouchPosition() {
   return enable_transformed_touch_position_;
+}
+
+void LynxContext::SetEnableCurrentTargetTouchPosition(
+    bool enable_current_target_touch_position) {
+  enable_current_target_touch_position_ = enable_current_target_touch_position;
+}
+
+bool LynxContext::EnableCurrentTargetTouchPosition() const {
+  return enable_current_target_touch_position_;
 }
 
 void LynxContext::CallJSApiCallbackWithValue(int32_t callback_id,

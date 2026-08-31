@@ -1,6 +1,7 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:ignore positionchange
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
@@ -42,6 +43,13 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+struct UIOwner::PositionChangeDispatchState {
+  explicit PositionChangeDispatchState(UIOwner* owner) : owner(owner) {}
+
+  UIOwner* owner;
+  bool pending{false};
+};
 
 ImageService* UIOwner::image_service = nullptr;
 
@@ -363,12 +371,17 @@ void UIOwner::DestroyTarget(UIBase* target) {
     window_state_listeners_.erase(target);
   }
   external_memory_report_candidate_ids_.erase(target->Sign());
+  UpdatePositionChangeListener(target->Sign(), false);
   ui_holder_.erase(target->Sign());
 }
 
 UIRoot* UIOwner::Root() {
   if (!root_) {
     root_ = std::shared_ptr<UIBase>(UIRoot::Make(context_.get(), 10, "page"));
+    if (!position_change_listeners_.empty()) {
+      reinterpret_cast<UIRoot*>(root_.get())
+          ->SetPositionChangeObservationEnabled(true);
+    }
   }
   return reinterpret_cast<UIRoot*>(root_.get());
 }
@@ -432,6 +445,7 @@ void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id) {
   layout_changed_nodes_.clear();
 
   NotifyIntrinsicContentSizeChangedIfNeeded();
+  RequestPositionChangeEvents();
 
   // For `<list>`
   if (operation_id == 0) {
@@ -581,7 +595,12 @@ void UIOwner::ListReusePaintingNode(int sign, const std::string& item_key) {
   }
 }
 
-UIOwner::~UIOwner() = default;
+UIOwner::~UIOwner() {
+  if (position_change_dispatch_state_) {
+    position_change_dispatch_state_->owner = nullptr;
+    position_change_dispatch_state_->pending = false;
+  }
+}
 
 void UIOwner::AttachPageRoot(NativeNodeContent* content) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_ATTACH_PAGE_ROOT);
@@ -822,6 +841,8 @@ UIBase* UIOwner::FindUIByIdSelector(const std::string& id_selector) const {
 
 UIOwner::UIOwner() {
   id_ = "lynx-" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "-";
+  position_change_dispatch_state_ =
+      std::make_shared<PositionChangeDispatchState>(this);
 }
 
 napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
@@ -916,6 +937,11 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->window_state_listeners_.clear();
   obj->external_memory_report_candidate_ids_.clear();
   obj->external_memory_report_pending_ = false;
+  obj->position_change_listeners_.clear();
+  if (obj->position_change_dispatch_state_) {
+    obj->position_change_dispatch_state_->owner = nullptr;
+    obj->position_change_dispatch_state_->pending = false;
+  }
   obj->keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
   obj->keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
   obj->keyboard_height_ = 0.f;
@@ -1221,6 +1247,7 @@ void UIOwner::ResumeExposure() { ui_observer_->ResumeExposure(); }
 
 void UIOwner::OnRootAttachedToViewTree() {
   ui_observer_->OnRootAttachedToViewTree();
+  RequestPositionChangeEvents();
 }
 
 void UIOwner::OnRootDetachedFromViewTree() {
@@ -1243,7 +1270,88 @@ UIIntersectionObserver* UIOwner::GetUIIntersectionObserver(
   return ui_observer_->GetUIIntersectionObserver(intersection_observer_id);
 }
 
-void UIOwner::NotifyUIScroll() { ui_observer_->NotifyUIScroll(); }
+void UIOwner::NotifyUIScroll() {
+  ui_observer_->NotifyUIScroll();
+  RequestPositionChangeEvents();
+}
+
+void UIOwner::UpdatePositionChangeListener(int32_t sign, bool listens) {
+  if (listens) {
+    const bool was_empty = position_change_listeners_.empty();
+    if (position_change_listeners_.insert(sign).second) {
+      if (was_empty && root_) {
+        reinterpret_cast<UIRoot*>(root_.get())
+            ->SetPositionChangeObservationEnabled(true);
+      }
+    }
+    RequestPositionChangeEvents();
+    return;
+  }
+
+  position_change_listeners_.erase(sign);
+  if (position_change_listeners_.empty() && root_) {
+    reinterpret_cast<UIRoot*>(root_.get())
+        ->SetPositionChangeObservationEnabled(false);
+  }
+}
+
+void UIOwner::RequestPositionChangeEvents() {
+  if (destroyed_ || position_change_listeners_.empty() ||
+      position_change_dispatch_state_->pending || !GetUITaskRunner()) {
+    return;
+  }
+  position_change_dispatch_state_->pending = true;
+  std::weak_ptr<PositionChangeDispatchState> weak_state =
+      position_change_dispatch_state_;
+  PostTaskOnUIThread([weak_state]() {
+    auto state = weak_state.lock();
+    if (!state || state->owner == nullptr || !state->pending) {
+      return;
+    }
+    state->owner->DispatchPositionChangeEventsNow();
+  });
+}
+
+void UIOwner::DispatchPositionChangeEventsNow() {
+  position_change_dispatch_state_->pending = false;
+  if (position_change_listeners_.empty()) {
+    return;
+  }
+  UIRoot* root = root_ ? reinterpret_cast<UIRoot*>(root_.get()) : nullptr;
+  if (destroyed_ || root == nullptr || !root->IsAttachedToViewTree() ||
+      context_ == nullptr || !context_->HasWindowInfo()) {
+    return;
+  }
+
+  std::vector<int32_t> listeners(position_change_listeners_.begin(),
+                                 position_change_listeners_.end());
+  for (int32_t sign : listeners) {
+    auto it = ui_holder_.find(sign);
+    if (it == ui_holder_.end()) {
+      position_change_listeners_.erase(sign);
+      continue;
+    }
+    UIBase* ui = it->second.get();
+    if (!ui->HasResponseChainEvent("positionchange")) {
+      position_change_listeners_.erase(sign);
+      continue;
+    }
+    if (IsAttachedToRoot(ui)) {
+      ui->SendPositionChangeEvent();
+    }
+  }
+  if (position_change_listeners_.empty()) {
+    root->SetPositionChangeObservationEnabled(false);
+  }
+}
+
+bool UIOwner::IsAttachedToRoot(UIBase* ui) const {
+  UIBase* current = ui;
+  while (current != nullptr && current != root_.get()) {
+    current = current->Parent();
+  }
+  return current == root_.get();
+}
 
 void UIOwner::OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                            bool from_overlay) {
