@@ -85,6 +85,8 @@ static void LynxClaySetup() {
   }
 }
 
+static BOOL gShouldEnableAllDevToolSessions = NO;
+
 @implementation LynxEnv {
   std::unique_ptr<fml::SharedMutex> external_env_mutex_;
   std::atomic_bool init_flow_completed_;
@@ -98,6 +100,11 @@ static void LynxClaySetup() {
   });
 
   return _instance;
+}
+
++ (void)prepareDevToolForDevelopmentBeforeInit {
+  [[DevToolSettings sharedInstance].bootstrap applyDevelopmentDefaultsIfUnset];
+  gShouldEnableAllDevToolSessions = YES;
 }
 
 + (void)prepareGlobalMTSRuntimePoolWithContextType:(LynxMTSContextType)contextType
@@ -241,7 +248,16 @@ static void LynxClaySetup() {
 - (void)initDevToolEnv {
 #if ENABLE_INSPECTOR
   if ([self lynxDebugEnabled]) {
-    [LynxService(LynxServiceDevToolProtocol) devtoolEnvSharedInstance];
+    id<LynxServiceDevToolProtocol> devToolService = LynxService(LynxServiceDevToolProtocol);
+    if (!devToolService) {
+      return;
+    }
+    [devToolService devtoolEnvSharedInstance];
+    if (gShouldEnableAllDevToolSessions) {
+      // Run the pre-init request after asking the service to initialize DevTool env.
+      [devToolService enableAllSessions];
+      gShouldEnableAllDevToolSessions = NO;
+    }
   }
 #endif
 }
