@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxFSPTracer+Native.h>
+#import <Lynx/LynxMemoryMonitorProtocol.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceEventReporterProtocol.h>
 #import "LynxEmbeddedTimingCollector.h"
-#import "LynxMemoryMonitorProtocol.h"
 #import "LynxPerformanceController+Native.h"
 #include "base/trace/native/trace_event.h"
 #include "core/services/timing_handler/timing_handler.h"
@@ -37,6 +37,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   id<LynxServiceEventReporterProtocol> _reporter;
   LynxEmbeddedTimingCollector* _embeddedCollector;
   BOOL _embeddedModeEnabled;
+  int32_t _instanceId;
 }
 
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
@@ -44,6 +45,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
     _observer = observer;
     _fspTracer = [[LynxFSPTracer alloc] init];
     _embeddedModeEnabled = NO;
+    _instanceId = ::kUnknownInstanceId;
   }
   return self;
 }
@@ -51,6 +53,10 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
 - (void)setNativeActor:(const std::shared_ptr<PerformanceControllerActor>&)nativeActor {
   _nativeWeakActorPtr = nativeActor;
   [_fspTracer setNativeActor:nativeActor];
+}
+
+- (void)setInstanceId:(int32_t)instanceId {
+  _instanceId = instanceId;
 }
 
 - (void)setEmbeddedModeEnabled:(BOOL)enabled {
