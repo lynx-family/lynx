@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include "clay/common/element_id.h"
+#include "clay/flow/frame_surface_registry.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/geometry/path.h"
@@ -109,6 +111,9 @@ class PaintingContext {
   void AddDrawableImage(int dx, int dy, int width, int height, int64_t image_id,
                         clay::DrawableImage::FitMode fit_mode);
   void AddPlatformView(int dx, int dy, int width, int height, int64_t view_id);
+  void AddFrameSurface(const ElementId& element_id, const skity::Rect& rect);
+  void AddFrameSurface(const FrameSurfaceId& surface_id,
+                       const skity::Rect& rect);
   void AddPunchHole(const Rect& punch_hole_rect);
   void SetCacheStrategy(CacheStrategy strategy) { strategy_ = strategy; }
   CacheStrategy GetCacheStrategy() const { return strategy_; }

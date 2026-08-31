@@ -56,6 +56,8 @@ source_set("lynx_adaptor") {
     "base_def.h",
     "clay_value.cc",
     "clay_value.h",
+    "frame_child_page_host.cc",
+    "frame_child_page_host.h",
     "layout_context_clay.cc",
     "layout_context_clay.h",
     "lynx_event_dispatcher.cc",

@@ -42,6 +42,7 @@ class ShadowNode {
   virtual bool IsEditableShadowNode() { return false; }
   virtual bool IsInlineTruncationShadowNode() { return false; }
   virtual bool IsImageShadowNode() { return false; }
+  virtual bool IsFrameShadowNode() { return false; }
   virtual bool IsMarkDownShadowNode() { return false; }
 
   virtual Measurable* GetMeasurable() { return nullptr; }

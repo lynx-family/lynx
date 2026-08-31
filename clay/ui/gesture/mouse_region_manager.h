@@ -29,10 +29,15 @@ class MouseRegionManager {
   using EnterCallback = std::function<void(const PointerEvent&)>;
   using LeaveCallback = std::function<void(const PointerEvent&)>;
   using HoverCallback = std::function<void(const PointerEvent&)>;
+  using HoverTrackingCallback = std::function<void(const PointerEvent&)>;
 
   void RegisterEnterCallback(BaseView* target, EnterCallback callback);
   void RegisterLeaveCallback(BaseView* target, LeaveCallback callback);
   void RegisterHoverCallback(BaseView* target, HoverCallback callback);
+  // Tracks pointer movement within an unchanged mouse region. This is an
+  // internal input-boundary signal and does not imply a DOM hover event.
+  void RegisterHoverTrackingCallback(BaseView* target,
+                                     HoverTrackingCallback callback);
 
   void UnregisterCallback(BaseView* target);
 
@@ -52,6 +57,7 @@ class MouseRegionManager {
     EnterCallback on_enter = nullptr;
     LeaveCallback on_leave = nullptr;
     HoverCallback on_hover = nullptr;
+    HoverTrackingCallback on_hover_tracking = nullptr;
   };
 
   std::map<BaseView*, MouseRegionRoute> mouse_region_routes_;

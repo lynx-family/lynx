@@ -168,7 +168,7 @@ void DiffContext::MarkSubtreeDirty(const PaintRegion& previous_paint_region) {
 
 void DiffContext::MarkSubtreeDirty(const skity::Rect& previous_paint_region) {
   FML_DCHECK(!IsSubtreeDirty());
-  AddDamage(previous_paint_region);
+  AddDamageRect(previous_paint_region);
   state_.dirty = true;
 }
 
@@ -186,7 +186,7 @@ void DiffContext::AddLayerBounds(const skity::Rect& rect) {
     paint_rect.Intersect(state_.cull_rect);
     rects_->push_back(paint_rect);
     if (IsSubtreeDirty()) {
-      AddDamage(paint_rect);
+      AddDamageRect(paint_rect);
     }
   }
 }
@@ -245,11 +245,24 @@ PaintRegion DiffContext::CurrentSubtreeRegion() const {
 void DiffContext::AddDamage(const PaintRegion& damage) {
   FML_DCHECK(damage.is_valid());
   for (const auto& r : damage) {
-    damage_.Join(r);
+    AddDamageRect(r);
   }
 }
 
-void DiffContext::AddDamage(const skity::Rect& rect) { damage_.Join(rect); }
+void DiffContext::AddDamageRect(const skity::Rect& rect) { damage_.Join(rect); }
+
+void DiffContext::AddLocalDamageRect(const skity::Rect& rect) {
+  auto transformed_rect =
+      ApplyFilterBoundsAdjustment(state_.transform.MapRect(rect));
+  if (skity::Rect::Intersect(transformed_rect, state_.cull_rect)) {
+    auto damage_rect = state_.transform_override
+                           ? ApplyFilterBoundsAdjustment(
+                                 state_.transform_override->MapRect(rect))
+                           : transformed_rect;
+    damage_rect.Intersect(state_.cull_rect);
+    AddDamageRect(damage_rect);
+  }
+}
 
 void DiffContext::SetLayerPaintRegion(const Layer* layer,
                                       const PaintRegion& region) {

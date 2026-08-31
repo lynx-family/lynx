@@ -187,6 +187,11 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   void MoveWindow();
 
  protected:
+  // Converts window-local physical coordinates into the coordinate space used
+  // by the engine. The implicit view already uses that space; overlay views
+  // override this hook to map their child-window coordinates.
+  virtual void ConvertPointerPosition(double* x, double* y) {}
+
   virtual void NotifyWinEventWrapper(DWORD event, HWND hwnd, LONG idObject,
                                      LONG idChild);
 

@@ -16,6 +16,7 @@
 #endif  // OS_IOS
 #endif  // ENABLE_CLAY_LITE
 
+#include "clay/ui/component/frame_view.h"
 #include "clay/ui/component/image_view.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/list/list_item_view.h"
@@ -25,6 +26,7 @@
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/component/view_registry.h"
+#include "clay/ui/shadow/frame_shadow_node.h"
 #include "clay/ui/shadow/image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/raw_text_shadow_node.h"
@@ -40,6 +42,7 @@ namespace clay {
 void keepBuiltinElements() {}
 
 REGISTER_CLAY_ELEMENT("view", View, void);
+REGISTER_CLAY_ELEMENT("frame", FrameView, FrameShadowNode);
 REGISTER_CLAY_ELEMENT("image", ImageView, ImageShadowNode);
 REGISTER_CLAY_ELEMENT("text", TextView, TextShadowNode);
 REGISTER_CLAY_ELEMENT("x-text", TextView, TextShadowNode);

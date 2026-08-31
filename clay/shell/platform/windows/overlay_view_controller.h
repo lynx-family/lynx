@@ -32,9 +32,11 @@ class OverlayViewController {
   OverlayWindowType GetType();
 
   void UpdatePosition(int left, int top, int width, int height);
+  void SetHitTestTransparent(bool hit_test_transparent);
 
  private:
   std::unique_ptr<FlutterWindowsView> child_view_;
+  FlutterWindow* child_window_ = nullptr;
   OverlayWindowType type_;
   FlutterWindowsView* overlay_view_ = nullptr;
   FlutterWindowsEngine* engine_;

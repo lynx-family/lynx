@@ -74,6 +74,7 @@ class ScrollFluencyMonitorDelegate;
 class PipelineTimingDelegate;
 class TapGestureRecognizer;
 class LongPressGestureRecognizer;
+class FrameTickClient;
 
 ClayEventType ToClayEventType(PointerEvent::EventType event_type,
                               PointerEvent::DeviceType device,
@@ -139,6 +140,8 @@ class PageView : public BaseView,
 
   void RequestPaint();
   void RequestPaintBase();
+  void ScheduleChildFrame(FrameTickClient* client, bool forced);
+  void CancelChildFrame(FrameTickClient* client);
 #if OS_IOS
   // Runs at the start of the next BeginFrame. The caller must already be in a
   // path that will schedule another frame.
@@ -201,6 +204,9 @@ class PageView : public BaseView,
   const clay::TaskRunners& GetTaskRunners() const { return task_runners_; }
 
   fml::RefPtr<GPUUnrefQueue> GetUnrefQueue() const { return unref_queue_; }
+  std::shared_ptr<FrameSurfaceRegistry> GetFrameSurfaceRegistry() const {
+    return frame_surface_registry_;
+  }
 
   // KeyboardClient
   fml::RefPtr<fml::TaskRunner> GetTaskRunner() override {
@@ -568,6 +574,7 @@ class PageView : public BaseView,
   BaseView* GetFirstNonAnonymousHitTestTarget(
       const HitTestResult& result) const;
   void ResignFirstResponderIfNeeded(BaseView* current_responder);
+  bool DrainScheduledChildFrames(const FrameTimingsRecorder& recorder);
 
   void UnRegisterUploadTask();
 
@@ -591,6 +598,7 @@ class PageView : public BaseView,
 
   std::unique_ptr<Renderer> renderer_;
   std::unique_ptr<LayoutController> layout_controller_;
+  std::shared_ptr<FrameSurfaceRegistry> frame_surface_registry_;
   std::unique_ptr<FrameBuilder> frame_builder_;
   std::unique_ptr<AnimationHandler> animation_handler_;
   uint64_t pending_lifecycle_wakeup_id_ = 0;
@@ -628,6 +636,8 @@ class PageView : public BaseView,
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
   std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
+  std::vector<FrameTickClient*> pending_child_frame_clients_;
+  std::unordered_map<FrameTickClient*, bool> pending_child_frame_forced_;
   int active_fling_count_ = 0;
 
   std::unique_ptr<GapWorker> gap_worker_;

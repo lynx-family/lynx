@@ -26,6 +26,11 @@ ui_component_sources = [
   "expose_manager/expose_observer.h",
   "extend_views.cc",
   "extend_views.h",
+  "frame_child_surface_host.cc",
+  "frame_child_surface_host.h",
+  "frame_tick_client.h",
+  "frame_view.cc",
+  "frame_view.h",
   "focus/focus_isolate.cc",
   "focus/focus_isolate.h",
   "focus_event_handler.h",
@@ -139,6 +144,8 @@ if (is_mac || is_win) {
   ui_component_sources += [
     "cover_view.cc",
     "cover_view.h",
+    "cover_view_platform_delegate.cc",
+    "cover_view_platform_delegate.h",
     "title_bar_view.cc",
     "title_bar_view.h",
   ]

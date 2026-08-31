@@ -16,10 +16,11 @@ OverlayViewController::OverlayViewController(
     const std::wstring& title)
     : engine_(engine) {
   if (type == OverlayWindowType::kChild) {
-    std::unique_ptr<WindowBindingHandler> window_wrapper =
+    auto window_wrapper =
         std::make_unique<FlutterWindow>(parent, CW_USEDEFAULT, CW_USEDEFAULT,
                                         preferred_size.preferred_view_width,
                                         preferred_size.preferred_view_height);
+    child_window_ = window_wrapper.get();
     child_view_ = engine_->CreateOverlayView(std::move(window_wrapper));
     overlay_view_ = child_view_.get();
     ShowWindow(child_view_->GetWindowHandle(), SW_HIDE);
@@ -50,6 +51,12 @@ void OverlayViewController::UpdatePosition(int left, int top, int width,
   if (child_view_) {
     SetWindowPos(child_view_->GetWindowHandle(), NULL, left, top, width, height,
                  SWP_NOZORDER);
+  }
+}
+
+void OverlayViewController::SetHitTestTransparent(bool hit_test_transparent) {
+  if (child_window_) {
+    child_window_->SetHitTestTransparent(hit_test_transparent);
   }
 }
 

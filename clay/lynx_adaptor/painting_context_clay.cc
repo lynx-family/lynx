@@ -10,8 +10,10 @@
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
+#include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/base_def.h"
 #include "clay/lynx_adaptor/clay_value.h"
+#include "clay/lynx_adaptor/frame_child_page_host.h"
 #include "clay/lynx_adaptor/platform_extra_bundle_clay.h"
 #include "clay/lynx_adaptor/platform_node_tag_resolver.h"
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
@@ -19,7 +21,10 @@
 #include "clay/public/value.h"
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
+#include "clay/ui/component/frame_view.h"
 #include "clay/ui/component/list/lynx_list_data.h"
+#include "clay/ui/event/gesture_event.h"
+#include "clay/ui/event/key_event.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/shadow/text_render.h"
 #include "core/base/trace/trace_event_def.h"
@@ -73,6 +78,9 @@ void PaintingContextClayRef::RemovePaintingNode(int parent, int child,
 
 void PaintingContextClayRef::DestroyPaintingNode(int parent, int child,
                                                  int index) {
+  if (owner_) {
+    owner_->DestroyFrameChildHost(child);
+  }
   view_context_->RemoveView(child, parent);
   view_context_->DestroyView(child);
 }
@@ -143,14 +151,19 @@ void PaintingContextClayRef::SetGestureDetectorState(int64_t id,
   view_context_->SetGestureDetectorState(id, gesture_id, state);
 }
 
-PaintingContextClay::PaintingContextClay(clay::ViewContext* view_context)
-    : view_context_(view_context) {
+PaintingContextClay::PaintingContextClay(
+    clay::ViewContext* view_context,
+    embedder::LynxTemplateRenderer::Settings parent_frame_renderer_settings)
+    : view_context_(view_context),
+      parent_frame_renderer_settings_(
+          std::move(parent_frame_renderer_settings)) {
   FML_DCHECK(view_context);
-  platform_ref_ = std::make_shared<PaintingContextClayRef>(view_context);
+  platform_ref_ = std::make_shared<PaintingContextClayRef>(view_context, this);
   view_context_->SetUIComponentDelegate(this);
 }
 
 PaintingContextClay::~PaintingContextClay() {
+  frame_child_hosts_.clear();
   view_context_->SetUIComponentDelegate(nullptr);
   view_context_->ResetPageView();
 }
@@ -213,7 +226,7 @@ void PaintingContextClay::CreatePaintingNode(
   auto resolved_tag = ResolveClayPlatformNodeTag(tag, painting_data.get());
   auto task = [view_context = view_context_, id, tag = std::move(resolved_tag),
                painting_data, flatten, create_node_async,
-               node_index]() mutable {
+               node_index, this]() mutable {
     TRACE_EVENT("clay", CLAY_PAINTING_CONTEXT_CREATE_PAINTING_NODE, "id", id,
                 "tag", tag.c_str(), "flatten", flatten, "create_node_async",
                 create_node_async, "node_index", node_index);
@@ -241,6 +254,11 @@ void PaintingContextClay::CreatePaintingNode(
       view_context->SetRepaintBoundary(id, true);
     }
     SetAttribute(view_context, id, pda, true);
+    auto* view = view_context->FindViewByViewId(id);
+    if (view && view->Is<clay::FrameView>()) {
+      static_cast<clay::FrameView*>(view)->MarkPropsUpdated();
+    }
+    UpdateFrameChildState(id);
   };
   if (ui_operation_queue_ref_) {
     Enqueue(std::move(task));
@@ -286,11 +304,17 @@ void PaintingContextClay::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) {
 void PaintingContextClay::UpdatePaintingNode(
     int id, bool tend_to_flatten,
     const fml::RefPtr<PropBundle>& painting_data) {
-  auto task = [view_context = view_context_, id, tend_to_flatten,
-               painting_data]() {
+  auto task = [view_context = view_context_, id, tend_to_flatten, painting_data,
+               this]() {
     auto* pda = painting_data.get();
+    DestroyFrameChildHostIfSrcChanged(id, pda);
     SetAttribute(view_context, id, pda, false);
     view_context->SetRepaintBoundary(id, !tend_to_flatten);
+    auto* view = view_context->FindViewByViewId(id);
+    if (view && view->Is<clay::FrameView>()) {
+      static_cast<clay::FrameView*>(view)->MarkPropsUpdated();
+    }
+    UpdateFrameChildState(id);
   };
   if (ui_operation_queue_ref_) {
     Enqueue(std::move(task));
@@ -317,7 +341,7 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
           : std::array<float, 4>{0, 0, 0, 0};
   auto task = [view_context = view_context_, tag, x, y, width, height,
                paddings_copy, margins_copy, sticky_copy, has_sticky,
-               display_none]() {
+               display_none, this]() {
     // Set margins, bounds, paddings.
     // Margins should be earlier then bounds because of it may be used during
     // bounds setting.
@@ -334,12 +358,150 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
       view->SetDisplayNone(display_none);
     }
     view_context->UpdateSticky(tag, has_sticky ? sticky_copy.data() : nullptr);
+    UpdateFrameChildViewport(tag);
   };
   if (ui_operation_queue_ref_) {
     Enqueue(std::move(task));
   } else {
     task();
   }
+}
+
+void PaintingContextClay::SetFrameAppBundle(
+    int tag, const std::shared_ptr<LynxTemplateBundle>& bundle) {
+  auto task = [view_context = view_context_, tag, bundle, this]() {
+    auto* view = view_context->FindViewByViewId(tag);
+    auto* frame_view = view && view->Is<clay::FrameView>()
+                           ? static_cast<clay::FrameView*>(view)
+                           : nullptr;
+    if (!frame_view) {
+      return;
+    }
+    frame_view->OnReceiveAppBundle(bundle);
+    UpdateFrameChildState(tag);
+  };
+  if (ui_operation_queue_ref_) {
+    Enqueue(std::move(task));
+  } else {
+    task();
+  }
+}
+
+void PaintingContextClay::UpdateFrameChildState(int tag) {
+  LoadFrameChildBundle(tag);
+  UpdateFrameChildMetadata(tag);
+}
+
+void PaintingContextClay::DestroyFrameChildHostIfSrcChanged(
+    int tag, PropBundle* attributes) {
+  auto* pda = static_cast<PropBundleImpl*>(attributes);
+  if (!pda) {
+    return;
+  }
+  auto src_it = pda->map().find("src");
+  if (src_it == pda->map().end() || !src_it->second.IsString()) {
+    return;
+  }
+
+  auto* view = view_context_->FindViewByViewId(tag);
+  auto* frame_view = view && view->Is<clay::FrameView>()
+                         ? static_cast<clay::FrameView*>(view)
+                         : nullptr;
+  if (!frame_view || frame_view->url() == src_it->second.GetString()) {
+    return;
+  }
+
+  DestroyFrameChildHost(tag);
+}
+
+void PaintingContextClay::LoadFrameChildBundle(int tag) {
+  auto* view = view_context_->FindViewByViewId(tag);
+  auto* frame_view = view && view->Is<clay::FrameView>()
+                         ? static_cast<clay::FrameView*>(view)
+                         : nullptr;
+  if (!frame_view || !frame_view->HasPendingBundleReady()) {
+    return;
+  }
+
+  auto& host = frame_child_hosts_[tag];
+  if (!host) {
+    host = std::make_unique<FrameChildPageHost>(
+        view_context_, resource_loader_, parent_frame_renderer_settings_);
+  }
+  auto* host_ptr = host.get();
+  frame_view->SetEventForwarder(
+      [host_ptr](const clay::PointerEvent& event) {
+        return host_ptr->ForwardPointerEvent(event);
+      },
+      [host_ptr](const clay::KeyEvent* event) {
+        return host_ptr->ForwardKeyEvent(event);
+      });
+  // FrameElement owns resource completion and emits bindload for both success
+  // and failure. This path only attaches an already loaded bundle to Clay.
+  if (!host->LoadBundle(frame_view, frame_view->pending_bundle(),
+                        frame_view->pending_data(),
+                        frame_view->pending_global_props())) {
+    FML_LOG(ERROR) << "Failed to attach frame bundle to Clay child page, tag: "
+                   << tag << ", url: " << frame_view->url();
+    return;
+  }
+  frame_view->CommitPendingBundleAttached();
+}
+
+void PaintingContextClay::UpdateFrameChildMetadata(int tag) {
+  auto iter = frame_child_hosts_.find(tag);
+  if (iter == frame_child_hosts_.end() || !iter->second) {
+    return;
+  }
+  auto* view = view_context_->FindViewByViewId(tag);
+  auto* frame_view = view && view->Is<clay::FrameView>()
+                         ? static_cast<clay::FrameView*>(view)
+                         : nullptr;
+  if (!frame_view) {
+    DestroyFrameChildHost(tag);
+    return;
+  }
+  if (!frame_view->HasPendingMetadataUpdate()) {
+    return;
+  }
+  if (iter->second->UpdateMetaData(frame_view->pending_data(),
+                                   frame_view->pending_global_props())) {
+    frame_view->CommitPendingMetadataUpdated();
+  }
+}
+
+void PaintingContextClay::UpdateFrameChildViewport(int tag) {
+  auto iter = frame_child_hosts_.find(tag);
+  if (iter == frame_child_hosts_.end() || !iter->second) {
+    return;
+  }
+  auto* view = view_context_->FindViewByViewId(tag);
+  auto* frame_view = view && view->Is<clay::FrameView>()
+                         ? static_cast<clay::FrameView*>(view)
+                         : nullptr;
+  if (!frame_view) {
+    DestroyFrameChildHost(tag);
+    return;
+  }
+  iter->second->UpdateViewport(frame_view);
+}
+
+void PaintingContextClay::DestroyFrameChildHost(int tag) {
+  auto iter = frame_child_hosts_.find(tag);
+  if (iter == frame_child_hosts_.end()) {
+    return;
+  }
+  auto* view = view_context_->FindViewByViewId(tag);
+  auto* frame_view = view && view->Is<clay::FrameView>()
+                         ? static_cast<clay::FrameView*>(view)
+                         : nullptr;
+  if (frame_view) {
+    frame_view->DestroyChildContent();
+  }
+  if (iter->second) {
+    iter->second->Destroy();
+  }
+  frame_child_hosts_.erase(iter);
 }
 
 // Invoked by MTS/worklet

@@ -163,6 +163,9 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       std::make_shared<tasm::LazyBundleLoader>(settings_.resource_loader);
   shell::ShellOption shell_option;
   shell_option.view_id_ = GetViewId();
+  shell_option.enable_multi_tasm_thread_ = settings_.enable_multi_async_thread;
+  shell_option.enable_multi_layout_thread_ =
+      settings_.enable_multi_async_thread;
   shell_option.js_group_thread_name_ =
       settings_.enable_js_group_thread ? settings_.group_id : "";
   shell_option.enable_js_group_thread_ = settings_.enable_js_group_thread;
@@ -171,6 +174,8 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
   auto native_module_manager = settings_.native_module_manager_creator
                                    ? settings_.native_module_manager_creator()
                                    : nullptr;
+  shell_option.page_options_.SetEmbeddedMode(
+      static_cast<tasm::EmbeddedMode>(settings_.embedded_mode));
   shell_.reset(
       shell::LynxShellBuilder()
           .SetNativeFacade(std::move(native_facade))
@@ -182,6 +187,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
           .SetEnableNewAnimator(settings_.enable_new_animator)
           .SetEnableNativeList(settings_.enable_native_list ||
                                ui_delegate_->EnableNativeList())
+          .SetEnablePreUpdateData(settings_.enable_pre_update_data)
           .SetWhiteBoard(settings_.white_board)
           .SetLazyBundleLoader(loader)
           .SetLayoutContextPlatformImpl(ui_delegate_->CreateLayoutContext())
