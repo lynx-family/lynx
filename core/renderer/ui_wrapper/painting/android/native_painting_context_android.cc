@@ -21,6 +21,7 @@
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/renderer/utils/android/text_utils_android.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
@@ -319,8 +320,7 @@ void NativePaintingCtxAndroid::UpdatePaintingNode(
 
 std::unique_ptr<pub::Value> NativePaintingCtxAndroid::GetTextInfo(
     const std::string &content, const pub::Value &info) {
-  // TODO: impl this function later.
-  return std::unique_ptr<pub::Value>();
+  return TextUtilsAndroidHelper::GetTextInfo(content, info);
 }
 
 void NativePaintingCtxAndroid::StopExposure(const pub::Value &options) {

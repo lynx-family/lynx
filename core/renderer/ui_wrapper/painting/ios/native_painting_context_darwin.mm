@@ -19,6 +19,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/renderer/utils/ios/text_utils_ios.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
@@ -98,8 +99,7 @@ void NativePaintingCtxDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
 
 std::unique_ptr<pub::Value> NativePaintingCtxDarwin::GetTextInfo(const std::string &content,
                                                                  const pub::Value &info) {
-  // TODO: impl this function later.
-  return std::unique_ptr<pub::Value>();
+  return TextUtilsDarwinHelper::GetTextInfo(content, info);
 }
 
 std::vector<float> NativePaintingCtxDarwin::getBoundingClientOrigin(int id) {
