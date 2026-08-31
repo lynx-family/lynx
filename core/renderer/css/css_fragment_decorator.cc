@@ -231,8 +231,10 @@ GET_PARSER_TOKEN_STYLE(Universal)
 #undef GET_PARSER_TOKEN_STYLE
 
 bool CSSFragmentDecorator::enable_css_selector() {
-  return intrinsic_style_sheets_ &&
-         intrinsic_style_sheets_->enable_css_selector();
+  if (intrinsic_style_sheets_) {
+    return intrinsic_style_sheets_->enable_css_selector();
+  }
+  return HasInAdopted([](CSSFragment&) { return true; });
 }
 
 bool CSSFragmentDecorator::enable_css_invalidation() {
