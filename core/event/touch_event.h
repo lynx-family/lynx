@@ -8,6 +8,7 @@
 #include <string>
 
 #include "core/event/event.h"
+#include "core/public/event/touch_event_data.h"
 
 #define EVENT_TOUCH_START "touchstart"
 #define EVENT_TOUCH_MOVE "touchmove"
@@ -27,7 +28,8 @@ class TouchEvent : public Event {
 
   TouchEvent(const std::string& event_name, float x = 0, float y = 0,
              float page_x = 0, float page_y = 0, float client_x = 0,
-             float client_y = 0, int64_t time_stamp = 0);
+             float client_y = 0, int64_t time_stamp = 0,
+             TouchEventTargetPoints current_target_points = {});
   TouchEvent(const std::string& event_name, const lepus::Value& targets_touches,
              int64_t time_stamp = 0);
 
@@ -39,6 +41,8 @@ class TouchEvent : public Event {
   float client_y() const { return client_y_; }
   int64_t identifier() const { return identifier_; }
   bool is_multi_touch() const { return is_multi_touch_; }
+
+  void HandleEventBaseDetail(bool is_core_event = false) override;
 
   void HandleEventCustomDetail() override;
 
@@ -58,6 +62,7 @@ class TouchEvent : public Event {
   bool is_multi_touch_{false};
   // Save the touched object and its touch information.
   lepus::Value targets_touches_{};
+  TouchEventTargetPoints current_target_points_;
 };
 
 }  // namespace event

@@ -29,18 +29,18 @@ void LynxEngineProxyImpl::DispatchTaskToLynxEngine(base::closure task) {
       [task = std::move(task)](auto& engine) mutable { task(); });
 }
 
-bool LynxEngineProxyImpl::SendTouchEvent(const std::string& name, int32_t tag,
-                                         float x, float y, float client_x,
-                                         float client_y, float page_x,
-                                         float page_y, int64_t timestamp) {
+bool LynxEngineProxyImpl::SendTouchEvent(
+    const std::string& name, int32_t tag, float x, float y, float client_x,
+    float client_y, float page_x, float page_y, int64_t timestamp,
+    event::TouchEventTargetPoints current_target_points) {
   if (engine_actor_ == nullptr) {
     LOGE(
         "LynxEngineProxy::SendTouchEvent failed since engine_actor_ is "
         "nullptr");
     return false;
   }
-  tasm::EventInfo info(tag, x, y, client_x, client_y, page_x, page_y,
-                       timestamp);
+  tasm::EventInfo info(tag, x, y, client_x, client_y, page_x, page_y, timestamp,
+                       std::move(current_target_points));
   engine_actor_->Act([name, info = std::move(info)](auto& engine) mutable {
     (void)engine->SendTouchEvent(name, info);
   });
