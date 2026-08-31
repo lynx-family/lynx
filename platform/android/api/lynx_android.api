@@ -5323,6 +5323,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.setLastUrl(String url);
   public boolean com.lynx.tasm.LynxEnv.hasInited();
   public boolean com.lynx.tasm.LynxEnv.isInitCompleted();
+  public void com.lynx.tasm.LynxEnv.prepareDevToolForDevelopmentBeforeInit();
   public boolean com.lynx.tasm.LynxEnv.isLynxDebugEnabled();
   public void com.lynx.tasm.LynxEnv.initDevtool();
   public void com.lynx.tasm.LynxEnv.enableLynxDebug(boolean enableLynxDebug);

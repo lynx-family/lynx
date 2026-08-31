@@ -3,11 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxInitProcessor.h"
-#import <Lynx/DevToolSettings.h>
 #import <Lynx/LynxConfig.h>
 #import <Lynx/LynxEnv.h>
-#import <Lynx/LynxService.h>
-#import <Lynx/LynxServiceDevToolProtocol.h>
 #import <SDWebImage/SDWebImage.h>
 #import <SDWebImageWebPCoder/SDWebImageWebPCoder.h>
 #import "ExplorerModule.h"
@@ -31,11 +28,8 @@ static LynxInitProcessor *_instance = nil;
 }
 
 - (void)setupLynxEnv {
-  [[DevToolSettings sharedInstance].bootstrap applyDevelopmentDefaultsIfUnset];
+  [LynxEnv prepareDevToolForDevelopmentBeforeInit];
   LynxEnv *env = [LynxEnv sharedInstance];
-
-  // enable debugging for all sessions
-  [LynxService(LynxServiceDevToolProtocol) enableAllSessions];
 
   // init global config
   LynxConfig *globalConfig = [[LynxConfig alloc] initWithProvider:[TemplateProvider new]];
