@@ -50,6 +50,8 @@ class SelectionPopupView : public WithTypeInfo<SelectionPopupView, BaseView> {
 
   void BuildSelectionPopup(const std::vector<ActionType>& types);
 
+  void UpdatePosition();
+
   FloatPoint GetPositionForChild(FloatSize size, FloatSize child_size);
 
   double CenterOn(double position, double width, double max);
