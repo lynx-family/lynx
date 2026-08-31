@@ -266,6 +266,7 @@ void NativePaintingCtxDarwin::FinishTasmOperation(const std::shared_ptr<Pipeline
 
 void NativePaintingCtxDarwin::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions> &options) {
+  MarkLayoutFinish();
   __weak LynxUIOwner *ui_owner = context_ != nullptr ? context_->GetUIOwner() : nil;
   Enqueue(
       [ui_owner, weak_queue = std::weak_ptr<shell::DynamicUIOperationQueue>(queue_), options]() {
