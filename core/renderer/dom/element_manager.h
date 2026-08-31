@@ -1477,6 +1477,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Indicate if need to do layout for current OnPatchFinish process
   bool need_layout_{false};
 
+  // LayoutInElement may receive a first-screen or reuse layout request before
+  // the viewport is ready. Retain that callback state until a real layout.
+  bool pending_first_layout_{false};
+
   bool animations_paused_{false};
 
   // Enable new animator for current lynx view by default for radon/fiber, the

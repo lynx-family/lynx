@@ -80,6 +80,123 @@ namespace tasm {
 namespace testing {
 
 namespace {
+void PrepareLayoutInElementFirstScreenTest(FiberElementTest* test) {
+  PageOptions page_options;
+  page_options.SetEmbeddedMode(static_cast<EmbeddedMode>(
+      EmbeddedMode::EMBEDDED_MODE_BASE | EmbeddedMode::LAYOUT_IN_ELEMENT));
+  test->tasm->SetPageOptions(page_options);
+
+  auto* manager = test->manager;
+  manager->SetLayoutTick(
+      [manager](const auto& options) { manager->RequestLayout(options); });
+}
+
+fml::RefPtr<PageElement> CreateLayoutInElementPage(FiberElementTest* test) {
+  auto page = test->manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  return page;
+}
+
+std::shared_ptr<PipelineOptions> LayoutOptions(FiberElementTest* test,
+                                               bool enable_unified,
+                                               bool is_first_screen = false,
+                                               bool is_reuse_engine = false) {
+  auto options = std::make_shared<PipelineOptions>();
+  options->is_first_screen = is_first_screen;
+  options->is_reuse_engine = is_reuse_engine;
+  if (enable_unified) {
+    test->tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+    auto* context = test->tasm->CreateAndUpdateCurrentPipelineContext(options);
+    EXPECT_NE(context, nullptr);
+    if (context) {
+      EXPECT_TRUE(test->tasm->pipeline_context_manager_->AdvanceLifecycleTo(
+          context, LifecycleState::kInStyleResolve));
+      EXPECT_TRUE(test->tasm->pipeline_context_manager_->AdvanceLifecycleTo(
+          context, LifecycleState::kAfterStyleResolve));
+      EXPECT_TRUE(test->tasm->pipeline_context_manager_->AdvanceLifecycleTo(
+          context, LifecycleState::kInPerformLayout));
+    }
+  }
+  return options;
+}
+
+void ExpectLayoutInElementFirstScreenWithReadyViewport(FiberElementTest* test,
+                                                       bool enable_unified) {
+  PrepareLayoutInElementFirstScreenTest(test);
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  auto page = CreateLayoutInElementPage(test);
+
+  auto first_screen_options = LayoutOptions(test, enable_unified, true);
+  test->manager->RequestLayout(first_screen_options);
+  EXPECT_EQ(first_screen_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  auto update_options = LayoutOptions(test, enable_unified);
+  test->manager->RequestLayout(update_options);
+  EXPECT_EQ(update_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_,
+            (std::vector<bool>{true, false}));
+}
+
+void ExpectLayoutInElementFirstScreenAfterLateViewport(FiberElementTest* test,
+                                                       bool enable_unified) {
+  PrepareLayoutInElementFirstScreenTest(test);
+  auto page = CreateLayoutInElementPage(test);
+
+  auto first_screen_options = LayoutOptions(test, enable_unified, true);
+  test->manager->RequestLayout(first_screen_options);
+  EXPECT_EQ(first_screen_options->version, nullptr);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  auto pre_viewport_update = LayoutOptions(test, enable_unified);
+  test->manager->RequestLayout(pre_viewport_update);
+  EXPECT_EQ(pre_viewport_update->version, nullptr);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  auto update_options = LayoutOptions(test, enable_unified);
+  test->manager->RequestLayout(update_options);
+  EXPECT_EQ(update_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_,
+            (std::vector<bool>{true, false}));
+}
+
+void ExpectLayoutInElementReuseAfterDeferredViewport(FiberElementTest* test,
+                                                     bool enable_unified) {
+  PrepareLayoutInElementFirstScreenTest(test);
+  auto page = CreateLayoutInElementPage(test);
+
+  auto reuse_options = LayoutOptions(test, enable_unified, false, true);
+  test->manager->RequestLayout(reuse_options);
+  EXPECT_EQ(reuse_options->version, nullptr);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, false);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  auto deferred_layout_options = LayoutOptions(test, enable_unified);
+  test->manager->OnPatchFinish(deferred_layout_options);
+  EXPECT_EQ(deferred_layout_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+}
+
 CSSValue parseTransformStringValue(const lepus::Value& value_str,
                                    const CSSParserConfigs& configs) {
   CSSStringParser parser = CSSStringParser::FromLepusString(value_str, configs);
@@ -2859,6 +2976,30 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(parent->sl_node_->is_dirty_);
   EXPECT_TRUE(element->sl_node_->is_dirty_);
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
+}
+
+TEST_P(FiberElementTest, LayoutInElementLegacyFirstScreenWithReadyViewport) {
+  ExpectLayoutInElementFirstScreenWithReadyViewport(this, false);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUnifiedFirstScreenWithReadyViewport) {
+  ExpectLayoutInElementFirstScreenWithReadyViewport(this, true);
+}
+
+TEST_P(FiberElementTest, LayoutInElementLegacyFirstScreenAfterLateViewport) {
+  ExpectLayoutInElementFirstScreenAfterLateViewport(this, false);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUnifiedFirstScreenAfterLateViewport) {
+  ExpectLayoutInElementFirstScreenAfterLateViewport(this, true);
+}
+
+TEST_P(FiberElementTest, LayoutInElementLegacyReuseAfterDeferredViewport) {
+  ExpectLayoutInElementReuseAfterDeferredViewport(this, false);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUnifiedReuseAfterDeferredViewport) {
+  ExpectLayoutInElementReuseAfterDeferredViewport(this, true);
 }
 
 TEST_P(FiberElementTest, PageElementLayoutUpdatesPlatformRootSize) {
