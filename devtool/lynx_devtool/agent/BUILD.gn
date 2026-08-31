@@ -37,6 +37,8 @@ devtool_agent_shared_sources = [
   "domain_agent/inspector_lynx_setting_agent.h",
   "domain_agent/inspector_memory_agent.cc",
   "domain_agent/inspector_memory_agent.h",
+  "domain_agent/inspector_network_agent.cc",
+  "domain_agent/inspector_network_agent.h",
   "domain_agent/inspector_overlay_agent_ng.cc",
   "domain_agent/inspector_overlay_agent_ng.h",
   "domain_agent/inspector_page_agent_ng.cc",
@@ -87,6 +89,8 @@ devtool_agent_ng_sources = [
   "lynx_devtool_mediator_base.h",
   "lynx_global_devtool_mediator.cc",
   "lynx_global_devtool_mediator.h",
+  "network_request_observer.cc",
+  "network_request_observer.h",
 ]
 
 if (is_android) {
@@ -128,6 +132,7 @@ devtool_source_set("agent") {
   deps = [
     "../../../base/src:base_log_headers",
     "../input",
+    "//third_party/modp_b64",
     "//third_party/zlib",
   ]
   public_configs = [ ":common_config" ]

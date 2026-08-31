@@ -724,12 +724,45 @@ std::u16string U32StringToU16(std::u32string_view u32_string) {
   return u16str;
 }
 
-bool IsValidUtf8Bytes(const unsigned char* p, int count) {
-  for (int i = 0; i < count; ++i) {
-    uint8_t c = p[++i];
-    if ((c & 0xC0) != 0x80) {
+bool IsValidUtf8(const uint8_t* data, size_t size) {
+  size_t index = 0;
+  while (index < size) {
+    const uint8_t first = data[index];
+    if (first <= 0x7f) {
+      ++index;
+      continue;
+    }
+    size_t count = 0;
+    uint32_t code_point = 0;
+    if ((first & 0xe0) == 0xc0) {
+      count = 2;
+      code_point = first & 0x1f;
+    } else if ((first & 0xf0) == 0xe0) {
+      count = 3;
+      code_point = first & 0x0f;
+    } else if ((first & 0xf8) == 0xf0) {
+      count = 4;
+      code_point = first & 0x07;
+    } else {
       return false;
     }
+    if (index + count > size) {
+      return false;
+    }
+    for (size_t offset = 1; offset < count; ++offset) {
+      if ((data[index + offset] & 0xc0) != 0x80) {
+        return false;
+      }
+      code_point = (code_point << 6) | (data[index + offset] & 0x3f);
+    }
+    if ((count == 2 && code_point < 0x80) ||
+        (count == 3 && code_point < 0x800) ||
+        (count == 4 && code_point < 0x10000) ||
+        (code_point >= 0xd800 && code_point <= 0xdfff) ||
+        code_point > 0x10ffff) {
+      return false;
+    }
+    index += count;
   }
   return true;
 }

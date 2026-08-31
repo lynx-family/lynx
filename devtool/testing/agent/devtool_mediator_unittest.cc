@@ -83,6 +83,14 @@ class DevToolMediatorTest : public ::testing::Test {
     ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
   }
 
+  void FlushDevToolTasks() {
+    std::promise<void> p;
+    auto f = p.get_future();
+    devtool_mediator_->default_task_runner_->PostTask(
+        [&p]() { p.set_value(); });
+    ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+  }
+
  private:
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
   std::shared_ptr<devtool::MessageSender> message_sender_;
@@ -667,6 +675,54 @@ TEST_F(DevToolMediatorTest, SendCDPEventString) {
   cdp_event_listener_thread_->Join();
   EXPECT_EQ(listener_sender->received_msg_.second,
             "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, NetworkCaptureEnqueuedAfterDisableIsDropped) {
+  auto observer = devtool_mediator_->devtool_executor_->network_observer_;
+  devtool::MockReceiver::GetInstance().ResetAll();
+
+  Json::Value enable_message;
+  enable_message["id"] = 1;
+  devtool_mediator_->NetworkEnable(message_sender_, enable_message);
+  FlushDevToolTasks();
+  ASSERT_TRUE(observer->IsEnabled());
+
+  // Block the DevTool runner so the queue order below is fixed.
+  auto blocker_started = std::make_shared<std::promise<void>>();
+  auto blocker_started_future = blocker_started->get_future();
+  auto release_blocker = std::make_shared<std::promise<void>>();
+  auto release_blocker_future = release_blocker->get_future().share();
+  devtool_mediator_->default_task_runner_->PostTask(
+      [blocker_started, release_blocker_future]() {
+        blocker_started->set_value();
+        release_blocker_future.wait();
+      });
+  ASSERT_EQ(blocker_started_future.wait_for(std::chrono::seconds(5)),
+            std::future_status::ready);
+
+  // The producer side may still pass the enabled fast-path while a disable is
+  // racing: the capture is enqueued behind the disable command and must be
+  // dropped by the execution-time enabled check.
+  Json::Value disable_message;
+  disable_message["id"] = 2;
+  devtool_mediator_->NetworkDisable(message_sender_, disable_message);
+
+  devtool::NetworkRequestInfo request;
+  request.url = "https://example.com/network-after-disable";
+  request.method = "GET";
+  ASSERT_FALSE(observer->RequestWillBeSent(request).empty());
+
+  release_blocker->set_value();
+  FlushDevToolTasks();
+
+  EXPECT_FALSE(observer->IsEnabled());
+  // The disable OK response is the last message; the capture was dropped.
+  Json::Value res;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  EXPECT_EQ(res["id"], 2);
+  EXPECT_TRUE(res["result"].isObject());
 }
 
 TEST_F(DevToolMediatorTest, SetTag) {

@@ -195,6 +195,8 @@ inline bool IsUtf8Start(char c) {
   return (c & 0xc0) != 0x80;
 }
 
+BASE_EXPORT bool IsValidUtf8(const uint8_t* data, size_t size);
+
 BASE_EXPORT std::u16string U8StringToU16(std::string_view u8_string);
 BASE_EXPORT std::string U16StringToU8(std::u16string_view u16_string);
 BASE_EXPORT std::u32string U8StringToU32(std::string_view u8_string);

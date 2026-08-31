@@ -1301,6 +1301,39 @@ void LynxDevToolMediator::SendLogEntryAddedEvent(
   });
 }
 
+// Network protocol
+void LynxDevToolMediator::NetworkEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkEnable(sender, message);
+  });
+}
+
+void LynxDevToolMediator::NetworkDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkDisable(sender, message);
+  });
+}
+
+void LynxDevToolMediator::NetworkGetResponseBody(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkGetResponseBody(sender, message);
+  });
+}
+
+void LynxDevToolMediator::NetworkGetRequestPostData(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkGetRequestPostData(sender, message);
+  });
+}
+
 void LynxDevToolMediator::LayerTreeEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
