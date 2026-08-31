@@ -155,6 +155,16 @@ InternalTextView* SelectionPopupView::CreateTextViewByText(
   return text_view;
 }
 
+void SelectionPopupView::UpdatePosition() {
+  FloatPoint offset = GetPositionForChild(
+      FloatSize(bounds_width_, bounds_height_), FloatSize(width_, height_));
+  SetX(offset.x());
+  SetY(offset.y());
+  origin_top_ = Top();
+  origin_left_ = Left();
+  Invalidate();
+}
+
 FloatPoint SelectionPopupView::GetPositionForChild(FloatSize size,
                                                    FloatSize child_size) {
   if (anchor_offset_.size() == 0) {
