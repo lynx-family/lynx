@@ -904,6 +904,36 @@ void EventDispatcher::GetTargetPoint(EventTarget* active_target,
   }
 }
 
+lynx::event::TouchEventTargetPoints EventDispatcher::GetCurrentTargetPoints(
+    EventTarget* active_target, float page_point[2],
+    const std::string& event_name) {
+  lynx::event::TouchEventTargetPoints points;
+  if (ui_owner_->Context() == nullptr ||
+      !ui_owner_->Context()->EnableCurrentTargetTouchPosition()) {
+    return points;
+  }
+  auto* current = active_target;
+  auto* root = ui_owner_->Root();
+  while (current != nullptr) {
+    if (current->HasUI()) {
+      auto* current_ui = static_cast<UIBase*>(current);
+      if (current_ui->HasResponseChainEvent(event_name)) {
+        float local_point[2] = {page_point[0], page_point[1]};
+        LynxUIHelper::ConvertPointFromAncestorToDescendant(
+            local_point, root, current_ui, page_point);
+        points.push_back(lynx::event::TouchEventTargetPoint{
+            current->Sign(), local_point[0], local_point[1]});
+      }
+    }
+    auto* parent = current->ParentTarget();
+    if (parent == current) {
+      break;
+    }
+    current = parent;
+  }
+  return points;
+}
+
 void EventDispatcher::GetPagePoint(float page_point[2], float node_point[2]) {
   if (from_overlay_ && !ui_owner_->Destroyed()) {
     auto root = ui_owner_->Root();
@@ -1594,6 +1624,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetTargetPoint(target_point);
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);
+  touch_event.SetCurrentTargetPoints(
+      GetCurrentTargetPoints(active_target, page_point, name));
   touch_event.SetTimeStamp(OH_ArkUI_UIInputEvent_GetEventTime(event));
   touch_event.SetTarget(first_active_target_);
   MarkDispatchInCurrentLynxPageOnly(touch_event);
@@ -1617,6 +1649,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetTargetPoint(target_point);
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);
+  touch_event.SetCurrentTargetPoints(
+      GetCurrentTargetPoints(active_target, page_point, name));
   MarkDispatchInCurrentLynxPageOnly(touch_event);
   ui_owner_->SendEvent(touch_event);
   last_touch_event_ = std::make_shared<TouchEvent>(touch_event);
