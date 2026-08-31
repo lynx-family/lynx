@@ -15,6 +15,9 @@ namespace lynx {
 namespace shell {
 void PerfControllerProxyImpl::MarkTiming(tasm::TimingKey timing_key,
                                          const tasm::PipelineID& pipeline_id) {
+  if (!perf_actor_) {
+    return;
+  }
   auto timestamp_us = base::CurrentSystemTimeMicroseconds();
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY, TIMING_MARK + std::string(timing_key),
@@ -34,6 +37,9 @@ void PerfControllerProxyImpl::MarkTiming(tasm::TimingKey timing_key,
 void PerfControllerProxyImpl::SetTiming(tasm::TimingKey timing_key,
                                         uint64_t timestamp_us,
                                         const tasm::PipelineID& pipeline_id) {
+  if (!perf_actor_) {
+    return;
+  }
   perf_actor_->ActAsync(
       [timestamp_us, pipeline_id,
        timing_key = std::move(timing_key)](auto& controller) mutable {
@@ -45,6 +51,9 @@ void PerfControllerProxyImpl::SetTiming(tasm::TimingKey timing_key,
 void PerfControllerProxyImpl::SetHostPlatformTiming(
     tasm::TimingKey timing_key, uint64_t timestamp_us,
     const tasm::PipelineID& pipeline_id) {
+  if (!perf_actor_) {
+    return;
+  }
   perf_actor_->ActAsync(
       [timestamp_us, pipeline_id,
        timing_key = std::move(timing_key)](auto& controller) mutable {
@@ -54,6 +63,9 @@ void PerfControllerProxyImpl::SetHostPlatformTiming(
 }
 
 void PerfControllerProxyImpl::SetHostPlatformType(const std::string& type) {
+  if (!perf_actor_) {
+    return;
+  }
   perf_actor_->ActAsync([type](auto& controller) mutable {
     controller->GetTimingHandler().SetHostPlatformType(type);
   });
@@ -64,6 +76,9 @@ std::string PerfControllerProxyImpl::GetPlatform() const {
 }
 
 void PerfControllerProxyImpl::RunTaskInReportThread(base::closure task) {
+  if (!perf_actor_) {
+    return;
+  }
   perf_actor_->ActAsync([task = std::move(task)](auto& controller) mutable {
     if (task) {
       task();
@@ -72,6 +87,9 @@ void PerfControllerProxyImpl::RunTaskInReportThread(base::closure task) {
 }
 
 void PerfControllerProxyImpl::OnEvent(int32_t instance_id, ReportEvent& event) {
+  if (!perf_actor_) {
+    return;
+  }
   perf_actor_->ActAsync(
       [instance_id, event = std::move(event)](auto& controller) mutable {
         lynx::tasm::report::MoveOnlyEvent move_only_event;
