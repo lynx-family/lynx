@@ -33,6 +33,45 @@ namespace animation {
 
 namespace {
 
+template <typename Keyframe>
+bool SetCSSKeyframeValue(Keyframe* keyframe, tasm::CSSPropertyID id,
+                         const tasm::CSSValue& value, tasm::Element* element) {
+  return keyframe->SetValue(id, value, element);
+}
+
+template <typename Keyframe>
+bool SetNumericCSSKeyframeValue(Keyframe* keyframe, tasm::CSSPropertyID id,
+                                const tasm::CSSValue& value,
+                                tasm::Element* element) {
+  auto resolved_value = HandleCSSVariableValueIfNeed(id, value, element);
+  if (!resolved_value.IsNumber()) {
+    return false;
+  }
+  keyframe->SetValue(
+      static_cast<decltype(keyframe->Value())>(resolved_value.GetNumber()));
+  return true;
+}
+
+bool SetCSSKeyframeValue(gfx::FloatKeyframe* keyframe, tasm::CSSPropertyID id,
+                         const tasm::CSSValue& value, tasm::Element* element) {
+  return SetNumericCSSKeyframeValue(keyframe, id, value, element);
+}
+
+bool SetCSSKeyframeValue(gfx::ColorKeyframe* keyframe, tasm::CSSPropertyID id,
+                         const tasm::CSSValue& value, tasm::Element* element) {
+  return SetNumericCSSKeyframeValue(keyframe, id, value, element);
+}
+
+bool SetCSSKeyframeValue(gfx::IntKeyframe* keyframe, tasm::CSSPropertyID id,
+                         const tasm::CSSValue& value, tasm::Element* element) {
+  auto resolved_value = HandleCSSVariableValueIfNeed(id, value, element);
+  if (!resolved_value.IsEnum()) {
+    return false;
+  }
+  keyframe->SetValue(static_cast<int32_t>(resolved_value.AsNumber()));
+  return true;
+}
+
 bool HasNoSampleableKeyframes(const std::shared_ptr<Animation>& animation,
                               bool has_custom_property_keyframes) {
   if (animation == nullptr || animation->keyframe_effect() == nullptr) {
@@ -137,7 +176,7 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
   KeyframeCallbacks keyframe_callbacks;
   auto init_keyframe = [&](auto factory) -> bool {
     auto typed_keyframe = factory();
-    if (!typed_keyframe->SetValue(id, value, element_)) {
+    if (!SetCSSKeyframeValue(typed_keyframe.get(), id, value, element_)) {
       return false;
     }
     keyframe_callbacks = MakeKeyframeCallbacks(typed_keyframe.get());
@@ -159,8 +198,8 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
       new_curve = KeyframedOpacityAnimationCurve::Create();
     }
     if (!init_keyframe([&]() {
-          return OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                         std::move(timing_function));
+          return gfx::FloatKeyframe::Create(
+              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
         })) {
       return false;
     }
@@ -175,8 +214,8 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
           element()->computed_css_style()->new_animator_interpolation());
     }
     if (!init_keyframe([&]() {
-          return ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                       std::move(timing_function));
+          return gfx::ColorKeyframe::Create(
+              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
         })) {
       return false;
     }
@@ -186,8 +225,8 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
       new_curve = KeyframedFloatAnimationCurve::Create();
     }
     if (!init_keyframe([&]() {
-          return FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
-                                       std::move(timing_function));
+          return gfx::FloatKeyframe::Create(
+              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
         })) {
       return false;
     }
@@ -246,8 +285,8 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
       new_curve = KeyframedVisibilityAnimationCurve::Create();
     }
     if (!init_keyframe([&]() {
-          return VisibilityKeyframe::Create(
-              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+          return gfx::IntKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                          std::move(timing_function));
         })) {
       return false;
     }
@@ -988,16 +1027,14 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     // the default values of layout properties are 'auto'.
     return tasm::CSSValue();
   } else if (type == starlight::AnimationPropertyType::kOpacity) {
-    return tasm::CSSValue(OpacityKeyframe::kDefaultOpacity,
-                          tasm::CSSValuePattern::NUMBER);
+    return tasm::CSSValue(kDefaultOpacity, tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kBackgroundColor ||
              (type >= starlight::AnimationPropertyType::kBorderTopColor &&
               type <= starlight::AnimationPropertyType::kBorderBottomColor)) {
-    return tasm::CSSValue(ColorKeyframe::kDefaultBackgroundColor,
+    return tasm::CSSValue(kDefaultBackgroundColor,
                           tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kColor) {
-    return tasm::CSSValue(ColorKeyframe::kDefaultTextColor,
-                          tasm::CSSValuePattern::NUMBER);
+    return tasm::CSSValue(kDefaultTextColor, tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kTransform) {
     // There are many kinds of identity transforms, we choose one(rotateZ 0
     // degree) of them.
@@ -1008,8 +1045,7 @@ tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     items->emplace_back(std::move(item));
     return tasm::CSSValue(std::move(items));
   } else if (type == starlight::AnimationPropertyType::kFlexGrow) {
-    return tasm::CSSValue(FloatKeyframe::kDefaultFloatValue,
-                          tasm::CSSValuePattern::NUMBER);
+    return tasm::CSSValue(kDefaultFloatValue, tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kBoxShadow) {
     return tasm::CSSValue(lepus::CArray::Create());
   }

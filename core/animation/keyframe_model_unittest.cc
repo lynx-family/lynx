@@ -18,13 +18,13 @@ namespace test {
 std::unique_ptr<gfx::KeyframeModel> InitTestModel() {
   auto test_curve = KeyframedOpacityAnimationCurve::Create();
   auto test_frame1 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(0.0), nullptr);
-  test_frame1->SetOpacity(1.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(0.0), nullptr);
+  test_frame1->SetValue(1.0f);
   test_curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(0.0f);
   test_curve->AddKeyframe(std::move(test_frame2));
   return gfx::KeyframeModel::Create(std::move(test_curve));
 }
@@ -582,13 +582,13 @@ TEST(KeyframeModelTest, TimingInputUsesPauseAndPlaybackState) {
 TEST(KeyframeModelTest, EnsureFromAndToKeyframe) {
   auto test_curve = KeyframedOpacityAnimationCurve::Create();
   auto test_frame1 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(0.3), nullptr);
-  test_frame1->SetOpacity(1.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(0.3), nullptr);
+  test_frame1->SetValue(1.0f);
   test_curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(0.7), nullptr);
-  test_frame2->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(0.7), nullptr);
+  test_frame2->SetValue(0.0f);
   test_curve->AddKeyframe(std::move(test_frame2));
 
   auto test_model = gfx::KeyframeModel::Create(std::move(test_curve));

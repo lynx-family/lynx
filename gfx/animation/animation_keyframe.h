@@ -82,10 +82,7 @@ class FloatKeyframe : public Keyframe {
 
   float Value() const { return value_; }
 
-  void SetValue(float value) { SetFloatValue(value); }
-
- protected:
-  void SetFloatValue(float value) {
+  void SetValue(float value) {
     value_ = value;
     MarkNonEmpty();
   }
@@ -108,10 +105,7 @@ class ColorKeyframe : public Keyframe {
 
   uint32_t Value() const { return value_; }
 
-  void SetValue(uint32_t value) { SetColorValue(value); }
-
- protected:
-  void SetColorValue(uint32_t value) {
+  void SetValue(uint32_t value) {
     value_ = value;
     MarkNonEmpty();
   }

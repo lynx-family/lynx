@@ -118,17 +118,17 @@ std::unique_ptr<gfx::Keyframe> LayoutAnimationCurve::MakeEmptyKeyframe(
 
 std::unique_ptr<gfx::Keyframe> OpacityAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
-  return OpacityKeyframe::Create(offset, nullptr);
+  return gfx::FloatKeyframe::Create(offset);
 }
 
 std::unique_ptr<gfx::Keyframe> ColorAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
-  return ColorKeyframe::Create(offset, nullptr);
+  return gfx::ColorKeyframe::Create(offset);
 }
 
 std::unique_ptr<gfx::Keyframe> FloatAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
-  return FloatKeyframe::Create(offset, nullptr);
+  return gfx::FloatKeyframe::Create(offset);
 }
 
 std::unique_ptr<gfx::Keyframe> FilterAnimationCurve::MakeEmptyKeyframe(
@@ -149,7 +149,7 @@ std::unique_ptr<gfx::Keyframe> TransformOriginAnimationCurve::MakeEmptyKeyframe(
 
 std::unique_ptr<gfx::Keyframe> VisibilityAnimationCurve::MakeEmptyKeyframe(
     const fml::TimeDelta& offset) {
-  return VisibilityKeyframe::Create(offset, nullptr);
+  return gfx::IntKeyframe::Create(offset);
 }
 
 }  // namespace animation
