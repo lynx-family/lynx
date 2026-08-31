@@ -83,6 +83,13 @@ void BorderRadius::SetRadius(CornerPosition position, const lepus::Value& value,
       val_array->get(offset + 2),
       static_cast<PlatformLengthType>(val_array->get(offset + 3).Number())};
 }
+
+void BorderRadius::SetRadius(CornerPosition position, float radius_x,
+                             float radius_y) {
+  size_t index = static_cast<size_t>(position) * 2;
+  radius_[index] = PlatformLength(radius_x, PlatformLengthType::kNumber);
+  radius_[index + 1] = PlatformLength(radius_y, PlatformLengthType::kNumber);
+}
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

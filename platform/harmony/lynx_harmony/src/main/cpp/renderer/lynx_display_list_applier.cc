@@ -7,16 +7,96 @@
 #include <native_drawing/drawing_rect.h>
 #include <native_drawing/drawing_round_rect.h>
 
+#include <algorithm>
+#include <memory>
+#include <utility>
+
+#include "base/include/value/array.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_drawable.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+namespace {
 
-LynxDisplayListApplier::LynxDisplayListApplier(LynxRendererContext* context)
-    : context_(context) {}
+void SetDrawableRadius(BackgroundDrawable& drawable,
+                       const RoundedRectangle& box) {
+  auto* radius = drawable.GetBorderRadius();
+  radius->SetRadius(BorderRadius::CornerPosition::kTopLeft,
+                    box.GetRadiusXTopLeft(), box.GetRadiusYTopLeft());
+  radius->SetRadius(BorderRadius::CornerPosition::kTopRight,
+                    box.GetRadiusXTopRight(), box.GetRadiusYTopRight());
+  radius->SetRadius(BorderRadius::CornerPosition::kBottomRight,
+                    box.GetRadiusXBottomRight(), box.GetRadiusYBottomRight());
+  radius->SetRadius(BorderRadius::CornerPosition::kBottomLeft,
+                    box.GetRadiusXBottomLeft(), box.GetRadiusYBottomLeft());
+}
+
+void ConfigureFillDrawable(BackgroundDrawable& drawable,
+                           const RoundedRectangle& box, uint32_t color,
+                           float density) {
+  drawable.SetBackgroundColor(color);
+  SetDrawableRadius(drawable, box);
+  drawable.UpdateBounds(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight(),
+                        0.f, 0.f, 0.f, 0.f, density);
+  drawable.AdjustBorder();
+}
+
+void ConfigureBorderDrawable(BackgroundDrawable& drawable,
+                             const RoundedRectangle& outer,
+                             const RoundedRectangle& inner,
+                             const DisplayListItem::Payload& payload,
+                             float density) {
+  const float outer_right = outer.GetX() + outer.GetWidth();
+  const float outer_bottom = outer.GetY() + outer.GetHeight();
+  const float inner_right = inner.GetX() + inner.GetWidth();
+  const float inner_bottom = inner.GetY() + inner.GetHeight();
+  drawable.SetBorderWidth({std::max(inner.GetX() - outer.GetX(), 0.f),
+                           std::max(outer_right - inner_right, 0.f),
+                           std::max(inner.GetY() - outer.GetY(), 0.f),
+                           std::max(outer_bottom - inner_bottom, 0.f)});
+  drawable.SetBorderTopColor(lepus::Value(payload.border.colors[0]));
+  drawable.SetBorderRightColor(lepus::Value(payload.border.colors[1]));
+  drawable.SetBorderBottomColor(lepus::Value(payload.border.colors[2]));
+  drawable.SetBorderLeftColor(lepus::Value(payload.border.colors[3]));
+  drawable.SetBorderTopStyle(lepus::Value(payload.border.styles[0]));
+  drawable.SetBorderRightStyle(lepus::Value(payload.border.styles[1]));
+  drawable.SetBorderBottomStyle(lepus::Value(payload.border.styles[2]));
+  drawable.SetBorderLeftStyle(lepus::Value(payload.border.styles[3]));
+  SetDrawableRadius(drawable, outer);
+  drawable.UpdateBounds(outer.GetX(), outer.GetY(), outer.GetWidth(),
+                        outer.GetHeight(), 0.f, 0.f, 0.f, 0.f, density);
+  drawable.AdjustBorder();
+}
+
+RoundedRectangle RecordBox(const DisplayListItem& item) {
+  RoundedRectangle box;
+  box.SetX(item.payload.record_box.x);
+  box.SetY(item.payload.record_box.y);
+  box.SetWidth(item.payload.record_box.w);
+  box.SetHeight(item.payload.record_box.h);
+  if (item.payload.record_box.has_radii) {
+    box.SetRadiusXTopLeft(item.payload.record_box.radii[0]);
+    box.SetRadiusYTopLeft(item.payload.record_box.radii[1]);
+    box.SetRadiusXTopRight(item.payload.record_box.radii[2]);
+    box.SetRadiusYTopRight(item.payload.record_box.radii[3]);
+    box.SetRadiusXBottomRight(item.payload.record_box.radii[4]);
+    box.SetRadiusYBottomRight(item.payload.record_box.radii[5]);
+    box.SetRadiusXBottomLeft(item.payload.record_box.radii[6]);
+    box.SetRadiusYBottomLeft(item.payload.record_box.radii[7]);
+  }
+  return box;
+}
+
+}  // namespace
+
+LynxDisplayListApplier::LynxDisplayListApplier(LynxRendererContext* context,
+                                               std::weak_ptr<UIBase> host)
+    : context_(context), host_(std::move(host)) {}
 
 LynxDisplayListApplier::~LynxDisplayListApplier() = default;
 
@@ -36,13 +116,123 @@ void LynxDisplayListApplier::ApplyDisplayList(const DisplayList& display_list,
   if (item_count == 0 || items == nullptr) {
     return;
   }
+  boxes_.clear();
   ProcessContentOperations(items, item_count, canvas,
                            lynx_context->ScaledDensity());
 }
 
 void LynxDisplayListApplier::ProcessContentOperations(
     const DisplayListItem* items, size_t item_count, OH_Drawing_Canvas* canvas,
-    float density) {}
+    float density) {
+  int32_t fragment_depth = 0;
+  bool has_seen_first_begin = false;
+
+  OH_Drawing_CanvasSave(canvas);
+  for (size_t i = 0; i < item_count; ++i) {
+    const auto& item = items[i];
+    switch (item.type) {
+      case DisplayListOpType::kBegin:
+        OH_Drawing_CanvasSave(canvas);
+        if (has_seen_first_begin) {
+          OH_Drawing_CanvasTranslate(canvas, item.payload.begin.x * density,
+                                     item.payload.begin.y * density);
+        }
+        has_seen_first_begin = true;
+        ++fragment_depth;
+        break;
+      case DisplayListOpType::kEnd:
+        if (fragment_depth > 0) {
+          OH_Drawing_CanvasRestore(canvas);
+          --fragment_depth;
+        }
+        break;
+      case DisplayListOpType::kRecordBox:
+        boxes_.emplace_back(RecordBox(item));
+        break;
+      case DisplayListOpType::kFill: {
+        const int32_t box_index = item.payload.fill.clip_index;
+        if (box_index < 0 || static_cast<size_t>(box_index) >= boxes_.size()) {
+          break;
+        }
+        if (!fill_drawable_) {
+          fill_drawable_ = std::make_unique<BackgroundDrawable>(host_, false);
+        }
+        ConfigureFillDrawable(*fill_drawable_, boxes_[box_index],
+                              item.payload.fill.color, density);
+        fill_drawable_->RenderForFragmentLayer(
+            canvas, BackgroundDrawable::FragmentLayerRenderMode::kBackground);
+        break;
+      }
+      case DisplayListOpType::kBorder: {
+        const int32_t outer_index = item.payload.border.out_index;
+        const int32_t inner_index = item.payload.border.inner_index;
+        if (outer_index < 0 || inner_index < 0 ||
+            static_cast<size_t>(outer_index) >= boxes_.size() ||
+            static_cast<size_t>(inner_index) >= boxes_.size()) {
+          break;
+        }
+        if (!border_drawable_) {
+          border_drawable_ = std::make_unique<BackgroundDrawable>(host_, false);
+        }
+        ConfigureBorderDrawable(*border_drawable_, boxes_[outer_index],
+                                boxes_[inner_index], item.payload, density);
+        border_drawable_->RenderForFragmentLayer(
+            canvas, BackgroundDrawable::FragmentLayerRenderMode::kBorder);
+        break;
+      }
+      case DisplayListOpType::kClipRect: {
+        const auto& clip = item.payload.clip_rect;
+        auto* rect = OH_Drawing_RectCreate(clip.x * density, clip.y * density,
+                                           (clip.x + clip.w) * density,
+                                           (clip.y + clip.h) * density);
+        if (!clip.has_radii) {
+          OH_Drawing_CanvasClipRect(canvas, rect,
+                                    OH_Drawing_CanvasClipOp::INTERSECT, true);
+          OH_Drawing_RectDestroy(rect);
+          break;
+        }
+        auto* round_rect = OH_Drawing_RoundRectCreate(rect, 0.f, 0.f);
+        OH_Drawing_RectDestroy(rect);
+        constexpr OH_Drawing_CornerPos kCornerPositions[] = {
+            CORNER_POS_TOP_LEFT, CORNER_POS_TOP_RIGHT, CORNER_POS_BOTTOM_RIGHT,
+            CORNER_POS_BOTTOM_LEFT};
+        for (size_t corner = 0; corner < 4; ++corner) {
+          OH_Drawing_Corner_Radii radii{clip.radii[corner * 2] * density,
+                                        clip.radii[corner * 2 + 1] * density};
+          OH_Drawing_RoundRectSetCorner(round_rect, kCornerPositions[corner],
+                                        radii);
+        }
+        OH_Drawing_CanvasClipRoundRect(
+            canvas, round_rect, OH_Drawing_CanvasClipOp::INTERSECT, true);
+        OH_Drawing_RoundRectDestroy(round_rect);
+        break;
+      }
+      case DisplayListOpType::kText: {
+        auto text_bundle = context_->GetTextBundle(item.payload.text.text_id);
+        if (text_bundle != nullptr) {
+          text_bundle->SetEmojiInvalidateTarget(host_);
+          text_bundle->Draw(canvas, text_bundle->GetTranslateLeftOffset(), 0.f);
+        }
+        break;
+      }
+      case DisplayListOpType::kDrawView:
+      case DisplayListOpType::kImage:
+      case DisplayListOpType::kCustom:
+      case DisplayListOpType::kLinearGradient:
+      case DisplayListOpType::kBoxShadow:
+      case DisplayListOpType::kBackgroundImage:
+        // TODO: Add the remaining Harmony fragment-layer drawing operations.
+        break;
+      default:
+        break;
+    }
+  }
+  while (fragment_depth > 0) {
+    OH_Drawing_CanvasRestore(canvas);
+    --fragment_depth;
+  }
+  OH_Drawing_CanvasRestore(canvas);
+}
 
 }  // namespace harmony
 }  // namespace tasm

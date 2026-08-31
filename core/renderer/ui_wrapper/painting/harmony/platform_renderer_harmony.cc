@@ -111,7 +111,7 @@ void PlatformRendererHarmony::CleanupRenderer() {
 
 void PlatformRendererHarmony::OnUpdateDisplayList(DisplayList display_list) {
   auto host = host_.lock();
-  if (host == nullptr) {
+  if (display_list.GetContentItemsSize() == 0 || host == nullptr) {
     return;
   }
   UpdateHostLayout(display_list);
