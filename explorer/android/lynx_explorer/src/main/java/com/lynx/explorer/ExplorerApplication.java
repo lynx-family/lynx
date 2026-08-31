@@ -10,7 +10,6 @@ import com.facebook.imagepipeline.core.ImagePipelineConfig;
 import com.facebook.imagepipeline.memory.PoolConfig;
 import com.facebook.imagepipeline.memory.PoolFactory;
 import com.lynx.devtool.recorder.LynxRecorderPageManager;
-import com.lynx.devtoolwrapper.DevToolSettings;
 import com.lynx.explorer.modules.LynxModuleAdapter;
 import com.lynx.explorer.provider.DemoTemplateProvider;
 import com.lynx.explorer.shell.LynxRecorderDefaultActionCallback;
@@ -95,6 +94,7 @@ public class ExplorerApplication extends Application {
   }
 
   private void initLynxEnv() {
+    LynxEnv.inst().prepareDevToolForDevelopmentBeforeInit();
     LynxEnv.inst().init(this, null, new DemoTemplateProvider(), null);
   }
 
@@ -107,12 +107,6 @@ public class ExplorerApplication extends Application {
     LynxServiceCenter.inst().registerService(LynxImageService.getInstance());
     LynxServiceCenter.inst().registerService(LynxHttpService.INSTANCE);
     LynxServiceCenter.inst().registerService(LynxDevToolService.getINSTANCE());
-
-    // enable debugging for all sessions
-    LynxDevToolService.getINSTANCE().enableAllSessions();
-
-    // set devtool bootstrap defaults
-    DevToolSettings.inst().bootstrap().applyDevelopmentDefaultsIfUnset();
   }
 
   // merge it into InitProcessor later.
