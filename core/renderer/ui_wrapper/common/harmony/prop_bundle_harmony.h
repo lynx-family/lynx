@@ -37,6 +37,8 @@ class PropBundleHarmony : public NativePropBundle {
 
   fml::RefPtr<PropBundle> ShallowCopy() override;
 
+  fml::RefPtr<PropBundleHarmony> CreateUIThreadSafeCopy() const;
+
   static napi_value CreateNapiValue(napi_env env, const lepus::Value& value);
 
   static void Init(napi_env env) { env_ = env; }

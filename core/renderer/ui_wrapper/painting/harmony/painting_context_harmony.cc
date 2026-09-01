@@ -35,6 +35,24 @@ void RunOnUITaskSync(const fml::RefPtr<fml::TaskRunner>& runner,
   runner->PostSyncTask(std::move(task));
 }
 
+fml::RefPtr<PropBundle> PreparePropBundle(
+    const std::shared_ptr<shell::DynamicUIOperationQueue>& queue,
+    fml::RefPtr<PropBundle> props) {
+  if (!queue->IsEngineAsync()) {
+    return props;
+  }
+  return static_cast<PropBundleHarmony*>(props.get())->CreateUIThreadSafeCopy();
+}
+
+template <typename T>
+lepus::Value PrepareValue(
+    const std::shared_ptr<shell::DynamicUIOperationQueue>& queue, T&& value) {
+  if (!queue->IsEngineAsync()) {
+    return std::forward<T>(value);
+  }
+  return lepus::Value::ShallowCopy(value);
+}
+
 }  // namespace
 
 void PaintingContextHarmonyRef::InsertPaintingNode(int parent, int child,
@@ -201,7 +219,8 @@ void PaintingContextHarmony::CreatePaintingNode(
     int id, const std::string& tag,
     const fml::RefPtr<PropBundle>& painting_data, bool flatten,
     bool create_node_async, uint32_t node_index) {
-  Enqueue([platform_ref = platform_ref_, id, tag, props = painting_data,
+  auto ui_props = PreparePropBundle(queue_, painting_data);
+  Enqueue([platform_ref = platform_ref_, id, tag, props = std::move(ui_props),
            node_index] {
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
@@ -212,7 +231,8 @@ void PaintingContextHarmony::CreatePaintingNode(
 
 void PaintingContextHarmony::ConsumeGesture(int64_t id, int32_t gesture_id,
                                             const pub::Value& params) {
-  auto lepus_map = pub::ValueUtils::ConvertValueToLepusValue(params);
+  auto lepus_map =
+      PrepareValue(queue_, pub::ValueUtils::ConvertValueToLepusValue(params));
 
   Enqueue([platform_ref = platform_ref_, id, gesture_id,
            gesture_map = std::move(lepus_map)] {
@@ -225,7 +245,8 @@ void PaintingContextHarmony::ConsumeGesture(int64_t id, int32_t gesture_id,
 void PaintingContextHarmony::UpdatePaintingNode(
     int id, bool tend_to_flatten,
     const fml::RefPtr<PropBundle>& painting_data) {
-  Enqueue([platform_ref = platform_ref_, id, props = painting_data] {
+  auto ui_props = PreparePropBundle(queue_, painting_data);
+  Enqueue([platform_ref = platform_ref_, id, props = std::move(ui_props)] {
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
     harmony_ref->UpdateUI(id,
@@ -274,7 +295,8 @@ void PaintingContextHarmony::UpdateLayout(
 
 void PaintingContextHarmony::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {
-  Enqueue([platform_ref = platform_ref_, data = std::move(keyframes_data)]() {
+  auto ui_data = PreparePropBundle(queue_, std::move(keyframes_data));
+  Enqueue([platform_ref = platform_ref_, data = std::move(ui_data)]() {
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
     auto* prop_bundle = reinterpret_cast<PropBundleHarmony*>(data.get());
@@ -307,7 +329,8 @@ std::unique_ptr<pub::Value> PaintingContextHarmony::GetTextInfo(
 }
 
 void PaintingContextHarmony::StopExposure(const pub::Value& options) {
-  auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
+  auto lepus_options =
+      PrepareValue(queue_, pub::ValueUtils::ConvertValueToLepusValue(options));
   Enqueue(
       [platform_ref = platform_ref_, lepus_opts = std::move(lepus_options)]() {
         auto harmony_ref =
@@ -407,14 +430,18 @@ void PaintingContextHarmony::Invoke(
     int64_t id, const std::string& method, const pub::Value& params,
     const std::function<void(int32_t code, const pub::Value& data)>& callback) {
   base::MoveOnlyClosure<void, int32_t, const lepus::Value&> cb =
-      [platform_ref = platform_ref_, callback](int32_t code,
-                                               const lepus::Value& data) {
+      [platform_ref = platform_ref_, callback, queue = queue_](
+          int32_t code, const lepus::Value& data) {
         auto harmony_ref =
             std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+        auto callback_data = PrepareValue(queue, data);
         harmony_ref->GetUIOwner()->RunTaskOnTASMThread(
-            [callback, code, data]() { callback(code, PubLepusValue(data)); });
+            [callback, code, data = std::move(callback_data)]() mutable {
+              callback(code, PubLepusValue(std::move(data)));
+            });
       };
-  auto lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  auto lepus_params =
+      PrepareValue(queue_, pub::ValueUtils::ConvertValueToLepusValue(params));
 
   Enqueue([platform_ref = platform_ref_, id, method,
            lepus_params = std::move(lepus_params),
@@ -469,12 +496,14 @@ void PaintingContextHarmony::InvokeUIMethod(int32_t id,
                                             const std::string& method,
                                             fml::RefPtr<tasm::PropBundle> value,
                                             int32_t callback_id) {
-  Enqueue([platform_ref = platform_ref_, value = std::move(value), id,
+  auto ui_args = PreparePropBundle(queue_, std::move(value));
+  Enqueue([platform_ref = platform_ref_, args = std::move(ui_args), id,
            method_name = method, callback_id]() {
-    auto* prop_bundle = reinterpret_cast<tasm::PropBundleHarmony*>(value.get());
     auto harmony_ref =
         std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
-    harmony_ref->InvokeUIMethod(id, method_name, prop_bundle, callback_id);
+    harmony_ref->InvokeUIMethod(
+        id, method_name, static_cast<tasm::PropBundleHarmony*>(args.get()),
+        callback_id);
   });
 }
 

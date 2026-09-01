@@ -5,9 +5,12 @@
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 
 #include <cstdint>
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/include/platform/harmony/napi_util.h"
+#include "core/renderer/events/gesture.h"
 
 namespace lynx {
 namespace tasm {
@@ -24,6 +27,53 @@ PropBundleHarmony::~PropBundleHarmony() = default;
 
 fml::RefPtr<PropBundle> PropBundleHarmony::ShallowCopy() {
   auto prop = fml::MakeRefCounted<PropBundleHarmony>(props_, event_handler_);
+  return prop;
+}
+
+fml::RefPtr<PropBundleHarmony> PropBundleHarmony::CreateUIThreadSafeCopy()
+    const {
+  auto prop = fml::MakeRefCounted<PropBundleHarmony>();
+  prop->props_.reserve(props_.size());
+  for (const auto& [key, value] : props_) {
+    prop->props_.emplace(key, lepus::Value::ShallowCopy(value));
+  }
+
+  if (event_handler_) {
+    prop->event_handler_ = std::vector<lepus::Value>();
+    prop->event_handler_->reserve(event_handler_->size());
+    for (const auto& event : *event_handler_) {
+      prop->event_handler_->emplace_back(lepus::Value::ShallowCopy(event));
+    }
+  }
+
+  if (gesture_detector_map_) {
+    prop->gesture_detector_map_ = GestureMap();
+    for (const auto& [gesture_id, detector] : *gesture_detector_map_) {
+      if (!detector) {
+        prop->gesture_detector_map_->emplace(gesture_id, nullptr);
+        continue;
+      }
+
+      std::vector<GestureCallback> callbacks;
+      callbacks.reserve(detector->gesture_callbacks().size());
+      for (const auto& callback : detector->gesture_callbacks()) {
+        // Harmony UI only uses callback names to enable platform handlers.
+        // Executable LEPUS values remain owned by the TASM-side detector.
+        GestureCallback ui_callback;
+        ui_callback.name_ = callback.name_;
+        callbacks.emplace_back(std::move(ui_callback));
+      }
+
+      auto config =
+          lepus::Value::ShallowCopy(detector->gesture_config_in_lepus_value());
+      prop->gesture_detector_map_->emplace(
+          gesture_id, std::make_shared<GestureDetectorImpl>(
+                          detector->gesture_id(), detector->gesture_type(),
+                          std::move(callbacks), detector->relation_map(),
+                          std::move(config)));
+    }
+  }
+
   return prop;
 }
 
