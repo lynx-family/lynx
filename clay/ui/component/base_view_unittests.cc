@@ -3,9 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "clay/fml/logging.h"
+#include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view.h"
@@ -14,6 +16,7 @@
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/rendering/render_container.h"
 #include "clay/ui/testing/ui_test.h"
+#include "core/public/ui_operation_queue_interface.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
@@ -278,6 +281,27 @@ class ExternalMemoryEventDelegate final : public testing::MockEventDelegate {
   MOCK_METHOD(void, OnExternalMemoryReport, (int64_t, int64_t), (override));
 };
 
+class SnapshotUIOperationQueue final
+    : public lynx::shell::UIOperationQueueInterface {
+ public:
+  void Enqueue(lynx::base::closure operation) override {
+    operations_.emplace_back(std::move(operation));
+  }
+
+  void Flush() override {
+    auto operations = std::move(operations_);
+    operations_.clear();
+    for (auto& operation : operations) {
+      operation();
+    }
+  }
+
+  size_t PendingOperationCount() const { return operations_.size(); }
+
+ private:
+  std::vector<lynx::base::closure> operations_;
+};
+
 TEST_F_UI(BaseViewTest, TreeManipulation) {
   int view_id = 0;
   std::unique_ptr<BaseView> root =
@@ -312,13 +336,13 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryTracksRemovedNodeCandidates) {
 
   view_context_->AddView(2, 1, 0);
   view_context_->AddView(3, 2, 0);
-  view_context_->UpdateNodeReadyPatching({}, {2});
+  view_context_->UpdateNodeReadyPatching({}, {2}, true);
   auto snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, 3 * unit_size);
   EXPECT_EQ(snapshot.garbage_size, 0);
 
   view_context_->RemoveView(2, 1, false);
-  view_context_->UpdateNodeReadyPatching({}, {2, 2, 3});
+  view_context_->UpdateNodeReadyPatching({}, {2, 2, 3}, true);
   snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, 3 * unit_size);
   EXPECT_EQ(snapshot.garbage_size, 2 * unit_size);
@@ -328,12 +352,12 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryTracksRemovedNodeCandidates) {
 
   view_context_->AddView(2, 1, 0);
   view_context_->RemoveView(2, 1, false);
-  view_context_->UpdateNodeReadyPatching({}, {2});
+  view_context_->UpdateNodeReadyPatching({}, {2}, true);
   view_context_->AddView(2, 1, 0);
   EXPECT_EQ(view_context_->GetExternalMemorySnapshot().garbage_size, 0);
 
   view_context_->RemoveView(2, 1, false);
-  view_context_->UpdateNodeReadyPatching({}, {2});
+  view_context_->UpdateNodeReadyPatching({}, {2}, true);
   ASSERT_TRUE(view_context_->DestroyView(2));
   EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
   snapshot = view_context_->GetExternalMemorySnapshot();
@@ -342,13 +366,35 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryTracksRemovedNodeCandidates) {
 }
 
 TEST_F_UI(ViewContextMemoryTest, ExternalMemoryPrunesMissingNodeCandidates) {
-  view_context_->UpdateNodeReadyPatching({}, {404, 405});
+  view_context_->UpdateNodeReadyPatching({}, {404, 405}, true);
   EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 2u);
 
   auto snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, 0);
   EXPECT_EQ(snapshot.garbage_size, 0);
   EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
+}
+
+TEST_F_UI(ViewContextMemoryTest,
+          FeatureOffDoesNotTrackExternalMemoryCandidates) {
+  view_context_->UpdateNodeReadyPatching({}, {404, 405}, false);
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
+}
+
+TEST_F_UI(ViewContextMemoryTest,
+          ClayNodeReadyPatchingCompletesInOneUIOperationFlush) {
+  auto queue = std::make_shared<SnapshotUIOperationQueue>();
+  lynx::tasm::PaintingContextClay painting_context(view_context_.get());
+  painting_context.SetUIOperationQueue(queue);
+  auto platform_ref = painting_context.GetPlatformRef();
+
+  queue->Enqueue([platform_ref]() {
+    platform_ref->UpdateNodeReadyPatching({}, {404, 405}, true);
+  });
+  queue->Flush();
+
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 2u);
+  EXPECT_EQ(queue->PendingOperationCount(), 0u);
 }
 
 TEST_F_UI(ViewContextMemoryTest, PendingReportSurvivesPageReset) {

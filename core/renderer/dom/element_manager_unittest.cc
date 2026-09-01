@@ -261,6 +261,8 @@ TEST_F(ElementManagerTest,
   ASSERT_EQ(platform_ref->remove_ids_.size(), 2U);
   EXPECT_EQ(platform_ref->remove_ids_[0], 3);
   EXPECT_EQ(platform_ref->remove_ids_[1], 4);
+  EXPECT_TRUE(platform_ref->should_cache_external_memory_candidates_);
+  EXPECT_EQ(platform_ref->node_ready_patching_update_count_, 1);
   EXPECT_EQ(platform_ref->external_memory_report_request_count_, 1);
   EXPECT_EQ(platform_ref->external_memory_report_delay_ms_, 1000);
 
@@ -282,6 +284,8 @@ TEST_F(ElementManagerTest, FeatureOffDoesNotRequestExternalMemoryReport) {
 
   ASSERT_EQ(platform_ref->remove_ids_.size(), 1U);
   EXPECT_EQ(platform_ref->remove_ids_[0], 2);
+  EXPECT_FALSE(platform_ref->should_cache_external_memory_candidates_);
+  EXPECT_EQ(platform_ref->node_ready_patching_update_count_, 1);
   EXPECT_EQ(platform_ref->external_memory_report_request_count_, 0);
 }
 

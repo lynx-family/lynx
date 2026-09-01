@@ -590,8 +590,10 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
 }
 
 void NativePaintingCtxPlatformRef::UpdateNodeReadyPatching(
-    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
   (void)remove_ids;
+  (void)should_cache_external_memory_candidates;
   if (ready_ids.empty()) {
     return;
   }

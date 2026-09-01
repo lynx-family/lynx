@@ -250,7 +250,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void OnFirstMeaningfulLayout();
 
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids);
+                               std::vector<int32_t> remove_ids,
+                               bool should_cache_external_memory_candidates);
 
   fml::RefPtr<fml::TaskRunner> GetUITaskRunner() const;
   lynx::tasm::ExternalMemorySnapshot GetExternalMemorySnapshot();

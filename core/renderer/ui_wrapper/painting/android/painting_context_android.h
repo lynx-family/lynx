@@ -46,8 +46,9 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
   void SetGestureDetectorState(int64_t idx, int32_t gesture_id,
                                int32_t state) override;
 
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) override;
   void RequestExternalMemoryReport(int64_t delay_ms) override;
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override;
 
@@ -149,8 +150,9 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
 
   void OnFirstMeaningfulLayout() override;
   // TODO(liting.src): remove this method after ui operation queue refactor.
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) override;
   void RequestExternalMemoryReport(int64_t delay_ms) override;
   void SetContextHasAttached() override;
 
