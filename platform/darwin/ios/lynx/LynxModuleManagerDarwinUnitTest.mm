@@ -8,9 +8,9 @@
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 
+#import <Lynx/LynxBackgroundRuntime+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxView.h>
-#import "LynxBackgroundRuntime+Internal.h"
 #import "LynxUnitTestUtils.h"
 
 #include "core/runtime/js/bindings/modules/ios/common_module_creator.h"
@@ -118,6 +118,24 @@ class ModuleFactoryDarwinTester : public lynx::runtime::js::ModuleFactoryDarwin 
   native_module_manager->SetModuleDelegate(_mockDelegate);
   auto platform_module = native_module_manager->GetModule("ExplicitModule");
   XCTAssertNotEqual(platform_module, nullptr);
+}
+
+- (void)testBuiltInRegistrationPreservesModuleWrapperMetadata {
+  auto external_factory = std::make_shared<ModuleFactoryDarwinTester>();
+  auto built_in_factory = std::make_shared<ModuleFactoryDarwinTester>();
+  NSDictionary *param = @{@"namescope" : @"test-scope", @"value" : @42};
+
+  external_factory->registerModule(@"TestModule", LynxModuleMockExplicitName.class, param);
+  built_in_factory->registerModule(@"TestModule", LynxModuleMockExplicitName.class, param, true);
+
+  LynxModuleWrapper *external_wrapper = external_factory->moduleWrappers()[@"TestModule"];
+  LynxModuleWrapper *built_in_wrapper = built_in_factory->moduleWrappers()[@"TestModule"];
+  XCTAssertNotNil(external_wrapper);
+  XCTAssertNotNil(built_in_wrapper);
+  XCTAssertEqual(external_wrapper.moduleClass, built_in_wrapper.moduleClass);
+  XCTAssertEqual(external_wrapper.param, built_in_wrapper.param);
+  XCTAssertEqualObjects(external_wrapper.moduleName, built_in_wrapper.moduleName);
+  XCTAssertEqualObjects(external_wrapper.namescope, built_in_wrapper.namescope);
 }
 
 @end
