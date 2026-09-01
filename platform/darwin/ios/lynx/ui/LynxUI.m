@@ -859,6 +859,21 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     return true;
   }
 
+  bool hasExternalMask = self.view.layer.mask != nil && self.view.layer.mask != _overflowMask;
+  if (hasExternalMask && [self.view isKindOfClass:[UIScrollView class]]) {
+    // The mask is owned externally (e.g. by the display-list applier in FLR mode). A
+    // scroll view scrolls by shifting its layer's bounds origin, which moves the layer's
+    // coordinate space; pin the mask to the current viewport so the clip stays fixed on
+    // screen instead of scrolling away with the content. This must happen before the
+    // uniform-radius fast path below, which otherwise returns without updating the mask.
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.view.layer.mask.frame = self.view.layer.bounds;
+    [CATransaction commit];
+    // mask is used, we could not set overflow
+    return false;
+  }
+
   bool hasDifferentRadii = false;
   if (_overflow == 0) {
     hasDifferentRadii = [self.backgroundManager hasDifferentBorderRadius];
@@ -871,7 +886,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     }
   }
 
-  if (self.view.layer.mask != nil && self.view.layer.mask != _overflowMask) {
+  if (hasExternalMask) {
     // mask is used, we could not set overflow
     return false;
   }
