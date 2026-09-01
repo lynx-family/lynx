@@ -83,6 +83,23 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   return platform_ref != nullptr && platform_ref->IsNativePaintingCtxPlatformRef();
 }
 
+NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
+  static NSMutableDictionary<NSString*, id>* wrappers;
+  static dispatch_once_t once_token;
+  dispatch_once(&once_token, ^{
+    auto factory = std::make_unique<lynx::runtime::js::ModuleFactoryDarwin>();
+    factory->registerModule(LynxIntersectionObserverModule.class, nil, true);
+    factory->registerModule(LynxUIMethodModule.class, nil, true);
+    factory->registerModule(LynxTextInfoModule.class, nil, true);
+    factory->registerModule(LynxResourceModule.class, nil, true);
+    factory->registerModule(LynxAccessibilityModule.class, nil, true);
+    factory->registerModule(LynxExposureModule.class, nil, true);
+    factory->registerModule(LynxSetModule.class, nil, true);
+    wrappers = [factory->moduleWrappers() mutableCopy];
+  });
+  return wrappers;
+}
+
 }  // namespace
 
 @interface LynxUIRenderer (PaintingContextInternal)
@@ -525,17 +542,13 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 }
 
 - (void)setUpBuiltModuleWithFactory:(lynx::runtime::js::ModuleFactoryDarwin*)module_factory {
-  // register built in module
-  module_factory->registerModule(LynxIntersectionObserverModule.class);
-  module_factory->registerModule(LynxUIMethodModule.class);
-  module_factory->registerModule(LynxTextInfoModule.class);
-  module_factory->registerModule(LynxResourceModule.class);
-  module_factory->registerModule(LynxAccessibilityModule.class);
-  module_factory->registerModule(LynxExposureModule.class);
+  // The parameterless built-in wrappers are immutable metadata. Share them across factories so
+  // subsequent LynxView creation does not repeatedly allocate the same wrappers. Modules with
+  // per-view state must still be registered on each factory.
+  module_factory->addWrappers(GetSharedBuiltInModuleWrappers());
   LynxFetchModuleEventSender* eventSender = [[LynxFetchModuleEventSender alloc] init];
   eventSender.eventSender = _context;
-  module_factory->registerModule(LynxFetchModule.class, eventSender);
-  module_factory->registerModule(LynxSetModule.class);
+  module_factory->registerModule(LynxFetchModule.class, eventSender, true);
   [_devTool registerModule:self];
 }
 

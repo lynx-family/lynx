@@ -237,7 +237,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 
     LynxFetchModuleEventSender* eventSender = [[LynxFetchModuleEventSender alloc] init];
     eventSender.eventSender = self;
-    module_factory->registerModule(LynxFetchModule.class, eventSender);
+    module_factory->registerModule(LynxFetchModule.class, eventSender, true);
     module_factory->addWrappers([options moduleWrappers]);
     LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
     if (globalConfig) {
