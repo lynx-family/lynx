@@ -719,6 +719,9 @@ void UINewImage::LoadImageFromService(const std::string& url,
   info.downsampling = downsampling_ && !auto_size_;
   info.mode = ConvertMode(mode_);
   info.processors = std::move(processors);
+  if (autoplay_) {
+    image_node_->StartAnimation();
+  }
   image_node_->FetchImage(std::move(info));
 }
 
