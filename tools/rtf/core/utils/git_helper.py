@@ -14,7 +14,7 @@ class GitHelper:
         current_commit_id = GitHelper.GetCommitID(0)
         base_commit_id = GitHelper.GetCommitID(commit_count)
         outputs = subprocess.check_output(
-            f"git diff  {base_commit_id} {current_commit_id} --name-only", shell=True
+            ["git", "diff", base_commit_id, current_commit_id, "--name-only"]
         )
         return outputs.decode("utf-8").strip().split("\n")
 
@@ -23,8 +23,7 @@ class GitHelper:
         current_commit_id = GitHelper.GetCommitID(0)
         base_commit_id = GitHelper.GetCommitID(commit_count)
         outputs = subprocess.check_output(
-            f"git diff {base_commit_id} {current_commit_id} -U0 {file}",
-            shell=True,
+            ["git", "diff", base_commit_id, current_commit_id, "-U0", "--", file],
             stderr=subprocess.DEVNULL,
         )
         lines = outputs.decode("utf-8").strip().split("\n")
@@ -48,7 +47,7 @@ class GitHelper:
     @staticmethod
     def GetCommitID(index):
         outputs = subprocess.check_output(
-            f"git log --format='%H' --max-count={index+1}", shell=True
+            ["git", "log", "--format=%H", f"--max-count={index+1}"]
         )
         format_outputs = outputs.decode("utf-8").strip().split("\n")
         commits = [i.strip() for i in format_outputs]
