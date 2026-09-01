@@ -9,6 +9,13 @@ namespace clay {
 CoverViewPlatformPluginMac::CoverViewPlatformPluginMac(ClayOverlayView* overlay_view)
     : overlay_view_(overlay_view) {}
 
+void CoverViewPlatformPluginMac::SetEventsPassThrough(bool events_pass_through) {
+  events_pass_through_ = events_pass_through;
+  if (node_id_ != -1) {
+    [overlay_view_ setEventsPassThrough:events_pass_through forViewId:node_id_];
+  }
+}
+
 void CoverViewPlatformPluginMac::OnDetachFromTree() {
   if (node_id_ != -1) {
     [overlay_view_ removeOpaqueRectForViewId:node_id_];
@@ -17,12 +24,15 @@ void CoverViewPlatformPluginMac::OnDetachFromTree() {
 
 void CoverViewPlatformPluginMac::OnViewDestroy() {
   if (node_id_ != -1) {
-    [overlay_view_ removeOpaqueRectForViewId:node_id_];
+    [overlay_view_ removeHitTestStateForViewId:node_id_];
     node_id_ = -1;
   }
 }
 
-void CoverViewPlatformPluginMac::Initialize(int id) { node_id_ = id; }
+void CoverViewPlatformPluginMac::Initialize(int id) {
+  node_id_ = id;
+  [overlay_view_ setEventsPassThrough:events_pass_through_ forViewId:node_id_];
+}
 
 std::unique_ptr<CoverViewPlatformPlugin>
 CoverViewPlatformServiceMac::CreateCoverViewPlatformPlugin() {

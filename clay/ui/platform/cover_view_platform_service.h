@@ -16,6 +16,7 @@ class CoverViewPlatformPlugin : public ActorObject<Owner::kPlatform> {
   virtual ~CoverViewPlatformPlugin() = default;
 
   virtual void Initialize(int id) = 0;
+  virtual void SetEventsPassThrough(bool events_pass_through) = 0;
   virtual void SetPreferredSize(int width, int height) {}
   virtual void OnAttachToTree() = 0;
   virtual void OnDetachFromTree() = 0;

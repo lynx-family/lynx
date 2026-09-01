@@ -20,6 +20,7 @@ class CoverViewPlatformPluginWin final : public CoverViewPlatformPlugin {
   ~CoverViewPlatformPluginWin() override = default;
 
   void Initialize(int id) override;
+  void SetEventsPassThrough(bool events_pass_through) override;
   void SetPreferredSize(int width, int height) override;
   void OnAttachToTree() override {}
   void OnDetachFromTree() override;
@@ -32,6 +33,7 @@ class CoverViewPlatformPluginWin final : public CoverViewPlatformPlugin {
   int64_t node_id_ = -1;
   int preferred_width_ = 0;
   int preferred_height_ = 0;
+  bool events_pass_through_ = false;
   FlutterWindowsEngine* engine_ = nullptr;
   OverlayViewManager* manager_ = nullptr;
   std::shared_ptr<OverlayViewController> view_;

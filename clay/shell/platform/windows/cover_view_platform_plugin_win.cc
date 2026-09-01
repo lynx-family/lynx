@@ -29,6 +29,14 @@ void CoverViewPlatformPluginWin::ChangeVisibility(bool visible) {
   }
 }
 
+void CoverViewPlatformPluginWin::SetEventsPassThrough(
+    bool events_pass_through) {
+  events_pass_through_ = events_pass_through;
+  if (view_) {
+    view_->SetEventsPassThrough(events_pass_through);
+  }
+}
+
 void CoverViewPlatformPluginWin::SetPreferredSize(int width, int height) {
   if (width <= 0 || height <= 0) {
     return;
@@ -68,6 +76,9 @@ void CoverViewPlatformPluginWin::EnsureView() {
   if (!view_) {
     view_ = manager_->CreateView(node_id_, OverlayWindowType::kChild, request,
                                  engine_->view()->GetWindowHandle());
+  }
+  if (view_) {
+    view_->SetEventsPassThrough(events_pass_through_);
   }
 }
 

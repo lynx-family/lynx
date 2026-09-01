@@ -19,12 +19,14 @@ class CoverViewPlatformPluginMac final : public CoverViewPlatformPlugin {
   ~CoverViewPlatformPluginMac() override = default;
 
   void Initialize(int id) override;
+  void SetEventsPassThrough(bool events_pass_through) override;
   void OnAttachToTree() override {}
   void OnDetachFromTree() override;
   void OnViewDestroy() override;
 
  private:
   int64_t node_id_ = -1;
+  bool events_pass_through_ = false;
   __weak ClayOverlayView* overlay_view_ = nil;
 };
 

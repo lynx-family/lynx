@@ -18,7 +18,9 @@ class CoverView : public WithTypeInfo<CoverView, BaseView> {
   CoverView(int id, PageView* page_view);
   ~CoverView() override;
 
+  void SetAttribute(const char* attr, const clay::Value& value) override;
   void SetBound(float left, float top, float width, float height) override;
+  bool HitTest(const PointerEvent& event, HitTestResult& result) override;
   void OnAttachToTree() override;
   void OnDetachFromTree() override;
   void OnDestroy() override;

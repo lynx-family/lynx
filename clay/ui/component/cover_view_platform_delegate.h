@@ -19,6 +19,7 @@ class CoverViewPlatformDelegate final {
   CoverViewPlatformDelegate(int id, PageView* page_view);
   ~CoverViewPlatformDelegate() = default;
 
+  void SetEventsPassThrough(bool events_pass_through);
   void SetPreferredSize(int width, int height);
   void OnAttachToTree();
   void OnDetachFromTree();
