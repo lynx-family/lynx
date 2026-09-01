@@ -1350,22 +1350,14 @@ fml::RefPtr<Element> ElementManager::CreateFiberElement(
 fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
   fml::RefPtr<Element> element = nullptr;
-  // TODO(hexionghui): compatible for cui's fallback ui, remove this when render
-  // by flatten ui not displaylist.
-  ElementBuiltInTagEnum resolved_enum_tag =
-      raw_tag.IsEqual(kElementEcomImageTag) ? ELEMENT_IMAGE : enum_tag;
-  switch (resolved_enum_tag) {
+  switch (enum_tag) {
     case ELEMENT_VIEW:
       element = fml::AdoptRef<ViewElement>(new ViewElement(nullptr));
       break;
-    case ELEMENT_IMAGE: {
-      base::String image_tag = raw_tag.IsEqual(kElementEcomImageTag)
-                                   ? raw_tag
-                                   : BASE_STATIC_STRING(kElementImageTag);
-      element =
-          fml::AdoptRef<ImageElement>(new ImageElement(nullptr, image_tag));
+    case ELEMENT_IMAGE:
+      element = fml::AdoptRef<ImageElement>(
+          new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
       break;
-    }
     case ELEMENT_INLINE_IMAGE:
       element = fml::AdoptRef<ImageElement>(
           new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
@@ -1439,9 +1431,6 @@ fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
 }
 
 fml::RefPtr<Element> ElementManager::CreateFiberNode(const base::String &tag) {
-  if (tag.IsEqual(kElementEcomImageTag)) {
-    return fml::AdoptRef<Element>(new ImageElement(this, tag));
-  }
   auto res = fml::AdoptRef<Element>(new Element(this, tag));
   return res;
 }
