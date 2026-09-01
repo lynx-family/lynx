@@ -159,6 +159,35 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
 @end
 
+// Scrollable host mock: UIScrollView shifts its layer's bounds origin while scrolling.
+@interface LynxMockScrollView : UIScrollView <LynxRendererHost>
+@property(nonatomic, strong) LynxRenderer *renderer;
+@end
+
+@implementation LynxMockScrollView
+
+@synthesize rendererContext = _rendererContext;
+
+- (instancetype)initWithRendererContext:(LynxRendererContext *)context {
+  self = [super init];
+  return self;
+}
+
+- (void)setRenderer:(LynxRenderer *)renderer {
+  _renderer = renderer;
+}
+
+- (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context {
+  self.renderer = [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
+  return self.renderer;
+}
+
+- (UIView *)view {
+  return self;
+}
+
+@end
+
 @interface LynxCountingRenderer : LynxRenderer
 @property(nonatomic, assign) NSInteger setFrameCount;
 @end
@@ -574,6 +603,65 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
   XCTAssertEqualWithAccuracy(view.layer.cornerRadius, 10.0f, 0.001f);
   XCTAssertTrue(view.layer.masksToBounds);
+}
+
+- (void)testClipRectUniformRadiusInsetOnScrollViewPreservesPreciseMask {
+  // A border-inset clip must retain its exact geometry so scroll-view content does not
+  // cover the host decoration layer's rounded border corners.
+  LynxMockScrollView *view = [[LynxMockScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  float radii[] = {8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f};
+  AppendClipRect(list, 2.0f, 2.0f, 96.0f, 96.0f, true, radii);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqualWithAccuracy(view.layer.cornerRadius, 0.0f, 0.001f);
+  XCTAssertFalse(view.layer.masksToBounds);
+  XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  CAShapeLayer *mask = (CAShapeLayer *)view.layer.mask;
+  XCTAssertTrue(CGRectEqualToRect(mask.frame, view.layer.bounds));
+  XCTAssertTrue(CGRectEqualToRect(CGPathGetBoundingBox(mask.path), CGRectMake(2, 2, 96, 96)));
+}
+
+- (void)testClipRectUniformRadiusInsetOnPlainViewUsesMask {
+  // Non-scrollable hosts keep the precise border-inset clip via a mask.
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  float radii[] = {8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f};
+  AppendClipRect(list, 2.0f, 2.0f, 96.0f, 96.0f, true, radii);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqualWithAccuracy(view.layer.cornerRadius, 0.0f, 0.001f);
+  XCTAssertFalse(view.layer.masksToBounds);
+  XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
+}
+
+- (void)testClipRectNonUniformRadiusOnScrolledScrollViewPinsMaskToViewport {
+  // Non-uniform radii still need a CAShapeLayer mask on scrollable hosts. When the
+  // display list is applied while the view is already scrolled, the mask frame must
+  // cover the current viewport (bounds), not the unscrolled origin.
+  LynxMockScrollView *view = [[LynxMockScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  view.contentSize = CGSizeMake(100, 1000);
+  view.contentOffset = CGPointMake(0, 100);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  float radii[] = {8.0f, 8.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  AppendClipRect(list, 0.0f, 0.0f, 100.0f, 100.0f, true, radii);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertTrue(CGRectEqualToRect(view.layer.mask.frame, view.layer.bounds));
+  XCTAssertEqualWithAccuracy(view.layer.mask.frame.origin.y, 100.0f, 0.001f);
 }
 
 - (void)testImageAppliesRoundedContentBox {
