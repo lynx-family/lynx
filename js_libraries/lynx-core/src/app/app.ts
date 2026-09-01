@@ -1053,6 +1053,7 @@ export abstract class BaseApp<
       MessageEventType.ON_LIFECYCLE_EVENT,
       (event: MessageEvent) => {
         this.OnLifecycleEvent(event.data);
+        this.dispatchLifecycleEvent(event.data);
       }
     );
     this.addInternalEventListener(
@@ -1185,6 +1186,42 @@ export abstract class BaseApp<
    * @param newData
    */
   updateGlobalProps(newData: object): void {}
+
+  private lifecycleEventListeners: ((args: unknown) => void)[] = [];
+  private pendingLifecycleEvents: unknown[] = [];
+
+  private dispatchLifecycleEvent(args: unknown) {
+    if (this.lifecycleEventListeners.length === 0) {
+      this.pendingLifecycleEvents.push(args);
+      return;
+    }
+    this.lifecycleEventListeners.forEach((listener) => listener(args));
+  }
+
+  /**
+   * Subscribes to `__OnLifecycleEvent`.
+   *
+   * A card's own bundle is still evaluating when its first lifecycle event
+   * arrives, so events received before the first subscriber are replayed to it.
+   * That is what makes this usable from a framework loaded with the card, and
+   * what a plain context-proxy listener cannot offer.
+   */
+  addLifecycleEventListener(listener: (args: unknown) => void): () => void {
+    this.lifecycleEventListeners.push(listener);
+    const pending = this.pendingLifecycleEvents;
+    this.pendingLifecycleEvents = [];
+    if (pending.length > 0) {
+      // A subscriber registers while its own bundle is still evaluating, so the
+      // replay waits for that to finish rather than running mid-evaluation.
+      Promise.resolve().then(() => pending.forEach((args) => listener(args)));
+    }
+    return () => {
+      const index = this.lifecycleEventListeners.indexOf(listener);
+      if (index >= 0) {
+        this.lifecycleEventListeners.splice(index, 1);
+      }
+    };
+  }
 
   /**
    *  override by subclass
