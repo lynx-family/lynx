@@ -69,5 +69,17 @@ bool StringToInt(const std::string& input, int* output, uint8_t base) {
   if (valid) *output = static_cast<int>(i);
   return valid;
 }
+
+bool StringToUInt64(const std::string& input, uint64_t& output, uint8_t base) {
+  int old_error = errno;
+  errno = 0;
+  char* endptr = nullptr;
+  uint64_t value = strtoull(input.c_str(), &endptr, base);
+  bool valid = (errno == 0 && !input.empty() && input[0] != '-' &&
+                input.c_str() + input.length() == endptr && !isspace(input[0]));
+  if (errno == 0) errno = old_error;
+  if (valid) output = value;
+  return valid;
+}
 }  // namespace base
 }  // namespace lynx
