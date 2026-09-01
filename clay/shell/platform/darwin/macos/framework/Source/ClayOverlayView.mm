@@ -29,6 +29,7 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
 @implementation ClayOverlayView {
   NSDictionary<NSNumber*, NSValue*>* _opaqueRects;
   NSArray<NSNumber*>* _hitTestViewOrder;
+  NSMutableSet<NSNumber*>* _eventsPassThroughViewIds;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect {
@@ -36,6 +37,7 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
   if (self) {
     _opaqueRects = @{};
     _hitTestViewOrder = @[];
+    _eventsPassThroughViewIds = [NSMutableSet set];
     // Host overlay content in a transparent layer.
     self.wantsLayer = YES;
     self.layer.opaque = NO;
@@ -70,6 +72,16 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
   [self.window invalidateCursorRectsForView:self];
 }
 
+- (void)setEventsPassThrough:(BOOL)eventsPassThrough forViewId:(int64_t)viewId {
+  NSNumber* key = @(viewId);
+  if (eventsPassThrough) {
+    [_eventsPassThroughViewIds addObject:key];
+  } else {
+    [_eventsPassThroughViewIds removeObject:key];
+  }
+  [self.window invalidateCursorRectsForView:self];
+}
+
 - (void)removeOpaqueRectForViewId:(int64_t)viewId {
   NSNumber* key = @(viewId);
   NSMutableDictionary<NSNumber*, NSValue*>* rects = [_opaqueRects mutableCopy];
@@ -79,6 +91,11 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
   [view_order removeObject:key];
   _hitTestViewOrder = [view_order copy];
   [self.window invalidateCursorRectsForView:self];
+}
+
+- (void)removeHitTestStateForViewId:(int64_t)viewId {
+  [self removeOpaqueRectForViewId:viewId];
+  [_eventsPassThroughViewIds removeObject:@(viewId)];
 }
 
 - (NSRect)viewRectFromDevicePixelRect:(NSRect)rect contentsScale:(CGFloat)scale {
@@ -108,7 +125,7 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
   for (NSNumber* view_id in [_hitTestViewOrder reverseObjectEnumerator]) {
     NSValue* rect = _opaqueRects[view_id];
     if (rect && NSPointInRect(point, [rect rectValue])) {
-      return self;
+      return [_eventsPassThroughViewIds containsObject:view_id] ? nil : self;
     }
   }
   return nil;

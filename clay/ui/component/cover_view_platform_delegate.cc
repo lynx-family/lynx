@@ -24,6 +24,14 @@ CoverViewPlatformDelegate::CoverViewPlatformDelegate(int id,
   platform_plugin_.Act([id](auto& plugin) { plugin.Initialize(id); });
 }
 
+void CoverViewPlatformDelegate::SetEventsPassThrough(bool events_pass_through) {
+  if (platform_plugin_) {
+    platform_plugin_.Act([events_pass_through](auto& plugin) {
+      plugin.SetEventsPassThrough(events_pass_through);
+    });
+  }
+}
+
 void CoverViewPlatformDelegate::SetPreferredSize(int width, int height) {
   if (platform_plugin_ && width > 0 && height > 0) {
     platform_plugin_.Act([width, height](auto& plugin) {

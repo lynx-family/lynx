@@ -42,6 +42,7 @@ class Window : public KeyboardManager::WindowDelegate {
                        unsigned int y, unsigned int width, unsigned int height);
 
   HWND GetWindowHandle();
+  void SetEventsPassThrough(bool events_pass_through);
 
   // |KeyboardManager::WindowDelegate|
   virtual BOOL Win32PeekMessage(LPMSG lpMsg, UINT wMsgFilterMin,
@@ -233,6 +234,8 @@ class Window : public KeyboardManager::WindowDelegate {
 
   // Set to true to be notified when the mouse leaves the window.
   bool tracking_mouse_leave_ = false;
+
+  bool events_pass_through_ = false;
 
   // Keeps track of the last key code produced by a WM_KEYDOWN or WM_SYSKEYDOWN
   // message.

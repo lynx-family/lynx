@@ -19,7 +19,9 @@
 - (void)updateOpaqueRects:(NSDictionary<NSNumber*, NSValue*>* _Nonnull)rects
                 viewOrder:(NSArray<NSNumber*>* _Nonnull)viewOrder;
 
+- (void)setEventsPassThrough:(BOOL)eventsPassThrough forViewId:(int64_t)viewId;
 - (void)removeOpaqueRectForViewId:(int64_t)viewId;
+- (void)removeHitTestStateForViewId:(int64_t)viewId;
 
 // Converts a Lynx top-left device-pixel rect into this view's point space.
 - (NSRect)viewRectFromDevicePixelRect:(NSRect)rect contentsScale:(CGFloat)scale;
