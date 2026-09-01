@@ -26,6 +26,7 @@
 #include "clay/shell/common/services/drag_drop_service.h"
 #include "clay/shell/common/switches.h"
 #include "clay/shell/platform/common/path_utils.h"
+#include "clay/shell/platform/windows/cover_view_platform_plugin_win.h"
 #include "clay/shell/platform/windows/flutter_windows_view.h"
 #include "clay/shell/platform/windows/overlay_view_manager_service.h"
 #include "clay/shell/platform/windows/overlay_windows_view.h"
@@ -277,6 +278,8 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   // |view_| can be nullptr in headless mode; avoid dereferencing it here.
   service_manager_->RegisterService<OverlayViewManagerService>(
       overlay_view_manager_service_);
+  service_manager_->RegisterService<CoverViewPlatformService>(
+      std::make_shared<CoverViewPlatformServiceWin>());
 
   // Configure device frame rate displayed via devtools.
   std::vector<std::unique_ptr<clay::Display>> displays;

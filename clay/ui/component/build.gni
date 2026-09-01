@@ -139,6 +139,8 @@ if (is_mac || is_win) {
   ui_component_sources += [
     "cover_view.cc",
     "cover_view.h",
+    "cover_view_platform_delegate.cc",
+    "cover_view_platform_delegate.h",
     "title_bar_view.cc",
     "title_bar_view.h",
   ]

@@ -5,16 +5,28 @@
 #ifndef CLAY_UI_COMPONENT_COVER_VIEW_H_
 #define CLAY_UI_COMPONENT_COVER_VIEW_H_
 
+#include <memory>
+
 #include "clay/ui/component/overlay_view.h"
 
 namespace clay {
 
+class CoverViewPlatformDelegate;
+
 class CoverView : public WithTypeInfo<CoverView, BaseView> {
  public:
   CoverView(int id, PageView* page_view);
+  ~CoverView() override;
+
   void SetBound(float left, float top, float width, float height) override;
+  void OnAttachToTree() override;
+  void OnDetachFromTree() override;
+  void OnDestroy() override;
 
   bool IsLayoutRootCandidate() const override { return true; }
+
+ private:
+  std::unique_ptr<CoverViewPlatformDelegate> platform_delegate_;
 };
 
 }  // namespace clay
