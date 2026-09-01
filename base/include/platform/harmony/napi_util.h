@@ -20,6 +20,12 @@
 namespace lynx {
 namespace base {
 
+enum class NapiValueConversionStatus {
+  kSuccess,
+  kTypeMismatch,
+  kOutOfRange,
+};
+
 #define NAPI_THROW_IF_FAILED_STATUS(env, status, format, ...)             \
   if ((status) != napi_ok) {                                              \
     char msg[1024];                                                       \
@@ -75,6 +81,26 @@ class BASE_EXPORT NapiUtil {
   static float ConvertToFloat(napi_env env, napi_value obj);
   static double ConvertToDouble(napi_env env, napi_value obj);
   static bool ConvertToBoolean(napi_env env, napi_value obj);
+
+  // Unlike the value-returning conversions above, these helpers reject type
+  // coercion and only modify the output on success. Numeric conversions also
+  // report values outside the target domain.
+  static NapiValueConversionStatus ConvertToFiniteDoubleChecked(napi_env env,
+                                                                napi_value obj,
+                                                                double* result);
+  static NapiValueConversionStatus ConvertToInt32Checked(napi_env env,
+                                                         napi_value obj,
+                                                         int32_t* result);
+  static NapiValueConversionStatus ConvertToBigUInt64Checked(napi_env env,
+                                                             napi_value obj,
+                                                             uint64_t* result);
+  static NapiValueConversionStatus ConvertToBooleanChecked(napi_env env,
+                                                           napi_value obj,
+                                                           bool* result);
+  static NapiValueConversionStatus ConvertToStringChecked(napi_env env,
+                                                          napi_value obj,
+                                                          std::string* result);
+
   static std::string ConvertToShortString(napi_env env, napi_value arg);
   static std::string ConvertToString(napi_env env, napi_value arg);
 
