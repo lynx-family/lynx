@@ -18,10 +18,9 @@ class ImageFetcherDesktop : public ImageFetcher {
                       fml::RefPtr<GPUUnrefQueue> unref_queue,
                       std::shared_ptr<ServiceManager> service_manager);
   ~ImageFetcherDesktop() override;
-  void FetchImage(
-      const std::string& url,
-      const std::function<void(std::shared_ptr<PlatformImage>)>& callback,
-      bool need_redirect) override;
+  void FetchImage(const std::string& url, const std::string& request_key,
+                  const PlatformImageCallback& callback,
+                  bool need_redirect) override;
 };
 }  // namespace clay
 #endif  // CLAY_SHELL_PLATFORM_COMMON_DESKTOP_CODEC_IMAGE_FETCHER_DESKTOP_H_

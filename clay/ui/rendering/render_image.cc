@@ -447,6 +447,12 @@ PaintFunction RenderImage::FixupPainterIfNeeded(const PaintFunction& painter) {
 }
 
 void RenderImage::WillPaint() {
+  if (client_) {
+    // Use the latest view size to resume image decoding that was deferred while
+    // waiting for layout. This also requests a new decode when the current
+    // image is too small for the view.
+    client_->UpdateImageDecodeSize();
+  }
   // Check if any transform expansion would be applied to this image.
   // If there is an expansion operation, we will force the image to use the
   // original size for decoding to avoid blurring issues.
