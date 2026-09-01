@@ -752,12 +752,16 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
   point_by_paragraph.Move(-BorderLeft() - PaddingLeft(),
                           -BorderTop() - PaddingTop());
   *relative_position = point_by_paragraph;
-  BaseView* view = GetViewAtPosition(point_by_paragraph, position,
-                                     relative_position, platform_try_hit_id);
-  if (view) {
-    return view;
+  BaseView* target = GetViewAtPosition(point_by_paragraph, position,
+                                       relative_position, platform_try_hit_id);
+  target = target ?: this;
+  for (BaseView* view = target; view; view = view->Parent()) {
+    const auto event_through = view->CanEventThrough();
+    if (event_through.has_value()) {
+      return *event_through ? nullptr : target;
+    }
   }
-  return this;
+  return target;
 }
 
 BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
