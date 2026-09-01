@@ -4,6 +4,7 @@
 #ifndef BASE_INCLUDE_STRING_STRING_NUMBER_CONVERT_H_
 #define BASE_INCLUDE_STRING_STRING_NUMBER_CONVERT_H_
 
+#include <cstdint>
 #include <string>
 
 #include "base/include/base_export.h"
@@ -14,6 +15,8 @@ BASE_EXPORT bool StringToInt(const std::string& input, int64_t& output,
                              uint8_t base = 10);
 BASE_EXPORT bool StringToInt(const std::string& input, int* output,
                              uint8_t base = 10);
+BASE_EXPORT bool StringToUInt64(const std::string& input, uint64_t& output,
+                                uint8_t base = 10);
 /*
  * Convert from string to double.
  * @param input, the string to be converted.
