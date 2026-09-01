@@ -202,7 +202,8 @@ class UIOwner {
   void RunTaskOnTASMThread(base::closure task) const;
   const fml::RefPtr<fml::TaskRunner>& GetUITaskRunner() const;
   void UpdateNodeReadyPatching(const std::vector<int32_t>& ready_ids,
-                               const std::vector<int32_t>& remove_ids);
+                               const std::vector<int32_t>& remove_ids,
+                               bool should_cache_external_memory_candidates);
   ExternalMemorySnapshot GetExternalMemorySnapshot();
   void RequestExternalMemoryReport(int64_t delay_ms);
   const std::shared_ptr<base::VSyncMonitor>& VSyncMonitor();

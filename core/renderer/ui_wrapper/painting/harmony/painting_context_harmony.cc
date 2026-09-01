@@ -104,8 +104,10 @@ void PaintingContextHarmonyRef::ListCellDisappear(int sign, bool isExist,
 }
 
 void PaintingContextHarmonyRef::UpdateNodeReadyPatching(
-    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
-  ui_owner_->UpdateNodeReadyPatching(ready_ids, remove_ids);
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
+  ui_owner_->UpdateNodeReadyPatching(ready_ids, remove_ids,
+                                     should_cache_external_memory_candidates);
 }
 
 void PaintingContextHarmonyRef::RequestExternalMemoryReport(int64_t delay_ms) {

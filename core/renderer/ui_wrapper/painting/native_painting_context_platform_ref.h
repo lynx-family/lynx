@@ -69,8 +69,9 @@ class NativePaintingCtxPlatformRef
   void DestroyPaintingNode(int parent, int child, int index) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes,
                         bool tend_to_flatten);
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) override;
 
   // Set the engine actor for the painting context ref.
   void SetLynxEngineActorForPlatformContextRef(

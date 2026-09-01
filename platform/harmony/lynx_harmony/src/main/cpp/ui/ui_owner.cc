@@ -293,10 +293,14 @@ void UIOwner::OnNodeRemoved(int sign) {
   }
 }
 
-void UIOwner::UpdateNodeReadyPatching(const std::vector<int32_t>& ready_ids,
-                                      const std::vector<int32_t>& remove_ids) {
-  external_memory_report_candidate_ids_.insert(remove_ids.begin(),
-                                               remove_ids.end());
+void UIOwner::UpdateNodeReadyPatching(
+    const std::vector<int32_t>& ready_ids,
+    const std::vector<int32_t>& remove_ids,
+    bool should_cache_external_memory_candidates) {
+  if (should_cache_external_memory_candidates) {
+    external_memory_report_candidate_ids_.insert(remove_ids.begin(),
+                                                 remove_ids.end());
+  }
   for (int32_t id : ready_ids) {
     OnNodeReady(id);
   }

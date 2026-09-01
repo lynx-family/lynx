@@ -744,10 +744,13 @@ void ViewContext::OnFirstMeaningfulLayout() {
   page_view_->OnFirstMeaningfulLayout();
 }
 
-void ViewContext::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                                          std::vector<int32_t> remove_ids) {
-  external_memory_report_candidate_ids_.insert(remove_ids.begin(),
-                                               remove_ids.end());
+void ViewContext::UpdateNodeReadyPatching(
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
+  if (should_cache_external_memory_candidates) {
+    external_memory_report_candidate_ids_.insert(remove_ids.begin(),
+                                                 remove_ids.end());
+  }
   auto* intersection_manager = page_view_->HasIntersectionObserverManager()
                                    ? page_view_->intersection_observer_manager()
                                    : nullptr;
