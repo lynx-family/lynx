@@ -109,15 +109,16 @@ std::shared_ptr<LynxNativeModule> ModuleFactoryDarwin::CreateModule(const std::s
 
 void ModuleFactoryDarwin::registerModule(Class<LynxModule> cls) { registerModule(cls, nil); }
 
-void ModuleFactoryDarwin::registerModule(Class<LynxModule> cls, id param) {
-  registerModule([cls name], cls, param);
+void ModuleFactoryDarwin::registerModule(Class<LynxModule> cls, id param, bool is_builtin) {
+  registerModule([cls name], cls, param, is_builtin);
 }
 
 void ModuleFactoryDarwin::registerModule(NSString *name, Class<LynxModule> cls) {
   registerModule(name, cls, nil);
 }
 
-void ModuleFactoryDarwin::registerModule(NSString *name, Class<LynxModule> cls, id param) {
+void ModuleFactoryDarwin::registerModule(NSString *name, Class<LynxModule> cls, id param,
+                                         bool is_builtin) {
   LynxModuleWrapper *wrapper = [[LynxModuleWrapper alloc] init];
   wrapper.moduleClass = cls;
   wrapper.param = param;
@@ -127,7 +128,9 @@ void ModuleFactoryDarwin::registerModule(NSString *name, Class<LynxModule> cls, 
     wrapper.namescope = [((NSDictionary *)param) objectForKey:@"namescope"];
   }
   modulesClasses_[name] = wrapper;
-  _LogI(@"NativeModule: LynxModule, module: %@ registered with param (address): %p", cls, param);
+  if (!is_builtin) {
+    _LogI(@"NativeModule: LynxModule, module: %@ registered with param (address): %p", cls, param);
+  }
 }
 
 void ModuleFactoryDarwin::registerMethodAuth(LynxMethodBlock block) {
