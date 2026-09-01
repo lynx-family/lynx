@@ -149,12 +149,24 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
 
 }  // namespace
 
-DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec)
-    : codec_(std::move(codec)) {
-  if (!codec_) {
+DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec,
+                           Size decode_size) {
+  if (!codec) {
     return;
   }
-  current_pixmap_ = codec_->Decode();
+  decoder_ = codec->DecodeMultiFrame();
+  is_animated_ = decoder_ && decoder_->GetFrameCount() > 1;
+
+  if (!is_animated_ && !decode_size.IsZero()) {
+    skity::DecodeOptions options{};
+    options.target_width = decode_size.width();
+    options.target_height = decode_size.height();
+    current_pixmap_ = codec->Decode(options);
+    decoded_to_target_size_ = current_pixmap_ != nullptr;
+  }
+  if (!current_pixmap_) {
+    current_pixmap_ = codec->Decode();
+  }
   if (!current_pixmap_ || !current_pixmap_->Addr() ||
       current_pixmap_->Width() <= 0 || current_pixmap_->Height() <= 0 ||
       current_pixmap_->RowBytes() <= 0) {
@@ -167,8 +179,12 @@ DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec)
                                 current_pixmap_->GetColorType());
   color_type_ = current_pixmap_->GetColorType();
   alpha_type_ = current_pixmap_->GetAlphaType();
-  decoder_ = codec_->DecodeMultiFrame();
-  is_animated_ = decoder_ != nullptr;
+  if (!is_animated_) {
+    decoder_.reset();
+    if (!decoded_to_target_size_) {
+      codec_ = std::move(codec);
+    }
+  }
 }
 
 DesktopImage::~DesktopImage() = default;
@@ -184,8 +200,11 @@ skity::AlphaType DesktopImage::GetAlphaType() { return alpha_type_; }
 std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap(
     const ImageInfo& render_info) {
   auto pixmap = std::move(current_pixmap_);
-  if (!pixmap && codec_ && width_ > 0 && height_ > 0) {
+  if (!pixmap && codec_) {
     pixmap = codec_->Decode();
+  }
+  if (decoded_to_target_size_) {
+    return pixmap;
   }
   return ScalePixmap(std::move(pixmap), render_info);
 }

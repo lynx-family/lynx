@@ -5,6 +5,8 @@
 #include "clay/ui/component/base_image_view.h"
 
 #include <array>
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -31,6 +33,7 @@
 
 #ifdef ENABLE_SKITY
 #include "clay/gfx/image/base_image.h"
+#include "clay/ui/resource/image_fetcher.h"
 #endif
 
 #ifdef ENABLE_NET_LOADER
@@ -38,8 +41,22 @@
 #endif
 
 namespace clay {
+namespace {
 
 constexpr double kImageFadeInDuration = 300;
+
+int DecodeDimension(float value, float pixel_ratio) {
+  if (!std::isfinite(value) || !std::isfinite(pixel_ratio) || value <= 0 ||
+      pixel_ratio <= 0) {
+    return 0;
+  }
+  double physical_value = std::ceil(static_cast<double>(value) * pixel_ratio);
+  return physical_value > std::numeric_limits<int>::max()
+             ? std::numeric_limits<int>::max()
+             : static_cast<int>(physical_value);
+}
+
+}  // namespace
 
 LYNX_UI_METHOD_BEGIN(BaseImageView) {
   LYNX_UI_METHOD(BaseImageView, startAnimate);
@@ -190,6 +207,21 @@ void BaseImageView::SetAttribute(const char* attr_c, const clay::Value& value) {
 void BaseImageView::OnNodeReady() {
   BaseView::OnNodeReady();
   GetRenderImage()->OnNodeReady();
+  node_ready_ = true;
+#ifdef ENABLE_SKITY
+  if (placeholder_decode_size_pending_ || source_decode_size_pending_) {
+    auto image_fetcher = page_view_->GetImageResourceFetcher();
+    const Size decode_size = GetDecodeSize();
+    if (placeholder_decode_size_pending_) {
+      image_fetcher->ResumeDeferredDecode(placeholder_fetch_id_, decode_size);
+      placeholder_decode_size_pending_ = false;
+    }
+    if (source_decode_size_pending_) {
+      image_fetcher->ResumeDeferredDecode(source_fetch_id_, decode_size);
+      source_decode_size_pending_ = false;
+    }
+  }
+#endif
 }
 
 void BaseImageView::SetLocalCache(bool use_local_cache) {}
@@ -228,6 +260,7 @@ void BaseImageView::SetPlaceholder(std::string original_url) {
   }
 
   TryCancelFetch(placeholder_, placeholder_fetch_id_);
+  placeholder_decode_size_pending_ = false;
   placeholder_ = std::move(original_url);
 
   TryEndTransition();
@@ -244,6 +277,7 @@ void BaseImageView::SetSource(std::string original_url) {
   }
 
   TryCancelFetch(source_, source_fetch_id_);
+  source_decode_size_pending_ = false;
   TryEndTransition();
   auto render_image = GetRenderImage();
   if (!defer_src_invalidation_ || original_url.empty()) {
@@ -426,6 +460,7 @@ void BaseImageView::NotifyFinalLoopComplete() {
 
 void BaseImageView::FetchPlaceholder() {
   if (placeholder_.empty()) {
+    placeholder_decode_size_pending_ = false;
     return;
   }
 #ifndef ENABLE_SKITY
@@ -457,7 +492,16 @@ void BaseImageView::FetchPlaceholder() {
           page_view_->ImageDecodeWithPriority(), should_redirect_url_,
           GetRenderImage() && GetRenderImage()->EnableLowQuality());
 #else
-  placeholder_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
+  auto image_fetcher = page_view_->GetImageResourceFetcher();
+  ImageRequestOptions options;
+  options.use_view_size = image_fetcher->IsDeferredDecodeEnabled() &&
+                          !IsSVG() &&
+                          GetRenderImage()->ShouldDecodeToViewSize();
+  options.decode_size = GetDecodeSize();
+  options.decode_size_ready =
+      !options.use_view_size || !options.decode_size.IsZero() || node_ready_;
+  placeholder_decode_size_pending_ = !options.decode_size_ready;
+  placeholder_fetch_id_ = image_fetcher->FetchImage(
       placeholder_, IsSVG(),
       [self = weak_factory_.GetWeakPtr()](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
@@ -465,6 +509,7 @@ void BaseImageView::FetchPlaceholder() {
           return;
         }
         self->placeholder_fetch_id_ = kDefaultImageFetchID;
+        self->placeholder_decode_size_pending_ = false;
 
         if (!image_instance) {
           return;
@@ -486,12 +531,13 @@ void BaseImageView::FetchPlaceholder() {
         auto render_image = self->GetRenderImage();
         render_image->SetPlaceholderImage(std::move(image_instance));
       },
-      should_redirect_url_);
+      should_redirect_url_, options);
 #endif  // ENABLE_SKITY
 }
 
 void BaseImageView::FetchSource() {
   if (source_.empty()) {
+    source_decode_size_pending_ = false;
     return;
   }
   report_info_.download_start_time =
@@ -549,7 +595,16 @@ void BaseImageView::FetchSource() {
       page_view_->ImageDecodeWithPriority(), should_redirect_url_,
       GetRenderImage() && GetRenderImage()->EnableLowQuality(), false, IsSVG());
 #else
-  source_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
+  auto image_fetcher = page_view_->GetImageResourceFetcher();
+  ImageRequestOptions options;
+  options.use_view_size = image_fetcher->IsDeferredDecodeEnabled() &&
+                          !IsSVG() &&
+                          GetRenderImage()->ShouldDecodeToViewSize();
+  options.decode_size = GetDecodeSize();
+  options.decode_size_ready =
+      !options.use_view_size || !options.decode_size.IsZero() || node_ready_;
+  source_decode_size_pending_ = !options.decode_size_ready;
+  source_fetch_id_ = image_fetcher->FetchImage(
       source_, IsSVG(),
       [self = weak_factory_.GetWeakPtr()](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
@@ -557,6 +612,7 @@ void BaseImageView::FetchSource() {
           return;
         }
         self->source_fetch_id_ = kDefaultImageFetchID;
+        self->source_decode_size_pending_ = false;
 
         if (!image_instance) {
           FML_LOG(ERROR) << "image is null";
@@ -583,7 +639,7 @@ void BaseImageView::FetchSource() {
         render_image->SetImage(std::move(image_instance));
         self->ReportImageLoadInfo();
       },
-      should_redirect_url_);
+      should_redirect_url_, options);
 #endif  // ENABLE_SKITY
 }
 
@@ -711,6 +767,18 @@ void BaseImageView::ReportImageLoadInfo() {
       std::to_string(load_finish), std::to_string(cost), url, width, height,
       std::to_string(memory_cost), downsampled, view_width, view_height,
       static_cast<int>(report_info_.image_origin));
+}
+
+Size BaseImageView::GetDecodeSize() const {
+  const auto* render_image = static_cast<const RenderImage*>(render_object());
+  if (!render_image || !render_image->ShouldDecodeToViewSize() ||
+      !page_view()) {
+    return {};
+  }
+  float pixel_ratio =
+      page_view()->GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>();
+  return Size(DecodeDimension(render_image->ContentWidth(), pixel_ratio),
+              DecodeDimension(render_image->ContentHeight(), pixel_ratio));
 }
 
 }  // namespace clay
