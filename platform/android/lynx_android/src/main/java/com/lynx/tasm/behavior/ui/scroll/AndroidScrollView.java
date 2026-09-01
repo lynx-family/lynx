@@ -635,11 +635,6 @@ public class AndroidScrollView
 
   @Override
   protected void dispatchDraw(final Canvas canvas) {
-    if (mRenderer != null) {
-      super.dispatchDraw(canvas);
-      mRenderer.afterDispatchDraw(canvas);
-      return;
-    }
     if (mEnableNewOverflow && mScrollContainerDrawHelper != null) {
       // AndroidScrollView (outer)
       // └─ CustomHorizontalScrollView (inner; handles horizontal scrolling)
@@ -662,7 +657,17 @@ public class AndroidScrollView
         canvas.clipPath(clipPath);
       }
       super.dispatchDraw(canvas);
+      if (mRenderer != null) {
+        // Fragment Layer Renderer draws flattened descendants after the platform children. Keep
+        // those display-list draws inside the scroll viewport clip as well.
+        mRenderer.afterDispatchDraw(canvas);
+      }
       canvas.restoreToCount(count);
+      return;
+    }
+    if (mRenderer != null) {
+      super.dispatchDraw(canvas);
+      mRenderer.afterDispatchDraw(canvas);
       return;
     }
     Drawable drawable = getBackground();
