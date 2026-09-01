@@ -168,10 +168,8 @@ void ImageServiceNode::InitAnimationListener(
 }
 
 void ImageServiceNode::StartAnimation() {
-  if (image_knife_animator_option_->state != ARKUI_ANIMATION_STATUS_RUNNING) {
-    image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
-    image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
-  }
+  image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
+  image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
 }
 
 void ImageServiceNode::StopAnimation() {
@@ -185,10 +183,8 @@ void ImageServiceNode::PauseAnimation() {
 }
 
 void ImageServiceNode::ResumeAnimation() {
-  if (image_knife_animator_option_->state != ARKUI_ANIMATION_STATUS_RUNNING) {
-    image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
-    image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
-  }
+  image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
+  image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
 }
 
 void ImageServiceNode::UpdateAutoPlay(bool autoplay) {
