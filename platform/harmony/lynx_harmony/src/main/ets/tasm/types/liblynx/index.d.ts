@@ -408,6 +408,14 @@ export class ExtensionModule {
   nativeDestroy(): void;
 
   nativeRegisterService(type: string, service: Object): void;
+
+  nativeAddDownStreamSurface(
+      canvasName: string, surfaceId: string, width: number, height: number,
+      scaleMode: number, hasSourceRect: boolean, sourceX: number,
+      sourceY: number, sourceWidth: number, sourceHeight: number,
+      maxFPS: number): bigint|undefined;
+
+  nativeRemoveDownStreamSurface(canvasName: string, surfaceKey: bigint): void;
 }
 
 export class LynxRuntimeWrapper {
