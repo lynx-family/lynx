@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "clay/gfx/geometry/size.h"
 #include "clay/gfx/image/image_info.h"
 #include "clay/gfx/image/platform_image.h"
 #include "skity/codec/codec.hpp"
@@ -14,7 +15,7 @@ namespace clay {
 
 class DesktopImage : public PlatformImage {
  public:
-  explicit DesktopImage(std::shared_ptr<skity::Codec> codec);
+  DesktopImage(std::shared_ptr<skity::Codec> codec, Size decode_size);
   ~DesktopImage() override;
 
   int GetWidth() override;
