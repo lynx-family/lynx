@@ -447,6 +447,9 @@ PaintFunction RenderImage::FixupPainterIfNeeded(const PaintFunction& painter) {
 }
 
 void RenderImage::WillPaint() {
+  if (client_) {
+    client_->UpdateImageDecodeSize();
+  }
   // Check if any transform expansion would be applied to this image.
   // If there is an expansion operation, we will force the image to use the
   // original size for decoding to avoid blurring issues.

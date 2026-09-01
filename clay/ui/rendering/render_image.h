@@ -24,6 +24,7 @@ class ImagePainterTest;
 
 class RenderImageClient {
  public:
+  virtual void UpdateImageDecodeSize() {}
   virtual void OnDecodeFinished(bool success, const std::string& url) = 0;
   virtual void RegisterUploadTask(OneShotCallback<>&& task, int image_id) = 0;
   virtual void OnStartPlay() = 0;
@@ -101,6 +102,9 @@ class RenderImage : public RenderBox, public ImageResourceClient {
 
   void SetDownSampling(bool down_sampling) { down_sampling_ = down_sampling; }
   bool DownSampling() const { return down_sampling_; }
+  bool ShouldDecodeToViewSize() const {
+    return down_sampling_ && !has_cap_insets_ && !HasTransformExpansion();
+  }
 
   DecodePriority GetDecodePriority() override {
     return DecodeUtils::GetDecodePriority(this);

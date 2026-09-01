@@ -5,6 +5,8 @@
 #include "clay/ui/component/base_image_view.h"
 
 #include <array>
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -31,6 +33,7 @@
 
 #ifdef ENABLE_SKITY
 #include "clay/gfx/image/base_image.h"
+#include "clay/ui/resource/image_fetcher.h"
 #endif
 
 #ifdef ENABLE_NET_LOADER
@@ -38,8 +41,21 @@
 #endif
 
 namespace clay {
+namespace {
 
 constexpr double kImageFadeInDuration = 300;
+
+int ContentDimension(float value, float pixel_ratio) {
+  if (value <= 0 || pixel_ratio <= 0) {
+    return 0;
+  }
+  double pixels = std::ceil(static_cast<double>(value) * pixel_ratio);
+  return std::isfinite(pixels) ? static_cast<int>(std::min<double>(
+                                     pixels, std::numeric_limits<int>::max()))
+                               : 0;
+}
+
+}  // namespace
 
 LYNX_UI_METHOD_BEGIN(BaseImageView) {
   LYNX_UI_METHOD(BaseImageView, startAnimate);
@@ -190,6 +206,48 @@ void BaseImageView::SetAttribute(const char* attr_c, const clay::Value& value) {
 void BaseImageView::OnNodeReady() {
   BaseView::OnNodeReady();
   GetRenderImage()->OnNodeReady();
+  node_ready_ = true;
+  UpdateImageDecodeSize();
+}
+
+void BaseImageView::UpdateImageDecodeSize() {
+#ifdef ENABLE_SKITY
+  if (!node_ready_ || (source_.empty() && placeholder_.empty())) {
+    return;
+  }
+  const Size size = GetContentSize().value_or(Size{});
+  if (last_checked_decode_size_ && *last_checked_decode_size_ == size) {
+    return;
+  }
+  last_checked_decode_size_ = size;
+  auto update = [&](const std::string& url, ImageFetchID& fetch_id,
+                    BaseImageInstance* image, auto fetch) {
+    if (url.empty()) {
+      return;
+    }
+    if (fetch_id == kDefaultImageFetchID && image &&
+        image->GetImage()->GetUrl() == url::TrimUrl(url)) {
+      const Size decode_size = image->GetImage()->GetDecodeSize();
+      if (!decode_size.IsZero() &&
+          (size.IsZero() || size.width() > decode_size.width() ||
+           size.height() > decode_size.height())) {
+        (this->*fetch)(true);
+      }
+    }
+    // Fetch may defer decoding again; resolve it in this update as well.
+    if (fetch_id != kDefaultImageFetchID) {
+      page_view_->GetImageResourceFetcher()->ResumeDeferredDecode(fetch_id,
+                                                                  size);
+    }
+  };
+  auto* render = GetRenderImage();
+  if (!render->GetImage()) {
+    update(placeholder_, placeholder_fetch_id_, render->GetPlaceholderImage(),
+           &BaseImageView::FetchPlaceholder);
+  }
+  update(source_, source_fetch_id_, render->GetImage(),
+         &BaseImageView::FetchSource);
+#endif
 }
 
 void BaseImageView::SetLocalCache(bool use_local_cache) {}
@@ -253,7 +311,6 @@ void BaseImageView::SetSource(std::string original_url) {
       placeholder_fetch_id_ == kDefaultImageFetchID) {
     FetchPlaceholder();
   }
-
   source_ = std::move(original_url);
 
   FetchSource();
@@ -424,7 +481,7 @@ void BaseImageView::NotifyFinalLoopComplete() {
   }
 }
 
-void BaseImageView::FetchPlaceholder() {
+void BaseImageView::FetchPlaceholder(bool reload) {
   if (placeholder_.empty()) {
     return;
   }
@@ -457,9 +514,10 @@ void BaseImageView::FetchPlaceholder() {
           page_view_->ImageDecodeWithPriority(), should_redirect_url_,
           GetRenderImage() && GetRenderImage()->EnableLowQuality());
 #else
+  last_checked_decode_size_.reset();
   placeholder_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
       placeholder_, IsSVG(),
-      [self = weak_factory_.GetWeakPtr()](
+      [self = weak_factory_.GetWeakPtr(), reload](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
         if (!self) {
           return;
@@ -469,10 +527,11 @@ void BaseImageView::FetchPlaceholder() {
         if (!image_instance) {
           return;
         }
+        self->last_checked_decode_size_.reset();
 
-        if (!hit_cache) {
+        if (!hit_cache && !reload) {
           self->TriggerTransitionIfNeeded();
-        } else {
+        } else if (hit_cache) {
           self->report_info_.image_origin =
               ReportInfo::ImageOrigin::kImageMemoryDecoded;
         }
@@ -486,11 +545,11 @@ void BaseImageView::FetchPlaceholder() {
         auto render_image = self->GetRenderImage();
         render_image->SetPlaceholderImage(std::move(image_instance));
       },
-      should_redirect_url_);
+      should_redirect_url_, GetContentSize());
 #endif  // ENABLE_SKITY
 }
 
-void BaseImageView::FetchSource() {
+void BaseImageView::FetchSource(bool reload) {
   if (source_.empty()) {
     return;
   }
@@ -549,9 +608,10 @@ void BaseImageView::FetchSource() {
       page_view_->ImageDecodeWithPriority(), should_redirect_url_,
       GetRenderImage() && GetRenderImage()->EnableLowQuality(), false, IsSVG());
 #else
+  last_checked_decode_size_.reset();
   source_fetch_id_ = page_view_->GetImageResourceFetcher()->FetchImage(
       source_, IsSVG(),
-      [self = weak_factory_.GetWeakPtr()](
+      [self = weak_factory_.GetWeakPtr(), reload](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
         if (!self) {
           return;
@@ -560,11 +620,16 @@ void BaseImageView::FetchSource() {
 
         if (!image_instance) {
           FML_LOG(ERROR) << "image is null";
-          self->NotifyLoadError("resource fetch fail");
+          if (!reload) {
+            self->NotifyLoadError("resource fetch fail");
+          }
           return;
         }
-        self->NotifyLoadSuccess(image_instance->GetWidth(),
-                                image_instance->GetHeight());
+        self->last_checked_decode_size_.reset();
+        if (!reload) {
+          self->NotifyLoadSuccess(image_instance->GetWidth(),
+                                  image_instance->GetHeight());
+        }
 
         image_instance->SetAnimationFrameCallback([self]() {
           if (!self) {
@@ -572,7 +637,7 @@ void BaseImageView::FetchSource() {
           }
           self->GetRenderImage()->MarkNeedsPaint();
         });
-        if (!hit_cache) {
+        if (!hit_cache && !reload) {
           self->TriggerTransitionIfNeeded();
         }
         // FIXME(songchengjiang.real): Theoretically, whether to enable mipmap
@@ -581,9 +646,11 @@ void BaseImageView::FetchSource() {
         image_instance->GetImage()->SetMipmapped(true);
         auto render_image = self->GetRenderImage();
         render_image->SetImage(std::move(image_instance));
-        self->ReportImageLoadInfo();
+        if (!reload) {
+          self->ReportImageLoadInfo();
+        }
       },
-      should_redirect_url_);
+      should_redirect_url_, GetContentSize());
 #endif  // ENABLE_SKITY
 }
 
@@ -711,6 +778,22 @@ void BaseImageView::ReportImageLoadInfo() {
       std::to_string(load_finish), std::to_string(cost), url, width, height,
       std::to_string(memory_cost), downsampled, view_width, view_height,
       static_cast<int>(report_info_.image_origin));
+}
+
+std::optional<Size> BaseImageView::GetContentSize() const {
+  const auto* render_image = static_cast<const RenderImage*>(render_object());
+  if (IsSVG() || !render_image || !render_image->ShouldDecodeToViewSize() ||
+      !page_view() || !page_view()->DeferredImageDecode()) {
+    return Size{};
+  }
+  float pixel_ratio =
+      page_view()->GetPixelRatio<kPixelTypeClay, kPixelTypePhysical>();
+  Size size(ContentDimension(render_image->ContentWidth(), pixel_ratio),
+            ContentDimension(render_image->ContentHeight(), pixel_ratio));
+  if (size.IsEmpty()) {
+    return std::nullopt;
+  }
+  return size;
 }
 
 }  // namespace clay
