@@ -78,6 +78,8 @@ source_set("flutter_windows_overlay_plugins") {
 source_set("flutter_windows_source") {
   # Common Windows sources.
   sources = [
+    "cover_view_platform_plugin_win.cc",
+    "cover_view_platform_plugin_win.h",
     "cursor_handler.cc",
     "cursor_handler.h",
     "direct_manipulation.cc",

@@ -27,13 +27,15 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
 }  // namespace
 
 @implementation ClayOverlayView {
-  NSArray<NSValue*>* _opaqueRects;
+  NSDictionary<NSNumber*, NSValue*>* _opaqueRects;
+  NSArray<NSNumber*>* _hitTestViewOrder;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect {
   self = [super initWithFrame:frameRect];
   if (self) {
-    _opaqueRects = @[];
+    _opaqueRects = @{};
+    _hitTestViewOrder = @[];
     // Host overlay content in a transparent layer.
     self.wantsLayer = YES;
     self.layer.opaque = NO;
@@ -61,8 +63,21 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
   return YES;
 }
 
-- (void)updateOpaqueRects:(NSArray<NSValue*>*)rects {
-  _opaqueRects = [rects copy] ?: @[];
+- (void)updateOpaqueRects:(NSDictionary<NSNumber*, NSValue*>*)rects
+                viewOrder:(NSArray<NSNumber*>*)viewOrder {
+  _opaqueRects = [rects copy] ?: @{};
+  _hitTestViewOrder = [viewOrder copy] ?: @[];
+  [self.window invalidateCursorRectsForView:self];
+}
+
+- (void)removeOpaqueRectForViewId:(int64_t)viewId {
+  NSNumber* key = @(viewId);
+  NSMutableDictionary<NSNumber*, NSValue*>* rects = [_opaqueRects mutableCopy];
+  [rects removeObjectForKey:key];
+  _opaqueRects = [rects copy];
+  NSMutableArray<NSNumber*>* view_order = [_hitTestViewOrder mutableCopy];
+  [view_order removeObject:key];
+  _hitTestViewOrder = [view_order copy];
   [self.window invalidateCursorRectsForView:self];
 }
 
@@ -90,8 +105,9 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
 
 - (NSView*)hitTest:(NSPoint)point {
   // Pass through events outside painted overlay regions.
-  for (NSValue* val in _opaqueRects) {
-    if (NSPointInRect(point, [val rectValue])) {
+  for (NSNumber* view_id in [_hitTestViewOrder reverseObjectEnumerator]) {
+    NSValue* rect = _opaqueRects[view_id];
+    if (rect && NSPointInRect(point, [rect rectValue])) {
       return self;
     }
   }

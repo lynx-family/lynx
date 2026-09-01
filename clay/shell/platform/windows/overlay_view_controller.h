@@ -5,6 +5,7 @@
 #define CLAY_SHELL_PLATFORM_WINDOWS_OVERLAY_VIEW_CONTROLLER_H_
 
 #include <memory>
+#include <string>
 
 #include "clay/shell/platform/windows/flutter_window.h"
 #include "clay/shell/platform/windows/flutter_windows_engine.h"

@@ -22,6 +22,10 @@ OverlayViewController::OverlayViewController(
                                         preferred_size.preferred_view_height);
     child_view_ = engine_->CreateOverlayView(std::move(window_wrapper));
     overlay_view_ = child_view_.get();
+    HWND window = GetWindowHandle();
+    if (window) {
+      SetWindowTextW(window, title.c_str());
+    }
     ShowWindow(child_view_->GetWindowHandle(), SW_HIDE);
   }
   type_ = type;
