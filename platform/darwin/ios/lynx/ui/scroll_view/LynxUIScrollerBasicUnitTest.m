@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUIScroller.h>
 #import <XCTest/XCTest.h>
-#import "LynxUI+Private.h"
 #import "LynxUIScrollerUnitTestUtils.h"
 
 @interface LynxUIScroller (TestBasic)
@@ -55,6 +55,55 @@
                                                  props:@{@"scroll-y" : @YES, @"scroll-top" : @100}];
   LynxUIScroller *scroller = (LynxUIScroller *)[mockContext.UIOwner findUIBySign:0];
   XCTAssert(CGPointEqualToPoint(scroller.view.contentOffset, CGPointMake(0, 100)));
+}
+
+- (void)assertScrollPinsExternallyOwnedMaskWithBorderRadii:(LynxBorderRadii)radii
+                                         hasDifferentRadii:(BOOL)hasDifferentRadii {
+  // In FLR mode the display-list applier owns the host layer's mask. Scrolling shifts the
+  // layer's bounds origin, so the mask must be re-pinned independently of the corner radii.
+  LynxUIMockContext *mockContext =
+      [LynxUIScrollerUnitTestUtils updateUIMockContext:nil
+                                                  sign:0
+                                                   tag:@"scroll-view"
+                                              eventSet:[NSSet set]
+                                         lepusEventSet:[NSSet set]
+                                                 props:@{@"scroll-y" : @YES}];
+  LynxUIScroller *scroller = (LynxUIScroller *)[mockContext.UIOwner findUIBySign:0];
+  UIScrollView *scrollView = (UIScrollView *)scroller.view;
+  scroller.backgroundManager.borderRadius = radii;
+  XCTAssertEqual([scroller.backgroundManager hasDifferentBorderRadius], hasDifferentRadii);
+
+  // Simulate the FLR display-list applier installing its own mask on the host layer.
+  CAShapeLayer *externalMask = [CAShapeLayer layer];
+  externalMask.frame = scrollView.layer.bounds;
+  externalMask.path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(scrollView.bounds, 2, 2)
+                                                 cornerRadius:10]
+                          .CGPath;
+  scrollView.layer.mask = externalMask;
+
+  [scrollView setContentOffset:CGPointMake(0, 100)];
+  [scroller updateLayerMaskOnFrameChanged];
+
+  XCTAssertTrue(CGRectEqualToRect(externalMask.frame, scrollView.layer.bounds));
+  XCTAssertEqualWithAccuracy(externalMask.frame.origin.y, 100.0f, 0.001f);
+}
+
+- (void)testScrollPinsExternallyOwnedMaskBeforeUniformRadiusFastPath {
+  LynxBorderRadii radii = LynxBorderRadiiZero;
+  radii.topLeftX.val = radii.topLeftY.val = 10;
+  radii.topRightX.val = radii.topRightY.val = 10;
+  radii.bottomRightX.val = radii.bottomRightY.val = 10;
+  radii.bottomLeftX.val = radii.bottomLeftY.val = 10;
+
+  [self assertScrollPinsExternallyOwnedMaskWithBorderRadii:radii hasDifferentRadii:NO];
+}
+
+- (void)testScrollPinsExternallyOwnedMaskWithNonUniformRadii {
+  LynxBorderRadii radii = LynxBorderRadiiZero;
+  radii.topLeftX.val = 10;
+  radii.topLeftY.val = 6;
+
+  [self assertScrollPinsExternallyOwnedMaskWithBorderRadii:radii hasDifferentRadii:YES];
 }
 
 - (void)testScrollTopExtremelyLargeValue {
