@@ -198,6 +198,11 @@ void QuickjsRuntimeInstance::ReportMemoryForTrace() {
     return;
   }
 
+  auto config = trace::TraceController::Instance()->GetLastSessionTraceConfig();
+  if (!(config && config->enable_memory_trace)) {
+    return;
+  }
+
   // When Lynx Trace is enabled, memory data is reported directly on the JS
   // thread. Otherwise, multithreading may cause the time sequence of events to
   // be disordered, hindering automated analysis.
