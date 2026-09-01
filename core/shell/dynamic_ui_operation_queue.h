@@ -37,6 +37,7 @@ class DynamicUIOperationQueue : public UIOperationQueueInterface {
   void SetEnableFlush(bool enable_flush);
   void SetErrorCallback(ErrorCallback callback);
   void SetPageOptions(const tasm::PageOptions& options);
+  bool IsEngineAsync() const { return is_engine_async_; }
   uint32_t GetNativeUpdateDataOrder();
   uint32_t UpdateNativeUpdateDataOrder();
   void ResetNativeUpdateDataOrder();

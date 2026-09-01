@@ -5,13 +5,24 @@
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 
 #include <cstdint>
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/include/platform/harmony/napi_util.h"
+#include "core/renderer/events/gesture.h"
 
 namespace lynx {
 namespace tasm {
 using base::NapiHandleScope;
+
+namespace {
+
+bool ShouldShallowCopy(const lepus::Value& value) {
+  return value.IsJSValue() || value.IsTable() || value.IsArray();
+}
+
+}  // namespace
 
 PropBundleHarmony::PropBundleHarmony() = default;
 
@@ -25,6 +36,28 @@ PropBundleHarmony::~PropBundleHarmony() = default;
 fml::RefPtr<PropBundle> PropBundleHarmony::ShallowCopy() {
   auto prop = fml::MakeRefCounted<PropBundleHarmony>(props_, event_handler_);
   return prop;
+}
+
+void PropBundleHarmony::SnapshotValues() {
+  for (auto& entry : props_) {
+    auto& value = entry.second;
+    if (ShouldShallowCopy(value)) {
+      value = lepus::Value::ShallowCopy(value);
+    }
+  }
+
+  if (gesture_detector_map_) {
+    for (auto& entry : *gesture_detector_map_) {
+      auto& detector = entry.second;
+      if (!detector) {
+        continue;
+      }
+      const auto& config = detector->gesture_config_in_lepus_value();
+      if (ShouldShallowCopy(config)) {
+        detector->SetGestureConfig(lepus::Value::ShallowCopy(config));
+      }
+    }
+  }
 }
 
 napi_value PropBundleHarmony::GetJSProps() const {

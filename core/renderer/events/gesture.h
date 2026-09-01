@@ -6,6 +6,7 @@
 #define CORE_RENDERER_EVENTS_GESTURE_H_
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/value/base_value.h"
@@ -94,6 +95,10 @@ class GestureDetectorImpl : public GestureDetector {
 
   const lepus::Value& gesture_config_in_lepus_value() const {
     return gesture_config_.backend_value();
+  }
+
+  void SetGestureConfig(lepus::Value config) {
+    gesture_config_ = PubLepusValue(std::move(config));
   }
 
   // Getter method for retrieving the vector of gesture callbacks in
