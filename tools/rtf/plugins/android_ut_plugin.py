@@ -66,7 +66,7 @@ class AndroidUTPlugin(Plugin):
             elif args.command == "list":
                 return self.__handle_list_command(template_name, template)
             else:
-                return Err(f"Unsupported command: {args.command}")
+                return Err("UNSUPPORTED_COMMAND", f"Unsupported command: {args.command}")
 
     def __handle_run_command(self, local_env, args):
         container = AndroidUTContainer(local_env["builder"], local_env["coverage"])
