@@ -203,7 +203,8 @@ void PaintingContextHarmony::CreatePaintingNode(
 
 void PaintingContextHarmony::ConsumeGesture(int64_t id, int32_t gesture_id,
                                             const pub::Value& params) {
-  auto lepus_map = pub::ValueUtils::ConvertValueToLepusValue(params);
+  auto lepus_map =
+      pub::ValueUtils::ConvertValueToLepusValue(params).ToLepusValue();
 
   Enqueue([platform_ref = platform_ref_, id, gesture_id,
            gesture_map = std::move(lepus_map)] {
@@ -293,7 +294,8 @@ std::unique_ptr<pub::Value> PaintingContextHarmony::GetTextInfo(
 }
 
 void PaintingContextHarmony::StopExposure(const pub::Value& options) {
-  auto lepus_options = pub::ValueUtils::ConvertValueToLepusValue(options);
+  auto lepus_options =
+      pub::ValueUtils::ConvertValueToLepusValue(options).ToLepusValue();
   Enqueue(
       [platform_ref = platform_ref_, lepus_opts = std::move(lepus_options)]() {
         auto harmony_ref =
@@ -397,10 +399,14 @@ void PaintingContextHarmony::Invoke(
                                                const lepus::Value& data) {
         auto harmony_ref =
             std::static_pointer_cast<PaintingContextHarmonyRef>(platform_ref);
+        auto callback_data = data.ToLepusValue();
         harmony_ref->GetUIOwner()->RunTaskOnTASMThread(
-            [callback, code, data]() { callback(code, PubLepusValue(data)); });
+            [callback, code, data = std::move(callback_data)]() {
+              callback(code, PubLepusValue(std::move(data)));
+            });
       };
-  auto lepus_params = pub::ValueUtils::ConvertValueToLepusValue(params);
+  auto lepus_params =
+      pub::ValueUtils::ConvertValueToLepusValue(params).ToLepusValue();
 
   Enqueue([platform_ref = platform_ref_, id, method,
            lepus_params = std::move(lepus_params),
