@@ -1163,7 +1163,7 @@ public class LynxTemplateRender
       nativeUpdateColorScheme(mNativePtr, mNativeLifecycle, colorScheme.id(), true);
     }
     nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
-
+    lynxUIRenderer().onLynxEngineProxyCreated(mEngineProxy.getNativePtr());
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
   }
 

@@ -25,6 +25,7 @@
 #include "clay/gfx/style/borders_data.h"
 #include "clay/public/clay.h"
 #include "clay/public/event_delegate.h"
+#include "clay/public/function_delegate.h"
 #include "clay/public/ui_component_delegate.h"
 #include "clay/public/value.h"
 #include "clay/ui/component/text/text_style.h"
@@ -290,6 +291,14 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   void SetExternalScreenshotCallback(ExternalScreenshotCallback callback);
 
+  void SetFunctionDelegate(clay::FunctionDelegate* delegate) {
+    function_delegate_ = delegate;
+  }
+
+  void RemoveFunctionDelegate(FunctionDelegate* delegate) {
+    function_delegate_ = nullptr;
+  }
+
   // Lynx list containers.
   void UpdateContentOffsetForListContainer(int id, float content_size,
                                            float target_content_offset_x,
@@ -363,6 +372,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   fml::WeakPtrFactory<ViewContext> weak_factory_;
   std::unique_ptr<CustomFilterDecoder> custom_filter_decoder_;
   FrameObserver* frame_observer_ = nullptr;
+  clay::FunctionDelegate* function_delegate_;
 };
 
 class CustomFilterDecoder {

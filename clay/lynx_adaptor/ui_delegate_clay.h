@@ -11,11 +11,15 @@
 #include <vector>
 
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
-#include "core/public/lynx_resource_loader.h"
+#include "clay/public/function_delegate.h"
 #include "core/public/ui_delegate.h"
 
 namespace clay {
 class ViewContext;
+}
+
+namespace pub {
+class LynxResourceLoader;
 }
 
 namespace lynx {
@@ -25,7 +29,7 @@ class PaintingContextClay;
 class LayoutContextClay;
 class PerfControllerClay;
 
-class UIDelegateClay : public UIDelegate {
+class CLAY_EXPORT UIDelegateClay : public UIDelegate {
  public:
   UIDelegateClay(
       clay::ViewContext* view_context,
@@ -71,6 +75,9 @@ class UIDelegateClay : public UIDelegate {
   bool EnableNativeList() const override { return true; }
 
   clay::ViewContext* GetViewContext() const { return view_context_; }
+
+  void SetFunctionDelegate(clay::FunctionDelegate* delegate);
+  void RemoveFunctionDelegate(clay::FunctionDelegate* delegate);
 
  private:
   clay::ViewContext* view_context_;
