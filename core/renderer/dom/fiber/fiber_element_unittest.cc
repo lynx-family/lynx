@@ -10500,6 +10500,90 @@ TEST_P(FiberElementTest, TestPseudoStatusChangeInheritanceLegacyPipeline) {
   EXPECT_FALSE(deactivated_color.has_value());
 }
 
+TEST_P(FiberElementTest,
+       TestPseudoStatusChangeKeepsUnchangedInheritedStyleInLayoutInElement) {
+  manager->enable_new_styling_pipeline_ = false;
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap index_tokens_map;
+  CSSParserTokenMap pseudo_map;
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDOpacity] =
+        CSSValue(lepus::Value(1.0), CSSValuePattern::STRING);
+    std::string key = ".test";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    index_tokens_map.emplace(key, tokens);
+  }
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDOpacity] =
+        CSSValue(lepus::Value(0.8), CSSValuePattern::STRING);
+    std::string key = ".test:active";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    pseudo_map.emplace(key, tokens);
+    index_tokens_map.emplace(key, tokens);
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto index_fragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, index_tokens_map, keyframes, fontfaces);
+  index_fragment->MarkHasTouchPseudoToken();
+  index_fragment->pseudo_map_ = pseudo_map;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto component = manager->CreateFiberComponent(
+      base::String("21"), 100, base::String("__Card__"),
+      base::String("TestComp"), base::String("/index/components/TestComp"));
+  component->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(index_fragment.get());
+  page->InsertNode(component);
+
+  auto parent = manager->CreateFiberView();
+  parent->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+  component->InsertNode(parent);
+
+  auto child = manager->CreateFiberView();
+  child->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  child->SetClass(base::String("test"));
+  parent->InsertNode(child);
+
+  auto grandchild = manager->CreateFiberView();
+  grandchild->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  child->InsertNode(grandchild);
+
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+  ASSERT_TRUE(
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+
+  child->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateActive);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+  EXPECT_TRUE(
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+
+  parent->RemoveAllInlineStyles();
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+  EXPECT_FALSE(
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+}
+
 TEST_P(FiberElementTest, RemoveIntergenerationalChild) {
   //===test fixed element =====//
   // normal case
