@@ -99,6 +99,7 @@ def main():
     # for the cache key of deps with extra targets:
     #  - key: hab-macOS-[dev]-abc123
     #  - restore-keys: hab-macOS-[dev]-
+
     target_key = f"[{'-'.join(targets)}]"
     digest_key = get_digest(paths)
 
