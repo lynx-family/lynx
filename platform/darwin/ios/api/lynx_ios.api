@@ -525,6 +525,7 @@ public class LynxBackgroundRuntimeOptions : NSObject {
   public id<LynxMediaResourceFetcher> LynxBackgroundRuntimeOptions::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxBackgroundRuntimeOptions::templateResourceFetcher templateResourceFetcher;
   public BOOL LynxBackgroundRuntimeOptions::pendingCoreJsLoad pendingCoreJsLoad;
+  public CGSize LynxBackgroundRuntimeOptions::screenSize screenSize;
   public instancetype LynxBackgroundRuntimeOptions::init();
   public void LynxBackgroundRuntimeOptions::addLynxResourceProvider:provider:(NSString *resType,[provider] id< LynxResourceProvider > provider);
   public void LynxBackgroundRuntimeOptions::registerModule:(Class< LynxModule > module);
