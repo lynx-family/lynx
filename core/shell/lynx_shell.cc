@@ -959,11 +959,24 @@ void LynxShell::LoadSSRData(
 void LynxShell::UpdateDataByParsedData(
     const std::shared_ptr<tasm::TemplateData>& data, bool is_reuse_engine) {
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
-  pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   pipeline_options->is_reuse_engine = is_reuse_engine;
+  if (is_reuse_engine) {
+    pipeline_options->pipeline_origin = tasm::timing::kLoadBundle;
+    pipeline_options->need_timestamps = true;
+  } else {
+    pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
+  }
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);
+  if (is_reuse_engine) {
+    // A reused engine skips LoadTemplate. The remaining setup stages, including
+    // loadBackground and paintEnd, are collected by the existing pipeline.
+    SetTiming(pipeline_options->pipeline_start_timestamp,
+              tasm::timing::kLoadBundleStart, pipeline_options->pipeline_id);
+    SetTiming(pipeline_options->pipeline_start_timestamp,
+              tasm::timing::kLoadBundleEnd, pipeline_options->pipeline_id);
+  }
 
   EnsureTemplateDataThreadSafe(data);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
