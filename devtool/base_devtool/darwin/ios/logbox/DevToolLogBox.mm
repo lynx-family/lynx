@@ -321,16 +321,23 @@ NSString *const BRIDGE_JS =
 #pragma mark - Helper
 
 - (NSString *)dict2JsonString:(NSDictionary *)dict {
-  NSData *json = [NSJSONSerialization dataWithJSONObject:dict
-                                                 options:NSJSONWritingPrettyPrinted
-                                                   error:nil];
-  NSString *str = [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding];
-  NSMutableString *mutStr = [NSMutableString stringWithString:str];
-  [mutStr replaceOccurrencesOfString:@"\n"
-                          withString:@""
-                             options:NSLiteralSearch
-                               range:{0, str.length}];
-  return mutStr;
+  @try {
+    NSData *json = [NSJSONSerialization dataWithJSONObject:dict
+                                                   options:NSJSONWritingPrettyPrinted
+                                                     error:nil];
+    NSString *str = [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding];
+    NSMutableString *mutStr = [NSMutableString stringWithString:str];
+    [mutStr replaceOccurrencesOfString:@"\n"
+                            withString:@""
+                               options:NSLiteralSearch
+                                 range:{0, str.length}];
+    return mutStr;
+  } @catch (NSException *exception) {
+    NSUInteger estimatedSize = [[dict description] lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+    NSLog(@"JSON serialization failed: %@, estimated size: %lu bytes", exception.reason,
+          (unsigned long)estimatedSize);
+    return @"";
+  }
 }
 
 - (void)sendJsResult:(NSDictionary *)msg {
