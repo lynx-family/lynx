@@ -10,6 +10,7 @@
 
 #include "base/include/log/logging.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/public/lynx_resource_handle.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/template_bundle/lynx_template_bundle.h"
@@ -87,6 +88,9 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
     const std::string& url, long timeout) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_BYTE_CODE, "source", url);
   if (!resource_loader_) {
+    LOGE(
+        "[ResourceHandle] External bytecode failure_stage=dispatch, "
+        "failure_reason=resource_loader_unavailable");
     auto error_msg = "LoadByteCode: resource_loader_ is null.";
     return ExternalResourceInfo(
         error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
@@ -103,8 +107,66 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
            promise)](pub::LynxResourceResponse& response) mutable {
         auto p = promise_weak.lock();
         if (!p) {
+          LOGE(
+              "[ResourceHandle] External bytecode "
+              "failure_stage=fetch_callback, failure_reason=late_callback");
           return;
         }
+        if (!response.Success()) {
+          LOGE(
+              "[ResourceHandle] External bytecode "
+              "failure_stage=fetch_callback, failure_reason=request_failed, "
+              "error_code="
+              << response.err_code);
+          p->set_value(ExternalResourceInfo(std::move(response.data),
+                                            response.err_code,
+                                            std::move(response.err_msg)));
+          return;
+        }
+
+        if (response.resource_handle != nullptr) {
+          TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EXTERNAL_BYTECODE_LOAD_PATH,
+                              "load_path", "resource_handle",
+                              "platform_bytes_copy_avoided", "true");
+          LOGI(
+              "[ResourceHandle] External bytecode load_path=resource_handle, "
+              "platform_bytes_copy_avoided=true");
+          auto result = [&response]() {
+            TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                        EXTERNAL_BYTECODE_READ_RESOURCE_HANDLE);
+            return response.resource_handle->ReadAllBytes();
+          }();
+          if (!result.has_value()) {
+            LOGE(
+                "[ResourceHandle] External bytecode "
+                "failure_stage=handle_read, failure_reason=read_failed");
+            p->set_value(ExternalResourceInfo(
+                error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+                std::move(result.error())));
+            return;
+          }
+          if (result.value().empty()) {
+            LOGE(
+                "[ResourceHandle] External bytecode "
+                "failure_stage=handle_read, failure_reason=empty_resource");
+            p->set_value(ExternalResourceInfo(
+                error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+                "external bytecode resource is empty"));
+            return;
+          }
+          response.data = std::move(result.value());
+          LOGI("[ResourceHandle] External bytecode read success, byte_size="
+               << response.data.size());
+        } else {
+          TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EXTERNAL_BYTECODE_LOAD_PATH,
+                              "load_path", "bytes",
+                              "platform_bytes_copy_avoided", "false");
+          LOGI(
+              "[ResourceHandle] External bytecode load_path=bytes, "
+              "platform_bytes_copy_avoided=false, byte_size="
+              << response.data.size());
+        }
+
         p->set_value(ExternalResourceInfo(std::move(response.data),
                                           response.err_code,
                                           std::move(response.err_msg)));
@@ -113,6 +175,9 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
   timeout = timeout > 0 ? timeout : 5;
   if (future.wait_for(std::chrono::seconds(timeout)) !=
       std::future_status::ready) {
+    LOGE(
+        "[ResourceHandle] External bytecode failure_stage=fetch_wait, "
+        "failure_reason=timeout");
     return ExternalResourceInfo(
         error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
         "loadByteCode timeout");
