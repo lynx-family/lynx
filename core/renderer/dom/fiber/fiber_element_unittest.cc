@@ -18380,6 +18380,57 @@ TEST_P(FiberElementTest, TestObjectPathCSSVariablePropagation) {
   }
 }
 
+// https://github.com/lynx-family/lynx/issues/8576
+TEST_P(FiberElementTest, FiberAddInlineStyleUpdatesCSSCustomProperty) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+  lepus_ctx->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* mts_ctx = runtime::MTSRuntime::ToQuickContext(lepus_ctx.get());
+  ASSERT_TRUE(mts_ctx);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(child);
+
+  parent->SetRawInlineStyles("--bg-color: red;");
+  child->SetRawInlineStyles("background-color: var(--bg-color);");
+  page->FlushActionsAsRoot();
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+  painting_context->Flush();
+  auto* node = painting_context->node_map_[child->impl_id()].get();
+  ASSERT_NE(node, nullptr);
+  EXPECT_EQ(node->props_["background-color"],
+            lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+
+  lepus::Value args[] = {lepus::Value(parent), lepus::Value("--bg-color"),
+                         lepus::Value("blue")};
+  RendererFunctions::FiberAddInlineStyle(mts_ctx, args,
+                                         static_cast<int>(std::size(args)));
+
+  auto variable = parent->data_model()->GetCSSInlineVariables().find(
+      base::String("--bg-color"));
+  ASSERT_NE(variable, parent->data_model()->GetCSSInlineVariables().end());
+  EXPECT_EQ(variable->second, base::String("blue"));
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  node = painting_context->node_map_[child->impl_id()].get();
+  ASSERT_NE(node, nullptr);
+  EXPECT_EQ(node->props_["background-color"],
+            lepus::Value(static_cast<uint32_t>(kTestColorMap["blue"])));
+}
+
 TEST_P(FiberElementTest, TestFontSizeWhenUnifyVwVhBehaviorFalse) {
   const_cast<DynamicCSSConfigs&>(manager->GetDynamicCSSConfigs())
       .unify_vw_vh_behavior_ = false;

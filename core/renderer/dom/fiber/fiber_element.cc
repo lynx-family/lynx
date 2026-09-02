@@ -4521,9 +4521,7 @@ bool Element::IsRelatedCSSVariableUpdated(
   return changed;
 }
 
-void Element::UpdateCSSVariable(
-    const lepus::Value &css_variable_updated,
-    std::shared_ptr<PipelineOptions> &pipeline_option) {
+void Element::UpdateCSSVariable(const lepus::Value &css_variable_updated) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_UPDATE_CSS_VARIABLE,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
@@ -4542,6 +4540,12 @@ void Element::UpdateCSSVariable(
     MarkStyleDirty(false);
   }
   RecursivelyMarkChildrenCSSVariableDirty(css_variable_updated);
+}
+
+void Element::UpdateCSSVariable(
+    const lepus::Value &css_variable_updated,
+    std::shared_ptr<PipelineOptions> &pipeline_option) {
+  UpdateCSSVariable(css_variable_updated);
 
   // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
