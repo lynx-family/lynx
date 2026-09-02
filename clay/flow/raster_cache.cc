@@ -36,8 +36,9 @@ struct GpuTarget {
 };
 
 GpuTarget CreateGpuTarget(const RasterCache::Context& context, int width,
-                          int height) {
+                          int height, uint32_t sample_count) {
 #ifndef ENABLE_SKITY
+  (void)sample_count;
   const SkImageInfo image_info = SkImageInfo::MakeN32Premul(
       width, height, sk_ref_sp(context.dst_color_space));
 
@@ -57,7 +58,7 @@ GpuTarget CreateGpuTarget(const RasterCache::Context& context, int width,
   skity::GPURenderTargetDescriptor desc;
   desc.width = width;
   desc.height = height;
-  desc.sample_count = 4;
+  desc.sample_count = sample_count;
 
   auto render_target = context.gr_context->CreateRenderTarget(desc);
   if (!render_target) {
@@ -149,7 +150,7 @@ std::unique_ptr<RasterCacheResult> RasterCache::Rasterize(
     // Create a new surface with the scaled size.
     auto target = CreateGpuTarget(
         context, std::ceil(context.logical_rect.Width() * scale),
-        std::ceil(context.logical_rect.Height() * scale));
+        std::ceil(context.logical_rect.Height() * scale), context.sample_count);
     clay::GrCanvas* canvas = target.canvas;
     if (!canvas) {
       return nullptr;
@@ -178,7 +179,8 @@ std::unique_ptr<RasterCacheResult> RasterCache::Rasterize(
 #endif  // ENABLE_RASTER_CACHE_SCALE
   skity::Rect dest_rect =
       RasterCacheUtil::GetRoundedOutDeviceBounds(context.logical_rect, matrix);
-  auto target = CreateGpuTarget(context, dest_rect.Width(), dest_rect.Height());
+  auto target = CreateGpuTarget(context, dest_rect.Width(), dest_rect.Height(),
+                                context.sample_count);
   clay::GrCanvas* canvas = target.canvas;
   if (!canvas) {
     return nullptr;

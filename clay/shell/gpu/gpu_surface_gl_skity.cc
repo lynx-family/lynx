@@ -52,6 +52,7 @@ GPUSurfaceGLSkity::GPUSurfaceGLSkity(
   valid_ = gpu_context_ != nullptr;
   if (valid_) {
     gpu_context_->SetEnableSimpleShapePipeline(true);
+    gpu_context_->EnableRenderTargetCache(false);
   }
 }
 
