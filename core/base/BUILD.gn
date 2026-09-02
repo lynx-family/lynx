@@ -133,7 +133,11 @@ lynx_core_source_set("base") {
   libs = []
   sources = []
   deps = []
-  public_deps = [ "../build:build" ]
+  public_deps = [
+    "../../base/src:base_group",
+    "../build:build",
+    "../public",
+  ]
   if (is_oliver_ssr) {
     not_needed(base_shared_sources)
     sources += [

@@ -5,7 +5,6 @@
 #include "core/base/darwin/vsync_monitor_darwin.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/trace/trace_event_def.h"
-#include "core/renderer/utils/lynx_env.h"
 
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CADisplayLink.h>
