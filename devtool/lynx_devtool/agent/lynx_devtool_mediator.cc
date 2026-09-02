@@ -1222,6 +1222,14 @@ void LynxDevToolMediator::InsertText(
   });
 }
 
+void LynxDevToolMediator::SynthesizeTapGesture(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnUIThread([sender, message, executor = ui_executor_] {
+    executor->SynthesizeTapGesture(sender, message);
+  });
+}
+
 void LynxDevToolMediator::InspectorEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
