@@ -17,23 +17,32 @@ module Lynx
       REGISTRY_CLASS_NAME = 'LynxGeneratedLibraryRegistry'
       ADDON_USE_SOURCE_NAME = 'LynxGeneratedNodeAPIAddonUse.mm'
       ADDON_NAME_PATTERN = /\A[A-Za-z_][A-Za-z0-9_]*\z/
+      PLUGIN_NAME = 'cocoapods-lynx-library'
+      DEFAULT_SOURCES = [:node_modules, :pods].freeze
+      KNOWN_SOURCES = [:node_modules, :pods].freeze
 
       class << self
         def install!(podfile, options = {})
           start_dir = File.expand_path(options[:root] || Dir.pwd)
-          output_dir = File.expand_path(options[:output_dir] || 'generated/lynx-library', start_dir)
-          libraries = scan(start_dir)
-          added_pods = []
-          libraries.each do |library|
-            pod_name = pod_name_from_podspec(library.podspec_path)
-            add_pod_once(podfile, added_pods, pod_name, File.dirname(library.podspec_path))
-            library.node_api_addons.each do |addon|
-              add_pod_once(podfile, added_pods, addon.pod_name, File.dirname(addon.podspec_path))
-            end
+          registry_dir = options[:output_dir] || 'generated/lynx-library'
+          output_dir = File.expand_path(registry_dir, start_dir)
+          sources = normalize_sources(options[:sources])
+
+          node_modules_libraries = sources.include?(:node_modules) ? scan(start_dir) : []
+          add_node_modules_pods(podfile, node_modules_libraries)
+
+          # Generate the initial registry. In pods mode it may be a stub that the
+          # post-install hook rewrites once the installed pods are available.
+          generate_registry(output_dir, node_modules_libraries)
+          # Pass the raw (unexpanded) path so Podfile.lock records it as given,
+          # keeping the lockfile portable instead of an absolute machine path.
+          podfile.pod 'LynxLibraryRegistry', :path => registry_dir
+
+          if sources.include?(:pods)
+            register_pods_hook(output_dir, node_modules_libraries, current_target_label(podfile))
           end
-          generate_registry(output_dir, libraries)
-          podfile.pod 'LynxLibraryRegistry', :path => output_dir
-          libraries
+
+          node_modules_libraries
         end
 
         def scan(start_dir)
@@ -42,16 +51,18 @@ module Lynx
           end.sort_by(&:npm_name)
         end
 
-        def generate_registry(output_dir, libraries)
+        def generate_registry(output_dir, libraries, write_podspec: true)
           FileUtils.mkdir_p(output_dir)
-          components = libraries.flat_map { |library| scan_components(library.source_dir) }
+          components = collect_components(libraries)
           node_api_addons = libraries.flat_map(&:node_api_addons)
           File.write(File.join(output_dir, "#{REGISTRY_CLASS_NAME}.h"), header_source)
           File.write(File.join(output_dir, "#{REGISTRY_CLASS_NAME}.m"),
                      implementation_source(components))
           File.write(File.join(output_dir, ADDON_USE_SOURCE_NAME), addon_use_source(node_api_addons))
-          File.write(File.join(output_dir, 'LynxLibraryRegistry.podspec'),
-                     podspec_source(node_api_addons))
+          if write_podspec
+            File.write(File.join(output_dir, 'LynxLibraryRegistry.podspec'),
+                       podspec_source(node_api_addons))
+          end
           components
         end
 
@@ -60,6 +71,174 @@ module Lynx
         end
 
         private
+
+        def normalize_sources(sources)
+          list = Array(sources || DEFAULT_SOURCES).map(&:to_sym)
+          list = DEFAULT_SOURCES.dup if list.empty?
+          unknown = list - KNOWN_SOURCES
+          raise "Unknown Lynx library autolink sources: #{unknown.join(', ')}" unless unknown.empty?
+          list.uniq
+        end
+
+        def add_node_modules_pods(podfile, libraries)
+          added_pods = []
+          libraries.each do |library|
+            pod_name = pod_name_from_podspec(library.podspec_path)
+            add_pod_once(podfile, added_pods, pod_name, File.dirname(library.podspec_path))
+            library.node_api_addons.each do |addon|
+              add_pod_once(podfile, added_pods, addon.pod_name, File.dirname(addon.podspec_path))
+            end
+          end
+        end
+
+        # Merge components across sources and drop duplicates that appear in more
+        # than one source.
+        def collect_components(libraries)
+          libraries.flat_map { |library| scan_components(library.source_dir) }
+                   .uniq { |component| [component.kind, component.name, component.class_name] }
+        end
+
+        # --- pods source -----------------------------------------------------
+
+        # Register a CocoaPods post-install hook that rescans the installed pods
+        # of the current target and rewrites the registry once their sources are
+        # available. The registry podspec stays fixed (write_podspec: false) so
+        # the resolved pod graph is never mutated after installation.
+        def register_pods_hook(output_dir, node_modules_libraries, target_label)
+          return unless defined?(Pod::HooksManager)
+
+          Pod::HooksManager.register(PLUGIN_NAME, :post_install) do |context|
+            pods_libraries = Autolink.scan_installed_pods(context, target_label)
+            libraries = node_modules_libraries + pods_libraries
+            Autolink.generate_registry(output_dir, libraries, write_podspec: false)
+          end
+        end
+
+        # @return [String, nil] label of the target that invoked use_lynx_library!
+        def current_target_label(podfile)
+          return nil unless podfile.respond_to?(:current_target_definition)
+
+          definition = podfile.current_target_definition
+          definition&.label
+        end
+
+        public
+
+        # Scan the pods installed for +target_label+ and turn the ones carrying a
+        # lynx.lib.json into LibraryInfo entries. Source location comes from the
+        # pod's resolved source_files, not from the manifest's sourceDir.
+        def scan_installed_pods(context, target_label)
+          sandbox = context.sandbox
+          seen_manifests = {}
+          pod_specs_for_target(context, target_label).map do |spec|
+            pod_name = spec.root.name
+            next if pod_name == 'LynxLibraryRegistry'
+
+            pod_root = pod_source_root(sandbox, pod_name)
+            unless pod_root
+              log_warning("skipped pod '#{pod_name}': source directory not found in sandbox")
+              next
+            end
+
+            manifest = File.join(pod_root, 'lynx.lib.json')
+            next unless File.file?(manifest)
+
+            canonical = File.realpath(manifest)
+            if (owner = seen_manifests[canonical])
+              # Different pods reusing the same manifest is unexpected.
+              if owner != pod_name
+                log_warning("skipped pod '#{pod_name}': lynx.lib.json at #{canonical} " \
+                            "already provided by '#{owner}'")
+              end
+              next
+            end
+            seen_manifests[canonical] = pod_name
+
+            native_library_from_pod(spec, pod_root, manifest)
+          end.compact.sort_by(&:npm_name)
+        end
+
+        private
+
+        def log_warning(message)
+          full = "[cocoapods-lynx-library] #{message}"
+          if defined?(Pod::UI)
+            Pod::UI.warn(full)
+          else
+            warn(full)
+          end
+        end
+
+        def pod_specs_for_target(context, target_label)
+          targets = context.umbrella_targets
+          targets = targets.select { |t| t.cocoapods_target_label == target_label } if target_label
+          targets.flat_map(&:specs).uniq(&:name)
+        end
+
+        def pod_source_root(sandbox, pod_name)
+          path = sandbox.pod_dir(pod_name)
+          return nil unless path && File.directory?(path)
+          File.realpath(path)
+        end
+
+        # Build a LibraryInfo for an installed pod. The source dir is derived from
+        # the pod's source_files (the manifest sourceDir is ignored in pods mode).
+        def native_library_from_pod(spec, pod_root, manifest_file)
+          json = JSON.parse(File.read(manifest_file))
+          ios = json.dig('platforms', 'ios')
+          return nil if ios.nil?
+          raise "Invalid ios platform entry in #{manifest_file}" unless ios.is_a?(Hash)
+
+          source_dir = source_dir_from_spec(spec, pod_root)
+          node_api_addons = parse_pod_node_api_addons(ios['nodeApiAddons'], spec, manifest_file)
+          LibraryInfo.new(spec.root.name, pod_root, manifest_file, source_dir, nil, node_api_addons)
+        rescue JSON::ParserError => e
+          raise "Failed to parse #{manifest_file}: #{e.message}"
+        end
+
+        # Resolve where the pod's Objective-C/Swift sources live from its
+        # source_files patterns, falling back to the pod root.
+        def source_dir_from_spec(spec, pod_root)
+          patterns = Array(spec.attributes_hash['source_files'])
+          ios_attrs = spec.attributes_hash['ios']
+          patterns += Array(ios_attrs['source_files']) if ios_attrs.is_a?(Hash)
+          roots = patterns.map { |pattern| source_pattern_root(pattern, pod_root) }.compact.uniq
+          roots.length == 1 ? roots.first : pod_root
+        end
+
+        # Reduce a glob like "common/**/*.{h,m}" to its fixed directory prefix,
+        # resolved against the pod root.
+        def source_pattern_root(pattern, pod_root)
+          fixed = pattern.to_s.split(/[*?\[\]{}]/).first.to_s
+          fixed = File.dirname(fixed) unless fixed.end_with?('/') || fixed.empty?
+          path = File.expand_path(fixed, pod_root)
+          File.directory?(path) ? path : nil
+        end
+
+        # Parse nodeApiAddons for an installed pod. Unlike node_modules, the pod is
+        # already in the graph, so podspecPath is ignored and podName defaults to
+        # the resolved pod name.
+        def parse_pod_node_api_addons(addons, spec, manifest_file)
+          return [] if addons.nil?
+          raise "platforms.ios.nodeApiAddons in #{manifest_file} must be an array" unless
+            addons.is_a?(Array)
+
+          addons.each_with_index.map do |addon, index|
+            raise "platforms.ios.nodeApiAddons[#{index}] in #{manifest_file} must be an object" unless
+              addon.is_a?(Hash)
+
+            name = addon['name']
+            validate_addon_name(name, "platforms.ios.nodeApiAddons[#{index}].name", manifest_file)
+            pod_name = addon['podName'] || spec.root.name
+            addon_use_header = addon['addonUseHeader'] || 'addon_use.h'
+            validate_addon_use_header(addon_use_header,
+                                      "platforms.ios.nodeApiAddons[#{index}].addonUseHeader",
+                                      manifest_file)
+            required = addon.key?('required') ? !!addon['required'] : true
+            NodeApiAddonInfo.new(name.strip, pod_name, nil, addon_use_header, required)
+          end
+        end
+
 
         def node_modules_dirs(start_dir)
           dirs = []
