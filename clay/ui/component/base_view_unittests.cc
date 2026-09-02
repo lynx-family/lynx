@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -515,6 +516,85 @@ TEST_F_UI(BaseViewTest, HitTest) {
 
   root->DestroyAllChildren();
   root->Destroy();
+}
+
+TEST_F_UI(BaseViewTest, EventThroughUsesNearestExplicitAncestorValue) {
+  struct TestCase {
+    bool page_event_through;
+    std::optional<bool> parent_event_through;
+    std::optional<bool> child_event_through;
+    bool expected_page;
+    bool expected_parent;
+    bool expected_child;
+  };
+  const TestCase test_cases[] = {
+      {false, std::nullopt, std::nullopt, false, false, false},
+      {true, std::nullopt, std::nullopt, true, true, true},
+      {true, false, std::nullopt, true, false, false},
+      {false, true, std::nullopt, false, true, true},
+      {true, false, true, true, false, true},
+  };
+
+  for (const auto& test_case : test_cases) {
+    page_->SetEventThrough(test_case.page_event_through);
+    auto current_parent = std::make_unique<View>(1, page_.get());
+    auto current_child = std::make_unique<View>(2, page_.get());
+    page_->AddChild(current_parent.get());
+    current_parent->AddChild(current_child.get());
+    current_parent->SetBound(0, 0, 100, 100);
+    current_child->SetBound(0, 0, 100, 100);
+    if (test_case.parent_event_through.has_value()) {
+      current_parent->SetEventThrough(*test_case.parent_event_through);
+    }
+    if (test_case.child_event_through.has_value()) {
+      current_child->SetEventThrough(*test_case.child_event_through);
+    }
+
+    HitTestResult result;
+    ASSERT_TRUE(page_->HitTest(CreateDownPointer(50, 50), result));
+    ASSERT_EQ(result.size(), 3u);
+
+    auto it = result.begin();
+    EXPECT_EQ(it->get(), current_child.get());
+    EXPECT_EQ((*it)->ShouldPassEventToNative(), test_case.expected_child);
+    ++it;
+    EXPECT_EQ(it->get(), current_parent.get());
+    EXPECT_EQ((*it)->ShouldPassEventToNative(), test_case.expected_parent);
+    ++it;
+    EXPECT_EQ(it->get(), page_.get());
+    EXPECT_EQ((*it)->ShouldPassEventToNative(), test_case.expected_page);
+
+    current_parent->RemoveChild(current_child.get());
+    page_->RemoveChild(current_parent.get());
+  }
+}
+
+TEST_F_UI(BaseViewTest, EventThroughControlsNativeEventTargetByInheritance) {
+  auto parent = std::make_unique<View>(1, page_.get());
+  auto child = std::make_unique<View>(2, page_.get());
+  page_->AddChild(parent.get());
+  parent->AddChild(child.get());
+  parent->SetBound(0, 0, 100, 100);
+  child->SetBound(0, 0, 100, 100);
+
+  FloatPoint relative_position;
+  page_->SetEventThrough(true);
+  EXPECT_EQ(
+      page_->GetTopViewToAcceptEvent(FloatPoint(50, 50), &relative_position),
+      nullptr);
+
+  parent->SetEventThrough(false);
+  EXPECT_EQ(
+      page_->GetTopViewToAcceptEvent(FloatPoint(50, 50), &relative_position),
+      child.get());
+
+  child->SetEventThrough(true);
+  EXPECT_EQ(
+      page_->GetTopViewToAcceptEvent(FloatPoint(50, 50), &relative_position),
+      parent.get());
+
+  parent->RemoveChild(child.get());
+  page_->RemoveChild(parent.get());
 }
 
 class BaseViewWithChildrenTest : public UITest {
