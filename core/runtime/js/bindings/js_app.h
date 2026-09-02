@@ -252,6 +252,12 @@ class App {
   void PauseGcSuppressionMode();
   void ResumeGcSuppressionMode();
 
+  // Delivers an app-level callback as a MessageEvent on the CoreContext
+  // proxy when the script side has registered a listener for it. Returns
+  // false when no listener is registered so callers can fall back to the
+  // legacy js_app property call.
+  bool DispatchAppEventMessage(const char* type, Runtime& rt, Value payload);
+
   void OnStandaloneScriptAdded(const std::string& url, JsContent script,
                                const std::shared_ptr<const JsBundle>& bundle);
   void OnSetPresetData(lepus::Value data);

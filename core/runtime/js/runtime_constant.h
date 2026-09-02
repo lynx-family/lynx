@@ -81,6 +81,8 @@ constexpr const char kMessageEventTypeUpdatePage[] = "__UpdatePage";
 constexpr const char kMessageEventTypeUpdateGlobalProps[] =
     "__UpdateGlobalProps";
 constexpr const char kMessageEventTypeRemoveComponents[] = "__RemoveComponents";
+constexpr const char kMessageEventTypeUpdateCardData[] = "__UpdateCardData";
+constexpr const char kMessageEventTypeOnAppReload[] = "__OnAppReload";
 
 constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
 constexpr char kRawRuntimePageRssMemoryInfo[] = "page_rss_usage";
