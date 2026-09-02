@@ -551,7 +551,8 @@ LYNX_UI_METHOD(playSegment) {
     return;
   }
   self.animaxContext.enableMultiThreadAccelerate = self.enableMultiThreadAccelerate;
-  self.animaxPlayer = [[AnimaXPlayer alloc] initWithContext:self.animaxContext];
+  self.animaxPlayer = [[AnimaXPlayer alloc] initWithContext:self.animaxContext
+                                                      scale:self.context.screenMetrics.scale];
   [self.propsPrioritySetter attachToPlayer:self.animaxPlayer];
 }
 

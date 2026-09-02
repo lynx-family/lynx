@@ -33,6 +33,8 @@ CGPoint PlatformRendererContextDarwin::GetRootViewLocationOnScreen() {
 }
 
 CGSize PlatformRendererContextDarwin::GetScreenSize() {
+  // TODO(xiamengfei.moonface): [ResizableWindowSize] Check whether this should use window or
+  // physical screen metrics.
   CGSize size = UIScreen.mainScreen.bounds.size;
   return size;
 }
