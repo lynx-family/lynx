@@ -1158,7 +1158,12 @@ public class LynxImageManager implements Drawable.Callback {
     if (mImageRequestDelegate == null || !isHttpImageRequest(requestInfo)) {
       return null;
     }
-    return mImageRequestDelegate.prepareImageRequest(requestInfo);
+    try {
+      return mImageRequestDelegate.prepareImageRequest(requestInfo);
+    } catch (Exception exception) {
+      LLog.e(TAG, "prepareImageRequest failed: " + Log.getStackTraceString(exception));
+      return null;
+    }
   }
 
   private void onImageRequestFinished(
