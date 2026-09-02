@@ -9,6 +9,7 @@
 #include <limits>
 #include <optional>
 #include <sstream>
+#include <type_traits>
 #include <utility>
 
 #include "clay/fml/logging.h"
@@ -25,6 +26,56 @@ namespace clay {
 
 namespace {
 
+float KeyframeFraction(const Keyframe& keyframe) {
+  return keyframe.GetFraction();
+}
+
+float KeyframeFraction(const lynx::gfx::Keyframe& keyframe) {
+  return static_cast<float>(keyframe.Time().ToSecondsF());
+}
+
+float ApplyKeyframeTiming(const Keyframe& keyframe, float fraction) {
+  auto* interpolator = keyframe.GetInterpolator();
+  return interpolator ? interpolator->Interpolate(fraction) : fraction;
+}
+
+float ApplyKeyframeTiming(const lynx::gfx::Keyframe& keyframe, float fraction) {
+  const auto* timing_function = keyframe.timing_function();
+  return timing_function
+             ? static_cast<float>(timing_function->GetValue(fraction))
+             : fraction;
+}
+
+std::unique_ptr<lynx::gfx::TimingFunction> CloneTimingFunction(
+    const lynx::gfx::Keyframe& keyframe) {
+  return keyframe.timing_function() ? keyframe.timing_function()->Clone()
+                                    : nullptr;
+}
+
+template <typename KeyframeType>
+decltype(auto) KeyframeValue(const KeyframeType& keyframe) {
+  return keyframe.Value();
+}
+
+Color KeyframeValue(const ColorKeyframe& keyframe) {
+  return Color(keyframe.Value());
+}
+
+template <typename KeyframeType, typename ValueType>
+std::unique_ptr<KeyframeType> CreateKeyframe(
+    fml::TimeDelta time, ValueType value,
+    std::unique_ptr<lynx::gfx::TimingFunction> timing_function) {
+  auto keyframe = KeyframeType::Create(time, std::move(timing_function));
+  keyframe->SetValue(value);
+  return keyframe;
+}
+
+template <typename KeyframeType>
+std::unique_ptr<KeyframeType> CloneKeyframe(const KeyframeType& keyframe) {
+  return CreateKeyframe<KeyframeType>(keyframe.Time(), keyframe.Value(),
+                                      CloneTimingFunction(keyframe));
+}
+
 // template function used to sort keyframes
 template <typename KeyframeType>
 void InsertKeyframe(std::unique_ptr<KeyframeType> keyframe,
@@ -32,9 +83,9 @@ void InsertKeyframe(std::unique_ptr<KeyframeType> keyframe,
   // Usually, the keyframes will be added in order, so this loop would be
   // unnecessary and we should skip it if possible.
   if (!keyframes->empty() &&
-      keyframe->GetFraction() < keyframes->back()->GetFraction()) {
+      KeyframeFraction(*keyframe) < KeyframeFraction(*keyframes->back())) {
     for (size_t i = 0; i < keyframes->size(); ++i) {
-      if (keyframe->GetFraction() < keyframes->at(i)->GetFraction()) {
+      if (KeyframeFraction(*keyframe) < KeyframeFraction(*keyframes->at(i))) {
         keyframes->insert(keyframes->begin() + i, std::move(keyframe));
         return;
       }
@@ -59,30 +110,27 @@ void InsertKeyframe(std::unique_ptr<KeyframeType> keyframe,
  * @return The animated value.
  */
 template <typename KeyframeType>
-typename KeyframeType::ValueType GetValue(
-    float fraction,
-    const std::vector<std::unique_ptr<KeyframeType>>& keyframes) {
-  FML_DCHECK(keyframes.front()->GetFraction() == 0.f);
-  FML_DCHECK(keyframes.back()->GetFraction() == 1.f);
+auto GetValue(float fraction,
+              const std::vector<std::unique_ptr<KeyframeType>>& keyframes) {
+  using ValueType = std::decay_t<decltype(KeyframeValue(*keyframes.front()))>;
+  FML_DCHECK(KeyframeFraction(*keyframes.front()) == 0.f);
+  FML_DCHECK(KeyframeFraction(*keyframes.back()) == 1.f);
   for (size_t i = 1; i < keyframes.size(); ++i) {
     const auto& prev_keyframe = keyframes[i - 1];
-    float prev_fraction = prev_keyframe->GetFraction();
+    const float prev_fraction = KeyframeFraction(*prev_keyframe);
     const auto& next_keyframe = keyframes[i];
-    if (fraction <= next_keyframe->GetFraction() || i == keyframes.size() - 1) {
-      Interpolator* interpolator = prev_keyframe->GetInterpolator();
-      float intervalFraction = (fraction - prev_fraction) /
-                               (next_keyframe->GetFraction() - prev_fraction);
-
-      // Apply interpolator on the proportional duration.
-      if (interpolator != nullptr) {
-        intervalFraction = interpolator->Interpolate(intervalFraction);
-      }
-      return TypeEvaluator<typename KeyframeType::ValueType>::Evaluate(
-          intervalFraction, prev_keyframe->Value(), next_keyframe->Value());
+    const float next_fraction = KeyframeFraction(*next_keyframe);
+    if (fraction <= next_fraction || i == keyframes.size() - 1) {
+      const float interval_fraction = ApplyKeyframeTiming(
+          *prev_keyframe,
+          (fraction - prev_fraction) / (next_fraction - prev_fraction));
+      return TypeEvaluator<ValueType>::Evaluate(interval_fraction,
+                                                KeyframeValue(*prev_keyframe),
+                                                KeyframeValue(*next_keyframe));
     }
   }
   FML_UNREACHABLE();
-  return keyframes.back()->Value();
+  return KeyframeValue(*keyframes.back());
 }
 
 }  // namespace
@@ -116,7 +164,7 @@ std::unique_ptr<KeyframeSet> FloatKeyframeSet::Clone(
       FloatKeyframeSet::Create(Type());
   to_return->SetKeyframesManager(manager);
   for (const auto& keyframe : keyframes_) {
-    to_return->AddKeyframe(keyframe->Clone());
+    to_return->AddKeyframe(CloneKeyframe(*keyframe));
   }
 
   return to_return;
@@ -126,15 +174,15 @@ void FloatKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
-  if (keyframes_.front()->GetFraction() > 0) {
-    auto* interpolator = keyframes_.front()->GetInterpolator();
-    AddKeyframe(
-        FloatKeyframe::Create(0.f, original_value_, interpolator->Clone()));
+  if (KeyframeFraction(*keyframes_.front()) > 0) {
+    AddKeyframe(CreateKeyframe<FloatKeyframe>(
+        fml::TimeDelta::Zero(), original_value_,
+        CloneTimingFunction(*keyframes_.front())));
   }
-  if (keyframes_.back()->GetFraction() < 1) {
-    auto* interpolator = keyframes_.back()->GetInterpolator();
-    AddKeyframe(
-        FloatKeyframe::Create(1.f, original_value_, interpolator->Clone()));
+  if (KeyframeFraction(*keyframes_.back()) < 1) {
+    AddKeyframe(CreateKeyframe<FloatKeyframe>(
+        fml::TimeDelta::FromSeconds(1), original_value_,
+        CloneTimingFunction(*keyframes_.back())));
   }
 }
 
@@ -161,7 +209,8 @@ std::string FloatKeyframeSet::ToString() const {
   os << "FloatKeyframeSet: size=" << keyframes_.size()
      << " type=" << static_cast<int>(Type()) << std::endl;
   for (const auto& keyframe : keyframes_) {
-    os << "\t" << keyframe->ToString() << std::endl;
+    os << "\tfraction=" << KeyframeFraction(*keyframe)
+       << " value=" << keyframe->Value() << std::endl;
   }
   return os.str();
 }
@@ -187,7 +236,7 @@ std::unique_ptr<KeyframeSet> ColorKeyframeSet::Clone(
       ColorKeyframeSet::Create(Type());
   to_return->SetKeyframesManager(manager);
   for (const auto& keyframe : keyframes_) {
-    to_return->AddKeyframe(keyframe->Clone());
+    to_return->AddKeyframe(CloneKeyframe(*keyframe));
   }
 
   return to_return;
@@ -197,15 +246,15 @@ void ColorKeyframeSet::OnAnimationPrepare(Animator& animation) {
   if (auto manager = GetKeyframesManager()) {
     manager->GetTarget()->GetProperty(Type(), original_value_);
   }
-  if (keyframes_.front()->GetFraction() > 0) {
-    auto* interpolator = keyframes_.front()->GetInterpolator();
-    AddKeyframe(
-        ColorKeyframe::Create(0.f, original_value_, interpolator->Clone()));
+  if (KeyframeFraction(*keyframes_.front()) > 0) {
+    AddKeyframe(CreateKeyframe<ColorKeyframe>(
+        fml::TimeDelta::Zero(), original_value_.Value(),
+        CloneTimingFunction(*keyframes_.front())));
   }
-  if (keyframes_.back()->GetFraction() < 1) {
-    auto* interpolator = keyframes_.back()->GetInterpolator();
-    AddKeyframe(
-        ColorKeyframe::Create(1.f, original_value_, interpolator->Clone()));
+  if (KeyframeFraction(*keyframes_.back()) < 1) {
+    AddKeyframe(CreateKeyframe<ColorKeyframe>(
+        fml::TimeDelta::FromSeconds(1), original_value_.Value(),
+        CloneTimingFunction(*keyframes_.back())));
   }
 }
 
@@ -232,7 +281,8 @@ std::string ColorKeyframeSet::ToString() const {
   os << "ColorKeyframeSet: size=" << keyframes_.size()
      << " type=" << static_cast<int>(Type()) << std::endl;
   for (const auto& keyframe : keyframes_) {
-    os << "\t" << keyframe->ToString() << std::endl;
+    os << "\tfraction=" << KeyframeFraction(*keyframe) << " value=" << std::hex
+       << keyframe->Value() << std::endl;
   }
   return os.str();
 }

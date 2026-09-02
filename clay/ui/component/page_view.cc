@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "base/include/fml/macros.h"
+#include "base/include/fml/time/time_delta.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/screenshot.h"
 #include "clay/flow/frame_timings.h"
@@ -1595,9 +1596,8 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
       if (!properties_val.IsMap()) {
         continue;
       }
-      float fraction = 0.0f;
-      // 与原 KeyframesData 一致地解析百分比键
-      fraction = std::stof(fraction_str);
+      const float fraction = std::stof(fraction_str);
+      const auto keyframe_time = fml::TimeDelta::FromSecondsF(fraction);
 
       const auto& properties_map = properties_val.GetMap();
       for (const auto& prop : properties_map) {
@@ -1615,9 +1615,9 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
                        .first;
             }
             auto* float_set = static_cast<FloatKeyframeSet*>(it->second.get());
-            float_set->AddKeyframe(FloatKeyframe::Create(
-                fraction, static_cast<float>(prop_value.GetDouble()),
-                Interpolator::CreateDefaultInterpolator()));
+            auto keyframe = FloatKeyframe::Create(keyframe_time);
+            keyframe->SetValue(static_cast<float>(prop_value.GetDouble()));
+            float_set->AddKeyframe(std::move(keyframe));
             break;
           }
           case KeywordID::kBackgroundColor: {
@@ -1632,9 +1632,9 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
                        .first;
             }
             auto* color_set = static_cast<ColorKeyframeSet*>(it->second.get());
-            color_set->AddKeyframe(ColorKeyframe::Create(
-                fraction, Color(prop_value.GetUint()),
-                Interpolator::CreateDefaultInterpolator()));
+            auto keyframe = ColorKeyframe::Create(keyframe_time);
+            keyframe->SetValue(prop_value.GetUint());
+            color_set->AddKeyframe(std::move(keyframe));
             break;
           }
           case KeywordID::kColor: {
@@ -1647,9 +1647,9 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
                        .first;
             }
             auto* color_set = static_cast<ColorKeyframeSet*>(it->second.get());
-            color_set->AddKeyframe(ColorKeyframe::Create(
-                fraction, Color(prop_value.GetUint()),
-                Interpolator::CreateDefaultInterpolator()));
+            auto keyframe = ColorKeyframe::Create(keyframe_time);
+            keyframe->SetValue(prop_value.GetUint());
+            color_set->AddKeyframe(std::move(keyframe));
             break;
           }
           case KeywordID::kTransform: {

@@ -15,7 +15,7 @@
 #include "clay/gfx/geometry/box_shadow_operations.h"
 #include "clay/gfx/geometry/filter_operations.h"
 #include "clay/gfx/geometry/transform_raw.h"
-#include "clay/gfx/style/color.h"
+#include "gfx/animation/animation_keyframe.h"
 #include "gfx/geometry/transform_operations.h"
 
 namespace clay {
@@ -65,73 +65,12 @@ class Keyframe {
   std::unique_ptr<Interpolator> interpolator_;
 };
 
-class FloatKeyframe : public Keyframe {
- public:
-  typedef float ValueType;
-
-  FloatKeyframe(const FloatKeyframe&) = delete;
-  FloatKeyframe& operator=(const FloatKeyframe&) = delete;
-
-  static std::unique_ptr<FloatKeyframe> Create(
-      float fraction, float value, std::unique_ptr<Interpolator> interpolator);
-  ~FloatKeyframe() override;
-
-  float Value() const;
-
-  std::unique_ptr<FloatKeyframe> Clone() const;
-
-#ifndef NDEBUG
-  std::string ToString() const override;
-#endif
-
- private:
-  FloatKeyframe(float fraction, float value,
-                std::unique_ptr<Interpolator> interpolator);
-
-  /**
-   * The value of the animation at the time fraction_.
-   */
-  float value_;
-};
-
-class ColorKeyframe : public Keyframe {
- public:
-  typedef Color ValueType;
-
-  ColorKeyframe(const ColorKeyframe&) = delete;
-  ColorKeyframe& operator=(const ColorKeyframe&) = delete;
-
-  static std::unique_ptr<ColorKeyframe> Create(
-      float fraction, Color value, std::unique_ptr<Interpolator> interpolator);
-  ~ColorKeyframe() override;
-
-  Color Value() const;
-
-  std::unique_ptr<ColorKeyframe> Clone() const;
-
-#ifndef NDEBUG
-  std::string ToString() const override;
-#endif
-
- private:
-  ColorKeyframe(float fraction, Color value,
-                std::unique_ptr<Interpolator> interpolator);
-
-  /**
-   * The value of the animation at the time fraction_.
-   */
-  Color value_;
-};
+using FloatKeyframe = lynx::gfx::FloatKeyframe;
+using ColorKeyframe = lynx::gfx::ColorKeyframe;
 
 // See `RawTransformKeyframeSet` class
 class RawTransformKeyframe : public Keyframe {
  public:
-  static std::unique_ptr<RawTransformKeyframe> Create(
-      float fraction, const ClayTransform& transform,
-      std::unique_ptr<Interpolator> interpolator);
-  static std::unique_ptr<RawTransformKeyframe> Create(
-      float fraction, const std::vector<ClayTransformOP>& transform,
-      std::unique_ptr<Interpolator> interpolator);
   static std::unique_ptr<RawTransformKeyframe> Create(
       float fraction, const std::vector<TransformRaw>& transform,
       std::unique_ptr<Interpolator> interpolator);
@@ -143,11 +82,6 @@ class RawTransformKeyframe : public Keyframe {
   const std::vector<TransformRaw>& Operations() const { return operations_; }
 
  private:
-  RawTransformKeyframe(float fraction, const ClayTransform& transform,
-                       std::unique_ptr<Interpolator> interpolator);
-  RawTransformKeyframe(float fraction,
-                       const std::vector<ClayTransformOP>& transform,
-                       std::unique_ptr<Interpolator> interpolator);
   RawTransformKeyframe(float fraction,
                        const std::vector<TransformRaw>& transform,
                        std::unique_ptr<Interpolator> interpolator);
