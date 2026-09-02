@@ -582,6 +582,19 @@ public class LynxEnv {
     }
   }
 
+  boolean shouldLoadDebugLynxLibraryBeforeInit(@Nullable Context context) {
+    if (context == null || mContext != null) {
+      return false;
+    }
+    try {
+      DevToolSettings.inst().init(context);
+      return DevToolSettings.inst().isDebugModeEnabled();
+    } catch (RuntimeException error) {
+      LLog.w(TAG, "Failed to read Debug Mode before native initialization: " + error);
+      return false;
+    }
+  }
+
   /**
    * Use mLibraryLoader to load required libraries.
    * In most cases, you should call {@link LynxEnv#init(Application, INativeLibraryLoader,
@@ -591,6 +604,18 @@ public class LynxEnv {
    * @return whether loading is successful
    */
   public synchronized boolean initNativeLibraries(INativeLibraryLoader loader) {
+    return initNativeLibraries(loader, null);
+  }
+
+  /**
+   * Loads native libraries with a context available before {@link LynxEnv#init}.
+   *
+   * <p>The context is used only to read persisted DevTool settings when selecting the Lynx
+   * library variant.
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public synchronized boolean initNativeLibraries(
+      INativeLibraryLoader loader, @Nullable Context context) {
     if (mIsNativeLibraryLoaded) {
       return true;
     }
@@ -605,7 +630,16 @@ public class LynxEnv {
         initBase(mLibraryLoader);
       }
       mLibraryLoader.loadLibrary("lynxgfx");
-      mLibraryLoader.loadLibrary("lynx");
+      boolean loadDebugLibrary = shouldLoadDebugLynxLibraryBeforeInit(context);
+      try {
+        mLibraryLoader.loadLibrary(loadDebugLibrary ? "lynx_debug" : "lynx");
+      } catch (UnsatisfiedLinkError error) {
+        if (!loadDebugLibrary) {
+          throw error;
+        }
+        LLog.w(TAG, "Failed to load lynx_debug, falling back to lynx: " + error.getMessage());
+        mLibraryLoader.loadLibrary("lynx");
+      }
       if (!LynxTraceEnv.inst().isNativeLibraryLoaded()) {
         mLibraryLoader.loadLibrary("lynxtrace");
         LynxTraceEnv.inst().markNativeLibraryLoaded(true);
