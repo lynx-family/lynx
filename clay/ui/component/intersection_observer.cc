@@ -4,6 +4,7 @@
 
 #include "clay/ui/component/intersection_observer.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -65,12 +66,33 @@ FloatRect BoundingRectWithScroll(BaseView* view) {
   return FloatRect(location.x(), location.y(), view->Width(), view->Height());
 }
 
+float IntersectionRatio(const FloatRect& target_rect,
+                        const FloatRect& clipping_rect) {
+  if (target_rect.IsEmpty() || clipping_rect.IsEmpty() ||
+      !target_rect.Intersects(clipping_rect)) {
+    return 0;
+  }
+  FloatRect intersection_rect = target_rect;
+  intersection_rect.Intersect(clipping_rect);
+  const float target_area = target_rect.width() * target_rect.height();
+  return target_area > 0 ? intersection_rect.width() *
+                               intersection_rect.height() / target_area
+                         : 0;
+}
+
 FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
                               FloatRect bounding_client_rect,
-                              FloatRect relative_rect, bool ui_clip_enabled) {
+                              FloatRect relative_rect, bool ui_clip_enabled,
+                              float* minimum_clipping_ratio = nullptr) {
+  if (minimum_clipping_ratio) {
+    *minimum_clipping_ratio = 0;
+  }
   if (!target_view || !root || relative_rect.IsEmpty() ||
       bounding_client_rect.IsEmpty()) {
     return FloatRect();
+  }
+  if (minimum_clipping_ratio) {
+    *minimum_clipping_ratio = 1;
   }
 
   FloatRect intersection_rect = bounding_client_rect;
@@ -78,21 +100,33 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
   BaseView* parent = target_view->Parent();
   while (!at_root && parent) {
     if (!parent->Visible()) {
+      if (minimum_clipping_ratio) {
+        *minimum_clipping_ratio = 0;
+      }
       return FloatRect();
     }
 
     FloatRect parent_rect;
+    bool should_clip = false;
     if (parent == root) {
       at_root = true;
+      should_clip = true;
       parent_rect = relative_rect;
     } else {
       if (parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
           parent->Is<ScrollView>() || ui_clip_enabled) {
+        should_clip = true;
         parent_rect = BoundingRectWithScroll(parent);
       }
     }
 
-    if (!parent_rect.IsEmpty()) {
+    if (should_clip &&
+        (!parent_rect.IsEmpty() || minimum_clipping_ratio != nullptr)) {
+      if (minimum_clipping_ratio) {
+        *minimum_clipping_ratio =
+            std::min(*minimum_clipping_ratio,
+                     IntersectionRatio(bounding_client_rect, parent_rect));
+      }
       if (intersection_rect.Intersects(parent_rect)) {
         intersection_rect.Intersect(parent_rect);
       } else {
@@ -108,7 +142,15 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
   // off-screen target as fully exposed.
   if (!at_root) {
     if (!root->Visible()) {
+      if (minimum_clipping_ratio) {
+        *minimum_clipping_ratio = 0;
+      }
       return FloatRect();
+    }
+    if (minimum_clipping_ratio) {
+      *minimum_clipping_ratio =
+          std::min(*minimum_clipping_ratio,
+                   IntersectionRatio(bounding_client_rect, relative_rect));
     }
     if (intersection_rect.Intersects(relative_rect)) {
       intersection_rect.Intersect(relative_rect);
@@ -122,10 +164,12 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
 
 }  // namespace
 
-void IntersectionObserverEntry::ComputeIntersectionRect(bool ui_clip_enabled) {
-  intersection_rect_ =
-      ComputeIntersection(target_view_, root_, bounding_client_rect_,
-                          relative_rect_, ui_clip_enabled);
+void IntersectionObserverEntry::ComputeIntersectionRect(
+    bool ui_clip_enabled, bool compute_minimum_clipping_ratio) {
+  intersection_rect_ = ComputeIntersection(
+      target_view_, root_, bounding_client_rect_, relative_rect_,
+      ui_clip_enabled,
+      compute_minimum_clipping_ratio ? &minimum_clipping_ratio_ : nullptr);
 }
 
 bool IsViewIntersecting(BaseView* view, BaseView* root, bool ui_clip_enabled) {
