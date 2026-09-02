@@ -19,6 +19,8 @@
 #import "LynxTemplateBundle+Converter.h"
 #import "LynxTraceEventDef.h"
 
+#include <cmath>
+
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
@@ -51,6 +53,7 @@
     [self merge:other];
     _moduleWrapperContainer->addWrappers([other moduleWrappers]);
     _presetData = other.presetData;
+    _screenSize = other.screenSize;
   }
   return self;
 }
@@ -222,6 +225,16 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     _options = [[LynxBackgroundRuntimeOptions alloc] initWithOptions:options];
     _innerLifecycleClients = [NSHashTable hashTableWithOptions:NSPointerFunctionsWeakMemory];
     [self initDevTool:debuggable];
+
+    // Initialize the global layout config so `SystemInfo.pixelRatio/pixelWidth/pixelHeight`
+    // are populated even when this runtime is created before any LynxView. Mirror
+    // LynxTemplateRender's fallback: use the real device screen size when unset.
+    CGSize screenSize = _options.screenSize;
+    if (!std::isfinite(screenSize.width) || !std::isfinite(screenSize.height) ||
+        screenSize.width <= 0 || screenSize.height <= 0) {
+      screenSize = [UIScreen mainScreen].bounds.size;
+    }
+    [[LynxEnv sharedInstance] initLayoutConfig:screenSize];
 
     // create NativeModuleManager
     std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
