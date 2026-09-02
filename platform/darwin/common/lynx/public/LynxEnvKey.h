@@ -50,6 +50,7 @@ typedef NS_ENUM(uint64_t, LynxEnvKey) {
   // Internal-only Lynx settings key. Do not mention graphics backend details in the key.
   LynxEnvSetupCanvasSurfaceEarlier,
   LynxEnvEnableImagePlaceholderResetFix,
+  LynxEnvEnableTextStrokeInheritanceFix,
 
   // Please add new enum values above
   LynxEnvKeyEndMark,  // Keep this as the last enum value, and do not use

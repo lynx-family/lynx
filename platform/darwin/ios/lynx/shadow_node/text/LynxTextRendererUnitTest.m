@@ -65,4 +65,29 @@
   XCTAssertFalse(
       [textRender.subSpan[3] containsPoint:CGPointMake(99, textRender.size.height - 10)]);
 }
+
+- (void)testInheritedTextStrokePreservesAbsoluteWidthWhenFontSizeChanges {
+  CGFloat parentFontSize = 14;
+  CGFloat childFontSize = 70;
+  CGFloat strokeWidth = 2;
+  NSDictionary<NSAttributedStringKey, id> *parentAttributes = @{
+    NSFontAttributeName : [UIFont systemFontOfSize:parentFontSize],
+    NSStrokeColorAttributeName : UIColor.whiteColor,
+    NSStrokeWidthAttributeName : @(-strokeWidth / parentFontSize * 100),
+  };
+
+  LynxBaseTextShadowNode *child = [[LynxBaseTextShadowNode alloc] initWithSign:2 tagName:@"text"];
+  child.text = @"3";
+  child.textStyle.fontSize = childFontSize;
+  [child layoutDidStart];
+
+  NSAttributedString *result = [child generateAttributedString:parentAttributes
+                                             withTextMaxLength:LynxNumberNotSet
+                                                 withDirection:NSWritingDirectionNatural];
+  NSNumber *resolvedStrokeWidth = [result attribute:NSStrokeWidthAttributeName
+                                            atIndex:0
+                                     effectiveRange:NULL];
+  XCTAssertEqualWithAccuracy(resolvedStrokeWidth.doubleValue, -strokeWidth / childFontSize * 100,
+                             0.0001);
+}
 @end

@@ -14,6 +14,8 @@
 
 - (BOOL)enableAnimationSyncTimeOpt;
 
+- (BOOL)enableTextStrokeInheritanceFix;
+
 - (NSString *)_stringFromExternalEnv:(NSString *)key;
 
 // Provide an interface for UT (Unit Testing) that can update the key value of
