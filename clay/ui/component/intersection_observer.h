@@ -27,7 +27,8 @@ class IntersectionObserverEntry {
   ~IntersectionObserverEntry() = default;
 
   void ComputeIntersectionRatio();
-  void ComputeIntersectionRect(bool ui_clip_enabled);
+  void ComputeIntersectionRect(bool ui_clip_enabled,
+                               bool compute_minimum_clipping_ratio = false);
 
   clay::Value::Map ToMap();
   clay::Value::Map RectToMap(FloatRect rect);
@@ -37,6 +38,7 @@ class IntersectionObserverEntry {
   FloatRect bounding_client_rect_;
   FloatRect relative_rect_;
   FloatRect intersection_rect_;
+  float minimum_clipping_ratio_ = 0;
   bool has_intersection_ = false;
   float intersection_ratio_;
   float time_;

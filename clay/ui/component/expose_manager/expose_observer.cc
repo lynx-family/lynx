@@ -4,6 +4,10 @@
 
 #include "clay/ui/component/expose_manager/expose_observer.h"
 
+#include <cerrno>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -90,7 +94,7 @@ void ExposeObserver::SetExposureHostVisible(bool visible) {
 
 bool ExposeObserver::TryNotifyAppearWithoutGeometry() {
   if (!available_ || !root_ || expose_attrs_.exposure_stoped ||
-      !exposure_host_visible_ ||
+      !exposure_host_visible_ || expose_attrs_.exposure_area > 0 ||
       !expose_attrs_.exposure_should_notify_appear_ || IsExposed()) {
     return false;
   }
@@ -165,14 +169,16 @@ void ExposeObserver::NotifyExposureEvent(bool appear) {
       appear ? ExposureState::kExposed : ExposureState::kDisExposed;
 }
 
+bool ExposeObserver::IsExposed(double intersection_ratio,
+                               double minimum_clipping_ratio) const {
+  return expose_attrs_.exposure_area <= 0
+             ? intersection_ratio > 0
+             : minimum_clipping_ratio >= expose_attrs_.exposure_area;
+}
+
 void ExposeObserver::NotifyTarget() {
-  double ratio = 0;
-  auto map = now_entry_->ToMap();
-  const auto it = map.find("intersectionRatio");
-  if (it != map.end()) {
-    attribute_utils::TryGetNum(it->second, ratio, 0);
-  }
-  NotifyExposureEvent(ratio > 0);
+  NotifyExposureEvent(IsExposed(now_entry_->intersection_ratio_,
+                                now_entry_->minimum_clipping_ratio_));
 }
 
 void ExposeObserver::CheckForIntersectionWithTarget() {
@@ -212,24 +218,26 @@ void ExposeObserver::CheckForIntersectionWithTarget() {
   root_rect.Expand(expose_attrs_.exposure_screen_margin_top,
                    expose_attrs_.exposure_screen_margin_right,
                    expose_attrs_.exposure_screen_margin_bottom,
-                   expose_attrs_.exposure_screen_margin_right);
+                   expose_attrs_.exposure_screen_margin_left);
   now_entry_->bounding_client_rect_ = target_rect;
   now_entry_->relative_rect_ = root_rect;
   now_entry_->target_view_ = attached_view_;
   now_entry_->root_ = root_;
-  now_entry_->ComputeIntersectionRect(exposure_ui_clip_enabled_);
+  now_entry_->ComputeIntersectionRect(exposure_ui_clip_enabled_, true);
   now_entry_->time_ = 0;  // not support time
   now_entry_->relative_to_id_ = attached_view_->GetIdSelector();
   now_entry_->ComputeIntersectionRatio();
 
   bool need_notify = false;
+  const bool exposed = IsExposed(now_entry_->intersection_ratio_,
+                                 now_entry_->minimum_clipping_ratio_);
   switch (expose_attrs_.expose_state) {
     case kInit:
     case kDisExposed:
-      need_notify = now_entry_->intersection_ratio_ > 0;
+      need_notify = exposed;
       break;
     case kExposed:
-      need_notify = now_entry_->intersection_ratio_ <= 0;
+      need_notify = !exposed;
   }
   if (need_notify) {
     NotifyTarget();
@@ -276,16 +284,16 @@ bool ExposeObserver::UpdateExposeData(const char* attr,
   } else if (KeywordID::kExposureArea == kw) {
     std::string area_str = utils::GetCString(value, "");
     std::string input_copy = lynx::base::TrimString(area_str);
+    expose_attrs_.exposure_area = 0;
     if (!input_copy.empty()) {
       char* endptr = nullptr;
       errno = 0;
-      [[maybe_unused]] double area_double = strtod(input_copy.c_str(), &endptr);
-      if (endptr) {
+      double area_double = strtod(input_copy.c_str(), &endptr);
+      if (errno == 0 && std::isfinite(area_double) &&
+          endptr != input_copy.c_str()) {
         std::string_view str_endptr(endptr, strlen(endptr));
-        if ((input_copy.c_str() + input_copy.size() != endptr) &&
-            (str_endptr == "%")) {
-          expose_attrs_.exposure_area = area_double / 100;
-          thresholds_.push_back(expose_attrs_.exposure_area);
+        if (str_endptr == "%") {
+          expose_attrs_.exposure_area = static_cast<float>(area_double / 100);
         }
       }
     }
