@@ -4,7 +4,7 @@
 
 import { Lynx, NativeLynxProxy } from '../lynx';
 import { AMDFactory } from '../common';
-import { LynxSetTimeout } from '@lynx-js/types';
+import { LynxClearTimeout, LynxSetTimeout } from '@lynx-js/types';
 import { BaseApp } from '.';
 import { LynxFeature } from '../common';
 import { IdentifierType } from '../modules/selectorQuery';
@@ -346,4 +346,18 @@ export interface NativeApp {
    * add custom info for error.
    */
   __addReporterCustomInfo: (info: Record<string, string>) => void;
+}
+
+/**
+ * Timers published by the standalone App runtime on the JS context, plus the
+ * Promise constructor built on top of them. Shared modules pick these up so
+ * captured timers and promises keep working after the card that evaluated
+ * them is destroyed.
+ */
+export interface StandaloneRuntimeGlobals {
+  setTimeout: LynxSetTimeout;
+  clearTimeout: LynxClearTimeout;
+  setInterval: LynxSetTimeout;
+  clearInterval: LynxClearTimeout;
+  promise?: PromiseConstructor;
 }

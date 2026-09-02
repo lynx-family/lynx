@@ -62,6 +62,12 @@ class LynxConfigDecoder final {
       page_config->SetPreferredFps(doc[config::kPreferredFps].GetString());
     }
 
+    if (doc.HasMember(config::kEnableLynxGroupModuleSharing) &&
+        doc[config::kEnableLynxGroupModuleSharing].IsBool()) {
+      page_config->SetEnableLynxGroupModuleSharing(
+          doc[config::kEnableLynxGroupModuleSharing].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableFSP) && doc[config::kEnableFSP].IsBool()) {
       page_config->SetEnableFSP(doc[config::kEnableFSP].GetBool()
                                     ? TernaryBool::TRUE_VALUE
