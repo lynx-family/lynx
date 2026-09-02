@@ -4,12 +4,15 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.h"
 
+#include <deviceinfo.h>
+
 #include "base/include/float_comparison.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
 BaseScrollContainer::BaseScrollContainer(LynxContext* context, int sign,
                                          const std::string& tag)
     : UIView(context, ARKUI_NODE_SCROLL, sign, tag) {
@@ -17,6 +20,11 @@ BaseScrollContainer::BaseScrollContainer(LynxContext* context, int sign,
   SetScrollbar(false);
   SetBounces(false, true);
   overflow_ = {false, false};
+  if (OH_GetSdkApiVersion() >= kScrollBackToTopSupportVersion) {
+    // By default, disable scrolling back to top when status bar is clicked.
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        node_, NODE_SCROLL_BACK_TO_TOP, static_cast<int32_t>(false));
+  }
 }
 
 void BaseScrollContainer::OnNodeReady() {
