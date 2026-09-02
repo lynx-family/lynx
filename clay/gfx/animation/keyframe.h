@@ -7,127 +7,50 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "base/include/fml/macros.h"
-#include "clay/gfx/animation/interpolator.h"
+#include "base/include/fml/time/time_delta.h"
 #include "clay/gfx/geometry/box_shadow_operations.h"
 #include "clay/gfx/geometry/filter_operations.h"
 #include "clay/gfx/geometry/transform_raw.h"
 #include "gfx/animation/animation_keyframe.h"
-#include "gfx/geometry/transform_operations.h"
+#include "gfx/animation/timing_function.h"
 
 namespace clay {
 
-class Keyframe {
- public:
-  Keyframe(const Keyframe&) = delete;
-  Keyframe& operator=(const Keyframe&) = delete;
-
-  /**
-   * Gets the time for this keyframe, as a fraction of the overall animation
-   * duration.
-   *
-   * @return The time associated with this keyframe, as a fraction of the
-   * overall animation duration. This should be a value between 0 and 1.
-   */
-  float GetFraction() const { return fraction_; }
-
-  /**
-   * Gets the optional interpolator for this Keyframe. A null pointer
-   * indicates that there is no interpolation, which is the same as linear
-   * interpolation.
-   *
-   * @return The optional interpolator for this Keyframe.
-   */
-  Interpolator* GetInterpolator() const { return interpolator_.get(); }
-
-#ifndef NDEBUG
-  virtual std::string ToString() const = 0;
-#endif
-
- protected:
-  Keyframe(float fraction, std::unique_ptr<Interpolator> interpolator);
-  virtual ~Keyframe();
-
- private:
-  /**
-   * The time at which value_ will hold true.
-   */
-  float fraction_ = 0.f;
-
-  /**
-   * The optional time interpolator for the interval preceding this keyframe.
-   * A null interpolator (the default) results in linear interpolation
-   * over the interval.
-   */
-  std::unique_ptr<Interpolator> interpolator_;
-};
-
 using FloatKeyframe = lynx::gfx::FloatKeyframe;
 using ColorKeyframe = lynx::gfx::ColorKeyframe;
+using TransformKeyframe = lynx::gfx::TransformKeyframe;
 
 // See `RawTransformKeyframeSet` class
-class RawTransformKeyframe : public Keyframe {
+class RawTransformKeyframe : public lynx::gfx::Keyframe {
  public:
   static std::unique_ptr<RawTransformKeyframe> Create(
-      float fraction, const std::vector<TransformRaw>& transform,
-      std::unique_ptr<Interpolator> interpolator);
+      fml::TimeDelta time, const std::vector<TransformRaw>& transform,
+      std::unique_ptr<lynx::gfx::TimingFunction> timing_function = nullptr);
 
 #ifndef NDEBUG
-  std::string ToString() const override;
+  std::string ToString() const;
 #endif
 
   const std::vector<TransformRaw>& Operations() const { return operations_; }
 
  private:
-  RawTransformKeyframe(float fraction,
-                       const std::vector<TransformRaw>& transform,
-                       std::unique_ptr<Interpolator> interpolator);
+  RawTransformKeyframe(
+      fml::TimeDelta time, const std::vector<TransformRaw>& transform,
+      std::unique_ptr<lynx::gfx::TimingFunction> timing_function);
 
   std::vector<TransformRaw> operations_;
 };
 
-class TransformKeyframe : public Keyframe {
+class FilterKeyframe : public lynx::gfx::Keyframe {
  public:
-  typedef lynx::gfx::TransformOperations ValueType;
-
-  TransformKeyframe(const TransformKeyframe&) = delete;
-  TransformKeyframe& operator=(const TransformKeyframe&) = delete;
-
-  static std::unique_ptr<TransformKeyframe> Create(
-      float fraction, const lynx::gfx::TransformOperations& value,
-      std::unique_ptr<Interpolator> interpolator);
-  ~TransformKeyframe() override;
-
-  const lynx::gfx::TransformOperations& Value() const;
-
-  std::unique_ptr<TransformKeyframe> Clone() const;
-
-#ifndef NDEBUG
-  std::string ToString() const override;
-#endif
-
- private:
-  TransformKeyframe(float fraction, const lynx::gfx::TransformOperations& value,
-                    std::unique_ptr<Interpolator> interpolator);
-
-  /**
-   * The value of the animation at the time fraction_.
-   */
-  lynx::gfx::TransformOperations value_;
-};
-
-class FilterKeyframe : public Keyframe {
- public:
-  typedef FilterOperations ValueType;
   FilterKeyframe(const FilterKeyframe&) = delete;
   FilterKeyframe& operator=(const FilterKeyframe&) = delete;
 
   static std::unique_ptr<FilterKeyframe> Create(
-      float fraction, const FilterOperations& value,
-      std::unique_ptr<Interpolator> interpolator);
+      fml::TimeDelta time, const FilterOperations& value,
+      std::unique_ptr<lynx::gfx::TimingFunction> timing_function = nullptr);
   ~FilterKeyframe() override;
 
   const FilterOperations& Value() const;
@@ -135,30 +58,24 @@ class FilterKeyframe : public Keyframe {
   std::unique_ptr<FilterKeyframe> Clone() const;
 
 #ifndef NDEBUG
-  std::string ToString() const override;
+  std::string ToString() const;
 #endif
 
  private:
-  FilterKeyframe(float fraction, const FilterOperations& value,
-                 std::unique_ptr<Interpolator> interpolator);
+  FilterKeyframe(fml::TimeDelta time, const FilterOperations& value,
+                 std::unique_ptr<lynx::gfx::TimingFunction> timing_function);
 
-  /**
-   * The value of the animation at the time fraction_.
-   */
   FilterOperations value_;
-
-  friend class FilterKeyframeSet;
 };
 
-class BoxShadowKeyframe : public Keyframe {
+class BoxShadowKeyframe : public lynx::gfx::Keyframe {
  public:
-  typedef BoxShadowOperations ValueType;
   BoxShadowKeyframe(const BoxShadowKeyframe&) = delete;
   BoxShadowKeyframe& operator=(const BoxShadowKeyframe&) = delete;
 
   static std::unique_ptr<BoxShadowKeyframe> Create(
-      float fraction, const BoxShadowOperations& value,
-      std::unique_ptr<Interpolator> interpolator);
+      fml::TimeDelta time, const BoxShadowOperations& value,
+      std::unique_ptr<lynx::gfx::TimingFunction> timing_function = nullptr);
   ~BoxShadowKeyframe() override;
 
   const BoxShadowOperations& Value() const;
@@ -166,16 +83,13 @@ class BoxShadowKeyframe : public Keyframe {
   std::unique_ptr<BoxShadowKeyframe> Clone() const;
 
 #ifndef NDEBUG
-  std::string ToString() const override;
+  std::string ToString() const;
 #endif
 
  private:
-  BoxShadowKeyframe(float fraction, const BoxShadowOperations& value,
-                    std::unique_ptr<Interpolator> interpolator);
+  BoxShadowKeyframe(fml::TimeDelta time, const BoxShadowOperations& value,
+                    std::unique_ptr<lynx::gfx::TimingFunction> timing_function);
 
-  /**
-   * The value of the animation at the time fraction_.
-   */
   BoxShadowOperations value_;
 };
 
