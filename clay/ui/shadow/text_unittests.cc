@@ -905,6 +905,24 @@ TEST_F_UI(TextTest, AutoFontSizeStepGranularity) {
   EXPECT_NE(text_shadow_node_->text_style_->font_size, font_size);
 }
 
+TEST_F_UI(TextTest, ReParentChildAfterOldParentDestroyed) {
+  auto child =
+      std::make_unique<RawTextShadowNode>(owner_, std::string("raw-text"), 2);
+  auto old_parent =
+      std::make_unique<TextShadowNode>(owner_, std::string("text"), 1);
+  old_parent->AddChild(child.get());
+
+  old_parent.reset();
+
+  auto new_parent =
+      std::make_unique<TextShadowNode>(owner_, std::string("text"), 3);
+  new_parent->AddChild(child.get());
+
+  EXPECT_EQ(child->Parent(), new_parent.get());
+  ASSERT_EQ(new_parent->ChildCount(), 1U);
+  EXPECT_EQ(new_parent->GetChildren().front(), child.get());
+}
+
 TEST_F_UI(TextTest, AutoFontSizeIgnoresInvalidStepGranularity) {
   MeasureConstraint constraint{4000, MeasureMode::kDefinite, 1000,
                                MeasureMode::kDefinite};
