@@ -24,14 +24,20 @@
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "gfx/animation/capabilities/ios_animation_capabilities_generated.h"
+#include "gfx/animation/cubic_bezier.h"
+#include "gfx/animation/timing_function.h"
 
 #import <Lynx/AbsLynxUIScroller.h>
+#import <Lynx/LynxAnimationInfo.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContext.h>
+#import <Lynx/LynxConverter+Transform.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventHandler.h>
+#import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxNewGestureDelegate.h>
 #import <Lynx/LynxPerformanceController.h>
@@ -41,6 +47,8 @@
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchHandler+Internal.h>
+#import <Lynx/LynxTransformRaw.h>
+#import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIImage.h>
@@ -59,10 +67,472 @@
 #include "third_party/rapidjson/writer.h"
 #endif
 
+@interface LynxKeyframeManager (TypedKeyframes)
+- (void)applyAnimationInfo:(LynxAnimationInfo*)info
+           parsedKeyframes:(LynxKeyframeParsedData*)parsedKeyframes
+               animationID:(uint64_t)animationID
+                generation:(uint32_t)generation
+                    cancel:(BOOL)cancel;
+@end
+
+@interface LynxKeyframeAnimator (TypedTransformKeyframes)
++ (nullable LynxKeyframeParsedData*)buildParsedTransformKeyframes:
+                                        (NSArray<NSArray<LynxTransformRaw*>*>*)keyframes
+                                                            times:(NSArray<NSNumber*>*)times
+                                                               ui:(LynxUI*)ui;
+@end
+
+@interface LynxUI (TypedTransitions)
+@property(nonatomic, strong, nullable) LynxTransitionAnimationManager* transitionAnimationManager;
+- (void)prepareTransitionAnimationManager;
+@end
+
+@interface LynxTransitionAnimationManager (TypedTransitions)
+- (void)applyPlatformOpacityTransition:(nullable LynxAnimationInfo*)info
+                           fromOpacity:(CGFloat)fromOpacity
+                             toOpacity:(CGFloat)toOpacity
+                           animationID:(uint64_t)animationID
+                            generation:(uint32_t)generation
+                                cancel:(BOOL)cancel;
+- (void)applyPlatformTransformTransition:(nullable LynxAnimationInfo*)info
+                        fromTransformRaw:(nullable NSArray<LynxTransformRaw*>*)fromTransformRaw
+                          toTransformRaw:(nullable NSArray<LynxTransformRaw*>*)toTransformRaw
+                             animationID:(uint64_t)animationID
+                              generation:(uint32_t)generation
+                                  cancel:(BOOL)cancel;
+@end
+
 namespace lynx {
 namespace tasm {
 
 namespace {
+CAMediaTimingFunction* ToCAMediaTimingFunction(const gfx::TimingFunctionData& timing) {
+  using Type = gfx::TimingFunctionType;
+  switch (timing.timing_func) {
+    case Type::kLinear:
+      return [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+    case Type::kEaseIn:
+      return [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+    case Type::kEaseOut:
+      return [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    case Type::kEaseInEaseOut:
+      return [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    case Type::kSquareBezier:
+      return [CAMediaTimingFunction functionWithControlPoints:timing.x1:timing.y1:1.0:1.0];
+    case Type::kCubicBezier:
+      return
+          [CAMediaTimingFunction functionWithControlPoints:timing.x1:timing.y1:timing.x2:timing.y2];
+    case Type::kSteps:
+      return nil;
+  }
+  return nil;
+}
+
+CAMediaTimingFillMode ToCAMediaTimingFillMode(gfx::AnimationFillModeType fill_mode) {
+  switch (fill_mode) {
+    case gfx::AnimationFillModeType::kForwards:
+      return kCAFillModeForwards;
+    case gfx::AnimationFillModeType::kBackwards:
+      return kCAFillModeBackwards;
+    case gfx::AnimationFillModeType::kBoth:
+      return kCAFillModeBoth;
+    case gfx::AnimationFillModeType::kNone:
+      return kCAFillModeRemoved;
+  }
+  return kCAFillModeRemoved;
+}
+
+LynxAnimationInfo* MakeAnimationInfo(const gfx::PlatformAnimationCommand& command) {
+  NSString* name = [NSString stringWithUTF8String:command.name.c_str()];
+  if (name == nil) {
+    return nil;
+  }
+  const auto& data = command.animation_data;
+  CAMediaTimingFunction* timing_function = ToCAMediaTimingFunction(data.timing_func);
+  if (timing_function == nil) {
+    return nil;
+  }
+  LynxAnimationInfo* info = [[LynxAnimationInfo alloc] initWithName:name];
+  info.duration = static_cast<NSTimeInterval>(data.duration) / 1000.0;
+  info.delay = static_cast<NSTimeInterval>(data.delay) / 1000.0;
+  info.timingFunction = timing_function;
+  info.iterationCount = data.iteration_count;
+  info.direction = static_cast<LynxAnimationDirectionType>(data.direction);
+  info.fillMode = ToCAMediaTimingFillMode(data.fill_mode);
+  info.playState = static_cast<LynxAnimationPlayStateType>(data.play_state);
+  if (command.kind == gfx::AnimationKind::kTransition) {
+    if (command.properties.size() != 1) {
+      return nil;
+    }
+    switch (command.properties.front().property) {
+      case gfx::AnimationPropertyType::kOpacity:
+        info.prop = OPACITY;
+        break;
+      case gfx::AnimationPropertyType::kTransform:
+        info.prop = TRANSITION_TRANSFORM;
+        break;
+      default:
+        return nil;
+    }
+    info.name = [LynxConverter toLynxPropName:info.prop];
+  }
+  return info;
+}
+
+bool GetOpacityTransitionEndpoints(const gfx::PlatformAnimationCommand& command,
+                                   CGFloat* from_opacity, CGFloat* to_opacity) {
+  if (command.properties.size() != 1 ||
+      command.properties.front().property != gfx::AnimationPropertyType::kOpacity) {
+    return false;
+  }
+  const auto& keyframes = command.properties.front().keyframes;
+  if (keyframes.size() < 2 || keyframes.front() == nullptr || keyframes.back() == nullptr ||
+      keyframes.front()->IsEmpty() || keyframes.back()->IsEmpty() ||
+      keyframes.front()->ValueType() != gfx::KeyframeValueType::kFloat ||
+      keyframes.back()->ValueType() != gfx::KeyframeValueType::kFloat) {
+    return false;
+  }
+  *from_opacity = static_cast<const gfx::FloatKeyframe*>(keyframes.front().get())->Value();
+  *to_opacity = static_cast<const gfx::FloatKeyframe*>(keyframes.back().get())->Value();
+  return true;
+}
+
+NSArray<LynxTransformRaw*>* ToLynxTransformRaw(const gfx::TransformOperations& operations);
+
+bool GetTransformTransitionEndpoints(const gfx::PlatformAnimationCommand& command,
+                                     NSArray<LynxTransformRaw*>** from_transform,
+                                     NSArray<LynxTransformRaw*>** to_transform) {
+  if (command.properties.size() != 1 ||
+      command.properties.front().property != gfx::AnimationPropertyType::kTransform) {
+    return false;
+  }
+  const auto& keyframes = command.properties.front().keyframes;
+  if (keyframes.size() < 2 || keyframes.front() == nullptr || keyframes.back() == nullptr ||
+      keyframes.front()->IsEmpty() || keyframes.back()->IsEmpty() ||
+      keyframes.front()->ValueType() != gfx::KeyframeValueType::kTransform ||
+      keyframes.back()->ValueType() != gfx::KeyframeValueType::kTransform) {
+    return false;
+  }
+  const auto* from_keyframe = static_cast<const gfx::TransformKeyframe*>(keyframes.front().get());
+  const auto* to_keyframe = static_cast<const gfx::TransformKeyframe*>(keyframes.back().get());
+  if (!from_keyframe->HasResolvedValue() || !to_keyframe->HasResolvedValue()) {
+    return false;
+  }
+  *from_transform = ToLynxTransformRaw(from_keyframe->ResolvedValue());
+  *to_transform = ToLynxTransformRaw(to_keyframe->ResolvedValue());
+  return true;
+}
+
+LynxKeyframeParsedData* MakeOpacityKeyframes(const gfx::PlatformAnimationProperty& property,
+                                             const gfx::AnimationData& animation_data) {
+  if (property.property != gfx::AnimationPropertyType::kOpacity || property.keyframes.size() < 2) {
+    return nil;
+  }
+
+  LynxKeyframeParsedData* parsed_data = [[LynxKeyframeParsedData alloc] init];
+  NSMutableArray* values = [[NSMutableArray alloc] init];
+  NSMutableArray<NSNumber*>* times = [[NSMutableArray alloc] init];
+  const bool reverse = animation_data.direction == gfx::AnimationDirectionType::kReverse ||
+                       animation_data.direction == gfx::AnimationDirectionType::kAlternateReverse;
+
+  auto append_keyframe = [&](const std::shared_ptr<const gfx::Keyframe>& keyframe) {
+    if (keyframe == nullptr || keyframe->IsEmpty() ||
+        keyframe->ValueType() != gfx::KeyframeValueType::kFloat) {
+      return false;
+    }
+    const auto* float_keyframe = static_cast<const gfx::FloatKeyframe*>(keyframe.get());
+    const double offset = reverse ? 1.0 - keyframe->Offset() : keyframe->Offset();
+    NSNumber* value = @(float_keyframe->Value());
+    [values addObject:value];
+    [times addObject:@(offset)];
+    if (offset == 0.0) {
+      parsed_data.beginStyles[@"opacity"] = value;
+    } else if (offset == 1.0) {
+      parsed_data.endStyles[@"opacity"] = value;
+    }
+    return true;
+  };
+
+  if (reverse) {
+    for (auto iter = property.keyframes.rbegin(); iter != property.keyframes.rend(); ++iter) {
+      if (!append_keyframe(*iter)) {
+        return nil;
+      }
+    }
+  } else {
+    for (const auto& keyframe : property.keyframes) {
+      if (!append_keyframe(keyframe)) {
+        return nil;
+      }
+    }
+  }
+  parsed_data.keyframeValues[@"opacity"] = values;
+  parsed_data.keyframeTimes[@"opacity"] = times;
+  return parsed_data;
+}
+
+LynxPlatformLengthUnit ToLynxLengthUnit(gfx::LengthUnit unit) {
+  return unit == gfx::LengthUnit::kPercent ? LynxPlatformLengthUnitPercentage
+                                           : LynxPlatformLengthUnitNumber;
+}
+
+NSNumber* ToLynxLengthValue(const gfx::LengthValue& value) {
+  // gfx stores CSS percentages as percentage points. LynxPlatformLength uses
+  // fractions for percentage transforms.
+  return @(value.unit == gfx::LengthUnit::kPercent ? value.value / 100.0f : value.value);
+}
+
+NSArray<LynxTransformRaw*>* ToLynxTransformRaw(const gfx::TransformOperations& operations) {
+  NSMutableArray<LynxTransformRaw*>* result = [[NSMutableArray alloc] init];
+  for (const auto& operation : operations.GetOperations()) {
+    NSMutableArray* raw = [[NSMutableArray alloc] init];
+    switch (operation.type) {
+      case gfx::TransformOperation::kIdentity:
+        continue;
+      case gfx::TransformOperation::kTranslate:
+        [raw addObjectsFromArray:@[
+          @(LynxTransformTypeTranslate3d), ToLynxLengthValue(operation.translate.x),
+          @(ToLynxLengthUnit(operation.translate.x.unit)), ToLynxLengthValue(operation.translate.y),
+          @(ToLynxLengthUnit(operation.translate.y.unit)), ToLynxLengthValue(operation.translate.z),
+          @(ToLynxLengthUnit(operation.translate.z.unit))
+        ]];
+        break;
+      case gfx::TransformOperation::kRotateX:
+      case gfx::TransformOperation::kRotateY:
+      case gfx::TransformOperation::kRotateZ: {
+        const LynxTransformType type =
+            operation.type == gfx::TransformOperation::kRotateX   ? LynxTransformTypeRotateX
+            : operation.type == gfx::TransformOperation::kRotateY ? LynxTransformTypeRotateY
+                                                                  : LynxTransformTypeRotateZ;
+        [raw addObjectsFromArray:@[
+          @(type), @(operation.rotate.degree), @(LynxPlatformLengthUnitNumber), @0,
+          @(LynxPlatformLengthUnitNumber), @0, @(LynxPlatformLengthUnitNumber)
+        ]];
+        break;
+      }
+      case gfx::TransformOperation::kScale:
+        [raw addObjectsFromArray:@[
+          @(LynxTransformTypeScale), @(operation.scale.x), @(LynxPlatformLengthUnitNumber),
+          @(operation.scale.y), @(LynxPlatformLengthUnitNumber), @0, @(LynxPlatformLengthUnitNumber)
+        ]];
+        break;
+      case gfx::TransformOperation::kSkew:
+        [raw addObjectsFromArray:@[
+          @(LynxTransformTypeSkew), @(operation.skew.x), @(LynxPlatformLengthUnitNumber),
+          @(operation.skew.y), @(LynxPlatformLengthUnitNumber), @0, @(LynxPlatformLengthUnitNumber)
+        ]];
+        break;
+      case gfx::TransformOperation::kMatrix:
+      case gfx::TransformOperation::kMatrix3d:
+        [raw addObject:@(operation.type == gfx::TransformOperation::kMatrix
+                             ? LynxTransformTypeMatrix
+                             : LynxTransformTypeMatrix3d)];
+        for (float value : operation.matrix.matrix_data) {
+          [raw addObject:@(value)];
+        }
+        break;
+    }
+    [result addObject:[[LynxTransformRaw alloc] initWithArray:raw]];
+  }
+  return result;
+}
+
+LynxKeyframeParsedData* MakeTransformKeyframes(const gfx::PlatformAnimationProperty& property,
+                                               const gfx::AnimationData& animation_data,
+                                               LynxUI* ui) {
+  if (property.property != gfx::AnimationPropertyType::kTransform ||
+      property.keyframes.size() < 2 || ui == nil) {
+    return nil;
+  }
+  NSMutableArray<NSArray<LynxTransformRaw*>*>* values = [[NSMutableArray alloc] init];
+  NSMutableArray<NSNumber*>* times = [[NSMutableArray alloc] init];
+  const bool reverse = animation_data.direction == gfx::AnimationDirectionType::kReverse ||
+                       animation_data.direction == gfx::AnimationDirectionType::kAlternateReverse;
+
+  auto append_keyframe = [&](const std::shared_ptr<const gfx::Keyframe>& keyframe) {
+    if (keyframe == nullptr || keyframe->IsEmpty() ||
+        keyframe->ValueType() != gfx::KeyframeValueType::kTransform) {
+      return false;
+    }
+    const auto* transform_keyframe = static_cast<const gfx::TransformKeyframe*>(keyframe.get());
+    if (!transform_keyframe->HasResolvedValue()) {
+      return false;
+    }
+    [values addObject:ToLynxTransformRaw(transform_keyframe->ResolvedValue())];
+    [times addObject:@(reverse ? 1.0 - keyframe->Offset() : keyframe->Offset())];
+    return true;
+  };
+
+  if (reverse) {
+    for (auto iter = property.keyframes.rbegin(); iter != property.keyframes.rend(); ++iter) {
+      if (!append_keyframe(*iter)) {
+        return nil;
+      }
+    }
+  } else {
+    for (const auto& keyframe : property.keyframes) {
+      if (!append_keyframe(keyframe)) {
+        return nil;
+      }
+    }
+  }
+  return [LynxKeyframeAnimator buildParsedTransformKeyframes:values times:times ui:ui];
+}
+
+LynxKeyframeParsedData* MakeTypedKeyframes(const gfx::PlatformAnimationProperty& property,
+                                           const gfx::AnimationData& animation_data, LynxUI* ui) {
+  switch (property.property) {
+    case gfx::AnimationPropertyType::kOpacity:
+      return MakeOpacityKeyframes(property, animation_data);
+    case gfx::AnimationPropertyType::kTransform:
+      return MakeTransformKeyframes(property, animation_data, ui);
+    default:
+      return nil;
+  }
+}
+
+void MergeParsedKeyframes(LynxKeyframeParsedData* target, LynxKeyframeParsedData* source) {
+  [target.keyframeValues addEntriesFromDictionary:source.keyframeValues];
+  [target.keyframeTimes addEntriesFromDictionary:source.keyframeTimes];
+  [target.beginStyles addEntriesFromDictionary:source.beginStyles];
+  [target.endStyles addEntriesFromDictionary:source.endStyles];
+  target.isPercentTransform |= source.isPercentTransform;
+}
+
+void ApplyPlatformAnimationCommands(
+    LynxUIOwner* ui_owner, int sign,
+    const std::shared_ptr<gfx::PlatformAnimationCommandBatch>& commands) {
+  if (commands == nullptr || commands->empty()) {
+    return;
+  }
+  LynxUI* ui = [ui_owner findUIBySign:sign];
+  if (ui == nil) {
+    LLogWarn(@"[AnimationRouting] executor=ios-legacy-animator element_id=%d rejected=no-ui", sign);
+    return;
+  }
+
+  for (const auto& command : *commands) {
+    if (command.kind == gfx::AnimationKind::kTransition) {
+      [ui prepareTransitionAnimationManager];
+      const bool cancel = command.type == gfx::PlatformAnimationCommandType::kCancel;
+      if (command.properties.size() != 1) {
+        LLogWarn(@"[AnimationRouting] executor=ios-legacy-transition-animator "
+                  "element_id=%d name=%s animation_id=%llu generation=%u "
+                  "rejected=invalid-property-count",
+                 sign, command.name.c_str(), static_cast<unsigned long long>(command.animation_id),
+                 command.generation);
+        continue;
+      }
+      LynxAnimationInfo* info = cancel ? nil : MakeAnimationInfo(command);
+      const auto property = command.properties.front().property;
+      bool valid = cancel || info != nil;
+      switch (property) {
+        case gfx::AnimationPropertyType::kOpacity: {
+          CGFloat from_opacity = 0.0;
+          CGFloat to_opacity = 0.0;
+          valid = valid &&
+                  (cancel || GetOpacityTransitionEndpoints(command, &from_opacity, &to_opacity));
+          if (valid) {
+            [ui.transitionAnimationManager applyPlatformOpacityTransition:info
+                                                              fromOpacity:from_opacity
+                                                                toOpacity:to_opacity
+                                                              animationID:command.animation_id
+                                                               generation:command.generation
+                                                                   cancel:cancel];
+          }
+          break;
+        }
+        case gfx::AnimationPropertyType::kTransform: {
+          NSArray<LynxTransformRaw*>* from_transform = nil;
+          NSArray<LynxTransformRaw*>* to_transform = nil;
+          valid = valid && (cancel || GetTransformTransitionEndpoints(command, &from_transform,
+                                                                      &to_transform));
+          if (valid) {
+            [ui.transitionAnimationManager applyPlatformTransformTransition:info
+                                                           fromTransformRaw:from_transform
+                                                             toTransformRaw:to_transform
+                                                                animationID:command.animation_id
+                                                                 generation:command.generation
+                                                                     cancel:cancel];
+          }
+          break;
+        }
+        default:
+          valid = false;
+          break;
+      }
+      if (!valid) {
+        LLogWarn(@"[AnimationRouting] executor=ios-legacy-transition-animator "
+                  "element_id=%d name=%s animation_id=%llu generation=%u "
+                  "rejected=invalid-typed-transition",
+                 sign, command.name.c_str(), static_cast<unsigned long long>(command.animation_id),
+                 command.generation);
+        continue;
+      }
+      const char* action = cancel                                                        ? "cancel"
+                           : command.type == gfx::PlatformAnimationCommandType::kHandoff ? "handoff"
+                                                                                         : "update";
+      LLogInfo(@"[AnimationRouting] executor=ios-legacy-transition-animator "
+                "action=%s element_id=%d name=%s animation_id=%llu generation=%u property=%u",
+               action, sign, command.name.c_str(),
+               static_cast<unsigned long long>(command.animation_id), command.generation,
+               static_cast<unsigned int>(property));
+      continue;
+    }
+    if (command.kind != gfx::AnimationKind::kKeyframe) {
+      continue;
+    }
+    const bool cancel = command.type == gfx::PlatformAnimationCommandType::kCancel;
+    if (cancel) {
+      [ui.animationManager applyAnimationInfo:nil
+                              parsedKeyframes:nil
+                                  animationID:command.animation_id
+                                   generation:command.generation
+                                       cancel:YES];
+      LLogInfo(@"[AnimationRouting] executor=ios-legacy-animator action=cancel "
+                "element_id=%d name=%s animation_id=%llu generation=%u",
+               sign, command.name.c_str(), static_cast<unsigned long long>(command.animation_id),
+               command.generation);
+      continue;
+    }
+
+    LynxAnimationInfo* info = MakeAnimationInfo(command);
+    LynxKeyframeParsedData* parsed_data = [[LynxKeyframeParsedData alloc] init];
+    bool valid = info != nil && !command.properties.empty();
+    for (const auto& property : command.properties) {
+      if (!valid) {
+        break;
+      }
+      LynxKeyframeParsedData* property_data =
+          MakeTypedKeyframes(property, command.animation_data, ui);
+      valid = property_data != nil;
+      if (valid) {
+        MergeParsedKeyframes(parsed_data, property_data);
+      }
+    }
+    if (!valid) {
+      LLogWarn(@"[AnimationRouting] executor=ios-legacy-animator element_id=%d name=%s "
+                "animation_id=%llu generation=%u rejected=invalid-typed-keyframes",
+               sign, command.name.c_str(), static_cast<unsigned long long>(command.animation_id),
+               command.generation);
+      continue;
+    }
+    [ui prepareKeyframeManager];
+    [ui.animationManager applyAnimationInfo:info
+                            parsedKeyframes:parsed_data
+                                animationID:command.animation_id
+                                 generation:command.generation
+                                     cancel:NO];
+    const char* action =
+        command.type == gfx::PlatformAnimationCommandType::kHandoff ? "handoff" : "update";
+    LLogInfo(@"[AnimationRouting] executor=ios-legacy-animator action=%s element_id=%d "
+              "name=%s animation_id=%llu generation=%u property_count=%zu",
+             action, sign, command.name.c_str(),
+             static_cast<unsigned long long>(command.animation_id), command.generation,
+             command.properties.size());
+  }
+}
+
 void RunOnMainThreadSync(dispatch_block_t block) {
   if ([NSThread isMainThread]) {
     block();
@@ -336,6 +806,7 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
   NSString* tagName = [[NSString alloc] initWithUTF8String:tag.c_str()];
   // TODO(renzhongyue): Remove copy, we now own the shared_ptr of prop bundle here.
   NSDictionary* props = pda->dictionary();
+  auto animation_commands = pda->TakePlatformAnimationCommands();
   __weak LynxUIOwner* uiOwner = uiOwner_;
 
   // When enable_create_ui_async_, use createUIAsyncWithSign and createUISyncWithSign to create ui,
@@ -372,19 +843,20 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
 
       base::TaskRunnerManufactor::PostTaskToConcurrentLoop([async_task]() { async_task->Run(); },
                                                            base::ConcurrentTaskType::HIGH_PRIORITY);
-      Enqueue([async_task, uiOwner, sign, tagName, props]() {
+      Enqueue([async_task, uiOwner, sign, tagName, props, animation_commands]() {
         TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_ASYNC);
 
         async_task->Run();
         LynxUI* ui = async_task->GetFuture().get();
         ui.view = [ui createView];
         [uiOwner processUIOnMainThread:ui withSign:sign tagName:tagName props:props];
+        ApplyPlatformAnimationCommands(uiOwner, sign, animation_commands);
       });
     } else {
       // Sync create ui if the class does not support async creating.
       Enqueue([uiOwner, sign, tagName, clazz, state, eventSet = pda->event_set(),
                lepusEventSet = pda->lepus_event_set(), props, node_index,
-               gestureDetectorSet = pda->gesture_detector_set()]() {
+               gestureDetectorSet = pda->gesture_detector_set(), animation_commands]() {
         TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_SYNC);
 
         [uiOwner createUISyncWithSign:sign
@@ -396,6 +868,7 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
                                 props:props
                             nodeIndex:node_index
                    gestureDetectorSet:gestureDetectorSet];
+        ApplyPlatformAnimationCommands(uiOwner, sign, animation_commands);
       });
     }
     return;
@@ -403,7 +876,7 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
 
   Enqueue([uiOwner, sign, tagName, eventSet = pda->event_set(),
            lepusEventSet = pda->lepus_event_set(), props, node_index,
-           gestureDetectorSet = pda->gesture_detector_set()]() {
+           gestureDetectorSet = pda->gesture_detector_set(), animation_commands]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE);
 
     [uiOwner createUIWithSign:sign
@@ -413,16 +886,18 @@ void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
                         props:props
                     nodeIndex:node_index
            gestureDetectorSet:gestureDetectorSet];
+    ApplyPlatformAnimationCommands(uiOwner, sign, animation_commands);
   });
 }
 
 void PaintingContextDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
                                                const fml::RefPtr<PropBundle>& painting_data) {
   PropBundleDarwin* pda = static_cast<PropBundleDarwin*>(painting_data.get());
+  auto animation_commands = pda->TakePlatformAnimationCommands();
   __weak LynxUIOwner* uiOwner = uiOwner_;
   Enqueue([uiOwner, id, props = pda->dictionary(), eventSet = pda->event_set(),
-           lepusEventSet = pda->lepus_event_set(),
-           gestureDetectorSet = pda->gesture_detector_set()]() {
+           lepusEventSet = pda->lepus_event_set(), gestureDetectorSet = pda->gesture_detector_set(),
+           animation_commands]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_UPDATE_PAINTING_NODE);
 
     [uiOwner updateUIWithSign:id
@@ -430,7 +905,12 @@ void PaintingContextDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
                      eventSet:eventSet
                 lepusEventSet:lepusEventSet
            gestureDetectorSet:gestureDetectorSet];
+    ApplyPlatformAnimationCommands(uiOwner, id, animation_commands);
   });
+}
+
+gfx::AnimationBackendCapabilities PaintingContextDarwin::GetPlatformAnimationCapabilities() {
+  return gfx::GetIOSAnimationBackendCapabilities();
 }
 
 void PaintingContextDarwin::UpdateLayout(int sign, float x, float y, float width, float height,

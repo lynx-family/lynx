@@ -1924,14 +1924,29 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
   return _lastInfo.lastTransformRotation;
 }
 
+- (void)setLastTransformRotation:(LynxAnimationTransformRotation*)rotation {
+  [self prepareLastInfo];
+  _lastInfo.lastTransformRotation = rotation;
+}
+
 - (CATransform3D)lastTransformWithoutRotate {
   [self prepareLastInfo];
   return _lastInfo.lastTransformWithoutRotate;
 }
 
+- (void)setLastTransformWithoutRotate:(CATransform3D)transform {
+  [self prepareLastInfo];
+  _lastInfo.lastTransformWithoutRotate = transform;
+}
+
 - (CATransform3D)lastTransformWithoutRotateXY {
   [self prepareLastInfo];
   return _lastInfo.lastTransformWithoutRotateXY;
+}
+
+- (void)setLastTransformWithoutRotateXY:(CATransform3D)transform {
+  [self prepareLastInfo];
+  _lastInfo.lastTransformWithoutRotateXY = transform;
 }
 
 - (void)applyTransform {

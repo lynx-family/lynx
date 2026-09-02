@@ -69,6 +69,11 @@ static const double kAnimationIterationCountInfinite = 1E9;
 @interface LynxKeyframeAnimator ()
 @property(nonatomic, strong, nullable) LynxAnimationInfo* info;
 @property(nonatomic, assign) LynxKFAnimatorState state;
+@property(nonatomic, assign) uint32_t platformAnimationGeneration;
++ (nullable LynxKeyframeParsedData*)buildParsedTransformKeyframes:
+                                        (NSArray<NSArray<LynxTransformRaw*>*>*)keyframes
+                                                            times:(NSArray<NSNumber*>*)times
+                                                               ui:(LynxUI*)ui;
 @end
 
 @implementation LynxKeyframeAnimator {
@@ -89,6 +94,7 @@ static NSString* const kBackgroundColorStr = @"backgroundColor";
 static NSString* const kTransformRotationXStr = @"transform.rotation.x";
 static NSString* const kTransformRotationYStr = @"transform.rotation.y";
 static NSString* const kTransformRotationZStr = @"transform.rotation.z";
+static NSString* const kPlatformAnimationGenerationKey = @"lynxPlatformAnimationGeneration";
 static const CATransform3D kEmptyCATransform3D = {0};
 
 + (NSString*)kTransformStr {
@@ -161,6 +167,25 @@ static const CATransform3D kEmptyCATransform3D = {0};
     default:
       break;
   }
+}
+
+// Typed keyframes from Core have already been parsed. Keep the existing iOS
+// animator lifecycle and event delivery, but skip parseKeyframes: entirely.
+- (void)applyAnimationInfo:(LynxAnimationInfo*)info
+           parsedKeyframes:(LynxKeyframeParsedData*)parsedKeyframes
+                generation:(uint32_t)generation {
+  if (info == nil || parsedKeyframes == nil || info.iterationCount <= 0 || info.duration <= 0) {
+    return;
+  }
+  _platformAnimationGeneration = generation;
+  if (_state == LynxKFAnimatorStateRunning || _state == LynxKFAnimatorStatePaused) {
+    [self cancel];
+  }
+  _keyframeParsedData = parsedKeyframes;
+  if (_propertyOriginValue == nil) {
+    _propertyOriginValue = [self recordLayerStyles];
+  }
+  [self applyAnimationInfo:info];
 }
 
 - (void)dealloc {
@@ -276,6 +301,11 @@ static const CATransform3D kEmptyCATransform3D = {0};
                  if ([anim isKindOfClass:[CAKeyframeAnimation class]]) {
                    __strong LynxKeyframeAnimator* strongSelf = weakSelf;
                    if (!strongSelf) {
+                     return;
+                   }
+                   NSNumber* generation = [anim valueForKey:kPlatformAnimationGenerationKey];
+                   if (generation != nil &&
+                       generation.unsignedIntValue != strongSelf.platformAnimationGeneration) {
                      return;
                    }
 
@@ -628,6 +658,126 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
   }
 }
 
+static void AppendTypedRotation(LynxKeyframeParsedData* parsedData, NSString* key, NSNumber* time,
+                                BOOL hasRotation, CGFloat rotation, CGFloat* previousRotation,
+                                NSNumber** previousTime) {
+  NSMutableArray<NSNumber*>* values = parsedData.keyframeValues[key];
+  if (values == nil) {
+    values = [[NSMutableArray alloc] init];
+    parsedData.keyframeValues[key] = values;
+  }
+  NSMutableArray<NSNumber*>* keyTimes = parsedData.keyframeTimes[key];
+  if (keyTimes == nil) {
+    keyTimes = [[NSMutableArray alloc] init];
+    parsedData.keyframeTimes[key] = keyTimes;
+  }
+
+  const CGFloat value = hasRotation ? rotation : 0;
+  if (hasRotation) {
+    if (*previousTime != nil && value == *previousRotation) {
+      [values addObject:@(value)];
+      [keyTimes addObject:time];
+    } else {
+      setRotationValues(value, time, *previousRotation, *previousTime, values, keyTimes);
+    }
+  } else {
+    [values addObject:@0];
+    [keyTimes addObject:time];
+  }
+  *previousRotation = value;
+  *previousTime = time;
+  if (time.doubleValue == 0.0) {
+    parsedData.beginStyles[key] = @(value);
+  } else if (time.doubleValue == 1.0) {
+    parsedData.endStyles[key] = @(value);
+  }
+}
+
++ (nullable LynxKeyframeParsedData*)buildParsedTransformKeyframes:
+                                        (NSArray<NSArray<LynxTransformRaw*>*>*)keyframes
+                                                            times:(NSArray<NSNumber*>*)times
+                                                               ui:(LynxUI*)ui {
+  if (keyframes.count < 2 || keyframes.count != times.count || ui == nil) {
+    return nil;
+  }
+
+  LynxKeyframeParsedData* parsedData = [[LynxKeyframeParsedData alloc] init];
+  NSMutableArray* transformValues = [[NSMutableArray alloc] init];
+  NSMutableArray<NSNumber*>* transformTimes = [[NSMutableArray alloc] init];
+
+  BOOL performRotateZInMatrix = YES;
+  CGFloat lastRotateZ = 0;
+  for (NSArray<LynxTransformRaw*>* transformRaw in keyframes) {
+    CGFloat rotateZ = [LynxTransformRaw getRotateZRad:transformRaw];
+    if (rotateZ - lastRotateZ >= M_PI) {
+      performRotateZInMatrix = NO;
+      break;
+    }
+    lastRotateZ = rotateZ;
+  }
+
+  CGFloat previousRotationX = 0;
+  CGFloat previousRotationY = 0;
+  CGFloat previousRotationZ = 0;
+  NSNumber* previousRotationXTime = nil;
+  NSNumber* previousRotationYTime = nil;
+  NSNumber* previousRotationZTime = nil;
+
+  for (NSUInteger index = 0; index < keyframes.count; ++index) {
+    NSArray<LynxTransformRaw*>* transformRaw = keyframes[index];
+    NSNumber* time = times[index];
+    char rotationType = LynxTransformRotationNone;
+    CGFloat rotationX = 0;
+    CGFloat rotationY = 0;
+    CGFloat rotationZ = 0;
+    CATransform3D transformWithoutRotate = CATransform3DIdentity;
+    CATransform3D transformWithoutRotateXY = CATransform3DIdentity;
+    [LynxConverter toCATransform3D:transformRaw
+                                ui:ui
+                          newFrame:ui.updatedFrame
+            transformWithoutRotate:&transformWithoutRotate
+          transformWithoutRotateXY:&transformWithoutRotateXY
+                      rotationType:&rotationType
+                         rotationX:&rotationX
+                         rotationY:&rotationY
+                         rotationZ:&rotationZ];
+
+    CATransform3D matrix =
+        performRotateZInMatrix ? transformWithoutRotateXY : transformWithoutRotate;
+    [transformValues addObject:[NSValue valueWithCATransform3D:matrix]];
+    [transformTimes addObject:time];
+    if (time.doubleValue == 0.0) {
+      parsedData.beginStyles[kTransformStr] =
+          transformRaw.count > 0 ? transformRaw : [NSValue valueWithCATransform3D:matrix];
+    } else if (time.doubleValue == 1.0) {
+      parsedData.endStyles[kTransformStr] =
+          transformRaw.count > 0 ? transformRaw : [NSValue valueWithCATransform3D:matrix];
+    }
+
+    AppendTypedRotation(parsedData, kTransformRotationXStr, time,
+                        rotationType & LynxTransformRotationX, rotationX, &previousRotationX,
+                        &previousRotationXTime);
+    AppendTypedRotation(parsedData, kTransformRotationYStr, time,
+                        rotationType & LynxTransformRotationY, rotationY, &previousRotationY,
+                        &previousRotationYTime);
+    if (!performRotateZInMatrix) {
+      AppendTypedRotation(parsedData, kTransformRotationZStr, time,
+                          rotationType & LynxTransformRotationZ, rotationZ, &previousRotationZ,
+                          &previousRotationZTime);
+    }
+  }
+
+  parsedData.keyframeValues[kTransformStr] = transformValues;
+  parsedData.keyframeTimes[kTransformStr] = transformTimes;
+  for (NSArray<LynxTransformRaw*>* transformRaw in keyframes) {
+    if ([LynxTransformRaw hasPercent:transformRaw]) {
+      parsedData.isPercentTransform = YES;
+      break;
+    }
+  }
+  return parsedData;
+}
+
 - (void)prepareKFValuesAndTimesContainer:(NSString*)key {
   if ([_keyframeParsedData.keyframeValues objectForKey:key] == nil) {
     _keyframeParsedData.keyframeValues[key] = [[NSMutableArray alloc] init];
@@ -897,6 +1047,9 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
     }
     animator.values = _keyframeParsedData.keyframeValues[key];
     animator.keyTimes = _keyframeParsedData.keyframeTimes[key];
+    if (_platformAnimationGeneration != 0) {
+      [animator setValue:@(_platformAnimationGeneration) forKey:kPlatformAnimationGenerationKey];
+    }
 
     [self addAnimationToLayer:key name:info.name animator:animator];
     _internalAnimators[key] = animator;

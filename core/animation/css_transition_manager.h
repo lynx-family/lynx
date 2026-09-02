@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
@@ -64,6 +65,9 @@ class CSSTransitionManager : public CSSKeyframeManager {
   void ClearPreviousEndValue(tasm::CSSPropertyID css_id);
 
  private:
+  using PlatformTransitionMap =
+      std::unordered_map<base::String, PlatformAnimationState>;
+
   void TryToStopTransitionAnimator(
       starlight::AnimationPropertyType property_type);
   void TryToStopTransitionAnimatorWithPendingCleanup(
@@ -84,7 +88,8 @@ class CSSTransitionManager : public CSSKeyframeManager {
       starlight::AnimationPropertyType property, long duration, long delay,
       const starlight::TimingFunctionData& timing_func,
       base::LinearFlatMap<base::String, std::shared_ptr<Animation>>&
-          active_animations_map);
+          active_animations_map,
+      PlatformTransitionMap& active_platform_animations);
 
   static starlight::AnimationPropertyType GetAnimationPropertyType(
       tasm::CSSPropertyID id);
@@ -92,10 +97,14 @@ class CSSTransitionManager : public CSSKeyframeManager {
   bool IsShouldTransitionType(starlight::AnimationPropertyType type);
 
  protected:
+  gfx::AnimationKind GetAnimationKind() const override {
+    return gfx::AnimationKind::kTransition;
+  }
   base::LinearFlatMap<unsigned int, starlight::AnimationData> transition_data_;
   base::LinearFlatMap<base::String, tasm::CSSKeyframesContent> keyframe_tokens_;
   base::LinearFlatSet<unsigned int> property_types_;
   tasm::StyleMap previous_end_values_;
+  PlatformTransitionMap platform_transition_animations_;
 };
 
 }  // namespace animation

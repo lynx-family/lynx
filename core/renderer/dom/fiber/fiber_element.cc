@@ -419,7 +419,7 @@ Element::SampleAnimationOverridesForNewPipeline(
     bool base_root_font_size_changed,
     const StyleMap &new_underlying_layout_only_styles,
     const starlight::ComputedCSSStyle *&previous_final_style) {
-  if (!enable_new_animator()) {
+  if (!use_cpp_animation_builder()) {
     return {};
   }
 
@@ -593,7 +593,7 @@ Element::TakeAnimationEventsForNewPipeline() {
 }
 
 bool Element::NeedsAnimationFrameForNewPipeline() const {
-  if (!enable_new_animator_) {
+  if (!use_cpp_animation_builder()) {
     return false;
   }
   return (css_keyframe_manager_ != nullptr &&
@@ -1156,7 +1156,7 @@ bool Element::MergeInlineStyles(StyleMap &new_styles,
 
 void Element::PersistAnimationFillStyles(const StyleMap &styles) {
   if (!element_manager()->EnableAnimationForwardUpdatePreservation() ||
-      !enable_new_animator() || styles.empty()) {
+      !use_cpp_animation_builder() || styles.empty()) {
     return;
   }
   for (const auto &[id, value] : styles) {
@@ -1359,7 +1359,7 @@ void Element::ApplyDynamicSimpleStylesWithoutTail(
 void Element::FinalizeSimpleStyleUpdate() {
   if (has_keyframe_props_changed_) {
     HandleDelayTask([this]() { HandleKeyframePropsChange(); });
-    if (!enable_new_animator()) {
+    if (!use_cpp_animation_builder()) {
       PushToBundle(kPropertyIDAnimation);
     }
   }
@@ -1369,7 +1369,7 @@ void Element::FinalizeSimpleStyleUpdate() {
                 [this](lynx::perfetto::EventContext ctx) {
                   UpdateTraceDebugInfo(ctx.event());
                 });
-    if (!enable_new_animator()) {
+    if (!use_cpp_animation_builder()) {
       PushToBundle(kPropertyIDTransition);
     } else {
       SetDataToNativeTransitionAnimator();
@@ -1827,7 +1827,7 @@ void Element::HandleKeyframePropsChange() {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  if (!enable_new_animator()) {
+  if (!use_cpp_animation_builder()) {
     ResolveAndFlushKeyframes();
   } else {
     SetDataToNativeKeyframeAnimator();
@@ -1838,7 +1838,7 @@ void Element::HandleKeyframePropsChange() {
 void Element::FinalizeAnimationPropsChange(bool &need_update) {
   // Report when enableNewAnimator is the default value.
   if ((has_transition_props_changed_ || has_keyframe_props_changed_) &&
-      !enable_new_animator()) {
+      !use_cpp_animation_builder()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
         element_manager()->GetInstanceId());
@@ -1846,7 +1846,7 @@ void Element::FinalizeAnimationPropsChange(bool &need_update) {
   // keyframe props
   if (has_keyframe_props_changed_) {
     HandleDelayTask([this]() { HandleKeyframePropsChange(); });
-    if (!enable_new_animator()) {
+    if (!use_cpp_animation_builder()) {
       PushToBundle(kPropertyIDAnimation);
     }
     need_update = true;
@@ -1857,7 +1857,7 @@ void Element::FinalizeAnimationPropsChange(bool &need_update) {
                 [this](lynx::perfetto::EventContext ctx) {
                   UpdateTraceDebugInfo(ctx.event());
                 });
-    if (!enable_new_animator()) {
+    if (!use_cpp_animation_builder()) {
       PushToBundle(kPropertyIDTransition);
     } else {
       SetDataToNativeTransitionAnimator();
@@ -2021,7 +2021,7 @@ Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
 
     AnimationPropertyChangeAnalysisForLegacyAnimator
         animation_prop_change_analysis_for_legacy_animator;
-    if (!enable_new_animator()) {
+    if (!use_cpp_animation_builder()) {
       // Animation/transition props are a special split point for the legacy
       // animator. Generic ComputedCSSStyle dirty bits are later consumed by
       // PushStyleToBundle(), so marking animation_data_ or transition_data_
@@ -2124,7 +2124,7 @@ Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
         *resolved_styles.final_style, outcome.need_update, &replayed_ids,
         &mutation_plan.source_style_ids);
 
-    if (!enable_new_animator()) {
+    if (!use_cpp_animation_builder()) {
       has_transition_props_changed_ |=
           animation_prop_change_analysis_for_legacy_animator
               .has_transition_props_changed;

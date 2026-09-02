@@ -21,6 +21,7 @@
 #include "core/public/text_layout_impl.h"
 #include "core/public/timing_key.h"
 #include "core/public/ui_operation_queue_interface.h"
+#include "gfx/animation/platform_animation.h"
 
 namespace lynx {
 
@@ -185,6 +186,10 @@ class PaintingCtxPlatformImpl {
   virtual bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) = 0;
 
   virtual bool NeedAnimationProps() = 0;
+
+  virtual gfx::AnimationBackendCapabilities GetPlatformAnimationCapabilities() {
+    return {};
+  }
 
   virtual void UpdateLayoutPatching() {}
   virtual void OnFirstScreen() {}

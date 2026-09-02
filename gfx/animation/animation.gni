@@ -10,7 +10,9 @@ gfx_animation_headers = [
   "animation/animation_timing.h",
   "animation/animation_types.h",
   "animation/animation_utils.h",
+  "animation/capabilities/ios_animation_capabilities_generated.h",
   "animation/cubic_bezier.h",
+  "animation/platform_animation.h",
   "animation/timing_function.h",
 ]
 

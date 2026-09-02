@@ -596,6 +596,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     enable_new_animator_fiber_ = enable;
   }
 
+  bool SupportsPlatformAnimationRouting() const {
+    return supports_platform_animation_routing_;
+  }
+
   bool GetEnableNewAnimatorForFiber() {
     // If enable fragment layer render, default enable new animation.
     // TODO(songshourui.null): support simple styling + new animation.
@@ -1490,6 +1494,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // enable_new_animator_radon/fiber_ when need its value.
   bool enable_new_animator_radon_{false};
   bool enable_new_animator_fiber_{true};
+  bool supports_platform_animation_routing_{false};
 
   bool enable_layout_only_{true};
   bool dom_tree_enabled_{true};
