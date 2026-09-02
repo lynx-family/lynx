@@ -137,6 +137,13 @@ export interface WebviewProps extends Omit<StandardProps, 'binderror'> {
    */
   'scroll-bar-enable'?: boolean;
   /**
+   * Hide the system keyboard accessory view above the software keyboard.
+   * Supported by the built-in loader on iOS 13 and later. Custom loaders must opt in.
+   * @iOS 4.3
+   * @defaultValue false
+   */
+  'ios-hide-keyboard-accessory-view'?: boolean;
+  /**
    * Params for external webview implementation
    * @Android 4.0
    * @iOS 4.0
