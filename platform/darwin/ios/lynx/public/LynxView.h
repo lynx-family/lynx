@@ -34,6 +34,7 @@
 @class LynxElement;
 @class LynxScreenMetrics;
 @protocol LynxBaseInspectorOwner;
+@protocol LynxTransferListener;
 
 /**
  * @apidoc
@@ -298,6 +299,11 @@
  */
 - (void)resetAnimation;
 - (void)restartAnimation;
+
+#pragma mark - Transfer
+
+- (void)registerTransferListener:(nonnull id<LynxTransferListener>)listener;
+- (void)unregisterTransferListener:(nonnull id<LynxTransferListener>)listener;
 
 // Set the theme and automatically trigger a UI refresh
 - (void)setTheme:(nonnull LynxTheme*)theme;
