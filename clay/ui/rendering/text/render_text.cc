@@ -153,6 +153,9 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
   } else {
     FML_DCHECK(text_paint_align_ == TextAlignment::kLeft);
   }
+  if (select_end_ != select_start_) {
+    PaintSelection(graphics_context);
+  }
   if (HasColorRasterAnimation()) {
     graphics_context->Canvas()->OnDrawDynamicTextBlobsStart();
     if (as_mask) {
@@ -169,9 +172,6 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
       painter_->Paint(graphics_context, x_offset, line_spacing_offset_);
     }
     PaintInlineEmojis(graphics_context, x_offset, line_spacing_offset_);
-  }
-  if (select_end_ != select_start_) {
-    PaintSelection(graphics_context);
   }
 }
 
@@ -206,13 +206,19 @@ void RenderText::SetAllSelection() {
   SetSelection(TextRange(0, text_.length()));
 }
 
+void RenderText::SetSelectionBackgroundColor(Color color) {
+  selection_background_color_ =
+      color == Color::kTransparent() ? Color(kSelectionColor) : color;
+  MarkNeedsPaint();
+}
+
 void RenderText::PaintSelection(GraphicsContext* context) {
   class Paint paint;
-  paint.setColor(kSelectionColor);
+  paint.setColor(selection_background_color_);
   auto text_boxes =
       painter_->GetRectsForRange(std::min(select_start_, select_end_),
                                  std::max(select_start_, select_end_),
-                                 RectHeightStyle::kMax, RectWidthStyle::kMax);
+                                 RectHeightStyle::kMax, RectWidthStyle::kTight);
   clay::GrPath path;
   for (auto box : text_boxes) {
     PATH_ADD_RECT(path, box.rect);
@@ -221,6 +227,9 @@ void RenderText::PaintSelection(GraphicsContext* context) {
 }
 
 std::u16string RenderText::GetSelectionString() const {
+  if (select_start_ < 0 || select_end_ < 0 || select_start_ == select_end_) {
+    return std::u16string();
+  }
   return text_.substr(std::min(select_start_, select_end_),
                       std::abs(select_end_ - select_start_));
 }
