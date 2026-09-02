@@ -45,6 +45,7 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
+import com.lynx.tasm.behavior.ui.UIExposure;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.UIShadowProxy;
@@ -886,6 +887,12 @@ public class LynxUIOwner {
     }
     newUI.invalidate();
     oldUI.destroy();
+
+    mContext.addUIToExposedMap(newUI);
+    UIExposure exposure = mContext.getExposure();
+    if (exposure != null) {
+      exposure.requestCheckUI();
+    }
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.endSection(traceEvent);
     }

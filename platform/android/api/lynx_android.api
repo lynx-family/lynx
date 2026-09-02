@@ -4528,6 +4528,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isFocusable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isScrollable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isOverlay();
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isExternalExposureRoot();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isClickable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isLongClickable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.enableTouchPseudoPropagation();
@@ -11051,6 +11052,20 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT;
 }
 
+public class com::lynx::tasm::behavior::ui::transfer::TransferHostView : com.lynx.tasm.behavior.ui.view.AndroidView {
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.addView(View child, int index, ViewGroup.LayoutParams params);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.removeView(View view);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.removeViewAt(int index);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.removeAllViews();
+}
+
+public class com::lynx::tasm::behavior::ui::transfer::TransferShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.attachNativePtr(long ptr);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.updateHostConstraints(float width, MeasureMode widthMode, float height, MeasureMode heightMode);
+  public MeasureResult com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.measure(MeasureParam param, MeasureContext context);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.align(AlignParam param, AlignContext context);
+}
+
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
   public final TransformOrigin com.lynx.tasm.behavior.ui.utils.TransformOrigin.TRANSFORM_ORIGIN_DEFAULT TRANSFORM_ORIGIN_DEFAULT;
   public static TransformOrigin com.lynx.tasm.behavior.ui.utils.TransformOrigin.MakeTransformOrigin(ReadableArray array);
@@ -11862,6 +11877,13 @@ public class com::lynx::tasm::utils::UIThreadUtils :  {
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThread(Runnable runnable, long delayMs);
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThreadAtTime(Runnable runnable, Object token, long uptimeMillis);
   public static void com.lynx.tasm.utils.UIThreadUtils.removeCallbacks(Runnable r, Object token);
+}
+
+public class com::lynx::tasm::behavior::ui::transfer::UITransfer : com::lynx::tasm::behavior::ui::UIGroup< TransferHostView > {
+  public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context);
+  public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context, Object params);
+  public boolean com.lynx.tasm.behavior.ui.transfer.UITransfer.canHaveFlattenChild();
+  public boolean com.lynx.tasm.behavior.ui.transfer.UITransfer.isExternalExposureRoot();
 }
 
 public class com::lynx::tasm::behavior::ui::view::UIView : com.lynx.tasm.behavior.ui.view.UISimpleView< AndroidView > {
