@@ -44,6 +44,13 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
                 }
             }
         }
+
+        project.plugins.withId('com.google.devtools.ksp') {
+            Object ksp = project.extensions.findByName('ksp')
+            if (ksp != null && ksp.metaClass.respondsTo(ksp, 'arg', String, String)) {
+                ksp.arg('lynx.library.packageName', library.androidPackageName)
+            }
+        }
     }
 
     private static void configureAndroidConsumer(
