@@ -15,23 +15,8 @@ function Get-Environment($environ_key) {
   return $environ_value
 }
 
-function Add-Environ($key, $value) {
-  $currentValue = Get-Environment $key
-  if ($currentValue) {
-    if ($currentValue.Contains($value)) {
-      return
-    }
-    $new_path = "$value;$currentValue"
-  } else {
-    $new_path = $value
-  }
-  Setup-Environment $key $new_path
-}
-
 function Lynx-Env-Setup {
-    $buildtoolsDir = Join-Path $lynx_dir_path 'buildtools'
-    Add-Environ 'PATH' (Join-Path $buildtoolsDir 'ninja')
-    Add-Environ 'PATH' (Join-Path $lynx_dir_path 'tools_shared')
+    & (Join-Path $tools_path 'env.ps1')
 }
 
 
@@ -51,13 +36,5 @@ function Android-Env-Setup {
   }
 }
 
-function Python-Env-Setup {
-  $pyDepsPath = Join-Path $lynx_dir_path 'third_party\py_deps'
-  if (Test-Path -LiteralPath $pyDepsPath) {
-    Add-Environ 'PYTHONPATH' $pyDepsPath
-  }
-}
-
 Lynx-Env-Setup
 Android-Env-Setup
-Python-Env-Setup
