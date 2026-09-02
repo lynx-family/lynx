@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <algorithm>
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <string>
@@ -24,6 +25,55 @@ namespace {
 std::vector<std::string> Events(std::initializer_list<std::string> names) {
   return std::vector<std::string>(names);
 }
+
+class ExposureTestTaskRunner final : public fml::TaskRunner {
+ public:
+  static fml::RefPtr<ExposureTestTaskRunner> Create() {
+    return fml::AdoptRef(new ExposureTestTaskRunner());
+  }
+
+  void PostTask(lynx::base::closure task) override {
+    immediate_tasks_.push_back(std::move(task));
+  }
+
+  void PostDelayedTask(lynx::base::closure task,
+                       fml::TimeDelta delay) override {
+    delayed_tasks_.push_back({std::move(task), delay});
+  }
+
+  bool RunsTasksOnCurrentThread() override { return true; }
+
+  fml::TaskQueueId GetTaskQueueId() override { return fml::TaskQueueId(0); }
+
+  size_t DelayedTaskCount() const { return delayed_tasks_.size(); }
+
+  void AdvanceBy(fml::TimeDelta delta) {
+    std::vector<lynx::base::closure> ready_tasks;
+    for (auto it = delayed_tasks_.begin(); it != delayed_tasks_.end();) {
+      it->delay = it->delay - delta;
+      if (it->delay <= fml::TimeDelta::Zero()) {
+        ready_tasks.push_back(std::move(it->task));
+        it = delayed_tasks_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    for (auto& task : ready_tasks) {
+      task();
+    }
+  }
+
+ private:
+  struct DelayedTask {
+    lynx::base::closure task;
+    fml::TimeDelta delay;
+  };
+
+  ExposureTestTaskRunner() : TaskRunner(fml::RefPtr<fml::MessageLoopImpl>()) {}
+
+  std::vector<lynx::base::closure> immediate_tasks_;
+  std::vector<DelayedTask> delayed_tasks_;
+};
 
 class RecordingEventDelegate final : public EventDelegate {
  public:
@@ -93,7 +143,8 @@ class RecordingEventDelegate final : public EventDelegate {
 class ExposeObserverTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    page_ = std::make_unique<PageView>(0, nullptr, nullptr);
+    task_runner_ = ExposureTestTaskRunner::Create();
+    page_ = std::make_unique<PageView>(0, nullptr, task_runner_);
     page_->SetEventDelegate(&event_delegate_);
     page_->SetBound(0, 0, 1000, 1000);
   }
@@ -160,8 +211,23 @@ class ExposeObserverTest : public ::testing::Test {
   }
 
   RecordingEventDelegate event_delegate_;
+  fml::RefPtr<ExposureTestTaskRunner> task_runner_;
   std::unique_ptr<PageView> page_;
 };
+
+TEST(ExposureFrequencyTest, ConvertsFrequencyToMicrosecondInterval) {
+  EXPECT_EQ(IntersectionObserverManager::CalculateExposureIntervalMicros(-1),
+            0);
+  EXPECT_EQ(IntersectionObserverManager::CalculateExposureIntervalMicros(0), 0);
+  EXPECT_EQ(IntersectionObserverManager::CalculateExposureIntervalMicros(1),
+            1000000);
+  EXPECT_EQ(IntersectionObserverManager::CalculateExposureIntervalMicros(20),
+            50000);
+  EXPECT_EQ(IntersectionObserverManager::CalculateExposureIntervalMicros(60),
+            16666);
+  EXPECT_EQ(IntersectionObserverManager::CalculateExposureIntervalMicros(120),
+            16666);
+}
 
 TEST_F(ExposeObserverTest, NodeReadyImmediatelyExposesVisibleTarget) {
   View* target = AddVisibleObservedView(1);
@@ -177,6 +243,43 @@ TEST_F(ExposeObserverTest, NodeReadyImmediatelyExposesVisibleTarget) {
   page_->SendGlobalExposureEvent();
   EXPECT_EQ(custom_events(), Events({"uiappear"}));
   EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest,
+       DirectPageChildWithExposureAreaSkipsFastPathWithoutGeometry) {
+  auto* target = new View(1, page_.get());
+  target->SetBound(2000, 2000, 100, 100);
+  target->SetAttribute("exposure-id", Value("offscreen-target"));
+  target->SetAttribute("exposure-area", Value("100%"));
+  target->AddEventCallback("uiappear");
+  target->AddEventCallback("uidisappear");
+
+  page_->AddChild(target);
+
+  EXPECT_TRUE(custom_events().empty());
+  EXPECT_TRUE(global_events().empty());
+
+  target->SetBound(0, 0, 100, 100);
+  NotifyObserversOnNextFrame();
+  page_->SendGlobalExposureEvent();
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+}
+
+TEST_F(ExposeObserverTest,
+       DirectPageChildWithDefaultExposureAreaUsesFastPathWithoutGeometry) {
+  auto* target = new View(1, page_.get());
+  target->SetBound(2000, 2000, 100, 100);
+  target->SetAttribute("exposure-id", Value("offscreen-target"));
+  target->AddEventCallback("uiappear");
+  target->AddEventCallback("uidisappear");
+
+  page_->AddChild(target);
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  EXPECT_EQ(global_events(), Events({"exposure"}));
+  ASSERT_EQ(custom_event_options().size(), 1u);
+  EXPECT_TRUE(custom_event_options()[0].emergency);
 }
 
 TEST_F(ExposeObserverTest, StructuralAttestationRejectsLaterPageChildren) {
@@ -385,6 +488,27 @@ TEST_F(ExposeObserverTest, StableGeometryDoesNotAmplifyAppearEvents) {
   EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
 }
 
+TEST_F(ExposeObserverTest, EarlyFrameSchedulesSingleFrequencyRetry) {
+  View* target = AddVisibleObservedView(1);
+  manager()->SetExposureFrequency(1);
+  manager()->NotifyObservers();
+  ASSERT_EQ(custom_events(), Events({"uiappear"}));
+
+  target->SetBound(2000, 2000, 100, 100);
+  manager()->NotifyObservers();
+  manager()->NotifyObservers();
+  manager()->NotifyObservers();
+
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+  ASSERT_EQ(task_runner_->DelayedTaskCount(), 1u);
+
+  task_runner_->AdvanceBy(fml::TimeDelta::FromMilliseconds(1000));
+  EXPECT_EQ(task_runner_->DelayedTaskCount(), 0u);
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
+}
+
 TEST_F(ExposeObserverTest, HorizontalScrollViewOnlyExposesIntersectingCards) {
   auto* scroll_view =
       new ScrollView(1, ScrollDirection::kHorizontal, page_.get());
@@ -415,6 +539,76 @@ TEST_F(ExposeObserverTest, HorizontalScrollViewOnlyExposesIntersectingCards) {
   EXPECT_EQ(CustomEventCount(2, "uiappear"), 2u);
   EXPECT_EQ(CustomEventCount(3, "uidisappear"), 0u);
   EXPECT_EQ(CustomEventCount(4, "uidisappear"), 1u);
+}
+
+TEST_F(ExposeObserverTest, ExposureAreaRequiresConfiguredVisibleRatio) {
+  View* target = AddObservedView(page_.get(), 1, 999, 0, 100, 100);
+  target->SetAttribute("exposure-area", Value("100%"));
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(CustomEventCount("uiappear"), 0u);
+
+  target->SetBound(900, 0, 100, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+
+  target->SetBound(901, 0, 100, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+
+  target->SetAttribute("exposure-area", Value("invalid"));
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uiappear"), 2u);
+}
+
+TEST_F(ExposeObserverTest, ExposureAreaChecksEachClippingBoundary) {
+  page_->SetBound(0, 0, 100, 60);
+
+  auto* clipping_parent = new View(1, page_.get());
+  page_->AddChild(clipping_parent);
+  clipping_parent->SetBound(0, 0, 60, 100);
+  clipping_parent->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+
+  View* target = AddObservedView(clipping_parent, 2, 0, 0, 100, 100);
+  target->SetAttribute("exposure-area", Value("50%"));
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+
+  clipping_parent->SetBound(0, 0, 50, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 0u);
+
+  clipping_parent->SetBound(0, 0, 49, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+}
+
+TEST_F(ExposeObserverTest,
+       EmptyClippingParentKeepsOrdinaryIntersectionBehavior) {
+  auto* clipping_parent = new View(1, page_.get());
+  page_->AddChild(clipping_parent);
+  clipping_parent->SetBound(0, 0, 0, 0);
+  clipping_parent->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+
+  auto* target = new View(2, page_.get());
+  clipping_parent->AddChild(target);
+  target->SetBound(0, 0, 100, 100);
+
+  EXPECT_TRUE(IsViewIntersecting(target, page_.get(), false));
+}
+
+TEST_F(ExposeObserverTest, ScreenMarginLeftDoesNotExpandRightSide) {
+  View* left_target = AddObservedView(page_.get(), 1, -75, 0, 25, 25);
+  left_target->SetAttribute("exposure-screen-margin-left", Value("100px"));
+
+  View* right_target = AddObservedView(page_.get(), 2, 1050, 0, 25, 25);
+  right_target->SetAttribute("exposure-screen-margin-left", Value("100px"));
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(CustomEventCount(1, "uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount(2, "uiappear"), 0u);
 }
 
 TEST_F(ExposeObserverTest, HiddenPreloadedPageDoesNotExposeItsContent) {
@@ -545,6 +739,32 @@ TEST_F(ExposeObserverTest, RootViewportClipsDetachedTarget) {
   EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
   page_->SendGlobalExposureEvent();
   EXPECT_EQ(global_events(), Events({"exposure", "disexposure"}));
+
+  detached_parent->RemoveChild(target.get());
+}
+
+TEST_F(ExposeObserverTest, ExposureAreaChecksRootOutsideTargetParentChain) {
+  auto detached_parent = std::make_unique<View>(1, page_.get());
+  auto target = std::make_unique<View>(2, page_.get());
+  detached_parent->AddChild(target.get());
+  ASSERT_NE(target->Parent(), page_.get());
+
+  target->SetBound(950, 0, 100, 100);
+  target->SetAttribute("exposure-id", Value("detached-target"));
+  target->SetAttribute("exposure-area", Value("100%"));
+  target->AddEventCallback("uiappear");
+  target->AddEventCallback("uidisappear");
+
+  manager()->NotifyObservers();
+  EXPECT_TRUE(custom_events().empty());
+
+  target->SetBound(900, 0, 100, 100);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(custom_events(), Events({"uiappear"}));
+
+  page_->SetVisible(false);
+  NotifyObserversOnNextFrame();
+  EXPECT_EQ(custom_events(), Events({"uiappear", "uidisappear"}));
 
   detached_parent->RemoveChild(target.get());
 }
