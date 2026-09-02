@@ -47,8 +47,11 @@ constexpr int64_t kPruneInterval = 1;   // 1 second.
 template <class T>
 class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
  public:
-  explicit ImageCache(fml::RefPtr<fml::TaskRunner> ui_task_runner)
-      : ui_task_runner_(ui_task_runner),
+  explicit ImageCache(
+      fml::RefPtr<fml::TaskRunner> ui_task_runner,
+      fml::RefPtr<fml::TaskRunner> cleanup_task_runner = nullptr)
+      : ui_task_runner_(std::move(ui_task_runner)),
+        cleanup_task_runner_(std::move(cleanup_task_runner)),
         current_cache_bytes_(0),
         max_cached_bytes_(SysInfo::IsLowEndDevice() ? kImageCacheMaxBytesLowMem
                                                     : kImageCacheMaxBytes) {
@@ -176,18 +179,19 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
     }
 
     if (!images.empty()) {
-      ReleaseImagesOnWorkerThread(images);
+      PostCleanupTask([released_images = std::move(images)]() mutable {
+        released_images.clear();
+      });
     }
   }
   void ClearCacheInternal() {
     if (current_cache_bytes_ > 0) {
       current_cache_bytes_ = 0;
-      GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
-          [cache_list = std::move(cache_list_),
-           cache_map = std::move(cache_map_)]() mutable {
-            cache_map.clear();
-            cache_list.clear();
-          });
+      PostCleanupTask([cache_list = std::move(cache_list_),
+                       cache_map = std::move(cache_map_)]() mutable {
+        cache_map.clear();
+        cache_list.clear();
+      });
     }
   }
   void PruneOldImages() {
@@ -230,18 +234,21 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
       }
     }
     if (!images.empty()) {
-      ReleaseImagesOnWorkerThread(images);
+      PostCleanupTask([released_images = std::move(images)]() mutable {
+        released_images.clear();
+      });
     }
   }
 
-  void ReleaseImagesOnWorkerThread(
-      const std::vector<std::shared_ptr<T>>& images) {
-    // Destroy images maybe time consuming, we post to worker thread to avoid
-    // blocking ui.
+  void PostCleanupTask(lynx::base::closure task) {
+    if (cleanup_task_runner_) {
+      cleanup_task_runner_->PostTask(std::move(task));
+      return;
+    }
+    // Preserve the existing worker-pool behavior when no platform-specific
+    // cleanup runner is provided.
     GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
-        [released_images = std::move(images)]() mutable {
-          released_images.clear();
-        });
+        std::move(task));
   }
 
   struct ImageItem {
@@ -268,6 +275,7 @@ class ImageCache : public std::enable_shared_from_this<ImageCache<T>> {
   std::unordered_map<size_t, decltype(cache_list_.begin())> cache_map_;
 
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
+  fml::RefPtr<fml::TaskRunner> cleanup_task_runner_;
 
   size_t current_cache_bytes_;
   size_t max_cached_bytes_;
