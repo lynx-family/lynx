@@ -9,6 +9,7 @@ import { IPerformanceObserver } from './IPerformanceObserver';
 import { ILynxEventReporterService, LynxReportEventPropValue, LynxServiceCenter, LynxServiceType } from '../../Index';
 import { PerformanceEntryConverter } from '../gen/performance/performanceobserver/PerformanceEntryConverter';
 import { LynxEventReporter } from '../eventreport/LynxEventReporter';
+import { EmbeddedTimingCollector } from './timing/EmbeddedTimingCollector';
 
 
 export class PerformanceController implements ITimingCollector {
@@ -16,6 +17,8 @@ export class PerformanceController implements ITimingCollector {
   private observers?: IPerformanceObserver[];
   private reporterService?: ILynxEventReporterService;
   private isDestroyed: boolean = false;
+  private embeddedModeEnabled: boolean = false;
+  private embeddedTimingCollector?: EmbeddedTimingCollector;
 
   constructor() {
     this.native = new lynx.PerformanceController(this, this.onPerformanceEvent);
@@ -25,8 +28,16 @@ export class PerformanceController implements ITimingCollector {
     this.observers = observer;
   }
 
+  public setEmbeddedModeEnabled(enabled: boolean): void {
+    this.embeddedModeEnabled = enabled;
+    if (enabled && this.embeddedTimingCollector === undefined) {
+      this.embeddedTimingCollector = new EmbeddedTimingCollector(
+        (entry: Record<string, Object>) => this.notifyPerformanceObservers(entry));
+    }
+  }
+
   public onPerformanceEvent(entry: Record<string, Object>): void {
-    this.observers?.forEach(observer => observer.onPerformanceEvent(PerformanceEntryConverter.makePerformanceEntry(entry)));
+    this.notifyPerformanceObservers(entry);
 
     let service = this.getEventReporterService();
     if (service != undefined) {
@@ -38,6 +49,11 @@ export class PerformanceController implements ITimingCollector {
       });
       service.onPerformanceEvent(PerformanceEntryConverter.makePerformanceEntry(entry));
     }
+  }
+
+  private notifyPerformanceObservers(entry: Record<string, Object>): void {
+    this.observers?.forEach(observer =>
+      observer.onPerformanceEvent(PerformanceEntryConverter.makePerformanceEntry(entry)));
   }
   
   public destroy(): void {
@@ -60,11 +76,19 @@ export class PerformanceController implements ITimingCollector {
     if (this.isDestroyed) {
       return;
     }
+    if (this.embeddedModeEnabled) {
+      this.embeddedTimingCollector?.markTiming(timingKey, timestamp);
+      return;
+    }
     this.native.setTiming(timestamp, timingKey, pipelineID);
   }
 
   public markTiming(timingKey: string, pipelineID: string): void {
     if (this.isDestroyed) {
+      return;
+    }
+    if (this.embeddedModeEnabled) {
+      this.embeddedTimingCollector?.markTiming(timingKey, Date.now() * 1000);
       return;
     }
     this.native.markTiming(timingKey, pipelineID);

@@ -558,6 +558,20 @@ void LynxTemplateRenderer::OnLoaded(const std::string& url) {
                                       1, param);
 }
 
+void LynxTemplateRenderer::SetEmbeddedTiming(const std::string& timing_key,
+                                             uint64_t timestamp_us,
+                                             const std::string& pipeline_id) {
+  base::NapiHandleScope scope(env_);
+  napi_value params[3];
+  napi_create_double(env_, static_cast<double>(timestamp_us), &params[0]);
+  napi_create_string_utf8(env_, timing_key.c_str(), timing_key.length(),
+                          &params[1]);
+  napi_create_string_utf8(env_, pipeline_id.c_str(), pipeline_id.length(),
+                          &params[2]);
+  base::NapiUtil::AsyncInvokeJsMethod(env_, template_renderer_ref_, "setTiming",
+                                      3, params);
+}
+
 void LynxTemplateRenderer::OnRuntimeReady() {
   base::NapiHandleScope scope(env_);
   base::NapiUtil::AsyncInvokeJsMethod(env_, template_renderer_ref_,

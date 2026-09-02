@@ -226,6 +226,10 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.perfController?.setTiming(timestamp, timingKey, pipelineID);
   }
 
+  markTiming(timingKey: string, pipelineID: string = '') {
+    this.perfController?.markTiming(timingKey, pipelineID);
+  }
+
   setExtraTiming(extraTiming: LynxExtraTiming) {
     this.perfController?.setExtraTiming(extraTiming);
   }

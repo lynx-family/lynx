@@ -97,6 +97,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   lepus::Value GetPageDataByKey(std::vector<std::string> keys);
 
   void OnLoaded(const std::string& url);
+  void SetEmbeddedTiming(const std::string& timing_key, uint64_t timestamp_us,
+                         const std::string& pipeline_id);
   void OnRuntimeReady();
   void OnDataUpdated();
   void OnPageChanged(bool is_first_screen);
