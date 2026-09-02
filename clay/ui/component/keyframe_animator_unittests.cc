@@ -143,9 +143,8 @@ TEST(TransformOperationsTest, TranslateYPercentageDetectionUsesFirstSlot) {
   op.values[0] = Length(1.f, LengthUnit::kPercent);
 
   auto keyframe_set = RawTransformKeyframeSet::Create();
-  keyframe_set->AddKeyframe(
-      RawTransformKeyframe::Create(0.f, std::vector<TransformRaw>{op},
-                                   Interpolator::CreateDefaultInterpolator()));
+  keyframe_set->AddKeyframe(RawTransformKeyframe::Create(
+      fml::TimeDelta::Zero(), std::vector<TransformRaw>{op}));
 
   EXPECT_TRUE(keyframe_set->HasPercentageValues());
 }
