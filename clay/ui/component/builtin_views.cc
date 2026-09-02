@@ -19,6 +19,13 @@
 #include "clay/ui/component/image_view.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/list/list_item_view.h"
+#ifdef ENABLE_NON_BUILTIN_VIEWS
+#include "clay/ui/component/scroll_coordinator/scroll_coordinator.h"
+#include "clay/ui/component/scroll_coordinator/scroll_coordinator_header.h"
+#include "clay/ui/component/scroll_coordinator/scroll_coordinator_slot.h"
+#include "clay/ui/component/scroll_coordinator/scroll_coordinator_slot_drag.h"
+#include "clay/ui/component/scroll_coordinator/scroll_coordinator_toolbar.h"
+#endif
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/component/text/inline_text_view.h"
 #include "clay/ui/component/text/raw_text_view.h"
@@ -57,6 +64,16 @@ REGISTER_CLAY_ELEMENT("component", Component, void);
 REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
 REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);
 REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
+#ifdef ENABLE_NON_BUILTIN_VIEWS
+REGISTER_CLAY_ELEMENT("scroll-coordinator", ScrollCoordinator, void);
+REGISTER_CLAY_ELEMENT("scroll-coordinator-header", ScrollCoordinatorHeader,
+                      void);
+REGISTER_CLAY_ELEMENT("scroll-coordinator-toolbar", ScrollCoordinatorToolbar,
+                      void);
+REGISTER_CLAY_ELEMENT("scroll-coordinator-slot", ScrollCoordinatorSlot, void);
+REGISTER_CLAY_ELEMENT("scroll-coordinator-slot-drag", ScrollCoordinatorSlotDrag,
+                      void);
+#endif
 
 #ifndef ENABLE_CLAY_LITE
 #ifndef OS_IOS
