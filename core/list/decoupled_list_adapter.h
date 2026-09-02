@@ -216,6 +216,8 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   void GenerateAndFlushListContainerInfo();
 
+  void CheckInValidItemHolder() const;
+
   void GenerateDiffArray(const std::string& diff_key,
                          const std::vector<int32_t>& diff_array,
                          const std::unique_ptr<pub::Value>& diff_result) const;
