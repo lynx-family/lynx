@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "base/include/auto_reset.h"
+#include "base/include/fml/time/time_delta.h"
 #include "base/include/fml/time/time_point.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animator_target.h"
@@ -19,6 +20,7 @@
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/rendering/render_container.h"
 #include "clay/ui/testing/ui_test.h"
+#include "gfx/animation/timing_function.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -136,17 +138,36 @@ Value MakeTranslateXCalcValue(double percent, double fixed) {
 }  // namespace
 
 TEST(TransformOperationsTest, TranslateYPercentageDetectionUsesFirstSlot) {
-  ClayTransformOP op{};
-  op.type = ClayTransformType::kTranslateY;
-  op.value[0] = 1.f;
-  op.unit[0] = ClayPlatformLengthUnit::kPercentage;
+  TransformRaw op{};
+  op.type = static_cast<int>(ClayTransformType::kTranslateY);
+  op.values[0] = Length(1.f, LengthUnit::kPercent);
 
   auto keyframe_set = RawTransformKeyframeSet::Create();
-  keyframe_set->AddKeyframe(
-      RawTransformKeyframe::Create(0.f, std::vector<ClayTransformOP>{op},
-                                   Interpolator::CreateDefaultInterpolator()));
+  keyframe_set->AddKeyframe(RawTransformKeyframe::Create(
+      fml::TimeDelta::Zero(), std::vector<TransformRaw>{op}));
 
   EXPECT_TRUE(keyframe_set->HasPercentageValues());
+}
+
+TEST(KeyframeSetTest, UsesGfxKeyframeTimingFunctionAfterClone) {
+  auto keyframe_set =
+      FloatKeyframeSet::Create(ClayAnimationPropertyType::kOpacity);
+  auto start_keyframe = FloatKeyframe::Create(
+      fml::TimeDelta::Zero(),
+      lynx::gfx::StepsTimingFunction::Create(4, lynx::gfx::StepsType::kEnd));
+  start_keyframe->SetValue(0.f);
+  keyframe_set->AddKeyframe(std::move(start_keyframe));
+  auto end_keyframe =
+      FloatKeyframe::Create(fml::TimeDelta::FromSeconds(1),
+                            lynx::gfx::LinearTimingFunction::Create());
+  end_keyframe->SetValue(1.f);
+  keyframe_set->AddKeyframe(std::move(end_keyframe));
+
+  auto cloned_keyframe_set = keyframe_set->Clone(nullptr);
+  auto* cloned_float_set =
+      static_cast<FloatKeyframeSet*>(cloned_keyframe_set.get());
+  EXPECT_FLOAT_EQ(cloned_float_set->GetValue(0.24f), 0.f);
+  EXPECT_FLOAT_EQ(cloned_float_set->GetValue(0.26f), 0.25f);
 }
 
 TEST_F_UI(KeyFrameTest, TransformKeyframeCalcResolvesOnClone) {

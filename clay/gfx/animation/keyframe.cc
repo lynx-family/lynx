@@ -6,202 +6,58 @@
 
 #include <memory>
 #include <sstream>
+#include <utility>
 
 #include "clay/gfx/geometry/filter_operations.h"
-#include "clay/gfx/geometry/transform.h"
-#include "clay/gfx/style/length.h"
 
 namespace clay {
 
 namespace {
 
-Length ToLength(const ClayTransformOP& op, int index) {
-  return Length(op.value[index],
-                op.unit[index] == ClayPlatformLengthUnit::kPercentage
-                    ? LengthUnit::kPercent
-                    : LengthUnit::kNum);
-}
-
-TransformRaw ToTransformRaw(const ClayTransformOP& op) {
-  TransformRaw raw{};
-  raw.type = static_cast<int>(op.type);
-  raw.values[0] = ToLength(op, 0);
-  raw.values[1] = ToLength(op, 1);
-  raw.values[2] = ToLength(op, 2);
-  for (int i = 0; i < 16; ++i) {
-    raw.matrix[i] = op.matrix[i];
-  }
-  return raw;
+std::unique_ptr<lynx::gfx::TimingFunction> CloneKeyframeTimingFunction(
+    const lynx::gfx::Keyframe& keyframe) {
+  return keyframe.timing_function() ? keyframe.timing_function()->Clone()
+                                    : nullptr;
 }
 
 }  // namespace
 
-Keyframe::Keyframe(float fraction, std::unique_ptr<Interpolator> interpolator)
-    : fraction_(fraction), interpolator_(std::move(interpolator)) {}
-
-Keyframe::~Keyframe() = default;
-
-std::unique_ptr<FloatKeyframe> FloatKeyframe::Create(
-    float fraction, float value, std::unique_ptr<Interpolator> interpolator) {
-  return std::unique_ptr<FloatKeyframe>(
-      new FloatKeyframe(fraction, value, std::move(interpolator)));
-}
-
-FloatKeyframe::FloatKeyframe(float fraction, float value,
-                             std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)), value_(value) {}
-
-FloatKeyframe::~FloatKeyframe() = default;
-
-float FloatKeyframe::Value() const { return value_; }
-
-std::unique_ptr<FloatKeyframe> FloatKeyframe::Clone() const {
-  std::unique_ptr<Interpolator> func;
-  if (GetInterpolator()) {
-    func = GetInterpolator()->Clone();
-  }
-  return FloatKeyframe::Create(GetFraction(), Value(), std::move(func));
-}
-
-#ifndef NDEBUG
-std::string FloatKeyframe::ToString() const {
-  std::ostringstream os;
-  os << "FloatKeyframe: fraction=" << GetFraction() << " value=" << Value();
-  return os.str();
-}
-#endif
-
-std::unique_ptr<ColorKeyframe> ColorKeyframe::Create(
-    float fraction, Color value, std::unique_ptr<Interpolator> interpolator) {
-  return std::unique_ptr<ColorKeyframe>(
-      new ColorKeyframe(fraction, value, std::move(interpolator)));
-}
-
-ColorKeyframe::ColorKeyframe(float fraction, Color value,
-                             std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)), value_(value) {}
-
-ColorKeyframe::~ColorKeyframe() = default;
-
-Color ColorKeyframe::Value() const { return value_; }
-
-std::unique_ptr<ColorKeyframe> ColorKeyframe::Clone() const {
-  std::unique_ptr<Interpolator> func;
-  if (GetInterpolator()) {
-    func = GetInterpolator()->Clone();
-  }
-  return ColorKeyframe::Create(GetFraction(), Value(), std::move(func));
-}
-
-#ifndef NDEBUG
-std::string ColorKeyframe::ToString() const {
-  std::ostringstream os;
-  os << "ColorKeyframe: fraction=" << GetFraction() << " value=" << std::hex
-     << Value().Value();
-  return os.str();
-}
-#endif
-
 std::unique_ptr<RawTransformKeyframe> RawTransformKeyframe::Create(
-    float fraction, const ClayTransform& transform,
-    std::unique_ptr<Interpolator> interpolator) {
+    fml::TimeDelta time, const std::vector<TransformRaw>& transform,
+    std::unique_ptr<lynx::gfx::TimingFunction> timing_function) {
   return std::unique_ptr<RawTransformKeyframe>(
-      new RawTransformKeyframe(fraction, transform, std::move(interpolator)));
-}
-
-std::unique_ptr<RawTransformKeyframe> RawTransformKeyframe::Create(
-    float fraction, const std::vector<ClayTransformOP>& transform,
-    std::unique_ptr<Interpolator> interpolator) {
-  return std::unique_ptr<RawTransformKeyframe>(
-      new RawTransformKeyframe(fraction, transform, std::move(interpolator)));
-}
-
-std::unique_ptr<RawTransformKeyframe> RawTransformKeyframe::Create(
-    float fraction, const std::vector<TransformRaw>& transform,
-    std::unique_ptr<Interpolator> interpolator) {
-  return std::unique_ptr<RawTransformKeyframe>(
-      new RawTransformKeyframe(fraction, transform, std::move(interpolator)));
+      new RawTransformKeyframe(time, transform, std::move(timing_function)));
 }
 
 RawTransformKeyframe::RawTransformKeyframe(
-    float fraction, const ClayTransform& transform,
-    std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)) {
-  operations_.reserve(transform.size);
-  for (int i = 0; i < transform.size; i++) {
-    operations_.emplace_back(ToTransformRaw(transform.op[i]));
-  }
+    fml::TimeDelta time, const std::vector<TransformRaw>& transform,
+    std::unique_ptr<lynx::gfx::TimingFunction> timing_function)
+    : lynx::gfx::Keyframe(time, std::move(timing_function)),
+      operations_(transform) {
+  MarkNonEmpty();
 }
-
-RawTransformKeyframe::RawTransformKeyframe(
-    float fraction, const std::vector<ClayTransformOP>& transform,
-    std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)) {
-  operations_.reserve(transform.size());
-  for (const auto& op : transform) {
-    operations_.emplace_back(ToTransformRaw(op));
-  }
-}
-
-RawTransformKeyframe::RawTransformKeyframe(
-    float fraction, const std::vector<TransformRaw>& transform,
-    std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)), operations_(transform) {}
 
 #ifndef NDEBUG
 std::string RawTransformKeyframe::ToString() const {
   std::ostringstream os;
-  os << "RawTransformKeyframe: fraction=" << GetFraction()
+  os << "RawTransformKeyframe: fraction=" << Time().ToSecondsF()
      << " operation_count=" << operations_.size();
   return os.str();
 }
 #endif
 
-std::unique_ptr<TransformKeyframe> TransformKeyframe::Create(
-    float fraction, const lynx::gfx::TransformOperations& value,
-    std::unique_ptr<Interpolator> interpolator) {
-  return std::unique_ptr<TransformKeyframe>(
-      new TransformKeyframe(fraction, value, std::move(interpolator)));
+FilterKeyframe::FilterKeyframe(
+    fml::TimeDelta time, const FilterOperations& value,
+    std::unique_ptr<lynx::gfx::TimingFunction> timing_function)
+    : lynx::gfx::Keyframe(time, std::move(timing_function)), value_(value) {
+  MarkNonEmpty();
 }
-
-TransformKeyframe::TransformKeyframe(
-    float fraction, const lynx::gfx::TransformOperations& value,
-    std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)), value_(value) {}
-
-TransformKeyframe::~TransformKeyframe() = default;
-
-const lynx::gfx::TransformOperations& TransformKeyframe::Value() const {
-  return value_;
-}
-
-std::unique_ptr<TransformKeyframe> TransformKeyframe::Clone() const {
-  std::unique_ptr<Interpolator> func;
-  if (GetInterpolator()) {
-    func = GetInterpolator()->Clone();
-  }
-  return TransformKeyframe::Create(GetFraction(), Value(), std::move(func));
-}
-
-#ifndef NDEBUG
-std::string TransformKeyframe::ToString() const {
-  std::ostringstream os;
-  os << "TransformKeyframe: fraction=" << GetFraction() << " value="
-     << Transform(ApplyTransform(Value(), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f))
-            .ToString();
-  return os.str();
-}
-#endif
-
-FilterKeyframe::FilterKeyframe(float fraction, const FilterOperations& value,
-                               std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)), value_(value) {}
 
 std::unique_ptr<FilterKeyframe> FilterKeyframe::Create(
-    float fraction, const FilterOperations& value,
-    std::unique_ptr<Interpolator> interpolator) {
+    fml::TimeDelta time, const FilterOperations& value,
+    std::unique_ptr<lynx::gfx::TimingFunction> timing_function) {
   return std::unique_ptr<FilterKeyframe>(
-      new FilterKeyframe(fraction, value, std::move(interpolator)));
+      new FilterKeyframe(time, value, std::move(timing_function)));
 }
 
 FilterKeyframe::~FilterKeyframe() = default;
@@ -211,40 +67,36 @@ std::string FilterKeyframe::ToString() const { return "FilterKeyframe"; }
 #endif
 
 std::unique_ptr<FilterKeyframe> FilterKeyframe::Clone() const {
-  std::unique_ptr<Interpolator> func;
-  if (GetInterpolator()) {
-    func = GetInterpolator()->Clone();
-  }
-  return FilterKeyframe::Create(GetFraction(), Value(), std::move(func));
+  return FilterKeyframe::Create(Time(), Value(),
+                                CloneKeyframeTimingFunction(*this));
 }
 
 const FilterOperations& FilterKeyframe::Value() const { return value_; }
 
 std::unique_ptr<BoxShadowKeyframe> BoxShadowKeyframe::Create(
-    float fraction, const BoxShadowOperations& value,
-    std::unique_ptr<Interpolator> interpolator) {
+    fml::TimeDelta time, const BoxShadowOperations& value,
+    std::unique_ptr<lynx::gfx::TimingFunction> timing_function) {
   return std::unique_ptr<BoxShadowKeyframe>(
-      new BoxShadowKeyframe(fraction, value, std::move(interpolator)));
+      new BoxShadowKeyframe(time, value, std::move(timing_function)));
 }
-BoxShadowKeyframe::~BoxShadowKeyframe() {}
+BoxShadowKeyframe::~BoxShadowKeyframe() = default;
 
 const BoxShadowOperations& BoxShadowKeyframe::Value() const { return value_; }
 
 std::unique_ptr<BoxShadowKeyframe> BoxShadowKeyframe::Clone() const {
-  std::unique_ptr<Interpolator> func;
-  if (GetInterpolator()) {
-    func = GetInterpolator()->Clone();
-  }
-  return BoxShadowKeyframe::Create(GetFraction(), Value(), std::move(func));
+  return BoxShadowKeyframe::Create(Time(), Value(),
+                                   CloneKeyframeTimingFunction(*this));
 }
 
 #ifndef NDEBUG
 std::string BoxShadowKeyframe::ToString() const { return "BoxShadowKeyframe"; }
 #endif
 
-BoxShadowKeyframe::BoxShadowKeyframe(float fraction,
-                                     const BoxShadowOperations& value,
-                                     std::unique_ptr<Interpolator> interpolator)
-    : Keyframe(fraction, std::move(interpolator)), value_(value) {}
+BoxShadowKeyframe::BoxShadowKeyframe(
+    fml::TimeDelta time, const BoxShadowOperations& value,
+    std::unique_ptr<lynx::gfx::TimingFunction> timing_function)
+    : lynx::gfx::Keyframe(time, std::move(timing_function)), value_(value) {
+  MarkNonEmpty();
+}
 
 }  // namespace clay

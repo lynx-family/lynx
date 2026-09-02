@@ -14,6 +14,7 @@
 #include "clay/gfx/animation/keyframe.h"
 #include "clay/gfx/geometry/box_shadow_operations.h"
 #include "clay/gfx/geometry/filter_operations.h"
+#include "clay/gfx/style/color.h"
 #include "clay/public/clay.h"
 #include "clay/public/style_types.h"
 #include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
