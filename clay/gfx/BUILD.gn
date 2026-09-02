@@ -62,6 +62,7 @@ source_set("gfx") {
       "paint_image_skity.cc",
       "paint_image_skity.h",
       "paint_recorder_skity.cc",
+      "svg/svg_dom.cc",
       "text_blob_skity.cc",
       "text_blob_skity.h",
     ]
