@@ -678,6 +678,16 @@ static BOOL gShouldEnableAllDevToolSessions = NO;
   return enableTextFontCascadeOpt;
 }
 
+- (BOOL)enableTextStrokeInheritanceFix {
+  static dispatch_once_t onceToken;
+  static BOOL enableTextStrokeInheritanceFix = YES;
+  dispatch_once(&onceToken, ^{
+    enableTextStrokeInheritanceFix = [self boolFromExternalEnv:LynxEnvEnableTextStrokeInheritanceFix
+                                                  defaultValue:YES];
+  });
+  return enableTextStrokeInheritanceFix;
+}
+
 - (int)memoryAcquisitionDelaySec {
   static dispatch_once_t onceToken;
   static int delaySecond = 0;
@@ -854,6 +864,7 @@ static BOOL gShouldEnableAllDevToolSessions = NO;
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
     @(LynxEnvEnableTextFontCascadeOpt) : @"lynx_text_font_cascade_opt",
+    @(LynxEnvEnableTextStrokeInheritanceFix) : @"enable_text_stroke_inheritance_fix",
     @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
     @(LynxEnvFSPEnable) : @"enable_fsp",
     @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string",
