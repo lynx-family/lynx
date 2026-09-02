@@ -46,10 +46,13 @@ class FlexLayoutAlgorithm : public LayoutAlgorithm {
 
   // Algorithm-6 Resolve the flexible lengths of all the flex items to find
   // their used main size.
+  bool CanSkipFlexibleLengthResolution() const;
   void ResolveFlexibleLengths(LineInfo& line_info);
 
   // Algorithm-7 Determine the hypothetical cross size of each item
+  bool CanUseSingleLineStretchedCrossSizeFastPath() const;
   void DetermineHypotheticalCrossSize();
+  void DetermineSingleLineStretchedCrossSize();
 
   // Algorithm-8 Calculate the cross size of each flex line.
   void CalculateCrossSizeOfEachFlexLine();

@@ -284,6 +284,8 @@ class LayoutObject : public ContainerNode {
   float GetPaddingAndBorderHorizontal() const;
   float GetPaddingAndBorderVertical() const;
 
+  bool HasDefaultMeasureBox() const;
+
   void MarkList() { is_list_ = true; }
   bool IsAbsoluteInContentBound() const {
     return configs_.is_absolute_in_content_bound_;
