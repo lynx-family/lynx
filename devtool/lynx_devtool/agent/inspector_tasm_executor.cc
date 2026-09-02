@@ -946,6 +946,9 @@ void InspectorTasmExecutor::OnElementManagerWillDestroy() {
 }
 
 void InspectorTasmExecutor::DiffID(lynx::tasm::Element* ptr) {
+  if (!ptr || ptr->will_destroy() || !ptr->inspector_attribute()) {
+    return;
+  }
   std::string old_id = ElementInspector::SelectorId(ptr);
   std::string new_id = ElementInspector::GetSelectorIDFromAttributeHolder(ptr);
   ElementInspector::SetSelectorId(ptr, new_id);
@@ -962,6 +965,13 @@ void InspectorTasmExecutor::DiffID(lynx::tasm::Element* ptr) {
 }
 
 void InspectorTasmExecutor::DiffAttr(lynx::tasm::Element* ptr) {
+  // FIX: Add protection against use-after-free.
+  // If the element is being destroyed or its inspector attribute is gone,
+  // do not proceed with the diff logic.
+  if (!ptr || ptr->will_destroy() || !ptr->inspector_attribute()) {
+    return;
+  }
+
   const auto old_attr = ElementInspector::AttrMap(ptr);
   const auto& new_attr =
       ElementInspector::GetAttrFromAttributeHolder(ptr).second;
@@ -1001,6 +1011,9 @@ void InspectorTasmExecutor::DiffAttr(lynx::tasm::Element* ptr) {
 }
 
 void InspectorTasmExecutor::DiffClass(lynx::tasm::Element* ptr) {
+  if (!ptr || ptr->will_destroy() || !ptr->inspector_attribute()) {
+    return;
+  }
   std::vector<std::string> old_class = ElementInspector::ClassOrder(ptr);
   std::vector<std::string> new_class =
       ElementInspector::GetClassOrderFromAttributeHolder(ptr);
@@ -1020,6 +1033,9 @@ void InspectorTasmExecutor::DiffClass(lynx::tasm::Element* ptr) {
 }
 
 void InspectorTasmExecutor::DiffStyle(lynx::tasm::Element* ptr) {
+  if (!ptr || ptr->will_destroy() || !ptr->inspector_attribute()) {
+    return;
+  }
   CHECK_NULL_AND_LOG_RETURN(ptr, "ptr is null");
   auto* inspector_attribute = ptr->inspector_attribute();
   CHECK_NULL_AND_LOG_RETURN(inspector_attribute, "inspector_attribute is null");
