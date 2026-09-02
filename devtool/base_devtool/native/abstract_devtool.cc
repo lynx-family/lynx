@@ -44,6 +44,11 @@ void AbstractDevTool::RegisterAgent(
   impl_->slot_agent_->RegisterAgent(agent_name, std::move(agent));
 }
 
+void AbstractDevTool::RegisterAgentNG(
+    const std::string& agent_name, std::shared_ptr<CDPDomainAgentBase> agent) {
+  impl_->slot_agent_->RegisterAgentNG(agent_name, std::move(agent));
+}
+
 void AbstractDevTool::RegisterMessageHandler(
     const std::string& type, std::unique_ptr<DevToolMessageHandler>&& handler) {
   impl_->slot_agent_->RegisterMessageHandler(type, std::move(handler));
