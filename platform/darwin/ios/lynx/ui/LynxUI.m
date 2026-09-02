@@ -1278,12 +1278,6 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   }
 
   _gestureMap = gestureMap;
-  for (LynxBaseGestureHandler* handler in _gestureHandlers.allValues) {
-    if (handler.status == LynxGestureHandlerStateBegin ||
-        handler.status == LynxGestureHandlerStateActive) {
-      [handler fail];
-    }
-  }
   _gestureHandlers = nil;
   [self gestureDidSet];
 }
