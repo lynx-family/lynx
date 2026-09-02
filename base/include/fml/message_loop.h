@@ -56,6 +56,9 @@ class BASE_EXPORT MessageLoop {
   void SetMessageLoopRestrictionDuration(fml::TimeDelta restriction_duration);
 
   static MessageLoop& EnsureInitializedForCurrentThread(
+      fml::RefPtr<MessageLoopImpl> platform_loop);
+
+  static MessageLoop& EnsureInitializedForCurrentThread(
       void* platform_loop = nullptr);
   const fml::RefPtr<MessageLoopImpl>& GetLoopImpl() const;
 
@@ -82,7 +85,7 @@ class BASE_EXPORT MessageLoop {
   fml::RefPtr<MessageLoopImpl> loop_;
   fml::RefPtr<fml::TaskRunner> task_runner_;
 
-  explicit MessageLoop(void* platform_loop = nullptr);
+  explicit MessageLoop(fml::RefPtr<MessageLoopImpl> platform_loop);
 
   BASE_DISALLOW_COPY_AND_ASSIGN(MessageLoop);
 };
