@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.jsbridge.LynxModule;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.Behavior;
@@ -36,6 +37,8 @@ import java.util.Map;
 
 public class LynxViewBuilder
     extends LynxBaseConfigurator<LynxViewBuilder> implements ILynxViewConfigProvider {
+  public static final String TAG = "LynxViewBuilder";
+
   AbsTemplateProvider templateProvider;
   Object lynxModuleExtraData;
   DynamicComponentFetcher fetcher;
@@ -114,6 +117,7 @@ public class LynxViewBuilder
   }
 
   public LynxViewBuilder setLynxViewGroup(ILynxViewGroup group) {
+    LLog.i(TAG, "config LynxViewBuilder with group: " + group + " url: " + group.getUrl());
     this.lynxViewGroup = group;
     this.hasInheritedGroupRuntimeOptions = false;
     return this;
