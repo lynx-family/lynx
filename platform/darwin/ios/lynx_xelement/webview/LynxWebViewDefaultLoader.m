@@ -4,6 +4,18 @@
 
 #import <XElement/LynxWebViewDefaultLoader.h>
 
+@interface LynxKeyboardAccessoryWebView : WKWebView
+@property(nonatomic, assign) BOOL keyboardAccessoryViewHidden;
+@end
+
+@implementation LynxKeyboardAccessoryWebView
+
+- (UIView *)inputAccessoryView {
+  return self.keyboardAccessoryViewHidden ? nil : [super inputAccessoryView];
+}
+
+@end
+
 @implementation LynxWebViewDefaultLoader
 
 - (instancetype)initWithDelegate:(id<LynxWebViewLoaderDelegate>)delegate {
@@ -23,13 +35,21 @@
     [configuration.userContentController
         addScriptMessageHandler:self
                            name:self.delegate.nameOfScriptMessageHandler];
-    self.webview = [[WKWebView alloc] initWithFrame:CGRectZero configuration:configuration];
+    self.webview = [[LynxKeyboardAccessoryWebView alloc] initWithFrame:CGRectZero
+                                                         configuration:configuration];
     self.webview.scrollView.bounces = NO;
     self.webview.scrollView.showsVerticalScrollIndicator = NO;
     self.webview.scrollView.showsHorizontalScrollIndicator = NO;
     self.webview.navigationDelegate = self;
   }
   return self.webview;
+}
+
+- (void)setKeyboardAccessoryViewHidden:(BOOL)hidden {
+  WKWebView *webView = [self getWebView];
+  if ([webView isKindOfClass:[LynxKeyboardAccessoryWebView class]]) {
+    ((LynxKeyboardAccessoryWebView *)webView).keyboardAccessoryViewHidden = hidden;
+  }
 }
 
 - (void)setParams:(NSDictionary *)params {

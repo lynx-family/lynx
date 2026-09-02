@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.6
+- Add `ios-hide-keyboard-accessory-view` to `<webview>` typings.
+
 ## 4.3.5
 - Add/Update platform support annotations for Element attributes, events, and methods.
 
