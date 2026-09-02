@@ -1003,6 +1003,54 @@ TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {
   EXPECT_LT(caret_height, caret_radius);
 }
 
+TEST_F(InspectorTasmExecutorTest, GetComputedStyleUsesResolvedElementStyle) {
+  auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  auto element = manager_->CreateFiberElement("view");
+  element->SetAttributeHolder(comp->attribute_holder());
+  element->MarkAttached();
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element_executor_->element_root_ = element.get();
+
+  ASSERT_NE(element->computed_css_style(), nullptr);
+  ASSERT_TRUE(element->computed_css_style()->SetBackgroundColor(
+      lynx::tasm::CSSValue(0xFF262626U, lynx::tasm::CSSValuePattern::NUMBER),
+      false));
+  element->parsed_styles_map_.insert_or_assign(
+      lynx::tasm::CSSPropertyID::kPropertyIDBackgroundColor,
+      lynx::tasm::CSSValue(0xFF262626U, lynx::tasm::CSSValuePattern::NUMBER));
+  element->computed_css_style()->SetCustomProperty(
+      lynx::base::String("--theme"),
+      lynx::tasm::CSSValue::MakePlainString("resolved"));
+  element->computed_css_style()->FinalizeCustomProperties();
+
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 110;
+  message["params"]["nodeId"] =
+      devtool::ElementInspector::NodeId(element.get());
+  element_executor_->GetComputedStyleForNode(message_sender_, message);
+  FlushUITasks();
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  const Json::Value& computed_style = response["result"]["computedStyle"];
+  auto background = std::find_if(
+      computed_style.begin(), computed_style.end(), [](const auto& property) {
+        return property["name"].asString() == "background-color";
+      });
+  ASSERT_NE(background, computed_style.end());
+  EXPECT_EQ((*background)["value"].asString(), "rgb(38,38,38)");
+  auto theme = std::find_if(computed_style.begin(), computed_style.end(),
+                            [](const auto& property) {
+                              return property["name"].asString() == "--theme";
+                            });
+  ASSERT_NE(theme, computed_style.end());
+  EXPECT_EQ((*theme)["value"].asString(), "resolved");
+}
+
 TEST_F(InspectorTasmExecutorTest,
        GetComputedStyleForNodeUsesBoxModelBorderShorthandCase) {
   auto facade = std::make_shared<testing::DevToolPlatformFacadeMock>();
