@@ -420,6 +420,19 @@ quirksMode:
     - Android
     - HarmonyOS
     - iOS
+enableLynxGroupModuleSharing:
+  description: Controls whether modules loaded through `lynx.requireModuleAsync` are shared across cards running in the same LynxGroup. When enabled, async module exports are cached at the JS-context level so every card in the group receives the same module instance; when disabled, each card evaluates its own copy.
+  defaultValue: 'false'
+  valueType: bool
+  jsValueType: boolean
+  syncTo:
+    - script
+  author: upupming
+  since: '3.6'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableLynxScrollFluency:
   description: Controls the scroll-fluency monitoring probability for the page. When set to a value in [0, 1], the scroll fluency monitor is enabled with that sampling probability and metrics are reported unconditionally through the applog service; when set to -1 (default), scroll fluency monitoring is off.
   defaultValue: '-1'
