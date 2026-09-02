@@ -100,35 +100,35 @@ jobs:
       - name: Run file type check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers file-type
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers file-type
       - name: Run cpplint check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers cpplint
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers cpplint
       - name: Run java-lint check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers java-lint
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers java-lint
       - name: Run commit-message check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers commit-message
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers commit-message
       - name: Run coding-style check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers coding-style
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers coding-style
       - name: Run android-check-style check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers android-check-style
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers android-check-style
       - name: Run api check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers api-check --all
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers api-check --all
       - name: Run gn relative path check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers gn-relative-path-check
+          python3 buildtools/tools_shared/tools_shared/git_lynx.py check --checkers gn-relative-path-check
 
   darwin-native-unittests-check:
     needs: [darwin-impact-check]

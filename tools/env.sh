@@ -8,7 +8,7 @@
 LYNX_OSS_ENV_ANDROID_NDK_VERSION="21.1.6352462"
 LYNX_OSS_ENV_HARMONY_SDK_VERSION="6.0.0.868"
 LYNX_OSS_ENV_COMMON_PATH_SUFFIXES=(
-  "tools_shared"
+  "buildtools/tools_shared/tools_shared"
   "tools/gn_tools"
 )
 LYNX_OSS_ENV_BUILDTOOLS_PATH_SUFFIXES=(

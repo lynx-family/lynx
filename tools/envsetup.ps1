@@ -31,7 +31,7 @@ function Add-Environ($key, $value) {
 function Lynx-Env-Setup {
     $buildtoolsDir = Join-Path $lynx_dir_path 'buildtools'
     Add-Environ 'PATH' (Join-Path $buildtoolsDir 'ninja')
-    Add-Environ 'PATH' (Join-Path $lynx_dir_path 'tools_shared')
+    Add-Environ 'PATH' (Join-Path $buildtoolsDir 'tools_shared/tools_shared')
 }
 
 

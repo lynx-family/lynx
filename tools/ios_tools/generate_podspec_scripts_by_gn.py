@@ -19,6 +19,8 @@ import re
 
 root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_path)
+tools_shared_path = os.path.join(root_path, "buildtools", "tools_shared")
+sys.path.append(tools_shared_path)
 from tools_shared.ios_tools.generate_podspec_scripts_from_gn import generate_compile_products
 
 def get_max_lynx_version(config_h_path):
