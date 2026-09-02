@@ -19,7 +19,7 @@ import com.journeyapps.barcodescanner.BarcodeResult;
 import com.journeyapps.barcodescanner.DecoratedBarcodeView;
 import com.journeyapps.barcodescanner.DefaultDecoderFactory;
 import com.lynx.explorer.R;
-import com.lynx.explorer.shell.TemplateDispatcher;
+import com.lynx.explorer.routes.RouteCoordinator;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -35,7 +35,7 @@ public class QRScanActivity extends Activity {
     public void barcodeResult(BarcodeResult result) {
       mUrl = result.getText();
 
-      TemplateDispatcher.dispatchUrl(getApplication(), mUrl);
+      RouteCoordinator.open(getApplication(), mUrl);
 
       finish();
     }
