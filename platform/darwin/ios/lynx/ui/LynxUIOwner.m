@@ -129,6 +129,8 @@ extern NSString* const kDefaultComponentID;
   LynxEmbeddedMode _embeddedMode;
 }
 
+static bool _useUiWithFilter;
+
 - (void)attachContainerView:(UIView<LUIBodyView>* _Nonnull)containerView {
   _containerView = containerView;
   _uiContext.rootView = containerView;
@@ -188,6 +190,7 @@ extern NSString* const kDefaultComponentID;
     if (uiConfig) {
       [_uiContext setUIConfig:uiConfig];
     }
+    [LynxUIOwner initSettings];
   }
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
   return self;
@@ -1103,7 +1106,22 @@ extern NSString* const kDefaultComponentID;
   }
 }
 
++ (void)initSettings {
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    NSString* value = [LynxTrail stringValueForTrailKey:@"ui_owner_find_ui_by_filter"];
+    _useUiWithFilter = [value isEqualToString:@"1"] || [value isEqualToString:@"true"];
+  });
+}
+
 - (nullable LynxUI*)uiWithName:(NSString*)name {
+  if (_useUiWithFilter) {
+    return [self
+        uiWithFilter:^(LynxUI* ui) {
+          return [ui.name isEqualToString:name];
+        }
+            findRoot:_rootUI];
+  }
   for (NSNumber* sign in _uiHolder) {
     LynxUI* ui = _uiHolder[sign];
     if ([ui.name isEqualToString:name]) {
@@ -1114,6 +1132,13 @@ extern NSString* const kDefaultComponentID;
 }
 
 - (nullable LynxUI*)uiWithIdSelector:(NSString*)idSelector {
+  if (_useUiWithFilter) {
+    return [self
+        uiWithFilter:^(LynxUI* ui) {
+          return [ui.idSelector isEqualToString:idSelector];
+        }
+            findRoot:_rootUI];
+  }
   for (NSNumber* sign in _uiHolder) {
     LynxUI* ui = _uiHolder[sign];
     if ([ui.idSelector isEqualToString:idSelector]) {
@@ -1121,6 +1146,40 @@ extern NSString* const kDefaultComponentID;
     }
   }
   return nil;
+}
+
+- (nonnull NSArray<LynxUI*>*)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                    findRoot:(nullable LynxUI*)findRoot
+                                    maxCount:(NSInteger)maxCount {
+  NSMutableArray* outArr = [NSMutableArray array];
+  LynxUI* start = findRoot ? findRoot : _rootUI;
+  if (start == nil) {
+    return outArr;
+  }
+  [self collectUiWithFilter:filter ui:start outArr:outArr maxCount:maxCount];
+  return outArr;
+}
+
+- (nonnull LynxUI*)uiWithFilter:(nonnull LynxUIFilter)filter findRoot:(nullable LynxUI*)findRoot {
+  return [[self uiWithFilterAll:filter findRoot:findRoot maxCount:1] firstObject];
+}
+
+- (bool)collectUiWithFilter:(nonnull LynxUIFilter)filter
+                         ui:(nonnull LynxUI*)ui
+                     outArr:(nonnull NSMutableArray<LynxUI*>*)outArr
+                   maxCount:(NSInteger)maxCount {
+  if (filter(ui)) {
+    [outArr addObject:ui];
+    if (maxCount > 0 && (NSInteger)[outArr count] >= maxCount) {
+      return true;
+    }
+  }
+  for (LynxUI* child in [ui children]) {
+    if ([self collectUiWithFilter:filter ui:child outArr:outArr maxCount:maxCount]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 - (void)reset {

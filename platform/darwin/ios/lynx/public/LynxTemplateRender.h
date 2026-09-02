@@ -88,6 +88,9 @@
 // prefer using `findViewWithName:` than `viewWithName:`.
 // `viewWithName:` will be marked deprecated in 1.6
 - (nullable UIView*)viewWithName:(nonnull NSString*)name;
+- (nonnull NSArray<LynxUI*>*)uiWithFilterAll:(nonnull LynxUIFilter)filter
+                                    findRoot:(nullable LynxUI*)findRoot
+                                    maxCount:(NSInteger)maxCount;
 
 - (void)setImageDownsampling:(BOOL)enableImageDownsampling;
 - (BOOL)enableImageDownsampling;
