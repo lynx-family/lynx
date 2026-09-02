@@ -213,6 +213,7 @@ if (enable_unittests) {
       "rendering/render_object_unittests.cc",
       "rendering/text/render_text_unittests.cc",
       "resource/font_resource_manager_unittests.cc",
+      "resource/image_cache_unittests.cc",
       "shadow/get_text_info_unittests.cc",
       "shadow/text_unittests.cc",
       "testing/test_utils_unittests.cc",
