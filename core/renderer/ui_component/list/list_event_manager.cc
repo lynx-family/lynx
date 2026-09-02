@@ -119,6 +119,14 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   if (event_source == list::EventSource::kDiff ||
       event_source == list::EventSource::kLayout) {
     // 1. Force sending lower/upper event after diff or layout
+    // Update previous_status and valid_diff flag before sending event to
+    // avoid reenter in worklet.
+    if (!is_lower || !is_upper) {
+      // Note: If event source kDiff or kLayout is before kScroll, we should
+      // update previous_scroll_state to kMiddle to make sure that the
+      // scroll_to_lower or scroll_to_upper event can be triggered correctly.
+      previous_scroll_state_ = list::ListScrollState::kMiddle;
+    }
     if (is_upper) {
       SendCustomScrollEvent(list::kScrollToUpper, distance, event_source);
     }
