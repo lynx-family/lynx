@@ -6,6 +6,7 @@
 #import <Lynx/LynxBoxShadowManager.h>
 #import <Lynx/LynxConverter+NSShadow.h>
 #import <Lynx/LynxConverter+UI.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGradient.h>
 #import <Lynx/LynxHtmlEscape.h>
@@ -117,6 +118,22 @@ NSAttributedStringKey const LynxVerticalAlignKey = @"LynxVerticalAlignKey";
       [NSMutableDictionary dictionaryWithDictionary:baseTextAttribute];
   // override style value by self attributes
   [textAttributes addEntriesFromDictionary:_attributes];
+
+  // NSStrokeWidthAttributeName is a percentage of the font size, while Lynx text-stroke-width is
+  // an absolute length. Preserve the absolute stroke width when an inline text node inherits the
+  // stroke and overrides only the font size.
+  NSNumber* inheritedStrokeWidth = baseTextAttribute[NSStrokeWidthAttributeName];
+  // TODO: Remove this temporary switch after the fix has been validated for one release.
+  if (inheritedStrokeWidth && baseTextAttribute[NSStrokeColorAttributeName] &&
+      !_attributes[NSStrokeWidthAttributeName] &&
+      [[LynxEnv sharedInstance] enableTextStrokeInheritanceFix]) {
+    UIFont* inheritedFont = baseTextAttribute[NSFontAttributeName];
+    UIFont* resolvedFont = textAttributes[NSFontAttributeName];
+    if (inheritedFont.pointSize > 0 && resolvedFont.pointSize > 0) {
+      textAttributes[NSStrokeWidthAttributeName] =
+          @(inheritedStrokeWidth.doubleValue * inheritedFont.pointSize / resolvedFont.pointSize);
+    }
+  }
 
   _hasNonVirtualOffspring = NO;
 
