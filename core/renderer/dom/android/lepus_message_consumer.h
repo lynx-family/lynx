@@ -26,6 +26,7 @@ class LepusDecoder {
   uint32_t len_;
   char* buffer_;
   bool in_exception_ = false;
+  void alignToValueBoundary();
   uint8_t forwardType();
   uint16_t forwardUInt16();
   int32_t forwardInteger();

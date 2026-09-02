@@ -74,6 +74,7 @@ lepus_value LepusDecoder::forwardValue() {
     case TypeLong:
       return lepus_value(forwardLong());
     case TypeDouble:
+      alignToValueBoundary();
       return lepus_value(forwardDouble());
     case TypeString:
       return lepus_value(forwardString());
@@ -87,6 +88,13 @@ lepus_value LepusDecoder::forwardValue() {
       return lepus_value(forwardTemplateData());
   }
   return lepus_value();
+}
+
+void LepusDecoder::alignToValueBoundary() {
+  const int mod = index_ % Alignment;
+  if (mod != 0) {
+    index_ += (Alignment - mod);
+  }
 }
 
 uint8_t LepusDecoder::forwardType() {
@@ -121,10 +129,6 @@ int64_t LepusDecoder::forwardLong() {
 }
 
 double_t LepusDecoder::forwardDouble() {
-  const int mod = index_ % Alignment;
-  if (mod != 0) {
-    index_ += (Alignment - mod);
-  }
   double_t result = *(reinterpret_cast<double_t *>(buffer_ + index_));
   index_ += sizeof(double_t);
   return result;
@@ -249,6 +253,7 @@ std::optional<runtime::js::Value> LepusDecoder::forwardJSValue(
       }
     }
     case TypeDouble:
+      alignToValueBoundary();
       return runtime::js::Value(forwardDouble());
     case TypeString:
       return runtime::js::Value(forwardJSString(rt));
@@ -462,7 +467,11 @@ void LepusEncoder::WriteString(std::vector<int8_t> &vec,
   const std::string &str = string.str();
   vec.push_back(TypeString);
   WriteSize(vec, str.size());
-  std::copy(str.begin(), str.end(), std::back_inserter(vec));
+  if (!str.empty()) {
+    size_t old_size = vec.size();
+    vec.resize(old_size + str.size());
+    memcpy(vec.data() + old_size, str.data(), str.size());
+  }
 }
 
 void LepusEncoder::WriteBytes(std::vector<int8_t> &vec,
@@ -471,8 +480,11 @@ void LepusEncoder::WriteBytes(std::vector<int8_t> &vec,
   size_t size = byte_array->GetLength();
   vec.push_back(TypeByteArray);
   WriteSize(vec, size);
-  std::copy(byte_array->GetPtr(), byte_array->GetPtr() + size,
-            std::back_inserter(vec));
+  if (size > 0 && byte_array->GetPtr()) {
+    size_t old_size = vec.size();
+    vec.resize(old_size + size);
+    memcpy(vec.data() + old_size, byte_array->GetPtr(), size);
+  }
 }
 
 void LepusEncoder::WriteSize(std::vector<int8_t> &vec, const size_t size) {
