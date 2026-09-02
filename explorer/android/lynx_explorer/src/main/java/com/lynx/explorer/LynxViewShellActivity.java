@@ -31,8 +31,12 @@ import com.lynx.explorer.modules.LynxSettingManager;
 import com.lynx.explorer.provider.DemoGenericResourceFetcher;
 import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
+import com.lynx.explorer.shell.TemplateDispatcher;
 import com.lynx.explorer.utils.QueryMapUtils;
+import com.lynx.tasm.LynxBackgroundRuntime;
+import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateData;
@@ -45,6 +49,8 @@ import com.lynx.xelement.XElementBehaviors;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,6 +68,83 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private LynxView mLynxView;
   private String mFrontendTheme;
   private TimingHandler.ExtraTimingInfo extraTimingInfo = new TimingHandler.ExtraTimingInfo();
+  private String mGroupName;
+
+  // Cards opened with the same `group=<name>` share one LynxGroup, and thus one
+  // background JS context. Held statically so a second scan joins the first
+  // card's context instead of building a new one.
+  private static final Map<String, LynxGroup> sNamedGroups = new HashMap<>();
+  private static final int APP_RUNTIME_TIMEOUT_MS = 5000;
+
+  private static synchronized LynxGroup getOrCreateNamedGroup(
+      android.content.Context context, String name, String appRuntimeUrl) {
+    LynxGroup group = sNamedGroups.get(name);
+    if (group != null) {
+      return group;
+    }
+    group = new LynxGroup.LynxGroupBuilder().setGroupName(name).build();
+    sNamedGroups.put(name, group);
+
+    // The standalone App runtime: a background runtime attached to no LynxView.
+    // It joins the group's context first and outlives every card, so the shared
+    // modules, timers and Promise it publishes survive card destruction. Cards
+    // read those at construction, so the script has to be in before the first
+    // one is built.
+    LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
+    options.setLynxGroup(group);
+    LynxBackgroundRuntime runtime =
+        new LynxBackgroundRuntime(context.getApplicationContext(), options);
+
+    String source = appRuntimeUrl == null ? null : fetchAppRuntime(appRuntimeUrl);
+    if (source == null) {
+      // Without an app runtime bundle the group still needs an App instance to
+      // publish the runtime globals, so fall back to an empty one. Scripts here
+      // go through the same loadScript wrapper protocol as cards, so a bare body
+      // would fail `_$executeInit`; the leading slash matters because the
+      // JS-side loadScript normalizes relative paths and the standalone script
+      // store matches keys exactly.
+      runtime.evaluateJavaScript(
+          "/app-runtime-bootstrap.js", "globalThis.initBundle=function(){return {};};");
+    } else {
+      runtime.evaluateJavaScript("/app-runtime.js", source);
+    }
+    Log.i(TAG, "Created standalone App runtime for group " + name);
+    return group;
+  }
+
+  private static String fetchAppRuntime(String url) {
+    final String[] result = new String[1];
+    Thread worker = new Thread(() -> {
+      HttpURLConnection connection = null;
+      try {
+        connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setConnectTimeout(APP_RUNTIME_TIMEOUT_MS);
+        connection.setReadTimeout(APP_RUNTIME_TIMEOUT_MS);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (InputStream input = connection.getInputStream()) {
+          byte[] chunk = new byte[8192];
+          int read;
+          while ((read = input.read(chunk)) != -1) {
+            buffer.write(chunk, 0, read);
+          }
+        }
+        result[0] = buffer.toString("UTF-8");
+      } catch (Exception e) {
+        Log.e(TAG, "Failed to fetch app runtime " + url, e);
+      } finally {
+        if (connection != null) {
+          connection.disconnect();
+        }
+      }
+    });
+    worker.start();
+    try {
+      worker.join(APP_RUNTIME_TIMEOUT_MS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    return result[0];
+  }
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -107,7 +190,24 @@ public class LynxViewShellActivity extends AppCompatActivity {
       finish();
       return true;
     }
+    if (item.getItemId() == R.id.action_open_another_page) {
+      // Stack the home page on top instead of replacing this card, so the two
+      // pages stay alive together in the group.
+      TemplateDispatcher.dispatchUrl(this, HOME_PAGE_URL, Intent.FLAG_ACTIVITY_NEW_TASK);
+      return true;
+    }
     return super.onOptionsItemSelected(item);
+  }
+
+  @Override
+  public boolean onCreateOptionsMenu(android.view.Menu menu) {
+    // Only cards in a shared-context group can be joined by another page, so
+    // the entry stays out of the way everywhere else.
+    if (mGroupName == null || mGroupName.isEmpty()) {
+      return super.onCreateOptionsMenu(menu);
+    }
+    getMenuInflater().inflate(R.menu.card_menu, menu);
+    return true;
   }
 
   private String getStorageItem(String key) {
@@ -123,6 +223,8 @@ public class LynxViewShellActivity extends AppCompatActivity {
 
     QueryMapUtils queryMap = new QueryMapUtils();
     queryMap.parse(url);
+    // Read before the action bar is set up: creating the menu asks for it.
+    mGroupName = queryMap.getString("group");
     boolean isFullscreen = queryMap.getBoolean("fullscreen", false);
 
     if (!isFullscreen) {
@@ -248,6 +350,12 @@ public class LynxViewShellActivity extends AppCompatActivity {
       queryMap.parse(getAssetFilename(url));
     } else {
       queryMap.parse(url);
+    }
+
+    String groupName = queryMap.getString("group");
+    if (groupName != null && !groupName.isEmpty()) {
+      builder.setLynxGroup(
+          getOrCreateNamedGroup(this, groupName, queryMap.getString("app_runtime")));
     }
 
     if (queryMap.contains("width") && queryMap.contains("height")) {
