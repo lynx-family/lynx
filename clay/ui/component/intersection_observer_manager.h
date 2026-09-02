@@ -6,6 +6,7 @@
 #define CLAY_UI_COMPONENT_INTERSECTION_OBSERVER_MANAGER_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
@@ -48,17 +49,22 @@ class IntersectionObserverManager {
   void SetExposureHostVisible(bool visible);
 
   void SetExposureFrequency(int freq);
+  static constexpr int64_t CalculateExposureIntervalMicros(int freq) {
+    return freq <= 0 ? 0 : 1000 * 1000 / (freq > 60 ? 60 : freq);
+  }
   void SetExposureUIMarginEnabled(bool enabled);
   bool GetExposureUIMarginEnabled() { return exposure_ui_margin_enabled_; }
 
   BaseView* page_view() { return page_view_; }
 
  private:
-  int64_t expose_min_time_gap_ms_ = 1000 / 20;
+  int64_t expose_min_time_gap_us_ = CalculateExposureIntervalMicros(20);
   bool exposure_ui_margin_enabled_ = false;
   bool exposure_stopped_ = false;
   bool exposure_host_visible_ = true;
   int64_t last_expose_time_ = -1;
+  bool exposure_retry_scheduled_ = false;
+  uint64_t exposure_retry_generation_ = 0;
 
   BaseView* page_view_;
   std::list<std::unique_ptr<IntersectionObserver>> intersection_observers_;
@@ -99,6 +105,9 @@ class IntersectionObserverManager {
 
   void NotifyExposures(void (IntersectionObserver::*ptr)(),
                        BaseView* view = nullptr);
+
+  void CancelExposureRetry();
+  void ScheduleExposureRetry(int64_t delay_us);
 
   void NotifyAllObserver(void (IntersectionObserver::*ptr)(),
                          BaseView* view = nullptr);
