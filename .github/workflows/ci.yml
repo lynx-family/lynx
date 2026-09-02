@@ -835,9 +835,6 @@ jobs:
         run: |-
           source tools/envsetup.sh
           export LANG=en_US.UTF-8
-          bundle -v
-          bundle config set path .
-          SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install
           python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
       - name: Publish to Local Pod Source
         run: |-
