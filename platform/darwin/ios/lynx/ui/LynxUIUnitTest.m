@@ -113,7 +113,7 @@
   XCTAssertTrue([ui getGestureHandlers].count == 0);
 }
 
-- (void)testGestureDetectorsRefreshHandlersAndSupportClearing {
+- (void)testGestureDetectorsRefreshHandlersWithoutCancellingAndSupportClearing {
   LynxUIView *ui = [[LynxUIView alloc] initWithView:nil];
   LynxUIMockContext *mockContext = [LynxUIUnitTestUtils initUIMockContextWithUI:ui];
   [mockContext.mockUIContext setEnableNewGesture:YES];
@@ -133,7 +133,7 @@
 
   LynxBaseGestureHandler *firstHandler = [ui getGestureHandlers].allValues.firstObject;
   XCTAssertEqual(firstHandler.gestureDetector.gestureID, 1);
-  [firstHandler begin];
+  [firstHandler activate];
 
   LynxGestureDetectorDarwin *secondDetector =
       [[LynxGestureDetectorDarwin alloc] initWithGestureID:2
@@ -145,7 +145,7 @@
   OCMExpect([manager registerGestureDetectors:1 detectorMap:secondDetectorMap]);
   [ui setGestureDetectors:[NSSet setWithObject:secondDetector]];
 
-  XCTAssertEqual(firstHandler.status, LynxGestureHandlerStateCancel);
+  XCTAssertEqual(firstHandler.status, LynxGestureHandlerStateActive);
   LynxBaseGestureHandler *secondHandler = [ui getGestureHandlers].allValues.firstObject;
   XCTAssertEqual(secondHandler.gestureDetector.gestureID, 2);
   [secondHandler activate];
@@ -154,7 +154,6 @@
   OCMExpect([manager removeMember:ui detectorMap:@{}]);
   [ui setGestureDetectors:[NSSet set]];
 
-  XCTAssertEqual(secondHandler.status, LynxGestureHandlerStateCancel);
   XCTAssertEqual([ui getGestureDetectorMap].count, 0);
   XCTAssertEqual([ui getGestureHandlers].count, 0);
   XCTAssertEqual([ui getGestureArenaMemberId], 0);
