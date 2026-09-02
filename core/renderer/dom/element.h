@@ -2115,7 +2115,6 @@ class Element : public lepus::RefCounted,
                                     const ClassList& new_classes);
   void MarkFontSizeInvalidateRecursively();
   void InvalidateChildrenFontSizeRecursively();
-  void InvalidateChildrenInheritedStylesRecursively();
   void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
   void RecursivelyMarkCustomPropertiesDirty();
   void InvalidateChildren(css::InvalidationSet* invalidation_set);

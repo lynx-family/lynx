@@ -26,6 +26,7 @@ enum class PseudoScenario {
   kNonInheritedSelf,
   kDescendantSparse,
   kInheritedSubtree,
+  kInheritedOverrideBoundary,
 };
 
 StyleMap WidthStyle(double width) {
@@ -58,6 +59,13 @@ bool HasWidth(bs::BenchmarkFiberElement& element, double expected) {
 
 bool HasColor(bs::BenchmarkFiberElement& element) {
   return element.GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value();
+}
+
+bool HasColor(bs::BenchmarkFiberElement& element, uint32_t expected) {
+  const CSSValue value =
+      element.CurrentStyleForBenchmark(CSSPropertyID::kPropertyIDColor);
+  return value.GetPattern() == CSSValuePattern::NUMBER &&
+         value.AsNumber() == expected;
 }
 
 bool HasBackgroundColor(bs::BenchmarkFiberElement& element) {
@@ -126,12 +134,21 @@ void BM_FiberRestylePseudoState(benchmark::State& state, bool new_pipeline,
       bs::AddRule(*fragment, ":active .target", WidthStyle(20));
       break;
     case PseudoScenario::kInheritedSubtree:
+    case PseudoScenario::kInheritedOverrideBoundary:
       bs::AddRule(*fragment, ":active", ColorStyle(CSSColor::White));
       break;
   }
 
   auto tree =
       bs::BuildBalancedTree(*env.element_manager, node_count, target_stride);
+  if (scenario == PseudoScenario::kInheritedOverrideBoundary) {
+    // Both direct children override color, so inherited changes at the root
+    // must stop at this boundary instead of invalidating either subtree.
+    for (size_t i = 1; i < tree.nodes.size() && i < 3; ++i) {
+      tree.nodes[i]->SetStyle(CSSPropertyID::kPropertyIDColor,
+                              lepus::Value("black"));
+    }
+  }
   auto style_sheet_manager =
       bs::InstallIntrinsicStyleSheet(*tree.page, std::move(fragment));
   benchmark::DoNotOptimize(style_sheet_manager.get());
@@ -140,14 +157,17 @@ void BM_FiberRestylePseudoState(benchmark::State& state, bool new_pipeline,
   if (scenario == PseudoScenario::kDescendantSparse) {
     verification_target = FirstDescendantTarget(tree, target_stride);
   }
-  auto* inheritance_target = scenario == PseudoScenario::kInheritedSubtree
-                                 ? tree.nodes[1].get()
+  const bool inherited_subtree = scenario == PseudoScenario::kInheritedSubtree;
+  const bool inherited_override_boundary =
+      scenario == PseudoScenario::kInheritedOverrideBoundary;
+  auto* inheritance_target = inherited_subtree || inherited_override_boundary
+                                 ? tree.nodes.back().get()
                                  : nullptr;
   auto* non_inherited_child = scenario == PseudoScenario::kNonInheritedSelf
                                   ? tree.nodes[1].get()
                                   : nullptr;
   if (verification_target == nullptr ||
-      (scenario == PseudoScenario::kInheritedSubtree &&
+      ((inherited_subtree || inherited_override_boundary) &&
        inheritance_target == nullptr) ||
       (scenario == PseudoScenario::kNonInheritedSelf &&
        non_inherited_child == nullptr)) {
@@ -156,9 +176,14 @@ void BM_FiberRestylePseudoState(benchmark::State& state, bool new_pipeline,
   }
 
   tree.page->FlushActionsAsRoot();
-  if (scenario == PseudoScenario::kInheritedSubtree) {
+  if (inherited_subtree) {
     if (HasColor(*inheritance_target)) {
       state.SkipWithError("inactive pseudo state unexpectedly inherited color");
+      return;
+    }
+  } else if (inherited_override_boundary) {
+    if (!HasColor(*inheritance_target, CSSColor::Black)) {
+      state.SkipWithError("override boundary did not provide inherited color");
       return;
     }
   } else if (scenario == PseudoScenario::kNonInheritedSelf) {
@@ -175,9 +200,14 @@ void BM_FiberRestylePseudoState(benchmark::State& state, bool new_pipeline,
 
   ChangePseudoState(tree, true);
   tree.page->FlushActionsAsRoot();
-  if (scenario == PseudoScenario::kInheritedSubtree) {
+  if (inherited_subtree) {
     if (!HasColor(*inheritance_target)) {
       state.SkipWithError("active pseudo state did not inherit color");
+      return;
+    }
+  } else if (inherited_override_boundary) {
+    if (!HasColor(*inheritance_target, CSSColor::Black)) {
+      state.SkipWithError("active pseudo state crossed override boundary");
       return;
     }
   } else if (scenario == PseudoScenario::kNonInheritedSelf) {
@@ -194,9 +224,14 @@ void BM_FiberRestylePseudoState(benchmark::State& state, bool new_pipeline,
 
   ChangePseudoState(tree, false);
   tree.page->FlushActionsAsRoot();
-  if (scenario == PseudoScenario::kInheritedSubtree) {
+  if (inherited_subtree) {
     if (HasColor(*inheritance_target)) {
       state.SkipWithError("inactive pseudo state retained inherited color");
+      return;
+    }
+  } else if (inherited_override_boundary) {
+    if (!HasColor(*inheritance_target, CSSColor::Black)) {
+      state.SkipWithError("inactive pseudo state crossed override boundary");
       return;
     }
   } else if (scenario == PseudoScenario::kNonInheritedSelf) {
@@ -517,6 +552,10 @@ REGISTER_SERIAL_PSEUDO(LegacyInheritedSubtree, false,
                        PseudoScenario::kInheritedSubtree);
 REGISTER_SERIAL_PSEUDO(NewInheritedSubtree, true,
                        PseudoScenario::kInheritedSubtree);
+REGISTER_SERIAL_PSEUDO(LegacyInheritedOverrideBoundary, false,
+                       PseudoScenario::kInheritedOverrideBoundary);
+REGISTER_SERIAL_PSEUDO(NewInheritedOverrideBoundary, true,
+                       PseudoScenario::kInheritedOverrideBoundary);
 
 REGISTER_SERIAL_CLASS(LegacySelf, false, ClassScenario::kSelf);
 REGISTER_SERIAL_CLASS(NewSelf, true, ClassScenario::kSelf);

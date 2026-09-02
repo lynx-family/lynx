@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/log/logging.h"
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/ng/parser/css_parser_token_range.h"
@@ -196,6 +197,7 @@ class NoOpElementManagerDelegate : public ElementManagerDelegate {
 struct BenchmarkEnvironment {
   explicit BenchmarkEnvironment(bool new_styling_pipeline = false,
                                 bool level_order_parallel = false) {
+    base::logging::SetMinLogLevel(base::logging::LOG_FATAL);
     LynxEnvConfig lynx_env_config(kBenchmarkWidth, kBenchmarkHeight,
                                   kBenchmarkLayoutsUnitPerPx,
                                   kBenchmarkPhysicalPixelsPerLayoutUnit);
