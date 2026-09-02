@@ -8,6 +8,7 @@ import android.graphics.Rect;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.base.CleanupReference;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent;
@@ -20,6 +21,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * FSP (First Stable Paint) Tracer implementation for Android platform.
@@ -70,6 +72,25 @@ public class FSPTracer {
   private volatile FSPSnapshot mPreviousSnapshot;
   private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
   private WeakReference<PerformanceController> mPerfControllerRef = new WeakReference<>(null);
+  private final AtomicReference<FSPReportDispatcher> mReportDispatcher = new AtomicReference<>();
+  private final CleanupReference mCleanupReference =
+      new CleanupReference(this, new CleanupTask(mReportDispatcher), false);
+
+  private static final class CleanupTask implements Runnable {
+    private final AtomicReference<FSPReportDispatcher> mReportDispatcher;
+
+    CleanupTask(AtomicReference<FSPReportDispatcher> reportDispatcher) {
+      mReportDispatcher = reportDispatcher;
+    }
+
+    @Override
+    public void run() {
+      FSPReportDispatcher reportDispatcher = mReportDispatcher.getAndSet(null);
+      if (reportDispatcher != null) {
+        reportDispatcher.close();
+      }
+    }
+  }
 
   /**
    * Constructor with configuration
@@ -96,6 +117,10 @@ public class FSPTracer {
       mConfig = new FSPConfig();
     }
     mConfig.parse();
+    if (mConfig.snapshotIntervalMs <= 0 && mConfig.hardTimeoutMs <= 0) {
+      return;
+    }
+    mReportDispatcher.set(new FSPReportDispatcher(this));
     mIsRunning.set(true);
     // 2. start snapshot timer
     scheduleNextCapture(captureHandler);
@@ -109,7 +134,7 @@ public class FSPTracer {
    */
   @UiThread
   public void stop() {
-    if (!isFSPEnabled() || !mIsRunning.get()) {
+    if (!mIsRunning.get()) {
       return;
     }
     internalStop(ResultStatus.STOP);
@@ -121,7 +146,7 @@ public class FSPTracer {
    */
   @UiThread
   public void cancelledByUserInteraction() {
-    if (!isFSPEnabled() || !mIsRunning.get()) {
+    if (!mIsRunning.get()) {
       return;
     }
     internalStop(ResultStatus.CANCEL_BY_USER_INTERACTION);
@@ -136,8 +161,11 @@ public class FSPTracer {
     final WeakReference<FSPTracer> weakSelf = new WeakReference<>(this);
     UIThreadUtils.runOnUiThread(() -> {
       FSPTracer tracer = weakSelf.get();
-      if (tracer == null || !tracer.isFSPEnabled() || !tracer.mIsRunning.get()
-          || captureHandler == null) {
+      if (tracer == null || !tracer.mIsRunning.get() || captureHandler == null) {
+        return;
+      }
+      if (!tracer.isFSPEnabled()) {
+        tracer.closeSession();
         return;
       }
       // Capture the snapshot
@@ -160,7 +188,11 @@ public class FSPTracer {
       return;
     }
     LynxEventReporter.delayRunOnReportThread(() -> {
-      if (!isFSPEnabled() || !mIsRunning.get()) {
+      if (!mIsRunning.get()) {
+        return;
+      }
+      if (!isFSPEnabled()) {
+        closeSession();
         return;
       }
       internalStop(ResultStatus.CANCEL_BY_TIMEOUT);
@@ -169,12 +201,21 @@ public class FSPTracer {
 
   @AnyThread
   private void internalStop(ResultStatus status) {
-    mIsRunning.set(false);
+    closeSession();
     long currentTimestampUs = PerformanceController.currentSystemTimeMicroseconds();
     if (currentTimestampUs <= 0) {
       return;
     }
     handleFSPResult(status, mPreviousSnapshot, currentTimestampUs);
+  }
+
+  @AnyThread
+  private void closeSession() {
+    mIsRunning.set(false);
+    FSPReportDispatcher reportDispatcher = mReportDispatcher.getAndSet(null);
+    if (reportDispatcher != null) {
+      reportDispatcher.close();
+    }
   }
 
   private boolean isFSPEnabled() {
@@ -186,43 +227,64 @@ public class FSPTracer {
   /// Process raw meaningful content snapshot to fsp snapshot, and check if it is valuable and
   /// stable.
   private void handleSnapshotCapture(final MeaningfulContentSnapshot rawSnapshot) {
+    if (!mIsRunning.get()) {
+      return;
+    }
+    if (!isFSPEnabled()) {
+      closeSession();
+      return;
+    }
     if (rawSnapshot.getContainerWidth() <= 0 || rawSnapshot.getContainerHeight() <= 0
         || rawSnapshot.getMeaningfulPaintingAreas() == null
         || rawSnapshot.getMeaningfulPaintingAreas().isEmpty()) {
       return;
     }
     long currentTimestampUs = PerformanceController.currentSystemTimeMicroseconds();
-    final WeakReference<FSPTracer> weakSelf = new WeakReference<>(this);
-    LynxEventReporter.runOnReportThread(() -> {
-      FSPTracer tracer = weakSelf.get();
-      if (tracer == null) {
-        return;
-      }
-      List<MeaningfulPaintingArea> areaList = rawSnapshot.getMeaningfulPaintingAreas();
-      if (areaList == null) {
-        return;
-      }
-      FSPSnapshot snapshot = new FSPSnapshot(
-          rawSnapshot.getContainerWidth(), rawSnapshot.getContainerHeight(), currentTimestampUs);
-      snapshot.mInstanceId = mInstanceId;
-      for (MeaningfulPaintingArea area : areaList) {
-        boolean isPresented = area.getMeaningfulContentStatus()
-            == ILynxUIMeaningfulContent.MeaningfulContentStatus.PRESENTED;
+    FSPReportDispatcher reportDispatcher = mReportDispatcher.get();
+    if (reportDispatcher != null) {
+      reportDispatcher.post(rawSnapshot, currentTimestampUs);
+    }
+  }
 
-        snapshot.fillContentToSnapshot(isPresented,
-            new Rect(area.getOffsetX(), area.getOffsetY(), area.getOffsetX() + area.getWidth(),
-                area.getOffsetY() + area.getHeight()),
-            area.getFirstMeaningfulContentPresentedTimestampMicros());
-      }
-      snapshot.traceCurrentTimestampUs = rawSnapshot.getTraceCurrentTimestampUs();
-      tracer.onCaptureSnapshot(snapshot);
-    });
+  /// @note Run on ReportThread
+  /// Convert a raw meaningful content snapshot and process it for FSP calculation.
+  void processSnapshotOnReportThread(
+      MeaningfulContentSnapshot rawSnapshot, long currentTimestampUs) {
+    if (!mIsRunning.get()) {
+      return;
+    }
+    if (!isFSPEnabled()) {
+      closeSession();
+      return;
+    }
+    List<MeaningfulPaintingArea> areaList = rawSnapshot.getMeaningfulPaintingAreas();
+    if (areaList == null) {
+      return;
+    }
+    FSPSnapshot snapshot = new FSPSnapshot(
+        rawSnapshot.getContainerWidth(), rawSnapshot.getContainerHeight(), currentTimestampUs);
+    snapshot.mInstanceId = mInstanceId;
+    for (MeaningfulPaintingArea area : areaList) {
+      boolean isPresented = area.getMeaningfulContentStatus()
+          == ILynxUIMeaningfulContent.MeaningfulContentStatus.PRESENTED;
+
+      snapshot.fillContentToSnapshot(isPresented,
+          new Rect(area.getOffsetX(), area.getOffsetY(), area.getOffsetX() + area.getWidth(),
+              area.getOffsetY() + area.getHeight()),
+          area.getFirstMeaningfulContentPresentedTimestampMicros());
+    }
+    snapshot.traceCurrentTimestampUs = rawSnapshot.getTraceCurrentTimestampUs();
+    onCaptureSnapshot(snapshot);
   }
 
   /// @note Run on ReportThread
   /// Process captured fsp snapshot
   public void onCaptureSnapshot(FSPSnapshot snapshot) {
-    if (!isFSPEnabled() || !mIsRunning.get()) {
+    if (!mIsRunning.get()) {
+      return;
+    }
+    if (!isFSPEnabled()) {
+      closeSession();
       return;
     }
 
@@ -247,7 +309,7 @@ public class FSPTracer {
       // Check if interval is greater than min interval
       if (diffTMs >= mConfig.minDiffIntervalMs) {
         // Generate FSP with previous snapshot
-        mIsRunning.set(false);
+        closeSession();
         handleFSPResult(
             ResultStatus.SUCCESS, mPreviousSnapshot, mPreviousSnapshot.getLastChangeTimestampUs());
       }
