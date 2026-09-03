@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 4.2.0
+
+### Minor Changes
+
+- Publish the LynxSDK 4.2 package line and add the backfilled `Config.enableLayoutOnlyEventThrough` type and runtime `configKeys` entry.
+
 ## 4.1.3
 
 ### Patch Changes
