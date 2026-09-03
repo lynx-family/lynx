@@ -5,6 +5,8 @@
 import Url from '@ohos.url';
 
 export class LynxRecorderReplayOptions {
+  sourceUrl?: string;
+  enablePreDecode: boolean = false;
   private enableBTSOverride?: boolean;
   private recordedEnableJSRuntime?: boolean;
 
@@ -14,11 +16,21 @@ export class LynxRecorderReplayOptions {
     }
     try {
       let urlObject = Url.URL.parseURL(url);
+      let source = urlObject.params.get('source');
+      if (source !== null && source !== undefined && source.length > 0) {
+        this.sourceUrl = source;
+      }
       let enableBTS = urlObject.params.get('enable_bts');
       if (enableBTS !== null && enableBTS !== undefined) {
         this.enableBTSOverride = enableBTS !== '0';
       }
+      let enablePreDecode = urlObject.params.get('enablePreDecode');
+      if (enablePreDecode !== null && enablePreDecode !== undefined) {
+        this.enablePreDecode = enablePreDecode === '1' || enablePreDecode.toLowerCase() === 'true';
+      }
     } catch (error) {
+      this.sourceUrl = undefined;
+      this.enablePreDecode = false;
       this.enableBTSOverride = undefined;
     }
   }
