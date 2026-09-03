@@ -35,6 +35,7 @@ enum class DisplayListOpType : int32_t {
   kLinearGradient = 12,
   kBoxShadow = 13,
   kBackgroundImage = 14,
+  kRadialGradient = 15,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -181,6 +182,20 @@ typedef struct DisplayListItem {
       float angle;
     } linear_gradient;
     struct {
+      uint32_t color_count_offset;
+      uint32_t color_count;
+      uint32_t stop_count_offset;
+      uint32_t stop_count;
+      int32_t tiling_index;
+      int32_t clip_index;
+      int32_t repeat_x;
+      int32_t repeat_y;
+      float center_x;
+      float center_y;
+      float radius_x;
+      float radius_y;
+    } radial_gradient;
+    struct {
       int32_t shadow_box_index;
       int32_t clip_box_index;
       uint32_t color;
@@ -261,6 +276,30 @@ static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_x) ==
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_y) ==
               32);
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36);
+static_assert(offsetof(DisplayListItem,
+                       payload.radial_gradient.color_count_offset) == 4);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.color_count) ==
+              8);
+static_assert(offsetof(DisplayListItem,
+                       payload.radial_gradient.stop_count_offset) == 12);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.stop_count) ==
+              16);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.tiling_index) ==
+              20);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.clip_index) ==
+              24);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.repeat_x) ==
+              28);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.repeat_y) ==
+              32);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.center_x) ==
+              36);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.center_y) ==
+              40);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.radius_x) ==
+              44);
+static_assert(offsetof(DisplayListItem, payload.radial_gradient.radius_y) ==
+              48);
 static_assert(offsetof(DisplayListItem, payload.box_shadow.shadow_box_index) ==
               4);
 static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_box_index) ==
@@ -330,6 +369,12 @@ class DisplayList {
   void ClearSubtreeProperties();
 
   void AddLinearGradient(float angle, const base::Vector<uint32_t>& colors,
+                         const base::Vector<float>& stops, int32_t tiling_index,
+                         int32_t clip_index, int32_t repeat_x,
+                         int32_t repeat_y);
+
+  void AddRadialGradient(float center_x, float center_y, float radius_x,
+                         float radius_y, const base::Vector<uint32_t>& colors,
                          const base::Vector<float>& stops, int32_t tiling_index,
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);

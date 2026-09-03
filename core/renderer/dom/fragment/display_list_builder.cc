@@ -195,6 +195,17 @@ DisplayListBuilder& DisplayListBuilder::LinearGradient(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::RadialGradient(
+    float center_x, float center_y, float radius_x, float radius_y,
+    const base::Vector<uint32_t>& colors, const base::Vector<float>& stops,
+    int32_t tiling_index, int32_t clip_index, int32_t repeat_x,
+    int32_t repeat_y) {
+  display_list_.AddRadialGradient(center_x, center_y, radius_x, radius_y,
+                                  colors, stops, tiling_index, clip_index,
+                                  repeat_x, repeat_y);
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::BackgroundImage(
     const fml::RefPtr<PaintImage>& image, int32_t tiling_index,
     int32_t clip_index, int32_t repeat_x, int32_t repeat_y) {

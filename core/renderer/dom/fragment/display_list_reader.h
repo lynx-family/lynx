@@ -30,6 +30,13 @@ class DisplayListReader {
   }
 
   const uint32_t* Colors(const DisplayListItem& item) const {
+    if (item.type == DisplayListOpType::kRadialGradient) {
+      if (item.payload.radial_gradient.color_count == 0) {
+        return nullptr;
+      }
+      return reinterpret_cast<const uint32_t*>(
+          data_ + item.payload.radial_gradient.color_count_offset);
+    }
     if (item.payload.linear_gradient.color_count == 0) {
       return nullptr;
     }
@@ -38,6 +45,13 @@ class DisplayListReader {
   }
 
   const float* Stops(const DisplayListItem& item) const {
+    if (item.type == DisplayListOpType::kRadialGradient) {
+      if (item.payload.radial_gradient.stop_count == 0) {
+        return nullptr;
+      }
+      return reinterpret_cast<const float*>(
+          data_ + item.payload.radial_gradient.stop_count_offset);
+    }
     if (item.payload.linear_gradient.stop_count == 0) {
       return nullptr;
     }

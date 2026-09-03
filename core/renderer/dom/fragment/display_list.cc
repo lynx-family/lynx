@@ -78,6 +78,46 @@ void DisplayList::AddLinearGradient(float angle,
   AppendItem(item);
 }
 
+void DisplayList::AddRadialGradient(float center_x, float center_y,
+                                    float radius_x, float radius_y,
+                                    const base::Vector<uint32_t>& colors,
+                                    const base::Vector<float>& stops,
+                                    int32_t tiling_index, int32_t clip_index,
+                                    int32_t repeat_x, int32_t repeat_y) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kRadialGradient;
+
+  const uint32_t color_count = static_cast<uint32_t>(colors.size());
+  const uint32_t stop_count = static_cast<uint32_t>(stops.size());
+  uint32_t color_offset = 0;
+  uint32_t stop_offset = 0;
+  if (color_count > 0) {
+    color_offset = static_cast<uint32_t>(content_data_->size());
+    content_data_->append(reinterpret_cast<const uint8_t*>(colors.data()),
+                          colors.size() * sizeof(uint32_t));
+  }
+  if (stop_count > 0) {
+    stop_offset = static_cast<uint32_t>(content_data_->size());
+    content_data_->append(reinterpret_cast<const uint8_t*>(stops.data()),
+                          stops.size() * sizeof(float));
+  }
+
+  auto& payload = item.payload.radial_gradient;
+  payload.color_count_offset = color_offset;
+  payload.color_count = color_count;
+  payload.stop_count_offset = stop_offset;
+  payload.stop_count = stop_count;
+  payload.tiling_index = tiling_index;
+  payload.clip_index = clip_index;
+  payload.repeat_x = repeat_x;
+  payload.repeat_y = repeat_y;
+  payload.center_x = center_x;
+  payload.center_y = center_y;
+  payload.radius_x = radius_x;
+  payload.radius_y = radius_y;
+  AppendItem(item);
+}
+
 void DisplayList::AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
                                      int32_t tiling_index, int32_t clip_index,
                                      int32_t repeat_x, int32_t repeat_y) {

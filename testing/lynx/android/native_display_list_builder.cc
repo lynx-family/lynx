@@ -176,6 +176,39 @@ void LinearGradient(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr,
                                clip_index, repeat_x, repeat_y);
 }
 
+void RadialGradient(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr,
+                    jintArray colors, jfloatArray stops, jint tiling_index,
+                    jint clip_index, jint repeat_x, jint repeat_y,
+                    jfloat center_x, jfloat center_y, jfloat radius_x,
+                    jfloat radius_y) {
+  lynx::base::Vector<uint32_t> color_values;
+  if (colors != nullptr) {
+    const jsize color_count = env->GetArrayLength(colors);
+    color_values.reserve(color_count);
+    jint* elements = env->GetIntArrayElements(colors, nullptr);
+    for (jsize i = 0; i < color_count; ++i) {
+      color_values.push_back(static_cast<uint32_t>(elements[i]));
+    }
+    env->ReleaseIntArrayElements(colors, elements, JNI_ABORT);
+  }
+
+  lynx::base::Vector<float> stop_values;
+  if (stops != nullptr) {
+    const jsize stop_count = env->GetArrayLength(stops);
+    stop_values.reserve(stop_count);
+    jfloat* elements = env->GetFloatArrayElements(stops, nullptr);
+    for (jsize i = 0; i < stop_count; ++i) {
+      stop_values.push_back(elements[i]);
+    }
+    env->ReleaseFloatArrayElements(stops, elements, JNI_ABORT);
+  }
+
+  State(native_ptr)
+      ->builder.RadialGradient(center_x, center_y, radius_x, radius_y,
+                               color_values, stop_values, tiling_index,
+                               clip_index, repeat_x, repeat_y);
+}
+
 void BoxShadow(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr,
                jint shadow_box_index, jint clip_box_index, jint color,
                jfloat blur_radius, jint clip_mode) {

@@ -12,7 +12,7 @@ namespace {
 
 lynx::tasm::DisplayList CreateDisplayListFixture() {
   lynx::tasm::DisplayListBuilder builder;
-  builder.Reserve(12);
+  builder.Reserve(13);
 
   lynx::starlight::BordersData border;
   border.color_top = 0xFF010203;
@@ -73,6 +73,7 @@ lynx::tasm::DisplayList CreateDisplayListFixture() {
       .LinearGradient(123.5f, colors, stops, 14, 15, 1, 0)
       .BoxShadow(16, 17, 0xCC616263, 18.5f,
                  lynx::tasm::DisplayListBuilder::BoxShadowClipMode::kInset)
+      .RadialGradient(19.5f, 20.5f, 21.5f, 22.5f, colors, stops, 18, 19, 0, 1)
       .End();
 
   return builder.Build();
