@@ -33,6 +33,7 @@ namespace devtool {
     return res;                                            \
   }
 
+// Deprecated: will be removed after the CDP error handling refactoring.
 enum CDPErrorCode {
   kParseError = -32700,
   kInvalidRequest = -32600,
