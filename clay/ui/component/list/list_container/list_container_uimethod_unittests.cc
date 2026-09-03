@@ -2,8 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
 #include <memory>
 
+#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/testing/ui_test.h"
@@ -120,6 +122,90 @@ TEST_F_UI(ListContainerUIMethodTest, GetScrollInfoClampsNegativeRangeToZero) {
       });
 
   EXPECT_TRUE(callback_invoked);
+}
+
+TEST_F_UI(ListContainerUIMethodTest, ScrollByRequiresOffset) {
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      wrapper_.get(), "scrollBy", {},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value&) {
+        callback_invoked = true;
+        EXPECT_EQ(code, LynxUIMethodResult::kParamInvalid);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+}
+
+TEST_F_UI(ListContainerUIMethodTest, ScrollByRejectsNonFiniteOffset) {
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      wrapper_.get(), "scrollBy",
+      {{"offset", clay::Value(std::numeric_limits<double>::infinity())}},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value&) {
+        callback_invoked = true;
+        EXPECT_EQ(code, LynxUIMethodResult::kParamInvalid);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+}
+
+TEST_F_UI(ListContainerUIMethodTest,
+          ScrollByReturnsConsumedAndUnconsumedVerticalOffsets) {
+  auto metrics = page_->GetViewportMetrics();
+  metrics.device_pixel_ratio = 3;
+  page_->SetViewportMetrics(metrics);
+  wrapper_->GetListContainerView()->SetBound(0, 0, 300, 300);
+  wrapper_->UpdateContentOffsetForListContainer(1200, 0, 0);
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      wrapper_.get(), "scrollBy", {{"offset", clay::Value(240)}},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("consumedX")),
+                        0.f);
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("consumedY")),
+                        240.f);
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("unconsumedX")),
+                        240.f);
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("unconsumedY")),
+                        0.f);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+  EXPECT_FLOAT_EQ(wrapper_->GetListContainerView()->GetScrollOffset().y(),
+                  720.f);
+}
+
+TEST_F_UI(ListContainerUIMethodTest,
+          ScrollByUsesHorizontalAxisForHorizontalListContainer) {
+  wrapper_->SetAttribute("scroll-orientation", clay::Value("horizontal"));
+  wrapper_->UpdateContentOffsetForListContainer(300, 0, 0);
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      wrapper_.get(), "scrollBy", {{"offset", clay::Value(40)}},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("consumedX")),
+                        40.f);
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("consumedY")),
+                        0.f);
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("unconsumedX")),
+                        0.f);
+        EXPECT_FLOAT_EQ(attribute_utils::GetDouble(result.at("unconsumedY")),
+                        40.f);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+  EXPECT_FLOAT_EQ(wrapper_->GetListContainerView()->GetScrollOffset().x(),
+                  40.f);
 }
 
 TEST_F_UI(ListContainerUIMethodTest, AutoScrollValidatesRate) {
