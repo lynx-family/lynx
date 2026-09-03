@@ -1173,11 +1173,16 @@ export interface GetScrollInfoMethod extends BaseMethod {
 }
 
 /**
- * Scroll by specified offset
+ * Scroll the list by the specified offset along its configured orientation.
  * @Android 1.4
  * @iOS 2.18
  * @Harmony 3.1
  * @Web
+ * @ClayAndroid 4.4
+ * @ClayIOS 4.4
+ * @ClayMacOS 4.4
+ * @ClayWindows 4.4
+ * @ClayHarmony 4.4
  */
 export interface ScrollByMethod extends BaseMethod {
   method: 'scrollBy';
