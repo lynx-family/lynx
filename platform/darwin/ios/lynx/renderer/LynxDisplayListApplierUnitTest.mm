@@ -558,6 +558,50 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(((CAShapeLayer *)gradientLayer.mask).path != nil);
 }
 
+- (void)testProcessContentOperationsWithRadialGradient {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f);
+  float radii[] = {4.0f, 4.0f, 8.0f, 8.0f, 12.0f, 12.0f, 16.0f, 16.0f};
+  AppendRecordBox(list, 10.0f, 12.0f, 80.0f, 60.0f, true, radii);
+  lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops{0.0f, 1.0f};
+  list.AddRadialGradient(50.0f, 50.0f, 70.0f, 70.0f, colors, stops, 0, 1, 1, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *gradientLayer = view.layer.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(gradientLayer.frame, CGRectMake(10, 12, 80, 60)));
+  XCTAssertNotNil(gradientLayer.mask);
+  CALayer *horizontalLayer = gradientLayer.sublayers.firstObject;
+  CAGradientLayer *radialLayer = (CAGradientLayer *)horizontalLayer.sublayers.firstObject;
+  XCTAssertEqualObjects(radialLayer.type, kCAGradientLayerRadial);
+}
+
+- (void)testProcessContentOperationsWithZeroRadiusRadialGradient {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f);
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f);
+  lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops{0.0f, 1.0f};
+  list.AddRadialGradient(0.0f, 50.0f, 0.0f, 50.0f, colors, stops, 0, 1, 1, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *gradientLayer = view.layer.sublayers.firstObject;
+  XCTAssertNotNil(gradientLayer);
+  CALayer *horizontalLayer = gradientLayer.sublayers.firstObject;
+  CAGradientLayer *radialLayer = (CAGradientLayer *)horizontalLayer.sublayers.firstObject;
+  XCTAssertEqualObjects(radialLayer.type, kCAGradientLayerRadial);
+}
+
 - (void)testProcessContentOperationsWithClipRectPartial {
   // Clip rect not equal to view bounds, should use mask
   id mockUIView = OCMClassMock([LynxMockView class]);

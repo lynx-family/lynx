@@ -12,6 +12,8 @@
 
 #include "base/include/closure.h"
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -553,6 +555,45 @@ float ResolveLinearGradientAngle(float angle,
   return angle;
 }
 
+float ResolveRadialGradientPosition(int32_t type, float value, float size) {
+  switch (type) {
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kCenter):
+      return size * 0.5f;
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kRight):
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kBottom):
+      return size;
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kLeft):
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kTop):
+      return 0.f;
+    case static_cast<int32_t>(CSSValuePattern::PERCENT):
+      return size * value / 100.f;
+    default:
+      return value;
+  }
+}
+
+bool ResolveRadialGradientLength(const lepus::Value& pattern,
+                                 const lepus::Value& value, float size,
+                                 starlight::ComputedCSSStyle* style,
+                                 float& result) {
+  if (!pattern.IsNumber() || style == nullptr) {
+    return false;
+  }
+  const auto resolved = starlight::CSSStyleUtils::ToLength(
+      CSSValue(value, static_cast<CSSValuePattern>(pattern.Number())),
+      style->GetMeasureContext(), style->GetCSSParserConfigs());
+  if (!resolved.second) {
+    return false;
+  }
+  const auto length = starlight::NLengthToLayoutUnit(
+      resolved.first, starlight::LayoutUnit(size));
+  if (!length.IsDefinite()) {
+    return false;
+  }
+  result = length.ToFloat();
+  return true;
+}
+
 }  // namespace
 
 fml::RefPtr<PaintImage> Fragment::GetOrCreateBackgroundImage(
@@ -777,6 +818,71 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
                                             define_image_clip_index(i_image),
                                             static_cast<int32_t>(repeat_x),
                                             static_cast<int32_t>(repeat_y));
+        break;
+      }
+      case starlight::BackgroundImageType::kRadialGradient: {
+        ClearBackgroundImage(i_image);
+        if (!array->get(i + 1).IsArray()) {
+          break;
+        }
+        auto gradient_arr = array->get(i + 1).Array();
+        if (gradient_arr->size() < 3 || !gradient_arr->get(0).IsArray() ||
+            !gradient_arr->get(1).IsArray() ||
+            !gradient_arr->get(2).IsArray()) {
+          break;
+        }
+        auto shape_arr = gradient_arr->get(0).Array();
+        if (shape_arr->size() < 6) {
+          break;
+        }
+
+        const auto shape = static_cast<starlight::RadialGradientShapeType>(
+            shape_arr->get(0).Number());
+        const auto shape_size = static_cast<starlight::RadialGradientSizeType>(
+            shape_arr->get(1).Number());
+        const float center_x = ResolveRadialGradientPosition(
+            static_cast<int32_t>(shape_arr->get(2).Number()),
+            static_cast<float>(shape_arr->get(3).Number()), tiling_width);
+        const float center_y = ResolveRadialGradientPosition(
+            static_cast<int32_t>(shape_arr->get(4).Number()),
+            static_cast<float>(shape_arr->get(5).Number()), tiling_height);
+
+        std::pair<float, float> radius;
+        if (shape_size == starlight::RadialGradientSizeType::kLength) {
+          if (shape_arr->size() < 10) {
+            break;
+          }
+          auto* style = element()->computed_css_style();
+          if (!ResolveRadialGradientLength(shape_arr->get(6), shape_arr->get(7),
+                                           tiling_width, style, radius.first) ||
+              !ResolveRadialGradientLength(shape_arr->get(8), shape_arr->get(9),
+                                           tiling_height, style,
+                                           radius.second)) {
+            break;
+          }
+        } else {
+          radius =
+              GetRadialGradientRadius(shape, shape_size, center_x, center_y,
+                                      tiling_width, tiling_height);
+        }
+
+        auto colors_arr = gradient_arr->get(1).Array();
+        base::Vector<uint32_t> colors;
+        colors.reserve(colors_arr->size());
+        for (size_t j = 0; j < colors_arr->size(); ++j) {
+          colors.push_back(static_cast<uint32_t>(colors_arr->get(j).UInt32()));
+        }
+        auto stops_arr = gradient_arr->get(2).Array();
+        base::Vector<float> stops;
+        stops.reserve(stops_arr->size());
+        for (size_t j = 0; j < stops_arr->size(); ++j) {
+          stops.push_back(static_cast<float>(stops_arr->get(j).Number()) /
+                          100.f);
+        }
+        display_list_builder.RadialGradient(
+            center_x, center_y, radius.first, radius.second, colors, stops,
+            tiling_index, define_image_clip_index(i_image),
+            static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
         break;
       }
       default:
