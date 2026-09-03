@@ -380,7 +380,7 @@ jobs:
           source tools/envsetup.sh
           python3 platform/linux/build_release.py --target-cpu x64
       - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
         with:
           name: linux-sdk-amd64-build
           path: |
@@ -537,7 +537,7 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx/platform/android
           ./gradlew zipArtifacts -Pversion=0.0.1-alpha.1
       - name: upload zip artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
         continue-on-error: true
         with:
           name: android-sdk-release
@@ -608,7 +608,7 @@ jobs:
           done
           $ANDROID_HOME/platform-tools/adb devices
       - name: Download Explorer APK
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: lynx-infra/download-artifact@dc0e183cc7050dff1fedf646a76bbcc33e2847ac
         with:
           name: android-lynx-explorer
           path: lynx/explorer/android/lynx_explorer/build_temp
@@ -722,7 +722,7 @@ jobs:
         id: collect_resource
       - name: Upload Generated Resource Files
         if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
         continue-on-error: true
         with:
           name: android-e2e-resources
@@ -748,7 +748,7 @@ jobs:
           git fetch origin d6a90706cc0bfde92d887d666c0139cc62554ee5
           git cherry-pick d6a90706cc0bfde92d887d666c0139cc62554ee5
       - name: Download Lynx SDK Artifacts
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: lynx-infra/download-artifact@dc0e183cc7050dff1fedf646a76bbcc33e2847ac
         with:
           name: android-sdk-release
           path: lynx
@@ -826,7 +826,7 @@ jobs:
           build-arch: ${{ matrix.arch }}
           build-params: '--integration-test'
       - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
         continue-on-error: true
         with:
           name: ios-explorer-build-${{ matrix.arch }}
@@ -970,7 +970,7 @@ jobs:
         env:
           npm_config_store_dir: ~/.local/share/pnpm/store
       - name: Download Explorer App
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: lynx-infra/download-artifact@dc0e183cc7050dff1fedf646a76bbcc33e2847ac
         with:
           name: ios-explorer-build-arm64
           path: lynx/explorer/darwin/ios/lynx_explorer/build_temp
@@ -1077,7 +1077,7 @@ jobs:
         id: collect_resource
       - name: Upload Generated Resource Files
         if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
         continue-on-error: true
         with:
           name: ios-e2e-resources
@@ -1097,7 +1097,7 @@ jobs:
       - name: Build Clay Example
         uses: ./lynx/.github/actions/clay-macos-build
       - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
         with:
           name: clay_glfw
           path: '${{ github.workspace }}/lynx/out/Default/clay_glfw'
@@ -1121,7 +1121,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: upload artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
         with:
           name: macos-explorer-build-${{ matrix.arch }}
           path: '${{ github.workspace }}/lynx/LynxExplorer-macos-${{ matrix.arch }}.app.tar.gz'
