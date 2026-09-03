@@ -4,10 +4,9 @@
 
 #ifndef DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_MESSAGE_SENDER_H_
 #define DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_MESSAGE_SENDER_H_
-#include <memory>
+
 #include <string>
 
-#include "base/include/closure.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
 namespace lynx {
@@ -22,6 +21,9 @@ constexpr int kInspectorErrorCode = -32601;
  */
 class MessageSender {
  public:
+  // TODO(devtool): The following response helpers (SendOKResponse and the two
+  // SendErrorResponse overloads) are transitional and will be removed once the
+  // CDP error handling refactoring is complete.
   void SendOKResponse(int64_t id) {
     Json::Value res;
     res["result"] = Json::Value(Json::ValueType::objectValue);
