@@ -1,22 +1,13 @@
 # CHANGELOG
 
-## 4.3.5
-- Add/Update platform support annotations for Element attributes, events, and methods.
-
-## 4.3.4
-- Remove deprecated `experimental-recycle-sticky-item` from `<list>` typings.
-
-## 4.3.3
-- Add `inputType` to the `<input>` and `<textarea>` input event typings to distinguish paste from normal input.
-
-## 4.3.2
-- Add `android-overlay-scope` to `<overlay>` typings.
-
-## 4.3.1
-- Clarify that `android-navigation-bar-style="transparent"` requires `android-adapt-edge-to-edge={true}`.
-
 ## 4.3.0
+
 - Add missing `repeat`, `altKey`, `shiftKey`, `ctrlKey`, and `metaKey` fields to `BaseKeyEvent`.
+- Clarify that `android-navigation-bar-style="transparent"` requires `android-adapt-edge-to-edge={true}`.
+- Add `android-overlay-scope` to `<overlay>` typings.
+- Add `inputType` to the `<input>` and `<textarea>` input event typings to distinguish paste from normal input.
+- Remove deprecated `experimental-recycle-sticky-item` from `<list>` typings.
+- Add/Update platform support annotations for Element attributes, events, and methods.
 
 ## 4.2.2
 - Add `-x-box` to the supported `display` values.
