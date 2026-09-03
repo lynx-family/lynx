@@ -7,6 +7,8 @@ import { EmbeddedMode } from '@lynx/lynx';
 
 export class LynxRecorderReplayOptions {
   embeddedMode: EmbeddedMode = EmbeddedMode.UNSET;
+  sourceUrl?: string;
+  enablePreDecode: boolean = false;
   private enableBTSOverride?: boolean;
   private recordedEnableJSRuntime?: boolean;
 
@@ -16,6 +18,10 @@ export class LynxRecorderReplayOptions {
     }
     try {
       let urlObject = Url.URL.parseURL(url);
+      let source = urlObject.params.get('source');
+      if (source !== null && source !== undefined && source.length > 0) {
+        this.sourceUrl = source;
+      }
       let embeddedMode = urlObject.params.get('embedded_mode');
       if (embeddedMode !== null && embeddedMode !== undefined && /^-?\d+$/.test(embeddedMode)) {
         this.embeddedMode = parseInt(embeddedMode) as EmbeddedMode;
@@ -24,8 +30,14 @@ export class LynxRecorderReplayOptions {
       if (enableBTS !== null && enableBTS !== undefined) {
         this.enableBTSOverride = enableBTS !== '0';
       }
+      let enablePreDecode = urlObject.params.get('enablePreDecode');
+      if (enablePreDecode !== null && enablePreDecode !== undefined) {
+        this.enablePreDecode = enablePreDecode === '1' || enablePreDecode.toLowerCase() === 'true';
+      }
     } catch (error) {
+      this.sourceUrl = undefined;
       this.embeddedMode = EmbeddedMode.UNSET;
+      this.enablePreDecode = false;
       this.enableBTSOverride = undefined;
     }
   }
