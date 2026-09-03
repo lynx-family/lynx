@@ -1,0 +1,17 @@
+summary: Enables live NativeModule record events for the current Lynx target.
+parameters: []
+returns: []
+events:
+  - name: LynxNativeModule.recordAdded
+    description: Emitted when a NativeModule invocation, callback, or global event record is captured.
+notes:
+  - Existing records remain available through LynxNativeModule.getRecords.
+  - The operation is idempotent and returns an empty result object.
+examples:
+  - title: Enable live NativeModule records
+    request:
+      id: 1
+      method: LynxNativeModule.enable
+    response:
+      id: 1
+      result: {}

@@ -163,6 +163,13 @@ class LynxDevToolMediator
   // events of Log domain -> devtool executor
   virtual void SendLogEntryAddedEvent(
       const lynx::runtime::js::ConsoleMessage& message);
+
+  // LynxNativeModule domain. Record collection is wired in a follow-up change;
+  // until then these methods expose an empty, protocol-valid backend.
+  DECLARE_DEVTOOL_METHOD(NativeModuleEnable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleDisable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleGetRecords)
+
   // Lynx domain
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)

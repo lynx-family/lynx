@@ -446,6 +446,22 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+  - name: LynxNativeModule
+    origin: lynx-extension
+    scope: instance
+    methods:
+      - name: disable
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.cc
+      - name: enable
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.cc
+      - name: getRecords
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.cc
   - name: LynxSetting
     origin: lynx-extension
     scope: global
