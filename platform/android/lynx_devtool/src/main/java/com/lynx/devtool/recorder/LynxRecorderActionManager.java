@@ -116,6 +116,8 @@ public class LynxRecorderActionManager {
     public JSONArray functionCall;
     // "Callback" field from record json file
     public JSONObject callbackData;
+    // "Action List" field from record json file
+    public JSONArray actionList;
     // replay additional info
     public JSONArray jsbIgnoredInfo;
     // "jsbSettings" field from record json file
@@ -128,6 +130,9 @@ public class LynxRecorderActionManager {
     }
     public JSONObject getCallbackData() {
       return callbackData;
+    }
+    public JSONArray getActionList() {
+      return actionList;
     }
     public JSONArray getJsbIgnoredInfo() {
       return jsbIgnoredInfo;
@@ -252,6 +257,7 @@ public class LynxRecorderActionManager {
   private TemplateBundleOption mTemplateBundleOptions;
   private LynxRecorderReplayDataProviderInternal mDataProvider;
   private LynxDebugInfoRecorderDelegate mLynxDebugInfoRecorderDelegate;
+  private JSONObject mRecordedScripts;
   private int mEmbeddedMode = EmbeddedMode.UNSET;
   private final AtomicInteger mReplayGeneration = new AtomicInteger(0);
 
@@ -268,6 +274,7 @@ public class LynxRecorderActionManager {
     JSONObject callbackData;
     JSONArray componentList;
     JSONArray actionList;
+    JSONObject scripts;
   }
 
   private interface RecordedInputStreamProvider {
@@ -452,6 +459,9 @@ public class LynxRecorderActionManager {
           case "Action List":
             parsedRecordData.actionList = readJsonArrayOrNull(reader, key);
             break;
+          case "Scripts":
+            parsedRecordData.scripts = readJsonObjectOrNull(reader, key);
+            break;
           default:
             reader.skipValue();
             break;
@@ -553,11 +563,16 @@ public class LynxRecorderActionManager {
     if (parsedRecordData.callbackData != null) {
       mDataProvider.callbackData = parsedRecordData.callbackData;
     }
+    if (parsedRecordData.actionList != null) {
+      mDataProvider.actionList = parsedRecordData.actionList;
+    }
+    mRecordedScripts = parsedRecordData.scripts;
     if (parsedRecordData.componentList != null) {
       mockComponent(parsedRecordData.componentList);
     }
     if (parsedRecordData.actionList != null) {
       if (checkFile(parsedRecordData.actionList)) {
+        mDynamicFetcher.setUrlRedirectMap(buildScriptUrlRedirectMap());
         mDynamicFetcher.parse(parsedRecordData.actionList);
         mStateView.setReplayState(LynxRecorderReplayStateView.HANDLE_ACTION_LIST);
         handleActionList(parsedRecordData.actionList);
@@ -583,11 +598,36 @@ public class LynxRecorderActionManager {
           mTemplateBundleParams = action.getJSONObject("Params");
           return true;
         }
-      } catch (JSONException e) {
+      } catch (Exception e) {
         e.printStackTrace();
       }
     }
     return false;
+  }
+
+  private HashMap<String, String> buildScriptUrlRedirectMap() {
+    HashMap<String, String> redirectMap = new HashMap<>();
+    JSONObject redirectConfig = getScriptUrlRedirectConfig();
+    if (redirectConfig == null) {
+      return redirectMap;
+    }
+    Iterator<String> it = redirectConfig.keys();
+    while (it.hasNext()) {
+      String from = it.next();
+      redirectMap.put(from, redirectConfig.optString(from));
+    }
+    return redirectMap;
+  }
+
+  private JSONObject getScriptUrlRedirectConfig() {
+    if (mConfig == null) {
+      return null;
+    }
+    JSONObject redirectConfig = mConfig.optJSONObject("urlRedirect");
+    if (redirectConfig != null) {
+      return redirectConfig;
+    }
+    return mConfig.optJSONObject("scriptUrlRedirect");
   }
 
   private class InnerCallback implements AbsTemplateProvider.Callback {
@@ -649,6 +689,7 @@ public class LynxRecorderActionManager {
                                  .setEnableContextAutoRefill(true)
                                  .build();
     mDataProvider = new LynxRecorderReplayDataProviderInternal();
+    mRecordedScripts = null;
     mTemplateBundleParams = null;
     mReplayGesture = false;
     mPreDecode = false;
@@ -1043,7 +1084,7 @@ public class LynxRecorderActionManager {
           completeMsg.what = ON_TESTBENCH_COMPLETE;
           mHandler.sendMessageDelayed(completeMsg, delay);
         }
-      } catch (JSONException e) {
+      } catch (Exception e) {
         e.printStackTrace();
       }
     }
@@ -1146,9 +1187,10 @@ public class LynxRecorderActionManager {
 
   private void setGlobalProps(JSONObject params) {
     try {
+      JSONObject globalProps = params.getJSONObject("global_props");
       if (mLynxView != null) {
         mGlobalPropsCache = null;
-        JSONObject obj = params.getJSONObject("global_props");
+        JSONObject obj = globalProps;
         if (mEnableSizeOptimization) {
           preprocessGlobalPropsDictData(obj);
         }
@@ -1157,7 +1199,7 @@ public class LynxRecorderActionManager {
         metaBuilder.setUpdatedGlobalProps(mGlobalProps);
         mLynxView.updateMetaData(metaBuilder.build());
       } else {
-        mGlobalPropsCache = params.getJSONObject("global_props");
+        mGlobalPropsCache = globalProps;
       }
     } catch (JSONException e) {
       e.printStackTrace();
@@ -1336,8 +1378,10 @@ public class LynxRecorderActionManager {
         builder.setEmbeddedMode(mEmbeddedMode);
 
         LynxRecorderSourceProvider provider = new LynxRecorderSourceProvider();
-        if (mConfig != null && mConfig.has("urlRedirect")) {
-          provider.setUrlRedirect(mConfig.getJSONObject("urlRedirect"));
+        provider.setOfflineScripts(mRecordedScripts);
+        JSONObject redirectConfig = getScriptUrlRedirectConfig();
+        if (redirectConfig != null) {
+          provider.setUrlRedirect(redirectConfig);
         }
         builder.setResourceProvider(LynxProviderRegistry.LYNX_PROVIDER_TYPE_EXTERNAL_JS, provider);
         builder.setDynamicComponentFetcher(mDynamicFetcher);
@@ -1434,8 +1478,10 @@ public class LynxRecorderActionManager {
         }
 
         LynxRecorderSourceProvider provider = new LynxRecorderSourceProvider();
-        if (mConfig != null && mConfig.has("urlRedirect")) {
-          provider.setUrlRedirect(mConfig.getJSONObject("urlRedirect"));
+        provider.setOfflineScripts(mRecordedScripts);
+        JSONObject redirectConfig = getScriptUrlRedirectConfig();
+        if (redirectConfig != null) {
+          provider.setUrlRedirect(redirectConfig);
         }
         builder.setResourceProvider(LynxProviderRegistry.LYNX_PROVIDER_TYPE_EXTERNAL_JS, provider);
         builder.setDynamicComponentFetcher(mDynamicFetcher);
@@ -1456,7 +1502,7 @@ public class LynxRecorderActionManager {
           mLynxView.getBaseInspectorController().setDebugInfoInterceptor(
               mLynxDebugInfoRecorderDelegate);
         }
-      } catch (JSONException e) {
+      } catch (Exception e) {
         e.printStackTrace();
       }
     }
@@ -1519,7 +1565,6 @@ public class LynxRecorderActionManager {
           Map lynxConfig = new HashMap<>();
           lynxConfig.put(LynxViewBuilderProperty.PLATFORM_CONFIG.getKey(), nativeConfig.toString());
           builder.setLynxViewConfig(lynxConfig);
-
           mLynxView.loadTemplate(builder.build());
         } else {
           LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
@@ -1649,7 +1694,6 @@ public class LynxRecorderActionManager {
         Map lynxConfig = new HashMap<>();
         lynxConfig.put(LynxViewBuilderProperty.PLATFORM_CONFIG.getKey(), nativeConfig.toString());
         builder.setLynxViewConfig(lynxConfig);
-
         mLynxView.loadTemplate(builder.build());
       } else {
         mLynxView.renderTemplateBundle(mTemplateBundle, mLoadTemplateData, url);
