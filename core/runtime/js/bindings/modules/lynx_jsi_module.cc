@@ -18,6 +18,10 @@
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#if ENABLE_INSPECTOR
+#include "core/inspector/observer/native_module_record_observer.h"
+#include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
+#endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/native_module_recorder.h"
 #endif
@@ -95,6 +99,11 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   NativeModuleInfoCollectorPtr timing_collector =
       std::make_shared<NativeModuleInfoCollector>(
           delegate_, name_, method.name, first_arg_str, rt->GetPageUrl());
+
+#if ENABLE_INSPECTOR
+  auto invocation_context = std::make_shared<NativeModuleInvocationContext>(
+      native_module_record_observer_, name_, method.name);
+#endif  // ENABLE_INSPECTOR
 
   if (invoke_method_frequency_monitor_) {
     std::string monitor_method_name;
@@ -184,6 +193,11 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
         callback->SetModuleInterceptor(group_interceptor_);
         callback->SetCallbackFlowId(callback_flow_id);
         callback->SetFirstArg(first_arg_str);
+#if ENABLE_INSPECTOR
+        callback->SetNativeModuleInvocationContext(
+            invocation_context->WithCallbackArgumentIndex(
+                static_cast<int32_t>(i)));
+#endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
         callback->SetRecordID(record_id_);
         callback_ids.push_back(callback_id);
@@ -211,6 +225,12 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
 
   timing_collector->EndFuncParamsConvert(convert_params_start);
+#if ENABLE_INSPECTOR
+  lepus::Value observer_arguments =
+      args_array ? pub::ValueUtils::ConvertValueToLepusValue(*args_array)
+                 : lepus::Value();
+  lepus::Value observer_result;
+#endif  // ENABLE_INSPECTOR
   // issue: #1510
   uint64_t invoke_facade_method_start = base::CurrentSystemTimeMilliseconds();
   InvokeInfo invoke_info{.method_name = method.name,
@@ -261,6 +281,10 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
       } else if (!ret.value()) {
         response = Value::undefined();
       } else {
+#if ENABLE_INSPECTOR
+        observer_result =
+            pub::ValueUtils::ConvertValueToLepusValue(*(ret.value().get()));
+#endif  // ENABLE_INSPECTOR
         response = pub::ValueUtils::ConvertValueToPiperValue(
             *rt, *(ret.value().get()));
       }
@@ -277,6 +301,20 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
 #endif  // ENABLE_TESTBENCH_RECORDER
   timing_collector->EndPlatformMethodInvoke(invoke_facade_method_start);
   timing_collector->EndCallFunc(call_func_start);
+#if ENABLE_INSPECTOR
+  lepus::Value invoke_record;
+  if (response.has_value()) {
+    invoke_record = invocation_context->BuildInvokeRecord(
+        std::move(observer_arguments), /*success=*/true,
+        std::move(observer_result), error::E_SUCCESS, std::string());
+  } else {
+    const auto& exception = response.error();
+    invoke_record = invocation_context->BuildInvokeRecord(
+        std::move(observer_arguments), /*success=*/false, lepus::Value(),
+        exception.errorCode(), exception.message());
+  }
+  invocation_context->EmitRecord(invoke_record);
+#endif  // ENABLE_INSPECTOR
   if (!invoke_info.has_error) {
     delegate_->OnMethodInvoked(name_, method.name, error::E_SUCCESS);
   }

@@ -27,6 +27,7 @@ namespace lynx {
 namespace runtime {
 class ExtensionModuleFactory;
 namespace js {
+class NativeModuleRecordObserver;
 // issue: #1510
 // LynxModuleUtils::LynxModuleManagerAllowList
 // inline static alternative
@@ -66,6 +67,16 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
 
   void InitModuleInterceptor();
   void SetTemplateUrl(const std::string &url);
+#if ENABLE_INSPECTOR
+  void SetNativeModuleRecordObserver(
+      std::shared_ptr<NativeModuleRecordObserver> observer) {
+    native_module_record_observer_ = std::move(observer);
+  }
+  const std::shared_ptr<NativeModuleRecordObserver> &
+  GetNativeModuleRecordObserver() const {
+    return native_module_record_observer_;
+  }
+#endif  // ENABLE_INSPECTOR
   void SetRecordID(int64_t record_id) override {
     LynxNativeModuleManager::SetRecordID(record_id);
     record_id_ = record_id;
@@ -104,6 +115,8 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
   std::unordered_map<std::string, std::shared_ptr<LynxModule>> module_map_;
   std::shared_ptr<GroupInterceptor> group_interceptor_;
   std::shared_ptr<ExtensionModuleFactory> extension_module_factory_ = nullptr;
+  std::shared_ptr<NativeModuleRecordObserver> native_module_record_observer_ =
+      nullptr;
 };
 
 }  // namespace js

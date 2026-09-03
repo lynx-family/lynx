@@ -2370,8 +2370,18 @@ void App::SendGlobalEvent(const std::string& name,
     }
     CallFunction(kGlobalEventModuleName, kGlobalEventMethodName,
                  std::move(*arg));
+#if ENABLE_INSPECTOR
+    RecordGlobalEvent(name, arguments);
+#endif  // ENABLE_INSPECTOR
   }
 }
+
+#if ENABLE_INSPECTOR
+void App::RecordGlobalEvent(const std::string&, const lepus::Value&) {
+  // TODO(liting.src): Serialize and deliver the global event through
+  // native_module_record_observer_.
+}
+#endif  // ENABLE_INSPECTOR
 
 void App::SetupSsrJsEnv() {
   constexpr char kCreateGlobalEventEmitter[] = "__createEventEmitter";
