@@ -127,11 +127,19 @@ void ScrollWrapper::getScrollInfo(const LynxModuleValues& args,
     FloatSize zoomed_content = page_view_->ConvertTo<kPixelTypeLogical>(
         FloatSize(view_->ContentWidth(), view_->ContentHeight()));
     FloatPoint zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
+    const bool vertical =
+        GetScrollView()->GetScrollDirection() == ScrollDirection::kVertical;
+    const float scroll_range = page_view_->ConvertTo<kPixelTypeLogical>(
+        vertical ? GetScrollView()->GetRenderScroll()->MaxScrollHeight()
+                 : GetScrollView()->GetRenderScroll()->MaxScrollWidth());
     clay::Value::Map map;
     map.emplace("scrollTop", zoomed_offset.y());
     map.emplace("scrollLeft", zoomed_offset.x());
     map.emplace("scrollHeight", zoomed_content.height());
     map.emplace("scrollWidth", zoomed_content.width());
+    map.emplace("scrollX", zoomed_offset.x());
+    map.emplace("scrollY", zoomed_offset.y());
+    map.emplace("scrollRange", scroll_range);
     map.emplace("isDragging",
                 static_cast<ScrollView*>(view_)->GetScrollStatus() ==
                     ScrollView::ScrollStatus::kDragging);
