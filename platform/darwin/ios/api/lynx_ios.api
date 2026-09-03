@@ -3454,6 +3454,15 @@ public protocol LynxResourceFetcher-p : <NSObject> {
   public nonnull LynxResourceResponse * LynxResourceFetcher-p::requestSyncWithResourceRequest:type:(LynxResourceRequest *lynxResourceRequest,[type] LynxFetchResType type);
 }
 
+public class LynxResourceHandle : NSObject {
+  public NSString* LynxResourceHandle::filePath filePath;
+  public NSInteger LynxResourceHandle::size size;
+  public BOOL LynxResourceHandle::valid valid;
+  public nullable instancetype LynxResourceHandle::initWithFilePath:(NSString *NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxResourceHandle::NS_UNAVAILABLE();
+  public void LynxResourceHandle::invalidate();
+}
+
 public protocol LynxResourceLoadDelegate-p : <NSObject> {
   public void LynxResourceLoadDelegate-p::onStart:(NSInteger contentLength);
   public void LynxResourceLoadDelegate-p::onData:(NSData *data);
