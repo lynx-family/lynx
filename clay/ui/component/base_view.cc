@@ -187,7 +187,6 @@ constexpr std::array<KeywordID, 15> kExposureAttributes = {{
     KeywordID::kExposureId,
     KeywordID::kExposureArea,
     KeywordID::kEnableExposureUiMargin,
-    KeywordID::kEnableExposureUiClip,
     KeywordID::kExposureUiMarginLeft,
     KeywordID::kExposureUiMarginRight,
     KeywordID::kExposureUiMarginTop,
@@ -3267,6 +3266,9 @@ bool BaseView::HandleCommonAttribute(const char* attr,
       break;
     case KeywordID::kEnableNewAnimator:
       SetEnableNewAnimator(utils::GetBool(value));
+      break;
+    case KeywordID::kEnableExposureUiClip:
+      enable_exposure_ui_clip_ = utils::GetBool(value);
       break;
     case KeywordID::kName:
       name_ = utils::GetCString(value);
