@@ -74,12 +74,12 @@ std::unique_ptr<txt::Paragraph> CreateParagraph(
   return paragraph;
 }
 
-std::unique_ptr<txt::Paragraph> CreateParagraph(const std::u16string& text,
-                                                float width) {
+[[maybe_unused]] std::unique_ptr<txt::Paragraph> CreateParagraph(
+    const std::u16string& text, float width) {
   return CreateParagraph(text, std::nullopt, width);
 }
 
-std::unique_ptr<txt::Paragraph> CreateParagraph(
+[[maybe_unused]] std::unique_ptr<txt::Paragraph> CreateParagraph(
     std::initializer_list<std::u16string> runs) {
   TextStyle base_style;
   base_style.font_size = 50.f;
@@ -289,6 +289,30 @@ TEST_F_UI(TextSelectionTest, GetTextBoundingRectRejectsInvalidRanges) {
     EXPECT_EQ(callback_code, LynxUIMethodResult::kParamInvalid)
         << "range [" << start << ", " << end << ")";
   }
+}
+
+TEST_F_UI(TextSelectionTest, GetSelectedTextReturnsPublicSchema) {
+  const std::u16string text = u"A\U0001F600\u4e2dB";
+  text_view_->SetParagraph(CreateParagraph(text), text);
+  text_view_->GetRenderText()->SetSelection(TextRange(1, 4));
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      text_view_.get(), "getSelectedText", {},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        ASSERT_EQ(result.size(), 1u);
+        const auto selected_text = result.find("selectedText");
+        ASSERT_NE(selected_text, result.end());
+        ASSERT_TRUE(selected_text->second.IsString());
+        EXPECT_EQ(selected_text->second.GetString(),
+                  "\xF0\x9F\x98\x80\xE4\xB8\xAD");
+      });
+
+  EXPECT_TRUE(callback_invoked);
 }
 
 #if defined(CLAY_ENABLE_SKSHAPER)
