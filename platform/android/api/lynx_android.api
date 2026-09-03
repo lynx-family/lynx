@@ -7843,6 +7843,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableAirStrictMode(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableMultiAsyncThread(boolean enableMultiAsyncThread);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableSyncFlush(boolean enable);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableNativeLifecycleOptimization(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setImageCustomParam(Map< String, String > imageCustomParams);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxImageConfig(LynxImageConfig imageConfig);
   public LynxImageConfig com.lynx.tasm.LynxViewBuilder.getLynxImageConfig();
