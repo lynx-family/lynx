@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_COMPONENT_BASE_VIEW_H_
 #define CLAY_UI_COMPONENT_BASE_VIEW_H_
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -597,6 +598,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void CheckStickyOnParentScrollAndReset(int left, int top);
 
   void SetEventThrough(bool event_through) { event_through_ = event_through; }
+  void SetEventThroughActiveRegions(const clay::Value& value);
   // this means whether the entire page through the touch events.
   std::optional<bool> CanEventThrough() const { return event_through_; }
   // this means whether this view node pass through the events to the nodes
@@ -799,6 +801,12 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool should_block_native_event_ = false;
   bool has_intersection_observer_ = false;
   std::optional<bool> event_through_;
+  struct EventThroughSizeValue {
+    double value = 0.0;
+    bool is_percentage = false;
+  };
+  using EventThroughRegion = std::array<EventThroughSizeValue, 4>;
+  std::vector<EventThroughRegion> event_through_active_regions_;
   // all slop values means extend x px
   float hit_slop_top_ = 0.f;
   float hit_slop_left_ = 0.f;
@@ -816,6 +824,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
 
  private:
+  bool ShouldPassEventToNativeAt(const FloatPoint& position) const;
+  bool HitEventThroughActiveRegions(const FloatPoint& position) const;
+
   template <typename... Args>
   void NotifyBgImageLoadStatus(bool success,
                                const std::vector<std::string>& keys,

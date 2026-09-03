@@ -46,7 +46,7 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 385
+#define TOTAL_KEYWORDS 386
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
 #define MIN_HASH_VALUE 25
@@ -387,6 +387,7 @@ struct StringPool_t {
   char StringPool_str636[sizeof("blur-radius")];
   char StringPool_str638[sizeof("outline-color")];
   char StringPool_str640[sizeof("src-format")];
+  char StringPool_str648[sizeof("event-through-active-regions")];
   char StringPool_str651[sizeof("scroll-bar-thumb-width")];
   char StringPool_str652[sizeof("bounces")];
   char StringPool_str656[sizeof("scroll-bar-thumb-min-length")];
@@ -774,6 +775,7 @@ static const struct StringPool_t StringPool_contents = {
     "blur-radius",
     "outline-color",
     "src-format",
+    "event-through-active-regions",
     "scroll-bar-thumb-width",
     "bounces",
     "scroll-bar-thumb-min-length",
@@ -1810,7 +1812,8 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {-1},
+    {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str648,
+     (short)KeywordID::kEventThroughActiveRegions},
     {-1},
     {-1},
     {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str651,
