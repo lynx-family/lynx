@@ -895,7 +895,7 @@ void BaseView::SetBackground(const BackgroundData& background) {
 
   FML_DCHECK(page_view());
 
-  bg_image_loader_token_++;
+  AdvanceImageLoaderToken(true);
   for (size_t i = 0; i < background.background_images.size(); i++) {
     const BackgroundImageData& image = background.background_images[i];
 
@@ -1495,16 +1495,20 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
        bg_image_loader_token = bg_image_loader_token_,
        mask_image_loader_token = mask_image_loader_token_](
           std::unique_ptr<ImageResource> resource, bool hit_cache) {
-        if (!resource || !self) {
-          if (!resource && background && self) {
+        if (!self) {
+          return;
+        }
+        const int loader_token =
+            background ? bg_image_loader_token : mask_image_loader_token;
+        if (!self->IsImageLoaderTokenCurrent(background, loader_token)) {
+          return;
+        }
+        if (!resource) {
+          if (background) {
             self->NotifyBgImageLoadStatus(
                 false, {"errMsg", "url", "lynx_categorized_code", "error_code"},
                 "resource load fail", uri, 0, 0);
           }
-          return;
-        }
-        if (self->GetCurrentImageLoaderToken() != bg_image_loader_token &&
-            self->GetCurrentMaskImageLoaderToken() != mask_image_loader_token) {
           return;
         }
 
@@ -1523,10 +1527,20 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
 #else
   page_view_->GetImageResourceFetcher()->FetchImage(
       uri, false,
-      [self = weak_factory_.GetWeakPtr(), uri, index, background](
+      [self = weak_factory_.GetWeakPtr(), uri, index, background,
+       bg_image_loader_token = bg_image_loader_token_,
+       mask_image_loader_token = mask_image_loader_token_](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
-        if (!image_instance || !self) {
-          if (!image_instance && background && self) {
+        if (!self) {
+          return;
+        }
+        const int loader_token =
+            background ? bg_image_loader_token : mask_image_loader_token;
+        if (!self->IsImageLoaderTokenCurrent(background, loader_token)) {
+          return;
+        }
+        if (!image_instance) {
+          if (background) {
             self->NotifyBgImageLoadStatus(
                 false, {"errMsg", "url", "lynx_categorized_code", "error_code"},
                 "resource load fail", uri, 0, 0);
@@ -1572,7 +1586,7 @@ void BaseView::SetBackgroundImage(const clay::Value::Array& array) {
     return;
   }
 
-  bg_image_loader_token_++;
+  AdvanceImageLoaderToken(true);
   for (size_t i = 0; i < array.size(); i = i + 2) {
     const auto& type =
         static_cast<ClayBackgroundImageType>(utils::GetUint(array[i]));
@@ -1661,6 +1675,7 @@ void BaseView::SetBackgroundSize(const std::vector<BackgroundSize>& sizes) {
 
 void BaseView::SetMaskImage(const clay::Value::Array& array) {
   if (array.size() == 0) {
+    AdvanceImageLoaderToken(false);
     return;
   }
 
@@ -1676,6 +1691,7 @@ void BaseView::SetMaskImage(const clay::Value::Array& array) {
     return;
   }
 
+  AdvanceImageLoaderToken(false);
   render_object()->ResizeMask(array.size() / 2);
   for (size_t i = 0; i < array.size(); i = i + 2) {
     const auto& type = static_cast<ClayMaskImageType>(utils::GetUint(array[i]));
@@ -1710,7 +1726,7 @@ void BaseView::SetMaskImage(const clay::Value::Array& array) {
 }
 
 void BaseView::ClearMask() {
-  ++mask_image_loader_token_;
+  AdvanceImageLoaderToken(false);
   render_object()->ClearMask();
 }
 
