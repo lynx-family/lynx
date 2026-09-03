@@ -42,7 +42,7 @@ sk_sp<SkFontStyleSet> AssetManagerFontProvider::MatchFamily(
   return font_style_set;
 }
 
-void AssetManagerFontProvider::RegisterAsset(const std::string& family_name,
+bool AssetManagerFontProvider::RegisterAsset(const std::string& family_name,
                                              const std::string& file_path) {
   std::string canonical_name = CanonicalFamilyName(family_name);
   auto family_it = registered_families_.find(canonical_name);
@@ -55,7 +55,7 @@ void AssetManagerFontProvider::RegisterAsset(const std::string& family_name,
     family_it = registered_families_.emplace(value).first;
   }
 
-  family_it->second->RegisterAsset(file_path);
+  return family_it->second->RegisterAsset(file_path);
 }
 
 AssetManagerFontStyleSet::AssetManagerFontStyleSet(
@@ -66,8 +66,13 @@ AssetManagerFontStyleSet::AssetManagerFontStyleSet(
 
 AssetManagerFontStyleSet::~AssetManagerFontStyleSet() = default;
 
-void AssetManagerFontStyleSet::RegisterAsset(const std::string& asset) {
+bool AssetManagerFontStyleSet::RegisterAsset(const std::string& asset) {
   assets_.emplace_back(asset);
+  if (createTypeface(assets_.size() - 1)) {
+    return true;
+  }
+  assets_.pop_back();
+  return false;
 }
 
 int AssetManagerFontStyleSet::count() { return assets_.size(); }

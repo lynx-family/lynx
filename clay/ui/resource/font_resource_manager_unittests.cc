@@ -158,4 +158,100 @@ TEST_F(FontResourceManagerTest, FailedFontLoadClearsCallbacks) {
   EXPECT_FALSE(font_collection_->HasFontResourceLoading(family_name));
 }
 
+TEST_F(FontResourceManagerTest, FailedFontLoadCanBeRetried) {
+  auto font_resource_manager = std::make_shared<FontResourceManager>();
+  auto load_task_runner = CreateNewThread("retry-font-loader");
+  const std::string family_name = "retry_font_callback";
+  std::atomic_int callback_count = 0;
+  std::atomic_bool first_load_succeeded = true;
+  std::atomic_bool retry_succeeded = false;
+  fml::AutoResetWaitableEvent first_load_finished;
+  fml::AutoResetWaitableEvent retry_finished;
+
+  font_resource_manager->LoadFontAsync(
+      load_task_runner, nullptr, nullptr, family_name,
+      {"data:font/ttf,invalid", "data:application/font,invalid"},
+      [&](bool success, const std::string&, const std::string&) {
+        ++callback_count;
+        first_load_succeeded = success;
+        first_load_finished.Signal();
+      });
+  first_load_finished.Wait();
+
+  EXPECT_EQ(callback_count, 1);
+  EXPECT_FALSE(first_load_succeeded);
+  EXPECT_FALSE(font_resource_manager->HasFontResourceLoading(family_name));
+
+  font_resource_manager->LoadFontAsync(
+      load_task_runner, nullptr, nullptr, family_name,
+      {"data:font/ttf;base64,AA=="},
+      [&](bool success, const std::string&, const std::string&) {
+        ++callback_count;
+        retry_succeeded = success;
+        retry_finished.Signal();
+      });
+  retry_finished.Wait();
+
+  EXPECT_EQ(callback_count, 2);
+  EXPECT_TRUE(retry_succeeded);
+  EXPECT_TRUE(font_resource_manager->HasFontResource(family_name));
+}
+
+TEST_F(FontResourceManagerTest, ConcurrentFontLoadsShareOneResult) {
+  auto font_resource_manager = std::make_shared<FontResourceManager>();
+  auto load_task_runner = CreateNewThread("deduplicated-font-loader");
+  fml::AutoResetWaitableEvent task_started;
+  fml::AutoResetWaitableEvent allow_task_to_finish;
+  load_task_runner->PostTask([&]() {
+    task_started.Signal();
+    allow_task_to_finish.Wait();
+  });
+  task_started.Wait();
+
+  const std::string family_name = "deduplicated_font_load";
+  std::atomic_int callback_count = 0;
+  auto callback = [&](bool success, const std::string&, const std::string&) {
+    EXPECT_TRUE(success);
+    ++callback_count;
+  };
+  font_resource_manager->LoadFontAsync(load_task_runner, nullptr, nullptr,
+                                       family_name,
+                                       {"data:font/ttf;base64,AA=="}, callback);
+  font_resource_manager->LoadFontAsync(load_task_runner, nullptr, nullptr,
+                                       family_name,
+                                       {"data:font/ttf;base64,AQ=="}, callback);
+
+  EXPECT_TRUE(font_resource_manager->HasFontResourceLoading(family_name));
+  allow_task_to_finish.Signal();
+  load_task_runner->PostSyncTask([]() {});
+
+  EXPECT_EQ(callback_count, 2);
+  EXPECT_TRUE(font_resource_manager->HasFontResource(family_name));
+  EXPECT_FALSE(font_resource_manager->HasFontResourceLoading(family_name));
+}
+
+TEST_F(FontResourceManagerTest, CachedFontLoadCompletesImmediately) {
+  auto font_resource_manager = std::make_shared<FontResourceManager>();
+  auto load_task_runner = CreateNewThread("cached-font-loader");
+  const std::string family_name = "cached_font_load";
+  font_resource_manager->LoadFontAsync(
+      load_task_runner, nullptr, nullptr, family_name,
+      {"data:font/ttf;base64,AA=="},
+      [](bool, const std::string&, const std::string&) {});
+  load_task_runner->PostSyncTask([]() {});
+  ASSERT_TRUE(font_resource_manager->HasFontResource(family_name));
+
+  bool callback_called = false;
+  font_resource_manager->LoadFontAsync(
+      load_task_runner, nullptr, nullptr, family_name,
+      {"data:font/ttf;base64,AQ=="},
+      [&](bool success, const std::string&, const std::string&) {
+        callback_called = true;
+        EXPECT_TRUE(success);
+      });
+
+  EXPECT_TRUE(callback_called);
+  EXPECT_FALSE(font_resource_manager->HasFontResourceLoading(family_name));
+}
+
 }  // namespace clay

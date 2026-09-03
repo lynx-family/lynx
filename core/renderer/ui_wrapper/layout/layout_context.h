@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_LAYOUT_LAYOUT_CONTEXT_H_
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -155,6 +156,8 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
   }
 
   void SetFontFaces(const CSSFontFaceRuleMap& fontfaces);
+  void AddFontFace(const CSSFontFaceRuleMap& fontfaces,
+                   std::function<void(bool)> callback);
 
   // Thread safe
   void Layout(const std::shared_ptr<PipelineOptions>& options =

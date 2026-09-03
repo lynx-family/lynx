@@ -26,7 +26,7 @@ class AssetManagerFontStyleSet : public SkFontStyleSet {
 
   ~AssetManagerFontStyleSet() override;
 
-  void RegisterAsset(const std::string& file_path);
+  bool RegisterAsset(const std::string& file_path);
 
   // |SkFontStyleSet|
   int count() override;
@@ -66,7 +66,7 @@ class AssetManagerFontProvider : public txt::FontAssetProvider {
 
   ~AssetManagerFontProvider() override;
 
-  void RegisterAsset(const std::string& family_name,
+  bool RegisterAsset(const std::string& family_name,
                      const std::string& file_path);
 
   // |FontAssetProvider|

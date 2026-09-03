@@ -1325,8 +1325,9 @@ void TemplateAssembler::ReloadFromJS(
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kReloadBundleEnd);
 }
 
-void TemplateAssembler::AddFont(const lepus::Value& font) {
-  page_proxy()->element_manager()->AddFontFace(font);
+void TemplateAssembler::AddFont(const lepus::Value& font,
+                                runtime::js::ApiCallBack callback) {
+  page_proxy()->element_manager()->AddFontFace(font, std::move(callback));
 }
 
 void TemplateAssembler::BindMTSRuntimeThread() {

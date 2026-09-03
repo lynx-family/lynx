@@ -1085,8 +1085,10 @@ void ElementManager::SetFontFaces(const tasm::CSSFontFaceRuleMap &fontfaces) {
   delegate_->SetFontFaces(fontfaces);
 }
 
-void ElementManager::AddFontFace(const lepus::Value &font) {
+void ElementManager::AddFontFace(const lepus::Value &font,
+                                 runtime::js::ApiCallBack callback) {
   if (!font.IsTable()) {
+    delegate_->AddFontFace({}, std::move(callback));
     return;
   }
   BASE_STATIC_STRING_DECL(kFontFamily, "font-family");
@@ -1094,10 +1096,11 @@ void ElementManager::AddFontFace(const lepus::Value &font) {
   auto token = std::shared_ptr<CSSFontFaceRule>(MakeCSSFontFaceToken(font));
   const std::string &key = font.Table()->GetValue(kFontFamily).StdString();
   if (key.empty()) {
+    delegate_->AddFontFace({}, std::move(callback));
     return;
   }
   map[key] = {token};
-  delegate_->SetFontFaces(map);
+  delegate_->AddFontFace(map, std::move(callback));
 }
 
 bool ElementManager::HasIntrinsicFontFacesResolved(

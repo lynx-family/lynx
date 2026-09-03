@@ -173,6 +173,11 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override {
     ++set_font_faces_call_count_;
   }
+  void AddFontFace(const CSSFontFaceRuleMap& fontfaces,
+                   runtime::js::ApiCallBack callback) override {
+    SetFontFaces(fontfaces);
+    CallJSApiCallback(std::move(callback));
+  }
 
   size_t set_font_faces_call_count() const {
     return set_font_faces_call_count_;

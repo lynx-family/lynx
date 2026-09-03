@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <set>
@@ -241,7 +242,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
                    float height, TextMeasureMode height_mode, float& out_width,
                    float& out_height);
 
-  void SetFontFace(const char* font_family, const char* src[], int size);
+  void SetFontFace(const char* font_family, const char* src[], int size,
+                   std::function<void(bool)> completion = nullptr);
   void SetNetLoadCallback(NetLoadCallback net_load_callback);
 
   void GetTransformValue(int id, const float* pad_border_margin_layout,

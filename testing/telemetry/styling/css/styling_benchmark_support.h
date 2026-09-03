@@ -123,6 +123,8 @@ class NoOpDelegate : public ElementManager::Delegate {
   void UpdateLayoutNodeAttribute(int32_t id, starlight::LayoutAttribute key,
                                  const lepus::Value& value) override {}
   void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override {}
+  void AddFontFace(const CSSFontFaceRuleMap& fontfaces,
+                   runtime::js::ApiCallBack callback) override {}
   void UpdateLayoutNodeByBundle(int32_t id,
                                 std::unique_ptr<LayoutBundle> bundle) override {
   }

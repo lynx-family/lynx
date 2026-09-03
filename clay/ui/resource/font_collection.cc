@@ -54,31 +54,40 @@ void FontCollection::SetupDefaultFontManager(
   collection_->SetupDefaultFontManager(font_initialization_data);
 }
 
-void FontCollection::RegisterAssetFont(const std::string& family_name,
+void FontCollection::SetDefaultFontManager(GrFontMgrPtr font_manager) {
+  collection_->SetDefaultFontManager(std::move(font_manager));
+}
+
+bool FontCollection::RegisterAssetFont(const std::string& family_name,
                                        const std::string& asset_path) {
   if (!asset_font_manager_) {
     FML_LOG(ERROR) << "asset_font_manager should not be null";
     FML_DCHECK(false);
-    return;
+    return false;
   }
   AssetManagerFontProvider& font_provider =
       asset_font_manager_->font_provider();
 
-  font_provider.RegisterAsset(family_name, asset_path);
+  return font_provider.RegisterAsset(family_name, asset_path);
 }
 
 void FontCollection::PreLoadFontOnMem(
     fml::RefPtr<fml::TaskRunner> load_task_runner,
     std::shared_ptr<ResourceLoaderIntercept> intercept,
     std::shared_ptr<ServiceManager> service_manager,
-    const std::string& font_family, std::vector<std::string> urls) {
+    const std::string& font_family, std::vector<std::string> urls,
+    std::function<void(bool)> completion) {
   if (!font_resource_manager_) {
     FML_LOG(ERROR) << "font_resource_manager should not be null";
     FML_DCHECK(false);
+    if (completion) {
+      completion(false);
+    }
     return;
   }
 
-  FontCallback callback = [weak = weak_from_this()](
+  FontCallback callback = [weak = weak_from_this(),
+                           completion = std::move(completion)](
                               bool success, const std::string& font_family,
                               const std::string& url) {
     // first : register font
@@ -86,16 +95,32 @@ void FontCollection::PreLoadFontOnMem(
     // appropriate font to show, now we only use one font
     auto self = weak.lock();
     if (!self) {
+      if (completion) {
+        completion(false);
+      }
       return;
     }
     if (!success) {
       self->font_download_callback_.erase(font_family);
+      if (completion) {
+        completion(false);
+      }
       return;
     }
     const std::string str = "not use";
-    self->RegisterAssetFont(font_family, str);
+    if (!self->RegisterAssetFont(font_family, str)) {
+      self->font_resource_manager_->RemoveResource(font_family);
+      self->font_download_callback_.erase(font_family);
+      if (completion) {
+        completion(false);
+      }
+      return;
+    }
 
     self->OnLoadFontEnd(font_family);
+    if (completion) {
+      completion(true);
+    }
   };
   font_resource_manager_->LoadFontAsync(load_task_runner, intercept,
                                         service_manager, font_family,

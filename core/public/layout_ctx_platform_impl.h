@@ -6,6 +6,7 @@
 #define CORE_PUBLIC_LAYOUT_CTX_PLATFORM_IMPL_H_
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -56,6 +57,19 @@ class LayoutCtxPlatformImpl {
   virtual void Destroy() = 0;
 
   virtual void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) = 0;
+  virtual void AddFontFace(const CSSFontFaceRuleMap& fontfaces,
+                           std::function<void(bool)> callback) {
+    if (fontfaces.empty()) {
+      if (callback) {
+        callback(false);
+      }
+      return;
+    }
+    SetFontFaces(fontfaces);
+    if (callback) {
+      callback(true);
+    }
+  }
   virtual void SetLynxShell(shell::LynxShell* shell) {}
   virtual void UpdateRootSize(float width, float height) {}
   virtual std::unique_ptr<PlatformExtraBundle> GetPlatformExtraBundle(

@@ -199,7 +199,9 @@ export class Lynx {
       throw new Error('The second argument must be function type');
     }
 
-    this.getNativeLynx().addFont(font, callback);
+    this.getNativeLynx().addFont(font, (success) => {
+      callback(success ? undefined : new Error('Failed to load font'));
+    });
   };
 
   stopExposure = this.getApp()._apiList['stopExposure'] as (options?: {

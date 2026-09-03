@@ -9,6 +9,7 @@
 #define CLAY_UI_RESOURCE_FONT_COLLECTION_H_
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -49,7 +50,8 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
                         std::shared_ptr<ResourceLoaderIntercept> intercept,
                         std::shared_ptr<ServiceManager> service_manager,
                         const std::string& font_family,
-                        std::vector<std::string> urls);
+                        std::vector<std::string> urls,
+                        std::function<void(bool)> completion = nullptr);
 
   FontDownloadCallbackId RegisterCallback(const std::string& font_family,
                                           const FontDownloadCallback& callback);
@@ -62,7 +64,7 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
 
   void OnLoadFontEnd(const std::string& font_family);
 
-  void RegisterAssetFont(const std::string& family_name,
+  bool RegisterAssetFont(const std::string& family_name,
                          const std::string& asset_path);
 
   void ClearFontFamilyCache();

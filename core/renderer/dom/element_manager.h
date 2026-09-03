@@ -49,6 +49,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/base/tasm_worker_task_runner.h"
+#include "core/runtime/js/bindings/api_call_back.h"
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/timing_handler/timing_handler.h"
@@ -224,6 +225,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
                                            starlight::LayoutAttribute key,
                                            const lepus::Value &value) = 0;
     virtual void SetFontFaces(const CSSFontFaceRuleMap &fontfaces) = 0;
+    virtual void AddFontFace(const CSSFontFaceRuleMap &fontfaces,
+                             runtime::js::ApiCallBack callback) = 0;
 
     virtual void UpdateLayoutNodeByBundle(
         int32_t id, std::unique_ptr<LayoutBundle> bundle) = 0;
@@ -344,7 +347,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void UpdateLayoutNodeAttribute(int32_t id, starlight::LayoutAttribute key,
                                  const lepus::Value &value);
   void SetFontFaces(const tasm::CSSFontFaceRuleMap &fontfaces);
-  void AddFontFace(const lepus::Value &font);
+  void AddFontFace(const lepus::Value &font, runtime::js::ApiCallBack callback);
 
   // Tracks whether the intrinsic font-face map of the given CSSFragment has
   // already been resolved within this ElementManager (i.e. this LynxView).

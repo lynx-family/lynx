@@ -39,7 +39,7 @@ std::shared_ptr<skity::FontStyleSet> AssetManagerFontProvider::MatchFamily(
   return found->second;
 }
 
-void AssetManagerFontProvider::RegisterAsset(const std::string& family_name,
+bool AssetManagerFontProvider::RegisterAsset(const std::string& family_name,
                                              const std::string& file_path) {
   std::string canonical_name = CanonicalFamilyName(family_name);
   auto family_it = registered_families_.find(canonical_name);
@@ -52,7 +52,7 @@ void AssetManagerFontProvider::RegisterAsset(const std::string& family_name,
     family_it = registered_families_.emplace(std::move(value)).first;
   }
 
-  family_it->second->RegisterAsset(file_path);
+  return family_it->second->RegisterAsset(file_path);
 }
 
 AssetManagerFontStyleSet::AssetManagerFontStyleSet(
@@ -63,8 +63,13 @@ AssetManagerFontStyleSet::AssetManagerFontStyleSet(
 
 AssetManagerFontStyleSet::~AssetManagerFontStyleSet() = default;
 
-void AssetManagerFontStyleSet::RegisterAsset(const std::string& asset) {
+bool AssetManagerFontStyleSet::RegisterAsset(const std::string& asset) {
   assets_.emplace_back(asset);
+  if (CreateTypeface(assets_.size() - 1)) {
+    return true;
+  }
+  assets_.pop_back();
+  return false;
 }
 
 int AssetManagerFontStyleSet::Count() { return assets_.size(); }

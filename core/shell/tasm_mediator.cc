@@ -711,6 +711,27 @@ void TasmMediator::SetFontFaces(const tasm::CSSFontFaceRuleMap& fontfaces) {
       [fontfaces](auto& layout) { layout->SetFontFaces(fontfaces); });
 }
 
+void TasmMediator::AddFontFace(const tasm::CSSFontFaceRuleMap& fontfaces,
+                               runtime::js::ApiCallBack callback) {
+  auto weak_runtime_actor =
+      std::weak_ptr<LynxActor<BTSRuntime>>(runtime_actor_);
+  layout_actor_->Act([fontfaces, callback = std::move(callback),
+                      weak_runtime_actor](auto& layout) mutable {
+    layout->AddFontFace(fontfaces, [callback = std::move(callback),
+                                    weak_runtime_actor](bool success) mutable {
+      auto runtime_actor = weak_runtime_actor.lock();
+      if (!runtime_actor) {
+        return;
+      }
+      runtime_actor->ActAsync(
+          [callback = std::move(callback), success](auto& runtime) mutable {
+            runtime->CallJSApiCallbackWithValue(std::move(callback),
+                                                lepus::Value(success));
+          });
+    });
+  });
+}
+
 void TasmMediator::UpdateLayoutNodeByBundle(
     int32_t id, std::unique_ptr<tasm::LayoutBundle> bundle) {
   layout_actor_->ActLite(
