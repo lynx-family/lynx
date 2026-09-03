@@ -29,7 +29,8 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lynx-family/lynx.git"
+    "url": "https://github.com/lynx-family/lynx.git",
+    "directory": "oliver/node-lynx"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
