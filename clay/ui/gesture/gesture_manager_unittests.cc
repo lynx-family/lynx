@@ -634,6 +634,62 @@ TEST_F(GestureManagerTest, HitTest_Hierarchy_Test) {
   EXPECT_EQ(tap_flag, 1);  // child wins.
 }
 
+TEST_F(GestureManagerTest, PerpendicularDragsChooseDominantAxis) {
+  bool horizontal_drag_started = false;
+  bool vertical_drag_started = false;
+
+  auto child = std::make_unique<MultiRecognizerHitTestTarget>();
+  auto horizontal_drag =
+      std::make_unique<HorizontalDragGestureRecognizer>(gesture_manager());
+  horizontal_drag->SetTouchSlop(8.f);
+  horizontal_drag->SetDragStartCallback(
+      [&horizontal_drag_started](const FloatPoint&) {
+        horizontal_drag_started = true;
+      });
+  child->recognizers_.emplace_back(std::move(horizontal_drag));
+
+  auto parent = std::make_unique<MultiRecognizerHitTestTarget>();
+  auto vertical_drag =
+      std::make_unique<VerticalDragGestureRecognizer>(gesture_manager());
+  vertical_drag->SetTouchSlop(8.f);
+  vertical_drag->SetDragStartCallback(
+      [&vertical_drag_started](const FloatPoint&) {
+        vertical_drag_started = true;
+      });
+  parent->recognizers_.emplace_back(std::move(vertical_drag));
+
+  AddHitTestTarget(child.get());
+  AddHitTestTarget(parent.get());
+
+  auto pointers = CreatePointer(ID(), PointerEvent::EventType::kDownEvent);
+  auto& pointer = pointers[0];
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+
+  MovePointer(pointer, FloatSize(9.f, 15.f), kFastMoveTime);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+
+  EXPECT_FALSE(horizontal_drag_started);
+  EXPECT_TRUE(vertical_drag_started);
+
+  UpPointer(pointer);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+
+  horizontal_drag_started = false;
+  vertical_drag_started = false;
+  auto tie_pointers = CreatePointer(ID(), PointerEvent::EventType::kDownEvent);
+  auto& tie_pointer = tie_pointers[0];
+  gesture_manager()->HandlePointerEvents(root(), tie_pointers);
+
+  MovePointer(tie_pointer, FloatSize(9.f, 9.f), kFastMoveTime);
+  gesture_manager()->HandlePointerEvents(root(), tie_pointers);
+
+  EXPECT_TRUE(horizontal_drag_started);
+  EXPECT_FALSE(vertical_drag_started);
+
+  UpPointer(tie_pointer);
+  gesture_manager()->HandlePointerEvents(root(), tie_pointers);
+}
+
 TEST_F(GestureManagerTest, NoConflict_MultiTap_Test) {
   std::unique_ptr<MockHitTestTargetBase> empty_target;
   std::unique_ptr<MultiRecognizerHitTestTarget> hit_test_target;

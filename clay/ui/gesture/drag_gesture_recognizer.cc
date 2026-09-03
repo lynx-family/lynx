@@ -220,7 +220,8 @@ FloatSize HorizontalDragGestureRecognizer::GetDeltaForDetails(
 
 bool HorizontalDragGestureRecognizer::HasSufficientDistanceToAccept(
     const FloatSize& distance) {
-  return std::abs(distance.width()) > GetTouchSlop();
+  return std::abs(distance.width()) > GetTouchSlop() &&
+         std::abs(distance.width()) >= std::abs(distance.height());
 }
 
 bool HorizontalDragGestureRecognizer::IsFlingGesture(
@@ -236,7 +237,8 @@ FloatSize VerticalDragGestureRecognizer::GetDeltaForDetails(
 
 bool VerticalDragGestureRecognizer::HasSufficientDistanceToAccept(
     const FloatSize& distance) {
-  return std::abs(distance.height()) > GetTouchSlop();
+  return std::abs(distance.height()) > GetTouchSlop() &&
+         std::abs(distance.height()) >= std::abs(distance.width());
 }
 
 bool VerticalDragGestureRecognizer::IsFlingGesture(
