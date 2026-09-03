@@ -637,7 +637,7 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
           output_surface->CreateMainGrContext();
           clay::GrContextPtr main_context = output_surface->GetMainGrContext();
           if (main_context) {
-#if defined(ENABLE_SKITY) && (defined(OS_ANDROID) || defined(OS_IOS))
+#if defined(ENABLE_SKITY) && defined(OS_ANDROID)
             if (clay::setting::CLAY_PRECOMPILE_SKITY_SHADERS.value()) {
               output_surface->PrecompileDefaultSkityShaders();
             }
