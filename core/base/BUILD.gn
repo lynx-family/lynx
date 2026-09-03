@@ -53,14 +53,18 @@ if (is_android) {
     "android/message_loop_android_vsync.h",
     "android/piper_data.cc",
     "android/piper_data.h",
-    "android/vsync_monitor_android.cc",
-    "android/vsync_monitor_android.h",
     "thread/atomic_lifecycle.cc",
     "thread/atomic_lifecycle.h",
     "threading/js_thread_config_getter.cc",
     "threading/task_runner_vsync.cc",
     "threading/task_runner_vsync.h",
   ]
+  if (!is_headless) {
+    base_shared_sources += [
+      "android/vsync_monitor_android.cc",
+      "android/vsync_monitor_android.h",
+    ]
+  }
 } else if (is_harmony) {
   base_shared_sources += [
     "harmony/harmony_function_loader.cc",
