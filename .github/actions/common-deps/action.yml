@@ -109,7 +109,7 @@ runs:
     - name: Upload Habitat statistics
       if: ${{ always() }}
       continue-on-error: true
-      uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+      uses: lynx-infra/upload-artifact@b32caae38013b23115647b6454b17bd25e8c7466
       with:
         name: habitat-stats-${{ github.job }}-${{ strategy.job-index || 0 }}-${{ github.run_attempt }}
         path: ${{ runner.temp }}/habitat-stats/habitat_session.jsonl
