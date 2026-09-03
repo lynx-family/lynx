@@ -110,6 +110,12 @@ lynx_core_source_set("embedder") {
       "lynx_ui_renderer_mock.cc",
     ]
   }
+  if (!enable_unittests && is_android && is_headless) {
+    sources += [
+      "vsync_monitor_fallback.cc",
+      "vsync_monitor_fallback.h",
+    ]
+  }
   if (is_win) {
     sources += [ "../../core/renderer/utils/sys_lynx_env/sys_env_default.cc" ]
   }
