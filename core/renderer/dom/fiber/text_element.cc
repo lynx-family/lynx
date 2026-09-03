@@ -11,6 +11,7 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -73,31 +74,6 @@ void TextElement::OnNodeAdded(Element* child) {
   }
 }
 
-base::String TextElement::ConvertContent(const lepus::Value value) {
-  auto result = value.String();
-  if (result.empty()) {
-    if (value.IsInt32()) {
-      result = base::String(std::to_string(value.Int32()));
-    } else if (value.IsInt64()) {
-      result = base::String(std::to_string(value.Int64()));
-    } else if (value.IsNumber()) {
-      std::stringstream stream;
-      stream << value.Number();
-      result = stream.str();
-    } else if (value.IsNaN()) {
-      BASE_STATIC_STRING_DECL(kNaN, "NaN");
-      result = kNaN;
-    } else if (value.IsNil()) {
-      BASE_STATIC_STRING_DECL(kNull, "null");
-      result = kNull;
-    } else if (value.IsUndefined()) {
-      BASE_STATIC_STRING_DECL(kUndefined, "undefined");
-      result = kUndefined;
-    }
-  }
-  return result;
-}
-
 bool TextElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
   if (EnableLayoutInElementMode()) {
@@ -151,7 +127,7 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
                                                      const lepus::Value& value,
                                                      bool is_reset) {
   if (key.IsEqual(kTextAttr)) {
-    auto content = !is_reset ? ConvertContent(value) : base::String();
+    auto content = !is_reset ? ConvertTextContent(value) : base::String();
     if (content_.IsEqual(content)) {
       return false;
     }
