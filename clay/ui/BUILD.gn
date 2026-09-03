@@ -161,6 +161,39 @@ if (enable_unittests) {
     fixtures = []
   }
 
+  if (is_linux && enable_skity) {
+    executable("font_resource_manager_skity_unittests") {
+      testonly = true
+      sources = [
+        "resource/asset_manager_font_provider_skity.cc",
+        "resource/asset_manager_font_provider_skity.h",
+        "resource/font_collection.cc",
+        "resource/font_collection.h",
+        "resource/font_resource_manager.cc",
+        "resource/font_resource_manager.h",
+        "resource/font_resource_manager_test_platform.cc",
+        "resource/font_resource_manager_unittests.cc",
+      ]
+
+      public_configs = [
+        ":ui_defines",
+        "../:export_dynamic_symbols",
+        "../:config",
+      ]
+
+      public_deps = [
+        "../../base/src:base_static",
+        "../common",
+        "../common/service",
+        "../fml:fml",
+        "../net:net",
+        "../testing",
+        "../third_party/txt",
+        "../third_party/txt:_cf_txt_fixtures",
+      ]
+    }
+  }
+
   executable("clay_unittests") {
     testonly = true
     sources = [
