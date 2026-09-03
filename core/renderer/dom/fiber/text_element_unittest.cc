@@ -13,6 +13,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
@@ -255,18 +256,18 @@ TEST_P(TextElementTest, AttributeStyleCacheMirrorsCommittedStyleCache) {
 }
 
 TEST_P(TextElementTest, TestConvertContent) {
-  EXPECT_EQ(TextElement::ConvertContent(lepus::Value("test")),
-            base::String("test"));
-  EXPECT_EQ(TextElement::ConvertContent(lepus::Value((int32_t)1)),
-            base::String("1"));
-  EXPECT_EQ(TextElement::ConvertContent(lepus::Value((int64_t)11231212121212)),
+  EXPECT_EQ(ConvertTextContent(lepus::Value("test")), base::String("test"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value((int32_t)1)), base::String("1"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value(uint32_t{4294967295U})),
+            base::String("4294967295"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value((int64_t)11231212121212)),
             base::String("11231212121212"));
-  EXPECT_EQ(TextElement::ConvertContent(lepus::Value(1.00)), base::String("1"));
-  EXPECT_EQ(TextElement::ConvertContent(lepus::Value(1.10)),
-            base::String("1.1"));
-  EXPECT_EQ(TextElement::ConvertContent(lepus::Value(1.1)),
-            base::String("1.1"));
-  EXPECT_EQ(TextElement::ConvertContent(lepus::Value()), base::String("null"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value(uint64_t{18446744073709551615ULL})),
+            base::String("18446744073709551615"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value(1.00)), base::String("1"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value(1.10)), base::String("1.1"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value(1.1)), base::String("1.1"));
+  EXPECT_EQ(ConvertTextContent(lepus::Value()), base::String("null"));
 }
 
 TEST_P(TextElementTest, TestResolveStyleValue) {
