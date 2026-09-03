@@ -106,7 +106,7 @@ config("export_dynamic_symbols") {
   # accept files formatted differently, so we have exported_symbols.sym for GNU
   # linker syntax, and exported_symbols_mac.sym for the macOS linker syntax.
   if (is_linux || is_fuchsia) {
-    inputs = [ "../common/exported_symbols.sym" ]
+    inputs = [ "common/exported_symbols.sym" ]
     ldflags = [ "-Wl,--dynamic-list=" + rebase_path(inputs[0], root_build_dir) ]
   }
 }
