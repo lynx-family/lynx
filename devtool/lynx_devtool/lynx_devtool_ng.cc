@@ -1,7 +1,7 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-// cspell:ignore lynxsetting
+// cspell:ignore lynxsetting lynxnativemodule
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
 #include "core/devtool_wrapper/devtool_pool.h"
@@ -19,6 +19,7 @@
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_layer_tree_agent_ng.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_log_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng.h"
@@ -169,6 +170,9 @@ void LynxDevToolNG::RegisterInstanceDomainAgents() {
   RegisterAgent("Input",
                 std::make_unique<InspectorInputAgent>(devtool_mediator_));
   RegisterAgent("Log", std::make_unique<InspectorLogAgent>(devtool_mediator_));
+  RegisterAgent(
+      "LynxNativeModule",
+      std::make_unique<InspectorLynxNativeModuleAgent>(devtool_mediator_));
   RegisterAgent("Page",
                 std::make_unique<InspectorPageAgentNG>(devtool_mediator_));
   RegisterAgent("Runtime",
@@ -228,6 +232,10 @@ void LynxDevToolNG::RegisterInstanceDomainAgents(
   } else if (!domain_key.compare(domain_key_prefix + "log")) {
     RegisterAgent("Log",
                   std::make_unique<InspectorLogAgent>(devtool_mediator_));
+  } else if (!domain_key.compare(domain_key_prefix + "lynxnativemodule")) {
+    RegisterAgent(
+        "LynxNativeModule",
+        std::make_unique<InspectorLynxNativeModuleAgent>(devtool_mediator_));
   } else if (!domain_key.compare(domain_key_prefix + "runtime")) {
     RegisterAgent("Runtime",
                   std::make_unique<InspectorRuntimeAgent>(devtool_mediator_));
