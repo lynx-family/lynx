@@ -175,6 +175,7 @@ if (enable_unittests) {
     configs += [ ":text_layout_reuse_test_defines" ]
     sources = [
       "common/attribute_utils_unittests.cc",
+      "component/base_image_view_unittests.cc",
       "component/base_view_unittests.cc",
       "component/editable/editable_view_unittests.cc",
       "component/editable/textarea_ng_view_unittests.cc",

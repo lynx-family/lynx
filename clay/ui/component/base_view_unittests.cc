@@ -52,6 +52,25 @@ clay::Value::Array BackgroundImage(const std::string& url) {
   return background_image;
 }
 
+double GetNumber(const clay::Value& value) {
+  if (value.IsFloat()) {
+    return value.GetFloat();
+  }
+  if (value.IsDouble()) {
+    return value.GetDouble();
+  }
+  if (value.IsInt()) {
+    return value.GetInt();
+  }
+  if (value.IsUint()) {
+    return value.GetUint();
+  }
+  if (value.IsLong()) {
+    return static_cast<double>(value.GetLong());
+  }
+  return 0;
+}
+
 class CountingInvalidationView final : public BaseView {
  public:
   explicit CountingInvalidationView(PageView* page)
@@ -970,6 +989,43 @@ TEST_F_UI(BaseViewTest, OnBoundChange) {
 
   EXPECT_CALL(mock_view, OnBoundsChanged(::testing::_, ::testing::_)).Times(0);
   mock_view.SetBound(10, 10, 200, 300);
+}
+
+TEST_F_UI(BaseViewTest, BoundingClientRectReturnsPublicSchema) {
+  auto parent = std::make_unique<View>(1, page_.get());
+  auto child = std::make_unique<View>(2, page_.get());
+  parent->SetIdSelector("parent");
+  child->SetIdSelector("child");
+  parent->SetBound(10, 20, 200, 300);
+  child->SetBound(30, 40, 50, 60);
+  page_->AddChild(parent.get());
+  parent->AddChild(child.get());
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      child.get(), "boundingClientRect", {},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        for (const char* key : {"id", "dataset", "left", "right", "top",
+                                "bottom", "width", "height"}) {
+          EXPECT_NE(result.find(key), result.end()) << key;
+        }
+        EXPECT_EQ(result.at("id").GetString(), "child");
+        EXPECT_TRUE(result.at("dataset").IsMap());
+        EXPECT_DOUBLE_EQ(GetNumber(result.at("left")), 40);
+        EXPECT_DOUBLE_EQ(GetNumber(result.at("top")), 60);
+        EXPECT_DOUBLE_EQ(GetNumber(result.at("right")), 90);
+        EXPECT_DOUBLE_EQ(GetNumber(result.at("bottom")), 120);
+        EXPECT_DOUBLE_EQ(GetNumber(result.at("width")), 50);
+        EXPECT_DOUBLE_EQ(GetNumber(result.at("height")), 60);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+  parent->RemoveChild(child.get());
+  page_->RemoveChild(parent.get());
 }
 
 }  // namespace clay

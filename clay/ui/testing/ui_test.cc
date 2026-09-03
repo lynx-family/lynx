@@ -39,7 +39,7 @@ class MockDelegate : public clay::RenderDelegate {
   }
   void SetClipboardData(const std::u16string& data) override {}
   std::u16string GetClipboardData() override { return {}; }
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
   void SetTextInputClient(int client_id, const char* input_action,
                           const char* input_type) override {}
   void ClearTextInputClient() override {}
