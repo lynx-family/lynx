@@ -7,7 +7,6 @@ import("../devtool.gni")
 devtool_agent_shared_sources = [
   "../lynx_devtool_ng.cc",
   "../lynx_devtool_ng.h",
-  "agent_constants.h",
   "devtool_platform_facade.cc",
   "devtool_platform_facade.h",
   "domain_agent/inspector_agent.cc",
