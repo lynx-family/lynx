@@ -328,8 +328,21 @@ void UIExposure::CheckOnUIThread() {
   }
   last_lynxview_check_time_ = time_stamp;
 
-  if ((time_interval_for_lynxview_check_ > 0 && IsLynxViewChanged()) ||
-      exposure_check_flag_) {
+  // Full re-check: host-side (e.g. ArkUI/Compose ancestor) scrolling does
+  // not mark any Lynx-internal dirty state, so neither the observer
+  // callbacks nor IsLynxViewChanged() can be relied upon in nested
+  // embeddings. Re-evaluate unconditionally at a low cadence; the
+  // per-element geometry uses live screen coordinates, so outer-scroll
+  // visibility changes are detected as long as the check runs.
+  const bool full_check_due =
+      time_interval_for_full_check_ > 0 &&
+      time_stamp - last_full_check_time_ >= time_interval_for_full_check_;
+  if (full_check_due) {
+    last_full_check_time_ = time_stamp;
+  }
+  const bool lynxview_changed =
+      time_interval_for_lynxview_check_ > 0 && IsLynxViewChanged();
+  if (full_check_due || lynxview_changed || exposure_check_flag_) {
     ExecExposureCheck();
   }
   ScheduleUIExposureCheck();
