@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -61,6 +62,26 @@ using lynx::lepus::Value;
 using lynx::shell::LynxShell;
 
 namespace {
+
+constexpr std::intptr_t kLockFreeLifecycle = -1;
+
+inline bool IsLockFreeLifecycle(AtomicLifecycle* lifecycle) {
+  return reinterpret_cast<std::intptr_t>(lifecycle) == kLockFreeLifecycle;
+}
+
+// The explicit sentinel is the client-enabled lock-free path. In that mode,
+// the client must serialize every native-shell call with destruction. Null
+// remains invalid so calls arriving before initialization or after destruction
+// continue to fail safely.
+inline bool TryLockLifecycle(AtomicLifecycle* lifecycle) {
+  return IsLockFreeLifecycle(lifecycle) || AtomicLifecycle::TryLock(lifecycle);
+}
+
+inline void TryFreeLifecycle(AtomicLifecycle* lifecycle) {
+  if (!IsLockFreeLifecycle(lifecycle)) {
+    AtomicLifecycle::TryFree(lifecycle);
+  }
+}
 
 Value ConvertJavaData(JNIEnv* env, jobject j_data, jint length) {
   if (j_data == nullptr || length <= 0) {
@@ -231,7 +252,7 @@ void InternalLoadTemplate(JNIEnv* env, jlong ptr, jlong lifecycle,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
 
@@ -244,7 +265,7 @@ void InternalLoadTemplate(JNIEnv* env, jlong ptr, jlong lifecycle,
   reinterpret_cast<LynxShell*>(ptr)->LoadTemplate(
       JNIConvertHelper::ConvertToString(env, j_url), std::move(j_binary),
       pipeline_options, template_data);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void InternalLoadSSRData(JNIEnv* env, jlong ptr, jlong lifecycle,
@@ -257,12 +278,12 @@ void InternalLoadSSRData(JNIEnv* env, jlong ptr, jlong lifecycle,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->LoadSSRData(
       JNIConvertHelper::ConvertJavaBinary(env, j_binary), template_data);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 std::shared_ptr<lynx::tasm::TemplateData> ConvertToTemplateData(
@@ -419,7 +440,7 @@ void RebuildLynxEngine(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                        jobject module_factory) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* ui_delegate =
@@ -437,7 +458,7 @@ void RebuildLynxEngine(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
       std::make_unique<lynx::shell::TasmPlatformInvokerAndroid>(
           env, tasm_platform_invoker, ui_delegate),
       std::move(native_module_manager));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void Destroy(JNIEnv* env, jclass jcaller, jlong ptr) {
@@ -461,12 +482,12 @@ jint GetInstanceId(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   jint id = -1;
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return id;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   id = shell->GetInstanceId();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return id;
 }
 
@@ -474,11 +495,11 @@ void AttachRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                    jlong background_runtime) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->AttachRuntime();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -546,54 +567,54 @@ void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
 void StartRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->StartJsRuntime();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void ProcessRender(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->ForceFlush();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetEnableUIFlush(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                       jboolean enable_ui_flush) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->SetEnableUIFlush(enable_ui_flush);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void OnEnterForeground(JNIEnv* env, jclass jcaller, jlong ptr,
                        jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->OnEnterForeground();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void OnEnterBackground(JNIEnv* env, jclass jcaller, jlong ptr,
                        jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->OnEnterBackground();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void LoadSSRDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -633,7 +654,7 @@ void LoadLynxML(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
 
@@ -643,7 +664,7 @@ void LoadLynxML(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
       JNIConvertHelper::ConvertToString(env, j_url),
       JNIConvertHelper::ConvertToString(env, j_source), pipeline_options,
       template_data);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void LoadTemplateBufferByPreParsedData(
@@ -701,7 +722,7 @@ void LoadTemplateBundleByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto pipeline_options =
@@ -710,19 +731,19 @@ void LoadTemplateBundleByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
 
   reinterpret_cast<LynxShell*>(ptr)->LoadTemplateBundle(
       url, std::move(copied_bundle), pipeline_options, template_data);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void PreloadLazyBundles(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                         jobjectArray urls) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->PreloadLazyBundles(
       JNIConvertHelper::ConvertJavaStringArrayToStringVector(env, urls));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 jboolean RegisterLazyBundle(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -731,12 +752,12 @@ jboolean RegisterLazyBundle(JNIEnv* env, jclass jcaller, jlong ptr,
       *reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(bundle_ptr);
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return false;
   }
   reinterpret_cast<LynxShell*>(ptr)->RegisterLazyBundle(
       JNIConvertHelper::ConvertToString(env, url), bundle);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return true;
 }
 
@@ -763,12 +784,12 @@ void UpdateDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->UpdateDataByParsedData(template_data,
                                                             is_reuse_engine);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void UpdateMetaData(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
@@ -794,12 +815,12 @@ void UpdateMetaData(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<lynx::base::AtomicLifecycle*>(lifecycle);
-  if (!lynx::base::AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->UpdateMetaData(updated_data,
                                                     updated_global_props);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void ResetDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -825,11 +846,11 @@ void ResetDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->ResetDataByParsedData(template_data);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void ReloadTemplate(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
@@ -839,7 +860,7 @@ void ReloadTemplate(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                     jobject j_timing_option) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->ResetTimingBeforeReload();
@@ -863,7 +884,7 @@ void ReloadTemplate(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
         pipeline_options,
         prop_value ? *prop_value : Value(lynx::lepus::Dictionary::Create()));
   }
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void UpdateConfig(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
@@ -872,11 +893,11 @@ void UpdateConfig(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   if (!config.IsNil()) {
     AtomicLifecycle* lifecycle_ptr =
         reinterpret_cast<AtomicLifecycle*>(lifecycle);
-    if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    if (!TryLockLifecycle(lifecycle_ptr)) {
       return;
     }
     reinterpret_cast<LynxShell*>(ptr)->UpdateConfig(config);
-    AtomicLifecycle::TryFree(lifecycle_ptr);
+    TryFreeLifecycle(lifecycle_ptr);
   }
 }
 
@@ -887,11 +908,11 @@ void UpdateGlobalProps(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   if (props != nullptr && !props->IsNil()) {
     AtomicLifecycle* lifecycle_ptr =
         reinterpret_cast<AtomicLifecycle*>(lifecycle);
-    if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    if (!TryLockLifecycle(lifecycle_ptr)) {
       return;
     }
     reinterpret_cast<LynxShell*>(ptr)->UpdateGlobalProps(*props);
-    AtomicLifecycle::TryFree(lifecycle_ptr);
+    TryFreeLifecycle(lifecycle_ptr);
   }
 }
 
@@ -900,7 +921,7 @@ void UpdateViewport(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                     jfloat scale, jlong ui_delegate_ptr, jboolean need_layout) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* ui_delegate =
@@ -912,7 +933,7 @@ void UpdateViewport(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
     reinterpret_cast<LynxShell*>(ptr)->UpdateViewport(width, width_mode, height,
                                                       height_mode, need_layout);
   }
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetSessionStorageItem(JNIEnv* env, jobject jcaller, jlong ptr,
@@ -920,7 +941,7 @@ void SetSessionStorageItem(JNIEnv* env, jobject jcaller, jlong ptr,
                            jboolean readonly) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   std::string shared_key =
@@ -930,14 +951,14 @@ void SetSessionStorageItem(JNIEnv* env, jobject jcaller, jlong ptr,
   reinterpret_cast<lynx::shell::LynxShell*>(ptr)->SetSessionStorageItem(
       std::move(shared_key),
       std::make_shared<lynx::tasm::TemplateData>(shared_data, readonly));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void GetSessionStorageItem(JNIEnv* env, jobject jcaller, jlong ptr,
                            jlong lifecycle, jstring key, jobject callback) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto shared_key =
@@ -946,7 +967,7 @@ void GetSessionStorageItem(JNIEnv* env, jobject jcaller, jlong ptr,
       std::make_unique<lynx::shell::PlatformCallBackAndroid>(env, callback);
   reinterpret_cast<lynx::shell::LynxShell*>(ptr)->GetSessionStorageItem(
       std::move(shared_key), std::move(platform_callback));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 jdouble SubscribeSessionStorage(JNIEnv* env, jobject jcaller, jlong ptr,
@@ -954,7 +975,7 @@ jdouble SubscribeSessionStorage(JNIEnv* env, jobject jcaller, jlong ptr,
                                 jobject callBack) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return -1;
   }
   std::string shared_key =
@@ -964,7 +985,7 @@ jdouble SubscribeSessionStorage(JNIEnv* env, jobject jcaller, jlong ptr,
   auto id =
       reinterpret_cast<lynx::shell::LynxShell*>(ptr)->SubscribeSessionStorage(
           std::move(shared_key), std::move(platform_callback));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return id;
 }
 
@@ -972,14 +993,14 @@ void UnsubscribeSessionStorage(JNIEnv* env, jobject jcaller, jlong ptr,
                                jlong lifecycle, jstring key, jdouble id) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   std::string shared_key =
       lynx::base::android::JNIConvertHelper::ConvertToString(env, key);
   reinterpret_cast<lynx::shell::LynxShell*>(ptr)->UnSubscribeSessionStorage(
       std::move(shared_key), id);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void UpdateScreenMetrics(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -987,7 +1008,7 @@ void UpdateScreenMetrics(JNIEnv* env, jclass jcaller, jlong ptr,
                          jlong ui_delegate_ptr) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* ui_delegate =
@@ -999,64 +1020,64 @@ void UpdateScreenMetrics(JNIEnv* env, jclass jcaller, jlong ptr,
     reinterpret_cast<LynxShell*>(ptr)->UpdateScreenMetrics(width, height,
                                                            scale);
   }
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetFontScale(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                   jfloat scale) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->SetFontScale(scale);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetPlatformConfig(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                        jstring platform_config) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->SetPlatformConfig(
       JNIConvertHelper::ConvertToString(env, platform_config));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void UpdateFontScale(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                      jfloat scale) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->UpdateFontScale(scale);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void UpdateColorScheme(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                        jint scheme, jboolean use_act_lite) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->UpdateColorScheme(
       scheme, static_cast<bool>(use_act_lite));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SyncFetchLayoutResult(JNIEnv* env, jclass jcaller, jlong ptr,
                            jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->SyncFetchLayoutResult();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SendTouchEvent(JNIEnv* env, jclass jcaller, jlong ptr, jstring name,
@@ -1090,11 +1111,11 @@ void SendSsrGlobalEvent(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   Value params = ConvertJavaData(env, buffer, length);
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->SendSsrGlobalEvent(event_name, params);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SendGlobalEventToLepus(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -1104,11 +1125,11 @@ void SendGlobalEventToLepus(JNIEnv* env, jclass jcaller, jlong ptr,
   Value params = ConvertJavaData(env, buffer, length);
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->SendGlobalEventToLepus(event_name, params);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void TriggerEventBus(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
@@ -1117,11 +1138,11 @@ void TriggerEventBus(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   Value params = ConvertJavaData(env, buffer, length);
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->TriggerEventBus(event_name, params);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void OnPseudoStatusChanged(JNIEnv* env, jclass jcaller, jlong ptr, jint tag,
@@ -1135,11 +1156,11 @@ void GetDataAsync(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
                   jint tag) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto data = reinterpret_cast<LynxShell*>(ptr)->GetCurrentData();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   if (data != nullptr) {
     lynx::tasm::LepusEncoder encoder;
     std::vector<int8_t> encoded_data = encoder.EncodeMessage(*data);
@@ -1158,12 +1179,12 @@ jobject GetPageDataByKey(JNIEnv* env, jclass jcaller, jlong ptr,
       JNIConvertHelper::ConvertJavaStringArrayToStringVector(env, keys);
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return nullptr;
   }
   auto data =
       reinterpret_cast<LynxShell*>(ptr)->GetPageDataByKey(std::move(keys_vec));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 
   lynx::tasm::LepusEncoder encoder;
   std::vector<int8_t> encoded_data = encoder.EncodeMessage(data);
@@ -1182,20 +1203,20 @@ jobject GetAllJsSource(JNIEnv* env, jclass jcaller, jlong ptr,
   JavaOnlyMap jni_map;
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return env->NewLocalRef(jni_map.jni_object());  // NOLINT
   }
   for (const auto& item : reinterpret_cast<LynxShell*>(ptr)->GetAllJsSource()) {
     jni_map.PushString(item.first, item.second);
   }
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return env->NewLocalRef(jni_map.jni_object());  // NOLINT
 }
 
 jboolean TakeBTSHeapSnapshotToFile(JNIEnv* env, jclass jcaller, jlong ptr,
                                    jlong lifecycle, jstring output_path,
                                    jobject callback) {
-  if (ptr == 0 || lifecycle == 0 || output_path == nullptr) {
+  if (ptr == 0 || output_path == nullptr) {
     return JNI_FALSE;
   }
   std::string native_output_path =
@@ -1204,7 +1225,7 @@ jboolean TakeBTSHeapSnapshotToFile(JNIEnv* env, jclass jcaller, jlong ptr,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return JNI_FALSE;
   }
 
@@ -1214,7 +1235,7 @@ jboolean TakeBTSHeapSnapshotToFile(JNIEnv* env, jclass jcaller, jlong ptr,
           [callback = std::move(global_callback)](bool success) mutable {
             DispatchBTSHeapSnapshotResult(std::move(callback), success);
           });
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return accepted ? JNI_TRUE : JNI_FALSE;
 }
 
@@ -1224,7 +1245,7 @@ void QueryNativeMemoryUsageAsync(JNIEnv* env, jclass jcaller, jlong ptr,
   if (global_receiver.IsNull()) {
     return;
   }
-  if (ptr == 0 || lifecycle == 0) {
+  if (ptr == 0) {
     DispatchNativeMemoryUsageResult(
         std::move(global_receiver),
         lynx::tasm::performance::NativeMemoryUsageSnapshot());
@@ -1232,7 +1253,7 @@ void QueryNativeMemoryUsageAsync(JNIEnv* env, jclass jcaller, jlong ptr,
   }
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     DispatchNativeMemoryUsageResult(
         std::move(global_receiver),
         lynx::tasm::performance::NativeMemoryUsageSnapshot());
@@ -1244,44 +1265,44 @@ void QueryNativeMemoryUsageAsync(JNIEnv* env, jclass jcaller, jlong ptr,
         DispatchNativeMemoryUsageResult(std::move(receiver),
                                         std::move(snapshot));
       });
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void RenderChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                  jint tag, jint index, jlong operation_id) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->RenderListChild(
       tag, static_cast<uint32_t>(index), operation_id);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void UpdateChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                  jint tag, jint sign, jint index, jlong operation_id) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->UpdateListChild(
       tag, static_cast<uint32_t>(sign), static_cast<uint32_t>(index),
       operation_id);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void RemoveChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                  jint tag, jint sign) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->RemoveListChild(
       tag, static_cast<uint32_t>(sign));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 jint ObtainChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
@@ -1289,13 +1310,13 @@ jint ObtainChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                  jboolean enable_reuse_notification) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return -1;
   }
   jint ret = reinterpret_cast<LynxShell*>(ptr)->ObtainListChild(
       tag, static_cast<uint32_t>(index), operation_id,
       enable_reuse_notification);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return ret;
 }
 
@@ -1303,37 +1324,37 @@ void ObtainChildAsync(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                       jint tag, jint index, jlong operation_id) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->LoadListNode(static_cast<uint32_t>(tag),
                                                   static_cast<uint32_t>(index),
                                                   operation_id, true);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void RecycleChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                   jint tag, jint sign) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->RecycleListChild(
       tag, static_cast<uint32_t>(sign));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void RecycleChildAsync(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                        jint tag, jint sign) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->EnqueueListNode(
       static_cast<uint32_t>(tag), static_cast<uint32_t>(sign));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void ScrollByListContainer(JNIEnv* env, jobject jcaller, jlong ptr,
@@ -1341,12 +1362,12 @@ void ScrollByListContainer(JNIEnv* env, jobject jcaller, jlong ptr,
                            jfloat originalX, jfloat originalY) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->ScrollByListContainer(
       sign, dx, dy, originalX, originalY);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void ScrollToPosition(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
@@ -1354,35 +1375,35 @@ void ScrollToPosition(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
                       jboolean smooth) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->ScrollToPosition(sign, position, offset,
                                                       align, smooth);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void ScrollStopped(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
                    jint sign) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->ScrollStopped(sign);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 jlong GetListEngineProxy(JNIEnv* env, jclass jcaller, jlong ptr,
                          jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return 0;
   }
   auto shell = reinterpret_cast<lynx::shell::LynxShell*>(ptr);
   auto engine_proxy = shell->GetListEngineProxy();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   if (!engine_proxy) {
     return 0;
   }
@@ -1415,12 +1436,12 @@ jobject GetListPlatformInfo(JNIEnv* env, jclass jcaller, jlong ptr,
 
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return nullptr;
   }
   reinterpret_cast<LynxShell*>(ptr)->AssembleListPlatformInfo(
       tag, std::move(assembler));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return env->NewLocalRef(jni_map.jni_object());  // NOLINT
 }
 
@@ -1428,33 +1449,33 @@ void UpdateI18nResource(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                         jstring key, jstring data, jint) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->UpdateI18nResource(
       JNIConvertHelper::ConvertToString(env, key),
       JNIConvertHelper::ConvertToString(env, data));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void MarkDirty(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->MarkDirty();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void Flush(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->Flush();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void GetLynxElementRoot(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
@@ -1462,7 +1483,7 @@ void GetLynxElementRoot(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   auto platform_callback =
       std::make_unique<lynx::shell::PlatformCallBackStrongRefAndroid>(env,
                                                                       callback);
-  if (ptr == 0 || lifecycle == 0) {
+  if (ptr == 0) {
     LOGW("GetLynxElementRoot failed since native render is null.");
     platform_callback->InvokeWithValue(
         lynx::lepus::Value(static_cast<int32_t>(lynx::tasm::kInvalidImplId)));
@@ -1470,7 +1491,7 @@ void GetLynxElementRoot(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   }
 
   auto* lifecycle_ptr = reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     LOGW("GetLynxElementRoot failed since native lifecycle is terminated.");
     platform_callback->InvokeWithValue(
         lynx::lepus::Value(static_cast<int32_t>(lynx::tasm::kInvalidImplId)));
@@ -1479,7 +1500,7 @@ void GetLynxElementRoot(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 
   reinterpret_cast<LynxShell*>(ptr)->GetLynxElementRootSignAsync(
       std::move(platform_callback));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void LynxElementToJSONString(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -1487,15 +1508,14 @@ void LynxElementToJSONString(JNIEnv* env, jclass jcaller, jlong ptr,
   auto platform_callback =
       std::make_unique<lynx::shell::PlatformCallBackStrongRefAndroid>(env,
                                                                       callback);
-  if (ptr == 0 || lifecycle == 0 ||
-      sign == static_cast<jint>(lynx::tasm::kInvalidImplId)) {
+  if (ptr == 0 || sign == static_cast<jint>(lynx::tasm::kInvalidImplId)) {
     LOGW("LynxElementToJSONString failed since native render or sign is null.");
     platform_callback->InvokeWithValue(lynx::lepus::Value(""));
     return;
   }
 
   auto* lifecycle_ptr = reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     LOGW(
         "LynxElementToJSONString failed since native lifecycle is terminated.");
     platform_callback->InvokeWithValue(lynx::lepus::Value(""));
@@ -1504,7 +1524,7 @@ void LynxElementToJSONString(JNIEnv* env, jclass jcaller, jlong ptr,
 
   reinterpret_cast<LynxShell*>(ptr)->GetLynxElementTreeAsJSONStringAsync(
       sign, std::move(platform_callback));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SyncPackageExternalPath(JNIEnv* env, jclass jcaller, jlong ptr,
@@ -1520,59 +1540,59 @@ void SetEnableBytecode(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                        jboolean enable, jstring url) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->SetEnableBytecode(enable, JNIConvertHelper::ConvertToString(env, url));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void DispatchMessageEvent(JNIEnv* env, jclass jcaller, jlong ptr,
                           jlong lifecycle, jobject event) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->DispatchMessageEvent(lynx::tasm::android::EventConverterAndroid::
                                   ConvertJavaOnlyMapToMessageEvent(env, event));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetTiming(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
                jlong usTimestamp, jstring timingKey, jstring updateFlag) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->SetTiming(usTimestamp,
                    JNIConvertHelper::ConvertToString(env, timingKey),
                    JNIConvertHelper::ConvertToString(env, updateFlag));
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetSSRTimingData(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
                       jstring url, jlong dataSize) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->SetSSRTimingData(JNIConvertHelper::ConvertToString(env, url),
                           dataSize);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 jobject GetAllTimingInfo(JNIEnv* env, jobject jcaller, jlong ptr,
                          jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     JavaOnlyMap jni_map;
     return env->NewLocalRef(jni_map.jni_object());  // NOLINT
   }
@@ -1580,7 +1600,7 @@ jobject GetAllTimingInfo(JNIEnv* env, jobject jcaller, jlong ptr,
   auto all_timing =
       lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
           shell->GetAllTimingInfo());
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
   return env->NewLocalRef(all_timing.jni_object());  // NOLINT
 }
 
@@ -1588,19 +1608,19 @@ void ClearPipelineTimingInfo(JNIEnv* env, jobject jcaller, jlong ptr,
                              jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->ClearPipelineTimingInfo();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetLongTaskMonitorDisabled(JNIEnv* env, jobject jcaller, jlong ptr,
                                 jlong lifecycle, jboolean disabled) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
@@ -1608,42 +1628,42 @@ void SetLongTaskMonitorDisabled(JNIEnv* env, jobject jcaller, jlong ptr,
   auto options = shell->GetPageOptions();
   options.SetLongTaskMonitorDisabled(disabled);
   shell->SetPageOptions(options);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void AttachEngineToUIThread(JNIEnv* env, jobject jcaller, jlong ptr,
                             jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
 
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->AttachEngineToUIThread();
 
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void DetachEngineFromUIThread(JNIEnv* env, jobject jcaller, jlong ptr,
                               jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
 
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->DetachEngineFromUIThread();
 
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetExtensionDelegate(JNIEnv* env, jobject jcaller, jlong ptr,
                           jlong lifecycle, jlong delegate_ptr) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
 
@@ -1651,20 +1671,20 @@ void SetExtensionDelegate(JNIEnv* env, jobject jcaller, jlong ptr,
   auto* extension_delegate =
       reinterpret_cast<lynx::pub::LynxExtensionDelegate*>(delegate_ptr);
   extension_delegate->SetRuntimeActor(shell->GetRuntimeActor());
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void SetContextHasAttached(JNIEnv* env, jobject jcaller, jlong ptr,
                            jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
 
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->SetContextHasAttached();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void ReattachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
@@ -1672,7 +1692,7 @@ void ReattachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
                                jlong proxy_ptr) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
@@ -1684,19 +1704,19 @@ void ReattachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
         reinterpret_cast<lynx::shell::LynxEngineProxyAndroid*>(proxy_ptr);
     engine_proxy->ResetActor(shell->GetEngineActor());
   }
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void DetachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
                              jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->PrepareEngineHandoff();
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
 
 void EnforceRelayoutOnCurrentThreadWithUpdatedViewport(
@@ -1704,7 +1724,7 @@ void EnforceRelayoutOnCurrentThreadWithUpdatedViewport(
     jint width_mode, jint height, jint height_mode) {
   auto* lifecycle_ptr = reinterpret_cast<AtomicLifecycle*>(lifecycle);
 
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+  if (!TryLockLifecycle(lifecycle_ptr)) {
     return;
   }
 
@@ -1713,5 +1733,5 @@ void EnforceRelayoutOnCurrentThreadWithUpdatedViewport(
       static_cast<float>(width), static_cast<int32_t>(width_mode),
       static_cast<float>(height), static_cast<int32_t>(height_mode));
 
-  AtomicLifecycle::TryFree(lifecycle_ptr);
+  TryFreeLifecycle(lifecycle_ptr);
 }
