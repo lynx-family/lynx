@@ -44,6 +44,34 @@ class CountingInvalidationView final : public BaseView {
   int invalidation_count_ = 0;
 };
 
+class ImageLoaderTokenView final : public View {
+ public:
+  explicit ImageLoaderTokenView(PageView* page) : View(1, page) {}
+
+  bool IsCurrent(bool background, int token) const {
+    return IsImageLoaderTokenCurrent(background, token);
+  }
+
+  int Current(bool background) const {
+    return background ? GetCurrentImageLoaderToken()
+                      : GetCurrentMaskImageLoaderToken();
+  }
+};
+
+TEST_F_UI(BaseViewTest, ImageLoaderTokensInvalidateOnlyTheirResourceType) {
+  ImageLoaderTokenView view(page_.get());
+
+  const int background_token = view.Current(true);
+  const int mask_token = view.Current(false);
+
+  view.SetBackground(BackgroundData{});
+  EXPECT_FALSE(view.IsCurrent(true, background_token));
+  EXPECT_TRUE(view.IsCurrent(false, mask_token));
+
+  view.ClearMask();
+  EXPECT_FALSE(view.IsCurrent(false, mask_token));
+}
+
 TEST_F_UI(BaseViewTest, StableRasterAnimationStateDoesNotInvalidate) {
   page_->SetRasterAnimationEnabled(true);
   CountingInvalidationView view(page_.get());

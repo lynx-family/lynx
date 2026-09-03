@@ -687,6 +687,17 @@ class BaseView : public TypeIdentifiable<BaseView>,
   int GetCurrentMaskImageLoaderToken() const {
     return mask_image_loader_token_;
   }
+  int AdvanceImageLoaderToken(bool background) {
+    return background ? ++bg_image_loader_token_ : ++mask_image_loader_token_;
+  }
+  static bool IsImageLoaderTokenCurrent(bool background, int token,
+                                        int background_token, int mask_token) {
+    return token == (background ? background_token : mask_token);
+  }
+  bool IsImageLoaderTokenCurrent(bool background, int token) const {
+    return IsImageLoaderTokenCurrent(background, token, bg_image_loader_token_,
+                                     mask_image_loader_token_);
+  }
   bool should_pass_event_for_hittest_ = false;
   void LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
                                  bool background = true);
