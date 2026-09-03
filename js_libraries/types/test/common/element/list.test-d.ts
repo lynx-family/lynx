@@ -538,6 +538,12 @@ describe('List method test', () => {
       params: {
         offset: 200,
       },
+      success: (payload) => {
+        assertType<number>(payload.consumedX);
+        assertType<number>(payload.consumedY);
+        assertType<number>(payload.unconsumedX);
+        assertType<number>(payload.unconsumedY);
+      },
     });
 
     invoke<'list'>({

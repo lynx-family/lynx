@@ -33,6 +33,7 @@ class ListContainerWrapper
 
 #define UI_METHOD_LIST_DECLARATION(V) \
   V(scrollToPosition)                 \
+  V(scrollBy)                         \
   V(autoScroll)                       \
   V(getVisibleItemsPositions)         \
   V(getScrollInfo)                    \
