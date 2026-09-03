@@ -4,12 +4,16 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxDynamicComponentFetcher.h>
+#import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxResourceProvider.h>
+#import <Lynx/LynxTemplateResourceFetcher.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxRecorderDynamicComponentFetcher
-    : NSObject <LynxResourceProvider, LynxDynamicComponentFetcher>
+@interface LynxRecorderDynamicComponentFetcher : NSObject <LynxResourceProvider,
+                                                           LynxDynamicComponentFetcher,
+                                                           LynxGenericResourceFetcher,
+                                                           LynxTemplateResourceFetcher>
 @property NSDictionary* urlRedirectMap;
 
 - (void)parse:(NSArray*)actionList;

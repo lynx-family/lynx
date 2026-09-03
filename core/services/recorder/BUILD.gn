@@ -68,10 +68,58 @@ unittest_exec("record_unittest_exec") {
   deps = [ ":record_testset" ]
 }
 
+config("enable_testbench_recorder_for_test") {
+  if (is_win) {
+    cflags = [
+      "/UENABLE_TESTBENCH_RECORDER",
+      "/DENABLE_TESTBENCH_RECORDER=1",
+    ]
+  } else {
+    cflags = [
+      "-UENABLE_TESTBENCH_RECORDER",
+      "-DENABLE_TESTBENCH_RECORDER=1",
+    ]
+  }
+}
+
+lynx_core_source_set("testbench_recorder_enabled_test_support") {
+  testonly = true
+  sources = [
+    "recorder_controller.cc",
+    "testbench_base_recorder.cc",
+  ]
+  configs = [ ":enable_testbench_recorder_for_test" ]
+  deps = [
+    "../../../third_party/rapidjson:rapidjson",
+    "../../base:base",
+    "//third_party/modp_b64:modp_b64",
+    "//third_party/zlib",
+  ]
+}
+
+unittest_set("record_bridge_testset") {
+  configs = [ "../../:lynx_public_config" ]
+  sources = [ "testbench_recorder_bridge_unittest.cc" ]
+  deps = [
+    ":testbench_recorder_enabled_test_support",
+    "../../../third_party/rapidjson:rapidjson",
+  ]
+}
+
+unittest_exec("record_bridge_unittest_exec") {
+  sources = []
+  deps = [
+    ":record_bridge_testset",
+    "../../renderer/utils:lynx_env",
+  ]
+}
+
 group("record_unit_test") {
   testonly = true
 
   deps = [
+    ":record_bridge_testset",
+    ":record_bridge_unittest_exec",
     ":record_testset",
     ":record_unittest_exec",
   ]
