@@ -585,6 +585,29 @@ TEST_F(ExposeObserverTest, ExposureAreaChecksEachClippingBoundary) {
   EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
 }
 
+TEST_F(ExposeObserverTest, ExposureUIClipUsesAncestorConfiguration) {
+  auto* no_clip_parent = new View(1, page_.get());
+  page_->AddChild(no_clip_parent);
+  no_clip_parent->SetBound(0, 0, 100, 50);
+  no_clip_parent->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+  no_clip_parent->SetAttribute("enable-exposure-ui-clip", Value(false));
+  AddObservedView(no_clip_parent, 2, 0, 60, 100, 30);
+
+  auto* clip_parent = new View(3, page_.get());
+  page_->AddChild(clip_parent);
+  clip_parent->SetBound(200, 0, 100, 50);
+  clip_parent->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
+  clip_parent->SetAttribute("enable-exposure-ui-clip", Value(true));
+  AddObservedView(clip_parent, 4, 0, 60, 100, 30);
+
+  EXPECT_FALSE(manager()->HasExposeObserver(no_clip_parent));
+  EXPECT_FALSE(manager()->HasExposeObserver(clip_parent));
+
+  manager()->NotifyObservers();
+  EXPECT_EQ(CustomEventCount(2, "uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount(4, "uiappear"), 0u);
+}
+
 TEST_F(ExposeObserverTest,
        EmptyClippingParentKeepsOrdinaryIntersectionBehavior) {
   auto* clipping_parent = new View(1, page_.get());

@@ -82,7 +82,8 @@ float IntersectionRatio(const FloatRect& target_rect,
 
 FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
                               FloatRect bounding_client_rect,
-                              FloatRect relative_rect, bool ui_clip_enabled,
+                              FloatRect relative_rect,
+                              bool respect_exposure_ui_clip,
                               float* minimum_clipping_ratio = nullptr) {
   if (minimum_clipping_ratio) {
     *minimum_clipping_ratio = 0;
@@ -113,8 +114,11 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
       should_clip = true;
       parent_rect = relative_rect;
     } else {
-      if (parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
-          parent->Is<ScrollView>() || ui_clip_enabled) {
+      const auto exposure_ui_clip = parent->EnableExposureUIClip();
+      if ((respect_exposure_ui_clip && exposure_ui_clip.has_value())
+              ? *exposure_ui_clip
+              : parent->GetOverflow() == CSSProperty::OVERFLOW_HIDDEN ||
+                    parent->Is<ScrollView>()) {
         should_clip = true;
         parent_rect = BoundingRectWithScroll(parent);
       }
@@ -165,10 +169,10 @@ FloatRect ComputeIntersection(BaseView* target_view, BaseView* root,
 }  // namespace
 
 void IntersectionObserverEntry::ComputeIntersectionRect(
-    bool ui_clip_enabled, bool compute_minimum_clipping_ratio) {
+    bool respect_exposure_ui_clip, bool compute_minimum_clipping_ratio) {
   intersection_rect_ = ComputeIntersection(
       target_view_, root_, bounding_client_rect_, relative_rect_,
-      ui_clip_enabled,
+      respect_exposure_ui_clip,
       compute_minimum_clipping_ratio ? &minimum_clipping_ratio_ : nullptr);
 }
 
@@ -298,7 +302,7 @@ void IntersectionObserver::CheckForIntersectionWithTarget() {
   now_entry_->relative_rect_ = root_rect;
   now_entry_->target_view_ = attached_view_;
   now_entry_->root_ = root_;
-  now_entry_->ComputeIntersectionRect(exposure_ui_clip_enabled_);
+  now_entry_->ComputeIntersectionRect(false);
   now_entry_->time_ = 0;  // not support time
   now_entry_->relative_to_id_ = attached_view_->GetIdSelector();
   now_entry_->ComputeIntersectionRatio();
