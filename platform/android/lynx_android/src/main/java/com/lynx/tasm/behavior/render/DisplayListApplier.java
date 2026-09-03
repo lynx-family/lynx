@@ -6,9 +6,11 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
@@ -51,6 +53,7 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int OP_LINEAR_GRADIENT = 12;
   static final int OP_BOX_SHADOW = 13;
   static final int OP_BACKGROUND_IMAGE = 14;
+  static final int OP_RADIAL_GRADIENT = 15;
   static final int SUBTREE_OP_TRANSFORM = 0;
   static final int SUBTREE_OP_OPACITY = 1;
   static final int SUBTREE_OP_FILTER = 2;
@@ -104,6 +107,10 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int GRADIENT_REPEAT_X_OFFSET = 28;
   static final int GRADIENT_REPEAT_Y_OFFSET = 32;
   static final int GRADIENT_ANGLE_OFFSET = 36;
+  static final int RADIAL_GRADIENT_CENTER_X_OFFSET = 36;
+  static final int RADIAL_GRADIENT_CENTER_Y_OFFSET = 40;
+  static final int RADIAL_GRADIENT_RADIUS_X_OFFSET = 44;
+  static final int RADIAL_GRADIENT_RADIUS_Y_OFFSET = 48;
   static final int BOX_SHADOW_SHADOW_BOX_INDEX_OFFSET = 4;
   static final int BOX_SHADOW_CLIP_BOX_INDEX_OFFSET = 8;
   static final int BOX_SHADOW_COLOR_OFFSET = 12;
@@ -688,6 +695,47 @@ public class DisplayListApplier implements Drawable.Callback {
           break;
         }
 
+        case OP_RADIAL_GRADIENT: {
+          int colorCount = getIntAt(itemByteOffset + GRADIENT_COLOR_COUNT_OFFSET);
+          int stopCount = getIntAt(itemByteOffset + GRADIENT_STOP_COUNT_OFFSET);
+          int tilingIndex = getIntAt(itemByteOffset + GRADIENT_TILING_INDEX_OFFSET);
+          int clipIndex = getIntAt(itemByteOffset + GRADIENT_CLIP_INDEX_OFFSET);
+          int repeatX = getIntAt(itemByteOffset + GRADIENT_REPEAT_X_OFFSET);
+          int repeatY = getIntAt(itemByteOffset + GRADIENT_REPEAT_Y_OFFSET);
+          float centerX = getFloatAt(itemByteOffset + RADIAL_GRADIENT_CENTER_X_OFFSET);
+          float centerY = getFloatAt(itemByteOffset + RADIAL_GRADIENT_CENTER_Y_OFFSET);
+          float radiusX = getFloatAt(itemByteOffset + RADIAL_GRADIENT_RADIUS_X_OFFSET);
+          float radiusY = getFloatAt(itemByteOffset + RADIAL_GRADIENT_RADIUS_Y_OFFSET);
+
+          int[] colors = null;
+          if (colorCount > 0) {
+            int colorOffset = getIntAt(itemByteOffset + GRADIENT_COLOR_COUNT_OFFSET_OFFSET);
+            if (mReusableGradientColors == null || mReusableGradientColors.length != colorCount) {
+              mReusableGradientColors = new int[colorCount];
+            }
+            colors = mReusableGradientColors;
+            for (int i = 0; i < colorCount; i++) {
+              colors[i] = mDataBuffer == null ? 0 : mDataBuffer.getInt(colorOffset + i * 4);
+            }
+          }
+
+          float[] stops = null;
+          if (stopCount > 0) {
+            int stopOffset = getIntAt(itemByteOffset + GRADIENT_STOP_COUNT_OFFSET_OFFSET);
+            if (mReusableGradientStops == null || mReusableGradientStops.length != stopCount) {
+              mReusableGradientStops = new float[stopCount];
+            }
+            stops = mReusableGradientStops;
+            for (int i = 0; i < stopCount; i++) {
+              stops[i] = mDataBuffer == null ? 0.0f : mDataBuffer.getFloat(stopOffset + i * 4);
+            }
+          }
+
+          drawRadialGradient(canvas, centerX, centerY, radiusX, radiusY, colors, stops, tilingIndex,
+              clipIndex, repeatX, repeatY);
+          break;
+        }
+
         default:
           break;
       }
@@ -744,11 +792,58 @@ public class DisplayListApplier implements Drawable.Callback {
     float startX = 2 * center.x - endX;
     float startY = 2 * center.y - endY;
 
+    drawGradient(canvas,
+        new LinearGradient(startX, startY, endX, endY, colors, stops, Shader.TileMode.CLAMP),
+        tilingBox, clipBox, repeatX, repeatY);
+  }
+
+  private void drawRadialGradient(Canvas canvas, float centerX, float centerY, float radiusX,
+      float radiusY, int[] colors, float[] stops, int tilingIndex, int clipIndex, int repeatX,
+      int repeatY) {
+    if (colors == null || colors.length < 2 || (stops != null && stops.length != colors.length)
+        || radiusX < 0.f || radiusY < 0.f) {
+      return;
+    }
+
+    RoundedRectangle tilingBox = getNormalizedRoundedRectangle(tilingIndex);
+    RoundedRectangle clipBox = getNormalizedRoundedRectangle(clipIndex);
+    if (tilingBox == null || clipBox == null) {
+      return;
+    }
+
+    boolean hasZeroRadius = radiusX == 0.f || radiusY == 0.f;
+    RadialGradient gradient = new RadialGradient(
+        centerX, centerY, Math.max(radiusX, 1.f), colors, stops, Shader.TileMode.CLAMP);
+    if (!hasZeroRadius && radiusX != radiusY) {
+      Matrix matrix = new Matrix();
+      matrix.setScale(1.f, radiusY / radiusX, centerX, centerY);
+      gradient.setLocalMatrix(matrix);
+    }
+    drawGradient(canvas, gradient, tilingBox, clipBox, repeatX, repeatY);
+  }
+
+  private void drawGradient(Canvas canvas, Shader shader, RoundedRectangle tilingBox,
+      RoundedRectangle clipBox, int repeatX, int repeatY) {
+    final RectF tilingRect = tilingBox.getRectF();
+    final float width = tilingRect.width();
+    final float height = tilingRect.height();
+    if (Float.isNaN(width) || Float.isNaN(height) || width <= 0.f || height <= 0.f) {
+      return;
+    }
+
+    final boolean repeatHorizontally = repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT
+        || repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT_X;
+    final boolean repeatVertically = repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT
+        || repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT_Y;
+    final float tileWidth = repeatHorizontally ? Math.max(1.f, Math.round(width)) : width;
+    final float tileHeight = repeatVertically ? Math.max(1.f, Math.round(height)) : height;
+
     mPaint.reset();
     mPaint.setAntiAlias(true);
+    mPaint.setShader(shader);
 
-    mPaint.setShader(
-        new LinearGradient(startX, startY, endX, endY, colors, stops, Shader.TileMode.CLAMP));
+    final float left = tilingRect.left;
+    final float top = tilingRect.top;
 
     final RectF clipRect = clipBox.getRectF();
     final float clipLeft = clipRect.left;
@@ -765,8 +860,7 @@ public class DisplayListApplier implements Drawable.Callback {
       canvas.clipRect(clipRect);
     }
 
-    if (repeatX == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT
-        && repeatY == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT) {
+    if (!repeatHorizontally && !repeatVertically) {
       canvas.save();
       canvas.translate(left, top);
       canvas.drawRect(0, 0, width, height, mPaint);
@@ -778,15 +872,13 @@ public class DisplayListApplier implements Drawable.Callback {
       float tileStartX = left;
       float tileStartY = top;
 
-      if (repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT
-          || repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT_X) {
+      if (repeatHorizontally) {
         if (tileStartX > clipLeft) {
           tileStartX = tileStartX - ((int) Math.ceil((tileStartX - clipLeft) / width)) * width;
         }
       }
 
-      if (repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT
-          || repeatY == StyleConstants.BACKGROUND_REPEAT_REPEAT_Y) {
+      if (repeatVertically) {
         if (tileStartY > clipTop) {
           tileStartY = tileStartY - ((int) Math.ceil((tileStartY - clipTop) / height)) * height;
         }
@@ -795,23 +887,21 @@ public class DisplayListApplier implements Drawable.Callback {
       final int saveCount = canvas.save();
       final float pixelAlignedStartX = Math.round(tileStartX);
       final float pixelAlignedStartY = Math.round(tileStartY);
-      final float pixelAlignedWidth = Math.round(width);
-      final float pixelAlignedHeight = Math.round(height);
       canvas.translate(pixelAlignedStartX, pixelAlignedStartY);
-      for (float x = pixelAlignedStartX; x < endTileX; x += pixelAlignedWidth) {
+      for (float x = pixelAlignedStartX; x < endTileX; x += tileWidth) {
         final int rowSaveCount = canvas.save();
-        for (float y = pixelAlignedStartY; y < endTileY; y += pixelAlignedHeight) {
-          canvas.drawRect(0, 0, pixelAlignedWidth, pixelAlignedHeight, mPaint);
-          canvas.translate(0, pixelAlignedHeight);
+        for (float y = pixelAlignedStartY; y < endTileY; y += tileHeight) {
+          canvas.drawRect(0, 0, tileWidth, tileHeight, mPaint);
+          canvas.translate(0, tileHeight);
 
-          if (repeatY == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT) {
+          if (!repeatVertically) {
             break;
           }
         }
         canvas.restoreToCount(rowSaveCount);
-        canvas.translate(pixelAlignedWidth, 0);
+        canvas.translate(tileWidth, 0);
 
-        if (repeatX == StyleConstants.BACKGROUND_REPEAT_NO_REPEAT) {
+        if (!repeatHorizontally) {
           break;
         }
       }

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -2273,6 +2274,37 @@ TEST_F(FragmentTest, LinearGradientCornerDirectionUsesTilingBoxSize) {
     EXPECT_NEAR(gradient_item.payload.linear_gradient.angle,
                 test_case.expected_angle, 0.0001f);
   }
+}
+
+TEST_F(FragmentTest, RadialGradientResolvesRawExplicitRadius) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 80.f);
+  fragment.UpdateLayout(layout);
+
+  constexpr char kGradient[] = "radial-gradient(ellipse 10px 5px, red, blue)";
+  CSSParserConfigs configs;
+  CSSStringParser parser(kGradient, sizeof(kGradient) - 1, configs);
+  auto value = parser.ParseBackgroundImage();
+  ASSERT_TRUE(value.IsArray());
+  auto shape_array = value.GetArray()->get(1).Array()->get(0).Array();
+  ASSERT_EQ(shape_array->size(), 10u);
+  ASSERT_TRUE(element->computed_css_style()->SetValue(
+      CSSPropertyID::kPropertyIDBackgroundImage, value));
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+
+  auto items = CollectDisplayListItems(builder.Build());
+  auto gradient =
+      std::find_if(items.begin(), items.end(), [](const auto& item) {
+        return item.type == DisplayListOpType::kRadialGradient;
+      });
+  ASSERT_NE(gradient, items.end());
+  EXPECT_FLOAT_EQ(gradient->payload.radial_gradient.radius_x, 10.f);
+  EXPECT_FLOAT_EQ(gradient->payload.radial_gradient.radius_y, 5.f);
 }
 
 TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
