@@ -21,4 +21,10 @@ export { LynxWebSocketModule } from './jsbridge/LynxWebSocketModule'
 
 export { LogBox, LogBoxNotificationOwner } from './logbox/LogBox'
 
-export { LynxRecorderEnv, LynxRecorderReplayDataModule, LynxRecorderView, RecorderDataType } from './recorder/index'
+export {
+  LynxRecorderEnv,
+  LynxRecorderReplayDataModule,
+  LynxRecorderReplayOptions,
+  LynxRecorderView,
+  RecorderDataType
+} from './recorder/index'
