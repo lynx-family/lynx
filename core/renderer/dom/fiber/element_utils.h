@@ -18,6 +18,8 @@ fml::RefPtr<Element> GetComposeContentOrFiberElementFromValue(
 fml::RefPtr<Element> GetComposeMountRootOrFiberElementFromValue(
     const lepus::Value& value);
 
+base::String ConvertTextContent(const lepus::Value& value);
+
 }  // namespace tasm
 }  // namespace lynx
 
