@@ -3691,6 +3691,7 @@ public protocol LynxServiceSystemInvokeProtocol-p : <LynxServiceProtocol> {
 }
 
 public protocol LynxServiceTextProtocol-p : <LynxServiceProtocol> {
+  public void LynxServiceTextProtocol-p::warm();
   public void * LynxServiceTextProtocol-p::createTextLayoutAPIFromContext:(LynxUIOwner *context);
   public void LynxServiceTextProtocol-p::destroyTextLayoutAPI:(void *api);
   public void LynxServiceTextProtocol-p::destroyPage:(void *page);

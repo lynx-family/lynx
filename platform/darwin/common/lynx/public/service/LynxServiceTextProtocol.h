@@ -14,6 +14,13 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxTextInfo;
 
 @protocol LynxServiceTextProtocol <LynxServiceProtocol>
+@optional
+/**
+ * Warm up the text service before its first use.
+ */
+- (void)warm;
+
+@required
 /**
  * create cpp TextLayoutAPI object
  * @param context resource context for TextLayoutAPI
