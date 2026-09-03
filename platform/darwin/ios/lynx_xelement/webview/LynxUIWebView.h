@@ -46,6 +46,10 @@ typedef void (^LynxWebViewLoaderInvocationCallback)(BOOL success, NSInteger cust
          completionHandler:
              (void (^_Nullable)(_Nullable id, NSError *_Nullable error))completionHandler;
 
+@optional
+
+- (void)setKeyboardAccessoryViewHidden:(BOOL)hidden;
+
 @end
 
 @protocol LynxWebViewLoaderProvider <NSObject>

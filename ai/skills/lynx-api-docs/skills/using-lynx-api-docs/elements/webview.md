@@ -23,6 +23,8 @@ This guide covers the current native Android, iOS, and Harmony `<webview>` eleme
 - treat `webview-type` as a host-integration surface
 - treat `params` as loader-specific metadata, not as a portable page-loading API
 - normalize iOS `binderror` payloads because its navigation-error keys differ from Android and Harmony
+- use `ios-hide-keyboard-accessory-view` only with Lynx 4.3 or later and the built-in loader on iOS 13 or later, or with a custom loader that explicitly supports it
+- provide another way to dismiss the keyboard when hiding its system accessory view
 - treat transparent background as built-in native behavior, not as a dedicated prop
 - use `enable-debug` only for development workflows
 
@@ -82,6 +84,7 @@ The built-in default webview paths can render transparent page content where the
 | `params` | Android, iOS | Passes loader-specific setup data; do not treat it as a portable content API |
 | `bounces` | iOS | Controls `WKWebView` bounce behavior |
 | `scroll-bar-enable` | iOS | Toggles both horizontal and vertical scroll indicators |
+| `ios-hide-keyboard-accessory-view` | iOS 13+, Lynx 4.3+ | Hides the system keyboard accessory view for the built-in loader; defaults to `false` |
 
 There is no dedicated transparent-background prop in the current native mobile implementations.
 

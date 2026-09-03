@@ -67,6 +67,7 @@
   [self.diffMap putValue:@(YES) forKey:@"bounces"];
   [self.diffMap putValue:@(NO) forKey:@"scroll-bar-enable"];
   [self.diffMap putValue:@(NO) forKey:@"enable-debug"];
+  [self.diffMap putValue:@(NO) forKey:@"ios-hide-keyboard-accessory-view"];
   self.loaderType = @"default";
   return [[LynxWebViewWrapper alloc] init];
 }
@@ -87,6 +88,10 @@ LYNX_PROP_SETTER("html", html, NSString *) { [self.diffMap putValue:value ?: @""
 
 LYNX_PROP_SETTER("enable-debug", setEnableDebug, BOOL) {
   [self.diffMap putValue:@(value) forKey:@"enable-debug"];
+}
+
+LYNX_PROP_SETTER("ios-hide-keyboard-accessory-view", setIOSHideKeyboardAccessoryView, BOOL) {
+  [self.diffMap putValue:@(value) forKey:@"ios-hide-keyboard-accessory-view"];
 }
 
 LYNX_PROP_SETTER("webview-type", setWebViewType, NSString *) { self.loaderType = value; }
@@ -199,6 +204,11 @@ LYNX_UI_METHOD(reload) {
     BOOL scrollBarEnable = [[self.diffMap getValueForKey:@"scroll-bar-enable"] boolValue];
     webView.scrollView.showsVerticalScrollIndicator = scrollBarEnable;
     webView.scrollView.showsHorizontalScrollIndicator = scrollBarEnable;
+
+    if ([self.loader respondsToSelector:@selector(setKeyboardAccessoryViewHidden:)]) {
+      BOOL hidden = [[self.diffMap getValueForKey:@"ios-hide-keyboard-accessory-view"] boolValue];
+      [self.loader setKeyboardAccessoryViewHidden:hidden];
+    }
 
     if (@available(iOS 16.4, *)) {
       webView.inspectable = [[self.diffMap getValueForKey:@"enable-debug"] boolValue];
