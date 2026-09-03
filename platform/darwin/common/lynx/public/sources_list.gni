@@ -25,6 +25,7 @@ common_lynx_public_headers =
                     "LynxErrorCode.h",
                     "LynxErrorBehavior.h",
                     "LynxSubErrorCode.h",
+                    "LynxResourceHandle.h",
                     "LynxTemplateBundle.h",
                     "LynxGlobalObserver.h",
                     "LynxViewClient.h",
