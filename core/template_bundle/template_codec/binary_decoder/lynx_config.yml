@@ -1882,7 +1882,7 @@ enableSimpleStyleNoPatchOptimization:
   valueType: bool
   readSettings: true
   author: 'linxiaosong'
-  since: '4.3'
+  since: '4.2'
   supportPlatform:
     - Android
     - HarmonyOS
