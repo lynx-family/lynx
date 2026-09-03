@@ -905,18 +905,22 @@ TEST_F_UI(TextTest, AutoFontSizeStepGranularity) {
   EXPECT_NE(text_shadow_node_->text_style_->font_size, font_size);
 }
 
-TEST_F_UI(TextTest, AutoFontSizeIgnoresInvalidStepGranularity) {
-  MeasureConstraint constraint{4000, MeasureMode::kDefinite, 1000,
+TEST_F_UI(TextTest, AutoFontSizeUsesDefaultStepGranularity) {
+  MeasureConstraint constraint{100, MeasureMode::kDefinite, 1,
                                MeasureMode::kDefinite};
   text_shadow_node_->enable_auto_font_size_ = true;
-  text_shadow_node_->auto_font_size_max_size_ = 50;
-  text_shadow_node_->auto_font_size_min_size_ = 30;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_min_size_ = 10;
   text_shadow_node_->auto_font_size_step_granularity_ = 0;
-  raw_text_shadow_node_->SetText("Hello");
+  raw_text_shadow_node_->SetText(
+      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
+      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
 
   text_shadow_node_->Measure(constraint);
 
-  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+  EXPECT_LT(text_shadow_node_->text_style_->font_size, 42);
+  EXPECT_DOUBLE_EQ(text_shadow_node_->GetAutoFontSizeStepGranularity(), 1);
+  EXPECT_DOUBLE_EQ(text_shadow_node_->auto_font_size_step_granularity_, 0);
 }
 
 TEST_F_UI(TextTest, AutoFontSizeAllowsUnsetMaxSize) {
@@ -935,20 +939,43 @@ TEST_F_UI(TextTest, AutoFontSizeAllowsUnsetMaxSize) {
   EXPECT_LT(text_shadow_node_->text_style_->font_size, 42);
 }
 
-TEST_F_UI(TextTest, AutoFontSizeIgnoresUnsetMinSize) {
-  MeasureConstraint constraint{100, MeasureMode::kDefinite, 1,
-                               MeasureMode::kDefinite};
+TEST_F_UI(TextTest, AutoFontSizeAllowsUnsetMinSize) {
+  MeasureConstraint constraint{100, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
   text_shadow_node_->enable_auto_font_size_ = true;
   text_shadow_node_->auto_font_size_min_size_ = 0;
   text_shadow_node_->auto_font_size_max_size_ = 0;
   text_shadow_node_->auto_font_size_step_granularity_ = 1;
-  raw_text_shadow_node_->SetText(
-      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
-      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
+  text_shadow_node_->SetWhiteSpaceType(WhiteSpace::kNoWrap);
+  text_shadow_node_->SetTextOverflow(TextOverflow::kClip);
+  raw_text_shadow_node_->SetText("Hello, Compiler NG");
 
   text_shadow_node_->Measure(constraint);
 
-  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+  EXPECT_LT(text_shadow_node_->text_style_->font_size, 42);
+  EXPECT_GT(text_shadow_node_->text_style_->font_size, 0);
+}
+
+TEST_F_UI(TextTest, AutoFontSizeWaitsForPositiveWidthConstraint) {
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_min_size_ = 0;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_step_granularity_ = 1;
+  text_shadow_node_->SetWhiteSpaceType(WhiteSpace::kNoWrap);
+  text_shadow_node_->SetTextOverflow(TextOverflow::kClip);
+  raw_text_shadow_node_->SetText("Hello, Compiler NG");
+  auto original_font_size = text_shadow_node_->text_style_->font_size;
+
+  text_shadow_node_->Measure(
+      {0, MeasureMode::kDefinite, std::nullopt, MeasureMode::kIndefinite});
+
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, original_font_size);
+
+  text_shadow_node_->Measure(
+      {100, MeasureMode::kDefinite, std::nullopt, MeasureMode::kIndefinite});
+
+  EXPECT_LT(text_shadow_node_->text_style_->font_size, original_font_size);
+  EXPECT_GT(text_shadow_node_->text_style_->font_size, 0);
 }
 
 TEST_F_UI(TextTest, AutoFontSizeDoesNotShrinkBelowMinSize) {

@@ -580,9 +580,8 @@ void TextRender::HandleAutoSize(const MeasureConstraint& constraint,
     if (HasInlineTruncationShadowNode(measure_node_)) {
       return;
     }
-    if (measure_node_->auto_font_size_preset_sizes_.empty() &&
-        (measure_node_->auto_font_size_step_granularity_ <= 0 ||
-         measure_node_->auto_font_size_min_size_ <= 0)) {
+    if (constraint.width_mode == TextMeasureMode::kIndefinite ||
+        !constraint.width.has_value() || constraint.width.value() <= 0.f) {
       return;
     }
     if (!CheckTextFullyDisplayed(constraint, context)) {
@@ -613,6 +612,8 @@ bool TextRender::CheckTextFullyDisplayed(
 void TextRender::TryShrinkFontSize(
     const MeasureConstraint& constraint,
     ShadowLayoutContextMeasure* context_measure) {
+  const double step_granularity =
+      measure_node_->GetAutoFontSizeStepGranularity();
   // FIXME: if the number of auto_font_size_preset_sizes_ is too much, we
   // should use dichotomy to find target
   if (!measure_node_->auto_font_size_preset_sizes_.empty()) {
@@ -652,9 +653,8 @@ void TextRender::TryShrinkFontSize(
          measure_node_->auto_font_size_min_size_) {
     auto current_font_size = measure_node_->text_style_->font_size.value_or(
         kDefaultFontSizeInDip * measure_node_->Logical2ClayPixelRatio());
-    auto target_font_size = std::max(
-        current_font_size - measure_node_->auto_font_size_step_granularity_,
-        measure_node_->auto_font_size_min_size_);
+    auto target_font_size = std::max(current_font_size - step_granularity,
+                                     measure_node_->auto_font_size_min_size_);
     if (target_font_size == current_font_size) {
       return;
     }
@@ -675,6 +675,8 @@ void TextRender::TryShrinkFontSize(
 void TextRender::TryExpandFontSize(
     const MeasureConstraint& constraint,
     ShadowLayoutContextMeasure* context_measure) {
+  const double step_granularity =
+      measure_node_->GetAutoFontSizeStepGranularity();
   // FIXME: if the number of auto_font_size_preset_sizes_ is too much, we
   // should use dichotomy to find target
   if (!measure_node_->auto_font_size_preset_sizes_.empty()) {
@@ -720,7 +722,7 @@ void TextRender::TryExpandFontSize(
     measure_node_->text_style_->font_size =
         measure_node_->text_style_->font_size.value_or(
             kDefaultFontSizeInDip * measure_node_->Logical2ClayPixelRatio()) +
-        measure_node_->auto_font_size_step_granularity_;
+        step_granularity;
     FlexInlineFontSize(false, measure_node_->text_style_->font_size.value(),
                        measure_node_);
     if (measure_node_->text_style_->font_size <=
@@ -732,7 +734,7 @@ void TextRender::TryExpandFontSize(
             measure_node_->text_style_->font_size.value_or(
                 kDefaultFontSizeInDip *
                 measure_node_->Logical2ClayPixelRatio()) -
-            measure_node_->auto_font_size_step_granularity_;
+            step_granularity;
         cache_paragraph_ = std::move(pre_paragraph);
         return;
       }
