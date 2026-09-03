@@ -47,6 +47,7 @@ namespace js {
 class Runtime;
 class App;
 class LynxProxy;
+class NativeModuleRecordObserver;
 
 // now this do nothing!
 class AppProxy : public HostObject {
@@ -291,6 +292,13 @@ class App {
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
   runtime::TemplateDelegate& GetDelegate() { return *delegate_; }
 
+#if ENABLE_INSPECTOR
+  void SetNativeModuleRecordObserver(
+      std::weak_ptr<NativeModuleRecordObserver> observer) {
+    native_module_record_observer_ = std::move(observer);
+  }
+#endif  // ENABLE_INSPECTOR
+
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id_ = 0;
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
@@ -335,6 +343,10 @@ class App {
                                   const std::string& name,
                                   const lepus::Value& params);
   void SendGlobalEvent(const std::string& name, const lepus::Value& arguments);
+#if ENABLE_INSPECTOR
+  void RecordGlobalEvent(const std::string& name,
+                         const lepus::Value& arguments);
+#endif  // ENABLE_INSPECTOR
   std::optional<Value> PublishComponentEvent(const std::string& component_id,
                                              const std::string& handler,
                                              const lepus::Value& info);
@@ -387,6 +399,8 @@ class App {
 
   std::unique_ptr<JsCallNativeFrequencyMonitor>
       js_call_native_frequency_monitor_;
+
+  std::weak_ptr<NativeModuleRecordObserver> native_module_record_observer_;
 
   bool IsJsAppStateValid() {
     return (js_app_.isObject() && state_ != State::kAppLoadFailed);

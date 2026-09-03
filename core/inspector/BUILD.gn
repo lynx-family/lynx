@@ -16,6 +16,10 @@ inspector_shared_sources = [
   "style_sheet.h",
 ]
 
+if (enable_inspector) {
+  inspector_shared_sources += [ "observer/native_module_record_observer.h" ]
+}
+
 if (!disable_rts_devtool) {
   inspector_shared_sources += [ "rts_inspector_manager.h" ]
 }
