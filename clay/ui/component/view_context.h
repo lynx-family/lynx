@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <set>
@@ -167,6 +168,10 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   }
 
   void SetBounds(int id, float left, float top, float width, float height);
+
+  void UpdateLayout(int id, const std::array<float, 4>& margins,
+                    const std::array<float, 4>& bounds,
+                    const std::array<float, 4>& paddings, const float* sticky);
 
   void SetPaddings(int id, float padding_left, float padding_top,
                    float padding_right, float padding_bottom);

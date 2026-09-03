@@ -483,6 +483,42 @@ void ViewContext::SetBounds(int id, float left, float top, float width,
   }
 }
 
+void ViewContext::UpdateLayout(int id, const std::array<float, 4>& margins,
+                               const std::array<float, 4>& bounds,
+                               const std::array<float, 4>& paddings,
+                               const float* sticky) {
+  CTX_LOG << "UpdateLayout id:" << id << " " << bounds[0] << "," << bounds[1]
+          << " " << bounds[2] << "," << bounds[3];
+
+  FIND_VIEW_WITH_ID_OR_RET;
+  view->SetMargins(
+      page_view_->RoundPixels(margins[0]), page_view_->RoundPixels(margins[1]),
+      page_view_->RoundPixels(margins[2]), page_view_->RoundPixels(margins[3]));
+  view->SetBound(
+      page_view_->RoundPixels(bounds[0]), page_view_->RoundPixels(bounds[1]),
+      page_view_->RoundPixels(bounds[2]), page_view_->RoundPixels(bounds[3]));
+  if (page_view_->HasIntersectionObserverManager()) {
+    page_view_->intersection_observer_manager()
+        ->TryReconcileLargeExposureTargetAfterLayout(view);
+  }
+  view->SetPaddings(page_view_->RoundPixels(paddings[0]),
+                    page_view_->RoundPixels(paddings[1]),
+                    page_view_->RoundPixels(paddings[2]),
+                    page_view_->RoundPixels(paddings[3]));
+  if (sticky == nullptr) {
+    view->UpdateSticky(std::nullopt);
+    return;
+  }
+  StickyInfo sticky_info;
+  sticky_info.left = sticky[0];
+  sticky_info.top = sticky[1];
+  sticky_info.right = sticky[2];
+  sticky_info.bottom = sticky[3];
+  sticky_info.offset_x = 0;
+  sticky_info.offset_y = 0;
+  view->UpdateSticky(sticky_info);
+}
+
 void ViewContext::SetPaddings(int id, float padding_left, float padding_top,
                               float padding_right, float padding_bottom) {
   FIND_VIEW_WITH_ID_OR_RET;
