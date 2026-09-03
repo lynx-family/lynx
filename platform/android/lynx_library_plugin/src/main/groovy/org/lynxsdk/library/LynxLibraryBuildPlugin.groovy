@@ -13,7 +13,17 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         Project root = project.rootProject
-        List<LynxLibraryInfo> libraries = LynxLibraryScanner.scan(root.projectDir)
+        List<String> sources = LynxLibraryScanner.enabledSources(
+            root.findProperty(LynxLibraryScanner.SOURCES_PROPERTY))
+
+        List<LynxLibraryInfo> libraries = []
+        if (sources.contains(LynxLibraryScanner.SOURCE_NODE_MODULES)) {
+            libraries.addAll(LynxLibraryScanner.scan(root.projectDir))
+        }
+        if (sources.contains(LynxLibraryScanner.SOURCE_LOCAL_PROJECT)) {
+            libraries.addAll(scanLocalProjects(root, libraries))
+        }
+        libraries = deduplicateByProvider(libraries)
         root.extensions.extraProperties.set('lynxAutolinkLibraries', libraries)
 
         root.allprojects { Project subproject ->
@@ -22,6 +32,38 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
                 configureAndroidConsumer(subproject, libraries)
             }
         }
+    }
+
+    // Discover host-included local projects that ship a lynx.lib.json. Skip any
+    // project already found via node_modules (same projectDir) to avoid double
+    // discovery.
+    private static List<LynxLibraryInfo> scanLocalProjects(
+        Project root, List<LynxLibraryInfo> alreadyFound) {
+        Set<File> knownDirs = alreadyFound.collect {
+            LynxLibraryScanner.canonicalOrAbsolute(it.androidDir)
+        }.toSet()
+        List<LynxLibraryInfo> result = []
+        root.allprojects.each { Project subproject ->
+            if (subproject == root) {
+                return
+            }
+            File dir = LynxLibraryScanner.canonicalOrAbsolute(subproject.projectDir)
+            if (knownDirs.contains(dir)) {
+                return
+            }
+            LynxLibraryInfo info = LynxLibraryScanner.scanLocalProject(
+                subproject.projectDir, subproject.path)
+            if (info != null) {
+                result << info
+            }
+        }
+        result.sort { it.npmName }
+    }
+
+    // Merge sources and drop duplicate providers. The same package resolved from
+    // more than one source is expected; keep the first and stay silent.
+    private static List<LynxLibraryInfo> deduplicateByProvider(List<LynxLibraryInfo> libraries) {
+        libraries.unique { it.providerClassName }
     }
 
     private static void configureLibraryProject(
@@ -49,6 +91,12 @@ class LynxLibraryBuildPlugin implements Plugin<Project> {
     private static void configureAndroidConsumer(
         Project project, List<LynxLibraryInfo> libraries) {
         libraries.each { LynxLibraryInfo library ->
+            // Only node_modules libraries are included by the settings plugin and
+            // need the build plugin to wire `implementation project(...)`.
+            // local_project libraries are depended on by the host itself.
+            if (library.source != LynxLibraryScanner.SOURCE_NODE_MODULES) {
+                return
+            }
             Project libraryProject = project.rootProject.findProject(library.projectPath)
             if (libraryProject != null && libraryProject != project) {
                 project.dependencies.add('implementation',

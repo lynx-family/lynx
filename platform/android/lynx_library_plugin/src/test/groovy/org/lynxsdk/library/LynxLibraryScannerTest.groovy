@@ -257,6 +257,75 @@ class LynxLibraryScannerTest {
         assertEquals(file.absoluteFile, LynxLibraryScanner.canonicalOrAbsolute(file))
     }
 
+    // A blank/absent sources property enables every known source.
+    @Test
+    void enabledSourcesDefaultsToAllWhenBlank() {
+        assertEquals(LynxLibraryScanner.KNOWN_SOURCES, LynxLibraryScanner.enabledSources(null))
+        assertEquals(LynxLibraryScanner.KNOWN_SOURCES, LynxLibraryScanner.enabledSources('  '))
+    }
+
+    // A comma-separated value enables only the listed subset.
+    @Test
+    void enabledSourcesParsesSubset() {
+        assertEquals(['node_modules'], LynxLibraryScanner.enabledSources('node_modules'))
+        assertEquals(['node_modules', 'aar'],
+            LynxLibraryScanner.enabledSources(' node_modules , aar '))
+    }
+
+    // Unknown source names are rejected with the list of valid ones.
+    @Test
+    void enabledSourcesRejectsUnknown() {
+        try {
+            LynxLibraryScanner.enabledSources('node_modules,bogus')
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('bogus'))
+            assertTrue(e.message.contains('node_modules'))
+        }
+    }
+
+    // local_project reads the project dir's own lynx.lib.json; the info is not a
+    // plugin-managed dependency and carries no sourceDir.
+    @Test
+    void scanLocalProjectReadsManifestFromProjectDir() {
+        File projectDir = temporaryFolder.newFolder('my-lib')
+        new File(projectDir, 'lynx.lib.json').text =
+            '{"platforms":{"android":{"packageName":"com.example.local"}}}'
+
+        LynxLibraryInfo info = LynxLibraryScanner.scanLocalProject(projectDir, ':my-lib')
+
+        assertEquals('com.example.local.LynxLibraryProviderImpl', info.providerClassName)
+        assertEquals(':my-lib', info.projectPath)
+        assertEquals(projectDir, info.androidDir)
+        assertEquals(LynxLibraryScanner.SOURCE_LOCAL_PROJECT, info.source)
+    }
+
+    // A project without lynx.lib.json or without a platforms.android entry is not
+    // a Lynx library; scanLocalProject returns null instead of failing.
+    @Test
+    void scanLocalProjectReturnsNullWhenNotALynxLibrary() {
+        File noManifest = temporaryFolder.newFolder('plain-project')
+        assertEquals(null, LynxLibraryScanner.scanLocalProject(noManifest, ':plain-project'))
+
+        File noAndroid = temporaryFolder.newFolder('ios-only')
+        new File(noAndroid, 'lynx.lib.json').text = '{"platforms":{"ios":{}}}'
+        assertEquals(null, LynxLibraryScanner.scanLocalProject(noAndroid, ':ios-only'))
+    }
+
+    // local_project still requires a packageName once it opts into autolink.
+    @Test
+    void scanLocalProjectRejectsMissingPackageName() {
+        File projectDir = temporaryFolder.newFolder('bad-local')
+        new File(projectDir, 'lynx.lib.json').text = '{"platforms":{"android":{}}}'
+
+        try {
+            LynxLibraryScanner.scanLocalProject(projectDir, ':bad-local')
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('platforms.android.packageName'))
+        }
+    }
+
     private static File writeLibrary(
         File root, String npmName, String packageName, String sourceDir) {
         File packageDir = new File(root, "node_modules/${npmName}")

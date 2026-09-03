@@ -10,6 +10,30 @@ import org.gradle.api.GradleException
 class LynxLibraryScanner {
     private static final String ADDON_NAME_PATTERN = '[A-Za-z0-9_.-]+'
 
+    static final String SOURCE_NODE_MODULES = 'node_modules'
+    static final String SOURCE_LOCAL_PROJECT = 'local_project'
+    static final String SOURCE_AAR = 'aar'
+    static final List<String> KNOWN_SOURCES =
+        [SOURCE_NODE_MODULES, SOURCE_LOCAL_PROJECT, SOURCE_AAR].asImmutable()
+    static final String SOURCES_PROPERTY = 'lynx.autolink.sources'
+
+    // Resolve which sources are enabled. A missing/blank property enables all
+    // known sources; otherwise only the comma-separated subset is enabled.
+    static List<String> enabledSources(Object propertyValue) {
+        String raw = propertyValue?.toString()?.trim()
+        if (raw == null || raw.isEmpty()) {
+            return new ArrayList<>(KNOWN_SOURCES)
+        }
+        List<String> requested = raw.split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+        List<String> unknown = requested - KNOWN_SOURCES
+        if (!unknown.isEmpty()) {
+            throw new GradleException(
+                "Unknown ${SOURCES_PROPERTY} value(s): ${unknown.join(', ')}; " +
+                "known sources: ${KNOWN_SOURCES.join(', ')}")
+        }
+        requested.unique()
+    }
+
     static List<LynxLibraryInfo> scan(File startDir) {
         Set<File> nodeModulesDirs = findNodeModulesDirs(startDir)
         List<LynxLibraryInfo> result = []
@@ -145,6 +169,43 @@ class LynxLibraryScanner {
                 "Invalid platforms.android.providerClassName in ${manifest}; expected a fully qualified Java class name or null")
         }
         providerClassName.trim()
+    }
+
+    // Build a LynxLibraryInfo for a host-included local project. Unlike
+    // node_modules, the project dir itself is the Android library (it already
+    // has a build.gradle Gradle could include), so `sourceDir` is not used and
+    // the dependency stays host-owned (source = SOURCE_LOCAL_PROJECT).
+    // NOTE: the manifest parse/validate below overlaps with parseManifest. Kept
+    // inline for now; extract a shared helper if a third caller (e.g. aar) needs
+    // the same parsing.
+    static LynxLibraryInfo scanLocalProject(File projectDir, String projectPath) {
+        File manifest = new File(projectDir, 'lynx.lib.json')
+        if (!manifest.isFile()) {
+            return null
+        }
+        Object json
+        try {
+            json = new JsonSlurper().parse(manifest)
+        } catch (Exception e) {
+            throw new GradleException("Failed to parse ${manifest}: ${e.message}", e)
+        }
+
+        Object android = json?.platforms?.android
+        if (android == null) {
+            return null
+        }
+        if (!(android instanceof Map)) {
+            throw new GradleException("Invalid android platform entry in ${manifest}")
+        }
+        String packageName = android.packageName
+        if (packageName == null || packageName.trim().isEmpty()) {
+            throw new GradleException("Missing platforms.android.packageName in ${manifest}")
+        }
+
+        List<LynxNodeApiAddonInfo> nodeApiAddons = parseNodeApiAddons(
+            android.nodeApiAddons, projectDir, manifest)
+        new LynxLibraryInfo(projectPath, projectDir, manifest, packageName.trim(), null,
+            projectDir, projectPath, nodeApiAddons, SOURCE_LOCAL_PROJECT)
     }
 
     private static List<LynxNodeApiAddonInfo> parseNodeApiAddons(
