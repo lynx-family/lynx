@@ -118,6 +118,23 @@ TEST_F(RawTextElementTest, SetSameTextSkipsLayoutInElementInvalidation) {
   EXPECT_TRUE(raw_text->content().IsEqual("updated-text-content"));
 }
 
+TEST_F(RawTextElementTest, SetNumericAttributeInLayoutInElementMode) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  auto raw_text = manager->CreateFiberRawText();
+  raw_text->SetAttribute(RawTextElement::kTextAttr, lepus::Value(1));
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(raw_text->content().IsEqual("1"));
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

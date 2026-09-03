@@ -4,7 +4,10 @@
 
 #include "core/renderer/dom/fiber/raw_text_element.h"
 
+#include <utility>
+
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/text_props.h"
 
 namespace lynx {
@@ -17,19 +20,11 @@ void RawTextElement::SetText(const lepus::Value& text) {
   if (!EnableLayoutInElementMode()) {
     SetAttribute(BASE_STATIC_STRING(kTextAttr), text);
   } else {
-    if (text.IsString()) {
-      if (content_.IsEqual(text.String())) {
-        return;
-      }
-      content_ = text.String();
-    } else if (text.IsNumber()) {
-      std::stringstream stream;
-      stream << text.Number();
-      if (content_.IsEqual(stream.str())) {
-        return;
-      }
-      content_ = stream.str();
+    auto content = ConvertTextContent(text);
+    if (content_.IsEqual(content)) {
+      return;
     }
+    content_ = std::move(content);
     content_utf16_length_ =
         GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
     MarkLayoutDirty();
@@ -42,11 +37,11 @@ bool RawTextElement::SetAttributeInternal(const base::String& key,
   if (EnableLayoutInElementMode()) {
     // TODO(songshourui.null): we may need other attributes here.
     if (key.IsEqual(kTextAttr)) {
-      const auto& content = value.String();
+      auto content = ConvertTextContent(value);
       if (content_.IsEqual(content)) {
         return false;
       }
-      content_ = content;
+      content_ = std::move(content);
       content_utf16_length_ =
           GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
       element_container_->InvalidateForRedraw();

@@ -111,8 +111,6 @@ class TextElement : public Element {
   bool SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
 
-  static base::String ConvertContent(const lepus::Value);
-
   TextElement(const TextElement& element, bool clone_resolved_props)
       : Element(element, clone_resolved_props) {}
 
