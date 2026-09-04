@@ -4,15 +4,24 @@
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
 
-#include <map>
 #include <string>
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "third_party/jsoncpp/include/json/json.h"
 #include "third_party/modp_b64/modp_b64.h"
 #include "third_party/zlib/zlib.h"
 
 namespace lynx {
 namespace devtool {
+
+void CDPDomainAgentBase::CallMethod(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& msg) {
+  // Default bridge for agents not yet migrated to the responder API: retrieve
+  // the raw sender (which also releases it from the responder so the responder
+  // will not emit a duplicate fallback response) and forward to the legacy
+  // sender-based CallMethod.
+  CallMethod(responder->RetrieveSender(), msg);
+}
 
 int CDPDomainAgentBase::CompressData(const std::string& tag,
                                      const std::string& data,
