@@ -46,7 +46,7 @@ class PlatformEventHandler {
 
   bool OnInputEvent(fml::RefPtr<PlatformEventTarget> target_tree,
                     int int_event_data[], float float_event_data[],
-                    bool enable_event_through_inherit_from_page);
+                    const PlatformEventThroughConfig& event_through_config);
   void OnTap();
   void OnLongPress();
   void DispatchPointerEvent(const std::string& name,
@@ -113,7 +113,7 @@ class PlatformEventHandler {
   // config
   unsigned int tap_slop_{5};
   bool has_pointer_pseudo_{false};
-  bool enable_event_through_inherit_from_page_{false};
+  PlatformEventThroughConfig event_through_config_;
 };
 
 }  // namespace tasm

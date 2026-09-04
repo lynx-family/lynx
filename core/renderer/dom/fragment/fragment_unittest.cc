@@ -1136,12 +1136,92 @@ TEST_F(FragmentTest, PlatformEventTargetInheritsEventThroughFromPage) {
   root_target->SetEventThrough(LynxEventPropStatus::kEnable);
   root_target->AddChildTarget(child_target);
 
+  PlatformEventThroughConfig config;
   float point[2] = {10.f, 10.f};
   EXPECT_FALSE(child_target->EventThrough(point));
-  EXPECT_TRUE(child_target->EventThrough(point, true));
+  config.enable_event_through_inherit_from_page = true;
+  EXPECT_TRUE(child_target->EventThrough(point, config));
 
   child_target->SetEventThrough(LynxEventPropStatus::kDisable);
-  EXPECT_FALSE(child_target->EventThrough(point, true));
+  EXPECT_FALSE(child_target->EventThrough(point, config));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetDoesNotInheritEventsPassThrough) {
+  constexpr int32_t kOverlayRootId = 20;
+  auto overlay_root = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, kOverlayRootId, 0.f, 0.f, 100.f, 100.f);
+  auto overlay_child = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, 21, 0.f, 0.f, 100.f, 100.f);
+  overlay_root->SetEventThrough(LynxEventPropStatus::kDisable);
+  overlay_root->SetEventsPassThrough(LynxEventPropStatus::kEnable);
+  overlay_root->AddChildTarget(overlay_child);
+
+  float point[2] = {10.f, 10.f};
+  EXPECT_TRUE(overlay_root->EventThrough(point));
+  EXPECT_FALSE(overlay_child->EventThrough(point));
+
+  overlay_child->SetEventsPassThrough(LynxEventPropStatus::kEnable);
+  EXPECT_TRUE(overlay_child->EventThrough(point));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetAppliesEventThroughConfigAtPageRoot) {
+  auto root_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, kRootId, 0.f, 0.f, 100.f, 100.f);
+  auto child_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, 1, 0.f, 0.f, 100.f, 100.f);
+  root_target->AddChildTarget(child_target);
+
+  PlatformEventThroughConfig config;
+  config.enable_event_through = true;
+  float point[2] = {10.f, 10.f};
+  EXPECT_TRUE(root_target->EventThrough(point, config));
+  EXPECT_FALSE(child_target->EventThrough(point, config));
+
+  config.enable_event_through_inherit_from_page = true;
+  EXPECT_TRUE(child_target->EventThrough(point, config));
+
+  child_target->SetEventThrough(LynxEventPropStatus::kDisable);
+  EXPECT_FALSE(child_target->EventThrough(point, config));
+
+  root_target->SetEventThrough(LynxEventPropStatus::kDisable);
+  EXPECT_TRUE(root_target->EventThrough(point, config));
+}
+
+TEST_F(FragmentTest,
+       PlatformEventTargetAppliesPageConfigBeforeEventThroughRegions) {
+  auto root_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, kRootId, 0.f, 0.f, 100.f, 100.f);
+  auto device_px = [](float value) {
+    PlatformEventTarget::EventThroughSizeValue result;
+    result.value = value;
+    return result;
+  };
+  PlatformEventTarget::EventThroughRegion region{
+      device_px(0.f), device_px(0.f), device_px(50.f), device_px(100.f)};
+  root_target->SetEventThroughActiveRegions({region});
+
+  PlatformEventThroughConfig config;
+  config.enable_event_through = true;
+  float inside_point[2] = {25.f, 50.f};
+  float outside_point[2] = {75.f, 50.f};
+  EXPECT_TRUE(root_target->EventThrough(inside_point, config));
+  EXPECT_FALSE(root_target->EventThrough(outside_point, config));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetDoesNotApplyPageConfigToOverlayRoot) {
+  constexpr int32_t kOverlayRootId = 20;
+  auto overlay_root = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, kOverlayRootId, 0.f, 0.f, 100.f, 100.f);
+  auto overlay_child = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, 21, 0.f, 0.f, 100.f, 100.f);
+  overlay_root->AddChildTarget(overlay_child);
+
+  PlatformEventThroughConfig config;
+  config.enable_event_through = true;
+  config.enable_event_through_inherit_from_page = true;
+  float point[2] = {10.f, 10.f};
+  EXPECT_FALSE(overlay_root->EventThrough(point, config));
+  EXPECT_FALSE(overlay_child->EventThrough(point, config));
 }
 
 TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {
