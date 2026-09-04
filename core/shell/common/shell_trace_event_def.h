@@ -98,6 +98,8 @@ inline constexpr const char* const LAYOUT_MEDIATOR_ON_LAYOUT_AFTER =
     "LayoutMediator.OnLayoutAfter";
 inline constexpr const char* const LAYOUT_MEDIATOR_HANDLE_PENDING_LAYOUT_TASK =
     "LayoutMediator.HandlePendingLayoutTask";
+inline constexpr const char* const LAYOUT_MEDIATOR_ON_FIRST_SCREEN =
+    "LayoutMediator.OnFirstScreen";
 inline constexpr const char* const
     LAYOUT_MEDIATOR_HANDLE_LIST_OR_COMPONENT_UPDATED =
         "LayoutMediator.HandleListOrComponentUpdated";
