@@ -24,7 +24,7 @@ class LynxTextInfoModule : public runtime::LynxNativeModule {
     return std::make_shared<LynxTextInfoModule>(view_context_id);
   }
 
-  static const std::string& GetName() { return name_; }
+  static constexpr const char* GetName() { return "LynxTextInfoModule"; }
 
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string& method_name, std::unique_ptr<pub::Value> args,
@@ -34,7 +34,6 @@ class LynxTextInfoModule : public runtime::LynxNativeModule {
                                           const pub::Value& info);
 
  private:
-  static const std::string name_;
   uint32_t view_context_id_;
 };
 

@@ -6,8 +6,6 @@
 
 #include <optional>
 #include <string>
-#include <unordered_map>
-#include <utility>
 
 #include "clay/gfx/graphics_context.h"
 #include "clay/third_party/txt/src/txt/paragraph_style.h"
@@ -19,7 +17,7 @@
 namespace clay {
 namespace {
 
-static const std::u16string kDefaultEllipsis = u"\u2026";
+constexpr char16_t kDefaultEllipsis[] = u"\u2026";
 
 #if defined(CLAY_ENABLE_TTTEXT)
 ttoffice::tttext::CharacterVerticalAlignment ToTTTextAlign(
@@ -54,20 +52,29 @@ ttoffice::tttext::CharacterVerticalAlignment ToTTTextAlign(
 #endif
 
 txt::FontWeight ToTxtFontWeight(FontWeight font_weight) {
-  static const std::unordered_map<FontWeight, txt::FontWeight> kMapping = {
-      {FontWeight::kNormal, txt::FontWeight::w400},
-      {FontWeight::kBold, txt::FontWeight::w700},
-      {FontWeight::k100, txt::FontWeight::w100},  // Thin
-      {FontWeight::k200, txt::FontWeight::w200},  // Extra-Light
-      {FontWeight::k300, txt::FontWeight::w300},  // Light
-      {FontWeight::k400, txt::FontWeight::w400},  // Normal/Regular
-      {FontWeight::k500, txt::FontWeight::w500},  // Medium
-      {FontWeight::k600, txt::FontWeight::w600},  // Semi-bold
-      {FontWeight::k700, txt::FontWeight::w700},  // Bold
-      {FontWeight::k800, txt::FontWeight::w800},  // Extra-Bold
-      {FontWeight::k900, txt::FontWeight::w900},  // Black
-  };
-  return kMapping.at(font_weight);
+  switch (font_weight) {
+    case FontWeight::kNormal:
+    case FontWeight::k400:
+      return txt::FontWeight::w400;
+    case FontWeight::kBold:
+    case FontWeight::k700:
+      return txt::FontWeight::w700;
+    case FontWeight::k100:
+      return txt::FontWeight::w100;
+    case FontWeight::k200:
+      return txt::FontWeight::w200;
+    case FontWeight::k300:
+      return txt::FontWeight::w300;
+    case FontWeight::k500:
+      return txt::FontWeight::w500;
+    case FontWeight::k600:
+      return txt::FontWeight::w600;
+    case FontWeight::k800:
+      return txt::FontWeight::w800;
+    case FontWeight::k900:
+      return txt::FontWeight::w900;
+  }
+  FML_UNREACHABLE();
 }
 
 txt::FontStyle ToTxtFontStyle(FontStyle font_style) {
@@ -110,21 +117,18 @@ txt::TextDirection ToTxtDirection(TextDirection direction) {
 }
 
 txt::TextDecorationStyle ToTxtDecorationStyle(TextDecorationStyle style) {
-  static const std::unordered_map<TextDecorationStyle, txt::TextDecorationStyle>
-      kRDToTxt{
-          {TextDecorationStyle::kSolid, txt::TextDecorationStyle::kSolid},
-          {TextDecorationStyle::kDouble, txt::TextDecorationStyle::kDouble},
-          {TextDecorationStyle::kDotted, txt::TextDecorationStyle::kDotted},
-          {TextDecorationStyle::kDashed, txt::TextDecorationStyle::kDashed},
-          {TextDecorationStyle::kWavy, txt::TextDecorationStyle::kWavy},
-      };
-
-  const auto itr = kRDToTxt.find(style);
-  FML_DCHECK(itr != kRDToTxt.end());
-  if (itr != kRDToTxt.end()) {
-    return itr->second;
+  switch (style) {
+    case TextDecorationStyle::kSolid:
+      return txt::TextDecorationStyle::kSolid;
+    case TextDecorationStyle::kDouble:
+      return txt::TextDecorationStyle::kDouble;
+    case TextDecorationStyle::kDotted:
+      return txt::TextDecorationStyle::kDotted;
+    case TextDecorationStyle::kDashed:
+      return txt::TextDecorationStyle::kDashed;
+    case TextDecorationStyle::kWavy:
+      return txt::TextDecorationStyle::kWavy;
   }
-
   FML_UNREACHABLE();
 }
 

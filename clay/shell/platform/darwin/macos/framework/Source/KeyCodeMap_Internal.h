@@ -7,7 +7,7 @@
 
 #import <Cocoa/Cocoa.h>
 #include <cinttypes>
-#include <vector>
+#include <cstddef>
 
 namespace clay {
 
@@ -107,6 +107,7 @@ typedef struct {
  * All keys that Flutter wants to derive layout for, and guides on how to derive
  * them.
  */
-extern const std::vector<LayoutGoal> layoutGoals;
+extern const LayoutGoal layoutGoals[];
+extern const size_t layoutGoalsSize;
 
 }  // namespace clay
