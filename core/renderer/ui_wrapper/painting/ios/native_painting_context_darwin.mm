@@ -36,6 +36,14 @@ namespace tasm {
 
 namespace {
 
+void RunOnMainThreadSync(dispatch_block_t block) {
+  if ([NSThread isMainThread]) {
+    block();
+    return;
+  }
+  dispatch_sync(dispatch_get_main_queue(), block);
+}
+
 std::array<float, 4> CopyMetrics(const float *source) {
   std::array<float, 4> result = {0.f, 0.f, 0.f, 0.f};
   if (source != nullptr) {
@@ -123,8 +131,14 @@ std::vector<float> NativePaintingCtxDarwin::GetRectToWindow(int id) {
 }
 
 std::vector<float> NativePaintingCtxDarwin::GetRectToLynxView(int64_t id) {
-  // TODO: impl this function later.
-  return std::vector<float>();
+  __block std::vector<float> result;
+  RunOnMainThreadSync(^{
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(platform_ref_);
+    if (darwin_ref != nullptr) {
+      result = darwin_ref->GetRectToLynxView(static_cast<int32_t>(id));
+    }
+  });
+  return result;
 }
 
 std::vector<float> NativePaintingCtxDarwin::ScrollBy(int64_t id, float width, float height) {
