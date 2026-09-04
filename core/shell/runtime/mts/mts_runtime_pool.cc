@@ -7,7 +7,6 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/devtool_wrapper/devtool_pool.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
-#include "core/services/performance/memory_monitor/memory_monitor.h"
 
 namespace lynx {
 namespace shell {
@@ -62,11 +61,9 @@ void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
     return;
   }
   decltype(mts_runtimes_) temp_mts_runtimes;
-  uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
   for (; count > 0; --count) {
     std::shared_ptr<runtime::MTSRuntime> mts_runtime =
-        runtime::MTSRuntime::CreateContext(context_type_, disable_tracing_gc_,
-                                           mode);
+        runtime::MTSRuntime::CreateContext(context_type_, disable_tracing_gc_);
     if (!mts_runtime) {
       continue;
     }

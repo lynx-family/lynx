@@ -107,10 +107,9 @@ LepusIdContainer& QuickjsRuntimeInstance::GetFunctionIdContainer() {
   return sFunctionIdContainer;
 }
 
-void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
-                                                uint32_t runtime_mode) {
+void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync) {
   LEPUSRuntime* rt;
-  rt = LEPUS_NewRuntimeWithMode(runtime_mode);
+  rt = LEPUS_NewRuntime();
   if (!rt) {
     LOGE("init quickjs runtime failed!");
     return;
@@ -123,6 +122,8 @@ void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
   rt_ = rt;
 
   LEPUS_SetGCObserver(rt_, static_cast<GCObserver*>(this));
+
+  detail::QuickjsHelper::SetGCInfoCallbackThresholdFromSetting(rt_, false);
 
 #if ENABLE_TRACE_PERFETTO
   if (trace::TraceController::Instance()->IsTracingStarted()) {

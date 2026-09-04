@@ -70,13 +70,6 @@ class MemoryMonitor {
   // MB. This is configured through Settings.
   static uint32_t MemoryChangeThresholdMb();
 
-  /// @brief Generates a bitmask for scripting engine memory monitoring
-  /// configuration This method combines memory monitoring status and memory
-  /// increment threshold into a uint32_t bitmask:
-  /// - Bits 0-8      : Memory increment threshold in MB (capped at 100MB)
-  /// @return uint32_t Combined configuration bitmask
-  static uint32_t ScriptingEngineMode();
-
   explicit MemoryMonitor(PerformanceEventSender* observer,
                          const base::LogContext& log_context,
                          int32_t instance_id = report::kUninitializedInstanceId)

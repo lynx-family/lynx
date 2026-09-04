@@ -286,7 +286,7 @@ class TestLepusContextHolder {
  protected:
   explicit TestLepusContextHolder(lynx::runtime::ContextType type)
       : owned_context_(new lynx::runtime::MTSRuntime(
-            type, false, 0, lynx::tasm::PageOptions())) {}
+            type, false, lynx::tasm::PageOptions())) {}
 
   lynx::runtime::MTSRuntime* context() const { return owned_context_.get(); }
 
@@ -487,7 +487,7 @@ class TestLepusNGContextHolder {
  protected:
   explicit TestLepusNGContextHolder(lynx::runtime::ContextType type)
       : owned_context_(new lynx::runtime::MTSRuntime(
-            type, false, 0, lynx::tasm::PageOptions())) {}
+            type, false, lynx::tasm::PageOptions())) {}
 
   lynx::runtime::MTSRuntime* context() const { return owned_context_.get(); }
 

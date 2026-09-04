@@ -93,6 +93,9 @@ class QuickjsHelper {
 
   static bool TakeHeapSnapshot(LEPUSContext* ctx,
                                const std::string& identifier);
+
+  static void SetGCInfoCallbackThresholdFromSetting(LEPUSRuntime* runtime,
+                                                    bool is_mts);
 };
 
 }  // namespace detail

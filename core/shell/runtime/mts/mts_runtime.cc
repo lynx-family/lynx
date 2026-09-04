@@ -106,14 +106,13 @@ MTSRuntime::Delegate* MTSRuntime::GetDelegate() {
 }
 
 std::shared_ptr<MTSRuntime> MTSRuntime::CreateContext(
-    ContextType type, bool disable_tracing_gc, int runtime_mode,
+    ContextType type, bool disable_tracing_gc,
     const tasm::PageOptions& page_options) {
   if (type == ContextType::VMContextType) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_VM_CONTEXT);
 #if !ENABLE_JUST_LEPUSNG
     return std::make_shared<MTSRuntime>(ContextType::VMContextType,
-                                        disable_tracing_gc, runtime_mode,
-                                        page_options);
+                                        disable_tracing_gc, page_options);
 #else
     LOGE("lepusng sdk do not support vm context");
     assert(false);
@@ -121,8 +120,7 @@ std::shared_ptr<MTSRuntime> MTSRuntime::CreateContext(
 #endif
   } else {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_MTS_RUNTIME);
-    return std::make_shared<MTSRuntime>(type, disable_tracing_gc, runtime_mode,
-                                        page_options);
+    return std::make_shared<MTSRuntime>(type, disable_tracing_gc, page_options);
   }
 }
 
@@ -475,9 +473,9 @@ std::unique_ptr<ContextBundle> ContextBundle::Create(ContextType context_type) {
 }
 
 MTSRuntime::MTSRuntime(ContextType type, bool disable_tracing_gc,
-                       int runtime_mode, const tasm::PageOptions& page_options)
+                       const tasm::PageOptions& page_options)
     : MTSContextHolder(MTSContextFactory::Create(type, this, disable_tracing_gc,
-                                                 runtime_mode, page_options)),
+                                                 page_options)),
       type_(type) {}
 
 }  // namespace runtime

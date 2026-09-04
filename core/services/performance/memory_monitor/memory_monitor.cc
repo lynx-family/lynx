@@ -150,32 +150,6 @@ uint32_t MemoryMonitor::MemoryChangeThresholdMb() {
   return threshold_mb;
 }
 
-uint32_t MemoryMonitor::ScriptingEngineMode() {
-  uint32_t mode = 0;
-  bool enable_mem_monitor = Enable();
-  if (!enable_mem_monitor) {
-    return mode;
-  }
-
-  // Maximum allowed value for memory threshold (8-bit unsigned max)
-  constexpr uint32_t kMaxMemThreshold = std::numeric_limits<uint8_t>::max();
-  uint32_t mem_increment_threshold_mb = MemoryChangeThresholdMb();
-  // Cap memory threshold at 8-bit maximum (255 MB)
-  if (mem_increment_threshold_mb > kMaxMemThreshold) {
-    mem_increment_threshold_mb = kMaxMemThreshold;
-  }
-
-  // Bit shift position for memory threshold in the mode register
-  constexpr uint32_t kMemThresholdShift = 24;
-  /*
-   * Mode register bit layout:
-   *   Bits [31:24] - Memory increment threshold (MB)
-   *   Bits [23:0]  - Reserved for other flags/values
-   */
-  mode = (mem_increment_threshold_mb << kMemThresholdShift);
-  return mode;
-}
-
 MemoryMonitor::~MemoryMonitor() {
   LOGI(log_context_ << " [memory_monitor.cc] release MemoryMonitor, this:"
                     << this);

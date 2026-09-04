@@ -516,13 +516,15 @@ LEPUSContext* QuickContextEnvWrapper::GetJsContextFromEnv(lynx_api_env env) {
   return reinterpret_cast<lynx_api_context__lepusng*>(env->ctx)->ctx;
 }
 
-LEPUSRuntimeData::LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode) {
-  runtime_ = LEPUS_NewRuntimeWithMode(runtime_mode);
+LEPUSRuntimeData::LEPUSRuntimeData(bool disable_tracing_gc) {
+  runtime_ = LEPUS_NewRuntime();
   if (disable_tracing_gc || tasm::LynxEnv::GetInstance().IsDisableTracingGC()) {
     LEPUS_SetRuntimeInfo(runtime_, "Lynx_LepusNG_RC");
   } else {
     LEPUS_SetRuntimeInfo(runtime_, "Lynx_LepusNG");
   }
+  runtime::js::detail::QuickjsHelper::SetGCInfoCallbackThresholdFromSetting(
+      runtime_, true);
 
   SetFuncsAndRegisterPrimJSCallbacks(runtime_);
   lepus_context_ = LEPUS_NewContext(runtime_);
@@ -537,9 +539,9 @@ LEPUSRuntimeData::~LEPUSRuntimeData() {
 }
 
 QuickContext::QuickContext(runtime::MTSRuntime* runtime_private,
-                           bool disable_tracing_gc, int runtime_mode,
+                           bool disable_tracing_gc,
                            const tasm::PageOptions& page_options)
-    : LEPUSRuntimeData(disable_tracing_gc, runtime_mode),
+    : LEPUSRuntimeData(disable_tracing_gc),
       runtime::MTSContext(runtime_private),
       top_level_function_(LEPUS_UNDEFINED),
       use_lepus_strict_mode_(false),

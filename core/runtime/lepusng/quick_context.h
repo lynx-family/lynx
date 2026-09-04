@@ -73,7 +73,7 @@ class QuickContextEnvWrapper {
 
 class LEPUSRuntimeData {
  public:
-  LEPUSRuntimeData(bool disable_tracing_gc, int runtime_mode);
+  LEPUSRuntimeData(bool disable_tracing_gc);
   ~LEPUSRuntimeData();
 
   LEPUSRuntime* runtime_;
@@ -88,7 +88,7 @@ class QuickContext : private LEPUSRuntimeData,
                      public GCObserver {
  public:
   QuickContext(runtime::MTSRuntime* runtime_private,
-               bool disable_tracing_gc = false, int runtime_mode = 0,
+               bool disable_tracing_gc = false,
                const tasm::PageOptions& page_options = tasm::PageOptions());
   QuickContext() : QuickContext(nullptr) {}
 

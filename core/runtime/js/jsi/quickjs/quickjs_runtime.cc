@@ -207,8 +207,7 @@ std::shared_ptr<VMInstance> QuickjsRuntime::createVM(
 std::shared_ptr<VMInstance> QuickjsRuntime::CreateVM(const StartupData *,
                                                      bool sync) {
   auto quickjs_runtime_wrapper = std::make_shared<QuickjsRuntimeInstance>();
-  uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
-  quickjs_runtime_wrapper->InitQuickjsRuntime(sync, mode);
+  quickjs_runtime_wrapper->InitQuickjsRuntime(sync);
   return quickjs_runtime_wrapper;
 }
 

@@ -34,7 +34,7 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   QuickjsRuntimeInstance();
   virtual ~QuickjsRuntimeInstance();
 
-  void InitQuickjsRuntime(bool is_sync = true, uint32_t runtime_mode = 0);
+  void InitQuickjsRuntime(bool is_sync = true);
   inline LEPUSRuntime* Runtime() { return rt_; }
   LEPUSClassID getFunctionId() { return s_function_id_; }
   LEPUSClassID getObjectId() { return s_object_id_; }

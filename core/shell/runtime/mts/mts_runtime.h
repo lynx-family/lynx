@@ -89,7 +89,6 @@ class MTSRuntime : private MTSContextHolder,
   virtual ~MTSRuntime();
 
   MTSRuntime(ContextType type, bool disable_tracing_gc = false,
-             int runtime_mode = 0,
              const tasm::PageOptions& page_options = tasm::PageOptions());
 
   static lepus::VMContext* ToVMContext(MTSRuntime* context);
@@ -99,7 +98,7 @@ class MTSRuntime : private MTSContextHolder,
   static MTSRuntime* ToContext(MTSContext* mts_context);
 
   static std::shared_ptr<MTSRuntime> CreateContext(
-      ContextType type, bool disable_tracing_gc = false, int runtime_mode = 0,
+      ContextType type, bool disable_tracing_gc = false,
       const tasm::PageOptions& page_options = tasm::PageOptions());
 
   Delegate* GetDelegate();

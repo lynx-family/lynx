@@ -19,6 +19,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "quickjs/include/quickjs.h"
 extern "C" {
 #include "quickjs/include/quickjs-libc.h"
@@ -401,6 +402,16 @@ bool QuickjsHelper::TakeHeapSnapshot(LEPUSContext *ctx,
   LOGI("Fail to take VM heap snapshot of '" << snapshot_id << "'");
 #endif
   return false;
+}
+
+void QuickjsHelper::SetGCInfoCallbackThresholdFromSetting(LEPUSRuntime *runtime,
+                                                          bool is_mts) {
+  (void)is_mts;
+  if (tasm::performance::MemoryMonitor::Enable()) {
+    uint32_t value =
+        tasm::performance::MemoryMonitor::MemoryChangeThresholdMb();
+    LEPUS_SetGCInfoThreshold(runtime, value * 1024 * 1024);
+  }
 }
 
 }  // namespace detail

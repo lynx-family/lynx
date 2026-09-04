@@ -21,7 +21,7 @@ class MTSContextFactory {
  public:
   static std::unique_ptr<MTSContext> Create(
       ContextType type, MTSRuntime* runtime_private, bool disable_tracing_gc,
-      int runtime_mode, const tasm::PageOptions& page_options);
+      const tasm::PageOptions& page_options);
 };
 
 class ContextBundleFactory {
