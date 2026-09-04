@@ -13,6 +13,14 @@
 #include "core/base/lynx_export.h"
 
 namespace lynx {
+namespace tasm {
+namespace replay {
+class ReplayResourceCache;
+}  // namespace replay
+}  // namespace tasm
+}  // namespace lynx
+
+namespace lynx {
 namespace pub {
 
 class LynxResourceHandle;
@@ -144,6 +152,9 @@ class LYNX_EXPORT LynxResourceLoader
     path_callback(resp);
   }
 
+  void SetReplayResourceCache(
+      std::shared_ptr<tasm::replay::ReplayResourceCache> cache);
+
  protected:
   virtual void LoadResourceInternal(
       const LynxResourceRequest& request,
@@ -152,6 +163,8 @@ class LYNX_EXPORT LynxResourceLoader
   virtual void LoadResourcePathInternal(
       const LynxResourceRequest& request,
       base::MoveOnlyClosure<void, LynxPathResponse&> path_callback){};
+
+  std::shared_ptr<tasm::replay::ReplayResourceCache> replay_cache_;
 };
 
 }  // namespace pub
