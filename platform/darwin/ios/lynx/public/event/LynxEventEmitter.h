@@ -10,19 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class LynxEngineProxy;
 
-typedef NS_ENUM(NSInteger, LynxInnerEventType) {
-  LynxEventTypeTouchEvent,
-  LynxEventTypeCustomEvent,
-  LynxEventTypeLayoutEvent,
-};
-
 typedef BOOL (^onLynxEvent)(LynxEvent *event);
-
-@protocol LynxEventObserver
-
-- (void)onLynxEvent:(LynxInnerEventType)type event:(LynxEvent *)event;
-
-@end
 
 /**
  * Emit event to front-end
@@ -54,8 +42,6 @@ typedef BOOL (^onLynxEvent)(LynxEvent *event);
 
 - (void)dispatchLayoutEvent;
 
-- (void)addObserver:(id<LynxEventObserver>)observer;
-- (void)removeObserver:(id<LynxEventObserver>)observer;
 - (void)notifyIntersectionObserver;
 
 - (void)startEventGenerate:(LynxEvent *)event;

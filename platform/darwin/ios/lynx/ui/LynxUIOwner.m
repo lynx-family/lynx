@@ -1125,9 +1125,7 @@ extern NSString* const kDefaultComponentID;
 
 - (void)reset {
   [_uiContext.uiExposure destroyExposure];
-  if ([_uiContext.intersectionManager enableNewIntersectionObserver]) {
-    [_uiContext.intersectionManager destroyIntersectionObserver];
-  }
+  [_uiContext.intersectionManager destroyIntersectionObserver];
   [_componentIdToUiIdHolder removeAllObjects];
   _oldRootSize = CGSizeZero;
   [_foregroundListeners removeAllObjects];
@@ -1375,9 +1373,7 @@ extern NSString* const kDefaultComponentID;
 
 - (void)didMoveToWindow:(BOOL)windowIsNil {
   [_uiContext.uiExposure didMoveToWindow:windowIsNil];
-  if ([_uiContext.intersectionManager enableNewIntersectionObserver]) {
-    [_uiContext.intersectionManager didMoveToWindow:windowIsNil];
-  }
+  [_uiContext.intersectionManager didMoveToWindow:windowIsNil];
   if (!windowIsNil) {
     [self resumeAnimation];
   }

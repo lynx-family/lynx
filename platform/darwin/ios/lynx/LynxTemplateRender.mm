@@ -56,7 +56,7 @@
 #import "LynxTextInfoModule.h"
 #import "LynxTimingConstants.h"
 #import "LynxTraceEventDef.h"
-#import "LynxUIIntersectionObserver+Internal.h"
+#import "LynxUIIntersectionObserver.h"
 #import "LynxUILayoutTick.h"
 #import "LynxUIMethodModule.h"
 #import "LynxViewGroup+Internal.h"

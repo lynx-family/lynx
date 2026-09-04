@@ -3,29 +3,29 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LUIErrorHandling.h>
+#import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxResourceServiceFetcher.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxScrollFluency.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxShadowNode.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIRendererProtocol.h>
 #import <Lynx/LynxUIReportInfoDelegate.h>
 #import <Lynx/LynxView+Internal.h>
-#import "LynxContext+Internal.h"
-#import "LynxScrollFluency.h"
-#import "LynxTemplateRender+Internal.h"
 #import "LynxTouchHandler+Internal.h"
-#import "LynxUIContext+Internal.h"
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver.h"
-#import "LynxUIRendererProtocol.h"
 
 @implementation LynxUIContext {
   BOOL _isDev;
@@ -238,9 +238,6 @@
 }
 
 - (void)removeUIFromIntersectionManager:(LynxUI*)ui {
-  if (![self intersectionManager].enableNewIntersectionObserver) {
-    return;
-  }
   [[self intersectionManager] removeAttachedIntersectionObserver:ui];
 }
 

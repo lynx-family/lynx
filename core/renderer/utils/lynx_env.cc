@@ -535,10 +535,6 @@ bool LynxEnv::EnableMultiTouch() {
   return GetBoolEnv(Key::ENABLE_MULTI_TOUCH, false);
 }
 
-bool LynxEnv::EnableNewIntersectionObserver() {
-  return GetBoolEnv(Key::ENABLE_NEW_INTERSECTION_OBSERVER, false);
-}
-
 bool LynxEnv::EnableParseIntFlex() {
   return GetBoolEnv(Key::ENABLE_PARSE_INT_FLEX, false);
 }
