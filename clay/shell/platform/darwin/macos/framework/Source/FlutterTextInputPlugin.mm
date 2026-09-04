@@ -21,6 +21,7 @@
 #include "clay/shell/platform/common/text_editing_delta.h"
 #include "clay/shell/platform/common/text_input_model.h"
 #import "clay/shell/platform/darwin/macos/framework/Headers/FlutterAppDelegate.h"
+#import "clay/shell/platform/darwin/macos/framework/Source/FlutterEngine_Internal.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterViewController_Internal.h"
 
 #include "clay/shell/platform/darwin/macos/framework/Headers/FlutterEngine.h"
@@ -648,6 +649,15 @@ static char markerKey;
 }
 
 - (void)doCommandBySelector:(SEL)selector {
+  SEL undoSelector = NSSelectorFromString(@"undo:");
+  SEL redoSelector = NSSelectorFromString(@"redo:");
+  if (_flutterEngine && _clientID && (selector == undoSelector || selector == redoSelector) &&
+      [_flutterEngine performTextInputHistoryAction:selector == redoSelector
+                                           clientID:_clientID.intValue]) {
+    _eventProducedOutput = YES;
+    return;
+  }
+
   _eventProducedOutput |= selector != NSSelectorFromString(@"noop:");
   if ([self respondsToSelector:selector]) {
     // Note: The more obvious [self performSelector...] doesn't give ARC enough information to
