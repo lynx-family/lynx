@@ -2126,6 +2126,14 @@ void PageView::OnPlatformPerformInputAction(int client_id) {
   input_client_manager_->InvokePerformAction(client_id);
 }
 
+bool PageView::OnPlatformPerformTextInputHistoryAction(
+    int client_id, TextInputHistoryAction action) {
+  if (!input_client_manager_) {
+    return false;
+  }
+  return input_client_manager_->InvokePerformHistoryAction(client_id, action);
+}
+
 void PageView::SetScrollFluencyMonitorDelegate(
     std::shared_ptr<ScrollFluencyMonitorDelegate> delegate) {
   clay::Puppet<clay::Owner::kPlatform, InstrumentationService> instrumentation =

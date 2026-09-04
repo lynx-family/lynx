@@ -667,6 +667,16 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
   _engine->GetShell().GetEngine()->GetPageView()->OnPlatformPerformInputAction(client_id);
 }
 
+- (BOOL)performTextInputHistoryAction:(BOOL)redo clientID:(int)client_id {
+  if (!_engine) {
+    return NO;
+  }
+  const auto action =
+      redo ? clay::TextInputHistoryAction::kRedo : clay::TextInputHistoryAction::kUndo;
+  return _engine->GetShell().GetEngine()->GetPageView()->OnPlatformPerformTextInputHistoryAction(
+      client_id, action);
+}
+
 - (void)performMouseDragLeave {
   clay::Puppet<clay::Owner::kPlatform, clay::DragDropService> drag_drop_service =
       _service_manager->GetService<clay::DragDropService>();
