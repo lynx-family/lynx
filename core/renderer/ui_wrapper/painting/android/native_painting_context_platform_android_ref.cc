@@ -105,6 +105,12 @@ bool NativePaintingCtxAndroidRef::IsPlatformRendererScrollable(int32_t sign) {
   return context->IsRendererHostScrollable(sign);
 }
 
+bool NativePaintingCtxAndroidRef::HitTestTextEventTarget(
+    int32_t text_id, float x, float y, PlatformTextEventTargetInfo* result) {
+  return view_manager_ != nullptr &&
+         view_manager_->HitTestTextEventTarget(text_id, x, y, result);
+}
+
 void NativePaintingCtxAndroidRef::SetNeedMarkPaintEndTiming(
     const tasm::PipelineID& pipeline_id) {
   if (view_manager_) {

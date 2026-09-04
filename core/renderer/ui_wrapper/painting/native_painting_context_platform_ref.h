@@ -38,6 +38,11 @@ namespace tasm {
 
 class PlatformEventTargetExposure;
 
+struct PlatformTextEventTargetInfo {
+  int32_t sign{-1};
+  uint32_t event_mask{0};
+};
+
 class NativePaintingCtxPlatformRef
     : public PaintingCtxPlatformRef,
       public std::enable_shared_from_this<NativePaintingCtxPlatformRef> {
@@ -148,6 +153,12 @@ class NativePaintingCtxPlatformRef
 
   // Get the scroll offset of the platform renderer host.
   virtual void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) {}
+
+  // Refine a hit on a text renderer to an inline text event target.
+  virtual bool HitTestTextEventTarget(int32_t text_id, float x, float y,
+                                      PlatformTextEventTargetInfo *result) {
+    return false;
+  }
 
   // Whether the platform renderer host is scrollable.
   virtual bool IsPlatformRendererScrollable(int32_t sign) { return false; }

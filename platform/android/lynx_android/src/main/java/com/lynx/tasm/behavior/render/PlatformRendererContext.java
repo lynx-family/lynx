@@ -6,6 +6,8 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.os.Build;
+import android.text.Layout;
+import android.text.Spanned;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +31,9 @@ import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
+import com.lynx.tasm.behavior.shadow.text.EventTargetSpan;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
+import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
@@ -796,6 +800,67 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   Page getTextBundle(int sign) {
     return (Page) mExtraDatas.get(sign);
+  }
+
+  @CalledByNative
+  private int[] hitTestTextEventTarget(int sign, float x, float y) {
+    if (mContext != null && mContext.isTextServiceModeOn()) {
+      Page page = getTextBundle(sign);
+      return page != null ? page.getHitTestEventTargets(x, y) : null;
+    }
+    if (mTextMeasurer == null) {
+      return null;
+    }
+    Object data = mTextMeasurer.takeTextLayout(sign);
+    if (!(data instanceof TextUpdateBundle)) {
+      return null;
+    }
+    TextUpdateBundle bundle = (TextUpdateBundle) data;
+    Layout layout = bundle.getTextLayout();
+    if (layout == null || !(layout.getText() instanceof Spanned) || x < 0 || y < 0
+        || x > layout.getWidth() || y > layout.getHeight()) {
+      return null;
+    }
+
+    PointF offset = bundle.getTextTranslateOffset();
+    if (offset != null) {
+      x -= offset.x;
+      y -= offset.y;
+    }
+    int line = layout.getLineForVertical((int) y);
+    if (y < layout.getLineTop(line) || y > layout.getLineBottom(line)
+        || x < layout.getLineLeft(line) || x > layout.getLineRight(line)) {
+      return null;
+    }
+    int character = layout.getOffsetForHorizontal(line, x);
+    if ((layout.getParagraphDirection(line) == Layout.DIR_LEFT_TO_RIGHT
+            && x < layout.getPrimaryHorizontal(character))
+        || (layout.getParagraphDirection(line) == Layout.DIR_RIGHT_TO_LEFT
+            && x >= layout.getPrimaryHorizontal(character))) {
+      character--;
+    }
+    if (character < 0) {
+      return null;
+    }
+
+    Spanned text = (Spanned) layout.getText();
+    EventTargetSpan[] spans = text.getSpans(character, character, EventTargetSpan.class);
+    EventTargetSpan target = null;
+    int targetStart = 0;
+    int targetEnd = text.length();
+    for (EventTargetSpan span : spans) {
+      int start = text.getSpanStart(span);
+      int end = text.getSpanEnd(span);
+      if (character >= start && character <= end && start >= targetStart && end <= targetEnd) {
+        target = span;
+        targetStart = start;
+        targetEnd = end;
+      }
+    }
+    if (target == null || !target.isClickable()) {
+      return null;
+    }
+    return new int[] {target.getSign(), 1, 0};
   }
 
   @CalledByNative

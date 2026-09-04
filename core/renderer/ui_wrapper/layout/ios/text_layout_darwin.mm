@@ -14,6 +14,7 @@
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
 
 #import <Lynx/LynxBaseTextShadowNode.h>
 #import <Lynx/LynxConverter+UI.h>
@@ -23,6 +24,34 @@
 namespace lynx {
 namespace tasm {
 namespace {
+
+NSAttributedStringKey const kLynxInlineTextEventTargetKey = @"LynxInlineTextEventTargetKey";
+
+uint32_t TextEventTargetMaskForElement(Element* element) {
+  return element->HasEventListener("tap") ? text::kTextEventTargetTap : 0;
+}
+
+void AddInlineTextEventTarget(NSMutableAttributedString* attributed_string, NSRange range,
+                              int32_t sign, uint32_t mask) {
+  if (range.length == 0 || mask == 0) {
+    return;
+  }
+  NSMutableArray<NSValue*>* uncovered_ranges = [NSMutableArray new];
+  [attributed_string enumerateAttribute:kLynxInlineTextEventTargetKey
+                                inRange:range
+                                options:0
+                             usingBlock:^(id value, NSRange subrange, BOOL*) {
+                               if (value == nil) {
+                                 [uncovered_ranges addObject:[NSValue valueWithRange:subrange]];
+                               }
+                             }];
+  NSArray<NSNumber*>* info = @[ @(sign), @(mask) ];
+  for (NSValue* value in uncovered_ranges) {
+    [attributed_string addAttribute:kLynxInlineTextEventTargetKey
+                              value:info
+                              range:value.rangeValue];
+  }
+}
 
 NSArray<NSNumber*>* AutoFontSizePresetSizesToNSArray(
     const base::InlineVector<float, 6>& preset_sizes) {
@@ -252,8 +281,11 @@ void TextLayoutDarwin::ProcessChildAttribute(
         [inlineTextStyle toAttributesWithFontFaceContext:_fontFaceContext withFontFaceObserver:nil];
     [textAttributes addEntriesFromDictionary:attributes];
 
+    NSUInteger start = attributedString.length;
     GenerateAttributedString(attributedString, textElement, textAttributes, inlineElementSigns,
                              hasViewOrImage);
+    AddInlineTextEventTarget(attributedString, NSMakeRange(start, attributedString.length - start),
+                             textElement->impl_id(), TextEventTargetMaskForElement(textElement));
   } else if (child->is_image() || child->is_view()) {
     *hasViewOrImage = YES;
     LynxTextAttachment* textAttachment = [[LynxTextAttachment alloc] init];

@@ -26,6 +26,10 @@
 
 @end
 
+@interface LynxTextRenderer (LynxInlineEventTarget)
+- (nullable NSArray<NSNumber *> *)lynx_inlineEventTargetInfoAtPoint:(CGPoint)point;
+@end
+
 @interface LynxCALayerDelegate : NSObject <CALayerDelegate>
 
 @end
@@ -638,6 +642,17 @@ LYNX_PROPS_GROUP_DECLARE(
   }
   CGPoint pointInTextRect = CGPointMake(point.x - self.padding.left - self.border.left,
                                         point.y - self.padding.top - self.border.top);
+  if ([self.context.uiOwner isLayoutInElementModeOn]) {
+    NSArray<NSNumber *> *targetInfo =
+        [self.renderer lynx_inlineEventTargetInfoAtPoint:pointInTextRect];
+    if (targetInfo.count >= 2) {
+      NSInteger sign = [targetInfo[0] integerValue];
+      NSUInteger eventMask = [targetInfo[1] unsignedIntegerValue];
+      if (sign != self.sign && eventMask != 0) {
+        return [self textServiceEventTargetWithSign:sign eventMask:eventMask];
+      }
+    }
+  }
   for (LynxEventTargetSpan *span in _renderer.subSpan) {
     if ([span containsPoint:pointInTextRect]) {
       [span setParentEventTarget:self];
