@@ -9,6 +9,7 @@
 #include <string>
 
 #include "devtool/base_devtool/native/public/base_devtool_export.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 
 namespace lynx {
@@ -24,6 +25,16 @@ class BASE_DEVTOOL_EXPORT CDPDomainAgentBase {
   virtual ~CDPDomainAgentBase() = default;
   virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
                           const Json::Value& msg) = 0;
+
+  // Responder-based entry point. New agents should override this and fill the
+  // response through |responder| (Result() / SendErrorResponse()) instead of
+  // assembling the CDP envelope by hand. The default implementation bridges to
+  // the legacy sender-based CallMethod so existing agents keep working during
+  // the migration: it retrieves the raw sender from the responder and forwards
+  // to CallMethod(sender, msg).
+  virtual void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                          const Json::Value& msg);
+
   int CompressData(const std::string& tag, const std::string& data,
                    Json::Value& value, const std::string& key);
 

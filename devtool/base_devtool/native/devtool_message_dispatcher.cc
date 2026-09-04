@@ -77,9 +77,9 @@ void DevToolMessageDispatcher::DispatchCDPMessage(
     return;
   }
 
-  // Ownership of the response is handed back to the legacy agent path; further
-  // migration to CDPResponder requires future refactorings.
-  iter->second->CallMethod(responder->RetrieveSender(), msg);
+  // Hand the responder down to the agent. New agents fill it directly; legacy
+  // agents fall back to the sender-based CallMethod via the base class default.
+  iter->second->CallMethod(responder, msg);
 }
 
 void DevToolMessageDispatcher::DispatchJsonMessage(
