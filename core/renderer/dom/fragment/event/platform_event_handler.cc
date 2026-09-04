@@ -11,11 +11,23 @@
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/dom/fragment/event/platform_input_event.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+base::Vector<PlatformEventName> EventNamesFromTextEventMask(uint32_t mask) {
+  base::Vector<PlatformEventName> events;
+  if (mask & text::kTextEventTargetTap) {
+    events.push_back(PlatformEventName::kTap);
+  }
+  return events;
+}
+
+}  // namespace
 
 PlatformEventHandler::PlatformEventTargetDetail::PlatformEventTargetDetail(
     fml::RefPtr<PlatformEventTarget> target, float down_point[2])
@@ -432,7 +444,31 @@ fml::RefPtr<PlatformEventTarget> PlatformEventHandler::FindTarget(
     return nullptr;
   }
   float point[] = {pointer_x, pointer_y};
-  return target_tree_->HitTest(point);
+  auto target = target_tree_->HitTest(point);
+  if (target == nullptr || platform_ref_ == nullptr ||
+      target->GetPlatformRendererType() != PlatformRendererType::kText) {
+    return target;
+  }
+
+  float text_point[2] = {pointer_x, pointer_y};
+  platform_ref_->GetEventTargetHelper()->ConvertPointFromAncestorToDescendant(
+      text_point, target_tree_, target, point);
+  PlatformTextEventTargetInfo info;
+  const bool hit_inline_text = platform_ref_->HitTestTextEventTarget(
+      target->Sign(), text_point[0], text_point[1], &info);
+  if (!hit_inline_text || info.sign < 0 || info.sign == target->Sign() ||
+      info.event_mask == 0) {
+    return target;
+  }
+
+  auto inline_target = fml::MakeRefCounted<PlatformEventTarget>(
+      platform_ref_->GetEventTargetHelper(), target->RootId(), info.sign, 0.f,
+      0.f, target->Width(), target->Height());
+  inline_target->SetRendererHostSign(target->RendererHostSign());
+  inline_target->SetPlatformRendererType(PlatformRendererType::kText);
+  inline_target->SetEventSet(EventNamesFromTextEventMask(info.event_mask));
+  inline_target->SetParentTarget(target);
+  return inline_target;
 }
 
 void PlatformEventHandler::ResetFocusInfo() {

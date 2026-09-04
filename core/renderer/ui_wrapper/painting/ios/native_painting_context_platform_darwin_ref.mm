@@ -9,9 +9,18 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
+#import <Lynx/LynxRendererContext.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxUIOwner.h>
 #import "LynxTimingConstants.h"
+
+@interface LynxTextRenderer (LynxInlineEventTarget)
+- (nullable NSArray<NSNumber*>*)lynx_inlineEventTargetInfoAtPoint:(CGPoint)point;
+@end
 
 namespace lynx {
 namespace tasm {
@@ -58,6 +67,38 @@ void NativePaintingCtxPlatformDarwinRef::GetScreenSize(float size[2]) {
   const auto res = context->GetScreenSize();
   size[0] = res.width;
   size[1] = res.height;
+}
+
+bool NativePaintingCtxPlatformDarwinRef::HitTestTextEventTarget(
+    int32_t text_id, float x, float y, PlatformTextEventTargetInfo* result) {
+  if (result == nullptr) {
+    return false;
+  }
+  LynxRendererContext* renderer_context = GetRendererContext();
+  if (renderer_context == nil) {
+    return false;
+  }
+
+  NSArray<NSNumber*>* target_info = nil;
+  void* page = [renderer_context getTextBundle:text_id];
+  if (page != nullptr) {
+    id<LynxServiceTextProtocol> text_service = LynxService(LynxServiceTextProtocol);
+    target_info = [text_service getHitTestEventTargetsOfPage:page
+                                             ByTouchPosition:CGPointMake(x, y)];
+    if (target_info.count >= 3 && [target_info[2] boolValue]) {
+      return false;
+    }
+  } else {
+    LynxTextRenderer* text_renderer = [renderer_context.textRenderManager takeTextRender:text_id];
+    target_info = [text_renderer lynx_inlineEventTargetInfoAtPoint:CGPointMake(x, y)];
+  }
+
+  if (target_info.count < 2) {
+    return false;
+  }
+  result->sign = [target_info[0] intValue];
+  result->event_mask = [target_info[1] unsignedIntValue];
+  return result->sign >= 0 && result->event_mask != 0;
 }
 
 LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {

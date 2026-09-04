@@ -407,6 +407,32 @@ bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
       env, local_ref.Get(), sign);
 }
 
+bool PlatformRendererContext::HitTestTextEventTarget(
+    int32_t text_id, float x, float y, PlatformTextEventTargetInfo* result) {
+  if (result == nullptr) {
+    return false;
+  }
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return false;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto target_info = Java_PlatformRendererContext_hitTestTextEventTarget(
+      env, local_ref.Get(), text_id, x, y);
+  if (target_info.IsNull() || env->GetArrayLength(target_info.Get()) < 2) {
+    return false;
+  }
+  jint values[3] = {-1, 0, 0};
+  const jsize size = std::min<jsize>(env->GetArrayLength(target_info.Get()), 3);
+  env->GetIntArrayRegion(target_info.Get(), 0, size, values);
+  if (size >= 3 && values[2] != 0) {
+    return false;
+  }
+  result->sign = values[0];
+  result->event_mask = static_cast<uint32_t>(values[1]);
+  return result->sign >= 0 && result->event_mask != 0;
+}
+
 void PlatformRendererContext::InvokeUIMethod(
     int32_t id, const std::string& method, const lepus::Value& params,
     base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) {

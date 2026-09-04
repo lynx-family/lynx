@@ -19,6 +19,7 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_compact_array_buffer.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TextLayout_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TextLayout_register_jni.h"
 
@@ -336,7 +337,11 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
                                         PropArrayAndroid* props) {
   TextProps* text_props = element->text_props();
   CSSIDBitset& property_bits = element->property_bits();
-  if (!text_props && !property_bits.HasAny()) {
+  const uint32_t event_mask =
+      element->is_inline_element() && element->HasEventListener("tap")
+          ? text::kTextEventTargetTap
+          : 0;
+  if (!text_props && !property_bits.HasAny() && event_mask == 0) {
     return;
   }
   // only inline text need the pass the range，   kPropRangeStart should be
@@ -344,6 +349,11 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
   if (element->is_inline_element()) {
     props->AddProp(kPropInlineStart);
     props->AddProp(static_cast<int>(pos_start));
+    if (event_mask != 0) {
+      props->AddProp(kPropInlineEventTarget);
+      props->AddProp(element->impl_id());
+      props->AddProp(static_cast<int>(event_mask));
+    }
   }
 
   // styles

@@ -17,6 +17,8 @@
 #import "LynxTraceEventDef.h"
 #import "base/include/compiler_specific.h"
 
+static NSAttributedStringKey const kLynxInlineTextEventTargetKey = @"LynxInlineTextEventTargetKey";
+
 static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   NSTextContainer *container = layoutManager.textContainers.firstObject;
   NSUInteger numberOfGlyphs = [layoutManager numberOfGlyphs];
@@ -585,6 +587,31 @@ static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   if ([subSpan count] > 0) {
     _subSpan = subSpan;
   }
+}
+
+- (nullable NSArray<NSNumber *> *)lynx_inlineEventTargetInfoAtPoint:(CGPoint)point {
+  [self ensureTextRenderLayout];
+  if (_textStorage.length == 0 || _layoutManager.numberOfGlyphs == 0) {
+    return nil;
+  }
+
+  NSUInteger glyphIndex = [_layoutManager glyphIndexForPoint:point inTextContainer:_textContainer];
+  if (glyphIndex >= _layoutManager.numberOfGlyphs) {
+    return nil;
+  }
+  CGRect glyphRect = [_layoutManager boundingRectForGlyphRange:NSMakeRange(glyphIndex, 1)
+                                               inTextContainer:_textContainer];
+  if (!CGRectContainsPoint(glyphRect, point)) {
+    return nil;
+  }
+
+  NSUInteger characterIndex = [_layoutManager characterIndexForGlyphAtIndex:glyphIndex];
+  id targetInfo = characterIndex < _textStorage.length
+                      ? [_textStorage attribute:kLynxInlineTextEventTargetKey
+                                        atIndex:characterIndex
+                                 effectiveRange:NULL]
+                      : nil;
+  return [targetInfo isKindOfClass:NSArray.class] && [targetInfo count] >= 2 ? targetInfo : nil;
 }
 
 - (BOOL)shouldAppendTruncatedToken {
