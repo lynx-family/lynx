@@ -16,7 +16,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, weak) LynxGestureArenaManager *_Nullable gestureArenaManager;
 
 - (void)setupVelocityTracker:(UIView *)rootView;
-- (void)setEnableTouchRefactor:(BOOL)enable;
 - (void)setEnableEndGestureAtLastFingerUp:(BOOL)enable;
 - (void)setEnableTouchPseudo:(BOOL)enable;
 - (void)setEnableMultiTouch:(BOOL)enable;
