@@ -5,6 +5,7 @@
 #include "clay/ui/component/text/internal_text_view.h"
 
 #include <algorithm>
+#include <cmath>
 #include <codecvt>
 #include <limits>
 #include <locale>
@@ -18,6 +19,7 @@
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/rendering/text/render_text.h"
+#include "clay/ui/shadow/measure_utils.h"
 
 namespace clay {
 
@@ -43,9 +45,9 @@ class LayoutContextMeasure : public LayoutContext {
   float layout_width_ = 0.f;
 
   // Indicate the intrinsic width after layout using |layout_width_|.
-  int measured_width_ = 0;
+  float measured_width_ = 0.f;
   // Indicate the height after layout using |layout_width_|.
-  int measured_height_ = 0;
+  float measured_height_ = 0.f;
 };
 
 }  // namespace
@@ -117,8 +119,8 @@ void InternalTextView::OnLayout(LayoutContext* context) {
 
   if (context_measure) {
     context_measure->measured_width_ =
-        std::ceil(paragraph_->GetMaxIntrinsicWidth());
-    context_measure->measured_height_ = std::ceil(paragraph_->GetHeight());
+        GetMeasuredParagraphWidth(paragraph_.get(), layout_width);
+    context_measure->measured_height_ = paragraph_->GetHeight();
   }
   update_flag_ = kUpdateFlagNone;
   prev_layout_width_ = layout_width;
@@ -170,17 +172,15 @@ void InternalTextView::Measure(const MeasureConstraint& constraint,
   if (constraint.width_mode == TextMeasureMode::kDefinite) {
     result.width = *constraint.width;
   } else if (constraint.width_mode == TextMeasureMode::kIndefinite) {
-    result.width = std::ceil(context.measured_width_);
+    result.width = context.measured_width_;
   } else {
-    result.width =
-        std::min(std::ceil(static_cast<float>(context.measured_width_)),
-                 *constraint.width);
+    result.width = std::min(context.measured_width_, *constraint.width);
   }
 
   auto desired_height = context.measured_height_;
   switch (constraint.height_mode) {
     case TextMeasureMode::kIndefinite: {
-      result.height = desired_height;
+      result.height = std::ceil(desired_height);
       break;
     }
     case TextMeasureMode::kDefinite: {

@@ -269,18 +269,6 @@ void BaseTextShadowNode::CreateRawTextNodeIfNeed(std::string text) {
 }
 
 void BaseTextShadowNode::SetFontSize(float font_size) {
-  auto context = owner_->GetViewContext();
-  double device_pixel_ratio = 1.0;
-  if (context) {
-    device_pixel_ratio = owner_->GetViewContext()
-                             ->GetPageView()
-                             ->GetViewportMetrics()
-                             .device_pixel_ratio;
-  }
-  font_size = std::roundf(font_size * device_pixel_ratio) / device_pixel_ratio;
-#if OS_MAC || OS_WIN
-  font_size = std::roundf(font_size);
-#endif
   EnsureDefaultStyle();
   if (text_style_->font_size != font_size) {
     text_style_->font_size = font_size;
