@@ -96,6 +96,7 @@ class PlatformRendererContext {
 
   std::vector<float> GetRootViewLocationOnScreen();
   std::vector<float> GetScreenSize();
+  std::vector<float> GetRectToLynxView(int32_t sign);
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);
   void InvokeUIMethod(

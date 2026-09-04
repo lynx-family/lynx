@@ -299,6 +299,22 @@ NativePaintingCtxPlatformRef::GetEventTargetHelper() {
   return event_target_helper_.get();
 }
 
+std::vector<float> NativePaintingCtxPlatformRef::GetRectToLynxView(int32_t id) {
+  if (destroyed_.load(std::memory_order_acquire) ||
+      !EnsureEventTargetTreeForTarget(id)) {
+    return {};
+  }
+  auto target = event_target_helper_->GetEventTarget(id);
+  if (target == nullptr) {
+    return {};
+  }
+
+  float rect[4] = {0.f, 0.f, target->Width(), target->Height()};
+  event_target_helper_->ConvertRectFromTargetToPageRootTarget(rect, target,
+                                                              rect);
+  return {rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]};
+}
+
 void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
     int32_t id, PlatformEventBundle bundle) {
   // TODO(hexionghui): When an Attribute does not trigger a rebuild, the

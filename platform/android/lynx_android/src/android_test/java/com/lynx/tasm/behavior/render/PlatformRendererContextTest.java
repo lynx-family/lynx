@@ -9,6 +9,7 @@ import static org.mockito.Mockito.*;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -249,6 +250,17 @@ public class PlatformRendererContextTest {
 
     assertArrayEquals(new float[] {12, 34}, rendererContext.getRendererHostScrollOffset(1), 0);
     assertArrayEquals(new float[] {0, 0}, rendererContext.getRendererHostScrollOffset(99), 0);
+  }
+
+  @Test
+  public void testGetRectToLynxViewFallsBackToUIOwner() {
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(1)).thenReturn(ui);
+    when(ui.getBoundingClientRect()).thenReturn(new Rect(10, 20, 40, 60));
+
+    assertArrayEquals(new float[] {10, 20, 30, 40}, rendererContext.getRectToLynxView(1), 0);
   }
 
   @Test
