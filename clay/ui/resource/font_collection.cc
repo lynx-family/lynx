@@ -11,7 +11,6 @@
 
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/third_party/txt/src/txt/platform.h"
-#include "clay/ui/common/isolate.h"
 
 namespace clay {
 
@@ -69,6 +68,7 @@ void FontCollection::RegisterAssetFont(const std::string& family_name,
 
 void FontCollection::PreLoadFontOnMem(
     fml::RefPtr<fml::TaskRunner> load_task_runner,
+    fml::RefPtr<fml::TaskRunner> io_task_runner,
     std::shared_ptr<ResourceLoaderIntercept> intercept,
     std::shared_ptr<ServiceManager> service_manager,
     const std::string& font_family, std::vector<std::string> urls) {
@@ -97,8 +97,8 @@ void FontCollection::PreLoadFontOnMem(
 
     self->OnLoadFontEnd(font_family);
   };
-  font_resource_manager_->LoadFontAsync(load_task_runner, intercept,
-                                        service_manager, font_family,
+  font_resource_manager_->LoadFontAsync(load_task_runner, io_task_runner,
+                                        intercept, service_manager, font_family,
                                         std::move(urls), callback);
 }
 

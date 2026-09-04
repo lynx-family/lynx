@@ -17,9 +17,10 @@ class EditableViewTest : public UITest {
   void UISetUp() override {}
 
   void LoadDataUriFont(const std::string& family_name) {
-    FontCollection::Instance()->PreLoadFontOnMem(
-        fml::MessageLoop::GetCurrent().GetTaskRunner(), nullptr, nullptr,
-        family_name, {"data:font/ttf;base64,AA=="});
+    auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+    FontCollection::Instance()->PreLoadFontOnMem(task_runner, task_runner,
+                                                 nullptr, nullptr, family_name,
+                                                 {"data:font/ttf;base64,AA=="});
   }
 };
 
