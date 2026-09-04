@@ -401,9 +401,9 @@ void Engine::SetFontFaceCache(const char* font_family, const char* local_path) {
   std::vector<std::string> src_vec;
   src_vec.emplace_back(local_path);
   clay::FontCollection::Instance()->PreLoadFontOnMem(
-      task_runners_.GetUITaskRunner(), GetResourceLoaderIntercept(),
-      page_view_->GetServiceManager(), std::string(font_family),
-      std::move(src_vec));
+      task_runners_.GetUITaskRunner(), task_runners_.GetIOTaskRunner(),
+      GetResourceLoaderIntercept(), page_view_->GetServiceManager(),
+      std::string(font_family), std::move(src_vec));
 }
 
 void Engine::UpdateMemoryCacheOptions() {
