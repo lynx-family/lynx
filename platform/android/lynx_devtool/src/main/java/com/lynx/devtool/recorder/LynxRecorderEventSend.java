@@ -40,7 +40,7 @@ public class LynxRecorderEventSend {
     }
   }
 
-  private static JavaOnlyMap jsonObjectToJavaOnlyMap(JSONObject obj) {
+  static JavaOnlyMap jsonObjectToJavaOnlyMap(JSONObject obj) {
     Iterator iterator = obj.keys();
     JavaOnlyMap result = new JavaOnlyMap();
     while (iterator.hasNext()) {
@@ -56,7 +56,7 @@ public class LynxRecorderEventSend {
     return result;
   }
 
-  private static JavaOnlyArray jsonArrayToJavaOnlyArray(JSONArray array) {
+  static JavaOnlyArray jsonArrayToJavaOnlyArray(JSONArray array) {
     JavaOnlyArray result = new JavaOnlyArray();
     for (int index = 0; index < array.length(); index++) {
       if (array.opt(index) instanceof JSONArray) {
