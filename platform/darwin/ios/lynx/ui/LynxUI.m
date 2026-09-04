@@ -986,22 +986,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 
 - (BOOL)childrenContainPoint:(CGPoint)point {
   BOOL contain = NO;
-  if (_context.enableEventRefactor) {
-    for (LynxUI* ui in self.children) {
-      CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
-      CALayer* childLayer = ui.view.layer.presentationLayer ?: ui.view.layer.modelLayer;
-      CGPoint newPoint = [parentLayer convertPoint:point toLayer:childLayer];
-      if ([ui shouldHitTest:newPoint withEvent:nil]) {
-        contain = contain || [ui containsPoint:newPoint];
-      }
-    }
-    return contain;
-  }
-
-  CGPoint offset = [self getHitTestFrame].origin;
-  CGPoint newPoint = CGPointMake(point.x + self.contentOffset.x - offset.x,
-                                 point.y + self.contentOffset.y - offset.y);
   for (LynxUI* ui in self.children) {
+    CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+    CALayer* childLayer = ui.view.layer.presentationLayer ?: ui.view.layer.modelLayer;
+    CGPoint newPoint = [parentLayer convertPoint:point toLayer:childLayer];
     if ([ui shouldHitTest:newPoint withEvent:nil]) {
       contain = contain || [ui containsPoint:newPoint];
     }
@@ -1038,21 +1026,15 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 }
 
 - (CGRect)getHitTestFrame {
-  CGRect frame = CGRectZero;
-
-  if (_context.enableEventRefactor) {
-    frame = self.view.bounds;
-    if (frame.size.width + _hitSlopLeft + _hitSlopRight >= CGFLOAT_EPSILON &&
-        frame.size.height + _hitSlopTop + _hitSlopBottom >= CGFLOAT_EPSILON) {
-      frame.origin.x -= _hitSlopLeft;
-      frame.origin.y -= _hitSlopTop;
-      frame.size.width += _hitSlopLeft + _hitSlopRight;
-      frame.size.height += _hitSlopTop + _hitSlopBottom;
-    }
-    return frame;
+  CGRect frame = self.view.bounds;
+  if (frame.size.width + _hitSlopLeft + _hitSlopRight >= CGFLOAT_EPSILON &&
+      frame.size.height + _hitSlopTop + _hitSlopBottom >= CGFLOAT_EPSILON) {
+    frame.origin.x -= _hitSlopLeft;
+    frame.origin.y -= _hitSlopTop;
+    frame.size.width += _hitSlopLeft + _hitSlopRight;
+    frame.size.height += _hitSlopTop + _hitSlopBottom;
   }
-
-  return [self getHitTestFrameWithFrame:self.frame];
+  return frame;
 }
 
 - (LynxUI*)hitTest:(CGPoint)point withEvent:(UIEvent*)event onUIWithCustomLayout:(LynxUI*)ui {
@@ -3890,14 +3872,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
       CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
       CALayer* childLayer = child.view.layer.presentationLayer ?: child.view.layer.modelLayer;
       CGPoint targetPoint = [parentLayer convertPoint:point toLayer:childLayer];
-      bool contain = false;
-      if (_context.enableEventRefactor) {
-        contain = [child containsPoint:targetPoint];
-      } else {
-        contain = [child containsPoint:point];
-      }
-
-      if (contain) {
+      if ([child containsPoint:targetPoint]) {
         [siblingTargets addObject:child];
         if (child.isOnResponseChain) {
           guard = child;
@@ -3910,11 +3885,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
         }
       }
     }
-    if (_context.enableEventRefactor) {
-      point = childPoint;
-    } else {
-      point = [guard getHitTestPoint:point];
-    }
+    point = childPoint;
   }
 
   id<LynxEventTarget> target = guard ? [guard hitTest:point withEvent:event] : self;
@@ -3927,9 +3898,6 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
       CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
       CALayer* childLayer = sibling.view.layer.presentationLayer ?: sibling.view.layer.modelLayer;
       CGPoint siblingPoint = [parentLayer convertPoint:originPoint toLayer:childLayer];
-      if (!_context.enableEventRefactor) {
-        siblingPoint = [sibling getHitTestPoint:originPoint];
-      }
       target = [sibling hitTest:siblingPoint withEvent:event];
       if (!target || [target pointerEvents] == kLynxPointerEventsValueNone) {
         target = nil;
@@ -3944,40 +3912,19 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 
 - (BOOL)containsPoint:(CGPoint)point inHitTestFrame:(CGRect)frame {
   bool contain = NO;
-  if (_context.enableEventRefactor) {
-    CGFloat left = frame.origin.x - self.touchSlop;
-    CGFloat width = frame.size.width + 2 * self.touchSlop;
-    CGFloat top = frame.origin.y - self.touchSlop;
-    CGFloat height = frame.size.height + 2 * self.touchSlop;
-    frame = CGRectMake(left, top, width, height);
-    contain = CGRectContainsPoint(frame, point);
-    if (!contain && _overflow != 0) {
-      if (_overflow == OVERFLOW_X_VAL) {
-        if (!(top < point.y && height + top > point.y)) {
-          return contain;
-        }
-      } else if (_overflow == OVERFLOW_Y_VAL) {
-        if (!(left < point.x && width + left > point.x)) {
-          return contain;
-        }
-      }
-      contain = [self childrenContainPoint:point];
-    }
-    return contain;
-  }
-
-  frame = CGRectMake(frame.origin.x - self.touchSlop, frame.origin.y - self.touchSlop,
-                     frame.size.width + 2 * self.touchSlop, frame.size.height + 2 * self.touchSlop);
+  CGFloat left = frame.origin.x - self.touchSlop;
+  CGFloat width = frame.size.width + 2 * self.touchSlop;
+  CGFloat top = frame.origin.y - self.touchSlop;
+  CGFloat height = frame.size.height + 2 * self.touchSlop;
+  frame = CGRectMake(left, top, width, height);
   contain = CGRectContainsPoint(frame, point);
   if (!contain && _overflow != 0) {
     if (_overflow == OVERFLOW_X_VAL) {
-      if (!(frame.origin.y - self.touchSlop < point.y &&
-            frame.origin.y + frame.size.height + self.touchSlop > point.y)) {
+      if (!(top < point.y && height + top > point.y)) {
         return contain;
       }
     } else if (_overflow == OVERFLOW_Y_VAL) {
-      if (!(frame.origin.x - self.touchSlop < point.x &&
-            frame.origin.x + frame.size.width + self.touchSlop > point.x)) {
+      if (!(left < point.x && width + left > point.x)) {
         return contain;
       }
     }

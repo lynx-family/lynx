@@ -8,7 +8,6 @@
 - (bool)enableTextOverflow;
 - (bool)enableNewClipMode;
 - (bool)globalImplicit;
-- (bool)enableEventRefactor;
 - (bool)enableA11yIDMutationObserver;
 - (bool)enableEventThrough;
 - (bool)enableEventThroughInheritFromPage;

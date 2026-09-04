@@ -1163,24 +1163,9 @@ LYNX_UI_METHOD(getVisibleCells) {
   return [self.itemHelper findHitTargetAtPoint:point withEvent:event];
 }
 
-- (LynxListContainerComponentWrapper *)visibleWrapperAtPoint:(CGPoint)point {
-  return (LynxListContainerComponentWrapper *)[self.itemHelper firstSubviewAtPoint:point];
-}
-
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
   [self resetInterceptGesture];
-  if (self.context.enableEventRefactor) {
-    return [self findHitTestTarget:point withEvent:event] ?: self;
-  } else {
-    id<LynxEventTarget> target = [self.stickyManager findHitTargetAtPoint:point withEvent:event];
-    if (target) {
-      return target;
-    }
-    LynxListContainerComponentWrapper *wrapper = [self visibleWrapperAtPoint:point];
-    if (!wrapper) return self;
-    return [wrapper.holdingUI hitTest:[self.view convertPoint:point toView:wrapper.holdingUI.view]
-                            withEvent:event];
-  }
+  return [self findHitTestTarget:point withEvent:event] ?: self;
 }
 
 #pragma mark LynxListItemHelperOwner

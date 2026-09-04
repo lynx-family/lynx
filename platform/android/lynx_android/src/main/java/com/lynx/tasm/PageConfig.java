@@ -57,7 +57,6 @@ public class PageConfig {
   private static final String KEY_KEYBOARD_CALLBACK_PASS_RELATIVE_HEIGHT =
       "keyboardCallbackPassRelativeHeight";
   private static final String KEY_ENABLE_CSS_PARSER = "enableCSSParser";
-  private static final String KEY_ENABLE_EVENT_REFACTOR = "enableEventRefactor";
   private static final String KEY_ENABLE_DISEXPOSURE_WHEN_LYNX_HIDDEN =
       "enableDisexposureWhenLynxHidden";
   private static final String KEY_ENABLE_EXPOSURE_WHEN_LAYOUT = "enableExposureWhenLayout";
@@ -127,7 +126,6 @@ public class PageConfig {
   private boolean mKeyboardCallbackUseRelativeHeight;
   private boolean mEnableCSSParser;
   private boolean mDefaultTextIncludePadding = false;
-  private boolean mEnableEventRefactor = true;
   private boolean mEnableDisexposureWhenLynxHidden = true;
   private boolean mEnableExposureWhenLayout = false;
   private boolean mEnableExposureWhenReload = false;
@@ -310,10 +308,6 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_CSS_PARSER)) {
         mEnableCSSParser = map.getBoolean(KEY_ENABLE_CSS_PARSER);
-      }
-
-      if (map.hasKey(KEY_ENABLE_EVENT_REFACTOR)) {
-        mEnableEventRefactor = map.getBoolean(KEY_ENABLE_EVENT_REFACTOR);
       }
 
       if (map.hasKey(KEY_ENABLE_DISEXPOSURE_WHEN_LYNX_HIDDEN)) {
@@ -578,10 +572,6 @@ public class PageConfig {
 
   public boolean isEnablePlatformGesture() {
     return mEnablePlatformGesture;
-  }
-
-  public boolean getEnableEventRefactor() {
-    return mEnableEventRefactor;
   }
 
   public boolean getEnableDisexposureWhenLynxHidden() {

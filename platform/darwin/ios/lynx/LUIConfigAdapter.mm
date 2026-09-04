@@ -36,10 +36,6 @@
   return _config->GetEnableBackgroundShapeLayer();
 }
 
-- (bool)enableEventRefactor {
-  return _config->GetEnableEventRefactor();
-}
-
 - (bool)enableEventThrough {
   return _config->GetEnableEventThrough();
 }
