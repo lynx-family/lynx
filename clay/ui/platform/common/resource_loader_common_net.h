@@ -24,7 +24,7 @@ class ResourceLoaderCommon
  public:
   explicit ResourceLoaderCommon(
       std::shared_ptr<ResourceLoaderIntercept> intercept,
-      fml::RefPtr<fml::TaskRunner> task_runner);
+      fml::RefPtr<fml::TaskRunner> callback_task_runner);
   ~ResourceLoaderCommon() override;
 
   void Load(const std::string& src,
@@ -42,14 +42,14 @@ class ResourceLoaderCommon
 
  private:
   void RealLoad(std::weak_ptr<ResourceLoaderCommon> weak_ref,
-                fml::RefPtr<fml::TaskRunner> ui_task_runner,
+                fml::RefPtr<fml::TaskRunner> callback_task_runner,
                 const std::string& src,
                 const std::function<void(const uint8_t*, size_t)>& callback);
   void LoadOnNet(std::weak_ptr<ResourceLoaderCommon> weak_ref,
-                 fml::RefPtr<fml::TaskRunner> ui_task_runner,
+                 fml::RefPtr<fml::TaskRunner> callback_task_runner,
                  const std::string& src,
                  const std::function<void(const uint8_t*, size_t)>& callback);
-  void LoadByFile(fml::RefPtr<fml::TaskRunner> ui_task_runner,
+  void LoadByFile(fml::RefPtr<fml::TaskRunner> callback_task_runner,
                   const std::string& src,
                   const std::function<void(const uint8_t*, size_t)>& callback);
   void OnLoadFinished(size_t request_seq);
@@ -61,7 +61,7 @@ class ResourceLoaderCommon
   RawResource resource_;
 
   std::shared_ptr<ResourceLoaderIntercept> resource_loader_intercept_;
-  fml::RefPtr<fml::TaskRunner> ui_task_runner_;
+  fml::RefPtr<fml::TaskRunner> callback_task_runner_;
 };
 }  // namespace clay
 

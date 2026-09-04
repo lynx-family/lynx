@@ -34,6 +34,7 @@ class FontResourceManager
   RawResource GetResource(const std::string& font_family);
 
   void LoadFontAsync(fml::RefPtr<fml::TaskRunner> load_task_runner,
+                     fml::RefPtr<fml::TaskRunner> io_task_runner,
                      std::shared_ptr<ResourceLoaderIntercept> intercept,
                      std::shared_ptr<ServiceManager> service_manager,
                      const std::string& font_family,
@@ -54,9 +55,11 @@ class FontResourceManager
   void OnDownloadEnd(
       bool success, const int url_index, const std::string& font_family,
       RawResource data, fml::RefPtr<fml::TaskRunner> load_task_runner,
+      fml::RefPtr<fml::TaskRunner> io_task_runner,
       std::shared_ptr<ResourceLoaderIntercept> intercept = nullptr,
       std::shared_ptr<ServiceManager> service_manager = nullptr);
   void DownloadFont(fml::RefPtr<fml::TaskRunner> load_task_runner,
+                    fml::RefPtr<fml::TaskRunner> io_task_runner,
                     std::shared_ptr<ResourceLoaderIntercept> intercept,
                     std::shared_ptr<ServiceManager> service_manager,
                     const std::string& url, const int url_index,

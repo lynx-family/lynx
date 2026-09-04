@@ -934,9 +934,10 @@ void ViewContext::SetFontFace(const char* font_family, const char* src[],
 
   auto font_collection = Isolate::Instance().GetFontCollection();
   font_collection->PreLoadFontOnMem(
-      page_view_->GetTaskRunner(), page_view_->GetResourceLoaderIntercept(),
-      page_view_->GetServiceManager(), std::string(font_family),
-      std::move(src_vec));
+      page_view_->GetTaskRunner(),
+      page_view_->GetTaskRunners().GetIOTaskRunner(),
+      page_view_->GetResourceLoaderIntercept(), page_view_->GetServiceManager(),
+      std::string(font_family), std::move(src_vec));
 }
 
 void ViewContext::GetAbsolutePosition(int id, float& top, float& left) {

@@ -46,6 +46,7 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
   void SetupDefaultFontManager(uint32_t font_initialization_data);
 
   void PreLoadFontOnMem(fml::RefPtr<fml::TaskRunner> load_task_runner,
+                        fml::RefPtr<fml::TaskRunner> io_task_runner,
                         std::shared_ptr<ResourceLoaderIntercept> intercept,
                         std::shared_ptr<ServiceManager> service_manager,
                         const std::string& font_family,
