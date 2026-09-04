@@ -173,7 +173,7 @@ class NativePaintingCtxPlatformRef
   void MarkEventTargetTreeDirty(int32_t renderer_id);
   void MarkEventTargetRootDirty(int32_t root_id);
   void ClearEventTargetRootDirty(int32_t root_id);
-  bool EnableEventThroughInheritFromPage() const;
+  PlatformEventThroughConfig GetEventThroughConfig() const;
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeForRoot(
       int32_t root_id);
 

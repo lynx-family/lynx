@@ -34,6 +34,11 @@ enum class LynxEventPropStatus {
   kEnable,
 };
 
+struct PlatformEventThroughConfig {
+  bool enable_event_through{false};
+  bool enable_event_through_inherit_from_page{false};
+};
+
 enum class LynxPointerEventsValue {
   kAuto,
   kNone,
@@ -190,7 +195,7 @@ class PlatformEventTarget
   bool TouchPseudoPropagation() const;
 
   bool EventThrough(float point[2],
-                    bool enable_inherit_from_page = false) const;
+                    const PlatformEventThroughConfig& config = {}) const;
   bool IgnoreFocus() const;
   LynxPointerEventsValue PointerEvents() const;
   bool BlockNativeEvent(float point[2]) const;
@@ -263,8 +268,8 @@ class PlatformEventTarget
 
  private:
   void UpdateScrollOffsetIfNeeded();
-  bool EventThroughInternal(float point[2], bool include_events_pass_through,
-                            bool enable_inherit_from_page) const;
+  bool EventThroughInternal(float point[2],
+                            const PlatformEventThroughConfig& config) const;
   bool HitEventThroughActiveRegions(float point[2]) const;
   float ConvertEventThroughSizeValue(const EventThroughSizeValue& value,
                                      bool is_horizontal) const;
