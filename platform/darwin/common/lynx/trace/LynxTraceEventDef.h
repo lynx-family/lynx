@@ -12,6 +12,12 @@ NS_ASSUME_NONNULL_BEGIN
  */
 static NSString* const UI_EXPOSURE_HANDLER = @"LynxUIExposure.exposureHandler";
 /**
+ * @trace_description: Dispatch a UI exposure custom event to the Lynx event emitter. The renderer,
+ * event name, target sign, exposure metadata, and optional dataset correlation identifiers are
+ * recorded as debug annotations.
+ */
+static NSString* const UI_EXPOSURE_DISPATCH_CUSTOM_EVENT = @"LynxExposure.dispatchCustomEvent";
+/**
  * @trace_description:  Layout of <text> element's platform layout node, where the preview text
  * are `@args{preview_text}`.
  * @history_name{text.TextShadowNode.measure}
