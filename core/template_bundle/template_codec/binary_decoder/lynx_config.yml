@@ -1209,14 +1209,6 @@ extendedLayoutOnlyOpt:
     - Android
     - HarmonyOS
     - iOS
-enableTouchRefactor:
-  description: Controls whether iOS touch dispatch uses the refactored gesture-conflict path. When enabled, external gestures in possible or began state no longer cancel Lynx touch handling and touchend can complete normally; when disabled, the legacy cancellation behavior remains.
-  defaultValue: 'true'
-  valueType: bool
-  author: rAY-ooo
-  since: '2.8'
-  supportPlatform:
-    - iOS
 enableEndGestureAtLastFingerUp:
   description: Controls whether iOS multi-finger touch handling ends only after the last finger is lifted. When enabled, the touch recognizer reports ended or cancelled when the final finger leaves; when disabled, the legacy earlier-ending behavior remains.
   defaultValue: 'false'
