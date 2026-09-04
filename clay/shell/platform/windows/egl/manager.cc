@@ -10,6 +10,9 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/make_copyable.h"
+#include "base/include/fml/thread.h"
+#include "base/include/no_destructor.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/utils/d3d11_device_creator.h"
 #include "clay/shell/platform/windows/egl/direct_composition_surface.h"
@@ -18,20 +21,38 @@
 namespace clay {
 namespace egl {
 
-int Manager::instance_count_ = 0;
+namespace {
+
+const fml::RefPtr<fml::TaskRunner>& GetCleanupTaskRunner() {
+  // D3D driver teardown can block indefinitely. Serialize it on a
+  // process-lifetime thread so it cannot stall the platform thread.
+  static fml::NoDestructor<fml::Thread> cleanup_thread(
+      fml::Thread::ThreadConfig("egl.cleanup",
+                                fml::Thread::ThreadPriority::BACKGROUND));
+  return cleanup_thread->GetTaskRunner();
+}
+
+}  // namespace
 
 std::unique_ptr<Manager> Manager::Create() {
   std::unique_ptr<Manager> manager;
   manager.reset(new Manager());
   if (!manager->IsValid()) {
+    DestroyAsync(std::move(manager));
     return nullptr;
   }
   return std::move(manager);
 }
 
-Manager::Manager() {
-  ++instance_count_;
+void Manager::DestroyAsync(std::unique_ptr<Manager> manager) {
+  if (!manager) {
+    return;
+  }
+  GetCleanupTaskRunner()->PostTask(fml::MakeCopyable(
+      [manager = std::move(manager)]() mutable { manager.reset(); }));
+}
 
+Manager::Manager() {
 #ifndef CLAY_FORCE_D3D9
   if (!TryInitializeD3D11Device()) {
     return;
@@ -53,10 +74,7 @@ Manager::Manager() {
   is_valid_ = true;
 }
 
-Manager::~Manager() {
-  CleanUp();
-  --instance_count_;
-}
+Manager::~Manager() { CleanUp(); }
 
 bool Manager::InitializeDisplay() {
   // These are preferred display attributes and request ANGLE's D3D11

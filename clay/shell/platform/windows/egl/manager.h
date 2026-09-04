@@ -39,6 +39,10 @@ class Manager {
  public:
   static std::unique_ptr<Manager> Create();
 
+  // Destroys the manager on a dedicated cleanup thread. All surfaces and
+  // engine tasks using the manager must be stopped before calling this method.
+  static void DestroyAsync(std::unique_ptr<Manager> manager);
+
   virtual ~Manager();
 
   // Whether the manager is currently valid.
@@ -82,9 +86,6 @@ class Manager {
   explicit Manager();
 
  private:
-  // Number of active instances of Manager
-  static int instance_count_;
-
   // Initialize the EGL display.
   bool InitializeDisplay();
 
