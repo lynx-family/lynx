@@ -1,0 +1,23 @@
+summary: Returns the bounded NativeModule record history for the current Lynx target.
+parameters: []
+returns:
+  - name: records
+    type: array
+    description: Captured records in sequence order, including invocation, callback, and global event records.
+  - name: latestSequence
+    type: number
+    description: Sequence number assigned to the most recently captured record, or zero when history is empty.
+events: []
+notes:
+  - History retains at most 200 records and 4 MiB of serialized record data.
+  - Fetching records does not change whether live reporting is enabled.
+examples:
+  - title: Read NativeModule history
+    request:
+      id: 1
+      method: LynxNativeModule.getRecords
+    response:
+      id: 1
+      result:
+        records: []
+        latestSequence: 0

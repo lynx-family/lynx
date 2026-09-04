@@ -1301,6 +1301,35 @@ void LynxDevToolMediator::SendLogEntryAddedEvent(
   });
 }
 
+void LynxDevToolMediator::NativeModuleEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread(
+      [sender, message] { sender->SendOKResponse(message["id"].asInt64()); });
+}
+
+void LynxDevToolMediator::NativeModuleDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread(
+      [sender, message] { sender->SendOKResponse(message["id"].asInt64()); });
+}
+
+void LynxDevToolMediator::NativeModuleGetRecords(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message] {
+    Json::Value result(Json::ValueType::objectValue);
+    result["records"] = Json::Value(Json::ValueType::arrayValue);
+    result["latestSequence"] = static_cast<Json::Int64>(0);
+
+    Json::Value response(Json::ValueType::objectValue);
+    response["id"] = message["id"];
+    response["result"] = std::move(result);
+    sender->SendMessage("CDP", response);
+  });
+}
+
 void LynxDevToolMediator::LayerTreeEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
