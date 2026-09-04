@@ -440,6 +440,32 @@ TEST_F_UI(ScrollViewTest, ScrollToIndex) {
   EXPECT_EQ(200, scroll_view->GetScrollOffset().y());
 }
 
+TEST_F_UI(ScrollViewTest, InitialScrollIndexWaitsForScrollableLayout) {
+  auto scroll_view =
+      std::make_unique<ScrollView>(-1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  page_->AddChild(scroll_view.get());
+  scroll_view->SetAttribute("initial-scroll-index", clay::Value(2));
+
+  auto view0 = std::make_unique<View>(-1, page_.get());
+  auto view1 = std::make_unique<View>(-1, page_.get());
+  auto view2 = std::make_unique<View>(-1, page_.get());
+  scroll_view->AddChild(view0.get(), 0);
+  scroll_view->AddChild(view1.get(), 1);
+  scroll_view->AddChild(view2.get(), 2);
+
+  Layout();
+  EXPECT_EQ(0, scroll_view->GetScrollOffset().y());
+
+  view0->SetBound(0, 0, 100, 100);
+  view1->SetBound(0, 100, 100, 100);
+  view2->SetBound(0, 200, 100, 100);
+  scroll_view->OnLayoutUpdated();
+  Layout();
+
+  EXPECT_EQ(200, scroll_view->GetScrollOffset().y());
+}
+
 // TODO(liuguoliang): Fix scrollWidth/scrollHeight and add test case
 TEST_F_UI(ScrollViewTest, ScrollEvent) {
   auto scroll_view = std::make_unique<ScrollWrapper>(
