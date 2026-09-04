@@ -68,9 +68,10 @@ class TestLayoutDelegate : public LayoutDelegate {
 class TextTest : public UITest {
  protected:
   void LoadDataUriFont(const std::string& family_name) {
-    FontCollection::Instance()->PreLoadFontOnMem(
-        fml::MessageLoop::GetCurrent().GetTaskRunner(), nullptr, nullptr,
-        family_name, {"data:font/ttf;base64,AA=="});
+    auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+    FontCollection::Instance()->PreLoadFontOnMem(task_runner, task_runner,
+                                                 nullptr, nullptr, family_name,
+                                                 {"data:font/ttf;base64,AA=="});
   }
 
   void UISetUp() override {
@@ -230,8 +231,9 @@ TEST_F_UI(TextTest, LoadingAssetFontPrecedesSameNamedSystemFont) {
   });
   task_started.Wait();
 
-  font_collection->PreLoadFontOnMem(load_task_runner, nullptr, nullptr,
-                                    family_name, {"data:font/ttf,invalid"});
+  font_collection->PreLoadFontOnMem(load_task_runner, load_task_runner, nullptr,
+                                    nullptr, family_name,
+                                    {"data:font/ttf,invalid"});
   ASSERT_TRUE(font_collection->HasFontResourceLoading(family_name));
 
   text_shadow_node_->SetFontFamily(family_name + ", " + fallback_family);

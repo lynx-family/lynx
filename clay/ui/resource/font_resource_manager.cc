@@ -13,7 +13,6 @@
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/net/url/url_helper.h"
-#include "clay/ui/common/isolate.h"
 
 namespace clay {
 
@@ -32,57 +31,65 @@ RawResource FontResourceManager::GetResource(const std::string& family_name) {
 
 void FontResourceManager::DownloadFont(
     fml::RefPtr<fml::TaskRunner> load_task_runner,
+    fml::RefPtr<fml::TaskRunner> io_task_runner,
     std::shared_ptr<ResourceLoaderIntercept> intercept,
     std::shared_ptr<ServiceManager> service_manager, const std::string& url,
     const int url_index, const std::string& font_family) {
-  if (url::ParseUriScheme(url) == url::UriSchemeType::kData) {
+  auto dispatch_result = [load_task_runner, io_task_runner, intercept,
+                          service_manager, url_index, font_name = font_family,
+                          weak = weak_from_this()](bool success,
+                                                   RawResource data) {
     fml::TaskRunner::RunNowOrPostTask(
-        load_task_runner,
-        [load_task_runner, intercept, service_manager, url, url_index,
-         font_name = font_family, weak = weak_from_this()]() {
+        load_task_runner, [load_task_runner, io_task_runner, intercept,
+                           service_manager, url_index, font_name, weak, success,
+                           data = std::move(data)]() mutable {
           auto self = weak.lock();
           if (!self) {
             return;
           }
-          bool success = false;
-          auto data = self->DecodeBase64Str(url);
-          if (data.length > 0) {
-            success = true;
+          self->OnDownloadEnd(success, url_index, font_name, std::move(data),
+                              load_task_runner, io_task_runner, intercept,
+                              service_manager);
+        });
+  };
+
+  if (url::ParseUriScheme(url) == url::UriSchemeType::kData) {
+    fml::TaskRunner::RunNowOrPostTask(
+        io_task_runner,
+        [url, weak = weak_from_this(),
+         dispatch_result = std::move(dispatch_result)]() mutable {
+          auto self = weak.lock();
+          if (!self) {
+            return;
           }
-          self->OnDownloadEnd(success, url_index, font_name, data,
-                              load_task_runner, intercept, service_manager);
+          auto data = self->DecodeBase64Str(url);
+          const bool success = data.length > 0;
+          dispatch_result(success, std::move(data));
         });
     return;
   }
 
   auto resource_loader = ResourceLoaderFactory::Create(
-      url, load_task_runner, intercept, service_manager);
+      url, io_task_runner, intercept, service_manager);
   if (!resource_loader) {
     FML_LOG(ERROR) << "create ResourceLoader fail";
-    OnDownloadEnd(false, url_index, font_family, {0, nullptr}, load_task_runner,
-                  intercept, service_manager);
+    dispatch_result(false, {0, nullptr});
     return;
   }
   resource_loader->Load(
       url,
-      [load_task_runner, intercept, service_manager, weak = weak_from_this(),
-       font_name = font_family,
-       url_index](const uint8_t* font_stream, size_t len) {
-        auto self = weak.lock();
-        if (!self) {
-          return;
-        }
-
-        bool success = (font_stream != nullptr && len > 0);
+      [dispatch_result = std::move(dispatch_result)](const uint8_t* font_stream,
+                                                     size_t len) mutable {
+        // The loader owns font_stream only for the duration of this callback,
+        // so copy it here before switching runners.
+        const bool success = font_stream != nullptr && len > 0;
         RawResource data;
         if (success) {
           data = RawResource::MakeWithCopy(font_stream, len);
         } else {
           data = {0, nullptr};
         }
-
-        self->OnDownloadEnd(success, url_index, font_name, data,
-                            load_task_runner, intercept, service_manager);
+        dispatch_result(success, std::move(data));
       },
       ResourceType::kFont, true);
   font_loader_map_.emplace(font_family, std::move(resource_loader));
@@ -91,6 +98,7 @@ void FontResourceManager::DownloadFont(
 void FontResourceManager::OnDownloadEnd(
     bool success, const int url_index, const std::string& font_family,
     RawResource data, fml::RefPtr<fml::TaskRunner> load_task_runner,
+    fml::RefPtr<fml::TaskRunner> io_task_runner,
     std::shared_ptr<ResourceLoaderIntercept> intercept,
     std::shared_ptr<ServiceManager> service_manager) {
   auto iter = font_url_map_.find(font_family);
@@ -117,14 +125,14 @@ void FontResourceManager::OnDownloadEnd(
       loading_font_families_.erase(font_family);
       return;
     } else {
-      DownloadFont(load_task_runner, intercept, service_manager, url_vec[index],
-                   index, font_family);
+      DownloadFont(load_task_runner, io_task_runner, intercept, service_manager,
+                   url_vec[index], index, font_family);
     }
     return;
   }
 
   // success , first : create font and cache
-  font_resource_map_.emplace(font_family, data);
+  font_resource_map_.emplace(font_family, std::move(data));
 
   // second : callback
   auto callback_iter = font_call_back_map_.find(font_family);
@@ -144,10 +152,15 @@ bool FontResourceManager::HasFontResourceLoading(
 
 void FontResourceManager::LoadFontAsync(
     fml::RefPtr<fml::TaskRunner> load_task_runner,
+    fml::RefPtr<fml::TaskRunner> io_task_runner,
     std::shared_ptr<ResourceLoaderIntercept> intercept,
     std::shared_ptr<ServiceManager> service_manager,
     const std::string& font_family, std::vector<std::string> url_vec,
     const FontCallback& callback) {
+  if (!io_task_runner) {
+    io_task_runner = load_task_runner;
+  }
+
   // first : find cache , avoid reloading
   if (font_url_map_.find(font_family) != font_url_map_.end()) {
     return;
@@ -166,8 +179,8 @@ void FontResourceManager::LoadFontAsync(
   const std::string& first_url = font_url_map_[font_family][url_index];
 
   // third : download by first url
-  DownloadFont(load_task_runner, intercept, service_manager, first_url,
-               url_index, font_family);
+  DownloadFont(load_task_runner, io_task_runner, intercept, service_manager,
+               first_url, url_index, font_family);
 }
 
 RawResource FontResourceManager::DecodeBase64Str(
@@ -223,7 +236,8 @@ void FontResourceManager::LoadFontSync(const std::string& font_family,
     if (url::ParseUriScheme(one_url) == url::UriSchemeType::kData) {
       auto data = DecodeBase64Str(one_url);
       if (data.length > 0) {
-        OnDownloadEnd(true, index, font_family, data, nullptr);
+        OnDownloadEnd(true, index, font_family, std::move(data), nullptr,
+                      nullptr);
         break;
       }
       continue;
@@ -237,7 +251,8 @@ void FontResourceManager::LoadFontSync(const std::string& font_family,
     }
     auto data = loader->LoadSync(one_url, ResourceType::kFont);
     if (data.length > 0) {
-      OnDownloadEnd(true, index, font_family, data, nullptr);
+      OnDownloadEnd(true, index, font_family, std::move(data), nullptr,
+                    nullptr);
       break;
     }
   }
