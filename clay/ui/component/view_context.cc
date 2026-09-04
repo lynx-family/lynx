@@ -1093,6 +1093,8 @@ std::vector<float> ViewContext::GetRectToLynxView(int64_t id) {
 }
 
 void ViewContext::StopExposure(bool send_event) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_STOP_EXPOSURE, "send_event", send_event,
+              "has_page_view", page_view_ != nullptr);
   if (page_view_) {
     auto intersection_manager = page_view_->intersection_observer_manager();
     if (intersection_manager) {
@@ -1102,6 +1104,8 @@ void ViewContext::StopExposure(bool send_event) {
 }
 
 void ViewContext::ResumeExposure() {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_RESUME_EXPOSURE, "has_page_view",
+              page_view_ != nullptr);
   if (page_view_) {
     auto intersection_manager = page_view_->intersection_observer_manager();
     if (intersection_manager) {
@@ -1111,6 +1115,8 @@ void ViewContext::ResumeExposure() {
 }
 
 void ViewContext::SetExposureHostVisible(bool visible) {
+  TRACE_EVENT("clay", CLAY_VIEW_CONTEXT_SET_EXPOSURE_HOST_VISIBLE, "visible",
+              visible, "has_page_view", page_view_ != nullptr);
   if (page_view_) {
     auto intersection_manager = page_view_->intersection_observer_manager();
     if (intersection_manager) {
