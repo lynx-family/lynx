@@ -32,7 +32,7 @@ constexpr skity::Vec2 kEndPoints[] = {
     {0, 0},
     {100, 100},
 };
-const clay::Color kColors[] = {
+constexpr clay::Color kColors[] = {
     clay::Color::kGreen(),
     clay::Color::kYellow(),
     clay::Color::kBlue(),
@@ -42,8 +42,6 @@ constexpr float kStops[] = {
     0.5,
     1.0,
 };
-static std::vector<uint32_t> color_vector(kColors, kColors + 3);
-static std::vector<float> stops_vector(kStops, kStops + 3);
 
 // clang-format off
 constexpr float kRotateColorMatrix[20] = {

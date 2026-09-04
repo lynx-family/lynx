@@ -22,7 +22,7 @@ class LynxExposureModule
     return std::make_shared<LynxExposureModule>(view_context_id, task_runner);
   }
 
-  static const std::string& GetName() { return name_; }
+  static constexpr const char* GetName() { return "LynxExposureModule"; }
 
   LynxExposureModule(uint32_t view_context_id,
                      fml::RefPtr<fml::TaskRunner> task_runner);
@@ -36,7 +36,6 @@ class LynxExposureModule
       std::unique_ptr<lynx::pub::Value>, const lynx::runtime::CallbackMap&);
 
  private:
-  static const std::string name_;
 };
 
 }  // namespace lynx
