@@ -23,6 +23,8 @@
 #include "clay/shell/platform/windows/flutter_windows_engine.h"
 
 static constexpr char kAffinityDownstream[] = "TextAffinity.downstream";
+static constexpr char kMultilineInputType[] = "TextInputType.multiline";
+static constexpr char kInputActionNewline[] = "TextInputAction.newline";
 
 namespace clay {
 
@@ -206,6 +208,20 @@ void TextInputPlugin::SendStateUpdateWithDelta(const TextInputModel& model,
                                                const TextEditingDelta* delta) {}
 
 void TextInputPlugin::EnterPressed(TextInputModel* model) {
+  if (input_type_ == kMultilineInputType &&
+      input_action_ == kInputActionNewline) {
+    std::u16string text_before_change =
+        lynx::base::U8StringToU16(model->GetText());
+    TextRange selection_before_change = model->selection();
+    model->AddText(u"\n");
+    if (enable_delta_model) {
+      TextEditingDelta delta(text_before_change, selection_before_change,
+                             u"\n");
+      SendStateUpdateWithDelta(*model, &delta);
+    } else {
+      SendStateUpdate(*model);
+    }
+  }
   engine_->PerformInputAction(client_id_);
 }
 
