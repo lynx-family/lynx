@@ -17,7 +17,7 @@
 #ifndef CLAY_THIRD_PARTY_TXT_SRC_TXT_PLACEHOLDER_RUN_H_
 #define CLAY_THIRD_PARTY_TXT_SRC_TXT_PLACEHOLDER_RUN_H_
 
-#include "text_baseline.h"
+#include "lynx/clay/third_party/txt/src/txt/text_baseline.h"
 
 namespace txt {
 
@@ -61,9 +61,9 @@ class PlaceholderRun {
   double width = 0;
   double height = 0;
 
-  PlaceholderAlignment alignment;
+  PlaceholderAlignment alignment = PlaceholderAlignment::kBaseline;
 
-  TextBaseline baseline;
+  TextBaseline baseline = TextBaseline::kAlphabetic;
 
   // Distance from the top edge of the rect to the baseline position. This
   // baseline will be aligned against the alphabetic baseline of the surrounding
