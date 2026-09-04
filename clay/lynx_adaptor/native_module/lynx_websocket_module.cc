@@ -466,8 +466,6 @@ class SimpleWebSocket {
   std::string reason_;
 };
 
-const std::string LynxWebSocketModule::name_ = "LynxWebSocketModule";
-
 LynxWebSocketModule::LynxWebSocketModule(
     uint32_t view_context_id, fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {

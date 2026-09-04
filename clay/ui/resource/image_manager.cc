@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/include/md5.h"
+#include "base/include/no_destructor.h"
 #include "clay/gfx/graphics_isolate.h"
 #include "clay/gfx/image/image_data_cache.h"
 #include "clay/gfx/image/image_producer.h"
@@ -17,9 +18,16 @@
 namespace clay {
 
 namespace {
-// [key]: raster task queue id, [value]: ImageManager.
-static std::unordered_map<size_t, std::shared_ptr<ImageManager>>
-    image_manager_map;
+using ImageManagerMap =
+    std::unordered_map<size_t, std::shared_ptr<ImageManager>>;
+
+// [key]: raster task queue id, [value]: ImageManager. This is mutable runtime
+// state, so keep its construction out of the file-level initializer list.
+ImageManagerMap& GetImageManagerMap() {
+  static lynx::base::NoDestructor<ImageManagerMap> image_manager_map;
+  return *image_manager_map;
+}
+
 static uint64_t clean_up_data_task_id = 0;
 constexpr int64_t kDeferredCleanupImageDataInterval = 30;  // 30 seconds
 
@@ -68,17 +76,17 @@ void ImageManager::PerformRemoval() {
 
   auto task_runner = task_runners_.GetUITaskRunner();
   size_t id = task_runners_.GetRasterTaskRunner()->GetTaskQueueId();
-  image_manager_map.erase(id);
+  GetImageManagerMap().erase(id);
 
   // Perform the deferred cleanup of ImageDataCache when the last ImageManager
   // is destructed. This is to ensure that the resources managed by DataCache
   // are not prematurely cleaned up if there is a possibility of creating new
   // ImageManager instances shortly after.
-  if (image_manager_map.empty()) {
+  if (GetImageManagerMap().empty()) {
     clean_up_data_task_id = GenerateTaskID();
     task_runners_.GetUITaskRunner()->PostDelayedTask(
         [id = clean_up_data_task_id]() {
-          if (id == clean_up_data_task_id && image_manager_map.empty()) {
+          if (id == clean_up_data_task_id && GetImageManagerMap().empty()) {
             ImageDataCache::GetInstance().ClearCache();
           }
         },
@@ -328,15 +336,15 @@ std::shared_ptr<ImageManager> ImageManager::GetOrCreateImageManager(
 
   // If the image manager is already created, return it.
   auto queue_id = task_runners.GetRasterTaskRunner()->GetTaskQueueId();
-  auto iter = image_manager_map.find(queue_id);
-  if (iter != image_manager_map.end()) {
+  auto iter = GetImageManagerMap().find(queue_id);
+  if (iter != GetImageManagerMap().end()) {
     return iter->second;
   }
 
   // Otherwise, create a new image manager and return it.
   auto image_manager =
       std::make_shared<ImageManager>(task_runners, unref_queue);
-  image_manager_map.emplace(queue_id, image_manager);
+  GetImageManagerMap().emplace(queue_id, image_manager);
 
   return image_manager;
 }

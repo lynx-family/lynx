@@ -18,6 +18,7 @@
 
 #include <sstream>
 
+#include "base/include/no_destructor.h"
 #include "third_party/skia/include/core/SkTypeface.h"
 #include "txt/asset_font_manager_skia.h"
 #include "txt/typeface_font_asset_provider_skia.h"
@@ -30,23 +31,34 @@
 
 namespace txt {
 
-static std::string gFontDir;
-static fml::CommandLine gCommandLine;
+namespace {
+
+std::string& FontDir() {
+  static lynx::base::NoDestructor<std::string> font_dir;
+  return *font_dir;
+}
+
+fml::CommandLine& CommandLineForProcess() {
+  static lynx::base::NoDestructor<fml::CommandLine> command_line;
+  return *command_line;
+}
+
+}  // namespace
 
 const std::string& GetFontDir() {
-  return gFontDir;
+  return FontDir();
 }
 
 void SetFontDir(const std::string& dir) {
-  gFontDir = dir;
+  FontDir() = dir;
 }
 
 const fml::CommandLine& GetCommandLineForProcess() {
-  return gCommandLine;
+  return CommandLineForProcess();
 }
 
 void SetCommandLine(fml::CommandLine cmd) {
-  gCommandLine = std::move(cmd);
+  CommandLineForProcess() = std::move(cmd);
 }
 
 void RegisterFontsFromPath(TypefaceFontAssetProvider& font_provider,

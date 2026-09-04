@@ -119,8 +119,6 @@ class FrameTimingCollector {
   bool is_first_send_ = true;
   PageView* page_view_ = nullptr;
 
-  static const std::unordered_map<Perf, const char*> perf_to_string_map;
-
   std::unordered_map<Perf, int64_t> perf_record_;
 
   std::unordered_map<std::string, int64_t> first_perf_container_;

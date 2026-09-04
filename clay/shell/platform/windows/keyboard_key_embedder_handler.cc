@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <windows.h>
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -111,6 +112,24 @@ static uint16_t normalizeScancode(int windowsScanCode, bool extended) {
   return (windowsScanCode & 0xff) | (extended ? 0xe000 : 0);
 }
 
+static const KeyCodeMapEntry* FindKeyCodeMapEntry(
+    const KeyCodeMapEntry* entries, size_t size, uint64_t key) {
+  // The map tables are sorted by key to support logarithmic lookup.
+  const auto* end = entries + size;
+  const auto* entry = std::lower_bound(
+      entries, end, key, [](const KeyCodeMapEntry& entry, uint64_t value) {
+        return entry.key < value;
+      });
+  return entry != end && entry->key == key ? entry : nullptr;
+}
+
+static uint64_t GetKeyCodeMapValue(const KeyCodeMapEntry* entries, size_t size,
+                                   uint64_t key) {
+  const KeyCodeMapEntry* entry = FindKeyCodeMapEntry(entries, size, key);
+  assert(entry != nullptr);
+  return entry->value;
+}
+
 uint64_t KeyboardKeyEmbedderHandler::ApplyPlaneToId(uint64_t id,
                                                     uint64_t plane) {
   return (id & valueMask) | plane;
@@ -119,8 +138,9 @@ uint64_t KeyboardKeyEmbedderHandler::ApplyPlaneToId(uint64_t id,
 uint64_t KeyboardKeyEmbedderHandler::GetPhysicalKey(int scancode,
                                                     bool extended) {
   int chromiumScancode = normalizeScancode(scancode, extended);
-  auto resultIt = windowsToPhysicalMap_.find(chromiumScancode);
-  if (resultIt != windowsToPhysicalMap_.end()) return resultIt->second;
+  const auto* result = FindKeyCodeMapEntry(
+      windowsToPhysicalMap_, windowsToPhysicalMapSize, chromiumScancode);
+  if (result != nullptr) return result->value;
   return ApplyPlaneToId(scancode, windowsPlane);
 }
 
@@ -133,13 +153,15 @@ uint64_t KeyboardKeyEmbedderHandler::GetLogicalKey(int key, bool extended,
   // Normally logical keys should only be derived from key codes, but since some
   // key codes are either 0 or ambiguous (multiple keys using the same key
   // code), these keys are resolved by scan codes.
-  auto numpadIter =
-      scanCodeToLogicalMap_.find(normalizeScancode(scancode, extended));
-  if (numpadIter != scanCodeToLogicalMap_.cend()) return numpadIter->second;
+  const auto* numpad =
+      FindKeyCodeMapEntry(scanCodeToLogicalMap_, scanCodeToLogicalMapSize,
+                          normalizeScancode(scancode, extended));
+  if (numpad != nullptr) return numpad->value;
 
   // Check if the keyCode is one we know about and have a mapping for.
-  auto logicalIt = windowsToLogicalMap_.find(key);
-  if (logicalIt != windowsToLogicalMap_.cend()) return logicalIt->second;
+  const auto* logical =
+      FindKeyCodeMapEntry(windowsToLogicalMap_, windowsToLogicalMapSize, key);
+  if (logical != nullptr) return logical->value;
 
   // Upper case letters should be normalized into lower case letters.
   if (isEasciiPrintable(key)) {
@@ -479,18 +501,18 @@ void KeyboardKeyEmbedderHandler::SynchronizeCriticalPressedStates(
 
 void KeyboardKeyEmbedderHandler::SyncModifiersIfNeeded(int modifiers_state) {
   // TODO(bleroux): consider exposing these constants in flutter_key_map.g.cc?
-  const uint64_t physical_shift_left =
-      windowsToPhysicalMap_.at(kScanCodeShiftLeft);
-  const uint64_t physical_shift_right =
-      windowsToPhysicalMap_.at(kScanCodeShiftRight);
-  const uint64_t logical_shift_left =
-      windowsToLogicalMap_.at(kKeyCodeShiftLeft);
-  const uint64_t physical_control_left =
-      windowsToPhysicalMap_.at(kScanCodeControlLeft);
-  const uint64_t physical_control_right =
-      windowsToPhysicalMap_.at(kScanCodeControlRight);
-  const uint64_t logical_control_left =
-      windowsToLogicalMap_.at(kKeyCodeControlLeft);
+  const uint64_t physical_shift_left = GetKeyCodeMapValue(
+      windowsToPhysicalMap_, windowsToPhysicalMapSize, kScanCodeShiftLeft);
+  const uint64_t physical_shift_right = GetKeyCodeMapValue(
+      windowsToPhysicalMap_, windowsToPhysicalMapSize, kScanCodeShiftRight);
+  const uint64_t logical_shift_left = GetKeyCodeMapValue(
+      windowsToLogicalMap_, windowsToLogicalMapSize, kKeyCodeShiftLeft);
+  const uint64_t physical_control_left = GetKeyCodeMapValue(
+      windowsToPhysicalMap_, windowsToPhysicalMapSize, kScanCodeControlLeft);
+  const uint64_t physical_control_right = GetKeyCodeMapValue(
+      windowsToPhysicalMap_, windowsToPhysicalMapSize, kScanCodeControlRight);
+  const uint64_t logical_control_left = GetKeyCodeMapValue(
+      windowsToLogicalMap_, windowsToLogicalMapSize, kKeyCodeControlLeft);
 
   bool shift_pressed = (modifiers_state & kShift) != 0;
   SynthesizeIfNeeded(physical_shift_left, physical_shift_right,

@@ -4,9 +4,10 @@
 
 #include "clay/ui/component/scrollbar/scrollbar_wrapper.h"
 
+#include <algorithm>
+#include <array>
 #include <limits>
 #include <string>
-#include <unordered_set>
 #include <utility>
 
 #include "clay/ui/common/attribute_utils.h"
@@ -19,13 +20,17 @@ const double kDefaultScrollbarWidth = 12;  // in logical pixels
 
 namespace {
 
-const std::unordered_set<KeywordID> kProxyAttributes = {
-    KeywordID::kScrollBarThumbWidth,       KeywordID::kScrollBarThumbMinLength,
-    KeywordID::kScrollBarThumbRadius,      KeywordID::kScrollBarThumbColor,
-    KeywordID::kScrollBarThumbActiveColor, KeywordID::kScrollBarThumbHoverColor,
-    KeywordID::kScrollBarTrackColor,       KeywordID::kScrollBarAutoHide,
+constexpr std::array<KeywordID, 9> kProxyAttributes = {{
+    KeywordID::kScrollBarThumbWidth,
+    KeywordID::kScrollBarThumbMinLength,
+    KeywordID::kScrollBarThumbRadius,
+    KeywordID::kScrollBarThumbColor,
+    KeywordID::kScrollBarThumbActiveColor,
+    KeywordID::kScrollBarThumbHoverColor,
+    KeywordID::kScrollBarTrackColor,
+    KeywordID::kScrollBarAutoHide,
     KeywordID::kScrollBarAutoHideDelay,
-};
+}};
 
 inline bool NearlyZeroFloat(float value) {
   return std::abs(value) < std::numeric_limits<float>::epsilon();
@@ -83,7 +88,8 @@ void ScrollbarWrapper::OnDestroy() {
 void ScrollbarWrapper::SetAttribute(const char* attr_c,
                                     const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (kProxyAttributes.find(kw) != kProxyAttributes.end()) {
+  if (std::find(kProxyAttributes.begin(), kProxyAttributes.end(), kw) !=
+      kProxyAttributes.end()) {
     scrollbar_->SetAttribute(attr_c, value);
   } else if (kw == KeywordID::kScrollBarWidth) {
     scrollbar_width_ = FromLogical(attribute_utils::GetNum(value));

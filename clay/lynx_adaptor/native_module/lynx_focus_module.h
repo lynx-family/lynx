@@ -20,7 +20,7 @@ class LynxFocusModule : public LynxModuleBase,
     return std::make_shared<LynxFocusModule>(view_context_id, task_runner);
   }
 
-  static const std::string& GetName() { return name_; }
+  static constexpr const char* GetName() { return "LynxFocusModule"; }
 
   LynxFocusModule(uint32_t view_context_id,
                   fml::RefPtr<fml::TaskRunner> task_runner);
@@ -36,7 +36,6 @@ class LynxFocusModule : public LynxModuleBase,
       std::unique_ptr<lynx::pub::Value>, const lynx::runtime::CallbackMap&);
 
  private:
-  static const std::string name_;
 };
 
 }  // namespace lynx
