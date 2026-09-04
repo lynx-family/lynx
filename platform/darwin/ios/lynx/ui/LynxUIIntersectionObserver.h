@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxEventEmitter.h>
 
 @class LynxUI;
 @class LynxUIOwner;
@@ -60,10 +59,9 @@
 
 @end
 
-@interface LynxUIIntersectionObserverManager : NSObject <LynxEventObserver>
+@interface LynxUIIntersectionObserverManager : NSObject
 
 @property(nonatomic, weak) LynxUIOwner* uiOwner;
-@property(nonatomic, readonly) BOOL enableNewIntersectionObserver;
 
 - (instancetype)initWithLynxContext:(LynxContext*)context;
 

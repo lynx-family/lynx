@@ -14,20 +14,16 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.event.LynxCustomEvent;
-import com.lynx.tasm.event.LynxEvent;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
-public class LynxIntersectionObserverManager
-    extends LynxObserverManager implements EventEmitter.LynxEventObserver {
+public class LynxIntersectionObserverManager extends LynxObserverManager {
   private static final String INTERSECTION_OBSERVER_EVENT_NAME = "onIntersectionObserver";
 
   private final ArrayList<LynxIntersectionObserver> mObservers;
   private final WeakReference<LynxContext> mContext;
   private final WeakReference<JSProxy> mJSProxy;
-  private boolean mEnableNewIntersectionObserver;
-
   final private String TAG = "Lynx.IntersectionObserver";
 
   public LynxIntersectionObserverManager(LynxContext context, JSProxy proxy) {
@@ -37,7 +33,6 @@ public class LynxIntersectionObserverManager
     mRootBodyRef = new WeakReference<>(context.getUIBody());
     mJSProxy = new WeakReference<>(proxy);
     mObservers = new ArrayList<>();
-    mEnableNewIntersectionObserver = false;
     TraceEvent.endSection(TraceEventDef.INTERSECTION_OBSERVER_MANAGER_INIT);
   }
 
@@ -115,11 +110,8 @@ public class LynxIntersectionObserverManager
           LynxContext context = observer.getContext();
           if (context != null) {
             updateWindowSize(context);
-            mEnableNewIntersectionObserver = context.getEnableNewIntersectionObserver();
           }
-          if (mEnableNewIntersectionObserver) {
-            addToObserverTree();
-          }
+          addToObserverTree();
         }
       }
     };
@@ -133,7 +125,7 @@ public class LynxIntersectionObserverManager
         for (LynxIntersectionObserver observer : mObservers) {
           if (observer.getObserverId() == observerId) {
             mObservers.remove(observer);
-            if (mEnableNewIntersectionObserver && mObservers.isEmpty()) {
+            if (mObservers.isEmpty()) {
               destroy();
             }
             return;
@@ -151,7 +143,7 @@ public class LynxIntersectionObserverManager
         for (LynxIntersectionObserver observer : mObservers) {
           if (observer.getAttachedUI() == ui) {
             mObservers.remove(observer);
-            if (mEnableNewIntersectionObserver && mObservers.isEmpty()) {
+            if (mObservers.isEmpty()) {
               destroy();
             }
             return;
@@ -170,28 +162,6 @@ public class LynxIntersectionObserverManager
       }
     }
     return null;
-  }
-
-  // Running on UIThread
-  @Override
-  public void onLynxEvent(EventEmitter.LynxEventType type, LynxEvent event) {
-    if (this.mObservers.size() == 0)
-      return;
-
-    boolean shouldHandle = false;
-    if (type == EventEmitter.LynxEventType.kLynxEventTypeLayoutEvent) {
-      shouldHandle = true;
-    } else if (type == EventEmitter.LynxEventType.kLynxEventTypeCustomEvent) {
-      String name = event.getName();
-      if ("scroll".equals(name) || "scrolltoupper".equals(name) || "scrolltolower".equals(name)) {
-        shouldHandle = true;
-      }
-    }
-
-    if (!shouldHandle)
-      return;
-
-    notifyObservers();
   }
 
   public void notifyObservers() {

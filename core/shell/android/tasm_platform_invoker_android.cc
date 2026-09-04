@@ -108,8 +108,6 @@ static constexpr const char* const kEnableExposureWhenLayout =
     "enableExposureWhenLayout";
 static constexpr const char* const kEnableExposureWhenReload =
     "enableExposureWhenReload";
-constexpr const char* kEnableNewIntersectionObserver =
-    "enableNewIntersectionObserver";
 constexpr const char* kIncludeFontPadding = "includeFontPadding";
 constexpr const char* kObserverFrameRate = "observerFrameRate";
 constexpr const char* kEnableExposureUIMargin = "enableExposureUIMargin";
@@ -224,8 +222,6 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
                           config->GetEnableExposureWhenLayout());
   java_config.PushBoolean(kEnableExposureWhenReload,
                           config->GetEnableExposureWhenReload());
-  java_config.PushBoolean(kEnableNewIntersectionObserver,
-                          config->GetEnableNewIntersectionObserver());
   java_config.PushInt(kObserverFrameRate, config->GetObserverFrameRate());
   java_config.PushBoolean(kEnableExposureUIMargin,
                           config->GetEnableExposureUIMargin());

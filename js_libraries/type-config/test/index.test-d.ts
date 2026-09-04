@@ -33,7 +33,6 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableMultiTouch').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNativeList').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewGesture').toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<Config>().toHaveProperty('enableNewIntersectionObserver').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewTransformOrigin').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableParseIntFlex').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableReloadLifecycle').toEqualTypeOf<boolean | undefined>();

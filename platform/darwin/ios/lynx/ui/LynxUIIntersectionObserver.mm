@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxUIIntersectionObserver.h"
-#import "LynxUIIntersectionObserver+Internal.h"
 
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxRootUI.h>
@@ -107,8 +106,6 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
 // key is target id in js, value is LynxUI
 @property(nonatomic, strong) NSMutableArray<LynxUIObservationTarget*>* observationTargets;
 
-@property(nonatomic) BOOL enableNewIntersectionObserver;
-
 @end
 
 @implementation LynxUIIntersectionObserver
@@ -122,7 +119,6 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
     _manager = manager;
     _observerId = observerId;
     _thresholds = [NSArray arrayWithArray:options[@"thresholds"] ?: @[ @(0) ]];
-    _enableNewIntersectionObserver = manager.enableNewIntersectionObserver;
 
     NSNumber* initialRatio = [options objectForKey:@"initialRatio"];
     _initialRatio = initialRatio ? initialRatio.intValue : 0;
@@ -156,7 +152,6 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
                        options:options];
   if (self) {
     _manager = manager;
-    _enableNewIntersectionObserver = manager.enableNewIntersectionObserver;
 
     NSString* relativeToIdSelector = options[@"relativeToIdSelector"];
     _relativeToScreen = [options[@"relativeToScreen"] boolValue];
@@ -365,11 +360,8 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
     }
 
     LynxUI* uiParent = parent.parent;
-    // to keep the old logic, set a switch here
-    if (_enableNewIntersectionObserver) {
-      while (uiParent.view != nil && ![parent.view isDescendantOfView:uiParent.view]) {
-        uiParent = uiParent.parent;
-      }
+    while (uiParent.view != nil && ![parent.view isDescendantOfView:uiParent.view]) {
+      uiParent = uiParent.parent;
     }
     parent = uiParent;
   }
@@ -452,12 +444,8 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
   [_displayLink invalidate];
 }
 
-- (void)setEnableNewIntersectionObserver:(BOOL)enable {
-  _enableNewIntersectionObserver = enable;
-}
-
 - (void)addIntersectionObserver:(LynxUIIntersectionObserver*)observer {
-  if ([observers_ count] == 0 && _enableNewIntersectionObserver) {
+  if ([observers_ count] == 0) {
     [self addIntersectionObserverToRunLoop];
   }
   if ([observers_ containsObject:observer]) return;
@@ -468,7 +456,7 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
   for (size_t i = 0; i < observers_.count; i++) {
     if (observers_[i].observerId == observerId) {
       [observers_ removeObjectAtIndex:i];
-      if (observers_.count == 0 && _enableNewIntersectionObserver) {
+      if (observers_.count == 0) {
         [self destroyIntersectionObserver];
       }
       return;
@@ -484,7 +472,7 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
   for (size_t i = 0; i < observers_.count; i++) {
     if (observers_[i].attachedUI == attachedUI) {
       [observers_ removeObjectAtIndex:i];
-      if (observers_.count == 0 && _enableNewIntersectionObserver) {
+      if (observers_.count == 0) {
         [self destroyIntersectionObserver];
       }
       return;
@@ -499,24 +487,6 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
     }
   }
   return nil;
-}
-
-- (void)onLynxEvent:(LynxInnerEventType)type event:(LynxEvent*)event {
-  if (observers_.count == 0) return;
-
-  BOOL shouldHandle = NO;
-  if (type == LynxEventTypeLayoutEvent) {
-    shouldHandle = YES;
-  } else if (type == LynxEventTypeCustomEvent) {
-    LynxCustomEvent* customEvent = (LynxCustomEvent*)event;
-    NSArray* scrollEvents = @[ @"scroll", @"scrolltoupper", @"scrolltolower" ];
-    if ([scrollEvents containsObject:customEvent.eventName]) {
-      shouldHandle = YES;
-    }
-  }
-
-  if (!shouldHandle) return;
-  [self notifyObservers];
 }
 
 - (void)notifyObservers {
@@ -541,7 +511,7 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
   [lynxView sendGlobalEvent:kIntersectionObserverEventName withParams:@[ event ]];
 }
 
-// below functions are for new intersection observer
+// Intersection observer run loop lifecycle.
 
 // This interface be used when didMoveToWindow occured.
 - (void)didMoveToWindow:(BOOL)windowIsNil {  // be controlled

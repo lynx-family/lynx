@@ -1331,7 +1331,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
       mExposure.clear();
     }
 
-    if (getEnableNewIntersectionObserver() && mIntersectionObserverManager != null) {
+    if (mIntersectionObserverManager != null) {
       LynxIntersectionObserverManager intersectionObserverManager =
           mIntersectionObserverManager.get();
       if (intersectionObserverManager != null) {
@@ -1345,7 +1345,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
       mExposure.clear();
     }
 
-    if (getEnableNewIntersectionObserver() && mIntersectionObserverManager != null) {
+    if (mIntersectionObserverManager != null) {
       LynxIntersectionObserverManager intersectionObserverManager =
           mIntersectionObserverManager.get();
       if (intersectionObserverManager != null) {
@@ -1440,7 +1440,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     if (mExposure != null) {
       mExposure.onRootViewDraw(canvas);
     }
-    if (getEnableNewIntersectionObserver() && mIntersectionObserverManager != null) {
+    if (mIntersectionObserverManager != null) {
       LynxIntersectionObserverManager intersectionObserverManager =
           mIntersectionObserverManager.get();
       if (intersectionObserverManager != null) {
@@ -1473,13 +1473,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   public boolean enableEventThroughInheritFromPage() {
     if (null != mPageConfig) {
       return mPageConfig.enableEventThroughInheritFromPage();
-    }
-    return false;
-  }
-
-  public boolean getEnableNewIntersectionObserver() {
-    if (null != mPageConfig) {
-      return mPageConfig.getEnableNewIntersectionObserver();
     }
     return false;
   }

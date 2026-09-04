@@ -1146,7 +1146,6 @@ public class LynxTemplateRender
     initEngineAndLayoutProxies();
 
     EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
-    eventEmitter.addObserver(mIntersectionObserverManager);
     eventEmitter.registerEventReporter(mNativeFacade);
     eventEmitter.registerEventFallback(this);
     mLynxContext.setEventEmitter(eventEmitter);
@@ -3318,7 +3317,6 @@ public class LynxTemplateRender
       initEngineAndLayoutProxies();
 
       EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
-      eventEmitter.addObserver(mIntersectionObserverManager);
       eventEmitter.registerEventReporter(mNativeFacade);
       eventEmitter.registerEventFallback(this);
       mLynxContext.setEventEmitter(eventEmitter);

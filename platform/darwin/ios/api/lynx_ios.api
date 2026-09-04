@@ -1648,8 +1648,6 @@ public class LynxEventEmitter : NSObject {
   public void LynxEventEmitter::dispatchGestureEvent:event:(int gestureId,[event] LynxCustomEvent *event);
   public void LynxEventEmitter::onPseudoStatusChanged:fromPreStatus:toCurrentStatus:(int32_t tag,[fromPreStatus] int32_t preStatus,[toCurrentStatus] int32_t currentStatus);
   public void LynxEventEmitter::dispatchLayoutEvent();
-  public void LynxEventEmitter::addObserver:(id< LynxEventObserver > observer);
-  public void LynxEventEmitter::removeObserver:(id< LynxEventObserver > observer);
   public void LynxEventEmitter::notifyIntersectionObserver();
   public void LynxEventEmitter::startEventGenerate:(LynxEvent *event);
   public void LynxEventEmitter::setEventID:(int64_t eventID);
@@ -1722,10 +1720,6 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::removeEventGestures();
   public void LynxEventHandler()::markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent *event);
   public void LynxEventHandler()::handleFocusOnView:withContainer:andPoint:andEvent:ignoreFocus:(UIView *view, [withContainer] UIView *container, [andPoint] CGPoint point, [andEvent] nullable UIEvent *event, [ignoreFocus] BOOL ignoreFocus);
-}
-
-public protocol LynxEventObserver-p :  {
-  public void LynxEventObserver-p::onLynxEvent:event:(LynxInnerEventType type,[event] LynxEvent *event);
 }
 
 public class LynxEventReporter : NSObject {
@@ -5002,9 +4996,8 @@ public class LynxUIIntersectionObserver : NSObject {
   public void LynxUIIntersectionObserver::checkForIntersections();
 }
 
-public class LynxUIIntersectionObserverManager : NSObject, <LynxEventObserver> {
+public class LynxUIIntersectionObserverManager : NSObject {
   public LynxUIOwner* LynxUIIntersectionObserverManager::uiOwner uiOwner;
-  public BOOL LynxUIIntersectionObserverManager::enableNewIntersectionObserver enableNewIntersectionObserver;
   public instancetype LynxUIIntersectionObserverManager::initWithLynxContext:(LynxContext *context);
   public void LynxUIIntersectionObserverManager::addIntersectionObserver:(LynxUIIntersectionObserver *observer);
   public void LynxUIIntersectionObserverManager::removeIntersectionObserver:(NSInteger observerId);
@@ -5015,7 +5008,6 @@ public class LynxUIIntersectionObserverManager : NSObject, <LynxEventObserver> {
   public void LynxUIIntersectionObserverManager::addIntersectionObserverToRunLoop();
   public void LynxUIIntersectionObserverManager::destroyIntersectionObserver();
   public void LynxUIIntersectionObserverManager::reset();
-  public void LynxUIIntersectionObserverManager()::setEnableNewIntersectionObserver:(BOOL enable);
 }
 
 public class LynxUIIntersectionObserverUnitTest : XCTestCase {
@@ -7189,12 +7181,6 @@ public enum EVENT_TYPE {
   CUSTOM_EVENT
 }
 
-
-public enum LynxInnerEventType {
-  LynxEventTypeTouchEvent
-  LynxEventTypeCustomEvent
-  LynxEventTypeLayoutEvent
-}
 
   typedef BOOL(^ onLynxEvent) (LynxEvent *event)
 
