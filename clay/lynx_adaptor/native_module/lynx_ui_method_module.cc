@@ -32,8 +32,6 @@ struct CallbackData {
 
 }  // namespace
 
-const std::string LynxUIMethodModule::name_ = "LynxUIMethodModule";
-
 LynxUIMethodModule::LynxUIMethodModule(uint32_t view_context_id,
                                        fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {

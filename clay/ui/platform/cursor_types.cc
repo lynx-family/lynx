@@ -4,56 +4,67 @@
 
 #include "clay/ui/platform/cursor_types.h"
 
+#include <algorithm>
+#include <array>
+#include <string_view>
+
 #include "clay/net/url/url_helper.h"
 
 namespace clay {
 
-#define ADDTOMAP(name, type) \
-  { name, type }
-
-const std::map<std::string, CursorTypes> CursorTypeUtil::cursor_type_map_ = {
-    ADDTOMAP("auto", CursorTypes::kAuto),
-    ADDTOMAP("default", CursorTypes::kBasic),
-    ADDTOMAP("none", CursorTypes::kNone),
-    ADDTOMAP("context-menu", CursorTypes::kContextmenu),
-    ADDTOMAP("help", CursorTypes::kHelp),
-    ADDTOMAP("pointer", CursorTypes::kClick),
-    ADDTOMAP("progress", CursorTypes::kProgress),
-    ADDTOMAP("wait", CursorTypes::kWait),
-    ADDTOMAP("cell", CursorTypes::kCell),
-    ADDTOMAP("crosshair", CursorTypes::kPrecise),
-    ADDTOMAP("text", CursorTypes::kText),
-    ADDTOMAP("vertical-text", CursorTypes::kVerticaltext),
-    ADDTOMAP("alias", CursorTypes::kAlias),
-    ADDTOMAP("copy", CursorTypes::kSystemmousecursor),
-    ADDTOMAP("move", CursorTypes::kMove),
-    ADDTOMAP("no-drop", CursorTypes::kNodrop),
-    ADDTOMAP("not-allowed", CursorTypes::kForbidden),
-    ADDTOMAP("grab", CursorTypes::kGrab),
-    ADDTOMAP("grabbing", CursorTypes::kGrabbing),
-    ADDTOMAP("all-scroll", CursorTypes::kAllscroll),
-    ADDTOMAP("col-resize", CursorTypes::kResizecolumn),
-    ADDTOMAP("row-resize", CursorTypes::kResizerow),
-    ADDTOMAP("n-resize", CursorTypes::kResizeup),
-    ADDTOMAP("e-resize", CursorTypes::kResizeright),
-    ADDTOMAP("s-resize", CursorTypes::kResizedown),
-    ADDTOMAP("w-resize", CursorTypes::kResizeleft),
-    ADDTOMAP("ne-resize", CursorTypes::kResizeupright),
-    ADDTOMAP("nw-resize", CursorTypes::kResizeupleft),
-    ADDTOMAP("se-resize", CursorTypes::kResizedownright),
-    ADDTOMAP("sw-resize", CursorTypes::kResizedownleft),
-    ADDTOMAP("ew-resize", CursorTypes::kResizeleftright),
-    ADDTOMAP("ns-resize", CursorTypes::kResizeupdown),
-    ADDTOMAP("nesw-resize", CursorTypes::kResizeuprightdownleft),
-    ADDTOMAP("nwse-resize", CursorTypes::kResizeupleftdownright),
-    ADDTOMAP("zoom-in", CursorTypes::kZoomin),
-    ADDTOMAP("zoom-out", CursorTypes::kZoomout),
+struct CursorTypeEntry {
+  std::string_view name;
+  CursorTypes type;
 };
 
+// Keep this table sorted by name for binary search.
+constexpr std::array<CursorTypeEntry, 36> kCursorTypes = {{
+    {"alias", CursorTypes::kAlias},
+    {"all-scroll", CursorTypes::kAllscroll},
+    {"auto", CursorTypes::kAuto},
+    {"cell", CursorTypes::kCell},
+    {"col-resize", CursorTypes::kResizecolumn},
+    {"context-menu", CursorTypes::kContextmenu},
+    {"copy", CursorTypes::kSystemmousecursor},
+    {"crosshair", CursorTypes::kPrecise},
+    {"default", CursorTypes::kBasic},
+    {"e-resize", CursorTypes::kResizeright},
+    {"ew-resize", CursorTypes::kResizeleftright},
+    {"grab", CursorTypes::kGrab},
+    {"grabbing", CursorTypes::kGrabbing},
+    {"help", CursorTypes::kHelp},
+    {"move", CursorTypes::kMove},
+    {"n-resize", CursorTypes::kResizeup},
+    {"ne-resize", CursorTypes::kResizeupright},
+    {"nesw-resize", CursorTypes::kResizeuprightdownleft},
+    {"no-drop", CursorTypes::kNodrop},
+    {"none", CursorTypes::kNone},
+    {"not-allowed", CursorTypes::kForbidden},
+    {"ns-resize", CursorTypes::kResizeupdown},
+    {"nw-resize", CursorTypes::kResizeupleft},
+    {"nwse-resize", CursorTypes::kResizeupleftdownright},
+    {"pointer", CursorTypes::kClick},
+    {"progress", CursorTypes::kProgress},
+    {"row-resize", CursorTypes::kResizerow},
+    {"s-resize", CursorTypes::kResizedown},
+    {"se-resize", CursorTypes::kResizedownright},
+    {"sw-resize", CursorTypes::kResizedownleft},
+    {"text", CursorTypes::kText},
+    {"vertical-text", CursorTypes::kVerticaltext},
+    {"w-resize", CursorTypes::kResizeleft},
+    {"wait", CursorTypes::kWait},
+    {"zoom-in", CursorTypes::kZoomin},
+    {"zoom-out", CursorTypes::kZoomout},
+}};
+
 CursorTypes CursorTypeUtil::ParseCursorType(const std::string& str) {
-  auto iter = cursor_type_map_.find(str);
-  if (iter != cursor_type_map_.end()) {
-    return iter->second;
+  const auto iter = std::lower_bound(
+      kCursorTypes.begin(), kCursorTypes.end(), std::string_view(str),
+      [](const CursorTypeEntry& entry, std::string_view name) {
+        return entry.name < name;
+      });
+  if (iter != kCursorTypes.end() && iter->name == str) {
+    return iter->type;
   }
 
   // network url or local file paths

@@ -34,10 +34,6 @@ namespace {
 
 constexpr char kScrollViewTag[] = "scroll-view-impl";
 
-constexpr char kArgOffset[] = "offset";
-constexpr char kArgSmooth[] = "smooth";
-const std::vector<std::string> kScrollToArgs{kArgSmooth, kArgOffset};
-
 NestedScrollMode ParseNestedScrollMode(const std::string& value) {
   if (value == "self-only") {
     return NestedScrollMode::kSelfOnly;

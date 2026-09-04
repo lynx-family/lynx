@@ -8,9 +8,10 @@
 #include <math.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
-#include <unordered_map>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,34 +26,46 @@ namespace {
 
 static constexpr char kLinearPrefix[] = "linear-gradient(";
 static constexpr char kRadialPrefix[] = "radial-gradient(";
-static const std::unordered_map<std::string, LinearGradientDirection>
-    kDirectionMap = {
-        {"top", LinearGradientDirection::kToTop},
-        {"bottom", LinearGradientDirection::kToBottom},
-        {"left", LinearGradientDirection::kToLeft},
-        {"right", LinearGradientDirection::kToRight},
-        {"topright", LinearGradientDirection::kToTopRight},
-        {"righttop", LinearGradientDirection::kToTopRight},
-        {"topleft", LinearGradientDirection::kToTopLeft},
-        {"lefttop", LinearGradientDirection::kToTopLeft},
-        {"bottomright", LinearGradientDirection::kToBottomRight},
-        {"rightbottom", LinearGradientDirection::kToBottomRight},
-        {"bottomleft", LinearGradientDirection::kToBottomLeft},
-        {"leftbottom", LinearGradientDirection::kToBottomLeft},
+struct DirectionEntry {
+  std::string_view name;
+  LinearGradientDirection direction;
 };
+
+// Keep this table sorted by name for binary search.
+constexpr std::array<DirectionEntry, 12> kDirectionMap = {{
+    {"bottom", LinearGradientDirection::kToBottom},
+    {"bottomleft", LinearGradientDirection::kToBottomLeft},
+    {"bottomright", LinearGradientDirection::kToBottomRight},
+    {"left", LinearGradientDirection::kToLeft},
+    {"leftbottom", LinearGradientDirection::kToBottomLeft},
+    {"lefttop", LinearGradientDirection::kToTopLeft},
+    {"right", LinearGradientDirection::kToRight},
+    {"rightbottom", LinearGradientDirection::kToBottomRight},
+    {"righttop", LinearGradientDirection::kToTopRight},
+    {"top", LinearGradientDirection::kToTop},
+    {"topleft", LinearGradientDirection::kToTopLeft},
+    {"topright", LinearGradientDirection::kToTopRight},
+}};
+
 static constexpr float kPositionNotSet = -2.f;
 
-static const std::unordered_map<LinearGradientDirection, FloatPoint>
-    kDirectionToStartPoints = {
-        {LinearGradientDirection::kToTop, {0.f, -1.f}},
-        {LinearGradientDirection::kToBottom, {0.f, 1.f}},
-        {LinearGradientDirection::kToLeft, {-1.f, 0.f}},
-        {LinearGradientDirection::kToRight, {1.f, 0.f}},
-        {LinearGradientDirection::kToTopRight, {1.f, -1.f}},
-        {LinearGradientDirection::kToTopLeft, {-1.f, -1.f}},
-        {LinearGradientDirection::kToBottomRight, {1.f, 1.f}},
-        {LinearGradientDirection::kToBottomLeft, {-1.f, 1.f}},
+struct DirectionStartPoint {
+  LinearGradientDirection direction;
+  float x;
+  float y;
 };
+
+// Keep this table sorted by direction for binary search.
+constexpr std::array<DirectionStartPoint, 8> kDirectionToStartPoints = {{
+    {LinearGradientDirection::kToTop, 0.f, -1.f},
+    {LinearGradientDirection::kToBottom, 0.f, 1.f},
+    {LinearGradientDirection::kToLeft, -1.f, 0.f},
+    {LinearGradientDirection::kToRight, 1.f, 0.f},
+    {LinearGradientDirection::kToTopRight, 1.f, -1.f},
+    {LinearGradientDirection::kToTopLeft, -1.f, -1.f},
+    {LinearGradientDirection::kToBottomRight, 1.f, 1.f},
+    {LinearGradientDirection::kToBottomLeft, -1.f, 1.f},
+}};
 
 template <typename T>
 void ConvertColorAndStops(Gradient::ColorAndStops* position_colors,
@@ -365,11 +378,15 @@ GradientFactory::ParseResult GradientFactory::ParseDirection(
     // Note(Xietong): refer to iOS implementation. Tolerate string without
     // space (e.g. "tobottomleft")
     std::string dir = lynx::base::RemoveSpaces(arg.substr(strlen("to")));
-    const auto itr = kDirectionMap.find(dir);
-    if (itr == kDirectionMap.end()) {
+    const auto itr = std::lower_bound(
+        kDirectionMap.begin(), kDirectionMap.end(), std::string_view(dir),
+        [](const DirectionEntry& entry, std::string_view name) {
+          return entry.name < name;
+        });
+    if (itr == kDirectionMap.end() || itr->name != dir) {
       return ParseResult::kFailed;
     }
-    gradient.direction_ = itr->second;
+    gradient.direction_ = itr->direction;
   } else if (lynx::base::EndsWith(arg, "deg")) {
     // case 2: xxx deg
     gradient.direction_ = LinearGradientDirection::kAngle;
@@ -742,10 +759,15 @@ GradientFactory::ParseResult GradientFactory::ParseLinearGradientStartPoints(
 
   float angle = 0.f;
 
-  auto direction_itr = kDirectionToStartPoints.find(gradient.Direction());
-  if (direction_itr != kDirectionToStartPoints.end()) {
-    const FloatPoint& start_point = direction_itr->second;
-    angle = atan2(start_point.x() * height, -start_point.y() * width) -
+  auto direction_itr = std::lower_bound(
+      kDirectionToStartPoints.begin(), kDirectionToStartPoints.end(),
+      gradient.Direction(),
+      [](const DirectionStartPoint& entry, LinearGradientDirection direction) {
+        return entry.direction < direction;
+      });
+  if (direction_itr != kDirectionToStartPoints.end() &&
+      direction_itr->direction == gradient.Direction()) {
+    angle = atan2(direction_itr->x * height, -direction_itr->y * width) -
             static_cast<float>(M_PI) * 2.f;
   } else if (gradient.Direction() == LinearGradientDirection::kAngle) {
     angle = gradient.Angle();

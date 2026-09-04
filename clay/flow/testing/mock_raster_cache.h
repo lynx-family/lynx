@@ -11,6 +11,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/include/no_destructor.h"
 #include "clay/flow/layers/layer.h"
 #include "clay/flow/raster_cache.h"
 #include "clay/flow/raster_cache_item.h"
@@ -50,7 +51,10 @@ class MockRasterCacheResult : public RasterCacheResult {
   skity::Rect device_rect_;
 };
 
-static std::vector<RasterCacheItem*> raster_cache_items_;
+static std::vector<RasterCacheItem*>& RasterCacheItems() {
+  static lynx::base::NoDestructor<std::vector<RasterCacheItem*>> items;
+  return *items;
+}
 
 /**
  * @brief A RasterCache implementation that simulates the act of rendering a
@@ -96,7 +100,7 @@ class MockRasterCache : public RasterCache {
       .frame_device_pixel_ratio      = 1.0f,
       .has_platform_view             = false,
       .has_drawable_image_layer      = false,
-      .raster_cached_entries         = &raster_cache_items_
+      .raster_cached_entries         = &RasterCacheItems()
       // clang-format on
   };
 
