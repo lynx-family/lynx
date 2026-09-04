@@ -31,6 +31,27 @@ int32_t ToInt(float value) { return static_cast<int32_t>(value); }
 constexpr int64_t kEventTargetTreeUpdateIntervalMs = 50;
 constexpr int32_t kUnknownEventTargetRootId = -1;
 
+bool EraseTextEventTargetRanges(
+    std::vector<PlatformTextEventTargetRange> &ranges, int32_t text_sign) {
+  size_t output = 0;
+  for (size_t input = 0; input < ranges.size(); ++input) {
+    if (ranges[input].text_sign == text_sign) {
+      continue;
+    }
+    if (output != input) {
+      ranges[output] = ranges[input];
+    }
+    ++output;
+  }
+  if (output == ranges.size()) {
+    return false;
+  }
+  while (ranges.size() > output) {
+    ranges.pop_back();
+  }
+  return true;
+}
+
 }  // namespace
 
 NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
@@ -134,6 +155,7 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
     renderers_.erase(child);
   }
   platform_event_bundles_.erase(child);
+  EraseTextEventTargetRanges(text_event_target_ranges_, child);
 }
 
 void NativePaintingCtxPlatformRef::RebuildSubLayers(
@@ -341,6 +363,23 @@ const PlatformEventBundle *NativePaintingCtxPlatformRef::GetPlatformEventBundle(
     return nullptr;
   }
   return &it->second;
+}
+
+void NativePaintingCtxPlatformRef::UpdateTextEventTargetRanges(
+    int32_t id, std::vector<PlatformTextEventTargetRange> ranges) {
+  const bool had_ranges =
+      EraseTextEventTargetRanges(text_event_target_ranges_, id);
+  if (ranges.empty()) {
+    if (!had_ranges) {
+      return;
+    }
+  } else {
+    for (auto &range : ranges) {
+      range.text_sign = id;
+      text_event_target_ranges_.push_back(std::move(range));
+    }
+  }
+  MarkEventTargetTreeDirty(id);
 }
 
 int32_t NativePaintingCtxPlatformRef::GetEventTargetRootIdForRenderer(
@@ -727,6 +766,7 @@ void NativePaintingCtxPlatformRef::Destroy() {
   }
   renderers_.clear();
   platform_event_bundles_.clear();
+  text_event_target_ranges_.clear();
   scheduled_event_target_tree_update_.store(false);
   dirty_event_root_ids_.clear();
   event_target_helper_->ClearActiveEventRoots();

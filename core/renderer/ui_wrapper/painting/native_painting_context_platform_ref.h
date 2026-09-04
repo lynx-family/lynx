@@ -22,6 +22,7 @@
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
+#include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
 namespace lynx {
@@ -113,6 +114,12 @@ class NativePaintingCtxPlatformRef
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
   // Get the platform event bundle of the target element.
   const PlatformEventBundle *GetPlatformEventBundle(int32_t id) const;
+  void UpdateTextEventTargetRanges(
+      int32_t id, std::vector<PlatformTextEventTargetRange> ranges);
+  const std::vector<PlatformTextEventTargetRange> &GetTextEventTargetRanges()
+      const {
+    return text_event_target_ranges_;
+  }
   // Ensure the event target tree for the given root is available. It rebuilds
   // only when the cached tree is missing or dirty, and refreshes scroll
   // offsets.
@@ -150,6 +157,11 @@ class NativePaintingCtxPlatformRef
 
   // Get the scroll offset of the platform renderer host.
   virtual void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) {}
+
+  virtual PlatformTextEventTargetRegions GetTextEventTargetRegions(
+      int32_t text_id) {
+    return {};
+  }
 
   // Whether the platform renderer host is scrollable.
   virtual bool IsPlatformRendererScrollable(int32_t sign) { return false; }
@@ -193,6 +205,7 @@ class NativePaintingCtxPlatformRef
   std::shared_ptr<PlatformEventTargetExposure> event_target_exposure_;
   base::InlineOrderedFlatMap<int32_t, PlatformEventBundle, 64>
       platform_event_bundles_;
+  std::vector<PlatformTextEventTargetRange> text_event_target_ranges_;
   std::atomic_bool scheduled_event_target_tree_update_{false};
   std::atomic_bool destroyed_{false};
   std::unordered_set<int32_t> dirty_event_root_ids_;

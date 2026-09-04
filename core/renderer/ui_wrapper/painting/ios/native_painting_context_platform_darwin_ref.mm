@@ -9,9 +9,18 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
+#import <Lynx/LynxRendererContext.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxUIOwner.h>
 #import "LynxTimingConstants.h"
+
+@interface LynxTextRenderer (LynxInlineEventTarget)
+- (NSArray<NSNumber*>*)inlineTextEventTargetRegions;
+@end
 
 namespace lynx {
 namespace tasm {
@@ -58,6 +67,46 @@ void NativePaintingCtxPlatformDarwinRef::GetScreenSize(float size[2]) {
   const auto res = context->GetScreenSize();
   size[0] = res.width;
   size[1] = res.height;
+}
+
+PlatformTextEventTargetRegions NativePaintingCtxPlatformDarwinRef::GetTextEventTargetRegions(
+    int32_t text_id) {
+  PlatformTextEventTargetRegions regions;
+  LynxRendererContext* renderer_context = GetRendererContext();
+  if (renderer_context == nil) {
+    return regions;
+  }
+
+  void* page = [renderer_context getTextBundle:text_id];
+  if (page != nullptr) {
+    id<LynxServiceTextProtocol> text_service = LynxService(LynxServiceTextProtocol);
+    for (const auto& range : GetTextEventTargetRanges()) {
+      if (range.text_sign != text_id) {
+        continue;
+      }
+      NSArray<NSValue*>* rects =
+          [text_service getSelectionRectsOfPage:page
+                                    ByCharRange:NSMakeRange(range.start, range.end - range.start)];
+      for (NSValue* value in rects) {
+        CGRect rect = value.CGRectValue;
+        regions.push_back(PlatformTextEventTargetRegion{
+            range.sign, static_cast<float>(rect.origin.x), static_cast<float>(rect.origin.y),
+            static_cast<float>(rect.size.width), static_cast<float>(rect.size.height)});
+      }
+    }
+  } else {
+    LynxTextRenderer* text_renderer = [renderer_context.textRenderManager takeTextRender:text_id];
+    NSArray<NSNumber*>* values = [text_renderer inlineTextEventTargetRegions];
+    if (values.count % 5 != 0) {
+      return regions;
+    }
+    for (NSUInteger i = 0; i < values.count; i += 5) {
+      regions.push_back(PlatformTextEventTargetRegion{
+          values[i].intValue, values[i + 1].floatValue, values[i + 2].floatValue,
+          values[i + 3].floatValue, values[i + 4].floatValue});
+    }
+  }
+  return regions;
 }
 
 LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {

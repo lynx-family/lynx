@@ -4,12 +4,14 @@
 
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include "base/include/string/string_utils.h"
 #include "base/include/string/unicode_decode_utils.h"
 #include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/attribute_holder.h"
@@ -21,6 +23,7 @@
 #include "core/renderer/dom/fiber/text_props.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
 namespace lynx {
 namespace tasm {
@@ -440,6 +443,8 @@ void TextLayoutTextra::BuildParagraphRecursively(Element* element,
       std::string decoded_content = DecodeTextContent(element_content);
       paragraph_builder_->AddText(decoded_content.c_str(),
                                   decoded_content.length());
+      text_position_ +=
+          static_cast<int32_t>(base::SizeOfUtf16(decoded_content));
     }
   } else if (IsInlineTextElement(element)) {
     ApplyTextStyle(element, CreateTextStylePropertyBits(element));
@@ -568,7 +573,9 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
                                                  bool& has_inline_view) {
   auto* child = element;
   if (!building_inline_truncation_ && IsInlineTruncationElement(child)) {
+    const int32_t start = text_position_;
     BuildInlineTruncation(child, has_inline_view);
+    RecordTextEventTargetRange(child, start, text_position_);
     return;
   }
 
@@ -577,13 +584,16 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
     std::string decoded_content = DecodeTextContent(rawText->content());
     paragraph_builder_->AddText(decoded_content.c_str(),
                                 decoded_content.length());
+    text_position_ += static_cast<int32_t>(base::SizeOfUtf16(decoded_content));
   } else if (child->GetTag().IsEqual(RawTextElement::kRawTextTag)) {
     auto content = GetRawTextContent(child);
     std::string decoded_content = DecodeTextContent(content);
     paragraph_builder_->AddText(decoded_content.c_str(),
                                 decoded_content.length());
+    text_position_ += static_cast<int32_t>(base::SizeOfUtf16(decoded_content));
   } else if (child->is_text() || IsInlineTextElement(child)) {
     // inline text
+    const int32_t start = text_position_;
     paragraph_builder_->PushTextStyle();
     bool pushed_event_target =
         PushEventTargetIfNeeded(paragraph_builder_, child);
@@ -592,8 +602,10 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
       paragraph_builder_->PopEventTarget();
     }
     paragraph_builder_->PopTextStyle();
+    RecordTextEventTargetRange(child, start, text_position_);
 
   } else if (child->is_image() || child->is_view()) {
+    const int32_t start = text_position_;
     paragraph_builder_->PushTextStyle();
     if (child->is_view() || !child->is_virtual()) {
       // On iOS TextService, inline images stay as standalone image nodes.
@@ -614,12 +626,29 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
       }
     }
     paragraph_builder_->PopTextStyle();
+    ++text_position_;
+    if (child->is_image() && child->is_virtual()) {
+      RecordTextEventTargetRange(child, start, text_position_);
+    }
   } else if (child->is_wrapper()) {
     for (auto* wrap_child = child->first_render_child(); wrap_child;
          wrap_child = wrap_child->next_render_sibling()) {
       ProcessChildStyleAndProps(wrap_child, has_inline_view);
     }
   }
+}
+
+void TextLayoutTextra::RecordTextEventTargetRange(Element* element,
+                                                  int32_t start, int32_t end) {
+  if (element == nullptr || !element->EnableFragmentLayerRender() ||
+      start >= end) {
+    return;
+  }
+  const auto info = BuildTextEventTargetInfo(element, false);
+  if ((info.event_mask & text::kTextEventTargetTap) == 0) {
+    return;
+  }
+  building_event_target_ranges_.push_back({info.sign, start, end});
 }
 
 void TextLayoutTextra::BuildInlineTruncation(Element* element,
@@ -686,8 +715,8 @@ LayoutResult TextLayoutTextra::Measure(Element* element, float width,
     text_element->SetTextBundle(bundle);
   } else if (auto* manager = element->element_manager();
              manager && manager->painting_context()) {
-    manager->painting_context()->impl()->UpdateTextBundle(element->impl_id(),
-                                                          bundle);
+    manager->painting_context()->impl()->CastToNativeCtx()->UpdateTextBundle(
+        element->impl_id(), bundle);
   }
 
   return {result.width, result.height, result.baseline};
@@ -727,6 +756,9 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
   }
   auto* text_element = static_cast<TextElement*>(element);
 
+  text_position_ = 0;
+  building_event_target_ranges_.clear();
+
   // create a new ParagraphBuilder
   paragraph_builder_ = api_->CreateParagraphBuilder();
 
@@ -759,9 +791,45 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
     api_->DestroyParagraphBuilder(paragraph_builder_);
     paragraph_builder_ = nullptr;
   }
+
+  const int32_t id = element->impl_id();
+  auto reported = std::find(reported_event_target_range_ids_.begin(),
+                            reported_event_target_range_ids_.end(), id);
+  if (!element->EnableFragmentLayerRender()) {
+    if (reported != reported_event_target_range_ids_.end()) {
+      reported_event_target_range_ids_.erase(reported);
+    }
+    return;
+  }
+
+  if (building_event_target_ranges_.empty()) {
+    if (reported == reported_event_target_range_ids_.end()) {
+      return;
+    }
+    reported_event_target_range_ids_.erase(reported);
+  } else if (reported == reported_event_target_range_ids_.end()) {
+    reported_event_target_range_ids_.push_back(id);
+  }
+
+  if (auto* manager = element->element_manager();
+      manager && manager->painting_context()) {
+    manager->painting_context()
+        ->impl()
+        ->CastToNativeCtx()
+        ->UpdateTextEventTargetRanges(id,
+                                      std::move(building_event_target_ranges_));
+  }
 }
 
 void TextLayoutTextra::Destroy(Element* element) {
+  if (element) {
+    auto reported =
+        std::find(reported_event_target_range_ids_.begin(),
+                  reported_event_target_range_ids_.end(), element->impl_id());
+    if (reported != reported_event_target_range_ids_.end()) {
+      reported_event_target_range_ids_.erase(reported);
+    }
+  }
   if (element && !element->EnableFragmentLayerRender()) {
     if (auto* manager = element->element_manager();
         manager && manager->painting_context()) {

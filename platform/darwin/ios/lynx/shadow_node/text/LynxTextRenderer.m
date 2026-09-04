@@ -17,6 +17,8 @@
 #import "LynxTraceEventDef.h"
 #import "base/include/compiler_specific.h"
 
+static NSAttributedStringKey const kLynxInlineTextEventTargetKey = @"LynxInlineTextEventTargetKey";
+
 static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   NSTextContainer *container = layoutManager.textContainers.firstObject;
   NSUInteger numberOfGlyphs = [layoutManager numberOfGlyphs];
@@ -585,6 +587,74 @@ static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   if ([subSpan count] > 0) {
     _subSpan = subSpan;
   }
+}
+
+- (nullable NSArray<NSNumber *> *)inlineTextEventTargetInfoAtPoint:(CGPoint)point {
+  [self ensureTextRenderLayout];
+  if (_textStorage.length == 0 || _layoutManager.numberOfGlyphs == 0) {
+    return nil;
+  }
+
+  NSLayoutManager *layoutManager = _layoutManager;
+  NSTextContainer *textContainer = _textContainer;
+  CGPoint textPoint = CGPointMake(point.x - _offsetX, point.y);
+  NSUInteger glyphIndex = [layoutManager glyphIndexForPoint:textPoint
+                                            inTextContainer:textContainer];
+  if (glyphIndex >= layoutManager.numberOfGlyphs) {
+    return nil;
+  }
+  CGRect glyphRect = [layoutManager boundingRectForGlyphRange:NSMakeRange(glyphIndex, 1)
+                                              inTextContainer:textContainer];
+  if (!CGRectContainsPoint(glyphRect, textPoint)) {
+    return nil;
+  }
+
+  NSUInteger characterIndex = [layoutManager characterIndexForGlyphAtIndex:glyphIndex];
+  id targetInfo = characterIndex < _textStorage.length
+                      ? [_textStorage attribute:kLynxInlineTextEventTargetKey
+                                        atIndex:characterIndex
+                                 effectiveRange:NULL]
+                      : nil;
+  return [targetInfo isKindOfClass:NSArray.class] && [targetInfo count] >= 2 ? targetInfo : nil;
+}
+
+- (NSArray<NSNumber *> *)inlineTextEventTargetRegions {
+  [self ensureTextRenderLayout];
+  if (_textStorage.length == 0 || _layoutManager.numberOfGlyphs == 0) {
+    return @[];
+  }
+
+  NSLayoutManager *layoutManager = _layoutManager;
+  NSTextContainer *textContainer = _textContainer;
+  CGFloat offsetX = _offsetX;
+  NSRange visibleGlyphRange = [self visibleGlyphRange];
+  NSRange visibleCharacterRange = [layoutManager characterRangeForGlyphRange:visibleGlyphRange
+                                                            actualGlyphRange:NULL];
+  NSMutableArray<NSNumber *> *result = [NSMutableArray new];
+  [_textStorage
+      enumerateAttribute:kLynxInlineTextEventTargetKey
+                 inRange:visibleCharacterRange
+                 options:0
+              usingBlock:^(id value, NSRange range, BOOL *_Nonnull stop) {
+                if (![value isKindOfClass:NSArray.class] || [value count] < 2) {
+                  return;
+                }
+                NSArray<NSNumber *> *targetInfo = value;
+                NSRange glyphRange = [layoutManager glyphRangeForCharacterRange:range
+                                                           actualCharacterRange:NULL];
+                [layoutManager
+                    enumerateEnclosingRectsForGlyphRange:glyphRange
+                                withinSelectedGlyphRange:NSMakeRange(NSNotFound, 0)
+                                         inTextContainer:textContainer
+                                              usingBlock:^(CGRect rect, BOOL *_Nonnull rectStop) {
+                                                [result addObject:targetInfo[0]];
+                                                [result addObject:@(rect.origin.x + offsetX)];
+                                                [result addObject:@(rect.origin.y)];
+                                                [result addObject:@(rect.size.width)];
+                                                [result addObject:@(rect.size.height)];
+                                              }];
+              }];
+  return result;
 }
 
 - (BOOL)shouldAppendTruncatedToken {

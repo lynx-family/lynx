@@ -138,6 +138,8 @@ class PlatformEventTargetHelper {
 
   void ApplyEventBundle(const fml::RefPtr<PlatformEventTarget>& target,
                         const PlatformEventBundle* bundle);
+  void AppendInlineTextEventTargets(
+      const fml::RefPtr<PlatformEventTarget>& text_target);
   void RefreshScrollOffsetsRecursively(
       const fml::RefPtr<PlatformEventTarget>& target);
   fml::RefPtr<PlatformEventTarget> GetTreeRoot(

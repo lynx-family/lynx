@@ -4,7 +4,6 @@
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 
-#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -405,6 +404,56 @@ bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
   JNIEnv* env = base::android::AttachCurrentThread();
   return Java_PlatformRendererContext_isRendererHostScrollable(
       env, local_ref.Get(), sign);
+}
+
+PlatformTextEventTargetRegions
+PlatformRendererContext::GetTextEventTargetRegions(
+    int32_t text_id,
+    const std::vector<PlatformTextEventTargetRange>& target_ranges) {
+  PlatformTextEventTargetRegions regions;
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return regions;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::Vector<jint> range_data;
+  range_data.reserve(target_ranges.size() * 3);
+  for (const auto& range : target_ranges) {
+    if (range.text_sign == text_id) {
+      range_data.push_back(range.sign);
+      range_data.push_back(range.start);
+      range_data.push_back(range.end);
+    }
+  }
+  auto ranges = base::android::ScopedLocalJavaRef<jintArray>(
+      env, env->NewIntArray(static_cast<jsize>(range_data.size())));
+  if (!range_data.empty()) {
+    env->SetIntArrayRegion(ranges.Get(), 0,
+                           static_cast<jsize>(range_data.size()),
+                           range_data.data());
+  }
+  auto result = Java_PlatformRendererContext_getTextEventTargetRegions(
+      env, local_ref.Get(), text_id, ranges.Get());
+  if (result.IsNull()) {
+    return regions;
+  }
+  const jsize size = env->GetArrayLength(result.Get());
+  if (size == 0 || size % 5 != 0) {
+    return regions;
+  }
+  jfloat* data = env->GetFloatArrayElements(result.Get(), nullptr);
+  if (data == nullptr) {
+    return regions;
+  }
+  for (jsize i = 0; i < size; i += 5) {
+    int32_t sign;
+    static_assert(sizeof(sign) == sizeof(data[i]));
+    std::memcpy(&sign, &data[i], sizeof(sign));
+    regions.push_back(PlatformTextEventTargetRegion{
+        sign, data[i + 1], data[i + 2], data[i + 3], data[i + 4]});
+  }
+  env->ReleaseFloatArrayElements(result.Get(), data, JNI_ABORT);
+  return regions;
 }
 
 void PlatformRendererContext::InvokeUIMethod(

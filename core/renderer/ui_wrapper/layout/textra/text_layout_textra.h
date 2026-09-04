@@ -8,9 +8,12 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
+#include "base/include/vector.h"
 #include "core/public/text_layout_impl.h"
 #include "core/renderer/css/css_property_bitset.h"
+#include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 
 namespace lynx {
 namespace tasm {
@@ -49,6 +52,7 @@ class TextLayoutTextra : public TextLayoutImpl {
   void HandleInlineViewProps(Element* child);
   void EnsureParagraphListener(Element* element);
   void DestroyParagraph(int32_t id);
+  void RecordTextEventTargetRange(Element* element, int32_t start, int32_t end);
   //  void MeasureChildrenRecursively(Element* element,starlight::Constraints&
   //  constraints);
 
@@ -63,6 +67,9 @@ class TextLayoutTextra : public TextLayoutImpl {
   std::unordered_map<int32_t, text::Paragraph*> paragraphs_;
   std::unordered_map<int32_t, std::unique_ptr<text::ParagraphListener>>
       paragraph_listeners_;
+  int32_t text_position_{0};
+  std::vector<PlatformTextEventTargetRange> building_event_target_ranges_;
+  base::InlineVector<int32_t, 16> reported_event_target_range_ids_;
 };
 
 }  // namespace tasm
