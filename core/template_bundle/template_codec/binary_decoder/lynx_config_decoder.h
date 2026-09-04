@@ -524,12 +524,6 @@ class LynxConfigDecoder final {
       page_config->SetEnableExtendedLayoutOpt(true);
     }
 
-    if (doc.HasMember(config::kEnableTouchRefactor) &&
-        doc[config::kEnableTouchRefactor].IsBool()) {
-      page_config->SetEnableTouchRefactor(
-          doc[config::kEnableTouchRefactor].GetBool());
-    }
-
     if (doc.HasMember(config::kEnableEndGestureAtLastFingerUp) &&
         doc[config::kEnableEndGestureAtLastFingerUp].IsBool()) {
       page_config->SetEnableEndGestureAtLastFingerUp(

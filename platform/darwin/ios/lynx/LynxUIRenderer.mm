@@ -245,7 +245,6 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler setTapSlop:[NSString stringWithUTF8String:pageConfig->GetTapSlop().c_str()]];
   [_eventHandler setLongPressDuration:pageConfig->GetLongPressDuration()];
   [_eventHandler setEnablePlatformGesture:pageConfig->GetEnablePlatformGesture()];
-  [_eventHandler.touchRecognizer setEnableTouchRefactor:pageConfig->GetEnableTouchRefactor()];
   [_eventHandler.touchRecognizer
       setEnableEndGestureAtLastFingerUp:pageConfig->GetEnableEndGestureAtLastFingerUp()];
   _eventHandler.touchRecognizer.enableNewGesture = pageConfig->GetEnableNewGesture();

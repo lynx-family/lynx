@@ -4465,7 +4465,6 @@ public class LynxTouchHandler : UIGestureRecognizer {
   public void LynxTouchHandler::touchesEndedInner:withEvent:(NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
   public void LynxTouchHandler::touchesCancelledInner:withEvent:(NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
   public void LynxTouchHandler()::setupVelocityTracker:(UIView *rootView);
-  public void LynxTouchHandler()::setEnableTouchRefactor:(BOOL enable);
   public void LynxTouchHandler()::setEnableEndGestureAtLastFingerUp:(BOOL enable);
   public void LynxTouchHandler()::setEnableTouchPseudo:(BOOL enable);
   public void LynxTouchHandler()::setEnableMultiTouch:(BOOL enable);
