@@ -42,7 +42,8 @@ config("private_config") {
     "../quickjs/src/src/napi",
     "../quickjs/src/src/napi/common",
   ]
-  if (is_headless && (is_android || is_harmony)) {
+  if (is_headless &&
+      (is_android || (is_harmony && enable_primjs_prebuilt_lib))) {
     defines += [ "NAPI_EXTERN=__attribute__((visibility(\"hidden\")))" ]
   }
 }
