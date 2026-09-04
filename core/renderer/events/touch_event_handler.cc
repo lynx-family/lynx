@@ -363,13 +363,18 @@ void TouchEventHandler::HandleGestureEvent(TemplateAssembler *tasm,
 void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
                                           const std::string &name, int tag,
                                           const lepus::Value &params,
-                                          const std::string &pname) {
+                                          const std::string &pname,
+                                          uint64_t trace_flow_id) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_CUSTOM_EVENT,
-              [&name, instance_id = tasm->GetInstanceId()](
+              [&name, tag, trace_flow_id, instance_id = tasm->GetInstanceId()](
                   lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("name", name);
+                ctx.event()->add_debug_annotations("tag", std::to_string(tag));
                 ctx.event()->add_debug_annotations(INSTANCE_ID,
                                                    std::to_string(instance_id));
+                if (trace_flow_id != 0) {
+                  ctx.event()->add_flow_ids(trace_flow_id);
+                }
               });
   LOGI("SendCustomEvent event name:" << name << " tag:" << tag);
 
@@ -389,6 +394,9 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
                             .count();
     auto event =
         fml::MakeRefCounted<event::CustomEvent>(name, params, pname, timestamp);
+    if (trace_flow_id != 0) {
+      event->SetTraceFlowId(trace_flow_id);
+    }
     if (base::Version(version_) < base::Version(LYNX_VERSION_2_1)) {
       event->set_enable_legacy_native_event_param(true);
     }
