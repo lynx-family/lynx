@@ -4,6 +4,8 @@
 
 #include "base/include/string/string_number_convert.h"
 
+#include <limits>
+
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -33,6 +35,22 @@ TEST(StringNumberConvertTest, StringToIntTest) {
   EXPECT_EQ(2, num1);
 
   EXPECT_FALSE(StringToInt("123abc", num1, 10));
+}
+
+TEST(StringNumberConvertTest, StringToUInt64Test) {
+  uint64_t value = 42;
+  EXPECT_TRUE(StringToUInt64("0", value));
+  EXPECT_EQ(0u, value);
+
+  EXPECT_TRUE(StringToUInt64("18446744073709551615", value));
+  EXPECT_EQ(std::numeric_limits<uint64_t>::max(), value);
+
+  EXPECT_FALSE(StringToUInt64("18446744073709551616", value));
+  EXPECT_EQ(std::numeric_limits<uint64_t>::max(), value);
+  EXPECT_FALSE(StringToUInt64("-1", value));
+  EXPECT_EQ(std::numeric_limits<uint64_t>::max(), value);
+  EXPECT_FALSE(StringToUInt64("123abc", value));
+  EXPECT_EQ(std::numeric_limits<uint64_t>::max(), value);
 }
 
 }  // namespace base
