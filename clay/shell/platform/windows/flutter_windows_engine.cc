@@ -102,7 +102,10 @@ FlutterWindowsEngine::FlutterWindowsEngine(const FlutterProjectBundle& project)
   platform_handler_ = std::make_unique<PlatformHandler>(this);
 }
 
-FlutterWindowsEngine::~FlutterWindowsEngine() { Stop(); }
+FlutterWindowsEngine::~FlutterWindowsEngine() {
+  Stop();
+  egl::Manager::DestroyAsync(std::move(egl_manager_));
+}
 
 void FlutterWindowsEngine::SetSwitches(
     const std::vector<std::string>& switches) {
