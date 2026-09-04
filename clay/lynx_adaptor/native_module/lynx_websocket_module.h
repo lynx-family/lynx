@@ -25,7 +25,7 @@ class LynxWebSocketModule
     return std::make_shared<LynxWebSocketModule>(view_context_id, task_runner);
   }
 
-  static const std::string& GetName() { return name_; }
+  static constexpr const char* GetName() { return "LynxWebSocketModule"; }
 
   LynxWebSocketModule(uint32_t view_context_id,
                       fml::RefPtr<fml::TaskRunner> task_runner);
@@ -44,7 +44,6 @@ class LynxWebSocketModule
                                     const runtime::CallbackMap& callbacks);
 
  private:
-  static const std::string name_;
   std::unordered_map<int, SimpleWebSocket*> sockets_;
 };
 

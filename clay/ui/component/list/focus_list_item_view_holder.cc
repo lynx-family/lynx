@@ -17,7 +17,7 @@ namespace {
 
 constexpr float kBoxSize = 50.f;
 constexpr float kPadding = 5.f;
-const std::array<Color, 4> kColors = {
+constexpr std::array<Color, 4> kColors = {
     Color::ARGBColor(0xFF, 0xFF, 0x00, 0x00),
     Color::ARGBColor(0xFF, 0x00, 0xFF, 0x00),
     Color::ARGBColor(0xFF, 0x00, 0x00, 0xFF),
