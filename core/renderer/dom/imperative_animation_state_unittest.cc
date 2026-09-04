@@ -17,7 +17,7 @@ namespace tasm {
 namespace testing {
 namespace {
 
-using AnimationSource = ImperativeAnimationState::Source;
+using AnimationSource = ImperativeAnimationSource;
 
 StyleMap MakeTimingStyles(const char* animation_name,
                           starlight::AnimationFillModeType fill_mode =
