@@ -5,10 +5,13 @@
 #include "devtool/base_devtool/native/public/devtool_message_dispatcher.h"
 
 #include <memory>
+#include <optional>
+#include <string>
 #include <utility>
 
 #include "base/include/log/logging.h"
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "third_party/jsoncpp/include/json/reader.h"
 
@@ -28,22 +31,55 @@ void DevToolMessageDispatcher::DispatchMessage(
 
 void DevToolMessageDispatcher::DispatchCDPMessage(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& msg) {
-  std::string method = msg["method"].asString();
-  std::string domain = method.substr(0, method.find(kDomainDot));
-  Json::Value content;
+  // A CDP command must carry an integer "id". When it is missing or not an
+  // integer we cannot echo it back, so the error response id stays null. This
+  // matches Chromium's crdtp::Dispatchable, which rejects such a message with
+  // InvalidRequest instead of dispatching it.
+  std::optional<int64_t> id;
+  if (msg.isMember("id") && msg["id"].isIntegral()) {
+    id = msg["id"].asInt64();
+  }
+
+  auto responder = std::make_shared<CDPResponder>(sender, id);
+
+  if (!id.has_value()) {
+    responder->SendErrorResponse(CDPErrorCode::kInvalidRequest,
+                                 "message must have integer 'id' property");
+    return;
+  }
+
+  // "method" must be present and be a string.
+  if (!msg.isMember("method") || !msg["method"].isString()) {
+    responder->SendErrorResponse(CDPErrorCode::kInvalidRequest,
+                                 "message must have string 'method' property");
+    return;
+  }
+
+  // "params" is optional, but when present it must be an object. A malformed
+  // envelope is InvalidRequest; InvalidParams is reserved for semantic checks
+  // of a well-formed params object, which the domain agent performs.
+  if (msg.isMember("params") && !msg["params"].isObject()) {
+    responder->SendErrorResponse(CDPErrorCode::kInvalidRequest,
+                                 "'params' must be an object");
+    return;
+  }
+
+  const std::string method = msg["method"].asString();
+  const std::string domain = method.substr(0, method.find(kDomainDot));
 
   std::shared_lock<std::shared_mutex> lock(agent_mutex_);
   auto iter = agent_map_.find(domain);
   if (iter == agent_map_.end()) {
-    Json::Value error;
-    error["code"] = kInspectorErrorCode;
-    error["message"] = "Not implemented: " + method;
-    content["error"] = error;
-    content["id"] = msg["id"].asInt64();
-    sender->SendMessage("CDP", content);
-  } else {
-    iter->second->CallMethod(sender, msg);
+    // Unknown domain/method: reply through CDPResponder so the error
+    // envelope is assembled in one place instead of being hand-written here.
+    responder->SendErrorResponse(CDPErrorCode::kMethodNotFound,
+                                 "'" + method + "' wasn't found");
+    return;
   }
+
+  // Ownership of the response is handed back to the legacy agent path; further
+  // migration to CDPResponder requires future refactorings.
+  iter->second->CallMethod(responder->RetrieveSender(), msg);
 }
 
 void DevToolMessageDispatcher::DispatchJsonMessage(
