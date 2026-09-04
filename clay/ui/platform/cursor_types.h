@@ -5,7 +5,6 @@
 #ifndef CLAY_UI_PLATFORM_CURSOR_TYPES_H_
 #define CLAY_UI_PLATFORM_CURSOR_TYPES_H_
 
-#include <map>
 #include <string>
 
 namespace clay {
@@ -521,7 +520,6 @@ enum class CursorTypes {
 
 class CursorTypeUtil {
  public:
-  static const std::map<std::string, CursorTypes> cursor_type_map_;
   static CursorTypes ParseCursorType(const std::string& str);
 };
 }  // namespace clay

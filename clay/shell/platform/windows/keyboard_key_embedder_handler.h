@@ -8,6 +8,7 @@
 #ifndef CLAY_SHELL_PLATFORM_WINDOWS_KEYBOARD_KEY_EMBEDDER_HANDLER_H_
 #define CLAY_SHELL_PLATFORM_WINDOWS_KEYBOARD_KEY_EMBEDDER_HANDLER_H_
 
+#include <cstddef>
 #include <functional>
 #include <map>
 #include <memory>
@@ -17,6 +18,11 @@
 #include "clay/shell/platform/windows/keyboard_key_handler.h"
 
 namespace clay {
+
+struct KeyCodeMapEntry {
+  uint64_t key;
+  uint64_t value;
+};
 
 // Encode a 32-bit unicode code point into a UTF-8 byte array.
 //
@@ -168,9 +174,12 @@ class KeyboardKeyEmbedderHandler
                                             const char* character);
   static uint64_t ApplyPlaneToId(uint64_t id, uint64_t plane);
 
-  static std::map<uint64_t, uint64_t> windowsToPhysicalMap_;
-  static std::map<uint64_t, uint64_t> windowsToLogicalMap_;
-  static std::map<uint64_t, uint64_t> scanCodeToLogicalMap_;
+  static const KeyCodeMapEntry windowsToPhysicalMap_[];
+  static const size_t windowsToPhysicalMapSize;
+  static const KeyCodeMapEntry windowsToLogicalMap_[];
+  static const size_t windowsToLogicalMapSize;
+  static const KeyCodeMapEntry scanCodeToLogicalMap_[];
+  static const size_t scanCodeToLogicalMapSize;
 
   // Mask for the 32-bit value portion of the key code.
   static const uint64_t valueMask;

@@ -27,7 +27,9 @@ class LynxIntersectionObserverModule
                                                             task_runner);
   }
 
-  static const std::string& GetName() { return name_; }
+  static constexpr const char* GetName() {
+    return "IntersectionObserverModule";
+  }
   LynxIntersectionObserverModule(uint32_t view_context_id,
                                  fml::RefPtr<fml::TaskRunner> task_runner);
   ~LynxIntersectionObserverModule() override;
@@ -57,8 +59,6 @@ class LynxIntersectionObserverModule
       const lynx::runtime::CallbackMap& callback_map);
 
  private:
-  static const std::string name_;
-
   std::unordered_map<int, clay::Value::Map> observer_configs_;
   std::unordered_map<int, std::vector<clay::BaseView*>> observers_;
 };
