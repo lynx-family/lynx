@@ -15,7 +15,7 @@
 
 namespace clay {
 
-static const std::u16string kDefaultEllipsis = u"\u2026";
+constexpr char16_t kDefaultEllipsis[] = u"\u2026";
 
 PreLayoutContextText::PreLayoutContextText() = default;
 PreLayoutContextText::~PreLayoutContextText() = default;

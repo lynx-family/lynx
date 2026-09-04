@@ -256,7 +256,8 @@ typedef _Nullable _NSResponderPtr (^NextResponderProvider)();
 
   std::map<uint32_t, LayoutGoal> mandatoryGoalsByChar;
   std::map<uint32_t, LayoutGoal> usLayoutGoalsByKeyCode;
-  for (const LayoutGoal& goal : clay::layoutGoals) {
+  for (size_t i = 0; i < clay::layoutGoalsSize; ++i) {
+    const LayoutGoal& goal = clay::layoutGoals[i];
     if (goal.mandatory) {
       mandatoryGoalsByChar[goal.keyChar] = goal;
     } else {

@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "base/include/fml/make_copyable.h"
+#include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/sha1.h"
 #include "clay/fml/base32.h"
@@ -30,10 +31,21 @@
 
 namespace clay {
 
-std::string PersistentCache::cache_base_path_;  // NOLINT(runtime/string)
+std::string& PersistentCache::CacheBasePath() {
+  static lynx::base::NoDestructor<std::string> cache_base_path;
+  return *cache_base_path;
+}
 
-std::mutex PersistentCache::instance_mutex_;
-std::unique_ptr<PersistentCache> PersistentCache::gPersistentCache;
+std::mutex& PersistentCache::InstanceMutex() {
+  static lynx::base::NoDestructor<std::mutex> instance_mutex;
+  return *instance_mutex;
+}
+
+std::unique_ptr<PersistentCache>& PersistentCache::GlobalPersistentCache() {
+  static lynx::base::NoDestructor<std::unique_ptr<PersistentCache>>
+      persistent_cache;
+  return *persistent_cache;
+}
 
 bool PersistentCache::gIsReadOnly = false;
 
@@ -50,21 +62,22 @@ void PersistentCache::SetCacheSkSL(bool value) {
 }
 
 PersistentCache* PersistentCache::GetCacheForProcess() {
-  std::scoped_lock lock(instance_mutex_);
-  if (gPersistentCache == nullptr) {
-    gPersistentCache.reset(new PersistentCache(gIsReadOnly));
+  std::scoped_lock lock(InstanceMutex());
+  auto& persistent_cache = GlobalPersistentCache();
+  if (persistent_cache == nullptr) {
+    persistent_cache.reset(new PersistentCache(gIsReadOnly));
   }
-  return gPersistentCache.get();
+  return persistent_cache.get();
 }
 
 void PersistentCache::ResetCacheForProcess() {
-  std::scoped_lock lock(instance_mutex_);
-  gPersistentCache.reset(new PersistentCache(gIsReadOnly));
+  std::scoped_lock lock(InstanceMutex());
+  GlobalPersistentCache().reset(new PersistentCache(gIsReadOnly));
   strategy_set_ = false;
 }
 
 void PersistentCache::SetCacheDirectoryPath(std::string path) {
-  cache_base_path_ = std::move(path);
+  CacheBasePath() = std::move(path);
 }
 
 bool PersistentCache::Purge() {
@@ -365,9 +378,9 @@ void PersistentCache::DumpSkp(const SkData& data) {
 
 PersistentCache::PersistentCache(bool read_only)
     : is_read_only_(read_only),
-      cache_directory_(MakeCacheDirectory(cache_base_path_, read_only, false)),
+      cache_directory_(MakeCacheDirectory(CacheBasePath(), read_only, false)),
       sksl_cache_directory_(
-          MakeCacheDirectory(cache_base_path_, read_only, true)),
+          MakeCacheDirectory(CacheBasePath(), read_only, true)),
       resource_cache_(new ResourceCache) {
   if (!IsValid()) {
     FML_DLOG(WARNING) << "Could not acquire the persistent cache directory. "

@@ -15,8 +15,6 @@
 
 namespace lynx {
 
-const std::string LynxConfigModule::name_ = "LynxConfigModule";
-
 LynxConfigModule::LynxConfigModule(uint32_t view_context_id,
                                    fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {

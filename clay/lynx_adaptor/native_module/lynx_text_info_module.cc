@@ -11,8 +11,6 @@
 #include "clay/ui/shadow/text_render.h"
 
 namespace lynx {
-const std::string LynxTextInfoModule::name_ = "LynxTextInfoModule";
-
 LynxTextInfoModule::LynxTextInfoModule(uint32_t view_context_id) {
   view_context_id_ = view_context_id;
   lynx::runtime::NativeModuleMethod get_text_info("getTextInfo", 2);

@@ -9,6 +9,7 @@
 
 #include <utility>
 
+#include "base/include/no_destructor.h"
 #include "clay/fml/file.h"
 
 namespace fml {
@@ -16,16 +17,24 @@ namespace paths {
 
 std::pair<bool, std::string> GetExecutablePath() { return {false, ""}; }
 
-static std::string gCachesPath;  // NOLINT
+namespace {
+
+std::string& GetCachesPath() {
+  static lynx::base::NoDestructor<std::string> caches_path;
+  return *caches_path;
+}
+
+}  // namespace
 
 void InitializeAndroidCachesPath(std::string caches_path) {
-  gCachesPath = std::move(caches_path);
+  GetCachesPath() = std::move(caches_path);
 }
 
 fml::UniqueFD GetCachesDirectory() {
   // If the caches path is not initialized, the FD will be invalid and caching
   // will be disabled throughout the system.
-  return OpenDirectory(gCachesPath.c_str(), false, fml::FilePermission::kRead);
+  return OpenDirectory(GetCachesPath().c_str(), false,
+                       fml::FilePermission::kRead);
 }
 
 }  // namespace paths

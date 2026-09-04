@@ -7,17 +7,30 @@
 
 #include <string>
 
+#include "base/include/no_destructor.h"
+
 namespace clay {
 
-static std::string gGoldenDir;
-static std::string gFontFile;
+namespace {
 
-const std::string& GetGoldenDir() { return gGoldenDir; }
+std::string& GoldenDir() {
+  static lynx::base::NoDestructor<std::string> golden_dir;
+  return *golden_dir;
+}
 
-void SetGoldenDir(const std::string& dir) { gGoldenDir = dir; }
+std::string& FontFile() {
+  static lynx::base::NoDestructor<std::string> font_file;
+  return *font_file;
+}
 
-const std::string& GetFontFile() { return gFontFile; }
+}  // namespace
 
-void SetFontFile(const std::string& file) { gFontFile = file; }
+const std::string& GetGoldenDir() { return GoldenDir(); }
+
+void SetGoldenDir(const std::string& dir) { GoldenDir() = dir; }
+
+const std::string& GetFontFile() { return FontFile(); }
+
+void SetFontFile(const std::string& file) { FontFile() = file; }
 
 }  // namespace clay

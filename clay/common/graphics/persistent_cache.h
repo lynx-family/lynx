@@ -154,10 +154,9 @@ class PersistentCache {
   ResourceCache* GetResourceCache() { return resource_cache_.get(); }
 
  private:
-  static std::string cache_base_path_;
-
-  static std::mutex instance_mutex_;
-  static std::unique_ptr<PersistentCache> gPersistentCache;
+  static std::string& CacheBasePath();
+  static std::mutex& InstanceMutex();
+  static std::unique_ptr<PersistentCache>& GlobalPersistentCache();
 
   // Mutable static switch that can be set before GetCacheForProcess is called
   // and GrContextOptions.fShaderCacheStrategy is set. If true, it means that

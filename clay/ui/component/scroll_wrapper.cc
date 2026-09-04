@@ -6,9 +6,10 @@
 
 #include <math.h>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -20,28 +21,28 @@ namespace clay {
 namespace {
 
 // Attributes that should be forwarded to the scroll view.
-const std::unordered_set<KeywordID> kProxyAttributes = {
-    KeywordID::kScrollX,
-    KeywordID::kScrollY,
-    KeywordID::kLowerThreshold,
-    KeywordID::kUpperThreshold,
-    KeywordID::kEnableScroll,
-    KeywordID::kEnableNestedScroll,
-    KeywordID::kScrollMonitorTag,
-    KeywordID::kScrollTop,
-    KeywordID::kScrollLeft,
-    KeywordID::kScrollToIndex,
-    KeywordID::kInitialScrollOffset,
-    KeywordID::kInitialScrollIndex,
-    KeywordID::kScrollOrientation,
-    KeywordID::kScrollForwardMode,
-    KeywordID::kScrollBackwardMode,
-    KeywordID::kPrevScrollable,
-    KeywordID::kNextScrollable,
-    KeywordID::kBounce,
-    KeywordID::kBounces,
-    KeywordID::kScrollToId,
-    KeywordID::kScrollEventThrottle};
+constexpr std::array<KeywordID, 21> kProxyAttributes = {
+    {KeywordID::kScrollX,
+     KeywordID::kScrollY,
+     KeywordID::kLowerThreshold,
+     KeywordID::kUpperThreshold,
+     KeywordID::kEnableScroll,
+     KeywordID::kEnableNestedScroll,
+     KeywordID::kScrollMonitorTag,
+     KeywordID::kScrollTop,
+     KeywordID::kScrollLeft,
+     KeywordID::kScrollToIndex,
+     KeywordID::kInitialScrollOffset,
+     KeywordID::kInitialScrollIndex,
+     KeywordID::kScrollOrientation,
+     KeywordID::kScrollForwardMode,
+     KeywordID::kScrollBackwardMode,
+     KeywordID::kPrevScrollable,
+     KeywordID::kNextScrollable,
+     KeywordID::kBounce,
+     KeywordID::kBounces,
+     KeywordID::kScrollToId,
+     KeywordID::kScrollEventThrottle}};
 constexpr char kScrollWrapperTag[] = "scroll-view";
 
 LYNX_UI_METHOD_BEGIN(ScrollWrapper) {
@@ -56,9 +57,6 @@ constexpr char kArgSmooth[] = "smooth";
 constexpr char kArgIndex[] = "index";
 constexpr char kArgStart[] = "start";
 constexpr char kArgRate[] = "rate";
-const std::vector<std::string> kScrollToArgs{kArgSmooth, kArgOffset, kArgIndex};
-const std::vector<std::string> kAutoScrollArgs{kArgStart, kArgRate};
-
 }  // namespace
 
 ScrollWrapper::ScrollWrapper(int id, PageView* page_view)
@@ -100,7 +98,8 @@ void ScrollWrapper::scrollTo(const LynxModuleValues& args) {
   bool smooth = false;
   float offset = 0;
   int index = -1;
-  if (CastNamedLynxModuleArgs(kScrollToArgs, args, smooth, offset, index)) {
+  if (CastNamedLynxModuleArgs({kArgSmooth, kArgOffset, kArgIndex}, args, smooth,
+                              offset, index)) {
     if (isnan(offset) || isinf(offset)) {
       FML_DLOG(ERROR) << "Cannot scrollTo nan or infinite!";
       return;
@@ -112,7 +111,7 @@ void ScrollWrapper::scrollTo(const LynxModuleValues& args) {
 void ScrollWrapper::autoScroll(const LynxModuleValues& args) {
   bool start = false;
   float rate = 0;
-  if (CastNamedLynxModuleArgs(kAutoScrollArgs, args, start, rate)) {
+  if (CastNamedLynxModuleArgs({kArgStart, kArgRate}, args, start, rate)) {
     if (isnan(rate) || isinf(rate)) {
       FML_DLOG(ERROR) << "rate cannot be nan or infinite!";
       return;
@@ -142,7 +141,8 @@ void ScrollWrapper::getScrollInfo(const LynxModuleValues& args,
 
 void ScrollWrapper::SetAttribute(const char* attr_c, const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (kProxyAttributes.find(kw) != kProxyAttributes.end()) {
+  if (std::find(kProxyAttributes.begin(), kProxyAttributes.end(), kw) !=
+      kProxyAttributes.end()) {
     view_->SetAttribute(attr_c, value);
     if (kw == KeywordID::kScrollX || kw == KeywordID::kScrollY) {
       scrollbar_->SetScrollDirection(

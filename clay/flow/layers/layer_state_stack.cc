@@ -29,7 +29,11 @@ namespace clay {
 // quickly and cheaply when no externally supplied delegates are present.
 class DummyDelegate : public LayerStateStack::Delegate {
  public:
-  static const std::shared_ptr<DummyDelegate> kInstance;
+  static const std::shared_ptr<DummyDelegate>& GetInstance() {
+    static const std::shared_ptr<DummyDelegate> instance =
+        std::make_shared<DummyDelegate>();
+    return instance;
+  }
 
   void decommission() override {}
 
@@ -73,8 +77,6 @@ class DummyDelegate : public LayerStateStack::Delegate {
     FML_DCHECK(false) << "LayerStateStack state queried without a delegate";
   }
 };
-const std::shared_ptr<DummyDelegate> DummyDelegate::kInstance =
-    std::make_shared<DummyDelegate>();
 
 #ifndef ENABLE_SKITY
 class SkCanvasDelegate : public LayerStateStack::Delegate {
@@ -672,11 +674,11 @@ void MutatorContext::clipPath(const clay::GrPath& path, bool is_aa) {
 // LayerStateStack methods
 // ==============================================================
 
-LayerStateStack::LayerStateStack() : delegate_(DummyDelegate::kInstance) {}
+LayerStateStack::LayerStateStack() : delegate_(DummyDelegate::GetInstance()) {}
 
 void LayerStateStack::clear_delegate() {
   delegate_->decommission();
-  delegate_ = DummyDelegate::kInstance;
+  delegate_ = DummyDelegate::GetInstance();
 }
 
 void LayerStateStack::set_delegate(clay::GrCanvas* canvas) {

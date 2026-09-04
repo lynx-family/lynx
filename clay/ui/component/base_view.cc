@@ -5,11 +5,11 @@
 #include "clay/ui/component/base_view.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 
 #include "base/include/auto_reset.h"
@@ -194,7 +194,7 @@ const float CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER = 1;
 
 }  // namespace
 
-const std::unordered_set<KeywordID> kExposureAttributes = {
+constexpr std::array<KeywordID, 15> kExposureAttributes = {{
     KeywordID::kExposureScene,
     KeywordID::kExposureId,
     KeywordID::kExposureArea,
@@ -210,7 +210,7 @@ const std::unordered_set<KeywordID> kExposureAttributes = {
     KeywordID::kExposureScreenMarginBottom,
     KeywordID::kUiappear,
     KeywordID::kUidisappear,
-};
+}};
 
 BaseView::BaseView(std::unique_ptr<RenderObject> render_object,
                    PageView* page_view)
@@ -3278,7 +3278,8 @@ void BaseView::NotifyBgImageLoadStatus(bool success,
 
 bool BaseView::UpdateExposeAttrs(const char* attr, const clay::Value& value) {
   auto kw = GetKeywordID(attr);
-  if (kExposureAttributes.find(kw) == kExposureAttributes.end()) {
+  if (std::find(kExposureAttributes.begin(), kExposureAttributes.end(), kw) ==
+      kExposureAttributes.end()) {
     return false;
   }
   auto* manager = page_view_->intersection_observer_manager();

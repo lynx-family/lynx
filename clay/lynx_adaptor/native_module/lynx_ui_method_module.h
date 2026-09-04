@@ -23,7 +23,7 @@ class LynxUIMethodModule
     return std::make_shared<LynxUIMethodModule>(view_context_id, task_runner);
   }
 
-  static const std::string& GetName() { return name_; }
+  static constexpr const char* GetName() { return "LynxUIMethodModule"; }
 
   LynxUIMethodModule(uint32_t view_context_id,
                      fml::RefPtr<fml::TaskRunner> task_runner);
@@ -44,8 +44,6 @@ class LynxUIMethodModule
   void EnsureInvokeAfterLayout(std::function<void()> invocation);
 
   friend class LynxUIMethodRegistrar;
-
-  static const std::string name_;
 };
 
 }  // namespace lynx

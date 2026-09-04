@@ -16,9 +16,6 @@
 
 namespace lynx {
 
-const std::string LynxIntersectionObserverModule::name_ =
-    "IntersectionObserverModule";
-
 LynxIntersectionObserverModule::LynxIntersectionObserverModule(
     uint32_t view_context_id, fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {

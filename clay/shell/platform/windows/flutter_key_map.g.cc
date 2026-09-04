@@ -8,8 +8,6 @@
 #ifndef FLUTTER_SHELL_PLATFORM_WINDOWS_FLUTTER_KEY_MAP_H_
 #define FLUTTER_SHELL_PLATFORM_WINDOWS_FLUTTER_KEY_MAP_H_
 
-#include <map>
-
 #include "clay/shell/platform/windows/keyboard_key_embedder_handler.h"
 
 // DO NOT EDIT -- DO NOT EDIT -- DO NOT EDIT
@@ -25,7 +23,7 @@
 
 namespace clay {
 
-std::map<uint64_t, uint64_t> KeyboardKeyEmbedderHandler::windowsToPhysicalMap_ =
+constexpr KeyCodeMapEntry KeyboardKeyEmbedderHandler::windowsToPhysicalMap_[] =
     {
         {0x00000001, 0x00070029},  // escape
         {0x00000002, 0x0007001e},  // digit1
@@ -185,133 +183,138 @@ std::map<uint64_t, uint64_t> KeyboardKeyEmbedderHandler::windowsToPhysicalMap_ =
         {0x0000e06c, 0x000c018a},  // launchMail
         {0x0000e06d, 0x000c0183},  // mediaSelect
 };
+constexpr size_t KeyboardKeyEmbedderHandler::windowsToPhysicalMapSize =
+    sizeof(KeyboardKeyEmbedderHandler::windowsToPhysicalMap_) /
+    sizeof(KeyboardKeyEmbedderHandler::windowsToPhysicalMap_[0]);
 
-std::map<uint64_t, uint64_t> KeyboardKeyEmbedderHandler::windowsToLogicalMap_ =
-    {
-        {0x00000003, 0x00100000504},  // CANCEL -> cancel
-        {0x00000008, 0x00100000008},  // BACK -> backspace
-        {0x00000009, 0x00100000009},  // TAB -> tab
-        {0x0000000c, 0x00100000401},  // CLEAR -> clear
-        {0x0000000d, 0x0010000000d},  // RETURN -> enter
-        {0x00000010, 0x00200000102},  // SHIFT -> shiftLeft
-        {0x00000011, 0x00200000100},  // CONTROL -> controlLeft
-        {0x00000013, 0x00100000509},  // PAUSE -> pause
-        {0x00000014, 0x00100000104},  // CAPITAL -> capsLock
-        {0x00000015, 0x00200000010},  // KANA, HANGEUL, HANGUL -> lang1
-        {0x00000017, 0x00100000713},  // JUNJA -> junjaMode
-        {0x00000018, 0x00100000706},  // FINAL -> finalMode
-        {0x00000019, 0x00100000719},  // HANJA, KANJI -> kanjiMode
-        {0x0000001b, 0x0010000001b},  // ESCAPE -> escape
-        {0x0000001c, 0x00100000705},  // CONVERT -> convert
-        {0x0000001e, 0x00100000501},  // ACCEPT -> accept
-        {0x0000001f, 0x0010000070b},  // MODECHANGE -> modeChange
-        {0x00000020, 0x00000000020},  // SPACE -> space
-        {0x00000021, 0x00100000308},  // PRIOR -> pageUp
-        {0x00000022, 0x00100000307},  // NEXT -> pageDown
-        {0x00000023, 0x00100000305},  // END -> end
-        {0x00000024, 0x00100000306},  // HOME -> home
-        {0x00000025, 0x00100000302},  // LEFT -> arrowLeft
-        {0x00000026, 0x00100000304},  // UP -> arrowUp
-        {0x00000027, 0x00100000303},  // RIGHT -> arrowRight
-        {0x00000028, 0x00100000301},  // DOWN -> arrowDown
-        {0x00000029, 0x0010000050c},  // SELECT -> select
-        {0x0000002a, 0x00100000a0c},  // PRINT -> print
-        {0x0000002b, 0x00100000506},  // EXECUTE -> execute
-        {0x0000002c, 0x00100000608},  // SNAPSHOT -> printScreen
-        {0x0000002d, 0x00100000407},  // INSERT -> insert
-        {0x0000002e, 0x0010000007f},  // DELETE -> delete
-        {0x0000002f, 0x00100000508},  // HELP -> help
-        {0x0000005b, 0x00200000106},  // LWIN -> metaLeft
-        {0x0000005c, 0x00200000107},  // RWIN -> metaRight
-        {0x0000005d, 0x00100000505},  // APPS -> contextMenu
-        {0x0000005f, 0x00200000002},  // SLEEP -> sleep
-        {0x00000060, 0x00200000230},  // NUMPAD0 -> numpad0
-        {0x00000061, 0x00200000231},  // NUMPAD1 -> numpad1
-        {0x00000062, 0x00200000232},  // NUMPAD2 -> numpad2
-        {0x00000063, 0x00200000233},  // NUMPAD3 -> numpad3
-        {0x00000064, 0x00200000234},  // NUMPAD4 -> numpad4
-        {0x00000065, 0x00200000235},  // NUMPAD5 -> numpad5
-        {0x00000066, 0x00200000236},  // NUMPAD6 -> numpad6
-        {0x00000067, 0x00200000237},  // NUMPAD7 -> numpad7
-        {0x00000068, 0x00200000238},  // NUMPAD8 -> numpad8
-        {0x00000069, 0x00200000239},  // NUMPAD9 -> numpad9
-        {0x0000006a, 0x0020000022a},  // MULTIPLY -> numpadMultiply
-        {0x0000006b, 0x0020000022b},  // ADD -> numpadAdd
-        {0x0000006c, 0x0020000022c},  // SEPARATOR -> numpadComma
-        {0x0000006d, 0x0020000022d},  // SUBTRACT -> numpadSubtract
-        {0x0000006e, 0x0020000022e},  // DECIMAL -> numpadDecimal
-        {0x0000006f, 0x0020000022f},  // DIVIDE -> numpadDivide
-        {0x00000070, 0x00100000801},  // F1 -> f1
-        {0x00000071, 0x00100000802},  // F2 -> f2
-        {0x00000072, 0x00100000803},  // F3 -> f3
-        {0x00000073, 0x00100000804},  // F4 -> f4
-        {0x00000074, 0x00100000805},  // F5 -> f5
-        {0x00000075, 0x00100000806},  // F6 -> f6
-        {0x00000076, 0x00100000807},  // F7 -> f7
-        {0x00000077, 0x00100000808},  // F8 -> f8
-        {0x00000078, 0x00100000809},  // F9 -> f9
-        {0x00000079, 0x0010000080a},  // F10 -> f10
-        {0x0000007a, 0x0010000080b},  // F11 -> f11
-        {0x0000007b, 0x0010000080c},  // F12 -> f12
-        {0x0000007c, 0x0010000080d},  // F13 -> f13
-        {0x0000007d, 0x0010000080e},  // F14 -> f14
-        {0x0000007e, 0x0010000080f},  // F15 -> f15
-        {0x0000007f, 0x00100000810},  // F16 -> f16
-        {0x00000080, 0x00100000811},  // F17 -> f17
-        {0x00000081, 0x00100000812},  // F18 -> f18
-        {0x00000082, 0x00100000813},  // F19 -> f19
-        {0x00000083, 0x00100000814},  // F20 -> f20
-        {0x00000084, 0x00100000815},  // F21 -> f21
-        {0x00000085, 0x00100000816},  // F22 -> f22
-        {0x00000086, 0x00100000817},  // F23 -> f23
-        {0x00000087, 0x00100000818},  // F24 -> f24
-        {0x00000090, 0x0010000010a},  // NUMLOCK -> numLock
-        {0x00000091, 0x0010000010c},  // SCROLL -> scrollLock
-        {0x00000092, 0x0020000023d},  // OEM_NEC_EQUAL -> numpadEqual
-        {0x000000a0, 0x00200000102},  // LSHIFT -> shiftLeft
-        {0x000000a1, 0x00200000103},  // RSHIFT -> shiftRight
-        {0x000000a2, 0x00200000100},  // LCONTROL -> controlLeft
-        {0x000000a3, 0x00200000101},  // RCONTROL -> controlRight
-        {0x000000a4, 0x00200000104},  // LMENU -> altLeft
-        {0x000000a5, 0x00200000105},  // RMENU -> altRight
-        {0x000000a6, 0x00100000c01},  // BROWSER_BACK -> browserBack
-        {0x000000a7, 0x00100000c03},  // BROWSER_FORWARD -> browserForward
-        {0x000000a8, 0x00100000c05},  // BROWSER_REFRESH -> browserRefresh
-        {0x000000a9, 0x00100000c07},  // BROWSER_STOP -> browserStop
-        {0x000000aa, 0x00100000c06},  // BROWSER_SEARCH -> browserSearch
-        {0x000000ab, 0x00100000c02},  // BROWSER_FAVORITES -> browserFavorites
-        {0x000000ac, 0x00100000c04},  // BROWSER_HOME -> browserHome
-        {0x000000ad, 0x00100000a11},  // VOLUME_MUTE -> audioVolumeMute
-        {0x000000ae, 0x00100000a0f},  // VOLUME_DOWN -> audioVolumeDown
-        {0x000000af, 0x00100000a10},  // VOLUME_UP -> audioVolumeUp
-        {0x000000b2, 0x00100000a07},  // MEDIA_STOP -> mediaStop
-        {0x000000b3, 0x00100000a05},  // MEDIA_PLAY_PAUSE -> mediaPlayPause
-        {0x000000b4, 0x00100000b03},  // LAUNCH_MAIL -> launchMail
-        {0x000000ba, 0x0000000003b},  // OEM_1 -> semicolon
-        {0x000000bb, 0x0000000003d},  // OEM_PLUS -> equal
-        {0x000000bc, 0x0000000002c},  // OEM_COMMA -> comma
-        {0x000000bd, 0x0000000002d},  // OEM_MINUS -> minus
-        {0x000000be, 0x0000000002e},  // OEM_PERIOD -> period
-        {0x000000bf, 0x0000000002f},  // OEM_2 -> slash
-        {0x000000c0, 0x00000000060},  // OEM_3 -> backquote
-        {0x000000c3, 0x00200000308},  // GAMEPAD_A -> gameButton8
-        {0x000000c4, 0x00200000309},  // GAMEPAD_B -> gameButton9
-        {0x000000c5, 0x0020000030a},  // GAMEPAD_X -> gameButton10
-        {0x000000c6, 0x0020000030b},  // GAMEPAD_Y -> gameButton11
-        {0x000000c7, 0x0020000030c},  // GAMEPAD_RIGHT_SHOULDER -> gameButton12
-        {0x000000c8, 0x0020000030d},  // GAMEPAD_LEFT_SHOULDER -> gameButton13
-        {0x000000c9, 0x0020000030e},  // GAMEPAD_LEFT_TRIGGER -> gameButton14
-        {0x000000ca, 0x0020000030f},  // GAMEPAD_RIGHT_TRIGGER -> gameButton15
-        {0x000000cb, 0x00200000310},  // GAMEPAD_DPAD_UP -> gameButton16
-        {0x000000db, 0x0000000005b},  // OEM_4 -> bracketLeft
-        {0x000000dc, 0x0000000005c},  // OEM_5 -> backslash
-        {0x000000dd, 0x0000000005d},  // OEM_6 -> bracketRight
-        {0x000000de, 0x00000000022},  // OEM_7 -> quote
-        {0x000000f6, 0x00100000503},  // ATTN -> attn
-        {0x000000fa, 0x0010000050a},  // PLAY -> play
+constexpr KeyCodeMapEntry KeyboardKeyEmbedderHandler::windowsToLogicalMap_[] = {
+    {0x00000003, 0x00100000504},  // CANCEL -> cancel
+    {0x00000008, 0x00100000008},  // BACK -> backspace
+    {0x00000009, 0x00100000009},  // TAB -> tab
+    {0x0000000c, 0x00100000401},  // CLEAR -> clear
+    {0x0000000d, 0x0010000000d},  // RETURN -> enter
+    {0x00000010, 0x00200000102},  // SHIFT -> shiftLeft
+    {0x00000011, 0x00200000100},  // CONTROL -> controlLeft
+    {0x00000013, 0x00100000509},  // PAUSE -> pause
+    {0x00000014, 0x00100000104},  // CAPITAL -> capsLock
+    {0x00000015, 0x00200000010},  // KANA, HANGEUL, HANGUL -> lang1
+    {0x00000017, 0x00100000713},  // JUNJA -> junjaMode
+    {0x00000018, 0x00100000706},  // FINAL -> finalMode
+    {0x00000019, 0x00100000719},  // HANJA, KANJI -> kanjiMode
+    {0x0000001b, 0x0010000001b},  // ESCAPE -> escape
+    {0x0000001c, 0x00100000705},  // CONVERT -> convert
+    {0x0000001e, 0x00100000501},  // ACCEPT -> accept
+    {0x0000001f, 0x0010000070b},  // MODECHANGE -> modeChange
+    {0x00000020, 0x00000000020},  // SPACE -> space
+    {0x00000021, 0x00100000308},  // PRIOR -> pageUp
+    {0x00000022, 0x00100000307},  // NEXT -> pageDown
+    {0x00000023, 0x00100000305},  // END -> end
+    {0x00000024, 0x00100000306},  // HOME -> home
+    {0x00000025, 0x00100000302},  // LEFT -> arrowLeft
+    {0x00000026, 0x00100000304},  // UP -> arrowUp
+    {0x00000027, 0x00100000303},  // RIGHT -> arrowRight
+    {0x00000028, 0x00100000301},  // DOWN -> arrowDown
+    {0x00000029, 0x0010000050c},  // SELECT -> select
+    {0x0000002a, 0x00100000a0c},  // PRINT -> print
+    {0x0000002b, 0x00100000506},  // EXECUTE -> execute
+    {0x0000002c, 0x00100000608},  // SNAPSHOT -> printScreen
+    {0x0000002d, 0x00100000407},  // INSERT -> insert
+    {0x0000002e, 0x0010000007f},  // DELETE -> delete
+    {0x0000002f, 0x00100000508},  // HELP -> help
+    {0x0000005b, 0x00200000106},  // LWIN -> metaLeft
+    {0x0000005c, 0x00200000107},  // RWIN -> metaRight
+    {0x0000005d, 0x00100000505},  // APPS -> contextMenu
+    {0x0000005f, 0x00200000002},  // SLEEP -> sleep
+    {0x00000060, 0x00200000230},  // NUMPAD0 -> numpad0
+    {0x00000061, 0x00200000231},  // NUMPAD1 -> numpad1
+    {0x00000062, 0x00200000232},  // NUMPAD2 -> numpad2
+    {0x00000063, 0x00200000233},  // NUMPAD3 -> numpad3
+    {0x00000064, 0x00200000234},  // NUMPAD4 -> numpad4
+    {0x00000065, 0x00200000235},  // NUMPAD5 -> numpad5
+    {0x00000066, 0x00200000236},  // NUMPAD6 -> numpad6
+    {0x00000067, 0x00200000237},  // NUMPAD7 -> numpad7
+    {0x00000068, 0x00200000238},  // NUMPAD8 -> numpad8
+    {0x00000069, 0x00200000239},  // NUMPAD9 -> numpad9
+    {0x0000006a, 0x0020000022a},  // MULTIPLY -> numpadMultiply
+    {0x0000006b, 0x0020000022b},  // ADD -> numpadAdd
+    {0x0000006c, 0x0020000022c},  // SEPARATOR -> numpadComma
+    {0x0000006d, 0x0020000022d},  // SUBTRACT -> numpadSubtract
+    {0x0000006e, 0x0020000022e},  // DECIMAL -> numpadDecimal
+    {0x0000006f, 0x0020000022f},  // DIVIDE -> numpadDivide
+    {0x00000070, 0x00100000801},  // F1 -> f1
+    {0x00000071, 0x00100000802},  // F2 -> f2
+    {0x00000072, 0x00100000803},  // F3 -> f3
+    {0x00000073, 0x00100000804},  // F4 -> f4
+    {0x00000074, 0x00100000805},  // F5 -> f5
+    {0x00000075, 0x00100000806},  // F6 -> f6
+    {0x00000076, 0x00100000807},  // F7 -> f7
+    {0x00000077, 0x00100000808},  // F8 -> f8
+    {0x00000078, 0x00100000809},  // F9 -> f9
+    {0x00000079, 0x0010000080a},  // F10 -> f10
+    {0x0000007a, 0x0010000080b},  // F11 -> f11
+    {0x0000007b, 0x0010000080c},  // F12 -> f12
+    {0x0000007c, 0x0010000080d},  // F13 -> f13
+    {0x0000007d, 0x0010000080e},  // F14 -> f14
+    {0x0000007e, 0x0010000080f},  // F15 -> f15
+    {0x0000007f, 0x00100000810},  // F16 -> f16
+    {0x00000080, 0x00100000811},  // F17 -> f17
+    {0x00000081, 0x00100000812},  // F18 -> f18
+    {0x00000082, 0x00100000813},  // F19 -> f19
+    {0x00000083, 0x00100000814},  // F20 -> f20
+    {0x00000084, 0x00100000815},  // F21 -> f21
+    {0x00000085, 0x00100000816},  // F22 -> f22
+    {0x00000086, 0x00100000817},  // F23 -> f23
+    {0x00000087, 0x00100000818},  // F24 -> f24
+    {0x00000090, 0x0010000010a},  // NUMLOCK -> numLock
+    {0x00000091, 0x0010000010c},  // SCROLL -> scrollLock
+    {0x00000092, 0x0020000023d},  // OEM_NEC_EQUAL -> numpadEqual
+    {0x000000a0, 0x00200000102},  // LSHIFT -> shiftLeft
+    {0x000000a1, 0x00200000103},  // RSHIFT -> shiftRight
+    {0x000000a2, 0x00200000100},  // LCONTROL -> controlLeft
+    {0x000000a3, 0x00200000101},  // RCONTROL -> controlRight
+    {0x000000a4, 0x00200000104},  // LMENU -> altLeft
+    {0x000000a5, 0x00200000105},  // RMENU -> altRight
+    {0x000000a6, 0x00100000c01},  // BROWSER_BACK -> browserBack
+    {0x000000a7, 0x00100000c03},  // BROWSER_FORWARD -> browserForward
+    {0x000000a8, 0x00100000c05},  // BROWSER_REFRESH -> browserRefresh
+    {0x000000a9, 0x00100000c07},  // BROWSER_STOP -> browserStop
+    {0x000000aa, 0x00100000c06},  // BROWSER_SEARCH -> browserSearch
+    {0x000000ab, 0x00100000c02},  // BROWSER_FAVORITES -> browserFavorites
+    {0x000000ac, 0x00100000c04},  // BROWSER_HOME -> browserHome
+    {0x000000ad, 0x00100000a11},  // VOLUME_MUTE -> audioVolumeMute
+    {0x000000ae, 0x00100000a0f},  // VOLUME_DOWN -> audioVolumeDown
+    {0x000000af, 0x00100000a10},  // VOLUME_UP -> audioVolumeUp
+    {0x000000b2, 0x00100000a07},  // MEDIA_STOP -> mediaStop
+    {0x000000b3, 0x00100000a05},  // MEDIA_PLAY_PAUSE -> mediaPlayPause
+    {0x000000b4, 0x00100000b03},  // LAUNCH_MAIL -> launchMail
+    {0x000000ba, 0x0000000003b},  // OEM_1 -> semicolon
+    {0x000000bb, 0x0000000003d},  // OEM_PLUS -> equal
+    {0x000000bc, 0x0000000002c},  // OEM_COMMA -> comma
+    {0x000000bd, 0x0000000002d},  // OEM_MINUS -> minus
+    {0x000000be, 0x0000000002e},  // OEM_PERIOD -> period
+    {0x000000bf, 0x0000000002f},  // OEM_2 -> slash
+    {0x000000c0, 0x00000000060},  // OEM_3 -> backquote
+    {0x000000c3, 0x00200000308},  // GAMEPAD_A -> gameButton8
+    {0x000000c4, 0x00200000309},  // GAMEPAD_B -> gameButton9
+    {0x000000c5, 0x0020000030a},  // GAMEPAD_X -> gameButton10
+    {0x000000c6, 0x0020000030b},  // GAMEPAD_Y -> gameButton11
+    {0x000000c7, 0x0020000030c},  // GAMEPAD_RIGHT_SHOULDER -> gameButton12
+    {0x000000c8, 0x0020000030d},  // GAMEPAD_LEFT_SHOULDER -> gameButton13
+    {0x000000c9, 0x0020000030e},  // GAMEPAD_LEFT_TRIGGER -> gameButton14
+    {0x000000ca, 0x0020000030f},  // GAMEPAD_RIGHT_TRIGGER -> gameButton15
+    {0x000000cb, 0x00200000310},  // GAMEPAD_DPAD_UP -> gameButton16
+    {0x000000db, 0x0000000005b},  // OEM_4 -> bracketLeft
+    {0x000000dc, 0x0000000005c},  // OEM_5 -> backslash
+    {0x000000dd, 0x0000000005d},  // OEM_6 -> bracketRight
+    {0x000000de, 0x00000000022},  // OEM_7 -> quote
+    {0x000000f6, 0x00100000503},  // ATTN -> attn
+    {0x000000fa, 0x0010000050a},  // PLAY -> play
 };
+constexpr size_t KeyboardKeyEmbedderHandler::windowsToLogicalMapSize =
+    sizeof(KeyboardKeyEmbedderHandler::windowsToLogicalMap_) /
+    sizeof(KeyboardKeyEmbedderHandler::windowsToLogicalMap_[0]);
 
-std::map<uint64_t, uint64_t> KeyboardKeyEmbedderHandler::scanCodeToLogicalMap_ =
+constexpr KeyCodeMapEntry KeyboardKeyEmbedderHandler::scanCodeToLogicalMap_[] =
     {
         {0x00000037, 0x0020000022a},  // numpadMultiply -> numpadMultiply
         {0x00000047, 0x00200000237},  // numpad7 -> numpad7
@@ -332,6 +335,9 @@ std::map<uint64_t, uint64_t> KeyboardKeyEmbedderHandler::scanCodeToLogicalMap_ =
         {0x0000e035, 0x0020000022f},  // numpadDivide -> numpadDivide
         {0x0000e038, 0x00200000105},  // altRight -> altRight
 };
+constexpr size_t KeyboardKeyEmbedderHandler::scanCodeToLogicalMapSize =
+    sizeof(KeyboardKeyEmbedderHandler::scanCodeToLogicalMap_) /
+    sizeof(KeyboardKeyEmbedderHandler::scanCodeToLogicalMap_[0]);
 
 const uint64_t KeyboardKeyEmbedderHandler::valueMask = 0x000ffffffff;
 const uint64_t KeyboardKeyEmbedderHandler::unicodePlane = 0x00000000000;

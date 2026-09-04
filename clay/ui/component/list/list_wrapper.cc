@@ -6,9 +6,10 @@
 
 #include <math.h>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -25,7 +26,7 @@
 namespace clay {
 namespace {
 
-const std::unordered_set<KeywordID> kProxyAttributes = {
+constexpr std::array<KeywordID, 26> kProxyAttributes = {{
     KeywordID::kListType,
     KeywordID::kColumnCount,
     KeywordID::kLowerThreshold,
@@ -51,7 +52,7 @@ const std::unordered_set<KeywordID> kProxyAttributes = {
     KeywordID::kBounces,
     KeywordID::kInitialScrollIndex,
     KeywordID::kStickyOffset,
-};
+}};
 
 LYNX_UI_METHOD_BEGIN(ListWrapper) {
   LYNX_UI_METHOD(ListWrapper, scrollToPosition);
@@ -101,7 +102,8 @@ void ListWrapper::OnLayout(LayoutContext* context) {
 
 void ListWrapper::SetAttribute(const char* attr_c, const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (kProxyAttributes.find(kw) != kProxyAttributes.end()) {
+  if (std::find(kProxyAttributes.begin(), kProxyAttributes.end(), kw) !=
+      kProxyAttributes.end()) {
     view_->SetAttribute(attr_c, value);
   } else {
     ScrollbarWrapper::SetAttribute(attr_c, value);

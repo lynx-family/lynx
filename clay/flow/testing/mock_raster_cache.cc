@@ -111,7 +111,7 @@ PrerollContextHolder GetSamplePrerollContextHolder(
           .frame_device_pixel_ratio      = 1.0f,
           .has_platform_view             = false,
           .has_drawable_image_layer      = false,
-          .raster_cached_entries         = &raster_cache_items_,
+          .raster_cached_entries         = &RasterCacheItems(),
           // clang-format on
       },
       srgb};
