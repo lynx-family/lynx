@@ -441,7 +441,8 @@
         [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:view];
     id<LynxUIRendererProtocol> uiRenderer = _templateRender.lynxUIRenderer;
     LynxEventHandler* eventHandler = uiRenderer.uiOwner.uiContext.eventHandler;
-    if (uiRenderer.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
+    BOOL isFragmentLayerRender = uiRenderer.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn;
+    if (isFragmentLayerRender) {
       BOOL ignoreFocus =
           eventHandler != nil &&
           [_templateRender IsPlatformEventTargetIgnoreFocus:eventHandler.eventRootSign point:point];
@@ -458,11 +459,19 @@
                      andEvent:event];
     }
     // If target eventThrough, return nil to let event through LynxView.
-    CGPoint targetPoint = point;
-    if (touchTarget.view) {
-      targetPoint = [self convertPoint:point toView:touchTarget.view];
+    BOOL isEventThrough = NO;
+    if (isFragmentLayerRender) {
+      isEventThrough = eventHandler != nil &&
+                       [_templateRender IsPlatformEventTargetEventThrough:eventHandler.eventRootSign
+                                                                    point:point];
+    } else {
+      CGPoint targetPoint = point;
+      if (touchTarget.view) {
+        targetPoint = [self convertPoint:point toView:touchTarget.view];
+      }
+      isEventThrough = [touchTarget eventThrough:targetPoint];
     }
-    if ([touchTarget eventThrough:targetPoint]) {
+    if (isEventThrough) {
       _LogI(@"LynxView: hit event through in %ld", [touchTarget signature]);
       return nil;
     } else {
