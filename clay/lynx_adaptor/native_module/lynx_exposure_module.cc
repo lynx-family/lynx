@@ -14,8 +14,6 @@
 
 namespace lynx {
 
-const std::string LynxExposureModule::name_ = "LynxExposureModule";
-
 LynxExposureModule::LynxExposureModule(uint32_t view_context_id,
                                        fml::RefPtr<fml::TaskRunner> task_runner)
     : LynxModuleBase(view_context_id, task_runner) {
