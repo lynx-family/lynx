@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.0.53
+* File custom section debug info under the section name, and skip the empty root entry when a bundle has no root lepus code.
+
 # 0.0.52
 * Support serializing decoded CSS descriptors into CSS text.
 
