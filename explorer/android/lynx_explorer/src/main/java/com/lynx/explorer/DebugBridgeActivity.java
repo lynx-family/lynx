@@ -8,7 +8,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
-import com.lynx.explorer.shell.TemplateDispatcher;
+import com.lynx.explorer.routing.RequestedRuntime;
+import com.lynx.explorer.routing.RouteCoordinator;
+import com.lynx.explorer.routing.RouteResult;
+import com.lynx.explorer.routing.RouteSource;
 
 public class DebugBridgeActivity extends AppCompatActivity {
   private static final String TAG = "DebugBridgeActivity";
@@ -24,8 +27,11 @@ public class DebugBridgeActivity extends AppCompatActivity {
       String targetUrl = data.getQueryParameter("url");
       if (targetUrl != null && !targetUrl.isEmpty()) {
         Log.d(TAG, "Opening URL via lynx://open: " + targetUrl);
-        TemplateDispatcher.dispatchUrl(
-            this, targetUrl, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        RouteResult result = RouteCoordinator.open(
+            this, data.toString(), RequestedRuntime.AUTOMATIC, RouteSource.DEBUG_BRIDGE);
+        if (!result.getAccepted()) {
+          Log.e(TAG, result.getCode() + ": " + result.getMessage());
+        }
         finish();
         return;
       }

@@ -31,7 +31,7 @@ type ExtensionRouteOpener = (
 const SPARKLING_GO_EXTENSION: ExplorerExtension = {
   id: SPARKLING_GO_EXTENSION_ID,
   title: 'Sparkling Go',
-  description: 'Container playground and examples',
+  description: 'Sparkling playground and examples',
   accentColor: '#e10543',
   rootScheme: SPARKLING_GO_ROOT_SCHEME,
 };

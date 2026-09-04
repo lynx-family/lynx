@@ -11,6 +11,9 @@ import re
 import sys
 from pathlib import Path
 
+EXPLORER_ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(EXPLORER_ROOT / "scripts"))
+
 from sparkling_source_validation import (
     SPARKLING_SOURCE_PODS,
     is_within,
@@ -196,13 +199,14 @@ def verify_ownership(mode, lockfile, manifest_path, source_root, lynx_root):
 def parse_args(argv=None):
     project_dir = _project_dir()
     default_source_root = (
-        os.environ.get("SPARKLING_SOURCE_ROOT") or "generated/sparkling-source"
+        os.environ.get("SPARKLING_SOURCE_ROOT")
+        or EXPLORER_ROOT / "generated/sparkling-source"
     )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("enable_sparkling", "disable_sparkling"), required=True)
     parser.add_argument("--lockfile", type=Path, default=project_dir / "Podfile.lock")
     parser.add_argument(
-        "--manifest", type=Path, default=project_dir / "sparkling-source.json"
+        "--manifest", type=Path, default=EXPLORER_ROOT / "sparkling-source.json"
     )
     parser.add_argument(
         "--source-root",

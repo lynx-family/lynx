@@ -4,8 +4,10 @@
 package com.lynx.explorer.modules;
 
 import android.content.Context;
+import androidx.annotation.Nullable;
 import com.lynx.jsbridge.LynxMethod;
 import com.lynx.jsbridge.LynxModule;
+import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.WritableMap;
 
 public class ExplorerModule extends LynxModule {
@@ -25,6 +27,16 @@ public class ExplorerModule extends LynxModule {
   @LynxMethod
   public void openSchema(String url) {
     LynxModuleAdapter.getInstance().openSchema(mContext, url);
+  }
+
+  @LynxMethod
+  public void openRoute(String url, String runtime, @Nullable Callback callback) {
+    LynxModuleAdapter.getInstance().openRoute(mContext, url, runtime, callback);
+  }
+
+  @LynxMethod
+  public void navigateBack(@Nullable Callback callback) {
+    LynxModuleAdapter.getInstance().navigateBack(mContext, callback);
   }
 
   @LynxMethod

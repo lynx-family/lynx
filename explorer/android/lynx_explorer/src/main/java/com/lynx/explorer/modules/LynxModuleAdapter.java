@@ -16,8 +16,12 @@ import androidx.annotation.Nullable;
 import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
 import com.lynx.explorer.LynxViewShellActivity;
+import com.lynx.explorer.routing.RequestedRuntime;
+import com.lynx.explorer.routing.RouteCoordinator;
+import com.lynx.explorer.routing.RouteResult;
+import com.lynx.explorer.routing.RouteSource;
 import com.lynx.explorer.scan.QRScanActivity;
-import com.lynx.explorer.shell.TemplateDispatcher;
+import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.LynxEnv;
@@ -35,7 +39,6 @@ public class LynxModuleAdapter {
     }
   };
 
-  private static final int OPEN_SCHEMA = 0;
   private static final int OPEN_SCAN = 1;
   private static final LynxModuleAdapter sInstance = new LynxModuleAdapter();
 
@@ -57,15 +60,6 @@ public class LynxModuleAdapter {
     }
   }
 
-  private static class OpenSchemaRequest extends ActivityRequest {
-    private final String mUrl;
-
-    OpenSchemaRequest(Context context, String url) {
-      super(context);
-      mUrl = url;
-    }
-  }
-
   public static LynxModuleAdapter getInstance() {
     return sInstance;
   }
@@ -78,10 +72,6 @@ public class LynxModuleAdapter {
         switch (msg.what) {
           case OPEN_SCAN:
             startQRScanActivity(((ActivityRequest) msg.obj).getActivity());
-            break;
-          case OPEN_SCHEMA:
-            OpenSchemaRequest request = (OpenSchemaRequest) msg.obj;
-            startFromUrl(request.getActivity(), request.mUrl);
             break;
           default:
         }
@@ -109,10 +99,47 @@ public class LynxModuleAdapter {
   }
 
   public void openSchema(Context context, String url) {
-    Message msg = Message.obtain();
-    msg.obj = new OpenSchemaRequest(context, url);
-    msg.what = OPEN_SCHEMA;
-    mHandler.sendMessage(msg);
+    openRoute(context, url, "automatic", null);
+  }
+
+  public void openRoute(Context context, String url, String runtime, @Nullable Callback callback) {
+    ActivityRequest request = new ActivityRequest(context);
+    RequestedRuntime requested = "sparkling".equalsIgnoreCase(runtime) ? RequestedRuntime.SPARKLING
+        : ("lynx".equalsIgnoreCase(runtime) || "legacy".equalsIgnoreCase(runtime))
+        ? RequestedRuntime.LYNX
+        : RequestedRuntime.AUTOMATIC;
+    mHandler.post(() -> {
+      RouteResult result = RouteCoordinator.open(
+          getStartContext(request.getActivity()), url, requested, RouteSource.NATIVE_MODULE);
+      if (callback != null) {
+        JavaOnlyMap response = new JavaOnlyMap();
+        response.putBoolean("success", result.getAccepted());
+        response.putBoolean("accepted", result.getAccepted());
+        response.putString("code", result.getCode());
+        response.putString("msg", result.getMessage());
+        response.putString("message", result.getMessage());
+        callback.invoke(response);
+      }
+    });
+  }
+
+  public void navigateBack(Context context, @Nullable Callback callback) {
+    ActivityRequest request = new ActivityRequest(context);
+    mHandler.post(() -> {
+      Activity activity = request.getActivity();
+      RouteResult result = activity == null
+          ? RouteResult.failure("route_owner_unavailable", "No owning Activity is available.")
+          : RouteCoordinator.navigateBack(activity);
+      JavaOnlyMap response = new JavaOnlyMap();
+      response.putBoolean("success", result.getAccepted());
+      response.putBoolean("accepted", result.getAccepted());
+      response.putString("code", result.getCode());
+      response.putString("msg", result.getMessage());
+      response.putString("message", result.getMessage());
+      if (callback != null) {
+        callback.invoke(response);
+      }
+    });
   }
 
   public void setThreadMode(int threadMode) {
@@ -148,15 +175,10 @@ public class LynxModuleAdapter {
     startContext.startActivity(intent);
   }
 
-  private void startFromUrl(@Nullable Activity activity, String url) {
-    Context startContext = getStartContext(activity);
-    int flags = startContext instanceof Activity ? 0 : Intent.FLAG_ACTIVITY_NEW_TASK;
-    TemplateDispatcher.dispatchUrl(startContext, url, flags);
-  }
-
   private void startFromUrlSingleTop(String url) {
-    TemplateDispatcher.dispatchUrl(
-        mContext, url, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+    mHandler.post(()
+                      -> RouteCoordinator.open(
+                          mContext, url, RequestedRuntime.AUTOMATIC, RouteSource.DEVTOOL));
   }
 
   private Context getStartContext(@Nullable Activity activity) {

@@ -38,6 +38,7 @@
 # enabled builds.
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 -keep class com.lynx.explorer.sparkling.SparklingNavigationRegistrar { *; }
+-keep class com.lynx.explorer.sparkling.ExplorerRouterOpenMethod** { *; }
 -keep class com.tiktok.sparkling.method.router.** { *; }
 -keep class com.tiktok.sparkling.method.registry.core.annotation.** { *; }
 

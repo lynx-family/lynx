@@ -9,6 +9,8 @@ apply plugin: 'kotlin-kapt'
 apply from: rootProject.file('sparkling-lynx-ownership.gradle')
 apply from: rootProject.file('sparkling-runtime-allowlist.gradle')
 
+def sparklingAndroidVersion = project.findProperty('sparklingAndroidVersion') ?: '2.1.0-rc.12'
+
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
@@ -81,11 +83,13 @@ android {
         withSparkling {
             dimension "sparklingMode"
             buildConfigField "boolean", "ENABLE_SPARKLING", "true"
+            buildConfigField "String", "SPARKLING_VERSION", "\"${sparklingAndroidVersion}\""
             matchingFallbacks = ["withSparkling"]
         }
         withoutSparkling {
             dimension "sparklingMode"
             buildConfigField "boolean", "ENABLE_SPARKLING", "false"
+            buildConfigField "String", "SPARKLING_VERSION", "\"\""
             matchingFallbacks = ["withoutSparkling"]
             getIsDefault().set(true)
         }
@@ -112,6 +116,11 @@ android {
         }
         withSparkling {
             java.srcDir "../../../node_modules/.pnpm/sparkling-navigation@2.1.0-rc.12/node_modules/sparkling-navigation/android/src/main/java"
+            assets.srcDir "${buildDir}/generated/sparklingAssets/withSparkling"
+        }
+        withoutSparkling {
+            assets.exclude 'extensions/sparkling-go/**'
+            assets.exclude 'Resource/extensions/sparkling-go/**'
         }
     }
 
@@ -128,8 +137,6 @@ tasks.whenTaskAdded { task ->
 }
 
 dependencies {
-    def sparklingAndroidVersion = project.findProperty('sparklingAndroidVersion') ?: '2.1.0-rc.12'
-
     // Sparkling is explicit opt-in. The broad Lynx group exclusion is verified by
     // verifySparklingLynxGraph so released Lynx implementation artifacts cannot
     // silently enter the enabled runtime graph.
@@ -179,7 +186,85 @@ dependencies {
     compileOnly project(':LynxProcessor')
 
     androidTestImplementation project(':TestingBase')
+    testImplementation 'junit:junit:4.13.2'
+    // Robolectric 4.8+ pulls Java 15 bytecode that this checkout's Jetifier cannot read.
+    testImplementation('org.robolectric:robolectric:4.7.3') {
+        // Not used by these routing tests, and its Java 15 classes break this
+        // checkout's legacy Jetifier before the test JVM starts.
+        exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
+    }
+    testImplementation 'org.bouncycastle:bcprov-jdk15on:1.65'
 }
+
+def explorerRoot = file('../..')
+def lynxRoot = explorerRoot.parentFile
+def sparklingManifest = new File(explorerRoot, 'sparkling-source.json')
+def sparklingSourceRoot = new File(explorerRoot, 'generated/sparkling-source')
+def sparklingAssetsRoot = file("${buildDir}/generated/sparklingAssets/withSparkling")
+def sparklingBundleAssetsRoot = new File(sparklingAssetsRoot, 'extensions/sparkling-go')
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+def sparklingBuildtoolsRoot = new File(lynxRoot, 'buildtools/sparkling')
+def sparklingNode = new File(sparklingBuildtoolsRoot, isWindows ? 'node/node.exe' : 'node/bin/node')
+def sparklingPnpm = new File(
+        sparklingBuildtoolsRoot, isWindows ? 'corepack/pnpm/pnpm.cmd' : 'corepack/pnpm/pnpm')
+def sparklingToolchainPath = [
+        sparklingNode.parent,
+        sparklingPnpm.parent,
+        System.getenv('PATH'),
+].findAll { it }.join(File.pathSeparator)
+def sparklingPnpmCommand = isWindows
+        ? ['cmd', '/c', sparklingPnpm.absolutePath]
+        : [sparklingPnpm.absolutePath]
+
+tasks.register('buildSparklingGoAssets') {
+    group = 'build'
+    description = 'Builds and stages the official pinned Sparkling Go bundles.'
+    inputs.file sparklingManifest
+    outputs.dir sparklingAssetsRoot
+    doLast {
+        def missingTools = [sparklingNode, sparklingPnpm].findAll { !it.isFile() }
+        if (!missingTools.isEmpty()) {
+            throw new GradleException(
+                    "Sparkling build tools are missing: ${missingTools.join(', ')}. " +
+                            "Run `tools/hab sync . --target sparkling` from the Lynx root.")
+        }
+        exec {
+            workingDir explorerRoot
+            commandLine 'python3', 'scripts/sync_sparkling_source.py',
+                    '--manifest', sparklingManifest.absolutePath,
+                    '--source-root', sparklingSourceRoot.absolutePath
+        }
+        exec {
+            workingDir sparklingSourceRoot
+            environment 'PATH', sparklingToolchainPath
+            commandLine sparklingPnpmCommand + ['install', '--frozen-lockfile']
+        }
+        exec {
+            workingDir sparklingSourceRoot
+            environment 'PATH', sparklingToolchainPath
+            commandLine sparklingPnpmCommand + ['--filter', 'sparkling-playground', 'build']
+        }
+        def sparklingDistRoot = new File(sparklingSourceRoot, 'packages/playground/dist')
+        delete sparklingAssetsRoot
+        copy {
+            from sparklingDistRoot
+            into sparklingBundleAssetsRoot
+            include '*.lynx.bundle'
+        }
+        copy {
+            from new File(sparklingDistRoot, 'static')
+            into new File(sparklingAssetsRoot, 'static')
+        }
+        if (!new File(sparklingBundleAssetsRoot, 'main.lynx.bundle').isFile()) {
+            throw new GradleException('Pinned Sparkling Go build did not produce main.lynx.bundle')
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith('mergeWithSparkling') && it.name.endsWith('Assets') }.all {
+    dependsOn 'buildSparklingGoAssets'
+}
+
 
 tasks.register('assembleNoasanRelease') {
     group = 'build'
@@ -228,11 +313,8 @@ tasks.register('verifySparklingLynxGraph') {
 
         def failures = []
         enabledClasspaths.each { configuration ->
-            def moduleDependencies =
-                    configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
-            def projectIds = configuration.incoming.resolutionResult.allComponents.collect {
-                it.id.displayName
-            }
+            def components = configuration.incoming.resolutionResult.allComponents
+            def projectIds = components.collect { it.id.displayName }
 
             sourceOwnedArtifacts.each { artifact, projectPath ->
                 if (!projectIds.any { it == "project ${projectPath}" }) {
@@ -240,27 +322,29 @@ tasks.register('verifySparklingLynxGraph') {
                 }
             }
 
-            moduleDependencies.each { dependency ->
-                if (dependency.moduleGroup == 'org.lynxsdk.lynx') {
-                    def coordinate = "${dependency.moduleGroup}:${dependency.moduleName}"
+            components.collect { it.id }.findAll {
+                it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+            }.each { dependency ->
+                if (dependency.group == 'org.lynxsdk.lynx') {
+                    def coordinate = "${dependency.group}:${dependency.module}"
                     def expectedVersion = allowlist[coordinate]
                     if (sourceOwnedArtifacts.containsKey(coordinate)) {
-                        failures << "${configuration.name}: released source-owned artifact ${coordinate}:${dependency.moduleVersion} is present; expected ${sourceOwnedArtifacts[coordinate]}"
+                        failures << "${configuration.name}: released source-owned artifact ${coordinate}:${dependency.version} is present; expected ${sourceOwnedArtifacts[coordinate]}"
                     } else if (expectedVersion == null) {
-                        failures << "${configuration.name}: unclassified Lynx artifact ${coordinate}:${dependency.moduleVersion}"
-                    } else if (expectedVersion != dependency.moduleVersion) {
-                        failures << "${configuration.name}: ${coordinate} resolved to ${dependency.moduleVersion}, expected ${expectedVersion}"
+                        failures << "${configuration.name}: unclassified Lynx artifact ${coordinate}:${dependency.version}"
+                    } else if (expectedVersion != dependency.version) {
+                        failures << "${configuration.name}: ${coordinate} resolved to ${dependency.version}, expected ${expectedVersion}"
                     }
                 }
             }
         }
 
         disabledClasspaths.each { configuration ->
-            def moduleDependencies =
-                    configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
-            moduleDependencies.each { dependency ->
-                if (dependency.moduleGroup == 'com.tiktok.sparkling') {
-                    failures << "${configuration.name}: disabled classpath contains ${dependency.moduleGroup}:${dependency.moduleName}:${dependency.moduleVersion}"
+            configuration.incoming.resolutionResult.allComponents.collect { it.id }.findAll {
+                it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+            }.each { dependency ->
+                if (dependency.group == 'com.tiktok.sparkling') {
+                    failures << "${configuration.name}: disabled classpath contains ${dependency.group}:${dependency.module}:${dependency.version}"
                 }
             }
         }
@@ -437,8 +521,15 @@ tasks.register('verifySparklingAndroidPackageArtifacts') {
                     dexContains(apk, 'Lcom/tiktok/sparkling/SparklingActivity;')
             def hasSparklingPipe = dexContains(apk, 'spkPipe')
             def hasSparklingRouterOpen =
-                    dexContains(apk, 'Lcom/tiktok/sparkling/method/router/open/RouterOpenMethod;') &&
+                    dexContains(apk, 'Lcom/lynx/explorer/sparkling/ExplorerRouterOpenMethod;') &&
                             dexContains(apk, 'router.open')
+            def hasSparklingGoBundle =
+                    entryNames.contains('assets/extensions/sparkling-go/main.lynx.bundle')
+            def hasSparklingGoImage = entryNames.any {
+                it.startsWith(
+                        'assets/static/image/sparkling_icon.') &&
+                        it.endsWith('.png')
+            }
 
             if (variant.enabled) {
                 if (!hasSparklingKotlinModule) {
@@ -453,6 +544,12 @@ tasks.register('verifySparklingAndroidPackageArtifacts') {
                 if (!hasSparklingRouterOpen) {
                     failures << "${variant.name}: enabled APK is missing sparkling-navigation router.open bytecode"
                 }
+                if (!hasSparklingGoBundle) {
+                    failures << "${variant.name}: enabled APK is missing the official Sparkling Go bundle"
+                }
+                if (!hasSparklingGoImage) {
+                    failures << "${variant.name}: enabled APK is missing the official Sparkling Go image"
+                }
             } else {
                 if (hasSparklingKotlinModule) {
                     failures << "${variant.name}: disabled APK unexpectedly contains Sparkling Kotlin module metadata"
@@ -462,6 +559,10 @@ tasks.register('verifySparklingAndroidPackageArtifacts') {
                 }
                 if (dexContains(apk, 'Lcom/tiktok/sparkling/method/router/')) {
                     failures << "${variant.name}: disabled APK unexpectedly contains Sparkling router bytecode descriptors"
+                }
+                if (entryNames.any { it.startsWith('assets/extensions/sparkling-go/') } ||
+                        hasSparklingGoImage) {
+                    failures << "${variant.name}: disabled APK unexpectedly contains Sparkling Go assets"
                 }
             }
         }

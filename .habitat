@@ -8,6 +8,7 @@ solutions = [
             'clay': 'dependencies/DEPS.clay',
             'dev': 'dependencies/DEPS.dev',
             'extension': 'dependencies/DEPS.extension',
+            'sparkling': 'dependencies/DEPS.sparkling',
             'tasm': 'dependencies/DEPS.tasm',
             'tools_shared': 'dependencies/DEPS.tools_shared',
             'lynxtron': 'dependencies/DEPS.lynxtron',

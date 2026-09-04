@@ -25,7 +25,7 @@ describe('Explorer extensions', () => {
       {
         id: SPARKLING_GO_EXTENSION_ID,
         title: 'Sparkling Go',
-        description: 'Container playground and examples',
+        description: 'Sparkling playground and examples',
         accentColor: '#e10543',
         rootScheme: SPARKLING_GO_ROOT_SCHEME,
       },
