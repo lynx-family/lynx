@@ -119,7 +119,7 @@ struct ValidatedTapGesture {
 bool IsValidGesture(
     const Json::Value& params,
     const std::shared_ptr<DevToolPlatformFacade>& platform_facade,
-    ValidatedTapGesture& gesture, CDPErrorCode& error_code,
+    ValidatedTapGesture& gesture, LegacyCDPErrorCode& error_code,
     std::string& error_message) {
   if (!params.isObject() || !ParseFiniteFloat(params["x"], gesture.x) ||
       !ParseFiniteFloat(params["y"], gesture.y)) {
@@ -266,7 +266,7 @@ void InputRequestHandler::SynthesizeTapGesture(
   const int64_t id = message["id"].asInt64();
   const Json::Value& params = message["params"];
   ValidatedTapGesture gesture;
-  CDPErrorCode error_code = kServerError;
+  LegacyCDPErrorCode error_code = kServerError;
   std::string error_message;
   if (!IsValidGesture(params, devtool_platform_facade_, gesture, error_code,
                       error_message)) {
