@@ -151,6 +151,11 @@ class NativePaintingCtxPlatformRef
   // Get the scroll offset of the platform renderer host.
   virtual void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) {}
 
+  // Return the sign of the inline text tap target at the given point.
+  virtual int32_t HitTestTextEventTarget(int32_t text_id, float x, float y) {
+    return -1;
+  }
+
   // Whether the platform renderer host is scrollable.
   virtual bool IsPlatformRendererScrollable(int32_t sign) { return false; }
 

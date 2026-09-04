@@ -60,6 +60,13 @@ class PlatformEventTargetHelper {
       const fml::RefPtr<PlatformEventTarget>& target,
       const fml::RefPtr<PlatformEventTarget>& another);
 
+  // Refines a valid text target during pointer-event dispatch. Keep this out
+  // of the generic HitTest path, which is also used by event-through,
+  // ignore-focus, and overflow checks.
+  fml::RefPtr<PlatformEventTarget> RefineTextEventTarget(
+      const fml::RefPtr<PlatformEventTarget>& root,
+      const fml::RefPtr<PlatformEventTarget>& target, float point[2]);
+
   // point: [x, y]
   void ConvertPointFromAncestorToDescendant(
       float res[2], const fml::RefPtr<PlatformEventTarget>& ancestor,
