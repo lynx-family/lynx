@@ -63,8 +63,6 @@ public class PageConfig {
   private static final String KEY_ENABLE_EXPOSURE_WHEN_LAYOUT = "enableExposureWhenLayout";
   private static final String KEY_ENABLE_EXPOSURE_WHEN_RELOAD = "enableExposureWhenReload";
   private static final String KEY_INCLUDE_FONT_PADDING = "includeFontPadding";
-  private static final String KEY_ENABLE_NEW_INTERSECTION_OBSERVER =
-      "enableNewIntersectionObserver";
   private static final String KEY_OBSERVER_FRAME_RATE = "observerFrameRate";
   private static final String KEY_ENABLE_EXPOSURE_UI_MARGIN = "enableExposureUIMargin";
   private static final String KEY_LONG_PRESS_DURATION = "longPressDuration";
@@ -134,7 +132,6 @@ public class PageConfig {
   private boolean mEnableFlattenTranslateZ = false;
   private boolean mEnableNewGesture = false;
   private boolean mEnablePlatformGesture = false;
-  private boolean mEnableNewIntersectionObserver = false;
   private boolean mEnableFiber = false;
   private boolean mEnableMultiTouch = false;
   private int mObserverFrameRate = 20;
@@ -326,10 +323,6 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_EXPOSURE_WHEN_RELOAD)) {
         mEnableExposureWhenReload = map.getBoolean(KEY_ENABLE_EXPOSURE_WHEN_RELOAD, false);
-      }
-
-      if (map.hasKey(KEY_ENABLE_NEW_INTERSECTION_OBSERVER)) {
-        mEnableNewIntersectionObserver = map.getBoolean(KEY_ENABLE_NEW_INTERSECTION_OBSERVER);
       }
 
       if (map.hasKey(KEY_OBSERVER_FRAME_RATE)) {
@@ -594,10 +587,6 @@ public class PageConfig {
 
   public boolean getEnableExposureWhenReload() {
     return mEnableExposureWhenReload;
-  }
-
-  public boolean getEnableNewIntersectionObserver() {
-    return mEnableNewIntersectionObserver;
   }
 
   public int getObserverFrameRate() {

@@ -8,7 +8,6 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateData+Converter.h>
-#import "LynxUIIntersectionObserver.h"
 
 #include <limits>
 
@@ -23,7 +22,6 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 
 @implementation LynxEventEmitter {
   LynxEngineProxy* _engineProxy;
-  NSMutableArray* eventObservers_;
   onLynxEvent eventReporter_;
   dispatch_block_t intersectionObserver_;
   int64_t eventID_;
@@ -32,7 +30,6 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 - (instancetype)initWithLynxEngineProxy:(LynxEngineProxy*)engineProxy {
   self = [super init];
   if (self) {
-    eventObservers_ = [[NSMutableArray alloc] init];
     _engineProxy = engineProxy;
     eventID_ = 0;
   }
@@ -137,7 +134,6 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
   }
   [event addDetailKey:@"timestamp" value:@((int64_t)(event.timestamp * 1000))];
   [_engineProxy sendCustomEvent:event];
-  [self notifyEventObservers:LynxEventTypeCustomEvent event:event];
 }
 
 // dispatch gesture event to template render
@@ -167,31 +163,6 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 }
 
 - (void)dispatchLayoutEvent {
-  [self notifyEventObservers:LynxEventTypeLayoutEvent event:nil];
-}
-
-- (void)addObserver:(id<LynxEventObserver>)observer {
-  if (![eventObservers_ containsObject:observer]) {
-    [eventObservers_ addObject:observer];
-  }
-}
-
-- (void)removeObserver:(id<LynxEventObserver>)observer {
-  if ([eventObservers_ containsObject:observer]) {
-    [eventObservers_ removeObject:observer];
-  }
-}
-
-- (void)notifyEventObservers:(LynxInnerEventType)type event:(LynxEvent*)event {
-  [eventObservers_
-      enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
-        // if use new IntersectionObserver, don't notify observer here.
-        if ([obj isKindOfClass:[LynxUIIntersectionObserverManager class]] &&
-            ((LynxUIIntersectionObserverManager*)obj).enableNewIntersectionObserver) {
-          return;
-        }
-        [(id<LynxEventObserver>(obj)) onLynxEvent:type event:event];
-      }];
 }
 
 - (void)notifyIntersectionObserver {

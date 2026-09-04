@@ -30,10 +30,6 @@ public abstract class EventEmitter {
     void onTap();
   }
 
-  public interface LynxEventObserver {
-    void onLynxEvent(LynxEventType type, LynxEvent event);
-  }
-
   public interface LynxEventReporter {
     boolean onLynxEvent(LynxEvent event);
     void onInternalEvent(@NonNull LynxInternalEvent event);
@@ -41,12 +37,6 @@ public abstract class EventEmitter {
 
   public interface LynxEventFallback {
     void checkFallbackForLynxEvent(boolean enableAsync);
-  }
-
-  public enum LynxEventType {
-    kLynxEventTypeTouchEvent,
-    kLynxEventTypeCustomEvent,
-    kLynxEventTypeLayoutEvent
   }
 
   public EventEmitter() {}
@@ -74,10 +64,6 @@ public abstract class EventEmitter {
   public abstract void sendLayoutEvent();
 
   public abstract void setInPreLoad(boolean preload);
-
-  public abstract void addObserver(LynxEventObserver observer);
-
-  public abstract void removeObserver(LynxEventObserver observer);
 
   public abstract void registerEventReporter(LynxEventReporter reporter);
 

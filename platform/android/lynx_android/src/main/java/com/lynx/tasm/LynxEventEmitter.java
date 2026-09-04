@@ -4,11 +4,7 @@
 
 package com.lynx.tasm;
 
-import android.os.Handler;
-import android.os.Looper;
 import com.lynx.tasm.base.LLog;
-import com.lynx.tasm.behavior.LynxContext;
-import com.lynx.tasm.behavior.LynxIntersectionObserverManager;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.common.LepusBuffer;
 import com.lynx.tasm.core.LynxEngineProxy;
@@ -18,7 +14,6 @@ import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
 
 public class LynxEventEmitter extends EventEmitter {
@@ -102,10 +97,6 @@ public class LynxEventEmitter extends EventEmitter {
   LynxEngineProxyWrapper mEngineProxy;
 
   private ITestTapTrack mTrack;
-
-  final ArrayList<LynxEventObserver> mEventObservers = new ArrayList<>();
-
-  final Handler mHandler = new Handler(Looper.getMainLooper());
 
   public LynxEventEmitter(LynxEngineProxy engineProxy) {
     super();
@@ -239,7 +230,6 @@ public class LynxEventEmitter extends EventEmitter {
               "sendCustomEvent event: " + event.getName()
                   + " failed since mEngineProxy is null or in preload.");
         }
-        notifyEventObservers(LynxEventType.kLynxEventTypeCustomEvent, event);
       }
     });
   }
@@ -281,54 +271,11 @@ public class LynxEventEmitter extends EventEmitter {
   }
 
   @Override
-  public void sendLayoutEvent() {
-    this.notifyEventObservers(LynxEventType.kLynxEventTypeLayoutEvent, null);
-  }
+  public void sendLayoutEvent() {}
 
   @Override
   public void setInPreLoad(boolean preload) {
     mInPreLoad = preload;
-  }
-
-  @Override
-  public void addObserver(LynxEventObserver observer) {
-    if (mEventObservers.contains(observer))
-      return;
-    mEventObservers.add(observer);
-  }
-
-  @Override
-  public void removeObserver(LynxEventObserver observer) {
-    if (!mEventObservers.contains(observer))
-      return;
-    mEventObservers.remove(observer);
-  }
-
-  private void notifyEventObservers(final LynxEventType type, final LynxEvent event) {
-    Runnable runnable = new Runnable() {
-      @Override
-      public void run() {
-        for (LynxEventObserver observer : mEventObservers) {
-          // if use new IntersectionObserver, don't notify observer here.
-          if (observer instanceof LynxIntersectionObserverManager) {
-            LynxContext context = ((LynxIntersectionObserverManager) observer).getContext();
-            if (context != null && context.getEnableNewIntersectionObserver()) {
-              continue;
-            }
-          }
-
-          observer.onLynxEvent(type, event);
-        }
-      }
-    };
-
-    if (Looper.getMainLooper() == Looper.myLooper()) {
-      // if on main thread, exec the runnable
-      runnable.run();
-    } else {
-      // if not on main thread, post to main thread
-      mHandler.post(runnable);
-    }
   }
 
   @Override
