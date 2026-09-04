@@ -126,8 +126,8 @@ bool NativePlatformView::PresentSurface(
   return true;
 }
 
-ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(int width,
-                                                               int height) {
+ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(
+    int width, int height, const ClayTransformation* transform) {
   if (!sink_ref_) {
     return nullptr;
   }
@@ -141,6 +141,12 @@ ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(int width,
   auto [backing, buffer_age] = sink->AcquireBack({width, height});
   if (!backing) {
     return nullptr;
+  }
+  if (transform) {
+    backing->SetTransformation(
+        skity::Matrix(transform->scaleX, transform->skewX, transform->transX,
+                      transform->skewY, transform->scaleY, transform->transY,
+                      transform->pers0, transform->pers1, transform->pers2));
   }
   auto fence_sync = backing->GetFenceSync();
   if (fence_sync) {

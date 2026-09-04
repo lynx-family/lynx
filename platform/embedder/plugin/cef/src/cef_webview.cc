@@ -229,6 +229,14 @@ void CEFWebview::OnPropertiesChanged(const lynx::pub::LynxValue& attrs,
   if (attrs.HasProperty(kPropertySrc)) {
     std::string url = attrs.GetProperty(kPropertySrc).StdString();
     bool navigate = url_ != url;
+    if (enable_devtool_) {
+      const std::string url_for_logging = RedactURLForLogging(url);
+      LYNX_CAPI_LOG(
+          LYNX_LOG_INFO, LOG_TAG,
+          "[navigation] src update: value=\"%s\", length=%zu, changed=%d, "
+          "browser_created=%d",
+          url_for_logging.c_str(), url.size(), navigate, browser_ ? 1 : 0);
+    }
     url_ = url;
     if (!browser_) {
       SetupClient();

@@ -35,8 +35,8 @@ bool NativePlatformView::PresentSurface(
     ClaySharedImageNativeHandle gfx_handle) {
   return false;
 }
-ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(int width,
-                                                               int height) {
+ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(
+    int width, int height, const ClayTransformation* transform) {
   return nullptr;
 }
 bool NativePlatformView::SwapBack() { return false; }

@@ -6,6 +6,8 @@
 #define PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_WIN_CEF_WEBVIEW_CLIENT_WIN_H_
 
 #include <Windows.h>
+#include <d3d11.h>
+#include <wrl/client.h>
 
 #include <memory>
 
@@ -24,6 +26,9 @@ class CEFWebviewClientWin : public CEFWebviewClient {
 
   // CefRenderHandler
   void GetViewRect(CefRefPtr<CefBrowser> browser, CefRect& rect) override;
+
+  bool GetScreenInfo(CefRefPtr<CefBrowser> browser,
+                     CefScreenInfo& screen_info) override;
 
   bool GetScreenPoint(CefRefPtr<CefBrowser> browser, int viewX, int viewY,
                       int& screenX, int& screenY) override;
@@ -54,6 +59,8 @@ class CEFWebviewClientWin : public CEFWebviewClient {
 
  private:
   HWND parent_;
+  Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device_;
+  Microsoft::WRL::ComPtr<ID3D11DeviceContext> d3d11_context_;
   std::unique_ptr<OsrImeHandlerWin> ime_handler_;
 };
 

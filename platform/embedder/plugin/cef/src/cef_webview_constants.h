@@ -5,6 +5,8 @@
 #ifndef PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_CEF_WEBVIEW_CONSTANTS_H_
 #define PLATFORM_EMBEDDER_PLUGIN_CEF_SRC_CEF_WEBVIEW_CONSTANTS_H_
 
+#include <string>
+
 // Cookie property names
 static const char kCookieDomain[] = "domain";
 static const char kCookieExpirationDate[] = "expirationDate";
@@ -44,6 +46,15 @@ static const char kJsExecutionContext[] = "<host>";
 
 // Log
 static constexpr const char* LOG_TAG = "cef-x-webview";
+
+static inline std::string RedactURLForLogging(std::string url) {
+  const size_t suffix = url.find_first_of("?#");
+  if (suffix != std::string::npos) {
+    url.resize(suffix);
+  }
+  return url;
+}
+
 // Trace
 static constexpr const char* CEF_TRACE_CATEGORY = "cef";
 

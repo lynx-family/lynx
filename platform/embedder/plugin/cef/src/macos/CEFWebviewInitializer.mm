@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Cocoa/Cocoa.h>
+#include <dlfcn.h>
 #include "include/capi/cef_app_capi.h"
 #include "include/cef_app.h"
 #include "include/cef_application_mac.h"
@@ -14,6 +15,63 @@
 #include "platform/embedder/plugin/cef/include/cef_extension_module_creator.h"
 
 constexpr int64_t max_delay_ms = 10;
+
+namespace {
+
+struct CEFBundlePaths {
+  NSString *framework_path;
+  NSString *framework_executable_path;
+  NSString *helper_bundle_path;
+  NSString *helper_executable_path;
+};
+
+NSString *GetModuleDirectory() {
+  Dl_info info = {};
+  if (dladdr(reinterpret_cast<const void *>(&cef_extension_module_initialize), &info) == 0 ||
+      info.dli_fname == nullptr) {
+    return nil;
+  }
+  NSString *module_path = [NSString stringWithUTF8String:info.dli_fname];
+  return [module_path stringByDeletingLastPathComponent];
+}
+
+bool ResolveCEFBundlePaths(CEFBundlePaths *paths) {
+  NSString *module_directory = GetModuleDirectory();
+  NSString *main_bundle_path = NSBundle.mainBundle.bundlePath;
+  NSMutableArray<NSString *> *framework_roots = [NSMutableArray arrayWithCapacity:2];
+  if (module_directory != nil) {
+    [framework_roots addObject:[module_directory stringByAppendingPathComponent:@"frameworks"]];
+  }
+  if (main_bundle_path != nil) {
+    [framework_roots
+        addObject:[main_bundle_path stringByAppendingPathComponent:@"Contents/Frameworks"]];
+  }
+
+  NSFileManager *file_manager = NSFileManager.defaultManager;
+  NSString *helper_name = [NSString stringWithUTF8String:CEF_WEBVIEW_HELPER_OUTPUT_NAME];
+  for (NSString *framework_root in framework_roots) {
+    NSString *framework_path =
+        [framework_root stringByAppendingPathComponent:@"Chromium Embedded Framework.framework"];
+    NSString *framework_executable_path =
+        [framework_path stringByAppendingPathComponent:@"Chromium Embedded Framework"];
+    NSString *helper_bundle_path = [framework_root
+        stringByAppendingPathComponent:[helper_name stringByAppendingPathExtension:@"app"]];
+    NSString *helper_executable_path =
+        [[helper_bundle_path stringByAppendingPathComponent:@"Contents/MacOS"]
+            stringByAppendingPathComponent:helper_name];
+    if ([file_manager isExecutableFileAtPath:framework_executable_path] &&
+        [file_manager isExecutableFileAtPath:helper_executable_path]) {
+      paths->framework_path = framework_path;
+      paths->framework_executable_path = framework_executable_path;
+      paths->helper_bundle_path = helper_bundle_path;
+      paths->helper_executable_path = helper_executable_path;
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
 
 class CEFWebviewApp : public CefApp,
                       public CefRenderProcessHandler,
@@ -94,8 +152,14 @@ class CEFWebviewApp : public CefApp,
 };
 
 LYNX_EXTERN_C bool cef_extension_module_initialize() {
-  CefScopedLibraryLoader library_loader;
-  if (!library_loader.LoadInMain()) {
+  CEFBundlePaths paths = {};
+  if (!ResolveCEFBundlePaths(&paths)) {
+    fprintf(stderr, "Failed to locate the CEF framework and helper app.\n");
+    return false;
+  }
+  if (!cef_load_library(paths.framework_executable_path.fileSystemRepresentation)) {
+    fprintf(stderr, "Failed to load the CEF framework from %s.\n",
+            paths.framework_executable_path.fileSystemRepresentation);
     return false;
   }
 
@@ -110,10 +174,15 @@ LYNX_EXTERN_C bool cef_extension_module_initialize() {
   settings.external_message_pump = true;
   settings.no_sandbox = true;
   settings.windowless_rendering_enabled = true;
+  CefString(&settings.framework_dir_path) = paths.framework_path.fileSystemRepresentation;
+  CefString(&settings.main_bundle_path) = paths.helper_bundle_path.fileSystemRepresentation;
+  CefString(&settings.browser_subprocess_path) =
+      paths.helper_executable_path.fileSystemRepresentation;
 
   CefRefPtr<CEFWebviewApp> app(new CEFWebviewApp);
 
   if (!CefInitialize(main_args, settings, app.get(), nullptr)) {
+    cef_unload_library();
     return false;
   }
 

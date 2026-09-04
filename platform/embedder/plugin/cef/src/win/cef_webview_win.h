@@ -34,6 +34,8 @@ class CEFWebviewWin : public CEFWebview {
 
   void MoveOwnedWinOnly();
   void AdjustOwnedWinAndChild(HWND child);
+  void OnHostWindowSizeChanged(HWND host, WPARAM size_type);
+  void RedrawAfterHostRestore();
 
  private:
   friend CEFWebviewClientWin;
@@ -43,6 +45,10 @@ class CEFWebviewWin : public CEFWebview {
   HWND win7_owned_win_{nullptr};
   RECT bounds_{0, 0, 0, 0};
   HWND hwnd_{nullptr};
+  bool attached_to_view_{false};
+  bool host_minimized_{false};
+  bool visible_before_host_minimize_{false};
+  bool restore_redraw_pending_{false};
 
   int last_click_x_ = 0;
   int last_click_y_ = 0;

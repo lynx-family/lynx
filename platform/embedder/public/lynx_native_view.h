@@ -148,13 +148,35 @@ class LynxNativeView {
    * @brief Acquire the latest back buffer
    * @param width The width of surface
    * @param height The height of surface
-   * @return Platform native graphics handle. On Darwin this is IOSurfaceRef.
-   *         On Windows this is a D3D shared HANDLE for the back buffer,
-   *         not a texture/device pointer. Import it with the graphics
-   * API/device that matches the active Windows backend.
+   * @return Borrowed platform native graphics handle, or nullptr when no buffer
+   *         is available. Do not release the handle. On Darwin this is
+   *         IOSurfaceRef. On Windows this is a D3D shared HANDLE for the back
+   *         buffer, not a texture/device pointer. Import it with the graphics
+   *         API/device that matches the active Windows backend. After writing
+   *         the buffer, call SwapBack() to make it available for presentation.
    */
   inline lynx_surface_handle_t* AcquireSurface(int width, int height) {
     return lynx_native_view_acquire_surface(native_view_, width, height);
+  }
+
+  /**
+   * @apidoc
+   * @brief Acquire the latest back buffer and assign its texture-coordinate
+   *        transformation
+   * @param width The width of surface
+   * @param height The height of surface
+   * @param transform May be nullptr to leave the current transformation
+   *                  unchanged. Otherwise, nine floats in row-major order:
+   *                  scaleX, skewX, transX, skewY, scaleY, transY, pers0,
+   *                  pers1, pers2.
+   * @return A borrowed platform native graphics handle under the same ownership
+   *         and presentation contract as AcquireSurface(width, height), or
+   *         nullptr when no buffer is available.
+   */
+  inline lynx_surface_handle_t* AcquireSurface(int width, int height,
+                                               const float* transform) {
+    return lynx_native_view_acquire_surface_with_transform(native_view_, width,
+                                                           height, transform);
   }
 
   /**

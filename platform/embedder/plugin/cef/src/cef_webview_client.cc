@@ -97,6 +97,14 @@ bool CEFWebviewClient::OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame,
                                       CefRefPtr<CefRequest> request,
                                       bool user_gesture, bool is_redirect) {
+  if (webview_ && webview_->EnableDevtool() && frame->IsMain()) {
+    const std::string request_url =
+        RedactURLForLogging(request->GetURL().ToString());
+    LYNX_CAPI_LOG(
+        LYNX_LOG_INFO, LOG_TAG,
+        "[navigation] before browse: url=\"%s\", user_gesture=%d, redirect=%d",
+        request_url.c_str(), user_gesture, is_redirect);
+  }
   message_router_->OnBeforeBrowse(browser, frame);
   return false;
 }
@@ -134,6 +142,9 @@ void CEFWebviewClient::OnLoadEnd(CefRefPtr<CefBrowser> browser,
   }
   if (httpStatusCode == 200 && frame->IsMain() && !loaded_) {
     loaded_ = true;
+    if (webview_->UseOSR()) {
+      browser->GetHost()->SendExternalBeginFrame();
+    }
     webview_->TriggerEvent(
         "load", lynx::pub::LynxValue(lynx::pub::LynxValue::kCreateAsNullTag));
   } else {
@@ -152,10 +163,11 @@ void CEFWebviewClient::OnLoadError(CefRefPtr<CefBrowser> browser,
                   "OnLoadError but webview instance is null");
     return;
   }
-  LYNX_CAPI_LOG(LYNX_LOG_INFO, LOG_TAG,
-                "OnLoadError: error code: %d, error text:%s, failed url:%s",
+  const std::string failed_url = RedactURLForLogging(failedUrl.ToString());
+  LYNX_CAPI_LOG(LYNX_LOG_ERROR, LOG_TAG,
+                "[navigation] load error: code=%d, text=\"%s\", url=\"%s\"",
                 static_cast<int>(errorCode), errorText.ToString().c_str(),
-                failedUrl.ToString().c_str());
+                failed_url.c_str());
   lynx::pub::LynxValue detail(lynx::pub::LynxValue::kCreateAsMapTag);
   detail.SetProperty("errorCode", lynx::pub::LynxValue(int(errorCode)));
   detail.SetProperty("errorMsg", lynx::pub::LynxValue(errorText.ToString()));

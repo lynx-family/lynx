@@ -15,6 +15,8 @@
 #include "platform/embedder/public/capi/lynx_log_capi.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 
+// cspell:ignore CALLWNDPROCRET CWPRETSTRUCT ALLCHILDREN UPDATENOW
+
 #ifndef GWL_HWNDPARENT
 #define GWL_HWNDPARENT -8
 #endif
@@ -25,10 +27,31 @@ static ATOM gAtomWindowType = 0;
 static HHOOK gWinHook = nullptr;
 static std::set<lynx::plugin::embedder::CEFWebviewWin*> gWatchList;
 static bool isWindows7 = !IsWindows8OrGreater();
+static UINT_PTR gRestoreRedrawTimer = 0;
 
 namespace lynx {
 namespace plugin {
 namespace embedder {
+
+namespace {
+constexpr UINT kRestoreRedrawDelayMs = 250;
+
+LRESULT CALLBACK CallWndRetProc(int code, WPARAM wparam, LPARAM lparam);
+void CALLBACK RestoreRedrawTimerProc(HWND, UINT, UINT_PTR timer_id, DWORD);
+
+void ScheduleRestoreRedraw() {
+  if (gRestoreRedrawTimer) {
+    ::KillTimer(nullptr, gRestoreRedrawTimer);
+  }
+  gRestoreRedrawTimer =
+      ::SetTimer(nullptr, 0, kRestoreRedrawDelayMs, RestoreRedrawTimerProc);
+  if (!gRestoreRedrawTimer) {
+    for (auto* webview : gWatchList) {
+      webview->RedrawAfterHostRestore();
+    }
+  }
+}
+}  // namespace
 
 CEFWebviewWin::CEFWebviewWin(lynx_view_t* lynx_view) : CEFWebview(lynx_view) {
   if (!gAtomWindowType) {
@@ -46,9 +69,15 @@ CEFWebviewWin::CEFWebviewWin(lynx_view_t* lynx_view) : CEFWebview(lynx_view) {
                            nullptr};
     gAtomWindowType = ::RegisterClassEx(&class_ex);
   }
+  if (!gWinHook) {
+    gWinHook = ::SetWindowsHookEx(WH_CALLWNDPROCRET, CallWndRetProc, nullptr,
+                                  ::GetCurrentThreadId());
+  }
+  gWatchList.insert(this);
 }
 
 void CEFWebviewWin::OnAttach() {
+  attached_to_view_ = true;
   if (win7_owned_win_) {
     ::ShowWindow(win7_owned_win_, SW_SHOW);
   }
@@ -69,6 +98,9 @@ void CEFWebviewWin::OnAttach() {
 }
 
 void CEFWebviewWin::OnDetach() {
+  attached_to_view_ = false;
+  visible_before_host_minimize_ = false;
+  restore_redraw_pending_ = false;
   if (win7_owned_win_) {
     ::ShowWindow(win7_owned_win_, SW_HIDE);
   }
@@ -99,6 +131,14 @@ void CEFWebviewWin::OnDestroy() {
   auto search = gWatchList.find(this);
   if (search != gWatchList.end()) {
     gWatchList.erase(search);
+  }
+  if (gWatchList.empty() && gWinHook) {
+    ::UnhookWindowsHookEx(gWinHook);
+    gWinHook = nullptr;
+  }
+  if (gWatchList.empty() && gRestoreRedrawTimer) {
+    ::KillTimer(nullptr, gRestoreRedrawTimer);
+    gRestoreRedrawTimer = 0;
   }
   if (win7_owned_win_) {
     ::DestroyWindow(win7_owned_win_);
@@ -151,6 +191,7 @@ void CEFWebviewWin::SetupClient() {
     auto* native_window = lynx_view_get_native_window(lynx_view_);
     window_info.SetAsWindowless(reinterpret_cast<HWND>(native_window));
     window_info.shared_texture_enabled = 1;
+    window_info.external_begin_frame_enabled = 1;
     settings.windowless_frame_rate = fps_;
   } else if (isWindows7) {
     window_info.SetAsChild(GetOrCreateOwnedWin(),
@@ -169,22 +210,33 @@ void CEFWebviewWin::SetupClient() {
 }
 
 namespace {
-static LRESULT CALLBACK CallWndProc(int code, WPARAM wparam, LPARAM lparam) {
+LRESULT CALLBACK CallWndRetProc(int code, WPARAM wparam, LPARAM lparam) {
   if (code >= 0 && !gWatchList.empty()) {
-    CWPSTRUCT* cwp = reinterpret_cast<CWPSTRUCT*>(lparam);
+    CWPRETSTRUCT* cwp = reinterpret_cast<CWPRETSTRUCT*>(lparam);
     if (GetParent(cwp->hwnd) == nullptr) {  // Only for top level window
-      if (cwp->message == WM_MOVE) {
+      if (isWindows7 && cwp->message == WM_MOVE) {
         for (auto* v : gWatchList) {
           v->MoveOwnedWinOnly();
         }
       } else if (cwp->message == WM_SIZE) {
         for (auto* v : gWatchList) {
-          v->AdjustOwnedWinAndChild(nullptr);
+          v->OnHostWindowSizeChanged(cwp->hwnd, cwp->wParam);
         }
       }
     }
   }
   return CallNextHookEx(gWinHook, code, wparam, lparam);
+}
+
+void CALLBACK RestoreRedrawTimerProc(HWND, UINT, UINT_PTR timer_id, DWORD) {
+  if (timer_id != gRestoreRedrawTimer) {
+    return;
+  }
+  ::KillTimer(nullptr, timer_id);
+  gRestoreRedrawTimer = 0;
+  for (auto* webview : gWatchList) {
+    webview->RedrawAfterHostRestore();
+  }
 }
 }  // namespace
 
@@ -203,13 +255,57 @@ HWND CEFWebviewWin::GetOrCreateOwnedWin() {
         rect.top, rect.right - rect.left, rect.bottom - rect.top,
         nullptr /*hWndParent */, nullptr, nullptr, nullptr);
     ::SetWindowLongPtr(win7_owned_win_, GWL_HWNDPARENT, LONG_PTR(parent));
-    if (!gWinHook) {
-      gWinHook = ::SetWindowsHookEx(WH_CALLWNDPROC, CallWndProc, nullptr,
-                                    GetCurrentThreadId());
-    }
-    gWatchList.insert(this);
   }
   return win7_owned_win_;
+}
+
+void CEFWebviewWin::OnHostWindowSizeChanged(HWND host, WPARAM size_type) {
+  auto* native_window = lynx_view_get_native_window(lynx_view_);
+  if (!native_window ||
+      ::GetAncestor(reinterpret_cast<HWND>(native_window), GA_ROOT) != host) {
+    return;
+  }
+
+  if (isWindows7) {
+    AdjustOwnedWinAndChild(nullptr);
+    return;
+  }
+
+  if (size_type == SIZE_MINIMIZED) {
+    host_minimized_ = true;
+    visible_before_host_minimize_ =
+        attached_to_view_ && hwnd_ &&
+        (::GetWindowLongPtr(hwnd_, GWL_STYLE) & WS_VISIBLE) != 0;
+    if (visible_before_host_minimize_) {
+      ::ShowWindow(hwnd_, SW_HIDE);
+    }
+    return;
+  }
+  if (!host_minimized_) {
+    return;
+  }
+
+  host_minimized_ = false;
+  if (attached_to_view_ && hwnd_ && visible_before_host_minimize_) {
+    // Keep the CEF child's visibility in sync with its host. Without this
+    // transition Chromium can retain a blank redirected surface after restore.
+    ::ShowWindow(hwnd_, SW_SHOW);
+    restore_redraw_pending_ = true;
+    ScheduleRestoreRedraw();
+  }
+  visible_before_host_minimize_ = false;
+}
+
+void CEFWebviewWin::RedrawAfterHostRestore() {
+  if (!restore_redraw_pending_) {
+    return;
+  }
+  restore_redraw_pending_ = false;
+  if (hwnd_) {
+    ::RedrawWindow(
+        hwnd_, nullptr, nullptr,
+        RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+  }
 }
 
 void CEFWebviewWin::AdjustOwnedWinAndChild(HWND child) {
