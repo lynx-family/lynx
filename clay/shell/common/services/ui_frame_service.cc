@@ -104,7 +104,8 @@ void UIFrameService::BeginFrame(
 }
 
 void UIFrameService::ForceBeginFrame(
-    std::unique_ptr<clay::FrameTimingsRecorder> recorder) {
+    std::unique_ptr<clay::FrameTimingsRecorder> recorder,
+    fml::closure no_update_callback) {
   raster_frame_service_->puppet_.Act(
       [](auto& impl) { impl.ForceBeginFrame(); });
   recorder->RecordBuildStart(fml::TimePoint::Now());
@@ -113,6 +114,9 @@ void UIFrameService::ForceBeginFrame(
   if (!engine_->BeginFrame(std::move(recorder))) {
     // Commit with no updates if failed to build LayerTree.
     CommitWithNoUpdates();
+    if (no_update_callback) {
+      no_update_callback();
+    }
   }
 }
 
