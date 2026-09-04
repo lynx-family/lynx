@@ -171,7 +171,9 @@ void ScrollView::OnLayout(LayoutContext* context) {
       pending_scroll_offset_ = std::nullopt;
     }
   }
-  if (pending_scroll_index_ > -1) {
+  if (pending_scroll_index_ > -1 &&
+      pending_scroll_index_ < static_cast<int>(child_count()) &&
+      CanInvokeScrollImmediately()) {
     SetScrollToIndex(pending_scroll_index_);
     pending_scroll_index_ = -1;
   }
