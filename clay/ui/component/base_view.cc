@@ -2776,6 +2776,13 @@ bool BaseView::CanAcceptEvent() const {
   return transform.IsInvertible();
 }
 
+bool BaseView::IsPointInsideHitSlop(const FloatPoint& point_by_self) const {
+  return point_by_self.x() >= -hit_slop_left_ &&
+         point_by_self.x() <= width_ + hit_slop_right_ &&
+         point_by_self.y() >= -hit_slop_top_ &&
+         point_by_self.y() <= height_ + hit_slop_bottom_;
+}
+
 bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (!CanAcceptEvent()) {
     return false;
@@ -3002,10 +3009,7 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
   }
 
   FloatPoint point_by_self = GetPointBySelf(position);
-  bool is_point_inside = point_by_self.x() >= -hit_slop_left_ &&
-                         point_by_self.x() <= width_ + hit_slop_right_ &&
-                         point_by_self.y() >= -hit_slop_top_ &&
-                         point_by_self.y() <= height_ + hit_slop_bottom_;
+  bool is_point_inside = IsPointInsideHitSlop(point_by_self);
   if (!CanChildrenEscape() && !is_point_inside) {
     return nullptr;
   }

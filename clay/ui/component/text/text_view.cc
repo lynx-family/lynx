@@ -720,6 +720,7 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
   FloatPoint point_by_self = GetPointBySelf(position);
   bool is_outside_x = point_by_self.x() < 0 || point_by_self.x() > Width();
   bool is_outside_y = point_by_self.y() < 0 || point_by_self.y() > Height();
+  bool is_inside_hit_slop = IsPointInsideHitSlop(point_by_self);
 
   // Inline views are mounted BaseView children and their bounds are the final
   // geometry used for painting. Prefer that real view tree for hit testing so
@@ -744,17 +745,22 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
     }
   }
 
+  BaseView* target = this;
   if (is_outside_x || is_outside_y) {
-    return nullptr;
+    if (!is_inside_hit_slop) {
+      return nullptr;
+    }
+    *relative_position = point_by_self;
+  } else {
+    FloatPoint point_by_paragraph = point_by_self;
+    point_by_paragraph.Move(-BorderLeft() - PaddingLeft(),
+                            -BorderTop() - PaddingTop());
+    *relative_position = point_by_paragraph;
+    target = GetViewAtPosition(point_by_paragraph, position, relative_position,
+                               platform_try_hit_id);
+    target = target ?: this;
   }
 
-  FloatPoint point_by_paragraph = point_by_self;
-  point_by_paragraph.Move(-BorderLeft() - PaddingLeft(),
-                          -BorderTop() - PaddingTop());
-  *relative_position = point_by_paragraph;
-  BaseView* target = GetViewAtPosition(point_by_paragraph, position,
-                                       relative_position, platform_try_hit_id);
-  target = target ?: this;
   for (BaseView* view = target; view; view = view->Parent()) {
     const auto event_through = view->CanEventThrough();
     if (event_through.has_value()) {
