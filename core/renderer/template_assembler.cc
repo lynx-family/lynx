@@ -3220,11 +3220,6 @@ void TemplateAssembler::OnPageConfigDecoded(
         report::LynxFeature::OBJC_DISABLE_TOUCH_REFACTOR,
         element_manager->GetInstanceId());
   }
-  if (!config->GetEnableEventRefactor()) {
-    report::GlobalFeatureCounter::Count(
-        report::LynxFeature::CPP_DISABLE_EVENT_REFACTOR,
-        element_manager->GetInstanceId());
-  }
   if (EnableEventReporter()) {
     report::EventTracker::UpdateGenericInfoByPageConfig(instance_id_, config);
   }

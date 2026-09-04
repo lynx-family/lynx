@@ -121,12 +121,6 @@ compilerOptions:
     jsValueType: boolean
     nameAs:
       member: enable_lazy_css_decode
-  enableEventRefactor:
-    description: Controls the event-refactor path written into page config before runtime starts. When enabled, or left unset, the decoder turns on the refactored event behavior; when disabled, runtime falls back to the legacy event path.
-    defaultValue: FE_OPTION_UNDEFINED
-    valueType: FeOption
-    jsValueType: boolean
-    since: '2.5'
   forceCalcNewStyle:
     description: Controls whether page config forces the Radon runtime to recalculate styles instead of using CSS invalidation and cached style diffs. When enabled, nodes rebuild style state on updates; when disabled, Radon can reuse invalidation results and cached styles.
     defaultValue: FE_OPTION_UNDEFINED

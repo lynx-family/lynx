@@ -184,7 +184,6 @@ public protocol LUIConfig-p : <NSObject> {
   public bool LUIConfig-p::enableTextOverflow();
   public bool LUIConfig-p::enableNewClipMode();
   public bool LUIConfig-p::globalImplicit();
-  public bool LUIConfig-p::enableEventRefactor();
   public bool LUIConfig-p::enableA11yIDMutationObserver();
   public bool LUIConfig-p::enableEventThrough();
   public bool LUIConfig-p::enableEventThroughInheritFromPage();
@@ -4840,7 +4839,6 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext::enableTextRefactor enableTextRefactor;
   public BOOL LynxUIContext::defaultAutoResumeAnimation defaultAutoResumeAnimation;
   public BOOL LynxUIContext::defaultEnableNewTransformOrigin defaultEnableNewTransformOrigin;
-  public BOOL LynxUIContext::enableEventRefactor enableEventRefactor;
   public BOOL LynxUIContext::enableiOSAnimationLayerForExposure enableiOSAnimationLayerForExposure;
   public BOOL LynxUIContext::enableA11yIDMutationObserver enableA11yIDMutationObserver;
   public BOOL LynxUIContext::enableTextOverflow enableTextOverflow;
@@ -4897,7 +4895,6 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext()::setEnableTextRefactor:(BOOL enable);
   public void LynxUIContext()::setEnableTextOverflow:(BOOL enable);
   public void LynxUIContext()::setEnableNewClipMode:(BOOL enable);
-  public void LynxUIContext()::setEnableEventRefactor:(BOOL enable);
   public void LynxUIContext()::setEnableA11yIDMutationObserver:(BOOL enable);
   public void LynxUIContext()::setEnableEventThrough:(BOOL enable);
   public void LynxUIContext()::setEnableEventThroughInheritFromPage:(BOOL enable);

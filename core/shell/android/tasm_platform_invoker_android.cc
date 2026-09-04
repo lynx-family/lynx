@@ -101,7 +101,6 @@ constexpr const char* kEnableNewClipMode = "enableNewClipMode";
 constexpr const char* kKeyboardCallbackUseRelativeHeight =
     "keyboardCallbackPassRelativeHeight";
 constexpr const char* kEnableCSSParser = "enableCSSParser";
-constexpr const char* kEnableEventRefactor = "enableEventRefactor";
 constexpr const char* kEnableDisexposureWhenLynxHidden =
     "enableDisexposureWhenLynxHidden";
 static constexpr const char* const kEnableExposureWhenLayout =
@@ -216,8 +215,6 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
                           config->GetKeyboardCallbackUseRelativeHeight());
 
   java_config.PushBoolean(kEnableCSSParser, config->GetEnableCSSParser());
-  java_config.PushBoolean(kEnableEventRefactor,
-                          config->GetEnableEventRefactor());
   java_config.PushBoolean(kEnableDisexposureWhenLynxHidden,
                           config->GetEnableDisexposureWhenLynxHidden());
   java_config.PushBoolean(kEnableExposureWhenLayout,

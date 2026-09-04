@@ -1290,13 +1290,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
-  public boolean getEnableEventRefactor() {
-    if (null != mPageConfig) {
-      return mPageConfig.getEnableEventRefactor();
-    }
-    return true;
-  }
-
   public boolean getEnableDisexposureWhenLynxHidden() {
     if (null != mPageConfig) {
       return mPageConfig.getEnableDisexposureWhenLynxHidden();

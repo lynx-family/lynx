@@ -5002,7 +5002,6 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.isTextLayoutCacheEnabled();
   public boolean com.lynx.tasm.behavior.LynxContext.useRelativeKeyboardHeightApi();
   public boolean com.lynx.tasm.behavior.LynxContext.getDefaultTextIncludePadding();
-  public boolean com.lynx.tasm.behavior.LynxContext.getEnableEventRefactor();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableDisexposureWhenLynxHidden();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableExposureWhenLayout();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableExposureWhenReload();
@@ -8667,7 +8666,6 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getEnableFlattenTranslateZ();
   public boolean com.lynx.tasm.PageConfig.isEnableNewGesture();
   public boolean com.lynx.tasm.PageConfig.isEnablePlatformGesture();
-  public boolean com.lynx.tasm.PageConfig.getEnableEventRefactor();
   public boolean com.lynx.tasm.PageConfig.getEnableDisexposureWhenLynxHidden();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenLayout();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenReload();

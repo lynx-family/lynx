@@ -436,19 +436,6 @@ LYNX_UI_METHOD(scrollToPosition) {
 
 #pragma mark hittest
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-  if (self.context.enableEventRefactor) {
-    return [((LynxListViewLight *)self.view) findHitTestTarget:point withEvent:event] ?: self;
-  } else {
-    id<LynxListCell> cell = [(LynxListViewLight *)self.view visibleCellAtPoint:point];
-    if (cell == nil) return self;
-    if ([cell isKindOfClass:LynxListViewCellLightLynxUI.class]) {
-      LynxListViewCellLightLynxUI *uiCell = (LynxListViewCellLightLynxUI *)cell;
-      CGPoint offset = [(LynxListViewLight *)self.view contentOffset];
-      point = CGPointMake(point.x - uiCell.frame.origin.x + offset.x,
-                          point.y - uiCell.frame.origin.y + offset.y);
-      return [uiCell.ui hitTest:point withEvent:event];
-    }
-    return self;
-  }
+  return [((LynxListViewLight *)self.view) findHitTestTarget:point withEvent:event] ?: self;
 }
 @end

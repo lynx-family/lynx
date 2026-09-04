@@ -87,7 +87,6 @@ typedef void (^LynxClaySnapshotCompletion)(UIImage* _Nullable image);
 @property(nonatomic, readonly) BOOL enableTextRefactor;
 @property(nonatomic, readonly) BOOL defaultAutoResumeAnimation;
 @property(nonatomic, readonly) BOOL defaultEnableNewTransformOrigin;
-@property(nonatomic, readonly) BOOL enableEventRefactor;
 @property(nonatomic, readonly) BOOL enableiOSAnimationLayerForExposure;
 @property(nonatomic, readonly) BOOL enableA11yIDMutationObserver;
 @property(nonatomic, readonly) BOOL enableTextOverflow;

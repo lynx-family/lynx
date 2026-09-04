@@ -3324,8 +3324,8 @@ public abstract class LynxBaseUI
     ArrayList<EventTarget> siblingTargets = new ArrayList<>();
     LynxBaseUI target = null;
 
-    float child_x = x;
-    float child_y = y;
+    float childX = x;
+    float childY = y;
     for (int i = mChildren.size() - 1; i >= 0; i--) {
       LynxBaseUI ui = mChildren.get(i);
       if (ui instanceof UIShadowProxy) {
@@ -3348,30 +3348,23 @@ public abstract class LynxBaseUI
         continue;
       }
 
-      boolean contain = false;
-      float[] point = new float[] {x, y};
-      if (mContext.getEnableEventRefactor()) {
-        // If EnableEventRefactor, transform point from ancestor to descendants, consider the
-        // transform props.
-        point = getTargetPoint(point[0], point[1], getScrollX(), getScrollY(),
-            ui.getRectWithoutTransform(), ui.getTransformMatrix());
-        contain = ui.containsPoint(point[0], point[1], ignoreUserInteraction);
-      } else {
-        contain = ui.containsPoint(point[0], point[1], ignoreUserInteraction);
-      }
+      // Transform point from ancestor to descendants, considering the transform props.
+      float[] point = getTargetPoint(
+          x, y, getScrollX(), getScrollY(), ui.getRectWithoutTransform(), ui.getTransformMatrix());
+      boolean contain = ui.containsPoint(point[0], point[1], ignoreUserInteraction);
 
       if (contain) {
         siblingTargets.add(ui);
         if (ui.isOnResponseChain()) {
           target = ui;
-          child_x = point[0];
-          child_y = point[1];
+          childX = point[0];
+          childY = point[1];
           break;
         }
         if (target == null || target.getRealTimeTranslationZ() < ui.getRealTimeTranslationZ()) {
           target = ui;
-          child_x = point[0];
-          child_y = point[1];
+          childX = point[0];
+          childY = point[1];
         }
       }
     }
@@ -3380,7 +3373,7 @@ public abstract class LynxBaseUI
     if (target == null) {
       bestHitTarget = this;
     } else {
-      bestHitTarget = performHitTestOnTarget(target, x, y, child_x, child_y, ignoreUserInteraction);
+      bestHitTarget = performHitTestOnTarget(target, childX, childY, ignoreUserInteraction);
     }
 
     if (bestHitTarget == null || bestHitTarget.pointerEvents() == PointerEventsValue.None) {
@@ -3390,34 +3383,12 @@ public abstract class LynxBaseUI
     return bestHitTarget != null ? bestHitTarget : this;
   }
 
-  private EventTarget performHitTestOnTarget(LynxBaseUI target, float x, float y, float child_x,
-      float child_y, boolean ignoreUserInteraction) {
+  private EventTarget performHitTestOnTarget(
+      LynxBaseUI target, float childX, float childY, boolean ignoreUserInteraction) {
     if (!target.isCustomHittest() && target.needCustomLayout() && target instanceof UIGroup) {
-      return performCustomLayoutHitTest((UIGroup) target, x, y, child_x, child_y);
-    } else {
-      return performStandardHitTest(target, x, y, child_x, child_y, ignoreUserInteraction);
+      return ((UIGroup) target).findUIWithCustomLayout(childX, childY, (UIGroup) target);
     }
-  }
-
-  private EventTarget performCustomLayoutHitTest(
-      UIGroup target, float x, float y, float child_x, float child_y) {
-    if (mContext.getEnableEventRefactor()) {
-      return target.findUIWithCustomLayout(child_x, child_y, target);
-    } else {
-      return target.findUIWithCustomLayout(
-          x - target.getOriginLeft(), y - target.getOriginTop(), target);
-    }
-  }
-
-  private EventTarget performStandardHitTest(LynxBaseUI target, float x, float y, float child_x,
-      float child_y, boolean ignoreUserInteraction) {
-    if (mContext.getEnableEventRefactor()) {
-      return target.hitTest(child_x, child_y, ignoreUserInteraction);
-    } else {
-      float adjustedX = x + target.getScrollX() - target.getOriginLeft() - target.getTranslationX();
-      float adjustedY = y + target.getScrollY() - target.getOriginTop() - target.getTranslationY();
-      return target.hitTest(adjustedX, adjustedY, ignoreUserInteraction);
-    }
+    return target.hitTest(childX, childY, ignoreUserInteraction);
   }
 
   private EventTarget findHitTargetInSiblings(List<EventTarget> siblingTargets,
@@ -3441,7 +3412,8 @@ public abstract class LynxBaseUI
 
   private EventTarget performHitTestOnSibling(
       LynxBaseUI sibling, float originX, float originY, boolean ignoreUserInteraction) {
-    float[] adjustedPoint = calculateSiblingCoordinates(sibling, originX, originY);
+    float[] adjustedPoint = getTargetPoint(originX, originY, getScrollX(), getScrollY(),
+        sibling.getRectWithoutTransform(), sibling.getTransformMatrix());
     float siblingX = adjustedPoint[0];
     float siblingY = adjustedPoint[1];
 
@@ -3449,26 +3421,6 @@ public abstract class LynxBaseUI
       return ((UIGroup) sibling).findUIWithCustomLayout(siblingX, siblingY, (UIGroup) sibling);
     } else {
       return sibling.hitTest(siblingX, siblingY, ignoreUserInteraction);
-    }
-  }
-
-  private float[] calculateSiblingCoordinates(LynxBaseUI sibling, float originX, float originY) {
-    float siblingX = originX;
-    float siblingY = originY;
-
-    if (mContext.getEnableEventRefactor()) {
-      float[] point = getTargetPoint(siblingX, siblingY, getScrollX(), getScrollY(),
-          sibling.getRectWithoutTransform(), sibling.getTransformMatrix());
-      return point;
-    } else {
-      if (!sibling.isCustomHittest() && sibling.needCustomLayout() && sibling instanceof UIGroup) {
-        siblingX -= sibling.getOriginLeft();
-        siblingY -= sibling.getOriginTop();
-      } else {
-        siblingX += sibling.getScrollX() - sibling.getOriginLeft() - sibling.getTranslationX();
-        siblingY += sibling.getScrollY() - sibling.getOriginTop() - sibling.getTranslationY();
-      }
-      return new float[] {siblingX, siblingY};
     }
   }
 
@@ -3480,40 +3432,19 @@ public abstract class LynxBaseUI
   @Override
   public boolean containsPoint(float x, float y, boolean ignoreUserInteraction) {
     float slop = getTouchSlop();
-    boolean contain = false;
-    if (mContext.getEnableEventRefactor()) {
-      // If EnableEventRefactor, the point is converted according to the child's origin.
-      float left = -slop - mHitSlopLeft;
-      float right = mWidth + slop + mHitSlopRight;
-      float top = -slop - mHitSlopTop;
-      float bottom = mHeight + slop + mHitSlopBottom;
-      contain = left <= x && right >= x && top <= y && bottom >= y;
-      if (!contain && getOverflow() != 0) {
-        if (getOverflow() == OVERFLOW_X) {
-          if (y < top || y > bottom) {
-            return contain;
-          }
-        } else if (getOverflow() == OVERFLOW_Y) {
-          if (x < left || x > right) {
-            return contain;
-          }
-        }
-        contain = childrenContainPoint(x, y, ignoreUserInteraction);
-      }
-      return contain;
-    }
-
-    Rect rect = getRect();
-    contain = rect.left - slop < x && rect.right + slop > x && rect.top - slop < y
-        && rect.bottom + slop > y;
-    // currently, do not care about flatten ui translation
+    // The point is expressed in the child's coordinate system.
+    float left = -slop - mHitSlopLeft;
+    float right = mWidth + slop + mHitSlopRight;
+    float top = -slop - mHitSlopTop;
+    float bottom = mHeight + slop + mHitSlopBottom;
+    boolean contain = left <= x && right >= x && top <= y && bottom >= y;
     if (!contain && getOverflow() != 0) {
       if (getOverflow() == OVERFLOW_X) {
-        if (!(rect.top - slop < y && rect.bottom + slop > y)) {
+        if (y < top || y > bottom) {
           return contain;
         }
       } else if (getOverflow() == OVERFLOW_Y) {
-        if (!(rect.left - slop < x && rect.right + slop > x)) {
+        if (x < left || x > right) {
           return contain;
         }
       }
@@ -3527,37 +3458,20 @@ public abstract class LynxBaseUI
   }
 
   public boolean childrenContainPoint(float x, float y, boolean ignoreUserInteraction) {
-    if (mContext.getEnableEventRefactor()) {
-      for (LynxBaseUI child : mChildren) {
-        if (child instanceof UIShadowProxy) {
-          child = ((UIShadowProxy) child).getChild();
-        }
-        float[] targetPoint = getTargetPoint(x, y, getScrollX(), getScrollY(),
-            child.getRectWithoutTransform(), child.getTransformMatrix());
-
-        // when ignoreUserInteraction set false:
-        // only nodes that are visible and userInteraction true will be added to the response chain.
-        //
-        // when ignoreUserInteraction set true:
-        // nodes only need to be visible will be added to the reponse chain
-        if ((ignoreUserInteraction || child.isUserInteractionEnabled()) && child.getVisibility()
-            && child.containsPoint(targetPoint[0], targetPoint[1], ignoreUserInteraction)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    x = x + getScrollX() - getOriginLeft() - getTranslationX();
-    y = y + getScrollY() - getOriginTop() - getTranslationY();
     for (LynxBaseUI child : mChildren) {
+      if (child instanceof UIShadowProxy) {
+        child = ((UIShadowProxy) child).getChild();
+      }
+      float[] targetPoint = getTargetPoint(x, y, getScrollX(), getScrollY(),
+          child.getRectWithoutTransform(), child.getTransformMatrix());
+
       // when ignoreUserInteraction set false:
       // only nodes that are visible and userInteraction true will be added to the response chain.
       //
       // when ignoreUserInteraction set true:
       // nodes only need to be visible will be added to the reponse chain
       if ((ignoreUserInteraction || child.isUserInteractionEnabled()) && child.getVisibility()
-          && child.containsPoint(x, y, ignoreUserInteraction)) {
+          && child.containsPoint(targetPoint[0], targetPoint[1], ignoreUserInteraction)) {
         return true;
       }
     }

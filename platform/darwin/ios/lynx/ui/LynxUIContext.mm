@@ -280,7 +280,6 @@
   [self setEnableTextOverflow:config.enableTextOverflow];
   [self setEnableNewClipMode:config.enableNewClipMode];
   [self setDefaultImplicitAnimation:config.globalImplicit];
-  [self setEnableEventRefactor:config.enableEventRefactor];
   [self setEnableA11yIDMutationObserver:config.enableA11yIDMutationObserver];
   [self setEnableEventThrough:config.enableEventThrough];
   [self setEnableEventThroughInheritFromPage:config.enableEventThroughInheritFromPage];
@@ -348,10 +347,6 @@
 
 - (void)setEnableNewClipMode:(BOOL)enable {
   _enableNewClipMode = enable;
-}
-
-- (void)setEnableEventRefactor:(BOOL)enable {
-  _enableEventRefactor = enable;
 }
 
 - (void)setEnableA11yIDMutationObserver:(BOOL)enable {
