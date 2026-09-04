@@ -42,13 +42,13 @@ void WhiteBoardInspectorImpl::SetSharedData(const std::string& key,
                                             std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = CDPErrorCode::kServerError;
+    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to set shared data!";
     return;
   }
   rapidjson::Document document;
   if (document.Parse(value).HasParseError()) {
-    error_code = CDPErrorCode::kInvalidParams;
+    error_code = LegacyCDPErrorCode::kInvalidParams;
     error_message = "The value must be a valid JSON string!";
     return;
   }
@@ -62,7 +62,7 @@ void WhiteBoardInspectorImpl::GetSharedData(
     int& error_code, std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = CDPErrorCode::kServerError;
+    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to get shared data!";
     return;
   }
@@ -80,12 +80,12 @@ void WhiteBoardInspectorImpl::RemoveSharedData(const std::string& key,
                                                std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = CDPErrorCode::kServerError;
+    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to remove shared data!";
     return;
   }
   if (sp->GetGlobalSharedData(key) == nullptr) {
-    error_code = CDPErrorCode::kInvalidParams;
+    error_code = LegacyCDPErrorCode::kInvalidParams;
     error_message = "The key does not exist!";
     return;
   }
@@ -96,7 +96,7 @@ void WhiteBoardInspectorImpl::ClearSharedData(int& error_code,
                                               std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = CDPErrorCode::kServerError;
+    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to clear shared data!";
     return;
   }
