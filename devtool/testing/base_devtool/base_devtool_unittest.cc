@@ -5,9 +5,13 @@
 #define protected public
 #include <memory>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include "devtool/base_devtool/native/global_message_channel.h"
 #include "devtool/base_devtool/native/global_message_dispatcher.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_base_agent.h"
@@ -42,6 +46,38 @@ class TestDevToolMessageDispatcher : public devtool::DevToolMessageDispatcher {
   std::shared_ptr<devtool::MessageSender> sender_ =
       std::make_shared<devtool::MessageSenderMock>();
 };
+
+class CapturingMessageSender : public devtool::MessageSender {
+ public:
+  void SendMessage(const std::string& type, const Json::Value& msg) override {
+    messages_.emplace_back(type, msg);
+  }
+
+  void SendMessage(const std::string& type, const std::string& msg) override {
+    Json::Value value;
+    Json::Reader reader;
+    if (!reader.parse(msg, value, false)) {
+      value = msg;
+    }
+    messages_.emplace_back(type, std::move(value));
+  }
+
+  const std::vector<std::pair<std::string, Json::Value>>& Messages() const {
+    return messages_;
+  }
+
+ private:
+  std::vector<std::pair<std::string, Json::Value>> messages_;
+};
+
+Json::Value ParseLastResponse() {
+  Json::Value response;
+  Json::Reader reader;
+  EXPECT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response,
+      false));
+  return response;
+}
 
 TEST_F(BaseDevToolTest, BaseDevToolAttachAndDetach) {
   std::string url = "www.mock.js";
@@ -114,6 +150,148 @@ TEST_F(BaseDevToolTest, DispatchCDPMessageRejectsNonObjectRoot) {
   EXPECT_NE(response.find("error"), std::string::npos);
   EXPECT_NE(response.find("-32600"), std::string::npos);
   EXPECT_NE(response.find("null"), std::string::npos);
+  EXPECT_NE(response.find("Message must be a JSON object"), std::string::npos);
+}
+
+TEST_F(BaseDevToolTest, CDPResponderSendsSuccess) {
+  auto sender = std::make_shared<CapturingMessageSender>();
+  {
+    auto responder = std::make_shared<devtool::CDPResponder>(sender, 7);
+    Json::Value result(Json::objectValue);
+    result["value"] = "ok";
+    responder->SendSuccess(std::move(result));
+  }
+
+  ASSERT_EQ(sender->Messages().size(), 1u);
+  EXPECT_EQ(sender->Messages()[0].first, "CDP");
+  EXPECT_EQ(sender->Messages()[0].second["id"].asInt64(), 7);
+  EXPECT_EQ(sender->Messages()[0].second["result"]["value"].asString(), "ok");
+}
+
+TEST_F(BaseDevToolTest, CDPResponderDestructorSendsFallbackSuccess) {
+  auto sender = std::make_shared<CapturingMessageSender>();
+  { auto responder = std::make_shared<devtool::CDPResponder>(sender, 8); }
+
+  ASSERT_EQ(sender->Messages().size(), 1u);
+  EXPECT_EQ(sender->Messages()[0].second["id"].asInt64(), 8);
+  EXPECT_TRUE(sender->Messages()[0].second["result"].isObject());
+}
+
+TEST_F(BaseDevToolTest, CDPResponderSendsExplicitError) {
+  auto sender = std::make_shared<CapturingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 9);
+  responder->SendError(devtool::CDPErrorCode::InvalidParams,
+                       "Expected object params");
+
+  ASSERT_EQ(sender->Messages().size(), 1u);
+  const Json::Value& response = sender->Messages()[0].second;
+  EXPECT_EQ(response["id"].asInt64(), 9);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"].asString(), "Expected object params");
+}
+
+TEST_F(BaseDevToolTest, CDPResponderUsesErrorTypeForEmptyMessage) {
+  auto sender = std::make_shared<CapturingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 10);
+  responder->SendError(devtool::CDPErrorCode::InternalError);
+
+  ASSERT_EQ(sender->Messages().size(), 1u);
+  EXPECT_EQ(sender->Messages()[0].second["error"]["message"].asString(),
+            "Internal error");
+}
+
+TEST_F(BaseDevToolTest, CDPResponderSendsAtMostOnce) {
+  auto sender = std::make_shared<CapturingMessageSender>();
+  {
+    auto responder = std::make_shared<devtool::CDPResponder>(sender, 11);
+    responder->SendSuccess();
+    responder->SendError(devtool::CDPErrorCode::ServerError,
+                         "Must not be sent");
+  }
+
+  ASSERT_EQ(sender->Messages().size(), 1u);
+  EXPECT_TRUE(sender->Messages()[0].second.isMember("result"));
+  EXPECT_FALSE(sender->Messages()[0].second.isMember("error"));
+}
+
+TEST_F(BaseDevToolTest, CDPResponderRetrieveSenderSuppressesFallback) {
+  auto sender = std::make_shared<CapturingMessageSender>();
+  std::shared_ptr<devtool::MessageSender> retrieved;
+  {
+    auto responder = std::make_shared<devtool::CDPResponder>(sender, 12);
+    retrieved = responder->RetrieveSender();
+  }
+
+  EXPECT_EQ(retrieved, sender);
+  EXPECT_TRUE(sender->Messages().empty());
+}
+
+TEST_F(BaseDevToolTest, DispatchCDPMessageRejectsMissingId) {
+  devtool::MockReceiver::GetInstance().ResetAll();
+  mock_devtool_->DispatchMessage(std::make_shared<devtool::MessageSenderMock>(),
+                                 "CDP", R"({"method":"MockAgent.test"})");
+
+  const Json::Value response = ParseLastResponse();
+  EXPECT_TRUE(response["id"].isNull());
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidRequest));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Message must have integer 'id' property");
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Message must have integer 'id' property");
+}
+
+TEST_F(BaseDevToolTest, DispatchCDPMessageRejectsNonIntegerId) {
+  devtool::MockReceiver::GetInstance().ResetAll();
+  mock_devtool_->DispatchMessage(std::make_shared<devtool::MessageSenderMock>(),
+                                 "CDP",
+                                 R"({"id":"1","method":"MockAgent.test"})");
+
+  const Json::Value response = ParseLastResponse();
+  EXPECT_TRUE(response["id"].isNull());
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidRequest));
+}
+
+TEST_F(BaseDevToolTest, DispatchCDPMessageRejectsMissingMethod) {
+  devtool::MockReceiver::GetInstance().ResetAll();
+  mock_devtool_->DispatchMessage(std::make_shared<devtool::MessageSenderMock>(),
+                                 "CDP", R"({"id":13})");
+
+  const Json::Value response = ParseLastResponse();
+  EXPECT_EQ(response["id"].asInt64(), 13);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidRequest));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Message must have string 'method' property");
+}
+
+TEST_F(BaseDevToolTest, DispatchCDPMessageRejectsNonStringMethod) {
+  devtool::MockReceiver::GetInstance().ResetAll();
+  mock_devtool_->DispatchMessage(std::make_shared<devtool::MessageSenderMock>(),
+                                 "CDP", R"({"id":14,"method":42})");
+
+  const Json::Value response = ParseLastResponse();
+  EXPECT_EQ(response["id"].asInt64(), 14);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidRequest));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Message must have string 'method' property");
+}
+
+TEST_F(BaseDevToolTest, DispatchCDPMessageRejectsNonObjectParams) {
+  devtool::MockReceiver::GetInstance().ResetAll();
+  mock_devtool_->DispatchMessage(
+      std::make_shared<devtool::MessageSenderMock>(), "CDP",
+      R"({"id":15,"method":"MockAgent.test","params":[]})");
+
+  const Json::Value response = ParseLastResponse();
+  EXPECT_EQ(response["id"].asInt64(), 15);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidRequest));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Params must be an object or null");
 }
 
 TEST_F(BaseDevToolTest, BaseDevToolRegisterMultipleThread) {

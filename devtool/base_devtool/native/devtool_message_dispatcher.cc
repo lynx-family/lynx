@@ -39,7 +39,7 @@ void DevToolMessageDispatcher::DispatchCDPMessage(
   if (!msg.isObject()) {
     auto responder = std::make_shared<CDPResponder>(sender, std::nullopt);
     responder->SendError(CDPErrorCode::InvalidRequest,
-                         "message must be a JSON object");
+                         "Message must be a JSON object");
     return;
   }
 
@@ -56,14 +56,14 @@ void DevToolMessageDispatcher::DispatchCDPMessage(
 
   if (!id.has_value()) {
     responder->SendError(CDPErrorCode::InvalidRequest,
-                         "message must have integer 'id' property");
+                         "Message must have integer 'id' property");
     return;
   }
 
   // "method" must be present and be a string.
   if (!msg.isMember("method") || !msg["method"].isString()) {
     responder->SendError(CDPErrorCode::InvalidRequest,
-                         "message must have string 'method' property");
+                         "Message must have string 'method' property");
     return;
   }
 
@@ -71,7 +71,7 @@ void DevToolMessageDispatcher::DispatchCDPMessage(
   if (msg.isMember("params") && !msg["params"].isNull() &&
       !msg["params"].isObject()) {
     responder->SendError(CDPErrorCode::InvalidRequest,
-                         "'params' must be an object or null");
+                         "Params must be an object or null");
     return;
   }
 
@@ -86,9 +86,9 @@ void DevToolMessageDispatcher::DispatchCDPMessage(
     return;
   }
 
-  // Ownership of the response is handed back to the legacy agent path; further
-  // migration to CDPResponder requires future refactorings.
-  iter->second->CallMethod(responder->RetrieveSender(), msg);
+  // Hand the responder down to the agent. New agents fill it directly; legacy
+  // agents fall back to the sender-based CallMethod via the base class default.
+  iter->second->CallMethod(responder, msg);
 }
 
 void DevToolMessageDispatcher::DispatchJsonMessage(
