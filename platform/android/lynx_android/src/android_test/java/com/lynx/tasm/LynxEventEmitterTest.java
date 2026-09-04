@@ -5,7 +5,6 @@
 package com.lynx.tasm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
 import androidx.annotation.NonNull;
@@ -58,10 +57,6 @@ public class LynxEventEmitterTest {
   class MockEventFallback implements EventEmitter.LynxEventFallback {
     @Override
     public void checkFallbackForLynxEvent(boolean isFallback) {}
-  }
-
-  class MockEventObserver implements EventEmitter.LynxEventObserver {
-    public void onLynxEvent(EventEmitter.LynxEventType type, LynxEvent event) {}
   }
 
   class MockEngineProxyWrapper extends LynxEventEmitter.LynxEngineProxyWrapper {
@@ -307,27 +302,5 @@ public class LynxEventEmitterTest {
     mEventEmitter.onPseudoStatusChanged(11, 1, 2);
     assertEquals(mPseudoPreStatus, 1);
     assertEquals(mPseudoCurrentStatus, 2);
-  }
-
-  @Test
-  public void testAddObserver() {
-    MockEventObserver observer = new MockEventObserver();
-    mEventEmitter.addObserver(observer);
-
-    assertSame(mEventEmitter.mEventObservers.get(0), observer);
-  }
-
-  @Test
-  public void removeAddObserver() {
-    MockEventObserver observer0 = new MockEventObserver();
-    mEventEmitter.addObserver(observer0);
-    assertSame(mEventEmitter.mEventObservers.get(0), observer0);
-
-    MockEventObserver observer1 = new MockEventObserver();
-    mEventEmitter.addObserver(observer1);
-    assertSame(mEventEmitter.mEventObservers.get(1), observer1);
-
-    mEventEmitter.removeObserver(observer0);
-    assertSame(mEventEmitter.mEventObservers.get(0), observer1);
   }
 }

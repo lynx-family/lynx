@@ -1775,8 +1775,6 @@ public class abstract com::lynx::tasm::EventEmitter :  {
   public abstract void com.lynx.tasm.EventEmitter.setTestTapTracker(ITestTapTrack track);
   public abstract void com.lynx.tasm.EventEmitter.sendLayoutEvent();
   public abstract void com.lynx.tasm.EventEmitter.setInPreLoad(boolean preload);
-  public abstract void com.lynx.tasm.EventEmitter.addObserver(LynxEventObserver observer);
-  public abstract void com.lynx.tasm.EventEmitter.removeObserver(LynxEventObserver observer);
   public abstract void com.lynx.tasm.EventEmitter.registerEventReporter(LynxEventReporter reporter);
   public abstract void com.lynx.tasm.EventEmitter.registerEventFallback(LynxEventFallback fallback);
   public void com.lynx.tasm.EventEmitter.onInternalEvent(LynxInternalEvent event);
@@ -5019,7 +5017,6 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableFlattenTranslateZ();
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventThrough();
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventThroughInheritFromPage();
-  public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewIntersectionObserver();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewSticky();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNativeInteraction();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableAutoNonFlatten();
@@ -5666,8 +5663,6 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
   public void com.lynx.tasm.LynxEventEmitter.setTestTapTracker(ITestTapTrack track);
   public void com.lynx.tasm.LynxEventEmitter.sendLayoutEvent();
   public void com.lynx.tasm.LynxEventEmitter.setInPreLoad(boolean preload);
-  public void com.lynx.tasm.LynxEventEmitter.addObserver(LynxEventObserver observer);
-  public void com.lynx.tasm.LynxEventEmitter.removeObserver(LynxEventObserver observer);
   public void com.lynx.tasm.LynxEventEmitter.registerEventReporter(LynxEventReporter reporter);
   public void com.lynx.tasm.LynxEventEmitter.registerEventFallback(LynxEventFallback fallback);
   public void com.lynx.tasm.LynxEventEmitter.startEventGenerate(LynxEvent event);
@@ -5679,10 +5674,6 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
 
 public interface com::lynx::tasm::EventEmitter::LynxEventFallback {
   public void com.lynx.tasm.EventEmitter.LynxEventFallback.checkFallbackForLynxEvent(boolean enableAsync);
-}
-
-public interface com::lynx::tasm::EventEmitter::LynxEventObserver {
-  public void com.lynx.tasm.EventEmitter.LynxEventObserver.onLynxEvent(LynxEventType type, LynxEvent event);
 }
 
 public interface com::lynx::tasm::EventEmitter::LynxEventReporter {
@@ -5721,12 +5712,6 @@ public enum com::lynx::tasm::event::LynxEvent::LynxEventType {
   public com.lynx.tasm.event.LynxEvent.LynxEventType.kWheel kWheel;
   public com.lynx.tasm.event.LynxEvent.LynxEventType.kKeyboard kKeyboard;
   public com.lynx.tasm.event.LynxEvent.LynxEventType.kCustom kCustom;
-}
-
-public enum com::lynx::tasm::EventEmitter::LynxEventType {
-  public com.lynx.tasm.EventEmitter.LynxEventType.kLynxEventTypeTouchEvent kLynxEventTypeTouchEvent;
-  public com.lynx.tasm.EventEmitter.LynxEventType.kLynxEventTypeCustomEvent kLynxEventTypeCustomEvent;
-  public com.lynx.tasm.EventEmitter.LynxEventType.kLynxEventTypeLayoutEvent kLynxEventTypeLayoutEvent;
 }
 
 public class com::lynx::jsbridge::LynxExposureModule : com.lynx.jsbridge.LynxContextModule {
@@ -6179,7 +6164,7 @@ public class com::lynx::tasm::behavior::LynxIntersectionObserver :  {
   public void com.lynx.tasm.behavior.LynxIntersectionObserver.checkForIntersections();
 }
 
-public class com::lynx::tasm::behavior::LynxIntersectionObserverManager : com.lynx.tasm.behavior.LynxObserverManager, com.lynx.tasm.EventEmitter.LynxEventObserver {
+public class com::lynx::tasm::behavior::LynxIntersectionObserverManager : com.lynx.tasm.behavior.LynxObserverManager {
   public com.lynx.tasm.behavior.LynxIntersectionObserverManager.LynxIntersectionObserverManager(LynxContext context, JSProxy proxy);
   public LynxContext com.lynx.tasm.behavior.LynxIntersectionObserverManager.getContext();
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.sendIntersectionObserverEvent(final int componentSign, final JavaOnlyMap args);
@@ -6188,7 +6173,6 @@ public class com::lynx::tasm::behavior::LynxIntersectionObserverManager : com.ly
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.removeIntersectionObserver(final int observerId);
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.removeAttachedIntersectionObserver(final LynxBaseUI ui);
   public LynxIntersectionObserver com.lynx.tasm.behavior.LynxIntersectionObserverManager.getObserverById(int observerId);
-  public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.onLynxEvent(EventEmitter.LynxEventType type, LynxEvent event);
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.notifyObservers();
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.clear();
 }
@@ -8669,7 +8653,6 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getEnableDisexposureWhenLynxHidden();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenLayout();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenReload();
-  public boolean com.lynx.tasm.PageConfig.getEnableNewIntersectionObserver();
   public int com.lynx.tasm.PageConfig.getObserverFrameRate();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureUIMargin();
   public int com.lynx.tasm.PageConfig.getLongPressDuration();

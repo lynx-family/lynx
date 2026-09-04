@@ -29,7 +29,6 @@ const configKeys = [
   'enableMultiTouch',
   'enableNativeList',
   'enableNewGesture',
-  'enableNewIntersectionObserver',
   'enableNewTransformOrigin',
   'enableParseIntFlex',
   'enableReloadLifecycle',

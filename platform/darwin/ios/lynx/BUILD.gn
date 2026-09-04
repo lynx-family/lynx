@@ -338,7 +338,6 @@ subspec_target("lynx") {
     "ui/LynxUIContext.mm",
     "ui/LynxUIExposure+Internal.h",
     "ui/LynxUIExposure.m",
-    "ui/LynxUIIntersectionObserver+Internal.h",
     "ui/LynxUIIntersectionObserver.h",
     "ui/LynxUIIntersectionObserver.mm",
     "ui/LynxUIOwner+Accessibility.h",

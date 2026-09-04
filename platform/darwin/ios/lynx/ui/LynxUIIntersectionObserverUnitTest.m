@@ -49,4 +49,34 @@
   XCTAssertTrue([array count] == 1);
 }
 
+- (void)testObserverRunLoopLifecycle {
+  LynxUIIntersectionObserverManager *observerManager =
+      OCMPartialMock([[LynxUIIntersectionObserverManager alloc] initWithLynxContext:nil]);
+  OCMStub([observerManager addIntersectionObserverToRunLoop]);
+  OCMStub([observerManager destroyIntersectionObserver]);
+
+  LynxUIIntersectionObserver *firstObserver =
+      [[LynxUIIntersectionObserver alloc] initWithManager:observerManager
+                                               observerId:1
+                                              componentId:@"0"
+                                                  options:nil];
+  LynxUIIntersectionObserver *secondObserver =
+      [[LynxUIIntersectionObserver alloc] initWithManager:observerManager
+                                               observerId:2
+                                              componentId:@"0"
+                                                  options:nil];
+
+  [observerManager addIntersectionObserver:firstObserver];
+  OCMVerify(times(1), [observerManager addIntersectionObserverToRunLoop]);
+
+  [observerManager addIntersectionObserver:secondObserver];
+  OCMVerify(times(1), [observerManager addIntersectionObserverToRunLoop]);
+
+  [observerManager removeIntersectionObserver:1];
+  OCMVerify(never(), [observerManager destroyIntersectionObserver]);
+
+  [observerManager removeIntersectionObserver:2];
+  OCMVerify(times(1), [observerManager destroyIntersectionObserver]);
+}
+
 @end

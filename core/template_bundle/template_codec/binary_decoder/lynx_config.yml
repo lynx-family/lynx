@@ -1650,17 +1650,6 @@ fontScaleEffectiveOnlyOnSp:
     - HarmonyOS
     - iOS
   export: true
-enableNewIntersectionObserver:
-  description: Controls whether intersection observers use the newer detection logic instead of the older scroll-bound path. When enabled, intersection managers add observers to the dedicated run loop and observe without depending on scroll-event binding; when disabled, runtime keeps the legacy observer logic. When unset, settings can still decide the flag.
-  defaultValue: 'true'
-  valueType: bool
-  readSettings: true
-  author: rAY-ooo
-  since: '2.8'
-  supportPlatform:
-    - Android
-    - iOS
-  export: true
 forceCalcNewStyle:
   description: Controls the deprecated page-level fallback for forcing Radon style recalculation on updates. When the newer compiler option is unset, manual config decode still reads this flag and `RadonNode` can recalculate styles instead of using the incremental style-invalidation path.
   defaultValue: 'true'

@@ -771,15 +771,6 @@ class LynxConfigDecoder final {
           doc[config::kFontScaleEffectiveOnlyOnSp].GetBool());
     }
 
-    if (doc.HasMember(config::kEnableNewIntersectionObserver) &&
-        doc[config::kEnableNewIntersectionObserver].IsBool()) {
-      page_config->SetEnableNewIntersectionObserver(
-          doc[config::kEnableNewIntersectionObserver].GetBool());
-    } else {
-      page_config->SetEnableNewIntersectionObserver(
-          LynxEnv::GetInstance().EnableNewIntersectionObserver());
-    }
-
     if (doc.HasMember(config::kEnableParseIntFlex) &&
         doc[config::kEnableParseIntFlex].IsBool()) {
       page_config->SetEnableParseIntFlex(

@@ -94,7 +94,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_SIGNAL_API,
     ENABLE_FIXED_NEW,
     ENABLE_MULTI_TOUCH,
-    ENABLE_NEW_INTERSECTION_OBSERVER,
     ENABLE_PARSE_INT_FLEX,
     ENABLE_ANIMATION_VSYNC_ON_UI_THREAD,
     MULTI_JS_THREAD_COUNT,
@@ -277,8 +276,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_SIGNAL_API, "enable_signal_api"},
             {Key::ENABLE_FIXED_NEW, "enable_lynx_new_fixed"},
             {Key::ENABLE_MULTI_TOUCH, "enable_multi_touch"},
-            {Key::ENABLE_NEW_INTERSECTION_OBSERVER,
-             "enable_new_intersection_observer"},
             {Key::ENABLE_PARSE_INT_FLEX, "enable_parse_int_flex"},
             {Key::ENABLE_ANIMATION_VSYNC_ON_UI_THREAD,
              "enable_animation_vsync_on_ui_thread"},
@@ -505,7 +502,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableSignalAPI();
   bool EnableFixedNew();
   bool EnableMultiTouch();
-  bool EnableNewIntersectionObserver();
   bool EnableParseIntFlex();
   bool EnableAnimationInfoReport();
   bool EnableJSVMRuntime();
