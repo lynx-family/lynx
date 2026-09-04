@@ -27,6 +27,7 @@
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxShadowNodeOwner.h>
+#import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIOwner+Private.h>
 #import <Lynx/LynxURL.h>
 #include <cstdint>
@@ -35,6 +36,14 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+void RunOnMainThreadSync(dispatch_block_t block) {
+  if ([NSThread isMainThread]) {
+    block();
+    return;
+  }
+  dispatch_sync(dispatch_get_main_queue(), block);
+}
 
 std::array<float, 4> CopyMetrics(const float *source) {
   std::array<float, 4> result = {0.f, 0.f, 0.f, 0.f};
@@ -123,8 +132,31 @@ std::vector<float> NativePaintingCtxDarwin::GetRectToWindow(int id) {
 }
 
 std::vector<float> NativePaintingCtxDarwin::GetRectToLynxView(int64_t id) {
-  // TODO: impl this function later.
-  return std::vector<float>();
+  __block CGRect rect = CGRectZero;
+  __block BOOL found = NO;
+  RunOnMainThreadSync(^{
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(platform_ref_);
+    auto platform_rect = darwin_ref != nullptr
+                             ? darwin_ref->GetRectToLynxView(static_cast<int32_t>(id))
+                             : std::vector<float>();
+    if (platform_rect.size() == 4) {
+      rect = CGRectMake(platform_rect[0], platform_rect[1], platform_rect[2], platform_rect[3]);
+      found = YES;
+      return;
+    }
+
+    LynxUIOwner *owner = context_ != nullptr ? context_->GetUIOwner() : nil;
+    LynxUI *ui = [owner findUIBySign:static_cast<int32_t>(id)];
+    if (ui != nil) {
+      rect = [ui getBoundingClientRect];
+      found = YES;
+    }
+  });
+  if (!found) {
+    return {};
+  }
+  return {static_cast<float>(rect.origin.x), static_cast<float>(rect.origin.y),
+          static_cast<float>(rect.size.width), static_cast<float>(rect.size.height)};
 }
 
 std::vector<float> NativePaintingCtxDarwin::ScrollBy(int64_t id, float width, float height) {

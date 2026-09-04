@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.View;
@@ -147,6 +148,22 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       res[1] = metrics.heightPixels;
     }
     return res;
+  }
+
+  @CalledByNative
+  float[] getRectToLynxView(int sign) {
+    float[] result = new float[] {0, 0, 0, 0};
+    UIThreadUtils.runOnUiThreadSync(() -> {
+      LynxBaseUI ui = findUIMethodTarget(sign);
+      if (ui != null) {
+        Rect rect = ui.getBoundingClientRect();
+        result[0] = rect.left;
+        result[1] = rect.top;
+        result[2] = rect.width();
+        result[3] = rect.height();
+      }
+    });
+    return result;
   }
 
   @CalledByNative

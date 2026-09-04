@@ -471,7 +471,24 @@ std::vector<float> NativePaintingCtxAndroid::GetRectToWindow(int id) {
 }
 
 std::vector<float> NativePaintingCtxAndroid::GetRectToLynxView(int64_t id) {
-  return std::vector<float>();
+  auto runner = base::UIThread::GetRunner();
+  if (runner == nullptr) {
+    return {};
+  }
+
+  std::vector<float> result;
+  runner->PostSyncTask(
+      [ref = platform_ref_, view_manager = view_manager_, id, &result]() {
+        auto android_ref =
+            std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref);
+        if (android_ref != nullptr) {
+          result = android_ref->GetRectToLynxView(static_cast<int32_t>(id));
+        }
+        if (result.size() != 4 && view_manager != nullptr) {
+          result = view_manager->GetRectToLynxView(static_cast<int32_t>(id));
+        }
+      });
+  return result;
 }
 
 std::vector<float> NativePaintingCtxAndroid::ScrollBy(int64_t id, float width,

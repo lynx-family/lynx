@@ -107,6 +107,8 @@ class NativePaintingCtxPlatformRef
   PlatformEventEmitter *GetEventEmitter();
   // Get PlatformEventTargetHelper instance.
   PlatformEventTargetHelper *GetEventTargetHelper();
+  // Get [x, y, width, height] in the page root's platform layout units.
+  std::vector<float> GetRectToLynxView(int32_t id);
   // Update the platform event bundle of the target element.
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
   // Get the platform event bundle of the target element.
