@@ -47,6 +47,7 @@ class TextAreaNGView : public WithTypeInfo<TextAreaNGView, BaseView>,
   FRIEND_TEST(TextAreaNGViewTest, scroll);
   FRIEND_TEST(TextAreaNGViewTest, enableScrollBar);
   FRIEND_TEST(TextAreaNGViewTest, invalidEditingRanges);
+  FRIEND_TEST(TextAreaNGViewTest, platformHistoryActionBridge);
   void OnDestroy() override;
 
   EditableView* editable_view_ = nullptr;

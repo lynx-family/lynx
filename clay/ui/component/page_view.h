@@ -467,6 +467,8 @@ class PageView : public BaseView,
                                  uint64_t composing_base);
 
   void OnPlatformPerformInputAction(int client_id);
+  bool OnPlatformPerformTextInputHistoryAction(int client_id,
+                                               TextInputHistoryAction action);
 
   virtual void OnFlingStart();
   virtual void OnFlingEnd();

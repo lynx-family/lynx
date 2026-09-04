@@ -10,6 +10,7 @@
 #include "base/include/fml/memory/weak_ptr.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/transform.h"
+#include "clay/ui/common/text_input_history_action.h"
 #include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/common/text_selection.h"
 #include "clay/ui/component/editable/ime_utils.h"
@@ -29,6 +30,7 @@ class TextInputClient {
   virtual void UpdateEditingState(std::string text, TextSelection selection,
                                   TextRange composing, Affinity affinity) = 0;
   virtual void PerformAction() = 0;
+  virtual bool PerformHistoryAction(TextInputHistoryAction action) = 0;
 };
 
 class TextInputController {
@@ -53,6 +55,7 @@ class TextInputController {
   void UpdateEditingState(std::string text, TextSelection selection,
                           TextRange composing, Affinity affinity);
   void PerformAction();
+  bool PerformHistoryAction(TextInputHistoryAction action);
 
   bool ConnectKeyboard() { return connect_keyboard_; }
 

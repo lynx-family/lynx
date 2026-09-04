@@ -98,4 +98,53 @@ TEST_F_UI(TextAreaNGViewTest, invalidEditingRanges) {
   Layout();
 }
 
+TEST_F_UI(TextAreaNGViewTest, platformHistoryActionBridge) {
+  constexpr int kClientId = 101;
+  TextAreaNGView *text_area = new TextAreaNGView(kClientId, page_.get());
+  page_->AddChild(text_area);
+  text_area->SetBound(0, 0, 200, 200);
+  text_area->editable_view_->UpdateEditingState(
+      "alpha", TextSelection(5, 5, Affinity::kDownstream), TextRange(0),
+      Affinity::kDownstream);
+  Layout();
+  text_area->focus({}, [](LynxUIMethodResult, clay::Value) {});
+
+  EXPECT_TRUE(page_->OnPlatformPerformTextInputHistoryAction(
+      kClientId, TextInputHistoryAction::kUndo));
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().GetText(), "");
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().selection(),
+            TextRange(0));
+  EXPECT_TRUE(page_->OnPlatformPerformTextInputHistoryAction(
+      kClientId, TextInputHistoryAction::kRedo));
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().GetText(),
+            "alpha");
+  EXPECT_EQ(text_area->editable_view_->GetTextEditingValue().selection(),
+            TextRange(5));
+  EXPECT_FALSE(page_->OnPlatformPerformTextInputHistoryAction(
+      kClientId + 1, TextInputHistoryAction::kUndo));
+}
+
+TEST(UndoStackTest, PreservesTextAndSelectionAcrossUndoRedo) {
+  UndoStack stack;
+  EXPECT_FALSE(stack.Undo().has_value());
+  EXPECT_FALSE(stack.Redo().has_value());
+
+  const TextEditingValue first("alpha", TextRange(5), TextRange(0), false,
+                               Affinity::kDownstream);
+  const TextEditingValue second("alpha beta", TextRange(6, 10), TextRange(0),
+                                false, Affinity::kDownstream);
+  stack.Push(first);
+  stack.Push(second);
+
+  const auto undone = stack.Undo();
+  ASSERT_TRUE(undone.has_value());
+  EXPECT_EQ(*undone, first);
+  const auto redone = stack.Redo();
+  ASSERT_TRUE(redone.has_value());
+  EXPECT_EQ(*redone, second);
+  const auto redo_at_end = stack.Redo();
+  ASSERT_TRUE(redo_at_end.has_value());
+  EXPECT_EQ(*redo_at_end, second);
+}
+
 };  // namespace clay
