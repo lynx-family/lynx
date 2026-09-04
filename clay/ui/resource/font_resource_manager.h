@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
@@ -33,6 +34,7 @@ class FontResourceManager
   RawResource GetResource(const std::string& font_family);
 
   void LoadFontAsync(fml::RefPtr<fml::TaskRunner> load_task_runner,
+                     fml::RefPtr<fml::TaskRunner> io_task_runner,
                      std::shared_ptr<ResourceLoaderIntercept> intercept,
                      std::shared_ptr<ServiceManager> service_manager,
                      const std::string& font_family,
@@ -47,15 +49,17 @@ class FontResourceManager
 
   void SetCallback(const FontCallback& callback);
 
-  bool HasFontResourceLoading(std::string font_family);
+  bool HasFontResourceLoading(const std::string& font_family);
 
  private:
   void OnDownloadEnd(
       bool success, const int url_index, const std::string& font_family,
       RawResource data, fml::RefPtr<fml::TaskRunner> load_task_runner,
+      fml::RefPtr<fml::TaskRunner> io_task_runner,
       std::shared_ptr<ResourceLoaderIntercept> intercept = nullptr,
       std::shared_ptr<ServiceManager> service_manager = nullptr);
   void DownloadFont(fml::RefPtr<fml::TaskRunner> load_task_runner,
+                    fml::RefPtr<fml::TaskRunner> io_task_runner,
                     std::shared_ptr<ResourceLoaderIntercept> intercept,
                     std::shared_ptr<ServiceManager> service_manager,
                     const std::string& url, const int url_index,
@@ -68,6 +72,7 @@ class FontResourceManager
   std::map<std::string, std::shared_ptr<ResourceLoader>> font_loader_map_;
   std::map<std::string, RawResource> font_resource_map_;
   std::map<std::string, FontCallback> font_call_back_map_;
+  std::unordered_set<std::string> loading_font_families_;
 };
 
 }  // namespace clay
