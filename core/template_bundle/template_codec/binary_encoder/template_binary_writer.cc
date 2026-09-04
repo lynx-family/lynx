@@ -257,15 +257,19 @@ void TemplateBinaryWriter::EncodeCustomSection() {
             EncodeValue(&content, false);
             break;
           case CustomSectionEncodingType::JS_BYTECODE: {
+            // The section name is the file name its debug info is filed under,
+            // so pass it along: a stack frame carries the file name, and
+            // without one every function is attributed to "".
+            const std::string section_name = it.name.GetString();
             auto error = lepus::BytecodeGenerator::GenerateBytecode(
                 mts_context(), content.StdString(),
-                compile_options_.target_sdk_version_);
+                compile_options_.target_sdk_version_, section_name);
             if (!error.empty()) {
               throw lepus::CompileException(error.c_str());
             }
             if (IsLepusNGContext()) {
               auto debug_info = GetDebugInfo();
-              lepus_debug_info_.AddDebugInfo(it.name.GetString(), debug_info,
+              lepus_debug_info_.AddDebugInfo(section_name, debug_info,
                                              quick_context());
             }
             ContextBinaryWriter::encode();
@@ -443,7 +447,11 @@ void TemplateBinaryWriter::EncodeLepusSection() {
         mts_context(), lepus_code_, compile_options_.target_sdk_version_,
         lepus_code_filename_);
 
-    if (IsLepusNGContext()) {
+    // A bundle whose main thread code lives in custom sections carries no root
+    // lepus code. Compiling the empty root still yields one `<eval>` function,
+    // and filing it drowns out the sections: consumers fall back to
+    // "lepusNG_debug_info" and remap against a stub that describes nothing.
+    if (IsLepusNGContext() && !lepus_code_.empty()) {
       auto debug_info = GetDebugInfo();
       // "lepusNG_debug_info" is hardcoded in various places in lynx sdk, tasm &
       // oliver. Use this name for now.
