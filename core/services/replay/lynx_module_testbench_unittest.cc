@@ -122,6 +122,48 @@ TEST(LynxModuleTestBench, IsSameURL) {
                                "http://www.lynx.com?Test1=2&timestamp=54321"));
 }
 
+TEST(LynxModuleTestBench, AppletBridgeWeakMatchIgnoresCallbackIdInJsonString) {
+  auto runtime = testing::utils::makeJSRuntime();
+  runtime::js::ModuleTestBench module("AppletBridgeModule", nullptr);
+  runtime::js::LynxModule::MethodMetadata method(1, "postMessage");
+
+  std::string runtime_arg_json =
+      R"({"callbackId":999,"payload":"{\"callbackId\":999,\"amount\":1}"})";
+  auto runtime_arg = runtime::js::Value::createFromJsonUtf8(
+      *runtime, reinterpret_cast<const uint8_t*>(runtime_arg_json.c_str()),
+      runtime_arg_json.size());
+  ASSERT_TRUE(runtime_arg.has_value());
+  runtime::js::Value args[] = {std::move(*runtime_arg)};
+
+  rapidjson::Document recorded;
+  recorded.Parse(
+      R"({"Params":{"argc":1,"args":[{"callbackId":1,"payload":"{\"callbackId\":1,\"amount\":1}"}]}})");
+
+  EXPECT_TRUE(module.IsAppletBridgeProtocolWeakMatch(method, runtime.get(),
+                                                     args, 1, recorded));
+}
+
+TEST(LynxModuleTestBench, AppletBridgeWeakMatchFuzzesNumberInJsonString) {
+  auto runtime = testing::utils::makeJSRuntime();
+  runtime::js::ModuleTestBench module("AppletBridgeModule", nullptr);
+  runtime::js::LynxModule::MethodMetadata method(1, "postMessage");
+
+  std::string runtime_arg_json =
+      R"({"callbackId":999,"payload":"{\"amount\":999}"})";
+  auto runtime_arg = runtime::js::Value::createFromJsonUtf8(
+      *runtime, reinterpret_cast<const uint8_t*>(runtime_arg_json.c_str()),
+      runtime_arg_json.size());
+  ASSERT_TRUE(runtime_arg.has_value());
+  runtime::js::Value args[] = {std::move(*runtime_arg)};
+
+  rapidjson::Document recorded;
+  recorded.Parse(
+      R"({"Params":{"argc":1,"args":[{"callbackId":1,"payload":"{\"amount\":1}"}]}})");
+
+  EXPECT_TRUE(module.IsAppletBridgeProtocolWeakMatch(method, runtime.get(),
+                                                     args, 1, recorded));
+}
+
 }  // namespace replay
 }  // namespace tasm
 }  // namespace lynx

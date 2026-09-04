@@ -4,7 +4,9 @@
 
 #include "core/public/lynx_resource_loader.h"
 
-#include "core/renderer/utils/lynx_env.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "core/services/replay/replay_resource_cache.h"
+#endif  // ENABLE_TESTBENCH_REPLAY
 
 namespace lynx {
 namespace pub {
@@ -12,15 +14,28 @@ namespace pub {
 void LynxResourceLoader::LoadResource(
     const LynxResourceRequest& request,
     base::MoveOnlyClosure<void, LynxResourceResponse&> callback) {
-  // TODO: impl cache logic here;
+#if ENABLE_TESTBENCH_REPLAY
+  auto* cache = replay_cache_ ? replay_cache_.get() : nullptr;
+  if (cache != nullptr && !cache->IsEmpty()) {
+    LynxResourceResponse cached_response;
+    if (cache->ResolveResource(request, &cached_response)) {
+      callback(cached_response);
+      return;
+    }
+  }
+#endif  // ENABLE_TESTBENCH_REPLAY
   LoadResourceInternal(request, std::move(callback));
 }
 
 void LynxResourceLoader::LoadResourcePath(
     const LynxResourceRequest& request,
     base::MoveOnlyClosure<void, LynxPathResponse&> path_callback) {
-  // TODO: impl cache logic here;
   LoadResourcePathInternal(request, std::move(path_callback));
+}
+
+void LynxResourceLoader::SetReplayResourceCache(
+    std::shared_ptr<tasm::replay::ReplayResourceCache> cache) {
+  replay_cache_ = std::move(cache);
 }
 }  // namespace pub
 }  // namespace lynx
