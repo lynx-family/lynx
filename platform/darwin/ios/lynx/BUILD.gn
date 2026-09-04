@@ -977,7 +977,10 @@ subspec_target("Replay") {
   pod_target_xcconfig = {
     GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_TESTBENCH_REPLAY=1" ]
   }
-  deps = [ "../../../../core/services/replay" ]
+  deps = [
+    "../../../../core/services/replay",
+    "../../../../core/services/replay:replay_resource_cache",
+  ]
 }
 
 subspec_target("Trace") {
