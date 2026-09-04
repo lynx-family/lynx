@@ -17,12 +17,12 @@ namespace devtool {
  * generic backend failures.
  */
 enum class CDPErrorCode : int {
-  kParseError = -32700,
-  kInvalidRequest = -32600,
-  kMethodNotFound = -32601,
-  kInvalidParams = -32602,
-  kInternalError = -32603,
-  kServerError = -32000,
+  ParseError = -32700,
+  InvalidRequest = -32600,
+  MethodNotFound = -32601,
+  InvalidParams = -32602,
+  InternalError = -32603,
+  ServerError = -32000,
 };
 
 }  // namespace devtool
