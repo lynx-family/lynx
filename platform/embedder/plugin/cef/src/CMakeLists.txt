@@ -63,6 +63,7 @@ endif()
 if(OS_WINDOWS)
   target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE OS_WIN lynx_EXPORTS)
   target_compile_options(${CEF_WEBVIEW_TARGET} PRIVATE /wd4267)
+  target_link_libraries(${CEF_WEBVIEW_TARGET} PUBLIC d3d11.lib)
 endif()
 
 
@@ -74,6 +75,18 @@ add_dependencies(${CEF_WEBVIEW_TARGET} libcef_dll_wrapper)
 # macOS configuration.
 #
 if(OS_MAC)
+  # Embedders may override the Helper bundle identity before adding this
+  # directory. Keep the existing host-derived name as the default.
+  if(NOT DEFINED CEF_WEBVIEW_HELPER_NAME)
+    if(NOT DEFINED HOST_EXECUTABLE_NAME)
+      message(FATAL_ERROR "CEF_WEBVIEW_HELPER_NAME is required on macOS")
+    endif()
+    set(CEF_WEBVIEW_HELPER_NAME "${HOST_EXECUTABLE_NAME}")
+  endif()
+  if(NOT DEFINED CEF_WEBVIEW_HELPER_BUNDLE_ID)
+    set(CEF_WEBVIEW_HELPER_BUNDLE_ID "org.lynxjs.cef.helper")
+  endif()
+
   list(APPEND CEF_COMPILER_FLAGS
     -fobjc-arc
     )
@@ -89,8 +102,12 @@ if(OS_MAC)
     macos/process_helper_mac.cc
     )
   APPEND_PLATFORM_SOURCES(CEF_WEBVIEW_HELPER_SRCS)
-  set(CEF_HELPER_TARGET "${HOST_EXECUTABLE_NAME}_Helper")
-  set(CEF_HELPER_OUTPUT_NAME "${HOST_EXECUTABLE_NAME} Helper")
+  set(CEF_HELPER_TARGET "${CEF_WEBVIEW_HELPER_NAME}_Helper")
+  set(CEF_HELPER_OUTPUT_NAME "${CEF_WEBVIEW_HELPER_NAME} Helper")
+  target_compile_definitions(
+    ${CEF_WEBVIEW_TARGET}
+    PRIVATE "CEF_WEBVIEW_HELPER_OUTPUT_NAME=\"${CEF_HELPER_OUTPUT_NAME}\""
+  )
   # Create the multiple Helper app bundle targets.
   foreach(_suffix_list ${CEF_HELPER_APP_SUFFIXES})
     # Convert to a list and extract the suffix values.
@@ -109,6 +126,7 @@ if(OS_MAC)
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/macos/Helper-Info.plist.in" _plist_contents)
     string(REPLACE "\${EXECUTABLE_NAME}" "${_helper_output_name}" _plist_contents ${_plist_contents})
     string(REPLACE "\${PRODUCT_NAME}" "${_helper_output_name}" _plist_contents ${_plist_contents})
+    string(REPLACE "\${BUNDLE_ID}" "${CEF_WEBVIEW_HELPER_BUNDLE_ID}" _plist_contents ${_plist_contents})
     string(REPLACE "\${BUNDLE_ID_SUFFIX}" "${_plist_suffix}" _plist_contents ${_plist_contents})
     file(WRITE ${_helper_info_plist} ${_plist_contents})
     # Create Helper executable target.
