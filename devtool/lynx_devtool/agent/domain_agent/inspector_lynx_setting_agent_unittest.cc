@@ -11,6 +11,8 @@
 #include <utility>
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/testing/mock/global_devtool_platform_facade_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -87,7 +89,8 @@ class InspectorLynxSettingAgentTest : public ::testing::Test {
     if (!params.isNull()) {
       message["params"] = params;
     }
-    agent_->CallMethod(sender_, message);
+    auto responder = std::make_shared<CDPResponder>(sender_, 7);
+    agent_->CallMethod(responder, message);
     EXPECT_TRUE(sender_->WaitForMessage());
     return sender_->Response();
   }
@@ -129,8 +132,9 @@ TEST_F(InspectorLynxSettingAgentTest, RejectsMissingKey) {
   Json::Value response =
       Dispatch("LynxSetting.getValue", Json::Value(Json::objectValue));
 
-  EXPECT_EQ(response["error"]["message"].asString(),
-            "Invalid params: expected string key");
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::kInvalidParams));
+  EXPECT_EQ(response["error"]["message"].asString(), "expected string key");
 }
 
 TEST_F(InspectorLynxSettingAgentTest, RejectsNonStringMockValue) {
@@ -140,8 +144,10 @@ TEST_F(InspectorLynxSettingAgentTest, RejectsNonStringMockValue) {
 
   Json::Value response = Dispatch("LynxSetting.setMockValue", params);
 
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::kInvalidParams));
   EXPECT_EQ(response["error"]["message"].asString(),
-            "Invalid params: expected string mock value");
+            "expected string mock value");
 }
 
 TEST_F(InspectorLynxSettingAgentTest, ForwardsPlatformError) {
@@ -150,6 +156,8 @@ TEST_F(InspectorLynxSettingAgentTest, ForwardsPlatformError) {
 
   Json::Value response = Dispatch("LynxSetting.clearMockValues");
 
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::kServerError));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Failed to persist mock value");
 }
@@ -160,6 +168,8 @@ TEST_F(InspectorLynxSettingAgentTest, RejectsInvalidPlatformJson) {
 
   Json::Value response = Dispatch("LynxSetting.getFetchInfo");
 
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::kInternalError));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Invalid LynxSetting result JSON");
 }
@@ -167,8 +177,10 @@ TEST_F(InspectorLynxSettingAgentTest, RejectsInvalidPlatformJson) {
 TEST_F(InspectorLynxSettingAgentTest, RejectsUnknownMethod) {
   Json::Value response = Dispatch("LynxSetting.unknown");
 
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::kMethodNotFound));
   EXPECT_EQ(response["error"]["message"].asString(),
-            "Not implemented: LynxSetting.unknown");
+            "'LynxSetting.unknown' wasn't found");
 }
 
 }  // namespace testing
