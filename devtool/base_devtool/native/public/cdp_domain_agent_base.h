@@ -23,8 +23,13 @@ namespace devtool {
 class BASE_DEVTOOL_EXPORT CDPDomainAgentBase {
  public:
   virtual ~CDPDomainAgentBase() = default;
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& msg) = 0;
+
+  // Legacy sender-based entry point. Agents not yet migrated to the responder
+  // API override this. It is no longer pure virtual so a migrated agent that
+  // only overrides the responder-based CallMethod can still be instantiated;
+  // the default is a no-op and is never reached for such agents.
+  virtual void CallMethod(const std::shared_ptr<MessageSender>& /*sender*/,
+                          const Json::Value& /*msg*/) {}
 
   // Responder-based entry point. New agents should override this and fill the
   // response through |responder| (Result() / SendErrorResponse()) instead of
