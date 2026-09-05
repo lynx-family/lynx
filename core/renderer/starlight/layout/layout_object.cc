@@ -200,51 +200,68 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
     new_layout_result.offset_.SetY(rounded_absolute_top -
                                    container_rounded_top);
 
-    float rounded_width = LayoutStyleUtils::RoundValueToPixelGrid(
-                              absolute_right, physical_pixels_per_layout_unit) -
-                          rounded_absolute_left;
-    float rounded_height =
-        LayoutStyleUtils::RoundValueToPixelGrid(
-            absolute_bottom, physical_pixels_per_layout_unit) -
-        rounded_absolute_top;
+    float rounded_width = rounded_absolute_right - rounded_absolute_left;
+    float rounded_height = rounded_absolute_bottom - rounded_absolute_top;
     new_layout_result.size_.width_ = rounded_width;
     new_layout_result.size_.height_ = rounded_height;
 
-    new_layout_result.border_[kLeft] = LayoutStyleUtils::RoundValueToPixelGrid(
-        GetLayoutBorderLeftWidth(), physical_pixels_per_layout_unit);
-    new_layout_result.border_[kRight] = LayoutStyleUtils::RoundValueToPixelGrid(
-        GetLayoutBorderRightWidth(), physical_pixels_per_layout_unit);
-    new_layout_result.border_[kTop] = LayoutStyleUtils::RoundValueToPixelGrid(
-        GetLayoutBorderTopWidth(), physical_pixels_per_layout_unit);
-    new_layout_result.border_[kBottom] =
-        LayoutStyleUtils::RoundValueToPixelGrid(
-            GetLayoutBorderBottomWidth(), physical_pixels_per_layout_unit);
+    const float border_left = GetLayoutBorderLeftWidth();
+    const float border_right = GetLayoutBorderRightWidth();
+    const float border_top = GetLayoutBorderTopWidth();
+    const float border_bottom = GetLayoutBorderBottomWidth();
+    const float padding_left = GetLayoutPaddingLeft();
+    const float padding_right = GetLayoutPaddingRight();
+    const float padding_top = GetLayoutPaddingTop();
+    const float padding_bottom = GetLayoutPaddingBottom();
 
-    const float content_left = LayoutStyleUtils::RoundValueToPixelGrid(
-        (absolute_left + GetLayoutPaddingLeft() + GetLayoutBorderLeftWidth()),
-        physical_pixels_per_layout_unit);
-    const float content_top = LayoutStyleUtils::RoundValueToPixelGrid(
-        (absolute_top + GetLayoutPaddingTop() + GetLayoutBorderTopWidth()),
-        physical_pixels_per_layout_unit);
-    const float content_right = LayoutStyleUtils::RoundValueToPixelGrid(
-        (absolute_right - GetLayoutPaddingRight() -
-         GetLayoutBorderRightWidth()),
-        physical_pixels_per_layout_unit);
-    const float content_bottom = LayoutStyleUtils::RoundValueToPixelGrid(
-        (absolute_bottom - GetLayoutPaddingBottom() -
-         GetLayoutBorderBottomWidth()),
-        physical_pixels_per_layout_unit);
+    if (border_left == 0.f && border_right == 0.f && border_top == 0.f &&
+        border_bottom == 0.f && padding_left == 0.f && padding_right == 0.f &&
+        padding_top == 0.f && padding_bottom == 0.f) {
+      new_layout_result.border_[kLeft] = 0.f;
+      new_layout_result.border_[kRight] = 0.f;
+      new_layout_result.border_[kTop] = 0.f;
+      new_layout_result.border_[kBottom] = 0.f;
+      new_layout_result.padding_[kLeft] = 0.f;
+      new_layout_result.padding_[kRight] = 0.f;
+      new_layout_result.padding_[kTop] = 0.f;
+      new_layout_result.padding_[kBottom] = 0.f;
+    } else {
+      new_layout_result.border_[kLeft] =
+          LayoutStyleUtils::RoundValueToPixelGrid(
+              border_left, physical_pixels_per_layout_unit);
+      new_layout_result.border_[kRight] =
+          LayoutStyleUtils::RoundValueToPixelGrid(
+              border_right, physical_pixels_per_layout_unit);
+      new_layout_result.border_[kTop] = LayoutStyleUtils::RoundValueToPixelGrid(
+          border_top, physical_pixels_per_layout_unit);
+      new_layout_result.border_[kBottom] =
+          LayoutStyleUtils::RoundValueToPixelGrid(
+              border_bottom, physical_pixels_per_layout_unit);
 
-    new_layout_result.padding_[kLeft] =
-        content_left - rounded_absolute_left - new_layout_result.border_[kLeft];
-    new_layout_result.padding_[kTop] =
-        content_top - rounded_absolute_top - new_layout_result.border_[kTop];
-    new_layout_result.padding_[kRight] = rounded_absolute_right -
-                                         content_right -
-                                         new_layout_result.border_[kRight];
-    new_layout_result.padding_[kBottom] = rounded_absolute_bottom -
-                                          content_bottom -
-                                          new_layout_result.border_[kBottom];
+      const float content_left = LayoutStyleUtils::RoundValueToPixelGrid(
+          (absolute_left + padding_left + border_left),
+          physical_pixels_per_layout_unit);
+      const float content_top = LayoutStyleUtils::RoundValueToPixelGrid(
+          (absolute_top + padding_top + border_top),
+          physical_pixels_per_layout_unit);
+      const float content_right = LayoutStyleUtils::RoundValueToPixelGrid(
+          (absolute_right - padding_right - border_right),
+          physical_pixels_per_layout_unit);
+      const float content_bottom = LayoutStyleUtils::RoundValueToPixelGrid(
+          (absolute_bottom - padding_bottom - border_bottom),
+          physical_pixels_per_layout_unit);
+
+      new_layout_result.padding_[kLeft] = content_left - rounded_absolute_left -
+                                          new_layout_result.border_[kLeft];
+      new_layout_result.padding_[kTop] =
+          content_top - rounded_absolute_top - new_layout_result.border_[kTop];
+      new_layout_result.padding_[kRight] = rounded_absolute_right -
+                                           content_right -
+                                           new_layout_result.border_[kRight];
+      new_layout_result.padding_[kBottom] = rounded_absolute_bottom -
+                                            content_bottom -
+                                            new_layout_result.border_[kBottom];
+    }
 
     new_layout_result.margin_[kLeft] = GetLayoutMarginLeft();
     new_layout_result.margin_[kTop] = GetLayoutMarginTop();

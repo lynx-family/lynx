@@ -5,8 +5,6 @@
 #ifndef CORE_RENDERER_STARLIGHT_LAYOUT_ELASTIC_LAYOUT_UTILS_H_
 #define CORE_RENDERER_STARLIGHT_LAYOUT_ELASTIC_LAYOUT_UTILS_H_
 
-#include <functional>
-
 #include "core/renderer/starlight/layout/direction_selector.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 
@@ -21,7 +19,7 @@ class ElasticLayoutUtils {
   ElasticLayoutUtils() {}
 
  public:
-  using ElasticFactorGetter = std::function<float(const LayoutObject&)>;
+  using ElasticFactorGetter = float (*)(const LayoutObject&);
 
   // ElasticInfos is a struct used as a closure of inputs for elastic sizing
   // algorithm, with the variables definition the same as the flex box layout
