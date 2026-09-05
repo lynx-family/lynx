@@ -7,6 +7,24 @@ set(CEF_WEBVIEW_TARGET "cef_webview")
 # Determine the target output directory.
 SET_CEF_TARGET_OUT_DIR()
 
+if(NOT LYNX_EXTENSION_HEADERS_DIR)
+  execute_process(
+    COMMAND node -p
+            "require('node:path').dirname(require.resolve('@lynx-js/lynx-extension-headers/package.json'))"
+    WORKING_DIRECTORY "${PROJECT_ROOT_DIR}"
+    OUTPUT_VARIABLE LYNX_EXTENSION_HEADERS_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+endif()
+
+if(NOT LYNX_EXTENSION_HEADERS_DIR)
+  message(
+    FATAL_ERROR
+    "Unable to resolve @lynx-js/lynx-extension-headers. Run yarn install first."
+  )
+endif()
+
 add_compile_definitions(
   NAPI_CPP_CUSTOM_NAMESPACE=weak_node_api
   USE_WEAK_SUFFIX_NAPI
@@ -17,7 +35,6 @@ add_compile_definitions(
 # Sources
 set(CEF_WEBVIEW_SRCS
   cef_extension_module.cc
-  cef_extension_module.h
   cef_webview_client.cc
   cef_webview_client.h
   cef_webview.cc
@@ -55,6 +72,7 @@ add_library(${CEF_WEBVIEW_TARGET} STATIC ${CEF_WEBVIEW_SRCS})
 target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE ${LYNX_ROOT_DIR})
 target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE ${LYNX_ROOT_DIR}/lynx)
 target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE ${PROJECT_ROOT_DIR}/third_party/cef_binary)
+target_include_directories(${CEF_WEBVIEW_TARGET} PRIVATE "${LYNX_EXTENSION_HEADERS_DIR}/include")
 
 target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE USE_PRIMJS_NAPI)
 if(OS_MAC)

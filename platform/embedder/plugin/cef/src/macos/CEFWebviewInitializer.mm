@@ -15,6 +15,8 @@
 
 constexpr int64_t max_delay_ms = 10;
 
+extern "C" void cef_extension_module_force_link_registration();
+
 class CEFWebviewApp : public CefApp,
                       public CefRenderProcessHandler,
                       public CefBrowserProcessHandler {
@@ -94,6 +96,8 @@ class CEFWebviewApp : public CefApp,
 };
 
 LYNX_EXTERN_C bool cef_extension_module_initialize() {
+  cef_extension_module_force_link_registration();
+
   CefScopedLibraryLoader library_loader;
   if (!library_loader.LoadInMain()) {
     return false;
