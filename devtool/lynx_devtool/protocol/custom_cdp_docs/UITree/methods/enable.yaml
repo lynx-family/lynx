@@ -6,9 +6,10 @@ parameters:
     default: false
     description: Whether UITree.getLynxUITree should compress a large root payload before returning it.
   - name: compressionThreshold
-    type: boolean
+    type: integer
     optional: true
-    description: Current native code reads this field as a boolean. true stores threshold 1 and false stores threshold 0.
+    default: 10240
+    description: Root payload size in bytes above which UITree.getLynxUITree compresses the response when compression is enabled.
 returns: []
 events: []
 notes:
@@ -24,7 +25,7 @@ examples:
       method: UITree.enable
       params:
         useCompression: true
-        compressionThreshold: true
+        compressionThreshold: 10240
     response:
       id: 1
       result: {}
