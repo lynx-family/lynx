@@ -4,6 +4,12 @@
 
 #import <Lynx/LynxCardManager.h>
 #import <Lynx/LynxNavigator.h>
+#import "LynxBaseCardManager+Private.h"
+
+@interface LynxNavigator ()
+- (LynxCardManager *)getCurrentCardManager;
+- (LynxCardManager *)cardManagerForHolder:(id<LynxHolder>)lynxHolder;
+@end
 
 @implementation LynxNavigator {
   NSMutableArray<LynxCardManager *> *_innerCardManagerStack;
@@ -40,9 +46,7 @@
 }
 
 - (void)unregisterLynxHolder:(id<LynxHolder>)lynxHolder {
-  //  LynxCardManager *cardManager = [_pageDict objectForKey:lynxHolder];
-  //  [_pageDict removeObjectForKey:lynxHolder];
-  LynxCardManager *cardManager = [self getCurrentCardManager];
+  LynxCardManager *cardManager = [self cardManagerForHolder:lynxHolder];
   if (cardManager) {
     [cardManager clearCaches];
     [_innerCardManagerStack removeObject:cardManager];
@@ -94,12 +98,32 @@
   return [_innerCardManagerStack lastObject];
 }
 
+- (LynxCardManager *)cardManagerForHolder:(id<LynxHolder>)lynxHolder {
+  if (!lynxHolder) {
+    return nil;
+  }
+  for (LynxCardManager *cardManager in [_innerCardManagerStack reverseObjectEnumerator]) {
+    if (cardManager.holder == lynxHolder) {
+      return cardManager;
+    }
+  }
+  return nil;
+}
+
 - (void)didEnterForeground:(id<LynxHolder>)lynxHolder {
-  [[self getCurrentCardManager] didEnterForeground];
+  LynxCardManager *cardManager = [self cardManagerForHolder:lynxHolder];
+  if (!cardManager) {
+    cardManager = [self getCurrentCardManager];
+  }
+  [cardManager didEnterForeground];
 }
 
 - (void)didEnterBackground:(id<LynxHolder>)lynxHolder {
-  [[self getCurrentCardManager] didEnterBackground];
+  LynxCardManager *cardManager = [self cardManagerForHolder:lynxHolder];
+  if (!cardManager) {
+    cardManager = [self getCurrentCardManager];
+  }
+  [cardManager didEnterBackground];
 }
 
 @end
