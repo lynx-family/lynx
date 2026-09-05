@@ -287,7 +287,7 @@ void InspectorUIExecutor::UITree_Enable(
     uitree_use_compression_ = params["useCompression"].asBool();
   }
   if (params.isMember("compressionThreshold")) {
-    uitree_compression_threshold_ = params["compressionThreshold"].asBool();
+    uitree_compression_threshold_ = params["compressionThreshold"].asInt();
   }
   uitree_enabled_ = true;
 
