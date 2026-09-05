@@ -74,6 +74,21 @@ class InspectorUIExecutorTest : public ::testing::Test {
   std::unique_ptr<fml::Thread> ui_thread_;
 };
 
+TEST_F(InspectorUIExecutorTest, UITreeEnableUsesIntegerCompressionThreshold) {
+  Json::Value message;
+  message["id"] = 1;
+  message["params"]["useCompression"] = true;
+  message["params"]["compressionThreshold"] = 4096;
+
+  ui_executor_->UITree_Enable(message_sender_, message);
+
+  EXPECT_TRUE(ui_executor_->uitree_enabled_);
+  EXPECT_TRUE(ui_executor_->uitree_use_compression_);
+  EXPECT_EQ(ui_executor_->uitree_compression_threshold_, 4096);
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
+}
+
 TEST_F(InspectorUIExecutorTest, PageReloadTest) {
   LOGI("InspectorUIExecutorTest PageReloadTest start");
 
