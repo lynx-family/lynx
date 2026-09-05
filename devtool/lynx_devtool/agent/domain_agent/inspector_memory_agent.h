@@ -5,7 +5,11 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_MEMORY_AGENT_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_MEMORY_AGENT_H_
 
+#include <map>
+#include <string>
+
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
@@ -14,19 +18,17 @@ class InspectorMemoryAgent : public CDPDomainAgentBase {
  public:
   InspectorMemoryAgent();
   virtual ~InspectorMemoryAgent();
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message) override;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                  const Json::Value& message) override;
 
  private:
   typedef void (InspectorMemoryAgent::*MemoryAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& message);
 
-  void StartTracing(const std::shared_ptr<MessageSender>& sender,
-                    const Json::Value& message);
-  void StopTracing(const std::shared_ptr<MessageSender>& sender,
-                   const Json::Value& message);
-  void GetAllMemoryUsage(const std::shared_ptr<MessageSender>& sender,
-                         const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(StartTracing);
+  DECLARE_DEVTOOL_CDP_METHOD(StopTracing);
+  DECLARE_DEVTOOL_CDP_METHOD(GetAllMemoryUsage);
 
   std::map<std::string, MemoryAgentMethod> functions_map_;
 };
