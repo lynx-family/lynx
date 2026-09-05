@@ -7,8 +7,10 @@
 #include <node_api.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdarg>
 #include <cstring>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -130,6 +132,92 @@ bool NapiUtil::ConvertToBoolean(napi_env env, napi_value obj) {
     LOGE("Fail to get bool:" << status);
   }
   return ret;
+}
+
+NapiValueConversionStatus NapiUtil::ConvertToFiniteDoubleChecked(
+    napi_env env, napi_value obj, double* result) {
+  if (result == nullptr || !NapiIsType(env, obj, napi_number)) {
+    return NapiValueConversionStatus::kTypeMismatch;
+  }
+
+  double number = 0.0;
+  if (napi_get_value_double(env, obj, &number) != napi_ok) {
+    return NapiValueConversionStatus::kTypeMismatch;
+  }
+  if (!std::isfinite(number)) {
+    return NapiValueConversionStatus::kOutOfRange;
+  }
+
+  *result = number;
+  return NapiValueConversionStatus::kSuccess;
+}
+
+NapiValueConversionStatus NapiUtil::ConvertToInt32Checked(napi_env env,
+                                                          napi_value obj,
+                                                          int32_t* result) {
+  double number = 0.0;
+  NapiValueConversionStatus status =
+      ConvertToFiniteDoubleChecked(env, obj, &number);
+  if (status != NapiValueConversionStatus::kSuccess) {
+    return status;
+  }
+  if (std::trunc(number) != number ||
+      number < std::numeric_limits<int32_t>::min() ||
+      number > std::numeric_limits<int32_t>::max()) {
+    return NapiValueConversionStatus::kOutOfRange;
+  }
+
+  *result = static_cast<int32_t>(number);
+  return NapiValueConversionStatus::kSuccess;
+}
+
+NapiValueConversionStatus NapiUtil::ConvertToBigUInt64Checked(
+    napi_env env, napi_value obj, uint64_t* result) {
+  if (result == nullptr || !NapiIsType(env, obj, napi_bigint)) {
+    return NapiValueConversionStatus::kTypeMismatch;
+  }
+
+  uint64_t number = 0;
+  bool lossless = false;
+  if (napi_get_value_bigint_uint64(env, obj, &number, &lossless) != napi_ok ||
+      !lossless) {
+    return NapiValueConversionStatus::kOutOfRange;
+  }
+
+  *result = number;
+  return NapiValueConversionStatus::kSuccess;
+}
+
+NapiValueConversionStatus NapiUtil::ConvertToBooleanChecked(napi_env env,
+                                                            napi_value obj,
+                                                            bool* result) {
+  if (result == nullptr || !NapiIsType(env, obj, napi_boolean) ||
+      napi_get_value_bool(env, obj, result) != napi_ok) {
+    return NapiValueConversionStatus::kTypeMismatch;
+  }
+  return NapiValueConversionStatus::kSuccess;
+}
+
+NapiValueConversionStatus NapiUtil::ConvertToStringChecked(
+    napi_env env, napi_value obj, std::string* result) {
+  if (result == nullptr || !NapiIsType(env, obj, napi_string)) {
+    return NapiValueConversionStatus::kTypeMismatch;
+  }
+
+  size_t length = 0;
+  if (napi_get_value_string_utf8(env, obj, nullptr, 0, &length) != napi_ok) {
+    return NapiValueConversionStatus::kTypeMismatch;
+  }
+  std::string value(length + 1, '\0');
+  size_t copied = 0;
+  if (napi_get_value_string_utf8(env, obj, value.data(), value.size(),
+                                 &copied) != napi_ok) {
+    return NapiValueConversionStatus::kTypeMismatch;
+  }
+
+  value.resize(copied);
+  *result = std::move(value);
+  return NapiValueConversionStatus::kSuccess;
 }
 
 std::string NapiUtil::ConvertToShortString(napi_env env, napi_value arg) {
