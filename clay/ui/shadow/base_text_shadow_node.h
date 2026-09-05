@@ -107,6 +107,11 @@ class BaseTextShadowNode : public ShadowNode {
   double auto_font_size_max_size_ = 0.;
   double auto_font_size_min_size_ = 0.;
   double auto_font_size_step_granularity_ = 1.;
+  double GetAutoFontSizeStepGranularity() const {
+    return auto_font_size_step_granularity_ > 0.
+               ? auto_font_size_step_granularity_
+               : 1.;
+  }
   std::vector<double> auto_font_size_preset_sizes_;
   bool text_indent_use_percent_ = false;
   float text_indent_ = 0.f;
