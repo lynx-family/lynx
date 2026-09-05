@@ -134,7 +134,10 @@ class LynxNativeView {
    * @brief Create and present surface with external graphics buffer
    * @param width The width of surface
    * @param height The height of surface
-   * @param transform The transformation matrix that will be applied on screen
+   * @param transform The sampling transform Lynx applies when presenting the
+   *        surface. It maps the producer's texture coordinates to Lynx's visual
+   *        coordinates. Use it for backend/origin differences, such as Y-flip,
+   *        instead of treating native buffer row 0 as the visual top row.
    * @param handle The resource handle of system graphics buffer
    */
   inline bool PresentSurface(int width, int height, const float* transform,
@@ -151,7 +154,15 @@ class LynxNativeView {
    * @return Platform native graphics handle. On Darwin this is IOSurfaceRef.
    *         On Windows this is a D3D shared HANDLE for the back buffer,
    *         not a texture/device pointer. Import it with the graphics
-   * API/device that matches the active Windows backend.
+   *         API/device that matches the active Windows backend.
+   *
+   * @note The returned handle exposes the platform/backend texture backing.
+   *       Its pixel row order is not guaranteed to match Lynx logical
+   *       top-to-bottom coordinates. For macOS IOSurface-backed desktop
+   *       surfaces, Lynx samples with the backend's vertical texture transform;
+   *       producers that draw directly into the IOSurface should keep the
+   *       platform texture orientation and adjust their own drawing transform
+   *       when needed.
    */
   inline lynx_surface_handle_t* AcquireSurface(int width, int height) {
     return lynx_native_view_acquire_surface(native_view_, width, height);
