@@ -239,8 +239,6 @@ void QuickjsRuntime::OnRuntimeGC(
   if (!observer_) {
     return;
   }
-  mem_info.emplace(tasm::performance::kCategory,
-                   tasm::performance::kCategoryBTSEngine);
   mem_info.emplace(tasm::performance::kRuntimeId,
                    std::to_string(getRuntimeId()));
   mem_info.emplace(tasm::performance::kRuntimeGroupId, getGroupId());

@@ -48,12 +48,6 @@ class MemoryMonitor {
   // the record, effectively updating the memory usage information.
   void UpdateMemoryUsage(MemoryRecord&& record, bool force_report = false);
 
-  // Overwrites the memory usage and sends a PerformanceEntry.
-  // This interface will overwrite the record corresponding to the category in
-  // the record, effectively updating the memory usage information.
-  void UpdateScriptingEngineMemoryUsage(
-      std::unordered_map<std::string, std::string> info);
-
   // Aggregate data and report memory to sender or trace.
   void ReportMemory(bool force_report = false);
 

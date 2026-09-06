@@ -52,11 +52,18 @@ void BTSRuntimeMediator::OnRuntimeGC(
   if (!perf_controller_actor_) {
     return;
   }
-  perf_controller_actor_->ActAsync(
-      [memory_info = std::move(mem_info)](auto& performance) mutable {
-        performance->GetMemoryMonitor().UpdateScriptingEngineMemoryUsage(
+  perf_controller_actor_->ActAsync([memory_info = std::move(mem_info)](
+                                       auto& performance) mutable {
+    tasm::performance::MemoryRecord record;
+    record.size_bytes_ = std::stoll(memory_info[runtime::kRawRuntimeHeapSize]);
+    record.category_ = tasm::performance::kCategoryBTSEngine;
+    record.detail_ =
+        std::make_unique<std::unordered_map<std::string, std::string>>(
             std::move(memory_info));
-      });
+    performance->GetMemoryMonitor().UpdateMemoryUsage(
+        std::move(record),
+        memory_info.find(runtime::kForceReportMemoryInfo) != memory_info.end());
+  });
 }
 
 void BTSRuntimeMediator::UpdateDataByJS(runtime::UpdateDataTask task) {
