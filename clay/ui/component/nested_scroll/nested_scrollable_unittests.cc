@@ -24,6 +24,7 @@ class TestScrollable : public NestedScrollable {
 
   FloatPoint DoScroll(FloatPoint delta, bool is_user_input,
                       bool ignore_repaint) override {
+    do_scroll_count_++;
     if (delta.y() != 0) {
       float new_offset = scroll_offset_ + delta.y();
       if (new_offset < 0) {
@@ -42,6 +43,10 @@ class TestScrollable : public NestedScrollable {
 
   void OnScrollStatusChange(ScrollStatus old_status) override {
     NestedScrollable::OnScrollStatusChange(old_status);
+    if (stop_animation_on_dragging_ && status_ == ScrollStatus::kDragging) {
+      do_scroll_count_when_dragging_ = do_scroll_count_;
+      StopAnimation();
+    }
     if (status_ == ScrollStatus::kBounce) {
       bounced_ = true;
     }
@@ -61,11 +66,24 @@ class TestScrollable : public NestedScrollable {
   float max_scroll_offset_;
   float scroll_offset_ = 0;
   bool bounced_ = false;
+  bool stop_animation_on_dragging_ = false;
+  int do_scroll_count_ = 0;
+  int do_scroll_count_when_dragging_ = 0;
 };
 
 class NestedScrollableTest : public UITest {
   void UISetUp() override {}
 };
+
+PointerEvent CreateWheelEvent(float delta, bool is_precise_scroll) {
+  PointerEvent event(PointerEvent::EventType::kSignalEvent);
+  event.device = PointerEvent::DeviceType::kMouse;
+  event.signal_kind = PointerEvent::SignalKind::kStartScroll;
+  event.position = {50, 50};
+  event.scroll_delta_y = delta;
+  event.is_precise_scroll = is_precise_scroll;
+  return event;
+}
 
 TEST_F_UI(NestedScrollableTest, Chain) {
   NestedScrollable* scrollable1 =
@@ -144,6 +162,87 @@ TEST_F_UI(NestedScrollableTest, TrackpadDragScrollsWhenMouseDragDisabled) {
   DispatchDragEvent({50, 50}, {50, 0}, PointerEvent::DeviceType::kTrackpad);
 
   EXPECT_EQ(scrollable->scroll_offset_, 50);
+}
+
+TEST_F_UI(NestedScrollableTest, ListLikeTouchDragScrolls) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  scrollable->stop_animation_on_dragging_ = true;
+  page_->AddChild(scrollable);
+
+  DispatchDragEvent({50, 50}, {50, 20});
+
+  EXPECT_EQ(scrollable->scroll_offset_, 30);
+  EXPECT_EQ(scrollable->GetScrollStatus(), Scrollable::ScrollStatus::kIdle);
+}
+
+TEST_F_UI(NestedScrollableTest, ListLikeTrackpadDragScrolls) {
+  page_->SetEnableMouseDragScroll(false);
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  scrollable->stop_animation_on_dragging_ = true;
+  page_->AddChild(scrollable);
+
+  DispatchDragEvent({50, 50}, {50, 20}, PointerEvent::DeviceType::kTrackpad);
+
+  EXPECT_EQ(scrollable->scroll_offset_, 30);
+}
+
+TEST_F_UI(NestedScrollableTest, ListLikeMouseDragRespectsPageConfig) {
+  page_->SetEnableMouseDragScroll(false);
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  scrollable->stop_animation_on_dragging_ = true;
+  page_->AddChild(scrollable);
+
+  DispatchDragEvent({50, 50}, {50, 20}, PointerEvent::DeviceType::kMouse);
+  EXPECT_EQ(scrollable->scroll_offset_, 0);
+
+  page_->SetEnableMouseDragScroll(true);
+  DispatchDragEvent({50, 50}, {50, 20}, PointerEvent::DeviceType::kMouse);
+  EXPECT_EQ(scrollable->scroll_offset_, 30);
+}
+
+TEST_F_UI(NestedScrollableTest, ListLikePreciseWheelScrollsImmediately) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  scrollable->stop_animation_on_dragging_ = true;
+  page_->AddChild(scrollable);
+
+  page_->DispatchPointerEvent({CreateWheelEvent(30, true)});
+
+  EXPECT_EQ(scrollable->do_scroll_count_when_dragging_, 0);
+  EXPECT_EQ(scrollable->do_scroll_count_, 1);
+  EXPECT_EQ(scrollable->scroll_offset_, 30);
+}
+
+TEST_F_UI(NestedScrollableTest, ListLikeDiscreteWheelAnimatesScroll) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  scrollable->stop_animation_on_dragging_ = true;
+  page_->AddChild(scrollable);
+
+  page_->DispatchPointerEvent({CreateWheelEvent(30, false)});
+
+  EXPECT_EQ(scrollable->do_scroll_count_when_dragging_, 0);
+  EXPECT_EQ(scrollable->scroll_offset_, 0);
+
+  DoAnimation();
+
+  EXPECT_GT(scrollable->do_scroll_count_, 0);
+  EXPECT_EQ(scrollable->scroll_offset_, 30);
+  EXPECT_EQ(scrollable->GetScrollStatus(), Scrollable::ScrollStatus::kIdle);
+}
+
+TEST_F_UI(NestedScrollableTest, ListLikeTouchFlingContinuesScroll) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  scrollable->stop_animation_on_dragging_ = true;
+  page_->AddChild(scrollable);
+
+  DispatchDragEvent({50, 50}, {50, 20}, true, 10, 1);
+  float offset_after_drag = scrollable->scroll_offset_;
+
+  EXPECT_EQ(offset_after_drag, 30);
+  EXPECT_EQ(scrollable->GetScrollStatus(), Scrollable::ScrollStatus::kFling);
+
+  DoAnimation(100);
+
+  EXPECT_GT(scrollable->scroll_offset_, offset_after_drag);
 }
 
 TEST_F_UI(NestedScrollableTest, NestedDrag) {
