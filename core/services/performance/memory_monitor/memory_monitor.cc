@@ -66,49 +66,6 @@ inline std::string ValueToJsonString(const pub::Value& value) {
 }
 #endif
 
-inline MemoryRecord BuildMemoryRecord(
-    const rapidjson::Value& obj,
-    std::unordered_map<std::string, std::string> info) {
-  MemoryRecord record;
-  // size_bytes
-  const rapidjson::Value& heap_size_kb_after_v = obj["heapsize_after"];
-  if (heap_size_kb_after_v.IsNumber()) {
-    record.size_bytes_ = heap_size_kb_after_v.GetUint() * 1024;
-  }
-  // category
-  auto category_it = info.find(kCategory);
-  if (category_it != info.end()) {
-    record.category_ = category_it->second;
-  }
-  // detail
-  record.detail_ =
-      std::make_unique<std::unordered_map<std::string, std::string>>(
-          std::move(info));
-  if (obj.IsObject()) {
-    for (rapidjson::Value::ConstMemberIterator itr = obj.MemberBegin();
-         itr != obj.MemberEnd(); ++itr) {
-      std::string key = itr->name.GetString();
-      if (key == lynx::runtime::kRawRuntimeMemoryInfo) {
-        continue;
-      }
-      std::string value;
-      if (itr->value.IsString()) {
-        value = itr->value.GetString();
-      } else if (itr->value.IsInt()) {
-        value = std::to_string(itr->value.GetInt());
-      } else if (itr->value.IsDouble()) {
-        value = std::to_string(itr->value.GetDouble());
-      } else if (itr->value.IsBool()) {
-        value = itr->value.GetBool() ? "true" : "false";
-      } else {
-        value = "Unsupported type";
-      }
-      record.detail_->emplace(std::move(key), std::move(value));
-    }
-  }
-  return record;
-}
-
 enum BoolValue : uint8_t { Unset = 0, False = 1, True = 2 };
 struct MemoryMonitorArgs {
   MemoryMonitorArgs() {
@@ -228,47 +185,6 @@ void MemoryMonitor::UpdateMemoryUsage(MemoryRecord&& record,
     memory_records_.emplace(record.category_, std::move(record));
   }
   ReportMemory(force_report);
-}
-
-void MemoryMonitor::UpdateScriptingEngineMemoryUsage(
-    std::unordered_map<std::string, std::string> info) {
-  if (!Enable()) {
-    return;
-  }
-  auto it = info.find(lynx::runtime::kRawRuntimeMemoryInfo);
-  if (it == info.end()) {
-    return;
-  }
-
-  bool force_report = false;
-#if ENABLE_TRACE_PERFETTO
-  auto force_report_it = info.find(runtime::kForceReportMemoryInfo);
-  if (force_report_it != info.end()) {
-    force_report = force_report_it->second == "1";
-    info.erase(force_report_it);
-  }
-#endif
-
-  rapidjson::Document doc;
-  doc.Parse(it->second);
-  info.erase(lynx::runtime::kRawRuntimeMemoryInfo);
-  if (doc.HasParseError() || !doc.IsObject()) {
-    return;
-  }
-  const rapidjson::Value& gc_info = doc["gc_info"];
-  if (!gc_info.IsArray()) {
-    return;
-  }
-  rapidjson::SizeType arraySize = gc_info.Size();
-  if (arraySize == 0) {
-    return;
-  }
-  const rapidjson::Value& lastElement = gc_info[arraySize - 1];
-  if (lastElement.IsNull()) {
-    return;
-  }
-  UpdateMemoryUsage(BuildMemoryRecord(lastElement, std::move(info)),
-                    force_report);
 }
 
 void MemoryMonitor::ReportMemory(bool force_report) {

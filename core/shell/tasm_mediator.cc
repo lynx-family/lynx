@@ -363,13 +363,18 @@ void TasmMediator::OnRuntimeGC(
   if (!perf_actor_) {
     return;
   }
-  perf_actor_->ActAsync(
-      [memory_info = std::move(mem_info)](auto& performance) mutable {
-        memory_info.emplace(tasm::performance::kCategory,
-                            tasm::performance::kCategoryMTSEngine);
-        performance->GetMemoryMonitor().UpdateScriptingEngineMemoryUsage(
+  perf_actor_->ActAsync([memory_info =
+                             std::move(mem_info)](auto& performance) mutable {
+    tasm::performance::MemoryRecord record;
+    record.size_bytes_ = std::stoll(memory_info[runtime::kRawRuntimeHeapSize]);
+    record.category_ = tasm::performance::kCategoryMTSEngine;
+    record.detail_ =
+        std::make_unique<std::unordered_map<std::string, std::string>>(
             std::move(memory_info));
-      });
+    performance->GetMemoryMonitor().UpdateMemoryUsage(
+        std::move(record),
+        memory_info.find(runtime::kForceReportMemoryInfo) != memory_info.end());
+  });
 }
 
 void TasmMediator::RequestVsync(

@@ -617,7 +617,7 @@ void QuickContext::OnGC(std::string mem_info) {
   if (trace::TraceController::Instance()->IsTracingStarted()) {
     auto usage = runtime::js::detail::QuickjsHelper::GetMemoryUsage(runtime_);
     std::unordered_map<std::string, std::string> info{
-        {lynx::runtime::kRawRuntimeMemoryInfo, std::move(mem_info)},
+        {lynx::runtime::kRawRuntimeHeapSize, std::to_string(usage.heap_size)},
         {lynx::runtime::kRawRuntimeBaseMemoryInfo,
          std::to_string(usage.base_size)},
         {lynx::runtime::kRawRuntimePageRssMemoryInfo,
@@ -630,7 +630,8 @@ void QuickContext::OnGC(std::string mem_info) {
     return;
   }
 #endif
-  OnContextGC({{lynx::runtime::kRawRuntimeMemoryInfo, std::move(mem_info)}});
+  OnContextGC({{lynx::runtime::kRawRuntimeHeapSize,
+                std::to_string(LEPUS_GetHeapSize(runtime_))}});
 }
 
 void QuickContext::Initialize() {

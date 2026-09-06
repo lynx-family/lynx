@@ -183,7 +183,8 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
   ReportMemoryForTrace();
 #endif
   for (auto* observer : obs_set_ptr_) {
-    observer->OnRuntimeGC({{kRawRuntimeMemoryInfo, mem_info}});
+    observer->OnRuntimeGC(
+        {{kRawRuntimeHeapSize, std::to_string(LEPUS_GetHeapSize(rt_))}});
   }
 }
 
