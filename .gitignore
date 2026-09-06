@@ -94,6 +94,12 @@ platform/android/lynx_library_plugin/build/
 !explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/xcshareddata/**
 explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource/*
 !explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource/testBench
+
+# Generated showcase JS bundles (build_and_copy.py); per-platform subdirs only.
+explorer/darwin/macos/lynx_explorer/Resource/showcase/
+explorer/harmony/lynx_explorer/src/main/resources/rawfile/showcase/
+explorer/windows/lynx_explorer/resources/showcase/
+
 explorer/darwin/ios/lynx_explorer/iOSCoreBuild/
 explorer/darwin/ios/lynx_explorer/results_bundle
 explorer/darwin/ios/lynx_explorer/xctestrunner
@@ -129,6 +135,8 @@ js_libraries/lynx-core/src/common/feature.ts
 
 # ignore all python script cache
 **/__pycache__/
+# pyenv local version pin
+.python-version
 
 # ignore os specific hidden files
 **/.DS_Store

@@ -8,6 +8,10 @@ import("../../testing/test.gni")
 import("../include/base_public_headers.gni")
 import("base.gni")
 
+if (is_harmony) {
+  import("../platform/harmony/harmony.gni")
+}
+
 static_library("base_static") {
   sources = [
     "../platform/windows/lynx_base_env.cc",
@@ -211,7 +215,9 @@ lynx_base_source_set("base_core") {
               "./fml/raster_thread_merger.cc",
               "./fml/shared_thread_merger.cc",
               "file_utils.cc",
+              "fml/concurrent_loop_backend_std.cc",
               "fml/concurrent_message_loop.cc",
+              "fml/concurrent_message_loop_backend.cc",
               "fml/cpu_affinity.cc",
               "fml/memory/task_runner_checker.cc",
               "fml/message_loop.cc",
@@ -260,6 +266,7 @@ lynx_base_source_set("base_core") {
   } else if (is_harmony) {
     sources += [
       "fml/platform/harmony/message_loop_harmony.cc",
+      "fml/platform/harmony/concurrent_loop_backend_ffrt.cc",
       "fml/platform/linux/timerfd.cc",
       "fml/platform/posix/thread_name_setter_posix.cc",
       "fml/synchronization/shared_mutex_std.cc",
@@ -305,11 +312,19 @@ lynx_base_source_set("base_core") {
     ]
   }
 
+  include_dirs = []
+  if (is_harmony) {
+    include_dirs += [ ffrt_include_dir ]
+  }
+
   deps = [ ":datauri_utils" ]
 
   libs = []
   if (is_android) {
     libs += [ "android" ]
+  }
+  if (is_harmony) {
+    libs += [ "ffrt.z" ]
   }
   if (is_win) {
     libs += [ "user32.lib" ]
@@ -317,6 +332,17 @@ lynx_base_source_set("base_core") {
 }
 
 if (enable_unittests) {
+  unittest_exec("concurrent_message_loop_backend_test") {
+    sources = [
+      "fml/concurrent_message_loop_backend_test.cc",
+    ]
+    deps = [
+      ":base_core",
+      ":base_log",
+      ":base_values",
+    ]
+  }
+
   unittest_exec("base_unittests_exec") {
     testonly = true
     sources = [
@@ -382,6 +408,7 @@ if (enable_unittests) {
       ":base_core",
       ":base_log",
       ":base_values",
+      ":concurrent_message_loop_backend_test",
       "//third_party/googletest:gtest",
     ]
   }
