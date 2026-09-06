@@ -1583,7 +1583,8 @@ const TextEditingValue& EditableView::GetTextEditingValue() {
 
 void EditableView::SetTextEditingValue(const TextEditingValue& value,
                                        bool is_composing,
-                                       bool need_update_remote) {
+                                       bool need_update_remote,
+                                       bool record_history) {
   bool text_changed = value.GetU16Text() != GetTextEditingValue().GetU16Text();
   bool trigger_input_event =
       !is_composing && pre_text_value_ != value.GetU16Text();
@@ -1592,7 +1593,7 @@ void EditableView::SetTextEditingValue(const TextEditingValue& value,
   }
   text_editing_controller_->SetValue(value, trigger_input_event,
                                      need_update_remote);
-  if (text_editing_history_state_ && text_changed) {
+  if (record_history && text_editing_history_state_ && text_changed) {
     text_editing_history_state_->Push();
   }
   UpdateCursorPositionIfNeeded(value.selection());
@@ -1616,6 +1617,20 @@ void EditableView::UpdateEditingState(std::string text, TextSelection selection,
 }
 
 void EditableView::PerformAction() { OnPerformAction(keyboard_action_); }
+
+bool EditableView::PerformHistoryAction(TextInputHistoryAction action) {
+  if (!editing_ || disabled_) {
+    return false;
+  }
+  if (!readonly_ && text_editing_history_state_) {
+    if (action == TextInputHistoryAction::kUndo) {
+      text_editing_history_state_->Undo();
+    } else {
+      text_editing_history_state_->Redo();
+    }
+  }
+  return true;
+}
 
 Transform EditableView::ToGlobalTransform() const {
   return BaseView::LocalToGlobalTransform();
@@ -1725,17 +1740,18 @@ void EditableView::UpdateCursorPositionIfNeeded(const TextRange& range) {
 
 TextEditingHistoryState::TextEditingHistoryState(EditableView* editable_view)
     : editable_view_(editable_view) {
-  Push();
+  stack_.Push(editable_view_->GetTextEditingValue());
 }
 
-void TextEditingHistoryState::Redo() { Update(*stack_.Redo()); }
+void TextEditingHistoryState::Redo() { Update(stack_.Redo()); }
 
 void TextEditingHistoryState::Undo() {
   if (throttle_timer_ && !throttle_timer_->Stopped()) {
     throttle_timer_->Stop();
-    Update(stack_.CurrentValue());
+    stack_.Push(editable_view_->GetTextEditingValue());
+    Update(stack_.Undo());
   } else {
-    Update(*stack_.Undo());
+    Update(stack_.Undo());
   }
 }
 
@@ -1757,11 +1773,11 @@ void TextEditingHistoryState::Push() {
 
 void TextEditingHistoryState::Update(
     std::optional<TextEditingValue> new_value) {
-  if (new_value.has_value() &&
+  if (!new_value.has_value() ||
       *new_value == editable_view_->GetTextEditingValue()) {
     return;
   }
-  editable_view_->SetTextEditingValue(*new_value);
+  editable_view_->SetTextEditingValue(*new_value, false, true, false);
 }
 
 std::unique_ptr<fml::Timer> TextEditingHistoryState::ThrottledPush() {

@@ -55,6 +55,10 @@ TextInputController::TextInputController(PageView* page_view, int client_id,
   callback.on_perform_action = [weak = weak_factory_.GetWeakPtr()]() {
     weak->PerformAction();
   };
+  callback.on_perform_history_action =
+      [weak = weak_factory_.GetWeakPtr()](TextInputHistoryAction action) {
+        return weak && weak->PerformHistoryAction(action);
+      };
 
   manager->AddClientCallback(client_id, callback);
 #endif
@@ -153,6 +157,10 @@ void TextInputController::UpdateEditingState(std::string text,
 }
 
 void TextInputController::PerformAction() { client_->PerformAction(); }
+
+bool TextInputController::PerformHistoryAction(TextInputHistoryAction action) {
+  return client_->PerformHistoryAction(action);
+}
 
 void TextInputController::SetMultiline(bool multiline) {
   multiline_ = multiline;
