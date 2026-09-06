@@ -24,6 +24,7 @@ class TestScrollable : public NestedScrollable {
 
   FloatPoint DoScroll(FloatPoint delta, bool is_user_input,
                       bool ignore_repaint) override {
+    do_scroll_count_++;
     if (delta.y() != 0) {
       float new_offset = scroll_offset_ + delta.y();
       if (new_offset < 0) {
@@ -42,6 +43,10 @@ class TestScrollable : public NestedScrollable {
 
   void OnScrollStatusChange(ScrollStatus old_status) override {
     NestedScrollable::OnScrollStatusChange(old_status);
+    if (stop_animation_on_dragging_ && status_ == ScrollStatus::kDragging) {
+      do_scroll_count_when_dragging_ = do_scroll_count_;
+      StopAnimation();
+    }
     if (status_ == ScrollStatus::kBounce) {
       bounced_ = true;
     }
@@ -61,6 +66,9 @@ class TestScrollable : public NestedScrollable {
   float max_scroll_offset_;
   float scroll_offset_ = 0;
   bool bounced_ = false;
+  bool stop_animation_on_dragging_ = false;
+  int do_scroll_count_ = 0;
+  int do_scroll_count_when_dragging_ = 0;
 };
 
 class NestedScrollableTest : public UITest {
@@ -144,6 +152,20 @@ TEST_F_UI(NestedScrollableTest, TrackpadDragScrollsWhenMouseDragDisabled) {
   DispatchDragEvent({50, 50}, {50, 0}, PointerEvent::DeviceType::kTrackpad);
 
   EXPECT_EQ(scrollable->scroll_offset_, 50);
+}
+
+TEST_F_UI(NestedScrollableTest, MouseWheelStartsAfterDraggingStatusChange) {
+  TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
+  scrollable->stop_animation_on_dragging_ = true;
+  page_->AddChild(scrollable);
+
+  PointerEvent wheel(PointerEvent::EventType::kSignalEvent);
+  wheel.device = PointerEvent::DeviceType::kMouse;
+  wheel.position = {50, 50};
+  wheel.scroll_delta_y = 50;
+  page_->DispatchPointerEvent({wheel});
+
+  EXPECT_EQ(scrollable->do_scroll_count_when_dragging_, 0);
 }
 
 TEST_F_UI(NestedScrollableTest, NestedDrag) {
