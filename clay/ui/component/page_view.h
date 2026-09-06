@@ -446,6 +446,15 @@ class PageView : public BaseView,
 
   void RequestNewFrameForSemantics();
   void DispatchSemanticsAction(int virtual_view_id, int action);
+  void RequestAccessibilityFocus(int32_t view_id, bool without_update,
+                                 std::function<void(bool)> callback) {
+    if (render_delegate_) {
+      render_delegate_->RequestAccessibilityFocus(view_id, without_update,
+                                                  std::move(callback));
+    } else {
+      callback(false);
+    }
+  }
 #endif
 
   const std::shared_ptr<ServiceManager>& GetServiceManager() const {
