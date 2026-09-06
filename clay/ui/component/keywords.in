@@ -71,6 +71,8 @@ font-size
 text-overflow
 font-weight
 font-style
+font-variation-settings
+font-optical-sizing
 line-height
 line-spacing
 white-space

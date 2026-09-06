@@ -73,6 +73,7 @@ class TextStyle {
   std::vector<TextShadow> text_shadows;
   FontFeatures font_features;
   FontVariations font_variations;
+  bool font_optical_sizing = false;
   WordBreak word_break = kNormal;
 #if defined(CLAY_ENABLE_TTTEXT)
   ttoffice::tttext::CharacterVerticalAlignment align_type =
@@ -83,6 +84,8 @@ class TextStyle {
 #endif  // CLAY_ENABLE_TTTEXT
 
   TextStyle();
+
+  FontVariations GetResolvedFontVariations() const;
 
   bool equals(const TextStyle& other) const;
 };

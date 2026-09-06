@@ -290,7 +290,38 @@ if (enable_unittests) {
   ]
 
   test_fixtures("txt_fixtures") {
-    fixtures = [ "third_party/fonts/Roboto-Bold.ttf" ]
+    fixtures = [
+      "third_party/fonts/Roboto-Bold.ttf",
+      "//third_party/harfbuzz/test/shaping/data/in-house/fonts/ab40c89624a6104e5d0a2308e448a989302f515b.ttf",
+      "//third_party/harfbuzz/test/shaping/data/text-rendering-tests/fonts/TestGVAR-Composite-0.ttf",
+      "//third_party/skia/resources/fonts/Variable.ttf",
+    ]
+  }
+
+  if (enable_skity && clay_enable_tttext && (is_mac || is_linux || is_win)) {
+    executable("txt_skity_variable_font_unittests") {
+      testonly = true
+
+      sources = [ "tests/font_variation_skity_unittests.cc" ]
+
+      deps = [
+        ":txt",
+        ":txt_fixtures",
+        "../../../base/src:base_group",
+        "//clay/third_party/skity:skity_lib",
+        "//third_party/googletest:gtest",
+      ]
+
+      if (is_mac) {
+        frameworks = [
+          "AppKit.framework",
+          "ApplicationServices.framework",
+          "CoreGraphics.framework",
+          "CoreText.framework",
+          "Metal.framework",
+        ]
+      }
+    }
   }
 
   source_set("txt_test_utils") {

@@ -96,10 +96,47 @@ tttext::Style ParagraphBuilderTTText::ToTTStyle(const TextStyle& text_style) {
       weight = tttext::FontStyle::kBlack_Weight;
       break;
   }
-  tttext::FontDescriptor fd{{text_style.font_families},
-                            {weight, tttext::FontStyle::kNormal_Width,
-                             tttext::FontStyle::kUpright_Slant},
-                            0};
+  auto font_families = text_style.font_families;
+  tttext::Weight descriptor_weight = weight;
+  tttext::Width descriptor_width = tttext::FontStyle::kNormal_Width;
+  tttext::Slant descriptor_slant = tttext::FontStyle::kUpright_Slant;
+  bool use_synthetic_italic = text_style.font_style != FontStyle::normal;
+#if defined(ENABLE_SKITY)
+  const auto font_variations = text_style.GetResolvedFontVariations();
+  if (!font_variations.GetAxisValues().empty()) {
+    skity::FontStyle::Slant slant = skity::FontStyle::kUpright_Slant;
+    if (text_style.font_style == FontStyle::italic) {
+      slant = skity::FontStyle::kItalic_Slant;
+    } else if (text_style.font_style == FontStyle::oblique) {
+      slant = skity::FontStyle::kOblique_Slant;
+    }
+    auto variation = font_collection_->GetVariationFontFamilies(
+        text_style.font_families,
+        skity::FontStyle(static_cast<int>(weight),
+                         skity::FontStyle::kNormal_Width, slant),
+        font_variations, variation_font_manager_);
+    font_families = std::move(variation.font_families);
+    if (variation.font_style) {
+      if (variation.overrides_weight) {
+        descriptor_weight =
+            static_cast<tttext::Weight>(variation.font_style->weight());
+      }
+      if (variation.overrides_width) {
+        descriptor_width =
+            static_cast<tttext::Width>(variation.font_style->width());
+      }
+      if (variation.overrides_slant) {
+        descriptor_slant =
+            static_cast<tttext::Slant>(variation.font_style->slant());
+        use_synthetic_italic = false;
+      }
+    }
+  }
+#endif
+  tttext::FontDescriptor fd{
+      {font_families},
+      {descriptor_weight, descriptor_width, descriptor_slant},
+      0};
   style.SetTextSize(text_style.font_size);
   style.SetFontDescriptor(fd);
   style.SetForegroundColor(tttext::TTColor(text_style.color));
@@ -118,7 +155,7 @@ tttext::Style ParagraphBuilderTTText::ToTTStyle(const TextStyle& text_style) {
     style.SetBackgroundColor(tttext::TTColor(text_style.background.getColor()));
   }
 #endif  // ENABLE_SKITY
-  if (text_style.font_style != FontStyle::normal) {
+  if (use_synthetic_italic) {
     style.SetItalic(true);
   }
   style.SetDecorationType(
@@ -217,8 +254,13 @@ void ParagraphBuilderTTText::ToTTParaStyle(const ParagraphStyle& para_style) {
 }
 void ParagraphBuilderTTText::CreateParagraph() {
   if (paragraph_ == nullptr) {
+#ifdef ENABLE_SKITY
+    paragraph_ = std::make_unique<ParagraphTTText>(
+        font_collection_, paragraph_style_, variation_font_manager_);
+#else
     paragraph_ =
         std::make_unique<ParagraphTTText>(font_collection_, paragraph_style_);
+#endif
   }
 }
 }  // namespace txt

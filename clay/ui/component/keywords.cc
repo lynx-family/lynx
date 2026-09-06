@@ -46,7 +46,7 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 385
+#define TOTAL_KEYWORDS 387
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
 #define MIN_HASH_VALUE 25
@@ -481,6 +481,7 @@ struct StringPool_t {
   char StringPool_str1091[sizeof("dynamic-resource")];
   char StringPool_str1092[sizeof("text-overflow")];
   char StringPool_str1096[sizeof("exposure-ui-margin-bottom")];
+  char StringPool_str1100[sizeof("font-variation-settings")];
   char StringPool_str1101[sizeof("flash")];
   char StringPool_str1105[sizeof("image-rendering")];
   char StringPool_str1116[sizeof("facing")];
@@ -497,6 +498,7 @@ struct StringPool_t {
   char StringPool_str1302[sizeof("border-right-width")];
   char StringPool_str1311[sizeof("background-color")];
   char StringPool_str1312[sizeof("background-position")];
+  char StringPool_str1315[sizeof("font-optical-sizing")];
   char StringPool_str1440[sizeof("overflow-y")];
   char StringPool_str1446[sizeof("image-config")];
   char StringPool_str1499[sizeof("background-image")];
@@ -868,6 +870,7 @@ static const struct StringPool_t StringPool_contents = {
     "dynamic-resource",
     "text-overflow",
     "exposure-ui-margin-bottom",
+    "font-variation-settings",
     "flash",
     "image-rendering",
     "facing",
@@ -884,6 +887,7 @@ static const struct StringPool_t StringPool_contents = {
     "border-right-width",
     "background-color",
     "background-position",
+    "font-optical-sizing",
     "overflow-y",
     "image-config",
     "background-image",
@@ -2356,7 +2360,8 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {-1},
+    {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str1100,
+     (short)KeywordID::kFontVariationSettings},
     {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str1101,
      (short)KeywordID::kFlash},
     {-1},
@@ -2587,7 +2592,8 @@ static const struct TokenValue wordlist[] = {
      (short)KeywordID::kBackgroundPosition},
     {-1},
     {-1},
-    {-1},
+    {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str1315,
+     (short)KeywordID::kFontOpticalSizing},
     {-1},
     {-1},
     {-1},
