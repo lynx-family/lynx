@@ -39,6 +39,7 @@ class LynxUIOperationAsyncQueue
   virtual void ResetNativeUpdateDataOrder() override;
   virtual bool IsInFlush() override { return is_in_flush_; }
   virtual bool FlushPendingOperations() override;
+  virtual bool HasPendingOperations() override;
 
  private:
   void FlushOnTASMThread();

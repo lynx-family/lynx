@@ -81,6 +81,12 @@ bool LynxUIOperationAsyncQueue::FlushPendingOperations() {
   return operations_.Empty() && high_priority_operations_.Empty();
 }
 
+bool LynxUIOperationAsyncQueue::HasPendingOperations() {
+  return !pending_operations_.Empty() ||
+         !pending_high_priority_operations_.Empty() ||
+         LynxUIOperationQueue::HasPendingOperations();
+}
+
 void LynxUIOperationAsyncQueue::FlushOnTASMThread() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               UI_OPERATION_ASYNC_QUEUE_FLUSH_ON_TASM_THREAD);

@@ -7,11 +7,17 @@
 
 #include "core/renderer/dom/element_manager.h"
 
+#include <atomic>
+#include <functional>
 #include <mutex>
 #include <optional>
+#include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/synchronization/waitable_event.h"
+#include "base/include/fml/thread.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/shared_css_fragment.h"
@@ -22,7 +28,14 @@
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/event/platform_event_bundle.h"
+#include "core/renderer/element_manager_delegate_impl.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
+#include "core/services/timing_handler/timing.h"
+#include "core/services/timing_handler/timing_constants.h"
+#include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -63,14 +76,85 @@ class ScopedExternalBoolEnv {
   std::optional<std::string> previous_value_;
 };
 
-class RecordingMockPaintingContext : public MockPaintingContext {
+class RecordingMockPaintingContext : public MockPaintingContext,
+                                     public NativePaintingContext {
  public:
   void RecordInitialLynxUITreeForReplay(
       std::vector<InitialLynxUITreeNodeForReplay> nodes) override {
     initial_tree_nodes_ = std::move(nodes);
   }
 
+  void Flush() override {
+    flush_called_ = true;
+    if (ui_operation_queue_) {
+      ui_operation_queue_->Flush();
+    }
+    MockPaintingContext::Flush();
+  }
+
+  void SetUIOperationQueue(
+      const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override {
+    ui_operation_queue_ = queue;
+  }
+
+  NativePaintingContext* CastToNativeCtx() override { return this; }
+
+  void UpdateLayoutPatching() override {
+    if (on_layout_) {
+      on_layout_();
+    }
+  }
+
+  void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {}
+  void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {}
+  void CreatePlatformRenderer(
+      int id, PlatformRendererType type,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config) override {}
+  void CreatePlatformExtendedRenderer(
+      int id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config) override {
+    EnqueueUIOperation();
+  }
+  void UpdateDisplayList(int id, DisplayList list) override {}
+  fml::RefPtr<PaintImage> CreateImage(int id, base::String src,
+                                      const ImagePaintInfo& paint_info,
+                                      float width, float height,
+                                      int32_t event_mask,
+                                      bool disable_default_resize) override {
+    return nullptr;
+  }
+  void UpdateTextBundle(int id, intptr_t bundle) override {}
+  void DestroyTextBundle(int id) override {}
+  void ReconstructEventTargetTreeRecursively() override {}
+  void UpdatePlatformEventBundle(int id, PlatformEventBundle bundle) override {}
+
+  void EnqueueUIOperation() {
+    if (!ui_operation_queue_) {
+      return;
+    }
+    ui_operation_queue_->Enqueue([this]() {
+      if (on_ui_operation_) {
+        on_ui_operation_();
+      }
+    });
+  }
+
+  std::function<void()> on_layout_;
+  std::function<void()> on_ui_operation_;
+  std::shared_ptr<shell::UIOperationQueueInterface> ui_operation_queue_;
+  std::atomic_bool flush_called_{false};
   std::vector<InitialLynxUITreeNodeForReplay> initial_tree_nodes_;
+};
+
+class RecordingTimingDelegate {
+ public:
+  void SetTiming(Timing timing) { timing_.emplace(std::move(timing)); }
+
+  std::optional<Timing> timing_;
 };
 
 const InitialLynxUITreeNodeForReplay* FindInitialTreeNode(
@@ -109,6 +193,49 @@ class ElementManagerTest : public ::testing::Test {
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
   }
+};
+
+constexpr EmbeddedMode MakeEmbeddedMode(bool enable_text_service) {
+  return static_cast<EmbeddedMode>(
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT) |
+      static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER) |
+      (enable_text_service
+           ? static_cast<int32_t>(EmbeddedMode::USE_TEXT_SERVICE)
+           : 0));
+}
+
+constexpr EmbeddedMode kLayoutFragmentMode = MakeEmbeddedMode(false);
+constexpr EmbeddedMode kLayoutFragmentTextMode = MakeEmbeddedMode(true);
+
+class ElementManagerUIOperationOverlapTest : public ElementManagerTest {
+ protected:
+  void ConfigureManager(EmbeddedMode embedded_mode,
+                        base::ThreadStrategyForRendering thread_strategy) {
+    manager->SetElementManagerDelegate(&element_manager_delegate_);
+    manager->page_options_.SetEmbeddedMode(embedded_mode);
+    manager->SetThreadStrategy(thread_strategy);
+    auto config = std::make_shared<PageConfig>();
+    config->SetEnableFiberArch(true);
+    config->SetEnableZIndex(true);
+    manager->SetConfig(config);
+  }
+
+  void CreateAndFlushPage() {
+    auto page = manager->CreateFiberPage("page", 11);
+    page->FlushActionsAsRoot();
+  }
+
+  std::shared_ptr<shell::DynamicUIOperationQueue> SetUIOperationQueue(
+      base::ThreadStrategyForRendering thread_strategy) {
+    auto queue = std::make_shared<shell::DynamicUIOperationQueue>(
+        thread_strategy, ui_thread_.GetTaskRunner());
+    manager->painting_context()->SetUIOperationQueue(queue);
+    return queue;
+  }
+
+ private:
+  fml::Thread ui_thread_{"LayoutUIOperationOverlapUI"};
+  ElementManagerDelegateImpl element_manager_delegate_{nullptr};
 };
 
 TEST_F(ElementManagerTest, CreateFiberPage) {
@@ -788,6 +915,170 @@ TEST_F(ElementManagerTest, EnableAnimationForwardUpdatePreservation_False) {
   config->enable_animation_forward_update_preservation_ = false;
   manager->SetConfig(config);
   EXPECT_FALSE(manager->EnableAnimationForwardUpdatePreservation());
+}
+
+TEST_F(ElementManagerTest, LayoutUIOperationOverlapEligibility) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  EXPECT_FALSE(manager->IsLayoutUIOperationOverlapModeOn());
+
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  EXPECT_FALSE(manager->IsLayoutUIOperationOverlapModeOn());
+
+  manager->page_options_.SetEmbeddedMode(static_cast<EmbeddedMode>(
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT) |
+      static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER)));
+  EXPECT_TRUE(manager->IsLayoutUIOperationOverlapModeOn());
+
+  manager->page_options_.SetEmbeddedMode(static_cast<EmbeddedMode>(
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT) |
+      static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER) |
+      static_cast<int32_t>(EmbeddedMode::USE_TEXT_SERVICE)));
+  EXPECT_TRUE(manager->IsLayoutUIOperationOverlapModeOn());
+
+  manager->SetThreadStrategy(base::ThreadStrategyForRendering::ALL_ON_UI);
+  EXPECT_FALSE(manager->ShouldRunLayoutConcurrentWithUIOperations());
+
+  manager->SetThreadStrategy(base::ThreadStrategyForRendering::PART_ON_LAYOUT);
+  EXPECT_TRUE(manager->ShouldRunLayoutConcurrentWithUIOperations());
+
+  manager->SetThreadStrategy(base::ThreadStrategyForRendering::MOST_ON_TASM);
+  EXPECT_FALSE(manager->ShouldRunLayoutConcurrentWithUIOperations());
+
+  manager->SetThreadStrategy(base::ThreadStrategyForRendering::MULTI_THREADS);
+  EXPECT_FALSE(manager->ShouldRunLayoutConcurrentWithUIOperations());
+}
+
+class ElementManagerNonPartLayoutTest
+    : public ElementManagerUIOperationOverlapTest,
+      public ::testing::WithParamInterface<base::ThreadStrategyForRendering> {};
+
+TEST_P(ElementManagerNonPartLayoutTest, DoesNotFlushBeforeCurrentThreadLayout) {
+  const auto thread_strategy = GetParam();
+  ConfigureManager(kLayoutFragmentTextMode, thread_strategy);
+  auto queue = SetUIOperationQueue(thread_strategy);
+  CreateAndFlushPage();
+  manager->has_viewport_ready_ = true;
+  queue->EnqueueUIOperation([]() {});
+  ASSERT_TRUE(queue->HasPendingOperations());
+  painting_context->flush_called_ = false;
+  const auto request_layout_thread = std::this_thread::get_id();
+  std::atomic_bool flush_observed_before_layout{false};
+  std::atomic_bool layout_on_request_thread{false};
+  painting_context->on_layout_ = [&]() {
+    flush_observed_before_layout = painting_context->flush_called_.load();
+    layout_on_request_thread =
+        std::this_thread::get_id() == request_layout_thread;
+  };
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->RequestLayout(options);
+
+  EXPECT_TRUE(options->has_layout);
+  EXPECT_FALSE(flush_observed_before_layout);
+  EXPECT_TRUE(layout_on_request_thread);
+  EXPECT_TRUE(painting_context->flush_called_);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NonPartStrategies, ElementManagerNonPartLayoutTest,
+    ::testing::Values(base::ThreadStrategyForRendering::ALL_ON_UI,
+                      base::ThreadStrategyForRendering::MOST_ON_TASM,
+                      base::ThreadStrategyForRendering::MULTI_THREADS));
+
+TEST_F(ElementManagerUIOperationOverlapTest,
+       EmptyQueueKeepsLayoutOnCurrentThread) {
+  ConfigureManager(kLayoutFragmentMode,
+                   base::ThreadStrategyForRendering::PART_ON_LAYOUT);
+  CreateAndFlushPage();
+  manager->has_viewport_ready_ = true;
+  auto queue =
+      SetUIOperationQueue(base::ThreadStrategyForRendering::PART_ON_LAYOUT);
+  ASSERT_FALSE(queue->HasPendingOperations());
+  const auto request_layout_thread = std::this_thread::get_id();
+  std::atomic_bool layout_on_request_thread{false};
+  painting_context->on_layout_ = [&]() {
+    layout_on_request_thread =
+        std::this_thread::get_id() == request_layout_thread;
+  };
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->RequestLayout(options);
+
+  EXPECT_TRUE(options->has_layout);
+  EXPECT_TRUE(layout_on_request_thread);
+}
+
+TEST_F(ElementManagerUIOperationOverlapTest,
+       PreservesFallbackCreateOperationUntilViewportReadyLayout) {
+  ConfigureManager(kLayoutFragmentMode,
+                   base::ThreadStrategyForRendering::PART_ON_LAYOUT);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  auto queue =
+      SetUIOperationQueue(base::ThreadStrategyForRendering::PART_ON_LAYOUT);
+  auto fallback_ui = manager->CreateFiberElement("x-custom");
+  ASSERT_FALSE(queue->HasPendingOperations());
+  page->InsertNode(fallback_ui);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(queue->HasPendingOperations());
+  painting_context->flush_called_ = false;
+
+  auto pre_viewport_options = std::make_shared<PipelineOptions>();
+  manager->RequestLayout(pre_viewport_options);
+
+  EXPECT_FALSE(pre_viewport_options->has_layout);
+  EXPECT_FALSE(painting_context->flush_called_);
+  ASSERT_TRUE(queue->HasPendingOperations());
+
+  const auto request_layout_thread = std::this_thread::get_id();
+  fml::ManualResetWaitableEvent layout_entered;
+  fml::ManualResetWaitableEvent release_layout;
+  std::atomic_bool overlap_observed{false};
+  std::atomic_bool layout_on_concurrent_loop{false};
+  std::atomic_bool layout_wait_timed_out{false};
+  std::atomic_bool ui_operation_on_request_thread{false};
+  std::atomic_bool layout_ui_operation_executed{false};
+  painting_context->on_layout_ = [&]() {
+    queue->EnqueueUIOperation([&]() { layout_ui_operation_executed = true; });
+    layout_on_concurrent_loop =
+        base::TaskRunnerManufactor::IsOnConcurrentLoopWorker(
+            base::ConcurrentTaskType::HIGH_PRIORITY);
+    layout_entered.Signal();
+    layout_wait_timed_out =
+        release_layout.WaitWithTimeout(fml::TimeDelta::FromSeconds(3));
+  };
+  painting_context->on_ui_operation_ = [&]() {
+    ui_operation_on_request_thread =
+        std::this_thread::get_id() == request_layout_thread;
+    overlap_observed =
+        !layout_entered.WaitWithTimeout(fml::TimeDelta::FromSeconds(3));
+    release_layout.Signal();
+  };
+  manager->has_viewport_ready_ = true;
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->need_timestamps = true;
+  RecordingTimingDelegate timing_delegate;
+  {
+    TimingCollector::Scope<RecordingTimingDelegate> timing_scope(
+        &timing_delegate, options);
+    manager->RequestLayout(options);
+  }
+
+  EXPECT_TRUE(options->has_layout);
+  EXPECT_FALSE(queue->HasPendingOperations());
+  EXPECT_TRUE(overlap_observed);
+  EXPECT_TRUE(layout_on_concurrent_loop);
+  EXPECT_FALSE(layout_wait_timed_out);
+  EXPECT_TRUE(ui_operation_on_request_thread);
+  EXPECT_TRUE(layout_ui_operation_executed);
+  ASSERT_TRUE(timing_delegate.timing_.has_value());
+  const auto& timings = timing_delegate.timing_->timings_;
+  ASSERT_TRUE(timings.contains(timing::kLayoutStart));
+  ASSERT_TRUE(timings.contains(timing::kLayoutEnd));
+  EXPECT_GT(timings.find(timing::kLayoutStart)->second, 0u);
+  EXPECT_GE(timings.find(timing::kLayoutEnd)->second,
+            timings.find(timing::kLayoutStart)->second);
 }
 
 TEST_F(ElementManagerTest,

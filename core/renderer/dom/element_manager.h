@@ -1411,6 +1411,16 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   std::shared_ptr<InspectorElementObserver> inspector_element_observer_;
 
  private:
+  bool IsLayoutUIOperationOverlapModeOn() const {
+    const auto embedded_mode = page_options_.GetEmbeddedMode();
+    return (embedded_mode & EmbeddedMode::LAYOUT_IN_ELEMENT) > 0 &&
+           (embedded_mode & EmbeddedMode::FRAGMENT_LAYER_RENDER) > 0;
+  }
+
+  bool ShouldRunLayoutConcurrentWithUIOperations() const {
+    return thread_strategy_ == base::ThreadStrategyForRendering::PART_ON_LAYOUT;
+  }
+
   /**
    * a special onPatchFinish function for fiber
    * @param option options for onPatchFinish

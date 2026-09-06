@@ -34,6 +34,7 @@ class DynamicUIOperationQueue : public UIOperationQueueInterface {
   void MarkDirty();
   void ForceFlush();
   void Flush() override;
+  bool HasPendingOperations();
   void SetEnableFlush(bool enable_flush);
   void SetErrorCallback(ErrorCallback callback);
   void SetPageOptions(const tasm::PageOptions& options);

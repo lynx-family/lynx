@@ -34,6 +34,10 @@ void LynxUIOperationQueue::Flush() {
   ConsumeOperations(high_priority_operations, operations);
 }
 
+bool LynxUIOperationQueue::HasPendingOperations() {
+  return !high_priority_operations_.Empty() || !operations_.Empty();
+}
+
 void LynxUIOperationQueue::SetEnableFlush(bool enable_flush) {
   enable_flush_ = enable_flush;
 }
