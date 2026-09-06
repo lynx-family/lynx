@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -26,6 +27,17 @@ PointerEvent CreateDownPointer(float x, float y) {
   PointerEvent event(PointerEvent::EventType::kDownEvent);
   event.position = {x, y};
   return event;
+}
+
+Value CreateEventThroughActiveRegions(
+    std::initializer_list<const char*> region_values) {
+  Value::Array region;
+  for (const char* region_value : region_values) {
+    region.emplace_back(std::string(region_value));
+  }
+  Value::Array regions;
+  regions.emplace_back(std::move(region));
+  return Value(std::move(regions));
 }
 
 class BaseViewTest : public UITest {};
@@ -623,6 +635,105 @@ TEST_F_UI(BaseViewTest, EventThroughControlsNativeEventTargetByInheritance) {
 
   parent->RemoveChild(child.get());
   page_->RemoveChild(parent.get());
+}
+
+TEST_F_UI(BaseViewTest, EventThroughActiveRegionsApplyToBothHitTestPaths) {
+  auto view = std::make_unique<View>(1, page_.get());
+  page_->AddChild(view.get());
+  view->SetBound(20, 30, 200, 100);
+  view->SetEventThrough(true);
+  view->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"25%", "10px", "50%", "40px"}));
+
+  struct TestCase {
+    FloatPoint position;
+    bool expected_event_through;
+  };
+  const TestCase test_cases[] = {
+      {{70, 40}, true},
+      {{169, 79}, true},
+      {{170, 40}, false},
+      {{70, 80}, false},
+  };
+
+  for (const auto& test_case : test_cases) {
+    HitTestResult result;
+    ASSERT_TRUE(page_->HitTest(
+        CreateDownPointer(test_case.position.x(), test_case.position.y()),
+        result));
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result.front()->ShouldPassEventToNative(),
+              test_case.expected_event_through);
+
+    FloatPoint relative_position;
+    BaseView* target =
+        page_->GetTopViewToAcceptEvent(test_case.position, &relative_position);
+    BaseView* expected_target = test_case.expected_event_through
+                                    ? static_cast<BaseView*>(page_.get())
+                                    : static_cast<BaseView*>(view.get());
+    EXPECT_EQ(target, expected_target);
+  }
+
+  page_->RemoveChild(view.get());
+}
+
+TEST_F_UI(BaseViewTest,
+          EventThroughActiveRegionsUseEachAncestorLocalCoordinateSpace) {
+  auto parent = std::make_unique<View>(1, page_.get());
+  auto child = std::make_unique<View>(2, page_.get());
+  page_->AddChild(parent.get());
+  parent->AddChild(child.get());
+  parent->SetBound(100, 100, 200, 200);
+  child->SetBound(25, 25, 100, 100);
+  parent->SetEventThrough(true);
+  parent->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"0px", "0px", "50%", "100%"}));
+  child->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"50%", "0px", "50%", "100%"}));
+
+  HitTestResult overlapping_result;
+  ASSERT_TRUE(page_->HitTest(CreateDownPointer(180, 150), overlapping_result));
+  ASSERT_EQ(overlapping_result.size(), 3u);
+  EXPECT_TRUE(overlapping_result.front()->ShouldPassEventToNative());
+
+  HitTestResult child_outside_result;
+  ASSERT_TRUE(
+      page_->HitTest(CreateDownPointer(140, 150), child_outside_result));
+  ASSERT_EQ(child_outside_result.size(), 3u);
+  EXPECT_FALSE(child_outside_result.front()->ShouldPassEventToNative());
+
+  HitTestResult parent_outside_result;
+  ASSERT_TRUE(
+      page_->HitTest(CreateDownPointer(200, 150), parent_outside_result));
+  ASSERT_EQ(parent_outside_result.size(), 3u);
+  EXPECT_FALSE(parent_outside_result.front()->ShouldPassEventToNative());
+
+  parent->RemoveChild(child.get());
+  page_->RemoveChild(parent.get());
+}
+
+TEST_F_UI(BaseViewTest, InvalidEventThroughActiveRegionsClearPreviousValue) {
+  auto view = std::make_unique<View>(1, page_.get());
+  page_->AddChild(view.get());
+  view->SetBound(0, 0, 100, 100);
+  view->SetEventThrough(true);
+  view->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"0px", "0px", "50%", "100%"}));
+
+  HitTestResult outside_result;
+  ASSERT_TRUE(page_->HitTest(CreateDownPointer(75, 50), outside_result));
+  EXPECT_FALSE(outside_result.front()->ShouldPassEventToNative());
+
+  view->SetAttribute("event-through-active-regions", Value{});
+  HitTestResult cleared_result;
+  ASSERT_TRUE(page_->HitTest(CreateDownPointer(75, 50), cleared_result));
+  EXPECT_TRUE(cleared_result.front()->ShouldPassEventToNative());
+
+  page_->RemoveChild(view.get());
 }
 
 class BaseViewWithChildrenTest : public UITest {

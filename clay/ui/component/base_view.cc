@@ -73,18 +73,6 @@ LYNX_UI_METHOD_END(BaseView);
 
 constexpr int64_t FORCE_CACHE_ANIMATION_DURATION = 500;
 
-bool ShouldPassEventToNativeInherited(BaseView* view) {
-  if (view == nullptr) {
-    return false;
-  } else if (view->CanEventThrough().has_value()) {
-    return *view->CanEventThrough();
-  } else if (view->Parent() == nullptr) {
-    return false;
-  } else {
-    return ShouldPassEventToNativeInherited(view->Parent());
-  }
-}
-
 #ifdef ENABLE_ACCESSIBILITY
 BaseView* A11yScrollTargetForSemantics(BaseView* view) {
   if (!view) {
@@ -2792,6 +2780,74 @@ bool BaseView::CanAcceptEvent() const {
   return transform.IsInvertible();
 }
 
+void BaseView::SetEventThroughActiveRegions(const clay::Value& value) {
+  event_through_active_regions_.clear();
+  if (!value.IsArray()) {
+    return;
+  }
+
+  for (const auto& region_value : value.GetArray()) {
+    if (!region_value.IsArray()) {
+      continue;
+    }
+    const auto& region_array = region_value.GetArray();
+    if (region_array.size() != 4) {
+      continue;
+    }
+    EventThroughRegion region;
+    bool valid = true;
+    for (size_t i = 0; i < region.size(); ++i) {
+      utils::Length length;
+      if (!utils::TryGetLength(region_array[i], length) ||
+          (length.unit != utils::Unit::kPx &&
+           length.unit != utils::Unit::kPercent)) {
+        valid = false;
+        break;
+      }
+      region[i] = {length.val, length.unit == utils::Unit::kPercent};
+    }
+    if (valid) {
+      event_through_active_regions_.push_back(region);
+    }
+  }
+}
+
+bool BaseView::HitEventThroughActiveRegions(const FloatPoint& position) const {
+  for (const auto& region : event_through_active_regions_) {
+    const auto resolve = [this](const EventThroughSizeValue& value,
+                                float size) {
+      return value.is_percentage
+                 ? static_cast<float>(value.value * size / 100.0)
+                 : FromLogical(static_cast<float>(value.value));
+    };
+    const float left = resolve(region[0], width_);
+    const float top = resolve(region[1], height_);
+    const float right = left + resolve(region[2], width_);
+    const float bottom = top + resolve(region[3], height_);
+    if (position.x() >= left && position.x() < right && position.y() >= top &&
+        position.y() < bottom) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool BaseView::ShouldPassEventToNativeAt(const FloatPoint& position) const {
+  bool should_pass = false;
+  if (event_through_.has_value()) {
+    should_pass = *event_through_;
+  } else if (parent_ != nullptr) {
+    should_pass = parent_->ShouldPassEventToNativeAt(position);
+  }
+
+  const FloatPoint point_by_self = GetPointBySelf(position);
+  if (!event_through_active_regions_.empty() &&
+      !HitEventThroughActiveRegions(point_by_self)) {
+    should_pass = !should_pass;
+  }
+  return should_pass;
+}
+
 bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (!CanAcceptEvent()) {
     return false;
@@ -2830,7 +2886,7 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (beyond_self) {
     return founded;
   }
-  should_pass_event_for_hittest_ = ShouldPassEventToNativeInherited(this);
+  should_pass_event_for_hittest_ = ShouldPassEventToNativeAt(event.position);
   result.emplace_back(GetHitTestTargetWeakPtr());
   return true;
 }
@@ -3058,7 +3114,7 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
       return nullptr;
     }
     *relative_position = point_by_self;
-    return ShouldPassEventToNativeInherited(this) ? nullptr : this;
+    return ShouldPassEventToNativeAt(position) ? nullptr : this;
   }
   return nullptr;
 }
@@ -3228,6 +3284,9 @@ bool BaseView::HandleCommonAttribute(const char* attr,
               << "event through is only supported in MOST_ON_UI thread mode";
         }
       }
+      break;
+    case KeywordID::kEventThroughActiveRegions:
+      SetEventThroughActiveRegions(value);
       break;
     case KeywordID::kHitSlop:
       if (value.IsMap()) {

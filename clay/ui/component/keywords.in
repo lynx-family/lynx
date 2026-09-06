@@ -240,6 +240,7 @@ exposure-screen-margin-right
 exposure-screen-margin-top
 exposure-screen-margin-bottom
 event-through
+event-through-active-regions
 hit-slop
 level
 enable-insert-platform-view-operation
