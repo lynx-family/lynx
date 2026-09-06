@@ -62,6 +62,7 @@ constexpr char kClayDisablePlatformScrollEvent[] =
 
 LYNX_UI_METHOD_BEGIN(ListContainerWrapper) {
   LYNX_UI_METHOD(ListContainerWrapper, scrollToPosition);
+  LYNX_UI_METHOD(ListContainerWrapper, scrollBy);
   LYNX_UI_METHOD(ListContainerWrapper, autoScroll);
   LYNX_UI_METHOD(ListContainerWrapper, getVisibleItemsPositions);
   LYNX_UI_METHOD(ListContainerWrapper, getVisibleCells);
@@ -131,6 +132,49 @@ void ListContainerWrapper::scrollToPosition(
           callback(static_cast<LynxUIMethodResult>(result), clay::Value());
         }
       });
+}
+
+void ListContainerWrapper::scrollBy(const LynxModuleValues& args,
+                                    const LynxUIMethodCallback& callback) {
+  if (!args.HasKey("offset")) {
+    if (callback) {
+      callback(LynxUIMethodResult::kParamInvalid,
+               clay::Value("offset is required for scrollBy"));
+    }
+    return;
+  }
+
+  float offset = 0.f;
+  CastNamedLynxModuleArgs({"offset"}, args, offset);
+  if (isnan(offset) || isinf(offset)) {
+    if (callback) {
+      callback(LynxUIMethodResult::kParamInvalid,
+               clay::Value("offset is invalid for scrollBy"));
+    }
+    return;
+  }
+
+  const FloatPoint old_offset = view_->GetScrollOffset();
+  const float physical_offset = FromLogical(offset);
+  GetListContainerView()->ScrollWithDelta(false, physical_offset);
+  const FloatPoint consumed_offset = view_->GetScrollOffset() - old_offset;
+  const bool is_horizontal = GetListContainerView()->GetScrollDirection() ==
+                             ScrollDirection::kHorizontal;
+
+  clay::Value::Map result;
+  result.emplace("consumedX",
+                 ToLogical(is_horizontal ? consumed_offset.x() : 0.f));
+  result.emplace("consumedY",
+                 ToLogical(is_horizontal ? 0.f : consumed_offset.y()));
+  result.emplace("unconsumedX", is_horizontal
+                                    ? offset - ToLogical(consumed_offset.x())
+                                    : offset);
+  result.emplace("unconsumedY", is_horizontal
+                                    ? offset
+                                    : offset - ToLogical(consumed_offset.y()));
+  if (callback) {
+    callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(result)));
+  }
 }
 
 void ListContainerWrapper::autoScroll(const LynxModuleValues& args,
