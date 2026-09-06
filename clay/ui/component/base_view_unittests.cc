@@ -11,6 +11,7 @@
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/gesture_handler/arena/gesture_arena_manager.h"
@@ -595,6 +596,25 @@ TEST_F_UI(BaseViewTest, EventThroughControlsNativeEventTargetByInheritance) {
 
   parent->RemoveChild(child.get());
   page_->RemoveChild(parent.get());
+}
+
+TEST_F_UI(BaseViewTest, TextViewHitSlopExpandsTopEventTarget) {
+  auto text = std::make_unique<TextView>(1, page_.get());
+  page_->AddChild(text.get());
+  text->SetBound(0, 0, 100, 100);
+  text->SetAttribute("hit-slop", Value("30px"));
+
+  FloatPoint relative_position;
+  EXPECT_EQ(
+      page_->GetTopViewToAcceptEvent(FloatPoint(115, 50), &relative_position),
+      text.get());
+  EXPECT_FLOAT_EQ(relative_position.x(), 115);
+  EXPECT_FLOAT_EQ(relative_position.y(), 50);
+  EXPECT_NE(
+      page_->GetTopViewToAcceptEvent(FloatPoint(131, 50), &relative_position),
+      text.get());
+
+  page_->RemoveChild(text.get());
 }
 
 class BaseViewWithChildrenTest : public UITest {
