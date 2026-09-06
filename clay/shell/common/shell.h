@@ -618,6 +618,8 @@ class Shell final : public PlatformView::Delegate,
   void OnPlatformViewDispatchSemanticsAction(int virtual_view_id,
                                              int action) override;
   void UpdateSemantics(const clay::SemanticsUpdateNodes& update_nodes) override;
+  void RequestAccessibilityFocus(int32_t view_id, bool without_update,
+                                 std::function<void(bool)> callback) override;
 #endif
 
   // |ResourceCacheLimitItem|
