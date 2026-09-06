@@ -30,6 +30,16 @@ PointerEvent CreateDownPointer(float x, float y) {
 
 class BaseViewTest : public UITest {};
 
+TEST(SlideDirectionTest, MapsAngleRangesToGestureDirections) {
+  EXPECT_EQ(GetSlideDirectionForAngleRange(0, 180),
+            SlideDirection::kHorizontal | SlideDirection::kUp);
+  EXPECT_EQ(GetSlideDirectionForAngleRange(10, 20), SlideDirection::kRight);
+  EXPECT_EQ(GetSlideDirectionForAngleRange(80, 100), SlideDirection::kUp);
+  EXPECT_EQ(GetSlideDirectionForAngleRange(-100, -80), SlideDirection::kDown);
+  EXPECT_EQ(GetSlideDirectionForAngleRange(170, 180), SlideDirection::kLeft);
+  EXPECT_EQ(GetSlideDirectionForAngleRange(20, 10), SlideDirection::kNone);
+}
+
 class CountingInvalidationView final : public BaseView {
  public:
   explicit CountingInvalidationView(PageView* page)

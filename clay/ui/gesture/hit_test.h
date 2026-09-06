@@ -12,10 +12,10 @@
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "clay/ui/gesture/scrollable_direction.h"
+#include "clay/ui/gesture/slide_direction.h"
 
 namespace clay {
 
-enum class SlideDirection : uint8_t;
 enum class ScrollDirection;
 struct PointerEvent;
 
@@ -48,6 +48,9 @@ class HitTestTarget {
 
   virtual bool HasConsumeSlideEventAngles() const { return false; }
   virtual bool ConsumeSlideEvent(float angle) { return false; }
+  virtual SlideDirection GetConsumeSlideEventDirection() const {
+    return SlideDirection::kNone;
+  }
   virtual ScrollableDirection GetScrollableDirection() const {
     return ScrollableDirection::kNone;
   }

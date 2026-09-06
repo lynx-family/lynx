@@ -7,11 +7,16 @@
 
 #include "clay/ui/gesture/gesture_recognizer.h"
 #include "clay/ui/gesture/scrollable_direction.h"
+#include "clay/ui/gesture/slide_direction.h"
 
 namespace clay {
 
 union HitTestResponsiveResult {
   int32_t value = 0;
+  static constexpr uint32_t kConsumeSlideEventDirectionShift = 16;
+  static constexpr uint32_t kConsumeSlideEventDirectionMask =
+      0xF << kConsumeSlideEventDirectionShift;
+
   // CAUTION: Don't change the order of these fields, or you will need to update
   // related code on the platform side.
   struct {
@@ -26,7 +31,20 @@ union HitTestResponsiveResult {
     bool cxx_foldview_is_fold : 1;
     bool cxx_foldview_is_expanded : 1;
   };
+
+  SlideDirection GetConsumeSlideEventDirection() const {
+    return static_cast<SlideDirection>(
+        (static_cast<uint32_t>(value) & kConsumeSlideEventDirectionMask) >>
+        kConsumeSlideEventDirectionShift);
+  }
+
+  void AddConsumeSlideEventDirection(SlideDirection direction) {
+    value |= static_cast<int32_t>(static_cast<uint32_t>(direction)
+                                  << kConsumeSlideEventDirectionShift);
+  }
 };
+
+static_assert(sizeof(HitTestResponsiveResult) == sizeof(int32_t));
 
 }  // namespace clay
 

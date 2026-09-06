@@ -370,6 +370,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool HasConsumeSlideEventAngles() const override {
     return !consume_slide_event_ranges_.empty();
   }
+  SlideDirection GetConsumeSlideEventDirection() const override;
 
   // By default, focus scope self cannot accept focus while traversal.
   FocusBehavior GetFocusBehavior() const override {
