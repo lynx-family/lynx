@@ -108,6 +108,7 @@ void InternalTextView::OnLayout(LayoutContext* context) {
   if (should_relayout) {
     paragraph_->Layout(layout_width);
     GetRenderText()->SetParagraph(paragraph_.get(), text_);
+    GetRenderText()->SetTextOverflow(text_style_->overflow);
     if (text_style_->text_gradient.has_value()) {
       GetRenderText()->SetGradient(text_style_->text_gradient);
     } else {

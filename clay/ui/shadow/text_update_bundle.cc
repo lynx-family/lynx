@@ -75,6 +75,7 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
     text_view->GetRenderText()->SetGradientShaderMap(
         std::move(gradient_shader_map_), std::move(range_map_));
     text_view->GetRenderText()->SetTextPaintAlign(text_paint_align_);
+    text_view->GetRenderText()->SetTextOverflow(text_overflow_);
     text_view->GetRenderText()->SetLineSpacingOffset(line_spacing_offset_);
   }
 }
