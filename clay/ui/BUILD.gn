@@ -71,10 +71,6 @@ source_set("ui") {
     sources += rebase_path(ui_extended_shadow_sources, "", "shadow")
   }
 
-  if (enable_unittests) {
-    sources += rebase_path(ui_component_unittests_sources, "", "component")
-  }
-
   if (use_net_loader) {
     sources += rebase_path(ui_net_loader_sources, "", "platform")
   }
@@ -218,6 +214,7 @@ if (enable_unittests) {
       "shadow/text_unittests.cc",
       "testing/test_utils_unittests.cc",
     ]
+    sources += rebase_path(ui_component_unittests_sources, "", "component")
 
     public_configs = [
       "../:export_dynamic_symbols",
