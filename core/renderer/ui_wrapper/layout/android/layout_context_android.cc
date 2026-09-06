@@ -29,13 +29,15 @@ bool RegisterJNIForLayoutContext(JNIEnv* env) {
 }  // namespace lynx
 
 void TriggerLayout(JNIEnv* env, jobject jcaller, jlong ptr) {
-  reinterpret_cast<lynx::tasm::LayoutContextAndroid*>(ptr)->TriggerLayout();
+  if (ptr != 0) {
+    reinterpret_cast<lynx::tasm::LayoutContextAndroid*>(ptr)->TriggerLayout();
+  }
 }
 
-jlong CreateLayoutContext(JNIEnv* env, jobject jcaller,
-                          jobject layout_context) {
-  return reinterpret_cast<jlong>(
-      new lynx::tasm::LayoutContextAndroid(env, layout_context));
+jlong CreateLayoutContext(JNIEnv* env, jobject jcaller, jobject layout_context,
+                          jboolean destroy_on_java_side) {
+  return reinterpret_cast<jlong>(new lynx::tasm::LayoutContextAndroid(
+      env, layout_context, destroy_on_java_side == JNI_TRUE));
 }
 
 namespace lynx {
@@ -57,8 +59,11 @@ static inline lepus::Value ResolveFontFaceToken(
   return result;
 }
 
-LayoutContextAndroid::LayoutContextAndroid(JNIEnv* env, jobject impl)
-    : impl_(env, impl), bundle_holder_() {
+LayoutContextAndroid::LayoutContextAndroid(JNIEnv* env, jobject impl,
+                                           bool destroy_on_java_side)
+    : impl_(env, impl),
+      bundle_holder_(),
+      destroy_on_java_side_(destroy_on_java_side) {
   Java_LayoutContext_attachNativePtr(env, impl, reinterpret_cast<jlong>(this));
 }
 
@@ -197,6 +202,12 @@ void LayoutContextAndroid::DestroyLayoutNodes(
 }
 
 void LayoutContextAndroid::Destroy() {
+  // Java can destroy the shadow nodes while its LayoutContext still has a
+  // strong owner. Avoid promoting impl_ here because decoding a jweak may
+  // block while ART temporarily disallows weak-global access during GC.
+  if (destroy_on_java_side_) {
+    return;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jobject> local_ref(impl_);
   if (local_ref.IsNull()) {
@@ -257,7 +268,11 @@ LayoutContextAndroid::ReleasePlatformBundleHolder() {
   return std::move(bundle_holder_);
 }
 
-void LayoutContextAndroid::TriggerLayout() { trigger_layout_(); }
+void LayoutContextAndroid::TriggerLayout() {
+  if (trigger_layout_) {
+    trigger_layout_();
+  }
+}
 
 void LayoutContextAndroid::SetLayoutNodeManager(
     LayoutNodeManager* layout_node_manager) {

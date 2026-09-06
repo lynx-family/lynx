@@ -7,13 +7,19 @@ import android.util.DisplayMetrics;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.behavior.ui.PropBundle;
 
 public abstract class LayoutContext {
   private long mNativePtr = 0;
-  private boolean mDestroyed;
+  private volatile boolean mDestroyed;
+  private final boolean mDestroyOnJavaSide;
   protected long mNativeLayoutContextPtr = 0;
+
+  protected LayoutContext() {
+    mDestroyOnJavaSide = LynxEnv.inst().enableLayoutContextDestroyOnJavaSide();
+  }
 
   /**
    * @return true when the ShadowNode is virtual, otherwise false
@@ -59,13 +65,15 @@ public abstract class LayoutContext {
   public abstract DisplayMetrics getScreenMetrics();
 
   public void triggerLayout() {
-    if (mNativePtr != 0) {
-      nativeTriggerLayout(mNativePtr);
+    synchronized (this) {
+      if (!mDestroyed && mNativePtr != 0) {
+        nativeTriggerLayout(mNativePtr);
+      }
     }
   }
 
   protected void createNativeLayoutContext(Object layoutContext) {
-    mNativeLayoutContextPtr = nativeCreateLayoutContext(layoutContext);
+    mNativeLayoutContextPtr = nativeCreateLayoutContext(layoutContext, mDestroyOnJavaSide);
   }
 
   public long getNativeLayoutContextPtr() {
@@ -73,10 +81,18 @@ public abstract class LayoutContext {
   }
 
   private native void nativeTriggerLayout(long ptr);
-  private native long nativeCreateLayoutContext(Object layoutContext);
+  private native long nativeCreateLayoutContext(Object layoutContext, boolean destroyOnJavaSide);
 
   public void destroy() {
-    mDestroyed = true;
+    synchronized (this) {
+      if (mDestroyed) {
+        return;
+      }
+      mDestroyed = true;
+      if (mDestroyOnJavaSide) {
+        detachNativePtr();
+      }
+    }
   }
 
   protected boolean isDestroyed() {

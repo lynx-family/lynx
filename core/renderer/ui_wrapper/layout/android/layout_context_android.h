@@ -22,7 +22,7 @@ class PlatformBundleHolderAndroid;
 
 class LayoutContextAndroid : public LayoutCtxPlatformImpl {
  public:
-  LayoutContextAndroid(JNIEnv* env, jobject impl);
+  LayoutContextAndroid(JNIEnv* env, jobject impl, bool destroy_on_java_side);
   ~LayoutContextAndroid() override;
 
   int CreateLayoutNode(int id, const std::string& tag, PropBundle* props,
@@ -51,6 +51,7 @@ class LayoutContextAndroid : public LayoutCtxPlatformImpl {
   base::android::ScopedWeakGlobalJavaRef<jobject> impl_;
   std::unique_ptr<PlatformBundleHolderAndroid> bundle_holder_;
   base::MoveOnlyClosure<void> trigger_layout_;
+  const bool destroy_on_java_side_;
 
   LayoutContextAndroid(const LayoutContextAndroid&) = delete;
   LayoutContextAndroid& operator=(const LayoutContextAndroid&) = delete;

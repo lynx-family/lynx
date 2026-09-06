@@ -1039,6 +1039,11 @@ public class LynxEnv {
     return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_FALLBACK_NEW_ENGINE_REBUILD, true);
   }
 
+  @AnyThread
+  public boolean enableLayoutContextDestroyOnJavaSide() {
+    return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_LAYOUT_CONTEXT_DESTROY_ON_JAVA_SIDE, false);
+  }
+
   public boolean isLayoutOnlyEnabled() {
     return mLayoutOnlyEnabled;
   }
