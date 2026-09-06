@@ -163,6 +163,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_READABLE_STREAM_MEM_FIX,
     ENABLE_ELEMENT_API_NEW_REGISTRATION,
     ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
+    ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK,
     ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
     ENABLE_AUTO_NON_FLATTEN,
     ENABLE_FIBER_UPDATE_METADATA,
@@ -355,6 +356,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_element_api_new_registration"},
             {Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
              "enable_harmony_text_custom_emoji"},
+            {Key::ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK,
+             "enable_harmony_message_loop_promise_microtask"},
             {Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
              "enable_element_invoke_ui_method_pending_task"},
             // NOLINT(harmony-trail-key): Android-only configuration.
@@ -548,6 +551,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnablePromiseMemoryFix();
   bool EnableCanvasEngineMemoryFix();
   bool EnableHarmonyTextCustomEmoji();
+  bool EnableHarmonyMessageLoopPromiseMicrotask();
   bool EnableElementApiNewRegistration();
   bool EnableElementInvokeUIMethodPendingTask();
   bool EnableAutoNonFlatten();

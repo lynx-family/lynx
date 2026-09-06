@@ -8,6 +8,7 @@
 #include <uv.h>
 
 #include "base/include/fml/platform/linux/timerfd.h"
+#include "base/include/platform/harmony/napi_util.h"
 
 // temporarily workaround to compile without logging
 #undef LOGE
@@ -24,6 +25,24 @@ fml::RefPtr<MessageLoopImpl> MessageLoopImpl::Create(void* platform_loop) {
 }
 
 static constexpr int kClockType = CLOCK_MONOTONIC;
+static constexpr const char* kThen = "then";
+
+napi_value MessageLoopHarmony::RunExpiredTasksInMicrotask(
+    napi_env env, napi_callback_info info) {
+  void* data = nullptr;
+  napi_get_cb_info(env, info, nullptr, nullptr, nullptr, &data);
+  auto* self = static_cast<MessageLoopHarmony*>(data);
+  self->did_run_expired_tasks_in_microtask_ = true;
+  self->RunExpiredTasksNow();
+  return nullptr;
+}
+
+void MessageLoopHarmony::SetupNapiCallback(napi_env env) {
+  env_ = env;
+  napi_value fn{};
+  napi_create_function(env_, nullptr, 0, RunExpiredTasksInMicrotask, this, &fn);
+  napi_create_reference(env_, fn, 1, &run_expired_tasks_callback_);
+}
 
 MessageLoopHarmony::MessageLoopHarmony(void* platform_loop)
     : timer_fd_(timerfd_create(kClockType, TFD_NONBLOCK | TFD_CLOEXEC)),
@@ -86,8 +105,61 @@ void MessageLoopHarmony::WakeUp(fml::TimePoint time_point) {
   // DCHECK(result);
 }
 
+bool MessageLoopHarmony::RunExpiredTasksByPromiseMicrotask() {
+  if (env_ == nullptr || run_expired_tasks_callback_ == nullptr) {
+    return false;
+  }
+
+  base::NapiHandleScope scope(env_);
+
+  napi_value promise{};
+  napi_deferred deferred{};
+  napi_status status = napi_create_promise(env_, &deferred, &promise);
+  if (status != napi_ok) {
+    return false;
+  }
+
+  napi_value then{};
+  status = napi_get_named_property(env_, promise, kThen, &then);
+  if (status != napi_ok) {
+    return false;
+  }
+
+  napi_value callback{};
+  status =
+      napi_get_reference_value(env_, run_expired_tasks_callback_, &callback);
+  if (status != napi_ok || callback == nullptr) {
+    return false;
+  }
+
+  status = napi_call_function(env_, promise, then, 1, &callback, nullptr);
+  if (status != napi_ok) {
+    return false;
+  }
+
+  napi_value undefined{};
+  status = napi_get_undefined(env_, &undefined);
+  if (status != napi_ok) {
+    return false;
+  }
+
+  did_run_expired_tasks_in_microtask_ = false;
+  // Ark's napi_resolve_deferred executes pending promise jobs, so the resolved
+  // promise drives the task flush without wrapping it in napi_call_function.
+  status = napi_resolve_deferred(env_, deferred, undefined);
+  if (status != napi_ok) {
+    napi_reject_deferred(env_, deferred, undefined);
+  }
+  return status == napi_ok || did_run_expired_tasks_in_microtask_;
+}
+
 void MessageLoopHarmony::OnEventFired() {
   if (TimerDrain(timer_fd_.get())) {
+    const bool should_use_napi_microtask =
+        run_expired_tasks_callback_ != nullptr;
+    if (should_use_napi_microtask && RunExpiredTasksByPromiseMicrotask()) {
+      return;
+    }
     RunExpiredTasksNow();
   }
 }
