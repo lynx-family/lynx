@@ -68,6 +68,9 @@ LYNX_UI_METHOD_BEGIN(BaseView) {
   LYNX_UI_METHOD(BaseView, boundingClientRect);
   LYNX_UI_METHOD(BaseView, scrollIntoView);
   LYNX_UI_METHOD(BaseView, takeScreenshot);
+#if defined(OS_IOS)
+  LYNX_UI_METHOD(BaseView, requestAccessibilityFocus);
+#endif
 }
 LYNX_UI_METHOD_END(BaseView);
 
@@ -3536,6 +3539,27 @@ void BaseView::takeScreenshot(const LynxModuleValues& args,
         map["data"] = clay::Value(result_data);
         callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(map)));
       });
+}
+
+void BaseView::requestAccessibilityFocus(const LynxModuleValues& args,
+                                         const LynxUIMethodCallback& callback) {
+#ifdef ENABLE_ACCESSIBILITY
+  bool without_update = args.HasKey("withoutUpdate");
+  page_view()->RequestAccessibilityFocus(
+      id(), without_update, [weak_self = GetWeakPtr(), callback](bool success) {
+        if (!weak_self) {
+          return;
+        }
+        callback(success ? LynxUIMethodResult::kSuccess
+                         : LynxUIMethodResult::kOperationError,
+                 success ? clay::Value()
+                         : clay::Value(
+                               "accessibility disabled or target unavailable"));
+      });
+#else
+  callback(LynxUIMethodResult::kOperationError,
+           clay::Value("accessibility disabled or target unavailable"));
+#endif
 }
 
 void BaseView::ScrollToFocus() {

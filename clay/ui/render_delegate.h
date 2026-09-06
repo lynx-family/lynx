@@ -96,6 +96,10 @@ class RenderDelegate {
   virtual void UpdateRootSize(int32_t width, int32_t height) {}
 #ifdef ENABLE_ACCESSIBILITY
   virtual void UpdateSemantics(const SemanticsUpdateNodes& update_nodes) {}
+  virtual void RequestAccessibilityFocus(int32_t view_id, bool without_update,
+                                         std::function<void(bool)> callback) {
+    callback(false);
+  }
 #endif
 
   virtual void RegisterDrawableImage(

@@ -456,6 +456,16 @@ void Engine::UpdateSemantics(const clay::SemanticsUpdateNodes& update_nodes) {
   }
 }
 
+void Engine::RequestAccessibilityFocus(int32_t view_id, bool without_update,
+                                       std::function<void(bool)> callback) {
+  if (delegate_) {
+    delegate_->RequestAccessibilityFocus(view_id, without_update,
+                                         std::move(callback));
+  } else {
+    callback(false);
+  }
+}
+
 void Engine::SetSemanticsEnabled(bool enabled) {
   if (page_view_) {
     page_view_->SetSemanticsEnabled(enabled);

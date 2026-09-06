@@ -107,6 +107,9 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
 #ifdef ENABLE_ACCESSIBILITY
     virtual void UpdateSemantics(
         const clay::SemanticsUpdateNodes& update_nodes) = 0;
+    virtual void RequestAccessibilityFocus(
+        int32_t view_id, bool without_update,
+        std::function<void(bool)> callback) = 0;
 #endif
 
     virtual void RegisterDrawableImage(
@@ -285,6 +288,8 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
 
 #ifdef ENABLE_ACCESSIBILITY
   void UpdateSemantics(const clay::SemanticsUpdateNodes& update_nodes) override;
+  void RequestAccessibilityFocus(int32_t view_id, bool without_update,
+                                 std::function<void(bool)> callback) override;
   void SetSemanticsEnabled(bool enabled);
   void SetPageEnableAccessibilityElement(bool enabled);
   void DispatchSemanticsAction(int virtual_view_id, int action);
