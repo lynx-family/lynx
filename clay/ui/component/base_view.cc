@@ -2454,6 +2454,14 @@ bool BaseView::ConsumeSlideEvent(float angle) {
   return false;
 }
 
+SlideDirection BaseView::GetConsumeSlideEventDirection() const {
+  SlideDirection direction = SlideDirection::kNone;
+  for (const auto& range : consume_slide_event_ranges_) {
+    direction |= GetSlideDirectionForAngleRange(range.first, range.second);
+  }
+  return direction;
+}
+
 Transform BaseView::GetTransform() const {
   if (render_object()->HasTransform()) {
     return render_object()->GetTransform();

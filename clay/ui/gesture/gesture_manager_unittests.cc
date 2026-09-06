@@ -91,6 +91,23 @@ class MultiRecognizerHitTestTarget : public MockHitTestTargetBase {
   std::list<std::unique_ptr<GestureRecognizer>> recognizers_;
 };
 
+class ConsumeSlideHitTestTarget : public MockHitTestTargetBase {
+ public:
+  explicit ConsumeSlideHitTestTarget(SlideDirection direction)
+      : direction_(direction) {}
+
+  bool HasConsumeSlideEventAngles() const override {
+    return direction_ != SlideDirection::kNone;
+  }
+
+  SlideDirection GetConsumeSlideEventDirection() const override {
+    return direction_;
+  }
+
+ private:
+  SlideDirection direction_;
+};
+
 class TestArenaMember : public ArenaMember {
  public:
   fml::WeakPtr<ArenaMember> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
@@ -278,6 +295,22 @@ TEST_F(GestureManagerTest, PointerDownAfterHitTestListenerRunsForRecognizer) {
 
   EXPECT_EQ(pointer_down_after_hit_test_count, 1);
   EXPECT_EQ(last_hit_test_size, 1u);
+}
+
+TEST_F(GestureManagerTest, AggregatesConsumeSlideEventDirections) {
+  auto horizontal_target =
+      std::make_unique<ConsumeSlideHitTestTarget>(SlideDirection::kHorizontal);
+  auto vertical_target =
+      std::make_unique<ConsumeSlideHitTestTarget>(SlideDirection::kVertical);
+  AddHitTestTarget(horizontal_target.get());
+  AddHitTestTarget(vertical_target.get());
+
+  auto pointers = CreatePointer(ID(), PointerEvent::EventType::kDownEvent);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+
+  const auto& result = gesture_manager()->GetHitTestResponsiveResult();
+  EXPECT_TRUE(result.has_consume_slide_event);
+  EXPECT_EQ(result.consume_slide_event_direction, SlideDirection::kAll);
 }
 
 enum LongPressStatus : uint32_t {

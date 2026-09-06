@@ -7,6 +7,7 @@
 
 #include "clay/ui/gesture/gesture_recognizer.h"
 #include "clay/ui/gesture/scrollable_direction.h"
+#include "clay/ui/gesture/slide_direction.h"
 
 namespace clay {
 
@@ -25,8 +26,11 @@ union HitTestResponsiveResult {
     bool has_cxx_fold_view : 1;
     bool cxx_foldview_is_fold : 1;
     bool cxx_foldview_is_expanded : 1;
+    SlideDirection consume_slide_event_direction : 4;
   };
 };
+
+static_assert(sizeof(HitTestResponsiveResult) == sizeof(int32_t));
 
 }  // namespace clay
 

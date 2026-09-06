@@ -344,6 +344,8 @@ void GestureManager::UpdateHitTestTargetResponsive(int pointer_id,
           target->ShouldBlockNativeEvent() || target->ShouldInterceptGesture();
       hit_test_responsive_result_.has_consume_slide_event |=
           target->HasConsumeSlideEventAngles();
+      hit_test_responsive_result_.consume_slide_event_direction |=
+          target->GetConsumeSlideEventDirection();
       // Considering that longpress callback bound in the node is accomplished
       // by IsolatedGestureDetector, such node only has longpress in its
       // events_. So we don't take `HasLongPressGestureRecognizer` into
@@ -391,6 +393,8 @@ void GestureManager::RefreshHitTestTargetResponsive() {
             target->ShouldInterceptGesture();
         hit_test_responsive_result_.has_consume_slide_event |=
             target->HasConsumeSlideEventAngles();
+        hit_test_responsive_result_.consume_slide_event_direction |=
+            target->GetConsumeSlideEventDirection();
         hit_test_responsive_result_.has_longpress_event |=
             target->HasLongPressEvent();
       }
