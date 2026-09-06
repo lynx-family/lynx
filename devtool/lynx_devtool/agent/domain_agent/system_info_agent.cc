@@ -4,6 +4,7 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/system_info_agent.h"
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
 namespace lynx {
@@ -15,19 +16,24 @@ SystemInfoAgent::SystemInfoAgent() {
 
 SystemInfoAgent::~SystemInfoAgent() = default;
 
-void SystemInfoAgent::getInfo(const std::shared_ptr<MessageSender>& sender,
+void SystemInfoAgent::getInfo(const std::shared_ptr<CDPResponder>& responder,
                               const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().SystemInfoGetInfo(sender, message);
+  // Bridge to the legacy mediator path, which still sends the response through
+  // the raw sender; RetrieveSender releases it so the responder does not emit a
+  // duplicate fallback response.
+  LynxGlobalDevToolMediator::GetInstance().SystemInfoGetInfo(
+      responder->RetrieveSender(), message);
 }
 
-void SystemInfoAgent::CallMethod(const std::shared_ptr<MessageSender>& sender,
+void SystemInfoAgent::CallMethod(const std::shared_ptr<CDPResponder>& responder,
                                  const Json::Value& content) {
   std::string method = content["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter != functions_map_.end()) {
-    (this->*(iter->second))(sender, content);
+    (this->*(iter->second))(responder, content);
   } else {
-    SendNotImplementedResponse(sender, content["id"].asInt64(), method);
+    responder->SendErrorResponse(CDPErrorCode::kMethodNotFound,
+                                 "'" + method + "' wasn't found");
   }
 }
 

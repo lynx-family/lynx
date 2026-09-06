@@ -9,6 +9,7 @@
 #include <string>
 
 #include "devtool/base_devtool/native/public/base_devtool_export.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 
 namespace lynx {
@@ -22,8 +23,23 @@ namespace devtool {
 class BASE_DEVTOOL_EXPORT CDPDomainAgentBase {
  public:
   virtual ~CDPDomainAgentBase() = default;
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& msg) = 0;
+
+  // Legacy sender-based entry point. Agents not yet migrated to the responder
+  // API override this. It is no longer pure virtual so a migrated agent that
+  // only overrides the responder-based CallMethod can still be instantiated;
+  // the default is a no-op and is never reached for such agents.
+  virtual void CallMethod(const std::shared_ptr<MessageSender>& /*sender*/,
+                          const Json::Value& /*msg*/) {}
+
+  // Responder-based entry point. New agents should override this and fill the
+  // response through |responder| (Result() / SendErrorResponse()) instead of
+  // assembling the CDP envelope by hand. The default implementation bridges to
+  // the legacy sender-based CallMethod so existing agents keep working during
+  // the migration: it retrieves the raw sender from the responder and forwards
+  // to CallMethod(sender, msg).
+  virtual void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                          const Json::Value& msg);
+
   int CompressData(const std::string& tag, const std::string& data,
                    Json::Value& value, const std::string& key);
 

@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.h"
 
 #include "core/runtime/lepus/json_parser.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
 namespace lynx {
@@ -19,29 +20,39 @@ InspectorMemoryAgent::InspectorMemoryAgent() {
 InspectorMemoryAgent::~InspectorMemoryAgent() = default;
 
 void InspectorMemoryAgent::StartTracing(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().MemoryStartTracing(sender, message);
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  // Bridge to the legacy mediator path, which still assembles and sends the
+  // response through the raw sender. Retrieving the sender releases it from the
+  // responder so no duplicate fallback response is emitted.
+  LynxGlobalDevToolMediator::GetInstance().MemoryStartTracing(
+      responder->RetrieveSender(), message);
 }
 
 void InspectorMemoryAgent::StopTracing(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().MemoryStopTracing(sender, message);
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  LynxGlobalDevToolMediator::GetInstance().MemoryStopTracing(
+      responder->RetrieveSender(), message);
 }
 
 void InspectorMemoryAgent::GetAllMemoryUsage(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().MemoryGetAllMemoryUsage(sender,
-                                                                   message);
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  LynxGlobalDevToolMediator::GetInstance().MemoryGetAllMemoryUsage(
+      responder->RetrieveSender(), message);
 }
 
 void InspectorMemoryAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& content) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& content) {
   std::string method = content["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter != functions_map_.end()) {
-    (this->*(iter->second))(sender, content);
+    (this->*(iter->second))(responder, content);
   } else {
-    SendNotImplementedResponse(sender, content["id"].asInt64(), method);
+    responder->SendErrorResponse(CDPErrorCode::kMethodNotFound,
+                                 "'" + method + "' wasn't found");
   }
 }
 

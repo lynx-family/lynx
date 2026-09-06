@@ -33,7 +33,10 @@ namespace devtool {
     return res;                                            \
   }
 
-enum CDPErrorCode {
+// Deprecated: will be removed after the CDP error handling refactoring. Renamed
+// to avoid clashing with the scoped enum class CDPErrorCode in base_devtool
+// (devtool/base_devtool/native/public/cdp_error_code.h).
+enum LegacyCDPErrorCode {
   kParseError = -32700,
   kInvalidRequest = -32600,
   kMethodNotFound = -32601,

@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator_base.h"
 
@@ -31,114 +32,115 @@ InspectorLynxSettingAgent::InspectorLynxSettingAgent() {
 }
 
 void InspectorLynxSettingAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& message) {
   const std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendErrorResponse(CDPErrorCode::kMethodNotFound,
+                                 "'" + method + "' wasn't found");
     return;
   }
-  (this->*(iter->second))(sender, message);
+  (this->*(iter->second))(responder, message);
 }
 
 void InspectorLynxSettingAgent::GetValues(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleRequest(sender, message, {"LynxSetting.getValues", "", ""});
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  HandleRequest(responder, {"LynxSetting.getValues", "", ""});
 }
 
 void InspectorLynxSettingAgent::GetLayeredValues(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleRequest(sender, message, {"LynxSetting.getLayeredValues", "", ""});
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  HandleRequest(responder, {"LynxSetting.getLayeredValues", "", ""});
 }
 
 void InspectorLynxSettingAgent::GetValue(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleKeyRequest(sender, message, "LynxSetting.getValue", false);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& message) {
+  HandleKeyRequest(responder, message, "LynxSetting.getValue", false);
 }
 
 void InspectorLynxSettingAgent::SetMockValue(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleKeyRequest(sender, message, "LynxSetting.setMockValue", true);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& message) {
+  HandleKeyRequest(responder, message, "LynxSetting.setMockValue", true);
 }
 
 void InspectorLynxSettingAgent::RemoveMockValue(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleKeyRequest(sender, message, "LynxSetting.removeMockValue", false);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& message) {
+  HandleKeyRequest(responder, message, "LynxSetting.removeMockValue", false);
 }
 
 void InspectorLynxSettingAgent::ClearMockValues(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleRequest(sender, message, {"LynxSetting.clearMockValues", "", ""});
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  HandleRequest(responder, {"LynxSetting.clearMockValues", "", ""});
 }
 
 void InspectorLynxSettingAgent::GetFetchInfo(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleRequest(sender, message, {"LynxSetting.getFetchInfo", "", ""});
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  HandleRequest(responder, {"LynxSetting.getFetchInfo", "", ""});
 }
 
 void InspectorLynxSettingAgent::FetchLatest(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  HandleRequest(sender, message, {"LynxSetting.fetchLatest", "", ""});
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  HandleRequest(responder, {"LynxSetting.fetchLatest", "", ""});
 }
 
 void InspectorLynxSettingAgent::HandleKeyRequest(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message,
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& message,
     const std::string& method, bool requires_value) {
-  const int64_t id = message["id"].asInt64();
   const Json::Value& params = message["params"];
   if (!params.isObject() || !params["key"].isString() ||
       params["key"].asString().empty()) {
-    sender->SendErrorResponse(id, "Invalid params: expected string key");
+    responder->SendErrorResponse(CDPErrorCode::kInvalidParams,
+                                 "expected string key");
     return;
   }
 
   LynxSettingRequest request{method, params["key"].asString(), ""};
   if (requires_value) {
     if (!params["value"].isString()) {
-      sender->SendErrorResponse(id,
-                                "Invalid params: expected string mock value");
+      responder->SendErrorResponse(CDPErrorCode::kInvalidParams,
+                                   "expected string mock value");
       return;
     }
     request.value = params["value"].asString();
   }
-  HandleRequest(sender, message, std::move(request));
+  HandleRequest(responder, std::move(request));
 }
 
 void InspectorLynxSettingAgent::HandleRequest(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message,
+    const std::shared_ptr<CDPResponder>& responder,
     LynxSettingRequest request) {
-  const int64_t id = message["id"].asInt64();
   auto task_runner =
       LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
   if (!task_runner) {
-    sender->SendErrorResponse(id, "Cannot find default task runner");
+    responder->SendErrorResponse(CDPErrorCode::kServerError,
+                                 "Cannot find default task runner");
     return;
   }
 
   lynx::fml::TaskRunner::RunNowOrPostTask(
       task_runner,
-      [sender, id, request = std::move(request), task_runner]() mutable {
+      [responder, request = std::move(request), task_runner]() mutable {
         GlobalDevToolPlatformFacade::GetInstance().HandleLynxSetting(
             std::move(request),
-            [sender, id, task_runner](const std::string& result_json,
-                                      const std::string& error_message) {
-              auto send_response = [sender, id, result_json, error_message]() {
+            [responder, task_runner](const std::string& result_json,
+                                     const std::string& error_message) {
+              auto send_response = [responder, result_json, error_message]() {
                 if (!error_message.empty()) {
-                  sender->SendErrorResponse(id, error_message);
+                  responder->SendErrorResponse(CDPErrorCode::kServerError,
+                                               error_message);
                   return;
                 }
                 Json::Value result;
                 Json::Reader reader;
                 if (!reader.parse(result_json, result, false) ||
                     !result.isObject()) {
-                  sender->SendErrorResponse(id,
-                                            "Invalid LynxSetting result JSON");
+                  responder->SendErrorResponse(
+                      CDPErrorCode::kInternalError,
+                      "Invalid LynxSetting result JSON");
                   return;
                 }
-                Json::Value response(Json::ValueType::objectValue);
-                response["id"] = id;
-                response["result"] = std::move(result);
-                sender->SendMessage("CDP", response);
+                responder->Result() = std::move(result);
+                responder->Send();
               };
               lynx::fml::TaskRunner::RunNowOrPostTask(task_runner,
                                                       std::move(send_response));
