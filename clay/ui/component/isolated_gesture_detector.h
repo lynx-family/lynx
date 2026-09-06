@@ -151,12 +151,14 @@ class IsolatedGestureDetector : public HitTestable, public HitTestTarget {
     const float delta_y = event.position.y() - state->second.down_position.y();
     const float touch_slop =
         gesture_manager_.ConvertFrom<kPixelTypeLogical>(kTouchSlop);
+    const auto scrollable_direction =
+        static_cast<ScrollableDirection>(state->second.scrollable_direction);
     const bool exceeded_horizontal_slop =
-        (state->second.scrollable_direction &
-         ScrollableDirection::kHorizontal) != ScrollableDirection::kNone &&
+        (scrollable_direction & ScrollableDirection::kHorizontal) !=
+            ScrollableDirection::kNone &&
         std::abs(delta_x) > touch_slop;
     const bool exceeded_vertical_slop =
-        (state->second.scrollable_direction & ScrollableDirection::kVertical) !=
+        (scrollable_direction & ScrollableDirection::kVertical) !=
             ScrollableDirection::kNone &&
         std::abs(delta_y) > touch_slop;
     if (exceeded_horizontal_slop || exceeded_vertical_slop) {
