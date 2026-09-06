@@ -11382,9 +11382,10 @@ TEST_P(FiberElementTest,
   ASSERT_EQ(parent_slot_parent->children().size(), 1u);
   EXPECT_EQ(parent_slot_parent->children()[0].get(),
             parent_slot_sentinel.get());
-  ASSERT_EQ(slot_parent->children().size(), 1u);
-  EXPECT_EQ(slot_parent->children()[0].get(), slot_sentinel.get());
-  EXPECT_EQ(stale_slot_child->parent(), nullptr);
+  ASSERT_EQ(slot_parent->children().size(), 2u);
+  EXPECT_EQ(slot_parent->children()[0].get(), stale_slot_child.get());
+  EXPECT_EQ(slot_parent->children()[1].get(), slot_sentinel.get());
+  EXPECT_EQ(stale_slot_child->parent(), slot_parent.get());
 
   auto fresh_slot_child = manager->CreateFiberView();
   auto fresh_child =
@@ -11409,6 +11410,7 @@ TEST_P(FiberElementTest,
   ASSERT_EQ(slot_parent->children().size(), 2u);
   EXPECT_EQ(slot_parent->children()[0].get(), fresh_slot_child.get());
   EXPECT_EQ(slot_parent->children()[1].get(), slot_sentinel.get());
+  EXPECT_EQ(stale_slot_child->parent(), nullptr);
 }
 
 TEST_P(FiberElementTest,
@@ -11570,7 +11572,8 @@ TEST_P(FiberElementTest,
   EXPECT_EQ(list_slot_parent->children()[1].get(), list_slot_sentinel.get());
 }
 
-TEST_P(FiberElementTest, ElementTemplateCacheDetachesSlotChildrenRecursively) {
+TEST_P(FiberElementTest,
+       ElementTemplateWholeTreeCacheDiffsSlotChildrenOnReuse) {
   auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   parent->SetTemplateKey(base::String("parent_template"));
   parent->result_ = manager->CreateFiberView();
@@ -11614,22 +11617,32 @@ TEST_P(FiberElementTest, ElementTemplateCacheDetachesSlotChildrenRecursively) {
   parent->RemoveElementSlotChild(0, child);
 
   EXPECT_EQ(child->result_, nullptr);
-  EXPECT_EQ(grandchild->result_, nullptr);
-  ASSERT_EQ(child_slot_parent->children().size(), 1u);
-  EXPECT_EQ(child_slot_parent->children()[0].get(), child_slot_sentinel.get());
+  EXPECT_EQ(grandchild->result_.get(), grandchild_root.get());
+  ASSERT_EQ(child_slot_parent->children().size(), 2u);
+  EXPECT_EQ(child_slot_parent->children()[0].get(), grandchild_root.get());
+  EXPECT_EQ(child_slot_parent->children()[1].get(), child_slot_sentinel.get());
 
-  auto fresh_grandchild =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  fresh_grandchild->SetTemplateKey(base::String("grandchild_template"));
-  EXPECT_EQ(fresh_grandchild->GetRoot().get(), grandchild_root.get());
+  auto fresh_slot_child = manager->CreateFiberView();
 
   auto fresh_child =
       fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   fresh_child->SetTemplateKey(base::String("child_template"));
+  auto fresh_child_slot_children = lepus::CArray::Create();
+  fresh_child_slot_children->emplace_back(lepus::Value(fresh_slot_child));
+  auto fresh_child_element_slots = lepus::CArray::Create();
+  fresh_child_element_slots->emplace_back(
+      lepus::Value(fresh_child_slot_children));
+  fresh_child->SetElementSlots(lepus::Value(fresh_child_element_slots));
+
   EXPECT_EQ(fresh_child->GetRoot().get(), child_root.get());
+  ASSERT_EQ(child_slot_parent->children().size(), 2u);
+  EXPECT_EQ(child_slot_parent->children()[0].get(), fresh_slot_child.get());
+  EXPECT_EQ(child_slot_parent->children()[1].get(), child_slot_sentinel.get());
+  EXPECT_EQ(grandchild->result_, nullptr);
+  EXPECT_EQ(grandchild_root->parent(), nullptr);
 }
 
-TEST_P(FiberElementTest, TypedTemplateElementIsUnmountedButNotCached) {
+TEST_P(FiberElementTest, TypedTemplateCacheDoesNotCollideWithCompiledKey) {
   auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
   parent->SetTemplateKey(base::String("parent_template"));
   parent->result_ = manager->CreateFiberView();
@@ -11654,12 +11667,24 @@ TEST_P(FiberElementTest, TypedTemplateElementIsUnmountedButNotCached) {
 
   parent->RemoveElementSlotChild(0, typed_child);
 
-  EXPECT_EQ(typed_child->result_.get(), typed_root.get());
+  EXPECT_EQ(typed_child->result_, nullptr);
   EXPECT_EQ(typed_root->parent(), nullptr);
-  EXPECT_TRUE(manager->cached_template_element_trees_.empty());
+  ASSERT_EQ(manager->cached_template_element_trees_.size(), 1u);
   ASSERT_EQ(parent_slot_parent->children().size(), 1u);
   EXPECT_EQ(parent_slot_parent->children()[0].get(),
             parent_slot_sentinel.get());
+
+  auto compiled_child =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  compiled_child->SetTemplateKey(base::String("view"));
+  EXPECT_NE(compiled_child->GetRoot().get(), typed_root.get());
+  ASSERT_EQ(manager->cached_template_element_trees_.size(), 1u);
+
+  auto fresh_typed_child =
+      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  fresh_typed_child->SetTypedTag(base::String("view"));
+  EXPECT_EQ(fresh_typed_child->GetRoot().get(), typed_root.get());
+  EXPECT_TRUE(manager->cached_template_element_trees_.empty());
 }
 
 TEST_P(FiberElementTest, ElementTemplateInsertElementSlotChildKeepsOtherSlots) {
@@ -11772,6 +11797,7 @@ TEST_P(FiberElementTest, ElementTemplateDynamicAPIsConsumePendingOpsOnGetRoot) {
   generated.result_->InsertNode(target);
   generated.result_->InsertNode(slot_parent);
   generated.attribute_slot_targets_.push_back(target);
+  generated.event_attribute_slot_targets_.push_back(target);
   generated.element_slot_targets_.push_back(
       ElementSlotMountPoint{slot_parent, sentinel});
   generated.prepared_element_slot_insertions_.push_back(
@@ -11871,6 +11897,80 @@ TEST_P(FiberElementTest, ElementTemplateStaticEventsSyncAfterAttach) {
   ASSERT_EQ(listeners->size(), 1u);
   EXPECT_FALSE(listeners->front()->GetOptions().IsCapture());
   EXPECT_FALSE(listeners->front()->GetOptions().IsCatch());
+}
+
+TEST_P(FiberElementTest,
+       ElementTemplateInitialRootAttributesSplitAfterPrepare) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  auto template_info = std::make_shared<ElementTemplateInfo>();
+  template_info->exist_ = true;
+  template_info->key_ = "root_template";
+
+  auto root_info = ElementInfo();
+  root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  root_info.attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
+                    lepus::Value(), 1}});
+  template_info->elements_.emplace_back(std::move(root_info));
+  default_entry->template_bundle_.element_template_infos_["root_template"] =
+      std::move(template_info);
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("compiled-value"));
+  attribute_slots->emplace_back(lepus::Value("onTap"));
+
+  auto old_root_attributes = lepus::Dictionary::Create();
+  old_root_attributes->SetValue("data-root", lepus::Value("old-root"));
+  old_root_attributes->SetValue("data-old", lepus::Value("old-value"));
+  old_root_attributes->SetValue("bindfocus", lepus::Value("onOldFocus"));
+
+  auto root = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
+  root->entry_ = default_entry.get();
+  root->SetTemplateKey(base::String("root_template"));
+  root->SetAttributeSlots(lepus::Value(attribute_slots));
+  root->SetRootAttributes(lepus::Value(old_root_attributes));
+  root->PrepareAsyncCreateElementTree();
+
+  auto new_root_attributes = lepus::Dictionary::Create();
+  new_root_attributes->SetValue("data-root", lepus::Value("new-root"));
+  new_root_attributes->SetValue("bindfocus", lepus::Value("onNewFocus"));
+  root->SetRootAttributes(lepus::Value(new_root_attributes));
+
+  auto resolved = root->GetRoot();
+  ASSERT_NE(resolved, nullptr);
+
+  auto* compiled_data = DatasetValue(resolved.get(), "test");
+  ASSERT_NE(compiled_data, nullptr);
+  EXPECT_EQ(compiled_data->StdString(), "compiled-value");
+  auto* root_data = DatasetValue(resolved.get(), "root");
+  ASSERT_NE(root_data, nullptr);
+  EXPECT_EQ(root_data->StdString(), "new-root");
+  EXPECT_EQ(resolved->data_model_->dataset().count("old"), 0u);
+
+  auto* tap_listeners = resolved->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(tap_listeners, nullptr);
+  ASSERT_EQ(tap_listeners->size(), 1u);
+  auto* focus_listeners = resolved->GetEventListenerMap()->Find("focus");
+  ASSERT_NE(focus_listeners, nullptr);
+  ASSERT_EQ(focus_listeners->size(), 1u);
+  auto focus_iter = resolved->event_map().find("focus");
+  ASSERT_NE(focus_iter, resolved->event_map().end());
+  EXPECT_EQ(focus_iter->second->function(), "onNewFocus");
+
+  root->SetAttributeSlot(0, lepus::Value("updated-compiled-value"));
+  compiled_data = DatasetValue(resolved.get(), "test");
+  ASSERT_NE(compiled_data, nullptr);
+  EXPECT_EQ(compiled_data->StdString(), "updated-compiled-value");
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesSpecialKeys) {
@@ -12200,6 +12300,65 @@ TEST_P(FiberElementTest, ApplyTemplateAttributesConsumesListCallbackKeys) {
                                                  lepus::Value(attribute_slots));
 
   EXPECT_EQ(target->data_model_->attributes().count("component-at-index"), 0u);
+}
+
+TEST_P(FiberElementTest, ApplyTemplateInitialAttributesCanSplitEvents) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto target = manager->CreateFiberView();
+  page->InsertNode(target);
+
+  auto spread_object = lepus::Dictionary::Create();
+  spread_object->SetValue("data-spread", lepus::Value("spread-value"));
+  spread_object->SetValue("main-thread:ref", lepus::Value("ref-value"));
+  spread_object->SetValue("main-thread:bindfocus", lepus::Value("onFocus"));
+
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(lepus::Value("data-value"));
+  attribute_slots->emplace_back(lepus::Value("onTap"));
+  attribute_slots->emplace_back(lepus::Value(spread_object));
+  auto slot_value = lepus::Value(attribute_slots);
+
+  auto template_attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
+                    lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 2}});
+  target->SetTemplateAttributes(template_attributes);
+
+  TreeResolver::ApplyTemplateNonEventAttributesToElement(target.get(),
+                                                         slot_value);
+  auto* test_data = DatasetValue(target.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "data-value");
+  auto* spread_data = DatasetValue(target.get(), "spread");
+  ASSERT_NE(spread_data, nullptr);
+  EXPECT_EQ(spread_data->StdString(), "spread-value");
+  EXPECT_EQ(target->data_model_->attributes().at("main-thread:ref").StdString(),
+            "ref-value");
+  EXPECT_EQ(target->event_map().count("tap"), 0u);
+  EXPECT_EQ(target->event_map().count("focus"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("bindtap"), 0u);
+  EXPECT_EQ(target->data_model_->attributes().count("main-thread:bindfocus"),
+            0u);
+
+  TreeResolver::ApplyTemplateEventAttributesToElement(target.get(), slot_value);
+  auto* tap_listeners = target->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(tap_listeners, nullptr);
+  ASSERT_EQ(tap_listeners->size(), 1u);
+  auto* focus_listeners = target->GetEventListenerMap()->Find("focus");
+  ASSERT_NE(focus_listeners, nullptr);
+  ASSERT_EQ(focus_listeners->size(), 1u);
+  auto focus_iter = target->event_map().find("focus");
+  ASSERT_NE(focus_iter, target->event_map().end());
+  EXPECT_EQ(focus_iter->second->function(), "onFocus");
 }
 
 TEST_P(FiberElementTest, ApplyTemplateAttributesEventKeys) {
