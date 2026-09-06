@@ -25,6 +25,7 @@ namespace clay {
 namespace {
 
 constexpr uint32_t kSelectionColor = 0x402196F3;  // material blue[200]
+constexpr float kUnboundedClipExtent = 1.0E+9f;
 
 }  // namespace
 
@@ -121,19 +122,18 @@ void RenderText::PaintText(GraphicsContext* graphics_context,
                            const FloatPoint& offset, bool as_mask) {
   GraphicsContext::AutoRestore saver(graphics_context, true);
   graphics_context->Translate(offset.x(), offset.y());
-  bool needs_clip_x = Overflow() == CSSProperty::OVERFLOW_Y ||
+  bool needs_clip_x = text_overflow_ == TextOverflow::kClip ||
+                      Overflow() == CSSProperty::OVERFLOW_Y ||
                       Overflow() == CSSProperty::OVERFLOW_HIDDEN;
   bool needs_clip_y = Overflow() == CSSProperty::OVERFLOW_X ||
                       Overflow() == CSSProperty::OVERFLOW_HIDDEN;
   if (!needs_clip_x && needs_clip_y) {
-    skity::Rect rect = skity::Rect::MakeXYWH(
-        -renderer_->GetFrameSize().width(), 0,
-        2 * renderer_->GetFrameSize().width(), ContentHeight());
+    skity::Rect rect = skity::Rect::MakeLTRB(
+        -kUnboundedClipExtent, 0, kUnboundedClipExtent, ContentHeight());
     graphics_context->ClipRect(rect, GrClipOp::kIntersect, false);
   } else if (needs_clip_x && !needs_clip_y) {
-    skity::Rect rect = skity::Rect::MakeXYWH(
-        0, -renderer_->GetFrameSize().height(), ContentWidth(),
-        2 * renderer_->GetFrameSize().height());
+    skity::Rect rect = skity::Rect::MakeLTRB(
+        0, -kUnboundedClipExtent, ContentWidth(), kUnboundedClipExtent);
     graphics_context->ClipRect(rect, GrClipOp::kIntersect, false);
   } else if (needs_clip_x && needs_clip_y) {
     skity::Rect rect =

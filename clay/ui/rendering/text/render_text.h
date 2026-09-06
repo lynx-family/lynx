@@ -45,6 +45,9 @@ class RenderText : public RenderBox {
   void SetTextStrokeMap(std::unordered_map<int, TextStroke>&& text_stroke_map);
   void SetInlineEmojiInfo(std::vector<InlineEmojiInfo> inline_emoji_info);
   bool IsInlineEmojiPlaceholder(int placeholder_id) const;
+  void SetTextOverflow(std::optional<TextOverflow> overflow) {
+    text_overflow_ = overflow;
+  }
 
   void Paint(PaintingContext& context, const FloatPoint& offset) override;
 
@@ -91,6 +94,7 @@ class RenderText : public RenderBox {
   int pre_select_end_ = -1;
   double line_spacing_offset_ = 0;
   TextAlignment text_paint_align_ = TextAlignment::kLeft;
+  std::optional<TextOverflow> text_overflow_;
 
  private:
   void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset,
