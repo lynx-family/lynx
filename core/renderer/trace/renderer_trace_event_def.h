@@ -959,6 +959,11 @@ inline constexpr const char* const LIST_CONTAINER_FLUSH_PATCHING =
     "ListContainerImpl::FlushPatching";
 inline constexpr const char* const LIST_CONTAINER_RESOLVE_ATTRIBUTE =
     "ListContainerImpl::ResolveAttribute";
+inline constexpr const char* const
+    ITEM_ANIMATOR_DEFAULT_RUN_PENDING_ANIMATIONS =
+        "ItemAnimatorDefault::RunPendingAnimations";
+inline constexpr const char* const ITEM_ANIMATOR_DEFAULT_CANCEL_ANIMATIONS =
+    "ItemAnimatorDefault::CancelAnimations";
 
 inline constexpr const char* const GRID_LAYOUT_MANAGER_LAYOUT_CHUNK =
     "GridLayoutManager::LayoutChunk";
