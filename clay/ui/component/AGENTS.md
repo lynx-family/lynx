@@ -44,6 +44,12 @@ Current spec files:
   - Normative contract for Clay iOS hybrid-composition overlay geometry
   - Covers visible overlay slices, local Metal backing surfaces, shared
     compositor mapping, and UIKit wrapper clipping
+- `spec/list_scroll_offset_spec.md`
+  - Normative contract for `ListContainerView` scroll/overscroll/paint offset
+    tracking and the content-resize base-offset rule
+  - Covers the three offset models, the platform<->ListElement linkage, the
+    conditional base-offset rule in `UpdateContentOffsetForListContainer`, and
+    overflow-rect / max-scroll-range semantics
 
 Relationship between the specs:
 
