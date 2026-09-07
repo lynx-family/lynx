@@ -170,33 +170,59 @@ class LynxLibraryAutolinkTest < Minitest::Test
     end
   end
 
-  def test_install_adds_node_api_addons_by_pod_path
+  def test_install_adds_pods_with_paths_relative_to_podfile
     Dir.mktmpdir do |dir|
-      package_dir = write_library(dir, 'demo-addon', 'DemoAddon')
+      package_dir = write_library(File.join(dir, 'workspace'), 'demo-lib', 'DemoLib')
+      addon_dir = File.join(package_dir, 'ios/addons')
+      FileUtils.mkdir_p(addon_dir)
+      File.write(File.join(addon_dir, 'DemoAddon.podspec'), <<~PODSPEC)
+        Pod::Spec.new do |s|
+          s.name = 'DemoAddon'
+        end
+      PODSPEC
       File.write(File.join(package_dir, 'lynx.lib.json'), <<~JSON)
         {
           "platforms": {
             "ios": {
-              "nodeApiAddons": [{
-                "name": "demo_addon",
-                "podName": "DemoAddon",
-                "podspecPath": "ios/DemoAddon.podspec",
-                "addonUseHeader": "addon_use.h"
-              }]
+              "nodeApiAddons": [
+                {
+                  "name": "demo_lib",
+                  "podName": "DemoLib",
+                  "podspecPath": "ios/DemoLib.podspec",
+                  "addonUseHeader": "addon_use.h"
+                },
+                {
+                  "name": "demo_addon",
+                  "podName": "DemoAddon",
+                  "podspecPath": "ios/addons/DemoAddon.podspec",
+                  "addonUseHeader": "addons/addon_use.h"
+                }
+              ]
             }
           }
         }
       JSON
-      podfile = FakePodfile.new
+      FileUtils.mkdir_p(File.join(dir, 'node_modules'))
+      File.symlink(package_dir, File.join(dir, 'node_modules/demo-lib'))
+      podfile_dir = File.join(dir, 'ios')
+      FileUtils.mkdir_p(podfile_dir)
+      podfile = FakePodfile.new(File.join(podfile_dir, 'Podfile'))
 
       Lynx::Library::Autolink.install!(podfile, root: dir,
-                                                output_dir: File.join(dir, 'generated/lynx-library'))
+                                                output_dir: File.join(podfile_dir,
+                                                                      'generated/lynx-library'))
 
       assert_includes podfile.pods,
-                      ['DemoAddon', { path: File.realpath(File.join(package_dir, 'ios')) }]
-      assert_equal 1, podfile.pods.count { |name, _options| name == 'DemoAddon' }
+                      ['DemoLib', { path: '../node_modules/demo-lib/ios' }]
+      assert_equal 1, podfile.pods.count { |name, _options| name == 'DemoLib' }
       assert_includes podfile.pods,
-                      ['LynxLibraryRegistry', { path: File.join(dir, 'generated/lynx-library') }]
+                      ['DemoAddon', { path: '../node_modules/demo-lib/ios/addons' }]
+      assert_includes podfile.pods,
+                      ['LynxLibraryRegistry', { path: 'generated/lynx-library' }]
+      podfile.pods.each do |_name, options|
+        refute Pathname.new(options[:path]).absolute?
+        refute_includes options[:path], dir
+      end
     end
   end
 
@@ -391,9 +417,10 @@ class LynxLibraryAutolinkTest < Minitest::Test
   private
 
   class FakePodfile
-    attr_reader :pods
+    attr_reader :defined_in_file, :pods
 
-    def initialize
+    def initialize(defined_in_file)
+      @defined_in_file = Pathname.new(defined_in_file)
       @pods = []
     end
 
