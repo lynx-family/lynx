@@ -131,6 +131,12 @@ void ListMediator::OnListItemLayoutUpdated(Element* list_item) {
   }
 }
 
+void ListMediator::SetEnableParallelElement(bool enable_parallel_element) {
+  if (list_container_delegate_) {
+    list_container_delegate_->SetEnableParallelElement(enable_parallel_element);
+  }
+}
+
 void ListMediator::SetEnableBatchRender(bool enable_batch_render) {
   if (list_container_delegate_) {
     list_container_delegate_->SetEnableBatchRender(enable_batch_render);

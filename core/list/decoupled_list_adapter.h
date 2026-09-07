@@ -107,7 +107,8 @@ class ListAdapter : public AdapterHelper::Delegate {
       const std::shared_ptr<tasm::PipelineOptions>& options) = 0;
 
   // Recycle ItemHolder.
-  virtual void RecycleItemHolder(ItemHolder* item_holder) = 0;
+  virtual void RecycleItemHolder(ItemHolder* item_holder,
+                                 bool flush_immediately = true) = 0;
 
   // Return whether the ItemHolder has already been bound, if return true, it
   // means the ItemHolder is a no dirty node, but with no valid list item
@@ -156,6 +157,8 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   // Recycle all removed ItemHolders.
   void RecycleRemovedItemHolders();
+
+  std::vector<std::unique_ptr<ItemHolder>> TakeRemovedItemHoldersForAnimation();
 
   // If the list item is self-layout-updated, we invoke the method to update
   // layout info to the ItemHolder.
