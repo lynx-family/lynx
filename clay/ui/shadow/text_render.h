@@ -103,6 +103,7 @@ class TextRender {
   int measured_width_;
   int measured_height_;
   std::unique_ptr<txt::Paragraph> cache_paragraph_;
+  bool cache_uses_auto_font_size_ = false;
   size_t end_glyph_position_ = 0;
   TextDirection truncation_direction_ = TextDirection::kLtr;
   // Override ellipsis count for inline truncation because line metrics are
