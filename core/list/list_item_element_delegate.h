@@ -37,9 +37,17 @@ class ItemElementDelegate {
   virtual void OnListItemWillAppear(const std::string& item_key) = 0;
   virtual void OnListItemDisappear(bool is_exist,
                                    const std::string& item_key) = 0;
+  // Callbacks used by the legacy update-animation path. The current mediator
+  // implementation submits the generated patches immediately.
   virtual void FlushPatching() {}
   virtual void FlushAnimatedStyle(tasm::CSSPropertyID id,
                                   tasm::CSSValue value) {}
+  // When flush_immediately is false, only enqueue the animation patch for an
+  // outer batch to flush. When true, submit it immediately after this update.
+  virtual void UpdateAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value,
+                                   bool flush_immediately) {}
+  virtual void UpdateAnimatedLayout(float left, float top,
+                                    bool flush_immediately) {}
 };
 
 }  // namespace list

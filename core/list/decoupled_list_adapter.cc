@@ -589,6 +589,24 @@ void ListAdapter::RecycleRemovedItemHolders() {
   }
 }
 
+std::vector<std::unique_ptr<ItemHolder>>
+ListAdapter::TakeRemovedItemHoldersForAnimation() {
+  std::vector<std::unique_ptr<ItemHolder>> result;
+  for (auto it = item_holder_map_->begin(); it != item_holder_map_->end();) {
+    const auto& item_holder = it->second.get();
+    if (item_holder && IsRemoved(item_holder)) {
+      // Move ownership of the removed holder out of item_holder_map_. The
+      // caller transfers the result to the current animation transaction so
+      // the target remains alive during the asynchronous animation.
+      result.emplace_back(std::move(it->second));
+      it = item_holder_map_->erase(it);
+    } else {
+      ++it;
+    }
+  }
+  return result;
+}
+
 void ListAdapter::UpdateLayoutInfoToItemHolder(
     ItemElementDelegate* list_item_delegate, ItemHolder* item_holder) {
   if (list_item_delegate && item_holder && IsFinishedBinding(item_holder) &&
