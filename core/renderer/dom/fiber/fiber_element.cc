@@ -2081,7 +2081,6 @@ Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
         HandleBeforeFlushActionsTask(
             [this]() {
               MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
-              InvalidateChildrenInheritedStylesRecursively();
             },
             kFlagGreedyParallel);
       }
@@ -4115,16 +4114,6 @@ void Element::InvalidateChildrenFontSizeRecursively() {
   }
 }
 
-void Element::InvalidateChildrenInheritedStylesRecursively() {
-  for (const auto &child : scoped_children_) {
-    child->ApplyFunctionRecursive([](Element *element) {
-      if (!element->is_raw_text()) {
-        element->MarkDirtyLite(kDirtyPropagateInherited);
-      }
-    });
-  }
-}
-
 void Element::FlushProps() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_PROPS,
               [this](lynx::perfetto::EventContext ctx) {
@@ -4225,6 +4214,8 @@ void Element::RecursivelyMarkCustomPropertiesDirty() {
 void Element::MarkDirectChildrenStyleDirtyForInheritedPropertyMutation() {
   for (const auto &child : scoped_children_) {
     if (!child->is_raw_text()) {
+      // Let the child continue propagation only if its computed inherited
+      // style actually changes during resolution.
       child->MarkStyleDirty(false);
     }
   }
