@@ -8,11 +8,13 @@
 #import "LynxViewShellViewController.h"
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView.h>
 #import "DemoGenericResourceFetcher.h"
 #import "DemoMediaResourceFetcher.h"
 #import "DemoTemplateResourceFetcher.h"
+#import "ExplorerTestModuleRegistrar.h"
 #import "LynxExplorerInput.h"
 #import "LynxExplorerSwiftInterop.h"
 #import "LynxNodeAPILifecycleListener.h"
@@ -95,6 +97,51 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
     [propsKey appendString:capitalizedPart];
   }
   return propsKey;
+}
+
++ (NSString *)localStandaloneResourceNameForURL:(NSString *)url {
+  if (![url isKindOfClass:NSString.class] || url.length == 0) {
+    return nil;
+  }
+
+  NSURLComponents *components = [NSURLComponents componentsWithString:url];
+  NSString *host = components.host;
+  NSString *path = components.path;
+  if (![components.scheme.lowercaseString isEqualToString:@"local"] || host.length == 0 ||
+      path.length <= 1 || components.user != nil || components.password != nil ||
+      components.port != nil || components.fragment != nil ||
+      ![path.pathExtension.lowercaseString isEqualToString:@"js"]) {
+    return nil;
+  }
+
+  NSString *relativePath = [host stringByAppendingString:path];
+  for (NSString *component in relativePath.pathComponents) {
+    if ([component isEqualToString:@"."] || [component isEqualToString:@".."]) {
+      return nil;
+    }
+  }
+  return [@"Resource" stringByAppendingPathComponent:relativePath];
+}
+
+- (BOOL)evaluateLocalStandaloneResource:(NSString *)resourceName
+                                    URL:(NSString *)url
+                                runtime:(LynxBackgroundRuntime *)runtime {
+  NSString *scriptPath =
+      [[NSBundle mainBundle] pathForResource:resourceName.stringByDeletingPathExtension
+                                      ofType:resourceName.pathExtension];
+  NSData *scriptData = scriptPath == nil ? nil : [NSData dataWithContentsOfFile:scriptPath];
+  NSString *script = scriptData == nil
+                         ? nil
+                         : [[NSString alloc] initWithData:scriptData encoding:NSUTF8StringEncoding];
+  if (script.length == 0) {
+    LLogWarn(@"Unable to load Explorer standalone script %@ from %@", url, resourceName);
+    return NO;
+  }
+
+  // Keep the stable platform-test source identifier so DevTool standalone-script
+  // breakpoints share one contract across test hosts.
+  [runtime evaluateJavaScript:@"http://standaloneScript.js" withSources:script];
+  return YES;
 }
 
 - (BOOL)hasExplicitViewportSize {
@@ -252,6 +299,14 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
                                            selector:@selector(explorerThemePreferenceDidChange:)
                                                name:@"ExplorerThemePreferenceDidChange"
                                              object:nil];
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(notifyApplicationBecomeActive)
+                                               name:UIApplicationDidBecomeActiveNotification
+                                             object:nil];
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(notifyApplicationEnterBackground)
+                                               name:UIApplicationWillResignActiveNotification
+                                             object:nil];
   extraTiming = [[LynxExtraTiming alloc] init];
   extraTiming.openTime = [[NSDate date] timeIntervalSince1970] * 1000;
   // Do any additional setup after loading the view.
@@ -266,6 +321,23 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
 
 - (void)dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [self clearLynxViewForDestroy];
+}
+
+- (void)notifyApplicationBecomeActive {
+  [self.lynxView onEnterForeground];
+}
+
+- (void)notifyApplicationEnterBackground {
+  [self.lynxView onEnterBackground];
+}
+
+- (void)clearLynxViewForDestroy {
+  if (_lynxView != nil) {
+    [_lynxView clearForDestroy];
+    _lynxView = nil;
+  }
+  _backgroundRuntime = nil;
 }
 
 - (void)explorerThemePreferenceDidChange:(NSNotification *)notification {
@@ -366,16 +438,37 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
       [LynxSettingManager sharedDataHandler].threadStrategy;
 
   BOOL enableNapiAddon = IsTruthyParam([self.params valueForKey:@"enable_napi_addon"]);
-  if (enableNapiAddon) {
+  id standaloneURLValue = [self.params valueForKey:@"standalone_url"];
+  NSString *standaloneURL =
+      [standaloneURLValue isKindOfClass:NSString.class] ? standaloneURLValue : nil;
+  NSString *localStandaloneResource = [self.class localStandaloneResourceNameForURL:standaloneURL];
+  if (standaloneURL.length > 0 && localStandaloneResource == nil) {
+    LLogWarn(@"Ignoring unsupported Explorer standalone URL: %@", standaloneURL);
+  }
+
+  if (enableNapiAddon || localStandaloneResource != nil) {
     // RuntimeLifecycleListener can only be registered through background runtime for now.
     // Node-API addon needs a background runtime to receive napi env via lifecycle callback.
     LynxBackgroundRuntimeOptions *options = [[LynxBackgroundRuntimeOptions alloc] init];
+    [ExplorerTestModuleRegistrar registerBackgroundModulesInOptions:options];
     options.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
     options.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
     options.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
     self.backgroundRuntime = [[LynxBackgroundRuntime alloc] initWithOptions:options];
-    [self.backgroundRuntime
-        addRuntimeLifecycleListener:[[LynxNodeAPILifecycleListener alloc] initWithToken:self]];
+    BOOL standaloneEvaluated = YES;
+    if (localStandaloneResource != nil) {
+      standaloneEvaluated = [self evaluateLocalStandaloneResource:localStandaloneResource
+                                                              URL:standaloneURL
+                                                          runtime:self.backgroundRuntime];
+    }
+    if (!standaloneEvaluated && !enableNapiAddon) {
+      // Do not attach an empty runtime when standalone execution was its only purpose.
+      self.backgroundRuntime = nil;
+    }
+    if (enableNapiAddon) {
+      [self.backgroundRuntime
+          addRuntimeLifecycleListener:[[LynxNodeAPILifecycleListener alloc] initWithToken:self]];
+    }
   } else {
     self.backgroundRuntime = nil;
   }
@@ -383,6 +476,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
     builder.config =
         [[LynxConfig alloc] initWithProvider:[LynxEnv sharedInstance].config.templateProvider];
+    [ExplorerTestModuleRegistrar registerModulesInConfig:builder.config];
     builder.screenSize = screenSize;
     builder.fontScale = 1.0;
     builder.fetcher = nil;

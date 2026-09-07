@@ -10,6 +10,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -27,11 +28,15 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.lynx.explorer.input.LynxExplorerInput;
+import com.lynx.explorer.modules.JSBTestModule;
 import com.lynx.explorer.modules.LynxSettingManager;
 import com.lynx.explorer.provider.DemoGenericResourceFetcher;
 import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
+import com.lynx.explorer.utils.ExplorerUrlUtils;
 import com.lynx.explorer.utils.QueryMapUtils;
+import com.lynx.tasm.LynxBackgroundRuntime;
+import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
@@ -45,14 +50,16 @@ import com.lynx.xelement.XElementBehaviors;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 public class LynxViewShellActivity extends AppCompatActivity {
   public static final String URL_KEY = "url";
   public static final String PREFERENCES = "ExplorerStorage";
-  private static final String URL_PREFIX = "file://lynx?local://";
+  private static final String URL_PREFIX = ExplorerUrlUtils.EXPLORER_LOCAL_PREFIX;
   private static final String TAG = "LynxViewShellActivity";
+  private static final String STANDALONE_SCRIPT_URL = "http://standaloneScript.js";
   private static final String HOME_PAGE_URL =
       "file://lynx?local://homepage.lynx.bundle?fullscreen=true";
   private static final String DEFAULT_TOP_BAR_COLOR = "#F0F2F5";
@@ -76,11 +83,14 @@ public class LynxViewShellActivity extends AppCompatActivity {
     if (initialUrl == null || initialUrl.isEmpty()) {
       initialUrl = intent.getStringExtra(URL_KEY);
     }
-    if ((initialUrl == null || initialUrl.isEmpty()) && intent.getData() != null) {
-      initialUrl = intent.getData().getQueryParameter(URL_KEY);
+    Uri intentData = intent.getData();
+    if ((initialUrl == null || initialUrl.isEmpty()) && intentData != null) {
+      String queryUrl = intentData.getQueryParameter(URL_KEY);
+      initialUrl = (queryUrl != null && !queryUrl.isEmpty()) ? queryUrl : intentData.toString();
     }
 
-    final String url = (initialUrl != null && !initialUrl.isEmpty()) ? initialUrl : HOME_PAGE_URL;
+    final String url = ExplorerUrlUtils.normalizeLocalTestUrl(
+        (initialUrl != null && !initialUrl.isEmpty()) ? initialUrl : HOME_PAGE_URL);
     if (initialUrl != null && !initialUrl.isEmpty()) {
       Log.d(TAG, "Opening initial URL: " + initialUrl);
     }
@@ -99,6 +109,31 @@ public class LynxViewShellActivity extends AppCompatActivity {
       mLynxView.destroy();
     }
     super.onDestroy();
+  }
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    if (mLynxView != null) {
+      mLynxView.onEnterForeground();
+    }
+  }
+
+  @Override
+  protected void onPause() {
+    if (mLynxView != null) {
+      mLynxView.onEnterBackground();
+    }
+    super.onPause();
+  }
+
+  @Override
+  public void onConfigurationChanged(Configuration newConfig) {
+    super.onConfigurationChanged(newConfig);
+    if (mLynxView != null) {
+      DisplayMetrics displayMetrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(this);
+      mLynxView.updateScreenMetrics(displayMetrics.widthPixels, displayMetrics.heightPixels);
+    }
   }
 
   @Override
@@ -234,9 +269,12 @@ public class LynxViewShellActivity extends AppCompatActivity {
       }
     });
     builder.setEnableGenericResourceFetcher(LynxBooleanOption.TRUE);
-    builder.setGenericResourceFetcher(new DemoGenericResourceFetcher());
-    builder.setTemplateResourceFetcher(new DemoTemplateResourceFetcher(this));
-    builder.setMediaResourceFetcher(new DemoMediaResourceFetcher());
+    DemoGenericResourceFetcher genericResourceFetcher = new DemoGenericResourceFetcher();
+    DemoTemplateResourceFetcher templateResourceFetcher = new DemoTemplateResourceFetcher(this);
+    DemoMediaResourceFetcher mediaResourceFetcher = new DemoMediaResourceFetcher();
+    builder.setGenericResourceFetcher(genericResourceFetcher);
+    builder.setTemplateResourceFetcher(templateResourceFetcher);
+    builder.setMediaResourceFetcher(mediaResourceFetcher);
     builder.setThreadStrategyForRendering(
         LynxSettingManager.getInstance().getSettingInfo().strategy == 0
             ? ThreadStrategyForRendering.ALL_ON_UI
@@ -276,6 +314,15 @@ public class LynxViewShellActivity extends AppCompatActivity {
 
     boolean enableNapiAddon = queryMap.getBoolean("enable_napi_addon", false);
 
+    if (queryMap.contains("standalone_url")) {
+      LynxBackgroundRuntime runtime =
+          prepareLocalBackgroundRuntime(queryMap.getString("standalone_url"), builder,
+              genericResourceFetcher, templateResourceFetcher, mediaResourceFetcher);
+      if (runtime != null) {
+        builder.setLynxBackgroundRuntime(runtime);
+      }
+    }
+
     LynxView lynxView = builder.build(this);
     if (enableNapiAddon) {
       lynxView.addRuntimeLifecycleListener(new com.lynx.jsbridge.RuntimeLifecycleListener() {
@@ -298,6 +345,41 @@ public class LynxViewShellActivity extends AppCompatActivity {
         new FrameLayout.LayoutParams(queryMap.getInt("width", ViewGroup.LayoutParams.MATCH_PARENT),
             queryMap.getInt("height", ViewGroup.LayoutParams.MATCH_PARENT)));
     mLynxView = lynxView;
+  }
+
+  private LynxBackgroundRuntime prepareLocalBackgroundRuntime(String standaloneUrl,
+      LynxViewBuilder builder, DemoGenericResourceFetcher genericResourceFetcher,
+      DemoTemplateResourceFetcher templateResourceFetcher,
+      DemoMediaResourceFetcher mediaResourceFetcher) {
+    if (standaloneUrl == null || !standaloneUrl.startsWith("local://")) {
+      Log.e(
+          TAG, "Unsupported standalone_url; only local:// scripts are supported: " + standaloneUrl);
+      return null;
+    }
+
+    String assetPath = standaloneUrl.substring("local://".length());
+    int queryStart = assetPath.indexOf('?');
+    if (queryStart >= 0) {
+      assetPath = assetPath.substring(0, queryStart);
+    }
+    byte[] scriptBytes = readFileFromAssets(this, assetPath);
+    if (scriptBytes == null) {
+      Log.e(TAG, "Unable to read standalone script from assets: " + assetPath);
+      return null;
+    }
+
+    LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
+    options.registerModule(JSBTestModule.NAME, JSBTestModule.class, null);
+    options.setEnableGenericResourceFetcher(LynxBooleanOption.TRUE);
+    options.setGenericResourceFetcher(genericResourceFetcher);
+    options.setTemplateResourceFetcher(templateResourceFetcher);
+    options.setMediaResourceFetcher(mediaResourceFetcher);
+    options.setLynxGroup(builder.getLynxGroup());
+
+    LynxBackgroundRuntime runtime = new LynxBackgroundRuntime(this, options);
+    runtime.evaluateJavaScript(
+        STANDALONE_SCRIPT_URL, new String(scriptBytes, StandardCharsets.UTF_8));
+    return runtime;
   }
 
   private void renderLynxViewWithUrl(LynxView lynxView, String url) {

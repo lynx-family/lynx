@@ -80,6 +80,20 @@ struct LaunchDescriptorParser {
       )
     }
 
+    // Platform tests use this canonical outer scheme for local assets. Treat
+    // only the `lynxtest` host as a local resource alias; other sslocal hosts
+    // retain their existing unsupported-scheme behavior.
+    if scheme == "sslocal", components.host?.lowercased() == "lynxtest" {
+      return try parseNestedLocal(
+        route,
+        components: components,
+        expectedOuterHost: "lynxtest",
+        originalInput: originalInput,
+        requestedContainer: requestedContainer,
+        source: source
+      )
+    }
+
     switch scheme {
     case "http", "https":
       return try parseRemote(
@@ -174,7 +188,25 @@ struct LaunchDescriptorParser {
     requestedContainer: RequestedContainer,
     source: RouteSource
   ) throws -> LaunchDescriptor {
-    guard components.host?.lowercased() == "lynx",
+    try parseNestedLocal(
+      route,
+      components: components,
+      expectedOuterHost: "lynx",
+      originalInput: originalInput,
+      requestedContainer: requestedContainer,
+      source: source
+    )
+  }
+
+  private func parseNestedLocal(
+    _ route: String,
+    components: URLComponents,
+    expectedOuterHost: String,
+    originalInput: String,
+    requestedContainer: RequestedContainer,
+    source: RouteSource
+  ) throws -> LaunchDescriptor {
+    guard components.host?.lowercased() == expectedOuterHost,
       let nestedRoute = components.percentEncodedQuery,
       !nestedRoute.isEmpty,
       Self.hasValidPercentEncoding(nestedRoute),

@@ -87,7 +87,11 @@ public class LynxModuleAdapter {
         }
       }
     };
+    LynxEnv.inst().registerModule(BridgeModule.NAME, BridgeModule.class);
     LynxEnv.inst().registerModule("ExplorerModule", ExplorerModule.class);
+    LynxEnv.inst().registerModule(JSBTestModule.NAME, JSBTestModule.class);
+    // Register the class, not an instance: the SDK supplies each page's LynxContext.
+    LynxEnv.inst().registerModule(LynxTestModule.NAME, LynxTestModule.class);
     LynxEnv.inst().registerModule("LynxNodeAPI", LynxNodeAPIModule.class);
 
     LynxDevtoolGlobalHelper.getInstance().registerCardListener(mListener);

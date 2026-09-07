@@ -2,8 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundRuntime.h>
+#import <Lynx/LynxConfig.h>
 #import <Lynx/LynxTemplateData.h>
 #import <XCTest/XCTest.h>
+#import <float.h>
+#import <limits.h>
+#import "ExplorerJSBTestModule.h"
+#import "ExplorerLynxTestModule.h"
+#import "ExplorerTestModuleRegistrar.h"
 #import "LynxNodeAPIModule.h"
 #import "LynxViewShellViewController.h"
 #import "ScanViewController.h"
@@ -14,6 +21,96 @@
 - (LynxTemplateData *)getGlobalPropsForScreenSize:(CGSize)screenSize;
 - (LynxTemplateData *)initialTemplateData;
 - (void)parseParameters;
+- (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data;
+- (void)initNavigation;
+- (void)notifyApplicationBecomeActive;
+- (void)notifyApplicationEnterBackground;
+- (void)clearLynxViewForDestroy;
++ (NSString *)localStandaloneResourceNameForURL:(NSString *)url;
+- (BOOL)evaluateLocalStandaloneResource:(NSString *)resourceName
+                                    URL:(NSString *)url
+                                runtime:(LynxBackgroundRuntime *)runtime;
+
+@end
+
+@interface LXTestBackgroundRuntimeOptions : LynxBackgroundRuntimeOptions
+
+@property(nonatomic, strong) NSMutableArray<Class> *registeredModules;
+
+@end
+
+@implementation LXTestBackgroundRuntimeOptions
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _registeredModules = [NSMutableArray array];
+  }
+  return self;
+}
+
+- (void)registerModule:(Class<LynxModule>)module {
+  [self.registeredModules addObject:module];
+}
+
+@end
+
+@interface LXTestModuleRegistrationConfig : LynxConfig
+
+@property(nonatomic, strong) NSMutableArray<Class> *registeredModules;
+
+@end
+
+@implementation LXTestModuleRegistrationConfig
+
+- (instancetype)initWithProvider:(id<LynxTemplateProvider>)provider {
+  self = [super initWithProvider:provider];
+  if (self) {
+    _registeredModules = [NSMutableArray array];
+  }
+  return self;
+}
+
+- (void)registerModule:(Class<LynxModule>)module {
+  [self.registeredModules addObject:module];
+}
+
+@end
+
+@interface LXLynxViewLifecycleSpy : NSObject
+
+@property(nonatomic, assign) NSUInteger foregroundCount;
+@property(nonatomic, assign) NSUInteger backgroundCount;
+@property(nonatomic, assign) NSUInteger clearForDestroyCount;
+
+@end
+
+@implementation LXLynxViewLifecycleSpy
+
+- (void)onEnterForeground {
+  self.foregroundCount += 1;
+}
+
+- (void)onEnterBackground {
+  self.backgroundCount += 1;
+}
+
+- (void)clearForDestroy {
+  self.clearForDestroyCount += 1;
+}
+
+@end
+
+@interface LXLifecycleTestShellViewController : LynxViewShellViewController
+@end
+
+@implementation LXLifecycleTestShellViewController
+
+- (void)initNavigation {
+}
+
+- (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
+}
 
 @end
 
@@ -79,7 +176,249 @@
 
 @end
 
+@interface LXContextModuleViewSpy : NSObject
+@property(nonatomic, copy) NSDictionary *data;
+@property(nonatomic, copy) NSDictionary *props;
+@end
+
+@implementation LXContextModuleViewSpy
+- (void)updateDataWithDictionary:(NSDictionary *)data {
+  NSMutableDictionary *merged = [self.data mutableCopy] ?: [NSMutableDictionary dictionary];
+  [merged addEntriesFromDictionary:data];
+  self.data = merged;
+}
+- (void)updateGlobalPropsWithDictionary:(NSDictionary *)props {
+  self.props = props;
+}
+- (NSDictionary *)getPageDataByKey:(NSArray *)keys {
+  NSMutableDictionary *result = [NSMutableDictionary dictionary];
+  for (NSString *key in keys) {
+    if (self.data[key]) {
+      result[key] = self.data[key];
+    }
+  }
+  return result;
+}
+@end
+
+@interface LXContextModuleContextSpy : NSObject
+@property(nonatomic, strong) LXContextModuleViewSpy *view;
+@property(nonatomic, assign) BOOL hasLynxViewDestroyed;
+@property(nonatomic, copy) NSString *event;
+@property(nonatomic, copy) NSArray *params;
+@end
+
+@implementation LXContextModuleContextSpy
+- (LynxView *)getLynxView {
+  return (LynxView *)self.view;
+}
+- (void)sendGlobalEvent:(NSString *)event withParams:(NSArray *)params {
+  self.event = event;
+  self.params = params;
+}
+@end
+
 @implementation LynxExplorerTests
+
+- (void)testLynxTestModuleKeepsDataAndEventsOnItsOwnPage {
+  XCTestExpectation *checked = [self expectationWithDescription:@"page-scoped operations"];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    LXContextModuleContextSpy *first = [LXContextModuleContextSpy new];
+    first.view = [LXContextModuleViewSpy new];
+    LXContextModuleContextSpy *second = [LXContextModuleContextSpy new];
+    second.view = [LXContextModuleViewSpy new];
+    ExplorerLynxTestModule *firstModule =
+        [[ExplorerLynxTestModule alloc] initWithLynxContext:(LynxContext *)first];
+    ExplorerLynxTestModule *secondModule =
+        [[ExplorerLynxTestModule alloc] initWithLynxContext:(LynxContext *)second];
+    [firstModule updateData:@{@"first" : @1}];
+    [firstModule updateData:@{@"next" : @2}];
+    [secondModule updateData:@{@"second" : @3}];
+    [firstModule updateGlobalProps:@{@"theme" : @"dark"}];
+    XCTAssertEqualObjects(first.view.data, (@{@"first" : @1, @"next" : @2}));
+    XCTAssertEqualObjects(second.view.data, (@{@"second" : @3}));
+    XCTAssertNil(second.view.props);
+    __block NSUInteger callbacks = 0;
+    [firstModule getPageDataByKey:@[ @"next" ]
+                         callback:^(id result) {
+                           callbacks++;
+                           XCTAssertEqualObjects(result, (@{@"next" : @2}));
+                         }];
+    XCTAssertEqual(callbacks, 1U);
+    [firstModule eventTest:@"value"];
+    XCTAssertEqualObjects(first.event, @"test");
+    XCTAssertEqualObjects(first.params, (@[ @10, @"value" ]));
+    XCTAssertNil(second.event);
+    [firstModule valueTest:@"{\"answer\":42}"];
+    XCTAssertEqualObjects(first.params, (@[ @{@"answer" : @42} ]));
+    [firstModule valueTest:@"not JSON"];
+    XCTAssertEqualObjects(first.params, (@[ @"not JSON" ]));
+    [firstModule destroy];
+    [firstModule updateData:@{@"afterDestroy" : @YES}];
+    [firstModule eventTest:@"afterDestroy"];
+    XCTAssertNil(first.view.data[@"afterDestroy"]);
+    XCTAssertEqualObjects(first.params, (@[ @"not JSON" ]));
+    second.hasLynxViewDestroyed = YES;
+    [secondModule updateData:@{@"afterDestroy" : @YES}];
+    XCTAssertNil(second.view.data[@"afterDestroy"]);
+    [checked fulfill];
+  });
+  [self waitForExpectations:@[ checked ] timeout:2];
+}
+
+- (void)testExplorerTestModulesExposePlatformCardContract {
+  NSDictionary<NSString *, NSString *> *jsbMethods = ExplorerJSBTestModule.methodLookup;
+  XCTAssertEqualObjects(ExplorerJSBTestModule.name, @"JSBTestModule");
+  XCTAssertEqualObjects(
+      [NSSet setWithArray:jsbMethods.allKeys], ([NSSet setWithArray:@[
+        @"name", @"getByte", @"getShort", @"getBoolean", @"getChar", @"getDouble",
+        @"getArrayBuffer", @"getString", @"getBigInt", @"getMap", @"getArray", @"testAsyncCallBack",
+        @"testSyncCallBack", @"testAsyncMultiCallBack", @"testSyncMultiCallBack", @"testPromise"
+      ]]));
+  XCTAssertEqualObjects(ExplorerJSBTimingTestModule.name, @"bridge");
+  XCTAssertEqualObjects(ExplorerJSBTimingTestModule.methodLookup,
+                        (@{@"call" : @"call:params:callback:"}));
+}
+
+- (void)testExplorerTestModuleRegistrarRegistersPageModuleNames {
+  LXTestModuleRegistrationConfig *config =
+      [[LXTestModuleRegistrationConfig alloc] initWithProvider:nil];
+
+  [ExplorerTestModuleRegistrar registerModulesInConfig:config];
+
+  XCTAssertEqualObjects(
+      ExplorerTestModuleRegistrar.moduleClasses, (@[
+        ExplorerJSBTestModule.class, ExplorerJSBTimingTestModule.class, ExplorerLynxTestModule.class
+      ]));
+  XCTAssertEqualObjects(config.registeredModules, ExplorerTestModuleRegistrar.moduleClasses);
+  XCTAssertEqualObjects([(Class<LynxModule>)config.registeredModules[0] name], @"JSBTestModule");
+  XCTAssertEqualObjects([(Class<LynxModule>)config.registeredModules[1] name], @"bridge");
+  XCTAssertEqualObjects([(Class<LynxModule>)config.registeredModules[2] name], @"LynxTestModule");
+}
+
+- (void)testLynxTestModuleExposesContextMethodsUnderNewName {
+  XCTAssertEqualObjects(ExplorerLynxTestModule.name, @"LynxTestModule");
+  XCTAssertTrue([ExplorerLynxTestModule conformsToProtocol:@protocol(LynxContextModule)]);
+  NSDictionary<NSString *, NSString *> *methods = ExplorerLynxTestModule.methodLookup;
+  XCTAssertEqualObjects(
+      [NSSet setWithArray:methods.allKeys], ([NSSet setWithArray:@[
+        @"eventTest", @"valueTest", @"back", @"reload", @"call", @"invoke", @"callSync",
+        @"updateData", @"resetData", @"updateGlobalProps", @"reloadTemplate", @"getPageDataByKey",
+        @"updateScreenMatrix", @"addButton", @"setDefaultValueForSetting"
+      ]]));
+  for (NSString *selector in methods.allValues) {
+    XCTAssertTrue(
+        [ExplorerLynxTestModule instancesRespondToSelector:NSSelectorFromString(selector)]);
+  }
+  LXContextModuleContextSpy *context = [LXContextModuleContextSpy new];
+  ExplorerLynxTestModule *module =
+      [[ExplorerLynxTestModule alloc] initWithLynxContext:(LynxContext *)context];
+  XCTAssertEqualObjects([module call:@"test" params:@{}], (@{@"cb_data" : @"5555"}));
+}
+
+- (void)testExplorerTestModuleRegistrarRegistersJSBModuleForBackgroundRuntime {
+  LXTestBackgroundRuntimeOptions *options = [[LXTestBackgroundRuntimeOptions alloc] init];
+
+  [ExplorerTestModuleRegistrar registerBackgroundModulesInOptions:options];
+
+  XCTAssertEqualObjects(options.registeredModules, (@[ ExplorerJSBTestModule.class ]));
+}
+
+- (void)testExplorerJSBTestModulePureValueCallbackAndPromiseContracts {
+  ExplorerJSBTestModule *module = [[ExplorerJSBTestModule alloc] init];
+  NSData *buffer = [@"bytes" dataUsingEncoding:NSUTF8StringEncoding];
+  NSArray *array = @[ @1, @"two" ];
+
+  XCTAssertEqualObjects([module name], @"JSBTestModule");
+  XCTAssertEqual([module getByte:42], 42);
+  XCTAssertEqual([module getShort:-123], -123);
+  XCTAssertTrue([module getBoolean:YES]);
+  XCTAssertEqualObjects([module getChar:@"L"], @"L");
+  XCTAssertEqualWithAccuracy([module getDouble:3.25], 3.25, DBL_EPSILON);
+  XCTAssertEqualObjects([module getArrayBuffer:buffer], buffer);
+  XCTAssertEqualObjects([module getString:@"Lynx"], @"Lynx");
+  XCTAssertEqual([module getBigInt:LONG_MAX], LONG_MAX);
+  XCTAssertEqualObjects([module getMap:@{@"answer" : @42}], (@{@"map" : @{@"answer" : @42}}));
+  XCTAssertEqualObjects([module getArray:array], (@[ array ]));
+
+  __block id callbackValue = nil;
+  [module testSyncCallBack:array
+                  callback:^(id result) {
+                    callbackValue = result;
+                  }];
+  XCTAssertEqualObjects(callbackValue, array);
+
+  __block id resolvedValue = nil;
+  [module testPromise:YES
+      resolve:^(id result) {
+        resolvedValue = result;
+      }
+      reject:^(NSString *code, NSString *message) {
+        XCTFail(@"Unexpected rejection: %@ %@", code, message);
+      }];
+  XCTAssertEqualObjects(resolvedValue, @"resolve");
+
+  __block NSString *rejectedCode = nil;
+  __block NSString *rejectedMessage = nil;
+  [module testPromise:NO
+      resolve:^(id result) {
+        XCTFail(@"Unexpected resolution: %@", result);
+      }
+      reject:^(NSString *code, NSString *message) {
+        rejectedCode = code;
+        rejectedMessage = message;
+      }];
+  XCTAssertEqualObjects(rejectedCode, @"code");
+  XCTAssertEqualObjects(rejectedMessage, @"message");
+}
+
+- (void)testLegacyShellForwardsApplicationStateAndClearsExactlyOnce {
+  LXLifecycleTestShellViewController *shellVC = [[LXLifecycleTestShellViewController alloc] init];
+  [shellVC loadViewIfNeeded];
+  LXLynxViewLifecycleSpy *lynxView = [[LXLynxViewLifecycleSpy alloc] init];
+  [shellVC setValue:lynxView forKey:@"lynxView"];
+
+  [[NSNotificationCenter defaultCenter]
+      postNotificationName:UIApplicationDidBecomeActiveNotification
+                    object:nil];
+  [[NSNotificationCenter defaultCenter]
+      postNotificationName:UIApplicationWillResignActiveNotification
+                    object:nil];
+
+  XCTAssertEqual(lynxView.foregroundCount, 1U);
+  XCTAssertEqual(lynxView.backgroundCount, 1U);
+
+  [shellVC clearLynxViewForDestroy];
+  [shellVC clearLynxViewForDestroy];
+  XCTAssertEqual(lynxView.clearForDestroyCount, 1U);
+  XCTAssertNil([shellVC valueForKey:@"lynxView"]);
+}
+
+- (void)testLegacyStandaloneURLResolvesOnlyPackagedLocalJavaScript {
+  XCTAssertEqualObjects([LynxViewShellViewController
+                            localStandaloneResourceNameForURL:
+                                @"local://automation/background-runtime-standalone/script.js"],
+                        @"Resource/automation/background-runtime-standalone/script.js");
+  XCTAssertEqualObjects(
+      [LynxViewShellViewController
+          localStandaloneResourceNameForURL:
+              @"local://automation/background-runtime-standalone/script.js?token=a%2Bb"],
+      @"Resource/automation/background-runtime-standalone/script.js");
+  XCTAssertNil([LynxViewShellViewController
+      localStandaloneResourceNameForURL:@"https://example.com/script.js"]);
+  XCTAssertNil([LynxViewShellViewController
+      localStandaloneResourceNameForURL:@"local://automation/../secret.js"]);
+  XCTAssertNil([LynxViewShellViewController
+      localStandaloneResourceNameForURL:@"local://automation/script.bundle"]);
+}
+
+- (void)testLegacyStandaloneEvaluationRejectsMissingPackagedResource {
+  LynxViewShellViewController *shellVC = [[LynxViewShellViewController alloc] init];
+  XCTAssertFalse([shellVC
+      evaluateLocalStandaloneResource:@"Resource/automation/definitely-missing-script.js"
+                                  URL:@"local://automation/definitely-missing-script.js"
+                              runtime:nil]);
+}
 
 - (void)testShellViewControllerAllowsAutorotation {
   LynxViewShellViewController *shellVC = [[LynxViewShellViewController alloc] init];

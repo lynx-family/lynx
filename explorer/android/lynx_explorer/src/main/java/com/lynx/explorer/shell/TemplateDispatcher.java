@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 import com.lynx.explorer.LynxViewShellActivity;
+import com.lynx.explorer.utils.ExplorerUrlUtils;
 import com.lynx.explorer.utils.QueryMapUtils;
 import com.lynx.tasm.LynxLoadMeta;
 import com.lynx.tasm.LynxView;
@@ -76,6 +77,11 @@ public abstract class TemplateDispatcher {
   }
 
   public static void dispatchUrl(Context ctx, String url, int activityLaunchFlags) {
+    url = ExplorerUrlUtils.normalizeLocalTestUrl(url);
+    if (url == null) {
+      Log.e(TAG, "cannot dispatch a null url");
+      return;
+    }
     for (Map.Entry<String, TemplateDispatcher> entry : sDispatchers.entrySet()) {
       TemplateDispatcher dispatcher = entry.getValue();
       if (dispatcher.checkUrl(url)) {

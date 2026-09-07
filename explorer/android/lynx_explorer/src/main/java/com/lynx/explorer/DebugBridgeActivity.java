@@ -31,6 +31,14 @@ public class DebugBridgeActivity extends AppCompatActivity {
       }
     }
 
+    // Canonical test-card routes are normalized by TemplateDispatcher onto Explorer's existing
+    // local asset route.
+    if (data != null && "sslocal".equals(data.getScheme()) && "lynxtest".equals(data.getHost())) {
+      Log.d(TAG, "Opening Lynx test URL: " + data);
+      TemplateDispatcher.dispatchUrl(
+          this, data.toString(), Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+    }
+
     finish();
   }
 }

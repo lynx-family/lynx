@@ -86,6 +86,62 @@ final class LaunchDescriptorParserTests: XCTestCase {
     XCTAssertFalse(descriptor.presentation.animated)
   }
 
+  func testLynxTestLocalAliasPreservesNestedPathQueryAndEncoding() throws {
+    let input =
+      "sslocal://lynxtest?local://automation/jsruntime/jsbModule/template.js"
+      + "?width=720&height=1280"
+      + "&standalone_url=local://automation/background/script.js"
+      + "&payload=a%2Bb%3Dc&tag=first&tag=second"
+
+    let descriptor = try parser.parse(
+      input,
+      requestedContainer: .automatic,
+      source: .startup
+    )
+
+    XCTAssertEqual(descriptor.originalInput, input)
+    XCTAssertEqual(
+      descriptor.resource,
+      .localBundle("automation/jsruntime/jsbModule/template.js"))
+    XCTAssertEqual(descriptor.container, .legacy)
+    XCTAssertEqual(descriptor.source, .startup)
+    XCTAssertEqual(
+      descriptor.queryItems,
+      [
+        LaunchQueryItem(name: "width", value: "720"),
+        LaunchQueryItem(name: "height", value: "1280"),
+        LaunchQueryItem(
+          name: "standalone_url",
+          value: "local://automation/background/script.js"),
+        LaunchQueryItem(name: "payload", value: "a+b=c"),
+        LaunchQueryItem(name: "tag", value: "first"),
+        LaunchQueryItem(name: "tag", value: "second"),
+      ])
+    XCTAssertEqual(descriptor.viewport, ViewportOptions(widthInPixels: 720, heightInPixels: 1280))
+    XCTAssertEqual(
+      descriptor.extras["standalone_url"],
+      "local://automation/background/script.js")
+    XCTAssertEqual(descriptor.extras["payload"], "a+b=c")
+    XCTAssertEqual(descriptor.extras["tag"], "second")
+  }
+
+  func testLynxTestAliasRejectsNonLocalPayloadWithoutClaimingOtherSSLocalHosts() {
+    assertRouteError(
+      .malformedURL("sslocal://lynxtest?https://example.com/page.lynx.bundle")
+    ) {
+      _ = try parser.parse(
+        "sslocal://lynxtest?https://example.com/page.lynx.bundle",
+        requestedContainer: .automatic,
+        source: .manualInput)
+    }
+    assertRouteError(.unsupportedScheme("sslocal")) {
+      _ = try parser.parse(
+        "sslocal://lynxview?local://automation/page.lynx.bundle",
+        requestedContainer: .automatic,
+        source: .manualInput)
+    }
+  }
+
   func testRawAndLocalResourcesCanExplicitlyUseSparkling() throws {
     let local = try parser.parse(
       "file://lynx?local://homepage.lynx.bundle",

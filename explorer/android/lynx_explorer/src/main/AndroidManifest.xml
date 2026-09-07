@@ -15,6 +15,7 @@
         android:usesCleartextTraffic="true">
         <activity
             android:name=".LynxViewShellActivity"
+            android:configChanges="keyboard|orientation|screenSize"
             android:windowSoftInputMode="adjustNothing"
             android:exported="true"
             android:theme="@style/LynxShellTheme">
@@ -32,6 +33,11 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:scheme="lynx" android:host="open" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="sslocal" android:host="lynxtest" />
             </intent-filter>
         </activity>
 

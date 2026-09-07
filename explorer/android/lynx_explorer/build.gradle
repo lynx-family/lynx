@@ -178,6 +178,7 @@ dependencies {
     kapt project(':LynxProcessor')
     compileOnly project(':LynxProcessor')
 
+    testImplementation 'junit:junit:4.13.2'
     androidTestImplementation project(':TestingBase')
 }
 

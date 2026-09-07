@@ -8,6 +8,7 @@
 #import <SDWebImage/SDWebImage.h>
 #import <SDWebImageWebPCoder/SDWebImageWebPCoder.h>
 #import "ExplorerModule.h"
+#import "ExplorerTestModuleRegistrar.h"
 #import "TemplateProvider.h"
 
 @implementation LynxInitProcessor
@@ -36,6 +37,7 @@ static LynxInitProcessor *_instance = nil;
 
   // register global JS module
   [globalConfig registerModule:ExplorerModule.class];
+  [ExplorerTestModuleRegistrar registerModulesInConfig:globalConfig];
 
   // prepare global config
   [env prepareConfig:globalConfig];

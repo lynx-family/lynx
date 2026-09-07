@@ -8,6 +8,7 @@
 #import "DemoMediaResourceFetcher.h"
 #import "DemoTemplateResourceFetcher.h"
 #import "ExplorerModule.h"
+#import "ExplorerTestModuleRegistrar.h"
 #import "LynxExplorerInput.h"
 #import "LynxNodeAPILifecycleListener.h"
 #import "LynxNodeAPIModule.h"
