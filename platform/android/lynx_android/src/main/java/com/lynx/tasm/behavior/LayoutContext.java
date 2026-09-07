@@ -7,12 +7,16 @@ import android.util.DisplayMetrics;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.behavior.ui.PropBundle;
 
 public abstract class LayoutContext {
   private long mNativePtr = 0;
-  private boolean mDestroyed;
+  private volatile boolean mDestroyed;
+  private final boolean mUseGlobalRefForDestroy = LynxEnv.getBooleanFromExternalEnv(
+      LynxEnvKey.ENABLE_LAYOUT_CONTEXT_GLOBAL_REF_FOR_DESTROY, false);
   protected long mNativeLayoutContextPtr = 0;
 
   /**
@@ -43,14 +47,14 @@ public abstract class LayoutContext {
   @CalledByNative public abstract Object getExtraBundle(int signature);
 
   @CalledByNative
-  protected void attachNativePtr(long ptr) {
+  protected synchronized void attachNativePtr(long ptr) {
     mNativePtr = ptr;
   }
 
   @CalledByNative public abstract void attachLayoutNodeManager(long nativeLayoutNodeManagerPtr);
 
   @CalledByNative
-  protected void detachNativePtr() {
+  protected synchronized void detachNativePtr() {
     mNativePtr = 0;
   }
 
@@ -59,8 +63,10 @@ public abstract class LayoutContext {
   public abstract DisplayMetrics getScreenMetrics();
 
   public void triggerLayout() {
-    if (mNativePtr != 0) {
-      nativeTriggerLayout(mNativePtr);
+    synchronized (this) {
+      if (!mDestroyed && mNativePtr != 0) {
+        nativeTriggerLayout(mNativePtr);
+      }
     }
   }
 
@@ -74,9 +80,17 @@ public abstract class LayoutContext {
 
   private native void nativeTriggerLayout(long ptr);
   private native long nativeCreateLayoutContext(Object layoutContext);
+  private native void nativePrepareDestroy(long ptr);
 
-  public void destroy() {
+  public synchronized void destroy() {
+    if (mDestroyed) {
+      return;
+    }
     mDestroyed = true;
+    if (mUseGlobalRefForDestroy && mNativePtr != 0) {
+      // Preserve this instance for native teardown without promoting a weak reference during GC.
+      nativePrepareDestroy(mNativePtr);
+    }
   }
 
   protected boolean isDestroyed() {

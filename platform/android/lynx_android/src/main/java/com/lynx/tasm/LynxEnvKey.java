@@ -25,6 +25,7 @@ public enum LynxEnvKey {
   ENABLE_SKIP_UPDATE_VIEWPORT_ON_INIT_WHEN_MEASURE_SPEC_EMPTY(
       "enable_skip_update_viewport_on_init_when_measure_spec_empty"),
   ENABLE_FALLBACK_NEW_ENGINE_REBUILD("enable_fallback_new_engine_rebuild"),
+  ENABLE_LAYOUT_CONTEXT_GLOBAL_REF_FOR_DESTROY("enable_layout_context_global_ref_for_destroy"),
   ENABLE_REPORT_CREATE_ASYNC_TAG("enable_report_create_async_tag"),
   ENABLE_SVG_ASYNC("enable_svg_async"),
   ENABLE_IMAGE_EVENT_REPORT("enable_image_event_report"),
