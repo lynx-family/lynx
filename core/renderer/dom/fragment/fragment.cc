@@ -329,7 +329,7 @@ void Fragment::UpdatePaintingNode(
   if (behavior_) {
     behavior_->OnAttributeUpdate(painting_data);
   }
-  if (has_platform_renderer_ && painting_data) {
+  if (has_platform_renderer_) {
     painting_context()->UpdatePaintingNode(id(), tend_to_flatten,
                                            painting_data);
   }
@@ -1564,6 +1564,10 @@ void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
     if (auto it = std::find(children_.begin(), children_.end(), sibling);
         it != children_.end()) {
       children_.insert(it, child);
+    } else {
+      // Keep the tree internally consistent even if a stale caller supplied a
+      // sibling from another stacking parent. Sorting restores z/fixed order.
+      children_.emplace_back(child);
     }
   }
 
@@ -1604,43 +1608,61 @@ void Fragment::RemoveChild(Fragment* child) {
   }
 }
 
+void Fragment::ReparentStackingNode(Fragment* target_parent,
+                                    Fragment* sibling) {
+  if (target_parent == nullptr) {
+    LOGE("Fragment reparent rejected because target parent is null: " << id());
+    return;
+  }
+  DCHECK(target_parent != this);
+  if (target_parent == fragment_parent()) {
+    // Reparenting does not reorder siblings. Style changes are handled by the
+    // caller even when the stacking parent remains unchanged.
+    return;
+  }
+
+  if (fragment_parent() != nullptr) {
+    fragment_parent()->RemoveChild(this);
+  }
+  target_parent->AddChildBefore(this, sibling);
+}
+
 void Fragment::ReinsertDescendantsToCorrectParent() {
-  using ReinsertClosure = base::MoveOnlyClosure<void, Fragment*, bool>;
-  auto* manager = element_manager();
-  ReinsertClosure f = [&f, manager](Fragment* current, bool need_handle_z) {
-    if (!current->fixed_children_.empty()) {
-      for (auto* fixed_child : current->fixed_children_) {
-        if (fixed_child->fragment_parent() == nullptr) {
-          manager->root()->fragment_impl()->AddChildBefore(fixed_child,
-                                                           nullptr);
-          // Recursively reinsert the fixed child's descendants. but do not
-          // handle z-index since fixed child must be stacking context node.
-          f(fixed_child, false);
+  base::MoveOnlyClosure<void, Fragment*, bool> f =
+      [&f, manager = element_manager()](Fragment* current, bool need_handle_z) {
+        if (!current->fixed_children_.empty()) {
+          for (auto* fixed_child : current->fixed_children_) {
+            if (fixed_child->fragment_parent() == nullptr) {
+              fixed_child->ReparentStackingNode(
+                  manager->root()->fragment_impl(), nullptr);
+              // Recursively reinsert the fixed child's descendants. but do not
+              // handle z-index since fixed child must be stacking context node.
+              f(fixed_child, false);
+            }
+          }
         }
-      }
-    }
 
-    // If this is not stacking context node and root is not stacking context
-    // node,
-    // then we need insert z-children.
-    bool need_handle_z_children =
-        !current->was_stacking_context() && need_handle_z;
-    if (need_handle_z_children) {
-      for (auto* z_child : current->z_children_) {
-        if (z_child->fragment_parent() == nullptr) {
-          z_child->EnclosingStackingContextFromElementParent()->AddChildBefore(
-              z_child, nullptr);
-          // Recursively reinsert the z-child's descendants. but do not
-          // handle z-index since z-child must be stacking context node.
-          f(z_child, false);
+        // If this is not stacking context node and root is not stacking context
+        // node,
+        // then we need insert z-children.
+        bool need_handle_z_children =
+            !current->was_stacking_context() && need_handle_z;
+        if (need_handle_z_children) {
+          for (auto* z_child : current->z_children_) {
+            if (z_child->fragment_parent() == nullptr) {
+              z_child->ReparentStackingNode(
+                  z_child->ResolveEnclosingStackingContextParent(), nullptr);
+              // Recursively reinsert the z-child's descendants. but do not
+              // handle z-index since z-child must be stacking context node.
+              f(z_child, false);
+            }
+          }
         }
-      }
-    }
 
-    for (auto* child : current->children_) {
-      f(child, need_handle_z_children);
-    }
-  };
+        for (auto* child : current->children_) {
+          f(child, need_handle_z_children);
+        }
+      };
 
   f(this, !was_stacking_context());
 }
@@ -1684,13 +1706,57 @@ void Fragment::RemoveDescendantsFromCurrentParent() {
 }
 
 void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
-  for (auto* z_child : root->z_children_) {
-    z_child->fragment_parent()->RemoveChild(z_child);
-    parent->AddChildBefore(z_child, nullptr);
+  if (parent == nullptr || root == nullptr) {
+    return;
   }
-  for (auto* child : root->children_) {
+
+  // Reparenting a nested z child can erase it from an ancestor's children_.
+  // Traverse snapshots so mutations never invalidate the active iteration.
+  const auto children_snapshot = root->children_;
+  // Reparenting does not change the logical parent's z_children_ set, so it is
+  // safe and cheaper to iterate that set directly.
+  for (auto* z_child : root->z_children_) {
+    z_child->ReparentStackingNode(parent, nullptr);
+  }
+
+  for (auto* child : children_snapshot) {
+    // Hoisted nodes are already represented by a z/fixed set, and an existing
+    // stacking context owns its descendants independently.
+    if (child->fragment_from_element_parent() != nullptr ||
+        child->was_stacking_context()) {
+      continue;
+    }
     MoveDirectStackingChildren(parent, child);
   }
+}
+
+void Fragment::InvalidateForRedraw() {
+  // A platform-backed fragment owns an independent display list. Rebuilding
+  // ancestors above that paint root cannot change its contents and only causes
+  // redundant display-list generation and platform invalidation.
+  Fragment* current = this;
+  while (current != nullptr) {
+    if (current->NeedRedraw()) {
+      return;
+    }
+    current->MarkDirtyState(kNeedRedraw);
+    if (current->has_platform_renderer_) {
+      return;
+    }
+    current = current->fragment_parent();
+  }
+}
+
+Fragment* Fragment::ResolveEnclosingStackingContextParent() const {
+  for (Element* ancestor = element() != nullptr ? element()->parent() : nullptr;
+       ancestor != nullptr; ancestor = ancestor->parent()) {
+    if (ancestor->IsStackingContextNode() &&
+        ancestor->fragment_impl() != nullptr) {
+      return ancestor->fragment_impl();
+    }
+  }
+  LOGE("No stacking context ancestor found for fragment " << id());
+  return nullptr;
 }
 
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {
