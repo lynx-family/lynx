@@ -46,6 +46,7 @@ public enum LynxEnvKey {
   MEMORY_ACQUISITION_DELAY_SEC("memory_acquisition_delay_second"),
   MEMORY_REPORT_INTERVAL_SEC("memory_report_interval_sec"),
   GLOBAL_MEMORY_REPORT_THRESHOLD_MB("global_memory_report_threshold_mb"),
+  ENABLE_LAYOUT_CONTEXT_DESTROY_ON_JAVA_SIDE("enable_layout_context_destroy_on_java_side"),
   ENABLE_DATA_LIST_FIX("enable_data_list_fix"),
   FSP_ENABLE("enable_fsp"),
   FSP_CONFIG_JSON_STRING("fsp_config_json_string"),
