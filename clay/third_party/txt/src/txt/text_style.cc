@@ -14,15 +14,26 @@
  * limitations under the License.
  */
 
-#include "text_style.h"
+#include "clay/third_party/txt/src/txt/text_style.h"
 
-#include "font_style.h"
-#include "font_weight.h"
-#include "txt/platform.h"
+#include "clay/third_party/txt/src/txt/font_style.h"
+#include "clay/third_party/txt/src/txt/font_weight.h"
+#include "clay/third_party/txt/src/txt/platform.h"
 
 namespace txt {
 
 TextStyle::TextStyle() : font_families(GetDefaultFontFamilies()) {}
+
+FontVariations TextStyle::GetResolvedFontVariations() const {
+  FontVariations variations;
+  if (font_optical_sizing) {
+    variations.SetAxisValue("opsz", static_cast<float>(font_size));
+  }
+  for (const auto& [axis, value] : font_variations.GetAxisValues()) {
+    variations.SetAxisValue(axis, value);
+  }
+  return variations;
+}
 
 bool TextStyle::equals(const TextStyle& other) const {
   if (color != other.color)
@@ -38,6 +49,10 @@ bool TextStyle::equals(const TextStyle& other) const {
   if (font_weight != other.font_weight)
     return false;
   if (font_style != other.font_style)
+    return false;
+  if (font_variations.GetAxisValues() != other.font_variations.GetAxisValues())
+    return false;
+  if (font_optical_sizing != other.font_optical_sizing)
     return false;
   if (letter_spacing != other.letter_spacing)
     return false;
