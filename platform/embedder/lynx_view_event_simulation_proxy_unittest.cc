@@ -75,9 +75,8 @@ TEST_F(LynxViewEventSimulationProxyTest, ForwardsPointerInputUnchanged) {
   proxy.EmulateTouch("mousePressed", 100, 200, "left", 0, 0, 4, 1);
   proxy.EmulateTouch("mouseMoved", 110, 190, "left", 0, 0, 4, 0);
   proxy.EmulateTouch("mouseReleased", 110, 190, "left", 0, 0, 4, 1);
-  proxy.EmulateTouch("mouseWheel", 7, 8, "none", 1.5f, -2.5f, 0, 0);
 
-  ASSERT_EQ(target->pointer_events.size(), 4u);
+  ASSERT_EQ(target->pointer_events.size(), 3u);
   EXPECT_EQ(target->pointer_events[0].type, "mousePressed");
   EXPECT_EQ(target->pointer_events[0].x, 100);
   EXPECT_EQ(target->pointer_events[0].y, 200);
@@ -86,9 +85,31 @@ TEST_F(LynxViewEventSimulationProxyTest, ForwardsPointerInputUnchanged) {
   EXPECT_EQ(target->pointer_events[0].click_count, 1);
   EXPECT_EQ(target->pointer_events[1].type, "mouseMoved");
   EXPECT_EQ(target->pointer_events[2].type, "mouseReleased");
-  EXPECT_EQ(target->pointer_events[3].type, "mouseWheel");
-  EXPECT_FLOAT_EQ(target->pointer_events[3].delta_x, 1.5f);
-  EXPECT_FLOAT_EQ(target->pointer_events[3].delta_y, -2.5f);
+}
+
+TEST_F(LynxViewEventSimulationProxyTest,
+       ConvertsEmulatedWheelDirectionForClay) {
+  FakeEventSimulationTarget* target = nullptr;
+  auto proxy = CreateProxy(&target);
+
+  proxy.EmulateTouch("mouseWheel", 7, 8, "none", 1.5f, -2.5f, 4, 0);
+  proxy.EmulateTouch("mouseWheel", 7, 8, "none", -1.5f, 2.5f, 0, 0);
+  proxy.EmulateTouch("mouseWheel", 7, 8, "none", 0, 0, 0, 0);
+
+  ASSERT_EQ(target->pointer_events.size(), 3u);
+  const auto& event = target->pointer_events[0];
+  EXPECT_EQ(event.type, "mouseWheel");
+  EXPECT_EQ(event.x, 7);
+  EXPECT_EQ(event.y, 8);
+  EXPECT_EQ(event.button, "none");
+  EXPECT_EQ(event.modifiers, 4);
+  EXPECT_EQ(event.click_count, 0);
+  EXPECT_FLOAT_EQ(event.delta_x, -1.5f);
+  EXPECT_FLOAT_EQ(event.delta_y, 2.5f);
+  EXPECT_FLOAT_EQ(target->pointer_events[1].delta_x, 1.5f);
+  EXPECT_FLOAT_EQ(target->pointer_events[1].delta_y, -2.5f);
+  EXPECT_FLOAT_EQ(target->pointer_events[2].delta_x, 0);
+  EXPECT_FLOAT_EQ(target->pointer_events[2].delta_y, 0);
 }
 
 }  // namespace
