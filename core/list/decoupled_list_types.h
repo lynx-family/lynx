@@ -99,6 +99,17 @@ static constexpr const char* const kPropListDebugInfoLevel =
     "list-debug-info-level";
 static constexpr const char* const kPropExperimentalSearchRefAnchorStrategy =
     "experimental-search-ref-anchor-strategy";
+static constexpr const char* const kPropExperimentalUseNewUpdateAnimation =
+    "experimental-use-new-update-animation";
+static constexpr const char* const kPropExperimentalUpdateAnimation =
+    "experimental-new-update-animation";
+static constexpr const char* const kUpdateAnimationConfigEnable = "enable";
+static constexpr const char* const kUpdateAnimationConfigAddDuration =
+    "addDuration";
+static constexpr const char* const kUpdateAnimationConfigRemoveDuration =
+    "removeDuration";
+static constexpr const char* const kUpdateAnimationConfigMoveDuration =
+    "moveDuration";
 
 // prop value
 static constexpr const char* const kPropValueTrue = "true";

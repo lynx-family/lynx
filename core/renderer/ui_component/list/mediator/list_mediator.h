@@ -53,6 +53,8 @@ class ListMediator : public lynx::list::ElementDelegate {
 
   void OnListItemLayoutUpdated(Element* list_item);
 
+  void SetEnableParallelElement(bool enable_parallel_element);
+
   void SetEnableBatchRender(bool enable_batch_render);
 
   void SetEnableScrollToThresholdEventOnDiffLayout(bool enable);

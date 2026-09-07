@@ -556,6 +556,8 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
         batch_render_strategy_ > list::BatchRenderStrategy::kDefault;
     if (UseDecoupledList()) {
       list_mediator_->SetEnableBatchRender(enable_batch_render);
+      list_mediator_->SetEnableParallelElement(
+          element_manager()->GetEnableParallelElement());
     } else if (UseInternalList()) {
       list_container_delegate_internal_->SetEnableBatchRender(
           enable_batch_render);
