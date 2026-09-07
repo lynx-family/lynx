@@ -13,6 +13,8 @@ export interface IContext {
 
   findJSShadowNodeBySign(sign: number): Object | undefined;
 
+  requestLayout?(sign: number): void;
+
   sendGlobalEvent(name: string, params: Object[]): void;
 
   getLynxElementRoot(callback?: LynxElementCallback<LynxElement | null>): void;

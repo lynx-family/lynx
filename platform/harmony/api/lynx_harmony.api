@@ -1210,6 +1210,7 @@ export interface IContext {
   getContextData(): Record<string, Object> | undefined;
   sendCustomEvent(name: string, id: number, params: Object, paramName: string): void;
   findJSShadowNodeBySign(sign: number): Object | undefined;
+  requestLayout(sign: number): void;
   sendGlobalEvent(name: string, params: Object[]): void;
   getLynxElementRoot(callback: LynxElementCallback<LynxElement | null>): void;
   measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): [number, number, number] | undefined;
