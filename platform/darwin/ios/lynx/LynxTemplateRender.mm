@@ -853,7 +853,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
           // if securityService is nil, Skip Security Check.
           [self markTiming:lynx::tasm::timing::kFfiStart
                 pipelineID:pipeline_options->pipeline_id.c_str()];
-          self->shell_->LoadTemplate([url UTF8String], ConvertNSBinary(tem), pipeline_options, ptr);
+          self->shell_->LoadTemplate(lynx::base::SafeStringConvert([url UTF8String]),
+                                     ConvertNSBinary(tem), pipeline_options, ptr);
           _hasStartedLoad = YES;
         } else {
           [self markTiming:lynx::tasm::timing::kVerifyTasmStart
@@ -867,8 +868,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
           if (verification.verified) {
             [self markTiming:lynx::tasm::timing::kFfiStart
                   pipelineID:pipeline_options->pipeline_id.c_str()];
-            self->shell_->LoadTemplate([url UTF8String], ConvertNSBinary(tem), pipeline_options,
-                                       ptr);
+            self->shell_->LoadTemplate(lynx::base::SafeStringConvert([url UTF8String]),
+                                       ConvertNSBinary(tem), pipeline_options, ptr);
             _hasStartedLoad = YES;
           } else {
             [self reportError:ECLynxAppBundleVerifyInvalidSignature
@@ -1206,13 +1207,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
           ptr->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(initData));
         }
 
-        std::string urlStr = url ? std::string([url UTF8String]) : std::string();
-        strongSelf->shell_->SetSSRTimingData(std::move(urlStr), tem.length);
+        std::string urlStr = lynx::base::SafeStringConvert([url UTF8String]);
+        strongSelf->shell_->SetSSRTimingData(urlStr, tem.length);
         [LynxEventReporter updateGenericInfo:@(YES)
                                          key:kPropEnableSSR
                                   instanceId:[self instanceId]];
         [strongSelf->_devTool attachDebugBridge:url];
-        strongSelf->shell_->LoadSSRData(std::move(data), ptr);
+        strongSelf->shell_->LoadSSRData(urlStr, std::move(data), ptr);
       }
       withErrorCallback:^(NSString* msg, NSString* stack) {
         __strong LynxTemplateRender* strongSelf = weakSelf;

@@ -268,7 +268,7 @@ void InternalLoadTemplate(JNIEnv* env, jlong ptr, jlong lifecycle,
   TryFreeLifecycle(lifecycle_ptr);
 }
 
-void InternalLoadSSRData(JNIEnv* env, jlong ptr, jlong lifecycle,
+void InternalLoadSSRData(JNIEnv* env, jlong ptr, jlong lifecycle, jstring j_url,
                          jbyteArray j_binary, const Value& value,
                          const bool read_only_value,
                          const std::string& processor_name,
@@ -282,6 +282,7 @@ void InternalLoadSSRData(JNIEnv* env, jlong ptr, jlong lifecycle,
     return;
   }
   reinterpret_cast<LynxShell*>(ptr)->LoadSSRData(
+      JNIConvertHelper::ConvertToString(env, j_url),
       JNIConvertHelper::ConvertJavaBinary(env, j_binary), template_data);
   TryFreeLifecycle(lifecycle_ptr);
 }
@@ -618,11 +619,12 @@ void OnEnterBackground(JNIEnv* env, jclass jcaller, jlong ptr,
 }
 
 void LoadSSRDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
-                                jlong lifecycle, jbyteArray ssr_data,
-                                jlong data, jboolean read_only, jstring name,
+                                jlong lifecycle, jstring j_url,
+                                jbyteArray ssr_data, jlong data,
+                                jboolean read_only, jstring name,
                                 jobject template_data) {
   std::string processor_name = JNIConvertHelper::ConvertToString(env, name);
-  InternalLoadSSRData(env, ptr, lifecycle, ssr_data,
+  InternalLoadSSRData(env, ptr, lifecycle, j_url, ssr_data,
                       data ? *(reinterpret_cast<Value*>(data)) : Value(),
                       read_only, processor_name, template_data);
 }
