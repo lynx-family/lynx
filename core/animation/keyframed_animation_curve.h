@@ -217,37 +217,29 @@ class KeyframedBoxShadowAnimationCurve : public AnimationCurve {
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
 
-//====BackgroundPosition keyframe ====
-class BackgroundPositionKeyframe : public gfx::Vec2Keyframe {
+// CSS-backed Vec2 keyframes need to be re-resolved when their unit context
+// changes. Background-position and transform-origin share this storage and
+// invalidation behavior; their CSS encodings remain curve-specific.
+class CSSVec2Keyframe : public gfx::Vec2Keyframe {
  public:
-  static tasm::CSSValue GetBackgroundPositionKeyframeValue(
-      BackgroundPositionKeyframe* keyframe, tasm::CSSPropertyID id,
-      const tasm::CSSValue& underlying_value);
-
-  static std::unique_ptr<BackgroundPositionKeyframe> Create(
+  static std::unique_ptr<CSSVec2Keyframe> Create(
       fml::TimeDelta time,
       std::unique_ptr<gfx::TimingFunction> timing_function);
-  ~BackgroundPositionKeyframe() override = default;
+  ~CSSVec2Keyframe() override = default;
 
-  void SetBackgroundPosition(const tasm::CSSValue& background_position) {
-    background_position_ = background_position;
-    ClearResolvedValue();
-    MarkNonEmpty();
-  }
-
-  tasm::CSSValue GetBackgroundPosition() const { return background_position_; }
+  const tasm::CSSValue& CSSValue() const { return css_value_; }
 
   bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                 tasm::Element* element);
 
   void NotifyUnitValuesUpdated(uint32_t css_value_pattern);
 
-  BackgroundPositionKeyframe(
-      fml::TimeDelta time,
-      std::unique_ptr<gfx::TimingFunction> timing_function);
+  CSSVec2Keyframe(fml::TimeDelta time,
+                  std::unique_ptr<gfx::TimingFunction> timing_function);
 
  private:
-  tasm::CSSValue background_position_;
+  tasm::CSSValue css_value_;
+  tasm::CSSPropertyID property_id_{tasm::kPropertyIDBackgroundPosition};
 };
 
 class KeyframedBackgroundPositionAnimationCurve
@@ -257,32 +249,6 @@ class KeyframedBackgroundPositionAnimationCurve
   ~KeyframedBackgroundPositionAnimationCurve() override = default;
 
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
-};
-
-//====transformOrigin keyframe ====
-class TransformOriginKeyframe : public gfx::Vec2Keyframe {
- public:
-  static tasm::CSSValue GetTransformOriginKeyframeValue(
-      TransformOriginKeyframe* keyframe, tasm::CSSPropertyID id,
-      const tasm::CSSValue& underlying_value);
-
-  static std::unique_ptr<TransformOriginKeyframe> Create(
-      fml::TimeDelta time,
-      std::unique_ptr<gfx::TimingFunction> timing_function);
-  ~TransformOriginKeyframe() override = default;
-
-  tasm::CSSValue GetTransformOrigin() const { return transform_origin_; }
-
-  bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
-                tasm::Element* element);
-
-  void NotifyUnitValuesUpdated(uint32_t css_value_pattern);
-
-  TransformOriginKeyframe(fml::TimeDelta time,
-                          std::unique_ptr<gfx::TimingFunction> timing_function);
-
- private:
-  tasm::CSSValue transform_origin_;
 };
 
 class KeyframedTransformOriginAnimationCurve

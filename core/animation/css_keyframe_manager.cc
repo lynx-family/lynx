@@ -265,8 +265,8 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
       new_curve = KeyframedBackgroundPositionAnimationCurve::Create();
     }
     if (!init_keyframe([&]() {
-          return BackgroundPositionKeyframe::Create(
-              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+          return CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                         std::move(timing_function));
         })) {
       return false;
     }
@@ -275,8 +275,8 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
       new_curve = KeyframedTransformOriginAnimationCurve::Create();
     }
     if (!init_keyframe([&]() {
-          return TransformOriginKeyframe::Create(
-              fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
+          return CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(offset),
+                                         std::move(timing_function));
         })) {
       return false;
     }
