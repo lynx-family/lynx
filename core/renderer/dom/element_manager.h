@@ -1422,6 +1422,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       base::MoveOnlyClosure<void, bool> patch_finish_callback,
       Element *root = nullptr);
   void Repaint();
+  void UpdateDirtyStackingContexts();
   void WillDestroy();
   void ReportElementStatistic();
   ElementManager(const ElementManager &) = delete;
