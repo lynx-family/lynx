@@ -80,7 +80,8 @@ class CLAY_EXPORT NativePlatformView {
   bool PresentSurface(int width, int height,
                       const ClayTransformation* transform,
                       ClaySharedImageNativeHandle gfx_handle);
-  ClaySharedImageNativeHandle AcquireSurface(int width, int height);
+  ClaySharedImageNativeHandle AcquireSurface(
+      int width, int height, const ClayTransformation* transform = nullptr);
   bool SwapBack();
   ClaySharedImageSinkRef GetSharedImageSink();
 
