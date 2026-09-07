@@ -170,6 +170,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     // TODO(yuyang.1024), remove the following two enums.
     ENABLE_PROMISE_MEMORY_FIX,
     ENABLE_CANVAS_ENGINE_MEMORY_FIX,
+    FIX_LAYOUT_IN_ELEMENT_NO_PATCH_FLUSH,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -368,6 +369,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_PROMISE_MEMORY_FIX, "enable_promise_memory_fix"},
             {Key::ENABLE_CANVAS_ENGINE_MEMORY_FIX,
              "enable_canvas_engine_memory_fix"},
+            {Key::FIX_LAYOUT_IN_ELEMENT_NO_PATCH_FLUSH,
+             "fix_layout_in_element_no_patch_flush"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
