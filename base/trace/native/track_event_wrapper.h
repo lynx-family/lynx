@@ -39,7 +39,6 @@ constexpr ::perfetto::CounterTrack ConvertToPerfCounterTrack(
  * here.
  */
 namespace lynx {
-
 namespace perfetto {
 
 // At present, Track is not exposed to the public and is not recommended for
@@ -222,7 +221,7 @@ class TRACE_EXPORT TrackEvent {
   void add_terminating_flow_ids(uint64_t value);
   LynxDebugAnnotation* add_debug_annotations();
   void add_debug_annotations(const std::string& name, const std::string& value);
-  void add_debug_annotations(std::string&& name, std::string&& value);
+  void add_debug_annotations(const std::string& name, void* value);
   void set_timestamp_absolute_us(int64_t value);
   TrackEvent_LegacyEvent* set_legacy_event();
 
