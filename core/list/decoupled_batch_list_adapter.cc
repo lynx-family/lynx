@@ -127,7 +127,7 @@ int64_t BatchListAdapter::BindItemHolderInternal(
                        << "] BatchListAdapter::BindItemHolderInternal: enqueue "
                           "component before render with item_key = "
                        << item_holder->item_key() << ", index = " << index);
-        RecycleItemHolder(item_holder);
+        RecycleItemHolder(item_holder, false);
         list_container_->list_children_helper()->EraseFromLastBindingChildren(
             item_holder);
       }
@@ -296,7 +296,8 @@ int BatchListAdapter::OnFinishValidBind(
   return kInvalidIndex;
 }
 
-void BatchListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
+void BatchListAdapter::RecycleItemHolder(ItemHolder* item_holder,
+                                         bool flush_immediately /* = true */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_BIND_ITEM_HOLDER,
               [this, item_holder](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event(), item_holder);
