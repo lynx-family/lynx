@@ -17,7 +17,7 @@
         _ZN4lynx8perfetto10TrackEvent21add_debug_annotationsERKNSt6__ndk112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEESA_;
         _ZN4lynx8perfetto10TrackEvent14set_track_uuidE?;
         _ZN4lynx8perfetto10TrackEvent8set_nameERKNSt6__ndk112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE;
-        _ZN4lynx8perfetto10TrackEvent21add_debug_annotationsEONSt6__ndk112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEES9_;
+        _ZN4lynx8perfetto10TrackEvent21add_debug_annotationsERKNSt6__ndk112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEEPv;
         _ZN4lynx8perfetto10TrackEvent16set_legacy_eventEv;
         _ZN4lynx8perfetto11ThreadTrack7CurrentEv;
         _ZN4lynx8perfetto19LynxDebugAnnotation16set_double_valueEd;
