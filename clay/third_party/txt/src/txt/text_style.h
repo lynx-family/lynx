@@ -21,12 +21,12 @@
 #include <vector>
 
 #include "clay/gfx/rendering_backend.h"
-#include "font_features.h"
-#include "font_style.h"
-#include "font_weight.h"
-#include "text_baseline.h"
-#include "text_decoration.h"
-#include "text_shadow.h"
+#include "clay/third_party/txt/src/txt/font_features.h"
+#include "clay/third_party/txt/src/txt/font_style.h"
+#include "clay/third_party/txt/src/txt/font_weight.h"
+#include "clay/third_party/txt/src/txt/text_baseline.h"
+#include "clay/third_party/txt/src/txt/text_decoration.h"
+#include "clay/third_party/txt/src/txt/text_shadow.h"
 #if defined(CLAY_ENABLE_TTTEXT)
 #include <textra/layout_definition.h>
 #endif  // ENABLE_TTTEXT
@@ -73,6 +73,7 @@ class TextStyle {
   std::vector<TextShadow> text_shadows;
   FontFeatures font_features;
   FontVariations font_variations;
+  bool font_optical_sizing = false;
   WordBreak word_break = kNormal;
 #if defined(CLAY_ENABLE_TTTEXT)
   ttoffice::tttext::CharacterVerticalAlignment align_type =
@@ -83,6 +84,8 @@ class TextStyle {
 #endif  // CLAY_ENABLE_TTTEXT
 
   TextStyle();
+
+  FontVariations GetResolvedFontVariations() const;
 
   bool equals(const TextStyle& other) const;
 };
