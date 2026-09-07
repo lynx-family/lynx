@@ -6,6 +6,7 @@
 
 #include <math.h>
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <unordered_set>
@@ -128,11 +129,22 @@ void ScrollWrapper::getScrollInfo(const LynxModuleValues& args,
     FloatSize zoomed_content = page_view_->ConvertTo<kPixelTypeLogical>(
         FloatSize(view_->ContentWidth(), view_->ContentHeight()));
     FloatPoint zoomed_offset = page_view_->ConvertTo<kPixelTypeLogical>(offset);
+    FloatSize zoomed_viewport = page_view_->ConvertTo<kPixelTypeLogical>(
+        FloatSize(view_->Width(), view_->Height()));
+    const bool vertical =
+        GetScrollView()->GetScrollDirection() == ScrollDirection::kVertical;
+    const float scroll_range =
+        vertical
+            ? std::max(zoomed_content.height() - zoomed_viewport.height(), 0.f)
+            : std::max(zoomed_content.width() - zoomed_viewport.width(), 0.f);
     clay::Value::Map map;
     map.emplace("scrollTop", zoomed_offset.y());
     map.emplace("scrollLeft", zoomed_offset.x());
     map.emplace("scrollHeight", zoomed_content.height());
     map.emplace("scrollWidth", zoomed_content.width());
+    map.emplace("scrollX", zoomed_offset.x());
+    map.emplace("scrollY", zoomed_offset.y());
+    map.emplace("scrollRange", scroll_range);
     map.emplace("isDragging",
                 static_cast<ScrollView*>(view_)->GetScrollStatus() ==
                     ScrollView::ScrollStatus::kDragging);
