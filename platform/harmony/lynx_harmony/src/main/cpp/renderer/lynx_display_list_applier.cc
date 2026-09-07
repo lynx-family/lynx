@@ -16,6 +16,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_drawable.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/lynx_image_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
@@ -90,6 +91,23 @@ RoundedRectangle RecordBox(const DisplayListItem& item) {
     box.SetRadiusYBottomLeft(item.payload.record_box.radii[7]);
   }
   return box;
+}
+
+void ClipRoundedRect(OH_Drawing_Canvas* canvas, OH_Drawing_Rect* rect,
+                     const float* radii, float density) {
+  auto* round_rect = OH_Drawing_RoundRectCreate(rect, 0.f, 0.f);
+  constexpr OH_Drawing_CornerPos kCornerPositions[] = {
+      CORNER_POS_TOP_LEFT, CORNER_POS_TOP_RIGHT, CORNER_POS_BOTTOM_RIGHT,
+      CORNER_POS_BOTTOM_LEFT};
+  for (size_t corner = 0; corner < 4; ++corner) {
+    OH_Drawing_Corner_Radii corner_radii{radii[corner * 2] * density,
+                                         radii[corner * 2 + 1] * density};
+    OH_Drawing_RoundRectSetCorner(round_rect, kCornerPositions[corner],
+                                  corner_radii);
+  }
+  OH_Drawing_CanvasClipRoundRect(canvas, round_rect,
+                                 OH_Drawing_CanvasClipOp::INTERSECT, true);
+  OH_Drawing_RoundRectDestroy(round_rect);
 }
 
 }  // namespace
@@ -191,20 +209,8 @@ void LynxDisplayListApplier::ProcessContentOperations(
           OH_Drawing_RectDestroy(rect);
           break;
         }
-        auto* round_rect = OH_Drawing_RoundRectCreate(rect, 0.f, 0.f);
+        ClipRoundedRect(canvas, rect, clip.radii, density);
         OH_Drawing_RectDestroy(rect);
-        constexpr OH_Drawing_CornerPos kCornerPositions[] = {
-            CORNER_POS_TOP_LEFT, CORNER_POS_TOP_RIGHT, CORNER_POS_BOTTOM_RIGHT,
-            CORNER_POS_BOTTOM_LEFT};
-        for (size_t corner = 0; corner < 4; ++corner) {
-          OH_Drawing_Corner_Radii radii{clip.radii[corner * 2] * density,
-                                        clip.radii[corner * 2 + 1] * density};
-          OH_Drawing_RoundRectSetCorner(round_rect, kCornerPositions[corner],
-                                        radii);
-        }
-        OH_Drawing_CanvasClipRoundRect(
-            canvas, round_rect, OH_Drawing_CanvasClipOp::INTERSECT, true);
-        OH_Drawing_RoundRectDestroy(round_rect);
         break;
       }
       case DisplayListOpType::kText: {
@@ -215,8 +221,47 @@ void LynxDisplayListApplier::ProcessContentOperations(
         }
         break;
       }
+      case DisplayListOpType::kImage: {
+        const int32_t image_id = item.payload.image.image_id;
+        const int32_t box_index = item.payload.image.box_index;
+        if (box_index < 0 || static_cast<size_t>(box_index) >= boxes_.size()) {
+          break;
+        }
+        auto host = host_.lock();
+        if (host == nullptr) {
+          break;
+        }
+        auto image_manager = context_->GetImageManager(image_id);
+        const auto& box = boxes_[box_index];
+        if (image_manager == nullptr || box.GetWidth() <= 0.f ||
+            box.GetHeight() <= 0.f) {
+          break;
+        }
+
+        image_manager->SetTarget(host);
+        OH_Drawing_CanvasSave(canvas);
+        OH_Drawing_CanvasTranslate(canvas, box.GetX() * density,
+                                   box.GetY() * density);
+        auto* clip_rect = OH_Drawing_RectCreate(
+            0.f, 0.f, box.GetWidth() * density, box.GetHeight() * density);
+        if (box.HasRadius()) {
+          const float radii[] = {
+              box.GetRadiusXTopLeft(),     box.GetRadiusYTopLeft(),
+              box.GetRadiusXTopRight(),    box.GetRadiusYTopRight(),
+              box.GetRadiusXBottomRight(), box.GetRadiusYBottomRight(),
+              box.GetRadiusXBottomLeft(),  box.GetRadiusYBottomLeft()};
+          ClipRoundedRect(canvas, clip_rect, radii, density);
+        } else {
+          OH_Drawing_CanvasClipRect(canvas, clip_rect,
+                                    OH_Drawing_CanvasClipOp::INTERSECT, true);
+        }
+        OH_Drawing_RectDestroy(clip_rect);
+        image_manager->UpdateBounds(box.GetWidth(), box.GetHeight(), density);
+        image_manager->Draw(canvas);
+        OH_Drawing_CanvasRestore(canvas);
+        break;
+      }
       case DisplayListOpType::kDrawView:
-      case DisplayListOpType::kImage:
       case DisplayListOpType::kCustom:
       case DisplayListOpType::kLinearGradient:
       case DisplayListOpType::kBoxShadow:

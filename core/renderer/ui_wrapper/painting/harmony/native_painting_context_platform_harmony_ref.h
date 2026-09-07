@@ -11,12 +11,23 @@
 
 namespace lynx::tasm {
 
+namespace harmony {
+class LynxRendererContext;
+}
+
 class NativePaintingCtxPlatformHarmonyRef
     : public NativePaintingCtxPlatformRef {
  public:
   explicit NativePaintingCtxPlatformHarmonyRef(
-      std::unique_ptr<PlatformRendererFactory> renderer_factory);
+      std::unique_ptr<PlatformRendererFactory> renderer_factory,
+      std::weak_ptr<harmony::LynxRendererContext> renderer_context);
   ~NativePaintingCtxPlatformHarmonyRef() override;
+
+ protected:
+  void DestroyImageOnPlatformThread(int32_t image_key) override;
+
+ private:
+  std::weak_ptr<harmony::LynxRendererContext> renderer_context_;
 };
 
 }  // namespace lynx::tasm

@@ -8,6 +8,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/lynx_image_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
 namespace tasm {
@@ -25,6 +27,31 @@ std::shared_ptr<LynxContext> LynxRendererContext::GetLynxContext() const {
 UIOwner* LynxRendererContext::GetUIOwner() const {
   auto context = context_.lock();
   return context != nullptr ? context->GetUIOwner() : nullptr;
+}
+
+void LynxRendererContext::CreateImageManager(int32_t id, const std::string& src,
+                                             const ImagePaintInfo& paint_info,
+                                             float width, float height,
+                                             int32_t event_mask,
+                                             int32_t image_key) {
+  auto context = GetLynxContext();
+  if (context == nullptr) {
+    return;
+  }
+  auto image_manager = std::make_shared<LynxImageManager>(context);
+  image_manager->UpdatePaintInfo(paint_info);
+  image_managers_[image_key] = image_manager;
+  image_manager->RequestImage(id, src, width, height, event_mask);
+}
+
+std::shared_ptr<LynxImageManager> LynxRendererContext::GetImageManager(
+    int32_t image_key) const {
+  auto it = image_managers_.find(image_key);
+  return it == image_managers_.end() ? nullptr : it->second;
+}
+
+void LynxRendererContext::DestroyImageManager(int32_t image_key) {
+  image_managers_.erase(image_key);
 }
 
 void LynxRendererContext::UpdateTextBundle(
