@@ -53,7 +53,7 @@ AnimatedImageInstance::AnimatedImageInstance(
     : BaseImageInstance(image) {
   player_ = std::make_unique<AnimatedImagePlayer>(
       image->image_->CreateAnimation(), image->task_runner_,
-      [this] { OnFrameChanged(); }, [this] { return IsVisible(); });
+      [this] { OnFrameChanged(); }, [this] { return IsVisible(); }, this);
   if (!player_->IsValid()) {
     FML_LOG(ERROR) << "AnimatedImageInstance: failed to create animation";
     return;
@@ -69,7 +69,7 @@ AnimatedImageInstance::AnimatedImageInstance(const AnimatedImageInstance& other)
   auto image = std::static_pointer_cast<AnimatedImage>(image_);
   player_ = std::make_unique<AnimatedImagePlayer>(
       image->image_->CreateAnimation(), image->task_runner_,
-      [this] { OnFrameChanged(); }, [this] { return IsVisible(); });
+      [this] { OnFrameChanged(); }, [this] { return IsVisible(); }, this);
   if (!player_->IsValid()) {
     FML_LOG(ERROR) << "AnimatedImageInstance: failed to clone animation";
     return;
@@ -198,6 +198,18 @@ void AnimatedImageInstance::OnFrameChanged() {
   gpu_image_.reset();
   uploaded_info_ = ImageInfo();
   BaseImageInstance::OnNotifyAnimationFrame();
+}
+
+void AnimatedImageInstance::SetAnimationListener(
+    ImageAnimationListener* listener) {
+  if (animation_listener_ == listener) {
+    return;
+  }
+  BaseImageInstance::SetAnimationListener(listener);
+  // Autoplay can start before the instance is attached to its view.
+  if (listener && player_ && player_->IsPlaying()) {
+    OnStartPlay();
+  }
 }
 
 }  // namespace clay

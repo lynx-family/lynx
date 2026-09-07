@@ -16,12 +16,20 @@ namespace clay {
 
 class PlatformImageAnimation {
  public:
+  // Values are also used by the platform animation bridges.
+  enum class FrameResult {
+    kNoFrame = 0,
+    kFrameReady = 1,
+    kLoopComplete = 2,
+    kFinalLoopComplete = 3,
+  };
+
   virtual ~PlatformImageAnimation() = default;
 
   virtual int64_t GetDuration() = 0;
   virtual std::shared_ptr<skity::Pixmap> ToBitmap(
       const ImageInfo& render_info) = 0;
-  virtual bool DrawFrame() = 0;
+  virtual FrameResult DrawFrame() = 0;
   virtual void SetLoopCount(int loop_count) = 0;
   virtual void StartAnimation() = 0;
   virtual void StopAnimation() = 0;

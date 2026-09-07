@@ -10,6 +10,7 @@
 
 #include "base/include/fml/task_runner.h"
 #include "base/include/fml/time/timer.h"
+#include "clay/gfx/image/image_animation_listener.h"
 #include "clay/gfx/image/platform_image.h"
 
 namespace clay {
@@ -21,7 +22,8 @@ class AnimatedImagePlayer {
   AnimatedImagePlayer(std::unique_ptr<PlatformImageAnimation> animation,
                       fml::RefPtr<fml::TaskRunner> task_runner,
                       std::function<void()> frame_changed_callback,
-                      std::function<bool()> visible_callback);
+                      std::function<bool()> visible_callback,
+                      ImageAnimationListener* listener = nullptr);
   ~AnimatedImagePlayer();
 
   bool IsValid() const { return animation_ != nullptr; }
@@ -48,8 +50,10 @@ class AnimatedImagePlayer {
   std::unique_ptr<fml::OneshotTimer> frame_timer_;
   std::function<void()> frame_changed_callback_;
   std::function<bool()> visible_callback_;
+  ImageAnimationListener* listener_ = nullptr;
   bool is_playing_ = false;
   bool is_timer_running_ = false;
+  fml::WeakPtrFactory<AnimatedImagePlayer> weak_factory_{this};
 };
 
 }  // namespace clay

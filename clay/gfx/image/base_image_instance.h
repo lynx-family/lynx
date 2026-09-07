@@ -11,11 +11,12 @@
 #include "clay/gfx/geometry/size.h"
 #include "clay/gfx/gpu_object.h"
 #include "clay/gfx/image/graphics_image.h"
+#include "clay/gfx/image/image_animation_listener.h"
 
 namespace clay {
 class BaseImage;
 
-class BaseImageInstance {
+class BaseImageInstance : public ImageAnimationListener {
  public:
   explicit BaseImageInstance(std::shared_ptr<BaseImage> image);
   BaseImageInstance(const BaseImageInstance& other);
@@ -40,6 +41,11 @@ class BaseImageInstance {
 
   void SetAnimationFrameCallback(std::function<void()> func);
   void SetVisibleCallback(std::function<bool()> func);
+  virtual void SetAnimationListener(ImageAnimationListener* listener);
+
+  void OnStartPlay() override;
+  void OnCurrentLoopComplete() override;
+  void OnFinalLoopComplete() override;
 
   void OnNotifyAnimationFrame();
 
@@ -49,6 +55,8 @@ class BaseImageInstance {
   std::shared_ptr<BaseImage> image_;
   std::function<void()> animation_frame_callback_;
   std::function<bool()> visible_callback_;
+  // A clone belongs to a separate view and must bind its own listener.
+  ImageAnimationListener* animation_listener_ = nullptr;
 };
 
 }  // namespace clay
