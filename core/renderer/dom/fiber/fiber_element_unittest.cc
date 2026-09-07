@@ -6943,6 +6943,90 @@ TEST_P(FiberElementTest, RequireFlush) {
 }
 
 // position:fixed related
+TEST_P(FiberElementTest, FixedTraversalOnlyRunsForLegacyRadon) {
+  class CountingViewElement final : public ViewElement {
+   public:
+    CountingViewElement(ElementManager* manager, int& visits)
+        : ViewElement(manager), visits_(visits) {}
+
+    void TraversalInsertFixedElementOfTree() override {
+      ++visits_;
+      Element::TraversalInsertFixedElementOfTree();
+    }
+
+   private:
+    int& visits_;
+  };
+
+  for (const auto& [fiber_arch, fixed_new, fixed_unified, expected_visits] :
+       {std::make_tuple(false, false, false, 2),
+        std::make_tuple(false, false, true, 0),
+        std::make_tuple(false, true, false, 0),
+        std::make_tuple(false, true, true, 0),
+        std::make_tuple(true, false, false, 0),
+        std::make_tuple(true, false, true, 0),
+        std::make_tuple(true, true, false, 0),
+        std::make_tuple(true, true, true, 0)}) {
+    SCOPED_TRACE(::testing::Message()
+                 << "fiber=" << fiber_arch << ", new=" << fixed_new
+                 << ", unified=" << fixed_unified);
+    manager->config_->SetEnableFiberArch(fiber_arch);
+    manager->config_->SetEnableFixedNew(fixed_new);
+    manager->config_->SetEnableUnifyFixedBehavior(fixed_unified);
+
+    int visits = 0;
+    auto page = manager->CreateFiberPage("page", 11);
+    auto parent = fml::AdoptRef(new CountingViewElement(manager, visits));
+    auto child = fml::AdoptRef(new CountingViewElement(manager, visits));
+    parent->InsertNode(child);
+    page->InsertNode(parent);
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(visits, expected_visits);
+
+    // A clean root flush must not re-scan modes without deferred fixed work.
+    visits = 0;
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(visits, expected_visits);
+  }
+}
+
+TEST_P(FiberElementTest, LegacyRadonFixedInsertionKeepsTreeOrder) {
+  manager->config_->SetEnableFiberArch(false);
+  manager->config_->SetEnableFixedNew(false);
+  manager->config_->SetEnableUnifyFixedBehavior(false);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  first->SetStyle(CSSPropertyID::kPropertyIDBackground, lepus::Value("red"));
+  second->SetStyle(CSSPropertyID::kPropertyIDBackground, lepus::Value("blue"));
+  page->InsertNode(first);
+  page->InsertNode(second);
+
+  auto first_fixed = manager->CreateFiberView();
+  auto second_fixed = manager->CreateFiberView();
+  first_fixed->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                        lepus::Value("fixed"));
+  second_fixed->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                         lepus::Value("fixed"));
+  // Queue in reverse order: the deferred pass must follow the DOM tree.
+  second->InsertNode(second_fixed);
+  first->InsertNode(first_fixed);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto* page_node = platform_impl_->node_map_.at(page->impl_id()).get();
+  const auto& children = page_node->children_;
+  ASSERT_EQ(children.size(), 4u);
+  EXPECT_EQ(children[0], platform_impl_->node_map_.at(first->impl_id()).get());
+  EXPECT_EQ(children[1], platform_impl_->node_map_.at(second->impl_id()).get());
+  EXPECT_EQ(children[2],
+            platform_impl_->node_map_.at(first_fixed->impl_id()).get());
+  EXPECT_EQ(children[3],
+            platform_impl_->node_map_.at(second_fixed->impl_id()).get());
+  EXPECT_FALSE(first_fixed->need_handle_fixed_);
+  EXPECT_FALSE(second_fixed->need_handle_fixed_);
+}
+
 TEST_P(FiberElementTest, FiberElementFixedStyle) {
   auto page = manager->CreateFiberPage("page", 11);
 
