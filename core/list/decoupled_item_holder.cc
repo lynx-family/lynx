@@ -5,6 +5,7 @@
 #include "core/list/decoupled_item_holder.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "base/include/float_comparison.h"
 #include "core/list/decoupled_list_container_impl.h"
@@ -45,6 +46,14 @@ void ItemHolder::UpdateLayoutToPlatform(float content_size,
                                         float container_width,
                                         ItemElementDelegate* item_delegate) {
   if (item_delegate) {
+    // Logical layout may continue updating left_ and top_, but a regular
+    // layout flush must not overwrite an interpolated move or change frame
+    // with the final position.
+    content_size_ = content_size;
+    container_width_ = container_width;
+    if (defer_layout_flush_for_animation_) {
+      return;
+    }
     if (animation_delegate_->UpdateAnimation() &&
         animation_type_ == ItemHolderAnimationType::kTransform) {
       // NOTE: In the remove animation, a new item holder is created, and we
@@ -57,9 +66,6 @@ void ItemHolder::UpdateLayoutToPlatform(float content_size,
         item_delegate->UpdateLayoutToPlatform(left_, top_);
       }
     }
-    // Record current content size and container width.
-    content_size_ = content_size;
-    container_width_ = container_width;
   }
 }
 
@@ -252,6 +258,53 @@ bool ItemHolder::VisibleInList(ListOrientationHelper* orientation_helper,
            base::FloatsLarger(end, list_end)) ||
           (base::FloatsLargerOrEqual(start, list_start) &&
            base::FloatsLargerOrEqual(list_end, end)));
+}
+
+void ItemHolder::PrepareForAnimation(ItemAnimationType animation_type) {
+  // Keep the normal recycling path from processing this target while it is
+  // animated. For a disappearance animation, ownership of the removed holder
+  // has already moved from ListAdapter to the current transaction.
+  defer_recycle_for_animation_ = true;
+  // Position animations must also defer regular layout updates so they do not
+  // overwrite the interpolated presentation position.
+  defer_layout_flush_for_animation_ =
+      animation_type == ItemAnimationType::kPersistence ||
+      animation_type == ItemAnimationType::kChange;
+}
+
+void ItemHolder::FinishAnimation() {
+  // Clear the deferral flags set by PrepareForAnimation. Normal completion,
+  // pending cancellation, and non-destroy cancellation of a running animation
+  // can all reach this method, so repeated calls must be safe.
+  defer_recycle_for_animation_ = false;
+  defer_layout_flush_for_animation_ = false;
+}
+
+void ItemHolder::UpdateAnimationOpacity(float opacity, bool flush_immediately) {
+  ItemElementDelegate* item_delegate =
+      animation_delegate_->GetItemElementDelegate(this);
+  if (item_delegate) {
+    item_delegate->UpdateAnimatedStyle(
+        tasm::kPropertyIDOpacity,
+        tasm::CSSValue(static_cast<double>(opacity),
+                       tasm::CSSValuePattern::NUMBER),
+        flush_immediately);
+  }
+}
+
+void ItemHolder::UpdateAnimationPosition(float left, float top,
+                                         bool flush_immediately) {
+  ItemElementDelegate* item_delegate =
+      animation_delegate_->GetItemElementDelegate(this);
+  if (item_delegate) {
+    float platform_left = left;
+    if (direction_ == Direction::kRTL) {
+      platform_left = GetRTLLeft(content_size_, container_width_, left, width_);
+    }
+    // Update only the platform presentation position. Keep the final logical
+    // left_ and top_ stored by ItemHolder unchanged.
+    item_delegate->UpdateAnimatedLayout(platform_left, top, flush_immediately);
+  }
 }
 
 }  // namespace list

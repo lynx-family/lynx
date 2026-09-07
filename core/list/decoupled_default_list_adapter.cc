@@ -103,7 +103,7 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
                      << "] DefaultListAdapter::BindItemHolder: enqueue "
                         "component before render with item_key = "
                      << item_holder->item_key() << ", index = " << index);
-      RecycleItemHolder(item_holder);
+      RecycleItemHolder(item_holder, true);
     }
     item_holder->MarkDirty(false);
     item_holder->MarkDiffStatus(DiffStatus::kValid);
@@ -218,14 +218,17 @@ void DefaultListAdapter::OnFinishBindItemHolder(
 }
 
 // Recycle ItemHolder.
-void DefaultListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
+void DefaultListAdapter::RecycleItemHolder(
+    ItemHolder* item_holder, bool flush_immediately /* = true */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_RECYCLE_ITEM_HOLDER,
               [this, item_holder](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event(), item_holder);
               });
   if (item_holder) {
     EnqueueElement(item_holder);
-    list_container_->list_delegate()->FlushImmediately();
+    if (flush_immediately) {
+      list_container_->list_delegate()->FlushImmediately();
+    }
   }
 }
 
