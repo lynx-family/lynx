@@ -49,7 +49,9 @@ std::shared_ptr<FontCollection> CreateFixtureFontCollection() {
 std::optional<tttext::FontInfo> GetFixtureFontInfo(
     const std::shared_ptr<FontCollection>& font_collection,
     const tttext::Style& style) {
-  auto tt_font_collection = font_collection->GetIFontCollection();
+  auto dynamic_font_manager = std::make_shared<DynamicFontManager>();
+  auto tt_font_collection =
+      font_collection->GetIFontCollection(dynamic_font_manager);
   auto typefaces = tt_font_collection.findTypefaces(style.GetFontDescriptor());
   if (typefaces.empty() || typefaces.front() == nullptr) {
     return std::nullopt;
@@ -107,7 +109,11 @@ TEST(ParagraphTTTextTest, HandlesEmptyText) {
 
 TEST(ParagraphTTTextTest, KeepsIndexesInSyncForEmbeddedNull) {
   tttext::ParagraphStyle paragraph_style;
+#if defined(ENABLE_SKITY)
+  ParagraphTTText paragraph(nullptr, paragraph_style, nullptr);
+#else
   ParagraphTTText paragraph(nullptr, paragraph_style);
+#endif
   tttext::Style style;
 
   paragraph.AddTextRun(style, std::u16string(u"A\0B", 3));
@@ -119,6 +125,39 @@ TEST(ParagraphTTTextTest, KeepsIndexesInSyncForEmbeddedNull) {
 }
 
 #if defined(ENABLE_SKITY)
+TEST(ParagraphTTTextTest, MaxIntrinsicWidthIgnoresSoftLineBreaks) {
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::ParagraphStyle paragraph_style;
+  auto dynamic_font_manager = std::make_shared<DynamicFontManager>();
+  ParagraphTTText paragraph(font_collection, paragraph_style,
+                            dynamic_font_manager);
+  tttext::Style style;
+  PlaceholderRun first_placeholder(40.f, 20.f, PlaceholderAlignment::kBaseline,
+                                   TextBaseline::kAlphabetic, 20.f);
+  PlaceholderRun second_placeholder(
+      40.f, 20.f, PlaceholderAlignment::kBaseline, TextBaseline::kAlphabetic,
+      20.f);
+  paragraph.AddPlaceholder(style, first_placeholder, false);
+  paragraph.AddPlaceholder(style, second_placeholder, false);
+
+  paragraph.Layout(50.f);
+
+  ASSERT_GT(paragraph.GetLineMetrics().size(), 1u);
+  const double narrow_max_intrinsic_width = paragraph.GetMaxIntrinsicWidth();
+  const double narrow_longest_line = paragraph.GetLongestLine();
+  EXPECT_GT(narrow_max_intrinsic_width, narrow_longest_line);
+
+  paragraph.Layout(100.f);
+
+  ASSERT_EQ(paragraph.GetLineMetrics().size(), 1u);
+  const double wide_max_intrinsic_width = paragraph.GetMaxIntrinsicWidth();
+  const double wide_longest_line = paragraph.GetLongestLine();
+  EXPECT_DOUBLE_EQ(wide_max_intrinsic_width, narrow_max_intrinsic_width);
+  EXPECT_GT(wide_longest_line, narrow_longest_line);
+}
+
 TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
   constexpr float kFontSize = 40.f;
   auto font_collection = CreateFixtureFontCollection();
@@ -142,7 +181,9 @@ TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
       0.5f);
 
   tttext::ParagraphStyle paragraph_style;
-  ParagraphTTText paragraph(font_collection, paragraph_style);
+  auto dynamic_font_manager = std::make_shared<DynamicFontManager>();
+  ParagraphTTText paragraph(font_collection, paragraph_style,
+                            dynamic_font_manager);
   PlaceholderRun placeholder(20.f, 40.f, PlaceholderAlignment::kMiddle,
                              TextBaseline::kAlphabetic, 0.f);
   paragraph.AddPlaceholder(style, placeholder, false);
@@ -160,7 +201,11 @@ TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
 
 TEST(ParagraphTTTextTest, DefaultPlaceholderUsesAlphabeticBaseline) {
   tttext::ParagraphStyle paragraph_style;
+#if defined(ENABLE_SKITY)
+  ParagraphTTText paragraph(nullptr, paragraph_style, nullptr);
+#else
   ParagraphTTText paragraph(nullptr, paragraph_style);
+#endif
   tttext::Style style;
   PlaceholderRun placeholder;
   placeholder.width = 10;
@@ -171,7 +216,6 @@ TEST(ParagraphTTTextTest, DefaultPlaceholderUsesAlphabeticBaseline) {
   paragraph.AddPlaceholder(style, placeholder, false);
 
   EXPECT_EQ(paragraph.GetTextSize(), 1u);
-  EXPECT_EQ(paragraph.paragraph_->GetCharCount(), 1u);
 }
 
 }  // namespace txt

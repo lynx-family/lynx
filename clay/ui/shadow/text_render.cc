@@ -450,7 +450,7 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
     }
     paragraph = LayoutParagraph(layout_width);
     cache_paragraph_ = std::move(paragraph);
-    measured_width_ = std::ceil(cache_paragraph_->GetMaxIntrinsicWidth());
+    measured_width_ = std::ceil(cache_paragraph_->GetLongestLine());
     if (measure_node_->text_style_->line_spacing.has_value() &&
         cache_paragraph_->GetLineMetrics().size() > 0) {
 #ifndef CLAY_ENABLE_TTTEXT
@@ -788,7 +788,7 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
             [](const auto& line_metric) { return line_metric.hard_break; });
         const double truncation_layout_width =
             has_hard_break ? prev_layout_width_
-                           : cache_paragraph_->GetMaxIntrinsicWidth();
+                           : cache_paragraph_->GetLongestLine();
         auto end_dx = truncation_direction_ == TextDirection::kRtl
                           ? truncation_size.width()
                           : truncation_layout_width - truncation_size.width();
