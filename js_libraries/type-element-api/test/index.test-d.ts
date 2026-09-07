@@ -21,7 +21,7 @@ import type {
   ElementEventRef,
   ElementEventType,
   ElementEventListenerOptions,
-} from '../types/index';
+} from '../types/internal';
 
 describe('Test Animation Types', () => {
   it('should have correct AnimationOperation type', () => {
