@@ -36,6 +36,10 @@ group("default") {
     deps += [ "tools/gn_tools/test:gn_tools_test" ]
   }
 
+  if (is_encoder_ut) {
+    deps += [ "testing/lynx/tasm/codec/encoder:encoder_tests_exec" ]
+  }
+
   if (enable_clay) {
     deps += [ "clay:standalone_lib" ]
   }

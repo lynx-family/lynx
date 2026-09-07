@@ -1,0 +1,30 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../../core/Lynx.gni")
+import("../../../../test.gni")
+
+unittest_set("encoder_testset") {
+  deps = [
+    "../../../../../core/parser",
+    "../../../../../core/runtime/js:utils",
+    "../../../../../core/runtime/js/jsi:jsi",
+    "../../../../../core/services/performance:performance",
+    "../../../../../core/template_bundle/template_codec/binary_encoder",
+    "../../../../../core/template_bundle/template_codec/generator",
+    "../../../../../core/value_wrapper:value_wrapper_common",
+    "../../../../../oliver/lynx-tasm:encoder_common",
+    "../../../../../third_party/aes",
+    "../../../../../third_party/quickjs:quickjs",
+    "../../../../../third_party/rapidjson:rapidjson",
+    "//third_party/modp_b64",
+  ]
+
+  sources = [ "encoder_test.cc" ]
+}
+
+unittest_exec("encoder_tests_exec") {
+  testonly = true
+  deps = [ ":encoder_testset" ]
+}
