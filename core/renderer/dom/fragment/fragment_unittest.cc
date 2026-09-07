@@ -2662,5 +2662,72 @@ TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
                                      additional_options->pipeline_id));
 }
 
+TEST_F(FragmentDrawTest, RedrawInvalidationStopsAtNearestPaintRoot) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto platform_parent = manager->CreateFiberView();
+  auto flattened_child = manager->CreateFiberView();
+
+  page->InsertNode(platform_parent);
+  platform_parent->InsertNode(flattened_child);
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* parent_fragment = platform_parent->fragment_impl();
+  auto* child_fragment = flattened_child->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(parent_fragment, nullptr);
+  ASSERT_NE(child_fragment, nullptr);
+
+  page_fragment->has_platform_renderer_ = true;
+  parent_fragment->has_platform_renderer_ = true;
+  child_fragment->has_platform_renderer_ = false;
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  parent_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  child_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+
+  child_fragment->InvalidateForRedraw();
+
+  EXPECT_TRUE(child_fragment->NeedRedraw());
+  EXPECT_TRUE(parent_fragment->NeedRedraw());
+  EXPECT_FALSE(page_fragment->NeedRedraw());
+}
+
+TEST_F(FragmentDrawTest, ReparentToCurrentParentPreservesOrderAndCleanState) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  second->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(first);
+  page->InsertNode(second);
+  page->FlushActionsAsRoot();
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* second_fragment = second->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(first_fragment, nullptr);
+  ASSERT_NE(second_fragment, nullptr);
+  ASSERT_EQ(first_fragment->fragment_parent(), page_fragment);
+  ASSERT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedSortZChild);
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedSortFixedChild);
+
+  // A same-parent request must not detach and append the first child. That
+  // would reorder equal-parent siblings and unnecessarily dirty the parent.
+  first_fragment->ReparentStackingNode(page_fragment, nullptr);
+
+  EXPECT_EQ(first_fragment->fragment_parent(), page_fragment);
+  EXPECT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+  EXPECT_FALSE(page_fragment->NeedRedraw());
+  EXPECT_FALSE(page_fragment->NeedSortZChild());
+  EXPECT_FALSE(page_fragment->NeedSortFixedChild());
+}
+
 }  // namespace tasm
 }  // namespace lynx
