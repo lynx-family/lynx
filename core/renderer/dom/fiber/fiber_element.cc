@@ -5045,7 +5045,8 @@ void Element::WillResetCSSValue(CSSPropertyID &css_id) {
 }
 
 void Element::TraversalInsertFixedElementOfTree() {
-  if (IsFixedUnifiedEnabled()) {
+  // Only legacy fixed elements using Radon diff defer insertion to this pass.
+  if (IsFiberArch() || IsFixedNewOrUnifiedEnabled()) {
     return;
   }
 
