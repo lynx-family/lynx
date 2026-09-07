@@ -13,6 +13,7 @@
 #include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/console_message_manager.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
+#include "devtool/lynx_devtool/agent/network_request_observer.h"
 
 namespace lynx {
 namespace runtime {
@@ -43,6 +44,12 @@ class InspectorDefaultExecutor
   DECLARE_DEVTOOL_METHOD(LogDisable)
   DECLARE_DEVTOOL_METHOD(LogClear)
 
+  // Network domain
+  DECLARE_DEVTOOL_METHOD(NetworkEnable)
+  DECLARE_DEVTOOL_METHOD(NetworkDisable)
+  DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
+  DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
+
   DECLARE_DEVTOOL_METHOD(InspectorEnable)
   DECLARE_DEVTOOL_METHOD(InspectorDetached)
 
@@ -53,6 +60,7 @@ class InspectorDefaultExecutor
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
   std::unique_ptr<ConsoleMessageManager> console_msg_manager_;
+  std::shared_ptr<NetworkRequestObserver> network_observer_;
 };
 
 }  // namespace devtool

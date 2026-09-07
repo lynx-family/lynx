@@ -21,6 +21,7 @@
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.h"
@@ -183,6 +184,8 @@ void LynxDevToolNG::RegisterInstanceDomainAgents() {
   RegisterAgent("Performance",
                 std::make_unique<InspectorPerformanceAgent>(devtool_mediator_));
   RegisterAgent("Memory", std::make_unique<InspectorMemoryAgent>());
+  RegisterAgent("Network",
+                std::make_unique<InspectorNetworkAgent>(devtool_mediator_));
   RegisterAgent("SystemInfo", std::make_unique<SystemInfoAgent>());
   RegisterAgent("Lynx",
                 std::make_unique<InspectorLynxAgentNG>(devtool_mediator_));
@@ -242,6 +245,9 @@ void LynxDevToolNG::RegisterInstanceDomainAgents(
     RegisterAgent("IO", std::make_unique<InspectorIOAgent>());
   } else if (!domain_key.compare(domain_key_prefix + "memory")) {
     RegisterAgent("Memory", std::make_unique<InspectorMemoryAgent>());
+  } else if (!domain_key.compare(domain_key_prefix + "network")) {
+    RegisterAgent("Network",
+                  std::make_unique<InspectorNetworkAgent>(devtool_mediator_));
   } else if (!domain_key.compare(domain_key_prefix + "heapprofiler")) {
     RegisterAgent("HeapProfiler", std::make_unique<InspectorHeapProfilerAgent>(
                                       devtool_mediator_));

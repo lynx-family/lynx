@@ -498,6 +498,26 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc
+  - name: Network
+    origin: standard
+    scope: instance
+    methods:
+      - name: disable
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
+      - name: enable
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
+      - name: getRequestPostData
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
+      - name: getResponseBody
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
   - name: Overlay
     origin: standard
     scope: instance
