@@ -52,8 +52,7 @@ void TrackEvent::add_terminating_flow_ids(uint64_t value) {}
 LynxDebugAnnotation* TrackEvent::add_debug_annotations() { return nullptr; }
 void TrackEvent::add_debug_annotations(const std::string& name,
                                        const std::string& value) {}
-void TrackEvent::add_debug_annotations(std::string&& name,
-                                       std::string&& value) {}
+void TrackEvent::add_debug_annotations(const std::string& name, void* value) {}
 void TrackEvent::set_timestamp_absolute_us(int64_t value) {}
 
 TrackEvent_LegacyEvent* TrackEvent::set_legacy_event() { return nullptr; }
