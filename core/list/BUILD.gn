@@ -55,6 +55,8 @@ if (disable_list_platform_implementation) {
       "animation/item_animator.h",
       "animation/item_animator_base.cc",
       "animation/item_animator_base.h",
+      "animation/item_animator_default.cc",
+      "animation/item_animator_default.h",
       "list_animation_manager_impl.cc",
       "list_animation_manager_impl.h",
     ]
@@ -106,6 +108,7 @@ if (disable_list_platform_implementation) {
     list_container_testset_shared_sources += [
       "animation/animation_types_unittest.cc",
       "animation/item_animator_base_unittest.cc",
+      "animation/item_animator_default_unittest.cc",
       "animation/item_animator_unittest.cc",
       "testing/mock_animation_target.h",
       "testing/mock_item_animator.h",
