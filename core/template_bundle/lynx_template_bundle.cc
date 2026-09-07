@@ -114,7 +114,11 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
 }
 
 bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
-  if (context_type_ == runtime::ContextType::RTSNativeContextType ||
+  // RTS VMs are bound to the thread that creates them. The local context pool
+  // is filled on a concurrent thread, so a pooled RTS VM cannot be consumed on
+  // the engine thread until RTS supports an explicit thread handoff.
+  if (context_type_ == runtime::ContextType::RTSContextType ||
+      context_type_ == runtime::ContextType::RTSNativeContextType ||
       !mts_runtime_pool_ || count <= 0) {
     return false;
   }
