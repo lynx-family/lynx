@@ -5,6 +5,7 @@ package com.lynx.jsbridge;
 
 import android.content.Context;
 import androidx.annotation.NonNull;
+import com.lynx.devtoolwrapper.LynxNetworkRequestObserver;
 import com.lynx.jsbridge.network.HttpRequest;
 import com.lynx.jsbridge.network.HttpResponse;
 import com.lynx.jsbridge.network.HttpStreamingDelegate;
@@ -34,17 +35,31 @@ public class LynxFetchModule extends LynxModule {
     mSender = (LynxFetchModuleEventSender) sender;
   }
 
-  private void request(
-      ILynxHttpService httpService, HttpRequest httpRequest, String url, Callback resolve) {
+  private void request(ILynxHttpService httpService, HttpRequest httpRequest, String url,
+      Callback resolve, LynxNetworkRequestObserver networkObserver, String networkRequestId) {
     httpService.request(httpRequest, new LynxHttpRequestCallback() {
       @Override
       public void invoke(@NonNull HttpResponse response) {
+        byte[] responseBody = response.getHttpBody() != null ? response.getHttpBody() : new byte[0];
+        JavaOnlyMap responseHeaders = response.getHttpHeaders();
+        String statusText = response.getStatusText() != null ? response.getStatusText() : "";
+
+        if (!networkRequestId.isEmpty()) {
+          // A normal Fetch exposes the complete response in one callback. Keep
+          // the CDP lifecycle ordering explicit while reusing the common
+          // observer state machine for validation, caching, and event output.
+          networkObserver.responseReceived(networkRequestId, response.getUrl(),
+              response.getStatusCode(), statusText, responseHeaders);
+          networkObserver.dataReceived(networkRequestId, responseBody);
+          networkObserver.loadingFinished(networkRequestId);
+        }
+
         JavaOnlyMap resp = new JavaOnlyMap();
         resp.put("url", url);
-        resp.put("body", response.getHttpBody() != null ? response.getHttpBody() : new byte[0]);
-        resp.put("headers", response.getHttpHeaders() != null ? response.getHttpHeaders() : "");
+        resp.put("body", responseBody);
+        resp.put("headers", responseHeaders != null ? responseHeaders : "");
         resp.put("status", response.getStatusCode());
-        resp.put("statusText", response.getStatusText() != null ? response.getStatusText() : "");
+        resp.put("statusText", statusText);
         JavaOnlyMap customInfo =
             response.getCustomInfo() != null ? response.getCustomInfo() : new JavaOnlyMap();
         resp.put("lynxExtension", customInfo);
@@ -53,20 +68,28 @@ public class LynxFetchModule extends LynxModule {
     });
   }
 
-  private void requestStreaming(
-      ILynxHttpService httpService, HttpRequest httpRequest, String url, Callback resolve) {
+  private void requestStreaming(ILynxHttpService httpService, HttpRequest httpRequest, String url,
+      Callback resolve, LynxNetworkRequestObserver networkObserver, String networkRequestId) {
     String streamingId = streamingEventNamePrefix + streamingCounter.getAndIncrement();
-    HttpStreamingDelegate delegate = new HttpStreamingDelegate(streamingId, mSender);
+    HttpStreamingDelegate delegate =
+        new HttpStreamingDelegate(streamingId, mSender, networkObserver, networkRequestId);
 
     httpService.requestStreaming(httpRequest, new LynxHttpRequestCallback() {
       @Override
       public void invoke(@NonNull HttpResponse response) {
+        JavaOnlyMap responseHeaders = response.getHttpHeaders();
+        String statusText = response.getStatusText() != null ? response.getStatusText() : "";
+        if (!networkRequestId.isEmpty()) {
+          networkObserver.responseReceived(networkRequestId, response.getUrl(),
+              response.getStatusCode(), statusText, responseHeaders);
+        }
+
         JavaOnlyMap resp = new JavaOnlyMap();
         resp.put("url", url);
         resp.put("body", new byte[0]);
-        resp.put("headers", response.getHttpHeaders() != null ? response.getHttpHeaders() : "");
+        resp.put("headers", responseHeaders != null ? responseHeaders : "");
         resp.put("status", response.getStatusCode());
-        resp.put("statusText", response.getStatusText() != null ? response.getStatusText() : "");
+        resp.put("statusText", statusText);
         JavaOnlyMap customInfo =
             response.getCustomInfo() != null ? response.getCustomInfo() : new JavaOnlyMap();
         customInfo.putString("streamingId", streamingId);
@@ -103,19 +126,30 @@ public class LynxFetchModule extends LynxModule {
     httpRequest.setCustomConfig(customConfig);
     boolean deprecatedUseStreaming = customConfig.getBoolean(deprecatedStreamingFlag, false);
     boolean enableFetchApiStandardStreaming = customConfig.getBoolean(standardStreamingFlag, false);
+    boolean useStreaming = deprecatedUseStreaming || enableFetchApiStandardStreaming;
+
+    LynxNetworkRequestObserver networkObserver = mSender.getNetworkRequestObserver();
+    String networkRequestId = "";
+    if (networkObserver != null && networkObserver.isEnabled()) {
+      networkRequestId = networkObserver.requestWillBeSent(httpRequest.getUrl(),
+          httpRequest.getHttpMethod(), httpRequest.getHttpHeaders(), httpRequest.getHttpBody());
+    }
 
     ILynxHttpService httpService = LynxServiceCenter.inst().getService(ILynxHttpService.class);
     if (httpService == null) {
+      if (!networkRequestId.isEmpty()) {
+        networkObserver.loadingFailed(networkRequestId, "Lynx Http Service not registered", false);
+      }
       JavaOnlyMap error = new JavaOnlyMap();
       error.put("message", "Lynx Http Service not registered");
       reject.invoke(error);
       return;
     }
 
-    if (!deprecatedUseStreaming && !enableFetchApiStandardStreaming) {
-      request(httpService, httpRequest, url, resolve);
+    if (!useStreaming) {
+      request(httpService, httpRequest, url, resolve, networkObserver, networkRequestId);
     } else {
-      requestStreaming(httpService, httpRequest, url, resolve);
+      requestStreaming(httpService, httpRequest, url, resolve, networkObserver, networkRequestId);
     }
   }
 }

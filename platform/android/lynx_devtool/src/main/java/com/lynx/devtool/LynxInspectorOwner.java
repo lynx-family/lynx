@@ -27,6 +27,7 @@ import com.lynx.devtoolwrapper.GlobalPropsObserver;
 import com.lynx.devtoolwrapper.IDevToolDelegate;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG;
+import com.lynx.devtoolwrapper.LynxNetworkRequestObserver;
 import com.lynx.devtoolwrapper.MessageHandler;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.ReadableMap;
@@ -132,6 +133,11 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
       LynxDevtoolEnv.inst().loadNativeDevtoolLibrary();
     }
     mLynxDevToolNG = new LynxDevToolNGDelegate(debuggable);
+  }
+
+  @Override
+  public LynxNetworkRequestObserver getNetworkRequestObserver() {
+    return mLynxDevToolNG != null ? mLynxDevToolNG.getNetworkRequestObserver() : null;
   }
 
   public void attachLynxUIOwnerToAgent(LynxUIOwner uiOwner) {
