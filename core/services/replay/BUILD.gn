@@ -25,6 +25,21 @@ replay_shared_sources = [
   "testbench_utils_embedder.h",
 ]
 
+replay_resource_cache_sources = [
+  "replay_resource_cache.cc",
+  "replay_resource_cache.h",
+  "replay_resource_cache_loader.cc",
+  "replay_resource_cache_loader.h",
+]
+
+lynx_core_source_set("replay_resource_cache") {
+  sources = replay_resource_cache_sources
+
+  public_deps = [ "../../../third_party/rapidjson:rapidjson" ]
+
+  deps = [ "//third_party/zlib" ]
+}
+
 lynx_core_source_set("replay") {
   include_dirs = [
     "../../renderer:tasm",
@@ -38,6 +53,7 @@ lynx_core_source_set("replay") {
   }
 
   deps = [
+    ":replay_resource_cache",
     "../../../third_party/rapidjson:rapidjson",
     "../../renderer/dom:dom",
     "../../runtime",
@@ -53,12 +69,14 @@ unittest_set("replay_testset") {
     "layout_tree_testbench_unittest.cc",
     "lynx_module_testbench_unittest.cc",
     "lynx_replay_helper_unittest.cc",
+    "replay_resource_cache_unittest.cc",
     "testbench_test_replay_unittest.cc",
   ]
   public_deps = [
     ":replay",
     "../../../testing/utils:testing_utils",
     "../../../third_party/rapidjson:rapidjson",
+    "../../resource:resource_loader",
   ]
 }
 
