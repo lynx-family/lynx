@@ -1596,8 +1596,8 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
       if (!properties_val.IsMap()) {
         continue;
       }
-      const float fraction = std::stof(fraction_str);
-      const auto keyframe_time = fml::TimeDelta::FromSecondsF(fraction);
+      const auto keyframe_time =
+          fml::TimeDelta::FromSecondsF(std::stof(fraction_str));
 
       const auto& properties_map = properties_val.GetMap();
       for (const auto& prop : properties_map) {
@@ -1663,8 +1663,8 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
             auto* transform_set =
                 static_cast<RawTransformKeyframeSet*>(it->second.get());
             auto ops = ParseTransformRawValues(prop_value);
-            transform_set->AddKeyframe(RawTransformKeyframe::Create(
-                fraction, ops, Interpolator::CreateDefaultInterpolator()));
+            transform_set->AddKeyframe(
+                RawTransformKeyframe::Create(keyframe_time, ops));
             break;
           }
           case KeywordID::kFilter: {
@@ -1679,8 +1679,7 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
                 static_cast<FilterKeyframeSet*>(it->second.get());
             auto values = ParseFilterValues(prop_value);
             filter_set->AddKeyframe(FilterKeyframe::Create(
-                fraction, FilterOperations(values),
-                Interpolator::CreateDefaultInterpolator()));
+                keyframe_time, FilterOperations(values)));
             break;
           }
           case KeywordID::kBoxShadow: {
@@ -1695,12 +1694,10 @@ void PageView::SetKeyframesData(const Value& keyframes_value) {
                 static_cast<BoxShadowKeyframeSet*>(it->second.get());
             auto values = ParseBoxShadowValues(prop_value);
             shadow_set->AddKeyframe(BoxShadowKeyframe::Create(
-                fraction, BoxShadowOperations(values),
-                Interpolator::CreateDefaultInterpolator()));
+                keyframe_time, BoxShadowOperations(values)));
             break;
           }
           default: {
-            // 保持原有错误处理
             FML_DLOG(ERROR)
                 << "SetKeyframes doesn't support property: " << prop_name;
             break;
