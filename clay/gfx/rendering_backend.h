@@ -100,6 +100,8 @@ namespace clay {
 
 #ifndef ENABLE_SKITY
 // PROTOTYPES
+class MarkdownCanvasHelperSkia;
+using MarkdownCanvasHelper = MarkdownCanvasHelperSkia;
 using GrAutoCanvasRestore = SkAutoCanvasRestore;
 using GrBitmap = SkBitmap;
 using GrContext = GrDirectContext;
@@ -384,6 +386,8 @@ class GrSoftwareSurface {
 
 #else
 // PROTOTYPES
+class MarkdownCanvasHelperSkity;
+using MarkdownCanvasHelper = MarkdownCanvasHelperSkity;
 using GrAutoCanvasRestore = SkityAutoCanvasRestore;
 using GrBitmap = skity::Bitmap;
 using GrContext = skity::GPUContext;
