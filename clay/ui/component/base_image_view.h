@@ -11,6 +11,7 @@
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/fml/time/timer.h"
+#include "clay/gfx/geometry/size.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/rendering/render_image.h"
 #include "clay/ui/rendering/render_object.h"
@@ -125,6 +126,7 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   void TryEndTransition();
 
   void ReportImageLoadInfo();
+  Size GetDecodeSize() const;
 
   bool should_redirect_url_ = true;
   bool prevent_loading_on_list_scroll_ = false;
@@ -141,6 +143,9 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   bool fetch_delay_source_ = false;
   std::string incoming_placeholder_ = "";
   bool fetch_delay_placeholder_ = false;
+  bool node_ready_ = false;
+  bool source_decode_size_pending_ = false;
+  bool placeholder_decode_size_pending_ = false;
   bool defer_src_invalidation_ = false;
   Listener* listener_ = nullptr;
   ReportInfo report_info_;

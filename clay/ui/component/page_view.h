@@ -421,14 +421,11 @@ class PageView : public BaseView,
         exposure_ui_margin_enabled);
   }
 
-  // Enable deferred image decode by default.
-  bool DeferredImageDecode() const {
-#ifndef ENABLE_SKITY
-    return false;
-#else
-    return true;
-#endif  // ENABLE_SKITY
-  }
+  // Controls the Skity deferred image decode pipeline for this page. It is
+  // enabled by default on Windows and macOS and is a no-op for non-Skity
+  // builds.
+  void SetDeferredImageDecodeEnabled(bool enabled);
+  bool DeferredImageDecode() const { return deferred_image_decode_enabled_; }
 
   // Enable new image decoding strategies.
   // Will not affect skity when using platform decoders.
@@ -639,6 +636,11 @@ class PageView : public BaseView,
   std::vector<fml::WeakPtr<BaseView>> disexposure_event_data_set_;
 
   bool use_texture_backend_ = true;
+#if defined(ENABLE_SKITY)
+  bool deferred_image_decode_enabled_ = true;
+#else
+  bool deferred_image_decode_enabled_ = false;
+#endif
   EventDelegate* event_delegate_ = nullptr;
   UIComponentDelegate* ui_component_delegate_ = nullptr;
   RenderDelegate* render_delegate_ = nullptr;

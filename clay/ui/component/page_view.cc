@@ -1769,6 +1769,8 @@ fml::RefPtr<ImageFetcher> PageView::GetImageResourceFetcher() {
     image_resource_fetcher_ =
         ImageFetcher::Create(GetResourceLoaderIntercept(), GetTaskRunners(),
                              unref_queue_, GetServiceManager());
+    image_resource_fetcher_->SetDeferredDecodeEnabled(
+        deferred_image_decode_enabled_);
   }
   return image_resource_fetcher_;
 }
@@ -1776,8 +1778,23 @@ fml::RefPtr<ImageFetcher> PageView::GetImageResourceFetcher() {
 void PageView::SetImageResourceFetcher(
     fml::RefPtr<ImageFetcher> image_resource_fetcher) {
   image_resource_fetcher_ = image_resource_fetcher;
+  if (image_resource_fetcher_) {
+    image_resource_fetcher_->SetDeferredDecodeEnabled(
+        deferred_image_decode_enabled_);
+  }
 }
 #endif  // ENABLE_SKITY
+
+void PageView::SetDeferredImageDecodeEnabled(bool enabled) {
+#ifdef ENABLE_SKITY
+  deferred_image_decode_enabled_ = enabled;
+  if (image_resource_fetcher_) {
+    image_resource_fetcher_->SetDeferredDecodeEnabled(enabled);
+  }
+#else
+  (void)enabled;
+#endif
+}
 
 ViewTreeObserver* PageView::GetViewTreeObserver() {
   if (!view_tree_observer_) {
