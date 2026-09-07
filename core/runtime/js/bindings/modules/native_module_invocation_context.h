@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "base/include/value/base_value.h"
@@ -17,9 +18,10 @@ namespace js {
 
 class NativeModuleRecordObserver;
 
-// Carries the identity and metadata of one NativeModule invocation. Callback
-// contexts derived from it keep the same invocation id and record their own
-// argument index.
+// Carries the identity of a single NativeModule invocation. Callback contexts
+// derived from it keep the same invocation id and record their own argument
+// index. Record wire-format lives in core/inspector/observer; this class only
+// owns identity and forwards records to the observer.
 class NativeModuleInvocationContext {
  public:
   NativeModuleInvocationContext(
@@ -30,15 +32,13 @@ class NativeModuleInvocationContext {
   std::shared_ptr<NativeModuleInvocationContext> WithCallbackArgumentIndex(
       int32_t callback_argument_index) const;
 
-  // TODO(liting.src): Serialize invocation values into an immutable record.
   lepus::Value BuildInvokeRecord(lepus::Value arguments, bool success,
-                                 lepus::Value result, int32_t error_code,
+                                 std::optional<lepus::Value> result,
+                                 int32_t error_code,
                                  const std::string& error_message) const;
 
-  // TODO(liting.src): Serialize callback values into an immutable record.
   lepus::Value BuildCallbackRecord(lepus::Value result) const;
 
-  // TODO(liting.src): Forward serialized records to NativeModuleRecordObserver.
   void EmitRecord(const lepus::Value& record) const;
 
   int64_t invocation_id() const { return invocation_id_; }

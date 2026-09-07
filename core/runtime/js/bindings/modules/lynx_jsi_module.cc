@@ -21,6 +21,7 @@
 #if ENABLE_INSPECTOR
 #include "core/inspector/observer/native_module_record_observer.h"
 #include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
+#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
 #endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/native_module_recorder.h"
@@ -229,7 +230,21 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   lepus::Value observer_arguments =
       args_array ? pub::ValueUtils::ConvertValueToLepusValue(*args_array)
                  : lepus::Value();
-  lepus::Value observer_result;
+  // The raw args carry each callback as its registered id. Replace those slots
+  // with a typed placeholder so the record shows a callback, not an opaque id.
+  if (observer_arguments.IsArray()) {
+    auto arguments_array = observer_arguments.Array();
+    for (const auto& entry : callback_map) {
+      int64_t argument_index = entry.first;
+      if (argument_index >= 0 &&
+          static_cast<size_t>(argument_index) < arguments_array->size()) {
+        arguments_array->set(
+            static_cast<size_t>(argument_index),
+            BuildCallbackPlaceholder(static_cast<int32_t>(argument_index)));
+      }
+    }
+  }
+  std::optional<lepus::Value> observer_result;
 #endif  // ENABLE_INSPECTOR
   // issue: #1510
   uint64_t invoke_facade_method_start = base::CurrentSystemTimeMilliseconds();
@@ -310,7 +325,7 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   } else {
     const auto& exception = response.error();
     invoke_record = invocation_context->BuildInvokeRecord(
-        std::move(observer_arguments), /*success=*/false, lepus::Value(),
+        std::move(observer_arguments), /*success=*/false, std::nullopt,
         exception.errorCode(), exception.message());
   }
   invocation_context->EmitRecord(invoke_record);
