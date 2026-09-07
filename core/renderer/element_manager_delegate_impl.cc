@@ -162,9 +162,8 @@ std::string ElementManagerDelegateImpl::GetDefaultEntryLogicalName() const {
 EventResult ElementManagerDelegateImpl::FireElementWorkletAndRequestResolve(
     const std::string &component_id, const std::string &entry_name,
     const lepus::Value &callback, const lepus::Value &script,
-    const lepus::Value &event_detail,
-    const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
-    int32_t element_id, std::shared_ptr<PipelineOptions> &pipeline_options) {
+    const lepus::Value &event_detail, int32_t element_id,
+    std::shared_ptr<PipelineOptions> &pipeline_options) {
 #if ENABLE_LEPUSNG_WORKLET
   if (tasm_ == nullptr) {
     return EventResult::kDefault;
@@ -172,7 +171,7 @@ EventResult ElementManagerDelegateImpl::FireElementWorkletAndRequestResolve(
   PipelineScope pipeline_scope(tasm_, pipeline_options);
   EventResult result = worklet::LepusElement::FireElementWorklet(
       component_id, entry_name, tasm_, callback, script, event_detail,
-      task_handler, element_id, EventType::kTouch);
+      tasm_->GetWorkletTaskHandler(), element_id, EventType::kTouch);
   tasm_->page_proxy()->element_manager()->SetNeedsLayout();
   tasm_->page_proxy()->element_manager()->RequestResolve(pipeline_options);
   return result;

@@ -671,15 +671,13 @@ void ElementManager::TriggerLepusBridgeAsync(
 EventResult ElementManager::FireElementWorkletAndRequestResolve(
     const std::string &component_id, const std::string &entry_name,
     const lepus::Value &callback, const lepus::Value &script,
-    const lepus::Value &event_detail,
-    const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
-    int32_t element_id,
+    const lepus::Value &event_detail, int32_t element_id,
     std::shared_ptr<PipelineOptions> &pipeline_options) const {
   return element_manager_delegate_ == nullptr
              ? EventResult::kDefault
              : element_manager_delegate_->FireElementWorkletAndRequestResolve(
                    component_id, entry_name, callback, script, event_detail,
-                   task_handler, element_id, pipeline_options);
+                   element_id, pipeline_options);
 }
 
 void ElementManager::EnqueuePostMTSRenderTask(base::closure task) {

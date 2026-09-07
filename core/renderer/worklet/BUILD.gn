@@ -81,6 +81,7 @@ unittest_set("worklet_testset") {
     "../dom:renderer_dom",
   ]
   public_deps += [ "../../../third_party/napi:env" ]
+  deps = [ "../../services/replay:replay" ]
   if (is_ios) {
     public_deps += [ "../../runtime/common/napi:napi_binding_jsc" ]
   } else {

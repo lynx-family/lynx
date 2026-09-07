@@ -424,6 +424,8 @@ TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent2) {
   EXPECT_EQ(delegate_->DumpDelegate(), "");
 
   tasm_->page_config_ = std::make_shared<PageConfig>();
+  // Keep coverage of the legacy component-event payload for a detached node.
+  tasm_->page_config_->SetEnableEventHandleRefactor(false);
   tasm_->page_config_->need_remove_component_element_ = true;
   touch_event_handler_->HandleTriggerComponentEvent(tasm_.get(), "xxxx", obj);
   EXPECT_EQ(delegate_->DumpDelegate(), "");

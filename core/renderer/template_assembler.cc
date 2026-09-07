@@ -1873,6 +1873,14 @@ void TemplateAssembler::InvokeLepusComponentCallback(
   touch_event_handler_->HandleJSCallbackLepusEvent(callback_id, this, data);
 }
 
+#if ENABLE_LEPUSNG_WORKLET
+const std::shared_ptr<worklet::LepusApiHandler>&
+TemplateAssembler::GetWorkletTaskHandler() {
+  EnsureTouchEventHandler();
+  return touch_event_handler_->GetTaskHandler();
+}
+#endif
+
 void TemplateAssembler::LepusInvokeUIMethod(
     std::vector<int32_t> ui_impl_ids, const std::string& method,
     const lepus::Value& params, runtime::MTSRuntime* context,

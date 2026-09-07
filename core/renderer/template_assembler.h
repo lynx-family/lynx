@@ -512,6 +512,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
                                     const std::string& entry_name,
                                     const lepus::Value& data);
 
+#if ENABLE_LEPUSNG_WORKLET
+  const std::shared_ptr<worklet::LepusApiHandler>& GetWorkletTaskHandler();
+#endif
+
   void GetDecodedJSSource(
       std::unordered_map<std::string, std::string>& js_source);
 

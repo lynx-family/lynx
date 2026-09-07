@@ -6,6 +6,7 @@
 #define protected public
 
 #include <memory>
+#include <string>
 
 #include "base/include/fml/message_loop.h"
 #include "core/renderer/lynx_env_config.h"
@@ -22,11 +23,38 @@
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "core/services/replay/testbench_test_replay.h"
+#endif  // ENABLE_TESTBENCH_REPLAY
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "third_party/rapidjson/document.h"
+#endif  // ENABLE_TESTBENCH_REPLAY
 
 namespace lynx {
 namespace base {
+
+#if ENABLE_TESTBENCH_REPLAY
+class ScopedTestBenchReplayCapture {
+ public:
+  ScopedTestBenchReplayCapture()
+      : replay_(tasm::replay::TestBenchTestReplay::GetInstance()),
+        previous_observer_(replay_.observer_) {
+    replay_.SetDevToolObserver(nullptr);
+    replay_.StartTest();
+  }
+
+  ~ScopedTestBenchReplayCapture() {
+    replay_.EndTest("");
+    replay_.SetDevToolObserver(previous_observer_);
+  }
+
+ private:
+  tasm::replay::TestBenchTestReplay& replay_;
+  std::shared_ptr<tasm::InspectorCommonObserver> previous_observer_;
+};
+#endif  // ENABLE_TESTBENCH_REPLAY
 
 class WorkletEventTest : public ::testing::Test {
  protected:
@@ -224,6 +252,77 @@ TEST_F(WorkletEventTest, TestStopPropagation) {
   LEPUSValue counter3 = quick_context->SearchGlobalData("counter3");
   ASSERT_TRUE(LEPUS_IsNumber(counter3));
   EXPECT_EQ(LEPUS_VALUE_GET_INT(counter3), 1);
+}
+
+TEST_F(WorkletEventTest, RefactoredEventKeepsCallJSFunctionCallback) {
+  auto config = std::make_shared<tasm::PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableEventHandleRefactor(true);
+  tasm_->page_config_ = config;
+  manager_->SetConfig(config);
+
+  auto* comp = new tasm::RadonComponent(tasm_->page_proxy(), 0, nullptr,
+                                        nullptr, nullptr, ctx_.get(), 0);
+  auto* quick_context = runtime::MTSRuntime::ToQuickContext(ctx_.get());
+  quick_context->RegisterGlobalProperty(
+      "$comp", LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, comp));
+
+  auto page = manager_->CreateFiberElement("page");
+  manager_->SetRoot(page.get());
+  manager_->SetRootOnLayout(page->impl_id());
+
+  std::string js_source =
+      "var callback_result = '';"
+      "var view = _CreateVirtualNode('view', 1);"
+      "_SetScriptEventTo(view, 'bindEvent', 'tap', $comp, (e, lepusComp) => {"
+      "lepusComp.callJSFunction('test', {}, (result) => {"
+      "callback_result = result; }); });";
+  lepus::BytecodeGenerator::GenerateBytecode(quick_context, js_source, "");
+  ctx_->Execute(nullptr);
+  tasm_->template_loaded_ = true;
+
+  auto node_value = MK_JS_LEPUS_VALUE(quick_context->context(),
+                                      quick_context->SearchGlobalData("view"));
+  auto* node = static_cast<tasm::RadonNode*>(node_value.CPoint());
+  ASSERT_TRUE(node->CreateElementIfNeeded());
+  node->DispatchFirstTime();
+  auto view = node->GetElementRef();
+  ASSERT_NE(view->GetEventListenerMap()->Find("tap"), nullptr);
+  view->CreateElementContainer(false);
+  manager_->node_manager()->Record(1, view.get());
+  page->InsertNode(view);
+  page->FlushProps();
+
+#if ENABLE_TESTBENCH_REPLAY
+  ScopedTestBenchReplayCapture replay_capture;
+#endif  // ENABLE_TESTBENCH_REPLAY
+  SendTouchEvent("tap", 1);
+#if ENABLE_TESTBENCH_REPLAY
+  const auto& replay_records =
+      tasm::replay::TestBenchTestReplay::GetInstance().dump_file_;
+  ASSERT_EQ(replay_records.count("LepusTouchEvent"), 1u);
+  ASSERT_EQ(replay_records.at("LepusTouchEvent").size(), 1u);
+  rapidjson::Document replay_event;
+  replay_event.Parse(replay_records.at("LepusTouchEvent")[0].c_str());
+  ASSERT_TRUE(replay_event.IsObject());
+  ASSERT_TRUE(replay_event.HasMember("type"));
+  ASSERT_TRUE(replay_event["type"].IsString());
+  EXPECT_NE(std::string(replay_event["type"].GetString()).find("tap"),
+            std::string::npos);
+#endif  // ENABLE_TESTBENCH_REPLAY
+  auto& task_handler = tasm_->GetWorkletTaskHandler();
+  ASSERT_TRUE(task_handler->HasPendingCalling());
+  EXPECT_NE(delegate_->DumpDelegate().find("CallJSFunctionInLepusEvent"),
+            std::string::npos);
+
+  tasm_->InvokeLepusComponentCallback(0, tasm::DEFAULT_ENTRY_NAME,
+                                      lepus::Value("red"));
+  EXPECT_FALSE(task_handler->HasPendingCalling());
+  auto callback_result = quick_context->SearchGlobalData("callback_result");
+  ASSERT_TRUE(LEPUS_IsString(callback_result));
+  auto callback_value =
+      MK_JS_LEPUS_VALUE(quick_context->context(), callback_result);
+  EXPECT_EQ(callback_value.StdString(), "red");
 }
 
 }  // namespace base
