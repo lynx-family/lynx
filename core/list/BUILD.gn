@@ -14,6 +14,8 @@ list_container_shared_sources = [
 
 if (disable_list_platform_implementation) {
   list_container_shared_sources += [
+    "animation/animation_target.h",
+    "animation/animation_types.h",
     "decoupled_adapter_helper.cc",
     "decoupled_adapter_helper.h",
     "decoupled_batch_list_adapter.cc",
@@ -49,6 +51,10 @@ if (disable_list_platform_implementation) {
   if (!defined(enable_list_container_animation) ||
       enable_list_container_animation) {
     list_container_shared_sources += [
+      "animation/item_animator.cc",
+      "animation/item_animator.h",
+      "animation/item_animator_base.cc",
+      "animation/item_animator_base.h",
       "list_animation_manager_impl.cc",
       "list_animation_manager_impl.h",
     ]
@@ -94,12 +100,24 @@ if (disable_list_platform_implementation) {
     "testing/radon_data_source.h",
     "testing/utils.h",
   ]
+  if (!defined(enable_list_container_animation) ||
+      enable_list_container_animation) {
+    list_container_testset_shared_sources += [
+      "animation/animation_types_unittest.cc",
+      "animation/item_animator_base_unittest.cc",
+      "animation/item_animator_unittest.cc",
+      "testing/mock_animation_target.h",
+      "testing/mock_item_animator.h",
+      "testing/mock_vsync_monitor.h",
+    ]
+  }
 }
 
 unittest_set("list_container_testset") {
   sources = list_container_testset_shared_sources
   public_deps = [ ":list_container" ]
   deps = [
+    "../base",
     "../public",
     "../renderer/dom:dom",
   ]
