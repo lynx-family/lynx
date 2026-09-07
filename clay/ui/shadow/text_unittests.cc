@@ -1,6 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:words wght
 
 #include <initializer_list>
 #include <limits>
@@ -16,6 +17,7 @@
 #include "clay/public/value.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/text/raw_text_view.h"
+#include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/inline_truncation_shadow_node.h"
@@ -205,6 +207,45 @@ TEST_F_UI(TextTest, FontAndShadowSettersPreserveStyleMetadata) {
   EXPECT_EQ(text_shadow_node_->text_style_->background_color,
             Color(0xffabcdef));
   EXPECT_EQ(text_shadow_node_->text_style_->text_shadows, expected_shadows);
+}
+
+TEST_F_UI(TextTest, FontVariationAttributesPropagateToTxtStyle) {
+  clay::Value::Array values;
+  for (const auto& [axis, value] :
+       std::initializer_list<std::pair<const char*, double>>{
+           {"wdth", 150.}, {"wght", 715.}, {"opsz", 12.}}) {
+    values.emplace_back(axis);
+    values.emplace_back(value);
+  }
+  text_shadow_node_->SetAttribute("font-variation-settings",
+                                  clay::Value(std::move(values)));
+  text_shadow_node_->SetAttribute("font-optical-sizing",
+                                  clay::Value(static_cast<uint32_t>(1)));
+  text_shadow_node_->SetFontSize(24.f);
+
+  ASSERT_TRUE(text_shadow_node_->text_style_->font_variations);
+  const auto& clay_variations =
+      *text_shadow_node_->text_style_->font_variations;
+  EXPECT_EQ(clay_variations.at("wdth"), 150.f);
+  EXPECT_EQ(clay_variations.at("wght"), 715.f);
+  EXPECT_EQ(clay_variations.at("opsz"), 12.f);
+  ASSERT_TRUE(text_shadow_node_->text_style_->font_optical_sizing.has_value());
+  EXPECT_TRUE(*text_shadow_node_->text_style_->font_optical_sizing);
+
+  TextParagraphBuilder builder(true, text_shadow_node_->text_style_);
+  builder.PushStyle(*text_shadow_node_->text_style_);
+  const auto& txt_style = builder.PeekStyleForTesting();
+  const auto resolved_variations = txt_style.GetResolvedFontVariations();
+  const auto& axes = resolved_variations.GetAxisValues();
+  EXPECT_EQ(axes.at("wdth"), 150.f);
+  EXPECT_EQ(axes.at("wght"), 715.f);
+  EXPECT_EQ(axes.at("opsz"), 12.f);
+
+  auto auto_optical_style = txt_style;
+  auto_optical_style.font_variations = txt::FontVariations();
+  EXPECT_FLOAT_EQ(
+      auto_optical_style.GetResolvedFontVariations().GetAxisValues().at("opsz"),
+      static_cast<float>(txt_style.font_size));
 }
 
 TEST_F_UI(TextTest, TextGradientAndSolidColorUpdatePaintState) {
