@@ -44,6 +44,7 @@ class CEFWebviewWin : public CEFWebview {
 
   HWND win7_owned_win_{nullptr};
   RECT bounds_{0, 0, 0, 0};
+  float osr_pixel_ratio_ = 1.0f;
   HWND hwnd_{nullptr};
   bool attached_to_view_{false};
   bool host_minimized_{false};

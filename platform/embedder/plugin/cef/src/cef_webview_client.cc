@@ -142,9 +142,6 @@ void CEFWebviewClient::OnLoadEnd(CefRefPtr<CefBrowser> browser,
   }
   if (httpStatusCode == 200 && frame->IsMain() && !loaded_) {
     loaded_ = true;
-    if (webview_->UseOSR()) {
-      browser->GetHost()->SendExternalBeginFrame();
-    }
     webview_->TriggerEvent(
         "load", lynx::pub::LynxValue(lynx::pub::LynxValue::kCreateAsNullTag));
   } else {
