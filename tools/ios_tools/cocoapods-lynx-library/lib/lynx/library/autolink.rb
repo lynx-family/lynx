@@ -4,6 +4,7 @@
 
 require 'fileutils'
 require 'json'
+require 'pathname'
 
 module Lynx
   module Library
@@ -26,13 +27,15 @@ module Lynx
           added_pods = []
           libraries.each do |library|
             pod_name = pod_name_from_podspec(library.podspec_path)
-            add_pod_once(podfile, added_pods, pod_name, File.dirname(library.podspec_path))
+            pod_path = pod_path_for_podspec(library.package_dir, library.podspec_path)
+            add_pod_once(podfile, added_pods, pod_name, pod_path)
             library.node_api_addons.each do |addon|
-              add_pod_once(podfile, added_pods, addon.pod_name, File.dirname(addon.podspec_path))
+              addon_path = pod_path_for_podspec(library.package_dir, addon.podspec_path)
+              add_pod_once(podfile, added_pods, addon.pod_name, addon_path)
             end
           end
           generate_registry(output_dir, libraries)
-          podfile.pod 'LynxLibraryRegistry', :path => output_dir
+          podfile.pod 'LynxLibraryRegistry', :path => relative_pod_path(podfile, output_dir)
           libraries
         end
 
@@ -131,11 +134,23 @@ module Lynx
         end
 
         def add_pod_once(podfile, added_pods, pod_name, pod_path)
-          key = [pod_name, pod_path]
+          key = [pod_name, File.realpath(pod_path)]
           return if added_pods.include?(key)
 
-          podfile.pod pod_name, :path => pod_path
+          podfile.pod pod_name, :path => relative_pod_path(podfile, pod_path)
           added_pods << key
+        end
+
+        def relative_pod_path(podfile, pod_path)
+          podfile_dir = File.expand_path(File.dirname(podfile.defined_in_file.to_s))
+          expanded_pod_path = Pathname.new(File.expand_path(pod_path))
+          expanded_pod_path.relative_path_from(Pathname.new(podfile_dir)).to_s
+        end
+
+        def pod_path_for_podspec(package_dir, podspec_path)
+          package_realpath = Pathname.new(File.realpath(package_dir))
+          relative_podspec = Pathname.new(podspec_path).relative_path_from(package_realpath)
+          File.dirname(File.join(package_dir, relative_podspec.to_s))
         end
 
         def parse_node_api_addons(addons, package_realpath, default_podspec_path, manifest_file)
