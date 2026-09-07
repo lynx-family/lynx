@@ -162,6 +162,10 @@ void ApplyParagraphStyle(const TextStyle& clay_style,
     txt_style.font_size = clay_style.font_size.value();
   }
 
+  if (clay_style.text_color && !clay_style.text_gradient) {
+    txt_style.color = clay_style.text_color.value();
+  }
+
   if (clay_style.text_align) {
     txt_style.text_align = ToTxtAlign(clay_style.text_align.value());
   }
@@ -231,6 +235,9 @@ void ApplyParagraphStyle(const TextStyle& clay_style,
     txt_style.enable_text_bounds = clay_style.enable_text_bounds.value();
   }
 #endif
+  if (clay_style.tail_color_convert) {
+    txt_style.tail_color_convert = clay_style.tail_color_convert.value();
+  }
 }
 
 void ApplyTextStyle(const TextStyle& clay_style, txt::TextStyle& txt_style) {

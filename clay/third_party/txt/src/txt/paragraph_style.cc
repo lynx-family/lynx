@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "paragraph_style.h"
+#include "lynx/clay/third_party/txt/src/txt/paragraph_style.h"
 
 #include <vector>
 
@@ -30,6 +30,7 @@ TextStyle ParagraphStyle::GetTextStyle() const {
   if (font_size >= 0) {
     result.font_size = font_size;
   }
+  result.color = color;
   result.locale = locale;
   result.height = height;
   result.has_height_override = has_height_override;

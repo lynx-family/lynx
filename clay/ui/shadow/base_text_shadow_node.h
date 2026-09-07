@@ -63,6 +63,7 @@ class BaseTextShadowNode : public ShadowNode {
   void SetTextStrokeColor(Color color);
   void SetTextStrokeWidth(double width);
   void SetTextGradient(const Gradient& gradient);
+  void SetTailColorConvert(bool tail_color_convert);
   void SetTextMaxLine(uint32_t max_lines);
   void SetTextOverflow(TextOverflow overflow);
   void SetTextEllipsis(std::u16string ellipsis);

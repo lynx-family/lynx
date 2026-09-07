@@ -195,6 +195,9 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
         SetTextMaxLine(std::numeric_limits<uint32_t>::max());
       }
     } break;
+    case KeywordID::kTailColorConvert:
+      SetTailColorConvert(utils::GetBool(value));
+      break;
     case KeywordID::kWordBreak:
       SetWordBreak(static_cast<WordBreak>(utils::GetInt(value)));
       break;
@@ -498,6 +501,14 @@ void BaseTextShadowNode::SetTextOverflow(TextOverflow overflow) {
   EnsureDefaultStyle();
   if (text_style_->overflow != overflow) {
     text_style_->overflow = overflow;
+    MarkDirty();
+  }
+}
+
+void BaseTextShadowNode::SetTailColorConvert(bool tail_color_convert) {
+  EnsureDefaultStyle();
+  if (text_style_->tail_color_convert != tail_color_convert) {
+    text_style_->tail_color_convert = tail_color_convert;
     MarkDirty();
   }
 }
