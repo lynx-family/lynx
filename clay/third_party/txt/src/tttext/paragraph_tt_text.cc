@@ -51,10 +51,19 @@ class TTShapeRun : public tttext::RunDelegate {
   float advance_;
 };
 
+#ifdef ENABLE_SKITY
+ParagraphTTText::ParagraphTTText(
+    std::shared_ptr<FontCollection> font_collection,
+    const tttext::ParagraphStyle& paragraph_style,
+    std::shared_ptr<DynamicFontManager> variation_font_manager)
+    : font_collection_(font_collection),
+      variation_font_manager_(std::move(variation_font_manager)) {
+#else
 ParagraphTTText::ParagraphTTText(
     std::shared_ptr<FontCollection> font_collection,
     const tttext::ParagraphStyle& paragraph_style)
     : font_collection_(font_collection) {
+#endif
   paragraph_ = tttext::Paragraph::Create();
   paragraph_->SetParagraphStyle(&paragraph_style);
 }
@@ -102,7 +111,8 @@ bool ParagraphTTText::DidExceedMaxLines() {
 
 void ParagraphTTText::Layout(double width) {
 #if defined(ENABLE_SKITY)
-  auto i_font_collection = font_collection_->GetIFontCollection();
+  auto i_font_collection =
+      font_collection_->GetIFontCollection(variation_font_manager_);
   tttext::TextLayout layout(&i_font_collection, tttext::kSelfRendering);
 #else
   auto i_font_collection = font_collection_->CreateTTFontCollection();
@@ -118,6 +128,11 @@ void ParagraphTTText::Layout(double width) {
       tttext::LayoutMode::kAtMost);
   tttext::TTTextContext context;
   context.SetEnableSystemFontAdjust(false);
+#if defined(ENABLE_SKITY)
+  if (variation_font_manager_ && variation_font_manager_->HasVariations()) {
+    context.EnableFeature(tttext::FeatureOption::kDisableShapeCache, true);
+  }
+#endif
   if (need_trim_space_) {
     context.EnableFeature(ttoffice::tttext::FeatureOption::kTrimLineTailSpace,
                           false);
