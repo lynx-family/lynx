@@ -3215,11 +3215,6 @@ void TemplateAssembler::OnPageConfigDecoded(
         report::LynxFeature::CPP_DISABLE_MULTI_TOUCH_PARAMS_COMPATIBLE,
         element_manager->GetInstanceId());
   }
-  if (!config->GetEnableTouchRefactor()) {
-    report::GlobalFeatureCounter::Count(
-        report::LynxFeature::OBJC_DISABLE_TOUCH_REFACTOR,
-        element_manager->GetInstanceId());
-  }
   if (!config->GetEnableEventRefactor()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_DISABLE_EVENT_REFACTOR,
