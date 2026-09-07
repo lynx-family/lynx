@@ -50,6 +50,8 @@ class BaseTextShadowNode : public ShadowNode {
   void SetTextAlign(TextAlignment text_align);
   void SetFontWeight(FontWeight font_weight);
   void SetFontStyle(FontStyle font_style);
+  void SetFontVariations(const clay::Value& value);
+  void SetFontOpticalSizing(const clay::Value& value);
   void SetTextColor(const Color& text_color);
   void SetTextBackgroundColor(const Color& color);
   void SetFontFamily(const std::string& font_family);

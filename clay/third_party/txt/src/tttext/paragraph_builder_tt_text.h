@@ -7,15 +7,15 @@
 
 #include <memory>
 #include <vector>
-#include "paragraph_tt_text.h"
+#include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
 #include "textra/layout_definition.h"
 #ifdef ENABLE_SKITY
-#include "txt/font_collection_skity.h"
+#include "clay/third_party/txt/src/txt/font_collection_skity.h"
 #else
 #include "txt/font_collection_skia.h"
 #endif
 #include <textra/paragraph_style.h>
-#include "txt/paragraph_builder.h"
+#include "clay/third_party/txt/src/txt/paragraph_builder.h"
 
 namespace ttoffice {
 namespace textlayout {
@@ -50,6 +50,12 @@ class ParagraphBuilderTTText : public ParagraphBuilder {
 
  private:
   std::shared_ptr<FontCollection> font_collection_;
+#ifdef ENABLE_SKITY
+  // Variable typeface aliases must not outlive the paragraph whose styles
+  // reference them.
+  std::shared_ptr<DynamicFontManager> variation_font_manager_ =
+      std::make_shared<DynamicFontManager>();
+#endif
   std::vector<TextStyle> text_style_stack_;
   std::vector<tttext::Style> run_style_stack_;
   std::unique_ptr<ParagraphTTText> paragraph_;
