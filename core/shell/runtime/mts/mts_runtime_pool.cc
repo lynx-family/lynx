@@ -62,7 +62,7 @@ void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
     return;
   }
   decltype(mts_runtimes_) temp_mts_runtimes;
-  uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
+  uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode(true);
   for (; count > 0; --count) {
     std::shared_ptr<runtime::MTSRuntime> mts_runtime =
         runtime::MTSRuntime::CreateContext(context_type_, disable_tracing_gc_,

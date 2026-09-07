@@ -150,7 +150,8 @@ uint32_t MemoryMonitor::MemoryChangeThresholdMb() {
   return threshold_mb;
 }
 
-uint32_t MemoryMonitor::ScriptingEngineMode() {
+uint32_t MemoryMonitor::ScriptingEngineMode(bool is_mts) {
+  (void)is_mts;
   uint32_t mode = 0;
   bool enable_mem_monitor = Enable();
   if (!enable_mem_monitor) {
