@@ -29,12 +29,21 @@ class LayoutRegion;
 namespace txt {
 class FontCollection;
 class PlaceholderRun;
+#ifdef ENABLE_SKITY
+class DynamicFontManager;
+#endif
 
 // Implementation of Paragraph based on Skia's text layout module.
 class ParagraphTTText : public Paragraph {
  public:
+#ifdef ENABLE_SKITY
+  ParagraphTTText(std::shared_ptr<FontCollection> font_collection,
+                  const tttext::ParagraphStyle& paragraph_style,
+                  std::shared_ptr<DynamicFontManager> variation_font_manager);
+#else
   ParagraphTTText(std::shared_ptr<FontCollection> font_collection,
                   const tttext::ParagraphStyle& paragraph_style);
+#endif
 
   ~ParagraphTTText() override = default;
 
@@ -101,6 +110,9 @@ class ParagraphTTText : public Paragraph {
   friend class ParagraphTTTextTest_KeepsIndexesInSyncForEmbeddedNull_Test;
 
   std::shared_ptr<FontCollection> font_collection_;
+#ifdef ENABLE_SKITY
+  std::shared_ptr<DynamicFontManager> variation_font_manager_;
+#endif
   std::unique_ptr<tttext::Paragraph> paragraph_;
   std::unique_ptr<tttext::LayoutRegion> region_;
   std::vector<LineMetrics> line_metrics_;
