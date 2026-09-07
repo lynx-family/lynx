@@ -300,6 +300,7 @@ enum class KeywordID {
   kEnableZoomGesture,
   kEndFrame,
   kEventsPassThrough,
+  kExperimentalOptimizeLoadKey,
   kExperimentalSyncLoad,
   kExtraInfo,
   kFacing,
