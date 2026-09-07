@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { ItemProps, MenuItem } from '@components/menu-item';
-import { useTheme } from '@explorer/lib';
+import { useSafeArea, useTheme } from '@explorer/lib';
 import './index.scss';
 
 interface MenuProps {
@@ -12,10 +12,23 @@ interface MenuProps {
 
 export function Menu(menu: MenuProps) {
   const { withTheme } = useTheme();
+  const safeArea = useSafeArea();
   const { items } = menu;
+  const horizontalSafeArea = safeArea.left + safeArea.right;
+  const bottomPadding = 30 + safeArea.bottom;
   return (
     <view clip-radius="true" className={withTheme('page')}>
-      <scroll-view scroll-y clip-radius="true" className="list">
+      <scroll-view
+        scroll-y
+        clip-radius="true"
+        className="list"
+        style={{
+          marginLeft: `${safeArea.left}px`,
+          marginRight: `${safeArea.right}px`,
+          width: `calc(100% - ${horizontalSafeArea}px)`,
+          paddingBottom: `${bottomPadding}px`,
+        }}
+      >
         {items.map((item: ItemProps) => {
           return <MenuItem {...item} />;
         })}

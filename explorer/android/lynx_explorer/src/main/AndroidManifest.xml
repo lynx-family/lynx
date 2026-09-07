@@ -17,6 +17,7 @@
             android:name=".LynxViewShellActivity"
             android:windowSoftInputMode="adjustNothing"
             android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:theme="@style/LynxShellTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
