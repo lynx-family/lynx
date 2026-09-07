@@ -69,6 +69,7 @@ ConcurrentMessageLoop::ConcurrentMessageLoop(
       const auto config = fml::Thread::ThreadConfig(
           std::string{name_prefix + std::to_string(i + 1)}, priority);
       setter(config);
+      fml::MessageLoop::EnsureInitializedForCurrentThread();
       WorkerMain(i);
     };
     workers_.emplace_back(std::move(setup_thread));
