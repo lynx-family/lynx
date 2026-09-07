@@ -65,9 +65,6 @@ class CascadeLayerMap;
 namespace runtime {
 class MTSRuntime;
 }  // namespace runtime
-namespace worklet {
-class LepusApiHandler;
-}  // namespace worklet
 namespace tasm {
 
 enum class EventResult : int;
@@ -1259,9 +1256,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   EventResult FireElementWorkletAndRequestResolve(
       const std::string &component_id, const std::string &entry_name,
       const lepus::Value &callback, const lepus::Value &script,
-      const lepus::Value &event_detail,
-      const std::shared_ptr<worklet::LepusApiHandler> &task_handler,
-      int32_t element_id,
+      const lepus::Value &event_detail, int32_t element_id,
       std::shared_ptr<PipelineOptions> &pipeline_options) const;
 
   void SetLayoutTick(

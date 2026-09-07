@@ -57,6 +57,9 @@
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "core/services/replay/replay_controller.h"
+#endif
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -104,6 +107,33 @@ bool IsSubtreeProperty(CSSPropertyID css_id) {
   return css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
          css_id == kPropertyIDVisibility || css_id == kPropertyIDFilter;
 }
+
+#if ENABLE_TESTBENCH_REPLAY
+bool IsLazyBundleSuccessEventForReplay(const lepus::Value& info) {
+  BASE_STATIC_STRING_DECL(kType, "type");
+  BASE_STATIC_STRING_DECL(kDetail, "detail");
+  BASE_STATIC_STRING_DECL(kData, "data");
+  BASE_STATIC_STRING_DECL(kUrl, "url");
+  BASE_STATIC_STRING_DECL(kSync, "sync");
+  BASE_STATIC_STRING_DECL(kErrorMsg, "error_msg");
+  BASE_STATIC_STRING_DECL(kMode, "mode");
+
+  if (!info.IsObject() || !info.GetProperty(kType).IsString() ||
+      info.GetProperty(kType).StdString() != "success") {
+    return false;
+  }
+
+  const auto& detail = info.GetProperty(kDetail);
+  if (!detail.IsObject()) {
+    return false;
+  }
+  const auto& data = detail.GetProperty(kData);
+  return data.IsObject() && data.GetProperty(kUrl).IsString() &&
+         data.GetProperty(kSync).IsBool() &&
+         data.GetProperty(kErrorMsg).IsString() &&
+         data.GetProperty(kMode).IsString();
+}
+#endif  // ENABLE_TESTBENCH_REPLAY
 }  // namespace
 
 #define FOREACH_EXTENDED_LAYOUT_ONLY_PROPERTY(V) \
@@ -2734,6 +2764,27 @@ void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
       event->set_current_target(current_target->GetWeakTarget());
       event->HandleEventBaseDetail();
       delegate->SendGlobalEvent(event->type(), event->detail());
+#if ENABLE_TESTBENCH_REPLAY
+      const char* replay_event_type = nullptr;
+      switch (event->event_type()) {
+        case event::Event::EventType::kTouchEvent:
+          replay_event_type = "GlobalTouchEvent";
+          break;
+        case event::Event::EventType::kCustomEvent:
+          if (!event->from_frontend() &&
+              !IsLazyBundleSuccessEventForReplay(event->detail())) {
+            replay_event_type = "GlobalCustomEvent";
+          }
+          break;
+        default:
+          break;
+      }
+      if (replay_event_type != nullptr) {
+        replay::ReplayController::SendFileByAgent(
+            replay_event_type,
+            replay::ReplayController::ConvertEventInfo(event->detail()));
+      }
+#endif
     }
   }
 

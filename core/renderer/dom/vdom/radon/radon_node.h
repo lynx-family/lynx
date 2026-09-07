@@ -371,7 +371,7 @@ class RadonNode : public RadonBase {
 
   // Process events for element accroding to the satic_events or
   // global_bind_events when needed.
-  void ProcessEvents();
+  void ProcessEvents(const RadonNode* old_radon_node = nullptr);
 
   // Set event listeners for element to adapt to the new event handling logic.
   void SetEventListeners(
