@@ -29,7 +29,16 @@ bool RegisterJNIForLayoutContext(JNIEnv* env) {
 }  // namespace lynx
 
 void TriggerLayout(JNIEnv* env, jobject jcaller, jlong ptr) {
-  reinterpret_cast<lynx::tasm::LayoutContextAndroid*>(ptr)->TriggerLayout();
+  if (ptr != 0) {
+    reinterpret_cast<lynx::tasm::LayoutContextAndroid*>(ptr)->TriggerLayout();
+  }
+}
+
+void PrepareDestroy(JNIEnv* env, jobject jcaller, jlong ptr) {
+  if (ptr != 0) {
+    reinterpret_cast<lynx::tasm::LayoutContextAndroid*>(ptr)->PrepareDestroy(
+        env, jcaller);
+  }
 }
 
 jlong CreateLayoutContext(JNIEnv* env, jobject jcaller,
@@ -198,11 +207,16 @@ void LayoutContextAndroid::DestroyLayoutNodes(
 
 void LayoutContextAndroid::Destroy() {
   JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedLocalJavaRef<jobject> local_ref(impl_);
-  if (local_ref.IsNull()) {
+  base::android::ScopedLocalJavaRef<jobject> weak_local_ref;
+  jobject impl = destroy_impl_.Get();
+  if (impl == nullptr) {
+    weak_local_ref.Reset(impl_);
+    impl = weak_local_ref.Get();
+  }
+  if (impl == nullptr) {
     return;
   }
-  Java_LayoutContext_detachNativePtr(env, local_ref.Get());
+  Java_LayoutContext_detachNativePtr(env, impl);
 }
 
 void LayoutContextAndroid::SetFontFaces(const CSSFontFaceRuleMap& fontfaces) {
@@ -257,7 +271,11 @@ LayoutContextAndroid::ReleasePlatformBundleHolder() {
   return std::move(bundle_holder_);
 }
 
-void LayoutContextAndroid::TriggerLayout() { trigger_layout_(); }
+void LayoutContextAndroid::TriggerLayout() {
+  if (trigger_layout_) {
+    trigger_layout_();
+  }
+}
 
 void LayoutContextAndroid::SetLayoutNodeManager(
     LayoutNodeManager* layout_node_manager) {
@@ -268,6 +286,10 @@ void LayoutContextAndroid::SetLayoutNodeManager(
   }
   Java_LayoutContext_attachLayoutNodeManager(
       env, local_ref.Get(), reinterpret_cast<long>(layout_node_manager));
+}
+
+void LayoutContextAndroid::PrepareDestroy(JNIEnv* env, jobject impl) {
+  destroy_impl_.Reset(env, impl);
 }
 
 void LayoutContextAndroid::SetTriggerLayoutCallback(
