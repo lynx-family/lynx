@@ -105,6 +105,20 @@ TEST(ParagraphTTTextTest, HandlesEmptyText) {
   EXPECT_EQ(mapper.ToUTF16Position(1), 0u);
 }
 
+TEST(ParagraphTTTextTest, PreservesParagraphForegroundForEllipsisConversion) {
+  constexpr uint32_t kParagraphColor = 0xff123456;
+  ParagraphStyle paragraph_style;
+  paragraph_style.color = clay::Color(kParagraphColor);
+  paragraph_style.tail_color_convert = true;
+
+  ParagraphBuilderTTText builder(paragraph_style, nullptr);
+  auto tt_paragraph_style = builder.GetTTParagraphStyle();
+
+  EXPECT_TRUE(tt_paragraph_style.EllipsisUsesDefaultForeground());
+  EXPECT_EQ(tt_paragraph_style.GetDefaultStyle().GetForegroundColor(),
+            tttext::TTColor(kParagraphColor));
+}
+
 TEST(ParagraphTTTextTest, KeepsIndexesInSyncForEmbeddedNull) {
   tttext::ParagraphStyle paragraph_style;
   ParagraphTTText paragraph(nullptr, paragraph_style);

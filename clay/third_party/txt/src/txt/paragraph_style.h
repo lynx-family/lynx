@@ -22,9 +22,9 @@
 #include <string>
 #include <vector>
 
-#include "font_style.h"
-#include "font_weight.h"
-#include "text_style.h"
+#include "lynx/clay/third_party/txt/src/txt/font_style.h"
+#include "lynx/clay/third_party/txt/src/txt/font_weight.h"
+#include "lynx/clay/third_party/txt/src/txt/text_style.h"
 
 namespace txt {
 
@@ -73,6 +73,7 @@ class ParagraphStyle {
   FontStyle font_style = FontStyle::normal;
   std::string font_family = "";
   double font_size = 14;
+  clay::Color color = clay::Color::kBlack();
   double height = 1;
   RulerType height_type = RulerType::kAuto;
   bool has_height_override = false;
@@ -104,6 +105,7 @@ class ParagraphStyle {
   size_t max_lines = std::numeric_limits<size_t>::max();
   std::u16string ellipsis;
   std::string locale;
+  bool tail_color_convert = false;
 
   TextStyle GetTextStyle() const;
 

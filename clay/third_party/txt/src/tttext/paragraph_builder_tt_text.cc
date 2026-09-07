@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "paragraph_builder_tt_text.h"
+#include "clay/third_party/txt/src/tttext/paragraph_builder_tt_text.h"
 
 #include <textra/layout_region.h>
 #include "clay/fml/logging.h"
+#include "clay/third_party/txt/src/tttext/tttext_headers.h"
+#include "clay/third_party/txt/src/txt/text_decoration.h"
 #include "textra/layout_definition.h"
-#include "tttext/tttext_headers.h"
-#include "txt/text_decoration.h"
 
 namespace txt {
 ParagraphBuilderTTText::ParagraphBuilderTTText(
@@ -214,6 +214,7 @@ void ParagraphBuilderTTText::ToTTParaStyle(const ParagraphStyle& para_style) {
   tt_para_style.SetDefaultStyle(ToTTStyle(text_style));
   tt_para_style.SetLineSpaceAfterPx(para_style.line_spacing);
   tt_para_style.SetHalfLeading(para_style.half_leading);
+  tt_para_style.SetEllipsisUsesDefaultForeground(para_style.tail_color_convert);
 }
 void ParagraphBuilderTTText::CreateParagraph() {
   if (paragraph_ == nullptr) {
