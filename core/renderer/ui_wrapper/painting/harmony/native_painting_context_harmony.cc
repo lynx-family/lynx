@@ -9,6 +9,7 @@
 #include "core/renderer/ui_wrapper/layout/harmony/text_layout_harmony.h"
 #include "core/renderer/ui_wrapper/layout/harmony/text_measurer_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_platform_harmony_ref.h"
+#include "core/renderer/ui_wrapper/painting/harmony/paint_image_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/platform_renderer_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
@@ -24,7 +25,8 @@ NativePaintingCtxHarmony::NativePaintingCtxHarmony(
   text_layout_impl_ = std::make_unique<TextLayoutHarmony>(text_measurer_.get());
   renderer_context_ = std::make_shared<harmony::LynxRendererContext>(context);
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformHarmonyRef>(
-      std::make_unique<PlatformRendererHarmonyFactory>(renderer_context_));
+      std::make_unique<PlatformRendererHarmonyFactory>(renderer_context_),
+      renderer_context_);
 }
 
 NativePaintingCtxHarmony::~NativePaintingCtxHarmony() {
@@ -178,7 +180,15 @@ void NativePaintingCtxHarmony::DestroyTextBundle(int id) {
 fml::RefPtr<PaintImage> NativePaintingCtxHarmony::CreateImage(
     int id, base::String src, const ImagePaintInfo& paint_info, float width,
     float height, int32_t event_mask, bool disable_default_resize) {
-  return nullptr;
+  const int32_t image_key = GenerateUniqueImageKey();
+  Enqueue([renderer_context = renderer_context_, id, src = src.str(),
+           paint_info, width, height, event_mask, image_key]() {
+    renderer_context->CreateImageManager(id, src, paint_info, width, height,
+                                         event_mask, image_key);
+  });
+  return fml::MakeRefCounted<PaintImageHarmony>(
+      image_key,
+      std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_));
 }
 
 void NativePaintingCtxHarmony::UpdatePlatformEventBundle(

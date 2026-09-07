@@ -40,7 +40,8 @@ class ImageDrawable {
                     float padding_left, float padding_top, float padding_right,
                     float padding_bottom, float scale_density);
   void UpdateDrawCurrent(std::unique_ptr<LynxBaseImage> pixelmap);
-  void UpdateDrawCurrent(std::shared_ptr<ImageData> image_data);
+  void UpdateDrawCurrent(std::shared_ptr<ImageData> image_data,
+                         bool prepare_draw_resources = false);
   void UpdateDrawMatrix();
   void UpdateMode(ImageMode mode);
   void UpdateImageRendering(starlight::ImageRenderingType);

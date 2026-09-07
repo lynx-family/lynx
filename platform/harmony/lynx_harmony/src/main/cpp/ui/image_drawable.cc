@@ -86,13 +86,41 @@ void ImageDrawable::UpdateDrawCurrent(std::unique_ptr<LynxBaseImage> pixelmap) {
   }
 }
 
-void ImageDrawable::UpdateDrawCurrent(std::shared_ptr<ImageData> image_data) {
+void ImageDrawable::UpdateDrawCurrent(std::shared_ptr<ImageData> image_data,
+                                      bool prepare_draw_resources) {
   pixel_maps_.reset();
   loop_duration_ = 0;
   if (!image_data || !image_data->Pixelmap()) {
     image_data_.reset();
     return;
   }
+  image_data_.reset();
+  if (prepare_draw_resources) {
+    if (src_rect_) {
+      OH_Drawing_RectDestroy(src_rect_);
+      src_rect_ = nullptr;
+    }
+    DestroyMatrix();
+    OH_Pixelmap_ImageInfo* pixel_map_info = nullptr;
+    OH_PixelmapImageInfo_Create(&pixel_map_info);
+    OH_PixelmapNative_GetImageInfo(image_data->Pixelmap(), pixel_map_info);
+    OH_PixelmapImageInfo_GetWidth(pixel_map_info, &image_width_);
+    OH_PixelmapImageInfo_GetHeight(pixel_map_info, &image_height_);
+    OH_PixelmapImageInfo_Release(pixel_map_info);
+    if (image_width_ == 0 || image_height_ == 0) {
+      return;
+    }
+    src_rect_ = OH_Drawing_RectCreate(0, 0, image_width_, image_height_);
+    if (!sample_) {
+      sample_ = OH_Drawing_SamplingOptionsCreate(FILTER_MODE_LINEAR,
+                                                 MIPMAP_MODE_LINEAR);
+    }
+    if (!src_rect_ || !sample_) {
+      return;
+    }
+    UpdateDrawMatrix();
+  }
+
   image_data_ = std::move(image_data);
 
   auto frame_count = image_data_->FrameCount();
@@ -109,9 +137,23 @@ void ImageDrawable::UpdateDrawCurrent(std::shared_ptr<ImageData> image_data) {
   }
 }
 
-void ImageDrawable::UpdateMode(ImageDrawable::ImageMode mode) { mode_ = mode; }
+void ImageDrawable::UpdateMode(ImageDrawable::ImageMode mode) {
+  mode_ = mode;
+  UpdateDrawMatrix();
+}
 
 void ImageDrawable::Render(OH_Drawing_Canvas* canvas) {
+  if (image_data_) {
+    auto* pixel_map = GetCurrentPixelMap();
+    auto* draw_bitmap =
+        pixel_map ? OH_Drawing_PixelMapGetFromOhPixelMapNative(pixel_map)
+                  : nullptr;
+    DrawPixelMap(canvas, draw_bitmap);
+    if (draw_bitmap) {
+      OH_Drawing_PixelMapDissolve(draw_bitmap);
+    }
+    return;
+  }
   if (!pixel_maps_) {
     return;
   }

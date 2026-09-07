@@ -54,6 +54,7 @@ if (!enable_unittests) {
       "harmony/native_painting_context_harmony.h",
       "harmony/native_painting_context_platform_harmony_ref.cc",
       "harmony/native_painting_context_platform_harmony_ref.h",
+      "harmony/paint_image_harmony.h",
       "harmony/painting_context_harmony.cc",
       "harmony/painting_context_harmony.h",
       "harmony/platform_renderer_harmony.cc",

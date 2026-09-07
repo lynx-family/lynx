@@ -106,10 +106,12 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
 
  private:
   void Enqueue(shell::UIOperation operation);
+  int32_t GenerateUniqueImageKey() { return ++image_key_; }
 
   std::unique_ptr<TextMeasurerHarmony> text_measurer_;
   std::shared_ptr<harmony::LynxRendererContext> renderer_context_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
+  int32_t image_key_{0};
 };
 
 }  // namespace tasm
