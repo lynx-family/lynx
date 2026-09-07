@@ -77,25 +77,30 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
     return ScalePixmap(std::move(pixmap), render_info);
   }
 
-  bool DrawFrame() override {
+  FrameResult DrawFrame() override {
     if (!is_playing_ || !decoder_) {
-      return false;
+      return FrameResult::kNoFrame;
     }
     auto frame_count = decoder_->GetFrameCount();
     if (frame_count <= 1 || current_frame_index_ >= frame_count) {
-      return false;
+      return FrameResult::kNoFrame;
     }
-    DrawFrameInternal();
+    if (!DrawFrameInternal()) {
+      return FrameResult::kNoFrame;
+    }
     if (current_frame_index_ >= frame_count) {
       if (remaining_loop_count_ > 0) {
         --remaining_loop_count_;
         if (remaining_loop_count_ <= 0) {
           StopAnimation();
+          current_frame_index_ = 0;
+          return FrameResult::kFinalLoopComplete;
         }
       }
       current_frame_index_ = 0;
+      return FrameResult::kLoopComplete;
     }
-    return current_pixmap_ != nullptr;
+    return FrameResult::kFrameReady;
   }
 
   void SetLoopCount(int loop_count) override {
@@ -110,10 +115,8 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
     is_playing_ = true;
     current_frame_index_ = 0;
     remaining_loop_count_ = loop_count_;
-    auto frame_info = decoder_->GetFrameInfo(current_frame_index_);
-    if (frame_info) {
-      current_frame_duration_ = frame_info->GetDuration();
-      DrawFrameInternal();
+    if (!DrawFrameInternal()) {
+      StopAnimation();
     }
   }
 
@@ -124,17 +127,18 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
   void ResumeAnimation() override { is_playing_ = decoder_ != nullptr; }
 
  private:
-  void DrawFrameInternal() {
+  bool DrawFrameInternal() {
     if (!decoder_) {
-      return;
+      return false;
     }
     auto frame_info = decoder_->GetFrameInfo(current_frame_index_++);
     if (!frame_info) {
-      return;
+      return false;
     }
     std::scoped_lock lock(pixmap_mutex_);
     current_pixmap_ = decoder_->DecodeFrame(frame_info, current_pixmap_);
     current_frame_duration_ = frame_info->GetDuration();
+    return current_pixmap_ != nullptr;
   }
 
   std::shared_ptr<skity::Pixmap> current_pixmap_;
