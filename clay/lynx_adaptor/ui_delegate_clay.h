@@ -64,6 +64,11 @@ class UIDelegateClay : public UIDelegate {
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
 
+  std::string GetLynxUITree() override;
+  std::string GetUINodeInfo(int id) override;
+  int SetUIStyle(int id, const std::string& name,
+                 const std::string& content) override;
+
   void SetEnableFluencyMonitor(bool enable);
 
   void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) override;

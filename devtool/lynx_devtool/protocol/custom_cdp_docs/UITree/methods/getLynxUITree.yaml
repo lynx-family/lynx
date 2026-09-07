@@ -44,7 +44,7 @@ notes:
   - Requires UITree.enable first. If UI tree inspection is not enabled, the current handler returns without sending a CDP response.
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
   - The platform facade returns a JSON string, and the executor parses that string into result.root.
-  - Android and Darwin include name, id, tagName, nodeIndex, props, label, frame, and children. Harmony includes name, id, frame, and children.
+  - Native Android and Darwin include name, id, tagName, nodeIndex, props, label, frame, and children. Native Harmony and Clay renderers on Android, iOS, Harmony, macOS, and Windows include name, id, frame, and children.
   - If compression is enabled and the serialized root exceeds the stored threshold, result.compress is true and result.root is a compressed base64 string.
   - The native implementation does not read request params.
   - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.

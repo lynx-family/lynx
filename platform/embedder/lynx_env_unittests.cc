@@ -12,11 +12,24 @@
 #endif
 
 #if ENABLE_INSPECTOR
+#include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router.h"
+
+TEST(LynxEnv, DevtoolDefaultAppInfo) {
+  lynx::embedder::DevToolEnvEmbedder::GetInstance();
+  EXPECT_EQ(debugrouter::common::DebugRouter::GetInstance().GetAppInfoByKey(
+                "sdkVersion"),
+            lynx::tasm::Config::GetCurrentLynxVersion());
+}
+
 TEST(LynxEnv, Devtool) {
   lynx_env_enable_devtool(0);
   EXPECT_EQ(lynx_env_is_devtool_enabled(), 0);
   lynx_env_enable_devtool(1);
   EXPECT_EQ(lynx_env_is_devtool_enabled(), 1);
+  EXPECT_EQ(debugrouter::common::DebugRouter::GetInstance().GetAppInfoByKey(
+                "sdkVersion"),
+            lynx::tasm::Config::GetCurrentLynxVersion());
 }
 
 TEST(LynxEnv, DevtoolCpp) {

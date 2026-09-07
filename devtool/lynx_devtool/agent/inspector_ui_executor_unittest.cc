@@ -9,8 +9,12 @@
 
 #include <sys/wait.h>
 
+#include <chrono>
 #include <cstddef>
+#include <future>
 #include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
@@ -19,6 +23,7 @@
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#include "third_party/jsoncpp/include/json/reader.h"
 #include "third_party/jsoncpp/include/json/value.h"
 
 namespace lynx {
@@ -45,6 +50,31 @@ class UnavailableRectDevToolPlatformFacadeMock
   std::vector<float> GetRectToWindow() const override { return {}; }
 };
 
+class ClayDesktopUITreePlatformFacadeMock
+    : public testing::DevToolPlatformFacadeMock {
+ public:
+  std::string GetLynxUITree() override {
+    return R"({"name":"page","id":1,"frame":[0,0,800,650],"children":[{"name":"view","id":2,"frame":[10,20,100,50],"children":[]}]})";
+  }
+
+  std::string GetUINodeInfo(int id) override {
+    last_node_id_ = id;
+    return R"({"id":2,"editableProps":{"frame":[10,20,100,50],"visible":true},"ui":{"name":"view"},"view":{"name":"ClayView"}})";
+  }
+
+  int SetUIStyle(int id, std::string name, std::string content) override {
+    last_node_id_ = id;
+    last_style_name_ = std::move(name);
+    last_style_content_ = std::move(content);
+    return set_style_result_;
+  }
+
+  int last_node_id_ = -1;
+  std::string last_style_name_;
+  std::string last_style_content_;
+  int set_style_result_ = 0;
+};
+
 class InspectorUIExecutorTest : public ::testing::Test {
  public:
   InspectorUIExecutorTest() = default;
@@ -64,6 +94,16 @@ class InspectorUIExecutorTest : public ::testing::Test {
         std::make_shared<devtool::InspectorUIExecutor>(devtool_mediator_);
     ui_thread_ = std::make_unique<fml::Thread>("ui");
     devtool_mediator_->ui_task_runner_ = ui_thread_->GetTaskRunner();
+    devtool_mediator_->default_task_runner_ = ui_thread_->GetTaskRunner();
+  }
+
+  void FlushDevtoolTasks() {
+    std::promise<void> promise;
+    auto future = promise.get_future();
+    ASSERT_TRUE(devtool_mediator_->RunOnDevToolThread(
+        [&promise]() { promise.set_value(); }, true));
+    ASSERT_EQ(future.wait_for(std::chrono::seconds(5)),
+              std::future_status::ready);
   }
 
  private:
@@ -209,6 +249,64 @@ TEST_F(InspectorUIExecutorTest, InsertTextTest) {
   EXPECT_EQ(facade->inserted_text_, "hello");
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 41,\n   \"result\" : {}\n}\n");
+}
+
+TEST_F(InspectorUIExecutorTest, ClayDesktopUITreeMethodsTest) {
+  auto facade = std::make_shared<ClayDesktopUITreePlatformFacadeMock>();
+  ui_executor_->SetDevToolPlatformFacade(facade);
+
+  Json::Value enable_message;
+  enable_message["id"] = 51;
+  ui_executor_->UITree_Enable(message_sender_, enable_message);
+  EXPECT_TRUE(ui_executor_->uitree_enabled_);
+
+  devtool::MockReceiver::GetInstance().ResetAll();
+  Json::Value tree_message;
+  tree_message["id"] = 52;
+  ui_executor_->GetLynxUITree(message_sender_, tree_message);
+  FlushDevtoolTasks();
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"].asInt(), 52);
+  EXPECT_FALSE(response["result"]["compress"].asBool());
+  EXPECT_EQ(response["result"]["root"]["name"].asString(), "page");
+  EXPECT_EQ(response["result"]["root"]["children"][0]["id"].asInt(), 2);
+
+  Json::Value node_message;
+  node_message["id"] = 53;
+  node_message["params"]["UINodeId"] = 2;
+  ui_executor_->GetUIInfoForNode(message_sender_, node_message);
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(facade->last_node_id_, 2);
+  EXPECT_EQ(response["result"]["view"]["name"].asString(), "ClayView");
+
+  Json::Value style_message;
+  style_message["id"] = 54;
+  style_message["params"]["UINodeId"] = 2;
+  style_message["params"]["styleName"] = "visible";
+  style_message["params"]["styleContent"] = "false";
+  ui_executor_->SetUIStyle(message_sender_, style_message);
+  EXPECT_EQ(facade->last_node_id_, 2);
+  EXPECT_EQ(facade->last_style_name_, "visible");
+  EXPECT_EQ(facade->last_style_content_, "false");
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"].asInt(), 54);
+  EXPECT_FALSE(response["result"].isMember("error"));
+
+  facade->set_style_result_ = -1;
+  style_message["id"] = 55;
+  ui_executor_->SetUIStyle(message_sender_, style_message);
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"].asInt(), 55);
+  EXPECT_EQ(response["result"]["error"]["code"].asInt(), -32000);
+  EXPECT_EQ(response["result"]["error"]["message"].asString(),
+            "set ui style fail");
 }
 
 TEST_F(InspectorUIExecutorTest, GetRectToWindowReturnsErrorWhenUnavailable) {

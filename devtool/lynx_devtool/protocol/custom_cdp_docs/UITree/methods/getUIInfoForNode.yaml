@@ -70,7 +70,7 @@ notes:
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
   - The platform facade returns a JSON string, and the executor parses that string directly into result.
   - If the platform returns an empty string or the node id cannot be resolved, the current handler returns an empty result object.
-  - Android, Darwin, and Harmony expose different platform-owned details. Consumers should tolerate missing optional fields.
+  - Native Android, Darwin, native Harmony, and Clay renderers expose different platform-owned details. Consumers should tolerate missing optional fields.
   - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
 examples:
   - title: Read UI information for one node
