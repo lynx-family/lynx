@@ -22,6 +22,19 @@ builder({
         "type": "gn",
     },
 
+    "builder_for_encode_ut" :{
+        "args": [
+            "build_lepus_compile=true",
+            "enable_inspector=true",
+            "enable_inspector_test=true",
+            "is_encoder_ut=true",
+            "enable_lepusng_bytecode_opt=true",
+            f"is_debug={options.get_str('is_debug', 'false')}",
+        ],
+        "output": "out/Default_encode_ut",
+        "type": "gn",
+    },
+
     "builder_for_trace" :{
         "args": [
             "enable_lepusng_worklet=true",
@@ -71,6 +84,14 @@ coverage({
 })
 
 targets({
+    "encoder_tests_exec":{
+        "cwd": ".",
+        "owners":["songshourui.null"],
+        "coverage": False,
+        "enable_parallel":True,
+        "builder":"builder_for_encode_ut",
+        "enable":options.get_bool('enable_encode_ut', False),
+    },
     "base_unittests_exec":{
         "cwd": ".",
         "owners":["ZhaoSongGOO"],

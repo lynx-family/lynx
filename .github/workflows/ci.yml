@@ -152,7 +152,7 @@ jobs:
         run: |
           set -e
           source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names lynx --disable-flutter-cxx
+          tools/rtf/rtf native-ut run --names lynx --disable-flutter-cxx --args="enable_encode_ut=true"
 
   linux-native-unittests-check:
     runs-on: lynx-ubuntu-22.04-large
