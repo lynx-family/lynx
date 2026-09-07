@@ -42,6 +42,7 @@ class ElementTemplateInstance : public lepus::RefCounted {
   fml::RefPtr<Element> GetRoot();
   lepus::Value Serialize() const;
 
+  void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
   void InsertNodeIntoChildSlot(uint32_t slot_index, const lepus::Value& child,
                                const lepus::Value& ref_node);
   void RemoveNodeFromChildSlot(uint32_t slot_index, const lepus::Value& child);
@@ -61,6 +62,9 @@ class ElementTemplateInstance : public lepus::RefCounted {
   void InitTypedRoot();
   bool IsMaterialized() const { return result_ != nullptr; }
   fml::RefPtr<Element> PeekMaterializedRoot() const;
+
+  void ApplyAttributeSlotToTarget(uint32_t slot_index,
+                                  const lepus::Value& previous_attribute_slots);
 
   lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
   bool EraseChildFromSlotStorage(uint32_t slot_index,

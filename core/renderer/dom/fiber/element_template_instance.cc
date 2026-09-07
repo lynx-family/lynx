@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fiber/element_template_instance.h"
 
 #include <future>
+#include <memory>
 #include <utility>
 
 #include "base/include/value/array.h"
@@ -30,8 +31,10 @@ static constexpr const char kTemplateAttributeSlots[] = "attributeSlots";
 static constexpr const char kTemplateChildSlots[] = "childSlots";
 static constexpr const char kTemplateOptions[] = "options";
 static constexpr const char kTemplateUid[] = "uid";
+static constexpr const char kTemplateRootAttributeSpread[] = "rootAttributes";
 static constexpr const char kDefaultPageComponentId[] = "0";
 static constexpr int32_t kDefaultPageCSSId = 0;
+static constexpr uint32_t kTypedTemplateRootAttributeSlotIndex = 0;
 static constexpr uint32_t kTypedTemplateRootChildSlotIndex = 0;
 
 fml::RefPtr<ElementTemplateInstance> ResolveElementTemplateInstanceValue(
@@ -90,6 +93,93 @@ lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots) {
   return lepus::Value(std::move(copied_slots));
 }
 
+lepus::Value CreateRootAttributeSlots(const lepus::Value& root_attributes) {
+  auto attribute_slots = lepus::CArray::Create();
+  attribute_slots->emplace_back(root_attributes.IsObject() ? root_attributes
+                                                           : lepus::Value());
+  return lepus::Value(std::move(attribute_slots));
+}
+
+const SharedTemplateAttributes& RootSpreadTemplateAttributes() {
+  static const auto attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                    BASE_STATIC_STRING(kTemplateRootAttributeSpread),
+                    lepus::Value(), kTypedTemplateRootAttributeSlotIndex}});
+  return attributes;
+}
+
+template <typename Apply>
+void ApplyRootTemplateAttributes(Element* root, Apply&& apply) {
+  if (root == nullptr) {
+    return;
+  }
+  auto compiled_attributes = root->template_attributes();
+  root->SetTemplateAttributes(RootSpreadTemplateAttributes());
+  apply();
+  root->SetTemplateAttributes(compiled_attributes);
+}
+
+void ApplyRootTemplateAttributes(Element* root,
+                                 const lepus::Value& previous_root_attributes,
+                                 const lepus::Value& root_attributes) {
+  if (!previous_root_attributes.IsObject() && !root_attributes.IsObject()) {
+    return;
+  }
+  ApplyRootTemplateAttributes(
+      root, [root, &previous_root_attributes, &root_attributes]() {
+        if (previous_root_attributes.IsObject()) {
+          TreeResolver::ApplyTemplateAttributesToElement(
+              root, CreateRootAttributeSlots(previous_root_attributes),
+              CreateRootAttributeSlots(root_attributes));
+          return;
+        }
+        TreeResolver::ApplyTemplateAttributesToElement(
+            root, CreateRootAttributeSlots(root_attributes));
+      });
+}
+
+void ApplyRootTemplateNonEventAttributes(Element* root,
+                                         const lepus::Value& root_attributes) {
+  if (!root_attributes.IsObject()) {
+    return;
+  }
+  ApplyRootTemplateAttributes(root, [root, &root_attributes]() {
+    TreeResolver::ApplyTemplateNonEventAttributesToElement(
+        root, CreateRootAttributeSlots(root_attributes));
+  });
+}
+
+void ApplyRootTemplateNonEventAttributes(
+    Element* root, const lepus::Value& previous_root_attributes,
+    const lepus::Value& root_attributes) {
+  if (!previous_root_attributes.IsObject() && !root_attributes.IsObject()) {
+    return;
+  }
+  ApplyRootTemplateAttributes(
+      root, [root, &previous_root_attributes, &root_attributes]() {
+        if (previous_root_attributes.IsObject()) {
+          TreeResolver::ApplyTemplateNonEventAttributesToElement(
+              root, CreateRootAttributeSlots(previous_root_attributes),
+              CreateRootAttributeSlots(root_attributes));
+          return;
+        }
+        TreeResolver::ApplyTemplateNonEventAttributesToElement(
+            root, CreateRootAttributeSlots(root_attributes));
+      });
+}
+
+void ApplyRootTemplateEventAttributes(Element* root,
+                                      const lepus::Value& root_attributes) {
+  if (!root_attributes.IsObject()) {
+    return;
+  }
+  ApplyRootTemplateAttributes(root, [root, &root_attributes]() {
+    TreeResolver::ApplyTemplateEventAttributesToElement(
+        root, CreateRootAttributeSlots(root_attributes));
+  });
+}
+
 fml::RefPtr<Element> CreateTypedRootElement(ElementManager* manager,
                                             TemplateAssembler* tasm,
                                             const base::String& tag) {
@@ -103,6 +193,67 @@ fml::RefPtr<Element> CreateTypedRootElement(ElementManager* manager,
     return page;
   }
   return manager->CreateFiberElement(tag);
+}
+
+template <typename Apply>
+void ApplyInitialAttributeSlots(
+    const base::Vector<fml::RefPtr<Element>>& targets,
+    const lepus::Value& attribute_slots, Apply apply) {
+  Element* previous_element = nullptr;
+  for (const auto& target : targets) {
+    auto* element = target.get();
+    if (element == nullptr || element == previous_element) {
+      continue;
+    }
+    apply(element, attribute_slots);
+    previous_element = element;
+  }
+}
+
+void ApplyInitialNonEventAttributeSlots(
+    const base::Vector<fml::RefPtr<Element>>& targets,
+    const lepus::Value& attribute_slots) {
+  ApplyInitialAttributeSlots(
+      targets, attribute_slots,
+      [](Element* element, const lepus::Value& slots) {
+        TreeResolver::ApplyTemplateNonEventAttributesToElement(element, slots);
+      });
+}
+
+void ApplyInitialEventAttributeSlots(
+    const base::Vector<fml::RefPtr<Element>>& targets,
+    const lepus::Value& attribute_slots) {
+  ApplyInitialAttributeSlots(
+      targets, attribute_slots,
+      [](Element* element, const lepus::Value& slots) {
+        TreeResolver::ApplyTemplateEventAttributesToElement(element, slots);
+      });
+}
+
+void ApplyStaticEventAttributes(
+    const base::Vector<fml::RefPtr<Element>>& targets) {
+  for (const auto& target : targets) {
+    TreeResolver::ApplyStaticTemplateEventAttributesToElement(target.get());
+  }
+}
+
+GeneratedElementsResult GeneratePreparedElementsResult(
+    TemplateEntry* entry, const base::String& template_key,
+    const lepus::Value& attribute_slots, uint32_t attribute_slots_generation,
+    const lepus::Value& root_attributes, uint32_t root_attributes_generation) {
+  GeneratedElementsResult generated;
+  if (entry != nullptr) {
+    auto& info = entry->GetElementTemplateInfo(template_key.str());
+    generated = TreeResolver::GenerateElementsFromTemplateInfo(info);
+  }
+  ApplyInitialNonEventAttributeSlots(generated.attribute_slot_targets_,
+                                     attribute_slots);
+  ApplyRootTemplateNonEventAttributes(generated.result_.get(), root_attributes);
+  generated.prepared_attribute_slots_ = attribute_slots;
+  generated.attribute_slots_generation_ = attribute_slots_generation;
+  generated.prepared_root_attributes_ = root_attributes;
+  generated.root_attributes_generation_ = root_attributes_generation;
+  return generated;
 }
 
 }  // namespace
@@ -209,10 +360,16 @@ void ElementTemplateInstance::SetRootAttributes(
       !attributes.IsUndefined()) {
     return;
   }
-  root_attributes_ = attributes.IsObject()
-                         ? CopyTemplateObjectForStorage(attributes)
-                         : lepus::Value();
+  auto next_root_attributes = attributes.IsObject()
+                                  ? CopyTemplateObjectForStorage(attributes)
+                                  : lepus::Value();
+  auto previous_root_attributes = std::move(root_attributes_);
+  root_attributes_ = std::move(next_root_attributes);
   ++root_attributes_generation_;
+  if (IsMaterialized()) {
+    ApplyRootTemplateAttributes(result_.get(), previous_root_attributes,
+                                root_attributes_);
+  }
 }
 
 void ElementTemplateInstance::SetAttributeSlots(
@@ -313,15 +470,18 @@ ElementTemplateInstance::CreateElementTreeTask(TemplateEntry* entry) {
   std::promise<GeneratedElementsResult> promise;
   auto future = promise.get_future();
   auto template_key = template_key_;
+  auto attribute_slots = attribute_slots_;
+  auto attribute_slots_generation = attribute_slots_generation_;
+  auto root_attributes = root_attributes_;
+  auto root_attributes_generation = root_attributes_generation_;
   return fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
       [entry, template_key = std::move(template_key),
+       attribute_slots = std::move(attribute_slots), attribute_slots_generation,
+       root_attributes = std::move(root_attributes), root_attributes_generation,
        promise = std::move(promise)]() mutable {
-        GeneratedElementsResult generated;
-        if (entry != nullptr) {
-          auto& info = entry->GetElementTemplateInfo(template_key.str());
-          generated = TreeResolver::GenerateElementsFromTemplateInfo(info);
-        }
-        promise.set_value(std::move(generated));
+        promise.set_value(GeneratePreparedElementsResult(
+            entry, template_key, attribute_slots, attribute_slots_generation,
+            root_attributes, root_attributes_generation));
       },
       std::move(future));
 }
@@ -333,6 +493,11 @@ void ElementTemplateInstance::MaterializeRoot() {
 
   if (IsTypedTemplate()) {
     InitTypedRoot();
+    if (result_ == nullptr) {
+      return;
+    }
+    ApplyRootTemplateAttributes(result_.get(), lepus::Value(),
+                                root_attributes_);
     return;
   }
 
@@ -356,8 +521,10 @@ void ElementTemplateInstance::MaterializeRoot() {
   static_event_targets_ = std::move(generated.static_event_targets_);
   element_slot_targets_ = std::move(generated.element_slot_targets_);
 
-  InitGeneratedElementTree(attribute_slots_, attribute_slots_generation_,
-                           root_attributes_, root_attributes_generation_);
+  InitGeneratedElementTree(generated.prepared_attribute_slots_,
+                           generated.attribute_slots_generation_,
+                           generated.prepared_root_attributes_,
+                           generated.root_attributes_generation_);
 }
 
 void ElementTemplateInstance::InitGeneratedElementTree(
@@ -372,6 +539,23 @@ void ElementTemplateInstance::InitGeneratedElementTree(
   TreeResolver::InitElementTree(result_, root != nullptr ? root->impl_id() : -1,
                                 element_manager_,
                                 entry_->GetStyleSheetManager());
+  ApplyStaticEventAttributes(static_event_targets_);
+  if (prepared_attribute_slots_generation != attribute_slots_generation_) {
+    ApplyInitialAttributeSlots(
+        attribute_slot_targets_, attribute_slots_,
+        [&prepared_attribute_slots](Element* element,
+                                    const lepus::Value& slots) {
+          TreeResolver::ApplyTemplateNonEventAttributesToElement(
+              element, prepared_attribute_slots, slots);
+        });
+  }
+  ApplyInitialEventAttributeSlots(event_attribute_slot_targets_,
+                                  attribute_slots_);
+  if (prepared_root_attributes_generation != root_attributes_generation_) {
+    ApplyRootTemplateNonEventAttributes(result_.get(), prepared_root_attributes,
+                                        root_attributes_);
+  }
+  ApplyRootTemplateEventAttributes(result_.get(), root_attributes_);
 }
 
 void ElementTemplateInstance::InitTypedRoot() {
@@ -403,6 +587,19 @@ fml::RefPtr<Element> ElementTemplateInstance::GetRoot() {
 
 fml::RefPtr<Element> ElementTemplateInstance::PeekMaterializedRoot() const {
   return result_;
+}
+
+void ElementTemplateInstance::ApplyAttributeSlotToTarget(
+    uint32_t slot_index, const lepus::Value& previous_attribute_slots) {
+  if (slot_index >= attribute_slot_targets_.size()) {
+    return;
+  }
+  const auto& target = attribute_slot_targets_[slot_index];
+  if (target == nullptr) {
+    return;
+  }
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), previous_attribute_slots, attribute_slots_);
 }
 
 lepus::Value ElementTemplateInstance::GetOrCreateMutableChildSlot(
@@ -465,6 +662,34 @@ void ElementTemplateInstance::ClearLogicalChildParentLinks() {
 
 lepus::Value ElementTemplateInstance::Serialize() const {
   return ElementTemplateInstanceSerializer().Serialize(*this);
+}
+
+void ElementTemplateInstance::SetAttributeSlot(uint32_t slot_index,
+                                               const lepus::Value& value) {
+  if (IsTypedTemplate()) {
+    if (slot_index == kTypedTemplateRootAttributeSlotIndex) {
+      SetRootAttributes(value);
+    }
+    return;
+  }
+
+  auto previous_attribute_slots = std::move(attribute_slots_);
+  auto next_slots = lepus::CArray::Create();
+  if (previous_attribute_slots.IsArrayOrJSArray()) {
+    next_slots->reserve(previous_attribute_slots.GetLength());
+    for (size_t index = 0;
+         index < static_cast<size_t>(previous_attribute_slots.GetLength());
+         ++index) {
+      next_slots->emplace_back(
+          previous_attribute_slots.GetProperty(static_cast<uint32_t>(index)));
+    }
+  }
+  attribute_slots_ = lepus::Value(std::move(next_slots));
+  attribute_slots_.SetProperty(slot_index, CopyTemplateValueForStorage(value));
+  ++attribute_slots_generation_;
+  if (IsMaterialized()) {
+    ApplyAttributeSlotToTarget(slot_index, previous_attribute_slots);
+  }
 }
 
 void ElementTemplateInstance::InsertNodeIntoChildSlot(
