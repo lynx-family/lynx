@@ -14,6 +14,9 @@ export interface IContext {
   findJSShadowNodeBySign(sign: number): Object | undefined;
 
   setFocusedUI?(sign: number): void;
+  markDirty?(sign: number): void;
+
+  requestLayout?(sign: number): void;
 
   sendGlobalEvent(name: string, params: Object[]): void;
 
