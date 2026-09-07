@@ -92,6 +92,7 @@ enum class KeywordID {
   kLineSpacing,
   kWhiteSpace,
   kTextMaxline,
+  kTailColorConvert,
   kMaxlines,
   kTextMaxlength,
   kLetterSpacing,
