@@ -747,11 +747,13 @@ void LynxShell::ResetShouldSendEventToMainThread() {
       [](auto& facade) { facade->OnShouldSendEventToMainThreadChanged(true); });
 }
 
+void LynxShell::SetUrl(const std::string& url) { url_ = url; }
+
 void LynxShell::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
-  url_ = url;
+  SetUrl(url);
   ResetShouldSendEventToMainThread();
 
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
@@ -836,7 +838,7 @@ void LynxShell::LoadTemplateBundle(
     const std::string& url, tasm::LynxTemplateBundle template_bundle,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
-  url_ = url;
+  SetUrl(url);
   ResetShouldSendEventToMainThread();
 
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
@@ -1008,6 +1010,7 @@ void LynxShell::LoadLynxML(
     const std::string& url, std::string source,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
+  SetUrl(url);
   if (!pipeline_options) {
     pipeline_options = std::make_shared<tasm::PipelineOptions>();
     pipeline_options->need_timestamps = true;
@@ -1024,6 +1027,8 @@ void LynxShell::LoadLynxML(
         engine->LoadLynxML(url, std::move(source), template_data,
                            std::move(pipeline_options));
       });
+
+  RegisterNotificationCallbacks();
 }
 
 void LynxShell::MarkDirty() {
@@ -1061,8 +1066,9 @@ void LynxShell::SetContextHasAttached() {
 };
 
 void LynxShell::LoadSSRData(
-    std::vector<uint8_t> source,
+    const std::string& url, std::vector<uint8_t> source,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
+  SetUrl(url);
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
   pipeline_options->need_timestamps = true;
   // TODO(kechenglong): should find a better pipeline_origin name?
@@ -1078,6 +1084,8 @@ void LynxShell::LoadSSRData(
         engine->LoadSSRData(std::move(source), template_data,
                             std::move(pipeline_options));
       });
+
+  RegisterNotificationCallbacks();
 }
 
 void LynxShell::UpdateDataByParsedData(

@@ -1949,7 +1949,7 @@ public class LynxTemplateRender
     }
     prepareForRenderSSR(ssr, url);
     if (mNativePtr != 0) {
-      loadSSRData(ssr, templateData, new TASMCallback());
+      loadSSRData(url, ssr, templateData, new TASMCallback());
     }
     postRenderOrUpdateData(templateData);
   }
@@ -4063,7 +4063,8 @@ public class LynxTemplateRender
         timingOption.toJavaOnlyMap());
   }
 
-  private void loadSSRData(byte[] ssr, TemplateData templateData, NativeFacade.Callback callback) {
+  private void loadSSRData(
+      String url, byte[] ssr, TemplateData templateData, NativeFacade.Callback callback) {
     NativeFacade facade = mNativeFacade;
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
@@ -4085,7 +4086,7 @@ public class LynxTemplateRender
       readOnly = templateData.isReadOnly();
     }
     facade.setCallback(callback);
-    nativeLoadSSRDataByPreParsedData(nativePtr, nativeLifecycle, ssr, templateDataNativePtr,
+    nativeLoadSSRDataByPreParsedData(nativePtr, nativeLifecycle, url, ssr, templateDataNativePtr,
         readOnly, processorName, templateData);
   }
 
@@ -4815,8 +4816,8 @@ public class LynxTemplateRender
 
   // load template && component
   // FIXME(songshourui.null): only use templateData later
-  private static native void nativeLoadSSRDataByPreParsedData(long ptr, long lifecycle, byte[] temp,
-      long data, boolean readOnly, String processorName, TemplateData templateData);
+  private static native void nativeLoadSSRDataByPreParsedData(long ptr, long lifecycle, String url,
+      byte[] temp, long data, boolean readOnly, String processorName, TemplateData templateData);
 
   // FIXME(songshourui.null): only use templateData later
   private static native void nativeLoadTemplateByPreParsedData(long ptr, long lifecycle, String url,
