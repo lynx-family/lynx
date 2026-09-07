@@ -89,5 +89,27 @@ void ListItemMediator::FlushAnimatedStyle(CSSPropertyID id, CSSValue value) {
   list_item_element_->element_container()->FlushImmediately();
 }
 
+void ListItemMediator::UpdateAnimatedStyle(CSSPropertyID id, CSSValue value,
+                                           bool flush_immediately) {
+  list_item_element_->FlushAnimatedStyle(id, value);
+  list_item_element_->OnNodeReady();
+  if (flush_immediately) {
+    list_item_element_->element_container()->UpdateNodeReadyPatching();
+    list_item_element_->element_container()->FlushImmediately();
+  }
+}
+
+void ListItemMediator::UpdateAnimatedLayout(float left, float top,
+                                            bool flush_immediately) {
+  list_item_element_->UpdateLayout(left, top);
+  list_item_element_->element_container()->UpdateLayout(left, top);
+  list_item_element_->element_container()->UpdateLayoutPatching();
+  list_item_element_->OnNodeReady();
+  if (flush_immediately) {
+    list_item_element_->element_container()->UpdateNodeReadyPatching();
+    list_item_element_->element_container()->FlushImmediately();
+  }
+}
+
 }  // namespace tasm
 }  // namespace lynx

@@ -52,7 +52,9 @@ class MockListElement : public ElementDelegate {
   MOCK_METHOD(void, EnqueueComponent, (int32_t list_item_id), (override));
   void RemoveListItemPaintingNode(int32_t list_item_id) override {}
   void InsertListItemPaintingNode(int32_t list_item_id) override {}
-  void FlushPatching(bool should_flush_finish_layout) override {}
+  void FlushPatching(bool should_flush_finish_layout) override {
+    ++flush_patching_count_;
+  }
   void FlushImmediately() override {}
   void UpdateContentOffsetAndSizeToPlatform(float content_size, float delta_x,
                                             float delta_y,
@@ -84,6 +86,7 @@ class MockListElement : public ElementDelegate {
   void MarkTiming(ListTiming flag) {}
   void RequestNextFrame() {}
   bool IsInDebugMode() const { return is_debug_mode_; }
+  int flush_patching_count() const { return flush_patching_count_; }
 
   void ClearListItemElements() { list_item_elements_.clear(); }
   void AddListItemElement(
@@ -110,6 +113,7 @@ class MockListElement : public ElementDelegate {
   std::array<float, 4> paddings_{0.f, 0.f, 0.f, 0.f};
   std::array<float, 4> margins_{0.f, 0.f, 0.f, 0.f};
   std::array<float, 4> borders_{0.f, 0.f, 0.f, 0.f};
+  int flush_patching_count_{0};
   std::unordered_set<std::string> events_;
   std::unordered_map<std::string, std::unique_ptr<MockListItemElement>>
       list_item_elements_;

@@ -131,7 +131,8 @@ class BatchListAdapter : public ListAdapter {
       const std::shared_ptr<tasm::PipelineOptions>& options) override;
 
   // Recycle ItemHolder.
-  void RecycleItemHolder(ItemHolder* item_holder) override;
+  void RecycleItemHolder(ItemHolder* item_holder,
+                         bool flush_immediately = true) override;
 
   // Return whether the ItemHolder has already been bound, if return true, it
   // means the ItemHolder is a no dirty node, but with no valid list item
