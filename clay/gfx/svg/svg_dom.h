@@ -21,6 +21,8 @@ class SVGDom : public std::enable_shared_from_this<SVGDom> {
   static std::shared_ptr<SVGDom> Create(std::shared_ptr<skity::Data> data,
                                         ImageCallback callback);
 
+  // Return a deferred image; rendering and texture upload run on the raster
+  // task runner supplied by unref_queue.
   virtual std::shared_ptr<skity::Image> Render(
       int width, int height, fml::RefPtr<GPUUnrefQueue> unref_queue) = 0;
 };
