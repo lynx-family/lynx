@@ -26,6 +26,7 @@ common_lynx_shared_sources = [
   "LynxGroup+Internal.h",
   "LynxLifecycleDispatcher.m",
   "LynxLoadMeta.m",
+  "LynxResourceHandle.mm",
   "LynxSSRHelper.h",
   "LynxSSRHelper.m",
   "LynxScreenMetrics.m",
