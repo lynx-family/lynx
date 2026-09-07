@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <memory>
 
+#include "base/include/geometry/point.h"
 #include "base/include/value/base_string.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/box_model_recorder.h"
@@ -34,17 +35,6 @@ class Fragment : public BaseElementContainer {
   // Returns the parent of this fragment in the fragment tree.
   Fragment* fragment_parent() const;
 
-  // Returns the fragment that is the parent of this fragment in the element
-  // tree.
-  Fragment* fragment_from_element_parent() const {
-    return fragment_from_element_parent_;
-  }
-
-  void set_fragment_from_element_parent(
-      Fragment* fragment_from_element_parent) {
-    fragment_from_element_parent_ = fragment_from_element_parent;
-  }
-
   bool HasUIPrimitive() const override;
 
   void InsertElementContainerAccordingToElement(Element* child,
@@ -66,6 +56,8 @@ class Fragment : public BaseElementContainer {
   void UpdateLayout(float left, float top,
                     bool transition_view = false) override;
   void UpdateLayoutWithoutChange() override;
+
+  void InvalidateForRedraw() override;
 
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override {}
   void StyleChanged() override;
@@ -110,19 +102,9 @@ class Fragment : public BaseElementContainer {
     return event_names_;
   }
 
-  void DrawChildren(DisplayListBuilder& display_list_builder);
-
   size_t PlatformLayerCount() const { return platform_layer_count_; }
 
-  void AddChildBefore(Fragment* child, Fragment* sibling);
-
-  void RemoveSelf();
-
-  void RemoveChild(Fragment* child);
-
   void UpdatePlatformExtraBundle(PlatformExtraBundle* bundle) override;
-
-  bool IsReliableSibling() const;
 
   const auto& LayoutResult() const { return layout_info_; }
 
@@ -140,15 +122,57 @@ class Fragment : public BaseElementContainer {
   bool is_fragment() const override { return true; }
 
  private:
-  void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
-  Fragment* EnclosingStackingContextFromElementParent();
-  void ZIndexChanged();
-  void UpdateBorderRadiusAccordingToLayoutInfo();
-  size_t UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
+  // The only geometry consumed by painting after LayoutTree coordinates have
+  // been resolved onto StackingTree edges.
+  struct ResolvedStackingGeometry {
+    Fragment* parent{nullptr};
+    base::geometry::FloatPoint offset_to_parent{0.f, 0.f};
+    base::geometry::FloatPoint paint_offset{0.f, 0.f};
+    base::geometry::FloatPoint platform_embedding_offset{0.f, 0.f};
+    bool valid{false};
+  };
 
-  void RefreshDrawingOffsetsRecursively();
-  void RefreshDrawingOffsetsRecursively(float left, float top);
-  void UpdateDrawingOffset();
+  Fragment* fragment_from_element_parent() const {
+    return fragment_from_element_parent_;
+  }
+  void set_fragment_from_element_parent(Fragment* fragment) {
+    fragment_from_element_parent_ = fragment;
+  }
+
+  void DrawChildren(DisplayListBuilder& display_list_builder);
+  void AddChildBefore(Fragment* child, Fragment* sibling);
+  void RemoveSelf();
+  void RemoveChild(Fragment* child);
+  bool IsReliableSibling() const;
+
+  void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
+  void UpdateBorderRadiusAccordingToLayoutInfo();
+  size_t UpdateLayoutRecursively(
+      Fragment* draw_root, uint64_t restacking_generation = 0,
+      base::geometry::FloatPoint active_paint_offset = {0.f, 0.f});
+
+  // Resolves LayoutTree coordinates onto StackingTree/paint edges. This is a
+  // no-op until an input edge is invalidated.
+  void RestackIfNeeded();
+  void InvalidateRestacking();
+  Fragment* RestackingRoot();
+  uint64_t PrepareRestacking();
+  void CollectLayoutOffsetsToRoot(Element* current,
+                                  base::geometry::FloatPoint parent_offset,
+                                  uint64_t restacking_generation);
+  bool ResolveStackingGeometry(
+      base::geometry::FloatPoint active_paint_offset,
+      uint64_t restacking_generation, bool flush_node_ready,
+      base::geometry::FloatPoint* child_active_paint_offset);
+  void ResolveStackingGeometryRecursively(
+      base::geometry::FloatPoint active_paint_offset,
+      uint64_t restacking_generation, bool flush_node_ready);
+  Fragment* ResolveStackingGeometryParent() const;
+  Fragment* ResolveEnclosingStackingContextParent() const;
+  Fragment* PaintRoot();
+  static void MarkPaintRootDirty(Fragment* fragment);
+  void ReparentStackingNode(Fragment* target_parent, Fragment* sibling);
+
   void DrawBorder(DisplayListBuilder& display_list_builder);
   void DrawClip(DisplayListBuilder& display_list_builder);
 
@@ -224,12 +248,15 @@ class Fragment : public BaseElementContainer {
   base::Vector<BackgroundImageResource> background_image_resources_;
   bool event_bundle_dirty_{false};
 
-  // Translation already present on the parent display-list canvas between
-  // the nearest platform renderer and this fragment.
-  float render_offset_[2] = {0, 0};
-  // This fragment's position relative to its actual Fragment parent. It may
-  // differ from the layout offset when z-index changes the Fragment tree.
-  float drawing_offset_[2] = {0, 0};
+  // Resolver input. This belongs to the LayoutTree coordinate space and is
+  // never read by drawing code.
+  base::geometry::FloatPoint layout_offset_to_root_{0.f, 0.f};
+  uint64_t layout_offset_generation_{0};
+
+  ResolvedStackingGeometry stacking_geometry_;
+  bool layout_geometry_initialized_{false};
+  bool needs_restacking_{true};
+  uint64_t restacking_generation_{0};
 
   int32_t draw_node_capacity_{0};
 
