@@ -264,11 +264,43 @@ void ListContainerView::UpdateContentOffsetForListContainer(
     float content_size, float target_content_offset_x,
     float target_content_offset_y) {
   lynx::base::AutoReset<bool> resetter(&should_block_did_scroll_, true);
+  // The ListElement delta (target_content_offset_*) is computed relative to the
+  // logical scroll offset *before* this resize. Choosing the base offset it is
+  // applied to is not a one-size-fits-all decision:
+  //
+  //   * Normal case / content shrink: use the pre-resize logical offset.
+  //     SetMaxContent() below runs CorrectScrollOffset(), which clamps
+  //     scroll_offset_ into the new (often smaller) range. If we then added the
+  //     delta on top of the already-clamped offset, the same shrink amount
+  //     would be subtracted twice (double clamp), leaving a blank strip at the
+  //     bottom.
+  //
+  //   * Overscroll + content growth (e.g. pull past the edge, then load more):
+  //     the paint offset carries the rubber-band displacement beyond the old
+  //     max range. SetMaxContent() -> CorrectScrollOffset() promotes that
+  //     displacement into a now-valid scroll offset. We must keep that
+  //     post-resize offset, otherwise the just-consumed overscroll distance is
+  //     lost and the viewport jumps back.
+  //
+  // Snapshot the inputs *before* SetMaxContent(): it overwrites max_content_
+  // and calls ClearOverscrollState(), which would invalidate both checks.
+  const bool was_under_overscroll = IsUnderOverscroll();
+  const bool content_is_growing = content_size > max_content_;
+  const FloatPoint logical_offset_before_resize = scroll_offset_;
+
   SetMaxContent(content_size);
+
+  const FloatPoint offset_for_delta =
+      (was_under_overscroll && content_is_growing)
+          ? scroll_offset_  // post-resize: consume old overscroll
+          : logical_offset_before_resize;  // otherwise: avoid double clamp
+
+  // OnScrollUpdate() -> DoScroll() clamps the result to the new max range, so
+  // the final offset can never exceed the freshly-updated content bounds.
   if (CanScrollY()) {
-    OnScrollUpdate(scroll_offset_.y() + target_content_offset_y);
+    OnScrollUpdate(offset_for_delta.y() + target_content_offset_y);
   } else {
-    OnScrollUpdate(scroll_offset_.x() + target_content_offset_x);
+    OnScrollUpdate(offset_for_delta.x() + target_content_offset_x);
   }
 }
 
