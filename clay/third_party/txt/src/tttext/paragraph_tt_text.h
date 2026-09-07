@@ -12,11 +12,11 @@
 #include <textra/paragraph_style.h>
 #include "clay/gfx/graphics_canvas.h"
 #ifdef ENABLE_SKITY
-#include "tttext/tttext_headers.h"
+#include "lynx/clay/third_party/txt/src/tttext/tttext_headers.h"
 #else
 #include "third_party/textlayout/textra/public/textra/platform/skia/skia_painter.h"
 #endif
-#include "txt/paragraph.h"
+#include "lynx/clay/third_party/txt/src/txt/paragraph.h"
 
 namespace ttoffice {
 namespace tttext {
@@ -28,12 +28,21 @@ class LayoutRegion;
 namespace txt {
 class FontCollection;
 class PlaceholderRun;
+#ifdef ENABLE_SKITY
+class DynamicFontManager;
+#endif
 
 // Implementation of Paragraph based on Skia's text layout module.
 class ParagraphTTText : public Paragraph {
  public:
+#ifdef ENABLE_SKITY
+  ParagraphTTText(std::shared_ptr<FontCollection> font_collection,
+                  const tttext::ParagraphStyle& paragraph_style,
+                  std::shared_ptr<DynamicFontManager> variation_font_manager);
+#else
   ParagraphTTText(std::shared_ptr<FontCollection> font_collection,
                   const tttext::ParagraphStyle& paragraph_style);
+#endif
 
   ~ParagraphTTText() override = default;
 
@@ -96,6 +105,9 @@ class ParagraphTTText : public Paragraph {
 
  private:
   std::shared_ptr<FontCollection> font_collection_;
+#ifdef ENABLE_SKITY
+  std::shared_ptr<DynamicFontManager> variation_font_manager_;
+#endif
   std::unique_ptr<tttext::Paragraph> paragraph_;
   std::unique_ptr<tttext::LayoutRegion> region_;
   std::vector<LineMetrics> line_metrics_;
