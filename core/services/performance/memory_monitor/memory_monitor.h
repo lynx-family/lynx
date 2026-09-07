@@ -68,8 +68,9 @@ class MemoryMonitor {
   /// configuration This method combines memory monitoring status and memory
   /// increment threshold into a uint32_t bitmask:
   /// - Bits 0-8      : Memory increment threshold in MB (capped at 100MB)
+  /// @param is_mts MTS and BTS use different threshold value
   /// @return uint32_t Combined configuration bitmask
-  static uint32_t ScriptingEngineMode();
+  static uint32_t ScriptingEngineMode(bool is_mts);
 
   explicit MemoryMonitor(PerformanceEventSender* observer,
                          const base::LogContext& log_context,
