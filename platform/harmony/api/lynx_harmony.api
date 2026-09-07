@@ -1293,6 +1293,7 @@ export enum LynxTrailKey {
   ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION = 'enable_simple_style_no_patch_optimization'
   ENABLE_ELEMENT_API_NEW_REGISTRATION = 'enable_element_api_new_registration'
   ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK = 'enable_element_invoke_ui_method_pending_task'
+  FIX_LAYOUT_IN_ELEMENT_NO_PATCH_FLUSH = 'fix_layout_in_element_no_patch_flush'
 }
 
 export interface LynxUIRenderer {
