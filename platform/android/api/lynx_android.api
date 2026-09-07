@@ -2405,6 +2405,7 @@ public class com::lynx::jsbridge::network::HttpResponse :  {
 
 public class com::lynx::jsbridge::network::HttpStreamingDelegate :  {
   public com.lynx.jsbridge.network.HttpStreamingDelegate.HttpStreamingDelegate(String streamingId, LynxFetchModuleEventSender sender);
+  public com.lynx.jsbridge.network.HttpStreamingDelegate.HttpStreamingDelegate(String streamingId, LynxFetchModuleEventSender sender, LynxNetworkRequestObserver networkObserver, String networkRequestId);
   public void com.lynx.jsbridge.network.HttpStreamingDelegate.onData(byte[] bytes);
   public void com.lynx.jsbridge.network.HttpStreamingDelegate.onEnd();
   public void com.lynx.jsbridge.network.HttpStreamingDelegate.onError(String error);
@@ -4127,6 +4128,7 @@ public class com::lynx::tasm::group::LynxBaseConfigurator< T extends LynxBaseCon
 }
 
 public interface com::lynx::devtoolwrapper::LynxBaseInspectorController {
+  public LynxNetworkRequestObserver com.lynx.devtoolwrapper.LynxBaseInspectorController.getNetworkRequestObserver();
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.setReloadHelper(PageReloadHelper reloadHelper);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.setDebugInfoInterceptor(LynxDebugInfoRecorder debugInfoRecorder);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorController.setDevToolDelegate(IDevToolDelegate devToolDelegate);
@@ -5770,6 +5772,7 @@ public class com::lynx::jsbridge::network::LynxFetchModuleEventSender :  {
   public com.lynx.jsbridge.network.LynxFetchModuleEventSender.LynxFetchModuleEventSender();
   public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.setWeakContext(LynxContext context);
   public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.setWeakRuntime(LynxBackgroundRuntime runtime);
+  public LynxNetworkRequestObserver com.lynx.jsbridge.network.LynxFetchModuleEventSender.getNetworkRequestObserver();
   public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.sendGlobalEvent(String name, JavaOnlyArray params);
 }
 
@@ -6473,6 +6476,15 @@ public class com::lynx::tasm::behavior::ui::scroll::base::LynxNestedScrollingChi
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.onDetachedFromWindow();
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.onStopNestedScroll(@NonNull View child);
   public ViewParent com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.getNestedScrollingParentForType(int type);
+}
+
+public interface com::lynx::devtoolwrapper::LynxNetworkRequestObserver {
+  public boolean com.lynx.devtoolwrapper.LynxNetworkRequestObserver.isEnabled();
+  public String com.lynx.devtoolwrapper.LynxNetworkRequestObserver.requestWillBeSent(String url, String method, JavaOnlyMap headers, byte[] body);
+  public void com.lynx.devtoolwrapper.LynxNetworkRequestObserver.responseReceived(String requestId, String url, int status, String statusText, JavaOnlyMap headers);
+  public void com.lynx.devtoolwrapper.LynxNetworkRequestObserver.dataReceived(String requestId, byte[] data);
+  public void com.lynx.devtoolwrapper.LynxNetworkRequestObserver.loadingFinished(String requestId);
+  public void com.lynx.devtoolwrapper.LynxNetworkRequestObserver.loadingFailed(String requestId, String errorText, boolean canceled);
 }
 
 public interface com::lynx::tasm::gesture::LynxNewGestureDelegate {

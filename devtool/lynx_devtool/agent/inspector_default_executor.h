@@ -39,6 +39,10 @@ class InspectorDefaultExecutor
   // events for Log domain
   void SendLogEntryAddedEvent(const lynx::runtime::js::ConsoleMessage& message);
 
+  std::weak_ptr<NetworkRequestObserver> GetNetworkRequestObserver() const {
+    return network_observer_;
+  }
+
   // Log domain
   DECLARE_DEVTOOL_METHOD(LogEnable)
   DECLARE_DEVTOOL_METHOD(LogDisable)

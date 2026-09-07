@@ -137,6 +137,7 @@ class NetworkRequestObserver
   struct RequestRecord {
     std::string request_url;
     LifecycleState lifecycle{LifecycleState::REQUESTED};
+    bool is_event_source{false};
     RetentionState request_body_state{RetentionState::NONE};
     RetentionState response_body_state{RetentionState::NONE};
     std::vector<uint8_t> request_body;

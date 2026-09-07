@@ -22,6 +22,13 @@ namespace {
 constexpr size_t DEFAULT_MAX_TOTAL_BUFFER_SIZE = 50 * 1024 * 1024;
 constexpr size_t DEFAULT_MAX_RESOURCE_BUFFER_SIZE = 5 * 1024 * 1024;
 constexpr size_t DEFAULT_MAX_POST_DATA_SIZE = 64 * 1024;
+constexpr char ASCII_WHITESPACE[] = " \t\n\r\f\v";
+
+struct EventSourceMessage {
+  std::string event_name;
+  std::string event_id;
+  std::string data;
+};
 
 std::string ToLower(std::string value) {
   std::transform(value.begin(), value.end(), value.begin(),
@@ -66,6 +73,40 @@ std::string HeaderValue(const std::map<std::string, std::string>& headers,
     }
   }
   return std::string();
+}
+
+bool ParseEventSourceChunk(const std::vector<uint8_t>& bytes,
+                           EventSourceMessage& message) {
+  // Native streaming splits EventSource data at message boundaries before
+  // onData reaches both this observer and EventSource.ts. Keep this field
+  // parser stateless and aligned with EventSource.ts.
+  const std::string raw(bytes.begin(), bytes.end());
+  size_t line_start = 0;
+  while (line_start <= raw.size()) {
+    const size_t line_end = raw.find('\n', line_start);
+    const std::string line = raw.substr(
+        line_start, line_end == std::string::npos ? std::string::npos
+                                                  : line_end - line_start);
+    if (line.compare(0, 5, "data:") == 0) {
+      message.data +=
+          base::TrimString(line.substr(5), ASCII_WHITESPACE, base::TRIM_ALL) +
+          "\n";
+    } else if (line.compare(0, 6, "event:") == 0) {
+      message.event_name =
+          base::TrimString(line.substr(6), ASCII_WHITESPACE, base::TRIM_ALL);
+    } else if (line.compare(0, 3, "id:") == 0) {
+      message.event_id =
+          base::TrimString(line.substr(3), ASCII_WHITESPACE, base::TRIM_ALL);
+    }
+    if (line_end == std::string::npos) {
+      break;
+    }
+    line_start = line_end + 1;
+  }
+  if (!message.data.empty()) {
+    message.data.pop_back();
+  }
+  return !message.data.empty();
 }
 
 Json::Value HeadersToJson(const std::map<std::string, std::string>& headers) {
@@ -380,7 +421,11 @@ void NetworkRequestObserver::ResponseReceivedImpl(const std::string& request_id,
   const std::string content_type =
       HeaderValue(response.headers, "content-type");
   const size_t separator = content_type.find(';');
-  cdp_response["mimeType"] = content_type.substr(0, separator);
+  const std::string mime_type = content_type.substr(0, separator);
+  cdp_response["mimeType"] = mime_type;
+  record->is_event_source =
+      ToLower(base::TrimString(mime_type, ASCII_WHITESPACE, base::TRIM_ALL)) ==
+      "text/event-stream";
   cdp_response["charset"] = "";
   cdp_response["connectionReused"] = false;
   cdp_response["connectionId"] = 0;
@@ -397,6 +442,10 @@ void NetworkRequestObserver::DataReceivedImpl(const std::string& request_id,
     return;
   }
   const size_t data_size = data.size();
+  EventSourceMessage event_source_message;
+  const bool has_event_source_message =
+      record->is_event_source &&
+      ParseEventSourceChunk(data, event_source_message);
   record->encoded_data_length += data_size;
   AppendResponseBody(*record, request_id, std::move(data));
 
@@ -407,6 +456,11 @@ void NetworkRequestObserver::DataReceivedImpl(const std::string& request_id,
   event["params"]["dataLength"] = Json::Value::UInt64(data_size);
   event["params"]["encodedDataLength"] = Json::Value::UInt64(data_size);
   SendCDPEvent(event);
+  if (has_event_source_message) {
+    EventSourceMessageReceivedImpl(request_id, event_source_message.event_name,
+                                   event_source_message.event_id,
+                                   event_source_message.data, time);
+  }
 }
 
 void NetworkRequestObserver::LoadingFinishedImpl(const std::string& request_id,

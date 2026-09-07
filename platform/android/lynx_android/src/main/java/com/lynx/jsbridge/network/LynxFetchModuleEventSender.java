@@ -4,8 +4,13 @@
 
 package com.lynx.jsbridge.network;
 
+import androidx.annotation.RestrictTo;
+import com.lynx.devtoolwrapper.LynxBaseInspectorController;
+import com.lynx.devtoolwrapper.LynxDevtool;
+import com.lynx.devtoolwrapper.LynxNetworkRequestObserver;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.LynxBackgroundRuntime;
+import com.lynx.tasm.LynxView;
 import com.lynx.tasm.behavior.LynxContext;
 import java.lang.ref.WeakReference;
 
@@ -23,6 +28,23 @@ public class LynxFetchModuleEventSender {
 
   public void setWeakRuntime(LynxBackgroundRuntime runtime) {
     weakRuntime = new WeakReference<>(runtime);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public LynxNetworkRequestObserver getNetworkRequestObserver() {
+    LynxContext context = weakContext.get();
+    if (context != null) {
+      LynxView view = context.getLynxView();
+      LynxBaseInspectorController controller =
+          view != null ? view.getBaseInspectorController() : null;
+      return controller != null ? controller.getNetworkRequestObserver() : null;
+    }
+
+    LynxBackgroundRuntime runtime = weakRuntime.get();
+    LynxDevtool devtool = runtime != null ? runtime.getDevtool() : null;
+    LynxBaseInspectorController controller =
+        devtool != null ? devtool.getBaseInspectorController() : null;
+    return controller != null ? controller.getNetworkRequestObserver() : null;
   }
 
   public void sendGlobalEvent(String name, JavaOnlyArray params) {

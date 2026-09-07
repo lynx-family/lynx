@@ -183,6 +183,124 @@ TEST_F(InspectorNetworkAgentTest, EmitsAllSupportedEventShapes) {
   EXPECT_TRUE(sender_->Messages()[6]["params"]["canceled"].asBool());
 }
 
+TEST_F(InspectorNetworkAgentTest, ParsesEventSourceChunksLikeJavaScript) {
+  Enable();
+  NetworkRequestInfo request;
+  request.url = "https://example.com/events";
+  const std::string request_id = observer_->RequestWillBeSent(request);
+
+  NetworkResponseInfo response;
+  response.status = 200;
+  response.headers["cOnTeNt-TyPe"] = "Text/Event-Stream; charset=utf-8";
+  observer_->ResponseReceived(request_id, response);
+  const std::string named_message =
+      "id: 7\r\nevent: update\r\ndata: first \r\ndata: second\r\n\r\n";
+  observer_->DataReceived(
+      request_id,
+      std::vector<uint8_t>(named_message.begin(), named_message.end()));
+  const std::string default_message = "data: default\n\n";
+  observer_->DataReceived(
+      request_id,
+      std::vector<uint8_t>(default_message.begin(), default_message.end()));
+  observer_->LoadingFinished(request_id);
+  FlushDevToolTasks();
+
+  ASSERT_EQ(sender_->Messages().size(), 7u);
+  EXPECT_EQ(sender_->Messages()[2]["method"].asString(),
+            "Network.dataReceived");
+  const Json::Value& named_event = sender_->Messages()[3];
+  EXPECT_EQ(named_event["method"].asString(),
+            "Network.eventSourceMessageReceived");
+  EXPECT_EQ(named_event["params"]["requestId"].asString(), request_id);
+  EXPECT_EQ(named_event["params"]["eventName"].asString(), "update");
+  EXPECT_EQ(named_event["params"]["eventId"].asString(), "7");
+  EXPECT_EQ(named_event["params"]["data"].asString(), "first\nsecond");
+  EXPECT_EQ(sender_->Messages()[4]["method"].asString(),
+            "Network.dataReceived");
+  const Json::Value& default_event = sender_->Messages()[5];
+  EXPECT_EQ(default_event["method"].asString(),
+            "Network.eventSourceMessageReceived");
+  EXPECT_EQ(default_event["params"]["eventName"].asString(), "message");
+  EXPECT_EQ(default_event["params"]["eventId"].asString(), "");
+  EXPECT_EQ(default_event["params"]["data"].asString(), "default");
+  EXPECT_EQ(sender_->Messages()[6]["method"].asString(),
+            "Network.loadingFinished");
+}
+
+TEST_F(InspectorNetworkAgentTest, DoesNotParseNonEventStreamResponses) {
+  Enable();
+  NetworkRequestInfo request;
+  request.url = "https://example.com/stream";
+  const std::string request_id = observer_->RequestWillBeSent(request);
+
+  NetworkResponseInfo response;
+  response.status = 200;
+  response.headers["Content-Type"] = "text/plain";
+  observer_->ResponseReceived(request_id, response);
+  const std::string chunk = "data: not-an-event-source-message\n\n";
+  observer_->DataReceived(request_id,
+                          std::vector<uint8_t>(chunk.begin(), chunk.end()));
+  observer_->LoadingFinished(request_id);
+  FlushDevToolTasks();
+
+  ASSERT_EQ(sender_->Messages().size(), 4u);
+  EXPECT_EQ(sender_->Messages()[0]["method"].asString(),
+            "Network.requestWillBeSent");
+  EXPECT_EQ(sender_->Messages()[1]["method"].asString(),
+            "Network.responseReceived");
+  EXPECT_EQ(sender_->Messages()[2]["method"].asString(),
+            "Network.dataReceived");
+  EXPECT_EQ(sender_->Messages()[3]["method"].asString(),
+            "Network.loadingFinished");
+}
+
+TEST_F(InspectorNetworkAgentTest, NonPositiveStatusFailsWithoutResponse) {
+  Enable();
+  NetworkRequestInfo request;
+  request.url = "https://example.com/unavailable";
+  const std::string request_id = observer_->RequestWillBeSent(request);
+
+  NetworkResponseInfo response;
+  response.status = 0;
+  response.status_text = "transport failed";
+  observer_->ResponseReceived(request_id, response);
+  observer_->LoadingFinished(request_id);
+  FlushDevToolTasks();
+
+  ASSERT_EQ(sender_->Messages().size(), 2u);
+  EXPECT_EQ(sender_->Messages()[0]["method"].asString(),
+            "Network.requestWillBeSent");
+  EXPECT_EQ(sender_->Messages()[1]["method"].asString(),
+            "Network.loadingFailed");
+  EXPECT_EQ(sender_->Messages()[1]["params"]["errorText"].asString(),
+            "transport failed");
+}
+
+TEST_F(InspectorNetworkAgentTest, IgnoresCallbacksAfterTerminalEvent) {
+  Enable();
+  NetworkRequestInfo request;
+  request.url = "https://example.com/stream";
+  const std::string request_id = observer_->RequestWillBeSent(request);
+
+  NetworkResponseInfo response;
+  response.status = 200;
+  observer_->ResponseReceived(request_id, response);
+  observer_->LoadingFinished(request_id);
+  observer_->LoadingFailed(request_id, "late failure");
+  observer_->DataReceived(request_id, {'l', 'a', 't', 'e'});
+  observer_->LoadingFinished(request_id);
+  observer_->EventSourceMessageReceived(request_id, "message", "", "late");
+  FlushDevToolTasks();
+
+  ASSERT_EQ(sender_->Messages().size(), 3u);
+  EXPECT_EQ(sender_->Messages()[0]["method"].asString(),
+            "Network.requestWillBeSent");
+  EXPECT_EQ(sender_->Messages()[1]["method"].asString(),
+            "Network.responseReceived");
+  EXPECT_EQ(sender_->Messages()[2]["method"].asString(),
+            "Network.loadingFinished");
+}
+
 TEST_F(InspectorNetworkAgentTest, ReturnsTextAndBinaryResponseBodies) {
   Enable();
   NetworkRequestInfo request;
