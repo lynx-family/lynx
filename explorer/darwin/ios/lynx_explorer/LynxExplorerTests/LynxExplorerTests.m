@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxTemplateData.h>
 #import <XCTest/XCTest.h>
+#import "ExplorerLynxTestModule.h"
 #import "LynxNodeAPIModule.h"
 #import "LynxViewShellViewController.h"
 #import "ScanViewController.h"
@@ -79,7 +80,115 @@
 
 @end
 
+@interface LXContextModuleViewSpy : NSObject
+@property(nonatomic, copy) NSDictionary *data;
+@property(nonatomic, copy) NSDictionary *props;
+@end
+
+@implementation LXContextModuleViewSpy
+- (void)updateDataWithDictionary:(NSDictionary *)data {
+  NSMutableDictionary *merged = [self.data mutableCopy] ?: [NSMutableDictionary dictionary];
+  [merged addEntriesFromDictionary:data];
+  self.data = merged;
+}
+- (void)updateGlobalPropsWithDictionary:(NSDictionary *)props {
+  self.props = props;
+}
+- (NSDictionary *)getPageDataByKey:(NSArray *)keys {
+  NSMutableDictionary *result = [NSMutableDictionary dictionary];
+  for (NSString *key in keys) {
+    if (self.data[key]) {
+      result[key] = self.data[key];
+    }
+  }
+  return result;
+}
+@end
+
+@interface LXContextModuleContextSpy : NSObject
+@property(nonatomic, strong) LXContextModuleViewSpy *view;
+@property(nonatomic, assign) BOOL hasLynxViewDestroyed;
+@property(nonatomic, copy) NSString *event;
+@property(nonatomic, copy) NSArray *params;
+@end
+
+@implementation LXContextModuleContextSpy
+- (LynxView *)getLynxView {
+  return (LynxView *)self.view;
+}
+- (void)sendGlobalEvent:(NSString *)event withParams:(NSArray *)params {
+  self.event = event;
+  self.params = params;
+}
+@end
+
 @implementation LynxExplorerTests
+
+- (void)testLynxTestModuleKeepsDataAndEventsOnItsOwnPage {
+  XCTestExpectation *checked = [self expectationWithDescription:@"page-scoped operations"];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    LXContextModuleContextSpy *first = [LXContextModuleContextSpy new];
+    first.view = [LXContextModuleViewSpy new];
+    LXContextModuleContextSpy *second = [LXContextModuleContextSpy new];
+    second.view = [LXContextModuleViewSpy new];
+    ExplorerLynxTestModule *firstModule =
+        [[ExplorerLynxTestModule alloc] initWithLynxContext:(LynxContext *)first];
+    ExplorerLynxTestModule *secondModule =
+        [[ExplorerLynxTestModule alloc] initWithLynxContext:(LynxContext *)second];
+    [firstModule updateData:@{@"first" : @1}];
+    [firstModule updateData:@{@"next" : @2}];
+    [secondModule updateData:@{@"second" : @3}];
+    [firstModule updateGlobalProps:@{@"theme" : @"dark"}];
+    XCTAssertEqualObjects(first.view.data, (@{@"first" : @1, @"next" : @2}));
+    XCTAssertEqualObjects(second.view.data, (@{@"second" : @3}));
+    XCTAssertNil(second.view.props);
+    __block NSUInteger callbacks = 0;
+    [firstModule getPageDataByKey:@[ @"next" ]
+                         callback:^(id result) {
+                           callbacks++;
+                           XCTAssertEqualObjects(result, (@{@"next" : @2}));
+                         }];
+    XCTAssertEqual(callbacks, 1U);
+    [firstModule eventTest:@"value"];
+    XCTAssertEqualObjects(first.event, @"test");
+    XCTAssertEqualObjects(first.params, (@[ @10, @"value" ]));
+    XCTAssertNil(second.event);
+    [firstModule valueTest:@"{\"answer\":42}"];
+    XCTAssertEqualObjects(first.params, (@[ @{@"answer" : @42} ]));
+    [firstModule valueTest:@"not JSON"];
+    XCTAssertEqualObjects(first.params, (@[ @"not JSON" ]));
+    [firstModule destroy];
+    [firstModule updateData:@{@"afterDestroy" : @YES}];
+    [firstModule eventTest:@"afterDestroy"];
+    XCTAssertNil(first.view.data[@"afterDestroy"]);
+    XCTAssertEqualObjects(first.params, (@[ @"not JSON" ]));
+    second.hasLynxViewDestroyed = YES;
+    [secondModule updateData:@{@"afterDestroy" : @YES}];
+    XCTAssertNil(second.view.data[@"afterDestroy"]);
+    [checked fulfill];
+  });
+  [self waitForExpectations:@[ checked ] timeout:2];
+}
+
+- (void)testLynxTestModuleExposesContextMethodsUnderNewName {
+  XCTAssertEqualObjects(ExplorerLynxTestModule.name, @"LynxTestModule");
+  XCTAssertTrue([ExplorerLynxTestModule conformsToProtocol:@protocol(LynxContextModule)]);
+  NSDictionary<NSString *, NSString *> *methods = ExplorerLynxTestModule.methodLookup;
+  XCTAssertEqualObjects(
+      [NSSet setWithArray:methods.allKeys], ([NSSet setWithArray:@[
+        @"eventTest", @"valueTest", @"back", @"reload", @"call", @"invoke", @"callSync",
+        @"updateData", @"resetData", @"updateGlobalProps", @"reloadTemplate", @"getPageDataByKey",
+        @"updateScreenMatrix", @"addButton", @"setDefaultValueForSetting"
+      ]]));
+  for (NSString *selector in methods.allValues) {
+    XCTAssertTrue(
+        [ExplorerLynxTestModule instancesRespondToSelector:NSSelectorFromString(selector)]);
+  }
+  LXContextModuleContextSpy *context = [LXContextModuleContextSpy new];
+  ExplorerLynxTestModule *module =
+      [[ExplorerLynxTestModule alloc] initWithLynxContext:(LynxContext *)context];
+  XCTAssertEqualObjects([module call:@"test" params:@{}], (@{@"cb_data" : @"5555"}));
+}
 
 - (void)testShellViewControllerAllowsAutorotation {
   LynxViewShellViewController *shellVC = [[LynxViewShellViewController alloc] init];
