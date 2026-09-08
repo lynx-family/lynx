@@ -388,6 +388,207 @@ class LynxLibraryAutolinkTest < Minitest::Test
     end
   end
 
+  def test_install_rejects_unknown_source
+    Dir.mktmpdir do |dir|
+      podfile = FakePodfile.new
+      error = assert_raises(RuntimeError) do
+        Lynx::Library::Autolink.install!(podfile, root: dir,
+                                                  output_dir: File.join(dir, 'generated'),
+                                                  sources: [:pods, :bogus])
+      end
+      assert_includes error.message, 'Unknown Lynx library autolink sources: bogus'
+    end
+  end
+
+  # pods-only mode does no node_modules discovery: install! must not add any
+  # library pod, only inject the generated LynxLibraryRegistry pod. The registry
+  # written at Podfile-eval time is a stub (no registration lines) that the
+  # post-install hook rewrites later; the podspec must exist so CocoaPods can
+  # resolve the pod.
+  def test_install_pods_only_generates_stub_registry_and_registry_pod
+    Dir.mktmpdir do |dir|
+      podfile = FakePodfile.new
+      output_dir = File.join(dir, 'generated/lynx-library')
+
+      Lynx::Library::Autolink.install!(podfile, root: dir, output_dir: output_dir,
+                                                sources: [:pods])
+
+      # No node_modules pod added; only the registry pod is injected.
+      assert_equal [['LynxLibraryRegistry', { path: output_dir }]], podfile.pods
+      # Initial registry is a stub with no registration lines.
+      impl = File.read(File.join(output_dir, "#{Lynx::Library::Autolink::REGISTRY_CLASS_NAME}.m"))
+      refute_includes impl, 'registerUI'
+      assert File.exist?(File.join(output_dir, 'LynxLibraryRegistry.podspec'))
+    end
+  end
+
+  # In pods mode the source location comes from the podspec's source_files, not
+  # from the manifest's sourceDir. This sets up a deliberate conflict: the
+  # manifest says sourceDir "ios" (which does not exist) while the real sources
+  # live under "src" as referenced by source_files. The resolved source_dir must
+  # be "src", proving sourceDir is ignored. Regression guard for the earlier
+  # `iOS sourceDir 'ios' does not exist` failure.
+  def test_scan_installed_pods_uses_source_files_and_ignores_source_dir
+    Dir.mktmpdir do |dir|
+      # Manifest declares sourceDir "ios" which does NOT exist; real sources
+      # live under "src" as referenced by source_files.
+      pod_root, = write_installed_pod(dir, 'DemoScreens', 'demo-screen', 'DemoScreenUI',
+                                      source_subdir: 'src',
+                                      manifest_ios: { 'sourceDir' => 'ios' })
+      spec = FakeSpec.new('DemoScreens', 'source_files' => 'src/**/*.{h,m,mm,swift}')
+      context = build_hook_context({ 'DemoScreens' => pod_root }, [spec])
+
+      libraries = Lynx::Library::Autolink.scan_installed_pods(context, 'Pods-App')
+
+      assert_equal 1, libraries.size
+      assert_equal File.realpath(File.join(pod_root, 'src')), libraries.first.source_dir
+    end
+  end
+
+  # When source_files spans multiple sibling dirs, no single dir covers them,
+  # so source_dir falls back to the pod root. The subsequent recursive scan must
+  # still reach components in every sub-dir, so the registry contains markers from both.
+  def test_scan_installed_pods_falls_back_to_pod_root_for_multiple_source_dirs
+    Dir.mktmpdir do |dir|
+      # lynx-screens layout: podspec + manifest at pod root, sources split across
+      # sibling dirs. Root resolves to pod root.
+      pod_root = File.join(dir, 'Pods', 'LynxScreens')
+      FileUtils.mkdir_p(File.join(pod_root, 'common'))
+      FileUtils.mkdir_p(File.join(pod_root, 'host'))
+      File.write(File.join(pod_root, 'lynx.lib.json'),
+                 JSON.generate('platforms' => { 'ios' => { 'sourceDir' => 'ios' } }))
+      File.write(File.join(pod_root, 'common/BaseUI.m'), <<~OBJC)
+        @implementation BaseUI
+        LYNX_LAZY_REGISTER_UI("base-ui")
+        @end
+      OBJC
+      File.write(File.join(pod_root, 'host/HostUI.m'), <<~OBJC)
+        @implementation HostUI
+        LYNX_LAZY_REGISTER_UI("host-ui")
+        @end
+      OBJC
+      spec = FakeSpec.new('LynxScreens',
+                          'source_files' => ['common/**/*.{h,m}', 'host/**/*.{h,m}'])
+      context = build_hook_context({ 'LynxScreens' => pod_root }, [spec])
+
+      libraries = Lynx::Library::Autolink.scan_installed_pods(context, 'Pods-App')
+      assert_equal File.realpath(pod_root), libraries.first.source_dir
+
+      output_dir = File.join(dir, 'generated')
+      Lynx::Library::Autolink.generate_registry(output_dir, libraries, write_podspec: false)
+      impl = File.read(File.join(output_dir, "#{Lynx::Library::Autolink::REGISTRY_CLASS_NAME}.m"))
+      assert_includes impl, 'withName:@"base-ui"'
+      assert_includes impl, 'withName:@"host-ui"'
+    end
+  end
+
+  # The hook only cares about pods that both carry a lynx.lib.json and are not
+  # the generated registry itself: a plain pod without a manifest is skipped,
+  # and the LynxLibraryRegistry pod is explicitly excluded (it would otherwise
+  # scan its own generated sources).
+  def test_scan_installed_pods_skips_pods_without_manifest_and_registry
+    Dir.mktmpdir do |dir|
+      pod_root, = write_installed_pod(dir, 'DemoScreens', 'demo-screen', 'DemoScreenUI',
+                                      source_subdir: 'src')
+      plain_root = File.join(dir, 'Pods', 'Plain')
+      FileUtils.mkdir_p(plain_root)
+      registry_root = File.join(dir, 'Pods', 'LynxLibraryRegistry')
+      FileUtils.mkdir_p(registry_root)
+
+      specs = [
+        FakeSpec.new('DemoScreens', 'source_files' => 'src/**/*.{h,m}'),
+        FakeSpec.new('Plain', 'source_files' => '*.m'),
+        FakeSpec.new('LynxLibraryRegistry', 'source_files' => '*.m')
+      ]
+      context = build_hook_context({
+        'DemoScreens' => pod_root,
+        'Plain' => plain_root,
+        'LynxLibraryRegistry' => registry_root
+      }, specs)
+
+      libraries = Lynx::Library::Autolink.scan_installed_pods(context, 'Pods-App')
+
+      assert_equal ['DemoScreens'], libraries.map(&:npm_name)
+    end
+  end
+
+  # Only pods belonging to the target that enabled autolink are scanned. A pod
+  # attached to a different umbrella target (Pods-Other) must be ignored when the
+  # hook runs for Pods-App.
+  def test_scan_installed_pods_filters_by_target_label
+    Dir.mktmpdir do |dir|
+      pod_root, = write_installed_pod(dir, 'DemoScreens', 'demo-screen', 'DemoScreenUI',
+                                      source_subdir: 'src')
+      spec = FakeSpec.new('DemoScreens', 'source_files' => 'src/**/*.{h,m}')
+      sandbox = FakeSandbox.new('DemoScreens' => pod_root)
+      context = FakeHookContext.new(sandbox, [FakeUmbrellaTarget.new('Pods-Other', [spec])])
+
+      libraries = Lynx::Library::Autolink.scan_installed_pods(context, 'Pods-App')
+
+      assert_empty libraries
+    end
+  end
+
+  # A component exposed by both a node_modules library and a pods library must be
+  # registered only once: generate_registry deduplicates across sources by
+  # (kind, name, class_name). Also asserts write_podspec: false leaves the
+  # podspec untouched during the hook rewrite.
+  def test_generate_registry_merges_and_deduplicates_across_sources
+    Dir.mktmpdir do |dir|
+      # node_modules library and pods library expose the same component.
+      nm_dir = write_library(dir, 'demo-lib', 'DemoLib')
+      File.write(File.join(nm_dir, 'ios/DupUI.m'), <<~OBJC)
+        @implementation DupUI
+        LYNX_LAZY_REGISTER_UI("dup-ui")
+        @end
+      OBJC
+      nm_libraries = Lynx::Library::Autolink.scan(dir)
+
+      pod_root, = write_installed_pod(dir, 'DemoScreens', 'dup-ui', 'DupUI',
+                                      source_subdir: 'src')
+      spec = FakeSpec.new('DemoScreens', 'source_files' => 'src/**/*.{h,m}')
+      context = build_hook_context({ 'DemoScreens' => pod_root }, [spec])
+      pods_libraries = Lynx::Library::Autolink.scan_installed_pods(context, 'Pods-App')
+
+      output_dir = File.join(dir, 'generated')
+      Lynx::Library::Autolink.generate_registry(output_dir, nm_libraries + pods_libraries,
+                                                write_podspec: false)
+
+      impl = File.read(File.join(output_dir, "#{Lynx::Library::Autolink::REGISTRY_CLASS_NAME}.m"))
+      assert_equal 1, impl.scan('withName:@"dup-ui"').size
+      refute File.exist?(File.join(output_dir, 'LynxLibraryRegistry.podspec'))
+    end
+  end
+
+  # pods mode still reads nodeApiAddons from the manifest. podName defaults
+  # to the resolved pod name (spec.root.name) since podspecPath is ignored in
+  # pods mode. The generated addon-use source must include the addon header
+  # under that pod name and call its register symbol.
+  def test_scan_installed_pods_generates_node_api_addon_use
+    Dir.mktmpdir do |dir|
+      manifest_ios = {
+        'sourceDir' => 'ios',
+        'nodeApiAddons' => [{ 'name' => 'demo_addon' }]
+      }
+      pod_root, = write_installed_pod(dir, 'DemoScreens', 'demo-screen', 'DemoScreenUI',
+                                      source_subdir: 'src', manifest_ios: manifest_ios)
+      spec = FakeSpec.new('DemoScreens', 'source_files' => 'src/**/*.{h,m}')
+      context = build_hook_context({ 'DemoScreens' => pod_root }, [spec])
+      libraries = Lynx::Library::Autolink.scan_installed_pods(context, 'Pods-App')
+
+      addon = libraries.first.node_api_addons.first
+      assert_equal 'demo_addon', addon.name
+      assert_equal 'DemoScreens', addon.pod_name
+
+      output_dir = File.join(dir, 'generated')
+      Lynx::Library::Autolink.generate_registry(output_dir, libraries, write_podspec: false)
+      addon_use = File.read(File.join(output_dir,
+                                      Lynx::Library::Autolink::ADDON_USE_SOURCE_NAME))
+      assert_includes addon_use, '#include <DemoScreens/addon_use.h>'
+      assert_includes addon_use, '_napi_register_xx_demo_addon();'
+    end
+  end
+
   private
 
   class FakePodfile
@@ -397,9 +598,53 @@ class LynxLibraryAutolinkTest < Minitest::Test
       @pods = []
     end
 
-    def pod(name, options)
+    def pod(name, options = {})
       @pods << [name, options]
     end
+  end
+
+  # --- pods source fakes ---------------------------------------------------
+
+  FakeSpec = Struct.new(:name, :attributes_hash) do
+    def root
+      self
+    end
+  end
+
+  FakeUmbrellaTarget = Struct.new(:cocoapods_target_label, :specs)
+
+  class FakeSandbox
+    def initialize(pod_dirs)
+      @pod_dirs = pod_dirs
+    end
+
+    def pod_dir(name)
+      @pod_dirs[name]
+    end
+  end
+
+  FakeHookContext = Struct.new(:sandbox, :umbrella_targets)
+
+  # Write an installed pod layout: pod root holds lynx.lib.json + a source dir
+  # (referenced from source_files) that contains a UI marker.
+  def write_installed_pod(root, pod_name, tag_name, class_name, source_subdir: 'src',
+                          manifest_ios: { 'sourceDir' => 'ios' })
+    pod_root = File.join(root, 'Pods', pod_name)
+    source_dir = File.join(pod_root, source_subdir)
+    FileUtils.mkdir_p(source_dir)
+    File.write(File.join(pod_root, 'lynx.lib.json'),
+               JSON.generate('platforms' => { 'ios' => manifest_ios }))
+    File.write(File.join(source_dir, "#{class_name}.m"), <<~OBJC)
+      @implementation #{class_name}
+      LYNX_LAZY_REGISTER_UI("#{tag_name}")
+      @end
+    OBJC
+    [pod_root, source_dir]
+  end
+
+  def build_hook_context(pod_roots, specs, label: 'Pods-App')
+    sandbox = FakeSandbox.new(pod_roots)
+    FakeHookContext.new(sandbox, [FakeUmbrellaTarget.new(label, specs)])
   end
 
   def write_library(root, npm_name, pod_name)
