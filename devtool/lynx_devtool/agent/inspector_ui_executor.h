@@ -104,6 +104,9 @@ class InspectorUIExecutor
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
 
  private:
+  bool EnsureUITreeEnabled(const std::shared_ptr<MessageSender>& sender,
+                           const Json::Value& message) const;
+
   bool uitree_enabled_;
   bool uitree_use_compression_;
   int uitree_compression_threshold_;

@@ -34,6 +34,7 @@ InspectorUIExecutor::InspectorUIExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : shell_(nullptr),
       devtool_mediator_wp_(devtool_mediator),
+      uitree_enabled_(false),
       uitree_use_compression_(false),
       uitree_compression_threshold_(10240) {}
 
@@ -309,10 +310,24 @@ void InspectorUIExecutor::UITree_Disable(
   sender->SendMessage("CDP", response);
 }
 
+bool InspectorUIExecutor::EnsureUITreeEnabled(
+    const std::shared_ptr<MessageSender>& sender,
+    const Json::Value& message) const {
+  if (uitree_enabled_) {
+    return true;
+  }
+  if (message.isMember("id")) {
+    sender->SendErrorResponse(message["id"].asInt64(), "UITree is not enabled");
+  }
+  return false;
+}
+
 void InspectorUIExecutor::GetLynxUITree(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (!uitree_enabled_) return;
+  if (!EnsureUITreeEnabled(sender, message)) {
+    return;
+  }
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content = Json::Value(Json::ValueType::objectValue);
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
@@ -350,7 +365,9 @@ void InspectorUIExecutor::GetLynxUITree(
 void InspectorUIExecutor::GetUIInfoForNode(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (!uitree_enabled_) return;
+  if (!EnsureUITreeEnabled(sender, message)) {
+    return;
+  }
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content = Json::Value(Json::ValueType::objectValue);
   Json::Value params = message["params"];
@@ -373,7 +390,9 @@ void InspectorUIExecutor::GetUIInfoForNode(
 void InspectorUIExecutor::SetUIStyle(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  if (!uitree_enabled_) return;
+  if (!EnsureUITreeEnabled(sender, message)) {
+    return;
+  }
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content(Json::ValueType::objectValue);
   Json::Value params = message["params"];
