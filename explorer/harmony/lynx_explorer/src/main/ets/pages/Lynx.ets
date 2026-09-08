@@ -33,6 +33,7 @@ import { ExampleGenericResourceFetcher } from '../provider/ExampleGenericResourc
 import { ExampleMediaResourceFetcher } from '../provider/ExampleMediaResourceFetcher';
 import { ExampleTemplateResourceFetcher } from '../provider/ExampleTemplateResourceFetcher';
 import { ExplorerModule } from '../module/ExplorerModule';
+import { LynxTestButton, LynxTestModule, LynxTestModuleHost } from '../module/LynxTestModule';
 import { LynxNodeAPIModule, LynxNodeAPIToken } from '../module/LynxNodeAPIModule';
 
 const TAG = 'LynxPage'
@@ -77,8 +78,22 @@ struct Lynx {
   private nodeAPIToken: LynxNodeAPIToken = new LynxNodeAPIToken();
   private backgroundRuntime?: LynxBackgroundRuntime;
   private enableNapiAddon: boolean = false;
-  
+
+  @State testButtons: LynxTestButton[] = [];
+  private nextTestButtonId: number = 0;
+  private routeIndex: number = 0;
+  private testModuleHost: LynxTestModuleHost = new LynxTestModuleHost((info) => {
+    this.testButtons = this.testButtons.concat(new LynxTestButton(this.nextTestButtonId++, info));
+  }, () => {
+    if (router.getState().index === this.routeIndex) {
+      router.back();
+    }
+  });
+
   aboutToAppear() {
+    this.routeIndex = router.getState().index;
+    this.testModuleHost.active = true;
+    this.modules.set('LynxTestModule', { moduleClass: LynxTestModule, param: this.testModuleHost });
     this.modules.set('ExplorerModule', {
       moduleClass: ExplorerModule,
       param: getContext(this) as common.UIAbilityContext
@@ -127,6 +142,11 @@ struct Lynx {
     this.tryPrepareBackgroundRuntime();
   }
 
+  aboutToDisappear(): void {
+    this.testModuleHost.active = false;
+    this.testButtons = [];
+  }
+
   private tryPrepareBackgroundRuntime(): void {
     if (!this.enableNapiAddon) {
       return;
@@ -134,35 +154,51 @@ struct Lynx {
     let group: LynxGroup = LynxGroup.createSharedLynxGroup();
     let options: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
     options.lynxGroup = group;
+    // Keep the page-context test module out of the unattached addon runtime.
+    const backgroundModules: Map<string, ModuleClassWrapper> = new Map();
+    backgroundModules.set('ExplorerModule', {
+      moduleClass: ExplorerModule, param: getContext(this) as common.UIAbilityContext
+    });
     this.backgroundRuntime = new LynxBackgroundRuntime(options, this.genericFetcher,
-      this.mediaFetcher, this.templateFetcher, this.modules, this.sendableModules, this.metaData);
+      this.mediaFetcher, this.templateFetcher, backgroundModules, this.sendableModules, this.metaData);
   }
 
   build() {
     Column() {
       Text('Lynx').fontSize(18).width('100%').height('5%').textAlign(TextAlign.Center)
 
-      LynxView({
-        clients: this.clients,
-        url: this.url,
-        genericResourceFetcher: this.genericFetcher,
-        mediaResourceFetcher: this.mediaFetcher,
-        templateResourceFetcher: this.templateFetcher,
-        backgroundRuntime: this.backgroundRuntime,
-        modules: this.modules,
-        sendableModules: this.sendableModules,
-        behaviors: this.behaviors,
-        metaData: this.metaData,
-        onCreate: (context: LynxContext) => {
-          let param: Param = new Param(this.url);
-          context.sendGlobalEvent('viewAppear', [param]);
-          if (this.widthPixel > 0 && this.heightPixel > 0) {
-            context.updateScreenMetrics(this.widthPixel * this.viewDensity / TEST_DENSITY,
-              this.heightPixel * this.viewDensity / TEST_DENSITY);
+      Stack({ alignContent: Alignment.TopStart }) {
+        LynxView({
+          clients: this.clients,
+          url: this.url,
+          genericResourceFetcher: this.genericFetcher,
+          mediaResourceFetcher: this.mediaFetcher,
+          templateResourceFetcher: this.templateFetcher,
+          backgroundRuntime: this.backgroundRuntime,
+          modules: this.modules,
+          sendableModules: this.sendableModules,
+          behaviors: this.behaviors,
+          metaData: this.metaData,
+          onCreate: (context: LynxContext) => {
+            let param: Param = new Param(this.url);
+            context.sendGlobalEvent('viewAppear', [param]);
+            if (this.widthPixel > 0 && this.heightPixel > 0) {
+              context.updateScreenMetrics(this.widthPixel * this.viewDensity / TEST_DENSITY,
+                this.heightPixel * this.viewDensity / TEST_DENSITY);
+            }
+            context.setExtraTiming(this.extraTiming);
           }
-          context.setExtraTiming(this.extraTiming);
-        }
-      }).height(this.viewHeight).width(this.viewWidth)
+        }).height('100%').width('100%')
+        ForEach(this.testButtons, (button: LynxTestButton) => {
+          Button(button.count.toString())
+            .fontSize(button.fontSize)
+            .position({ x: button.left, y: button.top })
+            .onClick(() => {
+              button.count++;
+              this.testButtons = this.testButtons.slice();
+            })
+        }, (button: LynxTestButton) => `${button.id}:${button.count}`)
+      }.height(this.viewHeight).width(this.viewWidth)
     }.size({ width: '100%', height: '100%' }).alignItems(HorizontalAlign.Start)
   }
 }
