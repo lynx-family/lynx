@@ -13,6 +13,7 @@
 		2B382D772D17B86300C67770 /* LynxInitProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D762D17B86300C67770 /* LynxInitProcessor.m */; };
 		2B382D7A2D17BBAD00C67770 /* TemplateProvider.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D792D17BBAD00C67770 /* TemplateProvider.m */; };
 		2B382D7E2D17BD1500C67770 /* ExplorerModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D7D2D17BD1500C67770 /* ExplorerModule.m */; };
+		C0DE00000000000000000030 /* ExplorerLynxTestModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000031 /* ExplorerLynxTestModule.m */; };
 		2B382D812D17BDC500C67770 /* UIHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D802D17BDC500C67770 /* UIHelper.m */; };
 		2B382D862D17C06D00C67770 /* ScanViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D852D17C06D00C67770 /* ScanViewController.m */; };
 		2B45A78F2E12870D00EA5D14 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2B45A78E2E12870D00EA5D14 /* AVFoundation.framework */; };
@@ -78,6 +79,8 @@
 		2B382D792D17BBAD00C67770 /* TemplateProvider.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TemplateProvider.m; sourceTree = "<group>"; };
 		2B382D7C2D17BD1500C67770 /* ExplorerModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExplorerModule.h; sourceTree = "<group>"; };
 		2B382D7D2D17BD1500C67770 /* ExplorerModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ExplorerModule.m; sourceTree = "<group>"; };
+		C0DE00000000000000000032 /* ExplorerLynxTestModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExplorerLynxTestModule.h; sourceTree = "<group>"; };
+		C0DE00000000000000000031 /* ExplorerLynxTestModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ExplorerLynxTestModule.m; sourceTree = "<group>"; };
 		2B382D7F2D17BDC500C67770 /* UIHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIHelper.h; sourceTree = "<group>"; };
 		2B382D802D17BDC500C67770 /* UIHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIHelper.m; sourceTree = "<group>"; };
 		2B382D842D17C06D00C67770 /* ScanViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ScanViewController.h; sourceTree = "<group>"; };
@@ -194,6 +197,8 @@
 		2B382D7B2D17BCDC00C67770 /* modules */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE00000000000000000032 /* ExplorerLynxTestModule.h */,
+				C0DE00000000000000000031 /* ExplorerLynxTestModule.m */,
 				2BB78AD12D1D18FA00060E1C /* LynxSettingManager.h */,
 				2BB78AD22D1D18FA00060E1C /* LynxSettingManager.m */,
 				2B382D7C2D17BD1500C67770 /* ExplorerModule.h */,
@@ -552,6 +557,7 @@
 				2B590A492D635BEB0041DE80 /* DemoMeidaResourceFetcher.m in Sources */,
 				2B948FB32C2D9FDC00535C96 /* main.m in Sources */,
 				2B382D7E2D17BD1500C67770 /* ExplorerModule.m in Sources */,
+				C0DE00000000000000000030 /* ExplorerLynxTestModule.m in Sources */,
 				2B2AA43D2CA14AC200DB0C3E /* TasmDispatcher.m in Sources */,
 				2B382D772D17B86300C67770 /* LynxInitProcessor.m in Sources */,
 				7B50D0B31E2C18D34E941800 /* SPKServiceRegistrar.swift in Sources */,
