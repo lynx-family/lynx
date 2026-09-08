@@ -5,12 +5,13 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxBaseInspectorOwnerNG.h>
+#import <Lynx/LynxNetworkRequestObserver.h>
 
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxDevToolNGDarwinDelegate : NSObject
+@interface LynxDevToolNGDarwinDelegate : NSObject <LynxNetworkRequestObserver>
 - (instancetype)initWithDebuggable:(BOOL)debuggable;
 
 - (int)getSessionId;

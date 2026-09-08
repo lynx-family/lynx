@@ -6,9 +6,14 @@
 #import <LynxDevtool/LynxDevToolNGDarwinDelegate.h>
 #include <cstddef>
 
+#include <map>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "devtool/base_devtool/native/public/message_sender.h"
+#include "devtool/lynx_devtool/agent/network_request_observer.h"
 #include "devtool/lynx_devtool/js_debug/lepus/manager/rts_inspector_manager_factory.h"
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
@@ -68,6 +73,42 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
 }  // namespace devtool
 }  // namespace lynx
 
+namespace {
+
+std::string ConvertNSString(NSString* value) {
+  if (value == nil) {
+    return {};
+  }
+  const char* utf8_value = value.UTF8String;
+  return utf8_value != nullptr ? std::string(utf8_value) : std::string();
+}
+
+std::map<std::string, std::string> ConvertHeaders(NSDictionary* headers) {
+  std::map<std::string, std::string> result;
+  for (id key in headers) {
+    id value = headers[key];
+    NSString* key_string = [key isKindOfClass:NSString.class] ? key : [key description];
+    NSString* value_string = [value isKindOfClass:NSString.class] ? value : [value description];
+    result.emplace(ConvertNSString(key_string), ConvertNSString(value_string));
+  }
+  return result;
+}
+
+std::vector<uint8_t> ConvertNSData(NSData* data) {
+  if (data.length == 0) {
+    return {};
+  }
+  const auto* bytes = static_cast<const uint8_t*>(data.bytes);
+  return std::vector<uint8_t>(bytes, bytes + data.length);
+}
+
+std::shared_ptr<lynx::devtool::NetworkRequestObserver> GetNetworkObserver(
+    const std::shared_ptr<lynx::devtool::LynxDevToolNG>& devtool) {
+  return devtool != nullptr ? devtool->GetNetworkRequestObserver().lock() : nullptr;
+}
+
+}  // namespace
+
 @implementation LynxDevToolNGDarwinDelegate {
   int session_id_;
   std::shared_ptr<lynx::devtool::LynxDevToolNG> devtool_ng_;
@@ -92,6 +133,72 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
 
 - (bool)isAttachToDebugRouter {
   return session_id_ != 0;
+}
+
+- (BOOL)isEnabled {
+  auto observer = GetNetworkObserver(devtool_ng_);
+  return observer != nullptr && observer->IsEnabled();
+}
+
+- (NSString*)requestWillBeSent:(nullable NSString*)url
+                        method:(nullable NSString*)method
+                       headers:(nullable NSDictionary*)headers
+                          body:(nullable NSData*)body {
+  auto observer = GetNetworkObserver(devtool_ng_);
+  if (observer == nullptr || !observer->IsEnabled()) {
+    return @"";
+  }
+  lynx::devtool::NetworkRequestInfo request;
+  request.url = ConvertNSString(url);
+  request.method = ConvertNSString(method);
+  request.headers = ConvertHeaders(headers);
+  request.body = ConvertNSData(body);
+  const std::string request_id = observer->RequestWillBeSent(std::move(request));
+  return [NSString stringWithUTF8String:request_id.c_str()];
+}
+
+- (void)responseReceived:(NSString*)requestId
+                     url:(nullable NSString*)url
+                  status:(NSInteger)status
+              statusText:(nullable NSString*)statusText
+                 headers:(nullable NSDictionary*)headers {
+  auto observer = GetNetworkObserver(devtool_ng_);
+  if (observer == nullptr || !observer->IsEnabled()) {
+    return;
+  }
+  lynx::devtool::NetworkResponseInfo response;
+  response.url = ConvertNSString(url);
+  response.status = static_cast<int>(status);
+  response.status_text = ConvertNSString(statusText);
+  response.headers = ConvertHeaders(headers);
+  observer->ResponseReceived(ConvertNSString(requestId), std::move(response));
+}
+
+- (void)dataReceived:(NSString*)requestId data:(nullable NSData*)data {
+  auto observer = GetNetworkObserver(devtool_ng_);
+  if (observer == nullptr || !observer->IsEnabled()) {
+    return;
+  }
+  observer->DataReceived(ConvertNSString(requestId), ConvertNSData(data));
+}
+
+- (void)loadingFinished:(NSString*)requestId {
+  auto observer = GetNetworkObserver(devtool_ng_);
+  if (observer == nullptr || !observer->IsEnabled()) {
+    return;
+  }
+  observer->LoadingFinished(ConvertNSString(requestId));
+}
+
+- (void)loadingFailed:(NSString*)requestId
+            errorText:(nullable NSString*)errorText
+             canceled:(BOOL)canceled {
+  auto observer = GetNetworkObserver(devtool_ng_);
+  if (observer == nullptr || !observer->IsEnabled()) {
+    return;
+  }
+  observer->LoadingFailed(ConvertNSString(requestId), ConvertNSString(errorText),
+                          static_cast<bool>(canceled));
 }
 
 - (void)onBackgroundRuntimeCreated:(LynxBackgroundRuntime*)runtime
