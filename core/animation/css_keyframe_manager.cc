@@ -733,6 +733,11 @@ void CSSKeyframeManager::PrepareAnimationRemoval(
     const std::shared_ptr<Animation>& animation,
     const tasm::StyleMap* new_base_resolved_styles,
     const tasm::StyleMap* new_underlying_layout_only_styles) {
+  if (animation != nullptr) {
+    // This path does not call Destroy(). Retire the Inspector record even for
+    // finished animations, which do not dispatch a page cancel event.
+    animation->NotifyInspectorCanceled();
+  }
   ClearAnimationEffects(animation, new_base_resolved_styles,
                         new_underlying_layout_only_styles);
   QueueCancelEvent(animation);
@@ -804,6 +809,10 @@ std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
         << data.name.str());
     return nullptr;
   }
+  // Notify the Inspector that a new animation was created (with its final
+  // origin already set). Fired after the validity check so invalid animations
+  // are never reported.
+  animation->NotifyInspectorCreated();
   return animation;
 }
 
