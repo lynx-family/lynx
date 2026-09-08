@@ -18,6 +18,7 @@
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/animation/testing/mock_css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/inspector/observer/inspector_animation_observer.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/measure_context.h"
 #include "core/renderer/dom/element.h"
@@ -746,6 +747,68 @@ TEST_F(CSSTransitionManagerTest,
                                   1.f, tasm::kPropertyIDOpacity);
   ASSERT_NE(nullptr, opacity_end);
   EXPECT_EQ(*opacity_end, tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
+}
+
+TEST_F(CSSTransitionManagerTest,
+       NewPipelineReplacementAndRemovalNotifyInspector) {
+  if (!ENABLE_INSPECTOR) {
+    GTEST_SKIP() << "Inspector is disabled";
+  }
+
+  class RecordingObserver : public InspectorAnimationObserver {
+   public:
+    void OnAnimationCanceled(animation::Animation* animation) override {
+      canceled.push_back(animation->id());
+    }
+    base::Vector<int64_t> canceled;
+  };
+  auto observer = std::make_shared<RecordingObserver>();
+  manager->SetInspectorAnimationObserver(observer);
+  auto test_element = InitElement();
+  auto test_manager = InitTestTransitionManager(test_element.get());
+  starlight::ComputedCSSStyle previous_base{1.f, 1.f};
+  starlight::ComputedCSSStyle previous_final{1.f, 1.f};
+  starlight::ComputedCSSStyle next_base{1.f, 1.f};
+  SetTransitionProperties(next_base,
+                          {starlight::AnimationPropertyType::kOpacity});
+  previous_base.SetValue(kPropertyIDOpacity,
+                         CSSValue(0.2, CSSValuePattern::NUMBER));
+  previous_final.SetValue(kPropertyIDOpacity,
+                          CSSValue(0.2, CSSValuePattern::NUMBER));
+  next_base.SetValue(kPropertyIDOpacity,
+                     CSSValue(0.8, CSSValuePattern::NUMBER));
+  StyleMap empty_styles;
+  auto sync = [&]() {
+    test_manager->UpdateTransitionsForNewPipeline(
+        previous_base, previous_final, next_base, empty_styles, empty_styles);
+  };
+  sync();
+  const auto first_id =
+      test_manager->animations_map().at(base::String("opacity"))->id();
+  EXPECT_TRUE(observer->canceled.empty());
+  previous_base.SetValue(kPropertyIDOpacity,
+                         CSSValue(0.8, CSSValuePattern::NUMBER));
+  previous_final.SetValue(kPropertyIDOpacity,
+                          CSSValue(0.4, CSSValuePattern::NUMBER));
+  next_base.SetValue(kPropertyIDOpacity,
+                     CSSValue(1.0, CSSValuePattern::NUMBER));
+  sync();
+  const auto second_id =
+      test_manager->animations_map().at(base::String("opacity"))->id();
+  EXPECT_NE(first_id, second_id);
+  ASSERT_EQ(1U, observer->canceled.size());
+  EXPECT_EQ(first_id, observer->canceled[0]);
+  next_base.transition_data().clear();
+  sync();
+  EXPECT_TRUE(test_manager->animations_map().empty());
+  ASSERT_EQ(2U, observer->canceled.size());
+  EXPECT_EQ(second_id, observer->canceled[1]);
+  auto events = test_manager->TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(2U, events.size());
+  EXPECT_TRUE(events[0].send_cancel_event);
+  EXPECT_TRUE(events[1].send_cancel_event);
+  test_element->DispatchAnimationEventsForNewPipeline(events);
+  EXPECT_EQ(2U, observer->canceled.size());
 }
 
 TEST_F(CSSTransitionManagerTest,

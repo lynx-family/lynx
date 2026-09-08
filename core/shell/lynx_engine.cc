@@ -830,6 +830,13 @@ void LynxEngine::SetInspectorElementObserver(
       inspector_element_observer);
 }
 
+void LynxEngine::SetInspectorAnimationObserver(
+    const std::shared_ptr<tasm::InspectorAnimationObserver>&
+        inspector_animation_observer) {
+  tasm_->page_proxy()->element_manager()->SetInspectorAnimationObserver(
+      inspector_animation_observer);
+}
+
 void LynxEngine::CallLepusMethod(const std::string& method_name,
                                  lepus::Value args,
                                  const runtime::js::ApiCallBack& callback) {

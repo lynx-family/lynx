@@ -16,6 +16,7 @@
 #include "core/animation/testing/mock_css_keyframe_manager.h"
 #include "core/animation/transform_animation_curve.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/inspector/observer/inspector_animation_observer.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -818,6 +819,176 @@ TEST_F(CSSKeyframeManagerTest,
   auto cancel_events = test_manager->TakePendingAnimationEventsForNewPipeline();
   ASSERT_EQ(1U, cancel_events.size());
   EXPECT_TRUE(cancel_events[0].send_cancel_event);
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       PausedSeekKeepsRequestedStyleAcrossDummyAndRealSamples) {
+  for (bool has_previous_sample : {false, true}) {
+    SCOPED_TRACE(has_previous_sample);
+    auto test_element = InitElement();
+    UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0, 1);
+    auto test_manager = InitTestKeyframeManager(test_element.get());
+    base::Vector<starlight::AnimationData> animation_data;
+    animation_data.emplace_back(InitAnimationData(
+        base::String("test"), 1000, 0, starlight::TimingFunctionData(), 1,
+        starlight::AnimationFillModeType::kBoth,
+        starlight::AnimationDirectionType::kNormal,
+        starlight::AnimationPlayStateType::kRunning));
+    test_manager->SyncAnimationDataForNewPipeline(animation_data);
+    auto animation = test_manager->animations_map().at(base::String("test"));
+    if (has_previous_sample) {
+      auto start_time = TimePointFromMs(1000);
+      test_manager->CollectAnimationUpdatesForNewPipeline(start_time);
+      auto mid_time = TimePointFromMs(1500);
+      test_manager->CollectAnimationUpdatesForNewPipeline(mid_time);
+    }
+    test_manager->TakePendingAnimationEventsForNewPipeline();
+    animation->Pause();
+
+    // Check both a first seek and a later seek with a populated sample cache.
+    for (int requested_ms : {750, 250}) {
+      SCOPED_TRACE(requested_ms);
+      const auto reference_time = TimePointFromMs(5000);
+      const auto requested_time =
+          fml::TimeDelta::FromMilliseconds(requested_ms);
+      animation->SeekTo(requested_time, reference_time);
+      for (auto sample_time :
+           {animation::Animation::GetAnimationDummyStartTime(),
+            animation::Animation::GetAnimationDummyStartTime(),
+            TimePointFromMs(8000)}) {
+        auto sample =
+            test_manager->CollectAnimationUpdatesForNewPipeline(sample_time);
+        const auto* opacity = FindSampledStyle(sample, kPropertyIDOpacity);
+        ASSERT_NE(nullptr, opacity);
+        EXPECT_NEAR(requested_ms / 1000.0, opacity->AsNumber(), 0.001);
+        EXPECT_EQ(reference_time, animation->pause_time());
+        EXPECT_EQ(requested_time, animation->GetCurrentTime());
+        EXPECT_EQ(animation::Animation::State::kPause, animation->GetState());
+        EXPECT_TRUE(
+            test_manager->TakePendingAnimationEventsForNewPipeline().empty());
+      }
+    }
+  }
+}
+
+TEST_F(CSSKeyframeManagerTest, CSSResumeNotifiesInspectorInBothPipelines) {
+  if (!ENABLE_INSPECTOR) {
+    GTEST_SKIP() << "Inspector is disabled";
+  }
+
+  class RecordingObserver : public InspectorAnimationObserver {
+   public:
+    void OnAnimationUpdated(animation::Animation* animation) override {
+      states.push_back(animation->GetState());
+    }
+    base::Vector<animation::Animation::State> states;
+  };
+  for (bool new_pipeline : {false, true}) {
+    SCOPED_TRACE(new_pipeline);
+    auto observer = std::make_shared<RecordingObserver>();
+    manager->SetInspectorAnimationObserver(observer);
+    auto test_element = InitElement();
+    UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0, 1);
+    auto test_manager = InitTestKeyframeManager(test_element.get());
+    base::Vector<starlight::AnimationData> data;
+    data.emplace_back(InitAnimationData(
+        base::String("test"), 1000, 0, starlight::TimingFunctionData(), -1,
+        starlight::AnimationFillModeType::kBoth,
+        starlight::AnimationDirectionType::kNormal,
+        starlight::AnimationPlayStateType::kRunning));
+    auto sync = [&]() {
+      if (new_pipeline) {
+        test_manager->SyncAnimationDataForNewPipeline(data);
+      } else {
+        test_manager->SetAnimationDataAndPlay(data);
+      }
+    };
+    sync();
+    EXPECT_TRUE(observer->states.empty());
+    data[0].play_state = starlight::AnimationPlayStateType::kPaused;
+    sync();
+    data[0].play_state = starlight::AnimationPlayStateType::kRunning;
+    sync();
+    sync();
+    ASSERT_EQ(2U, observer->states.size());
+    EXPECT_EQ(animation::Animation::State::kPause, observer->states[0]);
+    EXPECT_EQ(animation::Animation::State::kPlay, observer->states[1]);
+  }
+}
+
+TEST_F(
+    CSSKeyframeManagerTest,
+    NewPipelineRemovalAndRebuildNotifyInspectorForRunningAndFinishedAnimations) {
+  if (!ENABLE_INSPECTOR) {
+    GTEST_SKIP() << "Inspector is disabled";
+  }
+
+  class RecordingObserver : public InspectorAnimationObserver {
+   public:
+    void OnAnimationCreated(animation::Animation* animation) override {
+      created.push_back(animation->id());
+    }
+    void OnAnimationCanceled(animation::Animation* animation) override {
+      canceled.push_back(animation->id());
+    }
+    base::Vector<int64_t> created;
+    base::Vector<int64_t> canceled;
+  };
+
+  for (bool finished : {false, true}) {
+    for (bool rebuild : {false, true}) {
+      SCOPED_TRACE(finished);
+      SCOPED_TRACE(rebuild);
+      auto observer = std::make_shared<RecordingObserver>();
+      manager->SetInspectorAnimationObserver(observer);
+      auto test_element = InitElement();
+      UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0, 1);
+      auto test_manager = InitTestKeyframeManager(test_element.get());
+      base::Vector<starlight::AnimationData> animation_data;
+      animation_data.emplace_back(InitAnimationData(
+          base::String("test"), 1000, 0, starlight::TimingFunctionData(), 1,
+          starlight::AnimationFillModeType::kBoth,
+          starlight::AnimationDirectionType::kNormal,
+          starlight::AnimationPlayStateType::kRunning));
+      test_manager->SyncAnimationDataForNewPipeline(animation_data);
+      ASSERT_EQ(1U, observer->created.size());
+      const auto old_id = observer->created[0];
+      auto start_time = TimePointFromMs(1000);
+      test_manager->CollectAnimationUpdatesForNewPipeline(start_time);
+      if (finished) {
+        auto end_time = TimePointFromMs(2500);
+        test_manager->CollectAnimationUpdatesForNewPipeline(end_time);
+        ASSERT_EQ(animation::Animation::State::kStop,
+                  test_manager->animations_map()
+                      .at(base::String("test"))
+                      ->GetState());
+      }
+      test_manager->TakePendingAnimationEventsForNewPipeline();
+      EXPECT_TRUE(observer->canceled.empty());
+
+      if (rebuild) {
+        test_manager->SyncAnimationDataForNewPipeline(animation_data, true);
+        ASSERT_EQ(2U, observer->created.size());
+        EXPECT_NE(old_id, observer->created[1]);
+      } else {
+        base::Vector<starlight::AnimationData> empty_data;
+        test_manager->SyncAnimationDataForNewPipeline(empty_data);
+        EXPECT_TRUE(test_manager->animations_map().empty());
+        EXPECT_EQ(1U, observer->created.size());
+      }
+      ASSERT_EQ(1U, observer->canceled.size());
+      EXPECT_EQ(old_id, observer->canceled[0]);
+
+      // Inspector removal is independent of page cancel event eligibility.
+      auto events = test_manager->TakePendingAnimationEventsForNewPipeline();
+      ASSERT_EQ(finished ? 0U : 1U, events.size());
+      if (!finished) {
+        EXPECT_TRUE(events[0].send_cancel_event);
+      }
+      test_element->DispatchAnimationEventsForNewPipeline(events);
+      EXPECT_EQ(1U, observer->canceled.size());
+    }
+  }
 }
 
 TEST_F(CSSKeyframeManagerTest,

@@ -822,6 +822,8 @@ void CSSTransitionManager::PrepareTransitionRemovalCleanup(
   if (animation == nullptr) {
     return;
   }
+  // New-pipeline removal bypasses Destroy(), including when replacing a target.
+  animation->NotifyInspectorCanceled();
   animation->ClearTransitionPreviousEndValue();
   QueueCancelEvent(animation);
 }

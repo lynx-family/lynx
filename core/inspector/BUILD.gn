@@ -8,6 +8,7 @@ import("../Lynx.gni")
 inspector_shared_sources = [
   "console_message_postman.h",
   "lepus_inspector_manager.h",
+  "observer/inspector_animation_observer.h",
   "observer/inspector_common_observer.h",
   "observer/inspector_element_observer.h",
   "observer/inspector_lepus_observer.h",
