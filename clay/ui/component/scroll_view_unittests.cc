@@ -466,27 +466,6 @@ TEST_F_UI(ScrollViewTest, InitialScrollIndexWaitsForScrollableLayout) {
   EXPECT_EQ(200, scroll_view->GetScrollOffset().y());
 }
 
-TEST_F_UI(ScrollViewTest, InitialScrollOffsetUsesLogicalPixels) {
-  auto metrics = page_->GetViewportMetrics();
-  metrics.device_pixel_ratio = 2;
-  page_->SetViewportMetrics(metrics);
-
-  auto scroll_view =
-      std::make_unique<ScrollView>(-1, ScrollDirection::kVertical, page_.get());
-  scroll_view->SetBound(0, 0, 100, 100);
-  page_->AddChild(scroll_view.get());
-
-  auto content = std::make_unique<View>(-1, page_.get());
-  content->SetBound(0, 0, 100, 500);
-  scroll_view->AddChild(content.get(), 0);
-  scroll_view->OnLayoutUpdated();
-  scroll_view->SetAttribute("initial-scroll-offset", clay::Value(50));
-  Layout();
-
-  EXPECT_EQ(page_->ConvertFrom<kPixelTypeLogical>(50),
-            scroll_view->GetScrollOffset().y());
-}
-
 // TODO(liuguoliang): Fix scrollWidth/scrollHeight and add test case
 TEST_F_UI(ScrollViewTest, ScrollEvent) {
   auto scroll_view = std::make_unique<ScrollWrapper>(

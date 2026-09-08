@@ -371,7 +371,7 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
       }
     }
   } else if (kw == KeywordID::kInitialScrollOffset) {
-    int offset = FromLogical(attribute_utils::GetNum(value));
+    int offset = attribute_utils::GetNum(value);
     if (!initial_scroll_offset_set_ && offset >= 0) {
       initial_scroll_offset_set_ = true;
       if (CanInvokeScrollImmediately()) {
