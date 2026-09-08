@@ -8,7 +8,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
-import com.lynx.explorer.shell.TemplateDispatcher;
+import com.lynx.explorer.routes.RouteCoordinator;
 
 public class DebugBridgeActivity extends AppCompatActivity {
   private static final String TAG = "DebugBridgeActivity";
@@ -24,8 +24,8 @@ public class DebugBridgeActivity extends AppCompatActivity {
       String targetUrl = data.getQueryParameter("url");
       if (targetUrl != null && !targetUrl.isEmpty()) {
         Log.d(TAG, "Opening URL via lynx://open: " + targetUrl);
-        TemplateDispatcher.dispatchUrl(
-            this, targetUrl, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        RouteCoordinator.open(
+            this, targetUrl, false, Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         finish();
         return;
       }
