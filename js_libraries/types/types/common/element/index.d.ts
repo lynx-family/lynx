@@ -21,6 +21,7 @@ export * from './scroll-coordinator';
 export * from './viewpager';
 export * from './blur-view';
 export * from './webview';
+export * from './transfer-view';
 export * from './markdown';
 export * from './video';
 export * from './element';

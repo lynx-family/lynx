@@ -32,6 +32,7 @@ import { RefreshProps, RefreshUIMethods } from './refresh';
 import { ViewPagerItemProps, ViewPagerProps, ViewPagerUIMethods } from './viewpager';
 import { BlurViewProps } from './blur-view';
 import { WebviewProps, WebviewUIMethods } from './webview';
+import { TransferViewProps } from './transfer-view';
 import { MarkdownProps, MarkdownUIMethods } from './markdown';
 import { VideoProps, VideoUIMethods } from './video';
 
@@ -338,6 +339,7 @@ export interface IntrinsicElements {
    * @compatOverride method takeScreenshot ClayAndroid=false ClayIOS=false ClayMacOS=false ClayWindows=false ClayHarmony=false
    */
   'webview': WebviewProps;
+  'transfer-view': TransferViewProps;
   /**
    * @compatOverride method boundingClientRect Android=2.15 iOS=1.0 Web=false ClayAndroid=2.15 ClayIOS=4.0 ClayMacOS=4.0 ClayWindows=4.0 ClayHarmony=4.0
    * @compatOverride method requestAccessibilityFocus Android=2.15
@@ -390,6 +392,7 @@ declare module 'react' {
       'viewpager-item': ViewPagerItemProps;
       'blur-view': BlurViewProps;
       'webview': WebviewProps;
+      'transfer-view': TransferViewProps;
       'markdown': MarkdownProps;
       'video': VideoProps;
     }
