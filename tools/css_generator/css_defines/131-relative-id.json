@@ -11,7 +11,7 @@
     "relative-id": {
       "__compat": {
         "description": "Used to set the number of sibling elements in the relative layout.",
-        "lynx_path": "docs/zh/api/css/properties/relative-id",
+        "lynx_path": "api/css/properties/relative-id",
         "spec_url": [],
         "status": {
           "deprecated": false,

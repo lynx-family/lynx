@@ -11,7 +11,7 @@
     "relative-layout-once": {
       "__compat": {
         "description": "Used to set typesetting acceleration. When using positioning between elements at the same level, it is recommended to enable this property, and elements at the same level will only depend upwards.",
-        "lynx_path": "docs/zh/api/css/properties/relative-layout-once",
+        "lynx_path": "api/css/properties/relative-layout-once",
         "spec_url": [],
         "status": {
           "deprecated": false,

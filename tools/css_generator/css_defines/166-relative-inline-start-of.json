@@ -11,7 +11,7 @@
     "relative-inline-start-of": {
       "__compat": {
         "description": "The current element is to the left/right of the sibling element corresponding to the specified id.",
-        "lynx_path": "docs/zh/api/css/properties/relative-inline-start-of",
+        "lynx_path": "api/css/properties/relative-inline-start-of",
         "spec_url": [],
         "status": {
           "deprecated": false,
