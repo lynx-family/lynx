@@ -158,6 +158,8 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
   // clay::RenderDelegate
   void ScheduleFrame() override;
   void ForceBeginFrame() override;
+
+  void ForceBeginFrame(fml::closure no_update_callback);
   void OnFirstMeaningfulLayout() override;
   bool Raster(std::unique_ptr<clay::LayerTree> layer_tree,
               std::unique_ptr<clay::FrameTimingsRecorder> recorder = nullptr,
