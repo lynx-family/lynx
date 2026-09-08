@@ -28,9 +28,9 @@ namespace clay {
 
 ResourceLoaderCommon::ResourceLoaderCommon(
     std::shared_ptr<ResourceLoaderIntercept> intercept,
-    fml::RefPtr<fml::TaskRunner> callback_task_runner)
+    fml::RefPtr<fml::TaskRunner> task_runner)
     : resource_loader_intercept_(intercept),
-      callback_task_runner_(std::move(callback_task_runner)) {}
+      ui_task_runner_(std::move(task_runner)) {}
 
 ResourceLoaderCommon::~ResourceLoaderCommon() = default;
 
@@ -40,15 +40,13 @@ void ResourceLoaderCommon::Load(
     const ResourceType resource_type, bool need_redirect) {
   std::weak_ptr<ResourceLoaderCommon> weak_ref = shared_from_this();
   Isolate::Instance().GetIOTaskRunner()->PostTask(
-      [weak_ref, src, callback, need_redirect,
-       callback_task_runner = callback_task_runner_,
+      [weak_ref, src, callback, need_redirect, task_runner = ui_task_runner_,
        intercept = resource_loader_intercept_]() {
         auto self = weak_ref.lock();
         if (!self) {
           FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
           if (callback) {
-            callback_task_runner->PostTask(
-                [callback]() { callback(nullptr, 0); });
+            task_runner->PostTask([callback]() { callback(nullptr, 0); });
           }
           return;
         }
@@ -56,67 +54,66 @@ void ResourceLoaderCommon::Load(
         if (need_redirect && intercept) {
           intercept_url = intercept->ShouldInterceptUrl(src, false);
         }
-        self->RealLoad(weak_ref, callback_task_runner, intercept_url, callback);
+        self->RealLoad(weak_ref, task_runner, intercept_url, callback);
       });
 }
 
 void ResourceLoaderCommon::RealLoad(
     std::weak_ptr<ResourceLoaderCommon> weak_ref,
-    fml::RefPtr<fml::TaskRunner> callback_task_runner, const std::string& src,
+    fml::RefPtr<fml::TaskRunner> ui_task_runner, const std::string& src,
     const std::function<void(const uint8_t*, size_t)>& callback) {
   url::UriSchemeType scheme_type = url::ParseUriScheme(src);
 
   // Since base64(data) is handled in data_image_loader, we will not handle it.
   if (scheme_type == url::UriSchemeType::kNet) {
-    LoadOnNet(weak_ref, callback_task_runner, src, callback);
+    LoadOnNet(weak_ref, ui_task_runner, src, callback);
   } else if (scheme_type == url::UriSchemeType::kLocalFile) {
-    LoadByFile(callback_task_runner, src, callback);
+    LoadByFile(ui_task_runner, src, callback);
   } else {
-    callback_task_runner->PostTask([callback]() { callback(nullptr, 0); });
+    ui_task_runner->PostTask([callback]() { callback(nullptr, 0); });
   }
 }
 
 void ResourceLoaderCommon::LoadOnNet(
     std::weak_ptr<ResourceLoaderCommon> weak_ref,
-    fml::RefPtr<fml::TaskRunner> callback_task_runner, const std::string& src,
+    fml::RefPtr<fml::TaskRunner> ui_task_runner, const std::string& src,
     const std::function<void(const uint8_t*, size_t)>& callback) {
   NetLoaderCallback loader_callback;
-  loader_callback.set_succeeded_func([weak_ref, callback, callback_task_runner,
-                                      src](size_t request_seq,
-                                           RawResource&& raw_resource) {
-    auto self = weak_ref.lock();
-    if (!self) {
-      FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
-      if (callback) {
-        callback_task_runner->PostTask([callback]() { callback(nullptr, 0); });
-      }
-      return;
-    }
-    self->OnLoadFinished(request_seq);
-    RawResource resource = self->GetResource(src, raw_resource);
-
-    callback_task_runner->PostTask(
-        [callback, resource = std::move(resource)]() mutable {
-          if (callback) {
-            callback(resource.data.get(), resource.length);
-          }
-        });
-  });
-  loader_callback.set_failed_func(
-      [weak_ref, src, callback, callback_task_runner](
-          size_t request_seq, const std::string& reason) {
+  loader_callback.set_succeeded_func(
+      [weak_ref, callback, ui_task_runner, src](size_t request_seq,
+                                                RawResource&& raw_resource) {
         auto self = weak_ref.lock();
         if (!self) {
           FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
           if (callback) {
-            callback_task_runner->PostTask(
-                [callback]() { callback(nullptr, 0); });
+            ui_task_runner->PostTask([callback]() { callback(nullptr, 0); });
+          }
+          return;
+        }
+        self->OnLoadFinished(request_seq);
+        RawResource resource = self->GetResource(src, raw_resource);
+
+        ui_task_runner->PostTask(
+            [callback, resource = std::move(resource)]() mutable {
+              if (callback) {
+                callback(resource.data.get(), resource.length);
+              }
+            });
+      });
+  loader_callback.set_failed_func(
+      [weak_ref, src, callback, ui_task_runner](size_t request_seq,
+                                                const std::string& reason) {
+        auto self = weak_ref.lock();
+        if (!self) {
+          FML_LOG(ERROR) << "load resource fail: ResourceLoaderCommon is null";
+          if (callback) {
+            ui_task_runner->PostTask([callback]() { callback(nullptr, 0); });
           }
           return;
         }
         self->OnLoadFinished(request_seq);
         FML_LOG(WARNING) << "fail to load " << src << " with reason " << reason;
-        callback_task_runner->PostTask([callback] {
+        ui_task_runner->PostTask([callback] {
           if (callback) {
             callback(nullptr, 0);
           }
@@ -131,9 +128,9 @@ void ResourceLoaderCommon::LoadOnNet(
 }
 
 void ResourceLoaderCommon::LoadByFile(
-    fml::RefPtr<fml::TaskRunner> callback_task_runner, const std::string& src,
+    fml::RefPtr<fml::TaskRunner> ui_task_runner, const std::string& src,
     const std::function<void(const uint8_t*, size_t)>& callback) {
-  callback_task_runner->PostTask([src, callback]() {
+  ui_task_runner->PostTask([src, callback]() {
     std::string file_path = fml::paths::AbsolutePath(fml::paths::FromURI(src));
     auto mapping = fml::FileMapping::CreateReadOnly(file_path);
     if (mapping && mapping->IsValid()) {
