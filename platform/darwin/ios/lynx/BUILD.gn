@@ -108,6 +108,11 @@ subspec_target("Framework") {
     ]
   }
   dependency += [ "LynxServiceAPI" ]
+  if (enable_trace == "perfetto") {
+    # Runtime profiler sources are flattened into Framework when trace is on,
+    # so the matching QuickJS profiler implementations must be linked too.
+    dependency += js_debug_dependency
+  }
 }
 
 subspec_target("lynx") {
@@ -591,9 +596,13 @@ subspec_target("JSRuntime") {
   ]
 
   libraries = [ "stdc++" ]
+  dependency = []
   if (!use_flatten_deps) {
     header_mappings_dir = "."
-    dependency = [ "Lynx/Native" ]
+    dependency += [ "Lynx/Native" ]
+  }
+  if (enable_trace == "perfetto") {
+    dependency += js_debug_dependency
   }
 }
 

@@ -609,6 +609,14 @@
             LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:transEventName
                                                                 targetSign:ui.sign
                                                                     params:[detail toDictionary]];
+            LYNX_TRACE_INSTANT_WITH_DEBUG_INFO(LYNX_TRACE_CATEGORY_WRAPPER,
+                                               UI_EXPOSURE_PUBLISH_EVENT, (@{
+                                                 @"event_name" : transEventName,
+                                                 @"route" : @"custom",
+                                                 @"renderer" : @"native",
+                                                 @"target" : @(ui.sign),
+                                                 @"batch_size" : @1
+                                               }));
             [ui.context.eventEmitter sendCustomEvent:event];
           }
           continue;
@@ -622,6 +630,14 @@
       [self sendCustomParamMapEvent:customParamMap eventName:eventName];
 
       if (params.count > 0) {
+        LYNX_TRACE_INSTANT_WITH_DEBUG_INFO(LYNX_TRACE_CATEGORY_WRAPPER, UI_EXPOSURE_PUBLISH_EVENT,
+                                           (@{
+                                             @"event_name" : eventName,
+                                             @"route" : @"global",
+                                             @"renderer" : @"native",
+                                             @"target" : @(_rootUI.sign),
+                                             @"batch_size" : @(params.count)
+                                           }));
         [_rootUI.rootView sendGlobalEvent:eventName withParams:@[ params ]];
       }
     } else {
@@ -632,6 +648,14 @@
           LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:eventName
                                                               targetSign:ui.sign
                                                                   params:[detail toDictionary]];
+          LYNX_TRACE_INSTANT_WITH_DEBUG_INFO(LYNX_TRACE_CATEGORY_WRAPPER, UI_EXPOSURE_PUBLISH_EVENT,
+                                             (@{
+                                               @"event_name" : eventName,
+                                               @"route" : @"air_compat_custom",
+                                               @"renderer" : @"native",
+                                               @"target" : @(ui.sign),
+                                               @"batch_size" : @1
+                                             }));
           [ui.context.eventEmitter sendCustomEvent:event];
         }
       }
@@ -663,6 +687,16 @@
           LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:name
                                                               targetSign:receiveTarget.sign
                                                                   params:eventDetail];
+          if (receiveTarget != nil) {
+            LYNX_TRACE_INSTANT_WITH_DEBUG_INFO(LYNX_TRACE_CATEGORY_WRAPPER,
+                                               UI_EXPOSURE_PUBLISH_EVENT, (@{
+                                                 @"event_name" : name,
+                                                 @"route" : @"targeted_custom",
+                                                 @"renderer" : @"native",
+                                                 @"target" : @(receiveTarget.sign),
+                                                 @"batch_size" : @(array.count)
+                                               }));
+          }
           [receiveTarget.context.eventEmitter sendCustomEvent:event];
         }];
       }];

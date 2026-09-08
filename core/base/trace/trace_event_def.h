@@ -25,6 +25,18 @@ static constexpr const char* const LYNX_ENV_GET_BOOL_ENV = "GetBoolEnv";
 static constexpr const char* const LYNX_ENV_GET_LONG_ENV = "GetLongEnv";
 static constexpr const char* const LYNX_ENV_GET_STRING_ENV = "GetStringEnv";
 static constexpr const char* const LYNX_ENV_GET_EXTERNAL_ENV = "GetExternalEnv";
+/**
+ * @trace_description: Record an exposure state transition before Clay forwards
+ * its custom and global exposure events.
+ */
+static constexpr const char* const CLAY_EXPOSE_OBSERVER_NOTIFY_EXPOSURE_EVENT =
+    "ExposeObserver::NotifyExposureEvent";
+/**
+ * @trace_description: Record whether Clay forwards or drops a custom or global
+ * event at the Lynx adaptor boundary.
+ */
+static constexpr const char* const CLAY_LYNX_EVENT_DISPATCHER_FORWARD_EVENT =
+    "LynxEventDispatcher::ForwardEvent";
 static constexpr const char* const CLAY_LAYOUT_CONTEXT_CREATE_LAYOUT_NODE =
     "LayoutContextClay::CreateLayoutNode";
 static constexpr const char* const CLAY_PAINTING_CONTEXT_CREATE_PAINTING_NODE =
