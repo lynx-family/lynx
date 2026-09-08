@@ -227,6 +227,37 @@ td { border: 1px solid; padding: 8px; }
 </view>
 ```
 
+### Inline Rich Text and Whitespace
+
+An HTML paragraph with inline emphasis is one text flow, not a row of independently sized boxes:
+
+```html
+<p>Choose a <strong>green item</strong>.</p>
+```
+
+Do not assume that replacing this paragraph with sibling `<text>` elements in a horizontal Flex container preserves its appearance:
+
+```jsx
+// Not a drop-in replacement for the HTML paragraph.
+<view style={{ display: 'flex', flexDirection: 'row' }}>
+  <text>Choose a </text>
+  <text style={{ fontWeight: 'bold' }}>green item</text>
+  <text>.</text>
+</view>
+```
+
+A literal trailing space in the first text node does not by itself establish that the rendered result has a visible word separator. With this conversion pattern, adjacent words can appear joined even when a trailing space exists in the source. Sibling Flex items also have different sizing and wrapping behavior from inline text in a paragraph. Setting `white-space: normal` on each item does not turn the row into one shared text flow.
+
+For mixed text styles, start with the [nested text composition](../elements/text.md#nested-text) documented for `<text>` instead of flattening every inline span into a separate layout box. Keep the original wording, meaningful spaces, punctuation, and emphasis. Verify the result with the project's actual template or JSX compiler and target runtime; the presence of a space in source alone does not identify which compilation or layout stage changes its visible effect.
+
+When validating the migration:
+
+- Compare visible word separators and punctuation at each style boundary, not just the concatenated text content.
+- Check bold or other emphasis, baseline alignment, and line height.
+- Check narrow as well as wide containers, including line breaks around styled spans. Also check the font sizes supported by the application.
+- Do not blindly substitute a non-breaking space: it changes where a line may break. A fixed-width margin or `gap` spaces layout boxes rather than preserving a text space and may only match one font or width.
+- In screenshot-based tests, separate adapter-induced text differences from the feature being tested. Correct unrelated text adaptation errors and regenerate the evidence before attributing the remaining visual difference to that feature.
+
 ## Step 2: Convert CSS
 
 ### 1. The `display` Property and Default Layout
@@ -648,6 +679,7 @@ $spacing-unit: 8px;
 
 - [ ] Replace HTML tags with Lynx elements.
 - [ ] Wrap all text in `<text>` elements.
+- [ ] Verify visible spaces, emphasis, and wrapping when migrating inline rich text; do not assume sibling text boxes reproduce a paragraph.
 - [ ] Remove `float` and `clear`.
 - [ ] Remove `display: inline` and `display: inline-block`; Lynx 2.0+ retains `display: block` and falls back to Flex or Linear layout.
 - [ ] Replace `position: static` with `relative`.
