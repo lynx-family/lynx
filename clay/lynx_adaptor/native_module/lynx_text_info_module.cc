@@ -6,6 +6,8 @@
 
 #include "clay/lynx_adaptor/clay_value.h"
 #include "clay/lynx_adaptor/value_converter.h"
+#include "clay/ui/common/isolate.h"
+#include "clay/ui/component/view_context.h"
 #include "clay/ui/shadow/text_render.h"
 
 namespace lynx {
@@ -21,8 +23,12 @@ LynxTextInfoModule::LynxTextInfoModule(uint32_t view_context_id) {
 
 std::unique_ptr<pub::Value> LynxTextInfoModule::GetTextInfo(
     const std::string& content, const pub::Value& info) {
+  auto view_context =
+      clay::Isolate::Instance().GetViewContextById(view_context_id_);
+  auto* page_view = view_context ? view_context->GetPageView() : nullptr;
   auto rk_info = ValueConverter::CreateClayValue(info);
-  auto result = clay::TextRender::GetTextInfo(content.c_str(), rk_info);
+  auto result =
+      clay::TextRender::GetTextInfo(content.c_str(), rk_info, page_view);
   return std::make_unique<ClayValue>(std::move(result));
 }
 
