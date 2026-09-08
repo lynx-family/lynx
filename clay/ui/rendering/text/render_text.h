@@ -16,6 +16,7 @@
 
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
+#include "clay/gfx/style/color.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/component/text/inline_emoji_bitmap.h"
 #include "clay/ui/component/text/text_style.h"
@@ -52,6 +53,7 @@ class RenderText : public RenderBox {
 
   void SetSelection(const TextRange& range);
   void SetAllSelection();
+  void SetSelectionBackgroundColor(Color color);
 
   void PaintSelection(GraphicsContext* context);
 
@@ -91,6 +93,7 @@ class RenderText : public RenderBox {
   int pre_select_end_ = -1;
   double line_spacing_offset_ = 0;
   TextAlignment text_paint_align_ = TextAlignment::kLeft;
+  Color selection_background_color_ = Color(0x402196F3);
 
  private:
   void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset,
