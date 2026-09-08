@@ -493,6 +493,12 @@ void PageView::SetRenderDelegate(RenderDelegate* delegate) {
 }
 
 void PageView::SendGlobalExposureEvent() {
+  if (exposure_event_arr_.empty() && disexposure_event_arr_.empty()) {
+    return;
+  }
+  TRACE_EVENT("clay", "PageView::SendGlobalExposureEvent", "exposure_count",
+              exposure_event_arr_.size(), "disexposure_count",
+              disexposure_event_arr_.size());
   if (event_delegate_) {
     if (!exposure_event_arr_.empty()) {
       auto params =
