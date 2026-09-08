@@ -34,6 +34,7 @@
 @class LynxElement;
 @class LynxScreenMetrics;
 @protocol LynxBaseInspectorOwner;
+@protocol LynxTransferListener;
 
 /**
  * @apidoc
@@ -298,6 +299,23 @@
  */
 - (void)resetAnimation;
 - (void)restartAnimation;
+
+#pragma mark - Transfer
+
+/**
+ * Experimental API; may change in future releases. Call on the main thread.
+ * Registers a listener and offers pending transfer views through onCreate:view:dataset:.
+ * The listener is retained until unregistered or this LynxView is destroyed.
+ * @param listener The listener that may take ownership of transfer views.
+ */
+- (void)registerTransferListener:(nonnull id<LynxTransferListener>)listener;
+
+/**
+ * Experimental API; may change in future releases. Call on the main thread.
+ * Unregisters a listener, stopping future callbacks without removing its owned views.
+ * @param listener The previously registered listener.
+ */
+- (void)unregisterTransferListener:(nonnull id<LynxTransferListener>)listener;
 
 // Set the theme and automatically trigger a UI refresh
 - (void)setTheme:(nonnull LynxTheme*)theme;
