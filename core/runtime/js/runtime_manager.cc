@@ -593,20 +593,22 @@ std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
 #endif  // OS_WIN || OS_LINUX
 
 #if OS_HARMONY
+  if constexpr (!LYNX_HARMONY_TARGET_X64) {
 #if JS_ENGINE_TYPE != 3
-  if ((!force_use_lightweight_js_engine ||
-       tasm::LynxEnv::GetInstance().EnableJSVMRuntime()) &&
-      runtime::js::IsJSVMRuntimeAvailable()) {
+    if ((!force_use_lightweight_js_engine ||
+         tasm::LynxEnv::GetInstance().EnableJSVMRuntime()) &&
+        runtime::js::IsJSVMRuntimeAvailable()) {
 #endif  // JS_ENGINE_TYPE != 3
 #if ENABLE_NAPI_BINDING
-    static runtime::js::NapiRuntimeProxyJSVMFactoryImpl factory;
-    RegisterJSVMRuntimeProxyFactory(&factory);
+      static runtime::js::NapiRuntimeProxyJSVMFactoryImpl factory;
+      RegisterJSVMRuntimeProxyFactory(&factory);
 #endif  // ENABLE_NAPI_BINDING
-    LOGI("make jsvm runtime");
-    return runtime::js::makeJSVMRuntime();
+      LOGI("make jsvm runtime");
+      return runtime::js::makeJSVMRuntime();
 #if JS_ENGINE_TYPE != 3
-  }
+    }
 #endif  // JS_ENGINE_TYPE != 3
+  }
 #endif  // OS_HARMONY
 
 // Fit compile on other unknown platforms such as Linux.
