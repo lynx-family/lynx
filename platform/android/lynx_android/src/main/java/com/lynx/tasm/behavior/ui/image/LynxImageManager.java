@@ -985,6 +985,11 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   public void onNodeReady() {
+    // An async redirect started before Renderer attachment can finish afterwards.
+    // Only the Fragment's manager should load images for a Renderer-backed UIImage.
+    if (mUI instanceof UIImage && ((UIImage) mUI).getView().getRenderer() != null) {
+      return;
+    }
     // set one more time, need opt
     updateNodeProps();
     invalidate();

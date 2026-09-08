@@ -3,8 +3,26 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxUIImage.h>
 #import <XCTest/XCTest.h>
+
+@interface LynxUIImage (RendererTesting)
+- (void)requestImage;
+- (void)requestImage:(LynxURL*)url;
+- (void)onImageReady:(UIImage*)image withRequest:(LynxURL*)url;
+@end
+
+@interface LynxUIImageRequestProbe : LynxUIImage
+@property(nonatomic) NSInteger requestCount;
+@end
+
+@implementation LynxUIImageRequestProbe
+- (void)requestImage:(LynxURL*)url {
+  self.requestCount++;
+}
+@end
 
 @interface LynxUIImageUnitTest : XCTestCase
 
@@ -30,6 +48,34 @@
       LynxImageDefaultOptions | LynxImageIgnoreMemoryCache | LynxImageIgnoreDiskCache |
       LynxImageNotCacheToDisk | LynxImageNotCacheToMemory | LynxImageIgnoreCDNDowngradeCachePolicy;
   XCTAssertEqual(options, testOptions);
+}
+
+- (void)testRendererHostDoesNotRequestImages {
+  LynxUIImageRequestProbe* image = [[LynxUIImageRequestProbe alloc] init];
+  id<LynxRendererHost> host = (id<LynxRendererHost>)image.view;
+  host.renderer = [host createRendererWithSign:1 andContext:nil];
+  [image requestImage];
+  XCTAssertEqual(image.requestCount, 0);
+}
+
+- (void)testOrdinaryImageRequestsSourceAndPlaceholder {
+  LynxUIImageRequestProbe* image = [[LynxUIImageRequestProbe alloc] init];
+  [image requestImage];
+  XCTAssertEqual(image.requestCount, 2);
+}
+
+- (void)testRendererHostIgnoresCompletedImage {
+  id<LynxRendererHost> host = (id<LynxRendererHost>)_UIImage.view;
+  host.renderer = [host createRendererWithSign:1 andContext:nil];
+  [_UIImage onImageReady:[[UIImage alloc] init] withRequest:nil];
+  XCTAssertNil(_UIImage.view.image);
+  XCTAssertNil(_UIImage.view.animationImages);
+}
+
+- (void)testOrdinaryImageDisplaysCompletedImage {
+  UIImage* result = [[UIImage alloc] init];
+  [_UIImage onImageReady:result withRequest:nil];
+  XCTAssertEqual(_UIImage.view.image, result);
 }
 
 - (void)testSetFalseSingleOption {
