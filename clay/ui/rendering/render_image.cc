@@ -8,6 +8,10 @@
 #include <string>
 #include <utility>
 
+#include "build/build_config.h"
+#if defined(OS_IOS)
+#include "clay/common/trail_settings.h"
+#endif
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/graphics_context.h"
@@ -17,6 +21,13 @@
 #endif
 
 namespace clay {
+
+#if defined(OS_IOS)
+RenderImage::RenderImage()
+    : down_sampling_(setting::CLAY_ENABLE_IMAGE_DOWN_SAMPLING.value()) {}
+#else
+RenderImage::RenderImage() : down_sampling_(false) {}
+#endif
 
 RenderImage::~RenderImage() {
 #ifndef ENABLE_SKITY
