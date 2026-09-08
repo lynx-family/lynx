@@ -6,14 +6,27 @@ import("../../../../testing/test.gni")
 
 unittest_set("lepusng_debugger_testset") {
   public_configs = [ "../../../../core:lynx_public_config" ]
-  sources = [ "lepusng_debugger_unittest.cc" ]
+  sources = [
+    "lepusng_debugger_integration_unittest.cc",
+    "lepusng_debugger_unittest.cc",
+  ]
 
-  # NOTE: lepusng_debugger.h is included for inline functions only
-  # (MTSDebugInfoError::GetFormattedErrorMessage, DebugInfoDetail).
-  # DO NOT add //lynx/devtool/js_inspect/lepus:lepus_debug here — its
-  # transitive deps (QuickJS, MTSRuntime) are not linkable without a
-  # full LepusNG host.
-  public_deps = [ "../../../../third_party/rapidjson" ]
+  # lepus_debug brings in the real LepusNG debugger implementation; the
+  # core lepus/shell targets provide the runtime and bytecode generator so
+  # integration tests can create a real VM.
+  public_deps = [
+    "../:lepus_debug",
+    "../../../../core/renderer:tasm",
+    "../../../../core/renderer/dom:dom",
+    "../../../../core/renderer/dom:renderer_dom",
+    "../../../../core/renderer/starlight:starlight",
+    "../../../../core/runtime/lepus:lepus",
+    "../../../../core/runtime/lepus/bindings:bindings",
+    "../../../../core/shell:shell",
+    "../../../../third_party/quickjs",
+    "../../../../third_party/rapidjson",
+    "../../quickjs:quickjs_debug",
+  ]
   include_dirs = [ "../../../../../third_party/googletest/googletest/include" ]
   public_configs += [ "../../../../third_party/quickjs:quickjs_public_config" ]
 }

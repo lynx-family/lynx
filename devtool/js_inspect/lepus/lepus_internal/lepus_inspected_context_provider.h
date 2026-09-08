@@ -17,9 +17,22 @@ class LepusInspectedContext;
 
 class LepusInspectedContextProvider {
  public:
+  // Factory signature matches GetInspectedContext. An internal build can
+  // register a classic-Lepus-capable factory to override the default
+  // (LepusNG-only) implementation, without creating a build dependency from
+  // the open-source tree onto internal targets.
+  using Factory = std::shared_ptr<LepusInspectedContext> (*)(
+      lynx::runtime::MTSContext* context, LepusInspectorNGImpl* inspector,
+      const std::string& name);
+
   static std::shared_ptr<LepusInspectedContext> GetInspectedContext(
       lynx::runtime::MTSContext* context, LepusInspectorNGImpl* inspector,
       const std::string& name);
+
+  // Registers an override factory and returns the previously registered one
+  // (nullptr if none). Passing nullptr restores the default open-source
+  // implementation.
+  static Factory RegisterFactory(Factory factory);
 };
 
 }  // namespace lepus_inspector
