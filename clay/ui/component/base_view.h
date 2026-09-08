@@ -601,6 +601,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetEventThroughActiveRegions(const clay::Value& value);
   // this means whether the entire page through the touch events.
   std::optional<bool> CanEventThrough() const { return event_through_; }
+  bool EnableTouchPseudoPropagation() const {
+    return enable_touch_pseudo_propagation_;
+  }
   // this means whether this view node pass through the events to the nodes
   // behind it.
   virtual bool CanEventsPassThroughToViewsBehind() const { return false; }
@@ -801,6 +804,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool is_interactable_ = true;
   bool should_block_native_event_ = false;
   bool has_intersection_observer_ = false;
+  bool enable_touch_pseudo_propagation_ = true;
   std::optional<bool> event_through_;
   struct EventThroughSizeValue {
     double value = 0.0;
