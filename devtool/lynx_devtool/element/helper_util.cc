@@ -355,10 +355,18 @@ void MergeCSSStyle(Json::Value& res,
       CSSPropertyDetail& css_property_detail = it->second;
       css_property_detail.looped_ = true;
       temp["name"] = name;
+      std::string value;
       if (name == "animation") {
-        temp["value"] = NormalizeAnimationString(css_property_detail.value_);
+        value = NormalizeAnimationString(css_property_detail.value_);
       } else {
-        temp["value"] = css_property_detail.value_;
+        value = css_property_detail.value_;
+      }
+      temp["value"] =
+          CSSPropertyValueForProtocol(value, css_property_detail.important_);
+      if (css_property_detail.important_) {
+        temp["important"] = true;
+      } else {
+        temp.removeMember("important");
       }
       temp["implicit"] = css_property_detail.implicit_;
       temp["disabled"] = css_property_detail.disabled_;
@@ -405,6 +413,17 @@ std::string StripSpace(const std::string& str) {
   } else {
     return str.substr(first, last - first + 1);
   }
+}
+
+std::string CSSPropertyValueForProtocol(const std::string& value,
+                                        bool important) {
+  if (!important) {
+    return value;
+  }
+  if (lynx::tasm::MaybeStripImportantAsView(value).size() != value.size()) {
+    return value;
+  }
+  return value + " !important";
 }
 
 bool IsSpace(char letter) {

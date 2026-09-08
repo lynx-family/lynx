@@ -5,7 +5,6 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_ELEMENT_ELEMENT_INSPECTOR_H_
 #define DEVTOOL_LYNX_DEVTOOL_ELEMENT_ELEMENT_INSPECTOR_H_
 
-#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -267,6 +266,7 @@ class ElementInspector {
   static lynx::devtool::InspectorStyleSheet InitStyleSheet(
       Element* element, int start_line, std::string name,
       std::unordered_map<std::string, std::string> styles,
+      std::unordered_map<std::string, std::string> important_styles = {},
       uint64_t position = 0);
 
   static Element* GetParentComponentElementFromDataModel(Element* element);

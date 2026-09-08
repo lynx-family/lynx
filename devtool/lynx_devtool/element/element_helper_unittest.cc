@@ -68,10 +68,13 @@ std::unique_ptr<lynx::css::LynxCSSSelector[]> CreateSelectorArray(
 }
 
 fml::RefPtr<lynx::tasm::CSSParseToken> CreateParseToken(
-    lynx::tasm::CSSPropertyID property_id, const std::string& value) {
+    lynx::tasm::CSSPropertyID property_id, const std::string& value,
+    bool important = false) {
   lynx::tasm::CSSParserConfigs parser_configs;
   auto token = fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
-  token->raw_attributes_[property_id] =
+  auto& attributes =
+      important ? token->raw_important_attributes_ : token->raw_attributes_;
+  attributes[property_id] =
       lynx::tasm::CSSValue::MakePlainString(value.c_str());
   return token;
 }
@@ -101,8 +104,9 @@ std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateSelectorCSSFragment(
 
 std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateLayeredCSSFragment(
     const std::string& selector, lynx::tasm::CSSPropertyID property_id,
-    const std::string& value, const std::vector<std::string>& layer_path) {
-  auto token = CreateParseToken(property_id, value);
+    const std::string& value, const std::vector<std::string>& layer_path,
+    bool important = false) {
+  auto token = CreateParseToken(property_id, value, important);
 
   auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
   token->sheets().emplace_back(sheet);
@@ -122,6 +126,51 @@ std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateLayeredCSSFragment(
   fragment->AddStyleRule(fml::MakeRefCounted<lynx::css::StyleRule>(
                              CreateSelectorArray(selector), token),
                          layer);
+  return fragment;
+}
+
+struct LayeredCascadeRuleForTest {
+  std::string value;
+  std::vector<std::string> layer_path;
+  bool important;
+};
+
+std::shared_ptr<lynx::tasm::SharedCSSFragment> CreateLayeredCascadeCSSFragment(
+    const std::string& selector, lynx::tasm::CSSPropertyID property_id,
+    std::initializer_list<LayeredCascadeRuleForTest> rules) {
+  std::vector<fml::RefPtr<lynx::tasm::CSSParseToken>> tokens;
+  tokens.reserve(rules.size());
+  lynx::tasm::CSSParserTokenMap token_map;
+  for (const auto& rule : rules) {
+    auto token = CreateParseToken(property_id, rule.value, rule.important);
+    auto sheet = std::make_shared<lynx::tasm::CSSSheet>(selector);
+    token->sheets().emplace_back(std::move(sheet));
+    if (token_map.empty()) {
+      token_map.insert({selector, token});
+    }
+    tokens.push_back(std::move(token));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  lynx::tasm::CSSKeyframesTokenMap keyframes;
+  lynx::tasm::CSSFontFaceRuleMap font_faces;
+  auto fragment = std::make_shared<lynx::tasm::SharedCSSFragment>(
+      1, dependent_ids, std::move(token_map), std::move(keyframes),
+      std::move(font_faces));
+  fragment->SetEnableCSSSelector();
+  fragment->SetEnableCSSRule(true);
+
+  size_t index = 0;
+  for (const auto& rule : rules) {
+    lynx::css::CascadeLayer* layer = nullptr;
+    if (!rule.layer_path.empty()) {
+      layer =
+          fragment->GetOrCreateRootLayer()->GetOrAddSubLayer(rule.layer_path);
+    }
+    fragment->AddStyleRule(fml::MakeRefCounted<lynx::css::StyleRule>(
+                               CreateSelectorArray(selector), tokens[index++]),
+                           layer);
+  }
   return fragment;
 }
 
@@ -630,6 +679,37 @@ TEST_F(ElementHelperTest, GetStyleSheetAsTextOfNodeTest) {
   EXPECT_EQ(res1, json_value);
 }
 
+TEST_F(ElementHelperTest, UpdateStyleNormalizesImportantSuffix) {
+  auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
+      new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
+  auto element = manager->CreateFiberElement("view");
+  element->SetAttributeHolder(comp.get()->attribute_holder());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+
+  // A raw authored value carrying a trailing !important (e.g. from
+  // setNativeProps) must be normalized: value_ loses the suffix and important_
+  // becomes the single source of truth, matching the parsed path invariant.
+  lynx::devtool::ElementInspector::UpdateStyle(element.get(), "color",
+                                               "red !important");
+  lynx::devtool::ElementInspector::UpdateStyle(element.get(), "width", "10px");
+
+  const auto& inline_sheet =
+      lynx::devtool::ElementInspector::GetInlineStyleSheet(element.get());
+
+  auto color_it = inline_sheet.css_properties_.find("color");
+  ASSERT_NE(color_it, inline_sheet.css_properties_.end());
+  EXPECT_EQ(color_it->second.value_, "red");
+  EXPECT_TRUE(color_it->second.important_);
+  EXPECT_EQ(color_it->second.text_, "color:red !important;");
+
+  auto width_it = inline_sheet.css_properties_.find("width");
+  ASSERT_NE(width_it, inline_sheet.css_properties_.end());
+  EXPECT_EQ(width_it->second.value_, "10px");
+  EXPECT_FALSE(width_it->second.important_);
+  EXPECT_EQ(width_it->second.text_, "width:10px;");
+}
+
 TEST_F(ElementHelperTest, GetMatchedStylesForNodeTest) {
   auto comp = std::shared_ptr<lynx::tasm::RadonComponent>(
       new lynx::tasm::RadonComponent(nullptr, 0, nullptr, nullptr, 0, 0, 0));
@@ -879,7 +959,7 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsCascadeLayers) {
 
   auto fragment = CreateLayeredCSSFragment(
       ".layered", lynx::tasm::CSSPropertyID::kPropertyIDWidth, "10px",
-      {"framework", "components"});
+      {"framework", "components"}, true);
   fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({"unused"});
 
   lynx::base::String component_id("21");
@@ -917,6 +997,12 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsCascadeLayers) {
   ASSERT_EQ(matched["matchedCSSRules"].size(), 1U);
   const Json::Value& rule = matched["matchedCSSRules"][0]["rule"];
   EXPECT_EQ(rule["selectorList"]["text"].asString(), ".layered");
+  const Json::Value& properties = rule["style"]["cssProperties"];
+  ASSERT_EQ(properties.size(), 1U);
+  EXPECT_EQ(properties[0]["name"].asString(), "width");
+  EXPECT_EQ(properties[0]["value"].asString(), "10px !important");
+  EXPECT_TRUE(properties[0]["important"].asBool());
+  EXPECT_EQ(properties[0]["text"].asString(), "width:10px !important;");
   ASSERT_TRUE(rule["layers"].isArray());
   ASSERT_EQ(rule["layers"].size(), 2U);
   EXPECT_EQ(rule["layers"][0]["text"].asString(), "framework");
@@ -942,9 +1028,11 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsCascadeLayers) {
   ASSERT_FALSE(initial_sheet.empty);
   const std::vector<std::string> expected_layers{"framework", "components"};
   EXPECT_EQ(initial_sheet.layers_, expected_layers);
+  ASSERT_EQ(initial_sheet.css_properties_.count("width"), 1U);
+  EXPECT_TRUE(initial_sheet.css_properties_.find("width")->second.important_);
 
   lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
-                                              "width:20px;",
+                                              "width:20px !important;",
                                               initial_sheet.style_value_range_);
 
   auto edited_sheet = lynx::devtool::ElementInspector::GetStyleSheetByName(
@@ -959,6 +1047,90 @@ TEST_F(ElementHelperTest, GetMatchedStylesForNodeReportsCascadeLayers) {
   ASSERT_EQ(layers_after_edit.size(), 2U);
   EXPECT_EQ(layers_after_edit[0]["text"].asString(), "framework");
   EXPECT_EQ(layers_after_edit[1]["text"].asString(), "components");
+  const Json::Value& properties_after_edit =
+      matched_after_edit["matchedCSSRules"][0]["rule"]["style"]
+                        ["cssProperties"];
+  ASSERT_EQ(properties_after_edit.size(), 1U);
+  EXPECT_EQ(properties_after_edit[0]["value"].asString(), "20px !important");
+  EXPECT_TRUE(properties_after_edit[0]["important"].asBool());
+}
+
+TEST_F(ElementHelperTest,
+       SetSelectorStyleTextsLegacyPipelineUpdatesImportantLayeredStyles) {
+  manager->enable_new_styling_pipeline_ = false;
+
+  auto page = manager->CreateFiberPage("page", 0);
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(page.get()));
+  auto fragment = CreateLayeredCascadeCSSFragment(
+      ".result--important",
+      lynx::tasm::CSSPropertyID::kPropertyIDBackgroundColor,
+      {
+          {"#262626", {"important", "first"}, true},
+          {"#e85d3f", {"important", "second"}, true},
+          {"#4a0ccf", {}, true},
+      });
+
+  lynx::base::String component_id("21");
+  lynx::base::String entry_name("__Card__");
+  lynx::base::String component_name("TestComp");
+  lynx::base::String path("/index/components/TestComp");
+  auto component = manager->CreateFiberComponent(component_id, 100, entry_name,
+                                                 component_name, path);
+  component->style_sheet_ = std::make_unique<lynx::tasm::CSSFragmentDecorator>(
+      fragment.get(), manager.get());
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(component.get()));
+  page->InsertNode(component);
+
+  auto styled_element = manager->CreateFiberElement("view");
+  styled_element->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  styled_element->data_model()->SetClass("result--important");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(styled_element.get()));
+  component->InsertNode(styled_element);
+
+  auto style_root = manager->CreateFiberElement("stylevalue");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(style_root.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(styled_element.get(), style_root.get()));
+
+  page->FlushActionsAsRoot();
+
+  const std::vector<std::string> first_layer{"important", "first"};
+  auto find_first_layer_sheet = [&]() {
+    auto styles = lynx::devtool::ElementInspector::GetMatchedStyleSheet(
+        styled_element.get());
+    auto it = std::find_if(styles.begin(), styles.end(),
+                           [&first_layer](const auto& style) {
+                             return style.layers_ == first_layer;
+                           });
+    return it == styles.end() ? lynx::devtool::InspectorStyleSheet() : *it;
+  };
+
+  auto first_layer_sheet = find_first_layer_sheet();
+  ASSERT_FALSE(first_layer_sheet.empty);
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(), "background-color:#262626;",
+      first_layer_sheet.style_value_range_);
+  auto& normal_background =
+      styled_element->computed_css_style()->GetBackgroundData();
+  ASSERT_TRUE(normal_background.has_value());
+  EXPECT_EQ(normal_background->color, 0xFFE85D3FU);
+
+  first_layer_sheet = find_first_layer_sheet();
+  ASSERT_FALSE(first_layer_sheet.empty);
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(), "background-color:#262626 !important;",
+      first_layer_sheet.style_value_range_);
+  auto& restored_background =
+      styled_element->computed_css_style()->GetBackgroundData();
+  ASSERT_TRUE(restored_background.has_value());
+  EXPECT_EQ(restored_background->color, 0xff262626U);
 }
 
 TEST_F(ElementHelperTest, SetStyleTextsTest) {
@@ -1921,71 +2093,50 @@ TEST_F(ElementHelperTest,
   EXPECT_EQ(font_it->second, "DevToolFont");
 }
 
-TEST_F(ElementHelperTest, InitStyleSheetTest) {
+TEST_F(ElementHelperTest, InitInlineStyleSheetForInspectorTest) {
   auto element = manager->CreateFiberElement("view");
+  element->data_model()->SetInlineStyle(
+      lynx::tasm::CSSPropertyID::kPropertyIDFontSize,
+      lynx::tasm::CSSValue::MakePlainString("32rpx"));
+
   lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
+  auto style_sheet =
+      lynx::devtool::ElementInspector::GetInlineStyleSheet(element.get());
 
-  std::unordered_map<std::string, std::string> styles = {
-      {"font-size", "32rpx"}};
-  lynx::devtool::InspectorStyleSheet init_res =
-      lynx::devtool::ElementInspector::InitStyleSheet(element.get(), 10,
-                                                      "font-size", styles, 0);
+  ASSERT_FALSE(style_sheet.empty);
+  EXPECT_EQ(style_sheet.style_sheet_id_, std::to_string(element->impl_id()));
+  EXPECT_EQ(style_sheet.style_name_, "inline10");
+  EXPECT_EQ(style_sheet.origin_, "regular");
+  EXPECT_EQ(style_sheet.css_text_, "font-size:32rpx;");
+  ASSERT_EQ(style_sheet.css_properties_.count("font-size"), 1U);
+  const auto& property = style_sheet.css_properties_.find("font-size")->second;
+  EXPECT_EQ(property.value_, "32rpx");
+  EXPECT_EQ(property.text_, "font-size:32rpx;");
+  EXPECT_EQ(style_sheet.style_name_range_.start_line_, 0);
+  EXPECT_EQ(style_sheet.style_value_range_.start_line_, 0);
+  EXPECT_EQ(style_sheet.position_, 0U);
+}
 
-  std::unordered_multimap<std::string, lynx::devtool::CSSPropertyDetail>
-      css_properties = {{"font-size",
-                         {"font-size",
-                          "32rpx",
-                          "font-size:32rpx;",
-                          false,
-                          false,
-                          false,
-                          false,
-                          true,
-                          {80, 10, 65, 10}}}};
-  lynx::devtool::InspectorStyleSheet style_sheet;
-  style_sheet.empty = false;
-  style_sheet.style_sheet_id_ = std::to_string(element.get()->impl_id());
-  style_sheet.style_name_ = "font-size";
-  style_sheet.origin_ = "regular";
-  style_sheet.css_text_ = "font-size:32rpx;";
-  style_sheet.css_properties_ = css_properties;
-  style_sheet.style_name_range_ = {10, 10, 0, 9};
-  style_sheet.style_value_range_ = {10, 10, 10, 26};
-  style_sheet.position_ = 0;
+TEST_F(ElementHelperTest, InitInlineStyleSheetForInspectorPreservesImportant) {
+  auto element = manager->CreateFiberElement("view");
+  element->SetRawInlineStyles(
+      lynx::base::String("color:red !important;width:10px;"));
+  element->ProcessFullRawInlineStyle(nullptr);
 
-  EXPECT_EQ(init_res.empty, style_sheet.empty);
-  EXPECT_EQ(init_res.style_sheet_id_, style_sheet.style_sheet_id_);
-  EXPECT_EQ(init_res.style_name_, style_sheet.style_name_);
-  EXPECT_EQ(init_res.origin_, style_sheet.origin_);
-  EXPECT_EQ(init_res.css_text_, style_sheet.css_text_);
-  EXPECT_EQ(init_res.css_properties_.size(),
-            style_sheet.css_properties_.size());
+  lynx::devtool::ElementInspector::InitForInspector(std::make_tuple(element));
+  const auto& style_sheet =
+      lynx::devtool::ElementInspector::GetInlineStyleSheet(element.get());
 
-  for (auto it : init_res.css_properties_) {
-    EXPECT_EQ(it.first, style_sheet.css_properties_.find(it.first)->first);
-    EXPECT_EQ(it.second.text_,
-              style_sheet.css_properties_.find(it.first)->second.text_);
-  }
+  auto color = style_sheet.css_properties_.find("color");
+  ASSERT_NE(color, style_sheet.css_properties_.end());
+  EXPECT_EQ(color->second.value_, "red");
+  EXPECT_TRUE(color->second.important_);
+  EXPECT_EQ(color->second.text_, "color:red !important;");
 
-  EXPECT_EQ(init_res.style_name_range_.start_column_,
-            style_sheet.style_name_range_.start_column_);
-  EXPECT_EQ(init_res.style_name_range_.end_line_,
-            style_sheet.style_name_range_.end_line_);
-  EXPECT_EQ(init_res.style_name_range_.end_column_,
-            style_sheet.style_name_range_.end_column_);
-  EXPECT_EQ(init_res.style_name_range_.start_line_,
-            style_sheet.style_name_range_.start_line_);
-
-  EXPECT_EQ(init_res.style_value_range_.start_line_,
-            style_sheet.style_value_range_.start_line_);
-  EXPECT_EQ(init_res.style_value_range_.start_column_,
-            style_sheet.style_value_range_.start_column_);
-  EXPECT_EQ(init_res.style_value_range_.end_column_,
-            style_sheet.style_value_range_.end_column_);
-  EXPECT_EQ(init_res.style_value_range_.end_line_,
-            style_sheet.style_value_range_.end_line_);
-
-  EXPECT_EQ(init_res.position_, style_sheet.position_);
+  auto width = style_sheet.css_properties_.find("width");
+  ASSERT_NE(width, style_sheet.css_properties_.end());
+  EXPECT_EQ(width->second.value_, "10px");
+  EXPECT_FALSE(width->second.important_);
 }
 
 TEST_F(ElementHelperTest, GetBackGroundColorsOfNodeTest) {
@@ -2541,9 +2692,10 @@ TEST_F(ElementHelperTest,
       lynx::tasm::CSSValue(10, lynx::tasm::CSSValuePattern::PX));
   token->SetImportantAttributes(std::move(stale_important_styles));
 
-  // Edit selector style to move width out of !important and add height as a new
-  // important declaration. The old important width must not keep overriding,
-  // and important custom properties should be preserved without their suffix.
+  // Edit selector style to move width out of !important and add height as a
+  // new important declaration. The old important width must not keep
+  // overriding, and important custom properties should be preserved without
+  // their suffix.
   lynx::devtool::ElementHelper::SetStyleTexts(
       page.get(), style_root.get(),
       "--theme:red !important;color:var(--theme);width:20px;"
@@ -2628,7 +2780,8 @@ TEST_F(ElementHelperTest, SetAttributesClassNewPipeline) {
 
   EXPECT_TRUE(element->data_model()->classes().empty());
 
-  // After removal, width should fall back to default (not present in resolved).
+  // After removal, width should fall back to default (not present in
+  // resolved).
   auto resolved_after = element->computed_css_style()->GetResolvedValues();
   EXPECT_TRUE(
       resolved_after.find(lynx::tasm::CSSPropertyID::kPropertyIDWidth) ==

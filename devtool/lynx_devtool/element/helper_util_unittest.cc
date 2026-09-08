@@ -286,6 +286,39 @@ TEST(HelperUtilTest, StyleTextParserPreservesCascadeLayers) {
   EXPECT_EQ(expected, parsed.layers_);
 }
 
+TEST(HelperUtilTest, StyleTextParserExtractsImportantAnnotation) {
+  lynx::devtool::InspectorStyleSheet pre_style;
+  pre_style.empty = false;
+  pre_style.origin_ = "regular";
+  pre_style.style_sheet_id_ = "12";
+  pre_style.style_name_ = ".card";
+  pre_style.style_name_range_ = {1, 1, 0, 5};
+
+  auto parsed = lynx::devtool::StyleTextParser<lynx::tasm::Element*>(
+      nullptr, "width:20px !important;", pre_style);
+
+  auto property = parsed.css_properties_.find("width");
+  ASSERT_NE(property, parsed.css_properties_.end());
+  EXPECT_EQ(property->second.value_, "20px");
+  EXPECT_EQ(property->second.text_, "width:20px !important;");
+  EXPECT_TRUE(property->second.important_);
+
+  Json::Value result(Json::ValueType::arrayValue);
+  lynx::devtool::MergeCSSStyle(result, parsed, true);
+  const Json::Value& serialized =
+      result[0]["rule"]["style"]["cssProperties"][0];
+  EXPECT_EQ(serialized["value"].asString(), "20px !important");
+  EXPECT_TRUE(serialized["important"].asBool());
+}
+
+TEST(HelperUtilTest, CSSPropertyValueForProtocolAppendsImportantOnce) {
+  EXPECT_EQ(lynx::devtool::CSSPropertyValueForProtocol("20px", true),
+            "20px !important");
+  EXPECT_EQ(lynx::devtool::CSSPropertyValueForProtocol("20px !important", true),
+            "20px !important");
+  EXPECT_EQ(lynx::devtool::CSSPropertyValueForProtocol("20px", false), "20px");
+}
+
 TEST(HelperUtilTest, ReplaceDefaultComputedStyleTest) {
   std::unordered_map<std::string, std::string> dict1, dict2;
   std::unordered_multimap<std::string, lynx::devtool::CSSPropertyDetail>
