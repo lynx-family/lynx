@@ -27,7 +27,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setEnableTextRefactor:(BOOL)enable;
 - (void)setEnableTextOverflow:(BOOL)enable;
 - (void)setEnableNewClipMode:(BOOL)enable;
-- (void)setEnableEventRefactor:(BOOL)enable;
 - (void)setEnableA11yIDMutationObserver:(BOOL)enable;
 - (void)setEnableEventThrough:(BOOL)enable;
 - (void)setEnableEventThroughInheritFromPage:(BOOL)enable;

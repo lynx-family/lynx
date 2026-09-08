@@ -86,7 +86,6 @@ struct CompileOptions {
   bool default_display_linear_{true};
   bool enable_lynx_air_{false};
   FeOption enable_lazy_css_decode_{FE_OPTION_UNDEFINED};
-  FeOption enable_event_refactor_{FE_OPTION_UNDEFINED};
   FeOption force_calc_new_style_{FE_OPTION_UNDEFINED};
   FeOption enable_async_css_decode_{FE_OPTION_UNDEFINED};
   bool enable_css_engine{true};
@@ -132,7 +131,6 @@ struct CompileOptions {
   V(UINT8, remove_css_parser_log_, 15);           \
   V(UINT8, enable_lynx_air_, 16);                 \
   V(UINT8, enable_lazy_css_decode_, 17);          \
-  V(UINT8, enable_event_refactor_, 18);           \
   V(UINT8, force_calc_new_style_, 19);            \
   V(UINT8, enable_trial_options_, 20);            \
   V(UINT8, enable_async_css_decode_, 21);         \

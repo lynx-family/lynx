@@ -138,12 +138,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   page_config->SetAbSettingDisableCSSLazyDecode(
       absetting_disable_css_lazy_decode_);
 
-  // if enable_event_refactor == enabled, set page config's
-  // enable_event_refactor_ as true.
-  page_config->SetEnableEventRefactor(
-      compile_options_.enable_event_refactor_ == FE_OPTION_ENABLE ||
-      compile_options_.enable_event_refactor_ == FE_OPTION_UNDEFINED);
-
   page_config->SetEnableCSSInvalidation(
       compile_options_.enable_css_invalidation_);
 
