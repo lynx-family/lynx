@@ -51,6 +51,13 @@ if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests &&
       "android/performance_controller_android.cc",
       "android/performance_controller_android.h",
     ]
+
+    # FSP snapshots and their JNI dispatcher exist only in the Android UI
+    # runtime. Headless Android builds do not capture or report these frames.
+    if (!is_headless) {
+      performance_shared_sources +=
+          [ "android/fsp_report_dispatcher_android.cc" ]
+    }
   }
 }
 

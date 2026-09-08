@@ -43,6 +43,7 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxGetUIResult.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/utils/CallStackUtil.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/utils/DeviceUtils.java
+    - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/performance/fsp/FSPReportDispatcher.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/LynxModuleWrapper.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/MethodDescriptor.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/AttributeDescriptor.java
