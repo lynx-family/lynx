@@ -59,6 +59,10 @@
 
 @property(nonatomic, assign) NSInteger performanceEventCount;
 @property(nonatomic, strong, nullable) LynxPerformanceEntry *lastEntry;
+@property(nonatomic, assign) NSInteger setupTimingCount;
+@property(nonatomic, strong, nullable) NSDictionary *lastSetupTimingInfo;
+@property(nonatomic, strong, nullable) NSThread *setupTimingThread;
+@property(nonatomic, strong, nullable) XCTestExpectation *setupTimingExpectation;
 
 @end
 
@@ -67,6 +71,13 @@
 - (void)onPerformanceEvent:(nonnull LynxPerformanceEntry *)entry {
   self.performanceEventCount += 1;
   self.lastEntry = entry;
+}
+
+- (void)lynxView:(LynxView *)lynxView onSetup:(NSDictionary *)info {
+  self.setupTimingCount += 1;
+  self.lastSetupTimingInfo = info;
+  self.setupTimingThread = [NSThread currentThread];
+  [self.setupTimingExpectation fulfill];
 }
 
 @end
@@ -408,6 +419,109 @@
   XCTAssertEqualObjects(emitter.lastEvent.params[@"mode"], @"embedded");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"entryType"], @"pipeline");
   XCTAssertEqualObjects(emitter.lastEvent.params[@"entry"][@"name"], @"loadBundle");
+}
+
+- (void)testFrameViewEmbeddedModeDispatchesSetupTimingThroughRenderLifecycle {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:104
+                                                eventSet:[NSSet set]
+                                                 emitter:nil];
+  [frameView setEmbeddedMode:LynxEmbeddedModeBase];
+  LynxPerformanceEventClientTester *frameClient = [[LynxPerformanceEventClientTester alloc] init];
+  [[frameView getLifecycleDispatcher] addLifecycleClient:frameClient];
+  XCTestExpectation *setupTimingExpectation =
+      [self expectationWithDescription:@"Embedded setup timing should be dispatched"];
+  setupTimingExpectation.assertForOverFulfill = YES;
+  frameClient.setupTimingExpectation = setupTimingExpectation;
+
+  LynxTemplateRender *render = [self ensureRenderForFrameView:frameView];
+  LynxPerformanceController *controller = [render performanceController];
+  XCTAssertNotNil(controller);
+
+  [controller setTiming:1000 key:@(lynx::tasm::timing::kLoadBundleStart) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+
+  [controller setTiming:2000 key:@(lynx::tasm::timing::kLoadBundleEnd) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+
+  [controller setTiming:3000 key:@(lynx::tasm::timing::kPaintEnd) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+
+  // A duplicate timing before the main queue drains must not enqueue another callback.
+  [controller setTiming:4000 key:@(lynx::tasm::timing::kPaintEnd) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+  XCTestExpectation *mainQueueDrainedExpectation =
+      [self expectationWithDescription:@"Main queue should drain after setup timing"];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [mainQueueDrainedExpectation fulfill];
+  });
+
+  [self waitForExpectations:@[ setupTimingExpectation, mainQueueDrainedExpectation ] timeout:5.0];
+
+  XCTAssertEqual(frameClient.setupTimingCount, 1);
+  XCTAssertTrue([frameClient.setupTimingThread isMainThread]);
+  NSDictionary *expectedSetupTimingInfo = @{
+    @"setup_timing" : @{
+      @"load_template_start" : @1.0,
+      @"load_template_end" : @2.0,
+      @"draw_end" : @3.0,
+    },
+    @"extra_timing" : @{},
+    @"update_timings" : @{},
+    @"metrics" : @{@"lynx_fcp" : @2.0},
+    @"has_reload" : @NO,
+  };
+  XCTAssertEqualObjects(frameClient.lastSetupTimingInfo, expectedSetupTimingInfo);
+}
+
+- (void)testFrameViewEmbeddedModeDispatchesSetupTimingAfterLateLoadBundleEnd {
+  LynxView *rootView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder){
+  }];
+  LynxFrameView *frameView = [self frameViewWithRootView:rootView
+                                                    sign:105
+                                                eventSet:[NSSet set]
+                                                 emitter:nil];
+  [frameView setEmbeddedMode:LynxEmbeddedModeBase];
+  LynxPerformanceEventClientTester *frameClient = [[LynxPerformanceEventClientTester alloc] init];
+  [[frameView getLifecycleDispatcher] addLifecycleClient:frameClient];
+  XCTestExpectation *setupTimingExpectation =
+      [self expectationWithDescription:@"Out-of-order embedded setup timing should be dispatched"];
+  setupTimingExpectation.assertForOverFulfill = YES;
+  frameClient.setupTimingExpectation = setupTimingExpectation;
+
+  LynxTemplateRender *render = [self ensureRenderForFrameView:frameView];
+  LynxPerformanceController *controller = [render performanceController];
+  XCTAssertNotNil(controller);
+
+  [controller setTiming:1000 key:@(lynx::tasm::timing::kLoadBundleStart) pipelineID:nil];
+  [controller setTiming:3000 key:@(lynx::tasm::timing::kPaintEnd) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+
+  [controller setTiming:2000 key:@(lynx::tasm::timing::kLoadBundleEnd) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+
+  // Verify both duplicate suppression and timestamp snapshots before the queued callback runs.
+  [controller setTiming:2500 key:@(lynx::tasm::timing::kLoadBundleEnd) pipelineID:nil];
+  XCTAssertEqual(frameClient.setupTimingCount, 0);
+  XCTestExpectation *mainQueueDrainedExpectation =
+      [self expectationWithDescription:@"Main queue should drain after out-of-order setup timing"];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [mainQueueDrainedExpectation fulfill];
+  });
+
+  [self waitForExpectations:@[ setupTimingExpectation, mainQueueDrainedExpectation ] timeout:5.0];
+
+  XCTAssertEqual(frameClient.setupTimingCount, 1);
+  XCTAssertTrue([frameClient.setupTimingThread isMainThread]);
+  NSDictionary *expectedSetupTiming = @{
+    @"load_template_start" : @1.0,
+    @"load_template_end" : @2.0,
+    @"draw_end" : @3.0,
+  };
+  XCTAssertEqualObjects(frameClient.lastSetupTimingInfo[@"setup_timing"], expectedSetupTiming);
+  XCTAssertEqualObjects(frameClient.lastSetupTimingInfo[@"metrics"][@"lynx_fcp"], @2.0);
 }
 
 - (void)testFrameViewDispatchesLayoutChangeCustomEventWhenIntrinsicSizeChanges {

@@ -7,6 +7,7 @@
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceEventReporterProtocol.h>
+#import <Lynx/TemplateRenderCallbackProtocol.h>
 #import "LynxEmbeddedTimingCollector.h"
 #import "LynxPerformanceController+Native.h"
 #include "base/trace/native/trace_event.h"
@@ -20,6 +21,7 @@ using namespace lynx::shell;
 using namespace lynx::tasm;
 
 @interface LynxEmbeddedTimingCollector (Internal)
+@property(nonatomic, weak, nullable) id<TemplateRenderCallbackProtocol> embeddedTimingClient;
 - (void)setInstanceId:(int32_t)instanceId;
 @end
 
@@ -42,6 +44,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   LynxEmbeddedTimingCollector* _embeddedCollector;
   BOOL _embeddedModeEnabled;
   int32_t _instanceId;
+  __weak id<TemplateRenderCallbackProtocol> _embeddedTimingClient;
 }
 
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
@@ -71,8 +74,14 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   _embeddedModeEnabled = enabled;
   if (enabled) {
     _embeddedCollector = [[LynxEmbeddedTimingCollector alloc] initWithObserver:_observer];
+    _embeddedCollector.embeddedTimingClient = _embeddedTimingClient;
     [_embeddedCollector setInstanceId:_instanceId];
   }
+}
+
+- (void)setEmbeddedTimingClient:(id<TemplateRenderCallbackProtocol>)client {
+  _embeddedTimingClient = client;
+  _embeddedCollector.embeddedTimingClient = client;
 }
 
 #pragma mark - LynxMemoryMonitorProtocol
