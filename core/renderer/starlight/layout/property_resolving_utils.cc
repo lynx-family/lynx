@@ -82,12 +82,14 @@ DimensionValue<LayoutUnit> ComputePreferredSize(
   DimensionValue<LayoutUnit> result;
 
   const auto& css = *item.GetCSSStyle();
+  const NLength& width = css.GetWidth();
+  const NLength& height = css.GetHeight();
   result[kHorizontal] = NLengthToLayoutUnit(
-      css.GetWidth(), container_constraint[kHorizontal].ToPercentBase());
+      width, container_constraint[kHorizontal].ToPercentBase());
   result[kVertical] = NLengthToLayoutUnit(
-      css.GetHeight(), container_constraint[kVertical].ToPercentBase());
+      height, container_constraint[kVertical].ToPercentBase());
 
-  if (!css.GetWidth().IsMaxContent() && !css.GetHeight().IsMaxContent()) {
+  if (!width.IsMaxContent() && !height.IsMaxContent()) {
     ApplyAspectRatio(css, result);
   }
   HandleBoxSizing(css, *item.GetBoxInfo(), result, item.GetLayoutConfigs());
@@ -150,6 +152,22 @@ Constraints GenerateDefaultConstraints(
     const LayoutObject& item, const Constraints& container_constraint) {
   Constraints result;
 
+  const LayoutComputedStyle* style = item.GetCSSStyle();
+  const NLength& width = style->GetWidth();
+  const NLength& height = style->GetHeight();
+  if (width.IsAuto() && height.IsAuto() && style->GetAspectRatio() == -1.0f &&
+      style->IsBorderBox(item.GetLayoutConfigs())) {
+    if (container_constraint[kHorizontal].Mode() != SLMeasureModeIndefinite) {
+      result[kHorizontal] = OneSideConstraint::AtMost(StripMargins(
+          container_constraint[kHorizontal].Size(), item, kHorizontal));
+    }
+    if (container_constraint[kVertical].Mode() != SLMeasureModeIndefinite) {
+      result[kVertical] = OneSideConstraint::AtMost(StripMargins(
+          container_constraint[kVertical].Size(), item, kVertical));
+    }
+    return result;
+  }
+
   const auto preferred_size =
       property_utils::ComputePreferredSize(item, container_constraint);
 
@@ -171,19 +189,19 @@ Constraints GenerateDefaultConstraints(
         StripMargins(container_constraint[kVertical].Size(), item, kVertical));
   }
 
-  if (item.GetCSSStyle()->GetWidth().IsFitContent()) {
+  if (width.IsFitContent()) {
     ResolveFitContent(item, container_constraint, kHorizontal,
                       result[kHorizontal]);
   }
 
-  if (item.GetCSSStyle()->GetHeight().IsFitContent()) {
+  if (height.IsFitContent()) {
     ResolveFitContent(item, container_constraint, kVertical, result[kVertical]);
   }
 
-  if (item.GetCSSStyle()->GetWidth().IsMaxContent()) {
+  if (width.IsMaxContent()) {
     result[kHorizontal] = OneSideConstraint::Indefinite();
   }
-  if (item.GetCSSStyle()->GetHeight().IsMaxContent()) {
+  if (height.IsMaxContent()) {
     result[kVertical] = OneSideConstraint::Indefinite();
   }
   return result;
