@@ -217,6 +217,12 @@ importers:
   ai/skills/lynx-api-docs:
     specifiers: {}
 
+  js_libraries/host-script:
+    specifiers:
+      typescript: 5.8.3
+    devDependencies:
+      typescript: 5.8.3
+
   js_libraries/lynx-core:
     specifiers:
       '@lynx-js/ios-polyfill': workspace:*
