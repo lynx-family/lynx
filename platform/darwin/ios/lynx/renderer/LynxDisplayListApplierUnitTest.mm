@@ -20,10 +20,18 @@ using namespace lynx::tasm;
 
 @interface LynxImageManager (LynxDisplayListApplierUnitTest)
 - (void)updatePaintInfo:(const ImagePaintInfo &)paintInfo;
+- (void)applyImage:(UIImage *)image withType:(LynxImageRequestType)type;
 @end
 
 namespace {
 constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
+
+UIImageView<LynxRendererHost> *CreateImageHost() {
+  auto *view = (UIImageView<LynxRendererHost> *)[[UIImageView alloc]
+      initWithFrame:CGRectMake(0, 0, 100, 100)];
+  view.renderer = [view createRendererWithSign:1 andContext:nil];
+  return view;
+}
 
 void AppendBegin(DisplayList &list, int32_t id, int32_t type, float x, float y, float w, float h) {
   DisplayListItem item;
@@ -725,6 +733,124 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(CGRectEqualToRect(imageView.frame, CGRectMake(10.0f, 12.0f, 40.0f, 50.0f)));
   XCTAssertEqualWithAccuracy(imageView.layer.cornerRadius, 6.0f, 0.001f);
   XCTAssertTrue(imageView.layer.masksToBounds);
+}
+
+- (void)testRootImageReusesHostAndDisconnectsOnReset {
+  UIImageView<LynxRendererHost> *view = CreateImageHost();
+  UIView *parent = [[UIView alloc] init];
+  [parent addSubview:view];
+  LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context imageManagerForID:123]).andReturn(manager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:context];
+  DisplayList list;
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kImage), 0, 0, 100, 100);
+  AppendRecordBox(list, 0, 0, 100, 100);
+  AppendFill(list, 0xFFFF0000, 0);
+  AppendImage(list, 123, 0);
+  AppendEnd(list);
+
+  [applier applyDisplayList:&list];
+  UIImage *image = [[UIImage alloc] init];
+  [manager applyImage:image withType:LynxImageRequestSrc];
+  XCTAssertEqual(view.image, image);
+  XCTAssertEqual(view.subviews.count, 0u);
+  XCTAssertEqual(parent.layer.sublayers.lastObject, view.layer);
+
+  [applier reset];
+  XCTAssertEqual(view.superview, parent);
+  XCTAssertNil(view.image);
+  XCTAssertNil(view.animationImages);
+  [manager applyImage:image withType:LynxImageRequestSrc];
+  XCTAssertNil(view.image);
+  [context stopMocking];
+}
+
+- (void)testRootImageWithInsetsKeepsContentView {
+  UIImageView<LynxRendererHost> *view = CreateImageHost();
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kImage), 0, 0, 100, 100);
+  AppendRecordBox(list, 10, 12, 80, 76);
+  AppendImage(list, 123, 0);
+  AppendEnd(list);
+
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(view.subviews.count, 1u);
+  XCTAssertTrue(CGRectEqualToRect(view.subviews.firstObject.frame, CGRectMake(10, 12, 80, 76)));
+  XCTAssertTrue(CGRectEqualToRect(view.frame, CGRectMake(0, 0, 100, 100)));
+}
+
+- (void)testNestedImageDoesNotReuseHost {
+  UIImageView<LynxRendererHost> *view = CreateImageHost();
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kImage), 0, 0, 100, 100);
+  AppendBegin(list, 2, static_cast<int32_t>(PlatformRendererType::kImage), 0, 0, 100, 100);
+  AppendRecordBox(list, 0, 0, 100, 100);
+  AppendImage(list, 123, 0);
+  AppendEnd(list);
+  AppendEnd(list);
+
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(view.subviews.count, 1u);
+}
+
+- (void)testRootImageReusesHostWithRoundedContentBox {
+  UIImageView<LynxRendererHost> *view = CreateImageHost();
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kImage), 0, 0, 100, 100);
+  float radii[] = {2, 3, 4, 5, 6, 7, 8, 9};
+  AppendRecordBox(list, 0, 0, 100, 100, true, radii);
+  AppendImage(list, 123, 0);
+  AppendEnd(list);
+
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(view.subviews.count, 0u);
+  XCTAssertNotNil(view.layer.mask);
+  [applier reset];
+  XCTAssertNil(view.layer.mask);
+}
+
+- (void)testRootImageAboveContentLayerKeepsContentView {
+  UIImageView<LynxRendererHost> *view = CreateImageHost();
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kImage), 0, 0, 100, 100);
+  AppendBegin(list, 2, kViewType, 0, 0, 100, 100);
+  AppendRecordBox(list, 0, 0, 100, 100);
+  AppendFill(list, 0xFFFF0000, 0);
+  AppendEnd(list);
+  AppendImage(list, 123, 0);
+  AppendEnd(list);
+
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(view.subviews.count, 1u);
+  XCTAssertEqual(view.layer.sublayers.lastObject, view.subviews.firstObject.layer);
+}
+
+- (void)testRootImagePreservesSeparateHostAndContentClips {
+  UIImageView<LynxRendererHost> *view = CreateImageHost();
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, static_cast<int32_t>(PlatformRendererType::kImage), 0, 0, 100, 100);
+  AppendClipRect(list, 10, 10, 80, 80);
+  float radii[] = {6, 6, 6, 6, 6, 6, 6, 6};
+  AppendRecordBox(list, 0, 0, 100, 100, true, radii);
+  AppendImage(list, 123, 0);
+  AppendEnd(list);
+
+  [applier applyDisplayList:&list];
+  XCTAssertNotNil(view.layer.mask);
+  XCTAssertEqual(view.subviews.count, 1u);
+  XCTAssertEqualWithAccuracy(view.subviews.firstObject.layer.cornerRadius, 6, 0.001);
 }
 
 - (void)testImageAppliesNonUniformRoundedContentBox {
