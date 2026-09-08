@@ -5,25 +5,25 @@
 #import "AppDelegate.h"
 #if __has_include("Sparkling-umbrella.h")
 #import "Sparkling-umbrella.h"
+#import "SparklingMacro-umbrella.h"
 #define HAS_SPARKLING 1
 #endif
 #import "LynxDebugger.h"
-#import "LynxExplorer-Swift.h"
+#import "LynxExplorerSwiftInterop.h"
 #import "LynxInitProcessor.h"
-#import "TasmDispatcher.h"
 
-NSString *const LOCAL_URL_PREFIX = @"file://lynx?local://";
-NSString *const HOMEPAGE_URL =
-    @"file://lynx?local://homepage.lynx.bundle?fullscreen=true&orientation=portrait";
+NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullscreen=true";
 
 @interface AppDelegate ()
+
+@property(nonatomic, strong) LXRouteCoordinator *routeCoordinator;
 
 @end
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application
-    didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    didFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey, id> *)launchOptions {
   [[LynxInitProcessor sharedInstance] setupEnvironment];
 
 #if HAS_SPARKLING
@@ -41,57 +41,54 @@ NSString *const HOMEPAGE_URL =
   self.window.backgroundColor = [UIColor whiteColor];
   [self.window makeKeyAndVisible];
 
-  [LynxDebugger setOpenCardCallback:^(NSString *url) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [self openCard:url];
-    });
+  self.routeCoordinator =
+      [LXExplorerRouteComposition makeBridgeWithNavigationController:self.navigationController];
+  [LXRouteCoordinator installBridge:self.routeCoordinator];
+
+  __weak AppDelegate *weakSelf = self;
+  [LynxDebugger addOpenCardCallback:^(NSString *url) {
+    __strong AppDelegate *strongSelf = weakSelf;
+    [strongSelf.routeCoordinator openDebugURL:url
+                                     callback:^(__unused id payload){
+                                     }];
   }];
 
-  // Check for initial URL from environment variable.
-  NSDictionary *env = [[NSProcessInfo processInfo] environment];
-  NSString *initialUrl = env[@"lynx_initial_url"];
-  if (initialUrl && initialUrl.length > 0) {
-    [self openCard:initialUrl];
-    return YES;
-  }
-
-  [[TasmDispatcher sharedInstance] openTargetUrl:HOMEPAGE_URL];
+  NSDictionary<NSString *, NSString *> *environment = NSProcessInfo.processInfo.environment;
+  BOOL isRunningTests = environment[@"XCTestConfigurationFilePath"] != nil ||
+                        environment[@"XCInjectBundleInto"] != nil;
+  [self.routeCoordinator openStartupWithEnvironment:environment
+                                      launchOptions:launchOptions ?: @{}
+                                        homepageURL:HOMEPAGE_URL
+                                     isRunningTests:isRunningTests
+                                           callback:^(__unused id payload){
+                                           }];
   return YES;
-}
-
-- (void)openCard:(NSString *)url {
-  if ([url hasPrefix:LOCAL_URL_PREFIX]) {
-    [[TasmDispatcher sharedInstance] openTargetUrlSingleTop:url];
-  } else {
-    [self.navigationController popToRootViewControllerAnimated:YES];
-    [[TasmDispatcher sharedInstance] openTargetUrl:url];
-  }
 }
 
 - (BOOL)application:(UIApplication *)app
             openURL:(NSURL *)url
             options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
-  NSString *scheme = [url scheme];
-
-  // Handle lynx://open?url=https://... for runtime page switching.
-  if ([scheme isEqualToString:@"lynx"] && [[url host] isEqualToString:@"open"]) {
-    // Parse query string manually (NSURLComponents doesn't handle nested URLs well).
-    NSString *queryString = [url query];
-    NSString *targetUrl = nil;
-    if (queryString) {
-      NSString *prefix = @"url=";
-      NSRange range = [queryString rangeOfString:prefix];
-      if (range.location != NSNotFound) {
-        targetUrl = [queryString substringFromIndex:range.location + range.length];
-      }
-    }
-    if (targetUrl && targetUrl.length > 0) {
-      [self openCard:targetUrl];
-      return YES;
-    }
+  if (url.scheme.length == 0) {
+    return NO;
   }
+  [self.routeCoordinator openExternalURL:url
+                                callback:^(__unused id payload){
+                                }];
+  return YES;
+}
 
-  return NO;
+- (BOOL)application:(UIApplication *)application
+    continueUserActivity:(NSUserActivity *)userActivity
+      restorationHandler:
+          (void (^)(NSArray<id<UIUserActivityRestoring>> *_Nullable))restorationHandler {
+  NSURL *webpageURL = userActivity.webpageURL;
+  if (webpageURL == nil) {
+    return NO;
+  }
+  [self.routeCoordinator openUniversalLinkURL:webpageURL
+                                     callback:^(__unused id payload){
+                                     }];
+  return YES;
 }
 
 @end

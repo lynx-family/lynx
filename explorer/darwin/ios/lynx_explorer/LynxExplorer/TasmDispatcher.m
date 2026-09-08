@@ -3,97 +3,66 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "TasmDispatcher.h"
-#import <LynxDevtool/LynxRecorderViewController.h>
-#import "AppDelegate.h"
-#import "DemoTemplateResourceFetcher.h"
-#import "LynxRecorderDefaultActionCallback.h"
-#import "LynxViewShellViewController.h"
+#import <Lynx/LynxLog.h>
+#import "LynxExplorerSwiftInterop.h"
 
-@implementation TasmDispatcher {
-  NSString *_latestQuery;
-  NSMutableDictionary *_latestParams;
-}
+@interface TasmDispatcher ()
+
+- (void)forwardURL:(NSString *)sourceUrl
+            source:(LXRouteSource)source
+      presentation:(LXRoutePresentation)presentation;
+
+@end
+
+// This facade intentionally implements its own deprecated methods, so silence
+// the deprecation warning for the implementation only.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
+
+@implementation TasmDispatcher
 
 static TasmDispatcher *_instance = nil;
-static NSMapTable<NSString *, __kindof UIViewController *> *_dispatchedViewControllers = nil;
 
 + (instancetype)sharedInstance {
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
     _instance = [[self alloc] init];
-    _dispatchedViewControllers = [NSMapTable weakToWeakObjectsMapTable];
   });
   return _instance;
 }
 
-- (void)generateLatestParams {
-  if (_latestQuery == nil) {
-    _latestParams = nil;
+- (void)openTargetUrlSingleTop:(NSString *)sourceUrl {
+  [self forwardURL:sourceUrl
+            source:LXRouteSourceDebugBridge
+      presentation:LXRoutePresentationReplaceTop];
+}
+
+- (void)openTargetUrl:(NSString *)sourceUrl {
+  [self forwardURL:sourceUrl source:LXRouteSourceNativeModule presentation:LXRoutePresentationPush];
+}
+
+- (void)forwardURL:(NSString *)sourceUrl
+            source:(LXRouteSource)source
+      presentation:(LXRoutePresentation)presentation {
+  LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
+  if (coordinator == nil) {
+    LLogWarn(@"Lynx Explorer route coordinator has not been installed.");
     return;
   }
-  _latestParams = [[NSMutableDictionary alloc] init];
-  for (NSString *param in [_latestQuery componentsSeparatedByString:@"&"]) {
-    NSArray *elts = [param componentsSeparatedByString:@"="];
-    if ([elts count] < 2) continue;
-    [_latestParams setObject:[elts lastObject] forKey:[elts firstObject]];
-  }
-}
-
-- (void)openTargetUrlSingleTop:(NSString *)sourceUrl {
-  UINavigationController *vc =
-      ((AppDelegate *)([UIApplication sharedApplication].delegate)).navigationController;
-  [vc popViewControllerAnimated:NO];
-  [self openTargetUrl:sourceUrl];
-}
-
-// sourceUrl: file://lynx?local://homepage.lynx.bundle
-// processedUrl: local://homepage.lynx.bundle
-- (void)openTargetUrl:(NSString *)sourceUrl {
-  NSData *data = nil;
-  NSString *url = nil;
-
-  LocalBundleResult localRes = [DemoTemplateResourceFetcher readLocalBundleFromResource:sourceUrl];
-  if (localRes.isLocalScheme) {
-    data = localRes.data;
-    url = localRes.url;
-    _latestQuery = localRes.query;
-  } else if (localRes.isLynxRecorderSchema) {
-    url = localRes.url;
-  } else {
-    NSString *encodeUrl = [sourceUrl
-        stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet
-                                                               URLFragmentAllowedCharacterSet]];
-    NSURL *source = [NSURL URLWithString:encodeUrl];
-    if ([source.scheme isEqualToString:@"http"] || [source.scheme isEqualToString:@"https"]) {
-      _latestQuery = source.query;
-      url = sourceUrl;
-    }
-  }
-
-  [self generateLatestParams];
-
-  BOOL animated = YES;
-  if ([[_latestParams allKeys] containsObject:@"animated"]) {
-    animated = [[_latestParams objectForKey:@"animated"] boolValue];
-  }
-  dispatch_async(dispatch_get_main_queue(), ^{
-    UINavigationController *vc =
-        ((AppDelegate *)([UIApplication sharedApplication].delegate)).navigationController;
-
-    if (localRes.isLynxRecorderSchema) {
-      LynxRecorderViewController *tbVC = [[LynxRecorderViewController alloc] init];
-      tbVC.url = url;
-      [tbVC registerLynxRecorderActionCallback:[[LynxRecorderDefaultActionCallback alloc] init]];
-      [vc pushViewController:tbVC animated:animated];
-    } else {
-      LynxViewShellViewController *shellVC = [LynxViewShellViewController new];
-      shellVC.navigationController = (UINavigationController *)vc;
-      shellVC.url = url;
-      shellVC.data = data;
-      shellVC.params = self->_latestParams;
-      [vc pushViewController:shellVC animated:animated];
-    }
-  });
+  [coordinator openURL:sourceUrl
+      requestedContainer:LXRequestedContainerAutomatic
+                  source:source
+            presentation:presentation
+        animatedOverride:nil
+                callback:^(id result) {
+                  NSDictionary *payload =
+                      [result isKindOfClass:[NSDictionary class]] ? result : nil;
+                  if (payload != nil && ![payload[@"success"] boolValue]) {
+                    LLogWarn(@"Lynx Explorer route failed: %@", payload[@"message"]);
+                  }
+                }];
 }
 
 @end
+
+#pragma clang diagnostic pop

@@ -3,10 +3,9 @@
 # LICENSE file in the root directory of this source tree.
 set -e
 
-root_dir=$(pwd)/../../../../
-root_dir=$(readlink -f $root_dir)
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+root_dir=$(readlink -f "$script_dir/../../../..")
 echo "root_dir: $root_dir"
-command="pod install --verbose --repo-update"
 project_name="LynxExplorer.xcodeproj"
 enable_trace=true
 
@@ -17,16 +16,36 @@ usage() {
     echo " --skip-card-build  Skip card build task"
     echo " --integration-test  Build integration test demo pages"
     echo " --disable-trace    Disable trace"
+    echo " --sparkling-mode enable_sparkling|disable_sparkling"
+    echo "                    Select pinned Sparkling sources (default: disable_sparkling)"
 }
 
 build_card_resources() {
-    mkdir -p $root_dir/explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource
+    resource_dir=$root_dir/explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource
+    sparkling_go_resource_dir=$resource_dir/extensions/sparkling-go
+    mkdir -p "$resource_dir"
     # build home page card
     pushd $root_dir/explorer/homepage
     pnpm install --no-frozen-lockfile
     pnpm run build
     cp $root_dir/explorer/homepage/dist/main.lynx.bundle $root_dir/explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource/homepage.lynx.bundle
     popd
+
+    if [[ "$SPARKLING_MODE" == "enable_sparkling" ]]; then
+        # Sparkling Go is owned and built by the pinned upstream Sparkling
+        # checkout. Explorer only packages its official playground bundles.
+        sparkling_go_dist=$SPARKLING_SOURCE_ROOT/packages/playground/dist
+        if [[ ! -f "$sparkling_go_dist/main.lynx.bundle" ]]; then
+            echo "error: Sparkling Go bundles are missing; build the pinned playground first" >&2
+            exit 1
+        fi
+        rm -rf "$sparkling_go_resource_dir"
+        mkdir -p "$sparkling_go_resource_dir"
+        cp -R "$sparkling_go_dist"/. "$sparkling_go_resource_dir/"
+    else
+        # A mode switch must not leave an enabled-only extension in the app.
+        rm -rf "$sparkling_go_resource_dir"
+    fi
 
     if [[ "$SKIP_CARD_BUILD" == "false" ]]; then
         # build showcase cards
@@ -40,20 +59,35 @@ build_card_resources() {
 }
 
 handle_options() {
-    for i in "$@"; do
-        case $i in
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
             -h | --help)
                 usage
                 exit 0
                 ;;
             --skip-card-build)
                 SKIP_CARD_BUILD=true
+                shift
                 ;;
             --integration-test)
                 INTEGRATION_TEST=true
+                shift
                 ;;
             --disable-trace)
                 enable_trace=false
+                shift
+                ;;
+            --sparkling-mode)
+                if [[ $# -lt 2 ]]; then
+                    echo "error: --sparkling-mode requires enable_sparkling or disable_sparkling" >&2
+                    exit 1
+                fi
+                SPARKLING_MODE=$2
+                shift 2
+                ;;
+            --sparkling-mode=*)
+                SPARKLING_MODE=${1#*=}
+                shift
                 ;;
             *)
                 usage
@@ -65,10 +99,30 @@ handle_options() {
 
 SKIP_CARD_BUILD=false
 INTEGRATION_TEST=false
-
-enable_trace_param=$([ $enable_trace == true ] && echo "--enable-trace" || echo "")
+SPARKLING_MODE=${SPARKLING_MODE:-disable_sparkling}
+SPARKLING_SOURCE_ROOT=${SPARKLING_SOURCE_ROOT:-generated/sparkling-source}
 
 handle_options "$@"
+
+if [[ "$SPARKLING_MODE" != "enable_sparkling" && "$SPARKLING_MODE" != "disable_sparkling" ]]; then
+    echo "error: sparkling mode must be enable_sparkling or disable_sparkling, got '$SPARKLING_MODE'" >&2
+    exit 1
+fi
+
+SPARKLING_SOURCE_ROOT=$(python3 -c \
+    'import os, sys; print(os.path.abspath(os.path.join(sys.argv[1], sys.argv[2])))' \
+    "$script_dir" "$SPARKLING_SOURCE_ROOT")
+export SPARKLING_MODE
+export SPARKLING_SOURCE_ROOT
+
+enable_trace_param=$([ "$enable_trace" == true ] && echo "--enable-trace" || echo "")
+
+if [[ "$SPARKLING_MODE" == "enable_sparkling" ]]; then
+    python3 "$script_dir/scripts/sync_sparkling_source.py" \
+        --manifest "$script_dir/sparkling-source.json" \
+        --source-root "$SPARKLING_SOURCE_ROOT"
+fi
+
 build_card_resources
 
 pushd $root_dir
@@ -79,10 +133,15 @@ echo $generate_ios_podspec_cmd
 eval "$generate_ios_podspec_cmd"
 popd
 
-# prepare source cache
 export COCOAPODS_CONVERT_GIT_TO_HTTP=false
 export LANG=en_US.UTF-8
-SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install -V --path="$root_dir"
-bundle exec pod deintegrate "$project_name"
-rm -rf Podfile.lock
-COCOAPODS_LOCAL_SOURCE_REPO=$source_cache_dir/.git bundle exec "$command"
+pushd "$script_dir"
+pod deintegrate "$project_name"
+pod install
+python3 "$script_dir/scripts/verify_sparkling_ownership.py" \
+    --mode "$SPARKLING_MODE" \
+    --lockfile "$script_dir/Podfile.lock" \
+    --manifest "$script_dir/sparkling-source.json" \
+    --source-root "$SPARKLING_SOURCE_ROOT" \
+    --lynx-root "$root_dir"
+popd
