@@ -95,6 +95,10 @@ void LynxDevToolMediator::Init(
     int64_t record_id = reinterpret_cast<int64_t>(shell);
     lepus_debugger_->SetRecordID(record_id);
   }
+  if (native_module_record_manager_ == nullptr) {
+    native_module_record_manager_ =
+        std::make_shared<NativeModuleRecordManager>(shared_from_this());
+  }
 
   // shell set element observer in tasm thread;
   shell->SetInspectorElementObserver(
@@ -166,6 +170,10 @@ LynxDevToolMediator::InitWhenBackgroundRuntimeCreated(
   if (!devtool_executor_) {
     devtool_executor_ =
         std::make_shared<InspectorDefaultExecutor>(shared_from_this());
+  }
+  if (native_module_record_manager_ == nullptr) {
+    native_module_record_manager_ =
+        std::make_shared<NativeModuleRecordManager>(shared_from_this());
   }
   auto runtime_observer = js_debugger_->GetInspectorRuntimeObserver();
 
@@ -1301,34 +1309,49 @@ void LynxDevToolMediator::SendLogEntryAddedEvent(
   });
 }
 
-// NativeModule protocol
+void LynxDevToolMediator::AddNativeModuleRecord(const lepus::Value& record) {
+  auto manager = native_module_record_manager_;
+  if (manager == nullptr) {
+    return;
+  }
+  manager->EnqueueRecordOnJSThread(record);
+}
+
 void LynxDevToolMediator::NativeModuleEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
   RunOnDevToolThread(
-      [sender, message] { sender->SendOKResponse(message["id"].asInt64()); });
+      [sender, message, manager = native_module_record_manager_] {
+        if (manager != nullptr) {
+          manager->Enable();
+        }
+        sender->SendOKResponse(message["id"].asInt64());
+      });
 }
 
 void LynxDevToolMediator::NativeModuleDisable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
   RunOnDevToolThread(
-      [sender, message] { sender->SendOKResponse(message["id"].asInt64()); });
+      [sender, message, manager = native_module_record_manager_] {
+        if (manager != nullptr) {
+          manager->Disable();
+        }
+        sender->SendOKResponse(message["id"].asInt64());
+      });
 }
 
 void LynxDevToolMediator::NativeModuleGetRecords(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
-  RunOnDevToolThread([sender, message] {
-    Json::Value result(Json::ValueType::objectValue);
-    result["records"] = Json::Value(Json::ValueType::arrayValue);
-    result["latestSequence"] = static_cast<Json::Int64>(0);
-
-    Json::Value response(Json::ValueType::objectValue);
-    response["id"] = message["id"];
-    response["result"] = std::move(result);
-    sender->SendMessage("CDP", response);
-  });
+  RunOnDevToolThread(
+      [sender, message, manager = native_module_record_manager_] {
+        if (manager != nullptr) {
+          manager->GetRecords(sender, message["id"].asInt64());
+        } else {
+          sender->SendOKResponse(message["id"].asInt64());
+        }
+      });
 }
 
 // Network protocol
