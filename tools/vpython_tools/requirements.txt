@@ -8,6 +8,8 @@ charset-normalizer==3.4.4
     # via requests
 doxmlparser==1.14.0
     # via -r tools/vpython_tools/requirements.in
+future==1.0.0
+    # via -r tools/vpython_tools/requirements.in
 idna==3.11
     # via requests
 jinja2==3.1.6

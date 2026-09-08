@@ -26,15 +26,8 @@ Lynx requires Xcode 15.0 or later. It is recommended to keep Xcode up to date. Y
 
 ### Python Library
 
-The yaml dependency needs to be installed to execute some auto-generation logic.
-
-```
-# use the virtual environment to manage python environment
-python3 -m venv venv
-source venv/bin/activate
-# install PyYAML package
-pip3 install pyyaml
-```
+Repository Python packages are loaded from `third_party/py_deps` by the setup
+commands below.
 
 ## Get the Source Code
 

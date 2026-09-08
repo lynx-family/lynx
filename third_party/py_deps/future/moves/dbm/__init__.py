@@ -1,0 +1,25 @@
+# Copyright (c) 2013-2024 Python Charmers, Australia
+#
+# This file is part of the python-future project and is distributed under
+# the MIT license. See future-1.0.0.dist-info/LICENSE.txt for details.
+
+from __future__ import absolute_import
+from future.utils import PY3
+
+if PY3:
+    from dbm import *
+else:
+    __future_module__ = True
+    from whichdb import *
+    from anydbm import *
+
+# Py3.3's dbm/__init__.py imports ndbm but doesn't expose it via __all__.
+# In case some (badly written) code depends on dbm.ndbm after import dbm,
+# we simulate this:
+if PY3:
+    from dbm import ndbm
+else:
+    try:
+        from future.moves.dbm import ndbm
+    except ImportError:
+        ndbm = None
