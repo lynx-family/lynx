@@ -6,6 +6,7 @@
 #define CORE_RUNTIME_LEPUSNG_NAPI_WORKLET_NAPI_LOADER_UI_H_
 
 #include <unordered_map>
+#include <vector>
 
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/lepusng/quick_context.h"
@@ -34,6 +35,8 @@ class NapiLoaderUI : public runtime::js::NapiEnvironment::Delegate {
  private:
   static std::unordered_map<napi_env, lepus::QuickContext*>&
   NapiEnvToContextMap();
+  static std::unordered_map<lepus::QuickContext*, std::vector<napi_env>>&
+  NapiEnvStackMap();
   void SetNapiEnvToLEPUSContext(Napi::Env env);
 
   lynx::worklet::LepusLynx* lynx_ = nullptr;
