@@ -685,8 +685,7 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
     }
     BOOL contain = NO;
     if (self.headerSlotOverflowHitTest) {
-      contain = self.context.enableEventRefactor ? [child containsPoint:point]
-                                                 : [child containsPoint:oriPoint];
+      contain = [child containsPoint:point];
     } else {
       contain = CGRectContainsPoint(child.view.bounds, point);
     }

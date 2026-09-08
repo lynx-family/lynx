@@ -4,9 +4,7 @@
 package com.lynx.tasm.behavior.ui;
 
 import android.graphics.Canvas;
-import android.graphics.Matrix;
 import android.graphics.Path;
-import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -623,11 +621,7 @@ public abstract class UIGroup<T extends ViewGroup>
       return ((UIGroup) touchTarget)
           .findUIWithCustomLayout(eventCoords[0], eventCoords[1], (UIGroup) touchTarget);
     }
-    if (mContext.getEnableEventRefactor()) {
-      return touchTarget.hitTest(eventCoords[0], eventCoords[1]);
-    }
-    return touchTarget.hitTest(
-        eventCoords[0] + touchTarget.getScrollX(), eventCoords[1] + touchTarget.getScrollY());
+    return touchTarget.hitTest(eventCoords[0], eventCoords[1]);
   }
 
   private LynxUI findTouchTargetOnViewChian(
@@ -636,43 +630,20 @@ public abstract class UIGroup<T extends ViewGroup>
     int childrenCount = viewGroup.getChildCount();
     for (int i = childrenCount - 1; i >= 0; i--) {
       View child = viewGroup.getChildAt(i);
-      if (mContext.getEnableEventRefactor()) {
-        float[] childPoint = new float[2];
-        if (isTransformedTouchPointInView(eventCoords, viewGroup, child, childPoint, relations)) {
-          if (relations.containsKey(child)) {
-            touchTarget = relations.get(child);
-            eventCoords[0] = childPoint[0];
-            eventCoords[1] = childPoint[1];
-          } else if (child instanceof ViewGroup) {
-            touchTarget = findTouchTargetOnViewChian(childPoint, (ViewGroup) child, relations);
-            if (touchTarget != null) {
-              eventCoords[0] = childPoint[0];
-              eventCoords[1] = childPoint[1];
-            }
-          }
-          if (touchTarget == null) {
-            continue;
-          }
-          return touchTarget;
-        }
-        continue;
-      }
-
-      PointF childPoint = mTempPoint;
-      if (isTransformedTouchPointInView(
-              eventCoords[0], eventCoords[1], viewGroup, child, childPoint)) {
-        float prex = eventCoords[0];
-        float prey = eventCoords[1];
-        eventCoords[0] = childPoint.x;
-        eventCoords[1] = childPoint.y;
+      float[] childPoint = new float[2];
+      if (isTransformedTouchPointInView(eventCoords, viewGroup, child, childPoint, relations)) {
         if (relations.containsKey(child)) {
           touchTarget = relations.get(child);
+          eventCoords[0] = childPoint[0];
+          eventCoords[1] = childPoint[1];
         } else if (child instanceof ViewGroup) {
-          touchTarget = findTouchTargetOnViewChian(eventCoords, (ViewGroup) child, relations);
+          touchTarget = findTouchTargetOnViewChian(childPoint, (ViewGroup) child, relations);
+          if (touchTarget != null) {
+            eventCoords[0] = childPoint[0];
+            eventCoords[1] = childPoint[1];
+          }
         }
         if (touchTarget == null) {
-          eventCoords[0] = prex;
-          eventCoords[1] = prey;
           continue;
         }
         return touchTarget;
@@ -680,11 +651,6 @@ public abstract class UIGroup<T extends ViewGroup>
     }
     return touchTarget;
   }
-
-  private static final float[] mEventCoords = new float[2];
-  private static final PointF mTempPoint = new PointF();
-  private static final float[] mMatrixTransformCoords = new float[2];
-  private static final Matrix mInverseMatrix = new Matrix();
 
   protected boolean isTransformedTouchPointInView(float[] inPoint, View parent, View child,
       float[] outLocalPoint, Map<View, LynxUI> relations) {
@@ -696,30 +662,6 @@ public abstract class UIGroup<T extends ViewGroup>
         && (outLocalPoint[1] >= 0 && outLocalPoint[1] < (child.getBottom() - child.getTop()))) {
       return true;
     }
-    return false;
-  }
-
-  private boolean isTransformedTouchPointInView(
-      float x, float y, ViewGroup parent, View child, PointF outLocalPoint) {
-    float localX = x + parent.getScrollX() - child.getLeft();
-    float localY = y + parent.getScrollY() - child.getTop();
-    Matrix matrix = child.getMatrix();
-    if (!matrix.isIdentity()) {
-      float[] localXY = mMatrixTransformCoords;
-      localXY[0] = localX;
-      localXY[1] = localY;
-      Matrix inverseMatrix = mInverseMatrix;
-      matrix.invert(inverseMatrix);
-      inverseMatrix.mapPoints(localXY);
-      localX = localXY[0];
-      localY = localXY[1];
-    }
-    if ((localX >= 0 && localX < (child.getRight() - child.getLeft()))
-        && (localY >= 0 && localY < (child.getBottom() - child.getTop()))) {
-      outLocalPoint.set(localX, localY);
-      return true;
-    }
-
     return false;
   }
 

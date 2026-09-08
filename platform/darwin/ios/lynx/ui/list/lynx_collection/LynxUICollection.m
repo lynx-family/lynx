@@ -222,42 +222,33 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-  if (self.context.enableEventRefactor) {
-    // if the zIndex of CollectionViewCells are assigned according to their index
-    // we then use containsPoints to test each cell form the max zIndex to the min zIndex.
-    NSArray<NSIndexPath *> *visibleIndexPaths = self.view.indexPathsForVisibleItems;
-    NSArray<NSIndexPath *> *visibleIndexPathsSortedByZIndexReversely =
-        [visibleIndexPaths sortedArrayUsingComparator:^NSComparisonResult(
-                               NSIndexPath *_Nonnull lhs, NSIndexPath *_Nonnull rhs) {
-          UICollectionViewLayoutAttributes *lhsAttributes =
-              [self.view layoutAttributesForItemAtIndexPath:lhs];
-          UICollectionViewLayoutAttributes *rhsAttributes =
-              [self.view layoutAttributesForItemAtIndexPath:rhs];
-          if (lhsAttributes.zIndex < rhsAttributes.zIndex) {
-            return NSOrderedDescending;
-          } else {
-            return NSOrderedAscending;
-          }
-          return NSOrderedSame;
-        }];
+  // if the zIndex of CollectionViewCells are assigned according to their index
+  // we then use containsPoints to test each cell form the max zIndex to the min zIndex.
+  NSArray<NSIndexPath *> *visibleIndexPaths = self.view.indexPathsForVisibleItems;
+  NSArray<NSIndexPath *> *visibleIndexPathsSortedByZIndexReversely =
+      [visibleIndexPaths sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *_Nonnull lhs,
+                                                                        NSIndexPath *_Nonnull rhs) {
+        UICollectionViewLayoutAttributes *lhsAttributes =
+            [self.view layoutAttributesForItemAtIndexPath:lhs];
+        UICollectionViewLayoutAttributes *rhsAttributes =
+            [self.view layoutAttributesForItemAtIndexPath:rhs];
+        if (lhsAttributes.zIndex < rhsAttributes.zIndex) {
+          return NSOrderedDescending;
+        } else {
+          return NSOrderedAscending;
+        }
+        return NSOrderedSame;
+      }];
 
-    for (NSIndexPath *indexPath in visibleIndexPathsSortedByZIndexReversely) {
-      LynxCollectionViewCell *cell =
-          (LynxCollectionViewCell *)[self.view cellForItemAtIndexPath:indexPath];
-      CGPoint pointInCell = [cell.ui.view convertPoint:point fromView:self.view];
-      if ([cell.ui containsPoint:pointInCell inHitTestFrame:cell.contentView.bounds]) {
-        return [cell.ui hitTest:pointInCell withEvent:event];
-      }
-    }
-    return self;
-  } else {
-    NSIndexPath *path = [self.view indexPathForItemAtPoint:point];
+  for (NSIndexPath *indexPath in visibleIndexPathsSortedByZIndexReversely) {
     LynxCollectionViewCell *cell =
-        (LynxCollectionViewCell *)[self.view cellForItemAtIndexPath:path];
-    if (cell == nil) return self;
-    point = CGPointMake(point.x - cell.frame.origin.x, point.y - cell.frame.origin.y);
-    return [cell.ui hitTest:point withEvent:event];
+        (LynxCollectionViewCell *)[self.view cellForItemAtIndexPath:indexPath];
+    CGPoint pointInCell = [cell.ui.view convertPoint:point fromView:self.view];
+    if ([cell.ui containsPoint:pointInCell inHitTestFrame:cell.contentView.bounds]) {
+      return [cell.ui hitTest:pointInCell withEvent:event];
+    }
   }
+  return self;
 }
 
 #pragma mark - ContentOffset
