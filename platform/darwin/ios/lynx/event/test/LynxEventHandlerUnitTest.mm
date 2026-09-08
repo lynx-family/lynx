@@ -7,9 +7,13 @@
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxTouchEvent.h>
+#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
+#import <Lynx/LynxTransferWrapperView.h>
 #import <Lynx/LynxTransformRaw.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUITransfer.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxWeakProxy.h>
 
@@ -19,10 +23,27 @@
 - (Class)iosPanInterceptGestureClass;
 - (NSInteger)iosPanInterceptViewTag;
 - (BOOL)hasIosPanInterceptViewTag;
+- (BOOL)hasResponseChainEvent:(NSString*)eventName;
 @end
 
 @interface LynxUIContext ()
 @property(nonatomic, weak) LynxEventHandler* eventHandler;
+@end
+
+@interface LynxEventHandler (ConsumeBoundaryTest)
+- (BOOL)hasConsumeSlideEvent;
+- (BOOL)consumeSlideEvents:(CGFloat)angle;
+@end
+
+@interface LynxUITransfer (EventRoutingTest)
+@property(nonatomic, strong, readonly) LynxEventHandler* transferEventHandler;
+@end
+
+@interface LynxTouchHandler (ExternalCoordinatesTest)
+- (void)setEnableCurrentTargetTouchPosition:(BOOL)enable;
+- (NSDictionary<NSNumber*, NSValue*>*)currentTargetPointMapForTarget:(id<LynxEventTarget>)target
+                                                           pagePoint:(CGPoint)pagePoint
+                                                           eventName:(NSString*)eventName;
 @end
 
 @interface LynxPanInterceptUnitTestGesture : UIGestureRecognizer
@@ -335,6 +356,148 @@ static const NSInteger kLynxPanInterceptUnitTestViewTag = 1001;
              withPlatformGesture:nil];
 
   XCTAssertEqual(otherGesture.state, UIGestureRecognizerStatePossible);
+}
+
+- (void)testExternalConsumeSlideEventStopsAtEventRoot {
+  for (NSString* scope in @[ @"outside", @"nonmatching-root", @"root", @"child", @"ordinary" ]) {
+    LynxUIView* outer = [[LynxUIView alloc] initWithView:[UIView new]];
+    LynxUIView* root = [[LynxUIView alloc] initWithView:[UIView new]];
+    LynxUIView* child = [[LynxUIView alloc] initWithView:[UIView new]];
+    [outer insertChild:root atIndex:0];
+    [root insertChild:child atIndex:0];
+    [LynxPropsProcessor updateProp:@[ @[ @(-180), @180 ] ]
+                           withKey:@"consume-slide-event"
+                             forUI:outer];
+    if ([scope isEqualToString:@"nonmatching-root"]) {
+      [LynxPropsProcessor updateProp:@[ @[ @80, @100 ] ] withKey:@"consume-slide-event" forUI:root];
+    } else if ([scope isEqualToString:@"root"] || [scope isEqualToString:@"child"]) {
+      [LynxPropsProcessor updateProp:@[ @[ @(-180), @180 ] ]
+                             withKey:@"consume-slide-event"
+                               forUI:[scope isEqualToString:@"root"] ? root : child];
+    }
+    UIView* source = [UIView new];
+    LynxEventHandler* handler = [[LynxEventHandler alloc] initWithRootView:source
+                                                                withRootUI:root
+                                                                   andFlag:NO];
+    if (![scope isEqualToString:@"ordinary"]) {
+      [handler setTouchEventSource:source payloadRootView:outer.view];
+    }
+    [handler setValue:child forKey:@"touchTarget"];
+    XCTAssertEqual([handler hasConsumeSlideEvent], ![scope isEqualToString:@"outside"], @"%@",
+                   scope);
+    BOOL shouldConsume = [scope isEqualToString:@"root"] || [scope isEqualToString:@"child"] ||
+                         [scope isEqualToString:@"ordinary"];
+    XCTAssertEqual([handler consumeSlideEvents:0], shouldConsume, @"%@", scope);
+  }
+}
+
+- (void)testTouchEventSourceCoordinateConversion {
+  UIView* payloadRootView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 300)];
+  UIView* touchSourceView = [[UIView alloc] initWithFrame:CGRectMake(30, 40, 120, 120)];
+  UIView* targetView = [[UIView alloc] initWithFrame:CGRectMake(10, 15, 80, 80)];
+  [payloadRootView addSubview:touchSourceView];
+  [payloadRootView addSubview:targetView];
+
+  LynxUIView* targetUI = [[LynxUIView alloc] initWithView:targetView];
+  [_handler setTouchEventSource:touchSourceView payloadRootView:payloadRootView];
+
+  UITouch* mockTouch = OCMClassMock([UITouch class]);
+  OCMStub([mockTouch locationInView:touchSourceView]).andReturn(CGPointMake(5, 6));
+
+  CGPoint pagePoint = [_handler pagePointFromTouch:mockTouch];
+  CGPoint viewPoint = [_handler viewPointFromTouch:mockTouch target:targetUI];
+
+  XCTAssertTrue(CGPointEqualToPoint(pagePoint, CGPointMake(35, 46)));
+  XCTAssertTrue(CGPointEqualToPoint(viewPoint, CGPointMake(25, 31)));
+}
+
+- (void)testTransferRootHitReturnsWrapper {
+  id transfer = OCMClassMock([LynxUITransfer class]);
+  id handler = OCMClassMock([LynxEventHandler class]);
+  UIView* hiddenHost = [UIView new];
+  hiddenHost.hidden = YES;
+  OCMStub([transfer view]).andReturn(hiddenHost);
+  OCMStub([transfer transferEventHandler]).andReturn(handler);
+  CGPoint point = CGPointMake(20, 30);
+  OCMStub([handler hitTest:point withEvent:nil]).andReturn(transfer);
+  OCMStub([transfer eventThrough:point]).andReturn(NO);
+  LynxTransferWrapperView* wrapper = [[LynxTransferWrapperView alloc] initWithTransfer:transfer];
+  wrapper.frame = CGRectMake(0, 0, 100, 100);
+  XCTAssertEqual([wrapper hitTest:point withEvent:nil], wrapper);
+  OCMVerify([transfer eventThrough:point]);
+}
+
+- (void)testExternalCurrentTargetCoordinatesUsePayloadRoot {
+  UIView* page = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 500, 500)];
+  UIView* wrapper = [[UIView alloc] initWithFrame:CGRectMake(100, 200, 200, 200)];
+  [page addSubview:wrapper];
+  UIView* childView = [[UIView alloc] initWithFrame:CGRectMake(10, 20, 100, 100)];
+  [wrapper addSubview:childView];
+  LynxUIView* root = [[LynxUIView alloc] initWithView:[UIView new]];
+  LynxUIView* child = [[LynxUIView alloc] initWithView:childView];
+  root.sign = 1;
+  child.sign = 2;
+  [root insertChild:child atIndex:0];
+  [wrapper addSubview:childView];
+  XCTAssertEqual(child.parentTarget, root);
+  id rootMock = OCMPartialMock(root);
+  id childMock = OCMPartialMock(child);
+  OCMStub([rootMock hasResponseChainEvent:[OCMArg any]]).andReturn(YES);
+  OCMStub([childMock hasResponseChainEvent:[OCMArg any]]).andReturn(YES);
+  LynxEventHandler* handler = [[LynxEventHandler alloc] initWithRootView:wrapper
+                                                              withRootUI:root
+                                                                 andFlag:NO];
+  [handler setTouchEventSource:wrapper payloadRootView:page];
+  [_handler.touchRecognizer setEnableCurrentTargetTouchPosition:YES];
+  [handler syncConfigWith:_handler];
+  for (NSString* name in @[ @"touchstart", @"tap", @"click" ]) {
+    NSDictionary<NSNumber*, NSValue*>* points =
+        [handler.touchRecognizer currentTargetPointMapForTarget:child
+                                                      pagePoint:CGPointMake(125, 245)
+                                                      eventName:name];
+    XCTAssertNotNil(points[@1]);
+    XCTAssertNotNil(points[@2]);
+    XCTAssertTrue(CGPointEqualToPoint(points[@1].CGPointValue, CGPointMake(25, 45)));
+    XCTAssertTrue(CGPointEqualToPoint(points[@2].CGPointValue, CGPointMake(15, 25)));
+  }
+}
+
+- (void)testSyncConfigWith {
+  LynxRootUI* rootUI = [[LynxRootUI alloc] initWithLynxView:(LynxView*)[UIView new]];
+  LynxEventHandler* sourceHandler = [[LynxEventHandler alloc] initWithRootView:rootUI.view
+                                                                    withRootUI:rootUI
+                                                                       andFlag:NO];
+  LynxEventHandler* targetHandler = [[LynxEventHandler alloc] initWithRootView:[UIView new]
+                                                                    withRootUI:rootUI
+                                                                       andFlag:NO];
+
+  [sourceHandler setEnableViewReceiveTouch:YES];
+  [sourceHandler setEnableSimultaneousTap:YES];
+  [sourceHandler setDisableLongpressAfterScroll:YES];
+  [sourceHandler setTapSlop:@"24px"];
+  [sourceHandler setLongPressDuration:700];
+  [sourceHandler setEnablePlatformGesture:YES];
+  [sourceHandler.touchRecognizer setEnableEndGestureAtLastFingerUp:YES];
+  [sourceHandler.touchRecognizer setEnableTouchPseudo:YES];
+  [sourceHandler.touchRecognizer setEnableMultiTouch:YES];
+  [sourceHandler.touchRecognizer setEnableCurrentTargetTouchPosition:YES];
+  sourceHandler.touchRecognizer.enableNewGesture = YES;
+
+  [targetHandler syncConfigWith:sourceHandler];
+
+  XCTAssertTrue(sourceHandler.enableSimultaneousTap == targetHandler.enableSimultaneousTap);
+  XCTAssertTrue(((UITapGestureRecognizer*)targetHandler.tapRecognizer).cancelsTouchesInView == NO);
+  XCTAssertEqualWithAccuracy(
+      ((UILongPressGestureRecognizer*)targetHandler.longPressRecognizer).minimumPressDuration, 0.7,
+      0.0001);
+  XCTAssertTrue(targetHandler.customPlatformGesture != nil);
+  XCTAssertTrue(
+      [[targetHandler.touchRecognizer valueForKey:@"enableEndGestureAtLastFingerUp"] boolValue]);
+  XCTAssertTrue([[targetHandler.touchRecognizer valueForKey:@"enableTouchPseudo"] boolValue]);
+  XCTAssertTrue([[targetHandler.touchRecognizer valueForKey:@"enableMultiTouch"] boolValue]);
+  XCTAssertTrue(targetHandler.touchRecognizer.enableNewGesture);
+  XCTAssertTrue(
+      [[targetHandler.touchRecognizer valueForKey:@"enableCurrentTargetTouchPosition"] boolValue]);
 }
 
 @end
