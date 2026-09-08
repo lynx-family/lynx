@@ -1,6 +1,6 @@
 # Integration test
 
-This package contains self-driving testing for Lynx on devices and emulators. It is driven by the [Lynx-E2E](https://pypi.org/project/lynx-e2e-appium/) framework which is a self-developed UI automation framework of Lynx.
+This package contains self-driving testing for Lynx on devices and emulators. It is driven by the [Lynx-E2E](https://pypi.org/project/lynx-e2e-appium/) framework which is a self-developed UI automation framework of Lynx. 
 
 ## Environment Setup
 
