@@ -48,10 +48,12 @@ js_sources = [
   "update_data_type.h",
 ]
 
-if (enable_inspector) {
+if (enable_inspector || enable_unittests) {
   js_sources += [
     "bindings/modules/native_module_invocation_context.cc",
     "bindings/modules/native_module_invocation_context.h",
+    "bindings/modules/native_module_record_builder.cc",
+    "bindings/modules/native_module_record_builder.h",
   ]
 }
 
