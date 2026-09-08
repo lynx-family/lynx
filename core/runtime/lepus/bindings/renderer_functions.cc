@@ -10,6 +10,7 @@
 #include <deque>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -37,6 +38,7 @@
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
+#include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/frame_element.h"
@@ -48,7 +50,6 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
-#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -155,14 +156,6 @@ lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
   return GenerateSystemInfo(&config);
 }
 
-fml::RefPtr<Element> GetFiberElementFromValue(const lepus::Value& value) {
-  if (!value.IsRefCounted() ||
-      value.RefCounted()->GetRefType() != lepus::RefType::kElement) {
-    return nullptr;
-  }
-  return fml::static_ref_ptr_cast<Element>(value.RefCounted());
-}
-
 bool ParseComposeElementKind(const lepus::Value& value, const char* function,
                              ComposeElementKind* result) {
   if (!value.IsNumber() || !std::isfinite(value.Number()) ||
@@ -186,12 +179,25 @@ bool ParseComposeElementKind(const lepus::Value& value, const char* function,
   }
 }
 
-TemplateElement* GetTemplateElementFromValue(const lepus::Value& value) {
-  auto element = GetFiberElementFromValue(value);
-  if (element == nullptr || !element->is_template()) {
+bool IsElementTemplateHandle(const lepus::Value& value) {
+  return value.IsRefCounted() &&
+         value.RefCounted()->GetRefType() == lepus::RefType::kElementTemplate;
+}
+
+ElementTemplateInstance* GetElementTemplateInstanceFromValue(
+    const lepus::Value& value) {
+  if (!IsElementTemplateHandle(value)) {
     return nullptr;
   }
-  return static_cast<TemplateElement*>(element.get());
+  return static_cast<ElementTemplateInstance*>(value.RefCounted().get());
+}
+
+std::optional<uint32_t> DecodeElementTemplateSlotIndex(
+    const lepus::Value& value) {
+  if (!value.IsNumber() || value.Number() < 0) {
+    return std::nullopt;
+  }
+  return static_cast<uint32_t>(value.Number());
 }
 
 // Multiple FiberFlushElementTree calls may share the same PipelineOptions in
@@ -3821,63 +3827,57 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_ELEMENT_TEMPLATE);
   // Create one Element Template instance from the complete initial slot state.
-  // parameter size >= 1
+  // parameter size >= 5
   // [0] String -> templateKey
   // [1] String | Null | Undefined -> bundleUrl
   // [2] Array | Null | Undefined -> attributeSlots
-  // [3] Array | Null | Undefined -> elementSlots
-  // [4] any -> uid
+  // [3] Array | Null | Undefined -> childSlots
+  // [4] Number -> uid
   // [5] Object | Null | Undefined -> options
   CHECK_ARGC_GE(FiberCreateElementTemplate, 1);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
                                         FiberCreateElementTemplate);
+  if (argc < 5) {
+    ElementAPIError("FiberCreateElementTemplate param 4 should be Number");
+    RETURN_UNDEFINED();
+  }
 
   std::string entry_name = tasm::DEFAULT_ENTRY_NAME;
   lepus::Value attribute_slots;
-  lepus::Value element_slots;
-  lepus::Value uid;
+  lepus::Value child_slots;
   lepus::Value options;
 
-  if (argc >= 2) {
-    CONVERT_ARG(arg1, 1);
-    if (arg1->IsString()) {
-      entry_name = arg1->StdString();
-    } else if (!arg1->IsNil() && !arg1->IsUndefined()) {
-      ElementAPIError(
-          "FiberCreateElementTemplate param 1 should be String or "
-          "Null or Undefined");
-      RETURN_UNDEFINED();
-    }
+  CONVERT_ARG(arg1, 1);
+  if (arg1->IsString()) {
+    entry_name = arg1->StdString();
+  } else if (!arg1->IsNil() && !arg1->IsUndefined()) {
+    ElementAPIError(
+        "FiberCreateElementTemplate param 1 should be String or "
+        "Null or Undefined");
+    RETURN_UNDEFINED();
   }
 
-  if (argc >= 3) {
-    CONVERT_ARG(arg2, 2);
-    if (arg2->IsArrayOrJSArray()) {
-      attribute_slots = arg2->ToLepusValue();
-    } else if (!arg2->IsNil() && !arg2->IsUndefined()) {
-      ElementAPIError(
-          "FiberCreateElementTemplate param 2 should be Array or "
-          "Null or Undefined");
-      RETURN_UNDEFINED();
-    }
+  CONVERT_ARG(arg2, 2);
+  if (arg2->IsArrayOrJSArray()) {
+    attribute_slots = *arg2;
+  } else if (!arg2->IsNil() && !arg2->IsUndefined()) {
+    ElementAPIError(
+        "FiberCreateElementTemplate param 2 should be Array or "
+        "Null or Undefined");
+    RETURN_UNDEFINED();
   }
 
-  if (argc >= 4) {
-    CONVERT_ARG(arg3, 3);
-    if (arg3->IsArrayOrJSArray()) {
-      element_slots = arg3->ToLepusValue();
-    } else if (!arg3->IsNil() && !arg3->IsUndefined()) {
-      ElementAPIError(
-          "FiberCreateElementTemplate param 3 should be Array or "
-          "Null or Undefined");
-      RETURN_UNDEFINED();
-    }
+  CONVERT_ARG(arg3, 3);
+  if (arg3->IsArrayOrJSArray()) {
+    child_slots = *arg3;
+  } else if (!arg3->IsNil() && !arg3->IsUndefined()) {
+    ElementAPIError(
+        "FiberCreateElementTemplate param 3 should be Array or "
+        "Null or Undefined");
+    RETURN_UNDEFINED();
   }
-
-  if (argc >= 5) {
-    CONVERT_ARG(arg4, 4);
-    uid = *arg4;
-  }
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg4, 4, Number,
+                                        FiberCreateElementTemplate);
 
   if (argc >= 6) {
     CONVERT_ARG(arg5, 5);
@@ -3892,18 +3892,17 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   }
 
   auto* manager = self->page_proxy()->element_manager().get();
-  auto element = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  element->SetTASM(self);
-  element->SetTemplateKey(arg0->String());
-  element->SetBundleUrl(base::String(entry_name));
-  element->SetAttributeSlots(attribute_slots);
-  element->SetElementSlots(element_slots);
-  element->SetOptions(options);
-  element->SetUid(uid);
+  auto instance = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  instance->SetTASM(self);
+  instance->SetTemplateKey(arg0->String());
+  instance->SetBundleUrl(base::String(entry_name));
+  instance->SetAttributeSlots(attribute_slots);
+  instance->SetOptions(options);
+  instance->SetUid(*arg4);
+  instance->InitializeChildSlots(child_slots);
 
-  ON_NODE_CREATE(element);
-
-  RETURN(lepus::Value(element));
+  RETURN(lepus::Value(instance));
 }
 
 RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
@@ -3915,19 +3914,25 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   // parameter size >= 4
   // [0] String -> tag
   // [1] Object | Null | Undefined -> attributes
-  // [2] Array | Null | Undefined -> elementSlots
-  // [3] any -> uid
+  // [2] Array | Null | Undefined -> childSlots
+  // [3] Number -> uid
   // [4] Object | Null | Undefined -> options
   CHECK_ARGC_GE(FiberCreateTypedElementTemplate, 4);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
                                         FiberCreateTypedElementTemplate);
+  if (arg0->String().IsEqual(kElementListTag)) {
+    ElementAPIError(
+        "FiberCreateTypedElementTemplate does not support the list tag");
+    RETURN_UNDEFINED();
+  }
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
-  CONVERT_ARG(arg3, 3);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg3, 3, Number,
+                                        FiberCreateTypedElementTemplate);
 
   lepus::Value attributes;
   if (arg1->IsObject()) {
-    attributes = arg1->ToLepusValue();
+    attributes = *arg1;
   } else if (!arg1->IsNil() && !arg1->IsUndefined()) {
     ElementAPIError(
         "FiberCreateTypedElementTemplate param 1 should be Object or "
@@ -3935,9 +3940,9 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
     RETURN_UNDEFINED();
   }
 
-  lepus::Value element_slots;
+  lepus::Value child_slots;
   if (arg2->IsArrayOrJSArray()) {
-    element_slots = arg2->ToLepusValue();
+    child_slots = *arg2;
   } else if (!arg2->IsNil() && !arg2->IsUndefined()) {
     ElementAPIError(
         "FiberCreateTypedElementTemplate param 2 should be Array or "
@@ -3959,29 +3964,20 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   }
 
   auto* manager = self->page_proxy()->element_manager().get();
-  auto element = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  element->SetTASM(self);
-  element->SetTypedTag(arg0->String());
-  element->SetRootAttributes(attributes);
-  element->SetElementSlots(element_slots);
-  element->SetOptions(options);
-  element->SetUid(*arg3);
-  fml::RefPtr<Element> typed_page_root = nullptr;
+  auto instance = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  instance->SetTASM(self);
+  instance->SetTypedTag(arg0->String());
+  instance->SetAttributes(attributes);
+  instance->SetOptions(options);
+  instance->SetUid(*arg3);
+  instance->InitializeChildSlots(child_slots);
   if (arg0->String().IsEqual(kElementPageTag)) {
-    // Page templates are root templates, so materialize the root eagerly while
-    // still returning the TemplateElement shell for template APIs.
-    typed_page_root = element->GetRoot();
-    if (typed_page_root == nullptr) {
-      RETURN_UNDEFINED();
-    }
-  }
-
-  ON_NODE_CREATE(element);
-  if (typed_page_root != nullptr) {
+    auto typed_page_root = instance->GetRoot();
     ON_NODE_ADDED(typed_page_root);
   }
 
-  RETURN(lepus::Value(element));
+  RETURN(lepus::Value(instance));
 }
 
 RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
@@ -3989,99 +3985,99 @@ RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
   // Update one dynamic Attribute Slot on an existing template instance.
   // parameter size >= 3
   // [0] RefCounted -> templateInstance
-  // [1] Number -> attrSlotIndex
+  // [1] Number -> attributeSlotIndex
   // [2] any | Null -> value
   CHECK_ARGC_GE(FiberSetAttributeOfElementTemplate, 3);
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
-  auto* template_element = GetTemplateElementFromValue(*arg0);
-  if (template_element == nullptr || !arg1->IsNumber() || arg1->Number() < 0) {
+  auto* instance = GetElementTemplateInstanceFromValue(*arg0);
+  auto attribute_slot_index = DecodeElementTemplateSlotIndex(*arg1);
+  if (instance == nullptr || !attribute_slot_index.has_value()) {
     RETURN_UNDEFINED();
   }
-  // TODO(songshourui.null): Report ElementAPIError for typed templates when
-  // attrSlotIndex is not 0, matching typed element slot validation.
-  template_element->SetAttributeSlot(static_cast<uint32_t>(arg1->Number()),
-                                     *arg2);
+  instance->SetAttributeSlot(*attribute_slot_index, *arg2);
   RETURN_UNDEFINED();
 }
 
 RENDERER_FUNCTION_CC(FiberInsertNodeToElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_INSERT_NODE_TO_ELEMENT_TEMPLATE);
-  // Insert one node into one dynamic Element Slot before the reference node, or
+  // Insert one node into one dynamic Child Slot before the reference node, or
   // append it when the reference node is empty.
   // parameter size >= 3
   // [0] RefCounted -> templateInstance
-  // [1] Number -> elementSlotIndex
-  // [2] RefCounted -> node
-  // [3] RefCounted | Null | Undefined -> referenceNode
+  // [1] Number -> childSlotIndex
+  // [2] RefCounted -> child templateInstance
+  // [3] RefCounted | Null | Undefined -> reference templateInstance
   CHECK_ARGC_GE(FiberInsertNodeToElementTemplate, 3);
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
-  auto* template_element = GetTemplateElementFromValue(*arg0);
-  auto child = GetFiberElementFromValue(*arg2);
-  if (template_element == nullptr || !arg1->IsNumber() || arg1->Number() < 0 ||
-      child == nullptr) {
+  auto* instance = GetElementTemplateInstanceFromValue(*arg0);
+  auto child_slot_index = DecodeElementTemplateSlotIndex(*arg1);
+  if (instance == nullptr || !child_slot_index.has_value()) {
     RETURN_UNDEFINED();
   }
-  auto slot_index = static_cast<uint32_t>(arg1->Number());
-  if (template_element->IsTypedTemplate() && slot_index != 0) {
+  if (!IsElementTemplateHandle(*arg2)) {
+    ElementAPIError(
+        "FiberInsertNodeToElementTemplate param 2 should be "
+        "ElementTemplateHandle");
+    RETURN_UNDEFINED();
+  }
+  if (instance->IsTypedTemplate() && *child_slot_index != 0) {
     ElementAPIError(
         "FiberInsertNodeToElementTemplate typed template only supports "
-        "element slot 0");
+        "child slot 0");
     RETURN_UNDEFINED();
   }
-  fml::RefPtr<Element> ref_node = nullptr;
+  lepus::Value ref_node;
   if (argc >= 4) {
     CONVERT_ARG(arg3, 3);
     if (arg3->IsRefCounted()) {
-      ref_node = GetFiberElementFromValue(*arg3);
-      if (ref_node == nullptr) {
+      if (!IsElementTemplateHandle(*arg3)) {
+        ElementAPIError(
+            "FiberInsertNodeToElementTemplate param 3 should be "
+            "ElementTemplateHandle or Null or Undefined");
         RETURN_UNDEFINED();
       }
+      ref_node = *arg3;
     } else if (!arg3->IsNil() && !arg3->IsUndefined()) {
       RETURN_UNDEFINED();
     }
   }
-  template_element->InsertElementSlotChild(slot_index, child, ref_node);
+  instance->InsertNodeIntoChildSlot(*child_slot_index, *arg2, ref_node);
   RETURN_UNDEFINED();
 }
 
 RENDERER_FUNCTION_CC(FiberRemoveNodeFromElementTemplate) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_REMOVE_NODE_FROM_ELEMENT_TEMPLATE);
-  // Remove one node from one dynamic Element Slot.
+  // Remove one node from one dynamic Child Slot.
   // parameter size >= 3
   // [0] RefCounted -> templateInstance
-  // [1] Number -> elementSlotIndex
-  // [2] RefCounted -> node
+  // [1] Number -> childSlotIndex
+  // [2] RefCounted -> child templateInstance
   CHECK_ARGC_GE(FiberRemoveNodeFromElementTemplate, 3);
   CONVERT_ARG(arg0, 0);
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
-  auto* template_element = GetTemplateElementFromValue(*arg0);
-  auto child = GetFiberElementFromValue(*arg2);
-  if (template_element == nullptr || !arg1->IsNumber() || arg1->Number() < 0 ||
-      child == nullptr) {
+  auto* instance = GetElementTemplateInstanceFromValue(*arg0);
+  auto child_slot_index = DecodeElementTemplateSlotIndex(*arg1);
+  if (instance == nullptr || !child_slot_index.has_value()) {
     RETURN_UNDEFINED();
   }
-  auto slot_index = static_cast<uint32_t>(arg1->Number());
-  if (template_element->IsTypedTemplate() && slot_index != 0) {
+  if (!IsElementTemplateHandle(*arg2)) {
+    ElementAPIError(
+        "FiberRemoveNodeFromElementTemplate param 2 should be "
+        "ElementTemplateHandle");
+    RETURN_UNDEFINED();
+  }
+  if (instance->IsTypedTemplate() && *child_slot_index != 0) {
     ElementAPIError(
         "FiberRemoveNodeFromElementTemplate typed template only supports "
-        "element slot 0");
+        "child slot 0");
     RETURN_UNDEFINED();
   }
-  if (ctx != nullptr) {
-    auto removed_element =
-        child->is_template()
-            ? static_cast<TemplateElement*>(child.get())->GetResolvedRoot()
-            : child;
-    if (removed_element != nullptr) {
-      ON_NODE_REMOVED(removed_element);
-    }
-  }
-  template_element->RemoveElementSlotChild(slot_index, child);
+  instance->RemoveNodeFromChildSlot(*child_slot_index, *arg2);
   RETURN_UNDEFINED();
 }
 
@@ -4092,11 +4088,11 @@ RENDERER_FUNCTION_CC(FiberSerializeElementTemplate) {
   // [0] RefCounted -> templateInstance
   CHECK_ARGC_GE(FiberSerializeElementTemplate, 1);
   CONVERT_ARG(arg0, 0);
-  auto* element = GetTemplateElementFromValue(*arg0);
-  if (element == nullptr) {
+  auto* instance = GetElementTemplateInstanceFromValue(*arg0);
+  if (instance == nullptr) {
     RETURN_UNDEFINED();
   }
-  RETURN(element->Serialize());
+  RETURN(instance->Serialize());
 }
 
 RENDERER_FUNCTION_CC(FiberCloneElement) {
@@ -5324,13 +5320,6 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
     if (arg0->IsRefCounted()) {
       element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted()).get();
     }
-  }
-
-  // TemplateElement's materialized root is not attached to the main element
-  // tree. Flush through the nearest non-template ancestor so the following
-  // patch pipeline can resolve a target that is attached to the root tree.
-  while (element != nullptr && element->is_template()) {
-    element = element->parent();
   }
 
   bool trigger_data_updated = false;
