@@ -203,6 +203,11 @@ class SwiperView
   }
 
   @Override
+  public IDrawChildHook getDrawChildHook() {
+    return mDrawChildHook;
+  }
+
+  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     if (mRenderer != null) {
       if (mRenderer.getUIHost() != null) {

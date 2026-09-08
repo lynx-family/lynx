@@ -68,6 +68,7 @@ public class LynxLibraryProcessorTest {
               + "null; }\n"
               + "  public com.lynx.tasm.behavior.shadow.ShadowNode createShadowNode() { return "
               + "null; }\n"
+              + "  public boolean supportFragmentLayerChildren() { return false; }\n"
               + "}\n");
 
   private static final JavaFileObject LYNX_CONTEXT_STUB =

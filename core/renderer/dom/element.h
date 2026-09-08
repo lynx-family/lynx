@@ -98,6 +98,8 @@ enum NodeInfoBits : int32_t {
   kLayoutNodeTypeMask = 0x0000FFFF,
   // Mask for async creation flag.
   kCreateAsyncMask = 0x00010000,
+  // Component content can use FLR without requiring compatible child UIs.
+  kSupportFragmentLayerChildrenMask = 0x00040000,
 };
 
 constexpr const int32_t kCommonBuiltInNodeInfo =
@@ -1386,9 +1388,7 @@ class Element : public lepus::RefCounted,
     return nullptr;
   }
 
-  void MarkAsDirectChildOfCompatibleComponent(bool flag) {
-    is_direct_child_of_compatible_component_ = flag;
-  }
+  void MarkAsDirectChildOfCompatibleComponent(bool flag);
 
   bool is_direct_child_of_compatible_component() const {
     return is_direct_child_of_compatible_component_;

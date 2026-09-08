@@ -35,6 +35,7 @@ import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import java.lang.reflect.Field;
@@ -61,7 +62,7 @@ public class DisplayListApplierTest {
   @Mock private PlatformRendererContext mockPlatformRendererContext;
   @Mock private TextUpdateBundle mockTextUpdateBundle;
   @Mock private android.text.Layout mockTextLayout;
-  @Mock private IRendererHost mockRendererHost;
+  @Mock private LynxBaseUI mockHostUI;
   @Mock private View mockHostView;
   @Mock private LynxImageManager mockImageManager;
 
@@ -88,9 +89,9 @@ public class DisplayListApplierTest {
     MockitoAnnotations.openMocks(this);
     // Set up PlatformRendererContext to return our mock TextMeasurer
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
-    when(mockRendererHost.getView()).thenReturn(mockHostView);
+    when(mockHostUI.getFragmentLayerView()).thenReturn(mockHostView);
     displayListApplier =
-        new DisplayListApplier(null, null, mockPlatformRendererContext, mockRendererHost);
+        new DisplayListApplier(null, null, mockPlatformRendererContext, mockHostUI);
     spyDisplayListApplier = spy(displayListApplier);
     testDisplayList = createDisplayList();
 
@@ -134,7 +135,7 @@ public class DisplayListApplierTest {
   public void testConstructor() {
     when(mockPlatformRendererContext.getTextMeasurer()).thenReturn(mockTextMeasurer);
     DisplayListApplier applier = new DisplayListApplier(testDisplayList.toItemsBuffer(),
-        testDisplayList.toDataBuffer(), mockPlatformRendererContext, mockRendererHost);
+        testDisplayList.toDataBuffer(), mockPlatformRendererContext, mockHostUI);
     assertNotNull(applier);
   }
 
@@ -178,7 +179,7 @@ public class DisplayListApplierTest {
     testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f);
 
     setDisplayList(displayListApplier, testDisplayList);
-    displayListApplier.drawTillNextView(mockCanvas);
+    assertEquals(-1, displayListApplier.drawTillNextViewAndGetViewId(mockCanvas));
 
     verify(mockCanvas).save();
     verify(mockCanvas).translate(0f, 0f);
@@ -186,14 +187,11 @@ public class DisplayListApplierTest {
 
   @Test
   public void testOverlayOpBeginKeepsHorizontalOffsetOnly() {
-    Renderer renderer = new Renderer(mockPlatformRendererContext, 1);
     LynxBaseUI overlayUI = mock(LynxBaseUI.class);
     when(overlayUI.isOverlay()).thenReturn(true);
-    renderer.setUIHost(overlayUI);
-    when(mockRendererHost.getRenderer()).thenReturn(renderer);
 
     DisplayListApplier overlayApplier =
-        new DisplayListApplier(null, null, mockPlatformRendererContext, mockRendererHost);
+        new DisplayListApplier(null, null, mockPlatformRendererContext, overlayUI);
     testDisplayList.begin(0, VIEW_TYPE, 10f, 20f, 100f, 50f);
 
     setDisplayList(overlayApplier, testDisplayList);
@@ -237,7 +235,7 @@ public class DisplayListApplierTest {
     testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f).drawView(123, 15f, 26f);
 
     setDisplayList(displayListApplier, testDisplayList);
-    displayListApplier.drawTillNextView(mockCanvas);
+    assertEquals(123, displayListApplier.drawTillNextViewAndGetViewId(mockCanvas));
 
     verify(mockCanvas).save();
     // Should stop at OP_DRAW_VIEW and return
@@ -601,6 +599,61 @@ public class DisplayListApplierTest {
     verify(mockCanvas).save();
     verify(mockCanvas).clipRect(any(RectF.class));
     verify(mockCanvas).restore();
+  }
+
+  @Test
+  public void testFlattenLayerBackedByScrollViewDoesNotApplyScrollOffset() {
+    AndroidScrollView scrollView = mock(AndroidScrollView.class);
+    when(mockHostUI.getFragmentLayerView()).thenReturn(scrollView);
+    when(mockHostUI.isScrollable()).thenReturn(false);
+    when(mockHostUI.getFragmentLayerWidth()).thenReturn(100);
+    when(mockHostUI.getFragmentLayerHeight()).thenReturn(50);
+    when(mockHostUI.getFragmentLayerScrollY()).thenReturn(20);
+
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f).clipRect(0f, 0f, 100f, 50f).end();
+
+    setDisplayList(displayListApplier, testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).clipRect(eq(new RectF(0f, 0f, 100f, 50f)));
+  }
+
+  @Test
+  public void testScrollLayerAppliesScrollOffset() {
+    AndroidScrollView scrollView = mock(AndroidScrollView.class);
+    when(mockHostUI.getFragmentLayerView()).thenReturn(scrollView);
+    when(mockHostUI.isScrollable()).thenReturn(true);
+    when(mockHostUI.getFragmentLayerWidth()).thenReturn(100);
+    when(mockHostUI.getFragmentLayerHeight()).thenReturn(50);
+    when(mockHostUI.getFragmentLayerScrollY()).thenReturn(20);
+
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f).clipRect(0f, 0f, 100f, 50f).end();
+
+    setDisplayList(displayListApplier, testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).clipRect(eq(new RectF(0f, 20f, 100f, 70f)));
+  }
+
+  @Test
+  public void testHorizontalScrollLayerKeepsBackgroundInViewport() {
+    AndroidScrollView scrollView = mock(AndroidScrollView.class);
+    when(mockHostUI.getFragmentLayerView()).thenReturn(scrollView);
+    when(mockHostUI.isScrollable()).thenReturn(true);
+    when(mockHostUI.getFragmentLayerWidth()).thenReturn(100);
+    when(mockHostUI.getFragmentLayerHeight()).thenReturn(50);
+    when(mockHostUI.getFragmentLayerScrollX()).thenReturn(20);
+    when(scrollView.isHorizontal()).thenReturn(true);
+
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f)
+        .recordBox(0f, 0f, 100f, 50f)
+        .fill(0xFFFFA500, 0)
+        .end();
+
+    setDisplayList(displayListApplier, testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).drawRect(eq(new RectF(20f, 0f, 120f, 50f)), any(Paint.class));
   }
 
   private ArrayList<RoundedRectangle> getBoxArray(DisplayListApplier applier) {

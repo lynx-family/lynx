@@ -4,7 +4,6 @@
 package com.lynx.tasm.behavior.render;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -48,16 +47,15 @@ public class LynxFlattenUIRendererTest {
   }
 
   @Test
-  public void testSubtreePropertiesStayOnFlattenRendererHost() {
+  public void testSubtreePropertiesStayOnFlattenFragmentLayer() {
     UIView drawParent = new UIView(lynxContext);
     View drawParentView = drawParent.getView();
-    LynxFlattenUI flattenUI = createFlattenRendererHost(drawParent);
+    LynxFlattenUI flattenUI = createFlattenFragmentLayer(drawParent);
 
-    Renderer renderer = flattenUI.getRenderer();
-    renderer.applySubtreeProperties(createOpacityBuffer(0.5f), 1);
-    renderer.applySubtreeProperties(createTransformBuffer(20f, 30f), 1);
+    flattenUI.applyFragmentLayerSubtreeProperties(createOpacityBuffer(0.5f), 1);
+    flattenUI.applyFragmentLayerSubtreeProperties(createTransformBuffer(20f, 30f), 1);
 
-    assertSame(drawParentView, flattenUI.getView());
+    assertSame(drawParentView, flattenUI.getFragmentLayerView());
     assertEquals(1f, drawParentView.getAlpha(), 0.0001f);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       Matrix parentMatrix = drawParentView.getAnimationMatrix();
@@ -79,13 +77,12 @@ public class LynxFlattenUIRendererTest {
   }
 
   @Test
-  public void testIdentityTransformClearsFlattenRendererTransform() {
+  public void testIdentityTransformClearsFlattenFragmentLayerTransform() {
     UIView drawParent = new UIView(lynxContext);
-    LynxFlattenUI flattenUI = createFlattenRendererHost(drawParent);
+    LynxFlattenUI flattenUI = createFlattenFragmentLayer(drawParent);
 
-    Renderer renderer = flattenUI.getRenderer();
-    renderer.applySubtreeProperties(createTransformBuffer(20f, 30f), 1);
-    renderer.applySubtreeProperties(createTransformBuffer(0f, 0f), 1);
+    flattenUI.applyFragmentLayerSubtreeProperties(createTransformBuffer(20f, 30f), 1);
+    flattenUI.applyFragmentLayerSubtreeProperties(createTransformBuffer(0f, 0f), 1);
 
     flattenUI.setWidth(100);
     flattenUI.setHeight(50);
@@ -95,42 +92,40 @@ public class LynxFlattenUIRendererTest {
   }
 
   @Test
-  public void testConvertPointInRendererHostToScreenUsesFlattenPositionAndRendererTransform() {
+  public void testConvertPointInFragmentLayerToScreenUsesFlattenPositionAndTransform() {
     UIView drawParent = new UIView(lynxContext);
     drawParent.getView().setScrollX(3);
     drawParent.getView().setScrollY(4);
-    LynxFlattenUI flattenUI = createFlattenRendererHost(drawParent);
+    LynxFlattenUI flattenUI = createFlattenFragmentLayer(drawParent);
     flattenUI.setLeft(10);
     flattenUI.setTop(15);
-    flattenUI.getRenderer().applySubtreeProperties(createTransformBuffer(20f, 30f), 1);
+    flattenUI.applyFragmentLayerSubtreeProperties(createTransformBuffer(20f, 30f), 1);
 
-    PointF point = flattenUI.convertPointInRendererHostToScreen(new PointF(5, 6));
+    PointF point = flattenUI.convertPointInFragmentLayerToScreen(new PointF(5, 6));
 
     assertEquals(32f, point.x, 0.0001f);
     assertEquals(47f, point.y, 0.0001f);
   }
 
   @Test
-  public void testConvertPointInRendererHostToScreenWithoutDrawParentReturnsFallback() {
+  public void testConvertPointInFragmentLayerToScreenWithoutDrawParentReturnsFallback() {
     LynxFlattenUI flattenUI = new LynxFlattenUI(lynxContext);
-    Renderer renderer = flattenUI.createRenderer(mockPlatformRendererContext, TEST_SIGN);
-    renderer.setRenderHost(flattenUI);
-    flattenUI.setRenderer(renderer);
-    renderer.applySubtreeProperties(createTransformBuffer(20f, 30f), 1);
+    flattenUI.setSign(TEST_SIGN, "view");
+    flattenUI.attachFragmentLayer(TEST_SIGN, mockPlatformRendererContext);
+    flattenUI.applyFragmentLayerSubtreeProperties(createTransformBuffer(20f, 30f), 1);
 
-    PointF point = flattenUI.convertPointInRendererHostToScreen(new PointF(5, 6));
+    PointF point = flattenUI.convertPointInFragmentLayerToScreen(new PointF(5, 6));
 
     assertEquals(25f, point.x, 0.0001f);
     assertEquals(36f, point.y, 0.0001f);
   }
 
-  private LynxFlattenUI createFlattenRendererHost(UIView drawParent) {
+  private LynxFlattenUI createFlattenFragmentLayer(UIView drawParent) {
     LynxFlattenUI flattenUI = new LynxFlattenUI(lynxContext);
     flattenUI.setDrawParent(drawParent);
-    Renderer renderer = flattenUI.createRenderer(mockPlatformRendererContext, TEST_SIGN);
-    renderer.setRenderHost(flattenUI);
-    flattenUI.setRenderer(renderer);
-    assertNotNull(flattenUI.getRenderer());
+    flattenUI.setSign(TEST_SIGN, "view");
+    flattenUI.attachFragmentLayer(TEST_SIGN, mockPlatformRendererContext);
+    assertTrue(flattenUI.isFragmentLayer());
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       assertNull(drawParent.getView().getAnimationMatrix());
     }

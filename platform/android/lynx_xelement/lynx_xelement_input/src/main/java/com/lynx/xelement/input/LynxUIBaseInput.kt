@@ -138,6 +138,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     override fun createView(context: Context?): LynxEditTextView {
         mFontSize = UnitUtils.toPxWithDisplayMetrics("14px", 0f, 0f, 0f, 0f, mContext?.screenMetrics)
         val editText = LynxEditTextView(context!!).apply {
+            lynxUI = this@LynxUIBaseInput
             onFocusChangeListener =  View.OnFocusChangeListener { _: View?, hasFocus ->
                 // Make sure keyboard is displayed while being focused
                 if (hasFocus && !mUseCustomKeyboard) {

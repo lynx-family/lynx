@@ -181,7 +181,45 @@ Android exposes two read-only direct byte buffers through
 The JNI bridge validates the Java-provided item stride against
 `sizeof(DisplayListItem)` before returning the items buffer.
 
-`Renderer` passes both buffers to `DisplayListApplier`. The applier:
+`LynxUIOwner` owns both ordinary layers (`FragmentLayerUI`) and platform
+components (`LynxUI` or `LynxFlattenUI`). `LynxBaseUI` stores the layer frame,
+render offset, invalidation state and `DisplayListApplier`. `LayerRenderContext`
+supplies display-list buffers, images and text resources; it does not own a
+second registry of renderer hosts. `NativePaintingContext` provides these
+services through `PlatformRendererContext`.
+
+The existing `IDrawChildHook` callbacks prepare the display list, draw up to
+each native child View, and finish the remaining commands after dispatch.
+`LynxUIOwner` also drives measurement and layout. `Renderer`, `ContainerRenderer`
+and `IRendererHost` remain available for source compatibility, but layer creation
+does not use them.
+
+Ordinary layer containers and the page root mount non-flatten children in the
+owned child order without building `mDrawHead`, `mDrawParent` or drawing sibling
+links. Compatibility components retain their insertion callbacks. If a flatten
+compatibility child is inserted into an ordinary container, the owner constructs
+the legacy draw list for that container, including its existing children. This
+keeps flatten drawing and View rebuilding functional while ordinary layer trees
+use DisplayList ordering. Overlay mounting remains controlled by the component.
+
+Components may opt in to `supportFragmentLayerChildren` through `Behavior`,
+`LynxBehavior`, or `LynxElement`. The default is false. This capability describes
+whether ordinary child content can use FLR without legacy child UIs; it is
+independent of whether the component itself needs a UI or implements a renderer
+host. Android exposes the capability in TagInfo bit 18. Before creating child
+layers, Native uses that bit to stop treating the component as a compatibility
+boundary. Transparent wrappers and components propagate the enclosing boundary.
+
+The owner passes the same capability when attaching the component's layer.
+Opted-in components use the same child-order and draw-hook policy as ordinary
+layers: built-in content that can be flattened stays in the DisplayList, while
+independent layers mount without legacy draw links. Extended children retain their component
+UI and their own child policy. If a compatible flatten UI is mounted under an
+opted-in component, the owner still materializes the draw list for it. Platforms
+that do not expose the capability, and pages outside FLR, retain their existing
+behavior.
+
+`LynxBaseUI` passes both buffers to `DisplayListApplier`. The applier:
 
 1. Applies native byte order.
 2. Rejects an items buffer whose capacity is smaller than or not divisible by

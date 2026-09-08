@@ -36,6 +36,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.text.TextHelper;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.event.LynxDetailEvent;
 import com.lynx.tasm.service.ILynxSystemInvokeService;
@@ -255,12 +256,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Keep
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    if (super.getRenderer() != null) {
-      if (super.getRenderer().getUIHost() != null) {
-        super.getRenderer().getUIHost().measure();
-      }
-      super.getRenderer().onLayout(changed, l, t, r, b);
-    }
+    // UIGroup owns layout for both the regular and fragment-layer rendering paths.
   }
 
   @Override
@@ -296,8 +292,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     if (mDisplayNone) {
       return;
     }
-    if (super.getRenderer() != null) {
-      super.getRenderer().onDraw(canvas);
+    if (mDrawChildHook instanceof LynxBaseUI && ((LynxBaseUI) mDrawChildHook).isFragmentLayer()) {
       if (mTextraPage != null) {
         drawHighlightWithTextOffset(canvas);
       }
@@ -351,7 +346,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
       return;
     }
 
-    if (super.getRenderer() != null) {
+    if (mDrawChildHook instanceof LynxBaseUI && ((LynxBaseUI) mDrawChildHook).isFragmentLayer()) {
       return;
     }
 

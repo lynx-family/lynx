@@ -22,7 +22,6 @@ import com.lynx.tasm.behavior.ui.list.UIList;
 import com.lynx.tasm.behavior.ui.text.FlattenUIText;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
-import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +37,7 @@ public abstract class UIGroup<T extends ViewGroup>
   private static WeakHashMap<View, Integer> mZIndexHash = new WeakHashMap<>();
   private ViewGroupDrawingOrderHelper mDrawingOrderHelper;
   private boolean mIsInsertViewCalled = false;
-  private final ArrayList<LynxFlattenUI> mActiveFlattenRendererHosts = new ArrayList<>();
+  private final ArrayList<LynxFlattenUI> mActiveFlattenFragmentLayers = new ArrayList<>();
 
   public boolean isInsertViewCalled() {
     return mIsInsertViewCalled;
@@ -240,6 +239,10 @@ public abstract class UIGroup<T extends ViewGroup>
       ui = ui.mNextDrawUI;
     }
 
+    if (isFragmentLayer() && mDrawHead == null) {
+      nonFlattenIndex = mChildren.indexOf(child);
+    }
+
     View childView = ((LynxUI<?>) child).getView();
     if (childView.getParent() != null) {
       if (childView.getParent() == mView) {
@@ -275,6 +278,10 @@ public abstract class UIGroup<T extends ViewGroup>
       if (ui == child) {
         break;
       }
+    }
+
+    if (isFragmentLayer() && mDrawHead == null) {
+      i = mChildren.indexOf(child);
     }
 
     if (child.mView.getParent() != null && child.mView.getParent() instanceof ViewGroup) {
@@ -370,53 +377,60 @@ public abstract class UIGroup<T extends ViewGroup>
   @Override
   public void beforeDispatchDraw(final Canvas canvas) {
     mCurrentDrawUI = mDrawHead;
-    mCurrentDrawIndex = 0;
-    mActiveFlattenRendererHosts.clear();
-    boolean hasShear = getSkewX() != 0 || getSkewY() != 0;
+    if (shouldDrawFlattenUI()) {
+      mCurrentDrawIndex = 0;
+      mActiveFlattenFragmentLayers.clear();
+      boolean hasShear = getSkewX() != 0 || getSkewY() != 0;
 
-    if (getClipToRadius()
-        || (mContext.getDefaultOverflowVisible() && mOverflow == OVERFLOW_HIDDEN
-            && enableAutoClipRadius())) {
-      Drawable drawable = getLynxBackground() != null ? getLynxBackground().getDrawable() : null;
-      if (drawable != null && drawable instanceof BackgroundDrawable) {
-        Path path = ((BackgroundDrawable) drawable).getInnerClipPathForBorderRadius();
-        if (path != null) {
-          canvas.clipPath(path);
-        } else if (hasShear) {
-          // Shearing transformation should clip bounds manually.
-          canvas.clipRect(getClipBounds());
+      if (getClipToRadius()
+          || (mContext.getDefaultOverflowVisible() && mOverflow == OVERFLOW_HIDDEN
+              && enableAutoClipRadius())) {
+        Drawable drawable = getLynxBackground() != null ? getLynxBackground().getDrawable() : null;
+        if (drawable != null && drawable instanceof BackgroundDrawable) {
+          Path path = ((BackgroundDrawable) drawable).getInnerClipPathForBorderRadius();
+          if (path != null) {
+            canvas.clipPath(path);
+          } else if (hasShear) {
+            // Shearing transformation should clip bounds manually.
+            canvas.clipRect(getClipBounds());
+          }
         }
       }
+
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2
+          && getOverflow() != OVERFLOW_XY) {
+        // setClipBounds can not be used prior to API 18, force clip here
+        int w = getWidth(), h = getHeight();
+        int x = 0, y = 0;
+        DisplayMetrics dm = mContext.getScreenMetrics();
+        if ((getOverflow() & OVERFLOW_X) != 0) {
+          x -= dm.widthPixels;
+          w += 2 * dm.widthPixels;
+        }
+        if ((getOverflow() & OVERFLOW_Y) != 0) {
+          y -= dm.heightPixels;
+          h += 2 * dm.heightPixels;
+        }
+        mOverflowClipRect.set(x, y, x + w, y + h);
+        canvas.clipRect(mOverflowClipRect);
+      }
     }
 
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2
-        && getOverflow() != OVERFLOW_XY) {
-      // setClipBounds can not be used prior to API 18, force clip here
-      int w = getWidth(), h = getHeight();
-      int x = 0, y = 0;
-      DisplayMetrics dm = mContext.getScreenMetrics();
-      if ((getOverflow() & OVERFLOW_X) != 0) {
-        x -= dm.widthPixels;
-        w += 2 * dm.widthPixels;
-      }
-      if ((getOverflow() & OVERFLOW_Y) != 0) {
-        y -= dm.heightPixels;
-        h += 2 * dm.heightPixels;
-      }
-      mOverflowClipRect.set(x, y, x + w, y + h);
-      canvas.clipRect(mOverflowClipRect);
-    }
+    prepareFragmentLayerDisplayList(canvas);
   }
 
   @Override
   public void afterDispatchDraw(final Canvas canvas) {
-    LynxBaseUI ui;
-    for (ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI) {
-      if (ui.isFlatten() && !(ui instanceof UIShadowProxy)) {
-        drawChild((LynxFlattenUI) ui, canvas);
+    if (shouldDrawFlattenUI()) {
+      LynxBaseUI ui;
+      for (ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI) {
+        if (ui.isFlatten() && !(ui instanceof UIShadowProxy)) {
+          drawChild((LynxFlattenUI) ui, canvas);
+        }
       }
+      finishInactiveFlattenFragmentLayers(null, canvas);
     }
-    finishInactiveFlattenRendererHosts(null, canvas);
+    finishFragmentLayerDisplayList(canvas);
   }
 
   @Override
@@ -447,7 +461,7 @@ public abstract class UIGroup<T extends ViewGroup>
     for (LynxBaseUI ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI) {
       if (!ui.isFlatten()) {
         if (((LynxUI) ui).getView() == child) {
-          drawFlattenRendererContentBeforeUI(ui, canvas);
+          drawFlattenFragmentLayerContentBeforeUI(ui, canvas);
           bound = ui.getBound();
           mCurrentDrawUI = ui.mNextDrawUI;
           break;
@@ -461,12 +475,28 @@ public abstract class UIGroup<T extends ViewGroup>
 
   @Override
   public Rect beforeDrawChild(final Canvas canvas, final View child, final long drawingTime) {
-    Rect bound = drawFlattenUIBefore(canvas, child, drawingTime);
-    return bound;
+    if (isFragmentLayer()) {
+      beforeDrawFragmentLayerChild(canvas, null);
+    }
+    return shouldDrawFlattenUI() ? drawFlattenUIBefore(canvas, child, drawingTime) : null;
   }
 
   @Override
-  public void afterDrawChild(final Canvas canvas, final View child, final long drawingTime) {}
+  public void afterDrawChild(final Canvas canvas, final View child, final long drawingTime) {
+    if (isFragmentLayer()) {
+      afterDrawFragmentLayerChild(canvas);
+    }
+  }
+
+  protected boolean shouldDrawFlattenUIInFragmentLayer() {
+    // A compatible flatten component still needs the legacy draw list even
+    // when the surrounding ordinary content is rendered by FLR.
+    return !usesFragmentLayerChildOrder() || getDrawHead() != null;
+  }
+
+  private boolean shouldDrawFlattenUI() {
+    return !isFragmentLayer() || shouldDrawFlattenUIInFragmentLayer();
+  }
 
   @Override
   public int getChildDrawingOrder(int childCount, int index) {
@@ -492,10 +522,10 @@ public abstract class UIGroup<T extends ViewGroup>
   }
 
   protected void drawChild(LynxFlattenUI child, Canvas canvas) {
-    drawFlattenRendererContentBeforeUI(child, canvas);
-    if (child.isRendererHost()) {
+    drawFlattenFragmentLayerContentBeforeUI(child, canvas);
+    if (child.isFragmentLayer()) {
       child.innerDraw(canvas);
-      mActiveFlattenRendererHosts.add(child);
+      mActiveFlattenFragmentLayers.add(child);
       return;
     }
     Rect bound = child.getBound();
@@ -507,25 +537,28 @@ public abstract class UIGroup<T extends ViewGroup>
     canvas.restore();
   }
 
-  private void drawFlattenRendererContentBeforeUI(LynxBaseUI ui, Canvas canvas) {
-    finishInactiveFlattenRendererHosts(ui, canvas);
-    if (mActiveFlattenRendererHosts.isEmpty()) {
+  private void drawFlattenFragmentLayerContentBeforeUI(LynxBaseUI ui, Canvas canvas) {
+    finishInactiveFlattenFragmentLayers(ui, canvas);
+    if (mActiveFlattenFragmentLayers.isEmpty()) {
+      if (ui.isFlatten() && ui.isFragmentLayer()) {
+        drawFragmentLayerContentUntilNextViewWithoutResolvingLayer(canvas);
+      }
       return;
     }
-    LynxFlattenUI host = mActiveFlattenRendererHosts.get(mActiveFlattenRendererHosts.size() - 1);
+    LynxFlattenUI host = mActiveFlattenFragmentLayers.get(mActiveFlattenFragmentLayers.size() - 1);
     if (ui != host && isDescendantOf(ui, host)) {
-      host.drawRendererContentUntilNextView(canvas);
+      host.drawFragmentLayerContentUntilNextViewWithoutResolvingLayer(canvas);
     }
   }
 
-  private void finishInactiveFlattenRendererHosts(LynxBaseUI nextUI, Canvas canvas) {
-    for (int index = mActiveFlattenRendererHosts.size() - 1; index >= 0; --index) {
-      LynxFlattenUI host = mActiveFlattenRendererHosts.get(index);
+  private void finishInactiveFlattenFragmentLayers(LynxBaseUI nextUI, Canvas canvas) {
+    for (int index = mActiveFlattenFragmentLayers.size() - 1; index >= 0; --index) {
+      LynxFlattenUI host = mActiveFlattenFragmentLayers.get(index);
       if (nextUI != null && isDescendantOf(nextUI, host)) {
         break;
       }
-      host.drawRendererHostEnd(canvas);
-      mActiveFlattenRendererHosts.remove(index);
+      host.finishFlattenFragmentLayer(canvas);
+      mActiveFlattenFragmentLayers.remove(index);
     }
   }
 

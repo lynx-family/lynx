@@ -11,14 +11,19 @@ import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper.A
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.renderscript.Matrix4f;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -47,6 +52,8 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.*;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
+import com.lynx.tasm.behavior.render.DisplayListApplier;
+import com.lynx.tasm.behavior.render.LayerRenderContext;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityHelper;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
@@ -59,6 +66,7 @@ import com.lynx.tasm.behavior.ui.utils.LynxMask;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import com.lynx.tasm.behavior.ui.utils.TransformOrigin;
+import com.lynx.tasm.behavior.ui.utils.TransformProps;
 import com.lynx.tasm.behavior.ui.utils.TransformRaw;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUISetter;
@@ -73,11 +81,13 @@ import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
 import com.lynx.tasm.gesture.handler.GestureConstants;
+import com.lynx.tasm.utils.BlurUtils;
 import com.lynx.tasm.utils.ContextUtils;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.SizeValue;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -171,6 +181,27 @@ public abstract class LynxBaseUI
   protected LynxContext mContext;
   protected Object mParam;
   protected UIParent mParent;
+
+  public static final int FRAGMENT_LAYER_INVALIDATE_PARENT = 1;
+  public static final int FRAGMENT_LAYER_INVALIDATE_DISPLAY_LIST = 1 << 1;
+
+  private static final int FRAGMENT_LAYER_REPAINT_DRAW_ONLY = 1;
+  private static final int FRAGMENT_LAYER_REPAINT_GET_DISPLAY_LIST_AND_DRAW = 2;
+  private static final int INVALID_FRAGMENT_LAYER_SIGN = -1;
+  private static final int SUBTREE_PROPERTY_SIZE = 68;
+  private static final int SUBTREE_OP_TRANSFORM = 0;
+  private static final int SUBTREE_OP_OPACITY = 1;
+  private static final int SUBTREE_OP_FILTER = 2;
+
+  private final Rect mFragmentLayerFrame = new Rect();
+  private final Point mFragmentLayerRenderOffset = new Point();
+  private int mFragmentLayerSign = INVALID_FRAGMENT_LAYER_SIGN;
+  private LayerRenderContext mFragmentLayerContext;
+  private DisplayListApplier mFragmentLayerDisplayListApplier;
+  private ByteBuffer mFragmentLayerDisplayListItemsBuffer;
+  private ByteBuffer mFragmentLayerDisplayListDataBuffer;
+  private int mFragmentLayerRepaintType = FRAGMENT_LAYER_REPAINT_GET_DISPLAY_LIST_AND_DRAW;
+  private int mFragmentLayerFilterType = StyleConstants.FILTER_TYPE_NONE;
 
   // UI whose drawList contains this.
   protected UIParent mDrawParent;
@@ -466,6 +497,322 @@ public abstract class LynxBaseUI
     return mContext;
   }
 
+  private boolean mFragmentLayerChildOrder;
+
+  public final void attachFragmentLayer(int sign, @NonNull LayerRenderContext context) {
+    attachFragmentLayer(sign, context, false);
+  }
+
+  /** Attaches a layer, optionally allowing its content to use FLR child ordering. */
+  public final void attachFragmentLayer(
+      int sign, @NonNull LayerRenderContext context, boolean useFragmentLayerChildOrder) {
+    mFragmentLayerChildOrder = useFragmentLayerChildOrder;
+    mFragmentLayerSign = sign;
+    mFragmentLayerContext = context;
+    mFragmentLayerDisplayListApplier = null;
+    mFragmentLayerDisplayListItemsBuffer = null;
+    mFragmentLayerDisplayListDataBuffer = null;
+    mFragmentLayerRepaintType = FRAGMENT_LAYER_REPAINT_GET_DISPLAY_LIST_AND_DRAW;
+    View view = getFragmentLayerView();
+    if (!isFlatten() && view != null) {
+      view.setWillNotDraw(false);
+      if (view instanceof ViewGroup) {
+        ((ViewGroup) view).setClipChildren(false);
+      }
+      view.invalidate();
+    } else {
+      invalidate();
+    }
+  }
+
+  public final void detachFragmentLayer() {
+    mFragmentLayerChildOrder = false;
+    mFragmentLayerSign = INVALID_FRAGMENT_LAYER_SIGN;
+    mFragmentLayerContext = null;
+    mFragmentLayerDisplayListApplier = null;
+    mFragmentLayerDisplayListItemsBuffer = null;
+    mFragmentLayerDisplayListDataBuffer = null;
+    mFragmentLayerFrame.setEmpty();
+    mFragmentLayerRenderOffset.set(0, 0);
+    mFragmentLayerRepaintType = FRAGMENT_LAYER_REPAINT_GET_DISPLAY_LIST_AND_DRAW;
+  }
+
+  public final boolean isFragmentLayer() {
+    return mFragmentLayerContext != null;
+  }
+
+  public final boolean usesFragmentLayerChildOrder() {
+    // Flatten UIs mount their children through an ancestor's legacy draw list.
+    return isFragmentLayer() && !isFlatten() && mFragmentLayerChildOrder;
+  }
+
+  @Nullable
+  public View getFragmentLayerView() {
+    return null;
+  }
+
+  public int getFragmentLayerWidth() {
+    return getWidth();
+  }
+
+  public int getFragmentLayerHeight() {
+    return getHeight();
+  }
+
+  public int getFragmentLayerScrollX() {
+    return getScrollX();
+  }
+
+  public int getFragmentLayerScrollY() {
+    return getScrollY();
+  }
+
+  public PointF convertPointInFragmentLayerToScreen(PointF point) {
+    View view = getFragmentLayerView();
+    return view != null ? LynxUIHelper.convertPointInViewToScreen(view, point) : point;
+  }
+
+  public final Rect getFragmentLayerFrame() {
+    return mFragmentLayerFrame;
+  }
+
+  public final Point getFragmentLayerRenderOffset() {
+    return mFragmentLayerRenderOffset;
+  }
+
+  public final void setFragmentLayerFrame(
+      boolean needClip, int left, int top, int right, int bottom, int dx, int dy) {
+    mFragmentLayerFrame.set(left + dx, top + dy, right + dx, bottom + dy);
+    mFragmentLayerRenderOffset.set(dx, dy);
+    if (needClip) {
+      applyFragmentLayerClipBounds(
+          true, new Rect(0, 0, mFragmentLayerFrame.width(), mFragmentLayerFrame.height()));
+      return;
+    }
+
+    View view = getFragmentLayerView();
+    if (!isFlatten() && view != null && view.getParent() instanceof ViewGroup) {
+      ViewGroup parent = (ViewGroup) view.getParent();
+      parent.setClipChildren(false);
+      parent.setClipToPadding(false);
+    }
+    applyFragmentLayerClipBounds(false, null);
+  }
+
+  public final void prepareFragmentLayerDisplayList(Canvas canvas) {
+    if (!isFragmentLayer()) {
+      return;
+    }
+    if (mFragmentLayerRepaintType == FRAGMENT_LAYER_REPAINT_GET_DISPLAY_LIST_AND_DRAW) {
+      mFragmentLayerDisplayListItemsBuffer =
+          mFragmentLayerContext.getDisplayListItemsBuffer(mFragmentLayerSign);
+      mFragmentLayerDisplayListDataBuffer =
+          mFragmentLayerContext.getDisplayListDataBuffer(mFragmentLayerSign);
+    }
+    if (mFragmentLayerDisplayListApplier == null) {
+      mFragmentLayerDisplayListApplier =
+          new DisplayListApplier(mFragmentLayerDisplayListItemsBuffer,
+              mFragmentLayerDisplayListDataBuffer, mFragmentLayerContext, this);
+    } else {
+      mFragmentLayerDisplayListApplier.setBuffer(
+          mFragmentLayerDisplayListItemsBuffer, mFragmentLayerDisplayListDataBuffer);
+    }
+    if (mFragmentLayerDisplayListItemsBuffer != null) {
+      mFragmentLayerRepaintType = FRAGMENT_LAYER_REPAINT_DRAW_ONLY;
+    }
+  }
+
+  @Nullable
+  public final LynxBaseUI drawFragmentLayerContentUntilNextView(Canvas canvas) {
+    if (mFragmentLayerDisplayListApplier == null) {
+      return null;
+    }
+    int childSign = mFragmentLayerDisplayListApplier.drawTillNextViewAndGetViewId(canvas);
+    LynxBaseUI child =
+        mFragmentLayerContext != null ? mFragmentLayerContext.getFragmentLayer(childSign) : null;
+    return child;
+  }
+
+  final void drawFragmentLayerContentUntilNextViewWithoutResolvingLayer(Canvas canvas) {
+    if (mFragmentLayerDisplayListApplier != null) {
+      mFragmentLayerDisplayListApplier.drawTillNextView(canvas);
+    }
+  }
+
+  public final void beforeDrawFragmentLayerChild(Canvas canvas, @Nullable LynxBaseUI childLayer) {
+    if (!isFragmentLayer()) {
+      return;
+    }
+    LynxBaseUI displayListChild = drawFragmentLayerContentUntilNextView(canvas);
+    if (displayListChild != null) {
+      childLayer = displayListChild;
+    }
+    canvas.save();
+    if (childLayer != null && childLayer.isFragmentLayer()) {
+      Point offset = childLayer.getFragmentLayerRenderOffset();
+      canvas.translate(-offset.x, -offset.y);
+    }
+  }
+
+  public final void afterDrawFragmentLayerChild(Canvas canvas) {
+    if (isFragmentLayer()) {
+      canvas.restore();
+    }
+  }
+
+  public final void finishFragmentLayerDisplayList(Canvas canvas) {
+    if (mFragmentLayerDisplayListApplier == null) {
+      return;
+    }
+    mFragmentLayerDisplayListApplier.drawTillNextView(canvas);
+    mFragmentLayerDisplayListApplier.reset();
+  }
+
+  public final void invalidateFragmentLayer(int invalidateMask) {
+    invalidate();
+    View view = getFragmentLayerView();
+    if ((invalidateMask & FRAGMENT_LAYER_INVALIDATE_PARENT) != 0 && view != null
+        && view.getParent() instanceof View) {
+      ((View) view.getParent()).invalidate();
+    }
+    if ((invalidateMask & FRAGMENT_LAYER_INVALIDATE_DISPLAY_LIST) != 0) {
+      mFragmentLayerRepaintType = FRAGMENT_LAYER_REPAINT_GET_DISPLAY_LIST_AND_DRAW;
+    }
+  }
+
+  public final void applyFragmentLayerSubtreeProperties(ByteBuffer buffer, int count) {
+    if (buffer == null || count <= 0) {
+      return;
+    }
+    for (int i = 0; i < count; i++) {
+      buffer.position(i * SUBTREE_PROPERTY_SIZE);
+      int type = buffer.getInt();
+      if (type == SUBTREE_OP_TRANSFORM) {
+        float[] transform = new float[16];
+        for (int j = 0; j < transform.length; j++) {
+          transform[j] = buffer.getFloat();
+        }
+        applyFragmentLayerTransform(transform);
+      } else if (type == SUBTREE_OP_OPACITY) {
+        applyFragmentLayerOpacity(buffer.getFloat());
+      } else if (type == SUBTREE_OP_FILTER) {
+        applyFragmentLayerFilter(buffer.getInt(), buffer.getFloat());
+      }
+    }
+  }
+
+  public void applyFragmentLayerClipBounds(boolean needClip, @Nullable Rect clipBounds) {
+    View view = getFragmentLayerView();
+    if (view != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+      view.setClipBounds(needClip ? clipBounds : null);
+    }
+  }
+
+  public void applyFragmentLayerOpacity(float opacity) {
+    View view = getFragmentLayerView();
+    if (view != null) {
+      view.setAlpha(opacity);
+    }
+  }
+
+  public void applyFragmentLayerTransform(float[] transform) {
+    View view = getFragmentLayerView();
+    if (view == null) {
+      return;
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      view.setAnimationMatrix(createFragmentLayerTransformMatrix(transform));
+      return;
+    }
+    TransformProps transformProps = new TransformProps();
+    TransformProps.matrix4fToTransformProps(new Matrix4f(transform), transformProps);
+    view.setTranslationX(transformProps.getTranslationX());
+    view.setTranslationY(transformProps.getTranslationY());
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      view.setTranslationZ(transformProps.getTranslationZ());
+    }
+    view.setRotation(transformProps.getRotation());
+    view.setRotationX(transformProps.getRotationX());
+    view.setRotationY(transformProps.getRotationY());
+    view.setScaleX(transformProps.getScaleX());
+    view.setScaleY(transformProps.getScaleY());
+  }
+
+  public void applyFragmentLayerFilter(int type, float amount) {
+    View view = getFragmentLayerView();
+    if (view == null) {
+      return;
+    }
+    if (mFragmentLayerFilterType == StyleConstants.FILTER_TYPE_BLUR
+        && type != StyleConstants.FILTER_TYPE_BLUR) {
+      BlurUtils.removeEffect(view);
+    }
+    switch (type) {
+      case StyleConstants.FILTER_TYPE_NONE:
+        view.setLayerType(View.LAYER_TYPE_NONE, null);
+        break;
+      case StyleConstants.FILTER_TYPE_GRAYSCALE:
+        ColorMatrix grayscaleMatrix = new ColorMatrix();
+        grayscaleMatrix.setSaturation(UnitUtils.clamp(1.0f - amount, 0.0f, 1.0f));
+        applyFragmentLayerColorFilter(view, grayscaleMatrix);
+        break;
+      case StyleConstants.FILTER_TYPE_BLUR:
+        view.setLayerType(View.LAYER_TYPE_NONE, null);
+        amount = Math.max(0.0f, amount);
+        if (amount == 0.0f) {
+          BlurUtils.removeEffect(view);
+        } else {
+          BlurUtils.createEffect(view, amount);
+        }
+        break;
+      case StyleConstants.FILTER_TYPE_BRIGHTNESS:
+        amount = UnitUtils.clamp(amount, 0.0f, 2.0f);
+        ColorMatrix brightnessMatrix = new ColorMatrix();
+        brightnessMatrix.setScale(amount, amount, amount, 1.0f);
+        applyFragmentLayerColorFilter(view, brightnessMatrix);
+        break;
+      case StyleConstants.FILTER_TYPE_CONTRAST:
+        amount = UnitUtils.clamp(amount, 0.0f, 3.0f);
+        float offset = 128.0f * (1.0f - amount);
+        applyFragmentLayerColorFilter(view,
+            new ColorMatrix(new float[] {amount, 0, 0, 0, offset, 0, amount, 0, 0, offset, 0, 0,
+                amount, 0, offset, 0, 0, 0, 1, 0}));
+        break;
+      case StyleConstants.FILTER_TYPE_SATURATE:
+        ColorMatrix saturateMatrix = new ColorMatrix();
+        saturateMatrix.setSaturation(amount < 0.0f ? 1.0f : Math.min(3.0f, amount));
+        applyFragmentLayerColorFilter(view, saturateMatrix);
+        break;
+      case StyleConstants.FILTER_TYPE_HUE_ROTATE:
+      default:
+        view.setLayerType(View.LAYER_TYPE_NONE, null);
+        break;
+    }
+    mFragmentLayerFilterType = type;
+  }
+
+  private static void applyFragmentLayerColorFilter(View view, ColorMatrix colorMatrix) {
+    Paint filterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    filterPaint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
+    view.setLayerType(View.LAYER_TYPE_HARDWARE, filterPaint);
+  }
+
+  public static Matrix createFragmentLayerTransformMatrix(float[] transform) {
+    Matrix matrix = new Matrix();
+    float[] values = new float[9];
+    values[0] = transform[0];
+    values[1] = transform[4];
+    values[2] = transform[12];
+    values[3] = transform[1];
+    values[4] = transform[5];
+    values[5] = transform[13];
+    values[6] = transform[3];
+    values[7] = transform[7];
+    values[8] = transform[15];
+    matrix.setValues(values);
+    return matrix;
+  }
+
   public ViewGroup.LayoutParams generateLayoutParams(ViewGroup.LayoutParams childParams) {
     return null;
   }
@@ -589,6 +936,7 @@ public abstract class LynxBaseUI
   public void initialize() {}
 
   public void destroy() {
+    detachFragmentLayer();
     if (this instanceof PatchFinishListener) {
       mContext.unregisterPatchFinishListener((PatchFinishListener) this);
     }

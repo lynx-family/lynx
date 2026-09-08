@@ -10,6 +10,10 @@ import android.view.View;
 public interface IDrawChildHook {
   interface IDrawChildHookBinding {
     void bindDrawChildHook(IDrawChildHook hook);
+
+    default IDrawChildHook getDrawChildHook() {
+      return null;
+    }
   }
   void beforeDraw(Canvas canvas);
   void beforeDispatchDraw(Canvas canvas);

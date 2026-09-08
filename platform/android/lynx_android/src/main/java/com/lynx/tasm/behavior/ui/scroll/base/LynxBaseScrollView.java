@@ -24,6 +24,11 @@ public class LynxBaseScrollView
     mDrawChildHook = hook;
   }
 
+  @Override
+  public IDrawChildHook getDrawChildHook() {
+    return mDrawChildHook;
+  }
+
   /********* Public begin *********/
 
   public LynxBaseScrollView(@NonNull Context context) {

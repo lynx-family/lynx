@@ -264,6 +264,11 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     return mView;
   }
 
+  @Override
+  public View getFragmentLayerView() {
+    return mView;
+  }
+
   public ViewInfo getViewInfo() {
     return mViewInfo;
   }
@@ -372,8 +377,12 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       }
     }
 
-    if (mDrawParent instanceof UIGroup && mView.getParent() == null) {
-      ((UIGroup) mDrawParent).insertChildWhenRebuildView(this);
+    if (mView.getParent() == null) {
+      if (mDrawParent instanceof UIGroup) {
+        ((UIGroup) mDrawParent).insertChildWhenRebuildView(this);
+      } else if (isFragmentLayer() && getParentBaseUI() instanceof UIGroup) {
+        ((UIGroup) getParentBaseUI()).insertChildWhenRebuildView(this);
+      }
     }
 
     didEnsureCreateView();

@@ -11,13 +11,13 @@ import java.nio.ByteBuffer;
  * <p>Valid display-list buffers used by Android behavior tests must come from this builder so the
  * tests do not duplicate the native {@code DisplayListItem} ABI.
  */
-final class NativeDisplayListBuilder implements AutoCloseable {
+public final class NativeDisplayListBuilder implements AutoCloseable {
   private static boolean sRegistered;
 
   private long mNativePtr;
   private boolean mBuilt;
 
-  static synchronized void ensureRegistered() {
+  public static synchronized void ensureRegistered() {
     if (!sRegistered) {
       if (!registerJNI()) {
         throw new IllegalStateException("Failed to register NativeDisplayListBuilder JNI.");
@@ -26,7 +26,7 @@ final class NativeDisplayListBuilder implements AutoCloseable {
     }
   }
 
-  NativeDisplayListBuilder() {
+  public NativeDisplayListBuilder() {
     if (!sRegistered) {
       throw new IllegalStateException("Call ensureRegistered() before creating a display list.");
     }
@@ -54,7 +54,7 @@ final class NativeDisplayListBuilder implements AutoCloseable {
     return this;
   }
 
-  NativeDisplayListBuilder drawView(int viewId, float offsetX, float offsetY) {
+  public NativeDisplayListBuilder drawView(int viewId, float offsetX, float offsetY) {
     ensureMutable();
     nativeDrawView(mNativePtr, viewId, offsetX, offsetY);
     return this;
@@ -126,7 +126,7 @@ final class NativeDisplayListBuilder implements AutoCloseable {
     return this;
   }
 
-  ByteBuffer toItemsBuffer() {
+  public ByteBuffer toItemsBuffer() {
     ensureBuilt();
     return PlatformRendererContext.makeReadOnlyDisplayListBuffer(nativeGetItemsBuffer(mNativePtr));
   }

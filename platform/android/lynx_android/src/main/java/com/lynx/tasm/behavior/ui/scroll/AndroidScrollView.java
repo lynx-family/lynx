@@ -336,10 +336,10 @@ public class AndroidScrollView
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    if (mRenderer != null) {
-      if (mRenderer.getUIHost() != null) {
-        mRenderer.getUIHost().measure();
-      }
+    if (!getRootView().isLayoutRequested() && mDrawChildHook != null) {
+      // When layout is initiated by a container other than the root View traversal, keep the
+      // LynxUI subtree in sync without re-entering it during the normal owner-driven layout pass.
+      mDrawChildHook.performLayoutChildrenUI();
     }
 
     super.onLayout(changed, l, t, r, b);
@@ -359,6 +359,16 @@ public class AndroidScrollView
       if (mEnableNewBounce && bounceScrollRange > 0 && bounceScrollRange != getScrollY()) {
         setScrollTo(getScrollX(), bounceScrollRange, false);
       }
+    }
+  }
+
+  @Override
+  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    if (!getRootView().isLayoutRequested() && mDrawChildHook != null) {
+      // When measure is initiated by a container other than the root View traversal, keep the
+      // LynxUI subtree in sync without re-entering it during the normal owner-driven measure pass.
+      mDrawChildHook.performMeasureChildrenUI();
     }
   }
 
@@ -472,6 +482,11 @@ public class AndroidScrollView
   @Override
   public void bindDrawChildHook(IDrawChildHook hook) {
     mDrawChildHook = hook;
+  }
+
+  @Override
+  public IDrawChildHook getDrawChildHook() {
+    return mDrawChildHook;
   }
 
   @Override
@@ -612,6 +627,7 @@ public class AndroidScrollView
       return;
     }
     mLastScrollY = this.getScrollY();
+    invalidateFragmentLayerContent();
     // scroll by user or by front-end
     if (mScrollState == SCROLL_STATE_IDLE) {
       transferToScroll();
@@ -621,6 +637,12 @@ public class AndroidScrollView
       mUIScrollView.scrollToBounce(true);
     }
     sendScrollToEdgeEvent(l, t);
+  }
+
+  private void invalidateFragmentLayerContent() {
+    if (mUIScrollView != null && mUIScrollView.isFragmentLayer()) {
+      mLinearLayout.invalidate();
+    }
   }
 
   @Override
@@ -1360,6 +1382,7 @@ public class AndroidScrollView
         return;
       }
       mLastScrollX = this.getScrollX();
+      invalidateFragmentLayerContent();
       // scroll by user or by front-end
       if (mScrollState == SCROLL_STATE_IDLE) {
         transferToScroll();

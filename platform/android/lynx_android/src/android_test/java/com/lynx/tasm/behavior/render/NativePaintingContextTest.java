@@ -9,12 +9,15 @@ import static org.mockito.Mockito.*;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.ui.ILynxUIMeaningfulContent;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
@@ -29,45 +32,40 @@ import org.mockito.MockitoAnnotations;
 
 @RunWith(AndroidJUnit4.class)
 public class NativePaintingContextTest {
-  private NativePaintingContext mNativePaintingContext;
+  private TestNativePaintingContext mNativePaintingContext;
   @Mock private UIBody.UIBodyView mRootView;
   @Mock private LynxContext mContext;
+  @Mock private LynxUIOwner mUIOwner;
   @Mock private BehaviorRegistry mockBehaviorRegistry;
   private PlatformRendererContext mSpyPlatformContext;
 
   @Before
   public void setup() {
     MockitoAnnotations.initMocks(this);
+    when(mContext.getLynxUIOwner()).thenReturn(mUIOwner);
     LynxEnv.inst().initNativeLibraries(new INativeLibraryLoader() {
       @Override
       public void loadLibrary(String libName) throws UnsatisfiedLinkError {
         System.loadLibrary(libName);
       }
     });
-    mNativePaintingContext = new NativePaintingContext(mRootView, mContext, mockBehaviorRegistry);
-
-    try {
-      Field field = NativePaintingContext.class.getDeclaredField("mPlatformRendererContext");
-      field.setAccessible(true);
-      PlatformRendererContext realPlatformContext =
-          (PlatformRendererContext) field.get(mNativePaintingContext);
-      mSpyPlatformContext = spy(realPlatformContext);
-      field.set(mNativePaintingContext, mSpyPlatformContext);
-    } catch (Exception e) {
-      fail("Failed to access mPlatformRendererContext field: " + e.getMessage());
-    }
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      mNativePaintingContext =
+          new TestNativePaintingContext(mRootView, mContext, mockBehaviorRegistry);
+    });
+    mSpyPlatformContext = mNativePaintingContext;
   }
 
-  private void installRendererHost(
+  private void installFragmentLayerUI(
       int sign, int visibility, float alpha, float scaleX, float scaleY) {
-    IRendererHost host = mock(IRendererHost.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
     ViewGroup view = mock(ViewGroup.class);
-    when(host.getView()).thenReturn(view);
+    when(mUIOwner.getFragmentLayer(sign)).thenReturn(ui);
+    when(ui.getFragmentLayerView()).thenReturn(view);
     when(view.getVisibility()).thenReturn(visibility);
     when(view.getAlpha()).thenReturn(alpha);
     when(view.getScaleX()).thenReturn(scaleX);
     when(view.getScaleY()).thenReturn(scaleY);
-    mSpyPlatformContext.mViewHolder.put(sign, host);
   }
 
   private void setNativePtr(long nativePtr) {
@@ -84,6 +82,8 @@ public class NativePaintingContextTest {
   public void testConstructorInitializesNativePtr() {
     assertTrue("Native pointer should be initialized",
         mNativePaintingContext.getNativePaintingContextPtr() != 0);
+    assertTrue("NativePaintingContext should directly provide layer render services",
+        mNativePaintingContext instanceof LayerRenderContext);
   }
 
   @Test
@@ -97,7 +97,7 @@ public class NativePaintingContextTest {
   public void attachUIBodyViewSetsRootView() {
     UIBody.UIBodyView newView = mock(UIBody.UIBodyView.class);
     mNativePaintingContext.attachUIBodyView(newView);
-    verify(mSpyPlatformContext).setRootView(newView);
+    assertSame(newView, mNativePaintingContext.mRootView.get());
   }
 
   @Test
@@ -131,7 +131,7 @@ public class NativePaintingContextTest {
   @Test
   public void platformRendererContextMeaningfulPaintingAreaProperties_withHostUseViewProperties() {
     int sign = 2002;
-    installRendererHost(sign, View.INVISIBLE, 0.4f, 1.5f, 0.6f);
+    installFragmentLayerUI(sign, View.INVISIBLE, 0.4f, 1.5f, 0.6f);
 
     assertEquals(View.INVISIBLE, mSpyPlatformContext.getMeaningfulPaintingAreaVisibleStatus(sign));
     assertEquals(0.4f, mSpyPlatformContext.getMeaningfulPaintingAreaAlpha(sign), 0.f);
@@ -154,7 +154,7 @@ public class NativePaintingContextTest {
     int sign = 3001;
     LynxImageManager imageManager = mock(LynxImageManager.class);
     when(imageManager.getHasContent()).thenReturn(Boolean.FALSE);
-    doReturn(imageManager).when(mSpyPlatformContext).getImage(sign);
+    mNativePaintingContext.mImageManager = imageManager;
     int[] records = {sign, PlatformRendererContext.PlatformRendererType.kImage, 1, 2, 30, 40};
 
     MeaningfulPaintingArea area = MeaningfulPaintingAreaHelper.buildMeaningfulPaintingArea(
@@ -171,10 +171,10 @@ public class NativePaintingContextTest {
   @Test
   public void buildMeaningfulPaintingArea_imageWithContentReturnsPresentedArea() {
     int sign = 3005;
-    installRendererHost(sign, View.VISIBLE, 0.9f, 1.0f, 1.0f);
+    installFragmentLayerUI(sign, View.VISIBLE, 0.9f, 1.0f, 1.0f);
     LynxImageManager imageManager = mock(LynxImageManager.class);
     when(imageManager.getHasContent()).thenReturn(Boolean.TRUE);
-    doReturn(imageManager).when(mSpyPlatformContext).getImage(sign);
+    mNativePaintingContext.mImageManager = imageManager;
     int[] records = {sign, PlatformRendererContext.PlatformRendererType.kImage, 11, 12, 13, 14};
 
     MeaningfulPaintingArea area = MeaningfulPaintingAreaHelper.buildMeaningfulPaintingArea(
@@ -193,9 +193,9 @@ public class NativePaintingContextTest {
   @Test
   public void buildMeaningfulPaintingArea_textWithTextServiceReturnsPresentedArea() {
     int sign = 3002;
-    installRendererHost(sign, View.GONE, 0.5f, 1.2f, 0.8f);
+    installFragmentLayerUI(sign, View.GONE, 0.5f, 1.2f, 0.8f);
     when(mContext.isTextServiceModeOn()).thenReturn(true);
-    doReturn(mock(Page.class)).when(mSpyPlatformContext).getTextBundle(sign);
+    mNativePaintingContext.mTextBundle = mock(Page.class);
     int[] records = {sign, PlatformRendererContext.PlatformRendererType.kText, 3, 4, 50, 60};
 
     MeaningfulPaintingArea area = MeaningfulPaintingAreaHelper.buildMeaningfulPaintingArea(
@@ -216,7 +216,7 @@ public class NativePaintingContextTest {
     int sign = 3003;
     when(mContext.isTextServiceModeOn()).thenReturn(false);
     TextMeasurer textMeasurer = mock(TextMeasurer.class);
-    doReturn(textMeasurer).when(mSpyPlatformContext).getTextMeasurer();
+    mNativePaintingContext.mTextMeasurer = textMeasurer;
     when(textMeasurer.takeTextLayout(sign)).thenReturn(null);
     int[] records = {sign, PlatformRendererContext.PlatformRendererType.kText, 5, 6, 70, 80};
 
@@ -233,7 +233,7 @@ public class NativePaintingContextTest {
     int sign = 3006;
     LynxImageManager imageManager = mock(LynxImageManager.class);
     when(imageManager.getHasContent()).thenReturn(Boolean.TRUE);
-    doReturn(imageManager).when(mSpyPlatformContext).getImage(sign);
+    mNativePaintingContext.mImageManager = imageManager;
     int[] records = {1001, PlatformRendererContext.PlatformRendererType.kView, 0, 0, 20, 20, sign,
         PlatformRendererContext.PlatformRendererType.kImage, 1, 2, 0, 10, sign,
         PlatformRendererContext.PlatformRendererType.kImage, 3, 4, 30, 40};
@@ -262,17 +262,15 @@ public class NativePaintingContextTest {
 
   @Test
   public void getMeaningfulPaintingAreas_buildsAreasFromNativeRecords() {
-    NativePaintingContext spyPaintingContext = spy(mNativePaintingContext);
     int sign = 3004;
-    installRendererHost(sign, View.INVISIBLE, 0.7f, 1.1f, 0.9f);
+    installFragmentLayerUI(sign, View.INVISIBLE, 0.7f, 1.1f, 0.9f);
     LynxImageManager imageManager = mock(LynxImageManager.class);
     when(imageManager.getHasContent()).thenReturn(Boolean.TRUE);
-    doReturn(imageManager).when(mSpyPlatformContext).getImage(sign);
-    doReturn(new int[] {sign, PlatformRendererContext.PlatformRendererType.kImage, 7, 8, 90, 100})
-        .when(spyPaintingContext)
-        .nativeGetMeaningfulPaintingAreaRecords(anyLong());
+    mNativePaintingContext.mImageManager = imageManager;
+    mNativePaintingContext.mMeaningfulPaintingAreaRecords =
+        new int[] {sign, PlatformRendererContext.PlatformRendererType.kImage, 7, 8, 90, 100};
 
-    List<MeaningfulPaintingArea> areas = spyPaintingContext.getMeaningfulPaintingAreas();
+    List<MeaningfulPaintingArea> areas = mNativePaintingContext.getMeaningfulPaintingAreas();
 
     assertEquals(1, areas.size());
     MeaningfulPaintingArea area = areas.get(0);
@@ -284,5 +282,37 @@ public class NativePaintingContextTest {
     assertEquals(View.INVISIBLE, area.getVisibleStatus());
     assertEquals(ILynxUIMeaningfulContent.MeaningfulContentStatus.PRESENTED,
         area.getMeaningfulContentStatus());
+  }
+
+  private static class TestNativePaintingContext extends NativePaintingContext {
+    LynxImageManager mImageManager;
+    Page mTextBundle;
+    TextMeasurer mTextMeasurer;
+    int[] mMeaningfulPaintingAreaRecords;
+
+    TestNativePaintingContext(
+        UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry) {
+      super(rootView, context, behaviorRegistry);
+    }
+
+    @Override
+    public LynxImageManager getImage(int imageKey) {
+      return mImageManager != null ? mImageManager : super.getImage(imageKey);
+    }
+
+    @Override
+    public Page getTextBundle(int textKey) {
+      return mTextBundle != null ? mTextBundle : super.getTextBundle(textKey);
+    }
+
+    @Override
+    public TextMeasurer getTextMeasurer() {
+      return mTextMeasurer != null ? mTextMeasurer : super.getTextMeasurer();
+    }
+
+    @Override
+    int[] nativeGetMeaningfulPaintingAreaRecords(long nativePtr) {
+      return mMeaningfulPaintingAreaRecords;
+    }
   }
 }

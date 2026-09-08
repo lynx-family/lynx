@@ -19,4 +19,13 @@ public @interface LynxBehavior {
   boolean needProcessDirection() default false;
   boolean supportFragmentLayerRender() default false;
   Class<? extends IRendererHost> fragmentLayerRendererHost() default IRendererHost.class;
+  /**
+   * Whether this component can render ordinary child content through Fragment Layer
+   * display lists without requiring legacy child UIs. Opt in only when the component's
+   * child mounting and drawing are compatible with the Fragment Layer display-list path.
+   * Enabling this does not remove the component's own UI, and does not automatically
+   * change the behavior of extended child components. It is independent from
+   * supportFragmentLayerRender and fragmentLayerRendererHost.
+   */
+  boolean supportFragmentLayerChildren() default false;
 }

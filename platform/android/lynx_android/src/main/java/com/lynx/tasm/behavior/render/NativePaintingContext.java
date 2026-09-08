@@ -5,7 +5,6 @@ package com.lynx.tasm.behavior.render;
 
 import android.graphics.PointF;
 import android.view.MotionEvent;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.IPaintingContext;
@@ -20,7 +19,7 @@ import java.util.List;
  * All operations are implemented on the native object and called directly
  * by the pipeline.
  */
-public class NativePaintingContext implements IPaintingContext {
+public class NativePaintingContext extends PlatformRendererContext implements IPaintingContext {
   private static final int PLATFORM_FOCUS_INFO_SIZE = 4;
   private static final int PLATFORM_FOCUS_TARGET_SIGN_INDEX = 0;
   private static final int PLATFORM_FOCUS_RENDERER_HOST_SIGN_INDEX = 1;
@@ -29,20 +28,16 @@ public class NativePaintingContext implements IPaintingContext {
 
   private long mNativePtr = 0;
 
-  @NonNull private final PlatformRendererContext mPlatformRendererContext;
   private boolean mDestroyed = false;
   private long mTextra = 0;
-  private LynxContext mContext;
 
   public NativePaintingContext(
       UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry) {
-    mPlatformRendererContext = new PlatformRendererContext(rootView, context, behaviorRegistry);
-    mContext = context;
+    super(rootView, context, behaviorRegistry);
     if (context.isTextServiceModeOn() && context.getTextService() != null) {
       mTextra = context.getTextService().createTextLayoutAPI(context);
     }
-    mNativePtr = nativeCreatePaintingContext(this, mPlatformRendererContext.getNativePtr(),
-        mPlatformRendererContext.getTextLayout(), mTextra);
+    mNativePtr = nativeCreatePaintingContext(this, getNativePtr(), getTextLayout(), mTextra);
   }
 
   @Override
@@ -56,10 +51,9 @@ public class NativePaintingContext implements IPaintingContext {
       nativeDestroy(mNativePtr);
       mNativePtr = 0;
     }
-    mPlatformRendererContext.destroy();
+    super.destroy();
     // TextLayoutTextra owns mTextra and releases it on native teardown.
     mTextra = 0;
-    mContext = null;
   }
 
   @Override
@@ -69,19 +63,21 @@ public class NativePaintingContext implements IPaintingContext {
 
   @Override
   public PointF convertPointInViewToScreen(int sign, PointF point) {
-    return mPlatformRendererContext.convertPointInViewToScreen(sign, point);
+    return super.convertPointInViewToScreen(sign, point);
   }
 
+  @Override
   public int getTargetWidth(int sign) {
-    return mPlatformRendererContext.getTargetWidth(sign);
+    return super.getTargetWidth(sign);
   }
 
+  @Override
   public int getTargetHeight(int sign) {
-    return mPlatformRendererContext.getTargetHeight(sign);
+    return super.getTargetHeight(sign);
   }
 
   public void attachUIBodyView(UIBody.UIBodyView view) {
-    mPlatformRendererContext.setRootView(view);
+    setRootView(view);
   }
 
   @Override
@@ -148,7 +144,7 @@ public class NativePaintingContext implements IPaintingContext {
         || focusInfo[PLATFORM_FOCUS_CAN_RESPOND_INDEX] == 0) {
       return;
     }
-    mPlatformRendererContext.updatePlatformFocus(focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX],
+    updatePlatformFocus(focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX],
         focusInfo[PLATFORM_FOCUS_RENDERER_HOST_SIGN_INDEX]);
   }
 
@@ -195,7 +191,7 @@ public class NativePaintingContext implements IPaintingContext {
     }
 
     return MeaningfulPaintingAreaHelper.buildMeaningfulPaintingAreas(
-        nativeGetMeaningfulPaintingAreaRecords(mNativePtr), mPlatformRendererContext, mContext);
+        nativeGetMeaningfulPaintingAreaRecords(mNativePtr), this, getLynxContext());
   }
 
   private native long nativeCreatePaintingContext(
@@ -220,7 +216,7 @@ public class NativePaintingContext implements IPaintingContext {
   native boolean nativeIsPlatformEventTargetEventThrough(
       long nativePtr, int rootSign, float pointX, float pointY);
 
-  native void nativeDestroy(long nativePtr);
+  private native void nativeDestroy(long nativePtr);
 
   native int[] nativeGetMeaningfulPaintingAreaRecords(long nativePtr);
 }
