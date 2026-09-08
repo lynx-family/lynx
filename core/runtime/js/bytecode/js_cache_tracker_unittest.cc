@@ -40,10 +40,9 @@ using namespace lynx::tasm::report::test;
 void CheckCommonEventTrackerParams(MoveOnlyEvent &event, JSRuntimeType type,
                                    const std::string &stage) {
   EXPECT_EQ(event.GetName(), "lynxsdk_code_cache");
-  auto &string_props = event.GetStringProps();
-  EXPECT_EQ(string_props.at("stage"), stage);
-  auto &int_props = event.GetIntProps();
-  EXPECT_EQ(int_props.at("runtime_type"), static_cast<int>(type));
+  const auto props = event.GetPropsAsMap();
+  EXPECT_EQ(props.at("stage").GetStringValue(), stage);
+  EXPECT_EQ(props.at("runtime_type").GetIntValue(), static_cast<int>(type));
 }
 
 void CheckOnGetBytecodeEvent(JSRuntimeType type, const std::string &source_url,
@@ -53,17 +52,16 @@ void CheckOnGetBytecodeEvent(JSRuntimeType type, const std::string &source_url,
   MoveOnlyEvent event;
   GetEventParams(event, 1);
   CheckCommonEventTrackerParams(event, type, "get_code_cache");
-  auto &str_props = event.GetStringProps();
-  auto &int_props = event.GetIntProps();
-  auto &double_props = event.GetDoubleProps();
-  EXPECT_EQ(str_props.at("source_url"), source_url);
-  EXPECT_EQ(int_props.at("cache_type"), static_cast<int>(cache_type));
-  EXPECT_EQ(int_props.at("cache_hit"), cache_hit);
-  EXPECT_EQ(int_props.at("enable_user_bytecode"), enable_user_bytecode);
-  EXPECT_EQ(int_props.at("enable_bytecode"), enable_bytecode);
-  EXPECT_GE(double_props.at("cost"), cost);
+  const auto props = event.GetPropsAsMap();
+  EXPECT_EQ(props.at("source_url").GetStringValue(), source_url);
+  EXPECT_EQ(props.at("cache_type").GetIntValue(), static_cast<int>(cache_type));
+  EXPECT_EQ(props.at("cache_hit").GetIntValue(), cache_hit);
+  EXPECT_EQ(props.at("enable_user_bytecode").GetIntValue(),
+            enable_user_bytecode);
+  EXPECT_EQ(props.at("enable_bytecode").GetIntValue(), enable_bytecode);
+  EXPECT_GE(props.at("cost").GetDoubleValue(), cost);
   // kb so it is 0.
-  EXPECT_GE(double_props.at("code_size"), code_size);
+  EXPECT_GE(props.at("code_size").GetDoubleValue(), code_size);
 }
 
 void CheckBytecodeGenerateEvent(JSRuntimeType runtime_type, std::string url,
@@ -73,38 +71,35 @@ void CheckBytecodeGenerateEvent(JSRuntimeType runtime_type, std::string url,
                                 JsCacheErrorCode error_code,
                                 MoveOnlyEvent event) {
   CheckCommonEventTrackerParams(event, runtime_type, "generate_code_cache");
-  auto &str_props = event.GetStringProps();
-  auto &int_props = event.GetIntProps();
-  auto &double_props = event.GetDoubleProps();
-  EXPECT_EQ(str_props.at("source_url"), url);
-  EXPECT_EQ(str_props.at("template_url"), template_url);
-  EXPECT_EQ(int_props.at("generate_success"), generate_success);
-  EXPECT_GE(double_props.at("raw_size"), raw_size / 1024.0);
-  EXPECT_GE(double_props.at("code_cache_size"), bytecode_size / 1024.0);
-  EXPECT_EQ(int_props.at("persist_success"), persist_success);
-  EXPECT_NE(str_props.find("engine_version"), str_props.end());
-  EXPECT_GE(double_props.at("generate_cost"), 0);
-  EXPECT_EQ(int_props.at("error_code"), static_cast<int>(error_code));
+  const auto props = event.GetPropsAsMap();
+  EXPECT_EQ(props.at("source_url").GetStringValue(), url);
+  EXPECT_EQ(props.at("template_url").GetStringValue(), template_url);
+  EXPECT_EQ(props.at("generate_success").GetIntValue(), generate_success);
+  EXPECT_GE(props.at("raw_size").GetDoubleValue(), raw_size / 1024.0);
+  EXPECT_GE(props.at("code_cache_size").GetDoubleValue(),
+            bytecode_size / 1024.0);
+  EXPECT_EQ(props.at("persist_success").GetIntValue(), persist_success);
+  EXPECT_NE(props.find("engine_version"), props.end());
+  EXPECT_GE(props.at("generate_cost").GetDoubleValue(), 0);
+  EXPECT_EQ(props.at("error_code").GetIntValue(), static_cast<int>(error_code));
 }
 
 void CheckCleanUpEvent(JSRuntimeType runtime_type, JsCacheErrorCode error_code,
                        MoveOnlyEvent event) {
   CheckCommonEventTrackerParams(event, runtime_type, "cleanup");
-  auto &int_props = event.GetIntProps();
-  auto &double_props = event.GetDoubleProps();
-  EXPECT_GT(int_props.at("disk_file_count"), 0);
-  EXPECT_GT(double_props.at("disk_file_size"), 0);
-  EXPECT_GT(double_props.at("clean_size"), 0);
-  EXPECT_GE(double_props.at("cost"), 0);
-  EXPECT_EQ(int_props.at("error_code"), static_cast<int>(error_code));
+  const auto props = event.GetPropsAsMap();
+  EXPECT_GT(props.at("disk_file_count").GetIntValue(), 0);
+  EXPECT_GT(props.at("disk_file_size").GetDoubleValue(), 0);
+  EXPECT_GT(props.at("clean_size").GetDoubleValue(), 0);
+  EXPECT_GE(props.at("cost").GetDoubleValue(), 0);
+  EXPECT_EQ(props.at("error_code").GetIntValue(), static_cast<int>(error_code));
 }
 
 void CheckCommonEventTrackerParams(MoveOnlyEvent &event) {
   EXPECT_EQ(event.GetName(), "lynxsdk_code_cache");
-  auto &string_props = event.GetStringProps();
-  EXPECT_EQ(string_props.at("stage"), "prepare_js");
-  auto &int_props = event.GetIntProps();
-  EXPECT_EQ(int_props.at("runtime_type"),
+  const auto props = event.GetPropsAsMap();
+  EXPECT_EQ(props.at("stage").GetStringValue(), "prepare_js");
+  EXPECT_EQ(props.at("runtime_type").GetIntValue(),
             static_cast<int>(JSRuntimeType::quickjs));
 }
 
@@ -115,15 +110,13 @@ void CheckPrepareJSEvent(const std::string &source_url, bool load_success,
   GetEventParams(event, event_depth);
   CheckCommonEventTrackerParams(event);
 
-  auto &str_props = event.GetStringProps();
-  auto &int_props = event.GetIntProps();
-  auto &double_props = event.GetDoubleProps();
-
-  EXPECT_EQ(str_props.at("source_url"), source_url);
-  EXPECT_EQ(int_props.at("script_type"), static_cast<int>(script_type));
-  EXPECT_EQ(int_props.at("load_success"), load_success);
-  EXPECT_EQ(int_props.at("error_code"), static_cast<int>(error_code));
-  EXPECT_GE(double_props.at("cost"), cost);
+  const auto props = event.GetPropsAsMap();
+  EXPECT_EQ(props.at("source_url").GetStringValue(), source_url);
+  EXPECT_EQ(props.at("script_type").GetIntValue(),
+            static_cast<int>(script_type));
+  EXPECT_EQ(props.at("load_success").GetIntValue(), load_success);
+  EXPECT_EQ(props.at("error_code").GetIntValue(), static_cast<int>(error_code));
+  EXPECT_GE(props.at("cost").GetDoubleValue(), cost);
 }
 
 }  // namespace testing

@@ -273,11 +273,9 @@ TEST_F(LynxBinaryConfigDecoderTest,
   report::test::GetEventParams(event, 1);
 
   EXPECT_EQ(event.GetName(), "lynxsdk_global_feature_switch_statistic");
-  EXPECT_TRUE(event.GetIntProps().empty());
-  EXPECT_TRUE(event.GetDoubleProps().empty());
-  const auto& string_props = event.GetStringProps();
-  ASSERT_EQ(string_props.size(), 1u);
-  EXPECT_EQ(string_props.at("config_str"), config_str);
+  const auto props = event.GetPropsAsMap();
+  ASSERT_EQ(props.size(), 1u);
+  EXPECT_EQ(props.at("config_str").GetStringValue(), config_str);
 }
 
 TEST_F(LynxBinaryConfigDecoderTest, CompileOptionsPropagatesDerivedCSSFlags) {

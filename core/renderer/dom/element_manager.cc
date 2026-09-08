@@ -325,23 +325,16 @@ void ElementManager::ReportElementStatistic() {
          view_element_count =
              view_element_count_.load()](report::MoveOnlyEvent &event) {
           event.SetName("lynxsdk_element_statistic");
-          event.SetProps("element_count",
-                         static_cast<unsigned int>(element_count));
+          event.SetProps("element_count", element_count);
           event.SetProps("layout_only_element_count",
-                         static_cast<unsigned int>(layout_only_element_count));
-          event.SetProps(
-              "layout_only_transition_count",
-              static_cast<unsigned int>(layout_only_transition_count));
-          event.SetProps("wrapper_element_count",
-                         static_cast<unsigned int>(wrapper_element_count));
-          event.SetProps("component_element_count",
-                         static_cast<unsigned int>(component_element_count));
-          event.SetProps("image_element_count",
-                         static_cast<unsigned int>(image_element_count));
-          event.SetProps("text_element_count",
-                         static_cast<unsigned int>(text_element_count));
-          event.SetProps("view_element_count",
-                         static_cast<unsigned int>(view_element_count));
+                         layout_only_element_count);
+          event.SetProps("layout_only_transition_count",
+                         layout_only_transition_count);
+          event.SetProps("wrapper_element_count", wrapper_element_count);
+          event.SetProps("component_element_count", component_element_count);
+          event.SetProps("image_element_count", image_element_count);
+          event.SetProps("text_element_count", text_element_count);
+          event.SetProps("view_element_count", view_element_count);
           if (element_count > 0) {
             event.SetProps(
                 "wrapper_element_ratio",
