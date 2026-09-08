@@ -55,6 +55,14 @@ TEST_F_UI(MouseRegionManagerTest, EventThroughTextRevealsUnderlyingRegion) {
   EXPECT_FALSE(entered_text);
 }
 
+#if defined(OS_WIN) || defined(OS_MAC)
+std::string BoundaryRecord(const std::string& event_name, int target,
+                           int related_target) {
+  return event_name + ":" + std::to_string(target) + ":" +
+         std::to_string(related_target);
+}
+#endif
+
 TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
   //     0     100     200 250    450 600   800
   //     |---------------|
@@ -203,6 +211,49 @@ TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
 
 #if defined(OS_WIN) || defined(OS_MAC)
 TEST_F_UI(MouseRegionManagerTest,
+          DispatchesPointerBoundariesUsingLowestCommonAncestor) {
+  auto& root = page_;
+  auto* parent = new View(1, root.get());
+  auto* child = new View(2, root.get());
+  auto* sibling = new View(3, root.get());
+  root->AddChild(parent);
+  parent->AddChild(child);
+  parent->AddChild(sibling);
+
+  root->SetBound(0, 0, 1000, 1000);
+  parent->SetBound(0, 0, 500, 500);
+  child->SetBound(0, 0, 200, 200);
+  sibling->SetBound(250, 0, 200, 200);
+  parent->OnLayoutUpdated();
+  child->OnLayoutUpdated();
+  sibling->OnLayoutUpdated();
+
+  std::vector<std::string> records;
+  auto* manager = root->mouse_region_manager();
+  pointer_event_callback_ = [&records](const std::string& event_name,
+                                       int view_id, int, ClayPointerDeviceKind,
+                                       bool, int, int, float, float, float,
+                                       int64_t, int related_target_sign) {
+    records.push_back(BoundaryRecord(event_name, view_id, related_target_sign));
+  };
+
+  PointerEvent event(PointerEvent::EventType::kHoverEvent);
+  event.device = PointerEvent::DeviceType::kMouse;
+  event.pointer_id = 10;
+  event.device_id = 10;
+  event.position = {50, 50};
+  manager->HandlePointerEventBefore(root.get(), event);
+  EXPECT_THAT(records, ElementsAre("pointerover:2:-1", "pointerenter:0:-1",
+                                   "pointerenter:1:-1", "pointerenter:2:-1"));
+
+  records.clear();
+  event.position = {300, 50};
+  manager->HandlePointerEventBefore(root.get(), event);
+  EXPECT_THAT(records, ElementsAre("pointerout:2:3", "pointerleave:2:3",
+                                   "pointerover:3:2", "pointerenter:3:2"));
+}
+
+TEST_F_UI(MouseRegionManagerTest,
           RetargetsTouchLikePointerAfterCapturedViewIsDetached) {
   auto& root = page_;
   auto* fallback = new View(2, root.get());
@@ -257,6 +308,87 @@ TEST_F_UI(MouseRegionManagerTest,
 
   captured->Destroy();
   delete captured;
+}
+
+TEST_F_UI(MouseRegionManagerTest, RefreshesStationaryPointerAfterLayout) {
+  auto& root = page_;
+  auto* fallback = new View(1, root.get());
+  auto* top = new View(2, root.get());
+  root->AddChild(fallback);
+  root->AddChild(top);
+  root->SetBound(0, 0, 1000, 1000);
+  fallback->SetBound(0, 0, 200, 200);
+  top->SetBound(0, 0, 200, 200);
+  fallback->OnLayoutUpdated();
+  top->OnLayoutUpdated();
+
+  std::vector<std::string> records;
+  pointer_event_callback_ = [&records](const std::string& event_name,
+                                       int view_id, int, ClayPointerDeviceKind,
+                                       bool, int, int, float, float, float,
+                                       int64_t, int related_target_sign) {
+    records.push_back(BoundaryRecord(event_name, view_id, related_target_sign));
+  };
+
+  PointerEvent event(PointerEvent::EventType::kHoverEvent);
+  event.device = PointerEvent::DeviceType::kMouse;
+  event.pointer_id = 10;
+  event.position = {50, 50};
+  auto* manager = root->mouse_region_manager();
+  manager->HandlePointerEventBefore(root.get(), event);
+  records.clear();
+
+  top->SetBound(300, 300, 200, 200);
+  Layout();
+  top->OnLayoutUpdated();
+  DoAnimation(32);
+
+  EXPECT_THAT(records, ElementsAre("pointerout:2:1", "pointerleave:2:1",
+                                   "pointerover:1:2", "pointerenter:1:2"));
+}
+
+TEST_F_UI(MouseRegionManagerTest,
+          DoesNotRefreshImplicitlyCapturedStylusAfterLayout) {
+  auto& root = page_;
+  auto* fallback = new View(1, root.get());
+  auto* captured = new View(2, root.get());
+  root->AddChild(fallback);
+  root->AddChild(captured);
+  root->SetBound(0, 0, 1000, 1000);
+  fallback->SetBound(0, 0, 200, 200);
+  captured->SetBound(0, 0, 200, 200);
+  fallback->OnLayoutUpdated();
+  captured->OnLayoutUpdated();
+
+  std::vector<std::string> records;
+  pointer_event_callback_ = [&records](const std::string& event_name,
+                                       int view_id, int, ClayPointerDeviceKind,
+                                       bool, int, int, float, float, float,
+                                       int64_t, int related_target_sign) {
+    records.push_back(BoundaryRecord(event_name, view_id, related_target_sign));
+  };
+
+  PointerEvent event(PointerEvent::EventType::kDownEvent);
+  event.device = PointerEvent::DeviceType::kStylus;
+  event.pointer_id = 10;
+  event.position = {50, 50};
+  event.buttons = PointerEvent::MouseButton::kPrimary;
+  auto* manager = root->mouse_region_manager();
+  manager->HandlePointerEventBefore(root.get(), event);
+  records.clear();
+
+  captured->SetBound(300, 300, 200, 200);
+  Layout();
+  captured->OnLayoutUpdated();
+  DoAnimation(32);
+  EXPECT_THAT(records, ElementsAre());
+
+  event.type = PointerEvent::EventType::kUpEvent;
+  event.buttons = 0;
+  manager->HandlePointerEventBefore(root.get(), event);
+  manager->HandlePointerEventAfter(root.get(), event);
+  EXPECT_THAT(records, ElementsAre("pointerout:2:1", "pointerleave:2:1",
+                                   "pointerover:1:2", "pointerenter:1:2"));
 }
 
 TEST_F_UI(MouseRegionManagerTest, OrdersPointerLifecycleBeforeLegacyMouse) {
@@ -348,18 +480,28 @@ TEST_F_UI(MouseRegionManagerTest, StylusPreservesLegacyTouchEvents) {
     records.push_back(event_name + ":" + std::to_string(view_id));
   };
 
-  PointerEvent event(PointerEvent::EventType::kDownEvent);
-  event.device = PointerEvent::DeviceType::kStylus;
-  event.pointer_id = 10;
-  event.position = {50, 50};
-  event.buttons = PointerEvent::MouseButton::kPrimary;
-  root->DispatchPointerEvent({event});
-
-  event.type = PointerEvent::EventType::kUpEvent;
-  event.buttons = 0;
-  root->DispatchPointerEvent({event});
-
-  EXPECT_THAT(records, ElementsAre("touchstart:1", "touchend:1", "tap:1"));
+  const int button_combinations[] = {
+      PointerEvent::kPrimary, PointerEvent::kSecondary,
+      PointerEvent::kPrimary | PointerEvent::kSecondary};
+  for (auto device : {PointerEvent::kStylus, PointerEvent::kInvertedStylus}) {
+    for (int buttons : button_combinations) {
+      SCOPED_TRACE(device);
+      SCOPED_TRACE(buttons);
+      records.clear();
+      PointerEvent event(PointerEvent::EventType::kDownEvent);
+      event.device = device;
+      event.pointer_id = 10;
+      event.position = {50, 50};
+      event.buttons = buttons;
+      root->DispatchPointerEvent({event});
+      event.type = PointerEvent::EventType::kUpEvent;
+      event.buttons = 0;
+      root->DispatchPointerEvent({event});
+      EXPECT_THAT(records, ElementsAre("touchstart:1", "touchend:1", "tap:1"));
+      event.type = PointerEvent::EventType::kRemoveEvent;
+      root->DispatchPointerEvent({event});
+    }
+  }
 }
 
 TEST_F_UI(MouseRegionManagerTest, SharesPrimaryStateAcrossPenDeviceKinds) {
@@ -409,6 +551,150 @@ TEST_F_UI(MouseRegionManagerTest, SharesPrimaryStateAcrossPenDeviceKinds) {
                                    std::pair<int, bool>{2, false},
                                    std::pair<int, bool>{3, false},
                                    std::pair<int, bool>{4, true}));
+}
+
+TEST_F_UI(MouseRegionManagerTest, PenHoverDoesNotChangeLegacyMouseRegion) {
+  auto* left = new View(1, page_.get());
+  auto* right = new View(2, page_.get());
+  page_->AddChild(left);
+  page_->AddChild(right);
+  page_->SetBound(0, 0, 400, 200);
+  left->SetBound(0, 0, 200, 200);
+  right->SetBound(200, 0, 200, 200);
+  find_view_by_id_callback_ = [left, right](int id) {
+    return id == 1 ? left : id == 2 ? right : nullptr;
+  };
+  std::vector<std::string> legacy;
+  mouse_event_callback_ = [&legacy](const std::string& name, int id) {
+    legacy.push_back(name + ":" + std::to_string(id));
+  };
+  touch_event_callback_ = mouse_event_callback_;
+  std::vector<std::string> pointers;
+  pointer_event_callback_ = [&pointers](const std::string& name, int id, int,
+                                        ClayPointerDeviceKind, bool, int, int,
+                                        float, float, float, int64_t, int) {
+    if (id == 2) pointers.push_back(name);
+  };
+  PointerEvent mouse(PointerEvent::EventType::kHoverEvent);
+  mouse.device = PointerEvent::DeviceType::kMouse;
+  mouse.position = {50, 50};
+  page_->DispatchPointerEvent({mouse});
+  legacy.clear();
+  pointers.clear();
+
+  auto pen = mouse;
+  pen.device = PointerEvent::DeviceType::kStylus;
+  pen.dispatch_mode = PointerEvent::DispatchMode::kPenWithTouchCompatibility;
+  pen.device_id = 7;
+  pen.position = {250, 50};
+  page_->DispatchPointerEvent({pen});
+  EXPECT_THAT(pointers,
+              ElementsAre("pointerover", "pointerenter", "pointermove"));
+  EXPECT_TRUE(legacy.empty());
+  pen.type = PointerEvent::EventType::kRemoveEvent;
+  page_->DispatchPointerEvent({pen});
+  EXPECT_TRUE(legacy.empty());
+  page_->DispatchPointerEvent({mouse});
+  for (const auto& record : legacy) {
+    EXPECT_NE(record, "mouseenter:1");
+    EXPECT_NE(record, "mouseleave:1");
+  }
+}
+
+TEST_F_UI(MouseRegionManagerTest, PenCancellationEndsLegacyTouchOnlyOnce) {
+  auto* child = new View(1, page_.get());
+  page_->AddChild(child);
+  page_->SetBound(0, 0, 400, 400);
+  child->SetBound(0, 0, 400, 400);
+  find_view_by_id_callback_ = [child](int id) {
+    return id == 1 ? child : nullptr;
+  };
+  std::vector<std::string> touches;
+  touch_event_callback_ = [&touches](const std::string& name, int) {
+    touches.push_back(name);
+  };
+  PointerEvent event(PointerEvent::EventType::kDownEvent);
+  event.device = PointerEvent::DeviceType::kStylus;
+  event.dispatch_mode = PointerEvent::DispatchMode::kPenWithTouchCompatibility;
+  event.pointer_id = 10;
+  event.device_id = 7;
+  event.position = {50, 50};
+  event.buttons = PointerEvent::kPrimary;
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kCancel;
+  event.buttons = 0;
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kRemoveEvent;
+  page_->DispatchPointerEvent({event});
+  EXPECT_THAT(touches, ElementsAre("touchstart", "touchcancel"));
+}
+
+TEST_F_UI(MouseRegionManagerTest, PenContactMatchesLegacyTouchLifecycle) {
+  auto* child = new View(1, page_.get());
+  page_->AddChild(child);
+  page_->SetBound(0, 0, 400, 400);
+  child->SetBound(0, 0, 400, 400);
+  find_view_by_id_callback_ = [child](int id) {
+    return id == 1 ? child : nullptr;
+  };
+  std::vector<std::string> legacy;
+  mouse_event_callback_ = [&legacy](const std::string& name, int id) {
+    legacy.push_back(name + ":" + std::to_string(id));
+  };
+  touch_event_callback_ = mouse_event_callback_;
+
+  PointerEvent event(PointerEvent::EventType::kDownEvent);
+  event.device = PointerEvent::DeviceType::kTouch;
+  event.pointer_id = 10;
+  event.position = {50, 50};
+  event.buttons = PointerEvent::MouseButton::kPrimary;
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kUpEvent;
+  event.buttons = 0;
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kCancel;
+  event.position = {};
+  page_->DispatchPointerEvent({event});
+  const auto baseline = legacy;
+  ASSERT_THAT(baseline, ::testing::Contains("tap:1"));
+
+  const int button_combinations[] = {
+      PointerEvent::kPrimary, PointerEvent::kSecondary,
+      PointerEvent::kPrimary | PointerEvent::kSecondary};
+  for (int buttons : button_combinations) {
+    SCOPED_TRACE(buttons);
+    legacy.clear();
+    std::vector<std::string> pointers;
+    pointer_event_callback_ = [&pointers](const std::string& name, int id, int,
+                                          ClayPointerDeviceKind, bool, int, int,
+                                          float, float, float, int64_t, int) {
+      if (id == 1) pointers.push_back(name);
+    };
+    event.device = PointerEvent::DeviceType::kStylus;
+    event.dispatch_mode =
+        PointerEvent::DispatchMode::kPenWithTouchCompatibility;
+    event.device_id = 7;
+    event.type = PointerEvent::EventType::kDownEvent;
+    event.position = {50, 50};
+    event.buttons = buttons;
+    page_->DispatchPointerEvent({event});
+    event.type = PointerEvent::EventType::kUpEvent;
+    event.buttons = 0;
+    page_->DispatchPointerEvent({event});
+    EXPECT_EQ(legacy, baseline);
+    EXPECT_THAT(pointers, ::testing::Contains("pointerup"));
+    EXPECT_THAT(pointers, ::testing::Not(::testing::Contains("pointerleave")));
+    pointers.clear();
+    event.type = PointerEvent::EventType::kHoverEvent;
+    page_->DispatchPointerEvent({event});
+    EXPECT_THAT(pointers, ElementsAre("pointermove"));
+    EXPECT_EQ(legacy, baseline);
+    event.type = PointerEvent::EventType::kRemoveEvent;
+    page_->DispatchPointerEvent({event});
+    EXPECT_THAT(pointers, ::testing::Contains("pointerleave"));
+    EXPECT_EQ(legacy, baseline);
+    pointer_event_callback_ = nullptr;
+  }
 }
 
 TEST_F_UI(MouseRegionManagerTest, ReportsPointerTimestampsInMilliseconds) {
@@ -494,6 +780,47 @@ TEST_F_UI(MouseRegionManagerTest, ReportsPointerContactData) {
   event.buttons = 0;
   root->DispatchPointerEvent({event});
   EXPECT_FLOAT_EQ(pressure, 0.f);
+}
+
+TEST_F_UI(MouseRegionManagerTest, CancelPreservesPressureAcrossBoundaryEvents) {
+  page_->SetBound(0, 0, 1000, 1000);
+  for (bool measured : {false, true}) {
+    std::vector<std::string> names;
+    std::vector<float> pressures;
+    std::vector<int> buttons;
+    pointer_event_callback_ =
+        [&](const std::string& name, int, int, ClayPointerDeviceKind, bool, int,
+            int button_state, float, float, float pressure, int64_t, int) {
+          if (name == "pointerover" || name == "pointerenter") {
+            return;
+          }
+          names.push_back(name);
+          pressures.push_back(pressure);
+          buttons.push_back(button_state);
+        };
+
+    PointerEvent event(PointerEvent::EventType::kDownEvent);
+    event.device = PointerEvent::DeviceType::kStylus;
+    event.pointer_id = 10;
+    event.device_id = 10;
+    event.position = {50, 50};
+    event.buttons = PointerEvent::MouseButton::kPrimary;
+    event.pressure = measured ? 4.0 : 1.0;
+    event.pressure_min = 1.0;
+    event.pressure_max = measured ? 5.0 : 1.0;
+    page_->DispatchPointerEvent({event});
+
+    event.type = PointerEvent::EventType::kCancel;
+    event.pressure = 0.0;
+    page_->DispatchPointerEvent({event});
+
+    const float expected = measured ? 0.75f : 0.5f;
+    EXPECT_THAT(names, ElementsAre("pointerdown", "pointercancel", "pointerout",
+                                   "pointerleave"));
+    EXPECT_THAT(pressures, ElementsAre(expected, expected, expected, expected));
+    EXPECT_THAT(buttons, ElementsAre(1, 0, 0, 0));
+  }
+  pointer_event_callback_ = nullptr;
 }
 #endif
 }  // namespace testing

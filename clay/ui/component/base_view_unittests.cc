@@ -16,6 +16,7 @@
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/component/view_context.h"
+#include "clay/ui/gesture/mouse_region_manager.h"
 #include "clay/ui/gesture_handler/arena/gesture_arena_manager.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/rendering/render_container.h"
@@ -833,6 +834,47 @@ TEST_F_UI(BaseViewTest, TextPointerEventsAffectMouseTarget) {
   EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position),
             fallback);
 }
+
+#if defined(OS_WIN) || defined(OS_MAC)
+TEST_F_UI(BaseViewTest, PointerEventsChangeRefreshesPointerBoundaries) {
+  auto* fallback = new View(1, page_.get());
+  auto* top = new View(2, page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(top);
+
+  fallback->SetBound(0, 0, 200, 200);
+  top->SetBound(0, 0, 200, 200);
+  fallback->OnLayoutUpdated();
+  top->OnLayoutUpdated();
+
+  std::vector<std::string> records;
+  pointer_event_callback_ = [&records](const std::string& event_name,
+                                       int view_id, int, ClayPointerDeviceKind,
+                                       bool, int, int, float, float, float,
+                                       int64_t, int related_target) {
+    records.push_back(event_name + ":" + std::to_string(view_id) + ":" +
+                      std::to_string(related_target));
+  };
+
+  PointerEvent event(PointerEvent::EventType::kHoverEvent);
+  event.device = PointerEvent::DeviceType::kMouse;
+  event.pointer_id = 10;
+  event.device_id = 10;
+  event.position = {50, 50};
+  auto* manager = page_->mouse_region_manager();
+  manager->HandlePointerEventBefore(page_.get(), event);
+  EXPECT_EQ(records,
+            (std::vector<std::string>{"pointerover:2:-1", "pointerenter:0:-1",
+                                      "pointerenter:2:-1"}));
+
+  records.clear();
+  top->SetAttribute("pointer-events", clay::Value(kPointerEventsNone));
+  DoAnimation(32);
+  EXPECT_EQ(records,
+            (std::vector<std::string>{"pointerout:2:1", "pointerleave:2:1",
+                                      "pointerover:1:2", "pointerenter:1:2"}));
+}
+#endif
 
 class BaseViewWithChildrenTest : public UITest {
  protected:
