@@ -59,6 +59,11 @@
 #include "core/services/recorder/testbench_base_recorder.h"
 #endif
 
+#if ENABLE_INSPECTOR
+#include "core/inspector/observer/native_module_record_observer.h"
+#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
+#endif  // ENABLE_INSPECTOR
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -2377,9 +2382,11 @@ void App::SendGlobalEvent(const std::string& name,
 }
 
 #if ENABLE_INSPECTOR
-void App::RecordGlobalEvent(const std::string&, const lepus::Value&) {
-  // TODO(liting.src): Serialize and deliver the global event through
-  // native_module_record_observer_.
+void App::RecordGlobalEvent(const std::string& name,
+                            const lepus::Value& arguments) {
+  if (auto observer = native_module_record_observer_.lock()) {
+    observer->OnRecord(BuildGlobalEventRecord(name, arguments));
+  }
 }
 #endif  // ENABLE_INSPECTOR
 

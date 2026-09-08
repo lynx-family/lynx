@@ -229,7 +229,7 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   lepus::Value observer_arguments =
       args_array ? pub::ValueUtils::ConvertValueToLepusValue(*args_array)
                  : lepus::Value();
-  lepus::Value observer_result;
+  std::optional<lepus::Value> observer_result;
 #endif  // ENABLE_INSPECTOR
   // issue: #1510
   uint64_t invoke_facade_method_start = base::CurrentSystemTimeMilliseconds();
@@ -305,13 +305,13 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   lepus::Value invoke_record;
   if (response.has_value()) {
     invoke_record = invocation_context->BuildInvokeRecord(
-        std::move(observer_arguments), /*success=*/true,
+        std::move(observer_arguments), callback_map, /*success=*/true,
         std::move(observer_result), error::E_SUCCESS, std::string());
   } else {
     const auto& exception = response.error();
     invoke_record = invocation_context->BuildInvokeRecord(
-        std::move(observer_arguments), /*success=*/false, lepus::Value(),
-        exception.errorCode(), exception.message());
+        std::move(observer_arguments), callback_map, /*success=*/false,
+        std::nullopt, exception.errorCode(), exception.message());
   }
   invocation_context->EmitRecord(invoke_record);
 #endif  // ENABLE_INSPECTOR
