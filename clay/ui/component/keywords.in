@@ -327,6 +327,7 @@ norm-translation-factor
 object-fit
 objectfit
 only-local
+optimize-load-key
 overlay-id
 page-change-animation
 page-margin
