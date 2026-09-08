@@ -363,6 +363,8 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   __weak LynxUI* _rootUI;
   __weak id<LynxEventTarget> _touchTarget;
   __weak id<LynxEventTarget> _firstPanInterceptDirectionTarget;
+  __weak UIView* _touchEventSource;
+  __weak UIView* _touchEventPayloadRootView;
   CGPoint _longPressPoint;
   CustomGestureRecognizerDelegate* _tapDelegate;
   LongPressGestureRecognizerDelegate* _longPressDelegate;
@@ -388,6 +390,97 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     _customPlatformGesture = nil;
     _customPlatformDelegate = nil;
   }
+}
+
+- (UIView*)touchEventSource {
+  return _touchEventSource;
+}
+
+- (void)setTouchEventSource:(UIView*)sourceView payloadRootView:(UIView*)rootView {
+  _touchEventSource = sourceView;
+  _touchEventPayloadRootView = rootView;
+}
+
+- (void)syncConfigWith:(LynxEventHandler*)eventHandler {
+  if (eventHandler == nil || eventHandler == self) {
+    return;
+  }
+
+  [self setEnableViewReceiveTouch:eventHandler.tapRecognizer != nil &&
+                                  !eventHandler.tapRecognizer.cancelsTouchesInView];
+  [self setEnableSimultaneousTap:eventHandler.enableSimultaneousTap];
+  [self
+      setDisableLongpressAfterScroll:eventHandler->_longPressDelegate.disableLongpressAfterScroll];
+  range_ = eventHandler->range_;
+  self.touchRecognizer.tapSlop = eventHandler.touchRecognizer.tapSlop;
+  [self setLongPressDuration:(int32_t)(((UILongPressGestureRecognizer*)
+                                            eventHandler.longPressRecognizer)
+                                               .minimumPressDuration *
+                                           1000.0 +
+                                       0.5)];
+  [self setEnablePlatformGesture:eventHandler.customPlatformGesture != nil];
+  [self.touchRecognizer syncConfigWith:eventHandler.touchRecognizer];
+}
+
+- (CGPoint)pagePointFromTouchEventSourcePoint:(CGPoint)point {
+  UIView* sourceView = _touchEventSource;
+  UIView* payloadRootView = _touchEventPayloadRootView ?: _rootView;
+  if (sourceView == nil) {
+    return point;
+  }
+  if (payloadRootView == nil || payloadRootView == sourceView) {
+    return point;
+  }
+  return [sourceView convertPoint:point toView:payloadRootView];
+}
+
+- (CGPoint)viewPointFromPagePoint:(CGPoint)point target:(id<LynxEventTarget>)target {
+  UIView* sourceView = _touchEventSource;
+  UIView* payloadRootView = _touchEventPayloadRootView ?: _rootView;
+  CGPoint sourcePoint = point;
+  if (payloadRootView != nil && sourceView != nil) {
+    sourcePoint = [payloadRootView convertPoint:point toView:sourceView];
+  }
+  return [self viewPointFromTouchEventSourcePoint:sourcePoint target:target pagePoint:point];
+}
+
+- (CGPoint)viewPointFromTouchEventSourcePoint:(CGPoint)point
+                                       target:(id<LynxEventTarget>)target
+                                    pagePoint:(CGPoint)pagePoint {
+  UIView* targetView = target.view;
+  UIView* sourceView = _touchEventSource;
+  if (target == _rootUI && sourceView != nil) {
+    return point;
+  }
+  if (targetView == nil || sourceView == nil) {
+    return pagePoint;
+  }
+  return [sourceView convertPoint:point toView:targetView];
+}
+
+- (CGPoint)pagePointFromTouch:(UITouch*)touch {
+  UIView* sourceView = _touchEventSource;
+  return [self pagePointFromTouchEventSourcePoint:[touch locationInView:sourceView]];
+}
+
+- (CGPoint)viewPointFromTouch:(UITouch*)touch target:(id<LynxEventTarget>)target {
+  UIView* sourceView = _touchEventSource;
+  CGPoint point = [touch locationInView:sourceView];
+  CGPoint pagePoint = [self pagePointFromTouchEventSourcePoint:point];
+  return [self viewPointFromTouchEventSourcePoint:point target:target pagePoint:pagePoint];
+}
+
+- (CGPoint)pagePointFromGestureRecognizer:(UIGestureRecognizer*)sender {
+  UIView* sourceView = _touchEventSource;
+  return [self pagePointFromTouchEventSourcePoint:[sender locationInView:sourceView]];
+}
+
+- (CGPoint)viewPointFromGestureRecognizer:(UIGestureRecognizer*)sender
+                                   target:(id<LynxEventTarget>)target {
+  UIView* sourceView = _touchEventSource;
+  CGPoint point = [sender locationInView:sourceView];
+  CGPoint pagePoint = [self pagePointFromTouchEventSourcePoint:point];
+  return [self viewPointFromTouchEventSourcePoint:point target:target pagePoint:pagePoint];
 }
 
 - (instancetype)initWithRootView:(UIView*)rootView {
@@ -486,6 +579,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
                                 withName:(NSString*)name
                                       ui:(id<LynxEventTarget>)ui {
   CGPoint pagePoint = [sender locationInView:_rootView];
+  if (_touchEventSource != nil) {
+    pagePoint = [self pagePointFromGestureRecognizer:sender];
+  }
   NSDictionary* detail = @{
     @"x" : [NSNumber numberWithFloat:pagePoint.x],
     @"y" : [NSNumber numberWithFloat:pagePoint.y]
@@ -561,15 +657,24 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 
   CGPoint clientPoint = [sender locationInView:nil];
   CGPoint pagePoint = [sender locationInView:_rootView];
+  CGPoint hitTestPoint = pagePoint;
+  if (_touchEventSource != nil) {
+    pagePoint = [self pagePointFromGestureRecognizer:sender];
+    hitTestPoint = [sender locationInView:_touchEventSource];
+  }
   NSInteger slideTargetSign = [self canRespondTapOrClickEvent:_touchTarget];
   NSInteger propsTargetSign = [self canRespondTapOrClickWhenUISlideByProps:_touchTarget];
-  BOOL touchInSideLynx = [self touchUI:[self hitTestInner:pagePoint withEvent:nil]
+  BOOL touchInSideLynx = [self touchUI:[self hitTestInner:hitTestPoint withEvent:nil]
                       isDescendantOfUI:_touchRecognizer.preTarget];
   if (slideTargetSign == -1 && propsTargetSign == -1 && touchInSideLynx) {
     CGPoint viewPoint = pagePoint;
     if ([self.touchRecognizer.preTarget isKindOfClass:[LynxUI class]]) {
       LynxUI* ui = (LynxUI*)self.touchRecognizer.preTarget;
       viewPoint = [sender locationInView:ui.view];
+    }
+    if (_touchEventSource != nil) {
+      viewPoint = [self viewPointFromGestureRecognizer:sender
+                                                target:self.touchRecognizer.preTarget];
     }
     LynxTouchEvent* event =
         [[LynxTouchEvent alloc] initWithName:LynxEventTap
@@ -638,6 +743,13 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     LynxUI* ui = (LynxUI*)self.touchRecognizer.preTarget;
     viewPoint = [sender locationInView:ui.view];
   }
+  CGPoint hitTestPoint = pagePoint;
+  if (_touchEventSource != nil) {
+    clientPoint = [sender locationInView:nil];
+    pagePoint = [self pagePointFromGestureRecognizer:sender];
+    hitTestPoint = [sender locationInView:_touchEventSource];
+    viewPoint = [self viewPointFromGestureRecognizer:sender target:self.touchRecognizer.preTarget];
+  }
 
   if (sender.state == UIGestureRecognizerStateBegan) {
     LynxTouchEvent* event = [[LynxTouchEvent alloc] initWithName:LynxEventLongPress
@@ -672,7 +784,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     NSInteger slideTargetSign = [self canRespondTapOrClickEvent:_touchTarget];
     NSInteger propsTargetSign = [self canRespondTapOrClickWhenUISlideByProps:_touchTarget];
     BOOL touchInThreshold = _longPressPoint.x != -FLT_MAX && _longPressPoint.y != -FLT_MAX;
-    BOOL touchInSideLynx = [self touchUI:[self hitTestInner:pagePoint withEvent:nil]
+    BOOL touchInSideLynx = [self touchUI:[self hitTestInner:hitTestPoint withEvent:nil]
                         isDescendantOfUI:_touchRecognizer.preTarget];
     if (touchInThreshold && slideTargetSign == -1 && propsTargetSign == -1 && touchInSideLynx) {
       LynxTouchEvent* event =
@@ -766,6 +878,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
         break;
       }
     }
+    if (_touchEventSource != nil && target == _rootUI) {
+      break;
+    }
     target = target.parentTarget;
   }
   return res;
@@ -844,6 +959,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   while (target != nil && target != target.parentTarget) {
     if ([target consumeSlideEvent:angle]) {
       return YES;
+    }
+    if (_touchEventSource != nil && target == _rootUI) {
+      break;
     }
     target = target.parentTarget;
   }

@@ -82,6 +82,7 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 
 @property(nonatomic, strong)
     NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *_Nullable gestureMap;
+@property(nonatomic, weak, nullable) UIView *touchEventSourceView;
 
 - (void)dispatchMoveToWindow:(UIWindow *)window;
 
@@ -95,6 +96,10 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 // Returns the native container used to host child views. Wrapper based containers like transfer can
 // override this to keep the shared child insertion logic in LynxUI.
 - (UIView *)childrenContainerView;
+// Overrides the view used as the local coordinate source for hit testing. This is used by transfer
+// like containers whose logical root stays on the original Lynx tree while the real content view is
+// mounted under another native host.
+- (void)setTouchEventSourceView:(nullable UIView *)view;
 
 - (BOOL)enableExposureUIMargin;
 
