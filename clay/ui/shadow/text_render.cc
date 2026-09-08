@@ -90,7 +90,28 @@ static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
     return false;
   }
 
-  if (node->IsInlineTextShadowNode()) {
+  if (node->IsInlineTruncationShadowNode()) {
+    auto* truncation = static_cast<InlineTruncationShadowNode*>(node);
+    const size_t start = truncation->StartGlyph();
+    const size_t end = truncation->EndGlyph();
+    if (end > start) {
+      if (paragraph
+              ->GetRectsForRange(end - 1, end,
+                                 txt::Paragraph::RectHeightStyle::kTight,
+                                 txt::Paragraph::RectWidthStyle::kTight)
+              .empty()) {
+        return false;
+      }
+      for (const auto& box : paragraph->GetRectsForRange(
+               start, end, txt::Paragraph::RectHeightStyle::kTight,
+               txt::Paragraph::RectWidthStyle::kTight)) {
+        if (!InlineTruncationTextBoxFits(box, layout_width, visible_bottom,
+                                         target_line_top, target_line_bottom)) {
+          return false;
+        }
+      }
+    }
+  } else if (node->IsInlineTextShadowNode()) {
     auto* inline_text_node = static_cast<InlineTextShadowNode*>(node);
     for (const auto& range : inline_text_node->range_in_paragraph_) {
       if (range.end() > range.start()) {
@@ -771,6 +792,11 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
            (constraint.height_mode != MeasureMode::kIndefinite &&
             cache_paragraph_->GetHeight() > constraint.height &&
             cache_paragraph_->GetLineMetrics().size() > 1))) {
+        const auto& text_style = *measure_node_->text_style_;
+        truncation_node->SetEllipsis(
+            text_style.overflow == TextOverflow::kEllipsis
+                ? text_style.ellipsis.value_or(u"\u2026")
+                : std::u16string());
         FloatSize truncation_size = truncation_node->CalculateTruncatedSize();
         if (truncation_size.width() > constraint.width) {
           truncation_node->SetNeedMount(false);
