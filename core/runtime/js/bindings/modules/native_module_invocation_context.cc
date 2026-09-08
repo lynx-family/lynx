@@ -7,6 +7,9 @@
 #include <atomic>
 #include <utility>
 
+#include "core/inspector/observer/native_module_record_observer.h"
+#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -47,19 +50,24 @@ NativeModuleInvocationContext::WithCallbackArgumentIndex(
 }
 
 lepus::Value NativeModuleInvocationContext::BuildInvokeRecord(
-    lepus::Value, bool, lepus::Value, int32_t, const std::string&) const {
-  // TODO(liting.src): Implement protocol-safe value serialization.
-  return lepus::Value();
+    lepus::Value arguments, bool success, std::optional<lepus::Value> result,
+    int32_t error_code, const std::string& error_message) const {
+  return js::BuildInvokeRecord(invocation_id_, module_name_, method_name_,
+                               std::move(arguments), success, std::move(result),
+                               error_code, error_message);
 }
 
 lepus::Value NativeModuleInvocationContext::BuildCallbackRecord(
-    lepus::Value) const {
-  // TODO(liting.src): Implement protocol-safe value serialization.
-  return lepus::Value();
+    lepus::Value result) const {
+  return js::BuildCallbackRecord(invocation_id_, module_name_, method_name_,
+                                 callback_argument_index_, std::move(result));
 }
 
-void NativeModuleInvocationContext::EmitRecord(const lepus::Value&) const {
-  // TODO(liting.src): Deliver the serialized record to the observer.
+void NativeModuleInvocationContext::EmitRecord(
+    const lepus::Value& record) const {
+  if (auto observer = observer_.lock()) {
+    observer->OnRecord(record);
+  }
 }
 
 }  // namespace js
