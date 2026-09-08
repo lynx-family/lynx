@@ -19,6 +19,13 @@
 
 namespace lynx {
 namespace starlight {
+namespace {
+
+float GetLinearWeight(const LayoutObject& item) {
+  return item.GetCSSStyle()->GetLinearWeight();
+}
+
+}  // namespace
 
 LinearLayoutAlgorithm::LinearLayoutAlgorithm(LayoutObject* container)
     : LayoutAlgorithm(container),
@@ -94,11 +101,8 @@ void LinearLayoutAlgorithm::LayoutWeightedChildren(
     infos.total_elastic_factor_override_ = weight_sum;
   }
 
-  const auto weight_getter = [](const LayoutObject& item) {
-    return item.GetCSSStyle()->GetLinearWeight();
-  };
   ElasticLayoutUtils::ComputeElasticItemSizes(
-      infos, container_constraints_[MainAxis()].Size(), weight_getter,
+      infos, container_constraints_[MainAxis()].Size(), GetLinearWeight,
       main_size_);
   for (size_t idx = 0; idx < item_size; ++idx) {
     if (base::FloatsLarger(inflow_items_[idx]->GetCSSStyle()->GetLinearWeight(),
