@@ -14,9 +14,11 @@
 #include <utility>
 
 #include "base/include/fml/thread.h"
+#include "base/include/value/table.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.h"
+#include "devtool/lynx_devtool/native_module/native_module_record_manager.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -28,6 +30,8 @@ class InspectorLynxNativeModuleAgentTest : public ::testing::Test {
   void SetUp() override {
     MockReceiver::GetInstance().ResetAll();
     mediator_ = std::make_shared<LynxDevToolMediator>();
+    manager_ = std::make_shared<NativeModuleRecordManager>(mediator_);
+    mediator_->native_module_record_manager_ = manager_;
     devtool_thread_ = std::make_unique<fml::Thread>("devtools");
     mediator_->default_task_runner_ = devtool_thread_->GetTaskRunner();
     agent_ = std::make_shared<InspectorLynxNativeModuleAgent>(mediator_);
@@ -60,6 +64,7 @@ class InspectorLynxNativeModuleAgentTest : public ::testing::Test {
   }
 
   std::shared_ptr<LynxDevToolMediator> mediator_;
+  std::shared_ptr<NativeModuleRecordManager> manager_;
   std::shared_ptr<InspectorLynxNativeModuleAgent> agent_;
   std::shared_ptr<MessageSender> sender_;
   std::unique_ptr<fml::Thread> devtool_thread_;
@@ -70,21 +75,31 @@ TEST_F(InspectorLynxNativeModuleAgentTest, DispatchesEnableAndDisable) {
 
   EXPECT_EQ(response["id"].asInt64(), 1);
   EXPECT_TRUE(response["result"].isObject());
+  EXPECT_TRUE(manager_->enable_);
 
   response = Dispatch("LynxNativeModule.disable", 2);
 
   EXPECT_EQ(response["id"].asInt64(), 2);
   EXPECT_TRUE(response["result"].isObject());
+  EXPECT_FALSE(manager_->enable_);
 }
 
 TEST_F(InspectorLynxNativeModuleAgentTest, DispatchesGetRecords) {
+  auto record = lepus::Dictionary::Create();
+  record->SetValue("method", "LynxTestModule.echo");
+  manager_->EnqueueRecordOnJSThread(lepus::Value(std::move(record)));
+  // The manager schedules its own drain onto the DevTool thread; flush so it
+  // runs before we query.
+  FlushDevToolTasks();
+
   Json::Value response = Dispatch("LynxNativeModule.getRecords", 7);
 
   EXPECT_EQ(response["id"].asInt64(), 7);
-  EXPECT_EQ(response["result"]["latestSequence"].asInt64(), 0);
+  EXPECT_EQ(response["result"]["latestSequence"].asInt64(), 1);
   const Json::Value& records = response["result"]["records"];
-  EXPECT_TRUE(records.isArray());
-  EXPECT_TRUE(records.empty());
+  ASSERT_EQ(records.size(), 1U);
+  EXPECT_EQ(records[0]["method"].asString(), "LynxTestModule.echo");
+  EXPECT_EQ(records[0]["sequence"].asInt64(), 1);
 }
 
 TEST_F(InspectorLynxNativeModuleAgentTest, RejectsUnknownMethod) {

@@ -134,6 +134,7 @@ devtool_source_set("agent") {
   deps = [
     "../../../base/src:base_log_headers",
     "../input",
+    "../native_module",
     "//third_party/modp_b64",
     "//third_party/zlib",
   ]
