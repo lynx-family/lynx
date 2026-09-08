@@ -6,6 +6,7 @@
 #define DEVTOOL_LYNX_DEVTOOL_LYNX_DEVTOOL_NG_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "core/inspector/console_message_postman.h"
@@ -49,6 +50,9 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
   std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 
  private:
+  static void RegisterGlobalDomainAgentsIfEnabled(
+      DevToolMessageDispatcher& global_dispatcher,
+      std::once_flag& registration_flag, bool enabled);
   static void RegisterGlobalDomainAgents(
       DevToolMessageDispatcher& global_dispatcher);
   static void RegisterGlobalDomainAgents(
