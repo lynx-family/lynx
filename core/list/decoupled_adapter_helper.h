@@ -41,7 +41,8 @@ class AdapterHelper {
              move_to_.size() > 0 || move_from_.size() > 0 ||
              update_to_.size() > 0 || update_from_.size() > 0;
     }
-    std::string ToString() const;
+
+    std::string ToString(bool include_item_keys = true) const;
   };
   // Update diff info for Radon arch.
   bool UpdateRadonDiffResult(const pub::Value& diff_result);
@@ -150,6 +151,7 @@ class AdapterHelper {
   inline const std::vector<int32_t>& move_to() const {
     return diff_result_.move_to_;
   }
+  inline const DiffResult& diff_result() const { return diff_result_; }
 
  private:
   void UpdateInsertions(const pub::Value& diff_insertions);

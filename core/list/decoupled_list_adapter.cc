@@ -121,6 +121,8 @@ std::pair<ListAdapterDiffResult, bool> ListAdapter::UpdateRadonDataSource(
     list_container_->list_delegate()->FlushListContainerInfo(
         kListContainerInfo, std::move(list_container_info), false);
   }
+  DLIST_LOGI("[" << list_container_ << "] ListAdapter::UpdateRadonDataSource: "
+                 << adapter_helper_->diff_result().ToString(false));
   // For output list diff info before clear
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_OUTPUT_DATA_SOURCE_DIFF_INFO,
               [this](lynx::perfetto::EventContext ctx) {
@@ -183,6 +185,8 @@ std::pair<ListAdapterDiffResult, bool> ListAdapter::UpdateFiberDataSource(
   adapter_helper_->UpdateFiberExtraInfo();
   // Generate and flush list-container-info for fiber.
   GenerateAndFlushListContainerInfo();
+  DLIST_LOGI("[" << list_container_ << "] ListAdapter::UpdateFiberDataSource: "
+                 << adapter_helper_->diff_result().ToString(false));
   // For output list diff info before clear
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               LIST_ADAPTER_OUTPUT_FIBER_DATA_SOURCE_DIFF_INFO,
@@ -321,6 +325,7 @@ void ListAdapter::UpdateItemHolderToLatest(
       list_children_helper->AddChild(last_binding_children, item_holder);
     }
   }
+  CheckInValidItemHolder();
 }
 
 void ListAdapter::UpdateAnchorRefItem(
@@ -654,6 +659,25 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
                                                            list_item_delegate);
     }
     OnEnqueueElement(item_holder);
+  }
+}
+
+void ListAdapter::CheckInValidItemHolder() const {
+  // Validate item holders against the current item key map.
+  const auto& item_key_map = adapter_helper_->item_key_map();
+  for (auto it = item_holder_map_->begin(); it != item_holder_map_->end();) {
+    const auto& item_holder = it->second;
+    if (item_holder) {
+      const std::string& item_key = item_holder->item_key();
+      if (item_key_map.find(item_key) == item_key_map.end() &&
+          !const_cast<ListAdapter*>(this)->IsRemoved(item_holder.get())) {
+        DLIST_LOGE("[" << list_container_
+                       << "] ListAdapter::CheckInValidItemHolder: In current "
+                          "diff info, find invalid item holder with index = "
+                       << item_holder->index() << ", item_key = " << item_key);
+      }
+    }
+    ++it;
   }
 }
 
