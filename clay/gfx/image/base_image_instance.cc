@@ -53,6 +53,28 @@ void BaseImageInstance::SetVisibleCallback(std::function<bool()> func) {
   visible_callback_ = std::move(func);
 }
 
+void BaseImageInstance::SetAnimationListener(ImageAnimationListener* listener) {
+  animation_listener_ = listener;
+}
+
+void BaseImageInstance::OnStartPlay() {
+  if (animation_listener_) {
+    animation_listener_->OnStartPlay();
+  }
+}
+
+void BaseImageInstance::OnCurrentLoopComplete() {
+  if (animation_listener_) {
+    animation_listener_->OnCurrentLoopComplete();
+  }
+}
+
+void BaseImageInstance::OnFinalLoopComplete() {
+  if (animation_listener_) {
+    animation_listener_->OnFinalLoopComplete();
+  }
+}
+
 void BaseImageInstance::OnNotifyAnimationFrame() {
   if (animation_frame_callback_) {
     animation_frame_callback_();

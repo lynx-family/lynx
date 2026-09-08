@@ -60,6 +60,7 @@ class AnimatedImageInstance : public BaseImageInstance {
   void StopAnimation() override;
   void PauseAnimation() override;
   void ResumeAnimation() override;
+  void SetAnimationListener(ImageAnimationListener* listener) override;
 
  private:
   void OnFrameChanged();
