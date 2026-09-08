@@ -16,11 +16,15 @@
 
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/fiber/block_element.h"
+#include "core/renderer/lynx_env_config.h"
+#include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/recorder/testbench_base_recorder.h"
 #include "core/services/replay/replay_controller.h"
 #include "core/services/replay/testbench_test_replay.h"
+#include "core/shell/lynx_shell_builder.h"
+#include "core/shell/native_facade_empty_implementation.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
@@ -34,6 +38,30 @@
 
 namespace lynx {
 namespace testing {
+
+class QueuedTaskRunner : public fml::TaskRunner {
+ public:
+  QueuedTaskRunner() : fml::TaskRunner(nullptr) {}
+
+  bool RunsTasksOnCurrentThread() override {
+    return runs_tasks_on_current_thread_;
+  }
+  void PostTask(base::closure task) override {
+    tasks_.push_back(std::move(task));
+  }
+
+  void RunPendingTasks() {
+    auto tasks = std::move(tasks_);
+    for (auto& task : tasks) {
+      task();
+    }
+  }
+
+  bool runs_tasks_on_current_thread_{false};
+
+ private:
+  std::vector<base::closure> tasks_;
+};
 
 // Notice: If you find some case is not stable, Please check that the thread is
 // same as mediator using
@@ -111,6 +139,103 @@ TEST_F(DevToolMediatorTest, InspectorDetachedCase) {
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"method\" : \"Inspector.detached\",\n   \"params\" : {\n   "
             "   \"reason\" : \"\"\n   }\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, DOMStateSurvivesReloadBeforeQueuedTasksRun) {
+  auto old_runner = fml::MakeRefCounted<QueuedTaskRunner>();
+  devtool_mediator_->tasm_task_runner_ = old_runner;
+  auto old_executor = devtool_mediator_->element_executor_;
+  Json::Value command;
+  command["id"] = 1;
+  command["params"]["useCompression"] = true;
+  command["params"]["compressionThreshold"] = 512;
+
+  devtool_mediator_->DOM_Enable(message_sender_, command);
+  EXPECT_FALSE(old_executor->dom_enabled_);
+
+  tasm::LynxEnvConfig env_config(60, 90, 1.f, 1.f);
+  shell::ShellOption option;
+  option.view_id_ = 19;
+  std::unique_ptr<shell::LynxShell> shell(
+      shell::LynxShellBuilder()
+          .SetNativeFacade(std::make_unique<shell::NativeFacadeEmptyImpl>())
+          .SetPaintingContextPlatformImpl(
+              std::make_unique<tasm::PaintingContextPlatformImpl>())
+          .SetLynxEnvConfig(env_config)
+          .SetEnableElementManagerVsyncMonitor(true)
+          .SetStrategy(base::ThreadStrategyForRendering::ALL_ON_UI)
+          .SetShellOption(option)
+          .build());
+
+  devtool_mediator_->Init(shell.get(), devtools_ng_);
+  EXPECT_NE(devtool_mediator_->element_executor_, old_executor);
+  EXPECT_TRUE(devtool_mediator_->element_executor_->dom_enabled_);
+  EXPECT_FALSE(devtool_mediator_->element_executor_->dom_use_compression_);
+  EXPECT_EQ(devtool_mediator_->element_executor_->dom_compression_threshold_,
+            10240);
+
+  auto new_runner = fml::MakeRefCounted<QueuedTaskRunner>();
+  devtool_mediator_->tasm_task_runner_ = new_runner;
+  auto enabled_executor = devtool_mediator_->element_executor_;
+  command["id"] = 2;
+  command.removeMember("params");
+  devtool_mediator_->DOM_Disable(message_sender_, command);
+  EXPECT_TRUE(enabled_executor->dom_enabled_);
+
+  devtool_mediator_->Init(shell.get(), devtools_ng_);
+  EXPECT_NE(devtool_mediator_->element_executor_, enabled_executor);
+  EXPECT_FALSE(devtool_mediator_->element_executor_->dom_enabled_);
+
+  old_runner->RunPendingTasks();
+  EXPECT_TRUE(old_executor->dom_enabled_);
+  EXPECT_TRUE(old_executor->dom_use_compression_);
+  EXPECT_EQ(old_executor->dom_compression_threshold_, 512);
+  EXPECT_FALSE(devtool_mediator_->element_executor_->dom_enabled_);
+
+  new_runner->RunPendingTasks();
+  EXPECT_FALSE(enabled_executor->dom_enabled_);
+  EXPECT_FALSE(devtool_mediator_->element_executor_->dom_enabled_);
+
+  devtool_mediator_->tasm_task_runner_ = new_runner;
+  command["id"] = 3;
+  devtool_mediator_->DOM_Enable(message_sender_, command);
+  new_runner->RunPendingTasks();
+  EXPECT_TRUE(devtool_mediator_->element_executor_->dom_enabled_);
+}
+
+TEST_F(DevToolMediatorTest, DOMCommandsPreserveOrderOnTasmThread) {
+  auto runner = fml::MakeRefCounted<QueuedTaskRunner>();
+  devtool_mediator_->tasm_task_runner_ = runner;
+  Json::Value command;
+  command["id"] = 1;
+  devtool_mediator_->DOM_Enable(message_sender_, command);
+  runner->runs_tasks_on_current_thread_ = true;
+  command["id"] = 2;
+  devtool_mediator_->DOM_Disable(message_sender_, command);
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.second.empty());
+  runner->RunPendingTasks();
+  EXPECT_FALSE(devtool_mediator_->element_executor_->dom_enabled_);
+  EXPECT_FALSE(devtool_mediator_->dom_enabled_);
+}
+
+TEST_F(DevToolMediatorTest, ConcurrentDOMCommandsPreserveCachedState) {
+  const Json::Value command(Json::objectValue);
+  std::thread enable_thread([&]() {
+    for (int i = 0; i < 1000; ++i) {
+      devtool_mediator_->DOM_Enable(message_sender_, command);
+    }
+  });
+  std::thread disable_thread([&]() {
+    for (int i = 0; i < 1000; ++i) {
+      devtool_mediator_->DOM_Disable(message_sender_, command);
+    }
+  });
+  enable_thread.join();
+  disable_thread.join();
+  FlushTasmTasks();
+  EXPECT_EQ(devtool_mediator_->element_executor_->dom_enabled_,
+            devtool_mediator_->dom_enabled_);
 }
 
 TEST_F(DevToolMediatorTest, RecordStartCase) {
