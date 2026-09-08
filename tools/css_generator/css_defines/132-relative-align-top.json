@@ -11,7 +11,7 @@
     "relative-align-top": {
       "__compat": {
         "description": "Specifies that the current element is aligned with the top edge of the parent or sibling element corresponding to id.",
-        "lynx_path": "docs/zh/api/css/properties/relative-align-top",
+        "lynx_path": "api/css/properties/relative-align-top",
         "spec_url": [],
         "status": {
           "deprecated": false,

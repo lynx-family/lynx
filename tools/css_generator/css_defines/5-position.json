@@ -33,7 +33,7 @@
   "compat_data": {
     "position": {
       "__compat": {
-        "lynx_path": "docs/zh/api/css/css-style/position",
+        "lynx_path": "api/css/properties/position",
         "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/position",
         "spec_url": [],
         "status": {

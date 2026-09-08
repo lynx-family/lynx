@@ -1,3 +1,7 @@
+## 0.0.18
+- Add `-x-box-propagate-min-constraints` and `-x-box-match-parent-size` CSS properties.
+- Repoint stale CSS compatibility documentation paths and remove the obsolete `linear-orientation` link.
+
 ## 0.0.17
 - Add compat_data for `box-shadow` animations and the `transition-property: box-shadow` keyword.
 

@@ -10,7 +10,7 @@
   "compat_data": {
     "padding": {
       "__compat": {
-        "lynx_path": "docs/zh/api/css/properties/padding",
+        "lynx_path": "api/css/properties/padding",
         "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/padding",
         "spec_url": [],
         "status": {

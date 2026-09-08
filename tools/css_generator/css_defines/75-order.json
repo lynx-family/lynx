@@ -11,7 +11,7 @@
     "order": {
       "__compat": {
         "description": "The order CSS property sets the order to lay out an item.",
-        "lynx_path": "docs/zh/api/css/properties/order",
+        "lynx_path": "api/css/properties/order",
         "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/order",
         "spec_url": [],
         "status": {
