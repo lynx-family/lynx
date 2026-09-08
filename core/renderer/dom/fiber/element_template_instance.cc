@@ -85,20 +85,34 @@ void DetachMaterializedElementFromCurrentParent(
 
 void PrepareMaterializedElementTreeForInspector(ElementManager* manager,
                                                 Element* node) {
-  // Compiled nodes receive object styles before attaching to a manager,
-  // when SetStyle cannot populate the inspector's inline-style mirror.
-  const auto& styles = node->GetCurrentRawInlineStyles();
-  if (styles.has_value()) {
-    for (const auto& style : *styles) {
-      node->data_model()->SetInlineStyle(style.first, style.second,
-                                         manager->GetCSSParserConfigs());
+  if (node->inspector_attribute() == nullptr) {
+    // Compiled nodes receive object styles before attaching to a manager,
+    // when SetStyle cannot populate the inspector's inline-style mirror.
+    const auto& styles = node->GetCurrentRawInlineStyles();
+    if (styles.has_value()) {
+      for (const auto& style : *styles) {
+        node->data_model()->SetInlineStyle(style.first, style.second,
+                                           manager->GetCSSParserConfigs());
+      }
     }
+    manager->PrepareNodeForInspector(node);
   }
-  manager->PrepareNodeForInspector(node);
   for (const auto& child : node->children()) {
     PrepareMaterializedElementTreeForInspector(
         manager, static_cast<Element*>(child.get()));
   }
+}
+
+void NotifyTemplateAttributesChangedForInspector(ElementManager* manager,
+                                                 Element* target) {
+  EXEC_EXPR_FOR_INSPECTOR({
+    // Initial materialization is captured by PrepareNodeForInspector. Raw
+    // string styles notify after parsing during the existing style flush.
+    if (target->inspector_attribute() != nullptr &&
+        target->GetRawInlineStyles().empty()) {
+      manager->OnElementNodeSetForInspector(target);
+    }
+  });
 }
 
 void InitCompiledElementCSS(
@@ -340,6 +354,8 @@ void ElementTemplateInstance::SetAttributes(const lepus::Value& attributes) {
   if (IsMaterialized()) {
     TreeResolver::ApplyTemplateAttributesToElement(
         result_.get(), previous_slots, attribute_slots_);
+    NotifyTemplateAttributesChangedForInspector(element_manager_,
+                                                result_.get());
   }
 }
 
@@ -572,6 +588,7 @@ void ElementTemplateInstance::ApplyAttributeSlotToTarget(
   }
   TreeResolver::ApplyTemplateAttributesToElement(
       target.get(), previous_attribute_slots, attribute_slots_);
+  NotifyTemplateAttributesChangedForInspector(element_manager_, target.get());
 }
 
 lepus::Value ElementTemplateInstance::GetOrCreateMutableChildSlot(
