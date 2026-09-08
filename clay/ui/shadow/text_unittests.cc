@@ -559,6 +559,18 @@ TEST_F_UI(TextTest, TextMaxLengthAttributeLimitsInitialLayout) {
   EXPECT_GT(measure_width(6), measure_width(3));
 }
 
+TEST_F_UI(TextTest, EllipsizeModeCanSwitchToClipAndReset) {
+  text_shadow_node_->SetAttribute("ellipsize-mode", clay::Value("tail"));
+  EXPECT_EQ(text_shadow_node_->text_style_->overflow, TextOverflow::kEllipsis);
+
+  text_shadow_node_->SetAttribute("ellipsize-mode", clay::Value("clip"));
+  EXPECT_EQ(text_shadow_node_->text_style_->overflow, TextOverflow::kClip);
+
+  text_shadow_node_->SetAttribute("ellipsize-mode", clay::Value("tail"));
+  text_shadow_node_->SetAttribute("ellipsize-mode", clay::Value());
+  EXPECT_EQ(text_shadow_node_->text_style_->overflow, TextOverflow::kClip);
+}
+
 TEST_F_UI(TextTest, GetLineInfoReportsMaxLineEllipsis) {
   text_shadow_node_->SetTextMaxLine(1);
   text_shadow_node_->SetTextOverflow(TextOverflow::kEllipsis);
@@ -581,6 +593,35 @@ TEST_F_UI(TextTest, GetLineInfoReportsMaxLineEllipsis) {
   EXPECT_GT(lines.front().ellipsis_count, 0);
   EXPECT_LT(static_cast<size_t>(lines.front().end),
             raw_text_shadow_node_->Text().size());
+}
+
+TEST_F_UI(TextTest, EllipsizeModeTailMatchesTextOverflowLayout) {
+  text_shadow_node_->SetTextMaxLine(2);
+  raw_text_shadow_node_->SetText(
+      "one two three four five six seven eight nine ten eleven twelve ");
+  MeasureConstraint constraint{120.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  auto layout = [&]() {
+    TextRender render(text_shadow_node_.get());
+    render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
+    auto context = text_shadow_node_->CreateLayoutContext(constraint);
+    render.Measure(constraint, &context);
+    return render.GetLineInfo();
+  };
+
+  text_shadow_node_->SetTextOverflow(TextOverflow::kEllipsis);
+  const auto expected = layout();
+  text_shadow_node_->SetTextOverflow(TextOverflow::kClip);
+  text_shadow_node_->SetAttribute("ellipsize-mode", clay::Value("tail"));
+  const auto actual = layout();
+  ASSERT_EQ(actual.size(), 2u);
+  ASSERT_EQ(actual.size(), expected.size());
+  EXPECT_GT(actual.back().ellipsis_count, 0);
+  for (size_t i = 0; i < actual.size(); ++i) {
+    EXPECT_EQ(actual[i].start, expected[i].start);
+    EXPECT_EQ(actual[i].end, expected[i].end);
+    EXPECT_EQ(actual[i].ellipsis_count, expected[i].ellipsis_count);
+  }
 }
 
 TEST_F_UI(TextTest, GetLineInfoReportsEllipsisOnlyOnLastVisibleLine) {
@@ -1122,6 +1163,98 @@ TEST_F_UI(TextTest, InlineTruncationDoesNotMountMarkerWiderThanContainer) {
   EXPECT_TRUE(text_render.GetCacheParagraph()->DidExceedMaxLines());
   EXPECT_FALSE(inline_truncation_node->IfNeedMount());
   EXPECT_EQ(raw_text_shadow_node_->GetEndIndex(), 200u);
+}
+
+TEST_F_UI(TextTest, InlineTruncationReservesEllipsisBeforeRawMarker) {
+  auto marker = std::make_unique<InlineTruncationShadowNode>(
+      owner_, "inline-truncation", -1);
+  auto marker_text =
+      std::make_unique<RawTextShadowNode>(owner_, "raw-text", -1);
+  marker_text->SetText("more");
+  marker->AddChild(marker_text.get());
+  text_shadow_node_->AddChild(marker.get());
+  text_shadow_node_->SetFontSize(20.f);
+  marker->SetFontSize(20.f);
+  const std::string long_text(200, 'W');
+  TextRender render(text_shadow_node_.get());
+
+  for (uint32_t max_lines : {1u, 3u}) {
+    text_shadow_node_->SetTextMaxLine(max_lines);
+    for (bool ellipsis : {true, false, true}) {
+      SCOPED_TRACE(::testing::Message()
+                   << "max_lines=" << max_lines << " ellipsis=" << ellipsis);
+      raw_text_shadow_node_->SetText(long_text);
+      text_shadow_node_->SetAttribute("ellipsize-mode",
+                                      clay::Value(ellipsis ? "tail" : "clip"));
+      MeasureConstraint constraint{240.f, MeasureMode::kDefinite, std::nullopt,
+                                   MeasureMode::kIndefinite};
+      // Match the reset performed by TextShadowNode::Measure before relayout.
+      text_shadow_node_->ResetEndIndex();
+      render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
+      auto context = text_shadow_node_->CreateLayoutContext(constraint);
+      render.Measure(constraint, &context);
+
+      ASSERT_TRUE(marker->IfNeedMount());
+      EXPECT_EQ(marker->EndGlyph() - marker->StartGlyph(), ellipsis ? 5u : 4u);
+      ASSERT_LT(raw_text_shadow_node_->GetEndIndex(), long_text.size());
+      auto* paragraph = render.GetCacheParagraph();
+      ASSERT_NE(paragraph, nullptr);
+      EXPECT_FALSE(paragraph->DidExceedMaxLines());
+      const auto& lines = paragraph->GetLineMetrics();
+      ASSERT_EQ(lines.size(), max_lines);
+      const auto& last_line = lines.back();
+      auto boxes =
+          paragraph->GetRectsForRange(marker->StartGlyph(), marker->EndGlyph(),
+                                      txt::Paragraph::RectHeightStyle::kTight,
+                                      txt::Paragraph::RectWidthStyle::kTight);
+      ASSERT_FALSE(boxes.empty());
+      for (const auto& box : boxes) {
+        EXPECT_GE(box.rect.Left(), -1.f);
+        EXPECT_LE(box.rect.Right(), 241.f);
+        EXPECT_GE(box.rect.Top(), last_line.baseline - last_line.ascent - 1.f);
+        EXPECT_LE(box.rect.Bottom(),
+                  last_line.baseline + last_line.descent + 1.f);
+      }
+      EXPECT_FALSE(
+          paragraph
+              ->GetRectsForRange(marker->EndGlyph() - 1, marker->EndGlyph(),
+                                 txt::Paragraph::RectHeightStyle::kTight,
+                                 txt::Paragraph::RectWidthStyle::kTight)
+              .empty());
+    }
+  }
+
+  raw_text_shadow_node_->SetText("short");
+  render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
+  MeasureConstraint constraint{240.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  auto context = text_shadow_node_->CreateLayoutContext(constraint);
+  render.Measure(constraint, &context);
+  EXPECT_FALSE(marker->IfNeedMount());
+  EXPECT_EQ(render.GetLineInfo().back().end, 5);
+}
+
+TEST_F_UI(TextTest, InlineTruncationMeasuresEllipsisWithParentFont) {
+  auto marker = std::make_unique<InlineTruncationShadowNode>(
+      owner_, "inline-truncation", -1);
+  auto marker_text =
+      std::make_unique<RawTextShadowNode>(owner_, "raw-text", -1);
+  marker_text->SetText("more");
+  marker->AddChild(marker_text.get());
+  text_shadow_node_->AddChild(marker.get());
+  text_shadow_node_->SetFontSize(40.f);
+  marker->SetFontSize(12.f);
+  const float marker_width = marker->CalculateTruncatedSize().width();
+  marker->SetEllipsis(u"\u2026");
+  const float combined_width = marker->CalculateTruncatedSize().width();
+
+  auto builder = std::make_unique<TextParagraphBuilder>(
+      true, text_shadow_node_->text_style_);
+  builder->AddText(u"\u2026");
+  auto paragraph = Build(std::move(builder));
+  paragraph->Layout(1000.f);
+  EXPECT_NEAR(combined_width - marker_width, paragraph->GetMaxIntrinsicWidth(),
+              1.f);
 }
 
 TEST_F_UI(TextTest, InlineTruncationMountsAndReportsHiddenText) {

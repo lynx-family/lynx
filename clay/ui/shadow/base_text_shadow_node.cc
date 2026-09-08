@@ -239,6 +239,12 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
       break;
     default:
       if (attr_c) {
+        if (std::string_view(attr_c) == "ellipsize-mode") {
+          SetTextOverflow(utils::GetCString(value) == "tail"
+                              ? TextOverflow::kEllipsis
+                              : TextOverflow::kClip);
+          break;
+        }
         auto kw = GetKeywordID(attr_c);
         if (kw == KeywordID::kText) {
           CreateRawTextNodeIfNeed(attribute_utils::GetCString(value));
