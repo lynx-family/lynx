@@ -585,6 +585,45 @@ TEST_F(ExposeObserverTest, ExposureAreaChecksEachClippingBoundary) {
   EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
 }
 
+TEST_F(ExposeObserverTest, FullyContainedFractionalTargetMeetsFullExposure) {
+  page_->SetBound(0, 64, 390, 440);
+  View* target = AddObservedView(page_.get(), 1, 28, 119.8000031f, 334, 192);
+  target->SetAttribute("exposure-area", Value("100%"));
+
+  manager()->NotifyObservers();
+
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 0u);
+}
+
+TEST_F(ExposeObserverTest,
+       FullyContainedFractionalTargetStaysExposedAcrossFrames) {
+  page_->SetBound(0, 64, 390, 440);
+  View* target = AddObservedView(page_.get(), 1, 28, 119.8000031f, 334, 192);
+  target->SetAttribute("exposure-area", Value("100%"));
+  manager()->NotifyObservers();
+  ASSERT_EQ(CustomEventCount("uiappear"), 1u);
+
+  target->SetBound(28, 119.8000183f, 334, 192);
+  NotifyObserversOnNextFrame();
+
+  EXPECT_EQ(CustomEventCount("uiappear"), 1u);
+  EXPECT_EQ(CustomEventCount("uidisappear"), 0u);
+}
+
+TEST_F(ExposeObserverTest, FractionalTargetOutsideClipStillDisappears) {
+  page_->SetBound(0, 64, 390, 440);
+  View* target = AddObservedView(page_.get(), 1, 28, 119.8000031f, 334, 192);
+  target->SetAttribute("exposure-area", Value("100%"));
+  manager()->NotifyObservers();
+  ASSERT_EQ(CustomEventCount("uiappear"), 1u);
+
+  target->SetBound(28, 312.0000305f, 334, 192);
+  NotifyObserversOnNextFrame();
+
+  EXPECT_EQ(CustomEventCount("uidisappear"), 1u);
+}
+
 TEST_F(ExposeObserverTest,
        EmptyClippingParentKeepsOrdinaryIntersectionBehavior) {
   auto* clipping_parent = new View(1, page_.get());

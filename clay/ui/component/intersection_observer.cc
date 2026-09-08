@@ -72,6 +72,9 @@ float IntersectionRatio(const FloatRect& target_rect,
       !target_rect.Intersects(clipping_rect)) {
     return 0;
   }
+  if (clipping_rect.Contains(target_rect)) {
+    return 1;
+  }
   FloatRect intersection_rect = target_rect;
   intersection_rect.Intersect(clipping_rect);
   const float target_area = target_rect.width() * target_rect.height();
