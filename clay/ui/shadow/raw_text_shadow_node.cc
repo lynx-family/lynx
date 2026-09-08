@@ -168,13 +168,14 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
     BuildIdentityLayoutTextMapping(text);
     AddTextWithInlineEmoji(text_context, text, need_text_indent);
   }
-  if (parent_ && parent_->IsInlineTextShadowNode()) {
+  auto* parent = Parent();
+  if (parent && parent->IsInlineTextShadowNode()) {
 #if defined(CLAY_ENABLE_TTTEXT)
     auto end = text_context->TextSizeIncludingPlaceholdersInUtf32();
 #else
     auto end = text_context->TextSizeIncludingPlaceholders();
 #endif
-    static_cast<InlineTextShadowNode*>(parent_)->AddTextRange(start, end);
+    static_cast<InlineTextShadowNode*>(parent)->AddTextRange(start, end);
   }
 }
 
