@@ -240,6 +240,10 @@
   return _devtoolNG != nil ? [_devtoolNG getSessionId] : 0;
 }
 
+- (nullable id<LynxNetworkRequestObserver>)networkRequestObserver {
+  return _devtoolNG;
+}
+
 - (NSString*)getTemplateUrl {
   return _reloadHelper ? [_reloadHelper getURL] : @"___UNKNOWN___";
 }
