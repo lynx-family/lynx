@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxEventHandler+Internal.h>
+#import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxShadowNode.h>
 #import <Lynx/LynxUI+Internal.h>
@@ -27,11 +29,15 @@
 @interface LynxUITransfer ()
 
 @property(nonatomic, strong) LynxTransferWrapperView* wrapperView;
+@property(nonatomic, strong, nullable) LynxEventHandler* transferEventHandler;
 @property(nonatomic, copy, nullable) NSString* transferId;
 @property(nonatomic, copy, nullable) NSString* attachedTransferId;
 @property(nonatomic, assign) BOOL nodeReady;
+@property(nonatomic, assign) NSInteger gestureArenaManagerIndex;
 
 - (void)syncHostConstraintsFromWrapper:(LynxTransferWrapperView*)wrapperView;
+- (void)configureTransferEventHandlerIfNeeded;
+- (void)cleanupEventHandler;
 - (void)cleanupTransfer;
 - (void)dispatchTransferCreateIfNeeded;
 - (void)removeTransfer:(NSString*)transferId;
@@ -63,12 +69,21 @@ LYNX_PROP_SETTER("transfer-id", setTransferId, NSString*) {
   [self dispatchTransferCreateIfNeeded];
 }
 
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _gestureArenaManagerIndex = NSNotFound;
+  }
+  return self;
+}
+
 - (UIView*)createView {
   LynxTransferHostView* hostView = [[LynxTransferHostView alloc] init];
   hostView.translatesAutoresizingMaskIntoConstraints = YES;
   hostView.hidden = YES;
 
   self.wrapperView = [[LynxTransferWrapperView alloc] initWithTransfer:self];
+  self.touchEventSourceView = self.wrapperView;
   self.wrapperView.frame = hostView.bounds;
   [hostView addSubview:self.wrapperView];
   return hostView;
@@ -82,9 +97,15 @@ LYNX_PROP_SETTER("transfer-id", setTransferId, NSString*) {
   return !self.wrapperView.hidden && self.wrapperView.alpha >= 0.01;
 }
 
+- (void)setContext:(LynxUIContext*)context {
+  [super setContext:context];
+  [self configureTransferEventHandlerIfNeeded];
+}
+
 - (void)onNodeReady {
   [super onNodeReady];
   self.nodeReady = YES;
+  [self configureTransferEventHandlerIfNeeded];
   [self dispatchTransferCreateIfNeeded];
 }
 
@@ -104,6 +125,7 @@ LYNX_PROP_SETTER("transfer-id", setTransferId, NSString*) {
 
 - (void)dealloc {
   [self cleanupTransfer];
+  [self cleanupEventHandler];
 }
 
 - (void)syncHostConstraintsFromWrapper:(LynxTransferWrapperView*)wrapperView {
@@ -123,6 +145,38 @@ LYNX_PROP_SETTER("transfer-id", setTransferId, NSString*) {
                                                                 heightMode:heightMode];
                                       }
                                     }];
+}
+
+- (void)configureTransferEventHandlerIfNeeded {
+  if (self.wrapperView == nil || self.context == nil) {
+    return;
+  }
+  if (self.transferEventHandler == nil) {
+    self.transferEventHandler = [[LynxEventHandler alloc] initWithRootView:self.wrapperView
+                                                                withRootUI:self];
+  }
+  [self.transferEventHandler updateUiOwner:self.context.uiOwner
+                              eventEmitter:self.context.eventEmitter];
+  [self.transferEventHandler syncConfigWith:self.context.eventHandler];
+  [self.transferEventHandler setTouchEventSource:self.wrapperView
+                                 payloadRootView:self.context.rootView];
+  if (self.gestureArenaManagerIndex == NSNotFound &&
+      self.context.eventHandler.gestureArenaManager) {
+    self.gestureArenaManagerIndex = [self.transferEventHandler
+        setGestureArenaManagerAndGetIndex:self.context.eventHandler.gestureArenaManager];
+  }
+}
+
+- (void)cleanupEventHandler {
+  if (self.transferEventHandler == nil) {
+    return;
+  }
+  [self.transferEventHandler removeEventGestures];
+  if (self.gestureArenaManagerIndex != NSNotFound) {
+    [self.transferEventHandler removeGestureArenaManager:self.gestureArenaManagerIndex];
+    self.gestureArenaManagerIndex = NSNotFound;
+  }
+  self.transferEventHandler = nil;
 }
 
 - (void)cleanupTransfer {

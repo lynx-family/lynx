@@ -191,6 +191,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   BOOL _enableReuseAnimationState;
   NSMutableArray<LynxAnimationInfo*>* _animationInfos;
   LynxUILastInfo* _lastInfo;
+  __weak UIView* _touchEventSourceView;
 }
 
 @dynamic lastTransformRotation;
@@ -1532,6 +1533,14 @@ LYNX_UI_METHOD(boundingClientRect) {
         @"width" : @(rect.size.width),
         @"height" : @(rect.size.height)
       });
+}
+
+- (UIView*)touchEventSourceView {
+  return _touchEventSourceView;
+}
+
+- (void)setTouchEventSourceView:(UIView*)view {
+  _touchEventSourceView = view;
 }
 
 // TODO(zhixuan): Deprecated API, remove me.
@@ -3883,6 +3892,10 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
       }
 
       CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      if (self.touchEventSourceView != nil) {
+        parentLayer = self.touchEventSourceView.layer.presentationLayer
+                          ?: self.touchEventSourceView.layer.modelLayer;
+      }
       CALayer* childLayer = child.view.layer.presentationLayer ?: child.view.layer.modelLayer;
       CGPoint targetPoint = [parentLayer convertPoint:point toLayer:childLayer];
       if ([child containsPoint:targetPoint]) {
@@ -3909,6 +3922,10 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
         continue;
       }
       CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      if (self.touchEventSourceView != nil) {
+        parentLayer = self.touchEventSourceView.layer.presentationLayer
+                          ?: self.touchEventSourceView.layer.modelLayer;
+      }
       CALayer* childLayer = sibling.view.layer.presentationLayer ?: sibling.view.layer.modelLayer;
       CGPoint siblingPoint = [parentLayer convertPoint:originPoint toLayer:childLayer];
       target = [sibling hitTest:siblingPoint withEvent:event];
