@@ -8,6 +8,7 @@
 #ifndef CLAY_FLOW_RASTER_CACHE_H_
 #define CLAY_FLOW_RASTER_CACHE_H_
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -125,6 +126,7 @@ class RasterCache {
  public:
   struct Context {
     clay::GrContext* gr_context;
+    uint32_t sample_count = 1;
 #ifndef ENABLE_SKITY
     const SkColorSpace* dst_color_space;
 #endif  // ENABLE_SKITY

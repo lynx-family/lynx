@@ -8,6 +8,7 @@
 #ifndef CLAY_FLOW_COMPOSITOR_CONTEXT_H_
 #define CLAY_FLOW_COMPOSITOR_CONTEXT_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -90,7 +91,8 @@ class CompositorContext {
     ScopedFrame(CompositorContext& context, clay::GrContext* gr_context,
                 clay::GrCanvas* canvas, CompositorState* compositor_state,
                 const skity::Matrix& root_surface_transformation,
-                bool instrumentation_enabled, bool surface_supports_readback);
+                bool instrumentation_enabled, bool surface_supports_readback,
+                uint32_t sample_count = 1);
 
     ~ScopedFrame();
 
@@ -106,6 +108,8 @@ class CompositorContext {
 
     bool surface_supports_readback() { return surface_supports_readback_; }
 
+    uint32_t sample_count() const { return sample_count_; }
+
     RasterStatus Raster(
         LayerTree& layer_tree, bool ignore_raster_cache,
         FrameDamage* frame_damage,
@@ -120,6 +124,7 @@ class CompositorContext {
     const skity::Matrix root_surface_transformation_;
     const bool instrumentation_enabled_;
     const bool surface_supports_readback_;
+    const uint32_t sample_count_;
 
     BASE_DISALLOW_COPY_AND_ASSIGN(ScopedFrame);
   };
@@ -134,7 +139,8 @@ class CompositorContext {
       clay::GrContext* gr_context, clay::GrCanvas* canvas,
       CompositorState* compositor_state,
       const skity::Matrix& root_surface_transformation,
-      bool instrumentation_enabled, bool surface_supports_readback);
+      bool instrumentation_enabled, bool surface_supports_readback,
+      uint32_t sample_count = 1);
   void OnGrContextCreated();
 
   void OnGrContextDestroyed();
