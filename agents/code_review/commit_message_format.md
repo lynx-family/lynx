@@ -13,9 +13,11 @@
 
   Footer (optional):
   `issue: #12345`
+  `doc: https://xxxxxxxx`
+  `TEST: Test cases`
 
 ### Type
-- `Feature`, `BugFix`, `Optimize`, `Refactor`, `Infra`, `Docs`, `Test`, etc., using capitalized English.
+- `Feature`, `BugFix`, `Optimize`, `Refactor`, `Infra`, `Doc`, `Testing`, etc., using capitalized English.
 
 ### Scope
 - Module or subsystem name (e.g., `Clay`, `Layout`, `Headers`, `Painting`, `Harmony`, `Android`, `iOS`, etc.), optional but recommended.
