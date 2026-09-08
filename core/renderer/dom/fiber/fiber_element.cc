@@ -3123,6 +3123,7 @@ void Element::FlushActionsAsRoot() {
 
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   ParallelFlushAsRoot();
+  element_manager()->DrainPendingElementTemplateChildMounts(this);
   FlushActions();
 }
 

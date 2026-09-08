@@ -16,8 +16,10 @@
 #include <type_traits>
 #include <vector>
 
+#include "core/public/pipeline_option.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -1649,6 +1651,294 @@ TEST_P(ElementTemplateInstanceTest,
 
   instance->SetAttributeSlot(0, lepus::Value(lepus::Dictionary::Create()));
   EXPECT_EQ(DatasetValue(root.get(), "current"), nullptr);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PageFlushMountsCompiledSubtreeWithLatestAttributes) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  manager->SetConfig(manager->config_);
+  tasm->page_config_ = manager->config_;
+
+  auto default_entry = std::make_shared<TemplateEntry>();
+  default_entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = default_entry;
+
+  auto template_info = std::make_shared<ElementTemplateInfo>();
+  template_info->exist_ = true;
+  template_info->key_ = "prepared_child";
+  auto root_info = ElementInfo();
+  root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  root_info.attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-test"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
+                    lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 2}});
+  auto child_slot_info = ElementInfo();
+  child_slot_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_SLOT;
+  child_slot_info.slot_index_ = 0;
+  root_info.children_.emplace_back(std::move(child_slot_info));
+  template_info->elements_.emplace_back(std::move(root_info));
+  default_entry->template_bundle_.element_template_infos_["prepared_child"] =
+      std::move(template_info);
+
+  auto grandchild_template_info = std::make_shared<ElementTemplateInfo>();
+  grandchild_template_info->exist_ = true;
+  grandchild_template_info->key_ = "prepared_grandchild";
+  auto grandchild_root_info = ElementInfo();
+  grandchild_root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  grandchild_template_info->elements_.emplace_back(
+      std::move(grandchild_root_info));
+  default_entry->template_bundle_
+      .element_template_infos_["prepared_grandchild"] =
+      std::move(grandchild_template_info);
+
+  auto grandchild = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  grandchild->SetTASM(tasm.get());
+  grandchild->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
+  grandchild->SetTemplateKey(base::String("prepared_grandchild"));
+
+  auto initial_attribute_slots = lepus::CArray::Create();
+  initial_attribute_slots->emplace_back(lepus::Value("before"));
+  initial_attribute_slots->emplace_back(lepus::Value("onBeforeTap"));
+  auto initial_spread = lepus::Dictionary::Create();
+  initial_spread->SetValue("data-old", lepus::Value("old-value"));
+  initial_attribute_slots->emplace_back(lepus::Value(initial_spread));
+  auto child = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  child->SetTASM(tasm.get());
+  child->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
+  child->SetTemplateKey(base::String("prepared_child"));
+  child->SetAttributeSlots(lepus::Value(initial_attribute_slots));
+  auto child_slot_children = lepus::CArray::Create();
+  child_slot_children->emplace_back(lepus::Value(grandchild));
+  auto child_slots = lepus::CArray::Create();
+  child_slots->emplace_back(lepus::Value(child_slot_children));
+  child->InitializeChildSlots(lepus::Value(child_slots));
+
+  auto page = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  page->SetTASM(tasm.get());
+  page->SetTypedTag(base::String("page"));
+  page->SetUid(lepus::Value(0));
+  page->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+
+  EXPECT_EQ(child->PeekMaterializedRoot(), nullptr);
+  EXPECT_EQ(grandchild->PeekMaterializedRoot(), nullptr);
+
+  auto page_root = page->GetRoot();
+  ASSERT_NE(page_root, nullptr);
+  EXPECT_TRUE(page_root->children().empty());
+  EXPECT_EQ(child->PeekMaterializedRoot(), nullptr);
+  EXPECT_EQ(grandchild->PeekMaterializedRoot(), nullptr);
+
+  child->SetAttributeSlot(0, lepus::Value("after"));
+  child->SetAttributeSlot(1, lepus::Value("onAfterTap"));
+  auto final_spread = lepus::Dictionary::Create();
+  final_spread->SetValue("data-new", lepus::Value("new-value"));
+  child->SetAttributeSlot(2, lepus::Value(final_spread));
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+
+  auto child_root = child->PeekMaterializedRoot();
+  ASSERT_NE(child_root, nullptr);
+  auto grandchild_root = grandchild->PeekMaterializedRoot();
+  ASSERT_NE(grandchild_root, nullptr);
+  ASSERT_EQ(page_root->children().size(), 1u);
+  EXPECT_EQ(page_root->children()[0].get(), child_root.get());
+  ASSERT_EQ(child_root->children().size(), 1u);
+  EXPECT_EQ(child_root->children()[0].get(), grandchild_root.get());
+  auto* test_data = DatasetValue(child_root.get(), "test");
+  ASSERT_NE(test_data, nullptr);
+  EXPECT_EQ(test_data->StdString(), "after");
+  EXPECT_EQ(DatasetValue(child_root.get(), "old"), nullptr);
+  auto* new_data = DatasetValue(child_root.get(), "new");
+  ASSERT_NE(new_data, nullptr);
+  EXPECT_EQ(new_data->StdString(), "new-value");
+  auto event_iter = child_root->event_map().find("tap");
+  ASSERT_NE(event_iter, child_root->event_map().end());
+  EXPECT_EQ(event_iter->second->function(), "onAfterTap");
+  auto* listeners = child_root->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(listeners, nullptr);
+  EXPECT_EQ(listeners->size(), 1u);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       DetachedPendingCompiledChildMountWakesOnReattach) {
+  auto child = CreateCompiledSpreadInstance();
+
+  auto page = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  page->SetTASM(tasm.get());
+  page->SetTypedTag(base::String("page"));
+  page->SetUid(lepus::Value(0));
+  auto page_root = page->GetRoot();
+  ASSERT_NE(page_root, nullptr);
+
+  auto parent = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  parent->SetTypedTag(base::String("view"));
+  auto parent_root = parent->GetRoot();
+  ASSERT_NE(parent_root, nullptr);
+  parent->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+
+  ASSERT_TRUE(parent->HasPendingChildMounts());
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+
+  EXPECT_TRUE(parent->HasPendingChildMounts());
+  EXPECT_EQ(child->PeekMaterializedRoot(), nullptr);
+
+  page->InsertNodeIntoChildSlot(0, lepus::Value(parent), lepus::Value());
+  EXPECT_EQ(parent_root->parent(), page_root.get());
+
+  options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+
+  auto child_root = child->PeekMaterializedRoot();
+  ASSERT_NE(child_root, nullptr);
+  EXPECT_EQ(child_root->parent(), parent_root.get());
+  EXPECT_FALSE(parent->HasPendingChildMounts());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PendingCompiledChildMoveUsesFinalParentAndScopedDrain) {
+  auto child = CreateCompiledSpreadInstance();
+
+  auto source = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  source->SetTypedTag(base::String("view"));
+  auto destination = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  destination->SetTypedTag(base::String("view"));
+  auto sibling = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  sibling->SetTypedTag(base::String("view"));
+  destination->InsertNodeIntoChildSlot(0, lepus::Value(sibling),
+                                       lepus::Value());
+
+  auto page = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  page->SetTASM(tasm.get());
+  page->SetTypedTag(base::String("page"));
+  page->SetUid(lepus::Value(0));
+  page->InsertNodeIntoChildSlot(0, lepus::Value(source), lepus::Value());
+  page->InsertNodeIntoChildSlot(0, lepus::Value(destination), lepus::Value());
+  auto page_root = page->GetRoot();
+  ASSERT_NE(page_root, nullptr);
+  auto source_root = source->PeekMaterializedRoot();
+  auto destination_root = destination->PeekMaterializedRoot();
+  auto sibling_root = sibling->PeekMaterializedRoot();
+  ASSERT_NE(source_root, nullptr);
+  ASSERT_NE(destination_root, nullptr);
+  ASSERT_NE(sibling_root, nullptr);
+
+  page_root->FlushActionsAsRoot();
+
+  source->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+  destination->InsertNodeIntoChildSlot(0, lepus::Value(child),
+                                       lepus::Value(sibling));
+
+  ASSERT_TRUE(source->HasPendingChildMounts());
+  ASSERT_TRUE(destination->HasPendingChildMounts());
+  source_root->FlushActionsAsRoot();
+  EXPECT_FALSE(source->HasPendingChildMounts());
+  EXPECT_TRUE(destination->HasPendingChildMounts());
+  EXPECT_EQ(child->PeekMaterializedRoot(), nullptr);
+
+  destination_root->FlushActionsAsRoot();
+
+  auto child_root = child->PeekMaterializedRoot();
+  ASSERT_NE(child_root, nullptr);
+  ASSERT_EQ(destination_root->children().size(), 2u);
+  EXPECT_EQ(destination_root->children()[0].get(), child_root.get());
+  EXPECT_EQ(destination_root->children()[1].get(), sibling_root.get());
+  EXPECT_EQ(child_root->parent(), destination_root.get());
+  EXPECT_TRUE(source_root->children().empty());
+  EXPECT_FALSE(destination->HasPendingChildMounts());
+}
+
+TEST_P(ElementTemplateInstanceTest, FlushSkipsRemovedPendingCompiledChild) {
+  auto child = CreateCompiledSpreadInstance();
+  auto page_root = manager->CreateFiberPage("page", 0);
+  auto parent = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  parent->SetTypedTag(base::String("view"));
+  auto parent_root = parent->GetRoot();
+  ASSERT_NE(parent_root, nullptr);
+  page_root->InsertNode(parent_root);
+  page_root->FlushActionsAsRoot();
+  parent->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+  ASSERT_TRUE(parent->HasPendingChildMounts());
+
+  parent->RemoveNodeFromChildSlot(0, lepus::Value(child));
+  parent_root->FlushActionsAsRoot();
+
+  EXPECT_TRUE(parent_root->children().empty());
+  EXPECT_EQ(child->PeekMaterializedRoot(), nullptr);
+  EXPECT_FALSE(parent->HasPendingChildMounts());
+}
+
+TEST_P(ElementTemplateInstanceTest, FlushDoesNotRetainPendingTemplateOwner) {
+  auto child = CreateCompiledSpreadInstance();
+  auto page_root = manager->CreateFiberPage("page", 0);
+  auto parent = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  parent->SetTypedTag(base::String("view"));
+  auto parent_root = parent->GetRoot();
+  ASSERT_NE(parent_root, nullptr);
+  page_root->InsertNode(parent_root);
+  page_root->FlushActionsAsRoot();
+  parent->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+  ASSERT_TRUE(parent->HasPendingChildMounts());
+
+  auto weak_parent = parent->WeakFromThis();
+  parent = nullptr;
+  EXPECT_FALSE(weak_parent);
+  parent_root->FlushActionsAsRoot();
+
+  EXPECT_TRUE(parent_root->children().empty());
+  EXPECT_EQ(child->PeekMaterializedRoot(), nullptr);
+}
+
+TEST_P(ElementTemplateInstanceTest, ListSchedulerFlushMountsCompiledChild) {
+  auto page_root = manager->CreateFiberPage("page", 0);
+  for (auto strategy :
+       {list::BatchRenderStrategy::kAsyncResolveProperty,
+        list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree}) {
+    SCOPED_TRACE(static_cast<int>(strategy));
+    auto child = CreateCompiledSpreadInstance();
+    auto parent = fml::AdoptRef<ElementTemplateInstance>(
+        new ElementTemplateInstance(manager));
+    parent->SetTypedTag(base::String("view"));
+    auto parent_root = parent->GetRoot();
+    ASSERT_NE(parent_root, nullptr);
+    page_root->InsertNode(parent_root);
+    page_root->FlushActionsAsRoot();
+    parent_root->CreateListItemScheduler(strategy, true);
+    parent_root->RecursivelyMarkRenderRootElement(parent_root.get());
+    parent->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+    ASSERT_EQ(child->PeekMaterializedRoot(), nullptr);
+
+    auto* scheduler = parent_root->GetSchedulerAdapter();
+    auto& tasks = manager->ParallelResolveTreeTasks();
+    scheduler->ResolveElementTree(tasks);
+    while (!tasks.empty()) {
+      tasks.front()->Run();
+      tasks.front()->GetFuture().get()();
+      tasks.pop_front();
+    }
+
+    auto child_root = child->PeekMaterializedRoot();
+    ASSERT_NE(child_root, nullptr);
+    ASSERT_EQ(parent_root->children().size(), 1u);
+    EXPECT_EQ(parent_root->children()[0].get(), child_root.get());
+    EXPECT_EQ(child_root->parent(), parent_root.get());
+    EXPECT_FALSE(parent->HasPendingChildMounts());
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,

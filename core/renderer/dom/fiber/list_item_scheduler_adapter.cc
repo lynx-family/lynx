@@ -95,6 +95,8 @@ void ListItemSchedulerAdapter::ResolveElementTree(
       list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_SCHEDULER_ADAPTER_POST_FLUSH_ACTIONS);
 
+    render_root_->element_manager()->DrainPendingElementTemplateChildMounts(
+        render_root_);
     std::promise<ParallelFlushReturn> promise;
     std::future<ParallelFlushReturn> future = promise.get_future();
     auto task_info_ptr =
@@ -131,6 +133,8 @@ void ListItemSchedulerAdapter::ResolveElementTree(
             list::BatchRenderStrategy::kAsyncResolveProperty) {
       // Invoke resolve element tree directly after consuming resolve property
       // reduce tasks.
+      render_root_->element_manager()->DrainPendingElementTemplateChildMounts(
+          render_root_);
       render_root_->FlushActions();
     }
   }
