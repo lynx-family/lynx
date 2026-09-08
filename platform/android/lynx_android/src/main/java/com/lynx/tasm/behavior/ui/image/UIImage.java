@@ -142,8 +142,11 @@ public class UIImage extends UIView {
 
   @Override
   public void updatePropertiesInterval(StylesDiffMap props) {
-    ensureLynxImageManager();
     super.updatePropertiesInterval(props);
+    if (mView.getRenderer() != null) {
+      return;
+    }
+    ensureLynxImageManager();
     mLynxImageManager.updatePropertiesInterval(props.mBackingMap);
   }
 
@@ -161,8 +164,11 @@ public class UIImage extends UIView {
 
   @Override
   public void onNodeReady() {
-    ensureLynxImageManager();
     super.onNodeReady();
+    if (mView.getRenderer() != null) {
+      return;
+    }
+    ensureLynxImageManager();
     if (mLynxBackground.getDrawable() != null) {
       mLynxImageManager.setBorderWidth(
           mLynxBackground.getDrawable().getDirectionAwareBorderInsets());
@@ -188,13 +194,21 @@ public class UIImage extends UIView {
 
   @Override
   public void beforeDraw(Canvas canvas) {
-    ensureLynxImageManager();
     super.beforeDraw(canvas);
+    // The Fragment display list owns image content when this UI hosts a Renderer.
+    if (mView.getRenderer() != null) {
+      return;
+    }
+    ensureLynxImageManager();
     mLynxImageManager.onDraw(canvas);
   }
 
   @Override
   public void beforeProcessViewInfo(ViewInfo info) {
+    if (mView.getRenderer() != null) {
+      super.beforeProcessViewInfo(info);
+      return;
+    }
     ensureLynxImageManager();
 
     if (mLynxImageManager != null) {
