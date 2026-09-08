@@ -248,6 +248,8 @@ void PageView::OnDestroy() {
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
   touch_view_map_.clear();
+  active_touch_pointer_id_.reset();
+  active_touch_views_.clear();
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
@@ -263,6 +265,10 @@ void PageView::InitManagers() {
       [this](const PointerEvent& event, const HitTestResult& result) {
         isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
             event, result);
+        if (event.device == PointerEvent::DeviceType::kTouch) {
+          auto* target = GetFirstNonAnonymousHitTestTarget(result);
+          ActivateTouchPseudoStatus(event.pointer_id, target);
+        }
         if (event.device != PointerEvent::DeviceType::kTouch &&
             event.device != PointerEvent::DeviceType::kMouse) {
           return;
@@ -916,6 +922,12 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
   }
   isolated_gesture_detector_.ClearScrollTapSuppressionForEndedEvents(events);
   ClearTapSuppressedPointersForEndedEvents(events);
+  for (const auto& event : events) {
+    if (event.type == PointerEvent::EventType::kUpEvent ||
+        event.type == PointerEvent::EventType::kCancel) {
+      DeactivateTouchPseudoStatus(event.pointer_id);
+    }
+  }
 
   if (render_settings_) {
     render_settings_->SetIsTouching(true);
@@ -977,6 +989,37 @@ void PageView::ClearTapSuppressedPointersForEndedEvents(
       fling_stop_tap_suppressed_pointer_ids_.erase(event.pointer_id);
     }
   }
+}
+
+void PageView::ActivateTouchPseudoStatus(int pointer_id, BaseView* target) {
+  if (!event_delegate_ || !target || active_touch_pointer_id_) {
+    return;
+  }
+
+  active_touch_pointer_id_ = pointer_id;
+  for (BaseView* view = target; view; view = view->Parent()) {
+    active_touch_views_.emplace_back(view->GetWeakPtr());
+    event_delegate_->OnActiveChanged(view->id(), true);
+    if (!view->EnableTouchPseudoPropagation()) {
+      break;
+    }
+  }
+}
+
+void PageView::DeactivateTouchPseudoStatus(int pointer_id) {
+  if (active_touch_pointer_id_ != pointer_id) {
+    return;
+  }
+
+  if (event_delegate_) {
+    for (const auto& weak_view : active_touch_views_) {
+      if (auto* view = weak_view.get()) {
+        event_delegate_->OnActiveChanged(view->id(), false);
+      }
+    }
+  }
+  active_touch_pointer_id_.reset();
+  active_touch_views_.clear();
 }
 
 void PageView::OnFlingStart() { active_fling_count_++; }
@@ -1836,6 +1879,8 @@ void PageView::ResetPageView(bool recycle) {
   animation_handler_->ClearCallbacks();
   SetupAnimationCallback();
   touch_view_map_.clear();
+  active_touch_pointer_id_.reset();
+  active_touch_views_.clear();
   fling_stop_tap_suppressed_pointer_ids_.clear();
   isolated_gesture_detector_.ClearScrollTapSuppressionStates();
   active_fling_count_ = 0;

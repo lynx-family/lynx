@@ -241,6 +241,7 @@ exposure-screen-margin-top
 exposure-screen-margin-bottom
 event-through
 event-through-active-regions
+enable-touch-pseudo-propagation
 hit-slop
 level
 enable-insert-platform-view-operation

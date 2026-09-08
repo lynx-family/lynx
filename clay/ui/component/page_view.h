@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -545,6 +546,8 @@ class PageView : public BaseView,
       const std::vector<PointerEvent>& events);
   void ClearTapSuppressedPointersForEndedEvents(
       const std::vector<PointerEvent>& events);
+  void ActivateTouchPseudoStatus(int pointer_id, BaseView* target);
+  void DeactivateTouchPseudoStatus(int pointer_id);
   // Report the deepest leaf view in the position to lynx.
   void ReportTopViewRawEvents(const std::vector<PointerEvent>& events);
   // Report pointer event with specified type
@@ -627,6 +630,10 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  // Only the initial touch drives :active. Its pointer ID prevents unrelated
+  // touch end or cancel events from clearing the active view chain.
+  std::optional<int> active_touch_pointer_id_;
+  std::vector<fml::WeakPtr<BaseView>> active_touch_views_;
   std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
   int active_fling_count_ = 0;
 

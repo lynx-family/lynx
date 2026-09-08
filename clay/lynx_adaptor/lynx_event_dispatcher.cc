@@ -367,6 +367,15 @@ void LynxEventDispatcher::OnTransitionEvent(const std::string& event_name,
   engine_proxy_->SendCustomEvent(event_name, view_id, params, "params");
 }
 
+void LynxEventDispatcher::OnActiveChanged(int view_id, bool active) {
+  if (!engine_proxy_) {
+    return;
+  }
+  auto prev_state = !active ? lynx::kPseudoStateActive : lynx::kPseudoStateNone;
+  auto cur_state = active ? lynx::kPseudoStateActive : lynx::kPseudoStateNone;
+  engine_proxy_->OnPseudoStatusChanged(view_id, prev_state, cur_state);
+}
+
 void LynxEventDispatcher::OnFocusChanged(int view_id, bool focus) {
   if (!engine_proxy_) {
     return;

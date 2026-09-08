@@ -258,6 +258,7 @@ enum class KeywordID {
   kExposureScreenMarginBottom,
   kEventThrough,
   kEventThroughActiveRegions,
+  kEnableTouchPseudoPropagation,
   kHitSlop,
   kLevel,
   kEnableInsertPlatformViewOperation,
