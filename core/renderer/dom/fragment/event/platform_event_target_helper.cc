@@ -613,6 +613,28 @@ bool PlatformEventTargetHelper::TargetIsParentOfAnotherTarget(
   return false;
 }
 
+fml::RefPtr<PlatformEventTarget>
+PlatformEventTargetHelper::RefineTextEventTarget(
+    const fml::RefPtr<PlatformEventTarget>& root,
+    const fml::RefPtr<PlatformEventTarget>& target, float point[2]) {
+  float text_point[2] = {point[0], point[1]};
+  ConvertPointFromAncestorToDescendant(text_point, root, target, point);
+  const int32_t inline_target_sign = platform_ref_->HitTestTextEventTarget(
+      target->Sign(), text_point[0], text_point[1]);
+  if (inline_target_sign < 0 || inline_target_sign == target->Sign()) {
+    return target;
+  }
+
+  auto inline_target = fml::MakeRefCounted<PlatformEventTarget>(
+      this, target->RootId(), inline_target_sign, 0.f, 0.f, target->Width(),
+      target->Height());
+  inline_target->SetRendererHostSign(target->RendererHostSign());
+  inline_target->SetPlatformRendererType(PlatformRendererType::kText);
+  inline_target->SetEventSet({PlatformEventName::kTap});
+  inline_target->SetParentTarget(target);
+  return inline_target;
+}
+
 fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetTreeRoot(
     const fml::RefPtr<PlatformEventTarget>& target) {
   if (target == nullptr) {

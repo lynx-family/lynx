@@ -5,13 +5,23 @@
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 
 #include "core/renderer/dom/ios/lepus_value_converter.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
+#import <Lynx/LynxRendererContext.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxUIOwner.h>
 #import "LynxTimingConstants.h"
+
+@interface LynxTextRenderer (LynxInlineEventTarget)
+- (nullable NSArray<NSNumber*>*)lynx_inlineEventTargetInfoAtPoint:(CGPoint)point;
+@end
 
 namespace lynx {
 namespace tasm {
@@ -58,6 +68,34 @@ void NativePaintingCtxPlatformDarwinRef::GetScreenSize(float size[2]) {
   const auto res = context->GetScreenSize();
   size[0] = res.width;
   size[1] = res.height;
+}
+
+int32_t NativePaintingCtxPlatformDarwinRef::HitTestTextEventTarget(int32_t text_id, float x,
+                                                                   float y) {
+  LynxRendererContext* renderer_context = GetRendererContext();
+  if (renderer_context == nil) {
+    return -1;
+  }
+
+  NSArray<NSNumber*>* target_info = nil;
+  void* page = [renderer_context getTextBundle:text_id];
+  if (page != nullptr) {
+    id<LynxServiceTextProtocol> text_service = LynxService(LynxServiceTextProtocol);
+    target_info = [text_service getHitTestEventTargetsOfPage:page
+                                             ByTouchPosition:CGPointMake(x, y)];
+    if (target_info.count >= 3 && [target_info[2] boolValue]) {
+      return -1;
+    }
+  } else {
+    LynxTextRenderer* text_renderer = [renderer_context.textRenderManager takeTextRender:text_id];
+    target_info = [text_renderer lynx_inlineEventTargetInfoAtPoint:CGPointMake(x, y)];
+  }
+
+  if (target_info.count < 2 ||
+      ([target_info[1] unsignedIntValue] & text::kTextEventTargetTap) == 0) {
+    return -1;
+  }
+  return [target_info[0] intValue];
 }
 
 LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {

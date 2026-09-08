@@ -23,11 +23,13 @@ import android.text.style.StyleSpan;
 import android.util.Log;
 import android.util.SparseArray;
 import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.mapbuffer.CompactArrayBuffer;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
+import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.shadow.ShadowStyle;
@@ -37,6 +39,7 @@ import com.lynx.tasm.behavior.ui.image.InlineImageSpan;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.LynxBackground;
+import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.fontface.FontFaceManager;
 import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.PixelUtils;
@@ -88,6 +91,9 @@ public class TextMeasurer {
   private final static int kPropColorConicGradient = 108;
   private final static int kPropImageLoopCount = 110;
   private final static int kPropImageMode = 111;
+  private final static int kPropInlineEventTarget = 112;
+
+  private final static int kTextEventTargetTap = 1 << 0;
 
   private final static int kTextPropEnd = 0xFF;
 
@@ -119,6 +125,8 @@ public class TextMeasurer {
     boolean isParagraph = true;
     int start = 0, end = 0;
     int inlineViewSign = -1;
+    int inlineEventTargetSign = -1;
+    int inlineEventTargetMask = 0;
     HashMap<Integer, NativeLayoutNodeSpan> inlineViewMap = new HashMap<>();
 
     int[] margins = null;
@@ -150,6 +158,14 @@ public class TextMeasurer {
             buildStyledSpanIfNeeded(
                 start, end, ops, textAttributes, new TypefaceListener(sign, this), false);
           }
+          if (inlineEventTargetSign >= 0 && (inlineEventTargetMask & kTextEventTargetTap) != 0) {
+            Map<String, EventsListener> events = new HashMap<>();
+            events.put("tap", null);
+            ops.add(new BaseTextShadowNode.SetSpanOperation(start, end,
+                new EventTargetSpan(inlineEventTargetSign, events,
+                    EventTarget.EnableStatus.Undefined, true, EventTarget.EnableStatus.Undefined,
+                    EventTarget.PointerEventsValue.Unset, new JavaOnlyMap())));
+          }
 
           // reset current span for inline node
           textAttributes = null;
@@ -157,6 +173,8 @@ public class TextMeasurer {
           isParagraph = true;
           inlineImageProps = null;
           inlineViewSign = -1;
+          inlineEventTargetSign = -1;
+          inlineEventTargetMask = 0;
           break;
         case kPropTextString:
           text = iterator.next().getString();
@@ -510,6 +528,10 @@ public class TextMeasurer {
           break;
         case kPropInlineViewSign:
           inlineViewSign = iterator.next().getInt();
+          break;
+        case kPropInlineEventTarget:
+          inlineEventTargetSign = iterator.next().getInt();
+          inlineEventTargetMask = iterator.next().getInt();
           break;
 
         case kTextPropTextDecoration:

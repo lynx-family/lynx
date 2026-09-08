@@ -431,7 +431,15 @@ fml::RefPtr<PlatformEventTarget> PlatformEventHandler::FindTarget(
     return nullptr;
   }
   float point[] = {pointer_x, pointer_y};
-  return target_tree_->HitTest(point);
+  auto target = target_tree_->HitTest(point);
+  if (target == nullptr || platform_ref_ == nullptr) {
+    return target;
+  }
+  if (target->GetPlatformRendererType() != PlatformRendererType::kText) {
+    return target;
+  }
+  return platform_ref_->GetEventTargetHelper()->RefineTextEventTarget(
+      target_tree_, target, point);
 }
 
 void PlatformEventHandler::ResetFocusInfo() {

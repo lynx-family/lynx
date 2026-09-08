@@ -4,7 +4,6 @@
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 
-#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -405,6 +404,17 @@ bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
   JNIEnv* env = base::android::AttachCurrentThread();
   return Java_PlatformRendererContext_isRendererHostScrollable(
       env, local_ref.Get(), sign);
+}
+
+int32_t PlatformRendererContext::HitTestTextEventTarget(int32_t text_id,
+                                                        float x, float y) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return -1;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_PlatformRendererContext_hitTestTextEventTarget(
+      env, local_ref.Get(), text_id, x, y);
 }
 
 void PlatformRendererContext::InvokeUIMethod(
