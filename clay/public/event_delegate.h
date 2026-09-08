@@ -46,6 +46,7 @@ class EventDelegate {
   virtual void OnTransitionEvent(const std::string& event_name,
                                  const char* animation_name, int view_id,
                                  ClayAnimationPropertyType type) = 0;
+  virtual void OnActiveChanged(int view_id, bool active) {}
   virtual void OnFocusChanged(int view_id, bool focus) = 0;
   virtual void OnHoverChanged(int view_id, bool hover) = 0;
   virtual void OnDragDropEvent(const std::string& event_name, int view_id,

@@ -3229,6 +3229,9 @@ bool BaseView::HandleCommonAttribute(const char* attr,
         }
       }
       break;
+    case KeywordID::kEnableTouchPseudoPropagation:
+      enable_touch_pseudo_propagation_ = utils::GetBool(value, true);
+      break;
     case KeywordID::kHitSlop:
       if (value.IsMap()) {
         const auto& map = value.GetMap();
