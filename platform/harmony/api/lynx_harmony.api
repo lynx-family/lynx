@@ -334,6 +334,7 @@ export class LynxContext implements IContext {
   public updateScreenMetrics(width: number, height: number): void;
   updateCustomData(data: Record<string, Object>): void;
   public loadTemplate(url: string, bundle: TemplateBundle, buffer: ArrayBuffer, metaData: MetaData): void;
+  public registerLazyBundle(url: string, bundle: TemplateBundle): boolean;
   public reload(data: MetaData): void;
   public getAllTimingInfo(): void;
   public setExtraTiming(extraTiming: LynxExtraTiming): void;
