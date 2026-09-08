@@ -276,11 +276,11 @@ void ShadowNode::CreateTextInfo(txt::Paragraph* paragraph) {
         info.need_mount = true;
         if (text_box.back().direction == txt::TextDirection::rtl) {
           info.location =
-              FloatPoint(text_box.back().rect.Left(),
+              FloatPoint(text_box.back().rect.Left() + node->MarginLeft(),
                          text_box.back().rect.Top() + node->MarginTop());
         } else {
           info.location =
-              FloatPoint(text_box.front().rect.Left(),
+              FloatPoint(text_box.front().rect.Left() + node->MarginLeft(),
                          text_box.front().rect.Top() + node->MarginTop());
         }
       } else {

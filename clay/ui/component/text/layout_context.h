@@ -51,9 +51,9 @@ class LayoutContextText : public LayoutContext {
 
   // Used for simulate paddings/margins of inline views.
   int AddFakePlaceholder(float width) {
-    txt::PlaceholderRun fake_placeholder;
-    fake_placeholder.height = 1.0;
-    fake_placeholder.width = width;
+    txt::PlaceholderRun fake_placeholder(width, 1.0,
+                                         txt::PlaceholderAlignment::kBaseline,
+                                         txt::TextBaseline::kAlphabetic, 0);
     return AddPlaceholder(fake_placeholder);
   }
 
