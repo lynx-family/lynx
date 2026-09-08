@@ -14,6 +14,7 @@
 #import <Lynx/LynxMemoryListener.h>
 #import <Lynx/LynxNinePatchImageProcessor.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTraceEvent.h>
@@ -452,7 +453,7 @@ LYNX_REGISTER_UI("image")
   __weak typeof(self) weakSelf = self;
   __block void (^ready)(UIImage*, LynxURL*) = ^(UIImage* image, LynxURL* requestURL) {
     typeof(weakSelf) strongSelf = weakSelf;
-    if (!strongSelf) {
+    if (!strongSelf || ((id<LynxRendererHost>)strongSelf.view).renderer != nil) {
       return;
     }
     if (image == nil) {
@@ -663,6 +664,10 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 }
 
 - (void)requestImage {
+  // Fragment rendering owns both the image resource and its presentation.
+  if (((id<LynxRendererHost>)self.view).renderer != nil) {
+    return;
+  }
   self.image = nil;
   [self requestImage:_src];
   [self requestImage:_placeholder];
@@ -792,6 +797,9 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 }
 
 - (void)requestImage:(LynxURL*)requestUrl {
+  if (((id<LynxRendererHost>)self.view).renderer != nil) {
+    return;
+  }
   if (_cancelBlocks[@(requestUrl.type)]) {
     _cancelBlocks[@(requestUrl.type)]();
     _cancelBlocks[@(requestUrl.type)] = nil;
