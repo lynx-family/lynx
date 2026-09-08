@@ -2,31 +2,68 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundRuntime.h>
+#import <Lynx/LynxBaseInspectorController.h>
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxDevtool.h>
 #import <Lynx/LynxHttpStreamingDelegate.h>
+#import <Lynx/LynxView+Internal.h>
 #import "LynxFetchModule.h"
+
+@interface LynxBackgroundRuntime (LynxFetchModuleInternal)
+- (LynxDevtool *)devtool;
+@end
 
 @implementation LynxFetchModuleEventSender
 - (void)sendGlobalEvent:(nonnull NSString *)name withParams:(nullable NSArray *)params {
   __strong typeof(_eventSender) strongSender = _eventSender;
   [strongSender sendGlobalEvent:name withParams:params];
 }
+
+- (nullable id<LynxNetworkRequestObserver>)networkRequestObserver {
+  __strong typeof(_eventSender) strongSender = _eventSender;
+  id<LynxBaseInspectorController> inspectorController = nil;
+  if ([strongSender isKindOfClass:LynxContext.class]) {
+    inspectorController = [(LynxContext *)strongSender getLynxView].baseInspectorController;
+  } else if ([strongSender isKindOfClass:LynxBackgroundRuntime.class]) {
+    inspectorController = [(LynxBackgroundRuntime *)strongSender devtool].baseInspectorController;
+  }
+  return inspectorController.networkRequestObserver;
+}
 @end
 
 @implementation LynxHttpStreamingDelegate {
   LynxFetchModuleEventSender *_eventSender;
   NSString *_streamingId;
+  id<LynxNetworkRequestObserver> _networkObserver;
+  NSString *_networkRequestId;
 }
 
 - (instancetype)initWithParam:(LynxFetchModuleEventSender *)sender
               withStreamingId:(NSString *)streamingId {
+  return [self initWithParam:sender
+             withStreamingId:streamingId
+             networkObserver:nil
+            networkRequestId:@""];
+}
+
+- (instancetype)initWithParam:(LynxFetchModuleEventSender *)sender
+              withStreamingId:(NSString *)streamingId
+              networkObserver:(nullable id<LynxNetworkRequestObserver>)networkObserver
+             networkRequestId:(NSString *)networkRequestId {
   if (self = [super init]) {
     _eventSender = sender;
     _streamingId = streamingId;
+    _networkObserver = networkObserver;
+    _networkRequestId = networkRequestId;
   }
   return self;
 }
 
 - (void)onData:(NSData *)bytes {
+  if (_networkRequestId.length > 0) {
+    [_networkObserver dataReceived:_networkRequestId data:bytes];
+  }
   [_eventSender sendGlobalEvent:_streamingId
                      withParams:@[ @{
                        @"event" : @"onData",
@@ -34,9 +71,15 @@
                      } ]];
 }
 - (void)onEnd {
+  if (_networkRequestId.length > 0) {
+    [_networkObserver loadingFinished:_networkRequestId];
+  }
   [_eventSender sendGlobalEvent:_streamingId withParams:@[ @{@"event" : @"onEnd"} ]];
 }
 - (void)onError:(NSString *)error {
+  if (_networkRequestId.length > 0) {
+    [_networkObserver loadingFailed:_networkRequestId errorText:error canceled:NO];
+  }
   [_eventSender sendGlobalEvent:_streamingId
                      withParams:@[ @{
                        @"event" : @"onError",

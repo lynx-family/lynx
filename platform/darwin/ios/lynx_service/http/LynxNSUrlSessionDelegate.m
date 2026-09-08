@@ -5,11 +5,28 @@
 #import <Foundation/Foundation.h>
 #import <LynxService/LynxNSUrlSessionDelegate.h>
 
+static BOOL IsServerSentEventResponse(NSHTTPURLResponse *response) {
+  __block NSString *contentType = nil;
+  [response.allHeaderFields enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop) {
+    if ([[key description] caseInsensitiveCompare:@"Content-Type"] == NSOrderedSame) {
+      contentType = [value description];
+      *stop = YES;
+    }
+  }];
+  if (contentType.length == 0) {
+    return NO;
+  }
+  NSString *mediaType = [[[contentType componentsSeparatedByString:@";"] firstObject]
+      stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+  return [mediaType caseInsensitiveCompare:@"text/event-stream"] == NSOrderedSame;
+}
+
 @implementation LynxNSUrlSessionDelegate {
   LynxHttpStreamingDelegate *_httpDelegate;
   LynxHttpCallback _callback;
   NSMutableData *_buffer;
   BOOL _useDeprecatedStreamingConfig;
+  BOOL _isServerSentEvent;
 }
 
 - (instancetype)initWithDelegate:(LynxHttpStreamingDelegate *)httpDelegate
@@ -33,6 +50,7 @@
   resp.url = response.URL.absoluteString;
 
   NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+  _isServerSentEvent = IsServerSentEventResponse(httpResponse);
   resp.statusText = @"OK";
   resp.httpHeaders = httpResponse.allHeaderFields;
   resp.statusCode = httpResponse.statusCode;
@@ -43,7 +61,9 @@
 - (void)URLSession:(NSURLSession *)session
           dataTask:(NSURLSessionDataTask *)dataTask
     didReceiveData:(NSData *)data {
-  if (_useDeprecatedStreamingConfig) {
+  if (_isServerSentEvent) {
+    [_httpDelegate processSseData:_buffer withData:data];
+  } else if (_useDeprecatedStreamingConfig) {
     [_httpDelegate processChunkedData:_buffer withData:data];
   } else {
     [_httpDelegate processStreamingData:data];
