@@ -28,6 +28,10 @@ static NSMapTable<id, NSValue *> *s_envMap = nil;
   return self;
 }
 
+- (instancetype)initWithParam:(id)param {
+  return [self initWithToken:param];
+}
+
 + (void)putEnv:(void *)napiEnv forToken:(id)token {
   if (token && napiEnv) {
     @synchronized(s_envMap) {

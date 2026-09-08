@@ -9,6 +9,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ExplorerModule : NSObject <LynxModule>
 
+- (void)openSchema:(NSString *)url;
+- (void)openRoute:(NSString *)url
+        container:(NSString *)container
+         callback:(LynxCallbackBlock)callback;
+- (void)openScan;
+- (void)navigateBack:(LynxCallbackBlock)callback;
+
 @end
 
 NS_ASSUME_NONNULL_END
