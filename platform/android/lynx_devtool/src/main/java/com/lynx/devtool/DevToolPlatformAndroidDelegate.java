@@ -12,6 +12,7 @@ import android.widget.Toast;
 import androidx.annotation.Keep;
 import com.lynx.devtool.helper.EmulateTouchHelper;
 import com.lynx.devtool.helper.LepusDebugInfoHelper;
+import com.lynx.devtool.helper.PointerEventDispatcher;
 import com.lynx.devtool.helper.ScreenCapturer;
 import com.lynx.devtool.helper.ScreenCastHelper;
 import com.lynx.devtool.helper.UITreeHelper;
@@ -38,6 +39,9 @@ public class DevToolPlatformAndroidDelegate {
 
   // EmulateTouch
   private EmulateTouchHelper mTouchHelper;
+
+  // Synthetic pointer event injection
+  private PointerEventDispatcher mInputEventDispatcher;
 
   // PageReload
   private PageReloadHelper mReloadHelper;
@@ -70,6 +74,8 @@ public class DevToolPlatformAndroidDelegate {
     mFacadePtr = nativeCreateDevToolPlatformFacade();
 
     mTouchHelper = new EmulateTouchHelper(mLynxView);
+
+    mInputEventDispatcher = new PointerEventDispatcher(lynxView);
 
     mReloadHelper = null;
 
@@ -311,6 +317,9 @@ public class DevToolPlatformAndroidDelegate {
     if (mTouchHelper != null) {
       mTouchHelper.attach(lynxView);
     }
+    if (mInputEventDispatcher != null) {
+      mInputEventDispatcher.attach(lynxView);
+    }
   }
 
   public String getLepusDebugInfoUrl(String fileName) {
@@ -329,6 +338,10 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   public void destroy() {
+    if (mInputEventDispatcher != null) {
+      mInputEventDispatcher.detach();
+      mInputEventDispatcher = null;
+    }
     if (mFacadePtr != 0) {
       nativeDestroyDevToolPlatformFacade(mFacadePtr);
     }
@@ -347,6 +360,17 @@ public class DevToolPlatformAndroidDelegate {
       mTouchHelper.emulateTouch(type, (int) (x * scale + 0.5f), (int) (y * scale + 0.5f),
           deltaX * scale + 0.5f, deltaY * scale + 0.5f, button, mDevToolDelegate);
     }
+  }
+
+  @CalledByNative
+  public boolean injectPointerEvent(final int type, final float x, final float y,
+      final float deltaX, final float deltaY, final int pointerId, final int modifiers,
+      final long timestampUs) {
+    // Cache to a local so a concurrent destroy() cannot null the field between check and use.
+    final PointerEventDispatcher dispatcher = mInputEventDispatcher;
+    return dispatcher != null
+        && dispatcher.injectPointerEvent(
+            type, x, y, deltaX, deltaY, pointerId, modifiers, timestampUs);
   }
 
   @CalledByNative
