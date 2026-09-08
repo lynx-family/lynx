@@ -14,6 +14,8 @@ lynx_core_source_set("quickjs") {
   deps = [
     "../../../../../base/src:base_log_headers",
     "../../bytecode:jscache",
+    "//third_party/modp_b64",
+    "//third_party/zlib",
   ]
 
   if (is_mac || is_ios || is_linux) {
