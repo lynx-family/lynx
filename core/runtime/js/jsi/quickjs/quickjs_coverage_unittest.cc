@@ -197,12 +197,12 @@ TEST(QuickjsRuntimeCoverageTest, CoverageIdIsCreatedOnFirstDumpAndStaysStable) {
   report_event->Wait();
   ASSERT_EQ(tasm::report::EventTrackerWaitableEvent::stack_.size(), 1u);
   const auto first_dump_props =
-      tasm::report::EventTrackerWaitableEvent::stack_.front().GetStringProps();
+      tasm::report::EventTrackerWaitableEvent::stack_.front().GetPropsAsMap();
   const auto first_coverage_id = first_dump_props.find("coverage_id");
   ASSERT_NE(first_coverage_id, first_dump_props.end());
-  EXPECT_FALSE(first_coverage_id->second.empty());
+  EXPECT_FALSE(first_coverage_id->second.GetStringValue().empty());
   EXPECT_EQ(
-      first_coverage_id->second.find(
+      first_coverage_id->second.GetStringValue().find(
           std::to_string(reinterpret_cast<uintptr_t>(runtime.get())) + "_"),
       0u);
 
@@ -211,10 +211,11 @@ TEST(QuickjsRuntimeCoverageTest, CoverageIdIsCreatedOnFirstDumpAndStaysStable) {
   report_event->Wait();
   ASSERT_EQ(tasm::report::EventTrackerWaitableEvent::stack_.size(), 1u);
   const auto second_dump_props =
-      tasm::report::EventTrackerWaitableEvent::stack_.front().GetStringProps();
+      tasm::report::EventTrackerWaitableEvent::stack_.front().GetPropsAsMap();
   const auto second_coverage_id = second_dump_props.find("coverage_id");
   ASSERT_NE(second_coverage_id, second_dump_props.end());
-  EXPECT_EQ(second_coverage_id->second, first_coverage_id->second);
+  EXPECT_EQ(second_coverage_id->second.GetStringValue(),
+            first_coverage_id->second.GetStringValue());
 }
 
 TEST(QuickjsRuntimeCoverageTest, CoverageDisabledRuntimeDoesNotDumpCoverage) {

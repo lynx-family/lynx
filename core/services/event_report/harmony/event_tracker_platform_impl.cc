@@ -107,14 +107,21 @@ void DoReportEvent(napi_value instance_id_napi_value, MoveOnlyEvent&& event) {
                           event_name.length(), &argv[1]);
   // arg[2] - props
   napi_create_object(harmony::env_, &argv[2]);
-  for (const auto& [key, value] : event.GetStringProps()) {
-    base::NapiUtil::SetPropToJSMap(harmony::env_, argv[2], key, value);
-  }
-  for (const auto& [key, value] : event.GetDoubleProps()) {
-    base::NapiUtil::SetPropToJSMap(harmony::env_, argv[2], key, value);
-  }
-  for (const auto& [key, value] : event.GetIntProps()) {
-    base::NapiUtil::SetPropToJSMap(harmony::env_, argv[2], key, value);
+  for (const auto& prop : event.GetProps()) {
+    switch (prop.GetType()) {
+      case EventProp::Type::kString:
+        base::NapiUtil::SetPropToJSMap(harmony::env_, argv[2], prop.GetKey(),
+                                       prop.GetStringValue());
+        break;
+      case EventProp::Type::kInt32:
+        base::NapiUtil::SetPropToJSMap(harmony::env_, argv[2], prop.GetKey(),
+                                       prop.GetIntValue());
+        break;
+      case EventProp::Type::kDouble:
+        base::NapiUtil::SetPropToJSMap(harmony::env_, argv[2], prop.GetKey(),
+                                       prop.GetDoubleValue());
+        break;
+    }
   }
   // Call JS Method :
   // LynxEventReporter.onEventCallByNative(instanceId, eventName, props)

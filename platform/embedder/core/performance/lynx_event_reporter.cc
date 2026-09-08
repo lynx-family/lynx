@@ -70,17 +70,21 @@ void LynxEventReporter::OnEvent(int32_t instance_id,
 
     // 1. set properties
     {
-      for (const auto& item : event.GetStringProps()) {
-        map_value.SetProperty(item.first.c_str(),
-                              lynx::pub::LynxValue(item.second));
-      }
-      for (const auto& item : event.GetIntProps()) {
-        map_value.SetProperty(item.first.c_str(),
-                              lynx::pub::LynxValue(item.second));
-      }
-      for (const auto& item : event.GetDoubleProps()) {
-        map_value.SetProperty(item.first.c_str(),
-                              lynx::pub::LynxValue(item.second));
+      for (const auto& prop : event.GetProps()) {
+        switch (prop.GetType()) {
+          case tasm::report::EventProp::Type::kString:
+            map_value.SetProperty(prop.GetKey().c_str(),
+                                  lynx::pub::LynxValue(prop.GetStringValue()));
+            break;
+          case tasm::report::EventProp::Type::kInt32:
+            map_value.SetProperty(prop.GetKey().c_str(),
+                                  lynx::pub::LynxValue(prop.GetIntValue()));
+            break;
+          case tasm::report::EventProp::Type::kDouble:
+            map_value.SetProperty(prop.GetKey().c_str(),
+                                  lynx::pub::LynxValue(prop.GetDoubleValue()));
+            break;
+        }
       }
     }
 

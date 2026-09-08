@@ -13,6 +13,7 @@
 #if defined(OS_IOS)
 #include "core/renderer/utils/lynx_env.h"
 #endif
+#include "core/services/event_report/event_tracker.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/trace/service_trace_event_def.h"
 
@@ -268,90 +269,67 @@ void PerfControllerClay::EndFluencyMonitor(int id) {
 
     fps_tracer->Stop();
     std::weak_ptr<PerfControllerClay> weak_self = shared_from_this();
-    perf_controller_proxy_->RunTaskInReportThread(
-        [weak_self, fps_tracer = std::move(fps_tracer)] {
-          auto strong_self = weak_self.lock();
-          if (!strong_self) {
-            return;
-          }
+    perf_controller_proxy_->RunTaskInReportThread([weak_self,
+                                                   fps_tracer =
+                                                       std::move(fps_tracer)] {
+      auto strong_self = weak_self.lock();
+      if (!strong_self) {
+        return;
+      }
 
-          clay::FpsRawMetrics metrics;
-          fps_tracer->GetFpsMetrics(metrics);
-          // just ignore scroll event with duration less than 200ms.
-          if (metrics.duration_ms < kMinSessionDurationInMs) {
-            return;
-          }
+      clay::FpsRawMetrics metrics;
+      fps_tracer->GetFpsMetrics(metrics);
+      // just ignore scroll event with duration less than 200ms.
+      if (metrics.duration_ms < kMinSessionDurationInMs) {
+        return;
+      }
 
-          shell::ReportEvent event;
-          event.event_name = std::string(kLynxFluencyEvent);
+      report::MoveOnlyEvent event;
+      event.SetName(kLynxFluencyEvent.data());
+      event.SetProps("lynxsdk_fluency_scene", fps_tracer->GetConfig().scene);
+      event.SetProps("lynxsdk_fluency_tag", fps_tracer->GetConfig().tag);
+      event.SetProps("lynxsdk_fluency_maximum_frames",
+                     metrics.max_refresh_rate);
+      event.SetProps("lynxsdk_fluency_frames_number", metrics.frames);
+      event.SetProps("lynxsdk_fluency_fps", metrics.fps);
+      event.SetProps("lynxsdk_fluency_dur", metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop1_count", metrics.drop1_count);
+      event.SetProps("lynxsdk_fluency_drop1_duration",
+                     metrics.drop1_duration_ms);
+      event.SetProps("lynxsdk_fluency_drop3_count", metrics.drop3_count);
+      event.SetProps("lynxsdk_fluency_drop3_duration",
+                     metrics.drop3_duration_ms);
+      event.SetProps("lynxsdk_fluency_drop7_count", metrics.drop7_count);
+      event.SetProps("lynxsdk_fluency_drop7_duration",
+                     metrics.drop7_duration_ms);
+      event.SetProps("lynxsdk_fluency_drop25_count", metrics.drop25_count);
+      event.SetProps("lynxsdk_fluency_drop25_duration",
+                     metrics.drop25_duration_ms);
+      event.SetProps("lynxsdk_fluency_drop1_count_per_second",
+                     1000.0 * metrics.drop1_count / metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop3_count_per_second",
+                     1000.0 * metrics.drop3_count / metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop7_count_per_second",
+                     1000.0 * metrics.drop7_count / metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop25_count_per_second",
+                     1000.0 * metrics.drop25_count / metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop1_ratio",
+                     1000.0 * metrics.drop1_duration_ms / metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop3_ratio",
+                     1000.0 * metrics.drop3_duration_ms / metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop7_ratio",
+                     1000.0 * metrics.drop7_duration_ms / metrics.duration_ms);
+      event.SetProps("lynxsdk_fluency_drop25_ratio",
+                     1000.0 * metrics.drop25_duration_ms / metrics.duration_ms);
 
-          // string props
-          event.string_props.insert_or_assign("lynxsdk_fluency_scene",
-                                              fps_tracer->GetConfig().scene);
-          event.string_props.insert_or_assign("lynxsdk_fluency_tag",
-                                              fps_tracer->GetConfig().tag);
+      // Use real page config probability
+      event.SetProps("lynxsdk_fluency_pageconfig_probability",
+                     strong_self->page_config_probability_);
+      event.SetProps("lynxsdk_fluency_enabled_by_sampling", 0);
 
-          // int props
-          event.int_props.insert_or_assign("lynxsdk_fluency_maximum_frames",
-                                           metrics.max_refresh_rate);
-          event.int_props.insert_or_assign("lynxsdk_fluency_frames_number",
-                                           metrics.frames);
-          event.int_props.insert_or_assign("lynxsdk_fluency_fps", metrics.fps);
-          event.int_props.insert_or_assign("lynxsdk_fluency_dur",
-                                           metrics.duration_ms);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop1_count",
-                                           metrics.drop1_count);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop1_duration",
-                                           metrics.drop1_duration_ms);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop3_count",
-                                           metrics.drop3_count);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop3_duration",
-                                           metrics.drop3_duration_ms);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop7_count",
-                                           metrics.drop7_count);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop7_duration",
-                                           metrics.drop7_duration_ms);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop25_count",
-                                           metrics.drop25_count);
-          event.int_props.insert_or_assign("lynxsdk_fluency_drop25_duration",
-                                           metrics.drop25_duration_ms);
-
-          // double props
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop1_count_per_second",
-              1000.0 * metrics.drop1_count / metrics.duration_ms);
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop3_count_per_second",
-              1000.0 * metrics.drop3_count / metrics.duration_ms);
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop7_count_per_second",
-              1000.0 * metrics.drop7_count / metrics.duration_ms);
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop25_count_per_second",
-              1000.0 * metrics.drop25_count / metrics.duration_ms);
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop1_ratio",
-              1000.0 * metrics.drop1_duration_ms / metrics.duration_ms);
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop3_ratio",
-              1000.0 * metrics.drop3_duration_ms / metrics.duration_ms);
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop7_ratio",
-              1000.0 * metrics.drop7_duration_ms / metrics.duration_ms);
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_drop25_ratio",
-              1000.0 * metrics.drop25_duration_ms / metrics.duration_ms);
-
-          // Use real page config probability
-          event.double_props.insert_or_assign(
-              "lynxsdk_fluency_pageconfig_probability",
-              strong_self->page_config_probability_);
-          event.int_props.insert_or_assign(
-              "lynxsdk_fluency_enabled_by_sampling", 0);
-
-          strong_self->perf_controller_proxy_->OnEvent(
-              strong_self->instance_id_, event);
-        });
+      strong_self->perf_controller_proxy_->OnEvent(strong_self->instance_id_,
+                                                   std::move(event));
+    });
   }
 }
 

@@ -18,25 +18,25 @@ void EventTrackerPlatformImpl::OnEvent(int32_t instance_id, MoveOnlyEvent&& even
     return;
   }
   NSMutableDictionary* props = [NSMutableDictionary dictionary];
-  for (auto const& item : event.GetStringProps()) {
-    NSString* key = [NSString stringWithUTF8String:item.first.c_str()];
-    NSString* value = [NSString stringWithUTF8String:item.second.c_str()];
-    if (key && value) {
-      [props setObject:value forKey:key];
+  for (const auto& prop : event.GetProps()) {
+    NSString* key = [NSString stringWithUTF8String:prop.GetKey().c_str()];
+    if (!key) {
+      continue;
     }
-  }
-  for (auto const& item : event.GetIntProps()) {
-    NSString* key = [NSString stringWithUTF8String:item.first.c_str()];
-    NSNumber* value = [NSNumber numberWithInt:item.second];
-    if (key && value) {
-      [props setObject:value forKey:key];
-    }
-  }
-  for (auto const& item : event.GetDoubleProps()) {
-    NSString* key = [NSString stringWithUTF8String:item.first.c_str()];
-    NSNumber* value = [NSNumber numberWithDouble:item.second];
-    if (key && value) {
-      [props setObject:value forKey:key];
+    switch (prop.GetType()) {
+      case EventProp::Type::kString: {
+        NSString* string_value = [NSString stringWithUTF8String:prop.GetStringValue().c_str()];
+        if (string_value) {
+          [props setObject:string_value forKey:key];
+        }
+        break;
+      }
+      case EventProp::Type::kInt32:
+        [props setObject:@(prop.GetIntValue()) forKey:key];
+        break;
+      case EventProp::Type::kDouble:
+        [props setObject:@(prop.GetDoubleValue()) forKey:key];
+        break;
     }
   }
   [LynxEventReporter onEvent:eventName instanceId:instance_id props:props.copy];
