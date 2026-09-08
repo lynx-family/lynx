@@ -38,7 +38,7 @@ class RenderImageClient {
 
 class RenderImage : public RenderBox, public ImageResourceClient {
  public:
-  RenderImage() = default;
+  RenderImage();
   ~RenderImage() override;
 
   const char* GetName() const override;
@@ -161,7 +161,7 @@ class RenderImage : public RenderBox, public ImageResourceClient {
   bool enable_low_quality_ = false;
   // Decide whether decode image into the size of real rendering areas rather
   // than original size.
-  bool down_sampling_ = false;
+  bool down_sampling_;
 
   std::optional<Color> tint_color_ = std::nullopt;
 
