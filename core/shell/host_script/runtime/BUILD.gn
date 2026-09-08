@@ -1,0 +1,23 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../Lynx.gni")
+
+lynx_core_source_set("host_script") {
+  sources = [
+    "../lynx_view/lynx_view_ref_proxy.h",
+    "../lynx_view/lynx_view_ref_types.h",
+    "host_script_js_dispatcher.cc",
+    "host_script_js_dispatcher.h",
+    "host_script_module.cc",
+    "host_script_module.h",
+    "host_script_session.cc",
+    "host_script_session.h",
+  ]
+
+  deps = [
+    "../../../../third_party/binding/napi:napi_binding_base",
+    "../../../runtime/common/napi:napi_binding_core",
+  ]
+}
