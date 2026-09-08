@@ -208,6 +208,7 @@ unittest_set("js_debug_testset") {
     "../:devtool_common_config",
   ]
   sources = [
+    "../../js_inspect/quickjs/quickjs_inspector_client_impl_unittest.cc",
     "helper/js_debug_helper_unittest.cc",
     "inspector_client_delegate_impl_unittest.cc",
     "java_script_debugger_ng_unittest.cc",

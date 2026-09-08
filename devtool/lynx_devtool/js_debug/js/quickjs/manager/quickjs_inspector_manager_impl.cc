@@ -34,7 +34,8 @@ void QuickjsInspectorManagerImpl::InitInspector(
   inspector_group_id_ = inspector_client_->InitInspector(
       quickjs_runtime->getJSContext(), group_id_,
       devtool::kTargetJSPrefix + group_id_);
-  inspector_client_->ConnectSession(instance_id_, inspector_group_id_);
+  inspector_client_->ConnectSession(instance_id_, inspector_group_id_,
+                                    runtime_id_);
 
   static thread_local std::once_flag set_release_ctx_callback;
   if (group_id_ != devtool::kSingleGroupStr) {
@@ -62,7 +63,7 @@ void QuickjsInspectorManagerImpl::DestroyInspector() {
     sp->OnRuntimeDestroyed(runtime_id_);
   }
   if (inspector_client_ != nullptr) {
-    inspector_client_->DisconnectSession(instance_id_);
+    inspector_client_->DisconnectSession(instance_id_, runtime_id_);
     // Only call DestroyInspector() when using single group, because the
     // LEPUSContext will be destroyed.
     if (group_id_ == devtool::kSingleGroupStr) {
