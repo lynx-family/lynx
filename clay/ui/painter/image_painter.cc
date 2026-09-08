@@ -232,7 +232,8 @@ void ImagePainter::PaintImage(GraphicsContext* context,
                render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
                    content.height()))});
 
-  mipmapped = image_data.image_resource->GetImage()->IsMipmapped();
+  mipmapped = image_data.image_resource->GetImage()->IsMipmapped() &&
+              image_data.image_resource->GetImage()->HasResized();
 #endif  // ENABLE_SKITY
 
 #ifndef ENABLE_SKITY

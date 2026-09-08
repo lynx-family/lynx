@@ -58,4 +58,12 @@ void BaseImage::SetExpectSizeCalculator(
   }
 }
 
+bool BaseImage::HasResized() const {
+  if (render_info_.isEmpty()) {
+    return false;
+  }
+  return render_info_.width() != orig_info_.width() ||
+         render_info_.height() != orig_info_.height();
+}
+
 }  // namespace clay

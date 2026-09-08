@@ -58,6 +58,7 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
 
   void SetMipmapped(bool mipmapped) { mipmapped_ = mipmapped; }
   bool IsMipmapped() const { return mipmapped_; }
+  bool HasResized() const;
 
   std::unique_ptr<BaseImageInstance> NewInstance();
   virtual void OnInstanceCreated(BaseImageInstance* instance);
