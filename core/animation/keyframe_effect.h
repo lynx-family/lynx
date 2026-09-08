@@ -45,7 +45,7 @@ class KeyframeEffect {
   virtual ~KeyframeEffect() = default;
 
   gfx::KeyframeEffect::TickResult TickKeyframeModel(
-      fml::TimePoint monotonic_time);
+      fml::TimePoint monotonic_time, bool suppress_animation_events = false);
   KeyframeSampleResult SampleKeyframeModel(fml::TimePoint monotonic_time);
 
   void AddKeyframeModel(std::unique_ptr<KeyframeModel> keyframe_model);
@@ -99,7 +99,10 @@ class KeyframeEffect {
 
  private:
   friend class Animation;
-  void ApplyTickResult(const gfx::KeyframeEffect::TickResult& tick_result);
+  void SeekTo(fml::TimeDelta current_time, fml::TimePoint reference_time,
+              bool paused);
+  void ApplyTickResult(const gfx::KeyframeEffect::TickResult& tick_result,
+                       bool suppress_animation_events);
 
   tasm::Element* element_{nullptr};
   std::vector<std::unique_ptr<KeyframeModel>> keyframe_models_;

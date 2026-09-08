@@ -804,6 +804,10 @@ std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
         << data.name.str());
     return nullptr;
   }
+  // Notify the Inspector that a new animation was created (with its final
+  // origin already set). Fired after the validity check so invalid animations
+  // are never reported.
+  animation->NotifyInspectorCreated();
   return animation;
 }
 

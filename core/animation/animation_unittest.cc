@@ -11,6 +11,7 @@
 #include "core/animation/keyframe_model.h"
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/animation/testing/mock_animation.h"
+#include "core/animation/testing/mock_css_keyframe_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -934,6 +935,182 @@ TEST_F(AnimationTest, GetCurrentTimeIsReadOnly) {
   auto state_after_start = a->GetState();
   EXPECT_GE(a->GetCurrentTime(), fml::TimeDelta::Zero());
   EXPECT_EQ(a->GetState(), state_after_start);
+}
+
+TEST_F(AnimationTest, SeekToKeepsRunningAnimationAtRequestedTimelineTime) {
+  auto a = InitTestAnimation();
+  auto data = InitAnimationData(lynx::base::String("test_animation"), 3000, 0,
+                                starlight::TimingFunctionData(), 2,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+  animation::MockCSSKeyframeManager animation_delegate(element_.get());
+  a->BindDelegate(&animation_delegate);
+  a->keyframe_effect()->BindAnimationDelegate(&animation_delegate);
+
+  a->Play(false);
+  auto first_frame =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1000));
+  a->SampleAt(first_frame);
+  animation_delegate.ClearUTStatus();
+
+  const auto reference_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(5000));
+  const auto requested_time = fml::TimeDelta::FromMillisecondsF(1250.5);
+  a->SeekTo(requested_time, reference_time);
+
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPlay);
+  EXPECT_EQ(a->start_time(), reference_time - requested_time);
+  EXPECT_TRUE(animation_delegate.has_request_next_frame());
+
+  auto sample_time = reference_time;
+  a->SampleAt(sample_time);
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPlay);
+}
+
+TEST_F(AnimationTest, SeekToKeepsPausedAnimationFrozenAtRequestedTime) {
+  auto a = InitTestAnimation();
+  auto data = InitAnimationData(lynx::base::String("test_animation"), 3000, 0,
+                                starlight::TimingFunctionData(), 1,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+
+  a->Play(false);
+  auto first_frame =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1000));
+  a->SampleAt(first_frame);
+  a->Pause();
+  auto original_pause =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1500));
+  a->SampleAt(original_pause);
+
+  const auto reference_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(5000));
+  const auto requested_time = fml::TimeDelta::FromMilliseconds(750);
+  a->SeekTo(requested_time, reference_time);
+
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPause);
+  EXPECT_EQ(a->pause_time(), reference_time);
+  EXPECT_EQ(a->start_time(), reference_time - requested_time);
+
+  auto later_frame =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(8000));
+  a->SampleAt(later_frame);
+  EXPECT_EQ(a->pause_time(), reference_time);
+  EXPECT_EQ(a->start_time(), reference_time - requested_time);
+}
+
+TEST_F(AnimationTest, SeekToRevivesStoppedAnimation) {
+  auto a = InitTestAnimation();
+  auto data = InitAnimationData(lynx::base::String("test_animation"), 3000, 0,
+                                starlight::TimingFunctionData(), 1,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+  a->Stop();
+
+  const auto reference_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(5000));
+  const auto requested_time = fml::TimeDelta::FromMilliseconds(500);
+  a->SeekTo(requested_time, reference_time);
+
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPlay);
+  EXPECT_EQ(a->start_time(), reference_time - requested_time);
+}
+
+TEST_F(AnimationTest, SeekToDoesNotSynthesizeSkippedAnimationEvents) {
+  auto a = InitTestAnimation();
+  auto data = InitAnimationData(lynx::base::String("test_animation"), 1000, 0,
+                                starlight::TimingFunctionData(), 3,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+  a->GetElement()->data_model()->SetStaticEvent("bindEvent", "animationstart",
+                                                "onanimationstart");
+  a->GetElement()->data_model()->SetStaticEvent(
+      "bindEvent", "animationiteration", "onanimationiteration");
+  a->GetElement()->data_model()->SetStaticEvent("bindEvent", "animationend",
+                                                "onanimationend");
+
+  a->Play(false);
+  auto first_frame =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1000));
+  a->DoFrame(first_frame);
+  tasm_mediator->ClearAnimationEvent();
+
+  auto reference_time =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(5000));
+  a->SeekTo(fml::TimeDelta::FromMilliseconds(2500), reference_time);
+  a->DoFrame(reference_time);
+
+  EXPECT_TRUE(tasm_mediator->not_received_any_event());
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPlay);
+}
+
+TEST_F(AnimationTest, SetPausedFreezesAndResumesAtRequestedReferenceTime) {
+  auto a = InitTestAnimation();
+  auto data = InitAnimationData(lynx::base::String("test_animation"), 3000, 0,
+                                starlight::TimingFunctionData(), 2,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+  animation::MockCSSKeyframeManager animation_delegate(element_.get());
+  a->BindDelegate(&animation_delegate);
+  a->keyframe_effect()->BindAnimationDelegate(&animation_delegate);
+
+  a->Play(false);
+  auto first_frame =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1000));
+  a->SampleAt(first_frame);
+  // Align the independent Inspector clock with this synthetic test timeline.
+  a->SeekTo(fml::TimeDelta::Zero(), first_frame);
+  animation_delegate.ClearUTStatus();
+
+  const auto pause_reference =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1500));
+  a->SetPaused(true, pause_reference);
+
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPause);
+  EXPECT_EQ(a->pause_time(), pause_reference);
+  EXPECT_EQ(a->GetCurrentTime(), fml::TimeDelta::FromMilliseconds(500));
+  EXPECT_TRUE(animation_delegate.has_request_next_frame());
+
+  animation_delegate.ClearUTStatus();
+  const auto resume_reference =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(2500));
+  a->SetPaused(false, resume_reference);
+
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPlay);
+  EXPECT_EQ(a->start_time(), first_frame);
+  EXPECT_EQ(a->total_paused_duration(), fml::TimeDelta::FromMilliseconds(1000));
+  EXPECT_TRUE(animation_delegate.has_request_next_frame());
+
+  a->SetPaused(false, resume_reference);
+  EXPECT_EQ(a->total_paused_duration(), fml::TimeDelta::FromMilliseconds(1000));
+}
+
+TEST_F(AnimationTest, SetPausedDoesNotForceAnIdleAnimationToStart) {
+  auto a = InitTestAnimation();
+  const auto pause_reference =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1500));
+  a->SetPaused(true, pause_reference);
+
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPause);
+  EXPECT_EQ(a->GetCurrentTime(), fml::TimeDelta::Zero());
+  EXPECT_EQ(a->start_time(), fml::TimePoint::Min());
+  EXPECT_EQ(a->pause_time(), fml::TimePoint::Min());
+
+  const auto resume_reference =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(2500));
+  a->SetPaused(false, resume_reference);
+  EXPECT_EQ(a->GetState(), animation::Animation::State::kPlay);
+  EXPECT_EQ(a->start_time(), fml::TimePoint::Min());
 }
 
 }  // namespace testing

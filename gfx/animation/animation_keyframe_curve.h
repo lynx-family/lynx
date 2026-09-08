@@ -48,6 +48,14 @@ class AnimationCurve {
 
   size_t get_keyframes_size() const { return keyframes_.size(); }
 
+  // Read-only indexed access for Inspector/CDP keyframe enumeration. The
+  // caller reads the offset via Keyframe::Time() and the per-keyframe easing
+  // via Keyframe::timing_function(). Bounds-checked; returns nullptr when out
+  // of range so callers can iterate without additional size queries.
+  const Keyframe* KeyframeAt(size_t index) const {
+    return index < keyframes_.size() ? keyframes_[index].get() : nullptr;
+  }
+
   void AddKeyframe(std::unique_ptr<Keyframe> keyframe) {
     if (!keyframes_.empty() && keyframe != nullptr &&
         keyframe->Time() < keyframes_.back()->Time()) {
