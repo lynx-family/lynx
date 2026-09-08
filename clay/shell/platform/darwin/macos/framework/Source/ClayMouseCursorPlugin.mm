@@ -71,19 +71,19 @@ enum class CrCoreCursorType : int32_t {
   kZoomOut = 43,                        // NSCursor.zoomOutCursor
 };
 
-@interface CrCoreCursor : NSCursor
+@interface LynxCrCoreCursor : NSCursor
 
 + (id)cursorWithType:(CrCoreCursorType)type;
 @property(readonly, nonatomic) CrCoreCursorType _coreCursorType;
 
 @end
 
-@implementation CrCoreCursor
+@implementation LynxCrCoreCursor
 
 @synthesize _coreCursorType = _type;
 
 + (id)cursorWithType:(CrCoreCursorType)type {
-  return [[CrCoreCursor alloc] initWithType:type];
+  return [[LynxCrCoreCursor alloc] initWithType:type];
 }
 
 - (id)initWithType:(CrCoreCursorType)type {
@@ -161,7 +161,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsAll];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeEastWest];
+        result = [LynxCrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeEastWest];
       break;
     case CursorTypes::kResizeright:
       result = [NSCursor resizeRightCursor];
@@ -188,7 +188,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSouthwest];
+        result = [LynxCrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSouthwest];
       break;
     // cspell:disable-next-line
     case CursorTypes::kResizedownright:
@@ -198,7 +198,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSoutheast];
+        result = [LynxCrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSoutheast];
       break;
     case CursorTypes::kResizeupleft:
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
@@ -207,7 +207,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNorthwest];
+        result = [LynxCrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNorthwest];
       break;
     case CursorTypes::kResizeupright:
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
@@ -216,7 +216,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNortheast];
+        result = [LynxCrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNortheast];
       break;
     case CursorTypes::kVerticaltext:
       result = [NSCursor IBeamCursorForVerticalLayout];
