@@ -2059,6 +2059,7 @@ void TemplateAssembler::Destroy() {
   LOGI(GetLogContext() << " TemplateAssembler::Destroy url:" << url_
                        << " this:" << this);
 
+  page_proxy_.element_manager()->StopAnimationVsync();
   EnsureOnLayoutReadyHooksFinish();
 
   destroyed_ = true;

@@ -36,6 +36,12 @@ class ElementVsyncProxy
 
   void RequestNextFrame();
 
+  // Prevent queued callbacks from entering a page being destroyed.
+  void Invalidate() {
+    element_manager_ = nullptr;
+    has_requested_next_frame_ = false;
+  }
+
   void MarkNextFrameHasArrived() { has_requested_next_frame_ = false; }
 
   bool HasRequestedNextFrame() { return has_requested_next_frame_; }
