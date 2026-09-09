@@ -24,6 +24,9 @@ ElementVsyncProxy::ElementVsyncProxy(
     : element_manager_(element_manager), vsync_monitor_(vsync_monitor){};
 
 void ElementVsyncProxy::TickAllElement(fml::TimePoint &frame_time) {
+  if (!element_manager_) {
+    return;
+  }
   timing::LongTaskMonitor::Scope longTaskScope(
       element_manager_->GetPageOptions(), timing::kAnimationTask,
       timing::kTaskNameAnimationVSyncTickAllElement);
@@ -52,7 +55,7 @@ void ElementVsyncProxy::SetPreferredFps(const std::string &preferred_fps) {
 
 // The first animation starts an infinite loop.
 void ElementVsyncProxy::RequestNextFrame() {
-  if (element_manager_->IsPause()) {
+  if (!element_manager_ || element_manager_->IsPause()) {
     return;
   }
   if (!has_requested_next_frame_ && vsync_monitor_) {

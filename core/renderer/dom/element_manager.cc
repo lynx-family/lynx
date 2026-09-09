@@ -256,6 +256,7 @@ static bool EnableElementStatistic() {
 }
 
 ElementManager::~ElementManager() {
+  StopAnimationVsync();
   ReportElementStatistic();
   WillDestroy();
   if (platform_layout_context_) {
@@ -1225,7 +1226,17 @@ void ElementManager::BindTimingFlagToPipelineOptions(
 
 void ElementManager::SetNeedsLayout() { need_layout_ = true; }
 
+void ElementManager::StopAnimationVsync() {
+  animation_vsync_stopped_ = true;
+  if (element_vsync_proxy_) {
+    element_vsync_proxy_->Invalidate();
+  }
+}
+
 void ElementManager::RequestNextFrame(Element *element) {
+  if (animation_vsync_stopped_) {
+    return;
+  }
   animation_element_set_.insert(element);
   if (element_vsync_proxy_ == nullptr) {
     element_vsync_proxy_ = std::make_shared<ElementVsyncProxy>(
