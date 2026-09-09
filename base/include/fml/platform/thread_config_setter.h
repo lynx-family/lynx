@@ -13,7 +13,16 @@ namespace fml {
 
 class BASE_EXPORT PlatformThreadPriority {
  public:
+  using ThreadSchedulingPolicyEnabledProvider = bool (*)();
+
   static void Setter(const lynx::fml::Thread::ThreadConfig& config);
+  static void SetThreadSchedulingPolicyEnabledProvider(
+      ThreadSchedulingPolicyEnabledProvider provider);
+  static bool IsThreadSchedulingPolicyEnabled();
+#if defined(__APPLE__)
+  static int GetPlatformThreadPriority(
+      lynx::fml::Thread::ThreadPriority priority);
+#endif
 };
 }  // namespace fml
 }  // namespace lynx

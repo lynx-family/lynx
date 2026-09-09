@@ -217,6 +217,7 @@ lynx_base_source_set("base_core") {
               "fml/message_loop.cc",
               "fml/message_loop_impl.cc",
               "fml/message_loop_task_queues.cc",
+              "fml/platform/thread_config_setter.cc",
               "fml/synchronization/count_down_latch.cc",
               "fml/synchronization/semaphore.cc",
               "fml/synchronization/sync_switch.cc",

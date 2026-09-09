@@ -11,7 +11,11 @@ namespace fml {
 
 namespace {
 
-void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_priority) {
+void SetThreadPriorityWithQoS(qos_class_t qos_class) {
+  pthread_set_qos_class_self_np(qos_class, 0);
+}
+
+void SetThreadPriorityLegacy(int sched_priority, qos_class_t qos_class, double thread_priority) {
   pthread_set_qos_class_self_np(qos_class, 0);
   [[NSThread currentThread] setThreadPriority:thread_priority];
   sched_param param;
@@ -23,10 +27,32 @@ void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_
   }
 }
 
+void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_priority) {
+  if (PlatformThreadPriority::IsThreadSchedulingPolicyEnabled()) {
+    SetThreadPriorityWithQoS(qos_class);
+    return;
+  }
+  SetThreadPriorityLegacy(sched_priority, qos_class, thread_priority);
+}
+
 }  // namespace
+
+int PlatformThreadPriority::GetPlatformThreadPriority(lynx::fml::Thread::ThreadPriority priority) {
+  switch (priority) {
+    case lynx::fml::Thread::ThreadPriority::BACKGROUND:
+    case lynx::fml::Thread::ThreadPriority::LOW:
+      return QOS_CLASS_BACKGROUND;
+    case lynx::fml::Thread::ThreadPriority::NORMAL:
+      return QOS_CLASS_DEFAULT;
+    case lynx::fml::Thread::ThreadPriority::HIGH:
+      return QOS_CLASS_USER_INITIATED;
+  }
+  return QOS_CLASS_DEFAULT;
+}
 
 /// Inheriting ThreadConfigurer and use iOS platform thread API to configure the thread priorities
 /// Using iOS platform thread API to configure thread priority
+// Legacy path:
 // thread_name |  sched_priority | threadPriority
 // ui | 31 |  0.5
 // js |  31->50 |  0.5->0.806452
@@ -48,13 +74,16 @@ void PlatformThreadPriority::Setter(const lynx::fml::Thread::ThreadConfig& confi
     switch (config.priority) {
       case lynx::fml::Thread::ThreadPriority::BACKGROUND:
       case lynx::fml::Thread::ThreadPriority::LOW:
-        SetThreadPriority(4, QOS_CLASS_BACKGROUND, 0.0);
+        SetThreadPriority(4, static_cast<qos_class_t>(GetPlatformThreadPriority(config.priority)),
+                          0.0);
         break;
       case lynx::fml::Thread::ThreadPriority::NORMAL:
-        SetThreadPriority(31, QOS_CLASS_DEFAULT, 0.5);
+        SetThreadPriority(31, static_cast<qos_class_t>(GetPlatformThreadPriority(config.priority)),
+                          0.5);
         break;
       case lynx::fml::Thread::ThreadPriority::HIGH:
-        SetThreadPriority(46, QOS_CLASS_USER_INITIATED, 1.0);
+        SetThreadPriority(46, static_cast<qos_class_t>(GetPlatformThreadPriority(config.priority)),
+                          1.0);
         break;
     }
   }

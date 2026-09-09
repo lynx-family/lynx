@@ -6678,6 +6678,7 @@ public enum LynxEnvKey {
   LynxEnvSetupCanvasSurfaceEarlier
   LynxEnvEnableImagePlaceholderResetFix
   LynxEnvEnableTextStrokeInheritanceFix
+  LynxEnvEnablePlatformThreadSchedulingPolicy
   LynxEnvKeyEndMark
 }
 

@@ -29,6 +29,10 @@
 #include "base/include/fml/platform/thread_config_setter.h"
 #endif
 
+#if defined(OS_IOS)
+#include <pthread/qos.h>
+#endif
+
 #if defined(OS_ANDROID)
 #include "base/include/platform/android/jni_utils.h"
 #endif
@@ -38,7 +42,7 @@ namespace fml {
 
 class ThreadHandle {
  public:
-  ThreadHandle(base::closure&& function);
+  ThreadHandle(base::closure&& function, Thread::ThreadPriority priority);
   ~ThreadHandle();
 
   void Join();
@@ -52,7 +56,9 @@ class ThreadHandle {
 };
 
 #if defined(OS_WIN)
-ThreadHandle::ThreadHandle(base::closure&& function) {
+ThreadHandle::ThreadHandle(base::closure&& function,
+                           Thread::ThreadPriority priority) {
+  (void)priority;
   thread_ = (HANDLE*)_beginthreadex(
       nullptr, Thread::GetDefaultStackSize(),
       [](void* arg) -> unsigned {
@@ -70,7 +76,11 @@ void ThreadHandle::Join() { WaitForSingleObjectEx(thread_, INFINITE, FALSE); }
 ThreadHandle::~ThreadHandle() { CloseHandle(thread_); }
 #else
 
-ThreadHandle::ThreadHandle(base::closure&& function) {
+ThreadHandle::ThreadHandle(base::closure&& function,
+                           Thread::ThreadPriority priority) {
+#if !defined(OS_IOS)
+  (void)priority;
+#endif
   pthread_attr_t attr;
   pthread_attr_init(&attr);
 
@@ -83,7 +93,13 @@ ThreadHandle::ThreadHandle(base::closure&& function) {
   // This can fail if the user does not have permissions to do so. We will
   // not check the result of these calls and let the thread be created with
   // default attributes.
-  if (pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) == 0) {
+  if (PlatformThreadPriority::IsThreadSchedulingPolicyEnabled()) {
+    pthread_attr_set_qos_class_np(
+        &attr,
+        static_cast<qos_class_t>(
+            PlatformThreadPriority::GetPlatformThreadPriority(priority)),
+        0);
+  } else if (pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) == 0) {
     int policy;
     struct sched_param current_param;
     if (pthread_getschedparam(pthread_self(), &policy, &current_param) == 0) {
@@ -156,7 +172,8 @@ Thread::Thread(const ThreadConfigSetter& setter, const ThreadConfig& config)
     lynx::base::android::DetachFromVM();
 #endif
   };
-  thread_ = std::make_unique<ThreadHandle>(std::move(setup_thread));
+  thread_ =
+      std::make_unique<ThreadHandle>(std::move(setup_thread), config.priority);
   latch.Wait();
   task_runner_ = runner;
   loop_ = loop_impl;

@@ -33,6 +33,7 @@
 #import <LynxBase/LynxBaseEnv.h>
 #import "LynxBytecodeResponseBlock+Converter.h"
 
+#include "base/include/fml/platform/thread_config_setter.h"
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
@@ -88,6 +89,15 @@ static void LynxClaySetup() {
 
 static BOOL gShouldEnableAllDevToolSessions = NO;
 
+static bool IsThreadSchedulingPolicyEnabledFromEnv() {
+#if OS_IOS
+  return lynx::tasm::LynxEnv::GetInstance().GetBoolEnv(
+      lynx::tasm::LynxEnv::Key::ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY, false);
+#else
+  return false;
+#endif
+}
+
 @implementation LynxEnv {
   std::unique_ptr<fml::SharedMutex> external_env_mutex_;
   std::atomic_bool init_flow_completed_;
@@ -137,6 +147,8 @@ static BOOL gShouldEnableAllDevToolSessions = NO;
     _recordEnable = NO;
     [LynxLazyRegister loadLynxInitTask];
     [self initLynxBase];
+    lynx::fml::PlatformThreadPriority::SetThreadSchedulingPolicyEnabledProvider(
+        IsThreadSchedulingPolicyEnabledFromEnv);
     lynx::tasm::LynxEnvDarwin::initNativeUIThread();
 #if OS_IOS
     lynx::tasm::Config::InitializeVersion([[UIDevice currentDevice].systemVersion UTF8String]);
@@ -865,7 +877,8 @@ static BOOL gShouldEnableAllDevToolSessions = NO;
     @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
     @(LynxEnvFSPEnable) : @"enable_fsp",
     @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string",
-    @(LynxEnvSetupCanvasSurfaceEarlier) : @"setup_canvas_surface_earlier"
+    @(LynxEnvSetupCanvasSurfaceEarlier) : @"setup_canvas_surface_earlier",
+    @(LynxEnvEnablePlatformThreadSchedulingPolicy) : @"enable_platform_thread_scheduling_policy"
   };
   NSString *keyString = envKeyBinding[@(key)];
   NSAssert(keyString.length > 0, @"LynxEnv key string should not be nill.");
