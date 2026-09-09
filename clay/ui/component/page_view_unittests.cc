@@ -434,6 +434,7 @@ TEST_F_UI(DesktopEventTest, TrackpadPanZoomPreservesLegacyEvents) {
 }
 
 TEST_F_UI(DesktopEventTest, MouseButtonsPreserveCompatibilityInBothModes) {
+  uint64_t timestamp = 400000;
   for (bool aligned : {false, true}) {
     page_->SetAlignMouseEventWithW3C(aligned);
     for (const auto& [buttons, web_button] : std::array<std::pair<int, int>, 6>{
@@ -460,10 +461,13 @@ TEST_F_UI(DesktopEventTest, MouseButtonsPreserveCompatibilityInBothModes) {
       event.device = PointerEvent::kMouse;
       event.position = {50, 50};
       event.buttons = buttons;
+      event.timestamp = timestamp;
       page_->DispatchPointerEvent({event});
       event.type = PointerEvent::EventType::kUpEvent;
       event.buttons = 0;
+      event.timestamp++;
       page_->DispatchPointerEvent({event});
+      timestamp += 400000;
     }
   }
 }
@@ -562,6 +566,34 @@ TEST_F_UI(DesktopEventTest, BatchedTouchesKeepIndependentTargets) {
   second.type = PointerEvent::EventType::kUpEvent;
   first.buttons = second.buttons = 0;
   page_->DispatchPointerEvent({first, second});
+}
+
+TEST_F_UI(DesktopEventTest, DispatchesMouseDoubleClickOnSecondTap) {
+  auto view = std::make_unique<View>(1, page_.get());
+  view->SetBound(0, 0, 100, 100);
+  page_->AddChild(view.get());
+
+  InSequence sequence;
+  EXPECT_CALL(events_, OnMouseEvent("mousedown", 1, _, _, _, _, _, _, _));
+  EXPECT_CALL(events_, OnMouseEvent("mouseup", 1, _, _, _, _, _, _, _));
+  EXPECT_CALL(events_, OnMouseEvent("mouseclick", 1, _, _, _, _, _, _, _));
+  EXPECT_CALL(events_, OnMouseEvent("mousedown", 1, _, _, _, _, _, _, _));
+  EXPECT_CALL(events_, OnMouseEvent("mouseup", 1, _, _, _, _, _, _, _));
+  EXPECT_CALL(events_, OnMouseEvent("mouseclick", 1, _, _, _, _, _, _, _));
+  EXPECT_CALL(events_, OnMouseEvent("mousedblclick", 1, _, _, _, _, _, _, _));
+
+  for (int pointer_id : {1, 2}) {
+    const uint64_t timestamp = 100000 + pointer_id * 100000;
+    auto down = CreatePointer(pointer_id, PointerEvent::EventType::kDownEvent,
+                              {10, 10}, {}, timestamp);
+    down.device = PointerEvent::DeviceType::kMouse;
+    page_->DispatchPointerEvent({down});
+    auto up = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent,
+                            {10, 10}, {}, timestamp + 1000);
+    up.device = PointerEvent::DeviceType::kMouse;
+    up.buttons = 0;
+    page_->DispatchPointerEvent({up});
+  }
 }
 
 }  // namespace
