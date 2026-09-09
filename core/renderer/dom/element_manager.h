@@ -592,7 +592,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     enable_new_animator_radon_ = enable;
   }
 
-  bool GetEnableNewAnimatorForRadon() { return enable_new_animator_radon_; }
+  bool GetEnableNewAnimatorForRadon() {
+    return IsFragmentLayerRenderModeOn() || enable_new_animator_radon_;
+  }
 
   void SetEnableNewAnimatorFiber(bool enable) {
     enable_new_animator_fiber_ = enable;
