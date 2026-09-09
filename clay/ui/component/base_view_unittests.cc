@@ -5,6 +5,7 @@
 #include <initializer_list>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -42,6 +43,14 @@ Value CreateEventThroughActiveRegions(
 
 class BaseViewTest : public UITest {};
 
+clay::Value::Array BackgroundImage(const std::string& url) {
+  clay::Value::Array background_image;
+  background_image.emplace_back(
+      static_cast<uint32_t>(ClayBackgroundImageType::kUrl));
+  background_image.emplace_back(url);
+  return background_image;
+}
+
 class CountingInvalidationView final : public BaseView {
  public:
   explicit CountingInvalidationView(PageView* page)
@@ -70,6 +79,23 @@ class ImageLoaderTokenView final : public View {
   }
 };
 
+class BackgroundEventView final : public BaseView {
+ public:
+  BackgroundEventView(int32_t callback_id, PageView* page)
+      : BaseView(-1, "background_event_view",
+                 std::make_unique<RenderContainer>(), page),
+        callback_id_(callback_id) {}
+
+  void NotifyBackgroundEvent(bool success) {
+    NotifyBgImageLoadStatus(success, clay::Value::Map());
+  }
+
+  int GetCallbackId() override { return callback_id_; }
+
+ private:
+  int32_t callback_id_;
+};
+
 TEST_F_UI(BaseViewTest, ImageLoaderTokensInvalidateOnlyTheirResourceType) {
   ImageLoaderTokenView view(page_.get());
 
@@ -82,6 +108,44 @@ TEST_F_UI(BaseViewTest, ImageLoaderTokensInvalidateOnlyTheirResourceType) {
 
   view.ClearMask();
   EXPECT_FALSE(view.IsCurrent(false, mask_token));
+}
+
+TEST_F_UI(BaseViewTest, BackgroundErrorUsesCallbackId) {
+  constexpr int kCallbackId = 42;
+  BackgroundEventView view(kCallbackId, page_.get());
+  view.AddEventCallback(event_attr::kEventBgError);
+
+  int received_id = -1;
+  std::string received_event;
+  custom_event_callback_ = [&](int id, const char* event_name,
+                               clay::Value::Map) {
+    received_id = id;
+    received_event = event_name;
+  };
+
+  view.NotifyBackgroundEvent(false);
+
+  EXPECT_EQ(received_id, kCallbackId);
+  EXPECT_EQ(received_event, event_attr::kEventBgError);
+}
+
+TEST_F_UI(BaseViewTest, BackgroundLoadUsesCallbackId) {
+  constexpr int kCallbackId = 42;
+  BackgroundEventView view(kCallbackId, page_.get());
+  view.AddEventCallback(event_attr::kEventBgLoad);
+
+  int received_id = -1;
+  std::string received_event;
+  custom_event_callback_ = [&](int id, const char* event_name,
+                               clay::Value::Map) {
+    received_id = id;
+    received_event = event_name;
+  };
+
+  view.NotifyBackgroundEvent(true);
+
+  EXPECT_EQ(received_id, kCallbackId);
+  EXPECT_EQ(received_event, event_attr::kEventBgLoad);
 }
 
 TEST_F_UI(BaseViewTest, StableRasterAnimationStateDoesNotInvalidate) {
