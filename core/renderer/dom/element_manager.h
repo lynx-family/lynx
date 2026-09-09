@@ -1501,7 +1501,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   bool enable_layout_only_{true};
   bool dom_tree_enabled_{true};
   bool fix_new_animator_flush_bug_{true};
-  bool fix_layout_in_element_no_patch_flush_{true};
   bool fix_radon_inline_convert_bug_{true};
   bool fix_dynamic_update_transition_consume_bug_{true};
   bool fix_filter_dynamic_update_bug_{false};
