@@ -1634,10 +1634,7 @@ void EventDispatcher::DispatchSingleTouchEvent(
 
   auto active_target = first_active_target_.lock().get();
   TouchEvent touch_event(active_target->Sign(), name);
-  auto time_stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch())
-                        .count();
-  touch_event.SetTimeStamp(time_stamp);
+  touch_event.SetTimeStamp(time_stamp_);
   float scaled_density =
       (name == TouchEvent::TAP || name == TouchEvent::LONGPRESS)
           ? ui_owner_->Context()->ScaledDensity()
@@ -1654,7 +1651,6 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetClientPoint(client_point);
   touch_event.SetCurrentTargetPoints(
       GetCurrentTargetPoints(active_target, page_point, name));
-  touch_event.SetTimeStamp(OH_ArkUI_UIInputEvent_GetEventTime(event));
   touch_event.SetTarget(first_active_target_);
   MarkDispatchInCurrentLynxPageOnly(touch_event);
   ui_owner_->SendEvent(touch_event);
