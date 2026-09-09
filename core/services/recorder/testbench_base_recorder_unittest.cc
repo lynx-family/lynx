@@ -13,6 +13,11 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include <thread>
+
+#if !defined(_WIN32)
+#include <sys/stat.h>
+#endif
 
 #define private public
 #include "core/services/recorder/testbench_base_recorder.h"
@@ -323,8 +328,10 @@ TEST(TestBenchBaseRecorder, Clear) {
   wait(ark.thread_);
   ark.AddLynxViewSessionID(record_id, 42);
   ark.url_map_[record_id] = "url";
+  ark.fixture_table_[record_id].actions.push_back({"TestFunction", "{}", 1});
 
   EXPECT_EQ(ark.lynx_view_table_.size(), 1);
+  EXPECT_EQ(ark.fixture_table_.size(), 1);
   EXPECT_EQ(ark.replay_config_map_.size(), 1);
   EXPECT_EQ(ark.url_map_.size(), 1);
   EXPECT_EQ(ark.session_ids_.size(), 1);
@@ -332,6 +339,7 @@ TEST(TestBenchBaseRecorder, Clear) {
   ark.ResetForTesting();
 
   EXPECT_EQ(ark.lynx_view_table_.size(), 0);
+  EXPECT_EQ(ark.fixture_table_.size(), 0);
   EXPECT_EQ(ark.replay_config_map_.size(), 0);
   EXPECT_EQ(ark.url_map_.size(), 0);
   EXPECT_EQ(ark.session_ids_.size(), 0);
@@ -350,8 +358,10 @@ TEST(TestBenchBaseRecorder, RemoveRecord) {
   ark.SetScreenSize(record_id, 123, 456);
   wait(ark.thread_);
   ark.AddLynxViewSessionID(record_id, 42);
+  ark.fixture_table_[record_id].actions.push_back({"TestFunction", "{}", 1});
 
   EXPECT_EQ(ark.lynx_view_table_.count(record_id), 1);
+  EXPECT_EQ(ark.fixture_table_.count(record_id), 1);
   EXPECT_EQ(ark.replay_config_map_.count(record_id), 1);
   EXPECT_EQ(ark.session_ids_.count(record_id), 1);
 
@@ -359,6 +369,7 @@ TEST(TestBenchBaseRecorder, RemoveRecord) {
   wait(ark.thread_);
 
   EXPECT_EQ(ark.lynx_view_table_.count(record_id), 0);
+  EXPECT_EQ(ark.fixture_table_.count(record_id), 0);
   EXPECT_EQ(ark.replay_config_map_.count(record_id), 0);
   EXPECT_EQ(ark.url_map_.count(record_id), 0);
   EXPECT_EQ(ark.session_ids_.count(record_id), 0);
@@ -879,6 +890,7 @@ TEST(TestBenchBaseRecorder, EndRecordOutput) {
   ark.RecordAction("TestFunction", params, recorded_id);
   ark.RecordAction("TestFunction", params, bare_id);
   wait(ark.thread_);
+  EXPECT_TRUE(ark.fixture_table_.empty());
 
   std::vector<std::string> filenames;
   std::vector<int64_t> sessions;
@@ -1066,12 +1078,319 @@ FixtureAction MakeAction(const char* fn, std::string params, int64_t ms) {
   return {fn, std::move(params), ms};
 }
 
+FixtureCallGroup& AddCallGroup(FixtureData& data, std::string module,
+                               std::string method) {
+  data.call_groups.push_back(
+      {std::move(module), std::move(method), std::vector<FixtureCall>()});
+  return data.call_groups.back();
+}
+
+FixtureCallGroup* FindCallGroup(FixtureData& data, const std::string& module,
+                                const std::string& method) {
+  for (auto& group : data.call_groups) {
+    if (group.module_name == module && group.method_name == method) {
+      return &group;
+    }
+  }
+  return nullptr;
+}
+
 // Writes data to a fresh zip in the test temp dir and reads its entries back.
 bool WriteZipForTest(const std::string& name, const FixtureData& data,
                      std::map<std::string, std::string>* entries) {
   const std::string path =
       (std::filesystem::temp_directory_path() / name).string();
   return WriteFixtureZip(path, data) && ReadZipEntries(path, entries);
+}
+
+TEST(TestBenchBaseRecorder, RecordsJsonAndFixtureFromOneSession) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  wait(ark.thread_);
+  ark.ResetForTesting();
+  constexpr int64_t record_id = 52520;
+  constexpr int64_t session_id = 8899;
+  constexpr int64_t callback_id = 42;
+  const std::string temp_dir = std::filesystem::temp_directory_path().string();
+  const std::string json_path =
+      temp_dir + "/" + std::to_string(record_id) + ".json";
+  const std::string zip_path =
+      temp_dir + "/" + std::to_string(record_id) + ".zip";
+  std::remove(json_path.c_str());
+  std::remove(zip_path.c_str());
+
+  ark.InitConfig(temp_dir, session_id, 390, 844, record_id);
+  wait(ark.thread_);
+  ark.StartRecord(ArtifactFormat::kBoth);
+
+  rapidjson::Document load_template_params;
+  load_template_params.Parse(
+      R"({"url":"https://example.com/page.lynx.bundle","source":"dGVtcGxhdGUtYmluYXJ5","templateData":{"answer":42}})");
+  ark.RecordAction(kFuncLoadTemplate, load_template_params, record_id);
+
+  rapidjson::Document invoked_params;
+  invoked_params.Parse(
+      R"({"args":[1,"function"],"returnValue":{"ok":true},"callback":["42"]})");
+  ark.RecordInvokedMethodData("ExampleBridge", "invoke", invoked_params,
+                              record_id);
+
+  rapidjson::Document callback_params;
+  callback_params.Parse(R"({"returnValue":{"done":true}})");
+  ark.RecordCallback("ExampleBridge", "invoke", callback_params, callback_id,
+                     record_id);
+  ark.RecordComponent("example-view", 7, record_id);
+
+  rapidjson::Document shared_value;
+  shared_value.Parse(R"({"token":"value"})");
+  ark.RecordSharedData("example-key", shared_value, record_id);
+  wait(ark.thread_);
+
+  ASSERT_EQ(ark.fixture_table_.count(record_id), 1u);
+  FixtureData& fixture = ark.fixture_table_[record_id];
+  ASSERT_EQ(fixture.actions.size(), 1u);
+  EXPECT_EQ(
+      fixture.actions[0].record_ms,
+      ark.lynx_view_table_[record_id][kActionList][0][kParamRecordMillisecond]
+          .GetInt64());
+  FixtureCallGroup* call_group =
+      FindCallGroup(fixture, "ExampleBridge", "invoke");
+  ASSERT_NE(call_group, nullptr);
+  ASSERT_EQ(call_group->calls.size(), 1u);
+  EXPECT_EQ(call_group->calls[0].record_ms,
+            ark.lynx_view_table_[record_id][kInvokedMethodData][0]
+                                [kParamRecordMillisecond]
+                                    .GetInt64());
+  ASSERT_EQ(call_group->calls[0].callbacks.size(), 1u);
+  EXPECT_EQ(call_group->calls[0].callbacks[0].index, 0);
+  EXPECT_EQ(call_group->calls[0].callbacks[0].value_json, R"({"done":true})");
+  EXPECT_GE(call_group->calls[0].callbacks[0].delay_ms, 0);
+
+  std::vector<std::string> filenames;
+  std::vector<int64_t> sessions;
+  bool fixture_available_during_completion = false;
+  std::string callback_config_json;
+  ark.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& ids) {
+        filenames = files;
+        sessions = ids;
+        const auto fixture_it = ark.fixture_table_.find(record_id);
+        fixture_available_during_completion =
+            fixture_it != ark.fixture_table_.end();
+        if (fixture_available_during_completion) {
+          callback_config_json = fixture_it->second.config_json;
+        }
+      });
+  wait(ark.thread_);
+
+  ASSERT_EQ(filenames, (std::vector<std::string>{json_path, zip_path}));
+  ASSERT_EQ(sessions, (std::vector<int64_t>{session_id, session_id}));
+  EXPECT_TRUE(fixture_available_during_completion);
+  EXPECT_NE(callback_config_json.find("\"screenWidth\":390.0"),
+            std::string::npos);
+  EXPECT_TRUE(ark.fixture_table_.empty());
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(ReadZipEntries(zip_path, &entries));
+  EXPECT_EQ(entries["assets/template/template.bin"], "template-binary");
+  EXPECT_NE(entries["fixture.js"].find("ctx.sharedData(\"example-key\""),
+            std::string::npos);
+  EXPECT_NE(entries["config.json"].find("\"screenWidth\":390.0"),
+            std::string::npos);
+  EXPECT_NE(entries["assets/ExampleBridge/invoke.json"].find("\"index\":0"),
+            std::string::npos);
+  EXPECT_NE(entries["assets/ExampleBridge/invoke.json"].find("\"done\":true"),
+            std::string::npos);
+  ASSERT_TRUE(entries.count("component_list.json"));
+
+  std::remove(json_path.c_str());
+  std::remove(zip_path.c_str());
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, FixturePreservesNullReturnValue) {
+  auto& ark = TestBenchBaseRecorder::GetInstance();
+  wait(ark.thread_);
+  ark.ResetForTesting();
+  const int64_t record_id = 52524;
+  ark.StartRecord(ArtifactFormat::kFixture);
+  rapidjson::Document params;
+  params.Parse(R"({"args":[],"returnValue":null})");
+  ark.RecordInvokedMethodData("ExampleBridge", "getValue", params, record_id);
+  rapidjson::Document action(rapidjson::kObjectType);
+  ark.RecordAction("TestFunction", action, record_id);
+  wait(ark.thread_);
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(WriteZipForTest("lynx_recorder_null_return.zip",
+                              ark.fixture_table_.at(record_id), &entries));
+  rapidjson::Document calls;
+  calls.Parse(entries.at("assets/ExampleBridge/getValue.json").c_str());
+  ASSERT_TRUE(calls.IsArray());
+  ASSERT_EQ(calls.Size(), 1u);
+  EXPECT_TRUE(calls[0].HasMember("returnValue"));
+  if (calls[0].HasMember("returnValue")) {
+    EXPECT_TRUE(calls[0]["returnValue"].IsNull());
+  }
+  ark.ResetForTesting();
+}
+
+#if !defined(_WIN32)
+TEST(TestBenchBaseRecorder, RestartDuringWritePreservesFixtureFormat) {
+  auto& ark = TestBenchBaseRecorder::GetInstance();
+  wait(ark.thread_);
+  ark.ResetForTesting();
+  const auto dir = std::filesystem::temp_directory_path() /
+                   "lynx_recorder_restart_during_write";
+  std::filesystem::create_directories(dir);
+  const auto fifo = dir / "52525.json";
+  std::filesystem::remove(fifo);
+  ASSERT_EQ(mkfifo(fifo.c_str(), 0600), 0);
+  ark.SetRecorderPath(dir.string());
+  ark.StartRecord();
+  rapidjson::Document params(rapidjson::kObjectType);
+  ark.RecordAction("TestFunction", params, 52525);
+  wait(ark.thread_);
+  ark.EndRecord([](std::vector<std::string>&, std::vector<int64_t>&) {});
+
+  // Opening the JSON FIFO blocks the old writer until a reader connects.
+  // Start the next session while that writer still owns the recorder thread.
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (ark.IsRecordingProcess() &&
+         std::chrono::steady_clock::now() < deadline) {
+    std::this_thread::yield();
+  }
+  const bool stopped = !ark.IsRecordingProcess();
+  if (stopped) {
+    ark.StartRecord(ArtifactFormat::kFixture);
+    ark.RecordAction("TestFunction", params, 52526);
+  }
+  // Drain the first output, allowing its cleanup and the new events to run.
+  const auto first_output = ReadFileContent(fifo.string());
+  wait(ark.thread_);
+  EXPECT_TRUE(stopped);
+  EXPECT_FALSE(first_output.empty());
+  std::vector<std::string> files;
+  ark.EndRecord([&](std::vector<std::string>& paths, std::vector<int64_t>&) {
+    files = paths;
+  });
+  wait(ark.thread_);
+  EXPECT_EQ(files, (std::vector<std::string>{(dir / "52526.zip").string()}));
+  ark.ResetForTesting();
+  std::filesystem::remove_all(dir);
+}
+#endif
+
+TEST(TestBenchBaseRecorder, MatchesReusedCallbackIdsByModuleAndMethod) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  ark.ResetForTesting();
+  constexpr int64_t record_id = 52521;
+  constexpr int64_t callback_id = 9;
+  ark.StartRecord(ArtifactFormat::kBoth);
+
+  rapidjson::Document first_call;
+  first_call.Parse(R"({"args":["first","function"],"callback":["9"]})");
+  ark.RecordInvokedMethodData("FirstBridge", "invoke", first_call, record_id);
+  rapidjson::Document second_call;
+  second_call.Parse(R"({"args":["second","function"],"callback":["9"]})");
+  ark.RecordInvokedMethodData("SecondBridge", "invoke", second_call, record_id);
+
+  rapidjson::Document first_callback;
+  first_callback.Parse(R"({"returnValue":"first-result"})");
+  ark.RecordCallback("FirstBridge", "invoke", first_callback, callback_id,
+                     record_id);
+  rapidjson::Document second_callback;
+  second_callback.Parse(R"({"returnValue":"second-result"})");
+  ark.RecordCallback("SecondBridge", "invoke", second_callback, callback_id,
+                     record_id);
+  wait(ark.thread_);
+
+  FixtureData& fixture = ark.fixture_table_[record_id];
+  ASSERT_EQ(fixture.callback_targets.size(), 2u);
+  FixtureCallGroup* first_group =
+      FindCallGroup(fixture, "FirstBridge", "invoke");
+  FixtureCallGroup* second_group =
+      FindCallGroup(fixture, "SecondBridge", "invoke");
+  ASSERT_NE(first_group, nullptr);
+  ASSERT_NE(second_group, nullptr);
+  ASSERT_EQ(first_group->calls[0].callbacks.size(), 1u);
+  EXPECT_EQ(first_group->calls[0].callbacks[0].value_json, R"("first-result")");
+  ASSERT_EQ(second_group->calls[0].callbacks.size(), 1u);
+  EXPECT_EQ(second_group->calls[0].callbacks[0].value_json,
+            R"("second-result")");
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, FixtureOnlyReportsZip) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  ark.ResetForTesting();
+  constexpr int64_t record_id = 52522;
+  const std::string temp_dir = std::filesystem::temp_directory_path().string();
+  const std::string zip_path =
+      temp_dir + "/" + std::to_string(record_id) + ".zip";
+  std::remove(zip_path.c_str());
+  ark.SetRecorderPath(temp_dir);
+  ark.StartRecord(ArtifactFormat::kFixture);
+  rapidjson::Document params(rapidjson::kObjectType);
+  ark.RecordAction("TestFunction", params, record_id);
+  wait(ark.thread_);
+
+  std::vector<std::string> filenames;
+  std::vector<int64_t> sessions;
+  ark.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& ids) {
+        filenames = files;
+        sessions = ids;
+      });
+  wait(ark.thread_);
+
+  ASSERT_EQ(filenames, (std::vector<std::string>{zip_path}));
+  ASSERT_EQ(sessions, (std::vector<int64_t>{-1}));
+  EXPECT_TRUE(ReadFileContent(zip_path).size() > 0);
+  EXPECT_FALSE(std::filesystem::exists(temp_dir + "/" +
+                                       std::to_string(record_id) + ".json"));
+  std::remove(zip_path.c_str());
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, RejectsStaleFixtureTasksFromPreviousSession) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  ark.ResetForTesting();
+  constexpr int64_t record_id = 52523;
+  ark.StartRecord(ArtifactFormat::kBoth);
+
+  std::mutex gate_mutex;
+  std::condition_variable gate_condition;
+  bool task_started = false;
+  bool release_task = false;
+  ark.thread_.GetTaskRunner()->PostTask([&]() {
+    std::unique_lock<std::mutex> lock(gate_mutex);
+    task_started = true;
+    gate_condition.notify_one();
+    gate_condition.wait(lock, [&]() { return release_task; });
+  });
+  {
+    std::unique_lock<std::mutex> lock(gate_mutex);
+    gate_condition.wait(lock, [&]() { return task_started; });
+  }
+
+  ark.EndRecord([&](std::vector<std::string>&, std::vector<int64_t>&) {
+    ark.StartRecord(ArtifactFormat::kBoth);
+  });
+  rapidjson::Document shared_value;
+  shared_value.Parse(R"({"stale":true})");
+  ark.RecordComponent("stale-view", 1, record_id);
+  ark.RecordSharedData("stale-key", shared_value, record_id);
+
+  {
+    std::lock_guard<std::mutex> lock(gate_mutex);
+    release_task = true;
+  }
+  gate_condition.notify_one();
+  wait(ark.thread_);
+
+  EXPECT_TRUE(ark.lynx_view_table_.empty());
+  EXPECT_TRUE(ark.fixture_table_.empty());
+  ark.ResetForTesting();
 }
 
 TEST(FixtureWriter, DeterministicZipBytes) {
@@ -1083,15 +1402,14 @@ TEST(FixtureWriter, DeterministicZipBytes) {
       const int idx = reverse ? 3 - i : i;
       FixtureCall call{
           "[\"" + std::string(modules[idx]) + "\"]", "{\"ok\":true}", {}, 1000};
-      const std::string key = std::string(modules[idx]) + '\0' + "call";
-      data.calls[key].push_back(call);
+      AddCallGroup(data, modules[idx], "call").calls.push_back(call);
     }
     data.config_json = "{}";
     return data;
   };
 
-  // Same recording content, different calls insertion order. unordered_map
-  // iteration is insertion-dependent, so without sorting the zips differ.
+  // Same recording content, different group insertion order. The writer must
+  // sort groups so insertion order cannot change the archive.
   const std::string dir = std::filesystem::temp_directory_path().string();
   const std::string zip_a = dir + "/lynx_recorder_determinism_a.zip";
   const std::string zip_b = dir + "/lynx_recorder_determinism_b.zip";
@@ -1142,13 +1460,11 @@ TEST(FixtureWriter, FullFixtureGeneration) {
   data.config_json = "{\"jsbIgnoredInfo\":[\"foo\",123,\"bar\"]}";
 
   // JSB calls: callback with delay, malformed args, malformed callback value.
-  const std::string call_key = std::string("bridge") + '\0' + "callX";
   FixtureCall c1{"[1]", "{\"r\":1}", {{0, "{\"msg\":\"ok\"}", 250}}, t0 + 100};
-  data.calls[call_key].push_back(c1);
   FixtureCall c2{"not json", "", {{1, "bad{", 0}}, t0 + 200};
-  data.calls[call_key].push_back(c2);
-  // A key without the module\0method separator is skipped.
-  data.calls["orphan"].push_back(c1);
+  FixtureCallGroup& call_group = AddCallGroup(data, "bridge", "callX");
+  call_group.calls.push_back(c1);
+  call_group.calls.push_back(c2);
 
   std::map<std::string, std::string> entries;
   ASSERT_TRUE(WriteZipForTest("lynx_recorder_full.zip", data, &entries));
@@ -1208,17 +1524,16 @@ TEST(FixtureWriter, FullFixtureGeneration) {
   EXPECT_EQ(entries["assets/lifecycle/global_props_1.json"].find("first"),
             std::string::npos);
   // Legacy-wrapped templateData is flattened into the asset.
-  EXPECT_NE(
-      entries["assets/lifecycle/template_data.json"].find("\"web_id\": 7"),
-      std::string::npos);
+  EXPECT_NE(entries["assets/lifecycle/template_data.json"].find("\"web_id\":7"),
+            std::string::npos);
   EXPECT_NE(
       entries["assets/lifecycle/template_data.json"].find("preprocessorName"),
       std::string::npos);
   // Mock call asset: callback delay kept, malformed fallbacks applied.
   const std::string& asset = entries["assets/bridge/callX.json"];
-  EXPECT_NE(asset.find("\"delay\": 250"), std::string::npos);
-  EXPECT_NE(asset.find("\"args\": []"), std::string::npos);
-  EXPECT_NE(asset.find("\"value\": null"), std::string::npos);
+  EXPECT_NE(asset.find("\"delay\":250"), std::string::npos);
+  EXPECT_NE(asset.find("\"args\":[]"), std::string::npos);
+  EXPECT_NE(asset.find("\"value\":null"), std::string::npos);
   EXPECT_EQ(entries["assets/template/template.bin"], "template-binary");
 
   // loadTemplate with no recorded templateData still emits the third
@@ -1237,6 +1552,33 @@ TEST(FixtureWriter, FullFixtureGeneration) {
                   "ctx.loadTemplate(\"https://example.com/t.js\", "
                   "\"template/template.bin\", {})"),
               std::string::npos);
+  }
+}
+
+TEST(FixtureWriter, WritesCompactJsonAssets) {
+  FixtureData data;
+  data.actions.push_back(MakeAction(
+      "sendGlobalEvent", "{\"payload\":" + MakeObjectJson(40) + "}", 1000));
+  data.config_json = R"({"screenWidth":390,"nested":{"enabled":true}})";
+  data.components.emplace_back("example-view", 7);
+  data.load_template_data_json = R"({"answer":42})";
+  AddCallGroup(data, "bridge", "call")
+      .calls.push_back(
+          {R"([1])", R"({"ok":true})", {{0, R"("done")", 5}}, 1000});
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(
+      WriteZipForTest("lynx_recorder_compact_json.zip", data, &entries));
+  const char* json_assets[] = {
+      "config.json", "component_list.json", "assets/events/global_0.json",
+      "assets/bridge/call.json", "assets/lifecycle/template_data.json"};
+  for (const char* name : json_assets) {
+    SCOPED_TRACE(name);
+    ASSERT_TRUE(entries.count(name));
+    EXPECT_EQ(entries.at(name).find('\n'), std::string::npos);
+    rapidjson::Document parsed;
+    parsed.Parse(entries.at(name).c_str());
+    EXPECT_FALSE(parsed.HasParseError());
   }
 }
 
@@ -1271,12 +1613,12 @@ TEST(FixtureWriter, PreservesPlainTemplateDataWithLegacyFieldNames) {
 TEST(FixtureWriter, MatcherHandlesOwnPropertyFields) {
   FixtureData data;
   data.actions.push_back(MakeAction("setThreadStrategy", "{}", 1000));
-  const std::string call_key = std::string("bridge") + '\0' + "call";
-  data.calls[call_key].push_back(
-      {R"([{"hasOwnProperty":7,"nested":{"hasOwnProperty":8},"timestamp":1}])",
-       R"("matched")",
-       {{0, R"("callback")", 5}},
-       1000});
+  AddCallGroup(data, "bridge", "call")
+      .calls.push_back(
+          {R"([{"hasOwnProperty":7,"nested":{"hasOwnProperty":8},"timestamp":1}])",
+           R"("matched")",
+           {{0, R"("callback")", 5}},
+           1000});
   std::map<std::string, std::string> entries;
   ASSERT_TRUE(
       WriteZipForTest("lynx_recorder_own_property.zip", data, &entries));
@@ -1325,9 +1667,9 @@ TEST(FixtureWriter, EscapesConfiguredIgnoredKeys) {
   FixtureData data;
   data.actions.push_back(MakeAction("setThreadStrategy", "{}", 1000));
   data.config_json = R"({"jsbIgnoredInfo":["quote\"slash\\line\nend"]})";
-  const std::string call_key = std::string("bridge") + '\0' + "call";
-  data.calls[call_key].push_back(
-      {R"([{"quote\"slash\\line\nend":1}])", R"("matched")", {}, 1000});
+  AddCallGroup(data, "bridge", "call")
+      .calls.push_back(
+          {R"([{"quote\"slash\\line\nend":1}])", R"("matched")", {}, 1000});
 
   std::map<std::string, std::string> entries;
   ASSERT_TRUE(WriteZipForTest("lynx_recorder_ignored_key.zip", data, &entries));
@@ -1361,11 +1703,14 @@ TEST(FixtureWriter, EscapesConfiguredIgnoredKeys) {
 TEST(FixtureWriter, MatcherPreservesSerializedSpecialValueSemantics) {
   FixtureData data;
   data.actions.push_back(MakeAction("setThreadStrategy", "{}", 1000));
-  const std::string call_key = std::string("bridge") + '\0' + "call";
-  data.calls[call_key] = {
+  AddCallGroup(data, "bridge", "call").calls = {
       {R"(["function"])", R"("function-string")", {}, 1000},
       {R"(["undefined"])", R"("undefined-string")", {}, 1001},
       {R"(["NaN"])", R"("nan-string")", {{0, R"("callback")", 5}}, 1002},
+      {R"(["https://example.com/p?timestamp=1&fixed=x"])",
+       R"("url")",
+       {},
+       1003},
   };
   std::map<std::string, std::string> entries;
   ASSERT_TRUE(
@@ -1399,6 +1744,10 @@ TEST(FixtureWriter, MatcherPreservesSerializedSpecialValueSemantics) {
       if (handler([NaN], callbacks) !== 'nan-string') return false;
       if (handler(['NaN'], callbacks) !== 'nan-string') return false;
       if (handler([123], callbacks) !== undefined) return false;
+      if (handler(['https://example.com/p?timestamp=2&fixed=x'], callbacks) !==
+          'url') return false;
+      if (handler(['https://example.com/p?timestamp=2&fixed=y'], callbacks) !==
+          undefined) return false;
       return JSON.stringify(responses) ===
           '[["callback",5],["callback",5]]';
     })();
@@ -1504,10 +1853,8 @@ TEST(FixtureWriter, SanitizesZipEntryPaths) {
   FixtureData data;
   data.actions.push_back(MakeAction("setThreadStrategy", "{\"id\":0}", 1000));
   FixtureCall call{"[]", "{\"ok\":true}", {}, 1000};
-  // module contains a traversal escape, method contains a separator and NUL is
-  // exercised via the map key delimiter handling elsewhere.
-  const std::string key = std::string("../../etc") + '\0' + "a/b";
-  data.calls[key].push_back(call);
+  // The module contains a traversal escape and the method contains a separator.
+  AddCallGroup(data, "../../etc", "a/b").calls.push_back(call);
   data.config_json = "{}";
 
   std::map<std::string, std::string> entries;

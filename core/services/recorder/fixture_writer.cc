@@ -6,16 +6,12 @@
 
 #include <zlib.h>
 
-#include <algorithm>
 #include <cstdint>
-#include <fstream>
-#include <sstream>
+#include <cstdio>
 
+#include "core/base/json/json_util.h"
 #include "third_party/modp_b64/modp_b64.h"
 #include "third_party/rapidjson/document.h"
-#include "third_party/rapidjson/prettywriter.h"
-#include "third_party/rapidjson/stringbuffer.h"
-#include "third_party/rapidjson/writer.h"
 
 namespace lynx {
 namespace tasm {
@@ -29,48 +25,45 @@ constexpr const char* kDefaultIgnoredKeys[] = {
 }  // namespace
 
 std::string JsonToCompactString(const rapidjson::Value& value) {
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-  value.Accept(writer);
-  return buffer.GetString();
+  return base::ToJson(value);
 }
 
 namespace {
 
 // ---- JSON helpers ----
 
-std::string JsonToPrettyString(rapidjson::Value& value) {
-  rapidjson::StringBuffer buffer;
-  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-  value.Accept(writer);
-  return buffer.GetString();
-}
-
-std::string ParseThenPretty(const std::string& json) {
+std::string ParseThenCompact(const std::string& json) {
   rapidjson::Document doc;
   doc.Parse(json.c_str());
   if (doc.HasParseError()) {
     return json;
   }
-  return JsonToPrettyString(doc);
+  return JsonToCompactString(doc);
 }
 
-// Approximates json2fixture.js's countLines(JSON.stringify(v, null, 2))
-size_t CountJsonLines(rapidjson::Value& value) {
-  const std::string pretty = JsonToPrettyString(value);
-  return static_cast<size_t>(std::count(pretty.begin(), pretty.end(), '\n'));
+std::string CompactJsonOrFallback(const std::string& json,
+                                  const char* fallback) {
+  rapidjson::Document doc;
+  doc.Parse(json.c_str());
+  return doc.HasParseError() ? fallback : JsonToCompactString(doc);
 }
 
-rapidjson::Value ParseJson(
-    const std::string& json, rapidjson::Document::AllocatorType& allocator,
-    rapidjson::Type fallback_type = rapidjson::kNullType) {
-  rapidjson::Document parsed;
-  parsed.Parse(json.c_str());
-  rapidjson::Value value(fallback_type);
-  if (!parsed.HasParseError()) {
-    value.CopyFrom(parsed, allocator);
+// Matches the number of newlines produced by JSON.stringify(value, null, 2)
+// without instantiating a second JSON writer just to decide asset placement.
+size_t CountJsonLines(const rapidjson::Value& value) {
+  size_t lines = 0;
+  if (value.IsArray() && !value.Empty()) {
+    lines = value.Size() + 1;
+    for (const auto& item : value.GetArray()) {
+      lines += CountJsonLines(item);
+    }
+  } else if (value.IsObject() && !value.ObjectEmpty()) {
+    lines = value.MemberCount() + 1;
+    for (const auto& member : value.GetObject()) {
+      lines += CountJsonLines(member.value);
+    }
   }
-  return value;
+  return lines;
 }
 
 std::string JsonEscapeString(const std::string& input) {
@@ -79,6 +72,36 @@ std::string JsonEscapeString(const std::string& input) {
   v.SetString(input.c_str(), doc.GetAllocator());
   return JsonToCompactString(v);
 }
+
+// A small append-only builder avoids pulling the locale-heavy iostream
+// formatting machinery into production recorder binaries.
+class ScriptBuilder {
+ public:
+  ScriptBuilder& operator<<(const char* value) {
+    value_.append(value);
+    return *this;
+  }
+
+  ScriptBuilder& operator<<(const std::string& value) {
+    value_.append(value);
+    return *this;
+  }
+
+  ScriptBuilder& operator<<(int value) {
+    value_.append(std::to_string(value));
+    return *this;
+  }
+
+  ScriptBuilder& operator<<(int64_t value) {
+    value_.append(std::to_string(value));
+    return *this;
+  }
+
+  const std::string& str() const { return value_; }
+
+ private:
+  std::string value_;
+};
 
 // Percent-encodes any byte that is unsafe inside a single zip path component so
 // a recorded (module, method) name can never inject a path separator or escape
@@ -196,6 +219,11 @@ uint32_t ToUint32(size_t value) { return static_cast<uint32_t>(value); }
 // EOCD would wrap and the archive become unreadable. We do not emit Zip64.
 constexpr size_t kMaxZipEntries = 0xFFFF;
 
+bool WriteString(std::FILE* file, const std::string& value) {
+  return value.empty() ||
+         std::fwrite(value.data(), 1, value.size(), file) == value.size();
+}
+
 class ZipWriter {
  public:
   size_t RemainingBytes() const {
@@ -239,10 +267,11 @@ class ZipWriter {
     if (over_limit_) {
       return false;
     }
-    std::ofstream ofs(path, std::ios::binary | std::ios::out | std::ios::trunc);
-    if (!ofs.is_open()) {
+    std::FILE* file = std::fopen(path.c_str(), "wb");
+    if (file == nullptr) {
       return false;
     }
+    bool ok = true;
 
     // Stream entries instead of building the whole zip in memory: peak
     // memory stays proportional to the compressed entries, not the zip size.
@@ -257,8 +286,8 @@ class ZipWriter {
       header.append(4, '\0');  // mod time and date
       AppendEntryMeta(&header, entry);
       header.append(entry.name);
-      ofs.write(header.data(), header.size());
-      ofs.write(entry.data.data(), entry.data.size());
+      ok = ok && WriteString(file, header);
+      ok = ok && WriteString(file, entry.data);
       offset += 30 + entry.name.size() + entry.compressed_size;
     }
 
@@ -277,7 +306,7 @@ class ZipWriter {
       AppendUint32(&cd, 0);  // external attrs
       AppendUint32(&cd, entry.local_header_offset);
       cd.append(entry.name);
-      ofs.write(cd.data(), cd.size());
+      ok = ok && WriteString(file, cd);
       offset += cd.size();
     }
 
@@ -291,11 +320,11 @@ class ZipWriter {
     AppendUint32(&end_of_central_directory, central_dir_size);
     AppendUint32(&end_of_central_directory, central_dir_offset);
     AppendUint16(&end_of_central_directory, 0);  // comment len
-    ofs.write(end_of_central_directory.data(), end_of_central_directory.size());
-
-    ofs.flush();
-    const bool ok = ofs.good();
-    ofs.close();
+    ok = ok && WriteString(file, end_of_central_directory);
+    ok = ok && std::fflush(file) == 0;
+    if (std::fclose(file) != 0) {
+      ok = false;
+    }
     if (!ok) {
       // Never leave a partial zip behind (e.g. disk full mid-write).
       std::remove(path.c_str());
@@ -356,64 +385,102 @@ constexpr const char* kMatcherHelperPrefix =
     R"JS(  // --- NativeModule mock matching (mirrors V1 strict matcher) ---
   var __ignoredKeys = [)JS";
 
+// This helper defines the replay matching contract. Keep the implementation
+// readable so changes can be reviewed against the JSON recorder behavior.
 constexpr const char* kMatcherHelperSuffix = R"JS(];
-  function __isIgnored(k) { return __ignoredKeys.indexOf(k) !== -1; }
-  function __sameUrl(a, b) {
-    if (a.indexOf("http") !== 0 || b.indexOf("http") !== 0) return false;
-    var pa = a.split("?"), pb = b.split("?");
-    if (pa.length !== pb.length || pa[0] !== pb[0]) return false;
-    if (pa.length < 2) return true;
-    var la = pa[1].split("&"), lb = pb[1].split("&");
-    if (la.length !== lb.length) return false;
-    for (var i = 0; i < la.length; i++) {
-      if (la[i] === lb[i]) continue;
-      var ka = la[i].split("="), kb = lb[i].split("=");
-      if (ka[0] === kb[0] && __isIgnored(ka[0])) continue;
+  function __isIgnored(key) {
+    return __ignoredKeys.indexOf(key) !== -1;
+  }
+  function __hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
+  }
+  function __sameUrl(actual, recorded) {
+    if (actual.indexOf("http") !== 0 || recorded.indexOf("http") !== 0) {
+      return false;
+    }
+    var actualParts = actual.split("?");
+    var recordedParts = recorded.split("?");
+    if (actualParts.length !== recordedParts.length ||
+        actualParts[0] !== recordedParts[0]) {
+      return false;
+    }
+    if (actualParts.length < 2) return true;
+    var actualParams = actualParts[1].split("&");
+    var recordedParams = recordedParts[1].split("&");
+    if (actualParams.length !== recordedParams.length) return false;
+    for (var i = 0; i < actualParams.length; i++) {
+      if (actualParams[i] === recordedParams[i]) continue;
+      var actualParam = actualParams[i].split("=");
+      var recordedParam = recordedParams[i].split("=");
+      if (actualParam[0] === recordedParam[0] &&
+          __isIgnored(actualParam[0])) {
+        continue;
+      }
       return false;
     }
     return true;
   }
-  function __match(jsVal, recVal) {
-    if (recVal === "function" && typeof jsVal === "function") return true;
-    if (recVal === "undefined" && jsVal === undefined) return true;
-    if (recVal === "NaN" && typeof jsVal === "number" && jsVal !== jsVal) return true;
-    if (typeof recVal === "string") {
-      if (typeof jsVal !== "string") return false;
-      return jsVal === recVal || __sameUrl(recVal, jsVal);
-    }
-    if (typeof recVal === "number") return typeof jsVal === "number" && Math.abs(jsVal - recVal) < 1e-7;
-    if (typeof recVal === "boolean") return jsVal === recVal;
-    if (recVal === null) return jsVal === null;
-    if (Array.isArray(recVal)) {
-      if (!Array.isArray(jsVal) || jsVal.length !== recVal.length) return false;
-      for (var i = 0; i < recVal.length; i++) if (!__match(jsVal[i], recVal[i])) return false;
+  function __match(actual, recorded) {
+    if (recorded === "function" && typeof actual === "function") return true;
+    if (recorded === "undefined" && actual === undefined) return true;
+    if (recorded === "NaN" && typeof actual === "number" && actual !== actual) {
       return true;
     }
-    if (typeof recVal === "object") {
-      if (jsVal === null || typeof jsVal !== "object" || Array.isArray(jsVal)) return false;
-      for (var k in jsVal) {
-        if (!Object.prototype.hasOwnProperty.call(jsVal, k)) continue;
-        if (__isIgnored(k) && Object.prototype.hasOwnProperty.call(recVal, k)) continue;
-        if (!Object.prototype.hasOwnProperty.call(recVal, k)) return false;
-        if (!__match(jsVal[k], recVal[k])) return false;
+    if (typeof recorded === "string") {
+      return typeof actual === "string" &&
+             (actual === recorded || __sameUrl(actual, recorded));
+    }
+    if (typeof recorded === "number") {
+      return typeof actual === "number" && Math.abs(actual - recorded) < 1e-7;
+    }
+    if (typeof recorded === "boolean") return actual === recorded;
+    if (recorded === null) return actual === null;
+    if (Array.isArray(recorded)) {
+      if (!Array.isArray(actual) || actual.length !== recorded.length) {
+        return false;
+      }
+      for (var i = 0; i < recorded.length; i++) {
+        if (!__match(actual[i], recorded[i])) return false;
+      }
+      return true;
+    }
+    if (typeof recorded === "object") {
+      if (actual === null || typeof actual !== "object" ||
+          Array.isArray(actual)) {
+        return false;
+      }
+      for (var key in actual) {
+        if (!__hasOwn(actual, key)) continue;
+        if (__isIgnored(key) && __hasOwn(recorded, key)) continue;
+        if (!__hasOwn(recorded, key) ||
+            !__match(actual[key], recorded[key])) {
+          return false;
+        }
       }
       return true;
     }
     return false;
   }
-  function __matchArgs(args, recArgs) {
-    if (!recArgs || args.length !== recArgs.length) return false;
-    for (var i = 0; i < recArgs.length; i++) if (!__match(args[i], recArgs[i])) return false;
+  function __matchArgs(actualArgs, recordedArgs) {
+    if (!recordedArgs || actualArgs.length !== recordedArgs.length) {
+      return false;
+    }
+    for (var i = 0; i < recordedArgs.length; i++) {
+      if (!__match(actualArgs[i], recordedArgs[i])) return false;
+    }
     return true;
   }
-  function __dispatch(recorded, args, callbacks) {
-    for (var i = 0; i < recorded.length; i++) {
-      if (!__matchArgs(args, recorded[i].args)) continue;
-      var entry = recorded[i];
-      var cbs = entry.callbacks || [];
-      for (var c = 0; c < cbs.length; c++) {
-        var cb = callbacks[cbs[c].index];
-        if (cb) cb(cbs[c].value, cbs[c].delay || 0);
+  function __dispatch(recordedCalls, actualArgs, callbacks) {
+    for (var i = 0; i < recordedCalls.length; i++) {
+      if (!__matchArgs(actualArgs, recordedCalls[i].args)) continue;
+      var entry = recordedCalls[i];
+      var recordedCallbacks = entry.callbacks || [];
+      for (var j = 0; j < recordedCallbacks.length; j++) {
+        var callback = callbacks[recordedCallbacks[j].index];
+        if (callback) {
+          callback(recordedCallbacks[j].value,
+                   recordedCallbacks[j].delay || 0);
+        }
       }
       return entry.returnValue;
     }
@@ -480,40 +547,39 @@ std::string NormalizeTemplateDataJson(const std::string& template_data_json,
 // [{"args": [...], "returnValue": ..., "callbacks":
 // [{"index":0,"value":...,"delay":...}]}]
 std::string BuildModuleAssetJson(const std::vector<FixtureCall>& calls) {
-  rapidjson::Document doc(rapidjson::kArrayType);
+  ScriptBuilder out;
+  out << "[";
+  bool first_call = true;
   for (const auto& call : calls) {
-    rapidjson::Value entry(rapidjson::kObjectType);
-    entry.AddMember(
-        "args",
-        ParseJson(call.args_json, doc.GetAllocator(), rapidjson::kArrayType),
-        doc.GetAllocator());
+    out << (first_call ? "{\"args\":" : ",{\"args\":")
+        << CompactJsonOrFallback(call.args_json, "[]");
+    first_call = false;
     if (!call.return_value_json.empty()) {
-      entry.AddMember("returnValue",
-                      ParseJson(call.return_value_json, doc.GetAllocator()),
-                      doc.GetAllocator());
+      out << ",\"returnValue\":"
+          << CompactJsonOrFallback(call.return_value_json, "null");
     }
     if (!call.callbacks.empty()) {
-      rapidjson::Value cbs_val(rapidjson::kArrayType);
+      out << ",\"callbacks\":[";
+      bool first_callback = true;
       for (const auto& cb : call.callbacks) {
-        rapidjson::Value cb_entry(rapidjson::kObjectType);
-        cb_entry.AddMember("index", cb.index, doc.GetAllocator());
-        cb_entry.AddMember("value",
-                           ParseJson(cb.value_json, doc.GetAllocator()),
-                           doc.GetAllocator());
+        out << (first_callback ? "{\"index\":" : ",{\"index\":") << cb.index
+            << ",\"value\":" << CompactJsonOrFallback(cb.value_json, "null");
+        first_callback = false;
         if (cb.delay_ms > 0) {
-          cb_entry.AddMember("delay", cb.delay_ms, doc.GetAllocator());
+          out << ",\"delay\":" << cb.delay_ms;
         }
-        cbs_val.PushBack(cb_entry, doc.GetAllocator());
+        out << "}";
       }
-      entry.AddMember("callbacks", cbs_val, doc.GetAllocator());
+      out << "]";
     }
-    doc.PushBack(entry, doc.GetAllocator());
+    out << "}";
   }
-  return JsonToPrettyString(doc);
+  out << "]";
+  return out.str();
 }
 
-void AppendHandlerLine(std::ostringstream* out, int index,
-                       const std::string& module, const std::string& method,
+void AppendHandlerLine(ScriptBuilder* out, int index, const std::string& module,
+                       const std::string& method,
                        const std::string& asset_path) {
   // readAsset must reference the sanitized on-disk asset path, while register
   // keeps the raw (module, method) so replay dispatch still matches the
@@ -544,7 +610,7 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
   }
 
   ZipWriter zip;
-  std::ostringstream fixture;
+  ScriptBuilder fixture;
   fixture << "export default function(ctx) {\n";
 
   // Immediate lifecycle actions (no delay). Use the smallest record_ms as the
@@ -553,7 +619,9 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
   // and scramble the immediate/timed split.
   int64_t start_time = data.actions.front().record_ms;
   for (const auto& action : data.actions) {
-    start_time = std::min(start_time, action.record_ms);
+    if (action.record_ms < start_time) {
+      start_time = action.record_ms;
+    }
   }
   int global_props_seq = 0;
   for (const auto& action : data.actions) {
@@ -578,7 +646,7 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
                                        std::to_string(global_props_seq++) +
                                        ".json";
         if (!zip.AddFile("assets/" + asset_name,
-                         JsonToPrettyString(inner_doc))) {
+                         JsonToCompactString(inner_doc))) {
           return false;
         }
         fixture << "  ctx.setGlobalProps(ctx.readAsset("
@@ -645,7 +713,7 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
           (fn == "SendCustomEvent" ? "custom_" : "global_") +
           std::to_string(delayed_seq) + ".json";
       if (!zip.AddFile("assets/events/" + asset_name,
-                       JsonToPrettyString(params_doc))) {
+                       JsonToCompactString(params_doc))) {
         return false;
       }
       params_ref =
@@ -661,7 +729,7 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
                                        std::to_string(global_props_seq++) +
                                        ".json";
         if (!zip.AddFile("assets/" + asset_name,
-                         JsonToPrettyString(inner_doc))) {
+                         JsonToCompactString(inner_doc))) {
           return false;
         }
         inner_ref = "ctx.readAsset(" + JsonEscapeString(asset_name) + ")";
@@ -716,37 +784,61 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
   fixture << "\n";
 
   // Mock handlers.
-  // Iterate in sorted key order: unordered_map iteration order would
-  // otherwise make the zip bytes differ across identical recordings.
-  std::vector<std::string> call_keys;
-  call_keys.reserve(data.calls.size());
-  for (const auto& pair : data.calls) {
-    call_keys.push_back(pair.first);
-  }
-  std::sort(call_keys.begin(), call_keys.end());
-
+  // Recording order can differ across threads. Select the next group by key so
+  // equal recordings produce byte-identical archives. Group counts are small;
+  // the quadratic scan avoids a temporary vector and sorting machinery.
+  size_t previous_index = 0;
+  bool has_previous = false;
   int handler_index = 0;
-  for (const auto& key : call_keys) {
-    const auto calls_it = data.calls.find(key);
-    const size_t sep = key.find('\0');
-    if (sep == std::string::npos) {
-      continue;
+  for (size_t emitted = 0; emitted < data.call_groups.size(); ++emitted) {
+    size_t candidate = data.call_groups.size();
+    for (size_t i = 0; i < data.call_groups.size(); ++i) {
+      const auto& group = data.call_groups[i];
+      if (has_previous) {
+        const auto& previous = data.call_groups[previous_index];
+        const bool after_previous =
+            group.module_name > previous.module_name ||
+            (group.module_name == previous.module_name &&
+             (group.method_name > previous.method_name ||
+              (group.method_name == previous.method_name &&
+               i > previous_index)));
+        if (!after_previous) {
+          continue;
+        }
+      }
+      if (candidate == data.call_groups.size()) {
+        candidate = i;
+        continue;
+      }
+      const auto& selected = data.call_groups[candidate];
+      if (group.module_name < selected.module_name ||
+          (group.module_name == selected.module_name &&
+           (group.method_name < selected.method_name ||
+            (group.method_name == selected.method_name && i < candidate)))) {
+        candidate = i;
+      }
     }
-    const std::string module = key.substr(0, sep);
-    const std::string method = key.substr(sep + 1);
+    if (candidate == data.call_groups.size()) {
+      return false;
+    }
+    const FixtureCallGroup* group = &data.call_groups[candidate];
+    const std::string& module = group->module_name;
+    const std::string& method = group->method_name;
     // module/method originate from recorded bridge call names; sanitize each
     // path component so they cannot inject a separator or traverse out of
     // assets/ (zip-slip). readAsset below references this same sanitized path.
     const std::string asset_path = SanitizePathComponent(module) + "/" +
                                    SanitizePathComponent(method) + ".json";
     if (!zip.AddFile("assets/" + asset_path,
-                     BuildModuleAssetJson(calls_it->second))) {
+                     BuildModuleAssetJson(group->calls))) {
       // A cap was hit: WriteToFile will refuse to emit anyway, so stop the
       // per-call asset work rather than burning CPU on the EndRecord hot path.
       return false;
     }
     AppendHandlerLine(&fixture, handler_index, module, method, asset_path);
     handler_index++;
+    previous_index = candidate;
+    has_previous = true;
   }
 
   fixture << "}\n";
@@ -756,20 +848,21 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
     return false;
   }
   if (!data.config_json.empty() &&
-      !zip.AddFile("config.json", ParseThenPretty(data.config_json))) {
+      !zip.AddFile("config.json", ParseThenCompact(data.config_json))) {
     return false;
   }
   if (!data.components.empty()) {
-    rapidjson::Document comp_doc(rapidjson::kArrayType);
+    ScriptBuilder components;
+    components << "[";
+    bool first_component = true;
     for (const auto& comp : data.components) {
-      rapidjson::Value item(rapidjson::kObjectType);
-      rapidjson::Value name_val;
-      name_val.SetString(comp.first.c_str(), comp_doc.GetAllocator());
-      item.AddMember("Name", name_val, comp_doc.GetAllocator());
-      item.AddMember("Type", comp.second, comp_doc.GetAllocator());
-      comp_doc.PushBack(item, comp_doc.GetAllocator());
+      components << (first_component ? "{\"Name\":" : ",{\"Name\":")
+                 << JsonEscapeString(comp.first) << ",\"Type\":" << comp.second
+                 << "}";
+      first_component = false;
     }
-    if (!zip.AddFile("component_list.json", JsonToPrettyString(comp_doc))) {
+    components << "]";
+    if (!zip.AddFile("component_list.json", components.str())) {
       return false;
     }
   }
@@ -790,7 +883,7 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
   if (!data.load_template_data_json.empty() &&
       data.load_template_data_json != "{}") {
     if (!zip.AddFile("assets/lifecycle/template_data.json",
-                     ParseThenPretty(NormalizeTemplateDataJson(
+                     ParseThenCompact(NormalizeTemplateDataJson(
                          data.load_template_data_json,
                          data.load_template_data_format)))) {
       return false;
