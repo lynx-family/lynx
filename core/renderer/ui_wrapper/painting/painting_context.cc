@@ -23,6 +23,10 @@ void PaintingContext::SetUIOperationQueue(
   }
 }
 
+bool PaintingContext::HasPendingUIOperations() {
+  return ui_operation_queue_ && ui_operation_queue_->HasPendingOperations();
+}
+
 void PaintingContext::OnNodeReady(int tag) {
   patching_node_ready_ids_.emplace_back(tag);
 }

@@ -74,6 +74,10 @@ void DynamicUIOperationQueue::ForceFlush() { impl_->ForceFlush(); }
 
 void DynamicUIOperationQueue::Flush() { impl_->Flush(); }
 
+bool DynamicUIOperationQueue::HasPendingOperations() {
+  return impl_->HasPendingOperations();
+}
+
 void DynamicUIOperationQueue::SetEnableFlush(bool enable_flush) {
   impl_->SetEnableFlush(enable_flush);
 }

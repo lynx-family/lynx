@@ -36,6 +36,21 @@ TEST_F(DynamicUIOperationQueueTest, AllOnUIFlush) {
   ASSERT_EQ(result, kExpect);
 }
 
+TEST_F(DynamicUIOperationQueueTest, PartOnLayoutTracksPendingOperations) {
+  DynamicUIOperationQueue queue(
+      base::ThreadStrategyForRendering::PART_ON_LAYOUT,
+      MockRunnerManufactor::GetHookUITaskRunner());
+  EXPECT_FALSE(queue.HasPendingOperations());
+
+  queue.EnqueueUIOperation([]() {});
+
+  EXPECT_TRUE(queue.HasPendingOperations());
+
+  queue.Flush();
+
+  EXPECT_FALSE(queue.HasPendingOperations());
+}
+
 TEST_F(DynamicUIOperationQueueTest, MultiThreadsFlush) {
   int32_t result = 0;
   auto tasm_runner = MockRunnerManufactor::GetHookTASMTaskRunner();
