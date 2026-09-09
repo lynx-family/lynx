@@ -7,11 +7,13 @@
 
 #include <cstddef>
 #include <memory>
+#include <vector>
 
 #include "base/include/value/base_string.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 
@@ -55,6 +57,8 @@ class NativePaintingContext {
       bool disable_default_resize = false) = 0;
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
+  virtual void UpdateTextEventTargetRanges(
+      int id, std::vector<PlatformTextEventTargetRange> ranges) {}
   void ReconstructEventTargetTreeRecursively();
   virtual void UpdatePlatformEventBundle(int id,
                                          PlatformEventBundle bundle) = 0;

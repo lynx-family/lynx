@@ -127,6 +127,15 @@ void PlatformEventTarget::GetPointInTarget(
 bool PlatformEventTarget::ContainsPoint(float point[2]) {
   float x = point[0];
   float y = point[1];
+  if (hit_test_regions_) {
+    for (const auto& region : *hit_test_regions_) {
+      if (x >= region.left && x <= region.right && y >= region.top &&
+          y <= region.bottom) {
+        return true;
+      }
+    }
+    return false;
+  }
   if (x >= 0.f && x <= Width() && y >= 0.f && y <= Height()) {
     return true;
   }
