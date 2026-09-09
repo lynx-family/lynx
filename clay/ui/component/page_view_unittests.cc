@@ -9,6 +9,7 @@
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
+#include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
@@ -36,6 +37,8 @@ class RecordingEventDelegate : public testing::MockEventDelegate {
 };
 
 }  // namespace
+
+class PageViewGestureTest : public UITest {};
 
 TEST(PageViewTest, EmptyKeyframesData) {
   std::unique_ptr<PageView> page_view =
@@ -220,6 +223,33 @@ TEST(PageViewTest, AlignsMouseButtonWithW3C) {
       EXPECT_EQ(event_delegate.calls_, 2);
     }
   }
+}
+
+TEST_F_UI(PageViewGestureTest, DispatchesMouseDoubleClickOnSecondTap) {
+  auto view = std::make_unique<View>(1, page_.get());
+  view->SetBound(0, 0, 100, 100);
+  page_->AddChild(view.get());
+
+  std::vector<std::string> events;
+  mouse_event_callback_ = [&events](const std::string& event_name, int) {
+    events.push_back(event_name);
+  };
+
+  for (int pointer_id : {1, 2}) {
+    const uint64_t timestamp = 100000 + pointer_id * 100000;
+    auto down = CreatePointer(pointer_id, PointerEvent::EventType::kDownEvent,
+                              {10, 10}, {}, timestamp);
+    down.device = PointerEvent::DeviceType::kMouse;
+    page_->DispatchPointerEvent({down});
+    auto up = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent,
+                            {10, 10}, {}, timestamp + 1000);
+    up.device = PointerEvent::DeviceType::kMouse;
+    up.buttons = 0;
+    page_->DispatchPointerEvent({up});
+  }
+
+  EXPECT_EQ(std::count(events.begin(), events.end(), "mouseclick"), 2);
+  EXPECT_EQ(std::count(events.begin(), events.end(), "mousedblclick"), 1);
 }
 
 }  // namespace clay
