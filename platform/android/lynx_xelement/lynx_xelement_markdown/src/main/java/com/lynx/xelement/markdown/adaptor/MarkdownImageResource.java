@@ -98,7 +98,9 @@ public class MarkdownImageResource {
                 String id, ImageInfo imageInfo, android.graphics.drawable.Animatable animatable) {
               if (mDrawable != null && imageInfo != null && imageInfo.getWidth() > 0
                   && imageInfo.getHeight() > 0) {
-                mDrawable.setBounds(0, 0, imageInfo.getWidth(), imageInfo.getHeight());
+                float density = context.getScreenMetrics().density;
+                mDrawable.setBounds(0, 0, (int) (imageInfo.getWidth() * density),
+                    (int) (imageInfo.getHeight() * density));
               }
               mHost.onImageLoaded(mSource);
             }
