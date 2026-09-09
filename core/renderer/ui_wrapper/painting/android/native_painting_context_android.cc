@@ -648,5 +648,16 @@ void NativePaintingCtxAndroid::DestroyTextBundle(int id) {
   }
 }
 
+void NativePaintingCtxAndroid::UpdateTextEventTargetRanges(
+    int id, std::vector<PlatformTextEventTargetRange> ranges) {
+  auto ref =
+      std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
+  Enqueue([ref = std::move(ref), id, ranges = std::move(ranges)]() mutable {
+    if (ref) {
+      ref->UpdateTextEventTargetRanges(id, std::move(ranges));
+    }
+  });
+}
+
 }  // namespace tasm
 }  // namespace lynx

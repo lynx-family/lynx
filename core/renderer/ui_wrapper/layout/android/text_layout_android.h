@@ -15,6 +15,7 @@
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/public/text_layout_impl.h"
+#include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 
 namespace lynx {
@@ -43,12 +44,12 @@ class TextLayoutAndroid : public TextLayoutImpl {
   void ProcessChildProps(Element* element, std::string& output,
                          size_t& current_length, bool use_utf16,
                          PropArrayAndroid* props, bool* has_inline_view);
-  static void AppendTextProps(TextElement* element, size_t pos_start,
-                              size_t pos_end, PropArrayAndroid* props);
+  void AppendTextProps(TextElement* element, size_t pos_start, size_t pos_end,
+                       PropArrayAndroid* props);
   static void AppendViewProps(ViewElement* view_element, size_t start,
                               size_t end, PropArrayAndroid* props);
-  static void AppendImageProps(ImageElement* image_element, size_t start,
-                               size_t end, PropArrayAndroid* props);
+  void AppendImageProps(ImageElement* image_element, size_t start, size_t end,
+                        PropArrayAndroid* props);
   void MeasureInlineViewRecursively(Element* element,
                                     const starlight::Constraints& constraints,
                                     std::vector<float>& layout_result);
@@ -57,6 +58,7 @@ class TextLayoutAndroid : public TextLayoutImpl {
       const std::unordered_map<int, std::pair<float, float>>& result_map);
 
   base::android::ScopedWeakGlobalJavaRef<jobject> text_layout_;
+  std::vector<PlatformTextEventTargetRange> building_event_target_ranges_;
 };
 }  // namespace tasm
 }  // namespace lynx
