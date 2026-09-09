@@ -49,6 +49,8 @@ class RecordingEventDelegate : public testing::MockEventDelegate {
 
 }  // namespace
 
+class PageViewGestureTest : public UITest {};
+
 TEST(PageViewTest, EmptyKeyframesData) {
   std::unique_ptr<PageView> page_view =
       std::make_unique<PageView>(0, nullptr, nullptr);
@@ -542,5 +544,32 @@ TEST_F_UI(DesktopEventTest, BatchedTouchesKeepIndependentTargets) {
 
 }  // namespace
 #endif
+
+TEST_F_UI(PageViewGestureTest, DispatchesMouseDoubleClickOnSecondTap) {
+  auto view = std::make_unique<View>(1, page_.get());
+  view->SetBound(0, 0, 100, 100);
+  page_->AddChild(view.get());
+
+  std::vector<std::string> events;
+  mouse_event_callback_ = [&events](const std::string& event_name, int) {
+    events.push_back(event_name);
+  };
+
+  for (int pointer_id : {1, 2}) {
+    const uint64_t timestamp = 100000 + pointer_id * 100000;
+    auto down = CreatePointer(pointer_id, PointerEvent::EventType::kDownEvent,
+                              {10, 10}, {}, timestamp);
+    down.device = PointerEvent::DeviceType::kMouse;
+    page_->DispatchPointerEvent({down});
+    auto up = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent,
+                            {10, 10}, {}, timestamp + 1000);
+    up.device = PointerEvent::DeviceType::kMouse;
+    up.buttons = 0;
+    page_->DispatchPointerEvent({up});
+  }
+
+  EXPECT_EQ(std::count(events.begin(), events.end(), "mouseclick"), 2);
+  EXPECT_EQ(std::count(events.begin(), events.end(), "mousedblclick"), 1);
+}
 
 }  // namespace clay
