@@ -5,6 +5,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "base/include/fml/platform/thread_config_setter.h"
+#include "base/include/fml/synchronization/count_down_latch.h"
 #include "base/include/fml/thread.h"
 #include "build/build_config.h"
 
@@ -19,11 +21,38 @@
 #else
 #endif
 
+#if defined(__APPLE__)
+#include <pthread/qos.h>
+#endif
+
 #include <memory>
 
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
+
+namespace {
+
+bool EnableThreadSchedulingPolicyForTest() { return true; }
+
+bool DisableThreadSchedulingPolicyForTest() { return false; }
+
+class ScopedThreadSchedulingPolicyProvider {
+ public:
+  explicit ScopedThreadSchedulingPolicyProvider(
+      fml::PlatformThreadPriority::ThreadSchedulingPolicyEnabledProvider
+          provider) {
+    fml::PlatformThreadPriority::SetThreadSchedulingPolicyEnabledProvider(
+        provider);
+  }
+
+  ~ScopedThreadSchedulingPolicyProvider() {
+    fml::PlatformThreadPriority::SetThreadSchedulingPolicyEnabledProvider(
+        nullptr);
+  }
+};
+
+}  // namespace
 
 TEST(Thread, CanStartAndEnd) {
   fml::Thread thread;
@@ -43,6 +72,65 @@ TEST(Thread, HasARunningMessageLoop) {
   thread.Join();
   ASSERT_TRUE(done);
 }
+
+TEST(Thread, ThreadSchedulingPolicyEnabledProvider) {
+  fml::PlatformThreadPriority::SetThreadSchedulingPolicyEnabledProvider(
+      nullptr);
+  ASSERT_FALSE(fml::PlatformThreadPriority::IsThreadSchedulingPolicyEnabled());
+
+  {
+    ScopedThreadSchedulingPolicyProvider provider(
+        EnableThreadSchedulingPolicyForTest);
+    ASSERT_TRUE(fml::PlatformThreadPriority::IsThreadSchedulingPolicyEnabled());
+  }
+
+  ASSERT_FALSE(fml::PlatformThreadPriority::IsThreadSchedulingPolicyEnabled());
+
+  {
+    ScopedThreadSchedulingPolicyProvider provider(
+        DisableThreadSchedulingPolicyForTest);
+    ASSERT_FALSE(
+        fml::PlatformThreadPriority::IsThreadSchedulingPolicyEnabled());
+  }
+}
+
+#if defined(__APPLE__)
+TEST(Thread, PlatformThreadPriorityMatchesDarwinQoSClass) {
+  ASSERT_EQ(fml::PlatformThreadPriority::GetPlatformThreadPriority(
+                fml::Thread::ThreadPriority::BACKGROUND),
+            static_cast<int>(QOS_CLASS_BACKGROUND));
+  ASSERT_EQ(fml::PlatformThreadPriority::GetPlatformThreadPriority(
+                fml::Thread::ThreadPriority::LOW),
+            static_cast<int>(QOS_CLASS_BACKGROUND));
+  ASSERT_EQ(fml::PlatformThreadPriority::GetPlatformThreadPriority(
+                fml::Thread::ThreadPriority::NORMAL),
+            static_cast<int>(QOS_CLASS_DEFAULT));
+  ASSERT_EQ(fml::PlatformThreadPriority::GetPlatformThreadPriority(
+                fml::Thread::ThreadPriority::HIGH),
+            static_cast<int>(QOS_CLASS_USER_INITIATED));
+}
+
+TEST(Thread, ThreadSchedulingPolicyConfiguresDarwinThreadQoS) {
+  ScopedThreadSchedulingPolicyProvider provider(
+      EnableThreadSchedulingPolicyForTest);
+  fml::Thread thread(
+      fml::PlatformThreadPriority::Setter,
+      fml::Thread::ThreadConfig("qos_test", fml::Thread::ThreadPriority::HIGH));
+
+  fml::CountDownLatch latch(1);
+  qos_class_t qos_class = QOS_CLASS_UNSPECIFIED;
+  int relative_priority = QOS_MIN_RELATIVE_PRIORITY;
+  thread.GetTaskRunner()->PostTask([&]() {
+    pthread_get_qos_class_np(pthread_self(), &qos_class, &relative_priority);
+    latch.CountDown();
+  });
+  latch.Wait();
+  thread.Join();
+
+  ASSERT_EQ(qos_class, QOS_CLASS_USER_INITIATED);
+  ASSERT_EQ(relative_priority, 0);
+}
+#endif
 
 #if FLUTTER_PTHREAD_SUPPORTED
 TEST(Thread, ThreadNameCreatedWithConfig) {
