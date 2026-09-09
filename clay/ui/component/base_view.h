@@ -677,6 +677,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   virtual void OnDetachFromTree();
   virtual void OnAttachToTree();
   virtual void Invalidate();
+  bool IsPointInsideHitSlop(const FloatPoint& point_by_self) const;
   void LayoutUpdated();
 #if OS_IOS
   void RunAfterBoundsTransitionEnd(std::function<void()> task);
