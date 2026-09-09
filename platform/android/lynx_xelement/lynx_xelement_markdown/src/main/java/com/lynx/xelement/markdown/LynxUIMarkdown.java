@@ -24,6 +24,7 @@ import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownBundle;
 import com.lynx.xelement.markdown.adaptor.LynxMarkdownView;
+import com.lynx.xelement.markdown.adaptor.MarkdownLinkExposureUI;
 import com.lynx.xelement.markdown.adaptor.MarkdownResourceContext;
 import java.util.ArrayList;
 
@@ -31,6 +32,8 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
   private ServalMarkdownView mMarkdown;
   private LynxUIMarkdownShadowNode mShadowNode;
   private MarkdownResourceContext mResourceContext;
+  private String mContentID = "";
+  private boolean mExposeLinks;
 
   public LynxUIMarkdown(LynxContext context) {
     this(context, null);
@@ -42,7 +45,9 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
 
   @Override
   protected LynxMarkdownView createView(Context context) {
-    return new LynxMarkdownView(context);
+    LynxMarkdownView view = new LynxMarkdownView(context);
+    view.setExposureUpdater(this::updateLinkExposure);
+    return view;
   }
 
   @Override
@@ -51,6 +56,8 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     if (extraData instanceof LynxMarkdownBundle) {
       LynxMarkdownBundle bundle = (LynxMarkdownBundle) extraData;
       mShadowNode = bundle.mShadowNode;
+      mContentID = bundle.mContentID;
+      mExposeLinks = bundle.mExposeLinks;
       mResourceContext = bundle.mResourceContext;
       updateContentOffset();
       mMarkdown = mView.setBundle(bundle);
@@ -115,14 +122,17 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
 
   private int[] getSelectionRange(
       float startX, float startY, float endX, float endY, int selectionType) {
-    if (mMarkdown == null) {
+    if (mMarkdown == null || startX < 0 || startY < 0 || endX < 0 || endY < 0) {
       return null;
     }
-    if (selectionType == Constants.CHAR_RANGE_TYPE_CHAR) {
+    if (startX != endX || startY != endY) {
       int start = mMarkdown.getCharIndexByPoint(startX, startY, Constants.INDEX_TYPE_CHAR);
       int end = mMarkdown.getCharIndexByPoint(endX, endY, Constants.INDEX_TYPE_CHAR);
       if (start < 0 || end < 0) {
         return null;
+      }
+      if (start == end) {
+        return getSelectionRange(startX, startY, startX, startY, Constants.CHAR_RANGE_TYPE_CHAR);
       }
       if (start > end) {
         int tmp = start;
@@ -158,14 +168,14 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     if (hasRange) {
       int start = params.getInt("start", 0);
       int end = params.getInt("end", Integer.MAX_VALUE);
-      if (start >= end) {
-        callback.invoke(LynxUIMethodConstants.PARAM_INVALID, "start >= end");
+      if (start > end) {
+        callback.invoke(LynxUIMethodConstants.PARAM_INVALID, "start > end");
         return;
       }
       int indexType = toIndexType(params.getString("indexType", ""));
       content = mMarkdown.getContent(start, end, indexType);
     } else {
-      content = mMarkdown.getContent();
+      content = mMarkdown.getContent(0, Integer.MAX_VALUE, Constants.INDEX_TYPE_CHAR);
     }
     JavaOnlyMap result = new JavaOnlyMap();
     result.put("content", content);
@@ -235,6 +245,31 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
   }
 
   @LynxUIMethod
+  public void getCharIndexByPoint(ReadableMap params, Callback callback) {
+    if (!ensureMarkdownReady(callback)) {
+      return;
+    }
+    Object xValue = params == null ? null : params.asHashMap().get("x");
+    Object yValue = params == null ? null : params.asHashMap().get("y");
+    if (!(xValue instanceof Number) || !(yValue instanceof Number)) {
+      callback.invoke(LynxUIMethodConstants.PARAM_INVALID, "parameter is invalid");
+      return;
+    }
+    float density = getLynxContext().getScreenMetrics().density;
+    float x = (float) (((Number) xValue).doubleValue() * density - getContentLeftOffset());
+    float y = (float) (((Number) yValue).doubleValue() * density - getContentTopOffset());
+    int indexType = toIndexType(params.getString("indexType", ""));
+    int index = mMarkdown.getCharIndexByPoint(x, y, indexType);
+    if (index < 0) {
+      callback.invoke(LynxUIMethodConstants.UNKNOWN, "can not find char index");
+      return;
+    }
+    JavaOnlyMap result = new JavaOnlyMap();
+    result.put("index", index);
+    callback.invoke(LynxUIMethodConstants.SUCCESS, result);
+  }
+
+  @LynxUIMethod
   public void setTextSelection(ReadableMap params, Callback callback) {
     if (!ensureMarkdownReady(callback)) {
       return;
@@ -251,27 +286,31 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     int selectionType = toSelectionRangeType(params.getString("selectionTextType", ""));
     int[] range = getSelectionRange(startX, startY, endX, endY, selectionType);
     if (range == null) {
-      callback.invoke(LynxUIMethodConstants.UNKNOWN, "Can not set text selection.");
+      mMarkdown.setTextSelection(-1, -1);
+      JavaOnlyMap result = new JavaOnlyMap();
+      result.putArray("boxes", new JavaOnlyArray());
+      result.putArray("handles", new JavaOnlyArray());
+      callback.invoke(LynxUIMethodConstants.SUCCESS, result);
       return;
     }
     mMarkdown.setTextSelection(range[0], range[1]);
     ArrayList<RectF> boxes = mMarkdown.getSelectedLineBoundingRect();
     if (boxes.isEmpty()) {
-      callback.invoke(LynxUIMethodConstants.SUCCESS);
+      JavaOnlyMap result = new JavaOnlyMap();
+      result.putArray("boxes", new JavaOnlyArray());
+      result.putArray("handles", new JavaOnlyArray());
+      callback.invoke(LynxUIMethodConstants.SUCCESS, result);
       return;
     }
     RectF textRect = LynxUIHelper.getRelativePositionInfo(this, params);
     JavaOnlyMap result = getTextBoundingRectFromBoxes(boxes, textRect);
 
-    long handlePosition = mMarkdown.getSelectionHandlePosition();
-    int handleX = MarkdownValuePack.unpackPairFirst(handlePosition);
-    int handleY = MarkdownValuePack.unpackPairSecond(handlePosition);
-    if (handleX >= 0 && handleY >= 0) {
-      JavaOnlyArray handles = new JavaOnlyArray();
-      handles.pushMap(
-          getHandleMap(handleX, handleY, mMarkdown.getSelectionHandleRadius(), textRect));
-      result.putArray("handles", handles);
-    }
+    RectF first = boxes.get(0);
+    RectF last = boxes.get(boxes.size() - 1);
+    JavaOnlyArray handles = new JavaOnlyArray();
+    handles.pushMap(getHandleMap(first.left, first.bottom, 50.f, textRect));
+    handles.pushMap(getHandleMap(last.right, last.bottom, 50.f, textRect));
+    result.putArray("handles", handles);
     callback.invoke(LynxUIMethodConstants.SUCCESS, result);
   }
 
@@ -297,7 +336,7 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     }
 
     JavaOnlyMap result = new JavaOnlyMap();
-    result.put("id", mMarkdown.getContentID());
+    result.put("id", mContentID);
     JavaOnlyMap rangeResult = new JavaOnlyMap();
     for (int i = 0; i < tags.size(); i++) {
       String tag = tags.getString(i);
@@ -377,8 +416,41 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     return result;
   }
 
+  private void updateLinkExposure() {
+    removeChildrenExposureUI();
+    if (mMarkdown == null || !mExposeLinks || mEvents == null
+        || !mEvents.containsKey("childrenexpose")) {
+      return;
+    }
+    String[] urls = mMarkdown.getLinkUrl();
+    String[] contents = mMarkdown.getLinkContent();
+    ArrayList<RectF> rects = mMarkdown.getLinkBoundingRect();
+    for (int index = 0; index < urls.length; index++) {
+      RectF rect = new RectF(rects.get(index));
+      rect.offset(getContentLeftOffset(), getContentTopOffset());
+      String id = getSign() + "_link_" + index;
+      MarkdownLinkExposureUI child =
+          new MarkdownLinkExposureUI(getLynxContext(), rect, urls[index], contents[index], id);
+      insertChild(child, getChildCount());
+      getLynxContext().addUIToExposedMap(child, id, child.getData(), child.getOption());
+    }
+  }
+
+  @Override
+  public void removeChildrenExposureUI() {
+    for (int index = getChildCount() - 1; index >= 0; index--) {
+      LynxBaseUI child = getChildAt(index);
+      if (child instanceof MarkdownLinkExposureUI) {
+        MarkdownLinkExposureUI exposure = (MarkdownLinkExposureUI) child;
+        getLynxContext().removeUIFromExposedMap(exposure, exposure.getUniqueID());
+        removeChild(exposure);
+      }
+    }
+  }
+
   @Override
   public void destroy() {
+    removeChildrenExposureUI();
     super.destroy();
     mView.destroy();
     mMarkdown = null;

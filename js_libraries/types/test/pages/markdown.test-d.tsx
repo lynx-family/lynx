@@ -11,6 +11,7 @@ import {
   MarkdownOverflowEvent,
   MarkdownProps,
   MarkdownSelectionChangeEvent,
+  MarkdownTextClickEvent,
   MarkdownUIMethods,
   UIMethods,
 } from '../../types';
@@ -61,6 +62,16 @@ let a: unknown;
     bindlink={(e: BaseEvent<'bindlink', MarkdownLinkEvent>) => {
       assertType<string>(e.detail.url);
       assertType<string>(e.detail.content);
+    }}
+    content=""
+  />;
+
+  <markdown
+    bindtextClick={(e) => {
+      assertType<BaseEvent<'bindtextClick', MarkdownTextClickEvent>>(e);
+      assertType<string>(e.detail.id);
+      // @ts-expect-error Text attachment IDs are strings.
+      assertType<number>(e.detail.id);
     }}
     content=""
   />;

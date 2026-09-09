@@ -110,10 +110,6 @@ public class MarkdownResourceLoader implements IResourceLoader {
     if (TextUtils.isEmpty(id)) {
       return null;
     }
-    MarkdownInlineViewHandle cachedHandle = mInlineViewHandles.get(id);
-    if (cachedHandle != null) {
-      return cachedHandle;
-    }
     NativeLayoutNodeRef layoutNodeRef = null;
     LynxBaseUI ui = null;
     for (int i = 0; i < mHost.getChildCount(); i++) {
@@ -133,7 +129,12 @@ public class MarkdownResourceLoader implements IResourceLoader {
       break;
     }
     if (layoutNodeRef == null) {
+      mInlineViewHandles.remove(id);
       return null;
+    }
+    MarkdownInlineViewHandle cachedHandle = mInlineViewHandles.get(id);
+    if (cachedHandle != null && cachedHandle.isForNode(layoutNodeRef)) {
+      return cachedHandle;
     }
     MarkdownInlineViewHandle handle = new MarkdownInlineViewHandle(layoutNodeRef, ui, mHost);
     mInlineViewHandles.put(id, handle);
