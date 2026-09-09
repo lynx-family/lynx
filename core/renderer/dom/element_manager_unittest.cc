@@ -111,6 +111,20 @@ class ElementManagerTest : public ::testing::Test {
   }
 };
 
+TEST_F(ElementManagerTest, RadonAnimationBackendSelection) {
+  EXPECT_FALSE(manager->GetEnableNewAnimatorForRadon());
+  manager->SetEnableNewAnimatorRadon(true);
+  EXPECT_TRUE(manager->GetEnableNewAnimatorForRadon());
+
+  manager->SetEnableNewAnimatorRadon(false);
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  EXPECT_FALSE(manager->GetEnableNewAnimatorForRadon());
+
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  EXPECT_TRUE(manager->GetEnableNewAnimatorForRadon());
+  EXPECT_TRUE(manager->GetEnableNewAnimatorForFiber());
+}
+
 TEST_F(ElementManagerTest, CreateFiberPage) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
