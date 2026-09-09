@@ -3345,9 +3345,11 @@ void BaseView::NotifyBgImageLoadStatus(bool success,
                                        const std::vector<std::string>& keys,
                                        Args&&... args) {
   if (success && HasEvent(event_attr::kEventBgLoad)) {
-    page_view()->SendEvent(id(), event_attr::kEventBgLoad, keys, args...);
+    page_view()->SendEvent(GetCallbackId(), event_attr::kEventBgLoad, keys,
+                           args...);
   } else if (!success && HasEvent(event_attr::kEventBgError)) {
-    page_view()->SendEvent(id(), event_attr::kEventBgError, keys, args...);
+    page_view()->SendEvent(GetCallbackId(), event_attr::kEventBgError, keys,
+                           args...);
   }
 }
 
