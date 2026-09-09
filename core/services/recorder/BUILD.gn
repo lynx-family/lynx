@@ -87,6 +87,7 @@ config("enable_testbench_recorder_for_test") {
 lynx_core_source_set("testbench_recorder_enabled_test_support") {
   testonly = true
   sources = [
+    "fixture_writer.cc",
     "recorder_controller.cc",
     "testbench_base_recorder.cc",
   ]
