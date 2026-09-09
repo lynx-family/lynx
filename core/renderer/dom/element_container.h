@@ -83,8 +83,9 @@ class ElementContainer : public BaseElementContainer {
   void PositionFixedChanged();
   void StickyChanged();
 
-  void AttachChildToTargetContainerRecursive(ElementContainer* parent,
-                                             Element* child, int& index);
+  void AttachChildToTargetContainerRecursive(
+      ElementContainer* parent, Element* child, int& index,
+      ElementContainer** previous = nullptr);
 
   virtual void AddChild(ElementContainer* child, int index);
   void RemoveSelf(bool destroy);
@@ -95,7 +96,8 @@ class ElementContainer : public BaseElementContainer {
   // below helper functions to calculate the correct parent and UI index for
   // fiber element
   static std::pair<ElementContainer*, int> FindParentAndIndexForChildForFiber(
-      Element* parent, Element* child, Element* ref);
+      Element* parent, Element* child, Element* ref,
+      ElementContainer** previous = nullptr);
   static int GetUIIndexForChildForFiber(Element* parent, Element* child);
   static int GetUIChildrenCountForFiber(Element* parent);
   static void MoveZChildrenRecursively(Element* element,
@@ -126,6 +128,14 @@ class ElementContainer : public BaseElementContainer {
   bool props_changed_{true};
 
  private:
+  bool KeepsUnifiedFixedUIOrder() const;
+  void AddChildInternal(ElementContainer* child, int index,
+                        ElementContainer* previous,
+                        bool preserve_position = false);
+  static bool FindPreviousChildForLayoutOnlyFixed(Element* parent,
+                                                  Element* child,
+                                                  ElementContainer* root,
+                                                  ElementContainer*& previous);
   void CalcUIIndexForFixed(ElementContainer* child, int& index);
   void CalcUIIndexForFixedNew(ElementContainer* child, int& index);
   void CalcUIIndexForFixedUnified(ElementContainer* child, int& index);
