@@ -389,6 +389,11 @@ export interface TextAreaSetValueMethod extends BaseMethod {
      * @since 3.4
      */
     value: string;
+    /**
+     * Optional caret position after replacing the text.
+     * @Harmony 4.3.0
+     */
+    cursor?: number;
   };
 }
 
