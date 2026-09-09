@@ -766,7 +766,13 @@
           .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
   if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
       childLynxPage.view.isChildLynxPage) {
-    [childLynxPage.context.eventHandler.touchRecognizer touchesBeganInner:touches withEvent:event];
+    LynxTouchHandler* childRecognizer = childLynxPage.context.eventHandler.touchRecognizer;
+    // Recover stale child state before a new begin, while preserving touches still tracked by the
+    // parent. Repeated hit tests must not reset an ongoing touch sequence.
+    if (childRecognizer && ![childRecognizer->_touches intersectsSet:_touches]) {
+      [childRecognizer resetTouchEnv];
+    }
+    [childRecognizer touchesBeganInner:touches withEvent:event];
   }
 }
 

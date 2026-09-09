@@ -117,8 +117,49 @@
 
 @end
 
+@interface LynxTouchHandlerTestView : UIView
+@end
+
+@implementation LynxTouchHandlerTestView
+- (BOOL)isChildLynxPage {
+  return YES;
+}
+@end
+
+@interface LynxTouchHandlerTestRootUI : LynxRootUI
+@end
+
+@implementation LynxTouchHandlerTestRootUI
+- (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
+  return self;
+}
+@end
+
+@interface LynxTouchHandlerTestTouch : UITouch
+@property(nonatomic) CGPoint testPoint;
+@property(nonatomic) UITouchPhase testPhase;
+@end
+
+@implementation LynxTouchHandlerTestTouch
+- (CGPoint)locationInView:(UIView*)view {
+  return self.testPoint;
+}
+- (UITouchPhase)phase {
+  return self.testPhase;
+}
+@end
+
 @implementation LynxTouchHandlerUnitTest {
   LynxTouchHandler* _handler;
+  NSArray<UIView*>* _pageViews;
+  LynxRootUI* _parentPage;
+  LynxRootUI* _childPage;
+  LynxUIContext* _childContext;
+  LynxEventHandler* _parentEventHandler;
+  LynxEventHandler* _childEventHandler;
+  LynxEventEmitter* _childEmitter;
+  NSMutableArray<LynxTouchEvent*>* _childTouchEvents;
+  UIEvent* _touchEvent;
 }
 
 - (void)setUp {
@@ -301,6 +342,163 @@
   // Verify touchesBegan
   [touchHandler touchesBegan:touches withEvent:event];
   OCMVerify([touchHandler touchesBeganInner:touches withEvent:event]);
+}
+
+- (void)setUpParentChildPagesWithMultiTouch:(BOOL)enableMultiTouch {
+  _pageViews = @[ [UIView new], [LynxTouchHandlerTestView new] ];
+  _parentPage = [[LynxTouchHandlerTestRootUI alloc] initWithLynxView:(LynxView*)_pageViews[0]];
+  _childPage = [[LynxTouchHandlerTestRootUI alloc] initWithLynxView:(LynxView*)_pageViews[1]];
+  _parentPage.sign = 1;
+  _childPage.sign = 2;
+  _parentEventHandler = [[LynxEventHandler alloc] initWithRootView:_parentPage.view
+                                                        withRootUI:_parentPage];
+  _childEventHandler = [[LynxEventHandler alloc] initWithRootView:_childPage.view
+                                                       withRootUI:_childPage];
+  // Child pages receive touches from the parent instead of an attached recognizer.
+  [_childPage.view removeGestureRecognizer:_childEventHandler.touchRecognizer];
+  _childContext = OCMClassMock([LynxUIContext class]);
+  OCMStub([_childContext eventHandler]).andReturn(_childEventHandler);
+  _childPage.context = _childContext;
+  [_parentPage setChildrenLynxPageUI:[@{[NSString stringWithFormat:@"%p", _parentPage] : _childPage}
+                                         mutableCopy]];
+  [_parentEventHandler.touchRecognizer setEnableMultiTouch:enableMultiTouch];
+  [_childEventHandler.touchRecognizer setEnableMultiTouch:enableMultiTouch];
+
+  _childEmitter = OCMClassMock([LynxEventEmitter class]);
+  _childTouchEvents = [NSMutableArray new];
+  NSMutableArray<LynxTouchEvent*>* events = _childTouchEvents;
+  void (^recordEvent)(NSInvocation*) = ^(NSInvocation* invocation) {
+    __unsafe_unretained LynxTouchEvent* event;
+    [invocation getArgument:&event atIndex:2];
+    [events addObject:event];
+  };
+  OCMStub([_childEmitter dispatchTouchEvent:OCMArg.any]).andDo(recordEvent);
+  OCMStub([_childEmitter dispatchMultiTouchEvent:OCMArg.any]).andDo(recordEvent);
+  [_childEventHandler updateUiOwner:nil eventEmitter:_childEmitter];
+  _touchEvent = OCMClassMock([UIEvent class]);
+  [_parentEventHandler hitTest:CGPointZero withEvent:_touchEvent];
+}
+
+- (LynxTouchHandlerTestTouch*)touchAtPoint:(CGPoint)point {
+  LynxTouchHandlerTestTouch* touch = [LynxTouchHandlerTestTouch new];
+  touch.testPoint = point;
+  touch.testPhase = UITouchPhaseBegan;
+  return touch;
+}
+
+- (void)testChildTouchEventsSurviveRepeatedHitTest {
+  for (NSNumber* cancelled in @[ @NO, @YES ]) {
+    [self setUpParentChildPagesWithMultiTouch:NO];
+    LynxTouchHandlerTestTouch* touch = [self touchAtPoint:CGPointMake(10, 20)];
+    NSSet<UITouch*>* touches = [NSSet setWithObject:touch];
+    [_parentEventHandler.touchRecognizer touchesBeganInner:touches withEvent:_touchEvent];
+
+    [_parentEventHandler hitTest:touch.testPoint withEvent:_touchEvent];
+    [_parentEventHandler hitTest:touch.testPoint withEvent:_touchEvent];
+    touch.testPoint = CGPointMake(12, 20);
+    touch.testPhase = UITouchPhaseMoved;
+    [_parentEventHandler.touchRecognizer touchesMovedInner:touches withEvent:_touchEvent];
+
+    // A terminal UITouch phase does not mean the child's terminal callback has run.
+    touch.testPhase = cancelled.boolValue ? UITouchPhaseCancelled : UITouchPhaseEnded;
+    [_parentEventHandler hitTest:touch.testPoint withEvent:_touchEvent];
+    if (cancelled.boolValue) {
+      [_parentEventHandler.touchRecognizer touchesCancelledInner:touches withEvent:_touchEvent];
+    } else {
+      [_parentEventHandler.touchRecognizer touchesEndedInner:touches withEvent:_touchEvent];
+    }
+
+    NSString* terminalEvent = cancelled.boolValue ? LynxEventTouchCancel : LynxEventTouchEnd;
+    XCTAssertEqualObjects([_childTouchEvents valueForKey:@"eventName"],
+                          (@[ LynxEventTouchStart, LynxEventTouchMove, terminalEvent ]));
+    for (LynxTouchEvent* event in _childTouchEvents) {
+      XCTAssertEqual(event.eventTarget, _childPage);
+      XCTAssertEqual(event.targetSign, _childPage.sign);
+    }
+    XCTAssertNil(_childEventHandler.touchRecognizer.target);
+  }
+}
+
+- (void)testAdditionalChildTouchPreservesExistingIdentifiers {
+  [self setUpParentChildPagesWithMultiTouch:YES];
+  LynxTouchHandlerTestTouch* first = [self touchAtPoint:CGPointMake(10, 20)];
+  LynxTouchHandlerTestTouch* second = [self touchAtPoint:CGPointMake(20, 30)];
+  NSSet<UITouch*>* firstTouches = [NSSet setWithObject:first];
+  NSSet<UITouch*>* secondTouches = [NSSet setWithObject:second];
+  [_parentEventHandler.touchRecognizer touchesBeganInner:firstTouches withEvent:_touchEvent];
+  [_parentEventHandler hitTest:second.testPoint withEvent:_touchEvent];
+  [_parentEventHandler.touchRecognizer touchesBeganInner:secondTouches withEvent:_touchEvent];
+
+  first.testPoint = CGPointMake(12, 20);
+  first.testPhase = UITouchPhaseMoved;
+  [_parentEventHandler.touchRecognizer touchesMovedInner:firstTouches withEvent:_touchEvent];
+  first.testPhase = UITouchPhaseEnded;
+  [_parentEventHandler.touchRecognizer touchesEndedInner:firstTouches withEvent:_touchEvent];
+  XCTAssertEqual(_childEventHandler.touchRecognizer.target, _childPage);
+
+  second.testPoint = CGPointMake(22, 30);
+  second.testPhase = UITouchPhaseMoved;
+  [_parentEventHandler.touchRecognizer touchesMovedInner:secondTouches withEvent:_touchEvent];
+  second.testPhase = UITouchPhaseCancelled;
+  [_parentEventHandler.touchRecognizer touchesCancelledInner:secondTouches withEvent:_touchEvent];
+
+  XCTAssertEqualObjects([_childTouchEvents valueForKey:@"eventName"], (@[
+                          LynxEventTouchStart, LynxEventTouchStart, LynxEventTouchMove,
+                          LynxEventTouchEnd, LynxEventTouchMove, LynxEventTouchCancel
+                        ]));
+  NSMutableArray<NSNumber*>* identifiers = [NSMutableArray new];
+  for (LynxTouchEvent* event in _childTouchEvents) {
+    NSArray<NSArray*>* touchData = event.uiTouchMap[@"2"];
+    XCTAssertEqual(touchData.count, 1u);
+    [identifiers addObject:touchData.firstObject.firstObject];
+  }
+  XCTAssertEqualObjects(identifiers, (@[ @0, @1, @0, @0, @1, @1 ]));
+  XCTAssertNil(_childEventHandler.touchRecognizer.target);
+}
+
+- (void)testNewChildTouchRecoversStaleSequence {
+  [self setUpParentChildPagesWithMultiTouch:NO];
+  [_parentEventHandler.touchRecognizer setEnableMultiTouch:YES];
+  // Another parent touch remains active outside this child page.
+  NSMutableDictionary* childPages = _parentPage.childrenLynxPageUI;
+  [_parentPage setChildrenLynxPageUI:[NSMutableDictionary new]];
+  LynxTouchHandlerTestTouch* parentTouch = [self touchAtPoint:CGPointZero];
+  [_parentEventHandler.touchRecognizer touchesBeganInner:[NSSet setWithObject:parentTouch]
+                                               withEvent:_touchEvent];
+  [_parentPage setChildrenLynxPageUI:childPages];
+  LynxTouchHandlerTestTouch* staleTouch = [self touchAtPoint:CGPointMake(10, 20)];
+  // Simulate a child sequence whose terminal event was never forwarded by the parent.
+  [_childEventHandler.touchRecognizer touchesBeganInner:[NSSet setWithObject:staleTouch]
+                                              withEvent:_touchEvent];
+  LynxTouchHandlerTestTouch* touch = [self touchAtPoint:CGPointMake(20, 30)];
+  NSSet<UITouch*>* touches = [NSSet setWithObject:touch];
+  [_parentEventHandler hitTest:touch.testPoint withEvent:_touchEvent];
+  [_parentEventHandler.touchRecognizer touchesBeganInner:touches withEvent:_touchEvent];
+  touch.testPhase = UITouchPhaseEnded;
+  [_parentEventHandler.touchRecognizer touchesEndedInner:touches withEvent:_touchEvent];
+
+  XCTAssertEqualObjects([_childTouchEvents valueForKey:@"eventName"],
+                        (@[ LynxEventTouchStart, LynxEventTouchStart, LynxEventTouchEnd ]));
+  XCTAssertTrue(CGPointEqualToPoint(_childTouchEvents.lastObject.pagePoint, touch.testPoint));
+  XCTAssertNil(_childEventHandler.touchRecognizer.target);
+}
+
+- (void)testSingleTouchModeStillIgnoresAdditionalTouch {
+  [self setUpParentChildPagesWithMultiTouch:NO];
+  LynxTouchHandlerTestTouch* first = [self touchAtPoint:CGPointMake(10, 20)];
+  LynxTouchHandlerTestTouch* second = [self touchAtPoint:CGPointMake(20, 30)];
+  NSSet<UITouch*>* touches = [NSSet setWithObject:first];
+  [_parentEventHandler.touchRecognizer touchesBeganInner:touches withEvent:_touchEvent];
+  [_parentEventHandler hitTest:second.testPoint withEvent:_touchEvent];
+  [_parentEventHandler.touchRecognizer touchesBeganInner:[NSSet setWithObject:second]
+                                               withEvent:_touchEvent];
+  first.testPhase = UITouchPhaseEnded;
+  [_parentEventHandler.touchRecognizer touchesEndedInner:touches withEvent:_touchEvent];
+
+  XCTAssertEqualObjects([_childTouchEvents valueForKey:@"eventName"],
+                        (@[ LynxEventTouchStart, LynxEventTouchEnd ]));
+  XCTAssertTrue(CGPointEqualToPoint(_childTouchEvents.lastObject.pagePoint, first.testPoint));
+  XCTAssertNil(_childEventHandler.touchRecognizer.target);
 }
 
 - (NSInteger)getGestureArenaMemberId {
