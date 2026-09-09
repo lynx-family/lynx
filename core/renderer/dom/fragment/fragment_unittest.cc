@@ -393,6 +393,25 @@ TEST(NativePaintingCtxPlatformRefTest,
   EXPECT_THAT(ref->destroyed_image_keys, ::testing::ElementsAre(11));
 }
 
+TEST(NativePaintingCtxPlatformRefTest, UpdatesTextEventTargetRangesByTextId) {
+  TestNativePaintingCtxPlatformRef ref;
+
+  ref.UpdateTextEventTargetRanges(1, {{11, 0, 2}, {12, 2, 4}});
+  ref.UpdateTextEventTargetRanges(2, {{21, 4, 6}});
+  ref.UpdateTextEventTargetRanges(1, {{13, 6, 8}});
+
+  const auto& ranges = ref.GetTextEventTargetRanges();
+  ASSERT_EQ(ranges.size(), 2u);
+  EXPECT_EQ(ranges[0].sign, 21);
+  EXPECT_EQ(ranges[0].text_sign, 2);
+  EXPECT_EQ(ranges[1].sign, 13);
+  EXPECT_EQ(ranges[1].text_sign, 1);
+
+  ref.UpdateTextEventTargetRanges(2, {});
+  ASSERT_EQ(ref.GetTextEventTargetRanges().size(), 1u);
+  EXPECT_EQ(ref.GetTextEventTargetRanges()[0].text_sign, 1);
+}
+
 class FragmentDrawTest : public ::testing::Test {
  public:
   FragmentDrawTest() {}
@@ -1055,6 +1074,20 @@ TEST_F(FragmentTest, PlatformEventTargetHitTestAccountsForTransform) {
       converted_root_point, child_target, root_target, child_point);
   EXPECT_FLOAT_EQ(converted_root_point[0], root_point[0]);
   EXPECT_FLOAT_EQ(converted_root_point[1], root_point[1]);
+}
+
+TEST_F(FragmentTest, PlatformEventTargetHitTestUsesDisjointRegions) {
+  auto target = fml::MakeRefCounted<PlatformEventTarget>(nullptr, kRootId, 1,
+                                                         0.f, 0.f, 100.f, 60.f);
+  target->SetHitTestRegions(
+      {{0.f, 0.f, 40.f, 20.f}, {60.f, 40.f, 100.f, 60.f}});
+
+  float first_line[2] = {20.f, 10.f};
+  EXPECT_TRUE(target->ContainsPoint(first_line));
+  float second_line[2] = {80.f, 50.f};
+  EXPECT_TRUE(target->ContainsPoint(second_line));
+  float gap[2] = {50.f, 30.f};
+  EXPECT_FALSE(target->ContainsPoint(gap));
 }
 
 TEST_F(FragmentTest,

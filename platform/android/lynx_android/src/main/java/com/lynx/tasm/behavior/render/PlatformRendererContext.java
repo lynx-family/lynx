@@ -6,6 +6,8 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.os.Build;
+import android.text.Layout;
+import android.text.Spanned;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +31,9 @@ import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
+import com.lynx.tasm.behavior.shadow.text.EventTargetSpan;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
+import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
@@ -45,6 +49,7 @@ import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -796,6 +801,93 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   Page getTextBundle(int sign) {
     return (Page) mExtraDatas.get(sign);
+  }
+
+  private static void appendTextEventTargetRegion(
+      ArrayList<Float> result, int sign, float left, float top, float right, float bottom) {
+    if (right <= left || bottom <= top) {
+      return;
+    }
+    // Keep the full 32-bit sign while sharing one compact float array with geometry.
+    result.add(Float.intBitsToFloat(sign));
+    result.add(left);
+    result.add(top);
+    result.add(right - left);
+    result.add(bottom - top);
+  }
+
+  private static void appendLayoutRegions(
+      ArrayList<Float> result, int sign, Layout layout, int start, int end, PointF offset) {
+    if (start < 0 || start >= end || end > layout.getText().length()) {
+      return;
+    }
+    int startLine = layout.getLineForOffset(start);
+    int endLine = layout.getLineForOffset(end - 1);
+    float offsetX = offset != null ? offset.x : 0.f;
+    float offsetY = offset != null ? offset.y : 0.f;
+    for (int line = startLine; line <= endLine; ++line) {
+      int lineStart = layout.getLineStart(line);
+      int lineEnd = layout.getLineEnd(line);
+      int rangeStart = Math.max(start, lineStart);
+      int rangeEnd = Math.min(end, lineEnd);
+      if (rangeStart >= rangeEnd) {
+        continue;
+      }
+      // A soft-wrap boundary belongs to both adjacent lines. Use the current
+      // line bounds instead of resolving the offset against the other line.
+      float startX = rangeStart == lineStart ? layout.getLineLeft(line)
+                                             : layout.getPrimaryHorizontal(rangeStart);
+      float endX =
+          rangeEnd == lineEnd ? layout.getLineRight(line) : layout.getPrimaryHorizontal(rangeEnd);
+      appendTextEventTargetRegion(result, sign, Math.min(startX, endX) + offsetX,
+          layout.getLineTop(line) + offsetY, Math.max(startX, endX) + offsetX,
+          layout.getLineBottom(line) + offsetY);
+    }
+  }
+
+  @CalledByNative
+  private float[] getTextEventTargetRegions(int sign, int[] targetRanges) {
+    ArrayList<Float> result = new ArrayList<>();
+    if (mContext != null && mContext.isTextServiceModeOn()) {
+      Page page = getTextBundle(sign);
+      if (page == null || targetRanges == null || targetRanges.length % 3 != 0) {
+        return new float[0];
+      }
+      for (int i = 0; i < targetRanges.length; i += 3) {
+        int targetSign = targetRanges[i];
+        float[] rects = page.getSelectionRects(targetRanges[i + 1], targetRanges[i + 2]);
+        if (rects == null || rects.length % 4 != 0) {
+          continue;
+        }
+        for (int j = 0; j < rects.length; j += 4) {
+          appendTextEventTargetRegion(result, targetSign, rects[j], rects[j + 1],
+              rects[j] + rects[j + 2], rects[j + 1] + rects[j + 3]);
+        }
+      }
+    } else if (mTextMeasurer != null) {
+      Object data = mTextMeasurer.takeTextLayout(sign);
+      if (data instanceof TextUpdateBundle) {
+        TextUpdateBundle bundle = (TextUpdateBundle) data;
+        Layout layout = bundle.getTextLayout();
+        if (layout != null && layout.getText() instanceof Spanned) {
+          Spanned text = (Spanned) layout.getText();
+          EventTargetSpan[] spans = text.getSpans(0, text.length(), EventTargetSpan.class);
+          for (EventTargetSpan span : spans) {
+            int start = text.getSpanStart(span);
+            int end = text.getSpanEnd(span);
+            if (span.isClickable()) {
+              appendLayoutRegions(
+                  result, span.getSign(), layout, start, end, bundle.getTextTranslateOffset());
+            }
+          }
+        }
+      }
+    }
+    float[] regions = new float[result.size()];
+    for (int i = 0; i < result.size(); ++i) {
+      regions[i] = result.get(i);
+    }
+    return regions;
   }
 
   @CalledByNative

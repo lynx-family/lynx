@@ -115,6 +115,9 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 
   void DestroyTextBundle(int id) override;
 
+  void UpdateTextEventTargetRanges(int id,
+                                   std::vector<PlatformTextEventTargetRange> ranges) override;
+
   void EnqueueReconstructEventTargetTreeRecursively() override;
 
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle) override;

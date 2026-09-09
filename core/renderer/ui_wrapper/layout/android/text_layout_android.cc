@@ -336,7 +336,9 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
                                         PropArrayAndroid* props) {
   TextProps* text_props = element->text_props();
   CSSIDBitset& property_bits = element->property_bits();
-  if (!text_props && !property_bits.HasAny()) {
+  const bool has_tap_event =
+      element->is_inline_element() && element->HasEventListener("tap");
+  if (!text_props && !property_bits.HasAny() && !has_tap_event) {
     return;
   }
   // only inline text need the pass the range，   kPropRangeStart should be
@@ -344,6 +346,10 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
   if (element->is_inline_element()) {
     props->AddProp(kPropInlineStart);
     props->AddProp(static_cast<int>(pos_start));
+    if (has_tap_event) {
+      props->AddProp(kPropInlineEventTarget);
+      props->AddProp(element->impl_id());
+    }
   }
 
   // styles
@@ -650,6 +656,11 @@ void TextLayoutAndroid::AppendImageProps(ImageElement* image_element,
   // inline range start
   props->AddProp(kPropInlineStart);
   props->AddProp(static_cast<int>(start));
+
+  if (image_element->HasEventListener("tap")) {
+    props->AddProp(kPropInlineEventTarget);
+    props->AddProp(image_element->impl_id());
+  }
 
   // src
   props->AddProp(kPropImageSrc);

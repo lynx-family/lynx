@@ -29,6 +29,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
 
   void GetRootViewLocationOnScreen(float location[2]) override;
   void GetScreenSize(float size[2]) override;
+  PlatformTextEventTargetRegions GetTextEventTargetRegions(int32_t text_id) override;
   LynxRendererContext* GetRendererContext();
 
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;

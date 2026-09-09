@@ -108,6 +108,7 @@ public class UITextUtils {
     }
 
     EventTarget target = parent;
+    // cspell:ignore prestart preend
     int prestart = 0;
     int preend = spanned.length();
     for (EventTargetSpan eventTargetSpan : targets) {
@@ -116,7 +117,14 @@ public class UITextUtils {
       int end = spanned.getSpanEnd(eventTargetSpan);
       // if language is ltr, the off is between [start, end)
       // if language is rtl, the off is between (start, end]
-      if (off >= start && off <= end && start >= prestart && end <= preend) {
+      boolean containsOffset = off >= start && off <= end;
+      if (ui.getLynxContext().isLayoutInElementModeOn()
+          && !ui.getLynxContext().isFragmentLayerRenderOn()) {
+        // CUI records the actual character index, so the end offset belongs to
+        // the following inline node instead of the current event target span.
+        containsOffset = off >= start && off < end;
+      }
+      if (containsOffset && start >= prestart && end <= preend) {
         target = eventTargetSpan;
         eventTargetSpan.setParent(parent);
       }
