@@ -17,6 +17,8 @@ namespace {
 
 class TestPageView : public PageView {
  public:
+  using PageView::ActivateTouchPseudoStatus;
+  using PageView::DeactivateTouchPseudoStatus;
   using PageView::PageView;
   using PageView::ReportTopViewEvent;
 };
@@ -30,9 +32,14 @@ class RecordingEventDelegate : public testing::MockEventDelegate {
     calls_++;
   }
 
+  void OnActiveChanged(int view_id, bool active) override {
+    active_changes_.emplace_back(view_id, active);
+  }
+
   int button_ = -1;
   int buttons_ = -1;
   int calls_ = 0;
+  std::vector<std::pair<int, bool>> active_changes_;
 };
 
 }  // namespace
@@ -180,6 +187,64 @@ TEST(PageViewTest, AncestorTouchTargetDoesNotPreserveFocusedChild) {
 
   EXPECT_FALSE(page_view->ShouldPreserveFocusForTouchTarget(parent));
   EXPECT_TRUE(page_view->ShouldPreserveFocusForTouchTarget(child));
+}
+
+TEST(PageViewTest, TouchActivePseudoStatusPropagatesToAncestors) {
+  TestPageView page_view(0, nullptr, nullptr);
+  RecordingEventDelegate event_delegate;
+  page_view.SetEventDelegate(&event_delegate);
+
+  auto* parent = new View(1, &page_view);
+  auto* child = new View(2, &page_view);
+  page_view.AddChild(parent);
+  parent->AddChild(child);
+
+  page_view.ActivateTouchPseudoStatus(7, child);
+  page_view.DeactivateTouchPseudoStatus(7);
+
+  const std::vector<std::pair<int, bool>> expected = {
+      {2, true}, {1, true}, {0, true}, {2, false}, {1, false}, {0, false}};
+  EXPECT_EQ(event_delegate.active_changes_, expected);
+}
+
+TEST(PageViewTest, TouchActivePseudoStatusHonorsPropagationAttribute) {
+  TestPageView page_view(0, nullptr, nullptr);
+  RecordingEventDelegate event_delegate;
+  page_view.SetEventDelegate(&event_delegate);
+
+  auto* parent = new View(1, &page_view);
+  auto* child = new View(2, &page_view);
+  page_view.AddChild(parent);
+  parent->AddChild(child);
+  child->SetAttribute("enable-touch-pseudo-propagation", Value(false));
+
+  page_view.ActivateTouchPseudoStatus(7, child);
+  page_view.DeactivateTouchPseudoStatus(7);
+
+  const std::vector<std::pair<int, bool>> expected = {{2, true}, {2, false}};
+  EXPECT_EQ(event_delegate.active_changes_, expected);
+}
+
+TEST(PageViewTest, TouchActivePseudoStatusTracksInitialPointer) {
+  TestPageView page_view(0, nullptr, nullptr);
+  RecordingEventDelegate event_delegate;
+  page_view.SetEventDelegate(&event_delegate);
+
+  auto* child = new View(1, &page_view);
+  page_view.AddChild(child);
+
+  page_view.ActivateTouchPseudoStatus(7, child);
+  page_view.ActivateTouchPseudoStatus(8, child);
+  page_view.DeactivateTouchPseudoStatus(8);
+
+  const std::vector<std::pair<int, bool>> active_expected = {{1, true},
+                                                             {0, true}};
+  EXPECT_EQ(event_delegate.active_changes_, active_expected);
+
+  page_view.DeactivateTouchPseudoStatus(7);
+  const std::vector<std::pair<int, bool>> inactive_expected = {
+      {1, true}, {0, true}, {1, false}, {0, false}};
+  EXPECT_EQ(event_delegate.active_changes_, inactive_expected);
 }
 
 TEST(PageViewTest, AlignsMouseButtonWithW3C) {
