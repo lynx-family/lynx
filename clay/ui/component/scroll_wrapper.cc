@@ -47,6 +47,7 @@ constexpr char kScrollWrapperTag[] = "scroll-view";
 
 LYNX_UI_METHOD_BEGIN(ScrollWrapper) {
   LYNX_UI_METHOD(ScrollWrapper, scrollTo);
+  LYNX_UI_METHOD(ScrollWrapper, scrollBy);
   LYNX_UI_METHOD(ScrollWrapper, autoScroll);
   LYNX_UI_METHOD(ScrollWrapper, getScrollInfo);
 }
@@ -106,6 +107,35 @@ void ScrollWrapper::scrollTo(const LynxModuleValues& args) {
     }
     GetScrollView()->ScrollTo(smooth, FromLogical(offset), index);
   }
+}
+
+void ScrollWrapper::scrollBy(const LynxModuleValues& args,
+                             const LynxUIMethodCallback& callback) {
+  if (!args.HasKey(kArgOffset)) {
+    callback(LynxUIMethodResult::kParamInvalid,
+             clay::Value("offset is required for scrollBy"));
+    return;
+  }
+
+  float offset = 0;
+  CastNamedLynxModuleArgs({kArgOffset}, args, offset);
+  if (isnan(offset) || isinf(offset)) {
+    callback(LynxUIMethodResult::kParamInvalid,
+             clay::Value("offset is invalid for scrollBy"));
+    return;
+  }
+
+  const bool horizontal =
+      GetScrollView()->GetScrollDirection() == ScrollDirection::kHorizontal;
+  const auto result =
+      GetScrollView()->ScrollBy(horizontal ? FromLogical(offset) : 0,
+                                horizontal ? 0 : FromLogical(offset));
+  clay::Value::Map data;
+  data.emplace("consumedX", ToLogical(result[0]));
+  data.emplace("consumedY", ToLogical(result[1]));
+  data.emplace("unconsumedX", ToLogical(result[2]));
+  data.emplace("unconsumedY", ToLogical(result[3]));
+  callback(LynxUIMethodResult::kSuccess, clay::Value(std::move(data)));
 }
 
 void ScrollWrapper::autoScroll(const LynxModuleValues& args) {
