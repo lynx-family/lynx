@@ -875,7 +875,6 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
   // need to calculate the index here.
   bool should_skip_index_calculation =
       (!real_parent->element_container_impl()->has_z_child()) && !ref;
-  ;
 
   int index = 0;
   if (should_skip_index_calculation) {
@@ -890,17 +889,39 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
 
     // insert to the middle, child is already inserted in Element, just use
     // child to get index
-    index = GetUIIndexForChildForFiber(parent, child);
+    const bool mounts_at_root =
+        real_parent == parent->element_manager()->root();
+    index = GetUIIndexForChildForFiber(parent, child, mounts_at_root);
     while (parent->IsLayoutOnly() && !parent->IsFixedUnifiedOnly()) {
       auto* up_parent = parent->render_parent();
       if (!up_parent) {
         return {nullptr, -1};
       }
-      index += GetUIIndexForChildForFiber(up_parent, parent);
+      index += GetUIIndexForChildForFiber(up_parent, parent, mounts_at_root);
       parent = up_parent;
     }
     if (parent->IsLayoutOnly() && parent->IsFixedUnifiedOnly()) {
-      index += GetUIIndexForChildForFiber(real_parent, parent);
+      if (parent->render_parent() == real_parent) {
+        index +=
+            GetUIIndexForChildForFiber(real_parent, parent, mounts_at_root);
+      } else {
+        // This fixed container is mounted at the root but is not its direct
+        // render child. Use the offset from CalcUIIndexForFixedUnified instead.
+        // TODO(liuzhenyue): Use the current mounted UI order for this offset
+        // and cover dynamic insertions and moves with regression tests. Nodes
+        // inserted later can precede this subtree while retaining larger
+        // insertion orders.
+        const auto* fixed_container = parent->element_container_impl();
+        for (const auto* container :
+             real_parent->element_container_impl()->children_) {
+          if (!container->element()->IsLayoutOnly() &&
+              container->ZIndex() == 0 &&
+              container->global_insertion_order_ <
+                  fixed_container->global_insertion_order_) {
+            ++index;
+          }
+        }
+      }
     }
   }
 
@@ -909,7 +930,8 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
 
 // static
 int ElementContainer::GetUIIndexForChildForFiber(Element* parent,
-                                                 Element* child) {
+                                                 Element* child,
+                                                 bool mounts_at_root) {
   auto* node = parent->first_render_child();
   int index = 0;
   bool found = false;
@@ -923,7 +945,9 @@ int ElementContainer::GetUIIndexForChildForFiber(Element* parent,
       node = node->next_render_sibling();
       continue;
     }
-    index += (node->IsLayoutOnly() ? GetUIChildrenCountForFiber(node) : 1);
+    index +=
+        (node->IsLayoutOnly() ? GetUIChildrenCountForFiber(node, mounts_at_root)
+                              : 1);
     node = node->next_render_sibling();
   }
   if (!found) {
@@ -934,12 +958,16 @@ int ElementContainer::GetUIIndexForChildForFiber(Element* parent,
 }
 
 // static
-int ElementContainer::GetUIChildrenCountForFiber(Element* parent) {
+int ElementContainer::GetUIChildrenCountForFiber(Element* parent,
+                                                 bool mounts_at_root) {
+  // Fixed descendants contribute slots only when this subtree also mounts
+  // at the root. Keep the existing root order when counting through wrappers.
   int ret = 0;
   auto* child = parent->first_render_child();
   while (child) {
-    if (child->IsLayoutOnly()) {
-      ret += GetUIChildrenCountForFiber(child);
+    if (child->IsLayoutOnly() &&
+        (mounts_at_root || !child->IsFixedNewOrUnified())) {
+      ret += GetUIChildrenCountForFiber(child, mounts_at_root);
     } else if (child->ZIndex() == 0 && !child->IsFixedNewOrUnified()) {
       ret++;
     }

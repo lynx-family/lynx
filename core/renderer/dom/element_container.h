@@ -96,8 +96,9 @@ class ElementContainer : public BaseElementContainer {
   // fiber element
   static std::pair<ElementContainer*, int> FindParentAndIndexForChildForFiber(
       Element* parent, Element* child, Element* ref);
-  static int GetUIIndexForChildForFiber(Element* parent, Element* child);
-  static int GetUIChildrenCountForFiber(Element* parent);
+  static int GetUIIndexForChildForFiber(Element* parent, Element* child,
+                                        bool mounts_at_root);
+  static int GetUIChildrenCountForFiber(Element* parent, bool mounts_at_root);
   static void MoveZChildrenRecursively(Element* element,
                                        ElementContainer* parent);
 
