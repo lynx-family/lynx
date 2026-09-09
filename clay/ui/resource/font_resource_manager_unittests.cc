@@ -339,4 +339,35 @@ TEST_F(FontResourceManagerTest, FailedFontLoadClearsCallbacks) {
   EXPECT_FALSE(font_collection_->HasFontResourceLoading(family_name));
 }
 
+TEST_F(FontResourceManagerTest, FailedAsyncFontLoadCanRetryInCallback) {
+  auto font_resource_manager = std::make_shared<FontResourceManager>();
+  auto load_task_runner = CreateNewThread("retry-font-loader");
+  const std::string family_name = "retry_font_callback";
+  std::atomic_int callback_count = 0;
+  std::atomic_bool retry_succeeded = false;
+  fml::AutoResetWaitableEvent retry_finished;
+
+  font_resource_manager->LoadFontAsync(
+      load_task_runner, load_task_runner, nullptr, nullptr, family_name,
+      {"data:font/ttf,invalid"},
+      [&](bool success, const std::string&, const std::string&) {
+        EXPECT_FALSE(success);
+        ++callback_count;
+        font_resource_manager->LoadFontAsync(
+            load_task_runner, load_task_runner, nullptr, nullptr, family_name,
+            {"data:font/ttf;base64,AA=="},
+            [&](bool retry_success, const std::string&, const std::string&) {
+              retry_succeeded = retry_success;
+              ++callback_count;
+              retry_finished.Signal();
+            });
+      });
+  retry_finished.Wait();
+
+  EXPECT_EQ(callback_count, 2);
+  EXPECT_TRUE(retry_succeeded);
+  EXPECT_TRUE(font_resource_manager->HasFontResource(family_name));
+  EXPECT_FALSE(font_resource_manager->HasFontResourceLoading(family_name));
+}
+
 }  // namespace clay
