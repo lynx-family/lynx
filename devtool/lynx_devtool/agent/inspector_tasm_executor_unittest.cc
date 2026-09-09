@@ -1945,6 +1945,103 @@ TEST_F(InspectorTasmExecutorTest, SendDOMEventMsgCase) {
   EXPECT_TRUE(res["params"].isObject());
 }
 
+TEST_F(InspectorTasmExecutorTest, DiffIDEmitsOnlyActualChanges) {
+  auto element = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element->CreateElementContainer(false);
+  element_executor_->element_root_ = element.get();
+  auto event_sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = event_sender;
+
+  element->SetIdSelector("first");
+  element_executor_->DiffID(element.get());
+  FlushDevtoolTasks();
+  ASSERT_EQ(event_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "DOM.attributeModified");
+  EXPECT_EQ(event_sender->json_messages_[0].second["params"]["name"].asString(),
+            "id");
+  EXPECT_EQ(
+      event_sender->json_messages_[0].second["params"]["value"].asString(),
+      "#first");
+
+  event_sender->json_messages_.clear();
+  element_executor_->DiffID(element.get());
+  FlushDevtoolTasks();
+  EXPECT_TRUE(event_sender->json_messages_.empty());
+
+  element->SetIdSelector("second");
+  element_executor_->DiffID(element.get());
+  FlushDevtoolTasks();
+  ASSERT_EQ(event_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "DOM.attributeModified");
+  EXPECT_EQ(
+      event_sender->json_messages_[0].second["params"]["value"].asString(),
+      "#second");
+
+  event_sender->json_messages_.clear();
+  element->SetIdSelector("");
+  element_executor_->DiffID(element.get());
+  FlushDevtoolTasks();
+  ASSERT_EQ(event_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "DOM.attributeRemoved");
+  EXPECT_EQ(event_sender->json_messages_[0].second["params"]["name"].asString(),
+            "id");
+}
+
+TEST_F(InspectorTasmExecutorTest, DiffClassEmitsOnlyActualChanges) {
+  auto element = manager_->CreateFiberElement("view");
+  lynx::devtool::ElementInspector::InitForInspector(
+      std::make_tuple(element.get()));
+  element->CreateElementContainer(false);
+  element_executor_->element_root_ = element.get();
+  auto event_sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = event_sender;
+
+  element->SetClass("first");
+  element_executor_->DiffClass(element.get());
+  FlushDevtoolTasks();
+  ASSERT_EQ(event_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "DOM.attributeModified");
+  EXPECT_EQ(event_sender->json_messages_[0].second["params"]["name"].asString(),
+            "class");
+  EXPECT_EQ(
+      event_sender->json_messages_[0].second["params"]["value"].asString(),
+      "first");
+
+  event_sender->json_messages_.clear();
+  element_executor_->DiffClass(element.get());
+  FlushDevtoolTasks();
+  EXPECT_TRUE(event_sender->json_messages_.empty());
+
+  tasm::ClassList new_classes;
+  new_classes.emplace_back("second");
+  new_classes.emplace_back("third");
+  element->SetClasses(std::move(new_classes));
+  element_executor_->DiffClass(element.get());
+  FlushDevtoolTasks();
+  ASSERT_EQ(event_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "DOM.attributeModified");
+  EXPECT_EQ(
+      event_sender->json_messages_[0].second["params"]["value"].asString(),
+      "second third");
+
+  event_sender->json_messages_.clear();
+  element->RemoveAllClass();
+  element_executor_->DiffClass(element.get());
+  FlushDevtoolTasks();
+  ASSERT_EQ(event_sender->json_messages_.size(), 1U);
+  EXPECT_EQ(event_sender->json_messages_[0].second["method"].asString(),
+            "DOM.attributeRemoved");
+  EXPECT_EQ(event_sender->json_messages_[0].second["params"]["name"].asString(),
+            "class");
+}
+
 TEST_F(InspectorTasmExecutorTest, SearchProtocolUsesStringSearchIdCase) {
   auto element = manager_->CreateFiberElement("view");
   lynx::devtool::ElementInspector::InitForInspector(

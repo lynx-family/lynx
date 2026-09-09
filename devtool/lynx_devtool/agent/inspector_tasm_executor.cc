@@ -1031,15 +1031,19 @@ void InspectorTasmExecutor::OnFiberFlushElementTree() {
 }
 
 void InspectorTasmExecutor::DiffID(lynx::tasm::Element* ptr) {
-  std::string old_id = ElementInspector::SelectorId(ptr);
-  std::string new_id = ElementInspector::GetSelectorIDFromAttributeHolder(ptr);
+  const std::string old_id = ElementInspector::SelectorId(ptr);
+  const std::string new_id =
+      ElementInspector::GetSelectorIDFromAttributeHolder(ptr);
+  if (old_id == new_id) {
+    return;
+  }
+
   ElementInspector::SetSelectorId(ptr, new_id);
-  if (!old_id.empty()) {
+  if (new_id.empty()) {
     ElementInspector::DeleteAttr(ptr, "id");
     SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_REMOVED,
                     ElementInspector::NodeId(ptr), "id", -1);
-  }
-  if (!new_id.empty()) {
+  } else {
     ElementInspector::UpdateAttr(ptr, "id", new_id);
     SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_MODIFIED,
                     ElementInspector::NodeId(ptr), "id", -1);
@@ -1086,21 +1090,21 @@ void InspectorTasmExecutor::DiffAttr(lynx::tasm::Element* ptr) {
 }
 
 void InspectorTasmExecutor::DiffClass(lynx::tasm::Element* ptr) {
-  std::vector<std::string> old_class = ElementInspector::ClassOrder(ptr);
-  std::vector<std::string> new_class =
+  const std::vector<std::string> old_class = ElementInspector::ClassOrder(ptr);
+  const std::vector<std::string> new_class =
       ElementInspector::GetClassOrderFromAttributeHolder(ptr);
-  if (old_class != new_class) {
-    ElementInspector::DeleteClasses(ptr);
-    {
-      SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_REMOVED,
-                      ElementInspector::NodeId(ptr), "class", -1);
-    }
+  if (old_class == new_class) {
+    return;
+  }
 
+  if (new_class.empty()) {
+    ElementInspector::DeleteClasses(ptr);
+    SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_REMOVED,
+                    ElementInspector::NodeId(ptr), "class", -1);
+  } else {
     ElementInspector::UpdateClasses(ptr, new_class);
-    {
-      SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_MODIFIED,
-                      ElementInspector::NodeId(ptr), "class", -1);
-    }
+    SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_MODIFIED,
+                    ElementInspector::NodeId(ptr), "class", -1);
   }
 }
 
