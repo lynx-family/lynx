@@ -86,6 +86,13 @@ class PlatformEventTarget
   };
   using EventThroughRegion = std::array<EventThroughSizeValue, 4>;
 
+  struct HitTestRegion {
+    float left{0.f};
+    float top{0.f};
+    float right{0.f};
+    float bottom{0.f};
+  };
+
   PlatformEventTarget(PlatformEventTargetHelper* target_helper, int32_t root_id,
                       int32_t sign, float left, float top, float width,
                       float height)
@@ -265,6 +272,9 @@ class PlatformEventTarget
     events_pass_through_ = value;
   }
   void SetIgnoreFocus(LynxEventPropStatus value) { ignore_focus_ = value; }
+  void AddHitTestRegion(HitTestRegion region) {
+    hit_test_regions_->push_back(std::move(region));
+  }
 
  private:
   void UpdateScrollOffsetIfNeeded();
@@ -315,6 +325,7 @@ class PlatformEventTarget
   LynxEventPropStatus events_pass_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
   std::vector<EventThroughRegion> event_through_active_regions_;
+  base::auto_create_optional<base::Vector<HitTestRegion>> hit_test_regions_;
   std::string id_selector_;
   std::string exposure_id_;
   std::string exposure_scene_;

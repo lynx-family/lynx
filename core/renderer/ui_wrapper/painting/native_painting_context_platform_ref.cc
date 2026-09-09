@@ -134,6 +134,7 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
     renderers_.erase(child);
   }
   platform_event_bundles_.erase(child);
+  text_event_target_ranges_.erase(child);
 }
 
 void NativePaintingCtxPlatformRef::RebuildSubLayers(
@@ -341,6 +342,18 @@ const PlatformEventBundle *NativePaintingCtxPlatformRef::GetPlatformEventBundle(
     return nullptr;
   }
   return &it->second;
+}
+
+void NativePaintingCtxPlatformRef::UpdateTextEventTargetRanges(
+    int32_t id, std::vector<PlatformTextEventTargetRange> ranges) {
+  if (ranges.empty()) {
+    if (text_event_target_ranges_.erase(id) == 0) {
+      return;
+    }
+  } else {
+    text_event_target_ranges_.insert_or_assign(id, std::move(ranges));
+  }
+  MarkEventTargetTreeDirty(id);
 }
 
 int32_t NativePaintingCtxPlatformRef::GetEventTargetRootIdForRenderer(
@@ -727,6 +740,7 @@ void NativePaintingCtxPlatformRef::Destroy() {
   }
   renderers_.clear();
   platform_event_bundles_.clear();
+  text_event_target_ranges_.clear();
   scheduled_event_target_tree_update_.store(false);
   dirty_event_root_ids_.clear();
   event_target_helper_->ClearActiveEventRoots();
