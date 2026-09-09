@@ -98,6 +98,10 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
     return current_pixmap_ != nullptr;
   }
 
+  bool IsAnimationCompleted() const override {
+    return loop_count_ > 0 && remaining_loop_count_ <= 0;
+  }
+
   void SetLoopCount(int loop_count) override {
     loop_count_ = loop_count;
     remaining_loop_count_ = loop_count_;
