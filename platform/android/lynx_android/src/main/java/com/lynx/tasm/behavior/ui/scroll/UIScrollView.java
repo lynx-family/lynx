@@ -84,7 +84,8 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   protected boolean mPreferenceConsumeGesture = false;
   // scroll-top/scroll-left is props set by FE before scroll-view layout do not take effect, should
   // pending and consume when layout
-  private int mPendingScrollOffset = 0;
+  private static final int NO_PENDING_SCROLL_OFFSET = -1;
+  private int mPendingScrollOffset = NO_PENDING_SCROLL_OFFSET;
   private int mPendingInitialScrollOffset = 0;
   private int mLowerThreshold = 0;
   private int mUpperThreshold = 0;
@@ -423,22 +424,38 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
       mView.setBounceScrollRange(getScrollRange(), bounceScrollRange);
     }
     super.layout();
-    // consume mPendingScrollOffset
-    if (mPendingScrollOffset > 0) {
-      if (mEnableScrollY && mPendingScrollOffset + getHeight() <= getView().getContentHeight()) {
-        int originScrollX = getView().getRealScrollX();
-        getView().setScrollTo(originScrollX, mPendingScrollOffset, false);
-        mPendingScrollOffset = 0;
-      } else if (!mEnableScrollY
-          && mPendingScrollOffset + getWidth() <= getView().getContentWidth()) {
-        int originScrollY = getView().getRealScrollY();
-        getView().setScrollTo(mPendingScrollOffset, originScrollY, false);
-        mPendingScrollOffset = 0;
-      }
-    }
+    consumePendingScrollOffsetIfReady();
     // Sticky dirty here comes from measure(), where Android recalculates content size after child
     // layout info is updated.
     refreshStickyChildrenIfNeeded();
+  }
+
+  @Override
+  public void layoutChildren() {
+    super.layoutChildren();
+    // Custom-layout parents lay out the native view without calling this UI's layout().
+    consumePendingScrollOffsetIfReady();
+  }
+
+  private void consumePendingScrollOffsetIfReady() {
+    if (mPendingScrollOffset < 0) {
+      return;
+    }
+    int viewportSize = mEnableScrollY ? getHeight() : getWidth();
+    int contentSize = mEnableScrollY ? mView.getContentHeight() : mView.getContentWidth();
+    int nativeViewportSize = mEnableScrollY ? mView.getHeight() : mView.getHScrollView().getWidth();
+    int nativeContentSize =
+        mEnableScrollY ? mView.getLinearLayout().getHeight() : mView.getLinearLayout().getWidth();
+    if (viewportSize <= 0 || nativeViewportSize <= 0
+        || mPendingScrollOffset > contentSize - viewportSize
+        || mPendingScrollOffset > nativeContentSize - nativeViewportSize) {
+      return;
+    }
+    int target = mPendingScrollOffset;
+    // Clear before dispatching scroll events so a newer request is not cleared on return.
+    mPendingScrollOffset = NO_PENDING_SCROLL_OFFSET;
+    mView.setScrollTo(mEnableScrollY ? mView.getRealScrollX() : target,
+        mEnableScrollY ? target : mView.getRealScrollY(), false);
   }
 
   private void syncOverflowClipStateIfNeeded() {
@@ -524,7 +541,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     int yOffset = needConvertToPx ? (int) PixelUtils.dipToPx(value) : value;
     if (!isInitial && yOffset + getHeight() <= getView().getContentHeight()) {
       getView().setScrollTo(originScrollX, yOffset, false);
-      mPendingScrollOffset = 0;
+      mPendingScrollOffset = NO_PENDING_SCROLL_OFFSET;
     } else {
       if (isInitial) {
         setPendingInitialScrollOffset(yOffset);
@@ -544,7 +561,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
     int xOffset = needConvertToPx ? (int) PixelUtils.dipToPx(value) : value;
     if (!isInitial && xOffset + getWidth() <= getView().getContentWidth()) {
       getView().setScrollTo(xOffset, originScrollY, false);
-      mPendingScrollOffset = 0;
+      mPendingScrollOffset = NO_PENDING_SCROLL_OFFSET;
     } else {
       if (isInitial) {
         setPendingInitialScrollOffset(xOffset);

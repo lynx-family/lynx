@@ -11671,6 +11671,7 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setLynxDirection(int direction);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.measure();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.layout();
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.layoutChildren();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onNodeReload();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.invalidate();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.destroy();
