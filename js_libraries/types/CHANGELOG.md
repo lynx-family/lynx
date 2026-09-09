@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.2.3
+- Add `bindtextClick` and `MarkdownTextClickEvent` typings for `<markdown>` text attachment clicks.
+
 ## 4.2.2
 - Add `-x-box` to the supported `display` values.
 
