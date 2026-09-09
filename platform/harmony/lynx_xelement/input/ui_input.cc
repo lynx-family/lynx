@@ -195,6 +195,10 @@ ArkUI_NodeAttributeType UIInput::GetSelectionAttributeType() const {
   return NODE_TEXT_INPUT_TEXT_SELECTION;
 }
 
+ArkUI_NodeAttributeType UIInput::GetCaretAttributeType() const {
+  return NODE_TEXT_INPUT_CARET_OFFSET;
+}
+
 ArkUI_NodeAttributeType UIInput::GetEditingAttributeType() const {
   return NODE_TEXT_INPUT_EDITING;
 }

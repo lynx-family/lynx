@@ -177,8 +177,11 @@ this.getNodeRef('#feedback').invoke({
 | `focus` | none | Focuses the textarea |
 | `blur` | none | Blurs the textarea |
 | `getValue` | none | Returns `value`, `selectionStart`, `selectionEnd`, and `isComposing` |
-| `setValue` | `value: string`, `cursor?: number` | `cursor` is supported on iOS and Android; do not rely on it for Harmony |
+| `setValue` | `value: string`, `cursor?: number` | `cursor` is supported on iOS, Android, and Harmony (4.3.0) |
 | `setSelectionRange` | `selectionStart: number`, `selectionEnd: number` | Keep the range inside the current value length |
+
+On Harmony, the text is updated before cursor validation. If supplied, `cursor` must be a number, finite, integral, and no greater than `2147483647`; otherwise the method reports `PARAM_INVALID` while preserving the text update. Negative integers skip caret positioning. A non-negative cursor uses the native caret offset API, and a native failure reports `OPERATION_ERROR`. Keep the cursor within the new text's UTF-16 length for a meaningful position.
+
 
 ## Common Patterns
 
@@ -221,7 +224,7 @@ this.getNodeRef('#feedback').invoke({
 | `beforeinput` | Yes | No | No |
 | `keyboardheightchange` | Yes | Yes | Yes |
 | Extra `keyboard` event | Yes | No | No |
-| `setValue({ cursor })` | Yes | Yes | No |
+| `setValue({ cursor })` | Yes | Yes | Yes (4.3.0) |
 | `type="password"` | Yes | Yes | No local mapping |
 | `enable-scroll-bar` | Yes | Yes | No local handler |
 | `bounces` | Yes | No | No local handler |
