@@ -221,7 +221,8 @@ void LynxContext::HandleMultiTouchEvent(const TouchEvent& touch_event) const {
     return;
   }
   engine_proxy_->SendTouchEvent(touch_event.Name(),
-                                PubLepusValue(touch_event.UITouchMap()));
+                                PubLepusValue(touch_event.UITouchMap()),
+                                touch_event.TimeStamp());
 }
 
 void LynxContext::HandleCustomEvent(const CustomEvent& custom_event) const {
