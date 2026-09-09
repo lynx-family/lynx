@@ -116,13 +116,18 @@ void FontResourceManager::OnDownloadEnd(
     unsigned int index = url_index + 1;
     if (index >= url_vec.size()) {
       FML_DLOG(ERROR) << "Unable to get font for family: " << font_family;
+      FontCallback callback;
       auto callback_iter = font_call_back_map_.find(font_family);
       if (callback_iter != font_call_back_map_.end()) {
-        callback_iter->second(false, font_family, std::string());
+        callback = std::move(callback_iter->second);
       }
       font_call_back_map_.erase(font_family);
       font_loader_map_.erase(font_family);
       loading_font_families_.erase(font_family);
+      font_url_map_.erase(font_family);
+      if (callback) {
+        callback(false, font_family, std::string());
+      }
       return;
     } else {
       DownloadFont(load_task_runner, io_task_runner, intercept, service_manager,
