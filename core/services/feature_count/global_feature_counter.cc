@@ -165,6 +165,7 @@ void GlobalFeatureCounter::TimerFired() {
 void GlobalFeatureCounter::Report(
     const std::array<bool, kAllFeaturesCount>& features, int32_t instance_id) {
   MoveOnlyEvent event;
+  event.SetInstanceId(instance_id);
   event.SetName(LYNX_FEATURE_COUNT_EVENT);
   for (size_t i = 0; i < features.size(); i++) {
     const char* feature_name = LynxFeatureToString((LynxFeature)i);
@@ -173,7 +174,7 @@ void GlobalFeatureCounter::Report(
     }
     event.SetProps(feature_name, features[i]);
   }
-  EventTrackerPlatformImpl::OnEvent(instance_id, std::move(event));
+  EventTrackerPlatformImpl::OnEvent(std::move(event));
 }
 }  // namespace report
 }  // namespace tasm

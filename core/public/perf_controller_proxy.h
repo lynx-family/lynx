@@ -68,11 +68,9 @@ class PerfControllerProxy {
 
   /**
    * @brief Interface to report an event
-   * @param instance_id The instanceId of a lynx view
    * @param event The event to be reported
    */
-  virtual void OnEvent(int32_t instance_id,
-                       tasm::report::MoveOnlyEvent&& event) = 0;
+  virtual void OnEvent(tasm::report::MoveOnlyEvent&& event) = 0;
 };
 
 }  // namespace shell

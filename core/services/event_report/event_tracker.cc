@@ -70,6 +70,13 @@ void EventTracker::OnEvent(EventBuilder builder) {
   instance->tracker_event_builder_stack_.push_back(std::move(builder));
 }
 
+void EventTracker::OnGlobalEvent(EventBuilder builder) {
+  OnEvent([builder = std::move(builder)](MoveOnlyEvent& event) {
+    event.SetInstanceId(kUnknownInstanceId);
+    builder(event);
+  });
+}
+
 void EventTracker::UpdateGenericInfoByPageConfig(
     int32_t instance_id, const std::shared_ptr<tasm::PageConfig>& config) {
   // the unique id of template instance.
@@ -206,8 +213,11 @@ void EventTracker::Flush(int32_t instance_id) {
              instance->tracker_event_builder_stack_.front())]() mutable {
           MoveOnlyEvent event;
           builder(event);
+          if (event.GetInstanceId() == kUninitializedInstanceId) {
+            event.SetInstanceId(instance_id);
+          }
           if (!event.GetName().empty()) {
-            EventTrackerPlatformImpl::OnEvent(instance_id, std::move(event));
+            EventTrackerPlatformImpl::OnEvent(std::move(event));
           }
         });
     // tracker_event_builder_stack_'s buffer and capacity is not affected.
@@ -220,11 +230,14 @@ void EventTracker::Flush(int32_t instance_id) {
           stack.reserve(builder_stack.size());
           for (const auto& builder : builder_stack) {
             builder(stack.emplace_back());
+            if (stack.back().GetInstanceId() == kUninitializedInstanceId) {
+              stack.back().SetInstanceId(instance_id);
+            }
             if (stack.back().GetName().empty()) {
               stack.pop_back();
             }
           }
-          EventTrackerPlatformImpl::OnEvents(instance_id, std::move(stack));
+          EventTrackerPlatformImpl::OnEvents(std::move(stack));
         });
   }
 }

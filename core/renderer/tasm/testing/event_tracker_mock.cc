@@ -28,17 +28,17 @@ EventTrackerWaitableEvent::Await() {
   return *arwe;
 }
 
-void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
-                                       MoveOnlyEvent&& event) {
-  EventTrackerWaitableEvent::instance_id_ = instance_id;
+void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
+  assert(event.IsValidInstanceId());
+  EventTrackerWaitableEvent::instance_id_ = event.GetInstanceId();
   EventTrackerWaitableEvent::stack_.clear();
   EventTrackerWaitableEvent::stack_.emplace_back(std::move(event));
   EventTrackerWaitableEvent::Await()->Signal();
 }
 
-void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
-                                        std::vector<MoveOnlyEvent> stack) {
-  EventTrackerWaitableEvent::instance_id_ = instance_id;
+void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {
+  EventTrackerWaitableEvent::instance_id_ =
+      stack.empty() ? kUnknownInstanceId : stack.front().GetInstanceId();
   EventTrackerWaitableEvent::stack_ = std::move(stack);
   EventTrackerWaitableEvent::Await()->Signal();
 }

@@ -35,8 +35,7 @@ class PerfControllerProxyImpl : public PerfControllerProxy {
 
   void RunTaskInReportThread(base::closure task) override;
 
-  void OnEvent(int32_t instance_id,
-               tasm::report::MoveOnlyEvent&& event) override;
+  void OnEvent(tasm::report::MoveOnlyEvent&& event) override;
 
  protected:
   std::shared_ptr<shell::LynxActor<tasm::performance::PerformanceController>>

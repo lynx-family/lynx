@@ -91,7 +91,7 @@ class GenericInfoStorage {
    * @brief get generic info by instance id
    * please make sure this interface is called in report thread
    */
-  GenericInfo GetGenericInfo(int32_t instance_id);
+  const GenericInfo& GetGenericInfo(int32_t instance_id) const;
 
  private:
   // {instance_id -> generic_infos}

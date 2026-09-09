@@ -119,6 +119,7 @@ void TimingMediator::ReportSetupEvent(const TimingInfo& timing_info) const {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TIMING_MEDIATOR_REPORT_SETUP_EVENT,
               INSTANCE_ID, instance_id_);
   tasm::report::MoveOnlyEvent event;
+  event.SetInstanceId(instance_id_);
   event.SetName(kLynxSDKSetupTiming);
   auto timing = timing_info.GetAllTimingInfoAsMicrosecond();
   lepus::Value lepus_timing =
@@ -257,8 +258,7 @@ void TimingMediator::ReportSetupEvent(const TimingInfo& timing_info) const {
                      setup_timing, BASE_STATIC_STRING(kFfiEndPolyfill),
                      setup_timing, BASE_STATIC_STRING(kLoadBundleEndPolyfill)));
 
-  tasm::report::EventTrackerPlatformImpl::OnEvent(instance_id_,
-                                                  std::move(event));
+  tasm::report::EventTrackerPlatformImpl::OnEvent(std::move(event));
 }
 
 // OnTimingUpdate callback
@@ -357,6 +357,7 @@ void TimingMediator::ReportUpdateEvent(const TimingInfo& timing_info,
                                                    std::to_string(instance_id));
               });
   tasm::report::MoveOnlyEvent event;
+  event.SetInstanceId(instance_id_);
   event.SetName(kLynxSDKUpdateTiming);
   auto timing = timing_info.GetAllTimingInfoAsMicrosecond();
   lepus::Value all_lepus_timing =
@@ -473,8 +474,7 @@ void TimingMediator::ReportUpdateEvent(const TimingInfo& timing_info,
       all_lepus_timing.GetProperty(BASE_STATIC_STRING(kHasReload)).Bool());
   event.SetProps(kUseNativeTiming, 1);
 
-  tasm::report::EventTrackerPlatformImpl::OnEvent(instance_id_,
-                                                  std::move(event));
+  tasm::report::EventTrackerPlatformImpl::OnEvent(std::move(event));
 }
 
 }  // namespace timing

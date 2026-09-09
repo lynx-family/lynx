@@ -25,11 +25,9 @@ std::string JsCacheManager::GetPlatformCacheDir() { return "./"; }
 namespace tasm {
 namespace report {
 
-void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
-                                       MoveOnlyEvent&& event) {}
+void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {}
 
-void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
-                                        std::vector<MoveOnlyEvent> stack) {}
+void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {}
 
 void EventTrackerPlatformImpl::UpdateGenericInfo(
     int32_t instance_id,

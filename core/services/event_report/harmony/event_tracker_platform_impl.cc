@@ -88,7 +88,7 @@ napi_status CallJSUpdateGenericInfo(int32_t instance_id,
       env_, js_self_ref_, js_update_generic_info_func_, argc, argv);
 }
 
-void DoReportEvent(napi_value instance_id_napi_value, MoveOnlyEvent&& event) {
+void DoReportEvent(MoveOnlyEvent&& event) {
   /**
    * LynxEventReporter.onEventCallByNative(instanceId, eventName,
    * props);
@@ -97,10 +97,11 @@ void DoReportEvent(napi_value instance_id_napi_value, MoveOnlyEvent&& event) {
    * arg[1] - event name (string)
    * arg[2] - props (Record<string, Object>)
    */
+  assert(event.IsValidInstanceId());
   size_t argc = 3;
   napi_value argv[argc];
   // arg[0] - instance_id (number)
-  argv[0] = instance_id_napi_value;
+  argv[0] = base::NapiUtil::CreateInt32(harmony::env_, event.GetInstanceId());
   // arg[1] - event name
   auto& event_name = event.GetName();
   napi_create_string_utf8(harmony::env_, event_name.c_str(),
@@ -130,10 +131,8 @@ void DoReportEvent(napi_value instance_id_napi_value, MoveOnlyEvent&& event) {
 }
 }  // namespace harmony
 
-void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
-                                       MoveOnlyEvent&& event) {
-  base::UIThread::GetRunner()->PostTask([instance_id,
-                                         event = std::move(event)]() mutable {
+void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
+  base::UIThread::GetRunner()->PostTask([event = std::move(event)]() mutable {
     if (!harmony::env_ || !harmony::js_self_ref_ ||
         !harmony::js_on_event_func_) {
       napi_throw_error(harmony::env_, nullptr,
@@ -141,17 +140,12 @@ void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
       return;
     }
     base::NapiHandleScope scope(harmony::env_);
-
-    napi_value instance_id_napi_value =
-        base::NapiUtil::CreateInt32(harmony::env_, instance_id);
-    harmony::DoReportEvent(instance_id_napi_value, std::move(event));
+    harmony::DoReportEvent(std::move(event));
   });
 }
 
-void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
-                                        std::vector<MoveOnlyEvent> stack) {
-  base::UIThread::GetRunner()->PostTask([instance_id,
-                                         stack = std::move(stack)]() mutable {
+void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {
+  base::UIThread::GetRunner()->PostTask([stack = std::move(stack)]() mutable {
     if (!harmony::env_ || !harmony::js_self_ref_ ||
         !harmony::js_on_event_func_) {
       napi_throw_error(harmony::env_, nullptr,
@@ -159,11 +153,8 @@ void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
       return;
     }
     base::NapiHandleScope scope(harmony::env_);
-
-    napi_value instance_id_napi_value =
-        base::NapiUtil::CreateInt32(harmony::env_, instance_id);
     for (auto& event : stack) {
-      harmony::DoReportEvent(instance_id_napi_value, std::move(event));
+      harmony::DoReportEvent(std::move(event));
     }
   });
 }

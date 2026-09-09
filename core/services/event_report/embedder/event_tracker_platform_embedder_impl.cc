@@ -11,15 +11,14 @@ namespace lynx {
 namespace tasm {
 namespace report {
 
-void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
-                                       MoveOnlyEvent&& event) {
-  embedder::LynxEventReporter::OnEvent(instance_id, std::move(event));
+void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
+  assert(event.IsValidInstanceId());
+  embedder::LynxEventReporter::OnEvent(std::move(event));
 }
 
-void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
-                                        std::vector<MoveOnlyEvent> stack) {
+void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {
   for (auto& event : stack) {
-    OnEvent(instance_id, std::move(event));
+    OnEvent(std::move(event));
   }
 }
 

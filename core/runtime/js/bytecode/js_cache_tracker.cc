@@ -40,8 +40,8 @@ void JsCacheTracker::FlushEventWithoutInstanceId(
       [builder = std::move(event_builder)]() mutable {
         MoveOnlyEvent event;
         builder(event);
-        EventTrackerPlatformImpl::OnEvent(tasm::report::kUnknownInstanceId,
-                                          std::move(event));
+        event.SetInstanceId(tasm::report::kUnknownInstanceId);
+        EventTrackerPlatformImpl::OnEvent(std::move(event));
       });
 }
 

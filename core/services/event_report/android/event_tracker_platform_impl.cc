@@ -47,9 +47,9 @@ namespace lynx {
 namespace tasm {
 namespace report {
 
-static void DoReportEvent(JNIEnv* env, int32_t instance_id,
-                          MoveOnlyEvent&& event) {
+static void DoReportEvent(JNIEnv* env, MoveOnlyEvent&& event) {
   LOGI("EventTracker onEvent with name: " << event.GetName());
+  assert(event.IsValidInstanceId());
   auto j_event_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
       env, event.GetName().c_str());
   base::android::JavaOnlyMap props;
@@ -66,21 +66,18 @@ static void DoReportEvent(JNIEnv* env, int32_t instance_id,
         break;
     }
   }
-  Java_LynxEventReporter_onEvent(env, instance_id, j_event_name.Get(),
+  Java_LynxEventReporter_onEvent(env, event.GetInstanceId(), j_event_name.Get(),
                                  props.jni_object());
 }
 
-void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
-                                       MoveOnlyEvent&& event) {
-  DoReportEvent(base::android::AttachCurrentThread(), instance_id,
-                std::move(event));
+void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
+  DoReportEvent(base::android::AttachCurrentThread(), std::move(event));
 }
 
-void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
-                                        std::vector<MoveOnlyEvent> stack) {
+void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {
   JNIEnv* env = base::android::AttachCurrentThread();
   for (auto& event : stack) {
-    DoReportEvent(env, instance_id, std::move(event));
+    DoReportEvent(env, std::move(event));
   }
 }
 

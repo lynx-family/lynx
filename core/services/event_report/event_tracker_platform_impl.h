@@ -25,14 +25,12 @@ namespace report {
 class EventTrackerPlatformImpl {
  public:
   /// Send single event of template instance to platform.
-  /// @param instance_id The unique id of template instance.
   /// @param event The event.
-  static void OnEvent(int32_t instance_id, MoveOnlyEvent&& event);
+  static void OnEvent(MoveOnlyEvent&& event);
 
   /// Send events of template instance to platform.
-  /// @param instance_id The unique id of template instance.
   /// @param stack The stack of events.
-  static void OnEvents(int32_t instance_id, std::vector<MoveOnlyEvent> stack);
+  static void OnEvents(std::vector<MoveOnlyEvent> stack);
 
   /// Update the generic info of template instance to platform.
   /// @param instance_id The unique id of template instance.

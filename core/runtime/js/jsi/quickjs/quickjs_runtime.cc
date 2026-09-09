@@ -166,14 +166,14 @@ void QuickjsRuntime::DumpCoverage() {
         static constexpr char kJSCoverageDumpDurationKey[] = "dump_duration_ms";
 
         tasm::report::MoveOnlyEvent event;
+        event.SetInstanceId(instance_id);
         event.SetName(kJSCoverageEventName);
         event.SetProps(kJSCoverageIdKey, coverage_id);
         event.SetProps(kJSCoverageDataKey,
                        std::string(coverage_dump, dump_length));
         event.SetProps(kJSCoverageDumpDurationKey, dump_duration_ms);
         event.SetProps(tasm::report::kPropURL, page_url);
-        tasm::report::EventTrackerPlatformImpl::OnEvent(instance_id,
-                                                        std::move(event));
+        tasm::report::EventTrackerPlatformImpl::OnEvent(std::move(event));
         JS_FreeCoverageDumpString(coverage_dump);
       });
 }

@@ -21,11 +21,10 @@ class LynxEventReporterObserver {
 
   /**
    * @brief Interface used to receive reported events
-   * @param instance_id The optional lynx instance ID associated with the event
    * @param event_name Name of reported event
    * @param props Content of reported event in key-value format
    */
-  virtual void OnReportEvent(int32_t instance_id, const std::string& event_name,
+  virtual void OnReportEvent(const std::string& event_name,
                              const lynx::pub::LynxValue& props) = 0;
 };
 
