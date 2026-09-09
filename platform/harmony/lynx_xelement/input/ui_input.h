@@ -29,6 +29,7 @@ class UIInput : public UIBaseInput {
   ArkUI_NodeAttributeType GetTextAttributeType() const override;
   ArkUI_NodeAttributeType GetPlaceholderAttributeType() const override;
   ArkUI_NodeAttributeType GetSelectionAttributeType() const override;
+  ArkUI_NodeAttributeType GetCaretAttributeType() const override;
   ArkUI_NodeAttributeType GetEditingAttributeType() const override;
   ArkUI_NodeAttributeType GetPlaceholderTextAttributeType() const override;
   ArkUI_NodeAttributeType GetBlurOnSubmitAttributeType() const override;

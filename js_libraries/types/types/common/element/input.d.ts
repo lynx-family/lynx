@@ -402,6 +402,11 @@ export interface InputSetValueMethod extends BaseMethod {
      * @Web
      */
     value: string;
+    /**
+     * Optional caret position after replacing the text.
+     * @Harmony 4.3.0
+     */
+    cursor?: number;
   };
 }
 
