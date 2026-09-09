@@ -311,6 +311,10 @@ class LynxEngine {
       const std::shared_ptr<tasm::InspectorElementObserver>&
           inspector_element_observer);
 
+  void SetInspectorAnimationObserver(
+      const std::shared_ptr<tasm::InspectorAnimationObserver>&
+          inspector_animation_observer);
+
   // For Fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value args,
                        const runtime::js::ApiCallBack& callback);

@@ -59,6 +59,7 @@ namespace tasm {
 class LynxTemplateBundle;
 class LazyBundleLoader;
 class WhiteBoard;
+class InspectorAnimationObserver;
 }  // namespace tasm
 namespace runtime {
 class NativeModuleFactory;
@@ -310,6 +311,10 @@ class LynxShell {
   LYNX_EXPORT_FOR_DEVTOOL void SetInspectorElementObserver(
       const std::shared_ptr<tasm::InspectorElementObserver>&
           inspector_element_observer);
+
+  LYNX_EXPORT_FOR_DEVTOOL void SetInspectorAnimationObserver(
+      const std::shared_ptr<tasm::InspectorAnimationObserver>&
+          inspector_animation_observer);
 
   LYNX_EXPORT_FOR_DEVTOOL void SetInspectorRuntimeObserver(
       const std::shared_ptr<runtime::js::InspectorRuntimeObserverNG>&

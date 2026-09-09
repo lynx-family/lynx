@@ -89,13 +89,37 @@ void KeyframeEffect::AddKeyframeModel(
 }
 
 gfx::KeyframeEffect::TickResult KeyframeEffect::TickKeyframeModel(
-    fml::TimePoint monotonic_time) {
+    fml::TimePoint monotonic_time, bool suppress_animation_events) {
   auto tick_result = gfx_effect_->Tick(monotonic_time);
   if (animation_ != nullptr && tick_result.active_time) {
     animation_->MaybeReportOverTime(*tick_result.active_time);
   }
-  ApplyTickResult(tick_result);
+  ApplyTickResult(tick_result, suppress_animation_events);
   return tick_result;
+}
+
+void KeyframeEffect::SeekTo(fml::TimeDelta current_time,
+                            fml::TimePoint reference_time, bool paused) {
+  for (auto& keyframe_model : keyframe_models_) {
+    if (!keyframe_model || !keyframe_model->gfx_model_) {
+      continue;
+    }
+    auto* model = keyframe_model->gfx_model_.get();
+    if (paused) {
+      model->SetRunState(gfx::KeyframeModel::PAUSED, reference_time);
+    } else if (model->GetRunState() == gfx::KeyframeModel::PAUSED) {
+      model->SetRunState(gfx::KeyframeModel::RUNNING, reference_time);
+    }
+    auto model_start_time =
+        reference_time - model->total_paused_duration() - current_time;
+    model->set_start_time(model_start_time);
+  }
+
+  if (paused) {
+    custom_property_run_state_ = gfx::TimingRunState::PAUSED;
+  } else if (custom_property_run_state_ == gfx::TimingRunState::PAUSED) {
+    custom_property_run_state_ = gfx::TimingRunState::RUNNING;
+  }
 }
 
 KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
@@ -179,7 +203,8 @@ bool KeyframeEffect::HasFinishedAll() const {
 }
 
 void KeyframeEffect::ApplyTickResult(
-    const lynx::gfx::KeyframeEffect::TickResult& tick_result) {
+    const lynx::gfx::KeyframeEffect::TickResult& tick_result,
+    bool suppress_animation_events) {
   tasm::StyleMap style_map;
   bool should_persist_fill_styles = false;
   bool should_clear_fill_styles = false;
@@ -187,7 +212,7 @@ void KeyframeEffect::ApplyTickResult(
       animation_ != nullptr && animation_->GetTransitionFlag();
   style_map.reserve(keyframe_models_.size());
 
-  if (animation_ != nullptr) {
+  if (animation_ != nullptr && !suppress_animation_events) {
     for (int i = 0; i < tick_result.iteration_events_due; ++i) {
       animation_->SendIterationEvent();
     }
@@ -234,7 +259,7 @@ void KeyframeEffect::ApplyTickResult(
     }
   }
 
-  if (animation_) {
+  if (animation_ && !suppress_animation_events) {
     if (tick_result.start_event_due) {
       animation_->SendStartEvent();
       LOGI("Lynx Animation play, name is: " << animation_->name().str());

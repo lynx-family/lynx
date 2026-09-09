@@ -21,6 +21,7 @@
 #include "core/base/lynx_trace_categories.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/event_report/event_tracker.h"
 
@@ -46,6 +47,12 @@ void SuppressSampleSideEffects(KeyframeEffect::KeyframeSampleResult& result) {
   result.should_clear_fill_styles = false;
 }
 
+void SuppressSampleEvents(KeyframeEffect::KeyframeSampleResult& result) {
+  result.should_send_start_event = false;
+  result.should_send_end_event = false;
+  result.iteration_events_due = 0;
+}
+
 }  // namespace
 
 Animation::Animation(const base::String& name)
@@ -54,18 +61,107 @@ Animation::Animation(const base::String& name)
       keyframe_effect_(nullptr) {}
 
 fml::TimeDelta Animation::GetCurrentTime() const {
+  return GetCurrentTimeAt(fml::TimePoint::Now());
+}
+
+fml::TimeDelta Animation::GetCurrentTimeAt(
+    fml::TimePoint reference_time) const {
   if (start_time_ == fml::TimePoint::Min() ||
       start_time_ == GetAnimationDummyStartTime() ||
-      current_run_start_system_time_ == fml::TimePoint::Min()) {
+      current_run_start_system_time_ == fml::TimePoint::Min() ||
+      reference_time == fml::TimePoint::Min()) {
     return fml::TimeDelta::Zero();
   }
   if (state_ == State::kPause || state_ == State::kStop) {
     return current_time_at_pause_;
   }
-  fml::TimeDelta elapsed =
-      current_time_at_pause_ +
-      (fml::TimePoint::Now() - current_run_start_system_time_);
+  fml::TimeDelta elapsed = current_time_at_pause_ +
+                           (reference_time - current_run_start_system_time_);
   return elapsed < fml::TimeDelta::Zero() ? fml::TimeDelta::Zero() : elapsed;
+}
+
+void Animation::SeekTo(fml::TimeDelta current_time,
+                       fml::TimePoint reference_time) {
+  if (!keyframe_effect_ || reference_time == fml::TimePoint::Min()) {
+    return;
+  }
+
+  const bool keep_paused = state_ == State::kPause;
+  if (state_ == State::kIdle || state_ == State::kStop) {
+    // CDP follows Chromium's behavior: seeking an animation that is not
+    // paused makes it playable again. The requested time is installed below,
+    // so none of the old pause bookkeeping is needed.
+    ResetPauseTiming();
+    ClearSampleHistory();
+    state_ = State::kPlay;
+  } else {
+    InvalidateSampleCache();
+  }
+
+  if (keep_paused) {
+    // Move the hold point to this request's reference time. The start time is
+    // shifted by the same amount below, so currentTime remains the requested
+    // value without counting time spent paused.
+    pause_time_ = reference_time;
+    was_paused_ = true;
+  } else if (was_paused_ && pause_time_ != fml::TimePoint::Min()) {
+    // A resume may not have reached its first normal sample yet. Account for
+    // that pending paused interval before installing a new running timeline.
+    total_paused_duration_ =
+        total_paused_duration_ + (reference_time - pause_time_);
+    was_paused_ = false;
+  }
+
+  start_time_ = reference_time - total_paused_duration_ - current_time;
+  // Keep the Inspector's independent monotonic timeline aligned with the seek.
+  current_time_at_pause_ = current_time;
+  current_run_start_system_time_ = reference_time;
+  keyframe_effect_->SeekTo(current_time, reference_time, keep_paused);
+  suppress_next_sample_events_ = true;
+  RequestNextFrame();
+}
+
+void Animation::SetPaused(bool paused, fml::TimePoint reference_time) {
+  if (!keyframe_effect_ || reference_time == fml::TimePoint::Min() ||
+      paused == (state_ == State::kPause)) {
+    return;
+  }
+
+  const auto current_time = GetCurrentTimeAt(reference_time);
+  const bool has_real_start_time = start_time_ != fml::TimePoint::Min() &&
+                                   start_time_ != GetAnimationDummyStartTime();
+  InvalidateSampleCache();
+
+  if (paused) {
+    current_time_at_pause_ = current_time;
+    state_ = State::kPause;
+    if (has_real_start_time) {
+      pause_time_ = reference_time;
+      was_paused_ = true;
+      keyframe_effect_->SeekTo(current_time, reference_time, true);
+    }
+  } else {
+    state_ = State::kPlay;
+    if (has_real_start_time) {
+      current_run_start_system_time_ = reference_time;
+    }
+    if (was_paused_ && pause_time_ != fml::TimePoint::Min()) {
+      if (reference_time > pause_time_) {
+        total_paused_duration_ =
+            total_paused_duration_ + (reference_time - pause_time_);
+      }
+      was_paused_ = false;
+      start_time_ = reference_time - total_paused_duration_ - current_time;
+      keyframe_effect_->SeekTo(current_time, reference_time, false);
+    }
+  }
+
+  // Inspector controls operate on the real Lynx animation rather than a
+  // Chromium-style clone. Do not turn the timing discontinuity into page
+  // animation lifecycle events on the next sample.
+  suppress_next_sample_events_ = true;
+  RequestNextFrame();
+  NotifyInspectorUpdated();
 }
 
 void Animation::Play(bool play_handles_initial_frame) {
@@ -131,6 +227,7 @@ void Animation::Pause() {
   current_time_at_pause_ = GetCurrentTime();
   InvalidateSampleCache();
   state_ = State::kPause;
+  NotifyInspectorUpdated();
 }
 
 void Animation::Stop() {
@@ -138,6 +235,7 @@ void Animation::Stop() {
   current_time_at_pause_ = GetCurrentTime();
   ClearSampleHistory();
   state_ = State::kStop;
+  NotifyInspectorUpdated();
 }
 
 void Animation::Destroy(bool need_clear_effect) {
@@ -152,6 +250,9 @@ void Animation::Destroy(bool need_clear_effect) {
     SendCancelEvent();
     LOGI("Lynx Animation cancel, name is: " << name_.str());
   }
+  // The animation is being canceled/replaced/destroyed; always notify the
+  // Inspector so its registry record is removed, regardless of prior state.
+  NotifyInspectorCanceled();
   state_ = State::kStop;
   if (animation_delegate_) {
     animation_delegate_->FlushAnimatedStyle();
@@ -196,12 +297,16 @@ bool Animation::Tick(fml::TimePoint& time) {
     const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
     start_time_ = time;
     keyframe_effect_->SetStartTime(time, reset_effect_state);
+    NotifyInspectorStarted(time);
   }
   if (state_ == State::kPlay && time != GetAnimationDummyStartTime() &&
       current_run_start_system_time_ == fml::TimePoint::Min()) {
     current_run_start_system_time_ = fml::TimePoint::Now();
   }
-  return keyframe_effect_->TickKeyframeModel(time).has_finished_all;
+  auto tick_result =
+      keyframe_effect_->TickKeyframeModel(time, suppress_next_sample_events_);
+  suppress_next_sample_events_ = false;
+  return tick_result.has_finished_all;
 }
 
 void Animation::MaybeReportOverTime(fml::TimeDelta active_time) {
@@ -304,6 +409,7 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
     start_time_ = frame_time;
     keyframe_effect_->SetStartTime(frame_time, reset_effect_state);
+    NotifyInspectorStarted(frame_time);
   }
   if (state_ == State::kPlay && frame_time != GetAnimationDummyStartTime() &&
       current_run_start_system_time_ == fml::TimePoint::Min()) {
@@ -352,6 +458,10 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   // timestamp and, while history is kept, for future paused dummy-time
   // resolves.
   result = keyframe_effect_->SampleKeyframeModel(sample_time);
+  if (suppress_next_sample_events_) {
+    SuppressSampleEvents(result);
+    suppress_next_sample_events_ = false;
+  }
   has_last_sample_ = true;
   last_sample_time_ = sample_time;
   last_sample_result_ = result;
@@ -421,6 +531,7 @@ void Animation::InvalidateSampleCache() {
 
 void Animation::ClearSampleHistory() {
   InvalidateSampleCache();
+  suppress_next_sample_events_ = false;
   has_last_sample_ = false;
   last_sample_time_ = fml::TimePoint::Min();
   last_sample_result_ = KeyframeEffect::KeyframeSampleResult();
@@ -457,6 +568,62 @@ void Animation::SendCancelEvent() {
 
 void Animation::SendIterationEvent() {
   CreateEventAndSend(BASE_STATIC_STRING(kKeyframeIterationEventName));
+}
+
+void Animation::NotifyInspectorCreated() {
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (element_ && element_->element_manager()) {
+      auto* observer =
+          element_->element_manager()->inspector_animation_observer();
+      if (observer) {
+        observer->OnAnimationCreated(this);
+      }
+    }
+  });
+}
+
+void Animation::NotifyInspectorStarted(fml::TimePoint time) {
+  if (inspector_started_notified_) {
+    return;
+  }
+  // Only the first real (non-Min, non-dummy) sample counts as "started".
+  if (time == fml::TimePoint::Min() || time == GetAnimationDummyStartTime()) {
+    return;
+  }
+  inspector_started_notified_ = true;
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (element_ && element_->element_manager()) {
+      auto* observer =
+          element_->element_manager()->inspector_animation_observer();
+      if (observer) {
+        observer->OnAnimationStarted(this);
+      }
+    }
+  });
+}
+
+void Animation::NotifyInspectorUpdated() {
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (element_ && element_->element_manager()) {
+      auto* observer =
+          element_->element_manager()->inspector_animation_observer();
+      if (observer) {
+        observer->OnAnimationUpdated(this);
+      }
+    }
+  });
+}
+
+void Animation::NotifyInspectorCanceled() {
+  EXEC_EXPR_FOR_INSPECTOR({
+    if (element_ && element_->element_manager()) {
+      auto* observer =
+          element_->element_manager()->inspector_animation_observer();
+      if (observer) {
+        observer->OnAnimationCanceled(this);
+      }
+    }
+  });
 }
 
 }  // namespace animation

@@ -29,6 +29,7 @@
 #include "base/include/vector.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/utils/any.h"
+#include "core/inspector/observer/inspector_animation_observer.h"
 #include "core/inspector/observer/inspector_element_observer.h"
 #include "core/inspector/style_sheet.h"
 #include "core/public/external_memory_snapshot.h"
@@ -316,6 +317,15 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
           &inspector_element_observer);
   InspectorElementObserver *inspector_element_observer() const {
     return inspector_element_observer_.get();
+  }
+
+  // Inspector animation observer (Animation CDP). Nullable: null when the
+  // Inspector is not attached. Callers must null-check before use.
+  LYNX_EXPORT_FOR_DEVTOOL void SetInspectorAnimationObserver(
+      const std::shared_ptr<InspectorAnimationObserver>
+          &inspector_animation_observer);
+  InspectorAnimationObserver *inspector_animation_observer() const {
+    return inspector_animation_observer_.get();
   }
 
   void OnUpdateViewport(float width, int width_mode, float height,
@@ -1414,6 +1424,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   Element *root_{nullptr};
   std::weak_ptr<HierarchyObserver> hierarchy_observer_;
   std::shared_ptr<InspectorElementObserver> inspector_element_observer_;
+  std::shared_ptr<InspectorAnimationObserver> inspector_animation_observer_;
 
  private:
   /**

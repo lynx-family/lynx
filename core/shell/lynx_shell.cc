@@ -2081,6 +2081,14 @@ void LynxShell::SetInspectorElementObserver(
   });
 }
 
+void LynxShell::SetInspectorAnimationObserver(
+    const std::shared_ptr<tasm::InspectorAnimationObserver>&
+        inspector_animation_observer) {
+  engine_actor_->Act([inspector_animation_observer](auto& engine) {
+    engine->SetInspectorAnimationObserver(inspector_animation_observer);
+  });
+}
+
 void LynxShell::SetHierarchyObserver(
     const std::shared_ptr<tasm::HierarchyObserver>& hierarchy_observer) {
   layout_actor_->Act([hierarchy_observer](auto& layout) {

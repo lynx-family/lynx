@@ -26,6 +26,7 @@ class VSyncMonitor;
 namespace tasm {
 class Element;
 class CSSKeyframesToken;
+class InspectorAnimationObserver;
 }  // namespace tasm
 
 namespace animation {
@@ -41,7 +42,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   // TODO(wujintian): Mark the fml::TimePoint parameter as const in all
   // interfaces of animation, and then mark this variable as const.
-  static fml::TimePoint& GetAnimationDummyStartTime();
+  LYNX_EXPORT_FOR_DEVTOOL static fml::TimePoint& GetAnimationDummyStartTime();
 
   enum class State { kIdle = 0, kPlay, kPause, kStop };
 
@@ -80,6 +81,19 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   // Returns the current timeline time without mutating animation state.
   LYNX_EXPORT_FOR_DEVTOOL fml::TimeDelta GetCurrentTime() const;
+
+  // Sets the timeline time used by CDP Animation.seekAnimations. The caller
+  // supplies one shared monotonic reference time for the whole request so a
+  // group of animations stays synchronized. Running animations keep running,
+  // paused animations stay paused, and idle/stopped animations are revived.
+  LYNX_EXPORT_FOR_DEVTOOL void SeekTo(fml::TimeDelta current_time,
+                                      fml::TimePoint reference_time);
+
+  // Applies CDP Animation.setPaused at a caller-provided shared monotonic
+  // reference time. Pausing freezes the current timeline position immediately;
+  // resuming excludes the paused interval from subsequent timeline progress.
+  LYNX_EXPORT_FOR_DEVTOOL void SetPaused(bool paused,
+                                         fml::TimePoint reference_time);
 
   const fml::TimePoint& start_time() const { return start_time_; }
   const fml::TimePoint& pause_time() const { return pause_time_; }
@@ -139,6 +153,11 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void SetOrigin(Origin origin) { origin_ = origin; }
 
+  // Inspector (Animation CDP) lifecycle notification. No-op when the Inspector
+  // is disabled (compiled out via EXEC_EXPR_FOR_INSPECTOR). Called by the
+  // manager once the animation is fully created with its final origin set.
+  void NotifyInspectorCreated();
+
   void NotifyElementSizeUpdated();
 
   void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
@@ -157,8 +176,13 @@ class Animation : public std::enable_shared_from_this<Animation> {
   bool Tick(fml::TimePoint& time);
   void RequestNextFrame();
   void ResetPauseTiming();
+  fml::TimeDelta GetCurrentTimeAt(fml::TimePoint reference_time) const;
   void InvalidateSampleCache();
   void ClearSampleHistory();
+  // Inspector lifecycle helpers. Started fires once on the first real sample.
+  void NotifyInspectorStarted(fml::TimePoint time);
+  void NotifyInspectorUpdated();
+  void NotifyInspectorCanceled();
   AnimationDelegate* animation_delegate_{nullptr};
   base::String name_;
   // Process-unique identifier assigned once when the object is constructed.
@@ -185,6 +209,11 @@ class Animation : public std::enable_shared_from_this<Animation> {
   fml::TimeDelta current_time_at_pause_{fml::TimeDelta::Zero()};
   fml::TimePoint current_run_start_system_time_{fml::TimePoint::Min()};
   bool was_paused_{false};
+  // A CDP seek is a discontinuous Inspector operation. The first sample after
+  // it must update styles and timing state without synthesizing page-visible
+  // animationstart/animationiteration/animationend events for skipped time.
+  bool suppress_next_sample_events_{false};
+  bool inspector_started_notified_{false};
   bool has_cached_sample_{false};
   fml::TimePoint cached_sample_time_{fml::TimePoint::Min()};
   KeyframeEffect::KeyframeSampleResult cached_sample_result_;

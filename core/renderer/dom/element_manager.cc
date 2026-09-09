@@ -890,6 +890,12 @@ void ElementManager::SetInspectorElementObserver(
   devtool_flag_ = true;
 }
 
+void ElementManager::SetInspectorAnimationObserver(
+    const std::shared_ptr<InspectorAnimationObserver>
+        &inspector_animation_observer) {
+  inspector_animation_observer_ = inspector_animation_observer;
+}
+
 void ElementManager::OnFinishUpdateProps(
     Element *node, std::shared_ptr<PipelineOptions> &options) {
   // target_node is nullptr for radon by default;
