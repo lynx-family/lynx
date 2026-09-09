@@ -53,7 +53,8 @@ AnimatedImageInstance::AnimatedImageInstance(
     : BaseImageInstance(image) {
   player_ = std::make_unique<AnimatedImagePlayer>(
       image->image_->CreateAnimation(), image->task_runner_,
-      [this] { OnFrameChanged(); }, [this] { return IsVisible(); });
+      [this] { OnFrameChanged(); }, [this] { return IsVisible(); },
+      [this] { OnNotifyAnimationCompleted(); });
   if (!player_->IsValid()) {
     FML_LOG(ERROR) << "AnimatedImageInstance: failed to create animation";
     return;
@@ -69,7 +70,8 @@ AnimatedImageInstance::AnimatedImageInstance(const AnimatedImageInstance& other)
   auto image = std::static_pointer_cast<AnimatedImage>(image_);
   player_ = std::make_unique<AnimatedImagePlayer>(
       image->image_->CreateAnimation(), image->task_runner_,
-      [this] { OnFrameChanged(); }, [this] { return IsVisible(); });
+      [this] { OnFrameChanged(); }, [this] { return IsVisible(); },
+      [this] { OnNotifyAnimationCompleted(); });
   if (!player_->IsValid()) {
     FML_LOG(ERROR) << "AnimatedImageInstance: failed to clone animation";
     return;

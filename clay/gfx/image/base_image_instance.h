@@ -39,15 +39,18 @@ class BaseImageInstance {
   virtual void ResumeAnimation() {}
 
   void SetAnimationFrameCallback(std::function<void()> func);
+  void SetAnimationCompletedCallback(std::function<void()> func);
   void SetVisibleCallback(std::function<bool()> func);
 
   void OnNotifyAnimationFrame();
+  void OnNotifyAnimationCompleted();
 
   bool IsVisible() const;
 
  protected:
   std::shared_ptr<BaseImage> image_;
   std::function<void()> animation_frame_callback_;
+  std::function<void()> animation_completed_callback_;
   std::function<bool()> visible_callback_;
 };
 

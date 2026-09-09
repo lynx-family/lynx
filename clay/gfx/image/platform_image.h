@@ -22,6 +22,7 @@ class PlatformImageAnimation {
   virtual std::shared_ptr<skity::Pixmap> ToBitmap(
       const ImageInfo& render_info) = 0;
   virtual bool DrawFrame() = 0;
+  virtual bool IsAnimationCompleted() const { return false; }
   virtual void SetLoopCount(int loop_count) = 0;
   virtual void StartAnimation() = 0;
   virtual void StopAnimation() = 0;
