@@ -43,6 +43,18 @@ std::string LynxTemplateBundle::FromBinary(std::vector<uint8_t> binary,
 std::string LynxTemplateBundle::FromBinaryGreedy(
     std::vector<uint8_t> binary, const std::string &template_url,
     bool skip_css_decode, std::optional<bool> is_card) {
+  return FromBinaryGreedy(
+      std::make_shared<const std::vector<uint8_t>>(std::move(binary)),
+      template_url, skip_css_decode, is_card);
+}
+
+std::string LynxTemplateBundle::FromBinaryGreedy(
+    std::shared_ptr<const std::vector<uint8_t>> binary,
+    const std::string &template_url, bool skip_css_decode,
+    std::optional<bool> is_card) {
+  if (binary == nullptr) {
+    return "Cannot decode template from a null binary";
+  }
   auto reader = LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
   if (is_card.has_value()) {
     reader.SetIsCardType(*is_card);

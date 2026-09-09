@@ -91,6 +91,11 @@ class LynxTemplateBundle final {
                                bool skip_css_decode = false,
                                std::optional<bool> is_card = std::nullopt);
 
+  std::string FromBinaryGreedy(
+      std::shared_ptr<const std::vector<uint8_t>> binary,
+      const std::string& template_url, bool skip_css_decode = false,
+      std::optional<bool> is_card = std::nullopt);
+
   // Builds a bundle from a Lynx Markup Language document beginning with
   // <!doctype lynx> and containing a <lynx> root. Source blocks use <style>,
   // <script thread="main">, and <script thread="background">. Blocks may
