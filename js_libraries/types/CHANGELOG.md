@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 4.3.2
+- Add `bindtextClick` and `MarkdownTextClickEvent` typings for `<markdown>` text attachment clicks.
+
 ## 4.3.1
 - Add `ios-hide-keyboard-accessory-view` to `<webview>` typings.
 
