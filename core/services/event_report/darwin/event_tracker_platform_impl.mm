@@ -11,8 +11,9 @@ namespace lynx {
 namespace tasm {
 namespace report {
 
-void EventTrackerPlatformImpl::OnEvent(int32_t instance_id, MoveOnlyEvent&& event) {
+void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
   LLogInfo(@"EventTracker onEvent with name: %s", event.GetName().c_str());
+  assert(event.IsValidInstanceId());
   NSString* eventName = [NSString stringWithUTF8String:event.GetName().c_str()];
   if (!eventName) {
     return;
@@ -39,12 +40,12 @@ void EventTrackerPlatformImpl::OnEvent(int32_t instance_id, MoveOnlyEvent&& even
         break;
     }
   }
-  [LynxEventReporter onEvent:eventName instanceId:instance_id props:props.copy];
+  [LynxEventReporter onEvent:eventName instanceId:event.GetInstanceId() props:props.copy];
 }
 
-void EventTrackerPlatformImpl::OnEvents(int32_t instance_id, std::vector<MoveOnlyEvent> stack) {
+void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {
   for (auto& event : stack) {
-    OnEvent(instance_id, std::move(event));
+    OnEvent(std::move(event));
   }
 }
 

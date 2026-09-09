@@ -86,16 +86,13 @@ void PerfControllerProxyImpl::RunTaskInReportThread(base::closure task) {
   });
 }
 
-void PerfControllerProxyImpl::OnEvent(int32_t instance_id,
-                                      tasm::report::MoveOnlyEvent&& event) {
+void PerfControllerProxyImpl::OnEvent(tasm::report::MoveOnlyEvent&& event) {
   if (!perf_actor_) {
     return;
   }
-  perf_actor_->ActAsync(
-      [instance_id, event = std::move(event)](auto& controller) mutable {
-        lynx::tasm::report::EventTrackerPlatformImpl::OnEvent(instance_id,
-                                                              std::move(event));
-      });
+  perf_actor_->ActAsync([event = std::move(event)](auto& controller) mutable {
+    lynx::tasm::report::EventTrackerPlatformImpl::OnEvent(std::move(event));
+  });
 }
 
 }  // namespace shell

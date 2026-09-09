@@ -17,11 +17,7 @@ namespace embedder {
 
 class LynxEventReporter {
  public:
-  /**
-   * @brief
-   * @param type The specific host platform type.
-   */
-  static void OnEvent(int32_t instance_id, tasm::report::MoveOnlyEvent&& event);
+  static void OnEvent(tasm::report::MoveOnlyEvent&& event);
 
   static void UpdateGenericInfo(const std::string& key,
                                 const std::string& value, int32_t instance_id);

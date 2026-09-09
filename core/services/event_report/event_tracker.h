@@ -95,9 +95,14 @@ using EventPropsMap = std::unordered_map<std::string, EventProp>;
 /// Event of reporting.
 struct MoveOnlyEvent {
  public:
-  /// Setter of event name.
+  void SetInstanceId(int32_t instance_id) { instance_id_ = instance_id; }
+  int32_t GetInstanceId() const { return instance_id_; }
+
+  bool IsValidInstanceId() const {
+    return instance_id_ != kUninitializedInstanceId;
+  }
+
   void SetName(const char* name) { name_ = name; }
-  /// Getter of event name.
   const std::string& GetName() const { return name_; }
 
   void SetProps(const char* key, int32_t value) {
@@ -154,6 +159,7 @@ struct MoveOnlyEvent {
   MoveOnlyEvent& operator=(MoveOnlyEvent&&) = default;
 
  private:
+  int32_t instance_id_{kUninitializedInstanceId};
   std::string name_;
   base::Vector<EventProp> props_;
 };
@@ -186,6 +192,13 @@ class EventTracker {
   /// @param builder Builder of event, Builder will be called on report
   /// kLynxReportEventName.
   LYNX_EXPORT static void OnEvent(EventBuilder builder);
+  /// Cache custom event to the event stack and upload them later.
+  /// Can be called from any thread. The event is a global event and does not
+  /// belong to any specific page.
+  /// @param builder Builder of event, Builder will be called on report
+  /// kLynxReportEventName.
+  LYNX_EXPORT static void OnGlobalEvent(EventBuilder builder);
+
   /// Update generic info of template instance by PageConfig.
   /// Can be called from any thread.
   /// @param instance_id  The unique id of template instance.
@@ -214,8 +227,8 @@ class EventTracker {
   /// mapped by instance id.
   /// @param instance_id The unique id of template instance.
   static void ClearCache(int32_t instance_id);
-  // Flush all `std::vector<EventBuilder>` to platform with
-  // template instance id.
+  /// Flush all `std::vector<EventBuilder>` to platform with
+  /// template instance id. All global events will also be flushed.
   LYNX_EXPORT static void Flush(int32_t instance_id);
 
   /// Update the generic info of template instance by a pair of size.

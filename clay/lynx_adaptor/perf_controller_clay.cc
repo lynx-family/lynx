@@ -285,6 +285,7 @@ void PerfControllerClay::EndFluencyMonitor(int id) {
       }
 
       report::MoveOnlyEvent event;
+      event.SetInstanceId(strong_self->instance_id_);
       event.SetName(kLynxFluencyEvent.data());
       event.SetProps("lynxsdk_fluency_scene", fps_tracer->GetConfig().scene);
       event.SetProps("lynxsdk_fluency_tag", fps_tracer->GetConfig().tag);
@@ -327,8 +328,7 @@ void PerfControllerClay::EndFluencyMonitor(int id) {
                      strong_self->page_config_probability_);
       event.SetProps("lynxsdk_fluency_enabled_by_sampling", 0);
 
-      strong_self->perf_controller_proxy_->OnEvent(strong_self->instance_id_,
-                                                   std::move(event));
+      strong_self->perf_controller_proxy_->OnEvent(std::move(event));
     });
   }
 }

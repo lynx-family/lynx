@@ -80,6 +80,7 @@ void LongTaskMonitor::DidProcessTask() {
         [timing = std::move(timing),
          duration_threshold_ms = duration_threshold_ms_] {
           tasm::report::MoveOnlyEvent event;
+          event.SetInstanceId(timing.instance_id_);
           event.SetName("lynxsdk_long_task_timing");
           event.SetProps("duration_ms", timing.duration_ms_);
           event.SetProps("duration_threshold_ms", duration_threshold_ms);
@@ -87,8 +88,7 @@ void LongTaskMonitor::DidProcessTask() {
           event.SetProps("task_name", timing.task_name_);
           event.SetProps("task_info", timing.task_info_);
           event.SetProps("thread_name", timing.thread_name_);
-          tasm::report::EventTrackerPlatformImpl::OnEvent(timing.instance_id_,
-                                                          std::move(event));
+          tasm::report::EventTrackerPlatformImpl::OnEvent(std::move(event));
         });
     long_batched_tasks_monitor_.OnLongTaskTiming();
   } else {
