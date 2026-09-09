@@ -6,6 +6,8 @@
 
 #include <harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h>
 
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -722,6 +724,39 @@ void UIBaseInput::SetValue(
       const auto& value = params->GetValue("value");
       if (value.IsString()) {
         SetTextValue(value.StdString());
+        if (params->Contains("cursor")) {
+          const auto& cursor = params->GetValue("cursor");
+          if (!cursor.IsNumber()) {
+            const auto ret = lepus::Dictionary::Create();
+            ret->SetValue("err", "cursor must be a number");
+            callback(LynxGetUIResult::PARAM_INVALID, lepus::Value(ret));
+            return;
+          }
+          const double cursor_value = cursor.Number();
+          if (!std::isfinite(cursor_value) ||
+              std::trunc(cursor_value) != cursor_value ||
+              cursor_value > std::numeric_limits<int32_t>::max()) {
+            const auto ret = lepus::Dictionary::Create();
+            ret->SetValue(
+                "err",
+                "cursor must be a finite integer no greater than INT32_MAX");
+            callback(LynxGetUIResult::PARAM_INVALID, lepus::Value(ret));
+            return;
+          }
+          if (cursor_value >= 0) {
+            const auto cursor_index = static_cast<int32_t>(cursor_value);
+            ArkUI_NumberValue caret[] = {{.i32 = cursor_index}};
+            ArkUI_AttributeItem item = {.value = caret, .size = 1};
+            const bool success = NodeManager::Instance().SetAttribute(
+                input_node_, GetCaretAttributeType(), &item);
+            if (!success) {
+              const auto ret = lepus::Dictionary::Create();
+              ret->SetValue("err", "failed to set caret position");
+              callback(LynxGetUIResult::OPERATION_ERROR, lepus::Value(ret));
+              return;
+            }
+          }
+        }
         callback(LynxGetUIResult::SUCCESS, lepus::Value());
         return;
       }

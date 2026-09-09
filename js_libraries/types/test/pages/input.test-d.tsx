@@ -287,6 +287,14 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
       value: '123',
     },
   });
+  invoke<'input'>({ method: 'setValue', params: { value: '123', cursor: 0 } });
+  invoke<'textarea'>({ method: 'setValue', params: { value: '123', cursor: 2 } });
+  invoke<'input'>({ method: 'setValue', params: { value: '123', cursor: -1 } });
+  invoke<'textarea'>({ method: 'setValue', params: { value: '123', cursor: -1 } });
+  // @ts-expect-error cursor must be numeric
+  invoke<'input'>({ method: 'setValue', params: { value: '123', cursor: '2' } });
+  // @ts-expect-error cursor must be numeric
+  invoke<'textarea'>({ method: 'setValue', params: { value: '123', cursor: '2' } });
   invoke<'input'>({
     method: 'setSelectionRange',
     params: {

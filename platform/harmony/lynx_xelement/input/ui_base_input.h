@@ -64,6 +64,7 @@ class UIBaseInput : public UIView {
   virtual ArkUI_NodeAttributeType GetSelectionAttributeType() const {
     return static_cast<ArkUI_NodeAttributeType>(-1);
   };
+  virtual ArkUI_NodeAttributeType GetCaretAttributeType() const = 0;
   virtual ArkUI_NodeAttributeType GetEditingAttributeType() const {
     return static_cast<ArkUI_NodeAttributeType>(-1);
   }
