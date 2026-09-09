@@ -882,12 +882,6 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
       childLynxPage.view.isChildLynxPage) {
     CGPoint transPoint = [_rootUI.view convertPoint:point toView:((LynxUI*)_touchTarget).view];
     [childLynxPage.context.eventHandler hitTest:transPoint withEvent:event];
-    // When two fingers are pressed on different child Lynx pages at the same time, the parent Lynx
-    // page will generate two different touchTargets successively, and the custom gesture interface
-    // can be triggered after hitTest, which will cause different child Lynx pages to fail to
-    // receive touchstart or touchend, and ultimately make it impossible to reset the touch state of
-    // a child Lynx page, resulting in click failure.
-    [childLynxPage.context.eventHandler.touchRecognizer resetTouchEnv];
   }
 
   return _touchTarget;
