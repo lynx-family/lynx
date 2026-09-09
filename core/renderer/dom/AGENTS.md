@@ -23,6 +23,10 @@ This directory contains the core renderer DOM layer: element ownership, attribut
 
 ## Common Regression Symptoms
 
+- A NoPatch update can still enqueue completion operations. In layout-in-element
+  mode, finish those operations before flushing the root container; skipping
+  layout does not remove the need to publish the queue and notify waiters.
+
 - Nodes stop appearing, appear in the wrong order, or keep stale styles after manager or ownership changes.
 - Selection, fragment, or fiber regressions often start from a shared `Element` contract mismatch.
 - Layout-node churn or stale layout state often points to manager/style-resolution coupling rather than a single method bug.

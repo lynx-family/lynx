@@ -221,9 +221,6 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_NEW_ANIMATOR_FLUSH_BUG, true);
   fix_list_callback_leak_flag_ = LynxEnv::GetInstance().GetBoolEnv(
       LynxEnv::Key::FIX_LIST_CALLBACK_LEAK_BUG, false);
-  // Temporary rollback switch; remove after rollout validation.
-  fix_layout_in_element_no_patch_flush_ = LynxEnv::GetInstance().GetBoolEnv(
-      LynxEnv::Key::FIX_LAYOUT_IN_ELEMENT_NO_PATCH_FLUSH, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
   painting_context()->SetEnableExternalMemoryReport(
@@ -1863,8 +1860,7 @@ void ElementManager::OnPatchFinishForFiber(
       Repaint();
     }
     if (root() && (root()->EnableFragmentLayerRender() ||
-                   (fix_layout_in_element_no_patch_flush_ &&
-                    root()->EnableLayoutInElementMode()))) {
+                   root()->EnableLayoutInElementMode())) {
       root()->element_container()->FinishLayoutOperation(options);
       // NoPatch skips layout, but still enqueues completion operations.
       // Embedded mode skips LynxEngine::Flush(), so flush here to publish
