@@ -2006,6 +2006,7 @@ void TemplateAssembler::TriggerWorkletFunction(
 void TemplateAssembler::Destroy() {
   LOGI("TemplateAssembler::Destroy url:" << url_ << " this:" << this);
 
+  page_proxy_.element_manager()->StopAnimationVsync();
   EnsureOnLayoutReadyHooksFinish();
 
   destroyed_ = true;
