@@ -5,13 +5,16 @@
 #include "core/services/recorder/testbench_base_recorder.h"
 
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <utility>
 
 #include "base/include/closure.h"
 #include "base/include/log/logging.h"
+#include "base/include/string/string_number_convert.h"
 #include "third_party/modp_b64/modp_b64.h"
 #include "third_party/rapidjson/filewritestream.h"
 #include "third_party/rapidjson/prettywriter.h"
@@ -59,6 +62,45 @@ int64_t CurrentRecordMillis() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::system_clock::now().time_since_epoch())
       .count();
+}
+
+bool IncludesJson(ArtifactFormat format) {
+  return format != ArtifactFormat::kFixture;
+}
+
+bool IncludesFixture(ArtifactFormat format) {
+  return format != ArtifactFormat::kJson;
+}
+
+size_t FindOrCreateCallGroup(FixtureData& fixture,
+                             const std::string& module_name,
+                             const std::string& method_name) {
+  for (size_t i = 0; i < fixture.call_groups.size(); ++i) {
+    const auto& group = fixture.call_groups[i];
+    if (group.module_name == module_name && group.method_name == method_name) {
+      return i;
+    }
+  }
+  fixture.call_groups.push_back({module_name, method_name, {}});
+  return fixture.call_groups.size() - 1;
+}
+
+bool ParseCallbackId(const rapidjson::Value& value, int64_t* callback_id) {
+  if (value.IsInt64()) {
+    *callback_id = value.GetInt64();
+    return true;
+  }
+  if (value.IsUint64() &&
+      value.GetUint64() <=
+          static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+    *callback_id = static_cast<int64_t>(value.GetUint64());
+    return true;
+  }
+  if (!value.IsString()) {
+    return false;
+  }
+  return base::StringToInt(
+      std::string(value.GetString(), value.GetStringLength()), *callback_id);
 }
 
 }  // namespace
@@ -248,9 +290,14 @@ rapidjson::Document::AllocatorType& TestBenchBaseRecorder::GetAllocator() {
 };
 
 void TestBenchBaseRecorder::StartRecord() {
+  StartRecord(ArtifactFormat::kJson);
+}
+
+void TestBenchBaseRecorder::StartRecord(ArtifactFormat format) {
   bool expected = false;
   if (is_recording_.compare_exchange_strong(expected, true,
                                             std::memory_order_acq_rel)) {
+    artifact_format_.store(format, std::memory_order_release);
     const uint64_t recording_generation =
         recording_generation_.fetch_add(1, std::memory_order_acq_rel) + 1;
     auto initialize_records_task = [this, recording_generation]() {
@@ -275,17 +322,24 @@ void TestBenchBaseRecorder::EndRecord(
     if (!is_recording_.load(std::memory_order_acquire)) {
       return;
     }
+    // Snapshot this session before another thread can start the next one.
+    const ArtifactFormat format =
+        artifact_format_.load(std::memory_order_acquire);
     is_recording_.store(false, std::memory_order_release);
     std::vector<std::string> filenames;
     std::vector<int64_t> sessions;
     for (auto& lynx_view_pair : lynx_view_table_) {
       int64_t shell_id = lynx_view_pair.first;
-      std::string filename = file_path_ + std::to_string(shell_id) + ".json";
-      {
+      const auto session_it = session_ids_.find(shell_id);
+      const int64_t session =
+          session_it == session_ids_.end() ? -1 : session_it->second;
+      auto config_it = replay_config_map_.find(shell_id);
+
+      if (IncludesJson(format)) {
+        std::string filename = file_path_ + std::to_string(shell_id) + ".json";
         rapidjson::Value& doc = lynx_view_pair.second;
         rapidjson::Document::AllocatorType& allocator = GetAllocator();
         rapidjson::Value config;
-        auto config_it = replay_config_map_.find(shell_id);
         if (config_it == replay_config_map_.end()) {
           config.SetNull();
         } else {
@@ -296,20 +350,37 @@ void TestBenchBaseRecorder::EndRecord(
         // filenames/sessions arrays stay index-aligned with real files.
         if (WriteRecordJson(filename, doc)) {
           filenames.push_back(filename);
-          if (this->session_ids_.find(shell_id) != this->session_ids_.end()) {
-            sessions.push_back(this->session_ids_[shell_id]);
-          } else {
-            sessions.push_back(-1);
-          }
+          sessions.push_back(session);
         } else {
           LOGE("[TestBench] failed to write record json: " << filename);
         }
       }
+
+      if (IncludesFixture(format)) {
+        auto fixture_it = fixture_table_.find(shell_id);
+        if (fixture_it == fixture_table_.end() ||
+            fixture_it->second.actions.empty()) {
+          continue;
+        }
+        FixtureData& fixture = fixture_it->second;
+        fixture.config_json = config_it == replay_config_map_.end()
+                                  ? "{}"
+                                  : JsonToCompactString(config_it->second);
+        std::string filename = file_path_ + std::to_string(shell_id) + ".zip";
+        if (WriteFixtureZip(filename, fixture)) {
+          filenames.push_back(filename);
+          sessions.push_back(session);
+        } else {
+          std::remove(filename.c_str());
+          LOGE("[TestBench] failed to write fixture zip: " << filename);
+        }
+      }
     }
-    this->ClearRecordingSessionData();
-    // send a recordingComplete event after the previous session is fully
-    // cleared so the receiver can safely start another recording.
+    // Keep the completed session available while notifying the consumer. New
+    // recording work posted by the callback runs after this task, so clearing
+    // immediately afterwards cannot erase data from the new session.
     complete_func(filenames, sessions);
+    this->ClearRecordingSessionData();
   };
 
   thread_.GetTaskRunner()->PostTask(std::move(writer_task));
@@ -323,6 +394,7 @@ void TestBenchBaseRecorder::AddLynxViewSessionID(int64_t record_id,
 void TestBenchBaseRecorder::RemoveRecord(int64_t record_id) {
   auto remove_record_task = [this, record_id]() {
     lynx_view_table_.erase(record_id);
+    fixture_table_.erase(record_id);
     replay_config_map_.erase(record_id);
     url_map_.erase(record_id);
     session_ids_.erase(record_id);
@@ -391,7 +463,32 @@ void TestBenchBaseRecorder::RecordActionKernel(
   val.AddMember(rapidjson::StringRef(kFunctionName), func_name, allocator);
 
   // Record Time
-  RecordTime(val);
+  const int64_t record_ms = RecordTime(val);
+
+  if (IncludesFixture(artifact_format_.load(std::memory_order_relaxed))) {
+    FixtureData& fixture = fixture_table_[record_id];
+    fixture.actions.push_back(
+        {function_name, JsonToCompactString(params_val), record_ms});
+
+    if (std::strcmp(function_name, kFuncLoadTemplate) == 0 ||
+        std::strcmp(function_name, kFuncLoadTemplateBundle) == 0) {
+      fixture.has_load_template = true;
+      if (params_val.IsObject() && params_val.HasMember(kParamUrl) &&
+          params_val[kParamUrl].IsString()) {
+        fixture.load_template_url = params_val[kParamUrl].GetString();
+      }
+      if (params_val.IsObject() && params_val.HasMember(kParamSource) &&
+          params_val[kParamSource].IsString()) {
+        fixture.load_template_source_base64 =
+            params_val[kParamSource].GetString();
+      }
+      if (params_val.IsObject() && params_val.HasMember(kParamTemplateData)) {
+        fixture.load_template_data_json =
+            JsonToCompactString(params_val[kParamTemplateData]);
+        fixture.load_template_data_format = FixtureTemplateDataFormat::kPlain;
+      }
+    }
+  }
 
   val.AddMember(rapidjson::StringRef(kParams), params_val, allocator);
 
@@ -400,7 +497,8 @@ void TestBenchBaseRecorder::RecordActionKernel(
 
 void TestBenchBaseRecorder::AppendInvokedMethodData(
     rapidjson::Value& recorded_file, const std::string& module_name,
-    const std::string& method_name, const rapidjson::Value& params) {
+    const std::string& method_name, const rapidjson::Value& params,
+    int64_t record_id) {
   rapidjson::Value& invoked_method_data_value =
       recorded_file[kInvokedMethodData];
   rapidjson::Document::AllocatorType& allocator = GetAllocator();
@@ -419,7 +517,42 @@ void TestBenchBaseRecorder::AppendInvokedMethodData(
   rapidjson::Value params_val;
   params_val.CopyFrom(params, allocator);
 
-  RecordTime(val);
+  const int64_t record_ms = RecordTime(val);
+
+  if (IncludesFixture(artifact_format_.load(std::memory_order_relaxed))) {
+    FixtureData& fixture = fixture_table_[record_id];
+    const size_t group_index =
+        FindOrCreateCallGroup(fixture, module_name, method_name);
+    std::vector<FixtureCall>& calls = fixture.call_groups[group_index].calls;
+    FixtureCall call;
+    call.args_json = params_val.IsObject() &&
+                             params_val.HasMember(kParamArgs) &&
+                             params_val[kParamArgs].IsArray()
+                         ? JsonToCompactString(params_val[kParamArgs])
+                         : "[]";
+    if (params_val.IsObject() && params_val.HasMember(kParamReturnValue)) {
+      const rapidjson::Value& return_value = params_val[kParamReturnValue];
+      if (!(return_value.IsString() &&
+            std::strcmp(return_value.GetString(), "undefined") == 0)) {
+        call.return_value_json = JsonToCompactString(return_value);
+      }
+    }
+    call.record_ms = record_ms;
+
+    const size_t call_index = calls.size();
+    if (params_val.IsObject() && params_val.HasMember(kCallBack) &&
+        params_val[kCallBack].IsArray()) {
+      const rapidjson::Value& callback_ids = params_val[kCallBack];
+      for (rapidjson::SizeType i = 0; i < callback_ids.Size(); ++i) {
+        int64_t callback_id = 0;
+        if (ParseCallbackId(callback_ids[i], &callback_id)) {
+          fixture.callback_targets.push_back(
+              {callback_id, group_index, call_index, static_cast<int>(i)});
+        }
+      }
+    }
+    calls.push_back(std::move(call));
+  }
 
   val.AddMember(rapidjson::StringRef(kParams), params_val, allocator);
   invoked_method_data_value.PushBack(val, allocator);
@@ -429,7 +562,8 @@ void TestBenchBaseRecorder::AppendCallbackData(rapidjson::Value& recorded_file,
                                                const std::string& module_name,
                                                const std::string& method_name,
                                                const rapidjson::Value& params,
-                                               int64_t callback_id) {
+                                               int64_t callback_id,
+                                               int64_t record_id) {
   rapidjson::Value& callback_value = recorded_file[kCallback];
   rapidjson::Document::AllocatorType& allocator = GetAllocator();
 
@@ -447,7 +581,37 @@ void TestBenchBaseRecorder::AppendCallbackData(rapidjson::Value& recorded_file,
   val.AddMember(rapidjson::StringRef(kModuleName), module_name_val, allocator);
   val.AddMember(rapidjson::StringRef(kMethodName), method_name_val, allocator);
 
-  RecordTime(val);
+  const int64_t record_ms = RecordTime(val);
+
+  if (IncludesFixture(artifact_format_.load(std::memory_order_relaxed))) {
+    FixtureData& fixture = fixture_table_[record_id];
+    for (auto it = fixture.callback_targets.rbegin();
+         it != fixture.callback_targets.rend(); ++it) {
+      if (it->callback_id != callback_id ||
+          it->group_index >= fixture.call_groups.size()) {
+        continue;
+      }
+      FixtureCallGroup& group = fixture.call_groups[it->group_index];
+      if (group.module_name != module_name ||
+          group.method_name != method_name ||
+          it->call_index >= group.calls.size()) {
+        continue;
+      }
+      FixtureCall& call = group.calls[it->call_index];
+      if (call.record_ms > record_ms) {
+        continue;
+      }
+      FixtureCallback callback_entry;
+      callback_entry.index = it->callback_index;
+      callback_entry.value_json =
+          params.IsObject() && params.HasMember(kParamReturnValue)
+              ? JsonToCompactString(params[kParamReturnValue])
+              : "null";
+      callback_entry.delay_ms = record_ms - call.record_ms;
+      call.callbacks.push_back(std::move(callback_entry));
+      break;
+    }
+  }
 
   rapidjson::Value local_params;
   local_params.CopyFrom(params, allocator);
@@ -512,7 +676,8 @@ void TestBenchBaseRecorder::RecordInvokedMethodDataOwned(
       return;
     }
     rapidjson::Value& recorded_file = GetRecordedFile(record_id);
-    AppendInvokedMethodData(recorded_file, module_name, method_name, params);
+    AppendInvokedMethodData(recorded_file, module_name, method_name, params,
+                            record_id);
   };
 
   thread_.GetTaskRunner()->PostTask(std::move(record_invoked_method_task));
@@ -561,41 +726,52 @@ void TestBenchBaseRecorder::RecordCallbackOwned(std::string module_name,
     }
     rapidjson::Value& recorded_file = GetRecordedFile(record_id);
     AppendCallbackData(recorded_file, module_name, method_name, params,
-                       callback_id);
+                       callback_id, record_id);
   };
   thread_.GetTaskRunner()->PostTask(std::move(record_callback_task));
 }
 
 void TestBenchBaseRecorder::RecordComponent(const char* component_name,
                                             int type, int64_t record_id) {
-  auto record_component_task =
-      [this, component_name = std::string(component_name), type, record_id]() {
-        if (!is_recording_.load(std::memory_order_acquire)) {
-          return;
-        }
-        if (lynx_view_table_.count(record_id) == 0) {
-          return;
-        }
-        rapidjson::Value& component_list_value =
-            GetRecordedFileField(record_id, kComponentList);
-        rapidjson::Document::AllocatorType& allocator = GetAllocator();
+  const uint64_t recording_generation = RecordingGeneration();
+  if (record_id == 0 || recording_generation == 0) {
+    return;
+  }
+  auto record_component_task = [this,
+                                component_name = std::string(component_name),
+                                type, record_id, recording_generation]() {
+    if (!is_recording_.load(std::memory_order_acquire)) {
+      return;
+    }
+    if (RecordingGeneration() != recording_generation) {
+      return;
+    }
+    if (lynx_view_table_.count(record_id) == 0) {
+      return;
+    }
+    rapidjson::Value& component_list_value =
+        GetRecordedFileField(record_id, kComponentList);
+    rapidjson::Document::AllocatorType& allocator = GetAllocator();
 
-        rapidjson::Value component_name_val(rapidjson::kStringType);
-        component_name_val.SetString(component_name.c_str(), allocator);
+    rapidjson::Value component_name_val(rapidjson::kStringType);
+    component_name_val.SetString(component_name.c_str(), allocator);
 
-        rapidjson::Value component_type_val(rapidjson::kNumberType);
-        component_type_val.SetInt(type);
+    rapidjson::Value component_type_val(rapidjson::kNumberType);
+    component_type_val.SetInt(type);
 
-        rapidjson::Value val;
-        val.SetObject();
+    rapidjson::Value val;
+    val.SetObject();
 
-        val.AddMember(rapidjson::StringRef(kComponentName), component_name_val,
-                      allocator);
-        val.AddMember(rapidjson::StringRef(kComponentType), component_type_val,
-                      allocator);
+    val.AddMember(rapidjson::StringRef(kComponentName), component_name_val,
+                  allocator);
+    val.AddMember(rapidjson::StringRef(kComponentType), component_type_val,
+                  allocator);
 
-        component_list_value.PushBack(val, allocator);
-      };
+    component_list_value.PushBack(val, allocator);
+    if (IncludesFixture(artifact_format_.load(std::memory_order_relaxed))) {
+      fixture_table_[record_id].components.emplace_back(component_name, type);
+    }
+  };
   thread_.GetTaskRunner()->PostTask(std::move(record_component_task));
 }
 
@@ -772,11 +948,18 @@ void TestBenchBaseRecorder::RecordPreloadScript(const std::string& url,
 void TestBenchBaseRecorder::RecordSharedData(const std::string& key,
                                              rapidjson::Value& value,
                                              int64_t record_id) {
+  const uint64_t recording_generation = RecordingGeneration();
+  if (record_id == 0 || recording_generation == 0) {
+    return;
+  }
   rapidjson::Document owned_value;
   owned_value.CopyFrom(value, owned_value.GetAllocator());
   auto record_shared_data_task = [this, key, value = std::move(owned_value),
-                                  record_id]() {
+                                  record_id, recording_generation]() {
     if (!is_recording_.load(std::memory_order_acquire)) {
+      return;
+    }
+    if (RecordingGeneration() != recording_generation) {
       return;
     }
     if (lynx_view_table_.count(record_id) == 0) {
@@ -793,12 +976,16 @@ void TestBenchBaseRecorder::RecordSharedData(const std::string& key,
     rapidjson::Value json_key(rapidjson::kStringType);
     json_key.SetString(key.c_str(), allocator);
 
+    if (IncludesFixture(artifact_format_.load(std::memory_order_relaxed))) {
+      fixture_table_[record_id].shared_data.emplace_back(
+          key, JsonToCompactString(local_value));
+    }
     shared_data_map.AddMember(json_key, local_value, allocator);
   };
   thread_.GetTaskRunner()->PostTask(std::move(record_shared_data_task));
 }
 
-void TestBenchBaseRecorder::RecordTime(rapidjson::Value& val) {
+int64_t TestBenchBaseRecorder::RecordTime(rapidjson::Value& val) {
   rapidjson::Document::AllocatorType& allocator = GetAllocator();
   // Sample the clock once: the seconds member derives from the same
   // millisecond sample, so the two fields can never disagree.
@@ -812,6 +999,7 @@ void TestBenchBaseRecorder::RecordTime(rapidjson::Value& val) {
   m_time_val.SetInt64(millis);
   val.AddMember(rapidjson::StringRef(kParamRecordMillisecond), m_time_val,
                 allocator);
+  return millis;
 }
 
 rapidjson::Value& TestBenchBaseRecorder::GetRecordedFileField(
@@ -909,12 +1097,15 @@ void TestBenchBaseRecorder::CreateRecordedFile(int64_t record_id) {
 
 void TestBenchBaseRecorder::ClearRecordingSessionData() {
   lynx_view_table_.clear();
+  fixture_table_.clear();
   resource_table_.SetNull();
   {
     std::lock_guard<std::mutex> lock(recorded_external_script_urls_mutex_);
     recorded_external_script_urls_.clear();
   }
   external_script_cache_.clear();
+  // StartRecord owns format initialization; a new session may already have
+  // started while the previous session was writing its artifacts.
   GetAllocator().Clear();
 }
 
