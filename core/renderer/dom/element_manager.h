@@ -924,6 +924,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Tick all element need to animated.
   void TickAllElement(fml::TimePoint &time);
 
+  // Permanently stop animation VSync when page destruction begins.
+  void StopAnimationVsync();
+
   // Pause all element.
   void PauseAllAnimations();
 
@@ -1562,6 +1565,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Animation proxy class
   std::shared_ptr<ElementVsyncProxy> element_vsync_proxy_;
+  bool animation_vsync_stopped_{false};
 
   base::OrderedFlatSet<tasm::Element *> animation_element_set_;
   base::OrderedFlatSet<tasm::Element *>
