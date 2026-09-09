@@ -5,6 +5,7 @@
 #define CLAY_UNIT_TESTS 1
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 
 #include "clay/ui/component/scroll_view.h"
@@ -738,6 +739,59 @@ TEST_F_UI(ScrollViewTest, VoidUIMethodsReturnEmptySuccessData) {
                    EXPECT_TRUE(data.IsNone());
                  });
   EXPECT_TRUE(auto_scroll_callback_invoked);
+}
+
+TEST_F_UI(ScrollViewTest, ScrollByReturnsConsumedAndUnconsumedOffsets) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  scroll_view->SetAttribute("scroll-y", Value(true));
+  page_->AddChild(scroll_view.get());
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 500);
+  scroll_view->AddChild(content_view.get());
+  scroll_view->GetScrollView()->OnLayoutUpdated();
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      scroll_view.get(), "scrollBy", {{"offset", Value(40)}},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        EXPECT_FLOAT_EQ(result.at("consumedX").GetFloat(), 0);
+        EXPECT_FLOAT_EQ(result.at("consumedY").GetFloat(), 40);
+        EXPECT_FLOAT_EQ(result.at("unconsumedX").GetFloat(), 0);
+        EXPECT_FLOAT_EQ(result.at("unconsumedY").GetFloat(), 0);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+  EXPECT_FLOAT_EQ(scroll_view->GetScrollView()->GetScrollOffset().y(), 40);
+}
+
+TEST_F_UI(ScrollViewTest, ScrollByRequiresFiniteOffset) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+
+  bool missing_offset_callback_invoked = false;
+  InvokeUIMethod(scroll_view.get(), "scrollBy", {},
+                 [&missing_offset_callback_invoked](LynxUIMethodResult code,
+                                                    const clay::Value&) {
+                   missing_offset_callback_invoked = true;
+                   EXPECT_EQ(code, LynxUIMethodResult::kParamInvalid);
+                 });
+  EXPECT_TRUE(missing_offset_callback_invoked);
+
+  bool infinite_offset_callback_invoked = false;
+  InvokeUIMethod(scroll_view.get(), "scrollBy",
+                 {{"offset", Value(std::numeric_limits<float>::infinity())}},
+                 [&infinite_offset_callback_invoked](LynxUIMethodResult code,
+                                                     const clay::Value&) {
+                   infinite_offset_callback_invoked = true;
+                   EXPECT_EQ(code, LynxUIMethodResult::kParamInvalid);
+                 });
+  EXPECT_TRUE(infinite_offset_callback_invoked);
 }
 
 TEST_F_UI(ScrollViewTest, ScrollToUpperLowerEvent) {
