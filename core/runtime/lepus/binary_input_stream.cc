@@ -8,24 +8,31 @@ namespace lynx {
 namespace lepus {
 
 bool ByteArrayInputStream::ReadFromFile(const char* file) {
-  FILE* pf = fopen(file, "r");
+  FILE* pf = fopen(file, "rb");
   if (pf == nullptr) {
     return false;
   }
 
   fseek(pf, 0, SEEK_END);
   long size = ftell(pf);
-  // FIXME, unnecessary resize value initialization.
-  buf_->data.resize(size);
-  Initialize();
-  uint8_t* text = &buf_->data[0];
-  if (text != nullptr) {
-    rewind(pf);
-    fread(text, sizeof(char), size, pf);
-    return true;
+  if (size < 0) {
+    fclose(pf);
+    return false;
   }
 
-  return false;
+  // FIXME, unnecessary resize value initialization.
+  std::vector<uint8_t> data(static_cast<size_t>(size));
+  rewind(pf);
+  const size_t read_size =
+      data.empty() ? 0 : fread(data.data(), sizeof(char), data.size(), pf);
+  fclose(pf);
+  if (read_size != data.size()) {
+    return false;
+  }
+
+  buf_ = std::make_shared<InputBuffer>(std::move(data));
+  Initialize();
+  return true;
 }
 
 size_t InputStream::ReadCompactU32(uint32_t* out_value) {

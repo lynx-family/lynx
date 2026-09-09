@@ -24,10 +24,12 @@ class InputStream {
   InputStream() = default;
   virtual ~InputStream() = default;
 
-  inline uint8_t* begin() const { return begin_; }
-  inline uint8_t* end() const { return end_; }
+  inline const uint8_t* begin() const { return begin_; }
+  inline const uint8_t* end() const { return end_; }
   inline size_t size() const { return size_; }
-  inline uint8_t* cursor() const { return begin() + offset_; }
+  inline const uint8_t* cursor() const {
+    return offset_ == 0 ? begin() : begin() + offset_;
+  }
   inline size_t offset() const { return offset_; }
 
   inline bool CheckSize(size_t len) const {
@@ -38,7 +40,9 @@ class InputStream {
   }
 
   size_t Seek(size_t offset) {
-    if (offset >= size()) {
+    if (size() == 0) {
+      offset_ = 0;
+    } else if (offset >= size()) {
       offset_ = size() - 1;
     } else {
       offset_ = offset;
@@ -99,31 +103,42 @@ class InputStream {
  protected:
   size_t offset_{0};
   size_t size_{0};
-  uint8_t* begin_{nullptr};
-  uint8_t* end_{nullptr};
+  const uint8_t* begin_{nullptr};
+  const uint8_t* end_{nullptr};
 };
 
 struct InputBuffer {
-  InputBuffer() = default;
-  explicit InputBuffer(std::vector<uint8_t> data) : data(std::move(data)) {}
+  using Data = std::shared_ptr<const std::vector<uint8_t>>;
 
-  bool ReadFromFile(const char* filename) const;
+  InputBuffer() : data(std::make_shared<const std::vector<uint8_t>>()) {}
+  explicit InputBuffer(std::vector<uint8_t> value)
+      : data(std::make_shared<const std::vector<uint8_t>>(std::move(value))) {}
+  explicit InputBuffer(Data value)
+      : data(value == nullptr ? std::make_shared<const std::vector<uint8_t>>()
+                              : std::move(value)) {}
 
-  void clear() { data.clear(); }
-  size_t size() const { return data.size(); }
+  size_t size() const { return data->size(); }
 
-  std::vector<uint8_t> data;
+  const Data data;
 };
 
 class ByteArrayInputStream : public InputStream {
  public:
   ByteArrayInputStream(const uint8_t* data, size_t len) {
-    buf_.reset(new InputBuffer());
-    buf_->data.assign(data, data + len);
+    std::vector<uint8_t> bytes;
+    if (len != 0) {
+      bytes.assign(data, data + len);
+    }
+    buf_ = std::make_shared<InputBuffer>(std::move(bytes));
     Initialize();
   }
 
   ByteArrayInputStream(std::vector<uint8_t> data)
+      : buf_(std::make_shared<InputBuffer>(std::move(data))) {
+    Initialize();
+  }
+
+  ByteArrayInputStream(InputBuffer::Data data)
       : buf_(std::make_shared<InputBuffer>(std::move(data))) {
     Initialize();
   }
@@ -138,7 +153,7 @@ class ByteArrayInputStream : public InputStream {
   ByteArrayInputStream& operator=(const ByteArrayInputStream&& rhs) = delete;
 
   bool ReadFromFile(const char* filename);
-  inline const std::vector<uint8_t>& byte_array() { return buf_->data; }
+  inline const std::vector<uint8_t>& byte_array() { return *buf_->data; }
 
   std::unique_ptr<InputStream> DeriveInputStream() override {
     return std::make_unique<ByteArrayInputStream>(buf_);
@@ -147,8 +162,8 @@ class ByteArrayInputStream : public InputStream {
  private:
   void Initialize() {
     size_ = buf_->size();
-    begin_ = &buf_->data[0];
-    end_ = (&buf_->data[buf_->size() - 1]) + 1;
+    begin_ = buf_->data->data();
+    end_ = size_ == 0 ? begin_ : begin_ + size_;
   }
 
   std::shared_ptr<InputBuffer> buf_;
