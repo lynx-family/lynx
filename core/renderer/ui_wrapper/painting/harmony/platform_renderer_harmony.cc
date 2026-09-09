@@ -115,6 +115,7 @@ void PlatformRendererHarmony::OnUpdateDisplayList(DisplayList display_list) {
     return;
   }
   UpdateHostLayout(display_list);
+  host->SetFragmentLayerClipBounds(display_list.RootNeedClipBounds());
   host->UpdateFragmentLayerDisplayList(std::move(display_list));
 }
 

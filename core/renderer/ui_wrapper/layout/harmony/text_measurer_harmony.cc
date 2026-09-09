@@ -431,7 +431,6 @@ void AlignInlineElements(Element* element, harmony::TextBoxHarmony& rects,
                          const std::vector<int32_t>& placeholders,
                          const PlaceholderInfoList& placeholder_infos,
                          size_t placeholder_count, float density,
-                         float translate_left_offset,
                          harmony::ParagraphHarmony& paragraph) {
   if (element == nullptr) {
     return;
@@ -462,14 +461,13 @@ void AlignInlineElements(Element* element, harmony::TextBoxHarmony& rects,
             }
           }
         }
-        child->slnode()->AlignmentByPlatform(
-            top / density,
-            (rects.GetLeft(index) + translate_left_offset) / density);
+        const float left =
+            rects.GetLeft(index) + paragraph.GetTranslateLeftOffset();
+        child->slnode()->AlignmentByPlatform(top / density, left / density);
       }
     } else if (child->is_text() || child->is_wrapper()) {
       AlignInlineElements(child, rects, placeholders, placeholder_infos,
-                          placeholder_count, density, translate_left_offset,
-                          paragraph);
+                          placeholder_count, density, paragraph);
     }
   }
 }
@@ -608,8 +606,7 @@ void TextMeasurerHarmony::Align(Element* element) {
   const size_t count =
       std::min(static_cast<size_t>(rects.GetCount()), placeholders.size());
   AlignInlineElements(element, rects, placeholders, placeholder_info_it->second,
-                      count, density, paragraph->GetTranslateLeftOffset(),
-                      *paragraph);
+                      count, density, *paragraph);
 }
 
 void TextMeasurerHarmony::Destroy(Element* element) {

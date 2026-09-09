@@ -8,10 +8,12 @@
 #include <native_drawing/drawing_round_rect.h>
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <utility>
 
 #include "base/include/value/array.h"
+#include "core/renderer/starlight/style/css_type.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
@@ -264,10 +266,17 @@ void LynxDisplayListApplier::ProcessContentOperations(
       case DisplayListOpType::kDrawView:
       case DisplayListOpType::kCustom:
       case DisplayListOpType::kLinearGradient:
+      case DisplayListOpType::kRadialGradient:
       case DisplayListOpType::kBoxShadow:
-      case DisplayListOpType::kBackgroundImage:
         // TODO: Add the remaining Harmony fragment-layer drawing operations.
         break;
+      case DisplayListOpType::kBackgroundImage: {
+        const auto& background = item.payload.background_image;
+        DrawBackgroundImage(canvas, background.image_id,
+                            background.tiling_index, background.clip_index,
+                            background.repeat_x, background.repeat_y, density);
+        break;
+      }
       default:
         break;
     }
@@ -276,6 +285,93 @@ void LynxDisplayListApplier::ProcessContentOperations(
     OH_Drawing_CanvasRestore(canvas);
     --fragment_depth;
   }
+  OH_Drawing_CanvasRestore(canvas);
+}
+
+void LynxDisplayListApplier::DrawBackgroundImage(
+    OH_Drawing_Canvas* canvas, int32_t image_id, int32_t tiling_index,
+    int32_t clip_index, int32_t repeat_x, int32_t repeat_y, float density) {
+  if (tiling_index < 0 || clip_index < 0 ||
+      static_cast<size_t>(tiling_index) >= boxes_.size() ||
+      static_cast<size_t>(clip_index) >= boxes_.size() || density <= 0.f) {
+    return;
+  }
+  auto host = host_.lock();
+  auto image_manager = context_->GetImageManager(image_id);
+  if (host == nullptr || image_manager == nullptr) {
+    return;
+  }
+
+  const auto& tiling_box = boxes_[tiling_index];
+  const auto& clip_box = boxes_[clip_index];
+  const float tile_width = tiling_box.GetWidth() * density;
+  const float tile_height = tiling_box.GetHeight() * density;
+  const float clip_left = clip_box.GetX() * density;
+  const float clip_top = clip_box.GetY() * density;
+  const float clip_right = (clip_box.GetX() + clip_box.GetWidth()) * density;
+  const float clip_bottom = (clip_box.GetY() + clip_box.GetHeight()) * density;
+  if (tile_width <= 0.f || tile_height <= 0.f) {
+    return;
+  }
+
+  OH_Drawing_CanvasSave(canvas);
+  auto* clip_rect =
+      OH_Drawing_RectCreate(clip_left, clip_top, clip_right, clip_bottom);
+  if (clip_box.HasRadius()) {
+    const float radii[] = {
+        clip_box.GetRadiusXTopLeft(),     clip_box.GetRadiusYTopLeft(),
+        clip_box.GetRadiusXTopRight(),    clip_box.GetRadiusYTopRight(),
+        clip_box.GetRadiusXBottomRight(), clip_box.GetRadiusYBottomRight(),
+        clip_box.GetRadiusXBottomLeft(),  clip_box.GetRadiusYBottomLeft()};
+    ClipRoundedRect(canvas, clip_rect, radii, density);
+  } else {
+    OH_Drawing_CanvasClipRect(canvas, clip_rect,
+                              OH_Drawing_CanvasClipOp::INTERSECT, true);
+  }
+  OH_Drawing_RectDestroy(clip_rect);
+
+  const bool repeat_horizontally =
+      static_cast<starlight::BackgroundRepeatType>(repeat_x) ==
+      starlight::BackgroundRepeatType::kRepeat;
+  const bool repeat_vertically =
+      static_cast<starlight::BackgroundRepeatType>(repeat_y) ==
+      starlight::BackgroundRepeatType::kRepeat;
+  float start_x = tiling_box.GetX() * density;
+  float start_y = tiling_box.GetY() * density;
+  if (repeat_horizontally && start_x > clip_left) {
+    start_x -= std::ceil((start_x - clip_left) / tile_width) * tile_width;
+  }
+  if (repeat_vertically && start_y > clip_top) {
+    start_y -= std::ceil((start_y - clip_top) / tile_height) * tile_height;
+  }
+
+  start_x = std::round(start_x);
+  start_y = std::round(start_y);
+  const float aligned_width = std::max(1.f, std::round(tile_width));
+  const float aligned_height = std::max(1.f, std::round(tile_height));
+  image_manager->SetTarget(host);
+  image_manager->UpdateBounds(aligned_width / density, aligned_height / density,
+                              density);
+  for (float x = start_x; x < clip_right; x += aligned_width) {
+    for (float y = start_y; y < clip_bottom; y += aligned_height) {
+      DrawBackgroundImageTile(canvas, image_manager.get(), x, y);
+      if (!repeat_vertically) {
+        break;
+      }
+    }
+    if (!repeat_horizontally) {
+      break;
+    }
+  }
+  OH_Drawing_CanvasRestore(canvas);
+}
+
+void LynxDisplayListApplier::DrawBackgroundImageTile(
+    OH_Drawing_Canvas* canvas, LynxImageManager* image_manager, float x,
+    float y) {
+  OH_Drawing_CanvasSave(canvas);
+  OH_Drawing_CanvasTranslate(canvas, x, y);
+  image_manager->Draw(canvas);
   OH_Drawing_CanvasRestore(canvas);
 }
 

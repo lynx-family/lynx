@@ -948,7 +948,9 @@ void UIBase::OnNodeReady() {
 
   if ((dirty_flags_ & (kFlagFrameChanged | kFlagFrameSizeChanged |
                        kFlagRadiusChanged | kFlagOverflowChanged)) != 0) {
-    ApplyOverflowClip();
+    if (!renderer_) {
+      ApplyOverflowClip();
+    }
     Invalidate();
   }
   if (basic_shape_ &&
@@ -1414,6 +1416,11 @@ void UIBase::UpdateFragmentLayerDisplayList(DisplayList display_list) {
   }
   renderer_->UpdateDisplayList(std::move(display_list));
   Invalidate();
+}
+
+void UIBase::SetFragmentLayerClipBounds(bool need_clip) {
+  NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
+                                                      need_clip ? 1 : 0);
 }
 
 void UIBase::OnAttachedToFragmentLayerTree() {
