@@ -669,6 +669,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   friend class BaseListView;
   friend class BaseViewWithChildrenTest;
   friend class BaseViewAnimationMutator;
+  friend class BackgroundEventView;
 
   BaseViewAnimationMutator* GetAnimationMutator();
 
@@ -827,6 +828,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool ShouldPassEventToNativeAt(const FloatPoint& position) const;
   bool HitEventThroughActiveRegions(const FloatPoint& position) const;
 
+  void NotifyBgImageLoadStatus(bool success, clay::Value::Map params);
   template <typename... Args>
   void NotifyBgImageLoadStatus(bool success,
                                const std::vector<std::string>& keys,
