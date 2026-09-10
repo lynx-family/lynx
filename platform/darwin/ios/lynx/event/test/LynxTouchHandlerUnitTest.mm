@@ -8,6 +8,7 @@
 
 #include <deque>
 
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxPropsProcessor.h>
@@ -512,9 +513,10 @@
   LynxEventHandler* mockEventHandler = OCMClassMock([LynxEventHandler class]);
   id<LynxEventTarget> mockTarget = OCMProtocolMock(@protocol(LynxEventTarget));
   OCMStub([mockEventHandler touchTarget]).andReturn(mockTarget);
-  [[[[mockEventHandler stub] ignoringNonObjectArgs] andReturn:mockTarget]
-      hitTestInner:CGPointZero
-         withEvent:[OCMArg any]];
+  OCMStub([mockEventHandler hitTestInner:CGPointMake(10, 20) withEvent:OCMArg.any])
+      .andReturn(mockTarget);
+  OCMStub([mockEventHandler hitTestInner:CGPointMake(30, 40) withEvent:OCMArg.any])
+      .andReturn(mockTarget);
   LynxTouchHandler* handler = [[LynxTouchHandler alloc] initWithEventHandler:mockEventHandler];
 
   UITouch* mockTouch = OCMClassMock([UITouch class]);
@@ -546,10 +548,12 @@
 - (void)testTouchesBeganFlushesStrandedTouchSequence {
   LynxEventHandler* mockEventHandler = OCMClassMock([LynxEventHandler class]);
   id<LynxEventTarget> strandedTarget = OCMProtocolMock(@protocol(LynxEventTarget));
-  OCMStub([mockEventHandler touchTarget]).andReturn(strandedTarget);
-  [[[[mockEventHandler stub] ignoringNonObjectArgs] andReturn:strandedTarget]
-      hitTestInner:CGPointZero
-         withEvent:[OCMArg any]];
+  __block id<LynxEventTarget> currentTarget = strandedTarget;
+  OCMStub([mockEventHandler touchTarget]).andDo(^(NSInvocation* invocation) {
+    [invocation setReturnValue:&currentTarget];
+  });
+  OCMStub([mockEventHandler hitTestInner:CGPointMake(10, 20) withEvent:OCMArg.any])
+      .andReturn(strandedTarget);
   LynxTouchHandler* handler = [[LynxTouchHandler alloc] initWithEventHandler:mockEventHandler];
 
   UITouch* strandedTouch = OCMClassMock([UITouch class]);
@@ -561,10 +565,9 @@
 
   // A new touch arrives; the tracked touch is no longer alive in the new event.
   id<LynxEventTarget> freshTarget = OCMProtocolMock(@protocol(LynxEventTarget));
-  OCMStub([mockEventHandler touchTarget]).andReturn(freshTarget);
-  [[[[mockEventHandler stub] ignoringNonObjectArgs] andReturn:freshTarget]
-      hitTestInner:CGPointZero
-         withEvent:[OCMArg any]];
+  currentTarget = freshTarget;
+  OCMStub([mockEventHandler hitTestInner:CGPointMake(30, 40) withEvent:OCMArg.any])
+      .andReturn(freshTarget);
   UITouch* freshTouch = OCMClassMock([UITouch class]);
   OCMStub([freshTouch locationInView:OCMArg.any]).andReturn(CGPointMake(30, 40));
   OCMStub([freshTouch phase]).andReturn(UITouchPhaseBegan);
