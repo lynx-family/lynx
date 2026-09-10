@@ -62,6 +62,7 @@ class DevToolMediatorTest : public ::testing::Test {
         cdp_event_listener_thread_->GetTaskRunner();
     devtool::LynxGlobalDevToolMediator::GetInstance().ui_task_runner_ =
         ui_thread_->GetTaskRunner();
+    ResetRecorder();
     devtool_mediator_->devtool_executor_ =
         std::make_shared<devtool::InspectorDefaultExecutor>(devtool_mediator_);
     devtool_mediator_->ui_executor_ =
@@ -91,7 +92,21 @@ class DevToolMediatorTest : public ::testing::Test {
     ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
   }
 
+  void TearDown() override { ResetRecorder(); }
+
  private:
+  void ResetRecorder() {
+    auto* recorder =
+        &lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
+    std::promise<void> p;
+    auto f = p.get_future();
+    recorder->thread_.GetTaskRunner()->PostTask([recorder, &p]() {
+      recorder->ResetForTesting();
+      p.set_value();
+    });
+    ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+  }
+
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
   std::shared_ptr<devtool::MessageSender> message_sender_;
   std::shared_ptr<testing::DevToolPlatformFacadeMock> facade_;
@@ -121,14 +136,86 @@ TEST_F(DevToolMediatorTest, InspectorDetachedCase) {
             "   \"reason\" : \"\"\n   }\n}\n");
 }
 
-TEST_F(DevToolMediatorTest, RecordStartCase) {
+TEST_F(DevToolMediatorTest, RecordingStartDefaultsToJson) {
   EXPECT_TRUE(lynx::tasm::recorder::RecorderController::Enable());
-  Json::Value param;
+  Json::Value message;
+  message["id"] = 1;
   devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
-      message_sender_, param);
+      message_sender_, message);
   ui_thread_->Join();
-  EXPECT_TRUE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
-                  .IsRecordingProcess());
+
+  auto& recorder = lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
+  EXPECT_TRUE(recorder.IsRecordingProcess());
+  EXPECT_EQ(recorder.artifact_format_.load(),
+            lynx::tasm::recorder::ArtifactFormat::kJson);
+}
+
+TEST_F(DevToolMediatorTest, RecordingStartAcceptsBoth) {
+  Json::Value message;
+  message["id"] = 2;
+  message["params"]["format"] = "both";
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
+      message_sender_, message);
+  ui_thread_->Join();
+
+  auto& recorder = lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
+  EXPECT_TRUE(recorder.IsRecordingProcess());
+  EXPECT_EQ(recorder.artifact_format_.load(),
+            lynx::tasm::recorder::ArtifactFormat::kBoth);
+}
+
+TEST_F(DevToolMediatorTest, RecordingStartAcceptsFixture) {
+  Json::Value message;
+  message["id"] = 3;
+  message["params"]["format"] = "fixture";
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
+      message_sender_, message);
+  ui_thread_->Join();
+
+  auto& recorder = lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
+  EXPECT_TRUE(recorder.IsRecordingProcess());
+  EXPECT_EQ(recorder.artifact_format_.load(),
+            lynx::tasm::recorder::ArtifactFormat::kFixture);
+}
+
+TEST_F(DevToolMediatorTest, RecordingStartRejectsInvalidFormat) {
+  Json::Value message;
+  message["id"] = 4;
+  message["params"]["format"] = "zip";
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
+      message_sender_, message);
+
+  EXPECT_FALSE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
+                   .IsRecordingProcess());
+  EXPECT_NE(devtool::MockReceiver::GetInstance().received_message_.second.find(
+                "Invalid format"),
+            std::string::npos);
+}
+
+TEST_F(DevToolMediatorTest, RecordingStartRejectsNonStringFormat) {
+  Json::Value message;
+  message["id"] = 5;
+  message["params"]["format"] = true;
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
+      message_sender_, message);
+
+  EXPECT_FALSE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
+                   .IsRecordingProcess());
+  EXPECT_NE(devtool::MockReceiver::GetInstance().received_message_.second.find(
+                "expected string"),
+            std::string::npos);
+}
+
+TEST_F(DevToolMediatorTest, RecordingCompleteFormatMatchesFiles) {
+  EXPECT_STREQ(devtool::LynxGlobalDevToolMediator::RecordFormatFromFiles(
+                   {"/tmp/1.json"}),
+               "json");
+  EXPECT_STREQ(devtool::LynxGlobalDevToolMediator::RecordFormatFromFiles(
+                   {"/tmp/1.json", "/tmp/1.zip"}),
+               "both");
+  EXPECT_STREQ(
+      devtool::LynxGlobalDevToolMediator::RecordFormatFromFiles({"/tmp/1.zip"}),
+      "fixture");
 }
 
 TEST_F(DevToolMediatorTest, DISABLED_RecordEndCase) {

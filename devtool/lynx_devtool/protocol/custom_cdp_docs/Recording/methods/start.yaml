@@ -1,17 +1,31 @@
 summary: Starts TestBench recording for Lynx page interactions.
-parameters: []
+parameters:
+  - name: format
+    type: string
+    enum: [json, both, fixture]
+    optional: true
+    description: Output artifact format. json writes the V1 recording, both writes V1 JSON and fixture ZIP, and fixture writes only fixture ZIP. Defaults to json.
 returns: []
 events: []
 notes:
   - Recorder support must be enabled in the current runtime. If RecorderController::Enable() is false, the agent returns method not implemented.
-  - Dispatches through LynxGlobalDevToolMediator and starts RecorderController::StartRecord() on the UI task runner.
+  - Dispatches through LynxGlobalDevToolMediator and starts RecorderController::StartRecord(format) on the UI task runner.
   - Returns an empty result object on success.
-  - Returns a CDP error with message Cannot find ui task runner when no UI task runner is available.
+  - Returns a CDP error when params is not an object, format is not a string, format is not json, both, or fixture, or no UI task runner is available.
 examples:
-  - title: Start recording
+  - title: Start V1 JSON recording
     request:
       id: 1
       method: Recording.start
     response:
       id: 1
+      result: {}
+  - title: Start dual-artifact recording
+    request:
+      id: 2
+      method: Recording.start
+      params:
+        format: both
+    response:
+      id: 2
       result: {}

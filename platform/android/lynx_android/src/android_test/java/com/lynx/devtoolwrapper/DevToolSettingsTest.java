@@ -67,6 +67,21 @@ public class DevToolSettingsTest {
   }
 
   @Test
+  public void testFixtureArtifactEnabled() {
+    assertFalse(mSettings.isFixtureArtifactEnabled());
+
+    mSettings.setFixtureArtifactEnabled(true);
+    assertTrue(mSettings.isFixtureArtifactEnabled());
+
+    SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
+    assertTrue(sp.getBoolean(DevToolSettings.SP_KEY_ENABLE_FIXTURE_ARTIFACT, false));
+
+    mSettings.setFixtureArtifactEnabled(false);
+    assertFalse(mSettings.isFixtureArtifactEnabled());
+    assertFalse(sp.getBoolean(DevToolSettings.SP_KEY_ENABLE_FIXTURE_ARTIFACT, true));
+  }
+
+  @Test
   public void testInitWithNullContext() {
     // Should handle null context gracefully without crashing
     // Note: We cannot easily verify the internal state is unaffected since it's a singleton

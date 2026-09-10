@@ -5,4 +5,6 @@ package com.lynx.devtool;
 
 public class RecorderController {
   public static native void nativeStartRecord();
+
+  public static native void nativeStartRecordWithFixtureArtifact(boolean fixtureArtifactEnabled);
 }

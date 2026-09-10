@@ -10,6 +10,7 @@
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/services/recorder/recorder_controller.h"
+#include "core/services/recorder/recorder_types.h"
 #include "core/services/replay/replay_controller.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 #include "devtool/lynx_devtool/base/file_stream.h"
@@ -21,6 +22,43 @@ namespace devtool {
 
 constexpr char kMemoryUsageTimeoutMs[] = "timeoutMs";
 constexpr int64_t kMaxMemoryUsageTimeoutMs = 5 * 60 * 1000;
+
+bool ParseRecordingArtifactFormat(
+    const Json::Value& message,
+    lynx::tasm::recorder::ArtifactFormat& artifact_format,
+    std::string& error_message) {
+  artifact_format = lynx::tasm::recorder::ArtifactFormat::kJson;
+  const Json::Value& params = message["params"];
+  if (params.isNull()) {
+    return true;
+  }
+  if (!params.isObject()) {
+    error_message = "Invalid params: expected object";
+    return false;
+  }
+  if (!params.isMember("format")) {
+    return true;
+  }
+  const Json::Value& format = params["format"];
+  if (!format.isString()) {
+    error_message = "Invalid format: expected string";
+    return false;
+  }
+  const std::string value = format.asString();
+  if (value == "json") {
+    return true;
+  }
+  if (value == "both") {
+    artifact_format = lynx::tasm::recorder::ArtifactFormat::kBoth;
+    return true;
+  }
+  if (value == "fixture") {
+    artifact_format = lynx::tasm::recorder::ArtifactFormat::kFixture;
+    return true;
+  }
+  error_message = "Invalid format: expected json, both, or fixture";
+  return false;
+}
 
 bool ParseMemoryUsageTimeoutMs(const Json::Value& message, int64_t& timeout_ms,
                                std::string& error_message) {
@@ -80,9 +118,15 @@ void LynxGlobalDevToolMediator::RecordingStart(
     const Json::Value& message) {
   LOGI("start recording");
   int64_t id = message["id"].asInt64();
+  lynx::tasm::recorder::ArtifactFormat artifact_format;
+  std::string error_message;
+  if (!ParseRecordingArtifactFormat(message, artifact_format, error_message)) {
+    sender->SendErrorResponse(id, error_message);
+    return;
+  }
   if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_, [] {
-      lynx::tasm::recorder::RecorderController::StartRecord();
+    RunOnTaskRunner(ui_task_runner_, [artifact_format] {
+      lynx::tasm::recorder::RecorderController::StartRecord(artifact_format);
     });
   } else {
     sender->SendErrorResponse(id, "Cannot find ui task runner");
@@ -93,6 +137,22 @@ void LynxGlobalDevToolMediator::RecordingStart(
   res["result"] = Json::Value(Json::ValueType::objectValue);
   res["id"] = id;
   sender->SendMessage("CDP", res);
+}
+
+const char* LynxGlobalDevToolMediator::RecordFormatFromFiles(
+    const std::vector<std::string>& files) {
+  bool has_json = false;
+  bool has_fixture = false;
+  for (const auto& file : files) {
+    has_json |=
+        file.size() >= 5 && file.compare(file.size() - 5, 5, ".json") == 0;
+    has_fixture |=
+        file.size() >= 4 && file.compare(file.size() - 4, 4, ".zip") == 0;
+  }
+  if (has_fixture) {
+    return has_json ? "both" : "fixture";
+  }
+  return "json";
 }
 
 void LynxGlobalDevToolMediator::RecordingEnd(
@@ -119,7 +179,7 @@ void LynxGlobalDevToolMediator::RecordingEnd(
             msg["params"]["stream"] = handlers;
             msg["params"]["filenames"] = filenames;
             msg["params"]["sessionIDs"] = session_ids;
-            msg["params"]["recordFormat"] = "json";
+            msg["params"]["recordFormat"] = RecordFormatFromFiles(files);
             sender->SendMessage("CDP", msg);
           });
       lynx::tasm::recorder::RecorderController::EndRecord(
