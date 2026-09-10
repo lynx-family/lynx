@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include "core/base/lynx_export.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_jsvm_factory.h"
 #include "core/runtime/js/jsi/jsvm/jsvm_context_wrapper.h"
@@ -31,7 +32,8 @@ class NapiRuntimeProxyJSVM : public NapiRuntimeProxy {
   JSVM_VMScope vm_scope_ = nullptr;
 };
 
-class NapiRuntimeProxyJSVMFactoryImpl : public NapiRuntimeProxyJSVMFactory {
+class LYNX_EXPORT_FOR_DEVTOOL NapiRuntimeProxyJSVMFactoryImpl
+    : public NapiRuntimeProxyJSVMFactory {
  public:
   std::unique_ptr<NapiRuntimeProxy> Create(
       Runtime& runtime,
