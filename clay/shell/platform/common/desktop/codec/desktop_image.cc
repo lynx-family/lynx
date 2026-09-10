@@ -168,7 +168,7 @@ DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec)
   color_type_ = current_pixmap_->GetColorType();
   alpha_type_ = current_pixmap_->GetAlphaType();
   decoder_ = codec_->DecodeMultiFrame();
-  is_animated_ = decoder_ != nullptr;
+  is_animated_ = decoder_ && decoder_->GetFrameCount() > 1;
 }
 
 DesktopImage::~DesktopImage() = default;
@@ -183,9 +183,28 @@ skity::AlphaType DesktopImage::GetAlphaType() { return alpha_type_; }
 
 std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap(
     const ImageInfo& render_info) {
+  if (!is_animated_ && codec_ && render_info.width() > 0 &&
+      render_info.height() > 0 &&
+      (render_info.width() < width_ || render_info.height() < height_)) {
+    skity::DecodeOptions options;
+    options.target_width = render_info.width();
+    options.target_height = render_info.height();
+    auto scaled_pixmap = codec_->Decode(options);
+    if (scaled_pixmap) {
+      scaled_pixmap->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
+                                  scaled_pixmap->GetColorType());
+      current_pixmap_.reset();
+      return scaled_pixmap;
+    }
+  }
+
   auto pixmap = std::move(current_pixmap_);
   if (!pixmap && codec_ && width_ > 0 && height_ > 0) {
     pixmap = codec_->Decode();
+    if (pixmap) {
+      pixmap->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
+                           pixmap->GetColorType());
+    }
   }
   return ScalePixmap(std::move(pixmap), render_info);
 }
