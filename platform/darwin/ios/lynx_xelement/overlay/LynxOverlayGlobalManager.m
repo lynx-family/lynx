@@ -3,9 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/DevToolOverlayDelegate.h>
+#import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <Lynx/LynxView.h>
+#import <Lynx/LynxViewVisibleHelper.h>
 #import <Lynx/OverlayService.h>
 #import <XElement/LynxOverlayGlobalManager.h>
+#import <XElement/LynxUIOverlay.h>
 /**
  * Implement LynxOverlayGlobalContainer to customize hitTest
  */
@@ -49,6 +53,8 @@
 
 @property(nonatomic, strong)
     NSMutableDictionary<NSNumber *, NSMutableDictionary<NSNumber *, UIView *> *> *levelContainers;
+
+- (void)updateCustomRectsForOverlaysMatching:(BOOL (^)(LynxUIOverlay *overlay))predicate;
 
 @end
 
@@ -102,6 +108,46 @@
     }];
   }
   return array;
+}
+
+- (void)layoutIfNeededForLynxView:(LynxView *)lynxView {
+  [self updateCustomRectsForOverlaysMatching:^BOOL(LynxUIOverlay *overlay) {
+    return overlay.context.rootView == lynxView;
+  }];
+}
+
+- (void)layoutIfNeededForViewController:(UIViewController *)viewController {
+  UIView *rootView = viewController.viewIfLoaded;
+  if (!rootView) {
+    return;
+  }
+
+  [self updateCustomRectsForOverlaysMatching:^BOOL(LynxUIOverlay *overlay) {
+    return [overlay.view isDescendantOfView:rootView];
+  }];
+}
+
+- (void)updateCustomRectsForOverlaysMatching:(BOOL (^)(LynxUIOverlay *overlay))predicate {
+  NSMutableArray<LynxUIOverlay *> *overlays = [NSMutableArray array];
+  for (NSDictionary<NSNumber *, UIView *> *levelContainers in self.levelContainers.allValues) {
+    for (UIView *levelContainer in levelContainers.allValues) {
+      for (UIView *view in levelContainer.subviews) {
+        if (![view isKindOfClass:LynxOverlayContainer.class]) {
+          continue;
+        }
+        LynxUI *overlay = ((LynxOverlayContainer *)view).uiDelegate.overlayRootUI;
+        if ([overlay isKindOfClass:LynxUIOverlay.class] &&
+            [(id<LynxViewVisibleHelper>)overlay IsViewVisible] &&
+            predicate((LynxUIOverlay *)overlay)) {
+          [overlays addObject:(LynxUIOverlay *)overlay];
+        }
+      }
+    }
+  }
+
+  for (LynxUIOverlay *overlay in overlays) {
+    [overlay updateCustomRectIfNeeded];
+  }
 }
 
 + (UIView *)getTopViewControllerWithMode:(LynxOverlayMode)mode
