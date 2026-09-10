@@ -38,28 +38,27 @@ TEST(ItemAnimatorTest, CapturesPreAndPostLayoutInfo) {
   EXPECT_FLOAT_EQ(post_layout_info.bottom_, 260.f);
 }
 
-// Verifies the default durations and independent duration setters.
-TEST(ItemAnimatorTest, StoresAnimationDurations) {
+// Verify that stages are stored by value and remain independent of caller
+// modifications.
+TEST(ItemAnimatorTest, StoresIndependentAnimationStages) {
   MockItemAnimator item_animator;
+  auto stages = MakeDefaultAnimationStages(20, 30, 10, 40);
+  const auto expected = stages;
 
-  // 1. A new animator uses the List animation defaults.
-  EXPECT_EQ(item_animator.add_duration_ms(), kDefaultAddAnimationDurationMs);
-  EXPECT_EQ(item_animator.remove_duration_ms(),
-            kDefaultRemoveAnimationDurationMs);
-  EXPECT_EQ(item_animator.move_duration_ms(), kDefaultMoveAnimationDurationMs);
-  EXPECT_EQ(item_animator.change_duration_ms(),
-            kDefaultChangeAnimationDurationMs);
+  // 1. Preserve stage order, animation types, and durations when storing a
+  // config.
+  item_animator.SetAnimationStages(stages);
+  EXPECT_EQ(item_animator.animation_stages(), expected);
 
-  // 2. Updating one animation type's duration does not overwrite the others.
-  item_animator.SetAddDuration(10);
-  item_animator.SetRemoveDuration(20);
-  item_animator.SetMoveDuration(30);
-  item_animator.SetChangeDuration(40);
+  // 2. Modifying the input stages leaves the animator's config snapshot
+  // unchanged.
+  stages.front().front().duration_ms = 999;
+  stages.pop_back();
+  EXPECT_EQ(item_animator.animation_stages(), expected);
 
-  EXPECT_EQ(item_animator.add_duration_ms(), 10);
-  EXPECT_EQ(item_animator.remove_duration_ms(), 20);
-  EXPECT_EQ(item_animator.move_duration_ms(), 30);
-  EXPECT_EQ(item_animator.change_duration_ms(), 40);
+  // 3. Setting a new config replaces all previously stored stages.
+  item_animator.SetAnimationStages(stages);
+  EXPECT_EQ(item_animator.animation_stages(), stages);
 }
 
 }  // namespace

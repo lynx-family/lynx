@@ -26,11 +26,8 @@ class AnimationManager {
   AnimationManager& operator=(const AnimationManager&) = delete;
 
   // Applies the complete runtime configuration for update animations.
-  // Disabling animations cancels the active transaction immediately. Enabling
-  // animations only affects eligible future data updates. While animations
-  // remain enabled, duration changes are also applied to pending animations in
-  // the active transaction, but do not affect BasicAnimator instances that are
-  // already running.
+  // Disabling animations or changing stage contents cancels the active
+  // transaction immediately.
   virtual void SetUpdateAnimationConfig(
       const UpdateAnimationConfig& config) = 0;
 

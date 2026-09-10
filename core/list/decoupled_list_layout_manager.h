@@ -157,6 +157,7 @@ class ListLayoutManager {
   }
   void OnPrepareForLayoutChildren();
   void HandleLayoutOrScrollResult(bool is_layout);
+  void RecycleRemovedItemHolders();
 
  private:
   bool UpdateStickyItemsInternal(int& layout_changed_position,

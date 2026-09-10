@@ -12,6 +12,27 @@ namespace lynx {
 namespace list {
 namespace {
 
+// Verify that removal runs first, followed by concurrent move and change,
+// then addition.
+TEST(UpdateAnimationConfigTest, BuildsDefaultStagesWithIndependentDurations) {
+  const std::vector<AnimationStageEntries> expected{
+      {{ItemAnimationType::kDisappearance, 120}},
+      {{ItemAnimationType::kPersistence, 250},
+       {ItemAnimationType::kChange, 250}},
+      {{ItemAnimationType::kAppearance, 120}},
+  };
+  EXPECT_EQ(MakeDefaultAnimationStages(), expected);
+
+  // Custom durations map to types regardless of entry order in the default
+  // stages.
+  const std::vector<AnimationStageEntries> custom{
+      {{ItemAnimationType::kDisappearance, 11}},
+      {{ItemAnimationType::kPersistence, 22}, {ItemAnimationType::kChange, 44}},
+      {{ItemAnimationType::kAppearance, 33}},
+  };
+  EXPECT_EQ(MakeDefaultAnimationStages(11, 22, 33, 44), custom);
+}
+
 // Verifies that PositionChanged() compares only position and uses the standard
 // floating-point tolerance.
 TEST(ItemLayoutInfoTest, DetectsPositionChangeWithTolerance) {
