@@ -63,8 +63,11 @@ void BackgroundDrawable::Render(OH_Drawing_Canvas* canvas) {
       if (!HasImageLayers()) {
         return;
       }
+      OH_Drawing_CanvasSave(canvas);
+      OH_Drawing_CanvasClipRect(canvas, border_box_draw_rect_, INTERSECT, true);
       OH_Drawing_CanvasSaveLayer(canvas, border_box_draw_rect_, blend_brush_);
       DrawBackground(canvas);
+      OH_Drawing_CanvasRestore(canvas);
       OH_Drawing_CanvasRestore(canvas);
       return;
     }

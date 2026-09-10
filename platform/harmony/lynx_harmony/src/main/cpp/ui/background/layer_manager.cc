@@ -316,11 +316,13 @@ void LayerManager::SetLayerImage(const lepus::Value& data) {
   }
   auto items = data.Array();
   auto length = items->size();
+  size_t none_layer_count = 0;
   for (size_t i = 0; i < length; ++i) {
     auto type =
         static_cast<starlight::BackgroundImageType>(items->get(i).Number());
     if (type == starlight::BackgroundImageType::kNone) {
       image_layer_list_.emplace_back(std::make_unique<BackgroundNoneLayer>());
+      ++none_layer_count;
       continue;
     }
 
@@ -342,6 +344,10 @@ void LayerManager::SetLayerImage(const lepus::Value& data) {
       image_layer_list_.emplace_back(
           std::make_unique<BackgroundConicGradientLayer>(items->get(i)));
     }
+  }
+  // Keep none entries in mixed lists for indexing, but an all-none mask is off.
+  if (is_mask_ && none_layer_count == image_layer_list_.size()) {
+    image_layer_list_.clear();
   }
 }
 
