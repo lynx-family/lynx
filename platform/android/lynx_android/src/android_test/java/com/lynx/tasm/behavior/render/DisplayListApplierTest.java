@@ -276,12 +276,15 @@ public class DisplayListApplierTest {
   @Test
   public void testOpImage() {
     testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f).image(789, -1);
+    when(mockPlatformRendererContext.getImage(789)).thenReturn(mockImageManager);
 
     setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
-    // Image drawing would be implemented with actual image data lookup
+    verify(mockPlatformRendererContext).getImage(789);
+    verify(mockImageManager).setRendererHost(mockRendererHost);
+    verify(mockImageManager).onDraw(mockCanvas);
   }
 
   /** Verifies that replacing the typed buffers resets and processes the new display list. */
@@ -582,7 +585,7 @@ public class DisplayListApplierTest {
 
     verify(mockCanvas, times(2)).save();
     verify(mockCanvas).clipRect(eq(new RectF(0f, 0f, 90f, 40f)));
-    verify(mockImageManager).setView(mockHostView);
+    verify(mockImageManager).setRendererHost(mockRendererHost);
     verify(mockImageManager).updateInnerClipPathForBorderRadius(null);
     verify(mockImageManager).updateDrawableBounds(eq(new Rect(0, 0, 40, 20)));
     verify(mockImageManager).updateDrawableBounds(eq(new Rect(40, 0, 80, 20)));

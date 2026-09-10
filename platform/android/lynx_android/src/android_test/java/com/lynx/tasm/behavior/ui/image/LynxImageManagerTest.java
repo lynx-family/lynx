@@ -4,11 +4,17 @@
 package com.lynx.tasm.behavior.ui.image;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.view.View;
+import androidx.test.annotation.UiThreadTest;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.image.ScalingUtils;
@@ -28,6 +34,30 @@ public class LynxImageManagerTest {
 
   @After
   public void tearDown() {}
+
+  @Test
+  @UiThreadTest
+  public void imageInvalidationUsesRendererHostInsteadOfOrdinaryView() {
+    IRendererHost host = mock(IRendererHost.class);
+    View view = mock(View.class);
+    LynxImageManager manager = new LynxImageManager(mContext);
+    manager.setView(view);
+    manager.setRendererHost(host);
+    manager.invalidate();
+
+    verify(host).invalidateForRenderer();
+    verify(view, never()).invalidate();
+  }
+
+  @Test
+  @UiThreadTest
+  public void imageInvalidationStillSupportsOrdinaryViews() {
+    View view = mock(View.class);
+    LynxImageManager manager = new LynxImageManager(mContext);
+    manager.setView(view);
+    manager.invalidate();
+    verify(view).invalidate();
+  }
 
   private BackgroundDrawable.RoundRectPath getRoundRectPath(LynxImageManager manager) {
     BackgroundDrawable.RoundRectPath path = null;
