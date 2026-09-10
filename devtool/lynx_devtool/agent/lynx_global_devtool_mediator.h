@@ -6,6 +6,8 @@
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_LYNX_GLOBAL_DEVTOOL_MEDIATOR_H_
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "base/include/notification_center.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -70,6 +72,8 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   void RunOnDefaultTaskRunnerOrSendError(
       const std::shared_ptr<CDPResponder>& responder,
       lynx::base::closure&& task);
+  static const char* RecordFormatFromFiles(
+      const std::vector<std::string>& files);
 
   std::unique_ptr<base::NotificationCallback> tracing_notification_callback_;
 };

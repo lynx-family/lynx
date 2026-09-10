@@ -4,12 +4,20 @@
 
 #include "core/base/android/jni_helper.h"
 #include "core/services/recorder/recorder_controller.h"
-#include "core/services/recorder/testbench_base_recorder.h"
+#include "core/services/recorder/recorder_types.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/RecorderController_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/RecorderController_register_jni.h"
 
 void StartRecord(JNIEnv* env, jclass jcaller) {
   lynx::tasm::recorder::RecorderController::StartRecord();
+}
+
+void StartRecordWithFixtureArtifact(JNIEnv* env, jclass jcaller,
+                                    jboolean fixture_artifact_enabled) {
+  const auto format = fixture_artifact_enabled
+                          ? lynx::tasm::recorder::ArtifactFormat::kBoth
+                          : lynx::tasm::recorder::ArtifactFormat::kJson;
+  lynx::tasm::recorder::RecorderController::StartRecord(format);
 }
 
 namespace lynx {
