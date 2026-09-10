@@ -33,6 +33,18 @@ TEST_F_UI(LynxUIMethodTest, InvokeTest) {
   EXPECT_TRUE(ret);
   EXPECT_TRUE(called);
   EXPECT_EQ(ret_code, LynxUIMethodResult::kSuccess);
+
+  called = false;
+  ret = registar.Invoke("requestAccessibilityFocus", view, values, callback);
+#if defined(OS_IOS)
+  EXPECT_TRUE(ret);
+  EXPECT_TRUE(called);
+  EXPECT_EQ(ret_code, LynxUIMethodResult::kOperationError);
+#else
+  EXPECT_FALSE(ret);
+  EXPECT_TRUE(called);
+  EXPECT_EQ(ret_code, LynxUIMethodResult::kMethodNotFound);
+#endif
 }
 
 }  // namespace clay

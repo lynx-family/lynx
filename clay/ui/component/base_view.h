@@ -553,7 +553,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
   V(cancelInterceptBackKey)           \
   V(boundingClientRect)               \
   V(scrollIntoView)                   \
-  V(takeScreenshot)
+  V(takeScreenshot)                   \
+  V(requestAccessibilityFocus)
   UI_METHOD_LIST_DECLARATION(UI_METHOD_DEF);
 #undef UI_METHOD_LIST_DECLARATION
 

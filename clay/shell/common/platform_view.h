@@ -421,6 +421,9 @@ class PlatformView {
   void DispatchClaySemanticsAction(int virtual_view_id, int action);
   virtual void UpdateSemantics(const clay::SemanticsUpdateNodes& update_nodes) {
   }
+  virtual bool RequestAccessibilityFocus(int32_t view_id, bool without_update) {
+    return false;
+  }
 #endif
 
   const std::shared_ptr<clay::ServiceManager>& GetServiceManager() const {
