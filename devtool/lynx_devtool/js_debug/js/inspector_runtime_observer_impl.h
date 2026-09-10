@@ -9,6 +9,9 @@
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 
 namespace lynx {
+namespace lepus {
+class Value;
+}
 namespace devtool {
 class InspectorJavaScriptDebuggerImpl;
 class LynxDevToolNG;
@@ -32,6 +35,8 @@ class InspectorRuntimeObserverImpl
   CreateRuntimeInspectorManager(const std::string& vm_type) override;
   std::shared_ptr<runtime::js::ConsoleMessagePostMan>
   CreateConsoleMessagePostMan() override;
+  std::shared_ptr<runtime::js::NativeModuleRecordObserver>
+  CreateNativeModuleRecordObserver() override;
   void InitWhiteBoardInspector(
       const std::shared_ptr<tasm::WhiteBoardDelegate>& delegate) override;
 
@@ -51,6 +56,10 @@ class InspectorRuntimeObserverImpl
   void SetTag(const std::string& tag) { tag_ = tag; }
 
   void OnConsoleMessagePosted(const runtime::js::ConsoleMessage& message);
+
+  // Forwards a NativeModule record from the JS-thread observer to the DevTool
+  // thread via the mediator.
+  void OnNativeModuleRecord(const lepus::Value& record);
 
  private:
   std::weak_ptr<InspectorJavaScriptDebuggerImpl> debugger_wp_;

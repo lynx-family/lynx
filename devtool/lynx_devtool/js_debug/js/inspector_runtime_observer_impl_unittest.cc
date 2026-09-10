@@ -2,14 +2,20 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <chrono>
+#include <future>
+
 #define protected public
 #define private public
 
-#include "devtool/lynx_devtool/js_debug/js/inspector_runtime_observer_impl.h"
-
+#include "base/include/fml/thread.h"
+#include "base/include/value/array.h"
+#include "core/inspector/observer/native_module_record_observer.h"
+#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
+#include "devtool/lynx_devtool/js_debug/js/inspector_runtime_observer_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/runtime_manager_delegate_impl.h"
 #include "devtool/testing/mock/lynx_devtool_mediator_mock.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
@@ -27,7 +33,7 @@ class InspectorRuntimeObserverImplTest : public ::testing::Test {
     devtool_ = std::make_shared<lynx::testing::LynxDevToolNGMock>();
     const auto& mediator = devtool_->devtool_mediator_;
     debugger_ = std::make_shared<InspectorJavaScriptDebuggerImpl>(mediator, 1);
-    observer_ = std::make_shared<InspectorRuntimeObserverImpl>(debugger_);
+    observer_ = debugger_->GetInspectorRuntimeObserver();
     observer_->SetDevToolMediator(mediator);
     auto devtool_executor =
         std::make_shared<InspectorDefaultExecutor>(mediator);
@@ -46,6 +52,55 @@ class InspectorRuntimeObserverImplTest : public ::testing::Test {
 TEST_F(InspectorRuntimeObserverImplTest, CreateRuntimeManagerDelegate) {
   auto runtime_manager_delegate = observer_->CreateRuntimeManagerDelegate();
   EXPECT_NE(runtime_manager_delegate, nullptr);
+}
+
+TEST_F(InspectorRuntimeObserverImplTest, NativeModuleRecordReachesHistory) {
+  const auto& mediator = devtool_->devtool_mediator_;
+  mediator->native_module_record_manager_ =
+      std::make_shared<NativeModuleRecordManager>(mediator);
+  auto record_observer = observer_->CreateNativeModuleRecordObserver();
+  ASSERT_NE(record_observer, nullptr);
+
+  std::promise<void> done;
+  auto completed = done.get_future();
+  fml::Thread devtool_thread("devtool");
+  fml::Thread js_thread("js");
+  mediator->default_task_runner_ = devtool_thread.GetTaskRunner();
+  MockReceiver::GetInstance().ResetAll();
+  js_thread.GetTaskRunner()->PostTask([&, record_observer] {
+    auto arguments = lepus::CArray::Create();
+    arguments->emplace_back("payload");
+    auto record = runtime::js::BuildInvokeRecord(
+        1, "LynxTestModule", "echo", lepus::Value(std::move(arguments)), true,
+        lepus::Value("payload"), 0, "");
+    record_observer->OnRecord(record);
+
+    Json::Value request;
+    request["id"] = 7;
+    mediator->NativeModuleGetRecords(devtool_->message_sender_, request);
+    mediator->RunOnDevToolThread([&done] { done.set_value(); });
+  });
+  ASSERT_EQ(completed.wait_for(std::chrono::seconds(5)),
+            std::future_status::ready);
+
+  const auto& received = MockReceiver::GetInstance().received_message_;
+  EXPECT_EQ(received.first, "CDP");
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(received.second, response));
+  EXPECT_EQ(response["id"].asInt(), 7);
+  EXPECT_EQ(response["result"]["latestSequence"].asInt64(), 1);
+  const auto& records = response["result"]["records"];
+  ASSERT_EQ(records.size(), 1U);
+  EXPECT_EQ(records[0]["sequence"].asInt64(), 1);
+  EXPECT_EQ(records[0]["invocationId"].asString(), "1");
+  EXPECT_EQ(records[0]["method"].asString(), "LynxTestModule.echo");
+  EXPECT_EQ(records[0]["type"].asString(), "call");
+  EXPECT_EQ(records[0]["phase"].asString(), "invoke");
+  ASSERT_EQ(records[0]["arguments"].size(), 1U);
+  EXPECT_EQ(records[0]["arguments"][0].asString(), "payload");
+  EXPECT_TRUE(records[0]["result"]["success"].asBool());
+  EXPECT_EQ(records[0]["result"]["value"].asString(), "payload");
 }
 
 TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {

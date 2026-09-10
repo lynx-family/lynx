@@ -9,6 +9,7 @@
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 #include "devtool/lynx_devtool/js_debug/js/console_message_postman_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
+#include "devtool/lynx_devtool/js_debug/js/native_module_record_observer_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/runtime_manager_delegate_impl.h"
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
@@ -41,6 +42,18 @@ InspectorRuntimeObserverImpl::CreateRuntimeInspectorManager(
 std::shared_ptr<runtime::js::ConsoleMessagePostMan>
 InspectorRuntimeObserverImpl::CreateConsoleMessagePostMan() {
   return std::make_shared<ConsoleMessagePostManImpl>();
+}
+
+std::shared_ptr<runtime::js::NativeModuleRecordObserver>
+InspectorRuntimeObserverImpl::CreateNativeModuleRecordObserver() {
+  auto debugger = debugger_wp_.lock();
+  if (debugger == nullptr) {
+    return nullptr;
+  }
+  // The debugger owns this observer; borrow that shared_ptr so the JS-thread
+  // NativeModuleRecordObserverImpl can hold a weak reference back to us.
+  return std::make_shared<NativeModuleRecordObserverImpl>(
+      debugger->GetInspectorRuntimeObserver());
 }
 
 void InspectorRuntimeObserverImpl::InitWhiteBoardInspector(
@@ -106,6 +119,14 @@ void InspectorRuntimeObserverImpl::OnConsoleMessagePosted(
   auto sp = mediator_ptr_.lock();
   if (sp != nullptr) {
     sp->SendLogEntryAddedEvent(message);
+  }
+}
+
+void InspectorRuntimeObserverImpl::OnNativeModuleRecord(
+    const lepus::Value& record) {
+  auto sp = mediator_ptr_.lock();
+  if (sp != nullptr) {
+    sp->AddNativeModuleRecord(record);
   }
 }
 
