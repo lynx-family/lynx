@@ -1028,6 +1028,20 @@ void PageView::SetupIsolatedGestures() {
       ReportTopViewEvent(event, kClayEventTypeTap);
     } else {
       ReportTopViewEvent(event, kClayEventTypeMouseClick);
+      const uint64_t timestamp =
+          event.timestamp == 0
+              ? fml::TimePoint::Now().ToEpochDelta().ToMicroseconds()
+              : event.timestamp;
+      if (last_mouse_click_timestamp_ != 0 &&
+          timestamp - last_mouse_click_timestamp_ <= 300000 &&
+          (event.position - last_mouse_click_position_).distance() <=
+              ConvertFrom<kPixelTypeLogical>(2.5f)) {
+        ReportTopViewEvent(event, kClayEventTypeMouseDoubleClick);
+        last_mouse_click_timestamp_ = 0;
+      } else {
+        last_mouse_click_timestamp_ = timestamp;
+        last_mouse_click_position_ = event.position;
+      }
       // simulate primary mouse click as touch tap to adapt front-end code
       auto tap_event = event;
       tap_event.device = PointerEvent::DeviceType::kTouch;

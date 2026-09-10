@@ -83,7 +83,11 @@ class MockEventDelegate : public clay::EventDelegate {
   }
   void OnMouseEvent(const std::string& event_name, int view_id, int button,
                     int buttons, float scale, float x, float y, float page_x,
-                    float page_y) override {}
+                    float page_y) override {
+    if (uitest_->mouse_event_callback_) {
+      uitest_->mouse_event_callback_(event_name, view_id);
+    }
+  }
   void OnWheelEvent(const std::string& event_name, int view_id, float x,
                     float y, float page_x, float page_y, float delta_x,
                     float delta_y) override {}
