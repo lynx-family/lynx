@@ -495,6 +495,17 @@ export abstract class BaseApp<
   /**
    * @internal
    * @static
+   * Exports of modules loaded through {@link requireModuleAsync}, shared by
+   * every card in the JS context. Unlike {@link _$factoryCache}, which caches
+   * the factory and re-runs it per card, this caches the evaluated result so
+   * all cards observe one module instance. Only populated when the page
+   * config `enableLynxGroupModuleSharing` is on.
+   */
+  static _$sharedModules: Record<string, unknown> = {};
+
+  /**
+   * @internal
+   * @static
    * The LynxGroup level cache for loadScript
    */
   static _$loadScriptCache: Record<string, BundleInitReturnObj | Function> = {};
@@ -611,10 +622,21 @@ export abstract class BaseApp<
     path: string,
     callback: (error?: Error, exports?: T) => void
   ): void {
+    if (this._$shouldShareModules()) {
+      const shared = BaseApp._$sharedModules[path];
+      if (shared !== undefined) {
+        callback(null, shared as T);
+        return;
+      }
+    }
+
     const init = BaseApp._$factoryCache[path];
     if (this.shouldUseModuleCache() && init) {
       // cache hit
-      callback(null, this._$executeInit<T>({ init }, { path }));
+      callback(
+        null,
+        this._$shareModule<T>(path, this._$executeInit<T>({ init }, { path }))
+      );
       return;
     }
     // cache miss
@@ -641,7 +663,10 @@ export abstract class BaseApp<
       try {
         return callback(
           null,
-          this._$executeInit(cache as BundleInitReturnObj, { path })
+          this._$shareModule(
+            path,
+            this._$executeInit(cache as BundleInitReturnObj, { path })
+          )
         );
       } catch (e) {
         callback(e);
@@ -659,7 +684,13 @@ export abstract class BaseApp<
       }
 
       try {
-        return callback(null, this._$executeInit(exports, { path, cacheKey }));
+        return callback(
+          null,
+          this._$shareModule(
+            path,
+            this._$executeInit(exports, { path, cacheKey })
+          )
+        );
       } catch (e) {
         return callback(e);
       }
@@ -1072,6 +1103,28 @@ export abstract class BaseApp<
 
   private shouldUseModuleCache(): boolean {
     return NODE_ENV !== 'development' && !this.isModuleCacheDisabled();
+  }
+
+  /**
+   * Whether async module exports are shared across the cards of this JS
+   * context. Cards that leave the page config off neither read nor write the
+   * shared cache, so mixing opted-in and opted-out cards in one group keeps
+   * the opted-out ones on their own module instances.
+   */
+  private _$shouldShareModules(): boolean {
+    // The standalone app is the context's own runtime rather than a card, so
+    // the modules it loads are the ones cards are meant to share.
+    return (
+      this._$isStandaloneApp() ||
+      Boolean(this.params?.pageConfigSubset?.enableLynxGroupModuleSharing)
+    );
+  }
+
+  private _$shareModule<T>(path: string, exports: T): T {
+    if (this._$shouldShareModules()) {
+      BaseApp._$sharedModules[path] = exports;
+    }
+    return exports;
   }
 
   private isModuleCacheDisabled(): boolean {
