@@ -12,11 +12,13 @@ AnimatedImagePlayer::AnimatedImagePlayer(
     std::unique_ptr<PlatformImageAnimation> animation,
     fml::RefPtr<fml::TaskRunner> task_runner,
     std::function<void()> frame_changed_callback,
-    std::function<bool()> visible_callback)
+    std::function<bool()> visible_callback,
+    std::function<void()> completed_callback)
     : animation_(std::move(animation)),
       frame_timer_(std::make_unique<fml::OneshotTimer>(task_runner)),
       frame_changed_callback_(std::move(frame_changed_callback)),
-      visible_callback_(std::move(visible_callback)) {}
+      visible_callback_(std::move(visible_callback)),
+      completed_callback_(std::move(completed_callback)) {}
 
 AnimatedImagePlayer::~AnimatedImagePlayer() {
   frame_timer_->Stop();
@@ -122,6 +124,9 @@ void AnimatedImagePlayer::StartNextFrameTimer() {
       NotifyFrameChanged();
     } else {
       is_playing_ = false;
+      if (animation_->IsAnimationCompleted() && completed_callback_) {
+        completed_callback_();
+      }
     }
   });
 }

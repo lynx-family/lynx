@@ -2,7 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <chrono>
 #include <memory>
+#include <thread>
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
@@ -18,6 +20,7 @@ struct AnimationState {
   int loop_count = 0;
   int start_count = 0;
   int stop_count = 0;
+  int remaining_frames = -1;
 };
 
 class FakePlatformImageAnimation final : public PlatformImageAnimation {
@@ -25,12 +28,28 @@ class FakePlatformImageAnimation final : public PlatformImageAnimation {
   explicit FakePlatformImageAnimation(std::shared_ptr<AnimationState> state)
       : state_(std::move(state)) {}
 
-  int64_t GetDuration() override { return 100; }
+  int64_t GetDuration() override { return 1; }
   std::shared_ptr<skity::Pixmap> ToBitmap(
       const ImageInfo& render_info) override {
     return nullptr;
   }
-  bool DrawFrame() override { return state_->playing; }
+  bool DrawFrame() override {
+    if (!state_->playing) {
+      return false;
+    }
+    if (state_->remaining_frames == 0) {
+      state_->playing = false;
+      return false;
+    }
+    if (state_->remaining_frames > 0) {
+      --state_->remaining_frames;
+    }
+    return true;
+  }
+
+  bool IsAnimationCompleted() const override {
+    return state_->remaining_frames == 0;
+  }
 
   void SetLoopCount(int loop_count) override {
     state_->loop_count = loop_count;
@@ -165,6 +184,26 @@ TEST(AnimatedImagePlayerTest, SetAutoPlayIsIdempotent) {
   player.SetAutoPlay(false);
   EXPECT_EQ(state->start_count, 1);
   EXPECT_EQ(state->stop_count, 2);
+}
+
+TEST(AnimatedImagePlayerTest, NotifiesWhenFiniteAnimationCompletes) {
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  auto platform_image = std::make_shared<FakePlatformImage>();
+  int completed_count = 0;
+  AnimatedImagePlayer player(
+      platform_image->CreateAnimation(),
+      fml::MessageLoop::GetCurrent().GetTaskRunner(), [] {},
+      [] { return true; }, [&completed_count] { ++completed_count; });
+  platform_image->animation_states[0]->remaining_frames = 1;
+
+  player.SetAutoPlay(true);
+  for (int attempt = 0; attempt < 3 && completed_count == 0; ++attempt) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  }
+
+  EXPECT_EQ(completed_count, 1);
+  EXPECT_FALSE(player.IsPlaying());
 }
 
 }  // namespace

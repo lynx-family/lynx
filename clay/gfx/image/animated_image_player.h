@@ -21,7 +21,8 @@ class AnimatedImagePlayer {
   AnimatedImagePlayer(std::unique_ptr<PlatformImageAnimation> animation,
                       fml::RefPtr<fml::TaskRunner> task_runner,
                       std::function<void()> frame_changed_callback,
-                      std::function<bool()> visible_callback);
+                      std::function<bool()> visible_callback,
+                      std::function<void()> completed_callback = nullptr);
   ~AnimatedImagePlayer();
 
   bool IsValid() const { return animation_ != nullptr; }
@@ -48,6 +49,7 @@ class AnimatedImagePlayer {
   std::unique_ptr<fml::OneshotTimer> frame_timer_;
   std::function<void()> frame_changed_callback_;
   std::function<bool()> visible_callback_;
+  std::function<void()> completed_callback_;
   bool is_playing_ = false;
   bool is_timer_running_ = false;
 };
