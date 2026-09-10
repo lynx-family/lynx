@@ -342,7 +342,7 @@ public class DisplayListApplier implements Drawable.Callback {
       imageManager.updateDrawableBounds(rect.getRect());
     }
     imageManager.updateInnerClipPathForBorderRadius(rect);
-    imageManager.setView(getHostLayer());
+    imageManager.setRendererHost(getRendererHost());
     imageManager.onDraw(canvas);
   }
 
@@ -380,7 +380,7 @@ public class DisplayListApplier implements Drawable.Callback {
       canvas.clipRect(clipRect);
     }
 
-    imageManager.setView(getHostLayer());
+    imageManager.setRendererHost(getRendererHost());
     imageManager.updateInnerClipPathForBorderRadius(null);
 
     boolean repeatHorizontally = repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT
