@@ -104,12 +104,14 @@ static constexpr const char* const kPropExperimentalUseNewUpdateAnimation =
 static constexpr const char* const kPropExperimentalUpdateAnimation =
     "experimental-new-update-animation";
 static constexpr const char* const kUpdateAnimationConfigEnable = "enable";
-static constexpr const char* const kUpdateAnimationConfigAddDuration =
-    "addDuration";
-static constexpr const char* const kUpdateAnimationConfigRemoveDuration =
-    "removeDuration";
-static constexpr const char* const kUpdateAnimationConfigMoveDuration =
-    "moveDuration";
+static constexpr const char* const kUpdateAnimationConfigStages = "stages";
+static constexpr const char* const kUpdateAnimationStageAnimations =
+    "animations";
+static constexpr const char* const kUpdateAnimationStageDurations = "durations";
+static constexpr const char* const kUpdateAnimationTypeRemove = "remove";
+static constexpr const char* const kUpdateAnimationTypeMove = "move";
+static constexpr const char* const kUpdateAnimationTypeAdd = "add";
+static constexpr const char* const kUpdateAnimationTypeChange = "change";
 
 // prop value
 static constexpr const char* const kPropValueTrue = "true";

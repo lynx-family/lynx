@@ -19,39 +19,32 @@ namespace list {
 
 void AnimationManagerImpl::SetUpdateAnimationConfig(
     const UpdateAnimationConfig& config) {
-  bool enable_has_changed = enable_update_animation_ != config.enable;
-  update_animation_config_ = config;
-  if (enable_has_changed) {
-    enable_update_animation_ = config.enable;
-    if (!enable_update_animation_) {
-      // Enabling only affects eligible future data updates. Disabling cancels
-      // the active transaction immediately.
-      CancelAnimationTransaction(AnimationCancelReason::kAnimationDisabled);
-    }
-  }
+  const bool need_disable_animations =
+      enable_update_animation_ && !config.enable;
+  // Compare stage order, types, and durations; identical configs preserve
+  // animations.
+  const bool stages_have_changed =
+      update_animation_config_.stages != config.stages;
 
-  // Duration changes apply only to animations that have not started yet.
-  if (enable_update_animation_ && active_transaction_) {
-    ApplyAnimationConfig(active_transaction_->item_animator());
+  // Save the config first so future transactions use it after cancellation.
+  update_animation_config_ = config;
+  enable_update_animation_ = config.enable;
+
+  // Disabling or changing stages cancels pending and running animations
+  // immediately.
+  if (need_disable_animations) {
+    CancelAnimationTransaction(AnimationCancelReason::kAnimationDisabled);
+  } else if (stages_have_changed) {
+    CancelAnimationTransaction(AnimationCancelReason::kAnimationConfigChanged);
   }
 }
 
 std::unique_ptr<ItemAnimator>
 AnimationManagerImpl::CreateItemAnimatorForTransaction() {
   auto item_animator = std::make_unique<ItemAnimatorDefault>();
-  ApplyAnimationConfig(*item_animator);
+  item_animator->SetAnimationStages(update_animation_config_.stages);
   item_animator->SetListener(this);
   return item_animator;
-}
-
-void AnimationManagerImpl::ApplyAnimationConfig(
-    ItemAnimator& item_animator) const {
-  item_animator.SetAddDuration(update_animation_config_.add_duration_ms);
-  item_animator.SetRemoveDuration(update_animation_config_.remove_duration_ms);
-  item_animator.SetMoveDuration(update_animation_config_.move_duration_ms);
-  // TODO: The current configuration does not expose a separate change
-  // duration, so use the move duration for change animations as well.
-  item_animator.SetChangeDuration(update_animation_config_.move_duration_ms);
 }
 
 // Ignore disabled or invalid updates. Otherwise reuse an eligible PRE snapshot
