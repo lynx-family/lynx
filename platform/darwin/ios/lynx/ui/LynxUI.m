@@ -40,7 +40,6 @@
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIContext+Internal.h>
-#import <Lynx/LynxUIListContainer.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUIScrollView.h>
 #import <Lynx/LynxUIScrollViewInternal.h>
@@ -61,6 +60,7 @@
 #import "LynxOffsetCalculator.h"
 #import "LynxUI+Gesture.h"
 #import "LynxUIIntersectionObserver.h"
+#import "list/container/LynxUIListContainer+Internal.h"
 
 static const short OVERFLOW_X_VAL = 0x01;
 static const short OVERFLOW_Y_VAL = 0x02;
@@ -503,8 +503,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 - (LynxUI*)getStickyScroller {
   LynxUI* uiParent = (LynxUI*)self.parent;
   while (uiParent != nil) {
-    if ([uiParent isKindOfClass:[LynxUIScroller class]] &&
-        ![uiParent isKindOfClass:[LynxUIListContainer class]]) {
+    if ([uiParent isKindOfClass:[LynxUIScroller class]] && !LynxIsListContainerUI(uiParent)) {
       return uiParent;
     }
     uiParent = uiParent.parent;
@@ -1596,8 +1595,7 @@ LYNX_UI_METHOD(scrollIntoView) {
   BOOL scrollFlag = false;
   LynxUI* uiParent = (LynxUI*)self.parent;
   while (uiParent != nil) {
-    if ([uiParent isKindOfClass:[AbsLynxUIScroller class]] &&
-        ![uiParent isKindOfClass:[LynxUIListContainer class]]) {
+    if ([uiParent isKindOfClass:[AbsLynxUIScroller class]] && !LynxIsListContainerUI(uiParent)) {
       [((AbsLynxUIScroller*)uiParent) scrollInto:self
                                         isSmooth:isSmooth
                                        blockType:blockType
@@ -4218,18 +4216,18 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 }
 
 - (void)storeKeyToNativeStorage:(LynxUI*)list key:(NSString*)key value:(id)value {
-  if (![list isKindOfClass:LynxUICollection.class] &&
-      ![list isKindOfClass:LynxUIListContainer.class]) {
+  if (![list isKindOfClass:LynxUICollection.class] && !LynxIsListContainerUI(list)) {
     return;
   }
   [list.listNativeStateCache setObject:value forKey:key];
 }
 
 - (NSMutableArray*)getRestoreNativeStateBlockArrayFromList:(LynxUI*)list {
-  if (![list isKindOfClass:LynxUIListContainer.class]) {
+  if (!LynxIsListContainerUI(list)) {
     return nil;
   }
-  return ((LynxUIListContainer*)list).restoreNativeStateBlockArray;
+  // Keep list-container compatibility: return the original restore queue, not a copy.
+  return ((id<LynxListContainerInternal>)list).restoreNativeStateBlockArray;
 }
 
 - (BOOL)initialPropsFlushed:(NSString*)initialPropKey cacheKey:(NSString*)cacheKey {
@@ -4243,8 +4241,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   if (!_enableReuseAnimationState || !itemKey) {
     return;
   }
-  if (![list isKindOfClass:LynxUICollection.class] &&
-      ![list isKindOfClass:LynxUIListContainer.class]) {
+  if (![list isKindOfClass:LynxUICollection.class] && !LynxIsListContainerUI(list)) {
     return;
   }
 
