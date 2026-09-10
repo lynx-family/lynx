@@ -9,7 +9,16 @@
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 #if JS_ENGINE_TYPE == 1
 #include "core/runtime/js/jsi/jsc/jsc_api.h"
-#endif
+#endif  // JS_ENGINE_TYPE == 1
+#if OS_HARMONY
+#include "core/runtime/js/jsi/jsvm/jsvm_api.h"
+#if ENABLE_NAPI_BINDING
+#include "core/runtime/common/napi/napi_runtime_proxy_jsvm.h"
+
+extern void RegisterJSVMRuntimeProxyFactory(
+    lynx::runtime::js::NapiRuntimeProxyJSVMFactory* factory);
+#endif  // ENABLE_NAPI_BINDING
+#endif  // OS_HARMONY
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 
 namespace lynx {
@@ -24,6 +33,12 @@ RuntimeManagerDelegateImpl::~RuntimeManagerDelegateImpl() {
 void RuntimeManagerDelegateImpl::BeforeRuntimeCreate(
     bool force_use_lightweight_js_engine) {
   JSDebugHelper::GetInstance()->RegisterNapiRuntimeProxy();
+#if OS_HARMONY
+#if ENABLE_NAPI_BINDING
+  static runtime::js::NapiRuntimeProxyJSVMFactoryImpl factory;
+  RegisterJSVMRuntimeProxyFactory(&factory);
+#endif  // ENABLE_NAPI_BINDING
+#endif  // OS_HARMONY
 }
 
 void RuntimeManagerDelegateImpl::OnRuntimeReady(
@@ -88,8 +103,11 @@ RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
   if (force_use_lightweight_js_engine) {
     return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineQuickjs);
   } else {
-#if JS_ENGINE_TYPE == 1
-    LOGI("js debug: make JSC runtime");
+#if OS_HARMONY
+    LOGI("js debug: make JSVM runtime; JS debugging is not supported");
+    return runtime::js::makeJSVMRuntime();
+#elif JS_ENGINE_TYPE == 1
+    LOGI("js debug: make JSC runtime; JS debugging is not supported");
     return runtime::js::makeJSCRuntime();
 #else
     return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineV8);
