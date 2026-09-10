@@ -21,6 +21,7 @@
 #include "core/services/recorder/testbench_base_recorder.h"
 #include "core/services/replay/replay_controller.h"
 #include "core/services/replay/testbench_test_replay.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
@@ -567,10 +568,10 @@ TEST_F(DevToolMediatorTest, LogEntryAdded) {
 }
 
 TEST_F(DevToolMediatorTest, StartMemoryTracing) {
-  Json::Value param;
-  param["id"] = 1;
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
   lynx::devtool::LynxGlobalDevToolMediator::GetInstance().MemoryStartTracing(
-      message_sender_, param);
+      responder, params);
   devtool_thread_->Join();
   sleep(1);
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
@@ -578,14 +579,54 @@ TEST_F(DevToolMediatorTest, StartMemoryTracing) {
 }
 
 TEST_F(DevToolMediatorTest, StopMemoryTracing) {
-  Json::Value param;
-  param["id"] = 1;
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
   lynx::devtool::LynxGlobalDevToolMediator::GetInstance().MemoryStopTracing(
-      message_sender_, param);
+      responder, params);
   devtool_thread_->Join();
   sleep(1);
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
+}
+
+TEST_F(DevToolMediatorTest,
+       StartMemoryTracingWithoutTaskRunnerReturnsServerError) {
+  auto& mediator = devtool::LynxGlobalDevToolMediator::GetInstance();
+  auto task_runner = mediator.default_task_runner_;
+  mediator.default_task_runner_ = nullptr;
+
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  mediator.MemoryStartTracing(responder, Json::Value());
+  mediator.default_task_runner_ = task_runner;
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Cannot find default task runner");
+}
+
+TEST_F(DevToolMediatorTest,
+       StopMemoryTracingWithoutTaskRunnerReturnsServerError) {
+  auto& mediator = devtool::LynxGlobalDevToolMediator::GetInstance();
+  auto task_runner = mediator.default_task_runner_;
+  mediator.default_task_runner_ = nullptr;
+
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  mediator.MemoryStopTracing(responder, Json::Value());
+  mediator.default_task_runner_ = task_runner;
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Cannot find default task runner");
 }
 
 TEST_F(DevToolMediatorTest, HighlightTest) {
