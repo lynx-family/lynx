@@ -47,8 +47,8 @@ public class DisplayListItemBufferTest {
     data.order(ByteOrder.nativeOrder());
 
     assertEquals(DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, nativeGetDisplayListItemSize());
-    assertEquals(12, nativeGetDisplayListItemCount());
-    assertEquals(12 * DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, items.capacity());
+    assertEquals(13, nativeGetDisplayListItemCount());
+    assertEquals(13 * DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, items.capacity());
 
     assertItemType(items, 0, DisplayListApplier.OP_BEGIN);
     assertEquals(101, getInt(items, 0, DisplayListApplier.BEGIN_ID_OFFSET));
@@ -127,7 +127,29 @@ public class DisplayListItemBufferTest {
     assertFloatEquals(18.5f, getFloat(items, 10, DisplayListApplier.BOX_SHADOW_BLUR_RADIUS_OFFSET));
     assertEquals(1, getInt(items, 10, DisplayListApplier.BOX_SHADOW_CLIP_MODE_OFFSET));
 
-    assertItemType(items, 11, DisplayListApplier.OP_END);
+    assertItemType(items, 11, DisplayListApplier.OP_RADIAL_GRADIENT);
+    colorOffset = getInt(items, 11, DisplayListApplier.GRADIENT_COLOR_COUNT_OFFSET_OFFSET);
+    stopOffset = getInt(items, 11, DisplayListApplier.GRADIENT_STOP_COUNT_OFFSET_OFFSET);
+    assertEquals(2, getInt(items, 11, DisplayListApplier.GRADIENT_COLOR_COUNT_OFFSET));
+    assertEquals(2, getInt(items, 11, DisplayListApplier.GRADIENT_STOP_COUNT_OFFSET));
+    assertEquals(18, getInt(items, 11, DisplayListApplier.GRADIENT_TILING_INDEX_OFFSET));
+    assertEquals(19, getInt(items, 11, DisplayListApplier.GRADIENT_CLIP_INDEX_OFFSET));
+    assertEquals(0, getInt(items, 11, DisplayListApplier.GRADIENT_REPEAT_X_OFFSET));
+    assertEquals(1, getInt(items, 11, DisplayListApplier.GRADIENT_REPEAT_Y_OFFSET));
+    assertFloatEquals(
+        19.5f, getFloat(items, 11, DisplayListApplier.RADIAL_GRADIENT_CENTER_X_OFFSET));
+    assertFloatEquals(
+        20.5f, getFloat(items, 11, DisplayListApplier.RADIAL_GRADIENT_CENTER_Y_OFFSET));
+    assertFloatEquals(
+        21.5f, getFloat(items, 11, DisplayListApplier.RADIAL_GRADIENT_RADIUS_X_OFFSET));
+    assertFloatEquals(
+        22.5f, getFloat(items, 11, DisplayListApplier.RADIAL_GRADIENT_RADIUS_Y_OFFSET));
+    assertEquals(0xFF414243, data.getInt(colorOffset));
+    assertEquals(0xFF515253, data.getInt(colorOffset + Integer.BYTES));
+    assertFloatEquals(0.25f, data.getFloat(stopOffset));
+    assertFloatEquals(0.75f, data.getFloat(stopOffset + Float.BYTES));
+
+    assertItemType(items, 12, DisplayListApplier.OP_END);
   }
 
   private static void assertItemType(ByteBuffer buffer, int itemIndex, int expectedType) {

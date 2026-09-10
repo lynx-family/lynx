@@ -172,6 +172,29 @@ TEST_F(DisplayListTest, AddLinearGradientEmpty) {
   EXPECT_EQ(reader.Stops(item), nullptr);
 }
 
+TEST_F(DisplayListTest, AddRadialGradient) {
+  base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  base::Vector<float> stops{0.0f, 1.0f};
+
+  display_list_->AddRadialGradient(40.0f, 30.0f, 50.0f, 35.0f, colors, stops, 0,
+                                   1, 1, 0);
+
+  DisplayListReader reader(*display_list_);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kRadialGradient);
+  EXPECT_FLOAT_EQ(item.payload.radial_gradient.center_x, 40.0f);
+  EXPECT_FLOAT_EQ(item.payload.radial_gradient.center_y, 30.0f);
+  EXPECT_FLOAT_EQ(item.payload.radial_gradient.radius_x, 50.0f);
+  EXPECT_FLOAT_EQ(item.payload.radial_gradient.radius_y, 35.0f);
+  EXPECT_EQ(item.payload.radial_gradient.tiling_index, 0);
+  EXPECT_EQ(item.payload.radial_gradient.clip_index, 1);
+  ASSERT_NE(reader.Colors(item), nullptr);
+  EXPECT_EQ(reader.Colors(item)[1], 0xFF0000FF);
+  ASSERT_NE(reader.Stops(item), nullptr);
+  EXPECT_FLOAT_EQ(reader.Stops(item)[1], 1.0f);
+}
+
 TEST_F(DisplayListTest, MoveSemantics) {
   DisplayListItem item;
   item.type = DisplayListOpType::kFill;
