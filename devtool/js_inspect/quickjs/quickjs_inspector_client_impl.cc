@@ -194,7 +194,10 @@ void QJSInspectorClientImpl::DestroyInspector(const std::string &group_id) {
   inspectors_.erase(group_id);
   auto it = contexts_.find(group_id);
   if (it != contexts_.end()) {
-    interrupts_.erase(group_id);
+    {
+      std::lock_guard<std::mutex> lock(interrupts_mutex_);
+      interrupts_.erase(group_id);
+    }
     int context_id = GetExecutionContextId(it->second);
     contexts_.erase(it);
     auto sp = delegate_wp_.lock();
@@ -241,6 +244,7 @@ void QJSInspectorClientImpl::SetContext(LEPUSContext *context,
   }
   auto *runtime = context != nullptr ? LEPUS_GetRuntime(context) : nullptr;
   if (context != nullptr) {
+    std::lock_guard<std::mutex> lock(interrupts_mutex_);
     if (interrupts_.find(group_id) == interrupts_.end()) {
       interrupts_[group_id] =
           std::make_unique<InspectorPrimjsInterruptHelper>(runtime);
@@ -270,6 +274,7 @@ std::string QJSInspectorClientImpl::MapGroupId(const std::string &group_id) {
 
 void QJSInspectorClientImpl::RequestInterrupt(base::closure &&closure) {
   auto shared = std::make_shared<base::closure>(std::move(closure));
+  std::lock_guard<std::mutex> lock(interrupts_mutex_);
   for (auto &it : interrupts_) {
     if (it.second) {
       it.second->Request([shared]() {
