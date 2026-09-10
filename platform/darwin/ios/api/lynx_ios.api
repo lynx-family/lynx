@@ -2746,6 +2746,23 @@ public class LynxListContainerComponentWrapper : UIView {
   public LynxUIComponent* LynxListContainerComponentWrapper::holdingUI holdingUI;
 }
 
+public protocol LynxListContainerInternal-p : <NSObject> {
+  public BOOL LynxListContainerInternal-p::needAdjustContentOffset needAdjustContentOffset;
+  public CGPoint LynxListContainerInternal-p::targetDelta targetDelta;
+  public CGFloat LynxListContainerInternal-p::targetContentSize targetContentSize;
+  public NSMutableDictionary* LynxListContainerInternal-p::listNativeStateCache listNativeStateCache;
+  public NSMutableArray* LynxListContainerInternal-p::restoreNativeStateBlockArray restoreNativeStateBlockArray;
+  public void LynxListContainerInternal-p::updateScrollInfoWithEstimatedOffset:smooth:scrolling:(CGFloat estimatedOffset,[smooth] BOOL smooth,[scrolling] BOOL scrolling);
+  public void LynxListContainerInternal-p::insertListComponent:(LynxUIComponent *component);
+  public void LynxListContainerInternal-p::removeListComponent:(LynxUIComponent *component);
+  public BOOL LynxListContainerInternal-p::initialPropsFlushed:cacheKey:(NSString *initialPropKey,[cacheKey] NSString *cacheKey);
+  public void LynxListContainerInternal-p::setInitialPropsHasFlushed:cacheKey:(NSString *initialPropKey,[cacheKey] NSString *cacheKey);
+}
+
+public protocol LynxListContainerScrollView-p : <LynxListScrollHelperView> {
+  public BOOL LynxListContainerScrollView-p::verticalOrientation verticalOrientation;
+}
+
 public protocol LynxListEventsProtocol-p : <NSObject> {
   public NSInteger LynxListEventsProtocol-p::totalItemsCount();
   public NSArray< id< LynxListCell > > * LynxListEventsProtocol-p::attachedCells();
@@ -7602,6 +7619,16 @@ public enum LynxListProgrammaticScrollCompletionReason {
 }
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT const CGFloat LynxListScrollInvalidEstimatedOffset LynxListScrollInvalidEstimatedOffset;
+
+public enum LynxListContainerScrollState {
+  LynxListScrollStateIdle
+  LynxListScrollStateDragging
+  LynxListScrollStateFling
+  LynxListScrollStateScrollAnimation
+}
+
+  public const CGFloat kInvalidSnapFactor kInvalidSnapFactor;
+  public NS_INLINE BOOL LynxIsListContainerUI(id _Nullable object);
 
   typedef struct LBSPathConsumer LBSPathConsumer
   public CGPathRef LBSCreatePathFromData(const char *data);
