@@ -290,6 +290,18 @@ LYNX_LAZY_REGISTER_UI("overlay")
   }
 }
 
+- (void)updateCustomRectIfNeeded {
+  if (!self.followModeEdge || !self.visible) {
+    return;
+  }
+
+  CGRect modeRect = [LynxUIOverlayShadowNode getBoundsWithMode:self.mode
+                                                viewController:self.customViewController];
+  LynxUIOverlayShadowNode *node =
+      (LynxUIOverlayShadowNode *)[self.context.nodeOwner nodeWithSign:self.sign];
+  [node updateCustomRect:modeRect];
+}
+
 - (BOOL)blockNativeEvent:(UIGestureRecognizer *)gestureRecognizer {
   return !self.allowPanGesture;
 }

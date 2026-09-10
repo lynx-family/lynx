@@ -10,6 +10,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxUIOverlay : LynxUI <UIView *>
 
+// Update custom layout bounds only when the overlay is visible and follows its mode's bounds.
+- (void)updateCustomRectIfNeeded;
+
 @end
 
 @interface LynxUIOverlayShadowNode : LynxCustomMeasureShadowNode
