@@ -9,6 +9,7 @@
 
 #include "base/include/notification_center.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator_base.h"
@@ -43,9 +44,9 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_METHOD(IOClose)
 
   // Memory domain -> devtools executor
-  DECLARE_DEVTOOL_METHOD(MemoryStartTracing)
-  DECLARE_DEVTOOL_METHOD(MemoryStopTracing)
-  DECLARE_DEVTOOL_METHOD(MemoryGetAllMemoryUsage)
+  DECLARE_DEVTOOL_CDP_METHOD(MemoryStartTracing);
+  DECLARE_DEVTOOL_CDP_METHOD(MemoryStopTracing);
+  DECLARE_DEVTOOL_CDP_METHOD(MemoryGetAllMemoryUsage);
 
   DECLARE_DEVTOOL_METHOD(TracingStart)
   DECLARE_DEVTOOL_METHOD(TracingEnd)
@@ -66,6 +67,10 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   ~LynxGlobalDevToolMediator() = default;
 
  private:
+  void RunOnDefaultTaskRunnerOrSendError(
+      const std::shared_ptr<CDPResponder>& responder,
+      lynx::base::closure&& task);
+
   std::unique_ptr<base::NotificationCallback> tracing_notification_callback_;
 };
 
