@@ -244,6 +244,7 @@ class Window : public KeyboardManager::WindowDelegate {
   // Keeps track of the last mouse coordinates by a WM_MOUSEMOVE message.
   double mouse_x_ = 0;
   double mouse_y_ = 0;
+  ClayPointerDeviceKind cursor_device_kind_ = kClayPointerDeviceKindMouse;
 
   // Abstracts Windows APIs that may not be available on all supported versions
   // of Windows.

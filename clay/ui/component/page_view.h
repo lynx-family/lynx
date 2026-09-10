@@ -82,6 +82,11 @@ ClayEventType ToClayEventType(PointerEvent::EventType event_type,
 ClayEventType ToClayEventType(const PointerEvent& event,
                               bool align_mouse_event_with_w3c);
 
+#if defined(OS_WIN) || defined(OS_MAC)
+ClayPointerDeviceKind ToClayPointerDeviceKind(
+    PointerEvent::DeviceType device_type);
+#endif
+
 ClayEventType ToClayEventType(KeyEventType type);
 
 class PageView : public BaseView,
@@ -499,7 +504,7 @@ class PageView : public BaseView,
     enable_mouse_drag_scroll_ = enabled;
   }
   bool IsPointerAllowedForDragScroll(const PointerEvent& event) const {
-    return event.device == PointerEvent::DeviceType::kTouch ||
+    return IsTouchLikePointerDevice(event.device) ||
            event.device == PointerEvent::DeviceType::kTrackpad ||
            (event.device == PointerEvent::DeviceType::kMouse &&
             enable_mouse_drag_scroll_);

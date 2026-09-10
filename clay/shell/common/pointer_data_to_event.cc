@@ -6,6 +6,7 @@
 
 #include <cstring>
 
+#include "build/build_config.h"
 #include "clay/fml/logging.h"
 #include "clay/ui/event/gesture_event.h"
 #include "clay/ui/window/pointer_data.h"
@@ -14,7 +15,34 @@ namespace clay {
 
 namespace {
 
+#if defined(OS_WIN) || defined(OS_MAC)
+bool UsesStablePointerLifecycle(clay::PointerData::DeviceKind kind) {
+  return kind == clay::PointerData::DeviceKind::kMouse ||
+         kind == clay::PointerData::DeviceKind::kStylus ||
+         kind == clay::PointerData::DeviceKind::kInvertedStylus;
+}
+#endif
+
 void CopyToEvent(clay::PointerEvent* dest, const clay::PointerData& raw_data) {
+#if defined(OS_WIN) || defined(OS_MAC)
+  switch (raw_data.kind) {
+    case clay::PointerData::DeviceKind::kTouch:
+      dest->device = clay::PointerEvent::DeviceType::kTouch;
+      break;
+    case clay::PointerData::DeviceKind::kMouse:
+      dest->device = clay::PointerEvent::DeviceType::kMouse;
+      break;
+    case clay::PointerData::DeviceKind::kStylus:
+      dest->device = clay::PointerEvent::DeviceType::kStylus;
+      break;
+    case clay::PointerData::DeviceKind::kInvertedStylus:
+      dest->device = clay::PointerEvent::DeviceType::kInvertedStylus;
+      break;
+    case clay::PointerData::DeviceKind::kTrackpad:
+      dest->device = clay::PointerEvent::DeviceType::kTrackpad;
+      break;
+  }
+#else
   if (raw_data.kind == clay::PointerData::DeviceKind::kMouse) {
     dest->device = clay::PointerEvent::DeviceType::kMouse;
   } else if (raw_data.kind == clay::PointerData::DeviceKind::kTrackpad) {
@@ -29,6 +57,7 @@ void CopyToEvent(clay::PointerEvent* dest, const clay::PointerData& raw_data) {
     // statisfy functionality and reporting.
     dest->device = clay::PointerEvent::DeviceType::kTouch;
   }
+#endif
   dest->embedder_id = raw_data.embedder_id;
   dest->timestamp = raw_data.time_stamp;
   dest->pointer_id = raw_data.pointer_identifier;
@@ -54,7 +83,12 @@ void CopyToEvent(clay::PointerEvent* dest, const clay::PointerData& raw_data) {
   dest->orientation = raw_data.orientation;
   dest->tilt = raw_data.tilt;
   dest->platform_data = raw_data.platformData;
+#if defined(OS_WIN) || defined(OS_MAC)
+  dest->synthesized =
+      UsesStablePointerLifecycle(raw_data.kind) && raw_data.synthesized != 0;
+#else
   dest->synthesized = false;
+#endif
   dest->scroll_delta_x = raw_data.scroll_delta_x;
   dest->scroll_delta_y = raw_data.scroll_delta_y;
   dest->pan = clay::FloatPoint(raw_data.pan_x, raw_data.pan_y);
