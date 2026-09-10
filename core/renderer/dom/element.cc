@@ -1952,6 +1952,12 @@ void Element::CheckNewAnimatorAttr(const base::String& key,
 #endif
 
   if (key.IsEquals("enable-new-animator")) {
+    if (EnableFragmentLayerRender()) {
+      // Fragment layer nodes cannot use the legacy platform animation backend.
+      enable_new_animator_ = true;
+      return;
+    }
+
     if (IsFiberArch()) {
       // For FiberArch.
       if (value.IsBool()) {
