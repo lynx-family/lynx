@@ -88,6 +88,13 @@ class DisplayListBuilder {
                                      int32_t tiling_index, int32_t clip_index,
                                      int32_t repeat_x, int32_t repeat_y);
 
+  DisplayListBuilder& RadialGradient(float center_x, float center_y,
+                                     float radius_x, float radius_y,
+                                     const base::Vector<uint32_t>& colors,
+                                     const base::Vector<float>& stops,
+                                     int32_t tiling_index, int32_t clip_index,
+                                     int32_t repeat_x, int32_t repeat_y);
+
   DisplayListBuilder& BackgroundImage(const fml::RefPtr<PaintImage>& image,
                                       int32_t tiling_index, int32_t clip_index,
                                       int32_t repeat_x, int32_t repeat_y);
