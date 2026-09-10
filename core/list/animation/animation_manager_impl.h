@@ -30,6 +30,7 @@ class AnimationManagerImpl final
   AnimationManagerImpl(const AnimationManagerImpl&) = delete;
   AnimationManagerImpl& operator=(const AnimationManagerImpl&) = delete;
 
+  // AnimationManager
   void SetUpdateAnimationConfig(const UpdateAnimationConfig& config) override;
   void BeforeDataUpdate(bool has_valid_diff, bool has_expected_diff_animation,
                         bool has_completed_first_layout) override;
@@ -41,7 +42,6 @@ class AnimationManagerImpl final
 
  private:
   std::unique_ptr<ItemAnimator> CreateItemAnimatorForTransaction();
-  void ApplyAnimationConfig(ItemAnimator& item_animator) const;
   void BeginAnimationTransaction();
   void ReleaseRetiredTransactionsIfSafe();
   void RecycleDeferredItemHolders(AnimationTransaction& transaction);

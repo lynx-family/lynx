@@ -217,6 +217,8 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   void UpdateAnchorRefItem(ListChildrenHelper* list_children_helper);
 
+  void NotifyAnimationManagerBeforeDataUpdate();
+
   void GenerateAndFlushListContainerInfo();
 
   void GenerateDiffArray(const std::string& diff_key,
