@@ -6,6 +6,7 @@
 #define DEVTOOL_JS_INSPECT_QUICKJS_QUICKJS_INSPECTOR_CLIENT_IMPL_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -112,6 +113,9 @@ class QJSInspectorClientImpl : public quickjs_inspector::QJSInspectorClient,
   std::unordered_map<std::string,
                      std::unique_ptr<InspectorPrimjsInterruptHelper>>
       interrupts_;
+  // Protects interrupts_ because RequestInterrupt runs on the CDP thread while
+  // its other accesses run on the JS thread.
+  std::mutex interrupts_mutex_;
 };
 
 }  // namespace devtool
