@@ -16,6 +16,10 @@ if (is_win) {
 config("config") {
   defines = feature_defines_list
 
+  if (enable_non_builtin_views) {
+    defines += [ "ENABLE_NON_BUILTIN_VIEWS=1" ]
+  }
+
   include_dirs = [
     "..",
     "$root_gen_dir",
