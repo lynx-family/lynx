@@ -568,17 +568,6 @@ enableFiberElementForRadonDiff:
   deprecated: '3.7'
   codeGen:
     - NONE
-enableOptPushStyleToBundle:
-  description: Controls the deprecated style-to-PropBundle optimization flag applied after config decode. When enabled, `ElementManager` turns on the optimized push-style path; when disabled, style payloads keep the older path. When unset, runtime falls back to `LynxEnv`.
-  defaultValue: TernaryBool::UNDEFINE_VALUE
-  valueType: TernaryBool
-  author: ShouruiSong
-  readNative: true
-  deprecated: '3.5'
-  supportPlatform:
-    - Android
-    - HarmonyOS
-    - iOS
 enableTextLayoutCache:
   description: Controls whether text layout results can be reused from the text renderer cache. When enabled, text shadow nodes can reuse cached renderers for repeated layout specs; when disabled, text layout is recomputed each time. When unset, platform env can still provide the value.
   defaultValue: TernaryBool::UNDEFINE_VALUE

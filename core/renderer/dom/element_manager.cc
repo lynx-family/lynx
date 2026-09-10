@@ -1224,7 +1224,6 @@ void ElementManager::UpdateTouchPseudoStatus(bool value) {
 void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
   config_ = config;
 
-  SetEnableOptPushStyleToBundle(config_->GetEnableOptPushStyleToBundle());
   // Apply pagewise configs
   if (config_) {
     layout_configs_ = config_->GetLayoutConfigs();
@@ -1987,17 +1986,6 @@ void ElementManager::SetEnableUIOperationOptimize(TernaryBool enable) {
   if (enable == TernaryBool::TRUE_VALUE ||
       LynxEnv::GetInstance().EnableUIOpBatch()) {
     painting_context()->EnableUIOperationBatching();
-  }
-}
-
-void ElementManager::SetEnableOptPushStyleToBundle(TernaryBool value) {
-  if (value == TernaryBool::TRUE_VALUE) {
-    enable_opt_push_style_to_bundle_ = true;
-  } else if (value == TernaryBool::FALSE_VALUE) {
-    enable_opt_push_style_to_bundle_ = false;
-  } else {
-    enable_opt_push_style_to_bundle_ = LynxEnv::GetInstance().GetBoolEnv(
-        lynx::tasm::LynxEnv::Key::OPT_PUSH_STYLE_TO_BUNDLE, true);
   }
 }
 

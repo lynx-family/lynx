@@ -225,7 +225,6 @@ public class LynxRecorderActionManager {
   private TestBenchLynxViewClient mViewClient;
   private boolean mReplayGesture;
   private boolean mPreDecode;
-  private boolean mDisableOptPushStyleToBundle;
   private boolean mEnableUnifyFixedBehavior;
   private boolean mEnableNativeScheduleCreateViewAsync;
   private int mDelayEndInterval;
@@ -809,8 +808,6 @@ public class LynxRecorderActionManager {
     mDisableUpdateViewport = queryMap.getBoolean("disableUpdateViewport", false);
 
     mCreateWhenReload = queryMap.getBoolean("createWhenReload", false);
-
-    mDisableOptPushStyleToBundle = queryMap.getInt("disable_opt_push_style_to_bundle", 0) == 1;
 
     mEnableUnifyFixedBehavior = queryMap.getInt("enable_unify_fixed_behavior", 0) == 1;
 
@@ -1507,9 +1504,6 @@ public class LynxRecorderActionManager {
           builder.setUrl(url);
           builder.setInitialData(mLoadTemplateData);
           JSONObject nativeConfig = new JSONObject();
-          if (mDisableOptPushStyleToBundle) {
-            nativeConfig.put("enableOptPushStyleToBundle", false);
-          }
           if (mEnableNativeScheduleCreateViewAsync) {
             nativeConfig.put("enableNativeScheduleCreateViewAsync", true);
           }
@@ -1637,9 +1631,6 @@ public class LynxRecorderActionManager {
         builder.setUrl(url);
         builder.setInitialData(mLoadTemplateData);
         JSONObject nativeConfig = new JSONObject();
-        if (mDisableOptPushStyleToBundle) {
-          nativeConfig.put("enableOptPushStyleToBundle", false);
-        }
         if (mEnableNativeScheduleCreateViewAsync) {
           nativeConfig.put("enableNativeScheduleCreateViewAsync", true);
         }
