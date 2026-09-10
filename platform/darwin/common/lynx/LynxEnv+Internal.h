@@ -10,8 +10,6 @@
 
 + (BOOL)stringValueToBool:(NSString *)value defaultValue:(BOOL)defaultValue;
 
-- (BOOL)enableCreateUIAsync;
-
 - (BOOL)enableAnimationSyncTimeOpt;
 
 - (BOOL)enableTextStrokeInheritanceFix;

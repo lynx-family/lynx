@@ -11,7 +11,6 @@
 #import <objc/runtime.h>
 
 #import <Lynx/LynxCSSType.h>
-#import <Lynx/LynxEnv.h>
 #import <Lynx/LynxListScrollEventEmitter.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
@@ -20,6 +19,7 @@
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUICollection+Internal.h>
 #import <Lynx/LynxUICollection.h>
+#import <Lynx/LynxUIOwner+Private.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <memory>
 #include "base/include/value/base_value.h"
+#include "core/renderer/dom/element.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 #include "core/shell/lynx_shell.h"
@@ -121,6 +122,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   LynxView *_lynxView;
   LynxUIOwner *_uiOwner;
   std::unique_ptr<lynx::tasm::PaintingContext> sync_painting_context_darwin_;
+  // Exercise the shared async hint; Darwin must still create UI synchronously.
   std::unique_ptr<lynx::tasm::PaintingContext> async_painting_context_darwin_;
   std::shared_ptr<lynx::tasm::PropBundleCreatorDarwin> prop_bundle_creator_;
 }
@@ -137,9 +139,9 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
                                           screenMetrics:screenMetrics];
 
   sync_painting_context_darwin_ = std::make_unique<lynx::tasm::PaintingContext>(
-      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner, false));
+      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner));
   async_painting_context_darwin_ = std::make_unique<lynx::tasm::PaintingContext>(
-      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner, true));
+      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner));
 
   prop_bundle_creator_ = std::make_shared<lynx::tasm::PropBundleCreatorDarwin>();
 
@@ -171,7 +173,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
   prop_bundle->SetProps("opacity", 0.5);
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, false, 12);
+  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, true, 12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "view", prop_bundle, false, false, 11);
 
   sync_painting_context_darwin_->OnNodeReady(11);
@@ -193,11 +195,35 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   XCTAssert(async_ui.view.layer.opacity == 0.5);
 }
 
+- (void)testResolvedClassCreationFinalizesImageProperties {
+  NSDictionary *props = @{@"font-size" : @20, @"blur-radius" : @"2em", @"opacity" : @0.5};
+  TagSupportedState state = LynxUnsupportedTag;
+  Class clazz = [_uiOwner getTargetClass:@"image" props:props supportedState:&state];
+  XCTAssertEqual(state, LynxSupportedTag);
+  [_uiOwner createUISyncWithSign:12
+                         tagName:@"image"
+                           clazz:clazz
+                  supportedState:state
+                        eventSet:[NSSet set]
+                   lepusEventSet:[NSSet set]
+                           props:props
+                       nodeIndex:12
+              gestureDetectorSet:[NSSet set]];
+  LynxUI *ui = [_uiOwner findUIBySign:12];
+  XCTAssertNotNil(ui.view);
+  XCTAssertEqualObjects(ui.view.lynxSign, @12);
+  XCTAssertEqualWithAccuracy([[ui valueForKey:@"blurRadius"] doubleValue], 40, 0.001);
+
+  // Opacity is applied at node readiness, after creation has finalized image properties.
+  [_uiOwner onNodeReady:12];
+  XCTAssertEqualWithAccuracy(ui.view.layer.opacity, 0.5, 0.001);
+}
+
 - (void)testSetVisibility {
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
   prop_bundle->SetProps("visibility", false);
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, false, 12);
+  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, true, 12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "view", prop_bundle, false, false, 11);
 
   sync_painting_context_darwin_->OnNodeReady(11);
@@ -222,7 +248,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
   prop_bundle->SetProps("direction", 2);
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, false, 12);
+  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, true, 12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "view", prop_bundle, false, false, 11);
 
   sync_painting_context_darwin_->OnNodeReady(11);
@@ -250,7 +276,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
   prop_bundle->SetProps("accessibility-label", "test");
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, false, 12);
+  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, true, 12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "view", prop_bundle, false, false, 11);
 
   sync_painting_context_darwin_->OnNodeReady(11);
@@ -276,7 +302,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   prop_bundle->SetProps("native-interaction-enabled", false);
   prop_bundle->SetProps("allow-edge-antialiasing", false);
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, false, 12);
+  async_painting_context_darwin_->CreatePaintingNode(12, "view", prop_bundle, false, true, 12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "view", prop_bundle, false, false, 11);
 
   sync_painting_context_darwin_->OnNodeReady(11);
@@ -304,7 +330,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
   prop_bundle->SetProps("opacity", 0.5);
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "scroll-view", prop_bundle, false, false,
+  async_painting_context_darwin_->CreatePaintingNode(12, "scroll-view", prop_bundle, false, true,
                                                      12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "scroll-view", prop_bundle, false, false,
                                                     11);
@@ -333,7 +359,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
   prop_bundle->SetProps("opacity", 0.5);
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "scroll-view", prop_bundle, false, false,
+  async_painting_context_darwin_->CreatePaintingNode(12, "scroll-view", prop_bundle, false, true,
                                                      12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "scroll-view", prop_bundle, false, false,
                                                     11);
@@ -383,7 +409,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
     prop_bundle->SetEventHandler(PubLepusValue(lynx::lepus::Value(std::move(array))));
   }
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "list", prop_bundle, false, false, 12);
+  async_painting_context_darwin_->CreatePaintingNode(12, "list", prop_bundle, false, true, 12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "list", prop_bundle, false, false, 11);
 
   sync_painting_context_darwin_->OnNodeReady(11);
@@ -420,7 +446,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
 - (void)testImageAutoPlay {
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "image", prop_bundle, false, false, 12);
+  async_painting_context_darwin_->CreatePaintingNode(12, "image", prop_bundle, false, true, 12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "image", prop_bundle, false, false, 11);
 
   sync_painting_context_darwin_->OnNodeReady(11);
