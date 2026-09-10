@@ -135,14 +135,6 @@ class LynxConfigDecoder final {
               : TernaryBool::FALSE_VALUE);
     }
 
-    if (doc.HasMember(config::kEnableOptPushStyleToBundle) &&
-        doc[config::kEnableOptPushStyleToBundle].IsBool()) {
-      page_config->SetEnableOptPushStyleToBundle(
-          doc[config::kEnableOptPushStyleToBundle].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
     if (doc.HasMember(config::kEnableTextLayoutCache) &&
         doc[config::kEnableTextLayoutCache].IsBool()) {
       page_config->SetEnableTextLayoutCache(

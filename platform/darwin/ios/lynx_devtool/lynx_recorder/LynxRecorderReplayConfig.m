@@ -51,11 +51,6 @@
                                                                    forKey:@"createWhenReload"
                                                              defaultValue:NO];
 
-    _disableOptPushStyleToBundle =
-        [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
-                                                   forKey:@"disable_opt_push_style_to_bundle"
-                                             defaultValue:NO];
-
     _enableTextGradientOpt =
         [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
                                                    forKey:@"lynx_text_gradient_opt"

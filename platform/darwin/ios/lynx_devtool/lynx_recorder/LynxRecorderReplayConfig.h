@@ -32,7 +32,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readonly) BOOL createWhenReload;
 
-@property(nonatomic, readonly) BOOL disableOptPushStyleToBundle;
 @property(nonatomic, readonly) BOOL enableTextGradientOpt;
 
 @property(nonatomic, readonly) BOOL enableUnifyFixedBehavior;

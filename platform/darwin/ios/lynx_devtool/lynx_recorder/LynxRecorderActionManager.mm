@@ -1110,9 +1110,6 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
     LynxLoadMeta* loadMeta = [LynxLoadMeta new];
     loadMeta.lynxViewConfig = [NSMutableDictionary new];
     NSMutableDictionary* nativeConfig = [NSMutableDictionary new];
-    if ([[self replayConfig] disableOptPushStyleToBundle]) {
-      [nativeConfig setObject:@NO forKey:@"enableOptPushStyleToBundle"];
-    }
     if ([[self replayConfig] enableTextGradientOpt]) {
       [nativeConfig setObject:@YES forKey:@"enableTextGradientOpt"];
     }

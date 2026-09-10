@@ -1154,12 +1154,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     enable_report_threaded_element_flush_statistic_ = value;
   }
 
-  bool GetEnableOptPushStyleToBundle() {
-    return enable_opt_push_style_to_bundle_;
-  }
-
-  void SetEnableOptPushStyleToBundle(TernaryBool value);
-
   void SetEnableDumpElementTree(bool enable) {
     enable_dump_element_tree_ = enable;
   }
@@ -1482,8 +1476,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   bool enable_report_threaded_element_flush_statistic_{false};
 
   bool settings_enable_use_mapbuffer_for_ui_op_;
-
-  bool enable_opt_push_style_to_bundle_{false};
 
   // Indicate if need to do layout for current OnPatchFinish process
   bool need_layout_{false};
