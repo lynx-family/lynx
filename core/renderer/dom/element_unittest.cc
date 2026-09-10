@@ -48,6 +48,33 @@ class ElementTest : public ::testing::Test {
   }
 };
 
+TEST_F(ElementTest, FragmentLayerIgnoresNewAnimatorOptOut) {
+  manager->SetEnableNewAnimatorRadon(true);
+  for (bool fiber : {false, true}) {
+    auto config = std::make_shared<PageConfig>();
+    config->SetEnableFiberArch(fiber);
+    config->SetEnableNewAnimator(TernaryBool::TRUE_VALUE);
+    manager->SetConfig(config);
+    for (bool flr : {false, true}) {
+      manager->page_options_.SetEmbeddedMode(
+          flr ? EmbeddedMode::FRAGMENT_LAYER_RENDER
+              : static_cast<EmbeddedMode>(0));
+      auto element = fiber ? manager->CreateFiberElement(base::String("view"))
+                           : fml::MakeRefCounted<Element>(manager.get(),
+                                                          base::String("view"));
+      ASSERT_EQ(element->IsFiberArch(), fiber);
+      ASSERT_TRUE(element->enable_new_animator());
+      for (const auto& value : {lepus::Value(false), lepus::Value("false")}) {
+        element->CheckNewAnimatorAttr(base::String("enable-new-animator"),
+                                      lepus::Value(true));
+        element->CheckNewAnimatorAttr(base::String("enable-new-animator"),
+                                      value);
+        EXPECT_EQ(element->enable_new_animator(), flr) << "fiber=" << fiber;
+      }
+    }
+  }
+}
+
 TEST_F(ElementTest, CheckHasFilterProps) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableComponentLayoutOnly(true);
