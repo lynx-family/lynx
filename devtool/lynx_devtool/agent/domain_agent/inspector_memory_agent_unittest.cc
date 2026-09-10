@@ -12,6 +12,8 @@
 #include <utility>
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/testing/mock/global_devtool_platform_facade_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -91,6 +93,14 @@ class InspectorMemoryAgentTest : public ::testing::Test {
     return sender_->WaitForMessage(std::chrono::milliseconds(1000));
   }
 
+  // Drives the agent through a CDPResponder built from the test sender and the
+  // message id, mirroring how DevToolMessageDispatcher dispatches CDP requests.
+  void CallMethod(const Json::Value& message) {
+    auto responder =
+        std::make_shared<CDPResponder>(sender_, message["id"].asInt64());
+    agent_->CallMethod(responder, message);
+  }
+
  protected:
   std::shared_ptr<InspectorMemoryAgent> agent_;
   std::shared_ptr<TestMessageSender> sender_;
@@ -105,7 +115,7 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageReturnsPlatformResult) {
   message["id"] = 1;
   message["method"] = "Memory.getAllMemoryUsage";
   message["params"]["timeoutMs"] = 20;
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   EXPECT_EQ(sender_->GetReceivedMessage().first, "CDP");
@@ -133,12 +143,13 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageRejectsInvalidTimeout) {
   message["id"] = 2;
   message["method"] = "Memory.getAllMemoryUsage";
   message["params"]["timeoutMs"] = "fast";
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 2);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Invalid timeoutMs: expected integer milliseconds");
 }
@@ -148,7 +159,7 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageUsesDefaultTimeout) {
   message["id"] = 7;
   message["method"] = "Memory.getAllMemoryUsage";
   message["params"]["timeoutMs"] = 0;
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
@@ -164,12 +175,13 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageRejectsNegativeTimeout) {
   message["id"] = 10;
   message["method"] = "Memory.getAllMemoryUsage";
   message["params"]["timeoutMs"] = -1;
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 10);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Invalid timeoutMs: expected non-negative integer milliseconds");
   EXPECT_EQ(lynx::testing::GlobalDevToolPlatformFacadeMock::
@@ -182,12 +194,13 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageRejectsTooLargeTimeout) {
   message["id"] = 8;
   message["method"] = "Memory.getAllMemoryUsage";
   message["params"]["timeoutMs"] = 300001;
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 8);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Invalid timeoutMs: expected value <= 300000");
   EXPECT_EQ(lynx::testing::GlobalDevToolPlatformFacadeMock::
@@ -201,12 +214,13 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageRejectsUint64Timeout) {
   message["method"] = "Memory.getAllMemoryUsage";
   message["params"]["timeoutMs"] = Json::Value(
       static_cast<Json::UInt64>(std::numeric_limits<int64_t>::max()) + 1);
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 9);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Invalid timeoutMs: expected value <= 300000");
   EXPECT_EQ(lynx::testing::GlobalDevToolPlatformFacadeMock::
@@ -219,12 +233,13 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageRejectsInvalidParams) {
   message["id"] = 3;
   message["method"] = "Memory.getAllMemoryUsage";
   message["params"] = 1;
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 3);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Invalid params: expected object");
 }
@@ -236,12 +251,13 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageForwardsPlatformError) {
   Json::Value message(Json::ValueType::objectValue);
   message["id"] = 4;
   message["method"] = "Memory.getAllMemoryUsage";
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 4);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
   EXPECT_EQ(response["error"]["message"].asString(), "platform query failed");
 }
 
@@ -252,12 +268,13 @@ TEST_F(InspectorMemoryAgentTest, GetAllMemoryUsageRejectsInvalidPlatformJson) {
   Json::Value message(Json::ValueType::objectValue);
   message["id"] = 5;
   message["method"] = "Memory.getAllMemoryUsage";
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 5);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InternalError));
   EXPECT_EQ(response["error"]["message"].asString(),
             "Invalid memory usage result JSON");
 }
@@ -266,14 +283,15 @@ TEST_F(InspectorMemoryAgentTest, UnknownMemoryMethodReturnsNotImplemented) {
   Json::Value message(Json::ValueType::objectValue);
   message["id"] = 6;
   message["method"] = "Memory.unknown";
-  agent_->CallMethod(sender_, message);
+  CallMethod(message);
   ASSERT_TRUE(WaitForLastMessage());
 
   Json::Value response = ReadLastMessage();
   EXPECT_EQ(response["id"].asInt64(), 6);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::MethodNotFound));
   EXPECT_EQ(response["error"]["message"].asString(),
-            "Not implemented: Memory.unknown");
+            "'Memory.unknown' wasn't found");
 }
 
 }  // namespace testing

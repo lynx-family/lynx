@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.h"
 
 #include "core/runtime/lepus/json_parser.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
 namespace lynx {
@@ -19,29 +20,32 @@ InspectorMemoryAgent::InspectorMemoryAgent() {
 InspectorMemoryAgent::~InspectorMemoryAgent() = default;
 
 void InspectorMemoryAgent::StartTracing(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().MemoryStartTracing(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().MemoryStartTracing(responder,
+                                                              params);
 }
 
 void InspectorMemoryAgent::StopTracing(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().MemoryStopTracing(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().MemoryStopTracing(responder, params);
 }
 
 void InspectorMemoryAgent::GetAllMemoryUsage(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().MemoryGetAllMemoryUsage(sender,
-                                                                   message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().MemoryGetAllMemoryUsage(responder,
+                                                                   params);
 }
 
 void InspectorMemoryAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& content) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& content) {
   std::string method = content["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter != functions_map_.end()) {
-    (this->*(iter->second))(sender, content);
+    (this->*(iter->second))(responder, content["params"]);
   } else {
-    SendNotImplementedResponse(sender, content["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   }
 }
 
