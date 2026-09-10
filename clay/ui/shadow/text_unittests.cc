@@ -600,6 +600,24 @@ TEST_F_UI(TextTest, TextMaxLengthAttributeLimitsInitialLayout) {
   EXPECT_GT(measure_width(6), measure_width(3));
 }
 
+TEST_F_UI(TextTest, BuildTextLayoutReportsLaidOutLongestLineWidth) {
+  raw_text_shadow_node_->SetText(
+      "one two three four five six seven eight nine ten eleven twelve ");
+  MeasureConstraint constraint{120.f, MeasureMode::kAtMost, std::nullopt,
+                               MeasureMode::kIndefinite};
+  TextRender text_render(text_shadow_node_.get());
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
+  auto context = text_shadow_node_->CreateLayoutContext(constraint);
+
+  text_render.BuildTextLayout(constraint, &context);
+
+  auto* paragraph = text_render.GetCacheParagraph();
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_GT(paragraph->GetMaxIntrinsicWidth(), paragraph->GetLongestLine());
+  EXPECT_EQ(context.measured_width_, std::ceil(paragraph->GetLongestLine()));
+  EXPECT_LE(context.measured_width_, constraint.width.value());
+}
+
 TEST_F_UI(TextTest, GetLineInfoReportsMaxLineEllipsis) {
   text_shadow_node_->SetTextMaxLine(1);
   text_shadow_node_->SetTextOverflow(TextOverflow::kEllipsis);
