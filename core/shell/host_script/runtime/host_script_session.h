@@ -71,6 +71,7 @@ class HostScriptSession final
   ResultReporter reporter_;
   std::shared_ptr<HostScriptJsDispatcher> dispatcher_;
   std::shared_ptr<LynxViewRefProxy> proxy_;
+  napi_env env_ = nullptr;
   bool attached_ = false;
   bool detached_ = false;
   bool invalidated_ = false;

@@ -180,7 +180,7 @@ class HostScriptSessionTest : public ::testing::Test {
     auto* module = delegate_->GetModule("host_script");
     ASSERT_NE(module, nullptr);
     Napi::Object target = Napi::Object::New(env_);
-    module->OnLoad(target);
+    static_cast<HostScriptModule*>(module)->Populate(target);
     env_.Global().Set("viewRef", target);
   }
 
@@ -210,6 +210,53 @@ class HostScriptSessionTest : public ::testing::Test {
   std::shared_ptr<FakeProxyState> state_;
   std::shared_ptr<HostScriptSession> session_;
 };
+
+TEST_F(HostScriptSessionTest, InstallsGlobalApiWithoutAUserImport) {
+  std::vector<std::string> results;
+  state_ = std::make_shared<FakeProxyState>();
+  session_ = HostScriptSession::Create(
+      [&](const std::string& status, const std::string& message) {
+        results.push_back(status + ":" + message);
+      });
+  ASSERT_TRUE(session_->Attach(env_));
+  ASSERT_TRUE(
+      session_->BindView(std::make_unique<FakeLynxViewRefProxy>(state_)));
+
+  EXPECT_EQ(EvalString("typeof defineHostScript"), "function");
+  EXPECT_EQ(EvalString("typeof globalThis.__lynxHostScriptNative"),
+            "undefined");
+  auto* module = delegate_->GetModule("host_script");
+  ASSERT_NE(module, nullptr);
+  Napi::Object public_target = Napi::Object::New(env_);
+  module->OnLoad(public_target);
+  env_.Global().Set("publicTarget", public_target);
+  EXPECT_EQ(EvalString("Object.keys(publicTarget).length"), "0");
+  EXPECT_EQ(EvalString(R"(
+    (() => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        globalThis, 'defineHostScript');
+      return String(descriptor.writable) + ':' +
+             String(descriptor.configurable);
+    })()
+  )"),
+            "false:true");
+  env_.RunScript(R"(
+    globalThis.view = undefined;
+    defineHostScript(context => {
+      globalThis.view = context.lynxView;
+    });
+  )");
+  PumpJobs();
+
+  EXPECT_EQ(results, (std::vector<std::string>{"REGISTERED:", "READY:"}));
+  EXPECT_EQ(EvalString("String(view.available)"), "true");
+  EXPECT_EQ(EvalString(R"(
+    view.updateMetaData({updateData: {count: 1}})
+  )"),
+            "true");
+  EXPECT_TRUE(state_->update_data.has_data);
+  EXPECT_EQ(state_->update_data.data_json, "{\"count\":1}");
+}
 
 TEST_F(HostScriptSessionTest, SupportsBothAttachAndBindOrders) {
   for (bool attach_first : {true, false}) {
