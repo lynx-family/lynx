@@ -29,6 +29,8 @@ subspec_target("devtool") {
     "Helper/LynxDeviceInfoHelper.m",
     "Helper/LynxEmulateTouchHelper.h",
     "Helper/LynxEmulateTouchHelper.mm",
+    "Helper/LynxPointerEventDispatcher.h",
+    "Helper/LynxPointerEventDispatcher.mm",
     "Helper/LynxUITreeHelper.h",
     "Helper/LynxUITreeHelper.mm",
     "Helper/TestBenchTraceProfileHelper.mm",
