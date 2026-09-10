@@ -23,9 +23,16 @@ D3DImageRepresentation::D3DImageRepresentation(
     FML_LOG(ERROR) << "Has no d3d11 device.";
     return;
   }
-  device_ = d3d11_device;
+  // The public config carries an untyped COM pointer. Validate it before any
+  // D3D-specific call and retain the interface returned by QueryInterface.
+  HRESULT hr = d3d11_device->QueryInterface(IID_PPV_ARGS(&device_));
+  if (FAILED(hr)) {
+    FML_LOG(ERROR) << "Shared image device does not support ID3D11Device. hr="
+                   << hr;
+    return;
+  }
 
-  if (!backing->OpenForDevice(d3d11_device, &d3d11_texture_, &keyed_mutex_)) {
+  if (!backing->OpenForDevice(device_.Get(), &d3d11_texture_, &keyed_mutex_)) {
     FML_LOG(ERROR) << "Failed to open for device.";
   }
 }
@@ -37,9 +44,14 @@ D3DImageRepresentation::D3DImageRepresentation(
     FML_LOG(ERROR) << "Has no d3d9 device.";
     return;
   }
-  device9_ = d3d9_device;
+  HRESULT hr = d3d9_device->QueryInterface(IID_PPV_ARGS(&device9_));
+  if (FAILED(hr)) {
+    FML_LOG(ERROR)
+        << "Shared image device does not support IDirect3DDevice9. hr=" << hr;
+    return;
+  }
 
-  if (!backing->OpenForDevice(d3d9_device, &d3d9_texture_)) {
+  if (!backing->OpenForDevice(device9_.Get(), &d3d9_texture_)) {
     FML_LOG(ERROR) << "Failed to open for device.";
   }
 }
