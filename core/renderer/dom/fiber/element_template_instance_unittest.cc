@@ -13,6 +13,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <vector>
 
@@ -573,6 +574,210 @@ TEST_P(ElementTemplateInstanceTest,
   EXPECT_EQ(DatasetValue(resolved.get(), "added"), nullptr);
   EXPECT_EQ(resolved->event_map().count("tap"), 0u);
   EXPECT_FALSE(root->Serialize().Contains("attributes"));
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       CompiledStaticAttributesUseFinalValueWithoutSlots) {
+  auto instance = CreateCompiledSpreadInstance();
+  auto info =
+      tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+          ->template_bundle_.element_template_infos_.at("spread_template");
+  info->elements_[0].attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("src"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("src"),
+                    lepus::Value("static"), 0}});
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  auto page = manager->CreateFiberPage("page", 0);
+  page->InsertNode(root);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+  auto node = platform_impl_->node_map_.find(root->impl_id());
+  ASSERT_NE(node, platform_impl_->node_map_.end());
+  auto src = node->second->props_.find("src");
+  ASSERT_NE(src, node->second->props_.end());
+  EXPECT_EQ(src->second, lepus::Value("static"));
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       CompiledSpreadAttributeUpdatesReachPlatform) {
+  auto instance = CreateCompiledSpreadInstance();
+  auto info =
+      tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+          ->template_bundle_.element_template_infos_.at("spread_template");
+  info->elements_[0].attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("src"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("mode"),
+                    lepus::Value("static-mode"), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("src"),
+                    lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 2}});
+  auto spread = [](const lepus::Value& src, const char* mode) {
+    auto attrs = lepus::Dictionary::Create();
+    attrs->SetValue(base::String("src"), src);
+    attrs->SetValue(base::String("mode"), lepus::Value(mode));
+    attrs->SetValue(base::String("extra"), lepus::Value("spread-extra"));
+    return lepus::Value(attrs);
+  };
+  // The earlier null loses to the later spread in the same resolution.
+  instance->SetAttributeSlot(0, lepus::Value());
+  instance->SetAttributeSlot(1, spread(lepus::Value("first"), "first-mode"));
+  instance->SetAttributeSlot(2, spread(lepus::Value("last"), "last-mode"));
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  auto reference = manager->CreateFiberNode("view");
+  auto page = manager->CreateFiberPage("page", 0);
+  page->InsertNode(root);
+  page->InsertNode(reference);
+  auto set_reference = [&](const lepus::Value& src, const char* mode,
+                           const lepus::Value& extra =
+                               lepus::Value("spread-extra")) {
+    reference->SetAttribute("src", src);
+    reference->SetAttribute("mode", lepus::Value(mode));
+    reference->SetAttribute("extra", extra);
+  };
+  auto expect_attributes =
+      [&](const lepus::Value& expected_src, const char* expected_mode,
+          const lepus::Value& expected_extra = lepus::Value("spread-extra")) {
+        page->FlushActionsAsRoot();
+        platform_impl_->Flush();
+        Element* elements[] = {root.get(), reference.get()};
+        for (auto* element : elements) {
+          auto node = platform_impl_->node_map_.find(element->impl_id());
+          ASSERT_NE(node, platform_impl_->node_map_.end());
+          auto src = node->second->props_.find("src");
+          ASSERT_NE(src, node->second->props_.end());
+          EXPECT_EQ(src->second, expected_src);
+          auto mode = node->second->props_.find("mode");
+          ASSERT_NE(mode, node->second->props_.end());
+          EXPECT_EQ(mode->second, lepus::Value(expected_mode));
+          auto extra = node->second->props_.find("extra");
+          ASSERT_NE(extra, node->second->props_.end());
+          EXPECT_EQ(extra->second, expected_extra);
+        }
+      };
+  set_reference(lepus::Value("last"), "last-mode");
+  expect_attributes(lepus::Value("last"), "last-mode");
+
+  instance->SetAttributeSlot(0, lepus::Value("direct"));
+  instance->SetAttributeSlot(2,
+                             spread(lepus::Value("updated"), "updated-mode"));
+  set_reference(lepus::Value("updated"), "updated-mode");
+  instance->SetAttributeSlot(2, spread(lepus::Value("latest"), "latest-mode"));
+  set_reference(lepus::Value("latest"), "latest-mode");
+  expect_attributes(lepus::Value("latest"), "latest-mode");
+  instance->SetAttributeSlot(2, lepus::Value(lepus::Dictionary::Create()));
+  set_reference(lepus::Value("first"), "first-mode");
+  expect_attributes(lepus::Value("first"), "first-mode");
+  instance->SetAttributeSlot(1, lepus::Value(lepus::Dictionary::Create()));
+  set_reference(lepus::Value("direct"), "static-mode", lepus::Value());
+  expect_attributes(lepus::Value("direct"), "static-mode", lepus::Value());
+
+  instance->SetAttributeSlot(2, spread(lepus::Value(), "explicit-mode"));
+  set_reference(lepus::Value(), "explicit-mode");
+  expect_attributes(lepus::Value(), "explicit-mode");
+  instance->SetAttributeSlot(2, lepus::Value(lepus::Dictionary::Create()));
+  set_reference(lepus::Value("direct"), "static-mode", lepus::Value());
+  expect_attributes(lepus::Value("direct"), "static-mode", lepus::Value());
+}
+
+TEST_P(ElementTemplateInstanceTest, TypedSpreadAttributeUpdatesReachPlatform) {
+  auto instance = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  instance->SetTypedTag(base::String("view"));
+  auto spread = [](const lepus::Value& src, const char* extra = nullptr) {
+    auto attrs = lepus::Dictionary::Create();
+    attrs->SetValue(base::String("src"), src);
+    if (extra != nullptr) {
+      attrs->SetValue(base::String("extra"), lepus::Value(extra));
+    }
+    return lepus::Value(attrs);
+  };
+  instance->SetAttributes(spread(lepus::Value("before")));
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  auto reference = manager->CreateFiberNode("view");
+  reference->SetAttribute("src", lepus::Value("before"));
+  auto page = manager->CreateFiberPage("page", 0);
+  page->InsertNode(root);
+  page->InsertNode(reference);
+  auto expect_src = [&](std::optional<lepus::Value> expected = std::nullopt) {
+    page->FlushActionsAsRoot();
+    platform_impl_->Flush();
+    auto node = platform_impl_->node_map_.find(root->impl_id());
+    ASSERT_NE(node, platform_impl_->node_map_.end());
+    auto src = node->second->props_.find("src");
+    ASSERT_NE(src, node->second->props_.end());
+    auto reference_node = platform_impl_->node_map_.find(reference->impl_id());
+    ASSERT_NE(reference_node, platform_impl_->node_map_.end());
+    auto reference_src = reference_node->second->props_.find("src");
+    ASSERT_NE(reference_src, reference_node->second->props_.end());
+    EXPECT_EQ(src->second, reference_src->second);
+    if (expected.has_value()) {
+      EXPECT_EQ(src->second, *expected);
+    }
+  };
+  expect_src(lepus::Value("before"));
+
+  instance->SetAttributeSlot(0, spread(lepus::Value("after")));
+  reference->SetAttribute("src", lepus::Value("after"));
+  instance->SetAttributeSlot(0, spread(lepus::Value("latest")));
+  reference->SetAttribute("src", lepus::Value("latest"));
+  expect_src(lepus::Value("latest"));
+  instance->SetAttributeSlot(0, spread(lepus::Value()));
+  reference->SetAttribute("src", lepus::Value());
+  expect_src(lepus::Value());
+
+  // An unchanged null does not produce a setter call when only extra changes.
+  instance->SetAttributeSlot(0, spread(lepus::Value(), "changed"));
+  reference->SetAttribute("extra", lepus::Value("changed"));
+  instance->SetAttributeSlot(0, spread(lepus::Value("B"), "changed"));
+  reference->SetAttribute("src", lepus::Value("B"));
+  expect_src(lepus::Value("B"));
+  EXPECT_EQ(platform_impl_->node_map_.at(root->impl_id())->props_.at("extra"),
+            lepus::Value("changed"));
+
+  instance->SetAttributeSlot(0, lepus::Value(lepus::Dictionary::Create()));
+  reference->SetAttribute("src", lepus::Value());
+  reference->SetAttribute("extra", lepus::Value());
+  expect_src(lepus::Value());
+  instance->SetAttributeSlot(0, spread(lepus::Value("before-batch")));
+  reference->SetAttribute("src", lepus::Value("before-batch"));
+  expect_src(lepus::Value("before-batch"));
+
+  // Real deletion and re-addition use the same setter sequence and flush
+  // boundary.
+  instance->SetAttributeSlot(0, lepus::Value());
+  reference->SetAttribute("src", lepus::Value());
+  instance->SetAttributeSlot(0, spread(lepus::Value("readded")));
+  reference->SetAttribute("src", lepus::Value("readded"));
+  expect_src();
+
+  // Missing and explicitly null keys still differ in presence.
+  instance->SetAttributeSlot(0, lepus::Value(lepus::Dictionary::Create()));
+  reference->SetAttribute("src", lepus::Value());
+  expect_src(lepus::Value());
+  instance->SetAttributeSlot(0, spread(lepus::Value()));
+  reference->SetAttribute("src", lepus::Value());
+  instance->SetAttributeSlot(0, spread(lepus::Value("B")));
+  reference->SetAttribute("src", lepus::Value("B"));
+  expect_src();
+
+  instance->SetAttributeSlot(0, spread(lepus::Value()));
+  reference->SetAttribute("src", lepus::Value());
+  expect_src(lepus::Value());
+  instance->SetAttributeSlot(0, lepus::Value(lepus::Dictionary::Create()));
+  reference->SetAttribute("src", lepus::Value());
+  instance->SetAttributeSlot(0, spread(lepus::Value("B")));
+  reference->SetAttribute("src", lepus::Value("B"));
+  expect_src();
 }
 
 TEST_P(ElementTemplateInstanceTest,
