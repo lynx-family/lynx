@@ -338,20 +338,21 @@ void LynxGlobalDevToolMediator::MemoryGetAllMemoryUsage(
 }
 
 void LynxGlobalDevToolMediator::SystemInfoGetInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["modelName"] =
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  Json::Value result(Json::ValueType::objectValue);
+  result["modelName"] =
       GlobalDevToolPlatformFacade::GetInstance().GetSystemModelName();
+  // TODO: This platform detection is outdated. It only distinguishes Android
+  // and treats every other build target as "iOS", but this code also builds on
+  // other platforms (e.g. macOS via OS_OSX and Windows via OS_WIN), which are
+  // all misreported as "iOS" here. The platform string should come from the
+  // GlobalDevToolPlatformFacade instead of this two-way macro branch.
 #if defined(OS_ANDROID)
-  content["platform"] = "Android";
+  result["platform"] = "Android";
 #else
-  content["platform"] = "iOS";
+  result["platform"] = "iOS";
 #endif
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void LynxGlobalDevToolMediator::TracingStart(
