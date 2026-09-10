@@ -321,6 +321,31 @@ std::vector<float> NativePaintingCtxPlatformRef::GetRectToLynxView(int32_t id) {
   return {rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]};
 }
 
+std::vector<float> NativePaintingCtxPlatformRef::GetQuadToScreen(
+    int32_t id, float left, float top, float right, float bottom) {
+  if (destroyed_.load(std::memory_order_acquire) ||
+      !EnsureEventTargetTreeForTarget(id)) {
+    return {};
+  }
+  auto target = event_target_helper_->GetEventTarget(id);
+  if (target == nullptr) {
+    return {};
+  }
+
+  float points[4][2] = {{left, top},
+                        {target->Width() + right, top},
+                        {target->Width() + right, target->Height() + bottom},
+                        {left, target->Height() + bottom}};
+  std::vector<float> result;
+  result.reserve(8);
+  for (auto &point : points) {
+    event_target_helper_->ConvertPointFromTargetToScreen(point, target, point);
+    result.push_back(point[0]);
+    result.push_back(point[1]);
+  }
+  return result;
+}
+
 void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
     int32_t id, PlatformEventBundle bundle) {
   // TODO(hexionghui): When an Attribute does not trigger a rebuild, the

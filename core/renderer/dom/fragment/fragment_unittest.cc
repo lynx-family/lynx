@@ -1130,6 +1130,82 @@ TEST_F(FragmentTest,
   EXPECT_EQ(hit_target->Sign(), 3);
 }
 
+TEST_F(FragmentTest, QuadToScreenPreservesRotatedCornersAndScreenOrigin) {
+  class ScreenOffsetPlatformRef : public TestNativePaintingCtxPlatformRef {
+   public:
+    void GetRootViewLocationOnScreen(float location[2]) override {
+      location[0] = 100.f;
+      location[1] = 200.f;
+    }
+  } platform_ref;
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .DrawView(1, 10.f, 20.f)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+  auto child_renderer =
+      fml::MakeRefCounted<TestPlatformRenderer>(1, PlatformRendererType::kView);
+  gfx::Matrix44 transform;
+  transform.setRotateAboutZAxis(90.f);
+  DisplayListBuilder child_builder;
+  child_builder.Begin(1, PlatformRendererType::kView, 10.f, 20.f, 40.f, 30.f)
+      .End()
+      .Transform(transform);
+  child_renderer->UpdateDisplayList(child_builder.Build());
+  root_renderer->AddChild(child_renderer);
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, child_renderer);
+
+  auto quad = platform_ref.GetQuadToScreen(1, 0.f, 0.f, 0.f, 0.f);
+  const std::vector<float> expected = {110.f, 220.f, 110.f, 260.f,
+                                       80.f,  260.f, 80.f,  220.f};
+  ASSERT_EQ(quad.size(), expected.size());
+  for (size_t i = 0; i < expected.size(); ++i) {
+    EXPECT_NEAR(quad[i], expected[i], 0.001f);
+  }
+}
+
+TEST_F(FragmentTest, QuadToScreenUsesTargetInsetsAndRefreshesScrollOffsets) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .DrawView(1, 10.f, 20.f)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+  auto scroll_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kScroll);
+  DisplayListBuilder scroll_builder;
+  scroll_builder
+      .Begin(1, PlatformRendererType::kScroll, 10.f, 20.f, 100.f, 100.f)
+      .Begin(2, PlatformRendererType::kView, 5.f, 60.f, 40.f, 30.f)
+      .End()
+      .End();
+  scroll_renderer->UpdateDisplayList(scroll_builder.Build());
+  root_renderer->AddChild(scroll_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, scroll_renderer);
+  platform_ref.scrollable_signs.insert(1);
+  // Target 2 has no platform renderer. Its quad is derived from the display
+  // list.
+  EXPECT_THAT(
+      platform_ref.GetQuadToScreen(2, 2.f, 3.f, -4.f, -5.f),
+      ::testing::ElementsAre(17.f, 83.f, 51.f, 83.f, 51.f, 105.f, 17.f, 105.f));
+  platform_ref.scroll_offsets[1] = {0.f, 30.f};
+  EXPECT_THAT(
+      platform_ref.GetQuadToScreen(2, 2.f, 3.f, -4.f, -5.f),
+      ::testing::ElementsAre(17.f, 53.f, 51.f, 53.f, 51.f, 75.f, 17.f, 75.f));
+  EXPECT_TRUE(platform_ref.GetQuadToScreen(999, 0.f, 0.f, 0.f, 0.f).empty());
+  platform_ref.Destroy();
+  EXPECT_TRUE(platform_ref.GetQuadToScreen(2, 0.f, 0.f, 0.f, 0.f).empty());
+}
+
 TEST_F(FragmentTest, PlatformEventHandlerUsesRebuiltTargetsForPointerState) {
   auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
       kRootId, PlatformRendererType::kPage);

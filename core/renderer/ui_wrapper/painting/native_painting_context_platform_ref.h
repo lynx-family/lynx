@@ -109,6 +109,11 @@ class NativePaintingCtxPlatformRef
   PlatformEventTargetHelper *GetEventTargetHelper();
   // Get [x, y, width, height] in the page root's platform layout units.
   std::vector<float> GetRectToLynxView(int32_t id);
+  // Returns the four corners (clockwise from top-left) in screen platform
+  // layout units. Offsets are added to the target's left/top/right/bottom
+  // edges.
+  std::vector<float> GetQuadToScreen(int32_t id, float left, float top,
+                                     float right, float bottom);
   // Update the platform event bundle of the target element.
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
   // Get the platform event bundle of the target element.

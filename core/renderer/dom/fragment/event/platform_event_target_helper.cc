@@ -667,8 +667,6 @@ void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
   auto current_descendant = descendant;
   while (current_descendant != nullptr && current_descendant->ParentTarget() &&
          current_descendant != ancestor) {
-    res[0] += current_descendant->ScrollOffsetX();
-    res[1] += current_descendant->ScrollOffsetY();
     res[0] += current_descendant->Left();
     res[1] += current_descendant->Top();
     res[0] -= current_descendant->OffsetXForCalcPosition();

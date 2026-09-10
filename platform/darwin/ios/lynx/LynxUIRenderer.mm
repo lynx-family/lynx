@@ -568,62 +568,61 @@ NSArray<NSNumber *> *VectorToNSArray(const std::vector<float> &vec) {
 
 - (NSArray<NSNumber *> *)getTransformValue:(NSInteger)sign
                  withPadBorderMarginLayout:(NSArray<NSNumber *> *)arrayLayout {
-  std::vector<float> padBorderMarginLayout = NSArrayToVector(arrayLayout);
-  std::vector<float> res;
+  if (arrayLayout.count != 16) {
+    return @[];
+  }
+  const auto offsets = NSArrayToVector(arrayLayout);
+  auto *platformRef = _lynxContext.isFragmentLayerRenderOn
+                          ? CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)
+                          : nullptr;
   LynxUI *ui = [_uiOwner findUIBySign:sign];
-  if (ui != nil) {
-    for (int i = 0; i < 4; i++) {
-      TransOffset arr;
-      if (i == 0) {
-        arr = [ui getTransformValueWithLeft:padBorderMarginLayout[PAD_LEFT] +
-                                            padBorderMarginLayout[BORDER_LEFT] +
-                                            padBorderMarginLayout[LAYOUT_LEFT]
-                                      right:-padBorderMarginLayout[PAD_RIGHT] -
-                                            padBorderMarginLayout[BORDER_RIGHT] -
-                                            padBorderMarginLayout[LAYOUT_RIGHT]
-                                        top:padBorderMarginLayout[PAD_TOP] +
-                                            padBorderMarginLayout[BORDER_TOP] +
-                                            padBorderMarginLayout[LAYOUT_TOP]
-                                     bottom:-padBorderMarginLayout[PAD_BOTTOM] -
-                                            padBorderMarginLayout[BORDER_BOTTOM] -
-                                            padBorderMarginLayout[LAYOUT_BOTTOM]];
-      } else if (i == 1) {
-        arr = [ui getTransformValueWithLeft:padBorderMarginLayout[BORDER_LEFT] +
-                                            padBorderMarginLayout[LAYOUT_LEFT]
-                                      right:-padBorderMarginLayout[BORDER_RIGHT] -
-                                            padBorderMarginLayout[LAYOUT_RIGHT]
-                                        top:padBorderMarginLayout[BORDER_TOP] +
-                                            padBorderMarginLayout[LAYOUT_TOP]
-                                     bottom:-padBorderMarginLayout[BORDER_BOTTOM] -
-                                            padBorderMarginLayout[LAYOUT_BOTTOM]];
-      } else if (i == 2) {
-        arr = [ui getTransformValueWithLeft:padBorderMarginLayout[LAYOUT_LEFT]
-                                      right:-padBorderMarginLayout[LAYOUT_RIGHT]
-                                        top:padBorderMarginLayout[LAYOUT_TOP]
-                                     bottom:-padBorderMarginLayout[LAYOUT_BOTTOM]];
-      } else {
-        arr = [ui getTransformValueWithLeft:-padBorderMarginLayout[MARGIN_LEFT] +
-                                            padBorderMarginLayout[LAYOUT_LEFT]
-                                      right:padBorderMarginLayout[MARGIN_RIGHT] -
-                                            padBorderMarginLayout[LAYOUT_RIGHT]
-                                        top:-padBorderMarginLayout[MARGIN_TOP] +
-                                            padBorderMarginLayout[LAYOUT_TOP]
-                                     bottom:padBorderMarginLayout[MARGIN_BOTTOM] -
-                                            padBorderMarginLayout[LAYOUT_BOTTOM]];
-      }
-      res.push_back(arr.left_top.x);
-      res.push_back(arr.left_top.y);
-      res.push_back(arr.right_top.x);
-      res.push_back(arr.right_top.y);
-      res.push_back(arr.right_bottom.x);
-      res.push_back(arr.right_bottom.y);
-      res.push_back(arr.left_bottom.x);
-      res.push_back(arr.left_bottom.y);
-    }
+  if (platformRef == nullptr && ui == nil) {
+    return @[];
   }
 
-  NSArray<NSNumber *> *result = VectorToNSArray(res);
-  return result;
+  std::vector<float> res;
+  for (int i = 0; i < 4; i++) {
+    float left = offsets[LAYOUT_LEFT];
+    float top = offsets[LAYOUT_TOP];
+    float right = -offsets[LAYOUT_RIGHT];
+    float bottom = -offsets[LAYOUT_BOTTOM];
+    if (i < 2) {
+      left += offsets[BORDER_LEFT];
+      top += offsets[BORDER_TOP];
+      right -= offsets[BORDER_RIGHT];
+      bottom -= offsets[BORDER_BOTTOM];
+      if (i == 0) {
+        left += offsets[PAD_LEFT];
+        top += offsets[PAD_TOP];
+        right -= offsets[PAD_RIGHT];
+        bottom -= offsets[PAD_BOTTOM];
+      }
+    } else if (i == 3) {
+      left -= offsets[MARGIN_LEFT];
+      top -= offsets[MARGIN_TOP];
+      right += offsets[MARGIN_RIGHT];
+      bottom += offsets[MARGIN_BOTTOM];
+    }
+
+    if (platformRef != nullptr) {
+      // FLR targets need not own a LynxUI. Use the event tree's transforms,
+      // including scroll offsets and independent overlay root offsets.
+      auto quad =
+          platformRef->GetQuadToScreen(static_cast<int32_t>(sign), left, top, right, bottom);
+      if (quad.empty()) {
+        return @[];
+      }
+      res.insert(res.end(), quad.begin(), quad.end());
+    } else {
+      TransOffset arr = [ui getTransformValueWithLeft:left right:right top:top bottom:bottom];
+      res.insert(res.end(),
+                 {static_cast<float>(arr.left_top.x), static_cast<float>(arr.left_top.y),
+                  static_cast<float>(arr.right_top.x), static_cast<float>(arr.right_top.y),
+                  static_cast<float>(arr.right_bottom.x), static_cast<float>(arr.right_bottom.y),
+                  static_cast<float>(arr.left_bottom.x), static_cast<float>(arr.left_bottom.y)});
+    }
+  }
+  return VectorToNSArray(res);
 }
 
 - (CGPoint)convertPointFromScreen:(CGPoint)point ToView:(UIView *)view {
