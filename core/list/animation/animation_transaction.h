@@ -44,7 +44,7 @@ class AnimationTransaction {
 
   TransactionId id() const { return id_; }
 
-  ItemAnimationRecorder& recorder() { return *recorder_; }
+  ItemAnimationRecorder& recorder() { return recorder_; }
 
   ItemAnimator& item_animator() { return *item_animator_; }
 
@@ -75,7 +75,7 @@ class AnimationTransaction {
   // item_animator_ last ensures that it is destroyed before
   // deferred_item_holders_, keeping remove targets alive during animator
   // teardown.
-  std::unique_ptr<ItemAnimationRecorder> recorder_;
+  ItemAnimationRecorder recorder_;
   std::unique_ptr<ItemAnimator> item_animator_;
 };
 
