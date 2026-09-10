@@ -139,6 +139,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void UpdateEditingState(std::string text, TextSelection selection,
                           TextRange composing, Affinity affinity) override;
   void PerformAction() override;
+  bool PerformHistoryAction(TextInputHistoryAction action) override;
 
   Transform ToGlobalTransform() const;
 
@@ -190,7 +191,8 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void DeleteSurroundingText(int before_length, int after_length);
 
   void SetTextEditingValue(const TextEditingValue&, bool is_composing = false,
-                           bool need_update_remote = true);
+                           bool need_update_remote = true,
+                           bool record_history = true);
   void OnCommitText(std::string text) override;
 
   void UpdateCaretPosition();
