@@ -120,7 +120,7 @@ void PlatformRendererHarmony::OnUpdateDisplayList(DisplayList display_list) {
 }
 
 void PlatformRendererHarmony::OnUpdateAttributes(
-    const fml::RefPtr<PropBundle>& attributes, bool tends_to_flatten) {
+    const fml::RefPtr<PropBundle>& attributes) {
   if (!IsPlatformExtendedRenderer() || attributes == nullptr) {
     return;
   }

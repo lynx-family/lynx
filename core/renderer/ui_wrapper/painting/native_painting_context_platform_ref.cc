@@ -603,12 +603,12 @@ void NativePaintingCtxPlatformRef::ResumeExposure() {
 }
 
 void NativePaintingCtxPlatformRef::UpdateAttributes(
-    int id, const fml::RefPtr<PropBundle> &attributes, bool tend_to_flatten) {
+    int id, const fml::RefPtr<PropBundle> &attributes) {
   auto it = renderers_.find(id);
   if (it == renderers_.end()) {
     return;
   }
-  it->second->UpdateAttributes(attributes, tend_to_flatten);
+  it->second->UpdateAttributes(attributes);
 }
 
 void NativePaintingCtxPlatformRef::UpdateNodeReadyPatching(

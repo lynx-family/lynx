@@ -163,8 +163,7 @@ void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
   }
 }
 
-void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
-                                                bool tends_to_flatten) {
+void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes) {
   if (GetUIView() != nil && attributes && attributes->IsNative()) {
     // Convert NativePropBundle to PropBundleDarwin
     // The attributes should be a NativePropBundle from the pipeline

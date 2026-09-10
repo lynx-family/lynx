@@ -298,14 +298,14 @@ void PlatformRendererContext::UpdatePlatformRendererFrame(
 }
 
 void PlatformRendererContext::UpdatePlatformRendererAttributes(
-    int32_t id, jobject prop_bundle, bool tends_to_flatten) {
+    int32_t id, jobject prop_bundle) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull() || !prop_bundle) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_updatePlatformRendererAttributes(
-      env, local_ref.Get(), id, prop_bundle, tends_to_flatten);
+      env, local_ref.Get(), id, prop_bundle);
 }
 
 int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {

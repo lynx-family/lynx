@@ -33,7 +33,6 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
-#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -122,7 +121,7 @@ class TestPlatformRenderer : public PlatformRendererImpl {
       display_list_ = std::move(display_list);
     }
   }
-  void OnUpdateAttributes(const fml::RefPtr<PropBundle>&, bool) override {}
+  void OnUpdateAttributes(const fml::RefPtr<PropBundle>&) override {}
   void OnAddChild(PlatformRenderer*, int, bool) override {}
   void OnRemoveFromParent(bool) override {}
   void OnUpdateSubtreeProperties(const DisplayList&) override {}
@@ -863,7 +862,7 @@ TEST_F(FragmentDrawTest, ReinsertZIndexDescendantUsesAncestorStackingContext) {
   EXPECT_NE(layer_fragment->fragment_parent(), layer_fragment);
 }
 
-TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
+TEST_F(FragmentTest, CreateLayerIfNeededKeepsCompatibleComponentInitConfig) {
   auto element = manager->CreateFiberText("text");
   element->MarkAsDirectChildOfCompatibleComponent(true);
   Fragment fragment(element.get());
@@ -872,12 +871,9 @@ TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   fragment.SetBehavior(std::move(behavior));
 
   ASSERT_TRUE(element->TendToFlatten());
-  fragment.CreateLayerIfNeeded(nullptr);
+  ASSERT_TRUE(fragment.CreateLayerIfNeeded(nullptr));
 
-  ASSERT_TRUE(behavior_ptr->attributes_);
-  auto* props = static_cast<PropBundleMock*>(behavior_ptr->attributes_.get());
-  ASSERT_TRUE(props->Contains(kTendsToFlattenInitDataKey));
-  EXPECT_TRUE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
+  EXPECT_FALSE(behavior_ptr->attributes_);
   EXPECT_EQ(behavior_ptr->init_config_.fragment_parent_id, -1);
   EXPECT_TRUE(
       behavior_ptr->init_config_.is_direct_child_of_compatible_component);
@@ -914,8 +910,6 @@ TEST_F(FragmentTest, UpdatePaintingNodeUsesCurrentFlattenStateForLayer) {
   ASSERT_TRUE(behavior_ptr->attributes_);
   EXPECT_TRUE(behavior_ptr->attributes_->Contains(
       CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDTransform)));
-  auto* props = static_cast<PropBundleMock*>(behavior_ptr->attributes_.get());
-  EXPECT_FALSE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
 }
 
 TEST_F(FragmentTest, DrawFullSyncsOverflowToBeginOperation) {
