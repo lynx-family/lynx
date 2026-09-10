@@ -41,6 +41,13 @@ interface LynxModuleLoader {
 export class Lynx {
   static __registerSharedDataCounter: number = 0;
   __globalProps: GlobalProps;
+
+  /**
+   * The card's load-time data: `initData` merged with any `updateData` the
+   * host passed before the JS app started. Written by lynx-core so a UI
+   * framework does not have to reach into the App's params.
+   */
+  __initData: Record<string, unknown> = {};
   __presetData: Record<string, unknown>;
   _switches: Record<string, boolean>;
   targetSdkVersion?: string;
