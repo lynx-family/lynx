@@ -9,7 +9,10 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/timer/time_utils.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/resource/lazy_bundle/lazy_bundle_lifecycle_option.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/template_bundle/lynx_template_bundle.h"
@@ -128,16 +131,26 @@ void ExternalResourceLoader::LoadLazyBundle(const std::string& url,
 void ExternalResourceLoader::LoadLazyBundle(std::string url,
                                             int32_t callback_id,
                                             std::vector<std::string> ids) {
+  auto lifecycle_option = std::make_unique<tasm::LazyBundleLifecycleOption>(
+      url, 0, false, tasm::LazyBundleEntryOrigin::kBTS);
+  lifecycle_option->SetPerfControllerActor(perf_controller_actor_);
+  lifecycle_option->RecordRequireStart(base::CurrentSystemTimeMilliseconds());
   if (!resource_loader_) {
     LOGE("LoadLazyBundle:resource_loader_ is null");
+    lifecycle_option->RecordRequireEnd(base::CurrentSystemTimeMilliseconds(),
+                                       true, 0);
+    lifecycle_option->SetLoadResult(false);
+    lifecycle_option->ReportLazyBundleEntry();
     return;
   }
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
   resource_loader_->LoadResource(
-      request, [url = std::move(url), callback_id,
-                component_ids = std::move(ids), weak_self = weak_from_this()](
-                   pub::LynxResourceResponse& response) mutable {
+      request,
+      [url = std::move(url), callback_id, component_ids = std::move(ids),
+       lifecycle_option = std::move(lifecycle_option),
+       weak_self =
+           weak_from_this()](pub::LynxResourceResponse& response) mutable {
         auto self = weak_self.lock();
         if (!self) {
           LOGI("LoadLazyBundle:self is null");
@@ -163,6 +176,11 @@ void ExternalResourceLoader::LoadLazyBundle(std::string url,
                                                  true,
                                                  callback_id,
                                                  std::move(component_ids)};
+        lifecycle_option->RecordRequireEnd(
+            base::CurrentSystemTimeMilliseconds(), true,
+            callback_info.Success()
+                ? static_cast<int64_t>(callback_info.SourceSize())
+                : 0);
 
         if (callback_info.Success()) {
           auto engine_actor = self->engine_actor_.lock();
@@ -170,11 +188,14 @@ void ExternalResourceLoader::LoadLazyBundle(std::string url,
             LOGI("LoadLazyBundle:engine_actor is null");
             return;
           }
+          callback_info.lifecycle_option = std::move(lifecycle_option);
           engine_actor->Act(
               [callback_info = std::move(callback_info)](auto& engine) mutable {
                 engine->DidLoadComponentFromJS(std::move(callback_info));
               });
         } else {
+          lifecycle_option->SetLoadResult(false);
+          lifecycle_option->ReportLazyBundleEntry();
           auto runtime_actor = self->runtime_actor_.lock();
           if (!runtime_actor) {
             LOGI("LoadLazyBundle:runtime_actor is null");

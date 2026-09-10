@@ -7,6 +7,8 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -59,6 +61,14 @@ class PerformanceController : public PerformanceEventSender {
   void OnPerformanceEvent(std::unique_ptr<pub::Value> entry,
                           EventType type = kEventTypeAll) override;
 
+  void MarkMTSLazyBundleUrl(const std::string& url);
+  void OnMTSLazyBundlePerformanceEvent(const std::string& url,
+                                       std::unique_ptr<pub::Value> entry,
+                                       EventType type = kEventTypeAll);
+  void OnBTSLazyBundlePerformanceEvent(const std::string& url,
+                                       std::unique_ptr<pub::Value> entry,
+                                       EventType type = kEventTypeAll);
+
   const std::shared_ptr<pub::PubValueFactory>& GetValueFactory() override {
     return value_factory_;
   }
@@ -103,6 +113,7 @@ class PerformanceController : public PerformanceEventSender {
   // Keep members touched by OnPerformanceEvent alive until after
   // MemoryMonitor reports its final teardown event.
   std::vector<lepus::Value> performance_entries_;
+  std::unordered_set<std::string> mts_lazy_bundle_urls_;
   std::shared_ptr<JSBlockingMonitor> js_blocking_monitor_;
   MemoryMonitor memory_monitor_;
   timing::TimingHandler timing_handler_;

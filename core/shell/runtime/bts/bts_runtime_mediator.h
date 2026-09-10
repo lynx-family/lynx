@@ -66,6 +66,8 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
         !facade_actor || !engine_actor || !card_cached_data_mgr;
     // TODO(chenyouhui): Use LynxResourceLoader directly.
     external_resource_loader_->SetEngineActor(engine_actor);
+    external_resource_loader_->SetPerfControllerActor(
+        performance_controller_actor);
   }
   ~BTSRuntimeMediator() override = default;
   void AttachToLynxShell(
