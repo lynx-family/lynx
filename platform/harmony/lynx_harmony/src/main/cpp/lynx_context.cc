@@ -189,9 +189,10 @@ void LynxContext::HandleTouchEvent(const TouchEvent& touch_event) const {
   if (!engine_proxy_) {
     return;
   }
-  engine_proxy_->SendTouchEvent(
-      touch_event.Name(), touch_event.ID(), target_point[0], target_point[1],
-      client_point[0], client_point[1], page_point[0], page_point[1]);
+  engine_proxy_->SendTouchEvent(touch_event.Name(), touch_event.ID(),
+                                target_point[0], target_point[1],
+                                client_point[0], client_point[1], page_point[0],
+                                page_point[1], touch_event.TimeStamp());
 }
 
 void LynxContext::HandleMultiTouchEvent(const TouchEvent& touch_event) const {
@@ -210,7 +211,8 @@ void LynxContext::HandleMultiTouchEvent(const TouchEvent& touch_event) const {
     return;
   }
   engine_proxy_->SendTouchEvent(touch_event.Name(),
-                                PubLepusValue(touch_event.UITouchMap()));
+                                PubLepusValue(touch_event.UITouchMap()),
+                                touch_event.TimeStamp());
 }
 
 void LynxContext::HandleCustomEvent(const CustomEvent& custom_event) const {
