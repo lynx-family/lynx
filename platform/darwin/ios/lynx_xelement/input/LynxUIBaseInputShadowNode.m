@@ -101,15 +101,18 @@
   self.inputAttrs[NSFontAttributeName] = font;
   self.placeholderAttrs[NSFontAttributeName] = placeholderFont;
   
+  if (self.widthForMeasure != UNDEFINED_FLOAT) {
+    width = self.widthForMeasure;
+  }
+
+  if (widthMode == LynxMeasureModeDefinite && heightMode == LynxMeasureModeDefinite) {
+    return CGSizeMake(ceil(width), ceil(height));
+  }
   
   
   NSAttributedString * valueMeasureUnit = [[NSAttributedString alloc] initWithString:self.value.length ? self.value : @" " attributes:self.inputAttrs];
   
   NSAttributedString * placeholderMeasureUnit = self.placeholder.length ? [[NSAttributedString alloc] initWithString:self.placeholder attributes:self.placeholderAttrs] : nil;
-  
-  if (self.widthForMeasure != UNDEFINED_FLOAT) {
-    width = self.widthForMeasure;
-  }
   
   CGSize size = [valueMeasureUnit boundingRectWithSize:CGSizeMake(width, height) options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading context:nil].size;
   
