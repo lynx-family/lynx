@@ -10,6 +10,7 @@ import {
   loadCardParams,
   NativeApp,
   requireParamObj,
+  StandaloneRuntimeGlobals,
 } from './interface';
 import { AMDFactory, AMDModule } from '../common';
 import {
@@ -155,10 +156,15 @@ export abstract class BaseApp<
     } else {
       const { lynx } = options;
 
-      this.setTimeout = this.nativeApp.setTimeout;
-      this.setInterval = this.nativeApp.setInterval;
-      this.clearInterval = this.nativeApp.clearInterval;
-      this.clearTimeout = this.nativeApp.clearTimeout;
+      // Shared modules capture these at evaluation time, so they have to
+      // outlive the card that evaluated them.
+      const standalone = this._$setupStandaloneRuntime();
+      this.setTimeout = standalone?.setTimeout ?? this.nativeApp.setTimeout;
+      this.setInterval = standalone?.setInterval ?? this.nativeApp.setInterval;
+      this.clearInterval =
+        standalone?.clearInterval ?? this.nativeApp.clearInterval;
+      this.clearTimeout =
+        standalone?.clearTimeout ?? this.nativeApp.clearTimeout;
 
       this.modules = {};
       this._apiList = {};
@@ -196,11 +202,12 @@ export abstract class BaseApp<
         this.nativeApp
       );
 
-      const promiseCtor = this.setupPromise(
-        this.nativeApp.setTimeout,
-        this.nativeApp.clearTimeout,
-        lynx
-      );
+      const promiseCtor =
+        standalone?.promise ??
+        this.setupPromise(this.setTimeout, this.clearTimeout, lynx);
+      if (standalone && !standalone.promise) {
+        standalone.promise = promiseCtor;
+      }
 
       this.lynx = this.createLynx(lynx, promiseCtor);
       this.setupJSModule();
@@ -495,6 +502,17 @@ export abstract class BaseApp<
   /**
    * @internal
    * @static
+   * Exports of modules loaded through {@link requireModuleAsync}, shared by
+   * every card in the JS context. Unlike {@link _$factoryCache}, which caches
+   * the factory and re-runs it per card, this caches the evaluated result so
+   * all cards observe one module instance. Only populated when the page
+   * config `enableLynxGroupModuleSharing` is on.
+   */
+  static _$sharedModules: Record<string, unknown> = {};
+
+  /**
+   * @internal
+   * @static
    * The LynxGroup level cache for loadScript
    */
   static _$loadScriptCache: Record<string, BundleInitReturnObj | Function> = {};
@@ -611,10 +629,21 @@ export abstract class BaseApp<
     path: string,
     callback: (error?: Error, exports?: T) => void
   ): void {
+    if (this._$shouldShareModules()) {
+      const shared = BaseApp._$sharedModules[path];
+      if (shared !== undefined) {
+        callback(null, shared as T);
+        return;
+      }
+    }
+
     const init = BaseApp._$factoryCache[path];
     if (this.shouldUseModuleCache() && init) {
       // cache hit
-      callback(null, this._$executeInit<T>({ init }, { path }));
+      callback(
+        null,
+        this._$shareModule<T>(path, this._$executeInit<T>({ init }, { path }))
+      );
       return;
     }
     // cache miss
@@ -641,7 +670,10 @@ export abstract class BaseApp<
       try {
         return callback(
           null,
-          this._$executeInit(cache as BundleInitReturnObj, { path })
+          this._$shareModule(
+            path,
+            this._$executeInit(cache as BundleInitReturnObj, { path })
+          )
         );
       } catch (e) {
         callback(e);
@@ -659,7 +691,13 @@ export abstract class BaseApp<
       }
 
       try {
-        return callback(null, this._$executeInit(exports, { path, cacheKey }));
+        return callback(
+          null,
+          this._$shareModule(
+            path,
+            this._$executeInit(exports, { path, cacheKey })
+          )
+        );
       } catch (e) {
         return callback(e);
       }
@@ -1070,8 +1108,65 @@ export abstract class BaseApp<
     return cacheKey;
   }
 
+  /**
+   * Whether this App is the standalone runtime of its JS context: a
+   * background runtime not attached to any LynxView, which outlives every
+   * card. {@link StandaloneApp} overrides this.
+   */
+  protected _$isStandaloneApp(): boolean {
+    return false;
+  }
+
+  /**
+   * Publishes the standalone runtime's timers on the JS context, or picks up
+   * the ones already published.
+   *
+   * Timers and the Promise constructor a shared module captures at eval time
+   * belong to whichever card evaluated it first, and stop working once that
+   * card is destroyed. Taking them from the standalone runtime instead keeps
+   * them alive for as long as the context lives.
+   *
+   * Returns undefined when this card does not share modules, or when the host
+   * created no standalone runtime — both fall back to the card's own timers.
+   */
+  private _$setupStandaloneRuntime(): StandaloneRuntimeGlobals | undefined {
+    if (this._$isStandaloneApp()) {
+      return (nativeGlobal._$standaloneRuntime = {
+        setTimeout: this.nativeApp.setTimeout,
+        clearTimeout: this.nativeApp.clearTimeout,
+        setInterval: this.nativeApp.setInterval,
+        clearInterval: this.nativeApp.clearInterval,
+      });
+    }
+    return this._$shouldShareModules()
+      ? nativeGlobal._$standaloneRuntime
+      : undefined;
+  }
+
   private shouldUseModuleCache(): boolean {
     return NODE_ENV !== 'development' && !this.isModuleCacheDisabled();
+  }
+
+  /**
+   * Whether async module exports are shared across the cards of this JS
+   * context. Cards that leave the page config off neither read nor write the
+   * shared cache, so mixing opted-in and opted-out cards in one group keeps
+   * the opted-out ones on their own module instances.
+   */
+  private _$shouldShareModules(): boolean {
+    // The standalone app is the context's own runtime rather than a card, so
+    // the modules it loads are the ones cards are meant to share.
+    return (
+      this._$isStandaloneApp() ||
+      Boolean(this.params?.pageConfigSubset?.enableLynxGroupModuleSharing)
+    );
+  }
+
+  private _$shareModule<T>(path: string, exports: T): T {
+    if (this._$shouldShareModules()) {
+      BaseApp._$sharedModules[path] = exports;
+    }
+    return exports;
   }
 
   private isModuleCacheDisabled(): boolean {
