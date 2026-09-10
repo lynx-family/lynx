@@ -20,20 +20,14 @@
 #import "LynxListItemHelper.h"
 #import "LynxListScrollHelper.h"
 #import "LynxListStickyManager.h"
+#import "LynxUIListContainer+Internal.h"
 
 #import "core/public/list_container_proxy.h"
 #import "core/public/list_engine_proxy.h"
 
-static const CGFloat kInvalidSnapFactor = -1;
 static const CGFloat kFadeInAnimationDefaultDuration = 0.1;
 static const CGFloat kLynxListAutomaticMaxFlingRatio = CGFLOAT_MAX;
 static const NSInteger kDefaultMaxSnapCount = 1;
-typedef NS_ENUM(NSInteger, LynxListScrollState) {
-  LynxListScrollStateIdle = 1,
-  LynxListScrollStateDragging = 2,
-  LynxListScrollStateFling = 3,
-  LynxListScrollStateScrollAnimation = 4,
-};
 
 @interface LynxListContainerComponentWrapper () <LynxListItemWrapper>
 @end
@@ -73,7 +67,8 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 
 @end
 
-@interface LynxUIListContainer () <LynxListItemHelperOwner,
+@interface LynxUIListContainer () <LynxListContainerInternal,
+                                   LynxListItemHelperOwner,
                                    LynxListScrollHelperOwner,
                                    LynxListStickyManagerOwner> {
   std::unique_ptr<lynx::shell::ListContainerProxy> _listContainerProxy;
@@ -94,7 +89,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, assign) CGFloat maxFlingDistanceRatio;
 @property(nonatomic, assign) BOOL isInScrollToPosition;
 @property(nonatomic, assign) BOOL isInAutoScroll;
-@property(nonatomic, assign) LynxListScrollState currentScrollState;
+@property(nonatomic, assign) LynxListContainerScrollState currentScrollState;
 @property(nonatomic, assign) BOOL enableNeedVisibleItemInfo;
 @property(nonatomic, assign) NSInteger pagingMaxSnapCount;
 // Experimental
@@ -408,7 +403,7 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
   self.view.showsHorizontalScrollIndicator = value;
 }
 
-- (void)setScrollState:(LynxListScrollState)scrollState {
+- (void)setScrollState:(LynxListContainerScrollState)scrollState {
   if (self.currentScrollState == scrollState) {
     return;
   }
@@ -967,7 +962,7 @@ LYNX_UI_METHOD(getVisibleCells) {
   [self.scrollEventManager sendScrollEvent:LynxEventScrollEnd scrollView:self.view detail:detail];
 }
 
-- (void)sendScrollStateChangeEvent:(LynxListScrollState)scrollState {
+- (void)sendScrollStateChangeEvent:(LynxListContainerScrollState)scrollState {
   NSMutableDictionary *detail = [[NSMutableDictionary alloc] init];
   detail[@"state"] = @(scrollState);
   if (self.enableNeedVisibleItemInfo) {

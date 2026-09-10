@@ -30,7 +30,6 @@
 #import <Lynx/LynxUIExposure.h>
 #import <Lynx/LynxUIFrame.h>
 #import <Lynx/LynxUIImage.h>
-#import <Lynx/LynxUIListContainer.h>
 #import <Lynx/LynxUIListLight.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUIOwner.h>
@@ -44,6 +43,7 @@
 #import "LynxUIIntersectionObserver.h"
 #import "LynxUIOwner+Accessibility.h"
 #import "LynxUIOwner+Private.h"
+#import "list/container/LynxUIListContainer+Internal.h"
 
 // TODO(zhengsenyao): For white-screen problem investigation of preLayout, remove it later.
 // constant defined in LynxContext.m
@@ -1460,8 +1460,9 @@ extern NSString* const kDefaultComponentID;
                   smooth:(bool)smooth
                scrolling:(bool)scrolling {
   LynxUI* ui = [self findUIBySign:containerID];
-  if ([ui isKindOfClass:LynxUIListContainer.class]) {
-    LynxUIListContainer* list = (LynxUIListContainer*)ui;
+  // Keep list-container compatibility without requiring its concrete UI subclass.
+  if (LynxIsListContainerUI(ui)) {
+    id<LynxListContainerInternal> list = (id<LynxListContainerInternal>)ui;
     [list updateScrollInfoWithEstimatedOffset:estimatedOffset smooth:smooth scrolling:scrolling];
   }
 }
@@ -1469,10 +1470,9 @@ extern NSString* const kDefaultComponentID;
 - (void)insertListComponent:(NSInteger)listSign componentSign:(NSInteger)componentSign {
   LynxUI* child = _uiHolder[[NSNumber numberWithInteger:componentSign]];
   LynxUI* list = _uiHolder[[NSNumber numberWithInteger:listSign]];
-  if ([child isKindOfClass:LynxUIComponent.class] &&
-      [list isKindOfClass:LynxUIListContainer.class]) {
+  if ([child isKindOfClass:LynxUIComponent.class] && LynxIsListContainerUI(list)) {
     LynxUIComponent* component = (LynxUIComponent*)child;
-    LynxUIListContainer* listContainer = (LynxUIListContainer*)list;
+    id<LynxListContainerInternal> listContainer = (id<LynxListContainerInternal>)list;
     [listContainer insertListComponent:component];
   }
 }
@@ -1480,10 +1480,9 @@ extern NSString* const kDefaultComponentID;
 - (void)removeListComponent:(NSInteger)listSign componentSign:(NSInteger)componentSign {
   LynxUI* child = _uiHolder[[NSNumber numberWithInteger:componentSign]];
   LynxUI* list = _uiHolder[[NSNumber numberWithInteger:listSign]];
-  if ([child isKindOfClass:LynxUIComponent.class] &&
-      [list isKindOfClass:LynxUIListContainer.class]) {
+  if ([child isKindOfClass:LynxUIComponent.class] && LynxIsListContainerUI(list)) {
     LynxUIComponent* component = (LynxUIComponent*)child;
-    LynxUIListContainer* listContainer = (LynxUIListContainer*)list;
+    id<LynxListContainerInternal> listContainer = (id<LynxListContainerInternal>)list;
     [listContainer removeListComponent:component];
   }
 }
@@ -1493,8 +1492,8 @@ extern NSString* const kDefaultComponentID;
                                      deltaX:(float)deltaX
                                      deltaY:(float)deltaY {
   LynxUI* ui = [self findUIBySign:containerID];
-  if ([ui isKindOfClass:LynxUIListContainer.class]) {
-    LynxUIListContainer* listContainer = (LynxUIListContainer*)ui;
+  if (LynxIsListContainerUI(ui)) {
+    id<LynxListContainerInternal> listContainer = (id<LynxListContainerInternal>)ui;
     listContainer.needAdjustContentOffset = YES;
     listContainer.targetContentSize = contentSize;
     listContainer.targetDelta =
@@ -1506,8 +1505,7 @@ extern NSString* const kDefaultComponentID;
 - (void)listWillReuseNode:(NSInteger)sign withItemKey:(NSString*)itemKey {
   LynxUI* node = _uiHolder[[NSNumber numberWithInteger:sign]];
   if (node) {
-    if ([node.parent isKindOfClass:LynxUICollection.class] ||
-        [node.parent isKindOfClass:LynxUIListContainer.class]) {
+    if ([node.parent isKindOfClass:LynxUICollection.class] || LynxIsListContainerUI(node.parent)) {
       [node onListCellPrepareForReuse:itemKey withList:node.parent];
     }
   }
@@ -1515,14 +1513,14 @@ extern NSString* const kDefaultComponentID;
 
 - (void)listCellWillAppear:(NSInteger)sign withItemKey:(NSString*)itemKey {
   LynxUI* ui = _uiHolder[[NSNumber numberWithInteger:sign]];
-  if (ui && [ui.parent isKindOfClass:LynxUIListContainer.class]) {
+  if (ui && LynxIsListContainerUI(ui.parent)) {
     [ui onListCellAppear:itemKey withList:ui.parent];
   }
 }
 
 - (void)ListCellDisappear:(NSInteger)sign exist:(BOOL)isExist withItemKey:(NSString*)itemKey {
   LynxUI* ui = _uiHolder[[NSNumber numberWithInteger:sign]];
-  if (ui && [ui.parent isKindOfClass:LynxUIListContainer.class]) {
+  if (ui && LynxIsListContainerUI(ui.parent)) {
     [ui onListCellDisappear:itemKey exist:isExist withList:ui.parent];
   }
 }
