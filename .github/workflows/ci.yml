@@ -871,7 +871,7 @@ jobs:
     runs-on: lynx-darwin-15.6.1-medium
     env:
       LOCAL_POD_NAME: 'local_pod'
-      POD_VERSION: '0.0.1-alpha.1'
+      POD_VERSION: '0.0.1-alpha.1.${{ github.run_id }}.${{ github.run_attempt }}'
     steps:
       - name: Download Source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -938,6 +938,23 @@ jobs:
           pod install --repo-update
           rm -rf $GITHUB_WORKSPACE/lynx/*  # Prevent pods and header files from depending on local resources
           xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build
+      - name: Remove generated Pod caches
+        if: always()
+        run: |-
+          local_pod_repo="$HOME/.cocoapods/repos/$LOCAL_POD_NAME"
+          if [ ! -d "$local_pod_repo" ]; then
+            echo "Local pod repo does not exist; skipping cache cleanup: $local_pod_repo"
+            exit 0
+          fi
+
+          while IFS= read -r pod_name; do
+            echo "Cached versions to remove for $pod_name:"
+            pod cache list "$pod_name" --short || true
+            pod cache clean "$pod_name" --all || true
+          done < <(
+            find "$local_pod_repo" -type f -name '*.podspec.json' \
+              -exec basename {} .podspec.json \; | sort -u
+          )
 
   ios-e2e-test:
     timeout-minutes: 60
