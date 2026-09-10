@@ -259,7 +259,8 @@ void PlatformEventTargetExposure::AddCommonAncestorRectMap(
   }
   auto current = target->ParentTarget();
   while (current != nullptr && current->ParentTarget() != current) {
-    if (current->IsScrollable()) {
+    if (current->RendererHostSign() == current->Sign() &&
+        current->IsScrollContainer()) {
       int32_t sign = current->Sign();
       auto it = common_ancestor_rect_map_.find(sign);
       if (it != common_ancestor_rect_map_.end()) {

@@ -16,6 +16,7 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/memory/weak_ptr.h"
+#include "base/include/no_destructor.h"
 #include "base/include/vector.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
@@ -134,14 +135,15 @@ class PlatformEventTarget
   LynxEventPropStatus EnableExposureUIClip() const {
     return enable_exposure_ui_clip_;
   }
-  bool IsScrollable() const { return is_scroll_container_; }
   bool OverflowX() const { return overflow_x_; }
   bool OverflowY() const { return overflow_y_; }
   bool IsLayoutOnly() const { return is_layout_only_; }
   const gfx::Matrix44* Transform() const { return transform_.get(); }
   bool IsRoot() const { return sign_ == root_id_; }
   bool IsPageRoot() const { return IsRoot() && root_id_ == kRootId; }
-  const base::Vector<PlatformEventName>& EventSet() const { return event_set_; }
+  const base::Vector<PlatformEventName>& EventSet() const {
+    return GetOptionalValueOrDefault(event_set_);
+  }
   bool UserInteractionEnabled() const { return user_interaction_enabled_; }
   bool NativeInteractionEnabled() const { return native_interaction_enabled_; }
   float ExposureScreenMarginLeft() const {
@@ -159,10 +161,18 @@ class PlatformEventTarget
   float ExposureUIMarginTop() const { return exposure_ui_margin_top_; }
   float ExposureUIMarginBottom() const { return exposure_ui_margin_bottom_; }
   float ExposureAreaRatio() const { return exposure_area_ratio_; }
-  const std::string& IDSelector() const { return id_selector_; }
-  const std::string& ExposureId() const { return exposure_id_; }
-  const std::string& ExposureScene() const { return exposure_scene_; }
-  const lepus::Value& Dataset() const { return dataset_; }
+  const std::string& IDSelector() const {
+    return GetOptionalValueOrDefault(id_selector_);
+  }
+  const std::string& ExposureId() const {
+    return GetOptionalValueOrDefault(exposure_id_);
+  }
+  const std::string& ExposureScene() const {
+    return GetOptionalValueOrDefault(exposure_scene_);
+  }
+  const lepus::Value& Dataset() const {
+    return GetOptionalValueOrDefault(dataset_);
+  }
 
   void GetExposureTargetRect(float rect[4]) const;
   void GetExposureWindowRect(float rect[4]) const;
@@ -174,12 +184,14 @@ class PlatformEventTarget
     parent_ =
         parent ? parent->WeakFromThis() : fml::WeakPtr<PlatformEventTarget>();
   }
-  ChildrenTargetVec& ChildrenTargets() { return children_; }
+  const ChildrenTargetVec& ChildrenTargets() const {
+    return GetOptionalValueOrDefault(children_);
+  }
   void AddChildTarget(fml::RefPtr<PlatformEventTarget> child) {
     if (child == nullptr) {
       return;
     }
-    children_.push_back(child);
+    children_->push_back(child);
     child->SetParentTarget(fml::RefPtr<PlatformEventTarget>(this));
   }
 
@@ -209,7 +221,11 @@ class PlatformEventTarget
   LynxConsumeSlideDirection ConsumeSlideEvent() const;
 
   void SetEventSet(base::Vector<PlatformEventName> event_set) {
-    event_set_ = std::move(event_set);
+    if (event_set.empty()) {
+      event_set_.reset();
+      return;
+    }
+    *event_set_ = std::move(event_set);
   }
 
   void SetUserInteractionEnabled(bool enabled) {
@@ -244,12 +260,34 @@ class PlatformEventTarget
   void SetEnableExposureUIClip(LynxEventPropStatus value) {
     enable_exposure_ui_clip_ = value;
   }
-  void SetIDSelector(std::string value) { id_selector_ = std::move(value); }
-  void SetExposureId(std::string value) { exposure_id_ = std::move(value); }
-  void SetExposureScene(std::string value) {
-    exposure_scene_ = std::move(value);
+  void SetIDSelector(std::string value) {
+    if (value.empty()) {
+      id_selector_.reset();
+      return;
+    }
+    *id_selector_ = std::move(value);
   }
-  void SetDataset(lepus::Value dataset) { dataset_ = std::move(dataset); }
+  void SetExposureId(std::string value) {
+    if (value.empty()) {
+      exposure_id_.reset();
+      return;
+    }
+    *exposure_id_ = std::move(value);
+  }
+  void SetExposureScene(std::string value) {
+    if (value.empty()) {
+      exposure_scene_.reset();
+      return;
+    }
+    *exposure_scene_ = std::move(value);
+  }
+  void SetDataset(lepus::Value dataset) {
+    if (dataset.IsNil()) {
+      dataset_.reset();
+      return;
+    }
+    *dataset_ = std::move(dataset);
+  }
   void SetPlatformRendererType(PlatformRendererType type) {
     platform_renderer_type_ = type;
   }
@@ -266,7 +304,11 @@ class PlatformEventTarget
   void SetEventThrough(LynxEventPropStatus value) { event_through_ = value; }
   void SetEventThroughActiveRegions(
       std::vector<EventThroughRegion> event_through_active_regions) {
-    event_through_active_regions_ = std::move(event_through_active_regions);
+    if (event_through_active_regions.empty()) {
+      event_through_active_regions_.reset();
+      return;
+    }
+    *event_through_active_regions_ = std::move(event_through_active_regions);
   }
   void SetEventsPassThrough(LynxEventPropStatus value) {
     events_pass_through_ = value;
@@ -277,6 +319,16 @@ class PlatformEventTarget
   }
 
  private:
+  template <typename T>
+  static const T& GetOptionalValueOrDefault(
+      const base::auto_create_optional<T>& value) {
+    if (value) {
+      return *value;
+    }
+    static const base::NoDestructor<T> empty;
+    return *empty;
+  }
+
   void UpdateScrollOffsetIfNeeded();
   bool EventThroughInternal(float point[2],
                             const PlatformEventThroughConfig& config) const;
@@ -308,7 +360,7 @@ class PlatformEventTarget
   float scroll_offset_y_{0.f};
   float offset_x_for_calc_position_{0.f};
   float offset_y_for_calc_position_{0.f};
-  base::Vector<PlatformEventName> event_set_;
+  base::auto_create_optional<base::Vector<PlatformEventName>> event_set_;
   bool user_interaction_enabled_{true};
   bool native_interaction_enabled_{true};
   float exposure_screen_margin_left_{0.f};
@@ -324,16 +376,17 @@ class PlatformEventTarget
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus events_pass_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
-  std::vector<EventThroughRegion> event_through_active_regions_;
+  base::auto_create_optional<std::vector<EventThroughRegion>>
+      event_through_active_regions_;
   base::auto_create_optional<base::Vector<HitTestRegion>> hit_test_regions_;
-  std::string id_selector_;
-  std::string exposure_id_;
-  std::string exposure_scene_;
-  lepus::Value dataset_;
+  base::auto_create_optional<std::string> id_selector_;
+  base::auto_create_optional<std::string> exposure_id_;
+  base::auto_create_optional<std::string> exposure_scene_;
+  base::auto_create_optional<lepus::Value> dataset_;
 
   // event/expose target tree
   fml::WeakPtr<PlatformEventTarget> parent_;
-  ChildrenTargetVec children_;
+  base::auto_create_optional<ChildrenTargetVec> children_;
   PlatformEventTargetHelper* target_helper_{nullptr};
 };
 

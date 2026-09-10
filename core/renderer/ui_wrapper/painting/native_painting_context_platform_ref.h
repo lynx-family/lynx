@@ -170,6 +170,12 @@ class NativePaintingCtxPlatformRef
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
  protected:
+  // Query on the platform thread. Returns content, padding, border and margin
+  // quads with the root's platform position, or an empty result when
+  // unavailable. Called by the Android and iOS GetTransformValue overrides.
+  std::vector<float> GetTransformValueForEventTarget(
+      int32_t sign, const std::vector<float> &offsets);
+
   virtual void NotifyNodeReady(const std::vector<int32_t> &) {}
 
   bool TryInvokePlatformRendererUIMethod(

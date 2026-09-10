@@ -80,6 +80,13 @@ class PaintingCtxPlatformRef {
   virtual void MarkUIOperationQueueFlushForRecreateEngine(bool enable) {}
 
   virtual bool IsNativePaintingCtxPlatformRef() { return false; }
+
+  // Called on the UI thread. Returns content, padding, border and margin quads
+  // in screen coordinates, or an empty result when unavailable.
+  virtual std::vector<float> GetTransformValue(
+      int32_t sign, const std::vector<float>& offsets) {
+    return {};
+  }
 };
 
 struct PaintingCtxPlatformImplConfig {
