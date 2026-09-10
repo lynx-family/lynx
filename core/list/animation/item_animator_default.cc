@@ -5,6 +5,7 @@
 #include "core/list/animation/item_animator_default.h"
 
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
@@ -78,7 +79,6 @@ bool ItemAnimatorDefault::AnimateChangeImpl(
 void ItemAnimatorDefault::RunPendingAnimations() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ITEM_ANIMATOR_DEFAULT_RUN_PENDING_ANIMATIONS);
-
   if (!has_pending_animations()) {
     // An empty pending set still completes synchronously so AnimationManager
     // can finish the transaction and recycle deferred ItemHolders.
@@ -95,23 +95,67 @@ void ItemAnimatorDefault::RunPendingAnimations() {
   pending_moves.swap(pending_moves_);
   pending_changes.swap(pending_changes_);
 
-  const bool has_pending_removals = !pending_removals.empty();
-  const bool has_pending_moves = !pending_moves.empty();
-  const bool has_pending_changes = !pending_changes.empty();
-  int32_t move_change_delay = 0;
-  int32_t move_duration = 0;
-  int32_t change_duration = 0;
-  if (has_pending_removals) {
-    move_change_delay = std::max(0, remove_duration_ms());
+  // Discard expired targets; only types with live targets contribute to stage
+  // timing.
+  const auto remove_invalid_targets = [](auto& pending) {
+    pending.erase(std::remove_if(pending.begin(), pending.end(),
+                                 [](const auto& info) { return !info.target; }),
+                  pending.end());
+  };
+  remove_invalid_targets(pending_removals);
+  remove_invalid_targets(pending_moves);
+  remove_invalid_targets(pending_changes);
+  remove_invalid_targets(pending_adds);
+
+  // Initialize per-type state.
+  animation_type_states_ = {
+      {ItemAnimationType::kDisappearance, {}},
+      {ItemAnimationType::kPersistence, {}},
+      {ItemAnimationType::kChange, {}},
+      {ItemAnimationType::kAppearance, {}},
+  };
+
+  // No running records exist yet; use local pending queues to determine stage
+  // participation.
+  const auto has_pending_target = [&pending_removals, &pending_moves,
+                                   &pending_changes,
+                                   &pending_adds](ItemAnimationType type) {
+    switch (type) {
+      case ItemAnimationType::kDisappearance:
+        return !pending_removals.empty();
+      case ItemAnimationType::kPersistence:
+        return !pending_moves.empty();
+      case ItemAnimationType::kChange:
+        return !pending_changes.empty();
+      case ItemAnimationType::kAppearance:
+        return !pending_adds.empty();
+      default:
+        return false;
+    }
+  };
+  // Entries share a stage delay; the next stage waits for the longest
+  // participating animation.
+  // Stages without targets add no delay, avoiding a removal wait for add-only
+  // batches.
+  int64_t stage_delay_ms = 0;
+  for (const auto& animation_stage : animation_stages()) {
+    // animation_stage, eg:
+    // {animations:['move', 'add'], durations: [100, 200]}
+    int32_t stage_duration_ms = 0;
+    for (const auto& entry : animation_stage) {
+      if (!has_pending_target(entry.type)) {
+        continue;
+      }
+      auto& animation_type_state = animation_type_states_.at(entry.type);
+      animation_type_state.delay_ms = static_cast<int32_t>(stage_delay_ms);
+      animation_type_state.duration_ms =
+          std::max<int32_t>(0, entry.duration_ms);
+      stage_duration_ms =
+          std::max(stage_duration_ms, animation_type_state.duration_ms);
+    }
+    stage_delay_ms = std::min<int64_t>(std::numeric_limits<int32_t>::max(),
+                                       stage_delay_ms + stage_duration_ms);
   }
-  if (has_pending_moves) {
-    move_duration = std::max(0, move_duration_ms());
-  }
-  if (has_pending_changes) {
-    change_duration = std::max(0, change_duration_ms());
-  }
-  int32_t add_delay =
-      move_change_delay + std::max(move_duration, change_duration);
 
   {
     // Start() can complete a zero-duration animation synchronously. Defer the
@@ -119,16 +163,16 @@ void ItemAnimatorDefault::RunPendingAnimations() {
     // chance to start.
     in_starting_animations_ = true;
     for (const PendingAnimationInfo& info : pending_removals) {
-      StartRemoveAnimation(info, 0);
+      StartRemoveAnimation(info);
     }
     for (const PendingAnimationInfo& info : pending_moves) {
-      StartMoveAnimation(info, move_change_delay);
+      StartMoveAnimation(info);
     }
     for (const PendingAnimationInfo& info : pending_changes) {
-      StartChangeAnimation(info, move_change_delay);
+      StartChangeAnimation(info);
     }
     for (const PendingAnimationInfo& info : pending_adds) {
-      StartAddAnimation(info, add_delay);
+      StartAddAnimation(info);
     }
     in_starting_animations_ = false;
   }
@@ -228,39 +272,33 @@ void ItemAnimatorDefault::CancelAnimations(bool destroy) {
   in_cancelling_animations_ = false;
 }
 
-/*
- * Remove currently has zero delay. Before starting it, write the initial
- * visible state into the batch's deferred flush. LynxBasicAnimator::Start()
- * processes a dummy frame synchronously. When duration is positive and delay
- * is zero, the custom callback writes the same progress=0 state again. Both
- * writes occur while in_starting_animations_ is true and do not flush
- * individually. With zero duration, the dummy frame evaluates the final state
- * directly and may complete the animation inside Start().
- */
-void ItemAnimatorDefault::StartRemoveAnimation(const PendingAnimationInfo& info,
-                                               int32_t delay_ms) {
+void ItemAnimatorDefault::StartRemoveAnimation(
+    const PendingAnimationInfo& info) {
+  const auto& state =
+      animation_type_states_.at(ItemAnimationType::kDisappearance);
   StartAnimation(
       RunningAnimation{
           .type = ItemAnimationType::kDisappearance,
           .target = info.target,
           .pre_layout_info = info.pre_layout_info,
       },
-      remove_duration_ms(), delay_ms);
+      state.duration_ms, state.delay_ms);
 }
 
-void ItemAnimatorDefault::StartAddAnimation(const PendingAnimationInfo& info,
-                                            int32_t delay_ms) {
+void ItemAnimatorDefault::StartAddAnimation(const PendingAnimationInfo& info) {
+  const auto& state = animation_type_states_.at(ItemAnimationType::kAppearance);
   StartAnimation(
       RunningAnimation{
           .type = ItemAnimationType::kAppearance,
           .target = info.target,
           .post_layout_info = info.post_layout_info,
       },
-      add_duration_ms(), delay_ms);
+      state.duration_ms, state.delay_ms);
 }
 
-void ItemAnimatorDefault::StartMoveAnimation(const PendingAnimationInfo& info,
-                                             int32_t delay_ms) {
+void ItemAnimatorDefault::StartMoveAnimation(const PendingAnimationInfo& info) {
+  const auto& state =
+      animation_type_states_.at(ItemAnimationType::kPersistence);
   StartAnimation(
       RunningAnimation{
           .type = ItemAnimationType::kPersistence,
@@ -268,7 +306,7 @@ void ItemAnimatorDefault::StartMoveAnimation(const PendingAnimationInfo& info,
           .pre_layout_info = info.pre_layout_info,
           .post_layout_info = info.post_layout_info,
       },
-      move_duration_ms(), delay_ms);
+      state.duration_ms, state.delay_ms);
 }
 
 void ItemAnimatorDefault::StartAnimation(RunningAnimation animation,

@@ -6,6 +6,7 @@
 #define CORE_LIST_DECOUPLED_LIST_CONTAINER_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -133,6 +134,12 @@ class ListContainerImpl : public ContainerDelegate {
   AnimationManager* animation_manager() const {
     return animation_manager_.get();
   }
+  bool use_new_update_animation() const {
+    return use_new_update_animation_.value_or(false);
+  }
+  bool has_completed_first_layout() const {
+    return has_completed_first_layout_;
+  }
 
  protected:
   // Currently, the list container does not copy any member variables and is an
@@ -177,6 +184,16 @@ class ListContainerImpl : public ContainerDelegate {
   bool need_preload_section_on_next_frame_{false};
   bool enable_parallel_element_{false};
   bool enable_batch_render_{false};
+  bool has_completed_first_layout_{false};
+  // The optional distinguishes an undecided selection from a locked boolean.
+  // The first explicit property value selects the pipeline; if the property is
+  // absent, the first PropsUpdateFinish permanently selects false.
+  std::optional<bool> use_new_update_animation_{std::nullopt};
+  // The most recently parsed complete configuration, pending delivery to
+  // AnimationManager from PropsUpdateFinish. The new pipeline clears it after
+  // applying it so a later property update can provide another configuration.
+  std::optional<UpdateAnimationConfig> new_update_animation_config_{
+      std::nullopt};
   std::unique_ptr<AnimationManager> animation_manager_;
   ListAdapterDiffResult animation_diff_result_{ListAdapterDiffResult::kNone};
   std::shared_ptr<pub::PubValueFactory> value_factory_;

@@ -78,12 +78,25 @@ class ItemAnimatorDefaultTest : public ::testing::Test {
     item_animator_->SetListener(&listener_);
   }
 
-  void SetAnimationDurations(int32_t add_duration_ms,
-                             int32_t remove_duration_ms,
-                             int32_t move_duration_ms) {
-    item_animator_->SetAddDuration(add_duration_ms);
-    item_animator_->SetRemoveDuration(remove_duration_ms);
-    item_animator_->SetMoveDuration(move_duration_ms);
+  // Prepare three targets; move uses POST logical geometry while animation
+  // controls presentation.
+  void PreparePendingAnimations(MockAnimationTarget& remove,
+                                MockAnimationTarget& move,
+                                MockAnimationTarget& add) {
+    remove.SetAnimationLayout(0, 0.f, 0.f, 10.f, 10.f);
+    move.SetAnimationLayout(1, 0.f, 20.f, 10.f, 10.f);
+    auto move_pre = item_animator_->GetPreItemLayoutInfo(&move);
+    move.SetAnimationLayout(1, 100.f, 20.f, 10.f, 10.f);
+    add.SetAnimationLayout(2, 0.f, 40.f, 10.f, 10.f);
+    remove.PrepareForAnimation(ItemAnimationType::kDisappearance);
+    move.PrepareForAnimation(ItemAnimationType::kPersistence);
+    add.PrepareForAnimation(ItemAnimationType::kAppearance);
+    ASSERT_TRUE(item_animator_->AnimateAppearance(
+        &add, item_animator_->GetPostItemLayoutInfo(&add)));
+    ASSERT_TRUE(item_animator_->AnimatePersistence(
+        &move, move_pre, item_animator_->GetPostItemLayoutInfo(&move)));
+    ASSERT_TRUE(item_animator_->AnimateDisappearance(
+        &remove, item_animator_->GetPreItemLayoutInfo(&remove)));
   }
 
   void EstablishAnimationClock() {
@@ -236,8 +249,11 @@ TEST_F(ItemAnimatorDefaultTest, FinishesEmptyBatchSynchronously) {
 // Verifies the running records created from a mixed pending batch.
 TEST_F(ItemAnimatorDefaultTest,
        TracksMixedAnimationsAfterRunPendingAnimations) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, kAnimationDurationMs}},
+      {{ItemAnimationType::kPersistence, kAnimationDurationMs},
+       {ItemAnimationType::kAppearance, kAnimationDurationMs}},
+  });
 
   MockAnimationTarget remove_target("remove");
   remove_target.SetAnimationLayout(0, 10.f, 20.f, 30.f, 40.f);
@@ -312,8 +328,9 @@ TEST_F(ItemAnimatorDefaultTest,
 
 // Verifies that Appearance interpolates opacity from 0 to 1.
 TEST_F(ItemAnimatorDefaultTest, RunsAppearanceAnimationFrames) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kAppearance, kAnimationDurationMs}},
+  });
   MockAnimationTarget target("add");
   target.SetAnimationLayout(0, 100.f, 200.f, 30.f, 40.f);
   ItemLayoutInfo post_layout_info =
@@ -365,8 +382,9 @@ TEST_F(ItemAnimatorDefaultTest, RunsAppearanceAnimationFrames) {
 
 // Verifies that Disappearance interpolates opacity from 1 to 0.
 TEST_F(ItemAnimatorDefaultTest, RunsDisappearanceAnimationFrames) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, kAnimationDurationMs}},
+  });
   MockAnimationTarget target("remove");
   target.SetAnimationLayout(0, 10.f, 20.f, 30.f, 40.f);
   ItemLayoutInfo pre_layout_info =
@@ -419,8 +437,9 @@ TEST_F(ItemAnimatorDefaultTest, RunsDisappearanceAnimationFrames) {
 // Verifies that Persistence interpolates presentation position from PRE to
 // POST without changing the target's logical position.
 TEST_F(ItemAnimatorDefaultTest, RunsPersistenceAnimationFrames) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kPersistence, kAnimationDurationMs}},
+  });
   MockAnimationTarget target("move");
 
   target.SetAnimationLayout(0, 10.f, 20.f, 30.f, 40.f);
@@ -482,13 +501,18 @@ TEST_F(ItemAnimatorDefaultTest, RunsPersistenceAnimationFrames) {
   EXPECT_EQ(listener_.finished_count(), 1);
 }
 
-// Verifies that delays arrange a mixed batch's effective intervals as
-// Remove -> Move -> Add.
+// Verify that explicit stages run remove, move, then add regardless of enqueue
+// order.
 TEST_F(ItemAnimatorDefaultTest, RunsRemoveMoveAndAddInOrder) {
   constexpr int32_t kRemoveDurationMs = 100;
   constexpr int32_t kMoveDurationMs = 200;
   constexpr int32_t kAddDurationMs = 100;
-  SetAnimationDurations(kAddDurationMs, kRemoveDurationMs, kMoveDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, kRemoveDurationMs}},
+      {{ItemAnimationType::kPersistence, kMoveDurationMs},
+       {ItemAnimationType::kChange, kMoveDurationMs}},
+      {{ItemAnimationType::kAppearance, kAddDurationMs}},
+  });
 
   MockAnimationTarget remove_target("remove");
   remove_target.SetAnimationLayout(0, 0.f, 0.f, 10.f, 10.f);
@@ -581,10 +605,155 @@ TEST_F(ItemAnimatorDefaultTest, RunsRemoveMoveAndAddInOrder) {
   EXPECT_EQ(listener_.finished_count(), 1);
 }
 
+// Verify that removal runs first, then move and add start together with
+// independent durations.
+TEST_F(ItemAnimatorDefaultTest,
+       RunsConfiguredMoveAndAddConcurrentlyAfterRemove) {
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, 100}},
+      {{ItemAnimationType::kPersistence, 200},
+       {ItemAnimationType::kAppearance, 100}},
+  });
+  MockAnimationTarget remove("remove"), move("move"), add("add");
+  PreparePendingAnimations(remove, move, add);
+  item_animator_->RunPendingAnimations();
+  EstablishAnimationClock();
+
+  // 1. Only removal advances in stage one; other targets retain their initial
+  // state.
+  TriggerFrameAfter(50);
+  EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 0.5f);
+  EXPECT_FLOAT_EQ(move.position_updates().back().left, 0.f);
+  EXPECT_FLOAT_EQ(add.opacity_updates().back().opacity, 0.f);
+
+  // 2. Move and add advance together after removal finishes.
+  TriggerFrameAfter(150);
+  EXPECT_EQ(remove.finish_animation_count(), 1);
+  EXPECT_GT(move.position_updates().back().left, 0.f);
+  EXPECT_LT(move.position_updates().back().left, 100.f);
+  EXPECT_FLOAT_EQ(add.opacity_updates().back().opacity, 0.5f);
+
+  // 3. The shorter add finishes first; batch completion waits for the longer
+  // move.
+  TriggerFrameAfter(200);
+  EXPECT_EQ(add.finish_animation_count(), 1);
+  EXPECT_EQ(move.finish_animation_count(), 0);
+  EXPECT_EQ(listener_.finished_count(), 0);
+  TriggerFrameAfter(300);
+  EXPECT_FLOAT_EQ(move.position_updates().back().left, 100.f);
+  EXPECT_EQ(move.finish_animation_count(), 1);
+  EXPECT_EQ(listener_.finished_count(), 1);
+}
+
+// Verify delayed removal and stage timing based on the longest participating
+// animation.
+TEST_F(ItemAnimatorDefaultTest,
+       DelaysRemoveUntilLongestConcurrentAnimationEnds) {
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kPersistence, 100},
+       {ItemAnimationType::kAppearance, 200},
+       {ItemAnimationType::kChange, 1000}},
+      {{ItemAnimationType::kDisappearance, 100}},
+  });
+  MockAnimationTarget remove("remove"), move("move"), add("add");
+  PreparePendingAnimations(remove, move, add);
+  item_animator_->RunPendingAnimations();
+  EstablishAnimationClock();
+
+  // 1. Delayed removal stays visible; finishing move does not start removal
+  // early.
+  TriggerFrameAfter(100);
+  EXPECT_EQ(move.finish_animation_count(), 1);
+  EXPECT_FLOAT_EQ(add.opacity_updates().back().opacity, 0.5f);
+  EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 1.f);
+  EXPECT_EQ(remove.finish_animation_count(), 0);
+
+  // 2. The 200ms add sets the stage boundary; change adds no 1000ms wait
+  // without a target.
+  TriggerFrameAfter(200);
+  EXPECT_EQ(add.finish_animation_count(), 1);
+  EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 1.f);
+  TriggerFrameAfter(250);
+  EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 0.5f);
+  EXPECT_EQ(listener_.finished_count(), 0);
+  TriggerFrameAfter(300);
+  EXPECT_EQ(remove.finish_animation_count(), 1);
+  EXPECT_EQ(listener_.finished_count(), 1);
+}
+
+// Verify that a later zero-duration stage waits for its delay before completing
+// synchronously.
+TEST_F(ItemAnimatorDefaultTest, ZeroDurationStageWaitsForItsPredecessor) {
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kAppearance, 100}},
+      {{ItemAnimationType::kDisappearance, 0},
+       {ItemAnimationType::kPersistence, 0},
+       {ItemAnimationType::kChange, 0}},
+  });
+  MockAnimationTarget remove("remove"), move("move"), add("add");
+  PreparePendingAnimations(remove, move, add);
+  item_animator_->RunPendingAnimations();
+  EstablishAnimationClock();
+  TriggerFrameAfter(50);
+  EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 1.f);
+  EXPECT_FLOAT_EQ(move.position_updates().back().left, 0.f);
+  EXPECT_EQ(remove.finish_animation_count(), 0);
+  EXPECT_EQ(move.finish_animation_count(), 0);
+  EXPECT_EQ(listener_.finished_count(), 0);
+
+  // All three targets finish at 100ms, with one batch-completion notification.
+  TriggerFrameAfter(100);
+  EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 0.f);
+  EXPECT_FLOAT_EQ(move.position_updates().back().left, 100.f);
+  EXPECT_EQ(remove.finish_animation_count(), 1);
+  EXPECT_EQ(move.finish_animation_count(), 1);
+  EXPECT_EQ(add.finish_animation_count(), 1);
+  EXPECT_EQ(listener_.finished_count(), 1);
+}
+
+// Verify cancellation clears active and delayed animations; later VSyncs do not
+// update targets.
+TEST_F(ItemAnimatorDefaultTest, CancelsActiveAndDelayedStagesTogether) {
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kAppearance, 100}},
+      {{ItemAnimationType::kPersistence, 200},
+       {ItemAnimationType::kDisappearance, 300},
+       {ItemAnimationType::kChange, 400}},
+  });
+  MockAnimationTarget remove("remove"), move("move"), add("add");
+  PreparePendingAnimations(remove, move, add);
+  item_animator_->RunPendingAnimations();
+  EstablishAnimationClock();
+  TriggerFrameAfter(50);
+  item_animator_->CancelAnimations(false);
+
+  // Cancellation restores final states without a normal batch-completion
+  // notification.
+  EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 0.f);
+  EXPECT_FLOAT_EQ(move.position_updates().back().left, 100.f);
+  EXPECT_FLOAT_EQ(add.opacity_updates().back().opacity, 1.f);
+  EXPECT_EQ(remove.finish_animation_count(), 1);
+  EXPECT_EQ(move.finish_animation_count(), 1);
+  EXPECT_EQ(add.finish_animation_count(), 1);
+  EXPECT_TRUE(item_animator_->running_animations_.empty());
+  EXPECT_EQ(listener_.finished_count(), 0);
+  const auto remove_updates = remove.opacity_updates().size();
+  const auto move_updates = move.position_updates().size();
+  const auto add_updates = add.opacity_updates().size();
+  TriggerFrameAfter(1000);
+  EXPECT_EQ(remove.opacity_updates().size(), remove_updates);
+  EXPECT_EQ(move.position_updates().size(), move_updates);
+  EXPECT_EQ(add.opacity_updates().size(), add_updates);
+}
+
 // Verifies that a zero-duration mixed batch completes synchronously and emits
 // one batch-completion notification.
 TEST_F(ItemAnimatorDefaultTest, CompletesZeroDurationBatchOnce) {
-  SetAnimationDurations(0, 0, 0);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, 0}},
+      {{ItemAnimationType::kPersistence, 0},
+       {ItemAnimationType::kAppearance, 0}},
+  });
 
   MockAnimationTarget remove_target("remove");
   remove_target.SetAnimationLayout(0, 0.f, 0.f, 10.f, 10.f);
@@ -702,8 +871,9 @@ TEST_F(ItemAnimatorDefaultTest, FinishesBatchWhenPendingTargetWasDestroyed) {
 // Verifies that normal cancellation restores a running animation's final state
 // synchronously without dispatching normal batch completion.
 TEST_F(ItemAnimatorDefaultTest, CancelsRunningAnimationAndRestoresFinalState) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kAppearance, kAnimationDurationMs}},
+  });
   MockAnimationTarget target("add");
   target.SetAnimationLayout(0, 100.f, 200.f, 30.f, 40.f);
   ItemLayoutInfo post_layout_info =
@@ -746,8 +916,9 @@ TEST_F(ItemAnimatorDefaultTest, CancelsRunningAnimationAndRestoresFinalState) {
 
 // Verifies that normal cancellation restores a running Remove to opacity=0.
 TEST_F(ItemAnimatorDefaultTest, CancelsRunningRemoveToTransparentFinalState) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, kAnimationDurationMs}},
+  });
   MockAnimationTarget target("remove");
   target.SetAnimationLayout(0, 10.f, 20.f, 30.f, 40.f);
   ItemLayoutInfo pre_layout_info =
@@ -775,8 +946,9 @@ TEST_F(ItemAnimatorDefaultTest, CancelsRunningRemoveToTransparentFinalState) {
 // Verifies that normal cancellation restores a running Move to the target's
 // latest logical position.
 TEST_F(ItemAnimatorDefaultTest, CancelsRunningMoveToLatestLogicalPosition) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kPersistence, kAnimationDurationMs}},
+  });
   MockAnimationTarget target("move");
   target.SetAnimationLayout(0, 10.f, 20.f, 30.f, 40.f);
   ItemLayoutInfo pre_layout_info =
@@ -812,8 +984,9 @@ TEST_F(ItemAnimatorDefaultTest, CancelsRunningMoveToLatestLogicalPosition) {
 
 // Verifies that teardown cancellation does not access running targets.
 TEST_F(ItemAnimatorDefaultTest, DestroyCancellationSkipsRunningTargetCleanup) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kPersistence, kAnimationDurationMs}},
+  });
   MockAnimationTarget target("move");
   target.SetAnimationLayout(0, 10.f, 20.f, 30.f, 40.f);
   ItemLayoutInfo pre_layout_info =
@@ -854,8 +1027,11 @@ TEST_F(ItemAnimatorDefaultTest, DestroyCancellationSkipsRunningTargetCleanup) {
 // Verifies that relayout invalidation considers only the position endpoint of
 // a running Move animation.
 TEST_F(ItemAnimatorDefaultTest, DetectsOnlyInvalidatedMoveEndpoint) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, kAnimationDurationMs}},
+      {{ItemAnimationType::kPersistence, kAnimationDurationMs},
+       {ItemAnimationType::kAppearance, kAnimationDurationMs}},
+  });
 
   MockAnimationTarget remove_target("remove");
   remove_target.SetAnimationLayout(0, 0.f, 0.f, 10.f, 10.f);
@@ -925,8 +1101,9 @@ TEST_F(ItemAnimatorDefaultTest, DetectsOnlyInvalidatedMoveEndpoint) {
 
 // Verifies that an expired running target does not prevent batch completion.
 TEST_F(ItemAnimatorDefaultTest, FinishesBatchAfterRunningTargetIsDestroyed) {
-  SetAnimationDurations(kAnimationDurationMs, kAnimationDurationMs,
-                        kAnimationDurationMs);
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kAppearance, kAnimationDurationMs}},
+  });
   auto target = std::make_unique<MockAnimationTarget>("add");
   target->SetAnimationLayout(0, 100.f, 200.f, 30.f, 40.f);
   ItemLayoutInfo post_layout_info =
