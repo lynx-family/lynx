@@ -19,6 +19,10 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
  public:
   DevToolPlatformAndroid(JNIEnv* env, jobject owner);
 
+  void SetPaintingContextRef(
+      const std::shared_ptr<tasm::PaintingCtxPlatformRef>& platform_ref)
+      override;
+
   std::string GetDebugInfoByUrl(const std::string& url) override;
   void ScrollIntoView(int node_id) override;
   int FindNodeIdForLocation(float x, float y,

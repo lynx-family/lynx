@@ -392,6 +392,11 @@ void PlatformEventTargetHelper::RefreshScrollOffsets(
 void PlatformEventTargetHelper::ClearEventTargets() {
   event_targets_.clear();
   event_target_trees_.clear();
+  scroll_container_cache_.clear();
+}
+
+void PlatformEventTargetHelper::InvalidateScrollContainerCache(int32_t sign) {
+  scroll_container_cache_.erase(sign);
 }
 
 void PlatformEventTargetHelper::RemoveEventTargetsInEventRoot(int32_t root_id) {
@@ -489,9 +494,17 @@ bool PlatformEventTargetHelper::IsScrollContainer(PlatformRendererType type,
     case PlatformRendererType::kScroll:
     case PlatformRendererType::kList:
       return true;
-    case PlatformRendererType::kExtended:
-      return platform_ref_ != nullptr &&
-             platform_ref_->IsPlatformRendererScrollable(sign);
+    case PlatformRendererType::kExtended: {
+      if (auto it = scroll_container_cache_.find(sign);
+          it != scroll_container_cache_.end()) {
+        return it->second;
+      }
+      const bool is_scroll_container =
+          platform_ref_ != nullptr &&
+          platform_ref_->IsPlatformRendererScrollable(sign);
+      scroll_container_cache_.emplace(sign, is_scroll_container);
+      return is_scroll_container;
+    }
     default:
       return false;
   }
@@ -540,7 +553,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         const auto& begin = item.payload.begin;
         const int sign = begin.id;
         const auto type = static_cast<PlatformRendererType>(begin.type);
-        auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
+        const auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
             this, tree_root_id, sign, begin.x, begin.y, begin.w, begin.h);
         event_target->SetRendererHostSign(page_renderer->GetId());
         event_target->SetPlatformRendererType(type);
@@ -549,7 +562,7 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         event_target->SetLayoutOnly(begin.is_layout_only != 0);
         ApplyEventBundle(event_target,
                          platform_ref_->GetPlatformEventBundle(sign));
-        event_targets_[sign] = event_target;
+        event_targets_.insert_or_assign(sign, event_target);
         if (type == PlatformRendererType::kText &&
             platform_ref_->GetTextEventTargetRanges(sign) != nullptr) {
           AppendInlineTextEventTargets(event_target);
@@ -675,7 +688,7 @@ void PlatformEventTargetHelper::AppendInlineTextEventTargets(
     }
     target->SetRendererHostSign(text_target->RendererHostSign());
     target->SetPlatformRendererType(PlatformRendererType::kText);
-    event_targets_[region.sign] = target;
+    event_targets_.insert_or_assign(region.sign, std::as_const(target));
     text_target->AddChildTarget(std::move(target));
   }
 }
@@ -734,8 +747,6 @@ void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
   auto current_descendant = descendant;
   while (current_descendant != nullptr && current_descendant->ParentTarget() &&
          current_descendant != ancestor) {
-    res[0] += current_descendant->ScrollOffsetX();
-    res[1] += current_descendant->ScrollOffsetY();
     res[0] += current_descendant->Left();
     res[1] += current_descendant->Top();
     res[0] -= current_descendant->OffsetXForCalcPosition();

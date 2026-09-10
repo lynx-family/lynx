@@ -459,6 +459,11 @@ int DevToolPlatformAndroid::SetUIStyle(int id, std::string name,
       env, ref.Get(), id, jni_name.Get(), jni_content.Get());
 }
 
+void DevToolPlatformAndroid::SetPaintingContextRef(
+    const std::shared_ptr<tasm::PaintingCtxPlatformRef>& platform_ref) {
+  SetNativePaintingContextRef(platform_ref);
+}
+
 bool DevToolPlatformAndroid::SupportsOverlayBoxModel() const { return true; }
 
 std::vector<float> DevToolPlatformAndroid::GetTransformValue(

@@ -2,7 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxUI+Fluency.h>
 #import <objc/runtime.h>
@@ -24,7 +23,7 @@
                                                     tagName:self.tagName
                                        scrollMonitorTagName:self.scrollMonitorTagName];
   info.selector = selector;
-  info.lynxView = self.context.rootUI.rootView;
+  info.lynxView = self.context.rootView;
   return info;
 }
 

@@ -317,6 +317,7 @@ class LynxDevToolMediator
   // thread.
   std::shared_ptr<NativeModuleRecordManager> native_module_record_manager_;
   std::weak_ptr<LynxDevToolNG> devtool_wp_;
+  std::weak_ptr<tasm::PaintingCtxPlatformRef> painting_context_ref_;
   int view_id_{-1};
   bool fully_initialized_{false};
   bool attached_{false};

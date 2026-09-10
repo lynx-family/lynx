@@ -474,22 +474,28 @@ bool PlatformEventHandler::CanRespondTap(
 void PlatformEventHandler::ActivePseudoStatus() {
   auto current = GetEventTarget(first_target_sign_);
   while (current && current->ParentTarget() != current) {
-    const auto sign = current->Sign();
-    event_target_chain_.push_back(sign);
-    current->OnPseudoStatusChanged(LynxPseudoStatus::kNone,
-                                   LynxPseudoStatus::kActive);
-    if (has_pointer_pseudo_) {
-      // update :active for target.
-      platform_ref_->UpdatePseudoStatusStatus(
-          current->Sign(), static_cast<uint32_t>(LynxPseudoStatus::kNone),
-          static_cast<uint32_t>(LynxPseudoStatus::kActive));
-    }
-    // Updating pseudo status can synchronously rebuild the event target tree.
-    current = GetEventTarget(sign);
-    if (!current || !current->TouchPseudoPropagation()) {
+    event_target_chain_.push_back(current->Sign());
+    if (!current->TouchPseudoPropagation()) {
       break;
     }
     current = current->ParentTarget();
+  }
+
+  // updating pseudo status can synchronously rebuild the event target tree, so
+  // capture the response chain before applying any updates.
+  for (auto sign : event_target_chain_) {
+    auto target = GetEventTarget(sign);
+    if (!target) {
+      continue;
+    }
+    target->OnPseudoStatusChanged(LynxPseudoStatus::kNone,
+                                  LynxPseudoStatus::kActive);
+    if (has_pointer_pseudo_) {
+      // update :active for target.
+      platform_ref_->UpdatePseudoStatusStatus(
+          sign, static_cast<uint32_t>(LynxPseudoStatus::kNone),
+          static_cast<uint32_t>(LynxPseudoStatus::kActive));
+    }
   }
 }
 

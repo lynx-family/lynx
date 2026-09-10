@@ -77,6 +77,24 @@ DevToolPlatformFacade::~DevToolPlatformFacade() {
   LOGI("~DevToolPlatformFacade this: " << this);
 }
 
+void DevToolPlatformFacade::SetNativePaintingContextRef(
+    const std::shared_ptr<tasm::PaintingCtxPlatformRef>& platform_ref) {
+  painting_context_ref_ = platform_ref;
+  uses_native_box_model_ =
+      platform_ref && platform_ref->IsNativePaintingCtxPlatformRef();
+}
+
+std::vector<float> DevToolPlatformFacade::GetTransformValueForBoxModel(
+    int identifier, const std::vector<float>& pad_border_margin_layout) {
+  if (uses_native_box_model_) {
+    auto platform_ref = painting_context_ref_.lock();
+    return platform_ref ? platform_ref->GetTransformValue(
+                              identifier, pad_border_margin_layout)
+                        : std::vector<float>{};
+  }
+  return GetTransformValue(identifier, pad_border_margin_layout);
+}
+
 void DevToolPlatformFacade::SendPageScreencastFrameEvent(
     const std::string& data, std::shared_ptr<ScreenMetadata> metadata) {
   auto ui_executor = inspector_ui_executor_wp_.lock();
@@ -198,12 +216,12 @@ std::vector<double> DevToolPlatformFacade::GetBoxModelInGeneralPlatform(
       pad_border_margin_layout[15] =
           static_cast<float>(transform_layout_obj.border_bound_height) -
           layout_only_y - static_cast<float>(layout_obj.border_bound_height);
-      trans =
-          GetTransformValue(query.transform_node.id, pad_border_margin_layout);
+      trans = GetTransformValueForBoxModel(query.transform_node.id,
+                                           pad_border_margin_layout);
     }
   } else {
-    trans =
-        GetTransformValue(query.transform_node.id, pad_border_margin_layout);
+    trans = GetTransformValueForBoxModel(query.transform_node.id,
+                                         pad_border_margin_layout);
   }
   for (float t : trans) {
     res.push_back(t);

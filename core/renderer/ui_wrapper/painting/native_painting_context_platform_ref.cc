@@ -133,6 +133,7 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
     it_child->second->RemoveFromParent();
     renderers_.erase(child);
   }
+  event_target_helper_->InvalidateScrollContainerCache(child);
   platform_event_bundles_.erase(child);
   text_event_target_ranges_.erase(child);
 }
@@ -481,8 +482,7 @@ bool NativePaintingCtxPlatformRef::EnsureEventTargetTreeForTarget(
   auto target = event_target_helper_->GetEventTarget(target_id);
   if (target != nullptr) {
     const auto root_id = target->RootId();
-    if (event_target_helper_->GetEventRootTree(root_id) == nullptr ||
-        IsEventTargetRootDirty(root_id)) {
+    if (root_id != kRootId) {
       EnsureEventTargetTree(root_id);
     }
     target = event_target_helper_->GetEventTarget(target_id);
@@ -498,6 +498,66 @@ bool NativePaintingCtxPlatformRef::EnsureEventTargetTreeForTarget(
     }
   }
   return event_target_helper_->GetEventTarget(target_id) != nullptr;
+}
+
+std::vector<float>
+NativePaintingCtxPlatformRef::GetTransformValueForEventTarget(
+    int32_t sign, const std::vector<float> &offsets) {
+  // Each inset group is ordered left, top, right, bottom.
+  constexpr size_t kPadding = 0;
+  constexpr size_t kBorder = 4;
+  constexpr size_t kMargin = 8;
+  constexpr size_t kLayout = 12;
+  if (offsets.size() != 16 || destroyed_.load(std::memory_order_acquire) ||
+      !EnsureEventTargetTreeForTarget(sign)) {
+    return {};
+  }
+  auto target = event_target_helper_->GetEventTarget(sign);
+  auto root = event_target_helper_->GetEventRootTree(target->RootId());
+  if (root == nullptr) {
+    return {};
+  }
+
+  const std::array<float, 4> border = {offsets[kLayout], offsets[kLayout + 1],
+                                       target->Width() - offsets[kLayout + 2],
+                                       target->Height() - offsets[kLayout + 3]};
+  const std::array<float, 4> padding = {
+      border[0] + offsets[kBorder], border[1] + offsets[kBorder + 1],
+      border[2] - offsets[kBorder + 2], border[3] - offsets[kBorder + 3]};
+  const std::array<std::array<float, 4>, 4> boxes = {{
+      {padding[0] + offsets[kPadding], padding[1] + offsets[kPadding + 1],
+       padding[2] - offsets[kPadding + 2], padding[3] - offsets[kPadding + 3]},
+      padding,
+      border,
+      {border[0] - offsets[kMargin], border[1] - offsets[kMargin + 1],
+       border[2] + offsets[kMargin + 2], border[3] + offsets[kMargin + 3]},
+  }};
+  std::vector<float> result(32);
+  for (size_t i = 0; i < boxes.size(); ++i) {
+    const auto &box = boxes[i];
+    float *quad = result.data() + i * 8;
+    // Preserve the transformed corners instead of their axis-aligned bounds.
+    quad[0] = box[0];
+    quad[1] = box[1];
+    quad[2] = box[2];
+    quad[3] = box[1];
+    quad[4] = box[2];
+    quad[5] = box[3];
+    quad[6] = box[0];
+    quad[7] = box[3];
+  }
+
+  // Use the helper's screen-coordinate semantics, reading the page root's
+  // platform position once for all corners.
+  float origin[2] = {0.f, 0.f};
+  event_target_helper_->GetRootViewLocationOnScreen(origin);
+  for (size_t i = 0; i < result.size(); i += 2) {
+    float *point = result.data() + i;
+    event_target_helper_->ConvertPointFromTargetToPageRootTarget(point, target,
+                                                                 point);
+    event_target_helper_->OffsetPoint(point, origin);
+  }
+  return result;
 }
 
 std::vector<int32_t>

@@ -15,20 +15,22 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 
 @class LynxRendererContext;
+@class UIView;
 
 namespace lynx {
 namespace tasm {
 
-// TODO: No methods need overriding for now; add overrides if needed in the
-// future
 class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
  public:
   explicit NativePaintingCtxPlatformDarwinRef(
       std::unique_ptr<PlatformRendererFactory> view_factory);
   ~NativePaintingCtxPlatformDarwinRef() override = default;
 
+  std::vector<float> GetTransformValue(int32_t sign, const std::vector<float>& offsets) override;
   void GetRootViewLocationOnScreen(float location[2]) override;
   void GetScreenSize(float size[2]) override;
+  void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;
+  bool IsPlatformRendererScrollable(int32_t sign) override;
   LynxRendererContext* GetRendererContext();
 
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
@@ -46,6 +48,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   void NotifyNodeReady(const std::vector<int32_t>& signs) override;
 
  private:
+  UIView* GetPlatformRendererView(int32_t sign);
   __weak LynxPerformanceController* perf_controller_;
 };
 

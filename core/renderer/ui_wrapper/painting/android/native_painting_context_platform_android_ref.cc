@@ -21,6 +21,11 @@ NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
 
 NativePaintingCtxAndroidRef::~NativePaintingCtxAndroidRef() { Destroy(); }
 
+std::vector<float> NativePaintingCtxAndroidRef::GetTransformValue(
+    int32_t sign, const std::vector<float>& offsets) {
+  return GetTransformValueForEventTarget(sign, offsets);
+}
+
 void NativePaintingCtxAndroidRef::GetRootViewLocationOnScreen(
     float location[2]) {
   if (location == nullptr) {

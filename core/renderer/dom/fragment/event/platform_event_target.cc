@@ -207,7 +207,8 @@ bool PlatformEventTarget::IsVisibleForExposure(
     }
     if (current->EnableExposureUIClip() == LynxEventPropStatus::kEnable ||
         (current->EnableExposureUIClip() == LynxEventPropStatus::kUndefined &&
-         current->IsScrollable()) ||
+         (current->RendererHostSign() == current->Sign() &&
+          current->IsScrollContainer())) ||
         current->IsRoot()) {
       parent_array.push_back(current);
       GetOrUpdateTargetScreenRect(common_ancestor_rect_map, current,
@@ -320,7 +321,7 @@ bool PlatformEventTarget::EventThroughInternal(
     is_event_through = config.enable_event_through;
   }
 
-  if (!event_through_active_regions_.empty()) {
+  if (event_through_active_regions_) {
     is_event_through = HitEventThroughActiveRegions(point) ? is_event_through
                                                            : !is_event_through;
   }
@@ -329,7 +330,7 @@ bool PlatformEventTarget::EventThroughInternal(
 }
 
 bool PlatformEventTarget::HitEventThroughActiveRegions(float point[2]) const {
-  for (const auto& region : event_through_active_regions_) {
+  for (const auto& region : *event_through_active_regions_) {
     const float left = ConvertEventThroughSizeValue(region[0], true);
     const float top = ConvertEventThroughSizeValue(region[1], false);
     const float right = left + ConvertEventThroughSizeValue(region[2], true);
