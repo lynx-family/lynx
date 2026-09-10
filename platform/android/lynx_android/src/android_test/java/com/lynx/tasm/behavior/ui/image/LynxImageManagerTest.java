@@ -4,12 +4,18 @@
 package com.lynx.tasm.behavior.ui.image;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.view.View;
+import androidx.test.annotation.UiThreadTest;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
+import com.lynx.tasm.behavior.ui.LynxFlattenUI;
+import com.lynx.tasm.behavior.ui.UIParent;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.testing.base.TestingUtils;
@@ -28,6 +34,34 @@ public class LynxImageManagerTest {
 
   @After
   public void tearDown() {}
+
+  @Test
+  @UiThreadTest
+  public void imageInvalidationClearsFlattenedDrawCacheAndInvalidatesDrawParent() throws Exception {
+    LynxFlattenUI host = new LynxFlattenUI(mContext);
+    UIParent drawParent = mock(UIParent.class);
+    host.setDrawParent(drawParent);
+    Field cacheValid = LynxFlattenUI.class.getDeclaredField("mIsValidate");
+    cacheValid.setAccessible(true);
+    cacheValid.setBoolean(host, true);
+
+    LynxImageManager manager = new LynxImageManager(mContext);
+    manager.setRendererHost(host);
+    manager.invalidate();
+
+    assertFalse(cacheValid.getBoolean(host));
+    verify(drawParent).invalidate();
+  }
+
+  @Test
+  @UiThreadTest
+  public void imageInvalidationStillSupportsOrdinaryViews() {
+    View view = mock(View.class);
+    LynxImageManager manager = new LynxImageManager(mContext);
+    manager.setView(view);
+    manager.invalidate();
+    verify(view).invalidate();
+  }
 
   private BackgroundDrawable.RoundRectPath getRoundRectPath(LynxImageManager manager) {
     BackgroundDrawable.RoundRectPath path = null;

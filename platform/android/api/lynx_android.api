@@ -6046,6 +6046,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setLynxBaseUI(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setViewInfo(ViewInfo viewInfo);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setView(View view);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setRendererHost(IRendererHost rendererHost);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEventMask(int eventMask);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setFallbackSign(int sign);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.updatePropertiesInterval(ReadableMap props);
