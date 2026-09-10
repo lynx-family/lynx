@@ -261,6 +261,11 @@ void ListLayoutManager::RecycleOffScreenItemHolders() {
   }
 }
 
+void ListLayoutManager::RecycleRemovedItemHolders() {
+  ListAdapter* list_adapter = list_container_->list_adapter();
+  list_adapter->RecycleRemovedItemHolders();
+}
+
 // Update content size and content offset and flush to platform by invoking
 // ListContainer::UpdateContentOffsetAndSizeToPlatform().
 void ListLayoutManager::FlushContentSizeAndOffsetToPlatform(
@@ -308,6 +313,12 @@ void ListLayoutManager::FlushScrollInfoToPlatformIfNeeded() {
 void ListLayoutManager::OnPrepareForLayoutChildren() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               LIST_LAYOUT_MANAGER_PREPARE_FOR_LAYOUT_CHILDREN);
+  if (list_container_->use_new_update_animation()) {
+    // Every normal LayoutManager entry point passes through this hook. Before
+    // layout starts, the manager consumes the active transaction's PRE target
+    // snapshot; transaction state filters out repeated calls.
+    list_container_->animation_manager()->BeforeLayout();
+  }
   SetListLayoutInfoToAllItemHolders();
   list_container_->list_event_manager()->RecordVisibleItemIfNeeded(true);
 }
