@@ -11,7 +11,7 @@
     "top": {
       "__compat": {
         "description": "participates in setting the vertical position of a positioned element. It has no effect on non-positioned elements.",
-        "lynx_path": "docs/zh/api/css/properties/top",
+        "lynx_path": "api/css/properties/top",
         "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/top",
         "spec_url": [],
         "status": {

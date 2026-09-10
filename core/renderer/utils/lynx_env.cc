@@ -535,10 +535,6 @@ bool LynxEnv::EnableMultiTouch() {
   return GetBoolEnv(Key::ENABLE_MULTI_TOUCH, false);
 }
 
-bool LynxEnv::EnableNewIntersectionObserver() {
-  return GetBoolEnv(Key::ENABLE_NEW_INTERSECTION_OBSERVER, false);
-}
-
 bool LynxEnv::EnableParseIntFlex() {
   return GetBoolEnv(Key::ENABLE_PARSE_INT_FLEX, false);
 }
@@ -652,6 +648,10 @@ bool LynxEnv::EnableHarmonyGestureInterrupterUserData() {
 
 bool LynxEnv::EnableHarmonyTextCustomEmoji() {
   return GetBoolEnv(Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI, true);
+}
+
+bool LynxEnv::EnableHarmonyMessageLoopPromiseMicrotask() {
+  return GetBoolEnv(Key::ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK, false);
 }
 
 bool LynxEnv::EnableUnifyFixedBehavior() {

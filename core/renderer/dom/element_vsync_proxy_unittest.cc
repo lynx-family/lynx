@@ -14,6 +14,7 @@
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/starlight/types/nlength.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -29,6 +30,17 @@ namespace testing {
 namespace {
 
 constexpr int64_t kFrameDuration = 16;  // ms
+
+class CountingTickElement : public ViewElement {
+ public:
+  explicit CountingTickElement(ElementManager* manager) : ViewElement(manager) {
+    MarkAttached();
+  }
+
+  void TickElement(fml::TimePoint&) override { ++tick_count; }
+
+  int tick_count{0};
+};
 
 }  // namespace
 
@@ -76,6 +88,7 @@ class ElementVsyncProxyTest : public ::testing::Test {
     manager->SetConfig(config);
     vsync_monitor_ = std::make_shared<TestVSyncMonitor>();
     vsync_monitor_->BindToCurrentThread();
+    manager->vsync_monitor() = vsync_monitor_;
   }
 
   std::shared_ptr<ElementVsyncProxy> InitTestVSyncProxy() {
@@ -106,6 +119,43 @@ TEST_F(ElementVsyncProxyTest, TickAllElement) {
   test_vsync_proxy->set_preferred_fps("auto");
   auto time2 = fml::TimePoint::Now();
   test_vsync_proxy->TickAllElement(time2);
+}
+
+TEST_F(ElementVsyncProxyTest, StoppedPageIgnoresQueuedFrame) {
+  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
+  manager->RequestNextFrame(element.get());
+  vsync_monitor_->TriggerVsync();
+  ASSERT_EQ(element->tick_count, 1);
+
+  manager->RequestNextFrame(element.get());
+  manager->StopAnimationVsync();
+  // The page and its proxy are still alive when the queued callback runs.
+  vsync_monitor_->TriggerVsync();
+  EXPECT_EQ(element->tick_count, 1);
+
+  manager->RequestNextFrame(element.get());
+  vsync_monitor_->TriggerVsync();
+  EXPECT_EQ(element->tick_count, 1);
+}
+
+TEST_F(ElementVsyncProxyTest, StoppedPageCannotCreateAnimationVsync) {
+  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
+  manager->StopAnimationVsync();
+  manager->RequestNextFrame(element.get());
+  vsync_monitor_->TriggerVsync();
+  EXPECT_EQ(element->tick_count, 0);
+}
+
+TEST_F(ElementVsyncProxyTest, InvalidatedProxyCannotRequestNextFrame) {
+  auto proxy = InitTestVSyncProxy();
+  proxy->RequestNextFrame();
+  proxy->Invalidate();
+  manager.reset();
+
+  // A retained proxy must not dereference its former manager.
+  vsync_monitor_->TriggerVsync();
+  proxy->RequestNextFrame();
+  EXPECT_FALSE(proxy->HasRequestedNextFrame());
 }
 
 }  // namespace testing

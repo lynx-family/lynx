@@ -47,14 +47,20 @@ Android:
 - `android-enable-touch-stop-fling`
 - `android-header-over-slot`
 - `android-nested-scroll-as-child`
+- `android-adapt-to-empty-slot`
 - `android-header-tap-slop`
 
-iOS:
+`android-adapt-to-empty-slot` defaults to `false`. Set it to `true` to limit collapse at the visible boundary when the active slot is empty or cannot scroll.
+
+iOS and Harmony:
 
 - `bounces`
 - `allow-vertical-bounce`
 - `enable-scroll-bar`
 - `scroll-bar-enable`
+
+iOS:
+
 - `refresh-mode`
 - `ios-force-scroll-detach`
 - `ios-scroll-view-filter`
@@ -69,7 +75,7 @@ Harmony supports the core props and the public child tags. Set `header-over-slot
 
 | Method | Platforms | Description |
 | --- | --- | --- |
-| `setFoldExpanded` | Android, iOS, Harmony | Expands or collapses the coordinator header |
+| `setFoldExpanded` | Android, iOS, Harmony | Moves the coordinator to a requested unit offset |
 | `scrollBy` | Android, iOS, Harmony | Scrolls by a relative offset |
 | `getScrollInfo` | Android, iOS | Returns current scroll information through the callback |
 

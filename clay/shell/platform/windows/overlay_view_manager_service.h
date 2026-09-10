@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <shared_mutex>
+#include <string>
 #include <unordered_map>
 
 #include "clay/common/service/service.h"
@@ -22,7 +23,7 @@ class FlutterWindowsEngine;
 
 struct OverlayWindowCreationRequest {
   OverlayWindowSizeRequest preferred_size;
-  LPCWSTR title;
+  std::wstring title;
 };
 
 class OverlayViewManager {

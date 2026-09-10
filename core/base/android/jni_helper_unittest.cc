@@ -11,6 +11,31 @@ namespace lynx {
 namespace base {
 namespace android {
 
+TEST(ConvertToJNIIntArrayTest, ConvertEmptyVector) {
+  JNIEnv* env = AttachCurrentThread();
+
+  ScopedLocalJavaRef<jintArray> result =
+      JNIHelper::ConvertToJNIIntArray(env, {});
+
+  ASSERT_NE(result.Get(), nullptr);
+  EXPECT_EQ(env->GetArrayLength(result.Get()), 0);
+}
+
+TEST(ConvertToJNIIntArrayTest, ConvertNonEmptyVector) {
+  JNIEnv* env = AttachCurrentThread();
+  std::vector<int32_t> values = {1, -2, 3};
+
+  ScopedLocalJavaRef<jintArray> result =
+      JNIHelper::ConvertToJNIIntArray(env, values);
+
+  ASSERT_NE(result.Get(), nullptr);
+  ASSERT_EQ(env->GetArrayLength(result.Get()), values.size());
+  std::vector<int32_t> converted(values.size());
+  env->GetIntArrayRegion(result.Get(), 0, static_cast<jsize>(converted.size()),
+                         converted.data());
+  EXPECT_EQ(converted, values);
+}
+
 TEST(ConvertSTLStringMapToJavaMapTest, ConvertEmptyMap) {
   JNIEnv* env = AttachCurrentThread();
 

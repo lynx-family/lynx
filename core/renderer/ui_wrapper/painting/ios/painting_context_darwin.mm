@@ -146,8 +146,9 @@ void PaintingContextDarwinRef::SetGestureDetectorState(int64_t idx, int32_t gest
   [ui setGestureDetectorState:gesture_id state:(LynxGestureState)state];
 }
 
-void PaintingContextDarwinRef::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                                                       std::vector<int32_t> remove_ids) {
+void PaintingContextDarwinRef::UpdateNodeReadyPatching(
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
   if (ready_ids.empty() && remove_ids.empty()) {
     return;
   }
@@ -157,8 +158,10 @@ void PaintingContextDarwinRef::UpdateNodeReadyPatching(std::vector<int32_t> read
   for (const auto& tag : ready_ids) {
     [uiOwner_ onNodeReady:tag];
   }
-  for (const auto& tag : remove_ids) {
-    [uiOwner_ cacheRemovedUIId:tag];
+  if (should_cache_external_memory_candidates) {
+    for (const auto& tag : remove_ids) {
+      [uiOwner_ cacheRemovedUIId:tag];
+    }
   }
   for (const auto& tag : remove_ids) {
     [uiOwner_ onNodeRemoved:tag];

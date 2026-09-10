@@ -17,6 +17,7 @@
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterRenderer.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterViewController_Internal.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterViewEngineProvider.h"
+#include "clay/shell/platform/darwin/macos/framework/Source/cover_view_platform_plugin_mac.h"
 #include "clay/shell/platform/darwin/macos/framework/Source/overlay_view_controller_service.h"
 #include "clay/shell/platform/darwin/macos/framework/Source/platform_overlay_service_mac.h"
 #include "clay/shell/platform/darwin/macos/framework/Source/presenter_service_mac.h"
@@ -399,6 +400,8 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
           [_clayViewProvider GetClayServiceManager]));
   _service_manager->RegisterService<clay::OverlayViewControllerService>(
       std::make_shared<clay::OverlayViewControllerService>(self, _clayViewProvider.overlayView));
+  _service_manager->RegisterService<clay::CoverViewPlatformService>(
+      std::make_shared<clay::CoverViewPlatformServiceMac>());
   _service_manager->RegisterService<clay::PlatformOverlayService>(
       clay::PlatformOverlayServiceMac::Create());
   _service_manager->RegisterService<clay::PresenterService>(clay::PresenterServiceMac::Create());

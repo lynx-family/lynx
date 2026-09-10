@@ -26,6 +26,7 @@ on:
     types: [published]
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NIGHTLY_BASE_VERSION: '4.3.0'
 
 jobs:
@@ -158,8 +159,9 @@ jobs:
     if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
@@ -168,7 +170,7 @@ jobs:
         with:
           abi-list: armeabi-v7a,x86,x86_64,arm64-v8a
       - name: push to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -186,8 +188,9 @@ jobs:
         arch: [arm64, x86_64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
@@ -196,7 +199,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -219,15 +222,16 @@ jobs:
         shell: bash
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Build Explorer App
         uses: ./lynx/.github/actions/harmony-explorer-build
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -242,15 +246,16 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Free up disk space
         uses: ./lynx/.github/actions/free-android-disk
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Setup Android environment
@@ -281,7 +286,7 @@ jobs:
           popd
         id: build_artifact
       - name: Publish artifact to maven
-        uses: lynx-infra/maven-publish-action@53b4da2f23f9cfc4e905b135eda2724fcf5a0f0e
+        uses: lynx-infra/maven-publish-action@53b4da2f23f9cfc4e905b135eda2724fcf5a0f0e # main
         with:
           portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
           artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
@@ -293,13 +298,14 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -335,17 +341,18 @@ jobs:
       REPO_LYNX_ARTIFACTS_S3_PATH_PREFIX: ${{ vars.REPO_LYNX_ARTIFACTS_S3_PATH_PREFIX || 'ios-sdk' }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '4.0.5'
       - name: Install Common Dependencies
@@ -354,7 +361,7 @@ jobs:
           cache-backend: github
       - name: Create Specs repo GitHub App token
         id: specs_app_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ vars.SPECS_REPO_APP_ID }}
           private-key: ${{ secrets.SPECS_REPO_APP_PRIVATE_KEY }}
@@ -395,13 +402,14 @@ jobs:
       contents: read
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
           path: lynx
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '3.1'
       - name: Resolve gem version
@@ -445,7 +453,7 @@ jobs:
           echo "gem_file=$gem_file" >> "$GITHUB_OUTPUT"
           ruby -rrubygems/package -e 'spec = Gem::Package.new(ARGV.fetch(0)).spec; puts "#{spec.name} #{spec.version}"; puts spec.summary' "$gem_file"
       - name: Upload gem artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: cocoapods-lynx-library-${{ steps.gem_version.outputs.version }}
           path: lynx/tools/ios_tools/cocoapods-lynx-library/${{ steps.build_gem.outputs.gem_file }}
@@ -486,18 +494,17 @@ jobs:
             label: 'dev'
     steps:
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
         with:
           toolchain: stable
-          profile: minimal
-          override: true
       - name: Install git-cliff
         run: |
           cargo install git-cliff --locked
           git-cliff --version
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           fetch-depth: 0
           fetch-tags: true
@@ -547,8 +554,9 @@ jobs:
         arch: [arm64, x64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
@@ -557,7 +565,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -572,13 +580,14 @@ jobs:
     runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -592,7 +601,7 @@ jobs:
           source tools/envsetup.sh
           python3 platform/linux/build_release.py --target-cpu x64
       - name: push Linux SDK to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -617,13 +626,14 @@ jobs:
           git config --global http.sslBackend "schannel"
         working-directory: ./
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -635,7 +645,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}

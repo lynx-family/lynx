@@ -5,11 +5,13 @@
 #ifndef CORE_PUBLIC_LYNX_ENGINE_PROXY_H_
 #define CORE_PUBLIC_LYNX_ENGINE_PROXY_H_
 
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>
 
 #include "base/include/closure.h"
+#include "core/public/event/touch_event_data.h"
 #include "core/public/external_memory_snapshot.h"
 #include "core/public/list_data.h"
 #include "core/public/pub_value.h"
@@ -34,10 +36,10 @@ class LynxEngineProxy {
       tasm::ExternalMemorySnapshot /* snapshot */) {}
 
   // Event
-  virtual bool SendTouchEvent(const std::string& name, int32_t tag, float x,
-                              float y, float client_x, float client_y,
-                              float page_x, float page_y,
-                              int64_t timestamp = 0) = 0;
+  virtual bool SendTouchEvent(
+      const std::string& name, int32_t tag, float x, float y, float client_x,
+      float client_y, float page_x, float page_y, int64_t timestamp = 0,
+      event::TouchEventTargetPoints current_target_points = {}) = 0;
 
   virtual bool SendTouchEvent(const std::string& name, const pub::Value& params,
                               int64_t timestamp = 0) = 0;

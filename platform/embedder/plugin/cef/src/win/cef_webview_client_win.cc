@@ -5,6 +5,7 @@
 #include "platform/embedder/plugin/cef/src/win/cef_webview_client_win.h"
 
 #include <VersionHelpers.h>
+#include <d3d11_1.h>
 
 #include <algorithm>
 #include <limits>
@@ -17,11 +18,35 @@ namespace lynx {
 namespace plugin {
 namespace embedder {
 
+namespace {
+
+HRESULT OpenSharedTexture(ID3D11Device* device, HANDLE handle,
+                          ID3D11Texture2D** texture) {
+  HRESULT result = device->OpenSharedResource(
+      handle, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(texture));
+  if (SUCCEEDED(result)) {
+    return result;
+  }
+
+  Microsoft::WRL::ComPtr<ID3D11Device1> device1;
+  if (FAILED(device->QueryInterface(IID_PPV_ARGS(&device1)))) {
+    return result;
+  }
+  return device1->OpenSharedResource1(handle, __uuidof(ID3D11Texture2D),
+                                      reinterpret_cast<void**>(texture));
+}
+
+}  // namespace
+
 CEFWebviewClientWin::CEFWebviewClientWin(CEFWebviewWin* webview)
     : CEFWebviewClient(webview) {
   parent_ = reinterpret_cast<HWND>(
       lynx_view_get_native_window(webview->GetLynxView()));
   ime_handler_ = std::make_unique<OsrImeHandlerWin>(parent_);
+  D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
+                    D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0,
+                    D3D11_SDK_VERSION, &d3d11_device_, nullptr,
+                    &d3d11_context_);
 }
 
 void CEFWebviewClientWin::GetViewRect(CefRefPtr<CefBrowser> browser,
@@ -32,6 +57,16 @@ void CEFWebviewClientWin::GetViewRect(CefRefPtr<CefBrowser> browser,
   auto& bounds = static_cast<CEFWebviewWin*>(webview_)->bounds_;
   rect.Set(0, 0, std::max(1L, bounds.right - bounds.left),
            std::max(1L, bounds.bottom - bounds.top));
+}
+
+bool CEFWebviewClientWin::GetScreenInfo(CefRefPtr<CefBrowser> browser,
+                                        CefScreenInfo& screen_info) {
+  CefRect view_rect;
+  GetViewRect(browser, view_rect);
+  screen_info.device_scale_factor = 1.0f;
+  screen_info.rect = view_rect;
+  screen_info.available_rect = view_rect;
+  return true;
 }
 
 bool CEFWebviewClientWin::GetScreenPoint(CefRefPtr<CefBrowser> browser,
@@ -48,11 +83,43 @@ bool CEFWebviewClientWin::GetScreenPoint(CefRefPtr<CefBrowser> browser,
 void CEFWebviewClientWin::OnAcceleratedPaint(
     CefRefPtr<CefBrowser> browser, PaintElementType type,
     const RectList& dirtyRects, const CefAcceleratedPaintInfo& info) {
-  // TODO: check image sink
+  if (type != PET_VIEW || !d3d11_device_ || !d3d11_context_) {
+    return;
+  }
+
+  const int width = info.extra.source_size.width;
+  const int height = info.extra.source_size.height;
   static const float transform[3 * 3] = {1, 0, 0, 0, -1, 1, 0, 0, 1};
-  webview_->PresentSurface(
-      info.extra.source_size.width, info.extra.source_size.height, transform,
-      reinterpret_cast<lynx_surface_handle_t*>(info.shared_texture_handle));
+  HANDLE destination_handle = reinterpret_cast<HANDLE>(
+      webview_->AcquireSurface(width, height, transform));
+  if (!destination_handle) {
+    return;
+  }
+
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> source_texture;
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> destination_texture;
+  const HRESULT source_result =
+      OpenSharedTexture(d3d11_device_.Get(), info.shared_texture_handle,
+                        source_texture.GetAddressOf());
+  const HRESULT destination_result =
+      OpenSharedTexture(d3d11_device_.Get(), destination_handle,
+                        destination_texture.GetAddressOf());
+  if (FAILED(source_result) || FAILED(destination_result)) {
+    return;
+  }
+
+  Microsoft::WRL::ComPtr<IDXGIKeyedMutex> destination_mutex;
+  destination_texture.As(&destination_mutex);
+  if (destination_mutex && destination_mutex->AcquireSync(0, 2000) != S_OK) {
+    return;
+  }
+
+  d3d11_context_->CopyResource(destination_texture.Get(), source_texture.Get());
+  d3d11_context_->Flush();
+  if (destination_mutex) {
+    destination_mutex->ReleaseSync(0);
+  }
+  webview_->SwapBack();
 }
 
 void CEFWebviewClientWin::OnImeCompositionRangeChanged(

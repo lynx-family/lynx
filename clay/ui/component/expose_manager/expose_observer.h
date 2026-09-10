@@ -86,6 +86,8 @@ class ExposeObserver : public IntersectionObserver {
  private:
   ExposeAttrs expose_attrs_ = {};
   bool exposure_host_visible_ = true;
+  bool IsExposed(double intersection_ratio,
+                 double minimum_clipping_ratio) const;
   void NotifyAppearEvent(bool appear);
   void NotifyGlobalEvent(bool appear);
   void NotifyExposureEvent(bool appear);

@@ -1,0 +1,50 @@
+{
+  "name": "-x-box-match-parent-size",
+  "id": 238,
+  "type": "bool",
+  "default_value": "false",
+  "version": "4.2",
+  "author": "yuanzhiwen",
+  "consumption_status": "layout-only",
+  "desc": "Specify whether a box child matches the resolved size of its parent without contributing to the parent's automatic size.",
+  "formal_syntax": "true | false",
+  "is_shorthand": false,
+  "compat_data": {
+    "-x-box-match-parent-size": {
+      "__compat": {
+        "lynx_path": "api/css/properties/-x-box-match-parent-size",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": false
+        },
+        "support": {
+          "android": {
+            "version_added": "4.2"
+          },
+          "ios": {
+            "version_added": "4.2"
+          },
+          "harmony": {
+            "version_added": "4.2"
+          },
+          "clay_android": {
+            "version_added": "4.2"
+          },
+          "clay_ios": {
+            "version_added": "4.2"
+          },
+          "clay_macos": {
+            "version_added": "4.2"
+          },
+          "clay_windows": {
+            "version_added": "4.2"
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
+}

@@ -525,6 +525,7 @@ public class LynxBackgroundRuntimeOptions : NSObject {
   public id<LynxMediaResourceFetcher> LynxBackgroundRuntimeOptions::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxBackgroundRuntimeOptions::templateResourceFetcher templateResourceFetcher;
   public BOOL LynxBackgroundRuntimeOptions::pendingCoreJsLoad pendingCoreJsLoad;
+  public CGSize LynxBackgroundRuntimeOptions::screenSize screenSize;
   public instancetype LynxBackgroundRuntimeOptions::init();
   public void LynxBackgroundRuntimeOptions::addLynxResourceProvider:provider:(NSString *resType,[provider] id< LynxResourceProvider > provider);
   public void LynxBackgroundRuntimeOptions::registerModule:(Class< LynxModule > module);
@@ -1556,9 +1557,11 @@ public class LynxEnv : NSObject {
   public NSDictionary< NSString *, NSString * > * LynxEnv::platformEnvDebugDescription();
   public BOOL LynxEnv()::enableCreateUIAsync();
   public BOOL LynxEnv()::enableAnimationSyncTimeOpt();
+  public BOOL LynxEnv()::enableTextStrokeInheritanceFix();
   public NSString * LynxEnv()::_stringFromExternalEnv:(NSString *key);
   public void LynxEnv()::updateExternalEnvCacheForKey:withValue:(NSString *key, [withValue] NSString *value);
   public instancetype LynxEnv::sharedInstance();
+  public void LynxEnv::prepareDevToolForDevelopmentBeforeInit();
   public void LynxEnv::prepareGlobalMTSRuntimePoolWithContextType:count:(LynxMTSContextType contextType,[count] NSInteger count);
   public NSString *_Nonnull LynxEnv::getSSRApiVersion();
   public void LynxEnv::clearBytecode:(nonnull NSString *bytecodeSourceUrl);
@@ -1646,8 +1649,6 @@ public class LynxEventEmitter : NSObject {
   public void LynxEventEmitter::dispatchGestureEvent:event:(int gestureId,[event] LynxCustomEvent *event);
   public void LynxEventEmitter::onPseudoStatusChanged:fromPreStatus:toCurrentStatus:(int32_t tag,[fromPreStatus] int32_t preStatus,[toCurrentStatus] int32_t currentStatus);
   public void LynxEventEmitter::dispatchLayoutEvent();
-  public void LynxEventEmitter::addObserver:(id< LynxEventObserver > observer);
-  public void LynxEventEmitter::removeObserver:(id< LynxEventObserver > observer);
   public void LynxEventEmitter::notifyIntersectionObserver();
   public void LynxEventEmitter::startEventGenerate:(LynxEvent *event);
   public void LynxEventEmitter::setEventID:(int64_t eventID);
@@ -1720,10 +1721,6 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::removeEventGestures();
   public void LynxEventHandler()::markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent *event);
   public void LynxEventHandler()::handleFocusOnView:withContainer:andPoint:andEvent:ignoreFocus:(UIView *view, [withContainer] UIView *container, [andPoint] CGPoint point, [andEvent] nullable UIEvent *event, [ignoreFocus] BOOL ignoreFocus);
-}
-
-public protocol LynxEventObserver-p :  {
-  public void LynxEventObserver-p::onLynxEvent:event:(LynxInnerEventType type,[event] LynxEvent *event);
 }
 
 public class LynxEventReporter : NSObject {
@@ -2878,6 +2875,45 @@ public class LynxListScrollEventEmitterHelper : NSObject {
   public NSString * LynxListScrollEventEmitterHelper::fetchScrollEvent:(UIScrollView *scrollView);
 }
 
+public class LynxListScrollHelper : NSObject {
+  public instancetype LynxListScrollHelper::initWithOwner:(id< LynxListScrollHelperOwner > NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxListScrollHelper::NS_UNAVAILABLE();
+  public CGPoint LynxListScrollHelper::normalizedContentOffset();
+  public CGFloat LynxListScrollHelper::clampedContentOffsetForVerticalAxis:(BOOL isVertical);
+  public CGFloat LynxListScrollHelper::orientationMaxScrollableDistance();
+  public CGFloat LynxListScrollHelper::orientationSize();
+  public CGFloat LynxListScrollHelper::orientationContentSize();
+  public CGFloat LynxListScrollHelper::clampContentOffset:lower:size:viewportSize:(CGFloat offset,[lower] CGFloat lower,[size] CGFloat size,[viewportSize] CGFloat viewportSize);
+  public CGFloat LynxListScrollHelper::availableScrollOffsetFromSubviewsForward:currentOffset:(BOOL forward,[currentOffset] CGFloat currentOffset);
+  public CGFloat LynxListScrollHelper::contentOffsetXForRTL:(CGFloat contentOffsetX);
+  public CGPoint LynxListScrollHelper::applyContentSize:offsetDelta:previousContentOffset:disableScrollFiltering:(CGFloat targetContentSize,[offsetDelta] CGPoint targetDelta,[previousContentOffset] CGPoint previousContentOffset,[disableScrollFiltering] BOOL disableScrollFiltering);
+  public void LynxListScrollHelper::updateScrollInfoWithEstimatedOffset:smooth:scrolling:(CGFloat estimatedOffset,[smooth] BOOL smooth,[scrolling] BOOL scrolling);
+  public void LynxListScrollHelper::invalidateProgrammaticScrollRequest();
+  public void LynxListScrollHelper::finishProgrammaticScrollRequest();
+  public BOOL LynxListScrollHelper::stopProgrammaticScroll();
+  public CGPoint LynxListScrollHelper::contentOffset:constrainedToEstimatedOffset:vertical:scrollToLower:(CGPoint contentOffset,[constrainedToEstimatedOffset] CGFloat estimatedOffset,[vertical] BOOL vertical,[scrollToLower] BOOL scrollToLower);
+}
+
+public protocol LynxListScrollHelperOwner-p : <NSObject> {
+  public UIScrollView< LynxListScrollHelperView > * LynxListScrollHelperOwner-p::scrollViewForListScrollHelper();
+  public BOOL LynxListScrollHelperOwner-p::isVerticalForListScrollHelper();
+  public BOOL LynxListScrollHelperOwner-p::isRTLForListScrollHelper();
+  public CGRect LynxListScrollHelperOwner-p::listFrameForListScrollHelper();
+  public UIEdgeInsets LynxListScrollHelperOwner-p::listPaddingForListScrollHelper();
+  public BOOL LynxListScrollHelperOwner-p::listScrollHelperShouldDeferCompletionForSmoothScroll:needsAnimation:(BOOL smooth,[needsAnimation] BOOL needsAnimation);
+  public nullable id LynxListScrollHelperOwner-p::listScrollHelperCompletionToken();
+  public BOOL LynxListScrollHelperOwner-p::listScrollHelperShouldFinishTimeoutForPendingScroll();
+  public void LynxListScrollHelperOwner-p::listScrollHelperWillStartScrollAnimation();
+  public void LynxListScrollHelperOwner-p::listScrollHelperDidStopProgrammaticScroll();
+  public void LynxListScrollHelperOwner-p::listScrollHelperDidFinishProgrammaticScrollWithReason:(LynxListProgrammaticScrollCompletionReason reason);
+}
+
+public protocol LynxListScrollHelperView-p : <NSObject> {
+  public BOOL LynxListScrollHelperView-p::scrollToLower scrollToLower;
+  public CGFloat LynxListScrollHelperView-p::scrollEstimatedOffset scrollEstimatedOffset;
+  public BOOL LynxListScrollHelperView-p::adjustingContentOffsetInternally adjustingContentOffsetInternally;
+}
+
 public class LynxListStickyManager : NSObject {
   public BOOL LynxListStickyManager::enabled enabled;
   public CGFloat LynxListStickyManager::offset offset;
@@ -3247,6 +3283,7 @@ public class LynxPerformanceController : NSObject, <LynxTimingCollectorProtocol>
   public instancetype LynxPerformanceController::initWithObserver:(id< LynxPerformanceObserverProtocol > observer);
   public void LynxPerformanceController::setEmbeddedModeEnabled:(BOOL enable);
   public void LynxPerformanceController()::setNativeActor:(const std::shared_ptr< PerformanceControllerActor > &nativeActor);
+  public void LynxPerformanceController()::setInstanceId:(int32_t instanceId);
 }
 
 public class LynxPerformanceEntry : NSObject {
@@ -3449,6 +3486,15 @@ public protocol LynxResourceFetcher-p : <NSObject> {
   public void LynxResourceFetcher-p::loadResourceWithURLString:completion:(NSString *urlString,[completion] LynxResourceLoadCompletionBlock completionBlock);
   public _Nullable dispatch_block_t LynxResourceFetcher-p::requestAsyncWithResourceRequest:type:lynxResourceLoadCompletedBlock:(LynxResourceRequest *lynxResourceRequest,[type] LynxFetchResType type,[lynxResourceLoadCompletedBlock] LynxResourceLoadCompletedBlock loadCompletedBlock);
   public nonnull LynxResourceResponse * LynxResourceFetcher-p::requestSyncWithResourceRequest:type:(LynxResourceRequest *lynxResourceRequest,[type] LynxFetchResType type);
+}
+
+public class LynxResourceHandle : NSObject {
+  public NSString* LynxResourceHandle::filePath filePath;
+  public NSInteger LynxResourceHandle::size size;
+  public BOOL LynxResourceHandle::valid valid;
+  public nullable instancetype LynxResourceHandle::initWithFilePath:(NSString *NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxResourceHandle::NS_UNAVAILABLE();
+  public void LynxResourceHandle::invalidate();
 }
 
 public protocol LynxResourceLoadDelegate-p : <NSObject> {
@@ -3753,6 +3799,7 @@ public protocol LynxServiceSystemInvokeProtocol-p : <LynxServiceProtocol> {
 }
 
 public protocol LynxServiceTextProtocol-p : <LynxServiceProtocol> {
+  public void LynxServiceTextProtocol-p::warm();
   public void * LynxServiceTextProtocol-p::createTextLayoutAPIFromContext:(LynxUIOwner *context);
   public void LynxServiceTextProtocol-p::destroyTextLayoutAPI:(void *api);
   public void LynxServiceTextProtocol-p::destroyPage:(void *page);
@@ -4422,7 +4469,6 @@ public class LynxTouchHandler : UIGestureRecognizer {
   public void LynxTouchHandler::touchesEndedInner:withEvent:(NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
   public void LynxTouchHandler::touchesCancelledInner:withEvent:(NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
   public void LynxTouchHandler()::setupVelocityTracker:(UIView *rootView);
-  public void LynxTouchHandler()::setEnableTouchRefactor:(BOOL enable);
   public void LynxTouchHandler()::setEnableEndGestureAtLastFingerUp:(BOOL enable);
   public void LynxTouchHandler()::setEnableTouchPseudo:(BOOL enable);
   public void LynxTouchHandler()::setEnableMultiTouch:(BOOL enable);
@@ -4436,6 +4482,17 @@ public class LynxTouchHandler : UIGestureRecognizer {
 }
 
 public class LynxTouchHandlerUnitTest : XCTestCase {
+}
+
+public class LynxTransferHostView : UIView {
+}
+
+public class LynxTransferShadowNode : LynxCustomMeasureShadowNode {
+  public void LynxTransferShadowNode::updateHostConstraintsWithWidth:widthMode:height:heightMode:(CGFloat width,[widthMode] LynxMeasureMode widthMode,[height] CGFloat height,[heightMode] LynxMeasureMode heightMode);
+}
+
+public class LynxTransferWrapperView : UIView {
+  public instancetype LynxTransferWrapperView::initWithTransfer:(LynxUITransfer *transfer);
 }
 
 public class LynxTransformOriginRaw : NSObject {
@@ -4656,6 +4713,7 @@ public class LynxUI : <__covariant V UIView> {
   public CGRect LynxUI()::getHitTestFrame();
   public CGRect LynxUI()::getHitTestFrameWithFrame:(CGRect frame);
   public CGPoint LynxUI()::getHitTestPoint:(CGPoint inPoint);
+  public UIView * LynxUI()::childrenContainerView();
   public BOOL LynxUI()::enableExposureUIMargin();
   public void LynxUI()::setImplicitAnimation();
   public void LynxUI()::scrollIntoViewWithSmooth:blockType:inlineType:callback:(BOOL isSmooth, [blockType] NSString *blockType, [inlineType] NSString *inlineType, [callback] LynxUIMethodCallbackBlock callback);
@@ -4999,9 +5057,8 @@ public class LynxUIIntersectionObserver : NSObject {
   public void LynxUIIntersectionObserver::checkForIntersections();
 }
 
-public class LynxUIIntersectionObserverManager : NSObject, <LynxEventObserver> {
+public class LynxUIIntersectionObserverManager : NSObject {
   public LynxUIOwner* LynxUIIntersectionObserverManager::uiOwner uiOwner;
-  public BOOL LynxUIIntersectionObserverManager::enableNewIntersectionObserver enableNewIntersectionObserver;
   public instancetype LynxUIIntersectionObserverManager::initWithLynxContext:(LynxContext *context);
   public void LynxUIIntersectionObserverManager::addIntersectionObserver:(LynxUIIntersectionObserver *observer);
   public void LynxUIIntersectionObserverManager::removeIntersectionObserver:(NSInteger observerId);
@@ -5012,7 +5069,6 @@ public class LynxUIIntersectionObserverManager : NSObject, <LynxEventObserver> {
   public void LynxUIIntersectionObserverManager::addIntersectionObserverToRunLoop();
   public void LynxUIIntersectionObserverManager::destroyIntersectionObserver();
   public void LynxUIIntersectionObserverManager::reset();
-  public void LynxUIIntersectionObserverManager()::setEnableNewIntersectionObserver:(BOOL enable);
 }
 
 public class LynxUIIntersectionObserverUnitTest : XCTestCase {
@@ -5480,6 +5536,9 @@ public class LynxUIText : LynxUI, <LynxTextView> {
   public BOOL LynxUIText::enableLayerRender();
 }
 
+public class LynxUITransfer : LynxUIView {
+}
+
 public class LynxUIUnitTestUtils : NSObject {
   public LynxUIMockContext * LynxUIUnitTestUtils::initUIMockContextWithUI:(LynxUI *ui);
   public LynxUIMockContext * LynxUIUnitTestUtils::updateUIMockContext:sign:tag:eventSet:lepusEventSet:props:(nullable LynxUIMockContext *mockContext,[sign] NSInteger sign,[tag] NSString *tagName,[eventSet] NSSet *eventSet,[lepusEventSet] NSSet *lepusEventSet,[props] nonnull NSDictionary *props);
@@ -5676,7 +5735,8 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::attachEngineToUIThread();
   public void LynxView::detachEngineFromUIThread();
   public void LynxView::preloadDynamicComponents:("LynxTemplateResourceFetcher", ios(6.0, API_TO_BE_DEPRECATED) API_DEPRECATED_WITH_REPLACEMENT);
-  public BOOL LynxView::registerDynamicComponent:bundle:(nonnull NSString *url,[bundle] "LynxTemplateResourceFetcher", ios(6.0, API_TO_BE_DEPRECATED) API_DEPRECATED_WITH_REPLACEMENT);
+  public BOOL LynxView::registerLazyBundle:bundle:(nonnull NSString *url,[bundle] nonnull LynxTemplateBundle *bundle);
+  public BOOL LynxView::registerDynamicComponent:bundle:(nonnull NSString *url,[bundle] "registerLazyBundle:bundle:", ios(6.0, API_TO_BE_DEPRECATED) API_DEPRECATED_WITH_REPLACEMENT);
   public void LynxView::setEnableUserBytecode:url:(BOOL enableUserBytecode,[url] nonnull NSString *url);
   public void LynxView::attachTemplateRender:(LynxTemplateRender *_Nullable templateRender);
   public void LynxView::processRender();
@@ -6592,6 +6652,7 @@ public enum LynxEnvKey {
   LynxEnvFSPConfigJsonString
   LynxEnvSetupCanvasSurfaceEarlier
   LynxEnvEnableImagePlaceholderResetFix
+  LynxEnvEnableTextStrokeInheritanceFix
   LynxEnvKeyEndMark
 }
 
@@ -7186,12 +7247,6 @@ public enum EVENT_TYPE {
 }
 
 
-public enum LynxInnerEventType {
-  LynxEventTypeTouchEvent
-  LynxEventTypeCustomEvent
-  LynxEventTypeLayoutEvent
-}
-
   typedef BOOL(^ onLynxEvent) (LynxEvent *event)
 
 public enum LynxGestureHandlerState {
@@ -7539,6 +7594,14 @@ public enum LynxInterceptGestureState {
   LynxInterceptGestureStateTrue
 }
 
+
+public enum LynxListProgrammaticScrollCompletionReason {
+  LynxListProgrammaticScrollCompletionReasonImmediate
+  LynxListProgrammaticScrollCompletionReasonAnimationEnded
+  LynxListProgrammaticScrollCompletionReasonTimeout
+}
+
+  public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT const CGFloat LynxListScrollInvalidEstimatedOffset LynxListScrollInvalidEstimatedOffset;
 
   typedef struct LBSPathConsumer LBSPathConsumer
   public CGPathRef LBSCreatePathFromData(const char *data);

@@ -6,6 +6,7 @@
 #define CORE_ANIMATION_CSS_KEYFRAME_MANAGER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -155,9 +156,13 @@ class CSSKeyframeManager : public AnimationDelegate {
   void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
 
  protected:
+  virtual Animation::Origin ResolveAnimationOrigin(
+      const starlight::AnimationData& data) const;
+
   std::shared_ptr<Animation> CreateAnimation(
       starlight::AnimationData& data,
-      const tasm::CustomPropertiesMap* base_custom_properties = nullptr);
+      const tasm::CustomPropertiesMap* base_custom_properties = nullptr,
+      std::optional<Animation::Origin> origin = std::nullopt);
 
   void SetAnimationDataAndPlayInternal(
       base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,

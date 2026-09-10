@@ -8,7 +8,7 @@ import { IntrinsicElements, ScrollCoordinatorOffsetEvent, ScrollCoordinatorUIMet
 let a: unknown;
 {
   <scroll-coordinator />;
-  <scroll-coordinator enable-scroll={true} bounces={true} enable-scroll-bar={true} />;
+  <scroll-coordinator enable-scroll={true} bounces={true} enable-scroll-bar={true} android-adapt-to-empty-slot={true} />;
   <scroll-coordinator-header />;
   <scroll-coordinator-slot />;
   <scroll-coordinator-slot-drag enable-drag={true} />;
@@ -19,6 +19,7 @@ let a: unknown;
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator']['enable-scroll']);
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator']['bounces']);
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator']['enable-scroll-bar']);
+  assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator']['android-adapt-to-empty-slot']);
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator']['android-nested-scroll-as-child']);
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator']['ios-force-scroll-detach']);
   assertType<number | undefined>(a as IntrinsicElements['scroll-coordinator']['granularity']);

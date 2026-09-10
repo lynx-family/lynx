@@ -58,13 +58,7 @@ SyntheticGestureController::~SyntheticGestureController() {
     auto callback = std::exchange(active_callback_, nullptr);
     callback(SyntheticGestureResult::kFailed);
   }
-  while (!pending_gestures_.empty()) {
-    auto pending = std::move(pending_gestures_.front());
-    pending_gestures_.pop_front();
-    if (pending.callback) {
-      pending.callback(SyntheticGestureResult::kFailed);
-    }
-  }
+  CancelPendingGestures();
 }
 
 void SyntheticGestureController::StartNextGesture() {
@@ -176,7 +170,23 @@ void SyntheticGestureController::Complete(SyntheticGestureResult result) {
     auto callback = std::exchange(active_callback_, nullptr);
     callback(result);
   }
+  if (result != SyntheticGestureResult::kDone) {
+    // The active gesture failed; abort the rest of the sequence so no further
+    // synthetic input is injected, failing each queued gesture's callback.
+    CancelPendingGestures();
+    return;
+  }
   self->StartNextGesture();
+}
+
+void SyntheticGestureController::CancelPendingGestures() {
+  while (!pending_gestures_.empty()) {
+    auto pending = std::move(pending_gestures_.front());
+    pending_gestures_.pop_front();
+    if (pending.callback) {
+      pending.callback(SyntheticGestureResult::kFailed);
+    }
+  }
 }
 
 }  // namespace input

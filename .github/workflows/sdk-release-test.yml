@@ -15,21 +15,25 @@ defaults:
   run:
     working-directory: lynx
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   android-sdk-release-test:
     timeout-minutes: 60
     runs-on: ubuntu-22.04
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
       - name: Free up disk space
         uses: ./lynx/.github/actions/free-android-disk
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Setup Android environment
@@ -57,17 +61,18 @@ jobs:
       POD_VERSION: '0.0.1-alpha.1'
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Set up Ruby + specify Bundler version
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '2.6.10'
       - name: Install Common Dependencies

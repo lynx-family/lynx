@@ -183,13 +183,19 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
   ReportMemoryForTrace();
 #endif
   for (auto* observer : obs_set_ptr_) {
-    observer->OnRuntimeGC({{kRawRuntimeMemoryInfo, mem_info}});
+    observer->OnRuntimeGC(
+        {{kRawRuntimeHeapSize, std::to_string(LEPUS_GetHeapSize(rt_))}});
   }
 }
 
 #if ENABLE_TRACE_PERFETTO
 void QuickjsRuntimeInstance::ReportMemoryForTrace() {
   if (!trace::TraceController::Instance()->IsTracingStarted()) {
+    return;
+  }
+
+  auto config = trace::TraceController::Instance()->GetLastSessionTraceConfig();
+  if (!(config && config->enable_memory_trace)) {
     return;
   }
 

@@ -55,6 +55,12 @@ class ListItemMediator : public lynx::list::ItemElementDelegate {
 
   void FlushAnimatedStyle(CSSPropertyID id, CSSValue value) override;
 
+  void UpdateAnimatedStyle(CSSPropertyID id, CSSValue value,
+                           bool flush_immediately) override;
+
+  void UpdateAnimatedLayout(float left, float top,
+                            bool flush_immediately) override;
+
   Element* list_item_element() { return list_item_element_; }
 
  private:

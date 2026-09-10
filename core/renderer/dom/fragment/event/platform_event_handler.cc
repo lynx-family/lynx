@@ -18,8 +18,8 @@ namespace lynx {
 namespace tasm {
 
 PlatformEventHandler::PlatformEventTargetDetail::PlatformEventTargetDetail(
-    fml::RefPtr<PlatformEventTarget> target, float down_point[2])
-    : target_(target) {
+    int32_t target_sign, float down_point[2])
+    : target_sign_(target_sign) {
   memcpy(down_point_, down_point, sizeof(float) * 2);
 }
 
@@ -38,17 +38,12 @@ void PlatformEventHandler::PlatformEventTargetDetail::SetPrePoint(
   memcpy(pre_point_, pre_point, sizeof(float) * 2);
 }
 
-fml::RefPtr<PlatformEventTarget>
-PlatformEventHandler::PlatformEventTargetDetail::Target() {
-  return target_;
-}
-
 bool PlatformEventHandler::OnInputEvent(
     fml::RefPtr<PlatformEventTarget> target_tree, int int_event_data[],
-    float float_event_data[], bool enable_event_through_inherit_from_page) {
-  target_tree_ = target_tree;
-  enable_event_through_inherit_from_page_ =
-      enable_event_through_inherit_from_page;
+    float float_event_data[],
+    const PlatformEventThroughConfig& event_through_config) {
+  target_tree_sign_ = target_tree ? target_tree->Sign() : -1;
+  event_through_config_ = event_through_config;
   // int_event_data: [event_type, action_type, event_source, pointer_count, ...]
   int event_type = int_event_data[0];
   switch (event_type) {
@@ -100,16 +95,16 @@ void PlatformEventHandler::OnTap() {
   if (CanRespondFocus()) {
     DispatchGestureEvent(EVENT_TAP, root_point);
   }
-  auto click_target =
-      click_target_chain_.empty() ? nullptr : click_target_chain_.front();
+  auto click_target = click_target_chain_.empty()
+                          ? nullptr
+                          : GetEventTarget(click_target_chain_.front());
   if (!first_pointer_outside_ && CanRespondTap(click_target)) {
     DispatchGestureEvent(EVENT_CLICK, root_point);
   }
-  scroll_offset_for_tap_.clear();
 }
 
 void PlatformEventHandler::OnLongPress() {
-  if (!CanRespondTap(first_target_)) {
+  if (!CanRespondFocus()) {
     return;
   }
 
@@ -120,50 +115,53 @@ void PlatformEventHandler::OnLongPress() {
 
 void PlatformEventHandler::DispatchGestureEvent(const std::string& name,
                                                 float root_point[2]) {
-  if (!first_target_) {
+  auto first_target = GetEventTarget(first_target_sign_);
+  auto target_tree = GetTargetTree();
+  if (!first_target || !target_tree) {
     LOGE(
-        "PlatformEventHandler::DispatchPointerEvent first_target_ is null for "
+        "PlatformEventHandler::DispatchGestureEvent target is missing for "
         "event: " +
         name);
     return;
   }
   float target_point[2] = {root_point[0], root_point[1]};
-  GetTargetPoint(first_target_, target_point, root_point);
+  GetTargetPoint(first_target, target_point, root_point);
   float page_point[2] = {root_point[0], root_point[1]};
   platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToPageRootTarget(
-      page_point, target_tree_, page_point);
+      page_point, target_tree, page_point);
   float client_point[2] = {root_point[0], root_point[1]};
   platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToScreen(
-      client_point, target_tree_, client_point);
+      client_point, target_tree, client_point);
   auto gesture_event = fml::MakeRefCounted<event::TouchEvent>(
       name, target_point[0], target_point[1], page_point[0], page_point[1],
       client_point[0], client_point[1]);
-  platform_ref_->GetEventEmitter()->SendEvent(first_target_->Sign(),
+  platform_ref_->GetEventEmitter()->SendEvent(first_target->Sign(),
                                               gesture_event);
 }
 
 void PlatformEventHandler::DispatchPointerEvent(
     const std::string& name, const lepus::Value& target_pointer_map) {
-  if (!first_target_) {
+  auto first_target = GetEventTarget(first_target_sign_);
+  if (!first_target) {
     LOGE(
-        "PlatformEventHandler::DispatchPointerEvent first_target_ is null for "
+        "PlatformEventHandler::DispatchPointerEvent target is missing for "
         "event: " +
         name);
     return;
   }
   auto event = fml::MakeRefCounted<event::TouchEvent>(name, target_pointer_map);
-  platform_ref_->GetEventEmitter()->SendEvent(first_target_->Sign(), event);
+  platform_ref_->GetEventEmitter()->SendEvent(first_target->Sign(), event);
 }
 
 bool PlatformEventHandler::EventThrough() {
-  if (!first_target_) {
+  auto first_target = GetEventTarget(first_target_sign_);
+  if (!first_target) {
     return false;
   }
   float target_point[2] = {first_pointer_down_point_[0],
                            first_pointer_down_point_[1]};
-  GetTargetPoint(first_target_, target_point, first_pointer_down_point_);
-  return first_target_->EventThrough(target_point,
-                                     enable_event_through_inherit_from_page_);
+  GetTargetPoint(first_target, target_point, first_pointer_down_point_);
+  return first_target->EventThrough(target_point, event_through_config_);
 }
 
 void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {}
@@ -188,7 +186,7 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
     float down_point[2] = {pointer_x, pointer_y};
     if (pointer_id == 0) {
       ResetFocusInfo();
-      first_target_ = hit_target;
+      first_target_sign_ = hit_target ? hit_target->Sign() : -1;
       memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
       if (hit_target != nullptr) {
         hit_target_sign_ = hit_target->Sign();
@@ -197,7 +195,8 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
       }
     }
     target_pointer_map_.insert_or_assign(
-        pointer_id, PlatformEventTargetDetail(hit_target, down_point));
+        pointer_id, PlatformEventTargetDetail(
+                        hit_target ? hit_target->Sign() : -1, down_point));
   }
 }
 
@@ -211,17 +210,14 @@ void PlatformEventHandler::ResetPointerEnv(PlatformPointerEvent& event) {
 
 void PlatformEventHandler::InitClickEnv() {
   click_target_chain_.clear();
-  if (!first_target_) {
-    return;
-  }
-  auto target = first_target_;
+  auto target = GetEventTarget(first_target_sign_);
   while (target && target->ParentTarget() != target) {
-    click_target_chain_.push_back(target);
+    click_target_chain_.push_back(target->Sign());
     target = target->ParentTarget();
   }
 
   while (!click_target_chain_.empty()) {
-    auto& last_target = click_target_chain_.front();
+    auto last_target = GetEventTarget(click_target_chain_.front());
     if (!last_target) {
       click_target_chain_.pop_front();
       continue;
@@ -242,7 +238,8 @@ void PlatformEventHandler::InitClickEnv() {
     }
   }
 
-  for (auto click_target : click_target_chain_) {
+  for (auto sign : click_target_chain_) {
+    auto click_target = GetEventTarget(sign);
     if (!click_target) {
       continue;
     }
@@ -251,7 +248,8 @@ void PlatformEventHandler::InitClickEnv() {
 }
 
 void PlatformEventHandler::ResetClickEnv() {
-  for (const auto& click_target : click_target_chain_) {
+  for (auto sign : click_target_chain_) {
+    auto click_target = GetEventTarget(sign);
     if (!click_target) {
       continue;
     }
@@ -268,9 +266,10 @@ void PlatformEventHandler::RecordScrollOffsetsForTap() {
     return;
   }
 
-  auto target = first_target_;
+  auto target = GetEventTarget(first_target_sign_);
   while (target && target->ParentTarget() != target) {
-    if (target->IsScrollContainer()) {
+    if (target->RendererHostSign() == target->Sign() &&
+        target->IsScrollContainer()) {
       float offset[2] = {0.f, 0.f};
       target_helper->GetPlatformRendererScrollOffset(target->Sign(), offset);
       scroll_offset_for_tap_.insert_or_assign(
@@ -353,12 +352,12 @@ void PlatformEventHandler::OnPointerMove(PlatformPointerEvent& event) {
       // event.
       if (!click_target_chain_.empty()) {
         auto target = FindTarget(pre_page_point[0], pre_page_point[1]);
-        auto click_target = click_target_chain_.front();
         first_pointer_outside_ =
             first_pointer_outside_ || IsPointerMoveOutside(target);
       }
       // check if the movement threshold is exceeded or there is node scrolling.
-      if (first_pointer_moved_ || !CanRespondTap(first_target_)) {
+      if (first_pointer_moved_ ||
+          !CanRespondTap(GetEventTarget(first_target_sign_))) {
         DeactivatePseudoStatus(LynxPseudoStatus::kActive);
       }
     }
@@ -426,13 +425,28 @@ void PlatformEventHandler::HandlePointerCancel(PlatformPointerEvent& event) {
   ResetPointerEnv(event);
 }
 
+fml::RefPtr<PlatformEventTarget> PlatformEventHandler::GetTargetTree() const {
+  return platform_ref_->GetEventTargetHelper()->GetEventRootTree(
+      target_tree_sign_);
+}
+
+fml::RefPtr<PlatformEventTarget> PlatformEventHandler::GetEventTarget(
+    int32_t sign) const {
+  auto target = platform_ref_->GetEventTargetHelper()->GetEventTarget(sign);
+  // A tracked node may have been removed or moved to another event root.
+  return target && target->RootId() == target_tree_sign_ && GetTargetTree()
+             ? target
+             : nullptr;
+}
+
 fml::RefPtr<PlatformEventTarget> PlatformEventHandler::FindTarget(
     float pointer_x, float pointer_y) {
-  if (!target_tree_) {
+  auto target_tree = GetTargetTree();
+  if (!target_tree) {
     return nullptr;
   }
   float point[] = {pointer_x, pointer_y};
-  return target_tree_->HitTest(point);
+  return target_tree->HitTest(point);
 }
 
 void PlatformEventHandler::ResetFocusInfo() {
@@ -442,7 +456,8 @@ void PlatformEventHandler::ResetFocusInfo() {
 }
 
 bool PlatformEventHandler::CanRespondFocus() {
-  return !first_pointer_moved_ && CanRespondTap(first_target_);
+  return !first_pointer_moved_ &&
+         CanRespondTap(GetEventTarget(first_target_sign_));
 }
 
 bool PlatformEventHandler::CanRespondTap(
@@ -457,12 +472,10 @@ bool PlatformEventHandler::CanRespondTap(
 }
 
 void PlatformEventHandler::ActivePseudoStatus() {
-  if (!first_target_) {
-    return;
-  }
-  auto current = first_target_;
+  auto current = GetEventTarget(first_target_sign_);
   while (current && current->ParentTarget() != current) {
-    event_target_chain_.push_back(current);
+    const auto sign = current->Sign();
+    event_target_chain_.push_back(sign);
     current->OnPseudoStatusChanged(LynxPseudoStatus::kNone,
                                    LynxPseudoStatus::kActive);
     if (has_pointer_pseudo_) {
@@ -471,7 +484,9 @@ void PlatformEventHandler::ActivePseudoStatus() {
           current->Sign(), static_cast<uint32_t>(LynxPseudoStatus::kNone),
           static_cast<uint32_t>(LynxPseudoStatus::kActive));
     }
-    if (!current->TouchPseudoPropagation()) {
+    // Updating pseudo status can synchronously rebuild the event target tree.
+    current = GetEventTarget(sign);
+    if (!current || !current->TouchPseudoPropagation()) {
       break;
     }
     current = current->ParentTarget();
@@ -480,7 +495,8 @@ void PlatformEventHandler::ActivePseudoStatus() {
 
 void PlatformEventHandler::DeactivatePseudoStatus(LynxPseudoStatus status) {
   int int_status = static_cast<int>(status);
-  for (auto target : event_target_chain_) {
+  for (auto sign : event_target_chain_) {
+    auto target = GetEventTarget(sign);
     if (!target) {
       continue;
     }
@@ -503,9 +519,9 @@ bool PlatformEventHandler::IsPointerMoveOutside(
     return true;
   }
 
-  std::vector<fml::RefPtr<PlatformEventTarget>> target_chain;
+  std::vector<int32_t> target_chain;
   while (target && target->ParentTarget() != target) {
-    target_chain.push_back(target);
+    target_chain.push_back(target->Sign());
     target = target->ParentTarget();
   }
 
@@ -517,9 +533,7 @@ bool PlatformEventHandler::IsPointerMoveOutside(
   }
   int num = static_cast<int>(click_target_chain_.size());
   for (int i = 0; i < num; ++i) {
-    // judge with sign not target.
-    if (!click_target_chain_[i] || !target_chain[i] ||
-        click_target_chain_[i]->Sign() != target_chain[i]->Sign()) {
+    if (click_target_chain_[i] != target_chain[i]) {
       return true;
     }
   }
@@ -529,7 +543,7 @@ bool PlatformEventHandler::IsPointerMoveOutside(
 void PlatformEventHandler::GetTargetPoint(
     fml::RefPtr<PlatformEventTarget> target, float target_point[2],
     float page_point[2]) {
-  auto root_target = target_tree_;
+  auto root_target = GetTargetTree();
   if (!root_target) {
     return;
   }
@@ -539,13 +553,17 @@ void PlatformEventHandler::GetTargetPoint(
 
 void PlatformEventHandler::AddTargetPointerMap(lepus::Value& target_pointer_map,
                                                PlatformPointerEvent& event) {
+  auto target_tree = GetTargetTree();
+  if (!target_tree) {
+    return;
+  }
   auto dict = target_pointer_map.Table();
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     int pointer_id = event.PointerID()[i];
     if (auto pointer_target = target_pointer_map_.find(pointer_id);
         pointer_target != target_pointer_map_.end()) {
-      auto target = pointer_target->second.Target();
+      auto target = GetEventTarget(pointer_target->second.TargetSign());
       if (!target) {
         continue;
       }
@@ -556,11 +574,11 @@ void PlatformEventHandler::AddTargetPointerMap(lepus::Value& target_pointer_map,
       GetTargetPoint(target, target_point, root_point);
       float page_point[2] = {root_point[0], root_point[1]};
       platform_ref_->GetEventTargetHelper()
-          ->ConvertPointFromTargetToPageRootTarget(page_point, target_tree_,
+          ->ConvertPointFromTargetToPageRootTarget(page_point, target_tree,
                                                    page_point);
       float client_point[2] = {root_point[0], root_point[1]};
       platform_ref_->GetEventTargetHelper()->ConvertPointFromTargetToScreen(
-          client_point, target_tree_, client_point);
+          client_point, target_tree, client_point);
 
       auto pointer = lepus::CArray::Create();
       pointer->emplace_back(pointer_id);

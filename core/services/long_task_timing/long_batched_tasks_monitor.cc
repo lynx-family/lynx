@@ -99,6 +99,7 @@ void LongBatchedTasksMonitor::ReportLongBatchedTasksEvent(
 
         // Report the event with calculated statistics
         report::MoveOnlyEvent event;
+        event.SetInstanceId(max_duration_instance_id);
         event.SetName("lynxsdk_long_batched_tasks_timing");
         event.SetProps("all_tasks_duration_ms", all_tasks_duration_ms);
         event.SetProps("time_window_size_threshold_ms",
@@ -133,8 +134,7 @@ void LongBatchedTasksMonitor::ReportLongBatchedTasksEvent(
           event.SetProps("top_3_task_info", top_3_timing->task_info_.c_str());
           event.SetProps("top_3_task_duration_ms", top_3_timing->duration_ms_);
         }
-        report::EventTrackerPlatformImpl::OnEvent(max_duration_instance_id,
-                                                  std::move(event));
+        report::EventTrackerPlatformImpl::OnEvent(std::move(event));
       });
 }
 

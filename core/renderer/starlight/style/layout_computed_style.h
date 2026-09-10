@@ -58,6 +58,16 @@ class LayoutComputedStyle {
   DisplayType display_{DefaultLayoutStyle::SL_DEFAULT_DISPLAY};
   PositionType position_{DefaultLayoutStyle::SL_DEFAULT_POSITION};
   DirectionType direction_{DefaultLayoutStyle::SL_DEFAULT_DIRECTION};
+  bool x_box_propagate_min_constraints_{
+      DefaultLayoutStyle::SL_DEFAULT_X_BOX_PROPAGATE_MIN_CONSTRAINTS};
+  bool x_box_match_parent_size_{
+      DefaultLayoutStyle::SL_DEFAULT_X_BOX_MATCH_PARENT_SIZE};
+
+  // Box layout behavior
+  bool GetXBoxPropagateMinConstraints() const {
+    return x_box_propagate_min_constraints_;
+  }
+  bool GetXBoxMatchParentSize() const { return x_box_match_parent_size_; }
 
   // BoxData
   const NLength& GetWidth() const { return box_data_->width_; }
@@ -343,6 +353,23 @@ class LayoutComputedStyle {
   }
   SUPPORTED_ENUM_LAYOUT_PROPERTY(SET_ENUM_LAYOUT_PROPERTY)
 #undef SET_ENUM_LAYOUT_PROPERTY
+
+  LYNX_EXPORT bool SetXBoxPropagateMinConstraints(const bool value,
+                                                  const bool reset = false) {
+    bool old_value = x_box_propagate_min_constraints_;
+    x_box_propagate_min_constraints_ =
+        reset ? DefaultLayoutStyle::SL_DEFAULT_X_BOX_PROPAGATE_MIN_CONSTRAINTS
+              : value;
+    return old_value != x_box_propagate_min_constraints_;
+  }
+
+  LYNX_EXPORT bool SetXBoxMatchParentSize(const bool value,
+                                          const bool reset = false) {
+    bool old_value = x_box_match_parent_size_;
+    x_box_match_parent_size_ =
+        reset ? DefaultLayoutStyle::SL_DEFAULT_X_BOX_MATCH_PARENT_SIZE : value;
+    return old_value != x_box_match_parent_size_;
+  }
 
 #define SET_LAYOUT_PROPERTY(type_name, enum_type, css_type, default_type) \
   LYNX_EXPORT bool Set##type_name(const enum_type& value,                 \

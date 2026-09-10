@@ -149,6 +149,20 @@ struct EventDispatcher::WeakFlag {
   std::atomic<EventDispatcher*> dispatcher;
 };
 
+struct EventDispatcher::GestureCallbackFlag {
+  explicit GestureCallbackFlag(EventDispatcher* dispatcher)
+      : dispatcher(dispatcher) {}
+  std::atomic<EventDispatcher*> dispatcher;
+};
+
+EventDispatcher* EventDispatcher::ResolveDispatcherFromGestureUserData(
+    void* user_data) {
+  auto* callback_flag = static_cast<GestureCallbackFlag*>(user_data);
+  return callback_flag
+             ? callback_flag->dispatcher.load(std::memory_order_acquire)
+             : nullptr;
+}
+
 static void* GetGestureInterrupterGetUserDataFunc() {
   if (OH_GetSdkApiVersion() < kGestureInterrupterUserDataSupportVersion) {
     return nullptr;
@@ -168,30 +182,33 @@ static void* GestureInterrupterGetUserDataFuncHandle() {
 
 GestureReceiver EventDispatcher::long_press_receiver_callback_ =
     [](ArkUI_GestureEvent* event, void* user_data) {
-      if (!user_data) {
+      auto* event_dispatcher =
+          EventDispatcher::ResolveDispatcherFromGestureUserData(user_data);
+      if (!event_dispatcher) {
         return;
       }
-      auto event_dispatcher = reinterpret_cast<EventDispatcher*>(user_data);
       event_dispatcher->OnLongPressEvent(
           OH_ArkUI_GestureEvent_GetRawInputEvent(event));
     };
 
 GestureReceiver EventDispatcher::tap_receiver_callback_ =
     [](ArkUI_GestureEvent* event, void* user_data) {
-      if (!user_data) {
+      auto* event_dispatcher =
+          EventDispatcher::ResolveDispatcherFromGestureUserData(user_data);
+      if (!event_dispatcher) {
         return;
       }
-      auto event_dispatcher = reinterpret_cast<EventDispatcher*>(user_data);
       event_dispatcher->OnTapEvent(
           OH_ArkUI_GestureEvent_GetRawInputEvent(event));
     };
 // for gesture handler, record the current touch speed.
 GestureReceiver EventDispatcher::velocity_tracker_pan_receiver_callback_ =
     [](ArkUI_GestureEvent* event, void* user_data) {
-      if (!user_data) {
+      auto* event_dispatcher =
+          EventDispatcher::ResolveDispatcherFromGestureUserData(user_data);
+      if (!event_dispatcher) {
         return;
       }
-      auto event_dispatcher = reinterpret_cast<EventDispatcher*>(user_data);
       event_dispatcher->OnGetVelocity(event);
     };
 
@@ -204,8 +221,9 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
     void* func = GestureInterrupterGetUserDataFuncHandle();
     if (func != nullptr) {
       using OhGetUserData = void* (*)(ArkUI_GestureInterruptInfo*);
-      auto* event_dispatcher_from_user_data = static_cast<EventDispatcher*>(
-          reinterpret_cast<OhGetUserData>(func)(info));
+      auto* event_dispatcher_from_user_data =
+          EventDispatcher::ResolveDispatcherFromGestureUserData(
+              reinterpret_cast<OhGetUserData>(func)(info));
       if (event_dispatcher_from_user_data != nullptr) {
         event_dispatcher = event_dispatcher_from_user_data;
       }
@@ -302,12 +320,15 @@ void EventDispatcher::EventTargetDetail::SetPrePoint(float pre_point[2]) {
 }
 
 EventDispatcher::EventDispatcher(UIOwner* ui_owner)
-    : ui_owner_(ui_owner), weak_flag_(std::make_shared<WeakFlag>(this)) {
+    : ui_owner_(ui_owner),
+      weak_flag_(std::make_shared<WeakFlag>(this)),
+      gesture_callback_flag_(new GestureCallbackFlag(this)) {
   NodeManager::Instance().SetEventDispatcher(this);
   velocity_tracker_pan_gesture_ =
       NodeManager::Instance().CreatePanGesture(1, GESTURE_DIRECTION_ALL, 0);
   NodeManager::Instance().SetGestureEventTarget(
-      velocity_tracker_pan_gesture_, GESTURE_EVENT_ACTION_UPDATE, this,
+      velocity_tracker_pan_gesture_, GESTURE_EVENT_ACTION_UPDATE,
+      gesture_callback_flag_,
       EventDispatcher::velocity_tracker_pan_receiver_callback_);
   block_outer_pan_gesture_ =
       NodeManager::Instance().CreatePanGesture(1, GESTURE_DIRECTION_ALL, 5);
@@ -332,6 +353,13 @@ EventDispatcher::EventDispatcher(UIOwner* ui_owner)
 EventDispatcher::~EventDispatcher() {
   if (weak_flag_) {
     weak_flag_->dispatcher.store(nullptr, std::memory_order_release);
+  }
+  if (gesture_callback_flag_) {
+    // ArkUI may still deliver a delayed gesture callback after unregistering.
+    // Keep the sentinel alive and only null out the dispatcher pointer here to
+    // avoid dereferencing a stale EventDispatcher from callback user_data.
+    gesture_callback_flag_->dispatcher.store(nullptr,
+                                             std::memory_order_release);
   }
   NodeManager::Instance().SetEventDispatcher(nullptr);
   if (long_press_gesture_) {
@@ -404,7 +432,7 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
 
   NodeManager::Instance().SetGestureInterrupterToNode(
       root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_,
-      this);
+      gesture_callback_flag_);
 }
 
 void EventDispatcher::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
@@ -904,6 +932,36 @@ void EventDispatcher::GetTargetPoint(EventTarget* active_target,
   }
 }
 
+lynx::event::TouchEventTargetPoints EventDispatcher::GetCurrentTargetPoints(
+    EventTarget* active_target, float page_point[2],
+    const std::string& event_name) {
+  lynx::event::TouchEventTargetPoints points;
+  if (ui_owner_->Context() == nullptr ||
+      !ui_owner_->Context()->EnableCurrentTargetTouchPosition()) {
+    return points;
+  }
+  auto* current = active_target;
+  auto* root = ui_owner_->Root();
+  while (current != nullptr) {
+    if (current->HasUI()) {
+      auto* current_ui = static_cast<UIBase*>(current);
+      if (current_ui->HasResponseChainEvent(event_name)) {
+        float local_point[2] = {page_point[0], page_point[1]};
+        LynxUIHelper::ConvertPointFromAncestorToDescendant(
+            local_point, root, current_ui, page_point);
+        points.push_back(lynx::event::TouchEventTargetPoint{
+            current->Sign(), local_point[0], local_point[1]});
+      }
+    }
+    auto* parent = current->ParentTarget();
+    if (parent == current) {
+      break;
+    }
+    current = parent;
+  }
+  return points;
+}
+
 void EventDispatcher::GetPagePoint(float page_point[2], float node_point[2]) {
   if (from_overlay_ && !ui_owner_->Destroyed()) {
     auto root = ui_owner_->Root();
@@ -1043,7 +1101,7 @@ void EventDispatcher::SetTapSlop(const std::string& tap_slop) {
     return;
   }
   NodeManager::Instance().SetGestureEventTarget(
-      tap_gesture_, GESTURE_EVENT_ACTION_ACCEPT, this,
+      tap_gesture_, GESTURE_EVENT_ACTION_ACCEPT, gesture_callback_flag_,
       EventDispatcher::tap_receiver_callback_);
   if (!root_target_.expired()) {
     NodeManager::Instance().AddGestureToNode(root_target_.lock()->RootNode(),
@@ -1063,7 +1121,7 @@ void EventDispatcher::SetLongPressDuration(int32_t long_press_duration) {
     return;
   }
   NodeManager::Instance().SetGestureEventTarget(
-      long_press_gesture_, GESTURE_EVENT_ACTION_ACCEPT, this,
+      long_press_gesture_, GESTURE_EVENT_ACTION_ACCEPT, gesture_callback_flag_,
       EventDispatcher::long_press_receiver_callback_);
   if (!root_target_.expired()) {
     NodeManager::Instance().AddGestureToNode(root_target_.lock()->RootNode(),
@@ -1576,10 +1634,7 @@ void EventDispatcher::DispatchSingleTouchEvent(
 
   auto active_target = first_active_target_.lock().get();
   TouchEvent touch_event(active_target->Sign(), name);
-  auto time_stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch())
-                        .count();
-  touch_event.SetTimeStamp(time_stamp);
+  touch_event.SetTimeStamp(time_stamp_);
   float scaled_density =
       (name == TouchEvent::TAP || name == TouchEvent::LONGPRESS)
           ? ui_owner_->Context()->ScaledDensity()
@@ -1594,7 +1649,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetTargetPoint(target_point);
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);
-  touch_event.SetTimeStamp(OH_ArkUI_UIInputEvent_GetEventTime(event));
+  touch_event.SetCurrentTargetPoints(
+      GetCurrentTargetPoints(active_target, page_point, name));
   touch_event.SetTarget(first_active_target_);
   MarkDispatchInCurrentLynxPageOnly(touch_event);
   ui_owner_->SendEvent(touch_event);
@@ -1617,6 +1673,8 @@ void EventDispatcher::DispatchSingleTouchEvent(
   touch_event.SetTargetPoint(target_point);
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);
+  touch_event.SetCurrentTargetPoints(
+      GetCurrentTargetPoints(active_target, page_point, name));
   MarkDispatchInCurrentLynxPageOnly(touch_event);
   ui_owner_->SendEvent(touch_event);
   last_touch_event_ = std::make_shared<TouchEvent>(touch_event);

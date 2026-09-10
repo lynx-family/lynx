@@ -74,7 +74,7 @@ void NativePropBundle::SetProps(const char* key, double value) {
 }
 
 void NativePropBundle::SetProps(const char* key, const pub::Value& value) {
-  props_[key] = pub::ValueUtils::ConvertValueToLepusValue(value);
+  props_[key] = pub::ValueUtils::ConvertValueToLepusValue(value).ToLepusValue();
 }
 
 void NativePropBundle::SetEventHandler(const pub::Value& event) {
@@ -129,11 +129,12 @@ fml::RefPtr<PropBundle> NativePropBundle::ShallowCopy() {
 void NativePropBundle::SetProps(const pub::Value& value) {
   auto prev_value_vector =
       pub::ScopedCircleChecker::InitVectorIfNecessary(value);
-  value.ForeachMap(
-      [this, &prev_value_vector](const pub::Value& k, const pub::Value& v) {
-        props_[k.str().c_str()] = pub::ValueUtils::ConvertValueToLepusValue(
-            v, prev_value_vector.get(), 0);
-      });
+  value.ForeachMap([this, &prev_value_vector](const pub::Value& k,
+                                              const pub::Value& v) {
+    props_[k.str().c_str()] =
+        pub::ValueUtils::ConvertValueToLepusValue(v, prev_value_vector.get(), 0)
+            .ToLepusValue();
+  });
 }
 
 }  // namespace tasm

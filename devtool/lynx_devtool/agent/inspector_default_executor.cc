@@ -6,6 +6,7 @@
 
 #include "base/include/log/logging.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
@@ -14,7 +15,9 @@ InspectorDefaultExecutor::InspectorDefaultExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : devtool_mediator_wp_(devtool_mediator),
       console_msg_manager_(
-          std::make_unique<ConsoleMessageManager>(devtool_mediator)) {}
+          std::make_unique<ConsoleMessageManager>(devtool_mediator)),
+      network_observer_(
+          std::make_shared<NetworkRequestObserver>(devtool_mediator)) {}
 
 void InspectorDefaultExecutor::Reset() {
   console_msg_manager_->ClearConsoleMessages();
@@ -107,6 +110,80 @@ void InspectorDefaultExecutor::SendLogEntryAddedEvent(
 }
 
 // end log protocol
+
+void InspectorDefaultExecutor::NetworkEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const int64_t id = message["id"].asInt64();
+  if (!network_observer_->Enable(message["params"])) {
+    // Network.enable(maxPostDataSize) is called with invalid params, e.g.
+    // maxPostDataSize is negative.
+    sender->SendErrorResponse(id, kInvalidParams, "Invalid params");
+    return;
+  }
+  sender->SendOKResponse(id);
+}
+
+void InspectorDefaultExecutor::NetworkDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  network_observer_->Disable();
+  sender->SendOKResponse(message["id"].asInt64());
+}
+
+void InspectorDefaultExecutor::NetworkGetResponseBody(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const int64_t id = message["id"].asInt64();
+  const Json::Value& request_id = message["params"]["requestId"];
+  if (!request_id.isString() || request_id.asString().empty()) {
+    sender->SendErrorResponse(id, kInvalidParams,
+                              "Invalid params: requestId must be a string");
+    return;
+  }
+  std::string body;
+  bool base64_encoded = false;
+  const auto result = network_observer_->GetResponseBody(request_id.asString(),
+                                                         body, base64_encoded);
+  if (result != NetworkRequestObserver::BodyResult::OK) {
+    sender->SendErrorResponse(
+        id, kServerError,
+        NetworkRequestObserver::NetworkBodyResultMessage(result));
+    return;
+  }
+  Json::Value response;
+  response["id"] = id;
+  response["result"]["body"] = body;
+  response["result"]["base64Encoded"] = base64_encoded;
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorDefaultExecutor::NetworkGetRequestPostData(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const int64_t id = message["id"].asInt64();
+  const Json::Value& request_id = message["params"]["requestId"];
+  if (!request_id.isString() || request_id.asString().empty()) {
+    sender->SendErrorResponse(id, kInvalidParams,
+                              "Invalid params: requestId must be a string");
+    return;
+  }
+  std::string post_data;
+  bool base64_encoded = false;
+  const auto result = network_observer_->GetRequestPostData(
+      request_id.asString(), post_data, base64_encoded);
+  if (result != NetworkRequestObserver::BodyResult::OK) {
+    sender->SendErrorResponse(
+        id, kServerError,
+        NetworkRequestObserver::NetworkBodyResultMessage(result));
+    return;
+  }
+  Json::Value response;
+  response["id"] = id;
+  response["result"]["postData"] = post_data;
+  response["result"]["base64Encoded"] = base64_encoded;
+  sender->SendMessage("CDP", response);
+}
 
 }  // namespace devtool
 }  // namespace lynx

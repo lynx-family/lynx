@@ -38,6 +38,7 @@ void IntersectionObserverManager::StopExposure(bool send_event) {
   // an active exposure open, so a later stop(true) must still be allowed to
   // close it.
   exposure_stopped_ = true;
+  CancelExposureRetry();
   for (auto& it : expose_observers_map_) {
     it.second->StopExposure(send_event);
   }
@@ -54,6 +55,7 @@ void IntersectionObserverManager::ResumeExposure() {
   // state and re-adds exposure detection to the run loop. Keep forwarding it
   // and coalesce the actual check at BeginFrame below.
   exposure_stopped_ = false;
+  CancelExposureRetry();
   for (auto& it : expose_observers_map_) {
     it.second->ResumeExposure();
   }
@@ -86,6 +88,7 @@ void IntersectionObserverManager::SetExposureHostVisible(bool visible) {
     return;
   }
   exposure_host_visible_ = visible;
+  CancelExposureRetry();
   for (auto& it : expose_observers_map_) {
     it.second->SetExposureHostVisible(visible);
   }
@@ -159,7 +162,12 @@ void IntersectionObserverManager::RemoveExposeObserver(BaseView* view) {
 }
 
 void IntersectionObserverManager::SetExposureFrequency(int freq) {
-  expose_min_time_gap_ms_ = 1000 / std::min(1, std::max(freq, 60));
+  const int64_t interval_us = CalculateExposureIntervalMicros(freq);
+  if (interval_us > 0) {
+    expose_min_time_gap_us_ = interval_us;
+    CancelExposureRetry();
+    last_expose_time_ = -1;
+  }
 }
 
 void IntersectionObserverManager::SetExposureUIMarginEnabled(bool enabled) {
@@ -190,11 +198,59 @@ void IntersectionObserverManager::NotifyObservers() {
   }
 
   auto now = fml::TimePoint::Now().ToEpochDelta().ToMicroseconds();
-  if (last_expose_time_ == -1 ||
-      (now - last_expose_time_ > expose_min_time_gap_ms_)) {
+  const int64_t elapsed_us = now - last_expose_time_;
+  if (last_expose_time_ == -1 || elapsed_us >= expose_min_time_gap_us_) {
+    CancelExposureRetry();
     last_expose_time_ = now;
     NotifyExposures(&IntersectionObserver::CheckForIntersectionWithTarget);
+  } else {
+    ScheduleExposureRetry(expose_min_time_gap_us_ - elapsed_us);
   }
+}
+
+void IntersectionObserverManager::CancelExposureRetry() {
+  exposure_retry_scheduled_ = false;
+  ++exposure_retry_generation_;
+}
+
+void IntersectionObserverManager::ScheduleExposureRetry(int64_t delay_us) {
+  if (exposure_retry_scheduled_) {
+    return;
+  }
+
+  auto* page_view = owner_page_view_;
+  auto task_runner = page_view->GetTaskRunner();
+  if (!task_runner) {
+    return;
+  }
+
+  exposure_retry_scheduled_ = true;
+  const uint64_t generation = ++exposure_retry_generation_;
+  task_runner->PostDelayedTask(
+      [weak_page_view = page_view->GetWeakPtr(), generation]() {
+        if (!weak_page_view) {
+          return;
+        }
+        auto* page_view = static_cast<PageView*>(weak_page_view.get());
+        if (!page_view->HasIntersectionObserverManager()) {
+          return;
+        }
+        auto* manager = page_view->intersection_observer_manager();
+        if (!manager->exposure_retry_scheduled_ ||
+            manager->exposure_retry_generation_ != generation) {
+          return;
+        }
+
+        manager->exposure_retry_scheduled_ = false;
+        if (manager->exposure_stopped_ || !manager->exposure_host_visible_ ||
+            manager->expose_observers_map_.empty()) {
+          return;
+        }
+
+        manager->last_expose_time_ = -1;
+        page_view->RequestPaint();
+      },
+      fml::TimeDelta::FromMicroseconds(std::max<int64_t>(delay_us, 1)));
 }
 
 void IntersectionObserverManager::NotifyTargetAttached(BaseView* view) {

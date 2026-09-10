@@ -26,7 +26,7 @@
 #import "LynxTemplateRender+Protected.h"
 #import "LynxTouchHandler+Internal.h"
 #import "LynxUIExposure+Internal.h"
-#import "LynxUIIntersectionObserver+Internal.h"
+#import "LynxUIIntersectionObserver.h"
 
 #include "base/include/lynx_actor.h"
 #include "core/public/painting_ctx_platform_impl.h"
@@ -227,7 +227,6 @@ static id<LynxServiceTextProtocol> getTextService() {
   _intersectionObserverManager =
       [[LynxUIIntersectionObserverManager alloc] initWithLynxContext:_lynxContext];
   _intersectionObserverManager.uiOwner = _uiOwner;
-  [_eventEmitter addObserver:_intersectionObserverManager];
 
   _lynxContext.intersectionManager = _intersectionObserverManager;
   _lynxContext.uiOwner = _uiOwner;
@@ -245,7 +244,6 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler setTapSlop:[NSString stringWithUTF8String:pageConfig->GetTapSlop().c_str()]];
   [_eventHandler setLongPressDuration:pageConfig->GetLongPressDuration()];
   [_eventHandler setEnablePlatformGesture:pageConfig->GetEnablePlatformGesture()];
-  [_eventHandler.touchRecognizer setEnableTouchRefactor:pageConfig->GetEnableTouchRefactor()];
   [_eventHandler.touchRecognizer
       setEnableEndGestureAtLastFingerUp:pageConfig->GetEnableEndGestureAtLastFingerUp()];
   _eventHandler.touchRecognizer.enableNewGesture = pageConfig->GetEnableNewGesture();
@@ -254,10 +252,6 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler.touchRecognizer setEnableTouchPseudo:pageConfig->GetEnableFiberArch()];
   // Enable support multi-finger events.
   [_eventHandler.touchRecognizer setEnableMultiTouch:pageConfig->GetEnableMultiTouch()];
-
-  // Set config to IntersectionObserverManager
-  [_intersectionObserverManager
-      setEnableNewIntersectionObserver:pageConfig->GetEnableNewIntersectionObserver()];
 
   // Set config to LynxUIExposure
   [_uiOwner.uiContext.uiExposure

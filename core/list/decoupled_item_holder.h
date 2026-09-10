@@ -8,9 +8,11 @@
 #include <array>
 #include <limits>
 #include <string>
+#include <utility>
 
 #include "base/include/flex_optional.h"
 #include "base/include/fml/memory/weak_ptr.h"
+#include "core/list/animation/animation_target.h"
 #include "core/list/decoupled_list_types.h"
 
 namespace lynx {
@@ -19,7 +21,8 @@ namespace list {
 class ItemElementDelegate;
 class ListOrientationHelper;
 
-class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
+class ItemHolder : public AnimationTarget,
+                   public fml::EnableWeakFromThis<ItemHolder> {
  public:
   class AnimationDelegate {
    public:
@@ -87,6 +90,24 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   void RecycleAfterAnimation(ItemHolderAnimationType type);
   void MarkInsertOpacity();
 
+  // AnimationTarget implementation for the new update-animation pipeline.
+  const std::string& GetAnimationKey() const override { return item_key_; }
+  int GetAnimationIndex() const override { return index_; }
+  float GetAnimationLeft() const override { return left_; }
+  float GetAnimationTop() const override { return top_; }
+  float GetAnimationWidth() const override { return width_; }
+  float GetAnimationHeight() const override { return height_; }
+  fml::WeakPtr<AnimationTarget> GetWeakAnimationTarget() const override {
+    fml::WeakPtr<ItemHolder> weak_holder =
+        fml::EnableWeakFromThis<ItemHolder>::WeakFromThis();
+    return fml::WeakPtr<AnimationTarget>(std::move(weak_holder));
+  }
+  void PrepareForAnimation(ItemAnimationType animation_type) override;
+  void FinishAnimation() override;
+  void UpdateAnimationOpacity(float opacity, bool flush_immediately) override;
+  void UpdateAnimationPosition(float left, float top,
+                               bool flush_immediately) override;
+
   float GetBorder(FrameDirection frame_direction) const;
   float GetPadding(FrameDirection frame_direction) const;
   float GetMargin(FrameDirection frame_direction) const;
@@ -139,7 +160,9 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   base::flex_optional<fml::WeakPtr<ItemHolder>> weak_anchor_ref() const {
     return weak_anchor_ref_;
   }
-  bool recyclable() const { return recyclable_; }
+  bool recyclable() const {
+    return recyclable_ && !defer_recycle_for_animation_;
+  }
 
  private:
   float GetRTLLeft(float content_size, float container_width, float left,
@@ -230,6 +253,12 @@ class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
   float content_size_{std::numeric_limits<float>::quiet_NaN()};
   float container_width_{std::numeric_limits<float>::quiet_NaN()};
   ItemHolderAnimationType animation_type_{ItemHolderAnimationType::kNone};
+
+  // The new update-animation pipeline uses separate flags to defer normal
+  // recycling and layout updates. It does not reuse the legacy animation_type_
+  // or its starting-state fields above.
+  bool defer_recycle_for_animation_{false};
+  bool defer_layout_flush_for_animation_{false};
 };
 
 }  // namespace list

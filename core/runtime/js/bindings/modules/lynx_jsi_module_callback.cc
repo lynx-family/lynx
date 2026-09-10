@@ -11,6 +11,9 @@
 #include "core/runtime/js/template_delegate.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#if ENABLE_INSPECTOR
+#include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
+#endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/native_module_recorder.h"
 #endif
@@ -50,6 +53,11 @@ void ModuleCallback::Invoke(Runtime* runtime,
   args_->ForeachArray([&values, runtime](int64_t index, const pub::Value& val) {
     values[index] = pub::ValueUtils::ConvertValueToPiperValue(*runtime, val);
   });
+#if ENABLE_INSPECTOR
+  lepus::Value observer_result =
+      invocation_context_ ? pub::ValueUtils::ConvertValueToLepusValue(*args_)
+                          : lepus::Value();
+#endif  // ENABLE_INSPECTOR
   // Directly destroy `args_` to avoid issues caused by the unstable destruction
   // order of `shared_ptr`, which can lead to `args_` being destroyed by other
   // threads.
@@ -65,6 +73,14 @@ void ModuleCallback::Invoke(Runtime* runtime,
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_INVOKE_CALLBACK);
   uint64_t invoke_js_callback_start = base::CurrentSystemTimeMilliseconds();
   holder->function_.call(*runtime, values, size);
+
+#if ENABLE_INSPECTOR
+  if (invocation_context_) {
+    lepus::Value callback_record =
+        invocation_context_->BuildCallbackRecord(std::move(observer_result));
+    invocation_context_->EmitRecord(callback_record);
+  }
+#endif  // ENABLE_INSPECTOR
 
   if (timing_collector_ != nullptr) {
     timing_collector_->EndCallbackInvoke(

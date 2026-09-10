@@ -45,6 +45,7 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
+import com.lynx.tasm.behavior.ui.UIExposure;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.UIShadowProxy;
@@ -886,6 +887,12 @@ public class LynxUIOwner {
     }
     newUI.invalidate();
     oldUI.destroy();
+
+    mContext.addUIToExposedMap(newUI);
+    UIExposure exposure = mContext.getExposure();
+    if (exposure != null) {
+      exposure.requestCheckUI();
+    }
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.endSection(traceEvent);
     }
@@ -1293,11 +1300,13 @@ public class LynxUIOwner {
 
     long garbageSize = 0;
     // Keep candidates for the lifetime of their holder entries. Parented candidates may belong to
-    // a detached candidate subtree, so skip them without discarding them.
-    for (int i = 0; i < mRemovedUICandidateIds.size(); ++i) {
+    // a detached candidate subtree, so skip them without discarding them. Prune candidates whose
+    // holder entries are already gone.
+    for (int i = mRemovedUICandidateIds.size() - 1; i >= 0; --i) {
       int removeId = mRemovedUICandidateIds.keyAt(i);
       LynxBaseUI ui = mUIHolder.get(removeId);
       if (ui == null) {
+        mRemovedUICandidateIds.removeAt(i);
         continue;
       }
       if (ui.getParent() != null) {

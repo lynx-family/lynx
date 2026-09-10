@@ -496,6 +496,9 @@ TEST_F(CSSTransitionManagerTest, NoNeedUpdateExistingAnimator) {
                                    tasm::CSSValue(1, CSSValuePattern::NUMBER));
   // Animation map check
   EXPECT_TRUE(test_manager->animations_map().count(base::String("opacity")));
+  EXPECT_EQ(
+      animation::Animation::Origin::kCSSTransition,
+      test_manager->animations_map()[base::String("opacity")]->GetOrigin());
   starlight::AnimationData& opacity_animation_data =
       test_manager->animations_map()[base::String("opacity")]
           ->get_animation_data();

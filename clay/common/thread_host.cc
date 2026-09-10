@@ -17,13 +17,22 @@
 #include <string>
 #include <utility>
 
+#include "base/include/no_destructor.h"
+
 namespace clay {
 
 #if OS_ANDROID
 static std::atomic_bool g_has_android_looper = false;
 #endif
 
-static std::shared_ptr<fml::Thread> g_clay_io_thread = nullptr;
+namespace {
+
+std::shared_ptr<fml::Thread>& GetClayIOThread() {
+  static lynx::base::NoDestructor<std::shared_ptr<fml::Thread>> clay_io_thread;
+  return *clay_io_thread;
+}
+
+}  // namespace
 
 std::string ThreadHost::ThreadHostConfig::MakeThreadName(
     Type type, const std::string& prefix) {
@@ -104,11 +113,12 @@ ThreadHost::ThreadHost(const ThreadHostConfig& host_config)
   }
 
   if (host_config.isThreadNeeded(ThreadHost::Type::IO)) {
-    if (!g_clay_io_thread) {
-      g_clay_io_thread =
+    auto& clay_io_thread = GetClayIOThread();
+    if (!clay_io_thread) {
+      clay_io_thread =
           CreateThread(Type::IO, host_config.io_config, host_config);
     }
-    io_thread = g_clay_io_thread;
+    io_thread = clay_io_thread;
   }
 
   if (host_config.isThreadNeeded(ThreadHost::Type::Profiler)) {
@@ -143,10 +153,11 @@ void ThreadHost::UpdateConfig(const ThreadHostConfig& config) {
         CreateThread(Type::Platform, config.platform_config, config);
   }
   if (io_thread == nullptr && config.isThreadNeeded(Type::IO)) {
-    if (!g_clay_io_thread) {
-      g_clay_io_thread = CreateThread(Type::IO, config.io_config, config);
+    auto& clay_io_thread = GetClayIOThread();
+    if (!clay_io_thread) {
+      clay_io_thread = CreateThread(Type::IO, config.io_config, config);
     }
-    io_thread = g_clay_io_thread;
+    io_thread = clay_io_thread;
   }
   if (raster_thread == nullptr && config.isThreadNeeded(Type::RASTER)) {
     raster_thread = CreateThread(Type::RASTER, config.raster_config, config);

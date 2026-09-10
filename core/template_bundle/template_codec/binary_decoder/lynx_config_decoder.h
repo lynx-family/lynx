@@ -135,14 +135,6 @@ class LynxConfigDecoder final {
               : TernaryBool::FALSE_VALUE);
     }
 
-    if (doc.HasMember(config::kEnableOptPushStyleToBundle) &&
-        doc[config::kEnableOptPushStyleToBundle].IsBool()) {
-      page_config->SetEnableOptPushStyleToBundle(
-          doc[config::kEnableOptPushStyleToBundle].GetBool()
-              ? TernaryBool::TRUE_VALUE
-              : TernaryBool::FALSE_VALUE);
-    }
-
     if (doc.HasMember(config::kEnableTextLayoutCache) &&
         doc[config::kEnableTextLayoutCache].IsBool()) {
       page_config->SetEnableTextLayoutCache(
@@ -524,12 +516,6 @@ class LynxConfigDecoder final {
       page_config->SetEnableExtendedLayoutOpt(true);
     }
 
-    if (doc.HasMember(config::kEnableTouchRefactor) &&
-        doc[config::kEnableTouchRefactor].IsBool()) {
-      page_config->SetEnableTouchRefactor(
-          doc[config::kEnableTouchRefactor].GetBool());
-    }
-
     if (doc.HasMember(config::kEnableEndGestureAtLastFingerUp) &&
         doc[config::kEnableEndGestureAtLastFingerUp].IsBool()) {
       page_config->SetEnableEndGestureAtLastFingerUp(
@@ -771,15 +757,6 @@ class LynxConfigDecoder final {
           doc[config::kFontScaleEffectiveOnlyOnSp].GetBool());
     }
 
-    if (doc.HasMember(config::kEnableNewIntersectionObserver) &&
-        doc[config::kEnableNewIntersectionObserver].IsBool()) {
-      page_config->SetEnableNewIntersectionObserver(
-          doc[config::kEnableNewIntersectionObserver].GetBool());
-    } else {
-      page_config->SetEnableNewIntersectionObserver(
-          LynxEnv::GetInstance().EnableNewIntersectionObserver());
-    }
-
     if (doc.HasMember(config::kEnableParseIntFlex) &&
         doc[config::kEnableParseIntFlex].IsBool()) {
       page_config->SetEnableParseIntFlex(
@@ -831,6 +808,12 @@ class LynxConfigDecoder final {
         doc[config::kEnableEventTargetInfoNodeIndex].IsBool()) {
       page_config->SetEnableEventTargetInfoNodeIndex(
           doc[config::kEnableEventTargetInfoNodeIndex].GetBool());
+    }
+
+    if (doc.HasMember(config::kEnableCurrentTargetTouchPosition) &&
+        doc[config::kEnableCurrentTargetTouchPosition].IsBool()) {
+      page_config->SetEnableCurrentTargetTouchPosition(
+          doc[config::kEnableCurrentTargetTouchPosition].GetBool());
     }
 
     if (doc.HasMember(config::kEnableFrontendCustomEventBubbleCompatible) &&

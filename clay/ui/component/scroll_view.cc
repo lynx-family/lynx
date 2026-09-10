@@ -34,10 +34,6 @@ namespace {
 
 constexpr char kScrollViewTag[] = "scroll-view-impl";
 
-constexpr char kArgOffset[] = "offset";
-constexpr char kArgSmooth[] = "smooth";
-const std::vector<std::string> kScrollToArgs{kArgSmooth, kArgOffset};
-
 NestedScrollMode ParseNestedScrollMode(const std::string& value) {
   if (value == "self-only") {
     return NestedScrollMode::kSelfOnly;
@@ -171,7 +167,9 @@ void ScrollView::OnLayout(LayoutContext* context) {
       pending_scroll_offset_ = std::nullopt;
     }
   }
-  if (pending_scroll_index_ > -1) {
+  if (pending_scroll_index_ > -1 &&
+      pending_scroll_index_ < static_cast<int>(child_count()) &&
+      CanInvokeScrollImmediately()) {
     SetScrollToIndex(pending_scroll_index_);
     pending_scroll_index_ = -1;
   }
@@ -373,7 +371,7 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
       }
     }
   } else if (kw == KeywordID::kInitialScrollOffset) {
-    int offset = attribute_utils::GetNum(value);
+    int offset = FromLogical(attribute_utils::GetNum(value));
     if (!initial_scroll_offset_set_ && offset >= 0) {
       initial_scroll_offset_set_ = true;
       if (CanInvokeScrollImmediately()) {

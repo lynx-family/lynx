@@ -5,12 +5,11 @@
 #ifndef CORE_RENDERER_DOM_IMPERATIVE_ANIMATION_STATE_H_
 #define CORE_RENDERER_DOM_IMPERATIVE_ANIMATION_STATE_H_
 
-#include <cstdint>
-
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_property_bitset.h"
+#include "core/renderer/dom/imperative_animation_source.h"
 #include "core/renderer/starlight/style/css_type.h"
 
 namespace lynx {
@@ -24,25 +23,22 @@ class CSSKeyframesToken;
 
 class ImperativeAnimationState {
  public:
-  enum class Source : uint8_t {
-    kAnimate,
-    kAnimateV2,
-  };
-
   struct Mutation {
     CSSIDBitset cleanup_properties;
     base::Vector<base::String> keyframes_to_remove;
   };
 
-  Mutation RecordStart(Source source, const base::String& js_name,
+  Mutation RecordStart(ImperativeAnimationSource source,
+                       const base::String& js_name,
                        const base::String& animation_name,
                        bool owns_generated_keyframe,
                        const StyleMap& timing_styles,
                        CSSKeyframesToken* keyframes_token);
-  void UpdatePlayState(Source source, const base::String& name,
-                       const StyleMap& timing_styles, bool paused);
-  Mutation Cancel(Source source, const base::String& name);
-  Mutation Finish(Source source, const base::String& name);
+  void UpdatePlayState(ImperativeAnimationSource source,
+                       const base::String& name, const StyleMap& timing_styles,
+                       bool paused);
+  Mutation Cancel(ImperativeAnimationSource source, const base::String& name);
+  Mutation Finish(ImperativeAnimationSource source, const base::String& name);
   Mutation ClearForStyleAnimationUpdate();
   Mutation Clear();
 
@@ -56,7 +52,7 @@ class ImperativeAnimationState {
 
  private:
   struct Record {
-    Source source{Source::kAnimate};
+    ImperativeAnimationSource source{ImperativeAnimationSource::kAnimate};
     base::String js_name;
     base::String animation_name;
     StyleMap timing_styles;
@@ -67,10 +63,12 @@ class ImperativeAnimationState {
   };
 
   static bool MatchesName(const Record& record, const base::String& name);
-  static bool MatchesIdentity(const Record& record, Source source,
+  static bool MatchesIdentity(const Record& record,
+                              ImperativeAnimationSource source,
                               const base::String& js_name,
                               const base::String& animation_name);
-  static bool ShouldReplaceOnStart(const Record& record, Source source,
+  static bool ShouldReplaceOnStart(const Record& record,
+                                   ImperativeAnimationSource source,
                                    const base::String& js_name,
                                    const base::String& animation_name);
 

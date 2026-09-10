@@ -61,6 +61,29 @@ static void AddTimestampProperty(lepus::Dictionary *params,
   }
 }
 
+static event::TouchEventTargetPoints ParseCurrentTargetPoints(
+    const lepus::Value &value) {
+  event::TouchEventTargetPoints points;
+  if (!value.IsArrayOrJSArray()) {
+    return points;
+  }
+  const size_t size = value.GetLength();
+  points.reserve(size);
+  for (size_t index = 0; index < size; ++index) {
+    const auto &entry = value.GetProperty(static_cast<uint32_t>(index));
+    if (!entry.IsArrayOrJSArray() || entry.GetLength() < 3 ||
+        !entry.GetProperty(0).IsNumber() || !entry.GetProperty(1).IsNumber() ||
+        !entry.GetProperty(2).IsNumber()) {
+      continue;
+    }
+    points.push_back(event::TouchEventTargetPoint{
+        static_cast<int32_t>(entry.GetProperty(0).Number()),
+        static_cast<float>(entry.GetProperty(1).Number()),
+        static_cast<float>(entry.GetProperty(2).Number())});
+  }
+  return points;
+}
+
 TouchEventHandler::TouchEventHandler(
     NodeManager *node_manager,
     runtime::ContextProxy::Delegate &context_proxy_delegate,
@@ -190,7 +213,7 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
       }
       auto event = fml::MakeRefCounted<event::TouchEvent>(
           name, info.x, info.y, info.page_x, info.page_y, info.client_x,
-          info.client_y, info.timestamp);
+          info.client_y, info.timestamp, info.current_target_points);
       event::EventDispatcher::DispatchEvent(*target, std::move(event));
     }
     return;
@@ -828,7 +851,8 @@ lepus::Value TouchEventHandler::GetTouchEventParam(
   } else {
     return GetTouchEventParam(handler, target, current_target, info.x, info.y,
                               info.client_x, info.client_y, info.page_x,
-                              info.page_y, is_js_event, info.timestamp);
+                              info.page_y, is_js_event, info.timestamp,
+                              info.current_target_points);
   }
 }
 
@@ -836,7 +860,8 @@ lepus::Value TouchEventHandler::GetTouchEventParam(
     const base::String &handler, const Element *target,
     const Element *current_target, float x, float y, float client_x,
     float client_y, float page_x, float page_y, bool is_js_event,
-    int64_t timestamp) const {
+    int64_t timestamp,
+    const event::TouchEventTargetPoints &current_target_points) const {
   BASE_STATIC_STRING_DECL(kType, "type");
   BASE_STATIC_STRING_DECL(kTarget, "target");
   BASE_STATIC_STRING_DECL(kCurrentTarget, "currentTarget");
@@ -847,6 +872,8 @@ lepus::Value TouchEventHandler::GetTouchEventParam(
   BASE_STATIC_STRING_DECL(kPageY, "pageY");
   BASE_STATIC_STRING_DECL(kClientX, "clientX");
   BASE_STATIC_STRING_DECL(kClientY, "clientY");
+  BASE_STATIC_STRING_DECL(kCurrentTargetX, "currentTargetX");
+  BASE_STATIC_STRING_DECL(kCurrentTargetY, "currentTargetY");
   BASE_STATIC_STRING_DECL(kIdentifier, "identifier");
   BASE_STATIC_STRING_DECL(kTouches, "touches");
   BASE_STATIC_STRING_DECL(kChangedTouches, "changedTouches");
@@ -878,6 +905,13 @@ lepus::Value TouchEventHandler::GetTouchEventParam(
 
   touch.get()->SetValue(kX, x / layouts_unit_per_px);
   touch.get()->SetValue(kY, y / layouts_unit_per_px);
+  for (const auto &point : current_target_points) {
+    if (point.element_id == current_target->impl_id()) {
+      touch.get()->SetValue(kCurrentTargetX, point.x / layouts_unit_per_px);
+      touch.get()->SetValue(kCurrentTargetY, point.y / layouts_unit_per_px);
+      break;
+    }
+  }
   int64_t identifier = reinterpret_cast<int64_t>(&touch);
   touch.get()->SetValue(kIdentifier, identifier);
 
@@ -1579,6 +1613,7 @@ void TouchEventHandler::StartEventGenerate(TemplateAssembler *tasm,
     lepus::Value ui_touch_map;
     float client_x = 0, client_y = 0, page_x = 0, page_y = 0, view_x = 0,
           view_y = 0;
+    event::TouchEventTargetPoints current_target_points;
     if (is_multi_finger) {
       if (event_detail.GetLength() >= 2) {
         ui_touch_map = event_detail.GetProperty(1);
@@ -1592,15 +1627,19 @@ void TouchEventHandler::StartEventGenerate(TemplateAssembler *tasm,
         view_x = event_detail.GetProperty(5).Number();
         view_y = event_detail.GetProperty(6).Number();
       }
+      if (event_detail.GetLength() >= 8) {
+        current_target_points =
+            ParseCurrentTargetPoints(event_detail.GetProperty(7));
+      }
     }
 
     std::shared_ptr<EventInfo> event_info;
     if (is_multi_finger) {
       event_info = std::make_shared<EventInfo>(ui_touch_map, event_timestamp);
     } else {
-      event_info = std::make_shared<EventInfo>(target_sign, view_x, view_y,
-                                               client_x, client_y, page_x,
-                                               page_y, event_timestamp);
+      event_info = std::make_shared<EventInfo>(
+          target_sign, view_x, view_y, client_x, client_y, page_x, page_y,
+          event_timestamp, std::move(current_target_points));
     }
 
     EventContext event_context = {

@@ -2059,6 +2059,7 @@ void TemplateAssembler::Destroy() {
   LOGI(GetLogContext() << " TemplateAssembler::Destroy url:" << url_
                        << " this:" << this);
 
+  page_proxy_.element_manager()->StopAnimationVsync();
   EnsureOnLayoutReadyHooksFinish();
 
   destroyed_ = true;
@@ -3213,11 +3214,6 @@ void TemplateAssembler::OnPageConfigDecoded(
   if (!config->GetEnableMultiTouchParamsCompatible()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_DISABLE_MULTI_TOUCH_PARAMS_COMPATIBLE,
-        element_manager->GetInstanceId());
-  }
-  if (!config->GetEnableTouchRefactor()) {
-    report::GlobalFeatureCounter::Count(
-        report::LynxFeature::OBJC_DISABLE_TOUCH_REFACTOR,
         element_manager->GetInstanceId());
   }
   if (!config->GetEnableEventRefactor()) {

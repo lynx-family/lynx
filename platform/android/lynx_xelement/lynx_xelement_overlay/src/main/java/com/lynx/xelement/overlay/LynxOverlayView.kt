@@ -1169,4 +1169,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     override fun isOverlay(): Boolean {
         return true
     }
+
+    override fun isExternalExposureRoot(): Boolean {
+        return true
+    }
 }

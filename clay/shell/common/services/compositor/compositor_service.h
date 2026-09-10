@@ -38,8 +38,9 @@ class CompositorService
   // |clay::Service|
   void OnDestroy() override;
 
-  void CreateMissingSurfaces(size_t required_surfaces,
-                             clay::GrContextPtr context);
+  void CreateMissingSurfaces(
+      const std::vector<OverlayData>& overlay_render_requests,
+      clay::GrContextPtr context);
 
   CompositorSurface& GetCompositorSurface();
 

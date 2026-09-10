@@ -164,7 +164,8 @@ void PaintingContextAndroidRef::SetGestureDetectorState(int64_t idx,
 }
 
 void PaintingContextAndroidRef::UpdateNodeReadyPatching(
-    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
   if (ready_ids.empty() && remove_ids.empty()) {
     return;
   }
@@ -177,17 +178,14 @@ void PaintingContextAndroidRef::UpdateNodeReadyPatching(
   }
 
   JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedLocalJavaRef<jintArray> node_ready_ids(
-      env, env->NewIntArray(ready_ids.size()));
-  env->SetIntArrayRegion(node_ready_ids.Get(), 0, ready_ids.size(),
-                         &ready_ids[0]);
-  base::android::ScopedLocalJavaRef<jintArray> node_remove_ids(
-      env, env->NewIntArray(remove_ids.size()));
-  env->SetIntArrayRegion(node_remove_ids.Get(), 0, remove_ids.size(),
-                         &remove_ids[0]);
+  auto node_ready_ids =
+      base::android::JNIHelper::ConvertToJNIIntArray(env, ready_ids);
+  auto node_remove_ids =
+      base::android::JNIHelper::ConvertToJNIIntArray(env, remove_ids);
 
-  Java_PaintingContext_updateNodeReadyPatching(
-      env, local_ref.Get(), node_ready_ids.Get(), node_remove_ids.Get());
+  Java_PaintingContext_updateNodeReadyPatchingInternal(
+      env, local_ref.Get(), node_ready_ids.Get(), node_remove_ids.Get(),
+      static_cast<jboolean>(should_cache_external_memory_candidates));
 }
 
 void PaintingContextAndroidRef::RequestExternalMemoryReport(int64_t delay_ms) {
@@ -1392,7 +1390,8 @@ void PaintingContextAndroid::UpdateLayoutPatching() {
 void PaintingContextAndroid::OnFirstMeaningfulLayout() {}
 
 void PaintingContextAndroid::UpdateNodeReadyPatching(
-    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
   if (ready_ids.empty() && remove_ids.empty()) {
     return;
   }
@@ -1408,6 +1407,8 @@ void PaintingContextAndroid::UpdateNodeReadyPatching(
     if (!remove_ids.empty()) {
       ui_operation_batch_builder_->putInt(
           static_cast<int32_t>(UIOperationType::kRemoveBatching));
+      ui_operation_batch_builder_->putInt(
+          should_cache_external_memory_candidates ? 1 : 0);
       ui_operation_batch_builder_->putIntArray(std::move(remove_ids));
     }
     return;

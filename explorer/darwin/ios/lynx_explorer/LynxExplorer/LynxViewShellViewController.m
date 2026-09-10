@@ -13,6 +13,7 @@
 #import "DemoGenericResourceFetcher.h"
 #import "DemoMediaResourceFetcher.h"
 #import "DemoTemplateResourceFetcher.h"
+#import "ExplorerLynxTestModule.h"
 #import "LynxExplorerInput.h"
 #import "LynxExplorerSwiftInterop.h"
 #import "LynxNodeAPILifecycleListener.h"
@@ -266,6 +267,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
 
 - (void)dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [_lynxView clearForDestroy];
 }
 
 - (void)explorerThemePreferenceDidChange:(NSNotification *)notification {
@@ -390,6 +392,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
     // for homepage only
     [builder.config registerUI:LynxExplorerInput.class withName:@"explorer-input"];
     [builder.config registerModule:LynxNodeAPIModule.class param:self];
+    [builder.config registerModule:ExplorerLynxTestModule.class];
     // Add fetchers
     builder.enableGenericResourceFetcher = true;
     builder.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];

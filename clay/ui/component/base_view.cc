@@ -5,11 +5,11 @@
 #include "clay/ui/component/base_view.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 
 #include "base/include/auto_reset.h"
@@ -72,18 +72,6 @@ LYNX_UI_METHOD_BEGIN(BaseView) {
 LYNX_UI_METHOD_END(BaseView);
 
 constexpr int64_t FORCE_CACHE_ANIMATION_DURATION = 500;
-
-bool ShouldPassEventToNativeInherited(BaseView* view) {
-  if (view == nullptr) {
-    return false;
-  } else if (view->CanEventThrough().has_value()) {
-    return *view->CanEventThrough();
-  } else if (view->Parent() == nullptr) {
-    return false;
-  } else {
-    return ShouldPassEventToNativeInherited(view->Parent());
-  }
-}
 
 #ifdef ENABLE_ACCESSIBILITY
 BaseView* A11yScrollTargetForSemantics(BaseView* view) {
@@ -194,12 +182,11 @@ const float CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER = 1;
 
 }  // namespace
 
-const std::unordered_set<KeywordID> kExposureAttributes = {
+constexpr std::array<KeywordID, 15> kExposureAttributes = {{
     KeywordID::kExposureScene,
     KeywordID::kExposureId,
     KeywordID::kExposureArea,
     KeywordID::kEnableExposureUiMargin,
-    KeywordID::kEnableExposureUiClip,
     KeywordID::kExposureUiMarginLeft,
     KeywordID::kExposureUiMarginRight,
     KeywordID::kExposureUiMarginTop,
@@ -210,7 +197,7 @@ const std::unordered_set<KeywordID> kExposureAttributes = {
     KeywordID::kExposureScreenMarginBottom,
     KeywordID::kUiappear,
     KeywordID::kUidisappear,
-};
+}};
 
 BaseView::BaseView(std::unique_ptr<RenderObject> render_object,
                    PageView* page_view)
@@ -895,7 +882,7 @@ void BaseView::SetBackground(const BackgroundData& background) {
 
   FML_DCHECK(page_view());
 
-  bg_image_loader_token_++;
+  AdvanceImageLoaderToken(true);
   for (size_t i = 0; i < background.background_images.size(); i++) {
     const BackgroundImageData& image = background.background_images[i];
 
@@ -1495,16 +1482,20 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
        bg_image_loader_token = bg_image_loader_token_,
        mask_image_loader_token = mask_image_loader_token_](
           std::unique_ptr<ImageResource> resource, bool hit_cache) {
-        if (!resource || !self) {
-          if (!resource && background && self) {
+        if (!self) {
+          return;
+        }
+        const int loader_token =
+            background ? bg_image_loader_token : mask_image_loader_token;
+        if (!self->IsImageLoaderTokenCurrent(background, loader_token)) {
+          return;
+        }
+        if (!resource) {
+          if (background) {
             self->NotifyBgImageLoadStatus(
                 false, {"errMsg", "url", "lynx_categorized_code", "error_code"},
                 "resource load fail", uri, 0, 0);
           }
-          return;
-        }
-        if (self->GetCurrentImageLoaderToken() != bg_image_loader_token &&
-            self->GetCurrentMaskImageLoaderToken() != mask_image_loader_token) {
           return;
         }
 
@@ -1523,10 +1514,20 @@ void BaseView::LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
 #else
   page_view_->GetImageResourceFetcher()->FetchImage(
       uri, false,
-      [self = weak_factory_.GetWeakPtr(), uri, index, background](
+      [self = weak_factory_.GetWeakPtr(), uri, index, background,
+       bg_image_loader_token = bg_image_loader_token_,
+       mask_image_loader_token = mask_image_loader_token_](
           std::unique_ptr<BaseImageInstance> image_instance, bool hit_cache) {
-        if (!image_instance || !self) {
-          if (!image_instance && background && self) {
+        if (!self) {
+          return;
+        }
+        const int loader_token =
+            background ? bg_image_loader_token : mask_image_loader_token;
+        if (!self->IsImageLoaderTokenCurrent(background, loader_token)) {
+          return;
+        }
+        if (!image_instance) {
+          if (background) {
             self->NotifyBgImageLoadStatus(
                 false, {"errMsg", "url", "lynx_categorized_code", "error_code"},
                 "resource load fail", uri, 0, 0);
@@ -1572,7 +1573,7 @@ void BaseView::SetBackgroundImage(const clay::Value::Array& array) {
     return;
   }
 
-  bg_image_loader_token_++;
+  AdvanceImageLoaderToken(true);
   for (size_t i = 0; i < array.size(); i = i + 2) {
     const auto& type =
         static_cast<ClayBackgroundImageType>(utils::GetUint(array[i]));
@@ -1661,6 +1662,7 @@ void BaseView::SetBackgroundSize(const std::vector<BackgroundSize>& sizes) {
 
 void BaseView::SetMaskImage(const clay::Value::Array& array) {
   if (array.size() == 0) {
+    AdvanceImageLoaderToken(false);
     return;
   }
 
@@ -1676,6 +1678,7 @@ void BaseView::SetMaskImage(const clay::Value::Array& array) {
     return;
   }
 
+  AdvanceImageLoaderToken(false);
   render_object()->ResizeMask(array.size() / 2);
   for (size_t i = 0; i < array.size(); i = i + 2) {
     const auto& type = static_cast<ClayMaskImageType>(utils::GetUint(array[i]));
@@ -1710,7 +1713,7 @@ void BaseView::SetMaskImage(const clay::Value::Array& array) {
 }
 
 void BaseView::ClearMask() {
-  ++mask_image_loader_token_;
+  AdvanceImageLoaderToken(false);
   render_object()->ClearMask();
 }
 
@@ -2776,6 +2779,74 @@ bool BaseView::CanAcceptEvent() const {
   return transform.IsInvertible();
 }
 
+void BaseView::SetEventThroughActiveRegions(const clay::Value& value) {
+  event_through_active_regions_.clear();
+  if (!value.IsArray()) {
+    return;
+  }
+
+  for (const auto& region_value : value.GetArray()) {
+    if (!region_value.IsArray()) {
+      continue;
+    }
+    const auto& region_array = region_value.GetArray();
+    if (region_array.size() != 4) {
+      continue;
+    }
+    EventThroughRegion region;
+    bool valid = true;
+    for (size_t i = 0; i < region.size(); ++i) {
+      utils::Length length;
+      if (!utils::TryGetLength(region_array[i], length) ||
+          (length.unit != utils::Unit::kPx &&
+           length.unit != utils::Unit::kPercent)) {
+        valid = false;
+        break;
+      }
+      region[i] = {length.val, length.unit == utils::Unit::kPercent};
+    }
+    if (valid) {
+      event_through_active_regions_.push_back(region);
+    }
+  }
+}
+
+bool BaseView::HitEventThroughActiveRegions(const FloatPoint& position) const {
+  for (const auto& region : event_through_active_regions_) {
+    const auto resolve = [this](const EventThroughSizeValue& value,
+                                float size) {
+      return value.is_percentage
+                 ? static_cast<float>(value.value * size / 100.0)
+                 : FromLogical(static_cast<float>(value.value));
+    };
+    const float left = resolve(region[0], width_);
+    const float top = resolve(region[1], height_);
+    const float right = left + resolve(region[2], width_);
+    const float bottom = top + resolve(region[3], height_);
+    if (position.x() >= left && position.x() < right && position.y() >= top &&
+        position.y() < bottom) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool BaseView::ShouldPassEventToNativeAt(const FloatPoint& position) const {
+  bool should_pass = false;
+  if (event_through_.has_value()) {
+    should_pass = *event_through_;
+  } else if (parent_ != nullptr) {
+    should_pass = parent_->ShouldPassEventToNativeAt(position);
+  }
+
+  const FloatPoint point_by_self = GetPointBySelf(position);
+  if (!event_through_active_regions_.empty() &&
+      !HitEventThroughActiveRegions(point_by_self)) {
+    should_pass = !should_pass;
+  }
+  return should_pass;
+}
+
 bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (!CanAcceptEvent()) {
     return false;
@@ -2814,7 +2885,7 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (beyond_self) {
     return founded;
   }
-  should_pass_event_for_hittest_ = ShouldPassEventToNativeInherited(this);
+  should_pass_event_for_hittest_ = ShouldPassEventToNativeAt(event.position);
   result.emplace_back(GetHitTestTargetWeakPtr());
   return true;
 }
@@ -3010,6 +3081,17 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
     return nullptr;
   }
 
+  bool clip_x = (GetOverflow() == CSSProperty::OVERFLOW_Y);
+  bool clip_y = (GetOverflow() == CSSProperty::OVERFLOW_X);
+  if (clip_x && (point_by_self.x() < -hit_slop_left_ ||
+                 point_by_self.x() > width_ + hit_slop_right_)) {
+    return nullptr;
+  }
+  if (clip_y && (point_by_self.y() < -hit_slop_top_ ||
+                 point_by_self.y() > height_ + hit_slop_bottom_)) {
+    return nullptr;
+  }
+
   BaseView* view = nullptr;
 
   RebuildSortedChildrenIfNeeded();
@@ -3031,7 +3113,7 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
       return nullptr;
     }
     *relative_position = point_by_self;
-    return ShouldPassEventToNativeInherited(this) ? nullptr : this;
+    return ShouldPassEventToNativeAt(position) ? nullptr : this;
   }
   return nullptr;
 }
@@ -3185,6 +3267,9 @@ bool BaseView::HandleCommonAttribute(const char* attr,
     case KeywordID::kEnableNewAnimator:
       SetEnableNewAnimator(utils::GetBool(value));
       break;
+    case KeywordID::kEnableExposureUiClip:
+      enable_exposure_ui_clip_ = utils::GetBool(value);
+      break;
     case KeywordID::kName:
       name_ = utils::GetCString(value);
       break;
@@ -3201,6 +3286,9 @@ bool BaseView::HandleCommonAttribute(const char* attr,
               << "event through is only supported in MOST_ON_UI thread mode";
         }
       }
+      break;
+    case KeywordID::kEventThroughActiveRegions:
+      SetEventThroughActiveRegions(value);
       break;
     case KeywordID::kHitSlop:
       if (value.IsMap()) {
@@ -3267,7 +3355,8 @@ void BaseView::NotifyBgImageLoadStatus(bool success,
 
 bool BaseView::UpdateExposeAttrs(const char* attr, const clay::Value& value) {
   auto kw = GetKeywordID(attr);
-  if (kExposureAttributes.find(kw) == kExposureAttributes.end()) {
+  if (std::find(kExposureAttributes.begin(), kExposureAttributes.end(), kw) ==
+      kExposureAttributes.end()) {
     return false;
   }
   auto* manager = page_view_->intersection_observer_manager();

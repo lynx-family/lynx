@@ -163,7 +163,7 @@ class LynxShell {
 
   void SetContextHasAttached();
 
-  void LoadSSRData(std::vector<uint8_t> source,
+  void LoadSSRData(const std::string& url, std::vector<uint8_t> source,
                    const std::shared_ptr<tasm::TemplateData>& template_data);
 
   void UpdateData(const std::string& data);
@@ -508,6 +508,9 @@ class LynxShell {
 
  private:
   friend class LynxEngineWrapper;
+
+  void SetUrl(const std::string& url);
+
   void ResetNativeUpdateDataOrderForLoad(
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options);
 

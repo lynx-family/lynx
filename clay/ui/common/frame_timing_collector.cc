@@ -40,41 +40,6 @@ static constexpr const char* FORCE_UPDATE_FLAG = "clay_force_update";
 static constexpr const char* UPDATE_FLAG = "clay_update";
 }  // namespace
 
-const std::unordered_map<Perf, const char*>
-    FrameTimingCollector::perf_to_string_map = {
-        {Perf::kEnablePartialRepaint, "rk_enable_partial_repaint"},
-
-        {Perf::kFirstLayoutCost, "rk_first_layout"},
-        {Perf::kFirstPaintCost, "rk_first_paint"},
-        {Perf::kFirstBuildFrameCost, "rk_first_build_frame"},
-        {Perf::kFirstRasterCost, "rk_first_raster"},
-        {Perf::kFirstRasterEnd, "clay_first_raster_end"},
-        {Perf::kFirstPresentEnd, "clay_first_present_end"},
-
-        {Perf::kErrorCode, "rk_error_code"},
-
-        {Perf::kLayoutAndAnimationMax, "rk_layout_and_animation_max"},
-        {Perf::kLayoutAndAnimationAvg, "rk_layout_and_animation_avg"},
-        {Perf::kLayoutAndAnimationBad, "rk_layout_and_animation_bad"},
-
-        {Perf::kRasterMax, "rk_raster_max"},
-        {Perf::kRasterAvg, "rk_raster_avg"},
-        {Perf::kRasterBadLevel1, "rk_raster_bad_level_1"},
-        {Perf::kRasterBadLevel2, "rk_raster_bad_level_2"},
-        {Perf::kRasterBadLevel3, "rk_raster_bad_level_3"},
-
-        {Perf::kFrameTotalMax, "rk_frame_total_max"},
-        {Perf::kFrameTotalAvg, "rk_frame_total_avg"},
-        {Perf::kFrameTotalBadLevel1, "rk_frame_total_bad_level_1"},
-        {Perf::kFrameTotalBadLevel2, "rk_frame_total_bad_level_2"},
-        {Perf::kFrameTotalBadLevel3, "rk_frame_total_bad_level_3"},
-
-        {Perf::kListLayoutNewItem, "rk_list_layout_new_item"},
-        {Perf::kMoveFocusUntilDraw, "rk_move_focus_until_draw"},
-        {Perf::kMoveFocusUntilRaster, "rk_move_focus_until_raster"},
-        {Perf::kMoveFocusDirection, "rk_move_focus_direction"},
-};
-
 FrameTimingCollector::FrameTimingCollector(
     fml::RefPtr<fml::TaskRunner> platform_task_runner)
     : weak_factory_(this),
@@ -99,7 +64,64 @@ bool FrameTimingCollector::UpdatePerfReady() const {
 }
 
 const char* FrameTimingCollector::PerfToString(Perf perf) const {
-  return perf_to_string_map.at(perf);
+  switch (perf) {
+    case Perf::kEnablePartialRepaint:
+      return "rk_enable_partial_repaint";
+    case Perf::kFirstLayoutCost:
+      return "rk_first_layout";
+    case Perf::kFirstPaintCost:
+      return "rk_first_paint";
+    case Perf::kFirstBuildFrameCost:
+      return "rk_first_build_frame";
+    case Perf::kFirstRasterCost:
+      return "rk_first_raster";
+    case Perf::kFirstRasterEnd:
+      return "clay_first_raster_end";
+    case Perf::kFirstPresentEnd:
+      return "clay_first_present_end";
+    case Perf::kErrorCode:
+      return "rk_error_code";
+    case Perf::kLayoutAndAnimationMax:
+      return "rk_layout_and_animation_max";
+    case Perf::kLayoutAndAnimationAvg:
+      return "rk_layout_and_animation_avg";
+    case Perf::kLayoutAndAnimationBad:
+      return "rk_layout_and_animation_bad";
+    case Perf::kRasterMax:
+      return "rk_raster_max";
+    case Perf::kRasterAvg:
+      return "rk_raster_avg";
+    case Perf::kRasterBadLevel1:
+      return "rk_raster_bad_level_1";
+    case Perf::kRasterBadLevel2:
+      return "rk_raster_bad_level_2";
+    case Perf::kRasterBadLevel3:
+      return "rk_raster_bad_level_3";
+    case Perf::kFrameTotalMax:
+      return "rk_frame_total_max";
+    case Perf::kFrameTotalAvg:
+      return "rk_frame_total_avg";
+    case Perf::kFrameTotalBadLevel1:
+      return "rk_frame_total_bad_level_1";
+    case Perf::kFrameTotalBadLevel2:
+      return "rk_frame_total_bad_level_2";
+    case Perf::kFrameTotalBadLevel3:
+      return "rk_frame_total_bad_level_3";
+    case Perf::kListLayoutNewItem:
+      return "rk_list_layout_new_item";
+    case Perf::kMoveFocusUntilDraw:
+      return "rk_move_focus_until_draw";
+    case Perf::kMoveFocusUntilRaster:
+      return "rk_move_focus_until_raster";
+    case Perf::kMoveFocusDirection:
+      return "rk_move_focus_direction";
+    case Perf::kFirstSep:
+    case Perf::kUpdateSep:
+    case Perf::kForceSep:
+      break;
+  }
+  FML_DCHECK(false);
+  return "";
 }
 
 void FrameTimingCollector::BeginRecord(Perf perf) {

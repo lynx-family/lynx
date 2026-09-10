@@ -8,6 +8,9 @@ on:
         required: false
         default: 'latest'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   lynx_types_publish:
     runs-on: ubuntu-latest
@@ -17,20 +20,22 @@ jobs:
       id-token: write
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version-file: 'lynx/.node-version'
+
           registry-url: 'https://registry.npmjs.org'
       - name: Build
         run: |-

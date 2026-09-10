@@ -213,7 +213,7 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
   }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
                                       float_event_data,
-                                      EnableEventThroughInheritFromPage());
+                                      GetEventThroughConfig());
 }
 
 void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
@@ -240,8 +240,7 @@ bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
   float target_point[2] = {root_point[0], root_point[1]};
   event_target_helper_->ConvertPointFromAncestorToDescendant(
       target_point, event_target_tree, hit_target, root_point);
-  return hit_target->EventThrough(target_point,
-                                  EnableEventThroughInheritFromPage());
+  return hit_target->EventThrough(target_point, GetEventThroughConfig());
 }
 
 bool NativePaintingCtxPlatformRef::IsPlatformEventTargetIgnoreFocus(
@@ -262,11 +261,18 @@ std::array<int32_t, 4> NativePaintingCtxPlatformRef::GetPlatformFocusInfo() {
           event_handler_->CanRespondFocus() ? 1 : 0};
 }
 
-bool NativePaintingCtxPlatformRef::EnableEventThroughInheritFromPage() const {
+PlatformEventThroughConfig NativePaintingCtxPlatformRef::GetEventThroughConfig()
+    const {
+  PlatformEventThroughConfig event_through_config;
   auto *engine = engine_actor_ ? engine_actor_->Impl() : nullptr;
   auto *tasm = engine ? engine->GetTasm() : nullptr;
   auto config = tasm ? tasm->GetPageConfig() : nullptr;
-  return config && config->GetEnableEventThroughInheritFromPage();
+  if (config != nullptr) {
+    event_through_config.enable_event_through = config->GetEnableEventThrough();
+    event_through_config.enable_event_through_inherit_from_page =
+        config->GetEnableEventThroughInheritFromPage();
+  }
+  return event_through_config;
 }
 
 void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,
@@ -297,6 +303,22 @@ PlatformEventEmitter *NativePaintingCtxPlatformRef::GetEventEmitter() {
 PlatformEventTargetHelper *
 NativePaintingCtxPlatformRef::GetEventTargetHelper() {
   return event_target_helper_.get();
+}
+
+std::vector<float> NativePaintingCtxPlatformRef::GetRectToLynxView(int32_t id) {
+  if (destroyed_.load(std::memory_order_acquire) ||
+      !EnsureEventTargetTreeForTarget(id)) {
+    return {};
+  }
+  auto target = event_target_helper_->GetEventTarget(id);
+  if (target == nullptr) {
+    return {};
+  }
+
+  float rect[4] = {0.f, 0.f, target->Width(), target->Height()};
+  event_target_helper_->ConvertRectFromTargetToPageRootTarget(rect, target,
+                                                              rect);
+  return {rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]};
 }
 
 void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
@@ -590,8 +612,10 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
 }
 
 void NativePaintingCtxPlatformRef::UpdateNodeReadyPatching(
-    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
   (void)remove_ids;
+  (void)should_cache_external_memory_candidates;
   if (ready_ids.empty()) {
     return;
   }

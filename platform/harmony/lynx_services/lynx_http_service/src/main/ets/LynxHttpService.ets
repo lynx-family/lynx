@@ -13,19 +13,44 @@ export class LynxHttpService implements ILynxHttpService {
   private constructor() {
   }
   
-  private methodFromName(methodName: string) {
-    if (methodName == 'GET') {
-      return http.RequestMethod.GET;
-    } else if (methodName == 'POST') {
-      return http.RequestMethod.POST;
+  private methodFromName(methodName: string): http.RequestMethod | undefined {
+    switch (methodName) {
+      case 'OPTIONS':
+        return http.RequestMethod.OPTIONS;
+      case 'GET':
+        return http.RequestMethod.GET;
+      case 'HEAD':
+        return http.RequestMethod.HEAD;
+      case 'POST':
+        return http.RequestMethod.POST;
+      case 'PUT':
+        return http.RequestMethod.PUT;
+      case 'DELETE':
+        return http.RequestMethod.DELETE;
+      default:
+        return undefined;
     }
-    return null;
+  }
+
+  private buildUnsupportedMethodResponse(request: LynxHttpRequest): LynxHttpResponse {
+    const httpResponse = new LynxHttpResponse();
+    httpResponse.url = request.url;
+    httpResponse.statusCode = LynxHttpService.SDK_ERROR_STATUS_CODE;
+    httpResponse.statusText = 'Unsupported HTTP method: ' + request.httpMethod;
+    httpResponse.httpHeaders = {};
+    return httpResponse;
   }
 
   request(request: LynxHttpRequest, callback: (resp: LynxHttpResponse) => void): void {
+    const requestMethod = this.methodFromName(request.httpMethod.toUpperCase());
+    if (requestMethod === undefined) {
+      callback(this.buildUnsupportedMethodResponse(request));
+      return;
+    }
+
     let httpRequest = http.createHttp();
     httpRequest.request(request.url, {
-      method: this.methodFromName(request.httpMethod.toUpperCase()),
+      method: requestMethod,
       header: request.httpHeaders,
       extraData: request.httpBody,
       expectDataType: http.HttpDataType.ARRAY_BUFFER,
@@ -54,6 +79,14 @@ export class LynxHttpService implements ILynxHttpService {
 
   requestStreaming(request: LynxHttpRequest, callback: (resp: LynxHttpResponse) => void,
     delegate: HttpStreamingDelegate): void {
+    const requestMethod = this.methodFromName(request.httpMethod.toUpperCase());
+    if (requestMethod === undefined) {
+      const response = this.buildUnsupportedMethodResponse(request);
+      callback(response);
+      delegate.onError(response.statusText);
+      return;
+    }
+
     let httpRequest = http.createHttp();
     let responseHeaders: Record<string, string> = {};
     let enableSSEStreaming = false;
@@ -81,7 +114,7 @@ export class LynxHttpService implements ILynxHttpService {
       delegate.flushPendingData(enableSSEStreaming);
     });
     httpRequest.requestInStream(request.url, {
-      method: this.methodFromName(request.httpMethod.toUpperCase()),
+      method: requestMethod,
       header: request.httpHeaders,
       extraData: request.httpBody,
       expectDataType: http.HttpDataType.ARRAY_BUFFER,

@@ -21,6 +21,7 @@ namespace runtime {
 class JsCallNativeFrequencyMonitor;
 namespace js {
 struct InvokeInfo;
+class NativeModuleRecordObserver;
 
 class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
  public:
@@ -53,6 +54,13 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
 
   Value getAttributeValue(Runtime* rt, std::string propName) override;
 
+#if ENABLE_INSPECTOR
+  void SetNativeModuleRecordObserver(
+      std::weak_ptr<NativeModuleRecordObserver> observer) {
+    native_module_record_observer_ = std::move(observer);
+  }
+#endif  // ENABLE_INSPECTOR
+
  private:
   void SetMethodMetadata();
   InvokeInfo* CurrentInvokeInfo();
@@ -63,6 +71,7 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
       invoke_method_frequency_monitor_;
 
   std::vector<InvokeInfo*> invoke_scopes_;
+  std::weak_ptr<NativeModuleRecordObserver> native_module_record_observer_;
 };
 
 }  // namespace js

@@ -3,19 +3,24 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <map>
+#include <memory>
+#include <sstream>
 
 #define private public
 #include "core/services/recorder/testbench_base_recorder.h"
 #undef private
-
 #include <mutex>
 
+#include "core/services/recorder/fixture_writer.h"
+#include "testing/utils/make_js_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/modp_b64/modp_b64.h"
 #include "third_party/zlib/zlib.h"
@@ -23,6 +28,8 @@
 namespace lynx {
 namespace tasm {
 namespace recorder {
+
+extern thread_local rapidjson::Document dumped_document;
 
 void wait(fml::Thread& thread) {
   std::condition_variable condition;
@@ -91,27 +98,183 @@ std::string ReadFileContent(const std::string& path) {
 TEST(TestBenchBaseRecorder, RecordScripts) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
   int64_t record_id = 1;
-  rapidjson::Value& scripts_table = ark.GetRecordedFile(record_id)[kScripts];
-  ASSERT_TRUE(scripts_table.IsObject());
-  EXPECT_EQ(scripts_table.MemberCount(), 0);
-  // enable record
-  ark.is_recording_ = true;
+  ark.ResetForTesting();
+  ark.is_recording_ = false;
+
   std::string url = "url";
   std::string content = "content";
   ark.RecordScripts(url.c_str(), content.c_str(), record_id);
   wait(ark.thread_);
 
+  ASSERT_EQ(ark.script_cache_.count(record_id), 1);
+  ASSERT_EQ(ark.script_cache_[record_id].count(url), 1);
+  EXPECT_STREQ(ark.script_cache_[record_id][url].c_str(),
+               "eJxLzs8rSc0rAQALywL8");
+
+  // Scripts loaded before recording starts are copied into the new record.
+  ark.StartRecord();
+  rapidjson::Value& scripts_table = ark.GetRecordedFile(record_id)[kScripts];
   ASSERT_TRUE(scripts_table.IsObject());
   EXPECT_EQ(scripts_table.MemberCount(), 1);
   ASSERT_TRUE(scripts_table.HasMember(url));
   EXPECT_STREQ((scripts_table[url]).GetString(), "eJxLzs8rSc0rAQALywL8");
+
+  ark.is_recording_ = false;
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, RecordScriptsPreservesBinaryData) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 2;
+  ark.ResetForTesting();
+  ark.is_recording_ = false;
+
+  const std::string content("abc\0def", 7);
+  ark.RecordScripts("binary-script", content, record_id);
+  wait(ark.thread_);
+
+  ASSERT_EQ(ark.script_cache_.count(record_id), 1);
+  EXPECT_EQ(ark.script_cache_[record_id]["binary-script"],
+            "eJxLTEpmSElNAwAJRQJW");
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, RejectsExternalScriptBeforeRecordingStarts) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 3;
+  ark.ResetForTesting();
+  ark.is_recording_ = false;
+
+  ark.RecordExternalScript("app-service.js", "external source");
+  wait(ark.thread_);
+
+  ASSERT_EQ(ark.external_script_cache_.count("app-service.js"), 0);
+  ark.StartRecord();
+  rapidjson::Value& scripts = ark.GetRecordedFile(record_id)[kScripts];
+  ASSERT_TRUE(scripts.IsObject());
+  ASSERT_FALSE(scripts.HasMember("app-service.js"));
+
+  ark.is_recording_ = false;
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, ExternalScriptIsClearedAfterRecordingSession) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t first_record_id = 31;
+  constexpr int64_t second_record_id = 32;
+  ark.ResetForTesting();
+  ark.SetRecorderPath("/tmp");
+
+  ark.StartRecord();
+  ark.RecordExternalScript("lynx-main-thread.js", "main thread source");
+  wait(ark.thread_);
+
+  ASSERT_TRUE(ark.GetRecordedFile(first_record_id)[kScripts].HasMember(
+      "lynx-main-thread.js"));
+
+  std::atomic_bool completed{false};
+  ark.EndRecord(base::MoveOnlyClosure<void, std::vector<std::string>&,
+                                      std::vector<int64_t>&>(
+      [&completed](std::vector<std::string>&, std::vector<int64_t>&) {
+        completed = true;
+      }));
+  wait(ark.thread_);
+
+  ASSERT_TRUE(completed);
+  ASSERT_EQ(ark.external_script_cache_.count("lynx-main-thread.js"), 0);
+
+  ark.StartRecord();
+  rapidjson::Value& second_scripts =
+      ark.GetRecordedFile(second_record_id)[kScripts];
+  ASSERT_FALSE(second_scripts.HasMember("lynx-main-thread.js"));
+
+  ark.is_recording_ = false;
+  ark.ResetForTesting();
+  std::remove("/tmp/31.json");
+}
+
+TEST(TestBenchBaseRecorder, RecordPreloadScriptsBeforeRecordingStarts) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 3;
+  ark.ResetForTesting();
+  ark.is_recording_ = false;
+
+  ark.RecordPreloadScript("example-runtime.js", "preload", record_id);
+  wait(ark.thread_);
+
+  ark.StartRecord();
+  rapidjson::Value& preload_scripts =
+      ark.GetRecordedFile(record_id)[kPreloadScripts];
+  ASSERT_TRUE(preload_scripts.IsObject());
+  ASSERT_TRUE(preload_scripts.HasMember("example-runtime.js"));
+  EXPECT_STREQ(preload_scripts["example-runtime.js"].GetString(),
+               "eJwrKErNyU9MAQAL3wLo");
+  rapidjson::Value& preload_script_paths =
+      ark.GetRecordedFile(record_id)[kPreloadScriptPaths];
+  ASSERT_TRUE(preload_script_paths.IsArray());
+  ASSERT_EQ(preload_script_paths.Size(), 1);
+  EXPECT_STREQ(preload_script_paths[0].GetString(), "example-runtime.js");
+  ark.is_recording_ = false;
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, IgnoresPreloadScriptsWithoutRecordID) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  ark.ResetForTesting();
+
+  ark.RecordPreloadScript("example-runtime.js", "preload", 0);
+  wait(ark.thread_);
+
+  EXPECT_EQ(ark.preload_script_cache_.count(0), 0);
+  EXPECT_EQ(ark.preload_script_paths_cache_.count(0), 0);
+  EXPECT_EQ(ark.lynx_view_table_.count(0), 0);
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, IgnoresRecordsWithoutRecordID) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  ark.ResetForTesting();
+  ark.StartRecord();
+
+  rapidjson::Value params(rapidjson::kObjectType);
+  ark.RecordAction("loadTemplateBundle", params, 0);
+  ark.RecordScripts("lynx-main-thread.js", "main thread source", 0);
+  ark.RecordInvokedMethodData("ExampleBridge", "invoke", params, 0);
+  ark.RecordCallback("ExampleBridge", "invoke", params, 1, 0);
+
+  wait(ark.thread_);
+
+  EXPECT_EQ(ark.lynx_view_table_.count(0), 0);
+  EXPECT_EQ(ark.script_cache_.count(0), 0);
+
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, PreloadScriptDoesNotCreateRecordedFile) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 4;
+  ark.ResetForTesting();
+  ark.StartRecord();
+
+  ark.RecordPreloadScript("example-runtime.js", "preload", record_id);
+  wait(ark.thread_);
+
+  EXPECT_EQ(ark.lynx_view_table_.count(record_id), 0);
+  ASSERT_EQ(ark.preload_script_cache_.count(record_id), 1);
+
+  rapidjson::Value& preload_scripts =
+      ark.GetRecordedFile(record_id)[kPreloadScripts];
+  ASSERT_TRUE(preload_scripts.HasMember("example-runtime.js"));
+  EXPECT_STREQ(preload_scripts["example-runtime.js"].GetString(),
+               "eJwrKErNyU9MAQAL3wLo");
+  ark.ResetForTesting();
 }
 
 void CheckLynxViewTable(TestBenchBaseRecorder& ark, int64_t record_id) {
   rapidjson::Value& recorded_file = ark.lynx_view_table_[record_id];
 
   ASSERT_TRUE(recorded_file.IsObject());
-  EXPECT_EQ(recorded_file.MemberCount(), 7);
+  EXPECT_EQ(recorded_file.MemberCount(), 9);
 
   rapidjson::Value& action_list = recorded_file[kActionList];
   ASSERT_TRUE(action_list.IsArray());
@@ -140,12 +303,21 @@ void CheckLynxViewTable(TestBenchBaseRecorder& ark, int64_t record_id) {
   rapidjson::Value& scripts = recorded_file[kScripts];
   ASSERT_TRUE(scripts.IsObject());
   EXPECT_EQ(scripts.MemberCount(), 0);
+
+  rapidjson::Value& preload_scripts = recorded_file[kPreloadScripts];
+  ASSERT_TRUE(preload_scripts.IsObject());
+  EXPECT_EQ(preload_scripts.MemberCount(), 0);
+
+  rapidjson::Value& preload_script_paths = recorded_file[kPreloadScriptPaths];
+  ASSERT_TRUE(preload_script_paths.IsArray());
+  EXPECT_EQ(preload_script_paths.Size(), 0);
 }
 
 TEST(TestBenchBaseRecorder, Clear) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
   int64_t record_id = 1;
 
+  ark.StartRecord();
   ark.GetRecordedFile(record_id);
   ark.SetScreenSize(record_id, 123, 456);
   wait(ark.thread_);
@@ -157,18 +329,23 @@ TEST(TestBenchBaseRecorder, Clear) {
   EXPECT_EQ(ark.url_map_.size(), 1);
   EXPECT_EQ(ark.session_ids_.size(), 1);
 
-  ark.Clear();
+  ark.ResetForTesting();
 
   EXPECT_EQ(ark.lynx_view_table_.size(), 0);
   EXPECT_EQ(ark.replay_config_map_.size(), 0);
   EXPECT_EQ(ark.url_map_.size(), 0);
   EXPECT_EQ(ark.session_ids_.size(), 0);
+  EXPECT_FALSE(ark.is_recording_);
 }
 
 TEST(TestBenchBaseRecorder, RemoveRecord) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
   int64_t record_id = 1;
 
+  ark.ResetForTesting();
+  ark.is_recording_ = false;
+  ark.RecordScripts("script.js", "script", record_id);
+  ark.RecordPreloadScript("preload.js", "preload", record_id);
   ark.GetRecordedFile(record_id);
   ark.SetScreenSize(record_id, 123, 456);
   wait(ark.thread_);
@@ -185,8 +362,11 @@ TEST(TestBenchBaseRecorder, RemoveRecord) {
   EXPECT_EQ(ark.replay_config_map_.count(record_id), 0);
   EXPECT_EQ(ark.url_map_.count(record_id), 0);
   EXPECT_EQ(ark.session_ids_.count(record_id), 0);
+  EXPECT_EQ(ark.script_cache_.count(record_id), 0);
+  EXPECT_EQ(ark.preload_script_cache_.count(record_id), 0);
+  EXPECT_EQ(ark.preload_script_paths_cache_.count(record_id), 0);
 
-  ark.Clear();
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, CreateRecordedFile) {
@@ -196,7 +376,7 @@ TEST(TestBenchBaseRecorder, CreateRecordedFile) {
   ark.CreateRecordedFile(record_id);
   EXPECT_EQ(ark.lynx_view_table_.size(), 1);
   CheckLynxViewTable(ark, record_id);
-  ark.Clear();
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, GetRecordedFile) {
@@ -207,7 +387,7 @@ TEST(TestBenchBaseRecorder, GetRecordedFile) {
   ark.GetRecordedFile(2);
   CheckLynxViewTable(ark, 2);
   EXPECT_EQ(ark.lynx_view_table_.size(), 2);
-  ark.Clear();
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, GetRecordedFileField) {
@@ -228,7 +408,32 @@ TEST(TestBenchBaseRecorder, GetRecordedFileField) {
   value = ark.GetRecordedFileField(record_id, kComponentList);
   ASSERT_TRUE(value.IsArray());
   EXPECT_EQ(value.Size(), 0);
-  ark.Clear();
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, RecordInvokedMethodCreatesFileForNewRecord) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 90210;
+  ark.ResetForTesting();
+  ark.StartRecord();
+
+  rapidjson::Value params(rapidjson::kObjectType);
+  params.AddMember(rapidjson::StringRef(kParamArgc), 0, ark.GetAllocator());
+  params.AddMember(rapidjson::StringRef(kParamReturnValue), "undefined",
+                   ark.GetAllocator());
+  ark.RecordInvokedMethodData("ExampleBridge", "invoke", params, record_id);
+  wait(ark.thread_);
+
+  ASSERT_EQ(ark.lynx_view_table_.count(record_id), 1);
+  rapidjson::Value& invoked_method_data =
+      ark.lynx_view_table_[record_id][kInvokedMethodData];
+  ASSERT_TRUE(invoked_method_data.IsArray());
+  ASSERT_EQ(invoked_method_data.Size(), 1);
+  EXPECT_STREQ(invoked_method_data[0][kModuleName].GetString(),
+               "ExampleBridge");
+  EXPECT_STREQ(invoked_method_data[0][kMethodName].GetString(), "invoke");
+
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, SetRecorderPath) {
@@ -297,7 +502,7 @@ TEST(TestBenchBaseRecorder, RecordDebugInfo) {
       "eJwFwcERgCAMBMBWrg7bsIIYg2QGAgPn+"
       "LUOP7ZoCe6uUnsx7LadBzxSG1XoLXA5M2Y3dSnQLEOUNuYC2iS0BS2I733uH2JDGms=");
 
-  ark.Clear();
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, RecordAction) {
@@ -340,7 +545,143 @@ TEST(TestBenchBaseRecorder, RecordAction) {
   recorded_params = test_action[kParams];
   ASSERT_TRUE(recorded_params.IsObject());
 
-  ark.Clear();
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, RecordsOwnedDocumentsWithGeneration) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 90219;
+  constexpr int64_t callback_id = 7;
+  ark.ResetForTesting();
+  ark.StartRecord();
+  const uint64_t recording_generation = ark.RecordingGeneration();
+
+  rapidjson::Document action_params;
+  action_params.Parse(R"({"action":"owned"})");
+  ark.RecordActionWithGeneration("TestFunction", std::move(action_params),
+                                 record_id, recording_generation);
+
+  rapidjson::Document invoked_params;
+  invoked_params.Parse(R"({"invoke":"owned"})");
+  ark.RecordInvokedMethodDataWithGeneration("bridge", "call",
+                                            std::move(invoked_params),
+                                            record_id, recording_generation);
+
+  rapidjson::Document callback_params;
+  callback_params.Parse(R"({"callback":"owned"})");
+  ark.RecordCallbackWithGeneration("bridge", "call", std::move(callback_params),
+                                   callback_id, record_id,
+                                   recording_generation);
+  wait(ark.thread_);
+
+  rapidjson::Value& record = ark.GetRecordedFile(record_id);
+  EXPECT_STREQ(record[kActionList][0][kParams]["action"].GetString(), "owned");
+  EXPECT_STREQ(record[kInvokedMethodData][0][kParams]["invoke"].GetString(),
+               "owned");
+  EXPECT_STREQ(record[kCallback]["7"][kParams]["callback"].GetString(),
+               "owned");
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, LegacyApisOwnParamsAcrossTaskBoundary) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 90220;
+  constexpr int64_t callback_id = 8;
+  ark.ResetForTesting();
+  ark.StartRecord();
+
+  std::mutex gate_mutex;
+  std::condition_variable gate_condition;
+  bool task_started = false;
+  bool release_task = false;
+  ark.thread_.GetTaskRunner()->PostTask([&]() {
+    std::unique_lock<std::mutex> lock(gate_mutex);
+    task_started = true;
+    gate_condition.notify_one();
+    gate_condition.wait(lock, [&]() { return release_task; });
+  });
+  {
+    std::unique_lock<std::mutex> lock(gate_mutex);
+    gate_condition.wait(lock, [&]() { return task_started; });
+  }
+
+  rapidjson::Document params;
+  params.Parse(R"({"value":"survives-caller-allocator-clear"})");
+  ark.RecordAction("TestFunction", params, record_id);
+  ark.RecordInvokedMethodData("bridge", "call", params, record_id);
+  ark.RecordCallback("bridge", "call", params, callback_id, record_id);
+  ark.RecordSharedData("shared", params, record_id);
+
+  dumped_document.GetAllocator().Clear();
+  rapidjson::Value overwrite(rapidjson::kStringType);
+  overwrite.SetString("caller-allocator-reused-after-recording-call",
+                      dumped_document.GetAllocator());
+
+  {
+    std::lock_guard<std::mutex> lock(gate_mutex);
+    release_task = true;
+  }
+  gate_condition.notify_one();
+  wait(ark.thread_);
+
+  rapidjson::Value& record = ark.GetRecordedFile(record_id);
+  EXPECT_STREQ(record[kActionList][0][kParams]["value"].GetString(),
+               "survives-caller-allocator-clear");
+  EXPECT_STREQ(record[kInvokedMethodData][0][kParams]["value"].GetString(),
+               "survives-caller-allocator-clear");
+  EXPECT_STREQ(record[kCallback]["8"][kParams]["value"].GetString(),
+               "survives-caller-allocator-clear");
+  EXPECT_STREQ(record[kSharedData]["shared"]["value"].GetString(),
+               "survives-caller-allocator-clear");
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, LegacyApisRejectPreviousRecordingGeneration) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t record_id = 90221;
+  constexpr int64_t callback_id = 9;
+  ark.ResetForTesting();
+  ark.StartRecord();
+  const uint64_t previous_generation = ark.RecordingGeneration();
+
+  std::mutex gate_mutex;
+  std::condition_variable gate_condition;
+  bool task_started = false;
+  bool release_task = false;
+  ark.thread_.GetTaskRunner()->PostTask([&]() {
+    std::unique_lock<std::mutex> lock(gate_mutex);
+    task_started = true;
+    gate_condition.notify_one();
+    gate_condition.wait(lock, [&]() { return release_task; });
+  });
+  {
+    std::unique_lock<std::mutex> lock(gate_mutex);
+    gate_condition.wait(lock, [&]() { return task_started; });
+  }
+
+  ark.EndRecord([&](std::vector<std::string>&, std::vector<int64_t>&) {
+    ark.StartRecord();
+  });
+
+  rapidjson::Document params;
+  params.Parse(R"({"value":"previous-generation"})");
+  ark.RecordAction("TestFunction", params, record_id);
+  ark.RecordInvokedMethodData("bridge", "call", params, record_id);
+  ark.RecordCallback("bridge", "call", params, callback_id, record_id);
+
+  {
+    std::lock_guard<std::mutex> lock(gate_mutex);
+    release_task = true;
+  }
+  gate_condition.notify_one();
+  wait(ark.thread_);
+
+  EXPECT_NE(previous_generation, ark.RecordingGeneration());
+  rapidjson::Value& record = ark.GetRecordedFile(record_id);
+  EXPECT_TRUE(record[kActionList].Empty());
+  EXPECT_TRUE(record[kInvokedMethodData].Empty());
+  EXPECT_TRUE(record[kCallback].ObjectEmpty());
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, RecordInvokedMethodData) {
@@ -369,7 +710,7 @@ TEST(TestBenchBaseRecorder, RecordInvokedMethodData) {
   ASSERT_TRUE(invoked_module.HasMember(kParams));
   ASSERT_TRUE(invoked_module[kParams].IsObject());
 
-  ark.Clear();
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, RecordCallback) {
@@ -399,7 +740,27 @@ TEST(TestBenchBaseRecorder, RecordCallback) {
   ASSERT_TRUE(callback_info.HasMember(kParamRecordMillisecond));
   ASSERT_TRUE(callback_info.HasMember(kParams));
   ASSERT_TRUE(callback_info[kParams].IsObject());
-  ark.Clear();
+  ark.ResetForTesting();
+}
+
+TEST(TestBenchBaseRecorder, PreservesRepeatedCallbackIDs) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  constexpr int64_t kRecordId = 3;
+  constexpr int64_t kCallbackId = 9;
+  ark.StartRecord();
+  ark.CreateRecordedFile(kRecordId);
+  rapidjson::Value first_params(rapidjson::kObjectType);
+  rapidjson::Value second_params(rapidjson::kObjectType);
+
+  ark.RecordCallback("bridge", "call", first_params, kCallbackId, kRecordId);
+  ark.RecordCallback("bridge", "call", second_params, kCallbackId, kRecordId);
+  wait(ark.thread_);
+
+  rapidjson::Value& callback = ark.GetRecordedFileField(kRecordId, kCallback);
+  ASSERT_EQ(callback.MemberCount(), 1);
+  ASSERT_TRUE(callback["9"].IsArray());
+  EXPECT_EQ(callback["9"].Size(), 2);
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, RecordComponent) {
@@ -422,7 +783,7 @@ TEST(TestBenchBaseRecorder, RecordComponent) {
   EXPECT_STREQ(component[kComponentName].GetString(), component_name);
   ASSERT_TRUE(component.HasMember(kComponentType));
   EXPECT_EQ(component[kComponentType].GetInt(), type);
-  ark.Clear();
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, CompressToBase64String) {
@@ -505,7 +866,7 @@ TEST(TestBenchBaseRecorder, RecordTime) {
 TEST(TestBenchBaseRecorder, EndRecordOutput) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
   wait(ark.thread_);
-  ark.Clear();
+  ark.ResetForTesting();
   wait(ark.thread_);
   const std::string temp_dir = std::filesystem::temp_directory_path().string();
   ark.SetRecorderPath(temp_dir);
@@ -545,16 +906,66 @@ TEST(TestBenchBaseRecorder, EndRecordOutput) {
   EXPECT_EQ(sorted_sessions[0], -1);
   EXPECT_EQ(sorted_sessions[1], 777);
 
-  // EndRecord stops recording and clears the tables.
+  // EndRecord stops recording and clears only the current session. View state
+  // remains available until RemoveRecord so the page can be recorded again.
   EXPECT_FALSE(ark.is_recording_);
   EXPECT_TRUE(ark.lynx_view_table_.empty());
-  EXPECT_TRUE(ark.session_ids_.empty());
+  ASSERT_EQ(ark.session_ids_.size(), 1u);
+  EXPECT_EQ(ark.session_ids_[recorded_id], 777);
+}
+
+TEST(TestBenchBaseRecorder, EndRecordPreservesViewConfigForNextRecording) {
+  TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  wait(ark.thread_);
+  ark.ResetForTesting();
+  wait(ark.thread_);
+  const std::string temp_dir = std::filesystem::temp_directory_path().string();
+  constexpr int64_t record_id = 4244;
+  constexpr int64_t session_id = 778;
+  ark.InitConfig(temp_dir, session_id, 390, 844, record_id);
+  wait(ark.thread_);
+
+  for (int round = 1; round <= 2; ++round) {
+    ark.StartRecord();
+    rapidjson::Document params(rapidjson::kObjectType);
+    params.AddMember("round", round, params.GetAllocator());
+    ark.RecordAction("TestFunction", params, record_id);
+    wait(ark.thread_);
+
+    std::vector<std::string> filenames;
+    std::vector<int64_t> sessions;
+    ark.EndRecord(
+        [&](std::vector<std::string>& files, std::vector<int64_t>& ids) {
+          filenames = files;
+          sessions = ids;
+        });
+    wait(ark.thread_);
+
+    ASSERT_EQ(filenames.size(), 1u);
+    ASSERT_EQ(sessions.size(), 1u);
+    EXPECT_EQ(sessions[0], session_id);
+    const std::string plain =
+        ZlibDecompress(DecodeBase64(ReadFileContent(filenames[0])));
+    rapidjson::Document recorded;
+    recorded.Parse(plain.c_str());
+    ASSERT_FALSE(recorded.HasParseError());
+    ASSERT_TRUE(recorded[kConfig].IsObject());
+    EXPECT_FLOAT_EQ(recorded[kConfig]["screenWidth"].GetFloat(), 390);
+    EXPECT_FLOAT_EQ(recorded[kConfig]["screenHeight"].GetFloat(), 844);
+    ASSERT_EQ(recorded[kActionList].Size(), 1u);
+    EXPECT_EQ(recorded[kActionList][0][kParams]["round"].GetInt(), round);
+    std::remove(filenames[0].c_str());
+  }
+
+  ark.RemoveRecord(record_id);
+  wait(ark.thread_);
+  ark.ResetForTesting();
 }
 
 TEST(TestBenchBaseRecorder, EndRecordSkipsFailedWrites) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
   wait(ark.thread_);
-  ark.Clear();
+  ark.ResetForTesting();
   wait(ark.thread_);
   // Unwritable directory: WriteRecordJson fails, so the shell must not be
   // reported in the recordingComplete payload at all.
@@ -581,6 +992,549 @@ TEST(TestBenchBaseRecorder, EndRecordSkipsFailedWrites) {
 
   // Restore a writable path for any later tests on this singleton.
   ark.SetRecorderPath(std::filesystem::temp_directory_path().string());
+}
+
+constexpr const char* kTestBase64Source =
+    "dGVtcGxhdGUtYmluYXJ5";  // "template-binary"
+
+bool ReadZipEntries(const std::string& path,
+                    std::map<std::string, std::string>* entries) {
+  std::ifstream ifs(path, std::ios::binary);
+  const std::string data((std::istreambuf_iterator<char>(ifs)),
+                         std::istreambuf_iterator<char>());
+  auto read16 = [&data](size_t at) -> uint32_t {
+    return static_cast<uint32_t>(static_cast<uint8_t>(data[at])) |
+           (static_cast<uint32_t>(static_cast<uint8_t>(data[at + 1])) << 8);
+  };
+  auto read32 = [&read16](size_t at) -> uint32_t {
+    return read16(at) | (read16(at + 2) << 16);
+  };
+  size_t pos = 0;
+  while (pos + 30 <= data.size() && read32(pos) == 0x04034b50) {
+    const uint32_t method = read16(pos + 8);
+    const uint32_t compressed_size = read32(pos + 18);
+    const uint32_t uncompressed_size = read32(pos + 22);
+    const uint32_t name_len = read16(pos + 26);
+    const uint32_t extra_len = read16(pos + 28);
+    const size_t content_at = pos + 30 + name_len + extra_len;
+    if (content_at + compressed_size > data.size()) {
+      return false;
+    }
+    const std::string name = data.substr(pos + 30, name_len);
+    std::string content;
+    if (method == 0) {  // store
+      content = data.substr(content_at, compressed_size);
+    } else if (method == 8) {  // raw deflate
+      content.resize(uncompressed_size);
+      z_stream strm = {};
+      if (inflateInit2(&strm, -MAX_WBITS) != Z_OK) {
+        return false;
+      }
+      strm.next_in =
+          reinterpret_cast<Bytef*>(const_cast<char*>(&data[content_at]));
+      strm.avail_in = compressed_size;
+      strm.next_out = reinterpret_cast<Bytef*>(&content[0]);
+      strm.avail_out = uncompressed_size;
+      const int ret = inflate(&strm, Z_FINISH);
+      inflateEnd(&strm);
+      if (ret != Z_STREAM_END) {
+        return false;
+      }
+      content.resize(strm.total_out);
+    } else {
+      return false;
+    }
+    (*entries)[name] = std::move(content);
+    pos = content_at + compressed_size;
+  }
+  return !entries->empty();
+}
+
+// Builds a JSON object string with the given member count, used to cross the
+// pretty-printed line thresholds (>50 for global props, >30 for events) that
+// trigger asset extraction.
+std::string MakeObjectJson(int members) {
+  std::string json = "{";
+  for (int i = 0; i < members; ++i) {
+    json +=
+        (i ? ",\"k" : "\"k") + std::to_string(i) + "\":" + std::to_string(i);
+  }
+  return json + "}";
+}
+
+FixtureAction MakeAction(const char* fn, std::string params, int64_t ms) {
+  return {fn, std::move(params), ms};
+}
+
+// Writes data to a fresh zip in the test temp dir and reads its entries back.
+bool WriteZipForTest(const std::string& name, const FixtureData& data,
+                     std::map<std::string, std::string>* entries) {
+  const std::string path =
+      (std::filesystem::temp_directory_path() / name).string();
+  return WriteFixtureZip(path, data) && ReadZipEntries(path, entries);
+}
+
+TEST(FixtureWriter, DeterministicZipBytes) {
+  auto make_data = [](bool reverse) {
+    FixtureData data;
+    data.actions.push_back(MakeAction("setThreadStrategy", "{\"id\":0}", 1000));
+    const char* modules[] = {"alpha", "beta", "gamma", "delta"};
+    for (int i = 0; i < 4; ++i) {
+      const int idx = reverse ? 3 - i : i;
+      FixtureCall call{
+          "[\"" + std::string(modules[idx]) + "\"]", "{\"ok\":true}", {}, 1000};
+      const std::string key = std::string(modules[idx]) + '\0' + "call";
+      data.calls[key].push_back(call);
+    }
+    data.config_json = "{}";
+    return data;
+  };
+
+  // Same recording content, different calls insertion order. unordered_map
+  // iteration is insertion-dependent, so without sorting the zips differ.
+  const std::string dir = std::filesystem::temp_directory_path().string();
+  const std::string zip_a = dir + "/lynx_recorder_determinism_a.zip";
+  const std::string zip_b = dir + "/lynx_recorder_determinism_b.zip";
+  ASSERT_TRUE(WriteFixtureZip(zip_a, make_data(false)));
+  ASSERT_TRUE(WriteFixtureZip(zip_b, make_data(true)));
+  EXPECT_EQ(ReadFileContent(zip_a), ReadFileContent(zip_b));
+}
+
+TEST(FixtureWriter, FullFixtureGeneration) {
+  const int64_t t0 = 1000;
+  const std::string template_params =
+      std::string("{\"url\":\"https://example.com/t.js\",\"source\":\"") +
+      kTestBase64Source + "\"}";
+
+  FixtureData data;
+  data.actions = {
+      MakeAction("loadTemplate", template_params, t0),
+      // Immediate lifecycle actions (< 100ms from the first action).
+      MakeAction("setThreadStrategy", "{\"id\":0}", t0 + 10),
+      MakeAction("updateViewPort", "{\"width\":375}", t0 + 20),
+      MakeAction("setGlobalProps", "{\"global_props\":{\"theme\":\"dark\"}}",
+                 t0 + 30),
+      // Same asset name: the last large global-props value wins.
+      MakeAction("setGlobalProps",
+                 "{\"global_props\":{\"marker\":\"first\",\"data\":" +
+                     MakeObjectJson(60) + "}}",
+                 t0 + 40),
+      MakeAction("setGlobalProps",
+                 "{\"global_props\":{\"marker\":\"last\",\"data\":" +
+                     MakeObjectJson(60) + "}}",
+                 t0 + 50),
+      // Timed events cover lifecycle, decapitalization, asset, and fallback.
+      MakeAction("sendGlobalEvent", "{\"name\":\"n\"}", t0 + 1000),
+      MakeAction("SendCustomEvent", "{\"c\":1}", t0 + 1100),
+      MakeAction("updateViewPort", "{\"width\":750}", t0 + 1200),
+      MakeAction("setGlobalProps", "{\"global_props\":{\"x\":1}}", t0 + 1300),
+      MakeAction("sendGlobalEvent", "{\"big\":" + MakeObjectJson(40) + "}",
+                 t0 + 1400),
+      MakeAction("myCustomAction", "{\"z\":1}", t0 + 1500)};
+  data.has_load_template = true;
+  data.load_template_url = "https://example.com/t.js";
+  data.load_template_source_base64 = kTestBase64Source;
+  data.load_template_data_json =
+      "{\"value\":{\"web_id\":7},\"preprocessorName\":\"p\",\"readOnly\":true}";
+  data.load_template_data_format = FixtureTemplateDataFormat::kLegacyEnvelope;
+
+  data.shared_data.emplace_back("skey", "{\"v\":1}");
+  data.config_json = "{\"jsbIgnoredInfo\":[\"foo\",123,\"bar\"]}";
+
+  // JSB calls: callback with delay, malformed args, malformed callback value.
+  const std::string call_key = std::string("bridge") + '\0' + "callX";
+  FixtureCall c1{"[1]", "{\"r\":1}", {{0, "{\"msg\":\"ok\"}", 250}}, t0 + 100};
+  data.calls[call_key].push_back(c1);
+  FixtureCall c2{"not json", "", {{1, "bad{", 0}}, t0 + 200};
+  data.calls[call_key].push_back(c2);
+  // A key without the module\0method separator is skipped.
+  data.calls["orphan"].push_back(c1);
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(WriteZipForTest("lynx_recorder_full.zip", data, &entries));
+  ASSERT_TRUE(entries.count("fixture.js") == 1);
+  const std::string& fx = entries["fixture.js"];
+
+  const char* expected_fx[] = {
+      // Immediate lifecycle actions; setGlobalProps unwraps its envelope, and
+      // each large one reads its own uniquely-named extracted asset.
+      "ctx.setThreadStrategy({\"id\":0});",
+      "ctx.updateViewPort({\"width\":375});",
+      "ctx.setGlobalProps({\"theme\":\"dark\"});",
+      "ctx.setGlobalProps(ctx.readAsset(\"lifecycle/global_props_0.json\"));",
+      "ctx.setGlobalProps(ctx.readAsset(\"lifecycle/global_props_1.json\"));",
+      // loadTemplate: template.bin + flattened legacy-wrapped templateData.
+      "ctx.loadTemplate(\"https://example.com/t.js\"",
+      "ctx.readAsset(\"lifecycle/template_data.json\")",
+      // Timed events with delays.
+      "ctx.after(1000, () => ctx.sendGlobalEvent({\"name\":\"n\"}));",
+      "ctx.after(1100, () => ctx.sendCustomEvent(",
+      "ctx.after(1200, () => ctx.updateViewPort(",
+      "ctx.after(1300, () => ctx.setGlobalProps({\"x\":1}));",
+      "ctx.after(1400, () => ctx.sendGlobalEvent(ctx.readAsset(",
+      "ctx.after(1500, () => ctx.dispatch(\"myCustomAction\", {\"z\":1}));",
+      "ctx.sharedData(\"skey\", {\"v\":1});",
+      // Config jsbIgnoredInfo merged into the matcher; non-strings skipped.
+      ",\"foo\",\"bar\"",
+      "ctx.register(\"bridge\", \"callX\"",
+  };
+  for (const char* snippet : expected_fx) {
+    EXPECT_NE(fx.find(snippet), std::string::npos) << snippet;
+  }
+  // Ordering: immediate actions, then timed events, then mock handlers.
+  EXPECT_LT(fx.find("ctx.setThreadStrategy"), fx.find("--- Timed events ---"));
+  EXPECT_LT(fx.find("--- Timed events ---"), fx.find("ctx.register("));
+
+  const char* expected_files[] = {
+      "config.json",
+      "assets/lifecycle/global_props_0.json",
+      "assets/lifecycle/global_props_1.json",
+      "assets/lifecycle/template_data.json",
+      "assets/events/global_4.json",
+      "assets/bridge/callX.json",
+      "assets/template/template.bin",
+  };
+  for (const char* name : expected_files) {
+    EXPECT_TRUE(entries.count(name) == 1) << name;
+  }
+  // Each large immediate setGlobalProps keeps its own data under a unique
+  // asset name; a later value must not overwrite an earlier one.
+  EXPECT_NE(entries["assets/lifecycle/global_props_0.json"].find("first"),
+            std::string::npos);
+  EXPECT_EQ(entries["assets/lifecycle/global_props_0.json"].find("last"),
+            std::string::npos);
+  EXPECT_NE(entries["assets/lifecycle/global_props_1.json"].find("last"),
+            std::string::npos);
+  EXPECT_EQ(entries["assets/lifecycle/global_props_1.json"].find("first"),
+            std::string::npos);
+  // Legacy-wrapped templateData is flattened into the asset.
+  EXPECT_NE(
+      entries["assets/lifecycle/template_data.json"].find("\"web_id\": 7"),
+      std::string::npos);
+  EXPECT_NE(
+      entries["assets/lifecycle/template_data.json"].find("preprocessorName"),
+      std::string::npos);
+  // Mock call asset: callback delay kept, malformed fallbacks applied.
+  const std::string& asset = entries["assets/bridge/callX.json"];
+  EXPECT_NE(asset.find("\"delay\": 250"), std::string::npos);
+  EXPECT_NE(asset.find("\"args\": []"), std::string::npos);
+  EXPECT_NE(asset.find("\"value\": null"), std::string::npos);
+  EXPECT_EQ(entries["assets/template/template.bin"], "template-binary");
+
+  // loadTemplate with no recorded templateData still emits the third
+  // argument, as an empty object, so replay never sees an undefined value.
+  {
+    FixtureData bare;
+    bare.actions.push_back(MakeAction("loadTemplate", template_params, t0));
+    bare.has_load_template = true;
+    bare.load_template_url = "https://example.com/t.js";
+    bare.load_template_source_base64 = kTestBase64Source;
+    bare.config_json = "{}";
+    std::map<std::string, std::string> bare_entries;
+    ASSERT_TRUE(WriteZipForTest("lynx_recorder_bare_template.zip", bare,
+                                &bare_entries));
+    EXPECT_NE(bare_entries["fixture.js"].find(
+                  "ctx.loadTemplate(\"https://example.com/t.js\", "
+                  "\"template/template.bin\", {})"),
+              std::string::npos);
+  }
+}
+
+TEST(FixtureWriter, PreservesPlainTemplateDataWithLegacyFieldNames) {
+  FixtureData data;
+  data.actions.push_back(MakeAction("loadTemplate", "{}", 1000));
+  data.has_load_template = true;
+  data.load_template_source_base64 = kTestBase64Source;
+  data.load_template_data_json =
+      R"({"value":{"count":1},"preprocessorName":"business","readOnly":false})";
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(WriteZipForTest("lynx_recorder_plain_data.zip", data, &entries));
+  rapidjson::Document actual;
+  actual.Parse(entries.at("assets/lifecycle/template_data.json").c_str());
+  ASSERT_FALSE(actual.HasParseError());
+  rapidjson::Document expected;
+  expected.Parse(data.load_template_data_json.c_str());
+  EXPECT_TRUE(actual == expected);
+
+  // The same JSON is only flattened when its producer explicitly opts in.
+  data.load_template_data_format = FixtureTemplateDataFormat::kLegacyEnvelope;
+  entries.clear();
+  ASSERT_TRUE(WriteZipForTest("lynx_recorder_legacy_data.zip", data, &entries));
+  actual.Parse(entries.at("assets/lifecycle/template_data.json").c_str());
+  ASSERT_FALSE(actual.HasParseError());
+  expected.Parse(
+      R"({"count":1,"preprocessorName":"business","readOnly":false})");
+  EXPECT_TRUE(actual == expected);
+}
+
+TEST(FixtureWriter, MatcherHandlesOwnPropertyFields) {
+  FixtureData data;
+  data.actions.push_back(MakeAction("setThreadStrategy", "{}", 1000));
+  const std::string call_key = std::string("bridge") + '\0' + "call";
+  data.calls[call_key].push_back(
+      {R"([{"hasOwnProperty":7,"nested":{"hasOwnProperty":8},"timestamp":1}])",
+       R"("matched")",
+       {{0, R"("callback")", 5}},
+       1000});
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(
+      WriteZipForTest("lynx_recorder_own_property.zip", data, &entries));
+
+  // Execute the emitted fixture and its real call asset, supplying only the
+  // fixture context hooks. Exercise both the matcher and callback dispatch.
+  std::string script =
+      "var handler; var calls = " + entries.at("assets/bridge/call.json") +
+      "; var fixture = " +
+      entries.at("fixture.js").substr(std::string("export default ").size()) +
+      R"JS(;
+    fixture({
+      setThreadStrategy: function() {},
+      readAsset: function() { return calls; },
+      register: function(module, method, fn) { handler = fn; }
+    });
+    (function() {
+      var responses = [];
+      var callbacks = [function(value, delay) {
+        responses.push([value, delay]);
+      }];
+      var payload = {
+        hasOwnProperty: 7, nested: {hasOwnProperty: 8}, timestamp: 2
+      };
+      if (handler([payload], callbacks) !== 'matched') return false;
+      var withoutPrototype = Object.assign(Object.create(null), payload);
+      if (handler([withoutPrototype], callbacks) !== 'matched') return false;
+      var inherited = Object.assign(Object.create({extra: true}), payload);
+      if (handler([inherited], callbacks) !== 'matched') return false;
+      payload.nested.hasOwnProperty = 9;
+      if (handler([payload], callbacks) !== undefined) return false;
+      return JSON.stringify(responses) ===
+          '[["callback",5],["callback",5],["callback",5]]';
+    })();
+  )JS";
+  auto rt = testing::utils::makeJSRuntime();
+  runtime::js::Scope scope(*rt);
+  auto result = rt->evaluateJavaScript(
+      std::make_unique<runtime::js::StringBuffer>(script), "fixture-writer.js");
+  ASSERT_TRUE(result.has_value());
+  ASSERT_TRUE(result.value().isBool());
+  EXPECT_TRUE(result.value().getBool());
+}
+
+TEST(FixtureWriter, EscapesConfiguredIgnoredKeys) {
+  FixtureData data;
+  data.actions.push_back(MakeAction("setThreadStrategy", "{}", 1000));
+  data.config_json = R"({"jsbIgnoredInfo":["quote\"slash\\line\nend"]})";
+  const std::string call_key = std::string("bridge") + '\0' + "call";
+  data.calls[call_key].push_back(
+      {R"([{"quote\"slash\\line\nend":1}])", R"("matched")", {}, 1000});
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(WriteZipForTest("lynx_recorder_ignored_key.zip", data, &entries));
+
+  std::string script =
+      "var handler; var calls = " + entries.at("assets/bridge/call.json") +
+      "; var fixture = " +
+      entries.at("fixture.js").substr(std::string("export default ").size()) +
+      R"JS(;
+    fixture({
+      setThreadStrategy: function() {},
+      readAsset: function() { return calls; },
+      register: function(module, method, fn) { handler = fn; }
+    });
+    (function() {
+      var key = 'quote"slash\\line\nend';
+      var payload = {};
+      payload[key] = 2;
+      return handler([payload], []) === 'matched';
+    })();
+  )JS";
+  auto rt = testing::utils::makeJSRuntime();
+  runtime::js::Scope scope(*rt);
+  auto result = rt->evaluateJavaScript(
+      std::make_unique<runtime::js::StringBuffer>(script), "fixture-writer.js");
+  ASSERT_TRUE(result.has_value());
+  ASSERT_TRUE(result.value().isBool());
+  EXPECT_TRUE(result.value().getBool());
+}
+
+TEST(FixtureWriter, MatcherPreservesSerializedSpecialValueSemantics) {
+  FixtureData data;
+  data.actions.push_back(MakeAction("setThreadStrategy", "{}", 1000));
+  const std::string call_key = std::string("bridge") + '\0' + "call";
+  data.calls[call_key] = {
+      {R"(["function"])", R"("function-string")", {}, 1000},
+      {R"(["undefined"])", R"("undefined-string")", {}, 1001},
+      {R"(["NaN"])", R"("nan-string")", {{0, R"("callback")", 5}}, 1002},
+  };
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(
+      WriteZipForTest("lynx_recorder_special_values.zip", data, &entries));
+
+  // V1 encodes special values as strings and disambiguates them with the live
+  // argument type. Preserve that behavior while allowing the same text to be
+  // used as an ordinary string. In particular, "function" is not a wildcard
+  // and "undefined" must not match null.
+  std::string script =
+      "var handler; var calls = " + entries.at("assets/bridge/call.json") +
+      "; var fixture = " +
+      entries.at("fixture.js").substr(std::string("export default ").size()) +
+      R"JS(;
+    fixture({
+      setThreadStrategy: function() {},
+      readAsset: function() { return calls; },
+      register: function(module, method, fn) { handler = fn; }
+    });
+    (function() {
+      var responses = [];
+      var callbacks = [function(value, delay) {
+        responses.push([value, delay]);
+      }];
+      if (handler([function() {}], callbacks) !== 'function-string') return false;
+      if (handler(['function'], callbacks) !== 'function-string') return false;
+      if (handler([{}], callbacks) !== undefined) return false;
+      if (handler([undefined], callbacks) !== 'undefined-string') return false;
+      if (handler(['undefined'], callbacks) !== 'undefined-string') return false;
+      if (handler([null], callbacks) !== undefined) return false;
+      if (handler([NaN], callbacks) !== 'nan-string') return false;
+      if (handler(['NaN'], callbacks) !== 'nan-string') return false;
+      if (handler([123], callbacks) !== undefined) return false;
+      return JSON.stringify(responses) ===
+          '[["callback",5],["callback",5]]';
+    })();
+  )JS";
+  auto rt = testing::utils::makeJSRuntime();
+  runtime::js::Scope scope(*rt);
+  auto result = rt->evaluateJavaScript(
+      std::make_unique<runtime::js::StringBuffer>(script), "fixture-writer.js");
+  ASSERT_TRUE(result.has_value());
+  ASSERT_TRUE(result.value().isBool());
+  EXPECT_TRUE(result.value().getBool());
+}
+
+TEST(FixtureWriter, DecodesPaddedTemplates) {
+  FixtureData data;
+  data.actions.push_back(MakeAction("loadTemplate", "{}", 1000));
+  data.has_load_template = true;
+  // Cover exact output allocation for one, two and three decoded bytes,
+  // including an embedded NUL in a binary template.
+  const std::pair<std::string, std::string> cases[] = {
+      {"YQ==", "a"}, {"YWI=", "ab"}, {"YQBi", std::string("a\0b", 3)}};
+  for (const auto& item : cases) {
+    SCOPED_TRACE(item.first);
+    data.load_template_source_base64 = item.first;
+    std::map<std::string, std::string> entries;
+    ASSERT_TRUE(
+        WriteZipForTest("lynx_recorder_padded_template.zip", data, &entries));
+    EXPECT_EQ(entries.at("assets/template/template.bin"), item.second);
+  }
+}
+
+TEST(FixtureWriter, RejectsOversizedTemplate) {
+  FixtureData data;
+  data.actions.push_back(MakeAction("loadTemplate", "{}", 1000));
+  data.has_load_template = true;
+  data.load_template_source_base64.assign((kMaxFixtureTotalBytes / 3 + 1) * 4,
+                                          'A');
+  const std::string path = (std::filesystem::temp_directory_path() /
+                            "lynx_recorder_oversized_template.zip")
+                               .string();
+  EXPECT_FALSE(WriteFixtureZip(path, data));
+  EXPECT_FALSE(std::filesystem::exists(path));
+}
+
+TEST(FixtureWriter, WriteFailures) {
+  const std::string temp = std::filesystem::temp_directory_path().string();
+  // No actions: nothing to replay, no zip produced.
+  FixtureData empty;
+  EXPECT_FALSE(WriteFixtureZip(temp + "/lynx_recorder_empty.zip", empty));
+  // Unwritable output path -> false, no file left behind.
+  FixtureData data;
+  data.actions.push_back(MakeAction("setThreadStrategy", "{\"id\":0}", 1000));
+  const std::string bad_path = "/no/such/dir/fixture.zip";
+  EXPECT_FALSE(WriteFixtureZip(bad_path, data));
+  EXPECT_FALSE(std::filesystem::exists(bad_path));
+
+  // A template whose base64 fails to decode must fail the whole write rather
+  // than shipping an empty template.bin that fixture.js still references.
+  FixtureData bad_template;
+  bad_template.actions.push_back(MakeAction(
+      "loadTemplate", "{\"url\":\"https://example.com/t.js\"}", 1000));
+  bad_template.has_load_template = true;
+  bad_template.load_template_url = "https://example.com/t.js";
+  bad_template.load_template_source_base64 = "@@@@";  // invalid base64
+  bad_template.config_json = "{}";
+  const std::string bad_template_path =
+      temp + "/lynx_recorder_bad_template.zip";
+  EXPECT_FALSE(WriteFixtureZip(bad_template_path, bad_template));
+  EXPECT_FALSE(std::filesystem::exists(bad_template_path));
+}
+
+// Actions are keyed to the smallest record_ms, so an out-of-order stream never
+// yields a negative ctx.after() delay or scrambles the immediate/timed split.
+TEST(FixtureWriter, UnsortedActionsUseMinTimestamp) {
+  FixtureData data;
+  // First element is not the earliest: the true zero point is t=1000.
+  data.actions = {
+      MakeAction("sendGlobalEvent", "{\"name\":\"late\"}", 3000),
+      MakeAction("setThreadStrategy", "{\"id\":0}", 1000),
+      MakeAction("sendGlobalEvent", "{\"name\":\"early\"}", 1500),
+  };
+  data.config_json = "{}";
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(WriteZipForTest("lynx_recorder_unsorted.zip", data, &entries));
+  const std::string& fx = entries["fixture.js"];
+  // The immediate action still lands up front (delay 0 < 100), not demoted to
+  // a timed event by a wrong front()-based origin.
+  EXPECT_NE(fx.find("ctx.setThreadStrategy({\"id\":0});"), std::string::npos);
+  // Delays are relative to the min timestamp and never negative.
+  EXPECT_NE(fx.find("ctx.after(500, () => ctx.sendGlobalEvent("),
+            std::string::npos);
+  EXPECT_NE(fx.find("ctx.after(2000, () => ctx.sendGlobalEvent("),
+            std::string::npos);
+  EXPECT_EQ(fx.find("ctx.after(-"), std::string::npos);
+}
+
+// Recorded (module, method) names flow straight from JS bridge calls, so a
+// hostile name must not be able to inject a path separator or traverse out of
+// assets/ (zip-slip). Path components are percent-encoded before becoming zip
+// entry names, and fixture.js's readAsset references the same encoded path.
+TEST(FixtureWriter, SanitizesZipEntryPaths) {
+  FixtureData data;
+  data.actions.push_back(MakeAction("setThreadStrategy", "{\"id\":0}", 1000));
+  FixtureCall call{"[]", "{\"ok\":true}", {}, 1000};
+  // module contains a traversal escape, method contains a separator and NUL is
+  // exercised via the map key delimiter handling elsewhere.
+  const std::string key = std::string("../../etc") + '\0' + "a/b";
+  data.calls[key].push_back(call);
+  data.config_json = "{}";
+
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(WriteZipForTest("lynx_recorder_sanitize.zip", data, &entries));
+
+  // The traversal chars are percent-encoded, so the entry is a single flat
+  // component under assets/ rather than escaping it.
+  const std::string expected = "assets/..%2F..%2Fetc/a%2Fb.json";
+  EXPECT_TRUE(entries.count(expected)) << "missing sanitized entry";
+  // No entry has a path component equal to ".." or "." (real zip-slip escape).
+  for (const auto& pair : entries) {
+    std::stringstream ss(pair.first);
+    std::string component;
+    while (std::getline(ss, component, '/')) {
+      EXPECT_NE(component, "..") << "traversal component in " << pair.first;
+      EXPECT_NE(component, ".") << "traversal component in " << pair.first;
+    }
+  }
+  // The raw unsanitized path was never written.
+  EXPECT_EQ(entries.count("assets/../../etc/a/b.json"), 0u);
+
+  // fixture.js references the encoded asset path but registers the raw
+  // (module, method) so replay dispatch still matches the recorded call.
+  const std::string& fx = entries["fixture.js"];
+  EXPECT_NE(fx.find("ctx.readAsset(\"..%2F..%2Fetc/a%2Fb.json\")"),
+            std::string::npos);
+  EXPECT_NE(fx.find("ctx.register(\"../../etc\", \"a/b\""), std::string::npos);
 }
 
 }  // namespace recorder

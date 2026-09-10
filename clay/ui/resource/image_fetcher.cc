@@ -56,6 +56,19 @@ std::shared_ptr<ResourceLoader> GetOrCreateResourceLoader(
 #endif
 }
 
+fml::RefPtr<fml::TaskRunner> GetImageCacheCleanupTaskRunner(
+    const TaskRunners& task_runners) {
+#if defined(OS_IOS)
+  // The iOS IO runner may be backed by LynxNormalTask. Keep the concurrent
+  // worker fallback for embedders whose IO and UI work run on the same thread.
+  auto io_task_runner = task_runners.GetIOTaskRunner();
+  if (io_task_runner && !io_task_runner->RunsTasksOnCurrentThread()) {
+    return io_task_runner;
+  }
+#endif
+  return nullptr;
+}
+
 }  // namespace
 
 ImageFetcher::ImageFetcher(std::shared_ptr<ResourceLoaderIntercept> intercept,
@@ -68,7 +81,8 @@ ImageFetcher::ImageFetcher(std::shared_ptr<ResourceLoaderIntercept> intercept,
       task_runners_(std::move(task_runners)),
       unref_queue_(unref_queue),
       inactive_image_cache_(std::make_shared<ImageCache<BaseImage>>(
-          task_runners_.GetUITaskRunner())) {}
+          task_runners_.GetUITaskRunner(),
+          GetImageCacheCleanupTaskRunner(task_runners_))) {}
 
 ImageFetcher::~ImageFetcher() = default;
 

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "core/list/animation/animation_manager.h"
 #include "core/list/decoupled_list_adapter.h"
 #include "core/list/decoupled_list_children_helper.h"
 #include "core/list/decoupled_list_event_manager.h"
@@ -55,6 +56,9 @@ class ListContainerImpl : public ContainerDelegate {
     enable_insert_platform_view_operation_ = true;
   }
   void OnNextFrame() override;
+  void SetEnableParallelElement(bool enable_parallel_element) override {
+    enable_parallel_element_ = enable_parallel_element;
+  }
   void SetEnableBatchRender(bool enable_batch_render) override {
     enable_batch_render_ = enable_batch_render;
   }
@@ -108,6 +112,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool should_request_state_restore() const {
     return should_request_state_restore_;
   }
+  bool enable_parallel_element() const { return enable_parallel_element_; }
   bool enable_batch_render() const { return enable_batch_render_; }
   bool enable_insert_platform_view_operation() const {
     return enable_insert_platform_view_operation_;
@@ -124,6 +129,9 @@ class ListContainerImpl : public ContainerDelegate {
   }
   SearchRefAnchorStrategy search_ref_anchor_strategy() const {
     return search_ref_anchor_strategy_;
+  }
+  AnimationManager* animation_manager() const {
+    return animation_manager_.get();
   }
 
  protected:
@@ -167,7 +175,9 @@ class ListContainerImpl : public ContainerDelegate {
   bool has_valid_diff_{false};
   bool update_animation_{false};
   bool need_preload_section_on_next_frame_{false};
+  bool enable_parallel_element_{false};
   bool enable_batch_render_{false};
+  std::unique_ptr<AnimationManager> animation_manager_;
   ListAdapterDiffResult animation_diff_result_{ListAdapterDiffResult::kNone};
   std::shared_ptr<pub::PubValueFactory> value_factory_;
 };

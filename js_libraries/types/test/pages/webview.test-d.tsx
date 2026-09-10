@@ -20,6 +20,9 @@ let a: unknown;
   <webview scroll-bar-enable={true} />;
   assertType<boolean | undefined>(a as IntrinsicElements['webview']['scroll-bar-enable']);
 
+  <webview ios-hide-keyboard-accessory-view={true} />;
+  assertType<boolean | undefined>(a as IntrinsicElements['webview']['ios-hide-keyboard-accessory-view']);
+
   <webview params={{ key: 'value' }} />;
   assertType<object | undefined>(a as IntrinsicElements['webview']['params']);
 

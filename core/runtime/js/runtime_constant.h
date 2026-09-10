@@ -82,7 +82,7 @@ constexpr const char kMessageEventTypeUpdateGlobalProps[] =
     "__UpdateGlobalProps";
 constexpr const char kMessageEventTypeRemoveComponents[] = "__RemoveComponents";
 
-constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
+constexpr char kRawRuntimeHeapSize[] = "heap_size";
 constexpr char kRawRuntimePageRssMemoryInfo[] = "page_rss_usage";
 constexpr char kRawRuntimeBaseMemoryInfo[] = "base_usage";
 constexpr char kForceReportMemoryInfo[] = "force_report_memory_info";

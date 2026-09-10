@@ -273,14 +273,16 @@ LynxPseudoStatus PlatformEventTarget::GetPseudoStatus() const {
 
 bool PlatformEventTarget::TouchPseudoPropagation() const { return true; }
 
-bool PlatformEventTarget::EventThrough(float point[2],
-                                       bool enable_inherit_from_page) const {
-  return EventThroughInternal(point, true, enable_inherit_from_page);
+bool PlatformEventTarget::EventThrough(
+    float point[2], const PlatformEventThroughConfig& config) const {
+  if (events_pass_through_ == LynxEventPropStatus::kEnable) {
+    return true;
+  }
+  return EventThroughInternal(point, config);
 }
 
 bool PlatformEventTarget::EventThroughInternal(
-    float point[2], bool include_events_pass_through,
-    bool enable_inherit_from_page) const {
+    float point[2], const PlatformEventThroughConfig& config) const {
   bool is_event_through = false;
   if (event_through_ == LynxEventPropStatus::kEnable) {
     is_event_through = true;
@@ -289,7 +291,8 @@ bool PlatformEventTarget::EventThroughInternal(
   } else {
     auto parent = ParentTarget();
     if (parent != nullptr && parent.get() != this &&
-        (enable_inherit_from_page || !parent->IsPageRoot())) {
+        (config.enable_event_through_inherit_from_page ||
+         !parent->IsPageRoot())) {
       float parent_point[2] = {point[0], point[1]};
       if (target_helper_ != nullptr) {
         auto self = fml::RefPtr<PlatformEventTarget>(
@@ -297,9 +300,15 @@ bool PlatformEventTarget::EventThroughInternal(
         target_helper_->ConvertPointFromDescendantToAncestor(parent_point, self,
                                                              parent, point);
       }
-      is_event_through = parent->EventThroughInternal(parent_point, false,
-                                                      enable_inherit_from_page);
+      is_event_through = parent->EventThroughInternal(parent_point, config);
     }
+  }
+
+  // PageConfig.enableEventThrough is a fallback for the page root. A
+  // descendant can only observe it when inheritance is allowed to reach the
+  // page, and an explicit value on the descendant still takes precedence.
+  if (!is_event_through && IsPageRoot()) {
+    is_event_through = config.enable_event_through;
   }
 
   if (!event_through_active_regions_.empty()) {
@@ -307,10 +316,6 @@ bool PlatformEventTarget::EventThroughInternal(
                                                            : !is_event_through;
   }
 
-  if (include_events_pass_through &&
-      events_pass_through_ == LynxEventPropStatus::kEnable) {
-    return true;
-  }
   return is_event_through;
 }
 

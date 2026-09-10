@@ -8,6 +8,9 @@ on:
       - 'oliver/lynx-tasm/package.json'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   check-version-change:
     runs-on: ubuntu-latest
@@ -15,8 +18,9 @@ jobs:
       version_changed: ${{ steps.check.outputs.version_changed }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
           fetch-depth: 2 # latest 2 commits
 
@@ -50,16 +54,18 @@ jobs:
     needs: check-version-change
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 18
+          node-version-file: 'lynx/.node-version'
+
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
@@ -74,7 +80,7 @@ jobs:
           npm run build:release:linux
           popd
       - name: Upload Linux Tasm Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: tasm_linux
           path: lynx/oliver/lynx-tasm/build/linux/Release/lepus.node
@@ -85,16 +91,18 @@ jobs:
     needs: check-version-change
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 18
+          node-version-file: 'lynx/.node-version'
+
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
@@ -109,7 +117,7 @@ jobs:
           npm run build:release:darwin
           popd
       - name: Upload Darwin Tasm Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: tasm_darwin
           path: lynx/oliver/lynx-tasm/build/darwin/Release/lepus.node
@@ -123,16 +131,18 @@ jobs:
     environment: npm
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version-file: 'lynx/.node-version'
+
           registry-url: 'https://registry.npmjs.org'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
@@ -148,12 +158,12 @@ jobs:
           npm run build:wasm
           popd
       - name: Download Linux Tasm Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: tasm_linux
           path: lynx/oliver/lynx-tasm/build/linux/Release
       - name: Download Darwin Tasm Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: tasm_darwin
           path: lynx/oliver/lynx-tasm/build/darwin/Release

@@ -148,6 +148,10 @@ main().catch((error) => {
 });
 ```
 
+For bundles that synchronously load local JavaScript, pass `resourceRootPaths`
+to search those directories before falling back to the asynchronous resource
+fetcher. Views created with the same non-empty `groupName` share a BTS runtime.
+
 Useful APIs:
 
 - `loadTemplateFromUrl(url, options)` downloads and loads a remote template.
@@ -155,6 +159,8 @@ Useful APIs:
 - `updateData(data, options)` updates template data after load.
 - `updateGlobalProps(globalProps)` updates global props after load.
 - `invokeCDPFromSDK(cdpMessage)` invokes a CDP method with a JSON string.
+- `evaluateScript(url, script)` schedules JavaScript in the view's BTS runtime;
+  evaluation failures are reported to `onErrorOccurred`.
 - `waitForFrame()` waits until a frame has been submitted.
 - `screenshot({ settleMs })` returns a PNG buffer.
 - `destroy()` releases the native view. Always call it in a `finally` block.

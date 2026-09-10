@@ -198,6 +198,20 @@ public class LynxUIOwnerTest {
   }
 
   @Test
+  public void testExternalMemorySnapshotPrunesMissingCandidates() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext contextSpy = spy(mContext);
+      LynxUIOwner uiOwner = new LynxUIOwner(
+          contextSpy, new BehaviorRegistry(new BuiltInBehavior().create()), mUIBody.getBodyView());
+
+      uiOwner.cacheRemovedUIIds(new int[] {404, 405});
+      assertEquals(2, getExternalMemoryCandidateCount(uiOwner));
+      assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
+      assertEquals(0, getExternalMemoryCandidateCount(uiOwner));
+    });
+  }
+
+  @Test
   public void testExternalMemoryShadowProxyDelegation() {
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
       LynxContext contextSpy = spy(mContext);

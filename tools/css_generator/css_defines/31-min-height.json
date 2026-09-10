@@ -11,7 +11,7 @@
     "min-height": {
       "__compat": {
         "description": "sets the minimum height of an element.",
-        "lynx_path": "docs/zh/api/css/properties/min-height",
+        "lynx_path": "api/css/properties/min-height",
         "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/min-height",
         "spec_url": [],
         "status": {

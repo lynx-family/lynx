@@ -18,8 +18,12 @@ constexpr char kSetMappedMemoryCacheKeySymbol[] =
     "ImageKnifeOption_SetMappedMemoryCacheKey";
 constexpr char kSetMappedFileCacheKeySymbol[] =
     "ImageKnifeOption_SetMappedFileCacheKey";
+constexpr char kSetEnableVisibleAreaControlSymbol[] =
+    "ImageKnifeOption_SetEnableVisibleAreaControl";
 
 using SetUseHighestPriority = void (*)(ImageKnifePro::ImageKnifeOption*, bool);
+using SetEnableVisibleAreaControl = void (*)(ImageKnifePro::ImageKnifeOption*,
+                                             bool);
 using SetMappedCacheKey = void (*)(ImageKnifePro::ImageKnifeOption*,
                                    const char*);
 
@@ -45,12 +49,15 @@ struct ImageKnifeOptionApi {
         Resolve<SetMappedCacheKey>(handle, kSetMappedMemoryCacheKeySymbol);
     set_mapped_file_cache_key =
         Resolve<SetMappedCacheKey>(handle, kSetMappedFileCacheKeySymbol);
+    set_enable_visible_area_control = Resolve<SetEnableVisibleAreaControl>(
+        handle, kSetEnableVisibleAreaControlSymbol);
   }
 
   void* handle = nullptr;
   SetUseHighestPriority set_use_highest_priority = nullptr;
   SetMappedCacheKey set_mapped_memory_cache_key = nullptr;
   SetMappedCacheKey set_mapped_file_cache_key = nullptr;
+  SetEnableVisibleAreaControl set_enable_visible_area_control = nullptr;
 };
 
 const ImageKnifeOptionApi& GetImageKnifeOptionApi() {
@@ -87,6 +94,14 @@ void ImageKnifeOptionCompat::Apply(
     if (api.set_mapped_file_cache_key != nullptr) {
       api.set_mapped_file_cache_key(option, mapped_file_key.c_str());
     }
+  }
+}
+
+void ImageKnifeOptionCompat::SetEnableVisibleAreaControl(
+    ImageKnifePro::ImageKnifeOption* option, bool enabled) {
+  const auto& api = GetImageKnifeOptionApi();
+  if (api.set_enable_visible_area_control != nullptr) {
+    api.set_enable_visible_area_control(option, enabled);
   }
 }
 

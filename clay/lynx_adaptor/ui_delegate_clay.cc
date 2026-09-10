@@ -237,6 +237,8 @@ std::vector<float> UIDelegateClay::GetTransformValue(
 void UIDelegateClay::OnPageConfigDecoded(
     const std::shared_ptr<PageConfig>& config) {
   if (auto* page_view = view_context_->GetPageView()) {
+    view_context_->SetEnableSyncXElementRegistry(
+        config->GetSyncXElementRegistry());
     page_view->SetAlignMouseEventWithW3C(config->GetAlignMouseEventWithW3C());
     page_view->SetEnableMouseDragScroll(config->GetEnableMouseDragScroll());
     // Set exposure props.

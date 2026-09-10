@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_FRAGMENT_EVENT_PLATFORM_EVENT_HANDLER_H_
 
 #include <array>
+#include <cstdint>
 #include <deque>
 #include <limits>
 #include <string>
@@ -25,16 +26,15 @@ class PlatformEventHandler {
  public:
   class PlatformEventTargetDetail {
    public:
-    PlatformEventTargetDetail(fml::RefPtr<PlatformEventTarget> target,
-                              float down_point[2]);
+    PlatformEventTargetDetail(int32_t target_sign, float down_point[2]);
 
     void GetDownPoint(float down_point[2]);
     void GetPrePoint(float pre_point[2]);
     void SetPrePoint(float pre_point[2]);
-    fml::RefPtr<PlatformEventTarget> Target();
+    int32_t TargetSign() const { return target_sign_; }
 
    private:
-    fml::RefPtr<PlatformEventTarget> target_;
+    int32_t target_sign_;
     float down_point_[2]{std::numeric_limits<float>::max(),
                          std::numeric_limits<float>::max()};
     float pre_point_[2]{std::numeric_limits<float>::max(),
@@ -46,7 +46,7 @@ class PlatformEventHandler {
 
   bool OnInputEvent(fml::RefPtr<PlatformEventTarget> target_tree,
                     int int_event_data[], float float_event_data[],
-                    bool enable_event_through_inherit_from_page);
+                    const PlatformEventThroughConfig& event_through_config);
   void OnTap();
   void OnLongPress();
   void DispatchPointerEvent(const std::string& name,
@@ -81,6 +81,8 @@ class PlatformEventHandler {
   void HandlePointerCancel(PlatformPointerEvent& event);
 
   void DispatchGestureEvent(const std::string& name, float root_point[2]);
+  fml::RefPtr<PlatformEventTarget> GetTargetTree() const;
+  fml::RefPtr<PlatformEventTarget> GetEventTarget(int32_t sign) const;
   fml::RefPtr<PlatformEventTarget> FindTarget(float pointer_x, float pointer_y);
   void ResetFocusInfo();
   bool CanRespondTap(fml::RefPtr<PlatformEventTarget> target);
@@ -95,11 +97,12 @@ class PlatformEventHandler {
   // owned by NativePaintingCtxPlatformRef
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
 
-  // state
-  fml::RefPtr<PlatformEventTarget> target_tree_{nullptr};
-  fml::RefPtr<PlatformEventTarget> first_target_{nullptr};
-  std::vector<fml::RefPtr<PlatformEventTarget>> event_target_chain_;
-  std::deque<fml::RefPtr<PlatformEventTarget>> click_target_chain_;
+  // Keep signs across events because rebuilding replaces the target objects.
+  int32_t target_tree_sign_{-1};
+  int32_t first_target_sign_{-1};
+  // Preserve the response chains established on pointer down.
+  std::vector<int32_t> event_target_chain_;
+  std::deque<int32_t> click_target_chain_;
   std::unordered_map<int, PlatformEventTargetDetail> target_pointer_map_;
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offset_for_tap_;
   int32_t hit_target_sign_{-1};
@@ -113,7 +116,7 @@ class PlatformEventHandler {
   // config
   unsigned int tap_slop_{5};
   bool has_pointer_pseudo_{false};
-  bool enable_event_through_inherit_from_page_{false};
+  PlatformEventThroughConfig event_through_config_;
 };
 
 }  // namespace tasm

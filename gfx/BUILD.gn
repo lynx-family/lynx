@@ -50,6 +50,14 @@ if (gfx_builds_shared_library) {
   }
 }
 
+unittest_exec("animation_keyframe_unittests_exec") {
+  sources = [ "animation/animation_keyframe_unittest.cc" ]
+  deps = [
+    ":gfx_sources",
+    "//third_party/googletest:gtest",
+  ]
+}
+
 unittest_exec("geometry_unittests_exec") {
   sources = [
     "geometry/quaternion_unittest.cc",

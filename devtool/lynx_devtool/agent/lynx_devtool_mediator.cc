@@ -54,6 +54,10 @@ void LynxDevToolMediator::Init(
     lynx::shell::LynxShell* shell,
     const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng) {
   devtool_wp_ = lynx_devtool_ng;
+  if (ui_executor_) {
+    ui_executor_->ResetInputHandler();
+  }
+
   auto* runners = shell->GetRunners();
   tasm::TemplateAssembler* tasm = shell->GetTasm();
   tasm_task_runner_ = runners->GetTASMTaskRunner();
@@ -94,6 +98,10 @@ void LynxDevToolMediator::Init(
         std::make_shared<InspectorLepusDebuggerImpl>(shared_from_this());
     int64_t record_id = reinterpret_cast<int64_t>(shell);
     lepus_debugger_->SetRecordID(record_id);
+  }
+  if (native_module_record_manager_ == nullptr) {
+    native_module_record_manager_ =
+        std::make_shared<NativeModuleRecordManager>(shared_from_this());
   }
 
   // shell set element observer in tasm thread;
@@ -166,6 +174,10 @@ LynxDevToolMediator::InitWhenBackgroundRuntimeCreated(
   if (!devtool_executor_) {
     devtool_executor_ =
         std::make_shared<InspectorDefaultExecutor>(shared_from_this());
+  }
+  if (native_module_record_manager_ == nullptr) {
+    native_module_record_manager_ =
+        std::make_shared<NativeModuleRecordManager>(shared_from_this());
   }
   auto runtime_observer = js_debugger_->GetInspectorRuntimeObserver();
 
@@ -773,6 +785,10 @@ void LynxDevToolMediator::HideHighlight(
 }
 
 void LynxDevToolMediator::Destroy() {
+  if (ui_executor_) {
+    ui_executor_->ResetInputHandler();
+  }
+
   // Must be called before destructing, because in the destructor of
   // InspectorJavaScriptDebuggerImpl, we will post a task to the JS thread by
   // using the weak_ptr of LynxDevToolMediator saved in it.
@@ -1222,6 +1238,14 @@ void LynxDevToolMediator::InsertText(
   });
 }
 
+void LynxDevToolMediator::SynthesizeTapGesture(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnUIThread([sender, message, executor = ui_executor_] {
+    executor->SynthesizeTapGesture(sender, message);
+  });
+}
+
 void LynxDevToolMediator::InspectorEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
@@ -1298,6 +1322,84 @@ void LynxDevToolMediator::SendLogEntryAddedEvent(
     const lynx::runtime::js::ConsoleMessage& message) {
   RunOnDevToolThread([message, executor = devtool_executor_] {
     executor->SendLogEntryAddedEvent(message);
+  });
+}
+
+void LynxDevToolMediator::AddNativeModuleRecord(const lepus::Value& record) {
+  auto manager = native_module_record_manager_;
+  if (manager == nullptr) {
+    return;
+  }
+  manager->EnqueueRecordOnJSThread(record);
+}
+
+void LynxDevToolMediator::NativeModuleEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread(
+      [sender, message, manager = native_module_record_manager_] {
+        if (manager != nullptr) {
+          manager->Enable();
+        }
+        sender->SendOKResponse(message["id"].asInt64());
+      });
+}
+
+void LynxDevToolMediator::NativeModuleDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread(
+      [sender, message, manager = native_module_record_manager_] {
+        if (manager != nullptr) {
+          manager->Disable();
+        }
+        sender->SendOKResponse(message["id"].asInt64());
+      });
+}
+
+void LynxDevToolMediator::NativeModuleGetRecords(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread(
+      [sender, message, manager = native_module_record_manager_] {
+        if (manager != nullptr) {
+          manager->GetRecords(sender, message["id"].asInt64());
+        } else {
+          sender->SendOKResponse(message["id"].asInt64());
+        }
+      });
+}
+
+// Network protocol
+void LynxDevToolMediator::NetworkEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkEnable(sender, message);
+  });
+}
+
+void LynxDevToolMediator::NetworkDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkDisable(sender, message);
+  });
+}
+
+void LynxDevToolMediator::NetworkGetResponseBody(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkGetResponseBody(sender, message);
+  });
+}
+
+void LynxDevToolMediator::NetworkGetRequestPostData(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
+    executor->NetworkGetRequestPostData(sender, message);
   });
 }
 

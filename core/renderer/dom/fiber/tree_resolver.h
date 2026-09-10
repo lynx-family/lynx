@@ -81,6 +81,9 @@ class TreeResolver {
       const lepus::Value& attribute_slots);
   static void ApplyTemplateNonEventAttributesToElement(
       Element* element, const lepus::Value& attribute_slots);
+  static void ApplyTemplateNonEventAttributesToElement(
+      Element* element, const lepus::Value& previous_attribute_slots,
+      const lepus::Value& attribute_slots);
   static void ApplyTemplateEventAttributesToElement(
       Element* element, const lepus::Value& attribute_slots);
   static void ApplyStaticTemplateEventAttributesToElement(Element* element);
@@ -91,7 +94,7 @@ class TreeResolver {
 
   // Construct the detached single-root tree used by the new Element Template
   // create path. Slot target tables are returned together with the root in one
-  // aggregate result so async workers do not mutate TemplateElement directly.
+  // aggregate result so async workers do not mutate the logical owner directly.
   static GeneratedElementsResult GenerateElementsFromTemplateInfo(
       const ElementTemplateInfo& info);
 

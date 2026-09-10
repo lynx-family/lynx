@@ -11,6 +11,9 @@ import android.graphics.Rect
 import android.text.TextUtils
 import android.util.Log
 import android.util.Base64
+import com.lynx.react.bridge.Dynamic
+import com.lynx.react.bridge.ReadableType
+import com.lynx.react.bridge.mapbuffer.MapBuffer
 import com.lynx.serval.svg.SVGDrawable
 import com.lynx.serval.svg.SVGRender
 import com.lynx.serval.svg.SVGRender.BitmapRequestCallBack
@@ -18,20 +21,64 @@ import com.lynx.serval.svg.SVGRender.ResourceManager
 import com.lynx.tasm.behavior.LynxBehavior
 import com.lynx.tasm.behavior.LynxContext
 import com.lynx.tasm.behavior.LynxGeneratorName
+import com.lynx.tasm.behavior.LynxProp
+import com.lynx.tasm.behavior.PropertyIDConstants
 import com.lynx.tasm.behavior.PropsConstants
+import com.lynx.tasm.behavior.StylesDiffMap
 import com.lynx.tasm.behavior.ui.LynxUI
 import com.lynx.tasm.core.LynxThreadPool
 import com.lynx.tasm.event.LynxDetailEvent
-import com.lynx.tasm.resourceprovider.LynxResourceRequest
 import com.lynx.tasm.resourceprovider.LynxResourceCallback
+import com.lynx.tasm.resourceprovider.LynxResourceRequest
+import com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeSVG
 import com.lynx.tasm.resourceprovider.LynxResourceResponse
 import com.lynx.tasm.utils.UIThreadUtils
-
-import com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeSVG
-import java.nio.charset.StandardCharsets
 import java.nio.charset.Charset
-import com.lynx.tasm.behavior.LynxProp
+import java.nio.charset.StandardCharsets
+import java.util.Locale
 
+internal fun argbToSVGColor(argb: Long): String {
+  val color = argb and 0xFFFFFFFFL
+  return String.format(
+    Locale.US,
+    "rgba(%d,%d,%d,%.6f)",
+    color shr 16 and 0xFF,
+    color shr 8 and 0xFF,
+    color and 0xFF,
+    (color shr 24 and 0xFF) / 255.0
+  )
+}
+
+internal class SVGColorResolver {
+  private var cssColor: String? = null
+  private var currentColor: String? = null
+  private var hasCurrentColor = false
+
+  @Volatile
+  var resolvedColor: String? = null
+    private set
+
+  fun updateCurrentColor(color: String?, isDeclared: Boolean): Boolean {
+    currentColor = color?.trim()?.takeIf { it.isNotEmpty() }
+    hasCurrentColor = isDeclared
+    return updateResolvedColor()
+  }
+
+  fun updateCSSColor(color: String?): Boolean {
+    cssColor = color
+    return updateResolvedColor()
+  }
+
+  private fun updateResolvedColor(): Boolean {
+    // An explicit current-color, including an empty value, suppresses the CSS fallback.
+    val nextColor = if (hasCurrentColor) currentColor else cssColor
+    if (nextColor == resolvedColor) {
+      return false
+    }
+    resolvedColor = nextColor
+    return true
+  }
+}
 
 @LynxGeneratorName(packageName = "com.lynx.xelement.svg")
 @LynxBehavior(tagName = ["svg"], isCreateAsync = false)
@@ -48,8 +95,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
 
   @Volatile
   private var mContent: String? = null
-  @Volatile
-  private var mColor: String? = null
+  private val mColorResolver = SVGColorResolver()
   private var mSvgResourceManager: SvgDefaultResourceManager? = null
 
   @Volatile
@@ -88,14 +134,45 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
 
       @LynxProp(name = SVG_CURRENT_COLOR_PROP)
       fun setColor(color: String?) {
-        val normalizedColor = color?.trim()?.takeIf { it.isNotEmpty() }
-        if (normalizedColor == mColor) {
-          return
+        if (mColorResolver.updateCurrentColor(color, color != null)) {
+          mNeedRender = true
         }
-        mColor = normalizedColor
-        mNeedRender = true
       }
 
+      @LynxProp(name = PropsConstants.COLOR)
+      fun setCSSColor(color: Dynamic?) {
+        if (color == null || color.isNull) {
+          updateCSSColor(null)
+          return
+        }
+        val nextColor = when (color.type) {
+          ReadableType.Int -> argbToSVGColor(color.asInt().toLong())
+          ReadableType.Long -> argbToSVGColor(color.asLong())
+          else -> null
+        }
+        updateCSSColor(nextColor)
+      }
+
+      override fun updatePropertiesInterval(props: StylesDiffMap?) {
+        super.updatePropertiesInterval(props)
+        val styles = props?.styleMap ?: return
+        if (!styles.contains(PropertyIDConstants.Color)) {
+          return
+        }
+        val nextColor = when (styles.getType(PropertyIDConstants.Color)) {
+          MapBuffer.DataType.INT ->
+            argbToSVGColor(styles.getInt(PropertyIDConstants.Color).toLong())
+          MapBuffer.DataType.LONG -> argbToSVGColor(styles.getLong(PropertyIDConstants.Color))
+          else -> null
+        }
+        updateCSSColor(nextColor)
+      }
+
+      private fun updateCSSColor(color: String?) {
+        if (mColorResolver.updateCSSColor(color)) {
+          mNeedRender = true
+        }
+      }
 
       override fun onNodeReady() {
         super.onNodeReady()
@@ -206,7 +283,7 @@ open class LynxUISVG(context: LynxContext, params: Any?) : LynxUI<SVGImageView>(
           override fun run() {
             try {
               mSVGRender?.let { svgRender ->
-                svgRender.setColor(mColor)
+                svgRender.setColor(mColorResolver.resolvedColor)
                 val picture: Picture? = svgRender.renderPicture(
                   content,
                   Rect(0, 0, getWidth(), getHeight())

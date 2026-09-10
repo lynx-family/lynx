@@ -67,7 +67,11 @@ fml::RefPtr<GraphicsImage> MultiFrameCodec::State::GetNextFrameImage() {
     SkImageInfo updated = info.makeAlphaType(kPremul_SkAlphaType);
     info = updated;
   }
-  bitmap.allocPixels(info);
+  if (!bitmap.tryAllocPixels(info)) {
+    FML_LOG(ERROR) << "Failed to allocate memory for bitmap of size "
+                   << info.computeMinByteSize() << "B";
+    return nullptr;
+  }
 
   SkCodec::Options options;
   options.fFrameIndex = next_frame_index_;
@@ -114,17 +118,20 @@ fml::RefPtr<GraphicsImage> MultiFrameCodec::State::GetNextFrameImage() {
 
 void MultiFrameCodec::State::GetNextFrameAndInvokeCallback(
     const CodecCallback& callback) {
-  int duration = 0;
-  fml::RefPtr<GraphicsImage> image = GetNextFrameImage();
-  if (image) {
-    SkCodec::FrameInfo skFrameInfo{0};
-    generator_->getFrameInfo(next_frame_index_, &skFrameInfo);
-    duration = skFrameInfo.fDuration;
+  FrameInfo frame_info;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    frame_info.image = GetNextFrameImage();
+    if (frame_info.image) {
+      SkCodec::FrameInfo sk_frame_info{0};
+      generator_->getFrameInfo(next_frame_index_, &sk_frame_info);
+      frame_info.duration = sk_frame_info.fDuration;
+    }
+    next_frame_index_ = (next_frame_index_ + 1) % frame_count_;
   }
-  next_frame_index_ = (next_frame_index_ + 1) % frame_count_;
 
   // Invoke next frame callback.
-  callback({image, duration});
+  callback(std::move(frame_info));
 }
 
 void MultiFrameCodec::NextFrame(const CodecCallback& callback) {
@@ -144,6 +151,7 @@ void MultiFrameCodec::NextFrame(const CodecCallback& callback) {
 int MultiFrameCodec::FrameCount() const { return state_->frame_count_; }
 
 int MultiFrameCodec::FrameDuration(int index) const {
+  std::lock_guard<std::mutex> lock(state_->mutex_);
   SkCodec::FrameInfo sk_frame_info{0};
   state_->generator_->getFrameInfo(index, &sk_frame_info);
   return sk_frame_info.fDuration;

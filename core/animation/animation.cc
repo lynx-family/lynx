@@ -10,6 +10,7 @@
 
 #include <math.h>
 
+#include <atomic>
 #include <cstdint>
 #include <utility>
 
@@ -26,6 +27,10 @@
 namespace {
 
 constexpr int64_t kThirtyMinutesInSeconds = 1800;
+
+// Allocates nonzero Animation ids that are not reused during the process
+// lifetime, including across page and Element lifecycles.
+std::atomic<int64_t> g_next_animation_id{1};
 
 }  // namespace
 
@@ -44,7 +49,24 @@ void SuppressSampleSideEffects(KeyframeEffect::KeyframeSampleResult& result) {
 }  // namespace
 
 Animation::Animation(const base::String& name)
-    : name_(name), keyframe_effect_(nullptr) {}
+    : name_(name),
+      id_(g_next_animation_id.fetch_add(1, std::memory_order_relaxed)),
+      keyframe_effect_(nullptr) {}
+
+fml::TimeDelta Animation::GetCurrentTime() const {
+  if (start_time_ == fml::TimePoint::Min() ||
+      start_time_ == GetAnimationDummyStartTime() ||
+      current_run_start_system_time_ == fml::TimePoint::Min()) {
+    return fml::TimeDelta::Zero();
+  }
+  if (state_ == State::kPause || state_ == State::kStop) {
+    return current_time_at_pause_;
+  }
+  fml::TimeDelta elapsed =
+      current_time_at_pause_ +
+      (fml::TimePoint::Now() - current_run_start_system_time_);
+  return elapsed < fml::TimeDelta::Zero() ? fml::TimeDelta::Zero() : elapsed;
+}
 
 void Animation::Play(bool play_handles_initial_frame) {
   if (state_ == State::kPlay) {
@@ -55,11 +77,16 @@ void Animation::Play(bool play_handles_initial_frame) {
   State temp_state = state_;
   if (temp_state == State::kIdle || temp_state == State::kStop) {
     ResetPauseTiming();
+    current_run_start_system_time_ = fml::TimePoint::Min();
     ClearSampleHistory();
   } else {
     // Resume keeps the last valid sample history, but drops same-timestamp
     // cache.
     InvalidateSampleCache();
+  }
+  if (temp_state == State::kPause &&
+      current_run_start_system_time_ != fml::TimePoint::Min()) {
+    current_run_start_system_time_ = fml::TimePoint::Now();
   }
   // Since `DoFrame` may reads and modifies state_, the change of state_ must be
   // completed before DoFrame is executed.
@@ -101,18 +128,21 @@ void Animation::Pause() {
   if (state_ == State::kPause) {
     return;
   }
+  current_time_at_pause_ = GetCurrentTime();
   InvalidateSampleCache();
   state_ = State::kPause;
 }
 
 void Animation::Stop() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_STOP);
+  current_time_at_pause_ = GetCurrentTime();
   ClearSampleHistory();
   state_ = State::kStop;
 }
 
 void Animation::Destroy(bool need_clear_effect) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_DESTORY);
+  current_time_at_pause_ = GetCurrentTime();
   ClearSampleHistory();
   ClearTransitionPreviousEndValue();
   if (need_clear_effect) {
@@ -166,6 +196,10 @@ bool Animation::Tick(fml::TimePoint& time) {
     const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
     start_time_ = time;
     keyframe_effect_->SetStartTime(time, reset_effect_state);
+  }
+  if (state_ == State::kPlay && time != GetAnimationDummyStartTime() &&
+      current_run_start_system_time_ == fml::TimePoint::Min()) {
+    current_run_start_system_time_ = fml::TimePoint::Now();
   }
   return keyframe_effect_->TickKeyframeModel(time).has_finished_all;
 }
@@ -271,6 +305,10 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     start_time_ = frame_time;
     keyframe_effect_->SetStartTime(frame_time, reset_effect_state);
   }
+  if (state_ == State::kPlay && frame_time != GetAnimationDummyStartTime() &&
+      current_run_start_system_time_ == fml::TimePoint::Min()) {
+    current_run_start_system_time_ = fml::TimePoint::Now();
+  }
 
   // Resolve the timestamp that should be sampled. Paused animations keep
   // sampling at pause_time_ so repeated resolves return a frozen style.
@@ -371,6 +409,7 @@ void Animation::NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern type) {
 void Animation::ResetPauseTiming() {
   pause_time_ = fml::TimePoint::Min();
   total_paused_duration_ = fml::TimeDelta::Zero();
+  current_time_at_pause_ = fml::TimeDelta::Zero();
   was_paused_ = false;
 }
 

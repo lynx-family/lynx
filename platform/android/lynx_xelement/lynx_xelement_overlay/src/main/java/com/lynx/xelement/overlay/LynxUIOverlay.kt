@@ -203,4 +203,8 @@ open class LynxUIOverlay(context: LynxContext, params: Any?): UIGroup<AndroidVie
     override fun isOverlay(): Boolean {
         return true
     }
+
+    override fun isExternalExposureRoot(): Boolean {
+        return true
+    }
 }

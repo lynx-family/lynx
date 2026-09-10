@@ -15,6 +15,8 @@ class ImageKnifeOptionCompat {
  public:
   static void Apply(ImageKnifePro::ImageKnifeOption* option,
                     const tasm::harmony::ImageRequestInfo& info);
+  static void SetEnableVisibleAreaControl(
+      ImageKnifePro::ImageKnifeOption* option, bool enabled);
 };
 
 }  // namespace service

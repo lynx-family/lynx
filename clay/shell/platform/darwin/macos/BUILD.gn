@@ -65,6 +65,8 @@ source_set("flutter_framework_source") {
     "framework/Source/FlutterViewEngineProvider.mm",
     "framework/Source/FlutterViewProvider.h",
     "framework/Source/KeyCodeMap.g.mm",
+    "framework/Source/cover_view_platform_plugin_mac.h",
+    "framework/Source/cover_view_platform_plugin_mac.mm",
     "framework/Source/overlay_view_controller_service.h",
     "framework/Source/overlay_view_controller_service.mm",
     "framework/Source/platform_overlay_service_mac.h",

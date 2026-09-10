@@ -34,7 +34,7 @@ group("OliverTasmWasm") {
   }
 }
 
-if (build_lynx_lepus_node) {
+if (build_lynx_lepus_node || is_encoder_ut) {
   lynx_encoder_deps = [
     ":encoder_common",
     "../../core/parser",
@@ -196,7 +196,6 @@ if (build_lynx_lepus_node) {
 
     deps = [
       "../../base/src:base_for_oliver",
-      "../../core:find_node_headers",
       "../../core/base:json_utils",
       "../../core/base:observer",
       "../../core/build:build",
@@ -210,6 +209,10 @@ if (build_lynx_lepus_node) {
     ]
 
     deps += [ "../../third_party/quickjs" ]
+
+    if (build_lynx_lepus_node) {
+      deps += [ "../../core:find_node_headers" ]
+    }
 
     if (build_lepus_compile) {
       deps += [ "../../core/runtime/lepus/ir/llvh" ]

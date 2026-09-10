@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -57,6 +58,11 @@
 #include "core/services/recorder/native_module_recorder.h"
 #include "core/services/recorder/testbench_base_recorder.h"
 #endif
+
+#if ENABLE_INSPECTOR
+#include "core/inspector/observer/native_module_record_observer.h"
+#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
+#endif  // ENABLE_INSPECTOR
 
 namespace lynx {
 namespace runtime {
@@ -2204,7 +2210,7 @@ void App::EvaluateScript(const std::string& url, std::string script,
   LOGI("App::EvaluateScript:" << url << " length: " << script.length());
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
-      url.c_str(), script.c_str(), record_id_);
+      url, script, record_id_);
 #endif
 
   auto rt = rt_.Lock();
@@ -2369,8 +2375,20 @@ void App::SendGlobalEvent(const std::string& name,
     }
     CallFunction(kGlobalEventModuleName, kGlobalEventMethodName,
                  std::move(*arg));
+#if ENABLE_INSPECTOR
+    RecordGlobalEvent(name, arguments);
+#endif  // ENABLE_INSPECTOR
   }
 }
+
+#if ENABLE_INSPECTOR
+void App::RecordGlobalEvent(const std::string& name,
+                            const lepus::Value& arguments) {
+  if (auto observer = native_module_record_observer_.lock()) {
+    observer->OnRecord(BuildGlobalEventRecord(name, arguments));
+  }
+}
+#endif  // ENABLE_INSPECTOR
 
 void App::SetupSsrJsEnv() {
   constexpr char kCreateGlobalEventEmitter[] = "__createEventEmitter";
@@ -3016,6 +3034,20 @@ Value App::SetTimeout(Function func, int time) {
     return Value::undefined();
   }
 
+  // Experimental first-timeout scaling; scheduled to be removed on 2026-10-30.
+  int effective_time = time;
+  const int32_t target_delay_ms = page_options_.GetFirstTimeoutTargetDelayMs();
+  if (!first_timeout_consumed_ && target_delay_ms > 0 &&
+      time == target_delay_ms) {
+    const double scaled_delay =
+        target_delay_ms * page_options_.GetFirstTimeoutFactor();
+    if (std::isfinite(scaled_delay) && scaled_delay >= 0.0 &&
+        scaled_delay <= std::numeric_limits<int32_t>::max()) {
+      first_timeout_consumed_ = true;
+      effective_time = static_cast<int32_t>(std::round(scaled_delay));
+    }
+  }
+
   uint64_t trace_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, BACKGROUND_THREAD_SET_TIMEOUT,
@@ -3026,7 +3058,8 @@ Value App::SetTimeout(Function func, int time) {
                                            std::to_string(instance_id));
         ctx.event()->add_debug_annotations("delay", std::to_string(time));
       });
-  return js_task_adapter_->SetTimeout(std::move(func), time, trace_flow_id);
+  return js_task_adapter_->SetTimeout(std::move(func), effective_time,
+                                      trace_flow_id);
 }
 
 Value App::SetInterval(Function func, int time) {

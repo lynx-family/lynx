@@ -32,8 +32,9 @@ class PaintingContextHarmonyRef : public PaintingCtxPlatformRef {
   void UpdateScrollInfo(int32_t container_id, bool smooth,
                         float estimated_offset, bool scrolling) override;
 
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) override;
   void RequestExternalMemoryReport(int64_t delay_ms) override;
   void UpdateEventInfo(bool has_touch_pseudo) override;
   void InsertListItemPaintingNode(int list_sign, int child_sign) override;

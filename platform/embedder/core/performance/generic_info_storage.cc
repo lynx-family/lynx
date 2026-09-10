@@ -160,9 +160,11 @@ void GenericInfoStorage::ClearCache(int32_t instance_id) {
   generic_infos_.erase(instance_id);
 }
 
-GenericInfo GenericInfoStorage::GetGenericInfo(int32_t instance_id) {
+const GenericInfo& GenericInfoStorage::GetGenericInfo(
+    int32_t instance_id) const {
+  static GenericInfo default_info;
   auto it = generic_infos_.find(instance_id);
-  return it == generic_infos_.end() ? GenericInfo{} : it->second;
+  return it == generic_infos_.end() ? default_info : it->second;
 }
 
 }  // namespace embedder

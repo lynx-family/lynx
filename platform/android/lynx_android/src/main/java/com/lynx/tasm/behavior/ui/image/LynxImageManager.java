@@ -985,6 +985,11 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   public void onNodeReady() {
+    // An async redirect started before Renderer attachment can finish afterwards.
+    // Only the Fragment's manager should load images for a Renderer-backed UIImage.
+    if (mUI instanceof UIImage && ((UIImage) mUI).getView().getRenderer() != null) {
+      return;
+    }
     // set one more time, need opt
     updateNodeProps();
     invalidate();
@@ -1158,7 +1163,12 @@ public class LynxImageManager implements Drawable.Callback {
     if (mImageRequestDelegate == null || !isHttpImageRequest(requestInfo)) {
       return null;
     }
-    return mImageRequestDelegate.prepareImageRequest(requestInfo);
+    try {
+      return mImageRequestDelegate.prepareImageRequest(requestInfo);
+    } catch (Exception exception) {
+      LLog.e(TAG, "prepareImageRequest failed: " + Log.getStackTraceString(exception));
+      return null;
+    }
   }
 
   private void onImageRequestFinished(

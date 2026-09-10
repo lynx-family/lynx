@@ -120,6 +120,123 @@ class RecordingExternalMemoryRuntime : public runtime::MTSRuntime {
   RecordingExternalMemoryContext* context_{nullptr};
 };
 
+void PrepareLayoutInElementFirstScreenTest(FiberElementTest* test) {
+  PageOptions page_options;
+  page_options.SetEmbeddedMode(static_cast<EmbeddedMode>(
+      EmbeddedMode::EMBEDDED_MODE_BASE | EmbeddedMode::LAYOUT_IN_ELEMENT));
+  test->tasm->SetPageOptions(page_options);
+
+  auto* manager = test->manager;
+  manager->SetLayoutTick(
+      [manager](const auto& options) { manager->RequestLayout(options); });
+}
+
+fml::RefPtr<PageElement> CreateLayoutInElementPage(FiberElementTest* test) {
+  auto page = test->manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  return page;
+}
+
+std::shared_ptr<PipelineOptions> LayoutOptions(FiberElementTest* test,
+                                               bool enable_unified,
+                                               bool is_first_screen = false,
+                                               bool is_reuse_engine = false) {
+  auto options = std::make_shared<PipelineOptions>();
+  options->is_first_screen = is_first_screen;
+  options->is_reuse_engine = is_reuse_engine;
+  if (enable_unified) {
+    test->tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+    auto* context = test->tasm->CreateAndUpdateCurrentPipelineContext(options);
+    EXPECT_NE(context, nullptr);
+    if (context) {
+      EXPECT_TRUE(test->tasm->pipeline_context_manager_->AdvanceLifecycleTo(
+          context, LifecycleState::kInStyleResolve));
+      EXPECT_TRUE(test->tasm->pipeline_context_manager_->AdvanceLifecycleTo(
+          context, LifecycleState::kAfterStyleResolve));
+      EXPECT_TRUE(test->tasm->pipeline_context_manager_->AdvanceLifecycleTo(
+          context, LifecycleState::kInPerformLayout));
+    }
+  }
+  return options;
+}
+
+void ExpectLayoutInElementFirstScreenWithReadyViewport(FiberElementTest* test,
+                                                       bool enable_unified) {
+  PrepareLayoutInElementFirstScreenTest(test);
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  auto page = CreateLayoutInElementPage(test);
+
+  auto first_screen_options = LayoutOptions(test, enable_unified, true);
+  test->manager->RequestLayout(first_screen_options);
+  EXPECT_EQ(first_screen_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  auto update_options = LayoutOptions(test, enable_unified);
+  test->manager->RequestLayout(update_options);
+  EXPECT_EQ(update_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_,
+            (std::vector<bool>{true, false}));
+}
+
+void ExpectLayoutInElementFirstScreenAfterLateViewport(FiberElementTest* test,
+                                                       bool enable_unified) {
+  PrepareLayoutInElementFirstScreenTest(test);
+  auto page = CreateLayoutInElementPage(test);
+
+  auto first_screen_options = LayoutOptions(test, enable_unified, true);
+  test->manager->RequestLayout(first_screen_options);
+  EXPECT_EQ(first_screen_options->version, nullptr);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  auto pre_viewport_update = LayoutOptions(test, enable_unified);
+  test->manager->RequestLayout(pre_viewport_update);
+  EXPECT_EQ(pre_viewport_update->version, nullptr);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  auto update_options = LayoutOptions(test, enable_unified);
+  test->manager->RequestLayout(update_options);
+  EXPECT_EQ(update_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_,
+            (std::vector<bool>{true, false}));
+}
+
+void ExpectLayoutInElementReuseAfterDeferredViewport(FiberElementTest* test,
+                                                     bool enable_unified) {
+  PrepareLayoutInElementFirstScreenTest(test);
+  auto page = CreateLayoutInElementPage(test);
+
+  auto reuse_options = LayoutOptions(test, enable_unified, false, true);
+  test->manager->RequestLayout(reuse_options);
+  EXPECT_EQ(reuse_options->version, nullptr);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, false);
+  EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
+
+  auto deferred_layout_options = LayoutOptions(test, enable_unified);
+  test->manager->OnPatchFinish(deferred_layout_options);
+  EXPECT_EQ(deferred_layout_options->version, nullptr);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+
+  test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                                SLMeasureModeDefinite, true);
+  EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
+}
+
 CSSValue parseTransformStringValue(const lepus::Value& value_str,
                                    const CSSParserConfigs& configs) {
   CSSStringParser parser = CSSStringParser::FromLepusString(value_str, configs);
@@ -3122,6 +3239,30 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(parent->sl_node_->is_dirty_);
   EXPECT_TRUE(element->sl_node_->is_dirty_);
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
+}
+
+TEST_P(FiberElementTest, LayoutInElementLegacyFirstScreenWithReadyViewport) {
+  ExpectLayoutInElementFirstScreenWithReadyViewport(this, false);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUnifiedFirstScreenWithReadyViewport) {
+  ExpectLayoutInElementFirstScreenWithReadyViewport(this, true);
+}
+
+TEST_P(FiberElementTest, LayoutInElementLegacyFirstScreenAfterLateViewport) {
+  ExpectLayoutInElementFirstScreenAfterLateViewport(this, false);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUnifiedFirstScreenAfterLateViewport) {
+  ExpectLayoutInElementFirstScreenAfterLateViewport(this, true);
+}
+
+TEST_P(FiberElementTest, LayoutInElementLegacyReuseAfterDeferredViewport) {
+  ExpectLayoutInElementReuseAfterDeferredViewport(this, false);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUnifiedReuseAfterDeferredViewport) {
+  ExpectLayoutInElementReuseAfterDeferredViewport(this, true);
 }
 
 TEST_P(FiberElementTest, PageElementLayoutUpdatesPlatformRootSize) {
@@ -10357,6 +10498,90 @@ TEST_P(FiberElementTest, TestPseudoStatusChangeInheritanceLegacyPipeline) {
   auto deactivated_color =
       child->GetElementStyle(CSSPropertyID::kPropertyIDColor);
   EXPECT_FALSE(deactivated_color.has_value());
+}
+
+TEST_P(FiberElementTest,
+       TestPseudoStatusChangeKeepsUnchangedInheritedStyleInLayoutInElement) {
+  manager->enable_new_styling_pipeline_ = false;
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+
+  CSSParserConfigs configs;
+  CSSParserTokenMap index_tokens_map;
+  CSSParserTokenMap pseudo_map;
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDOpacity] =
+        CSSValue(lepus::Value(1.0), CSSValuePattern::STRING);
+    std::string key = ".test";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    index_tokens_map.emplace(key, tokens);
+  }
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDOpacity] =
+        CSSValue(lepus::Value(0.8), CSSValuePattern::STRING);
+    std::string key = ".test:active";
+    tokens->sheets().emplace_back(std::make_shared<CSSSheet>(key));
+    pseudo_map.emplace(key, tokens);
+    index_tokens_map.emplace(key, tokens);
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto index_fragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, index_tokens_map, keyframes, fontfaces);
+  index_fragment->MarkHasTouchPseudoToken();
+  index_fragment->pseudo_map_ = pseudo_map;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto component = manager->CreateFiberComponent(
+      base::String("21"), 100, base::String("__Card__"),
+      base::String("TestComp"), base::String("/index/components/TestComp"));
+  component->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(index_fragment.get());
+  page->InsertNode(component);
+
+  auto parent = manager->CreateFiberView();
+  parent->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+  component->InsertNode(parent);
+
+  auto child = manager->CreateFiberView();
+  child->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  child->SetClass(base::String("test"));
+  parent->InsertNode(child);
+
+  auto grandchild = manager->CreateFiberView();
+  grandchild->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(component->impl_id()));
+  child->InsertNode(grandchild);
+
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+  ASSERT_TRUE(
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+
+  child->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateActive);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+  EXPECT_TRUE(
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+
+  parent->RemoveAllInlineStyles();
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(
+      child->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
+  EXPECT_FALSE(
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDColor).has_value());
 }
 
 TEST_P(FiberElementTest, RemoveIntergenerationalChild) {
@@ -17676,6 +17901,7 @@ TEST_P(FiberElementTest,
   fiber_element->css_keyframe_manager_ =
       std::make_unique<animation::CSSKeyframeManager>(fiber_element.get());
   fiber_element->has_keyframe_props_changed_ = true;
+  fiber_element->needs_keyframe_effect_rebuild_ = true;
 
   const StyleMap new_underlying_layout_only_styles;
   fiber_element->SampleAnimationOverridesForNewPipeline(
@@ -17683,6 +17909,7 @@ TEST_P(FiberElementTest,
       previous_final_style);
 
   EXPECT_FALSE(fiber_element->has_keyframe_props_changed_);
+  EXPECT_FALSE(fiber_element->needs_keyframe_effect_rebuild_);
 }
 
 TEST_P(FiberElementTest,
@@ -17704,6 +17931,7 @@ TEST_P(FiberElementTest,
       fiber_element->platform_css_style_.get();
 
   fiber_element->has_keyframe_props_changed_ = true;
+  fiber_element->needs_keyframe_effect_rebuild_ = true;
 
   const StyleMap new_underlying_layout_only_styles;
   fiber_element->SampleAnimationOverridesForNewPipeline(
@@ -17711,6 +17939,7 @@ TEST_P(FiberElementTest,
       previous_final_style);
 
   EXPECT_FALSE(fiber_element->has_keyframe_props_changed_);
+  EXPECT_FALSE(fiber_element->needs_keyframe_effect_rebuild_);
 }
 
 TEST_P(FiberElementTest, NewStylingNewAnimatorTickRequestsTargetedResolve) {
@@ -20423,6 +20652,23 @@ TEST_P(FiberElementTest,
   element->AnimateV2(lepus::Value(start_args), pipeline_option);
 
   page->FlushActionsAsRoot();
+  ASSERT_NE(nullptr, element->css_keyframe_manager_);
+  auto animation = element->css_keyframe_manager_->animations_map_["fade"];
+  const auto animation_id = animation->id();
+  for (auto operation :
+       {runtime::js::JavaScriptElement::AnimationOperation::PAUSE,
+        runtime::js::JavaScriptElement::AnimationOperation::PLAY}) {
+    auto args = lepus::CArray::Create();
+    args->set(0, lepus::Value(static_cast<int32_t>(operation)));
+    args->set(1, lepus::Value("fade"));
+    auto operation_pipeline_option = std::make_shared<PipelineOptions>();
+    element->AnimateV2(lepus::Value(args), operation_pipeline_option);
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(animation,
+              element->css_keyframe_manager_->animations_map_["fade"]);
+    EXPECT_EQ(animation_id,
+              element->css_keyframe_manager_->animations_map_["fade"]->id());
+  }
   element->platform_css_style_->SetValue(CSSPropertyID::kPropertyIDOpacity,
                                          CSSValue(0.8, CSSValuePattern::NUMBER),
                                          false);
@@ -20452,6 +20698,125 @@ TEST_P(FiberElementTest,
       CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDOpacity));
   ASSERT_NE(opacity_it, props.end());
   EXPECT_NEAR(opacity_it->second.Number(), 0.2, 1e-6);
+}
+
+TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
+  int32_t page_id = 11;
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    for (const bool use_animate_v2 : {false, true}) {
+      SCOPED_TRACE(::testing::Message()
+                   << "enable_new_styling_pipeline="
+                   << enable_new_styling_pipeline
+                   << ", use_animate_v2=" << use_animate_v2);
+      manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+      auto page = manager->CreateFiberPage("page", page_id++);
+      manager->SetFiberPageElement(page);
+      auto element = manager->CreateFiberView();
+      element->enable_new_animator_ = true;
+      page->InsertNode(element);
+      page->FlushActionsAsRoot();
+
+      auto run_animation_operation = [&](const lepus::Value& args) {
+        auto pipeline_option = std::make_shared<PipelineOptions>();
+        pipeline_option->enable_unified_pixel_pipeline = true;
+        if (use_animate_v2) {
+          element->AnimateV2(args, pipeline_option);
+        } else {
+          element->Animate(args, pipeline_option);
+        }
+      };
+
+      auto start_args = lepus::CArray::Create();
+      start_args->set(
+          0, lepus::Value(static_cast<int32_t>(
+                 runtime::js::JavaScriptElement::AnimationOperation::START)));
+      start_args->set(1, lepus::Value("fade"));
+      auto keyframes = lepus::Dictionary::Create();
+      auto from_keyframe = lepus::Dictionary::Create();
+      from_keyframe->SetValue("opacity", lepus::Value("0.2"));
+      keyframes->SetValue("0%", lepus::Value(std::move(from_keyframe)));
+      auto to_keyframe = lepus::Dictionary::Create();
+      to_keyframe->SetValue("opacity", lepus::Value("0.8"));
+      keyframes->SetValue("100%", lepus::Value(std::move(to_keyframe)));
+      start_args->set(2, lepus::Value(std::move(keyframes)));
+      auto animation_data = lepus::Dictionary::Create();
+      animation_data->SetValue("name", lepus::Value("fade"));
+      animation_data->SetValue("duration", lepus::Value(2000));
+      animation_data->SetValue("fill", lepus::Value("forwards"));
+      animation_data->SetValue("play-state", lepus::Value("running"));
+      start_args->set(3, lepus::Value(std::move(animation_data)));
+      run_animation_operation(lepus::Value(start_args));
+
+      if (enable_new_styling_pipeline) {
+        ASSERT_EQ(nullptr, element->css_keyframe_manager_);
+      } else {
+        EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
+        element->SetDataToNativeKeyframeAnimator(false);
+      }
+
+      for (const auto operation :
+           {runtime::js::JavaScriptElement::AnimationOperation::PAUSE,
+            runtime::js::JavaScriptElement::AnimationOperation::PLAY}) {
+        auto operation_args = lepus::CArray::Create();
+        operation_args->set(0, lepus::Value(static_cast<int32_t>(operation)));
+        operation_args->set(1, lepus::Value("fade"));
+        run_animation_operation(lepus::Value(operation_args));
+        if (!enable_new_styling_pipeline) {
+          element->SetDataToNativeKeyframeAnimator(false);
+          EXPECT_EQ(
+              operation ==
+                      runtime::js::JavaScriptElement::AnimationOperation::PAUSE
+                  ? animation::Animation::State::kPause
+                  : animation::Animation::State::kPlay,
+              element->css_keyframe_manager_->animations_map_["fade"]
+                  ->GetState());
+        }
+      }
+
+      auto finish_args = lepus::CArray::Create();
+      finish_args->set(
+          0, lepus::Value(static_cast<int32_t>(
+                 runtime::js::JavaScriptElement::AnimationOperation::FINISH)));
+      finish_args->set(1, lepus::Value("fade"));
+      run_animation_operation(lepus::Value(finish_args));
+
+      EXPECT_FALSE(element->imperative_animation_metadata_->HasAnimationName(
+          base::String("fade")));
+      EXPECT_EQ(enable_new_styling_pipeline,
+                element->imperative_animation_state_.HasAnimationName(
+                    base::String("fade")));
+
+      if (enable_new_styling_pipeline) {
+        auto reduce_task = element->PrepareForCreateOrUpdate();
+        reduce_task();
+      }
+
+      ASSERT_NE(nullptr, element->css_keyframe_manager_);
+      auto animation_iter =
+          element->css_keyframe_manager_->animations_map_.find("fade");
+      ASSERT_NE(animation_iter,
+                element->css_keyframe_manager_->animations_map_.end());
+      EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
+                animation_iter->second->GetOrigin());
+
+      auto cancel_args = lepus::CArray::Create();
+      cancel_args->set(
+          0, lepus::Value(static_cast<int32_t>(
+                 runtime::js::JavaScriptElement::AnimationOperation::CANCEL)));
+      cancel_args->set(1, lepus::Value("fade"));
+      run_animation_operation(lepus::Value(cancel_args));
+      if (enable_new_styling_pipeline) {
+        auto reduce_task = element->PrepareForCreateOrUpdate();
+        reduce_task();
+      } else {
+        element->SetDataToNativeKeyframeAnimator(false);
+      }
+      EXPECT_FALSE(element->imperative_animation_state_.HasAnimationName(
+          base::String("fade")));
+      EXPECT_EQ(element->css_keyframe_manager_->animations_map_.end(),
+                element->css_keyframe_manager_->animations_map_.find("fade"));
+    }
+  }
 }
 
 TEST_P(FiberElementTest,
@@ -20980,7 +21345,7 @@ TEST_P(FiberElementTest, NewStylingSideApisReadCommittedInheritedStyle) {
 }
 
 TEST_P(FiberElementTest,
-       NewStylingCustomInheritedLayoutOnlyUpdateRefreshesChildStyle) {
+       NewStylingCustomInheritedLayoutOnlyUpdateRefreshesDescendantStyle) {
   manager->enable_new_styling_pipeline_ = true;
   manager->config_->SetEnableCSSInheritance(true);
   manager->config_->css_configs_.custom_inherit_list_.insert(
@@ -20990,8 +21355,10 @@ TEST_P(FiberElementTest,
   manager->SetFiberPageElement(page);
   auto parent = manager->CreateFiberView();
   auto child = manager->CreateFiberView();
+  auto grandchild = manager->CreateFiberView();
 
   parent->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("10px"));
+  child->InsertNode(grandchild);
   parent->InsertNode(child);
   page->InsertNode(parent);
   page->FlushActionsAsRoot();
@@ -21002,6 +21369,12 @@ TEST_P(FiberElementTest,
   EXPECT_EQ(CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDWidth,
                                          *first_child_width),
             "10px");
+  auto first_grandchild_width =
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(first_grandchild_width.has_value());
+  EXPECT_EQ(CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDWidth,
+                                         *first_grandchild_width),
+            "10px");
 
   parent->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("20px"));
   page->FlushActionsAsRoot();
@@ -21011,6 +21384,12 @@ TEST_P(FiberElementTest,
   ASSERT_TRUE(updated_child_width.has_value());
   EXPECT_EQ(CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDWidth,
                                          *updated_child_width),
+            "20px");
+  auto updated_grandchild_width =
+      grandchild->GetElementStyle(CSSPropertyID::kPropertyIDWidth);
+  ASSERT_TRUE(updated_grandchild_width.has_value());
+  EXPECT_EQ(CSSDecoder::CSSValueToString(CSSPropertyID::kPropertyIDWidth,
+                                         *updated_grandchild_width),
             "20px");
 }
 
@@ -21056,7 +21435,6 @@ TEST_P(FiberElementTest,
   EXPECT_TRUE(outcome.force_children);
   EXPECT_TRUE(outcome.child_update_flags & DynamicCSSStylesManager::kUpdateEm);
   EXPECT_TRUE(child->dirty_ & Element::kDirtyFontSize);
-  EXPECT_TRUE(child->dirty_ & Element::kDirtyPropagateInherited);
   EXPECT_TRUE(child->StyleDirty());
 }
 
@@ -21068,12 +21446,16 @@ TEST_P(FiberElementTest,
   manager->SetFiberPageElement(page);
   auto parent = manager->CreateFiberView();
   auto child = manager->CreateFiberView();
+  auto grandchild = manager->CreateFiberView();
+  child->InsertNode(grandchild);
   parent->InsertNode(child);
   page->InsertNode(parent);
   page->FlushActionsAsRoot();
 
   ASSERT_FALSE(child->StyleDirty());
   ASSERT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
+  ASSERT_FALSE(grandchild->StyleDirty());
+  ASSERT_FALSE(grandchild->dirty_ & Element::kDirtyPropagateInherited);
 
   parent->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
   parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
@@ -21085,13 +21467,20 @@ TEST_P(FiberElementTest,
   ASSERT_TRUE(parent->parallel_before_flush_action_tasks_.has_value());
   EXPECT_FALSE(child->StyleDirty());
   EXPECT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_FALSE(grandchild->StyleDirty());
+  EXPECT_FALSE(grandchild->dirty_ & Element::kDirtyPropagateInherited);
 
   for (const auto& task : *parent->parallel_before_flush_action_tasks_) {
     task();
   }
 
   EXPECT_TRUE(child->StyleDirty());
-  EXPECT_TRUE(child->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_FALSE(grandchild->StyleDirty());
+  EXPECT_FALSE(grandchild->dirty_ & Element::kDirtyPropagateInherited);
+
+  child->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(grandchild->StyleDirty());
 }
 
 TEST_P(FiberElementTest,
@@ -21102,12 +21491,16 @@ TEST_P(FiberElementTest,
   manager->SetFiberPageElement(page);
   auto parent = manager->CreateFiberView();
   auto child = manager->CreateFiberView();
+  auto grandchild = manager->CreateFiberView();
+  child->InsertNode(grandchild);
   parent->InsertNode(child);
   page->InsertNode(parent);
   page->FlushActionsAsRoot();
 
   ASSERT_FALSE(child->StyleDirty());
   ASSERT_FALSE(child->dirty_ & Element::kDirtyPropagateInherited);
+  ASSERT_FALSE(grandchild->StyleDirty());
+  ASSERT_FALSE(grandchild->dirty_ & Element::kDirtyPropagateInherited);
 
   parent->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
   parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
@@ -21118,7 +21511,48 @@ TEST_P(FiberElementTest,
   EXPECT_TRUE(outcome.force_children);
   EXPECT_FALSE(parent->parallel_before_flush_action_tasks_.has_value());
   EXPECT_TRUE(child->StyleDirty());
-  EXPECT_TRUE(child->dirty_ & Element::kDirtyPropagateInherited);
+  EXPECT_FALSE(grandchild->StyleDirty());
+  EXPECT_FALSE(grandchild->dirty_ & Element::kDirtyPropagateInherited);
+
+  child->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
+  child->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(grandchild->StyleDirty());
+}
+
+TEST_P(FiberElementTest,
+       NewStylingInheritedMutationStopsAtUnchangedComputedValue) {
+  manager->enable_new_styling_pipeline_ = true;
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto grandchild = manager->CreateFiberView();
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("blue"));
+  child->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("red"));
+  child->InsertNode(grandchild);
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(child->StyleDirty());
+  ASSERT_FALSE(grandchild->StyleDirty());
+
+  parent->SetStyle(CSSPropertyID::kPropertyIDColor, lepus::Value("green"));
+  Element::NewPipelineResolveRequest request;
+  auto parent_outcome = parent->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_TRUE(parent_outcome.force_children);
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_FALSE(grandchild->StyleDirty());
+  EXPECT_FALSE(grandchild->dirty_ & Element::kDirtyPropagateInherited);
+
+  auto child_outcome = child->ResolveCSSStylesNewPipelineCore(request);
+
+  EXPECT_FALSE(child_outcome.force_children);
+  EXPECT_FALSE(grandchild->StyleDirty());
+  EXPECT_FALSE(grandchild->dirty_ & Element::kDirtyPropagateInherited);
 }
 
 TEST_P(FiberElementTest,

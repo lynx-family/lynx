@@ -4,9 +4,9 @@
 
 #include "platform/embedder/lynx_service/lynx_http_request.h"
 
-lynx_http_request_t* lynx_http_request_create(const std::string& url) {
+LYNX_EXTERN_C lynx_http_request_t* lynx_http_request_create(const char* url) {
   lynx_http_request_t* request = new lynx_http_request_t();
-  request->url = url;
+  request->url = url ? url : "";
   return request;
 }
 

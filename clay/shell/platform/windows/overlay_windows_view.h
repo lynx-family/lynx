@@ -22,6 +22,9 @@ class OverlayWindowsView : public FlutterWindowsView {
   void SendWindowMetrics(size_t width, size_t height,
                          double dpi_scale) const override;
 
+ protected:
+  void ConvertPointerPosition(double* x, double* y) override;
+
  private:
   void Destroy();
 };

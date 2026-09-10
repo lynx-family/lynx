@@ -6,8 +6,11 @@
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_INSPECTOR_TASM_EXECUTOR_H_
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
+#include <optional>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -21,9 +24,14 @@
 #include "third_party/jsoncpp/include/json/json.h"
 
 namespace lynx {
+namespace lepus {
+class Value;
+}  // namespace lepus
+
 namespace tasm {
 class Element;
 class LayoutNode;
+enum CSSPropertyID : int32_t;
 }  // namespace tasm
 }  // namespace lynx
 
@@ -77,6 +85,10 @@ class InspectorTasmExecutor
   void OnElementManagerWillDestroy();
   void OnSetNativeProps(lynx::tasm::Element* ptr, const std::string& name,
                         const std::string& value, bool is_style);
+  void OnAddInlineStyle(int32_t backend_node_id,
+                        lynx::tasm::CSSPropertyID property_id,
+                        const lynx::lepus::Value& value);
+  void OnFiberFlushElementTree();
   void OnCSSStyleSheetAdded(lynx::tasm::Element* ptr);
   void OnCSSMediaQueryResultChanged();
 
@@ -90,6 +102,7 @@ class InspectorTasmExecutor
   void SetGlobalPropsEnabled(bool enable);
   uint64_t GetLastGlobalPropsTimestamp() const;
   void SetLastGlobalPropsTimestamp(uint64_t timestamp);
+  void SetDOMState(bool enable, const Json::Value& message);
 
  public:
   // dom related
@@ -219,6 +232,7 @@ class InspectorTasmExecutor
 
   bool dom_use_compression_;
   int dom_compression_threshold_;
+  bool dom_enabled_{false};
   size_t origin_node_id_ = 0;
 
   bool rule_usage_tracking_;
@@ -237,6 +251,10 @@ class InspectorTasmExecutor
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
 
   std::set<std::string> css_used_selector_;
+
+  std::map<std::pair<int32_t, lynx::tasm::CSSPropertyID>,
+           std::optional<std::string>>
+      pending_inline_style_updates_;
 
   int view_id_;
   std::shared_ptr<WhiteBoardInspectorTasmDelegate>

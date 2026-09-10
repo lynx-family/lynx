@@ -145,8 +145,11 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
     // the lower app version. So we can provide a new switch to replace the old switch. However, the
     // old switch cannot be directly replaced, because many scenes do not have access to this
     // plug-in, so the old switch also needs to work.
-    mConfigEnableNewAccessibility = config.getEnableNewAccessibility();
     mConfigEnableA11y = config.getEnableA11y();
+    // A page-level View-based accessibility configuration takes precedence over the host-level
+    // platform observability switch and the page-level delegate configuration.
+    mConfigEnableNewAccessibility = !mConfigEnableA11y
+        && (config.getEnableNewAccessibility() || LynxEnv.inst().isPlatformObservabilityEnabled());
     mConfigEnableAccessibilityElement = config.getEnableAccessibilityElement();
     mConfigEnableOverlap = config.getEnableOverlapForAccessibilityElement();
     mConfigEnableA11yIDMutationObserver = config.getEnableA11yIDMutationObserver();
@@ -181,7 +184,13 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
   }
 
   private void createAccessibilityDelegateForLynxViewIfNeeded() {
-    if (!isSystemAccessibilityEnable()) {
+    // Platform observability only bypasses the system accessibility gate for the delegate-based
+    // virtual-node implementation. A page that explicitly selects the View-based implementation
+    // keeps its existing lifecycle controlled by system accessibility state. This bypass only
+    // controls delegate initialization; individual accessibility interactions may still check the
+    // system accessibility state.
+    if (!isSystemAccessibilityEnable()
+        && !(mConfigEnableNewAccessibility && LynxEnv.inst().isPlatformObservabilityEnabled())) {
       return;
     }
     UIBody uiBody = getUIBody();

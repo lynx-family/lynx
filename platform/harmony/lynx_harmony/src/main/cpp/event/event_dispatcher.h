@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "core/base/lynx_export.h"
+#include "core/public/event/touch_event_data.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
@@ -111,6 +112,8 @@ class EventDispatcher {
 
   bool EventThrough();
 
+  static EventDispatcher* ResolveDispatcherFromGestureUserData(void* user_data);
+
   bool ShouldBlockNativeEvent();
 
   bool ContainGestureNode();
@@ -181,6 +184,10 @@ class EventDispatcher {
 
   void GetTargetPoint(EventTarget* active_target, float target_point[2],
                       float page_point[2]);
+
+  lynx::event::TouchEventTargetPoints GetCurrentTargetPoints(
+      EventTarget* active_target, float page_point[2],
+      const std::string& event_name);
 
   void GetPagePoint(float page_point[2], float node_point[2]);
 
@@ -275,6 +282,7 @@ class EventDispatcher {
   void ShowMessageOnConsole(const std::string& message, int32_t level) const;
 
   struct WeakFlag;
+  struct GestureCallbackFlag;
 
   struct ActiveOverlayHitTestRoot {
     std::weak_ptr<UIBase> root;
@@ -336,6 +344,7 @@ class EventDispatcher {
   std::atomic<uint64_t> inspect_hit_target_sequence_{0};
   std::atomic<uint64_t> cdp_request_id_{0};
   std::shared_ptr<WeakFlag> weak_flag_;
+  GestureCallbackFlag* gesture_callback_flag_{nullptr};
 
   static GestureReceiver long_press_receiver_callback_;
   static GestureReceiver tap_receiver_callback_;

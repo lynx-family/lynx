@@ -2,10 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <initializer_list>
 #include <memory>
+#include <optional>
+#include <utility>
 #include <vector>
 
 #include "clay/fml/logging.h"
+#include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view.h"
@@ -14,6 +18,7 @@
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/rendering/render_container.h"
 #include "clay/ui/testing/ui_test.h"
+#include "core/public/ui_operation_queue_interface.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
@@ -22,6 +27,17 @@ PointerEvent CreateDownPointer(float x, float y) {
   PointerEvent event(PointerEvent::EventType::kDownEvent);
   event.position = {x, y};
   return event;
+}
+
+Value CreateEventThroughActiveRegions(
+    std::initializer_list<const char*> region_values) {
+  Value::Array region;
+  for (const char* region_value : region_values) {
+    region.emplace_back(std::string(region_value));
+  }
+  Value::Array regions;
+  regions.emplace_back(std::move(region));
+  return Value(std::move(regions));
 }
 
 class BaseViewTest : public UITest {};
@@ -39,6 +55,34 @@ class CountingInvalidationView final : public BaseView {
  private:
   int invalidation_count_ = 0;
 };
+
+class ImageLoaderTokenView final : public View {
+ public:
+  explicit ImageLoaderTokenView(PageView* page) : View(1, page) {}
+
+  bool IsCurrent(bool background, int token) const {
+    return IsImageLoaderTokenCurrent(background, token);
+  }
+
+  int Current(bool background) const {
+    return background ? GetCurrentImageLoaderToken()
+                      : GetCurrentMaskImageLoaderToken();
+  }
+};
+
+TEST_F_UI(BaseViewTest, ImageLoaderTokensInvalidateOnlyTheirResourceType) {
+  ImageLoaderTokenView view(page_.get());
+
+  const int background_token = view.Current(true);
+  const int mask_token = view.Current(false);
+
+  view.SetBackground(BackgroundData{});
+  EXPECT_FALSE(view.IsCurrent(true, background_token));
+  EXPECT_TRUE(view.IsCurrent(false, mask_token));
+
+  view.ClearMask();
+  EXPECT_FALSE(view.IsCurrent(false, mask_token));
+}
 
 TEST_F_UI(BaseViewTest, StableRasterAnimationStateDoesNotInvalidate) {
   page_->SetRasterAnimationEnabled(true);
@@ -278,6 +322,27 @@ class ExternalMemoryEventDelegate final : public testing::MockEventDelegate {
   MOCK_METHOD(void, OnExternalMemoryReport, (int64_t, int64_t), (override));
 };
 
+class SnapshotUIOperationQueue final
+    : public lynx::shell::UIOperationQueueInterface {
+ public:
+  void Enqueue(lynx::base::closure operation) override {
+    operations_.emplace_back(std::move(operation));
+  }
+
+  void Flush() override {
+    auto operations = std::move(operations_);
+    operations_.clear();
+    for (auto& operation : operations) {
+      operation();
+    }
+  }
+
+  size_t PendingOperationCount() const { return operations_.size(); }
+
+ private:
+  std::vector<lynx::base::closure> operations_;
+};
+
 TEST_F_UI(BaseViewTest, TreeManipulation) {
   int view_id = 0;
   std::unique_ptr<BaseView> root =
@@ -312,13 +377,13 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryTracksRemovedNodeCandidates) {
 
   view_context_->AddView(2, 1, 0);
   view_context_->AddView(3, 2, 0);
-  view_context_->UpdateNodeReadyPatching({}, {2});
+  view_context_->UpdateNodeReadyPatching({}, {2}, true);
   auto snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, 3 * unit_size);
   EXPECT_EQ(snapshot.garbage_size, 0);
 
   view_context_->RemoveView(2, 1, false);
-  view_context_->UpdateNodeReadyPatching({}, {2, 2, 3});
+  view_context_->UpdateNodeReadyPatching({}, {2, 2, 3}, true);
   snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, 3 * unit_size);
   EXPECT_EQ(snapshot.garbage_size, 2 * unit_size);
@@ -328,17 +393,49 @@ TEST_F_UI(ViewContextMemoryTest, ExternalMemoryTracksRemovedNodeCandidates) {
 
   view_context_->AddView(2, 1, 0);
   view_context_->RemoveView(2, 1, false);
-  view_context_->UpdateNodeReadyPatching({}, {2});
+  view_context_->UpdateNodeReadyPatching({}, {2}, true);
   view_context_->AddView(2, 1, 0);
   EXPECT_EQ(view_context_->GetExternalMemorySnapshot().garbage_size, 0);
 
   view_context_->RemoveView(2, 1, false);
-  view_context_->UpdateNodeReadyPatching({}, {2});
+  view_context_->UpdateNodeReadyPatching({}, {2}, true);
   ASSERT_TRUE(view_context_->DestroyView(2));
   EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
   snapshot = view_context_->GetExternalMemorySnapshot();
   EXPECT_EQ(snapshot.total_size, unit_size);
   EXPECT_EQ(snapshot.garbage_size, 0);
+}
+
+TEST_F_UI(ViewContextMemoryTest, ExternalMemoryPrunesMissingNodeCandidates) {
+  view_context_->UpdateNodeReadyPatching({}, {404, 405}, true);
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 2u);
+
+  auto snapshot = view_context_->GetExternalMemorySnapshot();
+  EXPECT_EQ(snapshot.total_size, 0);
+  EXPECT_EQ(snapshot.garbage_size, 0);
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
+}
+
+TEST_F_UI(ViewContextMemoryTest,
+          FeatureOffDoesNotTrackExternalMemoryCandidates) {
+  view_context_->UpdateNodeReadyPatching({}, {404, 405}, false);
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 0u);
+}
+
+TEST_F_UI(ViewContextMemoryTest,
+          ClayNodeReadyPatchingCompletesInOneUIOperationFlush) {
+  auto queue = std::make_shared<SnapshotUIOperationQueue>();
+  lynx::tasm::PaintingContextClay painting_context(view_context_.get());
+  painting_context.SetUIOperationQueue(queue);
+  auto platform_ref = painting_context.GetPlatformRef();
+
+  queue->Enqueue([platform_ref]() {
+    platform_ref->UpdateNodeReadyPatching({}, {404, 405}, true);
+  });
+  queue->Flush();
+
+  EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 2u);
+  EXPECT_EQ(queue->PendingOperationCount(), 0u);
 }
 
 TEST_F_UI(ViewContextMemoryTest, PendingReportSurvivesPageReset) {
@@ -459,6 +556,184 @@ TEST_F_UI(BaseViewTest, HitTest) {
 
   root->DestroyAllChildren();
   root->Destroy();
+}
+
+TEST_F_UI(BaseViewTest, EventThroughUsesNearestExplicitAncestorValue) {
+  struct TestCase {
+    bool page_event_through;
+    std::optional<bool> parent_event_through;
+    std::optional<bool> child_event_through;
+    bool expected_page;
+    bool expected_parent;
+    bool expected_child;
+  };
+  const TestCase test_cases[] = {
+      {false, std::nullopt, std::nullopt, false, false, false},
+      {true, std::nullopt, std::nullopt, true, true, true},
+      {true, false, std::nullopt, true, false, false},
+      {false, true, std::nullopt, false, true, true},
+      {true, false, true, true, false, true},
+  };
+
+  for (const auto& test_case : test_cases) {
+    page_->SetEventThrough(test_case.page_event_through);
+    auto current_parent = std::make_unique<View>(1, page_.get());
+    auto current_child = std::make_unique<View>(2, page_.get());
+    page_->AddChild(current_parent.get());
+    current_parent->AddChild(current_child.get());
+    current_parent->SetBound(0, 0, 100, 100);
+    current_child->SetBound(0, 0, 100, 100);
+    if (test_case.parent_event_through.has_value()) {
+      current_parent->SetEventThrough(*test_case.parent_event_through);
+    }
+    if (test_case.child_event_through.has_value()) {
+      current_child->SetEventThrough(*test_case.child_event_through);
+    }
+
+    HitTestResult result;
+    ASSERT_TRUE(page_->HitTest(CreateDownPointer(50, 50), result));
+    ASSERT_EQ(result.size(), 3u);
+
+    auto it = result.begin();
+    EXPECT_EQ(it->get(), current_child.get());
+    EXPECT_EQ((*it)->ShouldPassEventToNative(), test_case.expected_child);
+    ++it;
+    EXPECT_EQ(it->get(), current_parent.get());
+    EXPECT_EQ((*it)->ShouldPassEventToNative(), test_case.expected_parent);
+    ++it;
+    EXPECT_EQ(it->get(), page_.get());
+    EXPECT_EQ((*it)->ShouldPassEventToNative(), test_case.expected_page);
+
+    current_parent->RemoveChild(current_child.get());
+    page_->RemoveChild(current_parent.get());
+  }
+}
+
+TEST_F_UI(BaseViewTest, EventThroughControlsNativeEventTargetByInheritance) {
+  auto parent = std::make_unique<View>(1, page_.get());
+  auto child = std::make_unique<View>(2, page_.get());
+  page_->AddChild(parent.get());
+  parent->AddChild(child.get());
+  parent->SetBound(0, 0, 100, 100);
+  child->SetBound(0, 0, 100, 100);
+
+  FloatPoint relative_position;
+  page_->SetEventThrough(true);
+  EXPECT_EQ(
+      page_->GetTopViewToAcceptEvent(FloatPoint(50, 50), &relative_position),
+      nullptr);
+
+  parent->SetEventThrough(false);
+  EXPECT_EQ(
+      page_->GetTopViewToAcceptEvent(FloatPoint(50, 50), &relative_position),
+      child.get());
+
+  child->SetEventThrough(true);
+  EXPECT_EQ(
+      page_->GetTopViewToAcceptEvent(FloatPoint(50, 50), &relative_position),
+      parent.get());
+
+  parent->RemoveChild(child.get());
+  page_->RemoveChild(parent.get());
+}
+
+TEST_F_UI(BaseViewTest, EventThroughActiveRegionsApplyToBothHitTestPaths) {
+  auto view = std::make_unique<View>(1, page_.get());
+  page_->AddChild(view.get());
+  view->SetBound(20, 30, 200, 100);
+  view->SetEventThrough(true);
+  view->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"25%", "10px", "50%", "40px"}));
+
+  struct TestCase {
+    FloatPoint position;
+    bool expected_event_through;
+  };
+  const TestCase test_cases[] = {
+      {{70, 40}, true},
+      {{169, 79}, true},
+      {{170, 40}, false},
+      {{70, 80}, false},
+  };
+
+  for (const auto& test_case : test_cases) {
+    HitTestResult result;
+    ASSERT_TRUE(page_->HitTest(
+        CreateDownPointer(test_case.position.x(), test_case.position.y()),
+        result));
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result.front()->ShouldPassEventToNative(),
+              test_case.expected_event_through);
+
+    FloatPoint relative_position;
+    BaseView* target =
+        page_->GetTopViewToAcceptEvent(test_case.position, &relative_position);
+    BaseView* expected_target = test_case.expected_event_through
+                                    ? static_cast<BaseView*>(page_.get())
+                                    : static_cast<BaseView*>(view.get());
+    EXPECT_EQ(target, expected_target);
+  }
+
+  page_->RemoveChild(view.get());
+}
+
+TEST_F_UI(BaseViewTest,
+          EventThroughActiveRegionsUseEachAncestorLocalCoordinateSpace) {
+  auto parent = std::make_unique<View>(1, page_.get());
+  auto child = std::make_unique<View>(2, page_.get());
+  page_->AddChild(parent.get());
+  parent->AddChild(child.get());
+  parent->SetBound(100, 100, 200, 200);
+  child->SetBound(25, 25, 100, 100);
+  parent->SetEventThrough(true);
+  parent->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"0px", "0px", "50%", "100%"}));
+  child->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"50%", "0px", "50%", "100%"}));
+
+  HitTestResult overlapping_result;
+  ASSERT_TRUE(page_->HitTest(CreateDownPointer(180, 150), overlapping_result));
+  ASSERT_EQ(overlapping_result.size(), 3u);
+  EXPECT_TRUE(overlapping_result.front()->ShouldPassEventToNative());
+
+  HitTestResult child_outside_result;
+  ASSERT_TRUE(
+      page_->HitTest(CreateDownPointer(140, 150), child_outside_result));
+  ASSERT_EQ(child_outside_result.size(), 3u);
+  EXPECT_FALSE(child_outside_result.front()->ShouldPassEventToNative());
+
+  HitTestResult parent_outside_result;
+  ASSERT_TRUE(
+      page_->HitTest(CreateDownPointer(200, 150), parent_outside_result));
+  ASSERT_EQ(parent_outside_result.size(), 3u);
+  EXPECT_FALSE(parent_outside_result.front()->ShouldPassEventToNative());
+
+  parent->RemoveChild(child.get());
+  page_->RemoveChild(parent.get());
+}
+
+TEST_F_UI(BaseViewTest, InvalidEventThroughActiveRegionsClearPreviousValue) {
+  auto view = std::make_unique<View>(1, page_.get());
+  page_->AddChild(view.get());
+  view->SetBound(0, 0, 100, 100);
+  view->SetEventThrough(true);
+  view->SetAttribute(
+      "event-through-active-regions",
+      CreateEventThroughActiveRegions({"0px", "0px", "50%", "100%"}));
+
+  HitTestResult outside_result;
+  ASSERT_TRUE(page_->HitTest(CreateDownPointer(75, 50), outside_result));
+  EXPECT_FALSE(outside_result.front()->ShouldPassEventToNative());
+
+  view->SetAttribute("event-through-active-regions", Value{});
+  HitTestResult cleared_result;
+  ASSERT_TRUE(page_->HitTest(CreateDownPointer(75, 50), cleared_result));
+  EXPECT_TRUE(cleared_result.front()->ShouldPassEventToNative());
+
+  page_->RemoveChild(view.get());
 }
 
 class BaseViewWithChildrenTest : public UITest {

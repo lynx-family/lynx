@@ -19,8 +19,4 @@ struct lynx_http_service_t : public lynx::embedder::LynxServiceBase {
   lynx_http_request_func request_func = nullptr;
 };
 
-void lynx_http_service_request(lynx_http_service_t* http_service,
-                               lynx_http_request_t* request,
-                               lynx_http_response_t* response);
-
 #endif  // PLATFORM_EMBEDDER_LYNX_SERVICE_LYNX_HTTP_SERVICE_PRIV_H_

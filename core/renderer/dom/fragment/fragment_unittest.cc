@@ -16,12 +16,14 @@
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
+#include "core/renderer/dom/fragment/event/platform_pointer_event.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 #include "core/renderer/lynx_env_config.h"
@@ -1128,6 +1130,278 @@ TEST_F(FragmentTest,
   EXPECT_EQ(hit_target->Sign(), 3);
 }
 
+TEST_F(FragmentTest, PlatformEventHandlerUsesRebuiltTargetsForPointerState) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  auto build_tree = [&](float parent_x, float parent_y) {
+    DisplayListBuilder builder;
+    builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+        .Begin(1, PlatformRendererType::kView, parent_x, parent_y, 100.f, 100.f)
+        .Begin(2, PlatformRendererType::kView, 5.f, 7.f, 40.f, 40.f)
+        .End()
+        .End()
+        .End();
+    root_renderer->UpdateDisplayList(builder.Build());
+  };
+  build_tree(10.f, 20.f);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  auto* helper = platform_ref.GetEventTargetHelper();
+  auto root = platform_ref.EnsureEventTargetTree(kRootId);
+  auto target = helper->GetEventTarget(2);
+  ASSERT_NE(root, nullptr);
+  ASSERT_NE(target, nullptr);
+  target->SetEventSet({PlatformEventName::kClick});
+  auto old_root = root->WeakFromThis();
+  auto old_target = target->WeakFromThis();
+
+  int down_data[] = {0, 0, 0, 1};
+  float down_point[] = {0.f, 20.f, 30.f};
+  ASSERT_TRUE(
+      platform_ref.DispatchPlatformInputEvent(down_data, down_point, kRootId));
+  EXPECT_FALSE(platform_ref.event_handler_->EventThrough());
+
+  build_tree(30.f, 40.f);
+  platform_ref.MarkEventTargetRootDirty(kRootId);
+  auto rebuilt_root = platform_ref.EnsureEventTargetTree(kRootId);
+  ASSERT_NE(rebuilt_root, nullptr);
+  ASSERT_NE(root.get(), rebuilt_root.get());
+  ASSERT_NE(target.get(), helper->GetEventTarget(2).get());
+  helper->GetEventTarget(1)->SetEventThrough(LynxEventPropStatus::kEnable);
+  root = nullptr;
+  target = nullptr;
+  EXPECT_FALSE(old_root);
+  EXPECT_FALSE(old_target);
+
+  // No new input updates the handler's root between rebuilding and querying it.
+  EXPECT_TRUE(platform_ref.event_handler_->EventThrough());
+  int move_data[] = {0, 2, 0, 1};
+  float move_point[] = {0.f, 40.f, 50.f};
+  PlatformPointerEvent move_event(move_data, move_point);
+  auto pointer_map = lepus::Value(lepus::Dictionary::Create());
+  platform_ref.event_handler_->AddTargetPointerMap(pointer_map, move_event);
+  auto it = pointer_map.Table()->find("2");
+  ASSERT_NE(it, pointer_map.Table()->end());
+  ASSERT_EQ(it->second.Array()->size(), 1u);
+  auto pointer = it->second.Array()->get(0).Array();
+  EXPECT_FLOAT_EQ(pointer->get(3).Number(), 40.f);
+  EXPECT_FLOAT_EQ(pointer->get(4).Number(), 50.f);
+  EXPECT_FLOAT_EQ(pointer->get(5).Number(), 5.f);
+  EXPECT_FLOAT_EQ(pointer->get(6).Number(), 3.f);
+}
+
+TEST_F(FragmentTest, PlatformEventHandlerSkipsDeletedPointerTargets) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 100.f)
+      .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 50.f, 50.f)
+      .End()
+      .Begin(2, PlatformRendererType::kView, 100.f, 0.f, 50.f, 50.f)
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  platform_ref.GetEventTargetHelper()->GetEventTarget(1)->SetEventSet(
+      {PlatformEventName::kClick});
+  int down_data[] = {0, 0, 0, 2};
+  float points[] = {0.f, 10.f, 10.f, 1.f, 110.f, 10.f};
+  ASSERT_TRUE(
+      platform_ref.DispatchPlatformInputEvent(down_data, points, kRootId));
+  ASSERT_TRUE(platform_ref.event_handler_->CanRespondFocus());
+
+  DisplayListBuilder rebuilt_builder;
+  rebuilt_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 100.f)
+      .Begin(2, PlatformRendererType::kView, 100.f, 0.f, 50.f, 50.f)
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(rebuilt_builder.Build());
+  platform_ref.MarkEventTargetRootDirty(kRootId);
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  ASSERT_EQ(platform_ref.GetEventTargetHelper()->GetEventTarget(1), nullptr);
+  EXPECT_FALSE(platform_ref.event_handler_->CanRespondFocus());
+
+  int move_data[] = {0, 2, 0, 2};
+  PlatformPointerEvent move_event(move_data, points);
+  auto pointer_map = lepus::Value(lepus::Dictionary::Create());
+  platform_ref.event_handler_->AddTargetPointerMap(pointer_map, move_event);
+  EXPECT_EQ(pointer_map.Table()->size(), 1u);
+  EXPECT_EQ(pointer_map.Table()->find("1"), pointer_map.Table()->end());
+  auto it = pointer_map.Table()->find("2");
+  ASSERT_NE(it, pointer_map.Table()->end());
+  ASSERT_EQ(it->second.Array()->size(), 1u);
+  auto pointer = it->second.Array()->get(0).Array();
+  EXPECT_EQ(pointer->get(0).Number(), 1);
+  EXPECT_FLOAT_EQ(pointer->get(5).Number(), 10.f);
+  EXPECT_FLOAT_EQ(pointer->get(6).Number(), 10.f);
+
+  // Up and cancel must also tolerate deleted signs in the saved response chain.
+  int up_data[] = {0, 1, 0, 2};
+  EXPECT_TRUE(
+      platform_ref.DispatchPlatformInputEvent(up_data, points, kRootId));
+  platform_ref.DispatchPlatformTap();
+  int cancel_data[] = {0, 3, 0, 2};
+  EXPECT_TRUE(
+      platform_ref.DispatchPlatformInputEvent(cancel_data, points, kRootId));
+}
+
+TEST_F(FragmentTest,
+       PlatformEventHandlerKeepsClickChainIdentityAcrossRebuilds) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  auto build_tree = [&](int32_t parent_sign) {
+    DisplayListBuilder builder;
+    builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+        .Begin(parent_sign, PlatformRendererType::kView, 0.f, 0.f, 100.f, 100.f)
+        .Begin(2, PlatformRendererType::kView, 0.f, 0.f, 50.f, 50.f)
+        .End()
+        .End()
+        .End();
+    root_renderer->UpdateDisplayList(builder.Build());
+  };
+  build_tree(1);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  auto* helper = platform_ref.GetEventTargetHelper();
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  helper->GetEventTarget(2)->SetEventSet({PlatformEventName::kClick});
+  int down_data[] = {0, 0, 0, 1};
+  float point[] = {0.f, 10.f, 10.f};
+  ASSERT_TRUE(
+      platform_ref.DispatchPlatformInputEvent(down_data, point, kRootId));
+
+  auto old_target = helper->GetEventTarget(2)->WeakFromThis();
+  platform_ref.MarkEventTargetRootDirty(kRootId);
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  EXPECT_FALSE(old_target);
+  EXPECT_FALSE(platform_ref.event_handler_->IsPointerMoveOutside(
+      helper->GetEventTarget(2)));
+
+  // Reparenting keeps the leaf sign but changes the chain captured on down.
+  build_tree(3);
+  platform_ref.MarkEventTargetRootDirty(kRootId);
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  EXPECT_TRUE(platform_ref.event_handler_->IsPointerMoveOutside(
+      helper->GetEventTarget(2)));
+}
+
+TEST_F(FragmentTest,
+       PlatformEventHandlerRejectsPointerTargetMovedToAnotherRoot) {
+  constexpr int32_t kIndependentRootId = 20;
+  TestNativePaintingCtxPlatformRef platform_ref;
+  auto page_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  auto independent_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kIndependentRootId, PlatformRendererType::kView);
+  auto build_tree = [](const fml::RefPtr<TestPlatformRenderer>& renderer,
+                       bool has_child) {
+    DisplayListBuilder builder;
+    builder.Begin(renderer->GetId(), renderer->GetPlatformRendererType(), 0.f,
+                  0.f, 100.f, 100.f);
+    if (has_child) {
+      builder.Begin(21, PlatformRendererType::kView, 3.f, 4.f, 50.f, 50.f)
+          .End();
+    }
+    builder.End();
+    renderer->UpdateDisplayList(builder.Build());
+  };
+  build_tree(page_renderer, false);
+  build_tree(independent_renderer, true);
+  platform_ref.renderers_.insert_or_assign(kRootId, page_renderer);
+  platform_ref.renderers_.insert_or_assign(kIndependentRootId,
+                                           independent_renderer);
+  platform_ref.SetPlatformEventRootActive(kIndependentRootId, true);
+  int down_data[] = {0, 0, 0, 1};
+  float point[] = {0.f, 10.f, 10.f};
+  ASSERT_TRUE(platform_ref.DispatchPlatformInputEvent(down_data, point,
+                                                      kIndependentRootId));
+  ASSERT_TRUE(platform_ref.event_handler_->CanRespondFocus());
+
+  build_tree(independent_renderer, false);
+  platform_ref.MarkEventTargetRootDirty(kIndependentRootId);
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kIndependentRootId), nullptr);
+  build_tree(page_renderer, true);
+  platform_ref.MarkEventTargetRootDirty(kRootId);
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  auto* helper = platform_ref.GetEventTargetHelper();
+  ASSERT_NE(helper->GetEventTarget(21), nullptr);
+  ASSERT_EQ(helper->GetEventTarget(21)->RootId(), kRootId);
+  EXPECT_TRUE(helper->IsActiveEventRoot(kIndependentRootId));
+  EXPECT_FALSE(platform_ref.event_handler_->CanRespondFocus());
+
+  int move_data[] = {0, 2, 0, 1};
+  PlatformPointerEvent move_event(move_data, point);
+  auto pointer_map = lepus::Value(lepus::Dictionary::Create());
+  platform_ref.event_handler_->AddTargetPointerMap(pointer_map, move_event);
+  EXPECT_TRUE(pointer_map.Table()->empty());
+}
+
+TEST_F(FragmentTest, PlatformEventHandlerGesturesUseRebuiltEventRoot) {
+  constexpr int32_t kIndependentRootId = 20;
+  for (int32_t root_id : {kRootId, kIndependentRootId}) {
+    for (bool long_press : {false, true}) {
+      SCOPED_TRACE(::testing::Message()
+                   << "root=" << root_id << " long_press=" << long_press);
+      TestNativePaintingCtxPlatformRef platform_ref;
+      auto page_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+          kRootId, PlatformRendererType::kPage);
+      auto renderer = root_id == kRootId
+                          ? page_renderer
+                          : fml::MakeRefCounted<TestPlatformRenderer>(
+                                root_id, PlatformRendererType::kView);
+      platform_ref.renderers_.insert_or_assign(kRootId, page_renderer);
+      platform_ref.renderers_.insert_or_assign(root_id, renderer);
+      DisplayListBuilder builder;
+      builder
+          .Begin(root_id, renderer->GetPlatformRendererType(), 0.f, 0.f, 100.f,
+                 100.f)
+          .Begin(21, PlatformRendererType::kView, 0.f, 0.f, 50.f, 50.f)
+          .End()
+          .End();
+      renderer->UpdateDisplayList(builder.Build());
+      if (root_id != kRootId) {
+        platform_ref.SetPlatformEventRootActive(root_id, true);
+      }
+      int down_data[] = {0, 0, 0, 1};
+      float point[] = {0.f, 10.f, 10.f};
+      ASSERT_TRUE(
+          platform_ref.DispatchPlatformInputEvent(down_data, point, root_id));
+      auto* helper = platform_ref.GetEventTargetHelper();
+      auto old_root = helper->GetEventRootTree(root_id)->WeakFromThis();
+      auto old_target = helper->GetEventTarget(21)->WeakFromThis();
+      platform_ref.MarkEventTargetRootDirty(root_id);
+      ASSERT_TRUE(platform_ref.IsEventTargetRootDirty(root_id));
+      ASSERT_NE(platform_ref.EnsureEventTargetTree(root_id), nullptr);
+
+      if (long_press) {
+        platform_ref.DispatchPlatformLongPress();
+      } else {
+        platform_ref.DispatchPlatformTap();
+      }
+
+      EXPECT_FALSE(platform_ref.IsEventTargetRootDirty(root_id));
+      EXPECT_FALSE(old_root);
+      EXPECT_FALSE(old_target);
+      ASSERT_NE(helper->GetEventTarget(21), nullptr);
+      EXPECT_EQ(helper->GetEventTarget(21)->RootId(), root_id);
+      EXPECT_TRUE(platform_ref.event_handler_->CanRespondFocus());
+      if (root_id != kRootId) {
+        platform_ref.SetPlatformEventRootActive(root_id, false);
+        EXPECT_FALSE(platform_ref.event_handler_->CanRespondFocus());
+        platform_ref.DispatchPlatformTap();
+        platform_ref.DispatchPlatformLongPress();
+        EXPECT_FALSE(platform_ref.event_handler_->EventThrough());
+      }
+    }
+  }
+}
+
 TEST_F(FragmentTest, PlatformEventTargetInheritsEventThroughFromPage) {
   auto root_target = fml::MakeRefCounted<PlatformEventTarget>(
       nullptr, kRootId, kRootId, 0.f, 0.f, 100.f, 100.f);
@@ -1136,12 +1410,92 @@ TEST_F(FragmentTest, PlatformEventTargetInheritsEventThroughFromPage) {
   root_target->SetEventThrough(LynxEventPropStatus::kEnable);
   root_target->AddChildTarget(child_target);
 
+  PlatformEventThroughConfig config;
   float point[2] = {10.f, 10.f};
   EXPECT_FALSE(child_target->EventThrough(point));
-  EXPECT_TRUE(child_target->EventThrough(point, true));
+  config.enable_event_through_inherit_from_page = true;
+  EXPECT_TRUE(child_target->EventThrough(point, config));
 
   child_target->SetEventThrough(LynxEventPropStatus::kDisable);
-  EXPECT_FALSE(child_target->EventThrough(point, true));
+  EXPECT_FALSE(child_target->EventThrough(point, config));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetDoesNotInheritEventsPassThrough) {
+  constexpr int32_t kOverlayRootId = 20;
+  auto overlay_root = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, kOverlayRootId, 0.f, 0.f, 100.f, 100.f);
+  auto overlay_child = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, 21, 0.f, 0.f, 100.f, 100.f);
+  overlay_root->SetEventThrough(LynxEventPropStatus::kDisable);
+  overlay_root->SetEventsPassThrough(LynxEventPropStatus::kEnable);
+  overlay_root->AddChildTarget(overlay_child);
+
+  float point[2] = {10.f, 10.f};
+  EXPECT_TRUE(overlay_root->EventThrough(point));
+  EXPECT_FALSE(overlay_child->EventThrough(point));
+
+  overlay_child->SetEventsPassThrough(LynxEventPropStatus::kEnable);
+  EXPECT_TRUE(overlay_child->EventThrough(point));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetAppliesEventThroughConfigAtPageRoot) {
+  auto root_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, kRootId, 0.f, 0.f, 100.f, 100.f);
+  auto child_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, 1, 0.f, 0.f, 100.f, 100.f);
+  root_target->AddChildTarget(child_target);
+
+  PlatformEventThroughConfig config;
+  config.enable_event_through = true;
+  float point[2] = {10.f, 10.f};
+  EXPECT_TRUE(root_target->EventThrough(point, config));
+  EXPECT_FALSE(child_target->EventThrough(point, config));
+
+  config.enable_event_through_inherit_from_page = true;
+  EXPECT_TRUE(child_target->EventThrough(point, config));
+
+  child_target->SetEventThrough(LynxEventPropStatus::kDisable);
+  EXPECT_FALSE(child_target->EventThrough(point, config));
+
+  root_target->SetEventThrough(LynxEventPropStatus::kDisable);
+  EXPECT_TRUE(root_target->EventThrough(point, config));
+}
+
+TEST_F(FragmentTest,
+       PlatformEventTargetAppliesPageConfigBeforeEventThroughRegions) {
+  auto root_target = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kRootId, kRootId, 0.f, 0.f, 100.f, 100.f);
+  auto device_px = [](float value) {
+    PlatformEventTarget::EventThroughSizeValue result;
+    result.value = value;
+    return result;
+  };
+  PlatformEventTarget::EventThroughRegion region{
+      device_px(0.f), device_px(0.f), device_px(50.f), device_px(100.f)};
+  root_target->SetEventThroughActiveRegions({region});
+
+  PlatformEventThroughConfig config;
+  config.enable_event_through = true;
+  float inside_point[2] = {25.f, 50.f};
+  float outside_point[2] = {75.f, 50.f};
+  EXPECT_TRUE(root_target->EventThrough(inside_point, config));
+  EXPECT_FALSE(root_target->EventThrough(outside_point, config));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetDoesNotApplyPageConfigToOverlayRoot) {
+  constexpr int32_t kOverlayRootId = 20;
+  auto overlay_root = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, kOverlayRootId, 0.f, 0.f, 100.f, 100.f);
+  auto overlay_child = fml::MakeRefCounted<PlatformEventTarget>(
+      nullptr, kOverlayRootId, 21, 0.f, 0.f, 100.f, 100.f);
+  overlay_root->AddChildTarget(overlay_child);
+
+  PlatformEventThroughConfig config;
+  config.enable_event_through = true;
+  config.enable_event_through_inherit_from_page = true;
+  float point[2] = {10.f, 10.f};
+  EXPECT_FALSE(overlay_root->EventThrough(point, config));
+  EXPECT_FALSE(overlay_child->EventThrough(point, config));
 }
 
 TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {
@@ -2275,6 +2629,37 @@ TEST_F(FragmentTest, LinearGradientCornerDirectionUsesTilingBoxSize) {
   }
 }
 
+TEST_F(FragmentTest, RadialGradientResolvesRawExplicitRadius) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 80.f);
+  fragment.UpdateLayout(layout);
+
+  constexpr char kGradient[] = "radial-gradient(ellipse 10px 5px, red, blue)";
+  CSSParserConfigs configs;
+  CSSStringParser parser(kGradient, sizeof(kGradient) - 1, configs);
+  auto value = parser.ParseBackgroundImage();
+  ASSERT_TRUE(value.IsArray());
+  auto shape_array = value.GetArray()->get(1).Array()->get(0).Array();
+  ASSERT_EQ(shape_array->size(), 10u);
+  ASSERT_TRUE(element->computed_css_style()->SetValue(
+      CSSPropertyID::kPropertyIDBackgroundImage, value));
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+
+  auto items = CollectDisplayListItems(builder.Build());
+  auto gradient =
+      std::find_if(items.begin(), items.end(), [](const auto& item) {
+        return item.type == DisplayListOpType::kRadialGradient;
+      });
+  ASSERT_NE(gradient, items.end());
+  EXPECT_FLOAT_EQ(gradient->payload.radial_gradient.radius_x, 10.f);
+  EXPECT_FLOAT_EQ(gradient->payload.radial_gradient.radius_y, 5.f);
+}
+
 TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
   auto element = manager->CreateFiberView();
   Fragment fragment(element.get());
@@ -2548,6 +2933,73 @@ TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
   EXPECT_THAT(native_ref->paint_end_pipeline_ids,
               ::testing::ElementsAre(options->pipeline_id,
                                      additional_options->pipeline_id));
+}
+
+TEST_F(FragmentDrawTest, RedrawInvalidationStopsAtNearestPaintRoot) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto platform_parent = manager->CreateFiberView();
+  auto flattened_child = manager->CreateFiberView();
+
+  page->InsertNode(platform_parent);
+  platform_parent->InsertNode(flattened_child);
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* parent_fragment = platform_parent->fragment_impl();
+  auto* child_fragment = flattened_child->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(parent_fragment, nullptr);
+  ASSERT_NE(child_fragment, nullptr);
+
+  page_fragment->has_platform_renderer_ = true;
+  parent_fragment->has_platform_renderer_ = true;
+  child_fragment->has_platform_renderer_ = false;
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  parent_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  child_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+
+  child_fragment->InvalidateForRedraw();
+
+  EXPECT_TRUE(child_fragment->NeedRedraw());
+  EXPECT_TRUE(parent_fragment->NeedRedraw());
+  EXPECT_FALSE(page_fragment->NeedRedraw());
+}
+
+TEST_F(FragmentDrawTest, ReparentToCurrentParentPreservesOrderAndCleanState) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  second->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(first);
+  page->InsertNode(second);
+  page->FlushActionsAsRoot();
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* second_fragment = second->fragment_impl();
+  ASSERT_NE(page_fragment, nullptr);
+  ASSERT_NE(first_fragment, nullptr);
+  ASSERT_NE(second_fragment, nullptr);
+  ASSERT_EQ(first_fragment->fragment_parent(), page_fragment);
+  ASSERT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedRedraw);
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedSortZChild);
+  page_fragment->ResetDirtyState(BaseElementContainer::kNeedSortFixedChild);
+
+  // A same-parent request must not detach and append the first child. That
+  // would reorder equal-parent siblings and unnecessarily dirty the parent.
+  first_fragment->ReparentStackingNode(page_fragment, nullptr);
+
+  EXPECT_EQ(first_fragment->fragment_parent(), page_fragment);
+  EXPECT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(first_fragment, second_fragment));
+  EXPECT_FALSE(page_fragment->NeedRedraw());
+  EXPECT_FALSE(page_fragment->NeedSortZChild());
+  EXPECT_FALSE(page_fragment->NeedSortFixedChild());
 }
 
 }  // namespace tasm

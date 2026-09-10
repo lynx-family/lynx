@@ -286,18 +286,6 @@ export interface Config {
   enableNewGesture?: boolean;
 
   /**
-   * Controls whether intersection observers use the newer detection logic instead of the older scroll-bound path. When enabled, intersection managers add observers to the dedicated run loop and observe without depending on scroll-event binding; when disabled, runtime keeps the legacy observer logic. When unset, settings can still decide the flag.
-   *
-   * @Android
-   * @iOS
-   *
-   * Since: LynxSDK 3.2
-   *
-   * @defaultValue true
-   */
-  enableNewIntersectionObserver?: boolean;
-
-  /**
    * Controls whether iOS uses the newer transform-origin calculation for transforms and background positioning. When enabled, `LynxUI`, `LynxConverter+Transform`, and background handling use the new origin algorithm; when disabled, iOS keeps the legacy transform-origin math. From target SDK 2.6 onward, the default override is enabled.
    *
    * @Android

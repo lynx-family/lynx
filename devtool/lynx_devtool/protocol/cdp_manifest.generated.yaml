@@ -358,6 +358,10 @@ domains:
         origin: standard
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
+      - name: synthesizeTapGesture
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
   - name: Inspector
     origin: standard
     scope: instance
@@ -446,6 +450,22 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+  - name: LynxNativeModule
+    origin: lynx-extension
+    scope: instance
+    methods:
+      - name: disable
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.cc
+      - name: enable
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.cc
+      - name: getRecords
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent.cc
   - name: LynxSetting
     origin: lynx-extension
     scope: global
@@ -498,6 +518,26 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_memory_agent.cc
+  - name: Network
+    origin: standard
+    scope: instance
+    methods:
+      - name: disable
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
+      - name: enable
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
+      - name: getRequestPostData
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
+      - name: getResponseBody
+        origin: standard
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.cc
   - name: Overlay
     origin: standard
     scope: instance

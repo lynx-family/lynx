@@ -277,6 +277,19 @@ LYNX_EXTERN_C lynx_surface_handle_t* lynx_native_view_acquire_surface(
   auto handle = self->AcquireSurface(width, height);
   return reinterpret_cast<lynx_surface_handle_t*>(handle);
 }
+LYNX_EXTERN_C lynx_surface_handle_t*
+lynx_native_view_acquire_surface_with_transform(lynx_native_view_t* view,
+                                                int width, int height,
+                                                const float* transform) {
+  static_assert(sizeof(ClayTransformation) == sizeof(float) * 3 * 3);
+  auto self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+  if (!self->GetSharedImageSink()) {
+    return nullptr;
+  }
+  auto handle = self->AcquireSurface(
+      width, height, reinterpret_cast<const ClayTransformation*>(transform));
+  return reinterpret_cast<lynx_surface_handle_t*>(handle);
+}
 LYNX_EXTERN_C bool lynx_native_view_swap_back(lynx_native_view_t* view) {
   return reinterpret_cast<LynxNativeViewPrivate*>(view)->SwapBack();
 }

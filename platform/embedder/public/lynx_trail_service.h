@@ -15,6 +15,23 @@
 namespace lynx {
 namespace pub {
 
+// Retrieves and copies a string value from the Trail service.
+// Returns std::nullopt when the service or value is unavailable.
+inline std::optional<std::string> GetTrailStringValue(
+    lynx_trail_service_t* trail_service, const std::string& key) {
+  std::optional<std::string> value;
+  lynx_trail_service_get_string_value(
+      trail_service, key.c_str(),
+      [](const char* raw_value, void* user_data) {
+        if (raw_value) {
+          static_cast<std::optional<std::string>*>(user_data)->emplace(
+              raw_value);
+        }
+      },
+      &value);
+  return value;
+}
+
 class LynxTrailService : public LynxServiceBase,
                          public std::enable_shared_from_this<LynxTrailService> {
  public:

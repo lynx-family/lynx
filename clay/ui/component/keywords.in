@@ -240,6 +240,7 @@ exposure-screen-margin-right
 exposure-screen-margin-top
 exposure-screen-margin-bottom
 event-through
+event-through-active-regions
 hit-slop
 level
 enable-insert-platform-view-operation
@@ -283,6 +284,7 @@ enable-system-overlay
 enable-zoom-gesture
 end-frame
 events-pass-through
+experimental-optimize-load-key
 experimental-sync-load
 extra-info
 facing

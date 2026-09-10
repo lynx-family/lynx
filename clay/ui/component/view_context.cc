@@ -27,6 +27,7 @@
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
+#include "clay/ui/component/xelement_tag_mapping.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "clay/ui/shadow/bundle.h"
 #ifdef ENABLE_NET_LOADER
@@ -151,7 +152,19 @@ bool ViewContext::CreateView(int id, const std::string& tag_name) {
     return true;
   }
   BaseView* view = nullptr;
-  view = ViewRegistry::GetInstance()->CreateView(id, tag_name, page_view_);
+  if (platform_view_tag_overrides_.find(tag_name) !=
+      platform_view_tag_overrides_.end()) {
+    view = new NativeView(id, tag_name, page_view_);
+    if (UNLIKELY(!static_cast<NativeView*>(view)->IsNativeViewAvailable())) {
+      view->Destroy();
+      delete view;
+      view = nullptr;
+    }
+  } else {
+    const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
+    view =
+        ViewRegistry::GetInstance()->CreateView(id, resolved_tag, page_view_);
+  }
 
   if (!view) {
     FML_DLOG(ERROR) << "unsupported view type: " << tag_name
@@ -330,8 +343,16 @@ ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
               tag_name.c_str());
   CTX_LOG << "CreateLayoutNode id:" << id << " tag:" << tag_name;
 
-  auto node = ViewRegistry::GetInstance()->CreateShadowNode(
-      id, shadow_node_owner_, tag_name);
+  ShadowNode* node = nullptr;
+  if (platform_view_tag_overrides_.find(tag_name) !=
+      platform_view_tag_overrides_.end()) {
+    node = GetShadowNodeCreator<NativeViewShadowNode>()(id, shadow_node_owner_,
+                                                        tag_name);
+  } else {
+    const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
+    node = ViewRegistry::GetInstance()->CreateShadowNode(id, shadow_node_owner_,
+                                                         resolved_tag);
+  }
   if (node) {
     shadow_node_owner_->AddNode(id, node);
   } else if (allow_inline) {
@@ -345,7 +366,26 @@ ShadowNode* ViewContext::CreateShadowNode(int id, const std::string& tag_name,
 }
 
 int32_t ViewContext::GetTagInfo(const std::string& tag_name) {
-  return ViewRegistry::GetInstance()->GetTagInfo(tag_name, page_view_);
+  constexpr int32_t kTagInfoCustom = 1 << 2;
+  if (platform_view_tag_overrides_.find(tag_name) !=
+      platform_view_tag_overrides_.end()) {
+    return kTagInfoCustom;
+  }
+  const auto resolved_tag = ResolveRegisteredXElementTag(tag_name);
+  return ViewRegistry::GetInstance()->GetTagInfo(resolved_tag, page_view_);
+}
+
+std::string ViewContext::ResolveRegisteredXElementTag(
+    const std::string& tag_name) const {
+  if (!enable_sync_xelement_registry_) {
+    return tag_name;
+  }
+  const auto resolved_tag = ResolveXElementTag(tag_name);
+  if (ViewRegistry::GetInstance()->HasView(resolved_tag) ||
+      IsInternalPlatformViewTag(resolved_tag)) {
+    return resolved_tag;
+  }
+  return tag_name;
 }
 
 void ViewContext::AddShadowNode(int id, int parent_id, int index) {
@@ -744,10 +784,13 @@ void ViewContext::OnFirstMeaningfulLayout() {
   page_view_->OnFirstMeaningfulLayout();
 }
 
-void ViewContext::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                                          std::vector<int32_t> remove_ids) {
-  external_memory_report_candidate_ids_.insert(remove_ids.begin(),
-                                               remove_ids.end());
+void ViewContext::UpdateNodeReadyPatching(
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
+  if (should_cache_external_memory_candidates) {
+    external_memory_report_candidate_ids_.insert(remove_ids.begin(),
+                                                 remove_ids.end());
+  }
   auto* intersection_manager = page_view_->HasIntersectionObserverManager()
                                    ? page_view_->intersection_observer_manager()
                                    : nullptr;
@@ -770,17 +813,21 @@ lynx::tasm::ExternalMemorySnapshot ViewContext::GetExternalMemorySnapshot() {
   lynx::tasm::ExternalMemorySnapshot snapshot;
   // Keep candidates for the lifetime of their holder entries. Parented
   // candidates may belong to a detached candidate subtree, so skip them
-  // without discarding them.
-  for (int32_t candidate : external_memory_report_candidate_ids_) {
-    auto view = view_map_.find(candidate);
+  // without discarding them. Prune candidates whose holder entries are gone.
+  for (auto candidate_it = external_memory_report_candidate_ids_.begin();
+       candidate_it != external_memory_report_candidate_ids_.end();) {
+    auto view = view_map_.find(*candidate_it);
     if (view == view_map_.end() || view->second == nullptr) {
+      candidate_it = external_memory_report_candidate_ids_.erase(candidate_it);
       continue;
     }
     if (view->second->Parent() != nullptr) {
+      ++candidate_it;
       continue;
     }
     snapshot.garbage_size +=
         GetExternalMemoryUsageBytesRecursively(view->second);
+    ++candidate_it;
   }
   for (const auto& entry : view_map_) {
     auto* view = entry.second;
@@ -910,9 +957,10 @@ void ViewContext::SetFontFace(const char* font_family, const char* src[],
 
   auto font_collection = Isolate::Instance().GetFontCollection();
   font_collection->PreLoadFontOnMem(
-      page_view_->GetTaskRunner(), page_view_->GetResourceLoaderIntercept(),
-      page_view_->GetServiceManager(), std::string(font_family),
-      std::move(src_vec));
+      page_view_->GetTaskRunner(),
+      page_view_->GetTaskRunners().GetIOTaskRunner(),
+      page_view_->GetResourceLoaderIntercept(), page_view_->GetServiceManager(),
+      std::string(font_family), std::move(src_vec));
 }
 
 void ViewContext::GetAbsolutePosition(int id, float& top, float& left) {
@@ -1164,6 +1212,11 @@ void ViewContext::SyncNativeViewTags(
         },
         GetShadowNodeCreator<NativeViewShadowNode>(), true);
   }
+}
+
+void ViewContext::SetPlatformViewTagOverrides(
+    std::unordered_set<std::string> tags) {
+  platform_view_tag_overrides_ = std::move(tags);
 }
 
 std::vector<float> ViewContext::GetRectToLynxView(int64_t id) {

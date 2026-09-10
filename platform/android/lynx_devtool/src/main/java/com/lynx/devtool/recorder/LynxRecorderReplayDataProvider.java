@@ -10,6 +10,7 @@ import org.json.JSONObject;
 public interface LynxRecorderReplayDataProvider {
   JSONArray getFunctionCall();
   JSONObject getCallbackData();
+  JSONArray getActionList();
   JSONArray getJsbIgnoredInfo();
   JSONObject getJsbSettings();
   JSONObject getSharedData();

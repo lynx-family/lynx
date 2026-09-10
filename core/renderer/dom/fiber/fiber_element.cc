@@ -445,9 +445,10 @@ Element::SampleAnimationOverridesForNewPipeline(
     css_keyframe_manager_ =
         std::make_unique<animation::CSSKeyframeManager>(this);
   }
-  const bool force_rebuild_keyframes = has_keyframe_props_changed_;
-  if (css_keyframe_manager_ == nullptr && force_rebuild_keyframes) {
+  const bool force_rebuild_keyframes = needs_keyframe_effect_rebuild_;
+  if (css_keyframe_manager_ == nullptr && has_keyframe_props_changed_) {
     has_keyframe_props_changed_ = false;
+    needs_keyframe_effect_rebuild_ = false;
   }
   if (css_transition_manager_ == nullptr && css_keyframe_manager_ == nullptr) {
     return {};
@@ -479,8 +480,9 @@ Element::SampleAnimationOverridesForNewPipeline(
         *animation_data, force_rebuild_keyframes,
         &new_base_style.GetResolvedValues(), &new_underlying_layout_only_styles,
         new_base_style.GetCustomProperties(), &new_base_style);
-    if (force_rebuild_keyframes) {
+    if (has_keyframe_props_changed_) {
       has_keyframe_props_changed_ = false;
+      needs_keyframe_effect_rebuild_ = false;
     }
     auto keyframe_sample =
         css_keyframe_manager_->CollectAnimationUpdatesForNewPipeline(
@@ -1833,6 +1835,7 @@ void Element::HandleKeyframePropsChange() {
     SetDataToNativeKeyframeAnimator();
   }
   has_keyframe_props_changed_ = false;
+  needs_keyframe_effect_rebuild_ = false;
 }
 
 void Element::FinalizeAnimationPropsChange(bool &need_update) {
@@ -2081,7 +2084,6 @@ Element::NewPipelineResolveOutcome Element::ResolveCSSStylesNewPipelineCore(
         HandleBeforeFlushActionsTask(
             [this]() {
               MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
-              InvalidateChildrenInheritedStylesRecursively();
             },
             kFlagGreedyParallel);
       }
@@ -2174,6 +2176,7 @@ void Element::ResolveCSSStyles(
     StyleMap &parsed_styles,
     base::InlineVector<CSSPropertyID, 16> &reset_style_ids, bool &need_update,
     bool &force_use_current_parsed_style_map) {
+  StyleMap changed_inherited_styles;
   const bool enable_new_styling_pipeline =
       element_manager()->EnableNewStylingPipeline();
   if (enable_new_styling_pipeline) {
@@ -2256,23 +2259,27 @@ void Element::ResolveCSSStyles(
       }
 
       // #2.parent inherited style changed
-      //  merge the inherited styles, but they have lower priority
+      // Keep updated_inherited_styles_ as the complete inherited-style
+      // snapshot. In LayoutInElement mode, changed_inherited_styles only
+      // contains values that need to be consumed in this pass.
+      updated_inherited_styles_->clear();
       if (inherited_property.inherited_styles_) {
-        updated_inherited_styles_->clear();
         updated_inherited_styles_->reserve(
             inherited_property.inherited_styles_->size());
         for (auto &pair : *(inherited_property.inherited_styles_)) {
           auto it = parsed_styles_map_.find(pair.first);
           if (it == parsed_styles_map_.end()) {
+            updated_inherited_styles_->insert_or_assign(pair.first,
+                                                        pair.second);
             if (EnableLayoutInElementMode()) {
               auto inherited_it = inherited_styles_->find(pair.first);
               if (inherited_it != inherited_styles_->end() &&
                   inherited_it->second == pair.second) {
                 continue;
               }
-            }
-            updated_inherited_styles_->insert_or_assign(pair.first,
+              changed_inherited_styles.insert_or_assign(pair.first,
                                                         pair.second);
+            }
             need_update = true;
           }
         }
@@ -2451,9 +2458,12 @@ void Element::ResolveCSSStyles(
   // TODO: A refactor of the animation-related style handling is needed later,
   // once the correct dependencies between animation and other special CSS
   // property changes are identified. set updated Styles to element in the end
+  const StyleMap *inherited_styles_to_consume =
+      EnableLayoutInElementMode() ? &changed_inherited_styles
+                                  : updated_inherited_styles_.get();
   if (!update_map.empty() ||
-      (updated_inherited_styles_.has_value() &&
-       !updated_inherited_styles_->empty()) ||
+      (inherited_styles_to_consume != nullptr &&
+       !inherited_styles_to_consume->empty()) ||
       (styles_from_attributes_.has_value() &&
        !styles_from_attributes_->empty())) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_SET_STYLE,
@@ -2463,7 +2473,7 @@ void Element::ResolveCSSStyles(
     // if kDirtyPropagateInherited, need to delay to SetStyle in inherit
     // process
     ConsumeStyle(update_map, IsCSSInheritanceEnabled()
-                                 ? updated_inherited_styles_.get()
+                                 ? inherited_styles_to_consume
                                  : nullptr);
     need_update = true;
   }
@@ -3113,6 +3123,7 @@ void Element::FlushActionsAsRoot() {
 
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   ParallelFlushAsRoot();
+  element_manager()->DrainPendingElementTemplateChildMounts(this);
   FlushActions();
 }
 
@@ -4107,16 +4118,6 @@ void Element::InvalidateChildrenFontSizeRecursively() {
   }
 }
 
-void Element::InvalidateChildrenInheritedStylesRecursively() {
-  for (const auto &child : scoped_children_) {
-    child->ApplyFunctionRecursive([](Element *element) {
-      if (!element->is_raw_text()) {
-        element->MarkDirtyLite(kDirtyPropagateInherited);
-      }
-    });
-  }
-}
-
 void Element::FlushProps() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_PROPS,
               [this](lynx::perfetto::EventContext ctx) {
@@ -4217,6 +4218,8 @@ void Element::RecursivelyMarkCustomPropertiesDirty() {
 void Element::MarkDirectChildrenStyleDirtyForInheritedPropertyMutation() {
   for (const auto &child : scoped_children_) {
     if (!child->is_raw_text()) {
+      // Let the child continue propagation only if its computed inherited
+      // style actually changes during resolution.
       child->MarkStyleDirty(false);
     }
   }

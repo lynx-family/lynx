@@ -4,6 +4,7 @@
 
 #include "base/include/fml/thread.h"
 #include "clay/ui/component/page_view.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
 #include "clay/ui/testing/ui_test.h"
@@ -22,6 +23,33 @@ class MouseRegionManagerTest : public UITest {
         CreatePointer(-1, clay::PointerEvent::EventType::kHoverEvent, {x, y})};
   }
 };
+
+TEST_F_UI(MouseRegionManagerTest, EventThroughTextRevealsUnderlyingRegion) {
+  auto* background = new View(1, page_.get());
+  auto* text = new TextView(2, page_.get());
+  page_->AddChild(background);
+  page_->AddChild(text);
+  page_->SetBound(0, 0, 100, 100);
+  background->SetBound(0, 0, 100, 100);
+  text->SetBound(0, 0, 100, 100);
+  text->SetEventThrough(true);
+
+  bool entered_background = false;
+  bool entered_text = false;
+  auto* manager = page_->mouse_region_manager();
+  ASSERT_NE(manager, nullptr);
+  manager->RegisterEnterCallback(background,
+                                 [&entered_background](const PointerEvent&) {
+                                   entered_background = true;
+                                 });
+  manager->RegisterEnterCallback(
+      text, [&entered_text](const PointerEvent&) { entered_text = true; });
+
+  page_->DispatchPointerEvent(CreateHoverPointer(50, 50));
+
+  EXPECT_TRUE(entered_background);
+  EXPECT_FALSE(entered_text);
+}
 
 TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
   //     0     100     200 250    450 600   800

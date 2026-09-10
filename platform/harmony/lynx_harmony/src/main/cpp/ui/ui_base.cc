@@ -1,6 +1,7 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:ignore positionchange
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
@@ -25,6 +26,7 @@
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
@@ -36,6 +38,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/base_gesture_handler.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_frame.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -79,6 +82,11 @@ static constexpr float kOffsetRotateAutoWithAngleBase = -1000000.0f;
 static constexpr float kOffsetRotateAutoWithAngleRange = 360.0f;
 
 namespace {
+bool IsFragmentLayerDecorationProperty(const std::string& name) {
+  return name == "box-shadow" || name.rfind("background-", 0) == 0 ||
+         name.rfind("border-", 0) == 0;
+}
+
 bool IsEncodedAutoOffsetRotate(float rotate) {
   return rotate <= kOffsetRotateAutoWithAngleBase &&
          rotate >
@@ -251,6 +259,7 @@ void UIBase::ConsumeGesture(int gesture_id, const lepus::Value& params) {
 }
 
 UIBase::~UIBase() {
+  renderer_.reset();
   // Reset animations before ArkUI node teardown. Animator cancellation may
   // synchronously invoke callbacks that update the node.
   keyframe_manager_.reset();
@@ -367,27 +376,64 @@ void UIBase::UpdateLayout(float left, float top, float width, float height,
 
 void UIBase::SendLayoutChangeEvent() {
   if (has_layout_change_event_) {
-    float result[4] = {0, 0, width_, height_};
-    auto ret = lepus::Dictionary::Create();
-    GetBoundingClientRect(result);
-    ret->SetValue("id", id_selector_);
-    ret->SetValue("left", result[0]);
-    ret->SetValue("top", result[1]);
-    ret->SetValue("right", result[2]);
-    ret->SetValue("bottom", result[3]);
-    ret->SetValue("width", result[2] - result[0]);
-    ret->SetValue("height", result[3] - result[1]);
-    ret->SetValue("dataset", dataset_);
-    // Only UIFrame needs extra layoutchange detail. Adding a virtual method to
-    // UIBase would increase binary size; use a type check until more subclasses
-    // share this need, at which point a virtual override is more appropriate.
-    if (tag_ == UIFrame::kTag) {
-      static_cast<UIFrame*>(this)->BuildLayoutChangeEventDetail(*ret);
-    }
-    CustomEvent layout_change_event = {sign_, "layoutchange", "detail",
-                                       lepus::Value(std::move(ret))};
-    context_->SendEvent(layout_change_event);
+    SendPositionEvent("layoutchange", false);
   }
+}
+
+void UIBase::SendPositionChangeEvent() {
+  SendPositionEvent("positionchange", true);
+}
+
+void UIBase::SendPositionEvent(const char* event_name,
+                               bool require_window_position) {
+  float result[4] = {0, 0, width_, height_};
+  auto ret = lepus::Dictionary::Create();
+  GetBoundingClientRect(result);
+  ret->SetValue("id", id_selector_);
+  ret->SetValue("left", result[0]);
+  ret->SetValue("top", result[1]);
+  ret->SetValue("right", result[2]);
+  ret->SetValue("bottom", result[3]);
+  ret->SetValue("width", result[2] - result[0]);
+  ret->SetValue("height", result[3] - result[1]);
+  auto* root = context_->Root();
+  const bool has_window_position = root != nullptr &&
+                                   root->IsAttachedToViewTree() &&
+                                   context_->HasWindowInfo();
+  if (has_window_position) {
+    float root_screen_offset[2] = {0.f, 0.f};
+    root->GetOffsetToScreen(root_screen_offset);
+    float scaled_density = context_->ScaledDensity();
+    if (!std::isfinite(scaled_density) || scaled_density <= 0.f) {
+      scaled_density = 1.f;
+    }
+    const float window_x = result[0] + root_screen_offset[0] -
+                           context_->WindowLeftPx() / scaled_density;
+    const float window_y = result[1] + root_screen_offset[1] -
+                           context_->WindowTopPx() / scaled_density;
+    if (require_window_position) {
+      const std::array<float, 4> rect = {
+          window_x, window_y, result[2] - result[0], result[3] - result[1]};
+      if (last_position_change_rect_ == rect) {
+        return;
+      }
+      last_position_change_rect_ = rect;
+    }
+    ret->SetValue("windowX", window_x);
+    ret->SetValue("windowY", window_y);
+  } else if (require_window_position) {
+    return;
+  }
+  ret->SetValue("dataset", dataset_);
+  // Only UIFrame needs extra layoutchange detail. Adding a virtual method to
+  // UIBase would increase binary size; use a type check until more subclasses
+  // share this need, at which point a virtual override is more appropriate.
+  if (tag_ == UIFrame::kTag) {
+    static_cast<UIFrame*>(this)->BuildLayoutChangeEventDetail(*ret);
+  }
+  CustomEvent event = {sign_, event_name, "detail",
+                       lepus::Value(std::move(ret))};
+  context_->SendEvent(event);
 }
 
 void UIBase::SetParent(UIBase* parent) { parent_ = parent; }
@@ -521,6 +567,9 @@ const GestureHandlerMap& UIBase::GetGestureHandlers() {
 
 void UIBase::UpdateProps(PropBundleHarmony* props) {
   for (const auto& [id, value] : props->GetProps()) {
+    if (renderer_ && IsFragmentLayerDecorationProperty(id)) {
+      continue;
+    }
     OnPropUpdate(id, value);
   }
 }
@@ -899,7 +948,9 @@ void UIBase::OnNodeReady() {
 
   if ((dirty_flags_ & (kFlagFrameChanged | kFlagFrameSizeChanged |
                        kFlagRadiusChanged | kFlagOverflowChanged)) != 0) {
-    ApplyOverflowClip();
+    if (!renderer_) {
+      ApplyOverflowClip();
+    }
     Invalidate();
   }
   if (basic_shape_ &&
@@ -1303,21 +1354,18 @@ void UIBase::Invalidate() {
   if (draw_node_) {
     NodeManager::Instance().Invalidate(draw_node_);
   }
-  if (node_type_ == ARKUI_NODE_CUSTOM) {
+  if (node_type_ == ARKUI_NODE_CUSTOM || (CanDrawBehind() && renderer_)) {
     NodeManager::Instance().Invalidate(node_);
   }
 }
 
 void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW);
-  if (!background_drawable_) {
-    return;
-  }
   // The draw function in the UIBase might be triggered by receivers from two
   // different nodes, so drawing is only required when the node returned in
   // the event matches.
   bool need_draw = draw_node_ ? node == draw_node_ : node == Node();
-  if (need_draw) {
+  if (need_draw && background_drawable_) {
     if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
       auto outset = GetOverlayShadowOutset();
       OH_Drawing_CanvasSave(canvas);
@@ -1325,9 +1373,12 @@ void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
                                  outset[1] * context_->ScaledDensity());
       background_drawable_->Render(canvas);
       OH_Drawing_CanvasRestore(canvas);
-      return;
+    } else {
+      background_drawable_->Render(canvas);
     }
-    background_drawable_->Render(canvas);
+  }
+  if (need_draw && !CanDrawBehind() && renderer_) {
+    renderer_->Draw(canvas);
   }
 }
 
@@ -1338,6 +1389,43 @@ void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   }
   if (background_drawable_) {
     background_drawable_->Render(canvas);
+  }
+  if (renderer_) {
+    renderer_->Draw(canvas);
+  }
+}
+
+void UIBase::AttachFragmentLayerRenderer(
+    std::shared_ptr<LynxRendererContext> context, int32_t sign) {
+  renderer_ = std::make_unique<LynxRenderer>(std::move(context), sign,
+                                             weak_from_this());
+  if (!CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
+    InitDrawNode();
+  }
+  Invalidate();
+}
+
+void UIBase::DetachFragmentLayerRenderer() {
+  renderer_.reset();
+  Invalidate();
+}
+
+void UIBase::UpdateFragmentLayerDisplayList(DisplayList display_list) {
+  if (!renderer_) {
+    return;
+  }
+  renderer_->UpdateDisplayList(std::move(display_list));
+  Invalidate();
+}
+
+void UIBase::SetFragmentLayerClipBounds(bool need_clip) {
+  NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
+                                                      need_clip ? 1 : 0);
+}
+
+void UIBase::OnAttachedToFragmentLayerTree() {
+  if (renderer_ && !CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
+    InitDrawNode();
   }
 }
 
@@ -1986,12 +2074,20 @@ void UIBase::SetImageRendering(const lepus::Value& value) {
 
 void UIBase::SetEvents(const std::vector<lepus::Value>& events) {
   events_.clear();
+  response_chain_events_.clear();
+  bool has_position_change_event = false;
   for (const auto& e : events) {
     if (!e.IsArray()) {
       continue;
     }
     const auto& name = e.Array()->get(0).StdString();
     events_.emplace_back(name);
+    const bool is_global_bind =
+        e.Array()->size() > 1 &&
+        e.Array()->get(1).StdString() == tasm::kEventGlobalBind;
+    if (!is_global_bind) {
+      response_chain_events_.emplace_back(name);
+    }
     if (!has_appear_event_) {
       has_appear_event_ = name == "uiappear";
     }
@@ -2004,7 +2100,18 @@ void UIBase::SetEvents(const std::vector<lepus::Value>& events) {
     if (!has_layout_change_event_ && name == "layoutchange") {
       has_layout_change_event_ = true;
     }
+    has_position_change_event |= !is_global_bind && name == "positionchange";
   }
+  last_position_change_rect_.reset();
+  if (context_ != nullptr && context_->GetUIOwner() != nullptr) {
+    context_->GetUIOwner()->UpdatePositionChangeListener(
+        sign_, has_position_change_event);
+  }
+}
+
+bool UIBase::HasResponseChainEvent(const std::string& event_name) const {
+  return std::find(response_chain_events_.begin(), response_chain_events_.end(),
+                   event_name) != response_chain_events_.end();
 }
 
 UIBase* UIBase::FindViewById(const std::string& id, bool by_ref_id,
@@ -2177,6 +2284,9 @@ void UIBase::ScrollIntoView(
 }
 
 bool UIBase::NeedDrawNode() {
+  if (renderer_ && !CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
+    return true;
+  }
   if (!background_drawable_) {
     return false;
   }

@@ -5,6 +5,8 @@
 #ifndef CORE_SERVICES_EVENT_REPORT_EVENT_TRACKER_H_
 #define CORE_SERVICES_EVENT_REPORT_EVENT_TRACKER_H_
 
+#include <cassert>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -12,6 +14,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/vector.h"
 #include "core/base/lynx_export.h"
 #include "core/public/pub_value.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
@@ -42,66 +45,107 @@ static constexpr int32_t kUnknownInstanceId = -1;
 // that it needs to be automatically obtained by LynxActor::AfterInvoke.
 static constexpr int32_t kUninitializedInstanceId = -2;
 
+class EventProp {
+ public:
+  enum class Type : uint8_t {
+    kString,
+    kInt32,
+    kDouble,
+  };
+
+  EventProp(std::string key, std::string value)
+      : key_(std::move(key)),
+        type_(Type::kString),
+        string_value_(std::move(value)) {}
+
+  EventProp(std::string key, int32_t value)
+      : key_(std::move(key)), type_(Type::kInt32), int_value_(value) {}
+
+  EventProp(std::string key, double value)
+      : key_(std::move(key)), type_(Type::kDouble), double_value_(value) {}
+
+  const std::string& GetKey() const { return key_; }
+  Type GetType() const { return type_; }
+
+  const std::string& GetStringValue() const {
+    assert(type_ == Type::kString);
+    return string_value_;
+  }
+
+  int32_t GetIntValue() const {
+    assert(type_ == Type::kInt32);
+    return int_value_;
+  }
+
+  double GetDoubleValue() const {
+    assert(type_ == Type::kDouble);
+    return double_value_;
+  }
+
+ private:
+  std::string key_;
+  Type type_;
+  int32_t int_value_{0};
+  double double_value_{0};
+  std::string string_value_;
+};
+
+using EventPropsMap = std::unordered_map<std::string, EventProp>;
+
 /// Event of reporting.
 struct MoveOnlyEvent {
  public:
-  /// Setter of event name.
+  void SetInstanceId(int32_t instance_id) { instance_id_ = instance_id; }
+  int32_t GetInstanceId() const { return instance_id_; }
+
+  bool IsValidInstanceId() const {
+    return instance_id_ != kUninitializedInstanceId;
+  }
+
   void SetName(const char* name) { name_ = name; }
-  /// Getter of event name.
   const std::string& GetName() const { return name_; }
 
-  void SetProps(const char* key, int value) { int_props_.insert({key, value}); }
+  void SetProps(const char* key, int32_t value) {
+    props_.emplace_back(key, value);
+  }
 
-  void SetProps(const char* key, unsigned int value) {
-    double_props_.insert({key, value});
+  void SetProps(const char* key, uint32_t value) {
+    props_.emplace_back(key, static_cast<double>(value));
   }
 
   void SetProps(const char* key, uint64_t value) {
-    double_props_.insert({key, value});
+    props_.emplace_back(key, static_cast<double>(value));
   }
 
   void SetProps(const char* key, int64_t value) {
-    double_props_.insert({key, value});
+    props_.emplace_back(key, static_cast<double>(value));
   }
 
   void SetProps(const char* key, const char* value) {
-    string_props_.insert({key, value});
+    props_.emplace_back(key, std::string(value));
   }
 
   void SetProps(const char* key, const std::string& value) {
-    string_props_.insert({key, value});
+    props_.emplace_back(key, value);
   }
 
   void SetProps(const char* key, bool value) {
-    int_props_.insert({key, value});
+    props_.emplace_back(key, static_cast<int32_t>(value));
   }
 
   void SetProps(const char* key, double value) {
-    double_props_.insert({key, value});
+    props_.emplace_back(key, value);
   }
 
-  void SetStringProps(std::unordered_map<std::string, std::string>& props) {
-    string_props_ = std::move(props);
-  }
+  const base::Vector<EventProp>& GetProps() const { return props_; }
 
-  void SetIntProps(std::unordered_map<std::string, int>& props) {
-    int_props_ = std::move(props);
-  }
-
-  void SetDoubleProps(std::unordered_map<std::string, double>& props) {
-    double_props_ = std::move(props);
-  }
-
-  const std::unordered_map<std::string, std::string>& GetStringProps() const {
-    return string_props_;
-  }
-
-  const std::unordered_map<std::string, int>& GetIntProps() const {
-    return int_props_;
-  }
-
-  const std::unordered_map<std::string, double>& GetDoubleProps() const {
-    return double_props_;
+  EventPropsMap GetPropsAsMap() const {
+    EventPropsMap props;
+    props.reserve(props_.size());
+    for (const auto& prop : props_) {
+      props.insert_or_assign(prop.GetKey(), prop);
+    }
+    return props;
   }
 
   MoveOnlyEvent() = default;
@@ -111,25 +155,13 @@ struct MoveOnlyEvent {
   MoveOnlyEvent(const MoveOnlyEvent&) = delete;
   MoveOnlyEvent& operator=(const MoveOnlyEvent&) = delete;
 
-  MoveOnlyEvent(MoveOnlyEvent&& other)
-      : name_(std::move(other.name_)),
-        string_props_(std::move(other.string_props_)),
-        int_props_(std::move(other.int_props_)),
-        double_props_(std::move(other.double_props_)) {}
-
-  MoveOnlyEvent& operator=(MoveOnlyEvent&& other) {
-    name_ = std::move(other.name_);
-    string_props_ = std::move(other.string_props_);
-    int_props_ = std::move(other.int_props_);
-    double_props_ = std::move(other.double_props_);
-    return *this;
-  }
+  MoveOnlyEvent(MoveOnlyEvent&&) = default;
+  MoveOnlyEvent& operator=(MoveOnlyEvent&&) = default;
 
  private:
+  int32_t instance_id_{kUninitializedInstanceId};
   std::string name_;
-  std::unordered_map<std::string, std::string> string_props_;
-  std::unordered_map<std::string, int> int_props_;
-  std::unordered_map<std::string, double> double_props_;
+  base::Vector<EventProp> props_;
 };
 
 namespace test {
@@ -160,6 +192,13 @@ class EventTracker {
   /// @param builder Builder of event, Builder will be called on report
   /// kLynxReportEventName.
   LYNX_EXPORT static void OnEvent(EventBuilder builder);
+  /// Cache custom event to the event stack and upload them later.
+  /// Can be called from any thread. The event is a global event and does not
+  /// belong to any specific page.
+  /// @param builder Builder of event, Builder will be called on report
+  /// kLynxReportEventName.
+  LYNX_EXPORT static void OnGlobalEvent(EventBuilder builder);
+
   /// Update generic info of template instance by PageConfig.
   /// Can be called from any thread.
   /// @param instance_id  The unique id of template instance.
@@ -188,8 +227,8 @@ class EventTracker {
   /// mapped by instance id.
   /// @param instance_id The unique id of template instance.
   static void ClearCache(int32_t instance_id);
-  // Flush all `std::vector<EventBuilder>` to platform with
-  // template instance id.
+  /// Flush all `std::vector<EventBuilder>` to platform with
+  /// template instance id. All global events will also be flushed.
   LYNX_EXPORT static void Flush(int32_t instance_id);
 
   /// Update the generic info of template instance by a pair of size.

@@ -85,18 +85,11 @@ void PaintingContextClayRef::UpdateScrollInfo(int32_t container_id, bool smooth,
 }
 
 void PaintingContextClayRef::UpdateNodeReadyPatching(
-    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
-  auto task = [view_context = view_context_, ready_ids = std::move(ready_ids),
-               remove_ids = std::move(remove_ids)]() mutable {
-    view_context->UpdateNodeReadyPatching(std::move(ready_ids),
-                                          std::move(remove_ids));
-  };
-  auto queue = queue_.lock();
-  if (queue) {
-    queue->Enqueue(std::move(task));
-  } else {
-    task();
-  }
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
+  view_context_->UpdateNodeReadyPatching(
+      std::move(ready_ids), std::move(remove_ids),
+      should_cache_external_memory_candidates);
 }
 
 void PaintingContextClayRef::RequestExternalMemoryReport(int64_t delay_ms) {

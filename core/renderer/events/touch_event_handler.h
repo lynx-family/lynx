@@ -9,9 +9,11 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/vector.h"
+#include "core/public/event/touch_event_data.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/page_proxy.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
@@ -57,7 +59,8 @@ struct EventInfo {
   explicit EventInfo(const lepus_value &params, int64_t timestamp = 0)
       : params(params), is_multi_finger(true), timestamp(timestamp) {}
   EventInfo(int tag, float x, float y, float client_x, float client_y,
-            float page_x, float page_y, int64_t timestamp = 0)
+            float page_x, float page_y, int64_t timestamp = 0,
+            event::TouchEventTargetPoints current_target_points = {})
       : tag(tag),
         x(x),
         y(y),
@@ -65,7 +68,8 @@ struct EventInfo {
         client_y(client_y),
         page_x(page_x),
         page_y(page_y),
-        timestamp(timestamp) {}
+        timestamp(timestamp),
+        current_target_points(std::move(current_target_points)) {}
   EventInfo(const EventInfo &info) = delete;
   EventInfo &operator=(const EventInfo &info) = delete;
   EventInfo(EventInfo &&info) noexcept = default;
@@ -81,6 +85,7 @@ struct EventInfo {
   float page_x{0};
   float page_y{0};
   int64_t timestamp{0};
+  event::TouchEventTargetPoints current_target_points;
 };
 
 enum class EventType : unsigned int {
@@ -226,12 +231,12 @@ class TouchEventHandler {
                                   const EventInfo &info,
                                   bool is_js_event) const;
 
-  lepus::Value GetTouchEventParam(const base::String &handler,
-                                  const Element *target,
-                                  const Element *currentTarget, float x,
-                                  float y, float client_x, float client_y,
-                                  float page_x, float page_y, bool is_js_event,
-                                  int64_t timestamp = 0) const;
+  lepus::Value GetTouchEventParam(
+      const base::String &handler, const Element *target,
+      const Element *currentTarget, float x, float y, float client_x,
+      float client_y, float page_x, float page_y, bool is_js_event,
+      int64_t timestamp,
+      const event::TouchEventTargetPoints &current_target_points) const;
 
   lepus_value GetTouchEventParam(const base::String &handler,
                                  const Element *target,

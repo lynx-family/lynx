@@ -94,12 +94,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_SIGNAL_API,
     ENABLE_FIXED_NEW,
     ENABLE_MULTI_TOUCH,
-    ENABLE_NEW_INTERSECTION_OBSERVER,
     ENABLE_PARSE_INT_FLEX,
     ENABLE_ANIMATION_VSYNC_ON_UI_THREAD,
     MULTI_JS_THREAD_COUNT,
     FIX_FIBER_REMOVE_TWICE_BUG,
-    OPT_PUSH_STYLE_TO_BUNDLE,
     ENABLE_ANIMATION_INFO_REPORT,
     ENABLE_JSVM_RUNTIME,
     ENABLE_UNIFIED_PIXEL_PIPELINE,
@@ -163,6 +161,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_READABLE_STREAM_MEM_FIX,
     ENABLE_ELEMENT_API_NEW_REGISTRATION,
     ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
+    ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK,
     ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
     ENABLE_AUTO_NON_FLATTEN,
     ENABLE_FIBER_UPDATE_METADATA,
@@ -277,14 +276,11 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_SIGNAL_API, "enable_signal_api"},
             {Key::ENABLE_FIXED_NEW, "enable_lynx_new_fixed"},
             {Key::ENABLE_MULTI_TOUCH, "enable_multi_touch"},
-            {Key::ENABLE_NEW_INTERSECTION_OBSERVER,
-             "enable_new_intersection_observer"},
             {Key::ENABLE_PARSE_INT_FLEX, "enable_parse_int_flex"},
             {Key::ENABLE_ANIMATION_VSYNC_ON_UI_THREAD,
              "enable_animation_vsync_on_ui_thread"},
             {Key::MULTI_JS_THREAD_COUNT, "multi_js_thread_count"},
             {Key::FIX_FIBER_REMOVE_TWICE_BUG, "fix_fiber_remove_twice_bug"},
-            {Key::OPT_PUSH_STYLE_TO_BUNDLE, "opt_push_style_to_bundle"},
             {Key::ENABLE_ANIMATION_INFO_REPORT, "enable_animation_info_report"},
             {Key::ENABLE_JSVM_RUNTIME, kLyneEnableJSVMRuntime},
             {Key::ENABLE_UNIFIED_PIXEL_PIPELINE,
@@ -355,6 +351,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_element_api_new_registration"},
             {Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
              "enable_harmony_text_custom_emoji"},
+            {Key::ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK,
+             "enable_harmony_message_loop_promise_microtask"},
             {Key::ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK,
              "enable_element_invoke_ui_method_pending_task"},
             // NOLINT(harmony-trail-key): Android-only configuration.
@@ -505,7 +503,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableSignalAPI();
   bool EnableFixedNew();
   bool EnableMultiTouch();
-  bool EnableNewIntersectionObserver();
   bool EnableParseIntFlex();
   bool EnableAnimationInfoReport();
   bool EnableJSVMRuntime();
@@ -548,6 +545,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnablePromiseMemoryFix();
   bool EnableCanvasEngineMemoryFix();
   bool EnableHarmonyTextCustomEmoji();
+  bool EnableHarmonyMessageLoopPromiseMicrotask();
   bool EnableElementApiNewRegistration();
   bool EnableElementInvokeUIMethodPendingTask();
   bool EnableAutoNonFlatten();

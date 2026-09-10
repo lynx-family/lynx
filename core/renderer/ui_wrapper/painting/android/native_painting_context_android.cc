@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/fml/synchronization/waitable_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
@@ -21,6 +22,7 @@
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/renderer/utils/android/text_utils_android.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 #include "platform/android/lynx_android/src/main/jni/gen/NativePaintingContext_jni.h"
@@ -319,8 +321,7 @@ void NativePaintingCtxAndroid::UpdatePaintingNode(
 
 std::unique_ptr<pub::Value> NativePaintingCtxAndroid::GetTextInfo(
     const std::string &content, const pub::Value &info) {
-  // TODO: impl this function later.
-  return std::unique_ptr<pub::Value>();
+  return TextUtilsAndroidHelper::GetTextInfo(content, info);
 }
 
 void NativePaintingCtxAndroid::StopExposure(const pub::Value &options) {
@@ -471,7 +472,34 @@ std::vector<float> NativePaintingCtxAndroid::GetRectToWindow(int id) {
 }
 
 std::vector<float> NativePaintingCtxAndroid::GetRectToLynxView(int64_t id) {
-  return std::vector<float>();
+  auto runner = base::UIThread::GetRunner();
+  if (runner == nullptr) {
+    return {};
+  }
+
+  auto android_ref =
+      std::static_pointer_cast<NativePaintingCtxAndroidRef>(platform_ref_);
+  if (android_ref == nullptr) {
+    return {};
+  }
+  if (runner->RunsTasksOnCurrentThread()) {
+    return android_ref->GetRectToLynxView(static_cast<int32_t>(id));
+  }
+
+  struct RectQueryResult {
+    fml::AutoResetWaitableEvent event;
+    std::vector<float> value;
+  };
+  auto result = std::make_shared<RectQueryResult>();
+  runner->PostTask([android_ref, id, result]() {
+    result->value = android_ref->GetRectToLynxView(static_cast<int32_t>(id));
+    result->event.Signal();
+  });
+
+  if (result->event.WaitWithTimeout(fml::TimeDelta::FromSeconds(1))) {
+    return {};
+  }
+  return std::move(result->value);
 }
 
 std::vector<float> NativePaintingCtxAndroid::ScrollBy(int64_t id, float width,

@@ -46,6 +46,7 @@ static tasm::harmony::LynxImageOrigin GetImageOrigin(
 ImageServiceNode::ImageServiceNode(ImageServiceHarmony* service)
     : ImageNode(), service_(service) {
   auto option = std::make_shared<ImageKnifePro::ImageKnifeOption>();
+  ImageKnifeOptionCompat::SetEnableVisibleAreaControl(option.get(), false);
   image_knife_animator_option_ =
       std::make_shared<ImageKnifePro::AnimatorOption>();
   image_knife_node_ =
@@ -167,10 +168,8 @@ void ImageServiceNode::InitAnimationListener(
 }
 
 void ImageServiceNode::StartAnimation() {
-  if (image_knife_animator_option_->state != ARKUI_ANIMATION_STATUS_RUNNING) {
-    image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
-    image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
-  }
+  image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
+  image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
 }
 
 void ImageServiceNode::StopAnimation() {
@@ -184,10 +183,8 @@ void ImageServiceNode::PauseAnimation() {
 }
 
 void ImageServiceNode::ResumeAnimation() {
-  if (image_knife_animator_option_->state != ARKUI_ANIMATION_STATUS_RUNNING) {
-    image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
-    image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
-  }
+  image_knife_animator_option_->state = ARKUI_ANIMATION_STATUS_RUNNING;
+  image_knife_node_->UpdateAnimatorOption(image_knife_animator_option_);
 }
 
 void ImageServiceNode::UpdateAutoPlay(bool autoplay) {

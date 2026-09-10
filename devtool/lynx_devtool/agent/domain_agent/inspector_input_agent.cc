@@ -17,6 +17,8 @@ InspectorInputAgent::InspectorInputAgent(
   functions_map_["Input.emulateTouchFromMouseEvent"] =
       &InspectorInputAgent::EmulateTouchFromMouseEvent;
   functions_map_["Input.insertText"] = &InspectorInputAgent::InsertText;
+  functions_map_["Input.synthesizeTapGesture"] =
+      &InspectorInputAgent::SynthesizeTapGesture;
 }
 
 InspectorInputAgent::~InspectorInputAgent() = default;
@@ -29,6 +31,11 @@ void InspectorInputAgent::EmulateTouchFromMouseEvent(
 void InspectorInputAgent::InsertText(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->InsertText(sender, message);
+}
+
+void InspectorInputAgent::SynthesizeTapGesture(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->SynthesizeTapGesture(sender, message);
 }
 
 void InspectorInputAgent::CallMethod(

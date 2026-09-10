@@ -450,6 +450,8 @@ class ScrollCoordinatorLayout(
         }
 
         if (nestedScrollAsChild && isScrolling) {
+          // Interception can cancel a nested child and stop the parent session.
+          startNestedScroll(ViewCompat.SCROLL_AXIS_VERTICAL, ViewCompat.TYPE_TOUCH)
           if (dispatchNestedPreScroll(0, dy, scrollConsumed, scrollOffset, ViewCompat.TYPE_TOUCH)) {
             dy -= scrollConsumed[1]
             nestedOffsets[0] += scrollOffset[0]
@@ -580,6 +582,10 @@ class ScrollCoordinatorLayout(
         downEventHandled = true
       }
     }
+    if (nestedScrollAsChild && event?.actionMasked == MotionEvent.ACTION_DOWN) {
+      // Finish the previous fling before an ancestor starts handling the new touch.
+      stopNestedScroll(ViewCompat.TYPE_NON_TOUCH)
+    }
     return super.dispatchTouchEvent(event)
   }
 
@@ -629,7 +635,19 @@ class ScrollCoordinatorLayout(
       return superResult
     }
     val vertical = (axes and ViewCompat.SCROLL_AXIS_VERTICAL) != 0
-    return (vertical && startNestedScroll(axes)) || superResult
+    return (vertical && startNestedScroll(axes, type)) || superResult
+  }
+
+  override fun onStopNestedScroll(target: View, type: Int) {
+    super.onStopNestedScroll(target, type)
+    if (nestedScrollAsChild) {
+      stopNestedScroll(type)
+    }
+  }
+
+  override fun onNestedPreFling(target: View, velocityX: Float, velocityY: Float): Boolean {
+    return super.onNestedPreFling(target, velocityX, velocityY) ||
+      (nestedScrollAsChild && dispatchNestedPreFling(velocityX, velocityY))
   }
 
   override fun onNestedPreScroll(target: View, dx: Int, dy: Int, consumed: IntArray, type: Int) {
@@ -654,7 +672,7 @@ class ScrollCoordinatorLayout(
       }
       ancestorScrollConsumed[0] = 0
       ancestorScrollConsumed[1] = 0
-      dispatchNestedPreScroll(dx, dy, ancestorScrollConsumed, null)
+      dispatchNestedPreScroll(dx, dy, ancestorScrollConsumed, null, type)
       consumed[0] = parentScrollConsumed[0] + ancestorScrollConsumed[0]
       consumed[1] = parentScrollConsumed[1] + ancestorScrollConsumed[1]
     } else {

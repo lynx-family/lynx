@@ -83,13 +83,34 @@ function run(command, args, options = {}) {
     throw result.error;
   }
   if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed with ${result.status}`);
+    throw new Error(
+      `${command} ${args.join(' ')} failed with ${result.status}`
+    );
   }
   return options.capture ? result.stdout.trim() : '';
 }
 
 function readPackageJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function validatePackageVersions(rootManifest, platformManifests) {
+  const mismatches = platformManifests.filter(
+    ({ manifest }) => manifest.version !== rootManifest.version
+  );
+  if (mismatches.length === 0) {
+    return;
+  }
+
+  const versions = [
+    `${rootManifest.name}@${rootManifest.version}`,
+    ...platformManifests.map(
+      ({ manifest }) => `${manifest.name}@${manifest.version}`
+    ),
+  ];
+  throw new Error(
+    `node-lynx package versions must match: ${versions.join(', ')}`
+  );
 }
 
 function packPackage(cwd, packDir) {
@@ -143,9 +164,18 @@ function publishTarball(tarball, options) {
 function main() {
   const options = parseArgs(process.argv.slice(2));
   const packDir = path.resolve(
-    options.packDir || fs.mkdtempSync(path.join(os.tmpdir(), 'node-lynx-publish-'))
+    options.packDir ||
+      fs.mkdtempSync(path.join(os.tmpdir(), 'node-lynx-publish-'))
   );
   fs.mkdirSync(packDir, { recursive: true });
+
+  const rootPackageJson = fs.readFileSync(rootPackageJsonPath, 'utf8');
+  const rootManifest = JSON.parse(rootPackageJson);
+  const platformManifests = platformPackages.map((platformPackage) => ({
+    ...platformPackage,
+    manifest: readPackageJson(path.join(platformPackage.dir, 'package.json')),
+  }));
+  validatePackageVersions(rootManifest, platformManifests);
 
   for (const platformPackage of platformPackages) {
     if (!fs.existsSync(platformPackage.addon)) {
@@ -157,13 +187,6 @@ function main() {
     run('pnpm', ['run', 'build:resources']);
     run('pnpm', ['exec', 'tsc']);
   }
-
-  const rootPackageJson = fs.readFileSync(rootPackageJsonPath, 'utf8');
-  const rootManifest = JSON.parse(rootPackageJson);
-  const platformManifests = platformPackages.map((platformPackage) => ({
-    ...platformPackage,
-    manifest: readPackageJson(path.join(platformPackage.dir, 'package.json')),
-  }));
 
   rootManifest.optionalDependencies = Object.fromEntries(
     platformManifests.map((platformPackage) => [
@@ -189,7 +212,10 @@ function main() {
   });
 
   try {
-    fs.writeFileSync(rootPackageJsonPath, `${JSON.stringify(rootManifest, null, 2)}\n`);
+    fs.writeFileSync(
+      rootPackageJsonPath,
+      `${JSON.stringify(rootManifest, null, 2)}\n`
+    );
 
     const platformTarballs = platformManifests.map((platformPackage) => {
       const tarball = packPackage(platformPackage.dir, packDir);
@@ -235,4 +261,8 @@ function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { validatePackageVersions };

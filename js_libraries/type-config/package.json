@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/type-config",
-  "version": "4.1.3",
+  "version": "4.2.0",
   "description": "Type definitions for Lynx Config(aka PageConfig) provided by the Lynx team, used to optimize the configuration experience of Lynx Config.",
   "keywords": [
     "lynx-config",

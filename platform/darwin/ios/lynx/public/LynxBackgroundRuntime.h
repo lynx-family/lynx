@@ -81,6 +81,19 @@ typedef NS_ENUM(NSInteger, LynxBackgroundJsRuntimeType) {
 // Pending lynx_core.js load
 @property(nonatomic, assign) BOOL pendingCoreJsLoad;
 
+/**
+ * The screen size used to initialize the global layout config, which backs
+ * `SystemInfo.pixelRatio`, `SystemInfo.pixelWidth` and `SystemInfo.pixelHeight`.
+ *
+ * These values are normally initialized when the first LynxView is created. If a
+ * LynxBackgroundRuntime is created before any LynxView, they would otherwise stay 0.
+ * Setting this ensures the runtime initializes them up front.
+ *
+ * When left as CGSizeZero (the default), the real device screen size is used, which
+ * matches the default behavior of LynxViewBuilder.
+ */
+@property(nonatomic, assign) CGSize screenSize;
+
 - (instancetype)init;
 // @deprecated use LynxGenericResourceFetcher/LynxMediaResourceFetcher/LynxTemplateResourceFetcher
 // instead

@@ -41,11 +41,14 @@
 
 namespace lynx {
 namespace tasm {
+class DisplayList;
 class PropBundleHarmony;
 
 namespace harmony {
 class LynxContext;
 class GestureArenaManager;
+class LynxRenderer;
+class LynxRendererContext;
 class UIStickyScroller;
 
 static constexpr const char* const kFluencyScrollEvent = "scroll";
@@ -116,6 +119,12 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void OnOverlayDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
+  void AttachFragmentLayerRenderer(std::shared_ptr<LynxRendererContext> context,
+                                   int32_t sign);
+  void DetachFragmentLayerRenderer();
+  void UpdateFragmentLayerDisplayList(DisplayList display_list);
+  void SetFragmentLayerClipBounds(bool need_clip);
+  void OnAttachedToFragmentLayerTree();
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();
@@ -141,6 +150,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void Invalidate();
   PlatformLength ToVPFromUnitValue(const std::string& value);
   virtual void SetEvents(const std::vector<lepus::Value>& events);
+  void SendPositionChangeEvent();
   virtual void InvokeMethod(
       const std::string& method, const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
@@ -292,6 +302,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void StartEventFire(bool is_stop, int64_t event_id) override;
   void OnEventFire(bool is_stop, int64_t event_id) override;
   std::vector<std::string> EventSet() override { return events_; };
+  bool HasResponseChainEvent(const std::string& event_name) const;
   void OnResponseChain() override { is_on_response_chain_ = true; };
   void OffResponseChain() override { is_on_response_chain_ = false; };
   starlight::ImageRenderingType RenderingType();
@@ -355,6 +366,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual UIStickyScroller* AsUIStickyScroller() { return nullptr; }
   virtual void SetImageRendering(const lepus::Value& value);
   void SendLayoutChangeEvent();
+  void SendPositionEvent(const char* event_name, bool require_window_position);
   bool NeedDrawNode();
   bool NeedDraw(ArkUI_NodeHandle node);
   void SetAccessibilityLabelDirtyFlag();
@@ -382,7 +394,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
 
   std::unique_ptr<BackgroundDrawable> background_drawable_{nullptr};
   std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
+  std::unique_ptr<LynxRenderer> renderer_;
   std::vector<std::string> events_;
+  std::vector<std::string> response_chain_events_;
   ArkUI_NodeType node_type_;
   starlight::ImageRenderingType rendering_type_{
       starlight::ImageRenderingType::kAuto};
@@ -582,6 +596,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   bool exposure_event_updated_{false};
   std::optional<TransformOrigin> transform_origin_ = std::nullopt;
   bool has_layout_change_event_{false};
+  std::optional<std::array<float, 4>> last_position_change_rect_;
   float translation_z_{.0f};
   lepus::Value dataset_{lepus::Value(lepus::Dictionary::Create())};
   bool has_transform_applied_{false};

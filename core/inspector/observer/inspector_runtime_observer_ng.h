@@ -26,6 +26,7 @@ class InspectorClientNG;
 namespace runtime {
 namespace js {
 enum class JSRuntimeType;
+class NativeModuleRecordObserver;
 
 // Only works for js runtime.
 // Create some instances which implemented in LynxDevtool and observe the js
@@ -47,6 +48,10 @@ class InspectorRuntimeObserverNG {
     return nullptr;
   }
   virtual std::shared_ptr<ConsoleMessagePostMan> CreateConsoleMessagePostMan() {
+    return nullptr;
+  }
+  virtual std::shared_ptr<NativeModuleRecordObserver>
+  CreateNativeModuleRecordObserver() {
     return nullptr;
   }
   virtual void InitWhiteBoardInspector(

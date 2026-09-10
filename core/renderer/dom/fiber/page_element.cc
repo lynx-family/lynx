@@ -95,6 +95,7 @@ void PageElement::FlushActionsAsRoot() {
               });
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   Element::ParallelFlushAsRoot();
+  element_manager()->DrainPendingElementTemplateChildMounts(this);
   Element::FlushActions();
   Element::TraversalInsertFixedElementOfTree();
 }

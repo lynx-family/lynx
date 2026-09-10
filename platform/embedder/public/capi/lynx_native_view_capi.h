@@ -146,11 +146,27 @@ lynx_native_view_get_surface_buffer_mode(lynx_native_view_t*);
 LYNX_CAPI_EXPORT bool lynx_native_view_present_surface(
     lynx_native_view_t*, int width, int height, const float* transform,
     lynx_surface_handle_t* handle);
-// Returns a platform native graphics handle for the latest back buffer.
-// Windows callers should import the returned D3D shared HANDLE with the
-// graphics API/device that matches the active Windows backend.
+// Acquires the latest back buffer. The returned platform native graphics
+// handle is borrowed and must not be released by the caller. Returns nullptr
+// when no buffer is available. After writing the buffer, call
+// lynx_native_view_swap_back() to make it available for presentation.
+// On Windows, import the returned D3D shared HANDLE with the graphics
+// API/device that matches the active Windows backend.
 LYNX_CAPI_EXPORT lynx_surface_handle_t* lynx_native_view_acquire_surface(
     lynx_native_view_t*, int width, int height);
+
+// Acquires the latest back buffer and assigns its texture-coordinate
+// transformation. If transform is nullptr, the current transformation remains
+// unchanged. Otherwise, it must point to nine floats in this row-major order:
+//   scaleX, skewX, transX,
+//   skewY, scaleY, transY,
+//   pers0,  pers1,  pers2.
+// The returned handle follows the ownership and presentation contract of
+// lynx_native_view_acquire_surface().
+LYNX_CAPI_EXPORT lynx_surface_handle_t*
+lynx_native_view_acquire_surface_with_transform(lynx_native_view_t*, int width,
+                                                int height,
+                                                const float* transform);
 LYNX_CAPI_EXPORT bool lynx_native_view_swap_back(lynx_native_view_t*);
 LYNX_CAPI_EXPORT void lynx_native_view_trigger_event(lynx_native_view_t*,
                                                      const char* name,

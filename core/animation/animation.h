@@ -9,12 +9,14 @@
 #ifndef CORE_ANIMATION_ANIMATION_H_
 #define CORE_ANIMATION_ANIMATION_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_set>
 
 #include "base/include/fml/time/time_point.h"
 #include "core/animation/keyframe_effect.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace base {
@@ -42,6 +44,17 @@ class Animation : public std::enable_shared_from_this<Animation> {
   static fml::TimePoint& GetAnimationDummyStartTime();
 
   enum class State { kIdle = 0, kPlay, kPause, kStop };
+
+  // Origin category used by the CDP Animation domain.
+  enum class Origin : uint8_t {
+    // Animation created from an author-defined CSS @keyframes rule.
+    kCSSAnimation = 0,
+    // Animation created by the CSS transition manager.
+    kCSSTransition,
+    // Animation created through Lynx's imperative Animate or AnimateV2 API.
+    kWebAnimation,
+  };
+
   Animation(const base::String& name);
   ~Animation() = default;
   void Play(bool play_handles_initial_frame = true);
@@ -61,6 +74,13 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void SendIterationEvent();
 
   const base::String& name() { return name_; }
+
+  // Stable process-unique identifier used as CDP Animation.id.
+  int64_t id() const { return id_; }
+
+  // Returns the current timeline time without mutating animation state.
+  LYNX_EXPORT_FOR_DEVTOOL fml::TimeDelta GetCurrentTime() const;
+
   const fml::TimePoint& start_time() const { return start_time_; }
   const fml::TimePoint& pause_time() const { return pause_time_; }
   const fml::TimeDelta& total_paused_duration() const {
@@ -115,6 +135,10 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   bool GetTransitionFlag() { return is_transition_; }
 
+  Origin GetOrigin() const { return origin_; }
+
+  void SetOrigin(Origin origin) { origin_ = origin; }
+
   void NotifyElementSizeUpdated();
 
   void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
@@ -137,6 +161,8 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void ClearSampleHistory();
   AnimationDelegate* animation_delegate_{nullptr};
   base::String name_;
+  // Process-unique identifier assigned once when the object is constructed.
+  int64_t id_{0};
   std::unique_ptr<KeyframeEffect> keyframe_effect_;
 
   starlight::AnimationData animation_data_;
@@ -149,9 +175,15 @@ class Animation : public std::enable_shared_from_this<Animation> {
   State state_{State::kIdle};
 
   bool is_transition_ = false;
+  // Creation entry point exposed through the CDP Animation domain.
+  Origin origin_{Origin::kCSSAnimation};
   bool need_report_over_time_{true};
   fml::TimePoint pause_time_{fml::TimePoint::Min()};
   fml::TimeDelta total_paused_duration_{fml::TimeDelta::Zero()};
+  // Inspector timeline tracking. It uses the FML monotonic clock and does not
+  // depend on the platform-specific vsync timestamp epoch.
+  fml::TimeDelta current_time_at_pause_{fml::TimeDelta::Zero()};
+  fml::TimePoint current_run_start_system_time_{fml::TimePoint::Min()};
   bool was_paused_{false};
   bool has_cached_sample_{false};
   fml::TimePoint cached_sample_time_{fml::TimePoint::Min()};

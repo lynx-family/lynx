@@ -9,10 +9,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup Node.js 18.20.0
-      uses: actions/setup-node@v6
+    - name: Setup Node.js
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
       with:
-        node-version: '18.20.0'
+        node-version-file: 'lynx/.node-version'
+
     - name: Get npm customcache directory
       id: npm-custom-cache-dir
       shell: pwsh
@@ -21,7 +22,7 @@ runs:
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         echo "NPM_CUSTOM_CACHE_DIR=$npm_custom_cache_dir" >> ${env:GITHUB_OUTPUT}
     - name: Cache pnpm Dependencies
-      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      uses: lynx-infra/cache@d6bd70bf2182b228ff5cfa9539e5f61b0929a1ba # Node 24
       with:
         path: ${{ steps.npm-custom-cache-dir.outputs.NPM_CUSTOM_CACHE_DIR }}
         key: pnpm-custom-${{ runner.os }}-${{ hashFiles('lynx/pnpm-lock.yaml') }}

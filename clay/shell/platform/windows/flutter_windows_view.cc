@@ -279,6 +279,7 @@ void FlutterWindowsView::OnWindowRepaint() { ForceRedraw(); }
 void FlutterWindowsView::OnPointerMove(double x, double y,
                                        ClayPointerDeviceKind device_kind,
                                        int32_t device_id, int modifiers_state) {
+  ConvertPointerPosition(&x, &y);
   engine_->keyboard_key_handler()->SyncModifiersIfNeeded(modifiers_state);
   SendPointerMove(x, y, GetOrCreatePointerState(device_kind, device_id));
 }
@@ -287,6 +288,7 @@ void FlutterWindowsView::OnPointerDown(double x, double y,
                                        ClayPointerDeviceKind device_kind,
                                        int32_t device_id,
                                        ClayPointerMouseButtons flutter_button) {
+  ConvertPointerPosition(&x, &y);
   if (flutter_button != 0) {
     auto state = GetOrCreatePointerState(device_kind, device_id);
     int32_t pointer_id = state->pointer_id;
@@ -305,6 +307,7 @@ void FlutterWindowsView::OnPointerUp(double x, double y,
                                      ClayPointerDeviceKind device_kind,
                                      int32_t device_id,
                                      ClayPointerMouseButtons flutter_button) {
+  ConvertPointerPosition(&x, &y);
   if (flutter_button != 0) {
     auto state = GetPointerState(device_kind, device_id);
     if (!state) {
@@ -325,6 +328,7 @@ void FlutterWindowsView::OnPointerUp(double x, double y,
 void FlutterWindowsView::OnPointerLeave(double x, double y,
                                         ClayPointerDeviceKind device_kind,
                                         int32_t device_id) {
+  ConvertPointerPosition(&x, &y);
   PointerState* state = GetPointerState(device_kind, device_id);
   if (state) {
     SendPointerLeave(x, y, state);
@@ -333,7 +337,10 @@ void FlutterWindowsView::OnPointerLeave(double x, double y,
 
 void FlutterWindowsView::OnPointerPanZoomStart(int32_t device_id) {
   PointerLocation point = binding_handler_->GetPrimaryPointerLocation();
-  SendPointerPanZoomStart(device_id, point.x, point.y);
+  double x = point.x;
+  double y = point.y;
+  ConvertPointerPosition(&x, &y);
+  SendPointerPanZoomStart(device_id, x, y);
 }
 
 void FlutterWindowsView::OnPointerPanZoomUpdate(int32_t device_id, double pan_x,
@@ -369,13 +376,17 @@ void FlutterWindowsView::OnScroll(double x, double y, double delta_x,
                                   double delta_y, int scroll_offset_multiplier,
                                   ClayPointerDeviceKind device_kind,
                                   int32_t device_id) {
+  ConvertPointerPosition(&x, &y);
   SendScroll(x, y, delta_x, delta_y, scroll_offset_multiplier, device_kind,
              device_id);
 }
 
 void FlutterWindowsView::OnScrollInertiaCancel(int32_t device_id) {
   PointerLocation point = binding_handler_->GetPrimaryPointerLocation();
-  SendScrollInertiaCancel(device_id, point.x, point.y);
+  double x = point.x;
+  double y = point.y;
+  ConvertPointerPosition(&x, &y);
+  SendScrollInertiaCancel(device_id, x, y);
 }
 
 void FlutterWindowsView::OnCursorRectUpdated(const FloatRect& rect) {

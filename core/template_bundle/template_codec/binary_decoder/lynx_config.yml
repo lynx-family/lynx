@@ -568,17 +568,6 @@ enableFiberElementForRadonDiff:
   deprecated: '3.7'
   codeGen:
     - NONE
-enableOptPushStyleToBundle:
-  description: Controls the deprecated style-to-PropBundle optimization flag applied after config decode. When enabled, `ElementManager` turns on the optimized push-style path; when disabled, style payloads keep the older path. When unset, runtime falls back to `LynxEnv`.
-  defaultValue: TernaryBool::UNDEFINE_VALUE
-  valueType: TernaryBool
-  author: ShouruiSong
-  readNative: true
-  deprecated: '3.5'
-  supportPlatform:
-    - Android
-    - HarmonyOS
-    - iOS
 enableTextLayoutCache:
   description: Controls whether text layout results can be reused from the text renderer cache. When enabled, text shadow nodes can reuse cached renderers for repeated layout specs; when disabled, text layout is recomputed each time. When unset, platform env can still provide the value.
   defaultValue: TernaryBool::UNDEFINE_VALUE
@@ -1209,14 +1198,6 @@ extendedLayoutOnlyOpt:
     - Android
     - HarmonyOS
     - iOS
-enableTouchRefactor:
-  description: Controls whether iOS touch dispatch uses the refactored gesture-conflict path. When enabled, external gestures in possible or began state no longer cancel Lynx touch handling and touchend can complete normally; when disabled, the legacy cancellation behavior remains.
-  defaultValue: 'true'
-  valueType: bool
-  author: rAY-ooo
-  since: '2.8'
-  supportPlatform:
-    - iOS
 enableEndGestureAtLastFingerUp:
   description: Controls whether iOS multi-finger touch handling ends only after the last finger is lifted. When enabled, the touch recognizer reports ended or cancelled when the final finger leaves; when disabled, the legacy earlier-ending behavior remains.
   defaultValue: 'false'
@@ -1650,17 +1631,6 @@ fontScaleEffectiveOnlyOnSp:
     - HarmonyOS
     - iOS
   export: true
-enableNewIntersectionObserver:
-  description: Controls whether intersection observers use the newer detection logic instead of the older scroll-bound path. When enabled, intersection managers add observers to the dedicated run loop and observe without depending on scroll-event binding; when disabled, runtime keeps the legacy observer logic. When unset, settings can still decide the flag.
-  defaultValue: 'true'
-  valueType: bool
-  readSettings: true
-  author: rAY-ooo
-  since: '2.8'
-  supportPlatform:
-    - Android
-    - iOS
-  export: true
 forceCalcNewStyle:
   description: Controls the deprecated page-level fallback for forcing Radon style recalculation on updates. When the newer compiler option is unset, manual config decode still reads this flag and `RadonNode` can recalculate styles instead of using the incremental style-invalidation path.
   defaultValue: 'true'
@@ -1784,6 +1754,16 @@ enableEventTargetInfoNodeIndex:
     - Android
     - HarmonyOS
     - iOS
+enableCurrentTargetTouchPosition:
+  description: Controls whether single-touch events include coordinates relative to each event-bound current target. When enabled, platforms collect points only for event-bound nodes in the response chain; when disabled, they skip that traversal and preserve the legacy payload.
+  defaultValue: 'false'
+  valueType: bool
+  author: baiqiang
+  since: '4.2'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableFrontendCustomEventBubbleCompatible:
   description: Controls whether refactored frontend custom events keep the legacy non-bubbling component-event behavior where the first ancestor bubble listener can still receive the event when the target has no bubble listener. When enabled, runtime preserves that compatibility path; when disabled, non-bubbling frontend custom events only dispatch on the target.
   defaultValue: 'true'
@@ -1872,7 +1852,7 @@ enableSimpleStyleNoPatchOptimization:
   valueType: bool
   readSettings: true
   author: 'linxiaosong'
-  since: '4.3'
+  since: '4.2'
   supportPlatform:
     - Android
     - HarmonyOS

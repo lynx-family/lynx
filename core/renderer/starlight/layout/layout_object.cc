@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/renderer/starlight/layout/box_layout_algorithm.h"
 #include "core/renderer/starlight/layout/flex_layout_algorithm.h"
 #include "core/renderer/starlight/layout/grid_layout_algorithm.h"
 #include "core/renderer/starlight/layout/layout_algorithm.h"
@@ -724,6 +725,8 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
     } else if (type == DisplayType::kGrid) {
       SendLayoutEvent(LayoutEventType::FeatureCountOnGridDisplay);
       algorithm_ = new GridLayoutAlgorithm(this);
+    } else if (type == DisplayType::kXBox) {
+      algorithm_ = new BoxLayoutAlgorithm(this);
     }
 
     DCHECK(algorithm_);

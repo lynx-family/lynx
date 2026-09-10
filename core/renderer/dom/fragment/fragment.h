@@ -67,6 +67,8 @@ class Fragment : public BaseElementContainer {
                     bool transition_view = false) override;
   void UpdateLayoutWithoutChange() override;
 
+  void InvalidateForRedraw() override;
+
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override {}
   void StyleChanged() override;
   void UpdateZIndexList() override;
@@ -149,6 +151,8 @@ class Fragment : public BaseElementContainer {
   void RefreshDrawingOffsetsRecursively();
   void RefreshDrawingOffsetsRecursively(float left, float top);
   void UpdateDrawingOffset();
+  void ReparentStackingNode(Fragment* target_parent, Fragment* sibling);
+  Fragment* ResolveEnclosingStackingContextParent() const;
   void DrawBorder(DisplayListBuilder& display_list_builder);
   void DrawClip(DisplayListBuilder& display_list_builder);
 

@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxPerformanceController.h"
+#import <Lynx/LynxPerformanceController.h>
 
 #include "base/include/lynx_actor.h"
 #include "core/public/performance_controller_platform_impl.h"
@@ -23,6 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
  * @param nativeActor The weak pointer to the native actor.
  */
 - (void)setNativeActor:(const std::shared_ptr<PerformanceControllerActor>&)nativeActor;
+
+/**
+ * @brief Sets the Lynx instance ID used by the embedded timing collector.
+ *
+ * @param instanceId The Lynx instance ID.
+ */
+- (void)setInstanceId:(int32_t)instanceId;
 
 @end
 NS_ASSUME_NONNULL_END

@@ -7,6 +7,7 @@
 #import <Lynx/LynxPerformanceEntryConverter.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceEventReporterProtocol.h>
+#import <Lynx/TemplateRenderCallbackProtocol.h>
 #import "LynxEmbeddedTimingCollector.h"
 #import "LynxPerformanceController+Native.h"
 #include "base/trace/native/trace_event.h"
@@ -20,6 +21,7 @@ using namespace lynx::shell;
 using namespace lynx::tasm;
 
 @interface LynxEmbeddedTimingCollector (Internal)
+@property(nonatomic, weak, nullable) id<TemplateRenderCallbackProtocol> embeddedTimingClient;
 - (void)setInstanceId:(int32_t)instanceId;
 @end
 
@@ -41,6 +43,8 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   id<LynxServiceEventReporterProtocol> _reporter;
   LynxEmbeddedTimingCollector* _embeddedCollector;
   BOOL _embeddedModeEnabled;
+  int32_t _instanceId;
+  __weak id<TemplateRenderCallbackProtocol> _embeddedTimingClient;
 }
 
 - (instancetype _Nonnull)initWithObserver:(id<LynxPerformanceObserverProtocol> _Nonnull)observer {
@@ -48,6 +52,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
     _observer = observer;
     _fspTracer = [[LynxFSPTracer alloc] init];
     _embeddedModeEnabled = NO;
+    _instanceId = ::kUnknownInstanceId;
   }
   return self;
 }
@@ -56,19 +61,27 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   _nativeWeakActorPtr = nativeActor;
   [_fspTracer setNativeActor:nativeActor];
   if (nativeActor) {
-    [_embeddedCollector setInstanceId:nativeActor->GetInstanceId()];
+    [self setInstanceId:nativeActor->GetInstanceId()];
   }
+}
+
+- (void)setInstanceId:(int32_t)instanceId {
+  _instanceId = instanceId;
+  [_embeddedCollector setInstanceId:instanceId];
 }
 
 - (void)setEmbeddedModeEnabled:(BOOL)enabled {
   _embeddedModeEnabled = enabled;
   if (enabled) {
     _embeddedCollector = [[LynxEmbeddedTimingCollector alloc] initWithObserver:_observer];
-    auto actorPtr = _nativeWeakActorPtr.lock();
-    if (actorPtr) {
-      [_embeddedCollector setInstanceId:actorPtr->GetInstanceId()];
-    }
+    _embeddedCollector.embeddedTimingClient = _embeddedTimingClient;
+    [_embeddedCollector setInstanceId:_instanceId];
   }
+}
+
+- (void)setEmbeddedTimingClient:(id<TemplateRenderCallbackProtocol>)client {
+  _embeddedTimingClient = client;
+  _embeddedCollector.embeddedTimingClient = client;
 }
 
 #pragma mark - LynxMemoryMonitorProtocol

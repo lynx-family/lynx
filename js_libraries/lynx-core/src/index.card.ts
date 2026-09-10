@@ -46,7 +46,5 @@ nativeGlobal.LynxSDKCore = {
 nativeGlobal.Headers = Headers;
 nativeGlobal.AbortController = AbortController;
 nativeGlobal.AbortSignal = AbortSignal;
-nativeGlobal.TextEncoder = TextEncoder;
-nativeGlobal.TextDecoder = TextDecoder;
 nativeGlobal.URL = URL;
 URLSearchParamsPolyfill(nativeGlobal);

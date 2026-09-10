@@ -60,6 +60,7 @@ group("lynx_test") {
     "../../core/services/replay:replay_unit_test",
     "../../core/shared_data:shared_data_test_exec",
     "../../core/shell/testing:shell_tests",
+    "../../gfx:animation_keyframe_unittests_exec",
     "../../gfx:geometry_unittests_exec",
     "../../third_party/binding:binding_tests",
   ]

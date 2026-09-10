@@ -100,7 +100,7 @@ bool CompositorService::SubmitFrame(
       PrepareBackgroundSubmit(*background_frame, submit_infos);
   did_encode &= background_submit.did_encode;
 
-  CreateMissingSurfaces(overlay_render_requests.size(), context);
+  CreateMissingSurfaces(overlay_render_requests, context);
 
   for (OverlayData& overlay_data : overlay_render_requests) {
     const skity::Rect& overlay_rect = overlay_data.rect;
@@ -214,16 +214,23 @@ void CompositorService::OnDestroy() {
   compositor_surfaces_.clear();
 }
 
-void CompositorService::CreateMissingSurfaces(size_t required_surfaces,
-                                              clay::GrContextPtr context) {
+void CompositorService::CreateMissingSurfaces(
+    const std::vector<OverlayData>& overlay_render_requests,
+    clay::GrContextPtr context) {
+  const size_t required_surfaces = overlay_render_requests.size();
   if (required_surfaces <= compositor_surfaces_.size()) {
     return;
   }
 
+  const size_t existing_surfaces = compositor_surfaces_.size();
   compositor_surfaces_.reserve(required_surfaces);
   auto created_surfaces = overlay_service_->CreatePlatformOverlay(
-      required_surfaces - compositor_surfaces_.size());
-  for (auto& surface : created_surfaces) {
+      required_surfaces - existing_surfaces);
+  for (size_t i = 0; i < created_surfaces.size(); ++i) {
+    auto& surface = created_surfaces[i];
+    // On Windows, this binds the overlay to the window required by
+    // CreateGPUSurface.
+    surface->PrepareSurface(overlay_render_requests[existing_surfaces + i]);
     compositor_surfaces_.emplace_back(CompositorSurface{
         .platform_overlay = surface,
         .surface = surface->GetOutputSurface()->CreateGPUSurface(context)});

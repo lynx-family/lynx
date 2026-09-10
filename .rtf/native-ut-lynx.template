@@ -2,6 +2,11 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+# NOTE: every builder below must own a distinct output directory. `gn gen`
+# rewrites a directory wholesale and RTF generates all builders up front, so two
+# builders sharing one directory means the last one silently wins: the other
+# builder's args are dropped and its targets are built with the wrong
+# configuration.
 builder({
     "default" :{
         "args": [
@@ -14,6 +19,19 @@ builder({
             f"is_asan={options.get_str('enable_asan', 'false')}",
         ],
         "output": "out/Default",
+        "type": "gn",
+    },
+
+    "builder_for_encode_ut" :{
+        "args": [
+            "build_lepus_compile=true",
+            "enable_inspector=true",
+            "enable_inspector_test=true",
+            "is_encoder_ut=true",
+            "enable_lepusng_bytecode_opt=true",
+            f"is_debug={options.get_str('is_debug', 'false')}",
+        ],
+        "output": "out/Default_encode_ut",
         "type": "gn",
     },
 
@@ -39,7 +57,7 @@ builder({
             "use_flutter_cxx=false",
             "is_debug=false",
         ],
-        "output": "out/Default",
+        "output": "out/Default_starlight_geometry",
         "type": "gn",
     },
 })
@@ -66,6 +84,14 @@ coverage({
 })
 
 targets({
+    "encoder_tests_exec":{
+        "cwd": ".",
+        "owners":["songshourui.null"],
+        "coverage": False,
+        "enable_parallel":True,
+        "builder":"builder_for_encode_ut",
+        "enable":options.get_bool('enable_encode_ut', False),
+    },
     "base_unittests_exec":{
         "cwd": ".",
         "owners":["ZhaoSongGOO"],

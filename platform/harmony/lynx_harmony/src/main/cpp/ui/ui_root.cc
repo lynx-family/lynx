@@ -11,6 +11,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 namespace lynx {
 namespace tasm {
 namespace harmony {
@@ -74,6 +75,10 @@ UIRoot::~UIRoot() {
                                               NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_EVENT_ON_DETACH);
+  if (is_position_change_observation_enabled_) {
+    NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
+                                                NODE_EVENT_ON_AREA_CHANGE);
+  }
   NodeManager::Instance().UnregisterNodeEvent(
       root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE);
   NodeManager::Instance().DisposeNode(root_proxy_);
@@ -121,6 +126,10 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
   } else if (event_type == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
     context_->OnRootDetachedFromViewTree();
+  } else if (event_type == NODE_EVENT_ON_AREA_CHANGE) {
+    if (auto* owner = context_->GetUIOwner(); owner != nullptr) {
+      owner->RequestPositionChangeEvents();
+    }
   } else if (event_type == NODE_ON_TOUCH_INTERCEPT) {
     context_->OnTouchEvent(OH_ArkUI_NodeEvent_GetInputEvent(event),
                            context_->Root());
@@ -169,6 +178,20 @@ bool UIRoot::IsVisible() {
   return is_root_attached_ && UIBase::IsVisible() &&
          (!context_->EnableHarmonyVisibleAreaChangeForExposure() ||
           is_root_visible_);
+}
+
+void UIRoot::SetPositionChangeObservationEnabled(bool enabled) {
+  if (is_position_change_observation_enabled_ == enabled) {
+    return;
+  }
+  is_position_change_observation_enabled_ = enabled;
+  if (enabled) {
+    NodeManager::Instance().RegisterNodeEvent(root_proxy_,
+                                              NODE_EVENT_ON_AREA_CHANGE, this);
+  } else {
+    NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
+                                                NODE_EVENT_ON_AREA_CHANGE);
+  }
 }
 
 void UIRoot::OnNodeReady() {

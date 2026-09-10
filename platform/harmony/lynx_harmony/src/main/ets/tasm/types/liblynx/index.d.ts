@@ -8,6 +8,8 @@ import type { NodeContent } from '@ohos.arkui.node';
 
 export const initGlobalEnv: (resourceManager: Object) => void;
 
+export const setupHarmonyMessageLoopPromiseMicrotask: () => boolean;
+
 export const registerImageService: (instance: number[]) => void;
 
 export const setEmojiResourceFetcher: (fetcher: Object) => void;
@@ -150,6 +152,8 @@ export class LynxTemplateRenderer {
 
   loadTemplateBundle(url: string, bundle: TemplateBundle, processor?: string, templateData?: Object, readOnly?: boolean,
     enableDumpElementTree?: boolean, timingOption?: Object)
+
+  registerLazyBundle(url: string, bundle: TemplateBundle): boolean;
 
   updateViewport(width: number, widthMode: number, height: number, heightMode: number): void;
 
@@ -304,7 +308,7 @@ export class UIBase {
     onNodeReady: Function,
     customLayout: boolean, updateExtraData: Function,
     needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function,
-    isScrollable: Function, scrollX: Function, scrollY: Function);
+    isScrollable: Function, scrollX: Function, scrollY: Function, isLayoutPlaceholder: boolean);
 
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
 
@@ -408,6 +412,17 @@ export class ExtensionModule {
   nativeDestroy(): void;
 
   nativeRegisterService(type: string, service: Object): void;
+
+  nativeAddDownStreamSurface(
+      canvasName: string, surfaceId: string, width: number, height: number,
+      scaleMode: number, hasSourceRect: boolean, sourceX: number,
+      sourceY: number, sourceWidth: number, sourceHeight: number,
+      maxFPS: number): bigint|undefined;
+
+  nativeRemoveDownStreamSurface(canvasName: string, surfaceKey: bigint): void;
+
+  nativeSetAudioDownstreamCallback(callback: Object|undefined, mode: number):
+      void;
 }
 
 export class LynxRuntimeWrapper {

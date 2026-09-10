@@ -69,8 +69,9 @@ class NativePaintingCtxPlatformRef
   void DestroyPaintingNode(int parent, int child, int index) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes,
                         bool tend_to_flatten);
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) override;
 
   // Set the engine actor for the painting context ref.
   void SetLynxEngineActorForPlatformContextRef(
@@ -106,6 +107,8 @@ class NativePaintingCtxPlatformRef
   PlatformEventEmitter *GetEventEmitter();
   // Get PlatformEventTargetHelper instance.
   PlatformEventTargetHelper *GetEventTargetHelper();
+  // Get [x, y, width, height] in the page root's platform layout units.
+  std::vector<float> GetRectToLynxView(int32_t id);
   // Update the platform event bundle of the target element.
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
   // Get the platform event bundle of the target element.
@@ -172,7 +175,7 @@ class NativePaintingCtxPlatformRef
   void MarkEventTargetTreeDirty(int32_t renderer_id);
   void MarkEventTargetRootDirty(int32_t root_id);
   void ClearEventTargetRootDirty(int32_t root_id);
-  bool EnableEventThroughInheritFromPage() const;
+  PlatformEventThroughConfig GetEventThroughConfig() const;
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeForRoot(
       int32_t root_id);
 

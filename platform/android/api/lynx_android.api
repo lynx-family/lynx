@@ -1727,6 +1727,7 @@ public class com::lynx::tasm::EmbeddedMode :  {
 
 public class com::lynx::tasm::performance::timing::EmbeddedTimingCollector :  {
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setObserver(WeakReference< IPerformanceObserver > observer);
+  public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setEmbeddedTimingClient(WeakReference< LynxViewClient > timingClient);
   public void com.lynx.tasm.performance.timing.EmbeddedTimingCollector.setInstanceId(int instanceId);
   public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasEmitLoadBundleEvent();
   public boolean com.lynx.tasm.performance.timing.EmbeddedTimingCollector.hasPendingUpdateEvent();
@@ -1775,8 +1776,6 @@ public class abstract com::lynx::tasm::EventEmitter :  {
   public abstract void com.lynx.tasm.EventEmitter.setTestTapTracker(ITestTapTrack track);
   public abstract void com.lynx.tasm.EventEmitter.sendLayoutEvent();
   public abstract void com.lynx.tasm.EventEmitter.setInPreLoad(boolean preload);
-  public abstract void com.lynx.tasm.EventEmitter.addObserver(LynxEventObserver observer);
-  public abstract void com.lynx.tasm.EventEmitter.removeObserver(LynxEventObserver observer);
   public abstract void com.lynx.tasm.EventEmitter.registerEventReporter(LynxEventReporter reporter);
   public abstract void com.lynx.tasm.EventEmitter.registerEventFallback(LynxEventFallback fallback);
   public void com.lynx.tasm.EventEmitter.onInternalEvent(LynxInternalEvent event);
@@ -3566,7 +3565,7 @@ public class abstract com::lynx::tasm::behavior::LayoutContext :  {
   public abstract DisplayMetrics com.lynx.tasm.behavior.LayoutContext.getScreenMetrics();
   public void com.lynx.tasm.behavior.LayoutContext.triggerLayout();
   public long com.lynx.tasm.behavior.LayoutContext.getNativeLayoutContextPtr();
-  public void com.lynx.tasm.behavior.LayoutContext.destroy();
+  public synchronized void com.lynx.tasm.behavior.LayoutContext.destroy();
 }
 
 public class com::lynx::tasm::animation::layout::LayoutCreateAnimation : com.lynx.tasm.animation.layout.BaseLayoutAnimation {
@@ -4528,6 +4527,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isFocusable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isScrollable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isOverlay();
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isExternalExposureRoot();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isClickable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isLongClickable();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.enableTouchPseudoPropagation();
@@ -5019,7 +5019,6 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableFlattenTranslateZ();
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventThrough();
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventThroughInheritFromPage();
-  public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewIntersectionObserver();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNewSticky();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableNativeInteraction();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableAutoNonFlatten();
@@ -5334,6 +5333,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.setLastUrl(String url);
   public boolean com.lynx.tasm.LynxEnv.hasInited();
   public boolean com.lynx.tasm.LynxEnv.isInitCompleted();
+  public void com.lynx.tasm.LynxEnv.prepareDevToolForDevelopmentBeforeInit();
   public boolean com.lynx.tasm.LynxEnv.isLynxDebugEnabled();
   public void com.lynx.tasm.LynxEnv.initDevtool();
   public void com.lynx.tasm.LynxEnv.enableLynxDebug(boolean enableLynxDebug);
@@ -5431,6 +5431,8 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.enableCheckAccessFromNonUIThread();
   public boolean com.lynx.tasm.LynxEnv.enableTextLayoutCache();
   public boolean com.lynx.tasm.LynxEnv.enableLazyInitA11y();
+  public void com.lynx.tasm.LynxEnv.enablePlatformObservability(boolean enable);
+  public boolean com.lynx.tasm.LynxEnv.isPlatformObservabilityEnabled();
   public boolean com.lynx.tasm.LynxEnv.enableFSP();
   public HashMap< String, String > com.lynx.tasm.LynxEnv.getFSPConfig();
   public boolean com.lynx.tasm.LynxEnv.isFspScreenshotEnabled();
@@ -5463,6 +5465,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.FORCE_LAYOUT_ON_BACKGROUND_THREAD FORCE_LAYOUT_ON_BACKGROUND_THREAD;
   public com.lynx.tasm.LynxEnvKey.ENABLE_SKIP_UPDATE_VIEWPORT_ON_INIT_WHEN_MEASURE_SPEC_EMPTY ENABLE_SKIP_UPDATE_VIEWPORT_ON_INIT_WHEN_MEASURE_SPEC_EMPTY;
   public com.lynx.tasm.LynxEnvKey.ENABLE_FALLBACK_NEW_ENGINE_REBUILD ENABLE_FALLBACK_NEW_ENGINE_REBUILD;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_LAYOUT_CONTEXT_GLOBAL_REF_FOR_DESTROY ENABLE_LAYOUT_CONTEXT_GLOBAL_REF_FOR_DESTROY;
   public com.lynx.tasm.LynxEnvKey.ENABLE_REPORT_CREATE_ASYNC_TAG ENABLE_REPORT_CREATE_ASYNC_TAG;
   public com.lynx.tasm.LynxEnvKey.ENABLE_SVG_ASYNC ENABLE_SVG_ASYNC;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_EVENT_REPORT ENABLE_IMAGE_EVENT_REPORT;
@@ -5663,8 +5666,6 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
   public void com.lynx.tasm.LynxEventEmitter.setTestTapTracker(ITestTapTrack track);
   public void com.lynx.tasm.LynxEventEmitter.sendLayoutEvent();
   public void com.lynx.tasm.LynxEventEmitter.setInPreLoad(boolean preload);
-  public void com.lynx.tasm.LynxEventEmitter.addObserver(LynxEventObserver observer);
-  public void com.lynx.tasm.LynxEventEmitter.removeObserver(LynxEventObserver observer);
   public void com.lynx.tasm.LynxEventEmitter.registerEventReporter(LynxEventReporter reporter);
   public void com.lynx.tasm.LynxEventEmitter.registerEventFallback(LynxEventFallback fallback);
   public void com.lynx.tasm.LynxEventEmitter.startEventGenerate(LynxEvent event);
@@ -5676,10 +5677,6 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
 
 public interface com::lynx::tasm::EventEmitter::LynxEventFallback {
   public void com.lynx.tasm.EventEmitter.LynxEventFallback.checkFallbackForLynxEvent(boolean enableAsync);
-}
-
-public interface com::lynx::tasm::EventEmitter::LynxEventObserver {
-  public void com.lynx.tasm.EventEmitter.LynxEventObserver.onLynxEvent(LynxEventType type, LynxEvent event);
 }
 
 public interface com::lynx::tasm::EventEmitter::LynxEventReporter {
@@ -5718,12 +5715,6 @@ public enum com::lynx::tasm::event::LynxEvent::LynxEventType {
   public com.lynx.tasm.event.LynxEvent.LynxEventType.kWheel kWheel;
   public com.lynx.tasm.event.LynxEvent.LynxEventType.kKeyboard kKeyboard;
   public com.lynx.tasm.event.LynxEvent.LynxEventType.kCustom kCustom;
-}
-
-public enum com::lynx::tasm::EventEmitter::LynxEventType {
-  public com.lynx.tasm.EventEmitter.LynxEventType.kLynxEventTypeTouchEvent kLynxEventTypeTouchEvent;
-  public com.lynx.tasm.EventEmitter.LynxEventType.kLynxEventTypeCustomEvent kLynxEventTypeCustomEvent;
-  public com.lynx.tasm.EventEmitter.LynxEventType.kLynxEventTypeLayoutEvent kLynxEventTypeLayoutEvent;
 }
 
 public class com::lynx::jsbridge::LynxExposureModule : com.lynx.jsbridge.LynxContextModule {
@@ -6176,7 +6167,7 @@ public class com::lynx::tasm::behavior::LynxIntersectionObserver :  {
   public void com.lynx.tasm.behavior.LynxIntersectionObserver.checkForIntersections();
 }
 
-public class com::lynx::tasm::behavior::LynxIntersectionObserverManager : com.lynx.tasm.behavior.LynxObserverManager, com.lynx.tasm.EventEmitter.LynxEventObserver {
+public class com::lynx::tasm::behavior::LynxIntersectionObserverManager : com.lynx.tasm.behavior.LynxObserverManager {
   public com.lynx.tasm.behavior.LynxIntersectionObserverManager.LynxIntersectionObserverManager(LynxContext context, JSProxy proxy);
   public LynxContext com.lynx.tasm.behavior.LynxIntersectionObserverManager.getContext();
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.sendIntersectionObserverEvent(final int componentSign, final JavaOnlyMap args);
@@ -6185,7 +6176,6 @@ public class com::lynx::tasm::behavior::LynxIntersectionObserverManager : com.ly
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.removeIntersectionObserver(final int observerId);
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.removeAttachedIntersectionObserver(final LynxBaseUI ui);
   public LynxIntersectionObserver com.lynx.tasm.behavior.LynxIntersectionObserverManager.getObserverById(int observerId);
-  public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.onLynxEvent(EventEmitter.LynxEventType type, LynxEvent event);
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.notifyObservers();
   public void com.lynx.tasm.behavior.LynxIntersectionObserverManager.clear();
 }
@@ -7722,6 +7712,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.resetData(TemplateData data);
   public void com.lynx.tasm.LynxView.reloadTemplate(TemplateData data);
   public void com.lynx.tasm.LynxView.reloadTemplate(TemplateData data, TemplateData globalProps);
+  public boolean com.lynx.tasm.LynxView.registerLazyBundle(@NonNull String url, @NonNull TemplateBundle bundle);
   public boolean com.lynx.tasm.LynxView.registerDynamicComponent(@NonNull String url, @NonNull TemplateBundle bundle);
   public Map< String, Object > com.lynx.tasm.LynxView.getPageDataByKey(String[] keys);
   public void com.lynx.tasm.LynxView.updateGlobalProps(@NonNull Map< String, Object > props);
@@ -7840,6 +7831,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableAirStrictMode(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableMultiAsyncThread(boolean enableMultiAsyncThread);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableSyncFlush(boolean enable);
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableNativeLifecycleOptimization(boolean enable);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setImageCustomParam(Map< String, String > imageCustomParams);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxImageConfig(LynxImageConfig imageConfig);
   public LynxImageConfig com.lynx.tasm.LynxViewBuilder.getLynxImageConfig();
@@ -8666,7 +8658,6 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getEnableDisexposureWhenLynxHidden();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenLayout();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenReload();
-  public boolean com.lynx.tasm.PageConfig.getEnableNewIntersectionObserver();
   public int com.lynx.tasm.PageConfig.getObserverFrameRate();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureUIMargin();
   public int com.lynx.tasm.PageConfig.getLongPressDuration();
@@ -8814,6 +8805,7 @@ public interface com::lynx::tasm::behavior::PatchFinishListener {
 public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm.performance.memory.IMemoryMonitor, com.lynx.tasm.performance.timing.ITimingCollector {
   public void com.lynx.tasm.performance.PerformanceController.setEmbeddedMode(boolean useEmbeddedMode);
   public boolean com.lynx.tasm.performance.PerformanceController.isEmbeddedMode();
+  public void com.lynx.tasm.performance.PerformanceController.setEmbeddedTimingClient(LynxViewClient timingClient);
   public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
   public void com.lynx.tasm.performance.PerformanceController.setInstanceId(int instanceId);
   public int com.lynx.tasm.performance.PerformanceController.getInstanceId();
@@ -11048,6 +11040,20 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT CHOREOGRAPHER_LAYOUT_TICK_TRIGGER_LAYOUT;
 }
 
+public class com::lynx::tasm::behavior::ui::transfer::TransferHostView : com.lynx.tasm.behavior.ui.view.AndroidView {
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.addView(View child, int index, ViewGroup.LayoutParams params);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.removeView(View view);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.removeViewAt(int index);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.removeAllViews();
+}
+
+public class com::lynx::tasm::behavior::ui::transfer::TransferShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.attachNativePtr(long ptr);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.updateHostConstraints(float width, MeasureMode widthMode, float height, MeasureMode heightMode);
+  public MeasureResult com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.measure(MeasureParam param, MeasureContext context);
+  public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.align(AlignParam param, AlignContext context);
+}
+
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
   public final TransformOrigin com.lynx.tasm.behavior.ui.utils.TransformOrigin.TRANSFORM_ORIGIN_DEFAULT TRANSFORM_ORIGIN_DEFAULT;
   public static TransformOrigin com.lynx.tasm.behavior.ui.utils.TransformOrigin.MakeTransformOrigin(ReadableArray array);
@@ -11665,6 +11671,7 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setLynxDirection(int direction);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.measure();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.layout();
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.layoutChildren();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onNodeReload();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.invalidate();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.destroy();
@@ -11859,6 +11866,13 @@ public class com::lynx::tasm::utils::UIThreadUtils :  {
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThread(Runnable runnable, long delayMs);
   public static void com.lynx.tasm.utils.UIThreadUtils.runOnUiThreadAtTime(Runnable runnable, Object token, long uptimeMillis);
   public static void com.lynx.tasm.utils.UIThreadUtils.removeCallbacks(Runnable r, Object token);
+}
+
+public class com::lynx::tasm::behavior::ui::transfer::UITransfer : com::lynx::tasm::behavior::ui::UIGroup< TransferHostView > {
+  public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context);
+  public com.lynx.tasm.behavior.ui.transfer.UITransfer.UITransfer(LynxContext context, Object params);
+  public boolean com.lynx.tasm.behavior.ui.transfer.UITransfer.canHaveFlattenChild();
+  public boolean com.lynx.tasm.behavior.ui.transfer.UITransfer.isExternalExposureRoot();
 }
 
 public class com::lynx::tasm::behavior::ui::view::UIView : com.lynx.tasm.behavior.ui.view.UISimpleView< AndroidView > {

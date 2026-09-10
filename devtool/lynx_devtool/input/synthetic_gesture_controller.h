@@ -53,6 +53,8 @@ class SyntheticGestureController
   void OnFrame(int64_t frame_time_us);
   void OnInputProcessed(uint64_t ack_id, bool success);
   void Complete(SyntheticGestureResult result);
+  // Drops every queued gesture, invoking each callback with kFailed.
+  void CancelPendingGestures();
 
   std::shared_ptr<InputEventTarget> target_;
   fml::RefPtr<fml::TaskRunner> task_runner_;

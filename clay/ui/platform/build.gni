@@ -15,6 +15,10 @@ ui_platform_sources = [
   "text_emoji_provider.h",
 ]
 
+if (is_win || is_mac) {
+  ui_platform_sources += [ "cover_view_platform_service.h" ]
+}
+
 if (is_android && !is_headless) {
   # Exactly one InternalPlatformViewTags() implementation should be linked.
   ui_platform_sources += [ "native_view_tags_android.cc" ]

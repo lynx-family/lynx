@@ -19,7 +19,10 @@ import com.journeyapps.barcodescanner.BarcodeResult;
 import com.journeyapps.barcodescanner.DecoratedBarcodeView;
 import com.journeyapps.barcodescanner.DefaultDecoderFactory;
 import com.lynx.explorer.R;
-import com.lynx.explorer.shell.TemplateDispatcher;
+import com.lynx.explorer.routing.RequestedRuntime;
+import com.lynx.explorer.routing.RouteCoordinator;
+import com.lynx.explorer.routing.RouteSource;
+import com.lynx.explorer.sparkling.ExplorerRuntimePreferences;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -35,7 +38,11 @@ public class QRScanActivity extends Activity {
     public void barcodeResult(BarcodeResult result) {
       mUrl = result.getText();
 
-      TemplateDispatcher.dispatchUrl(getApplication(), mUrl);
+      RequestedRuntime runtime =
+          "sparkling".equals(ExplorerRuntimePreferences.read(QRScanActivity.this))
+          ? RequestedRuntime.SPARKLING
+          : RequestedRuntime.LYNX;
+      RouteCoordinator.open(QRScanActivity.this, mUrl, runtime, RouteSource.SCANNER);
 
       finish();
     }

@@ -50,6 +50,10 @@ export abstract class UIBase {
     return false;
   }
 
+  protected isLayoutPlaceholder(): boolean {
+    return false;
+  }
+
   focusable(): boolean {
     return false;
   }
@@ -93,9 +97,16 @@ export abstract class UIBase {
         this.dispose,
         this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
         this.needWindowStateChangeEvent(),
-        this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY);
+        this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY,
+        this.isLayoutPlaceholder());
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
+  }
+
+  attachToPlatformView(uiContext: UIContext): FrameNode | null {
+    this.logicalPixels = true;
+    this.uiContext = uiContext;
+    return this.getFrameNode(uiContext);
   }
 
   sendGlobalEvent(name: string, params: Object[]) {
@@ -159,7 +170,11 @@ export abstract class UIBase {
   }
 
   setFocusedUI() {
-    this.nativeUI?.setFocusedUI();
+    if (this.nativeUI) {
+      this.nativeUI.setFocusedUI();
+    } else {
+      this.lynxContext.setFocusedUI?.(this.sign);
+    }
   }
 
   unsetFocusedUI() {

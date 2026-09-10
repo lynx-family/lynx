@@ -10,11 +10,14 @@ unittest_set("devtool_agent_testset") {
     "../../lynx_devtool/agent/domain_agent/inspector_dom_agent_ng_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_input_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_log_agent_unittest.cc",
+    "../../lynx_devtool/agent/domain_agent/inspector_lynx_native_module_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_lynx_setting_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_memory_agent_unittest.cc",
+    "../../lynx_devtool/agent/domain_agent/inspector_network_agent_unittest.cc",
     "../../lynx_devtool/agent/inspector_tasm_executor_unittest.cc",
     "../../lynx_devtool/agent/inspector_ui_executor_unittest.cc",
     "../../lynx_devtool/lynx_devtool_ng_unittest.cc",
+    "../../lynx_devtool/native_module/native_module_record_manager_unittest.cc",
     "devtool_mediator_unittest.cc",
   ]
 
@@ -35,6 +38,7 @@ unittest_set("devtool_agent_testset") {
     "../../lynx_devtool/element:element",
     "../../lynx_devtool/js_debug:js_debug",
     "../../lynx_devtool/message_handler:message_handler",
+    "../../lynx_devtool/native_module:native_module",
     "../../lynx_devtool/shared_data:shared_data",
     "//third_party/zlib",
   ]

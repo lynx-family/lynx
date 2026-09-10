@@ -22,6 +22,9 @@ void CEFExtensionModule::OnLynxViewCreate(lynx_view_t* lynx_view) {
   LYNX_CAPI_TRACE_BEGIN(CEF_TRACE_CATEGORY, TRACE_NAME_REGISTER_VIEW);
   lynx_view_register_native_view(lynx_view, "x-webview",
                                  &cef_webview_create_view, lynx_view);
+  // Keep the implementation tag and expose the public XElement alias.
+  lynx_view_register_native_view(lynx_view, "webview", &cef_webview_create_view,
+                                 lynx_view);
   LYNX_CAPI_TRACE_END(CEF_TRACE_CATEGORY, TRACE_NAME_REGISTER_VIEW);
 }
 

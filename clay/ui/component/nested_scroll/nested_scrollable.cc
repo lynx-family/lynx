@@ -523,14 +523,14 @@ void NestedScrollable::DispatchMouseWheelEvent(const PointerEvent& event) {
     }
     return;
   }
+  if (event.signal_kind == PointerEvent::SignalKind::kStartScroll) {
+    s->SetScrollStatus(ScrollStatus::kDragging);
+  }
   FloatPoint delta = {event.scroll_delta_x, event.scroll_delta_y};
   if (event.is_precise_scroll) {
     s->DoScroll(delta);
   } else {
     s->DoWheelScroll(delta);
-  }
-  if (event.signal_kind == PointerEvent::SignalKind::kStartScroll) {
-    s->SetScrollStatus(ScrollStatus::kDragging);
   }
   if (!need_scroll_animation_ &&
       event.signal_kind == PointerEvent::SignalKind::kEndScroll) {

@@ -61,6 +61,10 @@ class TestVSyncMonitor : public base::VSyncMonitor {
 
 class FiberElementMockTasmDelegate : public test::MockTasmDelegate {
  public:
+  void OnPageUpdated(bool is_first_screen) override {
+    page_updates_.emplace_back(is_first_screen);
+  }
+
   void UpdateLayoutNodeByBundle(
       int32_t id, std::unique_ptr<tasm::LayoutBundle> bundle) override {
     std::unique_lock<std::mutex> locker(mutex_);
@@ -69,6 +73,7 @@ class FiberElementMockTasmDelegate : public test::MockTasmDelegate {
   }
 
   std::mutex mutex_;
+  std::vector<bool> page_updates_;
   std::vector<int> captured_ids_;
   std::vector<std::unique_ptr<LayoutBundle>> captured_bundles_;
 };

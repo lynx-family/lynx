@@ -1,0 +1,19 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../Lynx.gni")
+
+if (is_android && is_debug) {
+  lynx_core_source_set("host_script_android") {
+    sources = [
+      "lynx_view/host_script_lynx_view_binding_android.cc",
+      "runtime/host_script_android_session.h",
+      "runtime/host_script_runtime_binding_android.cc",
+    ]
+    deps = [
+      "../../../base:base",
+      "../runtime:host_script",
+    ]
+  }
+}

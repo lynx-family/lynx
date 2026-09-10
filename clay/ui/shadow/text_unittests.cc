@@ -1,6 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:words wght
 
 #include <initializer_list>
 #include <limits>
@@ -19,6 +20,7 @@
 #include "clay/third_party/txt/src/txt/platform.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/text/raw_text_view.h"
+#include "clay/ui/component/text/text_paragraph_builder.h"
 #include "clay/ui/resource/font_collection.h"
 #include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
@@ -68,14 +70,17 @@ class TestLayoutDelegate : public LayoutDelegate {
 class TextTest : public UITest {
  protected:
   void LoadDataUriFont(const std::string& family_name) {
-    FontCollection::Instance()->PreLoadFontOnMem(
-        fml::MessageLoop::GetCurrent().GetTaskRunner(), nullptr, nullptr,
-        family_name, {"data:font/ttf;base64,AA=="});
+    auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+    FontCollection::Instance()->PreLoadFontOnMem(task_runner, task_runner,
+                                                 nullptr, nullptr, family_name,
+                                                 {"data:font/ttf;base64,AA=="});
   }
 
   void UISetUp() override {
     owner_ =
         new ShadowNodeOwner(fml::MessageLoop::GetCurrent().GetTaskRunner());
+    view_context_ = std::make_unique<ViewContext>(page_.get(), owner_);
+    owner_->SetViewContext(view_context_.get());
     text_shadow_node_ =
         std::make_unique<TextShadowNode>(owner_, std::string("text"), -1);
     raw_text_shadow_node_ = std::make_unique<RawTextShadowNode>(
@@ -90,9 +95,12 @@ class TextTest : public UITest {
     text_shadow_node_.reset();
     raw_text_shadow_node_.reset();
     inline_text_shadow_node_.reset();
+    owner_->SetViewContext(nullptr);
+    view_context_.reset();
     delete owner_;
   }
   ShadowNodeOwner* owner_;
+  std::unique_ptr<ViewContext> view_context_;
   std::unique_ptr<TextShadowNode> text_shadow_node_;
   std::unique_ptr<InlineTextShadowNode> inline_text_shadow_node_;
   std::unique_ptr<RawTextShadowNode> raw_text_shadow_node_;
@@ -225,8 +233,9 @@ TEST_F_UI(TextTest, LoadingAssetFontPrecedesSameNamedSystemFont) {
   });
   task_started.Wait();
 
-  font_collection->PreLoadFontOnMem(load_task_runner, nullptr, nullptr,
-                                    family_name, {"data:font/ttf,invalid"});
+  font_collection->PreLoadFontOnMem(load_task_runner, load_task_runner, nullptr,
+                                    nullptr, family_name,
+                                    {"data:font/ttf,invalid"});
   ASSERT_TRUE(font_collection->HasFontResourceLoading(family_name));
 
   text_shadow_node_->SetFontFamily(family_name + ", " + fallback_family);
@@ -332,6 +341,45 @@ TEST_F_UI(TextTest, FontAndShadowSettersPreserveStyleMetadata) {
   EXPECT_EQ(text_shadow_node_->text_style_->text_shadows, expected_shadows);
 }
 
+TEST_F_UI(TextTest, FontVariationAttributesPropagateToTxtStyle) {
+  clay::Value::Array values;
+  for (const auto& [axis, value] :
+       std::initializer_list<std::pair<const char*, double>>{
+           {"wdth", 150.}, {"wght", 715.}, {"opsz", 12.}}) {
+    values.emplace_back(axis);
+    values.emplace_back(value);
+  }
+  text_shadow_node_->SetAttribute("font-variation-settings",
+                                  clay::Value(std::move(values)));
+  text_shadow_node_->SetAttribute("font-optical-sizing",
+                                  clay::Value(static_cast<uint32_t>(1)));
+  text_shadow_node_->SetFontSize(24.f);
+
+  ASSERT_TRUE(text_shadow_node_->text_style_->font_variations);
+  const auto& clay_variations =
+      *text_shadow_node_->text_style_->font_variations;
+  EXPECT_EQ(clay_variations.at("wdth"), 150.f);
+  EXPECT_EQ(clay_variations.at("wght"), 715.f);
+  EXPECT_EQ(clay_variations.at("opsz"), 12.f);
+  ASSERT_TRUE(text_shadow_node_->text_style_->font_optical_sizing.has_value());
+  EXPECT_TRUE(*text_shadow_node_->text_style_->font_optical_sizing);
+
+  TextParagraphBuilder builder(true, text_shadow_node_->text_style_);
+  builder.PushStyle(*text_shadow_node_->text_style_);
+  const auto& txt_style = builder.PeekStyleForTesting();
+  const auto resolved_variations = txt_style.GetResolvedFontVariations();
+  const auto& axes = resolved_variations.GetAxisValues();
+  EXPECT_EQ(axes.at("wdth"), 150.f);
+  EXPECT_EQ(axes.at("wght"), 715.f);
+  EXPECT_EQ(axes.at("opsz"), 12.f);
+
+  auto auto_optical_style = txt_style;
+  auto_optical_style.font_variations = txt::FontVariations();
+  EXPECT_FLOAT_EQ(
+      auto_optical_style.GetResolvedFontVariations().GetAxisValues().at("opsz"),
+      static_cast<float>(txt_style.font_size));
+}
+
 TEST_F_UI(TextTest, TextGradientAndSolidColorUpdatePaintState) {
   const Gradient gradient;
 
@@ -374,6 +422,39 @@ TEST_F_UI(TextTest, GetLineInfoIsEmptyBeforeParagraphLayout) {
   TextRender text_render(text_shadow_node_.get());
 
   EXPECT_TRUE(text_render.GetLineInfo().empty());
+}
+
+TEST_F_UI(TextTest, LayoutEventReportsLogicalPixelSize) {
+  auto metrics = page_->GetViewportMetrics();
+  metrics.device_pixel_ratio = 2;
+  page_->SetViewportMetrics(metrics);
+  text_shadow_node_->AddEventCallback(event_attr::kEventLayout);
+  raw_text_shadow_node_->SetText("layout event");
+  MeasureConstraint constraint{200.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  const auto result = text_shadow_node_->Measure(constraint);
+  clay::Value::Map event_params;
+  custom_event_callback_ = [&](int, const char* event_name,
+                               clay::Value::Map params) {
+    if (event_attr::kEventLayout == std::string(event_name)) {
+      event_params = std::move(params);
+    }
+  };
+
+  text_shadow_node_->OnLayout(result.width, TextMeasureMode::kDefinite,
+                              result.height, TextMeasureMode::kDefinite,
+                              {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f});
+
+  ASSERT_FALSE(event_params.empty());
+  const auto& size = event_params.at("size").GetMap();
+  const auto get_number = [](const clay::Value& value) {
+    return value.IsDouble() ? value.GetDouble()
+                            : static_cast<double>(value.GetFloat());
+  };
+  EXPECT_DOUBLE_EQ(get_number(size.at("width")),
+                   page_->ConvertTo<kPixelTypeLogical>(result.width));
+  EXPECT_DOUBLE_EQ(get_number(size.at("height")),
+                   page_->ConvertTo<kPixelTypeLogical>(result.height));
 }
 
 TEST_F_UI(TextTest, GetTextInfoHonorsDefaultAndExplicitMaxLine) {

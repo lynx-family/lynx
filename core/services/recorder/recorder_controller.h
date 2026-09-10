@@ -5,6 +5,7 @@
 #ifndef CORE_SERVICES_RECORDER_RECORDER_CONTROLLER_H_
 #define CORE_SERVICES_RECORDER_RECORDER_CONTROLLER_H_
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <string>
@@ -45,5 +46,30 @@ class RecorderController {
 }  // namespace recorder
 }  // namespace tasm
 }  // namespace lynx
+
+extern "C" {
+LYNX_EXPORT_FOR_DEVTOOL bool LynxTestBenchRecorderIsRecording();
+LYNX_EXPORT_FOR_DEVTOOL uint64_t LynxTestBenchRecorderRecordingGeneration();
+LYNX_EXPORT_FOR_DEVTOOL void LynxTestBenchRecorderInitConfig(
+    const char* path, int64_t session_id, float screen_width,
+    float screen_height, int64_t record_id);
+LYNX_EXPORT_FOR_DEVTOOL bool LynxTestBenchRecorderRecordAction(
+    int64_t record_id, const char* function_name, const char* params_json);
+LYNX_EXPORT_FOR_DEVTOOL bool LynxTestBenchRecorderRecordInvokedMethod(
+    int64_t record_id, const char* module_name, const char* method_name,
+    const char* params_json);
+LYNX_EXPORT_FOR_DEVTOOL uint64_t
+LynxTestBenchRecorderRecordInvokedMethodWithGeneration(int64_t record_id,
+                                                       const char* module_name,
+                                                       const char* method_name,
+                                                       const char* params_json);
+LYNX_EXPORT_FOR_DEVTOOL bool LynxTestBenchRecorderRecordCallback(
+    int64_t record_id, const char* module_name, const char* method_name,
+    int64_t callback_id, const char* params_json);
+LYNX_EXPORT_FOR_DEVTOOL bool LynxTestBenchRecorderRecordCallbackWithGeneration(
+    int64_t record_id, const char* module_name, const char* method_name,
+    int64_t callback_id, const char* params_json,
+    uint64_t recording_generation);
+}
 
 #endif  // CORE_SERVICES_RECORDER_RECORDER_CONTROLLER_H_

@@ -43,8 +43,12 @@ class UIOwner {
   using UICreatorFunc = UIBase* (*)(LynxContext*, int, const std::string&);
   using AttachLynxPageUICallback = std::function<void(UIBase*)>;
   static napi_value Init(napi_env env, napi_value exports);
-  void CreateUI(int sign, const std::string& tag,
-                PropBundleHarmony* painting_data, uint32_t node_index);
+  void CreateUI(
+      int sign, const std::string& tag, PropBundleHarmony* painting_data,
+      uint32_t node_index,
+      std::shared_ptr<LynxRendererContext> renderer_context = nullptr);
+  UIBase* CreateFragmentLayerRootHost(int sign);
+  UIBase* CreateFragmentLayerHost(int sign);
   UIBase* CreateJSUI(int sign, const std::string& tag);
   void InsertUI(int parent, int child, int index);
   void RemoveUI(int parent, int child, int index, bool is_move);
@@ -127,6 +131,9 @@ class UIOwner {
   UIIntersectionObserver* GetUIIntersectionObserver(
       int intersection_observer_id);
   void NotifyUIScroll();
+  void UpdatePositionChangeListener(int32_t sign, bool listens);
+  void RequestPositionChangeEvents();
+  void DispatchPositionChangeEventsNow();
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
   void EmulateTouch(const std::string& event_type, int x, int y,
@@ -195,7 +202,8 @@ class UIOwner {
   void RunTaskOnTASMThread(base::closure task) const;
   const fml::RefPtr<fml::TaskRunner>& GetUITaskRunner() const;
   void UpdateNodeReadyPatching(const std::vector<int32_t>& ready_ids,
-                               const std::vector<int32_t>& remove_ids);
+                               const std::vector<int32_t>& remove_ids,
+                               bool should_cache_external_memory_candidates);
   ExternalMemorySnapshot GetExternalMemorySnapshot();
   void RequestExternalMemoryReport(int64_t delay_ms);
   const std::shared_ptr<base::VSyncMonitor>& VSyncMonitor();
@@ -237,6 +245,8 @@ class UIOwner {
   LynxImageConfig* GetLynxImageConfig() const;
 
  private:
+  struct PositionChangeDispatchState;
+
   static const std::unordered_map<std::string, UICreatorFunc> behaviors_;
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value AttachPageRoot(napi_env env, napi_callback_info info);
@@ -271,6 +281,7 @@ class UIOwner {
   float CalculateKeyboardAvoidDistance(UIBase* owner);
   float GetKeyboardAvoidingScreenBottom();
   void ResetKeyboardAvoidingTargetIfNeeded(int32_t sign);
+  bool IsAttachedToRoot(UIBase* ui) const;
 
   int GetJSNodeType(int sign, const std::string& tag) const;
   static constexpr int32_t kInvalidKeyboardAvoidingSign = -2;
@@ -280,6 +291,8 @@ class UIOwner {
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> layout_changed_nodes_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> keyboard_event_observers_;
   std::unordered_set<UIBase*> window_state_listeners_;
+  std::unordered_set<int32_t> position_change_listeners_;
+  std::shared_ptr<PositionChangeDispatchState> position_change_dispatch_state_;
 
   napi_env env_{nullptr};
   napi_ref js_this_{nullptr};

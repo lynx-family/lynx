@@ -24,6 +24,12 @@ podspec_target("lynx_podspec") {
       git = "https://github.com/lynx-family/lynx.git"
     }
     requires_arc = true
+    if (use_flatten_deps) {
+      preserve_paths = [
+        "core/renderer/css/ng/parser/css_parser_token.h",
+        "third_party/double-conversion/double-conversion/utils.h",
+      ]
+    }
     default_subspec = "Framework"
     compiler_flags = [
       "-Wall",
@@ -309,6 +315,8 @@ subspec_target("lynx") {
     "shadow_node/text/LynxTextRenderer.m",
     "shadow_node/text/LynxTextRendererCache.m",
     "shadow_node/text/LynxTextShadowNode.m",
+    "shadow_node/transfer/LynxTransferShadowNode.h",
+    "shadow_node/transfer/LynxTransferShadowNode.mm",
     "ui/LynxFilterUtil+System.m",
     "ui/LynxFilterUtil.h",
     "ui/LynxFilterUtil.m",
@@ -332,7 +340,6 @@ subspec_target("lynx") {
     "ui/LynxUIContext.mm",
     "ui/LynxUIExposure+Internal.h",
     "ui/LynxUIExposure.m",
-    "ui/LynxUIIntersectionObserver+Internal.h",
     "ui/LynxUIIntersectionObserver.h",
     "ui/LynxUIIntersectionObserver.mm",
     "ui/LynxUIOwner+Accessibility.h",
@@ -364,6 +371,8 @@ subspec_target("lynx") {
     "ui/list/container/ListNodeInfoFetcher.mm",
     "ui/list/container/LynxListItemHelper.h",
     "ui/list/container/LynxListItemHelper.m",
+    "ui/list/container/LynxListScrollHelper.h",
+    "ui/list/container/LynxListScrollHelper.m",
     "ui/list/container/LynxListStickyManager.h",
     "ui/list/container/LynxListStickyManager.m",
     "ui/list/container/LynxUIListContainer.mm",
@@ -425,6 +434,12 @@ subspec_target("lynx") {
     "ui/text/LynxTextOverflowLayer.m",
     "ui/text/LynxTextView.m",
     "ui/text/LynxUIText.m",
+    "ui/transfer/LynxTransferHostView.h",
+    "ui/transfer/LynxTransferHostView.m",
+    "ui/transfer/LynxTransferWrapperView.h",
+    "ui/transfer/LynxTransferWrapperView.m",
+    "ui/transfer/LynxUITransfer.h",
+    "ui/transfer/LynxUITransfer.mm",
     "utils/LynxGradientUtils.mm",
     "utils/LynxPropertyDiffMap.m",
     "utils/LynxUIKitAPIAdapter.m",
@@ -544,6 +559,7 @@ subspec_target("UnitTests") {
     "ui/frame/LynxUIFrameUnitTest.mm",
     "ui/image/LynxUIImageUnitTest.m",
     "ui/list/container/LynxListItemHelperUnitTest.m",
+    "ui/list/container/LynxListScrollHelperUnitTest.m",
     "ui/list/container/LynxListStickyManagerUnitTest.m",
     "ui/list/container/LynxUIListContainerUnitTest.m",
     "ui/list/list_light/layout/LynxListLayoutManagerUnitTest.mm",
@@ -775,6 +791,18 @@ subspec_target("Recorder") {
   }
 }
 
+# Keep the recorder available to explicit host integrations without adding it
+# to Lynx's default subspec graph.
+subspec_target("TestBenchRecorder") {
+  header_mappings_dir = "."
+  libraries = [ "stdc++" ]
+  deps = [ "../../../../core/services/recorder" ]
+  dependency = [ "Lynx/Native" ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_TESTBENCH_RECORDER=1" ]
+  }
+}
+
 # TODO(zhixuan): migrate zlib
 subspec_target("zlib") {
   compiler_flags = [
@@ -789,12 +817,32 @@ subspec_target("zlib") {
 }
 
 subspec_target("amoeba") {
+  if (use_flatten_deps) {
+    # Avoid duplicate CocoaPods header outputs while keeping the excluded
+    # implementation headers reachable from their source directories.
+    pattern_exclude_files = [
+      "../../../../core/renderer/css/ng/parser/css_parser_token.h",
+      "../../../../third_party/double-conversion/double-conversion/utils.h",
+    ]
+    pod_target_xcconfig = {
+      HEADER_SEARCH_PATHS = [
+        "//PODS_TARGET_SRCROOT",
+        "//PODS_TARGET_SRCROOT/third_party/double-conversion",
+      ]
+    }
+  } else {
+    header_mappings_dir = "."
+  }
+
   sources =
       [ "../../../../core/renderer/css/ng/selector/lynx_css_selector_impl.cc" ]
   deps = [
     "../../../../core/renderer/css",
+    "../../../../core/renderer/css:css_parser",
     "../../../../core/renderer/simple_styling",
   ]
+  flatten_deps =
+      [ "../../../../third_party/double-conversion:DoubleConversion" ]
 }
 
 subspec_target("animation") {
@@ -922,6 +970,9 @@ subspec_target("template_bundle") {
     "../../../../core/template_bundle/template_codec:template_decoder",
     "../../../../core/template_bundle/template_codec/binary_decoder:binary_decoder",
   ]
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Native/amoeba" ]
+  }
 }
 
 subspec_target("third_party") {
@@ -945,7 +996,10 @@ subspec_target("Replay") {
   pod_target_xcconfig = {
     GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_TESTBENCH_REPLAY=1" ]
   }
-  deps = [ "../../../../core/services/replay" ]
+  deps = [
+    "../../../../core/services/replay",
+    "../../../../core/services/replay:replay_resource_cache",
+  ]
 }
 
 subspec_target("Trace") {

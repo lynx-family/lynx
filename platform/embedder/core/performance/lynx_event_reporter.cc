@@ -44,7 +44,7 @@ class LynxReporterServiceObserver : public LynxEventReporterObserver {
   LynxReporterServiceObserver() = default;
   ~LynxReporterServiceObserver() = default;
 
-  void OnReportEvent(int32_t instance_id, const std::string& event_name,
+  void OnReportEvent(const std::string& event_name,
                      const lynx::pub::LynxValue& props) {
     lynx_service_center_t* service_center = lynx_service_get_center_instance();
     if (service_center) {
@@ -60,34 +60,37 @@ class LynxReporterServiceObserver : public LynxEventReporterObserver {
   }
 };
 
-void LynxEventReporter::OnEvent(int32_t instance_id,
-                                tasm::report::MoveOnlyEvent&& event) {
+void LynxEventReporter::OnEvent(tasm::report::MoveOnlyEvent&& event) {
   LynxEventReporter::InitLynxReporterServiceObserverIfNeeded();
 
-  RunTaskInReportThread([instance_id, event = std::move(event)]() {
+  RunTaskInReportThread([event = std::move(event)]() {
     auto map_value =
         lynx::pub::LynxValue(lynx::pub::LynxValue::kCreateAsMapTag);
 
     // 1. set properties
     {
-      for (const auto& item : event.GetStringProps()) {
-        map_value.SetProperty(item.first.c_str(),
-                              lynx::pub::LynxValue(item.second));
-      }
-      for (const auto& item : event.GetIntProps()) {
-        map_value.SetProperty(item.first.c_str(),
-                              lynx::pub::LynxValue(item.second));
-      }
-      for (const auto& item : event.GetDoubleProps()) {
-        map_value.SetProperty(item.first.c_str(),
-                              lynx::pub::LynxValue(item.second));
+      for (const auto& prop : event.GetProps()) {
+        switch (prop.GetType()) {
+          case tasm::report::EventProp::Type::kString:
+            map_value.SetProperty(prop.GetKey().c_str(),
+                                  lynx::pub::LynxValue(prop.GetStringValue()));
+            break;
+          case tasm::report::EventProp::Type::kInt32:
+            map_value.SetProperty(prop.GetKey().c_str(),
+                                  lynx::pub::LynxValue(prop.GetIntValue()));
+            break;
+          case tasm::report::EventProp::Type::kDouble:
+            map_value.SetProperty(prop.GetKey().c_str(),
+                                  lynx::pub::LynxValue(prop.GetDoubleValue()));
+            break;
+        }
       }
     }
 
     // 2. merge generic infos
     {
       const auto& generic_infos =
-          GenericInfoStorage::Instance().GetGenericInfo(instance_id);
+          GenericInfoStorage::Instance().GetGenericInfo(event.GetInstanceId());
       for (const auto& str_info : generic_infos.GetStrGenericInfos()) {
         map_value.SetProperty(str_info.first.c_str(),
                               lynx::pub::LynxValue(str_info.second));
@@ -108,7 +111,7 @@ void LynxEventReporter::OnEvent(int32_t instance_id,
     for (const auto& ob : observers) {
       auto strong_ob = ob.second.lock();
       if (strong_ob) {
-        strong_ob->OnReportEvent(instance_id, event.GetName(), map_value);
+        strong_ob->OnReportEvent(event.GetName(), map_value);
       }
     }
   });

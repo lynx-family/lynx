@@ -34,6 +34,15 @@ group("default") {
 
   if (enable_unittests) {
     deps += [ "tools/gn_tools/test:gn_tools_test" ]
+    if (is_mac || is_linux || is_win) {
+      deps += [
+        "core/shell/host_script/runtime:host_script_session_unittests_exec",
+      ]
+    }
+  }
+
+  if (is_encoder_ut) {
+    deps += [ "testing/lynx/tasm/codec/encoder:encoder_tests_exec" ]
   }
 
   if (enable_clay) {

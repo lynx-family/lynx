@@ -6,6 +6,8 @@
 #define CLAY_UI_COMPONENT_TEXT_TEXT_STYLE_H_
 
 #include <algorithm>
+#include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -82,6 +84,8 @@ enum class WhiteSpace {
   kNoWrap = 1,
 };
 
+using FontVariationSettings = std::map<std::string, float>;
+
 struct TextDecoration {
   // Support bit combination of TextDecorationLine
   uint8_t line;
@@ -110,6 +114,8 @@ struct TextStyle {
   std::optional<TextDirection> text_direction;
   std::optional<FontWeight> font_weight;
   std::optional<FontStyle> font_style;
+  std::shared_ptr<const FontVariationSettings> font_variations;
+  std::optional<bool> font_optical_sizing;
   std::optional<Color> text_color;
   std::optional<Color> background_color;
   std::optional<std::string> font_family;
@@ -155,6 +161,10 @@ struct TextStyle {
            this->text_direction == style.text_direction &&
            this->font_weight == style.font_weight &&
            this->font_style == style.font_style &&
+           (this->font_variations == style.font_variations ||
+            (this->font_variations && style.font_variations &&
+             *this->font_variations == *style.font_variations)) &&
+           this->font_optical_sizing == style.font_optical_sizing &&
            this->text_color == style.text_color &&
            this->background_color == style.background_color &&
            this->font_family == style.font_family &&
@@ -223,6 +233,15 @@ struct hash<clay::TextStyle> {
     result =
         result * prime +
         (text_style.font_style ? static_cast<int>(*text_style.font_style) : 0);
+    result = result * prime + static_cast<bool>(text_style.font_variations);
+    if (text_style.font_variations) {
+      for (const auto& [axis, value] : *text_style.font_variations) {
+        result = result * prime + std::hash<std::string>()(axis);
+        result = result * prime + std::hash<float>()(value);
+      }
+    }
+    result = result * prime + text_style.font_optical_sizing.has_value();
+    result = result * prime + text_style.font_optical_sizing.value_or(false);
     result = result * prime +
              (text_style.text_color ? text_style.text_color->Value() : 0);
     result = result * prime + (text_style.background_color

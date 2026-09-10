@@ -39,9 +39,22 @@ LYNX_EXTERN_C void lynx_http_service_release(
   http_service->Release();
 }
 
-void lynx_http_service_request(lynx_http_service_t* http_service,
-                               lynx_http_request_t* request,
-                               lynx_http_response_t* response) {
+LYNX_EXTERN_C void lynx_http_service_request(lynx_http_service_t* http_service,
+                                             lynx_http_request_t* request,
+                                             lynx_http_response_t* response) {
+  if (!request || !response) {
+    if (request) {
+      lynx_http_request_release(request);
+    }
+    if (response) {
+      lynx_http_response_set_status_code(response, -1);
+      lynx_http_response_set_status_text(response,
+                                         "request or response is null");
+      lynx_http_response_callback(response);
+      lynx_http_response_release(response);
+    }
+    return;
+  }
   lynx_http_response_set_url(response, lynx_http_request_get_url(request));
   if (http_service && http_service->request_func) {
     http_service->request_func(http_service, request, response);

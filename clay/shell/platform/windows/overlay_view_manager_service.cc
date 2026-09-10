@@ -19,7 +19,7 @@ std::shared_ptr<OverlayViewController> OverlayViewManager::CreateView(
     int64_t overlay_id, OverlayWindowType type,
     const OverlayWindowCreationRequest& request, HWND parent_handle) {
   auto view = std::make_shared<OverlayViewController>(
-      engine_, type, request.preferred_size, parent_handle, L"ClayOverlayView");
+      engine_, type, request.preferred_size, parent_handle, request.title);
   {
     std::unique_lock write_lock(active_views_mutex_);
     active_views_[overlay_id] = view;

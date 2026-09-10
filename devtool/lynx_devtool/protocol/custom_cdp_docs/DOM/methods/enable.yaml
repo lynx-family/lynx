@@ -1,0 +1,45 @@
+summary: Enables DOM domain notifications, including main-thread inline style updates.
+parameters:
+  - name: useCompression
+    type: boolean
+    optional: true
+    default: false
+    description: Whether oversized DOM payloads may use compression.
+  - name: compressionThreshold
+    type: integer
+    optional: true
+    default: 10240
+    description: Minimum serialized DOM payload size in bytes before compression is used.
+returns: []
+events:
+  - DOM.inlineStyleUpdatesFlushed
+notes:
+  - useCompression and compressionThreshold are Lynx extensions to the standard DOM.enable parameters.
+  - DOM.inlineStyleUpdatesFlushed is a Lynx extension emitted after a FiberFlushElementTree that contains observed FiberAddInlineStyle writes.
+  - The event reports updates for all backend nodes. Repeated writes to the same property on the same node within one flush are coalesced to the last value.
+  - params.timestamp is monotonically increasing time in seconds since an arbitrary point in the past.
+  - params.nodeUpdates contains backendNodeId and properties. A removed property has removed set to true instead of value.
+  - DOM.disable stops these notifications and discards pending inline style updates.
+  - The event observes Core FiberAddInlineStyle writes. It does not guarantee that the resulting frame was presented.
+examples:
+  - title: Enable DOM notifications
+    request:
+      id: 1
+      method: DOM.enable
+    response:
+      id: 1
+      result: {}
+  - title: Receive coalesced inline style updates
+    response:
+      method: DOM.inlineStyleUpdatesFlushed
+      params:
+        timestamp: 5248.546
+        nodeUpdates:
+          - backendNodeId: 26
+            properties:
+              - name: transform
+                value: translate(12px, 4px)
+          - backendNodeId: 27
+            properties:
+              - name: opacity
+                removed: true

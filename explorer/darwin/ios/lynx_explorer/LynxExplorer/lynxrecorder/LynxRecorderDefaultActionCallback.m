@@ -9,6 +9,7 @@
 #import <Lynx/LynxUIText.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView.h>
+#import "ExplorerLynxTestModule.h"
 #import "ExplorerModule.h"
 
 static const int kVirtual = 1 << 2;
@@ -21,6 +22,7 @@ static const int kVirtual = 1 << 2;
 - (void)onLynxViewWillBuild:(LynxRecorderActionManager *)manager
                     builder:(LynxViewBuilder *)builder {
   [builder.config registerModule:[ExplorerModule class]];
+  [builder.config registerModule:ExplorerLynxTestModule.class];
 }
 - (void)onLynxViewDidBuild:(LynxView *)lynxView {
 }

@@ -115,6 +115,10 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 
   int32_t GetTagInfo(const std::string& tag_name);
 
+  void SetEnableSyncXElementRegistry(bool enable) {
+    enable_sync_xelement_registry_ = enable;
+  }
+
   void AddShadowNode(int id, int parent_id, int index);
 
   void RemoveShadowNode(int id);
@@ -250,7 +254,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void OnFirstMeaningfulLayout();
 
   void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids);
+                               std::vector<int32_t> remove_ids,
+                               bool should_cache_external_memory_candidates);
 
   fml::RefPtr<fml::TaskRunner> GetUITaskRunner() const;
   lynx::tasm::ExternalMemorySnapshot GetExternalMemorySnapshot();
@@ -311,6 +316,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // entry and stay reserved for the platform-view path.
   void SyncNativeViewTags(std::unordered_set<std::string> tags,
                           std::unordered_set<std::string> bootstrap_tags = {});
+
+  void SetPlatformViewTagOverrides(std::unordered_set<std::string> tags);
   void SyncNativeViewCompositionPreferences(
       std::unordered_map<std::string, NativeViewCompositionPreference>
           composition_preferences);
@@ -342,6 +349,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // missing for now.
   void ConsumeInitialAttributes(BaseView* view);
 
+  std::string ResolveRegisteredXElementTag(const std::string& tag_name) const;
+
   PageView* page_view_;
 
   std::unordered_map<int, BaseView*> view_map_;
@@ -353,11 +362,13 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   // In method invokeUIMethod, we need to use this map and radon(js) component
   // id to find related views.
   std::unordered_map<std::string, int> component_id_to_ui_id_map_;
+  std::unordered_set<std::string> platform_view_tag_overrides_;
   std::unordered_map<std::string, NativeViewCompositionPreference>
       native_view_composition_preferences_;
 
   std::unordered_set<int32_t> external_memory_report_candidate_ids_;
   bool external_memory_report_pending_ = false;
+  bool enable_sync_xelement_registry_ = false;
 
   fml::WeakPtrFactory<ViewContext> weak_factory_;
   std::unique_ptr<CustomFilterDecoder> custom_filter_decoder_;

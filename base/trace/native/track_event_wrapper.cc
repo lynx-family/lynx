@@ -16,24 +16,31 @@ uint64_t ThreadTrack::Current() {
 void LynxDebugAnnotation::set_name(const std::string& value) {
   return debug_annotation_->set_name(value);
 }
+
 void LynxDebugAnnotation::set_bool_value(bool value) {
   return debug_annotation_->set_bool_value(value);
 }
+
 void LynxDebugAnnotation::set_uint_value(uint64_t value) {
   return debug_annotation_->set_uint_value(value);
 }
+
 void LynxDebugAnnotation::set_int_value(int64_t value) {
   return debug_annotation_->set_int_value(value);
 }
+
 void LynxDebugAnnotation::set_double_value(double value) {
   return debug_annotation_->set_double_value(value);
 }
+
 void LynxDebugAnnotation::set_string_value(const char* data, size_t size) {
   return debug_annotation_->set_string_value(data, size);
 }
+
 void LynxDebugAnnotation::set_string_value(const std::string& value) {
   return debug_annotation_->set_string_value(value);
 }
+
 void LynxDebugAnnotation::set_pointer_value(uint64_t value) {
   return debug_annotation_->set_pointer_value(value);
 }
@@ -45,6 +52,7 @@ void LynxDebugAnnotation::set_legacy_json_value(const std::string& value) {
 void TrackEvent_LegacyEvent::set_phase(int32_t value) {
   legacy_event_->set_phase(value);
 }
+
 void TrackEvent_LegacyEvent::set_unscoped_id(uint64_t value) {
   legacy_event_->set_unscoped_id(value);
 }
@@ -75,33 +83,39 @@ void TrackEvent_LegacyEvent::set_bind_to_enclosing(bool value) {
 void TrackEvent::set_name(const std::string& value) {
   ctx_->event()->set_name(value);
 }
+
 void TrackEvent::set_track_uuid(uint64_t value) {
   ctx_->event()->set_track_uuid(value);
 }
+
 void TrackEvent::add_flow_ids(uint64_t value) {
   ctx_->event()->add_flow_ids(value);
 }
+
 void TrackEvent::add_terminating_flow_ids(uint64_t value) {
   ctx_->event()->add_terminating_flow_ids(value);
 }
+
 LynxDebugAnnotation* TrackEvent::add_debug_annotations() {
   auto perfetto_debug_annotation = ctx_->event()->add_debug_annotations();
   lynx_debug_annotation_ =
       std::make_unique<LynxDebugAnnotation>(perfetto_debug_annotation);
   return lynx_debug_annotation_.get();
 }
+
 void TrackEvent::add_debug_annotations(const std::string& name,
                                        const std::string& value) {
   auto* debug = ctx_->event()->add_debug_annotations();
   debug->set_name(name);
   debug->set_string_value(value);
 }
-void TrackEvent::add_debug_annotations(std::string&& name,
-                                       std::string&& value) {
+
+void TrackEvent::add_debug_annotations(const std::string& name, void* value) {
   auto* debug = ctx_->event()->add_debug_annotations();
   debug->set_name(name);
-  debug->set_string_value(value);
+  debug->set_pointer_value(reinterpret_cast<uint64_t>(value));
 }
+
 void TrackEvent::set_timestamp_absolute_us(int64_t value) {
   ctx_->event()->set_timestamp_absolute_us(value);
 }

@@ -48,6 +48,15 @@ js_sources = [
   "update_data_type.h",
 ]
 
+if (enable_inspector || enable_unittests) {
+  js_sources += [
+    "bindings/modules/native_module_invocation_context.cc",
+    "bindings/modules/native_module_invocation_context.h",
+    "bindings/modules/native_module_record_builder.cc",
+    "bindings/modules/native_module_record_builder.h",
+  ]
+}
+
 if (!enable_unittests) {
   if (is_apple && !is_oliver_node_lynx) {
     js_sources += jsc_sources

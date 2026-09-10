@@ -41,6 +41,7 @@ class LayoutContextAndroid : public LayoutCtxPlatformImpl {
   void SetLayoutNodeManager(LayoutNodeManager* layout_node_manager) override;
   void SetTriggerLayoutCallback(base::MoveOnlyClosure<void> trigger_layout);
   void TriggerLayout();
+  void PrepareDestroy(JNIEnv* env, jobject impl);
   std::unique_ptr<PlatformExtraBundle> GetPlatformExtraBundle(
       int32_t id) override;
 
@@ -49,6 +50,7 @@ class LayoutContextAndroid : public LayoutCtxPlatformImpl {
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> impl_;
+  base::android::ScopedGlobalJavaRef<jobject> destroy_impl_;
   std::unique_ptr<PlatformBundleHolderAndroid> bundle_holder_;
   base::MoveOnlyClosure<void> trigger_layout_;
 

@@ -27,13 +27,17 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
 }  // namespace
 
 @implementation ClayOverlayView {
-  NSArray<NSValue*>* _opaqueRects;
+  NSDictionary<NSNumber*, NSValue*>* _opaqueRects;
+  NSArray<NSNumber*>* _hitTestViewOrder;
+  NSMutableSet<NSNumber*>* _eventsPassThroughViewIds;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect {
   self = [super initWithFrame:frameRect];
   if (self) {
-    _opaqueRects = @[];
+    _opaqueRects = @{};
+    _hitTestViewOrder = @[];
+    _eventsPassThroughViewIds = [NSMutableSet set];
     // Host overlay content in a transparent layer.
     self.wantsLayer = YES;
     self.layer.opaque = NO;
@@ -61,9 +65,37 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
   return YES;
 }
 
-- (void)updateOpaqueRects:(NSArray<NSValue*>*)rects {
-  _opaqueRects = [rects copy] ?: @[];
+- (void)updateOpaqueRects:(NSDictionary<NSNumber*, NSValue*>*)rects
+                viewOrder:(NSArray<NSNumber*>*)viewOrder {
+  _opaqueRects = [rects copy] ?: @{};
+  _hitTestViewOrder = [viewOrder copy] ?: @[];
   [self.window invalidateCursorRectsForView:self];
+}
+
+- (void)setEventsPassThrough:(BOOL)eventsPassThrough forViewId:(int64_t)viewId {
+  NSNumber* key = @(viewId);
+  if (eventsPassThrough) {
+    [_eventsPassThroughViewIds addObject:key];
+  } else {
+    [_eventsPassThroughViewIds removeObject:key];
+  }
+  [self.window invalidateCursorRectsForView:self];
+}
+
+- (void)removeOpaqueRectForViewId:(int64_t)viewId {
+  NSNumber* key = @(viewId);
+  NSMutableDictionary<NSNumber*, NSValue*>* rects = [_opaqueRects mutableCopy];
+  [rects removeObjectForKey:key];
+  _opaqueRects = [rects copy];
+  NSMutableArray<NSNumber*>* view_order = [_hitTestViewOrder mutableCopy];
+  [view_order removeObject:key];
+  _hitTestViewOrder = [view_order copy];
+  [self.window invalidateCursorRectsForView:self];
+}
+
+- (void)removeHitTestStateForViewId:(int64_t)viewId {
+  [self removeOpaqueRectForViewId:viewId];
+  [_eventsPassThroughViewIds removeObject:@(viewId)];
 }
 
 - (NSRect)viewRectFromDevicePixelRect:(NSRect)rect contentsScale:(CGFloat)scale {
@@ -90,9 +122,10 @@ NSDragOperation DragOperationForSender(id<NSDraggingInfo> sender) {
 
 - (NSView*)hitTest:(NSPoint)point {
   // Pass through events outside painted overlay regions.
-  for (NSValue* val in _opaqueRects) {
-    if (NSPointInRect(point, [val rectValue])) {
-      return self;
+  for (NSNumber* view_id in [_hitTestViewOrder reverseObjectEnumerator]) {
+    NSValue* rect = _opaqueRects[view_id];
+    if (rect && NSPointInRect(point, [rect rectValue])) {
+      return [_eventsPassThroughViewIds containsObject:view_id] ? nil : self;
     }
   }
   return nil;

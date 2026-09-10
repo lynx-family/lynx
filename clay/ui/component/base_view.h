@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_COMPONENT_BASE_VIEW_H_
 #define CLAY_UI_COMPONENT_BASE_VIEW_H_
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -303,6 +304,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetBlockNativeEvent(bool enable) { should_block_native_event_ = enable; }
   void SetConsumeSlideEventDirection(const clay::Value::Array& array);
   void SetEnableNewAnimator(bool enable) { enable_new_animator_ = enable; }
+  std::optional<bool> EnableExposureUIClip() const {
+    return enable_exposure_ui_clip_;
+  }
   bool IsInteractable() const { return is_interactable_; }
   const lynx::gfx::TransformOperations& GetTransformOps() const {
     return transform_ops_;
@@ -597,6 +601,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void CheckStickyOnParentScrollAndReset(int left, int top);
 
   void SetEventThrough(bool event_through) { event_through_ = event_through; }
+  void SetEventThroughActiveRegions(const clay::Value& value);
   // this means whether the entire page through the touch events.
   std::optional<bool> CanEventThrough() const { return event_through_; }
   // this means whether this view node pass through the events to the nodes
@@ -686,6 +691,17 @@ class BaseView : public TypeIdentifiable<BaseView>,
   int GetCurrentImageLoaderToken() const { return bg_image_loader_token_; }
   int GetCurrentMaskImageLoaderToken() const {
     return mask_image_loader_token_;
+  }
+  int AdvanceImageLoaderToken(bool background) {
+    return background ? ++bg_image_loader_token_ : ++mask_image_loader_token_;
+  }
+  static bool IsImageLoaderTokenCurrent(bool background, int token,
+                                        int background_token, int mask_token) {
+    return token == (background ? background_token : mask_token);
+  }
+  bool IsImageLoaderTokenCurrent(bool background, int token) const {
+    return IsImageLoaderTokenCurrent(background, token, bg_image_loader_token_,
+                                     mask_image_loader_token_);
   }
   bool should_pass_event_for_hittest_ = false;
   void LoadBackgroundOrMaskImage(const std::string& uri, size_t index,
@@ -787,7 +803,14 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool is_interactable_ = true;
   bool should_block_native_event_ = false;
   bool has_intersection_observer_ = false;
+  std::optional<bool> enable_exposure_ui_clip_;
   std::optional<bool> event_through_;
+  struct EventThroughSizeValue {
+    double value = 0.0;
+    bool is_percentage = false;
+  };
+  using EventThroughRegion = std::array<EventThroughSizeValue, 4>;
+  std::vector<EventThroughRegion> event_through_active_regions_;
   // all slop values means extend x px
   float hit_slop_top_ = 0.f;
   float hit_slop_left_ = 0.f;
@@ -805,6 +828,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
 
  private:
+  bool ShouldPassEventToNativeAt(const FloatPoint& position) const;
+  bool HitEventThroughActiveRegions(const FloatPoint& position) const;
+
   template <typename... Args>
   void NotifyBgImageLoadStatus(bool success,
                                const std::vector<std::string>& keys,

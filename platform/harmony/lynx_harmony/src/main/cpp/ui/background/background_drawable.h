@@ -72,6 +72,11 @@ class BackgroundDrawable {
   };
 
  public:
+  enum class FragmentLayerRenderMode {
+    kBackground,
+    kBorder,
+  };
+
   BackgroundDrawable(const std::weak_ptr<UIBase>& ui_base, bool is_mask);
   void UpdateBounds(float left, float top, float width, float height,
                     float padding_left, float padding_top, float padding_right,
@@ -106,6 +111,8 @@ class BackgroundDrawable {
   void SetBoxShadow(const lepus::Value& value);
   void SetBorderWidth(const std::array<float, 4>& value);
   void Render(OH_Drawing_Canvas* canvas);
+  void RenderForFragmentLayer(OH_Drawing_Canvas* canvas,
+                              FragmentLayerRenderMode mode);
   bool HasShadow();
   std::array<float, 4> GetBoxShadowOutset(float scale_density) const;
   bool HasBorder() { return has_border_; }

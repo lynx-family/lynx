@@ -27,6 +27,22 @@ using namespace lynx::tasm;
 
 namespace {
 
+bool BorderValuesAreApproximatelyEqual(CGFloat lhs, CGFloat rhs) {
+  constexpr CGFloat kBorderThreshold = 0.001f;
+  return ABS(lhs - rhs) < kBorderThreshold;
+}
+
+bool HasApproximatelyUniformRadius(const RoundedRectangle &rect) {
+  const CGFloat radius = rect.GetRadiusXTopLeft();
+  return radius > 0.0f && BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusYTopLeft()) &&
+         BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusXTopRight()) &&
+         BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusYTopRight()) &&
+         BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusXBottomRight()) &&
+         BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusYBottomRight()) &&
+         BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusXBottomLeft()) &&
+         BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusYBottomLeft());
+}
+
 // Renderer hosts need renderer callbacks and decoration-layer synchronization. Legacy LynxUI-backed
 // views have no renderer, so update only their host geometry here.
 bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
@@ -72,6 +88,14 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
                                         clipBox:(const RoundedRectangle &)clipBox
                                         repeatX:(int32_t)repeatX
                                         repeatY:(int32_t)repeatY;
+- (CALayer *)createRadialGradientLayerWithCenter:(CGPoint)center
+                                          radius:(CGPoint)radius
+                                          colors:(NSArray<NSNumber *> *)colors
+                                           stops:(NSArray<NSNumber *> *)stops
+                                       originBox:(const RoundedRectangle &)originBox
+                                         clipBox:(const RoundedRectangle &)clipBox
+                                         repeatX:(int32_t)repeatX
+                                         repeatY:(int32_t)repeatY;
 - (LynxBorderRadii)borderRadiiWithRoundedRectangle:(const RoundedRectangle &)rect;
 - (void)applyRoundedMaskToLayer:(CALayer *)layer
                       maskFrame:(CGRect)maskFrame
@@ -141,7 +165,6 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   while (reader_.HasNext()) {
     const auto &item = reader_.Next();
     auto op = item.type;
-
     switch (op) {
       case DisplayListOpType::kBegin: {
         // The first Begin describes the host renderer's frame, which is
@@ -275,18 +298,6 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         int out_box_index = item.payload.border.out_index;
         int inner_box_index = item.payload.border.inner_index;
 
-        // 4 colors: Top, Right, Bottom, Left (ARGB int)
-        UIColor *topColor = [self colorFromARGB:item.payload.border.colors[0]];
-        UIColor *rightColor = [self colorFromARGB:item.payload.border.colors[1]];
-        UIColor *bottomColor = [self colorFromARGB:item.payload.border.colors[2]];
-        UIColor *leftColor = [self colorFromARGB:item.payload.border.colors[3]];
-
-        // 4 styles: Top, Right, Bottom, Left (0=none, 1=solid, 2=dashed, 3=dotted)
-        int topStyle = item.payload.border.styles[0];
-        int rightStyle = item.payload.border.styles[1];
-        int bottomStyle = item.payload.border.styles[2];
-        int leftStyle = item.payload.border.styles[3];
-
         // Validate box indices
         if (out_box_index < 0 || static_cast<size_t>(out_box_index) >= box_array_.size() ||
             inner_box_index < 0 || static_cast<size_t>(inner_box_index) >= box_array_.size()) {
@@ -295,6 +306,89 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
         const RoundedRectangle &outBox = box_array_[out_box_index];
         const RoundedRectangle &innerBox = box_array_[inner_box_index];
+        if (outBox.GetWidth() <= 0.0f || outBox.GetHeight() <= 0.0f) {
+          break;
+        }
+        const CGRect borderFrame =
+            CGRectMake(outBox.GetX() + left_offset_, outBox.GetY() + top_offset_, outBox.GetWidth(),
+                       outBox.GetHeight());
+
+        const CGFloat topInset = MAX(0.0f, innerBox.GetY() - outBox.GetY());
+        const CGFloat leftInset = MAX(0.0f, innerBox.GetX() - outBox.GetX());
+        const CGFloat bottomInset =
+            MAX(0.0f, outBox.GetY() + outBox.GetHeight() - innerBox.GetY() - innerBox.GetHeight());
+        const CGFloat rightInset =
+            MAX(0.0f, outBox.GetX() + outBox.GetWidth() - innerBox.GetX() - innerBox.GetWidth());
+        const bool hasUniformWidth = topInset > 0.0f &&
+                                     BorderValuesAreApproximatelyEqual(leftInset, rightInset) &&
+                                     BorderValuesAreApproximatelyEqual(leftInset, bottomInset) &&
+                                     BorderValuesAreApproximatelyEqual(leftInset, topInset);
+        const bool hasUniformColor =
+            item.payload.border.colors[0] == item.payload.border.colors[1] &&
+            item.payload.border.colors[0] == item.payload.border.colors[2] &&
+            item.payload.border.colors[0] == item.payload.border.colors[3];
+        const bool isSolid =
+            item.payload.border.styles[0] == 0 && item.payload.border.styles[1] == 0 &&
+            item.payload.border.styles[2] == 0 && item.payload.border.styles[3] == 0;
+        const CGFloat expectedInnerRadius = MAX(0.0f, outBox.GetRadiusXTopLeft() - topInset);
+        const bool hasSupportedRadius =
+            (!outBox.HasRadius() && !innerBox.HasRadius()) ||
+            (HasApproximatelyUniformRadius(outBox) &&
+             ((BorderValuesAreApproximatelyEqual(expectedInnerRadius, 0.0f) &&
+               !innerBox.HasRadius()) ||
+              (HasApproximatelyUniformRadius(innerBox) &&
+               BorderValuesAreApproximatelyEqual(innerBox.GetRadiusXTopLeft(),
+                                                 expectedInnerRadius))));
+        if (hasUniformWidth && hasUniformColor && isSolid && hasSupportedRadius) {
+          CALayer *borderLayer = [CALayer layer];
+          borderLayer.frame = borderFrame;
+          borderLayer.borderWidth = topInset;
+          borderLayer.borderColor = [self colorFromARGB:item.payload.border.colors[0]].CGColor;
+          if (outBox.HasRadius()) {
+            borderLayer.cornerRadius = outBox.GetRadiusXTopLeft();
+          }
+          [self insertLayer:borderLayer forOp:op];
+          break;
+        }
+
+        if (hasUniformColor && isSolid) {
+          CGPathRef outerPath = [LynxBackgroundUtils
+              createBezierPathWithRoundedRect:CGRectMake(0.0f, 0.0f, outBox.GetWidth(),
+                                                         outBox.GetHeight())
+                                  borderRadii:[self borderRadiiWithRoundedRectangle:outBox]];
+          CGPathRef innerPath = [LynxBackgroundUtils
+              createBezierPathWithRoundedRect:CGRectMake(innerBox.GetX() - outBox.GetX(),
+                                                         innerBox.GetY() - outBox.GetY(),
+                                                         innerBox.GetWidth(), innerBox.GetHeight())
+                                  borderRadii:[self borderRadiiWithRoundedRectangle:innerBox]];
+          CGMutablePathRef borderPath = CGPathCreateMutable();
+          CGPathAddPath(borderPath, nullptr, outerPath);
+          CGPathAddPath(borderPath, nullptr, innerPath);
+
+          CAShapeLayer *borderLayer = [CAShapeLayer layer];
+          borderLayer.frame = borderFrame;
+          borderLayer.fillRule = kCAFillRuleEvenOdd;
+          borderLayer.fillColor = [self colorFromARGB:item.payload.border.colors[0]].CGColor;
+          borderLayer.path = borderPath;
+          [self insertLayer:borderLayer forOp:op];
+
+          CGPathRelease(borderPath);
+          CGPathRelease(innerPath);
+          CGPathRelease(outerPath);
+          break;
+        }
+
+        // 4 colors: Top, Right, Bottom, Left (ARGB int)
+        UIColor *topColor = [self colorFromARGB:item.payload.border.colors[0]];
+        UIColor *rightColor = [self colorFromARGB:item.payload.border.colors[1]];
+        UIColor *bottomColor = [self colorFromARGB:item.payload.border.colors[2]];
+        UIColor *leftColor = [self colorFromARGB:item.payload.border.colors[3]];
+
+        // 4 styles: Top, Right, Bottom, Left.
+        int topStyle = item.payload.border.styles[0];
+        int rightStyle = item.payload.border.styles[1];
+        int bottomStyle = item.payload.border.styles[2];
+        int leftStyle = item.payload.border.styles[3];
 
         // Create border image
         UIImage *borderImage =
@@ -309,10 +403,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           CALayer *borderLayer = [CALayer layer];
           borderLayer.contents = (id)borderImage.CGImage;
 
-          // Set frame with offset
-          CGRect frame = CGRectMake(outBox.GetX() + left_offset_, outBox.GetY() + top_offset_,
-                                    outBox.GetWidth(), outBox.GetHeight());
-          borderLayer.frame = frame;
+          borderLayer.frame = borderFrame;
 
           [self insertLayer:borderLayer forOp:op];
         }
@@ -433,6 +524,44 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         }
         break;
       }
+      case DisplayListOpType::kRadialGradient: {
+        int32_t colorCount = item.payload.radial_gradient.color_count;
+        int32_t stopCount = item.payload.radial_gradient.stop_count;
+        NSMutableArray<NSNumber *> *colors = [NSMutableArray arrayWithCapacity:colorCount];
+        const uint32_t *colorData = reader_.Colors(item);
+        for (int32_t i = 0; i < colorCount; ++i) {
+          [colors addObject:@(colorData[i])];
+        }
+        NSMutableArray<NSNumber *> *stops = [NSMutableArray arrayWithCapacity:stopCount];
+        const float *stopData = reader_.Stops(item);
+        for (int32_t i = 0; i < stopCount; ++i) {
+          [stops addObject:@(stopData[i] * 100.0f)];
+        }
+
+        int32_t originIndex = item.payload.radial_gradient.tiling_index;
+        int32_t clipIndex = item.payload.radial_gradient.clip_index;
+        if (originIndex < 0 || static_cast<size_t>(originIndex) >= box_array_.size() ||
+            clipIndex < 0 || static_cast<size_t>(clipIndex) >= box_array_.size()) {
+          break;
+        }
+        CGPoint center = CGPointMake(item.payload.radial_gradient.center_x,
+                                     item.payload.radial_gradient.center_y);
+        CGPoint radius = CGPointMake(item.payload.radial_gradient.radius_x,
+                                     item.payload.radial_gradient.radius_y);
+        CALayer *gradientLayer =
+            [self createRadialGradientLayerWithCenter:center
+                                               radius:radius
+                                               colors:colors
+                                                stops:stops
+                                            originBox:box_array_[originIndex]
+                                              clipBox:box_array_[clipIndex]
+                                              repeatX:item.payload.radial_gradient.repeat_x
+                                              repeatY:item.payload.radial_gradient.repeat_y];
+        if (gradientLayer != nil) {
+          [self insertLayer:gradientLayer];
+        }
+        break;
+      }
       default:
         break;
     }
@@ -466,7 +595,6 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   sign_stack_ = std::stack<int32_t>();
   x_stack_ = std::stack<float>();
   y_stack_ = std::stack<float>();
-
   // Clear previous clip state
   if (_view) {
     _view.layer.mask = nil;
@@ -607,6 +735,50 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
   layer.frame = clipRect;
 
+  if (clipBox.HasRadius()) {
+    RoundedRectangle localClipBox = clipBox;
+    localClipBox.SetX(0);
+    localClipBox.SetY(0);
+    [self applyRoundedRect:localClipBox toLayer:layer];
+  }
+  return layer;
+}
+
+- (CALayer *)createRadialGradientLayerWithCenter:(CGPoint)center
+                                          radius:(CGPoint)radius
+                                          colors:(NSArray<NSNumber *> *)colors
+                                           stops:(NSArray<NSNumber *> *)stops
+                                       originBox:(const RoundedRectangle &)originBox
+                                         clipBox:(const RoundedRectangle &)clipBox
+                                         repeatX:(int32_t)repeatX
+                                         repeatY:(int32_t)repeatY {
+  CGRect clipRect = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
+  if (CGRectIsEmpty(clipRect)) {
+    return nil;
+  }
+
+  CGRect localBorderRect = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
+  CGRect originRect = [self rectForRoundedRectangle:originBox applyingOffsets:YES];
+  CGRect localPaintRect =
+      CGRectOffset(originRect, -CGRectGetMinX(clipRect), -CGRectGetMinY(clipRect));
+  NSArray<NSNumber *> *shape = @[
+    @(LynxRadialGradientShapeEllipse), @(LynxRadialGradientSizeLength), @(LynxRadialCenterTypePX),
+    @(center.x), @(LynxRadialCenterTypePX), @(center.y), @0, @0, @0, @0, @(radius.x),
+    @(LynxPlatformLengthUnitNumber), @(radius.y), @(LynxPlatformLengthUnitNumber)
+  ];
+  LynxBackgroundRadialGradientDrawable *drawable =
+      [[LynxBackgroundRadialGradientDrawable alloc] initWithArray:@[ shape, colors, stops ]];
+  drawable.repeatX = static_cast<LynxBackgroundRepeatType>(repeatX);
+  drawable.repeatY = static_cast<LynxBackgroundRepeatType>(repeatY);
+  [drawable prepareGradientWithBorderBox:localBorderRect
+                             andPaintBox:localPaintRect
+                             andClipRect:localBorderRect];
+
+  CALayer *layer = drawable.verticalRepeatLayer;
+  if (layer == nil) {
+    return nil;
+  }
+  layer.frame = clipRect;
   if (clipBox.HasRadius()) {
     RoundedRectangle localClipBox = clipBox;
     localClipBox.SetX(0);

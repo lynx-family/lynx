@@ -66,6 +66,7 @@ TEST_F(ElementTest, CheckHasFilterProps) {
 
   ret = element->CheckKeyframeProps(CSSPropertyID::kPropertyIDAnimation);
   EXPECT_TRUE(element->has_keyframe_props_changed_);
+  EXPECT_TRUE(element->needs_keyframe_effect_rebuild_);
   EXPECT_TRUE(ret);
 
   element->computed_css_style()->SetEnableZIndex(true);
@@ -112,6 +113,23 @@ TEST_F(ElementTest, CheckHasFilterProps) {
     css_element->CheckHasNonFlattenCSSProps(id);
     EXPECT_TRUE(css_element->has_non_flatten_attrs_);
   }
+}
+
+TEST_F(ElementTest, PlayStateChangeDoesNotMaskKeyframeEffectRebuild) {
+  auto element = manager->CreateFiberElement("view");
+
+  EXPECT_TRUE(element->CheckKeyframeProps(kPropertyIDAnimationPlayState));
+  EXPECT_TRUE(element->has_keyframe_props_changed_);
+  EXPECT_FALSE(element->needs_keyframe_effect_rebuild_);
+
+  EXPECT_TRUE(element->CheckKeyframeProps(kPropertyIDAnimationDuration));
+  EXPECT_TRUE(element->needs_keyframe_effect_rebuild_);
+
+  element->has_keyframe_props_changed_ = false;
+  element->needs_keyframe_effect_rebuild_ = false;
+  EXPECT_TRUE(element->CheckKeyframeProps(kPropertyIDAnimationDuration));
+  EXPECT_TRUE(element->CheckKeyframeProps(kPropertyIDAnimationPlayState));
+  EXPECT_TRUE(element->needs_keyframe_effect_rebuild_);
 }
 
 TEST_F(ElementTest, NumericStylePreservesValueTypeInDataModel) {
@@ -220,9 +238,15 @@ TEST_F(ElementTest, ResolveCSSKeyframesByNames) {
 
 TEST_F(ElementTest, Animate_Array) {
   auto element = manager->CreateFiberElement("view");
+  EXPECT_FALSE(element->imperative_animation_metadata_.has_value());
+  EXPECT_FALSE(element->HasImperativeAnimationMetadata(base::String("name1")));
+  EXPECT_FALSE(element->imperative_animation_metadata_.has_value());
 
   auto array1 = lepus::CArray::Create();
-  array1->set(0, lepus_value(0));
+  array1->set(
+      0,
+      lepus_value(runtime::js::JavaScriptElement::AnimationOperation::START));
+  array1->set(1, lepus_value("animation-handle"));
 
   auto array2 = lepus::CArray::Create();
   auto table1 = lepus::Dictionary::Create();
@@ -249,6 +273,37 @@ TEST_F(ElementTest, Animate_Array) {
   lepus::Value test_animate_args{array1};
   auto pipeline_option = std::make_shared<PipelineOptions>();
   element->Animate(test_animate_args, pipeline_option);
+  EXPECT_TRUE(element->imperative_animation_metadata_.has_value());
+  EXPECT_TRUE(element->HasImperativeAnimationMetadata(base::String("name1")));
+  EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
+  element->SetDataToNativeKeyframeAnimator(false);
+  ASSERT_NE(nullptr, element->css_keyframe_manager_);
+  auto animation_iter =
+      element->css_keyframe_manager_->animations_map_.find("name1");
+  ASSERT_NE(animation_iter,
+            element->css_keyframe_manager_->animations_map_.end());
+  EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
+            animation_iter->second->GetOrigin());
+
+  array1->set(
+      0,
+      lepus_value(runtime::js::JavaScriptElement::AnimationOperation::PAUSE));
+  element->Animate(test_animate_args, pipeline_option);
+  element->SetDataToNativeKeyframeAnimator(false);
+  EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
+  EXPECT_EQ(
+      animation::Animation::State::kPause,
+      element->css_keyframe_manager_->animations_map_["name1"]->GetState());
+
+  array1->set(
+      0, lepus_value(runtime::js::JavaScriptElement::AnimationOperation::PLAY));
+  element->Animate(test_animate_args, pipeline_option);
+  element->SetDataToNativeKeyframeAnimator(false);
+  EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
+  EXPECT_EQ(
+      animation::Animation::State::kPlay,
+      element->css_keyframe_manager_->animations_map_["name1"]->GetState());
+
   auto iter = element->keyframes_map_->find("name1");
   EXPECT_EQ(iter != element->keyframes_map_->end(), true);
   EXPECT_EQ(iter->second->GetKeyframesContent()
@@ -271,6 +326,72 @@ TEST_F(ElementTest, Animate_Array) {
                 ->second->find(kPropertyIDLeft)
                 ->second.GetPattern(),
             CSSValuePattern::PX);
+
+  auto animation_data = element->computed_css_style()->animation_data();
+  auto web_animation = element->css_keyframe_manager_->animations_map_["name1"];
+  array1->set(
+      0,
+      lepus_value(runtime::js::JavaScriptElement::AnimationOperation::FINISH));
+  element->Animate(test_animate_args, pipeline_option);
+  EXPECT_FALSE(element->HasImperativeAnimationMetadata(base::String("name1")));
+  EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
+            web_animation->GetOrigin());
+
+  element->css_keyframe_manager_->SyncAnimationDataForNewPipeline(
+      animation_data, true);
+  auto rebuilt_animation =
+      element->css_keyframe_manager_->animations_map_["name1"];
+  EXPECT_NE(web_animation, rebuilt_animation);
+  EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
+            rebuilt_animation->GetOrigin());
+
+  base::Vector<starlight::AnimationData> no_animation_data;
+  element->css_keyframe_manager_->SetAnimationDataAndPlay(no_animation_data);
+  element->css_keyframe_manager_->SetAnimationDataAndPlay(animation_data);
+  EXPECT_EQ(
+      animation::Animation::Origin::kCSSAnimation,
+      element->css_keyframe_manager_->animations_map_["name1"]->GetOrigin());
+}
+
+TEST_F(ElementTest, AnimateV2UsesMetadataWithoutLegacyPipelineState) {
+  auto element = manager->CreateFiberElement("view");
+  element->enable_new_animator_ = true;
+
+  auto args = lepus::CArray::Create();
+  args->set(0, lepus_value(
+                   runtime::js::JavaScriptElement::AnimationOperation::START));
+  args->set(1, lepus_value("v2-handle"));
+
+  auto keyframes = lepus::CArray::Create();
+  auto first_frame = lepus::Dictionary::Create();
+  first_frame->SetValue("opacity", lepus_value(0));
+  keyframes->set(0, lepus::Value(first_frame));
+  auto second_frame = lepus::Dictionary::Create();
+  second_frame->SetValue("opacity", lepus_value(1));
+  keyframes->set(1, lepus::Value(second_frame));
+  args->set(2, lepus::Value(keyframes));
+
+  auto options = lepus::Dictionary::Create();
+  options->SetValue("name", lepus::Value("v2-animation"));
+  options->SetValue("duration", lepus::Value(2000));
+  args->set(3, lepus::Value(options));
+
+  auto pipeline_option = std::make_shared<PipelineOptions>();
+  element->AnimateV2(lepus::Value(args), pipeline_option);
+
+  EXPECT_TRUE(element->HasImperativeAnimationMetadata("v2-animation"));
+  EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
+  element->SetDataToNativeKeyframeAnimator(false);
+  ASSERT_NE(nullptr, element->css_keyframe_manager_);
+  ASSERT_TRUE(
+      element->css_keyframe_manager_->animations_map_.contains("v2-animation"));
+  EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
+            element->css_keyframe_manager_->animations_map_["v2-animation"]
+                ->GetOrigin());
+
+  element->DestroyPlatformNode();
+  EXPECT_FALSE(element->imperative_animation_metadata_.has_value());
+  EXPECT_FALSE(element->HasImperativeAnimationMetadata("v2-animation"));
 }
 
 TEST_F(ElementTest, Animate_Table) {

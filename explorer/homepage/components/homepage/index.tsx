@@ -250,7 +250,7 @@ export default function HomePage(props: HomePageProps) {
               lynx-test-tag="runtime-lynx"
               ios-platform-accessibility-id="runtime-lynx"
               accessibility-element={true}
-              accessibility-label="Use Standard Lynx as the default runtime"
+              accessibility-label="Use Lynx as the default runtime"
               accessibility-traits="button"
             >
               <text

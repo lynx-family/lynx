@@ -214,9 +214,7 @@ LynxShell* LynxShellBuilder::build() {
     shell->perf_mediator_ = nullptr;
     shell->perf_controller_actor_ = perf_controller_actor_;
   } else {
-    const auto enable_perf = !shell_option_.page_options_.IsEmbeddedModeOn();
-    std::unique_ptr<tasm::performance::PerformanceController> perf_controller;
-    if (enable_perf) {
+    if (!shell_option_.page_options_.IsEmbeddedModeOn()) {
       // create timing mediator & actor
       auto timing_mediator =
           std::make_unique<lynx::tasm::timing::TimingMediator>(
@@ -229,9 +227,7 @@ LynxShell* LynxShellBuilder::build() {
           std::make_unique<lynx::tasm::performance::PerformanceMediator>();
       shell->perf_mediator_ = performance_mediator.get();
 
-      // Temporarily disable TimingActor in Embedded mode
-
-      perf_controller =
+      auto perf_controller =
           std::make_unique<tasm::performance::PerformanceController>(
               shell->GetLogContextSnapshot(), std::move(performance_mediator),
               std::move(timing_mediator), shell->instance_id_);
@@ -239,16 +235,16 @@ LynxShell* LynxShellBuilder::build() {
       perf_controller->GetTimingHandler().SetEnableJSRuntime(
           this->shell_option_.enable_js_);
       perf_controller->GetTimingHandler().SetThreadStrategy(this->strategy_);
+      shell->perf_controller_actor_ =
+          std::make_shared<LynxActor<tasm::performance::PerformanceController>>(
+              std::move(perf_controller),
+              tasm::performance::PerformanceController::GetTaskRunner(),
+              shell->instance_id_, true);
     }
-    shell->perf_controller_actor_ =
-        std::make_shared<LynxActor<tasm::performance::PerformanceController>>(
-            std::move(perf_controller),
-            tasm::performance::PerformanceController::GetTaskRunner(),
-            shell->instance_id_, enable_perf);
   }
   // Pass the `perf_controller_actor_` to the `PerformanceController`
   // object of the platform layer to establish a mapping relationship.
-  if (performance_controller_platform_) {
+  if (performance_controller_platform_ && shell->perf_controller_actor_) {
     performance_controller_platform_->SetActor(shell->perf_controller_actor_);
     if (shell->perf_controller_actor_->Impl() != nullptr) {
       shell->perf_controller_actor_->Impl()->SetPlatformImpl(

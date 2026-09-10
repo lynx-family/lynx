@@ -428,6 +428,26 @@ TEST_F(DisplayListBuilderTest, LinearGradientOperationEmpty) {
   EXPECT_FALSE(reader.HasNext());
 }
 
+TEST_F(DisplayListBuilderTest, RadialGradientOperation) {
+  base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  base::Vector<float> stops{0.0f, 1.0f};
+  builder_->RadialGradient(40.0f, 30.0f, 50.0f, 35.0f, colors, stops, 0, 1, 1,
+                           0);
+
+  DisplayList display_list = builder_->Build();
+  DisplayListReader reader(display_list);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kRadialGradient);
+  EXPECT_FLOAT_EQ(item.payload.radial_gradient.center_x, 40.0f);
+  EXPECT_FLOAT_EQ(item.payload.radial_gradient.radius_y, 35.0f);
+  EXPECT_EQ(item.payload.radial_gradient.repeat_x, 1);
+  EXPECT_EQ(item.payload.radial_gradient.repeat_y, 0);
+  ASSERT_NE(reader.Colors(item), nullptr);
+  ASSERT_NE(reader.Stops(item), nullptr);
+  EXPECT_FALSE(reader.HasNext());
+}
+
 TEST_F(DisplayListBuilderTest, BoxShadowOperation) {
   builder_->BoxShadow(0, 1, 0x80000000, 10.0f,
                       DisplayListBuilder::BoxShadowClipMode::kOutset);

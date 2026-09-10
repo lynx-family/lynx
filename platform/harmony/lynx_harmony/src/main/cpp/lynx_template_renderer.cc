@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/platform/harmony/message_loop_harmony.h"
 #include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
@@ -25,6 +26,7 @@
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
 #include "core/renderer/utils/base/base_def.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
@@ -173,13 +175,6 @@ void LynxTemplateRenderer::SetUpLynxShell(
       runtime_wrapper ? runtime_wrapper->RuntimeStandalone().GetRuntimeId()
                       : -1;
   auto mode = static_cast<tasm::EmbeddedMode>(embedded_mode);
-  if ((mode & tasm::EmbeddedMode::FRAGMENT_LAYER_RENDER) != 0) {
-    // TODO: Remove this fallback after Harmony supports fragment layer
-    // rendering through NativePaintingContext.
-    mode = static_cast<tasm::EmbeddedMode>(
-        static_cast<int32_t>(mode) &
-        ~static_cast<int32_t>(tasm::EmbeddedMode::FRAGMENT_LAYER_RENDER));
-  }
   shell_option.page_options_.SetEmbeddedMode(mode);
   auto lynx_context =
       static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
@@ -440,6 +435,15 @@ void LynxTemplateRenderer::LoadTemplateBundle(
   pipeline_options->enable_pre_painting = false;
   pipeline_options->enable_dump_element_tree = enable_dump_element_tree;
   shell_->LoadTemplateBundle(url, bundle, pipeline_options, template_data);
+}
+
+bool LynxTemplateRenderer::RegisterLazyBundle(
+    const std::string& url, const lynx::tasm::LynxTemplateBundle& bundle) {
+  if (!shell_) {
+    return false;
+  }
+  shell_->RegisterLazyBundle(url, bundle);
+  return true;
 }
 
 std::shared_ptr<tasm::PipelineOptions>
@@ -736,6 +740,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("loadTemplate", LoadTemplate),
       DECLARE_NAPI_METHOD("reloadTemplate", ReloadTemplate),
       DECLARE_NAPI_METHOD("loadTemplateBundle", LoadTemplateBundle),
+      DECLARE_NAPI_METHOD("registerLazyBundle", RegisterLazyBundle),
       DECLARE_NAPI_METHOD("updateViewport", UpdateViewport),
       DECLARE_NAPI_METHOD("updateScreenMetrics", UpdateScreenMetrics),
       DECLARE_NAPI_METHOD("nativeSetWindowInfo", NativeSetWindowInfo),
@@ -784,6 +789,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   napi_set_named_property(env, exports, export_class.c_str(), cons);
 
   NAPI_CREATE_FUNCTION(env, exports, "initGlobalEnv", InitGlobalEnv);
+  NAPI_CREATE_FUNCTION(env, exports, "setupHarmonyMessageLoopPromiseMicrotask",
+                       SetupHarmonyMessageLoopPromiseMicrotask);
   NAPI_CREATE_FUNCTION(env, exports, "registerImageService",
                        RegisterImageService);
   NAPI_CREATE_FUNCTION(env, exports, "setEmojiResourceFetcher",
@@ -907,6 +914,25 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
   });
 
   return nullptr;
+}
+
+napi_value LynxTemplateRenderer::SetupHarmonyMessageLoopPromiseMicrotask(
+    napi_env env, napi_callback_info info) {
+  static std::once_flag setup_once_flag;
+  static bool enabled = false;
+  std::call_once(setup_once_flag, [env]() {
+    enabled =
+        tasm::LynxEnv::GetInstance().EnableHarmonyMessageLoopPromiseMicrotask();
+    if (enabled) {
+      auto* ui_loop = static_cast<fml::MessageLoopHarmony*>(
+          base::UIThread::GetRunner()->GetLoop().get());
+      ui_loop->SetupNapiCallback(env);
+    }
+  });
+
+  napi_value result;
+  napi_get_boolean(env, enabled, &result);
+  return result;
 }
 
 napi_value LynxTemplateRenderer::RegisterImageService(napi_env env,
@@ -1552,6 +1578,33 @@ napi_value LynxTemplateRenderer::LoadTemplateBundle(napi_env env,
   obj->LoadTemplateBundle(std::move(url), bundle->GetBundle(), pipeline_options,
                           template_data, enable_dump_element_tree);
   return nullptr;
+}
+
+napi_value LynxTemplateRenderer::RegisterLazyBundle(napi_env env,
+                                                    napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  bool success = false;
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (argc == 2 &&
+      CheckNapiUnwrapObject(status, obj, "RegisterLazyBundle failed")) {
+    const std::string url = base::NapiUtil::ConvertToString(env, args[0]);
+    LynxTemplateBundleHarmony* bundle = nullptr;
+    status = napi_unwrap(env, args[1], reinterpret_cast<void**>(&bundle));
+    if (!url.empty() && status == napi_ok && bundle != nullptr &&
+        bundle->IsValid()) {
+      success = obj->RegisterLazyBundle(url, bundle->GetBundle());
+    }
+  }
+
+  napi_value result = nullptr;
+  napi_get_boolean(env, success, &result);
+  return result;
 }
 
 napi_value LynxTemplateRenderer::GetAllTimingInfo(napi_env env,

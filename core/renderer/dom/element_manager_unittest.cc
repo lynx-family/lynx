@@ -9,6 +9,8 @@
 
 #include <mutex>
 #include <optional>
+#include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -65,12 +67,28 @@ class ScopedExternalBoolEnv {
 
 class RecordingMockPaintingContext : public MockPaintingContext {
  public:
+  void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {
+    completion_events_.push_back("FinishTasm");
+  }
+
+  void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {
+    completion_events_.push_back("FinishLayout");
+  }
+
+  void Flush() override {
+    completion_events_.push_back("Flush");
+    MockPaintingContext::Flush();
+  }
+
   void RecordInitialLynxUITreeForReplay(
       std::vector<InitialLynxUITreeNodeForReplay> nodes) override {
     initial_tree_nodes_ = std::move(nodes);
   }
 
   std::vector<InitialLynxUITreeNodeForReplay> initial_tree_nodes_;
+  std::vector<std::string> completion_events_;
 };
 
 const InitialLynxUITreeNodeForReplay* FindInitialTreeNode(
@@ -93,7 +111,7 @@ class ElementManagerTest : public ::testing::Test {
 
   void SetUp() override { CreateManager(); }
 
-  void CreateManager() {
+  void CreateManager(const PageOptions& page_options = PageOptions()) {
     manager.reset();
     LynxEnvConfig lynx_env_config(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
                                   kDefaultPhysicalPixelsPerLayoutUnit);
@@ -104,12 +122,77 @@ class ElementManagerTest : public ::testing::Test {
     painting_context = painting_context_impl.get();
     manager = std::make_unique<lynx::tasm::ElementManager>(
         std::move(painting_context_impl), tasm_mediator.get(), lynx_env_config,
-        tasm::PageOptions());
+        page_options);
     auto config = std::make_shared<PageConfig>();
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
   }
 };
+
+TEST_F(ElementManagerTest, RadonAnimationBackendSelection) {
+  EXPECT_FALSE(manager->GetEnableNewAnimatorForRadon());
+  manager->SetEnableNewAnimatorRadon(true);
+  EXPECT_TRUE(manager->GetEnableNewAnimatorForRadon());
+
+  manager->SetEnableNewAnimatorRadon(false);
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  EXPECT_FALSE(manager->GetEnableNewAnimatorForRadon());
+
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  EXPECT_TRUE(manager->GetEnableNewAnimatorForRadon());
+  EXPECT_TRUE(manager->GetEnableNewAnimatorForFiber());
+}
+
+class ElementManagerNoPatchTest
+    : public ElementManagerTest,
+      public ::testing::WithParamInterface<std::tuple<bool, bool>> {};
+
+TEST_P(ElementManagerNoPatchTest, PublishesCompletionForLayoutInElement) {
+  const auto [layout_in_element, trigger_layout] = GetParam();
+  PageOptions page_options;
+  if (layout_in_element) {
+    page_options.SetEmbeddedMode(static_cast<EmbeddedMode>(
+        EmbeddedMode::EMBEDDED_MODE_BASE | EmbeddedMode::LAYOUT_IN_ELEMENT));
+  }
+  CreateManager(page_options);
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  ASSERT_EQ(page->EnableLayoutInElementMode(), layout_in_element);
+  ASSERT_FALSE(page->EnableFragmentLayerRender());
+  manager->painting_context()->OnFirstScreen();
+  painting_context->completion_events_.clear();
+  painting_context->ResetFlushFlag();
+
+  // Exercise both NoPatch causes: no pending layout, or layout suppressed by
+  // the caller despite pending layout work.
+  manager->need_layout_ = !trigger_layout;
+  auto options = std::make_shared<PipelineOptions>();
+  options->trigger_layout_ = trigger_layout;
+  bool callback_called = false;
+  manager->OnPatchFinishForFiber(
+      options,
+      [&callback_called](bool has_patch) {
+        callback_called = true;
+        EXPECT_FALSE(has_patch);
+      },
+      page.get());
+
+  EXPECT_TRUE(callback_called);
+  std::vector<std::string> expected_events{"FinishTasm", "FinishLayout"};
+  if (layout_in_element) {
+    expected_events.push_back("Flush");
+  }
+  EXPECT_EQ(painting_context->completion_events_, expected_events);
+  EXPECT_EQ(painting_context->HasFlushed(), layout_in_element);
+  EXPECT_FALSE(options->has_layout);
+}
+
+INSTANTIATE_TEST_SUITE_P(NoPatch, ElementManagerNoPatchTest,
+                         ::testing::Combine(::testing::Bool(),
+                                            ::testing::Bool()));
 
 TEST_F(ElementManagerTest, CreateFiberPage) {
   auto config = std::make_shared<PageConfig>();
@@ -261,6 +344,8 @@ TEST_F(ElementManagerTest,
   ASSERT_EQ(platform_ref->remove_ids_.size(), 2U);
   EXPECT_EQ(platform_ref->remove_ids_[0], 3);
   EXPECT_EQ(platform_ref->remove_ids_[1], 4);
+  EXPECT_TRUE(platform_ref->should_cache_external_memory_candidates_);
+  EXPECT_EQ(platform_ref->node_ready_patching_update_count_, 1);
   EXPECT_EQ(platform_ref->external_memory_report_request_count_, 1);
   EXPECT_EQ(platform_ref->external_memory_report_delay_ms_, 1000);
 
@@ -282,6 +367,8 @@ TEST_F(ElementManagerTest, FeatureOffDoesNotRequestExternalMemoryReport) {
 
   ASSERT_EQ(platform_ref->remove_ids_.size(), 1U);
   EXPECT_EQ(platform_ref->remove_ids_[0], 2);
+  EXPECT_FALSE(platform_ref->should_cache_external_memory_candidates_);
+  EXPECT_EQ(platform_ref->node_ready_patching_update_count_, 1);
   EXPECT_EQ(platform_ref->external_memory_report_request_count_, 0);
 }
 
@@ -458,26 +545,28 @@ TEST_F(ElementManagerTest, CreateFiberElementImage) {
   EXPECT_TRUE(static_node->is_image());
 }
 
-TEST_F(ElementManagerTest, CreateFiberElementEcomImage) {
+TEST_F(ElementManagerTest, CreateFiberElementEcomImageAsCustomElement) {
   base::String tag("ecom-image");
+  EXPECT_EQ(ElementProperty::ConvertStringTagToEnumTag(tag), ELEMENT_EMPTY);
+
   auto node = manager->CreateFiberElement(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
 
-  EXPECT_TRUE(node->is_image());
+  EXPECT_FALSE(node->is_image());
 
   node = manager->CreateFiberNode(tag);
 
   EXPECT_EQ(node->GetTag(), tag.str());
 
-  EXPECT_TRUE(node->is_image());
+  EXPECT_FALSE(node->is_image());
 
   auto static_node =
       ElementManager::StaticCreateFiberElement(ELEMENT_OTHER, tag);
 
   EXPECT_EQ(static_node->GetTag(), tag.str());
 
-  EXPECT_TRUE(static_node->is_image());
+  EXPECT_FALSE(static_node->is_image());
 }
 
 TEST_F(ElementManagerTest, CreateFiberElementScrollView) {

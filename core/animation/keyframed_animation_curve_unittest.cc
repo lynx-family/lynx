@@ -232,13 +232,13 @@ TEST_F(KeyframedAnimationCurveTest, TwoOpacityKeyframe) {
   std::unique_ptr<KeyframedOpacityAnimationCurve> curve(
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
-  auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetOpacity(1.0f);
+  auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame2));
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
   fml::TimeDelta value2 = fml::TimeDelta::FromSecondsF(0.5f);
@@ -257,10 +257,10 @@ TEST_F(KeyframedAnimationCurveTest,
   curve->SetUnderlyingValue(
       ::lynx::tasm::CSSValue(1.0f, ::lynx::tasm::CSSValuePattern::NUMBER));
 
-  curve->AddKeyframe(OpacityKeyframe::Create(fml::TimeDelta(), nullptr));
+  curve->AddKeyframe(gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr));
   auto end_frame =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  end_frame->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  end_frame->SetValue(0.0f);
   curve->AddKeyframe(std::move(end_frame));
 
   fml::TimeDelta first_iteration_time = fml::TimeDelta::FromSecondsF(0.5f);
@@ -272,41 +272,23 @@ TEST_F(KeyframedAnimationCurveTest,
   EXPECT_EQ(first_iteration_value, curve->GetValue(second_iteration_time));
 }
 
-TEST_F(KeyframedAnimationCurveTest, OpacityKeyframeRejectsNonNumberLikeLegacy) {
-  auto test_element = InitFiberElement();
-
-  auto rem_frame = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  EXPECT_FALSE(rem_frame->SetValue(
-      ::lynx::tasm::kPropertyIDOpacity,
-      ::lynx::tasm::CSSValue(2.f, ::lynx::tasm::CSSValuePattern::REM),
-      test_element.get()));
-
-  auto calc_frame = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  EXPECT_FALSE(calc_frame->SetValue(
-      ::lynx::tasm::kPropertyIDOpacity,
-      ::lynx::tasm::CSSValue("calc(1rem + 10px)",
-                             ::lynx::tasm::CSSValuePattern::CALC,
-                             ::lynx::tasm::CSSValueType::DEFAULT),
-      test_element.get()));
-}
-
 // Tests that a opacity animation with three keyframes works as expected.
 TEST_F(KeyframedAnimationCurveTest, ThreeOpacityKeyframe) {
   std::unique_ptr<KeyframedOpacityAnimationCurve> curve(
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
-  auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetOpacity(1.0f);
+  auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetOpacity(0.4f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(0.4f);
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame3->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame3->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame3));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -327,23 +309,23 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedOpacityKeyTimes) {
   std::unique_ptr<KeyframedOpacityAnimationCurve> curve(
       KeyframedOpacityAnimationCurve::Create());
   curve->type_ = AnimationCurve::CurveType::OPACITY;
-  auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetOpacity(0.0f);
+  auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetOpacity(0.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(0.0f);
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame3->SetOpacity(1.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame3->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame3));
 
   auto test_frame4 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame4->SetOpacity(1.0f);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame4->SetValue(1.0f);
   curve->AddKeyframe(std::move(test_frame4));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -369,13 +351,13 @@ TEST_F(KeyframedAnimationCurveTest, TwoColorKeyFrame) {
       KeyframedColorAnimationCurve::Create(
           starlight::XAnimationColorInterpolationType::kSRGB));
   curve->type_ = AnimationCurve::CurveType::BGCOLOR;
-  auto test_frame1 = ColorKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetColor(4294901760);
+  auto test_frame1 = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(4294901760);
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetColor(4278255360);
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(4278255360);
   curve->AddKeyframe(std::move(test_frame2));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -398,18 +380,18 @@ TEST_F(KeyframedAnimationCurveTest, ThreeColorKeyFrame) {
       KeyframedColorAnimationCurve::Create(
           starlight::XAnimationColorInterpolationType::kSRGB));
   curve->type_ = AnimationCurve::CurveType::BGCOLOR;
-  auto test_frame1 = ColorKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetColor(4294901760);  // ARGB(255, 255, 0, 0)
+  auto test_frame1 = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(4294901760);  // ARGB(255, 255, 0, 0)
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetColor(4278255360);  // ARGB(255, 0, 255, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(4278255360);  // ARGB(255, 0, 255, 0)
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame3->SetColor(4278190335);  // ARGB(255, 0, 0, 255)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame3->SetValue(4278190335);  // ARGB(255, 0, 0, 255)
   curve->AddKeyframe(std::move(test_frame3));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -441,23 +423,23 @@ TEST_F(KeyframedAnimationCurveTest, RepeatedColorKeyFrame) {
       KeyframedColorAnimationCurve::Create(
           starlight::XAnimationColorInterpolationType::kSRGB));
   curve->type_ = AnimationCurve::CurveType::BGCOLOR;
-  auto test_frame1 = ColorKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->SetColor(4282384384);  // ARGB(255, 64, 0, 0)
+  auto test_frame1 = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->SetValue(4282384384);  // ARGB(255, 64, 0, 0)
   curve->AddKeyframe(std::move(test_frame1));
 
   auto test_frame2 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame2->SetColor(4282384384);  // ARGB(255, 64, 0, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame2->SetValue(4282384384);  // ARGB(255, 64, 0, 0)
   curve->AddKeyframe(std::move(test_frame2));
 
   auto test_frame3 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-  test_frame3->SetColor(4290772992);  // ARGB(255, 192, 0, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+  test_frame3->SetValue(4290772992);  // ARGB(255, 192, 0, 0)
   curve->AddKeyframe(std::move(test_frame3));
 
   auto test_frame4 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
-  test_frame4->SetColor(4290772992);  // ARGB(255, 192, 0, 0)
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+  test_frame4->SetValue(4290772992);  // ARGB(255, 192, 0, 0)
   curve->AddKeyframe(std::move(test_frame4));
 
   fml::TimeDelta value1 = fml::TimeDelta::FromSecondsF(0.f);
@@ -536,13 +518,13 @@ TEST_F(KeyframedAnimationCurveTest, UnsortedKeyframes) {
 TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
   {
     std::vector<std::unique_ptr<gfx::Keyframe>> keyframes;
-    auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-    test_frame1->SetOpacity(1.0f);
+    auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame1->SetValue(1.0f);
     keyframes.emplace_back(std::move(test_frame1));
 
     auto test_frame2 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame2->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame2->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame2));
     auto s1 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 0,
                                             fml::TimeDelta::FromSecondsF(1));
@@ -550,8 +532,8 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
     EXPECT_TRUE(s1.progress == 1.0);
 
     auto test_frame3 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame3->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame3->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame3));
     auto s2 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 1,
                                             fml::TimeDelta::FromSecondsF(1));
@@ -562,13 +544,13 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
 
   {
     std::vector<std::unique_ptr<gfx::Keyframe>> keyframes;
-    auto test_frame1 = OpacityKeyframe::Create(fml::TimeDelta(), nullptr);
-    test_frame1->SetOpacity(1.0f);
+    auto test_frame1 = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
+    test_frame1->SetValue(1.0f);
     keyframes.emplace_back(std::move(test_frame1));
 
     auto test_frame2 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame2->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame2->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame2));
     auto s3 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 2,
                                             fml::TimeDelta::FromSecondsF(0.5));
@@ -576,8 +558,8 @@ TEST_F(KeyframedAnimationCurveTest, TransformedKeyframeProgress) {
     EXPECT_TRUE(s3.progress == 0.25);
 
     auto test_frame3 =
-        OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
-    test_frame3->SetOpacity(0.0f);
+        gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    test_frame3->SetValue(0.0f);
     keyframes.emplace_back(std::move(test_frame3));
     auto s4 = gfx::ComputeKeyframedProgress(keyframes, nullptr, 2,
                                             fml::TimeDelta::FromSecondsF(2));
@@ -599,7 +581,7 @@ TEST_F(KeyframedAnimationCurveTest, MakeEmptyKeyframe) {
 
   auto test_curve2 = KeyframedOpacityAnimationCurve::Create();
   auto test_frame3 =
-      OpacityKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+      gfx::FloatKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
   auto test_frame4 =
       test_curve2->KeyframedOpacityAnimationCurve::MakeEmptyKeyframe(
           fml::TimeDelta::FromSecondsF(2.0));
@@ -609,7 +591,7 @@ TEST_F(KeyframedAnimationCurveTest, MakeEmptyKeyframe) {
   auto test_curve3 = KeyframedColorAnimationCurve::Create(
       starlight::XAnimationColorInterpolationType::kSRGB);
   auto test_frame5 =
-      ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
+      gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(2.0), nullptr);
   auto test_frame6 =
       test_curve3->KeyframedColorAnimationCurve::MakeEmptyKeyframe(
           fml::TimeDelta::FromSecondsF(2.0));
@@ -726,17 +708,17 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginKeyframeResolvesRem) {
   end_arr->emplace_back(
       static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::PERCENT));
 
-  auto start_frame = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
+  auto start_frame = CSSVec2Keyframe::Create(fml::TimeDelta(), nullptr);
   EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
                                     ::lynx::tasm::CSSValue(start_arr),
                                     test_element.get()));
   auto* start_frame_ptr = start_frame.get();
   EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
-            start_frame->transform_origin_.GetArray()->get(1).UInt32());
+            start_frame->css_value_.GetArray()->get(1).UInt32());
   EXPECT_FALSE(start_frame->HasResolvedValue());
 
-  auto end_frame = TransformOriginKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  auto end_frame =
+      CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
   EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDTransformOrigin,
                                   ::lynx::tasm::CSSValue(end_arr),
                                   test_element.get()));
@@ -764,6 +746,12 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginKeyframeResolvesRem) {
   EXPECT_EQ(gfx::UnitTag::kNumber, start_frame_ptr->ResolvedValue().x.tag);
   EXPECT_EQ(gfx::UnitTag::kPercent, start_frame_ptr->ResolvedValue().y.tag);
   EXPECT_TRUE(end_frame_ptr->HasResolvedValue());
+  start_frame_ptr->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::EM));
+  EXPECT_TRUE(start_frame_ptr->HasResolvedValue());
+  start_frame_ptr->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  EXPECT_FALSE(start_frame_ptr->HasResolvedValue());
 }
 
 TEST_F(KeyframedAnimationCurveTest, BackgroundPositionKeyframeResolvesUnits) {
@@ -792,22 +780,18 @@ TEST_F(KeyframedAnimationCurveTest, BackgroundPositionKeyframeResolvesUnits) {
   auto end_outer = lepus::CArray::Create();
   end_outer->emplace_back(std::move(end_position));
 
-  auto start_frame =
-      BackgroundPositionKeyframe::Create(fml::TimeDelta(), nullptr);
+  auto start_frame = CSSVec2Keyframe::Create(fml::TimeDelta(), nullptr);
   EXPECT_TRUE(start_frame->SetValue(::lynx::tasm::kPropertyIDBackgroundPosition,
                                     ::lynx::tasm::CSSValue(start_outer),
                                     test_element.get()));
   auto* start_frame_ptr = start_frame.get();
-  EXPECT_EQ(static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
-            start_frame->background_position_.GetArray()
-                ->get(0)
-                .Array()
-                ->get(0)
-                .UInt32());
+  EXPECT_EQ(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM),
+      start_frame->css_value_.GetArray()->get(0).Array()->get(0).UInt32());
   EXPECT_FALSE(start_frame->HasResolvedValue());
 
-  auto end_frame = BackgroundPositionKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(1.f), nullptr);
+  auto end_frame =
+      CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(1.f), nullptr);
   EXPECT_TRUE(end_frame->SetValue(::lynx::tasm::kPropertyIDBackgroundPosition,
                                   ::lynx::tasm::CSSValue(end_outer),
                                   test_element.get()));
@@ -844,6 +828,9 @@ TEST_F(KeyframedAnimationCurveTest, BackgroundPositionKeyframeResolvesUnits) {
                   end_frame_ptr->ResolvedValue().x.value);
   EXPECT_FLOAT_EQ(context.root_node_font_size_ * 4.f,
                   end_frame_ptr->ResolvedValue().y.value);
+  start_frame_ptr->NotifyUnitValuesUpdated(
+      static_cast<uint32_t>(::lynx::tasm::CSSValuePattern::REM));
+  EXPECT_FALSE(start_frame_ptr->HasResolvedValue());
 }
 
 TEST_F(KeyframedAnimationCurveTest, FilterInterPolateTest) {
@@ -913,14 +900,14 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginInterPolateTest) {
   end_arr->emplace_back(
       static_cast<uint32_t>(lynx::tasm::CSSValuePattern::PERCENT));
 
-  auto test_frame1 = TransformOriginKeyframe::Create(fml::TimeDelta(), nullptr);
-  test_frame1->transform_origin_ = lynx::tasm::CSSValue(start_arr);
+  auto test_frame1 = CSSVec2Keyframe::Create(fml::TimeDelta(), nullptr);
+  test_frame1->css_value_ = lynx::tasm::CSSValue(start_arr);
   test_frame1->is_empty_ = false;
   curve->AddKeyframe(std::move(test_frame1));
 
-  auto test_frame2 = TransformOriginKeyframe::Create(
-      fml::TimeDelta::FromSecondsF(2.f), nullptr);
-  test_frame2->transform_origin_ = lynx::tasm::CSSValue(end_arr);
+  auto test_frame2 =
+      CSSVec2Keyframe::Create(fml::TimeDelta::FromSecondsF(2.f), nullptr);
+  test_frame2->css_value_ = lynx::tasm::CSSValue(end_arr);
   test_frame2->is_empty_ = false;
   curve->AddKeyframe(std::move(test_frame2));
 

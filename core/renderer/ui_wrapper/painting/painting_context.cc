@@ -94,13 +94,16 @@ void PaintingContext::UpdateNodeReadyPatching() {
       enable_external_memory_report_ && !patching_node_remove_ids_.empty();
   if (platform_impl_->HasEnableUIOperationBatching()) {
     platform_impl_->UpdateNodeReadyPatching(patching_node_ready_ids_,
-                                            patching_node_remove_ids_);
+                                            patching_node_remove_ids_,
+                                            enable_external_memory_report_);
   } else {
     Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
              ready_ids = patching_node_ready_ids_,
-             remove_ids = patching_node_remove_ids_]() {
+             remove_ids = patching_node_remove_ids_,
+             enable_external_memory_report = enable_external_memory_report_]() {
       platform_ref->UpdateNodeReadyPatching(std::move(ready_ids),
-                                            std::move(remove_ids));
+                                            std::move(remove_ids),
+                                            enable_external_memory_report);
     });
   }
   if (should_request_external_memory_report) {

@@ -8,6 +8,7 @@
 #include "core/renderer/events/touch_event_handler.h"
 
 #include "base/include/value/base_value.h"
+#include "core/event/touch_event.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -107,6 +108,65 @@ TEST_F(TouchEventHandlerTest, TestGetTargetInfoNodeIndex) {
   ASSERT_TRUE(target_info_with_element.IsObject());
   EXPECT_EQ(target_info_with_element.Table()->GetValue("nodeIndex").Number(),
             42);
+}
+
+TEST_F(TouchEventHandlerTest, CurrentTargetPointMatchesBubblingElement) {
+  base::String tag("view");
+  auto target = tasm_->page_proxy()->element_manager()->CreateFiberElement(tag);
+  auto parent = tasm_->page_proxy()->element_manager()->CreateFiberElement(tag);
+  EventInfo info(
+      target->impl_id(), 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7,
+      {{target->impl_id(), 11.f, 12.f}, {parent->impl_id(), 21.f, 22.f}});
+
+  auto target_event = touch_event_handler_->GetTouchEventParam(
+      "tap", target.get(), target.get(), info, false);
+  auto target_touch = target_event.GetProperty("changedTouches").GetProperty(0);
+  EXPECT_FLOAT_EQ(target_touch.GetProperty("currentTargetX").Number(), 11.f);
+  EXPECT_FLOAT_EQ(target_touch.GetProperty("currentTargetY").Number(), 12.f);
+
+  auto parent_event = touch_event_handler_->GetTouchEventParam(
+      "tap", target.get(), parent.get(), info, false);
+  auto parent_touch = parent_event.GetProperty("changedTouches").GetProperty(0);
+  EXPECT_FLOAT_EQ(parent_touch.GetProperty("currentTargetX").Number(), 21.f);
+  EXPECT_FLOAT_EQ(parent_touch.GetProperty("currentTargetY").Number(), 22.f);
+}
+
+TEST_F(TouchEventHandlerTest,
+       RefactoredTouchEventMatchesBubblingCurrentTargetPoint) {
+  base::String tag("view");
+  auto target = tasm_->page_proxy()->element_manager()->CreateFiberElement(tag);
+  auto parent = tasm_->page_proxy()->element_manager()->CreateFiberElement(tag);
+  auto grandparent =
+      tasm_->page_proxy()->element_manager()->CreateFiberElement(tag);
+  auto event = fml::MakeRefCounted<event::TouchEvent>(
+      "tap", 1.f, 2.f, 5.f, 6.f, 3.f, 4.f, 7,
+      event::TouchEventTargetPoints{
+          {target->impl_id(), 11.f, 12.f},
+          {parent->impl_id(), 21.f, 22.f},
+          {grandparent->impl_id(), 31.f, 32.f},
+      });
+  event->set_target(target->GetWeakTarget());
+  event->HandleEventCustomDetail();
+  event->set_current_target(parent->GetWeakTarget());
+  event->HandleEventBaseDetail();
+
+  auto parent_touch =
+      event->detail().GetProperty("changedTouches").GetProperty(0);
+  EXPECT_FLOAT_EQ(parent_touch.GetProperty("currentTargetX").Number(), 21.f);
+  EXPECT_FLOAT_EQ(parent_touch.GetProperty("currentTargetY").Number(), 22.f);
+
+  // SendGlobalEvent shallow-copies the event detail and freezes nested values.
+  auto frozen_changed_touches = event->detail().GetProperty("changedTouches");
+  ASSERT_TRUE(frozen_changed_touches.MarkConst());
+
+  event->set_current_target(grandparent->GetWeakTarget());
+  event->HandleEventBaseDetail();
+  auto grandparent_touch =
+      event->detail().GetProperty("changedTouches").GetProperty(0);
+  EXPECT_FLOAT_EQ(grandparent_touch.GetProperty("currentTargetX").Number(),
+                  31.f);
+  EXPECT_FLOAT_EQ(grandparent_touch.GetProperty("currentTargetY").Number(),
+                  32.f);
 }
 
 TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {

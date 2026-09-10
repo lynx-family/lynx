@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: '0 19 * * *'
   workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   windows-explorer-build-x86:
     runs-on: lynx-windows-2022-large
@@ -16,11 +20,12 @@ jobs:
           git config --global http.sslBackend "schannel"
         working-directory: ./
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies

@@ -26,6 +26,7 @@
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/component_element.h"
+#include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
@@ -253,6 +254,7 @@ static bool EnableElementStatistic() {
 }
 
 ElementManager::~ElementManager() {
+  StopAnimationVsync();
   ReportElementStatistic();
   WillDestroy();
   if (platform_layout_context_) {
@@ -321,23 +323,16 @@ void ElementManager::ReportElementStatistic() {
          view_element_count =
              view_element_count_.load()](report::MoveOnlyEvent &event) {
           event.SetName("lynxsdk_element_statistic");
-          event.SetProps("element_count",
-                         static_cast<unsigned int>(element_count));
+          event.SetProps("element_count", element_count);
           event.SetProps("layout_only_element_count",
-                         static_cast<unsigned int>(layout_only_element_count));
-          event.SetProps(
-              "layout_only_transition_count",
-              static_cast<unsigned int>(layout_only_transition_count));
-          event.SetProps("wrapper_element_count",
-                         static_cast<unsigned int>(wrapper_element_count));
-          event.SetProps("component_element_count",
-                         static_cast<unsigned int>(component_element_count));
-          event.SetProps("image_element_count",
-                         static_cast<unsigned int>(image_element_count));
-          event.SetProps("text_element_count",
-                         static_cast<unsigned int>(text_element_count));
-          event.SetProps("view_element_count",
-                         static_cast<unsigned int>(view_element_count));
+                         layout_only_element_count);
+          event.SetProps("layout_only_transition_count",
+                         layout_only_transition_count);
+          event.SetProps("wrapper_element_count", wrapper_element_count);
+          event.SetProps("component_element_count", component_element_count);
+          event.SetProps("image_element_count", image_element_count);
+          event.SetProps("text_element_count", text_element_count);
+          event.SetProps("view_element_count", view_element_count);
           if (element_count > 0) {
             event.SetProps(
                 "wrapper_element_ratio",
@@ -371,7 +366,7 @@ void ElementManager::WillDestroy() {
 
 void ElementManager::OnDocumentUpdated() {
   EXEC_EXPR_FOR_INSPECTOR({
-    if (inspector_element_observer_ && IsDomTreeEnabled()) {
+    if (inspector_element_observer_) {
       inspector_element_observer_->OnDocumentUpdated();
     }
   });
@@ -588,11 +583,18 @@ void ElementManager::RequestLayout(
   if (has_viewport_ready_ && root()->is_page()) {
     static_cast<PageElement *>(root())->Layout(options);
 
+    const bool is_first_layout = pending_first_layout_ ||
+                                 options->is_first_screen ||
+                                 options->is_reuse_engine;
+    pending_first_layout_ = false;
+
     layout_data = {.layout_triggered = true,
                    .pipeline_version = options->version,
-                   .is_first_layout =
-                       options->is_first_screen || options->is_reuse_engine};
+                   .is_first_layout = is_first_layout};
   } else {
+    pending_first_layout_ |=
+        options->is_first_screen || options->is_reuse_engine;
+
     // When unified pipeline is disabled, force Flush as a fallback.
     // Layout will trigger flush; this only compensates when layout is not
     // invoked.
@@ -700,6 +702,53 @@ void ElementManager::FirePostMTSRenderTasks() {
   }
 
   PostTaskBatchToConcurrentLoop(batch);
+}
+
+void ElementManager::EnqueuePendingElementTemplateChildMounts(
+    ElementTemplateInstance &instance) {
+  if (instance.pending_child_mounts_enqueued_) {
+    return;
+  }
+  instance.pending_child_mounts_enqueued_ = true;
+  pending_element_template_child_mounts_.emplace_back(instance.WeakFromThis());
+}
+
+void ElementManager::DrainPendingElementTemplateChildMounts(
+    Element *flush_root) {
+  if (pending_element_template_child_mounts_.empty()) {
+    return;
+  }
+
+  auto pending_instances = std::move(pending_element_template_child_mounts_);
+  pending_element_template_child_mounts_.clear();
+  base::Vector<fml::WeakPtr<ElementTemplateInstance>> out_of_scope_instances;
+  while (!pending_instances.empty()) {
+    for (const auto &weak_instance : pending_instances) {
+      auto instance = fml::RefPtr<ElementTemplateInstance>(weak_instance.get());
+      if (instance == nullptr) {
+        continue;
+      }
+      instance->pending_child_mounts_enqueued_ = false;
+      if (!instance->HasPendingChildMounts()) {
+        continue;
+      }
+      auto result = instance->FlushPendingChildMounts(flush_root);
+      if (result ==
+          ElementTemplateInstance::FlushPendingChildMountsResult::kOutOfScope) {
+        out_of_scope_instances.emplace_back(weak_instance);
+      }
+    }
+
+    pending_instances = std::move(pending_element_template_child_mounts_);
+    pending_element_template_child_mounts_.clear();
+  }
+
+  for (const auto &weak_instance : out_of_scope_instances) {
+    auto instance = fml::RefPtr<ElementTemplateInstance>(weak_instance.get());
+    if (instance != nullptr && instance->HasPendingChildMounts()) {
+      EnqueuePendingElementTemplateChildMounts(*instance);
+    }
+  }
 }
 
 void ElementManager::PrepareComponentNodeForInspector(Element *component) {
@@ -931,6 +980,9 @@ void ElementManager::OnUpdateViewport(float width, int width_mode, float height,
   viewport_.UpdateViewport(width, width_mode, height, height_mode);
   has_viewport_ready_ = true;
 
+  // TODO(songshourui.null): Handle a deferred initial layout when the first
+  // viewport matches the page's default constraints, such as an INDEFINITE
+  // viewport, and SetViewportSizeToRootNode() returns false.
   if (SetViewportSizeToRootNode()) {
     if (need_layout) {
       TickLayout(std::make_shared<PipelineOptions>());
@@ -1170,7 +1222,6 @@ void ElementManager::UpdateTouchPseudoStatus(bool value) {
 void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
   config_ = config;
 
-  SetEnableOptPushStyleToBundle(config_->GetEnableOptPushStyleToBundle());
   // Apply pagewise configs
   if (config_) {
     layout_configs_ = config_->GetLayoutConfigs();
@@ -1212,7 +1263,17 @@ void ElementManager::BindTimingFlagToPipelineOptions(
 
 void ElementManager::SetNeedsLayout() { need_layout_ = true; }
 
+void ElementManager::StopAnimationVsync() {
+  animation_vsync_stopped_ = true;
+  if (element_vsync_proxy_) {
+    element_vsync_proxy_->Invalidate();
+  }
+}
+
 void ElementManager::RequestNextFrame(Element *element) {
+  if (animation_vsync_stopped_) {
+    return;
+  }
   animation_element_set_.insert(element);
   if (element_vsync_proxy_ == nullptr) {
     element_vsync_proxy_ = std::make_shared<ElementVsyncProxy>(
@@ -1340,22 +1401,14 @@ fml::RefPtr<Element> ElementManager::CreateFiberElement(
 fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
     ElementBuiltInTagEnum enum_tag, const base::String &raw_tag) {
   fml::RefPtr<Element> element = nullptr;
-  // TODO(hexionghui): compatible for cui's fallback ui, remove this when render
-  // by flatten ui not displaylist.
-  ElementBuiltInTagEnum resolved_enum_tag =
-      raw_tag.IsEqual(kElementEcomImageTag) ? ELEMENT_IMAGE : enum_tag;
-  switch (resolved_enum_tag) {
+  switch (enum_tag) {
     case ELEMENT_VIEW:
       element = fml::AdoptRef<ViewElement>(new ViewElement(nullptr));
       break;
-    case ELEMENT_IMAGE: {
-      base::String image_tag = raw_tag.IsEqual(kElementEcomImageTag)
-                                   ? raw_tag
-                                   : BASE_STATIC_STRING(kElementImageTag);
-      element =
-          fml::AdoptRef<ImageElement>(new ImageElement(nullptr, image_tag));
+    case ELEMENT_IMAGE:
+      element = fml::AdoptRef<ImageElement>(
+          new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
       break;
-    }
     case ELEMENT_INLINE_IMAGE:
       element = fml::AdoptRef<ImageElement>(
           new ImageElement(nullptr, BASE_STATIC_STRING(kElementImageTag)));
@@ -1429,9 +1482,6 @@ fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
 }
 
 fml::RefPtr<Element> ElementManager::CreateFiberNode(const base::String &tag) {
-  if (tag.IsEqual(kElementEcomImageTag)) {
-    return fml::AdoptRef<Element>(new ImageElement(this, tag));
-  }
   auto res = fml::AdoptRef<Element>(new Element(this, tag));
   return res;
 }
@@ -1819,8 +1869,13 @@ void ElementManager::OnPatchFinishForFiber(
     if (root() && root()->EnableFragmentLayerRender()) {
       Repaint();
     }
-    if (root() && root()->EnableFragmentLayerRender()) {
+    if (root() && (root()->EnableFragmentLayerRender() ||
+                   root()->EnableLayoutInElementMode())) {
       root()->element_container()->FinishLayoutOperation(options);
+      // NoPatch skips layout, but still enqueues completion operations.
+      // Embedded mode skips LynxEngine::Flush(), so flush here to publish
+      // pending operations and notify async queue waiters. Otherwise a
+      // subsequent syncFlush can time out despite rendering being finished.
       root()->element_container()->Flush();
     } else {
       catalyzer_->painting_context()->FinishLayoutOperation(options);
@@ -1938,17 +1993,6 @@ void ElementManager::SetEnableUIOperationOptimize(TernaryBool enable) {
   if (enable == TernaryBool::TRUE_VALUE ||
       LynxEnv::GetInstance().EnableUIOpBatch()) {
     painting_context()->EnableUIOperationBatching();
-  }
-}
-
-void ElementManager::SetEnableOptPushStyleToBundle(TernaryBool value) {
-  if (value == TernaryBool::TRUE_VALUE) {
-    enable_opt_push_style_to_bundle_ = true;
-  } else if (value == TernaryBool::FALSE_VALUE) {
-    enable_opt_push_style_to_bundle_ = false;
-  } else {
-    enable_opt_push_style_to_bundle_ = LynxEnv::GetInstance().GetBoolEnv(
-        lynx::tasm::LynxEnv::Key::OPT_PUSH_STYLE_TO_BUNDLE, true);
   }
 }
 

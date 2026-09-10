@@ -21,7 +21,6 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -3612,6 +3611,15 @@ public abstract class LynxBaseUI
   }
 
   public boolean isOverlay() {
+    return false;
+  }
+
+  /**
+   * Whether this UI is the root of a subtree rendered outside the Lynx root view hierarchy.
+   * Exposure checks stop clipping against Lynx ancestors and the Lynx root at this boundary, while
+   * retaining the subtree's existing exposure geometry and window clipping behavior.
+   */
+  public boolean isExternalExposureRoot() {
     return false;
   }
 

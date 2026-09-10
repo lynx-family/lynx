@@ -11,6 +11,7 @@
 #include "base/include/value/path_parser.h"
 #include "base/include/value/ref_type.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/runtime/lepus/base_binary_reader.h"
 #include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/builtin.h"
 #include "core/runtime/lepus/bytecode_generator.h"
@@ -119,6 +120,105 @@ TEST(VMContextSafety, InvalidOpcode_IsReportedAsException) {
   EXPECT_EQ(vm.err_code_, error::E_MTS_RUNTIME_ERROR);
   EXPECT_NE(vm.exception_info_.find("Invalid Lepus opcode: 255."),
             std::string::npos);
+}
+
+TEST(VMContextSafety, InvalidConstantIndices_AreReportedAsException) {
+  const std::vector<lepus::Instruction> instructions = {
+      lepus::Instruction::ABxCode(lepus::TypeOp_LoadConst, 0, 100),
+      lepus::Instruction::ABxCode(lepus::TypeOp_LoadConstAndClone, 0, 100),
+      lepus::Instruction::ABCCode(lepus::TypeOp_SetObjectConstString, 0, 100,
+                                  0),
+      lepus::Instruction::ABCCode(lepus::TypeOp_GetTableConstString, 0, 0, 100),
+  };
+
+  for (const auto instruction : instructions) {
+    lepus::VMContext vm;
+    vm.Initialize();
+
+    auto fn = lepus::Function::Create();
+    fn->AddInstruction(instruction);
+    vm.SetRootFunction(fn);
+
+    lepus::Value ret;
+    ASSERT_TRUE(vm.ExecuteBinaryWithBundle(nullptr, &ret));
+
+    ASSERT_TRUE(ret.IsNil());
+    EXPECT_EQ(vm.err_code_, error::E_MTS_RUNTIME_ERROR);
+    EXPECT_NE(vm.exception_info_.find(
+                  "Invalid Lepus bytecode constant index 100 (limit 0)."),
+              std::string::npos);
+  }
+}
+
+TEST(VMContextSafety, InvalidChildFunctionIndex_IsReportedAsException) {
+  lepus::VMContext vm;
+  vm.Initialize();
+
+  auto fn = lepus::Function::Create();
+  fn->AddInstruction(
+      lepus::Instruction::ABxCode(lepus::TypeOp_Closure, 0, 100));
+  vm.SetRootFunction(fn);
+
+  lepus::Value ret;
+  ASSERT_TRUE(vm.ExecuteBinaryWithBundle(nullptr, &ret));
+
+  ASSERT_TRUE(ret.IsNil());
+  EXPECT_EQ(vm.err_code_, error::E_MTS_RUNTIME_ERROR);
+  EXPECT_NE(vm.exception_info_.find(
+                "Invalid Lepus bytecode child function index 100 (limit 0)."),
+            std::string::npos);
+}
+
+TEST(LepusBytecodeValidation, RejectsOutOfRangeConstantIndices) {
+  lepus::BaseBinaryReader reader(nullptr);
+  const std::vector<lepus::Instruction> instructions = {
+      lepus::Instruction::ABxCode(lepus::TypeOp_LoadConst, 0, 0),
+      lepus::Instruction::ABxCode(lepus::TypeOp_LoadConstAndClone, 0, 0),
+      lepus::Instruction::ABCCode(lepus::TypeOp_SetObjectConstString, 0, 0, 0),
+      lepus::Instruction::ABCCode(lepus::TypeOp_GetTableConstString, 0, 0, 0),
+  };
+
+  for (const auto instruction : instructions) {
+    auto fn = lepus::Function::Create();
+    fn->AddInstruction(instruction);
+    EXPECT_FALSE(reader.ValidateFunctionBytecode(*fn, fn->OpCodeSize()));
+    EXPECT_NE(reader.error_message_.find(
+                  "Invalid Lepus bytecode constant index 0 (limit 0)."),
+              std::string::npos);
+  }
+}
+
+TEST(LepusBytecodeValidation, RejectsOutOfRangeChildFunctionIndex) {
+  lepus::BaseBinaryReader reader(nullptr);
+  auto fn = lepus::Function::Create();
+  fn->AddInstruction(lepus::Instruction::ABxCode(lepus::TypeOp_Closure, 0, 0));
+
+  EXPECT_FALSE(reader.ValidateFunctionBytecode(*fn, fn->OpCodeSize()));
+  EXPECT_NE(reader.error_message_.find(
+                "Invalid Lepus bytecode child function index 0 (limit 0)."),
+            std::string::npos);
+}
+
+TEST(LepusBytecodeValidation, AcceptsValidIndicesAndSkipsPackedOperands) {
+  lepus::BaseBinaryReader reader(nullptr);
+  auto fn = lepus::Function::Create();
+  fn->AddConstValue(lepus::Value());
+  fn->AddChildFunction(lepus::Function::Create());
+  fn->AddInstruction(
+      lepus::Instruction::ABxCode(lepus::TypeOp_LoadConst, 0, 0));
+  fn->AddInstruction(
+      lepus::Instruction::ABxCode(lepus::TypeOp_LoadConstAndClone, 0, 0));
+  fn->AddInstruction(
+      lepus::Instruction::ABCCode(lepus::TypeOp_SetObjectConstString, 0, 0, 0));
+  fn->AddInstruction(
+      lepus::Instruction::ABCCode(lepus::TypeOp_GetTableConstString, 0, 0, 0));
+  fn->AddInstruction(lepus::Instruction::ABxCode(lepus::TypeOp_Closure, 0, 0));
+  fn->AddInstruction(
+      lepus::Instruction::ABCCode(lepus::TypeOp_CallRandom1, 0, 1, 0));
+  fn->AddInstruction(
+      lepus::Instruction::ABxCode(lepus::TypeOp_LoadConst, 0, 100));
+
+  EXPECT_TRUE(reader.ValidateFunctionBytecode(*fn, fn->OpCodeSize()));
 }
 
 TEST(RenderBindingFunctionRegistration, VMContextFiltersEachEntry) {

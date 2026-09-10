@@ -230,7 +230,7 @@ class VMContext : public runtime::MTSContext {
   RestrictedValue CallEpilogue(RestrictedValue* function, size_t arg_count);
 
   void RunFrame();
-  void GenerateClosure(RestrictedValue* value, long index);
+  bool GenerateClosure(RestrictedValue* value, long index);
   RestrictedValue PrepareClosureContext(const fml::RefPtr<lepus::Closure>& clo);
   // Returns true if the exception is caught by a `catch` label.
   bool ReportException(const std::string& exception_info, int& pc,

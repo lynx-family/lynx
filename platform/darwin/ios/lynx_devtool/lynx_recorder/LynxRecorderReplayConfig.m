@@ -24,6 +24,10 @@
                                                               forKey:@"heightLimit"
                                                         defaultValue:NO];
 
+    _edgeToEdge = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
+                                                             forKey:@"edgeToEdge"
+                                                       defaultValue:NO];
+
     _enablePreDecode = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
                                                                   forKey:@"enablePreDecode"
                                                             defaultValue:NO];
@@ -46,11 +50,6 @@
     _createWhenReload = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
                                                                    forKey:@"createWhenReload"
                                                              defaultValue:NO];
-
-    _disableOptPushStyleToBundle =
-        [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
-                                                   forKey:@"disable_opt_push_style_to_bundle"
-                                             defaultValue:NO];
 
     _enableTextGradientOpt =
         [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
@@ -108,7 +107,7 @@
         initWithObjects:@"setGlobalProps", @"initialLynxView", @"loadTemplate", @"sendEventDarwin",
                         @"updateDataByPreParsedData", @"sendGlobalEvent", @"reloadTemplate",
                         @"updateConfig", @"loadTemplateBundle", @"updateMetaData",
-                        @"switchEngineFromUIThread", @"updateFontScale", nil];
+                        @"switchEngineFromUIThread", @"updateFontScale", @"callJSModule", nil];
     _reloadFuncName = [[NSSet alloc]
         initWithObjects:@"sendGlobalEvent", @"updateDataByPreParsedData", @"sendEventDarwin", nil];
 

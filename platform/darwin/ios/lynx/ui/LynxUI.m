@@ -859,6 +859,21 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     return true;
   }
 
+  bool hasExternalMask = self.view.layer.mask != nil && self.view.layer.mask != _overflowMask;
+  if (hasExternalMask && [self.view isKindOfClass:[UIScrollView class]]) {
+    // The mask is owned externally (e.g. by the display-list applier in FLR mode). A
+    // scroll view scrolls by shifting its layer's bounds origin, which moves the layer's
+    // coordinate space; pin the mask to the current viewport so the clip stays fixed on
+    // screen instead of scrolling away with the content. This must happen before the
+    // uniform-radius fast path below, which otherwise returns without updating the mask.
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.view.layer.mask.frame = self.view.layer.bounds;
+    [CATransaction commit];
+    // mask is used, we could not set overflow
+    return false;
+  }
+
   bool hasDifferentRadii = false;
   if (_overflow == 0) {
     hasDifferentRadii = [self.backgroundManager hasDifferentBorderRadius];
@@ -871,7 +886,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     }
   }
 
-  if (self.view.layer.mask != nil && self.view.layer.mask != _overflowMask) {
+  if (hasExternalMask) {
     // mask is used, we could not set overflow
     return false;
   }
@@ -1061,15 +1076,20 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   return nil;
 }
 
+- (UIView*)childrenContainerView {
+  return self.view;
+}
+
 - (void)insertChild:(LynxUI*)child atIndex:(NSInteger)index {
+  UIView* containerView = [self childrenContainerView];
   // main layer and its super layer
   CALayer* mainLayer = child.view.layer;
-  CALayer* superLayer = self.view.layer;
+  CALayer* superLayer = containerView.layer;
   LynxBackgroundManager* mgr = [child backgroundManager];
 
   // insert the child & its view into the proper position;
   [self didInsertChild:child atIndex:index];
-  [self.view insertSubview:[child view] atIndex:index];
+  [containerView insertSubview:[child view] atIndex:index];
 
   // adjust its layer's position
   // if the current LynxUI is not at the beginning of children
@@ -1086,7 +1106,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
         [superLayer.sublayers indexOfObject:mainLayer]) {
       // view operations
       [child.view removeFromSuperview];
-      [self.view insertSubview:child.view aboveSubview:siblingUI.view];
+      [containerView insertSubview:child.view aboveSubview:siblingUI.view];
       // layer operations
       [mainLayer removeFromSuperlayer];
       [superLayer insertSublayer:mainLayer above:[siblingUI topLayer]];
@@ -1107,7 +1127,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
         [superLayer.sublayers indexOfObject:mainLayer]) {
       // view operations
       [child.view removeFromSuperview];
-      [self.view insertSubview:child.view belowSubview:siblingUI.view];
+      [containerView insertSubview:child.view belowSubview:siblingUI.view];
       // layer operations
       [mainLayer removeFromSuperlayer];
       [superLayer insertSublayer:mainLayer below:[siblingUI bottomLayer]];
@@ -1278,12 +1298,6 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   }
 
   _gestureMap = gestureMap;
-  for (LynxBaseGestureHandler* handler in _gestureHandlers.allValues) {
-    if (handler.status == LynxGestureHandlerStateBegin ||
-        handler.status == LynxGestureHandlerStateActive) {
-      [handler fail];
-    }
-  }
   _gestureHandlers = nil;
   [self gestureDidSet];
 }

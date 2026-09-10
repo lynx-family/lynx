@@ -8,6 +8,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "clay/shell/common/services/compositor/presenter_service.h"
@@ -27,6 +28,11 @@ class PresenterServiceMac final : public PresenterService {
   PresenterServiceMac() = default;
 
  private:
+  struct OverlayHitRegion {
+    int64_t view_id;
+    CGRect rect;
+  };
+
   // PresenterService hooks
   void OnBeforePresent() override;
   void OnAfterPresent() override;
@@ -48,7 +54,8 @@ class PresenterServiceMac final : public PresenterService {
 
   clay::Puppet<clay::Owner::kPlatform, OverlayViewControllerService>
       overlay_view_controller_service_;
-  std::vector<CGRect> overlay_hit_rects_;
+  std::unordered_map<const PlatformOverlay*, OverlayHitRegion> hit_region_by_overlay_;
+  std::vector<OverlayHitRegion> ordered_hit_regions_;
 };
 
 }  // namespace clay

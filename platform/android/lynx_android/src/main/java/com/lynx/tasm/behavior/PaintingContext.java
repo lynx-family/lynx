@@ -607,12 +607,13 @@ public final class PaintingContext implements IPaintingContext {
           updateNodeReadyPatching(readyIds);
         } break;
         case UIOperationType.REMOVE_BATCHING: {
+          boolean shouldCacheExternalMemoryCandidates = iterator.next().getInt() != 0;
           int size = iterator.next().getInt();
           int[] removeIds = new int[size];
           for (int i = 0; i < size; i++) {
             removeIds[i] = iterator.next().getInt();
           }
-          updateNodeRemovePatching(removeIds);
+          updateNodeRemovePatching(removeIds, shouldCacheExternalMemoryCandidates);
         } break;
         case UIOperationType.UPDATE_LAYOUT_PATCHING: {
           // patching id
@@ -1014,8 +1015,14 @@ public final class PaintingContext implements IPaintingContext {
 
   @CalledByNative
   public void updateNodeReadyPatching(int[] readyIds, int[] removeIds) {
+    updateNodeReadyPatchingInternal(readyIds, removeIds, true);
+  }
+
+  @CalledByNative
+  private void updateNodeReadyPatchingInternal(
+      int[] readyIds, int[] removeIds, boolean shouldCacheExternalMemoryCandidates) {
     updateNodeReadyPatching(readyIds);
-    updateNodeRemovePatching(removeIds);
+    updateNodeRemovePatching(removeIds, shouldCacheExternalMemoryCandidates);
   }
 
   private static final class ExternalMemoryReportTask implements Runnable {
@@ -1061,8 +1068,11 @@ public final class PaintingContext implements IPaintingContext {
     }
   }
 
-  private void updateNodeRemovePatching(int[] removeIds) {
-    mUIOwner.cacheRemovedUIIds(removeIds);
+  private void updateNodeRemovePatching(
+      int[] removeIds, boolean shouldCacheExternalMemoryCandidates) {
+    if (shouldCacheExternalMemoryCandidates) {
+      mUIOwner.cacheRemovedUIIds(removeIds);
+    }
     for (int sign : removeIds) {
       Page page = mTextraPages.remove(sign);
       if (page != null) {

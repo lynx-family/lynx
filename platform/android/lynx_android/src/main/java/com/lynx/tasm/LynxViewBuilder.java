@@ -44,6 +44,7 @@ public class LynxViewBuilder
   LynxImageFetcher imageFetcher;
 
   boolean enableLayoutOnly = LynxEnv.inst().isLayoutOnlyEnabled();
+  boolean enableNativeLifecycleOptimization = false;
   Map<String, String> mImageCustomParam;
   LynxImageConfig mLynxImageConfig;
   Map<String, String> lynxViewConfig;
@@ -360,6 +361,29 @@ public class LynxViewBuilder
   @Override
   public LynxViewBuilder setEnableSyncFlush(boolean enable) {
     return super.setEnableSyncFlush(enable);
+  }
+
+  /**
+   * Experimental API. This API is unstable and may change or be removed without notice.
+   *
+   * Enables the lock-free native lifecycle path for this LynxView. This removes the
+   * AtomicLifecycle lock from Java-to-native calls and destroys the native shell directly.
+   *
+   * <p>Only enable this when the client guarantees that the LynxView is explicitly destroyed, all
+   * calls which may access the native shell are serialized with destruction, no queued task can
+   * access the renderer after destruction starts, and engine reuse or cache handoff cannot race
+   * with destruction. The default is false so existing clients keep lifecycle protection.
+   *
+   * @param enable whether to enable the lock-free native lifecycle path
+   * @return this
+   */
+  public LynxViewBuilder setEnableNativeLifecycleOptimization(boolean enable) {
+    enableNativeLifecycleOptimization = enable;
+    return this;
+  }
+
+  boolean isNativeLifecycleOptimizationEnabled() {
+    return enableNativeLifecycleOptimization;
   }
 
   /**

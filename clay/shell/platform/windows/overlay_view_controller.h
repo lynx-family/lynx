@@ -5,6 +5,7 @@
 #define CLAY_SHELL_PLATFORM_WINDOWS_OVERLAY_VIEW_CONTROLLER_H_
 
 #include <memory>
+#include <string>
 
 #include "clay/shell/platform/windows/flutter_window.h"
 #include "clay/shell/platform/windows/flutter_windows_engine.h"
@@ -32,9 +33,11 @@ class OverlayViewController {
   OverlayWindowType GetType();
 
   void UpdatePosition(int left, int top, int width, int height);
+  void SetEventsPassThrough(bool events_pass_through);
 
  private:
   std::unique_ptr<FlutterWindowsView> child_view_;
+  FlutterWindow* child_window_ = nullptr;
   OverlayWindowType type_;
   FlutterWindowsView* overlay_view_ = nullptr;
   FlutterWindowsEngine* engine_;

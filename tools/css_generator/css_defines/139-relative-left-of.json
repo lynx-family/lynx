@@ -11,7 +11,7 @@
     "relative-left-of": {
       "__compat": {
         "description": "The current element is to the left of the sibling element specified corresponding to id.",
-        "lynx_path": "docs/zh/api/css/properties/relative-left-of",
+        "lynx_path": "api/css/properties/relative-left-of",
         "spec_url": [],
         "status": {
           "deprecated": false,

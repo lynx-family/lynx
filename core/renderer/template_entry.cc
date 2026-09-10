@@ -111,7 +111,7 @@ bool TemplateEntry::ConstructContext(
 
   // 3. construct a context at runtime
   if (!vm_context_) {
-    uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
+    uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode(true);
     vm_context_ = runtime::MTSRuntime::CreateContext(
         vm_context_type, disable_tracing_gc, mode, page_options);
   }

@@ -7,6 +7,7 @@
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxPerformanceController.h>
 #import <Lynx/LynxTemplateRender.h>
+#import <Lynx/LynxUIOwner+Private.h>
 #import <Lynx/LynxUIOwner.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -16,6 +17,25 @@
 #import "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
+
+@interface ExternalMemoryPaintingTestUIOwner : LynxUIOwner
+@property(nonatomic, assign) NSInteger cachedRemovedUICount;
+@property(nonatomic, assign) NSInteger nodeRemovedCount;
+@end
+
+@implementation ExternalMemoryPaintingTestUIOwner
+
+- (void)cacheRemovedUIId:(NSInteger)removeId {
+  (void)removeId;
+  self.cachedRemovedUICount += 1;
+}
+
+- (void)onNodeRemoved:(NSInteger)sign {
+  (void)sign;
+  self.nodeRemovedCount += 1;
+}
+
+@end
 
 @interface painting_context_darwin_UnitTest : XCTestCase {
   std::unique_ptr<lynx::tasm::PaintingContextDarwin> paintingContext;
@@ -64,6 +84,22 @@
   dispatch_async(backgroundQueue, ^{
     runnable();
   });
+}
+
+- (void)testExternalMemoryGateOnlyControlsCandidateCaching {
+  ExternalMemoryPaintingTestUIOwner* uiOwner =
+      [[ExternalMemoryPaintingTestUIOwner alloc] initWithContainerView:nil
+                                                     componentRegistry:nil
+                                                         screenMetrics:nil];
+  lynx::tasm::PaintingContextDarwinRef platformRef(uiOwner);
+
+  platformRef.UpdateNodeReadyPatching({}, {1}, false);
+  XCTAssertEqual(uiOwner.cachedRemovedUICount, 0);
+  XCTAssertEqual(uiOwner.nodeRemovedCount, 1);
+
+  platformRef.UpdateNodeReadyPatching({}, {2}, true);
+  XCTAssertEqual(uiOwner.cachedRemovedUICount, 1);
+  XCTAssertEqual(uiOwner.nodeRemovedCount, 2);
 }
 
 - (void)testNativePaintingContextMarksPaintEndTiming {

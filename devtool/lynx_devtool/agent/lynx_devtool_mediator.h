@@ -18,6 +18,7 @@
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator_base.h"
+#include "devtool/lynx_devtool/native_module/native_module_record_manager.h"
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_delegate.h"
 
 namespace lynx {
@@ -150,6 +151,7 @@ class LynxDevToolMediator
   // Input domain -> ui executor
   DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
   DECLARE_DEVTOOL_METHOD(InsertText)
+  DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
 
   // Inspector domain -> devtools executor
   DECLARE_DEVTOOL_METHOD(InspectorEnable)
@@ -160,9 +162,23 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(LogDisable)
   DECLARE_DEVTOOL_METHOD(LogClear)
 
+  // methods of Network domain -> devtool executor
+  DECLARE_DEVTOOL_METHOD(NetworkEnable)
+  DECLARE_DEVTOOL_METHOD(NetworkDisable)
+  DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
+  DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
+
   // events of Log domain -> devtool executor
   virtual void SendLogEntryAddedEvent(
       const lynx::runtime::js::ConsoleMessage& message);
+  // Hops a NativeModule record from the JS thread to the DevTool thread and
+  // stores it in the per-instance record manager.
+  void AddNativeModuleRecord(const lepus::Value& record);
+
+  // methods of LynxNativeModule domain -> native module record manager
+  DECLARE_DEVTOOL_METHOD(NativeModuleEnable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleDisable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleGetRecords)
   // Lynx domain
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)
@@ -233,6 +249,9 @@ class LynxDevToolMediator
   std::shared_ptr<InspectorDefaultExecutor> GetDevToolExecutor() {
     return devtool_executor_;
   }
+  const lynx::fml::RefPtr<lynx::fml::TaskRunner>& GetUITaskRunner() const {
+    return ui_task_runner_;
+  }
   const std::shared_ptr<lynx::devtool::InspectorJavaScriptDebuggerImpl>&
   GetJSDebugger() {
     return js_debugger_;
@@ -289,6 +308,9 @@ class LynxDevToolMediator
   std::shared_ptr<InspectorDefaultExecutor> devtool_executor_;
   std::shared_ptr<InspectorJavaScriptDebuggerImpl> js_debugger_;
   std::shared_ptr<InspectorLepusDebuggerImpl> lepus_debugger_;
+  // Per-instance NativeModule record store; all access happens on the DevTool
+  // thread.
+  std::shared_ptr<NativeModuleRecordManager> native_module_record_manager_;
   std::weak_ptr<LynxDevToolNG> devtool_wp_;
   int view_id_{-1};
   bool fully_initialized_{false};

@@ -519,9 +519,14 @@
  * @param url url of lazy bundle
  * @param bundle parsed bundle of lazy bundle
  */
+- (BOOL)registerLazyBundle:(nonnull NSString*)url bundle:(nonnull LynxTemplateBundle*)bundle;
+
+/**
+ * Deprecated, please use registerLazyBundle:bundle: instead.
+ */
 - (BOOL)registerDynamicComponent:(nonnull NSString*)url
                           bundle:(nonnull LynxTemplateBundle*)bundle
-    API_DEPRECATED_WITH_REPLACEMENT("LynxTemplateResourceFetcher", ios(6.0, API_TO_BE_DEPRECATED));
+    API_DEPRECATED_WITH_REPLACEMENT("registerLazyBundle:bundle:", ios(6.0, API_TO_BE_DEPRECATED));
 
 #pragma mark - Bytecode
 

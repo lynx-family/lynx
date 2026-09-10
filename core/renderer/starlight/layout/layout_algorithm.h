@@ -57,6 +57,9 @@ class LayoutAlgorithm : public DirectionSelector {
     return BoxPositions{Position::kStart, Position::kStart};
   };
 
+  // Absolute | Fixed
+  virtual void MeasureAbsoluteAndFixed();
+
   virtual void AlignInFlowItems() = 0;
 
   // Initialize layout environment,init some relevant parameters
@@ -80,8 +83,6 @@ class LayoutAlgorithm : public DirectionSelector {
   // relative
   void HandleRelativePosition();
 
-  // Absolute | Fixed
-  virtual void MeasureAbsoluteAndFixed();
   virtual void AlignAbsoluteAndFixedItems();
 
   void ItemsUpdateAlignment();

@@ -137,6 +137,20 @@
   XCTAssertEqual(destroyed.garbageSize, 0);
 }
 
+- (void)testExternalMemorySnapshotPrunesMissingCandidates {
+  self.uiOwner = [[LynxUIOwner alloc] initWithContainerView:nil
+                                          componentRegistry:[LynxComponentScopeRegistry new]
+                                              screenMetrics:nil];
+  [self.uiOwner cacheRemovedUIId:404];
+  [self.uiOwner cacheRemovedUIId:405];
+  XCTAssertEqual(self.uiOwner.externalMemoryReportCandidateIds.count, 2U);
+
+  LynxExternalMemorySnapshot snapshot = [self.uiOwner getExternalMemorySnapshot];
+  XCTAssertEqual(snapshot.totalSize, 0);
+  XCTAssertEqual(snapshot.garbageSize, 0);
+  XCTAssertEqual(self.uiOwner.externalMemoryReportCandidateIds.count, 0U);
+}
+
 - (void)testExternalMemoryReportRequestIsCoalesced {
   LynxExternalMemoryRecordingContext *context = [LynxExternalMemoryRecordingContext new];
   context.reportExpectation = [self expectationWithDescription:@"external memory report"];

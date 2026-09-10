@@ -27,7 +27,8 @@ class IntersectionObserverEntry {
   ~IntersectionObserverEntry() = default;
 
   void ComputeIntersectionRatio();
-  void ComputeIntersectionRect(bool ui_clip_enabled);
+  void ComputeIntersectionRect(bool respect_exposure_ui_clip,
+                               bool compute_minimum_clipping_ratio = false);
 
   clay::Value::Map ToMap();
   clay::Value::Map RectToMap(FloatRect rect);
@@ -37,6 +38,7 @@ class IntersectionObserverEntry {
   FloatRect bounding_client_rect_;
   FloatRect relative_rect_;
   FloatRect intersection_rect_;
+  float minimum_clipping_ratio_ = 0;
   bool has_intersection_ = false;
   float intersection_ratio_;
   float time_;
@@ -87,8 +89,6 @@ class IntersectionObserver {
   bool is_initial_ = true;
   bool is_detaching_ = false;
   bool available_ = true;
-  bool exposure_ui_clip_enabled_ = false;
-
   std::unique_ptr<IntersectionObserverEntry> old_entry_;
   std::unique_ptr<IntersectionObserverEntry> now_entry_;
 };

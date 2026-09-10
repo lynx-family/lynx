@@ -9,6 +9,7 @@
 #include <textra/text_layout.h>
 #include <textra/text_line.h>
 #include <algorithm>
+#include <optional>
 #include "base/include/string/string_utils.h"
 #include "clay/third_party/txt/src/txt/placeholder_run.h"
 #ifdef ENABLE_SKITY
@@ -87,15 +88,20 @@ class ClaySkityCanvasHelper final : public tttext::SkityCanvasHelper {
 
 class TTShapeRun : public tttext::RunDelegate {
  public:
-  TTShapeRun(const PlaceholderRun& span, const tttext::Style& style) {
+  TTShapeRun(const PlaceholderRun& span,
+             const tttext::Style& style,
+             const std::optional<tttext::FontInfo>& font_info) {
     FML_DCHECK(span.baseline == TextBaseline::kAlphabetic);
     if (span.alignment == PlaceholderAlignment::kMiddle) {
       float text_size = style.GetTextSize();
       if (text_size <= 0) {
         text_size = static_cast<float>(span.height);
       }
-      const float text_ascent = text_size * 0.75f;
-      const float text_descent = text_size - text_ascent;
+      const float text_ascent =
+          font_info.has_value() ? -font_info->GetAscent() : text_size * 0.75f;
+      const float text_descent = font_info.has_value()
+                                     ? font_info->GetDescent()
+                                     : text_size - text_ascent;
       const float middle = (text_ascent - text_descent) / 2.f;
       ascent_ = -std::max(0.f, middle + static_cast<float>(span.height) / 2.f);
       descent_ = std::max(0.f, -middle + static_cast<float>(span.height) / 2.f);
@@ -116,10 +122,56 @@ class TTShapeRun : public tttext::RunDelegate {
   float advance_;
 };
 
+namespace {
+
+#ifdef ENABLE_SKITY
+std::optional<tttext::FontInfo> ResolveFontInfo(
+    const std::shared_ptr<FontCollection>& font_collection,
+    const tttext::Style& style,
+    const std::shared_ptr<DynamicFontManager>& variation_font_manager) {
+#else
+std::optional<tttext::FontInfo> ResolveFontInfo(
+    const std::shared_ptr<FontCollection>& font_collection,
+    const tttext::Style& style) {
+#endif
+  if (font_collection == nullptr || style.GetTextSize() <= 0) {
+    return std::nullopt;
+  }
+#ifdef ENABLE_SKITY
+  auto tt_font_collection =
+      font_collection->GetIFontCollection(variation_font_manager);
+  auto* tt_font_collection_ptr = &tt_font_collection;
+#else
+  auto tt_font_collection = font_collection->CreateTTFontCollection();
+  auto* tt_font_collection_ptr = tt_font_collection.get();
+#endif
+  if (tt_font_collection_ptr == nullptr) {
+    return std::nullopt;
+  }
+  auto typefaces =
+      tt_font_collection_ptr->findTypefaces(style.GetFontDescriptor());
+  if (typefaces.empty() || typefaces.front() == nullptr) {
+    return std::nullopt;
+  }
+  return typefaces.front()->GetFontInfo(style.GetTextSize());
+}
+
+}  // namespace
+
+#ifdef ENABLE_SKITY
+ParagraphTTText::ParagraphTTText(
+    std::shared_ptr<FontCollection> font_collection,
+    const tttext::ParagraphStyle& paragraph_style,
+    std::shared_ptr<DynamicFontManager> variation_font_manager)
+    : font_collection_(font_collection),
+      variation_font_manager_(std::move(variation_font_manager))
+#else
 ParagraphTTText::ParagraphTTText(
     std::shared_ptr<FontCollection> font_collection,
     const tttext::ParagraphStyle& paragraph_style)
-    : font_collection_(font_collection) {
+    : font_collection_(font_collection)
+#endif
+{
   paragraph_ = tttext::Paragraph::Create();
   paragraph_->SetParagraphStyle(&paragraph_style);
 }
@@ -167,7 +219,8 @@ bool ParagraphTTText::DidExceedMaxLines() {
 
 void ParagraphTTText::Layout(double width) {
 #if defined(ENABLE_SKITY)
-  auto i_font_collection = font_collection_->GetIFontCollection();
+  auto i_font_collection =
+      font_collection_->GetIFontCollection(variation_font_manager_);
   tttext::TextLayout layout(&i_font_collection, tttext::kSelfRendering);
 #else
   auto i_font_collection = font_collection_->CreateTTFontCollection();
@@ -195,6 +248,13 @@ void ParagraphTTText::Layout(double width) {
       tttext::LayoutMode::kAtMost);
   tttext::TTTextContext context;
   context.SetEnableSystemFontAdjust(false);
+#if defined(ENABLE_SKITY)
+  if (variation_font_manager_ && variation_font_manager_->HasVariations()) {
+    // Dynamic aliases are paragraph-local. Do not let TextLayout's shared
+    // shape cache retain a result resolved through another paragraph manager.
+    context.EnableFeature(tttext::FeatureOption::kDisableShapeCache, true);
+  }
+#endif
   if (need_trim_space_) {
     context.EnableFeature(ttoffice::tttext::FeatureOption::kTrimLineTailSpace,
                           false);
@@ -411,7 +471,13 @@ void ParagraphTTText::UpdateForegroundPaint(size_t start,
 void ParagraphTTText::AddPlaceholder(tttext::Style& style,
                                      PlaceholderRun& span,
                                      bool is_float) {
-  auto delegate = std::make_unique<TTShapeRun>(span, style);
+#ifdef ENABLE_SKITY
+  auto font_info =
+      ResolveFontInfo(font_collection_, style, variation_font_manager_);
+#else
+  auto font_info = ResolveFontInfo(font_collection_, style);
+#endif
+  auto delegate = std::make_unique<TTShapeRun>(span, style, font_info);
   placeholder_pos_.push_back(paragraph_->GetCharCount());
   index_mapper_.AppendText(u"\uFFFC");
   paragraph_->AddShapeRun(&style, std::move(delegate), is_float);

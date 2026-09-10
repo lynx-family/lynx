@@ -166,14 +166,14 @@ void QuickjsRuntime::DumpCoverage() {
         static constexpr char kJSCoverageDumpDurationKey[] = "dump_duration_ms";
 
         tasm::report::MoveOnlyEvent event;
+        event.SetInstanceId(instance_id);
         event.SetName(kJSCoverageEventName);
         event.SetProps(kJSCoverageIdKey, coverage_id);
         event.SetProps(kJSCoverageDataKey,
                        std::string(coverage_dump, dump_length));
         event.SetProps(kJSCoverageDumpDurationKey, dump_duration_ms);
         event.SetProps(tasm::report::kPropURL, page_url);
-        tasm::report::EventTrackerPlatformImpl::OnEvent(instance_id,
-                                                        std::move(event));
+        tasm::report::EventTrackerPlatformImpl::OnEvent(std::move(event));
         JS_FreeCoverageDumpString(coverage_dump);
       });
 }
@@ -207,7 +207,7 @@ std::shared_ptr<VMInstance> QuickjsRuntime::createVM(
 std::shared_ptr<VMInstance> QuickjsRuntime::CreateVM(const StartupData *,
                                                      bool sync) {
   auto quickjs_runtime_wrapper = std::make_shared<QuickjsRuntimeInstance>();
-  uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
+  uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode(false);
   quickjs_runtime_wrapper->InitQuickjsRuntime(sync, mode);
   return quickjs_runtime_wrapper;
 }
@@ -239,8 +239,6 @@ void QuickjsRuntime::OnRuntimeGC(
   if (!observer_) {
     return;
   }
-  mem_info.emplace(tasm::performance::kCategory,
-                   tasm::performance::kCategoryBTSEngine);
   mem_info.emplace(tasm::performance::kRuntimeId,
                    std::to_string(getRuntimeId()));
   mem_info.emplace(tasm::performance::kRuntimeGroupId, getGroupId());

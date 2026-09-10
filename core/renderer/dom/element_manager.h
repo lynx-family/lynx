@@ -24,6 +24,7 @@
 
 #include "base/include/boost/unordered.h"
 #include "base/include/closure.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/log/log_context.h"
 #include "base/include/vector.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -74,6 +75,7 @@ struct PseudoPlaceHolderStyles;
 class PaintingContext;
 class PropBundle;
 class Element;
+class ElementTemplateInstance;
 class ComponentElement;
 class ImageElement;
 class ListElement;
@@ -590,7 +592,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     enable_new_animator_radon_ = enable;
   }
 
-  bool GetEnableNewAnimatorForRadon() { return enable_new_animator_radon_; }
+  bool GetEnableNewAnimatorForRadon() {
+    return IsFragmentLayerRenderModeOn() || enable_new_animator_radon_;
+  }
 
   void SetEnableNewAnimatorFiber(bool enable) {
     enable_new_animator_fiber_ = enable;
@@ -924,6 +928,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Tick all element need to animated.
   void TickAllElement(fml::TimePoint &time);
 
+  // Permanently stop animation VSync when page destruction begins.
+  void StopAnimationVsync();
+
   // Pause all element.
   void PauseAllAnimations();
 
@@ -1146,12 +1153,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void SetEnableReportThreadedElementFlushStatistic(bool value) {
     enable_report_threaded_element_flush_statistic_ = value;
   }
-
-  bool GetEnableOptPushStyleToBundle() {
-    return enable_opt_push_style_to_bundle_;
-  }
-
-  void SetEnableOptPushStyleToBundle(TernaryBool value);
 
   void SetEnableDumpElementTree(bool enable) {
     enable_dump_element_tree_ = enable;
@@ -1394,6 +1395,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   void EnqueuePostMTSRenderTask(base::closure task);
   void FirePostMTSRenderTasks();
+  void EnqueuePendingElementTemplateChildMounts(
+      ElementTemplateInstance &instance);
+  void DrainPendingElementTemplateChildMounts(Element *flush_root);
 
  protected:
   void TickLayout(const std::shared_ptr<PipelineOptions> &options);
@@ -1473,10 +1477,12 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   bool settings_enable_use_mapbuffer_for_ui_op_;
 
-  bool enable_opt_push_style_to_bundle_{false};
-
   // Indicate if need to do layout for current OnPatchFinish process
   bool need_layout_{false};
+
+  // LayoutInElement may receive a first-screen or reuse layout request before
+  // the viewport is ready. Retain that callback state until a real layout.
+  bool pending_first_layout_{false};
 
   bool animations_paused_{false};
 
@@ -1557,6 +1563,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Animation proxy class
   std::shared_ptr<ElementVsyncProxy> element_vsync_proxy_;
+  bool animation_vsync_stopped_{false};
 
   base::OrderedFlatSet<tasm::Element *> animation_element_set_;
   base::OrderedFlatSet<tasm::Element *>
@@ -1575,6 +1582,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // consuming path must still run/wait on the same OnceTask before using data.
   using PendingPostMTSRenderTasks = base::Vector<base::closure>;
   std::shared_ptr<PendingPostMTSRenderTasks> pending_post_mts_render_tasks_;
+  base::Vector<fml::WeakPtr<ElementTemplateInstance>>
+      pending_element_template_child_mounts_;
 
   std::shared_ptr<tasm::TasmWorkerTaskRunner> task_runner_;
 

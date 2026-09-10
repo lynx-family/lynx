@@ -54,6 +54,7 @@
 
 #if OS_IOS
 #import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTextRendererCache.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
@@ -85,6 +86,8 @@ static void LynxClaySetup() {
   }
 }
 
+static BOOL gShouldEnableAllDevToolSessions = NO;
+
 @implementation LynxEnv {
   std::unique_ptr<fml::SharedMutex> external_env_mutex_;
   std::atomic_bool init_flow_completed_;
@@ -98,6 +101,11 @@ static void LynxClaySetup() {
   });
 
   return _instance;
+}
+
++ (void)prepareDevToolForDevelopmentBeforeInit {
+  [[DevToolSettings sharedInstance].bootstrap applyDevelopmentDefaultsIfUnset];
+  gShouldEnableAllDevToolSessions = YES;
 }
 
 + (void)prepareGlobalMTSRuntimePoolWithContextType:(LynxMTSContextType)contextType
@@ -144,6 +152,10 @@ static void LynxClaySetup() {
       // Delay text prewarm until LynxEnv setup is fully finished to avoid pulling
       // trail/settings initialization into LynxEnv init.
       [self prewarmTextIfNeeded];
+      id<LynxServiceTextProtocol> textService = LynxService(LynxServiceTextProtocol);
+      if ([textService respondsToSelector:@selector(warm)]) {
+        [textService warm];
+      }
     });
 #endif
     init_flow_completed_.store(true, std::memory_order_release);
@@ -241,7 +253,16 @@ static void LynxClaySetup() {
 - (void)initDevToolEnv {
 #if ENABLE_INSPECTOR
   if ([self lynxDebugEnabled]) {
-    [LynxService(LynxServiceDevToolProtocol) devtoolEnvSharedInstance];
+    id<LynxServiceDevToolProtocol> devToolService = LynxService(LynxServiceDevToolProtocol);
+    if (!devToolService) {
+      return;
+    }
+    [devToolService devtoolEnvSharedInstance];
+    if (gShouldEnableAllDevToolSessions) {
+      // Run the pre-init request after asking the service to initialize DevTool env.
+      [devToolService enableAllSessions];
+      gShouldEnableAllDevToolSessions = NO;
+    }
   }
 #endif
 }
@@ -662,6 +683,16 @@ static void LynxClaySetup() {
   return enableTextFontCascadeOpt;
 }
 
+- (BOOL)enableTextStrokeInheritanceFix {
+  static dispatch_once_t onceToken;
+  static BOOL enableTextStrokeInheritanceFix = YES;
+  dispatch_once(&onceToken, ^{
+    enableTextStrokeInheritanceFix = [self boolFromExternalEnv:LynxEnvEnableTextStrokeInheritanceFix
+                                                  defaultValue:YES];
+  });
+  return enableTextStrokeInheritanceFix;
+}
+
 - (int)memoryAcquisitionDelaySec {
   static dispatch_once_t onceToken;
   static int delaySecond = 0;
@@ -838,6 +869,7 @@ static void LynxClaySetup() {
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
     @(LynxEnvEnableTextFontCascadeOpt) : @"lynx_text_font_cascade_opt",
+    @(LynxEnvEnableTextStrokeInheritanceFix) : @"enable_text_stroke_inheritance_fix",
     @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
     @(LynxEnvFSPEnable) : @"enable_fsp",
     @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string",

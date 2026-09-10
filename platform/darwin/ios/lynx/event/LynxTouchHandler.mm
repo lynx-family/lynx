@@ -65,7 +65,6 @@
   BOOL _touchEndOrCancel;
   BOOL _touchOutSide;
   BOOL _gestureRecognized;
-  BOOL _enableTouchRefactor;
   BOOL _enableEndGestureAtLastFingerUp;
   BOOL _enableTouchPseudo;
   BOOL _enableMultiTouch;
@@ -115,7 +114,6 @@
     _target = nil;
     _preTarget = nil;
     _enableTouchPseudo = NO;
-    _enableTouchRefactor = NO;
     _enableEndGestureAtLastFingerUp = NO;
     _primaryGestureTouch = nil;
     _primaryGestureTarget = nil;
@@ -135,10 +133,6 @@
 
 - (void)onGestureRecognized {
   _gestureRecognized = YES;
-}
-
-- (void)setEnableTouchRefactor:(BOOL)enable {
-  _enableTouchRefactor = enable;
 }
 
 - (void)setEnableEndGestureAtLastFingerUp:(BOOL)enable {
@@ -834,7 +828,13 @@
           .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
   if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
       childLynxPage.view.isChildLynxPage) {
-    [childLynxPage.context.eventHandler.touchRecognizer touchesBeganInner:touches withEvent:event];
+    LynxTouchHandler* childRecognizer = childLynxPage.context.eventHandler.touchRecognizer;
+    // Recover stale child state before a new begin, while preserving touches still tracked by the
+    // parent. Repeated hit tests must not reset an ongoing touch sequence.
+    if (childRecognizer && ![childRecognizer->_touches intersectsSet:_touches]) {
+      [childRecognizer resetTouchEnv];
+    }
+    [childRecognizer touchesBeganInner:touches withEvent:event];
   }
 }
 
@@ -1416,9 +1416,9 @@
           NSStringFromClass([otherGestureRecognizer.view class]), otherGestureRecognizer.state);
     return NO;
   }
-  // _enableTouchRefactor's default value is false. If this flag is true, the external gesture
-  // which's state is possible or began will not cancel the Lynx iOS touch gesture see issue:#7920.
-  if (_enableTouchRefactor && ![self isDescendantOfLynxView:otherGestureRecognizer] &&
+  // An external gesture whose state is possible or began does not cancel the Lynx iOS touch
+  // gesture. See issue:#7920.
+  if (![self isDescendantOfLynxView:otherGestureRecognizer] &&
       (otherGestureRecognizer.state == UIGestureRecognizerStatePossible ||
        otherGestureRecognizer.state == UIGestureRecognizerStateBegan)) {
     [_outerGestures setValue:[LynxWeakProxy proxyWithTarget:otherGestureRecognizer]

@@ -96,14 +96,15 @@ void AppendImage(DisplayList &list, int32_t image_id, int32_t box_index) {
   list.AppendItem(item);
 }
 
-void AppendBorder(DisplayList &list, int32_t out_index, int32_t inner_index) {
-  DisplayListItem item;
+void AppendBorder(DisplayList &list, int32_t out_index, int32_t inner_index,
+                  const uint32_t *colors = nullptr, const int32_t *styles = nullptr) {
+  DisplayListItem item{};
   item.type = DisplayListOpType::kBorder;
   item.payload.border.out_index = out_index;
   item.payload.border.inner_index = inner_index;
   for (int i = 0; i < 4; i++) {
-    item.payload.border.colors[i] = 0xFF000000;
-    item.payload.border.styles[i] = 0;
+    item.payload.border.colors[i] = colors == nullptr ? 0xFF000000 : colors[i];
+    item.payload.border.styles[i] = styles == nullptr ? 0 : styles[i];
   }
   list.AppendItem(item);
 }
@@ -135,6 +136,35 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 @end
 
 @implementation LynxMockView
+
+@synthesize rendererContext = _rendererContext;
+
+- (instancetype)initWithRendererContext:(LynxRendererContext *)context {
+  self = [super init];
+  return self;
+}
+
+- (void)setRenderer:(LynxRenderer *)renderer {
+  _renderer = renderer;
+}
+
+- (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context {
+  self.renderer = [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
+  return self.renderer;
+}
+
+- (UIView *)view {
+  return self;
+}
+
+@end
+
+// Scrollable host mock: UIScrollView shifts its layer's bounds origin while scrolling.
+@interface LynxMockScrollView : UIScrollView <LynxRendererHost>
+@property(nonatomic, strong) LynxRenderer *renderer;
+@end
+
+@implementation LynxMockScrollView
 
 @synthesize rendererContext = _rendererContext;
 
@@ -528,6 +558,50 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(((CAShapeLayer *)gradientLayer.mask).path != nil);
 }
 
+- (void)testProcessContentOperationsWithRadialGradient {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f);
+  float radii[] = {4.0f, 4.0f, 8.0f, 8.0f, 12.0f, 12.0f, 16.0f, 16.0f};
+  AppendRecordBox(list, 10.0f, 12.0f, 80.0f, 60.0f, true, radii);
+  lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops{0.0f, 1.0f};
+  list.AddRadialGradient(50.0f, 50.0f, 70.0f, 70.0f, colors, stops, 0, 1, 1, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *gradientLayer = view.layer.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(gradientLayer.frame, CGRectMake(10, 12, 80, 60)));
+  XCTAssertNotNil(gradientLayer.mask);
+  CALayer *horizontalLayer = gradientLayer.sublayers.firstObject;
+  CAGradientLayer *radialLayer = (CAGradientLayer *)horizontalLayer.sublayers.firstObject;
+  XCTAssertEqualObjects(radialLayer.type, kCAGradientLayerRadial);
+}
+
+- (void)testProcessContentOperationsWithZeroRadiusRadialGradient {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f);
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f);
+  lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops{0.0f, 1.0f};
+  list.AddRadialGradient(0.0f, 50.0f, 0.0f, 50.0f, colors, stops, 0, 1, 1, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *gradientLayer = view.layer.sublayers.firstObject;
+  XCTAssertNotNil(gradientLayer);
+  CALayer *horizontalLayer = gradientLayer.sublayers.firstObject;
+  CAGradientLayer *radialLayer = (CAGradientLayer *)horizontalLayer.sublayers.firstObject;
+  XCTAssertEqualObjects(radialLayer.type, kCAGradientLayerRadial);
+}
+
 - (void)testProcessContentOperationsWithClipRectPartial {
   // Clip rect not equal to view bounds, should use mask
   id mockUIView = OCMClassMock([LynxMockView class]);
@@ -573,6 +647,65 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
   XCTAssertEqualWithAccuracy(view.layer.cornerRadius, 10.0f, 0.001f);
   XCTAssertTrue(view.layer.masksToBounds);
+}
+
+- (void)testClipRectUniformRadiusInsetOnScrollViewPreservesPreciseMask {
+  // A border-inset clip must retain its exact geometry so scroll-view content does not
+  // cover the host decoration layer's rounded border corners.
+  LynxMockScrollView *view = [[LynxMockScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  float radii[] = {8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f};
+  AppendClipRect(list, 2.0f, 2.0f, 96.0f, 96.0f, true, radii);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqualWithAccuracy(view.layer.cornerRadius, 0.0f, 0.001f);
+  XCTAssertFalse(view.layer.masksToBounds);
+  XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  CAShapeLayer *mask = (CAShapeLayer *)view.layer.mask;
+  XCTAssertTrue(CGRectEqualToRect(mask.frame, view.layer.bounds));
+  XCTAssertTrue(CGRectEqualToRect(CGPathGetBoundingBox(mask.path), CGRectMake(2, 2, 96, 96)));
+}
+
+- (void)testClipRectUniformRadiusInsetOnPlainViewUsesMask {
+  // Non-scrollable hosts keep the precise border-inset clip via a mask.
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  float radii[] = {8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f, 8.0f};
+  AppendClipRect(list, 2.0f, 2.0f, 96.0f, 96.0f, true, radii);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqualWithAccuracy(view.layer.cornerRadius, 0.0f, 0.001f);
+  XCTAssertFalse(view.layer.masksToBounds);
+  XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
+}
+
+- (void)testClipRectNonUniformRadiusOnScrolledScrollViewPinsMaskToViewport {
+  // Non-uniform radii still need a CAShapeLayer mask on scrollable hosts. When the
+  // display list is applied while the view is already scrolled, the mask frame must
+  // cover the current viewport (bounds), not the unscrolled origin.
+  LynxMockScrollView *view = [[LynxMockScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  view.contentSize = CGSizeMake(100, 1000);
+  view.contentOffset = CGPointMake(0, 100);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  DisplayList list;
+  float radii[] = {8.0f, 8.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  AppendClipRect(list, 0.0f, 0.0f, 100.0f, 100.0f, true, radii);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertTrue(CGRectEqualToRect(view.layer.mask.frame, view.layer.bounds));
+  XCTAssertEqualWithAccuracy(view.layer.mask.frame.origin.y, 100.0f, 0.001f);
 }
 
 - (void)testImageAppliesRoundedContentBox {
@@ -661,6 +794,149 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   [applier applyDisplayList:&list];
 
   XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *borderLayer = view.layer.sublayers.firstObject;
+  XCTAssertFalse([borderLayer isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertEqualWithAccuracy(borderLayer.borderWidth, 5.0, 0.001);
+  XCTAssertTrue(CGColorEqualToColor(borderLayer.borderColor,
+                                    [UIColor colorWithRed:0 green:0 blue:0 alpha:1].CGColor));
+  XCTAssertNil(borderLayer.contents);
+}
+
+- (void)testBorderWithInvalidOuterDimensionsDoesNotCreateLayer {
+  struct InvalidSize {
+    float width;
+    float height;
+  };
+  const InvalidSize invalidSizes[] = {
+      {0.0f, 100.0f}, {100.0f, 0.0f}, {-1.0f, 100.0f}, {100.0f, -1.0f}};
+
+  for (const InvalidSize &size : invalidSizes) {
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:nil];
+
+    DisplayList list;
+    AppendRecordBox(list, 0.0f, 0.0f, size.width, size.height);
+    AppendRecordBox(list, 0.0f, 0.0f, size.width, size.height);
+    AppendBorder(list, 0, 1);
+
+    [applier applyDisplayList:&list];
+
+    XCTAssertEqual(view.layer.sublayers.count, 0u, @"width=%f height=%f", size.width, size.height);
+  }
+}
+
+- (void)testSolidBorderWithNonUniformGeometryUsesShapeLayer {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  const float outerRadii[8] = {12.0f, 12.0f, 8.0f, 8.0f, 4.0f, 4.0f, 0.0f, 0.0f};
+  const float innerRadii[8] = {10.0f, 10.0f, 6.0f, 6.0f, 2.0f, 2.0f, 0.0f, 0.0f};
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f, true, outerRadii);
+  AppendRecordBox(list, 1.0f, 2.0f, 96.0f, 95.0f, true, innerRadii);
+  AppendBorder(list, 0, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CAShapeLayer *borderLayer = (CAShapeLayer *)view.layer.sublayers.firstObject;
+  XCTAssertTrue([borderLayer isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertEqualObjects(borderLayer.fillRule, kCAFillRuleEvenOdd);
+  XCTAssertTrue(borderLayer.path != NULL);
+  XCTAssertTrue(CGColorEqualToColor(borderLayer.fillColor,
+                                    [UIColor colorWithRed:0 green:0 blue:0 alpha:1].CGColor));
+  XCTAssertNil(borderLayer.contents);
+}
+
+- (void)testSolidBorderWithCompatibleUniformRadiusUsesLayerBorder {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  const float outerRadii[8] = {12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f};
+  const float innerRadii[8] = {7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f, 7.0f};
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f, true, outerRadii);
+  AppendRecordBox(list, 5.0f, 5.0f, 90.0f, 90.0f, true, innerRadii);
+  AppendBorder(list, 0, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *borderLayer = view.layer.sublayers.firstObject;
+  XCTAssertFalse([borderLayer isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertEqualWithAccuracy(borderLayer.cornerRadius, 12.0, 0.001);
+  XCTAssertEqualWithAccuracy(borderLayer.borderWidth, 5.0, 0.001);
+  XCTAssertNil(borderLayer.contents);
+}
+
+- (void)testFractionalUniformBorderAndRadiusUsesLayerBorder {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  const float borderWidth = 0.1f;
+  const float outerRadius = 10.1f;
+  const float innerRadius = outerRadius - borderWidth;
+  const float innerSize = 100.0f - borderWidth - borderWidth;
+  const float outerRadii[8] = {outerRadius, outerRadius, outerRadius, outerRadius,
+                               outerRadius, outerRadius, outerRadius, outerRadius};
+  const float innerRadii[8] = {innerRadius, innerRadius, innerRadius, innerRadius,
+                               innerRadius, innerRadius, innerRadius, innerRadius};
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f, true, outerRadii);
+  AppendRecordBox(list, borderWidth, borderWidth, innerSize, innerSize, true, innerRadii);
+  AppendBorder(list, 0, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *borderLayer = view.layer.sublayers.firstObject;
+  XCTAssertFalse([borderLayer isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertEqualWithAccuracy(borderLayer.cornerRadius, outerRadius, 0.001);
+  XCTAssertEqualWithAccuracy(borderLayer.borderWidth, borderWidth, 0.001);
+  XCTAssertNil(borderLayer.contents);
+}
+
+- (void)testSolidBorderWithMismatchedInnerRadiusUsesShapeLayer {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  const float outerRadii[8] = {12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f};
+  const float innerRadii[8] = {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f};
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f, true, outerRadii);
+  AppendRecordBox(list, 5.0f, 5.0f, 90.0f, 90.0f, true, innerRadii);
+  AppendBorder(list, 0, 1);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *borderLayer = view.layer.sublayers.firstObject;
+  XCTAssertTrue([borderLayer isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertNil(borderLayer.contents);
+}
+
+- (void)testNonUniformBorderColorsFallBackToRasterImage {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+
+  const uint32_t colors[4] = {0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFF000000};
+  DisplayList list;
+  AppendRecordBox(list, 0.0f, 0.0f, 100.0f, 100.0f);
+  AppendRecordBox(list, 5.0f, 5.0f, 90.0f, 90.0f);
+  AppendBorder(list, 0, 1, colors);
+
+  [applier applyDisplayList:&list];
+
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *borderLayer = view.layer.sublayers.firstObject;
+  XCTAssertFalse([borderLayer isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertNotNil(borderLayer.contents);
 }
 
 - (void)testProcessContentOperationsWithText {

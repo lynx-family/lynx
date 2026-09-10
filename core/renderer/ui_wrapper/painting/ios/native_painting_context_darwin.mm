@@ -19,6 +19,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin_factory.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "core/renderer/utils/ios/text_utils_ios.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
@@ -34,6 +35,14 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+void RunOnMainThreadSync(dispatch_block_t block) {
+  if ([NSThread isMainThread]) {
+    block();
+    return;
+  }
+  dispatch_sync(dispatch_get_main_queue(), block);
+}
 
 std::array<float, 4> CopyMetrics(const float *source) {
   std::array<float, 4> result = {0.f, 0.f, 0.f, 0.f};
@@ -98,8 +107,7 @@ void NativePaintingCtxDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
 
 std::unique_ptr<pub::Value> NativePaintingCtxDarwin::GetTextInfo(const std::string &content,
                                                                  const pub::Value &info) {
-  // TODO: impl this function later.
-  return std::unique_ptr<pub::Value>();
+  return TextUtilsDarwinHelper::GetTextInfo(content, info);
 }
 
 std::vector<float> NativePaintingCtxDarwin::getBoundingClientOrigin(int id) {
@@ -123,8 +131,14 @@ std::vector<float> NativePaintingCtxDarwin::GetRectToWindow(int id) {
 }
 
 std::vector<float> NativePaintingCtxDarwin::GetRectToLynxView(int64_t id) {
-  // TODO: impl this function later.
-  return std::vector<float>();
+  __block std::vector<float> result;
+  RunOnMainThreadSync(^{
+    auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(platform_ref_);
+    if (darwin_ref != nullptr) {
+      result = darwin_ref->GetRectToLynxView(static_cast<int32_t>(id));
+    }
+  });
+  return result;
 }
 
 std::vector<float> NativePaintingCtxDarwin::ScrollBy(int64_t id, float width, float height) {
@@ -266,6 +280,7 @@ void NativePaintingCtxDarwin::FinishTasmOperation(const std::shared_ptr<Pipeline
 
 void NativePaintingCtxDarwin::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions> &options) {
+  MarkLayoutFinish();
   __weak LynxUIOwner *ui_owner = context_ != nullptr ? context_->GetUIOwner() : nil;
   Enqueue(
       [ui_owner, weak_queue = std::weak_ptr<shell::DynamicUIOperationQueue>(queue_), options]() {

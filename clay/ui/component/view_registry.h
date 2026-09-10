@@ -84,9 +84,11 @@ extern "C" const ViewRegistryDescription __stop_clayview[] __asm(
     "section$end$__DATA$__clayview");
 
 // regist to secitons
-#define REGISTER_CLAY_ELEMENT(TAG, VIEW, SHADOW_NODE)         \
-  extern "C" __attribute__((used, section(CLAYVIEW_SEC_STR))) \
-  const ViewRegistryDescription UNIQUE_NAME(VIEW##_desc){     \
+// cspell:ignore CLAYVIEW
+#define REGISTER_CLAY_ELEMENT(TAG, VIEW, SHADOW_NODE)     \
+  extern "C" __attribute__((no_sanitize_address))         \
+  __attribute__((used, section(CLAYVIEW_SEC_STR)))        \
+  const ViewRegistryDescription UNIQUE_NAME(VIEW##_desc){ \
       TAG, GetViewCreator<VIEW>(), GetShadowNodeCreator<SHADOW_NODE>()};
 #else
 #define REGISTER_CLAY_ELEMENT REGISTER_VIEW_TAG

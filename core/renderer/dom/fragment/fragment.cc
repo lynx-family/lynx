@@ -12,6 +12,8 @@
 
 #include "base/include/closure.h"
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -327,7 +329,7 @@ void Fragment::UpdatePaintingNode(
   if (behavior_) {
     behavior_->OnAttributeUpdate(painting_data);
   }
-  if (has_platform_renderer_ && painting_data) {
+  if (has_platform_renderer_) {
     painting_context()->UpdatePaintingNode(id(), tend_to_flatten,
                                            painting_data);
   }
@@ -551,6 +553,45 @@ float ResolveLinearGradientAngle(float angle,
       return angle;
   }
   return angle;
+}
+
+float ResolveRadialGradientPosition(int32_t type, float value, float size) {
+  switch (type) {
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kCenter):
+      return size * 0.5f;
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kRight):
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kBottom):
+      return size;
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kLeft):
+    case static_cast<int32_t>(starlight::BackgroundPositionType::kTop):
+      return 0.f;
+    case static_cast<int32_t>(CSSValuePattern::PERCENT):
+      return size * value / 100.f;
+    default:
+      return value;
+  }
+}
+
+bool ResolveRadialGradientLength(const lepus::Value& pattern,
+                                 const lepus::Value& value, float size,
+                                 starlight::ComputedCSSStyle* style,
+                                 float& result) {
+  if (!pattern.IsNumber() || style == nullptr) {
+    return false;
+  }
+  const auto resolved = starlight::CSSStyleUtils::ToLength(
+      CSSValue(value, static_cast<CSSValuePattern>(pattern.Number())),
+      style->GetMeasureContext(), style->GetCSSParserConfigs());
+  if (!resolved.second) {
+    return false;
+  }
+  const auto length = starlight::NLengthToLayoutUnit(
+      resolved.first, starlight::LayoutUnit(size));
+  if (!length.IsDefinite()) {
+    return false;
+  }
+  result = length.ToFloat();
+  return true;
 }
 
 }  // namespace
@@ -777,6 +818,71 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
                                             define_image_clip_index(i_image),
                                             static_cast<int32_t>(repeat_x),
                                             static_cast<int32_t>(repeat_y));
+        break;
+      }
+      case starlight::BackgroundImageType::kRadialGradient: {
+        ClearBackgroundImage(i_image);
+        if (!array->get(i + 1).IsArray()) {
+          break;
+        }
+        auto gradient_arr = array->get(i + 1).Array();
+        if (gradient_arr->size() < 3 || !gradient_arr->get(0).IsArray() ||
+            !gradient_arr->get(1).IsArray() ||
+            !gradient_arr->get(2).IsArray()) {
+          break;
+        }
+        auto shape_arr = gradient_arr->get(0).Array();
+        if (shape_arr->size() < 6) {
+          break;
+        }
+
+        const auto shape = static_cast<starlight::RadialGradientShapeType>(
+            shape_arr->get(0).Number());
+        const auto shape_size = static_cast<starlight::RadialGradientSizeType>(
+            shape_arr->get(1).Number());
+        const float center_x = ResolveRadialGradientPosition(
+            static_cast<int32_t>(shape_arr->get(2).Number()),
+            static_cast<float>(shape_arr->get(3).Number()), tiling_width);
+        const float center_y = ResolveRadialGradientPosition(
+            static_cast<int32_t>(shape_arr->get(4).Number()),
+            static_cast<float>(shape_arr->get(5).Number()), tiling_height);
+
+        std::pair<float, float> radius;
+        if (shape_size == starlight::RadialGradientSizeType::kLength) {
+          if (shape_arr->size() < 10) {
+            break;
+          }
+          auto* style = element()->computed_css_style();
+          if (!ResolveRadialGradientLength(shape_arr->get(6), shape_arr->get(7),
+                                           tiling_width, style, radius.first) ||
+              !ResolveRadialGradientLength(shape_arr->get(8), shape_arr->get(9),
+                                           tiling_height, style,
+                                           radius.second)) {
+            break;
+          }
+        } else {
+          radius =
+              GetRadialGradientRadius(shape, shape_size, center_x, center_y,
+                                      tiling_width, tiling_height);
+        }
+
+        auto colors_arr = gradient_arr->get(1).Array();
+        base::Vector<uint32_t> colors;
+        colors.reserve(colors_arr->size());
+        for (size_t j = 0; j < colors_arr->size(); ++j) {
+          colors.push_back(static_cast<uint32_t>(colors_arr->get(j).UInt32()));
+        }
+        auto stops_arr = gradient_arr->get(2).Array();
+        base::Vector<float> stops;
+        stops.reserve(stops_arr->size());
+        for (size_t j = 0; j < stops_arr->size(); ++j) {
+          stops.push_back(static_cast<float>(stops_arr->get(j).Number()) /
+                          100.f);
+        }
+        display_list_builder.RadialGradient(
+            center_x, center_y, radius.first, radius.second, colors, stops,
+            tiling_index, define_image_clip_index(i_image),
+            static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
         break;
       }
       default:
@@ -1458,6 +1564,10 @@ void Fragment::AddChildBefore(Fragment* child, Fragment* sibling) {
     if (auto it = std::find(children_.begin(), children_.end(), sibling);
         it != children_.end()) {
       children_.insert(it, child);
+    } else {
+      // Keep the tree internally consistent even if a stale caller supplied a
+      // sibling from another stacking parent. Sorting restores z/fixed order.
+      children_.emplace_back(child);
     }
   }
 
@@ -1498,43 +1608,61 @@ void Fragment::RemoveChild(Fragment* child) {
   }
 }
 
+void Fragment::ReparentStackingNode(Fragment* target_parent,
+                                    Fragment* sibling) {
+  if (target_parent == nullptr) {
+    LOGE("Fragment reparent rejected because target parent is null: " << id());
+    return;
+  }
+  DCHECK(target_parent != this);
+  if (target_parent == fragment_parent()) {
+    // Reparenting does not reorder siblings. Style changes are handled by the
+    // caller even when the stacking parent remains unchanged.
+    return;
+  }
+
+  if (fragment_parent() != nullptr) {
+    fragment_parent()->RemoveChild(this);
+  }
+  target_parent->AddChildBefore(this, sibling);
+}
+
 void Fragment::ReinsertDescendantsToCorrectParent() {
-  using ReinsertClosure = base::MoveOnlyClosure<void, Fragment*, bool>;
-  auto* manager = element_manager();
-  ReinsertClosure f = [&f, manager](Fragment* current, bool need_handle_z) {
-    if (!current->fixed_children_.empty()) {
-      for (auto* fixed_child : current->fixed_children_) {
-        if (fixed_child->fragment_parent() == nullptr) {
-          manager->root()->fragment_impl()->AddChildBefore(fixed_child,
-                                                           nullptr);
-          // Recursively reinsert the fixed child's descendants. but do not
-          // handle z-index since fixed child must be stacking context node.
-          f(fixed_child, false);
+  base::MoveOnlyClosure<void, Fragment*, bool> f =
+      [&f, manager = element_manager()](Fragment* current, bool need_handle_z) {
+        if (!current->fixed_children_.empty()) {
+          for (auto* fixed_child : current->fixed_children_) {
+            if (fixed_child->fragment_parent() == nullptr) {
+              fixed_child->ReparentStackingNode(
+                  manager->root()->fragment_impl(), nullptr);
+              // Recursively reinsert the fixed child's descendants. but do not
+              // handle z-index since fixed child must be stacking context node.
+              f(fixed_child, false);
+            }
+          }
         }
-      }
-    }
 
-    // If this is not stacking context node and root is not stacking context
-    // node,
-    // then we need insert z-children.
-    bool need_handle_z_children =
-        !current->was_stacking_context() && need_handle_z;
-    if (need_handle_z_children) {
-      for (auto* z_child : current->z_children_) {
-        if (z_child->fragment_parent() == nullptr) {
-          z_child->EnclosingStackingContextFromElementParent()->AddChildBefore(
-              z_child, nullptr);
-          // Recursively reinsert the z-child's descendants. but do not
-          // handle z-index since z-child must be stacking context node.
-          f(z_child, false);
+        // If this is not stacking context node and root is not stacking context
+        // node,
+        // then we need insert z-children.
+        bool need_handle_z_children =
+            !current->was_stacking_context() && need_handle_z;
+        if (need_handle_z_children) {
+          for (auto* z_child : current->z_children_) {
+            if (z_child->fragment_parent() == nullptr) {
+              z_child->ReparentStackingNode(
+                  z_child->ResolveEnclosingStackingContextParent(), nullptr);
+              // Recursively reinsert the z-child's descendants. but do not
+              // handle z-index since z-child must be stacking context node.
+              f(z_child, false);
+            }
+          }
         }
-      }
-    }
 
-    for (auto* child : current->children_) {
-      f(child, need_handle_z_children);
-    }
-  };
+        for (auto* child : current->children_) {
+          f(child, need_handle_z_children);
+        }
+      };
 
   f(this, !was_stacking_context());
 }
@@ -1578,13 +1706,57 @@ void Fragment::RemoveDescendantsFromCurrentParent() {
 }
 
 void Fragment::MoveDirectStackingChildren(Fragment* parent, Fragment* root) {
-  for (auto* z_child : root->z_children_) {
-    z_child->fragment_parent()->RemoveChild(z_child);
-    parent->AddChildBefore(z_child, nullptr);
+  if (parent == nullptr || root == nullptr) {
+    return;
   }
-  for (auto* child : root->children_) {
+
+  // Reparenting a nested z child can erase it from an ancestor's children_.
+  // Traverse snapshots so mutations never invalidate the active iteration.
+  const auto children_snapshot = root->children_;
+  // Reparenting does not change the logical parent's z_children_ set, so it is
+  // safe and cheaper to iterate that set directly.
+  for (auto* z_child : root->z_children_) {
+    z_child->ReparentStackingNode(parent, nullptr);
+  }
+
+  for (auto* child : children_snapshot) {
+    // Hoisted nodes are already represented by a z/fixed set, and an existing
+    // stacking context owns its descendants independently.
+    if (child->fragment_from_element_parent() != nullptr ||
+        child->was_stacking_context()) {
+      continue;
+    }
     MoveDirectStackingChildren(parent, child);
   }
+}
+
+void Fragment::InvalidateForRedraw() {
+  // A platform-backed fragment owns an independent display list. Rebuilding
+  // ancestors above that paint root cannot change its contents and only causes
+  // redundant display-list generation and platform invalidation.
+  Fragment* current = this;
+  while (current != nullptr) {
+    if (current->NeedRedraw()) {
+      return;
+    }
+    current->MarkDirtyState(kNeedRedraw);
+    if (current->has_platform_renderer_) {
+      return;
+    }
+    current = current->fragment_parent();
+  }
+}
+
+Fragment* Fragment::ResolveEnclosingStackingContextParent() const {
+  for (Element* ancestor = element() != nullptr ? element()->parent() : nullptr;
+       ancestor != nullptr; ancestor = ancestor->parent()) {
+    if (ancestor->IsStackingContextNode() &&
+        ancestor->fragment_impl() != nullptr) {
+      return ancestor->fragment_impl();
+    }
+  }
+  LOGE("No stacking context ancestor found for fragment " << id());
+  return nullptr;
 }
 
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {

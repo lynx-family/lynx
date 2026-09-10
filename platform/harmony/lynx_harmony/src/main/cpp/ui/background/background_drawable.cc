@@ -85,6 +85,19 @@ void BackgroundDrawable::Render(OH_Drawing_Canvas* canvas) {
   }
 }
 
+void BackgroundDrawable::RenderForFragmentLayer(OH_Drawing_Canvas* canvas,
+                                                FragmentLayerRenderMode mode) {
+  if (!base::FloatsLarger(view_width_, 0) ||
+      !base::FloatsLarger(view_height_, 0)) {
+    return;
+  }
+  if (mode == FragmentLayerRenderMode::kBackground) {
+    DrawBackground(canvas);
+  } else if (mode == FragmentLayerRenderMode::kBorder) {
+    DrawBorder(canvas);
+  }
+}
+
 void BackgroundDrawable::DrawBorder(OH_Drawing_Canvas* canvas) {
   if (!border_info_) {
     return;
@@ -890,9 +903,10 @@ void BackgroundDrawable::UpdateRoundBorderPath(
   round_path->top = top;
   round_path->right = right;
   round_path->bottom = bottom;
+  auto path = round_path->path;
+  OH_Drawing_PathReset(path);
   if (border_radius_->IsZero()) {
-    OH_Drawing_PathAddRect(round_path->path, left, top, right, bottom,
-                           PATH_DIRECTION_CW);
+    OH_Drawing_PathAddRect(path, left, top, right, bottom, PATH_DIRECTION_CW);
     return;
   }
   float rx1 =
@@ -919,10 +933,8 @@ void BackgroundDrawable::UpdateRoundBorderPath(
   float ry4 =
       GenCenterBorderRadius(border_radius_->ComputedValue()[7] * scale_density_,
                             border_info_->border_bottom_width, mul);
-  auto path = round_path->path;
   std::ostringstream oss;
 
-  OH_Drawing_PathReset(path);
   OH_Drawing_PathMoveTo(path, left + rx1, top);
   SvgPathUtils::MoveTo(oss, left + rx1, top);
   OH_Drawing_PathLineTo(path, right - rx2, top);

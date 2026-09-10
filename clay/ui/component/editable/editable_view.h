@@ -234,6 +234,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   bool ApplyHotKey(const KeyEvent* key_event);
   void UpdateHotKeyTag(LogicalKeyboardKey key_code, bool is_up);
   void HandleCommandHotKey(LogicalKeyboardKey key_code);
+  void HandleCommandShiftHotKey(LogicalKeyboardKey key_code);
   void HandleCtrlHotKey(LogicalKeyboardKey key_code);
   bool HandleShiftHotKey(LogicalKeyboardKey key_code);
   void HandleWinCtrlAndMacCommandHotKey(LogicalKeyboardKey key_code);

@@ -297,6 +297,11 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
   ClayPointerDeviceKind device_kind;
 
   switch (message) {
+    case WM_NCHITTEST:
+      if (events_pass_through_) {
+        return HTTRANSPARENT;
+      }
+      break;
     case kWmDpiChangedBeforeParent:
       current_dpi_ = GetDpiForHWND(window_handle_);
       OnDpiScale(current_dpi_);
@@ -583,6 +588,10 @@ UINT Window::GetCurrentWidth() { return current_width_; }
 UINT Window::GetCurrentHeight() { return current_height_; }
 
 HWND Window::GetWindowHandle() { return window_handle_; }
+
+void Window::SetEventsPassThrough(bool events_pass_through) {
+  events_pass_through_ = events_pass_through;
+}
 
 float Window::GetScrollOffsetMultiplier() {
   return scroll_offset_multiplier_ * current_dpi_ / 96.0;

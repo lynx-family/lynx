@@ -89,11 +89,9 @@ inline int32_t ImageElement::GetImageNodeInfo<OSType::kHarmony>() const {
   if (has_auto_size_) {
     return kCustomBuiltInNodeInfo;
   }
-  // Layout-in-Element keeps inline images in the platform UI tree. Fragment
-  // Layer renders them through the display list instead.
-  return is_inline_element() && EnableFragmentLayerRender()
-             ? kVirtualBuiltInNodeInfo
-             : kCommonBuiltInNodeInfo;
+  // Keep inline images as independent renderer children. The parent paragraph
+  // reserves their layout space, while each image emits its own kImage op.
+  return kCommonBuiltInNodeInfo;
 }
 
 }  // namespace tasm

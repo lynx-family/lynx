@@ -12,16 +12,24 @@
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
+#include "core/shell/dynamic_ui_operation_queue.h"
 
-namespace lynx::tasm {
+namespace lynx {
+namespace tasm {
 
-// Harmony NativePaintingContext skeleton. Runtime wiring and platform
-// operations are introduced in follow-up changes.
+class TextMeasurerHarmony;
+
+namespace harmony {
+class LynxContext;
+class LynxRendererContext;
+}  // namespace harmony
+
 class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
                                  public NativePaintingContext {
  public:
-  NativePaintingCtxHarmony();
-  ~NativePaintingCtxHarmony() override = default;
+  explicit NativePaintingCtxHarmony(
+      const std::shared_ptr<harmony::LynxContext>& context);
+  ~NativePaintingCtxHarmony() override;
 
   NativePaintingCtxHarmony(const NativePaintingCtxHarmony&) = delete;
   NativePaintingCtxHarmony& operator=(const NativePaintingCtxHarmony&) = delete;
@@ -39,7 +47,7 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
                     const float* sticky, float max_height, uint32_t node_index,
                     bool display_none) override {}
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override {}
-  void Flush() override {}
+  void Flush() override;
   void HandleValidate(int tag) override {}
 
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
@@ -47,9 +55,9 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
   void StopExposure(const pub::Value& options) override {}
   void ResumeExposure() override {}
   void FinishTasmOperation(
-      const std::shared_ptr<PipelineOptions>& options) override {}
+      const std::shared_ptr<PipelineOptions>& options) override;
   void FinishLayoutOperation(
-      const std::shared_ptr<PipelineOptions>& options) override {}
+      const std::shared_ptr<PipelineOptions>& options) override;
 
   std::vector<float> getBoundingClientOrigin(int id) override;
   std::vector<float> getWindowSize(int id) override;
@@ -67,6 +75,9 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
   int32_t GetTagInfo(const std::string& tag_name) override;
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
   bool NeedAnimationProps() override;
+  void SetUIOperationQueue(
+      const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override;
+  bool EnableUIOperationQueue() override { return true; }
 
   NativePaintingContext* CastToNativeCtx() override { return this; }
 
@@ -84,16 +95,26 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
       int id, base::String src, const ImagePaintInfo& paint_info, float width,
       float height, int32_t event_mask = 0,
       bool disable_default_resize = false) override;
-  void UpdateTextBundle(int id, intptr_t bundle) override {}
-  void DestroyTextBundle(int id) override {}
+  void UpdateTextBundle(int id, intptr_t bundle) override;
+  void DestroyTextBundle(int id) override;
   void UpdatePlatformEventBundle(int id, PlatformEventBundle bundle) override;
 
  protected:
   void EnqueueDisplayList(int id, DisplayList list) override;
-  void EnqueueDisplayLists(DisplayListUpdateBatch batch) override {}
+  void EnqueueDisplayLists(DisplayListUpdateBatch batch) override;
   void EnqueueReconstructEventTargetTreeRecursively() override {}
+
+ private:
+  void Enqueue(shell::UIOperation operation);
+  int32_t GenerateUniqueImageKey() { return ++image_key_; }
+
+  std::unique_ptr<TextMeasurerHarmony> text_measurer_;
+  std::shared_ptr<harmony::LynxRendererContext> renderer_context_;
+  std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
+  int32_t image_key_{0};
 };
 
-}  // namespace lynx::tasm
+}  // namespace tasm
+}  // namespace lynx
 
 #endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_NATIVE_PAINTING_CONTEXT_HARMONY_H_

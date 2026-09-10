@@ -305,6 +305,9 @@ void LynxShell::BuildEngineActor(
       instance_id_, engine_build_options_.enable_unified_pipeline_,
       page_options_);
   tasm->SetEnableBTSRuntime(enable_runtime_);
+#if ENABLE_TESTBENCH_RECORDER
+  tasm->SetRecordID(reinterpret_cast<int64_t>(this));
+#endif
   tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
   if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
     tasm->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);
@@ -347,6 +350,19 @@ void LynxShell::OnLynxEngineBuilt(
   if (tasm == nullptr) {
     return;
   }
+
+#if ENABLE_TESTBENCH_RECORDER
+  const int64_t record_id = reinterpret_cast<int64_t>(this);
+  engine_actor_->ActLite(
+      [record_id](auto& engine) { engine->SetRecordID(record_id); });
+  layout_actor_->ActLite(
+      [record_id](auto& layout) { layout->SetRecordId(record_id); });
+  if (native_module_manager != nullptr) {
+    native_module_manager->SetRecordID(record_id);
+  }
+  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
+      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
+#endif
 
   ui_operation_queue_->SetErrorCallback(
       [facade_actor = facade_actor_](base::LynxError error) {
@@ -447,8 +463,10 @@ void LynxShell::Destroy() {
       reinterpret_cast<int64_t>(this));
 #endif
 
-  perf_controller_actor_->ActAsync(
-      [](auto& performance_controller) { performance_controller = nullptr; });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync(
+        [](auto& performance_controller) { performance_controller = nullptr; });
+  }
 
   facade_actor_->Act([instance_id = instance_id_](auto& facade) {
     facade = nullptr;
@@ -565,12 +583,12 @@ void LynxShell::InitRuntime(
   }
 
 #if ENABLE_TESTBENCH_RECORDER
-  int64_t record_id = reinterpret_cast<int64_t>(this);
-  engine_actor_->ActLite(
-      [record_id](auto& engine) { engine->SetRecordID(record_id); });
+  const int64_t record_id = reinterpret_cast<int64_t>(this);
   layout_actor_->ActLite(
       [record_id](auto& layout) { layout->SetRecordId(record_id); });
-  native_module_manager->SetRecordID(record_id);
+  if (native_module_manager != nullptr) {
+    native_module_manager->SetRecordID(record_id);
+  }
   tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
       static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
 #endif
@@ -736,11 +754,13 @@ void LynxShell::ResetShouldSendEventToMainThread() {
       [](auto& facade) { facade->OnShouldSendEventToMainThreadChanged(true); });
 }
 
+void LynxShell::SetUrl(const std::string& url) { url_ = url; }
+
 void LynxShell::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
-  url_ = url;
+  SetUrl(url);
   ResetShouldSendEventToMainThread();
 
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
@@ -766,9 +786,11 @@ void LynxShell::LoadTemplate(
 
   EnsureTemplateDataThreadSafe(template_data);
   hydration_pending_ = false;
-  perf_controller_actor_->ActAsync([url](auto& performance) {
-    performance->GetTimingHandler().SetURL(url);
-  });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync([url](auto& performance) {
+      performance->GetTimingHandler().SetURL(url);
+    });
+  }
   engine_actor_->Act([url, source = std::move(source), template_data,
                       pipeline_options = std::move(pipeline_options),
                       need_to_merge_back,
@@ -823,7 +845,7 @@ void LynxShell::LoadTemplateBundle(
     const std::string& url, tasm::LynxTemplateBundle template_bundle,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
-  url_ = url;
+  SetUrl(url);
   ResetShouldSendEventToMainThread();
 
   // TODO(zhangkaijie.9): remove pipeline_option and create it in TemplateRender
@@ -944,9 +966,11 @@ void LynxShell::RegisterNotificationCallbacks() {
              [this](const std::string& tag, [[maybe_unused]] intptr_t data) {
                // Add trace record to supplement information about pages that
                // existed before the trace started.
-               this->perf_controller_actor_->ActAsync([](auto& performance) {
-                 performance->GetMemoryMonitor().ReportMemory(true);
-               });
+               if (this->perf_controller_actor_) {
+                 this->perf_controller_actor_->ActAsync([](auto& performance) {
+                   performance->GetMemoryMonitor().ReportMemory(true);
+                 });
+               }
 
                this->engine_actor_->Act([&](auto& engine) {
                  auto default_entry = engine->GetTasm()->FindTemplateEntry(
@@ -993,6 +1017,7 @@ void LynxShell::LoadLynxML(
     const std::string& url, std::string source,
     std::shared_ptr<tasm::PipelineOptions> pipeline_options,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
+  SetUrl(url);
   if (!pipeline_options) {
     pipeline_options = std::make_shared<tasm::PipelineOptions>();
     pipeline_options->need_timestamps = true;
@@ -1009,6 +1034,8 @@ void LynxShell::LoadLynxML(
         engine->LoadLynxML(url, std::move(source), template_data,
                            std::move(pipeline_options));
       });
+
+  RegisterNotificationCallbacks();
 }
 
 void LynxShell::MarkDirty() {
@@ -1046,8 +1073,9 @@ void LynxShell::SetContextHasAttached() {
 };
 
 void LynxShell::LoadSSRData(
-    std::vector<uint8_t> source,
+    const std::string& url, std::vector<uint8_t> source,
     const std::shared_ptr<tasm::TemplateData>& template_data) {
+  SetUrl(url);
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
   pipeline_options->need_timestamps = true;
   // TODO(kechenglong): should find a better pipeline_origin name?
@@ -1063,16 +1091,31 @@ void LynxShell::LoadSSRData(
         engine->LoadSSRData(std::move(source), template_data,
                             std::move(pipeline_options));
       });
+
+  RegisterNotificationCallbacks();
 }
 
 void LynxShell::UpdateDataByParsedData(
     const std::shared_ptr<tasm::TemplateData>& data, bool is_reuse_engine) {
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
-  pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   pipeline_options->is_reuse_engine = is_reuse_engine;
+  if (is_reuse_engine) {
+    pipeline_options->pipeline_origin = tasm::timing::kLoadBundle;
+    pipeline_options->need_timestamps = true;
+  } else {
+    pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
+  }
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);
+  if (is_reuse_engine) {
+    // A reused engine skips LoadTemplate. The remaining setup stages, including
+    // loadBackground and paintEnd, are collected by the existing pipeline.
+    SetTiming(pipeline_options->pipeline_start_timestamp,
+              tasm::timing::kLoadBundleStart, pipeline_options->pipeline_id);
+    SetTiming(pipeline_options->pipeline_start_timestamp,
+              tasm::timing::kLoadBundleEnd, pipeline_options->pipeline_id);
+  }
 
   EnsureTemplateDataThreadSafe(data);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
@@ -1820,10 +1863,12 @@ void LynxShell::DetachEngineFromUIThread() {
 
 void LynxShell::OnThreadStrategyUpdated() {
   runners_.OnThreadStrategyUpdated(current_strategy_);
-  perf_controller_actor_->ActAsync(
-      [current_strategy = current_strategy_](auto& performance) {
-        performance->GetTimingHandler().SetThreadStrategy(current_strategy);
-      });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync(
+        [current_strategy = current_strategy_](auto& performance) {
+          performance->GetTimingHandler().SetThreadStrategy(current_strategy);
+        });
+  }
   engine_actor_->Act([current_strategy = current_strategy_](auto& engine) {
     engine->GetTasm()->page_proxy()->element_manager()->SetThreadStrategy(
         current_strategy);
@@ -1942,6 +1987,9 @@ void LynxShell::DispatchMessageEvent(fml::RefPtr<runtime::MessageEvent> event) {
 void LynxShell::SetTiming(uint64_t us_timestamp,
                           tasm::timing::TimestampKey timing_key,
                           tasm::PipelineID pipeline_id) const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [us_timestamp, timing_key = std::move(timing_key),
        pipeline_id = std::move(pipeline_id)](auto& performance) mutable {
@@ -1951,6 +1999,9 @@ void LynxShell::SetTiming(uint64_t us_timestamp,
 }
 
 LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
+  if (!perf_controller_actor_) {
+    return lepus::Value();
+  }
   return perf_controller_actor_->ActSync([](auto& performance) {
     auto all_timing_info = performance->GetTimingHandler().GetAllTimingInfo();
     lepus::Value lepus_all_info =
@@ -1962,6 +2013,9 @@ LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
 
 LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllPerformanceEntries()
     const {
+  if (!perf_controller_actor_) {
+    return lepus::Value();
+  }
   return perf_controller_actor_->ActSync([](auto& performance) {
     auto all_performance_entries = performance->GetAllPerformanceEntries();
     return pub::ValueUtils::ConvertValueToLepusValue(*all_performance_entries);
@@ -1969,6 +2023,9 @@ LYNX_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllPerformanceEntries()
 }
 
 void LynxShell::SetSSRTimingData(std::string url, uint64_t data_size) const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [url = std::move(url), data_size](auto& performance) {
         performance->GetTimingHandler().SetSSRTimingData(url, data_size);
@@ -1976,6 +2033,9 @@ void LynxShell::SetSSRTimingData(std::string url, uint64_t data_size) const {
 }
 
 void LynxShell::ClearPipelineTimingInfo() const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync([](auto& performance) {
     performance->GetTimingHandler().ClearPipelineTimingInfo();
   });
@@ -1995,15 +2055,20 @@ void LynxShell::OnPipelineStart(
             "pipeline_start_timestamp",
             std::to_string(pipeline_start_timestamp));
       });
-  perf_controller_actor_->ActAsync(
-      [pipeline_id, pipeline_origin,
-       pipeline_start_timestamp](auto& performance) {
-        performance->GetTimingHandler().OnPipelineStart(
-            pipeline_id, pipeline_origin, pipeline_start_timestamp);
-      });
+  if (perf_controller_actor_) {
+    perf_controller_actor_->ActAsync(
+        [pipeline_id, pipeline_origin,
+         pipeline_start_timestamp](auto& performance) {
+          performance->GetTimingHandler().OnPipelineStart(
+              pipeline_id, pipeline_origin, pipeline_start_timestamp);
+        });
+  }
 }
 
 void LynxShell::ResetTimingBeforeReload() const {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [](auto& performance) { performance->ResetStateBeforeReload(); });
 }

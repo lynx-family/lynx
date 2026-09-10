@@ -57,6 +57,17 @@ lepus::Value TouchEvent::EventParams() const {
     event_detail->emplace_back(page_point_[1]);
     event_detail->emplace_back(target_point_[0]);
     event_detail->emplace_back(target_point_[1]);
+    if (!current_target_points_.empty()) {
+      auto current_target_points = lepus::CArray::Create();
+      for (const auto& point : current_target_points_) {
+        auto entry = lepus::CArray::Create();
+        entry->emplace_back(point.element_id);
+        entry->emplace_back(point.x);
+        entry->emplace_back(point.y);
+        current_target_points->emplace_back(std::move(entry));
+      }
+      event_detail->emplace_back(std::move(current_target_points));
+    }
   }
   event_params->emplace_back(std::move(event_detail));
   return lepus::Value(event_params);

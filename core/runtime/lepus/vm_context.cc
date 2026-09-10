@@ -41,13 +41,22 @@
 namespace lynx {
 namespace lepus {
 
+namespace {
+
+std::string MakeInvalidBytecodeIndexMessage(const char* kind, size_t index,
+                                            size_t limit) {
+  return "Invalid Lepus bytecode " + std::string(kind) + " index " +
+         std::to_string(index) + " (limit " + std::to_string(limit) + ").";
+}
+
+}  // namespace
+
 // Instruction opcodes are encoded as a single byte.
 // Use a full-byte dispatch table (0..255) so invalid bytecode can't trigger
 // out-of-bounds reads on the computed-goto table.
 #define LEPUS_OPCODE_TABLE_SIZE 256
 #define LEPUS_MAX_OPCODE (LEPUS_OPCODE_TABLE_SIZE - 1)
 
-#define GET_CONST_VALUE(i) (function->GetConstValue(Instruction::GetParamBx(i)))
 #define GET_GLOBAL_VALUE(i) (global()->Get(Instruction::GetParamBx(i)))
 #define GET_BUILTIN_VALUE(i) (builtin()->Get(Instruction::GetParamBx(i)))
 #define GET_REGISTER_OPCODE(i) auto* d = (regs + Instruction::GetOpCode(i));
@@ -1123,7 +1132,12 @@ void VMContext::RunFrame() {
       BREAK;
       CASE(TypeOp_LoadConst) : {
         GET_REGISTER_A(i);
-        auto* b = GET_CONST_VALUE(i);
+        const size_t index = static_cast<size_t>(Instruction::GetParamBx(i));
+        auto* b = function->GetConstValue(index);
+        if (unlikely(b == nullptr)) {
+          TYPE_GUARD_TRAP(MakeInvalidBytecodeIndexMessage(
+              "constant", index, function->GetConstValue().size()));
+        }
         RestrictedValue::Assign(*a, *b);
       }
       BREAK;
@@ -1348,7 +1362,11 @@ void VMContext::RunFrame() {
       CASE(TypeOp_Closure) : {
         GET_REGISTER_A(i);
         long index = Instruction::GetParamBx(i);
-        GenerateClosure(a, index);
+        if (unlikely(!GenerateClosure(a, index))) {
+          TYPE_GUARD_TRAP(MakeInvalidBytecodeIndexMessage(
+              "child function", static_cast<size_t>(index),
+              function->GetChildFunction().size()));
+        }
       }
       BREAK;
       CASE(TypeOp_SetContextSlotMove) : {
@@ -1889,8 +1907,12 @@ void VMContext::RunFrame() {
       CASE(TypeOp_SetObjectConstString) : {
         GET_REGISTER_A(i);
         GET_REGISTER_C(i);
-        const Value* const_key =
-            function->GetConstValue(Instruction::GetParamB(i));
+        const size_t index = static_cast<size_t>(Instruction::GetParamB(i));
+        const Value* const_key = function->GetConstValue(index);
+        if (unlikely(const_key == nullptr)) {
+          TYPE_GUARD_TRAP(MakeInvalidBytecodeIndexMessage(
+              "constant", index, function->GetConstValue().size()));
+        }
         if (unlikely(!a->IsTable() || !const_key->IsString())) {
           TYPE_GUARD_TRAP("TypeError: expected table and string key");
         }
@@ -2227,8 +2249,12 @@ void VMContext::RunFrame() {
         GET_REGISTER_A(i);
         GET_REGISTER_B(i);
 
-        const Value* const_key_val =
-            function->GetConstValue(Instruction::GetParamC(i));
+        const size_t index = static_cast<size_t>(Instruction::GetParamC(i));
+        const Value* const_key_val = function->GetConstValue(index);
+        if (unlikely(const_key_val == nullptr)) {
+          TYPE_GUARD_TRAP(MakeInvalidBytecodeIndexMessage(
+              "constant", index, function->GetConstValue().size()));
+        }
         if (unlikely(!const_key_val->IsString())) {
           TYPE_GUARD_TRAP("TypeError: expected string constant key");
         }
@@ -2408,7 +2434,12 @@ void VMContext::RunFrame() {
         // load const value from constant pool and clone it to register, so that
         // the const value in constant pool is not modified.
         GET_REGISTER_A(i);
-        auto* b = GET_CONST_VALUE(i);
+        const size_t index = static_cast<size_t>(Instruction::GetParamBx(i));
+        auto* b = function->GetConstValue(index);
+        if (unlikely(b == nullptr)) {
+          TYPE_GUARD_TRAP(MakeInvalidBytecodeIndexMessage(
+              "constant", index, function->GetConstValue().size()));
+        }
         RestrictedValue::Assign(*a, RestrictedValue(Value::Clone(*b)));
       }
       BREAK;
@@ -2459,11 +2490,14 @@ void VMContext::RunFrame() {
   }
 }
 
-void VMContext::GenerateClosure(RestrictedValue* value, long index) {
+bool VMContext::GenerateClosure(RestrictedValue* value, long index) {
   Frame* frame = current_frame_;
   auto current_closure = fml::static_ref_ptr_cast<Closure>(
       UnsafeOp::TypeSure::GetRefCounted(*frame->function_));
   auto function = current_closure->function()->GetChildFunction(index);
+  if (unlikely(function == nullptr)) {
+    return false;
+  }
   auto closure = Closure::Create(function);
 
   std::size_t upvalues_count = function->UpvaluesSize();
@@ -2485,6 +2519,7 @@ void VMContext::GenerateClosure(RestrictedValue* value, long index) {
   if (!closure_context_.IsNil()) {
     closures_.AddClosure(closure, executed_);
   }
+  return true;
 }
 
 fml::RefPtr<Function> VMContext::GetRootFunction() {

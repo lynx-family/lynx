@@ -5,6 +5,7 @@
 #define CLAY_UNIT_TESTS 1
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 
 #include "clay/ui/component/scroll_view.h"
@@ -440,6 +441,53 @@ TEST_F_UI(ScrollViewTest, ScrollToIndex) {
   EXPECT_EQ(200, scroll_view->GetScrollOffset().y());
 }
 
+TEST_F_UI(ScrollViewTest, InitialScrollIndexWaitsForScrollableLayout) {
+  auto scroll_view =
+      std::make_unique<ScrollView>(-1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  page_->AddChild(scroll_view.get());
+  scroll_view->SetAttribute("initial-scroll-index", clay::Value(2));
+
+  auto view0 = std::make_unique<View>(-1, page_.get());
+  auto view1 = std::make_unique<View>(-1, page_.get());
+  auto view2 = std::make_unique<View>(-1, page_.get());
+  scroll_view->AddChild(view0.get(), 0);
+  scroll_view->AddChild(view1.get(), 1);
+  scroll_view->AddChild(view2.get(), 2);
+
+  Layout();
+  EXPECT_EQ(0, scroll_view->GetScrollOffset().y());
+
+  view0->SetBound(0, 0, 100, 100);
+  view1->SetBound(0, 100, 100, 100);
+  view2->SetBound(0, 200, 100, 100);
+  scroll_view->OnLayoutUpdated();
+  Layout();
+
+  EXPECT_EQ(200, scroll_view->GetScrollOffset().y());
+}
+
+TEST_F_UI(ScrollViewTest, InitialScrollOffsetUsesLogicalPixels) {
+  auto metrics = page_->GetViewportMetrics();
+  metrics.device_pixel_ratio = 2;
+  page_->SetViewportMetrics(metrics);
+
+  auto scroll_view =
+      std::make_unique<ScrollView>(-1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  page_->AddChild(scroll_view.get());
+
+  auto content = std::make_unique<View>(-1, page_.get());
+  content->SetBound(0, 0, 100, 500);
+  scroll_view->AddChild(content.get(), 0);
+  scroll_view->OnLayoutUpdated();
+  scroll_view->SetAttribute("initial-scroll-offset", clay::Value(50));
+  Layout();
+
+  EXPECT_EQ(page_->ConvertFrom<kPixelTypeLogical>(50),
+            scroll_view->GetScrollOffset().y());
+}
+
 // TODO(liuguoliang): Fix scrollWidth/scrollHeight and add test case
 TEST_F_UI(ScrollViewTest, ScrollEvent) {
   auto scroll_view = std::make_unique<ScrollWrapper>(
@@ -593,6 +641,157 @@ TEST_F_UI(ScrollViewTest, ScrollEvent) {
   ResetAnimationTime();
   DoAnimation(10);
   DoAnimation(1000);
+}
+
+TEST_F_UI(ScrollViewTest, GetScrollInfoReturnsCurrentSchema) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  scroll_view->SetAttribute("scroll-y", Value(true));
+  page_->AddChild(scroll_view.get());
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 500);
+  scroll_view->AddChild(content_view.get());
+  scroll_view->GetScrollView()->OnLayoutUpdated();
+  scroll_view->GetScrollView()->ScrollTo(false, 40, -1);
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      scroll_view.get(), "getScrollInfo", {},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        for (const char* key :
+             {"scrollX", "scrollY", "scrollRange", "scrollLeft", "scrollTop",
+              "scrollWidth", "scrollHeight", "isDragging"}) {
+          EXPECT_NE(result.find(key), result.end()) << key;
+        }
+        EXPECT_FLOAT_EQ(result.at("scrollX").GetFloat(), 0);
+        EXPECT_FLOAT_EQ(result.at("scrollY").GetFloat(), 40);
+        EXPECT_FLOAT_EQ(result.at("scrollRange").GetFloat(), 400);
+        EXPECT_FLOAT_EQ(result.at("scrollLeft").GetFloat(), 0);
+        EXPECT_FLOAT_EQ(result.at("scrollTop").GetFloat(), 40);
+        EXPECT_FLOAT_EQ(result.at("scrollWidth").GetFloat(), 100);
+        EXPECT_FLOAT_EQ(result.at("scrollHeight").GetFloat(), 500);
+        EXPECT_FALSE(result.at("isDragging").GetBool());
+      });
+
+  EXPECT_TRUE(callback_invoked);
+}
+
+TEST_F_UI(ScrollViewTest, GetScrollInfoUsesClientSizeForScrollRange) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  scroll_view->SetBorderWidth({Side::kTop, Side::kBottom}, {10, 10});
+  scroll_view->SetAttribute("scroll-y", Value(true));
+  page_->AddChild(scroll_view.get());
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 100);
+  scroll_view->AddChild(content_view.get());
+  scroll_view->GetScrollView()->OnLayoutUpdated();
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      scroll_view.get(), "getScrollInfo", {},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        EXPECT_FLOAT_EQ(data.GetMap().at("scrollRange").GetFloat(), 20);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+}
+
+TEST_F_UI(ScrollViewTest, VoidUIMethodsReturnEmptySuccessData) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  scroll_view->SetAttribute("scroll-y", Value(true));
+  page_->AddChild(scroll_view.get());
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 500);
+  scroll_view->AddChild(content_view.get());
+  scroll_view->GetScrollView()->OnLayoutUpdated();
+
+  bool scroll_to_callback_invoked = false;
+  InvokeUIMethod(scroll_view.get(), "scrollTo",
+                 {{"offset", Value(40)}, {"smooth", Value(false)}},
+                 [&scroll_to_callback_invoked](LynxUIMethodResult code,
+                                               const clay::Value& data) {
+                   scroll_to_callback_invoked = true;
+                   EXPECT_EQ(code, LynxUIMethodResult::kSuccess);
+                   EXPECT_TRUE(data.IsNone());
+                 });
+  EXPECT_TRUE(scroll_to_callback_invoked);
+  EXPECT_FLOAT_EQ(scroll_view->GetScrollView()->GetScrollOffset().y(), 40);
+
+  bool auto_scroll_callback_invoked = false;
+  InvokeUIMethod(scroll_view.get(), "autoScroll",
+                 {{"start", Value(false)}, {"rate", Value(60)}},
+                 [&auto_scroll_callback_invoked](LynxUIMethodResult code,
+                                                 const clay::Value& data) {
+                   auto_scroll_callback_invoked = true;
+                   EXPECT_EQ(code, LynxUIMethodResult::kSuccess);
+                   EXPECT_TRUE(data.IsNone());
+                 });
+  EXPECT_TRUE(auto_scroll_callback_invoked);
+}
+
+TEST_F_UI(ScrollViewTest, ScrollByReturnsConsumedAndUnconsumedOffsets) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+  scroll_view->SetAttribute("scroll-y", Value(true));
+  page_->AddChild(scroll_view.get());
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 500);
+  scroll_view->AddChild(content_view.get());
+  scroll_view->GetScrollView()->OnLayoutUpdated();
+
+  bool callback_invoked = false;
+  InvokeUIMethod(
+      scroll_view.get(), "scrollBy", {{"offset", Value(40)}},
+      [&callback_invoked](LynxUIMethodResult code, const clay::Value& data) {
+        callback_invoked = true;
+        ASSERT_EQ(code, LynxUIMethodResult::kSuccess);
+        ASSERT_TRUE(data.IsMap());
+        const auto& result = data.GetMap();
+        EXPECT_FLOAT_EQ(result.at("consumedX").GetFloat(), 0);
+        EXPECT_FLOAT_EQ(result.at("consumedY").GetFloat(), 40);
+        EXPECT_FLOAT_EQ(result.at("unconsumedX").GetFloat(), 0);
+        EXPECT_FLOAT_EQ(result.at("unconsumedY").GetFloat(), 0);
+      });
+
+  EXPECT_TRUE(callback_invoked);
+  EXPECT_FLOAT_EQ(scroll_view->GetScrollView()->GetScrollOffset().y(), 40);
+}
+
+TEST_F_UI(ScrollViewTest, ScrollByRequiresFiniteOffset) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+
+  bool missing_offset_callback_invoked = false;
+  InvokeUIMethod(scroll_view.get(), "scrollBy", {},
+                 [&missing_offset_callback_invoked](LynxUIMethodResult code,
+                                                    const clay::Value&) {
+                   missing_offset_callback_invoked = true;
+                   EXPECT_EQ(code, LynxUIMethodResult::kParamInvalid);
+                 });
+  EXPECT_TRUE(missing_offset_callback_invoked);
+
+  bool infinite_offset_callback_invoked = false;
+  InvokeUIMethod(scroll_view.get(), "scrollBy",
+                 {{"offset", Value(std::numeric_limits<float>::infinity())}},
+                 [&infinite_offset_callback_invoked](LynxUIMethodResult code,
+                                                     const clay::Value&) {
+                   infinite_offset_callback_invoked = true;
+                   EXPECT_EQ(code, LynxUIMethodResult::kParamInvalid);
+                 });
+  EXPECT_TRUE(infinite_offset_callback_invoked);
 }
 
 TEST_F_UI(ScrollViewTest, ScrollToUpperLowerEvent) {

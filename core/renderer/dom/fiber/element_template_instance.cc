@@ -4,10 +4,20 @@
 
 #include "core/renderer/dom/fiber/element_template_instance.h"
 
+#include <algorithm>
+#include <future>
+#include <memory>
 #include <utility>
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "base/trace/native/trace_event.h"
+#include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/tree_resolver.h"
+#include "core/renderer/template_assembler.h"
+#include "core/renderer/template_entry.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
 namespace tasm {
@@ -22,6 +32,9 @@ static constexpr const char kTemplateAttributeSlots[] = "attributeSlots";
 static constexpr const char kTemplateChildSlots[] = "childSlots";
 static constexpr const char kTemplateOptions[] = "options";
 static constexpr const char kTemplateUid[] = "uid";
+static constexpr const char kDefaultPageComponentId[] = "0";
+static constexpr int32_t kDefaultPageCSSId = 0;
+static constexpr uint32_t kTypedTemplateAttributeSlotIndex = 0;
 static constexpr uint32_t kTypedTemplateRootChildSlotIndex = 0;
 
 fml::RefPtr<ElementTemplateInstance> ResolveElementTemplateInstanceValue(
@@ -47,6 +60,36 @@ size_t FindSlotChildIndex(const lepus::Value& slot_children,
     }
   }
   return static_cast<size_t>(slot_children.GetLength());
+}
+
+void AddPendingSlot(base::Vector<uint32_t>& pending_slots,
+                    uint32_t slot_index) {
+  for (auto pending_slot : pending_slots) {
+    if (pending_slot == slot_index) {
+      return;
+    }
+  }
+  pending_slots.push_back(slot_index);
+}
+
+void DetachMaterializedElementFromCurrentParent(
+    ElementManager* manager, const fml::RefPtr<Element>& node) {
+  auto* current_parent = static_cast<Element*>(node->parent());
+  if (current_parent == nullptr) {
+    return;
+  }
+  EXEC_EXPR_FOR_INSPECTOR(
+      manager->OnElementNodeRemovedForInspector(node.get()));
+  current_parent->RemoveNode(node);
+}
+
+void PrepareMaterializedElementTreeForInspector(ElementManager* manager,
+                                                Element* node) {
+  manager->PrepareNodeForInspector(node);
+  for (const auto& child : node->children()) {
+    PrepareMaterializedElementTreeForInspector(
+        manager, static_cast<Element*>(child.get()));
+  }
 }
 
 lepus::Value CopyTemplateValueForStorage(const lepus::Value& value) {
@@ -78,6 +121,87 @@ lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots) {
                                    : CopyTemplateValueForStorage(slot));
   }
   return lepus::Value(std::move(copied_slots));
+}
+
+const SharedTemplateAttributes& TypedTemplateAttributes() {
+  static const auto attributes =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                    BASE_STATIC_STRING(kTemplateAttributes), lepus::Value(),
+                    kTypedTemplateAttributeSlotIndex}});
+  return attributes;
+}
+
+fml::RefPtr<Element> CreateTypedRootElement(ElementManager* manager,
+                                            TemplateAssembler* tasm,
+                                            const base::String& tag) {
+  if (tag.IsEqual(kElementPageTag)) {
+    auto page = manager->CreateFiberPage(
+        BASE_STATIC_STRING(kDefaultPageComponentId), kDefaultPageCSSId);
+    if (tasm != nullptr) {
+      page->set_style_sheet_manager(
+          tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME));
+    }
+    return page;
+  }
+  return manager->CreateFiberElement(tag);
+}
+
+template <typename Apply>
+void ApplyInitialAttributeSlots(
+    const base::Vector<fml::RefPtr<Element>>& targets,
+    const lepus::Value& attribute_slots, Apply apply) {
+  Element* previous_element = nullptr;
+  for (const auto& target : targets) {
+    auto* element = target.get();
+    if (element == nullptr || element == previous_element) {
+      continue;
+    }
+    apply(element, attribute_slots);
+    previous_element = element;
+  }
+}
+
+void ApplyInitialNonEventAttributeSlots(
+    const base::Vector<fml::RefPtr<Element>>& targets,
+    const lepus::Value& attribute_slots) {
+  ApplyInitialAttributeSlots(
+      targets, attribute_slots,
+      [](Element* element, const lepus::Value& slots) {
+        TreeResolver::ApplyTemplateNonEventAttributesToElement(element, slots);
+      });
+}
+
+void ApplyInitialEventAttributeSlots(
+    const base::Vector<fml::RefPtr<Element>>& targets,
+    const lepus::Value& attribute_slots) {
+  ApplyInitialAttributeSlots(
+      targets, attribute_slots,
+      [](Element* element, const lepus::Value& slots) {
+        TreeResolver::ApplyTemplateEventAttributesToElement(element, slots);
+      });
+}
+
+void ApplyStaticEventAttributes(
+    const base::Vector<fml::RefPtr<Element>>& targets) {
+  for (const auto& target : targets) {
+    TreeResolver::ApplyStaticTemplateEventAttributesToElement(target.get());
+  }
+}
+
+GeneratedElementsResult GeneratePreparedElementsResult(
+    TemplateEntry* entry, const base::String& template_key,
+    const lepus::Value& attribute_slots, uint32_t attribute_slots_generation) {
+  GeneratedElementsResult generated;
+  if (entry != nullptr) {
+    auto& info = entry->GetElementTemplateInfo(template_key.str());
+    generated = TreeResolver::GenerateElementsFromTemplateInfo(info);
+  }
+  ApplyInitialNonEventAttributeSlots(generated.attribute_slot_targets_,
+                                     attribute_slots);
+  generated.prepared_attribute_slots_ = attribute_slots;
+  generated.attribute_slots_generation_ = attribute_slots_generation;
+  return generated;
 }
 
 }  // namespace
@@ -136,10 +260,10 @@ class ElementTemplateInstanceSerializer {
     auto serialized = lepus::Dictionary::Create();
     serialized->SetValue(BASE_STATIC_STRING(kTemplateTypedTag),
                          instance.typed_tag_);
-    if (instance.root_attributes_.IsObject() &&
-        instance.root_attributes_.GetLength() > 0) {
-      serialized->SetValue(BASE_STATIC_STRING(kTemplateAttributes),
-                           instance.root_attributes_);
+    auto attributes =
+        instance.attribute_slots_.GetProperty(kTypedTemplateAttributeSlotIndex);
+    if (attributes.IsObject() && attributes.GetLength() > 0) {
+      serialized->SetValue(BASE_STATIC_STRING(kTemplateAttributes), attributes);
     }
     serialized->SetValue(BASE_STATIC_STRING(kTemplateChildSlots),
                          SerializeChildSlots(instance));
@@ -167,7 +291,8 @@ class ElementTemplateInstanceSerializer {
 
 ElementTemplateInstance::ElementTemplateInstance(
     ElementManager* element_manager)
-    : bundle_url_(BASE_STATIC_STRING(kDefaultTemplateBundleUrl)) {}
+    : element_manager_(element_manager),
+      bundle_url_(BASE_STATIC_STRING(kDefaultTemplateBundleUrl)) {}
 
 ElementTemplateInstance::~ElementTemplateInstance() {
   ClearLogicalChildParentLinks();
@@ -177,16 +302,21 @@ void ElementTemplateInstance::SetTypedTag(const base::String& typed_tag) {
   typed_tag_ = typed_tag;
 }
 
-void ElementTemplateInstance::SetRootAttributes(
-    const lepus::Value& attributes) {
+void ElementTemplateInstance::SetAttributes(const lepus::Value& attributes) {
   if (!attributes.IsObject() && !attributes.IsNil() &&
       !attributes.IsUndefined()) {
     return;
   }
-  root_attributes_ = attributes.IsObject()
-                         ? CopyTemplateObjectForStorage(attributes)
-                         : lepus::Value();
-  ++root_attributes_generation_;
+  auto next_slots = lepus::CArray::Create();
+  next_slots->emplace_back(attributes.IsObject()
+                               ? CopyTemplateObjectForStorage(attributes)
+                               : lepus::Value());
+  auto previous_slots = std::move(attribute_slots_);
+  attribute_slots_ = lepus::Value(std::move(next_slots));
+  if (IsMaterialized()) {
+    TreeResolver::ApplyTemplateAttributesToElement(
+        result_.get(), previous_slots, attribute_slots_);
+  }
 }
 
 void ElementTemplateInstance::SetAttributeSlots(
@@ -238,6 +368,184 @@ void ElementTemplateInstance::SetOptions(const lepus::Value& options) {
 
 void ElementTemplateInstance::SetUid(const lepus::Value& uid) { uid_ = uid; }
 
+void ElementTemplateInstance::RequestMaterializationRecursively() {
+  if (materialization_requested_) {
+    return;
+  }
+  materialization_requested_ = true;
+  EnsureCreateElementTreeTaskScheduled();
+  if (!child_slots_.IsArrayOrJSArray()) {
+    return;
+  }
+
+  for (size_t slot_index = 0;
+       slot_index < static_cast<size_t>(child_slots_.GetLength());
+       ++slot_index) {
+    auto slot_children =
+        child_slots_.GetProperty(static_cast<uint32_t>(slot_index));
+    if (!slot_children.IsArrayOrJSArray()) {
+      continue;
+    }
+    for (size_t child_index = 0;
+         child_index < static_cast<size_t>(slot_children.GetLength());
+         ++child_index) {
+      auto child = ResolveElementTemplateInstanceValue(
+          slot_children.GetProperty(static_cast<uint32_t>(child_index)));
+      if (child != nullptr) {
+        child->RequestMaterializationRecursively();
+      }
+    }
+  }
+}
+
+void ElementTemplateInstance::EnsureCreateElementTreeTaskScheduled() {
+  if (IsTypedTemplate() || result_ != nullptr ||
+      create_element_tree_task_ != nullptr) {
+    return;
+  }
+  if (entry_ == nullptr && tasm_ != nullptr) {
+    entry_ = tasm_->FindEntry(bundle_url_.str()).get();
+  }
+
+  create_element_tree_task_ = CreateElementTreeTask(entry_);
+  element_manager_->EnqueuePostMTSRenderTask(
+      base::closure([task = create_element_tree_task_]() { task->Run(); }));
+}
+
+base::OnceTaskRefptr<GeneratedElementsResult>
+ElementTemplateInstance::CreateElementTreeTask(TemplateEntry* entry) {
+  std::promise<GeneratedElementsResult> promise;
+  auto future = promise.get_future();
+  auto template_key = template_key_;
+  auto attribute_slots = attribute_slots_;
+  auto attribute_slots_generation = attribute_slots_generation_;
+  return fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
+      [entry, template_key = std::move(template_key),
+       attribute_slots = std::move(attribute_slots), attribute_slots_generation,
+       promise = std::move(promise)]() mutable {
+        promise.set_value(GeneratePreparedElementsResult(
+            entry, template_key, attribute_slots, attribute_slots_generation));
+      },
+      std::move(future));
+}
+
+void ElementTemplateInstance::MaterializeRoot() {
+  if (IsMaterialized()) {
+    return;
+  }
+
+  if (IsTypedTemplate()) {
+    InitTypedRoot();
+    if (result_ == nullptr) {
+      return;
+    }
+    TreeResolver::ApplyTemplateAttributesToElement(result_.get(),
+                                                   attribute_slots_);
+    MountInitialChildSlots();
+    return;
+  }
+
+  if (create_element_tree_task_ == nullptr) {
+    EnsureCreateElementTreeTaskScheduled();
+    if (create_element_tree_task_ == nullptr) {
+      return;
+    }
+  }
+
+  create_element_tree_task_->Run();
+  auto generated = create_element_tree_task_->GetFuture().get();
+  create_element_tree_task_ = nullptr;
+  if (generated.result_ == nullptr) {
+    return;
+  }
+  result_ = std::move(generated.result_);
+  attribute_slot_targets_ = std::move(generated.attribute_slot_targets_);
+  event_attribute_slot_targets_ =
+      std::move(generated.event_attribute_slot_targets_);
+  static_event_targets_ = std::move(generated.static_event_targets_);
+  element_slot_targets_ = std::move(generated.element_slot_targets_);
+
+  InitGeneratedElementTree(generated.prepared_attribute_slots_,
+                           generated.attribute_slots_generation_);
+  MountInitialChildSlots();
+}
+
+void ElementTemplateInstance::InitGeneratedElementTree(
+    const lepus::Value& prepared_attribute_slots,
+    uint32_t prepared_attribute_slots_generation) {
+  if (result_ == nullptr || entry_ == nullptr) {
+    return;
+  }
+  auto* root = element_manager_->root();
+  TreeResolver::InitElementTree(result_, root != nullptr ? root->impl_id() : -1,
+                                element_manager_,
+                                entry_->GetStyleSheetManager());
+  ApplyStaticEventAttributes(static_event_targets_);
+  if (prepared_attribute_slots_generation != attribute_slots_generation_) {
+    ApplyInitialAttributeSlots(
+        attribute_slot_targets_, attribute_slots_,
+        [&prepared_attribute_slots](Element* element,
+                                    const lepus::Value& slots) {
+          TreeResolver::ApplyTemplateNonEventAttributesToElement(
+              element, prepared_attribute_slots, slots);
+        });
+  }
+  ApplyInitialEventAttributeSlots(event_attribute_slot_targets_,
+                                  attribute_slots_);
+}
+
+void ElementTemplateInstance::InitTypedRoot() {
+  if (!IsTypedTemplate() || result_ != nullptr) {
+    return;
+  }
+
+  result_ = CreateTypedRootElement(element_manager_, tasm_, typed_tag_);
+  if (result_ == nullptr) {
+    return;
+  }
+  result_->MarkTemplateElement();
+  result_->SetTemplateAttributes(TypedTemplateAttributes());
+  auto* root = element_manager_->root();
+  if (root != nullptr) {
+    result_->SetParentComponentUniqueIdRecursively(root->impl_id());
+  }
+
+  element_slot_targets_.clear();
+  element_slot_targets_.push_back(ElementSlotMountPoint{result_, nullptr});
+}
+
+fml::RefPtr<Element> ElementTemplateInstance::GetRoot() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_GET_ROOT, "template_key",
+              template_key_.str(), "bundle_url", bundle_url_.str());
+  RequestMaterializationRecursively();
+  MaterializeRoot();
+
+  EXEC_EXPR_FOR_INSPECTOR(auto* manager = element_manager_;
+                          if (result_ != nullptr && manager->GetDevToolFlag() &&
+                              manager->IsDomTreeEnabled()) {
+                            PrepareMaterializedElementTreeForInspector(
+                                manager, result_.get());
+                          });
+  return result_;
+}
+
+fml::RefPtr<Element> ElementTemplateInstance::PeekMaterializedRoot() const {
+  return result_;
+}
+
+void ElementTemplateInstance::ApplyAttributeSlotToTarget(
+    uint32_t slot_index, const lepus::Value& previous_attribute_slots) {
+  if (slot_index >= attribute_slot_targets_.size()) {
+    return;
+  }
+  const auto& target = attribute_slot_targets_[slot_index];
+  if (target == nullptr) {
+    return;
+  }
+  TreeResolver::ApplyTemplateAttributesToElement(
+      target.get(), previous_attribute_slots, attribute_slots_);
+}
+
 lepus::Value ElementTemplateInstance::GetOrCreateMutableChildSlot(
     uint32_t slot_index) {
   if (!child_slots_.IsArray()) {
@@ -271,6 +579,218 @@ bool ElementTemplateInstance::EraseChildFromSlotStorage(
   return false;
 }
 
+bool ElementTemplateInstance::HasPendingChildMounts() const {
+  return !pending_child_mount_slots_.empty();
+}
+
+ElementTemplateInstance::FlushPendingChildMountsResult
+ElementTemplateInstance::FlushPendingChildMounts(Element* flush_root) {
+  if (!IsMaterializedRootInFlushScope(flush_root)) {
+    // A nested ET in a detached subtree still has a physical parent. Keep it
+    // queued so reattaching the subtree can bring it back into flush scope.
+    const bool has_physical_parent_or_is_root =
+        result_->parent() != nullptr ||
+        element_manager_->root() == result_.get();
+    return has_physical_parent_or_is_root
+               ? FlushPendingChildMountsResult::kOutOfScope
+               : FlushPendingChildMountsResult::kDoNotRequeue;
+  }
+
+  auto pending_slots = std::move(pending_child_mount_slots_);
+  pending_child_mount_slots_.clear();
+  for (auto slot_index : pending_slots) {
+    if (!MountChildSlot(slot_index, true)) {
+      AddPendingSlot(pending_child_mount_slots_, slot_index);
+    }
+  }
+  return FlushPendingChildMountsResult::kDoNotRequeue;
+}
+
+void ElementTemplateInstance::SchedulePendingChildMounts() {
+  if (!HasPendingChildMounts() || result_ == nullptr) {
+    return;
+  }
+  element_manager_->EnqueuePendingElementTemplateChildMounts(*this);
+  result_->MarkDirty(Element::kDirtyTree);
+}
+
+bool ElementTemplateInstance::IsMaterializedRootInFlushScope(
+    Element* flush_root) const {
+  auto* current = result_.get();
+  while (current != nullptr) {
+    if (current == flush_root) {
+      return true;
+    }
+    current = static_cast<Element*>(current->parent());
+  }
+  return false;
+}
+
+void ElementTemplateInstance::MountInitialChildSlots() {
+  if (!child_slots_.IsArrayOrJSArray()) {
+    return;
+  }
+  const size_t slot_count =
+      std::min(static_cast<size_t>(child_slots_.GetLength()),
+               element_slot_targets_.size());
+  for (size_t slot_index = 0; slot_index < slot_count; ++slot_index) {
+    if (!MountChildSlot(static_cast<uint32_t>(slot_index), false)) {
+      AddPendingSlot(pending_child_mount_slots_,
+                     static_cast<uint32_t>(slot_index));
+    }
+  }
+  SchedulePendingChildMounts();
+}
+
+bool ElementTemplateInstance::MountChildSlot(uint32_t slot_index,
+                                             bool resolve_compiled_children) {
+  if (slot_index >= element_slot_targets_.size() ||
+      !child_slots_.IsArrayOrJSArray() ||
+      slot_index >= static_cast<uint32_t>(child_slots_.GetLength())) {
+    return true;
+  }
+  const auto& mount_point = element_slot_targets_[slot_index];
+  auto slot_children = child_slots_.GetProperty(slot_index);
+  if (mount_point.parent_ == nullptr || !slot_children.IsArrayOrJSArray()) {
+    return true;
+  }
+
+  bool mounted_all = true;
+  // Initial slots mount in producer order, so later slot children are not yet
+  // attached to this mount point. Pending mounts must instead locate their
+  // current logical successor.
+  auto insertion_reference =
+      resolve_compiled_children
+          ? FindChildInsertionReference(
+                slot_index, static_cast<size_t>(slot_children.GetLength()))
+          : mount_point.ref_node_;
+  for (size_t index = static_cast<size_t>(slot_children.GetLength()); index > 0;
+       --index) {
+    auto child = ResolveElementTemplateInstanceValue(
+        slot_children.GetProperty(static_cast<uint32_t>(index - 1)));
+    if (child == nullptr) {
+      continue;
+    }
+    const bool is_typed_child = child->IsTypedTemplate();
+    auto child_root = child->PeekMaterializedRoot();
+    if (child_root == nullptr &&
+        (is_typed_child || resolve_compiled_children)) {
+      child_root = child->GetRoot();
+    }
+    if (child_root == nullptr) {
+      if (!is_typed_child) {
+        mounted_all = false;
+      }
+      continue;
+    }
+    MountMaterializedChildBefore(mount_point, child, child_root,
+                                 insertion_reference);
+    insertion_reference = std::move(child_root);
+  }
+  return mounted_all;
+}
+
+void ElementTemplateInstance::MountMaterializedChildBefore(
+    const ElementSlotMountPoint& mount_point,
+    const fml::RefPtr<ElementTemplateInstance>& child,
+    const fml::RefPtr<Element>& child_root,
+    const fml::RefPtr<Element>& insertion_reference) {
+  if (child_root.get() == insertion_reference.get()) {
+    return;
+  }
+  child->SchedulePendingChildMounts();
+  if (child_root->parent() == mount_point.parent_.get() &&
+      child_root->next_sibling() == insertion_reference.get()) {
+    return;
+  }
+
+  DetachMaterializedElementFromCurrentParent(element_manager_, child_root);
+  if (insertion_reference != nullptr) {
+    mount_point.parent_->InsertNodeBefore(child_root, insertion_reference);
+  } else {
+    mount_point.parent_->InsertNode(child_root);
+  }
+  EXEC_EXPR_FOR_INSPECTOR({
+    element_manager_->CheckAndProcessSlotForInspector(child_root.get());
+    element_manager_->OnElementNodeAddedForInspector(child_root.get());
+  });
+}
+
+void ElementTemplateInstance::UnmountMaterializedChild(
+    uint32_t slot_index, const fml::RefPtr<ElementTemplateInstance>& child) {
+  if (slot_index >= element_slot_targets_.size() || child == nullptr) {
+    return;
+  }
+  auto child_root = child->PeekMaterializedRoot();
+  const auto& mount_point = element_slot_targets_[slot_index];
+  if (child_root != nullptr && mount_point.parent_ != nullptr &&
+      child_root->parent() == mount_point.parent_.get()) {
+    DetachMaterializedElementFromCurrentParent(element_manager_, child_root);
+  }
+}
+
+fml::RefPtr<Element> ElementTemplateInstance::FindChildInsertionReference(
+    uint32_t slot_index, size_t first_sibling_index) const {
+  // Find a physical insert-before anchor without materializing pending
+  // siblings. Single-child inserts search from the next sibling; whole-slot
+  // mounts pass the slot length and build their within-slot order from back to
+  // front.
+  const auto& mount_point = element_slot_targets_[slot_index];
+  auto slot_children = child_slots_.GetProperty(slot_index);
+  for (size_t index = first_sibling_index;
+       index < static_cast<size_t>(slot_children.GetLength()); ++index) {
+    auto sibling = ResolveElementTemplateInstanceValue(
+        slot_children.GetProperty(static_cast<uint32_t>(index)));
+    if (sibling == nullptr) {
+      continue;
+    }
+    // A logical successor may still be pending or attached to another parent.
+    // Only an Element already under this mount point can serve as an anchor.
+    auto sibling_root = sibling->PeekMaterializedRoot();
+    if (sibling_root != nullptr &&
+        sibling_root->parent() == mount_point.parent_.get()) {
+      return sibling_root;
+    }
+  }
+
+  // Adjacent slots can share the same parent and static reference. Their
+  // mounted children must stay after this slot: [slot0: A, slot1: B, static S]
+  // needs B, not S, as the anchor when appending a child to slot0.
+  const size_t logical_slot_count =
+      static_cast<size_t>(child_slots_.GetLength());
+  for (size_t next_slot_index = slot_index + 1;
+       next_slot_index < element_slot_targets_.size() &&
+       next_slot_index < logical_slot_count;
+       ++next_slot_index) {
+    const auto& next_mount_point = element_slot_targets_[next_slot_index];
+    if (next_mount_point.parent_.get() != mount_point.parent_.get() ||
+        next_mount_point.ref_node_.get() != mount_point.ref_node_.get()) {
+      continue;
+    }
+    auto next_slot_children =
+        child_slots_.GetProperty(static_cast<uint32_t>(next_slot_index));
+    if (!next_slot_children.IsArrayOrJSArray()) {
+      continue;
+    }
+    for (size_t index = 0;
+         index < static_cast<size_t>(next_slot_children.GetLength()); ++index) {
+      auto sibling = ResolveElementTemplateInstanceValue(
+          next_slot_children.GetProperty(static_cast<uint32_t>(index)));
+      if (sibling == nullptr) {
+        continue;
+      }
+      auto sibling_root = sibling->PeekMaterializedRoot();
+      if (sibling_root != nullptr &&
+          sibling_root->parent() == mount_point.parent_.get()) {
+        return sibling_root;
+      }
+    }
+  }
+  // No mounted logical successor: insert before the static reference, or append
+  // to the parent when the reference is null.
+  return mount_point.ref_node_;
+}
+
 void ElementTemplateInstance::ClearLogicalChildParentLinks() {
   if (!child_slots_.IsArrayOrJSArray()) {
     return;
@@ -300,6 +820,36 @@ lepus::Value ElementTemplateInstance::Serialize() const {
   return ElementTemplateInstanceSerializer().Serialize(*this);
 }
 
+void ElementTemplateInstance::SetAttributeSlot(uint32_t slot_index,
+                                               const lepus::Value& value) {
+  if (IsTypedTemplate()) {
+    if (slot_index == kTypedTemplateAttributeSlotIndex) {
+      SetAttributes(value);
+    }
+    return;
+  }
+
+  auto previous_attribute_slots = std::move(attribute_slots_);
+  auto next_slots = lepus::CArray::Create();
+  if (previous_attribute_slots.IsArrayOrJSArray()) {
+    next_slots->reserve(previous_attribute_slots.GetLength());
+    for (size_t index = 0;
+         index < static_cast<size_t>(previous_attribute_slots.GetLength());
+         ++index) {
+      next_slots->emplace_back(
+          previous_attribute_slots.GetProperty(static_cast<uint32_t>(index)));
+    }
+  }
+  attribute_slots_ = lepus::Value(std::move(next_slots));
+  attribute_slots_.SetProperty(
+      slot_index, value.IsObject() ? CopyTemplateObjectForStorage(value)
+                                   : CopyTemplateValueForStorage(value));
+  ++attribute_slots_generation_;
+  if (IsMaterialized()) {
+    ApplyAttributeSlotToTarget(slot_index, previous_attribute_slots);
+  }
+}
+
 void ElementTemplateInstance::InsertNodeIntoChildSlot(
     uint32_t slot_index, const lepus::Value& child,
     const lepus::Value& ref_node) {
@@ -322,6 +872,35 @@ void ElementTemplateInstance::InsertNodeIntoChildSlot(
   slot_children.Array()->Insert(static_cast<uint32_t>(insert_index), child);
   child_instance->logical_parent_ = this;
   child_instance->logical_parent_slot_index_ = slot_index;
+  if (materialization_requested_) {
+    child_instance->RequestMaterializationRecursively();
+  }
+
+  if (IsMaterialized()) {
+    const bool is_typed_child = child_instance->IsTypedTemplate();
+    auto child_root = child_instance->PeekMaterializedRoot();
+    if (child_root == nullptr && is_typed_child) {
+      child_root = child_instance->GetRoot();
+    }
+    if (child_root != nullptr) {
+      if (slot_index < element_slot_targets_.size() &&
+          element_slot_targets_[slot_index].parent_ != nullptr) {
+        MountMaterializedChildBefore(
+            element_slot_targets_[slot_index], child_instance, child_root,
+            FindChildInsertionReference(slot_index, insert_index + 1));
+      } else if (previous_parent != nullptr &&
+                 previous_parent->IsMaterialized()) {
+        previous_parent->UnmountMaterializedChild(previous_slot_index,
+                                                  child_instance);
+      }
+    } else if (!is_typed_child) {
+      AddPendingSlot(pending_child_mount_slots_, slot_index);
+      SchedulePendingChildMounts();
+    }
+  } else if (previous_parent != nullptr && previous_parent->IsMaterialized()) {
+    previous_parent->UnmountMaterializedChild(previous_slot_index,
+                                              child_instance);
+  }
 }
 
 void ElementTemplateInstance::RemoveNodeFromChildSlot(
@@ -338,6 +917,9 @@ void ElementTemplateInstance::RemoveNodeFromChildSlot(
   }
   child_instance->logical_parent_ = nullptr;
   child_instance->logical_parent_slot_index_ = 0;
+  if (IsMaterialized()) {
+    UnmountMaterializedChild(slot_index, child_instance);
+  }
 }
 
 }  // namespace tasm

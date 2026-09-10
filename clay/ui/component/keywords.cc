@@ -46,7 +46,7 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 385
+#define TOTAL_KEYWORDS 387
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
 #define MIN_HASH_VALUE 25
@@ -281,6 +281,7 @@ struct StringPool_t {
   char StringPool_str401[sizeof("scroll-bar-thumb-color")];
   char StringPool_str402[sizeof("allow-pan-gesture")];
   char StringPool_str403[sizeof("tab-layout-gravity")];
+  char StringPool_str405[sizeof("experimental-optimize-load-key")];
   char StringPool_str407[sizeof("scroll-bar-thumb-hover-color")];
   char StringPool_str408[sizeof("scroll-bar-thumb-active-color")];
   char StringPool_str409[sizeof("experimental-batch-render-strategy")];
@@ -387,6 +388,7 @@ struct StringPool_t {
   char StringPool_str636[sizeof("blur-radius")];
   char StringPool_str638[sizeof("outline-color")];
   char StringPool_str640[sizeof("src-format")];
+  char StringPool_str648[sizeof("event-through-active-regions")];
   char StringPool_str651[sizeof("scroll-bar-thumb-width")];
   char StringPool_str652[sizeof("bounces")];
   char StringPool_str656[sizeof("scroll-bar-thumb-min-length")];
@@ -668,6 +670,7 @@ static const struct StringPool_t StringPool_contents = {
     "scroll-bar-thumb-color",
     "allow-pan-gesture",
     "tab-layout-gravity",
+    "experimental-optimize-load-key",
     "scroll-bar-thumb-hover-color",
     "scroll-bar-thumb-active-color",
     "experimental-batch-render-strategy",
@@ -774,6 +777,7 @@ static const struct StringPool_t StringPool_contents = {
     "blur-radius",
     "outline-color",
     "src-format",
+    "event-through-active-regions",
     "scroll-bar-thumb-width",
     "bounces",
     "scroll-bar-thumb-min-length",
@@ -1461,7 +1465,8 @@ static const struct TokenValue wordlist[] = {
     {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str403,
      (short)KeywordID::kTabLayoutGravity},
     {-1},
-    {-1},
+    {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str405,
+     (short)KeywordID::kExperimentalOptimizeLoadKey},
     {-1},
     {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str407,
      (short)KeywordID::kScrollBarThumbHoverColor},
@@ -1810,7 +1815,8 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {-1},
+    {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str648,
+     (short)KeywordID::kEventThroughActiveRegions},
     {-1},
     {-1},
     {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str651,

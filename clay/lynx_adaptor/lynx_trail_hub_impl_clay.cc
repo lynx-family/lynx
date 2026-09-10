@@ -5,8 +5,8 @@
 
 #include <memory>
 
-#include "platform/embedder/lynx_service/lynx_service_center_priv.h"
-#include "platform/embedder/lynx_service/lynx_trail_service_priv.h"
+#include "platform/embedder/public/capi/lynx_service_center_capi.h"
+#include "platform/embedder/public/lynx_trail_service.h"
 
 namespace lynx {
 namespace tasm {
@@ -20,11 +20,7 @@ std::optional<std::string> LynxTrailHubImplClay::GetStringForTrailKey(
     return std::nullopt;
   }
 
-  trail_service->AddRef();
-  std::optional<std::string> value =
-      lynx_trail_service_get_string_value(trail_service, key);
-  trail_service->Release();
-  return value;
+  return lynx::pub::GetTrailStringValue(trail_service, key);
 }
 
 std::unique_ptr<LynxTrailHub::TrailImpl> LynxTrailHub::TrailImpl::Create() {

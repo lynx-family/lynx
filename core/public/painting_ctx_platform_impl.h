@@ -50,8 +50,9 @@ class PaintingCtxPlatformRef {
   virtual void SetGestureDetectorState(int64_t id, int32_t gesture_id,
                                        int32_t state) {}
 
-  virtual void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                                       std::vector<int32_t> remove_ids) {}
+  virtual void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) {}
   // TODO(songshourui.null): Implement platform-specific reporting in follow-up
   // changes.
   // Requests a delayed, coalesced external-memory report from the UI backend.
@@ -190,8 +191,9 @@ class PaintingCtxPlatformImpl {
   virtual void OnFirstMeaningfulLayout() {}
 
   // TODO(liting.src): remove this method after ui operation queue refactor.
-  virtual void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                                       std::vector<int32_t> remove_ids) {}
+  virtual void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) {}
   // TODO(songshourui.null): Forward this request through platform-specific
   // operation queues in follow-up changes.
   // Appends an external-memory report request to a batched UI operation stream.

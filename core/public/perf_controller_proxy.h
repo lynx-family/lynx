@@ -4,27 +4,21 @@
 
 #ifndef CORE_PUBLIC_PERF_CONTROLLER_PROXY_H_
 #define CORE_PUBLIC_PERF_CONTROLLER_PROXY_H_
-#include <memory>
+#include <cstdint>
 #include <string>
-#include <unordered_map>
 
 #include "base/include/closure.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/timing_key.h"
 
 namespace lynx {
+namespace tasm {
+namespace report {
+struct MoveOnlyEvent;
+}  // namespace report
+}  // namespace tasm
+
 namespace shell {
-
-/**
- * @brief Event struct containing different types of property
- */
-struct ReportEvent {
-  std::string event_name;
-  std::unordered_map<std::string, std::string> string_props;
-  std::unordered_map<std::string, int> int_props;
-  std::unordered_map<std::string, double> double_props;
-};
-
 class PerfControllerProxy {
  public:
   virtual ~PerfControllerProxy() = default;
@@ -74,10 +68,9 @@ class PerfControllerProxy {
 
   /**
    * @brief Interface to report an event
-   * @param instance_id The instanceId of a lynx view
    * @param event The event to be reported
    */
-  virtual void OnEvent(int32_t instance_id, ReportEvent& event) = 0;
+  virtual void OnEvent(tasm::report::MoveOnlyEvent&& event) = 0;
 };
 
 }  // namespace shell

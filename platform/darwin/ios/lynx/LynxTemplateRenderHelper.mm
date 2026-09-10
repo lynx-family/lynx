@@ -23,6 +23,7 @@
 #import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxIntersectionObserverModule.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxPerformanceController+Native.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxResourceModule.h>
 #import <Lynx/LynxScreenMetrics.h>
@@ -45,6 +46,7 @@
 #include "base/include/lynx_actor.h"
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/public/lynx_extension_delegate.h"
+#include "core/public/page_options.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
@@ -67,6 +69,10 @@
 - (const lynx::base::LogContext*)runtimeCreationLogContext;
 @end
 
+@protocol LynxFirstTimeoutScaleProvider <NSObject>
+- (BOOL)getFirstTimeoutScaleTargetDelayMs:(int32_t*)targetDelayMs factor:(double*)factor;
+@end
+
 namespace {
 
 bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painting_context) {
@@ -77,12 +83,33 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   return platform_ref != nullptr && platform_ref->IsNativePaintingCtxPlatformRef();
 }
 
+NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
+  static NSMutableDictionary<NSString*, id>* wrappers;
+  static dispatch_once_t once_token;
+  dispatch_once(&once_token, ^{
+    auto factory = std::make_unique<lynx::runtime::js::ModuleFactoryDarwin>();
+    factory->registerModule(LynxIntersectionObserverModule.class, nil, true);
+    factory->registerModule(LynxUIMethodModule.class, nil, true);
+    factory->registerModule(LynxTextInfoModule.class, nil, true);
+    factory->registerModule(LynxResourceModule.class, nil, true);
+    factory->registerModule(LynxAccessibilityModule.class, nil, true);
+    factory->registerModule(LynxExposureModule.class, nil, true);
+    factory->registerModule(LynxSetModule.class, nil, true);
+    wrappers = [factory->moduleWrappers() mutableCopy];
+  });
+  return wrappers;
+}
+
 }  // namespace
 
 @interface LynxUIRenderer (PaintingContextInternal)
 - (void)setPaintingContextPlatformImpl:(lynx::tasm::PaintingCtxPlatformImpl*)platformImpl;
 - (void)setLynxEngineActorForPlatformContextRef:
     (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>>&)engineActor;
+@end
+
+@interface LynxPerformanceController (EmbeddedTimingClient)
+- (void)setEmbeddedTimingClient:(nullable id<TemplateRenderCallbackProtocol>)client;
 @end
 
 @implementation LynxTemplateRender (Helper)
@@ -149,6 +176,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
         painting_context->GetPlatformRef().get(), _performanceController);
     _context.perfController = _performanceController;
     if ((_embeddedMode & LynxEmbeddedModeBase) != 0) {
+      [_performanceController setEmbeddedTimingClient:self];
       [_performanceController setEmbeddedModeEnabled:YES];
     }
   }
@@ -193,6 +221,8 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
           .SetUseInvokeUIMethodFunction(_lynxUIRenderer.useInvokeUIMethodFunction)
           .SetLynxEngineWrapper(_lynxEngine ? [_lynxEngine getEngineNative] : nullptr)
           .build());
+
+  [_performanceController setInstanceId:shell_->GetInstanceId()];
 
   [_lynxEngineProxy setNativeEngineProxy:std::make_shared<lynx::shell::LynxEngineProxyDarwin>(
                                              shell_->GetEngineActor())];
@@ -517,17 +547,13 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 }
 
 - (void)setUpBuiltModuleWithFactory:(lynx::runtime::js::ModuleFactoryDarwin*)module_factory {
-  // register built in module
-  module_factory->registerModule(LynxIntersectionObserverModule.class);
-  module_factory->registerModule(LynxUIMethodModule.class);
-  module_factory->registerModule(LynxTextInfoModule.class);
-  module_factory->registerModule(LynxResourceModule.class);
-  module_factory->registerModule(LynxAccessibilityModule.class);
-  module_factory->registerModule(LynxExposureModule.class);
+  // The parameterless built-in wrappers are immutable metadata. Share them across factories so
+  // subsequent LynxView creation does not repeatedly allocate the same wrappers. Modules with
+  // per-view state must still be registered on each factory.
+  module_factory->addWrappers(GetSharedBuiltInModuleWrappers());
   LynxFetchModuleEventSender* eventSender = [[LynxFetchModuleEventSender alloc] init];
   eventSender.eventSender = _context;
-  module_factory->registerModule(LynxFetchModule.class, eventSender);
-  module_factory->registerModule(LynxSetModule.class);
+  module_factory->registerModule(LynxFetchModule.class, eventSender, true);
   [_devTool registerModule:self];
 }
 
@@ -553,6 +579,16 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
   option.page_options_.SetInstanceID(option.instance_id_);
   option.page_options_.SetEmbeddedMode(static_cast<lynx::tasm::EmbeddedMode>(_embeddedMode));
   option.page_options_.SetDebuggable(_debuggable);
+  // Experimental first-timeout scaling; scheduled to be removed on 2026-10-30.
+  if ([_lynxUIRenderer respondsToSelector:@selector(getFirstTimeoutScaleTargetDelayMs:factor:)]) {
+    int32_t target_delay_ms = 0;
+    double factor = 0.0;
+    if ([(id<LynxFirstTimeoutScaleProvider>)_lynxUIRenderer
+            getFirstTimeoutScaleTargetDelayMs:&target_delay_ms
+                                       factor:&factor]) {
+      option.page_options_.SetFirstTimeoutScale(target_delay_ms, factor);
+    }
+  }
   return option;
 }
 

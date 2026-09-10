@@ -7,9 +7,9 @@
 #include <math.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -24,38 +24,38 @@
 namespace clay {
 namespace {
 
-const std::unordered_set<KeywordID> kProxyAttributes = {
-    KeywordID::kSticky,
-    KeywordID::kStickyOffset,
-    KeywordID::kExperimentalRecycleStickyItem,
-    KeywordID::kExperimentalBatchRenderStrategy,
-    KeywordID::kExperimentalUpdateStickyForDiff,
-    KeywordID::kListContainerInfo,
-    KeywordID::kScrollX,
-    KeywordID::kScrollY,
-    KeywordID::kLowerThreshold,
-    KeywordID::kUpperThreshold,
-    KeywordID::kEnableScroll,
-    KeywordID::kEnableNestedScroll,
-    KeywordID::kScrollTop,
-    KeywordID::kScrollLeft,
-    KeywordID::kScrollToIndex,
-    KeywordID::kDirection,
-    KeywordID::kInitialScrollOffset,
-    KeywordID::kInitialScrollIndex,
-    KeywordID::kScrollOrientation,
-    KeywordID::kScrollForwardMode,
-    KeywordID::kScrollBackwardMode,
-    KeywordID::kPrevScrollable,
-    KeywordID::kNextScrollable,
-    KeywordID::kBounce,
-    KeywordID::kBounces,
-    KeywordID::kScrollToId,
-    KeywordID::kScrollEventThrottle,
-    KeywordID::kItemSnap,
-    KeywordID::kEnableInsertPlatformViewOperation,
-    KeywordID::kNeedVisibleItemInfo,
-    KeywordID::kNeedsVisibleCells};
+constexpr std::array<KeywordID, 31> kProxyAttributes = {
+    {KeywordID::kSticky,
+     KeywordID::kStickyOffset,
+     KeywordID::kExperimentalRecycleStickyItem,
+     KeywordID::kExperimentalBatchRenderStrategy,
+     KeywordID::kExperimentalUpdateStickyForDiff,
+     KeywordID::kListContainerInfo,
+     KeywordID::kScrollX,
+     KeywordID::kScrollY,
+     KeywordID::kLowerThreshold,
+     KeywordID::kUpperThreshold,
+     KeywordID::kEnableScroll,
+     KeywordID::kEnableNestedScroll,
+     KeywordID::kScrollTop,
+     KeywordID::kScrollLeft,
+     KeywordID::kScrollToIndex,
+     KeywordID::kDirection,
+     KeywordID::kInitialScrollOffset,
+     KeywordID::kInitialScrollIndex,
+     KeywordID::kScrollOrientation,
+     KeywordID::kScrollForwardMode,
+     KeywordID::kScrollBackwardMode,
+     KeywordID::kPrevScrollable,
+     KeywordID::kNextScrollable,
+     KeywordID::kBounce,
+     KeywordID::kBounces,
+     KeywordID::kScrollToId,
+     KeywordID::kScrollEventThrottle,
+     KeywordID::kItemSnap,
+     KeywordID::kEnableInsertPlatformViewOperation,
+     KeywordID::kNeedVisibleItemInfo,
+     KeywordID::kNeedsVisibleCells}};
 constexpr char kListContainerWrapperTag[] = "list-container-wrapper";
 constexpr char kClayDisablePlatformScrollEvent[] =
     "clay-disable-platform-scroll-event";
@@ -193,7 +193,8 @@ void ListContainerWrapper::SetAttribute(const char* attr_c,
     // kClayDisablePlatformScrollEvent is handle in BeforeSetAttribute.
     // No need to set this attribute on the view.
     return;
-  } else if (kProxyAttributes.find(kw) != kProxyAttributes.end()) {
+  } else if (std::find(kProxyAttributes.begin(), kProxyAttributes.end(), kw) !=
+             kProxyAttributes.end()) {
     view_->SetAttribute(attr_c, value);
     if (kw == KeywordID::kScrollX || kw == KeywordID::kScrollY ||
         kw == KeywordID::kScrollOrientation ||

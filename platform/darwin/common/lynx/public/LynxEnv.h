@@ -103,6 +103,11 @@ typedef NS_ENUM(NSInteger, LynxMTSContextType) {
 
 + (instancetype)sharedInstance;
 
+/**
+ * Applies the development DevTool bootstrap profile before `sharedInstance` initializes LynxEnv.
+ */
++ (void)prepareDevToolForDevelopmentBeforeInit;
+
 + (void)prepareGlobalMTSRuntimePoolWithContextType:(LynxMTSContextType)contextType
                                              count:(NSInteger)count;
 

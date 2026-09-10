@@ -44,9 +44,11 @@ class JSUIBase : public UIBase {
   bool ShouldHitTest() override;
   JSUIBase(LynxContext* context, ArkUI_NodeHandle node, int sign,
            const std::string& tag, bool has_customized_layout,
-           const bool need_window_state_change_event)
+           const bool need_window_state_change_event,
+           const bool is_layout_placeholder)
       : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag, has_customized_layout),
-        need_window_state_change_event_(need_window_state_change_event) {
+        need_window_state_change_event_(need_window_state_change_event),
+        is_layout_placeholder_(is_layout_placeholder) {
     if (node) {
       frame_node_ = node;
       NodeManager::Instance().InsertNode(node_, node, 0);
@@ -106,6 +108,7 @@ class JSUIBase : public UIBase {
   napi_ref js_on_enter_background_{nullptr};
   ArkUI_NodeHandle frame_node_{nullptr};
   const bool need_window_state_change_event_{false};
+  const bool is_layout_placeholder_{false};
   bool is_reused_by_client_{false};
 };
 

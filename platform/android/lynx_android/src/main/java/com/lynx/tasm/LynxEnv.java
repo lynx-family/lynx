@@ -192,6 +192,8 @@ public class LynxEnv {
 
   protected final Object mLazyInitLock = new Object();
 
+  private volatile boolean mShouldEnableAllDevToolSessions = false;
+
   private static ILynxDevToolService devtoolService = null;
   private static ILynxDevToolService getDevtoolService() {
     if (devtoolService == null) {
@@ -205,6 +207,8 @@ public class LynxEnv {
   private boolean mForceDisableQuickJsCache = false;
 
   private boolean mEnableLazyInitA11y = true;
+
+  private volatile boolean mEnablePlatformObservability = false;
 
   private boolean mEnableTextLayoutCache = true;
 
@@ -770,11 +774,28 @@ public class LynxEnv {
     return hasInit.get() && mIsNativeLibraryLoaded && mIsNativeUIThreadInited;
   }
 
+  /**
+   * Applies the development DevTool bootstrap profile before {@link #init}.
+   *
+   * <p>The DevTool service is initialized during {@link #init}, so this method only stores the
+   * request to enable all DevTool sessions.
+   */
+  public void prepareDevToolForDevelopmentBeforeInit() {
+    DevToolSettings.inst().bootstrap().applyDevelopmentDefaultsIfUnset();
+    mShouldEnableAllDevToolSessions = true;
+  }
+
   protected void initDevtoolEnv() {
     if (isLynxDebugEnabled() && mContext != null) {
       try {
-        if (getDevtoolService() != null) {
-          getDevtoolService().devtoolEnvInit(mContext);
+        ILynxDevToolService devToolService = getDevtoolService();
+        if (devToolService != null) {
+          devToolService.devtoolEnvInit(mContext);
+          if (mShouldEnableAllDevToolSessions) {
+            // Run the pre-init request after DevTool env initialization succeeds.
+            devToolService.enableAllSessions();
+            mShouldEnableAllDevToolSessions = false;
+          }
         } else {
           LLog.w(TAG, "DevtoolService not yet registered when initDevtoolEnv");
         }
@@ -1485,6 +1506,33 @@ public class LynxEnv {
 
   public boolean enableLazyInitA11y() {
     return this.mEnableLazyInitA11y;
+  }
+
+  /**
+   * Globally enables platform-native observability for subsequently created Lynx views.
+   *
+   * <p>When enabled, Android exposes Lynx UI through delegate-based virtual accessibility nodes
+   * even if system accessibility is disabled. A page-level {@code enableA11y} configuration still
+   * selects the View-based accessibility implementation and takes precedence.
+   *
+   * <p>This switch makes the node tree available for discovery and location. It does not bypass
+   * system accessibility checks for every accessibility interaction. Automation clients can use
+   * actions advertised by a node or use the exposed bounds to inject platform input. In the
+   * delegate-based implementation, {@code ACTION_CLICK} is advertised only for nodes with {@code
+   * accessibility-enable-tap=true}, while accessibility focus and hover remain controlled by system
+   * accessibility state.
+   *
+   * <p>This should be configured before creating a LynxView.
+   */
+  @AnyThread
+  public void enablePlatformObservability(boolean enable) {
+    mEnablePlatformObservability = enable;
+  }
+
+  /** Returns whether platform-native observability is globally enabled. */
+  @AnyThread
+  public boolean isPlatformObservabilityEnabled() {
+    return mEnablePlatformObservability;
   }
 
   protected void initEnableGenericResourceFetcher() {

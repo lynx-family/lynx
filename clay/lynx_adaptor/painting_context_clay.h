@@ -28,19 +28,15 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
       : view_context_(view_context) {}
   ~PaintingContextClayRef() override = default;
 
-  void SetUIOperationQueue(
-      const std::shared_ptr<shell::UIOperationQueueInterface>& queue) {
-    queue_ = queue;
-  }
-
   void InsertPaintingNode(int parent, int child, int index) override;
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
   void DestroyPaintingNode(int parent, int child, int index) override;
   void UpdateScrollInfo(int32_t container_id, bool smooth,
                         float estimated_offset, bool scrolling) override;
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) override;
   void RequestExternalMemoryReport(int64_t delay_ms) override;
   void InsertListItemPaintingNode(int list_sign, int child_sign) override;
   void RemoveListItemPaintingNode(int list_sign, int child_sign) override;
@@ -56,7 +52,6 @@ class PaintingContextClayRef : public PaintingCtxPlatformRef {
 
  private:
   clay::ViewContext* view_context_ = nullptr;
-  std::weak_ptr<shell::UIOperationQueueInterface> queue_;
   std::shared_ptr<PerfControllerClay> perf_controller_;
 };
 
@@ -69,10 +64,6 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override {
     ui_operation_queue_ref_ = queue;
-    auto ref = std::static_pointer_cast<PaintingContextClayRef>(platform_ref_);
-    if (ref) {
-      ref->SetUIOperationQueue(queue);
-    }
   }
 
   void SetEngineProxy(

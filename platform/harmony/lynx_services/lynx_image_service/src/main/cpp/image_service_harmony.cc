@@ -44,12 +44,13 @@ void ImageServiceHarmony::DecodeImage(
   options->onLoadListener = std::make_shared<ImageKnifePro::OnLoadCallBack>();
   options->onLoadListener->onLoadSuccess =
       [on_load_success = std::move(on_load_success)](
-          ImageKnifePro::ImageInfo image_info) mutable {
+          const ImageKnifePro::ImageInfo& image_info) mutable {
         on_load_success(image_info.imageWidth, image_info.imageHeight);
       };
   options->onLoadListener->onLoadFailed =
       [on_load_failed = std::move(on_load_failed)](
-          std::string error, ImageKnifePro::ImageInfo image_info) mutable {
+          const std::string& error,
+          const ImageKnifePro::ImageInfo& image_info) mutable {
         on_load_failed(static_cast<int>(image_info.errorInfo.code), error);
       };
   ImageServiceNode::UpdateImageSource(this, options, info.url,

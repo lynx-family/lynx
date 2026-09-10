@@ -17,6 +17,4 @@ struct lynx_http_request_t {
   std::vector<uint8_t> body;
 };
 
-lynx_http_request_t* lynx_http_request_create(const std::string& url);
-
 #endif  // PLATFORM_EMBEDDER_LYNX_SERVICE_LYNX_HTTP_REQUEST_H_

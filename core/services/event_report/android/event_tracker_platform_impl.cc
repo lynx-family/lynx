@@ -47,36 +47,37 @@ namespace lynx {
 namespace tasm {
 namespace report {
 
-static void DoReportEvent(JNIEnv* env, int32_t instance_id,
-                          MoveOnlyEvent&& event) {
+static void DoReportEvent(JNIEnv* env, MoveOnlyEvent&& event) {
   LOGI("EventTracker onEvent with name: " << event.GetName());
+  assert(event.IsValidInstanceId());
   auto j_event_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
       env, event.GetName().c_str());
   base::android::JavaOnlyMap props;
-  for (auto const& item : event.GetStringProps()) {
-    props.PushString(item.first, item.second);
+  for (const auto& prop : event.GetProps()) {
+    switch (prop.GetType()) {
+      case EventProp::Type::kString:
+        props.PushString(prop.GetKey(), prop.GetStringValue());
+        break;
+      case EventProp::Type::kInt32:
+        props.PushInt(prop.GetKey(), prop.GetIntValue());
+        break;
+      case EventProp::Type::kDouble:
+        props.PushDouble(prop.GetKey(), prop.GetDoubleValue());
+        break;
+    }
   }
-  for (auto const& item : event.GetIntProps()) {
-    props.PushInt(item.first, item.second);
-  }
-  for (auto const& item : event.GetDoubleProps()) {
-    props.PushDouble(item.first, item.second);
-  }
-  Java_LynxEventReporter_onEvent(env, instance_id, j_event_name.Get(),
+  Java_LynxEventReporter_onEvent(env, event.GetInstanceId(), j_event_name.Get(),
                                  props.jni_object());
 }
 
-void EventTrackerPlatformImpl::OnEvent(int32_t instance_id,
-                                       MoveOnlyEvent&& event) {
-  DoReportEvent(base::android::AttachCurrentThread(), instance_id,
-                std::move(event));
+void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
+  DoReportEvent(base::android::AttachCurrentThread(), std::move(event));
 }
 
-void EventTrackerPlatformImpl::OnEvents(int32_t instance_id,
-                                        std::vector<MoveOnlyEvent> stack) {
+void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {
   JNIEnv* env = base::android::AttachCurrentThread();
   for (auto& event : stack) {
-    DoReportEvent(env, instance_id, std::move(event));
+    DoReportEvent(env, std::move(event));
   }
 }
 

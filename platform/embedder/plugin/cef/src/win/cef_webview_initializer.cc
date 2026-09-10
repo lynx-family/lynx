@@ -2,6 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <windows.h>
+
+#include <string>
+
 #include "include/cef_app.h"
 #include "include/cef_render_process_handler.h"
 #include "include/wrapper/cef_message_router.h"
@@ -90,13 +94,36 @@ class CEFWebviewApp : public CefApp,
 
 }  // namespace
 
+extern "C" int cef_webview_execute_process(HINSTANCE instance) {
+  return CefExecuteProcess(CefMainArgs(instance), new CEFWebviewApp, nullptr);
+}
+
 LYNX_EXTERN_C bool cef_extension_module_initialize() {
   CefMainArgs main_args(::GetModuleHandle(nullptr));
-  int exit_code = CefExecuteProcess(main_args, new CEFWebviewApp, nullptr);
+  int exit_code = cef_webview_execute_process(::GetModuleHandle(nullptr));
   if (exit_code >= 0) {
     return false;
   }
   CefSettings settings;
+
+  HMODULE module = nullptr;
+  if (::GetModuleHandleExW(
+          GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+              GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+          reinterpret_cast<LPCWSTR>(&cef_extension_module_initialize),
+          &module)) {
+    wchar_t module_path[MAX_PATH];
+    const DWORD length = ::GetModuleFileNameW(module, module_path, MAX_PATH);
+    if (length > 0 && length < MAX_PATH) {
+      std::wstring subprocess_path(module_path, length);
+      const size_t separator = subprocess_path.find_last_of(L"\\/");
+      if (separator != std::wstring::npos) {
+        subprocess_path.resize(separator + 1);
+        subprocess_path.append(L"cef_subprocess.exe");
+        CefString(&settings.browser_subprocess_path) = subprocess_path;
+      }
+    }
+  }
 
   settings.no_sandbox = 1;
   settings.multi_threaded_message_loop = 1;

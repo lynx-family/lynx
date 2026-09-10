@@ -23,10 +23,19 @@ LYNX_SETTING_KEY(CLAY_FORCE_IGNORE_RASTER_CACHE, bool,
 LYNX_SETTING_KEY(CLAY_IOS_FULL_PAGE_BUFFER_COUNT, long,
                  "clay_ios_full_page_buffer_count", 3);
 LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
-                 "clay_precompile_skity_shaders");
+                 "clay_precompile_skity_shaders", false);
+LYNX_SETTING_KEY(CLAY_ENABLE_IMAGE_DOWN_SAMPLING, bool,
+                 "clay_enable_image_down_sampling", false);
 LYNX_SETTING_KEY(CLAY_DISABLE_IMAGE_MEM_CACHE, bool,
                  "clay_disable_image_mem_cache", false);
+LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
+                 "clay_ios_use_tt_video_engine", false);
 LYNX_SETTING_KEY(MERGE_CLAY_THREAD_POOL, bool, "merge_clay_thread_pool");
+// Experimental settings; scheduled to be removed on 2026-10-30.
+LYNX_SETTING_KEY(CLAY_FIRST_TIMEOUT_TARGET_DELAY_MS, long,
+                 "clay_first_timeout_delay_ms", 2000);
+// cspell:ignore optmize
+LYNX_SETTING_KEY(CLAY_FIRST_TIMEOUT_FACTOR, std::string, "clay_optmize_factor");
 
 }  // namespace setting
 }  // namespace clay

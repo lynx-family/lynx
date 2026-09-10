@@ -6,6 +6,7 @@
 
 #include <jni.h>
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -28,6 +29,9 @@ class JNIHelper {
   static lynx::base::android::ScopedLocalJavaRef<jbyteArray>
   ConvertToJNIByteArray(JNIEnv* env, runtime::js::Runtime* rt,
                         const runtime::js::ArrayBuffer& buf);
+
+  static ScopedLocalJavaRef<jintArray> ConvertToJNIIntArray(
+      JNIEnv* env, const std::vector<int32_t>& values);
 
   static runtime::js::ArrayBuffer ConvertToJSIArrayBuffer(
       JNIEnv* env, runtime::js::Runtime* rt, jbyteArray j_obj);

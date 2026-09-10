@@ -9,6 +9,11 @@
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
+#include "core/runtime/common/bindings/modules/lynx_native_module_manager.h"
+#if ENABLE_TESTBENCH_RECORDER
+#include "core/services/recorder/recorder_constants.h"
+#include "core/services/recorder/testbench_base_recorder.h"
+#endif
 #include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -232,6 +237,74 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
   ASSERT_EQ(shell_->GetTasm()->GetDevicePixelRatio(), 1.75f);
   ASSERT_EQ(element_manager->GetLynxEnvConfig().DevicePixelRatio(), 1.75f);
 }
+
+#if ENABLE_TESTBENCH_RECORDER
+class LynxShellBuilderRecorderTest
+    : public LynxShellBuilderTest,
+      public ::testing::WithParamInterface<bool> {
+ protected:
+  void TearDown() override {
+    LynxShellBuilderTest::TearDown();
+    auto& recorder = tasm::recorder::TestBenchBaseRecorder::GetInstance();
+    recorder.thread_.GetTaskRunner()->PostSyncTask([]() {});
+    recorder.is_recording_ = false;
+    recorder.Clear();
+  }
+};
+
+TEST_P(LynxShellBuilderRecorderTest,
+       InitializesRecorderBeforeOptionalBTSRuntime) {
+  auto& recorder = tasm::recorder::TestBenchBaseRecorder::GetInstance();
+  recorder.Clear();
+  recorder.StartRecord();
+
+  option_->enable_js_ = GetParam();
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::make_unique<MockNativeFacade>())
+                   .SetNativeModuleManager(
+                       std::make_unique<pub::LynxNativeModuleManager>())
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetShellOption(*option_)
+                   .build());
+
+  const int64_t record_id = reinterpret_cast<int64_t>(shell_.get());
+  EXPECT_EQ(shell_->GetTasm()->GetRecordID(), record_id);
+  EXPECT_EQ(shell_->layout_actor_->Impl()->record_id_, record_id);
+  ASSERT_NE(shell_->GetTasm()->lepus_module_manager_, nullptr);
+  EXPECT_EQ(shell_->GetTasm()->lepus_module_manager_->record_id_, record_id);
+
+  if (GetParam()) {
+    base::UIThread::Init();
+    auto bts_module_manager = std::make_shared<pub::LynxNativeModuleManager>();
+    shell_->InitRuntime(
+        "", nullptr, bts_module_manager,
+        [](const std::shared_ptr<LynxActor<BTSRuntime>>&) {},
+        std::vector<std::string>(), LynxRuntimeFlags::PENDING_JS_TASK, "");
+    EXPECT_EQ(bts_module_manager->record_id_, record_id);
+    shell_->runtime_actor_->ActSync([record_id](auto& runtime) {
+      ASSERT_NE(runtime, nullptr);
+      EXPECT_EQ(runtime->record_id_, record_id);
+    });
+  }
+
+  recorder.thread_.GetTaskRunner()->PostSyncTask([]() {});
+  auto& actions =
+      recorder.lynx_view_table_[record_id][tasm::recorder::kActionList];
+  ASSERT_TRUE(actions.IsArray());
+  ASSERT_EQ(actions.Size(), 1u);
+  EXPECT_STREQ(actions[0][tasm::recorder::kFunctionName].GetString(),
+               tasm::recorder::kFuncSetThreadStrategy);
+  const auto& params = actions[0][tasm::recorder::kParams];
+  EXPECT_EQ(params[tasm::recorder::kParamThreadStrategy].GetInt(),
+            static_cast<int32_t>(strategy_));
+  EXPECT_EQ(params[tasm::recorder::kParamEnableJSRuntime].GetBool(),
+            GetParam());
+}
+
+INSTANTIATE_TEST_SUITE_P(WithAndWithoutBTSRuntime, LynxShellBuilderRecorderTest,
+                         ::testing::Bool());
+#endif
 
 TEST_F(LynxShellBuilderTest, InitRuntimePublishesCompleteLogContext) {
   auto facade = std::make_unique<MockNativeFacade>();

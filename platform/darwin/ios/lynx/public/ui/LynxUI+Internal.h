@@ -83,6 +83,9 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 - (CGRect)getHitTestFrame;
 - (CGRect)getHitTestFrameWithFrame:(CGRect)frame;
 - (CGPoint)getHitTestPoint:(CGPoint)inPoint;
+// Returns the native container used to host child views. Wrapper based containers like transfer can
+// override this to keep the shared child insertion logic in LynxUI.
+- (UIView *)childrenContainerView;
 
 - (BOOL)enableExposureUIMargin;
 

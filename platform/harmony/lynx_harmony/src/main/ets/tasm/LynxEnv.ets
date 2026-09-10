@@ -67,6 +67,7 @@ class LynxEnvironment {
     LynxInfoReporterHelper.initialize();
     LynxEventReporter.initialize();
     LynxTrailHub.getInstance().init(context.getApplicationContext());
+    lynx.setupHarmonyMessageLoopPromiseMicrotask();
     LynxEnvironment.setCacheDirPath(context.cacheDir);
     LLog.i(TAG, 'LynxEnv initialize with version ' + BuildProfile.HAR_VERSION);
     this.initialized = true;

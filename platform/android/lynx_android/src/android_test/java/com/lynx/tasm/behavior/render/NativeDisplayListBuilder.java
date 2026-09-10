@@ -110,6 +110,15 @@ final class NativeDisplayListBuilder implements AutoCloseable {
     return this;
   }
 
+  NativeDisplayListBuilder radialGradient(int[] colors, float[] stops, int tilingIndex,
+      int clipIndex, int repeatX, int repeatY, float centerX, float centerY, float radiusX,
+      float radiusY) {
+    ensureMutable();
+    nativeRadialGradient(mNativePtr, colors, stops, tilingIndex, clipIndex, repeatX, repeatY,
+        centerX, centerY, radiusX, radiusY);
+    return this;
+  }
+
   NativeDisplayListBuilder boxShadow(
       int shadowBoxIndex, int clipBoxIndex, int color, float blurRadius, int clipMode) {
     ensureMutable();
@@ -183,6 +192,9 @@ final class NativeDisplayListBuilder implements AutoCloseable {
       long nativePtr, float x, float y, float width, float height, float[] radii);
   private static native void nativeLinearGradient(long nativePtr, int[] colors, float[] stops,
       int tilingIndex, int clipIndex, int repeatX, int repeatY, float angle);
+  private static native void nativeRadialGradient(long nativePtr, int[] colors, float[] stops,
+      int tilingIndex, int clipIndex, int repeatX, int repeatY, float centerX, float centerY,
+      float radiusX, float radiusY);
   private static native void nativeBoxShadow(long nativePtr, int shadowBoxIndex, int clipBoxIndex,
       int color, float blurRadius, int clipMode);
   private static native void nativeBuild(long nativePtr);

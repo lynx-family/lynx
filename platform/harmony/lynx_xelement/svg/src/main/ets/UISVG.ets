@@ -13,9 +13,21 @@ interface SvgLoadEvent {
   height: number,
 }
 
+function convertCSSColor(color?: number): string | undefined {
+  if (color === undefined) {
+    return undefined;
+  }
+  const argb: number = color >>> 0;
+  const alpha: string = (((argb >>> 24) & 0xff) / 255).toFixed(6);
+  return `rgba(${(argb >> 16) & 0xff},${(argb >> 8) & 0xff},${argb & 0xff},${alpha})`;
+}
+
 export class UISVG extends UIBase {
   private content: string = '';
   private color?: string = undefined;
+  private currentColor?: string = undefined;
+  private hasCurrentColor: boolean = false;
+  private cssColor?: string = undefined;
   private needUpdateContent = false;
   private needRequestSrc = false;
   private svgNodeController: SvgRenderNodeController = new SvgRenderNodeController();
@@ -54,18 +66,31 @@ export class UISVG extends UIBase {
       this.src = prop.src as string;
       this.needRequestSrc = true;
     }
-    const propColor = prop['current-color'];
-    if (propColor !== undefined) {
-      const normalizedColor = typeof propColor === 'string' ? propColor.trim() : undefined;
-      const nextColor =
-        normalizedColor !== undefined && normalizedColor.length > 0 ? normalizedColor : undefined;
-      if (nextColor !== this.color) {
-        this.color = nextColor;
-        this.needUpdateContent = true;
+    for (const entry of Object.entries(prop)) {
+      if (entry[0] === 'current-color') {
+        const propColor = entry[1];
+        const normalizedColor = typeof propColor === 'string' ? propColor.trim() : undefined;
+        this.currentColor =
+          normalizedColor !== undefined && normalizedColor.length > 0 ? normalizedColor : undefined;
+        this.hasCurrentColor = typeof propColor === 'string';
+        this.updateResolvedColor();
+      } else if (entry[0] === 'color') {
+        const cssColor = entry[1];
+        this.cssColor = convertCSSColor(typeof cssColor === 'number' ? cssColor : undefined);
+        this.updateResolvedColor();
       }
     }
     if (prop['allow-edge-antialiasing'] !== undefined) {
       this.allowAntiAlias = prop['allow-edge-antialiasing'] as boolean;
+    }
+  }
+
+  private updateResolvedColor(): void {
+    // An explicit current-color, including an empty value, suppresses the CSS fallback.
+    const nextColor = this.hasCurrentColor ? this.currentColor : this.cssColor;
+    if (nextColor !== this.color) {
+      this.color = nextColor;
+      this.needUpdateContent = true;
     }
   }
 
