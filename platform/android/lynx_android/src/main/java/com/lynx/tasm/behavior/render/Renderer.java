@@ -50,8 +50,7 @@ public class Renderer {
           true, new Rect(0, 0, mLynxFrame.width(), mLynxFrame.height()));
     } else {
       View self = mRenderHost.getView();
-      if ((mUIHost == null || !mUIHost.isFlatten()) && self != null
-          && self.getParent() instanceof ViewGroup) {
+      if (self != null && self.getParent() instanceof ViewGroup) {
         ViewGroup parent = (ViewGroup) self.getParent();
         parent.setClipChildren(false);
         parent.setClipToPadding(false);
@@ -103,9 +102,6 @@ public class Renderer {
     if (mRenderHost == null) {
       return;
     }
-    if (mUIHost != null && mUIHost.isFlatten()) {
-      return;
-    }
     View view = mRenderHost.getView();
     if (!(view instanceof ViewGroup)) {
       return;
@@ -130,9 +126,6 @@ public class Renderer {
     // TODO(linxs): Rename this to performLayoutChildren, since this method only lays out
     // renderer host children.
     if (mRenderHost == null) {
-      return;
-    }
-    if (mUIHost != null && mUIHost.isFlatten()) {
       return;
     }
     View view = mRenderHost.getView();

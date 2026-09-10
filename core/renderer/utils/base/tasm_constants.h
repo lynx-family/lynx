@@ -129,8 +129,6 @@ static constexpr const char kPipelineID[] = "pipelineID";
 static constexpr const char kPipelineOrigin[] = "pipelineOrigin";
 static constexpr const char kPipelineNeedTimestamps[] = "needTimestamps";
 static constexpr const char kPatchOptions[] = "patchOptions";
-static constexpr const char kTendsToFlattenInitDataKey[] =
-    "__lynx_tends_to_flatten";
 
 // Constant string for worklet
 static constexpr const char* kWorklet = "worklet";
