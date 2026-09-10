@@ -22,6 +22,18 @@ class ItemAnimator {
    public:
     virtual ~Listener() = default;
 
+    virtual void OnAnimationStart(const ItemAnimator* source,
+                                  ItemAnimationType type) {}
+
+    virtual void OnAnimationEnd(const ItemAnimator* source,
+                                ItemAnimationType type) {}
+
+    virtual void OnAnimationCancel(const ItemAnimator* source,
+                                   ItemAnimationType type) {}
+
+    virtual void OnAnimationUpdate(const ItemAnimator* source,
+                                   ItemAnimationType type, float progress) {}
+
     virtual void OnAllAnimationsFinished() = 0;
   };
 
@@ -68,6 +80,8 @@ class ItemAnimator {
   // restored to their final state and have their lifecycle ended. The
   // destroy=true teardown path avoids accessing running targets. Neither mode
   // dispatches the normal batch-completion notification.
+  // For non-destroy cancellation, notify each started, unfinished type once
+  // through OnAnimationCancel after cleanup.
   virtual void CancelAnimations(bool destroy) = 0;
 
   // 4. Listener and stage configuration

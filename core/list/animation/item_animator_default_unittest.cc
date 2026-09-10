@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #define private public
 #define protected public
@@ -35,14 +36,76 @@ void ExpectLayoutInfoEquals(const ItemLayoutInfo& actual,
   EXPECT_FLOAT_EQ(actual.bottom_, expected.bottom_);
 }
 
+enum class RecordedAnimationCallback {
+  kStart,
+  kUpdate,
+  kEnd,
+  kCancel,
+  kAllAnimationsFinished,
+};
+
 class RecordingItemAnimatorListener : public ItemAnimator::Listener {
  public:
-  void OnAllAnimationsFinished() override { ++finished_count_; }
+  void OnAllAnimationsFinished() override {
+    ++finished_count_;
+    callback_sequence_.push_back(
+        RecordedAnimationCallback::kAllAnimationsFinished);
+  }
+
+  void OnAnimationStart(const ItemAnimator*, ItemAnimationType type) override {
+    started_types_.push_back(type);
+    callback_sequence_.push_back(RecordedAnimationCallback::kStart);
+  }
+
+  void OnAnimationEnd(const ItemAnimator*, ItemAnimationType type) override {
+    ended_types_.push_back(type);
+    callback_sequence_.push_back(RecordedAnimationCallback::kEnd);
+  }
+
+  void OnAnimationCancel(const ItemAnimator*, ItemAnimationType type) override {
+    cancelled_types_.push_back(type);
+    callback_sequence_.push_back(RecordedAnimationCallback::kCancel);
+  }
+
+  void OnAnimationUpdate(const ItemAnimator*, ItemAnimationType type,
+                         float progress) override {
+    iteration_events_.emplace_back(type, progress);
+    callback_sequence_.push_back(RecordedAnimationCallback::kUpdate);
+  }
 
   int finished_count() const { return finished_count_; }
+  const std::vector<ItemAnimationType>& started_types() const {
+    return started_types_;
+  }
+  const std::vector<ItemAnimationType>& ended_types() const {
+    return ended_types_;
+  }
+  const std::vector<ItemAnimationType>& cancelled_types() const {
+    return cancelled_types_;
+  }
+  const std::vector<std::pair<ItemAnimationType, float>>& iteration_events()
+      const {
+    return iteration_events_;
+  }
+  bool HasIterationFor(ItemAnimationType type) const {
+    for (const auto& event : iteration_events_) {
+      if (event.first == type) {
+        return true;
+      }
+    }
+    return false;
+  }
+  const std::vector<RecordedAnimationCallback>& callback_sequence() const {
+    return callback_sequence_;
+  }
 
  private:
   int finished_count_{0};
+  std::vector<ItemAnimationType> started_types_;
+  std::vector<ItemAnimationType> ended_types_;
+  std::vector<ItemAnimationType> cancelled_types_;
+  std::vector<std::pair<ItemAnimationType, float>> iteration_events_;
+  std::vector<RecordedAnimationCallback> callback_sequence_;
 };
 
 // Overrides only the BasicAnimator factory so real animation code runs against
@@ -326,7 +389,8 @@ TEST_F(ItemAnimatorDefaultTest,
                          move_post_layout_info);
 }
 
-// Verifies that Appearance interpolates opacity from 0 to 1.
+// Verifies that Add updates opacity each frame and reports start, update, and
+// end events through the real VSync callback pipeline.
 TEST_F(ItemAnimatorDefaultTest, RunsAppearanceAnimationFrames) {
   item_animator_->SetAnimationStages({
       {{ItemAnimationType::kAppearance, kAnimationDurationMs}},
@@ -351,6 +415,14 @@ TEST_F(ItemAnimatorDefaultTest, RunsAppearanceAnimationFrames) {
   EXPECT_EQ(target.finish_animation_count(), 0);
   EXPECT_EQ(listener_.finished_count(), 0);
 
+  // Starting the animation reports Add start once; the dummy frame before
+  // start must not produce an update.
+  ASSERT_EQ(listener_.started_types().size(), 1u);
+  EXPECT_EQ(listener_.started_types().front(), ItemAnimationType::kAppearance);
+  EXPECT_TRUE(listener_.iteration_events().empty());
+  EXPECT_TRUE(listener_.ended_types().empty());
+  EXPECT_TRUE(listener_.cancelled_types().empty());
+
   // 2. Establish the VSync time origin, then sample the symmetric curve at
   // half duration.
   EstablishAnimationClock();
@@ -360,6 +432,12 @@ TEST_F(ItemAnimatorDefaultTest, RunsAppearanceAnimationFrames) {
   EXPECT_TRUE(target.opacity_updates().back().flush_immediately);
   // The target's running record remains until the animation ends.
   EXPECT_EQ(item_animator_->running_animations_.size(), 1u);
+
+  // Sampling halfway through the animation reports Add update at 50% progress.
+  ASSERT_FALSE(listener_.iteration_events().empty());
+  EXPECT_EQ(listener_.iteration_events().back().first,
+            ItemAnimationType::kAppearance);
+  EXPECT_FLOAT_EQ(listener_.iteration_events().back().second, 0.5f);
 
   // 3. The six opacity writes are, in order:
   // 1) StartAddAnimation writes the initial opacity=0;
@@ -378,6 +456,11 @@ TEST_F(ItemAnimatorDefaultTest, RunsAppearanceAnimationFrames) {
   EXPECT_TRUE(target.opacity_updates().back().flush_immediately);
   EXPECT_EQ(target.finish_animation_count(), 1);
   EXPECT_EQ(listener_.finished_count(), 1);
+
+  // Normal completion reports Add end once and must not report cancel.
+  ASSERT_EQ(listener_.ended_types().size(), 1u);
+  EXPECT_EQ(listener_.ended_types().front(), ItemAnimationType::kAppearance);
+  EXPECT_TRUE(listener_.cancelled_types().empty());
 }
 
 // Verifies that Disappearance interpolates opacity from 1 to 0.
@@ -501,8 +584,9 @@ TEST_F(ItemAnimatorDefaultTest, RunsPersistenceAnimationFrames) {
   EXPECT_EQ(listener_.finished_count(), 1);
 }
 
-// Verify that explicit stages run remove, move, then add regardless of enqueue
-// order.
+// Verifies that three explicit stages run remove, move, then add, with start,
+// update, and end callbacks for each stage. OnAllAnimationsFinished is called
+// last, after all stages finish.
 TEST_F(ItemAnimatorDefaultTest, RunsRemoveMoveAndAddInOrder) {
   constexpr int32_t kRemoveDurationMs = 100;
   constexpr int32_t kMoveDurationMs = 200;
@@ -542,6 +626,11 @@ TEST_F(ItemAnimatorDefaultTest, RunsRemoveMoveAndAddInOrder) {
   // Start the batch.
   item_animator_->RunPendingAnimations();
 
+  // At batch startup, only Remove in the first stage reports start.
+  ASSERT_EQ(listener_.started_types().size(), 1u);
+  EXPECT_EQ(listener_.started_types().back(),
+            ItemAnimationType::kDisappearance);
+
   // 2. RunPendingAnimations creates all three running records in one pass.
   // Move and Add remain running records whose progress is gated by delay.
   ASSERT_EQ(item_animator_->running_animations_.size(), 3u);
@@ -577,6 +666,11 @@ TEST_F(ItemAnimatorDefaultTest, RunsRemoveMoveAndAddInOrder) {
   EXPECT_EQ(add_target.opacity_updates().size(), 1u);
   EXPECT_EQ(remove_target.finish_animation_count(), 0);
 
+  // Remove reports update as the first stage progresses.
+  ASSERT_FALSE(listener_.iteration_events().empty());
+  EXPECT_EQ(listener_.iteration_events().back().first,
+            ItemAnimationType::kDisappearance);
+
   // 4. After Remove ends, Move progresses while Add remains delayed.
   TriggerFrameAfter(150);
   // Remove's final sample and final-state write bring it to six updates; Move's
@@ -586,6 +680,13 @@ TEST_F(ItemAnimatorDefaultTest, RunsRemoveMoveAndAddInOrder) {
   EXPECT_EQ(add_target.opacity_updates().size(), 1u);
   EXPECT_EQ(remove_target.finish_animation_count(), 1);
   EXPECT_EQ(listener_.finished_count(), 0);
+
+  // Remove in the first stage has reported end, and Move in the second stage
+  // has reported start.
+  ASSERT_EQ(listener_.ended_types().size(), 1u);
+  EXPECT_EQ(listener_.ended_types().back(), ItemAnimationType::kDisappearance);
+  ASSERT_EQ(listener_.started_types().size(), 2u);
+  EXPECT_EQ(listener_.started_types().back(), ItemAnimationType::kPersistence);
 
   // 5. After Move ends, Add progresses and keeps the batch active.
   TriggerFrameAfter(350);
@@ -597,12 +698,39 @@ TEST_F(ItemAnimatorDefaultTest, RunsRemoveMoveAndAddInOrder) {
   EXPECT_EQ(add_target.finish_animation_count(), 0);
   EXPECT_EQ(listener_.finished_count(), 0);
 
+  // Move in the second stage has reported update and end, and Add in the third
+  // stage has reported start.
+  ASSERT_FALSE(listener_.iteration_events().empty());
+  EXPECT_EQ(listener_.iteration_events().back().first,
+            ItemAnimationType::kPersistence);
+  ASSERT_EQ(listener_.ended_types().size(), 2u);
+  EXPECT_EQ(listener_.ended_types().back(), ItemAnimationType::kPersistence);
+  ASSERT_EQ(listener_.started_types().size(), 3u);
+  EXPECT_EQ(listener_.started_types().back(), ItemAnimationType::kAppearance);
+
   // 6. The batch completes only after Add reaches its endpoint.
   TriggerFrameAfter(400);
   // Add's final sample and final-state write bring it to four updates.
   EXPECT_EQ(add_target.opacity_updates().size(), 4u);
   EXPECT_EQ(add_target.finish_animation_count(), 1);
   EXPECT_EQ(listener_.finished_count(), 1);
+
+  // The third stage reports Add update and end. After all three stages finish,
+  // the batch-completion callback is last.
+  ASSERT_FALSE(listener_.iteration_events().empty());
+  EXPECT_EQ(listener_.iteration_events().back().first,
+            ItemAnimationType::kAppearance);
+  const std::vector<ItemAnimationType> expected_types{
+      ItemAnimationType::kDisappearance, ItemAnimationType::kPersistence,
+      ItemAnimationType::kAppearance};
+  EXPECT_EQ(listener_.started_types(), expected_types);
+  EXPECT_EQ(listener_.ended_types(), expected_types);
+  EXPECT_TRUE(listener_.cancelled_types().empty());
+  ASSERT_FALSE(listener_.callback_sequence().empty());
+  EXPECT_EQ(listener_.callback_sequence().front(),
+            RecordedAnimationCallback::kStart);
+  EXPECT_EQ(listener_.callback_sequence().back(),
+            RecordedAnimationCallback::kAllAnimationsFinished);
 }
 
 // Verify that removal runs first, then move and add start together with
@@ -711,8 +839,8 @@ TEST_F(ItemAnimatorDefaultTest, ZeroDurationStageWaitsForItsPredecessor) {
   EXPECT_EQ(listener_.finished_count(), 1);
 }
 
-// Verify cancellation clears active and delayed animations; later VSyncs do not
-// update targets.
+// Verifies that cancellation cleans up all targets but reports cancel only
+// for animation types that have started.
 TEST_F(ItemAnimatorDefaultTest, CancelsActiveAndDelayedStagesTogether) {
   item_animator_->SetAnimationStages({
       {{ItemAnimationType::kAppearance, 100}},
@@ -727,8 +855,15 @@ TEST_F(ItemAnimatorDefaultTest, CancelsActiveAndDelayedStagesTogether) {
   TriggerFrameAfter(50);
   item_animator_->CancelAnimations(false);
 
-  // Cancellation restores final states without a normal batch-completion
-  // notification.
+  // Add in the first stage has started; Move and Remove in later stages have
+  // not. Cancellation must report only Add cancel, with no normal end or
+  // batch-completion notification.
+  ASSERT_EQ(listener_.started_types().size(), 1u);
+  EXPECT_EQ(listener_.started_types().front(), ItemAnimationType::kAppearance);
+  ASSERT_EQ(listener_.cancelled_types().size(), 1u);
+  EXPECT_EQ(listener_.cancelled_types().front(),
+            ItemAnimationType::kAppearance);
+  EXPECT_TRUE(listener_.ended_types().empty());
   EXPECT_FLOAT_EQ(remove.opacity_updates().back().opacity, 0.f);
   EXPECT_FLOAT_EQ(move.position_updates().back().left, 100.f);
   EXPECT_FLOAT_EQ(add.opacity_updates().back().opacity, 1.f);
@@ -1123,6 +1258,59 @@ TEST_F(ItemAnimatorDefaultTest, FinishesBatchAfterRunningTargetIsDestroyed) {
   // 3. BasicAnimator still removes the record and completes the batch at End.
   TriggerFrameAfter(kAnimationDurationMs);
   EXPECT_EQ(listener_.finished_count(), 1);
+}
+
+// Verifies the event order for two stages: Remove finishes on its own, then
+// Move and Add run concurrently. The shorter Add finishes first, the longer
+// Move finishes last, and batch completion follows.
+TEST_F(ItemAnimatorDefaultTest,
+       ReportsEventsForConcurrentMoveAndAddWithDifferentDurations) {
+  item_animator_->SetAnimationStages({
+      {{ItemAnimationType::kDisappearance, 100}},
+      {{ItemAnimationType::kPersistence, 200},
+       {ItemAnimationType::kAppearance, 100}},
+  });
+  MockAnimationTarget remove("remove"), move("move"), add("add");
+  PreparePendingAnimations(remove, move, add);
+  item_animator_->RunPendingAnimations();
+  EstablishAnimationClock();
+
+  // 1. Only Remove reports start and update in the first stage; no end has
+  // been reported yet.
+  TriggerFrameAfter(50);
+  ASSERT_EQ(listener_.started_types().size(), 1u);
+  EXPECT_EQ(listener_.started_types().front(),
+            ItemAnimationType::kDisappearance);
+  EXPECT_TRUE(listener_.HasIterationFor(ItemAnimationType::kDisappearance));
+  EXPECT_TRUE(listener_.ended_types().empty());
+
+  // 2. After the first stage finishes, Remove reports end, and both Move and
+  // Add in the second stage have reported start. The order of the two start
+  // callbacks within the same VSync is not part of the stage contract.
+  TriggerFrameAfter(150);
+  ASSERT_EQ(listener_.ended_types().size(), 1u);
+  EXPECT_EQ(listener_.ended_types().front(), ItemAnimationType::kDisappearance);
+  EXPECT_EQ(listener_.started_types().size(), 3u);
+  EXPECT_EQ(listener_.finished_count(), 0);
+
+  // 3. Both Move and Add report update. The 100ms Add reports end first, while
+  // the batch continues waiting for the 200ms Move.
+  TriggerFrameAfter(200);
+  EXPECT_TRUE(listener_.HasIterationFor(ItemAnimationType::kPersistence));
+  EXPECT_TRUE(listener_.HasIterationFor(ItemAnimationType::kAppearance));
+  ASSERT_EQ(listener_.ended_types().size(), 2u);
+  EXPECT_EQ(listener_.ended_types().back(), ItemAnimationType::kAppearance);
+  EXPECT_EQ(listener_.finished_count(), 0);
+
+  // 4. Move reports end last, followed by OnAllAnimationsFinished.
+  TriggerFrameAfter(300);
+  ASSERT_EQ(listener_.ended_types().size(), 3u);
+  EXPECT_EQ(listener_.ended_types().back(), ItemAnimationType::kPersistence);
+  EXPECT_TRUE(listener_.cancelled_types().empty());
+  EXPECT_EQ(listener_.finished_count(), 1);
+  ASSERT_FALSE(listener_.callback_sequence().empty());
+  EXPECT_EQ(listener_.callback_sequence().back(),
+            RecordedAnimationCallback::kAllAnimationsFinished);
 }
 
 }  // namespace

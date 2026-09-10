@@ -104,10 +104,18 @@ class ItemAnimatorDefault
   RunningAnimation* FindRunningAnimation(AnimationTargetKey target_key,
                                          AnimationId animation_id);
   void FinishRunningAnimation(AnimationTargetKey target_key,
-                              AnimationId animation_id, bool cancelled);
+                              RunningAnimation animation, bool cancelled);
   void ResetTargetToFinalState(AnimationTarget* target,
                                ItemAnimationType animation_type);
   void CancelPendingAnimations();
+
+  // Dispatches animation event.
+  void DispatchAnimationStartIfNeeded(ItemAnimationType type);
+  void DispatchAnimationIterationIfNeeded(ItemAnimationType type,
+                                          float progress);
+  void DispatchAnimationEndIfNeeded(ItemAnimationType type);
+  void DispatchAnimationCancelIfNeeded(
+      const std::vector<ItemAnimationType>& cancelled_types);
   void DispatchAnimationFinishedIfNeeded();
 
   bool has_pending_animations() const {
