@@ -84,6 +84,28 @@ TEST_F_UI(BaseViewTest, ImageLoaderTokensInvalidateOnlyTheirResourceType) {
   EXPECT_FALSE(view.IsCurrent(false, mask_token));
 }
 
+TEST_F_UI(BaseViewTest, BackgroundErrorUsesCallbackId) {
+  constexpr int kCallbackId = 42;
+  ScrollView view(-1, kCallbackId, ScrollDirection::kVertical, page_.get());
+  view.AddEventCallback(event_attr::kEventBgError);
+
+  int received_id = -1;
+  std::string received_event;
+  custom_event_callback_ = [&](int id, const char* event_name,
+                               clay::Value::Map) {
+    received_id = id;
+    received_event = event_name;
+  };
+
+  clay::Value::Array background;
+  background.emplace_back(static_cast<uint32_t>(ClayBackgroundImageType::kUrl));
+  background.emplace_back("");
+  view.SetBackgroundImage(background);
+
+  EXPECT_EQ(received_id, kCallbackId);
+  EXPECT_EQ(received_event, event_attr::kEventBgError);
+}
+
 TEST_F_UI(BaseViewTest, StableRasterAnimationStateDoesNotInvalidate) {
   page_->SetRasterAnimationEnabled(true);
   CountingInvalidationView view(page_.get());
