@@ -674,6 +674,10 @@ void BTSRuntime::CallFunction(const std::string& module_id,
   }
   app_->CallFunction(module_id, method_id, arguments);
   if (lepus_arguments) {
+#if ENABLE_INSPECTOR
+    const auto& event_args = lepus_arguments->Array();
+    app_->RecordGlobalEvent(event_args->get(0).StdString(), event_args->get(1));
+#endif  // ENABLE_INSPECTOR
     auto core_context_event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeGlobalEvent,
         runtime::ContextProxy::Type::kNative,

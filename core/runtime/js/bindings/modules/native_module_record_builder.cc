@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/include/timer/time_utils.h"
-#include "base/include/value/array.h"
 #include "base/include/value/table.h"
 
 namespace lynx {
@@ -112,9 +111,8 @@ lepus::Value BuildGlobalEventRecord(const std::string& name,
                    static_cast<int64_t>(base::CurrentSystemTimeMilliseconds()));
   record->SetValue(kType, kTypeEvent);
   record->SetValue(kMethod, name);
-  auto event_arguments = lepus::CArray::Create();
-  event_arguments->push_back(arguments);
-  record->SetValue(kArguments, std::move(event_arguments));
+  // |arguments| is the emitter's listener-argument list, always an array.
+  record->SetValue(kArguments, arguments);
   record->SetValue(kTruncated, false);
   return lepus::Value(std::move(record));
 }

@@ -37,6 +37,8 @@ devtool_js_debug_sources = [
   "js/inspector_java_script_debugger_impl.h",
   "js/inspector_runtime_observer_impl.cc",
   "js/inspector_runtime_observer_impl.h",
+  "js/native_module_record_observer_impl.cc",
+  "js/native_module_record_observer_impl.h",
   "js/runtime_manager_delegate_impl.cc",
   "js/runtime_manager_delegate_impl.h",
 ]
