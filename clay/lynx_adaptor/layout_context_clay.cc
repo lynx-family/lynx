@@ -267,8 +267,9 @@ void LayoutContextClay::SetFontFaces(const CSSFontFaceRuleMap& fontfaces) {
   }
 }
 
-LayoutResult LayoutContextClay::MeasureImpl(int sign, int width, int width_mode,
-                                            int height, int height_mode) {
+LayoutResult LayoutContextClay::MeasureImpl(int sign, float width,
+                                            int width_mode, float height,
+                                            int height_mode) {
   float out_width = 0.f;
   float out_height = 0.f;
   float out_baseline = 0.f;
