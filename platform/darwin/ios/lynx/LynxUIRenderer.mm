@@ -184,8 +184,7 @@ static id<LynxServiceTextProtocol> getTextService() {
     _textra = [textService createTextLayoutAPIFromContext:_uiOwner];
   }
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateDarwin>(
-      _uiOwner, _componentRegistry, _lynxContext.isFragmentLayerRenderOn, _textra,
-      [[LynxEnv sharedInstance] enableCreateUIAsync], owner);
+      _uiOwner, _componentRegistry, _lynxContext.isFragmentLayerRenderOn, _textra, owner);
 }
 
 - (void *)uiDelegate {

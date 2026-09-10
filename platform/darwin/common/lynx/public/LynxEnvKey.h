@@ -27,6 +27,7 @@ typedef NS_ENUM(uint64_t, LynxEnvKey) {
   LynxEnvEnableTextRenderCacheHitRate,
   LynxEnvEnableImageMonitor,
   LynxEnvEnableTextLayerRender,
+  // Deprecated: UI creation is synchronous. Keep this value for compatibility.
   LynxEnvEnableCreateUIAsync,
   LynxEnvEnableImageEventReport,
   LynxEnvEnableImageAsyncLayout,
