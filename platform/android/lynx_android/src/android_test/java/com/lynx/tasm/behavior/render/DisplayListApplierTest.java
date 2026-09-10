@@ -23,6 +23,7 @@ import android.app.Application;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -478,6 +479,93 @@ public class DisplayListApplierTest {
     verify(mockCanvas, times(3)).restore();
     verify(mockCanvas).drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
     assertNotNull(capturedShader.get());
+  }
+
+  @Test
+  public void testOpRadialGradient() {
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 100f)
+        .recordBox(0f, 0f, 100f, 100f)
+        .recordBox(10f, 10f, 80f, 80f)
+        .radialGradient(new int[] {0xFFFF0000, 0xFF0000FF}, new float[] {0f, 1f}, 0, 1, 1, 1, 50f,
+            40f, 60f, 30f)
+        .end();
+
+    final AtomicReference<Shader> capturedShader = new AtomicReference<>();
+    doAnswer(new Answer<Void>() {
+      @Override
+      public Void answer(InvocationOnMock invocation) throws Throwable {
+        Paint paint = invocation.getArgument(4);
+        capturedShader.set(paint.getShader());
+        return null;
+      }
+    })
+        .when(mockCanvas)
+        .drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
+
+    setDisplayList(displayListApplier, testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas, times(3)).save();
+    verify(mockCanvas, times(3)).restore();
+    verify(mockCanvas).drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
+    assertNotNull(capturedShader.get());
+    assertEquals(RadialGradient.class, capturedShader.get().getClass());
+  }
+
+  @Test
+  public void testOpRadialGradientWithZeroRadius() {
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 100f)
+        .recordBox(0f, 0f, 100f, 100f)
+        .recordBox(0f, 0f, 100f, 100f)
+        .radialGradient(
+            new int[] {0xFFFF0000, 0xFF0000FF}, new float[] {0f, 1f}, 0, 1, 1, 1, 0f, 50f, 0f, 50f)
+        .end();
+
+    final AtomicReference<Shader> capturedShader = new AtomicReference<>();
+    doAnswer(invocation -> {
+      Paint paint = invocation.getArgument(4);
+      capturedShader.set(paint.getShader());
+      return null;
+    })
+        .when(mockCanvas)
+        .drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
+
+    setDisplayList(displayListApplier, testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
+    assertNotNull(capturedShader.get());
+    assertEquals(RadialGradient.class, capturedShader.get().getClass());
+  }
+
+  @Test
+  public void testOpRadialGradientClampsSubpixelRepeatStep() {
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 1f, 1f)
+        .recordBox(0f, 0f, 0.4f, 0.4f)
+        .recordBox(0f, 0f, 1f, 1f)
+        .radialGradient(new int[] {0xFFFF0000, 0xFF0000FF}, new float[] {0f, 1f}, 0, 1, 0, 0, 0.2f,
+            0.2f, 0.2f, 0.2f)
+        .end();
+
+    setDisplayList(displayListApplier, testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).drawRect(eq(0.f), eq(0.f), eq(1.f), eq(1.f), any(Paint.class));
+  }
+
+  @Test
+  public void testOpRadialGradientDrawsSubpixelNoRepeatTile() {
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 100f)
+        .recordBox(0f, 0f, 0.4f, 100f)
+        .recordBox(0f, 0f, 100f, 100f)
+        .radialGradient(new int[] {0xFFFF0000, 0xFF0000FF}, new float[] {0f, 1f}, 0, 1, 1, 1, 0.2f,
+            50f, 1f, 50f)
+        .end();
+
+    setDisplayList(displayListApplier, testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).drawRect(eq(0.f), eq(0.f), eq(0.4f), eq(100.f), any(Paint.class));
   }
 
   @Test
