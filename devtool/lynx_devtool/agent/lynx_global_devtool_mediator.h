@@ -6,9 +6,12 @@
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_LYNX_GLOBAL_DEVTOOL_MEDIATOR_H_
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "base/include/notification_center.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/services/recorder/recorder_types.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
@@ -59,6 +62,11 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_CDP_METHOD(SystemInfoGetInfo);
 
  protected:
+  // Whether the recorder is compiled into this build; fixture/both formats
+  // are unavailable when it is not. Virtual so tests can simulate a
+  // recorder-less build.
+  virtual bool IsRecorderEnabled() const;
+
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
   int tracing_session_id_;
 
@@ -70,6 +78,8 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   void RunOnDefaultTaskRunnerOrSendError(
       const std::shared_ptr<CDPResponder>& responder,
       lynx::base::closure&& task);
+  static const char* RecordFormatFromFiles(
+      const std::vector<std::string>& files);
 
   std::unique_ptr<base::NotificationCallback> tracing_notification_callback_;
 };
