@@ -5783,7 +5783,7 @@ public class com::lynx::jsbridge::network::LynxFetchModuleEventSender :  {
   public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.sendGlobalEvent(String name, JavaOnlyArray params);
 }
 
-public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavior.ui.LynxBaseUI, com.lynx.tasm.behavior.render.IRendererHost {
+public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavior.ui.LynxBaseUI {
   public Method com.lynx.tasm.behavior.ui.LynxFlattenUI.sSetUsageHint sSetUsageHint;
   public com.lynx.tasm.behavior.ui.LynxFlattenUI.LynxFlattenUI(LynxContext context);
   public com.lynx.tasm.behavior.ui.LynxFlattenUI.LynxFlattenUI(LynxContext context, Object param);
@@ -5792,22 +5792,6 @@ public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavi
   public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getInitialOverflowType();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.measure();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.layout(int x, int y, Rect bounds);
-  public Renderer com.lynx.tasm.behavior.ui.LynxFlattenUI.createRenderer(PlatformRendererContext platformRendererContext, int sign);
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setRenderer(Renderer renderer);
-  public Renderer com.lynx.tasm.behavior.ui.LynxFlattenUI.getRenderer();
-  public View com.lynx.tasm.behavior.ui.LynxFlattenUI.getView();
-  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostWidth();
-  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostHeight();
-  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostScrollX();
-  public int com.lynx.tasm.behavior.ui.LynxFlattenUI.getRendererHostScrollY();
-  public PointF com.lynx.tasm.behavior.ui.LynxFlattenUI.convertPointInRendererHostToScreen(PointF point);
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.requestLayoutForRenderer();
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.invalidateForRenderer();
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setWillNotDrawForRenderer(boolean willNotDraw);
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setClipChildrenForRenderer(boolean clipChildren);
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.applyRendererClipBounds(boolean needClip, Rect clipBounds);
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.applyRendererOpacity(float opacity);
-  public void com.lynx.tasm.behavior.ui.LynxFlattenUI.applyRendererTransform(float[] transform);
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.onDrawingPositionChanged();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.requestLayout();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.invalidate();

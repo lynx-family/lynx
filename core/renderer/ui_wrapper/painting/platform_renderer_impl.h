@@ -38,8 +38,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   void UpdateDisplayList(DisplayList display_list) override;
 
   // for layer only.
-  void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
-                        bool tends_to_flatten) override;
+  void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes) override;
   const DisplayList& GetDisplayList() const { return display_list_; }
   const SubtreeProperty* GetTransform() const { return transform_.get(); }
   void UpdateLayoutMetrics(float left, float top, float width, float height,
@@ -94,8 +93,8 @@ class PlatformRendererImpl : public PlatformRenderer {
  protected:
   // Platform-specific operations to be implemented by derived classes
   virtual void OnUpdateDisplayList(DisplayList display_list) = 0;
-  virtual void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes,
-                                  bool tends_to_flatten) = 0;
+  virtual void OnUpdateAttributes(
+      const fml::RefPtr<PropBundle>& attributes) = 0;
   // `should_update_ui_owner` is true when the platform implementation should
   // update the UIOwner tree instead of directly mutating renderer-host views.
   virtual void OnAddChild(PlatformRenderer* child, int index,

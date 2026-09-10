@@ -1661,7 +1661,8 @@ void Element::HandleCSSVariables(StyleMap& styles) {
 }
 
 bool Element::DisableFlattenWithOpacity() {
-  return computed_css_style()->HasOpacity() && !is_text() && !is_image();
+  return computed_css_style()->HasOpacity() &&
+         (EnableFragmentLayerRender() || (!is_text() && !is_image()));
 }
 
 starlight::ComputedCSSStyle* Element::GetParentComputedCSSStyle() {
