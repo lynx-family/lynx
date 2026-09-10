@@ -24,6 +24,10 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxEnv.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxTemplateRender.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxBackgroundRuntime.java
+    - java: platform/android/lynx_android/src/debug/java/com/lynx/tasm/LynxHostScriptRuntimeBinding.java
+      macro: (!defined(NDEBUG))
+    - java: platform/android/lynx_android/src/debug/java/com/lynx/tasm/LynxHostScriptLynxViewBinding.java
+      macro: (!defined(NDEBUG))
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/JavaOnlyMap.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/JavaOnlyArray.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxError.java

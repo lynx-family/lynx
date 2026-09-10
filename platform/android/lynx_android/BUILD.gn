@@ -88,6 +88,10 @@ group("lynx_android_lib") {
     "../../../gfx:gfx_headers",
     "../../../third_party/rapidjson:rapidjson",
   ]
+  if (is_debug) {
+    public_deps +=
+        [ "../../../core/shell/host_script/android:host_script_android" ]
+  }
   if (enable_testbench_recorder) {
     public_deps += [ "../../../core/services/recorder:recorder" ]
   }
