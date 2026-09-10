@@ -56,7 +56,7 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_METHOD(TakeVMSnapshotByUrl)
 
   // System Info domain
-  DECLARE_DEVTOOL_METHOD(SystemInfoGetInfo)
+  DECLARE_DEVTOOL_CDP_METHOD(SystemInfoGetInfo);
 
  protected:
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
