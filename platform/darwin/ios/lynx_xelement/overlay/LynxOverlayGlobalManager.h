@@ -7,6 +7,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxView;
+
 /**
  * `<overlay>` introduces the conception of `level`, which rearrange all the Overlays from the small
  * level to the large level. LynxOverlayGlobalManager is designed to make it works.
@@ -15,6 +17,18 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)sharedInstance;
 + (NSMutableArray *)getAllVisibleOverlay;
+
+/**
+ * Update custom layout bounds for visible overlays belonging to the LynxView that follow their
+ * mode's bounds. Call on the main thread.
+ */
+- (void)layoutIfNeededForLynxView:(LynxView *)lynxView;
+
+/**
+ * Update custom layout bounds for visible overlays whose views are descendants of the view
+ * controller's loaded view and follow their mode's bounds. Call on the main thread.
+ */
+- (void)layoutIfNeededForViewController:(UIViewController *)viewController;
 
 /**
  * Display the `<overlay>` according to its level and mode
