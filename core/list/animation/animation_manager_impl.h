@@ -63,6 +63,14 @@ class AnimationManagerImpl final
 
   // ItemAnimator::Listener
   void OnAllAnimationsFinished() override;
+  void OnAnimationStart(const ItemAnimator* source,
+                        ItemAnimationType type) override;
+  void OnAnimationEnd(const ItemAnimator* source,
+                      ItemAnimationType type) override;
+  void OnAnimationCancel(const ItemAnimator* source,
+                         ItemAnimationType type) override;
+  void OnAnimationUpdate(const ItemAnimator* source, ItemAnimationType type,
+                         float progress) override;
 
  private:
   bool enable_update_animation_{false};

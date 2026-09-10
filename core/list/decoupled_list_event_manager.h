@@ -8,9 +8,11 @@
 #include <chrono>
 #include <ctime>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 
+#include "core/list/animation/animation_types.h"
 #include "core/list/decoupled_list_anchor_manager.h"
 #include "core/list/decoupled_list_children_helper.h"
 #include "core/public/pub_value.h"
@@ -53,6 +55,19 @@ class ListEventManager {
   void SendExposureEvent(const std::string& event_name,
                          const ItemHolder* item_holder);
 
+  void SendUpdateAnimationStartEvent(TransactionId transaction_id,
+                                     ItemAnimationType type);
+
+  void SendUpdateAnimationEndEvent(TransactionId transaction_id,
+                                   ItemAnimationType type);
+
+  void SendUpdateAnimationCancelEvent(TransactionId transaction_id,
+                                      ItemAnimationType type);
+
+  void SendUpdateAnimationIterationEvent(TransactionId transaction_id,
+                                         ItemAnimationType type,
+                                         float progress);
+
   void DetectScrollToThresholdAndSend(float distance, float original_offset,
                                       EventSource event_source);
 
@@ -73,6 +88,10 @@ class ListEventManager {
   void SendCustomScrollEvent(const std::string& event_name, float distance,
                              EventSource event_source);
 
+  void SendUpdateAnimationEventInternal(
+      const std::string& event_name, TransactionId transaction_id,
+      ItemAnimationType type, std::optional<float> progress = std::nullopt);
+
   void CreateLayoutCompleteInfoIfNeeded();
 
   std::unique_ptr<pub::Value> GenerateScrollInfo(float deltaX,
@@ -83,6 +102,9 @@ class ListEventManager {
 
   std::unique_ptr<pub::Value> GenerateNodeExposureInfo(
       const ItemHolder* item_holder) const;
+
+  std::unique_ptr<pub::Value> GenerateUpdateAnimationInfo(
+      TransactionId transaction_id, ItemAnimationType type) const;
 
   void UpdatePreviousScrollState(bool is_lower, bool is_upper);
 
