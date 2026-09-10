@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
@@ -1998,7 +1999,16 @@ void BaseView::NotifyBoundChangeIfNeeded(const FloatRect& old_bounds) {
   }
   if (old_bounds != bounds) {
     OnBoundsChanged(old_bounds, bounds);
+    SchedulePointerEventTargetRefresh();
   }
+}
+
+void BaseView::SchedulePointerEventTargetRefresh() {
+#if defined(OS_WIN) || defined(OS_MAC)
+  if (auto* manager = page_view_->mouse_region_manager()) {
+    manager->SchedulePointerEventTargetRefresh(page_view_);
+  }
+#endif
 }
 
 void BaseView::UpdateChildrenBounds() {
@@ -2072,6 +2082,7 @@ void BaseView::SetTransformOperations(
       std::abs(render_object()->GetTranslateZ() - old_translate_z) > 1e-6) {
     Parent()->DirtyChildrenPaintingOrder();
   }
+  SchedulePointerEventTargetRefresh();
 }
 
 void BaseView::SetProperty(ClayAnimationPropertyType type,
@@ -2572,6 +2583,7 @@ FloatPoint BaseView::AbsoluteLocationWithScroll() const {
 }
 
 void BaseView::OnViewPostionUpdate(FloatPoint scroll_offset) {
+  SchedulePointerEventTargetRefresh();
   scroll_offset += FloatPoint(LeftWithScroll(), TopWithScroll());
   for (auto child : GetChildren()) {
     child->OnViewPostionUpdate(scroll_offset);
@@ -2848,6 +2860,14 @@ bool BaseView::ShouldPassEventToNativeAt(const FloatPoint& position) const {
   return should_pass;
 }
 
+bool BaseView::AcceptsPointerEvents() const {
+  if (pointer_events_enabled_.has_value()) {
+    return *pointer_events_enabled_;
+  }
+  return IsIndependentSubViewTree() || parent_ == nullptr ||
+         parent_->AcceptsPointerEvents();
+}
+
 bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (!CanAcceptEvent()) {
     return false;
@@ -2885,6 +2905,9 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
 
   if (beyond_self) {
     return founded;
+  }
+  if (!founded && !AcceptsPointerEvents()) {
+    return false;
   }
   should_pass_event_for_hittest_ = ShouldPassEventToNativeAt(event.position);
   result.emplace_back(GetHitTestTargetWeakPtr());
@@ -3109,7 +3132,7 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
   }
 
   // An internally created view (with an id < 0) cannot be the event target.
-  if (is_point_inside && !IsAnonymousView()) {
+  if (is_point_inside && !IsAnonymousView() && AcceptsPointerEvents()) {
     if (IsIndependentSubViewTree() && CanEventsPassThroughToViewsBehind()) {
       return nullptr;
     }
@@ -3198,6 +3221,19 @@ void BaseView::SetAttribute(const char* attr, const clay::Value& value) {
 
 bool BaseView::HandleCommonAttribute(const char* attr,
                                      const clay::Value& value) {
+  if (std::strcmp(attr, "pointer-events") == 0) {
+    const auto previous = pointer_events_enabled_;
+    if (value.IsNull()) {
+      pointer_events_enabled_.reset();
+    } else {
+      pointer_events_enabled_ = utils::GetInt(value) == 0;
+    }
+    if (pointer_events_enabled_ != previous) {
+      SchedulePointerEventTargetRefresh();
+    }
+    return true;
+  }
+
   auto kw = GetKeywordID(attr);
   switch (kw) {
     case KeywordID::kIdselector:
@@ -3748,6 +3784,24 @@ void BaseView::OnMouseEvent(const ClayEventType type,
         view_point.y(), position.x(), position.y());
   }
 }
+
+#if defined(OS_WIN) || defined(OS_MAC)
+void BaseView::OnPointerBoundaryEvent(const std::string& event_name,
+                                      const PointerEvent& event,
+                                      int related_target_sign) {
+  if (IsAnonymousView() || !page_view_->GetEventDelegate()) {
+    return;
+  }
+  const FloatPoint position = event.position;
+  const FloatPoint view_point = GetPointBySelf(position);
+  page_view_->GetEventDelegate()->OnPointerEvent(
+      event_name, GetCallbackId(), event.pointer_id,
+      ToClayPointerDeviceKind(event.device), event.is_primary, event.button,
+      event.buttons, event.ContactWidth(), event.ContactHeight(),
+      event.NormalizedPressure(), view_point.x(), view_point.y(), position.x(),
+      position.y(), event.timestamp / 1000, related_target_sign);
+}
+#endif
 
 void BaseView::OnLayoutChange() {
   if (enable_layout_change_event_ && page_view_->GetEventDelegate()) {
