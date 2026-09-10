@@ -89,19 +89,19 @@ NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner,
   }
 }
 
-void NativePaintingCtxDarwin::UpdatePaintingNode(int id, bool tend_to_flatten,
+void NativePaintingCtxDarwin::UpdatePaintingNode(int id, bool,
                                                  const fml::RefPtr<PropBundle> &painting_data) {
   if (!painting_data) {
     return;
   }
 
-  Enqueue([ref = platform_ref_, id, tend_to_flatten, painting_data]() mutable {
+  Enqueue([ref = platform_ref_, id, painting_data]() mutable {
     auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
     if (!darwin_ref) {
       return;
     }
 
-    darwin_ref->UpdateAttributes(id, painting_data, tend_to_flatten);
+    darwin_ref->UpdateAttributes(id, painting_data);
   });
 }
 

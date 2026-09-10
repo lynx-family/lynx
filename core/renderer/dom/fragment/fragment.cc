@@ -24,7 +24,6 @@
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
-#include "core/renderer/utils/base/tasm_constants.h"
 #include "gfx/geometry/matrix44.h"
 
 namespace lynx {
@@ -51,13 +50,12 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     return false;
   }
 
-  const bool tends_to_flatten = element()->TendToFlatten();
   const bool can_flatten_without_platform_renderer =
       (!element()->is_page() &&
        !element()->is_direct_child_of_compatible_component() &&
        (element()->is_text() || element()->is_image() || element()->is_view() ||
         element()->is_component())) &&
-      tends_to_flatten;
+      element()->TendToFlatten();
   if (can_flatten_without_platform_renderer) {
     // If the fragment is a view, text, image, or component, and it tends to
     // flatten, then it does not need to be layerized. The page must keep its
@@ -87,24 +85,7 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   init_config.is_direct_child_of_compatible_component =
       element()->is_direct_child_of_compatible_component();
 
-  fml::RefPtr<PropBundle> actual_init_data = init_data;
-  auto ensure_actual_init_data = [&actual_init_data, this]() {
-    if (actual_init_data == nullptr) {
-      bool use_map_buffer =
-          element()->element_manager()->GetEnableUseMapBuffer();
-      actual_init_data =
-          element()
-              ->element_manager()
-              ->GetPropBundleCreator()
-              ->CreatePropBundle(use_map_buffer,
-                                 element()->EnableFragmentLayerRender());
-    }
-    return actual_init_data != nullptr;
-  };
-  if (ensure_actual_init_data()) {
-    actual_init_data->SetProps(kTendsToFlattenInitDataKey, tends_to_flatten);
-  }
-  behavior_->CreatePlatformRenderer(actual_init_data, init_config);
+  behavior_->CreatePlatformRenderer(init_data, init_config);
   has_platform_renderer_ = true;
   auto* root = element_manager()->root();
   if (root != nullptr && root->fragment_impl() != nullptr) {

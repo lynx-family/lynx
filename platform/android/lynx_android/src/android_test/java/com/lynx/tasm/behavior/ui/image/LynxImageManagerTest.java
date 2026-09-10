@@ -14,8 +14,6 @@ import android.view.View;
 import androidx.test.annotation.UiThreadTest;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
-import com.lynx.tasm.behavior.ui.LynxFlattenUI;
-import com.lynx.tasm.behavior.ui.UIParent;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.testing.base.TestingUtils;
@@ -34,24 +32,6 @@ public class LynxImageManagerTest {
 
   @After
   public void tearDown() {}
-
-  @Test
-  @UiThreadTest
-  public void imageInvalidationClearsFlattenedDrawCacheAndInvalidatesDrawParent() throws Exception {
-    LynxFlattenUI host = new LynxFlattenUI(mContext);
-    UIParent drawParent = mock(UIParent.class);
-    host.setDrawParent(drawParent);
-    Field cacheValid = LynxFlattenUI.class.getDeclaredField("mIsValidate");
-    cacheValid.setAccessible(true);
-    cacheValid.setBoolean(host, true);
-
-    LynxImageManager manager = new LynxImageManager(mContext);
-    manager.setRendererHost(host);
-    manager.invalidate();
-
-    assertFalse(cacheValid.getBoolean(host));
-    verify(drawParent).invalidate();
-  }
 
   @Test
   @UiThreadTest
