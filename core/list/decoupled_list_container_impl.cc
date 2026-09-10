@@ -5,6 +5,8 @@
 #include "core/list/decoupled_list_container_impl.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
@@ -18,6 +20,171 @@
 
 namespace lynx {
 namespace list {
+
+namespace {
+
+bool ReadStageDuration(const pub::Value& value, int32_t& duration_ms) {
+  if (value.IsNumber()) {
+    const double number = value.Number();
+    if (std::isfinite(number)) {
+      // Store integer milliseconds: clamp negatives, truncate fractions, and
+      // check range before conversion.
+      const double milliseconds = std::max(0.0, std::trunc(number));
+      if (milliseconds <= std::numeric_limits<int32_t>::max()) {
+        duration_ms = static_cast<int32_t>(milliseconds);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool HasValidStageDurations(const std::vector<AnimationStageEntries>& stages) {
+  int64_t total_duration_ms = 0;
+  for (const auto& stage : stages) {
+    int32_t stage_duration_ms = 0;
+    for (const auto& entry : stage) {
+      stage_duration_ms = std::max(stage_duration_ms, entry.duration_ms);
+    }
+    total_duration_ms += stage_duration_ms;
+    if (total_duration_ms > std::numeric_limits<int32_t>::max()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/*
+ Parse animation configuration, for example:
+ (1) A single stage runs all animations concurrently.
+ [{ animations: ['remove', 'move', 'add', 'change'], durations: 200 }]
+ (2) Three stages, with move and change running concurrently for
+ 100ms and 200ms, respectively.
+ [
+   { animations: ['remove'], durations: 120 },
+   { animations: ['move', 'change'], durations: [100, 200] },
+   { animations: ['add'], durations: 200 },
+ ]
+ */
+bool ParseUpdateAnimationStages(const pub::Value& value,
+                                std::vector<AnimationStageEntries>& stages) {
+  if (!value.IsArray() || value.Length() < 1 || value.Length() > 4) {
+    return false;
+  }
+  constexpr uint8_t kRemove = 1;
+  constexpr uint8_t kMove = 2;
+  constexpr uint8_t kAdd = 4;
+  constexpr uint8_t kChange = 8;
+  uint8_t parsed_animation_types_mask = 0;
+
+  // Track parsed types across stages to prevent duplicate scheduling.
+  auto parse_animations = [&parsed_animation_types_mask](
+                              const pub::Value& animations,
+                              AnimationStageEntries& entries) {
+    if (!animations.IsArray() || animations.Length() < 1 ||
+        animations.Length() > 4) {
+      return false;
+    }
+    for (int j = 0; j < animations.Length(); ++j) {
+      auto name = animations.GetValueAtIndex(static_cast<uint32_t>(j));
+      if (!name || !name->IsString()) {
+        return false;
+      }
+      ItemAnimationType type;
+      uint8_t bit = 0;
+      if (name->str() == kUpdateAnimationTypeRemove) {
+        type = ItemAnimationType::kDisappearance;
+        bit = kRemove;
+      } else if (name->str() == kUpdateAnimationTypeMove) {
+        type = ItemAnimationType::kPersistence;
+        bit = kMove;
+      } else if (name->str() == kUpdateAnimationTypeAdd) {
+        type = ItemAnimationType::kAppearance;
+        bit = kAdd;
+      } else if (name->str() == kUpdateAnimationTypeChange) {
+        type = ItemAnimationType::kChange;
+        bit = kChange;
+      } else {
+        return false;
+      }
+      if ((parsed_animation_types_mask & bit) != 0) {
+        return false;
+      }
+      parsed_animation_types_mask |= bit;
+      entries.push_back({type, 0});
+    }
+    return true;
+  };
+  auto parse_durations = [](const pub::Value& durations,
+                            AnimationStageEntries& entries) {
+    if (durations.IsNumber()) {
+      // A numeric duration applies to every entry in the stage.
+      int32_t duration_ms = 0;
+      if (!ReadStageDuration(durations, duration_ms)) {
+        return false;
+      }
+      for (auto& entry : entries) {
+        entry.duration_ms = duration_ms;
+      }
+      return true;
+    } else if (durations.IsArray() &&
+               durations.Length() == static_cast<int>(entries.size())) {
+      // Array durations correspond to entries by index.
+      for (size_t j = 0; j < entries.size(); ++j) {
+        auto duration = durations.GetValueAtIndex(static_cast<uint32_t>(j));
+        if (!duration ||
+            !ReadStageDuration(*duration, entries[j].duration_ms)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return false;
+  };
+
+  std::vector<AnimationStageEntries> parsed_stages;
+  for (int i = 0; i < value.Length(); ++i) {
+    auto stage = value.GetValueAtIndex(static_cast<uint32_t>(i));
+    if (!stage || !stage->IsMap()) {
+      return false;
+    }
+    auto animations = stage->GetValueForKey(kUpdateAnimationStageAnimations);
+    auto durations = stage->GetValueForKey(kUpdateAnimationStageDurations);
+    AnimationStageEntries entries;
+    if (!animations || !durations || !parse_animations(*animations, entries) ||
+        !parse_durations(*durations, entries)) {
+      return false;
+    }
+    parsed_stages.push_back(std::move(entries));
+  }
+  if (parsed_animation_types_mask == 0 ||
+      !HasValidStageDurations(parsed_stages)) {
+    return false;
+  }
+  // Replace stages only after the entire configuration passes parsing and
+  // validation.
+  stages = std::move(parsed_stages);
+  return true;
+}
+
+UpdateAnimationConfig ParseUpdateAnimationConfig(const pub::Value& value) {
+  // Start with defaults, then apply valid user configuration.
+  UpdateAnimationConfig config;
+  config.stages = MakeDefaultAnimationStages();
+  if (auto enable = value.GetValueForKey(kUpdateAnimationConfigEnable);
+      enable && enable->IsBool()) {
+    config.enable = enable->Bool();
+  }
+  if (value.Contains(kUpdateAnimationConfigStages)) {
+    auto stages = value.GetValueForKey(kUpdateAnimationConfigStages);
+    if (!stages || !ParseUpdateAnimationStages(*stages, config.stages)) {
+      DLIST_LOGE("Invalid update-animation stages; using default scheduling.");
+    }
+  }
+  return config;
+}
+
+}  // namespace
 
 ListContainerImpl::ListContainerImpl(
     ElementDelegate* list_delegate,
@@ -44,6 +211,13 @@ ListContainerImpl::ListContainerImpl(
 }
 
 ListContainerImpl::~ListContainerImpl() {
+  if (animation_manager_) {
+    // Detach animation callbacks and clear transaction-owned resources before
+    // the other container members are destroyed. This prevents an animator
+    // from calling back after dependencies such as ListAdapter and
+    // ListChildrenHelper become invalid.
+    animation_manager_->Destroy();
+  }
   DLIST_LOGI("ListContainerImpl::~ListContainerImpl this=" << this);
 }
 
@@ -201,6 +375,7 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
               key_str.c_str());
   bool should_set_props = true;
   bool should_mark_layout_dirty = false;
+  bool should_cancel_animation = false;
   if (key_str == kPropCustomListName && value.IsString()) {
     // custom-list-container
     if (value.str() == kPropValueListContainer) {
@@ -224,6 +399,8 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
           std::move(suggestion), base::LynxErrorLevel::Warn);
       list_delegate_->OnErrorOccurred(std::move(error));
     }
+    should_cancel_animation =
+        list_layout_manager_->orientation() != orientation;
     list_layout_manager_->SetOrientation(orientation);
     list_layout_manager_->CreateOrUpdateListAnchorManager();
   } else if (key_str == kPropScrollOrientation && value.IsString()) {
@@ -233,6 +410,8 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
         value.str() == kPropValueScrollOrientationHorizontal
             ? Orientation::kHorizontal
             : Orientation::kVertical;
+    should_cancel_animation =
+        list_layout_manager_->orientation() != orientation;
     list_layout_manager_->SetOrientation(orientation);
     list_layout_manager_->CreateOrUpdateListAnchorManager();
   } else if (key_str == kPropEnableDynamicSpanCount && value.IsBool()) {
@@ -248,6 +427,7 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
       span_count = 1;
     }
     if (list_layout_manager_->span_count() != span_count) {
+      should_cancel_animation = true;
       span_count_changed_ = true;
     }
     list_layout_manager_->SetSpanCount(span_count);
@@ -303,6 +483,27 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     // update-animation
     update_animation_ = value.str() == kPropValueUpdateAnimationDefault;
     should_set_props = false;
+  } else if (key_str == kPropExperimentalUseNewUpdateAnimation &&
+             value.IsBool()) {
+    // Select the implementation when this property is parsed for the first
+    // time. The new pipeline does not yet support batch rendering or parallel
+    // element flushing, so either mode forces the selection to false if it is
+    // already enabled at that point. Ignore subsequent dynamic updates once
+    // the selection is made.
+    if (!use_new_update_animation_.has_value()) {
+      // TODO: Support the new update animation with batch rendering and
+      // parallel element flushing.
+      use_new_update_animation_ =
+          value.Bool() && !enable_batch_render() && !enable_parallel_element();
+    }
+    should_set_props = false;
+  } else if (key_str == kPropExperimentalUpdateAnimation && value.IsMap()) {
+    // Parse and cache the complete configuration, then apply it from
+    // PropsUpdateFinish after the new pipeline has been selected. This makes
+    // the result independent of the order in which the selection and
+    // configuration properties are parsed.
+    new_update_animation_config_ = ParseUpdateAnimationConfig(value);
+    should_set_props = false;
   } else if (key_str == kPropListType && value.IsString()) {
     // list-type
     LayoutType last_layout_type = layout_type_;
@@ -317,6 +518,10 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
       layout_type_ = LayoutType::kSingle;
     }
     if (layout_type_ != last_layout_type) {
+      // Replacing the LayoutManager changes coordinate calculation and
+      // recycling behavior, so an existing transaction cannot continue
+      // across the replacement.
+      should_cancel_animation = true;
       UpdateListLayoutManager(layout_type_);
     }
     should_mark_layout_dirty = true;
@@ -412,24 +617,39 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
   if (should_mark_layout_dirty) {
     list_delegate_->MarkListElementLayoutDirty();
   }
+  if (should_cancel_animation && use_new_update_animation()) {
+    animation_manager_->CancelAnimationTransaction(
+        AnimationCancelReason::kLayoutInvalidated);
+  }
   return should_set_props;
 };
 
 void ListContainerImpl::OnLayoutChildren(
     const std::shared_ptr<tasm::PipelineOptions>& options) {
-  if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
-    list_animation_manager_->SetUpdateAnimation(update_animation_);
+  // TODO: Remove the legacy update-animation path.
+  if (!use_new_update_animation()) {
+    if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
+      list_animation_manager_->SetUpdateAnimation(update_animation_);
+    }
+    if (list_animation_manager_->UpdateAnimation() &&
+        animation_diff_result_ != ListAdapterDiffResult::kNone) {
+      list_animation_manager_->UpdateDiffResult(animation_diff_result_);
+    }
+    animation_diff_result_ = ListAdapterDiffResult::kNone;
   }
-  if (list_animation_manager_->UpdateAnimation() &&
-      animation_diff_result_ != ListAdapterDiffResult::kNone) {
-    list_animation_manager_->UpdateDiffResult(animation_diff_result_);
-  }
-  animation_diff_result_ = ListAdapterDiffResult::kNone;
+
   if (list_layout_manager_) {
     if (options->need_timestamps) {
       list_delegate_->MarkTiming(ListTiming::kRenderChildrenStart);
     }
     if (need_recycle_all_item_holders_before_layout_) {
+      if (use_new_update_animation()) {
+        // Changes such as list-type or span-count invalidate the coordinate
+        // system used by existing PRE and POST state. Cancel the transaction
+        // before recycling every holder.
+        animation_manager_->CancelAnimationTransaction(
+            AnimationCancelReason::kLayoutInvalidated);
+      }
       list_adapter_->RecycleAllItemHolders();
       // Note: if list-type is changed, we will recycle all items before layout,
       // so here need to clear last_binding_children set to make sure we can
@@ -442,15 +662,25 @@ void ListContainerImpl::OnLayoutChildren(
       // options->has_layout to make sure invoke FinishLayoutOperation() to
       // trigger layoutDidFinished lifecycle of all list's children.
       should_flush_finish_layout_ = options->has_layout;
-      // Try to enqueue all available items before layout.
-      if (recycle_available_item_before_layout_) {
+
+      // The new pipeline consumes the transaction's PRE target snapshot from
+      // OnPrepareForLayoutChildren. Skip the pre-layout enqueue optimization:
+      // it could otherwise recycle platform nodes, detach ItemElementDelegate,
+      // and prevent later animation updates from being submitted.
+      if (!use_new_update_animation() &&
+          recycle_available_item_before_layout_) {
+        // Try to enqueue all available items before layout.
         list_adapter_->EnqueueElementsIfNeeded();
       }
+
+      // 2. Layout Children
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
       } else {
         list_layout_manager_->OnBatchLayoutChildren();
       }
+      // Record completion of the initial layout.
+      has_completed_first_layout_ = true;
     }
     if (options->need_timestamps) {
       list_delegate_->MarkTiming(ListTiming::kRenderChildrenEnd);
@@ -472,15 +702,40 @@ void ListContainerImpl::PropsUpdateFinish() {
     list_layout_manager_->SetInitialScrollIndex(initial_scroll_index_);
   }
 
-  // Handle update-animation attr.
-  if (layout_type_ == LayoutType::kWaterFall) {
-    // Consider the order of resolving list-type and update-animation is not
-    // fixed, we should move this logic in PropsUpdateFinish().
-    // TODO(dongjiajian): support update animation in waterfall.
-    update_animation_ = false;
+  // If the selection property was not parsed before the first
+  // PropsUpdateFinish, permanently select the legacy pipeline. An explicit
+  // selection is already locked by its first ResolveAttribute call and is not
+  // changed here.
+  if (!use_new_update_animation_.has_value()) {
+    use_new_update_animation_ = false;
   }
-  if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
-    list_delegate_->MarkListElementLayoutDirty();
+
+  if (use_new_update_animation()) {
+    // Apply any pending configuration, including requests to disable
+    // animations.
+    if (new_update_animation_config_.has_value()) {
+      DLIST_LOGI("[" << this
+                     << "] ListContainerImpl::PropsUpdateFinish: "
+                        "new_update_animation_config="
+                     << new_update_animation_config_.value().ToString());
+      animation_manager_->SetUpdateAnimationConfig(
+          new_update_animation_config_.value());
+      // Clear the pending config to avoid reapplying it on subsequent
+      // PropsUpdateFinish calls.
+      new_update_animation_config_.reset();
+    }
+  } else {
+    // TODO: Remove the legacy update-animation path.
+    // Handle update-animation attr.
+    if (layout_type_ == LayoutType::kWaterFall) {
+      // Consider the order of resolving list-type and update-animation is not
+      // fixed, we should move this logic in PropsUpdateFinish().
+      // TODO(dongjiajian): support update animation in waterfall.
+      update_animation_ = false;
+    }
+    if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
+      list_delegate_->MarkListElementLayoutDirty();
+    }
   }
 
   // Handle enable-dynamic-span-count attr and reset span_count_changed_.
@@ -567,16 +822,23 @@ void ListContainerImpl::OnAttachedToElementManager() {
 }
 
 void ListContainerImpl::ResolveListAxisGap(tasm::CSSPropertyID id, float gap) {
+  bool should_cancel_animation = false;
   if (tasm::CSSPropertyID::kPropertyIDListMainAxisGap == id) {
     if (base::FloatsNotEqual(gap, list_layout_manager_->main_axis_gap())) {
+      should_cancel_animation = true;
       list_layout_manager_->SetMainAxisGap(gap);
       list_delegate_->MarkListElementLayoutDirty();
     }
   } else if (tasm::CSSPropertyID::kPropertyIDListCrossAxisGap == id) {
     if (base::FloatsNotEqual(gap, list_layout_manager_->cross_axis_gap())) {
+      should_cancel_animation = true;
       list_layout_manager_->SetCrossAxisGap(gap);
       list_delegate_->MarkListElementLayoutDirty();
     }
+  }
+  if (should_cancel_animation && use_new_update_animation()) {
+    animation_manager_->CancelAnimationTransaction(
+        AnimationCancelReason::kLayoutInvalidated);
   }
 }
 

@@ -363,45 +363,42 @@ TEST_F(AnimationManagerImplTest,
   EXPECT_TRUE(lifecycle_observer->animator_destroyed);
 }
 
-// Verifies that animation configuration is applied to the transaction's
-// animator and that disabling animations cancels the active transaction.
-TEST_F(AnimationManagerImplTest, AppliesConfigAndCancelsWhenDisabled) {
-  UpdateAnimationConfig config{
-      .enable = true,
-      .add_duration_ms = 11,
-      .remove_duration_ms = 22,
-      .move_duration_ms = 33,
-  };
-
-  // 1. A new transaction's animator receives the complete current
-  // configuration, with change duration following move duration.
+// Verify that configs apply to future transactions and identical configs
+// preserve active ones.
+TEST_F(AnimationManagerImplTest, AppliesStagesAndPreservesIdenticalConfig) {
+  UpdateAnimationConfig config;
+  config.enable = true;
+  config.stages = MakeDefaultAnimationStages(22, 33, 11, 44);
   animation_manager_->SetUpdateAnimationConfig(config);
+
+  // 1. Enabling alone creates no transaction; eligible data updates create
+  // animators.
+  EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   animation_manager_->BeforeDataUpdate(true, true, true);
   ASSERT_NE(animation_manager_->active_transaction_, nullptr);
-  ItemAnimator& item_animator =
-      animation_manager_->active_transaction_->item_animator();
-  EXPECT_EQ(item_animator.add_duration_ms(), 11);
-  EXPECT_EQ(item_animator.remove_duration_ms(), 22);
-  EXPECT_EQ(item_animator.move_duration_ms(), 33);
-  EXPECT_EQ(item_animator.change_duration_ms(), 33);
+  auto* transaction = animation_manager_->active_transaction_.get();
+  EXPECT_EQ(transaction->item_animator().animation_stages(), config.stages);
 
-  // 2. A runtime configuration update immediately changes the durations stored
-  // by the active transaction's ItemAnimator.
-  config.add_duration_ms = 44;
-  config.remove_duration_ms = 55;
-  config.move_duration_ms = 66;
-  animation_manager_->SetUpdateAnimationConfig(config);
-  EXPECT_EQ(item_animator.add_duration_ms(), 44);
-  EXPECT_EQ(item_animator.remove_duration_ms(), 55);
-  EXPECT_EQ(item_animator.move_duration_ms(), 66);
-  EXPECT_EQ(item_animator.change_duration_ms(), 66);
+  // 2. Compare config copies by content and preserve transaction identity.
+  const UpdateAnimationConfig identical = config;
+  animation_manager_->SetUpdateAnimationConfig(identical);
+  ASSERT_EQ(animation_manager_->active_transaction_.get(), transaction);
+  EXPECT_EQ(animation_manager_->next_transaction_id_, 1u);
 
-  // 3. Disabling animations synchronously cancels and clears the active
-  // transaction.
+  // 3. Disabling cancels the transaction; re-enabling waits for the next data
+  // update.
   config.enable = false;
   animation_manager_->SetUpdateAnimationConfig(config);
-  EXPECT_FALSE(animation_manager_->enable_update_animation_);
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
+  config.enable = true;
+  animation_manager_->SetUpdateAnimationConfig(config);
+  EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
+  animation_manager_->BeforeDataUpdate(true, true, true);
+  ASSERT_NE(animation_manager_->active_transaction_, nullptr);
+  EXPECT_EQ(animation_manager_->active_transaction_->id(), 2u);
+  EXPECT_EQ(animation_manager_->active_transaction_->item_animator()
+                .animation_stages(),
+            config.stages);
 }
 
 // Verifies that Destroy() clears the active transaction and existing retired
