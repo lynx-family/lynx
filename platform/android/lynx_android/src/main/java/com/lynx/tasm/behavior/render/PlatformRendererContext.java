@@ -56,7 +56,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
   final private static String TAG = "PlatformRendererContext";
-  final private static String TENDS_TO_FLATTEN_INIT_DATA_KEY = "__lynx_tends_to_flatten";
 
   public static final class PlatformRendererType {
     public static final int kUnknown = 0;
@@ -378,9 +377,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
-    Behavior behavior = null;
     if (mBehaviorRegistry != null) {
-      behavior = mBehaviorRegistry.get(tagName);
+      Behavior behavior = mBehaviorRegistry.get(tagName);
       if (behavior != null && behavior.supportFragmentLayerRenderer()) {
         IRendererHost host = behavior.createPlatformRendererHost(mContext);
         if (host != null) {
@@ -400,9 +398,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       ReadableMap initialProps = initData != null ? initData.getProps() : null;
       ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
       ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
-      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, initialProps);
       owner.createView(
-          sign, tagName, initialProps, null, eventListeners, isFlatten, sign, gestureDetectors);
+          sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
       LynxBaseUI createdUI = owner.getNode(sign);
       LynxBaseUI rendererHostUI = resolveRendererHostUI(createdUI);
       IRendererHost host = resolveRendererHost(rendererHostUI);
@@ -430,18 +427,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     view.setRenderer(renderer);
     mViewHolder.put(sign, view);
     view.invalidate();
-  }
-
-  private boolean shouldCreateFallbackUIAsFlatten(
-      @Nullable Behavior behavior, @Nullable ReadableMap props) {
-    boolean tendsToFlatten =
-        props != null && props.getBoolean(TENDS_TO_FLATTEN_INIT_DATA_KEY, false);
-    return shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
-  }
-
-  private boolean shouldCreateFallbackUIAsFlatten(
-      @Nullable Behavior behavior, boolean tendsToFlatten) {
-    return tendsToFlatten && behavior != null && behavior.supportUIFlatten();
   }
 
   @Nullable
@@ -592,17 +577,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  private boolean shouldInsertIntoUIOwnerForFlattenRendererParent(
-      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
-    return parentUI != null && parentUI.isFlatten() && childUI != null && !childUI.isOverlay();
-  }
-
-  private boolean shouldRemoveFromUIOwnerForFlattenRendererParent(
-      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
-    return shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)
-        && childUI.getParentBaseUI() == parentUI;
-  }
-
   @CalledByNative
   void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner) {
     LynxUIOwner owner = mContext.getLynxUIOwner();
@@ -613,13 +587,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
-      return;
-    }
-    if (!shouldUpdateUIOwner
-        && shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)) {
-      if (childUI.getParentBaseUI() != parentUI) {
-        owner.insert(parent, child, index);
-      }
       return;
     }
 
@@ -692,7 +659,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  void updatePlatformRendererAttributes(int sign, PropBundle propBundle, boolean tendsToFlatten) {
+  void updatePlatformRendererAttributes(int sign, PropBundle propBundle) {
     IRendererHost host = mViewHolder.get(sign);
     if (host == null) {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
@@ -707,10 +674,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           propBundle != null ? propBundle.getEventHandlers() : null);
       Map<Integer, GestureDetector> detectors = GestureDetector.convertGestureDetectors(
           propBundle != null ? propBundle.getGestures() : null);
-      Behavior behavior = mBehaviorRegistry != null ? mBehaviorRegistry.get(ui.getTagName()) : null;
-      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
       owner.updateProperties(
-          sign, isFlatten, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
+          sign, false, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
     }
 
     // Get the renderer
@@ -978,11 +943,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
-      return;
-    }
-    if (!shouldUpdateUIOwner
-        && shouldRemoveFromUIOwnerForFlattenRendererParent(parentUI, childUI)) {
-      owner.remove(parent, sign);
       return;
     }
 
