@@ -6,8 +6,11 @@
 #define CORE_LIST_ANIMATION_ANIMATION_TYPES_H_
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 #include "base/include/float_comparison.h"
+#include "core/list/decoupled_list_types.h"
 
 namespace lynx {
 namespace list {
@@ -26,14 +29,99 @@ constexpr int32_t kDefaultRemoveAnimationDurationMs = 120;
 constexpr int32_t kDefaultMoveAnimationDurationMs = 250;
 constexpr int32_t kDefaultChangeAnimationDurationMs = 250;
 
-// Runtime configuration for List update animations. Duration values are
-// expressed in milliseconds.
+enum class ItemAnimationType {
+  kAppearance,
+  kDisappearance,
+  kPersistence,
+  kChange,
+};
+
+inline const char* ItemAnimationTypeToString(ItemAnimationType type) {
+  switch (type) {
+    case ItemAnimationType::kDisappearance:
+      return kUpdateAnimationTypeRemove;
+    case ItemAnimationType::kPersistence:
+      return kUpdateAnimationTypeMove;
+    case ItemAnimationType::kAppearance:
+      return kUpdateAnimationTypeAdd;
+    case ItemAnimationType::kChange:
+      return kUpdateAnimationTypeChange;
+    default:
+      return nullptr;
+  }
+}
+
+struct AnimationStageEntry {
+  ItemAnimationType type;
+  int32_t duration_ms;
+
+  bool operator==(const AnimationStageEntry& other) const {
+    return type == other.type && duration_ms == other.duration_ms;
+  }
+};
+
+using AnimationStageEntries = std::vector<AnimationStageEntry>;
+
+// Stages run sequentially; entries within each stage run concurrently with
+// individual durations.
 struct UpdateAnimationConfig {
   bool enable{false};
-  int32_t add_duration_ms{kDefaultAddAnimationDurationMs};
-  int32_t remove_duration_ms{kDefaultRemoveAnimationDurationMs};
-  int32_t move_duration_ms{kDefaultMoveAnimationDurationMs};
+  std::vector<AnimationStageEntries> stages;
+
+  // Serialize as single-line DSL JSON, preserving stage and entry order with
+  // duration arrays.
+  std::string ToString() const {
+    std::string result = std::string("{\"") + kUpdateAnimationConfigEnable +
+                         "\":" + (enable ? "true" : "false") + ",\"" +
+                         kUpdateAnimationConfigStages + "\":[";
+    for (size_t i = 0; i < stages.size(); ++i) {
+      if (i != 0) {
+        result += ',';
+      }
+      const auto& stage = stages[i];
+      result += std::string("{\"") + kUpdateAnimationStageAnimations + "\":[";
+      for (size_t j = 0; j < stage.size(); ++j) {
+        if (j != 0) {
+          result += ',';
+        }
+        result += '"';
+        const char* type_name = ItemAnimationTypeToString(stage[j].type);
+        result += type_name ? type_name : "unknown";
+        result += '"';
+      }
+      result += std::string("],\"") + kUpdateAnimationStageDurations + "\":[";
+      for (size_t j = 0; j < stage.size(); ++j) {
+        if (j != 0) {
+          result += ',';
+        }
+        result += std::to_string(stage[j].duration_ms);
+      }
+      result += "]}";
+    }
+    result += "]}";
+    return result;
+  }
 };
+
+inline std::vector<AnimationStageEntries> MakeDefaultAnimationStages(
+    int32_t remove_duration_ms = kDefaultRemoveAnimationDurationMs,
+    int32_t move_duration_ms = kDefaultMoveAnimationDurationMs,
+    int32_t add_duration_ms = kDefaultAddAnimationDurationMs,
+    int32_t change_duration_ms = kDefaultChangeAnimationDurationMs) {
+  /*
+  stages: [
+    {animations: ['remove'], duration: 120},
+    {animations: ['move', 'change'], duration: 250},
+    {animations: ['add'], duration: 120},
+  ]
+   */
+  return {
+      {{ItemAnimationType::kDisappearance, remove_duration_ms}},
+      {{ItemAnimationType::kPersistence, move_duration_ms},
+       {ItemAnimationType::kChange, change_duration_ms}},
+      {{ItemAnimationType::kAppearance, add_duration_ms}},
+  };
+}
 
 // A geometric snapshot of an AnimationTarget at a particular layout stage.
 class ItemLayoutInfo {
@@ -81,13 +169,6 @@ class ItemAnimationRecord {
 
 using ItemAnimationRecordFlag = ItemAnimationRecord::Flag;
 
-enum class ItemAnimationType {
-  kAppearance,
-  kDisappearance,
-  kPersistence,
-  kChange,
-};
-
 enum class TransactionState {
   // The target snapshot from before the data update has been captured, but
   // layout has not started. An empty snapshot is also valid.
@@ -112,6 +193,8 @@ enum class AnimationCancelReason {
   // Used when disabling update animations cancels the active transaction.
   kAnimationDisabled,
   kManagerCleared,
+  // Used when changed animation stages cancel the active transaction.
+  kAnimationConfigChanged,
 };
 
 }  // namespace list

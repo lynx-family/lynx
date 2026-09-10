@@ -262,6 +262,11 @@ void ListAdapter::UpdateItemHolderToLatest(
   if (!list_children_helper) {
     return;
   }
+  // Notify the manager before updating children and item_holder_map_ to the
+  // latest data source. This lets it snapshot the previously attached targets
+  // and decide whether to retain, cancel, or create a transaction.
+  NotifyAnimationManagerBeforeDataUpdate();
+
   // Update anchor ref for removed on screen children.
   // Note: This logic should be invoked before latest diff info being updated to
   // all ItemHolders, so here UpdateAnchorRefItem() is invoked in the begin of
@@ -301,8 +306,12 @@ void ListAdapter::UpdateItemHolderToLatest(
       (*item_holder_map_)[item_key] = std::make_unique<ItemHolder>(
           new_index, item_key, list_animation_manager);
       item_holder = (*item_holder_map_)[item_key].get();
-      if (list_animation_manager->AnimationType() != ListAnimationType::kNone) {
-        item_holder->MarkInsertOpacity();
+      if (!list_container_->use_new_update_animation()) {
+        // TODO: Remove the legacy update-animation path.
+        if (list_animation_manager->AnimationType() !=
+            ListAnimationType::kNone) {
+          item_holder->MarkInsertOpacity();
+        }
       }
       OnItemHolderInserted(item_holder);
     }
@@ -326,6 +335,17 @@ void ListAdapter::UpdateItemHolderToLatest(
     }
   }
   CheckInValidItemHolder();
+}
+
+void ListAdapter::NotifyAnimationManagerBeforeDataUpdate() {
+  if (list_container_->use_new_update_animation()) {
+    // The adapter only reports the current diff, whether an animation is
+    // expected, and whether an initial layout has completed. AnimationManager
+    // decides whether to create, retain, or cancel a transaction.
+    list_container_->animation_manager()->BeforeDataUpdate(
+        adapter_helper_->HasValidDiff(), HasExpectedDiffAnimation(),
+        list_container_->has_completed_first_layout());
+  }
 }
 
 void ListAdapter::UpdateAnchorRefItem(
@@ -582,9 +602,15 @@ void ListAdapter::RecycleRemovedItemHolders() {
     const auto& item_holder = it->second.get();
     if (item_holder && IsRemoved(item_holder)) {
       RecycleItemHolder(item_holder);
-      if (list_animation_manager->UpdateAnimation() &&
-          list_animation_manager->AnimationType() != ListAnimationType::kNone) {
-        ++it;
+      if (!list_container_->use_new_update_animation()) {
+        // TODO: Remove the legacy update-animation path.
+        if (list_animation_manager->UpdateAnimation() &&
+            list_animation_manager->AnimationType() !=
+                ListAnimationType::kNone) {
+          ++it;
+        } else {
+          it = item_holder_map_->erase(it);
+        }
       } else {
         it = item_holder_map_->erase(it);
       }
@@ -653,17 +679,20 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
                    << "] ListAdapter::EnqueueElement: null item holder");
     return;
   }
-  if (auto type = list_container_->list_animation_manager()->AnimationType();
-      type != ListAnimationType::kNone) {
-    if (type == ListAnimationType::kRemove) {
-      item_holder->RecycleAfterAnimation(ItemHolderAnimationType::kOpacity);
-    } else if (type == ListAnimationType::kInsert) {
-      // The insert animation in a list may push a child off the screen, but at
-      // that moment we still need a transform animation, so deferred destroy is
-      // still necessary.
-      item_holder->RecycleAfterAnimation(ItemHolderAnimationType::kTransform);
+  if (!list_container_->use_new_update_animation()) {
+    // TODO: Remove the legacy update-animation path.
+    if (auto type = list_container_->list_animation_manager()->AnimationType();
+        type != ListAnimationType::kNone) {
+      if (type == ListAnimationType::kRemove) {
+        item_holder->RecycleAfterAnimation(ItemHolderAnimationType::kOpacity);
+      } else if (type == ListAnimationType::kInsert) {
+        // The insert animation in a list may push a child off the screen, but
+        // at that moment we still need a transform animation, so deferred
+        // destroy is still necessary.
+        item_holder->RecycleAfterAnimation(ItemHolderAnimationType::kTransform);
+      }
+      return;
     }
-    return;
   }
   ItemElementDelegate* list_item_delegate = GetItemElementDelegate(item_holder);
   if (list_item_delegate) {

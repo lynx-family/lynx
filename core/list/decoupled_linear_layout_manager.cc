@@ -172,7 +172,19 @@ void LinearLayoutManager::HandlePreloadIfNeeded(
 }
 
 void LinearLayoutManager::OnLayoutAfter(LayoutState& layout_state) {
+  if (list_container_->use_new_update_animation()) {
+    // Logical layout is complete, but this pass's regular layout patches have
+    // not been flushed. Capture POST state now and transfer ownership of
+    // removed holders before the normal recycling path runs.
+    list_container_->animation_manager()->AfterLayoutBeforeFlush();
+  }
   HandleLayoutOrScrollResult(layout_state, true);
+  if (list_container_->use_new_update_animation()) {
+    // The regular layout patches have been flushed. Start pending animations
+    // now; AnimationManager then flushes the initial updates accumulated while
+    // starting the batch.
+    list_container_->animation_manager()->AfterFlush();
+  }
   // Send layout events.
   // Note: Events has to be called after StopInterceptListElementUpdated to
   // avoid reenter in worklet
@@ -216,7 +228,7 @@ void LinearLayoutManager::HandleLayoutOrScrollResult(LayoutState& layout_state,
     }
     if (is_layout) {
       // 2. Recycle all removed child.
-      list_adapter->RecycleRemovedItemHolders();
+      RecycleRemovedItemHolders();
     }
     // 3. Update layout info to platform.
     list_children_helper_->ForEachChild(
@@ -421,14 +433,21 @@ void LinearLayoutManager::RecycleOffPreloadItemHolders(bool recycle_to_end,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LINEAR_LAYOUT_MANAGER_RECYCLE_PRELOAD_ITEM);
   if (target_index != kInvalidIndex) {
     list_children_helper_->ForEachChild(
-        [this, target_index, recycle_to_end](ItemHolder* item_holder) {
+        [this, target_index, recycle_to_end,
+         use_new_update_animation =
+             list_container_->use_new_update_animation()](
+            ItemHolder* item_holder) {
           if (item_holder) {
-            int index = item_holder->index();
-            if (recycle_to_end && index > target_index &&
+            const int index = item_holder->index();
+            const bool outside_preload_buffer =
+                recycle_to_end ? index > target_index : index < target_index;
+            if (outside_preload_buffer &&
+                // TODO: Temporarily gate ShouldRecycleItemHolder with
+                // use_new_update_animation. Remove this gate on the develop
+                // branch.
+                (!use_new_update_animation ||
+                 ShouldRecycleItemHolder(item_holder)) &&
                 ShouldRecycleStickyItemHolder(item_holder)) {
-              list_container_->list_adapter()->RecycleItemHolder(item_holder);
-            } else if (!recycle_to_end && index < target_index &&
-                       ShouldRecycleStickyItemHolder(item_holder)) {
               list_container_->list_adapter()->RecycleItemHolder(item_holder);
             }
           }
