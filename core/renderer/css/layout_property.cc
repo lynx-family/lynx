@@ -3,13 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/css/layout_property.h"
 
+#include <array>
+
 namespace lynx {
 namespace tasm {
 
 ConsumptionStatus LayoutProperty::ConsumptionTest(CSSPropertyID id) {
-  static const auto& kWantedProperty = []() -> const int(&)[kPropertyEnd] {
-    static int arr[kPropertyEnd];
-    std::fill(std::begin(arr), std::end(arr), ConsumptionStatus::SKIP);
+  static constexpr auto kWantedProperty = [] {
+    std::array<ConsumptionStatus, kPropertyEnd> arr{};
+    for (auto& status : arr) {
+      status = ConsumptionStatus::SKIP;
+    }
 
 #define DECLARE_WANTED_PROPERTY(name, type) arr[kPropertyID##name] = type;
     FOREACH_LAYOUT_PROPERTY(DECLARE_WANTED_PROPERTY)
@@ -18,7 +22,7 @@ ConsumptionStatus LayoutProperty::ConsumptionTest(CSSPropertyID id) {
     return arr;
   }();
 
-  return static_cast<ConsumptionStatus>(kWantedProperty[id]);
+  return kWantedProperty[id];
 }
 
 }  // namespace tasm
