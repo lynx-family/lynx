@@ -92,6 +92,7 @@ unittest_set("css_test_testset") {
     "css_utils_unittest.cc",
     "css_value_unittest.cc",
     "css_variable_handler_unittest.cc",
+    "layout_property_unittest.cc",
     "shared_css_fragment_unittest.cc",
     "transforms/transform_operations_helper_unittest.cc",
     "unit_handler_unittest.cc",
