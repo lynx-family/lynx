@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "lynx_jsvm_initializer",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}

@@ -4,13 +4,17 @@
 #include "core/runtime/js/jsi/jsvm/jsvm_creator.h"
 
 #include "core/runtime/js/jsi/jsvm/jsvm_util.h"
+#include "platform/harmony/lynx_jsvm_initializer/src/main/cpp/jsvm_initializer.h"
 
 namespace lynx {
 namespace runtime {
 namespace js {
 
 void InitializeJSVM(const JSVM_InitOptions* options) {
-  JSVM_CALL_NO_ENV(OH_JSVM_Init, options);
+  auto status = Lynx_JSVM_Common_Init(options);
+  if (status != JSVM_Status::JSVM_OK) {
+    LOGE("jsvm init failed status:" << status);
+  }
 }
 
 }  // namespace js

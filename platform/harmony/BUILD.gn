@@ -12,6 +12,7 @@ group("harmony") {
     "../../gfx/platform/harmony:lynx_gfx",
     "lynx_devtool",
     "lynx_harmony",
+    "lynx_jsvm_initializer",
     "lynx_services/lynx_image_service",
     "lynx_xelement/markdown:xelement_markdown",
   ]
