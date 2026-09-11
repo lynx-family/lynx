@@ -21,12 +21,13 @@ namespace tasm {
 class UIDelegateDarwin : public UIDelegate {
  public:
   UIDelegateDarwin(LynxUIOwner* ui_owner, LynxComponentScopeRegistry* component_registry,
-                   bool use_native_painting_context, void* textra,
+                   bool use_native_painting_context, void* textra, bool enable_create_ui_async,
                    LynxShadowNodeOwner* shadow_node_owner)
       : ui_owner_(ui_owner),
         component_registry_(component_registry),
         use_native_painting_context_(use_native_painting_context),
         textra_(textra),
+        enable_create_ui_async_(enable_create_ui_async),
         shadow_node_owner_(shadow_node_owner) {}
   ~UIDelegateDarwin() override = default;
 
@@ -56,6 +57,7 @@ class UIDelegateDarwin : public UIDelegate {
   __strong LynxComponentScopeRegistry* component_registry_;
   bool use_native_painting_context_;
   void* textra_{nullptr};
+  bool enable_create_ui_async_;
   __weak LynxShadowNodeOwner* shadow_node_owner_;
   std::shared_ptr<shell::LynxLayoutProxy> layout_proxy_;
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_;

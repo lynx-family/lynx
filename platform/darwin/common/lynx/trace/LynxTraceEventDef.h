@@ -24,6 +24,7 @@ static NSString* const RESOURCE_MODULE_REQUEST_PREFETCH = @"requestResourcePrefe
 
 static NSString* const UI_OWNER_INSERT_NODE = @"UIOwner.insertNode.";
 static NSString* const UI_OWNER_CREATE_VIEW = @"UIOwner.createView.";
+static NSString* const UI_OWNER_CREATE_VIEW_ASYNC = @"UIOwner.createViewAsync.";
 static NSString* const UI_OWNER_UPDATE_PROPS = @"UIOwner.updateProps.";
 static NSString* const UI_OWNER_REMOVE_RECURSIVELY = @"UIOwner.removeRecursively.";
 static NSString* const UI_OWNER_REMOVE = @"UIOwner.remove.";

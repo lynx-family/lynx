@@ -35,6 +35,9 @@ typedef struct LynxExternalMemorySnapshot {
                   props:(NSDictionary*)props
          supportedState:(TagSupportedState*)state;
 
+// Given a specific tagName, return whether the class can be created on background thread.
+- (BOOL)needCreateUIAsync:(NSString*)tagName;
+
 // Given a specific tagName, return whether the corresponding platform node need direction related
 // prop
 - (BOOL)needProcessDirection:(NSString*)tagName;
@@ -45,7 +48,8 @@ typedef struct LynxExternalMemorySnapshot {
               supportedState:(TagSupportedState)state
                 onMainThread:(BOOL)onMainThread;
 
-// Create LynxUI for a resolved class on the main thread.
+// Synchronously create LynxUI, once this method is verified as stable, will replace the current
+// createUIWithSign method with this method.
 - (void)createUISyncWithSign:(NSInteger)sign
                      tagName:(NSString*)tagName
                        clazz:(Class)clazz
@@ -55,6 +59,19 @@ typedef struct LynxExternalMemorySnapshot {
                        props:(NSDictionary*)props
                    nodeIndex:(uint32_t)nodeIndex
           gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet;
+
+// Asynchronously create LynxUI, returning a block. All methods that must be executed on the main
+// thread will be encapsulated in this block, including creating the View, recording LynxUI, etc.
+// The PaintingContext can Enqueue the return block.
+- (LynxUI*)createUIAsyncWithSign:(NSInteger)sign
+                         tagName:(NSString*)tagName
+                           clazz:(Class)clazz
+                  supportedState:(TagSupportedState)state
+                        eventSet:(NSSet<NSString*>*)eventSet
+                   lepusEventSet:(NSSet<NSString*>*)lepusEventSet
+                           props:(NSDictionary*)props
+                       nodeIndex:(uint32_t)nodeIndex
+              gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet;
 
 - (void)processUIOnMainThread:(LynxUI*)ui
                      withSign:(NSInteger)sign

@@ -1313,6 +1313,12 @@ inline constexpr const char* const
 
 inline constexpr const char* const UI_OPERATION_QUEUE_LIST_REUSE_PAINTING_NODE =
     "UIOperationQueue::ListReusePaintingNodeTask";
+inline constexpr const char* const
+    UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_ASYNC =
+        "UIOperationQueue::CreatePaintingNodeAsyncTask";
+inline constexpr const char* const
+    UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_SYNC =
+        "UIOperationQueue::CreatePaintingNodeSyncTask";
 inline constexpr const char* const UI_OPERATION_QUEUE_UPDATE_LAYOUT_TASK =
     "UIOperationQueue::UpdateLayoutTask";
 inline constexpr const char* const DUMP_UI_TREE_LAYOUT = "DumpUITreeLayout";

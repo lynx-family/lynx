@@ -70,10 +70,12 @@ class PaintingContextDarwinRef : public PaintingCtxPlatformRef {
 
 class PaintingContextDarwin : public PaintingCtxPlatformImpl {
  public:
-  explicit PaintingContextDarwin(LynxUIOwner* owner, void* textra = nullptr);
+  PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async,
+                        void* textra_ = nullptr);
   ~PaintingContextDarwin() override;
   virtual void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override;
+  void SetInstanceId(const int32_t instance_id) override;
   void CreatePaintingNode(int sign, const std::string& tag,
                           const fml::RefPtr<PropBundle>& painting_data,
                           bool flatten, bool create_node_async,
@@ -147,8 +149,11 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
 
  private:
   __weak LynxUIOwner* uiOwner_;
+  bool enable_create_ui_async_{false};
 
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
+
+  int32_t instance_id_ = 0;
 
   shell::UIOperation CreateInvokeUIMethodOperation(
       int64_t element_id, std::string method, lepus::Value lepus_params,

@@ -20,12 +20,16 @@
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/utils/ios/text_utils_ios.h"
 #include "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
+#include "core/services/feature_count/feature.h"
+#include "core/services/feature_count/global_feature_counter.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #import <Lynx/AbsLynxUIScroller.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContext.h>
+#import <Lynx/LynxEnv+Internal.h>
+#import <Lynx/LynxEnv.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxLog.h>
@@ -39,9 +43,11 @@
 #import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
+#import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUIOwner+Private.h>
 #import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIView.h>
 #import <Lynx/UIDevice+Lynx.h>
 #import "LynxCallStackUtil.h"
 #import "LynxTimingConstants.h"
@@ -282,6 +288,14 @@ void PaintingContextDarwin::SetUIOperationQueue(
   queue_ = std::static_pointer_cast<shell::DynamicUIOperationQueue>(queue);
 }
 
+void PaintingContextDarwin::SetInstanceId(const int32_t instance_id) {
+  instance_id_ = instance_id;
+  if (enable_create_ui_async_) {
+    report::GlobalFeatureCounter::Count(report::LynxFeature::CPP_ENABLE_CREATE_UI_ASYNC,
+                                        instance_id_);
+  }
+};
+
 std::unique_ptr<pub::Value> PaintingContextDarwin::GetTextInfo(const std::string& content,
                                                                const pub::Value& info) {
   return TextUtilsDarwinHelper::GetTextInfo(content, info);
@@ -300,7 +314,9 @@ void PaintingContextDarwin::ResumeExposure() {
   Enqueue([uiOwner]() { [uiOwner.uiContext resumeExposure]; });
 }
 
-PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, void* textra) : uiOwner_(owner) {
+PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async,
+                                             void* textra)
+    : uiOwner_(owner), enable_create_ui_async_(enable_create_ui_async) {
   platform_ref_ = std::make_shared<PaintingContextDarwinRef>(owner);
   if (textra != 0) {
     text_layout_impl_ = std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(textra));
@@ -314,13 +330,76 @@ PaintingContextDarwin::~PaintingContextDarwin() {}
 
 void PaintingContextDarwin::CreatePaintingNode(int sign, const std::string& tag,
                                                const fml::RefPtr<PropBundle>& painting_data,
-                                               bool flatten, bool /*create_node_async*/,
+                                               bool flatten, bool create_node_async,
                                                uint32_t node_index) {
   PropBundleDarwin* pda = static_cast<PropBundleDarwin*>(painting_data.get());
   NSString* tagName = [[NSString alloc] initWithUTF8String:tag.c_str()];
   // TODO(renzhongyue): Remove copy, we now own the shared_ptr of prop bundle here.
   NSDictionary* props = pda->dictionary();
   __weak LynxUIOwner* uiOwner = uiOwner_;
+
+  // When enable_create_ui_async_, use createUIAsyncWithSign and createUISyncWithSign to create ui,
+  // rather than use createUIWithSign. One enable_create_ui_async_ is verified to be stable, we will
+  // remove createUIWithSign and default use createUIAsyncWithSign and createUISyncWithSign.
+  if (enable_create_ui_async_) {
+    TagSupportedState state;
+    Class clazz = [uiOwner_ getTargetClass:tagName props:props supportedState:&state];
+
+    if (create_node_async) {
+      // Async create ui if the class is LynxUIView or LynxUIImage.
+      std::promise<LynxUI*> promise;
+      std::future<LynxUI*> future = promise.get_future();
+
+      auto async_task = fml::MakeRefCounted<base::OnceTask<LynxUI*>>(
+          [uiOwner, sign, tagName, clazz, state, eventSet = pda->event_set(),
+           lepusEventSet = pda->lepus_event_set(), props, node_index,
+           gestureDetectorSet = pda->gesture_detector_set(),
+           promise = std::move(promise)]() mutable {
+            @autoreleasepool {
+              LynxUI* ui = [uiOwner createUIAsyncWithSign:sign
+                                                  tagName:tagName
+                                                    clazz:clazz
+                                           supportedState:state
+                                                 eventSet:eventSet
+                                            lepusEventSet:lepusEventSet
+                                                    props:props
+                                                nodeIndex:node_index
+                                       gestureDetectorSet:gestureDetectorSet];
+              promise.set_value(ui);
+            }
+          },
+          std::move(future));
+
+      base::TaskRunnerManufactor::PostTaskToConcurrentLoop([async_task]() { async_task->Run(); },
+                                                           base::ConcurrentTaskType::HIGH_PRIORITY);
+      Enqueue([async_task, uiOwner, sign, tagName, props]() {
+        TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_ASYNC);
+
+        async_task->Run();
+        LynxUI* ui = async_task->GetFuture().get();
+        ui.view = [ui createView];
+        [uiOwner processUIOnMainThread:ui withSign:sign tagName:tagName props:props];
+      });
+    } else {
+      // Sync create ui if the class does not support async creating.
+      Enqueue([uiOwner, sign, tagName, clazz, state, eventSet = pda->event_set(),
+               lepusEventSet = pda->lepus_event_set(), props, node_index,
+               gestureDetectorSet = pda->gesture_detector_set()]() {
+        TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_CREATE_PAINTING_NODE_SYNC);
+
+        [uiOwner createUISyncWithSign:sign
+                              tagName:tagName
+                                clazz:clazz
+                       supportedState:state
+                             eventSet:eventSet
+                        lepusEventSet:lepusEventSet
+                                props:props
+                            nodeIndex:node_index
+                   gestureDetectorSet:gestureDetectorSet];
+      });
+    }
+    return;
+  }
 
   Enqueue([uiOwner, sign, tagName, eventSet = pda->event_set(),
            lepusEventSet = pda->lepus_event_set(), props, node_index,
@@ -578,10 +657,10 @@ void PaintingContextDarwin::ConsumeGesture(int64_t idx, int32_t gesture_id,
 /**
  * @param tag_name  tag name of the node to be queried
  * @return 32bit integer value representing data object related to tag name including layout node
- *     type and whether direction processing is needed.
+ *     type and whether need to create node on a background thread.
  * Each data object value will adhere to the following layout:
  * Lower 16 bits represents layout node type
- * 17th bit is always zero because UI creation is synchronous
+ * 17th bit represents whether node with tag name support async creation
  * 18th bit represents whether node with tag name need text align value
  */
 int32_t PaintingContextDarwin::GetTagInfo(const std::string& tag_name) {
@@ -594,8 +673,10 @@ int32_t PaintingContextDarwin::GetTagInfo(const std::string& tag_name) {
     return (layout_node_type & 0xFFFF);
   }
 
+  bool create_ui_async = (enable_create_ui_async_ && [uiOwner_ needCreateUIAsync:tagName] == YES);
   bool need_process_direction = [uiOwner_ needProcessDirection:tagName] == YES;
-  return ((need_process_direction ? 1 : 0) << 17 | (layout_node_type & 0xFFFF));
+  return ((need_process_direction ? 1 : 0) << 17 | (create_ui_async ? 1 : 0) << 16 |
+          (layout_node_type & 0xFFFF));
 }
 
 bool PaintingContextDarwin::IsFlatten(base::MoveOnlyClosure<bool, bool> func) {
