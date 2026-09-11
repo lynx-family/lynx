@@ -6,6 +6,7 @@ import { assertType, expectTypeOf } from 'vitest';
 import {
   IntrinsicElements,
   BaseTouchEvent,
+  BasePointerEvent,
   BaseMouseEvent,
   BaseWheelEvent,
   BaseKeyEvent,
@@ -303,6 +304,13 @@ function noop() {}
       assertType<number>(e.detail.x);
       assertType<number>(e.detail.y);
     }}
+  />;
+
+  <view
+    bindpointerdown={(e) => assertType<BasePointerEvent<Target>>(e)}
+    bindpointermove={(e) => assertType<BasePointerEvent<Target>>(e)}
+    bindpointerup={(e) => assertType<BasePointerEvent<Target>>(e)}
+    bindpointercancel={(e) => assertType<BasePointerEvent<Target>>(e)}
   />;
 
   // Tap events

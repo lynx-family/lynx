@@ -187,6 +187,7 @@ if (enable_unittests) {
       "event/focus_isolate_unittests.cc",
       "event/focus_manager_unittests.cc",
       "event/gesture_event_unittests.cc",
+      "event/pointer_data_to_event_unittests.cc",
       "gesture/gesture_manager_unittests.cc",
       "gesture/mouse_region_manager_unittests.cc",
       "gesture/velocity_tracker_unittests.cc",

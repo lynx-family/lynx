@@ -256,6 +256,51 @@ void LynxEventDispatcher::OnMouseEvent(const std::string& event_name,
   engine_proxy_->SendBubbleEvent(event_name, view_id, params);
 }
 
+#if defined(OS_WIN) || defined(OS_MAC)
+void LynxEventDispatcher::OnPointerEvent(
+    const std::string& event_name, int view_id, int pointer_id,
+    ClayPointerDeviceKind device_kind, bool is_primary, int button, int buttons,
+    float width, float height, float pressure, float x, float y, float page_x,
+    float page_y, int64_t timestamp, int related_target_sign) {
+  if (!engine_proxy_) {
+    return;
+  }
+
+  const char* pointer_type = "touch";
+  if (device_kind == kClayPointerDeviceKindMouse ||
+      device_kind == kClayPointerDeviceKindTrackpad) {
+    pointer_type = "mouse";
+  } else if (device_kind == kClayPointerDeviceKindStylus) {
+    pointer_type = "pen";
+  }
+
+  clay::Value::Map params_map;
+  params_map["type"] = clay::Value(event_name);
+  params_map["pointerId"] = clay::Value(pointer_id);
+  params_map["pointerType"] = clay::Value(pointer_type);
+  params_map["isPrimary"] = clay::Value(is_primary);
+  params_map["button"] = clay::Value(button);
+  params_map["buttons"] = clay::Value(buttons);
+  params_map["width"] = clay::Value(width);
+  params_map["height"] = clay::Value(height);
+  params_map["pressure"] = clay::Value(pressure);
+  params_map["timestamp"] = clay::Value(timestamp);
+  params_map["__lynxRelatedTargetSign"] = clay::Value(related_target_sign);
+
+  const float density = engine_proxy_->GetDensity();
+  params_map["x"] = clay::Value(x / density);
+  params_map["y"] = clay::Value(y / density);
+  params_map["pageX"] = clay::Value(page_x / density);
+  params_map["pageY"] = clay::Value(page_y / density);
+  params_map["clientX"] = clay::Value(page_x / density);
+  params_map["clientY"] = clay::Value(page_y / density);
+  AddKeyModifierProperties(params_map);
+
+  auto params = lynx::ClayValue(clay::Value(std::move(params_map)));
+  engine_proxy_->SendBubbleEvent(event_name, view_id, params);
+}
+#endif
+
 void LynxEventDispatcher::OnWheelEvent(const std::string& event_name,
                                        int view_id, float x, float y,
                                        float page_x, float page_y,
