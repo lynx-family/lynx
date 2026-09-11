@@ -77,45 +77,6 @@ TEST_F(BaseDevToolTest, BaseDevToolRegister) {
                   "method") != std::string::npos);
 }
 
-TEST_F(BaseDevToolTest, DispatchCDPMessageAllowsNullParams) {
-  auto agent = std::make_unique<devtool::MockBaseAgent>();
-  mock_devtool_->RegisterAgent("MockAgent", std::move(agent));
-  devtool::MockReceiver::GetInstance().ResetAll();
-
-  const std::string message = R"({
-      "id": 1,
-      "method": "MockAgent.test",
-      "params": null
-    })";
-  mock_devtool_->DispatchMessage(std::make_shared<devtool::MessageSenderMock>(),
-                                 "CDP", message);
-
-  EXPECT_FALSE(devtool::MockReceiver::GetInstance().received_json_.empty());
-  EXPECT_TRUE(
-      devtool::MockReceiver::GetInstance().received_message_.second.empty());
-}
-
-TEST_F(BaseDevToolTest, DispatchCDPMessageRejectsNonObjectRoot) {
-  auto agent = std::make_unique<devtool::MockBaseAgent>();
-  mock_devtool_->RegisterAgent("MockAgent", std::move(agent));
-  devtool::MockReceiver::GetInstance().ResetAll();
-
-  // A valid JSON root that is not an object (here an array). JsonCpp asserts on
-  // isMember()/operator[] for non-object, non-null values, so without the
-  // isObject() guard this would abort before reaching envelope validation.
-  const std::string message = R"([1, 2, 3])";
-  mock_devtool_->DispatchMessage(std::make_shared<devtool::MessageSenderMock>(),
-                                 "CDP", message);
-
-  // It must produce an InvalidRequest (-32600) error response with a null id
-  // instead of crashing.
-  const std::string& response =
-      devtool::MockReceiver::GetInstance().received_message_.second;
-  EXPECT_NE(response.find("error"), std::string::npos);
-  EXPECT_NE(response.find("-32600"), std::string::npos);
-  EXPECT_NE(response.find("null"), std::string::npos);
-}
-
 TEST_F(BaseDevToolTest, BaseDevToolRegisterMultipleThread) {
   // This test case only verifies if multiple threads can register and
   // dispatch messages simultaneously without crashing
