@@ -115,8 +115,10 @@ export abstract class BaseApp<
     this.initWithReusedApp(options, otherApp);
     this.addInternalEventListeners();
 
-    nativeGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId] &&
-      nativeGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId](this.lynx);
+    // Use the current page globalThis injected by native to reach runtime hooks.
+    const currentGlobal = this._params?.currentGlobalThis ?? nativeGlobal;
+    currentGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId] &&
+      currentGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId](this.lynx);
   }
 
   private initWithReusedApp(

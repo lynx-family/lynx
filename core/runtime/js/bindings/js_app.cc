@@ -2145,6 +2145,9 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
           bundle_module_mode ==
               tasm::PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE) &&
       params.setProperty(*rt, "srcName", url) &&
+      // Pass the current page globalThis so corejs can reach runtime hooks.
+      params.setProperty(*rt, runtime::kCurrentGlobalThis,
+                         Value(*rt, rt->global())) &&
       params.setProperty(*rt, "pageConfigSubset", page_config_subset);
   if (!is_successful) {
     HandleLoadAppFailed("LoadApp fail: setProperty fail!");

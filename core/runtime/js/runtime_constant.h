@@ -20,6 +20,9 @@ constexpr const char kDynamicComponentJSPrefix[] = "dynamic-component/";
 // will start with `kLynxTemplateAssetsScheme`.
 constexpr const char kLynxTemplateAssetsScheme[] = "lynx";
 
+// Key on loadCard params carrying the current page globalThis.
+constexpr const char kCurrentGlobalThis[] = "currentGlobalThis";
+
 constexpr const char kMessageEventTypeNotifyGlobalPropsUpdated[] =
     "__NotifyGlobalPropsUpdated";
 

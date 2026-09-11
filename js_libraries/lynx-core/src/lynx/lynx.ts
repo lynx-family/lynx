@@ -564,7 +564,10 @@ export class Lynx {
   };
 
   getModuleLoader = (): LynxModuleLoader => {
-    return nativeGlobal['napiLoaderOnRT' + this.getApp().nativeAppId];
+    // Read the runtime loader from the current page globalThis.
+    const app = this.getApp();
+    const currentGlobal = app.params?.currentGlobalThis ?? nativeGlobal;
+    return currentGlobal['napiLoaderOnRT' + app.nativeAppId];
   };
 
   createAnimation = (
