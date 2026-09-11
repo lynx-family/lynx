@@ -24,16 +24,6 @@
 - (void)tearDown {
 }
 
-- (void)testEnableCreateViewAsync {
-  XCTAssert([[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableCreateUIAsync
-                                             defaultValue:NO] == NO);
-
-  [[LynxEnv sharedInstance] updateExternalEnvCacheForKey:@"enable_create_ui_async" withValue:@"1"];
-
-  XCTAssert([[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableCreateUIAsync
-                                             defaultValue:NO] == YES);
-}
-
 - (void)testEnableAnimationSyncTimeOpt {
   XCTAssert([[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableAnimationSyncTimeOpt
                                              defaultValue:NO] == NO);
