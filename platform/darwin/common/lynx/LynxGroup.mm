@@ -58,6 +58,7 @@ static NSString *sSingleGroupTag = @"-1";
   int _numberId;
   NSMutableArray<LynxView *> *_viewList;
   bool _enableJSGroupThread;
+  bool _enableNewShareGroup;
 }
 
 + (nonnull NSString *)singleGroupTag {
@@ -91,6 +92,7 @@ static NSString *sSingleGroupTag = @"-1";
           [[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableJSGroupThreadByDefault
                                            defaultValue:NO];
     }
+    _enableNewShareGroup = option.enableNewShareGroup;
     _config = option.config;
   }
   return self;
@@ -102,6 +104,14 @@ static NSString *sSingleGroupTag = @"-1";
 
 - (bool)enableJSGroupThread {
   return _enableJSGroupThread;
+}
+
+- (bool)enableNewShareGroup {
+  return _enableNewShareGroup;
+}
+
+- (void)setEnableNewShareGroup:(bool)enable {
+  _enableNewShareGroup = enable;
 }
 
 + (NSString *)groupNameForLynxGroupOrDefault:(LynxGroup *)group {

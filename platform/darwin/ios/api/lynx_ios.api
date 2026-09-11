@@ -2195,6 +2195,8 @@ public class LynxGroup : NSObject {
   public nonnull instancetype LynxGroup::initWithName:withLynxGroupOption:(nonnull NSString *name,[withLynxGroupOption] nullable LynxGroupOption *option);
   public void LynxGroup::addLynxView:(nonnull LynxView *view);
   public bool LynxGroup::enableJSGroupThread();
+  public bool LynxGroup::enableNewShareGroup();
+  public void LynxGroup::setEnableNewShareGroup:(bool enable);
   public nullable NSString * LynxGroup::getStringConfig:(nonnull NSString *key);
   public BOOL LynxGroup::getBoolConfig:(nonnull NSString *key);
 }
@@ -2202,6 +2204,7 @@ public class LynxGroup : NSObject {
 public class LynxGroupOption : NSObject {
   public NSArray* LynxGroupOption::preloadJSPaths preloadJSPaths;
   public bool LynxGroupOption::enableJSGroupThread enableJSGroupThread;
+  public bool LynxGroupOption::enableNewShareGroup enableNewShareGroup;
   public void LynxGroupOption::setStringConfig:forKey:(nonnull NSString *value,[forKey] nonnull NSString *key);
   public void LynxGroupOption::setBoolConfig:forKey:(BOOL value,[forKey] nonnull NSString *key);
 }

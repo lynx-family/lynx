@@ -15,6 +15,10 @@ export class LynxGroup {
   public enableHarmonyJSVM: boolean = false;
   public enableJSGroupThread: boolean = false;
   public jsGroupThreadName?: string = undefined;
+  // Whether pages in this group use the new "shared Isolate/VM + per-page isolated Context"
+  // scheme instead of the legacy cross-page shared Context. Only takes effect for shared groups
+  // (id != SINGLE_GROUP). Defaults to false to keep existing behavior.
+  public enableNewShareGroup: boolean = false;
   private id: string;
   private whiteBoard: lynx.LynxWhiteBoard | undefined = undefined;
 
@@ -37,6 +41,7 @@ export class LynxGroup {
       group.enableHarmonyJSVM = other.enableHarmonyJSVM;
       group.enableJSGroupThread = other.enableJSGroupThread;
       group.jsGroupThreadName = other.jsGroupThreadName;
+      group.enableNewShareGroup = other.enableNewShareGroup;
       group.whiteBoard = other.whiteBoard;
     }
     return group;

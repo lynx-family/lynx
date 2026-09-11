@@ -5930,7 +5930,9 @@ public class com::lynx::tasm::LynxGroup :  {
   public String com.lynx.tasm.LynxGroup.getJSGroupThreadName();
   public String com.lynx.tasm.LynxGroup.getJSGroupThreadNameOrDefault();
   public void com.lynx.tasm.LynxGroup.setEnableJSGroupThread(boolean enable);
+  public void com.lynx.tasm.LynxGroup.setEnableNewShareGroup(boolean enable);
   public boolean com.lynx.tasm.LynxGroup.enableV8();
+  public boolean com.lynx.tasm.LynxGroup.enableNewShareGroup();
   public String com.lynx.tasm.LynxGroup.getStringConfig(String key);
   public boolean com.lynx.tasm.LynxGroup.getBoolConfig(String key);
   public void com.lynx.tasm.LynxGroup.destroy();
@@ -5946,6 +5948,7 @@ public class com::lynx::tasm::LynxGroup::LynxGroupBuilder :  {
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setJSGroupThreadName(@Nullable String jsGroupThreadName);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setEnableWhiteBoard(boolean enableWhiteBoard);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setEnableV8(boolean enableV8);
+  public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setEnableNewShareGroup(boolean enableNewShareGroup);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setStringConfig(String key, String value);
   public LynxGroupBuilder com.lynx.tasm.LynxGroup.LynxGroupBuilder.setBoolConfig(String key, boolean value);
   public LynxGroup com.lynx.tasm.LynxGroup.LynxGroupBuilder.build();
