@@ -1219,6 +1219,48 @@ TEST_F(CSSPatchingTest, AdoptedStylesheets_BasicIntegration) {
   SUCCEED();
 }
 
+TEST_F(CSSPatchingTest,
+       AdoptedStylesheets_EnableSelectorWithoutIntrinsicStylesheet) {
+  auto fiber_element =
+      fml::AdoptRef<Element>(new Element(manager.get(), "view"));
+  auto* attribute_holder = fiber_element->data_model();
+  attribute_holder->set_tag("view");
+  attribute_holder->SetClass("adopted-only");
+
+  CSSParserConfigs configs;
+  auto adopted_fragment = std::make_unique<MockCSSFragment>();
+  adopted_fragment->SetEnableCSSSelector(true);
+
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+  tokens->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+      CSSValue(lepus::Value(24.0), CSSValuePattern::PX);
+
+  auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+  selector[0].SetMatch(css::LynxCSSSelector::kClass);
+  selector[0].SetValue("adopted-only");
+  selector[0].SetLastInTagHistory(true);
+  selector[0].SetLastInSelectorList(true);
+  adopted_fragment->AddStyleRule(std::move(selector), tokens);
+
+  auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  wrapper->fragment_ = std::move(adopted_fragment);
+  manager->AdoptStyleSheet(wrapper);
+
+  CSSFragmentDecorator decorator(nullptr, manager.get());
+  EXPECT_TRUE(decorator.enable_css_selector());
+
+  StyleMap result;
+  CSSVariableMap changed_css_vars;
+  fiber_element->style_resolver_.ResolveStyle(result, &decorator,
+                                              &changed_css_vars);
+
+  ExpectPxStyle(result, CSSPropertyID::kPropertyIDFontSize, 24.0);
+
+  manager->ClearAdoptedStyleSheets();
+  EXPECT_FALSE(decorator.enable_css_selector());
+}
+
 TEST_F(CSSPatchingTest, AdoptedStylesheets_EmptyList) {
   auto fiber_element =
       fml::AdoptRef<Element>(new Element(manager.get(), "view"));
