@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
 namespace lynx::tasm {
 
@@ -18,6 +19,16 @@ NativePaintingCtxPlatformHarmonyRef::NativePaintingCtxPlatformHarmonyRef(
 
 NativePaintingCtxPlatformHarmonyRef::~NativePaintingCtxPlatformHarmonyRef() {
   Destroy();
+}
+
+void NativePaintingCtxPlatformHarmonyRef::SetNeedMarkPaintEndTiming(
+    const tasm::PipelineID& pipeline_id) {
+  if (auto renderer_context = renderer_context_.lock()) {
+    auto* ui_owner = renderer_context->GetUIOwner();
+    if (ui_owner != nullptr) {
+      ui_owner->PostDrawEndTimingFrameCallback(pipeline_id);
+    }
+  }
 }
 
 void NativePaintingCtxPlatformHarmonyRef::DestroyImageOnPlatformThread(
