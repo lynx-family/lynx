@@ -36,6 +36,7 @@ class Config:
         bind_member_to: str,
         read_settings: bool,
         read_native: bool,
+        type_package_since: str,
         export: bool,
     ):
         self.name = name
@@ -127,6 +128,7 @@ class Config:
         self.codeGen = code_gen if code_gen is not None else ["ALL"]
         self.read_settings = read_settings
         self.read_native = read_native
+        self.type_package_since = type_package_since
         self.export = export
 
     def is_invalid(self):
