@@ -23,7 +23,8 @@ class Global : public HostGlobal {
 
   void Init(base::UnsafeOwningPtr<Runtime>& js_runtime_,
             std::shared_ptr<ConsoleMessagePostMan>& post_man,
-            const tasm::PageOptions& page_options) override;
+            const tasm::PageOptions& page_options,
+            bool install_shared_host_objects) override;
   void Release() override;
   void EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
                      const tasm::PageOptions& page_options);

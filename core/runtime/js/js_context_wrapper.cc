@@ -17,6 +17,48 @@
 namespace lynx {
 namespace runtime {
 
+namespace {
+
+// The corejs-exported globals that a page context needs. lynx_core.js is only
+// executed on the group's global context; each page context copies references
+// to these entries instead of re-running corejs. Keep this list curated to the
+// values corejs statically assigns onto `nativeGlobal`/globalThis (see
+// lynx-core index.card.ts / nativeGlobal.ts) plus the native-installed shared
+// host objects. Page-level stateful objects reached through the per-page `app`
+// object (publishEvent / callFunction / onAppReload ...) are intentionally
+// excluded: they live on the app object created by loadCard, not on globalThis.
+constexpr const char* kNewShareGroupCoreJSExports[] = {
+    // corejs functions statically installed on nativeGlobal (index.card.ts).
+    "loadCard",
+    "destroyCard",
+    "callDestroyLifetimeFun",
+    "loadDynamicComponent",
+    "__createEventEmitter",
+    "__lynxArrayBufferToBase64",
+    "__lynxBase64ToArrayBuffer",
+    "LynxSDKCore",
+    // Web-ish polyfills installed on nativeGlobal (index.card.ts).
+    "Headers",
+    "AbortController",
+    "AbortSignal",
+    "URL",
+    "URLSearchParams",
+    // Flag corejs installs on globalThis (nativeGlobal.ts); the app-service.js
+    // bundle wrapper reads it from its own realm's globalThis to decide whether
+    // to return an `init` factory.
+    "bundleSupportLoadScript",
+    // Stateless shared host objects. The page context skips creating them
+    // (Global::Init install_shared_host_objects=false) and instead references
+    // the single instances installed on the group's global context. All page
+    // runtimes share the same VM/Isolate, so referencing the same JS values
+    // across contexts is safe.
+    "SystemInfo",
+    "LynxJSBI",
+    "TextCodecHelper",
+};
+
+}  // namespace
+
 JSContextWrapper::JSContextWrapper(
     std::shared_ptr<runtime::js::JSIContext> context)
     : js_context_(context),
@@ -124,7 +166,8 @@ void SharedJSContextWrapper::initGlobal(
   }
   std::shared_ptr<runtime::js::SharedContextGlobal> global =
       std::make_shared<runtime::js::SharedContextGlobal>();
-  global->Init(rt, post_man, page_options);
+  global->Init(rt, post_man, page_options,
+               /*install_shared_host_objects=*/true);
   global_inited_ = true;
   global_ = global;
 }
@@ -203,9 +246,147 @@ void NoneSharedJSContextWrapper::initGlobal(
   }
   std::shared_ptr<runtime::js::SingleGlobal> global =
       std::make_shared<runtime::js::SingleGlobal>();
-  global->Init(js_runtime, post_man, page_options);
+  global->Init(js_runtime, post_man, page_options,
+               /*install_shared_host_objects=*/true);
   global_inited_ = true;
   global_ = global;
+}
+
+// -------- New "shared Isolate/VM + per-page isolated Context" scheme --------
+
+NewShareGroupGlobalContextWrapper::NewShareGroupGlobalContextWrapper(
+    std::shared_ptr<runtime::js::JSIContext> context,
+    const std::string& group_id)
+    : JSContextWrapper(context), group_id_(group_id) {}
+
+NewShareGroupGlobalContextWrapper::~NewShareGroupGlobalContextWrapper() {
+#if ENABLE_TRACE_PERFETTO
+  profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
+      runtime_profiler_);
+  runtime_profiler_ = nullptr;
+#endif
+}
+
+void NewShareGroupGlobalContextWrapper::EnsureCoreJSLoaded(
+    runtime::js::Runtime& js_runtime,
+    std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+        js_preload) {
+  auto* global_runtime = GetGlobalRuntime();
+  if (global_runtime == nullptr) {
+    return;
+  }
+  JSContextWrapper::EnsureCoreJSLoaded(*global_runtime, js_preload);
+  CopyGlobalsTo(js_runtime);
+}
+
+void NewShareGroupGlobalContextWrapper::CopyGlobalsTo(
+    runtime::js::Runtime& page_runtime) {
+  auto* global_runtime = GetGlobalRuntime();
+  if (global_runtime == nullptr) {
+    return;
+  }
+  runtime::js::Scope global_scope(*global_runtime);
+  runtime::js::Object global_obj = global_runtime->global();
+  runtime::js::Scope page_scope(page_runtime);
+  runtime::js::Object page_obj = page_runtime.global();
+  size_t copied = 0;
+  for (const char* name : kNewShareGroupCoreJSExports) {
+    auto value = global_obj.getProperty(*global_runtime, name);
+    if (!value || value->isUndefined() || value->isNull()) {
+      continue;
+    }
+    if (page_obj.setProperty(page_runtime, name, std::move(*value))) {
+      ++copied;
+    }
+  }
+  LOGI("new_share_group: copy globals group:"
+       << group_id_ << " copied:" << copied << "/"
+       << (sizeof(kNewShareGroupCoreJSExports) /
+           sizeof(kNewShareGroupCoreJSExports[0])));
+}
+
+void NewShareGroupGlobalContextWrapper::EnsureConsole(
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
+  if (isGlobalInited() && global_) {
+    global_->EnsureConsole(post_man, page_options);
+  }
+}
+
+void NewShareGroupGlobalContextWrapper::initGlobal(
+    base::UnsafeOwningPtr<runtime::js::Runtime>& rt,
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
+  if (global_inited_) {
+    return;
+  }
+  // The global context installs the full set of shared host objects so page
+  // contexts can copy them by reference. It uses a SingleGlobal (weak observer)
+  // because ownership of the runtime is held by this wrapper below, not by the
+  // Global.
+  auto global = base::MakeUnsafeOwning<runtime::js::SingleGlobal>();
+  global->Init(rt, post_man, page_options,
+               /*install_shared_host_objects=*/true);
+  // Keep a strong owning reference to the global runtime so the shared VM and
+  // global context outlive every page in the group. SingleGlobal only keeps a
+  // weak observer, so moving `rt` here does not disturb it.
+  owned_global_runtime_ = std::move(rt);
+  global_inited_ = true;
+  global_ = std::move(global);
+}
+
+std::shared_ptr<runtime::js::VMInstance>
+NewShareGroupGlobalContextWrapper::GetVM() {
+  auto context = getJSContext();
+  return context ? context->getVM() : nullptr;
+}
+
+NewShareGroupPageContextWrapper::NewShareGroupPageContextWrapper(
+    std::shared_ptr<runtime::js::JSIContext> context,
+    const std::string& group_id,
+    SharedJSContextWrapper::ReleaseListener* listener)
+    : JSContextWrapper(context), group_id_(group_id), listener_(listener) {}
+
+void NewShareGroupPageContextWrapper::Def() {
+  if (js_context_.use_count() == 1) {
+    global_.Reset();
+#if ENABLE_TRACE_PERFETTO
+    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
+        runtime_profiler_);
+    runtime_profiler_ = nullptr;
+#endif
+    // A page context is 1:1 with its page runtime; releasing it means this page
+    // is gone. Notify RuntimeManager so the group's live page count can be
+    // decremented and the global context released after the last page.
+    if (listener_ != nullptr) {
+      listener_->OnRelease(group_id_);
+    }
+  }
+}
+
+void NewShareGroupPageContextWrapper::EnsureConsole(
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
+  if (isGlobalInited() && global_) {
+    global_->EnsureConsole(post_man, page_options);
+  }
+}
+
+void NewShareGroupPageContextWrapper::initGlobal(
+    base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
+  if (global_inited_) {
+    return;
+  }
+  auto global = base::MakeUnsafeOwning<runtime::js::SingleGlobal>();
+  // Skip the stateless shared host objects (SystemInfo / LynxJSBI /
+  // TextCodecHelper); they are copied by reference from the group's global
+  // context instead of being re-created per page.
+  global->Init(js_runtime, post_man, page_options,
+               /*install_shared_host_objects=*/false);
+  global_inited_ = true;
+  global_ = std::move(global);
 }
 
 }  // namespace runtime

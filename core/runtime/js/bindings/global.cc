@@ -40,7 +40,8 @@ Global::~Global() { LOGI("lynx ~Global()"); }
 
 void Global::Init(base::UnsafeOwningPtr<Runtime>& runtime,
                   std::shared_ptr<ConsoleMessagePostMan>& post_man,
-                  const tasm::PageOptions& page_options) {
+                  const tasm::PageOptions& page_options,
+                  bool install_shared_host_objects) {
   SetJSRuntime(runtime);
   auto* js_runtime_ = GetJSRuntime();
   if (js_runtime_ == nullptr) {
@@ -57,16 +58,21 @@ void Global::Init(base::UnsafeOwningPtr<Runtime>& runtime,
   global.setProperty(*js_runtime_, "__lynxDisableModuleCache",
                      page_options.GetDebuggable());
 
-  Value system_info = GetSystemInfo(*js_runtime_);
-  global.setProperty(*js_runtime_, "SystemInfo", std::move(system_info));
+  // These are stateless shared host objects. For the new "shared Isolate/VM +
+  // per-page isolated Context" scheme the page context copies them by reference
+  // from the group's global context, so skip re-creating them here.
+  if (install_shared_host_objects) {
+    Value system_info = GetSystemInfo(*js_runtime_);
+    global.setProperty(*js_runtime_, "SystemInfo", std::move(system_info));
 
-  Object jsbi_obj =
-      Object::createFromHostObject(*js_runtime_, std::make_shared<JSBI>());
-  global.setProperty(*js_runtime_, "LynxJSBI", jsbi_obj);
+    Object jsbi_obj =
+        Object::createFromHostObject(*js_runtime_, std::make_shared<JSBI>());
+    global.setProperty(*js_runtime_, "LynxJSBI", jsbi_obj);
 
-  Object text_codec_helper_obj = Object::createFromHostObject(
-      *js_runtime_, std::make_shared<TextCodecHelper>());
-  global.setProperty(*js_runtime_, "TextCodecHelper", text_codec_helper_obj);
+    Object text_codec_helper_obj = Object::createFromHostObject(
+        *js_runtime_, std::make_shared<TextCodecHelper>());
+    global.setProperty(*js_runtime_, "TextCodecHelper", text_codec_helper_obj);
+  }
 
   if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
     auto& group_id = js_runtime_->getGroupId();
