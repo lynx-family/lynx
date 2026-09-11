@@ -205,6 +205,7 @@ subspec_target("lynx") {
     "base/background/LynxBackgroundSubBackgroundLayer.m",
     "base/background/LynxBackgroundUtils.m",
     "base/background/LynxBoxShadowLayer.m",
+    "base/background/LynxLayerCornerRadii.h",
     "event/LynxEventDetail.m",
     "event/LynxEventEmitter.mm",
     "event/LynxEventHandler+Internal.h",

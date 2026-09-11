@@ -58,6 +58,7 @@
 #import "LynxFeatureCounter.h"
 #import "LynxFilterUtil.h"
 #import "LynxGestureArenaManager.h"
+#import "LynxLayerCornerRadii.h"
 #import "LynxOffsetCalculator.h"
 #import "LynxUI+Gesture.h"
 #import "LynxUIIntersectionObserver.h"
@@ -832,7 +833,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 
 - (void)clearOverflowMask {
   if (_overflowMask != nil) {
-    _overflowMask = self.view.layer.mask = nil;
+    if (self.view.layer.mask == _overflowMask) {
+      self.view.layer.mask = nil;
+    }
+    _overflowMask = nil;
   }
 }
 
@@ -841,6 +845,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   LYNX_ASSERT_ON_MAIN_THREAD;
 
   if (_clipPath) {
+    if ([self.backgroundManager hasDifferentBorderRadius]) {
+      self.view.clipsToBounds = NO;
+      LynxSetLayerCornerRadii(self.view.layer, (LynxLayerCornerRadii){0});
+    }
     CAShapeLayer* mask = [[CAShapeLayer alloc] init];
     UIBezierPath* path = [_clipPath pathWithFrameSize:self.frameSize];
     mask.path = path.CGPath;
@@ -853,19 +861,25 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 
   if (_overflow == OVERFLOW_XY_VAL) {
     self.view.clipsToBounds = NO;
-    if (_overflowMask != nil) {
-      _overflowMask = self.view.layer.mask = nil;
-    }
+    [self clearOverflowMask];
     return true;
   }
 
   bool hasExternalMask = self.view.layer.mask != nil && self.view.layer.mask != _overflowMask;
+  if (hasExternalMask && [self.backgroundManager hasDifferentBorderRadius]) {
+    BOOL hadNativeClipping = self.view.clipsToBounds;
+    self.view.clipsToBounds = NO;
+    LynxSetLayerCornerRadii(self.view.layer, (LynxLayerCornerRadii){0});
+    if (hadNativeClipping) {
+      [self.backgroundManager applyEffect];
+    }
+  }
   if (hasExternalMask && [self.view isKindOfClass:[UIScrollView class]]) {
     // The mask is owned externally (e.g. by the display-list applier in FLR mode). A
     // scroll view scrolls by shifting its layer's bounds origin, which moves the layer's
     // coordinate space; pin the mask to the current viewport so the clip stays fixed on
     // screen instead of scrolling away with the content. This must happen before the
-    // uniform-radius fast path below, which otherwise returns without updating the mask.
+    // native-radius fast path below, which otherwise returns without updating the mask.
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.view.layer.mask.frame = self.view.layer.bounds;
@@ -874,14 +888,18 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     return false;
   }
 
-  bool hasDifferentRadii = false;
+  bool needsRadiusMask = false;
   if (_overflow == 0) {
-    hasDifferentRadii = [self.backgroundManager hasDifferentBorderRadius];
-    if (!hasDifferentRadii) {
+    LynxLayerCornerRadii radii = LynxGetLayerCornerRadii(
+        self.backgroundManager.backgroundInfo.borderRadius, self.view.bounds.size);
+    needsRadiusMask = !radii.eligible;
+    if (!hasExternalMask) {
+      LynxSetLayerCornerRadii(self.view.layer, radii);
+    }
+    if (!needsRadiusMask &&
+        (!hasExternalMask || ![self.backgroundManager hasDifferentBorderRadius])) {
       self.view.clipsToBounds = YES;
-      if (_overflowMask != nil) {
-        _overflowMask = self.view.layer.mask = nil;
-      }
+      [self clearOverflowMask];
       return true;
     }
   }
@@ -894,7 +912,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   self.view.clipsToBounds = FALSE;
 
   CGPathRef pathRef = nil;
-  if (_overflow == 0 && hasDifferentRadii) {
+  if (_overflow == 0 && needsRadiusMask) {
     pathRef = [LynxBackgroundUtils
         createBezierPathWithRoundedRect:CGRectMake(self.contentOffset.x, self.contentOffset.y,
                                                    self.frame.size.width, self.frame.size.height)

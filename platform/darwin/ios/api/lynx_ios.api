@@ -2532,6 +2532,12 @@ public class LynxKeyframes : NSObject {
 public class LynxLayer : CALayer {
 }
 
+public struct LynxLayerCornerRadii {
+  public BOOL LynxLayerCornerRadii::eligible eligible;
+  public CGFloat LynxLayerCornerRadii::radius radius;
+  public NSUInteger LynxLayerCornerRadii::corners corners;
+}
+
 public class LynxLayoutAnimationManager : NSObject {
   public LynxAnimationInfo* LynxLayoutAnimationManager::createConfig createConfig;
   public LynxAnimationInfo* LynxLayoutAnimationManager::updateConfig updateConfig;
@@ -7030,6 +7036,9 @@ public enum LynxSizeValueType {
 
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ StaticPageTaskDispatcher) (dispatch_block_t task) StaticPageTaskDispatcher;
+
+  public static LynxLayerCornerRadii LynxGetLayerCornerRadii(LynxBorderRadii radii, CGSize size);
+  public static void LynxSetLayerCornerRadii(CALayer *layer, LynxLayerCornerRadii radii);
 
 public enum LynxFPSRecordState {
   LynxFPSRecordStateNone
