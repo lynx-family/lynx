@@ -97,6 +97,16 @@ class TextRender {
                           std::vector<std::string>* measured_content);
 
  private:
+  friend class TextRenderReuseTestPeer;
+
+  // Complete policy for an AtMost shrink candidate after BuildTextLayout.
+  // nullptr means all checks passed; non-null reasons have static lifetime.
+  // Platform activation belongs to Measure, not this read-only policy, so the
+  // same checks can be regression-tested on host builds without enabling reuse.
+  const char* GetAtMostShrinkReuseRejectionReason(double target_width) const;
+  // Caller-side feature restrictions only; node/style must already be valid.
+  const char* GetAtMostShrinkFeatureRejectionReason() const;
+
   TextShadowNode* measure_node_;
   float prev_layout_width_ = std::numeric_limits<float>::quiet_NaN();
   TextUpdateFlag update_flag_ = TextUpdateFlag::kUpdateFlagNone;
