@@ -752,7 +752,6 @@ public class abstract com::lynx::tasm::behavior::ui::background::BackgroundLayer
   public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.setPathEffect(Path path);
   public Path com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.getPathEffect();
   public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.setBitmapConfig(@Nullable Bitmap.Config config);
-  public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.setEnableBitmapGradient(boolean enable);
   public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.setLynxUI(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable.onLynxUIPropsUpdated();
 }
@@ -765,7 +764,6 @@ public class com::lynx::tasm::behavior::ui::background::BackgroundLayerManager :
 public class com::lynx::tasm::behavior::ui::background::BackgroundLinearGradientLayer : com.lynx.tasm.behavior.ui.background.BackgroundGradientLayer {
   public com.lynx.tasm.behavior.ui.background.BackgroundLinearGradientLayer.BackgroundLinearGradientLayer(ReadableArray array);
   public void com.lynx.tasm.behavior.ui.background.BackgroundLinearGradientLayer.setBounds(Rect bounds);
-  public void com.lynx.tasm.behavior.ui.background.BackgroundLinearGradientLayer.setEnableBitmapGradient(boolean enable);
 }
 
 public class com::lynx::tasm::behavior::ui::utils::BackgroundManager : com.lynx.tasm.behavior.ui.utils.LynxBackground {
@@ -895,7 +893,6 @@ public class com::lynx::tasm::behavior::shadow::text::BaseTextShadowNode : com.l
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setTextFakeBold(boolean fakeBold);
   public int com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.getTypefaceStyle();
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.addChildAt(ShadowNode child, int i);
-  public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setEnableBitmapGradient(boolean enable);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setTextIndent(ReadableArray array);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setEnableEmojiCompat(boolean enable);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setText(@Nullable Dynamic text);
@@ -3505,7 +3502,6 @@ public class abstract com::lynx::tasm::behavior::ui::utils::LayerDrawable : Draw
   public RectF com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.getDirectionAwareBorderInsets();
   public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.onAttach();
   public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.onDetach();
-  public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.setEnableBitmapGradient(boolean enable);
   public void com.lynx.tasm.behavior.ui.utils.LayerDrawable< T extends LayerManager >.onLynxUIPropsUpdated();
 }
 
@@ -3529,7 +3525,6 @@ public class abstract com::lynx::tasm::behavior::ui::background::LayerManager : 
   public void com.lynx.tasm.behavior.ui.background.LayerManager.invalidateDrawable(@NonNull Drawable who);
   public void com.lynx.tasm.behavior.ui.background.LayerManager.scheduleDrawable(@NonNull Drawable who, @NonNull Runnable what, long when);
   public void com.lynx.tasm.behavior.ui.background.LayerManager.unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what);
-  public void com.lynx.tasm.behavior.ui.background.LayerManager.setEnableBitmapGradient(boolean enable);
   public void com.lynx.tasm.behavior.ui.background.LayerManager.onLynxUIPropsUpdated();
 }
 
@@ -4691,7 +4686,6 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBlockListEvent(boolean blockListEvent);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setImageConfig(@Nullable String config);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setImageRendering(int imageRendering);
-  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setEnableBitmapGradient(boolean enable);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBackgroundImage(@Nullable ReadableArray bgImage);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBackgroundOrigin(@Nullable ReadableArray bgOrigin);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBackgroundPosition(@Nullable ReadableArray bgPosition);
@@ -9455,7 +9449,6 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.SUSPENDABLE SUSPENDABLE;
   public final String com.lynx.tasm.behavior.PropsConstants.PERSPECTIVE PERSPECTIVE;
   public final String com.lynx.tasm.behavior.PropsConstants.RENDER_TO_HARDWARE_TEXTURE RENDER_TO_HARDWARE_TEXTURE;
-  public final String com.lynx.tasm.behavior.PropsConstants.BITMAP_GRADIENT BITMAP_GRADIENT;
   public final String com.lynx.tasm.behavior.PropsConstants.TEXT_INDENT TEXT_INDENT;
   public final String com.lynx.tasm.behavior.PropsConstants.ANDROID_EMOJI_COMPAT ANDROID_EMOJI_COMPAT;
   public final String com.lynx.tasm.behavior.PropsConstants.TRANSFORM_ORDER TRANSFORM_ORDER;
@@ -10991,7 +10984,6 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLATTEN_UI_DRAW FLATTEN_UI_DRAW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_UI_MEASURE LYNX_UI_MEASURE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_UI_LAYOUT LYNX_UI_LAYOUT;
-  public final String com.lynx.tasm.base.trace.TraceEventDef.CREATE_BITMAP_SHADER CREATE_BITMAP_SHADER;
   public final String com.lynx.tasm.base.trace.TraceEventDef.IMAGE_SERVICE_PROXY_FETCH_IMAGE IMAGE_SERVICE_PROXY_FETCH_IMAGE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.IMAGE_MANAGER_UPDATE_PROPS_INTERVAL IMAGE_MANAGER_UPDATE_PROPS_INTERVAL;
   public final String com.lynx.tasm.base.trace.TraceEventDef.IMAGE_MANAGER_UPDATE_IMAGE_SOURCE IMAGE_MANAGER_UPDATE_IMAGE_SOURCE;
