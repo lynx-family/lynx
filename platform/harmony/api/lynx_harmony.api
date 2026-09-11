@@ -1053,6 +1053,7 @@ export class LynxGroup {
   public enableHarmonyJSVM: boolean; = false
   public enableJSGroupThread: boolean; = false
   public jsGroupThreadName?: string; = undefined
+  public enableNewShareGroup: boolean; = false
 }
 
 export class TemplateBundle extends lynx.TemplateBundle {
