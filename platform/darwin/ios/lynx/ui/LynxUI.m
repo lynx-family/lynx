@@ -837,6 +837,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 }
 
 - (bool)updateLayerMaskOnFrameChanged {
+  // TODO(renzhongyue): modify this function such that it can run on the async thread.
   LYNX_ASSERT_ON_MAIN_THREAD;
 
   if (_clipPath) {
@@ -1855,6 +1856,7 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
 }
 
 - (void)applyTransformOrigin {
+  // TODO(renzhongyue): modify this function such that it can run on the async thread.
   LYNX_ASSERT_ON_MAIN_THREAD;
 
   CGFloat anchorX = 0, anchorY = 0;
@@ -1914,6 +1916,7 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
 }
 
 - (void)applyTransform {
+  // TODO(renzhongyue): modify this function such that it can run on the async thread.
   LYNX_ASSERT_ON_MAIN_THREAD;
   [self prepareLastInfo];
   [_transitionAnimationManager removeTransitionAnimation:TRANSITION_TRANSFORM];
@@ -2007,6 +2010,8 @@ LYNX_PROP_DEFINE("clip-radius", enableClipOnCornerRadius, NSString*) {
 - (void)setBackgroundOrMaskWithDrawable:(NSMutableArray*)drawable
                                   reset:(BOOL)reset
                                   value:(NSArray*)value {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   if (reset) {
     value = [NSArray new];
   }
@@ -2144,6 +2149,8 @@ LYNX_PROP_DEFINE("mask-position", setMaskPosition, NSArray*) {
 - (void)setBackgroundOrMaskWithRepeat:(NSMutableArray*)repeat
                                 reset:(BOOL)reset
                                 value:(NSArray*)value {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   [repeat removeAllObjects];
   if (reset) {
     value = [NSArray array];
@@ -2686,6 +2693,8 @@ LYNX_PROP_SETTER("accessibility-status", setAccessibilityRole, NSString*) {
 }
 
 - (nullable NSString*)concatA11yStatus:(NSString*)status label:(NSString*)label {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   NSMutableString* ret = [NSMutableString string];
 
   if (status) {
@@ -2826,6 +2835,8 @@ LYNX_PROP_DEFINE("image-rendering", setImageRendering, LynxImageRenderingType) {
 }
 
 - (void)prepareLayoutAnimationManager {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   _backgroundManager.implicitAnimation = false;
   if (!_layoutAnimationManager) {
     _layoutAnimationManager = [[LynxLayoutAnimationManager alloc] initWithLynxUI:self];
@@ -3002,6 +3013,8 @@ LYNX_PROP_DEFINE("lynx-test-tag", setTestTag, NSString*) {
 }
 
 - (void)setOverflowMask:(short)mask withValue:(LynxOverflowType)val {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   short newVal = _overflow;
   if (val == LynxOverflowVisible) {
     newVal |= mask;
@@ -3022,6 +3035,7 @@ LYNX_PROP_DEFINE("lynx-test-tag", setTestTag, NSString*) {
 }
 
 - (void)setImplicitAnimation {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
   _backgroundManager.implicitAnimation = _context.defaultImplicitAnimation;
 }
 
@@ -3701,6 +3715,8 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 }
 
 - (id)getFilterWithType:(LynxFilterType)type {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   if (_filter_type == LynxFilterTypeNone) {
     return nil;
   }
@@ -3753,6 +3769,8 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 }
 
 - (void)setAnimation:(NSArray*)value {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   if ([value isEqual:[NSNull null]] || value == nil) {
     _animationInfos = nil;
     [_animationManager endAllAnimation];
@@ -3774,6 +3792,8 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 }
 
 - (void)setTransition:(NSArray*)value {
+  LYNX_MAYBE_ON_ASYNC_THREAD;
+
   if ([value isEqual:[NSNull null]] || value == nil) {
     value = nil;
   }

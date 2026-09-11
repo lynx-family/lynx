@@ -6,6 +6,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// Used to mark that LynxUI-related functions may run on an asynchronous thread. It may be possible
+// to use this macro to include some main thread API checkers in debug mode, ensuring that code
+// wrapped by this macro do not call main thread APIs.
+#define LYNX_MAYBE_ON_ASYNC_THREAD
+
 // Use NSAssert to check that specific functions must run on the main thread.
 #define LYNX_ASSERT_ON_MAIN_THREAD \
   NSAssert([NSThread isMainThread], @"This function must be called on main thread.");

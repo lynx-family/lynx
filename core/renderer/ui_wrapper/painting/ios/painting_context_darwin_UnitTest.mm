@@ -66,7 +66,7 @@
   LynxUIOwner* uiOwner = [[LynxUIOwner alloc] initWithContainerView:nil
                                                   componentRegistry:nil
                                                       screenMetrics:nil];
-  paintingContext = std::make_unique<lynx::tasm::PaintingContextDarwin>(uiOwner);
+  paintingContext = std::make_unique<lynx::tasm::PaintingContextDarwin>(uiOwner, false);
 }
 
 - (void)tearDown {

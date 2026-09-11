@@ -81,7 +81,6 @@
   LynxView *_lynxView;
   LynxUIOwner *_uiOwner;
   std::unique_ptr<lynx::tasm::PaintingContext> sync_painting_context_darwin_;
-  // Exercise the shared async hint; Darwin must still create UI synchronously.
   std::unique_ptr<lynx::tasm::PaintingContext> async_painting_context_darwin_;
   std::shared_ptr<lynx::tasm::PropBundleCreatorDarwin> prop_bundle_creator_;
 }
@@ -98,9 +97,9 @@
                                           screenMetrics:screenMetrics];
 
   sync_painting_context_darwin_ = std::make_unique<lynx::tasm::PaintingContext>(
-      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner));
+      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner, false));
   async_painting_context_darwin_ = std::make_unique<lynx::tasm::PaintingContext>(
-      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner));
+      std::make_unique<lynx::tasm::PaintingContextDarwin>(_uiOwner, false));
 
   prop_bundle_creator_ = std::make_shared<lynx::tasm::PropBundleCreatorDarwin>();
 
@@ -132,7 +131,7 @@
   auto prop_bundle = prop_bundle_creator_->CreatePropBundle();
   prop_bundle->SetProps("opacity", 0.5);
 
-  async_painting_context_darwin_->CreatePaintingNode(12, "animax-view", prop_bundle, false, true,
+  async_painting_context_darwin_->CreatePaintingNode(12, "animax-view", prop_bundle, false, false,
                                                      12);
   sync_painting_context_darwin_->CreatePaintingNode(11, "animax-view", prop_bundle, false, false,
                                                     11);
