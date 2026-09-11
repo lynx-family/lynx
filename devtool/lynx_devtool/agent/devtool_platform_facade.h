@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/value/base_value.h"
+#include "core/public/painting_ctx_platform_impl.h"
 #include "core/renderer/dom/element.h"
 #include "devtool/lynx_devtool/base/mouse_event.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
@@ -76,6 +77,9 @@ class DevToolPlatformFacade
 
   void InitWithDevToolMediator(
       std::shared_ptr<LynxDevToolMediator> devtool_mediator);
+
+  virtual void SetPaintingContextRef(
+      const std::shared_ptr<tasm::PaintingCtxPlatformRef>& platform_ref) {}
 
   std::shared_ptr<input::InputEventTarget> GetInputEventTarget() const {
     return input_event_target_;
@@ -151,6 +155,10 @@ class DevToolPlatformFacade
   std::string GetLepusDebugInfoUrl(const std::string& file_name);
 
  protected:
+  // Called by platforms that query FLR box models through the painting context.
+  void SetNativePaintingContextRef(
+      const std::shared_ptr<tasm::PaintingCtxPlatformRef>& platform_ref);
+
   virtual bool SupportsOverlayBoxModel() const { return false; }
 
   // This function is shared across multiple platforms and retrieves box model
@@ -161,6 +169,11 @@ class DevToolPlatformFacade
   std::shared_ptr<input::InputEventTarget> input_event_target_;
 
  private:
+  std::vector<float> GetTransformValueForBoxModel(
+      int identifier, const std::vector<float>& pad_border_margin_layout);
+
+  std::weak_ptr<tasm::PaintingCtxPlatformRef> painting_context_ref_;
+  bool uses_native_box_model_{false};
   std::weak_ptr<InspectorUIExecutor> inspector_ui_executor_wp_;
   // std::weak_ptr<InspectorTasmExecutor> inspector_element_executor_wp_;
   std::weak_ptr<InspectorJavaScriptDebuggerImpl> js_debugger_wp_;

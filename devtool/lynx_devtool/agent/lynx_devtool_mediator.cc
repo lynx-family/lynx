@@ -12,6 +12,8 @@
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/ui_wrapper/painting/catalyzer.h"
+#include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/services/replay/replay_controller.h"
 #include "devtool/lynx_devtool/agent/hierarchy_observer_impl.h"
 #include "devtool/lynx_devtool/agent/inspector_common_observer_impl.h"
@@ -62,6 +64,16 @@ void LynxDevToolMediator::Init(
   tasm::TemplateAssembler* tasm = shell->GetTasm();
   tasm_task_runner_ = runners->GetTASMTaskRunner();
   js_task_runner_ = runners->GetJSTaskRunner();
+
+  // Capture the platform ref during initialization rather than accessing the
+  // TASM-owned painting context from subsequent UI-thread queries.
+  auto* painting_context = tasm->page_proxy()
+                               ->element_manager()
+                               ->catalyzer()
+                               ->painting_context()
+                               ->impl();
+  painting_context_ref_ =
+      painting_context ? painting_context->GetPlatformRef() : nullptr;
 
   ui_task_runner_ = runners->GetUITaskRunner();
 
@@ -142,6 +154,9 @@ void LynxDevToolMediator::Init(
 
 void LynxDevToolMediator::SetDevToolPlatformFacade(
     const std::shared_ptr<DevToolPlatformFacade>& platform_facade) {
+  if (platform_facade) {
+    platform_facade->SetPaintingContextRef(painting_context_ref_.lock());
+  }
   if (ui_executor_) {
     ui_executor_->SetDevToolPlatformFacade(platform_facade);
   }

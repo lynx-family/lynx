@@ -7,6 +7,7 @@
 
 #include <array>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "core/renderer/dom/fragment/event/platform_event_target.h"
@@ -24,14 +25,11 @@ class PlatformEventTargetHelper {
 
   fml::RefPtr<PlatformEventTarget> GetRootEventTarget();
   fml::RefPtr<PlatformEventTarget> GetEventTarget(int32_t id);
-  const base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformEventTarget>,
-                                   64>&
-  GetEventTargets() const {
-    return event_targets_;
-  }
+  const auto& GetEventTargets() const { return event_targets_; }
   void RefreshScrollOffsets();
   void RefreshScrollOffsets(const fml::RefPtr<PlatformEventTarget>& root);
   void ClearEventTargets();
+  void InvalidateScrollContainerCache(int32_t sign);
   // Remove cached targets belonging to an event root.
   void RemoveEventTargetsInEventRoot(int32_t root_id);
   bool IsActiveEventRoot(int32_t root_id) const;
@@ -47,11 +45,7 @@ class PlatformEventTargetHelper {
   const std::unordered_set<int32_t>& GetActiveEventRootIds() const {
     return active_event_root_ids_;
   }
-  const base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformEventTarget>,
-                                   16>&
-  GetEventRootTrees() const {
-    return event_target_trees_;
-  }
+  const auto& GetEventRootTrees() const { return event_target_trees_; }
 
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
       fml::RefPtr<PlatformRendererImpl> page_renderer);
@@ -153,18 +147,20 @@ class PlatformEventTargetHelper {
   // owned by NativePaintingCtxPlatformRef
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
   // map from id to the EventTarget.
-  base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformEventTarget>, 64>
-      event_targets_;
+  std::unordered_map<int32_t, fml::RefPtr<PlatformEventTarget>> event_targets_;
   std::unordered_set<int32_t> active_event_root_ids_;
   // map from tree root id to the root EventTarget of each event target tree.
-  base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformEventTarget>, 16>
+  std::unordered_map<int32_t, fml::RefPtr<PlatformEventTarget>>
       event_target_trees_;
   // map from independent tree root id to its platform offset in page-root
   // coordinates.
-  base::InlineOrderedFlatMap<int32_t, std::array<float, 2>, 16>
+  std::unordered_map<int32_t, std::array<float, 2>>
       event_root_offsets_to_page_root_;
   // device pixel ratio of the current display.
   float device_pixel_ratio_{1.0f};
+  // Keep platform query results across event-tree rebuilds until the renderer
+  // is destroyed. Cache both scrollable and non-scrollable hosts.
+  std::unordered_map<int32_t, bool> scroll_container_cache_;
 };
 
 }  // namespace tasm

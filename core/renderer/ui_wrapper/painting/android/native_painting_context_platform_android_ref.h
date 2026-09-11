@@ -15,8 +15,6 @@
 namespace lynx {
 namespace tasm {
 
-// TODO: No methods need overriding for now; add overrides if needed in the
-// future
 class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
  public:
   NativePaintingCtxAndroidRef(
@@ -24,6 +22,8 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
       std::unique_ptr<PlatformRendererContext> view_manager);
   ~NativePaintingCtxAndroidRef() override;
 
+  std::vector<float> GetTransformValue(
+      int32_t sign, const std::vector<float>& offsets) override;
   void GetRootViewLocationOnScreen(float location[2]) override;
   void GetScreenSize(float size[2]) override;
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;

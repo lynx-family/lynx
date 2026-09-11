@@ -33,6 +33,11 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
  public:
   DevToolPlatformDarwin(DevToolPlatformDarwinDelegate* darwin) { _darwin = darwin; }
 
+  void SetPaintingContextRef(
+      const std::shared_ptr<tasm::PaintingCtxPlatformRef>& platform_ref) override {
+    SetNativePaintingContextRef(platform_ref);
+  }
+
   int FindNodeIdForLocation(float x, float y, std::string screen_shot_mode) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {

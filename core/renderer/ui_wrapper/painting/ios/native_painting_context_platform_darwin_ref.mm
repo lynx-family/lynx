@@ -20,6 +20,11 @@ NativePaintingCtxPlatformDarwinRef::NativePaintingCtxPlatformDarwinRef(
     std::unique_ptr<PlatformRendererFactory> view_factory)
     : NativePaintingCtxPlatformRef(std::move(view_factory)) {}
 
+std::vector<float> NativePaintingCtxPlatformDarwinRef::GetTransformValue(
+    int32_t sign, const std::vector<float>& offsets) {
+  return GetTransformValueForEventTarget(sign, offsets);
+}
+
 void NativePaintingCtxPlatformDarwinRef::GetRootViewLocationOnScreen(float location[2]) {
   if (location == nullptr) {
     return;
@@ -64,6 +69,35 @@ LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {
   return static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
       ->GetContext()
       ->GetRendererContext();
+}
+
+void NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollOffset(int32_t sign,
+                                                                         float offset[2]) {
+  if (offset == nullptr) {
+    return;
+  }
+  offset[0] = 0.f;
+  offset[1] = 0.f;
+
+  UIView* view = GetPlatformRendererView(sign);
+  if ([view isKindOfClass:[UIScrollView class]]) {
+    const auto content_offset = ((UIScrollView*)view).contentOffset;
+    offset[0] = content_offset.x;
+    offset[1] = content_offset.y;
+  }
+}
+
+bool NativePaintingCtxPlatformDarwinRef::IsPlatformRendererScrollable(int32_t sign) {
+  UIView* view = GetPlatformRendererView(sign);
+  return [view isKindOfClass:[UIScrollView class]];
+}
+
+UIView* NativePaintingCtxPlatformDarwinRef::GetPlatformRendererView(int32_t sign) {
+  auto it = renderers_.find(sign);
+  if (it == renderers_.end() || !it->second) {
+    return nil;
+  }
+  return static_cast<PlatformRendererDarwin*>(it->second.get())->GetUIView();
 }
 
 void NativePaintingCtxPlatformDarwinRef::SetNeedMarkPaintEndTiming(
