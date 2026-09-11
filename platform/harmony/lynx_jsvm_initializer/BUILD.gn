@@ -1,0 +1,14 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+assert(is_harmony)
+
+shared_library("lynx_jsvm_initializer") {
+  output_name = "lynx_jsvm_initializer"
+
+  # Keep the once_flag in one shared library for all JSVM users in the process.
+  sources = [
+    "src/main/cpp/jsvm_initializer.cc",
+    "src/main/cpp/jsvm_initializer.h",
+  ]
+}
