@@ -31,11 +31,17 @@ void CEFWebviewClient::OnFrameCreated(CefRefPtr<CefBrowser> browser,
                   "OnFrameCreated but webview or browser instance is null");
     return;
   }
+  // macOS installs the forwarding listener in the renderer's V8 context.
+  // Installing it here as well can deliver the same message twice.
+#if defined(__APPLE__)
+  std::string js = webview_->init_js_;
+#else
   std::string js =
       "window.addEventListener('message', "
       "e => "
       "window.cefQuery({request: 'LyNxSig_' + e.data}));" +
       webview_->init_js_;
+#endif
   frame->ExecuteJavaScript(js, "<host>", 1);
 }
 
