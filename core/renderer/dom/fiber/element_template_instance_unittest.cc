@@ -17,6 +17,10 @@
 #include <vector>
 
 #include "core/public/pipeline_option.h"
+#include "core/renderer/css/css_style_sheet_manager.h"
+#include "core/renderer/css/ng/parser/css_tokenizer.h"
+#include "core/renderer/css/ng/selector/css_parser_context.h"
+#include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
@@ -129,7 +133,214 @@ class ElementTemplateInstanceTest : public FiberElementTest {
     instance->SetTemplateKey(base::String("spread_template"));
     return instance;
   }
+
+  void CreateCSSEntry(const char* name, const char* default_color,
+                      const char* scoped_color) {
+    auto entry = std::make_shared<TemplateEntry>();
+    entry->SetName(name);
+    auto styles = std::make_shared<CSSStyleSheetManager>(nullptr);
+    for (int32_t css_id : {0, 42}) {
+      auto fragment = std::make_unique<SharedCSSFragment>(css_id);
+      fragment->SetEnableCSSSelector();
+      auto token = fml::MakeRefCounted<CSSParseToken>(CSSParserConfigs{});
+      const auto color = css_id == 0 ? default_color : scoped_color;
+      token->raw_attributes_[kPropertyIDBackgroundColor] =
+          CSSValue::MakePlainString(color);
+      token->raw_attributes_[kPropertyIDColor] =
+          CSSValue::MakePlainString(color);
+      token->raw_attributes_[kPropertyIDFontWeight] =
+          CSSValue::MakePlainString("700");
+      css::CSSParserContext context;
+      css::CSSTokenizer tokenizer(".css-owner");
+      const auto tokens = tokenizer.TokenizeToEOF();
+      css::CSSParserTokenRange range(tokens);
+      auto selectors = css::CSSSelectorParser::ParseSelector(range, &context);
+      const auto size = css::CSSSelectorParser::FlattenedSize(selectors);
+      auto selector_array = std::make_unique<css::LynxCSSSelector[]>(size);
+      css::CSSSelectorParser::AdoptSelectorVector(selectors,
+                                                  selector_array.get(), size);
+      fragment->AddStyleRule(std::move(selector_array), token);
+      styles->AddSharedCSSFragment(std::move(fragment));
+    }
+    entry->template_bundle_.css_style_manager_ = std::move(styles);
+    for (bool scoped : {false, true}) {
+      auto info = std::make_shared<ElementTemplateInfo>();
+      info->exist_ = true;
+      info->key_ = scoped ? "scoped" : "default";
+      ElementInfo root;
+      root.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+      root.class_selector_ = {base::String("css-owner")};
+      if (scoped) {
+        root.attributes_ =
+            std::make_shared<const TemplateAttributes>(TemplateAttributes{
+                Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("css-id"),
+                          lepus::Value(42), 0}});
+      }
+      ElementInfo text;
+      text.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_TEXT;
+      text.class_selector_ = {base::String("css-owner")};
+      root.children_.emplace_back(std::move(text));
+      ElementInfo slot;
+      slot.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_SLOT;
+      slot.slot_index_ = 0;
+      root.children_.emplace_back(std::move(slot));
+      info->elements_.emplace_back(std::move(root));
+      entry->template_bundle_.element_template_infos_[info->key_] = info;
+    }
+    tasm->template_entries_[name] = std::move(entry);
+  }
+
+  fml::RefPtr<ElementTemplateInstance> CreateCSSInstance(const char* entry,
+                                                         bool scoped) {
+    auto instance = fml::AdoptRef<ElementTemplateInstance>(
+        new ElementTemplateInstance(manager));
+    instance->SetTASM(tasm.get());
+    instance->SetBundleUrl(base::String(entry));
+    instance->SetTemplateKey(base::String(scoped ? "scoped" : "default"));
+    return instance;
+  }
+
+  void ExpectCSSColor(ElementTemplateInstance* instance, uint32_t color) {
+    auto root = instance->PeekMaterializedRoot();
+    ASSERT_NE(root, nullptr);
+    ASSERT_FALSE(root->children().empty());
+    auto* text = root->children()[0].get();
+    platform_impl_->Flush();
+    // Background is not inherited: both nodes must match their own CSS rule.
+    for (auto* node : {root.get(), text}) {
+      const auto found = platform_impl_->node_map_.find(node->impl_id());
+      ASSERT_NE(found, platform_impl_->node_map_.end());
+      const auto& props = found->second->props_;
+      const auto background = props.find("background-color");
+      ASSERT_NE(background, props.end());
+      EXPECT_EQ(background->second.UInt32(), color);
+    }
+    const auto& text_props =
+        platform_impl_->node_map_.at(text->impl_id())->props_;
+    const auto foreground = text_props.find("color");
+    ASSERT_NE(foreground, text_props.end());
+    EXPECT_EQ(foreground->second.UInt32(), color);
+  }
 };
+
+TEST_P(ElementTemplateInstanceTest, CompiledCSSUsesOwningEntryAndRootScope) {
+  CreateCSSEntry(DEFAULT_ENTRY_NAME, "white", "red");
+  CreateCSSEntry("lazy", "yellow", "green");
+  auto page = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  page->SetTASM(tasm.get());
+  page->SetTypedTag(base::String("page"));
+  auto page_root = page->GetRoot();
+
+  for (const auto* entry : {DEFAULT_ENTRY_NAME, "lazy"}) {
+    for (bool scoped : {false, true}) {
+      SCOPED_TRACE(entry);
+      SCOPED_TRACE(scoped);
+      auto instance = CreateCSSInstance(entry, scoped);
+      page->InsertNodeIntoChildSlot(0, lepus::Value(instance), lepus::Value());
+      auto options = std::make_shared<PipelineOptions>();
+      manager->OnPatchFinish(options, page_root.get());
+      const auto main_entry = std::string(entry) == DEFAULT_ENTRY_NAME;
+      ExpectCSSColor(instance.get(), main_entry
+                                         ? (scoped ? 0xffff0000 : 0xffffffff)
+                                         : (scoped ? 0xff008000 : 0xffffff00));
+    }
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, CompiledCSSUsesLatestScopeAfterPrepare) {
+  CreateCSSEntry(DEFAULT_ENTRY_NAME, "white", "red");
+  CreateCSSEntry("lazy", "yellow", "green");
+  auto& info = tasm->template_entries_["lazy"]
+                   ->template_bundle_.element_template_infos_["default"];
+  info->elements_[0].attributes_ = std::make_shared<const TemplateAttributes>(
+      TemplateAttributes{Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                   base::String("css-id"), lepus::Value(), 0}});
+  auto page = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  page->SetTASM(tasm.get());
+  page->SetTypedTag(base::String("page"));
+  auto page_root = page->GetRoot();
+
+  auto instance = CreateCSSInstance("lazy", false);
+  instance->SetAttributeSlot(0, lepus::Value(0));
+  instance->EnsureCreateElementTreeTaskScheduled();
+  ASSERT_NE(instance->create_element_tree_task_, nullptr);
+  instance->create_element_tree_task_->Run();
+  ASSERT_EQ(instance->PeekMaterializedRoot(), nullptr);
+
+  instance->SetAttributeSlot(0, lepus::Value(42));
+  page->InsertNodeIntoChildSlot(0, lepus::Value(instance), lepus::Value());
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  ExpectCSSColor(instance.get(), 0xff008000);
+}
+
+TEST_P(ElementTemplateInstanceTest, CompiledCSSOwnershipSurvivesNestedRemount) {
+  CreateCSSEntry(DEFAULT_ENTRY_NAME, "white", "red");
+  CreateCSSEntry("lazy-parent", "blue", "green");
+  CreateCSSEntry("lazy-child", "yellow", "cyan");
+  auto page = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  page->SetTASM(tasm.get());
+  page->SetTypedTag(base::String("page"));
+  auto page_root = page->GetRoot();
+  auto parent = CreateCSSInstance("lazy-parent", true);
+  auto child = CreateCSSInstance("lazy-child", false);
+  auto main_child = CreateCSSInstance(DEFAULT_ENTRY_NAME, false);
+  child->InsertNodeIntoChildSlot(0, lepus::Value(main_child), lepus::Value());
+  parent->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+  page->InsertNodeIntoChildSlot(0, lepus::Value(parent), lepus::Value());
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  ExpectCSSColor(parent.get(), 0xff008000);
+  ExpectCSSColor(child.get(), 0xffffff00);
+  ExpectCSSColor(main_child.get(), 0xffffffff);
+
+  auto child_root = child->PeekMaterializedRoot();
+  parent->RemoveNodeFromChildSlot(0, lepus::Value(child));
+  options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  page->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+  options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  EXPECT_EQ(child->PeekMaterializedRoot(), child_root);
+  ExpectCSSColor(child.get(), 0xffffff00);
+  ExpectCSSColor(main_child.get(), 0xffffffff);
+
+  auto remounted = CreateCSSInstance("lazy-child", false);
+  parent->InsertNodeIntoChildSlot(0, lepus::Value(remounted), lepus::Value());
+  options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  ExpectCSSColor(remounted.get(), 0xffffff00);
+  ExpectCSSColor(parent.get(), 0xff008000);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       CompiledPreparedObjectStyleRemainsVisibleToInspector) {
+  if (!ENABLE_INSPECTOR) {
+    GTEST_SKIP();
+  }
+  manager->SetInspectorElementObserver(
+      std::make_shared<RecordingInspectorElementObserver>());
+  manager->devtool_flag_ = true;
+  manager->dom_tree_enabled_ = true;
+  auto instance = CreateCompiledSpreadInstance();
+  instance->EnsureCreateElementTreeTaskScheduled();
+  ASSERT_NE(instance->create_element_tree_task_, nullptr);
+  instance->create_element_tree_task_->Run();
+  auto attributes = lepus::Dictionary::Create();
+  auto style = lepus::Dictionary::Create();
+  style->SetValue("width", lepus::Value("23px"));
+  attributes->SetValue("style", lepus::Value(style));
+  instance->SetAttributeSlot(0, lepus::Value(attributes));
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  const auto& styles = root->data_model()->inline_styles();
+  const auto width = styles.find(kPropertyIDWidth);
+  ASSERT_NE(width, styles.end());
+  EXPECT_EQ(width->second.GetValue().Number(), 23);
+}
 
 TEST_P(ElementTemplateInstanceTest, PAPIHandlesRoundTripThroughJSChildSlots) {
   auto runtime = CreatePAPIRuntime();

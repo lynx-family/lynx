@@ -85,10 +85,34 @@ void DetachMaterializedElementFromCurrentParent(
 
 void PrepareMaterializedElementTreeForInspector(ElementManager* manager,
                                                 Element* node) {
+  // Compiled nodes receive object styles before attaching to a manager,
+  // when SetStyle cannot populate the inspector's inline-style mirror.
+  const auto& styles = node->GetCurrentRawInlineStyles();
+  if (styles.has_value()) {
+    for (const auto& style : *styles) {
+      node->data_model()->SetInlineStyle(style.first, style.second,
+                                         manager->GetCSSParserConfigs());
+    }
+  }
   manager->PrepareNodeForInspector(node);
   for (const auto& child : node->children()) {
     PrepareMaterializedElementTreeForInspector(
         manager, static_cast<Element*>(child.get()));
+  }
+}
+
+void InitCompiledElementCSS(
+    Element* element,
+    const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+    int32_t inherited_css_id) {
+  auto css_id = element->GetCSSID();
+  if (css_id == kInvalidCssId) {
+    css_id = inherited_css_id;
+  }
+  element->set_style_sheet_manager(style_manager);
+  element->SetCSSID(css_id);
+  for (const auto& child : element->children()) {
+    InitCompiledElementCSS(child.get(), style_manager, css_id);
   }
 }
 
@@ -476,11 +500,6 @@ void ElementTemplateInstance::InitGeneratedElementTree(
   if (result_ == nullptr || entry_ == nullptr) {
     return;
   }
-  auto* root = element_manager_->root();
-  TreeResolver::InitElementTree(result_, root != nullptr ? root->impl_id() : -1,
-                                element_manager_,
-                                entry_->GetStyleSheetManager());
-  ApplyStaticEventAttributes(static_event_targets_);
   if (prepared_attribute_slots_generation != attribute_slots_generation_) {
     ApplyInitialAttributeSlots(
         attribute_slot_targets_, attribute_slots_,
@@ -490,6 +509,15 @@ void ElementTemplateInstance::InitGeneratedElementTree(
               element, prepared_attribute_slots, slots);
         });
   }
+  // Resolve root scope while detached, before page CSS can become the fallback.
+  // Child-slot instances are mounted later and retain their own entry/scope.
+  InitCompiledElementCSS(result_.get(), entry_->GetStyleSheetManager(),
+                         kDefaultPageCSSId);
+  auto* root = element_manager_->root();
+  TreeResolver::InitElementTree(result_, root != nullptr ? root->impl_id() : -1,
+                                element_manager_,
+                                entry_->GetStyleSheetManager());
+  ApplyStaticEventAttributes(static_event_targets_);
   ApplyInitialEventAttributeSlots(event_attribute_slot_targets_,
                                   attribute_slots_);
 }
