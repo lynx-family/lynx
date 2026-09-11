@@ -1,22 +1,47 @@
 {
   "name": "@lynx-js/type-element-api",
-  "version": "0.0.10",
-  "description": "Type definitions for all Element PAPI provided by the Lynx team, used to improve Element PAPI support in your framework.",
-  "keywords": ["element-api" , "types"],
+  "version": "0.1.0",
+  "description": "Type definitions for Element APIs provided by the Lynx team.",
+  "keywords": [
+    "element-api",
+    "types"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/lynx-family/lynx.git"
   },
   "license": "Apache-2.0",
   "author": "Lynx Authors",
-  "types":"types/index.d.ts",
+  "types": "types/index.d.ts",
   "main": "types/index.d.ts",
   "scripts": {
-    "test": "vitest --typecheck --run && tsc --noEmit"
+    "test": "vitest --typecheck --run && tsc --noEmit && node test/entrypoints.test.cjs"
   },
   "exports": {
     ".": {
       "types": "./types/index.d.ts"
+    },
+    "./stable": {
+      "types": "./types/stable.d.ts"
+    },
+    "./experimental": {
+      "types": "./types/experimental.d.ts"
+    },
+    "./internal": {
+      "types": "./types/internal.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "stable": [
+        "./types/stable.d.ts"
+      ],
+      "experimental": [
+        "./types/experimental.d.ts"
+      ],
+      "internal": [
+        "./types/internal.d.ts"
+      ]
     }
   },
   "files": [
