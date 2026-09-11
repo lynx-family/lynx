@@ -8,6 +8,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_controller.h"
+#include "base/trace/native/trace_event_export_symbol.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -97,6 +98,12 @@ TEST_F(TraceEventTest, TraceEventMacrosTest) {
   // trace counter
   TRACE_COUNTER("TraceTest", lynx::perfetto::CounterTrack("counter_tracker"),
                 4);
+
+  // Asynchronous sections use a stable custom track and may span threads.
+  constexpr int64_t kAsyncTraceId = 1;
+  TraceEventBeginEx("TraceTest", "TraceEventAsyncTest", kAsyncTraceId,
+                    "testKey", "value", nullptr, nullptr);
+  TraceEventEndEx("TraceTest", "TraceEventAsyncTest", kAsyncTraceId);
 
   auto result = controller->StopTracing(session_id);
   ASSERT_TRUE(result);
