@@ -193,11 +193,6 @@ public abstract class LayerDrawable<T extends LayerManager> extends Drawable {
     mLayerManager.onDetach();
   }
 
-  public void setEnableBitmapGradient(boolean enable) {
-    mLayerManager.setEnableBitmapGradient(enable);
-    invalidateSelf();
-  }
-
   public void onLynxUIPropsUpdated() {
     mLayerManager.onLynxUIPropsUpdated();
   }
