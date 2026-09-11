@@ -67,6 +67,12 @@ class ParagraphTTText : public Paragraph {
 
   void Layout(double width) override;
 
+  // Returns nullptr when the current line geometry fits width, otherwise a
+  // static diagnostic reason. This is NOT permission to reuse the paragraph:
+  // the caller must separately validate content construction, letter spacing
+  // and text direction. Keep the complete reuse policy in TextRender.
+  const char* GetSingleLineGeometryRejectionReason(double width) const;
+
   void Paint(SkCanvas* canvas, double x, double y) override;
   void PaintMask(SkCanvas* canvas, double x, double y);
 
@@ -108,6 +114,8 @@ class ParagraphTTText : public Paragraph {
 
  private:
   friend class ParagraphTTTextTest_KeepsIndexesInSyncForEmbeddedNull_Test;
+  friend class
+      ParagraphTTTextTest_DefaultPlaceholderUsesAlphabeticBaseline_Test;
 
   std::shared_ptr<FontCollection> font_collection_;
 #ifdef ENABLE_SKITY
