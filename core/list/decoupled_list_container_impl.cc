@@ -717,9 +717,9 @@ void ListContainerImpl::PropsUpdateFinish() {
       DLIST_LOGI("[" << this
                      << "] ListContainerImpl::PropsUpdateFinish: "
                         "new_update_animation_config="
-                     << new_update_animation_config_.value().ToString());
+                     << new_update_animation_config_->ToString());
       animation_manager_->SetUpdateAnimationConfig(
-          new_update_animation_config_.value());
+          *new_update_animation_config_);
       // Clear the pending config to avoid reapplying it on subsequent
       // PropsUpdateFinish calls.
       new_update_animation_config_.reset();
