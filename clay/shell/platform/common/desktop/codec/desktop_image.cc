@@ -149,12 +149,22 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
 
 }  // namespace
 
-DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec)
+DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec,
+                           Size decode_size)
     : codec_(std::move(codec)) {
   if (!codec_) {
     return;
   }
-  current_pixmap_ = codec_->Decode();
+  decoder_ = codec_->DecodeMultiFrame();
+  is_animated_ = decoder_ && decoder_->GetFrameCount() > 1;
+
+  if (!is_animated_ && !decode_size.IsZero()) {
+    current_pixmap_ = codec_->Decode(
+        skity::DecodeOptions{decode_size.width(), decode_size.height()});
+  }
+  if (!current_pixmap_) {
+    current_pixmap_ = codec_->Decode();
+  }
   if (!current_pixmap_ || !current_pixmap_->Addr() ||
       current_pixmap_->Width() <= 0 || current_pixmap_->Height() <= 0 ||
       current_pixmap_->RowBytes() <= 0) {
@@ -167,8 +177,9 @@ DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec)
                                 current_pixmap_->GetColorType());
   color_type_ = current_pixmap_->GetColorType();
   alpha_type_ = current_pixmap_->GetAlphaType();
-  decoder_ = codec_->DecodeMultiFrame();
-  is_animated_ = decoder_ != nullptr;
+  if (!is_animated_) {
+    decoder_.reset();
+  }
 }
 
 DesktopImage::~DesktopImage() = default;
@@ -185,7 +196,10 @@ std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap(
     const ImageInfo& render_info) {
   auto pixmap = std::move(current_pixmap_);
   if (!pixmap && codec_ && width_ > 0 && height_ > 0) {
-    pixmap = codec_->Decode();
+    pixmap = codec_->Decode(skity::DecodeOptions{width_, height_});
+    if (!pixmap) {
+      pixmap = codec_->Decode();
+    }
   }
   return ScalePixmap(std::move(pixmap), render_info);
 }

@@ -421,7 +421,7 @@ class PageView : public BaseView,
         exposure_ui_margin_enabled);
   }
 
-  // Enable deferred image decode by default.
+  // Enable deferred image decode for Skity.
   bool DeferredImageDecode() const {
 #ifndef ENABLE_SKITY
     return false;
