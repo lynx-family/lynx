@@ -39,6 +39,13 @@ public class LynxGroup {
   private boolean mEnableJSGroupThread;
   @Nullable private String mJSGroupThreadName;
 
+  /**
+   * Whether pages in this group use the new "shared Isolate/VM + per-page isolated Context"
+   * scheme instead of the legacy cross-page shared Context. Only takes effect for groups whose
+   * id is not {@link #SINGNLE_GROUP}. Defaults to false to keep existing behavior unchanged.
+   */
+  private boolean mEnableNewShareGroup;
+
   private LynxWhiteBoard mWhiteBoard;
 
   private Map<String, Object> mConfig;
@@ -47,6 +54,7 @@ public class LynxGroup {
     this.mGroupName = builder.mGroupName;
     this.mID = builder.mID != null ? builder.mID : generateID();
     this.mPreloadJSPaths = builder.mPreloadJSPaths;
+    this.mEnableNewShareGroup = builder.mEnableNewShareGroup;
 
     if (builder.mEnableJSGroupThread == null) {
       this.mEnableJSGroupThread =
@@ -109,8 +117,21 @@ public class LynxGroup {
     this.mEnableJSGroupThread = enable;
   }
 
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setEnableNewShareGroup(boolean enable) {
+    this.mEnableNewShareGroup = enable;
+  }
+
   public boolean enableV8() {
     return mEnableV8;
+  }
+
+  /**
+   * Whether pages in this group should use the new "shared Isolate/VM + per-page isolated Context"
+   * scheme. Only meaningful for shared groups (id != {@link #SINGNLE_GROUP}).
+   */
+  public boolean enableNewShareGroup() {
+    return mEnableNewShareGroup;
   }
 
   public String getStringConfig(String key) {
@@ -158,6 +179,7 @@ public class LynxGroup {
     protected String mJSGroupThreadName;
     protected boolean mEnableWhiteBoard;
     protected Map<String, Object> mConfig;
+    protected boolean mEnableNewShareGroup;
 
     public LynxGroupBuilder() {}
 
@@ -200,6 +222,15 @@ public class LynxGroup {
 
     public LynxGroupBuilder setEnableV8(boolean enableV8) {
       this.mEnableV8 = enableV8;
+      return this;
+    }
+
+    /**
+     * Enable the new "shared Isolate/VM + per-page isolated Context" scheme for this group.
+     * Defaults to false. Only takes effect for shared groups (id != {@link #SINGNLE_GROUP}).
+     */
+    public LynxGroupBuilder setEnableNewShareGroup(boolean enableNewShareGroup) {
+      this.mEnableNewShareGroup = enableNewShareGroup;
       return this;
     }
 

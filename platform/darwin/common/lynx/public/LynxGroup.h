@@ -13,6 +13,12 @@
 
 @property(nonatomic, readwrite, nullable) NSArray *preloadJSPaths;
 @property(nonatomic, readwrite) bool enableJSGroupThread;
+/**
+ * Whether pages in this group use the new "shared Isolate/VM + per-page isolated Context" scheme
+ * instead of the legacy cross-page shared Context. Only takes effect for shared groups (group
+ * name != {@link +[LynxGroup singleGroupTag]}). Defaults to NO to keep existing behavior.
+ */
+@property(nonatomic, readwrite) bool enableNewShareGroup;
 
 - (void)setStringConfig:(nonnull NSString *)value forKey:(nonnull NSString *)key;
 - (void)setBoolConfig:(BOOL)value forKey:(nonnull NSString *)key;
@@ -64,6 +70,18 @@
 - (void)addLynxView:(nonnull LynxView *)view;
 
 - (bool)enableJSGroupThread;
+
+/**
+ * Whether pages in this group use the new "shared Isolate/VM + per-page isolated Context" scheme.
+ * Only meaningful for shared groups (group name != {@link +singleGroupTag}).
+ */
+- (bool)enableNewShareGroup;
+
+/**
+ * Set whether pages in this group use the new "shared Isolate/VM + per-page isolated Context"
+ * scheme. Only meaningful for shared groups (group name != {@link +singleGroupTag}).
+ */
+- (void)setEnableNewShareGroup:(bool)enable;
 
 - (nullable NSString *)getStringConfig:(nonnull NSString *)key;
 - (BOOL)getBoolConfig:(nonnull NSString *)key;
