@@ -42,6 +42,9 @@ constexpr CSSPropertyID kBorderLonghands[] = {
 constexpr CSSPropertyID kBorderRadiusLonghands[] = {
     kPropertyIDBorderTopLeftRadius, kPropertyIDBorderTopRightRadius,
     kPropertyIDBorderBottomRightRadius, kPropertyIDBorderBottomLeftRadius};
+constexpr CSSPropertyID kCornerShapeLonghands[] = {
+    kPropertyIDCornerTopLeftShape, kPropertyIDCornerTopRightShape,
+    kPropertyIDCornerBottomRightShape, kPropertyIDCornerBottomLeftShape};
 constexpr CSSPropertyID kBorderTopLonghands[] = {kPropertyIDBorderTopWidth,
                                                  kPropertyIDBorderTopColor,
                                                  kPropertyIDBorderTopStyle};
@@ -177,6 +180,7 @@ size_t CSSProperty::GetShorthandExpand(CSSPropertyID id) {
     (*kPropertyIdShorthand)[kPropertyIDBorder] = 12;
     (*kPropertyIdShorthand)[kPropertyIDBorderWidth] = 4;
     (*kPropertyIdShorthand)[kPropertyIDBorderRadius] = 4;
+    (*kPropertyIdShorthand)[kPropertyIDCornerShape] = 4;
     (*kPropertyIdShorthand)[kPropertyIDBorderColor] = 4;
     (*kPropertyIdShorthand)[kPropertyIDBorderStyle] = 4;
     (*kPropertyIdShorthand)[kPropertyIDBorderRight] = 3;
@@ -205,7 +209,7 @@ const std::unordered_set<CSSPropertyID> shorthandCSSProperties{
     kPropertyIDBorderRight,  kPropertyIDBorderLeft,  kPropertyIDBorderTop,
     kPropertyIDBorderBottom, kPropertyIDOutline,     kPropertyIDFlexFlow,
     kPropertyIDTransition,   kPropertyIDMask,        kPropertyIDAnimation,
-    kPropertyIDGridColumn,   kPropertyIDGridRow};
+    kPropertyIDGridColumn,   kPropertyIDGridRow,     kPropertyIDCornerShape};
 
 bool CSSProperty::IsShorthandProperty(CSSPropertyID id) {
   return shorthandCSSProperties.find(id) != shorthandCSSProperties.end();
@@ -253,6 +257,11 @@ const CSSPropertyID* CSSProperty::GetExpandedLonghands(CSSPropertyID id,
       static constexpr ExpandedLonghands kBorderRadius = {
           kBorderRadiusLonghands, std::size(kBorderRadiusLonghands)};
       expanded = &kBorderRadius;
+      break;
+    case kPropertyIDCornerShape:
+      static constexpr ExpandedLonghands kCornerShape = {
+          kCornerShapeLonghands, std::size(kCornerShapeLonghands)};
+      expanded = &kCornerShape;
       break;
     case kPropertyIDBorderTop:
       static constexpr ExpandedLonghands kBorderTop = {

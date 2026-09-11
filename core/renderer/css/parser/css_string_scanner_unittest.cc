@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "base/include/value/array.h"
@@ -157,6 +158,61 @@ TEST(CSSStringScanner, Dimension) {
   auto number = scanner2.ScanToken();
   EXPECT_EQ(number.type, TokenType::NUMBER);
   EXPECT_FALSE(scanner2.IsAtEnd());
+}
+
+TEST(CSSStringScanner, ScientificNotation) {
+  const char* inputs[] = {"3e+1",   "1e+2", "1E+2",  "1e2",
+                          "1E2",    "1e-2", "1E-2",  "-2.5e+1",
+                          "+.5E-1", ".5e2", "-.5E2", "+1.25E+2"};
+  for (const auto* input : inputs) {
+    SCOPED_TRACE(input);
+    std::string text(input);
+    Scanner scanner(text.c_str(), static_cast<uint32_t>(text.size()));
+    auto token = scanner.ScanToken();
+    EXPECT_EQ(token.type, TokenType::NUMBER);
+    EXPECT_EQ(std::string(token.start, token.length), text);
+    EXPECT_EQ(scanner.ScanToken().type, TokenType::TOKEN_EOF);
+  }
+}
+
+TEST(CSSStringScanner, ScientificNotationWithUnits) {
+  struct TestCase {
+    const char* input;
+    const char* number;
+    TokenType unit;
+  };
+  const TestCase cases[] = {{"1e2px", "1e2", TokenType::PX},
+                            {"1E+2px", "1E+2", TokenType::PX},
+                            {"1e-2em", "1e-2", TokenType::EM},
+                            {"-.5E-1%", "-.5E-1", TokenType::PERCENTAGE},
+                            {"1em", "1", TokenType::EM}};
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.input);
+    std::string text(test.input);
+    Scanner scanner(text.c_str(), static_cast<uint32_t>(text.size()));
+    auto token = scanner.ScanToken();
+    EXPECT_EQ(token.type, TokenType::DIMENSION);
+    EXPECT_EQ(token.unit, test.unit);
+    EXPECT_EQ(std::string(token.start, token.length), test.number);
+    EXPECT_EQ(scanner.ScanToken().type, TokenType::TOKEN_EOF);
+  }
+}
+
+TEST(CSSStringScanner, IncompleteExponentIsNotConsumedAsNumber) {
+  const std::pair<const char*, TokenType> cases[] = {
+      {"1e", TokenType::TOKEN_EOF}, {"1E-", TokenType::TOKEN_EOF},
+      {"1e+", TokenType::PLUS},     {"1e++2", TokenType::PLUS},
+      {"1e-.5", TokenType::NUMBER}, {"1e 2", TokenType::WHITESPACE}};
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.first);
+    std::string text(test.first);
+    Scanner scanner(text.c_str(), static_cast<uint32_t>(text.size()));
+    auto token = scanner.ScanToken();
+    EXPECT_EQ(token.type, TokenType::DIMENSION);
+    EXPECT_EQ(token.unit, TokenType::IDENTIFIER);
+    EXPECT_EQ(std::string(token.start, token.length), "1");
+    EXPECT_EQ(scanner.ScanToken().type, test.second);
+  }
 }
 
 TEST(CSSStringScanner, Ident) {

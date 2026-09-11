@@ -1,0 +1,54 @@
+{
+  "name": "corner-top-left-shape",
+  "id": 240,
+  "type": "complex",
+  "default_value": "round",
+  "version": "4.2",
+  "author": "renzhongyue",
+  "consumption_status": "skip",
+  "keywords": ["round", "squircle", "square", "bevel", "scoop", "notch"],
+  "desc": "Parses the top-left corner shape as superellipse K values. Parser-only; rendering support is not provided.",
+  "formal_syntax": "round | squircle | square | bevel | scoop | notch | superellipse( <number> | infinity | -infinity )",
+  "is_shorthand": false,
+  "compat_data": {
+    "corner-top-left-shape": {
+      "__compat": {
+        "lynx_path": "api/css/properties/corner-top-left-shape",
+        "mdn_url": "https://developer.mozilla.org/en-US/docs/Web/CSS/corner-top-left-shape",
+        "spec_url": [
+          "https://drafts.csswg.org/css-borders-4/#corner-shape"
+        ],
+        "status": {
+          "deprecated": false,
+          "experimental": true
+        },
+        "support": {
+          "android": {
+            "version_added": false
+          },
+          "ios": {
+            "version_added": false
+          },
+          "harmony": {
+            "version_added": false
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_ios": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
+}
