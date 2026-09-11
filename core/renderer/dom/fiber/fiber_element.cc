@@ -2115,6 +2115,7 @@ void Element::ResolveCSSStyles(
     StyleMap &parsed_styles,
     base::InlineVector<CSSPropertyID, 16> &reset_style_ids, bool &need_update,
     bool &force_use_current_parsed_style_map) {
+  StyleMap changed_inherited_styles;
   const bool enable_new_styling_pipeline =
       element_manager()->EnableNewStylingPipeline();
   if (enable_new_styling_pipeline) {
@@ -2197,23 +2198,27 @@ void Element::ResolveCSSStyles(
       }
 
       // #2.parent inherited style changed
-      //  merge the inherited styles, but they have lower priority
+      // Keep updated_inherited_styles_ as the complete inherited-style
+      // snapshot. In LayoutInElement mode, changed_inherited_styles only
+      // contains values that need to be consumed in this pass.
+      updated_inherited_styles_->clear();
       if (inherited_property.inherited_styles_) {
-        updated_inherited_styles_->clear();
         updated_inherited_styles_->reserve(
             inherited_property.inherited_styles_->size());
         for (auto &pair : *(inherited_property.inherited_styles_)) {
           auto it = parsed_styles_map_.find(pair.first);
           if (it == parsed_styles_map_.end()) {
+            updated_inherited_styles_->insert_or_assign(pair.first,
+                                                        pair.second);
             if (EnableLayoutInElementMode()) {
               auto inherited_it = inherited_styles_->find(pair.first);
               if (inherited_it != inherited_styles_->end() &&
                   inherited_it->second == pair.second) {
                 continue;
               }
-            }
-            updated_inherited_styles_->insert_or_assign(pair.first,
+              changed_inherited_styles.insert_or_assign(pair.first,
                                                         pair.second);
+            }
             need_update = true;
           }
         }
@@ -2392,9 +2397,12 @@ void Element::ResolveCSSStyles(
   // TODO: A refactor of the animation-related style handling is needed later,
   // once the correct dependencies between animation and other special CSS
   // property changes are identified. set updated Styles to element in the end
+  const StyleMap *inherited_styles_to_consume =
+      EnableLayoutInElementMode() ? &changed_inherited_styles
+                                  : updated_inherited_styles_.get();
   if (!update_map.empty() ||
-      (updated_inherited_styles_.has_value() &&
-       !updated_inherited_styles_->empty()) ||
+      (inherited_styles_to_consume != nullptr &&
+       !inherited_styles_to_consume->empty()) ||
       (styles_from_attributes_.has_value() &&
        !styles_from_attributes_->empty())) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_SET_STYLE,
@@ -2404,7 +2412,7 @@ void Element::ResolveCSSStyles(
     // if kDirtyPropagateInherited, need to delay to SetStyle in inherit
     // process
     ConsumeStyle(update_map, IsCSSInheritanceEnabled()
-                                 ? updated_inherited_styles_.get()
+                                 ? inherited_styles_to_consume
                                  : nullptr);
     need_update = true;
   }
