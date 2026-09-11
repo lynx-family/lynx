@@ -53,7 +53,7 @@ void TapGestureRecognizer::CheckIfTapUp() {
   GESTURE_LOG << GetMemberTag() << this
               << " CheckIfTapUp. pointer_id: " << up_event_->pointer_id;
 
-  if (down_event_->device == PointerEvent::kTouch) {
+  if (IsTouchLikePointerDevice(down_event_->device)) {
     if (on_tap_up_) {
       on_tap_up_(*up_event_);
     }

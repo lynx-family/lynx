@@ -205,6 +205,7 @@ class Window : public KeyboardManager::WindowDelegate {
 
   // Activates tracking for a "mouse leave" event.
   void TrackMouseLeaveEvent(HWND hwnd);
+  bool HandlePenPointerMessage(UINT message, WPARAM wparam);
 
   // Stores new width and height and calls |OnResize| to notify inheritors
   void HandleResize(UINT width, UINT height);
@@ -244,6 +245,12 @@ class Window : public KeyboardManager::WindowDelegate {
   // Keeps track of the last mouse coordinates by a WM_MOUSEMOVE message.
   double mouse_x_ = 0;
   double mouse_y_ = 0;
+  struct PenPointerState {
+    double x = 0;
+    double y = 0;
+    int buttons = 0;
+  };
+  std::map<UINT32, PenPointerState> pen_pointers_;
 
   // Abstracts Windows APIs that may not be available on all supported versions
   // of Windows.
