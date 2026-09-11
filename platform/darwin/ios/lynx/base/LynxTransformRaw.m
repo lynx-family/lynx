@@ -12,6 +12,21 @@
   LynxPlatformLengthUnit _p2Unit;
 }
 
+- (instancetype)initWithTranslationX:(LynxPlatformLength*)x
+                                   y:(LynxPlatformLength*)y
+                                   z:(LynxPlatformLength*)z {
+  if (self = [super init]) {
+    _type = LynxTransformTypeTranslate3d;
+    _platformLengthP0 = x;
+    _platformLengthP1 = y;
+    _platformLengthP2 = z;
+    _p0Unit = x.type;
+    _p1Unit = y.type;
+    _p2Unit = z.type;
+  }
+  return self;
+}
+
 - (instancetype)initWithArray:(NSArray*)arr {
   if (self = [super init]) {
     _type = [arr[0] intValue];

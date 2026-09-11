@@ -79,6 +79,9 @@ class KeyframeEffect {
   std::vector<std::unique_ptr<KeyframeModel>>& keyframe_models() {
     return keyframe_models_;
   }
+  const std::vector<std::unique_ptr<KeyframeModel>>& keyframe_models() const {
+    return keyframe_models_;
+  }
 
   void NotifyElementSizeUpdated();
 

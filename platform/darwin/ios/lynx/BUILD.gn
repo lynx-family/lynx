@@ -59,6 +59,7 @@ podspec_target("lynx_podspec") {
       ]
     }
     prepare_command = [
+      "python3 gfx/animation/capabilities/generate_animation_capabilities.py --input gfx/animation/capabilities/ios.json --output gfx/animation/capabilities/ios_animation_capabilities_generated.h",
       "if [ -f \"./tools/js_tools/build.py\" ]; then",
       "  python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
       "fi",
@@ -183,6 +184,7 @@ subspec_target("lynx") {
     "animation/LynxKeyframeManager.m",
     "animation/LynxKeyframes.m",
     "animation/LynxLayoutAnimationManager.m",
+    "animation/LynxPlatformAnimation.h",
     "animation/LynxTransitionAnimationManager.m",
     "base/LynxBoxShadowManager.m",
     "base/LynxConverter+Transform.m",
@@ -481,6 +483,7 @@ subspec_target("UnitTests") {
   }
   sources = [
     "../../../../core/renderer/ui_wrapper/painting/ios/painting_context_darwin_UnitTest.mm",
+    "../../../../core/renderer/ui_wrapper/painting/ios/platform_animation_darwin_unittest.mm",
     "../../../../core/value_wrapper/darwin/value_impl_darwin_unittest.mm",
     "../../common/lynx/LynxEnvUnitTest.mm",
     "../../common/lynx/LynxErrorUnitTest.m",

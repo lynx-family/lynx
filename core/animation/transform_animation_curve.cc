@@ -63,6 +63,19 @@ void TransformKeyframe::NotifyUnitValuesUpdated(uint32_t type) {
   }
 }
 
+bool TransformKeyframe::HasDynamicDependencies() const {
+  constexpr uint32_t kStableUnitDependencies =
+      (1u << static_cast<uint32_t>(tasm::CSSValuePattern::EMPTY)) |
+      (1u << static_cast<uint32_t>(tasm::CSSValuePattern::NUMBER)) |
+      (1u << static_cast<uint32_t>(tasm::CSSValuePattern::PX)) |
+      (1u << static_cast<uint32_t>(tasm::CSSValuePattern::PPX)) |
+      // A pure percentage remains typed in gfx::TransformOperations. Whether
+      // the target can resolve it is decided by backend capability.
+      (1u << static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT));
+  return depends_on_element_size_ ||
+         (unit_dependencies_ & ~kStableUnitDependencies) != 0;
+}
+
 bool TransformKeyframe::SetValue(tasm::CSSPropertyID id,
                                  const tasm::CSSValue& value,
                                  tasm::Element* element) {

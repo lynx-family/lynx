@@ -222,6 +222,11 @@ class PaintingContext {
     return platform_impl_->NeedAnimationProps();
   }
 
+  inline const gfx::AnimationBackendCapabilities&
+  GetPlatformAnimationCapabilities() {
+    return platform_impl_->GetPlatformAnimationCapabilities();
+  }
+
   inline bool DefaultOverflowAlwaysVisible() {
     return platform_impl_->DefaultOverflowAlwaysVisible();
   }

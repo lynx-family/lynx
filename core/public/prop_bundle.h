@@ -18,6 +18,7 @@
 #include "base/include/vector.h"
 #include "core/public/gesture_handler.h"
 #include "core/public/pub_value.h"
+#include "gfx/animation/platform_animation.h"
 
 namespace lynx {
 namespace tasm {
@@ -67,6 +68,12 @@ class PropBundle : public fml::RefCountedThreadSafeStorage {
   }
 
   virtual bool IsNative() const { return false; }
+
+  // Platform animation commands are optional, move-only side-band data. The
+  // default implementation deliberately does nothing so backends that have not
+  // opted into animation routing remain unchanged.
+  virtual void SetPlatformAnimationCommands(
+      std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {}
 
   // TODO(wujintian): Currently, the copy of the element depends on the shallow
   // copy optimization of the prop bundle to improve performance. In the future,
