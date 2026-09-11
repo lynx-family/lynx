@@ -299,6 +299,7 @@ if (enable_unittests) {
     fixtures = [
       "third_party/fonts/Roboto-Bold.ttf",
       "//third_party/skia/resources/fonts/Variable.ttf",
+      "//third_party/skia/resources/fonts/NotoSansCJK-VF-subset.otf.ttc",
     ]
   }
 
@@ -441,6 +442,34 @@ if (enable_unittests) {
     if (enable_skity) {
       sources += [ "tests/font_variation_skity_unittests.cc" ]
       deps += [ "../../third_party/skity:skity_lib" ]
+      if (is_mac) {
+        frameworks = [
+          "AppKit.framework",
+          "ApplicationServices.framework",
+          "CoreGraphics.framework",
+          "CoreText.framework",
+          "Metal.framework",
+        ]
+      }
+    }
+  }
+
+  if (clay_enable_tttext) {
+    executable("paragraph_tt_text_unittests") {
+      testonly = true
+      sources = [ "tests/paragraph_tt_text_unittests.cc" ]
+      deps = [
+               ":txt",
+               "../../testing:testing_lib",
+             ] + txt_common_executable_deps
+
+      if (enable_skity) {
+        deps += [
+          ":txt_fixtures",
+          "../../third_party/skity:skity_lib",
+        ]
+      }
+
       if (is_mac) {
         frameworks = [
           "AppKit.framework",
