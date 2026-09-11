@@ -139,7 +139,7 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
     bool enable_bytecode, std::string bytecode_source_url,
     std::unique_ptr<ModuleFactoryHarmony> module_factory,
     std::shared_ptr<tasm::TemplateData> template_data,
-    lepus::Value global_props)
+    lepus::Value global_props, bool enable_new_share_group)
     : env_(env) {
   napi_create_reference(env, js_this, 0, &runtime_wrapper_ref_);
 
@@ -177,8 +177,8 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
   };
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board = nullptr;
 
-  auto runtime_flags =
-      shell::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
+  auto runtime_flags = shell::CalcRuntimeFlags(
+      false, use_quickjs, false, enable_bytecode, enable_new_share_group);
 
   runtime_standalone_ =
       lynx::shell::BTSRuntimeStandalone::InitRuntimeStandalone(
@@ -265,8 +265,8 @@ napi_value LynxRuntimeWrapper::New(napi_env env, napi_callback_info info) {
 napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
                                             napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 14;
-  napi_value args[14] = {nullptr};
+  size_t argc = 15;
+  napi_value args[15] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // providers
@@ -307,13 +307,19 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
   lepus_value global_props =
       tasm::TemplateDataHarmony::GenerateLepusValue(env, args[13]);
 
+  bool enable_new_share_group = false;
+  if (argc > 14) {
+    napi_get_value_bool(env, args[14], &enable_new_share_group);
+  }
+
   // LynxTemplateRenderer
   LynxRuntimeWrapper* wrapper = new LynxRuntimeWrapper(
       env, js_this, resource_loader, std::move(group_id),
       std::move(js_group_thread_name), use_quickjs, enable_js_group_thread,
       std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), std::move(module_factory),
-      std::move(template_data), std::move(global_props));
+      std::move(template_data), std::move(global_props),
+      enable_new_share_group);
 
   static auto finalizer = [](napi_env env, void* data, void* hint) {
     if (data != nullptr) {

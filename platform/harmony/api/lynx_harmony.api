@@ -1033,6 +1033,7 @@ export class LynxBackgroundRuntimeOptions {
   getJSGroupThreadName(): string;
   getPreloadJSPath(): string[];
   enableJSGroupThread(): boolean;
+  enableNewShareGroup(): boolean;
   merge(other: LynxBackgroundRuntimeOptions): void;
   public enableBytecode: boolean; = false
   public bytecodeSourceUrl: string; = ''

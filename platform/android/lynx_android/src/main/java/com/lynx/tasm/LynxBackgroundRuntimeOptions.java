@@ -28,6 +28,8 @@ public class LynxBackgroundRuntimeOptions {
   private static int RUNTIME_FLAG_PENDING_CORE_JS_LOAD = 1 << 4;
   // Pending lynx_core.js load
   private static int RUNTIME_FLAG_PENDING_JS_TASK = 1 << 5;
+  // Use the new "shared Isolate/VM + per-page isolated Context" scheme.
+  private static int RUNTIME_FLAG_ENABLE_NEW_SHARE_GROUP = 1 << 6;
 
   private @Nullable Boolean mEnableUserBytecode;
   private String mBytecodeSourceUrl;
@@ -305,6 +307,8 @@ public class LynxBackgroundRuntimeOptions {
     if (group != null) {
       flags =
           setRuntimeFlag(flags, group.enableJSGroupThread(), RUNTIME_FLAG_ENABLE_JS_GROUP_THREAD);
+      flags =
+          setRuntimeFlag(flags, group.enableNewShareGroup(), RUNTIME_FLAG_ENABLE_NEW_SHARE_GROUP);
     }
     flags = setRuntimeFlag(flags, isPendingCoreJsLoad(), RUNTIME_FLAG_PENDING_CORE_JS_LOAD);
     return flags;

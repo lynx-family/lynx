@@ -121,6 +121,10 @@ struct JSRuntimeExternalParams {
   bool enable_user_bytecode = false;
   bool enable_js_call_timeout_guard = false;
   uint32_t js_call_timeout_ms = 0;
+  // Whether this runtime should use the new "shared Isolate/VM + per-page
+  // isolated Context" scheme instead of the legacy cross-page shared Context.
+  // Only meaningful for shared (non "-1") groups.
+  bool enable_new_share_group = false;
   std::string bytecode_source_url;
   std::weak_ptr<JSRuntimeDelegate> delegate;
 };

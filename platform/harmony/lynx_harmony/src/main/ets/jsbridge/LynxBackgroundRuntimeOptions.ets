@@ -36,7 +36,11 @@ export class LynxBackgroundRuntimeOptions {
   enableJSGroupThread(): boolean {
     return this.lynxGroup ? this.lynxGroup.enableJSGroupThread : false;
   }
-  
+
+  enableNewShareGroup(): boolean {
+    return this.lynxGroup ? this.lynxGroup.enableNewShareGroup : false;
+  }
+
   merge(other: LynxBackgroundRuntimeOptions): void {
     this.lynxGroup =  other.lynxGroup;
     this.enableBytecode = other.enableBytecode;

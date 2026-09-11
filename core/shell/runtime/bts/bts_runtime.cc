@@ -64,6 +64,7 @@ void SetRuntimeFlags(uint32_t& flags, bool enable, LynxRuntimeFlags flag) {
 
 uint32_t CalcRuntimeFlags(bool force_reload_core_js, bool use_quickjs_engine,
                           bool pending_js_task, bool enable_user_bytecode,
+                          bool enable_new_share_group,
                           bool* enable_js_group_thread,
                           bool* pending_core_js_load) {
   uint32_t flags = LynxRuntimeFlags::INIT;
@@ -74,6 +75,8 @@ uint32_t CalcRuntimeFlags(bool force_reload_core_js, bool use_quickjs_engine,
   SetRuntimeFlags(flags, pending_js_task, LynxRuntimeFlags::PENDING_JS_TASK);
   SetRuntimeFlags(flags, enable_user_bytecode,
                   LynxRuntimeFlags::ENABLE_USER_BYTECODE);
+  SetRuntimeFlags(flags, enable_new_share_group,
+                  LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
   if (enable_js_group_thread != nullptr) {
     SetRuntimeFlags(flags, *enable_js_group_thread,
                     LynxRuntimeFlags::ENABLE_JS_GROUP_THREAD);
@@ -272,6 +275,8 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   create_params.js_call_timeout_ms = js_call_timeout_cfg.timeout_ms;
   create_params.enable_user_bytecode =
       (runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE);
+  create_params.enable_new_share_group =
+      (runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
   create_params.bytecode_source_url = bytecode_source_url_;
   create_params.delegate = runtime_delegate_;
 

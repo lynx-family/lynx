@@ -58,11 +58,14 @@ enum LynxRuntimeFlags : uint32_t {
   FORCE_USE_LIGHT_WEIGHT_JS_ENGINE = 1 << 3,
   PENDING_CORE_JS_LOAD = 1 << 4,
   PENDING_JS_TASK = 1 << 5,
+  // Use the new "shared Isolate/VM + per-page isolated Context" scheme.
+  ENABLE_NEW_SHARE_GROUP = 1 << 6,
 };
 
 void SetRuntimeFlags(uint32_t& flags, bool enable, LynxRuntimeFlags flag);
 uint32_t CalcRuntimeFlags(bool force_reload_js_core, bool use_quickjs_engine,
                           bool pending_js_task, bool enable_user_bytecode,
+                          bool enable_new_share_group = false,
                           bool* enable_js_group_thread = nullptr,
                           bool* pending_core_js_load = nullptr);
 
