@@ -293,6 +293,7 @@ if (enable_unittests) {
     fixtures = [
       "third_party/fonts/Roboto-Bold.ttf",
       "//third_party/skia/resources/fonts/Variable.ttf",
+      "//third_party/skia/resources/fonts/NotoSansCJK-VF-subset.otf.ttc",
     ]
   }
 
