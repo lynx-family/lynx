@@ -955,11 +955,81 @@ inline constexpr const char* const LIST_CONTAINER_FLUSH_PATCHING =
     "ListContainerImpl::FlushPatching";
 inline constexpr const char* const LIST_CONTAINER_RESOLVE_ATTRIBUTE =
     "ListContainerImpl::ResolveAttribute";
+/**
+ * @trace_description: Schedule and start all pending list item animations with
+ * their configured delays and durations.
+ */
 inline constexpr const char* const
     ITEM_ANIMATOR_DEFAULT_RUN_PENDING_ANIMATIONS =
         "ItemAnimatorDefault::RunPendingAnimations";
+/**
+ * @trace_description: Cancel pending and running list item animations and
+ * clean up their animation state.
+ */
 inline constexpr const char* const ITEM_ANIMATOR_DEFAULT_CANCEL_ANIMATIONS =
     "ItemAnimatorDefault::CancelAnimations";
+/**
+ * @trace_description: Create and start an individual list item animator with
+ * its configured duration and delay.
+ */
+inline constexpr const char* const ITEM_ANIMATOR_DEFAULT_START_ANIMATION =
+    "ItemAnimatorDefault::StartAnimation";
+/**
+ * @trace_description: Evaluate whether a list data update should reuse,
+ * cancel, or create an update animation transaction.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_BEFORE_DATA_UPDATE =
+    "AnimationManagerImpl::BeforeDataUpdate";
+/**
+ * @trace_description: Capture the current list items and create an animation
+ * transaction before applying a list data update.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_BEGIN_TRANSACTION =
+    "AnimationManagerImpl::BeginAnimationTransaction";
+/**
+ * @trace_description: Mark successful creation of a list update animation
+ * transaction and record its identifier.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_TRANSACTION_CREATED =
+    "AnimationManagerImpl::TransactionCreated";
+/**
+ * @trace_description: Record the pre-layout geometry of list items for the
+ * active animation transaction.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_BEFORE_LAYOUT =
+    "AnimationManagerImpl::BeforeLayout";
+/**
+ * @trace_description: Record post-layout geometry and prepare list item
+ * animations, or validate running animation endpoints, before layout patches
+ * are flushed.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_AFTER_LAYOUT_BEFORE_FLUSH =
+    "AnimationManagerImpl::AfterLayoutBeforeFlush";
+/**
+ * @trace_description: Start the prepared list item animations after layout
+ * patches have been flushed.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_AFTER_FLUSH =
+    "AnimationManagerImpl::AfterFlush";
+/**
+ * @trace_description: Cancel the active update animation transaction and
+ * release the list items retained by it.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_CANCEL_TRANSACTION =
+    "AnimationManagerImpl::CancelAnimationTransaction";
+/**
+ * @trace_description: Complete the active animation transaction and recycle
+ * retained list items after all item animations finish.
+ */
+inline constexpr const char* const ANIMATION_MANAGER_ALL_ANIMATIONS_FINISHED =
+    "AnimationManagerImpl::OnAllAnimationsFinished";
+/**
+ * @trace_description: Restore retained item state and return removed list
+ * items to the adapter after animation completion or cancellation.
+ */
+inline constexpr const char* const
+    ANIMATION_MANAGER_RECYCLE_DEFERRED_ITEM_HOLDERS =
+        "AnimationManagerImpl::RecycleDeferredItemHolders";
 
 inline constexpr const char* const GRID_LAYOUT_MANAGER_LAYOUT_CHUNK =
     "GridLayoutManager::LayoutChunk";

@@ -11,6 +11,7 @@
 #undef private
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -26,6 +27,20 @@ namespace list {
 namespace {
 
 constexpr TransactionId kInjectedTransactionId = 100;
+
+void ExpectAnimationEventDetail(const std::unique_ptr<pub::Value>& detail,
+                                TransactionId expected_transaction_id,
+                                const char* expected_type) {
+  ASSERT_TRUE(detail && detail->IsMap());
+
+  auto transaction_id = detail->GetValueForKey(kAnimationInfoTransactionId);
+  ASSERT_TRUE(transaction_id && transaction_id->IsNumber());
+  EXPECT_DOUBLE_EQ(transaction_id->Number(), expected_transaction_id);
+
+  auto type = detail->GetValueForKey(kAnimationInfoType);
+  ASSERT_TRUE(type && type->IsString());
+  EXPECT_EQ(type->str(), expected_type);
+}
 
 class AnimationManagerImplTest : public ::testing::Test {
  public:
@@ -288,7 +303,7 @@ TEST_F(AnimationManagerImplTest,
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   EXPECT_EQ(lifecycle_observer->cancel_animations_count, 1);
   EXPECT_FALSE(lifecycle_observer->last_cancel_destroy);
-  EXPECT_TRUE(lifecycle_observer->listener_detached_when_cancelled);
+  EXPECT_FALSE(lifecycle_observer->listener_detached_when_cancelled);
   EXPECT_TRUE(lifecycle_observer->animator_destroyed);
   EXPECT_TRUE(lifecycle_observer->cancel_observed_before_destruction);
 }
@@ -417,11 +432,11 @@ TEST_F(AnimationManagerImplTest, DestroyClearsActiveAndRetiredTransactions) {
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   EXPECT_TRUE(animation_manager_->retired_transactions_.empty());
 
-  // 2. The manager detaches the listener, cancels in destroy mode, and then
+  // 2. The manager cancels in destroy mode, then detaches the listener and
   // destroys the animator.
   EXPECT_EQ(lifecycle_observer->cancel_animations_count, 1);
   EXPECT_TRUE(lifecycle_observer->last_cancel_destroy);
-  EXPECT_TRUE(lifecycle_observer->listener_detached_when_cancelled);
+  EXPECT_FALSE(lifecycle_observer->listener_detached_when_cancelled);
   EXPECT_TRUE(lifecycle_observer->animator_destroyed);
   EXPECT_TRUE(lifecycle_observer->cancel_observed_before_destruction);
 
@@ -430,6 +445,54 @@ TEST_F(AnimationManagerImplTest, DestroyClearsActiveAndRetiredTransactions) {
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   EXPECT_TRUE(animation_manager_->retired_transactions_.empty());
   EXPECT_EQ(lifecycle_observer->cancel_animations_count, 1);
+}
+
+// Verifies that all four ItemAnimator lifecycle callbacks are dispatched as
+// List events through the existing transaction pipeline.
+TEST_F(AnimationManagerImplTest, ForwardsAnimationLifecycleEvents) {
+  MockItemAnimator* item_animator =
+      CreateActiveTransaction(TransactionState::kRunning);
+  ASSERT_EQ(item_animator->listener(), animation_manager_);
+
+  constexpr float kProgress = 0.5f;
+  std::vector<std::string> received_events;
+  EXPECT_CALL(*mock_list_element_,
+              SendCustomEvent(::testing::_, ::testing::_, ::testing::_))
+      .Times(4)
+      .WillRepeatedly([&](const std::string& event_name,
+                          const std::string& param_name,
+                          std::unique_ptr<pub::Value> detail) {
+        received_events.push_back(event_name);
+        EXPECT_EQ(param_name, kEventParamDetail);
+        ExpectAnimationEventDetail(detail, kInjectedTransactionId,
+                                   kUpdateAnimationTypeAdd);
+        if (event_name == kEventListAnimationUpdate) {
+          auto progress = detail->GetValueForKey(kAnimationInfoProgress);
+          ASSERT_TRUE(progress && progress->IsNumber());
+          EXPECT_FLOAT_EQ(progress->Number(), kProgress);
+        }
+      });
+
+  // Bind one event at a time to verify that start, update, end, and cancel
+  // each depend on their own binding. The same pipeline carries the transaction
+  // ID, animation type, and progress from the callback into the event detail.
+  mock_list_element_->SetBoundEvents({kEventListAnimationStart});
+  item_animator->listener()->OnAnimationStart(item_animator,
+                                              ItemAnimationType::kAppearance);
+  mock_list_element_->SetBoundEvents({kEventListAnimationUpdate});
+  item_animator->listener()->OnAnimationUpdate(
+      item_animator, ItemAnimationType::kAppearance, kProgress);
+  mock_list_element_->SetBoundEvents({kEventListAnimationEnd});
+  item_animator->listener()->OnAnimationEnd(item_animator,
+                                            ItemAnimationType::kAppearance);
+  mock_list_element_->SetBoundEvents({kEventListAnimationCancel});
+  item_animator->listener()->OnAnimationCancel(item_animator,
+                                               ItemAnimationType::kAppearance);
+
+  const std::vector<std::string> expected_events{
+      kEventListAnimationStart, kEventListAnimationUpdate,
+      kEventListAnimationEnd, kEventListAnimationCancel};
+  EXPECT_EQ(received_events, expected_events);
 }
 
 }  // namespace
