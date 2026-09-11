@@ -413,6 +413,9 @@ export class ExtensionModule {
       maxFPS: number): bigint|undefined;
 
   nativeRemoveDownStreamSurface(canvasName: string, surfaceKey: bigint): void;
+
+  nativeSetAudioDownstreamCallback(callback: Object|undefined, mode: number):
+      void;
 }
 
 export class LynxRuntimeWrapper {
