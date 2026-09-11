@@ -121,6 +121,7 @@ def run_build_so(output_path, args):
 
 def run_cp_so(output_path, args, abi):
     shared_object_cp_map = {
+        'liblynx_jsvm_initializer.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_jsvm_initializer', 'libs', abi),
         'liblynx.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
         'liblynx_service_api.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', abi),
         'liblynxbase.so': os.path.join(LYNX_DIR, 'base', 'platform', 'harmony', 'libs', abi),
