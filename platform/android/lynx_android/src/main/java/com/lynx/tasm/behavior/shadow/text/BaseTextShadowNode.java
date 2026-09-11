@@ -90,8 +90,6 @@ public class BaseTextShadowNode extends ShadowNode {
   private boolean mEnableTextBoringLayout = false;
   // for css word-break style
   protected int mWordBreakStyle = StyleConstants.WORDBREAK_NORMAL;
-  // Use bitmap shader to draw linear gradient
-  private boolean mEnableBitmapGradient = false;
   /**
    * Since minSdk is 16 use raw value
    * 0 -> Layout.BREAK_STRATEGY_SIMPLE
@@ -315,9 +313,6 @@ public class BaseTextShadowNode extends ShadowNode {
     long type = args.getLong(0);
     if (type == StyleConstants.BACKGROUND_IMAGE_LINEAR_GRADIENT) {
       mTextAttributes.mTextGradient = new BackgroundLinearGradientLayer(args.getArray(1));
-      if (mEnableBitmapGradient) {
-        mTextAttributes.mTextGradient.setEnableBitmapGradient(true);
-      }
     } else if (type == StyleConstants.BACKGROUND_IMAGE_RADIAL_GRADIENT) {
       mTextAttributes.mTextGradient = new BackgroundRadialGradientLayer(args.getArray(1));
     } else if (type == StyleConstants.BACKGROUND_IMAGE_CONIC_GRADIENT) {
@@ -825,14 +820,6 @@ public class BaseTextShadowNode extends ShadowNode {
     super.addChildAt(child, i);
     if (child instanceof BaseTextShadowNode) {
       ((BaseTextShadowNode) child).setEnableFontScaling(mEnableFontScaling);
-    }
-  }
-
-  @LynxProp(name = PropsConstants.BITMAP_GRADIENT)
-  public void setEnableBitmapGradient(boolean enable) {
-    mEnableBitmapGradient = enable;
-    if (mTextAttributes.mTextGradient != null) {
-      mTextAttributes.mTextGradient.setEnableBitmapGradient(enable);
     }
   }
 
