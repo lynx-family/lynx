@@ -566,6 +566,25 @@ TEST_P(FiberElementTest, GetPropBundleForRecordingBuildsCurrentSnapshot) {
   EXPECT_NE(events.find("tap"), events.end());
 }
 
+TEST_P(FiberElementTest, LatestAttributeUpdateCancelsPendingReset) {
+  auto view = manager->CreateFiberView();
+  const base::String key("pending-attribute");
+
+  view->SetAttribute(key, lepus::Value());
+  view->SetAttribute(key, lepus::Value("latest-value"));
+
+  ASSERT_TRUE(view->reset_attr_vec_.has_value());
+  EXPECT_TRUE(view->reset_attr_vec_->empty());
+  ASSERT_TRUE(view->ConsumeAllAttributes());
+
+  auto* prop_bundle = static_cast<PropBundleMock*>(view->prop_bundle_.get());
+  ASSERT_NE(prop_bundle, nullptr);
+  const auto& props = prop_bundle->GetPropsMap();
+  const auto it = props.find(key.c_str());
+  ASSERT_NE(it, props.end());
+  EXPECT_EQ(it->second.StdString(), "latest-value");
+}
+
 TEST_P(FiberElementTest, ResolvingEmptyGestureMapResetsPropBundle) {
   auto view = manager->CreateFiberView();
   view->SetGestureDetector(
