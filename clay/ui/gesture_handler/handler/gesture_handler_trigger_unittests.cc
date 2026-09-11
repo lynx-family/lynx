@@ -1,9 +1,6 @@
 // Copyright 2026 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#define private public
-#include "clay/ui/gesture_handler/handler/gesture_handler_trigger.h"
-#undef private
 
 #include <cfloat>
 #include <cmath>
@@ -16,9 +13,15 @@
 #include "clay/ui/gesture_handler/gesture_handler_delegate.h"
 #include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 #include "clay/ui/gesture_handler/handler/default_gesture_handler.h"
+#include "clay/ui/gesture_handler/handler/fling_scroller.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/gesture_handler/handler/pan_gesture_handler.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+
+// Access changes alter MSVC linker names; load dependencies before this macro.
+#define private public
+#include "clay/ui/gesture_handler/handler/gesture_handler_trigger.h"
+#undef private
 
 namespace clay {
 namespace testing {

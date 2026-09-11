@@ -10,24 +10,14 @@
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/fml/thread.h"
-#include "core/base/threading/task_runner_manufactor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace base {
 
-class ThreadMergerTest : public ::testing::Test {
- protected:
-  ThreadMergerTest() = default;
-  ~ThreadMergerTest() override = default;
-
-  void SetUp() override { UIThread::Init(); }
-};
-
-TEST_F(ThreadMergerTest, SameRunner) {
-  TaskRunnerManufactor manufactor(ThreadStrategyForRendering::MULTI_THREADS,
-                                  true, true);
-  auto* runner = manufactor.GetTASMTaskRunner().get();
+TEST(ThreadMergerTest, SameRunner) {
+  fml::Thread thread("thread_merger");
+  auto* runner = thread.GetTaskRunner().get();
   fml::AutoResetWaitableEvent arwe;
 
   fml::MessageLoop* looper = nullptr;
@@ -41,10 +31,10 @@ TEST_F(ThreadMergerTest, SameRunner) {
 
   runner->PostTask([&arwe, runner, looper]() {
     auto merger = std::make_unique<ThreadMerger>(runner, runner);
-    ASSERT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
 
     merger = nullptr;
-    ASSERT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
 
     arwe.Signal();
   });
@@ -52,11 +42,11 @@ TEST_F(ThreadMergerTest, SameRunner) {
   arwe.Wait();
 }
 
-TEST_F(ThreadMergerTest, DifferentRunners) {
-  TaskRunnerManufactor manufactor(ThreadStrategyForRendering::MULTI_THREADS,
-                                  true, true);
-  auto* owner_runner = manufactor.GetTASMTaskRunner().get();
-  auto* subsumed_runner = manufactor.GetLayoutTaskRunner().get();
+TEST(ThreadMergerTest, DifferentRunners) {
+  fml::Thread owner_thread("thread_merger_owner");
+  fml::Thread subsumed_thread("thread_merger_subsumed");
+  auto* owner_runner = owner_thread.GetTaskRunner().get();
+  auto* subsumed_runner = subsumed_thread.GetTaskRunner().get();
 
   fml::AutoResetWaitableEvent arwe;
 
@@ -89,8 +79,8 @@ TEST_F(ThreadMergerTest, DifferentRunners) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
@@ -107,19 +97,19 @@ TEST_F(ThreadMergerTest, DifferentRunners) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
   arwe.Wait();
 }
 
-TEST_F(ThreadMergerTest, RvalueMove) {
-  TaskRunnerManufactor manufactor(ThreadStrategyForRendering::MULTI_THREADS,
-                                  true, true);
-  auto* owner_runner = manufactor.GetTASMTaskRunner().get();
-  auto* subsumed_runner = manufactor.GetLayoutTaskRunner().get();
+TEST(ThreadMergerTest, RvalueMove) {
+  fml::Thread owner_thread("thread_merger_owner");
+  fml::Thread subsumed_thread("thread_merger_subsumed");
+  auto* owner_runner = owner_thread.GetTaskRunner().get();
+  auto* subsumed_runner = subsumed_thread.GetTaskRunner().get();
 
   fml::AutoResetWaitableEvent arwe;
 
@@ -152,8 +142,8 @@ TEST_F(ThreadMergerTest, RvalueMove) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
@@ -179,8 +169,8 @@ TEST_F(ThreadMergerTest, RvalueMove) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
