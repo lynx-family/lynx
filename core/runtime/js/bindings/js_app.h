@@ -297,6 +297,8 @@ class App {
       std::weak_ptr<NativeModuleRecordObserver> observer) {
     native_module_record_observer_ = std::move(observer);
   }
+  void RecordGlobalEvent(const std::string& name,
+                         const lepus::Value& arguments);
 #endif  // ENABLE_INSPECTOR
 
 #if ENABLE_TESTBENCH_RECORDER
@@ -343,10 +345,6 @@ class App {
                                   const std::string& name,
                                   const lepus::Value& params);
   void SendGlobalEvent(const std::string& name, const lepus::Value& arguments);
-#if ENABLE_INSPECTOR
-  void RecordGlobalEvent(const std::string& name,
-                         const lepus::Value& arguments);
-#endif  // ENABLE_INSPECTOR
   std::optional<Value> PublishComponentEvent(const std::string& component_id,
                                              const std::string& handler,
                                              const lepus::Value& info);

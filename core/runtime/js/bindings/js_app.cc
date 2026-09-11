@@ -2376,7 +2376,10 @@ void App::SendGlobalEvent(const std::string& name,
     CallFunction(kGlobalEventModuleName, kGlobalEventMethodName,
                  std::move(*arg));
 #if ENABLE_INSPECTOR
-    RecordGlobalEvent(name, arguments);
+    // Core events deliver the payload as a single listener argument.
+    auto listener_args = lepus::CArray::Create();
+    listener_args->push_back(arguments);
+    RecordGlobalEvent(name, lepus::Value(std::move(listener_args)));
 #endif  // ENABLE_INSPECTOR
   }
 }

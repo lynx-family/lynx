@@ -152,11 +152,11 @@ TEST(NativeModuleRecordBuilderTest, BuildsGlobalEventRecord) {
   auto table = record.Table();
   EXPECT_EQ(table->GetValue("type")->StdString(), "event");
   EXPECT_EQ(table->GetValue("method")->StdString(), "customEvent");
+  // An array of listener arguments passes through as-is.
   ASSERT_TRUE(table->GetValue("arguments")->IsArray());
   ASSERT_EQ(table->GetValue("arguments")->Array()->size(), 1U);
-  EXPECT_EQ(
-      table->GetValue("arguments")->Array()->get(0).Array()->get(0).StdString(),
-      "payload");
+  EXPECT_EQ(table->GetValue("arguments")->Array()->get(0).StdString(),
+            "payload");
 }
 
 TEST(NativeModuleRecordBuilderTest, BuildsCallbackPlaceholder) {
