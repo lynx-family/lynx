@@ -534,6 +534,7 @@ public class LynxBackgroundRuntimeOptions : NSObject {
   public std::string LynxBackgroundRuntimeOptions()::groupThreadName();
   public std::string LynxBackgroundRuntimeOptions()::groupID();
   public BOOL LynxBackgroundRuntimeOptions()::enableJSGroupThread();
+  public BOOL LynxBackgroundRuntimeOptions()::enableNewShareGroup();
   public std::vector< std::string > LynxBackgroundRuntimeOptions()::preloadJSPath();
   public std::string LynxBackgroundRuntimeOptions()::bytecodeUrlString();
   public instancetype LynxBackgroundRuntimeOptions()::initWithOptions:(LynxBackgroundRuntimeOptions *other);

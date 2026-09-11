@@ -332,9 +332,13 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
 
   // Init Runtime
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_RUNTIME);
+  // Opt in to the new "shared Isolate/VM + per-page isolated Context" scheme when the group
+  // requests it. Only meaningful for shared groups; RuntimeManager ignores the flag for the
+  // single ("-1") group.
+  bool enableNewShareGroup = _group != nil && [_group enableNewShareGroup];
   auto runtime_flags = lynx::shell::CalcRuntimeFlags(
       false, _runtimeOptions.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs,
-      _enablePendingJSTaskOnLayout, _runtimeOptions.enableBytecode);
+      _enablePendingJSTaskOnLayout, _runtimeOptions.enableBytecode, enableNewShareGroup);
   shell_->InitRuntime([[LynxGroup groupNameForLynxGroupOrDefault:_group] UTF8String],
                       resource_loader, native_module_manager, std::move(on_runtime_actor_created),
                       [_runtimeOptions preloadJSPath], runtime_flags,

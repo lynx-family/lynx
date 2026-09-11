@@ -137,7 +137,7 @@ export class LynxTemplateRenderer {
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
     whiteBoard: LynxWhiteBoard | undefined, enableMultiAsyncThread: boolean, viewId: number,
-    embeddedMode?: number): void;
+    embeddedMode?: number, enableNewShareGroup?: boolean): void;
 
   nativeDetach(): void;
 
@@ -432,7 +432,7 @@ export class LynxRuntimeWrapper {
     jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], processor?: string, data?: Object | string, readonly?: boolean,
-    props?: Object | string): bigint;
+    props?: Object | string, enableNewShareGroup?: boolean): bigint;
 
   protected nativeEvaluateScript(url: string, sources: string): void;
 

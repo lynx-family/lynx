@@ -59,7 +59,8 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl,  convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), data?.templateData?.processor,
       data?.templateData?.getDataForNative(), data?.templateData?.readOnly,
-      data?.globalProps?.getDataForNative());
+      data?.globalProps?.getDataForNative(),
+      this.backgroundRuntimeOptions.enableNewShareGroup());
   }
 
   addLifecycleClient(client: LynxBackgroundRuntimeClient) {

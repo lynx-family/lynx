@@ -18,6 +18,7 @@
 - (std::string)groupThreadName;
 - (std::string)groupID;
 - (BOOL)enableJSGroupThread;
+- (BOOL)enableNewShareGroup;
 - (std::vector<std::string>)preloadJSPath;
 - (std::string)bytecodeUrlString;
 - (instancetype)initWithOptions:(LynxBackgroundRuntimeOptions *)other;

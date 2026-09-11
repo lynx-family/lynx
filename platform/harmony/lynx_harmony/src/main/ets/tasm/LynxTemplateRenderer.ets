@@ -99,7 +99,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.enableJSRuntime,
       convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
-      this.enableMultiAsyncThread, this.logContext.viewId, this.embeddedMode);
+      this.enableMultiAsyncThread, this.logContext.viewId, this.embeddedMode,
+      this.backgroundRuntimeOptions.enableNewShareGroup());
   }
 
   getLogContext(): LynxLogContext {

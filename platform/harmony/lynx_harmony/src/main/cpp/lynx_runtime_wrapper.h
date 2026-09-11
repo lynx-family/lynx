@@ -79,7 +79,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
       bool enable_bytecode, std::string bytecode_source_url,
       std::unique_ptr<ModuleFactoryHarmony> module_factory,
       std::shared_ptr<tasm::TemplateData> template_data,
-      lepus::Value global_props);
+      lepus::Value global_props, bool enable_new_share_group = false);
 
   virtual ~LynxRuntimeWrapper();
   LynxRuntimeWrapper(const LynxRuntimeWrapper& facade) = delete;

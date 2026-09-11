@@ -125,6 +125,10 @@
   return _group.enableJSGroupThread;
 }
 
+- (BOOL)enableNewShareGroup {
+  return _group.enableNewShareGroup;
+}
+
 - (std::vector<std::string>)preloadJSPath {
   std::vector<std::string> ret;
   NSArray* preloadJSPaths = [_group preloadJSPaths];
@@ -283,9 +287,10 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 
     bool enableJSGroupThread = [_options enableJSGroupThread] == YES;
     bool pendingCoreJsLoad = [_options pendingCoreJsLoad] == YES;
+    bool enableNewShareGroup = [_options enableNewShareGroup] == YES;
     auto runtime_flags = lynx::shell::CalcRuntimeFlags(
         false, _options.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs, false,
-        _options.enableBytecode, &enableJSGroupThread, &pendingCoreJsLoad);
+        _options.enableBytecode, enableNewShareGroup, &enableJSGroupThread, &pendingCoreJsLoad);
     _runtime_standalone_bundle = lynx::shell::BTSRuntimeStandalone::InitRuntimeStandalone(
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
         native_module_manager, bundle_creator, _options.group.whiteBoard,

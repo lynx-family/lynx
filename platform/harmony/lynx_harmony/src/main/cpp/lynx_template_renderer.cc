@@ -139,7 +139,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
     std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
     bool enable_multi_async_thread, base::LynxEntityId view_id,
-    int32_t embedded_mode) {
+    int32_t embedded_mode, bool enable_new_share_group) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
   is_host_renderer_ = is_host_renderer;
@@ -281,8 +281,8 @@ void LynxTemplateRenderer::SetUpLynxShell(
         module_manager->runtime_proxy = runtime_proxy_;
       };
 
-      auto runtime_flags =
-          shell::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
+      auto runtime_flags = shell::CalcRuntimeFlags(
+          false, use_quickjs, false, enable_bytecode, enable_new_share_group);
       shell_->InitRuntime(group_id, resource_loader_, module_manager,
                           std::move(on_runtime_actor_created),
                           std::move(preload_js_paths), runtime_flags,
@@ -1013,8 +1013,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 22;
-  napi_value args[22] = {nullptr};
+  size_t argc = 23;
+  napi_value args[23] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -1110,6 +1110,11 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
     napi_get_value_int32(env, args[21], &embedded_mode);
   }
 
+  bool enable_new_share_group = false;
+  if (argc > 22) {
+    napi_get_value_bool(env, args[22], &enable_new_share_group);
+  }
+
   LynxTemplateRenderer* obj = nullptr;
   napi_status status =
       napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -1133,7 +1138,8 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       std::move(bytecode_source_url), enable_js,
       std::move(jsbridge_module_factory), std::move(main_thread_module_factory),
       runtime_wrapper, white_board, enable_multi_async_thread,
-      static_cast<base::LynxEntityId>(view_id), embedded_mode);
+      static_cast<base::LynxEntityId>(view_id), embedded_mode,
+      enable_new_share_group);
   return nullptr;
 }
 
