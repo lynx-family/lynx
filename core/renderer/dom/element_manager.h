@@ -87,13 +87,6 @@ class TemplateAssembler;
 class ElementLayoutNodeManager;
 class ElementManagerDelegate;
 
-struct CachedTemplateElementTree {
-  base::String bundle_url_;
-  base::String template_key_;
-  GeneratedElementsResult generated_;
-  lepus::Value applied_attribute_slots_;
-};
-
 class HierarchyObserver {
  public:
   virtual ~HierarchyObserver() {}
@@ -615,11 +608,8 @@ class ElementManager : public ElementContextDelegate,
 
   bool GetEnableNativeListFromShell() const { return enable_native_list_; }
 
-  void PutCachedTemplateElementTree(const base::String &bundle_url,
-                                    const base::String &template_key,
-                                    CachedTemplateElementTree cached_tree);
-  bool TakeCachedTemplateElementTree(const base::String &bundle_url,
-                                     const base::String &template_key,
+  void PutCachedTemplateElementTree(CachedTemplateElementTree cached_tree);
+  bool TakeCachedTemplateElementTree(const TemplateElementReuseKey &key,
                                      CachedTemplateElementTree *cached_tree);
 
   bool GetEnableNativeListFromPageConfig() const {
