@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
 namespace lynx {
@@ -18,7 +19,6 @@ namespace tasm {
 namespace harmony {
 class LynxRendererContext;
 class BackgroundDrawable;
-class LynxImageManager;
 class UIBase;
 
 class LynxDisplayListApplier {
@@ -32,13 +32,11 @@ class LynxDisplayListApplier {
 
  private:
   void ProcessContentOperations(const DisplayListItem* items, size_t item_count,
+                                const DisplayListReader& reader,
                                 OH_Drawing_Canvas* canvas, float density);
   void DrawBackgroundImage(OH_Drawing_Canvas* canvas, int32_t image_id,
                            int32_t tiling_index, int32_t clip_index,
                            int32_t repeat_x, int32_t repeat_y, float density);
-  void DrawBackgroundImageTile(OH_Drawing_Canvas* canvas,
-                               LynxImageManager* image_manager, float x,
-                               float y);
 
   LynxRendererContext* context_{nullptr};
   std::weak_ptr<UIBase> host_;
