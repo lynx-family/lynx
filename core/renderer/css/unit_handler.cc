@@ -37,6 +37,7 @@
 #include "core/renderer/css/parser/border_width_handler.h"
 #include "core/renderer/css/parser/clip_path_handler.h"
 #include "core/renderer/css/parser/color_handler.h"
+#include "core/renderer/css/parser/corner_shape_handler.h"
 #include "core/renderer/css/parser/cursor_handler.h"
 #include "core/renderer/css/parser/enum_handler.h"
 #include "core/renderer/css/parser/filter_handler.h"
@@ -231,6 +232,7 @@ UnitHandler::UnitHandler() {
   TransitionShorthandHandler::Register(interceptors_);
   TextDecorationHandler::Register(interceptors_);
   BorderRadiusHandler::Register(interceptors_);
+  CornerShapeHandler::Register(interceptors_);
   BackgroundShorthandHandler::Register(interceptors_);
   BackgroundBoxHandler::Register(interceptors_);
   BackgroundClipHandler::Register(interceptors_);
