@@ -60,6 +60,23 @@ void ShadowNodeOwner::MarkDirty(ShadowNode* node) const {
   }
 }
 
+bool ShadowNodeOwner::InvalidateLaidOutTextNodes() {
+  bool invalidated = false;
+  for (const auto& entry : shadow_node_map_) {
+    auto* node = entry.second;
+    // A dirty node has not produced a reusable layout result yet and will
+    // naturally use the newly installed font manager on its first layout.
+    if (node &&
+        (node->IsBaseTextShadowNode() || node->IsEditableShadowNode() ||
+         node->IsMarkDownShadowNode()) &&
+        !node->IsDirty()) {
+      node->MarkDirty();
+      invalidated = true;
+    }
+  }
+  return invalidated;
+}
+
 ClayLayoutStyles ShadowNodeOwner::GetLayoutStyles(ShadowNode* node) const {
   if (layout_delegate_) {
     return layout_delegate_->OnGetLayoutStyles(node->id());
