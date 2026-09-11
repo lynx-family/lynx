@@ -54,6 +54,16 @@
       ]
     },
     {
+      "name": "lynx_jsvm_initializer",
+      "srcPath": "../../platform/harmony/lynx_jsvm_initializer",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": ["default"]
+        }
+      ]
+    },
+    {
       "name": "lynx_base",
       "srcPath": "../../base/platform/harmony",
       "targets": [
