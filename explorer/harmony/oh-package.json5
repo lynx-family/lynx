@@ -21,6 +21,7 @@
   "overrides": {
     "@ohos/imageknife": "3.2.6",
     "@lynx/lynx": "file:../../platform/harmony/lynx_harmony",
+    "@lynx/lynx_jsvm_initializer": "file:../../platform/harmony/lynx_jsvm_initializer",
     "@lynx/lynx_base": "file:../../base/platform/harmony",
     "@lynx/gfx": "file:../../gfx/platform/harmony",
     "@lynx/lynx_devtool": "file:../../platform/harmony/lynx_devtool",
