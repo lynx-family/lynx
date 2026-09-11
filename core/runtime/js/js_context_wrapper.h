@@ -49,7 +49,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
   // Evaluate all scripts from `js_preload` if corejs hasn't been loaded for
   // this context wrapper yet. If `/lynx_core.js` is present in the list, this
   // method will also update the `js_core_loaded_` state.
-  void EnsureCoreJSLoaded(
+  virtual void EnsureCoreJSLoaded(
       runtime::js::Runtime& js_runtime,
       std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
           js_preload);
@@ -138,6 +138,98 @@ class LYNX_EXPORT_FOR_DEVTOOL NoneSharedJSContextWrapper
 
  protected:
   std::shared_ptr<runtime::js::SingleGlobal> global_;
+  SharedJSContextWrapper::ReleaseListener* listener_ = nullptr;
+};
+
+// -------- New "shared Isolate/VM + per-page isolated Context" scheme --------
+// The two wrappers below are dedicated to the opt-in new-share-group scheme and
+// are intentionally kept separate from the legacy Shared/NoneShared wrappers so
+// the legacy refcount-based teardown (JSIContext use_count() checks) is not
+// reused here.
+
+// Global context of a new share group. It owns the group's global runtime (the
+// one that created the shared VM) and runs lynx_core.js exactly once. It does
+// NOT install napi (per-page contexts reach their own runtime hooks through the
+// page globalThis passed to loadCard) and is NOT registered as its own
+// context's release observer; RuntimeManager tears it down explicitly once the
+// group's last page is gone.
+class LYNX_EXPORT_FOR_DEVTOOL NewShareGroupGlobalContextWrapper
+    : public JSContextWrapper {
+ public:
+  NewShareGroupGlobalContextWrapper(
+      std::shared_ptr<runtime::js::JSIContext> context,
+      const std::string& group_id);
+  ~NewShareGroupGlobalContextWrapper() override;
+
+  // The global context is torn down explicitly by RuntimeManager, never through
+  // the JSIContext release-observer path, so Def() is a no-op.
+  void Def() override {}
+  void EnsureCoreJSLoaded(
+      runtime::js::Runtime& js_runtime,
+      std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+          js_preload) override;
+  void EnsureConsole(
+      std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+      const tasm::PageOptions& page_options) override;
+  // Takes ownership of `rt` (keeping the shared VM + global context alive for
+  // the whole group) and installs the full set of shared host objects so
+  // per-page contexts can reference them.
+  void initGlobal(base::UnsafeOwningPtr<runtime::js::Runtime>& rt,
+                  std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+                  const tasm::PageOptions& page_options) override;
+
+  // The shared VM every page context in this group is created on.
+  std::shared_ptr<runtime::js::VMInstance> GetVM();
+  // The global runtime, used to read corejs exports when copying them onto a
+  // page context. Owned by this wrapper via `owned_global_runtime_`.
+  runtime::js::Runtime* GetGlobalRuntime() {
+    return owned_global_runtime_.get();
+  }
+  void CopyGlobalsTo(runtime::js::Runtime& page_runtime);
+
+  void IncLivePageCount() { ++live_page_count_; }
+  // Returns the remaining live page count after the decrement.
+  int DecLivePageCount() { return --live_page_count_; }
+
+ private:
+  // Owns the global runtime (and therefore the shared VM + global context),
+  // keeping the group alive until RuntimeManager releases this wrapper.
+  base::UnsafeOwningPtr<runtime::js::Runtime> owned_global_runtime_;
+  base::UnsafeOwningPtr<runtime::js::SingleGlobal> global_;
+  std::string group_id_;
+  int live_page_count_ = 0;
+};
+
+// Per-page isolated context of a new share group. The page runtime owns the
+// context; this wrapper only observes release to notify RuntimeManager so the
+// group's live page count can be decremented. It installs page-local globals
+// WITHOUT the shared host objects (copied from the global context instead) and
+// WITHOUT napi.
+class LYNX_EXPORT_FOR_DEVTOOL NewShareGroupPageContextWrapper
+    : public JSContextWrapper {
+ public:
+  NewShareGroupPageContextWrapper(
+      std::shared_ptr<runtime::js::JSIContext> context,
+      const std::string& group_id,
+      SharedJSContextWrapper::ReleaseListener* listener);
+  ~NewShareGroupPageContextWrapper() override = default;
+
+  // A page context is 1:1 with its page runtime, so releasing it always means
+  // this page is gone; unconditionally notify the listener to decrement the
+  // group's page count.
+  void Def() override;
+  void EnsureConsole(
+      std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+      const tasm::PageOptions& page_options) override;
+  // Installs page-local globals but skips the shared host objects; they are
+  // copied by reference from the group's global context instead.
+  void initGlobal(base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
+                  std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+                  const tasm::PageOptions& page_options) override;
+
+ private:
+  base::UnsafeOwningPtr<runtime::js::SingleGlobal> global_;
+  std::string group_id_;
   SharedJSContextWrapper::ReleaseListener* listener_ = nullptr;
 };
 

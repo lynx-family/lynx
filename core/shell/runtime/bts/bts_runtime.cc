@@ -303,8 +303,8 @@ void BTSRuntime::TransitionToFullRuntime() {
       preload_js_sources;
   ReadCoreJS(preload_js_sources);
   if (!runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
-    auto* wrapper =
-        runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
+    auto* wrapper = runtime::RuntimeManager::Instance()->GetContextWrapper(
+        group_id_, runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
     if (wrapper != nullptr) {
       wrapper->EnsureCoreJSLoaded(*rt, preload_js_sources);
     }
@@ -782,7 +782,9 @@ void BTSRuntime::OnJSSourcePrepared(
         if (tasm::LynxEnv::GetInstance().GetBoolEnv(
                 tasm::LynxEnv::Key::ENABLE_SHARE_CONTEXT_ICU, false)) {
           auto* wrapper =
-              runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
+              runtime::RuntimeManager::Instance()->GetContextWrapper(
+                  group_id_,
+                  runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
           if (wrapper) {
             auto napi_environment = wrapper->GetNapiEnvironment();
             if (napi_environment) {
@@ -1245,8 +1247,8 @@ void BTSRuntime::AddLifecycleListener(
       listener->Type() ==
           runtime::RuntimeLifecycleListenerDelegate::DelegateType::PART &&
       !runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
-    auto* wrapper =
-        runtime::RuntimeManager::Instance()->GetContextWrapper(group_id_);
+    auto* wrapper = runtime::RuntimeManager::Instance()->GetContextWrapper(
+        group_id_, runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
     if (wrapper) {
       wrapper->AddLifecycleListener(std::move(listener));
     }
