@@ -20,6 +20,12 @@ import("semantics/build.gni")
 import("shadow/build.gni")
 import("window/build.gni")
 
+config("text_layout_reuse_test_defines") {
+  if (enable_unittests && clay_enable_tttext) {
+    defines = [ "CLAY_TEXT_LAYOUT_REUSE_TESTS=1" ]
+  }
+}
+
 config("ui_defines") {
   defines = []
   defines += [ "CLAY_LIBRARY_IMPLEMENTATION" ]
@@ -55,7 +61,10 @@ source_set("ui") {
   sources += rebase_path(ui_window_sources, "", "window")
   sources += rebase_path(gesture_handler_sources, "", "gesture_handler")
 
-  configs += [ ":ui_defines" ]
+  configs += [
+    ":text_layout_reuse_test_defines",
+    ":ui_defines",
+  ]
 
   if (use_accessbility) {
     sources += rebase_path(ui_semantics_sources, "", "semantics")
@@ -73,6 +82,7 @@ source_set("ui") {
 
   if (enable_unittests) {
     sources += rebase_path(ui_component_unittests_sources, "", "component")
+    sources += [ "testing/text_layout_reuse_test_hooks.h" ]
   }
 
   if (use_net_loader) {
@@ -163,6 +173,7 @@ if (enable_unittests) {
 
   executable("clay_unittests") {
     testonly = true
+    configs += [ ":text_layout_reuse_test_defines" ]
     sources = [
       "common/attribute_utils_unittests.cc",
       "component/base_view_unittests.cc",
@@ -211,6 +222,7 @@ if (enable_unittests) {
       "rendering/render_object_unittests.cc",
       "resource/font_resource_manager_unittests.cc",
       "resource/image_cache_unittests.cc",
+      "shadow/text_layout_reuse_unittests.cc",
       "shadow/text_unittests.cc",
       "testing/test_utils_unittests.cc",
     ]

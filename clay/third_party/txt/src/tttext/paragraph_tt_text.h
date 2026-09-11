@@ -12,11 +12,11 @@
 #include <textra/paragraph_style.h>
 #include "clay/gfx/graphics_canvas.h"
 #ifdef ENABLE_SKITY
-#include "tttext/tttext_headers.h"
+#include "lynx/clay/third_party/txt/src/tttext/tttext_headers.h"
 #else
 #include "third_party/textlayout/textra/public/textra/platform/skia/skia_painter.h"
 #endif
-#include "txt/paragraph.h"
+#include "lynx/clay/third_party/txt/src/txt/paragraph.h"
 
 namespace ttoffice {
 namespace tttext {
@@ -56,6 +56,12 @@ class ParagraphTTText : public Paragraph {
   bool DidExceedMaxLines() override;
 
   void Layout(double width) override;
+
+  // Returns nullptr when the current line geometry fits width, otherwise a
+  // static diagnostic reason. This is NOT permission to reuse the paragraph:
+  // the caller must separately validate content construction, letter spacing
+  // and text direction. Keep the complete reuse policy in TextRender.
+  const char* GetSingleLineGeometryRejectionReason(double width) const;
 
   void Paint(SkCanvas* canvas, double x, double y) override;
 
