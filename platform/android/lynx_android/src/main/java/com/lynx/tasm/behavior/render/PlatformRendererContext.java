@@ -8,7 +8,6 @@ import android.graphics.PointF;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.View;
-import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Callback;
@@ -31,7 +30,6 @@ import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
-import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
@@ -45,11 +43,12 @@ import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PlatformRendererContext implements TextMeasurerProvider {
+public class PlatformRendererContext implements TextMeasurerProvider, LayerRenderContext {
+  // Must match NodeInfoBits::kSupportFragmentLayerChildrenMask in Element.
+  static final int SUPPORT_FRAGMENT_LAYER_CHILDREN = 1 << 18;
   final private static String TAG = "PlatformRendererContext";
   final private static String TENDS_TO_FLATTEN_INIT_DATA_KEY = "__lynx_tends_to_flatten";
 
@@ -77,8 +76,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private static final int IMAGE_PAINT_INFO_LOOP_COUNT = 10;
 
   WeakReference<UIBody.UIBodyView> mRootView = null;
-
-  HashMap<Integer, IRendererHost> mViewHolder = new HashMap<>();
 
   @Nullable private PlatformFocusTarget mFocusedTarget = null;
 
@@ -125,6 +122,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return mNativePtr;
   }
 
+  @Nullable
+  LynxBaseUI getPlatformRendererUI(int sign) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    return owner != null ? owner.getFragmentLayer(sign) : null;
+  }
+
+  @Override
+  @Nullable
+  public LynxBaseUI getFragmentLayer(int sign) {
+    return getPlatformRendererUI(sign);
+  }
+
   @CalledByNative
   public float[] getRootViewLocationOnScreen() {
     float[] res = new float[] {0, 0};
@@ -152,24 +161,23 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   @CalledByNative
   float[] getRendererHostScrollOffset(int sign) {
     float[] res = new float[] {0, 0};
-    IRendererHost host = mViewHolder.get(sign);
-    if (host instanceof AndroidScrollView) {
-      AndroidScrollView scrollView = (AndroidScrollView) host;
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    View view = ui != null ? ui.getFragmentLayerView() : null;
+    if (view instanceof AndroidScrollView) {
+      AndroidScrollView scrollView = (AndroidScrollView) view;
       res[0] = scrollView.getRealScrollX();
       res[1] = scrollView.getRealScrollY();
-    } else if (host != null) {
-      res[0] = host.getRendererHostScrollX();
-      res[1] = host.getRendererHostScrollY();
+    } else if (ui != null) {
+      res[0] = ui.getFragmentLayerScrollX();
+      res[1] = ui.getFragmentLayerScrollY();
     }
     return res;
   }
 
   @CalledByNative
   boolean isRendererHostScrollable(int sign) {
-    IRendererHost host = mViewHolder.get(sign);
-    Renderer renderer = host != null ? host.getRenderer() : null;
-    LynxBaseUI uiHost = renderer != null ? renderer.getUIHost() : null;
-    return uiHost != null && uiHost.isScrollable();
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    return ui != null && ui.isScrollable();
   }
 
   @CalledByNative
@@ -180,10 +188,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       @Override
       public void run() {
         if (mDestroyed || mNativePtr == 0) {
-          return;
-        }
-        IRendererHost host = mViewHolder.get(sign);
-        if (host != null && host.invokeUIMethod(method, params, callback)) {
           return;
         }
         LynxBaseUI ui = findUIMethodTarget(sign);
@@ -228,48 +232,50 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   PointF convertPointInViewToScreen(int sign, PointF point) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null) {
-      LLog.e(TAG, "convertPointInViewToScreen failed since can not find target host.");
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    if (ui == null) {
+      LLog.e(TAG, "convertPointInViewToScreen failed since can not find target UI.");
       return point;
     }
-    return host.convertPointInRendererHostToScreen(point);
+    return ui.convertPointInFragmentLayerToScreen(point);
   }
 
   public int getTargetWidth(int sign) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null) {
-      LLog.e(TAG, "getTargetWidth failed since can not find target view.");
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    if (ui == null) {
+      LLog.e(TAG, "getTargetWidth failed since can not find target UI.");
       return 0;
     }
 
-    return host.getRendererHostWidth();
+    return ui.getFragmentLayerWidth();
   }
 
   public int getTargetHeight(int sign) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null) {
-      LLog.e(TAG, "getTargetHeight failed since can not find target view.");
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    if (ui == null) {
+      LLog.e(TAG, "getTargetHeight failed since can not find target UI.");
       return 0;
     }
 
-    return host.getRendererHostHeight();
+    return ui.getFragmentLayerHeight();
   }
 
   public int getMeaningfulPaintingAreaVisibleStatus(int sign) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null || host.getView() == null) {
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    View view = ui != null ? ui.getFragmentLayerView() : null;
+    if (view == null) {
       return View.VISIBLE;
     }
-    return host.getView().getVisibility();
+    return view.getVisibility();
   }
 
   public float getMeaningfulPaintingAreaAlpha(int sign) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null || host.getView() == null) {
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    View view = ui != null ? ui.getFragmentLayerView() : null;
+    if (view == null) {
       return 1.f;
     }
-    return host.getView().getAlpha();
+    return view.getAlpha();
   }
 
   public float getMeaningfulPaintingAreaScaleX(int sign) {
@@ -281,11 +287,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   private float getMeaningfulPaintingAreaScale(int sign, boolean scaleX) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null || host.getView() == null) {
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    View view = ui != null ? ui.getFragmentLayerView() : null;
+    if (view == null) {
       return 1.f;
     }
-    View view = host.getView();
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       Matrix animationMatrix = view.getAnimationMatrix();
       if (animationMatrix != null && !animationMatrix.isIdentity()) {
@@ -307,34 +313,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       case PlatformRendererType.kView:
       case PlatformRendererType.kText:
       case PlatformRendererType.kImage:
-      // TODO(songshourui.null): Support <list>, <list-item> and <scroll-view>'s platform view
-      // later, use ContainerRenderer for now
       case PlatformRendererType.kList:
       case PlatformRendererType.kListItem:
       case PlatformRendererType.kScroll: {
-        ContainerRenderer view = new ContainerRenderer(mContext);
-        Renderer renderer = view.createRenderer(this, sign);
-        renderer.setRenderHost(view);
-        view.setRenderer(renderer);
-        mViewHolder.put(sign, view);
-        view.invalidate();
+        LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+        if (owner == null) {
+          LLog.e(TAG, "createPlatformRenderer failed since LynxUIOwner is null.");
+          return;
+        }
+        owner.createFragmentLayer(sign, this);
         break;
       }
       case PlatformRendererType.kPage: {
-        LynxUIOwner owner = mContext.getLynxUIOwner();
-        if (owner != null) {
-          owner.setRootSign(sign);
-          owner.setNode(sign, mContext.getUIBody());
-        }
-        UIBody.UIBodyView view = mRootView.get();
-        if (view != null) {
-          view.setWillNotDraw(false);
-          view.invalidate();
-          Renderer renderer = view.createRenderer(this, sign);
-          renderer.setUIHost((LynxUI) mContext.getUIBody());
-          renderer.setRenderHost(view);
-          view.setRenderer(renderer);
-          mViewHolder.put(sign, view);
+        LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+        if (owner == null || owner.attachRootFragmentLayer(sign, this) == null) {
+          LLog.e(TAG, "create page fragment layer failed since root UI is unavailable.");
         }
         break;
       }
@@ -358,6 +351,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
     ShadowNode node = null;
     if (behavior != null) {
+      if (behavior.supportFragmentLayerChildren()) {
+        info |= SUPPORT_FRAGMENT_LAYER_CHILDREN;
+      }
       node = behavior.createShadowNode();
     }
     if (node != null) {
@@ -373,58 +369,23 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
-    Behavior behavior = null;
-    if (mBehaviorRegistry != null) {
-      behavior = mBehaviorRegistry.get(tagName);
-      if (behavior != null && behavior.supportFragmentLayerRenderer()) {
-        IRendererHost host = behavior.createPlatformRendererHost(mContext);
-        if (host != null) {
-          Renderer renderer = host.createRenderer(this, sign);
-          renderer.setRenderHost(host);
-          host.setRenderer(renderer);
-          mViewHolder.put(sign, host);
-          host.getView().invalidate();
-          renderer.updateAttributes(initData);
-          return;
-        }
-      }
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null) {
+      LLog.e(TAG, "createPlatformExtendedRenderer failed since LynxUIOwner is null.");
+      return;
     }
 
-    LynxUIOwner owner = mContext.getLynxUIOwner();
-    if (owner != null) {
-      ReadableMap initialProps = initData != null ? initData.getProps() : null;
-      ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
-      ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
-      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, initialProps);
-      owner.createView(
-          sign, tagName, initialProps, null, eventListeners, isFlatten, sign, gestureDetectors);
-      LynxBaseUI createdUI = owner.getNode(sign);
-      LynxBaseUI rendererHostUI = resolveRendererHostUI(createdUI);
-      IRendererHost host = resolveRendererHost(rendererHostUI);
-      if (host != null) {
-        Renderer renderer = host.createRenderer(this, sign);
-        renderer.setUIHost(rendererHostUI);
-        renderer.setRenderHost(host);
-        host.setRenderer(renderer);
-        mViewHolder.put(sign, host);
-        host.setWillNotDrawForRenderer(false);
-        host.setClipChildrenForRenderer(false);
-        host.invalidateForRenderer();
-        renderer.updateAttributes(initData);
-        return;
-      }
+    Behavior behavior = mBehaviorRegistry != null ? mBehaviorRegistry.get(tagName) : null;
+    ReadableMap initialProps = initData != null ? initData.getProps() : null;
+    ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
+    ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
+    boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, initialProps);
+    owner.createView(
+        sign, tagName, initialProps, null, eventListeners, isFlatten, sign, gestureDetectors);
+    LynxBaseUI layerUI = owner.attachFragmentLayer(sign, this);
+    if (layerUI == null) {
       owner.cleanupCreatedView(sign, tagName, initialProps);
     }
-
-    // For extended platform renderers, we need to create a custom view based on the tag name
-    // Currently, we'll create a ContainerRenderer as a fallback, but in the future
-    // we should look up the actual class based on the tag name
-    ContainerRenderer view = new ContainerRenderer(mContext);
-    Renderer renderer = view.createRenderer(this, sign);
-    renderer.setRenderHost(view);
-    view.setRenderer(renderer);
-    mViewHolder.put(sign, view);
-    view.invalidate();
   }
 
   private boolean shouldCreateFallbackUIAsFlatten(
@@ -437,28 +398,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private boolean shouldCreateFallbackUIAsFlatten(
       @Nullable Behavior behavior, boolean tendsToFlatten) {
     return tendsToFlatten && behavior != null && behavior.supportUIFlatten();
-  }
-
-  @Nullable
-  private LynxBaseUI resolveRendererHostUI(@Nullable LynxBaseUI ui) {
-    if (ui instanceof LynxUI && ui.isOverlay()) {
-      LynxUI transitionUI = ((LynxUI) ui).getTransitionUI();
-      if (transitionUI != null) {
-        return transitionUI;
-      }
-    }
-    return ui;
-  }
-
-  @Nullable
-  private IRendererHost resolveRendererHost(@Nullable LynxBaseUI ui) {
-    if (ui instanceof IRendererHost) {
-      return (IRendererHost) ui;
-    }
-    if (ui instanceof LynxUI && ((LynxUI) ui).getView() instanceof IRendererHost) {
-      return (IRendererHost) ((LynxUI) ui).getView();
-    }
-    return null;
   }
 
   void updatePlatformFocus(int targetSign, int rendererHostSign) {
@@ -486,29 +425,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     LynxBaseUI ui = owner != null ? owner.getNode(targetSign) : null;
 
-    IRendererHost host = mViewHolder.get(targetSign);
-    if (host == null) {
-      host = mViewHolder.get(rendererHostSign);
+    if (ui == null) {
+      ui = getFragmentLayer(rendererHostSign);
     }
-    if (ui == null && host != null) {
-      Renderer renderer = host.getRenderer();
-      ui = renderer != null ? renderer.getUIHost() : null;
-    }
-    return new PlatformFocusTarget(targetSign, rendererHostSign, ui, host);
+    return new PlatformFocusTarget(targetSign, rendererHostSign, ui);
   }
 
   private static final class PlatformFocusTarget {
     private final int mTargetSign;
     private final int mRendererHostSign;
     @Nullable private final LynxBaseUI mUI;
-    @Nullable private final IRendererHost mRendererHost;
 
-    PlatformFocusTarget(int targetSign, int rendererHostSign, @Nullable LynxBaseUI ui,
-        @Nullable IRendererHost rendererHost) {
+    PlatformFocusTarget(int targetSign, int rendererHostSign, @Nullable LynxBaseUI ui) {
       mTargetSign = targetSign;
       mRendererHostSign = rendererHostSign;
       mUI = ui;
-      mRendererHost = rendererHost;
     }
 
     boolean isSameObject(PlatformFocusTarget target) {
@@ -525,32 +456,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
 
     boolean isFocusable() {
-      if (mUI != null) {
-        return mUI.isFocusable();
-      }
-      View view = mRendererHost != null ? mRendererHost.getView() : null;
-      return view != null && view.isFocusable();
+      return mUI != null && mUI.isFocusable();
     }
 
     void onFocusChanged(boolean hasFocus, boolean isFocusTransition) {
       if (mUI != null) {
         mUI.onFocusChanged(hasFocus, isFocusTransition);
-        return;
-      }
-      View view = mRendererHost != null ? mRendererHost.getView() : null;
-      if (view == null) {
-        return;
-      }
-      if (hasFocus) {
-        view.requestFocus();
-      } else {
-        view.clearFocus();
       }
     }
 
     @Nullable
     private Object getFocusObject() {
-      return mUI != null ? mUI : mRendererHost;
+      return mUI;
     }
   }
 
@@ -559,91 +476,41 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (mFocusedTarget != null && mFocusedTarget.containsSign(sign)) {
       mFocusedTarget = null;
     }
-    LynxUIOwner owner = mContext.getLynxUIOwner();
-    boolean shouldRemoveFromNativeParent = false;
-    if (owner != null && owner.getNode(sign) != null) {
-      LynxBaseUI child = owner.getNode(sign);
-      shouldRemoveFromNativeParent = !(child.getParent() instanceof LynxBaseUI);
-      owner.destroy(-1, child.getSign());
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner != null) {
+      owner.destroyFragmentLayer(sign);
     }
-
-    IRendererHost host = mViewHolder.get(sign);
-    try {
-      if (host != null) {
-        View hostView = host.getView();
-        if (shouldRemoveFromNativeParent && hostView != null) {
-          View parent = (View) hostView.getParent();
-          if (parent instanceof ViewGroup) {
-            ((ViewGroup) parent).removeView(hostView);
-          }
-        }
-        Renderer renderer = host.getRenderer();
-        if (renderer != null) {
-          renderer.onDestroy();
-        }
-      }
-    } finally {
-      mViewHolder.remove(sign);
-    }
-  }
-
-  private boolean shouldInsertIntoUIOwnerForFlattenRendererParent(
-      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
-    return parentUI != null && parentUI.isFlatten() && childUI != null && !childUI.isOverlay();
-  }
-
-  private boolean shouldRemoveFromUIOwnerForFlattenRendererParent(
-      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
-    return shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)
-        && childUI.getParentBaseUI() == parentUI;
   }
 
   @CalledByNative
   void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner) {
-    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
     LynxBaseUI childUI = owner != null ? owner.getNode(child) : null;
-    if (shouldUpdateUIOwner && parentUI != null && childUI != null) {
-      owner.insert(parent, child, index);
+    // Overlay Views are mounted by their component, not by the Layer parent.
+    if (parentUI == null || childUI == null || (!shouldUpdateUIOwner && childUI.isOverlay())) {
       return;
     }
-    if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
-      return;
-    }
-    if (!shouldUpdateUIOwner
-        && shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)) {
-      if (childUI.getParentBaseUI() != parentUI) {
-        owner.insert(parent, child, index);
+    LynxBaseUI oldParent = childUI.getParentBaseUI();
+    int oldIndex = oldParent != null ? oldParent.getChildren().indexOf(childUI) : -1;
+    int targetIndex = index < 0 ? parentUI.getChildren().size() : index;
+    if (oldParent == parentUI) {
+      targetIndex = Math.min(targetIndex, parentUI.getChildren().size() - 1);
+      if (oldIndex == targetIndex) {
+        return;
       }
-      return;
     }
-
-    IRendererHost hParent = mViewHolder.get(parent);
-    IRendererHost hChild = mViewHolder.get(child);
-    if (hParent == null || hChild == null) {
-      return;
+    if (oldParent != null) {
+      owner.remove(oldParent.getSign(), child);
     }
-    if (!(hParent.getView() instanceof ViewGroup)) {
-      return;
-    }
-    ViewGroup parentView = (ViewGroup) hParent.getView();
-    View childView = hChild.getView();
-    if (childView == null) {
-      return;
-    }
-    int count = parentView.getChildCount();
-    if (index == -1 || index >= count) {
-      parentView.addView(childView);
-    } else {
-      parentView.addView(childView, index);
-    }
+    owner.insert(parent, child, Math.min(targetIndex, parentUI.getChildren().size()));
   }
 
   @CalledByNative
   public void invalidatePlatformRenderer(int sign) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host != null) {
-      host.invalidateForRenderer();
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    if (ui != null) {
+      ui.invalidateFragmentLayer(0);
     }
   }
 
@@ -652,97 +519,68 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       int height, int dx, int dy, int paddingLeft, int paddingTop, int paddingRight,
       int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom,
       int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null) {
-      LLog.d(TAG, "host renderer not found for sign: " + sign);
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    if (ui == null) {
+      LLog.d(TAG, "fragment layer UI not found for sign: " + sign);
       return;
     }
-    host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
+    ui.setFragmentLayerFrame(needClip, left, top, left + width, top + height, dx, dy);
 
-    LynxUIOwner owner = mContext.getLynxUIOwner();
-    if (owner != null) {
-      LynxBaseUI ui = owner.getNode(sign);
-      if (ui != null) {
-        int layoutLeft = left + dx;
-        int layoutTop = top + dy;
-        if (sign == owner.getRootSign() && ui == mContext.getUIBody()) {
-          // The page root's content is laid out by the Renderer directly on the UIBodyView,
-          // so it must not go through the legacy UIOwner layout path. Only sync the minimal
-          // layout data on the UIBody without running any layout lifecycle: the fields are
-          // still read by the FSP snapshot, the intersection observer, accessibility bounds
-          // and requestUIInfo.
-          ui.updateLayoutSize(width, height);
-          ui.syncLayoutFrame(layoutLeft, layoutTop, width, height);
-        } else {
-          owner.updateLayout(sign, layoutLeft, layoutTop, width, height, paddingLeft, paddingTop,
-              paddingRight, paddingBottom, marginLeft, marginTop, marginRight, marginBottom,
-              borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth, null, null, 0,
-              sign);
-        }
-      }
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner != null && owner.getNode(sign) != null) {
+      int layoutLeft = left + dx;
+      int layoutTop = top + dy;
+      owner.updateLayout(sign, layoutLeft, layoutTop, width, height, paddingLeft, paddingTop,
+          paddingRight, paddingBottom, marginLeft, marginTop, marginRight, marginBottom,
+          borderLeftWidth, borderTopWidth, borderRightWidth, borderBottomWidth, null, null, 0,
+          sign);
     }
 
-    host.requestLayoutForRenderer();
-    host.getRenderer().invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+    ui.requestLayout();
+    ui.invalidateFragmentLayer(LynxBaseUI.FRAGMENT_LAYER_INVALIDATE_PARENT
+        | LynxBaseUI.FRAGMENT_LAYER_INVALIDATE_DISPLAY_LIST);
   }
 
   @CalledByNative
   void updatePlatformRendererAttributes(int sign, PropBundle propBundle, boolean tendsToFlatten) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null) {
-      LLog.d(TAG, "host renderer not found for sign: " + sign);
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
+    if (ui == null) {
+      LLog.d(TAG, "fragment layer UI not found for sign: " + sign);
       return;
     }
 
-    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
-    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
-    if (ui != null) {
-      ReadableMap props = propBundle != null ? propBundle.getProps() : null;
-      Map<String, EventsListener> listeners = EventsListener.convertEventListeners(
-          propBundle != null ? propBundle.getEventHandlers() : null);
-      Map<Integer, GestureDetector> detectors = GestureDetector.convertGestureDetectors(
-          propBundle != null ? propBundle.getGestures() : null);
-      Behavior behavior = mBehaviorRegistry != null ? mBehaviorRegistry.get(ui.getTagName()) : null;
-      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
-      owner.updateProperties(
-          sign, isFlatten, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
-    }
+    LynxBaseUI oldLayerUI = owner.getFragmentLayer(sign);
+    ReadableMap props = propBundle != null ? propBundle.getProps() : null;
+    Map<String, EventsListener> listeners = EventsListener.convertEventListeners(
+        propBundle != null ? propBundle.getEventHandlers() : null);
+    Map<Integer, GestureDetector> detectors = GestureDetector.convertGestureDetectors(
+        propBundle != null ? propBundle.getGestures() : null);
+    Behavior behavior = mBehaviorRegistry != null ? mBehaviorRegistry.get(ui.getTagName()) : null;
+    boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
+    owner.updateProperties(
+        sign, isFlatten, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
 
-    // Get the renderer
-    Renderer renderer = host.getRenderer();
-    if (renderer != null) {
-      renderer.updateAttributes(propBundle);
-    }
+    owner.updateFragmentLayer(sign, oldLayerUI, this);
   }
 
   @CalledByNative
   public void updatePlatformRendererSubtreeProperties(int sign, ByteBuffer buffer, int count) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null) {
-      LLog.d(TAG, "host renderer not found for sign: " + sign);
+    LynxBaseUI ui = getPlatformRendererUI(sign);
+    if (ui == null) {
+      LLog.d(TAG, "fragment layer UI not found for sign: " + sign);
       return;
     }
 
-    // Get the renderer
-    Renderer renderer = host.getRenderer();
-    if (renderer != null) {
-      buffer.order(java.nio.ByteOrder.nativeOrder());
-      renderer.applySubtreeProperties(buffer, count);
-    }
+    buffer.order(java.nio.ByteOrder.nativeOrder());
+    ui.applyFragmentLayerSubtreeProperties(buffer, count);
   }
 
   @CalledByNative
   public void updatePlatformExtraData(int sign, Object extraData) {
-    IRendererHost host = mViewHolder.get(sign);
-    if (host == null) {
-      LLog.d(TAG, "host renderer not found for sign: " + sign);
-      return;
-    }
-
-    // Get the renderer
-    Renderer renderer = host.getRenderer();
-    if (renderer != null) {
-      renderer.updateExtraData(extraData);
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner != null && owner.getNode(sign) != null) {
+      owner.updateViewExtraData(sign, extraData);
     }
   }
 
@@ -794,7 +632,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  Page getTextBundle(int sign) {
+  public Page getTextBundle(int sign) {
     return (Page) mExtraDatas.get(sign);
   }
 
@@ -866,32 +704,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   void removePlatformRendererFromParent(int parent, int sign, boolean shouldUpdateUIOwner) {
-    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
     LynxBaseUI childUI = owner != null ? owner.getNode(sign) : null;
-    if (shouldUpdateUIOwner && parentUI != null && childUI != null) {
+    if (parentUI != null && childUI != null && childUI.getParentBaseUI() == parentUI
+        && (shouldUpdateUIOwner || !childUI.isOverlay())) {
       owner.remove(parent, sign);
-      return;
-    }
-    if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
-      return;
-    }
-    if (!shouldUpdateUIOwner
-        && shouldRemoveFromUIOwnerForFlattenRendererParent(parentUI, childUI)) {
-      owner.remove(parent, sign);
-      return;
-    }
-
-    IRendererHost host = mViewHolder.get(sign);
-    if (host != null) {
-      View hostView = host.getView();
-      if (hostView != null && hostView.getParent() instanceof ViewGroup) {
-        ((ViewGroup) hostView.getParent()).removeView(hostView);
-      }
     }
   }
 
-  ByteBuffer getDisplayListItemsBuffer(int id) {
+  @Override
+  public ByteBuffer getDisplayListItemsBuffer(int id) {
     if (mDestroyed || mNativePtr == 0) {
       return null;
     }
@@ -899,7 +722,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         nativeGetDisplayListItemsBuffer(mNativePtr, id, DisplayListApplier.DISPLAY_LIST_ITEM_SIZE));
   }
 
-  ByteBuffer getDisplayListDataBuffer(int id) {
+  @Override
+  public ByteBuffer getDisplayListDataBuffer(int id) {
     if (mDestroyed || mNativePtr == 0) {
       return null;
     }
@@ -955,7 +779,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   private native ByteBuffer nativeGetDisplayListDataBuffer(long nativePtr, int id);
 
-  native void nativeDestroy(long nativePtr);
+  private native void nativeDestroy(long nativePtr);
 
   private native void nativeInvokeUIMethodCallback(
       long nativePtr, int callbackId, int code, Object params);
@@ -971,7 +795,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
     mNativePtr = 0;
     mFocusedTarget = null;
-    mViewHolder.clear();
 
     for (Object value : mExtraDatas.values()) {
       if (value instanceof Page) {
@@ -982,7 +805,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
     mTextMeasurer = null;
     mTextLayout = null;
-    UIBody.UIBodyView root = mRootView.get();
+    UIBody.UIBodyView root = mRootView != null ? mRootView.get() : null;
     if (root != null) {
       root.clearNodeIndexImageMap();
     }

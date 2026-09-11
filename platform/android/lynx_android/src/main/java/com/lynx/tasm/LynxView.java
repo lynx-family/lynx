@@ -1196,8 +1196,6 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
     if (lynxUIRenderer != null) {
       boolean shouldInvokeNativeViewMethod = lynxUIRenderer.shouldInvokeNativeViewMethod();
-      boolean isFragmentLayerRender =
-          getLynxContext() != null && getLynxContext().isFragmentLayerRenderOn();
       if (mLynxTemplateRender.isEnableReuseEngine()) {
         UIGroup<UIBodyView> rootUI = getLynxUIRoot();
         if (rootUI instanceof UIBody) {
@@ -1205,7 +1203,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
         }
       }
       mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
-      if (shouldInvokeNativeViewMethod || isFragmentLayerRender) {
+      if (shouldInvokeNativeViewMethod) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
       }
     } else {
@@ -1238,10 +1236,6 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
     if ((lynxUIRenderer != null)) {
       if (lynxUIRenderer.shouldInvokeNativeViewMethod()) {
-        super.onLayout(changed, left, top, right, bottom);
-      }
-      if (getLynxContext() != null && getLynxContext().isFragmentLayerRenderOn()) {
-        // PlatformRenderer uses native layout pass to update frame.
         super.onLayout(changed, left, top, right, bottom);
       }
 

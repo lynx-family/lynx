@@ -32,6 +32,7 @@ public class LynxBehaviorProcessorTest {
               + "createPlatformRendererHost(LynxContext context) { return null; }\n"
               + "  public com.lynx.tasm.behavior.shadow.ShadowNode createShadowNode() { return "
               + "null; }\n"
+              + "  public boolean supportFragmentLayerChildren() { return false; }\n"
               + "}\n");
 
   private static final JavaFileObject LYNX_CONTEXT_STUB =
@@ -277,10 +278,120 @@ public class LynxBehaviorProcessorTest {
         "Should contain createPlatformRendererHost", source.contains("createPlatformRendererHost"));
   }
 
+  @Test
+  public void testBehaviorWithFragmentLayerChildren() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxBehavior;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxBehavior(tagName = \"test\", supportFragmentLayerChildren = true)\n"
+            + "public class TestUI extends LynxUI {\n"
+            + "  public TestUI(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertTrue("Should override supportFragmentLayerChildren returning true",
+        source.contains("public boolean supportFragmentLayerChildren()")
+            && source.contains("return true;"));
+    assertGeneratedRegistrationCompiles(compilation, "com.test.BehaviorGenerator", testClass);
+  }
+
+  @Test
+  public void testBehaviorWithDefaultFragmentLayerChildren() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestUI",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxBehavior;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxBehavior(tagName = \"test\")\n"
+            + "public class TestUI extends LynxUI {\n"
+            + "  public TestUI(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertFalse("Should not override supportFragmentLayerChildren by default",
+        source.contains("supportFragmentLayerChildren"));
+    assertGeneratedRegistrationCompiles(compilation, "com.test.BehaviorGenerator", testClass);
+  }
+
+  @Test
+  public void testLynxElementWithFragmentLayerChildren() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestElement",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxElement;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxElement(name = \"test-element\", supportFragmentLayerChildren = true)\n"
+            + "public class TestElement extends LynxUI {\n"
+            + "  public TestElement(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertTrue("Should override supportFragmentLayerChildren returning true",
+        source.contains("public boolean supportFragmentLayerChildren()")
+            && source.contains("return true;"));
+    assertGeneratedRegistrationCompiles(compilation, "com.test.BehaviorGenerator", testClass);
+  }
+
+  @Test
+  public void testLynxElementWithDefaultFragmentLayerChildren() throws IOException {
+    JavaFileObject testClass = JavaFileObjects.forSourceString("com.test.TestElement",
+        "package com.test;\n"
+            + "import com.lynx.tasm.behavior.LynxElement;\n"
+            + "import com.lynx.tasm.behavior.LynxContext;\n"
+            + "import com.lynx.tasm.behavior.ui.LynxUI;\n"
+            + "@LynxElement(name = \"test-element\")\n"
+            + "public class TestElement extends LynxUI {\n"
+            + "  public TestElement(LynxContext context) { super(context); }\n"
+            + "}\n");
+
+    Compilation compilation = javac()
+                                  .withProcessors(new LynxBehaviorProcessor())
+                                  .compile(merge(getCommonStubs(), testClass));
+
+    assertTrue("Compilation should succeed", compilation.status() == Compilation.Status.SUCCESS);
+
+    String source = getGeneratedSource(compilation, "com.test.BehaviorGenerator");
+    assertFalse("Should not override supportFragmentLayerChildren by default",
+        source.contains("supportFragmentLayerChildren"));
+    assertGeneratedRegistrationCompiles(compilation, "com.test.BehaviorGenerator", testClass);
+  }
+
   private static JavaFileObject[] merge(JavaFileObject[] base, JavaFileObject... extras) {
     JavaFileObject[] result = new JavaFileObject[base.length + extras.length];
     System.arraycopy(base, 0, result, 0, base.length);
     System.arraycopy(extras, 0, result, base.length, extras.length);
     return result;
+  }
+
+  private static void assertGeneratedRegistrationCompiles(
+      Compilation compilation, String qualifiedName, JavaFileObject... sources) throws IOException {
+    JavaFileObject generated =
+        compilation.generatedSourceFile(qualifiedName)
+            .orElseThrow(
+                () -> new AssertionError("Expected generated file not found: " + qualifiedName));
+    Compilation registrationCompilation =
+        javac().compile(merge(merge(getCommonStubs(), generated), sources));
+    assertTrue("Generated registration should compile",
+        registrationCompilation.status() == Compilation.Status.SUCCESS);
   }
 }

@@ -274,6 +274,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     boolean createAsync = classInfo.isCreateAsync;
     boolean needProcessDirection = classInfo.needProcessDirection;
     boolean supportFragmentLayerRender = classInfo.supportFragmentLayerRender;
+    boolean supportFragmentLayerChildren = classInfo.supportFragmentLayerChildren;
 
     for (String tag : classInfo.tagName) {
       ClassName lynxContextCln = ClassName.get("com.lynx.tasm.behavior", "LynxContext");
@@ -298,6 +299,13 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
         builder.addCode("@Override\n");
         builder.addCode("public $T createUI($T context) {\n", lynxUICln, lynxContextCln);
         builder.addCode("return new $T(context);\n", classInfo.mClassName);
+        builder.addCode(" }\n");
+      }
+
+      if (supportFragmentLayerChildren) {
+        builder.addCode("@Override\n");
+        builder.addCode("public boolean supportFragmentLayerChildren() {\n");
+        builder.addCode("return true;\n");
         builder.addCode(" }\n");
       }
 
@@ -335,6 +343,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     classInfo.addBehaviorIsCreateAsync(typeElement);
     classInfo.addBehaviorNeedProcessDirection(typeElement);
     classInfo.addBehaviorSupportFragmentLayerRender(typeElement);
+    classInfo.addBehaviorSupportFragmentLayerChildren(typeElement);
     classInfo.addBehaviorFragmentLayerRendererHost(typeElement);
     return classInfo;
   }
@@ -345,6 +354,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     classInfo.addLynxElementIsCreateAsync(typeElement);
     classInfo.addLynxElementNeedProcessDirection(typeElement);
     classInfo.addLynxElementSupportFragmentLayerRender(typeElement);
+    classInfo.addLynxElementSupportFragmentLayerChildren(typeElement);
     classInfo.addLynxElementFragmentLayerRendererHost(typeElement);
     return classInfo;
   }
@@ -379,6 +389,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     public String shadowNodeTag;
     public boolean needProcessDirection;
     public boolean supportFragmentLayerRender;
+    public boolean supportFragmentLayerChildren;
     public String fragmentLayerRendererHost;
 
     public ClassInfo(ClassName mClassName, TypeElement mElement) {
@@ -388,6 +399,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
       this.isCreateAsync = false;
       this.needProcessDirection = false;
       this.supportFragmentLayerRender = false;
+      this.supportFragmentLayerChildren = false;
       this.fragmentLayerRendererHost = null;
     }
 
@@ -429,6 +441,16 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     public void addLynxElementSupportFragmentLayerRender(Element element) {
       LynxElement annotation = element.getAnnotation(LynxElement.class);
       supportFragmentLayerRender = annotation.supportFragmentLayerRender();
+    }
+
+    public void addBehaviorSupportFragmentLayerChildren(Element element) {
+      LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
+      supportFragmentLayerChildren = annotation.supportFragmentLayerChildren();
+    }
+
+    public void addLynxElementSupportFragmentLayerChildren(Element element) {
+      LynxElement annotation = element.getAnnotation(LynxElement.class);
+      supportFragmentLayerChildren = annotation.supportFragmentLayerChildren();
     }
 
     public void addBehaviorFragmentLayerRendererHost(Element element) {

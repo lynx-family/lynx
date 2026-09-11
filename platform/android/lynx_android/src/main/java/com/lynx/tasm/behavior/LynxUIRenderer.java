@@ -460,14 +460,15 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     }
     boolean isFragmentLayerRender =
         lynxContext != null && lynxContext.isFragmentLayerRenderOn() && bodyView != null;
-    if (!isFragmentLayerRender) {
-      // No platform ui is needed
-      mLynxUIOwner.performMeasure();
-    }
+    // Fragment layers may be backed by real LynxUIs. Measure them through the authoritative
+    // LynxUIOwner tree so container components can also measure their internal Android views.
+    mLynxUIOwner.performMeasure();
     int width = 0;
     int height = 0;
     int widthMode = MeasureSpec.getMode(widthMeasureSpec);
-    Rect rootFrame = bodyView.getRenderer() != null ? bodyView.getRenderer().getLynxFrame() : null;
+    UIBody rootUI = mLynxUIOwner.getRootUI();
+    Rect rootFrame =
+        rootUI != null && rootUI.isFragmentLayer() ? rootUI.getFragmentLayerFrame() : null;
     if (widthMode == MeasureSpec.AT_MOST || widthMode == MeasureSpec.UNSPECIFIED) {
       width = isFragmentLayerRender ? (rootFrame != null ? rootFrame.width() : 0)
                                     : mLynxUIOwner.getRootWidth();
@@ -491,12 +492,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       return;
     }
     LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
-    boolean isFragmentLayerRender = lynxContext != null && lynxContext.isFragmentLayerRenderOn()
-        && lynxContext.getUIBodyView() != null;
-    if (isFragmentLayerRender) {
-      // No need to perform layout for UIOwner under fragment layer render.
-      return;
-    }
 
     if (lynxContext != null) {
       String eventName = "LynxTemplateRender.Layout";

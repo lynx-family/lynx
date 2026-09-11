@@ -25,6 +25,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
@@ -54,6 +55,7 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int OP_BOX_SHADOW = 13;
   static final int OP_BACKGROUND_IMAGE = 14;
   static final int OP_RADIAL_GRADIENT = 15;
+  static final int INVALID_VIEW_ID = -1;
   static final int SUBTREE_OP_TRANSFORM = 0;
   static final int SUBTREE_OP_OPACITY = 1;
   static final int SUBTREE_OP_FILTER = 2;
@@ -138,24 +140,44 @@ public class DisplayListApplier implements Drawable.Callback {
   private BlurMaskFilter mReusableBlurMaskFilter;
   private float mLastBlurRadius = -1.f;
 
-  private PlatformRendererContext mContext;
+  private LayerRenderContext mContext;
   private int mItemIndex;
   private int mFragmentDepth;
 
-  private WeakReference<IRendererHost> mHostLayer;
+  private WeakReference<LynxBaseUI> mHostLayer;
+  private WeakReference<IRendererHost> mLegacyHostLayer;
 
   private final ArrayList<RoundedRectangle> mRoundedRectangleArray = new ArrayList<>();
 
   public DisplayListApplier(ByteBuffer itemsBuffer, ByteBuffer dataBuffer,
-      PlatformRendererContext platformRendererContext, IRendererHost hostLayer) {
+      LayerRenderContext layerRenderContext, LynxBaseUI hostLayer) {
     mItemsBuffer = itemsBuffer;
     mDataBuffer = dataBuffer;
     mPaint = new Paint();
     mPaint.setAntiAlias(true);
     reset();
-    mTextMeasurer = platformRendererContext.getTextMeasurer();
-    mContext = platformRendererContext;
+    mTextMeasurer = layerRenderContext.getTextMeasurer();
+    mContext = layerRenderContext;
     mHostLayer = new WeakReference<>(hostLayer);
+    mLegacyHostLayer = new WeakReference<>(null);
+  }
+
+  public DisplayListApplier(ByteBuffer itemsBuffer, ByteBuffer dataBuffer,
+      PlatformRendererContext platformRendererContext, IRendererHost hostLayer) {
+    this(itemsBuffer, dataBuffer, (LayerRenderContext) platformRendererContext, hostLayer);
+  }
+
+  DisplayListApplier(ByteBuffer itemsBuffer, ByteBuffer dataBuffer,
+      LayerRenderContext layerRenderContext, IRendererHost hostLayer) {
+    mItemsBuffer = itemsBuffer;
+    mDataBuffer = dataBuffer;
+    mPaint = new Paint();
+    mPaint.setAntiAlias(true);
+    reset();
+    mTextMeasurer = layerRenderContext.getTextMeasurer();
+    mContext = layerRenderContext;
+    mHostLayer = new WeakReference<>(null);
+    mLegacyHostLayer = new WeakReference<>(hostLayer);
   }
 
   public void reset() {
@@ -165,12 +187,16 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   public void drawTillNextView(Canvas canvas) {
+    drawTillNextViewAndGetViewId(canvas);
+  }
+
+  public int drawTillNextViewAndGetViewId(Canvas canvas) {
     if (mItemsBuffer == null) {
-      return;
+      return INVALID_VIEW_ID;
     }
 
     // Process content operations
-    processContentOperations(canvas);
+    return processContentOperations(canvas);
   }
 
   private static final class BorderBoxes {
@@ -183,55 +209,108 @@ public class DisplayListApplier implements Drawable.Callback {
     }
   }
 
-  private IRendererHost getRendererHost() {
+  private LynxBaseUI getHostUI() {
     return mHostLayer.get();
   }
 
+  private IRendererHost getLegacyHostLayer() {
+    return mLegacyHostLayer.get();
+  }
+
   private View getHostLayer() {
-    IRendererHost host = getRendererHost();
-    return host != null ? host.getView() : null;
+    LynxBaseUI host = getHostUI();
+    if (host != null) {
+      return host.getFragmentLayerView();
+    }
+    IRendererHost legacyHost = getLegacyHostLayer();
+    return legacyHost != null ? legacyHost.getView() : null;
+  }
+
+  private boolean isHostLayerAndroidScrollView() {
+    LynxBaseUI host = getHostUI();
+    if (host != null) {
+      return host.isScrollable() && getHostLayer() instanceof AndroidScrollView;
+    }
+    return getLegacyHostLayer() instanceof AndroidScrollView;
   }
 
   private boolean shouldKeepOverlayRootHorizontalOffset() {
-    IRendererHost host = getRendererHost();
-    Renderer renderer = host != null ? host.getRenderer() : null;
+    LynxBaseUI host = getHostUI();
+    if (host != null) {
+      return host.isOverlay();
+    }
+    IRendererHost legacyHost = getLegacyHostLayer();
+    Renderer renderer = legacyHost != null ? legacyHost.getRenderer() : null;
     return renderer != null && renderer.getUIHost() != null && renderer.getUIHost().isOverlay();
   }
 
+  private int getHostLayerWidth() {
+    LynxBaseUI host = getHostUI();
+    if (host != null) {
+      return host.getFragmentLayerWidth();
+    }
+    IRendererHost legacyHost = getLegacyHostLayer();
+    return legacyHost != null ? legacyHost.getRendererHostWidth() : 0;
+  }
+
+  private int getHostLayerHeight() {
+    LynxBaseUI host = getHostUI();
+    if (host != null) {
+      return host.getFragmentLayerHeight();
+    }
+    IRendererHost legacyHost = getLegacyHostLayer();
+    return legacyHost != null ? legacyHost.getRendererHostHeight() : 0;
+  }
+
+  private int getHostLayerScrollX() {
+    LynxBaseUI host = getHostUI();
+    if (host != null) {
+      return host.getFragmentLayerScrollX();
+    }
+    IRendererHost legacyHost = getLegacyHostLayer();
+    return legacyHost != null ? legacyHost.getRendererHostScrollX() : 0;
+  }
+
+  private int getHostLayerScrollY() {
+    LynxBaseUI host = getHostUI();
+    if (host != null) {
+      return host.getFragmentLayerScrollY();
+    }
+    IRendererHost legacyHost = getLegacyHostLayer();
+    return legacyHost != null ? legacyHost.getRendererHostScrollY() : 0;
+  }
+
   private boolean shouldNormalizeRootGeometry() {
-    IRendererHost hostLayer = getRendererHost();
-    return mFragmentDepth == 1 && hostLayer != null && hostLayer.getRendererHostWidth() > 0
-        && hostLayer.getRendererHostHeight() > 0;
+    return mFragmentDepth == 1 && getHostLayerWidth() > 0 && getHostLayerHeight() > 0;
   }
 
   private RectF getHostBoundsRectF(boolean includeScrollOffset) {
-    IRendererHost hostLayer = getRendererHost();
-    if (hostLayer == null) {
+    if (getHostUI() == null && getLegacyHostLayer() == null) {
       return new RectF();
     }
 
     float left = 0.f;
     float top = 0.f;
-    if (includeScrollOffset && hostLayer instanceof AndroidScrollView) {
-      left = hostLayer.getRendererHostScrollX();
-      top = hostLayer.getRendererHostScrollY();
+    if (includeScrollOffset && isHostLayerAndroidScrollView()) {
+      left = getHostLayerScrollX();
+      top = getHostLayerScrollY();
     }
-    return new RectF(left, top, left + hostLayer.getRendererHostWidth(),
-        top + hostLayer.getRendererHostHeight());
+    return new RectF(left, top, left + getHostLayerWidth(), top + getHostLayerHeight());
   }
 
   private boolean shouldIncludeScrollOffsetForHostBounds() {
-    IRendererHost hostLayer = getRendererHost();
-    return hostLayer instanceof AndroidScrollView
-        && !((AndroidScrollView) hostLayer).isHorizontal();
+    IRendererHost legacyHost = getLegacyHostLayer();
+    if (legacyHost instanceof AndroidScrollView) {
+      return !((AndroidScrollView) legacyHost).isHorizontal();
+    }
+    return isHostLayerAndroidScrollView();
   }
 
   private void offsetRectForHostScroll(RectF rect) {
-    IRendererHost hostLayer = getRendererHost();
-    if (hostLayer == null) {
+    if (getHostUI() == null && getLegacyHostLayer() == null) {
       return;
     }
-    rect.offset(hostLayer.getRendererHostScrollX(), hostLayer.getRendererHostScrollY());
+    rect.offset(getHostLayerScrollX(), getHostLayerScrollY());
   }
 
   private float[] cloneBorderRadii(float[] borderRadii) {
@@ -318,9 +397,8 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   private void normalizeClipRect(RectF rect) {
-    IRendererHost hostLayer = getRendererHost();
-    if (hostLayer instanceof AndroidScrollView) {
-      rect.offset(hostLayer.getRendererHostScrollX(), hostLayer.getRendererHostScrollY());
+    if (isHostLayerAndroidScrollView()) {
+      rect.offset(getHostLayerScrollX(), getHostLayerScrollY());
     }
     if (!shouldNormalizeRootGeometry()) {
       return;
@@ -491,9 +569,9 @@ public class DisplayListApplier implements Drawable.Callback {
     return mItemsBuffer.getFloat(byteOffset);
   }
 
-  private void processContentOperations(Canvas canvas) {
+  private int processContentOperations(Canvas canvas) {
     if (mItemsBuffer == null) {
-      return;
+      return INVALID_VIEW_ID;
     }
 
     mItemsBuffer.order(ByteOrder.nativeOrder());
@@ -503,7 +581,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
     if (mItemsBuffer.capacity() < DISPLAY_LIST_ITEM_SIZE
         || mItemsBuffer.capacity() % DISPLAY_LIST_ITEM_SIZE != 0) {
-      return;
+      return INVALID_VIEW_ID;
     }
     int itemsCount = mItemsBuffer.capacity() / DISPLAY_LIST_ITEM_SIZE;
 
@@ -556,7 +634,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_DRAW_VIEW: {
           mItemIndex = currentItemIndex + 1;
-          return;
+          return getIntAt(itemByteOffset + DRAW_VIEW_ID_OFFSET);
         }
 
         case OP_TEXT: {
@@ -744,6 +822,7 @@ public class DisplayListApplier implements Drawable.Callback {
     }
 
     mItemIndex = currentItemIndex;
+    return INVALID_VIEW_ID;
   }
 
   private void drawLinearGradient(Canvas canvas, float angle, int[] colors, float[] stops,
@@ -1021,9 +1100,14 @@ public class DisplayListApplier implements Drawable.Callback {
 
   @Override
   public void invalidateDrawable(@NonNull Drawable who) {
-    IRendererHost hostLayer = getRendererHost();
+    LynxBaseUI hostLayer = getHostUI();
     if (hostLayer != null) {
-      hostLayer.invalidateForRenderer();
+      hostLayer.invalidate();
+      return;
+    }
+    IRendererHost legacyHost = getLegacyHostLayer();
+    if (legacyHost != null) {
+      legacyHost.invalidateForRenderer();
     }
   }
 

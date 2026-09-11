@@ -10,6 +10,9 @@ import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.lynx.tasm.behavior.ui.IDrawChildHook;
+import com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 
@@ -30,7 +33,7 @@ public class Renderer {
   private final Rect mLynxFrame = new Rect();
   private final Point mRenderOffset = new Point();
   private final int mSign;
-  private final PlatformRendererContext mPlatformRendererContext;
+  private final LayerRenderContext mLayerRenderContext;
   private DisplayListApplier mDisplayListApplier = null;
   private java.nio.ByteBuffer mDisplayListItemsBuffer = null;
   private java.nio.ByteBuffer mDisplayListDataBuffer = null;
@@ -69,7 +72,11 @@ public class Renderer {
   }
 
   public Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign) {
-    mPlatformRendererContext = platformRendererContext;
+    this((LayerRenderContext) platformRendererContext, sign);
+  }
+
+  Renderer(@NonNull LayerRenderContext layerRenderContext, int sign) {
+    mLayerRenderContext = layerRenderContext;
     mSign = sign;
   }
 
@@ -82,7 +89,7 @@ public class Renderer {
   }
 
   public com.lynx.tasm.behavior.LynxContext getLynxContext() {
-    return mPlatformRendererContext.getLynxContext();
+    return mLayerRenderContext.getLynxContext();
   }
 
   int getSign() {
@@ -113,16 +120,14 @@ public class Renderer {
     ViewGroup viewGroup = (ViewGroup) view;
     for (int i = 0; i < viewGroup.getChildCount(); i++) {
       View child = viewGroup.getChildAt(i);
-      if (child instanceof IRendererHost) {
-        Renderer childRenderer = ((IRendererHost) child).getRenderer();
-        if (childRenderer == null) {
-          continue;
-        }
-        Rect childFrame = childRenderer.getLynxFrame();
-        child.measure(
-            View.MeasureSpec.makeMeasureSpec(childFrame.width(), View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(childFrame.height(), View.MeasureSpec.EXACTLY));
+      IRendererHost childHost = resolveRendererHost(child);
+      Renderer childRenderer = childHost != null ? childHost.getRenderer() : null;
+      if (childRenderer == null) {
+        continue;
       }
+      Rect childFrame = childRenderer.getLynxFrame();
+      child.measure(View.MeasureSpec.makeMeasureSpec(childFrame.width(), View.MeasureSpec.EXACTLY),
+          View.MeasureSpec.makeMeasureSpec(childFrame.height(), View.MeasureSpec.EXACTLY));
     }
   }
 
@@ -142,25 +147,24 @@ public class Renderer {
     ViewGroup viewGroup = (ViewGroup) view;
     for (int i = 0; i < viewGroup.getChildCount(); i++) {
       View child = viewGroup.getChildAt(i);
-      if (child instanceof IRendererHost) {
-        Renderer childRenderer = ((IRendererHost) child).getRenderer();
-        if (childRenderer == null) {
-          continue;
-        }
-        Rect childFrame = childRenderer.getLynxFrame();
-        child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+      IRendererHost childHost = resolveRendererHost(child);
+      Renderer childRenderer = childHost != null ? childHost.getRenderer() : null;
+      if (childRenderer == null) {
+        continue;
       }
+      Rect childFrame = childRenderer.getLynxFrame();
+      child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
     }
   }
 
   public void onDraw(Canvas canvas) {
     if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
-      mDisplayListItemsBuffer = mPlatformRendererContext.getDisplayListItemsBuffer(mSign);
-      mDisplayListDataBuffer = mPlatformRendererContext.getDisplayListDataBuffer(mSign);
+      mDisplayListItemsBuffer = mLayerRenderContext.getDisplayListItemsBuffer(mSign);
+      mDisplayListDataBuffer = mLayerRenderContext.getDisplayListDataBuffer(mSign);
     }
     if (mDisplayListApplier == null) {
       mDisplayListApplier = new DisplayListApplier(
-          mDisplayListItemsBuffer, mDisplayListDataBuffer, mPlatformRendererContext, mRenderHost);
+          mDisplayListItemsBuffer, mDisplayListDataBuffer, mLayerRenderContext, mRenderHost);
     } else {
       mDisplayListApplier.setBuffer(mDisplayListItemsBuffer, mDisplayListDataBuffer);
     }
@@ -180,13 +184,25 @@ public class Renderer {
     }
     mDisplayListApplier.drawTillNextView(canvas);
     canvas.save();
-    if (child instanceof IRendererHost) {
-      IRendererHost childHost = (IRendererHost) child;
-      Renderer childRenderer = childHost.getRenderer();
-      if (childRenderer != null) {
-        canvas.translate(-childRenderer.getRenderOffset().x, -childRenderer.getRenderOffset().y);
+    IRendererHost childHost = resolveRendererHost(child);
+    Renderer childRenderer = childHost != null ? childHost.getRenderer() : null;
+    if (childRenderer != null) {
+      canvas.translate(-childRenderer.getRenderOffset().x, -childRenderer.getRenderOffset().y);
+    }
+  }
+
+  @Nullable
+  static IRendererHost resolveRendererHost(@Nullable View view) {
+    if (view instanceof IDrawChildHookBinding) {
+      IDrawChildHook hook = ((IDrawChildHookBinding) view).getDrawChildHook();
+      if (hook instanceof IRendererHost) {
+        IRendererHost hookHost = (IRendererHost) hook;
+        if (hookHost.getRenderer() != null) {
+          return hookHost;
+        }
       }
     }
+    return view instanceof IRendererHost ? (IRendererHost) view : null;
   }
 
   public void afterDrawChild(Canvas canvas, View child) {

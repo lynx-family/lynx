@@ -990,6 +990,9 @@ void Element::OnNodeAdded(Element *child) {
         !is_page() && !is_view() && !is_text() && !is_image();
     if (is_wrapper() || is_component()) {
       is_compatible_parent = is_direct_child_of_compatible_component();
+    } else if (is_compatible_parent && EnableFragmentLayerRender()) {
+      is_compatible_parent = !(element_manager()->GetNodeInfoByTag(GetTag()) &
+                               NodeInfoBits::kSupportFragmentLayerChildrenMask);
     }
     child->MarkAsDirectChildOfCompatibleComponent(is_compatible_parent);
   }
@@ -1016,6 +1019,21 @@ void Element::OnNodeAdded(Element *child) {
 void Element::OnNodeRemoved(Element *child) {
   if (child != nullptr) {
     child->MarkAsDirectChildOfCompatibleComponent(false);
+  }
+}
+
+void Element::MarkAsDirectChildOfCompatibleComponent(bool flag) {
+  if (is_direct_child_of_compatible_component_ == flag) {
+    return;
+  }
+  is_direct_child_of_compatible_component_ = flag;
+  // Transparent nodes may have children before they are attached or reparented.
+  // Propagate the boundary through them, stopping at concrete elements.
+  if (EnableFragmentLayerRender() && (is_wrapper() || is_component())) {
+    for (auto *child = first_child(); child != nullptr;
+         child = child->next_sibling()) {
+      child->MarkAsDirectChildOfCompatibleComponent(flag);
+    }
   }
 }
 

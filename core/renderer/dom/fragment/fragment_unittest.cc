@@ -18,9 +18,11 @@
 #include "base/include/fml/message_loop.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
+#include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
@@ -422,6 +424,99 @@ class FragmentDrawTest : public ::testing::Test {
   std::unique_ptr<lynx::tasm::ElementManager> manager;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
+
+TEST_F(FragmentDrawTest, ComponentCanRenderOrdinaryChildrenWithoutFallback) {
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  context->mock_virtuality_map["layer-content"] =
+      LayoutNodeType::COMMON | NodeInfoBits::kSupportFragmentLayerChildrenMask;
+  auto page = manager->CreateFiberPage("0", 0);
+  auto item = manager->CreateFiberNode("layer-content");
+  auto view = manager->CreateFiberView();
+  auto text = manager->CreateFiberText("text");
+  auto image = manager->CreateFiberImage("image");
+  auto extended = manager->CreateFiberNode("legacy-content");
+  auto legacy_child = manager->CreateFiberView();
+  page->InsertNode(item);
+  item->InsertNode(view);
+  item->InsertNode(text);
+  item->InsertNode(image);
+  item->InsertNode(extended);
+  extended->InsertNode(legacy_child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(item->fragment_impl()->has_platform_renderer_);
+  for (auto* child :
+       {static_cast<Element*>(view.get()), static_cast<Element*>(text.get()),
+        static_cast<Element*>(image.get())}) {
+    EXPECT_FALSE(child->is_direct_child_of_compatible_component());
+    EXPECT_FALSE(child->fragment_impl()->has_platform_renderer_);
+    EXPECT_EQ(child->fragment_impl()->fragment_parent(), item->fragment_impl());
+  }
+  // Opting in the parent does not turn an extended child into a built-in layer.
+  EXPECT_TRUE(extended->fragment_impl()->has_platform_renderer_);
+  EXPECT_TRUE(legacy_child->is_direct_child_of_compatible_component());
+  EXPECT_TRUE(legacy_child->fragment_impl()->has_platform_renderer_);
+
+  view->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(view->fragment_impl()->has_platform_renderer_);
+  EXPECT_FALSE(view->is_direct_child_of_compatible_component());
+}
+
+TEST_F(FragmentDrawTest, ComponentChildrenKeepFallbackByDefault) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto item = manager->CreateFiberNode("legacy-content");
+  auto child = manager->CreateFiberView();
+  page->InsertNode(item);
+  item->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(child->is_direct_child_of_compatible_component());
+  EXPECT_TRUE(child->fragment_impl()->has_platform_renderer_);
+}
+
+TEST_F(FragmentTest, FragmentLayerChildCapabilityCrossesTransparentNodes) {
+  auto* context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  context->mock_virtuality_map["layer-content"] =
+      LayoutNodeType::COMMON | NodeInfoBits::kSupportFragmentLayerChildrenMask;
+  auto layer_parent = manager->CreateFiberNode("layer-content");
+  auto legacy_parent = manager->CreateFiberNode("legacy-content");
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto component = manager->CreateFiberComponent("test", 0, "", "", "");
+  auto child = manager->CreateFiberView();
+  auto grandchild = manager->CreateFiberText("text");
+  wrapper->InsertNode(component);
+  component->InsertNode(child);
+  child->InsertNode(grandchild);
+
+  legacy_parent->InsertNode(wrapper);
+  EXPECT_TRUE(wrapper->is_direct_child_of_compatible_component());
+  EXPECT_TRUE(component->is_direct_child_of_compatible_component());
+  EXPECT_TRUE(child->is_direct_child_of_compatible_component());
+  EXPECT_FALSE(grandchild->is_direct_child_of_compatible_component());
+
+  legacy_parent->RemoveNode(wrapper);
+  layer_parent->InsertNode(wrapper);
+  EXPECT_FALSE(wrapper->is_direct_child_of_compatible_component());
+  EXPECT_FALSE(component->is_direct_child_of_compatible_component());
+  EXPECT_FALSE(child->is_direct_child_of_compatible_component());
+}
+
+TEST_F(FragmentTest, FragmentLayerChildCapabilityDoesNotChangeLegacyMode) {
+  auto* context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  context->mock_virtuality_map["layer-content"] =
+      LayoutNodeType::COMMON | NodeInfoBits::kSupportFragmentLayerChildrenMask;
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) &
+      ~static_cast<int32_t>(EmbeddedMode::FRAGMENT_LAYER_RENDER));
+  auto parent = manager->CreateFiberNode("layer-content");
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  EXPECT_TRUE(child->is_direct_child_of_compatible_component());
+}
 
 TEST_F(FragmentDrawTest, DrawViewRecordsFinalOffsetWithRenderOffset) {
   auto element = manager->CreateFiberView();

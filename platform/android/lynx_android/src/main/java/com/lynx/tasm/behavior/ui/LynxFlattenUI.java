@@ -39,11 +39,11 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
   private float mAlpha = 1.0f;
   private RenderNodeCompat mRenderNode;
   private boolean mIsValidate = false;
-  private Renderer mRenderer;
-  private Rect mRendererClipBounds;
-  private float mRendererOpacity = 1.0f;
-  private Matrix mRendererTransformMatrix;
-  private int mRendererDrawingScopeSaveCount = -1;
+  private Rect mFragmentLayerClipBounds;
+  private float mFragmentLayerOpacity = 1.0f;
+  private Matrix mFragmentLayerTransformMatrix;
+  private int mFragmentLayerDrawingScopeSaveCount = -1;
+  private Renderer mLegacyRenderer;
 
   // We need to support the dark mode?
   public static Method sSetUsageHint; // refers to LynxContext
@@ -99,10 +99,6 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
   public void measure() {
     for (LynxBaseUI child : this.mChildren) {
       child.measure();
-    }
-    if (mRenderer != null) {
-      mRenderer.onMeasure(View.MeasureSpec.makeMeasureSpec(getWidth(), View.MeasureSpec.EXACTLY),
-          View.MeasureSpec.makeMeasureSpec(getHeight(), View.MeasureSpec.EXACTLY));
     }
   }
 
@@ -163,10 +159,6 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
         ((LynxFlattenUI) child).layout(childX, childY, childBounds);
       }
     }
-    if (mRenderer != null) {
-      mRenderer.onLayout(
-          false, getLeft(), getTop(), getLeft() + getWidth(), getTop() + getHeight());
-    }
   }
 
   @Override
@@ -176,21 +168,17 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
 
   @Override
   public void setRenderer(Renderer renderer) {
-    mRenderer = renderer;
+    mLegacyRenderer = renderer;
   }
 
   @Override
   public Renderer getRenderer() {
-    return mRenderer;
+    return mLegacyRenderer;
   }
 
   @Override
   public View getView() {
-    LynxBaseUI drawParent = getDrawParent();
-    if (drawParent instanceof LynxUI) {
-      return ((LynxUI<?>) drawParent).getView();
-    }
-    return null;
+    return getFragmentLayerView();
   }
 
   @Override
@@ -205,28 +193,17 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
 
   @Override
   public int getRendererHostScrollX() {
-    return 0;
+    return getFragmentLayerScrollX();
   }
 
   @Override
   public int getRendererHostScrollY() {
-    return 0;
+    return getFragmentLayerScrollY();
   }
 
   @Override
   public PointF convertPointInRendererHostToScreen(PointF point) {
-    PointF targetPoint = new PointF(point.x, point.y);
-    if (mRendererTransformMatrix != null) {
-      float[] values = new float[] {targetPoint.x, targetPoint.y};
-      mRendererTransformMatrix.mapPoints(values);
-      targetPoint.set(values[0], values[1]);
-    }
-    if (!(mDrawParent instanceof LynxUI) || ((LynxUI<?>) mDrawParent).getView() == null) {
-      LLog.e(
-          "LynxFlattenUI", "convertPointInRendererHostToScreen failed since draw parent is null.");
-      return targetPoint;
-    }
-    return LynxUIHelper.convertPointFromUIToScreen(this, targetPoint);
+    return convertPointInFragmentLayerToScreen(point);
   }
 
   @Override
@@ -247,33 +224,76 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
 
   @Override
   public void applyRendererClipBounds(boolean needClip, Rect clipBounds) {
-    if (needClip && clipBounds != null) {
-      if (mRendererClipBounds == null) {
-        mRendererClipBounds = new Rect();
-      }
-      mRendererClipBounds.set(clipBounds);
-    } else {
-      mRendererClipBounds = null;
-    }
-    invalidate();
+    applyFragmentLayerClipBounds(needClip, clipBounds);
   }
 
   @Override
   public void applyRendererOpacity(float opacity) {
-    mRendererOpacity = opacity;
-    invalidate();
+    applyFragmentLayerOpacity(opacity);
   }
 
   @Override
   public void applyRendererTransform(float[] transform) {
-    Matrix matrix = Renderer.createTransformMatrix(transform);
-    if (matrix.isIdentity()) {
-      mRendererTransformMatrix = null;
+    applyFragmentLayerTransform(transform);
+  }
+
+  @Override
+  public View getFragmentLayerView() {
+    LynxBaseUI drawParent = getDrawParent();
+    if (drawParent instanceof LynxUI) {
+      return ((LynxUI<?>) drawParent).getView();
+    }
+    return null;
+  }
+
+  @Override
+  public PointF convertPointInFragmentLayerToScreen(PointF point) {
+    PointF targetPoint = new PointF(point.x, point.y);
+    if (mFragmentLayerTransformMatrix != null) {
+      float[] values = new float[] {targetPoint.x, targetPoint.y};
+      mFragmentLayerTransformMatrix.mapPoints(values);
+      targetPoint.set(values[0], values[1]);
+    }
+    if (!(mDrawParent instanceof LynxUI) || ((LynxUI<?>) mDrawParent).getView() == null) {
+      LLog.e(
+          "LynxFlattenUI", "convertPointInFragmentLayerToScreen failed since draw parent is null.");
+      return targetPoint;
+    }
+    return LynxUIHelper.convertPointFromUIToScreen(this, targetPoint);
+  }
+
+  @Override
+  public void applyFragmentLayerClipBounds(boolean needClip, Rect clipBounds) {
+    if (needClip && clipBounds != null) {
+      if (mFragmentLayerClipBounds == null) {
+        mFragmentLayerClipBounds = new Rect();
+      }
+      mFragmentLayerClipBounds.set(clipBounds);
     } else {
-      mRendererTransformMatrix = matrix;
+      mFragmentLayerClipBounds = null;
     }
     invalidate();
   }
+
+  @Override
+  public void applyFragmentLayerOpacity(float opacity) {
+    mFragmentLayerOpacity = opacity;
+    invalidate();
+  }
+
+  @Override
+  public void applyFragmentLayerTransform(float[] transform) {
+    Matrix matrix = LynxBaseUI.createFragmentLayerTransformMatrix(transform);
+    if (matrix.isIdentity()) {
+      mFragmentLayerTransformMatrix = null;
+    } else {
+      mFragmentLayerTransformMatrix = matrix;
+    }
+    invalidate();
+  }
+
+  @Override
+  public void applyFragmentLayerFilter(int type, float amount) {}
 
   @Override
   public void onDrawingPositionChanged() {
@@ -334,8 +354,8 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
   }
 
   final void innerDraw(Canvas canvas) {
-    if (mRenderer != null) {
-      drawRendererHostStart(canvas);
+    if (isFragmentLayer()) {
+      startFlattenFragmentLayer(canvas);
       return;
     }
     // TODO: 2020/8/9
@@ -359,51 +379,33 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
     mRenderNode.drawRenderNode(canvas);
   }
 
-  boolean isRendererHost() {
-    return mRenderer != null;
-  }
-
-  void drawRendererHostStart(Canvas canvas) {
-    if (!beginRendererDrawingScope(canvas)) {
+  void startFlattenFragmentLayer(Canvas canvas) {
+    if (!beginFragmentLayerDrawingScope(canvas)) {
       return;
     }
-    mRenderer.onDraw(canvas);
-    drawRendererContentUntilNextView(canvas);
+    prepareFragmentLayerDisplayList(canvas);
+    drawFragmentLayerContentUntilNextViewWithoutResolvingLayer(canvas);
   }
 
-  void drawRendererContentUntilNextView(Canvas canvas) {
-    drawRendererContent(canvas, false);
-  }
-
-  void drawRendererHostEnd(Canvas canvas) {
+  void finishFlattenFragmentLayer(Canvas canvas) {
     try {
-      drawRendererContent(canvas, true);
+      if (getEffectiveFragmentLayerAlpha() > 0.0f && mFragmentLayerDrawingScopeSaveCount >= 0) {
+        finishFragmentLayerDisplayList(canvas);
+      }
     } finally {
-      endRendererDrawingScope(canvas);
+      endFragmentLayerDrawingScope(canvas);
     }
   }
 
-  private void drawRendererContent(Canvas canvas, boolean finish) {
-    if (mRenderer == null || getEffectiveRendererAlpha() <= 0.0f
-        || mRendererDrawingScopeSaveCount < 0) {
-      return;
-    }
-    if (finish) {
-      mRenderer.afterDispatchDraw(canvas);
-    } else {
-      mRenderer.beforeDrawHost(canvas);
-    }
-  }
-
-  private boolean beginRendererDrawingScope(Canvas canvas) {
-    float alpha = getEffectiveRendererAlpha();
-    if (mRenderer == null || alpha <= 0.0f) {
+  private boolean beginFragmentLayerDrawingScope(Canvas canvas) {
+    float alpha = getEffectiveFragmentLayerAlpha();
+    if (!isFragmentLayer() || alpha <= 0.0f) {
       return false;
     }
-    if (mRendererDrawingScopeSaveCount >= 0) {
+    if (mFragmentLayerDrawingScopeSaveCount >= 0) {
       return true;
     }
-    mRendererDrawingScopeSaveCount = canvas.save();
+    mFragmentLayerDrawingScopeSaveCount = canvas.save();
     Rect bound = getBound();
     if (bound != null) {
       canvas.clipRect(bound);
@@ -413,11 +415,11 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
     if ((left | top) != 0) {
       canvas.translate(left, top);
     }
-    if (mRendererTransformMatrix != null) {
-      canvas.concat(mRendererTransformMatrix);
+    if (mFragmentLayerTransformMatrix != null) {
+      canvas.concat(mFragmentLayerTransformMatrix);
     }
-    if (mRendererClipBounds != null) {
-      canvas.clipRect(mRendererClipBounds);
+    if (mFragmentLayerClipBounds != null) {
+      canvas.clipRect(mFragmentLayerClipBounds);
     }
     if (alpha < 1.0f) {
       canvas.saveLayerAlpha(
@@ -426,12 +428,12 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
     return true;
   }
 
-  private void endRendererDrawingScope(Canvas canvas) {
-    if (mRendererDrawingScopeSaveCount < 0) {
+  private void endFragmentLayerDrawingScope(Canvas canvas) {
+    if (mFragmentLayerDrawingScopeSaveCount < 0) {
       return;
     }
-    canvas.restoreToCount(mRendererDrawingScopeSaveCount);
-    mRendererDrawingScopeSaveCount = -1;
+    canvas.restoreToCount(mFragmentLayerDrawingScopeSaveCount);
+    mFragmentLayerDrawingScopeSaveCount = -1;
   }
 
   public final RenderNodeCompat updateRenderNode() {
@@ -469,8 +471,8 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
     }
   }
 
-  private float getEffectiveRendererAlpha() {
-    return mAlpha * mRendererOpacity;
+  private float getEffectiveFragmentLayerAlpha() {
+    return mAlpha * mFragmentLayerOpacity;
   }
 
   private boolean isHardwareDraw(Canvas canvas) {
@@ -496,9 +498,9 @@ public class LynxFlattenUI extends LynxBaseUI implements IRendererHost {
       TraceEvent.endSection(TraceEventDef.FLATTEN_UI_DRAW);
       return;
     }
-    if (mRenderer != null) {
-      drawRendererHostStart(canvas);
-      drawRendererHostEnd(canvas);
+    if (isFragmentLayer()) {
+      startFlattenFragmentLayer(canvas);
+      finishFlattenFragmentLayer(canvas);
       TraceEvent.endSection(TraceEventDef.FLATTEN_UI_DRAW);
       return;
     }

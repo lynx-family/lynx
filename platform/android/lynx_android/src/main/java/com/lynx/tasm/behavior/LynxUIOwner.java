@@ -35,7 +35,7 @@ import com.lynx.tasm.animation.transition.TransitionAnimationManager;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
-import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.LayerRenderContext;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
@@ -54,6 +54,7 @@ import com.lynx.tasm.behavior.ui.list.UIList;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.swiper.XSwiperUI;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
+import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.event.EventsListener;
@@ -83,6 +84,12 @@ import java.util.concurrent.FutureTask;
 
 @UiThread
 public class LynxUIOwner {
+  static final class FragmentLayerUI extends UIView {
+    FragmentLayerUI(LynxContext context) {
+      super(context);
+    }
+  }
+
   private int mRootSign;
   private UIBody mUIBody;
   private LynxContext mContext;
@@ -945,7 +952,22 @@ public class LynxUIOwner {
         index = parent.getChildren().size();
       }
       parent.insertChild(child, index);
-      insertIntoDrawList(parent, child, index);
+      if (parent.usesFragmentLayerChildOrder() && ((LynxUI) parent).getDrawHead() == null) {
+        if (!child.isFlatten()) {
+          // DisplayList defines the drawing order. Mount the View using the owned child order
+          // without maintaining mDrawParent, mDrawHead or sibling drawing links.
+          ((UIGroup) parent).insertView((LynxUI) child);
+        } else {
+          // A compatibility flatten child still needs the legacy traversal. Materialize the
+          // list once, including Views that were already mounted directly.
+          int drawIndex = 0;
+          for (LynxBaseUI sibling : parent.getChildren()) {
+            insertIntoDrawList(parent, sibling, drawIndex++);
+          }
+        }
+      } else {
+        insertIntoDrawList(parent, child, index);
+      }
       if (child.isFlatten()) {
         parent.flattenChildrenCountIncrement();
       }
@@ -1378,6 +1400,83 @@ public class LynxUIOwner {
       return mUIHolder.get(sign);
     }
     return null;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @Nullable
+  public LynxBaseUI getFragmentLayer(int sign) {
+    LynxBaseUI ui = getNode(sign);
+    if (ui instanceof LynxUI && ui.isOverlay()) {
+      LynxUI transitionUI = ((LynxUI) ui).getTransitionUI();
+      if (transitionUI != null) {
+        return transitionUI;
+      }
+    }
+    return ui;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public LynxBaseUI createFragmentLayer(int sign, @NonNull LayerRenderContext context) {
+    FragmentLayerUI ui = new FragmentLayerUI(mContext);
+    ui.setSign(sign, "view");
+    ui.setNodeIndex(sign);
+    setNode(sign, ui);
+    ui.attachFragmentLayer(sign, context, true);
+    return ui;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @Nullable
+  public LynxBaseUI attachFragmentLayer(int sign, @NonNull LayerRenderContext context) {
+    LynxBaseUI ui = getFragmentLayer(sign);
+    if (ui != null) {
+      LynxBaseUI component = getNode(sign);
+      Behavior behavior = mBehaviorRegistry.get(component.getTagName());
+      ui.attachFragmentLayer(sign, context, behavior.supportFragmentLayerChildren());
+    }
+    return ui;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @Nullable
+  public LynxBaseUI attachRootFragmentLayer(int sign, @NonNull LayerRenderContext context) {
+    if (mUIBody == null) {
+      return null;
+    }
+    setRootSign(sign);
+    mUIBody.setSign(sign, LynxConstants.ROOT_TAG_NAME);
+    mUIBody.setNodeIndex(sign);
+    setNode(sign, mUIBody);
+    mUIBody.attachFragmentLayer(sign, context, true);
+    return mUIBody;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void updateFragmentLayer(
+      int sign, @Nullable LynxBaseUI oldLayer, @NonNull LayerRenderContext context) {
+    LynxBaseUI newLayer = getFragmentLayer(sign);
+    if (newLayer == oldLayer) {
+      return;
+    }
+    if (oldLayer != null) {
+      oldLayer.detachFragmentLayer();
+    }
+    if (newLayer != null) {
+      attachFragmentLayer(sign, context);
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void destroyFragmentLayer(int sign) {
+    LynxBaseUI ui = getNode(sign);
+    if (ui == null) {
+      return;
+    }
+    LynxBaseUI layer = getFragmentLayer(sign);
+    if (layer != null) {
+      layer.detachFragmentLayer();
+    }
+    destroy(-1, sign);
   }
 
   public void setNode(int sign, LynxBaseUI ui) {
@@ -1970,7 +2069,7 @@ public class LynxUIOwner {
 
     DelegateBehavior(String tagName, Behavior behavior) {
       super(tagName, behavior.supportUIFlatten(), behavior.supportCreateAsync(),
-          behavior.needProcessDirection(), behavior.supportFragmentLayerRenderer());
+          behavior.needProcessDirection());
       mBehavior = behavior;
     }
 
@@ -2012,11 +2111,6 @@ public class LynxUIOwner {
     @Override
     public BehaviorClassWarmer createClassWarmer() {
       return mBehavior.createClassWarmer();
-    }
-
-    @Override
-    public IRendererHost createPlatformRendererHost(LynxContext context) {
-      return mBehavior.createPlatformRendererHost(context);
     }
   }
 

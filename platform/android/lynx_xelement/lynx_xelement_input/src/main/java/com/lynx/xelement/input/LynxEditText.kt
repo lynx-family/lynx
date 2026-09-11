@@ -12,13 +12,11 @@ import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.lynx.tasm.base.LLog
-import com.lynx.tasm.behavior.render.IRendererHost
-import com.lynx.tasm.behavior.render.PlatformRendererContext
-import com.lynx.tasm.behavior.render.Renderer
+import com.lynx.tasm.behavior.ui.LynxBaseUI
 
 const val LYNX_EDIT_TEXT_LIGHT_INPUT_MODE_UNDEFINED = -1
 
-open class LynxEditText: androidx.appcompat.widget.AppCompatEditText, IRendererHost {
+open class LynxEditText: androidx.appcompat.widget.AppCompatEditText {
 
     companion object {
         private const val TAG = "LynxEditText"
@@ -29,7 +27,7 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText, IRendererH
     private var mCopyListener: CopyListener? = null
     private var isEditTextHasBeenServed: Boolean = false
     private var mAdjustInputMode = LYNX_EDIT_TEXT_LIGHT_INPUT_MODE_UNDEFINED
-    private var mRenderer: Renderer? = null
+    var lynxUI: LynxBaseUI? = null
     var mHasDrawn = false
     var onAttachedToWindowListener: OnAttachedListener? = null
 
@@ -61,22 +59,6 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText, IRendererH
         } else {
             LLog.w(TAG, "InputConnection failed to initialize")
         }
-    }
-
-    override fun createRenderer(platformRendererContext: PlatformRendererContext, sign: Int): Renderer {
-        return Renderer(platformRendererContext, sign)
-    }
-
-    override fun setRenderer(renderer: Renderer) {
-        mRenderer = renderer
-    }
-
-    override fun getRenderer(): Renderer? {
-        return mRenderer
-    }
-
-    override fun getView(): android.view.View {
-        return this
     }
 
     fun inputConnection(): LynxInputConnectionWrapper? {
@@ -150,16 +132,20 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText, IRendererH
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        mRenderer?.let {
-            it.uiHost?.measure()
+        lynxUI?.let {
+            if (it.isFragmentLayer) {
+                it.measure()
+            }
         }
         super.onLayout(changed, left, top, right, bottom)
     }
 
     override fun onDraw(canvas: Canvas) {
-        mRenderer?.let {
-            it.onDraw(canvas)
-            it.beforeDrawHost(canvas)
+        lynxUI?.let {
+            if (it.isFragmentLayer) {
+                it.prepareFragmentLayerDisplayList(canvas)
+                it.drawFragmentLayerContentUntilNextView(canvas)
+            }
         }
         super.onDraw(canvas)
         mHasDrawn = true
@@ -167,6 +153,10 @@ open class LynxEditText: androidx.appcompat.widget.AppCompatEditText, IRendererH
 
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
-        mRenderer?.afterDispatchDraw(canvas)
+        lynxUI?.let {
+            if (it.isFragmentLayer) {
+                it.finishFragmentLayerDisplayList(canvas)
+            }
+        }
     }
 }

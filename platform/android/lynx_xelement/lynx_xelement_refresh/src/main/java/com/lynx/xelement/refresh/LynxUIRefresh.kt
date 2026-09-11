@@ -20,9 +20,7 @@ import com.lynx.tasm.LynxError
 import com.lynx.tasm.LynxSubErrorCode
 import com.lynx.tasm.base.LLog
 import com.lynx.tasm.behavior.*
-import com.lynx.tasm.behavior.render.IRendererHost
-import com.lynx.tasm.behavior.render.PlatformRendererContext
-import com.lynx.tasm.behavior.render.Renderer
+import com.lynx.tasm.behavior.ui.IDrawChildHook
 import com.lynx.tasm.behavior.ui.LynxBaseUI
 import com.lynx.tasm.behavior.ui.LynxUI
 import com.lynx.tasm.behavior.ui.UIGroup
@@ -71,49 +69,33 @@ open class LynxUIRefresh(context: LynxContext?, params: Any?): UIGroup<SmartRefr
     mEnableRefresh = true
     mManualRefresh = true
     
-    return object : SmartRefreshLayout(ctx), IRendererHost {
-      private var mRenderer: Renderer? = null
+    return object : SmartRefreshLayout(ctx), IDrawChildHook.IDrawChildHookBinding {
+      private var mDrawChildHook: IDrawChildHook? = null
 
-      override fun createRenderer(platformRendererContext: PlatformRendererContext, sign: Int): Renderer {
-        return Renderer(platformRendererContext, sign)
+      override fun bindDrawChildHook(hook: IDrawChildHook?) {
+        mDrawChildHook = hook
       }
 
-      override fun setRenderer(renderer: Renderer) {
-        mRenderer = renderer
-      }
-
-      override fun getRenderer(): Renderer? {
-        return mRenderer
-      }
-
-      override fun getView(): View {
-        return this
-      }
-
-      override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        mRenderer?.let {
-          it.uiHost?.measure()
-        }
-        super.onLayout(changed, l, t, r, b)
-      }
-
-      override fun onDraw(canvas: Canvas) {
-        mRenderer?.let {
-          it.onDraw(canvas)
-          return
-        }
-        super.onDraw(canvas)
-      }
+      override fun getDrawChildHook(): IDrawChildHook? = mDrawChildHook
 
       override fun dispatchDraw(canvas: Canvas) {
+        mDrawChildHook?.beforeDispatchDraw(canvas)
         super.dispatchDraw(canvas)
-        mRenderer?.afterDispatchDraw(canvas)
+        mDrawChildHook?.afterDispatchDraw(canvas)
       }
 
       override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
-        mRenderer?.beforeDrawChild(canvas, child)
-        val ret = super.drawChild(canvas, child, drawingTime)
-        mRenderer?.afterDrawChild(canvas, child)
+        val bounds = mDrawChildHook?.beforeDrawChild(canvas, child, drawingTime)
+        val ret = if (bounds != null) {
+          val saveCount = canvas.save()
+          canvas.clipRect(bounds)
+          val result = super.drawChild(canvas, child, drawingTime)
+          canvas.restoreToCount(saveCount)
+          result
+        } else {
+          super.drawChild(canvas, child, drawingTime)
+        }
+        mDrawChildHook?.afterDrawChild(canvas, child, drawingTime)
         return ret
       }
 

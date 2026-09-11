@@ -67,6 +67,19 @@ public class Behavior {
     return mSupportFragmentLayerRender;
   }
 
+  /**
+   * Whether this component can render ordinary child content through Fragment Layer
+   * display lists without requiring legacy child UIs. Components should opt in only when
+   * their child mounting and drawing are compatible with the Fragment Layer display-list
+   * path. Enabling this does not remove the component's own UI, and does not
+   * automatically change the behavior of extended child components.
+   * This capability is independent from supportFragmentLayerRenderer and
+   * createPlatformRendererHost.
+   */
+  public boolean supportFragmentLayerChildren() {
+    return false;
+  }
+
   public LynxUI createUIWithParams(LynxContext context, Object params) {
     return createUI(context);
   }

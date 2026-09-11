@@ -31,8 +31,6 @@ import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIRenderer;
 import com.lynx.tasm.behavior.event.EventTarget;
-import com.lynx.tasm.behavior.render.ContainerRenderer;
-import com.lynx.tasm.behavior.render.DisplayListApplier;
 import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.PlatformRendererContext;
 import com.lynx.tasm.behavior.render.Renderer;
@@ -43,7 +41,6 @@ import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.performance.timing.ITimingCollector;
 import com.lynx.tasm.utils.SizeValue;
-import java.lang.annotation.Native;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -439,6 +436,11 @@ public class UIBody extends UIGroup<UIBodyView> {
     mChildrenLynxPageUI = childrenLynxPageUI;
   }
 
+  @Override
+  protected boolean shouldDrawFlattenUIInFragmentLayer() {
+    return getDrawHead() != null;
+  }
+
   public static class UIBodyView
       extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding, IRendererHost {
     private ConcurrentHashMap<Integer, View> mViewMap = new ConcurrentHashMap<>();
@@ -601,6 +603,11 @@ public class UIBody extends UIGroup<UIBodyView> {
       mDrawChildHook = hook;
     }
 
+    @Override
+    public IDrawChildHook getDrawChildHook() {
+      return mDrawChildHook;
+    }
+
     public void setLynxAccessibilityWrapper(LynxAccessibilityWrapper wrapper) {
       mA11yWrapper = wrapper;
     }
@@ -630,7 +637,6 @@ public class UIBody extends UIGroup<UIBodyView> {
         }
         return;
       }
-
       mIsMeaningfulPaintingAreaInvalidate = false;
       ITimingCollector timingCollector = mTimingCollector.get();
       if (timingCollector != null) {
