@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <deque>
+#include <limits>
 #include <map>
 #include <mutex>
 #include <queue>
@@ -109,6 +110,10 @@ class BASE_EXPORT MessageLoopImpl
 
   bool HasPendingVSyncRequest();
 
+  bool HasPendingVSyncAlignedTasks() const;
+
+  void UpdateNextVSyncAlignedWakeTime(fml::TimePoint time_point);
+
   void FlushVSyncAlignedTasks(FlushType type);
   // Return true if reach the given restriction_duration, otherwise, return
   // false.
@@ -131,9 +136,15 @@ class BASE_EXPORT MessageLoopImpl
   // the entire vsync cycle.
   static constexpr float kTraversalProportion = 0.75;
 
-  // Used to record the time for requesting vsync, it will be reset to 0 when
-  // the vsync callback is executed.
-  int64_t request_vsync_time_millis_ = 0;
+  // Used to record the wall time (ms) for requesting vsync. It will be reset
+  // to 0 when the vsync callback is executed or when we fall back to non-vsync
+  // execution.
+  std::atomic<int64_t> request_vsync_time_millis_{0};
+
+  // The next wake time (ticks) for vsync-aligned queues when we have scheduled
+  // a platform wake-up in the future.
+  std::atomic<int64_t> next_vsync_aligned_wake_ticks_{
+      std::numeric_limits<int64_t>::max()};
 
   // The maximum timeout for waiting for the vsync callback.
   static constexpr int64_t kWaitingVSyncTimeoutMillis = 5000;
