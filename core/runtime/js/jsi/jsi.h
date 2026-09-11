@@ -1755,9 +1755,14 @@ class HostGlobal {
   // Initialize the host-global bindings using the selected "global runtime".
   // In shared-context mode the concrete Global may take ownership from
   // `js_runtime`; in single-context mode it should only keep a weak observer.
+  // When `install_shared_host_objects` is false (the new "shared Isolate/VM +
+  // per-page isolated Context" page path) the stateless shared host objects
+  // (SystemInfo / LynxJSBI / TextCodecHelper) are skipped, because the page
+  // context copies them by reference from the group's global context instead.
   virtual void Init(lynx::base::UnsafeOwningPtr<Runtime>& js_runtime,
                     std::shared_ptr<ConsoleMessagePostMan>& post_man,
-                    const tasm::PageOptions& page_options) = 0;
+                    const tasm::PageOptions& page_options,
+                    bool install_shared_host_objects) = 0;
   virtual void Release() = 0;
   virtual ~HostGlobal() { LOGE("~HostGlobal;"); }
 };

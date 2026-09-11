@@ -106,10 +106,46 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
  private:
   RuntimeManager();
+
+  // Release listener bound to new-share-group page contexts. Composed (not
+  // inherited by RuntimeManager) so the legacy shared-context release path and
+  // the new-share-group page release path stay dispatched through distinct
+  // listener objects, avoiding any group-id ambiguity between the two schemes.
+  class NewShareGroupPageReleaseObserver
+      : public SharedJSContextWrapper::ReleaseListener {
+   public:
+    explicit NewShareGroupPageReleaseObserver(RuntimeManager* manager)
+        : manager_(manager) {}
+    void OnRelease(const std::string& group_id) override {
+      manager_->OnNewShareGroupPageRelease(group_id);
+    }
+
+   private:
+    RuntimeManager* manager_;
+  };
+
+  void OnNewShareGroupPageRelease(const std::string& group_id);
+
   base::UnsafeOwningPtr<runtime::js::Runtime> CreateRuntime(
       bool force_use_lightweight_js_engine,
       const tasm::PageOptions& page_options, bool use_shared_context,
       runtime::js::JSRuntimeExternalParams external_params = {});
+
+  // -------- New "shared Isolate/VM + per-page isolated Context" scheme
+  // -------- Everything below is only reachable when the caller opts in through
+  // the `enable_new_share_group` runtime flag (LynxGroup#enableNewShareGroup).
+  // It never runs on the legacy shared-context path.
+
+  // Ensure the group's global context exists (created and corejs loaded once),
+  // returning the owning wrapper. The wrapper owns the group's global runtime
+  // (and thus the shared VM + global context) and tracks the live page count.
+  NewShareGroupGlobalContextWrapper* EnsureNewShareGroupGlobalContext(
+      const std::string& group_id, bool force_use_lightweight_js_engine,
+      const tasm::PageOptions& page_options,
+      base::MoveOnlyClosure<std::vector<
+          std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
+          js_pre_sources_getter,
+      runtime::js::JSExecutor& executor);
 
   std::shared_ptr<runtime::js::JSIContext> GetSharedJSContext(
       const std::string& group_id);
@@ -147,6 +183,17 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   void OnMemoryPressure(base::MemoryPressureLevel level);
 
   Shared_Context_Map shared_context_map_;
+  // Per-group global-context wrappers for the new isolated-context scheme.
+  // Keyed by group id, only populated when `enable_new_share_group` is used.
+  // Each wrapper owns the group's global runtime (shared VM + global context)
+  // and tracks the group's live page count; erasing the entry tears the group
+  // down.
+  std::unordered_map<std::string,
+                     std::shared_ptr<NewShareGroupGlobalContextWrapper>>
+      new_share_group_map_;
+  // Observer forwarded to new-share-group page contexts as their release
+  // listener; forwards back to OnNewShareGroupPageRelease.
+  NewShareGroupPageReleaseObserver new_share_group_page_release_observer_{this};
   std::unordered_map<runtime::js::JSRuntimeType,
                      std::shared_ptr<runtime::js::VMInstance>>
       mVMContainer_;
