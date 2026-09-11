@@ -62,7 +62,13 @@ void MouseRegionManager::HandleEvent(BaseView* root,
   // TODO: Consider to be refactored with TouchEventHandler in future, see:
   // lynx/core/renderer/events/touch_event_handler.cc.
   BaseView* top_view = nullptr;
-  if (event.type != PointerEvent::EventType::kCancel) {
+  const bool force_empty = event.type == PointerEvent::EventType::kCancel
+#if defined(OS_WIN) || defined(OS_MAC)
+                           ||
+                           event.type == PointerEvent::EventType::kRemoveEvent
+#endif
+      ;
+  if (!force_empty) {
     FloatPoint relative_position;
     top_view = root->page_view()->GetTopViewToAcceptEvent(event.position,
                                                           &relative_position);
