@@ -19,13 +19,14 @@
 namespace lynx {
 namespace devtool {
 
+namespace {
+
 constexpr char kMemoryUsageTimeoutMs[] = "timeoutMs";
 constexpr int64_t kMaxMemoryUsageTimeoutMs = 5 * 60 * 1000;
 
-bool ParseMemoryUsageTimeoutMs(const Json::Value& message, int64_t& timeout_ms,
+bool ParseMemoryUsageTimeoutMs(const Json::Value& params, int64_t& timeout_ms,
                                std::string& error_message) {
   timeout_ms = 0;
-  const Json::Value& params = message["params"];
   // Memory.getAllMemoryUsage accepts optional params. When timeoutMs is absent
   // we pass 0 down to the platform bridge, letting the platform choose its
   // default wait policy.
@@ -64,6 +65,8 @@ bool ParseMemoryUsageTimeoutMs(const Json::Value& message, int64_t& timeout_ms,
   }
   return true;
 }
+
+}  // namespace
 
 LynxGlobalDevToolMediator::LynxGlobalDevToolMediator()
     : tracing_session_id_(-1) {
@@ -260,82 +263,69 @@ void LynxGlobalDevToolMediator::IOClose(
   }
 }
 
-void LynxGlobalDevToolMediator::MemoryStartTracing(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message]() {
-      int id = static_cast<int>(message["id"].asInt64());
-      GlobalDevToolPlatformFacade::GetInstance().StartMemoryTracing();
-      Json::Value response(Json::ValueType::objectValue);
-      response["result"] = Json::Value(Json::ValueType::objectValue);
-      response["id"] = id;
-      sender->SendMessage("CDP", response);
-    });
+void LynxGlobalDevToolMediator::RunOnDefaultTaskRunnerOrSendError(
+    const std::shared_ptr<CDPResponder>& responder,
+    lynx::base::closure&& task) {
+  if (!default_task_runner_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find default task runner");
+    return;
   }
+  RunOnTaskRunner(default_task_runner_, std::move(task));
+}
+
+void LynxGlobalDevToolMediator::MemoryStartTracing(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [responder]() {
+    GlobalDevToolPlatformFacade::GetInstance().StartMemoryTracing();
+    responder->SendSuccess();
+  });
 }
 
 void LynxGlobalDevToolMediator::MemoryStopTracing(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message]() {
-      int id = static_cast<int>(message["id"].asInt64());
-      GlobalDevToolPlatformFacade::GetInstance().StopMemoryTracing();
-      Json::Value response(Json::ValueType::objectValue);
-      response["result"] = Json::Value(Json::ValueType::objectValue);
-      response["id"] = id;
-      sender->SendMessage("CDP", response);
-    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [responder]() {
+    GlobalDevToolPlatformFacade::GetInstance().StopMemoryTracing();
+    responder->SendSuccess();
+  });
 }
 
 void LynxGlobalDevToolMediator::MemoryGetAllMemoryUsage(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (!default_task_runner_) {
-    sender->SendErrorResponse(message["id"].asInt64(),
-                              "Cannot find default task runner");
-    return;
-  }
-  RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
-    int64_t id = message["id"].asInt64();
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [this, responder, params]() {
     int64_t timeout_ms = 0;
     std::string error_message;
-    if (!ParseMemoryUsageTimeoutMs(message, timeout_ms, error_message)) {
-      sender->SendErrorResponse(id, error_message);
+    if (!ParseMemoryUsageTimeoutMs(params, timeout_ms, error_message)) {
+      responder->SendError(CDPErrorCode::InvalidParams, error_message);
       return;
     }
 
     auto task_runner = default_task_runner_;
     GlobalDevToolPlatformFacade::GetInstance().GetAllMemoryUsage(
-        timeout_ms,
-        [sender, id, task_runner](const std::string& result_json,
-                                  const std::string& error_message) {
+        timeout_ms, [responder, task_runner](const std::string& result_json,
+                                             const std::string& error_message) {
           // Platform bridges may finish on their own worker thread. Marshal the
           // CDP response back through the mediator task runner so response
           // ordering stays consistent with the other global DevTool commands.
-          auto send_response = [sender, id, result_json, error_message]() {
+          auto send_response = [responder, result_json, error_message]() {
             if (!error_message.empty()) {
-              sender->SendErrorResponse(id, error_message);
+              responder->SendError(CDPErrorCode::ServerError, error_message);
               return;
             }
 
             Json::Value result(Json::ValueType::objectValue);
             Json::Reader reader;
-            // The CDP response shape is owned by the mediator. Platforms only
+            // The CDP response shape is owned by the responder. Platforms only
             // return the "result" object as JSON so native bridges do not need
             // to construct protocol envelopes or know the request id.
             if (!reader.parse(result_json, result, false) ||
                 !result.isObject()) {
-              sender->SendErrorResponse(id, "Invalid memory usage result JSON");
+              responder->SendError(CDPErrorCode::InternalError,
+                                   "Invalid memory usage result JSON");
               return;
             }
 
-            Json::Value response(Json::ValueType::objectValue);
-            response["result"] = result;
-            response["id"] = id;
-            sender->SendMessage("CDP", response);
+            responder->SendSuccess(std::move(result));
           };
           if (task_runner) {
             lynx::fml::TaskRunner::RunNowOrPostTask(task_runner,
@@ -348,20 +338,21 @@ void LynxGlobalDevToolMediator::MemoryGetAllMemoryUsage(
 }
 
 void LynxGlobalDevToolMediator::SystemInfoGetInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["modelName"] =
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  Json::Value result(Json::ValueType::objectValue);
+  result["modelName"] =
       GlobalDevToolPlatformFacade::GetInstance().GetSystemModelName();
+  // TODO: This platform detection is outdated. It only distinguishes Android
+  // and treats every other build target as "iOS", but this code also builds on
+  // other platforms (e.g. macOS via OS_OSX and Windows via OS_WIN), which are
+  // all misreported as "iOS" here. The platform string should come from the
+  // GlobalDevToolPlatformFacade instead of this two-way macro branch.
 #if defined(OS_ANDROID)
-  content["platform"] = "Android";
+  result["platform"] = "Android";
 #else
-  content["platform"] = "iOS";
+  result["platform"] = "iOS";
 #endif
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void LynxGlobalDevToolMediator::TracingStart(
