@@ -4,11 +4,12 @@
 
 #import <Cocoa/Cocoa.h>
 #include <dlfcn.h>
+#include <atomic>
+#include <memory>
 #include "include/capi/cef_app_capi.h"
 #include "include/cef_app.h"
 #include "include/cef_application_mac.h"
 #include "include/cef_client.h"
-#include "include/cef_command_line.h"
 #include "include/wrapper/cef_helpers.h"
 #include "include/wrapper/cef_library_loader.h"
 #include "include/wrapper/cef_message_router.h"
@@ -102,9 +103,21 @@ class CEFWebviewApp : public CefApp,
 
   // CefBrowserProcessHandler
   void OnScheduleMessagePumpWork(int64_t delay_ms) override {
+    auto active = message_pump_active_;
     dispatch_async(dispatch_get_main_queue(), ^{
+      // Initialization may have failed and destroyed this object before the
+      // main queue drains. Check independently owned state before using this.
+      if (!active->load()) {
+        return;
+      }
       OnScheduleWorkMainThread(delay_ms);
     });
+  }
+
+  // Called on the main thread before releasing the app or unloading CEF.
+  void CancelMessagePump() {
+    message_pump_active_->store(false);
+    Stop();
   }
 
  private:
@@ -137,16 +150,21 @@ class CEFWebviewApp : public CefApp,
   }
 
   void Schedule(int64_t delay) {
+    auto active = message_pump_active_;
     auto max_delay = (double)delay;
     _timer = [NSTimer scheduledTimerWithTimeInterval:max_delay / 1000
                                              repeats:YES
                                                block:^(NSTimer *t) {
+                                                 if (!active->load()) {
+                                                   return;
+                                                 }
                                                  Stop();
                                                  DoWork();
                                                }];
   }
 
   NSTimer *_timer = nil;
+  std::shared_ptr<std::atomic_bool> message_pump_active_ = std::make_shared<std::atomic_bool>(true);
   CefRefPtr<CefMessageRouterRendererSide> message_router_;
   IMPLEMENT_REFCOUNTING(CEFWebviewApp);
 };
@@ -157,6 +175,31 @@ LYNX_EXTERN_C bool cef_extension_module_initialize() {
     fprintf(stderr, "Failed to locate the CEF framework and helper app.\n");
     return false;
   }
+  NSString *bundle_identifier = NSBundle.mainBundle.bundleIdentifier;
+  if (bundle_identifier.length == 0) {
+    bundle_identifier = [NSBundle bundleWithPath:paths.helper_bundle_path].bundleIdentifier;
+    if (bundle_identifier.length > 0) {
+      fprintf(stderr,
+              "CEF is using fallback Helper bundle identifier '%s'. Set a host bundle identifier "
+              "to isolate applications sharing a Helper bundle identifier.\n",
+              bundle_identifier.UTF8String);
+    }
+  }
+  NSURL *application_support =
+      [NSFileManager.defaultManager URLsForDirectory:NSApplicationSupportDirectory
+                                           inDomains:NSUserDomainMask]
+          .firstObject;
+  if (bundle_identifier.length == 0 || application_support == nil ||
+      ![bundle_identifier.lastPathComponent isEqualToString:bundle_identifier] ||
+      [bundle_identifier isEqualToString:@"."] || [bundle_identifier isEqualToString:@".."]) {
+    fprintf(stderr, "CEF requires a valid host or Helper bundle identifier and Application Support "
+                    "directory.\n");
+    return false;
+  }
+  NSString *root_cache_path =
+      [[[application_support.path stringByAppendingPathComponent:bundle_identifier]
+          stringByAppendingPathComponent:@"CEF"] stringByAppendingPathComponent:@"User Data"];
+
   if (!cef_load_library(paths.framework_executable_path.fileSystemRepresentation)) {
     fprintf(stderr, "Failed to load the CEF framework from %s.\n",
             paths.framework_executable_path.fileSystemRepresentation);
@@ -167,10 +210,8 @@ LYNX_EXTERN_C bool cef_extension_module_initialize() {
   const char *argv[] = {"", NULL};
   CefMainArgs main_args(argc, const_cast<char **>(argv));
 
-  CefRefPtr<CefCommandLine> command_line = CefCommandLine::CreateCommandLine();
-  command_line->InitFromArgv(argc, argv);
-
   CefSettings settings;
+  CefString(&settings.root_cache_path) = root_cache_path.fileSystemRepresentation;
   settings.external_message_pump = true;
   settings.no_sandbox = true;
   settings.windowless_rendering_enabled = true;
@@ -182,6 +223,8 @@ LYNX_EXTERN_C bool cef_extension_module_initialize() {
   CefRefPtr<CEFWebviewApp> app(new CEFWebviewApp);
 
   if (!CefInitialize(main_args, settings, app.get(), nullptr)) {
+    app->CancelMessagePump();
+    app = nullptr;
     cef_unload_library();
     return false;
   }

@@ -63,7 +63,7 @@ endif()
 if(OS_WINDOWS)
   target_compile_definitions(${CEF_WEBVIEW_TARGET} PRIVATE OS_WIN lynx_EXPORTS)
   target_compile_options(${CEF_WEBVIEW_TARGET} PRIVATE /wd4267)
-  target_link_libraries(${CEF_WEBVIEW_TARGET} PUBLIC d3d11.lib)
+  target_link_libraries(${CEF_WEBVIEW_TARGET} PUBLIC d3d11.lib shell32.lib ole32.lib)
 endif()
 
 

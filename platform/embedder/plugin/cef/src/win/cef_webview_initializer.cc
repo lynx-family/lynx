@@ -2,8 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <shlobj.h>
 #include <windows.h>
 
+#include <algorithm>
+#include <cstdio>
 #include <string>
 
 #include "include/cef_app.h"
@@ -11,7 +14,59 @@
 #include "include/wrapper/cef_message_router.h"
 #include "platform/embedder/plugin/cef/include/cef_extension_module_creator.h"
 
+// cspell:ignore FOLDERID
+
 namespace {
+bool ResolveRootCachePath(std::wstring* root_cache_path) {
+  PWSTR app_id = nullptr;
+  const HRESULT identity_result =
+      GetCurrentProcessExplicitAppUserModelID(&app_id);
+  std::wstring identity = app_id ? app_id : L"";
+  CoTaskMemFree(app_id);
+  if (FAILED(identity_result) || identity.empty()) {
+    std::wstring executable_path(32768, L'\0');
+    const DWORD length =
+        GetModuleFileNameW(nullptr, executable_path.data(),
+                           static_cast<DWORD>(executable_path.size()));
+    if (length == 0 || length >= executable_path.size()) {
+      fprintf(stderr, "CEF could not resolve the host executable name.\n");
+      return false;
+    }
+    executable_path.resize(length);
+    identity = L"cef." +
+               executable_path.substr(executable_path.find_last_of(L"\\/") + 1);
+    // Compatibility fallback only: executable names need not be unique.
+    fprintf(
+        stderr,
+        "CEF is using fallback identity '%ls'. Set an explicit "
+        "AppUserModelID to isolate applications sharing an executable name.\n",
+        identity.c_str());
+  }
+  // The host identity must remain one unambiguous Windows path component.
+  if (identity.empty() ||
+      identity.find_first_of(L"\\/:*?\"<>|") != std::wstring::npos ||
+      identity.back() == L'.' || identity.back() == L' ' ||
+      std::any_of(identity.begin(), identity.end(),
+                  [](wchar_t c) { return c < 32; })) {
+    fprintf(stderr,
+            "CEF requires a valid application identity before "
+            "initialization.\n");
+    return false;
+  }
+  PWSTR local_app_data = nullptr;
+  const HRESULT directory_result =
+      SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local_app_data);
+  if (FAILED(directory_result) || !local_app_data) {
+    CoTaskMemFree(local_app_data);
+    fprintf(stderr, "CEF requires a Local AppData directory.\n");
+    return false;
+  }
+  *root_cache_path =
+      std::wstring(local_app_data) + L"\\" + identity + L"\\CEF\\User Data";
+  CoTaskMemFree(local_app_data);
+  return true;
+}
+
 class CEFWebviewApp : public CefApp,
                       public CefBrowserProcessHandler,
                       public CefRenderProcessHandler {
@@ -105,6 +160,11 @@ LYNX_EXTERN_C bool cef_extension_module_initialize() {
     return false;
   }
   CefSettings settings;
+  std::wstring root_cache_path;
+  if (!ResolveRootCachePath(&root_cache_path)) {
+    return false;
+  }
+  CefString(&settings.root_cache_path) = root_cache_path;
 
   HMODULE module = nullptr;
   if (::GetModuleHandleExW(
@@ -134,6 +194,11 @@ LYNX_EXTERN_C bool cef_extension_module_initialize() {
   CefString(&settings.locale) = locale;
   CefRefPtr<CEFWebviewApp> app(new CEFWebviewApp);
   if (!CefInitialize(main_args, settings, app.get(), nullptr)) {
+    fprintf(
+        stderr,
+        "Failed to initialize CEF with root cache path '%ls'. Check the "
+        "CEF logs and whether another instance is using this AppUserModelID.\n",
+        root_cache_path.c_str());
     return false;
   }
 
