@@ -12,6 +12,8 @@ namespace clay {
 
 class MockDelegate : public clay::RenderDelegate {
  public:
+  explicit MockDelegate(UITest* uitest) : uitest_(uitest) {}
+
   void ScheduleFrame() override {}
   void ForceBeginFrame() override {}
   void OnFirstMeaningfulLayout() override {}
@@ -63,12 +65,19 @@ class MockDelegate : public clay::RenderDelegate {
   void FilterInputAsync(
       const std::string& input, const std::string& pattern,
       std::function<void(const std::string&)> callback) override {}
-  BaseView* FindViewById(int view_id) override { return nullptr; }
+  BaseView* FindViewById(int view_id) override {
+    return uitest_->find_view_by_id_callback_
+               ? uitest_->find_view_by_id_callback_(view_id)
+               : nullptr;
+  }
   ShadowNode* FindShadowNodeById(int node_id) override { return nullptr; }
 
   void RegisterDrawableImage(
       std::shared_ptr<DrawableImage> drawable_image) override {}
   void UnregisterDrawableImage(int64_t id) override {}
+
+ private:
+  UITest* uitest_;
 };
 
 class MockEventDelegate : public clay::EventDelegate {
@@ -83,7 +92,27 @@ class MockEventDelegate : public clay::EventDelegate {
   }
   void OnMouseEvent(const std::string& event_name, int view_id, int button,
                     int buttons, float scale, float x, float y, float page_x,
-                    float page_y) override {}
+                    float page_y) override {
+#if defined(OS_WIN) || defined(OS_MAC)
+    if (uitest_->mouse_event_callback_) {
+      uitest_->mouse_event_callback_(event_name, view_id);
+    }
+#endif
+  }
+#if defined(OS_WIN) || defined(OS_MAC)
+  void OnPointerEvent(const std::string& event_name, int view_id,
+                      int pointer_id, ClayPointerDeviceKind device_kind,
+                      bool is_primary, int button, int buttons, float width,
+                      float height, float pressure, float x, float y,
+                      float page_x, float page_y, int64_t timestamp,
+                      int related_target_sign) override {
+    if (uitest_->pointer_event_callback_) {
+      uitest_->pointer_event_callback_(
+          event_name, view_id, pointer_id, device_kind, is_primary, button,
+          buttons, width, height, pressure, timestamp, related_target_sign);
+    }
+  }
+#endif
   void OnWheelEvent(const std::string& event_name, int view_id, float x,
                     float y, float page_x, float page_y, float delta_x,
                     float delta_y) override {}
@@ -225,7 +254,7 @@ void UITest::InvokeUIMethod(
 
 void UITest::SetUp() {
   ui_thread_ = std::make_unique<fml::Thread>("ui");
-  delegate_ = std::make_unique<MockDelegate>();
+  delegate_ = std::make_unique<MockDelegate>(this);
   event_delegate_ = std::make_unique<MockEventDelegate>(this);
   auto font_collection = FontCollection::Instance();
   font_collection->SetupDefaultFontManager(0);

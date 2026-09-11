@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
+#include "build/build_config.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
 #include "clay/gfx/animation/animator_target.h"
@@ -120,6 +121,11 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   virtual void OnMouseHoverChange();
   void OnMouseEvent(const ClayEventType type, const PointerEvent& event);
+#if defined(OS_WIN) || defined(OS_MAC)
+  void OnPointerBoundaryEvent(const std::string& event_name,
+                              const PointerEvent& event,
+                              int related_target_sign);
+#endif
 
   // For some internally created view events, the callback id needs to be
   // returned.
@@ -438,6 +444,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float ContentInsetTop() const;
 
   virtual bool CanAcceptEvent() const;
+  bool AcceptsPointerEvents() const;
   virtual BaseView* GetTopViewToAcceptEvent(const FloatPoint& position,
                                             FloatPoint* relative_position,
                                             int platform_try_hit_id = -1);
@@ -800,6 +807,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool is_interactable_ = true;
   bool should_block_native_event_ = false;
   bool has_intersection_observer_ = false;
+  std::optional<bool> pointer_events_enabled_;
   std::optional<bool> event_through_;
   struct EventThroughSizeValue {
     double value = 0.0;
@@ -835,6 +843,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void DirtyChildrenPaintingOrder() { sorted_children_.clear(); }
   void RebuildSortedChildrenIfNeeded();
   void NotifyBoundChangeIfNeeded(const FloatRect& old_bounds);
+  void SchedulePointerEventTargetRefresh();
   void DrawClipPath(bool is_clip_path);
 #if OS_IOS
   bool HasBoundsTransition();
