@@ -913,6 +913,14 @@ void Element::SetAttribute(const base::String& key, const lepus::Value& value,
   CheckClassChangeTransmitAttribute(key, value);
 
   if (!value.IsEmpty()) {
+    // ConsumeAllAttributes applies updates before resets. Drop any pending
+    // reset for this key so that the latest attribute update wins.
+    if (reset_attr_vec_.has_value()) {
+      auto& reset_attributes = *reset_attr_vec_;
+      reset_attributes.erase(
+          std::remove(reset_attributes.begin(), reset_attributes.end(), key),
+          reset_attributes.end());
+    }
     updated_attr_map_[key] = value;
     // In the RadonNode-driven Fiber architecture, the attribute
     // used for diffing is already stored in the data_model,
