@@ -62,6 +62,8 @@ export interface loadCardParams {
   isReload?: boolean;
   srcName?: string;
   pageConfigSubset?: Record<string, any>;
+  // The current page globalThis injected by native App::LoadApp.
+  currentGlobalThis?: Record<string, any>;
 }
 
 export interface AppProxyParams<NativeAppProxy> {
