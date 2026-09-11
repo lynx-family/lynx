@@ -40,6 +40,18 @@ void TraceEventBeginEx(const char *category, const char *event_name,
                             event->add_debug_annotations(arg2_name, arg2_val);
                           }
                         });
+  } else if (trace_id > 0) {
+    TRACE_EVENT_BEGIN(category, nullptr, lynx::perfetto::Track(trace_id),
+                      [=](lynx::perfetto::EventContext ctx) {
+                        auto *event = ctx.event();
+                        event->set_name(event_name);
+                        if (arg1_name && arg1_val) {
+                          event->add_debug_annotations(arg1_name, arg1_val);
+                        }
+                        if (arg2_name && arg2_val) {
+                          event->add_debug_annotations(arg2_name, arg2_val);
+                        }
+                      });
   }
 }
 
@@ -49,6 +61,11 @@ void TraceEventEndEx(const char *category, const char *event_name,
     TRACE_EVENT_END(category, [=](lynx::perfetto::EventContext ctx) {
       ctx.event()->set_name(event_name);
     });
+  } else if (trace_id > 0) {
+    TRACE_EVENT_END(category, lynx::perfetto::Track(trace_id),
+                    [=](lynx::perfetto::EventContext ctx) {
+                      ctx.event()->set_name(event_name);
+                    });
   }
 }
 
