@@ -150,14 +150,19 @@ void CEFWebviewWin::OnLayoutChanged(float left, float top, float width,
                                     float height, float pixel_ratio) {
   if (use_osr_) {
     RECT prev = bounds_;
+    const bool ratio_changed = osr_pixel_ratio_ != pixel_ratio;
+    // OSR textures must use the same physical pixel scale as Lynx composition.
+    osr_pixel_ratio_ = pixel_ratio;
     bounds_.left = LONG(left);
     bounds_.top = LONG(top);
     bounds_.right = LONG(left) + LONG(width);
     bounds_.bottom = LONG(top) + LONG(height);
-    if (browser_ &&
-        (prev.right != bounds_.right || prev.bottom != bounds_.bottom)) {
+    if (browser_ && (ratio_changed || prev.right != bounds_.right ||
+                     prev.bottom != bounds_.bottom)) {
       CefRefPtr<CefBrowserHost> host = browser_->GetHost();
-      // host->NotifyScreenInfoChanged();
+      if (ratio_changed) {
+        host->NotifyScreenInfoChanged();
+      }
       host->WasResized();
       host->Invalidate(PET_VIEW);
     }
@@ -176,6 +181,9 @@ void CEFWebviewWin::OnLayoutChanged(float left, float top, float width,
 }
 
 float CEFWebviewWin::GetPixelRatio() const {
+  if (use_osr_) {
+    return osr_pixel_ratio_;
+  }
   auto* native_window = lynx_view_get_native_window(lynx_view_);
   return lynx::embedder::plugin::GetDpiForHWND(
              reinterpret_cast<HWND>(native_window)) /
@@ -191,7 +199,7 @@ void CEFWebviewWin::SetupClient() {
     auto* native_window = lynx_view_get_native_window(lynx_view_);
     window_info.SetAsWindowless(reinterpret_cast<HWND>(native_window));
     window_info.shared_texture_enabled = 1;
-    window_info.external_begin_frame_enabled = 1;
+    // Let CEF schedule frames for navigation, input and animations.
     settings.windowless_frame_rate = fps_;
   } else if (isWindows7) {
     window_info.SetAsChild(GetOrCreateOwnedWin(),

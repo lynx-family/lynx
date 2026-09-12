@@ -27,9 +27,6 @@ class CEFWebviewClientWin : public CEFWebviewClient {
   // CefRenderHandler
   void GetViewRect(CefRefPtr<CefBrowser> browser, CefRect& rect) override;
 
-  bool GetScreenInfo(CefRefPtr<CefBrowser> browser,
-                     CefScreenInfo& screen_info) override;
-
   bool GetScreenPoint(CefRefPtr<CefBrowser> browser, int viewX, int viewY,
                       int& screenX, int& screenY) override;
 

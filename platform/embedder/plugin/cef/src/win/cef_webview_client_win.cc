@@ -59,16 +59,6 @@ void CEFWebviewClientWin::GetViewRect(CefRefPtr<CefBrowser> browser,
            std::max(1L, bounds.bottom - bounds.top));
 }
 
-bool CEFWebviewClientWin::GetScreenInfo(CefRefPtr<CefBrowser> browser,
-                                        CefScreenInfo& screen_info) {
-  CefRect view_rect;
-  GetViewRect(browser, view_rect);
-  screen_info.device_scale_factor = 1.0f;
-  screen_info.rect = view_rect;
-  screen_info.available_rect = view_rect;
-  return true;
-}
-
 bool CEFWebviewClientWin::GetScreenPoint(CefRefPtr<CefBrowser> browser,
                                          int viewX, int viewY, int& screenX,
                                          int& screenY) {
