@@ -8,6 +8,9 @@ import type { NodeContent } from '@ohos.arkui.node';
 
 export const initGlobalEnv: (resourceManager: Object) => void;
 
+export const setJSVMInitOptions: (incrementalMarkingHardTrigger: number,
+  minSemiSpaceSize: number, maxSemiSpaceSize: number) => boolean;
+
 export const setupHarmonyMessageLoopPromiseMicrotask: () => boolean;
 
 export const registerImageService: (instance: number[]) => void;
