@@ -132,7 +132,16 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 **Compatibility notes:**
 
 - `background-color` can be applied directly to ordinary `view` and `page` backgrounds. Common named colors, transparent colors, and the `inherit` global value are supported.
-- The `background` shorthand supports common background values. When migrating a Web shorthand with multiple components, split it into supported longhand properties to verify that Lynx supports each component.
+- The `background` shorthand is supported for these single-layer forms:
+
+  ```css
+  background: url('bg.png');
+  background: #fff url('bg.png');
+  background: url('bg.png') #fff;
+  background: repeat-x #fff;
+  ```
+
+  The last form has no image, so `repeat-x` has no visible effect. These forms do not imply support for other shorthand component combinations or token orders. For other Web shorthands, split the declaration into supported longhand properties and verify each component.
 - `background-attachment` is not currently supported. If a Web shorthand contains an attachment keyword such as `fixed` or `scroll`, first determine whether its scroll-binding behavior is actually required. If only a color, image, repeat mode, or position is needed, specify the corresponding longhand properties explicitly:
 
   ```css
