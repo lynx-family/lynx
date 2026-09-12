@@ -152,6 +152,8 @@ void BaseElementContainer::FlushImmediately() {
 }
 
 void BaseElementContainer::OnFirstScreen() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, BASE_ELEMENT_CONTAINER_ON_FIRST_SCREEN,
+              "element_id", id_, "is_root", IsRootContainer());
   painting_context()->OnFirstScreen();
 }
 

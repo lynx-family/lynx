@@ -20,7 +20,9 @@ namespace setting {
 
 LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
                  "clay_precompile_skity_shaders");
-LYNX_SETTING_KEY(MERGE_CLAY_THREAD_POOL, bool, "merge_clay_thread_pool");
+LYNX_SETTING_KEY(MERGE_CLAY_THREAD_POOL, bool, "merge_clay_thread_pool", true);
+LYNX_SETTING_KEY(CLAY_DEFER_VIDEO_PLAYER_ITEM_CREATION, bool,
+                 "clay_defer_video_player_item_creation", true);
 
 }  // namespace setting
 }  // namespace clay
