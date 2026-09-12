@@ -26,6 +26,16 @@ import { DevToolSettings } from '../devtool_wrapper/DevToolSettings';
 
 const TAG = 'LynxEnv';
 
+/** Process-wide JSVM flags, applied by the shared initializer before its first initialization attempt. */
+export interface LynxJSVMInitOptions {
+  /** Integer percentage in [0, 100]. Zero selects the engine's default trigger policy. */
+  incrementalMarkingHardTrigger: number;
+  /** Minimum semi-space size in MiB, a positive int32 value no greater than maxSemiSpaceSize. */
+  minSemiSpaceSize: number;
+  /** Maximum semi-space size in MiB, a positive int32 value. */
+  maxSemiSpaceSize: number;
+}
+
 export interface LynxEmojiResource {
   name: string;
   uri: string | number;
@@ -44,6 +54,22 @@ class LynxEnvironment {
   private commonEmojiPreloadScheduled = false;
   private displayInfo = new DisplayInfo();
   private initialized = false;
+
+  /**
+   * Saves all three JSVM options without initializing the engine. Call before
+   * creating any JSVM runtime; preferably before LynxEnv.initialize().
+   * The last successful call before shared JSVM initialization starts wins.
+   * Without this call, Lynx does not add any of these flags.
+   * @returns false for invalid values or if shared JSVM initialization has started.
+   */
+  public setJSVMInitOptions(options: LynxJSVMInitOptions): boolean {
+    if (!options) {
+      LLog.e(TAG, 'JSVM initialization options are required.');
+      return false;
+    }
+    return lynx.setJSVMInitOptions(options.incrementalMarkingHardTrigger,
+      options.minSemiSpaceSize, options.maxSemiSpaceSize);
+  }
 
   public initialize(context: common.Context) {
     if (this.initialized) {
