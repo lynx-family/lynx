@@ -296,7 +296,10 @@ if (enable_unittests) {
   ]
 
   test_fixtures("txt_fixtures") {
-    fixtures = [ "third_party/fonts/Roboto-Bold.ttf" ]
+    fixtures = [
+      "third_party/fonts/Roboto-Bold.ttf",
+      "//third_party/skia/resources/fonts/Variable.ttf",
+    ]
   }
 
   source_set("txt_test_utils") {
@@ -431,6 +434,20 @@ if (enable_unittests) {
         sources -= [
           "tests/MinikinFontForTest.cpp",
           "tests/MinikinFontForTest.h",
+        ]
+      }
+    }
+
+    if (enable_skity) {
+      sources += [ "tests/font_variation_skity_unittests.cc" ]
+      deps += [ "../../third_party/skity:skity_lib" ]
+      if (is_mac) {
+        frameworks = [
+          "AppKit.framework",
+          "ApplicationServices.framework",
+          "CoreGraphics.framework",
+          "CoreText.framework",
+          "Metal.framework",
         ]
       }
     }

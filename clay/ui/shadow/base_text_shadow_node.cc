@@ -70,6 +70,14 @@ void BaseTextShadowNode::OnLayout(float width, TextMeasureMode width_mode,
 
 void BaseTextShadowNode::SetAttribute(const char* attr_c,
                                       const clay::Value& value) {
+  if (std::strcmp(attr_c, "font-variation-settings") == 0) {
+    SetFontVariations(value);
+    return;
+  }
+  if (std::strcmp(attr_c, "font-optical-sizing") == 0) {
+    SetFontOpticalSizing(value);
+    return;
+  }
   auto kw = GetKeywordID(attr_c);
   SetAttribute(kw, attr_c, value);
 }
@@ -347,6 +355,46 @@ void BaseTextShadowNode::SetFontStyle(FontStyle font_style) {
     MarkDirty();
   }
 }
+
+void BaseTextShadowNode::SetFontVariations(const clay::Value& value) {
+  EnsureDefaultStyle();
+  std::shared_ptr<FontVariationSettings> variations;
+  if (!utils::IsNullOrInvalid(value) && value.IsArray()) {
+    variations = std::make_shared<FontVariationSettings>();
+    const auto& array = utils::GetArray(value);
+    for (size_t i = 0; i + 1 < array.size(); i += 2) {
+      std::string axis;
+      double axis_value = 0.0;
+      if (utils::TryGetString(array[i], axis) && axis.size() == 4 &&
+          utils::TryGetNum(array[i + 1], axis_value)) {
+        variations->insert_or_assign(std::move(axis),
+                                     static_cast<float>(axis_value));
+      }
+    }
+  }
+  if ((!text_style_->font_variations && !variations) ||
+      (text_style_->font_variations && variations &&
+       *text_style_->font_variations == *variations)) {
+    return;
+  }
+  text_style_->font_variations = std::move(variations);
+  MarkDirty();
+}
+
+void BaseTextShadowNode::SetFontOpticalSizing(const clay::Value& value) {
+  EnsureDefaultStyle();
+  std::optional<bool> optical_sizing;
+  if (!utils::IsNullOrInvalid(value)) {
+    // FontOpticalSizingType::kNone is 0 and kAuto is 1 in the shared CSS
+    // parser. Keep the Clay layer independent from the core style enum.
+    optical_sizing = utils::GetInt(value) == 1;
+  }
+  if (text_style_->font_optical_sizing != optical_sizing) {
+    text_style_->font_optical_sizing = optical_sizing;
+    MarkDirty();
+  }
+}
+
 void BaseTextShadowNode::SetTextColor(const Color& text_color) {
   EnsureDefaultStyle();
   if (text_style_->text_color != text_color) {
