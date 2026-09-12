@@ -275,11 +275,28 @@ void LynxJSIModule::InvokeCallback(
     const std::shared_ptr<LynxModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func) {
   auto module_callback = std::static_pointer_cast<ModuleCallback>(callback);
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  // Host callback arguments are normally ready on this thread. Observe them
+  // before PlatformCallbackStart so response diagnostics can share the same
+  // callback flow into NativeModule::Callback. Custom converters fall back to
+  // observing on the JS thread once conversion has completed.
+  module_callback->ObserveArgsForTracingIfReady();
+#endif
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY_JSB, NATIVE_MODULE_PLATFORM_CALLBACK_START,
-      [&callback](lynx::perfetto::EventContext ctx) {
+      [&callback, &module_callback](lynx::perfetto::EventContext ctx) {
         ctx.event()->add_flow_ids(callback->CallbackFlowId());
         ctx.event()->add_debug_annotations(kTaskName, kJSTaskCallJSCallback);
+        ctx.event()->add_debug_annotations("module_name",
+                                           module_callback->module_name_);
+        ctx.event()->add_debug_annotations("method_name",
+                                           module_callback->method_name_);
+        ctx.event()->add_debug_annotations("first_arg",
+                                           module_callback->first_arg_);
+        ctx.event()->add_debug_annotations("callback_id",
+                                           module_callback->callback_id());
+        ctx.event()->add_debug_annotations("callback_flow_id",
+                                           module_callback->CallbackFlowId());
       });
   if (module_callback->timing_collector_) {
     module_callback->timing_collector_->CallbackThreadSwitchStart();

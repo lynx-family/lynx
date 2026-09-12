@@ -334,7 +334,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void SendTouchEvent(const std::string& name, const EventInfo& info);
   void SendCustomEvent(const std::string& name, int tag,
-                       const lepus::Value& params, const std::string& pname);
+                       const lepus::Value& params, const std::string& pname,
+                       uint64_t trace_flow_id = 0);
 
   void SendGestureEvent(int tag, int gesture_id, const std::string& name,
                         const lepus::Value& params);

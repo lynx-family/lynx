@@ -25,6 +25,14 @@ inline constexpr const char* const LYNX_ENGINE_DESTRUCTOR =
     "LynxEngine::~LynxEngine";
 
 /**
+ * @trace_description: Enqueue a custom event from the platform UI thread to
+ * the Engine thread. The flow continues through
+ * TouchEventHandler::HandleCustomEvent and EventTarget::DispatchEvent.
+ */
+inline constexpr const char* const LYNX_SEND_CUSTOM_EVENT_TO_ENGINE =
+    "Lynx::SendCustomEventToEngine";
+
+/**
  * @trace_description: Execute the @args{module_name}.@args{method} method on
  * the background scripting thread (historically known as "JS Thread").
  */
@@ -98,6 +106,8 @@ inline constexpr const char* const LAYOUT_MEDIATOR_ON_LAYOUT_AFTER =
     "LayoutMediator.OnLayoutAfter";
 inline constexpr const char* const LAYOUT_MEDIATOR_HANDLE_PENDING_LAYOUT_TASK =
     "LayoutMediator.HandlePendingLayoutTask";
+inline constexpr const char* const LAYOUT_MEDIATOR_ON_FIRST_SCREEN =
+    "LayoutMediator.OnFirstScreen";
 inline constexpr const char* const
     LAYOUT_MEDIATOR_HANDLE_LIST_OR_COMPONENT_UPDATED =
         "LayoutMediator.HandleListOrComponentUpdated";
