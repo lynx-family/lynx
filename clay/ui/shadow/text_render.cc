@@ -61,6 +61,24 @@ static bool HasInlineTruncationShadowNode(ShadowNode* node) {
   return false;
 }
 
+using FontSizeSnapshot =
+    std::vector<std::pair<ShadowNode*, std::optional<float>>>;
+
+static void CaptureFontSizes(ShadowNode* node, FontSizeSnapshot& snapshot) {
+  if (node->IsBaseTextShadowNode() && node->text_style_.has_value()) {
+    snapshot.emplace_back(node, node->text_style_->font_size);
+  }
+  for (auto* child : node->GetChildren()) {
+    CaptureFontSizes(child, snapshot);
+  }
+}
+
+static void RestoreFontSizes(const FontSizeSnapshot& snapshot) {
+  for (const auto& [node, font_size] : snapshot) {
+    node->text_style_->font_size = font_size;
+  }
+}
+
 static bool InlineTruncationTextBoxFits(const txt::Paragraph::TextBox& box,
                                         double layout_width,
                                         double visible_bottom,
@@ -309,6 +327,10 @@ TextAlignment TextRender::EffectAlign() {
 void TextRender::Measure(const MeasureConstraint& constraint,
                          ShadowLayoutContextMeasure* context) {
   inline_truncation_hidden_count_ = -1;
+  if (cache_uses_auto_font_size_) {
+    AddUpdateFlag(TextUpdateFlag::kUpdateFlagStyle);
+    cache_uses_auto_font_size_ = false;
+  }
   BuildTextLayout(constraint, context);
 
   if (constraint.width_mode == TextMeasureMode::kIndefinite &&
@@ -580,16 +602,21 @@ void TextRender::HandleAutoSize(const MeasureConstraint& constraint,
     if (HasInlineTruncationShadowNode(measure_node_)) {
       return;
     }
-    if (measure_node_->auto_font_size_preset_sizes_.empty() &&
-        (measure_node_->auto_font_size_step_granularity_ <= 0 ||
-         measure_node_->auto_font_size_min_size_ <= 0)) {
+    if (constraint.width_mode == TextMeasureMode::kIndefinite ||
+        !constraint.width.has_value() || constraint.width.value() <= 0.f) {
       return;
     }
+    FontSizeSnapshot font_sizes;
+    CaptureFontSizes(measure_node_, font_sizes);
+    const auto authored_font_size = measure_node_->text_style_->font_size;
     if (!CheckTextFullyDisplayed(constraint, context)) {
       TryShrinkFontSize(constraint, context);
     } else {
       TryExpandFontSize(constraint, context);
     }
+    cache_uses_auto_font_size_ =
+        measure_node_->text_style_->font_size != authored_font_size;
+    RestoreFontSizes(font_sizes);
   }
 }
 
@@ -613,6 +640,10 @@ bool TextRender::CheckTextFullyDisplayed(
 void TextRender::TryShrinkFontSize(
     const MeasureConstraint& constraint,
     ShadowLayoutContextMeasure* context_measure) {
+  const double step_granularity =
+      measure_node_->auto_font_size_step_granularity_ > 0.
+          ? measure_node_->auto_font_size_step_granularity_
+          : 1.;
   // FIXME: if the number of auto_font_size_preset_sizes_ is too much, we
   // should use dichotomy to find target
   if (!measure_node_->auto_font_size_preset_sizes_.empty()) {
@@ -637,24 +668,12 @@ void TextRender::TryShrinkFontSize(
     return;
   }
 
-  if (measure_node_->text_style_->font_size <=
-      measure_node_->auto_font_size_min_size_) {
-    measure_node_->text_style_->font_size =
-        measure_node_->auto_font_size_min_size_;
-  } else if (measure_node_->text_style_->font_size >=
-                 measure_node_->auto_font_size_max_size_ &&
-             measure_node_->auto_font_size_max_size_ >
-                 measure_node_->auto_font_size_min_size_) {
-    measure_node_->text_style_->font_size =
-        measure_node_->auto_font_size_max_size_;
-  }
   while (measure_node_->text_style_->font_size >=
          measure_node_->auto_font_size_min_size_) {
     auto current_font_size = measure_node_->text_style_->font_size.value_or(
         kDefaultFontSizeInDip * measure_node_->Logical2ClayPixelRatio());
-    auto target_font_size = std::max(
-        current_font_size - measure_node_->auto_font_size_step_granularity_,
-        measure_node_->auto_font_size_min_size_);
+    auto target_font_size = std::max(current_font_size - step_granularity,
+                                     measure_node_->auto_font_size_min_size_);
     if (target_font_size == current_font_size) {
       return;
     }
@@ -675,6 +694,10 @@ void TextRender::TryShrinkFontSize(
 void TextRender::TryExpandFontSize(
     const MeasureConstraint& constraint,
     ShadowLayoutContextMeasure* context_measure) {
+  const double step_granularity =
+      measure_node_->auto_font_size_step_granularity_ > 0.
+          ? measure_node_->auto_font_size_step_granularity_
+          : 1.;
   // FIXME: if the number of auto_font_size_preset_sizes_ is too much, we
   // should use dichotomy to find target
   if (!measure_node_->auto_font_size_preset_sizes_.empty()) {
@@ -703,24 +726,13 @@ void TextRender::TryExpandFontSize(
     return;
   }
 
-  if (measure_node_->text_style_->font_size <=
-      measure_node_->auto_font_size_min_size_) {
-    measure_node_->text_style_->font_size =
-        measure_node_->auto_font_size_min_size_;
-  } else if (measure_node_->text_style_->font_size >=
-                 measure_node_->auto_font_size_max_size_ &&
-             measure_node_->auto_font_size_max_size_ >
-                 measure_node_->auto_font_size_min_size_) {
-    measure_node_->text_style_->font_size =
-        measure_node_->auto_font_size_max_size_;
-  }
   while (measure_node_->text_style_->font_size <=
          measure_node_->auto_font_size_max_size_) {
     std::unique_ptr<txt::Paragraph> pre_paragraph = std::move(cache_paragraph_);
     measure_node_->text_style_->font_size =
         measure_node_->text_style_->font_size.value_or(
             kDefaultFontSizeInDip * measure_node_->Logical2ClayPixelRatio()) +
-        measure_node_->auto_font_size_step_granularity_;
+        step_granularity;
     FlexInlineFontSize(false, measure_node_->text_style_->font_size.value(),
                        measure_node_);
     if (measure_node_->text_style_->font_size <=
@@ -732,7 +744,7 @@ void TextRender::TryExpandFontSize(
             measure_node_->text_style_->font_size.value_or(
                 kDefaultFontSizeInDip *
                 measure_node_->Logical2ClayPixelRatio()) -
-            measure_node_->auto_font_size_step_granularity_;
+            step_granularity;
         cache_paragraph_ = std::move(pre_paragraph);
         return;
       }

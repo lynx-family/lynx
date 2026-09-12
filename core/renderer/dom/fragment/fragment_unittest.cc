@@ -33,7 +33,6 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
-#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -122,7 +121,7 @@ class TestPlatformRenderer : public PlatformRendererImpl {
       display_list_ = std::move(display_list);
     }
   }
-  void OnUpdateAttributes(const fml::RefPtr<PropBundle>&, bool) override {}
+  void OnUpdateAttributes(const fml::RefPtr<PropBundle>&) override {}
   void OnAddChild(PlatformRenderer*, int, bool) override {}
   void OnRemoveFromParent(bool) override {}
   void OnUpdateSubtreeProperties(const DisplayList&) override {}
@@ -213,6 +212,15 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
     return scrollable_signs.count(sign) > 0;
   }
 
+  PlatformTextEventTargetRegions GetTextEventTargetRegions(
+      int32_t text_id) override {
+    ++get_text_event_target_regions_call_count;
+    auto it = text_event_target_regions.find(text_id);
+    return it != text_event_target_regions.end()
+               ? it->second
+               : PlatformTextEventTargetRegions{};
+  }
+
   const DisplayList* GetDisplayListForRenderer(int32_t sign) const {
     auto it = renderers_.find(sign);
     if (it == renderers_.end() || it->second == nullptr) {
@@ -233,6 +241,9 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
 
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
   std::unordered_set<int32_t> scrollable_signs;
+  std::unordered_map<int32_t, PlatformTextEventTargetRegions>
+      text_event_target_regions;
+  int get_text_event_target_regions_call_count{0};
   std::vector<int32_t> destroyed_image_keys;
   std::vector<tasm::PipelineID> paint_end_pipeline_ids;
 
@@ -391,6 +402,54 @@ TEST(NativePaintingCtxPlatformRefTest,
   ref->ScheduleDestroyImage(12);
   ref->Destroy();
   EXPECT_THAT(ref->destroyed_image_keys, ::testing::ElementsAre(11));
+}
+
+TEST(NativePaintingCtxPlatformRefTest, UpdatesTextEventTargetRangesByTextId) {
+  TestNativePaintingCtxPlatformRef ref;
+
+  ref.UpdateTextEventTargetRanges(1, {{11, 0, 2}, {12, 2, 4}});
+  ref.UpdateTextEventTargetRanges(2, {{21, 4, 6}});
+  ref.UpdateTextEventTargetRanges(1, {{13, 6, 8}});
+
+  const auto* first_ranges = ref.GetTextEventTargetRanges(1);
+  ASSERT_NE(first_ranges, nullptr);
+  ASSERT_EQ(first_ranges->size(), 1u);
+  EXPECT_EQ((*first_ranges)[0].sign, 13);
+  const auto* second_ranges = ref.GetTextEventTargetRanges(2);
+  ASSERT_NE(second_ranges, nullptr);
+  ASSERT_EQ(second_ranges->size(), 1u);
+  EXPECT_EQ((*second_ranges)[0].sign, 21);
+  EXPECT_EQ(ref.GetTextEventTargetRanges(3), nullptr);
+
+  ref.UpdateTextEventTargetRanges(2, {});
+  EXPECT_EQ(ref.GetTextEventTargetRanges(2), nullptr);
+  ASSERT_NE(ref.GetTextEventTargetRanges(1), nullptr);
+  EXPECT_EQ(ref.GetTextEventTargetRanges(1)->size(), 1u);
+}
+
+TEST(NativePaintingCtxPlatformRefTest,
+     PreservesTextRangeOrderBeyondInlineCapacity) {
+  TestNativePaintingCtxPlatformRef ref;
+  for (int32_t id = 8; id > 0; --id) {
+    // The inner target must stay before its enclosing target, regardless of
+    // sign.
+    ref.UpdateTextEventTargetRanges(id,
+                                    {{id * 10 + 2, 1, 2}, {id * 10 + 1, 0, 3}});
+  }
+  ref.UpdateTextEventTargetRanges(4, {});
+  ref.UpdateTextEventTargetRanges(99, {});
+  EXPECT_EQ(ref.GetTextEventTargetRanges(4), nullptr);
+  EXPECT_EQ(ref.GetTextEventTargetRanges(99), nullptr);
+  for (int32_t id = 1; id <= 8; ++id) {
+    if (id == 4) {
+      continue;
+    }
+    const auto* ranges = ref.GetTextEventTargetRanges(id);
+    ASSERT_NE(ranges, nullptr);
+    ASSERT_EQ(ranges->size(), 2u);
+    EXPECT_EQ((*ranges)[0].sign, id * 10 + 2);
+    EXPECT_EQ((*ranges)[1].sign, id * 10 + 1);
+  }
 }
 
 class FragmentDrawTest : public ::testing::Test {
@@ -863,7 +922,7 @@ TEST_F(FragmentDrawTest, ReinsertZIndexDescendantUsesAncestorStackingContext) {
   EXPECT_NE(layer_fragment->fragment_parent(), layer_fragment);
 }
 
-TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
+TEST_F(FragmentTest, CreateLayerIfNeededKeepsCompatibleComponentInitConfig) {
   auto element = manager->CreateFiberText("text");
   element->MarkAsDirectChildOfCompatibleComponent(true);
   Fragment fragment(element.get());
@@ -872,12 +931,9 @@ TEST_F(FragmentTest, CreateLayerIfNeededWritesFlattenInitData) {
   fragment.SetBehavior(std::move(behavior));
 
   ASSERT_TRUE(element->TendToFlatten());
-  fragment.CreateLayerIfNeeded(nullptr);
+  ASSERT_TRUE(fragment.CreateLayerIfNeeded(nullptr));
 
-  ASSERT_TRUE(behavior_ptr->attributes_);
-  auto* props = static_cast<PropBundleMock*>(behavior_ptr->attributes_.get());
-  ASSERT_TRUE(props->Contains(kTendsToFlattenInitDataKey));
-  EXPECT_TRUE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
+  EXPECT_FALSE(behavior_ptr->attributes_);
   EXPECT_EQ(behavior_ptr->init_config_.fragment_parent_id, -1);
   EXPECT_TRUE(
       behavior_ptr->init_config_.is_direct_child_of_compatible_component);
@@ -914,8 +970,6 @@ TEST_F(FragmentTest, UpdatePaintingNodeUsesCurrentFlattenStateForLayer) {
   ASSERT_TRUE(behavior_ptr->attributes_);
   EXPECT_TRUE(behavior_ptr->attributes_->Contains(
       CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDTransform)));
-  auto* props = static_cast<PropBundleMock*>(behavior_ptr->attributes_.get());
-  EXPECT_FALSE(props->GetPropsMap().at(kTendsToFlattenInitDataKey).Bool());
 }
 
 TEST_F(FragmentTest, DrawFullSyncsOverflowToBeginOperation) {
@@ -1055,6 +1109,59 @@ TEST_F(FragmentTest, PlatformEventTargetHitTestAccountsForTransform) {
       converted_root_point, child_target, root_target, child_point);
   EXPECT_FLOAT_EQ(converted_root_point[0], root_point[0]);
   EXPECT_FLOAT_EQ(converted_root_point[1], root_point[1]);
+}
+
+TEST_F(FragmentTest, PlatformEventTargetHitTestUsesDisjointRegions) {
+  auto target = fml::MakeRefCounted<PlatformEventTarget>(nullptr, kRootId, 1,
+                                                         0.f, 0.f, 100.f, 60.f);
+  target->AddHitTestRegion({0.f, 0.f, 40.f, 20.f});
+  target->AddHitTestRegion({60.f, 40.f, 100.f, 60.f});
+
+  float first_line[2] = {20.f, 10.f};
+  EXPECT_TRUE(target->ContainsPoint(first_line));
+  float second_line[2] = {80.f, 50.f};
+  EXPECT_TRUE(target->ContainsPoint(second_line));
+  float gap[2] = {50.f, 30.f};
+  EXPECT_FALSE(target->ContainsPoint(gap));
+}
+
+TEST_F(FragmentTest, PlatformEventTargetHitTestPrefersNestedInlineTarget) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder root_builder;
+  root_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1, 0.f, 0.f)
+      .End();
+  root_renderer->UpdateDisplayList(root_builder.Build());
+
+  auto text_renderer =
+      fml::MakeRefCounted<TestPlatformRenderer>(1, PlatformRendererType::kText);
+  DisplayListBuilder text_builder;
+  text_builder.Begin(1, PlatformRendererType::kText, 0.f, 0.f, 100.f, 20.f)
+      .End();
+  text_renderer->UpdateDisplayList(text_builder.Build());
+  root_renderer->AddChild(text_renderer);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.renderers_.insert_or_assign(1, text_renderer);
+
+  auto root_target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root_target, nullptr);
+  EXPECT_EQ(platform_ref.get_text_event_target_regions_call_count, 0);
+
+  platform_ref.UpdateTextEventTargetRanges(1, {{2, 0, 2}, {3, 2, 4}});
+  platform_ref.text_event_target_regions[1] = {{3, 20.f, 0.f, 20.f, 20.f},
+                                               {2, 0.f, 0.f, 60.f, 20.f}};
+
+  root_target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root_target, nullptr);
+  EXPECT_EQ(platform_ref.get_text_event_target_regions_call_count, 1);
+  float point[2] = {30.f, 10.f};
+  auto hit_target = root_target->HitTest(point);
+  ASSERT_NE(hit_target, nullptr);
+  EXPECT_EQ(hit_target->Sign(), 3);
 }
 
 TEST_F(FragmentTest,

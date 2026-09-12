@@ -187,6 +187,7 @@ constexpr std::array<KeywordID, 15> kExposureAttributes = {{
     KeywordID::kExposureId,
     KeywordID::kExposureArea,
     KeywordID::kEnableExposureUiMargin,
+    KeywordID::kEnableExposureUiClip,
     KeywordID::kExposureUiMarginLeft,
     KeywordID::kExposureUiMarginRight,
     KeywordID::kExposureUiMarginTop,
@@ -3267,9 +3268,6 @@ bool BaseView::HandleCommonAttribute(const char* attr,
     case KeywordID::kEnableNewAnimator:
       SetEnableNewAnimator(utils::GetBool(value));
       break;
-    case KeywordID::kEnableExposureUiClip:
-      enable_exposure_ui_clip_ = utils::GetBool(value);
-      break;
     case KeywordID::kName:
       name_ = utils::GetCString(value);
       break;
@@ -3346,10 +3344,17 @@ template <typename... Args>
 void BaseView::NotifyBgImageLoadStatus(bool success,
                                        const std::vector<std::string>& keys,
                                        Args&&... args) {
+  NotifyBgImageLoadStatus(success,
+                          CreateClayMap(keys, std::forward<Args>(args)...));
+}
+
+void BaseView::NotifyBgImageLoadStatus(bool success, clay::Value::Map params) {
   if (success && HasEvent(event_attr::kEventBgLoad)) {
-    page_view()->SendEvent(id(), event_attr::kEventBgLoad, keys, args...);
+    page_view()->SendCustomEvent(GetCallbackId(), event_attr::kEventBgLoad,
+                                 std::move(params));
   } else if (!success && HasEvent(event_attr::kEventBgError)) {
-    page_view()->SendEvent(id(), event_attr::kEventBgError, keys, args...);
+    page_view()->SendCustomEvent(GetCallbackId(), event_attr::kEventBgError,
+                                 std::move(params));
   }
 }
 

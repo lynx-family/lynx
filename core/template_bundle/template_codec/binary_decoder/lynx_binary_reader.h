@@ -32,6 +32,8 @@ class LynxBinaryReader : public LynxBinaryBaseTemplateReader {
   LynxBinaryReader& operator=(LynxBinaryReader&&) = default;
 
   static LynxBinaryReader CreateLynxBinaryReader(std::vector<uint8_t> binary);
+  static LynxBinaryReader CreateLynxBinaryReader(
+      std::shared_ptr<const std::vector<uint8_t>> binary);
 
   LynxTemplateBundle GetTemplateBundle();
   tasm::StringListVec& GetStringList() override;

@@ -301,21 +301,20 @@ void NativePaintingCtxAndroid::CreatePaintingNode(
     bool create_node_async, uint32_t node_index) {}
 
 void NativePaintingCtxAndroid::UpdatePaintingNode(
-    int id, bool tend_to_flatten,
-    const fml::RefPtr<PropBundle> &painting_data) {
+    int id, bool, const fml::RefPtr<PropBundle> &painting_data) {
   if (!painting_data) {
     return;
   }
 
   auto platform_ref = platform_ref_;
-  Enqueue([platform_ref, id, tend_to_flatten, painting_data]() mutable {
+  Enqueue([platform_ref, id, painting_data]() mutable {
     auto android_ref =
         std::static_pointer_cast<NativePaintingCtxAndroidRef>(platform_ref);
     if (!android_ref) {
       return;
     }
 
-    android_ref->UpdateAttributes(id, painting_data, tend_to_flatten);
+    android_ref->UpdateAttributes(id, painting_data);
   });
 }
 
@@ -646,6 +645,17 @@ void NativePaintingCtxAndroid::DestroyTextBundle(int id) {
   if (view_manager_) {
     view_manager_->DestroyTextBundle(id);
   }
+}
+
+void NativePaintingCtxAndroid::UpdateTextEventTargetRanges(
+    int id, std::vector<PlatformTextEventTargetRange> ranges) {
+  auto ref =
+      std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
+  Enqueue([ref = std::move(ref), id, ranges = std::move(ranges)]() mutable {
+    if (ref) {
+      ref->UpdateTextEventTargetRanges(id, std::move(ranges));
+    }
+  });
 }
 
 }  // namespace tasm

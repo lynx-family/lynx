@@ -18,6 +18,7 @@ jni_class_configs:
   jni_classes:
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/LynxInspectorOwner.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/LynxDevToolNGDelegate.java
+    - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/LynxNetworkRequestObserverDelegate.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/DevToolMessageHandlerDelegate.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/CDPResultCallbackWrapper.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/CDPEventListenerWrapper.java

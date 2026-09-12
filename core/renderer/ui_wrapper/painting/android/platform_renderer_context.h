@@ -61,8 +61,7 @@ class PlatformRendererContext {
       int32_t id, const SubtreeProperty* properties, size_t count);
 
   // Update platform renderer attributes
-  void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle,
-                                        bool tends_to_flatten);
+  void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle);
 
   void UpdatePlatformRendererExtraData(int32_t id, jobject extra_bundle);
 
@@ -98,6 +97,9 @@ class PlatformRendererContext {
   std::vector<float> GetScreenSize();
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);
+  PlatformTextEventTargetRegions GetTextEventTargetRegions(
+      int32_t text_id,
+      const std::vector<PlatformTextEventTargetRange>& target_ranges);
   void InvokeUIMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback);

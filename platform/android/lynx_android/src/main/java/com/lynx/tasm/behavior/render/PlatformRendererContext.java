@@ -6,6 +6,8 @@ package com.lynx.tasm.behavior.render;
 import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.os.Build;
+import android.text.Layout;
+import android.text.Spanned;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +31,9 @@ import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
+import com.lynx.tasm.behavior.shadow.text.EventTargetSpan;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
+import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
@@ -45,13 +49,13 @@ import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
   final private static String TAG = "PlatformRendererContext";
-  final private static String TENDS_TO_FLATTEN_INIT_DATA_KEY = "__lynx_tends_to_flatten";
 
   public static final class PlatformRendererType {
     public static final int kUnknown = 0;
@@ -373,9 +377,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
-    Behavior behavior = null;
     if (mBehaviorRegistry != null) {
-      behavior = mBehaviorRegistry.get(tagName);
+      Behavior behavior = mBehaviorRegistry.get(tagName);
       if (behavior != null && behavior.supportFragmentLayerRenderer()) {
         IRendererHost host = behavior.createPlatformRendererHost(mContext);
         if (host != null) {
@@ -395,9 +398,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       ReadableMap initialProps = initData != null ? initData.getProps() : null;
       ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
       ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
-      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, initialProps);
       owner.createView(
-          sign, tagName, initialProps, null, eventListeners, isFlatten, sign, gestureDetectors);
+          sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
       LynxBaseUI createdUI = owner.getNode(sign);
       LynxBaseUI rendererHostUI = resolveRendererHostUI(createdUI);
       IRendererHost host = resolveRendererHost(rendererHostUI);
@@ -425,18 +427,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     view.setRenderer(renderer);
     mViewHolder.put(sign, view);
     view.invalidate();
-  }
-
-  private boolean shouldCreateFallbackUIAsFlatten(
-      @Nullable Behavior behavior, @Nullable ReadableMap props) {
-    boolean tendsToFlatten =
-        props != null && props.getBoolean(TENDS_TO_FLATTEN_INIT_DATA_KEY, false);
-    return shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
-  }
-
-  private boolean shouldCreateFallbackUIAsFlatten(
-      @Nullable Behavior behavior, boolean tendsToFlatten) {
-    return tendsToFlatten && behavior != null && behavior.supportUIFlatten();
   }
 
   @Nullable
@@ -587,17 +577,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
   }
 
-  private boolean shouldInsertIntoUIOwnerForFlattenRendererParent(
-      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
-    return parentUI != null && parentUI.isFlatten() && childUI != null && !childUI.isOverlay();
-  }
-
-  private boolean shouldRemoveFromUIOwnerForFlattenRendererParent(
-      @Nullable LynxBaseUI parentUI, @Nullable LynxBaseUI childUI) {
-    return shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)
-        && childUI.getParentBaseUI() == parentUI;
-  }
-
   @CalledByNative
   void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner) {
     LynxUIOwner owner = mContext.getLynxUIOwner();
@@ -608,13 +587,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
-      return;
-    }
-    if (!shouldUpdateUIOwner
-        && shouldInsertIntoUIOwnerForFlattenRendererParent(parentUI, childUI)) {
-      if (childUI.getParentBaseUI() != parentUI) {
-        owner.insert(parent, child, index);
-      }
       return;
     }
 
@@ -687,7 +659,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  void updatePlatformRendererAttributes(int sign, PropBundle propBundle, boolean tendsToFlatten) {
+  void updatePlatformRendererAttributes(int sign, PropBundle propBundle) {
     IRendererHost host = mViewHolder.get(sign);
     if (host == null) {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
@@ -702,10 +674,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           propBundle != null ? propBundle.getEventHandlers() : null);
       Map<Integer, GestureDetector> detectors = GestureDetector.convertGestureDetectors(
           propBundle != null ? propBundle.getGestures() : null);
-      Behavior behavior = mBehaviorRegistry != null ? mBehaviorRegistry.get(ui.getTagName()) : null;
-      boolean isFlatten = shouldCreateFallbackUIAsFlatten(behavior, tendsToFlatten);
       owner.updateProperties(
-          sign, isFlatten, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
+          sign, false, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
     }
 
     // Get the renderer
@@ -798,6 +768,105 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return (Page) mExtraDatas.get(sign);
   }
 
+  private static void appendTextEventTargetRegion(
+      ArrayList<Float> result, int sign, float left, float top, float right, float bottom) {
+    if (right <= left || bottom <= top) {
+      return;
+    }
+    // Keep the full 32-bit sign while sharing one compact float array with geometry.
+    result.add(Float.intBitsToFloat(sign));
+    result.add(left);
+    result.add(top);
+    result.add(right - left);
+    result.add(bottom - top);
+  }
+
+  private static void appendLayoutRegions(
+      ArrayList<Float> result, int sign, Layout layout, int start, int end, PointF offset) {
+    if (start < 0 || start >= end || end > layout.getText().length()) {
+      return;
+    }
+    int startLine = layout.getLineForOffset(start);
+    int endLine = layout.getLineForOffset(end - 1);
+    float offsetX = offset != null ? offset.x : 0.f;
+    float offsetY = offset != null ? offset.y : 0.f;
+    for (int line = startLine; line <= endLine; ++line) {
+      int lineStart = layout.getLineStart(line);
+      int lineEnd = layout.getLineEnd(line);
+      int rangeStart = Math.max(start, lineStart);
+      int rangeEnd = Math.min(end, lineEnd);
+      if (rangeStart >= rangeEnd) {
+        continue;
+      }
+      // A soft-wrap boundary belongs to both adjacent lines. Use the current
+      // line bounds instead of resolving the offset against the other line.
+      boolean isRtl = layout.getParagraphDirection(line) == Layout.DIR_RIGHT_TO_LEFT;
+      float lineStartX = isRtl ? layout.getLineRight(line) : layout.getLineLeft(line);
+      float lineEndX = isRtl ? layout.getLineLeft(line) : layout.getLineRight(line);
+      float startX = rangeStart == lineStart ? lineStartX : layout.getPrimaryHorizontal(rangeStart);
+      float endX = rangeEnd == lineEnd ? lineEndX : layout.getPrimaryHorizontal(rangeEnd);
+      appendTextEventTargetRegion(result, sign, Math.min(startX, endX) + offsetX,
+          layout.getLineTop(line) + offsetY, Math.max(startX, endX) + offsetX,
+          layout.getLineBottom(line) + offsetY);
+    }
+  }
+
+  @CalledByNative
+  private float[] getTextEventTargetRegions(int sign, int[] targetRanges) {
+    if (targetRanges == null || targetRanges.length % 3 != 0) {
+      return new float[0];
+    }
+    ArrayList<Float> result = new ArrayList<>();
+    if (mContext != null && mContext.isTextServiceModeOn()) {
+      Page page = getTextBundle(sign);
+      if (page == null) {
+        return new float[0];
+      }
+      for (int i = 0; i < targetRanges.length; i += 3) {
+        int targetSign = targetRanges[i];
+        float[] rects = page.getSelectionRects(targetRanges[i + 1], targetRanges[i + 2]);
+        if (rects == null || rects.length % 4 != 0) {
+          continue;
+        }
+        for (int j = 0; j < rects.length; j += 4) {
+          appendTextEventTargetRegion(result, targetSign, rects[j], rects[j + 1],
+              rects[j] + rects[j + 2], rects[j + 1] + rects[j + 3]);
+        }
+      }
+    } else if (mTextMeasurer != null) {
+      Object data = mTextMeasurer.takeTextLayout(sign);
+      if (data instanceof TextUpdateBundle) {
+        TextUpdateBundle bundle = (TextUpdateBundle) data;
+        Layout layout = bundle.getTextLayout();
+        if (layout != null && layout.getText() instanceof Spanned) {
+          Spanned text = (Spanned) layout.getText();
+          EventTargetSpan[] spans = text.getSpans(0, text.length(), EventTargetSpan.class);
+          Map<Integer, EventTargetSpan> spansBySign = new HashMap<>();
+          for (EventTargetSpan span : spans) {
+            if (span.isClickable()) {
+              spansBySign.put(span.getSign(), span);
+            }
+          }
+          // Native ranges list nested targets from inner to outer in both layout
+          // paths. Preserve that order while using offsets from the final Layout.
+          for (int i = 0; i < targetRanges.length; i += 3) {
+            EventTargetSpan span = spansBySign.get(targetRanges[i]);
+            if (span == null) {
+              continue;
+            }
+            appendLayoutRegions(result, span.getSign(), layout, text.getSpanStart(span),
+                text.getSpanEnd(span), bundle.getTextTranslateOffset());
+          }
+        }
+      }
+    }
+    float[] regions = new float[result.size()];
+    for (int i = 0; i < result.size(); ++i) {
+      regions[i] = result.get(i);
+    }
+    return regions;
+  }
+
   @CalledByNative
   public void updateTextBundle(int sign, long textBundle) {
     // Update the text layout bundle for the specified sign
@@ -874,11 +943,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
-      return;
-    }
-    if (!shouldUpdateUIOwner
-        && shouldRemoveFromUIOwnerForFlattenRendererParent(parentUI, childUI)) {
-      owner.remove(parent, sign);
       return;
     }
 

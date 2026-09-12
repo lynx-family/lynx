@@ -867,6 +867,20 @@ public class LynxTemplateRender
     return null;
   }
 
+  String getLynxUITree() {
+    byte[] result = nativeGetLynxUITree(lynxUIRenderer().getUIDelegatePtr());
+    return result != null ? new String(result, StandardCharsets.UTF_8) : "";
+  }
+
+  String getUINodeInfo(int id) {
+    byte[] result = nativeGetUINodeInfo(lynxUIRenderer().getUIDelegatePtr(), id);
+    return result != null ? new String(result, StandardCharsets.UTF_8) : "";
+  }
+
+  int setUIStyle(int id, String name, String content) {
+    return nativeSetUIStyle(lynxUIRenderer().getUIDelegatePtr(), id, name, content);
+  }
+
   /**
    * Get render phase of current LynxView
    *
@@ -4800,6 +4814,13 @@ public class LynxTemplateRender
       String bytecodeSourceUrl, int runtimeFlags, long uiDelegate);
 
   private static native void nativeOnLynxEngineCreated(long ptr, long uiDelegatePtr);
+
+  private static native byte[] nativeGetLynxUITree(long uiDelegatePtr);
+
+  private static native byte[] nativeGetUINodeInfo(long uiDelegatePtr, int id);
+
+  private static native int nativeSetUIStyle(
+      long uiDelegatePtr, int id, String name, String content);
 
   private static native void nativeStartRuntime(long ptr, long lifecycle);
 

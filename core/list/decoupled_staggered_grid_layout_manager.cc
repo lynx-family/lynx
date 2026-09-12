@@ -262,7 +262,19 @@ void StaggeredGridLayoutManager::OnLayoutChildrenInternal(
 }
 
 void StaggeredGridLayoutManager::OnLayoutAfter() {
+  if (list_container_->use_new_update_animation()) {
+    // Match LinearLayoutManager's hook order: capture POST state before
+    // flushing regular layout patches, and transfer ownership of removed
+    // holders before the normal recycling path runs.
+    list_container_->animation_manager()->AfterLayoutBeforeFlush();
+  }
   HandleLayoutOrScrollResult(true);
+  if (list_container_->use_new_update_animation()) {
+    // The regular layout patches have been flushed. Start pending animations
+    // now; AnimationManager then flushes the initial updates accumulated while
+    // starting the batch.
+    list_container_->animation_manager()->AfterFlush();
+  }
 
   // Send layout events.
   // Note: Events has to be called after StopInterceptListElementUpdated to
@@ -295,7 +307,7 @@ void StaggeredGridLayoutManager::HandleLayoutOrScrollResult(bool is_layout) {
     RecycleOffScreenItemHolders();
     if (is_layout) {
       // 2. Recycle all removed child.
-      list_adapter->RecycleRemovedItemHolders();
+      RecycleRemovedItemHolders();
     }
     // 3. Update layout info to platform.
     list_children_helper_->ForEachChild(

@@ -28,7 +28,9 @@
 #include "core/renderer/template_entry.h"
 #include "core/renderer/utils/base/element_template_info.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -93,6 +95,16 @@ const lepus::Value* DatasetValue(const Element* element,
 
 class ElementTemplateInstanceTest : public FiberElementTest {
  protected:
+  std::shared_ptr<runtime::MTSRuntime> CreatePAPIRuntime() {
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    return runtime;
+  }
+
   fml::RefPtr<ElementTemplateInstance> CreateCompiledSpreadInstance() {
     auto entry = std::make_shared<TemplateEntry>();
     entry->SetName(DEFAULT_ENTRY_NAME);
@@ -118,6 +130,367 @@ class ElementTemplateInstanceTest : public FiberElementTest {
     return instance;
   }
 };
+
+TEST_P(ElementTemplateInstanceTest, PAPIHandlesRoundTripThroughJSChildSlots) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::Value child_args[] = {lepus::Value("view"), lepus::Value(),
+                               lepus::Value(), lepus::Value(1.5)};
+  auto child =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, child_args, 4);
+  ASSERT_TRUE(child.IsRefCounted());
+  EXPECT_EQ(child.RefCounted()->GetRefType(), lepus::RefType::kElementTemplate);
+
+  runtime->SetGlobalData("etChild", child);
+  lepus::BytecodeGenerator::GenerateBytecode(
+      runtime->GetMTSContext(),
+      "let compiledSlots = []; compiledSlots[2] = [etChild]; "
+      "let typedSlots = [[etChild]];",
+      runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+  auto compiled_slots = runtime->GetGlobalData("compiledSlots");
+  auto typed_slots = runtime->GetGlobalData("typedSlots");
+  ASSERT_TRUE(compiled_slots.IsJSValue());
+  ASSERT_TRUE(typed_slots.IsJSValue());
+
+  auto attributes = lepus::CArray::Create();
+  attributes->emplace_back(lepus::Value("initial"));
+  auto options = lepus::Dictionary::Create();
+  options->SetValue("enabled", lepus::Value(true));
+  lepus::Value compiled_args[] = {lepus::Value("parent_template"),
+                                  lepus::Value("bundle.js"),
+                                  lepus::Value(attributes),
+                                  compiled_slots,
+                                  lepus::Value(7),
+                                  lepus::Value(options)};
+  auto compiled =
+      RendererFunctions::FiberCreateElementTemplate(ctx, compiled_args, 6);
+  ASSERT_TRUE(compiled.IsRefCounted());
+  EXPECT_EQ(compiled.RefCounted()->GetRefType(),
+            lepus::RefType::kElementTemplate);
+  lepus::Value serialize_args[] = {compiled};
+  auto serialized =
+      RendererFunctions::FiberSerializeElementTemplate(ctx, serialize_args, 1);
+  EXPECT_EQ(serialized.GetProperty("templateKey").StdString(),
+            "parent_template");
+  EXPECT_EQ(serialized.GetProperty("bundleUrl").StdString(), "bundle.js");
+  EXPECT_EQ(serialized.GetProperty("uid").Number(), 7);
+  EXPECT_EQ(serialized.GetProperty("attributeSlots").GetProperty(0).StdString(),
+            "initial");
+  EXPECT_TRUE(serialized.GetProperty("options").GetProperty("enabled").Bool());
+  auto slots = serialized.GetProperty("childSlots");
+  ASSERT_EQ(slots.GetLength(), 3);
+  EXPECT_TRUE(slots.GetProperty(0).IsUndefined());
+  EXPECT_TRUE(slots.GetProperty(1).IsUndefined());
+  ASSERT_EQ(slots.GetProperty(2).GetLength(), 1);
+  auto serialized_child = slots.GetProperty(2).GetProperty(0);
+  EXPECT_EQ(serialized_child.GetProperty("tag").StdString(), "view");
+  ASSERT_TRUE(serialized_child.GetProperty("uid").IsNumber());
+  EXPECT_EQ(serialized_child.GetProperty("uid").Number(), 1.5);
+
+  auto typed_attributes = lepus::Dictionary::Create();
+  typed_attributes->SetValue("data-state", lepus::Value("initial"));
+  lepus::Value typed_args[] = {lepus::Value("view"),
+                               lepus::Value(typed_attributes), typed_slots,
+                               lepus::Value(8), lepus::Value(options)};
+  auto typed =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, typed_args, 5);
+  ASSERT_TRUE(typed.IsRefCounted());
+  EXPECT_EQ(typed.RefCounted()->GetRefType(), lepus::RefType::kElementTemplate);
+  serialize_args[0] = typed;
+  serialized =
+      RendererFunctions::FiberSerializeElementTemplate(ctx, serialize_args, 1);
+  EXPECT_EQ(serialized.GetProperty("tag").StdString(), "view");
+  EXPECT_EQ(serialized.GetProperty("uid").Number(), 8);
+  EXPECT_EQ(serialized.GetProperty("attributes")
+                .GetProperty("data-state")
+                .StdString(),
+            "initial");
+  EXPECT_TRUE(serialized.GetProperty("options").GetProperty("enabled").Bool());
+  slots = serialized.GetProperty("childSlots");
+  ASSERT_EQ(slots.GetLength(), 1);
+  ASSERT_EQ(slots.GetProperty(0).GetLength(), 1);
+  EXPECT_EQ(slots.GetProperty(0).GetProperty(0).GetProperty("uid").Number(),
+            1.5);
+}
+
+TEST_P(ElementTemplateInstanceTest, PAPIAttributesSnapshotJSObjects) {
+  for (bool typed : {false, true}) {
+    SCOPED_TRACE(typed);
+    auto runtime = CreatePAPIRuntime();
+    auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+    lepus::BytecodeGenerator::GenerateBytecode(
+        runtime->GetMTSContext(),
+        "let callback = () => 42;"
+        "let attributes = {nested: {values: [1]}, callback};"
+        "let attributeSlots = [attributes];"
+        "let mutate = () => { attributes.nested.values[0] = 2; "
+        "attributes.callback = null; attributeSlots[0] = null; };",
+        runtime->GetSdkVersion(), "");
+    ASSERT_TRUE(runtime->Execute(nullptr));
+    auto attributes = runtime->GetGlobalData("attributes");
+    auto attribute_slots = runtime->GetGlobalData("attributeSlots");
+    auto callback = runtime->GetGlobalData("callback");
+    ASSERT_TRUE(attributes.IsJSValue());
+    ASSERT_TRUE(attribute_slots.IsJSValue());
+    ASSERT_TRUE(callback.IsCallable());
+
+    lepus::Value instance;
+    if (typed) {
+      lepus::Value args[] = {lepus::Value("view"), attributes, lepus::Value(),
+                             lepus::Value(1)};
+      instance =
+          RendererFunctions::FiberCreateTypedElementTemplate(ctx, args, 4);
+    } else {
+      lepus::Value args[] = {lepus::Value("logical_template"), lepus::Value(),
+                             attribute_slots, lepus::Value(), lepus::Value(1)};
+      instance = RendererFunctions::FiberCreateElementTemplate(ctx, args, 5);
+    }
+    ASSERT_TRUE(instance.IsRefCounted());
+    runtime->CallClosure(runtime->GetGlobalData("mutate"));
+    lepus::Value serialize_args[] = {instance};
+    auto serialized = RendererFunctions::FiberSerializeElementTemplate(
+        ctx, serialize_args, 1);
+    auto stored = typed
+                      ? serialized.GetProperty("attributes")
+                      : serialized.GetProperty("attributeSlots").GetProperty(0);
+    EXPECT_EQ(stored.GetProperty("nested")
+                  .GetProperty("values")
+                  .GetProperty(0)
+                  .Number(),
+              1);
+    EXPECT_TRUE(stored.GetProperty("callback").IsEqual(callback));
+    EXPECT_EQ(runtime->CallClosure(stored.GetProperty("callback")).Number(),
+              42);
+
+    attributes.SetProperty("callback", callback);
+    lepus::Value update_args[] = {instance, lepus::Value(0), attributes};
+    RendererFunctions::FiberSetAttributeOfElementTemplate(ctx, update_args, 3);
+    attributes.GetProperty("nested").GetProperty("values").SetProperty(
+        0, lepus::Value(3));
+    attributes.SetProperty("callback", lepus::Value());
+    serialized = RendererFunctions::FiberSerializeElementTemplate(
+        ctx, serialize_args, 1);
+    stored = typed ? serialized.GetProperty("attributes")
+                   : serialized.GetProperty("attributeSlots").GetProperty(0);
+    EXPECT_EQ(stored.GetProperty("nested")
+                  .GetProperty("values")
+                  .GetProperty(0)
+                  .Number(),
+              2);
+    EXPECT_TRUE(stored.GetProperty("callback").IsEqual(callback));
+    EXPECT_EQ(runtime->CallClosure(stored.GetProperty("callback")).Number(),
+              42);
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, PAPIMutationsUpdateSerializedLogicalSlots) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::Value child_args[] = {lepus::Value("view"), lepus::Value(),
+                               lepus::Value(), lepus::Value(1)};
+  auto first =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, child_args, 4);
+  child_args[3] = lepus::Value(2);
+  auto second =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, child_args, 4);
+  ASSERT_TRUE(first.IsRefCounted());
+  ASSERT_TRUE(second.IsRefCounted());
+  auto children = lepus::CArray::Create();
+  children->emplace_back(first);
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(lepus::Value(children));
+  auto attributes = lepus::CArray::Create();
+  attributes->emplace_back(lepus::Value("before"));
+  lepus::Value create_args[] = {lepus::Value("logical_template"),
+                                lepus::Value(), lepus::Value(attributes),
+                                lepus::Value(slots), lepus::Value(3)};
+  auto parent =
+      RendererFunctions::FiberCreateElementTemplate(ctx, create_args, 5);
+  ASSERT_TRUE(parent.IsRefCounted());
+
+  lepus::Value update_args[] = {parent, lepus::Value(0), lepus::Value("after")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(ctx, update_args, 3);
+  lepus::Value insert_args[] = {parent, lepus::Value(0), second, first};
+  RendererFunctions::FiberInsertNodeToElementTemplate(ctx, insert_args, 4);
+  lepus::Value serialize_args[] = {parent};
+  auto serialized =
+      RendererFunctions::FiberSerializeElementTemplate(ctx, serialize_args, 1);
+  EXPECT_EQ(serialized.GetProperty("attributeSlots").GetProperty(0).StdString(),
+            "after");
+  auto serialized_children =
+      serialized.GetProperty("childSlots").GetProperty(0);
+  ASSERT_EQ(serialized_children.GetLength(), 2);
+  EXPECT_EQ(serialized_children.GetProperty(0).GetProperty("uid").Number(), 2);
+  EXPECT_EQ(serialized_children.GetProperty(1).GetProperty("uid").Number(), 1);
+
+  lepus::Value remove_args[] = {parent, lepus::Value(0), first};
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(ctx, remove_args, 3);
+  serialized_children =
+      RendererFunctions::FiberSerializeElementTemplate(ctx, serialize_args, 1)
+          .GetProperty("childSlots")
+          .GetProperty(0);
+  ASSERT_EQ(serialized_children.GetLength(), 1);
+  EXPECT_EQ(serialized_children.GetProperty(0).GetProperty("uid").Number(), 2);
+}
+
+TEST_P(ElementTemplateInstanceTest, PAPITypedPageAppliesAttributesAndChildren) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  auto observer = std::make_shared<RecordingInspectorElementObserver>();
+  manager->SetInspectorElementObserver(observer);
+  manager->dom_tree_enabled_ = true;
+
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue("data-old", lepus::Value("old"));
+  lepus::Value child_args[] = {lepus::Value("view"), lepus::Value(attributes),
+                               lepus::Value(), lepus::Value(1)};
+  auto child =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, child_args, 4);
+  ASSERT_TRUE(child.IsRefCounted());
+  auto updated_attributes = lepus::Dictionary::Create();
+  updated_attributes->SetValue("data-state", lepus::Value("before-mount"));
+  lepus::Value update_args[] = {child, lepus::Value(0),
+                                lepus::Value(updated_attributes)};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(ctx, update_args, 3);
+  lepus::Value serialize_args[] = {child};
+  auto serialized_attributes =
+      RendererFunctions::FiberSerializeElementTemplate(ctx, serialize_args, 1)
+          .GetProperty("attributes");
+  EXPECT_TRUE(serialized_attributes.GetProperty("data-old").IsEmpty());
+  EXPECT_EQ(serialized_attributes.GetProperty("data-state").StdString(),
+            "before-mount");
+
+  auto children = lepus::CArray::Create();
+  children->emplace_back(child);
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(lepus::Value(children));
+  lepus::Value page_args[] = {lepus::Value("page"), lepus::Value(),
+                              lepus::Value(slots), lepus::Value(0)};
+  auto page =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, page_args, 4);
+  ASSERT_TRUE(page.IsRefCounted());
+  auto* page_root = manager->root();
+  ASSERT_NE(page_root, nullptr);
+  EXPECT_TRUE(page_root->is_page());
+  ASSERT_EQ(page_root->children().size(), 1u);
+  auto* child_root = static_cast<Element*>(page_root->children()[0].get());
+  EXPECT_TRUE(child_root->is_view());
+  EXPECT_EQ(child_root->dataset().find("old"), child_root->dataset().end());
+  auto state = child_root->dataset().find("state");
+  ASSERT_NE(state, child_root->dataset().end());
+  EXPECT_EQ(state->second.StdString(), "before-mount");
+  if (ENABLE_INSPECTOR) {
+    EXPECT_EQ(std::count(observer->added_nodes.begin(),
+                         observer->added_nodes.end(), page_root),
+              1);
+  }
+
+  auto mounted_attributes = lepus::Dictionary::Create();
+  mounted_attributes->SetValue("data-state", lepus::Value("after-mount"));
+  update_args[2] = lepus::Value(mounted_attributes);
+  RendererFunctions::FiberSetAttributeOfElementTemplate(ctx, update_args, 3);
+  state = child_root->dataset().find("state");
+  ASSERT_NE(state, child_root->dataset().end());
+  EXPECT_EQ(state->second.StdString(), "after-mount");
+
+  lepus::Value remove_args[] = {page, lepus::Value(0), child};
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(ctx, remove_args, 3);
+  EXPECT_TRUE(page_root->children().empty());
+  lepus::Value insert_args[] = {page, lepus::Value(0), child, lepus::Value()};
+  RendererFunctions::FiberInsertNodeToElementTemplate(ctx, insert_args, 4);
+  ASSERT_EQ(page_root->children().size(), 1u);
+  EXPECT_EQ(page_root->children()[0].get(), child_root);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PAPICreationRejectsInvalidUidAndArrayOptions) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::Value missing_uid_args[] = {lepus::Value("template"), lepus::Value(),
+                                     lepus::Value(), lepus::Value()};
+  for (int argc = 1; argc < 5; ++argc) {
+    SCOPED_TRACE(argc);
+    base::ErrorStorage::GetInstance().Reset();
+    auto result = RendererFunctions::FiberCreateElementTemplate(
+        ctx, missing_uid_args, argc);
+    EXPECT_TRUE(result.IsEmpty());
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  }
+  base::ErrorStorage::GetInstance().Reset();
+  for (bool invalid_uid : {true, false}) {
+    SCOPED_TRACE(invalid_uid ? "nonnumeric uid" : "array options");
+    auto uid = invalid_uid ? lepus::Value("invalid") : lepus::Value(1);
+    auto options =
+        invalid_uid ? lepus::Value() : lepus::Value(lepus::CArray::Create());
+    lepus::Value compiled_args[] = {lepus::Value("template"),
+                                    lepus::Value(),
+                                    lepus::Value(),
+                                    lepus::Value(),
+                                    uid,
+                                    options};
+    base::ErrorStorage::GetInstance().Reset();
+    auto compiled =
+        RendererFunctions::FiberCreateElementTemplate(ctx, compiled_args, 6);
+    EXPECT_TRUE(compiled.IsEmpty());
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+    lepus::Value typed_args[] = {lepus::Value("view"), lepus::Value(),
+                                 lepus::Value(), uid, options};
+    base::ErrorStorage::GetInstance().Reset();
+    auto typed =
+        RendererFunctions::FiberCreateTypedElementTemplate(ctx, typed_args, 5);
+    EXPECT_TRUE(typed.IsEmpty());
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+    base::ErrorStorage::GetInstance().Reset();
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, PAPITypedCreationRejectsList) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::Value args[] = {lepus::Value("list"), lepus::Value(), lepus::Value(),
+                         lepus::Value(0)};
+  base::ErrorStorage::GetInstance().Reset();
+  auto result =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, args, 4);
+  EXPECT_TRUE(result.IsEmpty());
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PAPIMutationsRejectOrdinaryElementChildren) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::Value create_args[] = {lepus::Value("view"), lepus::Value(),
+                                lepus::Value(), lepus::Value(1)};
+  auto parent =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, create_args, 4);
+  create_args[3] = lepus::Value(2);
+  auto child =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, create_args, 4);
+  ASSERT_TRUE(parent.IsRefCounted());
+  ASSERT_TRUE(child.IsRefCounted());
+  lepus::Value ordinary(manager->CreateFiberView());
+  lepus::Value insert_args[] = {parent, lepus::Value(0), ordinary,
+                                lepus::Value()};
+  base::ErrorStorage::GetInstance().Reset();
+  RendererFunctions::FiberInsertNodeToElementTemplate(ctx, insert_args, 4);
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  insert_args[2] = child;
+  insert_args[3] = ordinary;
+  base::ErrorStorage::GetInstance().Reset();
+  RendererFunctions::FiberInsertNodeToElementTemplate(ctx, insert_args, 4);
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+
+  lepus::Value remove_args[] = {parent, lepus::Value(0), ordinary};
+  base::ErrorStorage::GetInstance().Reset();
+  RendererFunctions::FiberRemoveNodeFromElementTemplate(ctx, remove_args, 3);
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  base::ErrorStorage::GetInstance().Reset();
+}
 
 TEST_P(ElementTemplateInstanceTest, UsesIndependentLepusRefType) {
   auto instance = fml::AdoptRef<ElementTemplateInstance>(

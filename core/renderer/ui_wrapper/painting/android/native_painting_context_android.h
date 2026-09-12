@@ -128,6 +128,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 
   void DestroyTextBundle(int id) override;
 
+  void UpdateTextEventTargetRanges(
+      int id, std::vector<PlatformTextEventTargetRange> ranges) override;
+
   void EnqueueReconstructEventTargetTreeRecursively() override;
 #pragma endregion  // NativePaintingContext
 

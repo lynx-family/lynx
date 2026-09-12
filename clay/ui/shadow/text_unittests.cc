@@ -69,6 +69,13 @@ class TestLayoutDelegate : public LayoutDelegate {
 
 class TextTest : public UITest {
  protected:
+  txt::Paragraph* MeasureParagraph(TextRender& text_render,
+                                   const MeasureConstraint& constraint) {
+    auto context = text_shadow_node_->CreateLayoutContext(constraint);
+    text_render.Measure(constraint, &context);
+    return text_render.GetCacheParagraph();
+  }
+
   void LoadDataUriFont(const std::string& family_name) {
     auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
     FontCollection::Instance()->PreLoadFontOnMem(task_runner, task_runner,
@@ -939,27 +946,47 @@ TEST_F_UI(TextTest, AutoFontSizeStepGranularity) {
       "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
       "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
   raw_text_shadow_node_->SetText(text);
-  text_shadow_node_->Measure(constraint);
-  auto font_size = text_shadow_node_->text_style_->font_size;
-  EXPECT_NE(font_size, 42);
+  inline_text_shadow_node_->SetFontSize(36);
+  TextRender text_render(text_shadow_node_.get());
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double narrow_intrinsic_width = paragraph->GetMaxIntrinsicWidth();
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+  EXPECT_EQ(inline_text_shadow_node_->text_style_->font_size, 36);
+
   constraint.width = 4000;
   constraint.height = 1000;
-  text_shadow_node_->Measure(constraint);
-  EXPECT_NE(text_shadow_node_->text_style_->font_size, font_size);
+  paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_GT(paragraph->GetMaxIntrinsicWidth(), narrow_intrinsic_width);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+  EXPECT_EQ(inline_text_shadow_node_->text_style_->font_size, 36);
 }
 
-TEST_F_UI(TextTest, AutoFontSizeIgnoresInvalidStepGranularity) {
-  MeasureConstraint constraint{4000, MeasureMode::kDefinite, 1000,
+TEST_F_UI(TextTest, AutoFontSizeUsesDefaultStepGranularity) {
+  MeasureConstraint constraint{100, MeasureMode::kDefinite, 1,
                                MeasureMode::kDefinite};
   text_shadow_node_->enable_auto_font_size_ = true;
-  text_shadow_node_->auto_font_size_max_size_ = 50;
-  text_shadow_node_->auto_font_size_min_size_ = 30;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_min_size_ = 10;
   text_shadow_node_->auto_font_size_step_granularity_ = 0;
-  raw_text_shadow_node_->SetText("Hello");
+  raw_text_shadow_node_->SetText(
+      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
+      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
 
-  text_shadow_node_->Measure(constraint);
+  TextRender text_render(text_shadow_node_.get());
+  text_shadow_node_->enable_auto_font_size_ = false;
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double authored_height = paragraph->GetHeight();
 
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagStyle);
+  paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_LT(paragraph->GetHeight(), authored_height);
   EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+  EXPECT_DOUBLE_EQ(text_shadow_node_->auto_font_size_step_granularity_, 0);
 }
 
 TEST_F_UI(TextTest, AutoFontSizeAllowsUnsetMaxSize) {
@@ -973,25 +1000,70 @@ TEST_F_UI(TextTest, AutoFontSizeAllowsUnsetMaxSize) {
       "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
       "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
 
-  text_shadow_node_->Measure(constraint);
+  TextRender text_render(text_shadow_node_.get());
+  text_shadow_node_->enable_auto_font_size_ = false;
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double authored_height = paragraph->GetHeight();
 
-  EXPECT_LT(text_shadow_node_->text_style_->font_size, 42);
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagStyle);
+  paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_LT(paragraph->GetHeight(), authored_height);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
 }
 
-TEST_F_UI(TextTest, AutoFontSizeIgnoresUnsetMinSize) {
-  MeasureConstraint constraint{100, MeasureMode::kDefinite, 1,
-                               MeasureMode::kDefinite};
+TEST_F_UI(TextTest, AutoFontSizeAllowsUnsetMinSize) {
+  MeasureConstraint constraint{100, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
   text_shadow_node_->enable_auto_font_size_ = true;
   text_shadow_node_->auto_font_size_min_size_ = 0;
   text_shadow_node_->auto_font_size_max_size_ = 0;
   text_shadow_node_->auto_font_size_step_granularity_ = 1;
-  raw_text_shadow_node_->SetText(
-      "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
-      "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
+  text_shadow_node_->SetWhiteSpaceType(WhiteSpace::kNoWrap);
+  text_shadow_node_->SetTextOverflow(TextOverflow::kClip);
+  raw_text_shadow_node_->SetText("Hello, Compiler NG");
 
-  text_shadow_node_->Measure(constraint);
+  TextRender text_render(text_shadow_node_.get());
+  text_shadow_node_->enable_auto_font_size_ = false;
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double authored_intrinsic_width = paragraph->GetMaxIntrinsicWidth();
 
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagStyle);
+  paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_LT(paragraph->GetMaxIntrinsicWidth(), authored_intrinsic_width);
+  EXPECT_LE(paragraph->GetMinIntrinsicWidth(), constraint.width.value());
   EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
+}
+
+TEST_F_UI(TextTest, AutoFontSizeWaitsForPositiveWidthConstraint) {
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_shadow_node_->auto_font_size_min_size_ = 0;
+  text_shadow_node_->auto_font_size_max_size_ = 0;
+  text_shadow_node_->auto_font_size_step_granularity_ = 1;
+  text_shadow_node_->SetWhiteSpaceType(WhiteSpace::kNoWrap);
+  text_shadow_node_->SetTextOverflow(TextOverflow::kClip);
+  raw_text_shadow_node_->SetText("Hello, Compiler NG");
+  auto original_font_size = text_shadow_node_->text_style_->font_size;
+
+  TextRender text_render(text_shadow_node_.get());
+  MeasureConstraint constraint{0, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double authored_intrinsic_width = paragraph->GetMaxIntrinsicWidth();
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, original_font_size);
+
+  constraint.width = 100;
+  paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_LT(paragraph->GetMaxIntrinsicWidth(), authored_intrinsic_width);
+  EXPECT_LE(paragraph->GetMinIntrinsicWidth(), constraint.width.value());
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, original_font_size);
 }
 
 TEST_F_UI(TextTest, AutoFontSizeDoesNotShrinkBelowMinSize) {
@@ -1005,9 +1077,18 @@ TEST_F_UI(TextTest, AutoFontSizeDoesNotShrinkBelowMinSize) {
       "Hello, Compiler NG Hello, Compiler NG Hello, Compiler NG Hello, "
       "Compiler NG Hello, Compiler NG Hello, Compiler NG ");
 
-  text_shadow_node_->Measure(constraint);
+  TextRender text_render(text_shadow_node_.get());
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double auto_sized_height = paragraph->GetHeight();
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
 
-  EXPECT_GE(text_shadow_node_->text_style_->font_size, 10);
+  text_shadow_node_->enable_auto_font_size_ = false;
+  text_shadow_node_->SetFontSize(10);
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagStyle);
+  paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_DOUBLE_EQ(paragraph->GetHeight(), auto_sized_height);
 }
 
 TEST_F_UI(TextTest, AutoFontSizeIgnoresInlineTruncation) {
@@ -1032,8 +1113,15 @@ TEST_F_UI(TextTest, AutoFontSizeIgnoresInlineTruncation) {
   inline_truncation_node->AddChild(inline_text_node.get());
   text_shadow_node_->AddChild(inline_truncation_node.get());
 
-  text_shadow_node_->Measure(constraint);
+  TextRender text_render(text_shadow_node_.get());
+  auto context = text_shadow_node_->CreateLayoutContext(constraint);
+  text_render.BuildTextLayout(constraint, &context);
+  auto* authored_paragraph = text_render.GetCacheParagraph();
+  ASSERT_NE(authored_paragraph, nullptr);
 
+  text_render.HandleAutoSize(constraint, &context);
+
+  EXPECT_EQ(text_render.GetCacheParagraph(), authored_paragraph);
   EXPECT_EQ(text_shadow_node_->text_style_->font_size, 42);
 }
 
@@ -1046,9 +1134,20 @@ TEST_F_UI(TextTest, AutoFontSizePresetExpandsToLargestFittingSize) {
       std::vector<double>{20, 30, 40};
   raw_text_shadow_node_->SetText("A");
 
-  text_shadow_node_->Measure(constraint);
+  TextRender text_render(text_shadow_node_.get());
+  text_shadow_node_->enable_auto_font_size_ = false;
+  text_shadow_node_->SetFontSize(40);
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double expected_intrinsic_width = paragraph->GetMaxIntrinsicWidth();
 
-  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 40);
+  text_shadow_node_->SetFontSize(20);
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagStyle);
+  paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_DOUBLE_EQ(paragraph->GetMaxIntrinsicWidth(), expected_intrinsic_width);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 20);
 }
 
 TEST_F_UI(TextTest, AutoFontSizePresetAttributeSortsValues) {
@@ -1104,13 +1203,23 @@ TEST_F_UI(TextTest, AutoFontPresetAttributeSelectsLargestFittingSize) {
   MeasureConstraint constraint{1000.f, MeasureMode::kDefinite, 1000.f,
                                MeasureMode::kDefinite};
 
-  const auto result = text_shadow_node_->Measure(constraint);
+  TextRender text_render(text_shadow_node_.get());
+  text_shadow_node_->enable_auto_font_size_ = false;
+  text_shadow_node_->SetFontSize(40);
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  const double expected_intrinsic_width = paragraph->GetMaxIntrinsicWidth();
+
+  text_shadow_node_->SetFontSize(20);
+  text_shadow_node_->enable_auto_font_size_ = true;
+  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagStyle);
+  paragraph = MeasureParagraph(text_render, constraint);
 
   EXPECT_EQ(text_shadow_node_->auto_font_size_preset_sizes_,
             (std::vector<double>{20, 30, 40}));
-  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 40.f);
-  EXPECT_GT(result.width, 0.f);
-  EXPECT_GT(result.height, 0.f);
+  EXPECT_EQ(text_shadow_node_->text_style_->font_size, 20.f);
+  ASSERT_NE(paragraph, nullptr);
+  EXPECT_DOUBLE_EQ(paragraph->GetMaxIntrinsicWidth(), expected_intrinsic_width);
 }
 
 TEST_F_UI(TextTest, InlineTruncationDoesNotMountWhenContentFits) {

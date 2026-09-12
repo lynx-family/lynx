@@ -252,6 +252,11 @@ class LynxDevToolMediator
   const lynx::fml::RefPtr<lynx::fml::TaskRunner>& GetUITaskRunner() const {
     return ui_task_runner_;
   }
+  std::weak_ptr<NetworkRequestObserver> GetNetworkRequestObserver() const {
+    return devtool_executor_ != nullptr
+               ? devtool_executor_->GetNetworkRequestObserver()
+               : std::weak_ptr<NetworkRequestObserver>();
+  }
   const std::shared_ptr<lynx::devtool::InspectorJavaScriptDebuggerImpl>&
   GetJSDebugger() {
     return js_debugger_;

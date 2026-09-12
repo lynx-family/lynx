@@ -4,6 +4,7 @@
 
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 
+#include <algorithm>
 #include <cstring>
 #include <stack>
 #include <string_view>
@@ -549,6 +550,10 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         ApplyEventBundle(event_target,
                          platform_ref_->GetPlatformEventBundle(sign));
         event_targets_[sign] = event_target;
+        if (type == PlatformRendererType::kText &&
+            platform_ref_->GetTextEventTargetRanges(sign) != nullptr) {
+          AppendInlineTextEventTargets(event_target);
+        }
         if (root_event_target == nullptr) {
           root_event_target = event_target;
           if (const auto* transform = page_renderer->GetTransform();
@@ -611,6 +616,68 @@ bool PlatformEventTargetHelper::TargetIsParentOfAnotherTarget(
     current = current->ParentTarget();
   }
   return false;
+}
+
+void PlatformEventTargetHelper::AppendInlineTextEventTargets(
+    const fml::RefPtr<PlatformEventTarget>& text_target) {
+  const auto regions =
+      platform_ref_->GetTextEventTargetRegions(text_target->Sign());
+  // Textra emits nested ranges from inner to outer. Build them in reverse so
+  // reverse-order sibling hit testing still prioritizes the innermost target.
+  for (auto region_it = regions.rbegin(); region_it != regions.rend();
+       ++region_it) {
+    const auto& region = *region_it;
+    if (region.sign == text_target->Sign() || region.width <= 0.f ||
+        region.height <= 0.f) {
+      continue;
+    }
+
+    bool handled = false;
+    for (auto handled_it = regions.rbegin(); handled_it != region_it;
+         ++handled_it) {
+      if (handled_it->sign == region.sign && handled_it->width > 0.f &&
+          handled_it->height > 0.f) {
+        handled = true;
+        break;
+      }
+    }
+    if (handled) {
+      continue;
+    }
+
+    float left = region.left;
+    float top = region.top;
+    float right = region.left + region.width;
+    float bottom = region.top + region.height;
+    for (const auto& candidate : regions) {
+      if (candidate.sign != region.sign || candidate.width <= 0.f ||
+          candidate.height <= 0.f) {
+        continue;
+      }
+      left = std::min(left, candidate.left);
+      top = std::min(top, candidate.top);
+      right = std::max(right, candidate.left + candidate.width);
+      bottom = std::max(bottom, candidate.top + candidate.height);
+    }
+
+    auto target = fml::MakeRefCounted<PlatformEventTarget>(
+        this, text_target->RootId(), region.sign, left, top, right - left,
+        bottom - top);
+    for (const auto& candidate : regions) {
+      if (candidate.sign != region.sign || candidate.width <= 0.f ||
+          candidate.height <= 0.f) {
+        continue;
+      }
+      target->AddHitTestRegion(PlatformEventTarget::HitTestRegion{
+          candidate.left - left, candidate.top - top,
+          candidate.left + candidate.width - left,
+          candidate.top + candidate.height - top});
+    }
+    target->SetRendererHostSign(text_target->RendererHostSign());
+    target->SetPlatformRendererType(PlatformRendererType::kText);
+    event_targets_[region.sign] = target;
+    text_target->AddChildTarget(std::move(target));
+  }
 }
 
 fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetTreeRoot(

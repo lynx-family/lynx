@@ -6,6 +6,7 @@ package com.lynx.devtool;
 import androidx.annotation.NonNull;
 import com.lynx.devtoolwrapper.CDPEventListener;
 import com.lynx.devtoolwrapper.CDPResultCallback;
+import com.lynx.devtoolwrapper.LynxNetworkRequestObserver;
 import com.lynx.devtoolwrapper.MessageHandler;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -16,9 +17,12 @@ public class LynxDevToolNGDelegate {
   private int mSessionId = 0;
   private final AtomicBoolean mHasDestroy = new AtomicBoolean(false);
   private final Object mDevToolLock = new Object();
+  private final LynxNetworkRequestObserverDelegate mNetworkRequestObserver;
 
   public LynxDevToolNGDelegate(boolean debuggable) {
     mLynxDevToolNGPtr = nativeCreateLynxDevToolNG(debuggable);
+    mNetworkRequestObserver =
+        new LynxNetworkRequestObserverDelegate(mLynxDevToolNGPtr, mDevToolLock);
   }
 
   public int getSessionId() {
@@ -30,6 +34,10 @@ public class LynxDevToolNGDelegate {
   }
 
   private native long nativeCreateLynxDevToolNG(boolean debuggable);
+
+  public LynxNetworkRequestObserver getNetworkRequestObserver() {
+    return mNetworkRequestObserver;
+  }
 
   public void sendMessageToDebugPlatform(@NonNull String type, @NonNull String msg) {
     if (mHasDestroy.get()) {
@@ -85,8 +93,10 @@ public class LynxDevToolNGDelegate {
 
     synchronized (mDevToolLock) {
       if (mLynxDevToolNGPtr != 0) {
-        nativeDestroy(mLynxDevToolNGPtr);
+        mNetworkRequestObserver.invalidate();
+        long nativePtr = mLynxDevToolNGPtr;
         mLynxDevToolNGPtr = 0;
+        nativeDestroy(nativePtr);
       }
     }
   }

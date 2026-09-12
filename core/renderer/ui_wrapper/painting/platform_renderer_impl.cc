@@ -84,8 +84,8 @@ void PlatformRendererImpl::UpdateDisplayList(DisplayList display_list) {
 }
 
 void PlatformRendererImpl::UpdateAttributes(
-    const fml::RefPtr<PropBundle>& attributes, bool tends_to_flatten) {
-  OnUpdateAttributes(attributes, tends_to_flatten);
+    const fml::RefPtr<PropBundle>& attributes) {
+  OnUpdateAttributes(attributes);
 }
 
 void PlatformRendererImpl::UpdateLayoutMetrics(float left, float top,

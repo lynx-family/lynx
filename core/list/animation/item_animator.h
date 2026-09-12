@@ -6,6 +6,7 @@
 #define CORE_LIST_ANIMATION_ITEM_ANIMATOR_H_
 
 #include <cstdint>
+#include <vector>
 
 #include "core/list/animation/animation_target.h"
 #include "core/list/animation/animation_types.h"
@@ -20,6 +21,18 @@ class ItemAnimator {
   class Listener {
    public:
     virtual ~Listener() = default;
+
+    virtual void OnAnimationStart(const ItemAnimator* source,
+                                  ItemAnimationType type) {}
+
+    virtual void OnAnimationEnd(const ItemAnimator* source,
+                                ItemAnimationType type) {}
+
+    virtual void OnAnimationCancel(const ItemAnimator* source,
+                                   ItemAnimationType type) {}
+
+    virtual void OnAnimationUpdate(const ItemAnimator* source,
+                                   ItemAnimationType type, float progress) {}
 
     virtual void OnAllAnimationsFinished() = 0;
   };
@@ -67,34 +80,28 @@ class ItemAnimator {
   // restored to their final state and have their lifecycle ended. The
   // destroy=true teardown path avoids accessing running targets. Neither mode
   // dispatches the normal batch-completion notification.
+  // For non-destroy cancellation, notify each started, unfinished type once
+  // through OnAnimationCancel after cleanup.
   virtual void CancelAnimations(bool destroy) = 0;
 
-  // 4. Listener and duration configuration
+  // 4. Listener and stage configuration
   void SetListener(Listener* listener) { listener_ = listener; }
-  void SetAddDuration(int32_t duration_ms) { add_duration_ms_ = duration_ms; }
-  void SetRemoveDuration(int32_t duration_ms) {
-    remove_duration_ms_ = duration_ms;
-  }
-  void SetMoveDuration(int32_t duration_ms) { move_duration_ms_ = duration_ms; }
-  void SetChangeDuration(int32_t duration_ms) {
-    change_duration_ms_ = duration_ms;
+  void SetAnimationStages(const std::vector<AnimationStageEntries>& stages) {
+    animation_stages_ = stages;
   }
 
   Listener* listener() { return listener_; }
-  int32_t add_duration_ms() const { return add_duration_ms_; }
-  int32_t remove_duration_ms() const { return remove_duration_ms_; }
-  int32_t move_duration_ms() const { return move_duration_ms_; }
-  int32_t change_duration_ms() const { return change_duration_ms_; }
+  const std::vector<AnimationStageEntries>& animation_stages() const {
+    return animation_stages_;
+  }
 
  protected:
   // Captures the target's current logical layout as an independent value.
   static ItemLayoutInfo GetItemLayoutInfo(const AnimationTarget& target);
 
  private:
-  int32_t add_duration_ms_{kDefaultAddAnimationDurationMs};
-  int32_t remove_duration_ms_{kDefaultRemoveAnimationDurationMs};
-  int32_t move_duration_ms_{kDefaultMoveAnimationDurationMs};
-  int32_t change_duration_ms_{kDefaultChangeAnimationDurationMs};
+  // Empty stages use the default scheduling policy during batch initialization.
+  std::vector<AnimationStageEntries> animation_stages_;
 
   // Non-owning. AnimationManager installs the listener and must clear it before
   // the transaction is released.

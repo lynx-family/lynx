@@ -4,13 +4,13 @@
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 
-#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"
+#include "core/base/android/jni_helper.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/tasm/react/android/mapbuffer/map_buffer_builder.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
@@ -298,14 +298,14 @@ void PlatformRendererContext::UpdatePlatformRendererFrame(
 }
 
 void PlatformRendererContext::UpdatePlatformRendererAttributes(
-    int32_t id, jobject prop_bundle, bool tends_to_flatten) {
+    int32_t id, jobject prop_bundle) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull() || !prop_bundle) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_updatePlatformRendererAttributes(
-      env, local_ref.Get(), id, prop_bundle, tends_to_flatten);
+      env, local_ref.Get(), id, prop_bundle);
 }
 
 int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
@@ -405,6 +405,47 @@ bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
   JNIEnv* env = base::android::AttachCurrentThread();
   return Java_PlatformRendererContext_isRendererHostScrollable(
       env, local_ref.Get(), sign);
+}
+
+PlatformTextEventTargetRegions
+PlatformRendererContext::GetTextEventTargetRegions(
+    int32_t text_id,
+    const std::vector<PlatformTextEventTargetRange>& target_ranges) {
+  PlatformTextEventTargetRegions regions;
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return regions;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  std::vector<int32_t> range_data;
+  for (const auto& range : target_ranges) {
+    range_data.push_back(range.sign);
+    range_data.push_back(range.start);
+    range_data.push_back(range.end);
+  }
+  auto ranges = base::android::JNIHelper::ConvertToJNIIntArray(env, range_data);
+  auto result = Java_PlatformRendererContext_getTextEventTargetRegions(
+      env, local_ref.Get(), text_id, ranges.Get());
+  if (result.IsNull()) {
+    return regions;
+  }
+  const jsize size = env->GetArrayLength(result.Get());
+  if (size == 0 || size % 5 != 0) {
+    return regions;
+  }
+  jfloat* data = env->GetFloatArrayElements(result.Get(), nullptr);
+  if (data == nullptr) {
+    return regions;
+  }
+  for (jsize i = 0; i < size; i += 5) {
+    int32_t sign;
+    static_assert(sizeof(sign) == sizeof(data[i]));
+    std::memcpy(&sign, &data[i], sizeof(sign));
+    regions.push_back(PlatformTextEventTargetRegion{
+        sign, data[i + 1], data[i + 2], data[i + 3], data[i + 4]});
+  }
+  env->ReleaseFloatArrayElements(result.Get(), data, JNI_ABORT);
+  return regions;
 }
 
 void PlatformRendererContext::InvokeUIMethod(

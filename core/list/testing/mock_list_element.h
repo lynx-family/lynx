@@ -63,6 +63,9 @@ class MockListElement : public ElementDelegate {
   bool HasBoundEvent(const std::string& event_name) const override {
     return events_.find(event_name) != events_.end();
   }
+  void SetBoundEvents(std::unordered_set<std::string> events) {
+    events_ = std::move(events);
+  }
   MOCK_METHOD(void, SendCustomEvent,
               (const std::string& event_name, const std::string& param_name,
                std::unique_ptr<pub::Value> param),

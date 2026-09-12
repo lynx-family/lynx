@@ -73,7 +73,7 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
   std::string key1 = "key1";
   std::string value1 = "value1";
   inspector_->SetSharedData(key1, value1, error_code, error_msg);
-  EXPECT_EQ(error_code, CDPErrorCode::kServerError);
+  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
   EXPECT_EQ(error_msg, "Failed to set shared data!");
 
   error_code = 0;
@@ -83,7 +83,7 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
   std::string key2 = "key2";
   std::string value2 = "value2";
   inspector_->SetSharedData(key2, value2, error_code, error_msg);
-  EXPECT_EQ(error_code, CDPErrorCode::kInvalidParams);
+  EXPECT_EQ(error_code, LegacyCDPErrorCode::kInvalidParams);
   EXPECT_EQ(error_msg, "The value must be a valid JSON string!");
 
   error_code = 0;
@@ -141,7 +141,7 @@ TEST_F(WhiteBoardInspectorImplTest, GetSharedData) {
 
   inspector_->GetSharedData(result, error_code, error_msg);
   EXPECT_TRUE(result.empty());
-  EXPECT_EQ(error_code, CDPErrorCode::kServerError);
+  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
   EXPECT_EQ(error_msg, "Failed to get shared data!");
 
   error_code = 0;
@@ -165,7 +165,7 @@ TEST_F(WhiteBoardInspectorImplTest, RemoveSharedData) {
   std::string error_key = "error_key";
 
   inspector_->RemoveSharedData(error_key, error_code, error_msg);
-  EXPECT_EQ(error_code, CDPErrorCode::kServerError);
+  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
   EXPECT_EQ(error_msg, "Failed to remove shared data!");
 
   error_code = 0;
@@ -173,7 +173,7 @@ TEST_F(WhiteBoardInspectorImplTest, RemoveSharedData) {
   inspector_->SetWhiteBoard(white_board_);
 
   inspector_->RemoveSharedData(error_key, error_code, error_msg);
-  EXPECT_EQ(error_code, CDPErrorCode::kInvalidParams);
+  EXPECT_EQ(error_code, LegacyCDPErrorCode::kInvalidParams);
   EXPECT_EQ(error_msg, "The key does not exist!");
 
   error_code = 0;
@@ -192,7 +192,7 @@ TEST_F(WhiteBoardInspectorImplTest, ClearSharedData) {
   std::string error_msg;
 
   inspector_->ClearSharedData(error_code, error_msg);
-  EXPECT_EQ(error_code, CDPErrorCode::kServerError);
+  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
   EXPECT_EQ(error_msg, "Failed to clear shared data!");
 
   error_code = 0;

@@ -104,12 +104,14 @@ static constexpr const char* const kPropExperimentalUseNewUpdateAnimation =
 static constexpr const char* const kPropExperimentalUpdateAnimation =
     "experimental-new-update-animation";
 static constexpr const char* const kUpdateAnimationConfigEnable = "enable";
-static constexpr const char* const kUpdateAnimationConfigAddDuration =
-    "addDuration";
-static constexpr const char* const kUpdateAnimationConfigRemoveDuration =
-    "removeDuration";
-static constexpr const char* const kUpdateAnimationConfigMoveDuration =
-    "moveDuration";
+static constexpr const char* const kUpdateAnimationConfigStages = "stages";
+static constexpr const char* const kUpdateAnimationStageAnimations =
+    "animations";
+static constexpr const char* const kUpdateAnimationStageDurations = "durations";
+static constexpr const char* const kUpdateAnimationTypeRemove = "remove";
+static constexpr const char* const kUpdateAnimationTypeMove = "move";
+static constexpr const char* const kUpdateAnimationTypeAdd = "add";
+static constexpr const char* const kUpdateAnimationTypeChange = "change";
 
 // prop value
 static constexpr const char* const kPropValueTrue = "true";
@@ -147,12 +149,25 @@ static constexpr const char* const kEventScrollToLowerEdge =
 static constexpr const char* const kEventScrollToNormalState =
     "scrolltonormalstate";
 static constexpr const char* const kEventLayoutComplete = "layoutcomplete";
+static constexpr const char* const kEventListAnimationStart =
+    "listanimationstart";
+static constexpr const char* const kEventListAnimationEnd = "listanimationend";
+static constexpr const char* const kEventListAnimationCancel =
+    "listanimationcancel";
+static constexpr const char* const kEventListAnimationUpdate =
+    "listanimationupdate";
 static constexpr const char* const kEventNodeAppear = "nodeappear";
 static constexpr const char* const kEventNodeDisappear = "nodedisappear";
 static constexpr const char* const kEventScrollStateChange =
     "scrollstatechange";
 static constexpr const char* const kEventListDebugInfo = "listdebuginfo";
 static constexpr const char* const kEventParamDetail = "detail";
+
+// event animation info
+static constexpr const char* const kAnimationInfoTransactionId =
+    "transactionId";
+static constexpr const char* const kAnimationInfoType = "type";
+static constexpr const char* const kAnimationInfoProgress = "progress";
 
 // event layout complete info
 static constexpr const char* const kLayoutInfoLayoutId = "layout-id";

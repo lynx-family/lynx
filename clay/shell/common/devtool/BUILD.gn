@@ -1,0 +1,41 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../common/config.gni")
+
+if (enable_clay && enable_inspector && enable_unittests && (is_mac || is_win)) {
+  executable("ui_tree_helper_unittests") {
+    testonly = true
+    sources = [
+      "ui_tree_helper.cc",
+      "ui_tree_helper.h",
+      "ui_tree_helper_unittests.cc",
+    ]
+
+    public_configs = [
+      "../../../:export_dynamic_symbols",
+      "../../../:config",
+    ]
+
+    public_deps = [
+      "../../../../base/src:base_static",
+      "../../../../third_party/rapidjson:rapidjson",
+      "../../../common/service",
+      "../../../flow",
+      "../../../gfx",
+      "../../../testing",
+      "../../../testing:skia",
+      "../../../ui:ui",
+      "../../../ui:ui_fixture_sources",
+      "../../../ui:ui_fixtures",
+      "//third_party/skia/modules/skparagraph:skparagraph",
+    ]
+    if (is_mac) {
+      public_deps += [
+        "..:platform_overlay_service_fallback",
+        "..:presenter_service_fallback",
+      ]
+    }
+  }
+}

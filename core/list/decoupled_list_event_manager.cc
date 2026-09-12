@@ -47,6 +47,66 @@ void ListEventManager::SendLayoutCompleteEvent() {
   }
 }
 
+void ListEventManager::SendUpdateAnimationStartEvent(
+    TransactionId transaction_id, ItemAnimationType type) {
+  SendUpdateAnimationEventInternal(kEventListAnimationStart, transaction_id,
+                                   type);
+}
+
+void ListEventManager::SendUpdateAnimationEndEvent(TransactionId transaction_id,
+                                                   ItemAnimationType type) {
+  SendUpdateAnimationEventInternal(kEventListAnimationEnd, transaction_id,
+                                   type);
+}
+
+void ListEventManager::SendUpdateAnimationCancelEvent(
+    TransactionId transaction_id, ItemAnimationType type) {
+  SendUpdateAnimationEventInternal(kEventListAnimationCancel, transaction_id,
+                                   type);
+}
+
+void ListEventManager::SendUpdateAnimationIterationEvent(
+    TransactionId transaction_id, ItemAnimationType type, float progress) {
+  SendUpdateAnimationEventInternal(kEventListAnimationUpdate, transaction_id,
+                                   type, progress);
+}
+
+void ListEventManager::SendUpdateAnimationEventInternal(
+    const std::string& event_name, TransactionId transaction_id,
+    ItemAnimationType type, std::optional<float> progress) {
+  if (!list_container_) {
+    return;
+  }
+  auto* delegate = list_container_->list_delegate();
+  if (!delegate || !delegate->HasBoundEvent(event_name)) {
+    return;
+  }
+  auto detail = GenerateUpdateAnimationInfo(transaction_id, type);
+  if (detail) {
+    if (progress.has_value()) {
+      detail->PushDoubleToMap(kAnimationInfoProgress, *progress);
+    }
+    delegate->SendCustomEvent(event_name, kEventParamDetail, std::move(detail));
+  }
+}
+
+std::unique_ptr<pub::Value> ListEventManager::GenerateUpdateAnimationInfo(
+    TransactionId transaction_id, ItemAnimationType type) const {
+  if (!list_container_ || !list_container_->value_factory()) {
+    return nullptr;
+  }
+  const char* type_name = ItemAnimationTypeToString(type);
+  if (!type_name) {
+    return nullptr;
+  }
+  auto detail = list_container_->value_factory()->CreateMap();
+  if (detail) {
+    detail->PushUInt64ToMap(kAnimationInfoTransactionId, transaction_id);
+    detail->PushStringToMap(kAnimationInfoType, type_name);
+  }
+  return detail;
+}
+
 void ListEventManager::RecordVisibleItemIfNeeded(bool is_layout_before) {
   if (!need_layout_complete_info_ || !list_container_->value_factory()) {
     return;

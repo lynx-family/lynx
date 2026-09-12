@@ -38,7 +38,6 @@ constexpr const char* kEnableCSSSelector = "enableCSSSelector";
 constexpr const char* kEnableCSSInvalidation = "enableCSSInvalidation";
 constexpr const char* kEncodeQuickjsBytecode =
     "experimental_encodeQuickjsBytecode";
-constexpr const char* kEnableEventRefactor = "enableEventRefactor";
 constexpr const char* kRemoveCSSParserLog = "removeCSSParserLog";
 constexpr const char* kEnableDynamicComponent = "enableDynamicComponent";
 constexpr const char* kEnableLepusDebug = "enableLepusDebug";
@@ -618,15 +617,6 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
         enable_css_async_decode ? FE_OPTION_ENABLE : FE_OPTION_DISABLE;
   }
 
-  FeOption event_refactor = FE_OPTION_UNDEFINED;
-  if (options.HasMember(kEnableEventRefactor)) {
-    bool enable_event_refactor = false;
-    GET_VALUE_FROM_JSON(options, kEnableEventRefactor, Bool,
-                        enable_event_refactor)
-    event_refactor =
-        enable_event_refactor ? FE_OPTION_ENABLE : FE_OPTION_DISABLE;
-  }
-
   FeOption forceCalcNewStyle = FE_OPTION_UNDEFINED;
   if (options.HasMember(kForceCalcNewStyle)) {
     bool force_calc_new_style = true;
@@ -806,7 +796,6 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
       defaultDisplayLinear,
       enable_lynx_air,
       enableCSSLazyDecode,
-      event_refactor,
       forceCalcNewStyle,
       enableCSSAsyncDecode,
       enable_css_engine,

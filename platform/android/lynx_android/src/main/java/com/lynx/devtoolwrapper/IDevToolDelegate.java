@@ -35,4 +35,21 @@ public interface IDevToolDelegate {
 
   // for devtool screen preview
   Bitmap getBitmapOfView();
+
+  /** Returns whether the current UI renderer is Clay. Defaults to false for other delegates. */
+  default boolean isClayRenderer() {
+    return false;
+  }
+
+  default String getLynxUITree() {
+    return "";
+  }
+
+  default String getUINodeInfo(int id) {
+    return "";
+  }
+
+  default int setUIStyle(int id, String name, String content) {
+    return -1;
+  }
 }

@@ -2,7 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-export interface ElementRef extends Record<string, unknown> { }
+declare const elementHandleKind: unique symbol;
+
+export interface ElementRef extends Record<string, unknown> {
+  readonly [elementHandleKind]?: 'element';
+}
+
+export interface ElementTemplateHandle extends Record<string, unknown> {
+  readonly [elementHandleKind]: 'element-template';
+}
 
 declare const composeElementRefBrand: unique symbol;
 
@@ -189,17 +197,17 @@ export interface SerializedCompiledTemplateInstance {
   templateKey: string;
   bundleUrl?: string;
   attributeSlots?: SerializableValue[] | null;
-  elementSlots?: SerializedTemplateInstance[][] | null;
+  childSlots?: (SerializedTemplateInstance[] | null | undefined)[] | null;
   options?: Record<string, any> | null;
-  uid: number | string;
+  uid: number;
 }
 
 export interface SerializedTypedTemplateInstance {
   tag: string;
   attributes?: Record<string, SerializableValue> | null;
-  elementSlots?: SerializedTemplateInstance[][] | null;
+  childSlots?: (SerializedTemplateInstance[] | null | undefined)[] | null;
   options?: Record<string, any> | null;
-  uid: number | string;
+  uid: number;
 }
 
 declare global {
@@ -435,59 +443,59 @@ declare global {
   /**
    * Create a template instance from the complete initial slot state.
    * `attributeSlots[i]` maps to `attrSlotIndex = i`.
-   * `elementSlots[i]` maps to `elementSlotIndex = i`.
+   * `childSlots[i]` maps to `childSlotIndex = i`.
    */
   function __CreateElementTemplate(
     templateKey: string,
     bundleUrl: string | null | undefined,
     attributeSlots: any[] | null | undefined,
-    elementSlots: ElementRef[][] | null | undefined,
-    uid: number | string,
+    childSlots: Array<ElementTemplateHandle[] | null | undefined> | null | undefined,
+    uid: number,
     options?: Record<string, any> | null | undefined,
-  ): ElementRef;
+  ): ElementTemplateHandle;
 
   /**
-   * Create a typed template instance. `elementSlots[0]` is mounted as the root element's children.
+   * Create a typed template instance. `childSlots[0]` is mounted as the root element's children.
    */
   function __CreateTypedElementTemplate(
     tag: string,
-    attributes: Record<string, SerializableValue> | null | undefined,
-    elementSlots: ElementRef[][] | null | undefined,
-    uid: number | string,
+    attributes: Record<string, any> | null | undefined,
+    childSlots: Array<ElementTemplateHandle[] | null | undefined> | null | undefined,
+    uid: number,
     options?: Record<string, any> | null | undefined,
-  ): ElementRef;
+  ): ElementTemplateHandle;
 
   /**
    * Update one dynamic attribute slot on an existing compiled template instance.
    *
-   * For typed template instances, `attrSlotIndex === 0` applies `value` as
+   * For typed template instances, `attributeSlotIndex === 0` applies `value` as
    * the root spread attributes. Passing `null` or `undefined` clears the
    * previously applied root spread attributes.
    */
   function __SetAttributeOfElementTemplate(
-    templateInstance: ElementRef,
-    attrSlotIndex: number,
+    templateInstance: ElementTemplateHandle,
+    attributeSlotIndex: number,
     value: any,
   ): void;
 
   /**
-   * Insert or move a child into one element slot.
+   * Insert or move a child into one child slot.
    * If `referenceChild` is omitted or `null`, append to the slot tail.
    */
   function __InsertNodeToElementTemplate(
-    templateInstance: ElementRef,
-    elementSlotIndex: number,
-    child: ElementRef,
-    referenceChild?: ElementRef | null,
+    templateInstance: ElementTemplateHandle,
+    childSlotIndex: number,
+    child: ElementTemplateHandle,
+    referenceChild?: ElementTemplateHandle | null,
   ): void;
 
   /**
-   * Remove a child from one element slot.
+   * Remove a child from one child slot.
    */
   function __RemoveNodeFromElementTemplate(
-    templateInstance: ElementRef,
-    elementSlotIndex: number,
-    child: ElementRef,
+    templateInstance: ElementTemplateHandle,
+    childSlotIndex: number,
+    child: ElementTemplateHandle,
   ): void;
 
   /**
@@ -495,7 +503,7 @@ declare global {
    * hydration and cross-thread transfer.
    */
   function __SerializeElementTemplate(
-    templateInstance: ElementRef,
+    templateInstance: ElementTemplateHandle,
   ): SerializedTemplateInstance;
 
   function __GetTemplateParts(ele: ElementRef): Record<string, ElementRef>;

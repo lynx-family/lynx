@@ -45,7 +45,7 @@ class StyleObject : public lepus::RefCounted {
    * @param creator A function pointer to a decoder creator function, used to
    * create a decoder for the style object.
    */
-  explicit StyleObject(uint32_t start, uint32_t end, uint8_t* data,
+  explicit StyleObject(uint32_t start, uint32_t end, const uint8_t* data,
                        size_t length, const tasm::StringListVec& string_list,
                        const DecoderCreatorFunc creator)
       : range_(start, end),
@@ -84,7 +84,7 @@ class StyleObject : public lepus::RefCounted {
 
   tasm::CSSRange range_;
 
-  uint8_t* data_;
+  const uint8_t* data_;
   size_t length_;
   tasm::StringListVec string_list_;
 

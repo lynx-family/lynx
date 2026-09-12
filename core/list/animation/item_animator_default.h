@@ -5,8 +5,10 @@
 #ifndef CORE_LIST_ANIMATION_ITEM_ANIMATOR_DEFAULT_H_
 #define CORE_LIST_ANIMATION_ITEM_ANIMATOR_DEFAULT_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -17,9 +19,9 @@
 namespace lynx {
 namespace list {
 
-// The default queueing and execution policy for list item animations. Delays
-// arrange the effective intervals as removals, then moves and changes, then
-// additions; all accepted animations are started in one scheduling pass.
+// The default queueing and execution policy for list item animations.
+// Configured stages determine animation delays; all accepted animations are
+// started in one scheduling pass.
 class ItemAnimatorDefault
     : public ItemAnimatorBase,
       public fml::EnableWeakFromThis<ItemAnimatorDefault> {
@@ -61,6 +63,18 @@ class ItemAnimatorDefault
     std::shared_ptr<::lynx::animation::basic::LynxBasicAnimator> animator;
   };
 
+  struct AnimationTypeState {
+    // Created but unfinished animations of this type, including delayed
+    // animations but excluding pending items.
+    std::size_t remaining_items{0};
+    int32_t delay_ms{0};
+    int32_t duration_ms{0};
+    // Whether this type has started in the current transaction.
+    bool has_started{false};
+    // The last sampled progress for this type in the current transaction.
+    std::optional<float> last_iteration_progress{};
+  };
+
   // Centralizes LynxBasicAnimator creation. Production does not inject a
   // VSyncMonitor; BasicAnimatorFrameCallbackProvider obtains a thread-local
   // monitor when it first requests a frame. Tests override this method to
@@ -71,13 +85,13 @@ class ItemAnimatorDefault
   void StartAnimation(RunningAnimation animation, int32_t duration_ms,
                       int32_t delay_ms);
   void ApplyAnimationFrame(const RunningAnimation& animation, float progress);
-  void StartRemoveAnimation(const PendingAnimationInfo& info, int32_t delay_ms);
-  void StartAddAnimation(const PendingAnimationInfo& info, int32_t delay_ms);
-  void StartMoveAnimation(const PendingAnimationInfo& info, int32_t delay_ms);
-  void StartChangeAnimation(const PendingAnimationInfo& info,
-                            int32_t delay_ms) {
+  void StartRemoveAnimation(const PendingAnimationInfo& info);
+  void StartAddAnimation(const PendingAnimationInfo& info);
+  void StartMoveAnimation(const PendingAnimationInfo& info);
+  void StartChangeAnimation(const PendingAnimationInfo& info) {
     // TODO: impl change animation
   }
+
   void ApplyRemoveFrame(AnimationTarget* target, float progress);
   void ApplyAddFrame(AnimationTarget* target, float progress);
   void ApplyMoveFrame(AnimationTarget* target,
@@ -90,12 +104,18 @@ class ItemAnimatorDefault
   RunningAnimation* FindRunningAnimation(AnimationTargetKey target_key,
                                          AnimationId animation_id);
   void FinishRunningAnimation(AnimationTargetKey target_key,
-                              AnimationId animation_id, bool cancelled);
+                              RunningAnimation animation, bool cancelled);
   void ResetTargetToFinalState(AnimationTarget* target,
                                ItemAnimationType animation_type);
-
   void CancelPendingAnimations();
 
+  // Dispatches animation event.
+  void DispatchAnimationStartIfNeeded(ItemAnimationType type);
+  void DispatchAnimationIterationIfNeeded(ItemAnimationType type,
+                                          float progress);
+  void DispatchAnimationEndIfNeeded(ItemAnimationType type);
+  void DispatchAnimationCancelIfNeeded(
+      const std::vector<ItemAnimationType>& cancelled_types);
   void DispatchAnimationFinishedIfNeeded();
 
   bool has_pending_animations() const {
@@ -107,16 +127,16 @@ class ItemAnimatorDefault
  private:
   bool in_starting_animations_{false};
   bool in_cancelling_animations_{false};
-
   std::vector<PendingAnimationInfo> pending_removals_;
   std::vector<PendingAnimationInfo> pending_adds_;
   std::vector<PendingAnimationInfo> pending_moves_;
   std::vector<PendingAnimationInfo> pending_changes_;
-
   // The target-address key permits at most one running record per target.
   // animation_id prevents callbacks for a replaced record from operating on
   // its replacement.
   std::unordered_map<AnimationTargetKey, RunningAnimation> running_animations_;
+  std::unordered_map<ItemAnimationType, AnimationTypeState>
+      animation_type_states_;
   AnimationId next_animation_id_{0};
 };
 

@@ -7,51 +7,47 @@
 #include <utility>
 #include <vector>
 
+#include "base/trace/native/trace_event.h"
 #include "core/list/animation/item_animator_default.h"
 #include "core/list/decoupled_item_holder.h"
 #include "core/list/decoupled_list_adapter.h"
 #include "core/list/decoupled_list_children_helper.h"
 #include "core/list/decoupled_list_container_impl.h"
+#include "core/list/decoupled_list_event_manager.h"
 #include "core/list/decoupled_list_types.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace list {
 
 void AnimationManagerImpl::SetUpdateAnimationConfig(
     const UpdateAnimationConfig& config) {
-  bool enable_has_changed = enable_update_animation_ != config.enable;
-  update_animation_config_ = config;
-  if (enable_has_changed) {
-    enable_update_animation_ = config.enable;
-    if (!enable_update_animation_) {
-      // Enabling only affects eligible future data updates. Disabling cancels
-      // the active transaction immediately.
-      CancelAnimationTransaction(AnimationCancelReason::kAnimationDisabled);
-    }
-  }
+  const bool need_disable_animations =
+      enable_update_animation_ && !config.enable;
+  // Compare stage order, types, and durations; identical configs preserve
+  // animations.
+  const bool stages_have_changed =
+      update_animation_config_.stages != config.stages;
 
-  // Duration changes apply only to animations that have not started yet.
-  if (enable_update_animation_ && active_transaction_) {
-    ApplyAnimationConfig(active_transaction_->item_animator());
+  // Save the config first so future transactions use it after cancellation.
+  update_animation_config_ = config;
+  enable_update_animation_ = config.enable;
+
+  // Disabling or changing stages cancels pending and running animations
+  // immediately.
+  if (need_disable_animations) {
+    CancelAnimationTransaction(AnimationCancelReason::kAnimationDisabled);
+  } else if (stages_have_changed) {
+    CancelAnimationTransaction(AnimationCancelReason::kAnimationConfigChanged);
   }
 }
 
 std::unique_ptr<ItemAnimator>
 AnimationManagerImpl::CreateItemAnimatorForTransaction() {
   auto item_animator = std::make_unique<ItemAnimatorDefault>();
-  ApplyAnimationConfig(*item_animator);
+  item_animator->SetAnimationStages(update_animation_config_.stages);
   item_animator->SetListener(this);
   return item_animator;
-}
-
-void AnimationManagerImpl::ApplyAnimationConfig(
-    ItemAnimator& item_animator) const {
-  item_animator.SetAddDuration(update_animation_config_.add_duration_ms);
-  item_animator.SetRemoveDuration(update_animation_config_.remove_duration_ms);
-  item_animator.SetMoveDuration(update_animation_config_.move_duration_ms);
-  // TODO: The current configuration does not expose a separate change
-  // duration, so use the move duration for change animations as well.
-  item_animator.SetChangeDuration(update_animation_config_.move_duration_ms);
 }
 
 // Ignore disabled or invalid updates. Otherwise reuse an eligible PRE snapshot
@@ -60,6 +56,7 @@ void AnimationManagerImpl::ApplyAnimationConfig(
 void AnimationManagerImpl::BeforeDataUpdate(bool has_valid_diff,
                                             bool has_expected_diff_animation,
                                             bool has_completed_first_layout) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_MANAGER_BEFORE_DATA_UPDATE);
   // Release transactions that have left their completion callback stacks before
   // starting a new data update.
   ReleaseRetiredTransactionsIfSafe();
@@ -92,6 +89,7 @@ void AnimationManagerImpl::BeforeDataUpdate(bool has_valid_diff,
 }
 
 void AnimationManagerImpl::BeginAnimationTransaction() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_MANAGER_BEGIN_TRANSACTION);
   // Capture weak targets for the children attached before the data update.
   const auto& attached_children =
       list_container_->list_children_helper()->attached_children();
@@ -103,13 +101,16 @@ void AnimationManagerImpl::BeginAnimationTransaction() {
     }
   }
   ++next_transaction_id_;
-  DLIST_LOGI("[AM] AnimationManagerImpl::BeginAnimationTransaction: id="
-             << next_transaction_id_);
-
   // Each transaction owns an ItemAnimator to isolate pending and running state.
   active_transaction_ = std::make_unique<AnimationTransaction>(
       next_transaction_id_, std::move(pre_targets),
       CreateItemAnimatorForTransaction());
+  DLIST_LOGI("[" << list_container_
+                 << "] AnimationManagerImpl::BeginAnimationTransaction: id="
+                 << active_transaction_->id());
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY,
+                      ANIMATION_MANAGER_TRANSACTION_CREATED, "transaction_id",
+                      active_transaction_->id());
 }
 
 void AnimationManagerImpl::BeforeLayout() {
@@ -117,7 +118,8 @@ void AnimationManagerImpl::BeforeLayout() {
                                   TransactionState::kHasPreChildrenSnapshot) {
     return;
   }
-
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_MANAGER_BEFORE_LAYOUT,
+              "transaction_id", active_transaction_->id());
   ItemAnimator& item_animator = active_transaction_->item_animator();
   ItemAnimationRecorder& recorder = active_transaction_->recorder();
   std::vector<WeakAnimationTarget> pre_targets =
@@ -136,10 +138,10 @@ void AnimationManagerImpl::AfterLayoutBeforeFlush() {
   if (!active_transaction_) {
     return;
   }
-
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_MANAGER_AFTER_LAYOUT_BEFORE_FLUSH,
+              "transaction_id", active_transaction_->id());
   if (active_transaction_->state() == TransactionState::kRunning) {
     ItemAnimator& item_animator = active_transaction_->item_animator();
-
     // Relayout cancels running animations only when a recorded endpoint differs
     // from its target's latest logical position.
     if (item_animator.HasInvalidatedRunningAnimationLayout()) {
@@ -182,7 +184,8 @@ void AnimationManagerImpl::AfterFlush() {
       active_transaction_->state() != TransactionState::kHasPrepared) {
     return;
   }
-
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_MANAGER_AFTER_FLUSH,
+              "transaction_id", active_transaction_->id());
   // Change state before starting the animator so AfterFlush() starts this
   // transaction at most once.
   active_transaction_->SetState(TransactionState::kRunning);
@@ -190,8 +193,11 @@ void AnimationManagerImpl::AfterFlush() {
 
   // Synchronous completion may retire active_transaction_; do not access it
   // after RunPendingAnimations().
+  DLIST_LOGI(
+      "[" << list_container_
+          << "] AnimationManagerImpl::AfterFlush: RunPendingAnimations id="
+          << active_transaction_->id());
   item_animator.RunPendingAnimations();
-
   // Flush accumulated initial property updates after the entire batch starts.
   if (list_container_) {
     list_container_->FlushPatching();
@@ -201,23 +207,26 @@ void AnimationManagerImpl::AfterFlush() {
 void AnimationManagerImpl::CancelAnimationTransaction(
     AnimationCancelReason reason) {
   if (active_transaction_) {
-    DLIST_LOGI("cancel list animation transaction: id="
-               << active_transaction_->id()
-               << ", reason=" << static_cast<int>(reason));
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_MANAGER_CANCEL_TRANSACTION,
+                "transaction_id", active_transaction_->id(), "reason",
+                static_cast<int>(reason));
+    DLIST_LOGI("[" << list_container_
+                   << "] AnimationManagerImpl::CancelAnimationTransaction: id="
+                   << active_transaction_->id() << ", state="
+                   << static_cast<int>(active_transaction_->state())
+                   << ", reason=" << static_cast<int>(reason));
     active_transaction_->SetState(TransactionState::kCancel);
-    // Detach the transaction from the manager first. CancelAnimations() may
-    // synchronously invoke a BasicAnimator cancel callback; reentrant animator
-    // or listener callbacks must not process the same transaction again.
+    const bool destroy = reason == AnimationCancelReason::kManagerCleared;
+    ItemAnimator& item_animator = active_transaction_->item_animator();
+    // Event callbacks only compute; they do not update List or cancel again.
+    // Keep the old transaction and Listener during cancellation so
+    // OnAnimationCancel can read its ID. ItemAnimator suppresses completion via
+    // in_cancelling_animations_.
+    item_animator.CancelAnimations(destroy);
+    item_animator.SetListener(nullptr);
+    // Detach the transaction and recycle resources after cancel notifications.
     std::unique_ptr<AnimationTransaction> transaction =
         std::move(active_transaction_);
-
-    bool destroy = reason == AnimationCancelReason::kManagerCleared;
-    ItemAnimator& item_animator = transaction->item_animator();
-    // CancelAnimations() may synchronously invoke BasicAnimator cancel
-    // callbacks. Detach the completion listener first so an explicit
-    // cancellation cannot reenter AnimationManager.
-    item_animator.SetListener(nullptr);
-    item_animator.CancelAnimations(destroy);
     if (!destroy) {
       RecycleDeferredItemHolders(*transaction);
     }
@@ -243,6 +252,9 @@ void AnimationManagerImpl::ReleaseRetiredTransactionsIfSafe() {
 
 void AnimationManagerImpl::RecycleDeferredItemHolders(
     AnimationTransaction& transaction) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              ANIMATION_MANAGER_RECYCLE_DEFERRED_ITEM_HOLDERS, "transaction_id",
+              transaction.id());
   std::vector<std::unique_ptr<ItemHolder>> deferred_item_holders =
       transaction.TakeDeferredItemHolders();
   if (!list_container_ || !list_container_->list_adapter()) {
@@ -315,11 +327,60 @@ void AnimationManagerImpl::ProcessChanged(
 
 void AnimationManagerImpl::ProcessNone(AnimationTarget* target) {}
 
+void AnimationManagerImpl::OnAnimationStart(const ItemAnimator* source,
+                                            ItemAnimationType type) {
+  if (active_transaction_ && &active_transaction_->item_animator() == source) {
+    DLIST_LOGD("[" << list_container_
+                   << "] AnimationManagerImpl::OnAnimationStart: id="
+                   << active_transaction_->id()
+                   << ", type=" << ItemAnimationTypeToString(type));
+    list_container_->list_event_manager()->SendUpdateAnimationStartEvent(
+        active_transaction_->id(), type);
+  }
+}
+
+void AnimationManagerImpl::OnAnimationEnd(const ItemAnimator* source,
+                                          ItemAnimationType type) {
+  if (active_transaction_ && &active_transaction_->item_animator() == source) {
+    DLIST_LOGD("[" << list_container_
+                   << "] AnimationManagerImpl::OnAnimationEnd: id="
+                   << active_transaction_->id()
+                   << ", type=" << ItemAnimationTypeToString(type));
+    list_container_->list_event_manager()->SendUpdateAnimationEndEvent(
+        active_transaction_->id(), type);
+  }
+}
+
+void AnimationManagerImpl::OnAnimationCancel(const ItemAnimator* source,
+                                             ItemAnimationType type) {
+  if (active_transaction_ && &active_transaction_->item_animator() == source) {
+    DLIST_LOGD("[" << list_container_
+                   << "] AnimationManagerImpl::OnAnimationCancel: id="
+                   << active_transaction_->id()
+                   << ", type=" << ItemAnimationTypeToString(type));
+    list_container_->list_event_manager()->SendUpdateAnimationCancelEvent(
+        active_transaction_->id(), type);
+  }
+}
+
+void AnimationManagerImpl::OnAnimationUpdate(const ItemAnimator* source,
+                                             ItemAnimationType type,
+                                             float progress) {
+  if (active_transaction_ && &active_transaction_->item_animator() == source) {
+    list_container_->list_event_manager()->SendUpdateAnimationIterationEvent(
+        active_transaction_->id(), type, progress);
+  }
+}
+
 void AnimationManagerImpl::OnAllAnimationsFinished() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_MANAGER_ALL_ANIMATIONS_FINISHED);
   // Track callback depth to cover nested callbacks during completion cleanup.
   ++item_animator_callback_depth_;
 
   if (active_transaction_) {
+    DLIST_LOGI("[" << list_container_
+                   << "] AnimationManagerImpl::OnAllAnimationsFinished: id="
+                   << active_transaction_->id());
     std::unique_ptr<AnimationTransaction> transaction =
         std::move(active_transaction_);
     // The transaction completed naturally. Detach its listener first so any

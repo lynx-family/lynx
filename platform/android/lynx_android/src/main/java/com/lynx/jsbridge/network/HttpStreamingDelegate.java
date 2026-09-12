@@ -4,6 +4,8 @@
 
 package com.lynx.jsbridge.network;
 
+import androidx.annotation.RestrictTo;
+import com.lynx.devtoolwrapper.LynxNetworkRequestObserver;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import java.io.BufferedInputStream;
@@ -14,14 +16,27 @@ import java.io.InputStream;
 public class HttpStreamingDelegate {
   private final String mStringId;
   private final LynxFetchModuleEventSender mSender;
+  private final LynxNetworkRequestObserver mNetworkObserver;
+  private final String mNetworkRequestId;
   static final String ERROR_STREAMING_MALFORMED_RESPONSE = "errorStreamingMalformedResponse";
 
   public HttpStreamingDelegate(String streamingId, LynxFetchModuleEventSender sender) {
+    this(streamingId, sender, null, "");
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public HttpStreamingDelegate(String streamingId, LynxFetchModuleEventSender sender,
+      LynxNetworkRequestObserver networkObserver, String networkRequestId) {
     this.mStringId = streamingId;
     this.mSender = sender;
+    this.mNetworkObserver = networkObserver;
+    this.mNetworkRequestId = networkRequestId;
   }
 
   public void onData(byte[] bytes) {
+    if (mNetworkObserver != null && !mNetworkRequestId.isEmpty()) {
+      mNetworkObserver.dataReceived(mNetworkRequestId, bytes);
+    }
     JavaOnlyMap result = new JavaOnlyMap();
     result.putString("event", "onData");
     result.putByteArray("data", bytes);
@@ -31,6 +46,9 @@ public class HttpStreamingDelegate {
   }
 
   public void onEnd() {
+    if (mNetworkObserver != null && !mNetworkRequestId.isEmpty()) {
+      mNetworkObserver.loadingFinished(mNetworkRequestId);
+    }
     JavaOnlyMap result = new JavaOnlyMap();
     result.putString("event", "onEnd");
     JavaOnlyArray params = new JavaOnlyArray();
@@ -39,6 +57,9 @@ public class HttpStreamingDelegate {
   }
 
   public void onError(String error) {
+    if (mNetworkObserver != null && !mNetworkRequestId.isEmpty()) {
+      mNetworkObserver.loadingFailed(mNetworkRequestId, error, false);
+    }
     JavaOnlyMap result = new JavaOnlyMap();
     result.putString("event", "onError");
     result.putString("error", error);

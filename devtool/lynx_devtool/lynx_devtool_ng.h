@@ -43,6 +43,10 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
 
   virtual std::shared_ptr<MessageSender> GetMessageSender() const;
 
+  std::weak_ptr<NetworkRequestObserver> GetNetworkRequestObserver() const {
+    return devtool_mediator_->GetNetworkRequestObserver();
+  }
+
   void SetTag(const std::string& tag);
 
  protected:

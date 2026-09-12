@@ -40,6 +40,10 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
   @Override
   public void requestDraw() {}
 
+  boolean isForNode(NativeLayoutNodeRef node) {
+    return mLayoutNodeRef == node;
+  }
+
   @Override
   public long measure(int width, int widthMode, int height, int heightMode) {
     MeasureContext measureContext = mHost.getMeasureContext();
@@ -129,20 +133,31 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
     if (shadowStyle == null) {
       return Constants.VERTICAL_ALIGN_BASELINE;
     }
-    int verticalAlign = shadowStyle.verticalAlign;
-    if (verticalAlign == StyleConstants.VERTICAL_ALIGN_TOP
-        || verticalAlign == StyleConstants.VERTICAL_ALIGN_TEXT_TOP) {
-      return Constants.VERTICAL_ALIGN_TOP;
+    switch (shadowStyle.verticalAlign) {
+      case StyleConstants.VERTICAL_ALIGN_TOP:
+        return Constants.VERTICAL_ALIGN_TOP;
+      case StyleConstants.VERTICAL_ALIGN_TEXT_TOP:
+        return Constants.VERTICAL_ALIGN_TEXT_TOP;
+      case StyleConstants.VERTICAL_ALIGN_CENTER:
+      case StyleConstants.VERTICAL_ALIGN_MIDDLE:
+        return Constants.VERTICAL_ALIGN_CENTER;
+      case StyleConstants.VERTICAL_ALIGN_BOTTOM:
+        return Constants.VERTICAL_ALIGN_BOTTOM;
+      case StyleConstants.VERTICAL_ALIGN_TEXT_BOTTOM:
+        return Constants.VERTICAL_ALIGN_TEXT_BOTTOM;
+      case StyleConstants.VERTICAL_ALIGN_LENGTH:
+        return Constants.VERTICAL_ALIGN_LENGTH;
+      default:
+        return Constants.VERTICAL_ALIGN_BASELINE;
     }
-    if (verticalAlign == StyleConstants.VERTICAL_ALIGN_CENTER
-        || verticalAlign == StyleConstants.VERTICAL_ALIGN_MIDDLE) {
-      return Constants.VERTICAL_ALIGN_CENTER;
-    }
-    if (verticalAlign == StyleConstants.VERTICAL_ALIGN_BOTTOM
-        || verticalAlign == StyleConstants.VERTICAL_ALIGN_TEXT_BOTTOM) {
-      return Constants.VERTICAL_ALIGN_BOTTOM;
-    }
-    return Constants.VERTICAL_ALIGN_BASELINE;
+  }
+
+  @Override
+  public float getVerticalAlignLength() {
+    ShadowStyle shadowStyle = mLayoutNodeRef.getShadowStyle();
+    return shadowStyle != null && shadowStyle.verticalAlign == StyleConstants.VERTICAL_ALIGN_LENGTH
+        ? shadowStyle.verticalAlignLength
+        : 0;
   }
 
   private @Nullable LynxBaseUI getUI() {

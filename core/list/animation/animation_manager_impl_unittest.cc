@@ -11,6 +11,7 @@
 #undef private
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -26,6 +27,20 @@ namespace list {
 namespace {
 
 constexpr TransactionId kInjectedTransactionId = 100;
+
+void ExpectAnimationEventDetail(const std::unique_ptr<pub::Value>& detail,
+                                TransactionId expected_transaction_id,
+                                const char* expected_type) {
+  ASSERT_TRUE(detail && detail->IsMap());
+
+  auto transaction_id = detail->GetValueForKey(kAnimationInfoTransactionId);
+  ASSERT_TRUE(transaction_id && transaction_id->IsNumber());
+  EXPECT_DOUBLE_EQ(transaction_id->Number(), expected_transaction_id);
+
+  auto type = detail->GetValueForKey(kAnimationInfoType);
+  ASSERT_TRUE(type && type->IsString());
+  EXPECT_EQ(type->str(), expected_type);
+}
 
 class AnimationManagerImplTest : public ::testing::Test {
  public:
@@ -288,7 +303,7 @@ TEST_F(AnimationManagerImplTest,
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   EXPECT_EQ(lifecycle_observer->cancel_animations_count, 1);
   EXPECT_FALSE(lifecycle_observer->last_cancel_destroy);
-  EXPECT_TRUE(lifecycle_observer->listener_detached_when_cancelled);
+  EXPECT_FALSE(lifecycle_observer->listener_detached_when_cancelled);
   EXPECT_TRUE(lifecycle_observer->animator_destroyed);
   EXPECT_TRUE(lifecycle_observer->cancel_observed_before_destruction);
 }
@@ -363,45 +378,42 @@ TEST_F(AnimationManagerImplTest,
   EXPECT_TRUE(lifecycle_observer->animator_destroyed);
 }
 
-// Verifies that animation configuration is applied to the transaction's
-// animator and that disabling animations cancels the active transaction.
-TEST_F(AnimationManagerImplTest, AppliesConfigAndCancelsWhenDisabled) {
-  UpdateAnimationConfig config{
-      .enable = true,
-      .add_duration_ms = 11,
-      .remove_duration_ms = 22,
-      .move_duration_ms = 33,
-  };
-
-  // 1. A new transaction's animator receives the complete current
-  // configuration, with change duration following move duration.
+// Verify that configs apply to future transactions and identical configs
+// preserve active ones.
+TEST_F(AnimationManagerImplTest, AppliesStagesAndPreservesIdenticalConfig) {
+  UpdateAnimationConfig config;
+  config.enable = true;
+  config.stages = MakeDefaultAnimationStages(22, 33, 11, 44);
   animation_manager_->SetUpdateAnimationConfig(config);
+
+  // 1. Enabling alone creates no transaction; eligible data updates create
+  // animators.
+  EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   animation_manager_->BeforeDataUpdate(true, true, true);
   ASSERT_NE(animation_manager_->active_transaction_, nullptr);
-  ItemAnimator& item_animator =
-      animation_manager_->active_transaction_->item_animator();
-  EXPECT_EQ(item_animator.add_duration_ms(), 11);
-  EXPECT_EQ(item_animator.remove_duration_ms(), 22);
-  EXPECT_EQ(item_animator.move_duration_ms(), 33);
-  EXPECT_EQ(item_animator.change_duration_ms(), 33);
+  auto* transaction = animation_manager_->active_transaction_.get();
+  EXPECT_EQ(transaction->item_animator().animation_stages(), config.stages);
 
-  // 2. A runtime configuration update immediately changes the durations stored
-  // by the active transaction's ItemAnimator.
-  config.add_duration_ms = 44;
-  config.remove_duration_ms = 55;
-  config.move_duration_ms = 66;
-  animation_manager_->SetUpdateAnimationConfig(config);
-  EXPECT_EQ(item_animator.add_duration_ms(), 44);
-  EXPECT_EQ(item_animator.remove_duration_ms(), 55);
-  EXPECT_EQ(item_animator.move_duration_ms(), 66);
-  EXPECT_EQ(item_animator.change_duration_ms(), 66);
+  // 2. Compare config copies by content and preserve transaction identity.
+  const UpdateAnimationConfig identical = config;
+  animation_manager_->SetUpdateAnimationConfig(identical);
+  ASSERT_EQ(animation_manager_->active_transaction_.get(), transaction);
+  EXPECT_EQ(animation_manager_->next_transaction_id_, 1u);
 
-  // 3. Disabling animations synchronously cancels and clears the active
-  // transaction.
+  // 3. Disabling cancels the transaction; re-enabling waits for the next data
+  // update.
   config.enable = false;
   animation_manager_->SetUpdateAnimationConfig(config);
-  EXPECT_FALSE(animation_manager_->enable_update_animation_);
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
+  config.enable = true;
+  animation_manager_->SetUpdateAnimationConfig(config);
+  EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
+  animation_manager_->BeforeDataUpdate(true, true, true);
+  ASSERT_NE(animation_manager_->active_transaction_, nullptr);
+  EXPECT_EQ(animation_manager_->active_transaction_->id(), 2u);
+  EXPECT_EQ(animation_manager_->active_transaction_->item_animator()
+                .animation_stages(),
+            config.stages);
 }
 
 // Verifies that Destroy() clears the active transaction and existing retired
@@ -420,11 +432,11 @@ TEST_F(AnimationManagerImplTest, DestroyClearsActiveAndRetiredTransactions) {
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   EXPECT_TRUE(animation_manager_->retired_transactions_.empty());
 
-  // 2. The manager detaches the listener, cancels in destroy mode, and then
+  // 2. The manager cancels in destroy mode, then detaches the listener and
   // destroys the animator.
   EXPECT_EQ(lifecycle_observer->cancel_animations_count, 1);
   EXPECT_TRUE(lifecycle_observer->last_cancel_destroy);
-  EXPECT_TRUE(lifecycle_observer->listener_detached_when_cancelled);
+  EXPECT_FALSE(lifecycle_observer->listener_detached_when_cancelled);
   EXPECT_TRUE(lifecycle_observer->animator_destroyed);
   EXPECT_TRUE(lifecycle_observer->cancel_observed_before_destruction);
 
@@ -433,6 +445,54 @@ TEST_F(AnimationManagerImplTest, DestroyClearsActiveAndRetiredTransactions) {
   EXPECT_EQ(animation_manager_->active_transaction_, nullptr);
   EXPECT_TRUE(animation_manager_->retired_transactions_.empty());
   EXPECT_EQ(lifecycle_observer->cancel_animations_count, 1);
+}
+
+// Verifies that all four ItemAnimator lifecycle callbacks are dispatched as
+// List events through the existing transaction pipeline.
+TEST_F(AnimationManagerImplTest, ForwardsAnimationLifecycleEvents) {
+  MockItemAnimator* item_animator =
+      CreateActiveTransaction(TransactionState::kRunning);
+  ASSERT_EQ(item_animator->listener(), animation_manager_);
+
+  constexpr float kProgress = 0.5f;
+  std::vector<std::string> received_events;
+  EXPECT_CALL(*mock_list_element_,
+              SendCustomEvent(::testing::_, ::testing::_, ::testing::_))
+      .Times(4)
+      .WillRepeatedly([&](const std::string& event_name,
+                          const std::string& param_name,
+                          std::unique_ptr<pub::Value> detail) {
+        received_events.push_back(event_name);
+        EXPECT_EQ(param_name, kEventParamDetail);
+        ExpectAnimationEventDetail(detail, kInjectedTransactionId,
+                                   kUpdateAnimationTypeAdd);
+        if (event_name == kEventListAnimationUpdate) {
+          auto progress = detail->GetValueForKey(kAnimationInfoProgress);
+          ASSERT_TRUE(progress && progress->IsNumber());
+          EXPECT_FLOAT_EQ(progress->Number(), kProgress);
+        }
+      });
+
+  // Bind one event at a time to verify that start, update, end, and cancel
+  // each depend on their own binding. The same pipeline carries the transaction
+  // ID, animation type, and progress from the callback into the event detail.
+  mock_list_element_->SetBoundEvents({kEventListAnimationStart});
+  item_animator->listener()->OnAnimationStart(item_animator,
+                                              ItemAnimationType::kAppearance);
+  mock_list_element_->SetBoundEvents({kEventListAnimationUpdate});
+  item_animator->listener()->OnAnimationUpdate(
+      item_animator, ItemAnimationType::kAppearance, kProgress);
+  mock_list_element_->SetBoundEvents({kEventListAnimationEnd});
+  item_animator->listener()->OnAnimationEnd(item_animator,
+                                            ItemAnimationType::kAppearance);
+  mock_list_element_->SetBoundEvents({kEventListAnimationCancel});
+  item_animator->listener()->OnAnimationCancel(item_animator,
+                                               ItemAnimationType::kAppearance);
+
+  const std::vector<std::string> expected_events{
+      kEventListAnimationStart, kEventListAnimationUpdate,
+      kEventListAnimationEnd, kEventListAnimationCancel};
+  EXPECT_EQ(received_events, expected_events);
 }
 
 }  // namespace

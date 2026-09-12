@@ -974,10 +974,14 @@ void UIBase::OnNodeReady() {
 
   if (((dirty_flags_ & (kFlagFrameChanged | kFlagMaskChanged)) != 0) &&
       mask_drawable_) {
-    auto parent = NodeManager::Instance().GetParent(DrawNode());
-    if (parent) {
-      NodeManager::Instance().SetAttributeWithNumberValue(parent,
-                                                          NODE_RENDER_GROUP, 1);
+    if (mask_drawable_->HasImage()) {
+      // Isolate this subtree so DST_IN cannot erase the parent or its siblings.
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          DrawNode(), NODE_BLEND_MODE,
+          static_cast<int32_t>(ARKUI_BLEND_MODE_SRC_OVER),
+          static_cast<int32_t>(BLEND_APPLY_TYPE_OFFSCREEN));
+    } else {
+      NodeManager::Instance().ResetAttribute(DrawNode(), NODE_BLEND_MODE);
     }
     mask_drawable_->UpdateBounds(0, 0, width_, height_, padding_left_,
                                  padding_top_, padding_right_, padding_bottom_,
@@ -2400,6 +2404,12 @@ void UIBase::InitDrawNode() {
         NodeManager::Instance().GetAttribute(Node(), NODE_RENDER_GROUP);
     NodeManager::Instance().ResetAttribute(Node(), NODE_RENDER_GROUP);
     NodeManager::Instance().SetAttribute(draw_node_, NODE_RENDER_GROUP, group);
+
+    auto blend_mode =
+        NodeManager::Instance().GetAttribute(Node(), NODE_BLEND_MODE);
+    NodeManager::Instance().ResetAttribute(Node(), NODE_BLEND_MODE);
+    NodeManager::Instance().SetAttribute(draw_node_, NODE_BLEND_MODE,
+                                         blend_mode);
 
     // update visibility
     int32_t visibility{ARKUI_VISIBILITY_VISIBLE};

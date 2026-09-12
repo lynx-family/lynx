@@ -6,7 +6,9 @@ package com.lynx.jsbridge.network;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
+import com.lynx.devtoolwrapper.LynxNetworkRequestObserver;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import java.io.BufferedInputStream;
@@ -23,6 +25,48 @@ public class HttpStreamingDelegateTest {
     @Override
     public void sendGlobalEvent(String name, JavaOnlyArray params) {
       eventList.add(params.getMap(0));
+    }
+  }
+
+  class MockNetworkRequestObserver implements LynxNetworkRequestObserver {
+    public ArrayList<String> calls = new ArrayList<>();
+    public byte[] lastData;
+    public String lastError;
+    public boolean lastCanceled;
+
+    @Override
+    public boolean isEnabled() {
+      return true;
+    }
+
+    @Override
+    public String requestWillBeSent(String url, String method, JavaOnlyMap headers, byte[] body) {
+      calls.add("requestWillBeSent");
+      return "request";
+    }
+
+    @Override
+    public void responseReceived(
+        String requestId, String url, int status, String statusText, JavaOnlyMap headers) {
+      calls.add("responseReceived:" + requestId);
+    }
+
+    @Override
+    public void dataReceived(String requestId, byte[] data) {
+      calls.add("dataReceived:" + requestId);
+      lastData = data;
+    }
+
+    @Override
+    public void loadingFinished(String requestId) {
+      calls.add("loadingFinished:" + requestId);
+    }
+
+    @Override
+    public void loadingFailed(String requestId, String errorText, boolean canceled) {
+      calls.add("loadingFailed:" + requestId);
+      lastError = errorText;
+      lastCanceled = canceled;
     }
   }
 
@@ -173,5 +217,39 @@ public class HttpStreamingDelegateTest {
     assertEquals(sender.eventList.size(), 2);
     assertArrayEquals(sender.eventList.get(0).getByteArray("data"), "12345\n\n".getBytes());
     assertArrayEquals(sender.eventList.get(1).getByteArray("data"), "1234567890\n\n".getBytes());
+  }
+
+  @Test
+  public void testNetworkObserverReceivesStreamingSuccess() {
+    MockNetworkRequestObserver observer = new MockNetworkRequestObserver();
+    processor = new HttpStreamingDelegate("stream", sender, observer, "request-1");
+    byte[] data = "hello".getBytes();
+
+    processor.onData(data);
+    processor.onEnd();
+
+    assertEquals(2, observer.calls.size());
+    assertEquals("dataReceived:request-1", observer.calls.get(0));
+    assertEquals("loadingFinished:request-1", observer.calls.get(1));
+    assertArrayEquals(data, observer.lastData);
+    assertEquals(2, sender.eventList.size());
+    assertEquals("onData", sender.eventList.get(0).getString("event"));
+    assertEquals("onEnd", sender.eventList.get(1).getString("event"));
+  }
+
+  @Test
+  public void testNetworkObserverReceivesStreamingFailure() {
+    MockNetworkRequestObserver observer = new MockNetworkRequestObserver();
+    processor = new HttpStreamingDelegate("stream", sender, observer, "request-2");
+
+    processor.onError("failed");
+
+    assertEquals(1, observer.calls.size());
+    assertEquals("loadingFailed:request-2", observer.calls.get(0));
+    assertEquals("failed", observer.lastError);
+    assertFalse(observer.lastCanceled);
+    assertEquals(1, sender.eventList.size());
+    assertEquals("onError", sender.eventList.get(0).getString("event"));
+    assertEquals("failed", sender.eventList.get(0).getString("error"));
   }
 }

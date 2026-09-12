@@ -207,12 +207,6 @@ class PageConfig final : public LynxConfig {
     absetting_disable_css_lazy_decode_ = disable;
   }
 
-  inline void SetEnableEventRefactor(bool option) {
-    enable_event_refactor_ = option;
-  }
-
-  bool GetEnableEventRefactor() const { return enable_event_refactor_; }
-
   int32_t GetIncludeFontPadding() const { return include_font_padding_; }
 
   void SetIncludeFontPadding(bool value) {
@@ -410,8 +404,6 @@ class PageConfig final : public LynxConfig {
   // Used for lynx config
   bool enable_css_parser_{false};
   bool is_target_sdk_verion_higher_than_2_1_{false};
-  bool enable_event_refactor_{true};
-
   CompileOptionAirMode air_mode_{CompileOptionAirMode::AIR_MODE_OFF};
   // set text overflow as visible if true
 

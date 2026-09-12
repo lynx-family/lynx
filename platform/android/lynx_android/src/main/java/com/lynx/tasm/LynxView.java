@@ -36,6 +36,7 @@ import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.base.TraceEvent;
@@ -51,6 +52,7 @@ import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.ui.transfer.UITransfer;
 import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.core.VSyncMonitor;
@@ -110,6 +112,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   private boolean isInPrePainting = false;
   private boolean mDestroyed = false;
+  private final LynxTransferManager mTransferManager = new LynxTransferManager();
 
   public LynxView(Context context) {
     super(context);
@@ -202,6 +205,47 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       return mLynxTemplateRender.getLynxContext();
     }
     return null;
+  }
+
+  /**
+   * Experimental API. This API is unstable and may change or be removed without notice.
+   *
+   * <p>Registers a listener that can take ownership of views created by {@code <transfer-view>}
+   * nodes. The listener is also called synchronously for existing transfer views that have not yet
+   * been accepted by another listener.
+   *
+   * @param listener the listener that receives transfer view lifecycle callbacks
+   */
+  public void registerTransferListener(@NonNull LynxTransferListener listener) {
+    mTransferManager.registerTransferListener(listener);
+  }
+
+  /**
+   * Experimental API. This API is unstable and may change or be removed without notice.
+   *
+   * <p>Unregisters a transfer listener. The listener will no longer receive dataset or removal
+   * callbacks for transfer views that it previously accepted.
+   *
+   * @param listener the listener to unregister
+   */
+  public void unregisterTransferListener(@NonNull LynxTransferListener listener) {
+    mTransferManager.unregisterTransferListener(listener);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public boolean dispatchTransferCreate(
+      @NonNull String id, @NonNull UITransfer owner, @NonNull View view) {
+    return mTransferManager.dispatchTransferCreate(id, owner, view);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void dispatchTransferDatasetUpdate(@NonNull View view, @Nullable ReadableMap dataset) {
+    mTransferManager.dispatchTransferDatasetUpdate(view, dataset);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void dispatchTransferRemove(@NonNull String id, @NonNull View view) {
+    mTransferManager.dispatchTransferRemove(id, view);
   }
 
   public void reloadAndInit() {
@@ -1327,6 +1371,8 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (mKeyboardEvent != null && mKeyboardEvent.isStart()) {
       mKeyboardEvent.stop();
     }
+
+    mTransferManager.clearTransfers();
 
     if (mLynxTemplateRender != null) {
       HeroTransitionManager.inst().onLynxViewDestroy(this);

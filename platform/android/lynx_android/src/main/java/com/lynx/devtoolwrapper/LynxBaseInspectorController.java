@@ -17,6 +17,8 @@ import org.json.JSONObject;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public interface LynxBaseInspectorController {
+  LynxNetworkRequestObserver getNetworkRequestObserver();
+
   void setReloadHelper(PageReloadHelper reloadHelper);
   void setDebugInfoInterceptor(LynxDebugInfoRecorder debugInfoRecorder);
   void setDevToolDelegate(IDevToolDelegate devToolDelegate);

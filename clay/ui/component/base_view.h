@@ -304,9 +304,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   void SetBlockNativeEvent(bool enable) { should_block_native_event_ = enable; }
   void SetConsumeSlideEventDirection(const clay::Value::Array& array);
   void SetEnableNewAnimator(bool enable) { enable_new_animator_ = enable; }
-  std::optional<bool> EnableExposureUIClip() const {
-    return enable_exposure_ui_clip_;
-  }
   bool IsInteractable() const { return is_interactable_; }
   const lynx::gfx::TransformOperations& GetTransformOps() const {
     return transform_ops_;
@@ -672,6 +669,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   friend class BaseListView;
   friend class BaseViewWithChildrenTest;
   friend class BaseViewAnimationMutator;
+  friend class BackgroundEventView;
 
   BaseViewAnimationMutator* GetAnimationMutator();
 
@@ -803,7 +801,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool is_interactable_ = true;
   bool should_block_native_event_ = false;
   bool has_intersection_observer_ = false;
-  std::optional<bool> enable_exposure_ui_clip_;
   std::optional<bool> event_through_;
   struct EventThroughSizeValue {
     double value = 0.0;
@@ -831,6 +828,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool ShouldPassEventToNativeAt(const FloatPoint& position) const;
   bool HitEventThroughActiveRegions(const FloatPoint& position) const;
 
+  void NotifyBgImageLoadStatus(bool success, clay::Value::Map params);
   template <typename... Args>
   void NotifyBgImageLoadStatus(bool success,
                                const std::vector<std::string>& keys,

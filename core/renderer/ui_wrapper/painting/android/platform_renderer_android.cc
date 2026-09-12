@@ -164,7 +164,7 @@ PlatformRendererAndroidFactory::CreateExtendedRenderer(
 }
 
 void PlatformRendererAndroid::OnUpdateAttributes(
-    const fml::RefPtr<PropBundle>& attributes, bool tends_to_flatten) {
+    const fml::RefPtr<PropBundle>& attributes) {
   if (!context_ || !is_platform_extended_renderer_) {
     return;
   }
@@ -181,8 +181,7 @@ void PlatformRendererAndroid::OnUpdateAttributes(
   // Get the Java object from PropBundleAndroid
   jobject j_prop_bundle = prop_bundle_android.jni_object();
   if (j_prop_bundle) {
-    context_->UpdatePlatformRendererAttributes(GetId(), j_prop_bundle,
-                                               tends_to_flatten);
+    context_->UpdatePlatformRendererAttributes(GetId(), j_prop_bundle);
   }
 }
 
