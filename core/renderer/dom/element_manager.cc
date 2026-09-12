@@ -1884,15 +1884,8 @@ void ElementManager::OnPatchFinishForFiber(
     patch_finish_callback(false);
   } else {
     LOGI("ElementManager::OnPatchFinishForFiber WithPatch!");
-    {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST);
-      // sort z-index children
-      for (const auto &context : dirty_stacking_contexts_) {
-        context->UpdateZIndexList();
-      }
-    }
+    UpdateDirtyStackingContexts();
     PatchEventRelatedInfo();
-    dirty_stacking_contexts_.clear();
     if (need_layout_ && !(options->has_layout)) {
       options->has_layout = need_layout_;
     }
@@ -1916,6 +1909,14 @@ void ElementManager::Repaint() {
   NativePaintingContext::ScopedDisplayListBatch display_list_batch(
       native_context, root_fragment->PlatformLayerCount());
   root_fragment->Draw();
+}
+
+void ElementManager::UpdateDirtyStackingContexts() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST);
+  for (const auto &context : dirty_stacking_contexts_) {
+    context->UpdateZIndexList();
+  }
+  dirty_stacking_contexts_.clear();
 }
 
 void ElementManager::EnqueueLevelOrderTask(

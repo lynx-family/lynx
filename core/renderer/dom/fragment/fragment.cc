@@ -126,106 +126,110 @@ void Fragment::StyleChanged() {
   // In summary, there are 4 * 3 * 3 = 36 cases in total.
   // Enumerating all cases is very costly. We found that we can implement it as
   // follows:
-  // 1. First, mark z-index changes for deferred sorting. Only determine a new
-  // parent when crossing z-index 0 or changing the fixed state, and then move
-  // the element itself if needed.
+  // 1. First, determine if the parent needs to be changed based on the current
+  // z-index and fixed state, and then only move the element itself.
   // 2. Then, based on the current and previous stacking context states,
   // determine whether to move the descendant stacking context fragment.
+  auto* previous_parent = fragment_parent();
+  const bool previous_stacking_context = was_stacking_context();
+  const bool current_stacking_context = element()->IsStackingContextNode();
+  const bool previous_fixed = was_position_fixed();
   const int32_t previous_z_index = old_z_index();
+  const bool current_fixed = element()->is_fixed();
   const int32_t current_z_index = element()->ZIndex();
-  const bool z_index_parent_may_change =
-      (previous_z_index == 0) != (current_z_index == 0);
-  if (element()->GetEnableZIndex()) {
-    ZIndexChanged();
-  }
-
-  if (element()->is_fixed() != was_position_fixed() ||
-      z_index_parent_may_change) {
+  if (current_fixed != previous_fixed || current_z_index != previous_z_index) {
     auto* target_parent = fragment_parent();
 
-    set_was_position_fixed(element()->is_fixed());
-    set_old_z_index(current_z_index);
-
-    if (was_position_fixed()) {
+    if (current_fixed) {
       // If it is a fixed element, the parent should be the root fragment.
       target_parent = element_manager()->root()->fragment_impl();
-    } else if (old_z_index() != 0) {
+    } else if (current_z_index != 0) {
       // If z-index is not 0, the parent should be the nearest stacking
-      // context fragment.
-      target_parent = EnclosingStackingContextFromElementParent();
+      // context ancestor. Start from the Element parent: the current element
+      // becomes a stacking context as soon as z-index changes and must never
+      // select itself as its new parent.
+      target_parent = ResolveEnclosingStackingContextParent();
     } else {
       // If it is not fixed and z-index is 0, the parent should be the
       // fragment corresponding to the element's parent.
-      target_parent = element()->parent()->fragment_impl();
+      target_parent = element()->parent() != nullptr
+                          ? element()->parent()->fragment_impl()
+                          : nullptr;
+    }
+    if (target_parent == nullptr) {
+      LOGE("Fragment style change has no valid stacking parent: " << id());
+      return;
     }
 
-    // If the parent has changed, the element needs to be moved.
-    if (target_parent != fragment_parent()) {
-      fragment_parent()->RemoveChild(this);
+    set_was_position_fixed(current_fixed);
+    set_old_z_index(current_z_index);
 
-      Element* ref = nullptr;
-      if (old_z_index() != 0) {
-        if (element()->next_render_sibling() != nullptr) {
-          ref = element()->next_render_sibling();
-        }
-        // If the child is not fixed and z-index is 0, insert it to the first
-        // reliable sibling.
-        while (ref != nullptr && !ref->fragment_impl()->IsReliableSibling()) {
-          ref = ref->next_render_sibling();
-        }
+    // Only a node returning to normal flow needs a render sibling. Hoisted
+    // z/fixed nodes are appended to their stacking parent and sorted there.
+    Element* ref = nullptr;
+    if (!current_fixed && current_z_index == 0 &&
+        element()->next_render_sibling() != nullptr) {
+      ref = element()->next_render_sibling();
+    }
+    while (ref != nullptr &&
+           (ref->fragment_impl() == nullptr ||
+            !ref->fragment_impl()->IsReliableSibling() ||
+            ref->fragment_impl()->fragment_parent() != target_parent)) {
+      ref = ref->next_render_sibling();
+    }
+
+    if (target_parent != fragment_parent()) {
+      ReparentStackingNode(target_parent,
+                           ref != nullptr ? ref->fragment_impl() : nullptr);
+    } else {
+      // A z-index/fixed value can change its sort group without changing its
+      // stacking parent.
+      if (previous_z_index != current_z_index) {
+        target_parent->MarkDirtyState(kNeedSortZChild);
       }
-      target_parent->AddChildBefore(
-          this, ref != nullptr ? ref->fragment_impl() : nullptr);
+      if (previous_fixed != current_fixed) {
+        target_parent->MarkDirtyState(kNeedSortFixedChild);
+      }
     }
 
     Fragment* fragment_from_element_parent =
-        element()->parent()->fragment_impl();
-    if (old_z_index() == 0) {
-      fragment_from_element_parent->z_children_.erase(this);
-    } else {
-      fragment_from_element_parent->z_children_.insert(this);
+        element()->parent() != nullptr ? element()->parent()->fragment_impl()
+                                       : nullptr;
+    if (fragment_from_element_parent != nullptr) {
+      if (current_z_index == 0) {
+        fragment_from_element_parent->z_children_.erase(this);
+      } else {
+        fragment_from_element_parent->z_children_.insert(this);
+      }
+      if (!current_fixed) {
+        fragment_from_element_parent->fixed_children_.erase(this);
+      } else {
+        fragment_from_element_parent->fixed_children_.insert(this);
+      }
     }
-    if (!was_position_fixed()) {
-      fragment_from_element_parent->fixed_children_.erase(this);
-    } else {
-      fragment_from_element_parent->fixed_children_.insert(this);
-    }
-    set_fragment_from_element_parent(old_z_index() != 0 || was_position_fixed()
+    set_fragment_from_element_parent(current_z_index != 0 || current_fixed
                                          ? fragment_from_element_parent
                                          : nullptr);
-  } else {
-    set_old_z_index(current_z_index);
   }
 
-  if (element()->IsStackingContextNode() != was_stacking_context()) {
+  if (previous_stacking_context != current_stacking_context) {
     // If the element's stacking context state changed, we should move the
     // descendants stacking context fragment to correct parent.
 
-    set_was_stacking_context(element()->IsStackingContextNode());
-    Fragment* target_parent =
-        was_stacking_context()
-            ? this
-            : EnclosingStackingContextNode()->CastToFragment();
-    MoveDirectStackingChildren(target_parent, this);
+    set_was_stacking_context(current_stacking_context);
+    Fragment* descendants_target_parent =
+        current_stacking_context ? this
+                                 : ResolveEnclosingStackingContextParent();
+    MoveDirectStackingChildren(descendants_target_parent, this);
   }
-}
-
-void Fragment::ZIndexChanged() {
-  if (fragment_parent() == nullptr || element()->parent() == nullptr ||
-      old_z_index() == element()->ZIndex()) {
-    return;
+  // Refresh legacy coordinates only when their parent or fixed/context basis
+  // changes. Other style updates and z-index-only sorting do not need a walk.
+  if (fragment_parent() != nullptr &&
+      (previous_parent != fragment_parent() ||
+       previous_fixed != current_fixed ||
+       previous_stacking_context != current_stacking_context)) {
+    fragment_parent()->RefreshDrawingOffsetsRecursively();
   }
-
-  fragment_parent()->EnclosingStackingContextNode()->MarkDirtyState(
-      kNeedSortZChild);
-}
-
-Fragment* Fragment::EnclosingStackingContextFromElementParent() {
-  return element()
-      ->parent()
-      ->fragment_impl()
-      ->EnclosingStackingContextNode()
-      ->CastToFragment();
 }
 
 void Fragment::UpdateZIndexList() {
@@ -277,7 +281,11 @@ void Fragment::UpdateZIndexList() {
     switch (group_a) {
       case 0:  // negative z-index
       case 3:  // positive z-index
-        return a->old_z_index() < b->old_z_index();
+        if (a->old_z_index() != b->old_z_index()) {
+          return a->old_z_index() < b->old_z_index();
+        }
+        return BaseElementContainer::CompareElementOrder(a->element(),
+                                                         b->element()) < 0;
       case 2:  // fixed, z-index 0
         return BaseElementContainer::CompareElementOrder(a->element(),
                                                          b->element()) < 0;
