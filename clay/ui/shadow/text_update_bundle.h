@@ -41,6 +41,9 @@ class TextUpdateBundle : public Bundle {
     paragraph_ = std::move(paragraph);
   }
   void SetTextPaintAlign(TextAlignment align) { text_paint_align_ = align; }
+  void SetTextOverflow(std::optional<TextOverflow> overflow) {
+    text_overflow_ = overflow;
+  }
   void SetText(std::u16string text) { text_ = text; }
   void SetGradientShaderMap(
       std::map<int, std::shared_ptr<ColorSource>>& gradient_shader_map,
@@ -61,6 +64,7 @@ class TextUpdateBundle : public Bundle {
  private:
   std::unique_ptr<txt::Paragraph> paragraph_ = nullptr;
   TextAlignment text_paint_align_;
+  std::optional<TextOverflow> text_overflow_;
   std::u16string text_;
   double line_spacing_offset_;
   std::map<int, std::shared_ptr<ColorSource>> gradient_shader_map_;

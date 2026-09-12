@@ -64,6 +64,19 @@ int CountNonTransparentPixels(GrSoftwareSurface& surface, int width,
   return non_transparent_pixels;
 }
 
+int CountNonTransparentPixels(GrSoftwareSurface& surface, int left, int top,
+                              int right, int bottom) {
+  int non_transparent_pixels = 0;
+  for (int y = top; y < bottom; ++y) {
+    for (int x = left; x < right; ++x) {
+      if (surface.GetPixelAlpha(x, y) != 0) {
+        ++non_transparent_pixels;
+      }
+    }
+  }
+  return non_transparent_pixels;
+}
+
 int CountNonTransparentPixels(const Picture& picture, int width, int height) {
   GrSoftwareSurface surface(width, height);
   EXPECT_TRUE(surface.IsValid());
@@ -242,6 +255,95 @@ TEST_F(RenderTextTest, BackgroundClipTextRendersThroughPictureMask) {
   int painted_pixels = CountNonTransparentPixels(surface, 64, 64);
   EXPECT_GT(painted_pixels, 0);
   EXPECT_LT(painted_pixels, static_cast<int>(result.width * result.height));
+  render_text->SetRenderer(original_renderer);
+}
+
+TEST_F(RenderTextTest, ClipTextOverflowDoesNotPaintOutsideContentWidth) {
+  constexpr int kContentWidth = 60;
+  constexpr int kSurfaceWidth = 240;
+  constexpr int kSurfaceHeight = 80;
+
+  auto page_view =
+      std::make_unique<PageView>(-1, nullptr, thread_.GetTaskRunner());
+  auto text_view = std::make_unique<InternalTextView>(-1, page_view.get());
+  text_view->SetText("This text must be clipped");
+  text_view->SetFontSize(30);
+  text_view->SetFontFamily("Roboto");
+  text_view->SetTextMaxLine(1);
+  text_view->SetTextOverflow(TextOverflow::kClip);
+  text_view->SetPaddings(0.f, 0.f, 0.f, 0.f);
+
+  MeasureResult result;
+  text_view->Measure({kContentWidth, MeasureMode::kDefinite, kSurfaceHeight,
+                      MeasureMode::kAtMost},
+                     result);
+
+  RenderText* render_text = text_view->GetRenderText();
+  render_text->SetWidth(result.width);
+  render_text->SetHeight(result.height);
+
+  Renderer* original_renderer = render_text->GetRenderer();
+  CountingRendererClient client;
+  Renderer renderer(&client, nullptr);
+  renderer.SetRoot(render_text);
+
+  PendingContainerLayer pending_root;
+  PaintingContext painting_context(&pending_root, render_text, nullptr);
+  render_text->Paint(painting_context, FloatPoint());
+  painting_context.StopRecordingIfNeeded();
+
+  FrameBuilder frame_builder({kSurfaceWidth, kSurfaceHeight}, 1.f, nullptr);
+  frame_builder.BuildFrame(&pending_root);
+  auto layer_tree = frame_builder.TakeLayerTree();
+  ASSERT_NE(layer_tree, nullptr);
+  auto root_layer = layer_tree->root_layer();
+  ASSERT_NE(root_layer, nullptr);
+  LayerStateStack preroll_state_stack;
+  preroll_state_stack.set_preroll_delegate(kGiantRect, skity::Matrix());
+  FixedRefreshRateStopwatch raster_time;
+  FixedRefreshRateStopwatch ui_time;
+  auto drawable_image_registry = std::make_shared<DrawableImageRegistry>();
+  std::vector<RasterCacheItem*> raster_cached_entries;
+  PrerollContext preroll_context{
+      .raster_cache = nullptr,
+      .gr_context = nullptr,
+      .compositor_state = nullptr,
+      .state_stack = preroll_state_stack,
+      .surface_needs_readback = false,
+      .raster_time = raster_time,
+      .ui_time = ui_time,
+      .drawable_image_registry = drawable_image_registry,
+      .frame_device_pixel_ratio = 1.0f,
+      .raster_cached_entries = &raster_cached_entries,
+  };
+  root_layer->Preroll(&preroll_context);
+
+  GrSoftwareSurface surface(kSurfaceWidth, kSurfaceHeight);
+  ASSERT_TRUE(surface.IsValid());
+  auto* canvas = surface.GetCanvas();
+  surface.Clear(0);
+  LayerStateStack paint_state_stack;
+  paint_state_stack.set_delegate(canvas);
+  PaintContext paint_context{
+      .state_stack = paint_state_stack,
+      .canvas = canvas,
+      .gr_context = nullptr,
+      .compositor_state = nullptr,
+      .raster_time = raster_time,
+      .ui_time = ui_time,
+      .drawable_image_registry = drawable_image_registry,
+      .raster_cache = nullptr,
+      .frame_device_pixel_ratio = 1.0f,
+  };
+  root_layer->Paint(paint_context);
+  surface.Flush();
+
+  EXPECT_GT(
+      CountNonTransparentPixels(surface, 0, 0, kContentWidth, kSurfaceHeight),
+      0);
+  EXPECT_EQ(CountNonTransparentPixels(surface, kContentWidth, 0, kSurfaceWidth,
+                                      kSurfaceHeight),
+            0);
   render_text->SetRenderer(original_renderer);
 }
 
