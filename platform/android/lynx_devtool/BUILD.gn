@@ -167,7 +167,11 @@ devtool_source_set("lynx_base_for_devtool") {
 # TODO(zhaosong): devtool should use the symbols exposed by lynx directly,
 #                 so need to remove lynx_tasm_recorder_for_devtool target later.
 devtool_source_set("lynx_tasm_recorder_for_devtool") {
+  deps = [ "//third_party/zlib" ]
+
   sources = [
+    "../../../core/services/recorder/fixture_writer.cc",
+    "../../../core/services/recorder/fixture_writer.h",
     "../../../core/services/recorder/native_module_recorder.cc",
     "../../../core/services/recorder/native_module_recorder.h",
     "../../../core/services/recorder/testbench_base_recorder.cc",

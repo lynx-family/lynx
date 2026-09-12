@@ -5,10 +5,9 @@
 #ifndef CORE_SERVICES_RECORDER_FIXTURE_WRITER_H_
 #define CORE_SERVICES_RECORDER_FIXTURE_WRITER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
-#include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -41,14 +40,28 @@ struct FixtureAction {
   int64_t record_ms = 0;  // invocation time (epoch ms)
 };
 
+struct FixtureCallGroup {
+  std::string module_name;
+  std::string method_name;
+  std::vector<FixtureCall> calls;
+};
+
+struct FixtureCallbackTarget {
+  int64_t callback_id = 0;
+  size_t group_index = 0;
+  size_t call_index = 0;
+  int callback_index = 0;  // index in the invocation's callback list
+};
+
 enum class FixtureTemplateDataFormat {
   kPlain,
   kLegacyEnvelope,  // {value: {...}, preprocessorName: ..., readOnly: ...}
 };
 
 struct FixtureData {
-  // key = module + '\0' + method -> calls in chronological order
-  std::unordered_map<std::string, std::vector<FixtureCall>> calls;
+  // Groups are appended on first use; calls within each group are
+  // chronological.
+  std::vector<FixtureCallGroup> call_groups;
   std::vector<FixtureAction> actions;
   std::vector<std::pair<std::string, int>> components;  // name, type
   std::vector<std::pair<std::string, std::string>> shared_data;
@@ -64,9 +77,9 @@ struct FixtureData {
   FixtureTemplateDataFormat load_template_data_format =
       FixtureTemplateDataFormat::kPlain;
 
-  // callback_id -> (calls key, call index, callback index in args)
-  std::unordered_map<int64_t, std::tuple<std::string, size_t, int>>
-      callback_lookup;
+  // A callback id can be reused by multiple module calls. Targets stay in
+  // invocation order so the recorder can select the latest compatible call.
+  std::vector<FixtureCallbackTarget> callback_targets;
 };
 
 // Hard cap on the total uncompressed content of one fixture zip (OOM
