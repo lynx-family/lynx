@@ -110,21 +110,76 @@ void ElementContainer::CalcUIIndexForFixed(ElementContainer* child,
 }
 
 void ElementContainer::AddChild(ElementContainer* child, int index) {
+  AddChildInternal(child, index, nullptr);
+}
+
+bool ElementContainer::KeepsUnifiedFixedUIOrder() const {
+  return IsRootContainer() && element()->IsFiberArch() &&
+         element()->IsFixedUnifiedEnabled() && !element()->GetEnableFixedNew();
+}
+
+void ElementContainer::AddChildInternal(ElementContainer* child, int index,
+                                        ElementContainer* previous,
+                                        bool preserve_position) {
   if (child->parent()) {
     child->RemoveFromParent(true);
   }
-  children_.push_back(child);
 
   if (!child->element()->IsLayoutOnly()) {
     none_layout_only_children_size_++;
   }
   // If the index is equal to -1 should add to the last. The node could be
   // position: fixed or with z-index.
-  if (index != -1) {
+  const bool insert_after_previous = previous || preserve_position;
+  if (index != -1 && !insert_after_previous) {
     index = index + static_cast<int>(negative_z_children_.size());
   }
 
-  CalcUIIndexForFixed(child, index);
+  if (!insert_after_previous || child->element()->IsFixedNewOrUnified()) {
+    CalcUIIndexForFixed(child, index);
+  }
+
+  if (KeepsUnifiedFixedUIOrder()) {
+    // Keep the root's mounted order, including zero-width layout-only fixed
+    // anchors. Render children cannot locate a fixed subtree mounted here, and
+    // insertion timestamps cannot account for subsequent insert-before moves.
+    auto it = children_.begin();
+    if (insert_after_previous) {
+      index = 0;
+      while (previous && it != children_.end()) {
+        auto* current = *it++;
+        index += !current->element()->IsLayoutOnly();
+        if (current == previous) {
+          break;
+        }
+      }
+      DCHECK(!previous || previous->parent() == this);
+    } else if (index == -1) {
+      it = children_.end();
+    } else {
+      if (child->element()->IsLayoutOnly() &&
+          child->element()->IsFixedUnifiedOnly()) {
+        index += static_cast<int>(negative_z_children_.size());
+      }
+      int ui_index = 0;
+      while (it != children_.end() && ui_index < index) {
+        ui_index += !(*it)->element()->IsLayoutOnly();
+        ++it;
+      }
+      // Empty fixed subtrees can share a native index. Preserve their anchors'
+      // order so that populating an earlier subtree does not pass a later one.
+      while (
+          it != children_.end() && (*it)->element()->IsLayoutOnly() &&
+          child->element()->IsFixedUnifiedOnly() &&
+          (!(*it)->element()->IsFixedUnifiedOnly() ||
+           (*it)->global_insertion_order_ < child->global_insertion_order_)) {
+        ++it;
+      }
+    }
+    children_.insert(it, child);
+  } else {
+    children_.push_back(child);
+  }
 
   child->set_parent(this);
   if ((child->ZIndex() != 0 || child->IsSticky()) && need_update_) {
@@ -255,7 +310,8 @@ std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
 }
 
 void ElementContainer::AttachChildToTargetContainerRecursive(
-    ElementContainer* parent, Element* child, int& index) {
+    ElementContainer* parent, Element* child, int& index,
+    ElementContainer** previous) {
   if (child->ZIndex() != 0 || child->IsFixedNewOrUnified()) {
     if (child->IsFixedNewOrUnified()) {
       // fixed node should attach to page root.
@@ -267,6 +323,18 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
     auto ui_parent =
         parent->EnclosingStackingContextNode()->CastToElementContainer();
     ui_parent->AddChild(child->element_container_impl(), -1);
+    if (child->IsLayoutOnly() && child->IsFixedUnifiedOnly() &&
+        ui_parent->KeepsUnifiedFixedUIOrder()) {
+      // A detached layout-only fixed has no native subtree to move with it.
+      // Reattach any existing render children after its root anchor as well.
+      auto* fixed_previous = child->element_container_impl();
+      int fixed_index = 0;
+      for (auto* grand = child->first_render_child(); grand;
+           grand = grand->next_render_sibling()) {
+        AttachChildToTargetContainerRecursive(ui_parent, grand, fixed_index,
+                                              &fixed_previous);
+      }
+    }
     return;
   }
   if (element_manager()->GetEnableNewSticky() && child->is_sticky() && parent) {
@@ -286,7 +354,12 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
       !child->is_wrapper() && !child->is_virtual()) {
     child->TransitionToNativeView();
   }
-  parent->AddChild(child->element_container_impl(), index);
+  if (previous) {
+    parent->AddChildInternal(child->element_container_impl(), index, *previous);
+    *previous = child->element_container_impl();
+  } else {
+    parent->AddChild(child->element_container_impl(), index);
+  }
   if (!child->IsLayoutOnly()) {
     ++index;
     return;
@@ -294,7 +367,7 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
   // Layout only node should add subtree to parent recursively.
   auto* grand = child->first_render_child();
   while (grand) {
-    AttachChildToTargetContainerRecursive(parent, grand, index);
+    AttachChildToTargetContainerRecursive(parent, grand, index, previous);
     grand = grand->next_render_sibling();
   }
 }
@@ -319,8 +392,9 @@ bool ElementContainer::HasUIPrimitive() const {
 void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
                                                                 Element* ref) {
   if (child->IsFixedNewOrUnified()) {
-    element_manager()->root()->element_container_impl()->AddChild(
-        child->element_container_impl(), -1);
+    int index = 0;
+    AttachChildToTargetContainerRecursive(
+        element_manager()->root()->element_container_impl(), child, index);
     return;
   }
   if (child->ZIndex() != 0) {
@@ -338,10 +412,12 @@ void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
     }
   }
   std::pair<ElementContainer*, int> result;
-  result = FindParentAndIndexForChildForFiber(element(), child, ref);
+  ElementContainer* previous = nullptr;
+  result = FindParentAndIndexForChildForFiber(element(), child, ref, &previous);
   if (result.first) {
     int index = result.second;
-    AttachChildToTargetContainerRecursive(result.first, child, index);
+    AttachChildToTargetContainerRecursive(result.first, child, index,
+                                          previous ? &previous : nullptr);
   }
 }
 
@@ -619,6 +695,19 @@ void ElementContainer::TransitionToNativeView(
   LOGI("[ElementContainer] TransitionToNativeView tag:"
        << element()->GetTag().str() << ",id:" << element()->impl_id());
 
+  ElementContainer* fixed_root = nullptr;
+  ElementContainer* previous = nullptr;
+  if (element()->IsFixedUnifiedOnly() && parent() &&
+      element_container_parent()->KeepsUnifiedFixedUIOrder()) {
+    fixed_root = element_container_parent();
+    for (auto* sibling : fixed_root->children_) {
+      if (sibling == this) {
+        break;
+      }
+      previous = sibling;
+    }
+  }
+
   // Remove from current parent.
   RemoveFromParent(true);
 
@@ -635,7 +724,13 @@ void ElementContainer::TransitionToNativeView(
       element()->NodeIndex());
 
   // Insert children to this.
-  InsertSelf();
+  if (fixed_root) {
+    // Creating a UI for the existing fixed anchor must preserve its current
+    // slot, including ordinary root children inserted since the anchor.
+    fixed_root->AddChildInternal(this, 0, previous, true);
+  } else {
+    InsertSelf();
+  }
 
   // Mark need update layout value to impl layer.
   element()->MarkFrameChanged();
@@ -837,11 +932,38 @@ void ElementContainer::StickyChanged() {
 }
 
 //========helper function for get index for fiber ========
+// Find the preceding mounted child within the fixed subtree. Fixed, z-index,
+// and sticky children are mounted or sorted independently and must not
+// contribute to its ordinary UI position. Layout-only wrappers contribute only
+// their descendants.
+bool ElementContainer::FindPreviousChildForLayoutOnlyFixed(
+    Element* parent, Element* child, ElementContainer* root,
+    ElementContainer*& previous) {
+  for (auto* node = parent->first_render_child(); node;
+       node = node->next_render_sibling()) {
+    if (node == child) {
+      return true;
+    }
+    if (node->IsFixedNewOrUnified() || node->ZIndex() != 0 ||
+        (node->is_sticky() && !node->IsLayoutOnly())) {
+      continue;
+    }
+    if (node->IsLayoutOnly()) {
+      if (FindPreviousChildForLayoutOnlyFixed(node, child, root, previous)) {
+        return true;
+      }
+    } else if (node->element_container_impl()->parent() == root) {
+      previous = node->element_container_impl();
+    }
+  }
+  return false;
+}
+
 // static
 std::pair<ElementContainer*, int>
-ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
-                                                     Element* child,
-                                                     Element* ref) {
+ElementContainer::FindParentAndIndexForChildForFiber(
+    Element* parent, Element* child, Element* ref,
+    ElementContainer** previous) {
   auto* real_parent = parent;
   // Traverse up the render tree to find the nearest ancestor that has a
   // corresponding UI node. Layout-only elements do not have UI nodes, so we
@@ -863,7 +985,30 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
 
   if (real_parent && real_parent->IsLayoutOnly() &&
       real_parent->IsFixedUnifiedOnly()) {
+    auto* fixed = real_parent;
     real_parent = real_parent->element_manager()->root();
+    auto* root_container = real_parent->element_container_impl();
+    if (root_container->KeepsUnifiedFixedUIOrder()) {
+      auto* predecessor = fixed->element_container_impl();
+      bool found = FindPreviousChildForLayoutOnlyFixed(
+          fixed, child, root_container, predecessor);
+      DCHECK(found);
+      int index = 0;
+      for (auto* container : root_container->children_) {
+        index += !container->element()->IsLayoutOnly();
+        if (container == predecessor) {
+          break;
+        }
+      }
+      if (previous) {
+        *previous = predecessor;
+      }
+      // The normal AddChild API adds the negative-z prefix. The predecessor
+      // path instead computes the final physical index at insertion time.
+      return {root_container,
+              index - static_cast<int>(
+                          root_container->negative_z_children_.size())};
+    }
   }
 
   if (!real_parent) {
@@ -936,14 +1081,18 @@ int ElementContainer::GetUIIndexForChildForFiber(Element* parent,
 // static
 int ElementContainer::GetUIChildrenCountForFiber(Element* parent) {
   int ret = 0;
-  auto* child = parent->first_render_child();
-  while (child) {
+  for (auto* child = parent->first_render_child(); child;
+       child = child->next_render_sibling()) {
+    // Fixed subtrees mount independently of this render parent, even when
+    // layout-only. Exclude them before recursing into their descendants.
+    if (child->IsFixedNewOrUnified()) {
+      continue;
+    }
     if (child->IsLayoutOnly()) {
       ret += GetUIChildrenCountForFiber(child);
-    } else if (child->ZIndex() == 0 && !child->IsFixedNewOrUnified()) {
+    } else if (child->ZIndex() == 0) {
       ret++;
     }
-    child = child->next_render_sibling();
   }
   return ret;
 }
