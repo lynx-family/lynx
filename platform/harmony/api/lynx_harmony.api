@@ -460,6 +460,12 @@ export class LynxUIMethodConstants {
   public static OPERATION_ERROR: any; = 8
 }
 
+export interface LynxJSVMInitOptions {
+  incrementalMarkingHardTrigger: number;
+  minSemiSpaceSize: number;
+  maxSemiSpaceSize: number;
+}
+
 export interface LynxEmojiResource {
   name: string;
   uri: string | number;
@@ -470,6 +476,7 @@ export interface LynxEmojiResourceFetcher {
 }
 
 export const LynxEnv: LynxEnvironment {
+  public setJSVMInitOptions(options: LynxJSVMInitOptions): boolean;
   public initialize(context: common.Context): void;
   setAppInfo(appInfo: Map<string, string>): void;
   public enableLynxDebug(enabled: boolean): void;
