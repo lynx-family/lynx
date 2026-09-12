@@ -239,6 +239,49 @@
   [_outerGestures removeAllObjects];
 }
 
+- (void)reset {
+  [super reset];
+  [self cancelStrandedTouchSequence];
+}
+
+- (void)cancelStrandedTouchSequence {
+  if ([_touches count] == 0) {
+    return;
+  }
+  _LogI(@"LynxTouchHandler: cancelStrandedTouchSequence %p: ", _eventHandler.rootView);
+  if (_touchBegin && !_touchEndOrCancel) {
+    // UIKit has already reset the recognizer, or a new sequence is about to begin.
+    // Complete cancellation without scheduling another UIKit reset for that new sequence.
+    [self cancelTouches:[_touches copy] withEvent:_event updateRecognizerState:NO];
+    return;
+  }
+  [self onTouchEndOrCancel];
+  [self resetTouchEnv];
+}
+
+- (BOOL)flushStrandedTouchesIfNeeded:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  if ([_touches count] == 0) {
+    return NO;
+  }
+  BOOL hasStrandedTouch = NO;
+  NSSet<UITouch*>* aliveTouches = [event allTouches];
+  for (UITouch* touch in _touches) {
+    // A began phase only starts a new sequence when this callback begins the tracked touch again.
+    // An unavailable event touch list does not establish that an existing touch has disappeared.
+    if ((touch.phase == UITouchPhaseBegan && [touches containsObject:touch]) ||
+        touch.phase == UITouchPhaseEnded || touch.phase == UITouchPhaseCancelled ||
+        (aliveTouches != nil && ![aliveTouches containsObject:touch])) {
+      hasStrandedTouch = YES;
+      break;
+    }
+  }
+  if (!hasStrandedTouch) {
+    return NO;
+  }
+  [self cancelStrandedTouchSequence];
+  return YES;
+}
+
 - (BOOL)isTouchMoving {
   return _touchMoving;
 }
@@ -646,6 +689,7 @@
 }
 
 - (void)touchesBeganInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  [self flushStrandedTouchesIfNeeded:touches withEvent:event];
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:
               [NSString stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
@@ -1114,6 +1158,12 @@
 }
 
 - (void)touchesCancelledInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  [self cancelTouches:touches withEvent:event updateRecognizerState:YES];
+}
+
+- (void)cancelTouches:(NSSet<UITouch*>*)touches
+                withEvent:(UIEvent*)event
+    updateRecognizerState:(BOOL)updateRecognizerState {
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:
               [NSString stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
@@ -1121,10 +1171,12 @@
                      withLevel:DevToolLogLevelInfo];
   }
 
-  if ([self isAllTouchesAreCancelledOrEnded:_touches]) {
-    self.state = UIGestureRecognizerStateCancelled;
-  } else if ([self hasAnyTouchesChanged:_touches]) {
-    self.state = UIGestureRecognizerStateChanged;
+  if (updateRecognizerState) {
+    if ([self isAllTouchesAreCancelledOrEnded:_touches]) {
+      self.state = UIGestureRecognizerStateCancelled;
+    } else if ([self hasAnyTouchesChanged:_touches]) {
+      self.state = UIGestureRecognizerStateChanged;
+    }
   }
 
   NSMutableDictionary* dict = [NSMutableDictionary new];
@@ -1182,7 +1234,7 @@
   [_target dispatchTouch:LynxEventTouchCancel touches:touches withEvent:event];
 
   if ([_touches count] == 0) {
-    if (_enableEndGestureAtLastFingerUp) {
+    if (updateRecognizerState && _enableEndGestureAtLastFingerUp) {
       self.state = UIGestureRecognizerStateCancelled;
     }
     [self onTouchEndOrCancel];
@@ -1194,8 +1246,12 @@
           .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
   if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
       childLynxPage.view.isChildLynxPage) {
-    [childLynxPage.context.eventHandler.touchRecognizer touchesCancelledInner:touches
-                                                                    withEvent:event];
+    LynxTouchHandler* childRecognizer = childLynxPage.context.eventHandler.touchRecognizer;
+    if (updateRecognizerState) {
+      [childRecognizer touchesCancelledInner:touches withEvent:event];
+    } else {
+      [childRecognizer cancelTouches:touches withEvent:event updateRecognizerState:NO];
+    }
   }
 }
 
