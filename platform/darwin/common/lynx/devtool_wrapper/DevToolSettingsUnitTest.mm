@@ -51,6 +51,7 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   XCTAssertFalse(settings.devToolEnabled);
   XCTAssertTrue(settings.logBoxEnabled);
   XCTAssertFalse(settings.launchRecordEnabled);
+  XCTAssertFalse(settings.fixtureArtifactEnabled);
   XCTAssertTrue(settings.quickjsDebugEnabled);
   XCTAssertTrue(settings.domTreeEnabled);
   XCTAssertFalse(settings.perfMetricsEnabled);
@@ -70,15 +71,18 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   // Change values
   settings.devToolEnabled = YES;
   settings.logBoxEnabled = NO;
+  settings.fixtureArtifactEnabled = YES;
 
   // Verify values are updated in memory
   XCTAssertTrue(settings.devToolEnabled);
   XCTAssertFalse(settings.logBoxEnabled);
+  XCTAssertTrue(settings.fixtureArtifactEnabled);
 
   // Verify persistence in NSUserDefaults
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
   XCTAssertTrue([defaults boolForKey:SP_KEY_ENABLE_DEVTOOL]);
   XCTAssertFalse([defaults boolForKey:SP_KEY_ENABLE_LOGBOX]);
+  XCTAssertTrue([defaults boolForKey:SP_KEY_ENABLE_FIXTURE_ARTIFACT]);
 }
 
 - (void)testBootstrapDefaultValues {

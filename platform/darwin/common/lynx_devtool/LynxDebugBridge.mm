@@ -24,6 +24,7 @@
 #endif
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/services/recorder/recorder_controller.h"
+#include "core/services/recorder/recorder_types.h"
 #include "devtool/lynx_devtool/config/devtool_config.h"
 
 typedef LynxInspectorOwner DevToolAgentDispatcher;
@@ -67,7 +68,10 @@ typedef LynxInspectorOwner DevToolAgentDispatcher;
     [[DebugRouter instance] addStateListener:self];
   }
   if (LynxEnv.sharedInstance.launchRecordEnabled) {
-    lynx::tasm::recorder::RecorderController::StartRecord();
+    const auto format = [DevToolSettings sharedInstance].fixtureArtifactEnabled
+                            ? lynx::tasm::recorder::ArtifactFormat::kBoth
+                            : lynx::tasm::recorder::ArtifactFormat::kJson;
+    lynx::tasm::recorder::RecorderController::StartRecord(format);
   }
   [LynxEventReporter addEventReportObserver:self];
   return self;
