@@ -1,0 +1,12 @@
+{
+  "name": "@lynx/lynx_jsvm_initializer",
+  "version": "@param:dependencies.lynx_version",
+  "description": "Harmony JSVM initializer",
+  "main": "Index.ets",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "liblynx_jsvm_initializer.so": "file:./src/main/cpp/types/liblynx_jsvm_initializer",
+  },
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)"
+}
