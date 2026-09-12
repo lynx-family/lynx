@@ -6,6 +6,7 @@
 
 #include <ark_runtime/jsvm.h>
 #include <ark_runtime/jsvm_types.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,7 +14,17 @@ extern "C" {
 
 // All participating callers must use the same shared library. Direct calls to
 // OH_JSVM_Init outside this library are not covered by this guarantee.
-// The first call supplies the initialization options. Its result, including a
+// Saves a complete configuration without initializing JSVM. The trigger must be
+// in [0, 100]; semi-space sizes are positive MiB values with min <= max.
+// Returns false for invalid values or once initialization has started. Before
+// that, the last successful call wins. These values override the corresponding
+// flags supplied to Lynx_JSVM_Common_Init by any participating caller.
+__attribute__((visibility("default"))) bool Lynx_JSVM_SetInitOptions(
+    int32_t incremental_marking_hard_trigger, int32_t min_semi_space_size,
+    int32_t max_semi_space_size);
+
+// Without a saved configuration, forwards the first caller's options unchanged.
+// The result of the first attempt, including a
 // failure to resolve or initialize JSVM, is cached; later calls do not retry.
 __attribute__((visibility("default"))) JSVM_Status Lynx_JSVM_Common_Init(
     const JSVM_InitOptions* options);

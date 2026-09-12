@@ -7,6 +7,8 @@
 #include <js_native_api.h>
 
 #include <atomic>
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -48,6 +50,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/emoji_resource_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
+#include "platform/harmony/lynx_jsvm_initializer/src/main/cpp/jsvm_initializer.h"
 
 #if ENABLE_TESTBENCH_REPLAY
 #include "core/services/replay/testbench_utils_embedder.h"
@@ -803,6 +806,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   napi_set_named_property(env, exports, export_class.c_str(), cons);
 
   NAPI_CREATE_FUNCTION(env, exports, "initGlobalEnv", InitGlobalEnv);
+  NAPI_CREATE_FUNCTION(env, exports, "setJSVMInitOptions", SetJSVMInitOptions);
   NAPI_CREATE_FUNCTION(env, exports, "setupHarmonyMessageLoopPromiseMicrotask",
                        SetupHarmonyMessageLoopPromiseMicrotask);
   NAPI_CREATE_FUNCTION(env, exports, "registerImageService",
@@ -909,6 +913,40 @@ napi_value LynxTemplateRenderer::InvokeLepusCallback(napi_env env,
     return engine->InvokeLepusCallback(id, entry, lepus_value);
   });
   return nullptr;
+}
+
+napi_value LynxTemplateRenderer::SetJSVMInitOptions(napi_env env,
+                                                    napi_callback_info info) {
+  size_t argc = 3;
+  napi_value args[3] = {nullptr};
+  int32_t values[3] = {};
+  bool valid =
+      napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) == napi_ok &&
+      argc == 3;
+  for (size_t i = 0; valid && i < argc; ++i) {
+    double value = 0;
+    valid = napi_get_value_double(env, args[i], &value) == napi_ok &&
+            std::isfinite(value) && std::trunc(value) == value && value >= 0 &&
+            value <= std::numeric_limits<int32_t>::max();
+    if (valid) {
+      values[i] = static_cast<int32_t>(value);
+    }
+  }
+  valid = valid && values[0] <= 100 && values[1] > 0 && values[2] >= values[1];
+  bool accepted = false;
+  if (!valid) {
+    LOGE(
+        "Invalid JSVM initialization options: expected an integer trigger in "
+        "[0, 100] and positive int32 semi-space sizes in MiB with min <= max");
+  } else {
+    accepted = Lynx_JSVM_SetInitOptions(values[0], values[1], values[2]);
+    if (!accepted) {
+      LOGW("Cannot set JSVM options after shared initialization has started");
+    }
+  }
+  napi_value result = nullptr;
+  napi_get_boolean(env, accepted, &result);
+  return result;
 }
 
 napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
