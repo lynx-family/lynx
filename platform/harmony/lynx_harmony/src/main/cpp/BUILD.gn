@@ -281,6 +281,8 @@ lynx_core_source_set("cpp") {
     "ohresmgr",
     "ohpreferences",
   ]
+
+  deps += [ "../../../../lynx_jsvm_initializer" ]
 }
 
 config("harmony_public_config") {

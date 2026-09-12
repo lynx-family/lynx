@@ -174,6 +174,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);
   static napi_value InitGlobalEnv(napi_env env, napi_callback_info info);
+  static napi_value SetJSVMInitOptions(napi_env env, napi_callback_info info);
   static napi_value SetupHarmonyMessageLoopPromiseMicrotask(
       napi_env env, napi_callback_info info);
   static napi_value RegisterImageService(napi_env env, napi_callback_info info);
