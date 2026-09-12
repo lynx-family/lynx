@@ -58,7 +58,8 @@ if (is_android) {
     ]
   }
 }
-if ((is_win || is_mac || is_ios || (is_linux && is_headless)) &&
+if ((is_win || is_mac || is_ios || (is_linux && is_headless) ||
+     (is_harmony && is_headless)) &&
     !enable_unittests) {
   ui_platform_fallback_sources -= [
     "common/native_view_service_common.cc",
