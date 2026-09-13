@@ -88,6 +88,7 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
     return JSRuntimeType::quickjs;
   }
   std::string GetDebugDescription() const override;
+  size_t GetHeapSize() const override;
 
   // Must exec in use thread.
   void AddToIdContainer();

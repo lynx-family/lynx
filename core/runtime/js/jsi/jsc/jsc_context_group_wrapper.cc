@@ -10,16 +10,13 @@ namespace lynx {
 namespace runtime {
 namespace js {
 JSCContextGroupWrapper::~JSCContextGroupWrapper() {
-  LOGI("~JSCContextGroupWrapper " << this);
   if (group_ != nullptr) {
-    LOGI("JSContextGroupRelease:" << group_);
     JSContextGroupRelease(group_);
     group_ = nullptr;
   }
 }
 
 void JSCContextGroupWrapper::InitContextGroup() {
-  LOGI("JSContextGroupCreate");
   group_ = JSContextGroupCreate();
 }
 

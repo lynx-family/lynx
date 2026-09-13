@@ -20,7 +20,8 @@ class JSVMRuntimeInstance : public VMInstance {
   ~JSVMRuntimeInstance() override;
 
   JSRuntimeType GetRuntimeType() const override { return JSRuntimeType::jsvm; };
-  std::string GetDebugDescription() const override { return "jsvm"; }
+  std::string GetDebugDescription() const override { return "jsvm"; };
+  size_t GetHeapSize() const override;
 
   void InitInstance();
   JSVM_VM GetVM() const { return vm_; }

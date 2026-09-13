@@ -60,6 +60,15 @@ void JSVMRuntimeInstance::InitInstance() {
 
   JSVM_CALL_NO_ENV(OH_JSVM_OpenVMScope, vm_, &vm_scope_);
 }
+
+size_t JSVMRuntimeInstance::GetHeapSize() const {
+  if (vm_) {
+    JSVM_HeapStatistics stats;
+    JSVM_CALL_NO_ENV(OH_JSVM_GetHeapStatistics, vm_, &stats);
+    return stats.usedHeapSize;
+  }
+  return 0;
+}
 }  // namespace js
 }  // namespace runtime
 }  // namespace lynx
