@@ -16,6 +16,11 @@ class LynxViewDataManager {
   static lepus::Value* ParseData(const char* data);
   static void ReleaseData(lepus::Value* obj);
   static void UpdateData(lepus::Value& dest, const lepus::Value& src);
+
+  // Merges the first-level keys from src into dest when both values are
+  // tables. Values with the same key are replaced as a whole instead of being
+  // merged recursively.
+  static void MergeData(lepus::Value& dest, const lepus::Value& src);
 };
 
 }  // namespace tasm
