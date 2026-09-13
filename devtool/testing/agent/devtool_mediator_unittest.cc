@@ -955,19 +955,26 @@ TEST_F(DevToolMediatorTest,
 }
 
 TEST_F(DevToolMediatorTest, HighlightTest) {
-  Json::Value param1(Json::objectValue);
-  param1["id"] = 1;
-  devtool_mediator_->HighlightNode(message_sender_, param1);
-  tasm_thread_->Join();
-  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
+  devtool_mediator_->HighlightNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1),
+      Json::Value());
+  FlushTasmTasks();
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 1);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"], "Invalid nodeId: expected integer");
+  EXPECT_FALSE(response.isMember("result"));
 
-  Json::Value param2;
-  param2["id"] = 1;
-  devtool_mediator_->HideHighlight(message_sender_, param2);
-  tasm_thread_->Join();
+  devtool_mediator_->HideHighlight(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 2),
+      Json::Value());
+  FlushTasmTasks();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
+            "{\n   \"id\" : 2,\n   \"result\" : {}\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, GetAllTimingInfoTest) {
