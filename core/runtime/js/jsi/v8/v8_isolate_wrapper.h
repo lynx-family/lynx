@@ -28,6 +28,14 @@ class V8IsolateInstance : public VMInstance {
   virtual v8::Isolate* Isolate() const = 0;
   JSRuntimeType GetRuntimeType() const override { return JSRuntimeType::v8; }
   std::string GetDebugDescription() const override { return "v8"; }
+  size_t GetHeapSize() const override {
+    if (auto isolate = Isolate(); isolate) {
+      v8::HeapStatistics stats;
+      isolate->GetHeapStatistics(&stats);
+      return stats.used_heap_size();
+    }
+    return 0;
+  }
 };
 
 }  // namespace js

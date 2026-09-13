@@ -81,7 +81,6 @@ QuickjsRuntimeInstance::QuickjsRuntimeInstance()
 }
 
 QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
-  LOGE("LYNX free quickjs runtime start");
   if (rt_) {
     LEPUS_SetGCObserver(rt_, nullptr);
     LEPUS_FreeRuntime(rt_);
@@ -93,8 +92,6 @@ QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
 #if ENABLE_TRACE_PERFETTO
   ReportMemoryForTrace();
 #endif
-
-  LOGI("LYNX free quickjs runtime end. " << this << " LEPUSRuntime: " << rt_);
 }
 
 LepusIdContainer& QuickjsRuntimeInstance::GetObjectIdContainer() {
@@ -235,6 +232,13 @@ void QuickjsRuntimeInstance::RemoveObserver(JSIObserver* obs) {
 
 std::string QuickjsRuntimeInstance::GetDebugDescription() const {
   return detail::QuickjsHelper::GetDebugDescription(rt_);
+}
+
+size_t QuickjsRuntimeInstance::GetHeapSize() const {
+  if (rt_) {
+    return LEPUS_GetHeapSize(rt_);
+  }
+  return 0;
 }
 
 void QuickjsRuntimeInstance::AddToIdContainer() {

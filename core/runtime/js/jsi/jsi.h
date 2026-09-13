@@ -1743,6 +1743,7 @@ class VMInstance {
   }
   virtual JSRuntimeType GetRuntimeType() const = 0;
   virtual std::string GetDebugDescription() const = 0;
+  virtual size_t GetHeapSize() const { return 0; }
 };
 
 class HostGlobal {
