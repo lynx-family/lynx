@@ -34,6 +34,10 @@
   _LogE(@"updateWithTemplateData is not supported for static-page data");
 }
 
+- (void)updateWithTemplateData:(LynxTemplateData*)value overwrite:(BOOL)overwrite {
+  _LogE(@"updateWithTemplateData is not supported for static-page data");
+}
+
 - (BOOL)checkIsLegalData {
   return YES;
 }
