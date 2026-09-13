@@ -18,7 +18,6 @@
 #include "core/renderer/data/platform_data.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
-#include "core/renderer/utils/value_utils.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateData_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateData_register_jni.h"
 
@@ -102,14 +101,7 @@ void MergeTemplateData(JNIEnv* env, jclass jcaller, jlong destPtr,
 
   auto destValue = reinterpret_cast<lynx::lepus::Value*>(destPtr);
   auto srcValue = reinterpret_cast<lynx::lepus::Value*>(srcPtr);
-  if (destValue->IsTable() && destValue->Table()->IsConst()) {
-    *destValue = lynx::lepus::Value::Clone(*destValue);
-  }
-  lynx::tasm::ForEachLepusValue(*srcValue,
-                                [&destValue](const lynx::lepus::Value& key,
-                                             const lynx::lepus::Value& value) {
-                                  destValue->SetProperty(key.String(), value);
-                                });
+  lynx::tasm::LynxViewDataManager::MergeData(*destValue, *srcValue);
 }
 
 void ReleaseData(JNIEnv* env, jclass jcaller, jlong data) {
