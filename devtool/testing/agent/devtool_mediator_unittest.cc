@@ -22,6 +22,7 @@
 #include "core/services/replay/replay_controller.h"
 #include "core/services/replay/testbench_test_replay.h"
 #include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
@@ -242,8 +243,9 @@ TEST_F(DevToolMediatorTest, IOCloseInvalidStreamHandleCase) {
 }
 
 TEST_F(DevToolMediatorTest, LogEnable) {
-  Json::Value param;
-  devtool_mediator_->LogEnable(message_sender_, param);
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogEnable(responder, params);
   devtool_thread_->Join();
   EXPECT_TRUE(
       devtool_mediator_->devtool_executor_->console_msg_manager_->enable_);
@@ -535,8 +537,9 @@ TEST_F(DevToolMediatorTest, LynxSendEventToVM) {
 }
 
 TEST_F(DevToolMediatorTest, LogDisable) {
-  Json::Value param;
-  devtool_mediator_->LogDisable(message_sender_, param);
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogDisable(responder, params);
   devtool_thread_->Join();
   EXPECT_FALSE(
       devtool_mediator_->devtool_executor_->console_msg_manager_->enable_);
@@ -545,8 +548,9 @@ TEST_F(DevToolMediatorTest, LogDisable) {
 }
 
 TEST_F(DevToolMediatorTest, LogClear) {
-  Json::Value param;
-  devtool_mediator_->LogClear(message_sender_, param);
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogClear(responder, params);
   devtool_thread_->Join();
   EXPECT_TRUE(devtool_mediator_->devtool_executor_->console_msg_manager_
                   ->log_messages_.empty());
@@ -556,8 +560,12 @@ TEST_F(DevToolMediatorTest, LogClear) {
 
 TEST_F(DevToolMediatorTest, LogEntryAdded) {
   lynx::runtime::js::ConsoleMessage param("test", 2, 0);
-  devtool_mediator_->LogClear(message_sender_, Json::Value());
-  devtool_mediator_->LogEnable(message_sender_, Json::Value());
+  auto clear_responder =
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogClear(clear_responder, Json::Value());
+  auto enable_responder =
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogEnable(enable_responder, Json::Value());
   devtool_mediator_->SendLogEntryAddedEvent(std::move(param));
   devtool_thread_->Join();
   EXPECT_FALSE(devtool_mediator_->devtool_executor_->console_msg_manager_
