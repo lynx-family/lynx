@@ -1236,26 +1236,23 @@ void LynxDevToolMediator::RemoveCDPEventListener(const std::string& name) {
 }
 
 void LynxDevToolMediator::EmulateTouchFromMouseEvent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->EmulateTouchFromMouseEvent(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->EmulateTouchFromMouseEvent(responder, params);
   });
 }
 
 void LynxDevToolMediator::InsertText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->InsertText(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->InsertText(responder, params);
   });
 }
 
 void LynxDevToolMediator::SynthesizeTapGesture(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->SynthesizeTapGesture(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->SynthesizeTapGesture(responder, params);
   });
 }
 
