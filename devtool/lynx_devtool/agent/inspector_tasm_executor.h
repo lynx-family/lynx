@@ -164,8 +164,8 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(SetSupportsText)
 
   // overlay
-  DECLARE_DEVTOOL_METHOD(HighlightNode)
-  DECLARE_DEVTOOL_METHOD(HideHighlight)
+  DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);
+  DECLARE_DEVTOOL_CDP_METHOD(HideHighlight);
 
   // layer tree
   DECLARE_DEVTOOL_CDP_METHOD(LayerTreeEnable);
