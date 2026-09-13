@@ -241,6 +241,10 @@ if (enable_unittests) {
       sources += [ "../shell/common/services/initialize_service.cc" ]
     }
 
+    if (is_harmony) {
+      sources += [ "gesture/arena_manager_unittests.cc" ]
+    }
+
     public_configs = [
       "../:export_dynamic_symbols",
       "../:config",
