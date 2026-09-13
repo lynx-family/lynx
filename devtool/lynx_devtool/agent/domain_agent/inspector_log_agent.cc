@@ -17,39 +17,35 @@ InspectorLogAgent::InspectorLogAgent(
 
 InspectorLogAgent::~InspectorLogAgent() = default;
 
-void InspectorLogAgent::CallMethod(const std::shared_ptr<MessageSender>& sender,
-                                   const Json::Value& message) {
+void InspectorLogAgent::CallMethod(
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   std::string method = message["method"].asString();
   std::map<std::string, LogAgentMethod>::iterator iter;
   // Do not process Log messages for the MTS target to avoid sending duplicate
   // `Log.entryAdded` messages.
   if (message.isMember("sessionId") ||
       (iter = functions_map_.find(method)) == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   } else {
-    (this->*(iter->second))(sender, message);
+    (this->*(iter->second))(responder, message["params"]);
   }
 }
 
-void InspectorLogAgent::Enable(const std::shared_ptr<MessageSender>& sender,
-                               const Json::Value& message) {
-  devtool_mediator_->LogEnable(sender, message);
+void InspectorLogAgent::Enable(const std::shared_ptr<CDPResponder>& responder,
+                               const Json::Value& params) {
+  devtool_mediator_->LogEnable(responder, params);
 }
 
-void InspectorLogAgent::Disable(const std::shared_ptr<MessageSender>& sender,
-                                const Json::Value& message) {
-  devtool_mediator_->LogDisable(sender, message);
+void InspectorLogAgent::Disable(const std::shared_ptr<CDPResponder>& responder,
+                                const Json::Value& params) {
+  devtool_mediator_->LogDisable(responder, params);
 }
 
-void InspectorLogAgent::Clear(const std::shared_ptr<MessageSender>& sender,
-                              const Json::Value& message) {
-  devtool_mediator_->LogClear(sender, message);
-}
-
-void InspectorLogAgent::SendLog(
-    const std::shared_ptr<MessageSender>& sender,
-    const lynx::runtime::js::ConsoleMessage& message) {
-  devtool_mediator_->SendLogEntryAddedEvent(message);
+void InspectorLogAgent::Clear(const std::shared_ptr<CDPResponder>& responder,
+                              const Json::Value& params) {
+  devtool_mediator_->LogClear(responder, params);
 }
 
 }  // namespace devtool

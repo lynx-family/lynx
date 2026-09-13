@@ -157,28 +157,29 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(InspectorEnable)
   DECLARE_DEVTOOL_METHOD(InspectorDetached)
 
-  // methods of Log domain -> devtool executor
-  DECLARE_DEVTOOL_METHOD(LogEnable)
-  DECLARE_DEVTOOL_METHOD(LogDisable)
-  DECLARE_DEVTOOL_METHOD(LogClear)
+  // Log domain -> devtool executor
+  DECLARE_DEVTOOL_CDP_METHOD(LogEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(LogDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(LogClear);
+  // TODO(devtool): Inject a log-event sink in tests and remove this test-only
+  // virtual hook.
+  virtual void SendLogEntryAddedEvent(
+      const lynx::runtime::js::ConsoleMessage& message);
 
-  // methods of Network domain -> devtool executor
+  // Network domain -> devtool executor
   DECLARE_DEVTOOL_METHOD(NetworkEnable)
   DECLARE_DEVTOOL_METHOD(NetworkDisable)
   DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
   DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
 
-  // events of Log domain -> devtool executor
-  virtual void SendLogEntryAddedEvent(
-      const lynx::runtime::js::ConsoleMessage& message);
+  // LynxNativeModule domain -> native module record manager
+  DECLARE_DEVTOOL_METHOD(NativeModuleEnable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleDisable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleGetRecords)
   // Hops a NativeModule record from the JS thread to the DevTool thread and
   // stores it in the per-instance record manager.
   void AddNativeModuleRecord(const lepus::Value& record);
 
-  // methods of LynxNativeModule domain -> native module record manager
-  DECLARE_DEVTOOL_METHOD(NativeModuleEnable)
-  DECLARE_DEVTOOL_METHOD(NativeModuleDisable)
-  DECLARE_DEVTOOL_METHOD(NativeModuleGetRecords)
   // Lynx domain
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)
