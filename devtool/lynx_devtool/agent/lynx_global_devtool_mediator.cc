@@ -11,6 +11,7 @@
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/replay/replay_controller.h"
+#include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 #include "devtool/lynx_devtool/base/file_stream.h"
 #include "devtool/lynx_devtool/tracing/devtool_trace_event_def.h"
@@ -190,77 +191,61 @@ void LynxGlobalDevToolMediator::EndReplayTest(
 }
 
 void LynxGlobalDevToolMediator::IORead(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  std::string handle_str = message["params"]["handle"].asString();
-  if (!std::isdigit(handle_str[0])) {
-    int id = static_cast<int>(message["id"].asInt64());
-    sender->SendErrorResponse(id, "Get invalid stream handle");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int handle = 0;
+  if (!ReadIntStringParam(params["handle"], handle) || handle < 0) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Get invalid stream handle");
     return;
   }
-
-  Json::Value res;
-  res["id"] = message["id"].asInt64();
-  res["result"]["base64Encoded"] = true;
-  int size = static_cast<int>(message["params"]["size"].asInt64());
-  if (size > 0) {
-    if (default_task_runner_) {
-      RunOnTaskRunner(default_task_runner_, [handle_str, size, sender, res] {
-        std::unique_ptr<char[]> buff = std::make_unique<char[]>(size);
-        int total_read = FileStream::Read(std::stoi(handle_str),
-                                          static_cast<char*>(buff.get()), size);
-        if (total_read > 0) {
-          int encode_length = lynx_modp_b64_encode_len(total_read);
-          std::unique_ptr<char[]> encode_buff =
-              std::make_unique<char[]>(encode_length);
-          lynx_modp_b64_encode(encode_buff.get(), buff.get(), total_read);
-          Json::Value result = res;
-          result["result"]["data"] =
-              std::string(encode_buff.get(), encode_length - 1);
-          if (total_read == size) {
-            result["result"]["eof"] = false;
-          } else {
-            result["result"]["eof"] = true;
-          }
-          sender->SendMessage("CDP", result);
-        } else {
-          Json::Value result = res;
-          result["result"]["eof"] = true;
-          sender->SendMessage("CDP", result);
-        }
-      });
-    } else {
-      sender->SendErrorResponse(res["id"].asInt(),
-                                "Cannot find default task runner");
-      return;
-    }
-  } else {
-    res["result"]["eof"] = true;
-    sender->SendMessage("CDP", res);
+  int size = 0;
+  if (params.isMember("size") && !ReadIntParam(params["size"], size)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid size: expected integer");
+    return;
   }
+  if (size <= 0) {
+    // Nothing to read: report an empty base64-encoded end-of-file chunk. The
+    // empty string is the base64 representation of zero bytes.
+    Json::Value result;
+    result["base64Encoded"] = true;
+    result["data"] = "";
+    result["eof"] = true;
+    responder->SendSuccess(std::move(result));
+    return;
+  }
+  RunOnDefaultTaskRunnerOrSendError(responder, [handle, size, responder] {
+    std::unique_ptr<char[]> buff = std::make_unique<char[]>(size);
+    int total_read = FileStream::Read(handle, buff.get(), size);
+    Json::Value result;
+    result["base64Encoded"] = true;
+    if (total_read > 0) {
+      int encode_length = lynx_modp_b64_encode_len(total_read);
+      std::unique_ptr<char[]> encode_buff =
+          std::make_unique<char[]>(encode_length);
+      lynx_modp_b64_encode(encode_buff.get(), buff.get(), total_read);
+      result["data"] = std::string(encode_buff.get(), encode_length - 1);
+      result["eof"] = total_read != size;
+    } else {
+      result["data"] = "";
+      result["eof"] = true;
+    }
+    responder->SendSuccess(std::move(result));
+  });
 }
 
 void LynxGlobalDevToolMediator::IOClose(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  std::string handle_str = message["params"]["handle"].asString();
-  if (!std::isdigit(handle_str[0])) {
-    int id = static_cast<int>(message["id"].asInt64());
-    sender->SendErrorResponse(id, "Get invalid stream handle");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int handle = 0;
+  if (!ReadIntStringParam(params["handle"], handle) || handle < 0) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Get invalid stream handle");
     return;
   }
-  Json::Value res;
-  res["id"] = message["id"].asInt64();
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [handle_str, sender, res] {
-      FileStream::Close(std::stoi(handle_str));
-      sender->SendMessage("CDP", res);
-    });
-  } else {
-    sender->SendErrorResponse(res["id"].asInt(),
-                              "Cannot find default task runner");
-    return;
-  }
+  RunOnDefaultTaskRunnerOrSendError(responder, [handle, responder] {
+    FileStream::Close(handle);
+    responder->SendSuccess();
+  });
 }
 
 void LynxGlobalDevToolMediator::RunOnDefaultTaskRunnerOrSendError(
