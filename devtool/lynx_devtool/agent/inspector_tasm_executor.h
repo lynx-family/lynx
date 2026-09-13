@@ -164,8 +164,8 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(SetSupportsText)
 
   // overlay
-  DECLARE_DEVTOOL_METHOD(HighlightNode)
-  DECLARE_DEVTOOL_METHOD(HideHighlight)
+  DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);
+  DECLARE_DEVTOOL_CDP_METHOD(HideHighlight);
 
   // layer tree
   DECLARE_DEVTOOL_CDP_METHOD(LayerTreeEnable);
@@ -234,7 +234,7 @@ class InspectorTasmExecutor
   bool dom_use_compression_;
   int dom_compression_threshold_;
   bool dom_enabled_{false};
-  size_t origin_node_id_ = 0;
+  int origin_node_id_ = 0;
 
   bool rule_usage_tracking_;
   bool layer_tree_enabled_ = false;
