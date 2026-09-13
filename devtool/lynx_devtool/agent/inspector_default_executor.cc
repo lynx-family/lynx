@@ -14,8 +14,8 @@ namespace devtool {
 InspectorDefaultExecutor::InspectorDefaultExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : devtool_mediator_wp_(devtool_mediator),
-      console_msg_manager_(
-          std::make_unique<ConsoleMessageManager>(devtool_mediator)),
+      console_msg_manager_(std::make_unique<ConsoleMessageManager>(
+          std::weak_ptr<LynxDevToolMediator>{devtool_mediator})),
       network_observer_(
           std::make_shared<NetworkRequestObserver>(devtool_mediator)) {}
 
@@ -82,26 +82,23 @@ void InspectorDefaultExecutor::SetDevToolPlatformFacade(
 
 // start log protocol
 void InspectorDefaultExecutor::LogEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   LOGI("LogEnable");
-  console_msg_manager_->EnableConsoleLog(sender);
-  sender->SendOKResponse(message["id"].asInt64());
+  console_msg_manager_->EnableConsoleLog();
+  responder->SendSuccess();
 }
 
 void InspectorDefaultExecutor::LogDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   LOGI("LogDisable");
   console_msg_manager_->DisableConsoleLog();
-  sender->SendOKResponse(message["id"].asInt64());
+  responder->SendSuccess();
 }
 
 void InspectorDefaultExecutor::LogClear(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   console_msg_manager_->ClearConsoleMessages();
-  sender->SendOKResponse(message["id"].asInt64());
+  responder->SendSuccess();
 }
 
 void InspectorDefaultExecutor::SendLogEntryAddedEvent(

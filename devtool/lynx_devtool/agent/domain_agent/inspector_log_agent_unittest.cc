@@ -7,6 +7,8 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_log_agent.h"
 
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/testing/mock/lynx_devtool_mediator_mock.h"
@@ -33,6 +35,12 @@ class InspectorLogAgentTest : public ::testing::Test {
     devtool_->message_sender_ = message_sender;
   }
 
+  void Dispatch(const Json::Value& message) {
+    auto responder = std::make_shared<CDPResponder>(devtool_->message_sender_,
+                                                    message["id"].asInt64());
+    agent_->CallMethod(responder, message);
+  }
+
  private:
   std::shared_ptr<InspectorLogAgent> agent_;
   std::shared_ptr<lynx::testing::LynxDevToolNGMock> devtool_;
@@ -45,8 +53,8 @@ TEST_F(InspectorLogAgentTest, CallMethod) {
   msg1["sessionId"] = "Main";
   std::string expected1 =
       "{\n   \"error\" : {\n      \"code\" : -32601,\n      \"message\" : "
-      "\"Not implemented: Log.enable\"\n   },\n   \"id\" : 1\n}\n";
-  agent_->CallMethod(devtool_->message_sender_, msg1);
+      "\"'Log.enable' wasn't found\"\n   },\n   \"id\" : 1\n}\n";
+  Dispatch(msg1);
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.first, "CDP");
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.second, expected1);
 
@@ -55,10 +63,27 @@ TEST_F(InspectorLogAgentTest, CallMethod) {
   msg2["id"] = 2;
   msg2["method"] = "Log.enable";
   std::string expected2 = "{\n   \"id\" : 2,\n   \"result\" : {}\n}\n";
-  agent_->CallMethod(devtool_->message_sender_, msg2);
+  Dispatch(msg2);
   sleep(1);
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.first, "CDP");
   EXPECT_EQ(MockReceiver::GetInstance().received_message_.second, expected2);
+}
+
+TEST_F(InspectorLogAgentTest, UnknownMethodReturnsMethodNotFound) {
+  Json::Value message(Json::objectValue);
+  message["id"] = 3;
+  message["method"] = "Log.unknown";
+
+  Dispatch(message);
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(MockReceiver::GetInstance().received_message_.second,
+                           response, false));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::MethodNotFound));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "'Log.unknown' wasn't found");
 }
 
 }  // namespace testing

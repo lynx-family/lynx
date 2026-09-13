@@ -5,18 +5,14 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LOG_AGENT_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LOG_AGENT_H_
 
+#include <map>
+#include <memory>
+
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
-
-namespace runtime {
-
-namespace js {
-struct ConsoleMessage;
-}
-
-}  // namespace runtime
 namespace devtool {
 
 class InspectorLogAgent : public CDPDomainAgentBase {
@@ -24,20 +20,17 @@ class InspectorLogAgent : public CDPDomainAgentBase {
   explicit InspectorLogAgent(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   virtual ~InspectorLogAgent();
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message) override;
-  void SendLog(const std::shared_ptr<MessageSender>& sender,
-               const lynx::runtime::js::ConsoleMessage& message);
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                  const Json::Value& message) override;
 
  private:
-  typedef void (InspectorLogAgent::*LogAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
-  void Enable(const std::shared_ptr<MessageSender>& sender,
-              const Json::Value& message);
-  void Disable(const std::shared_ptr<MessageSender>& sender,
-               const Json::Value& message);
-  void Clear(const std::shared_ptr<MessageSender>& sender,
-             const Json::Value& message);
+  using LogAgentMethod = void (InspectorLogAgent::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
+
+  DECLARE_DEVTOOL_CDP_METHOD(Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(Clear);
 
   std::map<std::string, LogAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
