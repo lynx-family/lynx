@@ -1310,26 +1310,23 @@ void LynxDevToolMediator::getAllPerformanceEntries(
 }
 
 void LynxDevToolMediator::LogEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->LogEnable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->LogEnable(responder, params);
   });
 }
 
 void LynxDevToolMediator::LogDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->LogDisable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->LogDisable(responder, params);
   });
 }
 
 void LynxDevToolMediator::LogClear(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->LogClear(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->LogClear(responder, params);
   });
 }
 
