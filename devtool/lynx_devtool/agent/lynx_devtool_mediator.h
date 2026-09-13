@@ -206,8 +206,8 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(TemplateGetTemplateApiInfo)
 
   // Overlay domain -> tasm executor
-  DECLARE_DEVTOOL_METHOD(HighlightNode)
-  DECLARE_DEVTOOL_METHOD(HideHighlight)
+  DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);
+  DECLARE_DEVTOOL_CDP_METHOD(HideHighlight);
 
   // LayerTree domain -> tasm executor
   DECLARE_DEVTOOL_CDP_METHOD(LayerTreeEnable);
