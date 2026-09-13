@@ -97,6 +97,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool ShouldPassEventToNative() const override {
     return should_pass_event_for_hittest_;
   }
+  bool HasGestureRecognizers() const override {
+    return !gesture_recognizers_.empty();
+  }
 
   bool IsAppRegionDraggable();
   // TODO(wangchen) to do better

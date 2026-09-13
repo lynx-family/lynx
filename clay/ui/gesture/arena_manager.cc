@@ -4,6 +4,7 @@
 
 #include "clay/ui/gesture/arena_manager.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -65,6 +66,34 @@ void ArenaEntry::Resolve(GestureDisposition disposition) {
   arena_manager_->Resolve(pointer_id_, member_, disposition);
 }
 
+bool ArenaEntry::DeferToThisMember() {
+  return arena_manager_->DeferToMember(pointer_id_, member_);
+}
+
+bool ArenaEntry::IsDeferred() const {
+  auto it = arena_manager_->arenas_.find(pointer_id_);
+  return it != arena_manager_->arenas_.end() && it->second->deferred_member &&
+         std::find(it->second->members.begin(), it->second->members.end(),
+                   member_) != it->second->members.end();
+}
+
+bool ArenaEntry::IsPlatformArbitrationActive() const {
+  auto it = arena_manager_->arenas_.find(pointer_id_);
+  return member_ && it != arena_manager_->arenas_.end() &&
+         !it->second->is_open && it->second->deferred_member == member_;
+}
+
+bool ArenaManager::DeferToMember(int pointer_id,
+                                 const fml::WeakPtr<ArenaMember>& member) {
+  auto it = arenas_.find(pointer_id);
+  if (member && member->IsPlatformGestureMember() && it != arenas_.end() &&
+      it->second->is_open && !it->second->deferred_member) {
+    it->second->deferred_member = member;
+    return true;
+  }
+  return false;
+}
+
 void ArenaManager::Close(const PointerEvent& event) {
   int pointer_id = event.pointer_id;
   auto iter = arenas_.find(pointer_id);
@@ -80,6 +109,23 @@ void ArenaManager::Close(const PointerEvent& event) {
   }
 
   arena->is_open = false;
+  if (arena->deferred_member) {
+    const bool has_clay_competitor = std::any_of(
+        arena->members.begin(), arena->members.end(), [](const auto& member) {
+          return member && !member->IsPlatformGestureMember();
+        });
+    if (!has_clay_competitor) {
+      // No cross-layer competition. Remove the provisional platform members
+      // without declaring a winner or starting native recognizer observation.
+      auto holder = TakeArenaOwnership(pointer_id);
+      for (auto& member : holder->members) {
+        if (member) {
+          member->OnGestureRejected(pointer_id);
+        }
+      }
+      return;
+    }
+  }
   TryResolve(pointer_id, arena);
 }
 
@@ -93,7 +139,7 @@ void ArenaManager::Sweep(int pointer_id) {
   Arena* arena = iter->second.get();
   FML_DCHECK(!arena->is_open);
 
-  if (arena->is_held) {
+  if (arena->is_held || arena->deferred_member) {
     arena->has_pending_sweep = true;
     // Arena will be swept when released.
     GESTURE_LOG << "[sweep] arena was held.";
@@ -167,14 +213,37 @@ void ArenaManager::Resolve(int pointer_id,
 
   // FML_DCHECK(arena->members.find(member) != arena->members.end());
   if (disposition == GestureDisposition::kReject) {
+    if (arena->deferred_member) {
+      if (arena->eager_winner == member) {
+        arena->eager_winner.reset();
+      }
+      if (arena->deferred_member == member) {
+        arena->deferred_member.reset();
+      }
+    }
     arena->RemoveMember(member);
     GESTURE_LOG << "arena member " << member->GetMemberTag() << member.get()
                 << " was removed. Members count: " << arena->members.size();
     member->OnGestureRejected(pointer_id);
     if (!arena->is_open) {
       TryResolve(pointer_id, arena);
+      auto pending = arenas_.find(pointer_id);
+      if (pending != arenas_.end() && pending->second->has_pending_sweep) {
+        Sweep(pointer_id);
+      }
     }
   } else {
+    if (arena->deferred_member && arena->deferred_member != member) {
+      if (!arena->eager_winner) {
+        arena->eager_winner = member;
+      }
+      return;
+    }
+    if (arena->deferred_member == member) {
+      arena->deferred_member.reset();
+      // The platform's decision takes precedence over deferred local requests.
+      arena->eager_winner = member;
+    }
     if (arena->is_open) {
       GESTURE_LOG << "arena wasn't closed. set as eager winner.";
       // If arena is not closed, we need to set the member as eager winner,
@@ -190,6 +259,9 @@ void ArenaManager::Resolve(int pointer_id,
 }
 
 void ArenaManager::TryResolve(int pointer_id, Arena* arena) {
+  if (arena->deferred_member) {
+    return;
+  }
   if (arena->members.size() == 1 && !has_outer_gestures_) {
     ResolveByDefault(pointer_id, arena);
   } else if (arena->members.empty()) {

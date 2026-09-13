@@ -17,6 +17,7 @@ class ArenaMember {
   virtual void OnGestureRejected(int pointer_id) = 0;
   // Useful for debug
   virtual const char* GetMemberTag() const = 0;
+  virtual bool IsPlatformGestureMember() const { return false; }
 
  protected:
   fml::WeakPtrFactory<ArenaMember> weak_factory_;

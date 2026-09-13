@@ -15,6 +15,9 @@
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/view_tree_observer.h"
+#if OS_HARMONY
+#include "clay/ui/gesture/platform_view_gesture_recognizer.h"
+#endif
 #include "clay/ui/platform/native_view_service.h"
 
 namespace clay {
@@ -56,6 +59,15 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   void MarkAsEditing();
   void OnInsert(int parent_id, int index);
   void UpdateTouchDispatchState(bool handled, int action);
+#if OS_HARMONY
+  bool HasPendingPlatformGesture(int pointer_id) const;
+  bool IsPlatformGestureTarget() const override { return true; }
+  void ArmPlatformGestureArbitration() override {
+    platform_gesture_armed_ = platform_gesture_recognizer_ != nullptr;
+  }
+  bool UpdatePlatformGestureDecision(int pointer_id,
+                                     GestureDisposition disposition);
+#endif
   NativeViewCompositionPreference GetCompositionPreference() const {
     return composition_preference_;
   }
@@ -86,6 +98,10 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
   FloatRect bounds_;
   float device_pixel_ratio_ = 1.0;
   bool is_scroll_enabled_;
+#if OS_HARMONY
+  bool platform_gesture_armed_ = false;
+  std::unique_ptr<PlatformViewGestureRecognizer> platform_gesture_recognizer_;
+#endif
   bool is_editing_ = false;
   bool is_available_ = false;
   bool ignore_for_touch_hit_test_ = false;

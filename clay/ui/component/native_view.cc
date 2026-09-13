@@ -66,6 +66,11 @@ NativeView::NativeView(int id, std::string tag, PageView* page_view)
           }
           weak_self->is_scroll_enabled_ = support_scrolling;
           weak_self->is_available_ = available;
+#if OS_HARMONY
+          weak_self->platform_gesture_recognizer_ =
+              std::make_unique<PlatformViewGestureRecognizer>(
+                  weak_self->page_view()->gesture_manager()->arena_manager());
+#endif
         }
       });
   SetFocusable(true);
@@ -148,6 +153,11 @@ void NativeView::SendMotionEvent(const PointerEvent& point_event,
 // currently. Maybe we can reactor this and make the destruction process more
 // unified.
 void NativeView::OnDestroy() {
+#if OS_HARMONY
+  if (platform_gesture_recognizer_) {
+    platform_gesture_recognizer_->CancelAll();
+  }
+#endif
 #if OS_IOS
   CancelPendingPlatformFocus();
 #endif
@@ -218,6 +228,16 @@ void NativeView::DidUpdateAttributes() {
 }
 
 void NativeView::HandleEvent(const PointerEvent& event) {
+#if OS_HARMONY
+  if (event.type == PointerEvent::EventType::kDownEvent) {
+    const bool armed = platform_gesture_armed_;
+    platform_gesture_armed_ = false;
+    if (armed && platform_gesture_recognizer_ &&
+        event.device == PointerEvent::DeviceType::kTouch) {
+      platform_gesture_recognizer_->AddPointer(event);
+    }
+  }
+#endif
   if (!IsScrollEnabled()) {
     return;
   }
@@ -229,6 +249,20 @@ void NativeView::HandleEvent(const PointerEvent& event) {
         });
   }
 }
+
+#if OS_HARMONY
+bool NativeView::HasPendingPlatformGesture(int pointer_id) const {
+  return platform_gesture_recognizer_ &&
+         platform_gesture_recognizer_->HasPendingPointer(pointer_id);
+}
+
+bool NativeView::UpdatePlatformGestureDecision(int pointer_id,
+                                               GestureDisposition disposition) {
+  return platform_gesture_recognizer_ &&
+         platform_gesture_recognizer_->UpdateDecision(pointer_id, disposition);
+}
+
+#endif
 
 void NativeView::InvokePlatformMethod(const std::string& method_name,
                                       clay::Value::Map args,
@@ -295,6 +329,11 @@ void NativeView::OnAttachToTree() {
 }
 
 void NativeView::OnDetachFromTree() {
+#if OS_HARMONY
+  if (platform_gesture_recognizer_) {
+    platform_gesture_recognizer_->CancelAll();
+  }
+#endif
   BaseView::OnDetachFromTree();
 #if OS_IOS
   CancelPendingPlatformFocus();

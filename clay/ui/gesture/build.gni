@@ -28,6 +28,8 @@ ui_gesture_sources = [
   "mouse_wheel_phase_handler.h",
   "multi_tap_gesture_recognizer.cc",
   "multi_tap_gesture_recognizer.h",
+  "platform_view_gesture_recognizer.cc",
+  "platform_view_gesture_recognizer.h",
   "pointer_router.cc",
   "pointer_router.h",
   "scrollable_direction.h",
