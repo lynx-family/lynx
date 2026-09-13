@@ -15,6 +15,9 @@
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
 #include "clay/ui/gesture/macros.h"
 #include "clay/ui/gesture/multi_tap_gesture_recognizer.h"
+#if OS_HARMONY
+#include "clay/ui/gesture/platform_view_gesture_recognizer.h"
+#endif
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -208,6 +211,45 @@ TEST(ArenaManagerTest, AddDropsStaleClosedArenaBeforeReusingPointer) {
   EXPECT_EQ(new_member.accepted_count, 1);
   EXPECT_EQ(new_member.rejected_count, 0);
 }
+
+#if OS_HARMONY
+class PlatformRecognizerHitTestTarget : public MockHitTestTargetBase {
+ public:
+  explicit PlatformRecognizerHitTestTarget(ArenaManager* manager)
+      : recognizer(manager) {}
+  void HandleEvent(const PointerEvent& event) override {
+    if (event.type == PointerEvent::EventType::kDownEvent) {
+      recognizer.AddPointer(event);
+    }
+  }
+  PlatformViewGestureRecognizer recognizer;
+};
+
+TEST_F(GestureManagerTest, PlatformRejectAllowsWaitingDrag) {
+  auto target = std::make_unique<MultiRecognizerHitTestTarget>();
+  auto native = std::make_unique<PlatformRecognizerHitTestTarget>(
+      gesture_manager()->arena_manager());
+  auto* proxy = &native->recognizer;
+  AddHitTestTarget(native.get());
+  auto drag =
+      std::make_unique<VerticalDragGestureRecognizer>(gesture_manager());
+  int starts = 0;
+  drag->SetDragStartCallback([&](const FloatPoint&) { ++starts; });
+  target->recognizers_.push_back(std::move(drag));
+  AddHitTestTarget(target.get());
+  auto events = CreatePointer(ID(), PointerEvent::EventType::kDownEvent);
+  const int pointer = events[0].pointer_id;
+  gesture_manager()->HandlePointerEvents(root(), events);
+  ASSERT_TRUE(proxy->HasPendingPointer(pointer));
+  MovePointer(events[0], {0, 100}, kFastMoveTime);
+  gesture_manager()->HandlePointerEvents(root(), events);
+  EXPECT_EQ(starts, 0);
+  EXPECT_TRUE(proxy->UpdateDecision(pointer, GestureDisposition::kReject));
+  EXPECT_EQ(starts, 1);
+  UpPointer(events[0]);
+  gesture_manager()->HandlePointerEvents(root(), events);
+}
+#endif
 
 TEST_F(GestureManagerTest, NoConflict_Tap_Test) {
   auto empty_target = std::make_unique<MockHitTestTargetBase>();
