@@ -40,6 +40,7 @@
 #include "core/renderer/template_assembler.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
@@ -611,34 +612,55 @@ TEST_F(InspectorTasmExecutorTest, SetDevtoolPlatformAbilityCase) {
 }
 
 TEST_F(InspectorTasmExecutorTest, LayerTreeEnableCase) {
-  LOGI("InspectorTasmExecutorTest LayerTreeEnableCase start");
-  Json::Value message;
-  message["id"] = 2;
-  element_executor_->LayerTreeEnable(message_sender_, message);
+  auto sender = std::make_shared<RecordingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 2);
+  element_executor_->LayerTreeEnable(responder, Json::Value());
+  responder.reset();
 
-  Json::Value res;
-  Json::Reader reader;
-  bool is_valid_json = reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res);
-
-  EXPECT_TRUE(is_valid_json);
+  ASSERT_EQ(sender->json_messages_.size(), 1u);
+  const auto& response = sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"], 2);
+  EXPECT_EQ(response["result"], Json::Value(Json::objectValue));
   EXPECT_TRUE(element_executor_->layer_tree_enabled_);
 }
 
 TEST_F(InspectorTasmExecutorTest, LayerTreeDisableCase) {
-  LOGI("InspectorTasmExecutorTest LayerTreeDisableCase start");
-  Json::Value message;
-  message["id"] = 6;
-  element_executor_->LayerTreeDisable(message_sender_, message);
+  element_executor_->layer_tree_enabled_ = true;
+  auto sender = std::make_shared<RecordingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 6);
+  element_executor_->LayerTreeDisable(responder, Json::Value());
+  responder.reset();
 
-  Json::Value res;
-  Json::Reader reader;
-  bool is_valid_json = reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res);
-
-  EXPECT_TRUE(is_valid_json);
-  EXPECT_EQ(res["id"], 6);
+  ASSERT_EQ(sender->json_messages_.size(), 1u);
+  const auto& response = sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"], 6);
+  EXPECT_EQ(response["result"], Json::Value(Json::objectValue));
   EXPECT_FALSE(element_executor_->layer_tree_enabled_);
+}
+
+TEST_F(InspectorTasmExecutorTest, CompositingReasonsReturnsElementPayload) {
+  auto element = manager_->CreateFiberElement("view");
+  devtool::ElementInspector::InitForInspector(std::make_tuple(element.get()));
+  element_executor_->element_root_ = element.get();
+  const int node_id = devtool::ElementInspector::NodeId(element.get());
+  Json::Value params(Json::objectValue);
+  params["layerId"] = std::to_string(node_id);
+  auto sender = std::make_shared<RecordingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 7);
+
+  element_executor_->CompositingReasons(responder, params);
+  responder.reset();
+
+  ASSERT_EQ(sender->json_messages_.size(), 1u);
+  const auto& response = sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"], 7);
+  EXPECT_FALSE(response.isMember("method"));
+  Json::Value expected(Json::objectValue);
+  expected["compositingReasons"].append("view");
+  expected["compositingReasonsIds"].append(node_id);
+  EXPECT_EQ(response["result"], expected);
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.second.empty());
 }
 
 TEST_F(InspectorTasmExecutorTest, GetLayersForNodeReturnsCanonicalLayerTree) {

@@ -209,10 +209,10 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(HighlightNode)
   DECLARE_DEVTOOL_METHOD(HideHighlight)
 
-  // Layer Tree domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(LayerTreeEnable)
-  DECLARE_DEVTOOL_METHOD(LayerTreeDisable)
-  DECLARE_DEVTOOL_METHOD(CompositingReasons)
+  // LayerTree domain -> tasm executor
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
   // Page domain - > ui executor
   DECLARE_DEVTOOL_METHOD(StartScreencast)

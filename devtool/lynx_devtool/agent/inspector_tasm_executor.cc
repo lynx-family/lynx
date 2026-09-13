@@ -29,6 +29,8 @@
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/replay/replay_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
+#include "devtool/base_devtool/native/public/cdp_param_utils.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -2884,9 +2886,8 @@ void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
 }
 
 void InspectorTasmExecutor::LayerTreeEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  sender->SendOKResponse(message["id"].asInt64());
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
   layer_tree_enabled_ = true;
 
   SendLayerPaintedEvent();
@@ -2894,9 +2895,8 @@ void InspectorTasmExecutor::LayerTreeEnable(
 }
 
 void InspectorTasmExecutor::LayerTreeDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  sender->SendOKResponse(message["id"].asInt64());
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
   layer_tree_enabled_ = false;
 }
 
@@ -2980,27 +2980,26 @@ void InspectorTasmExecutor::SendLayerPaintedEvent() {
 }
 
 void InspectorTasmExecutor::CompositingReasons(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int layer_id = 0;
+  if (!ReadIntStringParam(params["layerId"], layer_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid layerId: expected integer string");
+    return;
+  }
+
+  Json::Value result(Json::ValueType::objectValue);
   Json::Value compositingReasons(Json::ValueType::arrayValue);
   Json::Value compositingReasonsIds(Json::ValueType::arrayValue);
-  Json::Value params = message["params"];
-  int layerId = std::stoi(params["layerId"].asString());
-  auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
-  lynx::tasm::Element* element = GetElementById(layerId);
+  lynx::tasm::Element* element = GetElementById(layer_id);
 
   if (element) {
     compositingReasons.append(ElementInspector::LocalName(element));
     compositingReasonsIds.append(ElementInspector::NodeId(element));
   }
-  content["compositingReasons"] = compositingReasons;
-  content["compositingReasonsIds"] = compositingReasonsIds;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  devtool_mediator->SendCDPEvent(response);
+  result["compositingReasons"] = compositingReasons;
+  result["compositingReasonsIds"] = compositingReasonsIds;
+  responder->SendSuccess(std::move(result));
 }
 
 Json::Value InspectorTasmExecutor::GetLayerContentFromElement(
