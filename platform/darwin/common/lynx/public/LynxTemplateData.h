@@ -68,6 +68,15 @@
 // will convert TemplateData to lepus value
 - (void)updateWithTemplateData:(LynxTemplateData *)value;
 
+/**
+ * @apidoc
+ * @brief Updates the current TemplateData with another TemplateData.
+ * @param value The TemplateData to apply.
+ * @param overwrite When `YES`, values with the same top-level key are replaced as a whole. When
+ *     `NO`, the legacy merge behavior is preserved.
+ */
+- (void)updateWithTemplateData:(LynxTemplateData *)value overwrite:(BOOL)overwrite;
+
 - (BOOL)checkIsLegalData;
 
 - (NSDictionary *)dictionary;

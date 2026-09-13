@@ -32,6 +32,7 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
   lynx::lepus::Value seed_value_;
 }
 @property(nonatomic) LynxTemplateDataActionType type;
+@property(nonatomic) BOOL overwrite;
 @property(nonatomic, strong) id value;
 @end
 
@@ -235,12 +236,36 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 }
 
 - (void)updateWithTemplateData:(LynxTemplateData*)inputData {
+  [self updateWithTemplateData:inputData overwrite:NO];
+}
+
+- (void)updateWithTemplateData:(LynxTemplateData*)inputData overwrite:(BOOL)overwrite {
   if (inputData == nil) {
     return;
   }
 
   if (LynxTemplateDataIsForStaticPage(inputData)) {
     _LogE(@"updateWithTemplateData is not supported for static-page data");
+    return;
+  }
+
+  if (self == inputData) {
+    _LogW(@"can not update TemplateData with self");
+    return;
+  }
+  if (_readOnly) {
+    _LogW(@"can not update readOnly TemplateData");
+    return;
+  }
+
+  if (overwrite) {
+    LynxTemplateDataUpdateAction* action = [[LynxTemplateDataUpdateAction alloc] init];
+    action.type = LynxTemplateDataActionTypeLepusSeed;
+    action.overwrite = YES;
+    action->seed_value_ = lynx::lepus::Value::ShallowCopy(inputData->value_);
+    [self addObjectToUpdateActions:action];
+    (void)[inputData copyUpdateActions:YES];
+    LynxViewDataManager::MergeData(value_, inputData->value_);
     return;
   }
 
@@ -439,7 +464,11 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
       }
       case LynxTemplateDataActionTypeLepusSeed: {
         if (value_for_js_.IsTable() && action->seed_value_.IsTable()) {
-          LynxViewDataManager::UpdateData(value_for_js_, action->seed_value_);
+          if (action.overwrite) {
+            LynxViewDataManager::MergeData(value_for_js_, action->seed_value_);
+          } else {
+            LynxViewDataManager::UpdateData(value_for_js_, action->seed_value_);
+          }
         } else {
           value_for_js_ = lynx::lepus::Value::Clone(action->seed_value_);
         }
