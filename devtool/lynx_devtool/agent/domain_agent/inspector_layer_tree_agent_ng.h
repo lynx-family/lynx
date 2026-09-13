@@ -5,36 +5,35 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LAYER_TREE_AGENT_NG_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LAYER_TREE_AGENT_NG_H_
 
+#include <map>
+#include <memory>
+#include <string>
+
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
-#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
 
-class DevToolAgentNG;
+class LynxDevToolMediator;
 
 class InspectorLayerTreeAgentNG : public CDPDomainAgentBase {
  public:
   explicit InspectorLayerTreeAgentNG(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   virtual ~InspectorLayerTreeAgentNG() = default;
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  typedef void (InspectorLayerTreeAgentNG::*LayerTreeAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
+  using LayerTreeAgentMethod = void (InspectorLayerTreeAgentNG::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
 
-  void Enable(const std::shared_ptr<MessageSender>& sender,
-              const Json::Value& message);
-  void Disable(const std::shared_ptr<MessageSender>& sender,
-               const Json::Value& message);
-  void CompositingReasons(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message);
-  void LayerPainted(const std::shared_ptr<MessageSender>& sender,
-                    const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
- private:
   std::map<std::string, LayerTreeAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };
