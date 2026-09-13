@@ -98,6 +98,8 @@
 
   [standard updateWithTemplateData:staticPage];
   [staticPage updateWithTemplateData:standard];
+  [standard updateWithTemplateData:staticPage overwrite:YES];
+  [staticPage updateWithTemplateData:standard overwrite:YES];
 
   XCTAssertEqualObjects(@{@"standard" : @"value"}, standard.dictionary);
   XCTAssertEqualObjects(@{@"static" : @"value"}, staticPage.dictionary);
@@ -199,6 +201,69 @@
   XCTAssertTrue(*value == [templateData getDataForJSThread]);
   XCTAssertEqual(value->GetProperty("please-input-password").StdString(), "Please input your:");
   XCTAssertEqual(123456789123456L, value->GetProperty("long").Number());
+}
+
+- (void)testUpdateWithTemplateDataKeepsLegacyMergeByDefault {
+  LynxTemplateData* templateData = [[LynxTemplateData alloc]
+      initWithDictionary:@{@"profile" : @{@"name" : @"Lynx", @"age" : @1}}];
+  LynxTemplateData* diff =
+      [[LynxTemplateData alloc] initWithDictionary:@{@"profile" : @{@"age" : @2}}];
+
+  [templateData updateWithTemplateData:diff];
+
+  XCTAssertEqualObjects(templateData.dictionary,
+                        (@{@"profile" : @{@"name" : @"Lynx", @"age" : @2}}));
+}
+
+- (void)testUpdateWithTemplateDataOverwrite {
+  LynxTemplateData* templateData = [[LynxTemplateData alloc]
+      initWithDictionary:@{@"profile" : @{@"name" : @"Lynx", @"age" : @1}, @"version" : @1}];
+  LynxTemplateData* diff =
+      [[LynxTemplateData alloc] initWithDictionary:@{@"profile" : @{@"age" : @2}}];
+
+  [templateData updateWithTemplateData:diff overwrite:YES];
+
+  XCTAssertEqualObjects(templateData.dictionary, (@{@"profile" : @{@"age" : @2}, @"version" : @1}));
+  XCTAssertEqual(*LynxGetLepusValueFromTemplateData(templateData),
+                 [templateData getDataForJSThread]);
+}
+
+- (void)testUpdateWithTemplateDataOverwriteInitializesJSData {
+  LynxTemplateData* templateData = [[LynxTemplateData alloc] initWithDictionary:nil];
+  LynxTemplateData* diff =
+      [[LynxTemplateData alloc] initWithDictionary:@{@"profile" : @{@"age" : @2}}];
+
+  [templateData updateWithTemplateData:diff overwrite:YES];
+
+  XCTAssertEqualObjects(templateData.dictionary, (@{@"profile" : @{@"age" : @2}}));
+  XCTAssertEqual(*LynxGetLepusValueFromTemplateData(templateData),
+                 [templateData getDataForJSThread]);
+}
+
+- (void)testUpdateWithTemplateDataSelfIsNoOp {
+  LynxTemplateData* templateData =
+      [[LynxTemplateData alloc] initWithDictionary:@{@"key" : @"value"}];
+  NSUInteger actionCount = [templateData copyUpdateActions].count;
+
+  [templateData updateWithTemplateData:templateData];
+  [templateData updateWithTemplateData:templateData overwrite:YES];
+
+  XCTAssertEqualObjects(templateData.dictionary, (@{@"key" : @"value"}));
+  XCTAssertEqual([templateData copyUpdateActions].count, actionCount);
+}
+
+- (void)testUpdateWithTemplateDataReadOnlyIsNoOp {
+  LynxTemplateData* templateData =
+      [[LynxTemplateData alloc] initWithDictionary:@{@"key" : @"value"}];
+  LynxTemplateData* diff = [[LynxTemplateData alloc] initWithDictionary:@{@"key" : @"updated"}];
+  [templateData markReadOnly];
+  NSUInteger actionCount = [diff copyUpdateActions].count;
+
+  [templateData updateWithTemplateData:diff];
+  [templateData updateWithTemplateData:diff overwrite:YES];
+
+  XCTAssertEqualObjects(templateData.dictionary, (@{@"key" : @"value"}));
+  XCTAssertEqual([diff copyUpdateActions].count, actionCount);
 }
 
 - (void)testToMapIntDouble {

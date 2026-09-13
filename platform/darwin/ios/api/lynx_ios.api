@@ -3990,6 +3990,7 @@ public class LynxTemplateData : NSObject {
   public void LynxTemplateData::updateDouble:forKey:(CGFloat value,[forKey] NSString *key);
   public void LynxTemplateData::remove:(NSString *key);
   public void LynxTemplateData::updateWithTemplateData:(LynxTemplateData *value);
+  public void LynxTemplateData::updateWithTemplateData:overwrite:(LynxTemplateData *value,[overwrite] BOOL overwrite);
   public BOOL LynxTemplateData::checkIsLegalData();
   public NSDictionary * LynxTemplateData::dictionary();
   public void LynxTemplateData::markState:(NSString *name);
