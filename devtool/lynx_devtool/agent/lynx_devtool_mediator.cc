@@ -787,24 +787,22 @@ void LynxDevToolMediator::SetSupportsText(
 }
 
 void LynxDevToolMediator::HighlightNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->HighlightNode(sender, message);
-                    });
+    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
+                                        responder, params]() {
+      element_executor->HighlightNode(responder, params);
+    });
   }
 }
 
 void LynxDevToolMediator::HideHighlight(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->HideHighlight(sender, message);
-                    });
+    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
+                                        responder, params]() {
+      element_executor->HideHighlight(responder, params);
+    });
   }
 }
 
