@@ -4,9 +4,7 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.h"
 
-#include <sstream>
-
-#include "devtool/lynx_devtool/base/mouse_event.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
@@ -24,30 +22,30 @@ InspectorInputAgent::InspectorInputAgent(
 InspectorInputAgent::~InspectorInputAgent() = default;
 
 void InspectorInputAgent::EmulateTouchFromMouseEvent(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->EmulateTouchFromMouseEvent(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->EmulateTouchFromMouseEvent(responder, params);
 }
 
 void InspectorInputAgent::InsertText(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->InsertText(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->InsertText(responder, params);
 }
 
 void InspectorInputAgent::SynthesizeTapGesture(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SynthesizeTapGesture(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->SynthesizeTapGesture(responder, params);
 }
 
 void InspectorInputAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   std::string method = message["method"].asString();
-  Json::Value params = message["params"];
-
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   } else {
-    (this->*(iter->second))(sender, message);
+    (this->*(iter->second))(responder, message["params"]);
   }
 }
 }  // namespace devtool
