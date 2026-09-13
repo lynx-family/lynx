@@ -8,7 +8,8 @@
 #include <memory>
 
 #include "base/include/fml/task_runner.h"
-#include "devtool/base_devtool/native/public/message_sender.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
@@ -35,14 +36,10 @@ class InputRequestHandler {
   // Releases the gesture controller. Must run on the UI thread.
   void Reset();
 
-  void EmulateTouchFromMouseEvent(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message);
-  void DispatchMouseEvent(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message);
-  void InsertText(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message);
-  void SynthesizeTapGesture(const std::shared_ptr<MessageSender>& sender,
-                            const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(DispatchMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(InsertText);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
 
  private:
   void EnsureSyntheticGestureController(

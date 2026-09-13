@@ -723,27 +723,23 @@ void InspectorUIExecutor::getAllPerformanceEntries(
 
 // start input protocol
 void InspectorUIExecutor::EmulateTouchFromMouseEvent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  input_request_handler_->EmulateTouchFromMouseEvent(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  input_request_handler_->EmulateTouchFromMouseEvent(responder, params);
 }
 
 void InspectorUIExecutor::DispatchMouseEvent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  input_request_handler_->DispatchMouseEvent(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  input_request_handler_->DispatchMouseEvent(responder, params);
 }
 
 void InspectorUIExecutor::InsertText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  input_request_handler_->InsertText(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  input_request_handler_->InsertText(responder, params);
 }
 
 void InspectorUIExecutor::SynthesizeTapGesture(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  input_request_handler_->SynthesizeTapGesture(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  input_request_handler_->SynthesizeTapGesture(responder, params);
 }
 
 // end input protocol
