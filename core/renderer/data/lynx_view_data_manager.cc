@@ -54,6 +54,24 @@ void LynxViewDataManager::UpdateData(lepus::Value& dest,
   }
 }
 
+void LynxViewDataManager::MergeData(lepus::Value& dest,
+                                    const lepus::Value& src) {
+  if (!dest.IsTable() || !src.IsTable()) {
+    return;
+  }
+
+  if (dest.Table()->IsConst()) {
+    dest = lepus::Value::Clone(dest);
+  }
+
+  auto src_dict = src.Table();
+  auto dest_dict = dest.Table();
+  dest_dict->reserve(src_dict->size());
+  for (const auto& [key, value] : *src_dict) {
+    dest_dict->SetValue(key, value);
+  }
+}
+
 void LynxViewDataManager::ReleaseData(lepus::Value* obj) {
   if (obj != nullptr) {
     delete obj;

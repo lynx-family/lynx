@@ -304,6 +304,29 @@ public class TemplateDataTest {
   }
 
   @Test
+  public void testMergeTemplateDataOverwritesNestedData() {
+    Map<String, Object> profile = new HashMap<>();
+    profile.put("name", "Lynx");
+    profile.put("age", 1);
+    Map<String, Object> data = new HashMap<>();
+    data.put("profile", profile);
+    data.put("version", 1);
+
+    Map<String, Object> updatedProfile = new HashMap<>();
+    updatedProfile.put("age", 2);
+    Map<String, Object> updatedData = new HashMap<>();
+    updatedData.put("profile", updatedProfile);
+
+    TemplateData templateData = TemplateData.fromMap(data);
+    TemplateData diff = TemplateData.fromMap(updatedData);
+    templateData.updateWithTemplateData(diff);
+
+    Map<Object, Object> result = templateData.toMap();
+    assertEquals(updatedProfile, result.get("profile"));
+    assertEquals(1, result.get("version"));
+  }
+
+  @Test
   public void testToMapIntDouble() {
     TemplateData data = TemplateData.fromMap(new HashMap<>());
     data.put("key1", 1);
