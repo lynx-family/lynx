@@ -38,6 +38,7 @@ enum CSSPropertyID : int32_t;
 namespace lynx {
 namespace devtool {
 
+class CDPResponder;
 class LynxDevToolMediator;
 
 class InspectorTasmExecutor
@@ -167,9 +168,9 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(HideHighlight)
 
   // layer tree
-  DECLARE_DEVTOOL_METHOD(LayerTreeEnable)
-  DECLARE_DEVTOOL_METHOD(LayerTreeDisable)
-  DECLARE_DEVTOOL_METHOD(CompositingReasons)
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
   // page domain
   DECLARE_DEVTOOL_METHOD(PageGetResourceContent)
