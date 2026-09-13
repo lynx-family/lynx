@@ -578,18 +578,28 @@ TEST_F(DevToolMediatorTest, BoxModelDomCommandsRunOnTASMThreadCase) {
 }
 
 TEST_F(DevToolMediatorTest, LayerTreeCommandsRunOnTASMThreadCase) {
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 52;
-  Json::Value compositing_message(Json::ValueType::objectValue);
-  compositing_message["id"] = 53;
-  compositing_message["params"]["layerId"] = "0";
-
-  devtool_mediator_->LayerTreeEnable(message_sender_, message);
-  devtool_mediator_->LayerTreeDisable(message_sender_, message);
+  devtool_mediator_->LayerTreeEnable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 51),
+      Json::Value());
+  devtool_mediator_->LayerTreeDisable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 52),
+      Json::Value());
   devtool_mediator_->SendLayerTreeDidChangeEvent();
-  devtool_mediator_->CompositingReasons(message_sender_, compositing_message);
-  tasm_thread_->Join();
+  Json::Value params(Json::objectValue);
+  params["layerId"] = "0";
+  devtool_mediator_->CompositingReasons(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 53), params);
+  FlushTasmTasks();
 
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 53);
+  EXPECT_EQ(response["result"]["compositingReasons"],
+            Json::Value(Json::arrayValue));
+  EXPECT_EQ(response["result"]["compositingReasonsIds"],
+            Json::Value(Json::arrayValue));
   EXPECT_FALSE(devtool_mediator_->element_executor_->layer_tree_enabled_);
 }
 
