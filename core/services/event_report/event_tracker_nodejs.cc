@@ -21,6 +21,13 @@ void EventTracker::OnEvent(EventBuilder builder) {
   instance->tracker_event_builder_stack_.push_back(std::move(builder));
 }
 
+void EventTracker::OnGlobalEvent(EventBuilder builder) {
+  OnEvent([builder = std::move(builder)](MoveOnlyEvent& event) {
+    event.SetInstanceId(kUnknownInstanceId);
+    builder(event);
+  });
+}
+
 void EventTracker::UpdateGenericInfoByPageConfig(
     int32_t instance_id, const std::shared_ptr<tasm::PageConfig>& config) {}
 

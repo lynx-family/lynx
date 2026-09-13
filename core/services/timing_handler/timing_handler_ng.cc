@@ -122,11 +122,15 @@ void TimingHandlerNg::ProcessPipelineTiming(
   if (!timing_info_.SetPipelineTiming(timing_key, us_timestamp, pipeline_id)) {
     return;
   }
+  bool check_flush = false;
   if (timing_key == kLoadBackgroundEnd || timing_key == kReloadBackgroundEnd) {
     is_background_runtime_ready_ = true;
-    FlushPendingPerformanceEntries();
+    check_flush = true;
   } else if (timing_key == kLoadBundleEnd || timing_key == kReloadBundleEnd) {
     is_main_thread_runtime_ready_ = true;
+    check_flush = true;
+  }
+  if (check_flush && ReadyToDispatch()) {
     FlushPendingPerformanceEntries();
   }
   DispatchPerformanceEventIfNeeded(timing_key, pipeline_id);
