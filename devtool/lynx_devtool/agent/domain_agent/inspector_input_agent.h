@@ -5,37 +5,34 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_INPUT_AGENT_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_INPUT_AGENT_H_
 
+#include <map>
 #include <memory>
-#include <unordered_map>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
-#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
 
-class InspectorManager;
+class LynxDevToolMediator;
 
 class InspectorInputAgent : public CDPDomainAgentBase {
  public:
-  InspectorInputAgent(
+  explicit InspectorInputAgent(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
-  virtual ~InspectorInputAgent();
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  ~InspectorInputAgent() override = default;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  typedef void (InspectorInputAgent::*InputAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& params);
+  using InputAgentMethod = void (InspectorInputAgent::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
 
-  void EmulateTouchFromMouseEvent(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message);
-  void DispatchMouseEvent(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message);
-  void InsertText(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message);
-  void SynthesizeTapGesture(const std::shared_ptr<MessageSender>& sender,
-                            const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(DispatchMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(InsertText);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
 
   std::map<std::string, InputAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;

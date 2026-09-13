@@ -13,6 +13,7 @@
 #include "core/devtool_wrapper/devtool_pool.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/lynx_shell.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
@@ -64,7 +65,7 @@ class LynxDevToolMediator
       public LynxDevToolMediatorBase {
  public:
   LynxDevToolMediator();
-  ~LynxDevToolMediator() = default;
+  ~LynxDevToolMediator() override = default;
 
  public:
   void Init(lynx::shell::LynxShell* shell,
@@ -149,10 +150,10 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
 
   // Input domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
-  DECLARE_DEVTOOL_METHOD(DispatchMouseEvent)
-  DECLARE_DEVTOOL_METHOD(InsertText)
-  DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
+  DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(DispatchMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(InsertText);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
 
   // Inspector domain -> devtools executor
   DECLARE_DEVTOOL_METHOD(InspectorEnable)
