@@ -18,16 +18,19 @@
 namespace lynx {
 namespace base {
 namespace logging {
-namespace {
-
-const char* const kLogSeverityNames[LOG_NUM_SEVERITIES] = {
-    "VERBOSE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL"};
+namespace detail {
 
 #ifdef NDEBUG
 int32_t g_min_log_level = LOG_INFO;
 #else
 int32_t g_min_log_level = LOG_DEBUG;
 #endif
+
+}  // namespace detail
+namespace {
+
+const char* const kLogSeverityNames[LOG_NUM_SEVERITIES] = {
+    "VERBOSE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL"};
 
 static bool isLogOutputByPlatform = false;
 static bool kHasInitedLynxLog = false;
@@ -137,13 +140,11 @@ void InitLynxLogging(InitAlogCallBack initAlogCallback,
 }
 
 void SetMinLogLevel(int level) {
-  if (g_min_log_level >= level) {
+  if (detail::g_min_log_level >= level) {
     return;
   }
-  g_min_log_level = std::min(LOG_FATAL, level);
+  detail::g_min_log_level = std::min(LOG_FATAL, level);
 }
-
-int GetMinLogLevel() { return g_min_log_level; }
 
 void PrintLogToLynxLogging(int level, const char* tag, const char* message) {
   PrintLogMessageByAlog(level, tag, message);
