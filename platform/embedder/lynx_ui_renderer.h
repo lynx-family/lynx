@@ -99,7 +99,7 @@ class LynxUIRenderer {
 
  private:
   // Converts logical coordinates to physical pixels and sends the event with
-  // its synthetic Add/Remove lifecycle.
+  // its device-specific lifecycle.
   void DispatchSyntheticPointerEvent(ClayPointerEvent event);
 };
 }  // namespace embedder

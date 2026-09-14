@@ -13,8 +13,9 @@ namespace embedder {
 
 namespace {
 
-constexpr int32_t kSyntheticMouseDeviceId = 0;
 constexpr int32_t kSyntheticTouchDeviceId = 1;
+// Keep persistent synthetic mouse state separate from native mouse devices.
+constexpr int32_t kSyntheticMouseDeviceId = 2;
 static constexpr const char* kMousePressed = "mousePressed";
 static constexpr const char* kMouseMoved = "mouseMoved";
 static constexpr const char* kMouseReleased = "mouseReleased";
@@ -57,6 +58,12 @@ void LynxUIRenderer::DispatchSyntheticPointerEvent(ClayPointerEvent event) {
     pointer_event.timestamp = base::CurrentTimeMicroseconds();
     SendPointerEvent(pointer_event);
   };
+  if (event.device_kind == kClayPointerDeviceKindMouse) {
+    // Clay adds the mouse device on first input and retains its position across
+    // gestures. Removing it after each hover would discard subsequent motion.
+    send(event);
+    return;
+  }
   const auto send_lifecycle = [&event, &send](ClayPointerPhase phase) {
     // Add/Remove events carry no button/scroll payload.
     ClayPointerEvent lifecycle = event;
@@ -69,14 +76,12 @@ void LynxUIRenderer::DispatchSyntheticPointerEvent(ClayPointerEvent event) {
     send(lifecycle);
   };
 
-  // Synthetic down/up bracket a gesture; hover (including wheel) is standalone.
-  if (event.phase == kClayPointerPhaseDown ||
-      event.phase == kClayPointerPhaseHover) {
+  // A touch device exists only for the duration of its gesture.
+  if (event.phase == kClayPointerPhaseDown) {
     send_lifecycle(kClayPointerPhaseAdd);
   }
   send(event);
-  if (event.phase == kClayPointerPhaseUp ||
-      event.phase == kClayPointerPhaseHover) {
+  if (event.phase == kClayPointerPhaseUp) {
     send_lifecycle(kClayPointerPhaseRemove);
   }
 }

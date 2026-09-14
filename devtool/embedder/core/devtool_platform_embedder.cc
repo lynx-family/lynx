@@ -75,6 +75,12 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     embedder->EmulateTouch(input);
   }
 
+  void EmulateMouse(std::shared_ptr<lynx::devtool::MouseEvent> input) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    embedder->EmulateMouse(input);
+  }
+
   void Focus(int node_id) override {
     auto embedder = weak_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
@@ -341,6 +347,14 @@ void DevtoolPlatformEmbedder::EmulateTouch(
     std::shared_ptr<lynx::devtool::MouseEvent> input) {
   CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
   proxy_->EmulateTouch(input->type_, input->x_, input->y_, input->button_,
+                       input->delta_x_, input->delta_y_, input->modifiers_,
+                       input->click_count_);
+}
+
+void DevtoolPlatformEmbedder::EmulateMouse(
+    std::shared_ptr<lynx::devtool::MouseEvent> input) {
+  CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
+  proxy_->EmulateMouse(input->type_, input->x_, input->y_, input->button_,
                        input->delta_x_, input->delta_y_, input->modifiers_,
                        input->click_count_);
 }
