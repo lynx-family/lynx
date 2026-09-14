@@ -667,6 +667,8 @@ class PageView : public BaseView,
   uint8_t default_overflow_ = CSSProperty::OVERFLOW_XY;
 
   TapGestureRecognizer* tap_gesture_recognizer_ = nullptr;
+  uint64_t last_mouse_click_timestamp_ = 0;
+  FloatPoint last_mouse_click_position_;
   LongPressGestureRecognizer* long_press_gesture_recognizer_ = nullptr;
 };
 
