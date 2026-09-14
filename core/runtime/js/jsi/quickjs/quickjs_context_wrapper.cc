@@ -24,7 +24,7 @@ QuickjsContextWrapper::QuickjsContextWrapper(std::shared_ptr<VMInstance> vm)
   LEPUSContext* ctx;
   ctx = LEPUS_NewContext(rt);
   if (!ctx) {
-    LOGR("init quickjs context failed!");
+    LOGE("init quickjs context failed!");
     return;
   }
   ctx_ = ctx;
