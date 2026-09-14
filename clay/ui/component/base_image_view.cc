@@ -483,6 +483,11 @@ void BaseImageView::FetchPlaceholder() {
           }
           self->GetRenderImage()->MarkNeedsPaint();
         });
+        image_instance->SetAnimationCompletedCallback([self]() {
+          if (self) {
+            self->OnFinalLoopComplete();
+          }
+        });
         auto render_image = self->GetRenderImage();
         render_image->SetPlaceholderImage(std::move(image_instance));
       },
@@ -571,6 +576,11 @@ void BaseImageView::FetchSource() {
             return;
           }
           self->GetRenderImage()->MarkNeedsPaint();
+        });
+        image_instance->SetAnimationCompletedCallback([self]() {
+          if (self) {
+            self->OnFinalLoopComplete();
+          }
         });
         if (!hit_cache) {
           self->TriggerTransitionIfNeeded();
