@@ -191,7 +191,9 @@
         "enum": [
           "ios",
           "android",
+          "harmony",
           "clay_android",
+          "clay_ios",
           "clay_macos",
           "clay_windows",
           "web_lynx"
