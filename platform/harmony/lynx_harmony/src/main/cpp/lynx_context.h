@@ -45,6 +45,8 @@ class EmbedderPlatformHarmony;
 }
 
 namespace tasm {
+class NativePaintingCtxPlatformRef;
+
 namespace harmony {
 class ShadowNode;
 class LynxEvent;
@@ -128,6 +130,18 @@ class LynxContext {
 
   bool IsFragmentLayerRenderOn() const {
     return (embedded_mode_ & EmbeddedMode::FRAGMENT_LAYER_RENDER) > 0;
+  }
+
+  void SetNativePaintingContext(
+      std::weak_ptr<NativePaintingCtxPlatformRef> context) {
+    std::lock_guard<std::mutex> lock(native_painting_context_mutex_);
+    native_painting_context_ = std::move(context);
+  }
+
+  std::shared_ptr<NativePaintingCtxPlatformRef> GetNativePaintingContext()
+      const {
+    std::lock_guard<std::mutex> lock(native_painting_context_mutex_);
+    return native_painting_context_.lock();
   }
 
   void SetWindowInfo(int32_t window_id, int32_t window_left_px,
@@ -406,6 +420,9 @@ class LynxContext {
   bool enable_new_sticky_{false};
   bool enable_harmony_new_overlay_{false};
   EmbeddedMode embedded_mode_{EmbeddedMode::UNSET};
+
+  std::weak_ptr<NativePaintingCtxPlatformRef> native_painting_context_;
+  mutable std::mutex native_painting_context_mutex_;
 
   std::shared_ptr<shell::ListEngineProxy> list_engine_proxy_{nullptr};
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_{nullptr};

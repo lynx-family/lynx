@@ -347,7 +347,8 @@ void Fragment::SetBehavior(std::unique_ptr<FragmentBehavior> behavior) {
 bool Fragment::ShouldSyncNativePlatformRenderer() const {
   return element() != nullptr && has_platform_renderer_ &&
          behavior_ != nullptr &&
-         (behavior_->GetType() == PlatformRendererType::kExtended ||
+         (element()->is_page() ||
+          behavior_->GetType() == PlatformRendererType::kExtended ||
           element()->is_direct_child_of_compatible_component());
 }
 

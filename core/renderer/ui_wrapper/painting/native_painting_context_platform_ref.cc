@@ -195,15 +195,17 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
 void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
     std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
   engine_actor_ = engine_actor;
-  float device_pixel_ratio =
-      engine_actor_ != nullptr
-          ? engine_actor_->Impl()->GetTasm()->GetDevicePixelRatio()
-          : 1.0f;
-// Since iOS consumes logical pixels, device_pixel_ratio needs to be reset to 1.
-#if defined(OS_IOS)
-  device_pixel_ratio = 1.0f;
-#endif
-  event_target_helper_->SetDevicePixelRatio(device_pixel_ratio);
+  // Event geometry uses layout units, which may differ from physical pixels.
+  float layouts_unit_per_px = 1.0f;
+  if (engine_actor_ != nullptr) {
+    const auto &element_manager =
+        engine_actor_->Impl()->GetTasm()->page_proxy()->element_manager();
+    if (element_manager != nullptr) {
+      layouts_unit_per_px =
+          element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+    }
+  }
+  event_target_helper_->SetDevicePixelRatio(layouts_unit_per_px);
 }
 
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(

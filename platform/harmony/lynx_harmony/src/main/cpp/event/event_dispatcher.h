@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "base/include/vector.h"
 #include "core/base/lynx_export.h"
 #include "core/public/event/touch_event_data.h"
 #include "core/value_wrapper/value_impl_lepus.h"
@@ -27,6 +28,8 @@
 
 namespace lynx {
 namespace tasm {
+class NativePaintingCtxPlatformRef;
+
 namespace harmony {
 static constexpr int kGestureInterrupterUserDataSupportVersion = 18;
 
@@ -218,6 +221,16 @@ class EventDispatcher {
 
   void HandleTouchCancel(const ArkUI_UIInputEvent* event);
 
+  void DispatchPlatformTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
+                                  bool from_overlay);
+
+  void InitPlatformTouchEnv(const ArkUI_UIInputEvent* event, UIBase* root,
+                            bool from_overlay,
+                            NativePaintingCtxPlatformRef& context);
+
+  base::InlineVector<float, 6> CollectPlatformTouchPoints(
+      const ArkUI_UIInputEvent* event);
+
   void ActivePseudoStatus();
 
   void DeactivatePseudoStatus(PseudoStatus status);
@@ -326,6 +339,8 @@ class EventDispatcher {
   bool has_event_point_offset_{false};
   float event_point_offset_[2]{0.f, 0.f};
   int32_t long_press_duration_{500};
+  // Root coordinates for Fragment Layer rendering; target coordinates
+  // otherwise.
   float first_finger_down_point_[2]{0.f};
   ArkUI_GestureRecognizer* long_press_gesture_{nullptr};
   ArkUI_GestureRecognizer* tap_gesture_{nullptr};

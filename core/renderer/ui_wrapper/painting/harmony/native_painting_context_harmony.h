@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_NATIVE_PAINTING_CONTEXT_HARMONY_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_NATIVE_PAINTING_CONTEXT_HARMONY_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -52,8 +53,8 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
 
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
-  void StopExposure(const pub::Value& options) override {}
-  void ResumeExposure() override {}
+  void StopExposure(const pub::Value& options) override;
+  void ResumeExposure() override;
   void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) override;
   void FinishLayoutOperation(
@@ -102,7 +103,7 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
  protected:
   void EnqueueDisplayList(int id, DisplayList list) override;
   void EnqueueDisplayLists(DisplayListUpdateBatch batch) override;
-  void EnqueueReconstructEventTargetTreeRecursively() override {}
+  void EnqueueReconstructEventTargetTreeRecursively() override;
 
  private:
   void Enqueue(shell::UIOperation operation);
@@ -111,6 +112,8 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
   std::unique_ptr<TextMeasurerHarmony> text_measurer_;
   std::shared_ptr<harmony::LynxRendererContext> renderer_context_;
   std::shared_ptr<shell::DynamicUIOperationQueue> queue_;
+  std::shared_ptr<std::atomic_bool> event_target_tree_update_enqueued_ =
+      std::make_shared<std::atomic_bool>(false);
   int32_t image_key_{0};
 };
 

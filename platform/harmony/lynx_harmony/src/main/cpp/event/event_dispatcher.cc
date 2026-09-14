@@ -18,6 +18,7 @@
 #include "base/include/float_comparison.h"
 #include "base/include/fml/task_runner.h"
 #include "core/base/harmony/harmony_function_loader.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/lynx_console_helper.h"
@@ -433,6 +434,11 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
   NodeManager::Instance().SetGestureInterrupterToNode(
       root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_,
       gesture_callback_flag_);
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    if (auto context = ui_owner_->Context()->GetNativePaintingContext()) {
+      context->SetPlatformEventRootActive(root->Sign(), true);
+    }
+  }
 }
 
 void EventDispatcher::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
@@ -446,6 +452,11 @@ void EventDispatcher::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
 void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
   if (!root || !root->RootNode()) {
     return;
+  }
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    if (auto context = ui_owner_->Context()->GetNativePaintingContext()) {
+      context->SetPlatformEventRootActive(root->Sign(), false);
+    }
   }
   auto* root_node = root->RootNode();
   NodeManager::Instance().SetGestureInterrupterToNode(root_node, nullptr);
@@ -1474,6 +1485,11 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
   if (ui_owner_->Destroyed()) {
     return;
   }
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    NodeManager::Instance().SetEventDispatcher(this);
+    DispatchPlatformTouchEvent(event, root, from_overlay);
+    return;
+  }
   time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
@@ -1545,6 +1561,88 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
 
   DispatchActiveTargetTouchEvent(event);
   DispatchTouchEventToGestureArena(event_name, event);
+}
+
+void EventDispatcher::DispatchPlatformTouchEvent(
+    const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay) {
+  auto context = ui_owner_->Context()->GetNativePaintingContext();
+  if (!context || !root) {
+    return;
+  }
+
+  const auto action = OH_ArkUI_UIInputEvent_GetAction(event);
+  int action_type;
+  switch (action) {
+    case UI_TOUCH_EVENT_ACTION_DOWN:
+      action_type = 0;
+      break;
+    case UI_TOUCH_EVENT_ACTION_UP:
+      action_type = 1;
+      break;
+    case UI_TOUCH_EVENT_ACTION_MOVE:
+      action_type = 2;
+      break;
+    case UI_TOUCH_EVENT_ACTION_CANCEL:
+      action_type = 3;
+      break;
+    default:
+      return;
+  }
+  if (action == UI_TOUCH_EVENT_ACTION_DOWN) {
+    InitPlatformTouchEnv(event, root, from_overlay, *context);
+  }
+
+  auto pointer_data = CollectPlatformTouchPoints(event);
+  if (pointer_data.empty()) {
+    return;
+  }
+  int event_data[] = {0, action_type,
+                      OH_ArkUI_UIInputEvent_GetSourceType(event),
+                      static_cast<int>(pointer_data.size() / 3)};
+  context->DispatchPlatformInputEvent(event_data, pointer_data.data(),
+                                      root->Sign());
+}
+
+void EventDispatcher::InitPlatformTouchEnv(
+    const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay,
+    NativePaintingCtxPlatformRef& context) {
+  from_overlay_ = from_overlay;
+  root_target_ = root->weak_from_this();
+  if (OH_ArkUI_PointerEvent_GetPointerCount(event) == 1) {
+    GetEventPagePoint(first_finger_down_point_, event, 0);
+  }
+  if (root != ui_owner_->Root()) {
+    ArkUI_IntOffset root_offset = {0, 0};
+    OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->RootNode(),
+                                                        &root_offset);
+    float page_origin[2] = {0.f, 0.f};
+    context.GetRootViewLocationOnScreen(page_origin);
+    const float density = ui_owner_->Context()->ScaledDensity();
+    context.SetPlatformEventRootOffset(
+        root->Sign(), root_offset.x / density - page_origin[0],
+        root_offset.y / density - page_origin[1]);
+  }
+}
+
+base::InlineVector<float, 6> EventDispatcher::CollectPlatformTouchPoints(
+    const ArkUI_UIInputEvent* event) {
+  const auto pointer_count = OH_ArkUI_PointerEvent_GetPointerCount(event);
+  base::InlineVector<float, 6> pointer_data;
+  for (uint32_t i = 0; i < pointer_count; ++i) {
+    if (!IsActiveFinger(event, i)) {
+      continue;
+    }
+    const int32_t native_pointer_id =
+        OH_ArkUI_PointerEvent_GetPointerId(event, i);
+    const int32_t pointer_id =
+        IsPrimaryInput(event, native_pointer_id) ? 0 : native_pointer_id;
+    float point[2] = {0.f, 0.f};
+    GetEventPagePoint(point, event, i);
+    pointer_data.push_back(static_cast<float>(pointer_id));
+    pointer_data.push_back(point[0]);
+    pointer_data.push_back(point[1]);
+  }
+  return pointer_data;
 }
 
 void EventDispatcher::EmulateTouch(const std::string& event_type, int x, int y,
@@ -1698,6 +1796,15 @@ void EventDispatcher::DispatchMultiTouchEvent(
 }
 
 void EventDispatcher::OnLongPressEvent(const ArkUI_UIInputEvent* event) {
+  if (ui_owner_->Destroyed()) {
+    return;
+  }
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    if (auto context = ui_owner_->Context()->GetNativePaintingContext()) {
+      context->DispatchPlatformLongPress();
+    }
+    return;
+  }
   if (first_active_target_.expired()) {
     return;
   }
@@ -1706,6 +1813,15 @@ void EventDispatcher::OnLongPressEvent(const ArkUI_UIInputEvent* event) {
 }
 
 void EventDispatcher::OnTapEvent(const ArkUI_UIInputEvent* event) {
+  if (ui_owner_->Destroyed()) {
+    return;
+  }
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    if (auto context = ui_owner_->Context()->GetNativePaintingContext()) {
+      context->DispatchPlatformTap();
+    }
+    return;
+  }
   bool can_respond_tap = !first_active_target_.expired()
                              ? CanRespondTap(first_active_target_.lock().get())
                              : false;
@@ -1748,6 +1864,14 @@ void EventDispatcher::OnClickEvent(const ArkUI_UIInputEvent* event) {
 }
 
 bool EventDispatcher::EventThrough() {
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    auto context = ui_owner_->Context()->GetNativePaintingContext();
+    auto root = root_target_.lock();
+    return context && root &&
+           context->IsPlatformEventTargetEventThrough(
+               root->Sign(), first_finger_down_point_[0],
+               first_finger_down_point_[1]);
+  }
   auto target = first_active_target_.lock();
   if (!target) {
     return false;
@@ -1865,6 +1989,23 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
 
   point[0] = node_point_x - page_x;
   point[1] = node_point_y - page_y;
+
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    auto context = ui_owner_->Context()->GetNativePaintingContext();
+    if (!context) {
+      UpdateOverlayPassThroughState(root, false);
+      return false;
+    }
+    float root_screen_offset[2] = {0.f, 0.f};
+    context->GetRootViewLocationOnScreen(root_screen_offset);
+    context->SetPlatformEventRootOffset(root->Sign(),
+                                        page_x - root_screen_offset[0],
+                                        page_y - root_screen_offset[1]);
+    const bool can_consume = !context->IsPlatformEventTargetEventThrough(
+        root->Sign(), point[0], point[1]);
+    UpdateOverlayPassThroughState(root, can_consume);
+    return can_consume;
+  }
 
   EventTarget* active_target = root->HitTest(point);
   if (active_target == nullptr) {

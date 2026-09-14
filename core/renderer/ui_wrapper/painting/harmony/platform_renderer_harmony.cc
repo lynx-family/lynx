@@ -110,13 +110,18 @@ void PlatformRendererHarmony::CleanupRenderer() {
 }
 
 void PlatformRendererHarmony::OnUpdateDisplayList(DisplayList display_list) {
-  auto host = host_.lock();
-  if (display_list.GetContentItemsSize() == 0 || host == nullptr) {
+  if (display_list.GetContentItemsSize() == 0) {
     return;
   }
-  UpdateHostLayout(display_list);
-  host->SetFragmentLayerClipBounds(display_list.RootNeedClipBounds());
-  host->UpdateFragmentLayerDisplayList(std::move(display_list));
+  display_list_ = std::move(display_list);
+
+  auto host = host_.lock();
+  if (host == nullptr) {
+    return;
+  }
+  UpdateHostLayout(display_list_);
+  host->SetFragmentLayerClipBounds(display_list_.RootNeedClipBounds());
+  host->UpdateFragmentLayerDisplayList(&display_list_);
 }
 
 void PlatformRendererHarmony::OnUpdateAttributes(

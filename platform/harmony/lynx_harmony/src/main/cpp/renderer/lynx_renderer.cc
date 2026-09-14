@@ -17,8 +17,8 @@ LynxRenderer::LynxRenderer(std::shared_ptr<LynxRendererContext> context,
 
 LynxRenderer::~LynxRenderer() = default;
 
-void LynxRenderer::UpdateDisplayList(DisplayList display_list) {
-  display_list_ = std::move(display_list);
+void LynxRenderer::UpdateDisplayList(const DisplayList* display_list) {
+  display_list_ = display_list;
   if (!display_list_applier_) {
     display_list_applier_ =
         std::make_unique<LynxDisplayListApplier>(context_.get(), host_);
@@ -26,11 +26,11 @@ void LynxRenderer::UpdateDisplayList(DisplayList display_list) {
 }
 
 void LynxRenderer::Draw(OH_Drawing_Canvas* canvas) {
-  if (canvas == nullptr || !display_list_applier_ ||
-      display_list_.GetContentItemsSize() == 0) {
+  if (canvas == nullptr || !display_list_applier_ || display_list_ == nullptr ||
+      display_list_->GetContentItemsSize() == 0) {
     return;
   }
-  display_list_applier_->ApplyDisplayList(display_list_, canvas);
+  display_list_applier_->ApplyDisplayList(*display_list_, canvas);
 }
 
 }  // namespace harmony

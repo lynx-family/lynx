@@ -27,6 +27,7 @@
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
@@ -241,6 +242,12 @@ void LynxTemplateRenderer::SetUpLynxShell(
           .SetNativeModuleManager(std::move(native_module_manager))
           .SetWhiteBoard(white_board ? white_board->GetWhiteBoard() : nullptr)
           .build());
+  if (lynx_context != nullptr) {
+    if (auto painting_context = lynx_context->GetNativePaintingContext()) {
+      painting_context->SetLynxEngineActorForPlatformContextRef(
+          shell_->GetEngineActor());
+    }
+  }
   invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
 
   {
