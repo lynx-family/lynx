@@ -16,6 +16,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.DisplayCutout;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,22 +39,34 @@ import com.lynx.explorer.routing.RouteResult;
 import com.lynx.explorer.routing.RouteSource;
 import com.lynx.explorer.sparkling.ExplorerRuntimePreferences;
 import com.lynx.explorer.utils.QueryMapUtils;
+import com.lynx.tasm.LynxBackgroundRuntime;
+import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.LynxViewClient;
+import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.resourceprovider.LynxResourceCallback;
+import com.lynx.tasm.resourceprovider.LynxResourceRequest;
+import com.lynx.tasm.resourceprovider.LynxResourceResponse;
+import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.xelement.XElementBehaviors;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class LynxViewShellActivity extends AppCompatActivity {
   public static final String URL_KEY = "url";
@@ -62,6 +75,9 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private static final String TAG = "LynxViewShellActivity";
   private static final String HOME_PAGE_URL =
       "file://lynx?local://homepage.lynx.bundle?fullscreen=true";
+  private static final Map<String, LynxGroup> sNamedGroups = new HashMap<>();
+  private static final Map<String, LynxBackgroundRuntime> sGroupRuntimes = new HashMap<>();
+  private static final int STANDALONE_FETCH_TIMEOUT_MS = 5000;
   private static final String DEFAULT_TOP_BAR_COLOR = "#F0F2F5";
   private static final String DEFAULT_TOP_BAR_TITLE_COLOR = "#000000";
   private static final String DEFAULT_TOP_BAR_BACK_BUTTON_STYLE = "light";
@@ -69,6 +85,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private LynxView mLynxView;
   private String mFrontendTheme;
   private boolean mIsHomepage;
+  private String mGroupName;
   private ExplorerLoadingView mLoadingView;
   private TimingHandler.ExtraTimingInfo extraTimingInfo = new TimingHandler.ExtraTimingInfo();
 
@@ -121,12 +138,104 @@ public class LynxViewShellActivity extends AppCompatActivity {
   }
 
   @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    if (mGroupName == null || mGroupName.isEmpty()) {
+      return super.onCreateOptionsMenu(menu);
+    }
+    getMenuInflater().inflate(R.menu.card_menu, menu);
+    return true;
+  }
+
+  @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     if (item.getItemId() == android.R.id.home) {
       finish();
       return true;
     }
+    if (item.getItemId() == R.id.action_open_another_page) {
+      RouteResult result = RouteCoordinator.open(
+          this, HOME_PAGE_URL, RequestedRuntime.LYNX, RouteSource.NATIVE_MODULE);
+      if (!result.getAccepted()) {
+        Log.e(TAG, result.getCode() + ": " + result.getMessage());
+      }
+      return true;
+    }
     return super.onOptionsItemSelected(item);
+  }
+
+  public static boolean joinsGroup(String url) {
+    QueryMapUtils queryMap = new QueryMapUtils();
+    queryMap.parse(isAssetFilename(url) ? getAssetFilename(url) : url);
+    String groupName = queryMap.getString("group");
+    return groupName != null && !groupName.isEmpty();
+  }
+
+  private static synchronized LynxGroup namedGroup(String name) {
+    LynxGroup group = sNamedGroups.get(name);
+    if (group == null) {
+      group = new LynxGroup.LynxGroupBuilder().setGroupName(name).build();
+      sNamedGroups.put(name, group);
+    }
+    return group;
+  }
+
+  private static synchronized void startGroupRuntime(
+      Context context, String name, LynxGroup group, String url, String entryName) {
+    if (sGroupRuntimes.containsKey(name)) {
+      return;
+    }
+    LynxBackgroundRuntime runtime =
+        createStandaloneRuntime(context.getApplicationContext(), group, url, entryName);
+    if (runtime != null) {
+      sGroupRuntimes.put(name, runtime);
+      Log.i(TAG, "Started standalone runtime for group " + name);
+    }
+  }
+
+  private static LynxBackgroundRuntime createStandaloneRuntime(
+      Context context, LynxGroup group, String url, String entryName) {
+    byte[] data = fetchStandalone(context, url);
+    if (data == null) {
+      Log.e(TAG, "Failed to load standalone script " + url);
+      return null;
+    }
+    LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
+    if (group != null) {
+      options.setLynxGroup(group);
+    }
+    options.setGenericResourceFetcher(new DemoGenericResourceFetcher());
+    options.setMediaResourceFetcher(new DemoMediaResourceFetcher());
+    options.setTemplateResourceFetcher(new DemoTemplateResourceFetcher(context));
+    LynxBackgroundRuntime runtime =
+        new LynxBackgroundRuntime(context, options, LynxEnv.inst().isDevtoolEnabled());
+    if (entryName != null && !entryName.isEmpty()) {
+      runtime.evaluateTemplateBundle(url, TemplateBundle.fromTemplate(data), entryName);
+    } else {
+      runtime.evaluateJavaScript(url, new String(data, StandardCharsets.UTF_8));
+    }
+    return runtime;
+  }
+
+  private static byte[] fetchStandalone(Context context, String url) {
+    final byte[][] result = new byte[1][];
+    CountDownLatch latch = new CountDownLatch(1);
+    new DemoTemplateResourceFetcher(context).fetchTemplate(
+        new LynxResourceRequest(url, LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate),
+        new LynxResourceCallback<TemplateProviderResult>() {
+          @Override
+          public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {
+            if (response.getData() != null) {
+              result[0] = response.getData().getTemplateBinary();
+            }
+            latch.countDown();
+          }
+        });
+    try {
+      latch.await(STANDALONE_FETCH_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    return result[0];
   }
 
   private String getStorageItem(String key) {
@@ -142,6 +251,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
 
     QueryMapUtils queryMap = new QueryMapUtils();
     queryMap.parse(url);
+    mGroupName = queryMap.getString("group");
     boolean isFullscreen = queryMap.getBoolean("fullscreen", false);
 
     if (!isFullscreen) {
@@ -268,6 +378,24 @@ public class LynxViewShellActivity extends AppCompatActivity {
       queryMap.parse(getAssetFilename(url));
     } else {
       queryMap.parse(url);
+    }
+
+    String groupName = queryMap.getString("group");
+    String standaloneUrl = queryMap.getString("standalone_url");
+    String standaloneEntryName = queryMap.getString("standalone_entry_name");
+    boolean hasStandaloneUrl = standaloneUrl != null && !standaloneUrl.isEmpty();
+    if (groupName != null && !groupName.isEmpty()) {
+      LynxGroup group = namedGroup(groupName);
+      builder.setLynxGroup(group);
+      if (hasStandaloneUrl) {
+        startGroupRuntime(this, groupName, group, standaloneUrl, standaloneEntryName);
+      }
+    } else if (hasStandaloneUrl) {
+      LynxBackgroundRuntime runtime =
+          createStandaloneRuntime(this, null, standaloneUrl, standaloneEntryName);
+      if (runtime != null) {
+        builder.setLynxBackgroundRuntime(runtime);
+      }
     }
 
     if (queryMap.contains("width") && queryMap.contains("height")) {
