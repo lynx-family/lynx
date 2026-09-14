@@ -19,6 +19,7 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_compact_array_buffer.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TextLayout_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TextLayout_register_jni.h"
 
@@ -242,9 +243,21 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
   bool use_utf16 =
       text_element->is_inline_element() || text_element->has_inline_child();
   bool has_inline_view = false;
+  building_event_target_ranges_.clear();
   BuildTextPropsBuffer(text_element, output_str, current_length, use_utf16,
                        props.get(), &has_inline_view);
   text_element->set_need_layout_children(has_inline_view);
+
+  if (element->EnableFragmentLayerRender()) {
+    if (auto* manager = element->element_manager();
+        manager && manager->painting_context()) {
+      manager->painting_context()
+          ->impl()
+          ->CastToNativeCtx()
+          ->UpdateTextEventTargetRanges(
+              element->impl_id(), std::move(building_event_target_ranges_));
+    }
+  }
 
   props->AddProp(kPropTextString);
   props->AddProp(output_str.c_str());
@@ -336,7 +349,9 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
                                         PropArrayAndroid* props) {
   TextProps* text_props = element->text_props();
   CSSIDBitset& property_bits = element->property_bits();
-  if (!text_props && !property_bits.HasAny()) {
+  const bool has_tap_event =
+      element->is_inline_element() && element->HasEventListener("tap");
+  if (!text_props && !property_bits.HasAny() && !has_tap_event) {
     return;
   }
   // only inline text need the pass the range，   kPropRangeStart should be
@@ -344,6 +359,15 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
   if (element->is_inline_element()) {
     props->AddProp(kPropInlineStart);
     props->AddProp(static_cast<int>(pos_start));
+    if (has_tap_event) {
+      props->AddProp(kPropInlineEventTarget);
+      props->AddProp(element->impl_id());
+      if (element->EnableFragmentLayerRender()) {
+        building_event_target_ranges_.push_back(
+            {element->impl_id(), static_cast<int32_t>(pos_start),
+             static_cast<int32_t>(pos_end)});
+      }
+    }
   }
 
   // styles
@@ -650,6 +674,16 @@ void TextLayoutAndroid::AppendImageProps(ImageElement* image_element,
   // inline range start
   props->AddProp(kPropInlineStart);
   props->AddProp(static_cast<int>(start));
+
+  if (image_element->HasEventListener("tap")) {
+    props->AddProp(kPropInlineEventTarget);
+    props->AddProp(image_element->impl_id());
+    if (image_element->EnableFragmentLayerRender()) {
+      building_event_target_ranges_.push_back({image_element->impl_id(),
+                                               static_cast<int32_t>(start),
+                                               static_cast<int32_t>(end)});
+    }
+  }
 
   // src
   props->AddProp(kPropImageSrc);
