@@ -2390,6 +2390,7 @@ public class LynxImageManager : NSObject {
   public instancetype _Nonnull LynxImageManager::initWithContext:(LynxUIContext *_Nullable context);
   public void LynxImageManager::requestImage:withType:(LynxURL *_Nullable imageURL,[withType] LynxImageRequestType type);
   public void LynxImageManager::setTarget:(UIImageView *_Nullable view);
+  public void LynxImageManager::setLayerTarget:(CALayer *_Nullable layer);
   public void LynxImageManager::setSign:(NSInteger sign);
   public void LynxImageManager::setEventMask:(NSInteger eventMask);
   public void LynxImageManager::updatePaintInfo:(const lynx::tasm::ImagePaintInfo &paintInfo);
