@@ -1,0 +1,102 @@
+name: harmony_library_plugin_publish
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'platform/harmony/lynx_library_plugin/**'
+      - '.github/workflows/harmony-library-plugin-publish.yml'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The npm tag to publish with.'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harmony-library-plugin-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'lynx-family/lynx' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: lynx/platform/harmony/lynx_library_plugin
+    env:
+      NPM_TAG: ${{ inputs.tag || 'latest' }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          path: lynx
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: 'lynx/.node-version'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - name: Setup Package Manager
+        run: |
+          npm install -g npm@11.10.0
+          npm --version
+      - name: Check Published Version
+        id: check
+        run: |
+          package_name=$(node -p "require('./package.json').name")
+          package_version=$(node -p "require('./package.json').version")
+          test "$package_name" = '@lynx/lynx-library-plugin'
+
+          echo "Package: $package_name@$package_version"
+          registry_error=$(mktemp "$RUNNER_TEMP/harmony-plugin-npm-view.XXXXXX")
+          if npm view "$package_name@$package_version" version \
+            >/dev/null 2>"$registry_error"; then
+            echo "Version $package_version is already published. Skipping publish."
+            echo 'publish_needed=false' >> "$GITHUB_OUTPUT"
+          elif grep -q 'E404' "$registry_error"; then
+            if [[ "$package_version" == *-* && "$NPM_TAG" == 'latest' ]]; then
+              echo 'Prerelease versions require a non-latest npm tag.' >&2
+              exit 1
+            fi
+            echo "Version $package_version is not published yet."
+            echo 'publish_needed=true' >> "$GITHUB_OUTPUT"
+          else
+            cat "$registry_error" >&2
+            exit 1
+          fi
+      - name: Install Test Dependencies
+        if: steps.check.outputs.publish_needed == 'true'
+        run: npm install --ignore-scripts --legacy-peer-deps --package-lock=false
+      - name: Test
+        if: steps.check.outputs.publish_needed == 'true'
+        run: npm test
+      - name: Pack and Validate
+        if: steps.check.outputs.publish_needed == 'true'
+        id: pack
+        run: |
+          smoke_root=$(mktemp -d "$RUNNER_TEMP/harmony-plugin-smoke.XXXXXX")
+          npm pack . --ignore-scripts --json --pack-destination "$smoke_root" \
+            > "$smoke_root/pack.json"
+          tarball_name=$(node -e \
+            "const fs = require('node:fs'); const result = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(result[0].filename);" \
+            "$smoke_root/pack.json")
+          tarball="$smoke_root/$tarball_name"
+          node scripts/verify-package.js "$tarball"
+
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+      - name: Publish
+        if: steps.check.outputs.publish_needed == 'true'
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: npm publish "$TARBALL" --access public --provenance --tag "$NPM_TAG"
