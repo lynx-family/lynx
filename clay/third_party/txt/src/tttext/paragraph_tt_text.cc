@@ -192,7 +192,7 @@ double ParagraphTTText::GetMinIntrinsicWidth() {
   return GetMaxWidth();
 }
 double ParagraphTTText::GetMaxIntrinsicWidth() {
-  return GetMaxWidth();
+  return paragraph_->GetMaxIntrinsicWidth();
 }
 double ParagraphTTText::GetAlphabeticBaseline() {
   if (region_ == nullptr || region_->GetLineCount() == 0) {
