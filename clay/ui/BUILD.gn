@@ -168,6 +168,7 @@ if (enable_unittests) {
       "component/base_view_unittests.cc",
       "component/editable/textarea_ng_view_unittests.cc",
       "component/keyframe_animator_unittests.cc",
+      "component/list/list_container/list_container_view_unittests.cc",
       "component/native_view_unittests.cc",
       "component/nested_scroll/nested_scrollable_unittests.cc",
       "component/overlay_view_unittests.cc",
