@@ -60,6 +60,11 @@ void OneSequenceGestureRecognizer::ResolveAll(GestureDisposition disposition) {
   decltype(arena_entries_) local_entries = std::move(arena_entries_);
   for (auto& pair : local_entries) {
     pair.second->Resolve(disposition);
+    if (disposition == GestureDisposition::kAccept &&
+        pair.second->IsDeferred()) {
+      // Keep the entry so Up/Cancel can withdraw a pending acceptance request.
+      arena_entries_[pair.first] = std::move(pair.second);
+    }
   }
 }
 
@@ -71,6 +76,9 @@ void OneSequenceGestureRecognizer::ResolveOne(int pointer_id,
     std::unique_ptr<ArenaEntry> entry = std::move(iter->second);
     arena_entries_.erase(iter);
     entry->Resolve(disposition);
+    if (disposition == GestureDisposition::kAccept && entry->IsDeferred()) {
+      arena_entries_[pointer_id] = std::move(entry);
+    }
   }
 }
 

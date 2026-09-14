@@ -34,6 +34,10 @@ class ArenaEntry {
 
   // Interface for operating arena manager.
   void Resolve(GestureDisposition disposition);
+  // Only the first platform member on the hit path may reserve this arena.
+  bool DeferToThisMember();
+  bool IsDeferred() const;
+  bool IsPlatformArbitrationActive() const;
 
  private:
   ArenaManager* arena_manager_;
@@ -58,6 +62,7 @@ class ArenaManager final {
 
  private:
   friend class ArenaEntry;
+  bool DeferToMember(int pointer_id, const fml::WeakPtr<ArenaMember>& member);
   void Resolve(int pointer_id, const fml::WeakPtr<ArenaMember>& member,
                GestureDisposition disposition);
 

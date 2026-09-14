@@ -25,6 +25,12 @@ class HitTestTarget {
 
   virtual void HandleEvent(const PointerEvent& event) = 0;
 
+  // Optional hooks for platform arbitration on the hit path. Targets need not
+  // be views; targets without gesture integration retain the default behavior.
+  virtual bool HasGestureRecognizers() const { return false; }
+  virtual bool IsPlatformGestureTarget() const { return false; }
+  virtual void ArmPlatformGestureArbitration() {}
+
   virtual bool HasDragGestureRecognizer(ScrollDirection direction) const = 0;
 
   // TODO(zuojinglong.9): Implement a generic method to handle additional
