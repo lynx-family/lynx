@@ -143,8 +143,6 @@ class Fragment : public BaseElementContainer {
 
  private:
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
-  Fragment* EnclosingStackingContextFromElementParent();
-  void ZIndexChanged();
   void UpdateBorderRadiusAccordingToLayoutInfo();
   size_t UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
 
