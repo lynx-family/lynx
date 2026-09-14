@@ -30,7 +30,7 @@ target(lynx_harmony_type, "lynx_harmony") {
     "../../../core/runtime/common/napi:napi_binding_quickjs",
     "../../../gfx:gfx",
     "../../../gfx/platform/harmony:lynx_gfx",
-    "../../../service_api:lynx_service_api_native",
+    "../../../service_api:lynx_service_api",
     "../../../third_party/quickjs",
     "../lynx_xelement",
   ]

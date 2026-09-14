@@ -7,6 +7,27 @@ import("../core/Lynx.gni")
 import("../testing/test.gni")
 import("service_api.gni")
 
+# Consumers select this entry; registry ownership stays in the platform package.
+if (is_ios) {
+  import("//${lynx_dir}/build_overrides/darwin.gni")
+  subspec_target("lynx_service_api") {
+    output_name = "ServiceAPI"
+    dependency = [ "LynxServiceAPI/Core" ]
+  }
+} else {
+  group("lynx_service_api") {
+    if (is_android) {
+      public_deps = [
+        "//${lynx_dir}/platform/android/service_api:lynx_service_api_native",
+      ]
+    } else if (is_harmony) {
+      public_deps = [ "//${lynx_dir}/service_api:lynx_service_api_native" ]
+    } else {
+      public_deps = [ "//${lynx_dir}/service_api:src" ]
+    }
+  }
+}
+
 source_set("src") {
   sources = service_api_sources
   public = service_api_public
@@ -18,7 +39,7 @@ source_set("src") {
 if (is_harmony) {
   shared_library("lynx_service_api_native") {
     output_name = "lynx_service_api"
-    deps = [ ":src" ]
+    deps = [ "//${lynx_dir}/service_api:src" ]
     configs += [ "../platform/harmony/lynx_harmony:harmony_public_config" ]
   }
 }
