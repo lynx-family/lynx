@@ -134,6 +134,33 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     initialize(context, null);
   }
 
+  /**
+   * Captures the current JS call stack without stopping JS; completion runs on
+   * the main thread. Only the V8 engine is supported for now.
+   */
+  @UiThread
+  public void captureJavaScriptStack(@NonNull LynxJavaScriptExecutionCallback callback) {
+    checkAccessFromNonUiThread("captureJavaScriptStack");
+    if (callback == null) {
+      LLog.e(TAG, "captureJavaScriptStack: callback is null, ignore.");
+      return;
+    }
+    LynxTemplateRender render = mLynxTemplateRender;
+    if (render == null) {
+      callback.onResult(LynxJavaScriptExecutionCallback.DESTROYED, "");
+      return;
+    }
+    render.captureJavaScriptStack(callback);
+  }
+
+  /** Aborts the current JS execution. Only the V8 engine is supported for now. */
+  @UiThread
+  public boolean terminateJavaScriptExecution() {
+    checkAccessFromNonUiThread("terminateJavaScriptExecution");
+    LynxTemplateRender render = mLynxTemplateRender;
+    return render != null && render.terminateJavaScriptExecution();
+  }
+
   public int getLynxViewId() {
     return mLynxViewId;
   }

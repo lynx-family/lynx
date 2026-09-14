@@ -33,6 +33,8 @@ js_sources = [
   "bindings/modules/module_interceptor.h",
   "js_context_wrapper.cc",
   "js_context_wrapper.h",
+  "js_execution_control.cc",
+  "js_execution_control.h",
   "js_executor.cc",
   "js_executor.h",
   "lynx_api_handler.cc",

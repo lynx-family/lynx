@@ -173,6 +173,13 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
   if (!maybe_local_script.IsEmpty()) {
     script = maybe_local_script.ToLocalChecked();
   }
+  if (tc.HasTerminated()) {
+    isolate_->CancelTerminateExecution();
+    reportJSIException(JSINativeException(
+        "TerminatedError", "JavaScript execution was terminated by the host.",
+        "", false, error::E_BTS_RUNTIME_ERROR_TERMINATED_ERROR));
+    return Value::undefined();
+  }
   auto maybe_error = V8Exception::TryCatch(*this, tc);
   if (maybe_error.has_value()) {
     return base::unexpected(JSINativeException(
@@ -182,6 +189,13 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
 
   if (!script.IsEmpty()) {
     auto result = script->Run(context);
+    if (tc.HasTerminated()) {
+      isolate_->CancelTerminateExecution();
+      reportJSIException(JSINativeException(
+          "TerminatedError", "JavaScript execution was terminated by the host.",
+          "", false, error::E_BTS_RUNTIME_ERROR_TERMINATED_ERROR));
+      return Value::undefined();
+    }
 
     maybe_error = V8Exception::TryCatch(*this, tc);
     if (maybe_error.has_value()) {

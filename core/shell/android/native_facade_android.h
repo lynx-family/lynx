@@ -39,6 +39,7 @@ class NativeFacadeAndroid : public NativeFacade {
   void OnSSRHydrateFinished(const std::string& url) override;
 
   void OnRuntimeReady() override;
+  void OnJSVMInstanceReady(intptr_t vm_instance) override;
 
   void OnTasmFinishByNative() override;
 

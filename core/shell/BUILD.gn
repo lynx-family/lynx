@@ -91,6 +91,8 @@ if (!enable_unittests) {
 
 if (is_android) {
   shell_shared_sources += [
+    "android/javascript_execution_callback_android.cc",
+    "android/javascript_execution_callback_android.h",
     "android/js_proxy_android.cc",
     "android/js_proxy_android.h",
     "android/list_container_proxy_android.cc",

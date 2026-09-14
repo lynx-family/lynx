@@ -54,6 +54,8 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
     void onRuntimeReady();
 
+    void onJSVMInstanceReady(long vmInstance);
+
     void onDataUpdated();
 
     void onPageChanged(boolean isFirstScreen);
@@ -306,6 +308,13 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
     LLog.i(TAG, "native->java onRuntimeReady");
     if (mCallback != null) {
       mCallback.onRuntimeReady();
+    }
+  }
+
+  @CalledByNative
+  private void onJSVMInstanceReady(long vmInstance) {
+    if (mCallback != null) {
+      mCallback.onJSVMInstanceReady(vmInstance);
     }
   }
 

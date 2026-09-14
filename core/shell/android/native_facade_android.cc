@@ -168,6 +168,14 @@ void NativeFacadeAndroid::OnRuntimeReady() {
   Java_NativeFacade_onRuntimeReady(env, local_ref.Get());
 }
 
+void NativeFacadeAndroid::OnJSVMInstanceReady(intptr_t vm_instance) {
+  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) return;
+  JNIEnv* env = AttachCurrentThread();
+  Java_NativeFacade_onJSVMInstanceReady(env, local_ref.Get(),
+                                        static_cast<jlong>(vm_instance));
+}
+
 void NativeFacadeAndroid::ReportError(const base::LynxError& error) {
   ScopedLocalJavaRef<jobject> local_ref(jni_object_);
   if (local_ref.IsNull()) return;

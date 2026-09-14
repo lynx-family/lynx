@@ -52,6 +52,7 @@ class NativeFacade {
   virtual void OnTemplateLoaded(const std::string& url) = 0;
 
   virtual void OnRuntimeReady() = 0;
+  virtual void OnJSVMInstanceReady(intptr_t vm_instance) {}
 
   virtual void ReportError(const base::LynxError& error) = 0;
 
