@@ -78,6 +78,10 @@ class LayoutObject : public ContainerNode {
   inline bool IsFixed() const {
     return css_style_->GetPosition() == PositionType::kFixed;
   }
+  bool IsStatic() const {
+    return css_style_->GetPosition() == PositionType::kStatic;
+  }
+  bool HasAbsoluteDescendantsThroughStatic() const;
   inline bool IsFixedOrAbsolute() const {
     return css_style_->GetPosition() == PositionType::kFixed ||
            css_style_->GetPosition() == PositionType::kAbsolute;
@@ -166,6 +170,16 @@ class LayoutObject : public ContainerNode {
   const LayoutObject* ParentLayoutObject() const {
     return static_cast<const LayoutObject*>(parent_);
   }
+  LayoutObject* ContainingBlockEstablisher() {
+    return containing_block_establisher_;
+  }
+  const LayoutObject* ContainingBlockEstablisher() const {
+    return containing_block_establisher_;
+  }
+  void SetContainingBlockEstablisher(LayoutObject* const establisher) {
+    containing_block_establisher_ = establisher;
+  }
+
   inline float GetBorderBoundWidth() const { return offset_width_; }
   inline float GetBorderBoundHeight() const { return offset_height_; }
   // If not have/calculate baseline, return border bound height
@@ -268,6 +282,7 @@ class LayoutObject : public ContainerNode {
                                   const SLNodeSet* fixed_node_set = nullptr);
   virtual void UpdateAlignment();
   void LayoutDisplayNone();
+  void HideLayoutObject();
   std::vector<double> GetBoxModel();
 
   inline float pos_left() const { return pos_left_; }
@@ -308,13 +323,14 @@ class LayoutObject : public ContainerNode {
   void MarkHasNewLayout();
   void MarkDirtyInternal(bool request_layout, bool force = false);
   bool SetNewLayoutResult(LayoutResultForRendering new_result);
-  void HideLayoutObject();
   void UpdateSize(float width, float height);
   void RoundToPixelGrid(const float container_absolute_left,
                         const float container_absolute_top,
                         const float container_rounded_left,
                         const float container_rounded_top,
-                        bool ancestors_have_new_layout);
+                        bool ancestors_have_new_layout,
+                        bool ancestors_display_none = false);
+  void UpdateContainingBlockForPlatform();
 
   void UpdateMeasureWithMeasureFunc(const Constraints& constraints,
                                     bool final_measure);
@@ -341,6 +357,7 @@ class LayoutObject : public ContainerNode {
   void* context_ = nullptr;
   LayoutAlgorithm* algorithm_ = nullptr;
   LayoutObject* root_node_ = nullptr;
+  LayoutObject* containing_block_establisher_ = nullptr;
   LayoutEventHandler* event_handler_ = nullptr;
   LayoutComputedStyle* css_style_;
 
@@ -354,7 +371,7 @@ class LayoutObject : public ContainerNode {
 
   bool is_dirty_ = false;
   bool current_node_has_new_layout_ = false;
-  bool is_layout_occurred = false;
+  bool is_layout_occurred_ = false;
   bool current_node_should_display_none_ = false;
 
   bool final_measure_ = false;

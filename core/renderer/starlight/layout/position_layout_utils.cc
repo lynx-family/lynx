@@ -35,6 +35,85 @@ float CalcLengthValue(const NLength& length, const Constraints& constraints,
 }  // namespace
 namespace position_utils {
 
+LayoutObject* GetAbsolutePositionContainingBlock(LayoutObject* item,
+                                                 LayoutObject* container) {
+  if (item->GetCSSStyle()->GetPosition() != PositionType::kAbsolute) {
+    return container;
+  }
+  while (container->IsStatic() && container->ContainingBlockEstablisher()) {
+    container = container->ContainingBlockEstablisher();
+  }
+  return container;
+}
+
+Constraints GetAbsolutePositionContainingBlockConstraints(
+    LayoutObject* containing_block) {
+  Constraints content;
+  content[kHorizontal] =
+      OneSideConstraint::Definite(containing_block->GetContentBoundWidth());
+  content[kVertical] =
+      OneSideConstraint::Definite(containing_block->GetContentBoundHeight());
+  return GetContainingBlockForAbsoluteAndFixed(containing_block, content);
+}
+
+void AdjustAbsolutePositionForStaticAncestors(LayoutObject* item,
+                                              LayoutObject* container) {
+  auto* containing_block = GetAbsolutePositionContainingBlock(item, container);
+  if (containing_block == container) {
+    return;
+  }
+
+  // Translate the ancestor padding origin into the layout parent's padding
+  // coordinates. Contents nodes have already been skipped by the layout tree.
+  float left = -container->GetLayoutBorderLeftWidth();
+  float top = -container->GetLayoutBorderTopWidth();
+  for (auto* node = container; node != containing_block;
+       node = node->ContainingBlockEstablisher()) {
+    auto* parent = node->ContainingBlockEstablisher();
+    left -=
+        node->GetBoundLeftFrom(parent, BoundType::kBorder, BoundType::kBorder);
+    top -=
+        node->GetBoundTopFrom(parent, BoundType::kBorder, BoundType::kBorder);
+  }
+  left += containing_block->GetLayoutBorderLeftWidth();
+  top += containing_block->GetLayoutBorderTopWidth();
+  if (containing_block->IsAbsoluteInContentBound()) {
+    left += containing_block->GetLayoutPaddingLeft();
+    top += containing_block->GetLayoutPaddingTop();
+  }
+
+  const auto constraints =
+      GetAbsolutePositionContainingBlockConstraints(containing_block);
+  const auto* style = item->GetCSSStyle();
+  const auto start_x = NLengthToLayoutUnit(
+      style->GetLeft(), constraints[kHorizontal].ToPercentBase());
+  const auto end_x = NLengthToLayoutUnit(
+      style->GetRight(), constraints[kHorizontal].ToPercentBase());
+  const auto start_y = NLengthToLayoutUnit(
+      style->GetTop(), constraints[kVertical].ToPercentBase());
+  const auto end_y = NLengthToLayoutUnit(
+      style->GetBottom(), constraints[kVertical].ToPercentBase());
+
+  // With both insets auto, retain the static position supplied by the layout
+  // parent's algorithm, independently on each axis.
+  if (start_x.IsDefinite()) {
+    item->SetBorderBoundLeftFromParentPaddingBound(left + start_x.ToFloat() +
+                                                   item->GetLayoutMarginLeft());
+  } else if (end_x.IsDefinite()) {
+    item->SetBorderBoundLeftFromParentPaddingBound(
+        left + constraints[kHorizontal].Size() - end_x.ToFloat() -
+        item->GetLayoutMarginRight() - item->GetBorderBoundWidth());
+  }
+  if (start_y.IsDefinite()) {
+    item->SetBorderBoundTopFromParentPaddingBound(top + start_y.ToFloat() +
+                                                  item->GetLayoutMarginTop());
+  } else if (end_y.IsDefinite()) {
+    item->SetBorderBoundTopFromParentPaddingBound(
+        top + constraints[kVertical].Size() - end_y.ToFloat() -
+        item->GetLayoutMarginBottom() - item->GetBorderBoundHeight());
+  }
+}
+
 void CalcRelativePosition(LayoutObject* item,
                           const Constraints& content_constraints) {
   const LayoutComputedStyle* item_style = item->GetCSSStyle();
@@ -180,6 +259,7 @@ void CalcAbsoluteOrFixedPosition(
   CalcStartOffset(absolute_or_fixed_item, container_bound_type,
                   absolute_or_fixed_item_initial_position, containing_block,
                   kVertical, directions[kVertical]);
+  AdjustAbsolutePositionForStaticAncestors(absolute_or_fixed_item, container);
 }
 
 // Start always means left or top for now.

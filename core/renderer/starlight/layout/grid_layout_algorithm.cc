@@ -161,13 +161,23 @@ void GridLayoutAlgorithm::MeasureAbsoluteAndFixed() {
     containing_block[BlockAxis()] = OneSideConstraint::Definite(
         CalcContainingBlock(BlockAxis(), item_info.StartLine(BlockAxis()),
                             item_info.EndLine(BlockAxis())));
-    item->GetBoxInfo()->ResolveBoxInfoForAbsoluteAndFixed(
-        containing_block, *item, item->GetLayoutConfigs());
     item_info.SetContainingBlock(InlineAxis(), containing_block[InlineAxis()]);
     item_info.SetContainingBlock(BlockAxis(), containing_block[BlockAxis()]);
+    auto* positioning_container =
+        position_utils::GetAbsolutePositionContainingBlock(item, container_);
+    if (positioning_container != container_) {
+      containing_block =
+          position_utils::GetAbsolutePositionContainingBlockConstraints(
+              positioning_container);
+      item->GetBoxInfo()->InitializeBoxInfo(containing_block, *item,
+                                            item->GetLayoutConfigs());
+    } else {
+      item->GetBoxInfo()->ResolveBoxInfoForAbsoluteAndFixed(
+          containing_block, *item, item->GetLayoutConfigs());
+    }
     const Constraints& item_size_mode =
-        position_utils::GetAbsoluteOrFixedItemSizeAndMode(item, container_,
-                                                          containing_block);
+        position_utils::GetAbsoluteOrFixedItemSizeAndMode(
+            item, positioning_container, containing_block);
     item->UpdateMeasure(item_size_mode, true);
   }
 }
@@ -260,6 +270,7 @@ void GridLayoutAlgorithm::AlignAbsoluteAndFixedItems() {
         item, BoundType::kPadding,
         BoxPositions{Position::kStart, Position::kStart},
         item_info.ContainingBlock(), kVertical, kTop, offset_block);
+    position_utils::AdjustAbsolutePositionForStaticAncestors(item, container_);
   }
 }
 

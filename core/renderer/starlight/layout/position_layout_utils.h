@@ -20,6 +20,15 @@ static constexpr float kInvalidPosValue = -1e+10;
 
 namespace position_utils {
 
+// Layout offsets remain relative to the layout parent's padding box. The
+// positioning containing block can be a more distant ancestor.
+LayoutObject* GetAbsolutePositionContainingBlock(LayoutObject* item,
+                                                 LayoutObject* container);
+Constraints GetAbsolutePositionContainingBlockConstraints(
+    LayoutObject* containing_block);
+void AdjustAbsolutePositionForStaticAncestors(LayoutObject* item,
+                                              LayoutObject* container);
+
 void CalcRelativePosition(LayoutObject* item,
                           const Constraints& content_constraints);
 
