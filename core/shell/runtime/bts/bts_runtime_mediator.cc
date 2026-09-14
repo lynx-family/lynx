@@ -113,7 +113,8 @@ runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
   std::string external_resource_content("");
   runtime::js::JsContent::Type type(runtime::js::JsContent::Type::ERROR);
   if (info.Success()) {
-    external_resource_content = std::string(info.data.begin(), info.data.end());
+    external_resource_content =
+        std::string(info.data->begin(), info.data->end());
     type = runtime::js::JsContent::Type::SOURCE;
   } else {
     external_resource_content = info.err_msg;
