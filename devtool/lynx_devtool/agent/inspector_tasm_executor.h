@@ -20,6 +20,7 @@
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
+#include "devtool/lynx_devtool/agent/inspector_animation_controller.h"
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_tasm_delegate.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
@@ -33,6 +34,10 @@ class Element;
 class LayoutNode;
 enum CSSPropertyID : int32_t;
 }  // namespace tasm
+
+namespace animation {
+class Animation;
+}  // namespace animation
 }  // namespace lynx
 
 namespace lynx {
@@ -94,9 +99,24 @@ class InspectorTasmExecutor
   void OnCSSMediaQueryResultChanged();
 
  public:
+  // Animation domain (CDP Animation). Observer-driven lifecycle callbacks and
+  // CDP request handlers; all run on the TASM thread (the animations' thread).
+  void OnAnimationCreated(animation::Animation* animation);
+  void OnAnimationStarted(animation::Animation* animation);
+  void OnAnimationUpdated(animation::Animation* animation);
+  void OnAnimationCanceled(animation::Animation* animation);
+
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationGetCurrentTime);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationSeekAnimations);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationSetPaused);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationReleaseAnimations);
+
+ public:
   void SendWhiteBoardEvent(const Json::Value& msg);
-  // The following two functions are used only for resetting enabled state after
-  // reloading.
+  // These functions preserve domain state when reload replaces the TASM
+  // executor while the CDP session remains attached.
   bool IsWhiteBoardEnabled();
   void SetWhiteBoardEnabled(bool enable);
   bool IsGlobalPropsEnabled() const;
@@ -104,6 +124,10 @@ class InspectorTasmExecutor
   uint64_t GetLastGlobalPropsTimestamp() const;
   void SetLastGlobalPropsTimestamp(uint64_t timestamp);
   void SetDOMState(bool enable, const Json::Value& message);
+  bool IsAnimationEnabled() const { return animation_controller_->enabled(); }
+  void SetAnimationEnabled(bool enable) {
+    animation_controller_->set_enabled(enable);
+  }
 
  public:
   // dom related
@@ -256,6 +280,8 @@ class InspectorTasmExecutor
   std::map<std::pair<int32_t, lynx::tasm::CSSPropertyID>,
            std::optional<std::string>>
       pending_inline_style_updates_;
+
+  std::unique_ptr<InspectorAnimationController> animation_controller_;
 
   int view_id_;
   std::shared_ptr<WhiteBoardInspectorTasmDelegate>

@@ -217,6 +217,14 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(LayerTreeDisable);
   DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
+  // Animation domain -> tasm executor
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationGetCurrentTime);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationSeekAnimations);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationSetPaused);
+  DECLARE_DEVTOOL_CDP_METHOD(AnimationReleaseAnimations);
+
   // Page domain - > ui executor
   DECLARE_DEVTOOL_METHOD(StartScreencast)
   DECLARE_DEVTOOL_METHOD(StopScreencast)

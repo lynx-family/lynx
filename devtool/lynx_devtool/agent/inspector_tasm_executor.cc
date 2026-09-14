@@ -746,6 +746,8 @@ InspectorTasmExecutor::InspectorTasmExecutor(
       element_root_(nullptr),
       tasm_(),
       devtool_mediator_wp_(devtool_mediator),
+      animation_controller_(
+          std::make_unique<InspectorAnimationController>(devtool_mediator)),
       view_id_(view_id) {}
 InspectorTasmExecutor::InspectorTasmExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator,
@@ -755,6 +757,8 @@ InspectorTasmExecutor::InspectorTasmExecutor(
       element_root_(nullptr),
       tasm_(tasm),
       devtool_mediator_wp_(devtool_mediator),
+      animation_controller_(
+          std::make_unique<InspectorAnimationController>(devtool_mediator)),
       view_id_(view_id) {}
 
 void InspectorTasmExecutor::SetDevToolPlatformFacade(
@@ -817,6 +821,9 @@ void InspectorTasmExecutor::SendDOMEventMsg(const DomCdpEvent& event_name,
 
 void InspectorTasmExecutor::OnDocumentUpdated() {
   pending_inline_style_updates_.clear();
+  // Navigation: drop every registered animation. New animations get fresh,
+  // never-reused ids, so stale records cannot collide with later ones.
+  animation_controller_->Clear();
   if (tasm_->page_proxy()->element_manager()->IsDomTreeEnabled()) {
     SendDOMEventMsg(DomCdpEvent::DOCUMENT_UPDATED, -1, "", -1);
   }
@@ -964,6 +971,9 @@ void InspectorTasmExecutor::OnElementManagerWillDestroy() {
   pending_inline_style_updates_.clear();
   tasm_ = nullptr;
   element_root_ = nullptr;
+  // The element manager (and all animations) is going away; drop the registry
+  // so no dangling Animation* survives.
+  animation_controller_->Clear();
 }
 
 void InspectorTasmExecutor::OnAddInlineStyle(
@@ -3137,6 +3147,56 @@ Json::Value InspectorTasmExecutor::GetDocumentBodyFromNodeWithBoxModel(
     set_node_func(res, ptr);
   }
   return res;
+}
+
+void InspectorTasmExecutor::OnAnimationCreated(
+    animation::Animation* animation) {
+  animation_controller_->OnAnimationCreated(animation);
+}
+
+void InspectorTasmExecutor::OnAnimationStarted(
+    animation::Animation* animation) {
+  animation_controller_->OnAnimationStarted(animation);
+}
+
+void InspectorTasmExecutor::OnAnimationUpdated(
+    animation::Animation* animation) {
+  animation_controller_->OnAnimationUpdated(animation);
+}
+
+void InspectorTasmExecutor::OnAnimationCanceled(
+    animation::Animation* animation) {
+  animation_controller_->OnAnimationCanceled(animation);
+}
+
+void InspectorTasmExecutor::AnimationEnable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  animation_controller_->Enable(responder, params);
+}
+
+void InspectorTasmExecutor::AnimationDisable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  animation_controller_->Disable(responder, params);
+}
+
+void InspectorTasmExecutor::AnimationGetCurrentTime(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  animation_controller_->GetCurrentTime(responder, params);
+}
+
+void InspectorTasmExecutor::AnimationSeekAnimations(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  animation_controller_->SeekAnimations(responder, params);
+}
+
+void InspectorTasmExecutor::AnimationSetPaused(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  animation_controller_->SetPaused(responder, params);
+}
+
+void InspectorTasmExecutor::AnimationReleaseAnimations(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  animation_controller_->ReleaseAnimations(responder, params);
 }
 
 }  // namespace devtool
