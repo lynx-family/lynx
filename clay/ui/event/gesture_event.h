@@ -7,9 +7,12 @@
 
 #include <stdint.h>
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
 
+#include "build/build_config.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_size.h"
 
@@ -99,6 +102,10 @@ struct PointerEvent {
     kPanZoomStartEvent,
     kPanZoomUpdateEvent,
     kPanZoomEndEvent,
+#if defined(OS_WIN) || defined(OS_MAC)
+    kAddEvent,
+    kRemoveEvent,
+#endif
   };
 
   enum DeviceType {
@@ -182,6 +189,10 @@ struct PointerEvent {
   bool down = false;
 
   int64_t buttons = 0;  // bit field to indicate which buttons are pressed
+#if defined(OS_WIN) || defined(OS_MAC)
+  int button = -1;
+  bool is_primary = true;
+#endif
 
   /**
    * The pressure of the touch.
@@ -243,6 +254,34 @@ struct PointerEvent {
    * The radius of the contact ellipse along the minor axis, in logical pixels.
    */
   double radius_minor = 0.0;
+  double ContactWidth() const {
+    if (radius_major <= 0.0) {
+      return 1.0;
+    }
+    const double minor = radius_minor > 0.0 ? radius_minor : radius_major;
+    return 2.0 * std::hypot(radius_major * std::sin(orientation),
+                            minor * std::cos(orientation));
+  }
+
+  double ContactHeight() const {
+    if (radius_major <= 0.0) {
+      return 1.0;
+    }
+    const double minor = radius_minor > 0.0 ? radius_minor : radius_major;
+    return 2.0 * std::hypot(radius_major * std::cos(orientation),
+                            minor * std::sin(orientation));
+  }
+
+  double NormalizedPressure() const {
+    if (buttons == 0 && type != EventType::kCancel) {
+      return 0.0;
+    }
+    if (pressure_max <= pressure_min) {
+      return 0.5;
+    }
+    return std::clamp((pressure - pressure_min) / (pressure_max - pressure_min),
+                      0.0, 1.0);
+  }
   /**
    * The minimum value that could be reported for `radius_major` and
    * `radius_minor` for this pointer, in logical pixels.
@@ -338,6 +377,12 @@ struct PointerEvent {
 
   double source = kInputDeviceSourceTouchScreen;
 };
+
+inline bool IsTouchLikePointerDevice(PointerEvent::DeviceType device) {
+  return device == PointerEvent::DeviceType::kTouch ||
+         device == PointerEvent::DeviceType::kStylus ||
+         device == PointerEvent::DeviceType::kInvertedStylus;
+}
 
 }  // namespace clay
 

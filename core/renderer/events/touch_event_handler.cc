@@ -11,6 +11,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/event/custom_event.h"
 #include "core/event/event_dispatcher.h"
+#include "core/event/pointer_event.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -557,13 +558,52 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
     // modify the `long_press_consumed_` variable of `TouchEvent` accordingly.
     event::TouchEvent::long_press_consumed_ = false;
   }
-  bool bubbles = true;
+  const bool is_pointer_boundary_event =
+      name == "pointerenter" || name == "pointerleave";
+  const bool is_pointer_event =
+      name == "pointerdown" || name == "pointermove" || name == "pointerup" ||
+      name == "pointercancel" || is_pointer_boundary_event ||
+      name == "pointerover" || name == "pointerout";
   // According to the W3C specification, the `mouseenter` and `mouseleave`
   // events do not bubble. Therefore, bubbling needs to be disabled. See:
   // https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseenter_event
   // https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseleave_event
-  if (name.compare("mouseenter") == 0 || name.compare("mouseleave") == 0) {
-    bubbles = false;
+  const bool bubbles = name != "mouseenter" && name != "mouseleave" &&
+                       !is_pointer_boundary_event;
+  const bool composed = !is_pointer_boundary_event;
+
+  int64_t pointer_timestamp = 0;
+  if (is_pointer_event) {
+    BASE_STATIC_STRING_DECL(kType, "type");
+    BASE_STATIC_STRING_DECL(kTimestamp, "timestamp");
+    params->SetValue(kType, name);
+    const auto &timestamp = params->GetValue(kTimestamp);
+    if (timestamp.IsNumber()) {
+      pointer_timestamp = static_cast<int64_t>(timestamp.Number());
+    }
+  }
+  if (tasm->EnableEventHandleRefactor() && is_pointer_event) {
+    auto target = node_manager_->Get(tag);
+    if (!target) {
+      LOGE("HandleBubbleEvent error: the target is null.");
+      return;
+    }
+    auto pointer_event = fml::MakeRefCounted<event::PointerEvent>(
+        name, lepus::Value(params), pointer_timestamp);
+    auto related_target =
+        node_manager_->Get(pointer_event->related_target_sign());
+    if (related_target) {
+      pointer_event->set_related_target(related_target->GetWeakTarget());
+    }
+    event::EventDispatcher::DispatchEvent(*target, std::move(pointer_event));
+    return;
+  }
+
+  Element *related_target = nullptr;
+  if (is_pointer_event) {
+    event::PointerEvent::NormalizeParams(*params);
+    related_target = node_manager_->Get(
+        event::PointerEvent::ExtractRelatedTargetSign(*params));
   }
 
   EventContext context = {
@@ -571,16 +611,28 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
       .event_name = name,
       .page_name = page_name,
       .option = {.bubbles_ = bubbles,
-                 .composed_ = true,
+                 .composed_ = composed,
                  .capture_phase_ = true,
                  .lepus_event_ = false,
                  .from_frontend_ = false},
-      .get_event_params = [this, &params](Element *target,
-                                          Element *current_target,
-                                          bool is_js_event) {
-        ApplyEventTargetParams(params, target, current_target, is_js_event);
-        return lepus::Value::Clone(lepus::Value(params));
-      }};
+      .get_event_params =
+          [this, &params, is_pointer_event, pointer_timestamp, related_target](
+              Element *target, Element *current_target, bool is_js_event) {
+            ApplyEventTargetParams(params, target, current_target, is_js_event);
+            if (is_pointer_event) {
+              if (pointer_timestamp != 0) {
+                AddTimestampProperty(params.get(), pointer_timestamp);
+              }
+              BASE_STATIC_STRING_DECL(kRelatedTarget, "relatedTarget");
+              params->SetValue(kRelatedTarget,
+                               related_target
+                                   ? GetTargetInfo(related_target->impl_id(),
+                                                   related_target->data_model(),
+                                                   related_target, is_js_event)
+                                   : lepus::Value());
+            }
+            return lepus::Value::Clone(lepus::Value(params));
+          }};
   const auto &chain = GenerateResponseChain(tasm ? tasm->page_proxy() : nullptr,
                                             tag, context.option);
   EventOpsVector ops;
@@ -761,8 +813,20 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
     return chain;
   }
 
-  if (option.bubbles_) {
+  Element *event_target = target_node;
+  Element *root_component = target_node->GetParentComponentElement();
+  if (option.bubbles_ || option.capture_phase_) {
     while (target_node != nullptr) {
+      if (!option.bubbles_ && !option.composed_ &&
+          target_node != event_target) {
+        if (target_node == root_component) {
+          break;
+        }
+        if (target_node->GetParentComponentElement() != root_component) {
+          target_node = static_cast<Element *>(target_node->parent());
+          continue;
+        }
+      }
       chain.push_back(target_node);
 
       // TODO(songshourui.null): When using RadonDiff + RadonElement, the fixed
@@ -1299,6 +1363,9 @@ bool TouchEventHandler::HandleEventInternal(
   if (!capture) {
     for (auto *cur_target : response_chain) {
       if (cur_target == nullptr) break;
+      if (!option.bubbles_ && !option.from_frontend_ && cur_target != target) {
+        break;
+      }
       auto handlers =
           TouchEventHandler::get_handlers_f_(cur_target, base_str_name, false);
       bool need_break = false;

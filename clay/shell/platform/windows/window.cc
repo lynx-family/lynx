@@ -324,6 +324,9 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
       if (GetTouchInputInfo(touch_input_handle, num_points,
                             touch_points_.data(), sizeof(TOUCHINPUT))) {
         for (const auto& touch : touch_points_) {
+          if (touch.dwFlags & TOUCHEVENTF_PEN) {
+            continue;
+          }
           // Generate a mapped ID for the Windows-provided touch ID
           auto touch_id = touch_id_generator_.GetGeneratedId(touch.dwID);
 
@@ -351,7 +354,9 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
     }
     case WM_MOUSEMOVE:
       device_kind = GetClayPointerDeviceKind();
-      if (device_kind == kClayPointerDeviceKindMouse) {
+      if (device_kind == kClayPointerDeviceKindMouse ||
+          device_kind == kClayPointerDeviceKindStylus) {
+        cursor_device_kind_ = device_kind;
         TrackMouseLeaveEvent(window_handle_);
 
         xPos = GET_X_LPARAM(lparam);
@@ -380,12 +385,29 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
         TrackMouseEvent(&tme);
         tracking_mouse_leave_ = false;
       }
-      device_kind = GetClayPointerDeviceKind();
-      if (device_kind == kClayPointerDeviceKindMouse) {
-        OnPointerLeave(mouse_x_, mouse_y_, device_kind,
+      if (cursor_device_kind_ == kClayPointerDeviceKindMouse ||
+          cursor_device_kind_ == kClayPointerDeviceKindStylus) {
+        OnPointerLeave(mouse_x_, mouse_y_, cursor_device_kind_,
                        kDefaultPointerDeviceId);
       }
       break;
+    case WM_POINTERLEAVE:
+    case WM_POINTERCAPTURECHANGED: {
+      POINTER_INPUT_TYPE pointer_type;
+      if (windows_proc_table_->GetPointerType(GET_POINTERID_WPARAM(wparam),
+                                              &pointer_type) &&
+          pointer_type == PT_PEN) {
+        if (message == WM_POINTERLEAVE) {
+          POINT point = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+          ScreenToClient(window_handle_, &point);
+          mouse_x_ = static_cast<double>(point.x);
+          mouse_y_ = static_cast<double>(point.y);
+        }
+        OnPointerLeave(mouse_x_, mouse_y_, kClayPointerDeviceKindStylus,
+                       kDefaultPointerDeviceId);
+      }
+      break;
+    }
     case WM_SETCURSOR: {
       UINT hit_test_result = LOWORD(lparam);
       if (hit_test_result == HTCLIENT) {
@@ -405,9 +427,11 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
     case WM_MBUTTONDOWN:
     case WM_XBUTTONDOWN:
       device_kind = GetClayPointerDeviceKind();
-      if (device_kind != kClayPointerDeviceKindMouse) {
+      if (device_kind != kClayPointerDeviceKindMouse &&
+          device_kind != kClayPointerDeviceKindStylus) {
         break;
       }
+      cursor_device_kind_ = device_kind;
 
       if (message == WM_LBUTTONDOWN) {
         // Capture the pointer in case the user drags outside the client area.
@@ -431,9 +455,11 @@ Window::HandleMessage(UINT const message, WPARAM const wparam,
     case WM_MBUTTONUP:
     case WM_XBUTTONUP:
       device_kind = GetClayPointerDeviceKind();
-      if (device_kind != kClayPointerDeviceKindMouse) {
+      if (device_kind != kClayPointerDeviceKindMouse &&
+          device_kind != kClayPointerDeviceKindStylus) {
         break;
       }
+      cursor_device_kind_ = device_kind;
 
       if (message == WM_LBUTTONUP) {
         ReleaseCapture();
