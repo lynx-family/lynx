@@ -29,6 +29,7 @@
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/raw_text_shadow_node.h"
 #include "clay/ui/shadow/text_shadow_node.h"
+#include "clay/ui/shadow/x_text_shadow_node.h"
 
 #if (defined(OS_MAC) || defined(OS_WIN))
 #include "clay/ui/component/cover_view.h"
@@ -42,7 +43,7 @@ void keepBuiltinElements() {}
 REGISTER_CLAY_ELEMENT("view", View, void);
 REGISTER_CLAY_ELEMENT("image", ImageView, ImageShadowNode);
 REGISTER_CLAY_ELEMENT("text", TextView, TextShadowNode);
-REGISTER_CLAY_ELEMENT("x-text", TextView, TextShadowNode);
+REGISTER_CLAY_ELEMENT("x-text", TextView, XTextShadowNode);
 REGISTER_CLAY_ELEMENT("raw-text", RawTextView, RawTextShadowNode);
 REGISTER_CLAY_ELEMENT("inline-text", InlineTextView, InlineTextShadowNode);
 REGISTER_CLAY_ELEMENT("x-inline-text", InlineTextView, InlineTextShadowNode);

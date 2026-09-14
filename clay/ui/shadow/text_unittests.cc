@@ -30,6 +30,7 @@
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/shadow/text_render.h"
 #include "clay/ui/shadow/text_shadow_node.h"
+#include "clay/ui/shadow/x_text_shadow_node.h"
 #include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -587,6 +588,20 @@ TEST_F_UI(TextTest, TextMaxLineAttributeHandlesZeroAndPositiveValues) {
 
   text_shadow_node_->SetAttribute("text-maxline", clay::Value("3"));
   EXPECT_EQ(text_shadow_node_->text_style_->max_lines.value(), 3u);
+}
+
+TEST_F_UI(TextTest, XTextMapsEllipsizeModeToTextOverflow) {
+  auto x_text =
+      std::make_unique<XTextShadowNode>(owner_, std::string("x-text"), -1);
+
+  x_text->SetAttribute("ellipsize-mode", clay::Value("tail"));
+  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kEllipsis);
+
+  x_text->SetAttribute("ellipsize-mode", clay::Value("head"));
+  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kEllipsis);
+
+  x_text->SetAttribute("ellipsize-mode", clay::Value("clip"));
+  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kClip);
 }
 
 TEST_F_UI(TextTest, TextMaxLengthAttributeLimitsInitialLayout) {
