@@ -5,6 +5,8 @@
 #ifndef CORE_TEMPLATE_BUNDLE_LYNX_TEMPLATE_BUNDLE_H_
 #define CORE_TEMPLATE_BUNDLE_LYNX_TEMPLATE_BUNDLE_H_
 
+#include <service_api/services/security/security_service.h>
+
 #include <algorithm>
 #include <memory>
 #include <mutex>
@@ -40,6 +42,12 @@ class DevToolPool;
 }
 
 namespace tasm {
+struct TemplateVerification {
+  bool enabled{false};
+  service::security_service::LynxTasmType type{
+      service::security_service::LynxTasmType::kTemplate};
+};
+
 class LynxBinaryLazyReaderDelegate;
 class LynxBinaryRecyclerDelegate;
 
@@ -94,7 +102,8 @@ class LynxTemplateBundle final {
   std::string FromBinaryGreedy(
       std::shared_ptr<const std::vector<uint8_t>> binary,
       const std::string& template_url, bool skip_css_decode = false,
-      std::optional<bool> is_card = std::nullopt);
+      std::optional<bool> is_card = std::nullopt,
+      const TemplateVerification& verification = {});
 
   // Builds a bundle from a Lynx Markup Language document beginning with
   // <!doctype lynx> and containing a <lynx> root. Source blocks use <style>,
