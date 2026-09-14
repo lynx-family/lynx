@@ -443,7 +443,6 @@ extern NSString* const kDefaultComponentID;
   return false;
 }
 
-// TODO(songshourui.null): Once createUISyncWithSign is verified to be stable, remove this method.
 - (void)createUIWithSign:(NSInteger)sign
                  tagName:(NSString*)tagName
                 eventSet:(NSSet<NSString*>*)eventSet
@@ -532,8 +531,6 @@ extern NSString* const kDefaultComponentID;
   return _rootUI;
 }
 
-// Both createUISyncWithSign & createUIAsyncWithSign will invoke this method, which can be executed
-// on any thread without the expectation of thread safety issues.
 - (LynxUI*)createUIInnerWithSign:(NSInteger)sign
                          tagName:(NSString*)tagName
                            clazz:(Class)clazz
@@ -627,32 +624,6 @@ extern NSString* const kDefaultComponentID;
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
 }
 
-- (LynxUI*)createUIAsyncWithSign:(NSInteger)sign
-                         tagName:(NSString*)tagName
-                           clazz:(Class)clazz
-                  supportedState:(TagSupportedState)state
-                        eventSet:(NSSet<NSString*>*)eventSet
-                   lepusEventSet:(NSSet<NSString*>*)lepusEventSet
-                           props:(NSDictionary*)props
-                       nodeIndex:(uint32_t)nodeIndex
-              gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet {
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                     [UI_OWNER_CREATE_VIEW_ASYNC stringByAppendingString:tagName ?: @""])
-  LynxUI* ui = [self createUIInnerWithSign:sign
-                                   tagName:tagName
-                                     clazz:clazz
-                            supportedState:state
-                              onMainThread:NO
-                                  eventSet:eventSet
-                             lepusEventSet:lepusEventSet
-                                     props:props
-                                 nodeIndex:nodeIndex
-                        gestureDetectorSet:gestureDetectorSet];
-
-  LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
-  return ui;
-}
-
 - (Class)getTargetClass:(NSString*)tagName
                   props:(NSDictionary*)props
          supportedState:(TagSupportedState*)state {
@@ -669,12 +640,6 @@ extern NSString* const kDefaultComponentID;
     }
   }
   return clazz;
-}
-
-- (BOOL)needCreateUIAsync:(NSString*)tagName {
-  BOOL supported = YES;
-  Class clazz = [_componentRegistry uiClassWithName:tagName accessible:&supported];
-  return (clazz == [LynxUIView class] || clazz == [LynxUIImage class]);
 }
 
 - (BOOL)needProcessDirection:(NSString*)tagName {

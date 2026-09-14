@@ -586,15 +586,6 @@ static BOOL gShouldEnableAllDevToolSessions = NO;
   return enableComponentStatisticReport;
 }
 
-- (BOOL)enableCreateUIAsync {
-  static dispatch_once_t onceToken;
-  static BOOL enableCreateUIAsync = NO;
-  dispatch_once(&onceToken, ^{
-    enableCreateUIAsync = [self boolFromExternalEnv:LynxEnvEnableCreateUIAsync defaultValue:NO];
-  });
-  return enableCreateUIAsync;
-}
-
 - (BOOL)enableImageEventReport {
   static dispatch_once_t onceToken;
   static BOOL enableImageEventReport = NO;
@@ -852,6 +843,7 @@ static BOOL gShouldEnableAllDevToolSessions = NO;
     @(LynxEnvEnableTextRenderCacheHitRate) : @"enable_text_render_cache_hit_rate",
     @(LynxEnvEnableImageMonitor) : @"enable_image_monitor",
     @(LynxEnvEnableTextLayerRender) : @"enable_text_layer_render",
+    // Keep the retired key queryable for compatibility. UI creation no longer reads it.
     @(LynxEnvEnableCreateUIAsync) : @"enable_create_ui_async",
     @(LynxEnvEnableImageEventReport) : @"enable_image_event_report",
     @(LynxEnvEnableImageAsyncLayout) : @"enable_image_async_layout",
