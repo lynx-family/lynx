@@ -62,20 +62,22 @@ static uint64_t KeyOfPlane(uint64_t baseKey, uint64_t plane) {
  * Returns the physical key for a key code.
  */
 static uint64_t GetPhysicalKeyForKeyCode(unsigned short keyCode) {
-  NSNumber* physicalKey = [clay::keyCodeToPhysicalKey objectForKey:@(keyCode)];
-  if (physicalKey == nil) {
+  const auto* physicalKey = clay::FindKeyCodeMapEntry(
+      clay::keyCodeToPhysicalKey, clay::keyCodeToPhysicalKeySize, static_cast<uint32_t>(keyCode));
+  if (physicalKey == nullptr) {
     return KeyOfPlane(keyCode, clay::kMacosPlane);
   }
-  return physicalKey.unsignedLongLongValue;
+  return physicalKey->value;
 }
 
 /**
  * Returns the logical key for a modifier physical key.
  */
 static uint64_t GetLogicalKeyForModifier(unsigned short keyCode, uint64_t hidCode) {
-  NSNumber* fromKeyCode = [clay::keyCodeToLogicalKey objectForKey:@(keyCode)];
-  if (fromKeyCode != nil) {
-    return fromKeyCode.unsignedLongLongValue;
+  const auto* fromKeyCode = clay::FindKeyCodeMapEntry(
+      clay::keyCodeToLogicalKey, clay::keyCodeToLogicalKeySize, static_cast<uint32_t>(keyCode));
+  if (fromKeyCode != nullptr) {
+    return fromKeyCode->value;
   }
   return KeyOfPlane(hidCode, clay::kMacosPlane);
 }
@@ -150,9 +152,11 @@ static uint32_t* DecodeUtf16(NSString* target, size_t* out_length) {
  */
 static uint64_t GetLogicalKeyForEvent(NSEvent* event, uint64_t physicalKey) {
   // Look to see if the keyCode can be mapped from keycode.
-  NSNumber* fromKeyCode = [clay::keyCodeToLogicalKey objectForKey:@(event.keyCode)];
-  if (fromKeyCode != nil) {
-    return fromKeyCode.unsignedLongLongValue;
+  const auto* fromKeyCode =
+      clay::FindKeyCodeMapEntry(clay::keyCodeToLogicalKey, clay::keyCodeToLogicalKeySize,
+                                static_cast<uint32_t>(event.keyCode));
+  if (fromKeyCode != nullptr) {
+    return fromKeyCode->value;
   }
 
   // Convert `charactersIgnoringModifiers` to UTF32.
@@ -201,11 +205,10 @@ static double GetFlutterTimestampFrom(NSTimeInterval timestamp) {
  * well as NSEventModifierFlagCapsLock.
  */
 static NSUInteger computeModifierFlagOfInterestMask() {
-  __block NSUInteger modifierFlagOfInterestMask = NSEventModifierFlagCapsLock;
-  [clay::keyCodeToModifierFlag
-      enumerateKeysAndObjectsUsingBlock:^(NSNumber* keyCode, NSNumber* flag, BOOL* stop) {
-        modifierFlagOfInterestMask = modifierFlagOfInterestMask | [flag unsignedLongValue];
-      }];
+  NSUInteger modifierFlagOfInterestMask = NSEventModifierFlagCapsLock;
+  for (size_t i = 0; i < clay::keyCodeToModifierFlagSize; ++i) {
+    modifierFlagOfInterestMask |= clay::keyCodeToModifierFlag[i].value;
+  }
   return modifierFlagOfInterestMask;
 }
 
@@ -547,15 +550,17 @@ struct FlutterKeyPendingResponse {
       break;
     }
     flagDifference = flagDifference & ~currentFlag;
-    NSNumber* keyCode = [clay::modifierFlagToKeyCode objectForKey:@(currentFlag)];
-    NSAssert(keyCode != nil, @"Invalid modifier flag 0x%lx", currentFlag);
-    if (keyCode == nil) {
+    const auto* keyCode =
+        clay::FindKeyCodeMapEntry(clay::modifierFlagToKeyCode, clay::modifierFlagToKeyCodeSize,
+                                  static_cast<uint32_t>(currentFlag));
+    NSAssert(keyCode != nullptr, @"Invalid modifier flag 0x%lx", currentFlag);
+    if (keyCode == nullptr) {
       continue;
     }
     BOOL isDownEvent = (currentFlagsOfInterest & currentFlag) != 0;
     [self sendModifierEventOfType:isDownEvent
                         timestamp:timestamp
-                          keyCode:[keyCode unsignedShortValue]
+                          keyCode:static_cast<unsigned short>(keyCode->value)
                       synthesized:true
                          callback:guard];
   }
@@ -741,9 +746,11 @@ struct FlutterKeyPendingResponse {
 }
 
 - (void)handleFlagEvent:(NSEvent*)event callback:(FlutterKeyCallbackGuard*)callback {
-  NSNumber* targetModifierFlagObj = clay::keyCodeToModifierFlag[@(event.keyCode)];
+  const auto* targetModifierFlagEntry =
+      clay::FindKeyCodeMapEntry(clay::keyCodeToModifierFlag, clay::keyCodeToModifierFlagSize,
+                                static_cast<uint32_t>(event.keyCode));
   NSUInteger targetModifierFlag =
-      targetModifierFlagObj == nil ? 0 : [targetModifierFlagObj unsignedLongValue];
+      targetModifierFlagEntry == nullptr ? 0 : targetModifierFlagEntry->value;
   uint64_t targetKey = GetPhysicalKeyForKeyCode(event.keyCode);
   if (targetKey == clay::kCapsLockPhysicalKey) {
     return [self handleCapsLockEvent:event callback:callback];
@@ -756,7 +763,7 @@ struct FlutterKeyPendingResponse {
 
   NSNumber* pressedLogicalKey = [_pressingRecords objectForKey:@(targetKey)];
   BOOL lastTargetPressed = pressedLogicalKey != nil;
-  NSAssert(targetModifierFlagObj == nil ||
+  NSAssert(targetModifierFlagEntry == nullptr ||
                (_lastModifierFlagsOfInterest & targetModifierFlag) != 0 == lastTargetPressed,
            @"Desynchronized state between lastModifierFlagsOfInterest (0x%lx) on bit 0x%lx "
            @"for keyCode 0x%hx, whose pressing state is %@.",

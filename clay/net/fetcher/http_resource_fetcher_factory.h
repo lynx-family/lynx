@@ -5,6 +5,8 @@
 #ifndef CLAY_NET_FETCHER_HTTP_RESOURCE_FETCHER_FACTORY_H_
 #define CLAY_NET_FETCHER_HTTP_RESOURCE_FETCHER_FACTORY_H_
 
+#include <cstddef>
+#include <functional>
 #include <memory>
 
 #include "clay/net/fetcher/http_resource_fetcher.h"
@@ -32,7 +34,7 @@ class HttpResourceFetcherFactory {
       NetLoaderManager::HostNetLoader host_net_loader, const url::Uri& uri,
       size_t request_seq, int retry_time);
 
-  static ResourceFetcherCreator custom_fetcher_creator_;
+  static ResourceFetcherCreator& GetCustomFetcherCreator();
 };
 
 }  // namespace clay
