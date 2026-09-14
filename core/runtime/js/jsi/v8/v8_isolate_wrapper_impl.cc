@@ -6,9 +6,11 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 
 #include "base/include/log/logging.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/js/jsi/v8/v8_helper.h"
 #include "libplatform/libplatform.h"
 #if defined(OS_WIN)
 #include "base/include/string/string_conversion_win.h"
@@ -20,6 +22,32 @@
 namespace lynx {
 namespace runtime {
 namespace js {
+namespace {
+
+// Capture the current JS call stack from a V8 interrupt. The interrupt runs on
+// the JS thread even while it is stuck, which is why capturing works during a
+// dead loop. Currently only the V8 engine supports this.
+void CaptureStackInterrupt(v8::Isolate* isolate, void* data) {
+  std::unique_ptr<base::MoveOnlyClosure<void, std::string>> callback(
+      static_cast<base::MoveOnlyClosure<void, std::string>*>(data));
+  v8::HandleScope scope(isolate);
+  auto trace =
+      v8::StackTrace::CurrentStackTrace(isolate, 64, v8::StackTrace::kDetailed);
+  std::string stack;
+  for (int i = 0; i < trace->GetFrameCount(); ++i) {
+    auto frame = trace->GetFrame(isolate, i);
+    stack.append("at ").append(detail::V8Helper::JSStringToSTLString(
+        frame->GetFunctionName(), isolate));
+    stack.append(" (").append(detail::V8Helper::JSStringToSTLString(
+        frame->GetScriptNameOrSourceURL(), isolate));
+    stack.append(":").append(std::to_string(frame->GetLineNumber()));
+    stack.append(":").append(std::to_string(frame->GetColumn())).append(")\n");
+  }
+  (*callback)(std::move(stack));
+}
+
+}  // namespace
+
 V8IsolateInstanceImpl::V8IsolateInstanceImpl() = default;
 
 V8IsolateInstanceImpl::~V8IsolateInstanceImpl() {
@@ -53,6 +81,21 @@ void V8IsolateInstanceImpl::InitIsolate(const char* arg, bool useSnapshot) {
 }
 
 v8::Isolate* V8IsolateInstanceImpl::Isolate() const { return isolate_; }
+
+bool V8IsolateInstanceImpl::CaptureJavaScriptStack(
+    base::MoveOnlyClosure<void, std::string> callback) {
+  if (isolate_ == nullptr) return false;
+  isolate_->RequestInterrupt(
+      CaptureStackInterrupt,
+      new base::MoveOnlyClosure<void, std::string>(std::move(callback)));
+  return true;
+}
+
+bool V8IsolateInstanceImpl::TerminateJavaScriptExecution() {
+  if (isolate_ == nullptr) return false;
+  isolate_->TerminateExecution();
+  return true;
+}
 
 }  // namespace js
 

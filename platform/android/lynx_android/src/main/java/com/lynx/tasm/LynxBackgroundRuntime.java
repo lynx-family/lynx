@@ -477,6 +477,38 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     return nativeGetRuntimeId(mNativePtr);
   }
 
+  /**
+   * Captures the current JS stack for the isolate identified by the group. The
+   * group must enable V8 and its JS group thread. Completion runs on the main
+   * thread.
+   */
+  @AnyThread
+  public static void captureJavaScriptStack(
+      @NonNull LynxGroup group, @NonNull LynxJavaScriptExecutionCallback callback) {
+    if (callback == null || group == null) {
+      LLog.e(TAG, "captureJavaScriptStack: group or callback is null, ignore.");
+      return;
+    }
+    if (!group.enableV8() || !group.enableJSGroupThread()) {
+      callback.onResult(LynxJavaScriptExecutionCallback.UNSUPPORTED_ENGINE, "");
+      return;
+    }
+    nativeCaptureJavaScriptStack(
+        group.getJSGroupThreadNameOrDefault(), (status, stack) -> callback.onResult(status, stack));
+  }
+
+  /**
+   * Terminates the current JS execution for the isolate identified by the
+   * group. The group must enable V8 and its JS group thread.
+   */
+  @AnyThread
+  public static boolean terminateJavaScriptExecution(@NonNull LynxGroup group) {
+    if (group == null || !group.enableV8() || !group.enableJSGroupThread()) {
+      return false;
+    }
+    return nativeTerminateJavaScriptExecution(group.getJSGroupThreadNameOrDefault());
+  }
+
   private native long nativeCreateBackgroundRuntimeWrapper(LynxResourceLoader resourceLoader,
       LynxModuleFactory moduleFactory, long inspectorObserverPtr, long whiteBoardPtr,
       String groupId, String groupName, String[] preloadJSPaths, String bytecodeSourceUrl,
@@ -511,4 +543,9 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
   private native void nativeTransitionToFullRuntime(long ptr);
 
   private native int nativeGetRuntimeId(long ptr);
+
+  private static native void nativeCaptureJavaScriptStack(
+      String jsGroupThreadName, LynxJavaScriptExecutionCallback callback);
+
+  private static native boolean nativeTerminateJavaScriptExecution(String jsGroupThreadName);
 }
