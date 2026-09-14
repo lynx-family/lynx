@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRenderer.h>
@@ -706,6 +707,136 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
   XCTAssertTrue(CGRectEqualToRect(view.layer.mask.frame, view.layer.bounds));
   XCTAssertEqualWithAccuracy(view.layer.mask.frame.origin.y, 100.0f, 0.001f);
+}
+
+- (void)testHostBackgroundsShareContainerBelowBorderAndPreserveClip {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  id context = OCMClassMock([LynxRendererContext class]);
+  id manager = OCMClassMock([LynxImageManager class]);
+  OCMStub([context imageManagerForID:123]).andReturn(manager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(list, 0, 0, 100, 80);
+  AppendRecordBox(list, 10, 10, 80, 60);
+  AppendRecordBox(list, 2, 3, 96, 74);
+  AppendFill(list, 0xFFFFFFFF, 0);
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kBackgroundImage;
+  item.payload.background_image.image_id = 123;
+  item.payload.background_image.clip_index = 2;
+  item.payload.background_image.tiling_index = 0;
+  item.payload.background_image.repeat_x = LynxBackgroundRepeatNoRepeat;
+  item.payload.background_image.repeat_y = LynxBackgroundRepeatNoRepeat;
+  list.AppendItem(item);
+  list.AddLinearGradient(90, {0xFFFF0000, 0xFF0000FF}, {0, 1}, 0, 1, LynxBackgroundRepeatNoRepeat,
+                         LynxBackgroundRepeatNoRepeat);
+  list.AddRadialGradient(50, 40, 50, 40, {0xFFFFFFFF, 0xFF000000}, {0, 1}, 0, 2,
+                         LynxBackgroundRepeatNoRepeat, LynxBackgroundRepeatNoRepeat);
+  AppendBorder(list, 0, 1);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  [applier syncHostDecorationLayers];
+
+  NSArray<CALayer *> *layers = parent.layer.sublayers;
+  XCTAssertEqual(layers.count, 4u);
+  XCTAssertEqual(layers.lastObject, host.layer);
+  CALayer *background = layers[1];
+  XCTAssertTrue(CGRectEqualToRect(background.frame, host.frame));
+  XCTAssertEqual(background.sublayers.count, 3u);
+  XCTAssertTrue(CGRectEqualToRect(background.sublayers[1].frame, CGRectMake(10, 10, 80, 60)));
+  XCTAssertTrue(CGRectEqualToRect(background.sublayers[2].frame, CGRectMake(2, 3, 96, 74)));
+  CALayer *clip = background.sublayers.firstObject;
+  XCTAssertTrue([clip isKindOfClass:CAReplicatorLayer.class]);
+  XCTAssertTrue(CGRectEqualToRect(clip.frame, CGRectMake(2, 3, 96, 74)));
+  XCTAssertTrue(clip.masksToBounds);
+  XCTAssertEqual(host.layer.sublayers.count, 0u);
+
+  // Simulate scrolling followed by an opacity update on the host.
+  host.bounds = CGRectMake(7, 40, 100, 80);
+  host.alpha = 0.8;
+  [applier syncHostDecorationLayers];
+  XCTAssertTrue(CGRectEqualToRect(background.bounds, CGRectMake(0, 0, 100, 80)));
+  XCTAssertTrue(CGRectEqualToRect([clip convertRect:clip.bounds toLayer:parent.layer],
+                                  CGRectMake(22, 33, 96, 74)));
+  XCTAssertEqualWithAccuracy(background.opacity, 0.8, 0.001);
+
+  [applier applyDisplayList:&list];
+  [applier syncHostDecorationLayers];
+  XCTAssertNil(background.superlayer);
+  XCTAssertEqual(parent.layer.sublayers.count, 4u);
+  XCTAssertEqual(parent.layer.sublayers[1].sublayers.count, 3u);
+  CALayer *repaintedBackground = parent.layer.sublayers[1];
+  CALayer *repaintedClip = repaintedBackground.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(repaintedBackground.bounds, CGRectMake(0, 0, 100, 80)));
+  XCTAssertTrue(CGRectEqualToRect([repaintedClip convertRect:repaintedClip.bounds
+                                                     toLayer:parent.layer],
+                                  CGRectMake(22, 33, 96, 74)));
+
+  [applier reset];
+  XCTAssertEqual(parent.layer.sublayers.count, 1u);
+  XCTAssertNil(background.superlayer);
+}
+
+- (void)testBackgroundImageRepeatDirectionsAndReset {
+  for (BOOL repeatX : {NO, YES}) {
+    for (BOOL repeatY : {NO, YES}) {
+      LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+      view.contentScaleFactor = 2;
+      id context = OCMClassMock([LynxRendererContext class]);
+      id manager = OCMClassMock([LynxImageManager class]);
+      OCMStub([context imageManagerForID:123]).andReturn(manager);
+      __block CALayer *target = nil;
+      OCMStub([manager setLayerTarget:[OCMArg any]]).andDo(^(NSInvocation *invocation) {
+        __unsafe_unretained CALayer *imageLayer;
+        [invocation getArgument:&imageLayer atIndex:2];
+        target = imageLayer;
+      });
+      LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                          andContext:context];
+      DisplayList list;
+      float radii[] = {6, 6, 6, 6, 6, 6, 6, 6};
+      AppendRecordBox(list, 2.25f, 3.25f, 88, 64, true, radii);
+      AppendRecordBox(list, 10.3f, -3.7f, 15.3f, 11.7f);
+      DisplayListItem item{};
+      item.type = DisplayListOpType::kBackgroundImage;
+      item.payload.background_image.image_id = 123;
+      item.payload.background_image.clip_index = 0;
+      item.payload.background_image.tiling_index = 1;
+      item.payload.background_image.repeat_x =
+          repeatX ? LynxBackgroundRepeatRepeat : LynxBackgroundRepeatNoRepeat;
+      item.payload.background_image.repeat_y =
+          repeatY ? LynxBackgroundRepeatRepeat : LynxBackgroundRepeatNoRepeat;
+      list.AppendItem(item);
+      [applier applyDisplayList:&list];
+
+      CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+      CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+      XCTAssertNotNil(target);
+      XCTAssertEqual(horizontal.sublayers.firstObject, target);
+      XCTAssertTrue(CGRectEqualToRect(vertical.frame, CGRectMake(2.25, 3.25, 88, 64)));
+      XCTAssertTrue(vertical.masksToBounds);
+      XCTAssertEqualWithAccuracy(vertical.cornerRadius, 6, 0.001);
+      XCTAssertEqualWithAccuracy(target.frame.size.width, repeatX ? 15.5 : 15.3, 0.001);
+      XCTAssertEqualWithAccuracy(target.frame.size.height, repeatY ? 11.5 : 11.7, 0.001);
+      XCTAssertEqualWithAccuracy(target.frame.origin.x, repeatX ? -7.25 : 8.05, 0.001);
+      XCTAssertEqualWithAccuracy(target.frame.origin.y, repeatY ? -6.75 : -6.95, 0.001);
+      XCTAssertEqual(horizontal.instanceCount, repeatX ? 7 : 1);
+      XCTAssertEqual(vertical.instanceCount, repeatY ? 7 : 1);
+      XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, repeatX ? 15.5 : 15.3, 0.001);
+      XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, repeatY ? 11.5 : 11.7, 0.001);
+
+      [applier applyDisplayList:&list];
+      XCTAssertNil(vertical.superlayer);
+      XCTAssertEqual(view.layer.sublayers.count, 1u);
+      [applier reset];
+      XCTAssertEqual(view.layer.sublayers.count, 0u);
+    }
+  }
 }
 
 - (void)testImageAppliesRoundedContentBox {

@@ -23,6 +23,9 @@ struct ImagePaintInfo;
 
 - (void)setTarget:(UIImageView* _Nullable)view;
 
+// Sets the target layer for displaying background images.
+- (void)setLayerTarget:(CALayer* _Nullable)layer;
+
 - (void)setSign:(NSInteger)sign;
 
 - (void)setEventMask:(NSInteger)eventMask;
