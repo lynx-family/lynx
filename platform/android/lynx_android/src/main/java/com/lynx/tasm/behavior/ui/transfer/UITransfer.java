@@ -8,14 +8,25 @@ import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
+import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.event.EventsListener;
+import com.lynx.tasm.event.LynxCustomEvent;
+import com.lynx.tasm.performance.PerformanceController;
+import com.lynx.tasm.utils.UnitUtils;
+import java.util.HashMap;
+import java.util.Map;
 
 public class UITransfer extends UIGroup<TransferHostView> {
+  static final String EVENT_TRANSFER_TIMING = "transfertiming";
+
+  private TouchEventDispatcher mEventDispatcher;
   private TransferWrapperView mWrapperView;
   private boolean mHasHostConstraints;
   private String mTransferId;
@@ -25,6 +36,7 @@ public class UITransfer extends UIGroup<TransferHostView> {
   private MeasureMode mHostWidthMode = MeasureMode.UNDEFINED;
   private float mHostHeight;
   private MeasureMode mHostHeightMode = MeasureMode.UNDEFINED;
+  private boolean firstDrawEndSent = false;
 
   public UITransfer(LynxContext context) {
     this(context, null);
@@ -37,7 +49,33 @@ public class UITransfer extends UIGroup<TransferHostView> {
   @Override
   protected TransferHostView createView(Context context) {
     mWrapperView = new TransferWrapperView(context, this);
+    getTouchEventDispatcher().setTouchEventSource(mWrapperView);
     return new TransferHostView(context, mWrapperView);
+  }
+
+  private void syncEventDispatcherConfig(@NonNull TouchEventDispatcher dispatcher) {
+    if (mWrapperView != null) {
+      dispatcher.setTouchEventSource(mWrapperView);
+    }
+    dispatcher.setHasTouchPseudo(mContext.getLynxUIOwner().getHasTouchPseudo());
+    dispatcher.setHasTouchPseudo(mContext.getEnableFiberArch());
+    dispatcher.setEnableMultiTouch(mContext.getEnableMultiTouch());
+    dispatcher.setEnablePlatformGesture(mContext.isEnablePlatformGesture());
+
+    String tapSlop = mContext.getTapSlop();
+    if (tapSlop != null && !tapSlop.equals(TouchEventDispatcher.mTapSlopDefault)) {
+      dispatcher.setTapSlop(
+          UnitUtils.toPxWithDisplayMetrics(tapSlop, 0, 0, 0, 0, 0, 0, mContext.getScreenMetrics()));
+    }
+  }
+
+  @Override
+  public TouchEventDispatcher getTouchEventDispatcher() {
+    if (mEventDispatcher == null) {
+      mEventDispatcher = new TouchEventDispatcher(mContext.getLynxUIOwner());
+    }
+    syncEventDispatcherConfig(mEventDispatcher);
+    return mEventDispatcher;
   }
 
   @LynxProp(name = "transfer-id")
@@ -54,6 +92,31 @@ public class UITransfer extends UIGroup<TransferHostView> {
       removeTransfer(previousTransferId);
     }
     dispatchTransferCreateIfNeeded();
+  }
+
+  double nowMs() {
+    return ((double) PerformanceController.currentSystemTimeMicroseconds()) / 1000;
+  }
+
+  void sendTransferDrawEndEvent() {
+    if (firstDrawEndSent) {
+      return;
+    }
+    firstDrawEndSent = true;
+    Map<String, EventsListener> events = mEvents;
+    LynxContext lynxContext = getLynxContext();
+    EventEmitter eventEmitter = lynxContext != null ? lynxContext.getEventEmitter() : null;
+
+    if (events != null && events.containsKey(EVENT_TRANSFER_TIMING) && eventEmitter != null) {
+      Map<String, Object> timing = new HashMap<>();
+      timing.put("draw_end", nowMs());
+
+      Map<String, Object> data = new HashMap<>();
+      data.put("timing", timing);
+      data.put("transfer_id", mTransferId);
+
+      eventEmitter.sendCustomEvent(new LynxCustomEvent(getSign(), EVENT_TRANSFER_TIMING, data));
+    }
   }
 
   @Override
@@ -126,6 +189,7 @@ public class UITransfer extends UIGroup<TransferHostView> {
       mAttachedTransferId = mTransferId;
       return;
     }
+    firstDrawEndSent = false;
     lynxView.dispatchTransferCreate(mTransferId, this, mWrapperView);
     mAttachedTransferId = mTransferId;
   }
