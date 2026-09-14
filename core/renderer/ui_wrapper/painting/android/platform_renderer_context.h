@@ -98,6 +98,9 @@ class PlatformRendererContext {
   std::vector<float> GetScreenSize();
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);
+  PlatformTextEventTargetRegions GetTextEventTargetRegions(
+      int32_t text_id,
+      const std::vector<PlatformTextEventTargetRange>& target_ranges);
   void InvokeUIMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback);
