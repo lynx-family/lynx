@@ -9,10 +9,15 @@ performance_shared_sources = [
   "js_blocking_monitor/js_blocking_monitor.cc",
   "js_blocking_monitor/js_blocking_monitor.h",
   "js_blocking_monitor/js_blocking_trace_event_def.h",
+  "memory_monitor/global_memory_monitor.cc",
+  "memory_monitor/global_memory_monitor.h",
   "memory_monitor/memory_monitor.cc",
   "memory_monitor/memory_monitor.h",
+  "memory_monitor/memory_monitor_data.h",
   "memory_monitor/memory_record.cc",
   "memory_monitor/memory_record.h",
+  "memory_monitor/process_memory_usage.cc",
+  "memory_monitor/process_memory_usage.h",
   "performance_controller.cc",
   "performance_controller.h",
   "performance_event_sender.h",
@@ -56,6 +61,9 @@ if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests &&
 
 lynx_core_source_set("performance") {
   sources = performance_shared_sources
+  if (is_harmony) {
+    libs = [ "ohhidebug" ]
+  }
   deps = [
     "../../../base/src:base_log_headers",
     "../../../third_party/rapidjson",

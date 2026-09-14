@@ -82,6 +82,12 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
   static bool IsSingleJSContext(const std::string& group_id);
 
+  // One VM per runtime type in this manager, regardless of the page's group.
+  static inline bool IsVMSharedAcrossGroups(runtime::js::JSRuntimeType type) {
+    return type == runtime::js::JSRuntimeType::v8 ||
+           type == runtime::js::JSRuntimeType::jsvm;
+  }
+
   base::UnsafeOwningPtr<runtime::js::Runtime> CreateJSRuntime(
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>

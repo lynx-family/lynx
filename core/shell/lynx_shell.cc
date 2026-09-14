@@ -27,6 +27,7 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/watch_dog/watch_dog.h"
@@ -154,6 +155,11 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
       enable_js_group_thread_(shell_option.enable_js_group_thread_),
       page_options_(shell_option.page_options_) {
   LOGI("LynxShell create, this:" << this);
+  tasm::performance::GlobalMemoryMonitor::GetInstance().OnInstanceCreated(
+      instance_id_, tasm::performance::MemoryNowMs(),
+      [expected = enable_runtime_](auto& state) {
+        state.bts_expected = expected;
+      });
   page_options_.SetInstanceID(instance_id_);
   ui_operation_queue_->SetPageOptions(page_options_);
   engine_thread_switch_ = std::make_shared<EngineThreadSwitch>(
@@ -457,6 +463,9 @@ void LynxShell::Destroy() {
   LOGI("LynxShell Destroy, this:" << this);
 
   is_destroyed_ = true;
+  const auto memory_exit_time = tasm::performance::MemoryNowMs();
+  tasm::performance::GlobalMemoryMonitor::GetInstance().OnInstanceDestroyed(
+      instance_id_, memory_exit_time);
 
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::RecorderController::RemoveRecord(
@@ -465,7 +474,20 @@ void LynxShell::Destroy() {
 
   if (perf_controller_actor_) {
     perf_controller_actor_->ActAsync(
-        [](auto& performance_controller) { performance_controller = nullptr; });
+        [instance_id = instance_id_,
+         memory_exit_time](auto& performance_controller) {
+          if (performance_controller) {
+            // Only bound which scheduled points were due. Destruction sends
+            // saved sample statistics, never an exit memory measurement, so
+            // runtime teardown does not have to wait for this actor.
+            performance_controller->GetMemoryMonitor().SetExitTime(
+                memory_exit_time);
+          }
+          performance_controller = nullptr;
+          // Flush the saved summary and any pending scheduled events.
+          // PerformanceController has no actor mixin to do this automatically.
+          tasm::report::EventTracker::Flush(instance_id);
+        });
   }
 
   facade_actor_->Act([instance_id = instance_id_](auto& facade) {
@@ -732,6 +754,8 @@ void LynxShell::DestroyRuntime(int32_t instance_id,
                                std::unique_ptr<BTSRuntime>& runtime) {
   runtime = nullptr;
   tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
+  fml::MessageLoop::GetCurrent().GetTaskRunner()->RemoveInstanceMemorySlot(
+      instance_id);
 }
 
 bool LynxShell::IsDestroyed() { return is_destroyed_; }
@@ -754,7 +778,11 @@ void LynxShell::ResetShouldSendEventToMainThread() {
       [](auto& facade) { facade->OnShouldSendEventToMainThreadChanged(true); });
 }
 
-void LynxShell::SetUrl(const std::string& url) { url_ = url; }
+void LynxShell::SetUrl(const std::string& url) {
+  url_ = url;
+  tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+      instance_id_, [url](auto& state) { state.url = url; });
+}
 
 void LynxShell::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,

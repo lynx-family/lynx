@@ -23,6 +23,7 @@
 #include "core/runtime/profile/lepusng/lepusng_profiler.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 
 #if ENABLE_LEPUSNG_WORKLET
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
@@ -123,6 +124,13 @@ bool TemplateEntry::ConstructContext(
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_MTS_VM, "instance_id",
                       page_options.GetInstanceID(), "desc",
                       vm_context_->GetMTSContext()->GetDebugDescription());
+
+  performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+      page_options.GetInstanceID(),
+      [type = vm_context_->GetMTSContext()->Type()](auto& state) {
+        state.mts_context_type = type;
+        state.mts_known = true;
+      });
 
   if (source_type != LepusContextSourceType::kFromLocalPool) {
     vm_context_->SetSdkVersion(assembler->target_sdk_version_);

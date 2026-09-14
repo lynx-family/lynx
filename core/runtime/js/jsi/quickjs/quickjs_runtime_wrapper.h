@@ -93,12 +93,20 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   // Must exec in use thread.
   void AddToIdContainer();
 
+  // Caller supplies JSMemoryTrackSlotType::Count entries. The return value
+  // describes slot tracking, not heap-query success.
+  bool GetMemoryStatus(size_t& heap_size, size_t* memory_size_slots);
+
+  void RebindMemoryTrackSlot();
+  int32_t AllocatePageMemorySlot();
+
  private:
   LEPUSRuntime* rt_;
   base::LinearFlatSet<JSIObserver*> obs_set_ptr_;
   static LEPUSClassID s_function_id_;
   static LEPUSClassID s_object_id_;
 
+  bool per_instance_memory_track_{false};
 #if ENABLE_TRACE_PERFETTO
   // When tracing is enabled, the initial snapshot of a BTS VM will only be
   // captured once.
