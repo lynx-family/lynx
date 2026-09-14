@@ -4,6 +4,7 @@
 #ifndef BASE_INCLUDE_LOG_LOGGING_H_
 #define BASE_INCLUDE_LOG_LOGGING_H_
 
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -28,7 +29,12 @@ BASE_EXPORT void InitLynxLogging(InitAlogCallBack initAlogCallback,
 
 BASE_EXPORT void SetMinLogLevel(int level);
 
-BASE_EXPORT int GetMinLogLevel();
+namespace detail {
+// Shared storage for the inline getter. Update through SetMinLogLevel().
+BASE_EXPORT extern int32_t g_min_log_level;
+}  // namespace detail
+
+inline int GetMinLogLevel() { return detail::g_min_log_level; }
 
 BASE_EXPORT void PrintLogToLynxLogging(int level, const char* tag,
                                        const char* message);
