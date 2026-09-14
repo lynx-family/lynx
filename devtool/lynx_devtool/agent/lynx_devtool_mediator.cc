@@ -16,6 +16,7 @@
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/services/replay/replay_controller.h"
 #include "devtool/lynx_devtool/agent/hierarchy_observer_impl.h"
+#include "devtool/lynx_devtool/agent/inspector_animation_observer_impl.h"
 #include "devtool/lynx_devtool/agent/inspector_common_observer_impl.h"
 #include "devtool/lynx_devtool/agent/inspector_element_observer_impl.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -80,18 +81,20 @@ void LynxDevToolMediator::Init(
   // Preserve domain enabled states across reloads.
   bool white_board_enabled = false;
   bool global_props_enabled = false;
+  bool animation_enabled = false;
   uint64_t last_global_props_timestamp = 0;
   if (element_executor_ != nullptr) {
     white_board_enabled = element_executor_->IsWhiteBoardEnabled();
     global_props_enabled = element_executor_->IsGlobalPropsEnabled();
     last_global_props_timestamp =
         element_executor_->GetLastGlobalPropsTimestamp();
+    animation_enabled = element_executor_->IsAnimationEnabled();
   }
-
   element_executor_ = std::make_shared<InspectorTasmExecutor>(
       shared_from_this(), tasm, view_id_);
   element_executor_->SetLastGlobalPropsTimestamp(last_global_props_timestamp);
   element_executor_->SetGlobalPropsEnabled(global_props_enabled);
+  element_executor_->SetAnimationEnabled(animation_enabled);
   ui_executor_ = std::make_shared<InspectorUIExecutor>(shared_from_this());
   ui_executor_->SetShell(shell);
   if (!devtool_executor_) {
@@ -119,6 +122,9 @@ void LynxDevToolMediator::Init(
   // shell set element observer in tasm thread;
   shell->SetInspectorElementObserver(
       std::make_shared<InspectorElementObserverImpl>(element_executor_));
+  // Install the Animation CDP observer on the TASM thread.
+  shell->SetInspectorAnimationObserver(
+      std::make_shared<InspectorAnimationObserverImpl>(element_executor_));
   shell->SetHierarchyObserver(
       std::make_shared<lynx::devtool::HierarchyObserverImpl>(ui_executor_));
   auto runtime_observer = js_debugger_->GetInspectorRuntimeObserver();
@@ -1437,6 +1443,48 @@ void LynxDevToolMediator::LayerTreeDisable(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   RunOnTASMThread([responder, params, executor = element_executor_] {
     executor->LayerTreeDisable(responder, params);
+  });
+}
+
+void LynxDevToolMediator::AnimationEnable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->AnimationEnable(responder, params);
+  });
+}
+
+void LynxDevToolMediator::AnimationDisable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->AnimationDisable(responder, params);
+  });
+}
+
+void LynxDevToolMediator::AnimationGetCurrentTime(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->AnimationGetCurrentTime(responder, params);
+  });
+}
+
+void LynxDevToolMediator::AnimationSeekAnimations(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->AnimationSeekAnimations(responder, params);
+  });
+}
+
+void LynxDevToolMediator::AnimationSetPaused(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->AnimationSetPaused(responder, params);
+  });
+}
+
+void LynxDevToolMediator::AnimationReleaseAnimations(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->AnimationReleaseAnimations(responder, params);
   });
 }
 
