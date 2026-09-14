@@ -15,23 +15,39 @@ std::shared_ptr<ColorFilter> ColorFilter::MakeMatrix(const float matrix[20]) {
 }
 
 std::shared_ptr<ColorFilter> ColorFilter::MakeSrgbToLinearGamma() {
-  return SrgbToLinearGammaColorFilter::instance;
+  return SrgbToLinearGammaColorFilter::GetInstance();
 }
 
 std::shared_ptr<ColorFilter> ColorFilter::MakeLinearToSrgbGamma() {
-  return LinearToSrgbGammaColorFilter::instance;
+  return LinearToSrgbGammaColorFilter::GetInstance();
 }
 
-const std::shared_ptr<SrgbToLinearGammaColorFilter>
-    SrgbToLinearGammaColorFilter::instance =
-        std::make_shared<SrgbToLinearGammaColorFilter>();
-const GrColorFilterPtr SrgbToLinearGammaColorFilter::sk_filter_ =
-    GrColorFilters::SRGBToLinearGamma();
+const std::shared_ptr<SrgbToLinearGammaColorFilter>&
+SrgbToLinearGammaColorFilter::GetInstance() {
+  static const lynx::base::NoDestructor<
+      std::shared_ptr<SrgbToLinearGammaColorFilter>>
+      instance(std::make_shared<SrgbToLinearGammaColorFilter>());
+  return *instance;
+}
 
-const std::shared_ptr<LinearToSrgbGammaColorFilter>
-    LinearToSrgbGammaColorFilter::instance =
-        std::make_shared<LinearToSrgbGammaColorFilter>();
-const GrColorFilterPtr LinearToSrgbGammaColorFilter::sk_filter_ =
-    GrColorFilters::LinearToSRGBGamma();
+const GrColorFilterPtr& SrgbToLinearGammaColorFilter::GetSkFilter() {
+  static const lynx::base::NoDestructor<GrColorFilterPtr> sk_filter(
+      GrColorFilters::SRGBToLinearGamma());
+  return *sk_filter;
+}
+
+const std::shared_ptr<LinearToSrgbGammaColorFilter>&
+LinearToSrgbGammaColorFilter::GetInstance() {
+  static const lynx::base::NoDestructor<
+      std::shared_ptr<LinearToSrgbGammaColorFilter>>
+      instance(std::make_shared<LinearToSrgbGammaColorFilter>());
+  return *instance;
+}
+
+const GrColorFilterPtr& LinearToSrgbGammaColorFilter::GetSkFilter() {
+  static const lynx::base::NoDestructor<GrColorFilterPtr> sk_filter(
+      GrColorFilters::LinearToSRGBGamma());
+  return *sk_filter;
+}
 
 }  // namespace clay

@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/no_destructor.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/attributes.h"
 #include "clay/gfx/rendering_backend.h"
@@ -177,7 +178,7 @@ class MatrixColorFilter final : public ColorFilter {
 // gamma curve to the rendered pixels.
 class SrgbToLinearGammaColorFilter final : public ColorFilter {
  public:
-  static const std::shared_ptr<SrgbToLinearGammaColorFilter> instance;
+  static const std::shared_ptr<SrgbToLinearGammaColorFilter>& GetInstance();
 
   SrgbToLinearGammaColorFilter() = default;
   SrgbToLinearGammaColorFilter(const SrgbToLinearGammaColorFilter& filter)
@@ -193,9 +194,9 @@ class SrgbToLinearGammaColorFilter final : public ColorFilter {
   bool modifies_transparent_black() const override { return false; }
   bool can_commute_with_opacity() const override { return true; }
 
-  std::shared_ptr<ColorFilter> shared() const override { return instance; }
+  std::shared_ptr<ColorFilter> shared() const override { return GetInstance(); }
 
-  GrColorFilterPtr gr_object() const override { return sk_filter_; }
+  GrColorFilterPtr gr_object() const override { return GetSkFilter(); }
 
  protected:
   bool equals_(const ColorFilter& other) const override {
@@ -204,15 +205,14 @@ class SrgbToLinearGammaColorFilter final : public ColorFilter {
   }
 
  private:
-  static const GrColorFilterPtr sk_filter_;
-  friend class ColorFilter;
+  static const GrColorFilterPtr& GetSkFilter();
 };
 
 // The LinearToSrgb type of ColorFilter that applies the sRGB gamma curve
 // to the rendered pixels.
 class LinearToSrgbGammaColorFilter final : public ColorFilter {
  public:
-  static const std::shared_ptr<LinearToSrgbGammaColorFilter> instance;
+  static const std::shared_ptr<LinearToSrgbGammaColorFilter>& GetInstance();
 
   LinearToSrgbGammaColorFilter() {}
   LinearToSrgbGammaColorFilter(const LinearToSrgbGammaColorFilter& filter)
@@ -228,9 +228,9 @@ class LinearToSrgbGammaColorFilter final : public ColorFilter {
   bool modifies_transparent_black() const override { return false; }
   bool can_commute_with_opacity() const override { return true; }
 
-  std::shared_ptr<ColorFilter> shared() const override { return instance; }
+  std::shared_ptr<ColorFilter> shared() const override { return GetInstance(); }
 
-  GrColorFilterPtr gr_object() const override { return sk_filter_; }
+  GrColorFilterPtr gr_object() const override { return GetSkFilter(); }
 
  protected:
   bool equals_(const ColorFilter& other) const override {
@@ -239,8 +239,7 @@ class LinearToSrgbGammaColorFilter final : public ColorFilter {
   }
 
  private:
-  static const GrColorFilterPtr sk_filter_;
-  friend class ColorFilter;
+  static const GrColorFilterPtr& GetSkFilter();
 };
 
 class UnknownColorFilter final : public ColorFilter {

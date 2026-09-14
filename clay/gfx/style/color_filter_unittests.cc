@@ -197,7 +197,7 @@ TEST(DisplayListColorFilter, SrgbToLinearEquals) {
   DlSrgbToLinearGammaColorFilter filter1;
   DlSrgbToLinearGammaColorFilter filter2;
   TestEquals(filter1, filter2);
-  TestEquals(filter1, *DlSrgbToLinearGammaColorFilter::instance);
+  TestEquals(filter1, *DlSrgbToLinearGammaColorFilter::GetInstance());
 }
 
 TEST(DisplayListColorFilter, LinearToSrgbConstructor) {
@@ -214,7 +214,7 @@ TEST(DisplayListColorFilter, LinearToSrgbEquals) {
   DlLinearToSrgbGammaColorFilter filter1;
   DlLinearToSrgbGammaColorFilter filter2;
   TestEquals(filter1, filter2);
-  TestEquals(filter1, *DlLinearToSrgbGammaColorFilter::instance);
+  TestEquals(filter1, *DlLinearToSrgbGammaColorFilter::GetInstance());
 }
 
 TEST(DisplayListColorFilter, UnknownConstructor) {

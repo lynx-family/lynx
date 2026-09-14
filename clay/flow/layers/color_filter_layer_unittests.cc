@@ -94,7 +94,7 @@ TEST_F(ColorFilterLayerTest, SimpleFilter) {
       SkPath().addRect(clay::ConvertSkityRectToSkRect(child_bounds));
   const SkPaint child_paint = SkPaint(SkColors::kYellow);
 
-  auto dl_color_filter = DlLinearToSrgbGammaColorFilter::instance;
+  auto dl_color_filter = DlLinearToSrgbGammaColorFilter::GetInstance();
   auto mock_layer = std::make_shared<MockLayer>(child_path, child_paint);
   auto layer = std::make_shared<ColorFilterLayer>(dl_color_filter);
   layer->Add(mock_layer);
@@ -140,7 +140,7 @@ TEST_F(ColorFilterLayerTest, MultipleChildren) {
   const SkPaint child_paint2 = SkPaint(SkColors::kCyan);
   auto mock_layer1 = std::make_shared<MockLayer>(child_path1, child_paint1);
   auto mock_layer2 = std::make_shared<MockLayer>(child_path2, child_paint2);
-  auto dl_color_filter = DlSrgbToLinearGammaColorFilter::instance;
+  auto dl_color_filter = DlSrgbToLinearGammaColorFilter::GetInstance();
   auto layer = std::make_shared<ColorFilterLayer>(dl_color_filter);
   layer->Add(mock_layer1);
   layer->Add(mock_layer2);
@@ -201,7 +201,7 @@ TEST_F(ColorFilterLayerTest, Nested) {
   const SkPaint child_paint2 = SkPaint(SkColors::kCyan);
   auto mock_layer1 = std::make_shared<MockLayer>(child_path1, child_paint1);
   auto mock_layer2 = std::make_shared<MockLayer>(child_path2, child_paint2);
-  auto dl_color_filter = DlSrgbToLinearGammaColorFilter::instance;
+  auto dl_color_filter = DlSrgbToLinearGammaColorFilter::GetInstance();
   auto layer1 = std::make_shared<ColorFilterLayer>(dl_color_filter);
 
   auto layer2 = std::make_shared<ColorFilterLayer>(dl_color_filter);
@@ -268,7 +268,7 @@ TEST_F(ColorFilterLayerTest, Readback) {
 
   // ColorFilterLayer does not read from surface
   auto layer = std::make_shared<ColorFilterLayer>(
-      DlLinearToSrgbGammaColorFilter::instance);
+      DlLinearToSrgbGammaColorFilter::GetInstance());
   preroll_context()->surface_needs_readback = false;
   preroll_context()->state_stack.set_preroll_delegate(initial_transform);
   layer->Preroll(preroll_context());
@@ -284,7 +284,7 @@ TEST_F(ColorFilterLayerTest, Readback) {
 }
 
 TEST_F(ColorFilterLayerTest, CacheChild) {
-  auto layer_filter = DlSrgbToLinearGammaColorFilter::instance;
+  auto layer_filter = DlSrgbToLinearGammaColorFilter::GetInstance();
   auto initial_transform = SkMatrix::Translate(50.0, 25.5);
   auto other_transform = SkMatrix::Scale(1.0, 2.0);
   const SkPath child_path = SkPath().addRect(SkRect::MakeWH(5.0f, 5.0f));
@@ -326,7 +326,7 @@ TEST_F(ColorFilterLayerTest, CacheChild) {
 }
 
 TEST_F(ColorFilterLayerTest, CacheChildren) {
-  auto layer_filter = DlSrgbToLinearGammaColorFilter::instance;
+  auto layer_filter = DlSrgbToLinearGammaColorFilter::GetInstance();
   auto initial_transform = SkMatrix::Translate(50.0, 25.5);
   auto other_transform = SkMatrix::Scale(1.0, 2.0);
   const SkPath child_path1 = SkPath().addRect(SkRect::MakeWH(5.0f, 5.0f));
@@ -373,7 +373,7 @@ TEST_F(ColorFilterLayerTest, CacheChildren) {
 }
 
 TEST_F(ColorFilterLayerTest, CacheColorFilterLayerSelf) {
-  auto layer_filter = DlSrgbToLinearGammaColorFilter::instance;
+  auto layer_filter = DlSrgbToLinearGammaColorFilter::GetInstance();
   auto initial_transform = SkMatrix::Translate(50.0, 25.5);
   auto other_transform = SkMatrix::Scale(1.0, 2.0);
   const SkPath child_path1 = SkPath().addRect(SkRect::MakeWH(5.0f, 5.0f));
