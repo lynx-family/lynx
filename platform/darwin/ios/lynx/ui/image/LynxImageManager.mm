@@ -13,10 +13,12 @@
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxUnitUtils.h>
+#import <QuartzCore/QuartzCore.h>
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 static const NSInteger kFlagImageLoadEvent = 1 << 0;
 static const NSInteger kFlagImageErrorEvent = 1 << 1;
+static NSString* const kBackgroundImageAnimationKey = @"lynx.backgroundImage";
 static NSString* const kLynxImageEventLoad = @"load";
 static NSString* const kLynxImageEventError = @"error";
 
@@ -90,6 +92,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   NSMutableDictionary<id, UIImage*>* _images;
 
   __weak UIImageView* _imageView;
+  __weak CALayer* _imageLayer;
   __weak LynxUIContext* _context;
   NSInteger _sign;
   NSInteger _eventMask;
@@ -203,7 +206,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
       return;
     }
 
-    if (self->_imageView != nil) {
+    if (self->_imageView != nil || self->_imageLayer != nil) {
       [self applyImage:image withType:type];
     }
     if (type != LynxImageRequestSrc) {
@@ -236,7 +239,53 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   _cancelBlocks[@(type)] = [[LynxImageLoader sharedInstance] loadImageWithOptions:options];
 }
 
+- (void)applyBackgroundImage:(UIImage*)image {
+  CALayer* layer = _imageLayer;
+  NSArray<UIImage*>* frames = image.images ?: (image != nil ? @[ image ] : @[]);
+  NSMutableArray* contents = [NSMutableArray arrayWithCapacity:frames.count];
+  for (UIImage* sourceFrame in frames) {
+    UIImage* frame = sourceFrame;
+    if (frame.imageOrientation != UIImageOrientationUp || frame.CGImage == nil) {
+      // CALayer does not interpret UIImage orientation metadata.
+      UIGraphicsBeginImageContextWithOptions(frame.size, NO, frame.scale);
+      [frame drawInRect:(CGRect){CGPointZero, frame.size}];
+      frame = UIGraphicsGetImageFromCurrentImageContext();
+      UIGraphicsEndImageContext();
+    }
+    if (frame.CGImage == nil) {
+      return;
+    }
+    [contents addObject:(__bridge id)frame.CGImage];
+  }
+
+  BOOL animated = contents.count > 1 && image.duration > 0;
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+  layer.contents = contents.firstObject;
+  layer.contentsScale = image != nil ? image.scale : 1;
+  layer.contentsGravity = kCAGravityResize;
+  if (animated) {
+    NSUInteger frameCount = contents.count;
+    NSMutableArray<NSNumber*>* keyTimes = [NSMutableArray arrayWithCapacity:frameCount + 1];
+    for (NSUInteger i = 0; i <= frameCount; ++i) {
+      [keyTimes addObject:@((double)i / frameCount)];
+    }
+    CAKeyframeAnimation* animation = [CAKeyframeAnimation animationWithKeyPath:@"contents"];
+    animation.values = contents;
+    animation.keyTimes = keyTimes;
+    animation.calculationMode = kCAAnimationDiscrete;
+    animation.duration = image.duration;
+    animation.repeatCount = HUGE_VALF;
+    [layer addAnimation:animation forKey:kBackgroundImageAnimationKey];
+  }
+  [CATransaction commit];
+}
+
 - (void)applyImage:(UIImage*)image withType:(LynxImageRequestType)type {
+  if (_imageLayer != nil) {
+    [self applyBackgroundImage:image];
+    return;
+  }
   if (_imageView == nil) {
     return;
   }
@@ -272,6 +321,15 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   }
 }
 
+- (void)setLayerTarget:(CALayer*)layer {
+  _imageLayer = layer;
+  if (_images[@(LynxImageRequestSrc)] != nil) {
+    [self applyImage:_images[@(LynxImageRequestSrc)] withType:LynxImageRequestSrc];
+  } else {
+    [self applyImage:_images[@(LynxImageRequestPlaceholder)] withType:LynxImageRequestPlaceholder];
+  }
+}
+
 - (void)setTarget:(UIImageView*)view {
   _imageView = view;
   _imageView.contentMode = _contentMode;
@@ -286,6 +344,8 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)reset {
+  [_imageLayer removeAnimationForKey:kBackgroundImageAnimationKey];
+  _imageLayer = nil;
   _imageView = nil;
   [_cancelBlocks enumerateKeysAndObjectsUsingBlock:^(id key, dispatch_block_t block, BOOL* stop) {
     if (block) {

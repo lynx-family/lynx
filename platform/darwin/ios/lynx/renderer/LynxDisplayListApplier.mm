@@ -294,6 +294,69 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         [_contentImageViews addObject:imageView];
         break;
       }
+      case DisplayListOpType::kBackgroundImage: {
+        const auto &background = item.payload.background_image;
+        if (background.tiling_index < 0 || background.clip_index < 0 ||
+            static_cast<size_t>(background.tiling_index) >= box_array_.size() ||
+            static_cast<size_t>(background.clip_index) >= box_array_.size()) {
+          break;
+        }
+        LynxImageManager *imageManager = [self imageManagerForID:background.image_id];
+        const auto &tilingBox = box_array_[background.tiling_index];
+        const auto &clipBox = box_array_[background.clip_index];
+        CGRect clipRect = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
+        if (imageManager == nil || CGRectIsEmpty(clipRect) || tilingBox.GetWidth() <= 0 ||
+            tilingBox.GetHeight() <= 0) {
+          break;
+        }
+
+        const CGFloat scale = _view.window.screen.scale ?: _view.contentScaleFactor;
+        const bool repeatX = background.repeat_x == LynxBackgroundRepeatRepeat;
+        const bool repeatY = background.repeat_y == LynxBackgroundRepeatRepeat;
+        const CGFloat width =
+            repeatX ? MAX(1, round(tilingBox.GetWidth() * scale)) / scale : tilingBox.GetWidth();
+        const CGFloat height =
+            repeatY ? MAX(1, round(tilingBox.GetHeight() * scale)) / scale : tilingBox.GetHeight();
+        // Align in host drawing pixels, then convert back to the clip's local coordinates.
+        auto firstTile = [scale](CGFloat origin, CGFloat clipStart, CGFloat size) {
+          const CGFloat pixelSize = round(size * scale);
+          const CGFloat clipPixel = floor(clipStart * scale);
+          CGFloat phase = fmod(clipPixel - round(origin * scale), pixelSize);
+          if (phase < 0) {
+            phase += pixelSize;
+          }
+          return (clipPixel - phase) / scale - clipStart;
+        };
+        CGFloat x = tilingBox.GetX() - clipBox.GetX();
+        CGFloat y = tilingBox.GetY() - clipBox.GetY();
+        CAReplicatorLayer *horizontal = [CAReplicatorLayer layer];
+        CAReplicatorLayer *vertical = [CAReplicatorLayer layer];
+        horizontal.frame = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
+        vertical.frame = clipRect;
+        horizontal.instanceTransform = CATransform3DMakeTranslation(width, 0, 0);
+        vertical.instanceTransform = CATransform3DMakeTranslation(0, height, 0);
+        if (repeatX) {
+          x = firstTile(tilingBox.GetX() + left_offset_, clipRect.origin.x, width);
+          horizontal.instanceCount = ceil((clipRect.size.width - x) / width);
+        }
+        if (repeatY) {
+          y = firstTile(tilingBox.GetY() + top_offset_, clipRect.origin.y, height);
+          vertical.instanceCount = ceil((clipRect.size.height - y) / height);
+        }
+
+        CALayer *imageLayer = [CALayer layer];
+        imageLayer.frame = CGRectMake(x, y, width, height);
+        [imageManager setLayerTarget:imageLayer];
+        // Replicate one image target so asynchronous updates reach every tile.
+        [horizontal addSublayer:imageLayer];
+        [vertical addSublayer:horizontal];
+        if (clipBox.HasRadius()) {
+          [self applyRoundedRect:clipBox toLayer:vertical];
+        }
+        vertical.masksToBounds = YES;
+        [self insertLayer:vertical];
+        break;
+      }
       case DisplayListOpType::kBorder: {
         int out_box_index = item.payload.border.out_index;
         int inner_box_index = item.payload.border.inner_index;
