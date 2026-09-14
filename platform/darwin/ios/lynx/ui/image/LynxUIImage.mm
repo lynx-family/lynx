@@ -639,8 +639,6 @@ LYNX_REGISTER_UI("image")
 }
 
 - (void)markAsDirty {
-  LYNX_MAYBE_ON_ASYNC_THREAD;
-
   _isDirty = YES;
 }
 
@@ -1339,8 +1337,6 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 }
 
 - (void)resetImage {
-  LYNX_MAYBE_ON_ASYNC_THREAD;
-
   [self.propsDidUpdateBlockArray addObject:^(LynxUI* ui) {
     if (ui.view == nil) {
       return;
@@ -1356,8 +1352,6 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 }
 
 - (NSURL*)illegalUrlHandler:(NSString*)value {
-  LYNX_MAYBE_ON_ASYNC_THREAD;
-
   NSURL* urlValue = [[NSURL alloc] initWithString:value];
   // To handle some illegal symbols, such as chinese characters and [], etc
   // Query + Path characterset will cover all other urlcharacterset
