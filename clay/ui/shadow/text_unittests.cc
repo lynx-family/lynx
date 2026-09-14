@@ -30,6 +30,9 @@
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/shadow/text_render.h"
 #include "clay/ui/shadow/text_shadow_node.h"
+#include "clay/ui/shadow/x_inline_image_shadow_node.h"
+#include "clay/ui/shadow/x_inline_truncation_shadow_node.h"
+#include "clay/ui/shadow/x_text_shadow_node.h"
 #include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -587,6 +590,32 @@ TEST_F_UI(TextTest, TextMaxLineAttributeHandlesZeroAndPositiveValues) {
 
   text_shadow_node_->SetAttribute("text-maxline", clay::Value("3"));
   EXPECT_EQ(text_shadow_node_->text_style_->max_lines.value(), 3u);
+}
+
+TEST_F_UI(TextTest, XTextMapsEllipsizeModeToTextOverflow) {
+  auto x_text =
+      std::make_unique<XTextShadowNode>(owner_, std::string("x-text"), -1);
+
+  x_text->SetAttribute("ellipsize-mode", clay::Value("tail"));
+  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kEllipsis);
+
+  x_text->SetAttribute("ellipsize-mode", clay::Value("head"));
+  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kEllipsis);
+
+  x_text->SetAttribute("ellipsize-mode", clay::Value("clip"));
+  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kClip);
+}
+
+TEST_F_UI(TextTest, XInlineImageUsesMiddlePlaceholderAlignment) {
+  auto inline_image = std::make_unique<InlineImageShadowNode>(
+      owner_, std::string("inline-image"), -1);
+  auto x_inline_image = std::make_unique<XInlineImageShadowNode>(
+      owner_, std::string("x-inline-image"), -1);
+
+  EXPECT_EQ(inline_image->GetPlaceholderAlignment(),
+            txt::PlaceholderAlignment::kBaseline);
+  EXPECT_EQ(x_inline_image->GetPlaceholderAlignment(),
+            txt::PlaceholderAlignment::kMiddle);
 }
 
 TEST_F_UI(TextTest, TextMaxLengthAttributeLimitsInitialLayout) {
@@ -1245,6 +1274,47 @@ TEST_F_UI(TextTest, InlineTruncationDoesNotMountWhenContentFits) {
 
   EXPECT_FALSE(inline_truncation_node->IfNeedMount());
   EXPECT_TRUE(raw_text_shadow_node_->Text() == u"short");
+}
+
+TEST_F_UI(TextTest, XInlineTruncationMeasuresPrefixedEllipsisForTailMode) {
+  auto inline_truncation_node = std::make_unique<XInlineTruncationShadowNode>(
+      owner_, std::string("x-inline-truncation"), -1);
+  auto inline_text_node = std::make_unique<InlineTextShadowNode>(
+      owner_, std::string("x-inline-text"), -1);
+  auto inline_raw_text_shadow_node =
+      std::make_unique<RawTextShadowNode>(owner_, std::string("raw-text"), -1);
+  inline_raw_text_shadow_node->SetText("more");
+  inline_text_node->AddChild(inline_raw_text_shadow_node.get());
+  inline_truncation_node->AddChild(inline_text_node.get());
+  text_shadow_node_->AddChild(inline_truncation_node.get());
+
+  text_shadow_node_->text_style_->overflow = TextOverflow::kClip;
+  const auto marker_only = inline_truncation_node->CalculateTruncatedSize();
+  text_shadow_node_->text_style_->overflow = TextOverflow::kEllipsis;
+  const auto ellipsis_and_marker =
+      inline_truncation_node->CalculateTruncatedSize();
+
+  EXPECT_GT(ellipsis_and_marker.width(), marker_only.width());
+}
+
+TEST_F_UI(TextTest, InlineTruncationDoesNotPrefixEllipsisForTailMode) {
+  auto inline_truncation_node = std::make_unique<InlineTruncationShadowNode>(
+      owner_, std::string("inline-truncation"), -1);
+  auto inline_text_node = std::make_unique<InlineTextShadowNode>(
+      owner_, std::string("inline-text"), -1);
+  auto inline_raw_text_shadow_node =
+      std::make_unique<RawTextShadowNode>(owner_, std::string("raw-text"), -1);
+  inline_raw_text_shadow_node->SetText("more");
+  inline_text_node->AddChild(inline_raw_text_shadow_node.get());
+  inline_truncation_node->AddChild(inline_text_node.get());
+  text_shadow_node_->AddChild(inline_truncation_node.get());
+
+  text_shadow_node_->text_style_->overflow = TextOverflow::kClip;
+  const auto clip_size = inline_truncation_node->CalculateTruncatedSize();
+  text_shadow_node_->text_style_->overflow = TextOverflow::kEllipsis;
+  const auto ellipsis_size = inline_truncation_node->CalculateTruncatedSize();
+
+  EXPECT_EQ(ellipsis_size, clip_size);
 }
 
 TEST_F_UI(TextTest, InlineTruncationDoesNotMountMarkerWiderThanContainer) {

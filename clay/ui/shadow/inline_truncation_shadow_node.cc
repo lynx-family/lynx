@@ -23,6 +23,7 @@ InlineTruncationShadowNode::InlineTruncationShadowNode(ShadowNodeOwner* owner,
 
 void InlineTruncationShadowNode::TextLayout(LayoutContext* context) {
   if (need_layout_) {
+    AppendTruncationPrefix(static_cast<LayoutContextText*>(context));
     BaseTextShadowNode::TextLayout(context);
   }
 }
@@ -39,6 +40,7 @@ FloatSize InlineTruncationShadowNode::CalculateTruncatedSize() {
   auto builder = std::make_unique<TextParagraphBuilder>(true, text_style_);
   LayoutContextText context;
   context.SetBuilder(builder.get());
+  AppendTruncationPrefix(&context);
   ProcessChildLayout(&context);
   auto paragraph = Build(std::move(builder));
   paragraph->Layout(std::numeric_limits<float>::infinity());

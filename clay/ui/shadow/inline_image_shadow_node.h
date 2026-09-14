@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "clay/third_party/txt/src/txt/placeholder_run.h"
 #include "clay/ui/component/layout_controller.h"
 #include "clay/ui/shadow/shadow_node.h"
 
@@ -32,6 +33,11 @@ class InlineImageShadowNode : public ShadowNode {
   void SetBaselineOffset(double baseline_offset) override {
     baseline_offset_ = baseline_offset;
   }
+
+ protected:
+  friend class TextTest_XInlineImageUsesMiddlePlaceholderAlignment_Test;
+
+  virtual txt::PlaceholderAlignment GetPlaceholderAlignment() const;
 
  private:
   int placeholder_index_ = -1;

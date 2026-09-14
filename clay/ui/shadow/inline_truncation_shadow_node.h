@@ -13,6 +13,8 @@
 
 namespace clay {
 
+class LayoutContextText;
+
 class InlineTruncationShadowNode : public BaseTextShadowNode {
  public:
   InlineTruncationShadowNode(ShadowNodeOwner* owner, std::string tag, int id);
@@ -30,6 +32,9 @@ class InlineTruncationShadowNode : public BaseTextShadowNode {
   bool IfNeedMount() const { return need_mount_; }
 
   bool IsVirtual() override { return true; }
+
+ protected:
+  virtual void AppendTruncationPrefix(LayoutContextText*) {}
 
  private:
   bool need_layout_ = false;

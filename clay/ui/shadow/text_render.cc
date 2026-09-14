@@ -778,11 +778,13 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
   for (auto child : measure_node_->GetChildren()) {
     if (child->IsInlineTruncationShadowNode()) {
       auto truncation_node = static_cast<InlineTruncationShadowNode*>(child);
-      if (cache_paragraph_ &&
+      const bool content_overflows =
+          cache_paragraph_ &&
           (cache_paragraph_->DidExceedMaxLines() ||
            (constraint.height_mode != MeasureMode::kIndefinite &&
             cache_paragraph_->GetHeight() > constraint.height &&
-            cache_paragraph_->GetLineMetrics().size() > 1))) {
+            cache_paragraph_->GetLineMetrics().size() > 1));
+      if (content_overflows) {
         FloatSize truncation_size = truncation_node->CalculateTruncatedSize();
         if (truncation_size.width() > constraint.width) {
           truncation_node->SetNeedMount(false);
