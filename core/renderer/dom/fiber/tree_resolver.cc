@@ -55,6 +55,17 @@ enum class TemplateAttributeApplyMode {
   kEventOnly,
 };
 
+enum class TemplateAttributeType {
+  kOrdinary,
+  kClass,
+  kStyle,
+  kId,
+  kCSSId,
+  kEvent,
+  kListCallback,
+  kData,
+};
+
 bool StartsWith(std::string_view value, std::string_view prefix) {
   return value.size() >= prefix.size() &&
          value.compare(0, prefix.size(), prefix) == 0;
@@ -104,6 +115,32 @@ bool IsTemplateEventAttribute(const base::String& key) {
   base::String event_name;
   return ParseTemplateEventAttribute(key.string_view(), &event_type,
                                      &event_name);
+}
+
+TemplateAttributeType GetTemplateAttributeType(const base::String& key) {
+  if (key == kElementClass) {
+    return TemplateAttributeType::kClass;
+  }
+  if (key == kElementStyle) {
+    return TemplateAttributeType::kStyle;
+  }
+  if (key == kElementId) {
+    return TemplateAttributeType::kId;
+  }
+  if (key == kElementAttrCSSID) {
+    return TemplateAttributeType::kCSSId;
+  }
+  if (IsTemplateEventAttribute(key)) {
+    return TemplateAttributeType::kEvent;
+  }
+  if (ListElement::IsTemplateCallbackAttribute(key)) {
+    return TemplateAttributeType::kListCallback;
+  }
+  base::String data_name;
+  if (ParseTemplateDataAttribute(key.string_view(), &data_name)) {
+    return TemplateAttributeType::kData;
+  }
+  return TemplateAttributeType::kOrdinary;
 }
 
 void RegisterSlotTarget(base::Vector<fml::RefPtr<Element>>* targets,
@@ -200,31 +237,6 @@ void ApplyTemplateStyleAttribute(Element* element, const lepus::Value& value) {
   });
 }
 
-// TODO(songshourui.null): Unify this dispatch with Render Functions
-// SetAttribute once it supports special attributes through the shared setter.
-bool ApplySpecialTemplateAttribute(Element* element, const base::String& key,
-                                   const lepus::Value& value) {
-  if (key == kElementClass) {
-    ApplyTemplateClassAttribute(element, value);
-    return true;
-  }
-  if (key == kElementStyle) {
-    ApplyTemplateStyleAttribute(element, value);
-    return true;
-  }
-  if (key == kElementId) {
-    element->SetIdSelector(value.IsString() ? value.String() : base::String());
-    return true;
-  }
-
-  if (key == kElementAttrCSSID) {
-    element->SetCSSID(value.IsNumber() ? static_cast<int32_t>(value.Number())
-                                       : kInvalidCssId);
-    return true;
-  }
-  return false;
-}
-
 bool ApplyTemplateEventAttribute(Element* element, const base::String& key,
                                  const lepus::Value& value) {
   base::String event_type;
@@ -310,8 +322,11 @@ bool RemoveTemplateDataAttribute(Element* element, const base::String& key) {
 
 void ApplyTemplateAttributeValue(Element* element, const base::String& key,
                                  const lepus::Value& value,
-                                 TemplateAttributeApplyMode mode) {
-  if (IsTemplateEventAttribute(key)) {
+                                 TemplateAttributeApplyMode mode,
+                                 const AttrMap& final_attributes,
+                                 bool defer_empty_attributes = false) {
+  const auto type = GetTemplateAttributeType(key);
+  if (type == TemplateAttributeType::kEvent) {
     if (mode == TemplateAttributeApplyMode::kNonEventOnly) {
       return;
     }
@@ -321,28 +336,53 @@ void ApplyTemplateAttributeValue(Element* element, const base::String& key,
   if (mode == TemplateAttributeApplyMode::kEventOnly) {
     return;
   }
-  if (ApplySpecialTemplateAttribute(element, key, value)) {
-    return;
+  switch (type) {
+    case TemplateAttributeType::kClass:
+      ApplyTemplateClassAttribute(element, value);
+      return;
+    case TemplateAttributeType::kStyle:
+      ApplyTemplateStyleAttribute(element, value);
+      return;
+    case TemplateAttributeType::kId:
+      element->SetIdSelector(value.IsString() ? value.String()
+                                              : base::String());
+      return;
+    case TemplateAttributeType::kCSSId:
+      element->SetCSSID(value.IsNumber() ? static_cast<int32_t>(value.Number())
+                                         : kInvalidCssId);
+      return;
+    case TemplateAttributeType::kListCallback:
+      ApplyTemplateListCallbackAttribute(element, key, value);
+      return;
+    case TemplateAttributeType::kData:
+      ApplyTemplateDataAttribute(element, key, value);
+      return;
+    case TemplateAttributeType::kEvent:
+      return;
+    case TemplateAttributeType::kOrdinary:
+      break;
   }
-  if (ApplyTemplateListCallbackAttribute(element, key, value)) {
-    return;
-  }
-  if (ApplyTemplateDataAttribute(element, key, value)) {
+  const auto final_value = final_attributes.find(key);
+  if (final_value == final_attributes.end() ||
+      (value.IsEmpty() &&
+       (defer_empty_attributes || !final_value->second.IsEmpty()))) {
     return;
   }
   element->SetAttribute(key, value);
 }
 
 void ApplyTemplateSpreadAttributes(Element* element, const lepus::Value& value,
-                                   TemplateAttributeApplyMode mode) {
+                                   TemplateAttributeApplyMode mode,
+                                   const AttrMap& final_attributes) {
   if (element == nullptr || !value.IsObject()) {
     return;
   }
 
-  tasm::ForEachLepusValue(
-      value, [element, mode](const auto& key, const auto& item) {
-        ApplyTemplateAttributeValue(element, key.String(), item, mode);
-      });
+  tasm::ForEachLepusValue(value, [element, mode, &final_attributes](
+                                     const auto& key, const auto& item) {
+    ApplyTemplateAttributeValue(element, key.String(), item, mode,
+                                final_attributes);
+  });
 }
 
 lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
@@ -354,10 +394,72 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
   return attribute_slots.GetProperty(slot_index);
 }
 
+AttrMap ResolveOrdinaryTemplateAttributes(
+    const TemplateAttributes& template_attributes,
+    const lepus::Value& attribute_slots) {
+  AttrMap attributes;
+  auto collect = [&attributes](const base::String& key,
+                               const lepus::Value& value) {
+    if (GetTemplateAttributeType(key) == TemplateAttributeType::kOrdinary) {
+      attributes[key] = value;
+    }
+  };
+  for (const auto& attr : template_attributes) {
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
+      collect(attr.key_, attr.value_);
+    } else if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
+      collect(attr.key_,
+              ResolveAttributeSlotValue(attribute_slots, attr.slot_index_));
+    } else if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
+      auto spread =
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_);
+      if (spread.IsObject()) {
+        tasm::ForEachLepusValue(spread,
+                                [&collect](const auto& key, const auto& value) {
+                                  collect(key.String(), value);
+                                });
+      }
+    }
+  }
+  return attributes;
+}
+
+AttrMap ResolveOrdinaryTemplateAttributeUpdates(
+    const TemplateAttributes& template_attributes,
+    const lepus::Value* previous_attribute_slots,
+    const lepus::Value& attribute_slots) {
+  auto attributes =
+      ResolveOrdinaryTemplateAttributes(template_attributes, attribute_slots);
+  if (previous_attribute_slots != nullptr) {
+    auto previous_attributes = ResolveOrdinaryTemplateAttributes(
+        template_attributes, *previous_attribute_slots);
+    for (auto it = attributes.begin(); it != attributes.end();) {
+      const auto previous = previous_attributes.find(it->first);
+      // Replaying an unchanged empty result would introduce a new reset that
+      // a normal attribute diff would not issue. Skip all sources of that key.
+      const bool unchanged_empty = it->second.IsEmpty() &&
+                                   previous != previous_attributes.end() &&
+                                   it->second.IsEqual(previous->second);
+      if (previous != previous_attributes.end()) {
+        previous_attributes.erase(previous);
+      }
+      if (unchanged_empty) {
+        it = attributes.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    for (const auto& previous : previous_attributes) {
+      attributes[previous.first] = lepus::Value();
+    }
+  }
+  return attributes;
+}
+
 void ClearPreviousTemplateSpreadAttributes(
     Element* element, const TemplateAttributes& template_attributes,
     const lepus::Value& previous_attribute_slots,
-    TemplateAttributeApplyMode mode) {
+    TemplateAttributeApplyMode mode, const AttrMap& final_attributes) {
   if (!previous_attribute_slots.IsArrayOrJSArray()) {
     return;
   }
@@ -371,8 +473,8 @@ void ClearPreviousTemplateSpreadAttributes(
     if (!previous_value.IsObject()) {
       continue;
     }
-    tasm::ForEachLepusValue(previous_value, [element, mode](const auto& key,
-                                                            const auto&) {
+    tasm::ForEachLepusValue(previous_value, [element, mode, &final_attributes](
+                                                const auto& key, const auto&) {
       if (mode != TemplateAttributeApplyMode::kEventOnly &&
           RemoveTemplateDataAttribute(element, key.String())) {
         return;
@@ -380,7 +482,8 @@ void ClearPreviousTemplateSpreadAttributes(
       // Re-apply previous spread keys with an empty value to clear keys
       // that disappeared from the current spread object. data-* is handled
       // above because __AddDataset preserves empty values.
-      ApplyTemplateAttributeValue(element, key.String(), lepus::Value(), mode);
+      ApplyTemplateAttributeValue(element, key.String(), lepus::Value(), mode,
+                                  final_attributes);
     });
   }
 }
@@ -393,32 +496,46 @@ void ApplyTemplateAttributesToElementInternal(
   }
 
   const auto& template_attributes = element->template_attributes();
+  // Resolve only this application. A retained ordinary attribute must not gain
+  // a reset from spread cleanup or from an earlier, overridden null source.
+  // Keep the original setter order for attribute-driven and special state.
+  const auto final_attributes =
+      mode == TemplateAttributeApplyMode::kEventOnly
+          ? AttrMap{}
+          : ResolveOrdinaryTemplateAttributeUpdates(*template_attributes,
+                                                    previous_attribute_slots,
+                                                    attribute_slots);
   const bool rebuild_static_attributes = previous_attribute_slots != nullptr;
   DCHECK(!rebuild_static_attributes ||
          mode != TemplateAttributeApplyMode::kEventOnly);
   if (rebuild_static_attributes) {
     ClearPreviousTemplateSpreadAttributes(element, *template_attributes,
-                                          *previous_attribute_slots, mode);
+                                          *previous_attribute_slots, mode,
+                                          final_attributes);
   }
   bool has_applied_spread = false;
   for (const auto& attr : *template_attributes) {
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
       ApplyTemplateSpreadAttributes(
           element, ResolveAttributeSlotValue(attribute_slots, attr.slot_index_),
-          mode);
+          mode, final_attributes);
       has_applied_spread = true;
       continue;
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
-      if (has_applied_spread || rebuild_static_attributes) {
-        ApplyTemplateAttributeValue(element, attr.key_, attr.value_, mode);
+      if (has_applied_spread || rebuild_static_attributes ||
+          (attr.value_.IsEmpty() && GetTemplateAttributeType(attr.key_) ==
+                                        TemplateAttributeType::kOrdinary)) {
+        ApplyTemplateAttributeValue(element, attr.key_, attr.value_, mode,
+                                    final_attributes);
       }
       continue;
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
       ApplyTemplateAttributeValue(
           element, attr.key_,
-          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_), mode);
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_), mode,
+          final_attributes);
       continue;
     }
   }
@@ -879,6 +996,21 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
   }
 
   if (info.attributes_ != nullptr) {
+    AttrMap static_attributes;
+    bool has_dynamic_attributes = false;
+    for (const auto& attr : *info.attributes_) {
+      if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
+        static_attributes[attr.key_] = attr.value_;
+      } else if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC ||
+                 attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
+        has_dynamic_attributes = true;
+      }
+    }
+    // Generated dynamic nodes receive a complete non-event slot application
+    // before attach. Leave ordinary static nulls for that pass, where later
+    // dynamic/spread sources are available to decide whether a reset is needed.
+    const bool defer_empty_attributes =
+        generated != nullptr && has_dynamic_attributes;
     bool has_static_template_event = false;
     for (const auto& attr : *info.attributes_) {
       if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
@@ -886,7 +1018,8 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
           has_static_template_event = true;
         }
         ApplyTemplateAttributeValue(res.get(), attr.key_, attr.value_,
-                                    TemplateAttributeApplyMode::kAll);
+                                    TemplateAttributeApplyMode::kAll,
+                                    static_attributes, defer_empty_attributes);
         continue;
       }
       if (generated != nullptr &&
