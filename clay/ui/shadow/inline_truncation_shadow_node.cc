@@ -21,8 +21,24 @@ InlineTruncationShadowNode::InlineTruncationShadowNode(ShadowNodeOwner* owner,
                                                        std::string tag, int id)
     : BaseTextShadowNode(owner, tag, id) {}
 
+void InlineTruncationShadowNode::AppendTruncationPrefix(
+    LayoutContextText* context) {
+  auto* parent = Parent();
+  if (tag_ != "x-inline-truncation" || !parent ||
+      !parent->IsBaseTextShadowNode() || !parent->text_style_ ||
+      parent->text_style_->overflow != TextOverflow::kEllipsis) {
+    return;
+  }
+
+  auto* builder = context->builder();
+  builder->PushStyle(parent->text_style_.value());
+  context->AddText(u"\u2026");
+  builder->Pop();
+}
+
 void InlineTruncationShadowNode::TextLayout(LayoutContext* context) {
   if (need_layout_) {
+    AppendTruncationPrefix(static_cast<LayoutContextText*>(context));
     BaseTextShadowNode::TextLayout(context);
   }
 }
@@ -39,6 +55,7 @@ FloatSize InlineTruncationShadowNode::CalculateTruncatedSize() {
   auto builder = std::make_unique<TextParagraphBuilder>(true, text_style_);
   LayoutContextText context;
   context.SetBuilder(builder.get());
+  AppendTruncationPrefix(&context);
   ProcessChildLayout(&context);
   auto paragraph = Build(std::move(builder));
   paragraph->Layout(std::numeric_limits<float>::infinity());
