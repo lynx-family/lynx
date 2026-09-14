@@ -47,6 +47,7 @@ def _construct_config_object(key: str, value: dict) -> Config:
         bind_member_to=value.get("bindMemberTo", ""),
         read_settings=value.get("readSettings", False),
         read_native=value.get("readNative", False),
+        type_package_since=value.get("typePackageSince", ""),
         export=export_to_open_source,
     )
 
