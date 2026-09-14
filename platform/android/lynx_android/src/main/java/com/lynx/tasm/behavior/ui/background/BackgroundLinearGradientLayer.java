@@ -3,18 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.ui.background;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapShader;
 import android.graphics.LinearGradient;
-import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.Shader;
-import android.os.Build;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.tasm.base.LLog;
-import com.lynx.tasm.base.TraceEvent;
-import com.lynx.tasm.base.trace.TraceEventDef;
 
 public class BackgroundLinearGradientLayer extends BackgroundGradientLayer {
   private double mAngle;
@@ -28,8 +22,6 @@ public class BackgroundLinearGradientLayer extends BackgroundGradientLayer {
   private static final int BOTTOM_LEFT = 8;
   private static final int ANGLE = 9;
   private int mDirectionType;
-  // Use bitmap shader to draw linear gradient
-  private boolean mEnableBitmapGradient = false;
 
   public BackgroundLinearGradientLayer(ReadableArray array) {
     if (array == null) {
@@ -135,15 +127,8 @@ public class BackgroundLinearGradientLayer extends BackgroundGradientLayer {
           start.x = 2 * center.x - end.x;
           start.y = 2 * center.y - end.y;
         }
-        // The version number should lower than 9.0
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P && mEnableBitmapGradient) {
-          TraceEvent.beginSection(TraceEventDef.CREATE_BITMAP_SHADER);
-          createBitmapShader(start, end, mColors, mPositions, (float) mAngle);
-          TraceEvent.endSection(TraceEventDef.CREATE_BITMAP_SHADER);
-        } else {
-          mShader = new LinearGradient(
-              start.x, start.y, end.x, end.y, mColors, mPositions, Shader.TileMode.CLAMP);
-        }
+        mShader = new LinearGradient(
+            start.x, start.y, end.x, end.y, mColors, mPositions, Shader.TileMode.CLAMP);
       } catch (Exception e) {
         mShader = null;
         mPaint.setColor(mColors[0]);
@@ -152,111 +137,5 @@ public class BackgroundLinearGradientLayer extends BackgroundGradientLayer {
       }
     }
     super.setBounds(bounds);
-  }
-
-  public void setEnableBitmapGradient(boolean enable) {
-    mEnableBitmapGradient = enable;
-  }
-
-  private static class FloatColor {
-    float r = 0;
-    float g = 0;
-    float b = 0;
-    float a = 0;
-    void set(int color) {
-      a = ((color >> 24) & 0xff) / 255.0f;
-      r = ((color >> 16) & 0xff) / 255.0f;
-      g = ((color >> 8) & 0xff) / 255.0f;
-      b = ((color) & 0xff) / 255.0f;
-    }
-    void set(FloatColor color) {
-      a = color.a;
-      r = color.r;
-      g = color.g;
-      b = color.b;
-    }
-  }
-
-  private static void mix(FloatColor start, FloatColor end, float amount, int index, int[] dst) {
-    float oppAmount = 1.0f - amount;
-    int r = (int) ((start.r * oppAmount + end.r * amount) * 255.0f);
-    int g = (int) ((start.g * oppAmount + end.g * amount) * 255.0f);
-    int b = (int) ((start.b * oppAmount + end.b * amount) * 255.0f);
-    int a = (int) ((start.a * oppAmount + end.a * amount) * 255.0f);
-    dst[index] = (a << 24 | r << 16 | g << 8 | b);
-  }
-
-  private static void fillPixels(int[] colors, float[] positions, int width, int[] output) {
-    FloatColor start = new FloatColor();
-    start.set(colors[0]);
-
-    FloatColor end = new FloatColor();
-    end.set(colors[1]);
-
-    int currentPos = 1;
-    float startPos = positions[0];
-    float distance = positions[1] - startPos;
-    for (int x = 0; x < width; x++) {
-      float pos = x / ((float) width - 1);
-      if (pos > positions[currentPos]) {
-        start.set(end);
-        startPos = positions[currentPos];
-        currentPos++;
-        end.set(colors[currentPos]);
-        distance = positions[currentPos] - startPos;
-      }
-
-      float amount = (pos - startPos) / distance;
-      mix(start, end, amount, x, output);
-    }
-  }
-
-  private void createBitmapShader(
-      PointF start, PointF end, int[] colors, float[] pos, float angle) {
-    int length = (int) PointF.length(end.x - start.x, end.y - start.y);
-    if (length <= 0) {
-      mShader = null;
-      return;
-    }
-    int[] buffer = new int[length];
-    if (pos == null) {
-      pos = new float[colors.length];
-      if (colors.length == 2) {
-        pos[0] = 0;
-        pos[1] = 1;
-      } else if (colors.length > 2) {
-        for (int i = 0; i < colors.length; i++) {
-          pos[i] = i / (float) (colors.length - 1);
-        }
-      }
-    }
-    // Check if need to add in dummy start and/or end position/colors
-    boolean dummyFirst = pos[0] != 0;
-    boolean dummyLast = pos[pos.length - 1] != 1;
-    int count = pos.length + (dummyFirst ? 1 : 0) + (dummyLast ? 1 : 0);
-    if (count != pos.length) {
-      int[] colorList = new int[count];
-      float[] posList = new float[count];
-      if (dummyFirst) {
-        colorList[0] = colors[0];
-        posList[0] = 0.f;
-      }
-      // Copy the original position/colors
-      System.arraycopy(colors, 0, colorList, dummyFirst ? 1 : 0, colors.length);
-      System.arraycopy(pos, 0, posList, dummyFirst ? 1 : 0, pos.length);
-      if (dummyLast) {
-        colorList[count - 1] = colors[colors.length - 1];
-        posList[count - 1] = 1.f;
-      }
-      fillPixels(colorList, posList, length, buffer);
-    } else {
-      fillPixels(colors, pos, length, buffer);
-    }
-    Bitmap bitmap = Bitmap.createBitmap(buffer, length, 1, Bitmap.Config.ARGB_8888);
-    mShader = new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.REPEAT);
-    Matrix matrix = new Matrix();
-    matrix.postRotate(angle + 270);
-    matrix.postTranslate(start.x, start.y);
-    mShader.setLocalMatrix(matrix);
   }
 }
