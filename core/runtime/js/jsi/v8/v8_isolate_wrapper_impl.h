@@ -4,6 +4,8 @@
 #ifndef CORE_RUNTIME_JS_JSI_V8_V8_ISOLATE_WRAPPER_IMPL_H_
 #define CORE_RUNTIME_JS_JSI_V8_V8_ISOLATE_WRAPPER_IMPL_H_
 
+#include <string>
+
 #include "core/runtime/js/jsi/v8/v8_isolate_wrapper.h"
 
 namespace lynx {
@@ -21,6 +23,10 @@ class V8IsolateInstanceImpl : public V8IsolateInstance {
   // observers_.RemoveObserver(obs);
   // }
   v8::Isolate* Isolate() const override;
+
+  bool CaptureJavaScriptStack(
+      base::MoveOnlyClosure<void, std::string> callback) override;
+  bool TerminateJavaScriptExecution() override;
 
  private:
   v8::Isolate* isolate_;

@@ -4104,6 +4104,8 @@ public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorRe
   public void com.lynx.tasm.LynxBackgroundRuntime.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
   public void com.lynx.tasm.LynxBackgroundRuntime.transitionToFullRuntime();
   public int com.lynx.tasm.LynxBackgroundRuntime.getRuntimeId();
+  public static void com.lynx.tasm.LynxBackgroundRuntime.captureJavaScriptStack( @NonNull LynxGroup group, @NonNull LynxJavaScriptExecutionCallback callback);
+  public static boolean com.lynx.tasm.LynxBackgroundRuntime.terminateJavaScriptExecution(@NonNull LynxGroup group);
 }
 
 public class abstract com::lynx::tasm::LynxBackgroundRuntimeClient :  {
@@ -6216,6 +6218,14 @@ public class com::lynx::jsbridge::LynxIntersectionObserverModule : com.lynx.jsbr
   public com.lynx.jsbridge.LynxIntersectionObserverModule.LynxIntersectionObserverModule(LynxContext context);
 }
 
+public interface com::lynx::tasm::LynxJavaScriptExecutionCallback {
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.SUCCESS SUCCESS;
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.UNSUPPORTED_ENGINE UNSUPPORTED_ENGINE;
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.NOT_READY NOT_READY;
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.DESTROYED DESTROYED;
+  public void com.lynx.tasm.LynxJavaScriptExecutionCallback.onResult(int status, String stack);
+}
+
 public class com::lynx::jsbridge::jsi::LynxJSIObjectHub :  {
   public static LynxJSIObjectHub com.lynx.jsbridge.jsi.LynxJSIObjectHub.inst();
   public ILynxJSIObjectDescriptor com.lynx.jsbridge.jsi.LynxJSIObjectHub.getLynxJSIObjectDescriptor(String className);
@@ -6978,6 +6988,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BINDINGS_ERROR E_BTS_RUNTIME_ERROR_BINDINGS_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_TERMINATED_ERROR E_BTS_RUNTIME_ERROR_TERMINATED_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_JS_CALL_NATIVE_FUNCTION_TOO_FREQUENCY E_BTS_JS_CALL_NATIVE_FUNCTION_TOO_FREQUENCY;

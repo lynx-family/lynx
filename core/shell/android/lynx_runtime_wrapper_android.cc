@@ -16,6 +16,8 @@
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
+#include "core/runtime/js/js_execution_control.h"
+#include "core/shell/android/javascript_execution_callback_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_shell.h"
@@ -33,6 +35,7 @@ bool RegisterJNIForLynxBackgroundRuntime(JNIEnv *env) {
 
 using lynx::base::android::AttachCurrentThread;
 using lynx::base::android::JNIConvertHelper;
+using lynx::base::android::ScopedGlobalJavaRef;
 
 static jlong CreateBackgroundRuntimeWrapper(
     JNIEnv *env, jobject jcaller, jobject java_resource_loader,
@@ -123,6 +126,28 @@ void EvaluateScript(JNIEnv *env, jobject jcaller, jlong ptr, jstring java_url,
   auto script = JNIConvertHelper::ConvertToString(env, java_source);
   runtime_wrapper->BTSRuntimeStandalone().EvaluateScript(std::move(url),
                                                          std::move(script));
+}
+
+void CaptureJavaScriptStack(JNIEnv *env, jclass jcaller,
+                            jstring js_group_thread_name, jobject callback) {
+  ScopedGlobalJavaRef<jobject> java_callback(env, callback);
+  if (callback == nullptr) {
+    return;
+  }
+  lynx::runtime::js::CaptureJavaScriptStack(
+      JNIConvertHelper::ConvertToString(env, js_group_thread_name),
+      [callback = std::move(java_callback)](
+          lynx::runtime::js::JSStackCaptureResult result,
+          std::string stack) mutable {
+        lynx::shell::DispatchJavaScriptExecutionResult(
+            std::move(callback), static_cast<jint>(result), std::move(stack));
+      });
+}
+
+jboolean TerminateJavaScriptExecution(JNIEnv *env, jclass jcaller,
+                                      jstring js_group_thread_name) {
+  return lynx::runtime::js::TerminateJavaScriptExecution(
+      JNIConvertHelper::ConvertToString(env, js_group_thread_name));
 }
 
 void SetPresetData(JNIEnv *env, jobject jcaller, jlong nativePtr,

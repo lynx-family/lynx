@@ -85,6 +85,7 @@ unittest_set("runtime_testset") {
     "js/bindings/modules/native_module_factory_unittest.cc",
     "js/bindings/modules/native_module_invocation_context_unittest.cc",
     "js/js_bundle_unittest.cc",
+    "js/js_execution_control_unittest.cc",
     "js/runtime_lifecycle_observer_unittest.cc",
   ]
 
