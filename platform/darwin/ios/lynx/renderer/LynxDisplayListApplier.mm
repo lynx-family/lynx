@@ -19,6 +19,7 @@
 
 #include <stack>
 #include "base/include/vector.h"
+#include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
@@ -125,6 +126,9 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   NSMutableArray<UIImageView *> *_contentImageViews;
   NSMutableArray<CALayer *> *_contentLayers;
   NSMutableArray<CALayer *> *_hostDecorationLayers;
+  BOOL _rootIsImage;
+  BOOL _usesHostImage;
+  __weak LynxImageManager *_hostImageManager;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
@@ -172,6 +176,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         // the host's local coordinate space and must be applied, including a
         // text content Begin that intentionally reuses the host text sign.
         bool record_offset = !sign_stack_.empty();
+        if (!record_offset) {
+          _rootIsImage =
+              item.payload.begin.type == static_cast<int32_t>(PlatformRendererType::kImage);
+        }
         sign_stack_.emplace(item.payload.begin.id);
 
         x_stack_.emplace(record_offset ? item.payload.begin.x : 0.f);
@@ -268,12 +276,30 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         }
         LynxImageManager *imageManager = [self imageManagerForID:image_id];
 
-        UIImageView *imageView = [self createImageView];
-
         auto &box = box_array_[box_index];
         CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
         rect.origin.x += left_offset_;
         rect.origin.y += top_offset_;
+
+        // A root image that fills its host can use the existing image view. Inset
+        // content and images above previously inserted layers still need a child
+        // view to preserve geometry and paint order.
+        if (_rootIsImage && sign_stack_.size() == 1 && sign_stack_.top() == _view.renderer.sign &&
+            !_usesHostImage && [_view isKindOfClass:[UIImageView class]] &&
+            CGRectEqualToRect(rect, _view.bounds) && _contentLayers.count == 0 &&
+            _contentImageViews.count == 0 &&
+            (!box.HasRadius() || (_view.layer.mask == nil && _view.layer.cornerRadius == 0))) {
+          UIImageView *imageView = (UIImageView *)_view;
+          if (box.HasRadius()) {
+            [self applyRoundedRect:box toLayer:imageView.layer];
+          }
+          _usesHostImage = YES;
+          _hostImageManager = imageManager;
+          [imageManager setTarget:imageView];
+          break;
+        }
+
+        UIImageView *imageView = [self createImageView];
         [imageView setFrame:rect];
         if (box.HasRadius()) {
           [self applyRoundedRect:box toLayer:imageView.layer];
@@ -586,6 +612,17 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)reset {
+  if (_usesHostImage) {
+    // Disconnect pending results before clearing a host that survives this list.
+    [_hostImageManager setTarget:nil];
+    UIImageView *imageView = (UIImageView *)_view;
+    [imageView stopAnimating];
+    imageView.animationImages = nil;
+    imageView.image = nil;
+  }
+  _hostImageManager = nil;
+  _usesHostImage = NO;
+  _rootIsImage = NO;
   reader_ = DisplayListReader();
   top_offset_ = 0;
   left_offset_ = 0;
