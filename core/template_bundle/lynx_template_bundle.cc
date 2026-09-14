@@ -51,9 +51,22 @@ std::string LynxTemplateBundle::FromBinaryGreedy(
 std::string LynxTemplateBundle::FromBinaryGreedy(
     std::shared_ptr<const std::vector<uint8_t>> binary,
     const std::string &template_url, bool skip_css_decode,
-    std::optional<bool> is_card) {
+    std::optional<bool> is_card, const TemplateVerification &verification) {
   if (binary == nullptr) {
     return "Cannot decode template from a null binary";
+  }
+  if (verification.enabled) {
+    auto *service =
+        service::get_service<service::security_service::LynxSecurityService>();
+    if (!service) {
+      return "Native security service is unavailable";
+    }
+    auto result = service->VerifyTASM(binary->data(), binary->size(),
+                                      template_url, verification.type);
+    if (!result.verified) {
+      return result.error_message.empty() ? "Template verification failed"
+                                          : result.error_message;
+    }
   }
   auto reader = LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
   if (is_card.has_value()) {

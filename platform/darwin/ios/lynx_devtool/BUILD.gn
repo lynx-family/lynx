@@ -171,6 +171,7 @@ subspec_target("Framework") {
   ]
   flatten_deps = [
     ":devtool",
+    "../../../../service_api:lynx_service_api",
     "../../common/lynx_devtool:devtool",
   ]
   dependency = [ [

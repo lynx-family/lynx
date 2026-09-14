@@ -113,7 +113,7 @@ class _BaseService {
 
 /**
  * @brief Base class for service interface.
- * @par Example
+ * Example:
  * @code{.cpp}
  * // service_api/services/a_service.h
  * #include "../service_api.h"
@@ -289,7 +289,7 @@ static void register_service() {
  * The implementation instance will be created when the first time the
  * service is retrieved.
  *
- * @par Example
+ * Example:
  * @code{.cpp}
  * AServiceImpl *creator() {
  *   return new AServiceImpl();
