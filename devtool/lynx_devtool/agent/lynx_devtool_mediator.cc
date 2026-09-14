@@ -1254,6 +1254,14 @@ void LynxDevToolMediator::EmulateTouchFromMouseEvent(
   });
 }
 
+void LynxDevToolMediator::DispatchMouseEvent(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnUIThread([sender, message, executor = ui_executor_] {
+    executor->DispatchMouseEvent(sender, message);
+  });
+}
+
 void LynxDevToolMediator::InsertText(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

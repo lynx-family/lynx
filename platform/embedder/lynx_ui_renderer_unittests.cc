@@ -42,14 +42,12 @@ TEST(LynxUIRendererTest, DragProducesClayPointerSequence) {
   renderer.EmulateMouseSyntheticEvent("mouseReleased", 11, 25, "left", 0, 0, 0,
                                       1);
 
-  ASSERT_EQ(renderer.events.size(), 5u);
-  EXPECT_EQ(renderer.events[0].phase, kClayPointerPhaseAdd);
-  EXPECT_EQ(renderer.events[1].phase, kClayPointerPhaseDown);
-  EXPECT_EQ(renderer.events[2].phase, kClayPointerPhaseMove);
-  EXPECT_EQ(renderer.events[3].phase, kClayPointerPhaseUp);
-  EXPECT_EQ(renderer.events[4].phase, kClayPointerPhaseRemove);
+  ASSERT_EQ(renderer.events.size(), 3u);
+  EXPECT_EQ(renderer.events[0].phase, kClayPointerPhaseDown);
+  EXPECT_EQ(renderer.events[1].phase, kClayPointerPhaseMove);
+  EXPECT_EQ(renderer.events[2].phase, kClayPointerPhaseUp);
+  EXPECT_EQ(renderer.events[0].buttons, kClayPointerMouseButtonsMousePrimary);
   EXPECT_EQ(renderer.events[1].buttons, kClayPointerMouseButtonsMousePrimary);
-  EXPECT_EQ(renderer.events[2].buttons, kClayPointerMouseButtonsMousePrimary);
   EXPECT_DOUBLE_EQ(renderer.events[0].x, 20.0);
   EXPECT_DOUBLE_EQ(renderer.events[0].y, 40.0);
   EXPECT_DOUBLE_EQ(renderer.events[2].x, 22.0);
@@ -73,9 +71,9 @@ TEST(LynxUIRendererTest, RightDragRetainsPressedButtonAcrossMove) {
   renderer.EmulateMouseSyntheticEvent("mouseReleased", 3, 4, "right", 0, 0, 0,
                                       1);
 
-  ASSERT_EQ(renderer.events.size(), 5u);
+  ASSERT_EQ(renderer.events.size(), 3u);
+  EXPECT_EQ(renderer.events[0].buttons, kClayPointerMouseButtonsMouseSecondary);
   EXPECT_EQ(renderer.events[1].buttons, kClayPointerMouseButtonsMouseSecondary);
-  EXPECT_EQ(renderer.events[2].buttons, kClayPointerMouseButtonsMouseSecondary);
 }
 
 TEST(LynxUIRendererTest, WheelProducesPreciseClayScroll) {
@@ -86,9 +84,8 @@ TEST(LynxUIRendererTest, WheelProducesPreciseClayScroll) {
   renderer.EmulateMouseSyntheticEvent("mouseWheel", 7, 8, "none", 1.5f, -2.5f,
                                       0, 0);
 
-  ASSERT_EQ(renderer.events.size(), 3u);
-  EXPECT_EQ(renderer.events[0].phase, kClayPointerPhaseAdd);
-  const auto& event = renderer.events[1];
+  ASSERT_EQ(renderer.events.size(), 1u);
+  const auto& event = renderer.events[0];
   EXPECT_EQ(event.phase, kClayPointerPhaseHover);
   EXPECT_EQ(event.signal_kind, kClayPointerSignalKindScroll);
   EXPECT_DOUBLE_EQ(event.x, 14.0);
@@ -96,20 +93,6 @@ TEST(LynxUIRendererTest, WheelProducesPreciseClayScroll) {
   EXPECT_DOUBLE_EQ(event.scroll_delta_x, 3.0);
   EXPECT_DOUBLE_EQ(event.scroll_delta_y, -5.0);
   EXPECT_EQ(event.is_precise_scroll, 1u);
-  EXPECT_EQ(renderer.events[2].phase, kClayPointerPhaseRemove);
-  for (const auto index : {0, 2}) {
-    const auto& lifecycle = renderer.events[index];
-    EXPECT_EQ(lifecycle.struct_size, sizeof(ClayPointerEvent));
-    EXPECT_EQ(lifecycle.device, event.device);
-    EXPECT_EQ(lifecycle.device_kind, event.device_kind);
-    EXPECT_DOUBLE_EQ(lifecycle.x, event.x);
-    EXPECT_DOUBLE_EQ(lifecycle.y, event.y);
-    EXPECT_EQ(lifecycle.buttons, 0);
-    EXPECT_EQ(lifecycle.signal_kind, kClayPointerSignalKindNone);
-    EXPECT_DOUBLE_EQ(lifecycle.scroll_delta_x, 0.0);
-    EXPECT_DOUBLE_EQ(lifecycle.scroll_delta_y, 0.0);
-    EXPECT_EQ(lifecycle.is_precise_scroll, 0u);
-  }
 }
 
 TEST(LynxUIRendererTest, MoveUsesButtonStateFromCaller) {
@@ -117,16 +100,43 @@ TEST(LynxUIRendererTest, MoveUsesButtonStateFromCaller) {
   builder.screen_size.pixel_ratio = 1.f;
   CapturingLynxUIRenderer renderer(&builder);
 
-  renderer.EmulateMouseSyntheticEvent("mouseMoved", 1, 2, "left", 0, 0, 0, 0);
+  renderer.EmulateMouseSyntheticEvent("mousePressed", 1, 2, "left", 0, 0, 0, 1);
+  renderer.EmulateMouseSyntheticEvent("mouseMoved", 2, 3, "left", 0, 0, 0, 0);
+  renderer.EmulateMouseSyntheticEvent("mouseReleased", 2, 3, "left", 0, 0, 0,
+                                      1);
   renderer.EmulateMouseSyntheticEvent("mouseMoved", 3, 4, "none", 0, 0, 0, 0);
 
   ASSERT_EQ(renderer.events.size(), 4u);
-  EXPECT_EQ(renderer.events[0].phase, kClayPointerPhaseMove);
-  EXPECT_EQ(renderer.events[0].buttons, kClayPointerMouseButtonsMousePrimary);
-  EXPECT_EQ(renderer.events[1].phase, kClayPointerPhaseAdd);
-  EXPECT_EQ(renderer.events[2].phase, kClayPointerPhaseHover);
-  EXPECT_EQ(renderer.events[2].buttons, 0);
-  EXPECT_EQ(renderer.events[3].phase, kClayPointerPhaseRemove);
+  EXPECT_EQ(renderer.events[1].phase, kClayPointerPhaseMove);
+  EXPECT_EQ(renderer.events[1].buttons, kClayPointerMouseButtonsMousePrimary);
+  EXPECT_EQ(renderer.events[3].phase, kClayPointerPhaseHover);
+  EXPECT_EQ(renderer.events[3].buttons, 0);
+}
+
+TEST(LynxUIRendererTest, MouseHoverRetainsDeviceAcrossGestures) {
+  lynx_view_builder_t builder = {};
+  builder.screen_size.pixel_ratio = 1.f;
+  CapturingLynxUIRenderer renderer(&builder);
+
+  renderer.EmulateMouseSyntheticEvent("mouseMoved", 1, 2, "none", 0, 0, 0, 0);
+  renderer.EmulateMouseSyntheticEvent("mouseMoved", 3, 4, "none", 0, 0, 0, 0);
+  renderer.EmulateMouseSyntheticEvent("mousePressed", 3, 4, "left", 0, 0, 0, 1);
+  renderer.EmulateMouseSyntheticEvent("mouseReleased", 3, 4, "left", 0, 0, 0,
+                                      1);
+  renderer.EmulateMouseSyntheticEvent("mouseWheel", 3, 4, "none", 0, 120, 0, 0);
+  renderer.EmulateMouseSyntheticEvent("mouseMoved", 5, 6, "none", 0, 0, 0, 0);
+
+  ASSERT_EQ(renderer.events.size(), 6u);
+  for (const auto& event : renderer.events) {
+    EXPECT_NE(event.phase, kClayPointerPhaseAdd);
+    EXPECT_NE(event.phase, kClayPointerPhaseRemove);
+    EXPECT_EQ(event.device, renderer.events[0].device);
+    EXPECT_NE(event.device, 0);
+  }
+  for (const auto index : {0, 1, 5}) {
+    EXPECT_EQ(renderer.events[index].phase, kClayPointerPhaseHover);
+    EXPECT_EQ(renderer.events[index].buttons, 0);
+  }
 }
 
 TEST(LynxUIRendererTest, UnknownEventTypeIsIgnored) {
@@ -204,7 +214,7 @@ TEST(LynxUIRendererTest, TouchAndMouseUseDifferentDeviceIds) {
   renderer.EmulateMouseSyntheticEvent("mousePressed", 1, 2, "left", 0, 0, 0, 1);
   renderer.EmulateTouchSyntheticEvent("mousePressed", 1, 2, "left", 0, 0, 0, 1);
 
-  ASSERT_GE(renderer.events.size(), 4u);
+  ASSERT_EQ(renderer.events.size(), 3u);
   EXPECT_EQ(renderer.events[0].device_kind, kClayPointerDeviceKindMouse);
   EXPECT_EQ(renderer.events[2].device_kind, kClayPointerDeviceKindTouch);
   EXPECT_NE(renderer.events[0].device, renderer.events[2].device);

@@ -716,6 +716,16 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
   }
 }
 
+void LynxTemplateRenderer::EmulateMouse(const std::string& event_type, int x,
+                                        int y, const std::string& button,
+                                        float delta_x, float delta_y,
+                                        int modifiers, int click_count) {
+  if (event_proxy_) {
+    event_proxy_->EmulateMouse(event_type, x, y, button, delta_x, delta_y,
+                               modifiers, click_count);
+  }
+}
+
 void LynxTemplateRenderer::SetEventSimulationCallbacks(
     lynx_emulate_touch_fn emulate_touch_callback, lynx_focus_fn focus_callback,
     lynx_insert_text_fn insert_text_callback, void* context) {

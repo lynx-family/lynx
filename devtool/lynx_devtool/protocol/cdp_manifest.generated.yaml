@@ -350,6 +350,10 @@ domains:
     origin: standard
     scope: instance
     methods:
+      - name: dispatchMouseEvent
+        origin: standard
+        since: '4.4'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
       - name: emulateTouchFromMouseEvent
         origin: standard
         since: '4.1'

@@ -71,6 +71,7 @@ class InspectorUIExecutor
 
   // Input domain
   DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
+  DECLARE_DEVTOOL_METHOD(DispatchMouseEvent)
   DECLARE_DEVTOOL_METHOD(InsertText)
   DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
 

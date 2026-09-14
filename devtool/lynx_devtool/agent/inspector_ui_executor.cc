@@ -720,6 +720,12 @@ void InspectorUIExecutor::EmulateTouchFromMouseEvent(
   input_request_handler_->EmulateTouchFromMouseEvent(sender, message);
 }
 
+void InspectorUIExecutor::DispatchMouseEvent(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  input_request_handler_->DispatchMouseEvent(sender, message);
+}
+
 void InspectorUIExecutor::InsertText(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

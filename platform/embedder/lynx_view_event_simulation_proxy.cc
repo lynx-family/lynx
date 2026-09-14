@@ -30,6 +30,15 @@ void LynxViewEventSimulationProxy::EmulateTouch(
                                       delta_y, modifiers, click_count);
 }
 
+void LynxViewEventSimulationProxy::EmulateMouse(
+    const std::string& event_type, int x, int y, const std::string& button,
+    float delta_x, float delta_y, int modifiers, int click_count) {
+  if (target_) {
+    target_->EmulateMouseSyntheticEvent(event_type, x, y, button, delta_x,
+                                        delta_y, modifiers, click_count);
+  }
+}
+
 void LynxViewEventSimulationProxy::Focus(int node_id) {
   if (target_) {
     target_->Focus(node_id);

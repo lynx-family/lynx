@@ -110,6 +110,49 @@ TEST_F(LynxViewEventSimulationProxyTest, EmulateTouchWheelDowngradesToMouse) {
   EXPECT_FLOAT_EQ(target->events[0].delta_y, 2.5f);
 }
 
+TEST_F(LynxViewEventSimulationProxyTest, EmulateMouseForwardsUnchanged) {
+  FakeEventSimulationTarget* target = nullptr;
+  auto proxy = CreateProxy(&target);
+
+  for (const auto* type : {"mousePressed", "mouseMoved", "mouseReleased"}) {
+    proxy.EmulateMouse(type, 100, 200, "left", 0, 0, 4, 1);
+  }
+
+  ASSERT_EQ(target->events.size(), 3u);
+  EXPECT_EQ(target->events[0].type, "mousePressed");
+  EXPECT_EQ(target->events[1].type, "mouseMoved");
+  EXPECT_EQ(target->events[2].type, "mouseReleased");
+  for (const auto& event : target->events) {
+    EXPECT_EQ(event.source, SyntheticPointerEventRecord::Source::kMouse);
+    EXPECT_EQ(event.x, 100);
+    EXPECT_EQ(event.y, 200);
+    EXPECT_EQ(event.button, "left");
+    EXPECT_EQ(event.modifiers, 4);
+    EXPECT_EQ(event.click_count, 1);
+    EXPECT_FLOAT_EQ(event.delta_x, 0);
+    EXPECT_FLOAT_EQ(event.delta_y, 0);
+  }
+}
+
+TEST_F(LynxViewEventSimulationProxyTest, EmulateMouseWheelPreservesDirection) {
+  FakeEventSimulationTarget* target = nullptr;
+  auto proxy = CreateProxy(&target);
+
+  proxy.EmulateMouse("mouseWheel", 7, 8, "none", 1.5f, -2.5f, 4, 0);
+
+  ASSERT_EQ(target->events.size(), 1u);
+  const auto& event = target->events[0];
+  EXPECT_EQ(event.source, SyntheticPointerEventRecord::Source::kMouse);
+  EXPECT_EQ(event.type, "mouseWheel");
+  EXPECT_EQ(event.x, 7);
+  EXPECT_EQ(event.y, 8);
+  EXPECT_EQ(event.button, "none");
+  EXPECT_EQ(event.modifiers, 4);
+  EXPECT_EQ(event.click_count, 0);
+  EXPECT_FLOAT_EQ(event.delta_x, 1.5f);
+  EXPECT_FLOAT_EQ(event.delta_y, -2.5f);
+}
+
 }  // namespace
 }  // namespace embedder
 }  // namespace lynx
