@@ -8,6 +8,7 @@
 
 #include "core/base/android/jni_helper.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
+#include "devtool/lynx_devtool/agent/android/android_input_event_target.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
@@ -134,8 +135,24 @@ void SendCDPEvent(JNIEnv* env, jobject jcaller, jlong facadePtr,
 
 namespace lynx {
 namespace devtool {
+namespace {
+
+bool InjectPointerEventToJava(JNIEnv* env, jobject delegate, jint type,
+                              jfloat x, jfloat y, jfloat delta_x,
+                              jfloat delta_y, jint pointer_id, jint modifiers,
+                              jlong timestamp_us) {
+  return Java_DevToolPlatformAndroidDelegate_injectPointerEvent(
+             env, delegate, type, x, y, delta_x, delta_y, pointer_id, modifiers,
+             timestamp_us) == JNI_TRUE;
+}
+
+}  // namespace
+
 DevToolPlatformAndroid::DevToolPlatformAndroid(JNIEnv* env, jobject owner)
-    : weak_android_delegate_(env, owner) {}
+    : weak_android_delegate_(env, owner) {
+  input_event_target_ = std::make_shared<input::AndroidInputEventTarget>(
+      env, owner, &InjectPointerEventToJava);
+}
 
 int DevToolPlatformAndroid::FindNodeIdForLocation(
     float x, float y, std::string screen_shot_mode) {
@@ -291,6 +308,7 @@ std::string DevToolPlatformAndroid::GetLepusDebugInfo(const std::string& url) {
 // and reset weak_android_delegate_ when destroying.
 void DevToolPlatformAndroid::Destroy() {
   std::lock_guard<std::mutex> lock(mutex_);
+  input_event_target_ = nullptr;
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   weak_android_delegate_.Reset(env, nullptr);
 }
