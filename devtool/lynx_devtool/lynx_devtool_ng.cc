@@ -8,6 +8,7 @@
 #include "core/shell/lynx_shell.h"
 #include "devtool/base_devtool/native/public/abstract_devtool.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_agent.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_animation_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_component_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_debugger_agent.h"
@@ -200,6 +201,8 @@ void LynxDevToolNG::RegisterInstanceDomainAgents() {
   RegisterAgent("Component", std::make_unique<InspectorComponentAgent>());
   RegisterAgent("LayerTree",
                 std::make_unique<InspectorLayerTreeAgentNG>(devtool_mediator_));
+  RegisterAgent("Animation",
+                std::make_unique<InspectorAnimationAgent>(devtool_mediator_));
   RegisterAgent("UITree",
                 std::make_unique<InspectorUITreeAgent>(devtool_mediator_));
   RegisterAgent("GlobalProps",
@@ -281,6 +284,9 @@ void LynxDevToolNG::RegisterInstanceDomainAgents(
   } else if (!domain_key.compare(domain_key_prefix + "globalprops")) {
     RegisterAgent("GlobalProps", std::make_unique<InspectorGlobalPropsAgent>(
                                      devtool_mediator_));
+  } else if (!domain_key.compare(domain_key_prefix + "animation")) {
+    RegisterAgent("Animation",
+                  std::make_unique<InspectorAnimationAgent>(devtool_mediator_));
   } else if (!domain_key.compare(domain_key_prefix + "whiteboard")) {
     RegisterAgent("WhiteBoard", std::make_unique<InspectorWhiteBoardAgent>(
                                     devtool_mediator_));

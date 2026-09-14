@@ -5,7 +5,12 @@
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <limits>
+#include <map>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -15,6 +20,10 @@
 #include "base/include/log/logging.h"
 #include "base/include/timer/time_utils.h"
 #include "base/include/value/base_value.h"
+#include "core/animation/animation.h"
+#include "core/animation/animation_curve.h"
+#include "core/animation/keyframe_effect.h"
+#include "core/animation/keyframe_model.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_fragment.h"
@@ -33,7 +42,10 @@
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/element/element_helper.h"
+#include "devtool/lynx_devtool/element/element_inspector.h"
 #include "devtool/lynx_devtool/element/helper_util.h"
+#include "gfx/animation/animation_keyframe.h"
+#include "gfx/animation/timing_function.h"
 #include "third_party/modp_b64/modp_b64.h"
 #include "third_party/zlib/zlib.h"
 
@@ -815,6 +827,9 @@ void InspectorTasmExecutor::SendDOMEventMsg(const DomCdpEvent& event_name,
 
 void InspectorTasmExecutor::OnDocumentUpdated() {
   pending_inline_style_updates_.clear();
+  // Navigation: drop every registered animation. New animations get fresh,
+  // never-reused ids, so stale records cannot collide with later ones.
+  ClearAnimationRegistry();
   if (tasm_->page_proxy()->element_manager()->IsDomTreeEnabled()) {
     SendDOMEventMsg(DomCdpEvent::DOCUMENT_UPDATED, -1, "", -1);
   }
@@ -962,6 +977,9 @@ void InspectorTasmExecutor::OnElementManagerWillDestroy() {
   pending_inline_style_updates_.clear();
   tasm_ = nullptr;
   element_root_ = nullptr;
+  // The element manager (and all animations) is going away; drop the registry
+  // so no dangling Animation* survives.
+  ClearAnimationRegistry();
 }
 
 void InspectorTasmExecutor::OnAddInlineStyle(
@@ -3113,6 +3131,560 @@ Json::Value InspectorTasmExecutor::GetDocumentBodyFromNodeWithBoxModel(
     set_node_func(res, ptr);
   }
   return res;
+}
+
+namespace {
+
+// Formats a normalized keyframe offset (0..1) as the percentage string expected
+// by CDP KeyframeStyle.offset ("0%", "45%", "100%", ...).
+std::string FormatKeyframeOffset(double normalized_offset) {
+  const double percentage = std::clamp(normalized_offset, 0.0, 1.0) * 100.0;
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%.6f", percentage);
+  std::string result(buf);
+  const size_t dot = result.find('.');
+  if (dot != std::string::npos) {
+    const size_t last = result.find_last_not_of('0');
+    result.erase(result[last] == '.' ? last : last + 1);
+  }
+  return result + "%";
+}
+
+// Parses a base-10 int64 without throwing. Exceptions are disabled on some
+// targets (e.g. Android NDK -fno-exceptions), so std::stoll cannot be used
+// here. Returns false on empty, non-numeric, trailing garbage, or overflow.
+bool TryParseAnimationId(const std::string& s, int64_t& out) {
+  if (s.empty()) return false;
+  errno = 0;
+  char* end = nullptr;
+  long long v = std::strtoll(s.c_str(), &end, 10);
+  if (errno != 0 || end == s.c_str() || *end != '\0') {
+    return false;
+  }
+  out = static_cast<int64_t>(v);
+  return true;
+}
+
+// Converts a gfx::TimingFunction (per-keyframe easing) to its CSS string form.
+std::string GfxTimingFunctionToString(const gfx::TimingFunction* tf) {
+  if (tf == nullptr || tf->GetType() == gfx::TimingFunction::Type::LINEAR) {
+    return "linear";
+  }
+  if (tf->GetType() == gfx::TimingFunction::Type::CUBIC_BEZIER) {
+    const auto* cb = static_cast<const gfx::CubicBezierTimingFunction*>(tf);
+    switch (cb->ease_type()) {
+      case gfx::CubicBezierTimingFunction::EaseType::EASE:
+        return "ease";
+      case gfx::CubicBezierTimingFunction::EaseType::EASE_IN:
+        return "ease-in";
+      case gfx::CubicBezierTimingFunction::EaseType::EASE_OUT:
+        return "ease-out";
+      case gfx::CubicBezierTimingFunction::EaseType::EASE_IN_OUT:
+        return "ease-in-out";
+      case gfx::CubicBezierTimingFunction::EaseType::CUSTOM: {
+        const auto& b = cb->bezier();
+        char buf[96];
+        snprintf(buf, sizeof(buf), "cubic-bezier(%g, %g, %g, %g", b.GetX1(),
+                 b.GetY1(), b.GetX2(), b.GetY2());
+        return std::string(buf) + ")";
+      }
+    }
+  }
+  if (tf->GetType() == gfx::TimingFunction::Type::STEPS) {
+    const auto* st = static_cast<const gfx::StepsTimingFunction*>(tf);
+    const char* pos = "end";
+    switch (st->step_position()) {
+      case gfx::StepsType::kStart:
+        pos = "start";
+        break;
+      case gfx::StepsType::kJumpBoth:
+        pos = "jump-both";
+        break;
+      case gfx::StepsType::kJumpNone:
+        pos = "jump-none";
+        break;
+      case gfx::StepsType::kEnd:
+      default:
+        pos = "end";
+        break;
+    }
+    char buf[48];
+    snprintf(buf, sizeof(buf), "steps(%d, %s)", st->steps(), pos);
+    return std::string(buf);
+  }
+  return "linear";
+}
+
+// Converts the overall animation timing function (from AnimationData) to its
+// CSS string form.
+std::string StarlightTimingFunctionToString(
+    const starlight::TimingFunctionData& tf) {
+  switch (tf.timing_func) {
+    case starlight::TimingFunctionType::kLinear:
+      return "linear";
+    case starlight::TimingFunctionType::kEaseIn:
+      return "ease-in";
+    case starlight::TimingFunctionType::kEaseOut:
+      return "ease-out";
+    case starlight::TimingFunctionType::kEaseInEaseOut:
+      return "ease-in-out";
+    case starlight::TimingFunctionType::kCubicBezier: {
+      char buf[96];
+      snprintf(buf, sizeof(buf), "cubic-bezier(%g, %g, %g, %g",
+               static_cast<double>(tf.x1), static_cast<double>(tf.y1),
+               static_cast<double>(tf.x2), static_cast<double>(tf.y2));
+      return std::string(buf) + ")";
+    }
+    // TODO(animations): Starlight carries no step count for kSteps, and
+    // kSquareBezier has no direct CSS representation; both fall back to linear
+    // for the read-only MVP.
+    case starlight::TimingFunctionType::kSteps:
+    case starlight::TimingFunctionType::kSquareBezier:
+    default:
+      return "linear";
+  }
+}
+
+const char* PlayStateToString(lynx::animation::Animation::State state) {
+  switch (state) {
+    case lynx::animation::Animation::State::kIdle:
+      return "idle";
+    case lynx::animation::Animation::State::kPlay:
+      return "running";
+    case lynx::animation::Animation::State::kPause:
+      return "paused";
+    case lynx::animation::Animation::State::kStop:
+      return "finished";
+  }
+  return "idle";
+}
+
+const char* DirectionToString(starlight::AnimationDirectionType dir) {
+  switch (dir) {
+    case starlight::AnimationDirectionType::kReverse:
+      return "reverse";
+    case starlight::AnimationDirectionType::kAlternate:
+      return "alternate";
+    case starlight::AnimationDirectionType::kAlternateReverse:
+      return "alternate-reverse";
+    case starlight::AnimationDirectionType::kNormal:
+    default:
+      return "normal";
+  }
+}
+
+const char* FillModeToString(starlight::AnimationFillModeType fill) {
+  switch (fill) {
+    case starlight::AnimationFillModeType::kForwards:
+      return "forwards";
+    case starlight::AnimationFillModeType::kBackwards:
+      return "backwards";
+    case starlight::AnimationFillModeType::kBoth:
+      return "both";
+    case starlight::AnimationFillModeType::kNone:
+    default:
+      return "none";
+  }
+}
+
+}  // namespace
+
+Json::Value InspectorTasmExecutor::BuildAnimationSnapshot(
+    lynx::animation::Animation* animation) {
+  Json::Value anim(Json::ValueType::objectValue);
+  if (animation == nullptr) {
+    return anim;
+  }
+
+  anim["id"] = std::to_string(animation->id());
+  anim["name"] = animation->name().str();
+
+  switch (animation->GetOrigin()) {
+    case lynx::animation::Animation::Origin::kCSSTransition:
+      anim["type"] = "CSSTransition";
+      break;
+    case lynx::animation::Animation::Origin::kWebAnimation:
+      anim["type"] = "WebAnimation";
+      break;
+    case lynx::animation::Animation::Origin::kCSSAnimation:
+    default:
+      anim["type"] = "CSSAnimation";
+      break;
+  }
+
+  anim["pausedState"] =
+      animation->GetState() == lynx::animation::Animation::State::kPause;
+  anim["playState"] = PlayStateToString(animation->GetState());
+  // The MVP is read-only; the effective playback rate is always 1.
+  anim["playbackRate"] = 1.0;
+
+  const fml::TimePoint& start_time = animation->start_time();
+  if (start_time == fml::TimePoint::Min() ||
+      start_time == lynx::animation::Animation::GetAnimationDummyStartTime()) {
+    anim["startTime"] = 0;
+  } else {
+    anim["startTime"] =
+        static_cast<Json::Int64>(start_time.ToEpochDelta().ToMilliseconds());
+  }
+  anim["currentTime"] =
+      static_cast<Json::Int64>(animation->GetCurrentTime().ToMilliseconds());
+
+  // cssId links a CSS @keyframes animation to its rule; only meaningful for
+  // CSS animations.
+  if (animation->GetOrigin() ==
+      lynx::animation::Animation::Origin::kCSSAnimation) {
+    anim["cssId"] = animation->name().str();
+  }
+
+  // source: AnimationEffect
+  Json::Value source(Json::ValueType::objectValue);
+  const starlight::AnimationData& data = animation->get_animation_data();
+  source["delay"] = static_cast<Json::Int64>(data.delay);
+  source["endDelay"] = 0;
+  source["iterationStart"] = 0;
+  source["iterations"] = static_cast<Json::Int64>(data.iteration_count);
+  // Iteration duration in ms; the panel sizes the animation bar from this.
+  source["duration"] = static_cast<Json::Int64>(data.duration);
+  source["direction"] = DirectionToString(data.direction);
+  source["fill"] = FillModeToString(data.fill_mode);
+  source["easing"] = StarlightTimingFunctionToString(data.timing_func);
+
+  lynx::tasm::Element* element = animation->GetElement();
+  source["backendNodeId"] =
+      element != nullptr ? ElementInspector::NodeId(element) : 0;
+
+  // keyframesRule
+  Json::Value keyframes_rule(Json::ValueType::objectValue);
+  keyframes_rule["name"] = data.name.str();
+  Json::Value keyframes(Json::ValueType::arrayValue);
+  if (data.duration > 0) {
+    lynx::animation::KeyframeEffect* effect = animation->keyframe_effect();
+    if (effect != nullptr) {
+      // Collect the union of (offset, easing) across all property curves. CSS
+      // @keyframes and transitions share offsets across properties, so the
+      // union is robust to any divergence while staying deduplicated.
+      std::map<double, std::string> offset_to_easing;
+      for (auto& model_ptr : effect->keyframe_models()) {
+        if (model_ptr == nullptr) {
+          continue;
+        }
+        lynx::animation::AnimationCurve* curve = model_ptr->animation_curve();
+        if (curve == nullptr) {
+          continue;
+        }
+        size_t count = curve->get_keyframes_size();
+        for (size_t i = 0; i < count; ++i) {
+          const gfx::Keyframe* kf = curve->KeyframeAt(i);
+          if (kf == nullptr) {
+            continue;
+          }
+          const double normalized_offset = kf->Time().ToSecondsF();
+          // Read the timing used by sampling, not the current author styles.
+          offset_to_easing.emplace(
+              normalized_offset,
+              GfxTimingFunctionToString(kf->timing_function()));
+        }
+      }
+      for (const auto& kv : offset_to_easing) {
+        Json::Value kf_style(Json::ValueType::objectValue);
+        kf_style["offset"] = FormatKeyframeOffset(kv.first);
+        kf_style["easing"] = kv.second;
+        keyframes.append(kf_style);
+      }
+    }
+  }
+  keyframes_rule["keyframes"] = keyframes;
+  source["keyframesRule"] = keyframes_rule;
+
+  anim["source"] = source;
+  return anim;
+}
+
+void InspectorTasmExecutor::SendAnimationEvent(const std::string& method,
+                                               const Json::Value& params) {
+  if (!animation_enabled_) {
+    return;
+  }
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  if (devtool_mediator == nullptr) {
+    return;
+  }
+  Json::Value msg(Json::ValueType::objectValue);
+  msg["method"] = method;
+  msg["params"] = params;
+  devtool_mediator->RunOnDevToolThread(
+      [devtool_mediator, msg]() mutable {
+        devtool_mediator->SendCDPEvent(msg);
+      },
+      true);
+}
+
+void InspectorTasmExecutor::ClearAnimationRegistry() {
+  animation_registry_.clear();
+}
+
+void InspectorTasmExecutor::OnAnimationCreated(
+    lynx::animation::Animation* animation) {
+  if (animation == nullptr) {
+    return;
+  }
+  animation_registry_[animation->id()] = animation;
+  Json::Value params(Json::ValueType::objectValue);
+  params["id"] = std::to_string(animation->id());
+  SendAnimationEvent("Animation.animationCreated", params);
+}
+
+void InspectorTasmExecutor::OnAnimationStarted(
+    lynx::animation::Animation* animation) {
+  if (animation == nullptr) {
+    return;
+  }
+  // Ensure the animation is registered even if the created notification was
+  // missed (e.g. observer installed after creation).
+  animation_registry_[animation->id()] = animation;
+  Json::Value params(Json::ValueType::objectValue);
+  params["animation"] = BuildAnimationSnapshot(animation);
+  SendAnimationEvent("Animation.animationStarted", params);
+}
+
+void InspectorTasmExecutor::OnAnimationUpdated(
+    lynx::animation::Animation* animation) {
+  if (animation == nullptr) {
+    return;
+  }
+  Json::Value params(Json::ValueType::objectValue);
+  params["animation"] = BuildAnimationSnapshot(animation);
+  SendAnimationEvent("Animation.animationUpdated", params);
+}
+
+void InspectorTasmExecutor::OnAnimationCanceled(
+    lynx::animation::Animation* animation) {
+  if (animation == nullptr) {
+    return;
+  }
+  Json::Value params(Json::ValueType::objectValue);
+  params["id"] = std::to_string(animation->id());
+  SendAnimationEvent("Animation.animationCanceled", params);
+  animation_registry_.erase(animation->id());
+}
+
+void InspectorTasmExecutor::AnimationEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  animation_enabled_ = true;
+  // Backfill: announce every currently-registered animation so the panel shows
+  // animations that started before it was opened.
+  std::vector<std::pair<int64_t, lynx::animation::Animation*>> animations;
+  animations.reserve(animation_registry_.size());
+  for (const auto& kv : animation_registry_) {
+    animations.emplace_back(kv.first, kv.second);
+  }
+  for (const auto& kv : animations) {
+    Json::Value created_params(Json::ValueType::objectValue);
+    created_params["id"] = std::to_string(kv.first);
+    SendAnimationEvent("Animation.animationCreated", created_params);
+  }
+  for (const auto& kv : animations) {
+    Json::Value started_params(Json::ValueType::objectValue);
+    started_params["animation"] = BuildAnimationSnapshot(kv.second);
+    SendAnimationEvent("Animation.animationStarted", started_params);
+  }
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value content(Json::ValueType::objectValue);
+  response["result"] = content;
+  response["id"] = message["id"].asInt64();
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorTasmExecutor::AnimationDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  animation_enabled_ = false;
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value content(Json::ValueType::objectValue);
+  response["result"] = content;
+  response["id"] = message["id"].asInt64();
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorTasmExecutor::AnimationGetCurrentTime(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const Json::Value& params = message["params"];
+  Json::Value response(Json::ValueType::objectValue);
+  response["id"] = message["id"].asInt64();
+  if (!params.isObject() || !params.isMember("id") ||
+      !params["id"].isString()) {
+    response["error"]["code"] = -32602;  // invalid params
+    response["error"]["message"] = "Missing or invalid 'id' parameter.";
+    sender->SendMessage("CDP", response);
+    return;
+  }
+  int64_t anim_id = 0;
+  if (!TryParseAnimationId(params["id"].asString(), anim_id)) {
+    response["error"]["code"] = -32602;
+    response["error"]["message"] = "Invalid animation id.";
+    sender->SendMessage("CDP", response);
+    return;
+  }
+  auto it = animation_registry_.find(anim_id);
+  if (it == animation_registry_.end() || it->second == nullptr) {
+    response["error"]["code"] = -32602;
+    response["error"]["message"] = "Animation not found.";
+  } else {
+    response["result"]["currentTime"] =
+        static_cast<Json::Int64>(it->second->GetCurrentTime().ToMilliseconds());
+  }
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorTasmExecutor::AnimationSeekAnimations(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const Json::Value& params = message["params"];
+  Json::Value response(Json::ValueType::objectValue);
+  response["id"] = message["id"].asInt64();
+  auto send_invalid_params = [&](const char* error_message) {
+    response["error"]["code"] = -32602;
+    response["error"]["message"] = error_message;
+    sender->SendMessage("CDP", response);
+  };
+
+  if (!params.isObject() || !params.isMember("animations") ||
+      !params["animations"].isArray()) {
+    send_invalid_params("Missing or invalid 'animations' parameter.");
+    return;
+  }
+  if (!params.isMember("currentTime") || !params["currentTime"].isNumeric()) {
+    send_invalid_params("Missing or invalid 'currentTime' parameter.");
+    return;
+  }
+
+  const double current_time_ms = params["currentTime"].asDouble();
+  constexpr double kMaxTimeDeltaMilliseconds =
+      static_cast<double>(std::numeric_limits<int64_t>::max()) / 1000000.0;
+  if (!std::isfinite(current_time_ms) || current_time_ms < 0.0 ||
+      current_time_ms > kMaxTimeDeltaMilliseconds) {
+    send_invalid_params("'currentTime' must be a finite, non-negative time.");
+    return;
+  }
+
+  const Json::Value& ids = params["animations"];
+  std::vector<lynx::animation::Animation*> animations;
+  animations.reserve(ids.size());
+  std::unordered_set<int64_t> unique_ids;
+  for (const auto& id : ids) {
+    if (!id.isString()) {
+      send_invalid_params("Animation ids must be strings.");
+      return;
+    }
+    int64_t animation_id = 0;
+    if (!TryParseAnimationId(id.asString(), animation_id)) {
+      send_invalid_params("Invalid animation id.");
+      return;
+    }
+    auto it = animation_registry_.find(animation_id);
+    if (it == animation_registry_.end() || it->second == nullptr) {
+      send_invalid_params("Animation not found.");
+      return;
+    }
+    if (unique_ids.insert(animation_id).second) {
+      animations.push_back(it->second);
+    }
+  }
+
+  // Validate the whole batch before mutating it, then use one reference time
+  // so all animations land on the requested timeline position together.
+  const auto current_time = fml::TimeDelta::FromMillisecondsF(current_time_ms);
+  const auto reference_time = fml::TimePoint::Now();
+  for (auto* animation : animations) {
+    animation->SeekTo(current_time, reference_time);
+  }
+
+  response["result"] = Json::Value(Json::ValueType::objectValue);
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorTasmExecutor::AnimationSetPaused(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const Json::Value& params = message["params"];
+  Json::Value response(Json::ValueType::objectValue);
+  response["id"] = message["id"].asInt64();
+  auto send_invalid_params = [&](const char* error_message) {
+    response["error"]["code"] = -32602;
+    response["error"]["message"] = error_message;
+    sender->SendMessage("CDP", response);
+  };
+
+  if (!params.isObject() || !params.isMember("animations") ||
+      !params["animations"].isArray()) {
+    send_invalid_params("Missing or invalid 'animations' parameter.");
+    return;
+  }
+  if (!params.isMember("paused") || !params["paused"].isBool()) {
+    send_invalid_params("Missing or invalid 'paused' parameter.");
+    return;
+  }
+
+  const Json::Value& ids = params["animations"];
+  std::vector<lynx::animation::Animation*> animations;
+  animations.reserve(ids.size());
+  std::unordered_set<int64_t> unique_ids;
+  for (const auto& id : ids) {
+    if (!id.isString()) {
+      send_invalid_params("Animation ids must be strings.");
+      return;
+    }
+    int64_t animation_id = 0;
+    if (!TryParseAnimationId(id.asString(), animation_id)) {
+      send_invalid_params("Invalid animation id.");
+      return;
+    }
+    auto it = animation_registry_.find(animation_id);
+    if (it == animation_registry_.end() || it->second == nullptr) {
+      send_invalid_params("Animation not found.");
+      return;
+    }
+    if (unique_ids.insert(animation_id).second) {
+      animations.push_back(it->second);
+    }
+  }
+
+  // Validate the whole batch before changing any state. A shared reference
+  // time keeps every animation in the group paused or resumed in lockstep.
+  const bool paused = params["paused"].asBool();
+  const auto reference_time = fml::TimePoint::Now();
+  for (auto* animation : animations) {
+    animation->SetPaused(paused, reference_time);
+  }
+
+  response["result"] = Json::Value(Json::ValueType::objectValue);
+  sender->SendMessage("CDP", response);
+}
+
+void InspectorTasmExecutor::AnimationReleaseAnimations(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  const Json::Value& params = message["params"];
+  const Json::Value& ids =
+      params.isObject() ? params["animations"] : Json::Value::nullSingleton();
+  if (ids.isArray()) {
+    for (const auto& id : ids) {
+      if (id.isString()) {
+        int64_t anim_id = 0;
+        if (TryParseAnimationId(id.asString(), anim_id)) {
+          animation_registry_.erase(anim_id);
+        }
+        // Ignore malformed ids.
+      }
+    }
+  }
+  Json::Value response(Json::ValueType::objectValue);
+  Json::Value content(Json::ValueType::objectValue);
+  response["result"] = content;
+  response["id"] = message["id"].asInt64();
+  sender->SendMessage("CDP", response);
 }
 
 }  // namespace devtool

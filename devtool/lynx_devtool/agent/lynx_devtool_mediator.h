@@ -212,6 +212,14 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(LayerTreeDisable)
   DECLARE_DEVTOOL_METHOD(CompositingReasons)
 
+  // Animation domain -> tasm executor
+  DECLARE_DEVTOOL_METHOD(AnimationEnable)
+  DECLARE_DEVTOOL_METHOD(AnimationDisable)
+  DECLARE_DEVTOOL_METHOD(AnimationGetCurrentTime)
+  DECLARE_DEVTOOL_METHOD(AnimationSeekAnimations)
+  DECLARE_DEVTOOL_METHOD(AnimationSetPaused)
+  DECLARE_DEVTOOL_METHOD(AnimationReleaseAnimations)
+
   // Page domain - > ui executor
   DECLARE_DEVTOOL_METHOD(StartScreencast)
   DECLARE_DEVTOOL_METHOD(StopScreencast)
@@ -302,6 +310,7 @@ class LynxDevToolMediator
       const std::shared_ptr<WhiteBoardInspectorDelegate>& inspector_delegate);
 
  private:
+  void ResetTasmExecutor(tasm::TemplateAssembler* tasm);
   bool RunOnUIThread(lynx::base::closure&& closure, bool run_now = true);
 
   lynx::fml::RefPtr<lynx::fml::TaskRunner> tasm_task_runner_;

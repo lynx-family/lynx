@@ -103,6 +103,16 @@ class DevToolMediatorTest : public ::testing::Test {
   std::unique_ptr<fml::Thread> cdp_event_listener_thread_;
 };
 
+TEST_F(DevToolMediatorTest, ResetTasmExecutorPreservesAnimationEnabledState) {
+  auto old_executor = devtool_mediator_->element_executor_;
+  old_executor->SetAnimationEnabled(true);
+
+  devtool_mediator_->ResetTasmExecutor(nullptr);
+
+  EXPECT_NE(devtool_mediator_->element_executor_, old_executor);
+  EXPECT_TRUE(devtool_mediator_->element_executor_->IsAnimationEnabled());
+}
+
 TEST_F(DevToolMediatorTest, InspectorEnableCase) {
   LOGI("InspectorEnableCase start");
   Json::Value param;
