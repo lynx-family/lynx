@@ -5,18 +5,37 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Cocoa/Cocoa.h>
+#include <algorithm>
 #include <cinttypes>
 #include <cstddef>
 
 namespace clay {
 
+template <typename Key, typename Value>
+struct KeyCodeMapEntry {
+  Key key;
+  Value value;
+};
+
+template <typename Key, typename Value>
+inline const KeyCodeMapEntry<Key, Value>* FindKeyCodeMapEntry(
+    const KeyCodeMapEntry<Key, Value>* entries, size_t size, const Key& key) {
+  const auto* end = entries + size;
+  const auto* entry =
+      std::lower_bound(entries, end, key,
+                       [](const KeyCodeMapEntry<Key, Value>& entry,
+                          const Key& value) { return entry.key < value; });
+  return entry != end && entry->key == key ? entry : nullptr;
+}
+
 /**
  * Maps macOS-specific key code values representing |PhysicalKeyboardKey|.
  *
- * MacOS doesn't provide a scan code, but a virtual keycode to represent a physical key.
+ * MacOS doesn't provide a scan code, but a virtual keycode to represent a
+ * physical key.
  */
-extern const NSDictionary* keyCodeToPhysicalKey;
+extern const KeyCodeMapEntry<uint32_t, uint64_t> keyCodeToPhysicalKey[];
+extern const size_t keyCodeToPhysicalKeySize;
 
 /**
  * A map from macOS key codes to Flutter's logical key values.
@@ -24,7 +43,8 @@ extern const NSDictionary* keyCodeToPhysicalKey;
  * This is used to derive logical keys that can't or shouldn't be derived from
  * |charactersIgnoringModifiers|.
  */
-extern const NSDictionary* keyCodeToLogicalKey;
+extern const KeyCodeMapEntry<uint32_t, uint64_t> keyCodeToLogicalKey[];
+extern const size_t keyCodeToLogicalKeySize;
 
 // Several mask constants. See KeyCodeMap.g.mm for their descriptions.
 
@@ -48,7 +68,8 @@ extern const uint64_t kMacosPlane;
  *
  * This does not include CapsLock, for it is handled specially.
  */
-extern const NSDictionary* keyCodeToModifierFlag;
+extern const KeyCodeMapEntry<uint32_t, uint32_t> keyCodeToModifierFlag[];
+extern const size_t keyCodeToModifierFlagSize;
 
 /**
  * Map a bit of bitmask of NSEventModifierFlags to its corresponding
@@ -56,7 +77,8 @@ extern const NSDictionary* keyCodeToModifierFlag;
  *
  * This does not include CapsLock, for it is handled specially.
  */
-extern const NSDictionary* modifierFlagToKeyCode;
+extern const KeyCodeMapEntry<uint32_t, uint32_t> modifierFlagToKeyCode[];
+extern const size_t modifierFlagToKeyCodeSize;
 
 /**
  * The physical key for CapsLock, which needs special handling.

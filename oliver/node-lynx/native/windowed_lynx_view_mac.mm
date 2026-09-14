@@ -95,25 +95,29 @@ bool IsFunctionKeyCharacter(uint32_t character) {
 }
 
 uint64_t PhysicalKeyForKeyCode(unsigned short key_code) {
-  NSNumber* physical_key = [clay::keyCodeToPhysicalKey objectForKey:@(key_code)];
-  if (physical_key) {
-    return physical_key.unsignedLongLongValue;
+  const auto* physical_key = clay::FindKeyCodeMapEntry(
+      clay::keyCodeToPhysicalKey, clay::keyCodeToPhysicalKeySize, static_cast<uint32_t>(key_code));
+  if (physical_key != nullptr) {
+    return physical_key->value;
   }
   return KeyOfPlane(key_code, clay::kMacosPlane);
 }
 
 uint64_t LogicalKeyForModifier(unsigned short key_code, uint64_t physical_key) {
-  NSNumber* logical_key = [clay::keyCodeToLogicalKey objectForKey:@(key_code)];
-  if (logical_key) {
-    return logical_key.unsignedLongLongValue;
+  const auto* logical_key = clay::FindKeyCodeMapEntry(
+      clay::keyCodeToLogicalKey, clay::keyCodeToLogicalKeySize, static_cast<uint32_t>(key_code));
+  if (logical_key != nullptr) {
+    return logical_key->value;
   }
   return KeyOfPlane(physical_key, clay::kMacosPlane);
 }
 
 uint64_t LogicalKeyForEvent(NSEvent* event, uint64_t physical_key) {
-  NSNumber* logical_key = [clay::keyCodeToLogicalKey objectForKey:@(event.keyCode)];
-  if (logical_key) {
-    return logical_key.unsignedLongLongValue;
+  const auto* logical_key =
+      clay::FindKeyCodeMapEntry(clay::keyCodeToLogicalKey, clay::keyCodeToLogicalKeySize,
+                                static_cast<uint32_t>(event.keyCode));
+  if (logical_key != nullptr) {
+    return logical_key->value;
   }
   uint32_t character = FirstCodePoint(event.charactersIgnoringModifiers);
   if (character != 0 && !IsControlCharacter(character) && !IsFunctionKeyCharacter(character)) {
@@ -549,13 +553,15 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
   void HandleKeyUp(NSEvent* event) { SendNativeKeyEvent(event, false); }
 
   void HandleFlagsChanged(NSEvent* event) {
-    NSNumber* modifier_flag = [clay::keyCodeToModifierFlag objectForKey:@(event.keyCode)];
-    if (!modifier_flag) {
+    const auto* modifier_flag =
+        clay::FindKeyCodeMapEntry(clay::keyCodeToModifierFlag, clay::keyCodeToModifierFlagSize,
+                                  static_cast<uint32_t>(event.keyCode));
+    if (modifier_flag == nullptr) {
       return;
     }
     uint64_t physical = PhysicalKeyForKeyCode(event.keyCode);
     uint64_t logical = LogicalKeyForModifier(event.keyCode, physical);
-    bool is_down = (event.modifierFlags & modifier_flag.unsignedLongValue) != 0;
+    bool is_down = (event.modifierFlags & modifier_flag->value) != 0;
     auto pressed = pressed_keys_.find(physical);
     if (is_down && pressed != pressed_keys_.end()) {
       return;
