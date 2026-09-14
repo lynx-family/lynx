@@ -60,7 +60,7 @@ def install_android_sdk(root_path):
     return r
 
   print("\n====> SUCCESS!!! <====\nAndroid environment setup completed.")
-  print("Now you can run `cd explorer/android` and `./gradlew :LynxExplorer:assembleNoAsanDebug` to build LynxExplorer APP.")
+  print("Now you can run `cd explorer/android` and `./gradlew :LynxExplorer:assembleWithoutSparklingNoasanDebug` to build LynxExplorer APP.")
 
 def main():
   root_path = os.path.join(os.path.dirname(__file__), '..', '..')
