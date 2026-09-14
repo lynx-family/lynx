@@ -6,31 +6,46 @@
 
 namespace clay {
 
-const std::unordered_set<std::string>& InternalPlatformViewTags() {
-  static const std::unordered_set<std::string> tags = {
-      "x-map-ng",      "input-view",     "textarea-view", "input",
-      "x-input",       "x-input-ng",     "textarea",      "x-textarea",
-      "x-textarea-ng", "x-video-engine",
-  };
-  return tags;
+namespace {
+
+constexpr std::string_view kInternalPlatformViewTags[] = {
+    "input",      "input-view", "textarea",   "textarea-view", "x-input",
+    "x-input-ng", "x-map-ng",   "x-textarea", "x-textarea-ng", "x-video-engine",
+};
+constexpr NativeViewTagSet kInternalPlatformViewTagSet(
+    kInternalPlatformViewTags,
+    sizeof(kInternalPlatformViewTags) / sizeof(kInternalPlatformViewTags[0]));
+
+constexpr std::string_view kInternalPlatformViewShadowNodeTags[] = {
+    "input",      "input-view", "textarea",      "textarea-view",  "x-input",
+    "x-input-ng", "x-textarea", "x-textarea-ng", "x-video-engine",
+};
+constexpr NativeViewTagSet kInternalPlatformViewShadowNodeTagSet(
+    kInternalPlatformViewShadowNodeTags,
+    sizeof(kInternalPlatformViewShadowNodeTags) /
+        sizeof(kInternalPlatformViewShadowNodeTags[0]));
+
+constexpr std::string_view kInternalPlatformViewWithoutShadowNodeTags[] = {
+    "x-map-marker-ng",
+    "x-map-ng",
+};
+constexpr NativeViewTagSet kInternalPlatformViewWithoutShadowNodeTagSet(
+    kInternalPlatformViewWithoutShadowNodeTags,
+    sizeof(kInternalPlatformViewWithoutShadowNodeTags) /
+        sizeof(kInternalPlatformViewWithoutShadowNodeTags[0]));
+
+}  // namespace
+
+const NativeViewTagSet& InternalPlatformViewTags() {
+  return kInternalPlatformViewTagSet;
 }
 
-const std::unordered_set<std::string>& InternalPlatformViewShadowNodeTags() {
-  static const std::unordered_set<std::string> tags = {
-      "input-view", "textarea-view", "input",
-      "x-input",    "x-input-ng",    "textarea",
-      "x-textarea", "x-textarea-ng", "x-video-engine",
-  };
-  return tags;
+const NativeViewTagSet& InternalPlatformViewShadowNodeTags() {
+  return kInternalPlatformViewShadowNodeTagSet;
 }
 
-const std::unordered_set<std::string>&
-InternalPlatformViewWithoutShadowNodeTags() {
-  static const std::unordered_set<std::string> tags = {
-      "x-map-ng",
-      "x-map-marker-ng",
-  };
-  return tags;
+const NativeViewTagSet& InternalPlatformViewWithoutShadowNodeTags() {
+  return kInternalPlatformViewWithoutShadowNodeTagSet;
 }
 
 bool ShouldCreateFallbackNativeViewDirectly() { return true; }

@@ -6,20 +6,22 @@
 
 namespace clay {
 
-const std::unordered_set<std::string>& InternalPlatformViewTags() {
-  static const std::unordered_set<std::string> tags;
-  return tags;
+namespace {
+
+constexpr NativeViewTagSet kEmptyNativeViewTags(nullptr, 0);
+
+}  // namespace
+
+const NativeViewTagSet& InternalPlatformViewTags() {
+  return kEmptyNativeViewTags;
 }
 
-const std::unordered_set<std::string>& InternalPlatformViewShadowNodeTags() {
-  static const std::unordered_set<std::string> tags;
-  return tags;
+const NativeViewTagSet& InternalPlatformViewShadowNodeTags() {
+  return kEmptyNativeViewTags;
 }
 
-const std::unordered_set<std::string>&
-InternalPlatformViewWithoutShadowNodeTags() {
-  static const std::unordered_set<std::string> tags;
-  return tags;
+const NativeViewTagSet& InternalPlatformViewWithoutShadowNodeTags() {
+  return kEmptyNativeViewTags;
 }
 
 bool ShouldCreateFallbackNativeViewDirectly() { return false; }

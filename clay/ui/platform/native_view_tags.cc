@@ -6,34 +6,50 @@
 
 namespace clay {
 
-const std::unordered_set<std::string>& InternalPlatformViewTags() {
+namespace {
+
+constexpr std::string_view kInternalPlatformViewTags[] = {
+    "input",         "input-view",    "map-view",       "textarea",
+    "textarea-view", "x-input",       "x-input-ng",     "x-map-ng",
+    "x-textarea",    "x-textarea-ng", "x-video-engine",
+};
+constexpr NativeViewTagSet kInternalPlatformViewTagSet(
+    kInternalPlatformViewTags,
+    sizeof(kInternalPlatformViewTags) / sizeof(kInternalPlatformViewTags[0]));
+
+constexpr std::string_view kInternalPlatformViewShadowNodeTags[] = {
+    "input",   "input-view", "map-view",   "textarea",      "textarea-view",
+    "x-input", "x-input-ng", "x-textarea", "x-textarea-ng", "x-video-engine",
+};
+constexpr NativeViewTagSet kInternalPlatformViewShadowNodeTagSet(
+    kInternalPlatformViewShadowNodeTags,
+    sizeof(kInternalPlatformViewShadowNodeTags) /
+        sizeof(kInternalPlatformViewShadowNodeTags[0]));
+
+constexpr std::string_view kInternalPlatformViewWithoutShadowNodeTags[] = {
+    "x-map-marker-ng",
+    "x-map-ng",
+};
+constexpr NativeViewTagSet kInternalPlatformViewWithoutShadowNodeTagSet(
+    kInternalPlatformViewWithoutShadowNodeTags,
+    sizeof(kInternalPlatformViewWithoutShadowNodeTags) /
+        sizeof(kInternalPlatformViewWithoutShadowNodeTags[0]));
+
+}  // namespace
+
+const NativeViewTagSet& InternalPlatformViewTags() {
   // iOS implementation. Android links native_view_tags_android.cc, where
   // x-video-engine is admitted as an XElement-backed platform view.
   // Clay's c++ video tag is changed to be clay-video-engine.
-  static const std::unordered_set<std::string> tags = {
-      "x-map-ng",   "map-view",      "input-view",     "textarea-view",
-      "input",      "x-input",       "x-input-ng",     "textarea",
-      "x-textarea", "x-textarea-ng", "x-video-engine",
-  };
-  return tags;
+  return kInternalPlatformViewTagSet;
 }
 
-const std::unordered_set<std::string>& InternalPlatformViewShadowNodeTags() {
-  static const std::unordered_set<std::string> tags = {
-      "map-view",      "input-view",     "textarea-view", "input",
-      "x-input",       "x-input-ng",     "textarea",      "x-textarea",
-      "x-textarea-ng", "x-video-engine",
-  };
-  return tags;
+const NativeViewTagSet& InternalPlatformViewShadowNodeTags() {
+  return kInternalPlatformViewShadowNodeTagSet;
 }
 
-const std::unordered_set<std::string>&
-InternalPlatformViewWithoutShadowNodeTags() {
-  static const std::unordered_set<std::string> tags = {
-      "x-map-ng",
-      "x-map-marker-ng",
-  };
-  return tags;
+const NativeViewTagSet& InternalPlatformViewWithoutShadowNodeTags() {
+  return kInternalPlatformViewWithoutShadowNodeTagSet;
 }
 
 bool ShouldCreateFallbackNativeViewDirectly() { return true; }
