@@ -272,6 +272,14 @@ export class LynxContext implements IContext {
     this.lynxView?.onEnterBackground();
   }
 
+  /**
+   * Starts the Lynx JS runtime if its initialization is pending.
+   * @apidoc
+   */
+  public startLynxRuntime(): void {
+    this.lynxView?.startLynxRuntime();
+  }
+
   public updateScreenMetrics(width: number, height: number) {
     this.renderer?.updateScreenMetrics(width, height);
   }

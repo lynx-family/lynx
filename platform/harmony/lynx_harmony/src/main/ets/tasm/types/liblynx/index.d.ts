@@ -137,9 +137,11 @@ export class LynxTemplateRenderer {
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
     whiteBoard: LynxWhiteBoard | undefined, enableMultiAsyncThread: boolean, viewId: number,
-    embeddedMode?: number, enableNewShareGroup?: boolean): void;
+    embeddedMode?: number, enableNewShareGroup?: boolean, enablePendingJsTask?: boolean): void;
 
   nativeDetach(): void;
+
+  startLynxRuntime(): void;
 
   nativeQueryLynxElement(sign: number, queryType: number, argument: string | null,
     callback: (result: Object | string | number | boolean | null) => void): void;

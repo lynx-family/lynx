@@ -139,7 +139,8 @@ void LynxTemplateRenderer::SetUpLynxShell(
     std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
     bool enable_multi_async_thread, base::LynxEntityId view_id,
-    int32_t embedded_mode, bool enable_new_share_group) {
+    int32_t embedded_mode, bool enable_new_share_group,
+    bool enable_pending_js_task) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
   is_host_renderer_ = is_host_renderer;
@@ -281,8 +282,9 @@ void LynxTemplateRenderer::SetUpLynxShell(
         module_manager->runtime_proxy = runtime_proxy_;
       };
 
-      auto runtime_flags = shell::CalcRuntimeFlags(
-          false, use_quickjs, false, enable_bytecode, enable_new_share_group);
+      auto runtime_flags =
+          shell::CalcRuntimeFlags(false, use_quickjs, enable_pending_js_task,
+                                  enable_bytecode, enable_new_share_group);
       shell_->InitRuntime(group_id, resource_loader_, module_manager,
                           std::move(on_runtime_actor_created),
                           std::move(preload_js_paths), runtime_flags,
@@ -328,6 +330,13 @@ void LynxTemplateRenderer::OnEnterBackground() {
     return;
   }
   shell_->OnEnterBackground();
+}
+
+void LynxTemplateRenderer::StartLynxRuntime() {
+  if (!shell_ || shell_->IsDestroyed()) {
+    return;
+  }
+  shell_->StartJsRuntime();
 }
 
 void LynxTemplateRenderer::UpdateScreenMetrics(float width, float height,
@@ -784,6 +793,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("setupExtensionDelegate", SetupExtensionDelegate),
       DECLARE_NAPI_METHOD("onEnterForeground", OnEnterForeground),
       DECLARE_NAPI_METHOD("onEnterBackground", OnEnterBackground),
+      DECLARE_NAPI_METHOD("startLynxRuntime", StartLynxRuntime),
       DECLARE_NAPI_METHOD("nativeSetSessionStorageItem", SetSessionStorageItem),
       DECLARE_NAPI_METHOD("nativeGetSessionStorageItem", GetSessionStorageItem),
       DECLARE_NAPI_METHOD("nativeSubscribeSessionStorage",
@@ -1013,8 +1023,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 23;
-  napi_value args[23] = {nullptr};
+  size_t argc = 24;
+  napi_value args[24] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -1115,6 +1125,11 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
     napi_get_value_bool(env, args[22], &enable_new_share_group);
   }
 
+  bool enable_pending_js_task = false;
+  if (argc > 23) {
+    napi_get_value_bool(env, args[23], &enable_pending_js_task);
+  }
+
   LynxTemplateRenderer* obj = nullptr;
   napi_status status =
       napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -1139,7 +1154,7 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       std::move(jsbridge_module_factory), std::move(main_thread_module_factory),
       runtime_wrapper, white_board, enable_multi_async_thread,
       static_cast<base::LynxEntityId>(view_id), embedded_mode,
-      enable_new_share_group);
+      enable_new_share_group, enable_pending_js_task);
   return nullptr;
 }
 
@@ -2121,6 +2136,23 @@ napi_value LynxTemplateRenderer::OnEnterBackground(napi_env env,
     return nullptr;
   }
   obj->OnEnterBackground();
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::StartLynxRuntime(napi_env env,
+                                                  napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_value args[0];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "StartLynxRuntime failed")) {
+    return nullptr;
+  }
+  obj->StartLynxRuntime();
   return nullptr;
 }
 

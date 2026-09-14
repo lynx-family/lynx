@@ -114,6 +114,10 @@ export interface LynxViewBuilder {
   colorScheme?: ColorScheme;
   enableMultiAsyncThread?: boolean;
   embeddedMode?: EmbeddedMode;
+  /**
+   * Defers Lynx JS runtime initialization until LynxContext.startLynxRuntime() is called.
+   */
+  enablePendingJsTask?: boolean;
 }
 
 @Builder
@@ -221,6 +225,7 @@ export struct LynxView {
   private fontScale: number = 1.0;
   private colorScheme: ColorScheme = ColorScheme.LIGHT;
   private enableMultiAsyncThread: boolean = true;
+  private enablePendingJsTask: boolean = false;
   onCreate: (context: LynxContext) => void = ((context: LynxContext) => {
   });
   onReuse: (context: LynxContext) => boolean = ((context: LynxContext) => {
@@ -271,6 +276,7 @@ export struct LynxView {
     this.fontScale = builder.fontScale ?? 1.0;
     this.colorScheme = builder.colorScheme ?? ColorScheme.LIGHT;
     this.enableMultiAsyncThread = builder.enableMultiAsyncThread ?? true;
+    this.enablePendingJsTask = builder.enablePendingJsTask ?? false;
     if (this.hasAppeared) {
       LynxServiceCenter.getService<ILynxTrailService>(LynxServiceType.Trail)?.parseLynxView(this);
       this.reInitTemplateRenderer(this.hasLoadSource());
@@ -308,6 +314,7 @@ export struct LynxView {
       fontScale: this.fontScale,
       colorScheme: this.colorScheme,
       enableMultiAsyncThread: this.enableMultiAsyncThread,
+      enablePendingJsTask: this.enablePendingJsTask,
     };
   }
 
@@ -379,8 +386,8 @@ export struct LynxView {
       new LynxTemplateRenderer(this.viewId, this.clients, providers, !this.uiRendererCreator,
         this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
         this.backgroundRuntimeOptions, this, !this.enableAirStrictMode,
-        this.moduleManager, this.sendableModuleManager, this.enableMultiAsyncThread, this.screenSize,
-        this.embeddedMode);
+        this.moduleManager, this.sendableModuleManager, this.enableMultiAsyncThread, this.enablePendingJsTask,
+        this.screenSize, this.embeddedMode);
     if (this.platformConfig) {
       this.templateRenderer.setPlatformConfig(this.platformConfig);
     }
@@ -406,6 +413,14 @@ export struct LynxView {
   onEnterBackground() {
     this.uiRenderer?.onEnterBackground();
     this.templateRenderer?.onEnterBackground();
+  }
+
+  startLynxRuntime(): void {
+    if (!this.templateRenderer || this.templateRenderer.isDestroyed()) {
+      return;
+    }
+    this.enablePendingJsTask = false;
+    this.templateRenderer.startLynxRuntime();
   }
 
   prepareForLoadTemplate() {
@@ -682,6 +697,13 @@ export struct LynxView {
       LLog.d(TAG,
         `can not reuse due to different enableAirStrictMode, old(${this.enableAirStrictMode}) new(${params.enableAirStrictMode})`);
       this.enableAirStrictMode = params.enableAirStrictMode;
+      couldReuse = false;
+    }
+    if (params.enablePendingJsTask !== undefined &&
+      this.enablePendingJsTask !== params.enablePendingJsTask) {
+      LLog.d(TAG,
+        `can not reuse due to different enablePendingJsTask, old(${this.enablePendingJsTask}) new(${params.enablePendingJsTask})`);
+      this.enablePendingJsTask = params.enablePendingJsTask;
       couldReuse = false;
     }
     if (params.genericResourceFetcher !== undefined && this.genericResourceFetcher != params.genericResourceFetcher) {
