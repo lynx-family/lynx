@@ -171,6 +171,41 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     return listContainerView;
   }
 
+  /**
+   * Sets the parent-owned transformer used for attached list-item views.
+   *
+   * <p>Replacing or clearing the transformer resets every attached item through the previous
+   * transformer before applying the new transformer. A non-null transformer cannot be installed
+   * while sticky is enabled. Call on the UI thread.
+   *
+   * @param transformer transformer to install, or {@code null} to clear it
+   */
+  public void setListItemTransformer(@Nullable ListItemTransformer transformer) {
+    if (mEnableListSticky && transformer != null) {
+      LynxContext context = getLynxContext();
+      if (context != null) {
+        context.handleLynxError(new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG,
+            "Cannot set listItemTransformer while sticky is enabled.",
+            "Disable sticky before setting listItemTransformer.", LynxError.LEVEL_WARN));
+      }
+      return;
+    }
+    if (mView != null) {
+      mView.setListItemTransformer(transformer);
+    }
+  }
+
+  /**
+   * Reapplies the current transformer after its parameters change, without requiring a scroll.
+   *
+   * <p>Call this method on the UI thread.
+   */
+  public void requestListItemTransform() {
+    if (mView != null) {
+      mView.requestListItemTransform();
+    }
+  }
+
   @Override
   public boolean isScrollContainer() {
     return true;
@@ -445,6 +480,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
     updateStickyStarts();
     updateStickyEnds();
+    requestListItemTransform();
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.endSection(traceEvent);
     }
@@ -961,6 +997,15 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @LynxProp(name = "sticky", defaultBoolean = true)
   public void setEnableListSticky(boolean value) {
     // Sticky for horizontal layout is not supported.
+    if (value && mView != null && mView.hasListItemTransformer()) {
+      LynxContext context = getLynxContext();
+      if (context != null) {
+        context.handleLynxError(new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG,
+            "listItemTransformer is cleared when sticky is enabled.",
+            "Disable sticky before setting listItemTransformer.", LynxError.LEVEL_WARN));
+      }
+      setListItemTransformer(null);
+    }
     mEnableListSticky = value;
   }
 
