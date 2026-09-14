@@ -63,6 +63,9 @@ std::string LynxTemplateBundle::FromBinaryGreedy(
     }
     auto result = service->VerifyTASM(binary->data(), binary->size(),
                                       template_url, verification.type);
+    if (verification.apply_policy) {
+      verification.apply_policy(result);
+    }
     if (!result.verified) {
       return result.error_message.empty() ? "Template verification failed"
                                           : result.error_message;

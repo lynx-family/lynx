@@ -8,6 +8,7 @@
 #include <service_api/services/security/security_service.h>
 
 #include <algorithm>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -46,6 +47,10 @@ struct TemplateVerification {
   bool enabled{false};
   service::security_service::LynxTasmType type{
       service::security_service::LynxTasmType::kTemplate};
+  // Applied synchronously before decoding; neither policy nor service owns
+  // input.
+  std::function<void(service::security_service::TasmVerificationResult&)>
+      apply_policy;
 };
 
 class LynxBinaryLazyReaderDelegate;

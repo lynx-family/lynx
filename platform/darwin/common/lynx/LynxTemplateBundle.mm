@@ -12,6 +12,19 @@
 - (std::shared_ptr<lynx::pub::LynxResourceHandle>)rawResourceHandle;
 @end
 
+@protocol LynxNativeSecurityPolicyService <NSObject>
+- (id)prepareNativeVerificationForTarget:(id<LynxSecurityTarget>)target;
+- (BOOL)isNativeVerificationEnabled:(id)policy;
+- (LynxVerificationResult*)didTASMVerifiedByNative:(id)policy
+                                            target:(id<LynxSecurityTarget>)target
+                                               url:(NSString*)url
+                                          verified:(BOOL)verified
+                                          errorMsg:(NSString*)errorMsg
+                                         errorCode:(NSInteger)errorCode
+                                            signId:(NSUInteger)signId
+                                       extraConfig:(NSString*)extraConfig;
+@end
+
 #import "LynxBytecodeResponseBlock+Converter.h"
 #import "LynxTemplateBundle+Converter.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
@@ -142,6 +155,48 @@
         auto snapshot = std::move(data.value());
         lynx::tasm::TemplateVerification verification;
         verification.enabled = true;
+        using lynx::service::security_service::LynxSecurityService;
+        auto* nativeService = lynx::service::get_service<LynxSecurityService>();
+        if (nativeService != nullptr) {
+          auto securityService = LynxService(LynxServiceSecurityProtocol);
+          if ([securityService respondsToSelector:@selector(prepareNativeVerificationForTarget:)] &&
+              [securityService respondsToSelector:@selector(isNativeVerificationEnabled:)] &&
+              [securityService
+                  respondsToSelector:@selector
+                  (didTASMVerifiedByNative:
+                                    target:url:verified:errorMsg:errorCode:signId:extraConfig:)]) {
+            id<LynxNativeSecurityPolicyService> adapter = (id)securityService;
+            id policy = [adapter prepareNativeVerificationForTarget:self];
+            verification.enabled = policy == nil || [adapter isNativeVerificationEnabled:policy];
+            if (policy != nil) {
+              NSString* url = _url;
+              verification.apply_policy = [adapter, policy, self, url](auto& result) {
+                auto text = [](const std::string& value) {
+                  return [[NSString alloc] initWithBytes:value.data()
+                                                  length:value.size()
+                                                encoding:NSUTF8StringEncoding];
+                };
+                LynxVerificationResult* decision =
+                    [adapter didTASMVerifiedByNative:policy
+                                              target:self
+                                                 url:url
+                                            verified:result.verified
+                                            errorMsg:text(result.error_message)
+                                           errorCode:result.error_code
+                                              signId:result.sign_id
+                                         extraConfig:text(result.extra_config)];
+                result.verified = decision != nil && decision.verified;
+                if (decision.errorMsg != nil) {
+                  NSData* message = [decision.errorMsg dataUsingEncoding:NSUTF8StringEncoding];
+                  result.error_message =
+                      message.length
+                          ? std::string(static_cast<const char*>(message.bytes), message.length)
+                          : "";
+                }
+              };
+            }
+          }
+        }
         if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
           _devtool_pool = [[LynxDevToolPool alloc] initWithURL:_url debuggable:option.debuggable];
         }
