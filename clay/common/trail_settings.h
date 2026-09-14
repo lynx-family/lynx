@@ -30,9 +30,6 @@ LYNX_SETTING_KEY(CLAY_DISABLE_IMAGE_MEM_CACHE, bool,
                  "clay_disable_image_mem_cache", false);
 LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
                  "clay_ios_use_tt_video_engine", false);
-// Reuse eligible single-line AtMost layouts with TTText.
-LYNX_SETTING_KEY(CLAY_ENABLE_TEXT_AT_MOST_LAYOUT_REUSE, bool,
-                 "clay_enable_text_at_most_layout_reuse", false);
 LYNX_SETTING_KEY(MERGE_CLAY_THREAD_POOL, bool, "merge_clay_thread_pool");
 // Experimental settings; scheduled to be removed on 2026-10-30.
 LYNX_SETTING_KEY(CLAY_FIRST_TIMEOUT_TARGET_DELAY_MS, long,

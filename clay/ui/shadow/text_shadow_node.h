@@ -106,8 +106,6 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
   void SetCacheParagraph(std::unique_ptr<txt::Paragraph> paragraph);
 
  private:
-  friend class TextRenderReuseTestPeer;
-
   std::unique_ptr<TextRender> text_render_ = nullptr;
   bool need_second_layout_ = false;
   std::vector<InlineImageShadowNode*> inline_images_;

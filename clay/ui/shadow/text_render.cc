@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "base/trace/native/trace_event.h"
-#include "clay/common/trail_settings.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/public/value.h"
@@ -41,9 +40,6 @@
 #include "clay/ui/shadow/text_shadow_node.h"
 #if defined(CLAY_ENABLE_TTTEXT)
 #include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
-#endif
-#if defined(CLAY_TEXT_LAYOUT_REUSE_TESTS)
-#include "clay/ui/testing/text_layout_reuse_test_hooks.h"
 #endif
 
 namespace clay {
@@ -312,99 +308,6 @@ void TextRender::MeasureText(const std::string& text, bool show_content,
   }
 }
 
-const char* TextRender::GetAtMostShrinkReuseRejectionReason(
-    double target_width) const {
-#if defined(CLAY_ENABLE_TTTEXT)
-  if (measure_node_ == nullptr || !measure_node_->text_style_) {
-    return "no_measure_node_or_style";
-  }
-  if (cache_paragraph_ == nullptr) {
-    return "no_paragraph";
-  }
-  if (const auto* reason = GetAtMostShrinkFeatureRejectionReason()) {
-    return reason;
-  }
-
-  // Geometry is necessary, but not sufficient: the caller's feature policy
-  // above and the conservative text policy below are part of the contract too.
-  const auto* paragraph =
-      static_cast<const txt::ParagraphTTText*>(cache_paragraph_.get());
-  if (const auto* reason =
-          paragraph->GetSingleLineGeometryRejectionReason(target_width)) {
-    return reason;
-  }
-
-  // Feature checks already established that every child is RawText. Reuse each
-  // child's cached text check without copying text or retaining a view.
-  // Keep this after geometry checks to preserve rejection-reason priority.
-  bool has_text = false;
-  for (auto* child : measure_node_->GetChildren()) {
-    auto* raw_text_node = static_cast<RawTextShadowNode*>(child);
-    has_text = has_text || !raw_text_node->GetTruncatedTextView().empty();
-    if (!raw_text_node->IsTextSupportedForLayoutReuse()) {
-      return "unsupported_text";
-    }
-  }
-  return has_text ? nullptr : "empty_text";
-#else
-  (void)target_width;
-  return "unsupported_platform_or_backend";
-#endif
-}
-
-const char* TextRender::GetAtMostShrinkFeatureRejectionReason() const {
-  // Audited scope, not a universal list of all width-dependent features.
-  // When adding width-dependent work to LayoutParagraph, HandleAutoSize or
-  // HandleInlineTruncation, review this policy and its regression tests too.
-  // Exclusions such as max_lines/nowrap intentionally remain conservative.
-
-  // Content construction and post-layout processing owned by the shadow node.
-  if (measure_node_->enable_auto_font_size_) {
-    return "auto_font_size";
-  }
-  if (measure_node_->text_indent_use_percent_) {
-    return "percent_text_indent";
-  }
-  if (measure_node_->text_indent_ != 0.0f) {
-    return "text_indent";
-  }
-  if (measure_node_->max_length_.has_value()) {
-    return "max_length";
-  }
-  if (measure_node_->IsBracketRichType()) {
-    return "bracket_rich_text";
-  }
-
-  // Style restrictions are separate from the actual geometry checks. In
-  // particular, a zero node indent does not rule out a stale style indent.
-  const auto& style = *measure_node_->text_style_;
-  if (style.white_space.value_or(WhiteSpace::kNormal) != WhiteSpace::kNormal) {
-    return "nowrap";
-  }
-  if (style.text_indent.has_value()) {
-    return "text_indent_style";
-  }
-  if (style.max_lines.has_value()) {
-    return "max_lines";
-  }
-  // A negative spacing can make a prefix wider than the entire line. Even
-  // positive spacing is counted differently for zero-advance glyphs by the
-  // width and line-break measurers. NaN is rejected by this comparison too.
-  if (style.letter_spacing.value_or(0.f) != 0.f) {
-    return "nonzero_letter_spacing";
-  }
-
-  // Pure RawText also excludes inline truncation and inline text processing.
-  // Still check actual placeholders in the geometry policy: margins/padding
-  // can create them even when every child is RawText.
-  for (auto* child : measure_node_->GetChildren()) {
-    if (child == nullptr || !child->IsRawTextShadowNode()) {
-      return "complex_children";
-    }
-  }
-  return nullptr;
-}
-
 TextAlignment TextRender::EffectAlign() {
   auto text_align =
       measure_node_->text_style_->text_align.value_or(TextAlignment::kStart);
@@ -445,32 +348,8 @@ void TextRender::Measure(const MeasureConstraint& constraint,
     // Do second layout if actual text width is less than constraints.
     // For example, given at most 200px width and actually 100px is needed,
     // use 100px to layout again. Otherwise text align will be problem.
-    bool skip_second_layout = false;
-#if (defined(OS_IOS) && defined(CLAY_ENABLE_TTTEXT)) || \
-    defined(CLAY_TEXT_LAYOUT_REUSE_TESTS)
-    const auto reuse_enabled = [] {
-#if defined(CLAY_TEXT_LAYOUT_REUSE_TESTS)
-      if (const auto enabled =
-              ScopedTextLayoutReuseTestHooks::GetEnabledOverride()) {
-        return *enabled;
-      }
-#endif
-#if defined(OS_IOS) && defined(CLAY_ENABLE_TTTEXT)
-      return setting::CLAY_ENABLE_TEXT_AT_MOST_LAYOUT_REUSE.value();
-#else
-      return false;
-#endif
-    }();
-    if (reuse_enabled) {
-      skip_second_layout = GetAtMostShrinkReuseRejectionReason(
-                               context->measured_width_) == nullptr;
-    }
-#endif
-    // Keep the cached requested width unchanged: a later width change must
-    // still trigger the normal BuildTextLayout invalidation path.
-    if (!skip_second_layout) {
-      measure_node_->SetNeedSecondLayout(true);
-    }
+    // Note: Here maybe some optimizations to avoid second layout.
+    measure_node_->SetNeedSecondLayout(true);
   }
 
   if (cache_paragraph_) {
@@ -540,9 +419,6 @@ std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
 #if defined(CLAY_ENABLE_TTTEXT) && (defined(OS_WIN) || defined(OS_MAC))
   auto* impl = static_cast<txt::ParagraphTTText*>(paragraph.get());
   impl->SetNeedTrimSpace(true);
-#endif
-#if defined(CLAY_TEXT_LAYOUT_REUSE_TESTS)
-  ScopedTextLayoutReuseTestHooks::OnLayout(this);
 #endif
   paragraph->Layout(layout_width);
 #if defined(CLAY_ENABLE_TTTEXT)
