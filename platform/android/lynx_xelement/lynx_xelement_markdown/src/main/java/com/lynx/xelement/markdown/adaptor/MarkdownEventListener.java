@@ -21,8 +21,6 @@ public class MarkdownEventListener implements IMarkdownEventListener {
   static final String EVENT_TEXT_CLICK = "textClick";
 
   private final MarkdownEventContext mHost;
-  private int mLastSelectionStart = -1;
-  private int mLastSelectionEnd = -1;
 
   public MarkdownEventListener(MarkdownEventContext host) {
     mHost = host;
@@ -57,17 +55,9 @@ public class MarkdownEventListener implements IMarkdownEventListener {
   public void onImageClicked(String url) {
     dispatchImageTap(mHost.getShadowNode(), url);
   }
-  public void onTextClicked(String id) {
-    dispatchTextClick(mHost.getShadowNode(), id);
-  }
   @Override
   public void onSelectionChanged(int startIndex, int endIndex, int handle, int state) {
-    boolean forward = mLastSelectionStart == -1
-        ? startIndex < endIndex
-        : mLastSelectionStart < startIndex || mLastSelectionEnd < endIndex;
-    mLastSelectionStart = startIndex;
-    mLastSelectionEnd = endIndex;
-    dispatchSelectionChange(mHost.getShadowNode(), startIndex, endIndex, forward);
+    dispatchSelectionChange(mHost.getShadowNode(), startIndex, endIndex, startIndex <= endIndex);
   }
   public static void dispatchSimpleEvent(final ShadowNode node, final String eventName) {
     final LynxDetailEvent event = new LynxDetailEvent(node.getSignature(), eventName);

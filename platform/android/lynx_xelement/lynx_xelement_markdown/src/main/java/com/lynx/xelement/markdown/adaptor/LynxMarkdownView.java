@@ -21,12 +21,6 @@ public class LynxMarkdownView extends AndroidView {
   private int mMeasuredHeight;
   private int mContentLeftOffset;
   private int mContentTopOffset;
-  private Runnable mExposureUpdater;
-  private boolean mExposureUpdatePending;
-
-  public void setExposureUpdater(Runnable updater) {
-    mExposureUpdater = updater;
-  }
 
   public LynxMarkdownView(Context context) {
     super(context);
@@ -57,7 +51,6 @@ public class LynxMarkdownView extends AndroidView {
       addView(mMarkdownView);
       setDrawableCallbackOnLayoutThread(mMarkdownView);
     }
-    mExposureUpdatePending = true;
     mMeasuredWidth = bundle.mMeasuredWidth;
     mMeasuredHeight = bundle.mMeasuredHeight;
     layoutMarkdownView();
@@ -70,7 +63,6 @@ public class LynxMarkdownView extends AndroidView {
     }
     mContentLeftOffset = left;
     mContentTopOffset = top;
-    mExposureUpdatePending = true;
     layoutMarkdownView();
   }
 
@@ -102,16 +94,11 @@ public class LynxMarkdownView extends AndroidView {
     }
     if (mMarkdownView != null) {
       mMarkdownView.onRendererFrame(time);
-      if (mExposureUpdatePending && mExposureUpdater != null) {
-        mExposureUpdatePending = false;
-        mExposureUpdater.run();
-      }
     }
     Choreographer.getInstance().postFrameCallback(mFrameCallback);
   }
 
   public void destroy() {
-    mExposureUpdater = null;
     if (mFrameCallback != null) {
       Choreographer.getInstance().removeFrameCallback(mFrameCallback);
     }

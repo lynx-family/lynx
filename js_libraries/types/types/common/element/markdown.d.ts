@@ -45,13 +45,6 @@ export interface MarkdownImageTapEvent {
   url: string;
 }
 
-export interface MarkdownTextClickEvent {
-  /**
-   * ID of the clicked text attachment.
-   */
-  id: string;
-}
-
 export interface MarkdownParseEndEvent {
   /**
    * The id of content that parsed.
@@ -315,11 +308,6 @@ export interface MarkdownProps extends StandardProps {
    * @ClayWindows 4.0
    */
   bindimageTap?: (e: BaseEvent<'bindimageTap', MarkdownImageTapEvent>) => void;
-
-  /**
-   * Callback when a text attachment is clicked.
-   */
-  bindtextClick?: (e: BaseEvent<'bindtextClick', MarkdownTextClickEvent>) => void;
 
   /**
    * Callback when parse ends.
