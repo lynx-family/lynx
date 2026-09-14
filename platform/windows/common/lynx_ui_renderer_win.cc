@@ -12,7 +12,9 @@
 #include <string>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "base/include/string/string_conversion_win.h"
+#include "base/include/string/string_utils.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_view_service_embedder.h"
@@ -268,6 +270,26 @@ void LynxUIRendererWin::RegisterNativeView(const char* name,
 
 lynx::tasm::UIDelegate* LynxUIRendererWin::GetUIDelegate() {
   return ui_delegate_.get();
+}
+
+void LynxUIRendererWin::Focus(int node_id) {
+  auto* view_context =
+      static_cast<clay::ViewContext*>(engine_->GetViewContext());
+  view_context->InvokeUIMethod(
+      node_id, "focus", {},
+      [node_id](clay::LynxUIMethodResult code, clay::Value) {
+        if (code != clay::LynxUIMethodResult::kSuccess) {
+          LOGW("DOM.focus failed for nodeId: " << node_id << ", code: "
+                                               << static_cast<int>(code));
+        }
+      });
+}
+
+void LynxUIRendererWin::InsertText(const std::string& text) {
+  if (text.empty()) {
+    return;
+  }
+  flutter_view_->OnText(base::U8StringToU16(text));
 }
 
 void LynxUIRendererWin::RegisterIMEHandler(void* handler, void* opaque) {

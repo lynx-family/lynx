@@ -7,6 +7,7 @@
 
 #include <list>
 #include <memory>
+#include <string>
 
 #include "clay/lynx_adaptor/ui_delegate_clay.h"
 #include "clay/shell/platform/windows/dpi_utils.h"
@@ -37,6 +38,9 @@ class LynxUIRendererWin : public LynxUIRenderer {
 
   void EmulateMouseEvent(const char* event_name, float x, float y,
                          float delta_x, float delta_y) override;
+
+  void Focus(int node_id) override;
+  void InsertText(const std::string& text) override;
 
   void InjectBubbleEvent(const char* params) override;
 
