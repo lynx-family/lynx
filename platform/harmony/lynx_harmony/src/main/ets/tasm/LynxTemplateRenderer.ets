@@ -42,6 +42,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private sendableModuleManager: SendableLynxModuleManager;
   private readonly enableMultiAsyncThread: boolean;
   private readonly embeddedMode: EmbeddedMode;
+  private enablePendingJsTask: boolean = false;
   private hasDestroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
 
@@ -54,6 +55,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     moduleManager: LynxModuleManager,
     sendableModuleManager: SendableLynxModuleManager,
     enableMultiAsyncThread?: boolean,
+    enablePendingJsTask?: boolean,
     screenSize?: Size,
     embeddedMode: EmbeddedMode = EmbeddedMode.UNSET) {
     super();
@@ -69,6 +71,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.moduleManager = moduleManager;
     this.sendableModuleManager = sendableModuleManager;
     this.enableMultiAsyncThread = enableMultiAsyncThread ?? true;
+    this.enablePendingJsTask = enablePendingJsTask ?? false;
     this.embeddedMode = embeddedMode;
     if (screenSize) {
       LLog.i(TAG, `screen size, w: ${screenSize.width}, h: ${screenSize.height}`);
@@ -100,7 +103,15 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       convertModuleArgs(this.moduleManager),
       convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
       this.enableMultiAsyncThread, this.logContext.viewId, this.embeddedMode,
-      this.backgroundRuntimeOptions.enableNewShareGroup());
+      this.backgroundRuntimeOptions.enableNewShareGroup(),
+      this.enablePendingJsTask);
+  }
+
+  override startLynxRuntime(): void {
+    // Once LynxView starts its LynxRuntime, user expects that LynxRuntime is
+    // always running. Reload/load operations shouldn't enable PendingJsTask.
+    this.enablePendingJsTask = false;
+    super.startLynxRuntime();
   }
 
   getLogContext(): LynxLogContext {

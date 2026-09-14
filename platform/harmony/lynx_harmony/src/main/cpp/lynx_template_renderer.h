@@ -86,6 +86,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                       int height_mode);
   void OnEnterForeground();
   void OnEnterBackground();
+  void StartLynxRuntime();
   void UpdateScreenMetrics(float width, float height, float display_density);
   void SetWindowInfo(int32_t window_id, int32_t window_left_px,
                      int32_t window_top_px);
@@ -176,7 +177,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       std::unique_ptr<ModuleFactoryHarmony> main_thread_module_factory,
       LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
       bool enable_multi_async_thread, base::LynxEntityId view_id,
-      int32_t embedded_mode, bool enable_new_share_group = false);
+      int32_t embedded_mode, bool enable_new_share_group = false,
+      bool enable_pending_js_task = false);
 
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value GenerateViewId(napi_env env, napi_callback_info info);
@@ -243,6 +245,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                                            napi_callback_info info);
   static napi_value OnEnterForeground(napi_env env, napi_callback_info info);
   static napi_value OnEnterBackground(napi_env env, napi_callback_info info);
+  static napi_value StartLynxRuntime(napi_env env, napi_callback_info info);
   static napi_value SetSessionStorageItem(napi_env env,
                                           napi_callback_info info);
   static napi_value GetSessionStorageItem(napi_env env,

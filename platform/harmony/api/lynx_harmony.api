@@ -193,6 +193,7 @@ export abstract class LynxNodeController extends NodeController {
   reInitTemplateRenderer(shouldLoadTemplate: boolean): void;
   onEnterForeground(): void;
   onEnterBackground(): void;
+  startLynxRuntime(): void;
   prepareForLoadTemplate(): void;
   getCurrentWindow(): Promise<window.Window>;
   aboutToAppear(): void;
@@ -274,6 +275,7 @@ export interface LynxViewBuilder {
   colorScheme?: ColorScheme;
   enableMultiAsyncThread?: boolean;
   embeddedMode?: EmbeddedMode;
+  enablePendingJsTask?: boolean;
 }
 
 export enum MeasureMode {
@@ -331,6 +333,7 @@ export class LynxContext implements IContext {
   public updateViewport(width: number, widthMode: number, height: number, heightMode: number): void;
   public onEnterForeground(): void;
   public onEnterBackground(): void;
+  public startLynxRuntime(): void;
   public updateScreenMetrics(width: number, height: number): void;
   updateCustomData(data: Record<string, Object>): void;
   public loadTemplate(url: string, bundle: TemplateBundle, buffer: ArrayBuffer, metaData: MetaData): void;
