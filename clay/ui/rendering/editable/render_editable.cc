@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <iterator>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -204,7 +205,7 @@ void RenderEditable::UpdateSelectionForMultiLine(
     const std::vector<TextBox>& boxes, std::vector<skity::Rect>& res) {
   // TODO(haochen): RTL support
   if (text_direction_ == TextDirection::kRtl) {
-    std::transform(boxes.begin(), boxes.end(), res.begin(),
+    std::transform(boxes.begin(), boxes.end(), std::back_inserter(res),
                    [](TextBox box) -> skity::Rect { return box.rect; });
     return;
   }
