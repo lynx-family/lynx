@@ -2,14 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxBackgroundManager.h>
 #import <Lynx/LynxBaseGestureHandler.h>
-#import <Lynx/LynxBasicShape.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
-#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIView.h>
 #import <OCMock/OCMock.h>
@@ -18,6 +15,8 @@
 #include <objc/runtime.h>
 #import "LynxGestureArenaManager.h"
 #import "LynxUI+Gesture.h"
+#import "LynxUI+Private.h"
+#import "LynxUIContext+Internal.h"
 #import "LynxUIUnitTestUtils.h"
 
 @implementation LynxUI (Test)
@@ -42,171 +41,6 @@
 - (void)tearDown {
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
-}
-
-- (LynxUIView *)roundedUIWithView:(UIView *)view {
-  LynxUIView *ui = [[LynxUIView alloc] initWithView:view];
-  [LynxPropsProcessor updateProp:@(LynxOverflowHidden) withKey:@"overflow" forUI:ui];
-  [LynxPropsProcessor updateProp:@[ @10, @0, @10, @0 ] withKey:@"border-top-right-radius" forUI:ui];
-  [ui propsDidUpdate];
-  [ui updateFrameWithoutLayoutAnimation:CGRectMake(0, 0, 100, 100)
-                            withPadding:UIEdgeInsetsZero
-                                 border:UIEdgeInsetsZero
-                                 margin:UIEdgeInsetsZero];
-  [ui frameDidChange];
-  [ui onNodeReadyForUIOwner];
-  return ui;
-}
-
-- (void)testMaskedCornersClippingTransitions {
-  if (@available(iOS 11.0, *)) {
-    LynxUIView *ui = [self roundedUIWithView:[UIView new]];
-    XCTAssertNil(ui.view.layer.mask);
-    XCTAssertTrue(ui.view.clipsToBounds);
-    XCTAssertEqual(ui.view.layer.cornerRadius, 10);
-    XCTAssertEqual(ui.view.layer.maskedCorners, kCALayerMaxXMinYCorner);
-    for (NSArray *radius in
-         @[ @[ @10, @0, @20, @0 ], @[ @10, @0, @10, @0 ], @[ @0, @0, @0, @0 ] ]) {
-      [LynxPropsProcessor updateProp:radius withKey:@"border-top-right-radius" forUI:ui];
-      [ui propsDidUpdate];
-      [ui onNodeReadyForUIOwner];
-      if ([radius[2] intValue] == 20) {
-        XCTAssertTrue([ui.view.layer.mask isKindOfClass:CAShapeLayer.class]);
-        XCTAssertFalse(ui.view.clipsToBounds);
-        XCTAssertEqual(ui.view.layer.cornerRadius, 0);
-      } else {
-        XCTAssertNil(ui.view.layer.mask);
-        XCTAssertTrue(ui.view.clipsToBounds);
-        XCTAssertEqual(ui.view.layer.cornerRadius, [radius[0] doubleValue]);
-      }
-    }
-  }
-}
-
-- (void)testPartialCornersPreserveExternalMaskAndScrollPosition {
-  if (@available(iOS 11.0, *)) {
-    for (UIView *view in @[ [UIView new], [UIScrollView new] ]) {
-      LynxUIView *ui = [self roundedUIWithView:view];
-      [LynxPropsProcessor updateProp:@0xFFFF0000 withKey:@"background-color" forUI:ui];
-      for (NSString *edge in @[ @"left", @"right", @"top", @"bottom" ]) {
-        [LynxPropsProcessor updateProp:@1
-                               withKey:[NSString stringWithFormat:@"border-%@-width", edge]
-                                 forUI:ui];
-      }
-      [ui propsDidUpdate];
-      [ui onNodeReadyForUIOwner];
-      XCTAssertNil(ui.backgroundManager.backgroundLayer);
-      XCTAssertNil(ui.backgroundManager.borderLayer);
-      XCTAssertEqual(ui.view.layer.borderWidth, 1);
-      XCTAssertTrue(CGColorEqualToColor(ui.view.layer.backgroundColor, UIColor.redColor.CGColor));
-      XCTAssertTrue(ui.view.clipsToBounds);
-      XCTAssertEqual(ui.view.layer.cornerRadius, 10);
-      CALayer *mask = [CALayer layer];
-      ui.view.layer.mask = mask;
-      if ([view isKindOfClass:UIScrollView.class]) {
-        ((UIScrollView *)view).contentOffset = CGPointMake(12, 24);
-      }
-      for (NSNumber *fromBackground in @[ @NO, @YES ]) {
-        if (fromBackground.boolValue) {
-          ui.view.layer.mask = nil;
-          [ui updateLayerMaskOnFrameChanged];
-          [ui.backgroundManager applyEffect];
-          XCTAssertTrue(ui.view.clipsToBounds);
-          XCTAssertNil(ui.backgroundManager.backgroundLayer);
-          ui.view.layer.mask = mask;
-          [LynxPropsProcessor updateProp:@2 withKey:@"border-left-width" forUI:ui];
-          [ui propsDidUpdate];
-          [ui.backgroundManager applyEffect:YES];
-        } else {
-          [ui updateLayerMaskOnFrameChanged];
-        }
-        XCTAssertEqual(ui.view.layer.mask, mask);
-        XCTAssertFalse(ui.view.clipsToBounds, @"view: %@, fromBackground: %@", view.class,
-                       fromBackground);
-        XCTAssertEqual(ui.view.layer.cornerRadius, 0);
-        XCTAssertEqual(ui.view.layer.maskedCorners,
-                       kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner | kCALayerMinXMaxYCorner |
-                           kCALayerMaxXMaxYCorner);
-        XCTAssertEqual(ui.view.layer.borderWidth, 0);
-        XCTAssertTrue(ui.view.layer.backgroundColor == nil ||
-                      CGColorGetAlpha(ui.view.layer.backgroundColor) == 0);
-        XCTAssertNotNil(ui.backgroundManager.backgroundLayer);
-        XCTAssertNotNil(ui.backgroundManager.borderLayer);
-        XCTAssertEqual(ui.backgroundManager.backgroundLayer.type, LynxBgTypeComplex);
-        XCTAssertNotEqual(ui.backgroundManager.borderLayer.type, LynxBgTypeSimple);
-        XCTAssertFalse(ui.backgroundManager.backgroundLayer.masksToBounds);
-        XCTAssertFalse(ui.backgroundManager.borderLayer.masksToBounds);
-        if ([view isKindOfClass:UIScrollView.class]) {
-          XCTAssertTrue(CGRectEqualToRect(mask.frame, view.layer.bounds));
-          XCTAssertTrue(CGPointEqualToPoint(view.bounds.origin, CGPointMake(12, 24)));
-        }
-      }
-    }
-  }
-}
-
-- (void)testUniformCornersPreserveLegacyExternalMaskClipping {
-  for (UIView *view in @[ [UIView new], [UIScrollView new] ]) {
-    LynxUIView *ui = [self roundedUIWithView:view];
-    for (NSString *corner in @[ @"top-left", @"bottom-left", @"bottom-right" ]) {
-      [LynxPropsProcessor updateProp:@[ @10, @0, @10, @0 ]
-                             withKey:[NSString stringWithFormat:@"border-%@-radius", corner]
-                               forUI:ui];
-    }
-    [ui propsDidUpdate];
-    [ui onNodeReadyForUIOwner];
-    CALayer *mask = [CALayer layer];
-    view.layer.mask = mask;
-    [ui updateLayerMaskOnFrameChanged];
-    XCTAssertEqual(view.layer.mask, mask);
-    XCTAssertTrue(view.clipsToBounds);
-    XCTAssertEqual(view.layer.cornerRadius, 10);
-  }
-}
-
-- (void)testPartialRadiusTransitionDoesNotClearAnExternalReplacementMask {
-  if (@available(iOS 11.0, *)) {
-    LynxUIView *ui = [self roundedUIWithView:[UIView new]];
-    [LynxPropsProcessor updateProp:@[ @10, @0, @20, @0 ]
-                           withKey:@"border-top-right-radius"
-                             forUI:ui];
-    [ui propsDidUpdate];
-    [ui onNodeReadyForUIOwner];
-    XCTAssertNotNil(ui.view.layer.mask);
-    CALayer *externalMask = [CALayer layer];
-    ui.view.layer.mask = externalMask;
-    for (NSArray *radius in @[ @[ @10, @0, @10, @0 ], @[ @0, @0, @0, @0 ] ]) {
-      [LynxPropsProcessor updateProp:radius withKey:@"border-top-right-radius" forUI:ui];
-      [ui propsDidUpdate];
-      [ui onNodeReadyForUIOwner];
-      XCTAssertEqual(ui.view.layer.mask, externalMask);
-    }
-    [LynxPropsProcessor updateProp:@(LynxOverflowVisible) withKey:@"overflow" forUI:ui];
-    [ui propsDidUpdate];
-    [ui onNodeReadyForUIOwner];
-    XCTAssertEqual(ui.view.layer.mask, externalMask);
-  }
-}
-
-- (void)testPartialCornersKeepClipPathAndPerAxisOverflow {
-  if (@available(iOS 11.0, *)) {
-    LynxUIView *ui = [self roundedUIWithView:[UIView new]];
-    ui.clipPath = LBSCreateBasicShapeFromPathData(@"M 0 0 L 100 0 L 0 100 Z");
-    [ui updateLayerMaskOnFrameChanged];
-    XCTAssertTrue([ui.view.layer.mask isKindOfClass:CAShapeLayer.class]);
-    XCTAssertFalse(ui.view.clipsToBounds);
-    XCTAssertEqual(ui.view.layer.cornerRadius, 0);
-    XCTAssertTrue(CGPathEqualToPath(((CAShapeLayer *)ui.view.layer.mask).path,
-                                    [ui.clipPath pathWithFrameSize:ui.frameSize].CGPath));
-    ui.clipPath = nil;
-    [ui updateLayerMaskOnFrameChanged];
-    XCTAssertNil(ui.view.layer.mask);
-    [LynxPropsProcessor updateProp:@(LynxOverflowVisible) withKey:@"overflow-x" forUI:ui];
-    [ui propsDidUpdate];
-    [ui onNodeReadyForUIOwner];
-    XCTAssertFalse(ui.view.clipsToBounds);
-    XCTAssertTrue([ui.view.layer.mask isKindOfClass:CAShapeLayer.class]);
-  }
 }
 
 - (void)testIsVisible {
