@@ -2933,6 +2933,33 @@ public protocol LynxListScrollHelperView-p : <NSObject> {
   public BOOL LynxListScrollHelperView-p::adjustingContentOffsetInternally adjustingContentOffsetInternally;
 }
 
+public class LynxListScrollView :  {
+  public UIGestureRecognizerDelegate BOOL LynxListScrollView::scrollToLower scrollToLower;
+  public BOOL LynxListScrollView::verticalOrientation verticalOrientation;
+  public CGFloat LynxListScrollView::scrollEstimatedOffset scrollEstimatedOffset;
+  public id<LynxListScrollViewOwner> LynxListScrollView::ui ui;
+  public BOOL LynxListScrollView::adjustingContentOffsetInternally adjustingContentOffsetInternally;
+  public BOOL LynxListScrollView::forceCanScroll forceCanScroll;
+  public Class LynxListScrollView::blockGestureClass blockGestureClass;
+  public NSInteger LynxListScrollView::recognizedViewTag recognizedViewTag;
+  public BOOL LynxListScrollView::duringGestureScroll duringGestureScroll;
+  public BOOL LynxListScrollView::gestureEnabled gestureEnabled;
+  public BOOL LynxListScrollView::increaseFrequencyWithGesture increaseFrequencyWithGesture;
+  public UIPanGestureRecognizer* LynxListScrollView::nativeGesturePanRecognizer nativeGesturePanRecognizer;
+  public LynxGestureConsumer* LynxListScrollView::gestureConsumer gestureConsumer;
+  public void LynxListScrollView::setupNativeGestureRecognizerIfNeeded:(NSDictionary< NSNumber *, LynxGestureDetectorDarwin * > *gestureMap);
+  public void LynxListScrollView::updateContentSize();
+}
+
+public protocol LynxListScrollViewOwner-p : <LynxBaseScrollViewDelegate> {
+  public void LynxListScrollViewOwner-p::listScrollView:contentSizeChangedFrom:to:(UIScrollView *scrollView,[contentSizeChangedFrom] CGSize oldSize,[to] CGSize newSize);
+  public void LynxListScrollViewOwner-p::listScrollViewWillEndDragging:withVelocity:targetContentOffset:(UIScrollView *scrollView,[withVelocity] CGPoint velocity,[targetContentOffset] inout CGPoint *targetContentOffset);
+  public BOOL LynxListScrollViewOwner-p::listScrollViewShouldScrollToTop:(UIScrollView *scrollView);
+  public void LynxListScrollViewOwner-p::listScrollViewAutoScrollDidStop();
+  public void LynxListScrollViewOwner-p::detachedFromWindow();
+  public void LynxListScrollViewOwner-p::updateContentSize();
+}
+
 public class LynxListStickyManager : NSObject {
   public BOOL LynxListStickyManager::enabled enabled;
   public CGFloat LynxListStickyManager::offset offset;
