@@ -4,8 +4,10 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_new_image.h"
 
+#include <deviceinfo.h>
 #include <native_drawing/drawing_color_filter.h>
 
+#include <cmath>
 #include <string_view>
 #include <utility>
 
@@ -31,6 +33,14 @@ namespace tasm {
 namespace harmony {
 
 namespace {
+constexpr int32_t kImageMatrixMinApiVersion = 21;
+
+bool SupportsImageMatrix() {
+  static const bool kSupportsImageMatrix =
+      OH_GetSdkApiVersion() >= kImageMatrixMinApiVersion;
+  return kSupportsImageMatrix;
+}
+
 class SvgResourceFetcherImpl final : public SvgResourceFetcher {
  public:
   explicit SvgResourceFetcherImpl(
@@ -135,6 +145,7 @@ void UINewImage::OnOverlayDraw(OH_Drawing_Canvas* canvas,
 void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
   image_width_ = image_width;
   image_height_ = image_height;
+  UpdateCenterMatrix();
   if (context_) {
     context_->PostTaskOnUIThread([weak_self = weak_from_this()] {
       auto self = weak_self.lock();
@@ -273,7 +284,8 @@ ArkUI_ObjectFit UINewImage::ConvertMode(const std::string& mode) {
     return ARKUI_OBJECT_FIT_COVER;
   }
   if (mode == image::kModeCenter) {
-    return ARKUI_OBJECT_FIT_NONE;
+    return UsesCenterMatrix() ? ARKUI_OBJECT_FIT_NONE_MATRIX
+                              : ARKUI_OBJECT_FIT_NONE;
   }
   return ARKUI_OBJECT_FIT_FILL;
 }
@@ -335,6 +347,7 @@ void UINewImage::UpdateLayout(float left, float top, float width, float height,
     image_view_height_ = height;
     dirty_flags_ |= image::kFlagFrameSizeChanged;
   }
+  UpdateCenterMatrix();
 }
 
 UINewImage::~UINewImage() {
@@ -717,6 +730,9 @@ void UINewImage::LoadImageFromService(const std::string& url,
         ImageEffect::kDropShadow, shadow_params));
   }
   info.downsampling = downsampling_ && !auto_size_;
+  if (UsesCenterMatrix()) {
+    info.downsampling = false;
+  }
   info.mode = ConvertMode(mode_);
   info.processors = std::move(processors);
   if (autoplay_) {
@@ -784,6 +800,42 @@ void UINewImage::UpdateTintColor(const lepus::Value& value) {
 
 void UINewImage::UpdateEnableReportInfo(const lepus::Value& value) {
   enable_report_info_ = value.Bool();
+}
+
+bool UINewImage::UsesCenterMatrix() const {
+  return mode_ == image::kModeCenter && SupportsImageMatrix();
+}
+
+void UINewImage::UpdateCenterMatrix() {
+  if (!UsesCenterMatrix() || !context_ || image_width_ <= 0.f ||
+      image_height_ <= 0.f) {
+    return;
+  }
+
+  float density = context_->ScaledDensity();
+  if (!std::isfinite(density) || density <= 0.f) {
+    density = 1.f;
+  }
+  const float content_width =
+      width_ - image_padding_left_ - image_padding_right_;
+  const float content_height =
+      height_ - image_padding_top_ - image_padding_bottom_;
+  if (content_width <= 0.f || content_height <= 0.f) {
+    return;
+  }
+  const float translate_x =
+      std::round((content_width * density - image_width_ * density) * 0.5f);
+  const float translate_y =
+      std::round((content_height * density - image_height_ * density) * 0.5f);
+  ArkUI_NumberValue values[16] = {};
+  values[0].f32 = density;
+  values[5].f32 = density;
+  values[10].f32 = 1.f;
+  values[12].f32 = translate_x;
+  values[13].f32 = translate_y;
+  values[15].f32 = 1.f;
+  ArkUI_AttributeItem item{.value = values, .size = 16};
+  NodeManager::Instance().SetAttribute(Node(), NODE_IMAGE_IMAGE_MATRIX, &item);
 }
 
 void UINewImage::UpdateDropShadow(const lepus::Value& value) {
