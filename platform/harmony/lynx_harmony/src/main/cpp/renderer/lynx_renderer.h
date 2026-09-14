@@ -25,7 +25,7 @@ class LynxRenderer {
                std::weak_ptr<UIBase> host);
   ~LynxRenderer();
   int32_t Sign() const { return sign_; }
-  void UpdateDisplayList(DisplayList display_list);
+  void UpdateDisplayList(const DisplayList* display_list);
   void Draw(OH_Drawing_Canvas* canvas);
 
  private:
@@ -33,7 +33,9 @@ class LynxRenderer {
   std::weak_ptr<UIBase> host_;
   int32_t sign_{0};
   std::unique_ptr<LynxDisplayListApplier> display_list_applier_;
-  DisplayList display_list_;
+  // Owned by PlatformRendererHarmony, which detaches this renderer before
+  // destroying the display list.
+  const DisplayList* display_list_ = nullptr;
 };
 
 }  // namespace harmony

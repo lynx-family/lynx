@@ -1414,11 +1414,11 @@ void UIBase::DetachFragmentLayerRenderer() {
   Invalidate();
 }
 
-void UIBase::UpdateFragmentLayerDisplayList(DisplayList display_list) {
+void UIBase::UpdateFragmentLayerDisplayList(const DisplayList* display_list) {
   if (!renderer_) {
     return;
   }
-  renderer_->UpdateDisplayList(std::move(display_list));
+  renderer_->UpdateDisplayList(display_list);
   Invalidate();
 }
 

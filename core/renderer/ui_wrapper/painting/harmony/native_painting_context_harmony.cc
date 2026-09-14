@@ -6,11 +6,14 @@
 
 #include <utility>
 
+#include "base/include/fml/synchronization/waitable_event.h"
+#include "base/include/fml/task_runner.h"
 #include "core/renderer/ui_wrapper/layout/harmony/text_layout_harmony.h"
 #include "core/renderer/ui_wrapper/layout/harmony/text_measurer_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_platform_harmony_ref.h"
 #include "core/renderer/ui_wrapper/painting/harmony/paint_image_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/platform_renderer_harmony.h"
+#include "core/value_wrapper/value_wrapper_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
@@ -27,6 +30,8 @@ NativePaintingCtxHarmony::NativePaintingCtxHarmony(
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformHarmonyRef>(
       std::make_unique<PlatformRendererHarmonyFactory>(renderer_context_),
       renderer_context_);
+  context->SetNativePaintingContext(
+      std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_));
 }
 
 NativePaintingCtxHarmony::~NativePaintingCtxHarmony() {
@@ -86,12 +91,41 @@ std::unique_ptr<pub::Value> NativePaintingCtxHarmony::GetTextInfo(
   return nullptr;
 }
 
+void NativePaintingCtxHarmony::StopExposure(const pub::Value& options) {
+  auto lynx_context = renderer_context_->GetLynxContext();
+  auto runner = lynx_context ? lynx_context->GetUITaskRunner() : nullptr;
+  if (runner == nullptr) {
+    return;
+  }
+  auto lepus_options =
+      pub::ValueUtils::ConvertValueToLepusValue(options).ToLepusValue();
+  runner->PostTask([ref = platform_ref_, options = std::move(lepus_options)]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref)
+        ->StopExposure(options);
+  });
+}
+
+void NativePaintingCtxHarmony::ResumeExposure() {
+  auto lynx_context = renderer_context_->GetLynxContext();
+  auto runner = lynx_context ? lynx_context->GetUITaskRunner() : nullptr;
+  if (runner == nullptr) {
+    return;
+  }
+  runner->PostTask([ref = platform_ref_]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref)
+        ->ResumeExposure();
+  });
+}
+
 std::vector<float> NativePaintingCtxHarmony::getBoundingClientOrigin(int id) {
   return {};
 }
 
 std::vector<float> NativePaintingCtxHarmony::getWindowSize(int id) {
-  return {};
+  float size[2] = {0.f, 0.f};
+  std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(platform_ref_)
+      ->GetScreenSize(size);
+  return {size[0], size[1]};
 }
 
 std::vector<float> NativePaintingCtxHarmony::GetRectToWindow(int id) {
@@ -99,7 +133,30 @@ std::vector<float> NativePaintingCtxHarmony::GetRectToWindow(int id) {
 }
 
 std::vector<float> NativePaintingCtxHarmony::GetRectToLynxView(int64_t id) {
-  return {};
+  auto lynx_context = renderer_context_->GetLynxContext();
+  auto runner = lynx_context ? lynx_context->GetUITaskRunner() : nullptr;
+  if (runner == nullptr) {
+    return {};
+  }
+  auto ref = std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(
+      platform_ref_);
+  if (runner->RunsTasksOnCurrentThread()) {
+    return ref->GetRectToLynxView(static_cast<int32_t>(id));
+  }
+
+  struct RectQueryResult {
+    fml::AutoResetWaitableEvent event;
+    std::vector<float> value;
+  };
+  auto result = std::make_shared<RectQueryResult>();
+  runner->PostTask([ref, id, result]() {
+    result->value = ref->GetRectToLynxView(static_cast<int32_t>(id));
+    result->event.Signal();
+  });
+  if (result->event.WaitWithTimeout(fml::TimeDelta::FromSeconds(1))) {
+    return {};
+  }
+  return std::move(result->value);
 }
 
 std::vector<float> NativePaintingCtxHarmony::ScrollBy(int64_t id, float width,
@@ -109,11 +166,51 @@ std::vector<float> NativePaintingCtxHarmony::ScrollBy(int64_t id, float width,
 
 void NativePaintingCtxHarmony::Invoke(
     int64_t id, const std::string& method, const pub::Value& params,
-    const std::function<void(int32_t, const pub::Value&)>& callback) {}
+    const std::function<void(int32_t, const pub::Value&)>& callback) {
+  auto context = renderer_context_->GetLynxContext();
+  if (!context) {
+    return;
+  }
+  auto runner = context->GetUITaskRunner();
+  if (!runner) {
+    return;
+  }
+  auto lepus_params =
+      pub::ValueUtils::ConvertValueToLepusValue(params).ToLepusValue();
+  base::MoveOnlyClosure<void, int32_t, const pub::Value&> cb =
+      [callback](int32_t code, const pub::Value& data) {
+        callback(code, data);
+      };
+  // A UI method may not trigger a pipeline, so post directly to the UI thread.
+  runner->PostTask([ref = platform_ref_, id, method,
+                    params = std::move(lepus_params),
+                    cb = std::move(cb)]() mutable {
+    auto harmony_ref =
+        std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref);
+    if (harmony_ref) {
+      harmony_ref->InvokeUIMethod(id, method, params, std::move(cb));
+    }
+  });
+}
 
 void NativePaintingCtxHarmony::EnqueueInvoke(
     int64_t id, const std::string& method, const pub::Value& params,
-    const std::function<void(int32_t, const pub::Value&)>& callback) {}
+    const std::function<void(int32_t, const pub::Value&)>& callback) {
+  auto lepus_params =
+      pub::ValueUtils::ConvertValueToLepusValue(params).ToLepusValue();
+  base::MoveOnlyClosure<void, int32_t, const pub::Value&> cb =
+      [callback](int32_t code, const pub::Value& data) {
+        callback(code, data);
+      };
+  Enqueue([ref = platform_ref_, id, method, params = std::move(lepus_params),
+           cb = std::move(cb)]() mutable {
+    auto harmony_ref =
+        std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref);
+    if (harmony_ref) {
+      harmony_ref->InvokeUIMethod(id, method, params, std::move(cb));
+    }
+  });
+}
 
 int32_t NativePaintingCtxHarmony::GetTagInfo(const std::string& tag_name) {
   auto* ui_owner = renderer_context_->GetUIOwner();
@@ -177,6 +274,26 @@ void NativePaintingCtxHarmony::DestroyTextBundle(int id) {
   });
 }
 
+void NativePaintingCtxHarmony::EnqueueReconstructEventTargetTreeRecursively() {
+  if (queue_ == nullptr) {
+    return;
+  }
+  auto ref = std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(
+      platform_ref_);
+  if (ref->HasScheduledEventTargetTreeUpdate()) {
+    return;
+  }
+  bool expected = false;
+  if (!event_target_tree_update_enqueued_->compare_exchange_strong(expected,
+                                                                   true)) {
+    return;
+  }
+  Enqueue([enqueued = event_target_tree_update_enqueued_, ref]() {
+    ref->ScheduleEnsureEventTargetTree(kRootId);
+    enqueued->store(false);
+  });
+}
+
 fml::RefPtr<PaintImage> NativePaintingCtxHarmony::CreateImage(
     int id, base::String src, const ImagePaintInfo& paint_info, float width,
     float height, int32_t event_mask, bool disable_default_resize) {
@@ -192,7 +309,12 @@ fml::RefPtr<PaintImage> NativePaintingCtxHarmony::CreateImage(
 }
 
 void NativePaintingCtxHarmony::UpdatePlatformEventBundle(
-    int id, PlatformEventBundle bundle) {}
+    int id, PlatformEventBundle bundle) {
+  Enqueue([ref = platform_ref_, id, bundle = std::move(bundle)]() mutable {
+    std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref)
+        ->UpdatePlatformEventBundle(id, std::move(bundle));
+  });
+}
 
 void NativePaintingCtxHarmony::Enqueue(shell::UIOperation operation) {
   if (queue_ != nullptr) {
