@@ -33,6 +33,9 @@ class LynxViewEventSimulationProxy final
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count) override;
+  void EmulateMouse(const std::string& event_type, int x, int y,
+                    const std::string& button, float delta_x, float delta_y,
+                    int modifiers, int click_count) override;
   void Focus(int node_id) override;
   void InsertText(const std::string& text) override;
 

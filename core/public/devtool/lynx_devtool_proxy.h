@@ -49,6 +49,9 @@ class LynxDevToolProxy {
   virtual void EmulateTouch(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,
                             float delta_y, int modifiers, int click_count) = 0;
+  virtual void EmulateMouse(const std::string& event_type, int x, int y,
+                            const std::string& button, float delta_x,
+                            float delta_y, int modifiers, int click_count) {}
   virtual void Focus(int node_id) {}
   virtual void InsertText(const std::string& text) {}
   virtual void DispatchMessageEvent(const Json::Value& message) = 0;

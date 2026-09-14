@@ -69,6 +69,24 @@ class InputAgentTestMessageSender : public MessageSender {
   std::vector<std::pair<std::string, Json::Value>> messages_;
 };
 
+class InputAgentPlatformFacadeMock
+    : public lynx::testing::DevToolPlatformFacadeMock {
+ public:
+  void EmulateMouse(std::shared_ptr<MouseEvent> input) override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mouse_events_.push_back(*input);
+  }
+
+  std::vector<MouseEvent> MouseEvents() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return mouse_events_;
+  }
+
+ private:
+  mutable std::mutex mutex_;
+  std::vector<MouseEvent> mouse_events_;
+};
+
 class InspectorInputAgentTest : public ::testing::Test {
  public:
   InspectorInputAgentTest() = default;
@@ -82,8 +100,7 @@ class InspectorInputAgentTest : public ::testing::Test {
   void SetUp() override {
     devtool_mediator_ = std::make_shared<LynxDevToolMediator>();
     ui_executor_ = std::make_shared<InspectorUIExecutor>(devtool_mediator_);
-    platform_facade_ =
-        std::make_shared<lynx::testing::DevToolPlatformFacadeMock>();
+    platform_facade_ = std::make_shared<InputAgentPlatformFacadeMock>();
     devtool_mediator_->ui_task_runner_ = GetUIThread().GetTaskRunner();
     devtool_mediator_->ui_executor_ = ui_executor_;
     SetDevToolPlatformFacade(platform_facade_);
@@ -130,7 +147,7 @@ class InspectorInputAgentTest : public ::testing::Test {
   std::shared_ptr<InspectorInputAgent> agent_;
   std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
   std::shared_ptr<InspectorUIExecutor> ui_executor_;
-  std::shared_ptr<lynx::testing::DevToolPlatformFacadeMock> platform_facade_;
+  std::shared_ptr<InputAgentPlatformFacadeMock> platform_facade_;
   std::shared_ptr<InputAgentTestMessageSender> message_sender_;
 };
 
@@ -146,6 +163,51 @@ TEST_F(InspectorInputAgentTest, InsertTextReturnsSuccess) {
   const Json::Value response = LastResponse();
   EXPECT_EQ(response["id"].asInt64(), 7);
   EXPECT_TRUE(response["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, DispatchMouseEventForwardsPointerInput) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 35;
+  message["method"] = "Input.dispatchMouseEvent";
+  message["params"]["type"] = "mouseMoved";
+  message["params"]["x"] = 195;
+  message["params"]["y"] = 756;
+  message["params"]["buttons"] = 1;
+  message["params"]["modifiers"] = 8;
+
+  agent_->CallMethod(message_sender_, message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto events = platform_facade_->MouseEvents();
+  ASSERT_EQ(events.size(), 1u);
+  EXPECT_EQ(events[0].type_, "mouseMoved");
+  EXPECT_EQ(events[0].x_, 195);
+  EXPECT_EQ(events[0].y_, 756);
+  EXPECT_EQ(events[0].button_, "left");
+  EXPECT_EQ(events[0].modifiers_, 8);
+  EXPECT_EQ(LastResponse()["id"].asInt64(), 35);
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, DispatchMouseWheelUsesDispatchDirection) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 36;
+  message["method"] = "Input.dispatchMouseEvent";
+  message["params"]["type"] = "mouseWheel";
+  message["params"]["x"] = 10;
+  message["params"]["y"] = 20;
+  message["params"]["deltaX"] = 1.5;
+  message["params"]["deltaY"] = -2.5;
+
+  agent_->CallMethod(message_sender_, message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto events = platform_facade_->MouseEvents();
+  ASSERT_EQ(events.size(), 1u);
+  EXPECT_EQ(events[0].button_, "none");
+  EXPECT_FLOAT_EQ(events[0].delta_x_, 1.5f);
+  EXPECT_FLOAT_EQ(events[0].delta_y_, -2.5f);
+  EXPECT_EQ(LastResponse()["id"].asInt64(), 36);
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureUsesDefaultTouchSource) {
@@ -241,8 +303,7 @@ TEST_F(InspectorInputAgentTest,
   agent_->CallMethod(message_sender_, BuildTapMessage(33, 10, 20));
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
 
-  platform_facade_ =
-      std::make_shared<lynx::testing::DevToolPlatformFacadeMock>();
+  platform_facade_ = std::make_shared<InputAgentPlatformFacadeMock>();
   SetDevToolPlatformFacade(platform_facade_);
   agent_->CallMethod(message_sender_, BuildTapMessage(34, 30, 40));
 
