@@ -20,14 +20,15 @@ namespace lynx {
 namespace shell {
 
 struct ExternalResourceInfo {
-  std::vector<uint8_t> data;
-  int32_t err_code;
+  // Successful responses own a non-null snapshot, which may be empty.
+  std::shared_ptr<const std::vector<uint8_t>> data;
+  int32_t err_code{-1};
   std::string err_msg;
 
   ExternalResourceInfo() = default;
 
-  ExternalResourceInfo(std::vector<uint8_t> data, int32_t err_code,
-                       std::string err_msg)
+  ExternalResourceInfo(std::shared_ptr<const std::vector<uint8_t>> data,
+                       int32_t err_code, std::string err_msg)
       : data(std::move(data)),
         err_code(err_code),
         err_msg(std::move(err_msg)) {}

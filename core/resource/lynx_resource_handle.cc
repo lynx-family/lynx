@@ -47,16 +47,22 @@ LynxResourceHandle::DataResult ReadFile(const std::string& file_path) {
     return base::unexpected<std::string>("Resource file has an invalid size");
   }
 
-  std::vector<uint8_t> bytes(static_cast<size_t>(end));
+  const auto size = static_cast<size_t>(end);
+  std::vector<uint8_t> bytes;
+  bytes.reserve(size);
   input.seekg(0, std::ios::beg);
-  if (!bytes.empty()) {
-    input.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
+  uint8_t buffer[64 * 1024];
+  while (bytes.size() < size) {
+    const auto remaining = size - bytes.size();
+    const auto count = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+    input.read(reinterpret_cast<char*>(buffer), count);
     if (!input) {
       LOGE(
           "[ResourceHandle] Materialize failure_stage=file_read, "
           "failure_reason=read_failed");
       return base::unexpected<std::string>("Failed to read resource file");
     }
+    bytes.insert(bytes.end(), buffer, buffer + count);
   }
   return std::make_shared<const std::vector<uint8_t>>(std::move(bytes));
 }
