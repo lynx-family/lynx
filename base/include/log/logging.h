@@ -187,13 +187,6 @@ class LogMessageVoidify {
 #define LOGE(msg)
 #endif
 
-#if LYNX_MIN_LOG_LEVEL <= LYNX_LOG_LEVEL_ERROR
-#define LOGR(msg) \
-  { LAZY_STREAM(LOG_STREAM_ERROR, LOG_IS_ON(ERROR)) << msg; }
-#else
-#define LOGR(msg)
-#endif
-
 #if LYNX_MIN_LOG_LEVEL <= LYNX_LOG_LEVEL_FATAL
 #define LOGF(msg) \
   { LAZY_STREAM(LOG_STREAM(FATAL), LOG_IS_ON(FATAL)) << msg; }

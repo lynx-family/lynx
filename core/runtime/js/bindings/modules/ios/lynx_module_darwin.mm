@@ -816,14 +816,14 @@ LynxCallbackBlock LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock(
 
   return ^(id response) {
     if (wrapperWasCalled) {
-      LOGR("NativeModule: LynxModule, callback id: " << callback_id
+      LOGE("NativeModule: LynxModule, callback id: " << callback_id
                                                      << " is called more than once.");
       return;
     }
     wrapperWasCalled = YES;
     auto lock_delegate = delegate.lock();
     if (!lock_delegate) {
-      LOGR("NativeModule: LynxModuleCallback has been destroyed. id:" << callback_id);
+      LOGE("NativeModule: LynxModuleCallback has been destroyed. id:" << callback_id);
       return;
     }
 

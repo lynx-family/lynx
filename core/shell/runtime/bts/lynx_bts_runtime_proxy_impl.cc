@@ -170,7 +170,7 @@ void LynxBTSRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
     auto* js_runtime = runtime->GetJSRuntimeWeak().Lock();
     if (js_runtime == nullptr) {
-      LOGR(
+      LOGE(
           "try CallJSApiCallbackWithValue before js context is ready "
           "callback_id:"
           << callback_id << &runtime);
@@ -178,7 +178,7 @@ void LynxBTSRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
     }
     auto params = getter();
     if (params == nullptr) {
-      LOGR(
+      LOGE(
           "try CallJSApiCallbackWithValue params is nullptr."
           "callback_id:"
           << callback_id << &runtime);

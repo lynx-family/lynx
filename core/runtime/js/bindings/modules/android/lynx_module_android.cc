@@ -400,7 +400,7 @@ void LynxModuleAndroid::InvokeCallback(
        << " to JSThread");
   auto lock_delegate = delegate_.lock();
   if (!lock_delegate) {
-    LOGR("NativeModule: LynxModuleCallback Has Been Destroyed. id:"
+    LOGE("NativeModule: LynxModuleCallback Has Been Destroyed. id:"
          << callback->CallbackId());
     return;
   }
