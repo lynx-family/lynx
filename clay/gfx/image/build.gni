@@ -13,6 +13,7 @@ gfx_image_sources = [
   "graphics_image.h",
   "image.cc",
   "image.h",
+  "image_animation_listener.h",
   "image_data.h",
   "image_data_cache.cc",
   "image_data_cache.h",

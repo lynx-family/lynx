@@ -152,6 +152,9 @@ void RenderImage::SetImage(std::unique_ptr<BaseImageInstance> image_instance) {
   if (image_resource_ && placeholder_resource_) {
     placeholder_resource_.reset();
   }
+  if (image_resource_) {
+    image_resource_->SetAnimationListener(this);
+  }
 }
 
 void RenderImage::SetPlaceholderImage(
@@ -167,6 +170,9 @@ void RenderImage::SetPlaceholderImage(
   }
   MarkNeedsPaint();
   AdjustSizeIfNeeded();
+  if (placeholder_resource_) {
+    placeholder_resource_->SetAnimationListener(this);
+  }
 }
 #endif  // ENABLE_SKITY
 

@@ -12,11 +12,12 @@ AnimatedImagePlayer::AnimatedImagePlayer(
     std::unique_ptr<PlatformImageAnimation> animation,
     fml::RefPtr<fml::TaskRunner> task_runner,
     std::function<void()> frame_changed_callback,
-    std::function<bool()> visible_callback)
+    std::function<bool()> visible_callback, ImageAnimationListener* listener)
     : animation_(std::move(animation)),
       frame_timer_(std::make_unique<fml::OneshotTimer>(task_runner)),
       frame_changed_callback_(std::move(frame_changed_callback)),
-      visible_callback_(std::move(visible_callback)) {}
+      visible_callback_(std::move(visible_callback)),
+      listener_(listener) {}
 
 AnimatedImagePlayer::~AnimatedImagePlayer() {
   frame_timer_->Stop();
@@ -51,7 +52,13 @@ void AnimatedImagePlayer::StartAnimation() {
   animation_->StopAnimation();
   animation_->StartAnimation();
   is_playing_ = true;
-  NotifyFrameChanged();
+  auto weak = weak_factory_.GetWeakPtr();
+  if (listener_) {
+    listener_->OnStartPlay();
+  }
+  if (weak) {
+    NotifyFrameChanged();
+  }
 }
 
 void AnimatedImagePlayer::StopAnimation() {
@@ -73,12 +80,18 @@ void AnimatedImagePlayer::PauseAnimation() {
 }
 
 void AnimatedImagePlayer::ResumeAnimation() {
-  if (!animation_) {
+  if (!animation_ || is_playing_) {
     return;
   }
   animation_->ResumeAnimation();
   is_playing_ = true;
-  NotifyFrameChanged();
+  auto weak = weak_factory_.GetWeakPtr();
+  if (listener_) {
+    listener_->OnStartPlay();
+  }
+  if (weak) {
+    NotifyFrameChanged();
+  }
 }
 
 void AnimatedImagePlayer::EnsureAnimationScheduled() {
@@ -88,11 +101,15 @@ void AnimatedImagePlayer::EnsureAnimationScheduled() {
 }
 
 void AnimatedImagePlayer::NotifyFrameChanged() {
-  if (!animation_ || !is_playing_) {
+  if (!animation_) {
     return;
   }
+  auto weak = weak_factory_.GetWeakPtr();
   if (frame_changed_callback_) {
     frame_changed_callback_();
+  }
+  if (!weak || !is_playing_) {
+    return;
   }
   if (visible_callback_ && !visible_callback_()) {
     frame_timer_->Stop();
@@ -118,10 +135,28 @@ void AnimatedImagePlayer::StartNextFrameTimer() {
     if (!animation_ || !is_playing_) {
       return;
     }
-    if (animation_->DrawFrame()) {
-      NotifyFrameChanged();
-    } else {
+    auto result = animation_->DrawFrame();
+    if (result == PlatformImageAnimation::FrameResult::kNoFrame) {
       is_playing_ = false;
+      return;
+    }
+    const bool final_loop =
+        result == PlatformImageAnimation::FrameResult::kFinalLoopComplete;
+    if (final_loop) {
+      is_playing_ = false;
+    }
+    auto weak = weak_factory_.GetWeakPtr();
+    NotifyFrameChanged();
+    if (!weak) {
+      return;
+    }
+    if (listener_ &&
+        (final_loop ||
+         result == PlatformImageAnimation::FrameResult::kLoopComplete)) {
+      listener_->OnCurrentLoopComplete();
+    }
+    if (weak && listener_ && final_loop) {
+      listener_->OnFinalLoopComplete();
     }
   });
 }

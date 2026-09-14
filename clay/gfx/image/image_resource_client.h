@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "clay/gfx/image/image_animation_listener.h"
 #include "clay/shell/common/one_shot_callback.h"
 #include "clay/ui/rendering/decode_utils.h"
 
@@ -14,7 +15,7 @@ namespace clay {
 
 class ImageResource;
 
-class ImageResourceClient {
+class ImageResourceClient : public ImageAnimationListener {
  public:
   virtual bool WillRenderImage() = 0;
   virtual void RequestRenderImage(ImageResource* image_resource,
@@ -24,9 +25,9 @@ class ImageResourceClient {
 
   virtual void RegisterUploadTask(OneShotCallback<>&& task, int image_id) {}
 
-  virtual void OnStartPlay() {}
-  virtual void OnCurrentLoopComplete() {}
-  virtual void OnFinalLoopComplete() {}
+  void OnStartPlay() override {}
+  void OnCurrentLoopComplete() override {}
+  void OnFinalLoopComplete() override {}
 
   virtual DecodePriority GetDecodePriority() {
     return DecodePriority::kImmediate;
