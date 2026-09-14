@@ -23,8 +23,18 @@ InlineTruncationShadowNode::InlineTruncationShadowNode(ShadowNodeOwner* owner,
 
 void InlineTruncationShadowNode::TextLayout(LayoutContext* context) {
   if (need_layout_) {
-    BaseTextShadowNode::TextLayout(context);
+    LayoutTruncation(context);
   }
+}
+
+void InlineTruncationShadowNode::LayoutTruncation(LayoutContext* context) {
+  auto* text_context = static_cast<LayoutContextText*>(context);
+  start_glyph_ = text_context->TextSizeIncludingPlaceholders();
+  // Keep the ellipsis in the surrounding text style, before applying the
+  // custom marker's own color, font, or inline children.
+  text_context->AddText(ellipsis_);
+  BaseTextShadowNode::TextLayout(context);
+  end_glyph_ = text_context->TextSizeIncludingPlaceholders();
 }
 
 void InlineTruncationShadowNode::UpdateTruncatedSize(float width,
@@ -36,10 +46,11 @@ void InlineTruncationShadowNode::UpdateTruncatedSize(float width,
 FloatSize InlineTruncationShadowNode::CalculateTruncatedSize() {
   TRACE_EVENT("clay",
               "InlineTruncationShadowNode::CalculateTruncatedStringWidth");
-  auto builder = std::make_unique<TextParagraphBuilder>(true, text_style_);
+  auto builder = std::make_unique<TextParagraphBuilder>(
+      true, Parent() ? Parent()->text_style_ : text_style_);
   LayoutContextText context;
   context.SetBuilder(builder.get());
-  ProcessChildLayout(&context);
+  LayoutTruncation(&context);
   auto paragraph = Build(std::move(builder));
   paragraph->Layout(std::numeric_limits<float>::infinity());
   return {static_cast<float>(paragraph->GetMaxIntrinsicWidth()),
