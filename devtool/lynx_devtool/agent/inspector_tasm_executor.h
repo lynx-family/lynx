@@ -33,6 +33,10 @@ class Element;
 class LayoutNode;
 enum CSSPropertyID : int32_t;
 }  // namespace tasm
+
+namespace animation {
+class Animation;
+}  // namespace animation
 }  // namespace lynx
 
 namespace lynx {
@@ -93,9 +97,36 @@ class InspectorTasmExecutor
   void OnCSSMediaQueryResultChanged();
 
  public:
+  // Animation domain (CDP Animation). Observer-driven lifecycle callbacks and
+  // CDP request handlers; all run on the TASM thread (the animations' thread).
+  void OnAnimationCreated(lynx::animation::Animation* animation);
+  void OnAnimationStarted(lynx::animation::Animation* animation);
+  void OnAnimationUpdated(lynx::animation::Animation* animation);
+  void OnAnimationCanceled(lynx::animation::Animation* animation);
+
+  void AnimationEnable(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const Json::Value& message);
+  void AnimationDisable(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const Json::Value& message);
+  void AnimationGetCurrentTime(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const Json::Value& message);
+  void AnimationSeekAnimations(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const Json::Value& message);
+  void AnimationSetPaused(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const Json::Value& message);
+  void AnimationReleaseAnimations(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const Json::Value& message);
+
+ public:
   void SendWhiteBoardEvent(const Json::Value& msg);
-  // The following two functions are used only for resetting enabled state after
-  // reloading.
+  // These functions preserve domain state when reload replaces the TASM
+  // executor while the CDP session remains attached.
   bool IsWhiteBoardEnabled();
   void SetWhiteBoardEnabled(bool enable);
   bool IsGlobalPropsEnabled() const;
@@ -103,6 +134,8 @@ class InspectorTasmExecutor
   uint64_t GetLastGlobalPropsTimestamp() const;
   void SetLastGlobalPropsTimestamp(uint64_t timestamp);
   void SetDOMState(bool enable, const Json::Value& message);
+  bool IsAnimationEnabled() const { return animation_enabled_; }
+  void SetAnimationEnabled(bool enable) { animation_enabled_ = enable; }
 
  public:
   // dom related
@@ -230,6 +263,15 @@ class InspectorTasmExecutor
  private:
   void SendLayoutTreeWithCallback(std::function<void()> callback);
 
+  // Builds the CDP Animation JSON object for |animation| (id, name, play state,
+  // timing, source AnimationEffect with keyframesRule, backendNodeId, type).
+  Json::Value BuildAnimationSnapshot(lynx::animation::Animation* animation);
+  // Posts a CDP Animation event (e.g. "Animation.animationStarted") to the
+  // DevTool thread. No-op when the Animation domain is disabled.
+  void SendAnimationEvent(const std::string& method, const Json::Value& params);
+  // Drops every registered animation (used on navigation / teardown).
+  void ClearAnimationRegistry();
+
   bool dom_use_compression_;
   int dom_compression_threshold_;
   bool dom_enabled_{false};
@@ -255,6 +297,15 @@ class InspectorTasmExecutor
   std::map<std::pair<int32_t, lynx::tasm::CSSPropertyID>,
            std::optional<std::string>>
       pending_inline_style_updates_;
+
+  // Animation Registry: maps the stable Animation.id to the live Animation*.
+  // Maintained on the TASM thread for the lifetime of each animation (entries
+  // are removed on cancel/destroy, or cleared on navigation/teardown). Used to
+  // backfill the Animations panel on enable and to answer getCurrentTime. The
+  // raw pointer is safe because OnAnimationCanceled (fired synchronously from
+  // Animation::Destroy) removes the entry before the animation is freed.
+  std::unordered_map<int64_t, lynx::animation::Animation*> animation_registry_;
+  bool animation_enabled_{false};
 
   int view_id_;
   std::shared_ptr<WhiteBoardInspectorTasmDelegate>

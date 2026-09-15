@@ -14,6 +14,34 @@ externalReferences:
     displayName: V8
     cdpRoot: https://chromedevtools.github.io/devtools-protocol/1-3
 domains:
+  - name: Animation
+    origin: standard
+    scope: instance
+    methods:
+      - name: disable
+        origin: standard
+        since: '4.2'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_animation_agent.cc
+      - name: enable
+        origin: standard
+        since: '4.2'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_animation_agent.cc
+      - name: getCurrentTime
+        origin: standard
+        since: '4.2'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_animation_agent.cc
+      - name: releaseAnimations
+        origin: standard
+        since: '4.2'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_animation_agent.cc
+      - name: seekAnimations
+        origin: standard
+        since: '4.2'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_animation_agent.cc
+      - name: setPaused
+        origin: standard
+        since: '4.2'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_animation_agent.cc
   - name: CSS
     origin: standard
     scope: instance

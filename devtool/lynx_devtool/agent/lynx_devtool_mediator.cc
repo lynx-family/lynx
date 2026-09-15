@@ -16,6 +16,7 @@
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/services/replay/replay_controller.h"
 #include "devtool/lynx_devtool/agent/hierarchy_observer_impl.h"
+#include "devtool/lynx_devtool/agent/inspector_animation_observer_impl.h"
 #include "devtool/lynx_devtool/agent/inspector_common_observer_impl.h"
 #include "devtool/lynx_devtool/agent/inspector_element_observer_impl.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -52,6 +53,17 @@ void RunCallbackOnTasmThread(
 
 LynxDevToolMediator::LynxDevToolMediator() { view_id_ = GenerateViewId(); }
 
+void LynxDevToolMediator::ResetTasmExecutor(tasm::TemplateAssembler* tasm) {
+  bool animation_enabled = false;
+  if (element_executor_ != nullptr) {
+    animation_enabled = element_executor_->IsAnimationEnabled();
+  }
+
+  element_executor_ = std::make_shared<InspectorTasmExecutor>(
+      shared_from_this(), tasm, view_id_);
+  element_executor_->SetAnimationEnabled(animation_enabled);
+}
+
 void LynxDevToolMediator::Init(
     lynx::shell::LynxShell* shell,
     const std::shared_ptr<LynxDevToolNG>& lynx_devtool_ng) {
@@ -87,9 +99,7 @@ void LynxDevToolMediator::Init(
     last_global_props_timestamp =
         element_executor_->GetLastGlobalPropsTimestamp();
   }
-
-  element_executor_ = std::make_shared<InspectorTasmExecutor>(
-      shared_from_this(), tasm, view_id_);
+  ResetTasmExecutor(tasm);
   element_executor_->SetLastGlobalPropsTimestamp(last_global_props_timestamp);
   element_executor_->SetGlobalPropsEnabled(global_props_enabled);
   ui_executor_ = std::make_shared<InspectorUIExecutor>(shared_from_this());
@@ -119,6 +129,9 @@ void LynxDevToolMediator::Init(
   // shell set element observer in tasm thread;
   shell->SetInspectorElementObserver(
       std::make_shared<InspectorElementObserverImpl>(element_executor_));
+  // shell set animation observer in tasm thread (Animation CDP, read-only MVP);
+  shell->SetInspectorAnimationObserver(
+      std::make_shared<InspectorAnimationObserverImpl>(element_executor_));
   shell->SetHierarchyObserver(
       std::make_shared<lynx::devtool::HierarchyObserverImpl>(ui_executor_));
   auto runtime_observer = js_debugger_->GetInspectorRuntimeObserver();
@@ -1431,6 +1444,54 @@ void LynxDevToolMediator::LayerTreeDisable(
     const Json::Value& message) {
   RunOnTASMThread([sender, message, executor = element_executor_] {
     executor->LayerTreeDisable(sender, message);
+  });
+}
+
+void LynxDevToolMediator::AnimationEnable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->AnimationEnable(sender, message);
+  });
+}
+
+void LynxDevToolMediator::AnimationDisable(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->AnimationDisable(sender, message);
+  });
+}
+
+void LynxDevToolMediator::AnimationGetCurrentTime(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->AnimationGetCurrentTime(sender, message);
+  });
+}
+
+void LynxDevToolMediator::AnimationSeekAnimations(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->AnimationSeekAnimations(sender, message);
+  });
+}
+
+void LynxDevToolMediator::AnimationSetPaused(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->AnimationSetPaused(sender, message);
+  });
+}
+
+void LynxDevToolMediator::AnimationReleaseAnimations(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->AnimationReleaseAnimations(sender, message);
   });
 }
 
