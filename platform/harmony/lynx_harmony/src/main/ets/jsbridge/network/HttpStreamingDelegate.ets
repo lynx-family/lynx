@@ -2,22 +2,24 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { LynxContext } from '../../tasm/LynxContext';
+interface GlobalEventSender {
+  sendGlobalEvent(name: string, params: Object[]): void;
+}
 
 export class HttpStreamingDelegate {
   private streamingId: string;
-  private context: LynxContext;
+  private sender: GlobalEventSender;
   private sseBuffer: ArrayBuffer = new ArrayBuffer(0);
   private pendingBuffer: ArrayBuffer = new ArrayBuffer(0);
 
-  constructor(streamingId: string, context: LynxContext) {
+  constructor(streamingId: string, sender: Object) {
     this.streamingId = streamingId;
-    this.context = context;
+    this.sender = sender as GlobalEventSender;
   }
 
   onData(data: ArrayBuffer): void {
     const res: Record<string, Object> = {'event': 'onData', 'data': data};
-    this.context.sendGlobalEvent(this.streamingId, [res]);
+    this.sender.sendGlobalEvent(this.streamingId, [res]);
   }
 
   onDataSSE(data: ArrayBuffer): void {
@@ -74,12 +76,12 @@ export class HttpStreamingDelegate {
 
   onEnd(): void {
     const res: Record<string, Object> = {'event': 'onEnd'};
-    this.context.sendGlobalEvent(this.streamingId, [res]);
+    this.sender.sendGlobalEvent(this.streamingId, [res]);
   }
 
   onError(error: string): void {
     const res: Record<string, Object> = {'event': 'onError', 'error': error};
-    this.context.sendGlobalEvent(this.streamingId, [res]);
+    this.sender.sendGlobalEvent(this.streamingId, [res]);
   }
 
   private mergeArrayBuffer(first: ArrayBuffer, second: ArrayBuffer): ArrayBuffer {
