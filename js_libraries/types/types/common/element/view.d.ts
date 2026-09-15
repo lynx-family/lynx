@@ -4,4 +4,11 @@
 
 import { StandardProps } from '../props';
 
-export interface ViewProps extends StandardProps {}
+export interface ViewProps extends StandardProps {
+  /**
+   * Automatically update the Android view blur when its contents change.
+   * @Android 3.9
+   * @defaultValue true
+   */
+  'android-enable-auto-blur'?: boolean;
+}

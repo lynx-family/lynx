@@ -10,6 +10,57 @@ import { StandardProps } from '../props';
  */
 export interface TextProps extends StandardProps {
   /**
+   * Custom baseline shift: a px string is converted to device pixels, a percentage is relative to font size, and a unitless string is a font-size multiplier.
+   * An explicit zero string still selects custom baseline alignment.
+   * @Android 2.3
+   * @defaultValue Unset; no custom baseline alignment is applied and the stored shift is 0.
+   */
+  'custom-baseline-shift'?: string;
+  /**
+   * Availability of this inherited attribute differs across maintenance releases.
+   * Allow asynchronous text drawing. Text disables this by default.
+   * @iOS 1.4
+   * @defaultValue false
+   */
+  'async-display'?: boolean;
+  /**
+   * Backported to 2.18 on Android and iOS; availability differs across later maintenance releases.
+   * Background color of selected text, encoded as a 32-bit ARGB number.
+   * @Android 2.18
+   * @iOS 2.18
+   * @Harmony 3.7
+   */
+  'selection-background-color'?: number;
+  /**
+   * Clay Android and Clay Harmony support begins in prerelease builds; the corresponding stable releases omit this API.
+   * Backported to 2.18 on Android and iOS; availability differs across later maintenance releases.
+   * Color of the text selection handles. Use a numeric ARGB color on native mobile platforms; Clay additionally accepts color strings.
+   * @Android 2.18
+   * @iOS 2.18
+   * @Harmony 3.7
+   * @ClayAndroid 3.5
+   * @ClayIOS 4.2
+   * @ClayMacOS 4.1
+   * @ClayWindows 4.1
+   * @ClayHarmony 4.0
+   */
+  'selection-handle-color'?: number | string;
+  /**
+   * Clay Android and Clay Harmony support begins in prerelease builds; the corresponding stable releases omit this API.
+   * Backported to 2.18 on Android and iOS; availability differs across later maintenance releases.
+   * Size of the text selection handle. Android uses physical pixels; iOS and Harmony use logical units.
+   * Omitted values and zero follow each platform's native defaults.
+   * @Android 2.18
+   * @iOS 2.18
+   * @Harmony 3.7
+   * @ClayAndroid 3.5
+   * @ClayIOS 4.2
+   * @ClayMacOS 4.1
+   * @ClayWindows 4.1
+   * @ClayHarmony 4.0
+   */
+  'selection-handle-size'?: number;
+  /**
    * Maximum number of lines for text display
    * @Android 1.5
    * @iOS 1.5

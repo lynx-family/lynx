@@ -22,6 +22,20 @@ export interface ScrollCoordinatorOffset {
 
 export interface ScrollCoordinatorProps extends StandardProps {
   /**
+   * Initial support was backported; component registration differs across later release branches.
+   * Comma-separated native scroll-view names to exclude from nested-scroll discovery.
+   * @iOS 3.7
+   * @defaultValue Unset; no scroll-view names are excluded by this attribute.
+   */
+  'ios-scroll-exclude'?: string;
+  /**
+   * Initial support was backported; component registration differs across later release branches.
+   * Minimum nested scroll-view height as a fraction of the available slot height when selecting the scroll view to coordinate.
+   * @iOS 3.7
+   * @defaultValue 0.5
+   */
+  'ios-scroll-view-filter'?: number;
+  /**
    * When the user taps the status bar, the scroll view beneath the touch which is closest to the status bar will be scrolled to top. iOS feature only.
    * @iOS 3.9
    * @ClayIOS 4.0
@@ -113,7 +127,14 @@ export interface ScrollCoordinatorProps extends StandardProps {
 
 export type ScrollCoordinatorOffsetEvent = BaseEvent<'bindoffset', ScrollCoordinatorOffset>;
 
-export interface ScrollCoordinatorHeaderProps extends StandardProps {}
+export interface ScrollCoordinatorHeaderProps extends StandardProps {
+  /**
+   * Keep gestures in the header with its children instead of allowing the parent to intercept them.
+   * @Android 3.9
+   * @defaultValue false
+   */
+  'android-consume-gesture'?: boolean;
+}
 
 export interface ScrollCoordinatorSlotProps extends StandardProps {}
 

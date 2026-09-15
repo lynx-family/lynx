@@ -98,6 +98,29 @@ export interface TextAreaSelectionChangeEvent {
 
 export interface TextAreaProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'> {
   /**
+   * Shift the text baseline using a px string, percentage, or font-size multiplier.
+   * An explicit zero string still selects custom baseline alignment.
+   * @Android 3.3
+   * @defaultValue Unset; no custom baseline alignment is applied and the stored shift is 0.
+   */
+  'custom-baseline-shift'?: string;
+  /**
+   * Keep the editor focused after confirmation instead of dismissing the keyboard.
+   * The next action still performs native focus traversal.
+   * @Android 3.5
+   * @iOS 3.4
+   * @Harmony 3.4
+   * @defaultValue false
+   */
+  'confirm-enter'?: boolean;
+  /**
+   * This attribute was backported; public input and textarea registration differs across later maintenance releases.
+   * Emit input events while the input method is composing text.
+   * @iOS 3.1
+   * @defaultValue true
+   */
+  'ios-send-composing-input'?: boolean;
+  /**
    * Placeholder
    * @Android 3.4
    * @iOS 3.4

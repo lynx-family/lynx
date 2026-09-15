@@ -76,7 +76,197 @@ export interface MarkdownSelectionChangeEvent {
   direction: 'forward' | 'backward';
 }
 
+/** Styling for one border of a text attachment. */
+export interface MarkdownTextAttachmentBorder {
+  /**
+   * Border line style accepted by the Markdown parser.
+   * Attachment borders currently render solid and dashed lines.
+   * @defaultValue 'none'
+   */
+  lineType?: 'none' | 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
+  /**
+   * Border width, as a native length number or string such as '2px'.
+   * @defaultValue 0
+   */
+  width?: number | string;
+  /**
+   * Hexadecimal color or a supported linear-gradient()/radial-gradient() string.
+   * @defaultValue '#00000000' (transparent)
+   */
+  color?: string;
+  /**
+   * Length of each dash in a dashed border.
+   * @defaultValue 2.5 density-independent pixels
+   */
+  elementSize?: number | string;
+  /**
+   * Requested gap between dashes; spacing may be adjusted to fit the border.
+   * @defaultValue 1.5 density-independent pixels
+   */
+  emptySize?: number | string;
+}
+/** Background and border decoration for the rectangle covering a text range. */
+export interface MarkdownTextAttachmentStyle {
+  /**
+   * Left edge offset from the text range's left edge.
+   * @defaultValue 0
+   */
+  left?: number | string;
+  /**
+   * Top edge offset from the text range's top edge.
+   * @defaultValue 0
+   */
+  top?: number | string;
+  /**
+   * Right edge offset from the text range's left edge, not a right inset.
+   * @defaultValue '100%' (the text range's width)
+   */
+  right?: number | string;
+  /**
+   * Bottom edge offset from the text range's top edge, not a bottom inset.
+   * @defaultValue '100%' (the text range's height)
+   */
+  bottom?: number | string;
+  /**
+   * Corner radius of the background rectangle.
+   * @defaultValue 0
+   */
+  radius?: number | string;
+  /**
+   * Hexadecimal fill color or a supported linear-gradient()/radial-gradient() string.
+   * @defaultValue '#00000000' (transparent)
+   */
+  color?: string;
+  /**
+   * Left border decoration.
+   * @defaultValue {} (no border)
+   */
+  borderLeft?: MarkdownTextAttachmentBorder;
+  /**
+   * Top border decoration.
+   * @defaultValue {} (no border)
+   */
+  borderTop?: MarkdownTextAttachmentBorder;
+  /**
+   * Right border decoration.
+   * @defaultValue {} (no border)
+   */
+  borderRight?: MarkdownTextAttachmentBorder;
+  /**
+   * Bottom border decoration.
+   * @defaultValue {} (no border)
+   */
+  borderBottom?: MarkdownTextAttachmentBorder;
+}
+/** Decoration and optional click target for the text range [startIndex, endIndex). */
+export interface MarkdownTextAttachment {
+  /**
+   * Inclusive start index in the text selected by indexType.
+   * @defaultValue 0
+   */
+  startIndex: number;
+  /**
+   * Exclusive end index in the text selected by indexType.
+   * @defaultValue 0
+   */
+  endIndex: number;
+  /**
+   * 'char' indexes parsed text; 'source' indexes the original Markdown source.
+   * @defaultValue 'char'
+   */
+  indexType?: 'char' | 'source';
+  /**
+   * Whether the decoration is drawn behind or in front of the text.
+   * @defaultValue 'background'
+   */
+  layer?: 'background' | 'foreground';
+  /**
+   * Identifier returned by the textClick event when this attachment is clicked.
+   * @defaultValue ''
+   */
+  id?: string;
+  /**
+   * Whether the text range can emit a textClick event.
+   * @defaultValue false
+   */
+  clickable?: boolean;
+  /**
+   * Background and border decoration for the text range.
+   * @defaultValue {} (no decoration)
+   */
+  style?: MarkdownTextAttachmentStyle;
+}
 export interface MarkdownProps extends StandardProps {
+  /**
+   * Decorations and optional click targets attached to text ranges.
+   * Clay mobile support in 4.3 requires the Skity rendering backend.
+   * @Android 4.0
+   * @iOS 4.0
+   * @ClayAndroid 4.3
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @defaultValue []
+   */
+  'text-mark-attachments'?: MarkdownTextAttachment[];
+  /**
+   * Markdown tags whose visibility should be tracked, such as 'link'.
+   * @Android 4.0
+   * @iOS 4.0
+   * @defaultValue [] (no exposure tracking)
+   */
+  'exposure-tags'?: string[];
+  /**
+   * Maximum layout height of the markdown content, in platform logical units.
+   * @Android 4.0
+   * @iOS 4.0
+   * @defaultValue 0 (no additional height limit)
+   */
+  'markdown-max-height'?: number;
+  /**
+   * Text selection highlight color, encoded as a 32-bit ARGB number.
+   * Clay Android and iOS require the Skity rendering backend in 4.3 prereleases.
+   * Desktop versions refer to the earliest verified prerelease builds.
+   * @Android 4.0
+   * @iOS 4.0
+   * @ClayAndroid 4.3
+   * @ClayIOS 4.3
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   */
+  'selection-background-color'?: number;
+  /**
+   * Text selection handle color, encoded as a 32-bit ARGB number.
+   * Clay Android and iOS require the Skity rendering backend in 4.3 prereleases.
+   * Desktop versions refer to the earliest verified prerelease builds.
+   * @Android 4.0
+   * @iOS 4.0
+   * @ClayAndroid 4.3
+   * @ClayIOS 4.3
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   */
+  'selection-handle-color'?: number;
+  /**
+   * Text selection handle size. Android uses physical pixels; iOS uses points.
+   * Clay Android and iOS require the Skity rendering backend in 4.3 prereleases.
+   * Desktop versions refer to the earliest verified prerelease builds.
+   * @Android 4.0
+   * @iOS 4.0
+   * @ClayAndroid 4.3
+   * @ClayIOS 4.3
+   * @ClayMacOS 4.0
+   * @ClayWindows 4.0
+   */
+  'selection-handle-size'?: number;
+  /**
+   * Prefetches the next content height for typewriter height transitions.
+   * Removing this attribute resets it to false on Android and iOS.
+   * @Android 4.0
+   * @iOS 4.0
+   * @defaultValue true
+   */
+  'typewriter-height-transition-prefetch'?: boolean;
   /**
    * Markdown source content.
    * @Android 2.15
