@@ -55,15 +55,18 @@ bool HasValidStageDurations(const std::vector<AnimationStageEntries>& stages) {
 }
 
 /*
- Parse animation configuration, for example:
- (1) A single stage runs all animations concurrently.
- [{ animations: ['remove', 'move', 'add', 'change'], durations: 200 }]
- (2) Three stages, with move and change running concurrently for
- 100ms and 200ms, respectively.
- [
-   { animations: ['remove'], durations: 120 },
-   { animations: ['move', 'change'], durations: [100, 200] },
-   { animations: ['add'], durations: 200 },
+ Stages run sequentially; entries within a stage run concurrently. Times are ms.
+ Use one syntax throughout stages; mixing syntaxes falls back to defaults.
+
+ Current DSL: remove, then move/add concurrently.
+ stages: [
+   { type: 'remove', duration: 120 },
+   [{ type: 'move', duration: 100 }, { type: 'add', duration: 200 }],
+ ]
+
+ Equivalent legacy DSL (durations: a shared number or an array matched by
+ index): stages: [ { animations: ['remove'], durations: 120 }, { animations:
+ ['move', 'add'], durations: [100, 200] },
  ]
  */
 bool ParseUpdateAnimationStages(const pub::Value& value,
@@ -77,42 +80,64 @@ bool ParseUpdateAnimationStages(const pub::Value& value,
   constexpr uint8_t kChange = 8;
   uint8_t parsed_animation_types_mask = 0;
 
-  // Track parsed types across stages to prevent duplicate scheduling.
-  auto parse_animations = [&parsed_animation_types_mask](
-                              const pub::Value& animations,
-                              AnimationStageEntries& entries) {
+  // Share type validation across both syntaxes and all stages.
+  auto parse_type = [&parsed_animation_types_mask](
+                        const pub::Value& name,
+                        AnimationStageEntries& entries) {
+    if (!name.IsString()) {
+      return false;
+    }
+    ItemAnimationType type;
+    uint8_t bit = 0;
+    if (name.str() == kUpdateAnimationTypeRemove) {
+      type = ItemAnimationType::kDisappearance;
+      bit = kRemove;
+    } else if (name.str() == kUpdateAnimationTypeMove) {
+      type = ItemAnimationType::kPersistence;
+      bit = kMove;
+    } else if (name.str() == kUpdateAnimationTypeAdd) {
+      type = ItemAnimationType::kAppearance;
+      bit = kAdd;
+    } else if (name.str() == kUpdateAnimationTypeChange) {
+      type = ItemAnimationType::kChange;
+      bit = kChange;
+    } else {
+      return false;
+    }
+    if ((parsed_animation_types_mask & bit) != 0) {
+      return false;
+    }
+    parsed_animation_types_mask |= bit;
+    entries.push_back({type, 0});
+    return true;
+  };
+  auto parse_animations = [&parse_type](const pub::Value& animations,
+                                        AnimationStageEntries& entries) {
     if (!animations.IsArray() || animations.Length() < 1 ||
         animations.Length() > 4) {
       return false;
     }
     for (int j = 0; j < animations.Length(); ++j) {
       auto name = animations.GetValueAtIndex(static_cast<uint32_t>(j));
-      if (!name || !name->IsString()) {
+      if (!name || !parse_type(*name, entries)) {
         return false;
       }
-      ItemAnimationType type;
-      uint8_t bit = 0;
-      if (name->str() == kUpdateAnimationTypeRemove) {
-        type = ItemAnimationType::kDisappearance;
-        bit = kRemove;
-      } else if (name->str() == kUpdateAnimationTypeMove) {
-        type = ItemAnimationType::kPersistence;
-        bit = kMove;
-      } else if (name->str() == kUpdateAnimationTypeAdd) {
-        type = ItemAnimationType::kAppearance;
-        bit = kAdd;
-      } else if (name->str() == kUpdateAnimationTypeChange) {
-        type = ItemAnimationType::kChange;
-        bit = kChange;
-      } else {
-        return false;
-      }
-      if ((parsed_animation_types_mask & bit) != 0) {
-        return false;
-      }
-      parsed_animation_types_mask |= bit;
-      entries.push_back({type, 0});
     }
+    return true;
+  };
+  auto parse_entry = [&parse_type](const pub::Value& entry,
+                                   AnimationStageEntries& entries) {
+    if (!entry.IsMap() || entry.Contains(kUpdateAnimationStageAnimations)) {
+      return false;
+    }
+    auto type = entry.GetValueForKey(kUpdateAnimationStageType);
+    auto duration = entry.GetValueForKey(kUpdateAnimationStageDuration);
+    int32_t duration_ms = 0;
+    if (!type || !duration || !ReadStageDuration(*duration, duration_ms) ||
+        !parse_type(*type, entries)) {
+      return false;
+    }
+    entries.back().duration_ms = duration_ms;
     return true;
   };
   auto parse_durations = [](const pub::Value& durations,
@@ -143,16 +168,45 @@ bool ParseUpdateAnimationStages(const pub::Value& value,
   };
 
   std::vector<AnimationStageEntries> parsed_stages;
+  bool use_legacy_syntax = false;
   for (int i = 0; i < value.Length(); ++i) {
     auto stage = value.GetValueAtIndex(static_cast<uint32_t>(i));
-    if (!stage || !stage->IsMap()) {
+    if (!stage) {
       return false;
     }
-    auto animations = stage->GetValueForKey(kUpdateAnimationStageAnimations);
-    auto durations = stage->GetValueForKey(kUpdateAnimationStageDurations);
+    const bool is_legacy_stage =
+        stage->IsMap() && stage->Contains(kUpdateAnimationStageAnimations);
+    if (i == 0) {
+      // The first stage selects the syntax for the entire configuration.
+      use_legacy_syntax = is_legacy_stage;
+    } else if (is_legacy_stage != use_legacy_syntax) {
+      // Mixing legacy and current stage syntax is not supported.
+      return false;
+    }
     AnimationStageEntries entries;
-    if (!animations || !durations || !parse_animations(*animations, entries) ||
-        !parse_durations(*durations, entries)) {
+    if (use_legacy_syntax) {
+      // Preserve legacy precedence even when extra type/duration keys exist.
+      // Invalid legacy stages must not be reinterpreted as the new syntax.
+      auto animations = stage->GetValueForKey(kUpdateAnimationStageAnimations);
+      auto durations = stage->GetValueForKey(kUpdateAnimationStageDurations);
+      if (!animations || !durations ||
+          !parse_animations(*animations, entries) ||
+          !parse_durations(*durations, entries)) {
+        return false;
+      }
+    } else if (stage->IsArray()) {
+      // [{type: 'move', duration: 100}, {type: 'add', duration: 200}]
+      if (stage->Length() < 1 || stage->Length() > 4) {
+        return false;
+      }
+      for (int j = 0; j < stage->Length(); ++j) {
+        auto entry = stage->GetValueAtIndex(static_cast<uint32_t>(j));
+        if (!entry || !parse_entry(*entry, entries)) {
+          return false;
+        }
+      }
+    } else if (!parse_entry(*stage, entries)) {
+      // {type: 'remove', duration: 120}
       return false;
     }
     parsed_stages.push_back(std::move(entries));

@@ -421,10 +421,76 @@ TEST_F(ListContainerImplTest, ParsesValidAnimationStageConfigurations) {
   EXPECT_EQ(config.stages, duration_boundary);
 }
 
+TEST_F(ListContainerImplTest, NormalizesLegacyAndEntryAnimationStages) {
+  const auto legacy = ResolveAnimationConfig(R"({"enable":true,"stages":[
+    {"animations":["remove"],"durations":1000},
+    {"animations":["move","add"],"durations":[800,1200]}
+  ]})");
+  for (const char* json : {
+           R"({"enable":true,"stages":[
+             {"type":"remove","duration":1000},
+             [{"type":"move","duration":800},{"type":"add","duration":1200}]
+           ]})"}) {
+    SCOPED_TRACE(json);
+    const auto config = ResolveAnimationConfig(json);
+    EXPECT_EQ(config.enable, legacy.enable);
+    EXPECT_EQ(config.stages, legacy.stages);
+  }
+}
+
+TEST_F(ListContainerImplTest, ValidatesEntryAnimationDurations) {
+  const auto config = ResolveAnimationConfig(R"({"enable":true,"stages":[
+    {"type":"remove","duration":-20},
+    [{"type":"move","duration":33.9},{"type":"change","duration":80.9}],
+    {"type":"add","duration":2147483567}
+  ]})");
+  const std::vector<AnimationStageEntries> expected{
+      {{ItemAnimationType::kDisappearance, 0}},
+      {{ItemAnimationType::kPersistence, 33}, {ItemAnimationType::kChange, 80}},
+      {{ItemAnimationType::kAppearance, 2147483567}},
+  };
+  EXPECT_EQ(config.stages, expected);
+  const auto partial = ResolveAnimationConfig(R"({"stages":[
+    [{"type":"add","duration":80}]]})");
+  const std::vector<AnimationStageEntries> add_only{
+      {{ItemAnimationType::kAppearance, 80}},
+  };
+  EXPECT_EQ(partial.stages, add_only);
+}
+
 // Verify invalid structure, types, duplicates, or durations fall back without
 // partial results.
 TEST_F(ListContainerImplTest, FallsBackForInvalidAnimationStages) {
   const char* invalid_stages[] = {
+      // Mixed syntax is invalid even when all types and durations are valid.
+      R"([{"animations":["remove"],"durations":120},[{"type":"move","duration":100},{"type":"add","duration":200}]])",
+      R"([[{"type":"move","duration":100},{"type":"add","duration":200}],{"animations":["remove"],"durations":120}])",
+      R"([{"animations":["remove"],"durations":120},{"type":"add","duration":200}])",
+      R"([{"type":"remove","duration":120},{"animations":["add"],"durations":200}])",
+      R"([{"type":"add","durations":10}])",
+      R"([{"type":"add"}])",
+      R"([{"duration":10}])",
+      R"([{"type":" move","duration":10}])",
+      R"([{"type":1,"duration":10}])",
+      R"([{"type":"unknown","duration":10}])",
+      R"([{"type":"add","duration":[10]}])",
+      R"([{"type":"add","duration":"10"}])",
+      R"([{"type":"add","duration":true}])",
+      R"([{"type":"add","duration":null}])",
+      R"([{"type":"add","duration":2147483648}])",
+      R"([{"type":"remove","duration":2147483647},{"type":"add","duration":1}])",
+      R"([{"type":"remove","duration":10},[{"type":"add","duration":20},{"type":"move","duration":"bad"}]])",
+      R"([[{"type":"add","duration":10},{"type":"add","duration":20}]])",
+      R"([{"type":"add","duration":10},{"type":"add","duration":20}])",
+      R"([{"animations":["add"],"durations":10},{"type":"add","duration":20}])",
+      R"([{"type":"add","duration":10},{"animations":["add"],"durations":20}])",
+      R"([{"animations":null,"type":"add","duration":10}])",
+      R"([[{"animations":["add"],"durations":10}]])",
+      R"([[{"animations":["remove"],"durations":10,"type":"add","duration":20}]])",
+      R"([[]])",
+      R"([[null]])",
+      R"([[[{"type":"add","duration":10}]]])",
+      R"([[{}, {}, {}, {}, {}]])",
       "null",
       "{}",
       "[]",

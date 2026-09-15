@@ -381,6 +381,176 @@ export interface ListSnapEvent extends BaseEvent<'snap', ListSnapInfo> {}
 
 export interface ListLayoutCompleteEvent extends BaseEvent<'layoutcomplete', ListLayoutCompleteInfo> {}
 
+/**
+ * Animation types accepted by the staged list animation configuration.
+ * `change` is reserved; the default animator does not currently animate it.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export type ListAnimationType = 'remove' | 'move' | 'add' | 'change';
+
+/**
+ * A single animation entry. Supported since Lynx 4.4.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListAnimationEntry {
+  /**
+   * The animation type for this entry.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  type: ListAnimationType;
+  /**
+   * Duration in milliseconds. Negative values become zero; fractions are truncated.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  duration: number;
+}
+
+/**
+ * The legacy stage syntax remains supported for compatibility.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ * @deprecated Use ListAnimationStage with type/duration entries instead.
+ */
+export interface ListAnimationLegacyStage {
+  /**
+   * Animation types that run concurrently in this stage.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   * @deprecated Use the type field of each ListAnimationEntry instead.
+   */
+  animations: ListAnimationType[];
+  /**
+   * A shared duration, or one duration per animation, in milliseconds.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   * @deprecated Use the duration field of each ListAnimationEntry instead.
+   */
+  durations: number | number[];
+}
+
+/**
+ * A stage in the current syntax: a single entry or an array of concurrent entries.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export type ListAnimationStage = ListAnimationEntry | ListAnimationEntry[];
+
+/**
+ * Configuration for the new C++ list update animation implementation.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListUpdateAnimationConfig {
+  /**
+   * Whether to animate list updates.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   * @defaultValue false
+   */
+  enable?: boolean;
+  /**
+   * Stages run sequentially; entries within a stage run concurrently.
+   * All stages must use the same syntax.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   * @defaultValue
+   * ```ts
+   * [
+   *   { type: 'remove', duration: 120 },
+   *   [{ type: 'move', duration: 250 }, { type: 'change', duration: 250 }],
+   *   { type: 'add', duration: 120 },
+   * ]
+   * ```
+   */
+  stages?: ListAnimationStage[] | ListAnimationLegacyStage[];
+}
+
+/**
+ * Animation lifecycle events are grouped by transaction and animation type.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListAnimationInfo {
+  /**
+   * Identifies the list update animation transaction.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  transactionId: number;
+  /**
+   * The animation type within the transaction.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  type: ListAnimationType;
+}
+
+/**
+ * Progress details for an animation type within a transaction.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListAnimationUpdateInfo extends ListAnimationInfo {
+  /**
+   * Animation progress reported for this type.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  progress: number;
+}
+
+/**
+ * An animation type starts within a transaction.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListAnimationStartEvent extends BaseEvent<'listanimationstart', ListAnimationInfo> {}
+
+/**
+ * All participating items of an animation type finish normally.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListAnimationEndEvent extends BaseEvent<'listanimationend', ListAnimationInfo> {}
+
+/**
+ * A started, unfinished animation type is cancelled.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListAnimationCancelEvent extends BaseEvent<'listanimationcancel', ListAnimationInfo> {}
+
+/**
+ * Progress updates for an animation type within a transaction.
+ * @Android 4.4
+ * @iOS 4.4
+ * @Harmony 4.4
+ */
+export interface ListAnimationUpdateEvent extends BaseEvent<'listanimationupdate', ListAnimationUpdateInfo> {}
+
 export interface ListItemSnapAlignment {
   /**
    * Paging factor, 0.0 means align to the top, while 1.0 means align to the bottom.
@@ -686,6 +856,63 @@ export interface ListProps extends StandardProps, ScrollbarProps {
    * @defaultValue false
    */
   'harmony-scroll-edge-effect'?: boolean;
+
+  /**
+   * Selects the new C++ list update animation implementation. The selection is
+   * fixed by the first boolean value, or defaults to false before the first
+   * props update finishes. Batch rendering and parallel element flushing are
+   * not supported. Enable animations separately through the configuration.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   * @defaultValue false
+   */
+  'experimental-use-new-update-animation'?: boolean;
+
+  /**
+   * Configures the new list update animation implementation. Disabling it or
+   * changing stages cancels pending and running animations; equivalent
+   * configurations preserve them. Legacy animations/durations stages remain
+   * supported alongside type/duration entries (since Lynx 4.4).
+   * When omitted, update animations are disabled.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   * @defaultValue undefined
+   */
+  'experimental-new-update-animation'?: ListUpdateAnimationConfig;
+
+  /**
+   * Called when an animation type starts within a transaction.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  bindlistanimationstart?: EventHandler<ListAnimationStartEvent>;
+
+  /**
+   * Called when all participating items of an animation type finish normally.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  bindlistanimationend?: EventHandler<ListAnimationEndEvent>;
+
+  /**
+   * Called when a started, unfinished animation type is cancelled.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  bindlistanimationcancel?: EventHandler<ListAnimationCancelEvent>;
+
+  /**
+   * Called with progress updates grouped by transaction and animation type.
+   * @Android 4.4
+   * @iOS 4.4
+   * @Harmony 4.4
+   */
+  bindlistanimationupdate?: EventHandler<ListAnimationUpdateEvent>;
 
   /**
    * Scroll event.
