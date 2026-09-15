@@ -15,13 +15,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/include/concurrent_queue.h"
 #include "core/base/android/java_only_map.h"
-#include "core/base/thread/once_task.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/tasm/react/android/mapbuffer/compact_array_buffer_builder.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
+#include "core/renderer/ui_wrapper/painting/create_view_scheduler.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/modules/android/callback_impl.h"
@@ -257,26 +256,8 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   bool enable_vsync_aligned_flush_ = false;
   jint thread_strategy_;
   bool enable_context_free_;
-  // A thread-safe queue used to store create_view_async tasks before context is
-  // attached
-  lynx::base::ConcurrentQueue<
-      fml::RefPtr<base::OnceTask<base::android::ScopedGlobalJavaRef<jobject>>>>
-      context_free_create_node_async_task_queue_;
-  // A thread-safe queue used to store create_view_async tasks posted to
-  // thread-pool
-  lynx::base::ConcurrentQueue<
-      fml::RefPtr<base::OnceTask<base::android::ScopedGlobalJavaRef<jobject>>>>
-      scheduled_create_node_async_task_queue_;
-  // A container used to iterate scheduled create_view_async tasks from the end
-  // to the beginning
-  lynx::base::ConcurrentQueue<fml::RefPtr<base::OnceTask<
-      base::android::ScopedGlobalJavaRef<jobject>>>>::IterableContainer
-      backward_create_node_async_task_iterable_container_;
-  // An iterator used to track the create_view_async tasks from the end to the
-  // beginning
-  lynx::base::ConcurrentQueue<fml::RefPtr<
-      base::OnceTask<base::android::ScopedGlobalJavaRef<jobject>>>>::Iterator
-      backward_create_node_async_task_iterator_;
+  CreateViewScheduler<base::android::ScopedGlobalJavaRef<jobject>>
+      create_view_scheduler_;
 
   int32_t instance_id_ = 0;
 
