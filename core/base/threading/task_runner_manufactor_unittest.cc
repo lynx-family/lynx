@@ -86,8 +86,15 @@ TEST_F(TaskRunnerManufactorTest, MultiTASMThreadMode) {
       TaskRunnerManufactor(MULTI_THREADS, true, false);
   TaskRunnerManufactor multi_tasm_manufactor_2 =
       TaskRunnerManufactor(MULTI_THREADS, true, false);
+#if defined(OS_WIN)
+  ASSERT_EQ(multi_tasm_manufactor_1.GetTASMTaskRunner()->GetLoop(),
+            multi_tasm_manufactor_1.GetUITaskRunner()->GetLoop());
+  ASSERT_EQ(multi_tasm_manufactor_2.GetTASMTaskRunner()->GetLoop(),
+            multi_tasm_manufactor_1.GetUITaskRunner()->GetLoop());
+#else
   ASSERT_NE(multi_tasm_manufactor_1.GetTASMTaskRunner()->GetLoop(),
             multi_tasm_manufactor_2.GetTASMTaskRunner()->GetLoop());
+#endif
   ASSERT_EQ(multi_tasm_manufactor_1.GetLayoutTaskRunner()->GetLoop(),
             multi_tasm_manufactor_2.GetLayoutTaskRunner()->GetLoop());
 }

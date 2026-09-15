@@ -5,10 +5,12 @@
 #include "core/runtime/js/bytecode/js_cache_manager.h"
 
 #include <cstddef>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <system_error>
 
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -169,38 +171,44 @@ class JsCacheManagerTest : public ::testing::Test {
 
   void SetUp() override {
     // clean first.
-    JsCacheManager::GetQuickjsInstance().ClearCacheDir();
-    JsCacheManager::GetQuickjsInstance().cache_path_.clear();
-    JsCacheManager::GetQuickjsInstance().task_set_.clear();
-    JsCacheManager::GetV8Instance().ClearCacheDir();
-    JsCacheManager::GetV8Instance().cache_path_.clear();
-    JsCacheManager::GetV8Instance().task_set_.clear();
-    QuickjsCacheManagerForTesting::GetInstance().ClearCacheDir();
-    QuickjsCacheManagerForTesting::GetInstance().cache_path_.clear();
-    QuickjsCacheManagerForTesting::GetInstance().task_set_.clear();
-    QuickjsCacheManagerForTestingCleanCache::GetInstance().ClearCacheDir();
-    QuickjsCacheManagerForTestingCleanCache::GetInstance().cache_path_.clear();
-    QuickjsCacheManagerForTestingCleanCache::GetInstance().task_set_.clear();
-    QuickjsCacheManagerForTestingWithFailedWriteFile::GetInstance()
-        .ClearCacheDir();
-    QuickjsCacheManagerForTestingWithFailedWriteFile::GetInstance()
-        .cache_path_.clear();
-    QuickjsCacheManagerForTestingWithFailedWriteFile::GetInstance()
-        .task_set_.clear();
-    ;
-    QuickjsCacheManagerForTestingWithEmptyGetCacheDir::GetInstance()
-        .ClearCacheDir();
-    QuickjsCacheManagerForTestingWithEmptyGetCacheDir::GetInstance()
-        .cache_path_.clear();
-    QuickjsCacheManagerForTestingWithEmptyGetCacheDir::GetInstance()
-        .task_set_.clear();
+    ResetCaches();
+    s_current_builder = nullptr;
     JsCacheTracker::s_test_intercept_event_ = &SetTestInterceptEvent;
   }
 
   void TearDown() override {
     // clean on finished.
-    JsCacheManager::GetQuickjsInstance().ClearCacheDir();
-    JsCacheManager::GetV8Instance().ClearCacheDir();
+    ResetCaches();
+    JsCacheTracker::s_test_intercept_event_ = nullptr;
+  }
+
+  void ResetCaches() {
+    WaitNormalTaskFinish();
+    JsCacheManager *instances[] = {
+        &JsCacheManager::GetQuickjsInstance(),
+        &JsCacheManager::GetV8Instance(),
+        &QuickjsCacheManagerForTesting::GetInstance(),
+        &QuickjsCacheManagerForTestingCleanCache::GetInstance(),
+        &QuickjsCacheManagerForTestingWithFailedWriteFile::GetInstance(),
+        &QuickjsCacheManagerForTestingWithEmptyGetCacheDir::GetInstance(),
+    };
+    for (auto *instance : instances) {
+      const auto cache_dir = instance->GetCacheDir();
+      if (!cache_dir.empty()) {
+        std::error_code error;
+        std::filesystem::remove_all(cache_dir, error);
+        ASSERT_FALSE(error) << error.message();
+        std::filesystem::create_directories(cache_dir, error);
+        ASSERT_FALSE(error) << error.message();
+      }
+      instance->cache_path_.clear();
+      instance->task_set_.clear();
+      instance->cache_.clear();
+      instance->can_create_cache_ = true;
+      auto metadata = instance->GetLockedMetaData();
+      *metadata = MetaData(metadata->GetLynxVersion(),
+                           instance->GetBytecodeGenerateEngineVersion());
+    }
   }
 };
 
@@ -291,6 +299,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheGetCore) {
   const std::string source_url =
       "/lynx_core.js";  // Added to match usage in TestingCacheGenerator
   auto core_file_buffer = std::make_shared<StringBuffer>(core_file);
+  instance.SaveCacheToMemory(source_url, core_file_buffer);
   auto buffer =
       instance.TryGetCache(source_url, "template4.js", 0,
                            std::make_unique<TestingCacheGenerator>(
@@ -534,6 +543,7 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationCore) {
       "/lynx_core.js";  // Added to match usage in TestingCacheGenerator
   auto core_file_buffer = std::make_shared<StringBuffer>(core_file);
 
+  instance.SaveCacheToMemory(source_url, core_file_buffer);
   auto buffer =
       instance.TryGetCache(source_url, "RequestCacheGeneration.js", 0,
                            std::make_unique<TestingCacheGenerator>(
@@ -704,11 +714,6 @@ TEST_F(JsCacheManagerTest, LoadCacheFromStorageWithGetCacheDirFailure) {
 TEST_F(JsCacheManagerTest, DifferentEngineVersion) {
   class DifferentEngineVersion : public QuickjsCacheManagerForTesting {
    public:
-    static DifferentEngineVersion &GetInstance() {
-      static DifferentEngineVersion instance;
-      return instance;
-    }
-
     std::string GetBytecodeGenerateEngineVersion() override {
       return "different_version";
     }
@@ -731,7 +736,8 @@ TEST_F(JsCacheManagerTest, DifferentEngineVersion) {
   WaitNormalTaskFinish();
   EXPECT_NE(buffer, nullptr);
 
-  buffer = DifferentEngineVersion::GetInstance().TryGetCache(
+  DifferentEngineVersion different_engine_version;
+  buffer = different_engine_version.TryGetCache(
       k_source_url, k_template_url, 0,
       std::make_unique<TestingCacheGenerator>(
           k_source_url, std::make_shared<StringBuffer>(js_file), js_file));
@@ -739,13 +745,16 @@ TEST_F(JsCacheManagerTest, DifferentEngineVersion) {
   WaitNormalTaskFinish();
   EXPECT_EQ(buffer, nullptr);
   {
-    auto meta2 = DifferentEngineVersion::GetInstance().GetLockedMetaData();
+    auto meta2 = different_engine_version.GetLockedMetaData();
     EXPECT_EQ(meta2->GetBytecodeGenerateEngineVersion(), "different_version");
   }
 }
 
 // ClearCacheDir
 TEST_F(JsCacheManagerTest, ClearCacheDir2) {
+#if defined(OS_WIN)
+  GTEST_SKIP() << "Cache directory clearing is not implemented on Windows.";
+#endif
   auto &instance = QuickjsCacheManagerForTesting::GetInstance();
   auto buffer = instance.TryGetCache(
       k_source_url, k_template_url, 0,
