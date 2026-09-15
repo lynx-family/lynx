@@ -41,15 +41,9 @@ export class LynxLog {
   }
 
   static setMinimumLoggingLevel(level: LynxBaseLogLevel): void {
-    let logLevelName: Array<string> = ["DEBUG", "INFO", "WARN", "ERROR"];
-    if (LynxLog.mMinLogLevel < level) {
-      LynxLog.mMinLogLevel = level;
-      lynxbase.nativeSetMinLogLevel(level);
-      hilog.warn(DOMAIN, "lynxbase", LynxLog.format, `Reset minimum log level as ${logLevelName[LynxLog.mMinLogLevel]}`);
-    } else {
-      hilog.warn(DOMAIN, "lynxbase", LynxLog.format,
-        `Please set a log level higher than ${logLevelName[LynxLog.mMinLogLevel]}} to filter lynx logs!`);
-    }
+    LynxLog.mMinLogLevel = level;
+    lynxbase.nativeSetMinLogLevel(level);
+    hilog.warn(DOMAIN, "lynxbase", LynxLog.format, `Reset minimum log level as ${level}`);
   }
 
   static v(tag: string, message: string): void {
