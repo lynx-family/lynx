@@ -171,7 +171,8 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
     module_manager->initBindingPtr(
         module_manager,
         std::make_shared<shell::ModuleDelegateImpl>(actor, facade_actor));
-    runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
+    runtime_proxy_ =
+        std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor, true);
     module_manager->runtime_proxy = runtime_proxy_;
   };
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board = nullptr;

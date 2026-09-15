@@ -263,13 +263,18 @@ void LynxTemplateRenderer::SetUpLynxShell(
   runtime_proxy_.reset();
   if (enable_js) {
     if (runtime_wrapper) {
-      if (auto module_manager = runtime_wrapper->GetModuleManager().lock()) {
+      auto module_manager = runtime_wrapper->GetModuleManager().lock();
+      if (module_manager) {
         module_manager->SetModuleFactory(
             ui_delegate_->GetCustomModuleFactory());
       }
       runtime_wrapper->SetAttached(true);
       shell_->AttachRuntime();
-      runtime_proxy_ = runtime_wrapper->GetRuntimeProxy();
+      runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(
+          shell_->GetRuntimeActor());
+      if (module_manager) {
+        module_manager->runtime_proxy = runtime_proxy_;
+      }
     } else {
       // InitJSBridge
       auto module_manager = std::make_shared<runtime::js::LynxModuleManager>();
