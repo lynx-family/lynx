@@ -40,6 +40,12 @@ ui_shadow_sources = [
   "text_update_bundle.cc",
   "text_update_bundle.h",
   "vertical_align_style.h",
+  "x_inline_image_shadow_node.cc",
+  "x_inline_image_shadow_node.h",
+  "x_inline_truncation_shadow_node.cc",
+  "x_inline_truncation_shadow_node.h",
+  "x_text_shadow_node.cc",
+  "x_text_shadow_node.h",
 ]
 
 if (enable_skity && is_ios) {

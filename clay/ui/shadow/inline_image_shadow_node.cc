@@ -21,6 +21,11 @@ void InlineImageShadowNode::PreLayout(PreLayoutContext* context) {
   }
 }
 
+txt::PlaceholderAlignment InlineImageShadowNode::GetPlaceholderAlignment()
+    const {
+  return txt::PlaceholderAlignment::kBaseline;
+}
+
 void InlineImageShadowNode::TextLayout(LayoutContext* context) {
   if (GetEndIndex() == 0) {
     placeholder_index_ = -1;
@@ -31,7 +36,7 @@ void InlineImageShadowNode::TextLayout(LayoutContext* context) {
   builder->PushStyle(text_style_.value());
   txt::PlaceholderRun placeholder(
       Width(), Height() + MarginTop() + MarginBottom(),
-      txt::PlaceholderAlignment::kBaseline, txt::TextBaseline::kAlphabetic,
+      GetPlaceholderAlignment(), txt::TextBaseline::kAlphabetic,
       Height() + MarginTop() + MarginBottom() + baseline_offset_);
   auto* text_context = static_cast<LayoutContextText*>(context);
   start_glyph_ = text_context->TextSizeIncludingPlaceholders();
