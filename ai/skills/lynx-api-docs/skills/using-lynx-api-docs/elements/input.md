@@ -67,6 +67,7 @@ This guide covers the current native Android, iOS, and Harmony `<input>` element
 | `disabled` | `boolean` | Fully disables interaction |
 | `readonly` | `boolean` | Prevents edits without always behaving exactly like `disabled` |
 | `show-soft-input-on-focus` | `boolean` | Controls whether the system keyboard appears on focus |
+| `set-soft-input-mode` | `"unspecified" \| "nothing" \| "pan" \| "resize"` | Sets the host keyboard avoidance mode on Android and Harmony |
 | `confirm-enter` | `boolean` | Keeps the field focused after confirm instead of auto-blurring |
 | `avoid-keyboard` | `boolean` | Moves the Lynx root or view when keyboard overlap would occur |
 | `avoid-keyboard-spacing` | `string \| number` | Adds extra keyboard-avoidance spacing; prefer string units for Android-safe behavior |
@@ -97,7 +98,7 @@ This guide covers the current native Android, iOS, and Harmony `<input>` element
 | `ios-spell-check` | iOS | Toggles spell checking |
 | `ios-send-composing-input` | iOS | Controls whether composing input updates are emitted continuously |
 | `android-fullscreen-mode` | Android | Controls IME fullscreen extract mode |
-| `android-set-soft-input-mode` | Android | Requests the host window soft-input adjustment mode |
+| `android-set-soft-input-mode` | Android | Compatibility alias for `set-soft-input-mode` |
 
 ## Events
 

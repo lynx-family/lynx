@@ -646,6 +646,11 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         mView.updateInputMode(inputMode)
     }
 
+    @LynxProp(name = "set-soft-input-mode")
+    fun setCrossPlatformSoftInputMode(value: String) {
+        setSoftInputMode(value)
+    }
+
     override fun afterPropsUpdated(props: StylesDiffMap?) {
         super.afterPropsUpdated(props)
         setFont()
