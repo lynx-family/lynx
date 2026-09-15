@@ -5,6 +5,14 @@
 import { describe, it, assertType } from 'vitest';
 import {
   ListProps,
+  ListAnimationType,
+  ListAnimationEntry,
+  ListAnimationLegacyStage,
+  ListUpdateAnimationConfig,
+  ListAnimationStartEvent,
+  ListAnimationEndEvent,
+  ListAnimationCancelEvent,
+  ListAnimationUpdateEvent,
   StandardProps,
   ListEventSource,
   ListScrollEvent,
@@ -268,7 +276,171 @@ describe('ListItemProps type test', () => {
   });
 });
 
+describe('List update animation configuration', () => {
+  it('accepts uniformly new or legacy stages', () => {
+    assertType<ListProps>({
+      'experimental-use-new-update-animation': true,
+      'experimental-new-update-animation': {
+        enable: true,
+        stages: [
+          { type: 'remove', duration: 1000 },
+          [
+            { type: 'move', duration: 800 },
+            { type: 'add', duration: 1200 },
+          ],
+        ],
+      },
+    });
+    assertType<ListProps>({
+      'experimental-use-new-update-animation': true,
+      'experimental-new-update-animation': {
+        enable: true,
+        stages: [
+          { animations: ['remove'], durations: 1000 },
+          { animations: ['move', 'add'], durations: [800, 1200] },
+        ],
+      },
+    });
+    assertType<ListUpdateAnimationConfig>({});
+    assertType<ListUpdateAnimationConfig>({ enable: false });
+  });
+
+  it('rejects mixed stage syntax in either order', () => {
+    assertType<ListUpdateAnimationConfig>({
+      // @ts-expect-error
+      stages: [{ animations: ['remove'], durations: 1000 }, [{ type: 'add', duration: 1200 }]],
+    });
+    assertType<ListUpdateAnimationConfig>({
+      // @ts-expect-error
+      stages: [[{ type: 'add', duration: 1200 }], { animations: ['remove'], durations: 1000 }],
+    });
+    assertType<ListUpdateAnimationConfig>({
+      stages: [
+        { animations: ['remove'], durations: 1000 },
+        // @ts-expect-error
+        { type: 'add', duration: 1200 },
+      ],
+    });
+    assertType<ListUpdateAnimationConfig>({
+      stages: [
+        // @ts-expect-error
+        { type: 'add', duration: 1200 },
+        { animations: ['remove'], durations: 1000 },
+      ],
+    });
+  });
+
+  it('requires stages to be an array and parallel groups to contain current entries', () => {
+    assertType<ListUpdateAnimationConfig>({
+      // @ts-expect-error stages must be an array, even for a single animation
+      stages: { type: 'remove', duration: 1000 },
+    });
+    assertType<ListUpdateAnimationConfig>({
+      // @ts-expect-error legacy stages cannot be nested in parallel groups
+      stages: [[{ animations: ['remove'], durations: 1000 }]],
+    });
+    assertType<ListUpdateAnimationConfig>({
+      // @ts-expect-error parallel groups cannot be nested
+      stages: [[[{ type: 'remove', duration: 1000 }]]],
+    });
+  });
+
+  it('rejects invalid flags, names, and duration fields', () => {
+    assertType<ListProps>({
+      // @ts-expect-error
+      'experimental-use-new-update-animation': 'true',
+    });
+    assertType<ListUpdateAnimationConfig>({
+      // @ts-expect-error
+      enable: 1,
+    });
+    assertType<ListAnimationEntry>({
+      // @ts-expect-error
+      type: ' move',
+      duration: 1000,
+    });
+    assertType<ListAnimationEntry>({
+      type: 'remove',
+      // @ts-expect-error
+      durations: 1000,
+    });
+    assertType<ListAnimationEntry>({
+      type: 'remove',
+      // @ts-expect-error
+      duration: [1000],
+    });
+    assertType<ListAnimationLegacyStage>({
+      animations: ['remove'],
+      // @ts-expect-error
+      duration: 1000,
+    });
+    // @ts-expect-error
+    assertType<ListAnimationEntry>({ type: 'add' });
+  });
+});
+
 describe('List event check', () => {
+  it('infers animation event names and payloads', () => {
+    assertType<ListProps>({
+      bindlistanimationstart: (e) => {
+        assertType<ListAnimationStartEvent>(e);
+        assertType<'listanimationstart'>(e.type);
+        assertType<number>(e.detail.transactionId);
+        assertType<ListAnimationType>(e.detail.type);
+        // @ts-expect-error
+        e.detail.progress;
+      },
+      bindlistanimationend: (e) => {
+        assertType<ListAnimationEndEvent>(e);
+        assertType<'listanimationend'>(e.type);
+        assertType<number>(e.detail.transactionId);
+        assertType<ListAnimationType>(e.detail.type);
+        // @ts-expect-error progress is only present on update events
+        e.detail.progress;
+      },
+      bindlistanimationcancel: (e) => {
+        assertType<ListAnimationCancelEvent>(e);
+        assertType<'listanimationcancel'>(e.type);
+        assertType<number>(e.detail.transactionId);
+        assertType<ListAnimationType>(e.detail.type);
+        // @ts-expect-error progress is only present on update events
+        e.detail.progress;
+      },
+      bindlistanimationupdate: (e) => {
+        assertType<ListAnimationUpdateEvent>(e);
+        assertType<'listanimationupdate'>(e.type);
+        assertType<number>(e.detail.progress);
+        assertType<number>(e.detail.transactionId);
+        assertType<ListAnimationType>(e.detail.type);
+      },
+    });
+    assertType<ListProps>({
+      // @ts-expect-error
+      bindlistanimationstart: (e: ListAnimationUpdateEvent) => {},
+    });
+    // @ts-expect-error
+    assertType<ListAnimationUpdateEvent['detail']>({ transactionId: 1, type: 'move' });
+  });
+
+  it('requires valid animation event details', () => {
+    assertType<ListAnimationUpdateEvent['detail']>({ transactionId: 1, type: 'move', progress: 0.5 });
+    // @ts-expect-error transactionId is required
+    assertType<ListAnimationStartEvent['detail']>({ type: 'remove' });
+    // @ts-expect-error type is required
+    assertType<ListAnimationEndEvent['detail']>({ transactionId: 1 });
+    assertType<ListAnimationCancelEvent['detail']>({
+      transactionId: 1,
+      // @ts-expect-error unknown animation type
+      type: 'unknown',
+    });
+    assertType<ListAnimationUpdateEvent['detail']>({
+      transactionId: 1,
+      type: 'move',
+      // @ts-expect-error progress must be numeric
+      progress: '0.5',
+    });
+  });
+
   it('check bind scroll event', () => {
     assertType<ListProps>({
       bindscroll: (e: ListScrollEvent) => {},
