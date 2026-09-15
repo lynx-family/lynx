@@ -25,10 +25,13 @@ namespace lynx {
 namespace tasm {
 namespace recorder {
 
+enum class ArtifactFormat;
+
 class RecorderController {
  public:
   LYNX_EXPORT_FOR_DEVTOOL static bool Enable();
   LYNX_EXPORT_FOR_DEVTOOL static void StartRecord();
+  LYNX_EXPORT_FOR_DEVTOOL static void StartRecord(ArtifactFormat format);
   LYNX_EXPORT_FOR_DEVTOOL static void EndRecord(
       base::MoveOnlyClosure<void, std::vector<std::string>&,
                             std::vector<int64_t>&>

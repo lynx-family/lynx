@@ -29,6 +29,13 @@ void RecorderController::StartRecord() {
 #endif
 }
 
+void RecorderController::StartRecord(ArtifactFormat format) {
+#if ENABLE_TESTBENCH_RECORDER
+  lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance().StartRecord(
+      format);
+#endif
+}
+
 void RecorderController::EndRecord(
     base::MoveOnlyClosure<void, std::vector<std::string>&,
                           std::vector<int64_t>&>
