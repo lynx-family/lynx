@@ -42,7 +42,7 @@ try {
       '--input-type=commonjs',
       '--eval',
       `const assert = require('node:assert/strict');
-const plugin = require('@lynx/lynx-library-plugin');
+const plugin = require('@lynx-js/lynx-library-plugin');
 assert.equal(typeof plugin, 'function');
 assert.equal(typeof plugin.enableHarmonyLynxAutolink, 'function');
 assert.equal(plugin.default, plugin.enableHarmonyLynxAutolink);`,
@@ -55,7 +55,7 @@ assert.equal(plugin.default, plugin.enableHarmonyLynxAutolink);`,
       '--input-type=module',
       '--eval',
       `import assert from 'node:assert/strict';
-import plugin, { enableHarmonyLynxAutolink } from '@lynx/lynx-library-plugin';
+import plugin, { enableHarmonyLynxAutolink } from '@lynx-js/lynx-library-plugin';
 assert.equal(typeof plugin, 'function');
 assert.equal(plugin, enableHarmonyLynxAutolink);`,
     ],
@@ -75,7 +75,7 @@ assert.equal(plugin, enableHarmonyLynxAutolink);`,
   const typeConsumer = `import plugin, {
   enableHarmonyLynxAutolink,
   type HarmonyLynxAutolinkOptions,
-} from '@lynx/lynx-library-plugin';
+} from '@lynx-js/lynx-library-plugin';
 import * as hvigorApi from '@ohos/hvigor';
 
 const options: HarmonyLynxAutolinkOptions = {
@@ -117,7 +117,7 @@ enableHarmonyLynxAutolink({});
   const packageRoot = path.join(
     consumerRoot,
     'node_modules',
-    '@lynx',
+    '@lynx-js',
     'lynx-library-plugin'
   );
   for (const excludedDir of ['test', 'scripts', 'node_modules']) {
