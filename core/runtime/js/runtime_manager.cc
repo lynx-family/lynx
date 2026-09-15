@@ -173,6 +173,72 @@ std::shared_ptr<runtime::js::VMInstance> VMInstancePool::DoCreateVMInstance(
 
 #endif  // JS_ENGINE_TYPE
 
+// Log tag for the new "shared Isolate/VM + per-page isolated Context" scheme.
+constexpr const char* kNewShareGroupTag = "new_share_group:";
+
+// The corejs-exported globals that a page context needs. lynx_core.js is only
+// executed on the group's global context; each page context copies references
+// to these entries instead of re-running corejs. Keep this list curated to the
+// values corejs statically assigns onto `nativeGlobal`/globalThis (see
+// lynx-core index.card.ts / nativeGlobal.ts) plus the native-installed shared
+// host objects. Page-level stateful objects reached through the per-page `app`
+// object (publishEvent / callFunction / onAppReload ...) are intentionally
+// excluded: they live on the app object created by loadCard, not on globalThis.
+constexpr const char* kNewShareGroupCoreJSExports[] = {
+    // corejs functions statically installed on nativeGlobal (index.card.ts).
+    "loadCard",
+    "destroyCard",
+    "callDestroyLifetimeFun",
+    "loadDynamicComponent",
+    "__createEventEmitter",
+    "__lynxArrayBufferToBase64",
+    "__lynxBase64ToArrayBuffer",
+    "LynxSDKCore",
+    // Web-ish polyfills installed on nativeGlobal (index.card.ts).
+    "Headers",
+    "AbortController",
+    "AbortSignal",
+    "URL",
+    "URLSearchParams",
+    // Flag corejs installs on globalThis (nativeGlobal.ts); the app-service.js
+    // bundle wrapper reads it from its own realm's globalThis to decide whether
+    // to return an `init` factory.
+    "bundleSupportLoadScript",
+    // Stateless shared host objects. The page context skips creating them
+    // (Global::Init install_shared_host_objects=false) and instead references
+    // the single instances installed on the group's global context. All page
+    // runtimes share the same VM/Isolate, so referencing the same JS values
+    // across contexts is safe.
+    "SystemInfo",
+    "LynxJSBI",
+    "TextCodecHelper",
+};
+
+// Copy the curated corejs exports from the group's global context onto the page
+// context's globalThis. Both runtimes share the same VM/Isolate, so the
+// underlying JS values can be referenced across contexts.
+void CopyGlobalsFromGlobalContext(runtime::js::Runtime& global_runtime,
+                                  runtime::js::Runtime& page_runtime,
+                                  const std::string& group_id) {
+  runtime::js::Scope global_scope(global_runtime);
+  runtime::js::Object global_obj = global_runtime.global();
+  runtime::js::Scope page_scope(page_runtime);
+  runtime::js::Object page_obj = page_runtime.global();
+  size_t copied = 0;
+  for (const char* name : kNewShareGroupCoreJSExports) {
+    auto value = global_obj.getProperty(global_runtime, name);
+    if (!value || value->isUndefined() || value->isNull()) {
+      continue;
+    }
+    if (page_obj.setProperty(page_runtime, name, std::move(*value))) {
+      ++copied;
+    }
+  }
+  LOGI(kNewShareGroupTag << " copy globals group:" << group_id
+                         << " copied:" << copied << "/"
+                         << std::size(kNewShareGroupCoreJSExports));
+}
+
 }  // namespace
 
 RuntimeManager* RuntimeManager::Instance() {
@@ -227,6 +293,60 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
     runtime_manager_delegate_->BeforeRuntimeCreate(
         force_use_lightweight_js_engine);
+  }
+  // New "shared Isolate/VM + per-page isolated Context" scheme. Only reachable
+  // when the LynxGroup opts in AND this is a shared (non "-1") group. Falls
+  // through to the legacy path otherwise so existing behavior is untouched.
+  if (create_params.enable_new_share_group && !IsSingleJSContext(group_id)) {
+    // 1. Ensure the group's global context exists (corejs loaded once).
+    auto* global_wrapper = EnsureNewShareGroupGlobalContext(
+        group_id, force_use_lightweight_js_engine, page_options,
+        js_pre_sources_getter, executor);
+
+    // 2. Create an isolated page runtime + Context on the SAME shared VM.
+    auto page_runtime =
+        CreateRuntime(force_use_lightweight_js_engine, page_options, true,
+                      std::move(create_params));
+    page_runtime->setCreatedType(
+        runtime::js::JSRuntimeCreatedType::none_vm_none_context);
+    auto page_context = page_runtime->createContext(global_wrapper->GetVM());
+
+    EnsureConsolePostMan(page_context, executor,
+                         force_use_lightweight_js_engine, page_options);
+    page_runtime->InitRuntime(page_context);
+
+    // 3. Each page context has its own wrapper/global so page-level state (tt,
+    // lynx, console) is created per page and released with the page. The page
+    // context keeps its wrapper alive through SetReleaseObserver, and the page
+    // runtime owns the context, so everything is freed when the page runtime is
+    // destroyed. The wrapper notifies us on release so the group's global
+    // context can be torn down after the last page.
+    auto page_wrapper = std::make_shared<NewShareGroupPageContextWrapper>(
+        page_context, group_id, &new_share_group_page_release_observer_);
+    page_context->SetReleaseObserver(page_wrapper);
+    global_wrapper->IncLivePageCount();
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> page_post_man =
+        page_context->GetPostMan();
+    page_wrapper->initGlobal(page_runtime, page_post_man, page_options);
+    if (ensure_console) {
+      page_wrapper->EnsureConsole(page_post_man, page_options);
+    }
+
+    // 4. Copy the curated corejs exports from the global context instead of
+    // re-running corejs on the page context.
+    auto* global_rt = global_wrapper->GetGlobalRuntime();
+    if (global_rt != nullptr) {
+      CopyGlobalsFromGlobalContext(*global_rt, *page_runtime, group_id);
+    }
+
+    // Each page has its own runtime, so the devtool delegate needs to be
+    // notified per page just like the legacy shared-context reuse path.
+    if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
+      runtime_manager_delegate_->OnRuntimeReady(executor, *page_runtime,
+                                                group_id);
+    }
+
+    return page_runtime;
   }
   bool is_single_context = IsSingleJSContext(group_id);
   base::UnsafeOwningPtr<runtime::js::Runtime> js_runtime;
@@ -399,6 +519,83 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   return js_runtime;
 }
 
+NewShareGroupGlobalContextWrapper*
+RuntimeManager::EnsureNewShareGroupGlobalContext(
+    const std::string& group_id, bool force_use_lightweight_js_engine,
+    const tasm::PageOptions& page_options,
+    base::MoveOnlyClosure<std::vector<
+        std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
+        js_pre_sources_getter,
+    runtime::js::JSExecutor& executor) {
+  auto it = new_share_group_map_.find(group_id);
+  if (it != new_share_group_map_.end()) {
+    return it->second.get();
+  }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+              RUNTIME_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
+
+  // Create the group's global runtime + shared VM/context. Ownership of this
+  // runtime is handed to the global-context wrapper (via initGlobal) so it
+  // outlives every page in the group. It carries only the group id as external
+  // params; napi is intentionally NOT installed on the global context (per-page
+  // contexts own their own napi hooks).
+  auto unique_global =
+      MakeRuntime(force_use_lightweight_js_engine, false, page_options);
+  base::UnsafeOwningPtr<runtime::js::Runtime> global_runtime(
+      unique_global.release());
+  runtime::js::JSRuntimeExternalParams global_params{};
+  global_params.group_id = group_id;
+  global_runtime->SetExternalParams(std::move(global_params));
+  auto global_context = CreateJSIContext(*global_runtime, group_id);
+  global_runtime->InitRuntime(global_context);
+  runtime::js::Runtime* global_rt_ptr = global_runtime.get();
+  // Capture a weak handle before initGlobal moves the owning pointer into the
+  // wrapper; used to drive prepareJSEnv below.
+  base::UnsafeWeakPtr<runtime::js::Runtime> global_runtime_weak =
+      global_runtime.GetWeakPtr();
+
+  auto wrapper =
+      std::make_shared<NewShareGroupGlobalContextWrapper>(global_context);
+  // Register the engine type with the devtool delegate so the matching release
+  // callback fires when the group's global context is torn down, mirroring the
+  // legacy shared-context first-create path.
+  if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
+    runtime_manager_delegate_->AfterSharedContextCreate(group_id,
+                                                        global_rt_ptr->type());
+  }
+#if ENABLE_TRACE_PERFETTO
+  auto runtime_profiler = MakeRuntimeProfiler(
+      global_context, force_use_lightweight_js_engine, page_options);
+  wrapper->SetRuntimeProfiler(runtime_profiler);
+#endif
+  EnsureConsolePostMan(global_context, executor,
+                       force_use_lightweight_js_engine, page_options);
+  std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man = nullptr;
+  if (!IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
+    post_man = global_context->GetPostMan();
+  }
+
+  // initGlobal moves ownership of `global_runtime` into the wrapper and
+  // installs the full set of shared host objects so page contexts can copy
+  // them.
+  wrapper->initGlobal(global_runtime, post_man, page_options);
+  wrapper->EnsureConsole(post_man, page_options);
+
+  // should call before loadPreJS.
+  if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
+    runtime_manager_delegate_->OnRuntimeReady(executor, *global_rt_ptr,
+                                              group_id);
+  }
+
+  runtime::js::GCPauseSuppressionMode mode(global_rt_ptr);
+  auto js_pre_sources = js_pre_sources_getter();
+  wrapper->prepareJSEnv(global_runtime_weak, js_pre_sources);
+
+  auto emplaced = new_share_group_map_.insert_or_assign(group_id, wrapper);
+  return emplaced.first->second.get();
+}
+
 base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
     bool force_use_lightweight_js_engine, const tasm::PageOptions& page_options,
     bool use_shared_context,
@@ -451,6 +648,26 @@ void RuntimeManager::OnRelease(const std::string& group_id) {
     LOGI("RuntimeManager::OnRelease : not find shared jscontext in group:"
          << group_id << " It may has been released in global runtime.");
   }
+}
+
+void RuntimeManager::OnNewShareGroupPageRelease(const std::string& group_id) {
+  // Dispatched only from NewShareGroupPageContextWrapper, so this never
+  // collides with a legacy shared context that happens to reuse the same group
+  // id. Decrement the group's live page count; when the last page is gone drop
+  // the group's global-context wrapper, which owns the global runtime and thus
+  // tears down the shared VM + global context.
+  auto ng_it = new_share_group_map_.find(group_id);
+  if (ng_it == new_share_group_map_.end()) {
+    return;
+  }
+  if (ng_it->second->DecLivePageCount() > 0) {
+    return;
+  }
+  if (runtime_manager_delegate_) {
+    runtime_manager_delegate_->OnRelease(group_id);
+  }
+  LOGI(kNewShareGroupTag << " release global context group:" << group_id);
+  new_share_group_map_.erase(ng_it);
 }
 
 JSContextWrapper* RuntimeManager::GetContextWrapper(
