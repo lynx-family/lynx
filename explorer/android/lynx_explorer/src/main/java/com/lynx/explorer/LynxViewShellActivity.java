@@ -36,6 +36,7 @@ import com.lynx.explorer.routing.RequestedRuntime;
 import com.lynx.explorer.routing.RouteCoordinator;
 import com.lynx.explorer.routing.RouteResult;
 import com.lynx.explorer.routing.RouteSource;
+import com.lynx.explorer.sparkling.ExplorerAppearance;
 import com.lynx.explorer.sparkling.ExplorerRuntimePreferences;
 import com.lynx.explorer.utils.QueryMapUtils;
 import com.lynx.tasm.LynxBooleanOption;
@@ -261,6 +262,8 @@ public class LynxViewShellActivity extends AppCompatActivity {
         LynxSettingManager.getInstance().getSettingInfo().strategy == 0
             ? ThreadStrategyForRendering.ALL_ON_UI
             : ThreadStrategyForRendering.MOST_ON_TASM);
+    builder.setColorScheme(
+        ExplorerAppearance.resolveColorScheme(this, ExplorerAppearance.read(this)));
     // Parse the URL parameters and specify the LynxView width, height, and density according to the
     // parameters.
     QueryMapUtils queryMap = new QueryMapUtils();

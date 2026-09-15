@@ -3,15 +3,39 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "ExplorerModule.h"
+#import <Lynx/LynxContext.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxView.h>
+#import <UIKit/UIKit.h>
 #import "../LynxExplorerSwiftInterop.h"
 #import "LynxSettingManager.h"
 
-@implementation ExplorerModule
+@implementation ExplorerModule {
+  __weak LynxContext *_context;
+}
+
+static LynxColorScheme ExplorerColorScheme(NSString *preference, UITraitCollection *traits) {
+  NSString *normalized = preference.lowercaseString;
+  if ([normalized isEqualToString:@"dark"]) {
+    return LynxColorSchemeDark;
+  }
+  if ([normalized isEqualToString:@"light"]) {
+    return LynxColorSchemeLight;
+  }
+  return traits.userInterfaceStyle == UIUserInterfaceStyleDark ? LynxColorSchemeDark
+                                                               : LynxColorSchemeLight;
+}
 
 - (instancetype)init {
   if (self = [super init]) {
     LLogInfo(@"ExplorerModule alloc");
+  }
+  return self;
+}
+
+- (instancetype)initWithLynxContext:(LynxContext *)context {
+  if (self = [self init]) {
+    _context = context;
   }
   return self;
 }
@@ -125,6 +149,10 @@
   [defaults synchronize];
   if ([theme isEqualToString:@"preferredTheme"]) {
     dispatch_async(dispatch_get_main_queue(), ^{
+      LynxView *view = self->_context.hasLynxViewDestroyed ? nil : [self->_context getLynxView];
+      if (view) {
+        [view updateColorScheme:ExplorerColorScheme(value, view.traitCollection)];
+      }
       [[NSNotificationCenter defaultCenter]
           postNotificationName:@"ExplorerThemePreferenceDidChange"
                         object:nil

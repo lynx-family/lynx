@@ -394,6 +394,11 @@ struct ExplorerSparklingAssetResolver {
       builder.config?.registerModule(ExplorerLynxTestModule.self)
       builder.screenSize = frame.size
       builder.fontScale = 1
+      let preference = UserDefaults.standard.string(forKey: "preferredTheme")?.lowercased()
+      builder.colorScheme =
+        preference == "dark"
+        || (preference != "light" && UIScreen.main.traitCollection.userInterfaceStyle == .dark)
+        ? .dark : .light
       builder.debuggable = true
       builder.enableGenericResourceFetcher = .true
       builder.genericResourceFetcher = genericResourceFetcher

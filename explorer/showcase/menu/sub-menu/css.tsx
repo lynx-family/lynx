@@ -92,6 +92,11 @@ const ITEMS: ItemProps[] = [
       'file://lynx?local://showcase/css/mask_image_circle_gradient.lynx.bundle',
   },
   {
+    title: 'Media Query',
+    description: 'An example shows how to use CSS media queries',
+    url: 'file://lynx?local://showcase/css/media_query.lynx.bundle',
+  },
+  {
     title: 'Relative layout',
     description: 'An example shows how to use CSS relative layout module',
     url: 'file://lynx?local://showcase/css/relative_layout.lynx.bundle',

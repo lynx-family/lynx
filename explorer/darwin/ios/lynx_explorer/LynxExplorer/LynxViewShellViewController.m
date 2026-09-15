@@ -55,6 +55,8 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, assign) CGSize currentViewportSize;
 @property(nonatomic, assign) UIEdgeInsets currentSafeAreaInsets;
 
+- (LynxColorScheme)resolvedColorScheme;
+
 @end
 
 @implementation LynxViewShellViewController
@@ -274,11 +276,24 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   if (self.lynxView == nil) {
     return;
   }
+  [self.lynxView updateColorScheme:[self resolvedColorScheme]];
   CGSize screenSize = self.currentScreenMetricsSize;
   if (CGSizeEqualToSize(screenSize, CGSizeZero)) {
     screenSize = UIScreen.mainScreen.bounds.size;
   }
   [self.lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+  [super traitCollectionDidChange:previousTraitCollection];
+  if (@available(iOS 13.0, *)) {
+    NSString *preference = [[self getStorageItem:@"preferredTheme"] lowercaseString];
+    if ([previousTraitCollection
+            hasDifferentColorAppearanceComparedToTraitCollection:self.traitCollection] &&
+        (preference.length == 0 || [preference isEqualToString:@"auto"])) {
+      [self explorerThemePreferenceDidChange:nil];
+    }
+  }
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -387,6 +402,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
         [[LynxConfig alloc] initWithProvider:[LynxEnv sharedInstance].config.templateProvider];
     builder.screenSize = screenSize;
     builder.fontScale = 1.0;
+    builder.colorScheme = [self resolvedColorScheme];
     builder.fetcher = nil;
     builder.lynxBackgroundRuntime = self.backgroundRuntime;
     // for homepage only
@@ -706,6 +722,18 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
 - (NSString *)getStorageItem:(NSString *)key {
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
   return [defaults objectForKey:key];
+}
+
+- (LynxColorScheme)resolvedColorScheme {
+  NSString *preference = [[self getStorageItem:@"preferredTheme"] lowercaseString];
+  if ([preference isEqualToString:@"dark"]) {
+    return LynxColorSchemeDark;
+  }
+  if ([preference isEqualToString:@"light"]) {
+    return LynxColorSchemeLight;
+  }
+  return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? LynxColorSchemeDark
+                                                                             : LynxColorSchemeLight;
 }
 
 @end

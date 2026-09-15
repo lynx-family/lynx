@@ -159,7 +159,7 @@ importers:
   explorer/showcase:
     specifiers:
       '@lynx-example/animation': 0.3.0
-      '@lynx-example/css': 0.3.0
+      '@lynx-example/css': 0.7.0
       '@lynx-example/fetch': 0.3.0
       '@lynx-example/image': 0.3.0
       '@lynx-example/layout': 0.3.0
@@ -171,7 +171,7 @@ importers:
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
     dependencies:
       '@lynx-example/animation': 0.3.0
-      '@lynx-example/css': 0.3.0
+      '@lynx-example/css': 0.7.0
       '@lynx-example/fetch': 0.3.0
       '@lynx-example/image': 0.3.0
       '@lynx-example/layout': 0.3.0
@@ -1696,13 +1696,14 @@ packages:
       - '@types/react'
     dev: false
 
-  /@lynx-example/css/0.3.0:
-    resolution: {integrity: sha512-bdFZ5/3nGUrVgqz0z8bnyc9sp0jhG7Gj2R/gszLPEkNmG26m9WLCXQGK959a1y91TVDI+l7uNgeVfvKht9ik2g==}
+  /@lynx-example/css/0.7.0:
+    resolution: {integrity: sha512-06i9vaaSvk+WJUzmvjeSxDX8dPf18j9EJhZondl0NZB0Jj55rUIRoQKsfOf+Pg35fiPzCVwneA+Z46Jys7cIFA==}
     dependencies:
-      '@lynx-js/react': 0.105.0
+      '@lynx-js/react': 0.126.1
     transitivePeerDependencies:
       - '@lynx-js/types'
       - '@types/react'
+      - preact-render-to-string
     dev: false
 
   /@lynx-example/fetch/0.3.0:
@@ -1808,6 +1809,15 @@ packages:
     dependencies:
       css-tree: 3.1.0
     dev: true
+
+  /@lynx-js/internal-preact/11.0.0-rc.1-20260903085447-f95471a:
+    resolution: {integrity: sha512-RsU+km8Ulg+HVEJpx1/lq/38GUB+KtJKypB80gbumAtswd+og0RpVppy8bZTBVZY7jSjxx2GHYPTjT61+HDPaw==}
+    peerDependencies:
+      preact-render-to-string: '>=6.7.0'
+    peerDependenciesMeta:
+      preact-render-to-string:
+        optional: true
+    dev: false
 
   /@lynx-js/qrcode-rsbuild-plugin/0.3.3:
     resolution: {integrity: sha512-0Kkr2TWqIicgUrc3VJcCEzhuuaYLdFWdcIXJIZ1shChsuH9nRJCFqG29bfGlqLK5P3KV5WImXvF/+sC93KEPMw==}
@@ -1975,6 +1985,20 @@ packages:
         optional: true
     dependencies:
       preact: /@hongzhiyuan/preact/10.24.0-00213bad
+    dev: false
+
+  /@lynx-js/react/0.126.1:
+    resolution: {integrity: sha512-vb4FAznktLlL5Gqrw0RvGVONdm9sW4AmiqEhY695XD/Apv7j6Pc27oO4m3qxspjEg/PWpWNiwDpvKAgWTzm0Gw==}
+    peerDependencies:
+      '@lynx-js/types': '*'
+      '@types/react': ^18 || ^19.0.0
+    peerDependenciesMeta:
+      '@lynx-js/types':
+        optional: true
+    dependencies:
+      preact: /@lynx-js/internal-preact/11.0.0-rc.1-20260903085447-f95471a
+    transitivePeerDependencies:
+      - preact-render-to-string
     dev: false
 
   /@lynx-js/rspeedy/0.9.3:

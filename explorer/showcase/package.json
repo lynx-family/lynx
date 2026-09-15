@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@lynx-example/animation": "0.3.0",
-    "@lynx-example/css": "0.3.0",
+    "@lynx-example/css": "0.7.0",
     "@lynx-example/fetch": "0.3.0",
     "@lynx-example/image": "0.3.0",
     "@lynx-example/layout": "0.3.0",

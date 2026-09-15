@@ -5,6 +5,7 @@
 import {
   Behavior,
   BehaviorRegistryMap,
+  ColorScheme,
   LynxContext,
   LynxExtraTiming,
   LynxGenericResourceFetcher,
@@ -27,6 +28,10 @@ import { UIClickView } from '../component/UIClickView';
 import { ClickShadowNode } from '../component/UIClickShadowNode';
 import { LynxExplorerInput } from '../component/LynxExplorerInput';
 import { ConfigurationConstant } from '@kit.AbilityKit';
+import {
+  getThemePreference,
+  resolveColorScheme
+} from '../common/ExplorerAppearance';
 import { UISVG } from '@lynx/xelement_svg';
 import { UIWebView } from '@lynx/xelement_webview';
 import { UIVideo } from '@lynx/xelement_video';
@@ -56,6 +61,7 @@ struct Index {
   private lynxContext?: LynxContext;
 
   onColorModeChange(): void {
+    this.lynxContext?.updateColorScheme(this.getColorScheme());
     if (this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT) {
       this.lynxContext?.updateMetaData(new MetaData(
         undefined,
@@ -102,6 +108,10 @@ struct Index {
     }
   }
 
+  private getColorScheme(): ColorScheme {
+    return resolveColorScheme(getThemePreference(), this.currentColorMode);
+  }
+
   build() {
     Column() {
       LynxView({
@@ -115,6 +125,7 @@ struct Index {
         behaviors: this.behaviors,
         onCreate: (context: LynxContext) => {
           this.lynxContext = context;
+          context.updateColorScheme(this.getColorScheme());
           context.sendGlobalEvent('viewAppear', [true]);
           context.setExtraTiming(this.extraTiming);
         }

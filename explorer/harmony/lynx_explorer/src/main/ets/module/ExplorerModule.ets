@@ -4,8 +4,14 @@
 
 import { LLog, LynxModule } from '@lynx/lynx';
 import { LynxRecorderEnv } from '@lynx/lynx_devtool';
+import { ConfigurationConstant } from '@kit.AbilityKit';
 import router from '@ohos.router';
 import Constants from '../common/constants';
+import {
+  resolveColorScheme,
+  setThemePreference,
+  THEME_PREFERENCE_KEY
+} from '../common/ExplorerAppearance';
 
 const TAG = 'ExplorerModule'
 
@@ -35,5 +41,15 @@ export class ExplorerModule extends LynxModule {
     }).catch((error: Error) => {
       LLog.d(TAG, 'openSchema error, ' + JSON.stringify(error));
     });
+  }
+
+  public saveThemePreferences(key: string, value: string): void {
+    if (key !== THEME_PREFERENCE_KEY) {
+      return;
+    }
+    setThemePreference(value);
+    const colorMode = AppStorage.get<ConfigurationConstant.ColorMode>('currentColorMode') ??
+      ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT;
+    this.context.updateColorScheme(resolveColorScheme(value, colorMode));
   }
 }
