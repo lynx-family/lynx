@@ -168,6 +168,7 @@ typedef enum {
   kClayPointerDeviceKindTouch,
   kClayPointerDeviceKindStylus,
   kClayPointerDeviceKindTrackpad,
+  kClayPointerDeviceKindInvertedStylus,
 } ClayPointerDeviceKind;
 
 /// Flags for the `buttons` field of `ClayPointerEvent` when `device_kind`

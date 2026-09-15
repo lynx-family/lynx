@@ -83,7 +83,27 @@ class MockEventDelegate : public clay::EventDelegate {
   }
   void OnMouseEvent(const std::string& event_name, int view_id, int button,
                     int buttons, float scale, float x, float y, float page_x,
-                    float page_y) override {}
+                    float page_y) override {
+#if defined(OS_WIN) || defined(OS_MAC)
+    if (uitest_->mouse_event_callback_) {
+      uitest_->mouse_event_callback_(event_name, view_id);
+    }
+#endif
+  }
+#if defined(OS_WIN) || defined(OS_MAC)
+  void OnPointerEvent(const std::string& event_name, int view_id,
+                      int pointer_id, ClayPointerDeviceKind device_kind,
+                      bool is_primary, int button, int buttons, float width,
+                      float height, float pressure, float x, float y,
+                      float page_x, float page_y, int64_t timestamp,
+                      int related_target_sign) override {
+    if (uitest_->pointer_event_callback_) {
+      uitest_->pointer_event_callback_(
+          event_name, view_id, pointer_id, device_kind, is_primary, button,
+          buttons, width, height, pressure, timestamp, related_target_sign);
+    }
+  }
+#endif
   void OnWheelEvent(const std::string& event_name, int view_id, float x,
                     float y, float page_x, float page_y, float delta_x,
                     float delta_y) override {}
