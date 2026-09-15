@@ -4,6 +4,7 @@
 
 #include "clay/shell/common/pointer_data_to_event.h"
 #include "clay/ui/window/pointer_data.h"
+#include "clay/ui/window/pointer_data_helper.h"
 #include "clay/ui/window/pointer_data_packet.h"
 #include "clay/ui/window/pointer_data_packet_converter.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -13,6 +14,34 @@ namespace testing {
 
 constexpr bool kHasDesktopPointerLifecycle =
     CLAY_TEST_HAS_DESKTOP_POINTER_LIFECYCLE;
+
+TEST(PointerDataToEventTest, PreservesEmbeddedPenKindAndLegacyContact) {
+  if (!kHasDesktopPointerLifecycle) {
+    GTEST_SKIP();
+  }
+  for (auto kind :
+       {kClayPointerDeviceKindStylus, kClayPointerDeviceKindInvertedStylus}) {
+    PointerData data{};
+    data.kind = PointerDataHelper::ToPointerDataKind(kind);
+    data.change = PointerData::Change::kDown;
+    data.buttons = PointerEvent::kPrimary;
+    PointerDataPacket packet(1);
+    packet.SetPointerData(0, data);
+    auto events = GetEventsFromPointerDataPacket(&packet);
+    ASSERT_EQ(events.size(), 1u);
+    EXPECT_EQ(events[0].device,
+              kind == kClayPointerDeviceKindStylus
+                  ? PointerEvent::DeviceType::kStylus
+                  : PointerEvent::DeviceType::kInvertedStylus);
+    events[0].dispatch_mode =
+        PointerEvent::DispatchMode::kPenWithTouchCompatibility;
+    auto legacy = events[0].ToLegacyEvent();
+    ASSERT_TRUE(legacy);
+    EXPECT_EQ(legacy->device, PointerEvent::DeviceType::kTouch);
+    EXPECT_EQ(legacy->type, PointerEvent::EventType::kDownEvent);
+    EXPECT_EQ(legacy->buttons, PointerEvent::kPrimary);
+  }
+}
 
 TEST(PointerDataToEventTest, PreservesGestureIdentityForPenLifecycle) {
   if (!kHasDesktopPointerLifecycle) {

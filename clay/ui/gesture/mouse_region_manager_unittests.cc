@@ -848,10 +848,17 @@ TEST_F_UI(MouseRegionManagerTest, PenContactMatchesLegacyTouchLifecycle) {
   page_->DispatchPointerEvent({event});
   const auto baseline = legacy;
   ASSERT_THAT(baseline, ::testing::Contains("tap:1"));
-  const int button_combinations[] = {
-      PointerEvent::kPrimary, PointerEvent::kSecondary,
-      PointerEvent::kPrimary | PointerEvent::kSecondary};
-  for (int buttons : button_combinations) {
+  const std::pair<PointerEvent::DeviceType, int> contacts[] = {
+      {PointerEvent::kStylus, PointerEvent::kPrimary},
+      {PointerEvent::kStylus, PointerEvent::kSecondary},
+      {PointerEvent::kStylus,
+       PointerEvent::kPrimary | PointerEvent::kSecondary},
+      {PointerEvent::kInvertedStylus, PointerEvent::kPrimary},
+      {PointerEvent::kInvertedStylus, PointerEvent::kSecondary},
+      {PointerEvent::kInvertedStylus,
+       PointerEvent::kPrimary | PointerEvent::kSecondary}};
+  for (auto [device, buttons] : contacts) {
+    SCOPED_TRACE(static_cast<int>(device));
     SCOPED_TRACE(buttons);
     legacy.clear();
     std::vector<std::string> pointers;
@@ -860,7 +867,7 @@ TEST_F_UI(MouseRegionManagerTest, PenContactMatchesLegacyTouchLifecycle) {
                                           float, float, float, int64_t, int) {
       if (id == 1) pointers.push_back(name);
     };
-    event.device = PointerEvent::DeviceType::kStylus;
+    event.device = device;
     event.dispatch_mode =
         PointerEvent::DispatchMode::kPenWithTouchCompatibility;
     event.device_id = 7;
