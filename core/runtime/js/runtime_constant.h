@@ -116,6 +116,16 @@ constexpr const char kEnableReuseLoadScriptExports[] =
     "enableReuseLoadScriptExports";
 
 /**
+ * @name: enableLynxGroupModuleSharing
+ * @description: Share modules loaded via lynx.requireModuleAsync across
+ *cards in the same LynxGroup.
+ * @platform: Both
+ * @supportVersion: 3.6
+ **/
+constexpr const char kEnableLynxGroupModuleSharing[] =
+    "enableLynxGroupModuleSharing";
+
+/**
  * @name: enableFetchAPIStandardStreaming
  * @description: Make the Lynx Fetch-API support standard http streaming.
  * @platform: Both
