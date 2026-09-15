@@ -119,6 +119,17 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   @Override
+  public int getPlatformTouchTargetSign() {
+    if (mNativePtr == 0 || mDestroyed) {
+      return -1;
+    }
+    int[] focusInfo = nativeGetPlatformFocusInfo(mNativePtr);
+    return focusInfo != null && focusInfo.length >= PLATFORM_FOCUS_INFO_SIZE
+        ? focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX]
+        : -1;
+  }
+
+  @Override
   public void dispatchPlatformLongPress() {
     if (mNativePtr == 0 || mDestroyed) {
       return;
