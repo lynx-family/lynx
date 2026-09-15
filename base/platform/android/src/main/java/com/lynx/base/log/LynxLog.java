@@ -61,25 +61,13 @@ public class LynxLog {
   }
 
   public static void setMinimumLoggingLevel(int level) {
-    try {
-      if (!sIsNativeLibLoad) {
-        sIsNativeLibLoad = LynxBaseEnv.inst().isNativeLibraryLoaded();
-      }
-      if (sIsNativeLibLoad) {
-        final String[] logLevelName = {"VERBOSE", "DEBUG", "INFO", "WARN", "ERROR"};
-        if (sALogMinLogLevel < level) {
-          sALogMinLogLevel = level;
-          nativeSetNativeMinLogLevel(level);
-          Log.w("lynx",
-              String.format("Reset minimum log level as %s", logLevelName[sALogMinLogLevel]));
-        } else {
-          Log.w("lynx",
-              String.format("Please set a log level higher than %s to filter lynx logs!",
-                  logLevelName[sALogMinLogLevel]));
-        }
-      }
-    } catch (ArrayIndexOutOfBoundsException error) {
-      Log.e("lynx", "Please check index, " + error.getMessage());
+    if (!sIsNativeLibLoad) {
+      sIsNativeLibLoad = LynxBaseEnv.inst().isNativeLibraryLoaded();
+    }
+    if (sIsNativeLibLoad) {
+      sALogMinLogLevel = level;
+      nativeSetNativeMinLogLevel(level);
+      Log.w("lynx", "Reset minimum log level as " + level);
     }
   }
 

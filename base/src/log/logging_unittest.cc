@@ -14,6 +14,47 @@
 namespace lynx::base::logging {
 namespace {
 
+class LogLevelTest : public ::testing::Test {
+ protected:
+  void SetUp() override { original_level_ = GetMinLogLevel(); }
+  void TearDown() override { SetMinLogLevel(original_level_); }
+
+ private:
+  int original_level_;
+};
+
+TEST_F(LogLevelTest, RestoresMoreDetailedLogging) {
+  SetMinLogLevel(LOG_INFO);
+  EXPECT_TRUE(LOG_IS_ON(INFO));
+  SetMinLogLevel(LOG_WARNING);
+  EXPECT_FALSE(LOG_IS_ON(INFO));
+  SetMinLogLevel(LOG_INFO);
+  EXPECT_TRUE(LOG_IS_ON(INFO));
+  SetMinLogLevel(LOG_DEBUG);
+  EXPECT_TRUE(LOG_IS_ON(DEBUG));
+  SetMinLogLevel(LOG_VERBOSE);
+  EXPECT_TRUE(LOG_IS_ON(VERBOSE));
+}
+
+TEST_F(LogLevelTest, PreservesFatalThresholdAndCanRestoreIt) {
+  SetMinLogLevel(LOG_FATAL);
+  EXPECT_FALSE(LOG_IS_ON(ERROR));
+  EXPECT_TRUE(LOG_IS_ON(FATAL));
+  SetMinLogLevel(LOG_INFO);
+  EXPECT_TRUE(LOG_IS_ON(ERROR));
+  EXPECT_TRUE(LOG_IS_ON(INFO));
+}
+
+TEST_F(LogLevelTest, EvaluatesPayloadOnlyAfterRestoringThreshold) {
+  int evaluations = 0;
+  SetMinLogLevel(LOG_WARNING);
+  BASE_LOG(INFO) << ++evaluations;
+  EXPECT_EQ(evaluations, 0);
+  SetMinLogLevel(LOG_INFO);
+  BASE_LOG(INFO) << ++evaluations;
+  EXPECT_EQ(evaluations, 1);
+}
+
 TEST(LogContextTest, DefaultsToUnavailableEntities) {
   LogContext context;
 

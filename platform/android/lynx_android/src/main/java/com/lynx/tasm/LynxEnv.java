@@ -918,12 +918,7 @@ public class LynxEnv {
     }
 
     LLog.i(TAG, enableDevTool ? "Turn on devtool" : "Turn off devtool");
-    if (enableDevTool) {
-      LLog.setMinimumLoggingLevel(LLog.VERBOSE);
-    } else {
-      LLog.setMinimumLoggingLevel(LLog.INFO);
-    }
-
+    // Keep the host's logging level independent of the DevTool switch.
     DevToolSettings.inst().setDevToolEnabled(enableDevTool);
   }
 

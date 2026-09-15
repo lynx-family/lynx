@@ -124,10 +124,8 @@ void RemoveLoggingDelegate(int delegate_id) {
 }
 
 void SetMinimumLoggingLevel(int min_log_level) {
-  if (lynx_alog_min_level_ < min_log_level) {
-    lynx_alog_min_level_ = min_log_level;
-    lynx::base::logging::SetMinLogLevel(min_log_level);
-  }
+  lynx_alog_min_level_ = min_log_level;
+  lynx::base::logging::SetMinLogLevel(min_log_level);
 }
 
 void SetJSLogsFromExternalChannels(bool is_open) {

@@ -140,9 +140,6 @@ void InitLynxLogging(InitAlogCallBack initAlogCallback,
 }
 
 void SetMinLogLevel(int level) {
-  if (detail::g_min_log_level >= level) {
-    return;
-  }
   detail::g_min_log_level = std::min(LOG_FATAL, level);
 }
 

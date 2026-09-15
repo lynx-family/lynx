@@ -146,17 +146,9 @@ void RemoveLoggingDelegate(NSInteger delegateId) {
 NSArray<LynxLogDelegate *> *GetLoggingDelegates(void) { LOCKED(return [gDelegateDic allValues]); }
 
 void SetMinimumLoggingLevel(LynxLogLevel minLogLevel) {
-  [[maybe_unused]] static constexpr const char *kLogLevelName[] = {
-      "LynxLogLevelVerbose", "LynxLogLevelDebug", "LynxLogLevelInfo",
-      "LynxLogLevelWarning", "LynxLogLevelError", "LynxLogLevelFatal"};
-  if (gLogMinLevel < minLogLevel) {
-    gLogMinLevel = minLogLevel;
-    lynx::base::logging::SetLynxLogMinLevel(static_cast<int>(minLogLevel));
-    NSLog(@"W/lynx: Reset minimum log level as %s", kLogLevelName[gLogMinLevel]);
-  } else {
-    NSLog(@"W/lynx: Please set a log level higher than %s to filter lynx logs!",
-          kLogLevelName[gLogMinLevel]);
-  }
+  gLogMinLevel = minLogLevel;
+  lynx::base::logging::SetLynxLogMinLevel(static_cast<int>(minLogLevel));
+  NSLog(@"W/lynx: Reset minimum log level as %d", static_cast<int>(minLogLevel));
 }
 
 LynxLogLevel GetMinimumLoggingLevel(void) { return gLogMinLevel; }
