@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.1
+
+- Add `set-soft-input-mode` to `<input>` and `<textarea>` typings.
+
 ## 4.4.0
 
 - Add `experimental-use-new-update-animation` and `experimental-new-update-animation` to `<list>` typings.

@@ -88,6 +88,17 @@ let a;
     <textarea show-soft-input-on-focus={100} />;
   });
 
+  <input set-soft-input-mode="pan" />;
+  <textarea set-soft-input-mode="nothing" />;
+  assertType<'unspecified' | 'nothing' | 'pan' | 'resize' | undefined>(a as IntrinsicElements['input']['set-soft-input-mode']);
+  assertType<'unspecified' | 'nothing' | 'pan' | 'resize' | undefined>(a as IntrinsicElements['textarea']['set-soft-input-mode']);
+  expectError(() => {
+    // @ts-expect-error type error
+    <input set-soft-input-mode="invalid" />;
+    // @ts-expect-error type error
+    <textarea set-soft-input-mode={1} />;
+  });
+
   <input input-filter={'[A-Za-z0-9]'} />;
   <textarea input-filter={'[A-Za-z0-9]'} />;
   assertType<string | undefined>(a as IntrinsicElements['input']['input-filter']);

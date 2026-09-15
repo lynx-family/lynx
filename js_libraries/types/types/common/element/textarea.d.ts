@@ -214,6 +214,28 @@ export interface TextAreaProps extends Omit<StandardProps, 'bindfocus' | 'bindbl
   'show-soft-input-on-focus'?: boolean;
 
   /**
+   * Sets how the host avoids the soft keyboard.
+   *
+   * - `unspecified`: Uses the platform default behavior.
+   * - `nothing`: Leaves the host window or page unchanged when the keyboard appears.
+   * - `pan`: Moves the host content to keep the focused textarea visible.
+   * - `resize`: Resizes the host content to fit above the keyboard.
+   *
+   * This setting affects the owning Android window or Harmony UI context, including
+   * sibling views that share it. It is not restored automatically when this textarea
+   * loses focus or is removed. Omitting the property leaves the current host setting
+   * unchanged. Unsupported strings fall back to `unspecified`.
+   *
+   * This property is independent of `avoid-keyboard`, which controls Lynx's own
+   * keyboard avoidance. On Android, `android-set-soft-input-mode` remains available
+   * as a compatibility alias. Harmony support requires API 14 or later.
+   *
+   * @Android 4.3
+   * @Harmony 4.3
+   */
+  'set-soft-input-mode'?: 'unspecified' | 'nothing' | 'pan' | 'resize';
+
+  /**
    * Filter the input content and process it in the form of regular expressions
    * @Android 3.4
    * @iOS 3.4
