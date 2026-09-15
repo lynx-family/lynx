@@ -177,3 +177,22 @@ ui_extended_component_sources = [
 ]
 
 ui_component_unittests_sources = []
+
+if (enable_non_builtin_views) {
+  ui_component_sources += [
+    "scroll_coordinator/scroll_coordinator.cc",
+    "scroll_coordinator/scroll_coordinator.h",
+    "scroll_coordinator/scroll_coordinator_header.cc",
+    "scroll_coordinator/scroll_coordinator_header.h",
+    "scroll_coordinator/scroll_coordinator_scroll_view.cc",
+    "scroll_coordinator/scroll_coordinator_scroll_view.h",
+    "scroll_coordinator/scroll_coordinator_slot.cc",
+    "scroll_coordinator/scroll_coordinator_slot.h",
+    "scroll_coordinator/scroll_coordinator_slot_drag.cc",
+    "scroll_coordinator/scroll_coordinator_slot_drag.h",
+    "scroll_coordinator/scroll_coordinator_toolbar.cc",
+    "scroll_coordinator/scroll_coordinator_toolbar.h",
+  ]
+  ui_component_unittests_sources +=
+      [ "scroll_coordinator/scroll_coordinator_unittests.cc" ]
+}

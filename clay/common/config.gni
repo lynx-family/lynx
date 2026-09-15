@@ -14,6 +14,9 @@ declare_args() {
   # Whether enable clay lite
   enable_clay_lite = false
 
+  # Whether enable clay elements
+  enable_non_builtin_views = true
+
   # The runtime mode ("debug", "profile", "release", or "jit_release")
   clay_engine_mode = "release"
 
