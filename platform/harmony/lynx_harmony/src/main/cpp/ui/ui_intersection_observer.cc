@@ -192,6 +192,7 @@ void UIIntersectionObserver::RelativeTo(const std::string& ref_id_selector,
   if (ref_id_selector.find("#") != 0) {
     return;
   }
+  relative_to_screen_ = false;
   auto id_selector = ref_id_selector.substr(1);
   auto component =
       ui_owner_->FindLynxUIByComponentId(std::to_string(js_component_id_));
@@ -207,11 +208,13 @@ void UIIntersectionObserver::RelativeTo(const std::string& ref_id_selector,
 }
 
 void UIIntersectionObserver::RelativeToViewport(const lepus::Value& options) {
+  relative_to_screen_ = false;
   ref_id_ = ui_owner_->Root()->Sign();
   ParseUIMargin(options);
 }
 
 void UIIntersectionObserver::RelativeToScreen(const lepus::Value& options) {
+  relative_to_screen_ = true;
   ref_id_ = -1;
   ParseUIMargin(options);
 }
@@ -302,7 +305,7 @@ void UIIntersectionObserver::ParseUIMargin(const lepus::Value& options) {
     if (ui == nullptr) {
       return;
     }
-    ui->GetBoundingClientRect(ref_rect_, true);
+    ui->GetBoundingClientRect(ref_rect_);
   } else {
     float size[2] = {0.f};
     intersection_observer_manager_->ScreenSize(size);
@@ -340,17 +343,23 @@ void UIIntersectionObserver::CheckIntersectionWithTarget(
     return;
   }
 
-  UIRoot* root = ui->GetContext()->Root();
-  float offset_screen[2] = {0};
-  root->GetOffsetToScreen(offset_screen);
   float target_rect[4] = {0.f};
   float intersection_rect[4] = {0.f};
   auto time_stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now().time_since_epoch())
                         .count();
   ui->GetBoundingClientRect(target_rect);
-  LynxUIHelper::OffsetRect(target_rect, offset_screen);
   ComputeTargetInteraction(ui, target_rect, intersection_rect);
+  if (relative_to_screen_) {
+    UIRoot* root = ui->GetContext()->Root();
+    float offset_screen[2] = {0};
+    root->GetOffsetToScreen(offset_screen);
+    LynxUIHelper::OffsetRect(target_rect, offset_screen);
+    if (!IsRectEqualZero(intersection_rect)) {
+      LynxUIHelper::OffsetRect(intersection_rect, offset_screen);
+      GetRectIntersection(intersection_rect, ref_rect_, intersection_rect);
+    }
+  }
   std::unique_ptr<UIIntersectionObserverTarget::UIIntersectionObserverEntry>
       new_entry = std::make_unique<
           UIIntersectionObserverTarget::UIIntersectionObserverEntry>(
@@ -384,37 +393,40 @@ void UIIntersectionObserver::ComputeTargetInteraction(
     return;
   }
 
-  UIRoot* root = target->GetContext()->Root();
-  float offset_screen[2] = {0};
-  root->GetOffsetToScreen(offset_screen);
+  UIBase* root = target->GetContext()->Root();
   auto current = target->Parent();
   memcpy(intersection_rect, target_rect, 4 * sizeof(float));
-  while (current && current->Parent() != current) {
+  while (current) {
     if (!current->IsVisible()) {
       memset(intersection_rect, 0.f, 4 * sizeof(float));
       return;
     }
+
+    float current_rect[4] = {0.f};
     if (current->Sign() == ref_id_) {
-      GetRectIntersection(ref_rect_, intersection_rect, intersection_rect);
-      return;
+      memcpy(current_rect, ref_rect_, 4 * sizeof(float));
+    } else if (relative_to_screen_ && current == root) {
+      current->GetBoundingClientRect(current_rect);
     } else {
       if (!current->Overflow().overflow_x || !current->Overflow().overflow_y) {
-        float current_rect[4] = {0.f};
         current->GetBoundingClientRect(current_rect);
-        LynxUIHelper::OffsetRect(current_rect, offset_screen);
-        if (!GetRectIntersection(current_rect, intersection_rect,
-                                 intersection_rect)) {
-          return;
-        }
       }
     }
-    current = current->Parent();
-  }
 
-  if (ref_id_ == -1 && !ui_owner_->Destroyed()) {
-    root->GetBoundingClientRect(intersection_rect);
-    LynxUIHelper::OffsetRect(intersection_rect, offset_screen);
-    GetRectIntersection(intersection_rect, ref_rect_, intersection_rect);
+    if (!IsRectEqualZero(current_rect) &&
+        !GetRectIntersection(current_rect, intersection_rect,
+                             intersection_rect)) {
+      return;
+    }
+
+    if (current->Sign() == ref_id_) {
+      return;
+    }
+    UIBase* parent = current->Parent();
+    if (parent == current) {
+      break;
+    }
+    current = parent;
   }
 }
 
