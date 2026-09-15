@@ -290,6 +290,19 @@ final class RouteEntryAdapterTests: XCTestCase {
     XCTAssertEqual(remote.presentation, .resetAndPush)
   }
 
+  func testDebugBridgePushesURLsThatJoinAGroup() {
+    let remote = RouteEntryAdapter.debugBridgeRequest(
+      for: "https://example.com/home.lynx.bundle?group=cards")
+    let local = RouteEntryAdapter.debugBridgeRequest(
+      for: "file://lynx?local://homepage.lynx.bundle&group=cards")
+    let emptyGroup = RouteEntryAdapter.debugBridgeRequest(
+      for: "https://example.com/home.lynx.bundle?group=")
+
+    XCTAssertEqual(remote.presentation, .push)
+    XCTAssertEqual(local.presentation, .push)
+    XCTAssertEqual(emptyGroup.presentation, .resetAndPush)
+  }
+
   func testModuleScannerUniversalAndSparklingRouterRequestsUseExplicitPolicies() {
     let module = RouteEntryAdapter.moduleRequest(
       for: "https://example.com/module.lynx.bundle",
