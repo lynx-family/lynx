@@ -30,6 +30,8 @@ class InspectorInputAgent : public CDPDomainAgentBase {
 
   void EmulateTouchFromMouseEvent(const std::shared_ptr<MessageSender>& sender,
                                   const Json::Value& message);
+  void DispatchMouseEvent(const std::shared_ptr<MessageSender>& sender,
+                          const Json::Value& message);
   void InsertText(const std::shared_ptr<MessageSender>& sender,
                   const Json::Value& message);
   void SynthesizeTapGesture(const std::shared_ptr<MessageSender>& sender,

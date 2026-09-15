@@ -28,6 +28,25 @@ constexpr int kDefaultTapCount = 1;
 constexpr int kMaxSyntheticTapCount = 200;
 constexpr int64_t kMaxSyntheticTapSequenceDurationMs = 10000;
 
+std::string ButtonFromButtons(int buttons) {
+  if ((buttons & 1) != 0) {
+    return "left";
+  }
+  if ((buttons & 2) != 0) {
+    return "right";
+  }
+  if ((buttons & 4) != 0) {
+    return "middle";
+  }
+  if ((buttons & 8) != 0) {
+    return "back";
+  }
+  if ((buttons & 16) != 0) {
+    return "forward";
+  }
+  return "none";
+}
+
 class TapGestureResponse {
  public:
   TapGestureResponse(std::shared_ptr<MessageSender> sender, int64_t id,
@@ -235,6 +254,28 @@ void InputRequestHandler::EmulateTouchFromMouseEvent(
   response["result"] = content;
   response["id"] = message["id"].asInt64();
   sender->SendMessage("CDP", response);
+}
+
+void InputRequestHandler::DispatchMouseEvent(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  const Json::Value& params = message["params"];
+
+  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
+                            "devtool_platform_facade_ is null");
+  auto input = std::make_shared<MouseEvent>();
+  input->button_ = params.get("button", "none").asString();
+  if (input->button_ == "none" && params.isMember("buttons")) {
+    input->button_ = ButtonFromButtons(params["buttons"].asInt());
+  }
+  input->click_count_ = params.get("clickCount", 0).asInt();
+  input->delta_x_ = params.get("deltaX", 0).asFloat();
+  input->delta_y_ = params.get("deltaY", 0).asFloat();
+  input->modifiers_ = params.get("modifiers", 0).asInt();
+  input->type_ = params["type"].asString();
+  input->x_ = params["x"].asInt();
+  input->y_ = params["y"].asInt();
+  devtool_platform_facade_->EmulateMouse(input);
+  sender->SendOKResponse(message["id"].asInt64());
 }
 
 void InputRequestHandler::InsertText(

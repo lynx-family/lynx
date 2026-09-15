@@ -16,13 +16,20 @@ LynxViewEventSimulationProxy::LynxViewEventSimulationProxy(
 void LynxViewEventSimulationProxy::EmulateTouch(
     const std::string& event_type, int x, int y, const std::string& button,
     float delta_x, float delta_y, int modifiers, int click_count) {
+  if (event_type == kMouseWheel) {
+    // CDP Input.emulateTouchFromMouseEvent uses the opposite wheel-delta
+    // convention to Clay (and Input.dispatchMouseEvent).
+    delta_x = -delta_x;
+    delta_y = -delta_y;
+  }
+  EmulateMouse(event_type, x, y, button, delta_x, delta_y, modifiers,
+               click_count);
+}
+
+void LynxViewEventSimulationProxy::EmulateMouse(
+    const std::string& event_type, int x, int y, const std::string& button,
+    float delta_x, float delta_y, int modifiers, int click_count) {
   if (target_) {
-    if (event_type == kMouseWheel) {
-      // CDP Input.emulateTouchFromMouseEvent uses the opposite wheel-delta
-      // convention to Clay (and Input.dispatchMouseEvent).
-      delta_x = -delta_x;
-      delta_y = -delta_y;
-    }
     target_->DispatchSyntheticPointerEvent(event_type, x, y, button, delta_x,
                                            delta_y, modifiers, click_count);
   }

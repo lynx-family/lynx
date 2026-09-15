@@ -112,6 +112,24 @@ TEST_F(LynxViewEventSimulationProxyTest,
   EXPECT_FLOAT_EQ(target->pointer_events[2].delta_y, 0);
 }
 
+TEST_F(LynxViewEventSimulationProxyTest, ForwardsMouseWheelDirectionForClay) {
+  FakeEventSimulationTarget* target = nullptr;
+  auto proxy = CreateProxy(&target);
+
+  proxy.EmulateMouse("mouseWheel", 7, 8, "none", 1.5f, -2.5f, 4, 0);
+
+  ASSERT_EQ(target->pointer_events.size(), 1u);
+  const auto& event = target->pointer_events[0];
+  EXPECT_EQ(event.type, "mouseWheel");
+  EXPECT_EQ(event.x, 7);
+  EXPECT_EQ(event.y, 8);
+  EXPECT_EQ(event.button, "none");
+  EXPECT_EQ(event.modifiers, 4);
+  EXPECT_EQ(event.click_count, 0);
+  EXPECT_FLOAT_EQ(event.delta_x, 1.5f);
+  EXPECT_FLOAT_EQ(event.delta_y, -2.5f);
+}
+
 }  // namespace
 }  // namespace embedder
 }  // namespace lynx
