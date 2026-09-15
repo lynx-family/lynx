@@ -508,6 +508,17 @@ void ElementContainer::UpdateLayout(float left, float top,
                            top != last_top_ || ShouldUpdateStickyRange());
   last_left_ = left;
   last_top_ = top;
+
+  // For a C++ list item, need_update_impl skips only the item root's platform
+  // update. Scrolling would still revisit every descendant, so stop here when
+  // the complete item subtree is unchanged.
+  Element* list_parent = element()->parent();
+  if (is_layouted_ && !need_update_impl && !element()->need_update() &&
+      !props_changed_ && list_parent &&
+      list_parent->DisableListPlatformImplementation()) {
+    return;
+  }
+
   if (!element()->IsLayoutOnly()) {
     if (need_update_impl) {  // Update to impl layer
       painting_context()->UpdateLayout(
@@ -781,6 +792,9 @@ void ElementContainer::MoveZChildrenRecursively(Element* element,
 void ElementContainer::StyleChanged() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_STYLE_CHANGED);
   props_changed_ = true;
+  // Keep the subtree dirty bit in sync with props_changed_ so UpdateLayout's
+  // unchanged-layout fast path cannot hide a descendant property update.
+  element()->MarkSubtreeNeedUpdate();
   if (element()->GetEnableZIndex()) {
     ZIndexChanged();
   }
