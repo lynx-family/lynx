@@ -1,0 +1,7 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+# Optional source replacements for lynx_core_source_set. Each entry contains
+# source and replacement fields using source-absolute GN paths (//...).
+lynx_core_source_overrides = []
