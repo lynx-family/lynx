@@ -442,7 +442,7 @@ export class LynxHttpResponse {
 }
 
 export class HttpStreamingDelegate {
-  constructor(streamingId: string, context: LynxContext);
+  constructor(streamingId: string, sender: Object);
   onData(data: ArrayBuffer): void;
   onDataSSE(data: ArrayBuffer): void;
   onDataPending(data: ArrayBuffer): void;
