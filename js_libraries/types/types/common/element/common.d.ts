@@ -4,6 +4,19 @@
 
 import { BaseEvent } from '../events';
 
+/** Properties for baseline alignment of text and inline images. */
+export interface TextBaselineProps {
+  /**
+   * Shift text or an inline image vertically relative to the text baseline. Positive values move it down.
+   * A px string is converted to device pixels, a percentage is relative to font size,
+   * and a unitless string is a font-size multiplier.
+   * For text, an explicit zero string still selects custom baseline alignment.
+   * @Android 2.3
+   * @defaultValue Unset; the stored shift is 0 and no custom text baseline alignment is applied.
+   */
+  'custom-baseline-shift'?: string;
+}
+
 /**
  * Scrollbar properties supported by Clay scrollable components.
  * @ClayWindows

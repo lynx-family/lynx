@@ -7,6 +7,79 @@ import { LynxEventProps } from './events';
 
 export interface StandardProps extends LynxEventProps {
   /**
+   * Class name of the containing UITableViewCell whose accessibility elements should be updated with this element.
+   * @iOS 2.8
+   * @defaultValue Unset; no containing cell class is configured.
+   */
+  'accessibility-attached-cell-class'?: string;
+  /**
+   * Scroll to this element when it receives accessibility focus programmatically.
+   * @iOS 2.8
+   * @defaultValue false
+   */
+  'accessibility-auto-scroll-if-focused'?: boolean;
+  /**
+   * Enable accessibility tap actions for this element.
+   * @Android 2.3
+   * @defaultValue false
+   */
+  'accessibility-enable-tap'?: boolean | 'true' | 'false';
+  /**
+   * Enable edge antialiasing on the view layer and its background.
+   * @iOS 1.4
+   * @defaultValue false
+   */
+  'allow-edge-antialiasing'?: boolean;
+  /**
+   * Keep accessibility focus on this element when the accessibility helper updates.
+   * @Android 2.8
+   * @defaultValue false
+   */
+  'android-accessibility-keep-focused'?: boolean | 'true' | 'false';
+  /**
+   * Consume hover events in the accessibility helper instead of dispatching them to other views.
+   * @Android 2.12
+   * @defaultValue false
+   */
+  'android-consume-hover-event'?: boolean;
+  /**
+   * Allow the iOS drawing path to display asynchronously.
+   * @iOS 1.4
+   * @defaultValue true; text defaults to false.
+   */
+  'async-display'?: boolean;
+  /**
+   * Enable cross-language attribute setting on the Harmony ArkUI node.
+   * @Harmony 3.2
+   */
+  'enable-cross-language-option'?: boolean;
+  /**
+   * Enable the new animator implementation for this element.
+   * @ClayAndroid 2.12
+   * @ClayIOS 2.16
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.17
+   * @defaultValue false
+   */
+  'enable-new-animator'?: boolean;
+  /**
+   * Render the Android view into a hardware texture layer.
+   * @Android 2.3
+   * @defaultValue false
+   */
+  'hardware-layer'?: boolean;
+  /**
+   * Fall back to directional focus traversal when the explicitly configured next-focus target cannot be focused.
+   * @ClayAndroid 2.14
+   * @ClayIOS 2.16
+   * @ClayMacOS 2.14
+   * @ClayWindows 2.14
+   * @ClayHarmony 2.17
+   * @defaultValue false
+   */
+  'next-focus-fallback'?: boolean;
+  /**
    * The unique identifier of the element, ensuring the uniqueness of the entire page
    * @Android 1.0
    * @iOS 1.0
@@ -258,6 +331,7 @@ export interface StandardProps extends LynxEventProps {
    * @ClayMacOS 3.6
    * @ClayWindows 3.6
    * @ClayHarmony 2.17
+   * @defaultValue '0, 0'
    */
   'focus-index'?: string;
 
@@ -268,6 +342,7 @@ export interface StandardProps extends LynxEventProps {
    * @ClayMacOS 3.6
    * @ClayWindows 3.6
    * @ClayHarmony 2.17
+   * @defaultValue ''
    */
   'next-focus-up'?: string;
 
@@ -278,6 +353,7 @@ export interface StandardProps extends LynxEventProps {
    * @ClayMacOS 3.6
    * @ClayWindows 3.6
    * @ClayHarmony 2.17
+   * @defaultValue ''
    */
   'next-focus-down'?: string;
 
@@ -288,6 +364,7 @@ export interface StandardProps extends LynxEventProps {
    * @ClayMacOS 3.6
    * @ClayWindows 3.6
    * @ClayHarmony 2.17
+   * @defaultValue ''
    */
   'next-focus-left'?: string;
 
@@ -298,6 +375,7 @@ export interface StandardProps extends LynxEventProps {
    * @ClayMacOS 3.6
    * @ClayWindows 3.6
    * @ClayHarmony 2.17
+   * @defaultValue ''
    */
   'next-focus-right'?: string;
 
@@ -336,6 +414,11 @@ export interface StandardProps extends LynxEventProps {
    */
   'ios-background-shape-layer'?: boolean;
 
+  /**
+   * Use CAShapeLayer for background rendering. When omitted, the native background configuration applies.
+   * @iOS 2.7
+   */
+  'background-shape-layer'?: boolean;
   /**
    * Specify whether the node needs exposure/un-exposure events
    * @Android 1.1
