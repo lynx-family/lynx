@@ -6,7 +6,6 @@
 
 #include <array>
 #include <cmath>
-#include <future>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -16,7 +15,6 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/jni_helper.h"
-#include "core/base/thread/once_task.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
@@ -544,17 +542,12 @@ void PaintingContextAndroid::CreatePaintingNode(
   }
 
   // Async Create
-  std::promise<base::android::ScopedGlobalJavaRef<jobject>> promise;
-  std::future<base::android::ScopedGlobalJavaRef<jobject>> future =
-      promise.get_future();
-
-  auto create_node_async_task = fml::MakeRefCounted<
-      base::OnceTask<base::android::ScopedGlobalJavaRef<jobject>>>(
-      [impl = impl_, id, tag, painting_data = painting_data, flatten,
-       node_index, promise = std::move(promise)]() mutable {
+  auto task = create_view_scheduler_.Schedule(
+      [impl = impl_, id, tag, painting_data, flatten,
+       node_index]() -> base::android::ScopedGlobalJavaRef<jobject> {
         base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
         if (local_ref.IsNull()) {
-          return;
+          return {};
         }
         JNIEnv* env = base::android::AttachCurrentThread();
         PropBundleAndroid* pda =
@@ -562,53 +555,23 @@ void PaintingContextAndroid::CreatePaintingNode(
         const auto tag_ref =
             base::android::JNIConvertHelper::ConvertToJNIStringUTF(env,
                                                                    tag.c_str());
-        promise.set_value(base::android::ScopedGlobalJavaRef<jobject>(
+        auto runnable = base::android::ScopedGlobalJavaRef<jobject>(
             env, Java_PaintingContext_createPaintingNodeAsync(
                      env, local_ref.Get(), id, tag_ref.Get(), pda->jni_object(),
                      pda->GetStyleMapBuffer().Get(), flatten, node_index)
-                     .Get()));
-
-        // Set painting_data to null to release the Java GlobalRef immediately
-        // after the once-task execution completes.
-        painting_data = nullptr;
-
+                     .Get());
         if (lynx::base::android::HasJNIException()) {
           base::ErrorStorage::GetInstance().AddCustomInfoToError(
               {{"node_index", std::to_string(node_index)}});
         }
-        return;
+        return runnable;
       },
-      std::move(future));
-
-  if (enable_context_free_) {
-    context_free_create_node_async_task_queue_.Push(create_node_async_task);
-  } else {
-    base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
-        [create_node_async_task]() { create_node_async_task->Run(); },
-        base::ConcurrentTaskType::HIGH_PRIORITY);
-    scheduled_create_node_async_task_queue_.Push(create_node_async_task);
-  }
-  Enqueue([this, task = std::move(create_node_async_task)]() {
+      enable_context_free_);
+  Enqueue([this, task = std::move(task)]() {
     JNIEnv* env = base::android::AttachCurrentThread();
-    task->Run();
-    // Taking tasks from the LIFO queue iterable container to execute while
-    // waiting for the current task to finish.
-    while (!(task->GetFuture().valid() &&
-             task.get()->GetFuture().wait_for(std::chrono::seconds(0)) ==
-                 std::future_status::ready) &&
-           (!backward_create_node_async_task_iterable_container_.empty() &&
-            backward_create_node_async_task_iterator_ !=
-                backward_create_node_async_task_iterable_container_.end())) {
-      auto back_task = *backward_create_node_async_task_iterator_;
-      back_task->Run();
-      backward_create_node_async_task_iterator_++;
-    }
-
-    if (task->GetFuture().valid()) {
-      auto runnable = task->GetFuture().get();
-      if (!runnable.IsNull()) {
-        InvokeNativeRunnable(runnable, env);
-      }
+    auto runnable = create_view_scheduler_.Consume(task);
+    if (runnable && !runnable->IsNull()) {
+      InvokeNativeRunnable(*runnable, env);
     }
   });
 }
@@ -618,12 +581,7 @@ void PaintingContextAndroid::SetContextHasAttached() {
               PAINTING_CONTEXT_ANDROID_SET_CONTEXT_ATTACHED);
   if (enable_context_free_) {
     enable_context_free_ = false;
-    auto tasks = context_free_create_node_async_task_queue_.PopAll();
-    for (auto& task : tasks) {
-      base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
-          [task]() { task->Run(); }, base::ConcurrentTaskType::HIGH_PRIORITY);
-      scheduled_create_node_async_task_queue_.Push(task);
-    }
+    create_view_scheduler_.DispatchDeferred();
   }
 }
 
@@ -996,13 +954,12 @@ void PaintingContextAndroid::RequestPlatformLayout() {
 
 void PaintingContextAndroid::FinishTasmOperation(
     const std::shared_ptr<PipelineOptions>& options) {
-  // Reset iterable container and iterator
   {
     if (config_.enable_native_schedule_create_view_async) {
       Enqueue([this]() mutable {
         TRACE_EVENT(LYNX_TRACE_CATEGORY,
                     PAINTING_CONTEXT_ANDROID_RESET_PAINTING_NODE_CONTAINER);
-        backward_create_node_async_task_iterable_container_.reset();
+        create_view_scheduler_.ResetBatch();
       });
     }
   }
@@ -1452,19 +1409,15 @@ void PaintingContextAndroid::BeforeFlush() {
       Java_PaintingContext_rebuildViewTree(env, local_ref.Get());
     });
 
-    if (config_.enable_native_schedule_create_view_async &&
-        !scheduled_create_node_async_task_queue_.Empty()) {
-      EnqueueHighPriorityUIOperation(
-          [this, iterable_container = scheduled_create_node_async_task_queue_
-                                          .ReversePopAll()]() mutable {
-            TRACE_EVENT(
-                LYNX_TRACE_CATEGORY,
-                PAINTING_CONTEXT_ANDROID_REINIT_PAINTING_NODE_CONTAINER);
-            backward_create_node_async_task_iterable_container_ =
-                std::move(iterable_container);
-            backward_create_node_async_task_iterator_ =
-                backward_create_node_async_task_iterable_container_.begin();
-          });
+    if (config_.enable_native_schedule_create_view_async) {
+      if (auto batch = create_view_scheduler_.TakeBatch()) {
+        EnqueueHighPriorityUIOperation([this,
+                                        batch = std::move(batch)]() mutable {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                      PAINTING_CONTEXT_ANDROID_REINIT_PAINTING_NODE_CONTAINER);
+          create_view_scheduler_.ActivateBatch(std::move(batch));
+        });
+      }
     }
   }
 
