@@ -22,6 +22,10 @@ export default class StandaloneApp extends BaseApp {
     }
   }
 
+  protected _$isStandaloneApp(): boolean {
+    return true;
+  }
+
   createLynx(nativeLynx: NativeLynxProxy, promise: PromiseConstructor): Lynx {
     const lynx_proxy = CachedFunctionProxy.create(nativeLynx);
     return new Lynx(
