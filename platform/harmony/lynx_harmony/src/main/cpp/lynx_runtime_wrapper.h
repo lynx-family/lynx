@@ -134,6 +134,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
     return runtime_proxy_;
   }
 
+  std::shared_ptr<shell::LynxRuntimeProxy> CreateAttachedRuntimeProxy();
   void SetAttached(bool is_attached);
   void AddLifecycleListener(
       std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate);
@@ -163,6 +164,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   void DestroyRuntime();
   std::unique_ptr<shell::BTSRuntimeStandalone> runtime_standalone_;
   std::shared_ptr<shell::LynxBTSRuntimeProxyImpl> runtime_proxy_;
+  std::shared_ptr<shell::LynxBTSRuntimeProxyImpl> attached_runtime_proxy_;
   std::weak_ptr<runtime::js::LynxModuleManager> module_manager_;
   bool is_attached_{false};
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
