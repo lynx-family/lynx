@@ -11,9 +11,11 @@
 
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/base/android/jni_helper.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/tasm/react/android/mapbuffer/map_buffer_builder.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
+#include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/painting/android/paint_image_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
@@ -92,6 +94,81 @@ base::android::ScopedLocalJavaRef<jobject> CreateImagePaintInfoMapBuffer(
 }
 
 }  // namespace
+
+PreparedFallbackUI::PreparedFallbackUI(
+    base::android::ScopedGlobalJavaRef<jobject> context,
+    base::android::ScopedGlobalJavaRef<jobject> init_data,
+    base::android::ScopedGlobalJavaRef<jobject> ui)
+    : context_(std::move(context)),
+      init_data_(std::move(init_data)),
+      ui_(std::move(ui)) {}
+
+PreparedFallbackUI::~PreparedFallbackUI() {
+  if (ui_.IsNull()) {
+    return;
+  }
+  fml::TaskRunner::RunNowOrPostTask(
+      base::UIThread::GetRunner(),
+      [context = std::move(context_), ui = std::move(ui_)]() {
+        JNIEnv* env = base::android::AttachCurrentThread();
+        Java_PlatformRendererContext_disposePreparedFallbackUI(
+            env, context.Get(), ui.Get());
+      });
+}
+
+void PreparedFallbackUI::Commit(int32_t id, const base::String& tag_name) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto j_tag_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, tag_name.c_str());
+  Java_PlatformRendererContext_createPlatformExtendedRendererWithPrepared(
+      env, context_.Get(), id, j_tag_name.Get(), init_data_.Get(), ui_.Get());
+  // Java has either committed or disposed the result, including a context
+  // destroyed while the operation was waiting for its preparation.
+  ui_.Reset();
+}
+
+base::OnceTaskRefptr<std::unique_ptr<PreparedFallbackUI>>
+PlatformRendererContext::CreateFallbackUITask(
+    int32_t id, const base::String& tag_name,
+    const NativePropBundle* init_data) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return nullptr;
+  }
+  auto j_tag_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, tag_name.c_str());
+  if (!Java_PlatformRendererContext_canCreateFallbackUIAsync(
+          env, local_ref.Get(), j_tag_name.Get())) {
+    return nullptr;
+  }
+
+  // Snapshot on the producer: NativePropBundle is mutable, and ShallowCopy
+  // does not preserve all creation data. Both preparation and commit use this
+  // same Java bundle, including events and gesture detectors.
+  base::android::ScopedGlobalJavaRef<jobject> java_data;
+  if (init_data != nullptr) {
+    PropBundleAndroid bundle(*init_data);
+    java_data.Reset(env, bundle.jni_object());
+  }
+  std::promise<std::unique_ptr<PreparedFallbackUI>> promise;
+  auto future = promise.get_future();
+  return fml::MakeRefCounted<
+      base::OnceTask<std::unique_ptr<PreparedFallbackUI>>>(
+      [context =
+           base::android::ScopedGlobalJavaRef<jobject>(env, local_ref.Get()),
+       tag = base::android::ScopedGlobalJavaRef<jstring>(env, j_tag_name.Get()),
+       id, data = std::move(java_data),
+       promise = std::move(promise)]() mutable {
+        JNIEnv* env = base::android::AttachCurrentThread();
+        auto ui = Java_PlatformRendererContext_prepareFallbackUI(
+            env, context.Get(), id, tag.Get(), data.Get());
+        promise.set_value(std::make_unique<PreparedFallbackUI>(
+            std::move(context), std::move(data),
+            base::android::ScopedGlobalJavaRef<jobject>(env, ui.Get())));
+      },
+      std::move(future));
+}
 
 void PlatformRendererContext::CreatePlatformRenderer(
     int32_t id, PlatformRendererType type) {

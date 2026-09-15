@@ -60,6 +60,8 @@ class PlatformRendererImpl : public PlatformRenderer {
   PlatformRendererType GetPlatformRendererType() const { return type_; }
 
   base::String GetExtendedRendererTagName() const override;
+  static base::String GetExtendedRendererTagName(PlatformRendererType type,
+                                                 const base::String& tag_name);
 
  protected:
   void ReleaseSelf() const override;

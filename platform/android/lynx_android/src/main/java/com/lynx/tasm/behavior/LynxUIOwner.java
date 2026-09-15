@@ -111,6 +111,7 @@ public class LynxUIOwner {
   private boolean mIsFirstLayout;
   private boolean mIsRootLayoutAnimationRunning;
   private boolean mIsContextFree = false;
+  private volatile boolean mDestroyed = false;
   private static final String TAG = "LynxUIOwner";
   private static final int LEGACY_STICKY_INFO_COUNT = 4;
   private WeakReference<NativeFacade> mNativeFacade;
@@ -585,6 +586,139 @@ public class LynxUIOwner {
     destroy(-1, sign);
   }
 
+  /** Owns an unpublished UI until the ordered UI operation commits or discards it. */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public final class PreparedView {
+    private final UIParams mParams;
+    private LynxBaseUI mUI;
+    private UIShadowProxy mProxy;
+    private Throwable mFailure;
+    private boolean mConsumed;
+
+    private PreparedView(UIParams params) {
+      mParams = params;
+    }
+
+    public boolean isFor(LynxUIOwner owner, int sign, String tagName) {
+      return owner == LynxUIOwner.this && mParams.mSign == sign && mParams.mTagName.equals(tagName);
+    }
+
+    public boolean isConsumed() {
+      return mConsumed;
+    }
+
+    public boolean commit() {
+      UIThreadUtils.assertOnUiThread();
+      if (mConsumed) {
+        return false;
+      }
+      mConsumed = true;
+      if (mDestroyed || mFailure != null || mUI == null) {
+        release();
+        return false;
+      }
+      String traceEvent = null;
+      if (TraceEvent.isTracingStarted()) {
+        traceEvent = TraceEventDef.UI_OWNER_CREATE_VIEW_ASYNC_RUNNABLE_AFTER + mParams.mTagName;
+        TraceEvent.beginSection(traceEvent);
+      }
+      try {
+        LynxBaseUI ui = afterConsumeInitialProps(mUI, mProxy, mParams.mInitialProps);
+        // Property callbacks can synchronously destroy the page.
+        if (mDestroyed) {
+          release();
+          return false;
+        }
+        registerCreatedView(mParams.mSign, mParams.mTagName, mParams.mInitialProps, ui);
+        mUI = null;
+        mProxy = null;
+        return true;
+      } catch (Throwable error) {
+        LLog.e(
+            TAG, "commit prepared view failed, tagName:" + mParams.mTagName + ", error:" + error);
+        release();
+        return false;
+      } finally {
+        if (traceEvent != null) {
+          TraceEvent.endSection(traceEvent);
+        }
+      }
+    }
+
+    public void dispose() {
+      UIThreadUtils.assertOnUiThread();
+      if (!mConsumed) {
+        mConsumed = true;
+        release();
+      }
+    }
+
+    private void release() {
+      LynxBaseUI ui = mProxy != null ? mProxy : mUI;
+      // These registrations belong to the owner. A custom UI may override destroy without
+      // calling super, so undo them explicitly when abandoning an incomplete commit.
+      if (mUI instanceof PatchFinishListener) {
+        mContext.unregisterPatchFinishListener((PatchFinishListener) mUI);
+      }
+      if (mUI instanceof ForegroundListener) {
+        unregisterForegroundListener((ForegroundListener) mUI);
+      }
+      mProxy = null;
+      mUI = null;
+      mFailure = null;
+      if (ui != null) {
+        try {
+          ui.destroy();
+        } catch (Throwable error) {
+          LLog.e(TAG,
+              "dispose prepared view failed, tagName:" + mParams.mTagName + ", error:" + error);
+        }
+      }
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public PreparedView prepareView(int sign, String tagName, ReadableMap initialProps,
+      ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten,
+      int nodeIndex, ReadableArray gestureDetectors) {
+    UIParams params = new UIParams(sign, nodeIndex, isFlatten, tagName, null, null, null);
+    PreparedView prepared = new PreparedView(params);
+    if (mDestroyed) {
+      return prepared;
+    }
+    String traceEvent = null;
+    if (TraceEvent.isTracingStarted()) {
+      traceEvent = TraceEventDef.UI_OWNER_CREATE_VIEW_ASYNC_RUNNABLE + tagName;
+      TraceEvent.beginSection(traceEvent);
+    }
+    try {
+      StylesDiffMap styles =
+          initialProps != null ? new StylesDiffMap(initialProps, initialStyles) : null;
+      params.mInitialProps = styles;
+      params.mEventsListenerMap = EventsListener.convertEventListeners(eventListeners);
+      params.mGestureDetectors = GestureDetector.convertGestureDetectors(gestureDetectors);
+      prepared.mUI = createViewInterval(params, prepared);
+      prepared.mProxy = consumeInitialPropsInterval(prepared.mUI, styles, prepared);
+    } catch (Throwable error) {
+      prepared.mFailure = error;
+      // Retry, if needed, in the original UI operation. Posting an error callback here could
+      // destroy the page ahead of that operation and race the remaining creation work.
+      LLog.e(TAG, "prepare view failed, tagName:" + tagName + ", error:" + error);
+    } finally {
+      if (traceEvent != null) {
+        TraceEvent.endSection(traceEvent);
+      }
+    }
+    return prepared;
+  }
+
+  private void registerCreatedView(
+      int sign, String tagName, StylesDiffMap initialProps, LynxBaseUI ui) {
+    reportStatistic(tagName);
+    updateComponentIdToUiIdMapIfNeeded(sign, tagName, initialProps);
+    mUIHolder.put(sign, ui);
+  }
+
   // TODO(ZHOUZHITAO): REFACTOR CODE TO REUSE SHARED NODE SNIPPET
   public Runnable createViewAsyncRunnable(final int sign, final String tagName,
       final ReadableMap initialProps, final ReadableMapBuffer initialStyles,
@@ -623,10 +757,7 @@ public class LynxUIOwner {
             TraceEvent.beginSection(traceEvent);
           }
           ui[0] = afterConsumeInitialProps(ui[0], proxy, styleMap);
-          // Report the usage of the component.
-          reportStatistic(tagName);
-          updateComponentIdToUiIdMapIfNeeded(sign, tagName, styleMap);
-          mUIHolder.put(sign, ui[0]);
+          registerCreatedView(sign, tagName, styleMap, ui[0]);
           if (TraceEvent.isTracingStarted()) {
             TraceEvent.endSection(traceEvent);
           }
@@ -687,10 +818,7 @@ public class LynxUIOwner {
               traceBeginWithInstanceId(traceEvent);
             }
             ui[0] = afterConsumeInitialProps(ui[0], proxy, initialProps);
-            // Report the usage of the component.
-            reportStatistic(tagName);
-            updateComponentIdToUiIdMapIfNeeded(sign, tagName, initialProps);
-            mUIHolder.put(sign, ui[0]);
+            registerCreatedView(sign, tagName, initialProps, ui[0]);
             if (TraceEvent.isTracingStarted()) {
               TraceEvent.endSection(traceEvent);
             }
@@ -738,10 +866,18 @@ public class LynxUIOwner {
 
   private UIShadowProxy consumeInitialPropsInterval(
       LynxBaseUI ui, @Nullable StylesDiffMap initialProps) {
+    return consumeInitialPropsInterval(ui, initialProps, null);
+  }
+
+  private UIShadowProxy consumeInitialPropsInterval(
+      LynxBaseUI ui, @Nullable StylesDiffMap initialProps, @Nullable PreparedView prepared) {
     UIShadowProxy proxy = null;
     if (initialProps != null) {
       if (hasShadowOrOutline(initialProps)) {
         proxy = new UIShadowProxy(mContext, ui);
+        if (prepared != null) {
+          prepared.mProxy = proxy;
+        }
       }
       ui.updatePropertiesInterval(initialProps);
     }
@@ -773,6 +909,10 @@ public class LynxUIOwner {
   }
 
   private LynxBaseUI createViewInterval(UIParams params) {
+    return createViewInterval(params, null);
+  }
+
+  private LynxBaseUI createViewInterval(UIParams params, @Nullable PreparedView prepared) {
     LynxBaseUI ui = null;
 
     // Root ui do not need to create from behavior as ui has been created through
@@ -791,6 +931,10 @@ public class LynxUIOwner {
       return ui;
     }
 
+    // Keep ownership before overridable initialization callbacks can fail.
+    if (prepared != null) {
+      prepared.mUI = ui;
+    }
     ui.setEvents(params.mEventsListenerMap);
     ui.setSign(params.mSign, params.mTagName);
     ui.setNodeIndex(params.mNodeIndex);
@@ -1152,6 +1296,7 @@ public class LynxUIOwner {
   }
 
   public void destroy() {
+    mDestroyed = true;
     TraceEvent.beginSection(TraceEventDef.UI_OWNER_DESTORY);
     for (Map.Entry<Integer, LynxBaseUI> e : mUIHolder.entrySet()) {
       if (!(e.getValue() instanceof LynxBaseUI)) {
@@ -1172,6 +1317,11 @@ public class LynxUIOwner {
     }
     mCreateNodeAsyncTasks.clear();
     TraceEvent.endSection(TraceEventDef.UI_OWNER_DESTORY);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public boolean isDestroyed() {
+    return mDestroyed;
   }
 
   public void onTasmFinish(long operationId) {

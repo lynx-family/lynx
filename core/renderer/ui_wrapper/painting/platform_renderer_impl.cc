@@ -47,10 +47,15 @@ PlatformRendererImpl::~PlatformRendererImpl() {
 }
 
 base::String PlatformRendererImpl::GetExtendedRendererTagName() const {
-  if (!tag_name_.empty()) {
-    return tag_name_;
+  return GetExtendedRendererTagName(type_, tag_name_);
+}
+
+base::String PlatformRendererImpl::GetExtendedRendererTagName(
+    PlatformRendererType type, const base::String& tag_name) {
+  if (!tag_name.empty()) {
+    return tag_name;
   }
-  switch (type_) {
+  switch (type) {
     case PlatformRendererType::kScroll:
       return base::String(BASE_STATIC_STRING(kElementScrollViewTag));
     case PlatformRendererType::kList:

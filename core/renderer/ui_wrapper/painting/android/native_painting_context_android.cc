@@ -16,6 +16,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
@@ -358,11 +359,51 @@ void NativePaintingCtxAndroid::CreatePlatformExtendedRenderer(
     int id, const base::String &tag_name,
     const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
+  if (TryEnqueueCreateFallbackUI(id, PlatformRendererType::kUnknown, tag_name,
+                                 init_data, init_config)) {
+    return;
+  }
   Enqueue([ref = platform_ref_, id, tag_name, init_config = init_config,
            data_ref = init_data]() {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
         ->CreatePlatformExtendedRenderer(id, tag_name, data_ref, init_config);
   });
+}
+
+bool NativePaintingCtxAndroid::TryEnqueueCreateFallbackUI(
+    int id, PlatformRendererType type, const base::String &tag_name,
+    const fml::RefPtr<PropBundle> &init_data,
+    const PlatformRendererInitConfig &init_config) {
+  if (!PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
+          type, tag_name, init_config)) {
+    return false;
+  }
+  auto extended_tag =
+      PlatformRendererImpl::GetExtendedRendererTagName(type, tag_name);
+  auto task = view_manager_->CreateFallbackUITask(
+      id, extended_tag, static_cast<NativePropBundle *>(init_data.get()));
+  if (!task) {
+    return false;
+  }
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [task]() { task->Run(); }, base::ConcurrentTaskType::HIGH_PRIORITY);
+  // Keep the original creation position as the dependency for all following
+  // properties, layout and display-list operations. Run takes over preparation
+  // only when no worker has started it; it never constructs a second UI.
+  Enqueue(
+      [ref = platform_ref_, id, type, tag_name, init_config, task]() mutable {
+        TRACE_EVENT(LYNX_TRACE_CATEGORY, "FragmentLayer::CommitFallbackUI");
+        std::unique_ptr<PreparedFallbackUI> prepared_ui;
+        {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, "FragmentLayer::EnsureFallbackUI");
+          task->Run();
+          prepared_ui = task->GetFuture().get();
+        }
+        std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
+            ->CreatePreparedRenderer(id, type, tag_name, init_config,
+                                     std::move(prepared_ui));
+      });
+  return true;
 }
 
 void NativePaintingCtxAndroid::UpdateLayout(
@@ -566,6 +607,10 @@ bool NativePaintingCtxAndroid::NeedAnimationProps() { return false; }
 void NativePaintingCtxAndroid::CreatePlatformRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
+  if (TryEnqueueCreateFallbackUI(id, type, base::String(), init_data,
+                                 init_config)) {
+    return;
+  }
   Enqueue([ref = platform_ref_, id, type, init_config = init_config,
            data_ref = init_data]() {
     std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)

@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableArray;
@@ -90,7 +91,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private BehaviorRegistry mBehaviorRegistry;
   private long mNativePtr = 0;
   private TextLayout mTextLayout;
-  private boolean mDestroyed = false;
+  private volatile boolean mDestroyed = false;
 
   private ConcurrentHashMap<Integer, Object> mExtraDatas = new ConcurrentHashMap<>();
 
@@ -377,11 +378,85 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
+    createPlatformExtendedRendererInternal(sign, tagName, initData, null);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @CalledByNative
+  public boolean canCreateFallbackUIAsync(String tagName) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    // The legacy fallback process can obtain an existing, attached View by node index.
+    // Keep that process on the UI thread without reading its mutable View map here.
+    if (mDestroyed || owner == null || owner.isDestroyed() || owner.isContextFree()
+        || mRootView == null || mRootView.get() == null || mContext.getBaseContext() == null
+        || mContext.isFallbackProcess() || mBehaviorRegistry == null) {
+      return false;
+    }
+    try {
+      Behavior behavior = mBehaviorRegistry.get(tagName);
+      // Fragment Layer enables asynchronous creation by default. Each fallback behavior
+      // declares whether it supports preparing its UI off the UI thread.
+      return behavior != null && !behavior.supportFragmentLayerRenderer()
+          && owner.behaviorSupportCreateAsync(tagName);
+    } catch (RuntimeException ignored) {
+      // Unknown behaviors still use the synchronous creation error path.
+      return false;
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @CalledByNative
+  public Object prepareFallbackUI(int sign, String tagName, PropBundle initData) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (owner == null || !canCreateFallbackUIAsync(tagName)) {
+      return null;
+    }
+    return owner.prepareView(sign, tagName, initData != null ? initData.getProps() : null, null,
+        initData != null ? initData.getEventHandlers() : null, false, sign,
+        initData != null ? initData.getGestures() : null);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @CalledByNative
+  public void createPlatformExtendedRendererWithPrepared(
+      int sign, String tagName, PropBundle initData, Object prepared) {
+    try {
+      createPlatformExtendedRendererInternal(sign, tagName, initData,
+          prepared instanceof LynxUIOwner.PreparedView ? (LynxUIOwner.PreparedView) prepared
+                                                       : null);
+    } finally {
+      // A synchronous behavior/host failure must also release an unconsumed result.
+      disposePreparedFallbackUI(prepared);
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  @CalledByNative
+  public void disposePreparedFallbackUI(Object prepared) {
+    if (prepared instanceof LynxUIOwner.PreparedView) {
+      ((LynxUIOwner.PreparedView) prepared).dispose();
+    }
+  }
+
+  private void createPlatformExtendedRendererInternal(
+      int sign, String tagName, PropBundle initData, @Nullable LynxUIOwner.PreparedView prepared) {
+    if (mDestroyed) {
+      disposePreparedFallbackUI(prepared);
+      return;
+    }
+    if (prepared != null && prepared.isConsumed()) {
+      return;
+    }
+    if (prepared != null && mViewHolder.containsKey(sign)) {
+      prepared.dispose();
+      return;
+    }
     if (mBehaviorRegistry != null) {
       Behavior behavior = mBehaviorRegistry.get(tagName);
       if (behavior != null && behavior.supportFragmentLayerRenderer()) {
         IRendererHost host = behavior.createPlatformRendererHost(mContext);
         if (host != null) {
+          disposePreparedFallbackUI(prepared);
           Renderer renderer = host.createRenderer(this, sign);
           renderer.setRenderHost(host);
           host.setRenderer(renderer);
@@ -398,8 +473,25 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       ReadableMap initialProps = initData != null ? initData.getProps() : null;
       ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
       ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
-      owner.createView(
-          sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
+      boolean committed = false;
+      if (prepared != null) {
+        if (prepared.isFor(owner, sign, tagName)) {
+          committed = prepared.commit();
+        } else {
+          prepared.dispose();
+        }
+      }
+      if (mDestroyed || owner.isDestroyed()) {
+        return;
+      }
+      if (!committed) {
+        owner.createView(
+            sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
+      }
+      if (mDestroyed || owner.isDestroyed()) {
+        owner.cleanupCreatedView(sign, tagName, initialProps);
+        return;
+      }
       LynxBaseUI createdUI = owner.getNode(sign);
       LynxBaseUI rendererHostUI = resolveRendererHostUI(createdUI);
       IRendererHost host = resolveRendererHost(rendererHostUI);
@@ -416,6 +508,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         return;
       }
       owner.cleanupCreatedView(sign, tagName, initialProps);
+    } else {
+      disposePreparedFallbackUI(prepared);
     }
 
     // For extended platform renderers, we need to create a custom view based on the tag name
