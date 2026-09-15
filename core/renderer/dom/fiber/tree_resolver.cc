@@ -440,6 +440,37 @@ void TreeResolver::ApplyTemplateAttributesToElement(
                                            TemplateAttributeApplyMode::kAll);
 }
 
+void TreeResolver::ApplyTemplateAttributeSlotToElement(
+    Element* element, uint32_t slot_index,
+    const lepus::Value& previous_attribute_slots,
+    const lepus::Value& attribute_slots) {
+  if (element == nullptr || !element->HasTemplateAttributes()) {
+    return;
+  }
+
+  const auto& template_attributes = element->template_attributes();
+  if (std::any_of(template_attributes->begin(), template_attributes->end(),
+                  [](const auto& attr) {
+                    return attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD;
+                  })) {
+    ApplyTemplateAttributesToElementInternal(element, &previous_attribute_slots,
+                                             attribute_slots,
+                                             TemplateAttributeApplyMode::kAll);
+    return;
+  }
+
+  for (const auto& attr : *template_attributes) {
+    if (attr.type_ != ATTRIBUTE_BINDING_TYPE_DYNAMIC ||
+        attr.slot_index_ != static_cast<int32_t>(slot_index)) {
+      continue;
+    }
+    ApplyTemplateAttributeValue(
+        element, attr.key_,
+        ResolveAttributeSlotValue(attribute_slots, slot_index),
+        TemplateAttributeApplyMode::kAll);
+  }
+}
+
 void TreeResolver::ApplyTemplateNonEventAttributesToElement(
     Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(
