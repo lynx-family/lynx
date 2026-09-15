@@ -34,6 +34,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,11 +53,13 @@ public class PlatformRendererContextTest {
   @Mock private UIBody.UIBodyView mockBodyView;
   @Mock private BehaviorRegistry mockBehaviorRegistry;
 
+  private boolean previousCreateViewAsync;
   private PlatformRendererContext rendererContext;
   private AtomicReference<Renderer> rootRendererRef;
 
   @Before
   public void setUp() {
+    previousCreateViewAsync = LynxEnv.inst().getCreateViewAsync();
     MockitoAnnotations.initMocks(this);
     LynxEnv.inst().initNativeLibraries(new INativeLibraryLoader() {
       @Override
@@ -188,11 +191,159 @@ public class PlatformRendererContextTest {
     props.putDouble("opacity", 0.5);
     when(propBundle.getProps()).thenReturn(props);
 
-    rendererContext.createPlatformExtendedRenderer(1, "fallback", propBundle);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> rendererContext.createPlatformExtendedRenderer(1, "fallback", propBundle));
 
     verify(owner).createView(1, "fallback", props, null, null, false, 1, null);
     assertSame(ui.getView(), rendererContext.mViewHolder.get(1));
     assertSame(ui, ui.getView().getRenderer().getUIHost());
+  }
+
+  private LynxUIOwner asyncOwner(String tag) {
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getEnableCreateViewAsync()).thenReturn(true);
+    when(owner.behaviorSupportCreateAsync(tag)).thenReturn(true);
+    when(mockBehaviorRegistry.get(tag)).thenReturn(new Behavior(tag));
+    LynxEnv.inst().setCreateViewAsync(true);
+    return owner;
+  }
+
+  @After
+  public void restoreAsyncSwitch() {
+    LynxEnv.inst().setCreateViewAsync(previousCreateViewAsync);
+  }
+
+  @Test
+  public void testAsyncEligibilityUsesExistingSwitchesAndExcludesUnsafeHosts() {
+    LynxUIOwner owner = asyncOwner("view");
+    assertTrue(rendererContext.canPreparePlatformRenderer("view"));
+    LynxEnv.inst().setCreateViewAsync(false);
+    assertFalse(rendererContext.canPreparePlatformRenderer("view"));
+    LynxEnv.inst().setCreateViewAsync(true);
+    when(owner.getEnableCreateViewAsync()).thenReturn(false);
+    assertFalse(rendererContext.canPreparePlatformRenderer("view"));
+    when(owner.getEnableCreateViewAsync()).thenReturn(true);
+    when(owner.behaviorSupportCreateAsync("view")).thenReturn(false);
+    assertFalse(rendererContext.canPreparePlatformRenderer("view"));
+    when(owner.behaviorSupportCreateAsync("view")).thenReturn(true);
+    when(owner.isContextFree()).thenReturn(true);
+    assertFalse(rendererContext.canPreparePlatformRenderer("view"));
+    when(owner.isContextFree()).thenReturn(false);
+    when(mockLynxContext.isFallbackProcess()).thenReturn(true);
+    assertFalse(rendererContext.canPreparePlatformRenderer("view"));
+    when(mockLynxContext.isFallbackProcess()).thenReturn(false);
+    Behavior nativeBehavior = mock(Behavior.class);
+    when(nativeBehavior.supportFragmentLayerRenderer()).thenReturn(true);
+    when(mockBehaviorRegistry.get("view")).thenReturn(nativeBehavior);
+    assertFalse(rendererContext.canPreparePlatformRenderer("view"));
+    assertFalse(rendererContext.canPreparePlatformRenderer("page"));
+    verify(owner, never()).prepareViewForRenderer(anyInt(), anyString(), any(), any(), any());
+  }
+
+  @Test
+  public void testCompatibilityBuiltInsUseTheSameOptIn() {
+    for (String tag : new String[] {"view", "text", "image", "scroll-view", "list", "list-item"}) {
+      asyncOwner(tag);
+      assertTrue(rendererContext.canPreparePlatformRenderer(tag));
+    }
+  }
+
+  @Test
+  public void testFallbackStartingAfterFlushDefersConstructionToMain() {
+    LynxUIOwner owner = asyncOwner("view");
+    when(owner.getNode(1)).thenReturn(new UIView(TestingUtils.getLynxContext()));
+    when(mockLynxContext.isFallbackProcess()).thenReturn(true);
+    Runnable result = rendererContext.preparePlatformRenderer(1, "view", null);
+    verify(owner, never()).prepareViewForRenderer(anyInt(), anyString(), any(), any(), any());
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(result);
+    verify(owner).createView(1, "view", null, null, null, false, 1, null);
+  }
+
+  @Test
+  public void testPreparationConstructsOffMainAndFinalizesBeforeBindingOnMain() {
+    LynxUIOwner owner = asyncOwner("view");
+    UIView ui = new UIView(TestingUtils.getLynxContext());
+    when(owner.getNode(1)).thenReturn(ui);
+    Runnable complete = mock(Runnable.class);
+    doAnswer(invocation -> {
+      assertTrue(com.lynx.tasm.utils.UIThreadUtils.isOnUiThread());
+      assertNull(rendererContext.mViewHolder.get(1));
+      return null;
+    })
+        .when(complete)
+        .run();
+    doAnswer(invocation -> {
+      assertFalse(com.lynx.tasm.utils.UIThreadUtils.isOnUiThread());
+      return complete;
+    })
+        .when(owner)
+        .prepareViewForRenderer(1, "view", null, null, null);
+    Runnable result = rendererContext.preparePlatformRenderer(1, "view", null);
+    assertNotNull(result);
+    assertNull(rendererContext.mViewHolder.get(1));
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(result);
+    verify(complete).run();
+    verify(owner).prepareViewForRenderer(1, "view", null, null, null);
+    verify(owner, never())
+        .createView(anyInt(), anyString(), any(), any(), any(), anyBoolean(), anyInt(), any());
+    assertSame(ui.getView(), rendererContext.mViewHolder.get(1));
+  }
+
+  @Test
+  public void testReplacedOwnerCannotReceiveStalePreparation() {
+    LynxUIOwner owner = asyncOwner("view");
+    Runnable complete = mock(Runnable.class);
+    when(owner.prepareViewForRenderer(1, "view", null, null, null)).thenReturn(complete);
+    Runnable result = rendererContext.preparePlatformRenderer(1, "view", null);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(mock(LynxUIOwner.class));
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(result);
+    verify(complete, never()).run();
+    assertTrue(rendererContext.mViewHolder.isEmpty());
+  }
+
+  @Test
+  public void testConstructionErrorFallsBackOnMainWithoutDroppingRenderer() {
+    LynxUIOwner owner = asyncOwner("view");
+    UIView ui = new UIView(TestingUtils.getLynxContext());
+    when(owner.getNode(1)).thenReturn(ui);
+    when(owner.prepareViewForRenderer(1, "view", null, null, null))
+        .thenThrow(new IllegalStateException("construction failure"));
+    Runnable result = rendererContext.preparePlatformRenderer(1, "view", null);
+    assertNotNull(result);
+    verify(owner, never())
+        .createView(anyInt(), anyString(), any(), any(), any(), anyBoolean(), anyInt(), any());
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(result);
+    verify(owner).prepareViewForRenderer(1, "view", null, null, null);
+    verify(owner).createView(1, "view", null, null, null, false, 1, null);
+    assertSame(ui.getView(), rendererContext.mViewHolder.get(1));
+  }
+
+  @Test
+  public void testReentrantDestroyDuringCompletionDoesNotBindHost() {
+    LynxUIOwner owner = asyncOwner("view");
+    when(owner.getNode(1)).thenReturn(new UIView(TestingUtils.getLynxContext()));
+    when(owner.prepareViewForRenderer(1, "view", null, null, null))
+        .thenReturn(() -> rendererContext.destroy());
+    Runnable result = rendererContext.preparePlatformRenderer(1, "view", null);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(result);
+    assertTrue(rendererContext.mViewHolder.isEmpty());
+  }
+
+  @Test
+  public void testDestroyRejectsFinalizationAndFurtherConstruction() {
+    LynxUIOwner owner = asyncOwner("view");
+    Runnable complete = mock(Runnable.class);
+    when(owner.prepareViewForRenderer(1, "view", null, null, null)).thenReturn(complete);
+    Runnable result = rendererContext.preparePlatformRenderer(1, "view", null);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      rendererContext.destroy();
+      result.run();
+    });
+    assertNull(rendererContext.preparePlatformRenderer(1, "view", null));
+    verify(owner).prepareViewForRenderer(1, "view", null, null, null);
+    verify(complete, never()).run();
+    assertTrue(rendererContext.mViewHolder.isEmpty());
   }
 
   @Test

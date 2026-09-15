@@ -19,6 +19,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.Behavior;
@@ -47,6 +48,7 @@ import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
+import java.lang.Runnable;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -90,7 +92,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private BehaviorRegistry mBehaviorRegistry;
   private long mNativePtr = 0;
   private TextLayout mTextLayout;
-  private boolean mDestroyed = false;
+  private volatile boolean mDestroyed = false;
 
   private ConcurrentHashMap<Integer, Object> mExtraDatas = new ConcurrentHashMap<>();
 
@@ -375,9 +377,77 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return info;
   }
 
+  // Called during flush, before the renderer's main-thread creation is queued.
   @CalledByNative
+  boolean canPreparePlatformRenderer(String tagName) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (mDestroyed || owner == null || "page".equals(tagName)
+        || !LynxEnv.inst().getCreateViewAsync() || !owner.getEnableCreateViewAsync()
+        || owner.isContextFree()
+        // Fallback may reuse attached views; never touch those on a worker.
+        || mContext.isFallbackProcess()) {
+      return false;
+    }
+    try {
+      Behavior behavior = mBehaviorRegistry != null ? mBehaviorRegistry.get(tagName) : null;
+      if (behavior == null || behavior.supportFragmentLayerRenderer()
+          || !owner.behaviorSupportCreateAsync(tagName)) {
+        return false;
+      }
+    } catch (RuntimeException ignored) {
+      return false;
+    }
+    return true;
+  }
+
+  // Preparation runs on the shared scheduler worker or assisting UI thread.
+  @CalledByNative
+  Runnable preparePlatformRenderer(int sign, String tagName, PropBundle initData) {
+    LynxUIOwner owner = mContext != null ? mContext.getLynxUIOwner() : null;
+    if (mDestroyed || owner == null) {
+      return null;
+    }
+    Runnable prepared = null;
+    try {
+      if (canPreparePlatformRenderer(tagName)) {
+        prepared = owner.prepareViewForRenderer(sign, tagName,
+            initData != null ? initData.getProps() : null,
+            initData != null ? initData.getEventHandlers() : null,
+            initData != null ? initData.getGestures() : null);
+      }
+    } catch (Throwable error) {
+      LLog.e(TAG, "Adapted renderer construction failed: " + error);
+    }
+    final Runnable complete = prepared;
+    return () -> {
+      UIThreadUtils.assertOnUiThread();
+      if (!mDestroyed && mContext.getLynxUIOwner() == owner) {
+        createPlatformExtendedRenderer(sign, tagName, initData, complete);
+      }
+    };
+  }
+
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
-    if (mBehaviorRegistry != null) {
+    createPlatformExtendedRenderer(sign, tagName, initData, null);
+  }
+
+  @CalledByNative
+  void createPlatformExtendedRendererWithPreparation(
+      int sign, String tagName, PropBundle initData, Runnable preparation) {
+    if (preparation != null) {
+      preparation.run();
+    } else {
+      createPlatformExtendedRenderer(sign, tagName, initData);
+    }
+  }
+
+  private void createPlatformExtendedRenderer(
+      int sign, String tagName, PropBundle initData, Runnable complete) {
+    UIThreadUtils.assertOnUiThread();
+    if (mDestroyed) {
+      return;
+    }
+    if (complete == null && mBehaviorRegistry != null) {
       Behavior behavior = mBehaviorRegistry.get(tagName);
       if (behavior != null && behavior.supportFragmentLayerRenderer()) {
         IRendererHost host = behavior.createPlatformRendererHost(mContext);
@@ -398,8 +468,15 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       ReadableMap initialProps = initData != null ? initData.getProps() : null;
       ReadableArray eventListeners = initData != null ? initData.getEventHandlers() : null;
       ReadableArray gestureDetectors = initData != null ? initData.getGestures() : null;
-      owner.createView(
-          sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
+      if (complete != null) {
+        complete.run();
+      } else {
+        owner.createView(
+            sign, tagName, initialProps, null, eventListeners, false, sign, gestureDetectors);
+      }
+      if (mDestroyed || mContext.getLynxUIOwner() != owner) {
+        return;
+      }
       LynxBaseUI createdUI = owner.getNode(sign);
       LynxBaseUI rendererHostUI = resolveRendererHostUI(createdUI);
       IRendererHost host = resolveRendererHost(rendererHostUI);

@@ -358,10 +358,14 @@ void NativePaintingCtxAndroid::CreatePlatformExtendedRenderer(
     int id, const base::String &tag_name,
     const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
-  Enqueue([ref = platform_ref_, id, tag_name, init_config = init_config,
-           data_ref = init_data]() {
-    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
-        ->CreatePlatformExtendedRenderer(id, tag_name, data_ref, init_config);
+  auto ref =
+      std::static_pointer_cast<NativePaintingCtxAndroidRef>(platform_ref_);
+  auto preparation = ref->PrepareRenderer(id, PlatformRendererType::kUnknown,
+                                          tag_name, init_data, init_config);
+  Enqueue([ref, id, tag_name, init_config, data_ref = init_data,
+           preparation = std::move(preparation)]() {
+    ref->CreatePreparedRenderer(id, PlatformRendererType::kUnknown, tag_name,
+                                data_ref, init_config, preparation);
   });
 }
 
@@ -409,7 +413,41 @@ void NativePaintingCtxAndroid::UpdatePlatformExtraBundle(
 void NativePaintingCtxAndroid::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {}
 
-void NativePaintingCtxAndroid::Flush() { queue_->Flush(); }
+struct NativePaintingCtxAndroid::PreparationBatch {
+  PlatformRendererContext::PreparationScheduler::BatchRef snapshot;
+};
+
+void NativePaintingCtxAndroid::Enqueue(shell::UIOperation op) {
+  if (!preparation_batch_) {
+    preparation_batch_ = std::make_shared<PreparationBatch>();
+    queue_->EnqueueUIOperation(
+        [scheduler = view_manager_->GetPreparationScheduler(),
+         batch = preparation_batch_]() {
+          scheduler->ActivateBatch(batch->snapshot);
+        });
+  }
+  queue_->EnqueueUIOperation(std::move(op));
+}
+
+void NativePaintingCtxAndroid::BeforeFlush() {
+  auto scheduler = view_manager_->GetPreparationScheduler();
+  auto snapshot = scheduler->TakeBatch();
+  if (!preparation_batch_) {
+    return;
+  }
+  preparation_batch_->snapshot = snapshot;
+  queue_->EnqueueHighPriorityUIOperation(
+      [scheduler, snapshot = std::move(snapshot)]() mutable {
+        scheduler->ActivateBatch(std::move(snapshot));
+      });
+  queue_->EnqueueUIOperation([scheduler]() { scheduler->ResetBatch(); });
+  preparation_batch_.reset();
+}
+
+void NativePaintingCtxAndroid::Flush() {
+  BeforeFlush();
+  queue_->Flush();
+}
 
 void NativePaintingCtxAndroid::HandleValidate(int tag) {}
 
@@ -566,10 +604,14 @@ bool NativePaintingCtxAndroid::NeedAnimationProps() { return false; }
 void NativePaintingCtxAndroid::CreatePlatformRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
-  Enqueue([ref = platform_ref_, id, type, init_config = init_config,
-           data_ref = init_data]() {
-    std::static_pointer_cast<NativePaintingCtxAndroidRef>(ref)
-        ->CreatePlatformRenderer(id, type, data_ref, init_config);
+  auto ref =
+      std::static_pointer_cast<NativePaintingCtxAndroidRef>(platform_ref_);
+  auto preparation =
+      ref->PrepareRenderer(id, type, base::String(), init_data, init_config);
+  Enqueue([ref, id, type, init_config, data_ref = init_data,
+           preparation = std::move(preparation)]() {
+    ref->CreatePreparedRenderer(id, type, base::String(), data_ref, init_config,
+                                preparation);
   });
 }
 

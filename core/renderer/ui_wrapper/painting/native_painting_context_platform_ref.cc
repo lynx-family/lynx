@@ -48,8 +48,11 @@ void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
   }
-  renderers_.insert_or_assign(
-      id, view_factory_->CreateRenderer(id, type, init_data, init_config));
+  auto renderer =
+      view_factory_->CreateRenderer(id, type, init_data, init_config);
+  if (!destroyed_.load(std::memory_order_acquire)) {
+    renderers_.insert_or_assign(id, std::move(renderer));
+  }
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
@@ -59,8 +62,11 @@ void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
   }
-  renderers_.insert_or_assign(id, view_factory_->CreateExtendedRenderer(
-                                      id, tag_name, init_data, init_config));
+  auto renderer = view_factory_->CreateExtendedRenderer(id, tag_name, init_data,
+                                                        init_config);
+  if (!destroyed_.load(std::memory_order_acquire)) {
+    renderers_.insert_or_assign(id, std::move(renderer));
+  }
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayList(
@@ -74,7 +80,8 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
   }
 
   MarkEventTargetTreeDirty(id);
-  const auto &layer = it->second;
+  // Host creation can synchronously destroy the context and clear renderers_.
+  const auto layer = it->second;
   // Rebuild the sublayers according to the new SubLayers in the display list
   // with MyersDiff. And generate actual addChild and removeChild actions for
   // PlatformRenderer here.
@@ -84,12 +91,18 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
     RebuildSubLayers(layer, display_list.SubLayers());
   }
 
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   layer->UpdateDisplayList(std::move(display_list));
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayLists(
     DisplayListUpdateBatch &&batch) {
   for (auto &update : batch) {
+    if (destroyed_.load(std::memory_order_acquire)) {
+      return;
+    }
     UpdateDisplayList(update.id, std::move(update.display_list));
   }
 }
@@ -114,7 +127,8 @@ void NativePaintingCtxPlatformRef::RemovePaintingNode(int parent, int child,
     return;
   }
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
-    it_child->second->RemoveFromParent();
+    const auto renderer = it_child->second;
+    renderer->RemoveFromParent();
   }
 }
 
@@ -130,7 +144,11 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
     ClearEventTargetRootDirty(child);
   }
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
-    it_child->second->RemoveFromParent();
+    const auto renderer = it_child->second;
+    renderer->RemoveFromParent();
+    if (destroyed_.load(std::memory_order_acquire)) {
+      return;
+    }
     renderers_.erase(child);
   }
   event_target_helper_->InvalidateScrollContainerCache(child);
@@ -148,7 +166,11 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
     for (int child_id : new_children) {
       auto child_it = renderers_.find(child_id);
       if (child_it != renderers_.end()) {
-        renderer->AddChild(child_it->second);
+        const auto child = child_it->second;
+        renderer->AddChild(child);
+        if (destroyed_.load(std::memory_order_acquire)) {
+          return;
+        }
       }
     }
     return;
@@ -163,6 +185,9 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
   };
 
   renderer->OnRebuildSubRenderers();
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
 
   // Perform diff
   auto diff_result = myers_diff::MyersDiffWithoutUpdate(
@@ -174,7 +199,11 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
             std::greater<>());
   for (int idx : diff_result.removals_) {
     if (idx >= 0 && static_cast<size_t>(idx) < existing_children.size()) {
-      existing_children[idx]->RemoveFromParent();
+      const auto child = existing_children[idx];
+      child->RemoveFromParent();
+      if (destroyed_.load(std::memory_order_acquire)) {
+        return;
+      }
     }
   }
 
@@ -187,7 +216,11 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
     int child_id = new_children[insert_pos];
     auto child_it = renderers_.find(child_id);
     if (child_it != renderers_.end()) {
-      renderer->AddChild(child_it->second, insert_pos);
+      const auto child = child_it->second;
+      renderer->AddChild(child, insert_pos);
+      if (destroyed_.load(std::memory_order_acquire)) {
+        return;
+      }
     }
   }
 }
@@ -687,7 +720,8 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
   if (it == renderers_.end()) {
     return;
   }
-  it->second->UpdateAttributes(attributes);
+  const auto renderer = it->second;
+  renderer->UpdateAttributes(attributes);
 }
 
 void NativePaintingCtxPlatformRef::UpdateNodeReadyPatching(
@@ -768,7 +802,8 @@ bool NativePaintingCtxPlatformRef::TryInvokePlatformRendererUIMethod(
   if (it == renderers_.end() || !it->second) {
     return false;
   }
-  return it->second->InvokeUIMethod(method, params, callback);
+  const auto renderer = it->second;
+  return renderer->InvokeUIMethod(method, params, callback);
 }
 
 void NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(
