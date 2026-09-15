@@ -215,6 +215,7 @@ class UIOwner {
   void PostDrawEndTimingFrameCallback(
       const tasm::PipelineID& pipeline_id) const;
   void OnAvoidKeyboardCallback(float translate_y) const;
+  void SetSoftInputMode(const std::string& mode) const;
   void KeyboardAvoidingInputDidFocus(UIBase* owner, bool avoid_keyboard,
                                      float spacing);
   void KeyboardAvoidingInputDidBlur(UIBase* owner, bool is_focus_transition);
@@ -296,6 +297,7 @@ class UIOwner {
 
   napi_env env_{nullptr};
   napi_ref js_this_{nullptr};
+  napi_ref js_ui_context_{nullptr};
   napi_ref js_create_{nullptr};
   napi_ref js_create_node_content_{nullptr};
   napi_ref js_start_fluency_trace_{nullptr};

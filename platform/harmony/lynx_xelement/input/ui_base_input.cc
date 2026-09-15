@@ -275,6 +275,11 @@ void UIBaseInput::OnPropUpdate(const std::string& name,
     NodeManager::Instance().SetAttributeWithNumberValue(
         input_node_, GetBlurOnSubmitAttributeType(),
         static_cast<uint32_t>(!value.Bool()));
+  } else if (name == "set-soft-input-mode") {
+    if (!value.IsString()) {
+      return;
+    }
+    context_->GetUIOwner()->SetSoftInputMode(value.StdString());
   } else if (name == "avoid-keyboard") {
     avoid_keyboard_in_lynx_view_ = value.Bool();
     context_->GetUIOwner()->AvoidKeyboardPropsDidChangeForOwner(
