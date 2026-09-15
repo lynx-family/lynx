@@ -104,6 +104,8 @@ lynx_core_source_set("cpp") {
     "public/pub_ui_owner.h",
     "renderer/lynx_display_list_applier.cc",
     "renderer/lynx_display_list_applier.h",
+    "renderer/lynx_render_node.cc",
+    "renderer/lynx_render_node.h",
     "renderer/lynx_renderer.cc",
     "renderer/lynx_renderer.h",
     "renderer/lynx_renderer_context.cc",

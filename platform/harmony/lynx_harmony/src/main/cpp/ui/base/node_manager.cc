@@ -80,6 +80,10 @@ ArkUI_NodeHandle NodeManager::GetParent(ArkUI_NodeHandle node) {
   return native_node_api_->getParent(node);
 }
 
+ArkUI_NodeHandle NodeManager::GetNextSibling(ArkUI_NodeHandle node) {
+  return native_node_api_->getNextSibling(node);
+}
+
 bool NodeManager::InsertNodeAfter(ArkUI_NodeHandle parent,
                                   ArkUI_NodeHandle child,
                                   ArkUI_NodeHandle after) {

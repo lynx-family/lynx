@@ -125,6 +125,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void UpdateFragmentLayerDisplayList(DisplayList display_list);
   void SetFragmentLayerClipBounds(bool need_clip);
   void OnAttachedToFragmentLayerTree();
+  void UpdateFragmentLayerOffset(float left, float top);
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();

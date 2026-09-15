@@ -9,14 +9,17 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "core/renderer/dom/fragment/display_list.h"
+#include "core/renderer/dom/fragment/display_list_segment.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
 class LynxDisplayListApplier;
 class LynxRendererContext;
+class LynxRenderNode;
 class UIBase;
 
 class LynxRenderer {
@@ -27,6 +30,9 @@ class LynxRenderer {
   int32_t Sign() const { return sign_; }
   void UpdateDisplayList(DisplayList display_list);
   void Draw(OH_Drawing_Canvas* canvas);
+  void DrawSegment(size_t index, OH_Drawing_Canvas* canvas);
+  void UpdateRenderNodeOrder();
+  void InvalidateRenderNodes();
 
  private:
   std::shared_ptr<LynxRendererContext> context_;
@@ -34,6 +40,8 @@ class LynxRenderer {
   int32_t sign_{0};
   std::unique_ptr<LynxDisplayListApplier> display_list_applier_;
   DisplayList display_list_;
+  base::Vector<DisplayListSegment> segments_;
+  std::vector<std::unique_ptr<LynxRenderNode>> render_nodes_;
 };
 
 }  // namespace harmony
