@@ -84,6 +84,12 @@ coverage({
 })
 
 targets({
+    "create_view_scheduler_unittest_exec": {
+        "cwd": ".",
+        "owners":["renzhongyue"],
+        "coverage": True,
+        "enable_parallel":True
+    },
     "encoder_tests_exec":{
         "cwd": ".",
         "owners":["songshourui.null"],

@@ -9,6 +9,7 @@ import("../../../Lynx.gni")
 ui_wrapper_painting_shared_sources = [
   "catalyzer.cc",
   "catalyzer.h",
+  "create_view_scheduler.h",
   "native_painting_context.cc",
   "native_painting_context.h",
   "native_painting_context_platform_ref.cc",
@@ -109,4 +110,20 @@ unittest_set("platform_renderer_testset") {
 
 unittest_exec("platform_renderer_unittest_exec") {
   deps = [ ":platform_renderer_testset" ]
+}
+
+unittest_set("create_view_scheduler_testset") {
+  sources = [
+    "create_view_scheduler.h",
+    "create_view_scheduler_unittest.cc",
+  ]
+  deps = [
+    "../../../../base/src:base_group",
+    "../../../base:base",
+    "../../utils:lynx_env",
+  ]
+}
+
+unittest_exec("create_view_scheduler_unittest_exec") {
+  deps = [ ":create_view_scheduler_testset" ]
 }
