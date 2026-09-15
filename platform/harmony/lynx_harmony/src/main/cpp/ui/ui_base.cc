@@ -2475,6 +2475,27 @@ float UIBase::TranslateZ() const {
 }
 
 float UIBase::ViewLeft() const {
+  ArkUI_IntOffset child_offset{0, 0};
+  ArkUI_IntOffset parent_offset{0, 0};
+  if (parent_ && parent_->HasJSObject() && parent_->HasCustomizedLayout() &&
+      OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+          Node(), &child_offset) == ARKUI_ERROR_CODE_NO_ERROR &&
+      OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+          parent_->Node(), &parent_offset) == ARKUI_ERROR_CODE_NO_ERROR) {
+    // ContentSlot children can have ArkUI layout ancestors outside the Lynx
+    // UI tree. Include their transforms when querying screen positions.
+    // Remove this UI's transform and sticky offsets, which callers apply
+    // separately, and add back parent scrolling for content coordinates.
+    float transformed_origin[2] = {0.f, 0.f};
+    if (transform_) {
+      transform_->GetTransformMatrix(width_, height_, 1.f, true)
+          .mapPoint(transformed_origin, transformed_origin);
+    }
+    const float sticky_translate =
+        sticky_info_ ? sticky_info_->translate_x : 0.f;
+    return (child_offset.x - parent_offset.x) / context_->ScaledDensity() +
+           parent_->ScrollX() - transformed_origin[0] - sticky_translate;
+  }
   float left =
       NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION, 0);
   if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
@@ -2484,6 +2505,24 @@ float UIBase::ViewLeft() const {
 }
 
 float UIBase::ViewTop() const {
+  ArkUI_IntOffset child_offset{0, 0};
+  ArkUI_IntOffset parent_offset{0, 0};
+  if (parent_ && parent_->HasJSObject() && parent_->HasCustomizedLayout() &&
+      OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+          Node(), &child_offset) == ARKUI_ERROR_CODE_NO_ERROR &&
+      OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+          parent_->Node(), &parent_offset) == ARKUI_ERROR_CODE_NO_ERROR) {
+    // Keep transform, sticky and scroll compensation consistent with ViewLeft.
+    float transformed_origin[2] = {0.f, 0.f};
+    if (transform_) {
+      transform_->GetTransformMatrix(width_, height_, 1.f, true)
+          .mapPoint(transformed_origin, transformed_origin);
+    }
+    const float sticky_translate =
+        sticky_info_ ? sticky_info_->translate_y : 0.f;
+    return (child_offset.y - parent_offset.y) / context_->ScaledDensity() +
+           parent_->ScrollY() - transformed_origin[1] - sticky_translate;
+  }
   float top =
       NodeManager::Instance().GetAttribute<float>(DrawNode(), NODE_POSITION, 1);
   if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
