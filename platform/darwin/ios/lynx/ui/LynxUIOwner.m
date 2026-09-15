@@ -565,8 +565,6 @@ extern NSString* const kDefaultComponentID;
   return ui;
 }
 
-// During the creation of LynxUI, methods that cannot be executed asynchronously are encapsulated
-// within the processUIOnMainThread method, which will be ensured to run on the main thread.
 - (void)processUIOnMainThread:(LynxUI*)ui
                      withSign:(NSInteger)sign
                       tagName:(NSString*)tagName

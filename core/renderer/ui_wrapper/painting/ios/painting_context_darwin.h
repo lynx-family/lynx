@@ -157,9 +157,6 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
   template <typename F>
   void Enqueue(F&& func);
 
-  template <typename F>
-  void EnqueueHighPriorityUIOperation(F&& func);
-
   PaintingContextDarwin(const PaintingContextDarwin&) = delete;
   PaintingContextDarwin& operator=(const PaintingContextDarwin&) = delete;
 };
