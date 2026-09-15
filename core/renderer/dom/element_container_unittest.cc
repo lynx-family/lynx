@@ -300,6 +300,91 @@ TEST_F(ElementContainerTest, FiberElementCase0) {
               element_after_yellow->impl_id());
 }
 
+TEST_F(ElementContainerTest, FiberLayoutOnlyAppendHint) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto create_native_view = [this]() {
+    auto view = manager->CreateFiberNode("view");
+    view->SetAttribute("enable-layout", lepus::Value("false"));
+    return view;
+  };
+
+  auto row0 = manager->CreateFiberWrapperElement();
+  auto row0_child0 = create_native_view();
+  auto row0_child1 = create_native_view();
+  row0->InsertNode(row0_child0);
+  row0->InsertNode(row0_child1);
+
+  auto row1 = manager->CreateFiberWrapperElement();
+  auto row1_child0 = create_native_view();
+  auto row1_child1 = create_native_view();
+  row1->InsertNode(row1_child0);
+  row1->InsertNode(row1_child1);
+
+  page->InsertNode(row0);
+  page->InsertNode(row1);
+  page->FlushActionsAsRoot();
+
+  auto* page_container = page->element_container_impl();
+  EXPECT_TRUE(page_container->last_normal_ui_child_is_tail_);
+  EXPECT_EQ(page_container->LastAddedNormalUIChild(), row1_child1.get());
+
+  auto appended_row = manager->CreateFiberWrapperElement();
+  auto appended_child0 = create_native_view();
+  auto appended_child1 = create_native_view();
+  appended_row->InsertNode(appended_child0);
+  appended_row->InsertNode(appended_child1);
+  page->InsertNode(appended_row);
+  page->FlushActionsAsRoot();
+  ASSERT_EQ(page_container->none_layout_only_children_size_, 6);
+  ASSERT_TRUE(page_container->last_normal_ui_child_is_tail_);
+  ASSERT_EQ(page_container->LastAddedNormalUIChild(), appended_child1.get());
+
+  auto middle_row = manager->CreateFiberWrapperElement();
+  auto middle_child0 = create_native_view();
+  auto middle_child1 = create_native_view();
+  middle_row->InsertNode(middle_child0);
+  middle_row->InsertNode(middle_child1);
+  page->InsertNodeBefore(middle_row, row1);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(page_container->last_normal_ui_child_is_tail_);
+
+  auto recovered_row = manager->CreateFiberWrapperElement();
+  auto recovered_child0 = create_native_view();
+  auto recovered_child1 = create_native_view();
+  recovered_row->InsertNode(recovered_child0);
+  recovered_row->InsertNode(recovered_child1);
+  page->InsertNode(recovered_row);
+  EXPECT_FALSE(page_container->last_normal_ui_child_is_tail_);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(page_container->last_normal_ui_child_is_tail_);
+
+  auto painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  const auto& children = page_painting_node->children_;
+  ASSERT_EQ(children.size(), static_cast<size_t>(10));
+  EXPECT_EQ(children[0]->id_, row0_child0->impl_id());
+  EXPECT_EQ(children[1]->id_, row0_child1->impl_id());
+  EXPECT_EQ(children[2]->id_, middle_child0->impl_id());
+  EXPECT_EQ(children[3]->id_, middle_child1->impl_id());
+  EXPECT_EQ(children[4]->id_, row1_child0->impl_id());
+  EXPECT_EQ(children[5]->id_, row1_child1->impl_id());
+  EXPECT_EQ(children[6]->id_, appended_child0->impl_id());
+  EXPECT_EQ(children[7]->id_, appended_child1->impl_id());
+  EXPECT_EQ(children[8]->id_, recovered_child0->impl_id());
+  EXPECT_EQ(children[9]->id_, recovered_child1->impl_id());
+
+  page->RemoveNode(recovered_row);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(page_container->last_normal_ui_child_is_tail_);
+  EXPECT_EQ(page_painting_node->children_.size(), static_cast<size_t>(8));
+}
+
 TEST_F(ElementContainerTest, FiberElementCase0_UnifiedBehavior) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
