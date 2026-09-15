@@ -37,7 +37,7 @@ class IsolatedGestureDetector : public HitTestable, public HitTestTarget {
   void TrackScrollTapSuppressionForPointerDown(const PointerEvent& event,
                                                const HitTestResult& result) {
     scroll_tap_suppression_states_.erase(event.pointer_id);
-    if (event.device != PointerEvent::DeviceType::kTouch) {
+    if (!IsTouchLikePointerDevice(event.device)) {
       return;
     }
 
