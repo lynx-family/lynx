@@ -110,9 +110,12 @@ inline std::vector<AnimationStageEntries> MakeDefaultAnimationStages(
     int32_t change_duration_ms = kDefaultChangeAnimationDurationMs) {
   /*
   stages: [
-    {animations: ['remove'], duration: 120},
-    {animations: ['move', 'change'], duration: 250},
-    {animations: ['add'], duration: 120},
+    {type: 'remove', duration: 120},
+    [
+      {type: 'move', duration: 250},
+      {type: 'change', duration: 250},
+    ],
+    {type: 'add', duration: 120},
   ]
    */
   return {

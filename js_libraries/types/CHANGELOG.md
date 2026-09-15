@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 4.4.0
+
+- Add `experimental-use-new-update-animation` and `experimental-new-update-animation` to `<list>` typings.
+- Add `bindlistanimationstart`, `bindlistanimationend`, `bindlistanimationcancel`, and `bindlistanimationupdate` typings with their event details and platform annotations.
+
 ## 4.3.2
 - Add `bindtextClick` and `MarkdownTextClickEvent` typings for `<markdown>` text attachment clicks.
 
