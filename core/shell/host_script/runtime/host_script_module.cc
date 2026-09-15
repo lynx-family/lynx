@@ -322,7 +322,9 @@ bool HostScriptModule::IsLazy() { return true; }
 
 void HostScriptModule::OnEnvDetach(Napi::Env) { session_->Detach(); }
 
-void HostScriptModule::OnLoad(Napi::Object& target) {
+void HostScriptModule::OnLoad(Napi::Object&) {}
+
+void HostScriptModule::Populate(Napi::Object& target) {
   using Callback = Napi::Value (*)(const Napi::CallbackInfo&);
   const std::pair<const char*, Callback> methods[] = {
       {"reportEntryResult", ReportEntryResult},
