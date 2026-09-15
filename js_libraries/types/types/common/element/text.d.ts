@@ -4,11 +4,49 @@
 
 import { BaseEvent, Callback, BaseMethod, TextLayoutEventDetail, TextSelectionChangeEventDetail } from '../events';
 import { StandardProps } from '../props';
+import { TextBaselineProps } from './common';
 
 /**
  * Text Component
  */
-export interface TextProps extends StandardProps {
+export interface TextProps extends StandardProps, TextBaselineProps {
+  /**
+   * Backported to 2.18 on Android and iOS; availability differs across later maintenance releases.
+   * Background color of selected text, encoded as a 32-bit ARGB number.
+   * @Android 2.18
+   * @iOS 2.18
+   * @Harmony 3.7
+   */
+  'selection-background-color'?: number;
+  /**
+   * Clay Android and Clay Harmony support begins in prerelease builds; the corresponding stable releases omit this API.
+   * Backported to 2.18 on Android and iOS; availability differs across later maintenance releases.
+   * Color of the text selection handles. Use a numeric ARGB color on native mobile platforms; Clay additionally accepts color strings.
+   * @Android 2.18
+   * @iOS 2.18
+   * @Harmony 3.7
+   * @ClayAndroid 3.5
+   * @ClayIOS 4.2
+   * @ClayMacOS 4.1
+   * @ClayWindows 4.1
+   * @ClayHarmony 4.0
+   */
+  'selection-handle-color'?: number | string;
+  /**
+   * Clay Android and Clay Harmony support begins in prerelease builds; the corresponding stable releases omit this API.
+   * Backported to 2.18 on Android and iOS; availability differs across later maintenance releases.
+   * Size of the text selection handle. Android uses physical pixels; iOS and Harmony use logical units.
+   * Omitted values and zero follow each platform's native defaults.
+   * @Android 2.18
+   * @iOS 2.18
+   * @Harmony 3.7
+   * @ClayAndroid 3.5
+   * @ClayIOS 4.2
+   * @ClayMacOS 4.1
+   * @ClayWindows 4.1
+   * @ClayHarmony 4.0
+   */
+  'selection-handle-size'?: number;
   /**
    * Maximum number of lines for text display
    * @Android 1.5

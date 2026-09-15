@@ -98,6 +98,15 @@ export interface TextAreaSelectionChangeEvent {
 
 export interface TextAreaProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'> {
   /**
+   * Keep the editor focused after confirmation instead of dismissing the keyboard.
+   * The next action still performs native focus traversal.
+   * @Android 3.5
+   * @iOS 3.4
+   * @Harmony 3.4
+   * @defaultValue false
+   */
+  'confirm-enter'?: boolean;
+  /**
    * Placeholder
    * @Android 3.4
    * @iOS 3.4

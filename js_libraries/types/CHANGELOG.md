@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 4.4.2
+
+- Add structured `MarkdownTextAttachment` typings for `text-mark-attachments`, including range, click target, background, and border styles.
+- Complete missing Element property declarations with platform versions and default values.
+- Add `InlineImageProps` for `<inline-image>` while preserving `NoProps` for `<inline-truncation>`.
+
 ## 4.4.1
 
 - Add `set-soft-input-mode` to `<input>` and `<textarea>` typings.
