@@ -21,6 +21,23 @@ NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
 
 NativePaintingCtxAndroidRef::~NativePaintingCtxAndroidRef() { Destroy(); }
 
+void NativePaintingCtxAndroidRef::CreatePreparedRenderer(
+    int id, PlatformRendererType type, const base::String& tag_name,
+    const PlatformRendererInitConfig& init_config,
+    std::unique_ptr<PreparedFallbackUI> prepared_ui) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  auto renderer = factory->CreatePreparedRenderer(
+      id, type, tag_name, init_config, prepared_ui.get());
+  // A component's creation error callback may destroy the page reentrantly.
+  if (!destroyed_.load(std::memory_order_acquire)) {
+    renderers_.insert_or_assign(id, std::move(renderer));
+  }
+}
+
 std::vector<float> NativePaintingCtxAndroidRef::GetTransformValue(
     int32_t sign, const std::vector<float>& offsets) {
   return GetTransformValueForEventTarget(sign, offsets);

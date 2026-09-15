@@ -29,8 +29,13 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
                           const base::String& tag_name,
                           const fml::RefPtr<PropBundle>& init_data,
                           const PlatformRendererInitConfig& init_config =
-                              PlatformRendererInitConfig());
+                              PlatformRendererInitConfig(),
+                          PreparedFallbackUI* prepared_ui = nullptr);
   ~PlatformRendererAndroid() override;
+
+  static bool ShouldCreatePlatformExtendedRenderer(
+      PlatformRendererType type, const base::String& tag_name,
+      const PlatformRendererInitConfig& init_config);
 
  protected:
   // PlatformRendererImpl interface
@@ -47,9 +52,8 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   PlatformRendererContext* context_;
 
   // Initialize the Android view
-  void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data);
-  bool ShouldCreatePlatformExtendedRenderer(
-      const PlatformRendererInitConfig& init_config) const;
+  void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data,
+                             PreparedFallbackUI* prepared_ui);
   // Clean up Android resources
   void CleanupAndroidView();
 };
@@ -74,6 +78,11 @@ class PlatformRendererAndroidFactory : public PlatformRendererFactory {
       const fml::RefPtr<PropBundle>& init_data,
       const PlatformRendererInitConfig& init_config =
           PlatformRendererInitConfig()) override;
+
+  fml::RefPtr<PlatformRenderer> CreatePreparedRenderer(
+      int id, PlatformRendererType type, const base::String& tag_name,
+      const PlatformRendererInitConfig& init_config,
+      PreparedFallbackUI* prepared_ui);
 
  private:
   PlatformRendererContext* context_;

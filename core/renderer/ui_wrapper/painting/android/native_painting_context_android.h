@@ -135,6 +135,11 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 #pragma endregion  // NativePaintingContext
 
  private:
+  bool TryEnqueueCreateFallbackUI(
+      int id, PlatformRendererType type, const base::String &tag_name,
+      const fml::RefPtr<PropBundle> &init_data,
+      const PlatformRendererInitConfig &init_config);
+
   void Enqueue(shell::UIOperation op) {
     queue_->EnqueueUIOperation(std::move(op));
   }

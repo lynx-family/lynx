@@ -39,15 +39,16 @@ PlatformRendererAndroid::PlatformRendererAndroid(
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
     const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data,
-    const PlatformRendererInitConfig& init_config)
+    const PlatformRendererInitConfig& init_config,
+    PreparedFallbackUI* prepared_ui)
     : PlatformRendererImpl(id, type, tag_name), context_(context) {
   SetDirectChildOfCompatibleComponent(
       init_config.is_direct_child_of_compatible_component);
   SetFragmentParentId(init_config.fragment_parent_id);
-  if (ShouldCreatePlatformExtendedRenderer(init_config)) {
+  if (ShouldCreatePlatformExtendedRenderer(type, tag_name, init_config)) {
     is_platform_extended_renderer_ = true;
   }
-  InitializeAndroidView(init_data);
+  InitializeAndroidView(init_data, prepared_ui);
   // Register this renderer with the context
   if (context_) {
     context_->RegisterPlatformRenderer(id, this);
@@ -93,13 +94,17 @@ void PlatformRendererAndroid::OnRemoveFromParent(bool should_update_ui_owner) {
 }
 
 void PlatformRendererAndroid::InitializeAndroidView(
-    const fml::RefPtr<PropBundle>& init_data) {
+    const fml::RefPtr<PropBundle>& init_data, PreparedFallbackUI* prepared_ui) {
   if (!context_) {
     return;
   }
   if (IsPlatformExtendedRenderer()) {
     const base::String extended_renderer_tag_name =
         GetExtendedRendererTagName();
+    if (prepared_ui != nullptr) {
+      prepared_ui->Commit(GetId(), extended_renderer_tag_name);
+      return;
+    }
     NativePropBundle* native_bundle =
         static_cast<NativePropBundle*>(init_data.get());
 
@@ -125,20 +130,21 @@ void PlatformRendererAndroid::InitializeAndroidView(
 }
 
 bool PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
-    const PlatformRendererInitConfig& init_config) const {
+    PlatformRendererType type, const base::String& tag_name,
+    const PlatformRendererInitConfig& init_config) {
   if (init_config.is_direct_child_of_compatible_component) {
     return true;
   }
-  if (type_ == PlatformRendererType::kText ||
-      type_ == PlatformRendererType::kImage ||
-      type_ == PlatformRendererType::kView ||
-      type_ == PlatformRendererType::kPage) {
+  if (type == PlatformRendererType::kText ||
+      type == PlatformRendererType::kImage ||
+      type == PlatformRendererType::kView ||
+      type == PlatformRendererType::kPage) {
     return false;
   }
-  if (type_ != PlatformRendererType::kUnknown) {
+  if (type != PlatformRendererType::kUnknown) {
     return true;
   }
-  return !tag_name_.empty();
+  return !tag_name.empty();
 }
 
 void PlatformRendererAndroid::CleanupAndroidView() {
@@ -161,6 +167,15 @@ PlatformRendererAndroidFactory::CreateExtendedRenderer(
     const PlatformRendererInitConfig& init_config) {
   return fml::MakeRefCounted<PlatformRendererAndroid>(context_, id, tag_name,
                                                       init_data, init_config);
+}
+
+fml::RefPtr<PlatformRenderer>
+PlatformRendererAndroidFactory::CreatePreparedRenderer(
+    int id, PlatformRendererType type, const base::String& tag_name,
+    const PlatformRendererInitConfig& init_config,
+    PreparedFallbackUI* prepared_ui) {
+  return fml::MakeRefCounted<PlatformRendererAndroid>(
+      context_, id, type, tag_name, nullptr, init_config, prepared_ui);
 }
 
 void PlatformRendererAndroid::OnUpdateAttributes(

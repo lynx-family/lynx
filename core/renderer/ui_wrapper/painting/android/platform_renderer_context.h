@@ -13,6 +13,7 @@
 #include "base/include/closure.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/vector.h"
+#include "core/base/thread/once_task.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
@@ -29,6 +30,26 @@ namespace tasm {
 class PlatformRendererAndroid;
 class PaintImage;
 class NativePaintingCtxPlatformRef;
+class NativePropBundle;
+
+// Owns a detached UI until its original UI operation adopts it. A discarded
+// operation also releases the UI on the platform thread.
+class PreparedFallbackUI {
+ public:
+  PreparedFallbackUI(base::android::ScopedGlobalJavaRef<jobject> context,
+                     base::android::ScopedGlobalJavaRef<jobject> init_data,
+                     base::android::ScopedGlobalJavaRef<jobject> ui);
+  ~PreparedFallbackUI();
+  PreparedFallbackUI(const PreparedFallbackUI&) = delete;
+  PreparedFallbackUI& operator=(const PreparedFallbackUI&) = delete;
+
+  void Commit(int32_t id, const base::String& tag_name);
+
+ private:
+  base::android::ScopedGlobalJavaRef<jobject> context_;
+  base::android::ScopedGlobalJavaRef<jobject> init_data_;
+  base::android::ScopedGlobalJavaRef<jobject> ui_;
+};
 
 class PlatformRendererContext {
  public:
@@ -40,6 +61,10 @@ class PlatformRendererContext {
   void CreatePlatformRenderer(int32_t id, PlatformRendererType type);
   void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name,
                                       jobject init_data);
+
+  base::OnceTaskRefptr<std::unique_ptr<PreparedFallbackUI>>
+  CreateFallbackUITask(int32_t id, const base::String& tag_name,
+                       const NativePropBundle* init_data);
 
   void InsertPlatformRenderer(int32_t parent, int32_t child, int32_t index,
                               bool should_update_ui_owner);
