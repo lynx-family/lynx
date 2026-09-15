@@ -17,6 +17,18 @@ LYNX_EXTERN_C void lynx_trace_section_end(const char* category,
   TRACE_EVENT_END(category);
 }
 
+LYNX_EXTERN_C void lynx_trace_async_section_begin(const char* category,
+                                                  const char* name,
+                                                  uint64_t trace_id) {
+  TRACE_EVENT_BEGIN(category, name, lynx::perfetto::Track(trace_id));
+}
+
+LYNX_EXTERN_C void lynx_trace_async_section_end(const char* category,
+                                                const char* name,
+                                                uint64_t trace_id) {
+  TRACE_EVENT_END(category, lynx::perfetto::Track(trace_id));
+}
+
 LYNX_EXTERN_C void lynx_trace_instant(const char* category, const char* name) {
   TRACE_EVENT_INSTANT(category, name);
 }
