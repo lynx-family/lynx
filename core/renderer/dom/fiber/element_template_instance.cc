@@ -542,8 +542,8 @@ void ElementTemplateInstance::ApplyAttributeSlotToTarget(
   if (target == nullptr) {
     return;
   }
-  TreeResolver::ApplyTemplateAttributesToElement(
-      target.get(), previous_attribute_slots, attribute_slots_);
+  TreeResolver::ApplyTemplateAttributeSlotToElement(
+      target.get(), slot_index, previous_attribute_slots, attribute_slots_);
 }
 
 lepus::Value ElementTemplateInstance::GetOrCreateMutableChildSlot(

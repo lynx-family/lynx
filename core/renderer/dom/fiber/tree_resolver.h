@@ -79,6 +79,10 @@ class TreeResolver {
   static void ApplyTemplateAttributesToElement(
       Element* element, const lepus::Value& previous_attribute_slots,
       const lepus::Value& attribute_slots);
+  static void ApplyTemplateAttributeSlotToElement(
+      Element* element, uint32_t slot_index,
+      const lepus::Value& previous_attribute_slots,
+      const lepus::Value& attribute_slots);
   static void ApplyTemplateNonEventAttributesToElement(
       Element* element, const lepus::Value& attribute_slots);
   static void ApplyTemplateNonEventAttributesToElement(
