@@ -108,6 +108,8 @@ static constexpr const char* const kUpdateAnimationConfigStages = "stages";
 static constexpr const char* const kUpdateAnimationStageAnimations =
     "animations";
 static constexpr const char* const kUpdateAnimationStageDurations = "durations";
+static constexpr const char* const kUpdateAnimationStageDuration = "duration";
+static constexpr const char* const kUpdateAnimationStageType = "type";
 static constexpr const char* const kUpdateAnimationTypeRemove = "remove";
 static constexpr const char* const kUpdateAnimationTypeMove = "move";
 static constexpr const char* const kUpdateAnimationTypeAdd = "add";
