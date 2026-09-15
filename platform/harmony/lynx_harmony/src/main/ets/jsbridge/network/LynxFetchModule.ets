@@ -35,8 +35,13 @@ interface ResponseType {
 }
 
 type ResponseCallBack = (resp: ResponseType) => void;
+type GlobalEventSender = { sendGlobalEvent(name: string, params: Object[]): void };
 
 export class LynxFetchModule extends LynxModule {
+  private getGlobalEventSender(): GlobalEventSender {
+    return (this.param as GlobalEventSender | undefined) ?? this.context;
+  }
+
   private traceFetchRequest(url: string) {
     if (!TraceEvent.enableTrace()) {
       return;
@@ -83,7 +88,7 @@ export class LynxFetchModule extends LynxModule {
     }
 
     const streamingId = streamingEventNamePrefix + streamingCounter++;
-    const delegate = new HttpStreamingDelegate(streamingId, this.context);
+    const delegate = new HttpStreamingDelegate(streamingId, this.getGlobalEventSender());
     httpService?.requestStreaming(httpRequest, (resp: LynxHttpResponse) => {
       const customInfo = resp.customInfo ?? {};
       customInfo['streamingId'] = streamingId;
