@@ -13,6 +13,7 @@
 
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/rect.h"
+#include "clay/gfx/geometry/size.h"
 #include "clay/gfx/gpu_object.h"
 #include "clay/gfx/image/base_image_instance.h"
 #include "clay/gfx/image/graphics_image.h"
@@ -53,6 +54,9 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   void SetCacheIdentifier(const std::string& cache_identifier) {
     cache_identifier_ = cache_identifier;
   }
+  // Bounds used by the decoder; zero means intrinsic resolution.
+  Size GetDecodeSize() const { return decode_size_; }
+  void SetDecodeSize(Size size) { decode_size_ = size; }
 
   bool IsSVG() const { return type_ == ImageType::kSVG; }
 
@@ -71,6 +75,7 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   // For Data images, this is the MD5 of the Data content. For other images,
   // this is the trimmed URL.
   std::string cache_identifier_;
+  Size decode_size_;
   ImageType type_ = ImageType::kStatic;
   std::shared_ptr<PlatformImage> image_;
   GPUObject<GraphicsImage> gpu_image_;

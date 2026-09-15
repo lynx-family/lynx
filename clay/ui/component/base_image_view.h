@@ -6,11 +6,13 @@
 #define CLAY_UI_COMPONENT_BASE_IMAGE_VIEW_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/fml/time/timer.h"
+#include "clay/gfx/geometry/size.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/rendering/render_image.h"
 #include "clay/ui/rendering/render_object.h"
@@ -44,6 +46,7 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
 
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
   void OnNodeReady() override;
+  void UpdateImageDecodeSize() override;
 
   void SetLocalCache(bool use_local_cache);
   void SetSkipRedirection(bool skip_redirection);
@@ -115,8 +118,8 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   void NotifyStartPlay();
   void NotifyCurrentLoopComplete();
   void NotifyFinalLoopComplete();
-  void FetchPlaceholder();
-  void FetchSource();
+  void FetchPlaceholder(bool reload = false);
+  void FetchSource(bool reload = false);
   void TryCancelFetch(const std::string&, ImageFetchID&);
 
   void OnAnimationUpdate(ValueAnimator& animation) override;
@@ -125,6 +128,8 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   void TryEndTransition();
 
   void ReportImageLoadInfo();
+  // Returns nullopt while downsampling awaits bounds; zero means original size.
+  std::optional<Size> GetContentSize() const;
 
   bool should_redirect_url_ = true;
   bool prevent_loading_on_list_scroll_ = false;
@@ -133,6 +138,8 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   ImageFetchID source_fetch_id_ = kDefaultImageFetchID;
   std::string placeholder_;
   ImageFetchID placeholder_fetch_id_ = kDefaultImageFetchID;
+  // New requests and successful loads invalidate the last size check.
+  std::optional<Size> last_checked_decode_size_;
   fml::WeakPtrFactory<BaseImageView> weak_factory_;
 
   ImageTransitionStyle transition_style_ = ImageTransitionStyle::kNone;
@@ -141,6 +148,7 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
   bool fetch_delay_source_ = false;
   std::string incoming_placeholder_ = "";
   bool fetch_delay_placeholder_ = false;
+  bool node_ready_ = false;
   bool defer_src_invalidation_ = false;
   Listener* listener_ = nullptr;
   ReportInfo report_info_;

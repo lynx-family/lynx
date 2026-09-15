@@ -35,42 +35,55 @@ ImageFetcherDesktop::ImageFetcherDesktop(
     clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue,
     std::shared_ptr<ServiceManager> service_manager)
     : ImageFetcher(intercept, task_runners, unref_queue, service_manager) {}
-void ImageFetcherDesktop::FetchImage(
-    const std::string& url,
-    const std::function<void(std::shared_ptr<PlatformImage>)>& callback,
-    bool need_redirect) {
+void ImageFetcherDesktop::FetchImage(const std::string& url,
+                                     const std::string& request_key,
+                                     const PlatformImageCallback& callback,
+                                     bool need_redirect) {
   std::shared_ptr<ResourceLoader> loader = GetOrCreateResourceLoader(
       resource_loader_intercept_, url, task_runners_.GetUITaskRunner(),
       service_manager_);
   if (!loader) {
-    callback(nullptr);
+    callback(nullptr, {});
     return;
   }
-  url_loader_map_[url] = loader;
+  url_loader_map_[request_key] = loader;
   loader->Load(
       url,
-      [callback, ui_task_runner = task_runners_.GetUITaskRunner()](
-          const uint8_t* data, size_t size) {
+      [self = GetWeakPtr(), request_key, callback,
+       ui_task_runner = task_runners_.GetUITaskRunner()](const uint8_t* data,
+                                                         size_t size) {
+        if (!self) {
+          return;
+        }
         if (!data || size == 0) {
-          callback(nullptr);
+          callback(nullptr, {});
           return;
         }
         auto raw_data = skity::Data::MakeWithCopy(data, size);
-        if (raw_data->IsEmpty()) {
-          callback(nullptr);
+        if (!raw_data || raw_data->IsEmpty()) {
+          callback(nullptr, {});
           return;
         }
-        GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
-            [callback, raw_data, ui_task_runner]() {
-              auto codec = skity::Codec::MakeFromData(raw_data);
-              if (!codec) {
-                ui_task_runner->PostTask([callback]() { callback(nullptr); });
-                return;
-              }
-              codec->SetData(raw_data);
-              auto image = std::make_shared<DesktopImage>(std::move(codec));
-              ui_task_runner->PostTask(
-                  [image, callback]() { callback(image); });
+        static_cast<ImageFetcherDesktop*>(self.get())
+            ->DecodeWhenReady(request_key, [callback, raw_data,
+                                            ui_task_runner](Size decode_size) {
+              GraphicsIsolate::Instance()
+                  .GetConcurrentWorkerTaskRunner()
+                  ->PostTask([callback, raw_data, ui_task_runner,
+                              decode_size]() {
+                    auto codec = skity::Codec::MakeFromData(raw_data);
+                    if (!codec) {
+                      ui_task_runner->PostTask(
+                          [callback]() { callback(nullptr, {}); });
+                      return;
+                    }
+                    codec->SetData(raw_data);
+                    auto image = std::make_shared<DesktopImage>(
+                        std::move(codec), decode_size);
+                    ui_task_runner->PostTask([image, callback, decode_size]() {
+                      callback(image, decode_size);
+                    });
+                  });
             });
       },
       ResourceType::kImage, need_redirect);
