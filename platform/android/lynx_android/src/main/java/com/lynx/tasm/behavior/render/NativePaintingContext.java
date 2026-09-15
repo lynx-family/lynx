@@ -4,12 +4,15 @@
 package com.lynx.tasm.behavior.render;
 
 import android.graphics.PointF;
+import android.util.SparseArray;
 import android.view.MotionEvent;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import java.util.ArrayList;
@@ -33,6 +36,8 @@ public class NativePaintingContext implements IPaintingContext {
   private boolean mDestroyed = false;
   private long mTextra = 0;
   private LynxContext mContext;
+  @Nullable private LynxBaseUI mPlatformTouchTarget;
+  private final SparseArray<PointF> mPlatformEventRootOffsets = new SparseArray<>();
 
   public NativePaintingContext(
       UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry) {
@@ -51,6 +56,8 @@ public class NativePaintingContext implements IPaintingContext {
       return;
     }
     mDestroyed = true;
+    mPlatformTouchTarget = null;
+    mPlatformEventRootOffsets.clear();
 
     if (mNativePtr != 0) {
       nativeDestroy(mNativePtr);
@@ -99,6 +106,9 @@ public class NativePaintingContext implements IPaintingContext {
     }
 
     int actionMasked = ev.getActionMasked();
+    if (actionMasked == MotionEvent.ACTION_DOWN) {
+      mPlatformTouchTarget = null;
+    }
     int actionType = getPlatformActionType(actionMasked);
     // Pointer down/up MotionEvents contain all active pointers, while native down/up
     // handlers mutate state for every pointer in the payload.
@@ -115,7 +125,41 @@ public class NativePaintingContext implements IPaintingContext {
       fEventData[base + 1] = ev.getX(pointerIndex);
       fEventData[base + 2] = ev.getY(pointerIndex);
     }
-    return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
+    boolean consumed = nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
+    if (consumed && actionMasked == MotionEvent.ACTION_DOWN) {
+      // Use the native hit target, since flattened nodes have no corresponding LynxUI tree.
+      int[] focusInfo = nativeGetPlatformFocusInfo(mNativePtr);
+      LynxUIOwner owner = mContext.getLynxUIOwner();
+      if (owner != null && focusInfo != null && focusInfo.length >= PLATFORM_FOCUS_INFO_SIZE) {
+        mPlatformTouchTarget = owner.findLynxUIBySign(focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX]);
+      }
+    }
+
+    LynxBaseUI touchTarget = mPlatformTouchTarget;
+    if (actionMasked == MotionEvent.ACTION_UP || actionMasked == MotionEvent.ACTION_CANCEL) {
+      mPlatformTouchTarget = null;
+    }
+    if (consumed && touchTarget != null) {
+      dispatchPlatformTouch(touchTarget, ev, rootSign);
+    }
+    return consumed;
+  }
+
+  private void dispatchPlatformTouch(LynxBaseUI target, MotionEvent ev, int rootSign) {
+    PointF offset = mPlatformEventRootOffsets.get(rootSign);
+    if (offset == null || (offset.x == 0 && offset.y == 0)) {
+      target.dispatchTouch(ev);
+      return;
+    }
+
+    // Fallback UIs consume page coordinates, while independent event roots use local coordinates.
+    MotionEvent pageEvent = MotionEvent.obtain(ev);
+    pageEvent.offsetLocation(offset.x, offset.y);
+    try {
+      target.dispatchTouch(pageEvent);
+    } finally {
+      pageEvent.recycle();
+    }
   }
 
   @Override
@@ -179,6 +223,9 @@ public class NativePaintingContext implements IPaintingContext {
     if (mNativePtr == 0 || mDestroyed) {
       return;
     }
+    if (!active) {
+      mPlatformEventRootOffsets.remove(rootSign);
+    }
     nativeSetPlatformEventRootActive(mNativePtr, rootSign, active);
   }
 
@@ -186,6 +233,7 @@ public class NativePaintingContext implements IPaintingContext {
     if (mNativePtr == 0 || mDestroyed) {
       return;
     }
+    mPlatformEventRootOffsets.put(rootSign, new PointF(offsetX, offsetY));
     nativeSetPlatformEventRootOffset(mNativePtr, rootSign, offsetX, offsetY);
   }
 
