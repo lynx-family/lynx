@@ -5,7 +5,9 @@
 #import "LynxFetchModule.h"
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxHttpRequest.h>
+#import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxModule.h>
+#import <Lynx/LynxNetworkRequestObserver.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceHttpProtocol.h>
 #import <Lynx/LynxTraceEvent.h>
@@ -13,6 +15,21 @@
 #import <objc/runtime.h>
 #import <stdatomic.h>
 #import "LynxTraceEventDef.h"
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface LynxFetchModuleEventSender ()
+- (nullable id<LynxNetworkRequestObserver>)networkRequestObserver;
+@end
+
+@interface LynxHttpStreamingDelegate ()
+- (instancetype)initWithParam:(LynxFetchModuleEventSender *)sender
+              withStreamingId:(NSString *)streamingId
+              networkObserver:(nullable id<LynxNetworkRequestObserver>)networkObserver
+             networkRequestId:(NSString *)networkRequestId;
+@end
+
+NS_ASSUME_NONNULL_END
 
 @implementation LynxFetchModule {
   LynxFetchModuleEventSender *_eventSender;
@@ -41,15 +58,30 @@ NSString *const standardStreamingFlag = @"enableFetchAPIStandardStreaming";
 }
 
 - (void)request:(LynxHttpRequest *)httpRequest
-        withResolve:(LynxCallbackBlock)resolve
-    withHttpService:(id<LynxServiceHttpProtocol>)httpService {
+         withResolve:(LynxCallbackBlock)resolve
+     withHttpService:(id<LynxServiceHttpProtocol>)httpService
+     networkObserver:(nullable id<LynxNetworkRequestObserver>)networkObserver
+    networkRequestId:(NSString *)networkRequestId {
   LynxHttpCallback block = ^(LynxHttpResponse *response) {
+    NSData *responseBody = response.httpBody ?: [[NSData alloc] init];
+    NSDictionary *responseHeaders = response.httpHeaders ?: @{};
+    NSString *statusText = response.statusText ?: @"";
+    if (networkRequestId.length > 0) {
+      [networkObserver responseReceived:networkRequestId
+                                    url:response.url
+                                 status:response.statusCode
+                             statusText:statusText
+                                headers:responseHeaders];
+      [networkObserver dataReceived:networkRequestId data:responseBody];
+      [networkObserver loadingFinished:networkRequestId];
+    }
+
     resolve(@{
       @"url" : httpRequest.url ?: @"",
-      @"body" : response.httpBody ?: [[NSData new] init],
-      @"headers" : response.httpHeaders ?: @{},
+      @"body" : responseBody,
+      @"headers" : responseHeaders,
       @"status" : @(response.statusCode),
-      @"statusText" : response.statusText ?: @"",
+      @"statusText" : statusText,
       @"lynxExtension" : response.customInfo ?: @{},
     });
   };
@@ -59,25 +91,40 @@ NSString *const standardStreamingFlag = @"enableFetchAPIStandardStreaming";
 
 - (void)requestStreaming:(LynxHttpRequest *)httpRequest
              withResolve:(LynxCallbackBlock)resolve
-         withHttpService:(id<LynxServiceHttpProtocol>)httpService {
+         withHttpService:(id<LynxServiceHttpProtocol>)httpService
+         networkObserver:(nullable id<LynxNetworkRequestObserver>)networkObserver
+        networkRequestId:(NSString *)networkRequestId {
   NSString *streamingId = [NSString
       stringWithFormat:@"%@%ld", streamingEventNamePrefix, atomic_fetch_add(&streamingCounter, 1)];
   LynxHttpCallback block = ^(LynxHttpResponse *response) {
+    NSDictionary *responseHeaders = response.httpHeaders ?: @{};
+    NSString *statusText = response.statusText ?: @"";
+    if (networkRequestId.length > 0) {
+      [networkObserver responseReceived:networkRequestId
+                                    url:response.url
+                                 status:response.statusCode
+                             statusText:statusText
+                                headers:responseHeaders];
+    }
+
     NSMutableDictionary *customInfo = [response.customInfo ?: @{} mutableCopy];
     customInfo[@"streamingId"] = streamingId;
 
     resolve(@{
       @"url" : httpRequest.url ?: @"",
       @"body" : [[NSData new] init],
-      @"headers" : response.httpHeaders ?: @{},
+      @"headers" : responseHeaders,
       @"status" : @(response.statusCode),
-      @"statusText" : response.statusText ?: @"",
+      @"statusText" : statusText,
       @"lynxExtension" : customInfo,
     });
   };
 
   LynxHttpStreamingDelegate *delegate =
-      [[LynxHttpStreamingDelegate alloc] initWithParam:_eventSender withStreamingId:streamingId];
+      [[LynxHttpStreamingDelegate alloc] initWithParam:_eventSender
+                                       withStreamingId:streamingId
+                                       networkObserver:networkObserver
+                                      networkRequestId:networkRequestId];
 
   [httpService invokeStreamingWithRequest:httpRequest callback:block withDelegate:delegate];
 }
@@ -122,8 +169,22 @@ NSString *const standardStreamingFlag = @"enableFetchAPIStandardStreaming";
     }
   }
 
+  id<LynxNetworkRequestObserver> networkObserver = [_eventSender networkRequestObserver];
+  NSString *networkRequestId = @"";
+  if (networkObserver.isEnabled) {
+    networkRequestId = [networkObserver requestWillBeSent:httpRequest.url
+                                                   method:httpRequest.httpMethod
+                                                  headers:httpRequest.httpHeaders
+                                                     body:httpRequest.httpBody];
+  }
+
   id<LynxServiceHttpProtocol> httpService = LynxService(LynxServiceHttpProtocol);
   if (!httpService) {
+    if (networkRequestId.length > 0) {
+      [networkObserver loadingFailed:networkRequestId
+                           errorText:@"Lynx Http Service not registered"
+                            canceled:NO];
+    }
     reject(@{
       @"message" : @"Lynx Http Service not registered",
     });
@@ -131,9 +192,17 @@ NSString *const standardStreamingFlag = @"enableFetchAPIStandardStreaming";
   }
 
   if (!useDeprecatedStreamingConfig && !enableFetchApiStandardStreaming) {
-    [self request:httpRequest withResolve:resolve withHttpService:httpService];
+    [self request:httpRequest
+             withResolve:resolve
+         withHttpService:httpService
+         networkObserver:networkObserver
+        networkRequestId:networkRequestId];
   } else {
-    [self requestStreaming:httpRequest withResolve:resolve withHttpService:httpService];
+    [self requestStreaming:httpRequest
+               withResolve:resolve
+           withHttpService:httpService
+           networkObserver:networkObserver
+          networkRequestId:networkRequestId];
   }
 }
 

@@ -5,6 +5,7 @@
 #import <Foundation/Foundation.h>
 
 #import <Lynx/LynxDebugInfoRecorderProtocol.h>
+#import <Lynx/LynxNetworkRequestObserver.h>
 #import <Lynx/LynxPageReloadHelper.h>
 
 #if TARGET_OS_IOS
@@ -18,6 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol LynxBaseInspectorController <NSObject>
 
 - (nonnull instancetype)initWithLynxView:(nullable LynxView *)view;
+
+- (nullable id<LynxNetworkRequestObserver>)networkRequestObserver;
 
 - (void)setReloadHelper:(nullable LynxPageReloadHelper *)reloadHelper;
 - (void)setDebugInfoInterceptor:(nonnull id<LynxDebugInfoRecorderProtocol>)debugInfoRecorder;
