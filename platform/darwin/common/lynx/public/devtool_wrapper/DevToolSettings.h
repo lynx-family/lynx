@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 static NSString *const SP_KEY_ENABLE_DEVTOOL = @"enable_devtool";
 static NSString *const SP_KEY_ENABLE_LOGBOX = @"enable_logbox";
 static NSString *const SP_KEY_ENABLE_LAUNCH_RECORD = @"enable_launch_record";
+static NSString *const SP_KEY_ENABLE_FIXTURE_ARTIFACT = @"enable_fixture_artifact";
 static NSString *const SP_KEY_ENABLE_QUICKJS_DEBUG = @"enable_quickjs_debug";
 static NSString *const SP_KEY_ENABLE_DOM_TREE = @"enable_dom_tree";
 static NSString *const SP_KEY_ENABLE_LONG_PRESS_MENU = @"enable_long_press_menu";
@@ -62,6 +63,7 @@ static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME = @"enable_cdp_domain_ru
 @property(nonatomic, assign) BOOL devToolEnabled;
 @property(nonatomic, assign) BOOL logBoxEnabled;
 @property(nonatomic, assign) BOOL launchRecordEnabled;
+@property(nonatomic, assign) BOOL fixtureArtifactEnabled;
 @property(nonatomic, assign) BOOL quickjsDebugEnabled;
 @property(nonatomic, assign) BOOL domTreeEnabled;
 @property(nonatomic, assign) BOOL longPressMenuEnabled;

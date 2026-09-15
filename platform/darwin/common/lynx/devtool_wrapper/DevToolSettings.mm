@@ -223,6 +223,20 @@ static const NSUInteger kMaxReportedBacktraceFrames = 10;
   [self setBool:launchRecordEnabled forKey:SP_KEY_ENABLE_LAUNCH_RECORD];
 }
 
+- (BOOL)fixtureArtifactEnabled {
+  /*!
+   fixtureArtifactEnabled
+   @note Persistence: YES
+   @note Sync to native: NO
+   @note Default: NO
+   */
+  return [self boolForKey:SP_KEY_ENABLE_FIXTURE_ARTIFACT defaultValue:NO];
+}
+
+- (void)setFixtureArtifactEnabled:(BOOL)fixtureArtifactEnabled {
+  [self setBool:fixtureArtifactEnabled forKey:SP_KEY_ENABLE_FIXTURE_ARTIFACT];
+}
+
 - (BOOL)quickjsDebugEnabled {
   /*!
    quickjsDebugEnabled

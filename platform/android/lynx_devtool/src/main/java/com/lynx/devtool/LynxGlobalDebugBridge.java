@@ -119,7 +119,8 @@ public class LynxGlobalDebugBridge
   }
 
   public void startRecord() {
-    RecorderController.nativeStartRecord();
+    RecorderController.nativeStartRecordWithFixtureArtifact(
+        DevToolSettings.inst().isFixtureArtifactEnabled());
   }
 
   @Override

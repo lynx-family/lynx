@@ -50,6 +50,7 @@ public class DevToolSettings {
   public static final String SP_KEY_ENABLE_LOGBOX = "enable_logbox";
   public static final String SP_KEY_ENABLE_DEBUG_MODE = "enable_debug_mode";
   public static final String SP_KEY_ENABLE_LAUNCH_RECORD = "enable_launch_record";
+  public static final String SP_KEY_ENABLE_FIXTURE_ARTIFACT = "enable_fixture_artifact";
   public static final String SP_KEY_ENABLE_QUICKJS_DEBUG = "enable_quickjs_debug";
   public static final String SP_KEY_ENABLE_QUICKJS_CACHE = "enable_quickjs_cache";
   public static final String SP_KEY_ENABLE_V8 = "enable_v8";
@@ -395,6 +396,19 @@ public class DevToolSettings {
 
   public void setLaunchRecordEnabled(boolean enabled) {
     setPersistedBoolean(SP_KEY_ENABLE_LAUNCH_RECORD, enabled);
+  }
+
+  /**
+   * <b>Persistence:</b> true
+   * <br><b>Sync to Native:</b> false
+   * <br><b>Default:</b> false
+   */
+  public boolean isFixtureArtifactEnabled() {
+    return getPersistedBoolean(SP_KEY_ENABLE_FIXTURE_ARTIFACT, false);
+  }
+
+  public void setFixtureArtifactEnabled(boolean enabled) {
+    setPersistedBoolean(SP_KEY_ENABLE_FIXTURE_ARTIFACT, enabled);
   }
 
   /**

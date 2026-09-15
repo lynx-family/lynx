@@ -19,7 +19,9 @@
 #include "base/include/fml/thread.h"
 #include "base/include/no_destructor.h"
 #include "core/base/lynx_export.h"
+#include "core/services/recorder/fixture_writer.h"
 #include "core/services/recorder/recorder_constants.h"
+#include "core/services/recorder/recorder_types.h"
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
@@ -83,6 +85,7 @@ class TestBenchBaseRecorder {
   void AddLynxViewSessionID(int64_t record_id, int64_t session);
   void RemoveRecord(int64_t record_id);
   void StartRecord();
+  void StartRecord(ArtifactFormat format);
   void EndRecord(base::MoveOnlyClosure<void, std::vector<std::string>&,
                                        std::vector<int64_t>&>
                      send_complete);
@@ -94,7 +97,7 @@ class TestBenchBaseRecorder {
   TestBenchBaseRecorder(const TestBenchBaseRecorder&) = delete;
   TestBenchBaseRecorder& operator=(const TestBenchBaseRecorder&) = delete;
 
-  void RecordTime(rapidjson::Value& val);
+  int64_t RecordTime(rapidjson::Value& val);
   rapidjson::Value& GetRecordedFileField(int64_t record_id,
                                          const std::string& filed_name);
   rapidjson::Value& GetRecordedFile(int64_t record_id);
@@ -102,18 +105,22 @@ class TestBenchBaseRecorder {
   void AppendInvokedMethodData(rapidjson::Value& recorded_file,
                                const std::string& module_name,
                                const std::string& method_name,
-                               const rapidjson::Value& params);
+                               const rapidjson::Value& params,
+                               int64_t record_id);
   void AppendCallbackData(rapidjson::Value& recorded_file,
                           const std::string& module_name,
                           const std::string& method_name,
-                          const rapidjson::Value& params, int64_t callback_id);
+                          const rapidjson::Value& params, int64_t callback_id,
+                          int64_t record_id);
   template <typename T>
   void InsertReplayConfig(int64_t record_id, const char* name, T value);
 
   std::unordered_map<int64_t, rapidjson::Value> lynx_view_table_;
+  std::unordered_map<int64_t, FixtureData> fixture_table_;
   rapidjson::Value resource_table_;
   std::atomic<bool> is_recording_{false};
   std::atomic<uint64_t> recording_generation_{0};
+  std::atomic<ArtifactFormat> artifact_format_{ArtifactFormat::kJson};
   std::string file_path_;
   std::unordered_map<int64_t, rapidjson::Document> replay_config_map_;
   std::unordered_map<int64_t, std::string> url_map_;

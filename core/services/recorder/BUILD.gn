@@ -7,6 +7,8 @@ import("../../Lynx.gni")
 
 # recorder_shared_sources
 recorder_shared_sources = [
+  "fixture_native_module_matcher.cc",
+  "fixture_native_module_matcher.h",
   "fixture_writer.cc",
   "fixture_writer.h",
   "lynxview_init_recorder.cc",
@@ -54,6 +56,7 @@ unittest_set("record_testset") {
   configs = [ "../../:lynx_public_config" ]
 
   sources = [
+    "fixture_native_module_matcher_unittest.cc",
     "native_module_recorder_unittest.cc",
     "template_assembler_recorder_unittest.cc",
     "testbench_base_recorder_unittest.cc",
@@ -87,6 +90,8 @@ config("enable_testbench_recorder_for_test") {
 lynx_core_source_set("testbench_recorder_enabled_test_support") {
   testonly = true
   sources = [
+    "fixture_native_module_matcher.cc",
+    "fixture_writer.cc",
     "recorder_controller.cc",
     "testbench_base_recorder.cc",
   ]
