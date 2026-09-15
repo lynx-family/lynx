@@ -18,6 +18,7 @@
 #import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxGestureArenaManager.h"
@@ -73,6 +74,7 @@
   __weak id<LynxEventTarget> _primaryGestureTarget;
   NSMutableSet<UITouch*>* _touches;
   NSMutableSet<UITouch*>* _platformUITouches;
+  __weak LynxUI* _platformTouchTarget;
   // In single-finger mode, when multiple fingers are raised at the same time, touches need to be
   // tracked in touchesBegan to ensure that touches received by touchesEnded are not missed.
   NSSet<UITouch*>* _other_touches;
@@ -171,6 +173,7 @@
   touches_map_.clear();
   [active_target_map_ removeAllObjects];
   [_platformUITouches removeAllObjects];
+  _platformTouchTarget = nil;
   reuse_id_pool_.clear();
   reuse_touches_id_.clear();
   [_touchesIDMap removeAllObjects];
@@ -212,6 +215,13 @@
 }
 
 - (void)resetTouchEnv {
+  _platformTouchTarget = nil;
+  [_platformUITouches removeAllObjects];
+  // Platform touch sequences do not update the legacy end-or-cancel flag.
+  if (_eventHandler.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
+    reuse_touches_id_.clear();
+    [_touchesIDMap removeAllObjects];
+  }
   // Add reentrancy prevention logic to resetTouchEnv to prevent both _target and _preTarget from
   // being set to nil.
   if (_touchEndOrCancel) {
@@ -224,7 +234,6 @@
   _touchEndOrCancel = YES;
   _gestureRecognized = NO;
   [_touches removeAllObjects];
-  [_platformUITouches removeAllObjects];
   _event = nil;
   _preTarget = _target;
   _target = nil;
@@ -372,8 +381,14 @@
     return NO;
   }
 
+  BOOL isFirstTouch = actionType == 0 && _platformUITouches.count == 0;
+  if (isFirstTouch) {
+    _platformTouchTarget = nil;
+  }
+  NSString* touchType = nil;
   switch (actionType) {
     case 0:
+      touchType = LynxEventTouchStart;
       [_platformUITouches unionSet:touches];
       [super touchesBegan:touches withEvent:event];
       if (self.state == UIGestureRecognizerStatePossible) {
@@ -383,6 +398,7 @@
       }
       break;
     case 1:
+      touchType = LynxEventTouchEnd;
       [super touchesEnded:touches withEvent:event];
       if ([self isAllTouchesAreCancelledOrEnded:_platformUITouches]) {
         self.state = UIGestureRecognizerStateEnded;
@@ -392,10 +408,12 @@
       [_platformUITouches minusSet:touches];
       break;
     case 2:
+      touchType = LynxEventTouchMove;
       [super touchesMoved:touches withEvent:event];
       self.state = UIGestureRecognizerStateChanged;
       break;
     case 3:
+      touchType = LynxEventTouchCancel;
       [super touchesCancelled:touches withEvent:event];
       if ([self isAllTouchesAreCancelledOrEnded:_platformUITouches]) {
         self.state = UIGestureRecognizerStateCancelled;
@@ -410,6 +428,7 @@
 
   LynxTemplateRender* templateRender =
       ((LynxView*)_eventHandler.uiOwner.uiContext.rootView).templateRender;
+  BOOL consumed = NO;
   if (templateRender && touches && event) {
     NSArray* touchArray = [touches allObjects];
     NSInteger eventSource = ((UITouch*)touchArray.firstObject).type;
@@ -427,7 +446,21 @@
       [fEventData addObject:@(point.x)];
       [fEventData addObject:@(point.y)];
     }
-    [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+    consumed = [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+    if (isFirstTouch && consumed) {
+      id<LynxUIRendererProtocol> renderer = templateRender.lynxUIRenderer;
+      if ([renderer isKindOfClass:[LynxUIRenderer class]]) {
+        // Keep the fallback UI hit by the first touch for the whole sequence.
+        _platformTouchTarget = [(LynxUIRenderer*)renderer platformTouchTarget];
+      }
+    }
+  }
+  LynxUI* touchTarget = _platformTouchTarget;
+  if ((actionType == 1 || actionType == 3) && _platformUITouches.count == 0) {
+    _platformTouchTarget = nil;
+  }
+  if (consumed && touchType != nil) {
+    [touchTarget dispatchTouch:touchType touches:touches withEvent:event];
   }
   return YES;
 }
