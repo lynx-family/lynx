@@ -29,6 +29,8 @@ subspec_target("devtool") {
     "Helper/LynxDeviceInfoHelper.m",
     "Helper/LynxEmulateTouchHelper.h",
     "Helper/LynxEmulateTouchHelper.mm",
+    "Helper/LynxPointerEventDispatcher.h",
+    "Helper/LynxPointerEventDispatcher.mm",
     "Helper/LynxUITreeHelper.h",
     "Helper/LynxUITreeHelper.mm",
     "Helper/TestBenchTraceProfileHelper.mm",
@@ -47,9 +49,15 @@ subspec_target("devtool") {
   sources += devtool_public_headers
   public_header_files = devtool_public_headers
   if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug) {
-    deps = [ "../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory" ]
+    deps = [
+      "../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory",
+      "../../../../devtool/lynx_devtool/input:input_types",
+    ]
   } else {
-    deps = [ "../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory_stub" ]
+    deps = [
+      "../../../../devtool/lynx_devtool/input:input_types",
+      "../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory_stub",
+    ]
   }
 }
 
