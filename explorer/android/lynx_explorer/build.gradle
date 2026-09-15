@@ -287,6 +287,26 @@ tasks.register('assembleNoasanRelease') {
     }
 }
 
+tasks.register('assembleNoAsanDebug') {
+    group = 'build'
+    description = 'Compatibility task for the legacy noasan debug APK.'
+    dependsOn 'assembleWithoutSparklingNoasanDebug'
+
+    doLast {
+        def sourceApk =
+                file("${buildDir}/outputs/apk/withoutSparklingNoasan/debug/LynxExplorer-withoutSparkling-noasan-debug.apk")
+        if (!sourceApk.exists()) {
+            throw new GradleException("Expected debug APK was not generated: ${sourceApk}")
+        }
+
+        copy {
+            from sourceApk
+            into file("${buildDir}/outputs/apk/noasan/debug")
+            rename { 'LynxExplorer-noasan-debug.apk' }
+        }
+    }
+}
+
 tasks.register('verifySparklingLynxGraph') {
     group = 'verification'
     description = 'Verifies Sparkling-enabled Android classpaths use local Lynx source projects.'
