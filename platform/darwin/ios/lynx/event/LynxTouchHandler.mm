@@ -18,6 +18,7 @@
 #import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxGestureArenaManager.h"
@@ -372,8 +373,29 @@
     return NO;
   }
 
+  BOOL isFirstTouch = actionType == 0 && _platformUITouches.count == 0;
+  if (isFirstTouch) {
+    _target = nil;
+    reuse_touches_id_.clear();
+    [_touchesIDMap removeAllObjects];
+  }
+  NSString* touchType = nil;
   switch (actionType) {
     case 0:
+      touchType = LynxEventTouchStart;
+      for (UITouch* touch in touches) {
+        NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
+        if ([_touchesIDMap valueForKey:key] == nil) {
+          int32_t identifier = 0;
+          if (!reuse_touches_id_.empty()) {
+            identifier = *reuse_touches_id_.begin();
+            reuse_touches_id_.erase(reuse_touches_id_.begin());
+          } else {
+            identifier = (int32_t)_touchesIDMap.count;
+          }
+          _touchesIDMap[key] = @(identifier);
+        }
+      }
       [_platformUITouches unionSet:touches];
       [super touchesBegan:touches withEvent:event];
       if (self.state == UIGestureRecognizerStatePossible) {
@@ -383,6 +405,7 @@
       }
       break;
     case 1:
+      touchType = LynxEventTouchEnd;
       [super touchesEnded:touches withEvent:event];
       if ([self isAllTouchesAreCancelledOrEnded:_platformUITouches]) {
         self.state = UIGestureRecognizerStateEnded;
@@ -392,10 +415,12 @@
       [_platformUITouches minusSet:touches];
       break;
     case 2:
+      touchType = LynxEventTouchMove;
       [super touchesMoved:touches withEvent:event];
       self.state = UIGestureRecognizerStateChanged;
       break;
     case 3:
+      touchType = LynxEventTouchCancel;
       [super touchesCancelled:touches withEvent:event];
       if ([self isAllTouchesAreCancelledOrEnded:_platformUITouches]) {
         self.state = UIGestureRecognizerStateCancelled;
@@ -410,6 +435,7 @@
 
   LynxTemplateRender* templateRender =
       ((LynxView*)_eventHandler.uiOwner.uiContext.rootView).templateRender;
+  BOOL consumed = NO;
   if (templateRender && touches && event) {
     NSArray* touchArray = [touches allObjects];
     NSInteger eventSource = ((UITouch*)touchArray.firstObject).type;
@@ -427,7 +453,17 @@
       [fEventData addObject:@(point.x)];
       [fEventData addObject:@(point.y)];
     }
-    [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+    consumed = [templateRender DispatchPlatformInputEvent:iEventData withData:fEventData];
+    if (isFirstTouch && consumed) {
+      id<LynxUIRendererProtocol> renderer = templateRender.lynxUIRenderer;
+      if ([renderer isKindOfClass:[LynxUIRenderer class]]) {
+        // Keep the fallback UI hit by the first touch for the whole sequence.
+        _target = [(LynxUIRenderer*)renderer platformTouchTarget];
+      }
+    }
+  }
+  if (consumed && touchType != nil) {
+    [_target dispatchTouch:touchType touches:touches withEvent:event];
   }
   return YES;
 }
@@ -627,19 +663,6 @@
 
 - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
   _LogI(@"LynxTouchHandler: touchesBegan %p: ", _eventHandler.rootView);
-  for (UITouch* touch in touches) {
-    NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
-    if ([_touchesIDMap valueForKey:key] == nil) {
-      int32_t identifier = 0;
-      if (!reuse_touches_id_.empty()) {
-        identifier = *reuse_touches_id_.begin();
-        reuse_touches_id_.erase(reuse_touches_id_.begin());
-      } else {
-        identifier = (int32_t)_touchesIDMap.count;
-      }
-      _touchesIDMap[key] = @(identifier);
-    }
-  }
   if (![self dispatchPlatformUIEvent:touches withEvent:event forType:0]) {
     [self touchesBeganInner:touches withEvent:event];
   }
