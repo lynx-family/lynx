@@ -4,6 +4,8 @@
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
 
+import("//${lynx_dir}/build_overrides/core.gni")
+
 # Do not include this file directly, include //core/Lynx.gni instead
 #
 import("../config.gni")
@@ -29,6 +31,20 @@ template("lynx_core_source_set") {
                              "configs",
                              "public_configs",
                            ])
+
+    if (defined(sources) && lynx_core_source_overrides != []) {
+      original_sources = sources
+      sources = []
+      foreach(source, original_sources) {
+        mapped_source = source
+        foreach(source_override, lynx_core_source_overrides) {
+          if (get_path_info(source, "abspath") == source_override.source) {
+            mapped_source = source_override.replacement
+          }
+        }
+        sources += [ mapped_source ]
+      }
+    }
 
     if (!defined(deps)) {
       deps = []
