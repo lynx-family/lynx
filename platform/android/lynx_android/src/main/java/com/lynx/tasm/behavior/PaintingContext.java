@@ -346,6 +346,11 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
+  public int getPlatformTouchTargetSign() {
+    return -1;
+  }
+
+  @Override
   public void dispatchPlatformLongPress() {}
 
   @Override
