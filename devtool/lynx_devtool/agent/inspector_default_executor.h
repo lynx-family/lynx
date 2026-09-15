@@ -9,6 +9,7 @@
 
 #include "base/include/fml/task_runner.h"
 #include "base/include/fml/thread.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/console_message_manager.h"
@@ -44,9 +45,9 @@ class InspectorDefaultExecutor
   }
 
   // Log domain
-  DECLARE_DEVTOOL_METHOD(LogEnable)
-  DECLARE_DEVTOOL_METHOD(LogDisable)
-  DECLARE_DEVTOOL_METHOD(LogClear)
+  DECLARE_DEVTOOL_CDP_METHOD(LogEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(LogDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(LogClear);
 
   // Network domain
   DECLARE_DEVTOOL_METHOD(NetworkEnable)

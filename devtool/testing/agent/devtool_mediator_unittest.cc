@@ -22,6 +22,7 @@
 #include "core/services/replay/replay_controller.h"
 #include "core/services/replay/testbench_test_replay.h"
 #include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
@@ -162,12 +163,35 @@ TEST_F(DevToolMediatorTest, ReplayEndCase) {
 }
 
 TEST_F(DevToolMediatorTest, IOReadCase) {
-  Json::Value param;
-  param["id"] = 1;
-  param["params"]["handle"] = "1";
-  param["params"]["size"] = 1024;
-  devtool::LynxGlobalDevToolMediator::GetInstance().IORead(message_sender_,
-                                                           param);
+  Json::Value params;
+  params["handle"] = "1";
+  params["size"] = 1024;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  devtool::LynxGlobalDevToolMediator::GetInstance().IORead(responder, params);
+  responder.reset();
+  devtool_thread_->Join();
+
+  sleep(1);
+
+  Json::Value res;
+  Json::Reader reader;
+  bool is_valid_json = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res);
+  EXPECT_TRUE(is_valid_json);
+  EXPECT_EQ(res["id"], 1);
+  // No stream is open for this handle, so the read yields an empty end-of-file
+  // chunk represented using the stream's base64 encoding.
+  EXPECT_TRUE(res["result"]["base64Encoded"].asBool());
+  EXPECT_EQ(res["result"]["data"].asString(), "");
+  EXPECT_TRUE(res["result"]["eof"].asBool());
+}
+
+TEST_F(DevToolMediatorTest, IOReadWithoutSizeReturnsEmptyEofChunkCase) {
+  Json::Value params;
+  params["handle"] = "1";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  devtool::LynxGlobalDevToolMediator::GetInstance().IORead(responder, params);
+  responder.reset();
   devtool_thread_->Join();
 
   sleep(1);
@@ -179,15 +203,16 @@ TEST_F(DevToolMediatorTest, IOReadCase) {
   EXPECT_TRUE(is_valid_json);
   EXPECT_EQ(res["id"], 1);
   EXPECT_TRUE(res["result"]["base64Encoded"].asBool());
+  EXPECT_EQ(res["result"]["data"].asString(), "");
   EXPECT_TRUE(res["result"]["eof"].asBool());
 }
 
 TEST_F(DevToolMediatorTest, IOReadInvalidStreamHandleCase) {
-  Json::Value param;
-  param["id"] = 1;
-  param["params"]["handle"] = "a";
-  devtool::LynxGlobalDevToolMediator::GetInstance().IORead(message_sender_,
-                                                           param);
+  Json::Value params;
+  params["handle"] = "a";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  devtool::LynxGlobalDevToolMediator::GetInstance().IORead(responder, params);
+  responder.reset();
   devtool_thread_->Join();
 
   sleep(1);
@@ -197,18 +222,137 @@ TEST_F(DevToolMediatorTest, IOReadInvalidStreamHandleCase) {
   bool is_valid_json = reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, res);
   EXPECT_TRUE(is_valid_json);
-  EXPECT_EQ(res["error"]["code"].asInt(), devtool::kInspectorErrorCode);
+  EXPECT_EQ(res["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
   EXPECT_EQ(res["error"]["message"].asString(), "Get invalid stream handle");
   EXPECT_EQ(res["id"], 1);
 }
 
+TEST_F(DevToolMediatorTest, IOReadNonStringStreamHandleCase) {
+  // A non-string handle must be rejected rather than aborting the process in
+  // the jsoncpp accessor under JSON_USE_EXCEPTION=0.
+  Json::Value params;
+  params["handle"] = 1;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  devtool::LynxGlobalDevToolMediator::GetInstance().IORead(responder, params);
+  responder.reset();
+  devtool_thread_->Join();
+
+  sleep(1);
+
+  Json::Value res;
+  Json::Reader reader;
+  bool is_valid_json = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res);
+  EXPECT_TRUE(is_valid_json);
+  EXPECT_EQ(res["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(res["error"]["message"].asString(), "Get invalid stream handle");
+  EXPECT_EQ(res["id"], 1);
+}
+
+TEST_F(DevToolMediatorTest, IOReadInvalidSizeTypeCase) {
+  Json::Value params;
+  params["handle"] = "1";
+  params["size"] = "1024";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  devtool::LynxGlobalDevToolMediator::GetInstance().IORead(responder, params);
+  responder.reset();
+  devtool_thread_->Join();
+
+  sleep(1);
+
+  Json::Value res;
+  Json::Reader reader;
+  bool is_valid_json = reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res);
+  EXPECT_TRUE(is_valid_json);
+  EXPECT_EQ(res["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(res["error"]["message"].asString(),
+            "Invalid size: expected integer");
+  EXPECT_EQ(res["id"], 1);
+}
+
+TEST_F(DevToolMediatorTest, IOReadRejectsInvalidSizeValues) {
+  const std::vector<Json::Value> values = {
+      Json::Value(),
+      Json::Value(true),
+      Json::Value(1.0),
+      Json::Value(1.5),
+      Json::Value(Json::arrayValue),
+      Json::Value(Json::objectValue),
+      Json::Value(static_cast<Json::Int64>(2147483648LL))};
+  for (const auto& value : values) {
+    SCOPED_TRACE(value.toStyledString());
+    devtool::MockReceiver::GetInstance().ResetAll();
+    Json::Value params(Json::objectValue);
+    params["handle"] = "1";
+    params["size"] = value;
+    auto responder =
+        std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+    devtool::LynxGlobalDevToolMediator::GetInstance().IORead(responder, params);
+    responder.reset();
+    Json::Value response;
+    Json::Reader reader;
+    ASSERT_TRUE(reader.parse(
+        devtool::MockReceiver::GetInstance().received_message_.second,
+        response));
+    EXPECT_EQ(response["id"], 1);
+    EXPECT_EQ(response["error"]["code"].asInt(),
+              static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+    EXPECT_EQ(response["error"]["message"], "Invalid size: expected integer");
+    EXPECT_FALSE(response.isMember("result"));
+  }
+}
+
+TEST_F(DevToolMediatorTest, IOCommandsRejectInvalidHandleValues) {
+  const std::vector<Json::Value> values = {
+      Json::Value(),
+      Json::Value(1),
+      Json::Value(Json::arrayValue),
+      Json::Value(Json::objectValue),
+      Json::Value(""),
+      Json::Value("-1"),
+      Json::Value("1suffix"),
+      Json::Value("2147483648"),
+      Json::Value("999999999999999999999999")};
+  for (const auto& value : values) {
+    SCOPED_TRACE(value.toStyledString());
+    for (bool close : {false, true}) {
+      devtool::MockReceiver::GetInstance().ResetAll();
+      Json::Value params(Json::objectValue);
+      params["handle"] = value;
+      auto responder =
+          std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+      auto& mediator = devtool::LynxGlobalDevToolMediator::GetInstance();
+      if (close) {
+        mediator.IOClose(responder, params);
+      } else {
+        mediator.IORead(responder, params);
+      }
+      responder.reset();
+      Json::Value response;
+      Json::Reader reader;
+      ASSERT_TRUE(reader.parse(
+          devtool::MockReceiver::GetInstance().received_message_.second,
+          response));
+      EXPECT_EQ(response["id"], 1);
+      EXPECT_EQ(response["error"]["code"].asInt(),
+                static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+      EXPECT_EQ(response["error"]["message"], "Get invalid stream handle");
+      EXPECT_FALSE(response.isMember("result"));
+    }
+  }
+}
+
 TEST_F(DevToolMediatorTest, IOCloseCase) {
-  Json::Value param;
-  param["id"] = 1;
-  param["params"]["handle"] = "1";
-  param["params"]["size"] = 1024;
-  devtool::LynxGlobalDevToolMediator::GetInstance().IOClose(message_sender_,
-                                                            param);
+  Json::Value params;
+  params["handle"] = "1";
+  params["size"] = 1024;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  devtool::LynxGlobalDevToolMediator::GetInstance().IOClose(responder, params);
+  responder.reset();
   devtool_thread_->Join();
 
   sleep(1);
@@ -222,11 +366,11 @@ TEST_F(DevToolMediatorTest, IOCloseCase) {
 }
 
 TEST_F(DevToolMediatorTest, IOCloseInvalidStreamHandleCase) {
-  Json::Value param;
-  param["id"] = 1;
-  param["params"]["handle"] = "a";
-  devtool::LynxGlobalDevToolMediator::GetInstance().IOClose(message_sender_,
-                                                            param);
+  Json::Value params;
+  params["handle"] = "a";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
+  devtool::LynxGlobalDevToolMediator::GetInstance().IOClose(responder, params);
+  responder.reset();
   devtool_thread_->Join();
 
   sleep(1);
@@ -236,14 +380,16 @@ TEST_F(DevToolMediatorTest, IOCloseInvalidStreamHandleCase) {
   bool is_valid_json = reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, res);
   EXPECT_TRUE(is_valid_json);
-  EXPECT_EQ(res["error"]["code"].asInt(), devtool::kInspectorErrorCode);
+  EXPECT_EQ(res["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
   EXPECT_EQ(res["error"]["message"].asString(), "Get invalid stream handle");
   EXPECT_EQ(res["id"], 1);
 }
 
 TEST_F(DevToolMediatorTest, LogEnable) {
-  Json::Value param;
-  devtool_mediator_->LogEnable(message_sender_, param);
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogEnable(responder, params);
   devtool_thread_->Join();
   EXPECT_TRUE(
       devtool_mediator_->devtool_executor_->console_msg_manager_->enable_);
@@ -432,18 +578,28 @@ TEST_F(DevToolMediatorTest, BoxModelDomCommandsRunOnTASMThreadCase) {
 }
 
 TEST_F(DevToolMediatorTest, LayerTreeCommandsRunOnTASMThreadCase) {
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 52;
-  Json::Value compositing_message(Json::ValueType::objectValue);
-  compositing_message["id"] = 53;
-  compositing_message["params"]["layerId"] = "0";
-
-  devtool_mediator_->LayerTreeEnable(message_sender_, message);
-  devtool_mediator_->LayerTreeDisable(message_sender_, message);
+  devtool_mediator_->LayerTreeEnable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 51),
+      Json::Value());
+  devtool_mediator_->LayerTreeDisable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 52),
+      Json::Value());
   devtool_mediator_->SendLayerTreeDidChangeEvent();
-  devtool_mediator_->CompositingReasons(message_sender_, compositing_message);
-  tasm_thread_->Join();
+  Json::Value params(Json::objectValue);
+  params["layerId"] = "0";
+  devtool_mediator_->CompositingReasons(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 53), params);
+  FlushTasmTasks();
 
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 53);
+  EXPECT_EQ(response["result"]["compositingReasons"],
+            Json::Value(Json::arrayValue));
+  EXPECT_EQ(response["result"]["compositingReasonsIds"],
+            Json::Value(Json::arrayValue));
   EXPECT_FALSE(devtool_mediator_->element_executor_->layer_tree_enabled_);
 }
 
@@ -535,8 +691,9 @@ TEST_F(DevToolMediatorTest, LynxSendEventToVM) {
 }
 
 TEST_F(DevToolMediatorTest, LogDisable) {
-  Json::Value param;
-  devtool_mediator_->LogDisable(message_sender_, param);
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogDisable(responder, params);
   devtool_thread_->Join();
   EXPECT_FALSE(
       devtool_mediator_->devtool_executor_->console_msg_manager_->enable_);
@@ -545,8 +702,9 @@ TEST_F(DevToolMediatorTest, LogDisable) {
 }
 
 TEST_F(DevToolMediatorTest, LogClear) {
-  Json::Value param;
-  devtool_mediator_->LogClear(message_sender_, param);
+  Json::Value params;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogClear(responder, params);
   devtool_thread_->Join();
   EXPECT_TRUE(devtool_mediator_->devtool_executor_->console_msg_manager_
                   ->log_messages_.empty());
@@ -556,8 +714,12 @@ TEST_F(DevToolMediatorTest, LogClear) {
 
 TEST_F(DevToolMediatorTest, LogEntryAdded) {
   lynx::runtime::js::ConsoleMessage param("test", 2, 0);
-  devtool_mediator_->LogClear(message_sender_, Json::Value());
-  devtool_mediator_->LogEnable(message_sender_, Json::Value());
+  auto clear_responder =
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogClear(clear_responder, Json::Value());
+  auto enable_responder =
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0);
+  devtool_mediator_->LogEnable(enable_responder, Json::Value());
   devtool_mediator_->SendLogEntryAddedEvent(std::move(param));
   devtool_thread_->Join();
   EXPECT_FALSE(devtool_mediator_->devtool_executor_->console_msg_manager_
@@ -630,19 +792,26 @@ TEST_F(DevToolMediatorTest,
 }
 
 TEST_F(DevToolMediatorTest, HighlightTest) {
-  Json::Value param1(Json::objectValue);
-  param1["id"] = 1;
-  devtool_mediator_->HighlightNode(message_sender_, param1);
-  tasm_thread_->Join();
-  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
+  devtool_mediator_->HighlightNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1),
+      Json::Value());
+  FlushTasmTasks();
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 1);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"], "Invalid nodeId: expected integer");
+  EXPECT_FALSE(response.isMember("result"));
 
-  Json::Value param2;
-  param2["id"] = 1;
-  devtool_mediator_->HideHighlight(message_sender_, param2);
-  tasm_thread_->Join();
+  devtool_mediator_->HideHighlight(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 2),
+      Json::Value());
+  FlushTasmTasks();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
+            "{\n   \"id\" : 2,\n   \"result\" : {}\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, GetAllTimingInfoTest) {

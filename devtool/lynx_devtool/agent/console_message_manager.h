@@ -6,13 +6,13 @@
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_CONSOLE_MESSAGE_MANAGER_H_
 
 #include <list>
+#include <memory>
 
 #include "core/inspector/console_message_postman.h"
 
 namespace lynx {
 namespace devtool {
 
-class MessageSender;
 class LynxDevToolMediator;
 
 /**
@@ -30,11 +30,11 @@ class LynxDevToolMediator;
 class ConsoleMessageManager
     : public std::enable_shared_from_this<ConsoleMessageManager> {
  public:
-  ConsoleMessageManager(
-      const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
+  explicit ConsoleMessageManager(
+      std::weak_ptr<LynxDevToolMediator> devtool_mediator);
   virtual ~ConsoleMessageManager() = default;
 
-  void EnableConsoleLog(const std::shared_ptr<MessageSender>& sender);
+  void EnableConsoleLog();
   void DisableConsoleLog();
   void LogEntryAdded(const lynx::runtime::js::ConsoleMessage& message);
   void ClearConsoleMessages();

@@ -40,8 +40,8 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_METHOD(ReplayEnd)
 
   // IO domain -> devtool executor
-  DECLARE_DEVTOOL_METHOD(IORead)
-  DECLARE_DEVTOOL_METHOD(IOClose)
+  DECLARE_DEVTOOL_CDP_METHOD(IORead);
+  DECLARE_DEVTOOL_CDP_METHOD(IOClose);
 
   // Memory domain -> devtools executor
   DECLARE_DEVTOOL_CDP_METHOD(MemoryStartTracing);
@@ -56,7 +56,7 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_METHOD(TakeVMSnapshotByUrl)
 
   // System Info domain
-  DECLARE_DEVTOOL_METHOD(SystemInfoGetInfo)
+  DECLARE_DEVTOOL_CDP_METHOD(SystemInfoGetInfo);
 
  protected:
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;

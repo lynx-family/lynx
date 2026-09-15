@@ -5,39 +5,36 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_OVERLAY_AGENT_NG_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_OVERLAY_AGENT_NG_H_
 
+#include <map>
 #include <memory>
-#include <unordered_map>
+#include <string>
 
-#include "core/inspector/style_sheet.h"
-#include "core/renderer/dom/element.h"
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
-#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
 
-class DevToolAgentNG;
+class LynxDevToolMediator;
 
 class InspectorOverlayAgentNG : public CDPDomainAgentBase {
  public:
   InspectorOverlayAgentNG(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   virtual ~InspectorOverlayAgentNG() = default;
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message) override;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                  const Json::Value& message) override;
 
  private:
-  typedef void (InspectorOverlayAgentNG::*OverlayAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& params);
+  using OverlayAgentMethod = void (InspectorOverlayAgentNG::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
 
-  void HighlightNode(const std::shared_ptr<MessageSender>& sender,
-                     const Json::Value& message);
-  void HideHighlight(const std::shared_ptr<MessageSender>& sender,
-                     const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);
+  DECLARE_DEVTOOL_CDP_METHOD(HideHighlight);
 
   std::map<std::string, OverlayAgentMethod> functions_map_;
-  InspectorStyleSheet origin_inline_style_;
-  const std::shared_ptr<LynxDevToolMediator>& devtool_mediator_;
+  const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };
 }  // namespace devtool
 }  // namespace lynx
