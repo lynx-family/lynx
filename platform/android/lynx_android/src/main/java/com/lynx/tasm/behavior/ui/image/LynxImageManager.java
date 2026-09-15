@@ -31,6 +31,7 @@ import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.PropsConstants;
+import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -218,6 +219,8 @@ public class LynxImageManager implements Drawable.Callback {
   private ViewInfo mViewInfo;
 
   private View mView = null;
+
+  private IRendererHost mRendererHost;
 
   private final boolean mAsyncRedirect;
 
@@ -670,6 +673,10 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void setView(View view) {
     mView = view;
+  }
+
+  public void setRendererHost(IRendererHost rendererHost) {
+    mRendererHost = rendererHost;
   }
 
   public void setEventMask(int eventMask) {
@@ -1326,7 +1333,11 @@ public class LynxImageManager implements Drawable.Callback {
       mViewInfo.invalidate();
     }
 
-    if (mView != null) {
+    if (mRendererHost != null) {
+      // A flattened renderer must invalidate its draw cache and draw parent,
+      // not just the Android View returned by its host.
+      mRendererHost.invalidateForRenderer();
+    } else if (mView != null) {
       mView.invalidate();
     }
   }
