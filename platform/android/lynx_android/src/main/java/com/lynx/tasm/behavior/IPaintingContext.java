@@ -22,6 +22,9 @@ public interface IPaintingContext {
 
   boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
 
+  // Returns the native hit target sign, or -1 when no platform touch target is available.
+  int getPlatformTouchTargetSign();
+
   void dispatchPlatformLongPress();
 
   void dispatchPlatformTap();
