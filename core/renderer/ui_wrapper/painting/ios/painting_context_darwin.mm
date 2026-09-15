@@ -730,15 +730,6 @@ void PaintingContextDarwin::Enqueue(F&& func) {
   });
 }
 
-template <typename F>
-void PaintingContextDarwin::EnqueueHighPriorityUIOperation(F&& func) {
-  queue_->EnqueueHighPriorityUIOperation([func = std::move(func)]() mutable {
-    @autoreleasepool {
-      PaintingContextDarwinUtils::ExecuteSafely(func);
-    }
-  });
-}
-
 shell::UIOperation PaintingContextDarwin::ExecuteOperationSafely(shell::UIOperation op) {
   return [func = std::move(op)]() {
     @autoreleasepool {
