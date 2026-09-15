@@ -6,6 +6,25 @@
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxTemplateBundle.h>
+#include "core/resource/lynx_resource_handle.h"
+
+@interface LynxResourceHandle (Internal)
+- (std::shared_ptr<lynx::pub::LynxResourceHandle>)rawResourceHandle;
+@end
+
+@protocol LynxNativeSecurityPolicyService <NSObject>
+- (id)prepareNativeVerificationForTarget:(id<LynxSecurityTarget>)target;
+- (BOOL)isNativeVerificationEnabled:(id)policy;
+- (LynxVerificationResult*)didTASMVerifiedByNative:(id)policy
+                                            target:(id<LynxSecurityTarget>)target
+                                               url:(NSString*)url
+                                          verified:(BOOL)verified
+                                          errorMsg:(NSString*)errorMsg
+                                         errorCode:(NSInteger)errorCode
+                                            signId:(NSUInteger)signId
+                                       extraConfig:(NSString*)extraConfig;
+@end
+
 #import "LynxBytecodeResponseBlock+Converter.h"
 #import "LynxTemplateBundle+Converter.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
@@ -38,7 +57,8 @@
                                                                    url:url
                                                                   type:LynxTASMTypeTemplate];
     if (!verification.verified) {
-      _error = verification.errorMsg;
+      _error =
+          verification.errorMsg.length ? verification.errorMsg : @"Template verification failed";
       return;
     }
   }
@@ -104,6 +124,103 @@
   BOOL skipCSS = option ? [option skipCSS] : NO;
   [self decodeTemplate:data url:url debuggable:debuggable skipCSS:skipCSS];
   [self initWithOption:option];
+  return self;
+}
+
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle {
+  return [self initWithResourceHandle:handle option:nil];
+}
+
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle
+                                          option:(nullable LynxTemplateBundleOption*)option {
+  if (handle == nil) {
+    return nil;
+  }
+  if (self = [super init]) {
+    _url = option.url ?: handle.filePath;
+    [LynxEnv sharedInstance];
+    auto resource = [handle rawResourceHandle];
+    if (!resource) {
+      _error = [NSString
+          stringWithFormat:@"Cannot parse template from an invalidated resource handle: %@",
+                           handle.filePath];
+    } else {
+      auto data = resource->GetData();
+      if (!data.has_value() || !data.value()) {
+        _error =
+            [NSString stringWithFormat:@"Failed to read template resource: %@", handle.filePath];
+      } else if (data.value()->empty()) {
+        _error = @"Cannot parse template from an empty resource";
+      } else {
+        auto snapshot = std::move(data.value());
+        lynx::tasm::TemplateVerification verification;
+        verification.enabled = true;
+        using lynx::service::security_service::LynxSecurityService;
+        auto* nativeService = lynx::service::get_service<LynxSecurityService>();
+        if (nativeService != nullptr) {
+          auto securityService = LynxService(LynxServiceSecurityProtocol);
+          if ([securityService respondsToSelector:@selector(prepareNativeVerificationForTarget:)] &&
+              [securityService respondsToSelector:@selector(isNativeVerificationEnabled:)] &&
+              [securityService
+                  respondsToSelector:@selector
+                  (didTASMVerifiedByNative:
+                                    target:url:verified:errorMsg:errorCode:signId:extraConfig:)]) {
+            id<LynxNativeSecurityPolicyService> adapter = (id)securityService;
+            id policy = [adapter prepareNativeVerificationForTarget:self];
+            verification.enabled = policy == nil || [adapter isNativeVerificationEnabled:policy];
+            if (policy != nil) {
+              NSString* url = _url;
+              verification.apply_policy = [adapter, policy, self, url](auto& result) {
+                auto text = [](const std::string& value) {
+                  return [[NSString alloc] initWithBytes:value.data()
+                                                  length:value.size()
+                                                encoding:NSUTF8StringEncoding];
+                };
+                LynxVerificationResult* decision =
+                    [adapter didTASMVerifiedByNative:policy
+                                              target:self
+                                                 url:url
+                                            verified:result.verified
+                                            errorMsg:text(result.error_message)
+                                           errorCode:result.error_code
+                                              signId:result.sign_id
+                                         extraConfig:text(result.extra_config)];
+                result.verified = decision != nil && decision.verified;
+                if (decision.errorMsg != nil) {
+                  NSData* message = [decision.errorMsg dataUsingEncoding:NSUTF8StringEncoding];
+                  result.error_message =
+                      message.length
+                          ? std::string(static_cast<const char*>(message.bytes), message.length)
+                          : "";
+                }
+              };
+            }
+          }
+        }
+        if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
+          _devtool_pool = [[LynxDevToolPool alloc] initWithURL:_url debuggable:option.debuggable];
+        }
+        NSData* url = [_url dataUsingEncoding:NSUTF8StringEncoding];
+        std::string templateURL;
+        if (url.length) templateURL.assign(static_cast<const char*>(url.bytes), url.length);
+        auto bundle = std::make_shared<lynx::tasm::LynxTemplateBundle>();
+        auto error = bundle->FromBinaryGreedy(std::move(snapshot), templateURL, option.skipCSS,
+                                              std::nullopt, verification);
+        if (error.empty()) {
+          template_bundle_ = std::move(bundle);
+          [_devtool_pool
+              onTemplateBundleCreated:reinterpret_cast<intptr_t>(template_bundle_.get())];
+          template_bundle_->PrepareVMByConfigs();
+        } else {
+          _error = [[NSString alloc] initWithBytes:error.data()
+                                            length:error.size()
+                                          encoding:NSUTF8StringEncoding]
+                       ?: @"Template decoding failed";
+        }
+      }
+    }
+    [self initWithOption:option];
+  }
   return self;
 }
 
