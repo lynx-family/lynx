@@ -452,6 +452,9 @@ void UIBase::AddChild(UIBase* child, int index) {
   }
   child->SetParent(this);
   InsertNode(child, index);
+  if (renderer_) {
+    renderer_->UpdateRenderNodeOrder();
+  }
 }
 
 void UIBase::RemoveChild(UIBase* child) {
@@ -460,6 +463,9 @@ void UIBase::RemoveChild(UIBase* child) {
   RemoveNode(child);
   children_.erase(std::remove(children_.begin(), children_.end(), child),
                   children_.end());
+  if (renderer_) {
+    renderer_->UpdateRenderNodeOrder();
+  }
 }
 
 void UIBase::InsertNode(UIBase* child, int index) {
@@ -1355,6 +1361,9 @@ void UIBase::RequestLayout() {
 }
 
 void UIBase::Invalidate() {
+  if (renderer_) {
+    renderer_->InvalidateRenderNodes();
+  }
   if (draw_node_) {
     NodeManager::Instance().Invalidate(draw_node_);
   }
@@ -1427,9 +1436,21 @@ void UIBase::SetFragmentLayerClipBounds(bool need_clip) {
                                                       need_clip ? 1 : 0);
 }
 
+void UIBase::UpdateFragmentLayerOffset(float left, float top) {
+  if (left_ == left && top_ == top) {
+    return;
+  }
+  left_ = left;
+  top_ = top;
+  FrameDidChanged();
+}
+
 void UIBase::OnAttachedToFragmentLayerTree() {
   if (renderer_ && !CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
     InitDrawNode();
+  }
+  if (parent_ && parent_->renderer_) {
+    parent_->renderer_->UpdateRenderNodeOrder();
   }
 }
 
@@ -2424,6 +2445,9 @@ void UIBase::InitDrawNode() {
         draw_node_, NODE_Z_INDEX, translation_z_);
   }
   UpdateDrawNodeFrame();
+  if (parent_ && parent_->renderer_) {
+    parent_->renderer_->UpdateRenderNodeOrder();
+  }
 }
 
 void UIBase::DestroyDrawNode() {
