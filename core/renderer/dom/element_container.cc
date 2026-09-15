@@ -18,6 +18,67 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+bool IsNormalUIChild(Element* element, bool enable_new_sticky) {
+  return !element->IsLayoutOnly() && element->ZIndex() == 0 &&
+         !element->IsFixedNewOrUnified() &&
+         (!enable_new_sticky || !element->is_sticky());
+}
+
+Element* FirstFlattenedUIChild(Element* root, bool enable_new_sticky) {
+  auto* current = root;
+  while (current != nullptr) {
+    if (IsNormalUIChild(current, enable_new_sticky)) {
+      return current;
+    }
+    if (current->IsLayoutOnly() && current->ZIndex() == 0 &&
+        !current->IsFixedNewOrUnified() &&
+        (!enable_new_sticky || !current->is_sticky()) &&
+        current->first_render_child() != nullptr) {
+      current = current->first_render_child();
+      continue;
+    }
+    while (current != root && current->next_render_sibling() == nullptr) {
+      current = current->render_parent();
+    }
+    if (current == root) {
+      return nullptr;
+    }
+    current = current->next_render_sibling();
+  }
+  return nullptr;
+}
+
+Element* NextFlattenedUIChild(Element* current, Element* boundary,
+                              bool enable_new_sticky) {
+  while (current != nullptr && current != boundary) {
+    auto* next = current->next_render_sibling();
+    if (next == nullptr) {
+      current = current->render_parent();
+      continue;
+    }
+
+    current = next;
+    while (current != nullptr && current->IsLayoutOnly() &&
+           current->ZIndex() == 0 && !current->IsFixedNewOrUnified() &&
+           (!enable_new_sticky || !current->is_sticky())) {
+      auto* child = current->first_render_child();
+      if (child == nullptr) {
+        break;
+      }
+      current = child;
+    }
+
+    if (current != nullptr && IsNormalUIChild(current, enable_new_sticky)) {
+      return current;
+    }
+  }
+  return nullptr;
+}
+
+}  // namespace
+
 ElementContainer::ElementContainer(Element* element)
     : BaseElementContainer(element) {}
 
@@ -32,6 +93,7 @@ ElementContainer::~ElementContainer() {
   }
   // Remove self from parent's children.
   if (parent()) {
+    element_container_parent()->last_normal_ui_child_is_tail_ = false;
     auto it = std::find(element_container_parent()->children_.begin(),
                         element_container_parent()->children_.end(), this);
     if (it != element_container_parent()->children_.end())
@@ -113,6 +175,7 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
   if (child->parent()) {
     child->RemoveFromParent(true);
   }
+  const int32_t ui_child_count_before = none_layout_only_children_size_;
   children_.push_back(child);
 
   if (!child->element()->IsLayoutOnly()) {
@@ -132,6 +195,11 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
   }
   if (!child->element()->IsLayoutOnly()) {
     painting_context()->InsertPaintingNode(id(), child->id(), index);
+    last_normal_ui_child_is_tail_ =
+        IsNormalUIChild(child->element(),
+                        element_manager()->GetEnableNewSticky()) &&
+        !has_z_child() && !has_fixed_child() &&
+        (index == -1 || index == ui_child_count_before);
   }
 }
 
@@ -139,6 +207,7 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
   auto it = std::find(children_.begin(), children_.end(), child);
   if (it != children_.end()) {
     children_.erase(it);
+    last_normal_ui_child_is_tail_ = false;
     if (child->element()->ZIndex() < 0) {
       auto z_it = std::find(negative_z_children_.begin(),
                             negative_z_children_.end(), child);
@@ -164,6 +233,35 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
     // The stacking context need update
     MarkDirtyState(kNeedSortZChild);
   }
+}
+
+Element* ElementContainer::LastAddedNormalUIChild() const {
+  const bool enable_new_sticky = element_manager()->GetEnableNewSticky();
+  for (auto it = children_.rbegin(); it != children_.rend(); ++it) {
+    if (IsNormalUIChild((*it)->element(), enable_new_sticky)) {
+      return (*it)->element();
+    }
+  }
+  return nullptr;
+}
+
+bool ElementContainer::CanAppendUIChildWithoutIndexCalculation(
+    Element* child) const {
+  if (none_layout_only_children_size_ == 0) {
+    return true;
+  }
+  if (!last_normal_ui_child_is_tail_) {
+    return false;
+  }
+  auto* last_normal_ui_child = LastAddedNormalUIChild();
+  if (last_normal_ui_child == nullptr) {
+    return false;
+  }
+  const bool enable_new_sticky = element_manager()->GetEnableNewSticky();
+  auto* first_ui_child = FirstFlattenedUIChild(child, enable_new_sticky);
+  return first_ui_child == nullptr ||
+         NextFlattenedUIChild(last_normal_ui_child, element(),
+                              enable_new_sticky) == first_ui_child;
 }
 
 void ElementContainer::RemoveFromParent(bool is_move) {
@@ -873,14 +971,15 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
   // We can skip index calculation if the target parent doesn't have any child
   // need adjust z order. And dirty_ context will sort its children. We don't
   // need to calculate the index here.
+  auto* real_parent_container = real_parent->element_container_impl();
   bool should_skip_index_calculation =
-      (!real_parent->element_container_impl()->has_z_child()) && !ref;
-  ;
+      !real_parent_container->has_z_child() &&
+      (!ref ||
+       real_parent_container->CanAppendUIChildWithoutIndexCalculation(child));
 
   int index = 0;
   if (should_skip_index_calculation) {
-    index =
-        real_parent->element_container_impl()->none_layout_only_children_size_;
+    index = real_parent_container->none_layout_only_children_size_;
   } else {
     // Calculate the cumulative UI index.
     // Since the direct parent might be a layout-only element (which is skipped
