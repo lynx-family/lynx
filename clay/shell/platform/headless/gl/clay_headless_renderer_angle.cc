@@ -10,6 +10,8 @@
 #include <Windows.h>
 #include <dxgi.h>
 
+#include <array>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -19,10 +21,16 @@
 
 namespace clay {
 
-constexpr int kD3D11CreateDeviceRetryDelayMs = 500;
-constexpr int kAngleInitializationRetryDelayMs = 100;
-constexpr int kMaxDeviceLostRetries = 1;
-constexpr int kMaxAngleInitializationRetries = 3;
+constexpr std::array<DWORD, 1> kDefaultD3D11DeviceRetryDelaysMs = {1000};
+constexpr std::array<DWORD, 3> kDefaultAngleInitRetryDelaysMs = {1000, 2000,
+                                                                 4000};
+
+template <typename T>
+static std::string ToHexString(T value) {
+  std::ostringstream stream;
+  stream << "0x" << std::hex << static_cast<uint32_t>(value);
+  return stream.str();
+}
 
 // Logs an EGL error to stderr. This automatically calls eglGetError()
 // and logs the error code.
@@ -131,15 +139,16 @@ bool HeadlessAngleSurfaceManager::TryInitializeD3D11Device() {
   };
 
   HRESULT hr = create_device();
-  for (int retry = 0; FAILED(hr) && IsRetriableD3D11CreateError(hr) &&
-                      retry < kMaxDeviceLostRetries;
+  for (size_t retry = 0; FAILED(hr) && IsRetriableD3D11CreateError(hr) &&
+                         retry < kDefaultD3D11DeviceRetryDelaysMs.size();
        ++retry) {
     FML_LOG(WARNING)
         << "HeadlessAngleSurfaceManager::TryInitializeD3D11Device, transient "
            "error while creating D3D11 Device, retry "
-        << (retry + 1) << "/" << kMaxDeviceLostRetries << " after "
-        << kD3D11CreateDeviceRetryDelayMs << "ms, hr:" << hr;
-    ::Sleep(kD3D11CreateDeviceRetryDelayMs);
+        << (retry + 1) << "/" << kDefaultD3D11DeviceRetryDelaysMs.size()
+        << " after " << kDefaultD3D11DeviceRetryDelaysMs[retry]
+        << "ms, hr:" << hr;
+    ::Sleep(kDefaultD3D11DeviceRetryDelaysMs[retry]);
     hr = create_device();
   }
 
@@ -190,7 +199,7 @@ bool HeadlessAngleSurfaceManager::Initialize() {
   // https://github.com/flutter/flutter/issues/100392
   const EGLint config_attributes[] = {EGL_RED_SIZE,   8, EGL_GREEN_SIZE,   8,
                                       EGL_BLUE_SIZE,  8, EGL_ALPHA_SIZE,   8,
-                                      EGL_DEPTH_SIZE, 8, EGL_STENCIL_SIZE, 8,
+                                      EGL_DEPTH_SIZE, 0, EGL_STENCIL_SIZE, 0,
                                       EGL_NONE};
 
   const EGLint display_context_attributes[] = {EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -273,19 +282,21 @@ bool HeadlessAngleSurfaceManager::Initialize() {
   // Attempt to initialize ANGLE's renderer in order of: D3D11, D3D11 Feature
   // Level 9_3 and finally D3D11 WARP.
   bool initialized = false;
-  for (int attempt = 0;
-       !initialized && attempt <= kMaxAngleInitializationRetries; ++attempt) {
+  for (size_t attempt = 0;
+       !initialized && attempt <= kDefaultAngleInitRetryDelaysMs.size();
+       ++attempt) {
     if (attempt > 0) {
+      const DWORD retry_delay = kDefaultAngleInitRetryDelaysMs[attempt - 1];
       FML_LOG(INFO)
           << "HeadlessAngleSurfaceManager::Initialize, retrying ANGLE display "
              "configs, retry "
-          << attempt << "/" << kMaxAngleInitializationRetries << " after "
-          << kAngleInitializationRetryDelayMs << "ms.";
-      ::Sleep(kAngleInitializationRetryDelayMs);
+          << attempt << "/" << kDefaultAngleInitRetryDelaysMs.size()
+          << " after " << retry_delay << "ms.";
+      ::Sleep(retry_delay);
     }
 
     for (auto config : display_attributes_configs) {
-      bool should_log = (attempt == kMaxAngleInitializationRetries &&
+      bool should_log = (attempt == kDefaultAngleInitRetryDelaysMs.size() &&
                          config == display_attributes_configs.back());
       if (InitializeEGL(egl_get_platform_display_EXT, config, should_log)) {
         initialized = true;
@@ -312,8 +323,9 @@ bool HeadlessAngleSurfaceManager::Initialize() {
                      "eglCreateContext success.";
   }
 
-  // We only ever create pbuffer surfaces for background resource loading
-  // contexts. We never bind the pbuffer to anything.
+  // The pbuffer is only used as the draw/read surface when making the context
+  // current. Actual rendering targets a SharedImage-backed FBO, so the pbuffer
+  // does not need depth/stencil buffers.
   const EGLint attribs[] = {EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE};
 
   egl_surface_ = eglCreatePbufferSurface(egl_display_, egl_config_, attribs);
@@ -329,6 +341,23 @@ bool HeadlessAngleSurfaceManager::Initialize() {
 void HeadlessAngleSurfaceManager::CleanUp() {
   EGLBoolean result = EGL_FALSE;
 
+  if (resolved_device_) {
+    FML_LOG(INFO)
+        << "HeadlessAngleSurfaceManager::CleanUp before releasing D3D11 device"
+        << ", surface_manager=" << this << ", egl_display=" << egl_display_
+        << ", egl_context=" << egl_context_ << ", egl_surface=" << egl_surface_
+        << ", d3d11_device=" << resolved_device_.Get()
+        << ", device_removed_reason="
+        << ToHexString(resolved_device_->GetDeviceRemovedReason());
+  } else if (egl_display_ != EGL_NO_DISPLAY || egl_context_ != EGL_NO_CONTEXT ||
+             egl_surface_ != EGL_NO_SURFACE) {
+    FML_LOG(INFO)
+        << "HeadlessAngleSurfaceManager::CleanUp before releasing D3D11 device"
+        << ", surface_manager=" << this << ", egl_display=" << egl_display_
+        << ", egl_context=" << egl_context_ << ", egl_surface=" << egl_surface_
+        << ", d3d11_device=null";
+  }
+
   // Needs to be reset before destroying the EGLContext.
   resolved_device_.Reset();
 
@@ -336,7 +365,7 @@ void HeadlessAngleSurfaceManager::CleanUp() {
     result = eglDestroySurface(egl_display_, egl_surface_);
     egl_surface_ = EGL_NO_SURFACE;
     if (result == EGL_FALSE) {
-      LogEglError("Failed to destroy context");
+      LogEglError("Failed to destroy surface");
     }
   }
 
