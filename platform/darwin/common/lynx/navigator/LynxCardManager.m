@@ -14,11 +14,6 @@
 
 @implementation LynxCardManager
 
-@synthesize routeStack = _routeStack;
-@synthesize lruCache = _lruCache;
-@synthesize lynxView = _lynxView;
-@synthesize holder = _holder;
-
 - (void)hideLynxView:(LynxView*)lynxView {
 #if OS_IOS
   if (lynxView) {
