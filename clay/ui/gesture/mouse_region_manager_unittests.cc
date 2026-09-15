@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "base/include/fml/thread.h"
+#include "build/build_config.h"
+#include "clay/shell/common/pointer_data_to_event.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
@@ -173,6 +175,60 @@ TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
   EXPECT_THAT(views_leave, ElementsAre(4));
   EXPECT_THAT(views_enter, ElementsAre());
   clear();
+
+#if defined(OS_WIN) || defined(OS_MAC)
+  manager->RegisterLeaveCallback(View3, [&](const PointerEvent& event) {
+    on_leave(3);
+    EXPECT_EQ(event.type, PointerEvent::EventType::kCancel);
+    EXPECT_EQ(event.position, FloatPoint());
+  });
+  PointerData data{};
+  data.kind = PointerData::DeviceKind::kMouse;
+  data.change = PointerData::Change::kRemove;
+  data.physical_x = 200;
+  data.physical_y = 600;
+  PointerDataPacket packet(1);
+  packet.SetPointerData(0, data);
+  root->DispatchPointerEvent(GetEventsFromPointerDataPacket(&packet));
+  EXPECT_THAT(views_leave, ElementsAre(3, 2, 0));
+  EXPECT_THAT(views_enter, ElementsAre());
+  clear();
+
+  root->DispatchPointerEvent(GetEventsFromPointerDataPacket(&packet));
+  EXPECT_THAT(views_leave, ElementsAre());
+  EXPECT_THAT(views_enter, ElementsAre());
+
+  root->DispatchPointerEvent(CreateHoverPointer(200, 600));
+  EXPECT_THAT(views_leave, ElementsAre());
+  EXPECT_THAT(views_enter, ElementsAre(0, 2, 3));
+#endif
 }
+
+#if defined(OS_WIN) || defined(OS_MAC)
+TEST_F_UI(MouseRegionManagerTest, MouseAddDoesNotEnterLegacyRegions) {
+  page_->SetBound(0, 0, 100, 100);
+  page_->SetAlignMouseEventWithW3C(false);
+  std::vector<int> buttons;
+  int hover_count = 0;
+  auto* manager = page_->mouse_region_manager();
+  manager->RegisterEnterCallback(page_.get(), [&](const PointerEvent& event) {
+    buttons.push_back(event.buttons);
+  });
+  manager->RegisterHoverCallback(page_.get(),
+                                 [&](const PointerEvent&) { ++hover_count; });
+  PointerData data{};
+  data.kind = PointerData::DeviceKind::kMouse;
+  data.change = PointerData::Change::kAdd;
+  data.physical_x = data.physical_y = 50;
+  PointerDataPacket packet(2);
+  packet.SetPointerData(0, data);
+  data.change = PointerData::Change::kDown;
+  data.buttons = PointerEvent::kPrimary;
+  packet.SetPointerData(1, data);
+  page_->DispatchPointerEvent(GetEventsFromPointerDataPacket(&packet));
+  EXPECT_THAT(buttons, ElementsAre(PointerEvent::kPrimary));
+  EXPECT_EQ(hover_count, 0);
+}
+#endif
 }  // namespace testing
 }  // namespace clay
