@@ -17,6 +17,7 @@
 #include "core/base/trace/trace_event_def.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/js/bindings/global.h"
+#include "core/runtime/js/js_execution_control.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/runtime_constant.h"
@@ -204,6 +205,11 @@ RuntimeManager::RuntimeManager()
 }
 
 RuntimeManager::~RuntimeManager() {
+  for (const auto& [type, vm] : mVMContainer_) {
+    if (type == runtime::js::JSRuntimeType::v8) {
+      UnregisterVMInstance(vm.get());
+    }
+  }
   // Should destroy runtime_manager_delegate_ before mVMContainer_
   runtime_manager_delegate_.reset();
 }
@@ -500,6 +506,9 @@ bool RuntimeManager::EnsureVM(runtime::js::Runtime& rt) {
     runtime::js::StartupData* data = nullptr;
 
     mVMContainer_.insert(std::make_pair(rt.type(), rt.createVM(data)));
+    if (rt.type() == runtime::js::JSRuntimeType::v8) {
+      RegisterVMInstance(mVMContainer_[rt.type()].get());
+    }
     return true;
   }
   return false;

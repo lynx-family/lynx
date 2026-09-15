@@ -21,6 +21,7 @@
 #include "core/renderer/tasm/i18n/i18n.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
+#include "core/runtime/js/js_execution_control.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/runtime/js/lynx_api_handler.h"
 #include "core/runtime/js/runtime_constant.h"
@@ -221,6 +222,17 @@ void BTSRuntime::Init(
 
   InitExecutor(!(runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD),
                std::move(preload_js_paths));
+  auto* js_runtime = GetJSRuntimeWeak().Lock();
+  if (js_runtime != nullptr &&
+      js_runtime->type() == runtime::js::JSRuntimeType::v8) {
+    // Derive the VM directly from this runtime instead of a thread_local side
+    // channel, so shared JS groups deliver the right isolate token.
+    auto vm_instance = js_runtime->getSharedVM();
+    if (vm_instance != nullptr) {
+      delegate_->OnJSVMInstanceReady(
+          reinterpret_cast<intptr_t>(vm_instance.get()));
+    }
+  }
   LOGI(log_context_ << " js_runtime_type:"
                     << static_cast<int32_t>(js_executor_->getJSRuntimeType())
                     << " this:" << this);
@@ -1006,7 +1018,6 @@ void BTSRuntime::OnRuntimeReady() {
   }
 
   LOGI(log_context_ << " lynx runtime ready");
-
   delegate_->OnRuntimeReady();
 
   for (const auto& task : cached_tasks_) {

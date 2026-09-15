@@ -237,6 +237,12 @@ void BTSRuntimeMediator::OnRuntimeReady() {
   facade_actor_->ActAsync([](auto& facade) { facade->OnRuntimeReady(); });
 }
 
+void BTSRuntimeMediator::OnJSVMInstanceReady(intptr_t vm_instance) {
+  facade_actor_->ActAsync([vm_instance](auto& facade) {
+    facade->OnJSVMInstanceReady(vm_instance);
+  });
+}
+
 void BTSRuntimeMediator::OnErrorOccurred(base::LynxError error) {
   facade_actor_->ActAsync(
       [error = std::move(error)](auto& facade) { facade->ReportError(error); });

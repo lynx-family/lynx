@@ -300,6 +300,7 @@ public class LynxTemplateRender
   private long mNativeLifecycle;
   // Destory mNativeLifecycle when no reference to LynxTemplateRender.
   private CleanupReference mCleanupReference = null;
+  private long mV8IsolatePtr;
 
   private volatile NativeFacade mNativeFacade;
   private long mNativePtr = 0;
@@ -3499,6 +3500,11 @@ public class LynxTemplateRender
     }
 
     @Override
+    public void onJSVMInstanceReady(long vmInstance) {
+      mV8IsolatePtr = vmInstance;
+    }
+
+    @Override
     public void onDataUpdated() {
       LLog.i(TAG, "TASMCallback.onDataUpdated");
       if (mClient != null) {
@@ -4399,6 +4405,30 @@ public class LynxTemplateRender
     });
   }
 
+  void captureJavaScriptStack(LynxJavaScriptExecutionCallback callback) {
+    if (mLynxRuntimeOptions.useQuickJSEngine()) {
+      callback.onResult(LynxJavaScriptExecutionCallback.UNSUPPORTED_ENGINE, "");
+      return;
+    }
+    if (mV8IsolatePtr == 0) {
+      callback.onResult(LynxJavaScriptExecutionCallback.NOT_READY, "");
+      return;
+    }
+    nativeCaptureJavaScriptStack(mV8IsolatePtr,
+        (status, stack) -> UIThreadUtils.runOnUiThread(() -> callback.onResult(status, stack)));
+  }
+
+  boolean terminateJavaScriptExecution() {
+    if (mLynxRuntimeOptions.useQuickJSEngine() || mV8IsolatePtr == 0) {
+      return false;
+    }
+    return nativeTerminateJavaScriptExecution(mV8IsolatePtr);
+  }
+
+  private static native void nativeCaptureJavaScriptStack(
+      long vmInstancePtr, LynxJavaScriptExecutionCallback callback);
+  private static native boolean nativeTerminateJavaScriptExecution(long vmInstancePtr);
+
   private void destroyLynxEngine() {
     synchronized (mNativeShellLifecycleLock) {
       if (!mIsDestroyed.compareAndSet(false, true)) {
@@ -4456,6 +4486,7 @@ public class LynxTemplateRender
     mNativeFacade = null;
     mNativeLifecycle = 0;
     mNativePtr = 0;
+    mV8IsolatePtr = 0;
   }
 
   private boolean shouldCacheLynxEngine() {

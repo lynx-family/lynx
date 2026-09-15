@@ -112,6 +112,7 @@ class TemplateDelegate : public ContextProxy::Delegate,
           response_promise) = 0;
 
   virtual void OnRuntimeReady() = 0;
+  virtual void OnJSVMInstanceReady(intptr_t vm_instance) {}
 
   virtual void OnErrorOccurred(base::LynxError error) = 0;
 

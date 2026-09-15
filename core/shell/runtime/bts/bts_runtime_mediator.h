@@ -105,6 +105,7 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
           response_promise) override;
 
   void OnRuntimeReady() override;
+  void OnJSVMInstanceReady(intptr_t vm_instance) override;
   void OnErrorOccurred(base::LynxError error) override;
 
   void OnModuleMethodInvoked(const std::string& module,

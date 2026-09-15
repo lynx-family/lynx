@@ -118,6 +118,11 @@ sections:
             level: warn
             description: 'The script may execute timeout.'
             fix-suggestion: 'Please check the error message and fix the script.'
+          - name: TerminatedError
+            low-code: 5
+            level: warn
+            description: 'The script execution was terminated by the host, e.g. via terminateJavaScriptExecution.'
+            fix-suggestion: 'This is expected when the host aborts a stuck script. Check for dead loops or long-running synchronous work in the script.'
       - name: PlatformCallJSFunction
         mid-code: 2
         description: 'Error occurred while calling JS function from platform.'

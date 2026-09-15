@@ -23,7 +23,9 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
+#include "core/runtime/js/js_execution_control.h"
 #include "core/services/performance/android/performance_controller_android.h"
+#include "core/shell/android/javascript_execution_callback_android.h"
 #include "core/shell/android/lynx_engine_proxy_android.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
 #include "core/shell/android/native_facade_android.h"
@@ -460,6 +462,28 @@ void RebuildLynxEngine(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
           env, tasm_platform_invoker, ui_delegate),
       std::move(native_module_manager));
   TryFreeLifecycle(lifecycle_ptr);
+}
+
+void CaptureJavaScriptStack(JNIEnv* env, jclass jcaller, jlong vm_instance_ptr,
+                            jobject callback) {
+  ScopedGlobalJavaRef<jobject> java_callback(env, callback);
+  if (callback == nullptr) {
+    return;
+  }
+  lynx::runtime::js::CaptureJavaScriptStack(
+      reinterpret_cast<lynx::runtime::js::VMInstance*>(vm_instance_ptr),
+      [callback = std::move(java_callback)](
+          lynx::runtime::js::JSStackCaptureResult result,
+          std::string stack) mutable {
+        lynx::shell::DispatchJavaScriptExecutionResult(
+            std::move(callback), static_cast<jint>(result), std::move(stack));
+      });
+}
+
+jboolean TerminateJavaScriptExecution(JNIEnv* env, jclass jcaller,
+                                      jlong vm_instance_ptr) {
+  return lynx::runtime::js::TerminateJavaScriptExecution(
+      reinterpret_cast<lynx::runtime::js::VMInstance*>(vm_instance_ptr));
 }
 
 void Destroy(JNIEnv* env, jclass jcaller, jlong ptr) {

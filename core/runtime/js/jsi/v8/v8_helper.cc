@@ -253,6 +253,13 @@ std::optional<Value> V8Helper::call(V8Runtime* rt, const Function& f,
         heapStatistics.used_heap_size());
   }
 #endif
+  if (try_catch.HasTerminated()) {
+    isolate->CancelTerminateExecution();
+    rt->reportJSIException(JSINativeException(
+        "TerminatedError", "JavaScript execution was terminated by the host.",
+        "", false, error::E_BTS_RUNTIME_ERROR_TERMINATED_ERROR));
+    return std::nullopt;
+  }
   if (try_catch.HasCaught()) {
     // Actually there is no need to check if try_catch.Exception() is empty
     // handle. Since v8 will only return an empty handle when HasCaught() is
@@ -293,6 +300,13 @@ std::optional<Value> V8Helper::callAsConstructor(V8Runtime* rt,
 
   v8::MaybeLocal<v8::Value> result =
       v8obj->CallAsConstructor(context, nArgs, args);
+  if (trycatch.HasTerminated()) {
+    isolate->CancelTerminateExecution();
+    rt->reportJSIException(JSINativeException(
+        "TerminatedError", "JavaScript execution was terminated by the host.",
+        "", false, error::E_BTS_RUNTIME_ERROR_TERMINATED_ERROR));
+    return std::nullopt;
+  }
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   if (isolate) {

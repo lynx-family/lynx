@@ -1246,6 +1246,7 @@ public interface com::lynx::tasm::NativeFacade::Callback {
   public void com.lynx.tasm.NativeFacade.Callback.onLoaded(int templateSize);
   public void com.lynx.tasm.NativeFacade.Callback.onSSRHydrateFinished();
   public void com.lynx.tasm.NativeFacade.Callback.onRuntimeReady();
+  public void com.lynx.tasm.NativeFacade.Callback.onJSVMInstanceReady(long vmInstance);
   public void com.lynx.tasm.NativeFacade.Callback.onDataUpdated();
   public void com.lynx.tasm.NativeFacade.Callback.onPageChanged(boolean isFirstScreen);
   public void com.lynx.tasm.NativeFacade.Callback.onDynamicComponentPerfReady(HashMap< String, Object > perf);
@@ -6182,6 +6183,14 @@ public class com::lynx::jsbridge::LynxIntersectionObserverModule : com.lynx.jsbr
   public com.lynx.jsbridge.LynxIntersectionObserverModule.LynxIntersectionObserverModule(LynxContext context);
 }
 
+public interface com::lynx::tasm::LynxJavaScriptExecutionCallback {
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.SUCCESS SUCCESS;
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.UNSUPPORTED_ENGINE UNSUPPORTED_ENGINE;
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.NOT_READY NOT_READY;
+  public int com.lynx.tasm.LynxJavaScriptExecutionCallback.DESTROYED DESTROYED;
+  public void com.lynx.tasm.LynxJavaScriptExecutionCallback.onResult(int status, String stack);
+}
+
 public class com::lynx::jsbridge::jsi::LynxJSIObjectHub :  {
   public static LynxJSIObjectHub com.lynx.jsbridge.jsi.LynxJSIObjectHub.inst();
   public ILynxJSIObjectDescriptor com.lynx.jsbridge.jsi.LynxJSIObjectHub.getLynxJSIObjectDescriptor(String className);
@@ -6944,6 +6953,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BINDINGS_ERROR E_BTS_RUNTIME_ERROR_BINDINGS_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR E_BTS_RUNTIME_ERROR_EXECUTE_TIMEOUT_ERROR;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_TERMINATED_ERROR E_BTS_RUNTIME_ERROR_TERMINATED_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_JS_CALL_NATIVE_FUNCTION_TOO_FREQUENCY E_BTS_JS_CALL_NATIVE_FUNCTION_TOO_FREQUENCY;
@@ -7667,6 +7677,8 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public com.lynx.tasm.LynxView.LynxView(Context context, AttributeSet attrs);
   public com.lynx.tasm.LynxView.LynxView(Context context, LynxViewBuilder builder);
   public com.lynx.tasm.LynxView.LynxView(Context context, @NonNull ILynxEngine templateRender);
+  public void com.lynx.tasm.LynxView.captureJavaScriptStack(@NonNull LynxJavaScriptExecutionCallback callback);
+  public boolean com.lynx.tasm.LynxView.terminateJavaScriptExecution();
   public int com.lynx.tasm.LynxView.getLynxViewId();
   public void com.lynx.tasm.LynxView.initWithLynxViewBuilder(LynxViewBuilder builder);
   public LynxContext com.lynx.tasm.LynxView.getLynxContext();
@@ -10416,6 +10428,7 @@ public class com::lynx::tasm::LynxTemplateRender::TASMCallback : com.lynx.tasm.N
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onLoaded(int templateSize);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onSSRHydrateFinished();
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onRuntimeReady();
+  public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onJSVMInstanceReady(long vmInstance);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onDataUpdated();
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onPageChanged(boolean isFirstScreen);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onDynamicComponentPerfReady(HashMap< String, Object > perf);
