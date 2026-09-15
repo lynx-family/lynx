@@ -17,8 +17,6 @@ typedef void (^LynxPropsDidUpdateBlockReadyBlock)(LynxUI*);
 // If you need to do something in propsDidUpdate later, add them as LynxNodeReadyBlock here.
 @property(nonatomic) NSMutableArray<LynxPropsDidUpdateBlockReadyBlock>* propsDidUpdateBlockArray;
 
-- (instancetype)initWithoutView NS_DESIGNATED_INITIALIZER;
-
 - (void)setView:(UIView*)view;
 
 - (void)initProperties;

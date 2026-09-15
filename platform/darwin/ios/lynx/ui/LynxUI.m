@@ -281,14 +281,6 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   return self;
 }
 
-- (instancetype)initWithoutView {
-  self = [super init];
-  if (self) {
-    [self initProperties];
-  }
-  return self;
-}
-
 + (BOOL)needProcessDirection {
   return NO;
 }

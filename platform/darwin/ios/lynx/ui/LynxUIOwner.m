@@ -535,13 +535,12 @@ extern NSString* const kDefaultComponentID;
                          tagName:(NSString*)tagName
                            clazz:(Class)clazz
                   supportedState:(TagSupportedState)state
-                    onMainThread:(BOOL)onMainThread
                         eventSet:(NSSet<NSString*>*)eventSet
                    lepusEventSet:(NSSet<NSString*>*)lepusEventSet
                            props:(NSDictionary*)props
                        nodeIndex:(uint32_t)nodeIndex
               gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet {
-  LynxUI* ui = [self createUIWithClass:clazz supportedState:state onMainThread:onMainThread];
+  LynxUI* ui = [self createUIWithClass:clazz supportedState:state];
   if (ui) {
     ui.nodeIndex = nodeIndex;
     ui.tagName = tagName;
@@ -614,7 +613,6 @@ extern NSString* const kDefaultComponentID;
                                    tagName:tagName
                                      clazz:clazz
                             supportedState:state
-                              onMainThread:YES
                                   eventSet:eventSet
                              lepusEventSet:lepusEventSet
                                      props:props
@@ -657,19 +655,12 @@ extern NSString* const kDefaultComponentID;
   return NO;
 }
 
-// Given a Class and props, create the corresponding LynxUI instance, using different LynxUI init
-// methods depending on whether it is called on the main thread or not.
-- (LynxUI*)createUIWithClass:(Class)clazz
-              supportedState:(TagSupportedState)state
-                onMainThread:(BOOL)onMainThread {
+// Create the corresponding LynxUI instance on the main thread.
+- (LynxUI*)createUIWithClass:(Class)clazz supportedState:(TagSupportedState)state {
   if (state == LynxRootTag) {
     return [self createAndAttachRootUI];
   } else if (state == LynxSupportedTag) {
-    if (onMainThread) {
-      return [[clazz alloc] init];
-    } else {
-      return [[clazz alloc] initWithoutView];
-    }
+    return [[clazz alloc] init];
   }
   return nil;
 }
