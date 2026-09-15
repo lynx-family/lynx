@@ -470,6 +470,47 @@ void UIOwner::OnLayoutFinish(int32_t component_id, int64_t operation_id) {
   }
 }
 
+void UIOwner::SetSoftInputMode(const std::string& mode) const {
+  if (destroyed_ || !env_ || !js_ui_context_) {
+    return;
+  }
+  // Values of ArkTS UIContext.KeyboardAvoidMode (API 14+), not the
+  // ArkUI_KeyboardAvoidMode enum for native custom dialogs.
+  constexpr int32_t kOffset = 0;
+  constexpr int32_t kResize = 1;
+  constexpr int32_t kNone = 4;
+  // Like Android, unrecognized strings fall back to the unspecified mode.
+  int32_t keyboard_mode = kOffset;
+  if (mode == "nothing") {
+    keyboard_mode = kNone;
+  } else if (mode == "resize") {
+    keyboard_mode = kResize;
+  }
+
+  base::NapiHandleScope scope(env_);
+  napi_value receiver =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_ui_context_);
+  napi_value callback;
+  napi_valuetype type;
+  if (!receiver ||
+      napi_get_named_property(env_, receiver, "setKeyboardAvoidMode",
+                              &callback) != napi_ok ||
+      napi_typeof(env_, callback, &type) != napi_ok || type != napi_function) {
+    LOGE("UIContext.setKeyboardAvoidMode is unavailable");
+    return;
+  }
+  napi_value argument;
+  if (napi_create_int32(env_, keyboard_mode, &argument) != napi_ok) {
+    LOGE("Failed to create soft input mode argument");
+    return;
+  }
+  napi_value result;
+  if (napi_call_function(env_, receiver, callback, 1, &argument, &result) !=
+      napi_ok) {
+    LOGE("Failed to set Harmony soft input mode");
+  }
+}
+
 void UIOwner::NotifyIntrinsicContentSizeChangedIfNeeded() {
   if (destroyed_ || !env_ || !js_this_ || !root_) {
     return;
@@ -872,6 +913,7 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[0], 0, &owner->js_this_);
   napi_create_reference(env, argv[1], 0, &owner->js_create_);
   OH_ArkUI_GetContextFromNapiValue(env, argv[2], &owner->ark_ui_context_);
+  napi_create_reference(env, argv[2], 1, &owner->js_ui_context_);
   napi_create_reference(env, argv[3], 0, &owner->js_create_node_content_);
   napi_create_reference(env, argv[4], 0, &owner->js_start_fluency_trace_);
   napi_create_reference(env, argv[5], 0, &owner->js_stop_fluency_trace_);
@@ -966,6 +1008,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
     napi_delete_reference(env, obj->js_create_frame_host_);
   }
   napi_delete_reference(env, obj->js_this_);
+  napi_delete_reference(env, obj->js_ui_context_);
   obj->js_create_ = nullptr;
   obj->js_create_node_content_ = nullptr;
   obj->js_get_node_type_ = nullptr;
@@ -974,6 +1017,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->on_resource_load_callback_ = nullptr;
   obj->js_create_frame_host_ = nullptr;
   obj->js_this_ = nullptr;
+  obj->js_ui_context_ = nullptr;
   obj->env_ = nullptr;
   obj->destroyed_ = true;
   return nullptr;
