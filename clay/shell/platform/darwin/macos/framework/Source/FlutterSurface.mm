@@ -9,10 +9,17 @@
 
 #import <Metal/Metal.h>
 
+#include <atomic>
+
+namespace {
+std::atomic<int64_t> next_texture_id{1};
+}  // namespace
+
 @interface FlutterSurface () {
   CGSize _size;
   IOSurfaceRef _ioSurface;
   id<MTLTexture> _texture;
+  int64_t _textureId;
 }
 @end
 
@@ -27,7 +34,7 @@
 }
 
 - (int64_t)textureId {
-  return reinterpret_cast<int64_t>(_texture);
+  return _textureId;
 }
 
 - (instancetype)initWithSize:(CGSize)size device:(id<MTLDevice>)device {
@@ -35,6 +42,9 @@
     self->_size = size;
     self->_ioSurface = [FlutterSurface createIOSurfaceWithSize:size];
     self->_texture = [FlutterSurface createTextureForIOSurface:_ioSurface size:size device:device];
+    // Damage history outlives cached surfaces. Object addresses can be reused
+    // after eviction, so each new surface needs a distinct lifetime identity.
+    self->_textureId = next_texture_id.fetch_add(1, std::memory_order_relaxed);
   }
   return self;
 }
