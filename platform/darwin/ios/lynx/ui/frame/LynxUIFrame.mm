@@ -21,6 +21,10 @@
 - (void)setFrameIntrinsicContentSizeChangeCallback:(void (^)(CGSize size))callback;
 @end
 
+@interface LynxUI (FrameUserInteraction)
+- (void)setUserInteractionEnabled:(BOOL)value requestReset:(BOOL)requestReset;
+@end
+
 @interface LynxUIFrame () {
   LynxTemplateBundle* _pendingBundle;
   BOOL _isPropsUpdated;
@@ -243,5 +247,11 @@ LYNX_PROP_SETTER("preset-height", setPresetHeight, NSString*) {
 
 LYNX_PROP_SETTER("enable-multi-async-thread", setEnableMultiAsyncThread, NSNumber*) {
   [[self view] setEnableMultiAsyncThread:requestReset ? nil : value];
+}
+
+LYNX_PROP_SETTER("user-interaction-enabled", setFrameUserInteractionEnabled, BOOL) {
+  BOOL enabled = requestReset ? YES : value;
+  [super setUserInteractionEnabled:enabled requestReset:requestReset];
+  self.view.userInteractionEnabled = enabled;
 }
 @end
