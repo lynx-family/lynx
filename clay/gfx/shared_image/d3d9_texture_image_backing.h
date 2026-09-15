@@ -45,9 +45,11 @@ class D3D9TextureImageBacking final : public SharedImageBacking {
  private:
   HANDLE shared_handle_ = nullptr;
 
+  bool ShouldSkipOperationForOutOfMemory(const char* operation) const;
   IDirect3DTexture9* GetOrCreateStagingTexture();
 
   D3DFORMAT d3d_format_;
+  bool device_initialization_out_of_memory_ = false;
 
   // The texture and device should never be used outside the class.
   // User MUST use OpenSharedResource on its own D3D9Device
