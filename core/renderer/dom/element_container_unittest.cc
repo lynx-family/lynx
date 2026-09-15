@@ -11,6 +11,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/dom/element_container.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -228,6 +229,37 @@ TEST_F(ElementContainerTest, TransitionToNativeView) {
   ASSERT_TRUE(element->IsLayoutOnly());
   element->TransitionToNativeView();
   ASSERT_FALSE(element->IsLayoutOnly());
+}
+
+TEST_F(ElementContainerTest, TransitionToNativeViewFlushesUnchangedFrame) {
+  auto page = manager->CreateFiberElement("page");
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+  page->FlushProps();
+
+  auto element = manager->CreateFiberElement("view");
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDOverflow,
+                            tasm::CSSValue(starlight::OverflowType::kVisible));
+  element->FlushProps();
+  ASSERT_TRUE(element->IsLayoutOnly());
+
+  element->UpdateLayout(10, 20, 30, 40, {0}, {0}, {0}, nullptr, 0);
+  auto* container = element->element_container_impl();
+  container->UpdateLayout(element->left(), element->top());
+  ASSERT_TRUE(container->is_layouted_);
+  ASSERT_FALSE(element->frame_changed());
+
+  element->TransitionToNativeView();
+
+  ASSERT_FALSE(element->IsLayoutOnly());
+  auto* painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* painting_node =
+      painting_context->node_map_.at(element->impl_id()).get();
+  EXPECT_EQ(painting_node->frame_.left_, 10);
+  EXPECT_EQ(painting_node->frame_.top_, 20);
+  EXPECT_EQ(painting_node->frame_.width_, 30);
+  EXPECT_EQ(painting_node->frame_.height_, 40);
 }
 
 TEST_F(ElementContainerTest, FiberElementCase0) {
@@ -704,6 +736,111 @@ TEST_F(ElementContainerTest, FiberElementUpdateLayoutForFixed) {
   EXPECT_TRUE(element_fixed_painting_node->frame_.top_ == 0);
   EXPECT_TRUE(element_fixed_painting_node->frame_.width_ == 200);
   EXPECT_TRUE(element_fixed_painting_node->frame_.height_ == 200);
+}
+
+TEST_F(ElementContainerTest, SkipsCleanCppListItemSubtreeButFlushesDirtyChild) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto list = manager->CreateFiberList(nullptr, "list", lepus::Value(),
+                                       lepus::Value(), lepus::Value());
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  child->MarkCanBeLayoutOnly(false);
+  page->InsertNode(list);
+  list->InsertNode(parent);
+  parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+  list->disable_list_platform_implementation_ = true;
+
+  page->UpdateLayout(0, 0, kWidth, kHeight, {0}, {0}, {0}, nullptr, 0);
+  parent->UpdateLayout(10, 20, 200, 200, {0}, {0}, {0}, nullptr, 0);
+  child->UpdateLayout(3, 4, 50, 50, {0}, {0}, {0}, nullptr, 0);
+  auto* parent_container = parent->element_container_impl();
+  auto* child_container = child->element_container_impl();
+  parent_container->UpdateLayout(parent->left(), parent->top());
+
+  const float child_left = child_container->last_left_;
+  child_container->last_left_ = child_left + 100;
+  parent_container->UpdateLayout(parent->left(), parent->top());
+  EXPECT_EQ(child_container->last_left_, child_left + 100);
+
+  child_container->StyleChanged();
+  parent_container->UpdateLayout(parent->left(), parent->top());
+  EXPECT_EQ(child_container->last_left_, child_left);
+}
+
+TEST_F(ElementContainerTest, AncestorMovementUpdatesReparentedZIndexChild) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto z_child = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  z_child->MarkCanBeLayoutOnly(false);
+  z_child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  page->InsertNode(parent);
+  parent->InsertNode(z_child);
+  page->FlushActionsAsRoot();
+
+  page->UpdateLayout(0, 0, kWidth, kHeight, {0}, {0}, {0}, nullptr, 0);
+  parent->UpdateLayout(0, 0, 200, 200, {0}, {0}, {0}, nullptr, 0);
+  z_child->UpdateLayout(0, 5, 50, 50, {0}, {0}, {0}, nullptr, 0);
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
+
+  auto* painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* z_painting_node =
+      painting_context->node_map_.at(z_child->impl_id()).get();
+  ASSERT_FLOAT_EQ(z_painting_node->frame_.top_, 5.f);
+
+  // Match a layout flush where only the root's content-space position changes.
+  parent->UpdateLayout(0, 100);
+  parent->element_container_impl()->UpdateLayout(parent->left(), parent->top());
+  EXPECT_FLOAT_EQ(z_painting_node->frame_.top_, 105.f);
+}
+
+TEST_F(ElementContainerTest,
+       AncestorMovementTraversesNativeNodeBeforeReparentedZIndexChild) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto native_child = manager->CreateFiberView();
+  auto z_child = manager->CreateFiberView();
+  parent->MarkCanBeLayoutOnly(false);
+  native_child->MarkCanBeLayoutOnly(false);
+  z_child->MarkCanBeLayoutOnly(false);
+  z_child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  page->InsertNode(parent);
+  parent->InsertNode(native_child);
+  native_child->InsertNode(z_child);
+  page->FlushActionsAsRoot();
+
+  page->UpdateLayout(0, 0, kWidth, kHeight, {0}, {0}, {0}, nullptr, 0);
+  parent->UpdateLayout(0, 20, 200, 200, {0}, {0}, {0}, nullptr, 0);
+  native_child->UpdateLayout(0, 7, 100, 100, {0}, {0}, {0}, nullptr, 0);
+  z_child->UpdateLayout(0, 5, 50, 50, {0}, {0}, {0}, nullptr, 0);
+  page->element_container_impl()->UpdateLayout(page->left(), page->top());
+
+  auto* painting_context =
+      static_cast<MockPaintingContext*>(manager->painting_context()->impl());
+  auto* z_painting_node =
+      painting_context->node_map_.at(z_child->impl_id()).get();
+  ASSERT_FLOAT_EQ(z_painting_node->frame_.top_, 32.f);
+
+  parent->UpdateLayout(0, 100);
+  parent->element_container_impl()->UpdateLayout(parent->left(), parent->top());
+  EXPECT_FLOAT_EQ(z_painting_node->frame_.top_, 112.f);
 }
 
 TEST_F(ElementContainerTest,
