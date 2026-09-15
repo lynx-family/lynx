@@ -374,6 +374,55 @@ void DrawRadialGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
                gradient.repeat_x, gradient.repeat_y, density);
 }
 
+base::Vector<DisplayListSegment> SegmentDisplayList(
+    const DisplayList& display_list, std::vector<RoundedRectangle>& boxes) {
+  boxes.clear();
+  base::Vector<DisplayListSegment> segments;
+  const size_t item_count = display_list.GetContentItemsSize();
+  if (item_count == 0) {
+    return segments;
+  }
+
+  const auto* items = reinterpret_cast<const DisplayListItem*>(
+      display_list.GetContentItemsData());
+  DisplayListSegment segment;
+  base::Vector<size_t> state;
+  base::Vector<size_t> scopes;
+  for (size_t i = 0; i < item_count; ++i) {
+    switch (items[i].type) {
+      case DisplayListOpType::kBegin:
+        scopes.push_back(state.size());
+        state.push_back(i);
+        break;
+      case DisplayListOpType::kEnd:
+        if (!scopes.empty()) {
+          state.resize<false>(scopes.back());
+          scopes.pop_back();
+        }
+        break;
+      case DisplayListOpType::kClipRect:
+        state.push_back(i);
+        break;
+      case DisplayListOpType::kRecordBox:
+        boxes.emplace_back(RecordBox(items[i]));
+        break;
+      case DisplayListOpType::kDrawView:
+        segment.end_item_index = i;
+        segments.push_back(std::move(segment));
+        segment = DisplayListSegment{};
+        segment.start_item_index = i + 1;
+        segment.preceding_view_id = items[i].payload.draw_view.view_id;
+        segment.state_item_indices = state;
+        break;
+      default:
+        segment.has_drawing = true;
+        break;
+    }
+  }
+  segment.end_item_index = item_count;
+  segments.push_back(std::move(segment));
+  return segments;
+}
 }  // namespace
 
 LynxDisplayListApplier::LynxDisplayListApplier(LynxRendererContext* context,
@@ -382,8 +431,14 @@ LynxDisplayListApplier::LynxDisplayListApplier(LynxRendererContext* context,
 
 LynxDisplayListApplier::~LynxDisplayListApplier() = default;
 
-void LynxDisplayListApplier::ApplyDisplayList(const DisplayList& display_list,
-                                              OH_Drawing_Canvas* canvas) {
+base::Vector<DisplayListSegment> LynxDisplayListApplier::UpdateDisplayList(
+    const DisplayList& display_list) {
+  return SegmentDisplayList(display_list, boxes_);
+}
+
+void LynxDisplayListApplier::ApplyDisplayList(
+    const DisplayList& display_list, OH_Drawing_Canvas* canvas,
+    const DisplayListSegment& segment) {
   if (context_ == nullptr || canvas == nullptr) {
     return;
   }
@@ -398,20 +453,25 @@ void LynxDisplayListApplier::ApplyDisplayList(const DisplayList& display_list,
   if (item_count == 0 || items == nullptr) {
     return;
   }
-  boxes_.clear();
   DisplayListReader reader(display_list);
-  ProcessContentOperations(items, item_count, reader, canvas,
-                           lynx_context->ScaledDensity());
+  ProcessContentOperations(items, reader, canvas, lynx_context->ScaledDensity(),
+                           segment);
 }
 
 void LynxDisplayListApplier::ProcessContentOperations(
-    const DisplayListItem* items, size_t item_count,
-    const DisplayListReader& reader, OH_Drawing_Canvas* canvas, float density) {
+    const DisplayListItem* items, const DisplayListReader& reader,
+    OH_Drawing_Canvas* canvas, float density,
+    const DisplayListSegment& segment) {
   int32_t fragment_depth = 0;
   bool has_seen_first_begin = false;
 
   OH_Drawing_CanvasSave(canvas);
-  for (size_t i = 0; i < item_count; ++i) {
+  const size_t state_count = segment.state_item_indices.size();
+  for (size_t cursor = 0; cursor < state_count + segment.ItemCount();
+       ++cursor) {
+    const size_t i = cursor < state_count
+                         ? segment.state_item_indices[cursor]
+                         : segment.start_item_index + cursor - state_count;
     const auto& item = items[i];
     switch (item.type) {
       case DisplayListOpType::kBegin:
@@ -430,7 +490,6 @@ void LynxDisplayListApplier::ProcessContentOperations(
         }
         break;
       case DisplayListOpType::kRecordBox:
-        boxes_.emplace_back(RecordBox(item));
         break;
       case DisplayListOpType::kFill: {
         const int32_t box_index = item.payload.fill.clip_index;
@@ -514,6 +573,8 @@ void LynxDisplayListApplier::ProcessContentOperations(
         break;
       }
       case DisplayListOpType::kDrawView:
+        // Native views separate the segments composed by LynxRenderer.
+        break;
       case DisplayListOpType::kCustom:
       case DisplayListOpType::kBoxShadow:
         // TODO: Add the remaining Harmony fragment-layer drawing operations.
