@@ -39,11 +39,8 @@ typedef struct LynxExternalMemorySnapshot {
 // prop
 - (BOOL)needProcessDirection:(NSString*)tagName;
 
-// Given a Class and props, create the corresponding LynxUI instance, using different LynxUI init
-// methods depending on whether it is called on the main thread or not.
-- (LynxUI*)createUIWithClass:(Class)clazz
-              supportedState:(TagSupportedState)state
-                onMainThread:(BOOL)onMainThread;
+// Create the corresponding LynxUI instance on the main thread.
+- (LynxUI*)createUIWithClass:(Class)clazz supportedState:(TagSupportedState)state;
 
 // Create LynxUI for a resolved class on the main thread.
 - (void)createUISyncWithSign:(NSInteger)sign
