@@ -287,9 +287,9 @@ tasks.register('assembleNoasanRelease') {
     }
 }
 
-tasks.register('assembleNoAsanDebug') {
-    group = 'build'
-    description = 'Compatibility task for the legacy noasan debug APK.'
+// Android Gradle Plugin creates this lifecycle task for the noasan debug
+// variant. Configure it instead of registering a task with the same name.
+tasks.matching { it.name == 'assembleNoAsanDebug' }.all {
     dependsOn 'assembleWithoutSparklingNoasanDebug'
 
     doLast {

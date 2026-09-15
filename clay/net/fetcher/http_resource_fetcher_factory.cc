@@ -4,12 +4,16 @@
 
 #include "clay/net/fetcher/http_resource_fetcher_factory.h"
 
+#include <utility>
+
 #include "clay/net/fetcher/http_resource_fetcher_host.h"
 
 namespace clay {
 
-ResourceFetcherCreator HttpResourceFetcherFactory::custom_fetcher_creator_ =
-    nullptr;
+ResourceFetcherCreator& HttpResourceFetcherFactory::GetCustomFetcherCreator() {
+  static ResourceFetcherCreator custom_fetcher_creator;
+  return custom_fetcher_creator;
+}
 
 // static
 std::unique_ptr<HttpResourceFetcher> HttpResourceFetcherFactory::CreateFetcher(
@@ -25,7 +29,7 @@ std::unique_ptr<HttpResourceFetcher> HttpResourceFetcherFactory::CreateFetcher(
 // static
 void HttpResourceFetcherFactory::SetCustomFetcherCreator(
     ResourceFetcherCreator creator) {
-  custom_fetcher_creator_ = creator;
+  GetCustomFetcherCreator() = std::move(creator);
 }
 
 // static
@@ -33,8 +37,9 @@ std::unique_ptr<HttpResourceFetcher>
 HttpResourceFetcherFactory::CreateCustomFetcher(const url::Uri& uri,
                                                 size_t request_seq,
                                                 int retry_time) {
-  if (custom_fetcher_creator_) {
-    return custom_fetcher_creator_(uri, request_seq, retry_time);
+  auto& custom_fetcher_creator = GetCustomFetcherCreator();
+  if (custom_fetcher_creator) {
+    return custom_fetcher_creator(uri, request_seq, retry_time);
   } else {
     return nullptr;
   }
