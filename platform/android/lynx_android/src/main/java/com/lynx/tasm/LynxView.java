@@ -972,7 +972,6 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   /**
-   * Deprecated, please use {@link #LynxTemplateResourceFetcher} instead.
    * Register lazy bundle with TemplateBundle.
    * Use the parsed TemplateBundle to preload a lazy bundle, making lazy bundle ready in
    * a flash
@@ -982,13 +981,22 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    * @param url url of lazy bundle
    * @param bundle parsed bundle of lazy bundle
    */
-  @Deprecated
-  public boolean registerDynamicComponent(@NonNull String url, @NonNull TemplateBundle bundle) {
+  public boolean registerLazyBundle(@NonNull String url, @NonNull TemplateBundle bundle) {
     LLog.i(TAG, "register lazy bundle with TemplateBundle: " + url);
     if (mLynxTemplateRender == null) {
       return false;
     }
     return mLynxTemplateRender.registerLazyBundle(url, bundle);
+  }
+
+  /**
+   * Deprecated, please use {@link #registerLazyBundle(String, TemplateBundle)} instead.
+   *
+   * @deprecated Use {@link #registerLazyBundle(String, TemplateBundle)} instead.
+   */
+  @Deprecated
+  public boolean registerDynamicComponent(@NonNull String url, @NonNull TemplateBundle bundle) {
+    return registerLazyBundle(url, bundle);
   }
 
   /**
@@ -2020,7 +2028,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   /**
-   * Deprecated, please use {@link #registerDynamicComponent(String, TemplateBundle)} instead.
+   * Deprecated, please use {@link #registerLazyBundle(String, TemplateBundle)} instead.
    * <p>
    * Preload lazy bundles with urls.
    * If you want to improve the efficiency of the first-screen display of lazy bundles, you
