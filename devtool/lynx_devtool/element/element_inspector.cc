@@ -876,12 +876,16 @@ std::unordered_map<std::string, std::string> ElementInspector::GetCssByStyleMap(
     Element* element, const StyleMap& style_map,
     const CSSVariableSnapshot* variable_snapshot) {
   std::unordered_map<std::string, std::string> res;
+  const bool new_styling_pipeline =
+      element != nullptr && element->element_manager() != nullptr &&
+      element->element_manager()->EnableNewStylingPipeline();
   for (const auto& pair : style_map) {
     const auto& name = lynx::tasm::CSSProperty::GetPropertyName(pair.first);
 
     if (pair.second.GetValueType() == lynx::tasm::CSSValueType::VARIABLE) {
       String property;
-      if (element != nullptr && pair.second.NeedsVariableResolution()) {
+      if (element != nullptr && pair.second.NeedsVariableResolution() &&
+          (!new_styling_pipeline || variable_snapshot != nullptr)) {
         // DevTool overrides are written to AttributeHolder before the next
         // style flush. Resolve from there so the protocol does not expose stale
         // ComputedCSSStyle values in that interval.
@@ -899,8 +903,7 @@ std::unordered_map<std::string, std::string> ElementInspector::GetCssByStyleMap(
           }
         }
       }
-      if (element != nullptr && element->element_manager() != nullptr &&
-          element->element_manager()->EnableNewStylingPipeline()) {
+      if (new_styling_pipeline) {
         // New styling pipeline: resolved custom properties live in
         // ComputedCSSStyle, not AttributeHolder.
         const lynx::tasm::CustomPropertiesMap* custom_properties = nullptr;
@@ -910,12 +913,11 @@ std::unordered_map<std::string, std::string> ElementInspector::GetCssByStyleMap(
         } else if (element->base_css_style() != nullptr) {
           custom_properties = element->base_css_style()->GetCustomProperties();
         }
-        if (custom_properties != nullptr) {
-          property = lynx::tasm::CSSValue::SubstitutionResolved(
-              pair.second, *custom_properties);
-        } else {
-          property = pair.second.GetDefaultValue();
-        }
+        static const lynx::tasm::CustomPropertiesMap empty_custom_properties;
+        property = lynx::tasm::CSSValue::SubstitutionResolved(
+            pair.second, custom_properties != nullptr
+                             ? *custom_properties
+                             : empty_custom_properties);
       } else {
         // Legacy {{...}} variable syntax.
         Value value_expr = pair.second.GetValue();

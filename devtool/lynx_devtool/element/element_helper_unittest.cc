@@ -1225,6 +1225,8 @@ TEST_F(ElementHelperTest,
       fml::MakeRefCounted<lynx::tasm::CSSParseToken>(parser_configs);
   consumer_token->SetAttribute(lynx::tasm::CSSPropertyID::kPropertyIDHeight,
                                ParseVariableValue("var(--size, 10px)"));
+  consumer_token->SetAttribute(lynx::tasm::CSSPropertyID::kPropertyIDOpacity,
+                               ParseVariableValue("var(--opacity,0.25)"));
   consumer_token->MarkParsed();
   auto consumer_sheet = std::make_shared<lynx::tasm::CSSSheet>(".consumer");
   consumer_token->sheets().emplace_back(consumer_sheet);
@@ -1265,6 +1267,8 @@ TEST_F(ElementHelperTest,
       std::make_tuple(style_root.get(), style_root.get()));
   lynx::devtool::ElementInspector::SetStyleRoot(
       std::make_tuple(element.get(), style_root.get()));
+  lynx::devtool::ElementInspector::SetStyleRoot(
+      std::make_tuple(consumer.get(), style_root.get()));
 
   auto matched_styles =
       lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get());
@@ -1272,7 +1276,7 @@ TEST_F(ElementHelperTest,
   auto style_sheet = matched_styles[0];
 
   lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
-                                              "--size:200px;",
+                                              "--size:200px;--opacity:0.4;",
                                               style_sheet.style_value_range_);
   auto computed_variables =
       element->computed_css_style()->GetCustomProperties();
@@ -1290,9 +1294,9 @@ TEST_F(ElementHelperTest,
             "200px");
   style_sheet =
       lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get())[0];
-  lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
-                                              "/* --size:200px; */",
-                                              style_sheet.style_value_range_);
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(), "/* --size:200px; */--opacity:0.4;",
+      style_sheet.style_value_range_);
   computed_variables = element->computed_css_style()->GetCustomProperties();
   EXPECT_TRUE(computed_variables == nullptr ||
               computed_variables->find(lynx::base::String("--size")) ==
@@ -1308,7 +1312,7 @@ TEST_F(ElementHelperTest,
   style_sheet =
       lynx::devtool::ElementInspector::GetMatchedStyleSheet(element.get())[0];
   lynx::devtool::ElementHelper::SetStyleTexts(page.get(), style_root.get(),
-                                              "--size:200px;",
+                                              "--size:200px;--opacity:0.4;",
                                               style_sheet.style_value_range_);
   computed_variables = element->computed_css_style()->GetCustomProperties();
   ASSERT_NE(computed_variables, nullptr);
@@ -1332,6 +1336,31 @@ TEST_F(ElementHelperTest,
       lynx::base::String("--size"));
   ASSERT_NE(runtime_variable, element->data_model()->css_variables_map().end());
   EXPECT_EQ(runtime_variable->second.str(), "200px");
+
+  EXPECT_FLOAT_EQ(consumer->computed_css_style()->GetOpacity(), 0.4f);
+  auto consumer_style =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(consumer.get())[0];
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(),
+      "height:var(--size,10px);/* opacity:var(--opacity,0.25); */",
+      consumer_style.style_value_range_);
+  EXPECT_FLOAT_EQ(consumer->computed_css_style()->GetOpacity(), 1.f);
+
+  consumer_style =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(consumer.get())[0];
+  lynx::devtool::ElementHelper::SetStyleTexts(
+      page.get(), style_root.get(),
+      "height:var(--size,10px);opacity:var(--opacity,0.25);",
+      consumer_style.style_value_range_);
+  EXPECT_FLOAT_EQ(consumer->computed_css_style()->GetOpacity(), 0.4f);
+  consumer_style =
+      lynx::devtool::ElementInspector::GetMatchedStyleSheet(consumer.get())[0];
+  auto resolved_style =
+      lynx::devtool::ElementInspector::ResolveStyleSheetForComputedStyle(
+          consumer.get(), consumer_style);
+  auto opacity = resolved_style.css_properties_.find("opacity");
+  ASSERT_NE(opacity, resolved_style.css_properties_.end());
+  EXPECT_EQ(opacity->second.value_, "0.4");
 }
 
 TEST_F(ElementHelperTest,
@@ -1908,6 +1937,18 @@ TEST_F(ElementHelperTest,
   ASSERT_TRUE(font_it != css.end());
   EXPECT_EQ(font_it->second, "PingFang");
 
+  style->SetCustomProperty(lynx::base::String("--opacity"),
+                           lynx::tasm::CSSValue::MakePlainString("0.4"));
+  style->FinalizeCustomProperties();
+  auto opacity = ParseVariableValue("var(--opacity,0.25)");
+  EXPECT_TRUE(opacity.IsVariable());
+  EXPECT_TRUE(opacity.NeedsVariableResolution());
+  style_map.insert_or_assign(lynx::tasm::CSSPropertyID::kPropertyIDOpacity,
+                             std::move(opacity));
+  css = lynx::devtool::ElementInspector::GetCssByStyleMap(element.get(),
+                                                          style_map);
+  EXPECT_EQ(css.at("opacity"), "0.4");
+
   CSSVariableSnapshot variable_snapshot;
   lynx::tasm::CSSVariableMap devtool_variables;
   devtool_variables.insert_or_assign(lynx::base::String("--font"),
@@ -1919,6 +1960,19 @@ TEST_F(ElementHelperTest,
   font_it = css.find("font-family");
   ASSERT_TRUE(font_it != css.end());
   EXPECT_EQ(font_it->second, "DevToolFont");
+}
+
+TEST_F(ElementHelperTest,
+       GetCssByStyleMapNewPipelineUsesFallbackWithoutCustomProperties) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto element = manager->CreateFiberElement("view");
+  lynx::tasm::StyleMap style_map;
+  style_map.insert_or_assign(lynx::tasm::CSSPropertyID::kPropertyIDOpacity,
+                             ParseVariableValue("var(--missing,0.25)"));
+
+  auto css = lynx::devtool::ElementInspector::GetCssByStyleMap(element.get(),
+                                                               style_map);
+  EXPECT_EQ(css.at("opacity"), "0.25");
 }
 
 TEST_F(ElementHelperTest, InitStyleSheetTest) {
