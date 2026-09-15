@@ -66,6 +66,12 @@ class GFX_EXPORT KeyframeModel {
   }
 
   void SetRunState(RunState run_state, fml::TimePoint monotonic_time);
+  void RestoreTiming(fml::TimePoint start_time, RunState run_state) {
+    start_time_ = start_time;
+    run_state_ = run_state;
+    pause_time_ = fml::TimePoint();
+    total_paused_duration_ = fml::TimeDelta::Zero();
+  }
 
   void SetAnimationData(const AnimationData* data);
   const AnimationData* animation_data() const { return animation_data_; }

@@ -10,6 +10,70 @@
 namespace lynx {
 namespace gfx {
 
+// Keep the numeric values aligned with the existing starlight and Clay
+// property enums while animation users migrate to the gfx-facing type.
+enum class AnimationPropertyType : uint32_t {
+  kNone = 0,
+  kOpacity = 1 << 0,
+  kScaleX = 1 << 1,
+  kScaleY = 1 << 2,
+  kScaleXY = 1 << 3,
+  kWidth = 1 << 4,
+  kHeight = 1 << 5,
+  kBackgroundColor = 1 << 6,
+  kVisibility = 1 << 7,
+  kLeft = 1 << 8,
+  kTop = 1 << 9,
+  kRight = 1 << 10,
+  kBottom = 1 << 11,
+  kTransform = 1 << 12,
+  kColor = 1 << 13,
+  kMaxWidth = 1 << 14,
+  kMinWidth = 1 << 15,
+  kMaxHeight = 1 << 16,
+  kMinHeight = 1 << 17,
+  kPaddingLeft,
+  kPaddingRight,
+  kPaddingTop,
+  kPaddingBottom,
+  kMarginLeft,
+  kMarginRight,
+  kMarginTop,
+  kMarginBottom,
+  kBorderLeftWidth,
+  kBorderRightWidth,
+  kBorderTopWidth,
+  kBorderBottomWidth,
+  kBorderTopColor,
+  kBorderLeftColor,
+  kBorderRightColor,
+  kBorderBottomColor,
+  kFlexBasis,
+  kFlexGrow,
+  kBorderWidth,
+  kBorderColor,
+  kMargin,
+  kPadding,
+  kFilter,
+  kBoxShadow,
+  kOffsetDistance,
+  kBackgroundPosition,
+  kTransformOrigin,
+  kAll = 1 << 18,
+};
+
+enum class KeyframeValueType : uint8_t {
+  kUnknown = 0,
+  kFloat,
+  kColor,
+  kLength,
+  kVec2,
+  kFilter,
+  kTransform,
+  kBoxShadow,
+  kEnum,
+};
+
 enum class TimingFunctionType : uint8_t {
   kLinear = 0,
   kEaseIn = 1,
@@ -35,6 +99,11 @@ struct TimingFunctionData {
   float y2{0.0f};
   TimingFunctionType timing_func{TimingFunctionType::kLinear};
   StepsType steps_type{StepsType::kInvalid};
+
+  bool operator==(const TimingFunctionData& other) const {
+    return timing_func == other.timing_func && steps_type == other.steps_type &&
+           x1 == other.x1 && y1 == other.y1 && x2 == other.x2 && y2 == other.y2;
+  }
 };
 
 enum class AnimationFillModeType : uint8_t {

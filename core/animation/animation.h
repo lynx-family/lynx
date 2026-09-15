@@ -17,6 +17,7 @@
 #include "base/include/fml/time/time_point.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/base/lynx_export.h"
+#include "gfx/animation/platform_animation.h"
 
 namespace lynx {
 namespace base {
@@ -59,7 +60,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
   Animation(const base::String& name);
   ~Animation() = default;
   void Play(bool play_handles_initial_frame = true);
-  void Pause();
+  void Pause(bool pause_handles_initial_frame = false);
   void Stop();
   void Destroy(bool need_clear_effect = true);
 
@@ -118,6 +119,18 @@ class Animation : public std::enable_shared_from_this<Animation> {
   starlight::AnimationData& get_animation_data() { return animation_data_; }
 
   void UpdateAnimationData(starlight::AnimationData& data);
+
+  // Replace only the effect; the animation's identity, clock and events
+  // survive.
+  void ReplaceEffectFrom(Animation& replacement);
+  // Transfer executor ownership while preserving the current playback clock.
+  // Apply playback changes separately after updating the animation data.
+  void SetPlatformExecution(bool platform);
+  void UpdatePlaybackState();
+  const std::shared_ptr<gfx::AnimationPlaybackState>& playback() const {
+    return playback_;
+  }
+  uint64_t executor() const { return executor_; }
 
   void UpdateUnderlyingValue(AnimationCurve::CurveType type,
                              const tasm::CSSValue& value);
@@ -185,6 +198,9 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void NotifyInspectorStarted(fml::TimePoint time);
   void NotifyInspectorUpdated();
   void NotifyInspectorCanceled();
+  void EnsurePlaybackState();
+  void RebaseEffectTiming(fml::TimePoint frame_time);
+  void RecordSampleTime(fml::TimePoint frame_time);
   AnimationDelegate* animation_delegate_{nullptr};
   base::String name_;
   // Process-unique identifier assigned once when the object is constructed.
@@ -216,6 +232,14 @@ class Animation : public std::enable_shared_from_this<Animation> {
   // animationstart/animationiteration/animationend events for skipped time.
   bool suppress_next_sample_events_{false};
   bool inspector_started_notified_{false};
+  std::shared_ptr<gfx::AnimationPlaybackState> playback_;
+  uint64_t executor_{0};
+  bool platform_execution_{false};
+  bool needs_timing_rebase_{false};
+  gfx::KeyframeModel::RunState previous_run_state_{
+      gfx::KeyframeModel::STARTING};
+  gfx::AnimationPlaybackState::Phase event_phase_{
+      gfx::AnimationPlaybackState::Phase::kBefore};
   bool has_cached_sample_{false};
   fml::TimePoint cached_sample_time_{fml::TimePoint::Min()};
   KeyframeEffect::KeyframeSampleResult cached_sample_result_;

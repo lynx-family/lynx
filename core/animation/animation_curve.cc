@@ -85,6 +85,20 @@ void AnimationCurve::AddKeyframe(std::unique_ptr<gfx::Keyframe> keyframe,
   gfx::AnimationCurve::AddKeyframe(std::move(keyframe));
 }
 
+void AnimationCurve::UpdateAnimationTiming(
+    const gfx::TimingFunctionData& timing, bool animation_timing_changed) {
+  // Do not distort the effect timeline before selecting a CSS interval.
+  SetTimingFunction(nullptr);
+  if (!animation_timing_changed) {
+    return;
+  }
+  for (auto& keyframe : keyframes_) {
+    if (keyframe->timing_source() == gfx::Keyframe::TimingSource::kAnimation) {
+      keyframe->SetTimingFunction(gfx::CreateTimingFunction(timing));
+    }
+  }
+}
+
 void AnimationCurve::NotifyElementSizeUpdated() {
   for (auto& callbacks : keyframe_callbacks_) {
     if (callbacks.keyframe && callbacks.notify_element_size_updated) {

@@ -61,6 +61,7 @@ export enum LynxTrailKey {
   ENABLE_REPORT_DYNAMIC_COMPONENT_EVENT = 'enable_report_dynamic_component_event',
   BYTECODE_MAX_SIZE = 'bytecode_max_size',
   ENABLE_NEW_ANIMATOR_FIBER = 'enable_new_animator_fiber',
+  ENABLE_ANIMATION_ROUTING = 'enable_animation_routing',
   ENABLE_FIBER_UPDATE_METADATA = 'enable_fiber_update_metadata',
   POST_DATA_BEFORE_UPDATE = 'post_data_before_update',
   ENABLE_REPORT_LIST_ITEM_LIFE_STATISTIC = 'enable_report_list_item_life_statistic',
