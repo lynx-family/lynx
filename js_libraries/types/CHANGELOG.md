@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.3.2
+
+- Add desktop PointerEvent payload fields, event bindings, and pointer-events typings.
+
 ## 4.3.1
 - Add `ios-hide-keyboard-accessory-view` to `<webview>` typings.
 
