@@ -80,25 +80,6 @@ void ConfigureBorderDrawable(BackgroundDrawable& drawable,
   drawable.AdjustBorder();
 }
 
-RoundedRectangle RecordBox(const DisplayListItem& item) {
-  RoundedRectangle box;
-  box.SetX(item.payload.record_box.x);
-  box.SetY(item.payload.record_box.y);
-  box.SetWidth(item.payload.record_box.w);
-  box.SetHeight(item.payload.record_box.h);
-  if (item.payload.record_box.has_radii) {
-    box.SetRadiusXTopLeft(item.payload.record_box.radii[0]);
-    box.SetRadiusYTopLeft(item.payload.record_box.radii[1]);
-    box.SetRadiusXTopRight(item.payload.record_box.radii[2]);
-    box.SetRadiusYTopRight(item.payload.record_box.radii[3]);
-    box.SetRadiusXBottomRight(item.payload.record_box.radii[4]);
-    box.SetRadiusYBottomRight(item.payload.record_box.radii[5]);
-    box.SetRadiusXBottomLeft(item.payload.record_box.radii[6]);
-    box.SetRadiusYBottomLeft(item.payload.record_box.radii[7]);
-  }
-  return box;
-}
-
 void ClipRoundedRect(OH_Drawing_Canvas* canvas, OH_Drawing_Rect* rect,
                      const float* radii, float density) {
   auto* round_rect = OH_Drawing_RoundRectCreate(rect, 0.f, 0.f);
@@ -382,8 +363,14 @@ LynxDisplayListApplier::LynxDisplayListApplier(LynxRendererContext* context,
 
 LynxDisplayListApplier::~LynxDisplayListApplier() = default;
 
-void LynxDisplayListApplier::ApplyDisplayList(const DisplayList& display_list,
-                                              OH_Drawing_Canvas* canvas) {
+base::Vector<DisplayListSegment> LynxDisplayListApplier::UpdateDisplayList(
+    const DisplayList& display_list) {
+  return SegmentDisplayList(display_list, boxes_);
+}
+
+void LynxDisplayListApplier::ApplyDisplayList(
+    const DisplayList& display_list, OH_Drawing_Canvas* canvas,
+    const DisplayListSegment& segment) {
   if (context_ == nullptr || canvas == nullptr) {
     return;
   }
@@ -398,20 +385,25 @@ void LynxDisplayListApplier::ApplyDisplayList(const DisplayList& display_list,
   if (item_count == 0 || items == nullptr) {
     return;
   }
-  boxes_.clear();
   DisplayListReader reader(display_list);
-  ProcessContentOperations(items, item_count, reader, canvas,
-                           lynx_context->ScaledDensity());
+  ProcessContentOperations(items, reader, canvas, lynx_context->ScaledDensity(),
+                           segment);
 }
 
 void LynxDisplayListApplier::ProcessContentOperations(
-    const DisplayListItem* items, size_t item_count,
-    const DisplayListReader& reader, OH_Drawing_Canvas* canvas, float density) {
+    const DisplayListItem* items, const DisplayListReader& reader,
+    OH_Drawing_Canvas* canvas, float density,
+    const DisplayListSegment& segment) {
   int32_t fragment_depth = 0;
   bool has_seen_first_begin = false;
 
   OH_Drawing_CanvasSave(canvas);
-  for (size_t i = 0; i < item_count; ++i) {
+  const size_t state_count = segment.state_item_indices.size();
+  for (size_t cursor = 0; cursor < state_count + segment.ItemCount();
+       ++cursor) {
+    const size_t i = cursor < state_count
+                         ? segment.state_item_indices[cursor]
+                         : segment.start_item_index + cursor - state_count;
     const auto& item = items[i];
     switch (item.type) {
       case DisplayListOpType::kBegin:
@@ -430,7 +422,6 @@ void LynxDisplayListApplier::ProcessContentOperations(
         }
         break;
       case DisplayListOpType::kRecordBox:
-        boxes_.emplace_back(RecordBox(item));
         break;
       case DisplayListOpType::kFill: {
         const int32_t box_index = item.payload.fill.clip_index;
@@ -514,6 +505,8 @@ void LynxDisplayListApplier::ProcessContentOperations(
         break;
       }
       case DisplayListOpType::kDrawView:
+        // Native views separate the segments composed by LynxRenderer.
+        break;
       case DisplayListOpType::kCustom:
       case DisplayListOpType::kBoxShadow:
         // TODO: Add the remaining Harmony fragment-layer drawing operations.

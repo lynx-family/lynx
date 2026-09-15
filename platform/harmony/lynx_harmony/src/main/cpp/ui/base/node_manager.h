@@ -88,6 +88,7 @@ class BASE_EXPORT NodeManager {
   LYNX_EXPORT void RequestLayout(ArkUI_NodeHandle node);
   LYNX_EXPORT void Invalidate(ArkUI_NodeHandle node);
   LYNX_EXPORT ArkUI_NodeHandle GetParent(ArkUI_NodeHandle node);
+  ArkUI_NodeHandle GetNextSibling(ArkUI_NodeHandle node);
 
   /**
    * Add event to the target node.

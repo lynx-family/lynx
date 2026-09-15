@@ -12,6 +12,7 @@
 
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
+#include "core/renderer/dom/fragment/display_list_segment.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
 namespace lynx {
@@ -27,13 +28,17 @@ class LynxDisplayListApplier {
                          std::weak_ptr<UIBase> host);
   ~LynxDisplayListApplier();
 
+  base::Vector<DisplayListSegment> UpdateDisplayList(
+      const DisplayList& display_list);
   void ApplyDisplayList(const DisplayList& display_list,
-                        OH_Drawing_Canvas* canvas);
+                        OH_Drawing_Canvas* canvas,
+                        const DisplayListSegment& segment);
 
  private:
-  void ProcessContentOperations(const DisplayListItem* items, size_t item_count,
+  void ProcessContentOperations(const DisplayListItem* items,
                                 const DisplayListReader& reader,
-                                OH_Drawing_Canvas* canvas, float density);
+                                OH_Drawing_Canvas* canvas, float density,
+                                const DisplayListSegment& segment);
   void DrawBackgroundImage(OH_Drawing_Canvas* canvas, int32_t image_id,
                            int32_t tiling_index, int32_t clip_index,
                            int32_t repeat_x, int32_t repeat_y, float density);
