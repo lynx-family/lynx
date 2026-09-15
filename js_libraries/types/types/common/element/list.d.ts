@@ -946,18 +946,23 @@ export interface GetScrollInfoMethod extends BaseMethod {
 }
 
 /**
- * Scroll by specified offset
+ * Scroll the list by the specified offset along its configured orientation.
  * @Android 1.4
  * @iOS 2.18
  * @Harmony 3.1
  * @Web
+ * @ClayAndroid 4.4
+ * @ClayIOS 4.4
+ * @ClayMacOS 4.4
+ * @ClayWindows 4.4
+ * @ClayHarmony 4.4
  */
 export interface ScrollByMethod extends BaseMethod {
   method: 'scrollBy';
 
   params: {
     /**
-     * Offset to scroll, in px.
+     * Distance to scroll along the configured orientation, in PX.
      * @Android
      * @Web
      * @iOS
@@ -966,6 +971,24 @@ export interface ScrollByMethod extends BaseMethod {
      */
     offset: number;
   };
+  success?: Callback<{
+    /**
+     * Consumed offset on the X-axis, in PX.
+     */
+    consumedX: number;
+    /**
+     * Consumed offset on the Y-axis, in PX.
+     */
+    consumedY: number;
+    /**
+     * Unconsumed offset on the X-axis, in PX.
+     */
+    unconsumedX: number;
+    /**
+     * Unconsumed offset on the Y-axis, in PX.
+     */
+    unconsumedY: number;
+  }>;
 }
 
 export type ListUIMethods =
