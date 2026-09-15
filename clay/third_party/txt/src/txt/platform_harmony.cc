@@ -19,15 +19,23 @@
 
 #include "txt/platform.h"
 
+#include "build/build_config.h"
+#if defined(OS_HARMONY)
 #include "third_party/skia/include/ports/SkFontMgr_directory.h"
+#endif
 
 namespace txt {
 
 std::vector<std::string> GetDefaultFontFamilies() {
+#if defined(OS_HARMONY)
   return {"sans-serif", "HarmonyOS Sans", "FZHeiT"};
+#else
+  return {"sans-serif"};
+#endif
 }
 
 sk_sp<SkFontMgr> GetDefaultFontManager(uint32_t font_initialization_data) {
+#if defined(OS_HARMONY)
   // OHOS ships its system fonts (HarmonyOS Sans / FZHeiT / DejaVu / emoji /
   // etc.) as loose .ttf files under /system/fonts/. Scan that directory so
   // Lynx <text> can actually rasterize glyphs -- SkFontMgr::RefDefault() would
@@ -41,6 +49,7 @@ sk_sp<SkFontMgr> GetDefaultFontManager(uint32_t font_initialization_data) {
   if (mgr && mgr->countFamilies() > 0) {
     return mgr;
   }
+#endif
   return SkFontMgr::RefDefault();
 }
 
