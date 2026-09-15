@@ -249,9 +249,13 @@ void NativeView::SetAttribute(const char* attr, const clay::Value& value) {
     CancelPendingPlatformFocus();
   }
 #endif
+  const auto keyword = GetKeywordID(attr);
   if (!HandleCommonAttribute(attr, value)) {
     staging_attrs_.emplace(attr, CloneClayValue(value));
-  } else if (GetKeywordID(attr) == KeywordID::kName) {
+  } else if (keyword == KeywordID::kName) {
+    staging_attrs_.emplace(attr, CloneClayValue(value));
+  } else if (keyword == KeywordID::kUserInteractionEnabled &&
+             GetName() == "frame") {
     staging_attrs_.emplace(attr, CloneClayValue(value));
   }
 }
