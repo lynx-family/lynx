@@ -23,6 +23,9 @@
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/shadow/text_shadow_node.h"
+#if defined(CLAY_TEXT_LAYOUT_REUSE_TESTS)
+#include "clay/ui/testing/text_layout_reuse_test_hooks.h"
+#endif
 
 namespace clay {
 
@@ -129,10 +132,50 @@ void RawTextShadowNode::SetText(const std::u16string& text) {
   if (text != text_) {
     text_ = text;
     origin_text_ = text_;
+#if defined(CLAY_ENABLE_TTTEXT)
+    is_text_supported_for_layout_reuse_.reset();
+#endif
     SetEndIndex(text_.length());
     MarkDirty();
   }
 }
+
+#if defined(CLAY_ENABLE_TTTEXT)
+bool RawTextShadowNode::IsTextSupportedForLayoutReuse() {
+  const auto text = GetTruncatedTextView();
+  if (is_text_supported_for_layout_reuse_.has_value() &&
+      layout_reuse_text_end_ == text.size()) {
+    return *is_text_supported_for_layout_reuse_;
+  }
+
+  // Only this repertoire is eligible; other text keeps the normal layout path.
+  // Geometry, styles and line-tail checks remain the caller's responsibility.
+  // Empty prefixes pass here; the caller still rejects all-empty text.
+#if defined(CLAY_TEXT_LAYOUT_REUSE_TESTS)
+  ScopedTextLayoutReuseTestHooks::OnTextScan(this);
+#endif
+  is_text_supported_for_layout_reuse_ =
+      std::all_of(text.begin(), text.end(), [](char16_t code) {
+        // Printable ASCII: spaces, letters, digits and punctuation.
+        return (code >= 0x0020u && code <= 0x007Eu) ||
+               // Latin letters/extensions and multiplication/division signs.
+               (code >= 0x00C0u && code <= 0x024Fu) ||
+               // Common dashes, quotation marks, bullets and ellipsis.
+               (code >= 0x2010u && code <= 0x2027u) ||
+               // CJK symbols/punctuation, including ideographic space.
+               (code >= 0x3000u && code <= 0x303Fu) ||
+               // Han ideographs: Extension A and the basic block.
+               (code >= 0x3400u && code <= 0x4DBFu) ||
+               (code >= 0x4E00u && code <= 0x9FFFu) ||
+               // Fullwidth letters, digits, punctuation and brackets.
+               (code >= 0xFF01u && code <= 0xFF60u) ||
+               // Fullwidth currency signs and related symbols.
+               (code >= 0xFFE0u && code <= 0xFFE6u);
+      });
+  layout_reuse_text_end_ = text.size();
+  return *is_text_supported_for_layout_reuse_;
+}
+#endif
 
 void RawTextShadowNode::TextLayout(LayoutContext* context) {
   if (!context) {

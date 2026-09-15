@@ -9,9 +9,14 @@
 #include <textra/text_layout.h>
 #include <textra/text_line.h>
 #include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <optional>
 #include "base/include/string/string_utils.h"
 #include "clay/third_party/txt/src/txt/placeholder_run.h"
+#include "third_party/textlayout/textra/src/textlayout/utils/u_8_string.h"
 #ifdef ENABLE_SKITY
 #include "clay/third_party/txt/src/txt/font_collection_skity.h"
 #else
@@ -124,6 +129,50 @@ class TTShapeRun : public tttext::RunDelegate {
 
 namespace {
 
+bool IsValidUtf8(const uint8_t* data, size_t size) {
+  size_t index = 0;
+  while (index < size) {
+    const uint8_t first = data[index];
+    if (first <= 0x7f) {
+      ++index;
+      continue;
+    }
+
+    size_t count = 0;
+    uint32_t code_point = 0;
+    if ((first & 0xe0) == 0xc0) {
+      count = 2;
+      code_point = first & 0x1f;
+    } else if ((first & 0xf0) == 0xe0) {
+      count = 3;
+      code_point = first & 0x0f;
+    } else if ((first & 0xf8) == 0xf0) {
+      count = 4;
+      code_point = first & 0x07;
+    } else {
+      return false;
+    }
+    if (index + count > size) {
+      return false;
+    }
+    for (size_t offset = 1; offset < count; ++offset) {
+      if ((data[index + offset] & 0xc0) != 0x80) {
+        return false;
+      }
+      code_point = (code_point << 6) | (data[index + offset] & 0x3f);
+    }
+    if ((count == 2 && code_point < 0x80) ||
+        (count == 3 && code_point < 0x800) ||
+        (count == 4 && code_point < 0x10000) ||
+        (code_point >= 0xd800 && code_point <= 0xdfff) ||
+        code_point > 0x10ffff) {
+      return false;
+    }
+    index += count;
+  }
+  return true;
+}
+
 std::optional<tttext::FontInfo> ResolveFontInfo(
     const std::shared_ptr<FontCollection>& font_collection,
     const tttext::Style& style) {
@@ -197,6 +246,80 @@ bool ParagraphTTText::DidExceedMaxLines() {
     return false;
   }
   return region_->DidExceedMaxLines();
+}
+
+const char* ParagraphTTText::GetSingleLineGeometryRejectionReason(
+    double width) const {
+  if (paragraph_ == nullptr || region_ == nullptr) {
+    return "no_layout";
+  }
+  if (!std::isfinite(width) || width <= 0.0) {
+    return "invalid_target_width";
+  }
+
+  // Read the absolute alignment from the paragraph that was actually built.
+  // This avoids treating start + RTL as left alignment.
+  if (paragraph_->GetParagraphStyle().GetHorizontalAlign() !=
+      tttext::ParagraphHorizontalAlignment::kLeft) {
+    return "non_left_alignment";
+  }
+  if (paragraph_->GetResolvedWriteDirection() != tttext::WriteDirection::kLTR) {
+    return "non_ltr_direction";
+  }
+
+  // This covers inline views/images and the placeholder used for text-indent.
+  if (!placeholder_pos_.empty()) {
+    return "has_placeholder";
+  }
+  if (region_->GetLineCount() != 1) {
+    return "not_single_line";
+  }
+  if (region_->DidExceedMaxLines()) {
+    return "exceeded_max_lines";
+  }
+
+  const auto text_size = paragraph_->GetCharCount();
+  const auto* line = region_->GetLine(0);
+  if (text_size == 0 || line == nullptr || !line->IsLayouted() ||
+      line->IsEmpty()) {
+    return "empty_or_unlayouted_line";
+  }
+  if (line->GetStartCharPos() != 0 || line->GetEndCharPos() != text_size) {
+    return "incomplete_line";
+  }
+
+  // TTText trims line-tail spaces after line breaking. A width derived from
+  // that trimmed line can be too narrow when the paragraph is laid out again.
+  // The index/count are code points; the returned string is UTF-8 bytes.
+  const auto last_code_point_utf8 =
+      paragraph_->GetContentString(text_size - 1, 1);
+  if (last_code_point_utf8.empty()) {
+    return "missing_last_character";
+  }
+  // Validate before calling TTText's decoder, which has no input length bound.
+  // Only classify a complete code point, preserving the old byte-exact match.
+  if (IsValidUtf8(reinterpret_cast<const uint8_t*>(last_code_point_utf8.data()),
+                  last_code_point_utf8.size())) {
+    uint32_t byte_count = 0;
+    const char32_t code_point =
+        ttoffice::base::U8CharToU32(last_code_point_utf8.data(), &byte_count);
+    // Keep the conservative control/separator exclusions beyond trimmed spaces.
+    if (byte_count == last_code_point_utf8.size() &&
+        (ttoffice::base::IsSpaceChar(code_point) ||
+         ttoffice::base::IsNoneVisibleASCII(code_point) ||
+         code_point == 0x7Fu || code_point == 0x0085u ||
+         code_point == 0x2028u || code_point == 0x2029u)) {
+      return "trailing_space_or_control";
+    }
+  }
+
+  const auto layouted_width = region_->GetLayoutedWidth();
+  if (!std::isfinite(layouted_width) || layouted_width <= 0.0 ||
+      width < layouted_width) {
+    return "target_too_narrow";
+  }
+
+  return nullptr;
 }
 
 void ParagraphTTText::Layout(double width) {
