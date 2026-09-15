@@ -754,7 +754,13 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
   *relative_position = point_by_paragraph;
   BaseView* target = GetViewAtPosition(point_by_paragraph, position,
                                        relative_position, platform_try_hit_id);
-  target = target ?: this;
+  if (!target || !target->AcceptsPointerEvents()) {
+    if (!AcceptsPointerEvents()) {
+      return nullptr;
+    }
+    target = this;
+    *relative_position = point_by_paragraph;
+  }
   for (BaseView* view = target; view; view = view->Parent()) {
     const auto event_through = view->CanEventThrough();
     if (event_through.has_value()) {
