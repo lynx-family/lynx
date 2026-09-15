@@ -314,6 +314,10 @@ public class TouchEventDispatcher {
   }
 
   public boolean consumeSlideEvent(MotionEvent ev) {
+    if (mUIOwner.getContext().isFragmentLayerRenderOn()) {
+      // TODO: Support consume-slide-event in fragment layer rendering.
+      return false;
+    }
     switch (ev.getAction()) {
       case MotionEvent.ACTION_DOWN: {
         // When the finger is pressed, set mConsumeSlideEvent to Undefined.
@@ -391,6 +395,10 @@ public class TouchEventDispatcher {
   }
 
   public boolean blockNativeEvent(MotionEvent ev) {
+    if (mUIOwner.getContext().isFragmentLayerRenderOn()) {
+      // TODO: Support block-native-event in fragment layer rendering.
+      return false;
+    }
     if (mActiveUI == null) {
       return false;
     }
@@ -703,7 +711,9 @@ public class TouchEventDispatcher {
     resetEnv();
   }
 
-  public void destroy() {}
+  public void destroy() {
+    mActiveUI = null;
+  }
 
   private PointF moveEventToChildLynxPage(MotionEvent ev) {
     PointF originalLocation = new PointF(ev.getX(), ev.getY());
@@ -1282,15 +1292,24 @@ public class TouchEventDispatcher {
       MotionEvent ev, UIGroup rootUi, IPaintingContext paintingContext) {
     int rootSign = getPlatformEventRootSign(rootUi);
     boolean consumed = paintingContext.dispatchPlatformMotionEvent(ev, rootSign);
+    int action = ev.getActionMasked();
+    if (action == MotionEvent.ACTION_DOWN) {
+      // Keep the native hit target for the whole touch sequence, including additional pointers.
+      mActiveUI =
+          consumed ? mUIOwner.findLynxUIBySign(paintingContext.getPlatformTouchTargetSign()) : null;
+      if (consumed) {
+        updateLongPressTimeout();
+      }
+    } else if (action == MotionEvent.ACTION_UP && consumed) {
+      paintingContext.dispatchPlatformFocus();
+      paintingContext.dispatchPlatformTap();
+    }
     if (!consumed) {
       return false;
     }
 
-    if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
-      updateLongPressTimeout();
-    } else if (ev.getActionMasked() == MotionEvent.ACTION_UP) {
-      paintingContext.dispatchPlatformFocus();
-      paintingContext.dispatchPlatformTap();
+    if (mActiveUI != null) {
+      mActiveUI.dispatchTouch(ev);
     }
 
     mDetector.onTouchEvent(ev);

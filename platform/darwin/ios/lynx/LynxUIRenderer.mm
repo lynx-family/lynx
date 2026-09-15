@@ -415,6 +415,14 @@ static id<LynxServiceTextProtocol> getTextService() {
   return consumed;
 }
 
+- (LynxUI *)platformTouchTarget {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    auto focus_info = platform_ref->GetPlatformFocusInfo();
+    return [_uiOwner findUIBySign:focus_info[0]];
+  }
+  return nil;
+}
+
 - (void)DispatchPlatformLongPress {
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
     platform_ref->DispatchPlatformLongPress();
