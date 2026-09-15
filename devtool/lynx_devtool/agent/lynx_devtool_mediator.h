@@ -13,6 +13,7 @@
 #include "core/devtool_wrapper/devtool_pool.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/lynx_shell.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
@@ -149,36 +150,37 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
 
   // Input domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
-  DECLARE_DEVTOOL_METHOD(InsertText)
-  DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
+  DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(InsertText);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
 
   // Inspector domain -> devtools executor
   DECLARE_DEVTOOL_METHOD(InspectorEnable)
   DECLARE_DEVTOOL_METHOD(InspectorDetached)
 
-  // methods of Log domain -> devtool executor
-  DECLARE_DEVTOOL_METHOD(LogEnable)
-  DECLARE_DEVTOOL_METHOD(LogDisable)
-  DECLARE_DEVTOOL_METHOD(LogClear)
+  // Log domain -> devtool executor
+  DECLARE_DEVTOOL_CDP_METHOD(LogEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(LogDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(LogClear);
+  // TODO(devtool): Inject a log-event sink in tests and remove this test-only
+  // virtual hook.
+  virtual void SendLogEntryAddedEvent(
+      const lynx::runtime::js::ConsoleMessage& message);
 
-  // methods of Network domain -> devtool executor
+  // Network domain -> devtool executor
   DECLARE_DEVTOOL_METHOD(NetworkEnable)
   DECLARE_DEVTOOL_METHOD(NetworkDisable)
   DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
   DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
 
-  // events of Log domain -> devtool executor
-  virtual void SendLogEntryAddedEvent(
-      const lynx::runtime::js::ConsoleMessage& message);
+  // LynxNativeModule domain -> native module record manager
+  DECLARE_DEVTOOL_METHOD(NativeModuleEnable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleDisable)
+  DECLARE_DEVTOOL_METHOD(NativeModuleGetRecords)
   // Hops a NativeModule record from the JS thread to the DevTool thread and
   // stores it in the per-instance record manager.
   void AddNativeModuleRecord(const lepus::Value& record);
 
-  // methods of LynxNativeModule domain -> native module record manager
-  DECLARE_DEVTOOL_METHOD(NativeModuleEnable)
-  DECLARE_DEVTOOL_METHOD(NativeModuleDisable)
-  DECLARE_DEVTOOL_METHOD(NativeModuleGetRecords)
   // Lynx domain
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)
@@ -204,13 +206,13 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(TemplateGetTemplateApiInfo)
 
   // Overlay domain -> tasm executor
-  DECLARE_DEVTOOL_METHOD(HighlightNode)
-  DECLARE_DEVTOOL_METHOD(HideHighlight)
+  DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);
+  DECLARE_DEVTOOL_CDP_METHOD(HideHighlight);
 
-  // Layer Tree domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(LayerTreeEnable)
-  DECLARE_DEVTOOL_METHOD(LayerTreeDisable)
-  DECLARE_DEVTOOL_METHOD(CompositingReasons)
+  // LayerTree domain -> tasm executor
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
   // Page domain - > ui executor
   DECLARE_DEVTOOL_METHOD(StartScreencast)

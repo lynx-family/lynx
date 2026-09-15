@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/console_message_manager.h"
 
+#include <utility>
+
 #include "core/runtime/common/lynx_console_helper.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
@@ -36,11 +38,10 @@ namespace lynx {
 namespace devtool {
 
 ConsoleMessageManager::ConsoleMessageManager(
-    const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
-    : devtool_mediator_wp_(devtool_mediator) {}
+    std::weak_ptr<LynxDevToolMediator> devtool_mediator)
+    : devtool_mediator_wp_(std::move(devtool_mediator)) {}
 
-void ConsoleMessageManager::EnableConsoleLog(
-    const std::shared_ptr<MessageSender>& sender) {
+void ConsoleMessageManager::EnableConsoleLog() {
   enable_ = true;
   FireCacheLogs();
 }

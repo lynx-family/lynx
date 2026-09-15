@@ -5,9 +5,12 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_IO_AGENT_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_IO_AGENT_H_
 
+#include <map>
 #include <memory>
+#include <string>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
@@ -18,17 +21,18 @@ class InspectorIOAgent : public CDPDomainAgentBase {
 
   virtual ~InspectorIOAgent();
 
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message) override;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                  const Json::Value& message) override;
 
  private:
-  using IOAgentMethod = void (InspectorIOAgent::*)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
+  using IOAgentMethod =
+      void (InspectorIOAgent::*)(const std::shared_ptr<CDPResponder>& responder,
+                                 const Json::Value& params);
+
+  DECLARE_DEVTOOL_CDP_METHOD(Read);
+  DECLARE_DEVTOOL_CDP_METHOD(Close);
+
   std::map<std::string, IOAgentMethod> functions_map_;
-  void Read(const std::shared_ptr<MessageSender>& sender,
-            const Json::Value& message);
-  void Close(const std::shared_ptr<MessageSender>& sender,
-             const Json::Value& message);
 };
 
 }  // namespace devtool
