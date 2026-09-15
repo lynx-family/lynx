@@ -39,11 +39,15 @@ class PlatformModuleManager {
     std::unordered_set<std::string> sync_methods;
   };
 
-  const auto& JSModuleMap() { return js_module_map_; }
+  bool GetModuleInfo(const std::string& name, ModuleInfo& info);
+  void RegisterModule(const std::string& name, std::vector<std::string> methods,
+                      std::vector<std::string> sync_methods);
 
   napi_env Env() { return env_; }
 
  private:
+  bool AddPlatformModuleInfo(const std::string& key, napi_value methods,
+                             napi_value sync_methods, bool sendable);
   void AddPlatformModules(napi_value module_key, napi_value module_value,
                           napi_value sync_methods_value, bool sendable);
   static napi_value EnsureSendable(napi_env env, void* buffer, napi_ref& ref);
@@ -57,6 +61,7 @@ class PlatformModuleManager {
   void* sendable_js_module_manager_buffer_ = nullptr;
   void* sendable_js_module_buffer_ = nullptr;
 
+  std::mutex mutex_;
   std::unordered_map<std::string, ModuleInfo> js_module_map_;
 };
 
