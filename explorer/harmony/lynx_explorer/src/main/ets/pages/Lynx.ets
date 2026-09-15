@@ -5,10 +5,11 @@
 import router from '@ohos.router';
 import url from '@ohos.url';
 import { display } from '@kit.ArkUI';
-import { common } from '@kit.AbilityKit';
+import { common, ConfigurationConstant } from '@kit.AbilityKit';
 import {
   Behavior,
   BehaviorRegistryMap,
+  ColorScheme,
   LLog,
   LynxBackgroundRuntime,
   LynxBackgroundRuntimeOptions,
@@ -28,6 +29,10 @@ import { UISVG } from '@lynx/xelement_svg';
 import { UIWebView } from '@lynx/xelement_webview';
 import { UIVideo } from '@lynx/xelement_video';
 import Constants from '../common/constants';
+import {
+  getThemePreference,
+  resolveColorScheme
+} from '../common/ExplorerAppearance';
 import { EntryLynxClient } from '../client/EntryLynxClient';
 import { ExampleGenericResourceFetcher } from '../provider/ExampleGenericResourceFetcher';
 import { ExampleMediaResourceFetcher } from '../provider/ExampleMediaResourceFetcher';
@@ -55,6 +60,8 @@ class Param {
 @Component
 struct Lynx {
   @State count: number = 0;
+  @StorageProp('currentColorMode') @Watch('onColorModeChange') currentColorMode: ConfigurationConstant.ColorMode =
+    AppStorage.get<ConfigurationConstant.ColorMode>('currentColorMode')!;
   private url: string = (router.getParams() as LynxParam).url;
   private modules: Map<string, ModuleClassWrapper> = new Map();
   private sendableModules: Map<string, SendableModuleClassWrapper> = new Map();
@@ -78,6 +85,7 @@ struct Lynx {
   private nodeAPIToken: LynxNodeAPIToken = new LynxNodeAPIToken();
   private backgroundRuntime?: LynxBackgroundRuntime;
   private enableNapiAddon: boolean = false;
+  private lynxContext?: LynxContext;
 
   @State testButtons: LynxTestButton[] = [];
   private nextTestButtonId: number = 0;
@@ -142,6 +150,10 @@ struct Lynx {
     this.tryPrepareBackgroundRuntime();
   }
 
+  onColorModeChange(): void {
+    this.lynxContext?.updateColorScheme(this.getColorScheme());
+  }
+
   aboutToDisappear(): void {
     this.testModuleHost.active = false;
     this.testButtons = [];
@@ -163,6 +175,10 @@ struct Lynx {
       this.mediaFetcher, this.templateFetcher, backgroundModules, this.sendableModules, this.metaData);
   }
 
+  private getColorScheme(): ColorScheme {
+    return resolveColorScheme(getThemePreference(), this.currentColorMode);
+  }
+
   build() {
     Column() {
       Text('Lynx').fontSize(18).width('100%').height('5%').textAlign(TextAlign.Center)
@@ -180,6 +196,8 @@ struct Lynx {
           behaviors: this.behaviors,
           metaData: this.metaData,
           onCreate: (context: LynxContext) => {
+            this.lynxContext = context;
+            context.updateColorScheme(this.getColorScheme());
             let param: Param = new Param(this.url);
             context.sendGlobalEvent('viewAppear', [param]);
             if (this.widthPixel > 0 && this.heightPixel > 0) {

@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxModule.h>
+#import <Lynx/LynxContextModule.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ExplorerModule : NSObject <LynxModule>
+@interface ExplorerModule : NSObject <LynxContextModule>
 
 - (void)openSchema:(NSString *)url;
 - (void)openRoute:(NSString *)url
