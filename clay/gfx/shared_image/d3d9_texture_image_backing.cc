@@ -30,6 +30,10 @@ namespace clay {
 
 namespace {
 
+bool IsOutOfMemoryError(HRESULT hr) {
+  return hr == D3DERR_OUTOFVIDEOMEMORY || hr == E_OUTOFMEMORY;
+}
+
 class D3D9TextureFactory {
  public:
   static D3D9TextureFactory& Instance();
@@ -37,13 +41,15 @@ class D3D9TextureFactory {
   ~D3D9TextureFactory() = default;
 
   IDirect3DDevice9* GetDevice() { return d3d9_device_.Get(); }
+  HRESULT GetInitializationResult() const { return initialization_result_; }
 
  private:
   D3D9TextureFactory();
-  bool InitializeD3D9Device();
+  HRESULT InitializeD3D9Device();
 
   Microsoft::WRL::ComPtr<IDirect3D9> d3d9_api_;
   Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device_;
+  HRESULT initialization_result_ = E_FAIL;
 };
 
 fml::NativeLibrary* GetPinnedD3D9Library() {
@@ -53,6 +59,110 @@ fml::NativeLibrary* GetPinnedD3D9Library() {
   static fml::NoDestructor<fml::RefPtr<fml::NativeLibrary>> d3d9(
       fml::NativeLibrary::Create("d3d9.dll"));
   return d3d9->get();
+}
+
+// These flags are independent of how vertex processing is performed and must
+// remain enabled for every fallback attempt. FPU_PRESERVE prevents D3D9 from
+// changing the caller's floating-point control state, NOWINDOWCHANGES prevents
+// device creation from changing the foreground window, and MULTITHREADED keeps
+// the existing D3D9 synchronization guarantees for shared-image operations.
+constexpr DWORD kCommonD3D9CreateFlags = D3DCREATE_FPU_PRESERVE |
+                                         D3DCREATE_NOWINDOWCHANGES |
+                                         D3DCREATE_MULTITHREADED;
+
+struct D3D9CreateDeviceAttempt {
+  const char* name;
+  DWORD flags;
+  bool supported;
+};
+
+HRESULT CreateD3D9DeviceWithFallback(
+    IDirect3D9* d3d9_api, const D3DPRESENT_PARAMETERS& present_parameters,
+    IDirect3DDevice9** out_device) {
+  // D3D9 does not automatically discard unsupported behavior flags passed to
+  // CreateDevice. In particular, requesting PUREDEVICE together with hardware
+  // vertex processing can return D3DERR_NOTAVAILABLE even when the adapter can
+  // create a less restrictive HAL device. Query the advertised capabilities so
+  // unsupported strict modes can be skipped without making a known-to-fail
+  // CreateDevice call.
+  D3DCAPS9 caps = {};
+  HRESULT caps_hr =
+      d3d9_api->GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &caps);
+  const bool has_caps = SUCCEEDED(caps_hr);
+  if (!has_caps) {
+    FML_LOG(WARNING)
+        << "D3D9TextureImageBacking could not query D3D9 Device caps. hr="
+        << caps_hr;
+  }
+
+  // A capability-query failure must not prevent device creation. Some drivers
+  // may fail GetDeviceCaps but still accept one of the CreateDevice modes
+  // below, so in that case keep every attempt eligible and let CreateDevice
+  // decide.
+  const bool supports_hardware_vertex_processing =
+      !has_caps || (caps.DevCaps & D3DDEVCAPS_HWTRANSFORMANDLIGHT);
+  const bool supports_pure_device =
+      !has_caps || (caps.DevCaps & D3DDEVCAPS_PUREDEVICE);
+
+  // Preserve the original and fastest configuration as the first choice, then
+  // reduce only the vertex-processing requirements:
+  //   1. hardware_pure: original hardware vertex processing + pure device.
+  //   2. hardware:      hardware vertex processing without PUREDEVICE.
+  //   3. mixed:         allow D3D9 to use hardware and software vertex paths.
+  //   4. software:      perform vertex processing on the CPU as a last resort.
+  // Every attempt still uses D3DDEVTYPE_HAL below, so the software fallback is
+  // not a reference/software rasterizer; it changes only vertex processing.
+  const D3D9CreateDeviceAttempt attempts[] = {
+      {"hardware_pure",
+       kCommonD3D9CreateFlags | D3DCREATE_HARDWARE_VERTEXPROCESSING |
+           D3DCREATE_PUREDEVICE,
+       supports_hardware_vertex_processing && supports_pure_device},
+      {"hardware", kCommonD3D9CreateFlags | D3DCREATE_HARDWARE_VERTEXPROCESSING,
+       supports_hardware_vertex_processing},
+      {"mixed", kCommonD3D9CreateFlags | D3DCREATE_MIXED_VERTEXPROCESSING,
+       true},
+      {"software", kCommonD3D9CreateFlags | D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+       true},
+  };
+
+  HRESULT hr = E_FAIL;
+  for (const auto& attempt : attempts) {
+    if (!attempt.supported) {
+      continue;
+    }
+
+    // CreateDevice receives presentation parameters as an in/out structure and
+    // a driver may modify it even when creation fails. Start every fallback
+    // from the same known-good parameters so one failed attempt cannot affect
+    // the next one. Keep the candidate device in a local ComPtr for the same
+    // reason: a failed or partial attempt is released before another mode is
+    // tried.
+    D3DPRESENT_PARAMETERS attempt_present_parameters = present_parameters;
+    Microsoft::WRL::ComPtr<IDirect3DDevice9> device;
+    hr = d3d9_api->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL,
+                                GetDesktopWindow(), attempt.flags,
+                                &attempt_present_parameters, &device);
+    if (SUCCEEDED(hr)) {
+      if (attempt.flags != attempts[0].flags) {
+        FML_LOG(WARNING)
+            << "D3D9TextureImageBacking created D3D9Ex Device with fallback "
+               "flags. attempt="
+            << attempt.name << ", flags=" << attempt.flags;
+      }
+
+      // Publish the device only after CreateDevice has fully succeeded. Detach
+      // transfers the COM reference to the factory's ComPtr without releasing
+      // it when the local candidate goes out of scope.
+      *out_device = device.Detach();
+      return S_OK;
+    }
+
+    FML_LOG(WARNING)
+        << "D3D9TextureImageBacking could not create D3D9Ex Device. attempt="
+        << attempt.name << ", flags=" << attempt.flags << ", hr=" << hr;
+  }
+
+  return hr;
 }
 
 D3D9TextureFactory& D3D9TextureFactory::Instance() {
@@ -68,18 +178,20 @@ D3D9TextureFactory& D3D9TextureFactory::Instance() {
 }
 
 D3D9TextureFactory::D3D9TextureFactory() {
-  if (!InitializeD3D9Device()) {
+  initialization_result_ = InitializeD3D9Device();
+  if (FAILED(initialization_result_)) {
     FML_LOG(ERROR)
-        << "D3D9TextureImageBacking failed to initialize D3D Device.";
+        << "D3D9TextureImageBacking failed to initialize D3D Device. hr="
+        << initialization_result_;
   }
 }
 
-bool D3D9TextureFactory::InitializeD3D9Device() {
+HRESULT D3D9TextureFactory::InitializeD3D9Device() {
   auto* d3d9 = GetPinnedD3D9Library();
 
   if (!d3d9) {
     FML_LOG(ERROR) << "Could not load D3D9 library.";
-    return false;
+    return E_FAIL;
   }
 
   auto Direct3DCreate9ExFn =
@@ -87,7 +199,7 @@ bool D3D9TextureFactory::InitializeD3D9Device() {
 
   if (!Direct3DCreate9ExFn.has_value()) {
     FML_LOG(ERROR) << "Could not retrieve Direct3DCreate9Ex address.";
-    return false;
+    return E_FAIL;
   }
   // Use Direct3D9Ex, in ANGLE Renderer9.cpp, it's said that
   // "this version is less inclined to report a lost context,"
@@ -97,13 +209,13 @@ bool D3D9TextureFactory::InitializeD3D9Device() {
   if (FAILED(hr)) {
     FML_LOG(ERROR) << "D3D9TextureImageBacking could not create D3D9Ex api. hr="
                    << hr;
-    return false;
+    return hr;
   }
   hr = d3d9ex_api.As(&d3d9_api_);
   if (FAILED(hr)) {
     FML_LOG(ERROR) << "D3D9TextureImageBacking could not create D3D9 api. hr="
                    << hr;
-    return false;
+    return hr;
   }
   D3DPRESENT_PARAMETERS present_parameters = {};
 
@@ -123,18 +235,17 @@ bool D3D9TextureFactory::InitializeD3D9Device() {
   present_parameters.SwapEffect = D3DSWAPEFFECT_DISCARD;
   present_parameters.Windowed = TRUE;
 
-  hr = d3d9_api_->CreateDevice(
-      D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, GetDesktopWindow(),
-      D3DCREATE_FPU_PRESERVE | D3DCREATE_NOWINDOWCHANGES |
-          D3DCREATE_MULTITHREADED | D3DCREATE_HARDWARE_VERTEXPROCESSING |
-          D3DCREATE_PUREDEVICE,
-      &present_parameters, &d3d9_device_);
+  // Keep the existing presentation setup and fall back only from
+  // device-creation flags that are known to be unavailable on some adapters or
+  // drivers.
+  hr = CreateD3D9DeviceWithFallback(d3d9_api_.Get(), present_parameters,
+                                    &d3d9_device_);
   if (FAILED(hr)) {
     FML_LOG(ERROR)
         << "D3D9TextureImageBacking could not create D3D9Ex Device. hr=" << hr;
-    return false;
+    return hr;
   }
-  return true;
+  return S_OK;
 }
 
 std::optional<D3DFORMAT> ToD3DFormat(SharedImageBacking::PixelFormat format) {
@@ -197,7 +308,27 @@ D3D9TextureImageBacking::D3D9TextureImageBacking(
     PixelFormat pixel_format, skity::Vec2 size,
     std::optional<GraphicsMemoryHandle> gfx_handle)
     : SharedImageBacking(pixel_format, size) {
-  d3d9_device_ = D3D9TextureFactory::Instance().GetDevice();
+  auto& factory = D3D9TextureFactory::Instance();
+  d3d9_device_ = factory.GetDevice();
+  HRESULT initialization_result = factory.GetInitializationResult();
+  if (!d3d9_device_ && IsOutOfMemoryError(initialization_result)) {
+    // Keep the backing object alive so existing buffer-queue semantics remain
+    // unchanged. Operations that require D3D9 resources will return failure
+    // while the device is unavailable instead of dereferencing a null device.
+    // TODO: Add a recovery path that recreates the D3D9 device when resources
+    // become available again.
+    device_initialization_out_of_memory_ = true;
+    FML_LOG(ERROR)
+        << "D3D9TextureImageBacking has no D3D9 device because device "
+           "initialization ran out of memory. hr="
+        << initialization_result;
+    return;
+  }
+
+  // Only out-of-memory failures are recoverable. Other initialization errors
+  // remain fatal instead of being hidden by a generic null-device guard.
+  FML_CHECK(d3d9_device_) << "D3D9 device is null. initialization hr="
+                          << initialization_result;
   auto opt_format = ToD3DFormat(pixel_format);
   if (!opt_format) {
     return;
@@ -222,8 +353,22 @@ D3D9TextureImageBacking::~D3D9TextureImageBacking() {
   d3d9_device_.Reset();
 }
 
+bool D3D9TextureImageBacking::ShouldSkipOperationForOutOfMemory(
+    const char* operation) const {
+  if (!device_initialization_out_of_memory_) {
+    return false;
+  }
+
+  FML_LOG(WARNING) << "Skip D3D9TextureImageBacking::" << operation
+                   << " because D3D9 device initialization ran out of memory.";
+  return true;
+}
+
 bool D3D9TextureImageBacking::OpenForDevice(
     IDirect3DDevice9* device, IDirect3DTexture9** out_texture) const {
+  if (ShouldSkipOperationForOutOfMemory("OpenForDevice")) {
+    return false;
+  }
   return OpenD3D9SharedHandle(device, d3d_format_, size_, shared_handle_,
                               out_texture);
 }
@@ -372,6 +517,9 @@ bool D3D9TextureImageBacking::ReadbackToMemory(
 }
 
 IDirect3DTexture9* D3D9TextureImageBacking::GetOrCreateStagingTexture() {
+  if (ShouldSkipOperationForOutOfMemory("GetOrCreateStagingTexture")) {
+    return nullptr;
+  }
   if (!staging_texture_) {
     HRESULT hr = d3d9_device_->CreateTexture(size_.x, size_.y, 1, 0,
                                              d3d_format_, D3DPOOL_SYSTEMMEM,
