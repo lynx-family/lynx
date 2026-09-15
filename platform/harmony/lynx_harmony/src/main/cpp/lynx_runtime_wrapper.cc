@@ -172,7 +172,8 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
     module_manager->initBindingPtr(
         module_manager,
         std::make_shared<shell::ModuleDelegateImpl>(actor, facade_actor));
-    runtime_proxy_ = std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor);
+    runtime_proxy_ =
+        std::make_shared<shell::LynxBTSRuntimeProxyImpl>(actor, true);
     module_manager->runtime_proxy = runtime_proxy_;
   };
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board = nullptr;
@@ -204,6 +205,20 @@ void LynxRuntimeWrapper::DestroyRuntime() {
 
 void LynxRuntimeWrapper::SetAttached(bool is_attached) {
   is_attached_ = is_attached;
+}
+
+std::shared_ptr<shell::LynxRuntimeProxy>
+LynxRuntimeWrapper::CreateAttachedRuntimeProxy() {
+  const auto& runtime_actor = RuntimeStandalone().GetRuntimeActor();
+  if (!runtime_actor) {
+    return nullptr;
+  }
+  attached_runtime_proxy_ =
+      std::make_shared<shell::LynxBTSRuntimeProxyImpl>(runtime_actor);
+  if (auto module_manager = module_manager_.lock()) {
+    module_manager->runtime_proxy = attached_runtime_proxy_;
+  }
+  return attached_runtime_proxy_;
 }
 
 void LynxRuntimeWrapper::AddLifecycleListener(
