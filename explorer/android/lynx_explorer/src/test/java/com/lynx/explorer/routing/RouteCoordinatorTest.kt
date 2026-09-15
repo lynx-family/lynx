@@ -76,6 +76,19 @@ class RouteCoordinatorTest {
     assertEquals(expectedFlags, intent.flags and expectedFlags)
   }
 
+  @Test fun devToolLaunchIntoGroupKeepsExistingCards() {
+    val context = RuntimeEnvironment.getApplication()
+    val descriptor = LaunchDescriptorParser().parse(
+      "https://example.com/a.bundle?group=cards",
+      RequestedRuntime.AUTOMATIC,
+      RouteSource.DEVTOOL)
+
+    assertTrue(LynxContainerLauncher.open(context, descriptor).accepted)
+    val intent = shadowOf(context).nextStartedActivity
+    assertEquals(0, intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK)
+  }
+
   @Test fun navigateBackUsesComponentActivityDispatcher() {
     val activity = BackActivity()
     var dispatched = false

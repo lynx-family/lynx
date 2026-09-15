@@ -8,7 +8,10 @@
 #import "LynxViewShellViewController.h"
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxGroup.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
+#import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxView.h>
 #import "DemoGenericResourceFetcher.h"
 #import "DemoMediaResourceFetcher.h"
@@ -56,6 +59,8 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, assign) UIEdgeInsets currentSafeAreaInsets;
 
 @end
+
+static NSString *const kHomepageURL = @"file://lynx?local://homepage.lynx.bundle?fullscreen=true";
 
 @implementation LynxViewShellViewController
 
@@ -367,19 +372,28 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   LynxThreadStrategyForRender threadStrategy =
       [LynxSettingManager sharedDataHandler].threadStrategy;
 
+  NSString *groupName = [self groupName];
+  NSString *standaloneURL = [self stringParamForKey:@"standalone_url"];
+  NSString *standaloneEntryName = [self stringParamForKey:@"standalone_entry_name"];
+  self.backgroundRuntime =
+      !groupName && standaloneURL
+          ? [LynxViewShellViewController standaloneRuntimeWithURL:standaloneURL
+                                                        entryName:standaloneEntryName
+                                                            group:nil]
+          : nil;
   BOOL enableNapiAddon = IsTruthyParam([self.params valueForKey:@"enable_napi_addon"]);
   if (enableNapiAddon) {
     // RuntimeLifecycleListener can only be registered through background runtime for now.
     // Node-API addon needs a background runtime to receive napi env via lifecycle callback.
-    LynxBackgroundRuntimeOptions *options = [[LynxBackgroundRuntimeOptions alloc] init];
-    options.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
-    options.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
-    options.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
-    self.backgroundRuntime = [[LynxBackgroundRuntime alloc] initWithOptions:options];
+    if (!self.backgroundRuntime) {
+      LynxBackgroundRuntimeOptions *options = [[LynxBackgroundRuntimeOptions alloc] init];
+      options.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
+      options.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
+      options.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
+      self.backgroundRuntime = [[LynxBackgroundRuntime alloc] initWithOptions:options];
+    }
     [self.backgroundRuntime
         addRuntimeLifecycleListener:[[LynxNodeAPILifecycleListener alloc] initWithToken:self]];
-  } else {
-    self.backgroundRuntime = nil;
   }
 
   LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
@@ -399,6 +413,15 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
     builder.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
     builder.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
     [builder setThreadStrategyForRender:threadStrategy];
+    if (groupName) {
+      builder.group = [LynxViewShellViewController groupNamed:groupName];
+      if (standaloneURL) {
+        [LynxViewShellViewController startRuntimeForGroup:builder.group
+                                                    named:groupName
+                                            standaloneURL:standaloneURL
+                                                entryName:standaloneEntryName];
+      }
+    }
   }];
   lynxView.preferredLayoutWidth = lynxViewFrame.size.width;
   [lynxView setExtraTiming:extraTiming];
@@ -532,7 +555,106 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
 
   [barView addSubview:goBackButton];
   [barView addSubview:titleLabel];
+  if ([self groupName]) {
+    UIButton *openAnotherPageButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    openAnotherPageButton.frame = CGRectMake(screenSize.width - navH, 0, navH, navH);
+    openAnotherPageButton.titleLabel.font = [UIFont systemFontOfSize:28];
+    openAnotherPageButton.accessibilityLabel = @"Open another page";
+    [openAnotherPageButton setTitle:@"+" forState:UIControlStateNormal];
+    [openAnotherPageButton setTitleColor:self.titleColor forState:UIControlStateNormal];
+    [openAnotherPageButton addTarget:self
+                              action:@selector(openAnotherPage)
+                    forControlEvents:UIControlEventTouchUpInside];
+    [barView addSubview:openAnotherPageButton];
+  }
   [self.view addSubview:barView];
+}
+
++ (LynxGroup *)groupNamed:(NSString *)name {
+  static NSMutableDictionary<NSString *, LynxGroup *> *groups;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    groups = [NSMutableDictionary new];
+  });
+  @synchronized(groups) {
+    LynxGroup *group = groups[name];
+    if (!group) {
+      group = [[LynxGroup alloc] initWithName:name];
+      groups[name] = group;
+    }
+    return group;
+  }
+}
+
++ (void)startRuntimeForGroup:(LynxGroup *)group
+                       named:(NSString *)name
+               standaloneURL:(NSString *)url
+                   entryName:(NSString *)entryName {
+  static NSMutableDictionary<NSString *, LynxBackgroundRuntime *> *runtimes;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    runtimes = [NSMutableDictionary new];
+  });
+  @synchronized(runtimes) {
+    if (runtimes[name]) {
+      return;
+    }
+    LynxBackgroundRuntime *runtime = [self standaloneRuntimeWithURL:url
+                                                          entryName:entryName
+                                                              group:group];
+    if (runtime) {
+      runtimes[name] = runtime;
+      LLogInfo(@"Started standalone runtime for group %@", name);
+    }
+  }
+}
+
++ (LynxBackgroundRuntime *)standaloneRuntimeWithURL:(NSString *)url
+                                          entryName:(NSString *)entryName
+                                              group:(LynxGroup *)group {
+  LocalBundleResult local = [DemoTemplateResourceFetcher readLocalBundleFromResource:url];
+  NSData *data =
+      local.isLocalScheme ? local.data : [NSData dataWithContentsOfURL:[NSURL URLWithString:url]];
+  if (!data) {
+    LLogError(@"Failed to load standalone script %@", url);
+    return nil;
+  }
+  LynxBackgroundRuntimeOptions *options = [[LynxBackgroundRuntimeOptions alloc] init];
+  options.group = group;
+  options.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
+  options.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
+  options.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
+  LynxBackgroundRuntime *runtime =
+      [[LynxBackgroundRuntime alloc] initWithOptions:options
+                                          debuggable:[LynxEnv sharedInstance].devtoolEnabled];
+  if (entryName.length > 0) {
+    [runtime evaluateTemplateBundle:url
+                        widthBundle:[[LynxTemplateBundle alloc] initWithTemplate:data]
+                         withJSFile:entryName];
+  } else {
+    [runtime evaluateJavaScript:url
+                    withSources:[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
+  }
+  return runtime;
+}
+
+- (NSString *)groupName {
+  return [self stringParamForKey:@"group"];
+}
+
+- (NSString *)stringParamForKey:(NSString *)key {
+  id value = self.params[key];
+  return [value isKindOfClass:NSString.class] && [value length] > 0 ? value : nil;
+}
+
+- (void)openAnotherPage {
+  [[LXRouteCoordinator currentBridge] openURL:kHomepageURL
+                           requestedContainer:LXRequestedContainerAutomatic
+                                       source:LXRouteSourceNativeModule
+                                 presentation:LXRoutePresentationPush
+                             animatedOverride:nil
+                                     callback:^(id result){
+                                     }];
 }
 
 - (BOOL)shouldAutorotate {
