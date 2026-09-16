@@ -98,15 +98,20 @@ export class SendableLynxModuleManager {
 
 export function convertModuleArgs(moduleManager: LynxModuleManager | SendableLynxModuleManager) {
   const values = Array.from(moduleManager.getModulesMap().values());
+  const metadata = values.map((item) => getModuleMetadata(item));
   return [
     moduleManager,
     moduleManager.getModule,
     Array.from(moduleManager.getModulesMap().keys()),
-    values.map((item) => {
-      return Object.getOwnPropertyNames((item.moduleClass as Function).prototype);
-    }),
-    values.map((item) => {
-      return (item.moduleClass as Record<string, Object>)['syncMethods'] as string[] | undefined;
-    })
+    metadata.map((item) => item[0]),
+    metadata.map((item) => item[1]),
+  ];
+}
+
+export function getModuleMetadata(wrapper: ModuleClassWrapper): [string[], string[] | undefined] {
+  const moduleClass = wrapper.moduleClass as Function;
+  return [
+    Object.getOwnPropertyNames(moduleClass.prototype),
+    (moduleClass as Record<string, Object>)['syncMethods'] as string[] | undefined,
   ];
 }
