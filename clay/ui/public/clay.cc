@@ -23,6 +23,8 @@
 #include "clay/ui/common/isolate.h"
 #ifdef ENABLE_SKITY
 #include "skity/codec/codec.hpp"
+#include "skity/io/data.hpp"
+#include "skity/io/pixmap.hpp"
 #endif
 
 namespace clay {
@@ -681,6 +683,11 @@ CLAY_EXTERN_C bool ClayDecodeDataUrlImage(const char* data_url, size_t length,
 CLAY_EXTERN_C bool ClayEncodeBitmap(const ClayBitmap* bitmap,
                                     ClayImageFormat encoding,
                                     float compress_ratio, ClayDataHolder* out) {
+  if (!bitmap || !out || !bitmap->pixels.ptr || bitmap->width == 0 ||
+      bitmap->height == 0 ||
+      bitmap->pixels.size / bitmap->height / 4 < bitmap->width) {
+    return false;
+  }
 #ifndef ENABLE_SKITY
   SkEncodedImageFormat format;
 
@@ -711,8 +718,39 @@ CLAY_EXTERN_C bool ClayEncodeBitmap(const ClayBitmap* bitmap,
   };
   out->user_data = data.release();
 #else
-  FML_UNIMPLEMENTED();
-  return false;
+  std::shared_ptr<skity::Codec> codec;
+  switch (encoding) {
+    case kClayImageFormatJPEG:
+      codec = skity::Codec::MakeJPEGCodec();
+      break;
+    case kClayImageFormatPNG:
+      codec = skity::Codec::MakePngCodec();
+      break;
+    default:
+      return false;
+  }
+  if (!codec) {
+    return false;
+  }
+
+  // Encoding is synchronous, so the input pixels can be borrowed.
+  auto pixels = skity::Data::MakeWithProc(
+      bitmap->pixels.ptr, bitmap->pixels.size, nullptr, nullptr);
+  skity::Pixmap pixmap(std::move(pixels), bitmap->width, bitmap->height,
+                       skity::AlphaType::kPremul_AlphaType,
+                       skity::ColorType::kRGBA);
+  // Skity does not expose encoding quality options; JPEG uses quality 100.
+  auto data = codec->Encode(&pixmap);
+  if (!data) {
+    return false;
+  }
+  auto* shared_ptr_holder = new GrDataPtr(std::move(data));
+  out->size = (*shared_ptr_holder)->Size();
+  out->ptr = (*shared_ptr_holder)->RawData();
+  out->destruction_callback = [](const void*, void* user_data) {
+    delete static_cast<GrDataPtr*>(user_data);
+  };
+  out->user_data = shared_ptr_holder;
 #endif  // ENABLE_SKITY
   return true;
 }
