@@ -122,15 +122,12 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   void HideSelectionPopup();
   void ShowSelectionHandle(bool show_start_handle = true,
                            bool show_end_handle = true);
-  void SetSelectionBackgroundColor(Color selection_background_color);
   void SetSelectionHandleColor(Color selection_handle_color);
   void SetSelectionHandleSize(float selection_handle_size);
   void HideSelectionHandle();
   void UpdateSelectionHandle(FloatPoint point, SelectionHandleView* handle_bar);
   void UpdateSelectionHandleTypes();
   void UpdateSelectionRange(int selection_start, int selection_end);
-  void ResetSelectionRange();
-  void ClearSelection();
 
   FloatRect GetDisplayRect();
 

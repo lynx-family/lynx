@@ -428,33 +428,30 @@ TEST_F_UI(TextSelectionTest, PopupSelectAllDispatchesSelectionChange) {
   ExpectSelectionChange(0, text.length(), "forward");
 }
 
-TEST_F_UI(TextSelectionTest, CopyDispatchesClearedSelectionChange) {
+TEST_F_UI(TextSelectionTest, CopyDispatchesCollapsedSelectionChange) {
   const std::u16string text = u"copy selection";
   text_view_->SetParagraph(CreateParagraph(text), text);
   EnableTextSelection();
-  text_view_->HandleSelectAll();
+  text_view_->UpdateSelectionRange(2, 6);
+  text_view_->GetRenderText()->SetSelection(TextRange(2, 6));
   StartSelectionChangeCapture();
 
-  AsyncStart();
   text_view_->HandleCopy();
-  ui_task_runner()->PostTask([this]() {
-    ExpectSelectionChange(-1, -1, "forward");
-    EXPECT_TRUE(text_view_->GetRenderText()->GetSelectionString().empty());
-    AsyncEnd();
-  });
+
+  ExpectSelectionChange(6, 6, "forward");
 }
 
-TEST_F_UI(TextSelectionTest, LosingFocusDispatchesClearedSelectionChange) {
+TEST_F_UI(TextSelectionTest, LosingFocusDispatchesCollapsedSelectionChange) {
   const std::u16string text = u"focus selection";
   text_view_->SetParagraph(CreateParagraph(text), text);
   EnableTextSelection();
-  text_view_->HandleSelectAll();
+  text_view_->UpdateSelectionRange(1, 5);
+  text_view_->GetRenderText()->SetSelection(TextRange(1, 5));
   StartSelectionChangeCapture();
 
   text_view_->FocusHasChanged(false, true);
 
-  ExpectSelectionChange(-1, -1, "forward");
-  EXPECT_TRUE(text_view_->GetRenderText()->GetSelectionString().empty());
+  ExpectSelectionChange(5, 5, "forward");
 }
 
 #if !defined(OS_ANDROID) && !defined(OS_IOS)
