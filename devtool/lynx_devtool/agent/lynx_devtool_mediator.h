@@ -201,9 +201,11 @@ class LynxDevToolMediator
   void GlobalPropsChanged();
 
   // Template domain
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateData)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateJsInfo)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateApiInfo)
+  // -> ui executor
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateData);
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
+  // -> tasm executor
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateApiInfo);
 
   // Overlay domain -> tasm executor
   DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);

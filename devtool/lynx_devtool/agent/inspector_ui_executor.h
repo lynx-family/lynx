@@ -61,8 +61,10 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(LynxGetViewLocationOnScreen)
   DECLARE_DEVTOOL_METHOD(LynxSendEventToVM)
   DECLARE_DEVTOOL_METHOD(GetScreenshot)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateData)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateJsInfo)
+
+  // template domain
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateData);
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
 
   // Performance domain
   DECLARE_DEVTOOL_METHOD(PerformanceEnable)

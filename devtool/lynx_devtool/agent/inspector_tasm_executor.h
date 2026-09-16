@@ -179,7 +179,9 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)
   DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateApiInfo)
+
+  // template domain
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateApiInfo);
 
   // DOM ScrollIntoViewIfNeeded
   DECLARE_DEVTOOL_METHOD(ScrollIntoViewIfNeeded)

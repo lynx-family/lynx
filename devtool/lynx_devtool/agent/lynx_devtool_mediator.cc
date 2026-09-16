@@ -1602,26 +1602,23 @@ void LynxDevToolMediator::LynxSendEventToVM(
 }
 
 void LynxDevToolMediator::TemplateGetTemplateData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->TemplateGetTemplateData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->TemplateGetTemplateData(responder, params);
   });
 }
 
 void LynxDevToolMediator::TemplateGetTemplateJsInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->TemplateGetTemplateJsInfo(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->TemplateGetTemplateJsInfo(responder, params);
   });
 }
 
 void LynxDevToolMediator::TemplateGetTemplateApiInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->TemplateGetTemplateApiInfo(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->TemplateGetTemplateApiInfo(responder, params);
   });
 }
 
