@@ -239,14 +239,14 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(SetUIStyle)
 
   // WhiteBoard domain:
-  // When tasm_executor_ is not nullptr, dispatch to tasm_executor_. Otherwise,
-  // dispatch to js_debugger_.
-  DECLARE_DEVTOOL_METHOD(WhiteBoardEnable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardDisable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardSetSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardGetSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardRemoveSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardClear)
+  // When tasm_executor_ is not nullptr, dispatch to tasm_executor_.
+  // Otherwise, dispatch to js_debugger_.
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardSetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardGetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardRemoveSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardClear);
 
  public:
   std::shared_ptr<InspectorUIExecutor> GetUIExecutor() { return ui_executor_; }
