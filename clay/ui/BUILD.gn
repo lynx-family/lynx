@@ -203,6 +203,7 @@ if (enable_unittests) {
       "painter/painter_graphics_test.cc",
       "painter/painter_graphics_test.h",
       "painter/painting_context_unittests.cc",
+      "public/clay_unittests.cc",
       "rendering/abstract_node_unittests.cc",
       "rendering/editable/render_editable_unittests.cc",
       "rendering/render_box_unittests.cc",
