@@ -3,9 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.service;
 
+import android.content.Context;
 import android.graphics.Typeface;
+import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import java.io.Closeable;
 
 public interface ILynxResourceService extends IServiceProvider {
   /**
@@ -108,4 +111,24 @@ public interface ILynxResourceService extends IServiceProvider {
    * @return typeface if creation succeeds, otherwise null
    */
   @Nullable Typeface createTypeFace(@NonNull String url);
+
+  /**
+   * Creates a platform media data source for a URI that requires custom resource handling.
+   *
+   * <p>The returned object is an {@code android.media.MediaDataSource} on Android M and above. It
+   * is declared as {@link Closeable} so loading this interface remains safe on earlier Android
+   * versions where {@code android.media.MediaDataSource} does not exist. An implementation should
+   * return {@code null} when it does not handle the URI, cannot create the data source, or the
+   * platform does not support it. The caller will then fall back to the platform's default URI
+   * handling. Ownership of a non-null result is transferred to the caller.
+   *
+   * @param context Android context used to resolve the URI
+   * @param uri URI of the media resource
+   * @return a platform media data source when the URI is handled successfully, otherwise {@code
+   *     null}
+   */
+  @Nullable
+  default Closeable createMediaDataSource(@NonNull Context context, @NonNull Uri uri) {
+    return null;
+  }
 }
