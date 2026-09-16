@@ -20,6 +20,7 @@ namespace tasm {
 class PlatformInputEvent;
 class PlatformPointerEvent;
 class NativePaintingCtxPlatformRef;
+class LynxEnvConfig;
 
 class PlatformEventHandler {
  public:
@@ -57,7 +58,7 @@ class PlatformEventHandler {
   bool IgnoreFocus() const { return ignore_focus_; }
   bool CanRespondFocus();
 
-  void SetTapSlop(const std::string& tap_slop);
+  void SetTapSlop(const std::string& tap_slop, const LynxEnvConfig& env_config);
   void SetLongPressDuration(int32_t long_press_duration);
   void SetHasPointerPseudo(bool has_pointer_pseudo);
 
@@ -110,7 +111,7 @@ class PlatformEventHandler {
   float first_pointer_down_point_[2]{0.f};
 
   // config
-  unsigned int tap_slop_{5};
+  float tap_slop_{50.f};
   bool has_pointer_pseudo_{false};
 };
 

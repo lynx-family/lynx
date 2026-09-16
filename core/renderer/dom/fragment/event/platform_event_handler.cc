@@ -4,13 +4,18 @@
 
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
 
+#include <cmath>
 #include <utility>
 
 #include "base/include/float_comparison.h"
 #include "core/event/touch_event.h"
+#include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/measure_context.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/dom/fragment/event/platform_input_event.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
+#include "core/renderer/lynx_env_config.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -163,7 +168,23 @@ bool PlatformEventHandler::EventThrough() {
   return first_target_->EventThrough(target_point);
 }
 
-void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {}
+void PlatformEventHandler::SetTapSlop(const std::string& tap_slop,
+                                      const LynxEnvConfig& env_config) {
+  // Pointer coordinates use platform layout units, while CSS px are logical
+  // pixels. Keep the default and configured threshold in the same units.
+  tap_slop_ = 50.f * env_config.LayoutsUnitPerPx();
+  CSSParserConfigs parser_configs;
+  CSSStringParser parser(tap_slop.c_str(), tap_slop.length(), parser_configs);
+  auto result = starlight::CSSStyleUtils::ToLength(
+      parser.ParseLength(), CssMeasureContext(env_config, 0.f, 0.f),
+      parser_configs);
+  if (result.second && result.first.IsUnit()) {
+    float value = result.first.GetRawValue();
+    if (std::isfinite(value) && value >= 0.f) {
+      tap_slop_ = value;
+    }
+  }
+}
 
 void PlatformEventHandler::SetLongPressDuration(int32_t long_press_duration) {}
 
