@@ -110,7 +110,7 @@ class PlatformEventHandler {
   float first_pointer_down_point_[2]{0.f};
 
   // config
-  unsigned int tap_slop_{5};
+  float tap_slop_{50.f};
   bool has_pointer_pseudo_{false};
 };
 
