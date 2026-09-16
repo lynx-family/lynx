@@ -2885,9 +2885,7 @@ void InspectorTasmExecutor::LynxGetComponentId(
 }
 
 void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   Json::Value result(Json::ValueType::objectValue);
   if (tasm_) {
     lynx::lepus::Value default_processor_value = tasm_->GetDefaultProcessor();
@@ -2904,10 +2902,7 @@ void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
   } else {
     result["useDefault"] = false;
   }
-
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::LayerTreeEnable(

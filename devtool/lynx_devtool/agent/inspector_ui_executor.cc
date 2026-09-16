@@ -10,6 +10,7 @@
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/runtime/lepus/json_parser.h"
+#include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/input_request_handler.h"
@@ -610,47 +611,41 @@ void InspectorUIExecutor::LynxSendEventToVM(
 }
 
 void InspectorUIExecutor::TemplateGetTemplateData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Template target is unavailable");
+    return;
+  }
   Json::Value result(Json::ValueType::objectValue);
-
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
   lynx::lepus::Value* value =
       devtool_platform_facade_->GetLepusValueFromTemplateData();
   if (value != nullptr) {
     std::string template_data_str = lynx::lepus::lepusValueToString(*value);
     result["content"] = template_data_str;
   }
-
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::TemplateGetTemplateJsInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value result(Json::ValueType::objectValue);
-  const auto& params = message["params"];
-  const auto id = message["id"].asInt();
-  if (params.isMember("offset") && params.isMember("size")) {
-    const uint32_t offset = params["offset"].asUInt();
-    const uint32_t size = params["size"].asUInt();
-    CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                              "devtool_platform_facade_ is null");
-    std::string content =
-        devtool_platform_facade_->GetTemplateJsInfo(offset, size);
-    result["data"] = content;
-    response["result"] = result;
-    response["id"] = id;
-    sender->SendMessage("CDP", response);
-  } else {
-    sender->SendErrorResponse(id,
-                              "Params must have offset and size properties");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Template target is unavailable");
+    return;
   }
+  int offset = 0;
+  int size = 0;
+  if (!ReadIntParam(params["offset"], offset) || offset < 0 ||
+      !ReadIntParam(params["size"], size) || size < 0) {
+    responder->SendError(
+        CDPErrorCode::InvalidParams,
+        "Invalid params: offset and size must be non-negative integers");
+    return;
+  }
+  Json::Value result(Json::ValueType::objectValue);
+  result["data"] = devtool_platform_facade_->GetTemplateJsInfo(offset, size);
+  responder->SendSuccess(std::move(result));
 }
 
 // start performance protocol
