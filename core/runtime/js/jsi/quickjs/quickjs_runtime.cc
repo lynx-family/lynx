@@ -868,7 +868,7 @@ Function QuickjsRuntime::createFunctionFromHostFunction(const PropNameID &name,
 std::optional<Value> QuickjsRuntime::call(const Function &function,
                                           const Value &jsThis,
                                           const Value *args, size_t count) {
-  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
+  LYNX_JS_CALL_TIMEOUT_GUARD();
   auto converter = ArgsConverter<LEPUSValue>(
       count, args, [this](const auto &value) { return valueRef(value); });
   return QuickjsHelper::call(
@@ -882,7 +882,7 @@ std::optional<Value> QuickjsRuntime::call(const Function &function,
 std::optional<Value> QuickjsRuntime::callAsConstructor(const Function &function,
                                                        const Value *args,
                                                        size_t count) {
-  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
+  LYNX_JS_CALL_TIMEOUT_GUARD();
   auto converter = ArgsConverter<LEPUSValue>(
       count, args, [this](const auto &value) { return valueRef(value); });
   return QuickjsHelper::callAsConstructor(this,

@@ -114,6 +114,7 @@ class JSRuntimeDelegateImpl : public runtime::js::JSRuntimeDelegate {
     is_handling_exception_ = false;
   }
 
+#if ENABLE_TRACE_PERFETTO
   void OnTimeoutException(
       std::string message,
       std::unordered_map<std::string, std::string> info) override {
@@ -133,13 +134,16 @@ class JSRuntimeDelegateImpl : public runtime::js::JSRuntimeDelegate {
     }
     runtime_->OnErrorOccurred(std::move(error));
   }
+#endif
 
   void Destroy() override { destroyed_ = true; }
 
  private:
   bool destroyed_ = false;
   bool is_handling_exception_ = false;
+#if ENABLE_TRACE_PERFETTO
   uint64_t last_timeout_error_report_ms_ = 0;
+#endif
 
   BTSRuntime* const runtime_;
 };
@@ -269,10 +273,11 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   runtime::js::JSRuntimeExternalParams create_params{};
   create_params.runtime_id = GetRuntimeId();
   create_params.group_id = group_id_;
-  const auto js_call_timeout_cfg =
-      tasm::LynxEnv::GetInstance().GetJSCallTimeoutConfig();
-  create_params.enable_js_call_timeout_guard = js_call_timeout_cfg.enable;
-  create_params.js_call_timeout_ms = js_call_timeout_cfg.timeout_ms;
+#if ENABLE_TRACE_PERFETTO
+  create_params.enable_js_call_timeout_guard =
+      tasm::LynxEnv::GetInstance().IsLynxDebugEnabled();
+  create_params.js_call_timeout_ms = 20000;
+#endif
   create_params.enable_user_bytecode =
       (runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE);
   create_params.enable_new_share_group =

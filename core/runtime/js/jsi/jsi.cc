@@ -40,6 +40,7 @@ void Runtime::reportJSIException(const JSIException& exception) {
   }
 }
 
+#if ENABLE_TRACE_PERFETTO
 std::unique_ptr<shell::WatchDog::JSCallTimeoutGuard>
 Runtime::CreateJSCallTimeoutGuardIfEnabled() {
   if (!external_params_.enable_js_call_timeout_guard ||
@@ -75,6 +76,12 @@ Runtime::CreateJSCallTimeoutGuardIfEnabled() {
       },
       external_params_.js_call_timeout_ms, GetPageUrl());
 }
+#else
+std::unique_ptr<shell::WatchDog::JSCallTimeoutGuard>
+Runtime::CreateJSCallTimeoutGuardIfEnabled() {
+  return nullptr;
+}
+#endif
 
 Instrumentation& Runtime::instrumentation() {
   class NoInstrumentation : public Instrumentation {

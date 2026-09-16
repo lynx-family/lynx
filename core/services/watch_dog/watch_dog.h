@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "base/include/closure.h"
+#include "base/include/compiler_specific.h"
 #include "base/include/fml/thread.h"
 #include "base/include/log/logging.h"
 #include "base/include/lynx_actor.h"
@@ -23,15 +24,17 @@ namespace shell {
 
 class WatchDog final {
  public:
-  using TimeoutErrorHandler =
-      base::MoveOnlyClosure<void, std::string,
-                            std::unordered_map<std::string, std::string>>;
   struct TaskConfig {
     uint32_t delay = 50 * 1000;
     uint32_t allow_delay = 1.5 * 1000;
     uint32_t step = 2;
     base::MoveOnlyClosure<void> idle_task;
   };
+
+#if ENABLE_TRACE_PERFETTO
+  using TimeoutErrorHandler =
+      base::MoveOnlyClosure<void, std::string,
+                            std::unordered_map<std::string, std::string>>;
 
   class JSCallTimeoutGuard {
    public:
@@ -74,6 +77,12 @@ class WatchDog final {
     std::string page_url_;
     std::shared_ptr<std::atomic<bool>> done_flag_;
   };
+#else
+  // The factory is still exported (it returns nullptr) so that devtool
+  // bridges, which are compiled with ENABLE_TRACE_PERFETTO, can link against a
+  // liblynx built without it.
+  class JSCallTimeoutGuard {};
+#endif
 
  private:
   static const fml::RefPtr<fml::TaskRunner>& GetWatchDogTaskRunner() {
@@ -146,5 +155,13 @@ class WatchDog final {
 
 }  // namespace shell
 }  // namespace lynx
+
+#if ENABLE_TRACE_PERFETTO
+#define LYNX_JS_CALL_TIMEOUT_GUARD()             \
+  ALLOW_UNUSED_TYPE auto js_call_timeout_guard = \
+      CreateJSCallTimeoutGuardIfEnabled()
+#else
+#define LYNX_JS_CALL_TIMEOUT_GUARD()
+#endif
 
 #endif  // CORE_SERVICES_WATCH_DOG_WATCH_DOG_H_
