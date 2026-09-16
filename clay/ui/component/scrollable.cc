@@ -207,8 +207,17 @@ void Scrollable::StopAnimation() {
 
 void Scrollable::SetScrollDirection(ScrollDirection direction) {
   if (scroll_direction_ != direction) {
+    StopAnimation();
+    ClearOverscrollState();
     ResetScroll();
+    // An axis change starts a new scroll coordinate system. Do not leave the
+    // old axis's paint displacement (including a bounce) on the render object.
+    scroll_offset_ = {0, 0};
+    GetRenderScroll()->ScrollTo(0, 0);
+    OnScrollDirectionReset();
     scroll_direction_ = direction;
+    GetRenderScroll()->SetScrollDirection(direction);
+    SetScrollStatus(ScrollStatus::kIdle);
     ResetGestureRecognizers();
   }
 }

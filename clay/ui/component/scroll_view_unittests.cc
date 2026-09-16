@@ -366,6 +366,58 @@ TEST_F_UI(ScrollViewTest, SkipCorrectScrollOffsetWhenDetached) {
   EXPECT_EQ(scroll_view->GetRenderScroll()->ScrollTop(), 50);
 }
 
+TEST_F_UI(ScrollViewTest, ChildSizeCorrectionUsesPaintOffset) {
+  outer_view_->OnLayoutUpdated();
+  auto* render_scroll = outer_view_->GetRenderScroll();
+  ASSERT_NE(render_scroll->GetRenderer(), nullptr);
+  render_scroll->ScrollTo(0, 50);
+
+  outer_view_->OnChildSizeChanged(inner_view_.get());
+
+  EXPECT_FLOAT_EQ(50, render_scroll->ScrollTop());
+  EXPECT_FLOAT_EQ(50, outer_view_->GetScrollOffset().y());
+}
+
+TEST_F_UI(ScrollViewTest, DirectionChangeClearsPreviousAxisEventDelta) {
+  auto wrapper = std::make_unique<ScrollWrapper>(-1, ScrollDirection::kVertical,
+                                                 page_.get());
+  wrapper->SetBound(0, 0, 100, 100);
+  wrapper->AddEventCallback(event_attr::kEventScroll);
+  page_->AddChild(wrapper.get());
+  auto content = std::make_unique<View>(-1, page_.get());
+  content->SetBound(0, 0, 500, 500);
+  wrapper->AddChild(content.get());
+  auto* scroll = wrapper->GetScrollView();
+  scroll->OnLayoutUpdated();
+  scroll->SetClampedOverscrollOffset({0, -40});
+
+  ::testing::Mock::VerifyAndClearExpectations(this);
+  scroll->SetScrollDirection(ScrollDirection::kHorizontal);
+  EXPECT_CALL(*this, OnCustomEvent(
+                         event_attr::kEventScroll,
+                         UnorderedElementsAre(
+                             Pair("deltaX", Value(10.f)),
+                             Pair("deltaY", Value(0.f)), Pair("scrollLeft", _),
+                             Pair("scrollTop", _), Pair("scrollWidth", _),
+                             Pair("scrollHeight", _), Pair("isDragging", _))))
+      .Times(1);
+  scroll->OnScrollUpdate(10);
+
+  ::testing::Mock::VerifyAndClearExpectations(this);
+  scroll->OnScrollUpdate(0);
+  scroll->SetClampedOverscrollOffset({-40, 0});
+  scroll->SetScrollDirection(ScrollDirection::kVertical);
+  EXPECT_CALL(*this, OnCustomEvent(
+                         event_attr::kEventScroll,
+                         UnorderedElementsAre(
+                             Pair("deltaX", Value(0.f)),
+                             Pair("deltaY", Value(10.f)), Pair("scrollLeft", _),
+                             Pair("scrollTop", _), Pair("scrollWidth", _),
+                             Pair("scrollHeight", _), Pair("isDragging", _))))
+      .Times(1);
+  scroll->OnScrollUpdate(10);
+}
+
 TEST_F_UI(ScrollViewTest, SkipChildAddedDelegateCorrectionWhenDetached) {
   auto scroll_wrapper = std::make_unique<ScrollWrapper>(
       -1, ScrollDirection::kVertical, page_.get());
