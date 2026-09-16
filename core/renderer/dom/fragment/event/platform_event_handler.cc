@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "base/include/float_comparison.h"
+#include "base/include/string/string_number_convert.h"
+#include "base/include/string/string_utils.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/dom/fragment/event/platform_input_event.h"
@@ -166,7 +168,19 @@ bool PlatformEventHandler::EventThrough() {
                                      enable_event_through_inherit_from_page_);
 }
 
-void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {}
+void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {
+  float value = 0.f;
+  float logical_tap_slop = 50.f;
+  if (base::EndsWith(tap_slop, "px") &&
+      base::StringToFloat(tap_slop.substr(0, tap_slop.length() - 2), value,
+                          true) &&
+      value >= 0.f) {
+    logical_tap_slop = value;
+  }
+  // Pointer coordinates use layout units; tapSlop accepts logical px only.
+  tap_slop_ = logical_tap_slop *
+              platform_ref_->GetEventTargetHelper()->GetDevicePixelRatio();
+}
 
 void PlatformEventHandler::SetLongPressDuration(int32_t long_press_duration) {}
 
