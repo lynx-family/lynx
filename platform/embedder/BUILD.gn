@@ -59,6 +59,7 @@ lynx_core_source_set("embedder") {
     "frame_timing_listener_impl.cc",
     "frame_timing_listener_impl.h",
     "lynx_env.cc",
+    "lynx_env_platform.h",
     "lynx_group.cc",
     "lynx_group_priv.h",
     "lynx_load_meta.cc",
@@ -100,20 +101,20 @@ lynx_core_source_set("embedder") {
     ":public_headers",
     "../../base/src:base_static",
     "../../core:lynx_native",
-    "../../core/renderer/data:data",
+    "../../core/renderer/data",
     "./core:renderer",
-    "./lynx_service:lynx_service",
-    "./resource:resource",
+    "./lynx_service",
+    "./resource",
   ]
   if (enable_napi_binding) {
     public_deps = [
       ":lynx_runtime_lifecycle_observer",
       "../../third_party/napi:weak_node_api_host",
-      "./module:module",
+      "./module",
     ]
   }
   if (is_headless) {
-    deps += [ "./windowless:windowless" ]
+    deps += [ "./windowless" ]
   }
   if (enable_inspector && enable_logbox) {
     deps += [ "./lynx_devtool:lynx_devtool_logbox" ]
@@ -283,7 +284,7 @@ if (enable_unittests) {
     ]
 
     if (enable_inspector) {
-      deps += [ "./lynx_devtool:lynx_devtool" ]
+      deps += [ "./lynx_devtool" ]
     }
 
     if (is_mac) {

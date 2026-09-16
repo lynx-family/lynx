@@ -15,6 +15,7 @@
 #include "clay/gfx/shared_image/utils/d3d11_device_creator.h"
 #include "clay/shell/platform/windows/egl/direct_composition_surface.h"
 #include "clay/shell/platform/windows/egl/egl.h"
+#include "clay/shell/platform/windows/egl/graphics_preparation.h"
 #include "clay/ui/common/isolate.h"
 
 namespace clay {
@@ -250,19 +251,25 @@ bool Manager::InitializeDevice() {
 
 bool Manager::TryInitializeD3D11Device() {
   // Note: Different raster threads cannot use the same egldisplay.
-  d3d11_ = fml::NativeLibrary::Create("d3d11.dll");
+  auto prepared = TakePreparedGraphicsDevice();
+  if (prepared) {
+    d3d11_ = std::move(prepared->library);
+    resolved_device_ = std::move(prepared->device);
+  } else {
+    d3d11_ = fml::NativeLibrary::Create("d3d11.dll");
 
-  if (!d3d11_) {
-    FML_LOG(WARNING) << "Could not load D3D11 library.";
-    return false;
-  }
+    if (!d3d11_) {
+      FML_LOG(WARNING) << "Could not load D3D11 library.";
+      return false;
+    }
 
-  std::optional<PFN_D3D11_CREATE_DEVICE> D3D11CreateDevice =
-      d3d11_->ResolveFunction<PFN_D3D11_CREATE_DEVICE>("D3D11CreateDevice");
-  if (FAILED(CreateSafeD3D11Device(D3D11CreateDevice, &resolved_device_,
-                                   nullptr))) {
-    FML_LOG(WARNING) << "Could not create D3D11 Device.";
-    return false;
+    std::optional<PFN_D3D11_CREATE_DEVICE> D3D11CreateDevice =
+        d3d11_->ResolveFunction<PFN_D3D11_CREATE_DEVICE>("D3D11CreateDevice");
+    if (FAILED(CreateSafeD3D11Device(D3D11CreateDevice, &resolved_device_,
+                                     nullptr))) {
+      FML_LOG(WARNING) << "Could not create D3D11 Device.";
+      return false;
+    }
   }
 
   egl_device_ = eglCreateDeviceANGLE(EGL_D3D11_DEVICE_ANGLE,

@@ -20,6 +20,12 @@ class LynxEnv {
   void SetICUDataPath(const char* icu_data_path);
   const char* GetICUDataPath() const;
 
+  /**
+   * @return true if the prewarm request was accepted, otherwise false.
+   * @see lynx_env_prewarm_async
+   */
+  bool PrewarmAsync();
+
   void SetDevtoolAppInfo(const char* name, const char* value);
   void SetDevtoolEnabled(bool enable);
   bool IsDevtoolEnabled();
@@ -59,6 +65,8 @@ inline void LynxEnv::SetICUDataPath(const char* icu_data_path) {
 inline const char* LynxEnv::GetICUDataPath() const {
   return lynx_env_get_icu_data_path();
 }
+
+inline bool LynxEnv::PrewarmAsync() { return lynx_env_prewarm_async(); }
 
 inline void LynxEnv::SetDevtoolAppInfo(const char* name, const char* value) {
   lynx_env_set_devtool_app_info(name, value);
