@@ -209,7 +209,7 @@ target 'LynxExplorer' do
     'RenderBackend/Skity',
   ]
   pod 'skity', '1.1.0-alpha.3'
-  pod 'LynxTextra', '0.1.5'
+  pod 'LynxTextra', '0.2.0'
 
   pod 'XElement', :path => '../../../..', :subspecs => [
     'AnimaX',

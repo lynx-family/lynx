@@ -13,14 +13,22 @@
 
 #import <XElement/LynxUIMarkdownShadowNode.h>
 #import "adaptor/LynxMarkdownBundle.h"
+#import "adaptor/LynxMarkdownLinkExposureUI.h"
 
 @implementation LynxUIMarkdownV2 {
   ServalMarkdownView *_markdownView;
   __weak LynxUIMarkdownShadowNodeV2 *_shadowNode;
+  NSString *_contentID;
+  BOOL _exposeLinks;
 }
 
 - (LynxMarkdownViewV2 *)createView {
-  return [[LynxMarkdownViewV2 alloc] init];
+  LynxMarkdownViewV2 *view = [[LynxMarkdownViewV2 alloc] init];
+  __weak typeof(self) weakSelf = self;
+  view.exposureUpdater = ^{
+    [weakSelf updateLinkExposure];
+  };
+  return view;
 }
 
 - (void)didInsertChild:(LynxUI *)child atIndex:(NSInteger)index {
@@ -34,6 +42,8 @@
   if (value != nil && [value isKindOfClass:[LynxMarkdownBundleV2 class]]) {
     LynxMarkdownBundleV2 *bundle = (LynxMarkdownBundleV2 *)value;
     _shadowNode = bundle.shadowNode;
+    _contentID = bundle.contentID;
+    _exposeLinks = bundle.exposeLinks;
     [self updateContentOffset];
     _markdownView = [self.view setBundle:bundle];
   }
@@ -91,7 +101,10 @@
                              SelectionType:(ServalMarkdownCharRangeType)selectionType {
   NSInteger start = -1;
   NSInteger end = -1;
-  if (selectionType == kServalMarkdownCharRangeTypeChar) {
+  if (startX < 0 || startY < 0 || endX < 0 || endY < 0) {
+    return nil;
+  }
+  if (startX != endX || startY != endY) {
     start = [markdown getCharIndexByPoint:startX y:startY indexType:kServalMarkdownIndexTypeChar];
     end = [markdown getCharIndexByPoint:endX y:endY indexType:kServalMarkdownIndexTypeChar];
   } else {
@@ -111,6 +124,17 @@
   }
   if (start < 0 || end < 0) {
     return nil;
+  }
+  if (start == end) {
+    NSRange range = [markdown getCharRangeByPoint:startX
+                                                y:startY
+                                        indexType:kServalMarkdownIndexTypeChar
+                                        rangeType:kServalMarkdownCharRangeTypeChar];
+    if (range.location == NSNotFound || range.length == 0) {
+      return nil;
+    }
+    start = range.location;
+    end = NSMaxRange(range);
   }
   if (start > end) {
     NSInteger tmp = start;
@@ -138,15 +162,15 @@ LYNX_UI_METHOD(getContent) {
     if ([params[@"end"] isKindOfClass:[NSNumber class]]) {
       end = [params[@"end"] integerValue];
     }
-    if (start >= end) {
-      callback(kUIMethodParamInvalid, @"start >= end");
+    if (start > end) {
+      callback(kUIMethodParamInvalid, @"start > end");
       return;
     }
     content = [markdown getContent:(int)start
                                end:(int)end
                          indexType:[self toIndexType:params[@"indexType"]]];
   } else {
-    content = [markdown getContent];
+    content = [markdown getContent:0 end:INT32_MAX indexType:kServalMarkdownIndexTypeChar];
   }
   callback(kUIMethodSuccess, @{@"content" : content ?: @""});
 }
@@ -261,28 +285,33 @@ LYNX_UI_METHOD(setTextSelection) {
                          EndY:endY.doubleValue - contentOffset.y
                 SelectionType:[self toSelectionRangeType:params[@"selectionTextType"]]];
   if (range == nil || range.count < 2) {
-    callback(kUIMethodUnknown, @"Can not set text selection.");
+    [markdown setTextSelection:-1 end:-1];
+    callback(
+        kUIMethodSuccess,
+        @{@"boxes" : @[],
+          @"handles" : @[]});
     return;
   }
 
   [markdown setTextSelection:range[0].intValue end:range[1].intValue];
   NSArray<NSValue *> *boxes = [markdown getSelectedLineBoundingRect];
   if (boxes.count == 0) {
-    callback(kUIMethodSuccess, @{});
+    callback(
+        kUIMethodSuccess,
+        @{@"boxes" : @[],
+          @"handles" : @[]});
     return;
   }
   CGRect rect = [self getRelativeBoundingClientRect:params];
   NSMutableDictionary *result = [[self getTextBoundingRectFromBoxes:boxes
                                                            textRect:rect] mutableCopy];
 
-  CGPoint handle = [markdown getSelectionHandlePosition];
-  if (handle.x >= 0 && handle.y >= 0) {
-    NSDictionary *handleMap = [self getHandleMap:handle.x
-                                               Y:handle.y
-                                          Radius:[markdown getSelectionHandleRadius]
-                                        TextRect:rect];
-    result[@"handles"] = @[ handleMap ];
-  }
+  CGRect first = boxes.firstObject.CGRectValue;
+  CGRect last = boxes.lastObject.CGRectValue;
+  result[@"handles"] = @[
+    [self getHandleMap:CGRectGetMinX(first) Y:CGRectGetMaxY(first) Radius:20.f TextRect:rect],
+    [self getHandleMap:CGRectGetMaxX(last) Y:CGRectGetMaxY(last) Radius:20.f TextRect:rect]
+  ];
   callback(kUIMethodSuccess, [result copy]);
 }
 
@@ -328,16 +357,8 @@ LYNX_UI_METHOD(getParseResult) {
     result[tag] = resultArray;
   }
 
-  NSString *contentID = [markdown getContentID];
-  if (contentID.length == 0) {
-    LynxShadowNode *node = [self.context.nodeOwner nodeWithSign:self.sign];
-    if ([node isKindOfClass:[LynxUIMarkdownShadowNodeV2 class]]) {
-      contentID = [(LynxUIMarkdownShadowNodeV2 *)node currentContentID];
-    }
-  }
-
   callback(kUIMethodSuccess, @{
-    @"id" : contentID ?: @"",
+    @"id" : _contentID ?: @"",
     @"result" : [result copy],
   });
 }
@@ -397,7 +418,45 @@ LYNX_UI_METHOD(getImages) {
   };
 }
 
+- (void)updateLinkExposure {
+  [self removeChildrenExposureUI];
+  if (_markdownView == nil || !_exposeLinks) {
+    return;
+  }
+  NSArray<NSString *> *urls = [_markdownView getLinkUrl];
+  NSArray<NSString *> *contents = [_markdownView getLinkContent];
+  NSArray<NSValue *> *rects = [_markdownView getLinkBoundingRect];
+  CGPoint offset = [self contentOffset];
+  for (NSUInteger index = 0; index < urls.count; index++) {
+    NSString *identifier =
+        [NSString stringWithFormat:@"%ld_link_%lu", (long)self.sign, (unsigned long)index];
+    CGRect rect = CGRectOffset(rects[index].CGRectValue, offset.x, offset.y);
+    LynxMarkdownLinkExposureUIV2 *child =
+        [[LynxMarkdownLinkExposureUIV2 alloc] initWithRect:rect
+                                                  uniqueID:identifier
+                                                       url:urls[index]
+                                                   content:contents[index]];
+    [self insertChild:child atIndex:self.children.count];
+    [self.context addUIToExposedMap:child
+               withUniqueIdentifier:identifier
+                          extraData:[child getData]
+                         useOptions:[child getOption]];
+  }
+}
+
+- (void)removeChildrenExposureUI {
+  for (NSInteger index = self.children.count - 1; index >= 0; index--) {
+    LynxUI *child = self.children[index];
+    if ([child isKindOfClass:LynxMarkdownLinkExposureUIV2.class]) {
+      LynxMarkdownLinkExposureUIV2 *exposure = (LynxMarkdownLinkExposureUIV2 *)child;
+      [self.context removeUIFromExposedMap:exposure withUniqueIdentifier:[exposure getUniqueID]];
+      [self removeChild:exposure atIndex:index];
+    }
+  }
+}
+
 - (void)dealloc {
+  [self removeChildrenExposureUI];
   [self.view setBundle:nil];
   _markdownView = nil;
   _shadowNode = nil;
