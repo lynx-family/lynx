@@ -59,6 +59,8 @@
             callback:(nullable ClayKeyEventCallback)callback
             userData:(nullable void*)userData;
 
+- (BOOL)performTextInputHistoryAction:(BOOL)redo clientID:(int)client_id;
+
 - (nonnull FlutterPlatformViewController*)platformViewController;
 
 - (BOOL)postUIThreadTask:(const fml::closure&)callback;
