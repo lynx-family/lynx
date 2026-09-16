@@ -210,7 +210,7 @@ jobs:
   harmony-explorer-build:
     runs-on: lynx-custom-container
     container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:bf493c3710de3c44bfa84caf402c0727b9310c42497f6e52580ad441ea640ef1
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:da3d7313011f5f0e63a118197d15c005617cf3147282e77b1cd30402dcd142ac
       credentials:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -473,7 +473,7 @@ jobs:
     name: Publish Harmony SDK (${{ matrix.label }})
     runs-on: lynx-custom-container
     container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:25913874dad0557526b44f9c9ab30b9873080009db85bb569d718d2bb5f0e074
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:da3d7313011f5f0e63a118197d15c005617cf3147282e77b1cd30402dcd142ac
       credentials:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
