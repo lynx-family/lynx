@@ -45,6 +45,7 @@ enum ElementBuiltInTagEnum {
   ELEMENT_X_NESTED_SCROLL_VIEW,
   ELEMENT_INLINE_IMAGE,
   ELEMENT_SLOT,
+  ELEMENT_X_SCROLL_VIEW_ORIGIN,
 };
 
 enum class ElementBuiltInAttributeEnum {
