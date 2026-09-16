@@ -203,8 +203,11 @@ void PlatformRendererHarmony::UpdateHostLayout(
   auto* ui_owner = context_ != nullptr ? context_->GetUIOwner() : nullptr;
   if (ui_owner != nullptr) {
     constexpr float kZeroMetrics[4] = {0.f, 0.f, 0.f, 0.f};
-    ui_owner->UpdateLayout(GetId(), left, top, frame.w, frame.h, kZeroMetrics,
-                           kZeroMetrics, nullptr, 0.f, 0);
+    ui_owner->UpdateLayout(
+        GetId(), left, top, frame.w, frame.h,
+        HasLayoutMetrics() ? GetLayoutPaddings() : kZeroMetrics,
+        HasLayoutMetrics() ? GetLayoutMargins() : kZeroMetrics, nullptr, 0.f,
+        0);
   }
 }
 
