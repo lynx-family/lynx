@@ -406,6 +406,30 @@ TEST_F_UI(TextSelectionTest,
   EXPECT_EQ(event_count, 0);
 }
 
+TEST_F_UI(TextSelectionTest,
+          CustomTextSelectionAfterEnableSuppressesBuiltInGesture) {
+  text_view_->SetAttribute("text-selection", clay::Value(true));
+  text_view_->SetAttribute("custom-text-selection", clay::Value(true));
+
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kHorizontal));
+  EXPECT_FALSE(
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kVertical));
+  EXPECT_FALSE(text_view_->HasLongPressGestureRecognizer());
+}
+
+TEST_F_UI(TextSelectionTest,
+          DisablingCustomTextSelectionRestoresBuiltInGesture) {
+  text_view_->SetAttribute("text-selection", clay::Value(true));
+  text_view_->SetAttribute("custom-text-selection", clay::Value(true));
+  text_view_->SetAttribute("custom-text-selection", clay::Value(false));
+
+  const bool has_drag_gesture =
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kHorizontal) &&
+      text_view_->HasDragGestureRecognizer(ScrollDirection::kVertical);
+  EXPECT_TRUE(text_view_->HasLongPressGestureRecognizer() || has_drag_gesture);
+}
+
 TEST_F_UI(TextSelectionTest, CommandSelectAllDispatchesSelectionChange) {
   const std::u16string text = u"select all";
   text_view_->SetParagraph(CreateParagraph(text), text);

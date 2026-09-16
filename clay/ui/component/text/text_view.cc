@@ -152,16 +152,16 @@ void TextView::SetAttribute(const char* attr, const clay::Value& value) {
   if (kw == KeywordID::kTextSelection) {
     if ((is_text_selection_ = attribute_utils::GetBool(value))) {
       SetFocusable(true);
-      if (!custom_text_selection_) {
-        ResetGestureRecognizers();
-      }
-    } else {
-      ClearGestureRecognizers();
     }
+    UpdateTextSelectionGestureRecognizers();
   } else if (kw == KeywordID::kCustomContextMenu) {
     custom_context_menu_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kCustomTextSelection) {
-    custom_text_selection_ = attribute_utils::GetBool(value);
+    const bool custom_text_selection = attribute_utils::GetBool(value);
+    if (custom_text_selection_ != custom_text_selection) {
+      custom_text_selection_ = custom_text_selection;
+      UpdateTextSelectionGestureRecognizers();
+    }
   } else if (kw == KeywordID::kSelectionHandleColor) {
     SetSelectionHandleColor(value.IsString()
                                 ? attribute_utils::GetColor(value)
@@ -287,6 +287,14 @@ void TextView::ClearGestureRecognizers() {
   RemoveGestureRecognizer(drag_recognizer_);
   drag_recognizer_ = nullptr;
 #endif
+}
+
+void TextView::UpdateTextSelectionGestureRecognizers() {
+  if (is_text_selection_ && !custom_text_selection_) {
+    ResetGestureRecognizers();
+  } else {
+    ClearGestureRecognizers();
+  }
 }
 
 void TextView::HandleCommandHotKey(LogicalKeyboardKey key_code) {
