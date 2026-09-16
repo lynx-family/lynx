@@ -149,8 +149,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_LIST_WITH_SYNC_FLUSH,
     ENABLE_FETCH_API_STANDARD_STREAMING,
     ENABLE_RELEASE_APP_INSTANCE,
-    ENABLE_JS_CALL_TIMEOUT_GUARD,
-    JS_CALL_TIMEOUT_MS,
     ENABLE_JS_CALL_NATIVE_FREQUENCY_MONITOR,
     JS_CALL_NATIVE_FREQUENCY_WINDOW_MS,
     JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
@@ -326,8 +324,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
              "enable_fetch_api_standard_streaming"},
             {Key::ENABLE_RELEASE_APP_INSTANCE, "enable_release_app_instance"},
-            {Key::ENABLE_JS_CALL_TIMEOUT_GUARD, "enable_js_call_timeout_guard"},
-            {Key::JS_CALL_TIMEOUT_MS, "js_call_timeout_ms"},
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
             {Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
              "fix_old_fixed_insert_self_use_render_parent"},
@@ -468,11 +464,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableJSBlockingMonitor();
   uint32_t GetJSBlockingThresholdMs();
   uint32_t GetJSBlockingReportIntervalMs();
-  struct JSCallTimeoutConfig {
-    bool enable;
-    uint32_t timeout_ms;
-  };
-  JSCallTimeoutConfig GetJSCallTimeoutConfig();
   bool EnableJSCallNativeFrequencyMonitor();
   uint32_t GetJSCallNativeFrequencyMonitorWindowMs();
   uint32_t GetJSCallNativeFrequencyMonitorThresholdCommon();
