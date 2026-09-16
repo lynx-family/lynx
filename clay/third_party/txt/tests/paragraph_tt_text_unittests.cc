@@ -185,6 +185,25 @@ TEST(ParagraphTTTextTest, DefaultPlaceholderUsesAlphabeticBaseline) {
   EXPECT_EQ(paragraph.paragraph_->GetCharCount(), 1u);
 }
 
+TEST(ParagraphTTTextTest, MinIntrinsicWidthUsesWidestBreakableSegment) {
+  tttext::ParagraphStyle paragraph_style;
+#if defined(ENABLE_SKITY)
+  ParagraphTTText paragraph(nullptr, paragraph_style, nullptr);
+#else
+  ParagraphTTText paragraph(nullptr, paragraph_style);
+#endif
+  tttext::Style style;
+  PlaceholderRun placeholder(30.f, 10.f, PlaceholderAlignment::kBaseline,
+                             TextBaseline::kAlphabetic, 0.f);
+  paragraph.AddPlaceholder(style, placeholder, false);
+  paragraph.AddPlaceholder(style, placeholder, false);
+  paragraph.AddPlaceholder(style, placeholder, false);
+
+  paragraph.Layout(40);
+
+  EXPECT_DOUBLE_EQ(paragraph.GetMinIntrinsicWidth(), 30);
+}
+
 #if defined(ENABLE_SKITY)
 class ParagraphTTTextReuseTest : public ::testing::Test {
  protected:
