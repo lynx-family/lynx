@@ -881,13 +881,18 @@ void ScrollView::CorrectScrollOffset() {
   if (!scroll->GetRenderer()) {
     return;
   }
-  // Use the paint offset to correct the scroll offset. If we correct it using
-  // scroll_offset_, the corrected scroll offset can get out of sync with the
-  // paint offset, causing flickering.
-  const auto paint_offset = scroll->GetPaintOffsetForScroll();
+  // Three-offset model: correct the *logical* scroll offset into the new valid
+  // range. Overscroll displacement is tracked separately (overscroll_offset_)
+  // and composed into the paint offset at paint time, so we must not fold the
+  // paint offset (which includes the rubber-band displacement) back into the
+  // logical offset here -- doing so was the source of the content-resize double
+  // adjustment. Callers that want to consume pending overscroll on content
+  // growth do so explicitly before updating the offset.
+  const float max_offset = scroll_direction_ == ScrollDirection::kVertical
+                               ? scroll->MaxScrollHeight()
+                               : scroll->MaxScrollWidth();
   if (scroll_direction_ == ScrollDirection::kVertical) {
-    const float target_offset =
-        std::min(paint_offset.y(), scroll->MaxScrollHeight());
+    const float target_offset = std::min(scroll_offset_.y(), max_offset);
     if (RoughlyNotZero(scroll_offset_.y() - target_offset)) {
       OnScrollUpdate(target_offset);
       return;
@@ -897,8 +902,7 @@ void ScrollView::CorrectScrollOffset() {
       last_scroll_offset_ = scroll->ScrollOffset();
     }
   } else {
-    const float target_offset =
-        std::min(paint_offset.x(), scroll->MaxScrollWidth());
+    const float target_offset = std::min(scroll_offset_.x(), max_offset);
     if (RoughlyNotZero(scroll_offset_.x() - target_offset)) {
       OnScrollUpdate(target_offset);
       return;

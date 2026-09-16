@@ -51,6 +51,12 @@ Current spec files:
 - `spec/scroll_listener_spec.md`
   - Normative contract for scroll listener ownership and registration
   - Covers weak references, tree changes, callback mutation, and destruction
+- `spec/list_scroll_offset_spec.md`
+  - Normative contract for `ListContainerView` scroll/overscroll/paint offset
+    tracking and the content-resize base-offset rule
+  - Covers the three offset models, the platform<->ListElement linkage, the
+    base-offset rule in `UpdateContentOffsetForListContainer`, and
+    overflow-rect / max-scroll-range semantics
 
 Relationship between the specs:
 
