@@ -4,6 +4,8 @@
 
 #include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_harmony.h"
 
+#include <algorithm>
+#include <array>
 #include <utility>
 
 #include "base/include/fml/synchronization/waitable_event.h"
@@ -17,10 +19,22 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/text_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
 namespace lynx {
 namespace tasm {
+namespace {
+
+std::array<float, 4> CopyMetrics(const float* source) {
+  std::array<float, 4> result = {0.f, 0.f, 0.f, 0.f};
+  if (source != nullptr) {
+    std::copy_n(source, result.size(), result.data());
+  }
+  return result;
+}
+
+}  // namespace
 
 NativePaintingCtxHarmony::NativePaintingCtxHarmony(
     const std::shared_ptr<harmony::LynxContext>& context) {
@@ -46,6 +60,38 @@ NativePaintingCtxHarmony::~NativePaintingCtxHarmony() {
 void NativePaintingCtxHarmony::SetUIOperationQueue(
     const std::shared_ptr<shell::UIOperationQueueInterface>& queue) {
   queue_ = std::static_pointer_cast<shell::DynamicUIOperationQueue>(queue);
+}
+
+void NativePaintingCtxHarmony::UpdatePaintingNode(
+    int id, bool, const fml::RefPtr<PropBundle>& painting_data) {
+  if (!painting_data) {
+    return;
+  }
+  Enqueue([ref = platform_ref_, id, painting_data]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref)
+        ->UpdateAttributes(id, painting_data);
+  });
+}
+
+void NativePaintingCtxHarmony::UpdateLayout(
+    int tag, float x, float y, float width, float height, const float* paddings,
+    const float* margins, const float* borders, const float* bounds,
+    const float* sticky, float max_height, uint32_t node_index,
+    bool display_none) {
+  (void)bounds;
+  (void)sticky;
+  (void)max_height;
+  (void)node_index;
+  (void)display_none;
+  auto padding_values = CopyMetrics(paddings);
+  auto margin_values = CopyMetrics(margins);
+  auto border_values = CopyMetrics(borders);
+  Enqueue([ref = platform_ref_, tag, x, y, width, height, padding_values,
+           margin_values, border_values]() {
+    std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref)
+        ->UpdateLayoutMetrics(tag, x, y, width, height, padding_values.data(),
+                              margin_values.data(), border_values.data());
+  });
 }
 
 void NativePaintingCtxHarmony::Flush() {
@@ -88,7 +134,9 @@ void NativePaintingCtxHarmony::FinishLayoutOperation(
 
 std::unique_ptr<pub::Value> NativePaintingCtxHarmony::GetTextInfo(
     const std::string& content, const pub::Value& info) {
-  return nullptr;
+  auto context = renderer_context_->GetLynxContext();
+  auto result = harmony::TextUtils::GetTextInfo(content, info, context.get());
+  return std::make_unique<PubLepusValue>(std::move(result));
 }
 
 void NativePaintingCtxHarmony::StopExposure(const pub::Value& options) {
@@ -237,7 +285,14 @@ void NativePaintingCtxHarmony::CreatePlatformRenderer(
 void NativePaintingCtxHarmony::CreatePlatformExtendedRenderer(
     int id, const base::String& tag_name,
     const fml::RefPtr<PropBundle>& init_data,
-    const PlatformRendererInitConfig& init_config) {}
+    const PlatformRendererInitConfig& init_config) {
+  Enqueue([platform_ref = platform_ref_, id, tag_name, init_data,
+           init_config]() {
+    auto ref = std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(
+        platform_ref);
+    ref->CreatePlatformExtendedRenderer(id, tag_name, init_data, init_config);
+  });
+}
 
 void NativePaintingCtxHarmony::EnqueueDisplayList(int id, DisplayList list) {
   Enqueue([platform_ref = platform_ref_, id, list = std::move(list)]() mutable {

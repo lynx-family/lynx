@@ -41,12 +41,12 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
                           uint32_t node_index) override {}
   void UpdatePaintingNode(
       int id, bool tend_to_flatten,
-      const fml::RefPtr<PropBundle>& painting_data) override {}
+      const fml::RefPtr<PropBundle>& painting_data) override;
   void UpdateLayout(int tag, float x, float y, float width, float height,
                     const float* paddings, const float* margins,
                     const float* borders, const float* bounds,
                     const float* sticky, float max_height, uint32_t node_index,
-                    bool display_none) override {}
+                    bool display_none) override;
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override {}
   void Flush() override;
   void HandleValidate(int tag) override {}
