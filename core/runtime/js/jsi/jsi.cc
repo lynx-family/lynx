@@ -42,6 +42,7 @@ void Runtime::reportJSIException(const JSIException& exception) {
 
 std::unique_ptr<shell::WatchDog::JSCallTimeoutGuard>
 Runtime::CreateJSCallTimeoutGuardIfEnabled() {
+#if ENABLE_TRACE_PERFETTO
   if (!external_params_.enable_js_call_timeout_guard ||
       external_params_.js_call_timeout_ms == 0) {
     return nullptr;
@@ -74,6 +75,9 @@ Runtime::CreateJSCallTimeoutGuardIfEnabled() {
         delegate->OnTimeoutException(std::move(message), std::move(info));
       },
       external_params_.js_call_timeout_ms, GetPageUrl());
+#else
+  return nullptr;
+#endif
 }
 
 Instrumentation& Runtime::instrumentation() {
