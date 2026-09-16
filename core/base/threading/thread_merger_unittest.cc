@@ -21,13 +21,22 @@ class ThreadMergerTest : public ::testing::Test {
   ThreadMergerTest() = default;
   ~ThreadMergerTest() override = default;
 
-  void SetUp() override { UIThread::Init(); }
+  void SetUp() override {
+#if !defined(OS_WIN)
+    UIThread::Init();
+#endif
+  }
 };
 
 TEST_F(ThreadMergerTest, SameRunner) {
+#if defined(OS_WIN)
+  fml::Thread thread("thread_merger");
+  auto* runner = thread.GetTaskRunner().get();
+#else
   TaskRunnerManufactor manufactor(ThreadStrategyForRendering::MULTI_THREADS,
                                   true, true);
   auto* runner = manufactor.GetTASMTaskRunner().get();
+#endif
   fml::AutoResetWaitableEvent arwe;
 
   fml::MessageLoop* looper = nullptr;
@@ -41,10 +50,10 @@ TEST_F(ThreadMergerTest, SameRunner) {
 
   runner->PostTask([&arwe, runner, looper]() {
     auto merger = std::make_unique<ThreadMerger>(runner, runner);
-    ASSERT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
 
     merger = nullptr;
-    ASSERT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(looper, &(fml::MessageLoop::GetCurrent()));
 
     arwe.Signal();
   });
@@ -53,10 +62,17 @@ TEST_F(ThreadMergerTest, SameRunner) {
 }
 
 TEST_F(ThreadMergerTest, DifferentRunners) {
+#if defined(OS_WIN)
+  fml::Thread owner_thread("thread_merger_owner");
+  fml::Thread subsumed_thread("thread_merger_subsumed");
+  auto* owner_runner = owner_thread.GetTaskRunner().get();
+  auto* subsumed_runner = subsumed_thread.GetTaskRunner().get();
+#else
   TaskRunnerManufactor manufactor(ThreadStrategyForRendering::MULTI_THREADS,
                                   true, true);
   auto* owner_runner = manufactor.GetTASMTaskRunner().get();
   auto* subsumed_runner = manufactor.GetLayoutTaskRunner().get();
+#endif
 
   fml::AutoResetWaitableEvent arwe;
 
@@ -89,8 +105,8 @@ TEST_F(ThreadMergerTest, DifferentRunners) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
@@ -107,8 +123,8 @@ TEST_F(ThreadMergerTest, DifferentRunners) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
@@ -116,10 +132,17 @@ TEST_F(ThreadMergerTest, DifferentRunners) {
 }
 
 TEST_F(ThreadMergerTest, RvalueMove) {
+#if defined(OS_WIN)
+  fml::Thread owner_thread("thread_merger_owner");
+  fml::Thread subsumed_thread("thread_merger_subsumed");
+  auto* owner_runner = owner_thread.GetTaskRunner().get();
+  auto* subsumed_runner = subsumed_thread.GetTaskRunner().get();
+#else
   TaskRunnerManufactor manufactor(ThreadStrategyForRendering::MULTI_THREADS,
                                   true, true);
   auto* owner_runner = manufactor.GetTASMTaskRunner().get();
   auto* subsumed_runner = manufactor.GetLayoutTaskRunner().get();
+#endif
 
   fml::AutoResetWaitableEvent arwe;
 
@@ -152,8 +175,8 @@ TEST_F(ThreadMergerTest, RvalueMove) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
@@ -179,8 +202,8 @@ TEST_F(ThreadMergerTest, RvalueMove) {
   arwe.Reset();
 
   subsumed_runner->PostTask([&arwe, owner_looper, subsumed_looper]() {
-    ASSERT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
-    ASSERT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_NE(owner_looper, &(fml::MessageLoop::GetCurrent()));
+    EXPECT_EQ(subsumed_looper, &(fml::MessageLoop::GetCurrent()));
     arwe.Signal();
   });
 
