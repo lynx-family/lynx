@@ -208,6 +208,10 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
   event_target_helper_->SetDevicePixelRatio(layouts_unit_per_px);
 }
 
+void NativePaintingCtxPlatformRef::SetTapSlop(const std::string &tap_slop) {
+  event_handler_->SetTapSlop(tap_slop);
+}
+
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
     int int_event_data[], float float_event_data[],
     int32_t event_target_root_id) {

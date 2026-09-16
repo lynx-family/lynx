@@ -149,6 +149,12 @@ void PaintingContext::UpdateEventInfo(bool has_touch_pseudo) {
       });
 }
 
+void PaintingContext::SetTapSlop(const std::string& tap_slop) {
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(), tap_slop]() {
+    platform_ref->SetTapSlop(tap_slop);
+  });
+}
+
 void PaintingContext::UpdateFlattenStatus(int id, bool flatten) {
   Enqueue([platform_ref = platform_impl_->GetPlatformRef(), id, flatten]() {
     platform_ref->UpdateFlattenStatus(id, flatten);

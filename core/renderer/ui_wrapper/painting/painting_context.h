@@ -235,6 +235,7 @@ class PaintingContext {
   void SetGestureDetectorState(int64_t id, int32_t gesture_id, int32_t state);
 
   void UpdateEventInfo(bool has_touch_pseudo);
+  void SetTapSlop(const std::string& tap_slop);
   void UpdateFlattenStatus(int id, bool flatten);
 
   void ListReusePaintingNode(int id, const base::String& item_key);

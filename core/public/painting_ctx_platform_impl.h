@@ -59,6 +59,7 @@ class PaintingCtxPlatformRef {
   virtual void RequestExternalMemoryReport(int64_t) {}
   virtual void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {}
   virtual void UpdateEventInfo(bool has_touch_pseudo) {}
+  virtual void SetTapSlop(const std::string& tap_slop) {}
   virtual void UpdateFlattenStatus(int id, bool flatten) {}
 
   virtual void ListReusePaintingNode(int id, const std::string& item_key){};
