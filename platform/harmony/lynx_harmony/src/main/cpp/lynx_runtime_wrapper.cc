@@ -138,7 +138,6 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
     bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
     bool enable_bytecode, std::string bytecode_source_url,
     std::unique_ptr<ModuleFactoryHarmony> module_factory,
-    std::shared_ptr<tasm::TemplateData> template_data,
     lepus::Value global_props)
     : env_(env) {
   napi_create_reference(env, js_this, 0, &runtime_wrapper_ref_);
@@ -302,8 +301,22 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
   auto module_factory = std::make_unique<ModuleFactoryHarmony>(
       env, module_args, sendable_module_args);
 
-  auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
-      env, args[11], args[12], args[10]);
+  lepus::Value preset_data;
+  if (argc > 12 && args[11] != nullptr) {
+    preset_data = tasm::TemplateDataHarmony::GenerateLepusValue(env, args[11]);
+    if (!preset_data.IsNil()) {
+      bool read_only = false;
+      napi_valuetype read_only_type;
+      if (args[12] != nullptr &&
+          napi_typeof(env, args[12], &read_only_type) == napi_ok &&
+          read_only_type == napi_boolean) {
+        napi_get_value_bool(env, args[12], &read_only);
+      }
+      if (!read_only) {
+        preset_data = lepus::Value::Clone(preset_data);
+      }
+    }
+  }
 
   lepus_value global_props =
       tasm::TemplateDataHarmony::GenerateLepusValue(env, args[13]);
@@ -314,7 +327,7 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
       std::move(js_group_thread_name), use_quickjs, enable_js_group_thread,
       std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), std::move(module_factory),
-      std::move(template_data), std::move(global_props));
+      std::move(global_props));
 
   static auto finalizer = [](napi_env env, void* data, void* hint) {
     if (data != nullptr) {
@@ -328,6 +341,9 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
 
   NAPI_THROW_IF_FAILED_NULL(env, status,
                             "NativeCreate failed due to napi_wrap failed!");
+  if (!preset_data.IsNil()) {
+    wrapper->RuntimeStandalone().SetPresetData(std::move(preset_data));
+  }
   napi_value wrapper_ptr = nullptr;
   napi_create_bigint_uint64(env, reinterpret_cast<uintptr_t>(wrapper),
                             &wrapper_ptr);
