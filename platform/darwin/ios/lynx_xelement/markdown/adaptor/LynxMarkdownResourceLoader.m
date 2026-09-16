@@ -29,6 +29,9 @@ static UIFontWeight LynxMarkdownToUIFontWeight(NSInteger weight) {
   if (weight >= 500) {
     return UIFontWeightMedium;
   }
+  if (weight >= 400) {
+    return UIFontWeightRegular;
+  }
   if (weight >= 300) {
     return UIFontWeightLight;
   }
@@ -225,10 +228,6 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
     if (_released) {
       return nil;
     }
-    LynxMarkdownInlineViewHandle *cachedHandle = _inlineViewCache[idSelector];
-    if (cachedHandle != nil) {
-      return cachedHandle;
-    }
   }
 
   NSArray<LynxShadowNode *> *children = [_host markdownHostChildren];
@@ -244,7 +243,16 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
     }
   }
   if (targetNode == nil) {
+    @synchronized(self) {
+      [_inlineViewCache removeObjectForKey:idSelector];
+    }
     return nil;
+  }
+  @synchronized(self) {
+    LynxMarkdownInlineViewHandle *cachedHandle = _inlineViewCache[idSelector];
+    if (cachedHandle != nil && [cachedHandle isForNode:targetNode]) {
+      return cachedHandle;
+    }
   }
 
   LynxMarkdownInlineViewHandle *handle =

@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, readonly, nullable) MarkdownMeasurer *markdownMeasurer;
 @property(nonatomic, weak, readonly, nullable) LynxUIMarkdownShadowNodeV2 *shadowNode;
 @property(nonatomic, assign, readonly) CGSize measuredSize;
+@property(nonatomic, copy, readonly) NSString *contentID;
+@property(nonatomic, assign, readonly) BOOL exposeLinks;
 
 - (instancetype)initWithMarkdownMeasurer:(nullable MarkdownMeasurer *)markdownMeasurer
                               shadowNode:(nullable LynxUIMarkdownShadowNodeV2 *)shadowNode

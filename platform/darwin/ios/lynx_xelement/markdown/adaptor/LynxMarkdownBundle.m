@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxMarkdownBundle.h"
+#import <XElement/LynxUIMarkdownShadowNode.h>
 
 @implementation LynxMarkdownBundleV2
 
@@ -14,6 +15,8 @@
     _markdownMeasurer = markdownMeasurer;
     _shadowNode = shadowNode;
     _measuredSize = measuredSize;
+    _contentID = [shadowNode currentContentID] ?: @"";
+    _exposeLinks = [shadowNode exposesLinks];
   }
   return self;
 }

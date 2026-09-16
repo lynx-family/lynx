@@ -33,6 +33,10 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   CGFloat _top;
 }
 
+- (BOOL)isForNode:(LynxNativeLayoutNode *)layoutNode {
+  return _layoutNode == layoutNode;
+}
+
 - (instancetype)initWithLayoutNode:(LynxNativeLayoutNode *)layoutNode
                               host:(id<LynxMarkdownResourceLoaderHost>)host {
   self = [super init];
@@ -156,6 +160,31 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   } else {
     dispatch_async(dispatch_get_main_queue(), updateUI);
   }
+}
+
+- (ServalMarkdownVerticalAlign)getVerticalAlign {
+  switch (_layoutNode.shadowNodeStyle.valign) {
+    case LynxVerticalAlignTop:
+      return kServalMarkdownVerticalAlignTop;
+    case LynxVerticalAlignTextTop:
+      return kServalMarkdownVerticalAlignTextTop;
+    case LynxVerticalAlignCenter:
+    case LynxVerticalAlignMiddle:
+      return kServalMarkdownVerticalAlignCenter;
+    case LynxVerticalAlignBottom:
+      return kServalMarkdownVerticalAlignBottom;
+    case LynxVerticalAlignTextBottom:
+      return kServalMarkdownVerticalAlignTextBottom;
+    case LynxVerticalAlignLength:
+      return kServalMarkdownVerticalAlignLength;
+    default:
+      return kServalMarkdownVerticalAlignBaseline;
+  }
+}
+
+- (CGFloat)getVerticalAlignLength {
+  LynxShadowNodeStyle *style = _layoutNode.shadowNodeStyle;
+  return style.valign == LynxVerticalAlignLength ? style.valignLength : 0.f;
 }
 
 - (LynxUI *)findUI {

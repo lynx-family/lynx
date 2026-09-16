@@ -4,10 +4,6 @@
 
 #import "LynxMarkdownEventDispatcher.h"
 
-static NSString *LynxMarkdownSelectionDirection(NSInteger startIndex, NSInteger endIndex) {
-  return startIndex <= endIndex ? @"forward" : @"backward";
-}
-
 static NSString *LynxMarkdownOverflowType(ServalMarkdownTextOverflow overflow) {
   return overflow == kServalMarkdownTextOverflowEllipsis ? @"ellipsis" : @"clip";
 }
@@ -32,12 +28,16 @@ static NSString *LynxMarkdownSelectionState(ServalMarkdownSelectionState state) 
 
 @implementation LynxMarkdownEventDispatcher {
   __weak id<LynxMarkdownEventDispatcherHost> _host;
+  NSInteger _lastSelectionStart;
+  NSInteger _lastSelectionEnd;
 }
 
 - (instancetype)initWithHost:(id<LynxMarkdownEventDispatcherHost>)host {
   self = [super init];
   if (self != nil) {
     _host = host;
+    _lastSelectionStart = -1;
+    _lastSelectionEnd = -1;
   }
   return self;
 }
@@ -96,71 +96,28 @@ static NSString *LynxMarkdownSelectionState(ServalMarkdownSelectionState state) 
                         }];
 }
 
+- (void)onTextClicked:(NSString *)identifier {
+  [_host dispatchMarkdownEvent:@"textClick" detail:@{@"id" : identifier}];
+}
+
 - (void)onSelectionChanged:(NSInteger)startIndex
                   EndIndex:(NSInteger)endIndex
                     Handle:(ServalMarkdownSelectionHandleType)handle
                      State:(ServalMarkdownSelectionState)state {
+  BOOL forward = _lastSelectionStart == -1
+                     ? startIndex < endIndex
+                     : _lastSelectionStart < startIndex || _lastSelectionEnd < endIndex;
+  _lastSelectionStart = startIndex;
+  _lastSelectionEnd = endIndex;
   [_host dispatchMarkdownEvent:@"selectionchange"
                         detail:@{
                           @"start" : @(MIN(startIndex, endIndex)),
                           @"end" : @(MAX(startIndex, endIndex)),
-                          @"direction" : LynxMarkdownSelectionDirection(startIndex, endIndex),
+                          @"direction" : forward ? @"forward" : @"backward",
                           @"handle" : @(handle),
                           @"state" : @(state),
                           @"handleType" : LynxMarkdownHandleType(handle),
                           @"selectionState" : LynxMarkdownSelectionState(state),
-                        }];
-}
-
-- (void)onLinkAppear:(nonnull NSString *)url Content:(nonnull NSString *)content {
-  [_host dispatchMarkdownEvent:@"childrenexpose"
-                        detail:@{
-                          @"type" : @"link",
-                          @"state" : @"appear",
-                          @"url" : url ?: @"",
-                          @"content" : content ?: @"",
-                          @"data" : @{
-                            @"url" : url ?: @"",
-                            @"content" : content ?: @"",
-                          },
-                        }];
-}
-
-- (void)onLinkDisappear:(nonnull NSString *)url Content:(nonnull NSString *)content {
-  [_host dispatchMarkdownEvent:@"childrenexpose"
-                        detail:@{
-                          @"type" : @"link",
-                          @"state" : @"disappear",
-                          @"url" : url ?: @"",
-                          @"content" : content ?: @"",
-                          @"data" : @{
-                            @"url" : url ?: @"",
-                            @"content" : content ?: @"",
-                          },
-                        }];
-}
-
-- (void)onImageAppear:(nonnull NSString *)url {
-  [_host dispatchMarkdownEvent:@"childrenexpose"
-                        detail:@{
-                          @"type" : @"image",
-                          @"state" : @"appear",
-                          @"url" : url ?: @"",
-                          @"data" : @{
-                            @"url" : url ?: @"",
-                          },
-                        }];
-}
-
-- (void)onImageDisappear:(nonnull NSString *)url {
-  [_host dispatchMarkdownEvent:@"childrenexpose"
-                        detail:@{
-                          @"type" : @"image",
-                          @"state" : @"disappear",
-                          @"url" : url ?: @"",
-                          @"data" : @{
-                            @"url" : url ?: @"",
-                          },
                         }];
 }
 

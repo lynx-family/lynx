@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithLayoutNode:(LynxNativeLayoutNode *)layoutNode
                               host:(id<LynxMarkdownResourceLoaderHost>)host;
+- (BOOL)isForNode:(LynxNativeLayoutNode *)layoutNode;
 
 @end
 
