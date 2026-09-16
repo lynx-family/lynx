@@ -24,7 +24,9 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
-static constexpr const char* ELLIPSIS = u8"\u2026";
+// In C++20 a u8 literal has type char8_t[], while the text APIs consume
+// UTF-8 through const char*.  Spell the same U+2026 bytes explicitly.
+static constexpr const char* ELLIPSIS = "\xE2\x80\xA6";
 
 class ParagraphStyleHarmony {
  public:
