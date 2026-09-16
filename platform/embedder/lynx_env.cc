@@ -8,8 +8,17 @@
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 #include "third_party/debug_router/src/debug_router/native/core/debug_router_core.h"
 #endif
+#include "platform/embedder/lynx_env_platform.h"
 #include "platform/embedder/module/global_module_registry.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
+
+LYNX_EXTERN_C int lynx_env_prewarm_async() {
+#if defined(_WIN32)
+  return lynx::embedder::PrewarmPlatformAsync();
+#else
+  return 0;
+#endif
+}
 
 namespace {
 static std::string g_icu_data_path;

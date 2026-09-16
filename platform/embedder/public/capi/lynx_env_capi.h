@@ -19,6 +19,12 @@ LYNX_CAPI_EXPORT void lynx_env_set_icu_data_path(const char* icu_data_path);
 // Retrieves the ICU data path for the LynxEnv.
 LYNX_CAPI_EXPORT const char* lynx_env_get_icu_data_path();
 
+/**
+ * Starts optional platform-specific prewarming. Call early during host startup.
+ * @return 1 if the prewarm request was accepted, otherwise 0.
+ */
+LYNX_CAPI_EXPORT int lynx_env_prewarm_async();
+
 // Lynx devtools
 typedef void (*lynx_env_open_card_callback)(void* user_data, const char* url);
 typedef void (*lynx_env_close_card_callback)(void* user_data);

@@ -166,8 +166,8 @@ if (enable_unittests) {
       "gfx",
       "testing",
       "testing:testing_fixtures",
-      "ui:ui",
-      "//third_party/skia/modules/skparagraph:skparagraph",
+      "ui",
+      "//third_party/skia/modules/skparagraph",
     ]
     public_configs = [ ":config" ]
   }
@@ -195,6 +195,10 @@ group("unittests") {
 
     if (use_net_loader) {
       public_deps += [ "net:net_unittests" ]
+    }
+
+    if (is_win) {
+      public_deps += [ "shell/platform/windows:async_preparation_unittests" ]
     }
 
     if (is_mac || is_win) {

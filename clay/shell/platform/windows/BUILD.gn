@@ -61,10 +61,10 @@ source_set("flutter_windows_overlay_plugins") {
   deps = [
     ":flutter_windows_utils",
     "../../../common/graphics",
-    "../../../fml:fml",
+    "../../../fml",
     "../../../gfx/shared_image",
-    "../../common:common",
-    "../embedder:embedder",
+    "../../common",
+    "../embedder",
     "//third_party/angle:libEGL_static",
     "//third_party/angle:libGLESv2_static",
   ]
@@ -84,6 +84,7 @@ source_set("flutter_windows_source") {
     "cursor_handler.h",
     "direct_manipulation.cc",
     "direct_manipulation.h",
+    "egl/async_preparation.h",
     "egl/child_window_win.cc",
     "egl/child_window_win.h",
     "egl/context.cc",
@@ -92,6 +93,8 @@ source_set("flutter_windows_source") {
     "egl/direct_composition_surface.h",
     "egl/egl.cc",
     "egl/egl.h",
+    "egl/graphics_preparation.cc",
+    "egl/graphics_preparation.h",
     "egl/manager.cc",
     "egl/manager.h",
     "egl/surface.cc",
@@ -178,18 +181,18 @@ source_set("flutter_windows_source") {
     ":chromium_cursor_resources",
     ":flutter_windows_overlay_plugins",
     ":flutter_windows_utils",
-    "../../../../gfx:gfx",
+    "../../../../gfx",
     "../../../../third_party/rapidjson",
     "../../../common/graphics:gl_scoped_binder",
-    "../../../fml:fml",
+    "../../../fml",
     "../../../fml:icu_util",
     "../../../gfx/shared_image",
-    "../../../ui:ui",
-    "../../common:common",
+    "../../../ui",
+    "../../common",
     "../common:common_cpp_core",
     "../common:common_cpp_input",
     "../common:common_cpp_switches",
-    "../embedder:embedder",
+    "../embedder",
     "//third_party/angle:libEGL_static",  # the order of libEGL_static and
                                           # libGLESv2_static is important.. if
                                           # reversed, will cause a linker error
@@ -210,4 +213,16 @@ source_set("flutter_windows_source") {
   }
 
   configs += [ "../../../../clay:config" ]
+}
+
+if (enable_unittests) {
+  executable("async_preparation_unittests") {
+    testonly = true
+    sources = [ "egl/async_preparation_unittests.cc" ]
+    configs += [ "../../../:config" ]
+    deps = [
+      "../../../../testing/utils:gtest_main",
+      "//third_party/googletest:gtest",
+    ]
+  }
 }
