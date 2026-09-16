@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 
 import androidx.test.filters.SmallTest;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
@@ -60,21 +61,33 @@ public class UIThreadUtilsTest {
   @SmallTest
   public void runOnUiThreadSyncReturnsFalseWhenWaitingThreadIsInterrupted()
       throws InterruptedException {
+    CountDownLatch releaseUiTask = new CountDownLatch(1);
     AtomicBoolean interruptPreserved = new AtomicBoolean(false);
     AtomicBoolean result = new AtomicBoolean(true);
 
     Thread worker = new Thread(() -> {
       Thread.currentThread().interrupt();
-      result.set(UIThreadUtils.runOnUiThreadSync(() -> {}));
+      result.set(UIThreadUtils.runOnUiThreadSync(() -> {
+        try {
+          releaseUiTask.await();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }));
       interruptPreserved.set(Thread.currentThread().isInterrupted());
     });
 
-    worker.start();
-    worker.join(3000);
+    try {
+      worker.start();
+      worker.join(3000);
 
-    assertFalse(worker.isAlive());
-    assertFalse(result.get());
-    assertTrue(interruptPreserved.get());
+      assertFalse(worker.isAlive());
+      assertFalse(result.get());
+      assertTrue(interruptPreserved.get());
+    } finally {
+      releaseUiTask.countDown();
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+    }
   }
 
   @Test
