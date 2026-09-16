@@ -68,6 +68,7 @@ class NativePaintingCtxPlatformRef
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
   void DestroyPaintingNode(int parent, int child, int index) override;
+  void SetTapSlop(const std::string &tap_slop) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes);
   void UpdateNodeReadyPatching(
       std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
