@@ -12,6 +12,7 @@ import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.base.LLog;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -884,6 +886,7 @@ public class TemplateDataTest {
   @Test
   public void testConcurrentGetTemplateDataForJSThread() throws Exception {
     TemplateData data = TemplateData.fromMap(new HashMap<>());
+    data.markConcurrent();
     data.put("seed", 1);
     data.flush();
 
@@ -897,32 +900,33 @@ public class TemplateDataTest {
     CountDownLatch startLatch = new CountDownLatch(1);
     CountDownLatch doneLatch = new CountDownLatch(writerCount + readerCount);
     ExecutorService pool = Executors.newFixedThreadPool(writerCount + readerCount);
+    List<Future<?>> tasks = new ArrayList<>();
 
     // Writer threads: update source JS data continuously so getTemplateDataForJSThread()
     // clones mJsNativeData while it is being refreshed.
     for (int t = 0; t < writerCount; t++) {
       final int threadId = t;
-      pool.submit(() -> {
+      tasks.add(pool.submit(() -> {
         try {
           startLatch.await();
           for (int i = 0; i < opsPerWriter; i++) {
             data.put("key-" + threadId + "-" + i, i);
             data.flush();
-            Object jsData = TemplateData.nativeGetData(data.getDataForJSThread());
-            assertTrue(jsData instanceof Map);
-            assertEquals(1, ((Map<?, ?>) jsData).get("seed"));
+            // Do not read the shared native object after its lock is released:
+            // another writer can mutate it while nativeGetData encodes it.
+            assertNotEquals(0, data.getDataForJSThread());
           }
         } catch (Exception e) {
           fail(e.getMessage());
         } finally {
           doneLatch.countDown();
         }
-      });
+      }));
     }
 
     // Reader threads: continuously clone JS thread data and verify the clone is usable.
     for (int t = 0; t < readerCount; t++) {
-      pool.submit(() -> {
+      tasks.add(pool.submit(() -> {
         try {
           startLatch.await();
           for (int i = 0; i < opsPerWriter; i++) {
@@ -937,12 +941,15 @@ public class TemplateDataTest {
         } finally {
           doneLatch.countDown();
         }
-      });
+      }));
     }
 
     startLatch.countDown();
     doneLatch.await();
     pool.shutdown();
+    for (Future<?> task : tasks) {
+      task.get();
+    }
 
     TemplateData copiedJsTemplateData = data.getTemplateDataForJSThread();
     Object copiedJsData = TemplateData.nativeGetData(copiedJsTemplateData.getDataForJSThread());
