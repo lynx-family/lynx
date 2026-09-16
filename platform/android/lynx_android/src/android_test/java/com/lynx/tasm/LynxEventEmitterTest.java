@@ -5,6 +5,8 @@
 package com.lynx.tasm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import androidx.annotation.NonNull;
@@ -57,6 +59,21 @@ public class LynxEventEmitterTest {
   class MockEventFallback implements EventEmitter.LynxEventFallback {
     @Override
     public void checkFallbackForLynxEvent(boolean isFallback) {}
+  }
+
+  class MockEventObserver implements EventEmitter.LynxEventObserver {
+    int eventCount;
+    EventEmitter.LynxEventType lastType;
+    LynxEvent lastEvent;
+    boolean calledOnUiThread;
+
+    @Override
+    public void onLynxEvent(EventEmitter.LynxEventType type, LynxEvent event) {
+      eventCount++;
+      lastType = type;
+      lastEvent = event;
+      calledOnUiThread = UIThreadUtils.isOnUiThread();
+    }
   }
 
   class MockEngineProxyWrapper extends LynxEventEmitter.LynxEngineProxyWrapper {
@@ -302,5 +319,86 @@ public class LynxEventEmitterTest {
     mEventEmitter.onPseudoStatusChanged(11, 1, 2);
     assertEquals(mPseudoPreStatus, 1);
     assertEquals(mPseudoCurrentStatus, 2);
+  }
+
+  @Test
+  public void testUiAppearObserverRegistrationAndRemoval() {
+    MockEventObserver observer = new MockEventObserver();
+    LynxCustomEvent event = new LynxCustomEvent(11, "uiappear");
+
+    assertTrue(UIThreadUtils.runOnUiThreadSync(() -> {
+      mEventEmitter.addObserver(observer);
+      mEventEmitter.addObserver(observer);
+      mEventEmitter.sendCustomEvent(event);
+      assertEquals(1, observer.eventCount);
+      assertEquals(EventEmitter.LynxEventType.kLynxEventTypeCustomEvent, observer.lastType);
+      assertSame(event, observer.lastEvent);
+      assertSame(event, mCustomEvent);
+      assertTrue(observer.calledOnUiThread);
+
+      mEventEmitter.removeObserver(observer);
+      mEventEmitter.sendCustomEvent(new LynxCustomEvent(11, "uiappear"));
+      assertEquals(1, observer.eventCount);
+      assertEquals("uiappear", mCustomEvent.getName());
+    }));
+  }
+
+  @Test
+  public void testLayoutObserverRunsOnUiThread() {
+    MockEventObserver observer = new MockEventObserver();
+    assertTrue(UIThreadUtils.runOnUiThreadSync(() -> mEventEmitter.addObserver(observer)));
+
+    mEventEmitter.sendLayoutEvent();
+    assertTrue(UIThreadUtils.runOnUiThreadSync(() -> {
+      assertEquals(1, observer.eventCount);
+      assertEquals(EventEmitter.LynxEventType.kLynxEventTypeLayoutEvent, observer.lastType);
+      assertNull(observer.lastEvent);
+      assertTrue(observer.calledOnUiThread);
+    }));
+  }
+
+  @Test
+  public void testObserverCanRemoveItselfDuringUiAppear() {
+    MockEventObserver firstObserver = new MockEventObserver() {
+      @Override
+      public void onLynxEvent(EventEmitter.LynxEventType type, LynxEvent event) {
+        super.onLynxEvent(type, event);
+        mEventEmitter.removeObserver(this);
+      }
+    };
+    MockEventObserver secondObserver = new MockEventObserver();
+
+    assertTrue(UIThreadUtils.runOnUiThreadSync(() -> {
+      mEventEmitter.addObserver(firstObserver);
+      mEventEmitter.addObserver(secondObserver);
+      mEventEmitter.sendCustomEvent(new LynxCustomEvent(11, "uiappear"));
+      assertEquals(1, firstObserver.eventCount);
+      assertEquals(1, secondObserver.eventCount);
+
+      mEventEmitter.sendCustomEvent(new LynxCustomEvent(11, "uiappear"));
+      assertEquals(1, firstObserver.eventCount);
+      assertEquals(2, secondObserver.eventCount);
+    }));
+  }
+
+  @Test
+  public void testObserverPreservesCustomEventDispatchConditions() {
+    MockEventObserver observer = new MockEventObserver();
+    LynxCustomEvent event = new LynxCustomEvent(11, "uiappear");
+
+    assertTrue(UIThreadUtils.runOnUiThreadSync(() -> {
+      mEventEmitter.addObserver(observer);
+      mLynxEventReporterReturn = true;
+      mEventEmitter.sendCustomEvent(event);
+      assertEquals(0, observer.eventCount);
+      assertNull(mCustomEvent);
+
+      mLynxEventReporterReturn = false;
+      mEventEmitter.setInPreLoad(true);
+      mEventEmitter.sendCustomEvent(event);
+      assertEquals(1, observer.eventCount);
+      assertSame(event, observer.lastEvent);
+      assertNull(mCustomEvent);
+    }));
   }
 }

@@ -30,6 +30,11 @@ public abstract class EventEmitter {
     void onTap();
   }
 
+  /** Retained for native components that observe custom events such as uiappear. */
+  public interface LynxEventObserver {
+    void onLynxEvent(LynxEventType type, LynxEvent event);
+  }
+
   public interface LynxEventReporter {
     boolean onLynxEvent(LynxEvent event);
     void onInternalEvent(@NonNull LynxInternalEvent event);
@@ -37,6 +42,12 @@ public abstract class EventEmitter {
 
   public interface LynxEventFallback {
     void checkFallbackForLynxEvent(boolean enableAsync);
+  }
+
+  public enum LynxEventType {
+    kLynxEventTypeTouchEvent,
+    kLynxEventTypeCustomEvent,
+    kLynxEventTypeLayoutEvent
   }
 
   public EventEmitter() {}
@@ -64,6 +75,11 @@ public abstract class EventEmitter {
   public abstract void sendLayoutEvent();
 
   public abstract void setInPreLoad(boolean preload);
+
+  /** Registers a native event observer independently of IntersectionObserver. */
+  public abstract void addObserver(LynxEventObserver observer);
+
+  public abstract void removeObserver(LynxEventObserver observer);
 
   public abstract void registerEventReporter(LynxEventReporter reporter);
 

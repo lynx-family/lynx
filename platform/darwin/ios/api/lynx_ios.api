@@ -1648,6 +1648,8 @@ public class LynxEventEmitter : NSObject {
   public void LynxEventEmitter::dispatchGestureEvent:event:(int gestureId,[event] LynxCustomEvent *event);
   public void LynxEventEmitter::onPseudoStatusChanged:fromPreStatus:toCurrentStatus:(int32_t tag,[fromPreStatus] int32_t preStatus,[toCurrentStatus] int32_t currentStatus);
   public void LynxEventEmitter::dispatchLayoutEvent();
+  public void LynxEventEmitter::addObserver:(id< LynxEventObserver > observer);
+  public void LynxEventEmitter::removeObserver:(id< LynxEventObserver > observer);
   public void LynxEventEmitter::notifyIntersectionObserver();
   public void LynxEventEmitter::startEventGenerate:(LynxEvent *event);
   public void LynxEventEmitter::setEventID:(int64_t eventID);
@@ -1720,6 +1722,10 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::removeEventGestures();
   public void LynxEventHandler()::markDispatchInCurrentLynxPageOnlyIfNeeded:(LynxTouchEvent *event);
   public void LynxEventHandler()::handleFocusOnView:withContainer:andPoint:andEvent:ignoreFocus:(UIView *view, [withContainer] UIView *container, [andPoint] CGPoint point, [andEvent] nullable UIEvent *event, [ignoreFocus] BOOL ignoreFocus);
+}
+
+public protocol LynxEventObserver-p :  {
+  public void LynxEventObserver-p::onLynxEvent:event:(LynxInnerEventType type,[event] LynxEvent *event);
 }
 
 public class LynxEventReporter : NSObject {
@@ -7264,6 +7270,12 @@ public enum EVENT_TYPE {
   CUSTOM_EVENT
 }
 
+
+public enum LynxInnerEventType {
+  LynxEventTypeTouchEvent
+  LynxEventTypeCustomEvent
+  LynxEventTypeLayoutEvent
+}
 
   typedef BOOL(^ onLynxEvent) (LynxEvent *event)
 

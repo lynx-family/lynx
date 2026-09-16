@@ -18,10 +18,12 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 
 @interface LynxEventEmitter ()
 - (BOOL)consumeDispatchInCurrentLynxPageOnly:(LynxTouchEvent*)event;
+- (void)notifyEventObservers:(LynxInnerEventType)type event:(LynxEvent*)event;
 @end
 
 @implementation LynxEventEmitter {
   LynxEngineProxy* _engineProxy;
+  NSMutableArray<id<LynxEventObserver>>* eventObservers_;
   onLynxEvent eventReporter_;
   dispatch_block_t intersectionObserver_;
   int64_t eventID_;
@@ -30,6 +32,7 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 - (instancetype)initWithLynxEngineProxy:(LynxEngineProxy*)engineProxy {
   self = [super init];
   if (self) {
+    eventObservers_ = [[NSMutableArray alloc] init];
     _engineProxy = engineProxy;
     eventID_ = 0;
   }
@@ -134,6 +137,7 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
   }
   [event addDetailKey:@"timestamp" value:@((int64_t)(event.timestamp * 1000))];
   [_engineProxy sendCustomEvent:event];
+  [self notifyEventObservers:LynxEventTypeCustomEvent event:event];
 }
 
 // dispatch gesture event to template render
@@ -163,6 +167,27 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 }
 
 - (void)dispatchLayoutEvent {
+  [self notifyEventObservers:LynxEventTypeLayoutEvent event:nil];
+}
+
+- (void)addObserver:(id<LynxEventObserver>)observer {
+  if (![eventObservers_ containsObject:observer]) {
+    [eventObservers_ addObject:observer];
+  }
+}
+
+- (void)removeObserver:(id<LynxEventObserver>)observer {
+  [eventObservers_ removeObject:observer];
+}
+
+- (void)notifyEventObservers:(LynxInnerEventType)type event:(LynxEvent*)event {
+  if (eventObservers_.count == 0) {
+    return;
+  }
+  // Callbacks may unregister observers while handling an event.
+  for (id<LynxEventObserver> observer in [eventObservers_ copy]) {
+    [observer onLynxEvent:type event:event];
+  }
 }
 
 - (void)notifyIntersectionObserver {
