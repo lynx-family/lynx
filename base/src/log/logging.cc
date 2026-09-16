@@ -140,7 +140,21 @@ void InitLynxLogging(InitAlogCallBack initAlogCallback,
 }
 
 void SetMinLogLevel(int level) {
-  detail::g_min_log_level = std::min(LOG_FATAL, level);
+  const int previous_level = GetMinLogLevel();
+  const int new_level = std::min(LOG_FATAL, level);
+  detail::g_min_log_level = new_level;
+  if (previous_level == new_level) {
+    return;
+  }
+
+  // Configuration diagnostics bypass the log macros so compile-time filtering
+  // cannot hide a threshold change. Use at least WARNING, but never FATAL:
+  // even setting the threshold to FATAL must not terminate the process.
+  const int severity = std::clamp(new_level, LOG_WARNING, LOG_ERROR);
+  LogMessage(__LOG_FILE_NAME__, __LINE__, severity).stream()
+      << "Minimum log level changed: " << LogSeverityName(previous_level)
+      << " (" << previous_level << ") -> " << LogSeverityName(new_level) << " ("
+      << new_level << ")";
 }
 
 void PrintLogToLynxLogging(int level, const char* tag, const char* message) {

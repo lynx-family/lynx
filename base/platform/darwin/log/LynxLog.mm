@@ -148,7 +148,6 @@ NSArray<LynxLogDelegate *> *GetLoggingDelegates(void) { LOCKED(return [gDelegate
 void SetMinimumLoggingLevel(LynxLogLevel minLogLevel) {
   gLogMinLevel = minLogLevel;
   lynx::base::logging::SetLynxLogMinLevel(static_cast<int>(minLogLevel));
-  NSLog(@"W/lynx: Reset minimum log level as %d", static_cast<int>(minLogLevel));
 }
 
 LynxLogLevel GetMinimumLoggingLevel(void) { return gLogMinLevel; }

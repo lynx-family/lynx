@@ -43,7 +43,6 @@ export class LynxLog {
   static setMinimumLoggingLevel(level: LynxBaseLogLevel): void {
     LynxLog.mMinLogLevel = level;
     lynxbase.nativeSetMinLogLevel(level);
-    hilog.warn(DOMAIN, "lynxbase", LynxLog.format, `Reset minimum log level as ${level}`);
   }
 
   static v(tag: string, message: string): void {
