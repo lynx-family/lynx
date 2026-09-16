@@ -1410,6 +1410,10 @@ fml::RefPtr<Element> ElementManager::StaticCreateFiberElement(
       element = fml::AdoptRef<ScrollElement>(new ScrollElement(
           nullptr, BASE_STATIC_STRING(kElementXNestedScrollViewTag)));
       break;
+    case ELEMENT_X_SCROLL_VIEW_ORIGIN:
+      element = fml::AdoptRef<ScrollElement>(new ScrollElement(
+          nullptr, BASE_STATIC_STRING(kElementXScrollViewOriginTag)));
+      break;
     case ELEMENT_LIST:
       element = fml::AdoptRef<ListElement>(
           new ListElement(nullptr, BASE_STATIC_STRING(kElementListTag),
