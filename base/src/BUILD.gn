@@ -155,10 +155,11 @@ lynx_base_source_set("base_log") {
       "log/logging_harmony.cc",
       "log/logging_harmony.h",
     ]
-  } else if (is_win) {
-    sources += [ "log/logging_base.cc" ]
-  } else if (is_linux) {
-    sources += [ "log/logging_base.cc" ]
+  } else if (is_win || is_linux) {
+    sources += [
+      "log/logging_base.cc",
+      "log/logging_platform_default.cc",
+    ]
   }
   if (!is_win) {
     # Windows do not overwrite this file

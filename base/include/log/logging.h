@@ -27,7 +27,12 @@ BASE_EXPORT void InitLynxLogging(InitAlogCallBack initAlogCallback,
                                  PlatformLogCallBack PlatformLogCallBack,
                                  bool isPrintAllLogToAllChannels);
 
+// Updates native filtering only. Platform setters use this as their leaf call.
 BASE_EXPORT void SetMinLogLevel(int level);
+// Updates platform and native filtering through the platform setter.
+// Harmony requires logger initialization and its owning ArkTS thread.
+// Calls that violate the Harmony preconditions are logged and ignored.
+BASE_EXPORT void SetPlatformMinLogLevel(int level);
 
 namespace detail {
 // Shared storage for the inline getter. Update through SetMinLogLevel().

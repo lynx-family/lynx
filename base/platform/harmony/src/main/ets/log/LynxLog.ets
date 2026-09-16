@@ -37,10 +37,11 @@ export class LynxLog {
       }
       lynxbase.nativeInitLynxLogWriteFunction(LynxLog.mService.getDefaultWriteFunction());
     }
-    lynxbase.nativeInitLynxLog(isPrintLogToAllChannel);
+    lynxbase.nativeInitLynxLog(isPrintLogToAllChannel, LynxLog);
   }
 
   static setMinimumLoggingLevel(level: LynxBaseLogLevel): void {
+    level = Math.max(LynxBaseLogLevel.VERBOSE, Math.min(LynxBaseLogLevel.ERROR, level));
     LynxLog.mMinLogLevel = level;
     lynxbase.nativeSetMinLogLevel(level);
     hilog.warn(DOMAIN, "lynxbase", LynxLog.format, `Reset minimum log level as ${level}`);

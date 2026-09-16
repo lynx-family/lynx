@@ -36,13 +36,21 @@ TEST_F(LogLevelTest, RestoresMoreDetailedLogging) {
   EXPECT_TRUE(LOG_IS_ON(VERBOSE));
 }
 
-TEST_F(LogLevelTest, PreservesFatalThresholdAndCanRestoreIt) {
+TEST_F(LogLevelTest, ClampsThresholdWithoutDisablingErrors) {
   SetMinLogLevel(LOG_FATAL);
-  EXPECT_FALSE(LOG_IS_ON(ERROR));
+  EXPECT_EQ(GetMinLogLevel(), LOG_ERROR);
+  EXPECT_TRUE(LOG_IS_ON(ERROR));
   EXPECT_TRUE(LOG_IS_ON(FATAL));
   SetMinLogLevel(LOG_INFO);
   EXPECT_TRUE(LOG_IS_ON(ERROR));
   EXPECT_TRUE(LOG_IS_ON(INFO));
+}
+
+TEST_F(LogLevelTest, ClampsOutOfRangeThresholds) {
+  SetMinLogLevel(-100);
+  EXPECT_EQ(GetMinLogLevel(), LOG_VERBOSE);
+  SetMinLogLevel(100);
+  EXPECT_EQ(GetMinLogLevel(), LOG_ERROR);
 }
 
 TEST_F(LogLevelTest, EvaluatesPayloadOnlyAfterRestoringThreshold) {

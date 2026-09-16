@@ -59,6 +59,11 @@ void PrintLogMessageByLogDelegate(LogMessage* msg, const char* tag) {
 }
 }  // namespace
 
+void SetPlatformMinLogLevel(int level) {
+  JNIEnv* env = android::AttachCurrentThread();
+  Java_LynxLog_setMinimumLoggingLevel(env, level);
+}
+
 void InitLynxLog(bool is_all_channels) {
   InitLynxLogging(InitAlog, PrintLogMessageByLogDelegate, is_all_channels);
 }

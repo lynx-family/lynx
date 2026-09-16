@@ -13,10 +13,10 @@
 
 namespace {
 static lynx_log_callback_t g_lynx_log_callback = nullptr;
-static lynx_log_level_e g_min_log_level = LYNX_LOG_VERBOSE;
 
 void lynx_log_write(unsigned int level, const char* tag, const char* msg) {
-  if (!g_lynx_log_callback || level < g_min_log_level) {
+  if (!g_lynx_log_callback ||
+      static_cast<int>(level) < lynx::base::logging::GetMinLogLevel()) {
     return;
   }
   g_lynx_log_callback(static_cast<lynx_log_level_e>(level), tag, msg);
@@ -32,7 +32,6 @@ LYNX_EXTERN_C void lynx_log_init(lynx_log_callback_t callback) {
 }
 
 LYNX_EXTERN_C void lynx_log_set_minimum_level(lynx_log_level_e min_log_level) {
-  g_min_log_level = min_log_level;
   lynx::base::logging::SetMinLogLevel(static_cast<int>(min_log_level));
 }
 

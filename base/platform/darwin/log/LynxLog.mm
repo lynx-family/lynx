@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <LynxBase/LynxLog.h>
+#include <algorithm>
 #include <map>
 
 #import <LynxServiceAPI/LynxServiceLogProtocol.h>  // nogncheck
@@ -146,10 +147,18 @@ void RemoveLoggingDelegate(NSInteger delegateId) {
 NSArray<LynxLogDelegate *> *GetLoggingDelegates(void) { LOCKED(return [gDelegateDic allValues]); }
 
 void SetMinimumLoggingLevel(LynxLogLevel minLogLevel) {
+  minLogLevel = static_cast<LynxLogLevel>(
+      std::clamp<NSInteger>(minLogLevel, LynxLogLevelVerbose, LynxLogLevelError));
   gLogMinLevel = minLogLevel;
   lynx::base::logging::SetLynxLogMinLevel(static_cast<int>(minLogLevel));
   NSLog(@"W/lynx: Reset minimum log level as %d", static_cast<int>(minLogLevel));
 }
+
+namespace lynx::base::logging {
+void SetPlatformMinLogLevel(int level) {
+  ::SetMinimumLoggingLevel(static_cast<LynxLogLevel>(level));
+}
+}  // namespace lynx::base::logging
 
 LynxLogLevel GetMinimumLoggingLevel(void) { return gLogMinLevel; }
 

@@ -60,7 +60,9 @@ public class LynxLog {
     sDebugLoggingDelegate = delegate;
   }
 
+  @CalledByNative
   public static void setMinimumLoggingLevel(int level) {
+    level = Math.max(VERBOSE, Math.min(ERROR, level));
     if (!sIsNativeLibLoad) {
       sIsNativeLibLoad = LynxBaseEnv.inst().isNativeLibraryLoaded();
     }
