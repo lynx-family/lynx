@@ -724,14 +724,14 @@ Function JSCRuntime::createFunctionFromHostFunction(const PropNameID& name,
 
 std::optional<Value> JSCRuntime::call(const Function& f, const Value& jsThis,
                                       const Value* args, size_t count) {
-  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
+  LYNX_JS_CALL_TIMEOUT_GUARD();
   return JSCHelper::call(ctx_->getContext(), *this, f, jsThis, args, count);
 }
 
 std::optional<Value> JSCRuntime::callAsConstructor(const Function& f,
                                                    const Value* args,
                                                    size_t count) {
-  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
+  LYNX_JS_CALL_TIMEOUT_GUARD();
   return JSCHelper::callAsConstructor(ctx_->getContext(), *this, f, args,
                                       count);
 }

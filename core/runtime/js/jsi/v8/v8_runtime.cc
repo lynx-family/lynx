@@ -718,7 +718,7 @@ Function V8Runtime::createFunctionFromHostFunction(const PropNameID& name,
 
 std::optional<Value> V8Runtime::call(const Function& f, const Value& jsThis,
                                      const Value* args, size_t count) {
-  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
+  LYNX_JS_CALL_TIMEOUT_GUARD();
   auto converter = ArgsConverter<v8::Local<v8::Value>>(
       count, args, [this](const Value& value) { return valueRef(value); });
   auto aa = V8Helper::call(
@@ -730,7 +730,7 @@ std::optional<Value> V8Runtime::call(const Function& f, const Value& jsThis,
 std::optional<Value> V8Runtime::callAsConstructor(const Function& f,
                                                   const Value* args,
                                                   size_t count) {
-  ALLOW_UNUSED_TYPE auto guard = CreateJSCallTimeoutGuardIfEnabled();
+  LYNX_JS_CALL_TIMEOUT_GUARD();
   auto converter = ArgsConverter<v8::Local<v8::Value>>(
       count, args, [this](const Value& value) { return valueRef(value); });
   return V8Helper::callAsConstructor(this, V8Helper::objectRef(f), converter,

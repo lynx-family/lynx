@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "base/include/closure.h"
+#include "base/include/compiler_specific.h"
 #include "base/include/fml/thread.h"
 #include "base/include/log/logging.h"
 #include "base/include/lynx_actor.h"
@@ -23,9 +24,6 @@ namespace shell {
 
 class WatchDog final {
  public:
-  using TimeoutErrorHandler =
-      base::MoveOnlyClosure<void, std::string,
-                            std::unordered_map<std::string, std::string>>;
   struct TaskConfig {
     uint32_t delay = 50 * 1000;
     uint32_t allow_delay = 1.5 * 1000;
@@ -33,18 +31,20 @@ class WatchDog final {
     base::MoveOnlyClosure<void> idle_task;
   };
 
+  using TimeoutErrorHandler =
+      base::MoveOnlyClosure<void, std::string,
+                            std::unordered_map<std::string, std::string>>;
+
   class JSCallTimeoutGuard {
    public:
     JSCallTimeoutGuard(TimeoutErrorHandler error_dispatcher,
-                       uint32_t timeout_ms, std::string page_url)
-        : error_dispatcher_(std::move(error_dispatcher)),
-          timeout_ms_(timeout_ms),
-          page_url_(std::move(page_url)),
-          done_flag_(std::make_shared<std::atomic<bool>>(false)) {
+                       uint32_t timeout_ms, std::string page_url) {
+#if ENABLE_TRACE_PERFETTO
+      done_flag_ = std::make_shared<std::atomic<bool>>(false);
       auto done = done_flag_;
       GetWatchDogTaskRunner()->PostDelayedTask(
-          [done, dispatcher = std::move(error_dispatcher_),
-           timeout_ms = timeout_ms_, page_url = page_url_]() mutable {
+          [done, dispatcher = std::move(error_dispatcher), timeout_ms,
+           page_url = std::move(page_url)]() mutable {
             if (!done->load()) {
               LOGE("js call exceeded " << timeout_ms << "ms"
                                        << ", page_url: " << page_url);
@@ -60,19 +60,27 @@ class WatchDog final {
               }
             }
           },
-          fml::TimeDelta::FromMilliseconds(timeout_ms_));
+          fml::TimeDelta::FromMilliseconds(timeout_ms));
+#else
+      (void)error_dispatcher;
+      (void)timeout_ms;
+      (void)page_url;
+#endif
     }
 
-    ~JSCallTimeoutGuard() { done_flag_->store(true); }
+    ~JSCallTimeoutGuard() {
+#if ENABLE_TRACE_PERFETTO
+      done_flag_->store(true);
+#endif
+    }
 
     JSCallTimeoutGuard(const JSCallTimeoutGuard&) = delete;
     JSCallTimeoutGuard& operator=(const JSCallTimeoutGuard&) = delete;
 
    private:
-    TimeoutErrorHandler error_dispatcher_;
-    uint32_t timeout_ms_;
-    std::string page_url_;
+#if ENABLE_TRACE_PERFETTO
     std::shared_ptr<std::atomic<bool>> done_flag_;
+#endif
   };
 
  private:
@@ -146,5 +154,13 @@ class WatchDog final {
 
 }  // namespace shell
 }  // namespace lynx
+
+#if ENABLE_TRACE_PERFETTO
+#define LYNX_JS_CALL_TIMEOUT_GUARD()             \
+  ALLOW_UNUSED_TYPE auto js_call_timeout_guard = \
+      CreateJSCallTimeoutGuardIfEnabled()
+#else
+#define LYNX_JS_CALL_TIMEOUT_GUARD()
+#endif
 
 #endif  // CORE_SERVICES_WATCH_DOG_WATCH_DOG_H_
