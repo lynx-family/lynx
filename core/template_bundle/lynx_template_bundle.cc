@@ -61,8 +61,9 @@ std::string LynxTemplateBundle::FromBinaryGreedy(
     if (!service) {
       return "Native security service is unavailable";
     }
-    auto result = service->VerifyTASM(binary->data(), binary->size(),
-                                      template_url, verification.type);
+    auto result =
+        service->VerifyTASM(binary->data(), binary->size(), template_url,
+                            verification.type, verification.platform_target);
     if (!result.verified) {
       return result.error_message.empty() ? "Template verification failed"
                                           : result.error_message;
