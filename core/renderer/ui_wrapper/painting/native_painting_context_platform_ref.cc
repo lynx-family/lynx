@@ -187,15 +187,17 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
 void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
     std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
   engine_actor_ = engine_actor;
-  float device_pixel_ratio =
-      engine_actor_ != nullptr
-          ? engine_actor_->Impl()->GetTasm()->GetDevicePixelRatio()
-          : 1.0f;
-// Since iOS consumes logical pixels, device_pixel_ratio needs to be reset to 1.
-#if defined(OS_IOS)
-  device_pixel_ratio = 1.0f;
-#endif
-  event_target_helper_->SetDevicePixelRatio(device_pixel_ratio);
+  // Event geometry uses layout units, which may differ from physical pixels.
+  float layouts_unit_per_px = 1.0f;
+  if (engine_actor_ != nullptr) {
+    const auto &element_manager =
+        engine_actor_->Impl()->GetTasm()->page_proxy()->element_manager();
+    if (element_manager != nullptr) {
+      layouts_unit_per_px =
+          element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+    }
+  }
+  event_target_helper_->SetDevicePixelRatio(layouts_unit_per_px);
 }
 
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
@@ -204,6 +206,16 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
   auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
   if (event_target_tree == nullptr) {
     return false;
+  }
+  // Page config is decoded after the engine actor is attached. Refresh the
+  // threshold on pointer down so reloads take effect without parsing on moves.
+  if (int_event_data[0] == 0 && int_event_data[1] == 0) {
+    auto *engine = engine_actor_ ? engine_actor_->Impl() : nullptr;
+    auto *tasm = engine ? engine->GetTasm() : nullptr;
+    auto config = tasm ? tasm->GetPageConfig() : nullptr;
+    if (config != nullptr) {
+      event_handler_->SetTapSlop(config->GetTapSlop());
+    }
   }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
                                       float_event_data);

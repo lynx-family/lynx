@@ -1173,6 +1173,109 @@ TEST_F(FragmentTest,
   EXPECT_EQ(hit_target->Sign(), 3);
 }
 
+TEST_F(FragmentTest, PlatformEventHandlerResolvesTapSlopInLayoutUnits) {
+  const std::array<float, 2> layout_scales = {1.f, 3.f};
+  struct TestCase {
+    const char* value;
+    std::array<float, 2> expected;
+  };
+  const TestCase cases[] = {
+      {"0px", {0.f, 0.f}},
+      {"0.5px", {0.5f, 1.5f}},
+      {"10px", {10.f, 30.f}},
+      {"50px", {50.f, 150.f}},
+      {"75rpx", {50.f, 150.f}},
+      {"3ppx", {50.f, 150.f}},
+      {"10", {50.f, 150.f}},
+      {"50%", {50.f, 150.f}},
+      {"calc(10px + 5px)", {50.f, 150.f}},
+      {"1em", {50.f, 150.f}},
+      {"", {50.f, 150.f}},
+      {"invalid", {50.f, 150.f}},
+      {"-1px", {50.f, 150.f}},
+      // cspell:ignore nanpx infpx
+      {"nanpx", {50.f, 150.f}},
+      {"infpx", {50.f, 150.f}},
+  };
+  TestNativePaintingCtxPlatformRef platform_ref;
+  auto* handler = platform_ref.event_handler_.get();
+  EXPECT_FLOAT_EQ(handler->tap_slop_, 50.f);
+  for (size_t index = 0; index < layout_scales.size(); ++index) {
+    platform_ref.GetEventTargetHelper()->SetDevicePixelRatio(
+        layout_scales[index]);
+    for (const auto& test_case : cases) {
+      SCOPED_TRACE(::testing::Message()
+                   << "layoutScale=" << layout_scales[index]
+                   << " tapSlop=" << test_case.value);
+      // Invalid values must restore the default after a custom threshold.
+      handler->SetTapSlop("1px");
+      handler->SetTapSlop(test_case.value);
+      EXPECT_FLOAT_EQ(handler->tap_slop_, test_case.expected[index]);
+    }
+  }
+}
+
+TEST_F(FragmentTest, PlatformEventHandlerTapSlopControlsMovementThreshold) {
+  struct TestCase {
+    const char* value;
+    float logical_threshold;
+  };
+  const TestCase cases[] = {
+      {"10px", 10.f}, {"50px", 50.f}, {"0.5px", 0.5f}, {"0px", 0.f}};
+  for (float layout_scale : {1.f, 3.f}) {
+    for (const auto& test_case : cases) {
+      SCOPED_TRACE(::testing::Message() << "layoutScale=" << layout_scale
+                                        << " tapSlop=" << test_case.value);
+      TestNativePaintingCtxPlatformRef platform_ref;
+      platform_ref.GetEventTargetHelper()->SetDevicePixelRatio(layout_scale);
+      auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+          kRootId, PlatformRendererType::kPage);
+      DisplayListBuilder builder;
+      builder
+          .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 500.f, 500.f)
+          .Begin(1, PlatformRendererType::kView, 0.f, 0.f, 500.f, 500.f)
+          .End()
+          .End();
+      root_renderer->UpdateDisplayList(builder.Build());
+      platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+      auto* handler = platform_ref.event_handler_.get();
+      handler->SetTapSlop(test_case.value);
+
+      int down_data[] = {0, 0, 0, 1};
+      float point[] = {0.f, 10.f, 10.f};
+      ASSERT_TRUE(
+          platform_ref.DispatchPlatformInputEvent(down_data, point, kRootId));
+      ASSERT_TRUE(handler->CanRespondFocus());
+
+      int move_data[] = {0, 2, 0, 1};
+      const float threshold = test_case.logical_threshold * layout_scale;
+      point[1] = 10.f + threshold / 2.f;
+      ASSERT_TRUE(
+          platform_ref.DispatchPlatformInputEvent(move_data, point, kRootId));
+      EXPECT_TRUE(handler->CanRespondFocus());
+
+      point[1] = 10.f + threshold;
+      ASSERT_TRUE(
+          platform_ref.DispatchPlatformInputEvent(move_data, point, kRootId));
+      EXPECT_TRUE(handler->CanRespondFocus());
+
+      point[1] += 0.25f * layout_scale;
+      ASSERT_TRUE(
+          platform_ref.DispatchPlatformInputEvent(move_data, point, kRootId));
+      EXPECT_FALSE(handler->CanRespondFocus());
+
+      // A new gesture must not retain the previous gesture's cancellation.
+      int up_data[] = {0, 1, 0, 1};
+      ASSERT_TRUE(
+          platform_ref.DispatchPlatformInputEvent(up_data, point, kRootId));
+      point[1] = 10.f;
+      ASSERT_TRUE(
+          platform_ref.DispatchPlatformInputEvent(down_data, point, kRootId));
+      EXPECT_TRUE(handler->CanRespondFocus());
+    }
+  }
+}
+
 TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {
   auto element = manager->CreateFiberText("text");
   Fragment fragment(element.get());
