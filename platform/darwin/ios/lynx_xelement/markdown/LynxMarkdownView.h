@@ -11,6 +11,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxMarkdownViewV2 : UIView
 
+@property(nonatomic, copy, nullable) void (^exposureUpdater)(void);
+
 - (nullable ServalMarkdownView *)setBundle:(nullable LynxMarkdownBundleV2 *)bundle;
 - (void)setContentOffset:(CGPoint)contentOffset;
 

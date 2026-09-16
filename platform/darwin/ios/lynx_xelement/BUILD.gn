@@ -316,6 +316,8 @@ subspec_target("Markdown") {
     "markdown/adaptor/LynxMarkdownEventDispatcher.m",
     "markdown/adaptor/LynxMarkdownInlineViewHandle.h",
     "markdown/adaptor/LynxMarkdownInlineViewHandle.m",
+    "markdown/adaptor/LynxMarkdownLinkExposureUI.h",
+    "markdown/adaptor/LynxMarkdownLinkExposureUI.m",
     "markdown/adaptor/LynxMarkdownResourceLoader.h",
     "markdown/adaptor/LynxMarkdownResourceLoader.m",
   ]
@@ -327,7 +329,7 @@ subspec_target("Markdown") {
 
   dependency = [ [
         "ServalMarkdown",
-        "0.2.6",
+        "0.2.9",
       ] ]
 
   dependency += lynx_dependency
