@@ -1,0 +1,18 @@
+summary: Publishes an opaque string message from the host runtime on the global channel.
+parameters:
+  - name: message
+    type: string
+    description: Message provided by the runtime, unchanged. Empty strings are allowed.
+notes:
+  - Native host/runtime code may call GlobalDevToolPlatformFacade::SendHSRMessageReceived from any thread. Delivery runs on the DevTool thread through the existing global MessageSender (session -1).
+  - Events may be sent without a preceding command. There is no enable method or additional subscription in this domain.
+  - Delivery follows the existing global channel's connection behavior. This domain adds no buffering or replay.
+  - Events have no CDP request id and do not imply completion of a particular command. Applications may encode correlation information in the message string.
+  - loadScript and evaluate still complete through their own responses. The sendMessage command is not provided.
+  - Host Script JavaScript needs a runtime bridge to invoke the native publisher. This event does not supply that bridge.
+examples:
+  - title: Runtime announces readiness
+    event:
+      method: HSR.messageReceived
+      params:
+        message: ready

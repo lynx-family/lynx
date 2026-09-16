@@ -4,6 +4,8 @@
 
 #include "devtool/base_devtool/native/test/devtool_global_slot_platform_mock.h"
 
+#include "devtool/base_devtool/native/test/mock_receiver.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -18,6 +20,8 @@ DevToolGlobalSlotPlatformMock::DevToolGlobalSlotPlatformMock(
 void DevToolGlobalSlotPlatformMock::OnMessage(const std::string& type,
                                               const std::string& msg) {}
 void DevToolGlobalSlotPlatformMock::SendMessage(const std::string& type,
-                                                const std::string& msg) {}
+                                                const std::string& msg) {
+  MockReceiver::GetInstance().OnMessage(type, msg);
+}
 }  // namespace devtool
 }  // namespace lynx

@@ -1,0 +1,34 @@
+summary: Executes JavaScript in the current Host Script context without replacing the script.
+parameters:
+  - name: expression
+    type: string
+    description: JavaScript source to evaluate. Empty strings are allowed.
+returns:
+  - name: valueType
+    type: string
+    description: json for a JSON-representable value, or undefined for JavaScript undefined.
+  - name: value
+    type: any
+    optional: true
+    description: Present only when valueType is json; JSON null is distinct from JavaScript undefined.
+notes:
+  - Uses the global CDP channel (session -1), not the page Runtime.evaluate method.
+  - Runtime integration is pending. The default platform boundary returns ServerError (-32000), HSR runtime is not connected.
+  - The execution boundary must return the synchronous evaluation value. JavaScript exceptions, Promise values, and non-serializable values are execution errors, not successful empty results.
+  - Evaluation may mutate state and does not roll back side effects. It does not expose lexical variables inside previously executed functions.
+  - Store asynchronous progress on the script global object and evaluate it again, or publish HSR.messageReceived through the native facade. Events do not complete this request. There is no probe-specific command language.
+  - Missing or non-string expression values return InvalidParams (-32602).
+  - Runtime failures and abandoned callbacks return ServerError (-32000); malformed completion results return InternalError (-32603).
+  - The original CDP id identifies the single terminal response. Client timeout does not cancel execution.
+examples:
+  - title: Result after a Runtime adapter is integrated
+    request:
+      id: 2
+      method: HSR.evaluate
+      params:
+        expression: 2 + 2
+    response:
+      id: 2
+      result:
+        valueType: json
+        value: 4
