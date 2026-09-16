@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../../config.gni")
+import("../../oliver/oliver.gni")
 import("../testing/testing.gni")
 import("common/build.gni")
 import("component/build.gni")
@@ -173,6 +174,9 @@ if (enable_unittests) {
   executable("clay_unittests") {
     testonly = true
     configs += [ ":text_layout_reuse_test_defines" ]
+    if (is_win) {
+      defines = [ "_USE_MATH_DEFINES" ]
+    }
     sources = [
       "common/attribute_utils_unittests.cc",
       "component/base_view_unittests.cc",
@@ -232,6 +236,9 @@ if (enable_unittests) {
       "testing/test_utils_unittests.cc",
     ]
     sources += rebase_path(ui_component_unittests_sources, "", "component")
+    if (!enable_clay_standalone) {
+      sources += [ "../shell/common/services/initialize_service.cc" ]
+    }
 
     public_configs = [
       "../:export_dynamic_symbols",
@@ -243,6 +250,8 @@ if (enable_unittests) {
       ":ui_fixture_sources",
       ":ui_fixtures",
       "../../base/src:base_static",
+      "../../base/src:base_values",
+      "../../base/src:base_values_extended",
       "../common/service",
       "../flow",
       "../flow:flow_testing",
@@ -252,7 +261,7 @@ if (enable_unittests) {
       "../testing:skia",
       "//third_party/skia/modules/skparagraph:skparagraph",
     ]
-    if (is_mac) {
+    if ((is_mac || is_win) && !is_oliver_node_lynx) {
       public_deps += [
         "../shell/common:platform_overlay_service_fallback",
         "../shell/common:presenter_service_fallback",
