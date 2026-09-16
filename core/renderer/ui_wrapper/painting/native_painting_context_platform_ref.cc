@@ -205,6 +205,18 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
   if (event_target_tree == nullptr) {
     return false;
   }
+  // Page config is decoded after the engine actor is attached. Refresh the
+  // threshold on pointer down so reloads take effect without parsing on moves.
+  if (int_event_data[0] == 0 && int_event_data[1] == 0) {
+    auto *engine = engine_actor_ ? engine_actor_->Impl() : nullptr;
+    auto *tasm = engine ? engine->GetTasm() : nullptr;
+    auto config = tasm ? tasm->GetPageConfig() : nullptr;
+    if (config != nullptr) {
+      event_handler_->SetTapSlop(
+          config->GetTapSlop(),
+          tasm->page_proxy()->element_manager()->GetLynxEnvConfig());
+    }
+  }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
                                       float_event_data);
 }
