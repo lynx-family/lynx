@@ -3729,6 +3729,61 @@ TEST_P(FiberElementTest, ConvertPointAppliesPlatformStickyTranslation) {
   EXPECT_FLOAT_EQ(reset->Y(), 175.f);
 }
 
+TEST_P(FiberElementTest, LayoutInElementFixedUsesPageBounds) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->config_->SetEnableFixedNew(true);
+  manager->layout_configs_.enable_fixed_new_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  parent->SetStyle(kPropertyIDWidth, lepus::Value("200px"));
+  parent->SetStyle(kPropertyIDHeight, lepus::Value("300px"));
+  auto fixed = manager->CreateFiberView();
+  fixed->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+  fixed->SetStyle(kPropertyIDWidth, lepus::Value("100px"));
+  fixed->SetStyle(kPropertyIDHeight, lepus::Value("80px"));
+  fixed->SetStyle(kPropertyIDRight, lepus::Value("10px"));
+  fixed->SetStyle(kPropertyIDBottom, lepus::Value("20px"));
+  page->InsertNode(parent);
+  parent->InsertNode(fixed);
+  page->FlushActionsAsRoot();
+
+  // Supply the viewport after the fixed node was created and attached.
+  manager->UpdateViewport(540, SLMeasureModeDefinite, 832,
+                          SLMeasureModeDefinite, false);
+  auto layout = [&]() {
+    page->FlushActionsAsRoot();
+    page->Layout(std::make_shared<PipelineOptions>());
+  };
+  layout();
+  EXPECT_FLOAT_EQ(fixed->left(), 430.f);
+  EXPECT_FLOAT_EQ(fixed->top(), 732.f);
+
+  manager->UpdateViewport(600, SLMeasureModeDefinite, 900,
+                          SLMeasureModeDefinite, false);
+  layout();
+  EXPECT_FLOAT_EQ(fixed->left(), 490.f);
+  EXPECT_FLOAT_EQ(fixed->top(), 800.f);
+
+  // Re-register a fixed descendant when its containing subtree is reattached.
+  page->RemoveNode(parent);
+  layout();
+  EXPECT_TRUE(manager->GetFixedNodeSet()->empty());
+  page->InsertNode(parent);
+  layout();
+  EXPECT_FLOAT_EQ(fixed->left(), 490.f);
+  EXPECT_FLOAT_EQ(fixed->top(), 800.f);
+
+  fixed->SetStyle(kPropertyIDPosition, lepus::Value("absolute"));
+  layout();
+  EXPECT_FLOAT_EQ(fixed->left(), 90.f);
+  EXPECT_FLOAT_EQ(fixed->top(), 200.f);
+  fixed->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+  layout();
+  EXPECT_FLOAT_EQ(fixed->left(), 490.f);
+  EXPECT_FLOAT_EQ(fixed->top(), 800.f);
+}
+
 TEST_P(FiberElementTest, ConvertPointUsesLayoutRootForNewFixed) {
   manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
   manager->config_->layout_configs_.enable_fixed_new_ = true;

@@ -870,6 +870,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       return;
     }
     if (is_insert) {
+      // Element-owned layout nodes bypass LayoutContext's root binding. Fixed
+      // positioning must resolve bottom/right against the page, not the parent.
+      node->SetRoot(root_ ? root_->slnode() : nullptr);
       fixed_node_set_.insert(node);
     } else {
       fixed_node_set_.erase(node);
