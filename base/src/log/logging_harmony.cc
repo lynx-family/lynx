@@ -18,6 +18,14 @@ namespace logging {
 namespace {
 
 static alog_write_func_ptr s_alog_write = nullptr;
+// N-API references are accessed only from the environment's owning thread.
+thread_local napi_env log_env = nullptr;
+thread_local napi_ref log_class = nullptr;
+
+void ReleaseLogClass(void *) {
+  log_env = nullptr;
+  log_class = nullptr;  // The environment releases its references on teardown.
+}
 
 alog_write_func_ptr GetLynxLogWriteFunction() { return s_alog_write; }
 
@@ -48,6 +56,22 @@ void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
 
 }  // namespace
 
+void SetPlatformMinLogLevel(int level) {
+  if (!log_env || !log_class) {
+    LOGE(
+        "SetPlatformMinLogLevel requires logger initialization on this ArkTS "
+        "thread");
+    return;
+  }
+  NapiHandleScope scope(log_env);
+  napi_value value = nullptr;
+  if (napi_create_int32(log_env, level, &value) != napi_ok ||
+      NapiUtil::InvokeJsMethod(log_env, log_class, "setMinimumLoggingLevel", 1,
+                               &value, nullptr) != napi_ok) {
+    LOGE("Failed to set the platform log level");
+  }
+}
+
 napi_value LynxLog::Init(napi_env env, napi_value exports) {
   NAPI_CREATE_FUNCTION(env, exports, "nativeInitLynxLogWriteFunction",
                        NativeInitLynxLogWriteFunction);
@@ -73,9 +97,26 @@ napi_value LynxLog::NativeInitLynxLogWriteFunction(napi_env env,
 }
 
 napi_value LynxLog::NativeInitLynxLog(napi_env env, napi_callback_info info) {
-  size_t argc = 1;
-  napi_value args[1] = {nullptr};
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (argc != 2 || (log_env && log_env != env)) {
+    napi_throw_error(env, nullptr, "Cannot initialize the platform log entry");
+    return nullptr;
+  }
+  if (!log_class) {
+    if (napi_create_reference(env, args[1], 1, &log_class) != napi_ok) {
+      napi_throw_error(env, nullptr, "Cannot retain the platform logger");
+      return nullptr;
+    }
+    if (napi_add_env_cleanup_hook(env, ReleaseLogClass, nullptr) != napi_ok) {
+      napi_delete_reference(env, log_class);
+      log_class = nullptr;
+      napi_throw_error(env, nullptr, "Cannot initialize logger cleanup");
+      return nullptr;
+    }
+    log_env = env;
+  }
   bool print_logs_to_all_channels = NapiUtil::ConvertToBoolean(env, args[0]);
   InitLynxLogging(GetLynxLogWriteFunction, PrintLogMessageByLogDelegate,
                   print_logs_to_all_channels);

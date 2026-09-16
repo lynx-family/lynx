@@ -4,7 +4,7 @@
 
 export const nativeInitLynxLogWriteFunction: (logWriteFunctionAddress: number) => void;
 
-export const nativeInitLynxLog: (isPrintLogToAllChannel: boolean) => void;
+export const nativeInitLynxLog: (isPrintLogToAllChannel: boolean, logger: Object) => void;
 
 export const nativeUseSysLog: (open: boolean) => void;
 

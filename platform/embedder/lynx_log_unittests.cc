@@ -84,3 +84,12 @@ TEST_F(LynxLogCAPITest, LogWithNoFormatArgsWithMacro) {
   EXPECT_NE(output.find("lynx_log_unittests.cc"), std::string::npos);
   EXPECT_NE(output.find("] This is a simple message."), std::string::npos);
 }
+
+TEST_F(LynxLogCAPITest, ClampsThresholdAndKeepsErrors) {
+  lynx_log_set_minimum_level(LYNX_LOG_FATAL);
+  EXPECT_EQ(lynx_log_get_minimum_level(), LYNX_LOG_ERROR);
+  LYNX_CAPI_LOG(LYNX_LOG_ERROR, "tag", "retained error");
+  ASSERT_EQ(TestLogSink::messages.size(), 1u);
+  lynx_log_set_minimum_level(static_cast<lynx_log_level_e>(-100));
+  EXPECT_EQ(lynx_log_get_minimum_level(), LYNX_LOG_VERBOSE);
+}
