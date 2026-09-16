@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LynxUIMarkdownShadowNodeV2 : LynxShadowNode <LynxCustomMeasureDelegate>
 
 - (NSString *)currentContentID;
+- (BOOL)exposesLinks;
 - (void)setMarkdownContentOffset:(CGPoint)contentOffset;
 - (BOOL)pauseAnimation;
 - (BOOL)resumeAnimation:(NSInteger)animationStep;

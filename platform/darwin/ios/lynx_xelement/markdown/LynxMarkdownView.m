@@ -20,6 +20,7 @@
   CADisplayLink *_displayLink;
   CGSize _measuredSize;
   CGPoint _contentOffset;
+  BOOL _exposureUpdatePending;
 }
 
 - (instancetype)init {
@@ -59,6 +60,7 @@
   } else {
     [self invalidateDisplayLink];
   }
+  _exposureUpdatePending = YES;
   _measuredSize = bundle != nil ? bundle.measuredSize : CGSizeZero;
   [self layoutMarkdownView];
   [self setNeedsDisplay];
@@ -70,6 +72,7 @@
     return;
   }
   _contentOffset = contentOffset;
+  _exposureUpdatePending = YES;
   [self layoutMarkdownView];
 }
 
@@ -98,6 +101,10 @@
 - (void)displayLinkHandle:(CADisplayLink *)sender {
   if (_markdownView != nil) {
     [_markdownView onRendererFrame:sender.targetTimestamp * 1e9];
+    if (_exposureUpdatePending && self.exposureUpdater != nil) {
+      _exposureUpdatePending = NO;
+      self.exposureUpdater();
+    }
   }
 }
 @end

@@ -4,7 +4,6 @@
 
 #import <Foundation/Foundation.h>
 #import <ServalMarkdown/IMarkdownEventDelegate.h>
-#import <ServalMarkdown/IMarkdownExposureDelegate.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -16,8 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-@interface LynxMarkdownEventDispatcher
-    : NSObject <IMarkdownEventDelegate, IMarkdownExposureDelegate>
+@interface LynxMarkdownEventDispatcher : NSObject <IMarkdownEventDelegate>
 
 - (instancetype)initWithHost:(id<LynxMarkdownEventDispatcherHost>)host;
 
