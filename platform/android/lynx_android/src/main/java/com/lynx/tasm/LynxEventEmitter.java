@@ -14,6 +14,7 @@ import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class LynxEventEmitter extends EventEmitter {
@@ -97,6 +98,8 @@ public class LynxEventEmitter extends EventEmitter {
   LynxEngineProxyWrapper mEngineProxy;
 
   private ITestTapTrack mTrack;
+
+  private final ArrayList<LynxEventObserver> mEventObservers = new ArrayList<>();
 
   public LynxEventEmitter(LynxEngineProxy engineProxy) {
     super();
@@ -230,6 +233,7 @@ public class LynxEventEmitter extends EventEmitter {
               "sendCustomEvent event: " + event.getName()
                   + " failed since mEngineProxy is null or in preload.");
         }
+        notifyEventObservers(LynxEventType.kLynxEventTypeCustomEvent, event);
       }
     });
   }
@@ -271,11 +275,40 @@ public class LynxEventEmitter extends EventEmitter {
   }
 
   @Override
-  public void sendLayoutEvent() {}
+  public void sendLayoutEvent() {
+    notifyEventObservers(LynxEventType.kLynxEventTypeLayoutEvent, null);
+  }
 
   @Override
   public void setInPreLoad(boolean preload) {
     mInPreLoad = preload;
+  }
+
+  @Override
+  public void addObserver(LynxEventObserver observer) {
+    if (!mEventObservers.contains(observer)) {
+      mEventObservers.add(observer);
+    }
+  }
+
+  @Override
+  public void removeObserver(LynxEventObserver observer) {
+    mEventObservers.remove(observer);
+  }
+
+  private void notifyEventObservers(final LynxEventType type, final LynxEvent event) {
+    if (mEventObservers.isEmpty()) {
+      return;
+    }
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        // Observers may unregister themselves while handling an event.
+        for (LynxEventObserver observer : new ArrayList<>(mEventObservers)) {
+          observer.onLynxEvent(type, event);
+        }
+      }
+    });
   }
 
   @Override

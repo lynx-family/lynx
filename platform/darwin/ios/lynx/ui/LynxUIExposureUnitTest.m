@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxUIExposureUnitTest.h"
+#import <Lynx/LynxEngineProxy.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIScroller.h>
@@ -114,6 +115,78 @@
   [mockCtx removeUIFromExposedMap:ui withUniqueIdentifier:nil];
   OCMVerify(times(2), [mockExposure removeFromRunLoop]);
   XCTAssertTrue([map count] == 0);
+}
+
+- (void)testUIAppearNotifiesNativeEventObserver {
+  LynxEngineProxy *engineProxy = OCMClassMock([LynxEngineProxy class]);
+  LynxEventEmitter *emitter = [[LynxEventEmitter alloc] initWithLynxEngineProxy:engineProxy];
+  id observer = OCMProtocolMock(@protocol(LynxEventObserver));
+  [emitter addObserver:observer];
+  [emitter addObserver:observer];
+
+  LynxUIExposure *exposure = OCMPartialMock([[LynxUIExposure alloc] init]);
+  OCMStub([exposure addExposureToRunLoop]);
+  LynxUIContext *context = OCMPartialMock([[LynxUIContext alloc] init]);
+  context.uiExposure = exposure;
+  OCMStub([context eventEmitter]).andReturn(emitter);
+  LynxUI *ui = [[LynxUI alloc] init];
+  ui.sign = 42;
+  ui.context = context;
+  [ui setRawEvents:[NSSet setWithArray:@[ @"uiappear(bindEvent)" ]] andLepusRawEvents:[NSSet set]];
+  [context addUIToExposedMap:ui];
+  XCTAssertEqual(exposure.exposedLynxUIMap.count, 1);
+
+  NSMutableSet *details = [NSMutableSet setWithArray:exposure.exposedLynxUIMap.allValues];
+  [exposure sendEvent:details eventName:@"exposure"];
+  OCMVerify(times(1), [engineProxy sendCustomEvent:[OCMArg any]]);
+  OCMVerify(times(1), [observer onLynxEvent:LynxEventTypeCustomEvent
+                                      event:[OCMArg checkWithBlock:^BOOL(LynxCustomEvent *event) {
+                                        return [event.eventName isEqualToString:@"uiappear"] &&
+                                               event.targetSign == 42 &&
+                                               event.params[@"timestamp"] != nil;
+                                      }]]);
+
+  [emitter removeObserver:observer];
+  [exposure sendEvent:details eventName:@"exposure"];
+  OCMVerify(times(2), [engineProxy sendCustomEvent:[OCMArg any]]);
+  OCMVerify(times(1), [observer onLynxEvent:LynxEventTypeCustomEvent event:[OCMArg any]]);
+  [context removeUIFromExposedMap:ui];
+}
+
+- (void)testEventObserverCanRemoveItselfDuringLayoutCallback {
+  LynxEngineProxy *engineProxy = OCMClassMock([LynxEngineProxy class]);
+  LynxEventEmitter *emitter = [[LynxEventEmitter alloc] initWithLynxEngineProxy:engineProxy];
+  id observer = OCMProtocolMock(@protocol(LynxEventObserver));
+  id remainingObserver = OCMProtocolMock(@protocol(LynxEventObserver));
+  __weak LynxEventEmitter *weakEmitter = emitter;
+  __weak id weakObserver = observer;
+  OCMStub([observer onLynxEvent:LynxEventTypeLayoutEvent event:[OCMArg isNil]])
+      .andDo(^(NSInvocation *invocation) {
+        [weakEmitter removeObserver:weakObserver];
+      });
+  [emitter addObserver:observer];
+  [emitter addObserver:remainingObserver];
+
+  [emitter dispatchLayoutEvent];
+  [emitter dispatchLayoutEvent];
+  OCMVerify(times(1), [observer onLynxEvent:LynxEventTypeLayoutEvent event:[OCMArg isNil]]);
+  OCMVerify(times(2), [remainingObserver onLynxEvent:LynxEventTypeLayoutEvent
+                                               event:[OCMArg isNil]]);
+}
+
+- (void)testInterceptedUIAppearDoesNotNotifyEventObservers {
+  LynxEngineProxy *engineProxy = OCMClassMock([LynxEngineProxy class]);
+  LynxEventEmitter *emitter = [[LynxEventEmitter alloc] initWithLynxEngineProxy:engineProxy];
+  id observer = OCMProtocolMock(@protocol(LynxEventObserver));
+  [emitter addObserver:observer];
+  [emitter setEventReporterBlock:^BOOL(LynxEvent *event) {
+    return YES;
+  }];
+
+  LynxCustomEvent *event = [[LynxCustomEvent alloc] initWithName:@"uiappear" targetSign:42];
+  [emitter sendCustomEvent:event];
+  OCMVerify(never(), [engineProxy sendCustomEvent:[OCMArg any]]);
+  OCMVerify(never(), [observer onLynxEvent:LynxEventTypeCustomEvent event:[OCMArg any]]);
 }
 
 - (void)testOverlayExposure {
