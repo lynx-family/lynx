@@ -11,7 +11,7 @@ param(
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $LynxOssEnvAndroidNdkVersion = "21.1.6352462"
-$LynxOssEnvHarmonySdkVersion = "6.0.0.868"
+$LynxOssEnvHarmonySdkVersion = "6.1.1.300"
 $LynxOssEnvCommonPathSuffixes = @(
   "tools_shared",
   "tools\gn_tools"

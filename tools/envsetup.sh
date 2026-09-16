@@ -41,7 +41,7 @@ function android_env_setup() {
   fi
 }
 
-HARMONY_SDK_VERSION='6.0.0.868'
+HARMONY_SDK_VERSION='6.1.1.300'
 
 function harmony_home_setup_for_ci() {
     if [ -z "${COMMANDLINE_TOOL_BASE_DIR}" ]; then
