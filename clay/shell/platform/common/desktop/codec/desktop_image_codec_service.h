@@ -9,17 +9,11 @@
 #include <vector>
 
 #include "clay/common/service/service.h"
-#include "clay/gfx/geometry/size.h"
-#include "clay/shell/platform/common/desktop/codec/image_codec_generator.h"
-#include "skity/io/data.hpp"
+#include "clay/shell/platform/common/desktop/codec/desktop_image_codec_registry.h"
 
 namespace clay {
 
-using ImageCodecGeneratorFactory = std::shared_ptr<ImageCodecGenerator> (*)(
-    std::shared_ptr<skity::Data> encoded_data, const Size& decode_size);
-
-// A per-engine registry of desktop image codec generators. Factories are
-// tried in registration order.
+// A per-engine list of desktop image codec generators.
 class DesktopImageCodecService
     : public Service<DesktopImageCodecService, Owner::kUI,
                      ServiceFlags::kMultiThread> {
@@ -27,14 +21,6 @@ class DesktopImageCodecService
   DesktopImageCodecService();
 
   static std::shared_ptr<DesktopImageCodecService> Create();
-
-  // Registers a generator factory before the service is published.
-  void RegisterGeneratorFactory(ImageCodecGeneratorFactory factory) {
-    if (!factory) {
-      return;
-    }
-    factories_.push_back(factory);
-  }
 
   std::shared_ptr<ImageCodecGenerator> CreateCodecGenerator(
       const std::shared_ptr<skity::Data>& encoded_data,
@@ -48,6 +34,8 @@ class DesktopImageCodecService
   }
 
  private:
+  void RegisterGeneratorFactory(ImageCodecGeneratorFactory factory);
+
   std::vector<ImageCodecGeneratorFactory> factories_;
 };
 
