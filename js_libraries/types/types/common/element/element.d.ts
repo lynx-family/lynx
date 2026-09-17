@@ -7,6 +7,7 @@ import { NoProps } from '../props';
 import { ComponentProps } from './component';
 import { FilterImageProps } from './filter-image';
 import { ImageProps, ImageUIMethods } from './image';
+import { InlineImageProps } from './inline-image';
 import { ListProps, ListUIMethods } from './list';
 import { ListItemProps } from './list-item';
 import { PageProps } from './page';
@@ -97,7 +98,7 @@ export interface IntrinsicElements {
    * @compatOverride method setFocus ClayAndroid=2.14 ClayIOS=2.16 ClayMacOS=2.14 ClayWindows=2.14 ClayHarmony=2.14
    * @compatOverride method takeScreenshot Android=false
    */
-  'inline-image': ImageProps;
+  'inline-image': InlineImageProps;
   /**
    * @Web
    * @compatOverride attribute custom-context-menu Android=false iOS=false Harmony=false ClayAndroid=false ClayIOS=false ClayMacOS=false ClayWindows=false ClayHarmony=false
@@ -361,7 +362,7 @@ declare module 'react' {
       'component': LynxComponentProps;
       'filter-image': FilterImageProps;
       'image': ImageProps;
-      'inline-image': ImageProps;
+      'inline-image': InlineImageProps;
       'inline-text': TextProps;
       'inline-truncation': NoProps;
       'list': ListProps;

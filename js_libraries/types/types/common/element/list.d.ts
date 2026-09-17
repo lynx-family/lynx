@@ -583,6 +583,19 @@ export interface ListItemSnapAlignment {
  */
 export interface ListProps extends StandardProps, ScrollbarProps {
   /**
+   * Clay versions below identify the first verified host builds; support is not implied for every later release branch.
+   * Availability of this attribute differs across iOS maintenance releases.
+   * Identifier used by native list scroll monitoring.
+   * @Android 1.6
+   * @iOS 2.1
+   * @ClayAndroid 3.5
+   * @ClayIOS 3.4
+   * @ClayMacOS 3.7
+   * @ClayWindows 3.7
+   * @ClayHarmony 3.6
+   */
+  'scroll-monitor-tag'?: string;
+  /**
    * Sets the scrolling direction and layout direction.
    * @Android 3.0
    * @iOS 3.1

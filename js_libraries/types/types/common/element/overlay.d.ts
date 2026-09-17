@@ -50,6 +50,27 @@ export interface OverlayTouch {
 }
 
 export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
+  /**
+   * Keeps a global overlay displayed when its authored view detaches.
+   * Set to false to hide the overlay on detach. Fragment-scoped overlays follow their owner.
+   * @Android 3.6
+   * @defaultValue true
+   */
+  'always-show'?: boolean;
+  /**
+   * Uses the bounds selected by mode and follows changes to those bounds.
+   * Available starting with 4.3 prereleases.
+   * @iOS 4.3
+   * @defaultValue false
+   */
+  'ios-follow-mode-edge'?: boolean;
+  /**
+   * ID selector of the nested scroll view used to coordinate overlay gesture handling.
+   * @Android 3.6
+   * @iOS 3.4
+   * @defaultValue Unset; no nested scroll-view ID is configured.
+   */
+  'nest-scroll'?: string;
   
   /**
    * Control whether the overlay is displayed

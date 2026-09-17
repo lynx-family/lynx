@@ -5,6 +5,7 @@
 export * from './component';
 export * from './filter-image';
 export * from './image';
+export * from './inline-image';
 export * from './list';
 export * from './list-item';
 export * from './page';
