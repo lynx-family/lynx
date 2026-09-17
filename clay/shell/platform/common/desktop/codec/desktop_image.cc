@@ -4,32 +4,24 @@
 
 #include "clay/shell/platform/common/desktop/codec/desktop_image.h"
 
-#include <limits>
 #include <memory>
 #include <mutex>
 #include <utility>
 
-#include "skity/io/data.hpp"
+#include "clay/gfx/skity_to_skia_utils.h"
 
 namespace clay {
 namespace {
 
-std::shared_ptr<skity::Pixmap> CopyPixmap(
-    const std::shared_ptr<skity::Pixmap>& source) {
-  if (!source || !source->Addr() || source->Width() == 0 ||
-      source->Height() == 0 || source->RowBytes() == 0 ||
-      source->Height() >
-          std::numeric_limits<size_t>::max() / source->RowBytes()) {
-    return nullptr;
-  }
-  auto data = skity::Data::MakeWithCopy(source->Addr(),
-                                        source->RowBytes() * source->Height());
-  if (!data) {
-    return nullptr;
-  }
-  return std::make_shared<skity::Pixmap>(
-      std::move(data), source->RowBytes(), source->Width(), source->Height(),
-      source->GetAlphaType(), source->GetColorType());
+std::shared_ptr<skity::Pixmap> PixmapFromFrame(const FrameInfo& frame) {
+  return frame.image ? frame.image->peekPixels() : nullptr;
+}
+
+// Desktop image codecs invoke NextFrame callbacks synchronously.
+FrameInfo DecodeNextFrame(const fml::RefPtr<Codec>& codec) {
+  FrameInfo frame;
+  codec->NextFrame([&frame](FrameInfo result) { frame = std::move(result); });
+  return frame;
 }
 
 std::shared_ptr<skity::Pixmap> ScalePixmap(
@@ -60,35 +52,42 @@ std::shared_ptr<skity::Pixmap> ScalePixmap(
 
 class DesktopImageAnimation final : public PlatformImageAnimation {
  public:
-  DesktopImageAnimation(std::shared_ptr<skity::MultiFrameDecoder> decoder,
-                        std::shared_ptr<skity::Pixmap> first_frame)
-      : current_pixmap_(CopyPixmap(first_frame)),
-        decoder_(std::move(decoder)) {}
+  explicit DesktopImageAnimation(std::shared_ptr<ImageCodecGenerator> generator)
+      : generator_(std::move(generator)) {
+    if (generator_) {
+      current_frame_.image = generator_->GetImage();
+      codec_ = generator_->CreateCodec();
+    }
+    frame_count_ = codec_ ? codec_->FrameCount() : 0;
+  }
 
-  int64_t GetDuration() override { return current_frame_duration_; }
+  int64_t GetDuration() override {
+    std::scoped_lock lock(frame_mutex_);
+    return current_frame_.duration;
+  }
 
   std::shared_ptr<skity::Pixmap> ToBitmap(
       const ImageInfo& render_info) override {
-    std::shared_ptr<skity::Pixmap> pixmap;
+    FrameInfo frame;
     {
-      std::scoped_lock lock(pixmap_mutex_);
-      pixmap = CopyPixmap(current_pixmap_);
+      std::scoped_lock lock(frame_mutex_);
+      frame = current_frame_;
     }
-    return ScalePixmap(std::move(pixmap), render_info);
+    return ScalePixmap(PixmapFromFrame(frame), render_info);
   }
 
   FrameResult DrawFrame() override {
-    if (!is_playing_ || !decoder_) {
+    if (!is_playing_ || !codec_) {
       return FrameResult::kNoFrame;
     }
-    auto frame_count = decoder_->GetFrameCount();
-    if (frame_count <= 1 || current_frame_index_ >= frame_count) {
+    if (frame_count_ <= 1 || current_frame_index_ >= frame_count_) {
       return FrameResult::kNoFrame;
     }
     if (!DrawFrameInternal()) {
       return FrameResult::kNoFrame;
     }
-    if (current_frame_index_ >= frame_count) {
+    ++current_frame_index_;
+    if (current_frame_index_ >= frame_count_) {
       if (remaining_loop_count_ > 0) {
         --remaining_loop_count_;
         if (remaining_loop_count_ <= 0) {
@@ -109,81 +108,74 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
   }
 
   void StartAnimation() override {
-    if (!decoder_ || is_playing_) {
+    if (is_playing_) {
       return;
     }
-    is_playing_ = true;
+    if (!generator_) {
+      return;
+    }
+    codec_ = generator_->CreateCodec();
+    frame_count_ = codec_ ? codec_->FrameCount() : 0;
+    if (frame_count_ <= 1) {
+      return;
+    }
     current_frame_index_ = 0;
     remaining_loop_count_ = loop_count_;
     if (!DrawFrameInternal()) {
       StopAnimation();
+      return;
     }
+    ++current_frame_index_;
+    is_playing_ = true;
   }
 
   void StopAnimation() override { is_playing_ = false; }
 
   void PauseAnimation() override { is_playing_ = false; }
 
-  void ResumeAnimation() override { is_playing_ = decoder_ != nullptr; }
+  void ResumeAnimation() override { is_playing_ = codec_ != nullptr; }
 
  private:
   bool DrawFrameInternal() {
-    if (!decoder_) {
+    if (!codec_) {
       return false;
     }
-    auto frame_info = decoder_->GetFrameInfo(current_frame_index_++);
-    if (!frame_info) {
+    auto frame = DecodeNextFrame(codec_);
+    if (!frame.image) {
       return false;
     }
-    std::scoped_lock lock(pixmap_mutex_);
-    current_pixmap_ = decoder_->DecodeFrame(frame_info, current_pixmap_);
-    current_frame_duration_ = frame_info->GetDuration();
-    return current_pixmap_ != nullptr;
+    std::scoped_lock lock(frame_mutex_);
+    current_frame_ = std::move(frame);
+    return true;
   }
 
-  std::shared_ptr<skity::Pixmap> current_pixmap_;
-  std::shared_ptr<skity::MultiFrameDecoder> decoder_;
-  std::mutex pixmap_mutex_;
+  FrameInfo current_frame_;
+  std::shared_ptr<ImageCodecGenerator> generator_;
+  fml::RefPtr<Codec> codec_;
+  std::mutex frame_mutex_;
+  int frame_count_ = 0;
   int loop_count_ = 0;
   int remaining_loop_count_ = 0;
   int32_t current_frame_index_ = 0;
-  int32_t current_frame_duration_ = 0;
   bool is_playing_ = false;
 };
 
 }  // namespace
 
-DesktopImage::DesktopImage(std::shared_ptr<skity::Codec> codec,
-                           Size decode_size)
-    : codec_(std::move(codec)) {
-  if (!codec_) {
+DesktopImage::DesktopImage(std::shared_ptr<ImageCodecGenerator> generator)
+    : generator_(std::move(generator)) {
+  if (!generator_) {
     return;
   }
-  decoder_ = codec_->DecodeMultiFrame();
-  is_animated_ = decoder_ && decoder_->GetFrameCount() > 1;
-
-  if (!is_animated_ && !decode_size.IsZero()) {
-    current_pixmap_ = codec_->Decode(
-        skity::DecodeOptions{decode_size.width(), decode_size.height()});
-  }
-  if (!current_pixmap_) {
-    current_pixmap_ = codec_->Decode();
-  }
-  if (!current_pixmap_ || !current_pixmap_->Addr() ||
-      current_pixmap_->Width() <= 0 || current_pixmap_->Height() <= 0 ||
-      current_pixmap_->RowBytes() <= 0) {
-    current_pixmap_.reset();
+  const auto& image_info = generator_->GetImageInfo();
+  if (image_info.isEmpty()) {
     return;
   }
-  width_ = current_pixmap_->Width();
-  height_ = current_pixmap_->Height();
-  current_pixmap_->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
-                                current_pixmap_->GetColorType());
-  color_type_ = current_pixmap_->GetColorType();
-  alpha_type_ = current_pixmap_->GetAlphaType();
-  if (!is_animated_) {
-    decoder_.reset();
-  }
+  width_ = image_info.width();
+  height_ = image_info.height();
+  color_type_ = ConvertToSkityColorType(image_info.colorType());
+  alpha_type_ = ConvertToSkityAlphaType(image_info.alphaType());
+  is_animated_ = generator_->FrameCount() > 1;
 }
 
 DesktopImage::~DesktopImage() = default;
@@ -198,23 +190,18 @@ skity::AlphaType DesktopImage::GetAlphaType() { return alpha_type_; }
 
 std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap(
     const ImageInfo& render_info) {
-  auto pixmap = std::move(current_pixmap_);
-  if (!pixmap && codec_ && width_ > 0 && height_ > 0) {
-    pixmap = codec_->Decode(skity::DecodeOptions{width_, height_});
-    if (!pixmap) {
-      pixmap = codec_->Decode();
-    }
-  }
+  auto image = generator_ ? generator_->GetImage() : nullptr;
+  auto pixmap = image ? image->peekPixels() : nullptr;
   return ScalePixmap(std::move(pixmap), render_info);
 }
 
 bool DesktopImage::IsAnimated() { return is_animated_; }
 
 std::unique_ptr<PlatformImageAnimation> DesktopImage::CreateAnimation() {
-  if (!is_animated_) {
+  if (!is_animated_ || !generator_) {
     return nullptr;
   }
-  return std::make_unique<DesktopImageAnimation>(decoder_, current_pixmap_);
+  return std::make_unique<DesktopImageAnimation>(generator_);
 }
 
 }  // namespace clay
