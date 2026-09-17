@@ -36,7 +36,7 @@ export class LynxEventReporter {
 
   private constructor() {
     lynx.EventReporter.registerJSMethods(this, this.onEventCallByNative, this.updateGenericInfoCallByNative,
-      this.clearCacheCallByNative);
+      this.clearCacheCallByNative, this.getGenericInfoOrExtraParamCallByNative);
   }
 
   /**
@@ -293,6 +293,21 @@ export class LynxEventReporter {
     Object.keys(info).forEach((key) => {
       genericInfo.set(key, info[key]);
     });
+  }
+
+  private getGenericInfoOrExtraParamCallByNative(instanceId: InstanceId, key: string): string {
+    if (instanceId < 0) {
+      return '';
+    }
+    const genericInfo = this.mAllGenericInfos.get(instanceId);
+    if (genericInfo && genericInfo.has(key)) {
+      return genericInfo.get(key)!.toString();
+    }
+    const extraParams = this.mAllExtraParams.get(instanceId);
+    if (extraParams && extraParams.has(key)) {
+      return extraParams.get(key)!.toString();
+    }
+    return '';
   }
 
   private clearCacheCallByNative(instanceId: InstanceId): void {

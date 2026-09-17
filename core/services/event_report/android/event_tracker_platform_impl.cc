@@ -134,6 +134,15 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
                                            java_config.jni_object());
 }
 
+std::string EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(
+    int32_t instance_id, const std::string& key) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto j_key = base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  auto j_value = Java_LynxEventReporter_getGenericInfoOrExtraParam(
+      env, instance_id, j_key.Get());
+  return base::android::JNIConvertHelper::ConvertToString(env, j_value.Get());
+}
+
 void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {
   // It is not implemented on Android yet, because the Java layer can directly
   // call LynxEventReporter.clearCache.

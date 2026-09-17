@@ -62,6 +62,12 @@ class EventTrackerPlatformImpl {
   static void UpdateGenericInfo(int32_t instance_id, const std::string& key,
                                 const float value);
 
+  /// Get a generic info or extra parameter value from platform storage.
+  /// Must be called on the report thread. Generic info takes precedence when
+  /// both stores contain the key.
+  static std::string GetGenericInfoOrExtraParam(int32_t instance_id,
+                                                const std::string& key);
+
   /// Clear the cache, which includes extra parameters and generic info directly
   /// mapped by instance id.
   /// @param instance_id The unique id of template instance.

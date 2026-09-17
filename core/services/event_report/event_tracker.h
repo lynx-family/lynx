@@ -244,6 +244,12 @@ class EventTracker {
       int32_t instance_id,
       std::unordered_map<std::string, std::string>&& prop_map);
 
+  /// Get a generic info or extra parameter value from platform storage.
+  /// Must be called on the report thread. Generic info takes precedence when
+  /// both stores contain the key.
+  static std::string GetGenericInfoOrExtraParam(int32_t instance_id,
+                                                const std::string& key);
+
  private:
   static EventTracker* Instance();
 
