@@ -16,9 +16,9 @@ notes:
   - Runtime integration is pending. The default platform boundary returns ServerError (-32000), HSR runtime is not connected.
   - The execution boundary must return the synchronous evaluation value. JavaScript exceptions, Promise values, and non-serializable values are execution errors, not successful empty results.
   - Evaluation may mutate state and does not roll back side effects. It does not expose lexical variables inside previously executed functions.
-  - Store asynchronous progress on the script global object and evaluate it again. There is no probe-specific command language.
+  - Store asynchronous progress on the script global object and evaluate it again, or publish HSR.messageReceived through the native facade. Events do not complete this request. There is no probe-specific command language.
   - Missing or non-string expression values return InvalidParams (-32602).
-  - Runtime failures and abandoned callbacks return ServerError (-32000); non-object completion results return InternalError (-32603).
+  - Runtime failures and abandoned callbacks return ServerError (-32000); malformed completion results return InternalError (-32603).
   - The original CDP id identifies the single terminal response. Client timeout does not cancel execution.
 examples:
   - title: Result after a Runtime adapter is integrated
