@@ -222,12 +222,10 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
     void* func = GestureInterrupterGetUserDataFuncHandle();
     if (func != nullptr) {
       using OhGetUserData = void* (*)(ArkUI_GestureInterruptInfo*);
-      auto* event_dispatcher_from_user_data =
-          EventDispatcher::ResolveDispatcherFromGestureUserData(
-              reinterpret_cast<OhGetUserData>(func)(info));
-      if (event_dispatcher_from_user_data != nullptr) {
-        event_dispatcher = event_dispatcher_from_user_data;
-      }
+      // A null dispatcher marks an invalid callback; do not fall back to
+      // another page's dispatcher after the original dispatcher is destroyed.
+      event_dispatcher = EventDispatcher::ResolveDispatcherFromGestureUserData(
+          reinterpret_cast<OhGetUserData>(func)(info));
     }
   }
   if (!event_dispatcher) {
