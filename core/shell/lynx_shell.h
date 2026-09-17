@@ -74,6 +74,8 @@ struct ShellOption {
   bool enable_js_group_thread_{false};
   bool enable_vsync_aligned_msg_loop_{false};
   bool enable_async_hydration_{false};
+  // DevTool-only fallback when a logic executor replaces the per-view runtime.
+  bool enable_lepus_console_post_{false};
   int32_t instance_id_{kUnknownInstanceId};
   std::string js_group_thread_name_;
   tasm::PageOptions page_options_;
@@ -306,6 +308,10 @@ class LynxShell {
 
   LYNX_EXPORT_FOR_DEVTOOL bool IsRuntimeEnabled() { return enable_runtime_; }
 
+  LYNX_EXPORT_FOR_DEVTOOL bool ShouldPostLepusConsole() {
+    return !enable_runtime_ || enable_lepus_console_post_;
+  }
+
   LYNX_EXPORT_FOR_DEVTOOL void SetHierarchyObserver(
       const std::shared_ptr<tasm::HierarchyObserver>& hierarchy_observer);
 
@@ -452,6 +458,7 @@ class LynxShell {
   const int32_t instance_id_;
 
   bool enable_runtime_ = true;
+  const bool enable_lepus_console_post_;
 
   std::shared_ptr<LynxCardCacheDataManager> card_cached_data_mgr_ =
       std::make_shared<LynxCardCacheDataManager>();

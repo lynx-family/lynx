@@ -138,6 +138,7 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
                        ? shell_option.instance_id_
                        : NextInstanceId()),
       enable_runtime_(shell_option.enable_js_),
+      enable_lepus_console_post_(shell_option.enable_lepus_console_post_),
       tasm_operation_queue_(
           strategy == base::ThreadStrategyForRendering::ALL_ON_UI ||
                   strategy == base::ThreadStrategyForRendering::MOST_ON_TASM
