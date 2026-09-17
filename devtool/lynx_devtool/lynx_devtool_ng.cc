@@ -1,7 +1,7 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-// cspell:ignore lynxsetting lynxnativemodule
+// cspell:ignore lynxsetting lynxnativemodule hsr
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
 #include "core/devtool_wrapper/devtool_pool.h"
@@ -14,6 +14,7 @@
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_dom_agent_ng.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_global_props_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_heap_profiler_agent.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_hsr_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_io_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_layer_tree_agent_ng.h"
@@ -125,6 +126,7 @@ void LynxDevToolNG::RegisterGlobalDomainAgents(
                                   std::make_unique<InspectorComponentAgent>());
   global_dispatcher.RegisterAgent(
       "LynxSetting", std::make_unique<InspectorLynxSettingAgent>());
+  global_dispatcher.RegisterAgent("HSR", std::make_unique<InspectorHSRAgent>());
 }
 
 void LynxDevToolNG::RegisterGlobalDomainAgents(
@@ -154,6 +156,9 @@ void LynxDevToolNG::RegisterGlobalDomainAgents(
   } else if (!domain_key.compare(domain_key_prefix + "lynxsetting")) {
     global_dispatcher.RegisterAgent(
         "LynxSetting", std::make_unique<InspectorLynxSettingAgent>());
+  } else if (!domain_key.compare(domain_key_prefix + "hsr")) {
+    global_dispatcher.RegisterAgent("HSR",
+                                    std::make_unique<InspectorHSRAgent>());
   }
 }
 
