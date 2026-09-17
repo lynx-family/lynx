@@ -21,6 +21,7 @@ namespace shell {
 
 struct ExternalResourceInfo {
   std::vector<uint8_t> data;
+  std::shared_ptr<const std::vector<uint8_t>> shared_data;
   int32_t err_code;
   std::string err_msg;
 
@@ -29,6 +30,12 @@ struct ExternalResourceInfo {
   ExternalResourceInfo(std::vector<uint8_t> data, int32_t err_code,
                        std::string err_msg)
       : data(std::move(data)),
+        err_code(err_code),
+        err_msg(std::move(err_msg)) {}
+
+  ExternalResourceInfo(std::shared_ptr<const std::vector<uint8_t>> shared_data,
+                       int32_t err_code, std::string err_msg)
+      : shared_data(std::move(shared_data)),
         err_code(err_code),
         err_msg(std::move(err_msg)) {}
 
