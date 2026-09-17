@@ -29,12 +29,14 @@ bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,
     }
     parsed.source = source["script"].asString();
   } else if (type == "url") {
-    if (!source["url"].isString() || source["url"].asString().empty() ||
-        source.isMember("script")) {
+    const auto& url = source["url"];
+    if (url.isString() && !source.isMember("script")) {
+      parsed.source = url.asString();
+    }
+    if (parsed.source.empty()) {
       error = "Expected non-empty source.url without source.script";
       return false;
     }
-    parsed.source = source["url"].asString();
     parsed.source_type = HSRScriptRequest::SourceType::kUrl;
   } else {
     error = "Expected source.type: inline or url";

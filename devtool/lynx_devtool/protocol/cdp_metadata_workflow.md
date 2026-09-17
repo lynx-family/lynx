@@ -105,7 +105,8 @@ Scan non-forwarding native domain agents:
 
 - `devtool/lynx_devtool/agent/domain_agent/*.cc`
 - Exclude `*_unittest.cc`.
-- Extract entries matching `functions_map_["Domain.method"]`.
+- Extract entries matching `functions_map_["Domain.method"]` or direct
+  `if (method == "Domain.method")` branches in an agent's `CallMethod` function.
 - Store the declaration file as `source` for each extracted method.
 - Do not use forwarding-only JS-engine domain agents as method inventory sources.
   - `Debugger`, `Runtime`, `HeapProfiler`, and `Profiler` are registered as DevTool domains, but their domain agents forward requests through `devtool_mediator_->DispatchJSMessage(...)`.

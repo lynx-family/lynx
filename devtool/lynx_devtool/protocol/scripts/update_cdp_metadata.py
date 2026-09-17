@@ -26,6 +26,12 @@ METHOD_NAME_PATTERN = r"[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9_]*"
 METHOD_RE = re.compile(
     rf'functions_map_\["({METHOD_NAME_PATTERN})"\]'
 )
+CALL_METHOD_FUNCTION_RE = re.compile(
+    r"\bvoid\s+[A-Za-z_]\w*::CallMethod\s*\([^)]*\)\s*\{"
+)
+DIRECT_METHOD_RE = re.compile(
+    rf'\bif\s*\(\s*method\s*==\s*"({METHOD_NAME_PATTERN})"\s*\)'
+)
 PRIMJS_FUNCTION_RE = re.compile(
     r"const\s+debug_function_type\s*&\s*GetDebugFunctionMap\s*\(\)\s*\{",
     re.MULTILINE,
@@ -273,7 +279,11 @@ def scan_local_methods(paths: Paths) -> list[LocalMethod]:
         if source_file.name.endswith("_unittest.cc"):
             continue
         text = source_file.read_text(encoding="utf-8")
-        for full_method in METHOD_RE.findall(text):
+        declared_methods = METHOD_RE.findall(text)
+        for match in CALL_METHOD_FUNCTION_RE.finditer(text):
+            body = extract_braced_block(text, match.end() - 1)
+            declared_methods.extend(DIRECT_METHOD_RE.findall(body))
+        for full_method in declared_methods:
             domain, method = full_method.split(".", 1)
             if domain in FORWARDED_JS_ENGINE_DOMAINS:
                 continue
