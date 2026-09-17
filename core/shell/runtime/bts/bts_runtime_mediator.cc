@@ -671,6 +671,10 @@ std::shared_ptr<runtime::js::Buffer> BTSRuntimeMediator::LoadBytecode(
   auto info = external_resource_loader_->LoadByteCode(url, 5 /* 5s timeout */);
   std::shared_ptr<runtime::js::Buffer> buffer;
   if (info.Success()) {
+    if (info.shared_data != nullptr) {
+      return std::make_shared<runtime::js::ByteBuffer>(
+          std::move(info.shared_data));
+    }
     buffer = std::make_shared<runtime::js::ByteBuffer>(std::move(info.data));
   }
   return buffer;
