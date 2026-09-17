@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_SHELL_COMMON_DEVTOOLS_INSTRUMENTATION_H_
-#define CLAY_SHELL_COMMON_DEVTOOLS_INSTRUMENTATION_H_
+#ifndef CLAY_SHELL_COMMON_DEVTOOL_DEVTOOLS_INSTRUMENTATION_H_
+#define CLAY_SHELL_COMMON_DEVTOOL_DEVTOOLS_INSTRUMENTATION_H_
 
 #include <cstddef>
 #include <string>
@@ -51,4 +51,4 @@ class DevtoolsInstrumentation {
 
 }  // namespace clay
 
-#endif  // CLAY_SHELL_COMMON_DEVTOOLS_INSTRUMENTATION_H_
+#endif  // CLAY_SHELL_COMMON_DEVTOOL_DEVTOOLS_INSTRUMENTATION_H_
