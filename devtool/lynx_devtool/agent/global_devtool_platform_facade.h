@@ -12,6 +12,7 @@
 
 #include "base/include/closure.h"
 #include "base/trace/native/trace_controller.h"
+#include "devtool/lynx_devtool/agent/hsr_script_request.h"
 
 namespace lynx {
 namespace devtool {
@@ -81,6 +82,15 @@ class GlobalDevToolPlatformFacade
                           "LynxSetting is not available in this Lynx runtime.");
     }
   }
+
+  // Called on the DevTool thread. The implementation reuses the platform's
+  // resource fetcher for URL sources and owns Runtime selection, thread
+  // dispatch, and completion (including teardown).
+  // The callback may run on any thread. Report completion, not mere acceptance.
+  using HSRScriptCallback =
+      base::MoveOnlyClosure<void, const std::string&, const std::string&>;
+  virtual void HandleHSRScript(HSRScriptRequest request,
+                               HSRScriptCallback callback);
 
   // The following functions are used for tracing agent.
   virtual lynx::trace::TraceController* GetTraceController() = 0;
