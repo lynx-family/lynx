@@ -93,38 +93,6 @@ TEST_P(FiberElementTest, NonPageTemplateElementSlotsDoNotPrepareBeforeTree) {
   EXPECT_EQ(compiled_child->async_create_task_, nullptr);
 }
 
-TEST_P(FiberElementTest, InsertElementSlotChildMarksChildInTreeBeforeResolve) {
-  auto grandchild =
-      fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  grandchild->SetTemplateKey(base::String("grandchild_template"));
-
-  auto child = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  child->SetTypedTag(base::String("list"));
-  auto child_slot_children = lepus::CArray::Create();
-  child_slot_children->emplace_back(lepus::Value(grandchild));
-  auto child_slots = lepus::CArray::Create();
-  child_slots->emplace_back(lepus::Value(child_slot_children));
-  child->SetElementSlots(lepus::Value(child_slots));
-
-  auto parent = fml::AdoptRef<TemplateElement>(new TemplateElement(manager));
-  parent->SetTypedTag(base::String("page"));
-  parent->SetElementSlots(lepus::Value(lepus::CArray::Create()));
-  ASSERT_TRUE(parent->IsInTemplateTree());
-
-  parent->InsertElementSlotChild(0, child, nullptr);
-
-  EXPECT_EQ(parent->result_, nullptr);
-  ASSERT_EQ(parent->pending_operations_.size(), 1u);
-  EXPECT_TRUE(child->IsInTemplateTree());
-  EXPECT_TRUE(grandchild->IsInTemplateTree());
-  EXPECT_EQ(child->async_create_task_, nullptr);
-  EXPECT_NE(grandchild->async_create_task_, nullptr);
-
-  parent->RemoveElementSlotChild(0, child);
-  EXPECT_TRUE(child->IsInTemplateTree());
-  EXPECT_TRUE(grandchild->IsInTemplateTree());
-}
-
 TEST_P(FiberElementTest, TypedTemplateElementResolvesListRootAndSlotChildren) {
   auto slot_child = manager->CreateFiberView();
 
@@ -311,11 +279,6 @@ TEST_P(FiberElementTest,
   auto focus_iter = resolved->event_map().find("focus");
   ASSERT_NE(focus_iter, resolved->event_map().end());
   EXPECT_EQ(focus_iter->second->function(), "onNewFocus");
-
-  root->SetAttributeSlot(0, lepus::Value("updated-compiled-value"));
-  compiled_data = DatasetValue(resolved.get(), "test");
-  ASSERT_NE(compiled_data, nullptr);
-  EXPECT_EQ(compiled_data->StdString(), "updated-compiled-value");
 }
 
 }  // namespace testing

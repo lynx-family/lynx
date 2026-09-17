@@ -46,37 +46,8 @@ class TemplateElement : public Element {
   void PrepareAsyncCreateElementTree();
   fml::RefPtr<Element> GetRoot();
   fml::RefPtr<Element> GetResolvedRoot() const { return result_; }
-  void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
-  void InsertElementSlotChild(uint32_t slot_index,
-                              const fml::RefPtr<Element>& child,
-                              const fml::RefPtr<Element>& ref_node);
-  void RemoveElementSlotChild(uint32_t slot_index,
-                              const fml::RefPtr<Element>& child);
 
  private:
-  struct PendingOperation {
-    enum class Type {
-      kSetAttributeSlot,
-      kInsertElementSlotChild,
-      kRemoveElementSlotChild,
-    };
-
-    PendingOperation(Type type, uint32_t slot_index, lepus::Value value)
-        : type_(type), slot_index_(slot_index), value_(std::move(value)) {}
-    PendingOperation(Type type, uint32_t slot_index, fml::RefPtr<Element> child,
-                     fml::RefPtr<Element> ref_node = nullptr)
-        : type_(type),
-          slot_index_(slot_index),
-          child_(std::move(child)),
-          ref_node_(std::move(ref_node)) {}
-
-    Type type_{Type::kSetAttributeSlot};
-    uint32_t slot_index_{0};
-    lepus::Value value_;
-    fml::RefPtr<Element> child_;
-    fml::RefPtr<Element> ref_node_;
-  };
-
   enum class TemplateElementTreeState {
     kDetached,
     kInTemplateTree,
@@ -102,8 +73,6 @@ class TemplateElement : public Element {
   void ResolveGeneratedElements();
   void InitGeneratedElementTree(const lepus::Value& prepared_root_attributes,
                                 uint32_t prepared_root_attributes_generation);
-  void ApplyAttributeSlotToTarget(uint32_t slot_index,
-                                  const lepus::Value& previous_attribute_slots);
   void ApplyInitialRootEventAttributes(
       const lepus::Value& prepared_root_attributes,
       uint32_t prepared_root_attributes_generation);
@@ -114,20 +83,12 @@ class TemplateElement : public Element {
   void MarkTemplateChildrenInElementSlotsInTree();
   void ApplyRootAttributes(const lepus::Value& previous_root_attributes);
   void ApplyInitialElementSlots();
-  void ApplyPendingOperations();
   bool IsInTemplateTree() const {
     return template_tree_state_ == TemplateElementTreeState::kInTemplateTree;
   }
   bool IsActiveMaterialized() const { return result_ != nullptr; }
   void InsertInitialElementSlotChild(const ElementSlotMountPoint& mount_point,
                                      const fml::RefPtr<Element>& child);
-  void MountElementSlotChild(const ElementSlotMountPoint& mount_point,
-                             const fml::RefPtr<Element>& child,
-                             const fml::RefPtr<Element>& ref_node);
-  void UnmountElementSlotChild(const ElementSlotMountPoint& mount_point,
-                               const fml::RefPtr<Element>& child);
-  lepus::Value GetOrCreateElementSlotChildren(uint32_t slot_index);
-  void RemoveElementSlotChildFromSlot(uint32_t slot_index, Element* child);
   TemplateAssembler* tasm_{nullptr};
   TemplateEntry* entry_{nullptr};
   base::String template_key_;
@@ -143,7 +104,6 @@ class TemplateElement : public Element {
   base::Vector<fml::RefPtr<Element>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
-  base::Vector<PendingOperation> pending_operations_;
   base::OnceTaskRefptr<GeneratedElementsResult> async_create_task_{nullptr};
   TemplateElementTreeState template_tree_state_{
       TemplateElementTreeState::kDetached};
