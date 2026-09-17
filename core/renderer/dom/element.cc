@@ -834,7 +834,8 @@ void Element::ResetAttribute(const base::String& key) {
         if (name == PlatformEventPropName::kEventThrough ||
             name == PlatformEventPropName::kEventThroughActiveRegions ||
             name == PlatformEventPropName::kEventsPassThrough ||
-            name == PlatformEventPropName::kIgnoreFocus) {
+            name == PlatformEventPropName::kIgnoreFocus ||
+            name == PlatformEventPropName::kEnableTouchPseudoPropagation) {
           fragment->SetEventProp(name, lepus::Value());
         } else {
           fragment->SetEventProp(name, lepus::Value(0));

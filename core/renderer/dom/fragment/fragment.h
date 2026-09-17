@@ -176,6 +176,9 @@ class Fragment : public BaseElementContainer {
 
   void MoveDirectStackingChildren(Fragment* parent, Fragment* child);
 
+  void SyncEventBundle();
+  void SyncEventBundlesRecursively();
+
   void MarkHasExposureEventIfNeeded() const;
 
   void ReconstructEventTargetTreeForExposure() const;

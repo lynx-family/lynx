@@ -1313,6 +1313,7 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
 }
 
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
+  SyncEventBundle();
   MarkHasExposureEventIfNeeded();
 
   // Only a fragment backed by a platform layer can skip full draw when its
@@ -1336,8 +1337,17 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
-  if (element()->IsShadowNodeVirtual() || element()->display_none()) {
+  if (element()->IsShadowNodeVirtual()) {
     // No contents to be rendered for virtual shadow nodes.
+    // Their event targets are synthesized from text ranges, so make sure the
+    // bundles for the whole virtual subtree are still available.
+    for (auto* child : children_) {
+      child->SyncEventBundlesRecursively();
+    }
+    return;
+  }
+
+  if (element()->display_none()) {
     return;
   }
 
@@ -1357,12 +1367,6 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
       layout_info_.layout_result.size_.height_, computed_style->IsOverflowX(),
       computed_style->IsOverflowY(), ShouldSyncLayoutOnlyToEventTarget());
 
-  if (event_bundle_dirty_) {
-    painting_context()->impl()->CastToNativeCtx()->UpdatePlatformEventBundle(
-        id(), PlatformEventBundle(event_props_, event_names_));
-    event_bundle_dirty_ = false;
-  }
-
   DrawBackground(display_list_builder);
   DrawBoxShadow(display_list_builder);
   DrawBorder(display_list_builder);
@@ -1375,6 +1379,22 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   DrawChildren(display_list_builder);
 
   display_list_builder.End();
+}
+
+void Fragment::SyncEventBundle() {
+  if (!event_bundle_dirty_) {
+    return;
+  }
+  painting_context()->impl()->CastToNativeCtx()->UpdatePlatformEventBundle(
+      id(), PlatformEventBundle(event_props_, event_names_));
+  event_bundle_dirty_ = false;
+}
+
+void Fragment::SyncEventBundlesRecursively() {
+  SyncEventBundle();
+  for (auto* child : children_) {
+    child->SyncEventBundlesRecursively();
+  }
 }
 
 void Fragment::MarkNodeReadyIfNeeded() {

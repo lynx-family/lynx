@@ -155,6 +155,15 @@ void PaintingContext::SetTapSlop(const std::string& tap_slop) {
   });
 }
 
+void PaintingContext::SetEventThroughConfig(
+    bool enable_event_through, bool enable_event_through_inherit_from_page) {
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
+           enable_event_through, enable_event_through_inherit_from_page]() {
+    platform_ref->SetEventThroughConfig(enable_event_through,
+                                        enable_event_through_inherit_from_page);
+  });
+}
+
 void PaintingContext::UpdateFlattenStatus(int id, bool flatten) {
   Enqueue([platform_ref = platform_impl_->GetPlatformRef(), id, flatten]() {
     platform_ref->UpdateFlattenStatus(id, flatten);

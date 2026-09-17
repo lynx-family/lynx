@@ -45,8 +45,7 @@ class PlatformEventHandler {
       : platform_ref_(platform_ref) {}
 
   bool OnInputEvent(fml::RefPtr<PlatformEventTarget> target_tree,
-                    int int_event_data[], float float_event_data[],
-                    const PlatformEventThroughConfig& event_through_config);
+                    int int_event_data[], float float_event_data[]);
   void OnTap();
   void OnLongPress();
   void DispatchPointerEvent(const std::string& name,
@@ -59,7 +58,6 @@ class PlatformEventHandler {
   bool CanRespondFocus();
 
   void SetTapSlop(const std::string& tap_slop);
-  void SetLongPressDuration(int32_t long_press_duration);
   void SetHasPointerPseudo(bool has_pointer_pseudo);
 
  private:
@@ -102,6 +100,7 @@ class PlatformEventHandler {
   int32_t first_target_sign_{-1};
   // Preserve the response chains established on pointer down.
   std::vector<int32_t> event_target_chain_;
+  std::unordered_map<int32_t, LynxPseudoStatus> pseudo_statuses_;
   std::deque<int32_t> click_target_chain_;
   std::unordered_map<int, PlatformEventTargetDetail> target_pointer_map_;
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offset_for_tap_;
@@ -116,7 +115,6 @@ class PlatformEventHandler {
   // config
   float tap_slop_{50.f};
   bool has_pointer_pseudo_{false};
-  PlatformEventThroughConfig event_through_config_;
 };
 
 }  // namespace tasm

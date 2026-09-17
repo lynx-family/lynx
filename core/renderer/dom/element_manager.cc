@@ -1228,6 +1228,17 @@ void ElementManager::UpdateTouchPseudoStatus(bool value) {
 void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
   config_ = config;
 
+  if (IsFragmentLayerRenderModeOn()) {
+    // FLR is based on FiberElement, but its element architecture can still be
+    // Radon. FiberArch always needs TASM pseudo callbacks; Radon enables them
+    // later when a stylesheet containing touch pseudo tokens is observed.
+    painting_context()->UpdateEventInfo(config_ != nullptr &&
+                                        config_->GetEnableFiberArch());
+    painting_context()->SetEventThroughConfig(
+        config_ != nullptr && config_->GetEnableEventThrough(),
+        config_ != nullptr && config_->GetEnableEventThroughInheritFromPage());
+  }
+
   // Apply pagewise configs
   if (config_) {
     if (IsFragmentLayerRenderModeOn()) {

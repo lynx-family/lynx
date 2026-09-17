@@ -150,6 +150,13 @@ void SetIgnoreFocus(PlatformEventTarget* target, const lepus::Value& value) {
   target->SetIgnoreFocus(EventPropValueToStatus(value));
 }
 
+void SetTouchPseudoPropagation(PlatformEventTarget* target,
+                               const lepus::Value& value) {
+  // Keep parity with platform targets: absent and non-boolean values use the
+  // default propagation behavior.
+  target->SetTouchPseudoPropagation(!value.IsBool() || value.Bool());
+}
+
 bool ParseEventThroughSizeValue(
     const lepus::Value& value,
     PlatformEventTarget::EventThroughSizeValue* result) {
@@ -303,6 +310,8 @@ GetEventPropSetterMap() {
            &SetEventThroughActiveRegions},
           {PlatformEventPropName::kEventsPassThrough, &SetEventsPassThrough},
           {PlatformEventPropName::kIgnoreFocus, &SetIgnoreFocus},
+          {PlatformEventPropName::kEnableTouchPseudoPropagation,
+           &SetTouchPseudoPropagation},
       };
   return map;
 }
@@ -688,6 +697,8 @@ void PlatformEventTargetHelper::AppendInlineTextEventTargets(
     }
     target->SetRendererHostSign(text_target->RendererHostSign());
     target->SetPlatformRendererType(PlatformRendererType::kText);
+    ApplyEventBundle(target,
+                     platform_ref_->GetPlatformEventBundle(region.sign));
     event_targets_.insert_or_assign(region.sign, std::as_const(target));
     text_target->AddChildTarget(std::move(target));
   }
