@@ -7,7 +7,6 @@ source_set("codec") {
   sources = [
     "desktop_image.cc",
     "desktop_image.h",
-    "desktop_image_codec_service.cc",
     "desktop_image_codec_service.h",
     "image_codec_generator.h",
     "image_fetcher_desktop.cc",
@@ -15,6 +14,10 @@ source_set("codec") {
     "skity_image_codec.cc",
     "skity_image_codec.h",
   ]
+
+  if (enable_clay_standalone) {
+    sources += [ "desktop_image_codec_service.cc" ]
+  }
 
   public_configs = [ "../../../../../../clay:config" ]
 
