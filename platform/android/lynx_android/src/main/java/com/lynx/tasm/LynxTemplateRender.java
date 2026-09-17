@@ -1625,7 +1625,7 @@ public class LynxTemplateRender
       propMap.put(LynxEventReporter.PROP_NAME_URL, url);
       // TODO(kechenglong): Remove relative_path.
       propMap.put(LynxEventReporter.PROP_NAME_RELATIVE_PATH, url);
-      if (mReportHelper != null) {
+      if (!mLynxContext.isEmbeddedModeOn() && mReportHelper != null) {
         mReportHelper.reportLynxCrashContext(LynxInfoReportHelper.KEY_LAST_LYNX_URL, url);
       }
     }
