@@ -1351,6 +1351,7 @@ TEST_F(FragmentTest, PlatformEventHandlerSkipsDeletedPointerTargets) {
   int up_data[] = {0, 1, 0, 2};
   EXPECT_TRUE(
       platform_ref.DispatchPlatformInputEvent(up_data, points, kRootId));
+  EXPECT_TRUE(platform_ref.event_handler_->pseudo_statuses_.empty());
   platform_ref.DispatchPlatformTap();
   int cancel_data[] = {0, 3, 0, 2};
   EXPECT_TRUE(

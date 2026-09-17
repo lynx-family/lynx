@@ -68,6 +68,7 @@ class NativePaintingCtxPlatformRef
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
   void DestroyPaintingNode(int parent, int child, int index) override;
+  void UpdateEventInfo(bool has_touch_pseudo) override;
   void SetTapSlop(const std::string &tap_slop) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes);
   void UpdateNodeReadyPatching(
@@ -114,6 +115,12 @@ class NativePaintingCtxPlatformRef
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
   // Get the platform event bundle of the target element.
   const PlatformEventBundle *GetPlatformEventBundle(int32_t id) const;
+  void SetEventThroughConfig(
+      bool enable_event_through,
+      bool enable_event_through_inherit_from_page) override;
+  const PlatformEventThroughConfig &GetEventThroughConfig() const {
+    return event_through_config_;
+  }
   void UpdateTextEventTargetRanges(
       int32_t id, std::vector<PlatformTextEventTargetRange> ranges);
   const std::vector<PlatformTextEventTargetRange> *GetTextEventTargetRanges(
@@ -194,7 +201,6 @@ class NativePaintingCtxPlatformRef
   void MarkEventTargetTreeDirty(int32_t renderer_id);
   void MarkEventTargetRootDirty(int32_t root_id);
   void ClearEventTargetRootDirty(int32_t root_id);
-  PlatformEventThroughConfig GetEventThroughConfig() const;
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeForRoot(
       int32_t root_id);
 
@@ -202,6 +208,7 @@ class NativePaintingCtxPlatformRef
   base::InlineOrderedFlatMap<int32_t, fml::RefPtr<PlatformRenderer>, 64>
       renderers_;
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_{nullptr};
+  PlatformEventThroughConfig event_through_config_;
   std::unique_ptr<PlatformEventHandler> event_handler_ =
       std::make_unique<PlatformEventHandler>(this);
   std::unique_ptr<PlatformEventEmitter> event_emitter_ =

@@ -274,14 +274,9 @@ void PlatformEventTarget::OffResponseChain() {}
 
 bool PlatformEventTarget::IsOnResponseChain() const { return false; }
 
-void PlatformEventTarget::OnPseudoStatusChanged(
-    LynxPseudoStatus pre_status, LynxPseudoStatus current_status) {}
-
-LynxPseudoStatus PlatformEventTarget::GetPseudoStatus() const {
-  return LynxPseudoStatus::kNone;
+bool PlatformEventTarget::TouchPseudoPropagation() const {
+  return touch_pseudo_propagation_;
 }
-
-bool PlatformEventTarget::TouchPseudoPropagation() const { return true; }
 
 bool PlatformEventTarget::EventThrough(
     float point[2], const PlatformEventThroughConfig& config) const {

@@ -60,6 +60,8 @@ class PaintingCtxPlatformRef {
   virtual void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {}
   virtual void UpdateEventInfo(bool has_touch_pseudo) {}
   virtual void SetTapSlop(const std::string& tap_slop) {}
+  virtual void SetEventThroughConfig(
+      bool enable_event_through, bool enable_event_through_inherit_from_page) {}
   virtual void UpdateFlattenStatus(int id, bool flatten) {}
 
   virtual void ListReusePaintingNode(int id, const std::string& item_key){};

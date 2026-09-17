@@ -190,6 +190,7 @@ enum class PlatformEventPropName : int32_t {
   kEventThroughActiveRegions = 17,
   kEventsPassThrough = 18,
   kIgnoreFocus = 19,
+  kEnableTouchPseudoPropagation = 20,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
@@ -253,6 +254,9 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   }
   if (name == "ignore-focus") {
     return PlatformEventPropName::kIgnoreFocus;
+  }
+  if (name == "enable-touch-pseudo-propagation") {
+    return PlatformEventPropName::kEnableTouchPseudoPropagation;
   }
   return PlatformEventPropName::kUnknown;
 }
@@ -318,6 +322,9 @@ inline std::string_view PlatformEventPropNameToString(
   }
   if (name == PlatformEventPropName::kIgnoreFocus) {
     return "ignore-focus";
+  }
+  if (name == PlatformEventPropName::kEnableTouchPseudoPropagation) {
+    return "enable-touch-pseudo-propagation";
   }
   return "";
 }

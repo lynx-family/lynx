@@ -212,6 +212,10 @@ void NativePaintingCtxPlatformRef::SetTapSlop(const std::string &tap_slop) {
   event_handler_->SetTapSlop(tap_slop);
 }
 
+void NativePaintingCtxPlatformRef::UpdateEventInfo(bool has_touch_pseudo) {
+  event_handler_->SetHasPointerPseudo(has_touch_pseudo);
+}
+
 bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
     int int_event_data[], float float_event_data[],
     int32_t event_target_root_id) {
@@ -220,8 +224,7 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
     return false;
   }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
-                                      float_event_data,
-                                      GetEventThroughConfig());
+                                      float_event_data);
 }
 
 void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
@@ -248,7 +251,7 @@ bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
   float target_point[2] = {root_point[0], root_point[1]};
   event_target_helper_->ConvertPointFromAncestorToDescendant(
       target_point, event_target_tree, hit_target, root_point);
-  return hit_target->EventThrough(target_point, GetEventThroughConfig());
+  return hit_target->EventThrough(target_point, event_through_config_);
 }
 
 bool NativePaintingCtxPlatformRef::IsPlatformEventTargetIgnoreFocus(
@@ -267,20 +270,6 @@ std::array<int32_t, 4> NativePaintingCtxPlatformRef::GetPlatformFocusInfo() {
   return {event_handler_->HitTargetSign(), event_handler_->RendererHostSign(),
           event_handler_->IgnoreFocus() ? 1 : 0,
           event_handler_->CanRespondFocus() ? 1 : 0};
-}
-
-PlatformEventThroughConfig NativePaintingCtxPlatformRef::GetEventThroughConfig()
-    const {
-  PlatformEventThroughConfig event_through_config;
-  auto *engine = engine_actor_ ? engine_actor_->Impl() : nullptr;
-  auto *tasm = engine ? engine->GetTasm() : nullptr;
-  auto config = tasm ? tasm->GetPageConfig() : nullptr;
-  if (config != nullptr) {
-    event_through_config.enable_event_through = config->GetEnableEventThrough();
-    event_through_config.enable_event_through_inherit_from_page =
-        config->GetEnableEventThroughInheritFromPage();
-  }
-  return event_through_config;
 }
 
 void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,
@@ -349,6 +338,13 @@ const PlatformEventBundle *NativePaintingCtxPlatformRef::GetPlatformEventBundle(
     return nullptr;
   }
   return &it->second;
+}
+
+void NativePaintingCtxPlatformRef::SetEventThroughConfig(
+    bool enable_event_through, bool enable_event_through_inherit_from_page) {
+  event_through_config_.enable_event_through = enable_event_through;
+  event_through_config_.enable_event_through_inherit_from_page =
+      enable_event_through_inherit_from_page;
 }
 
 void NativePaintingCtxPlatformRef::UpdateTextEventTargetRanges(

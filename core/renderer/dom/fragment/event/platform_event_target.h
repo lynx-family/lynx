@@ -208,9 +208,6 @@ class PlatformEventTarget
   void OffResponseChain();
   bool IsOnResponseChain() const;
 
-  void OnPseudoStatusChanged(LynxPseudoStatus pre_status,
-                             LynxPseudoStatus current_status);
-  LynxPseudoStatus GetPseudoStatus() const;
   bool TouchPseudoPropagation() const;
 
   bool EventThrough(float point[2],
@@ -314,6 +311,9 @@ class PlatformEventTarget
     events_pass_through_ = value;
   }
   void SetIgnoreFocus(LynxEventPropStatus value) { ignore_focus_ = value; }
+  void SetTouchPseudoPropagation(bool value) {
+    touch_pseudo_propagation_ = value;
+  }
   void AddHitTestRegion(HitTestRegion region) {
     hit_test_regions_->push_back(std::move(region));
   }
@@ -376,6 +376,7 @@ class PlatformEventTarget
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus events_pass_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
+  bool touch_pseudo_propagation_{true};
   base::auto_create_optional<std::vector<EventThroughRegion>>
       event_through_active_regions_;
   base::auto_create_optional<base::Vector<HitTestRegion>> hit_test_regions_;
