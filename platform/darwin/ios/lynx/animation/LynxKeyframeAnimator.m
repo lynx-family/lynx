@@ -13,10 +13,13 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
+#import <Lynx/LynxWeakProxy.h>
 #import <mach/mach_time.h>
 
 static const CFTimeInterval kTimeNotInit = 0;
 static const double kAnimationIterationCountInfinite = 1E9;
+static NSString* const kAnimationEventIteration = @"animationiteration";
+static const CFTimeInterval kMinIterationTimerInterval = 1.0 / 60.0;
 
 #pragma mark - PauseTimeHelper
 @interface PauseTimeHelper : NSObject
@@ -78,6 +81,13 @@ static const double kAnimationIterationCountInfinite = 1E9;
   PauseTimeHelper* _pauseTimeHelper;
   LynxAnimationDelegate* _delegate;
   CADisplayLink* _displayLink;
+  NSTimer* _iterationTimer;
+  LynxWeakProxy* _iterationTimerTarget;
+  CFTimeInterval _iterationTimerDeadline;
+  BOOL _iterationTracking;
+  BOOL _observingIterationLifecycle;
+  double _lastIteration;
+  NSUInteger _iterationGeneration;
 }
 
 static NSString* const kTransformStr = @"transform";
@@ -144,6 +154,8 @@ static const CATransform3D kEmptyCATransform3D = {0};
     case LynxKFAnimatorStatePaused:
     case LynxKFAnimatorStateRunning: {
       if ([info isEqualToKeyframeInfo:_info] && ![self shouldReInitTransform]) {
+        // Event bindings can change without changing animation properties.
+        [self updateIterationTracking:NO];
         return;
       }
       if ([info isOnlyPlayStateChanged:_info]) {
@@ -164,6 +176,8 @@ static const CATransform3D kEmptyCATransform3D = {0};
 }
 
 - (void)dealloc {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [_iterationTimer invalidate];
   if (_displayLink) {
     [_displayLink invalidate];
     _displayLink = nil;
@@ -186,6 +200,7 @@ static const CATransform3D kEmptyCATransform3D = {0};
 }
 
 - (void)destroy {
+  [self stopIterationTracking];
   [_displayLink invalidate];
   _displayLink = nil;
   // Special case in iOS.
@@ -256,6 +271,163 @@ static const CATransform3D kEmptyCATransform3D = {0};
 }
 
 #pragma mark - private function
+- (CFTimeInterval)iterationActiveTime {
+  return [_ui.view.layer convertTime:CACurrentMediaTime() fromLayer:nil] -
+         (_keyframeStartTime + _info.delay);
+}
+
+- (double)iterationAtActiveTime:(CFTimeInterval)activeTime {
+  if (_info.duration <= 0 || !isfinite(activeTime)) {
+    return 0;
+  }
+  double iteration = floor(MAX(0, activeTime) / _info.duration);
+  if (_info.iterationCount < kAnimationIterationCountInfinite) {
+    // The final boundary sends animationend, including for fractional iteration counts.
+    iteration = MIN(iteration, MAX(0, ceil(_info.iterationCount) - 1));
+  }
+  return iteration;
+}
+
+- (BOOL)canTrackIterations {
+  return [_ui.eventSet objectForKey:kAnimationEventIteration] &&
+         _state == LynxKFAnimatorStateRunning && _info.playState == LynxAnimationPlayStateRunning &&
+         _internalAnimators.count > 0 && _info.duration > 0 && isfinite(_info.duration) &&
+         _info.iterationCount > 1;
+}
+
+- (void)setObservingIterationLifecycle:(BOOL)observe {
+  if (_observingIterationLifecycle == observe) {
+    return;
+  }
+  _observingIterationLifecycle = observe;
+  NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
+  if (observe) {
+    [center addObserver:self
+               selector:@selector(onIterationLifecycleChange:)
+                   name:UIApplicationDidEnterBackgroundNotification
+                 object:nil];
+    [center addObserver:self
+               selector:@selector(onIterationLifecycleChange:)
+                   name:UIApplicationDidBecomeActiveNotification
+                 object:nil];
+  } else {
+    [center removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:nil];
+    [center removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
+  }
+}
+
+- (void)onIterationLifecycleChange:(NSNotification*)notification {
+  [self updateIterationTracking:NO];
+}
+
+- (void)stopIterationTracking {
+  [self suspendIterationTracking];
+  [self setObservingIterationLifecycle:NO];
+}
+
+- (void)suspendIterationTracking {
+  ++_iterationGeneration;
+  _iterationTracking = NO;
+  [_iterationTimer invalidate];
+  _iterationTimer = nil;
+}
+
+- (void)updateIterationTracking:(BOOL)firstApplication {
+  BOOL eligible = [self canTrackIterations];
+  [self setObservingIterationLifecycle:eligible];
+  if (!eligible ||
+      [UIApplication sharedApplication].applicationState == UIApplicationStateBackground) {
+    // Background animations retain observers for recovery, but never schedule a timer.
+    [self suspendIterationTracking];
+    return;
+  }
+  if (!_iterationTracking) {
+    _iterationTracking = YES;
+    // Skip history on binding/recovery and negative delay on initial application.
+    CFTimeInterval activeTime = firstApplication ? -_info.delay : [self iterationActiveTime];
+    // The synchronized pause clock may lag sampling; never repeat an already delivered boundary.
+    _lastIteration = MAX(_lastIteration, [self iterationAtActiveTime:activeTime]);
+  }
+  CFTimeInterval deadline = NAN;
+  double nextIteration = _lastIteration + 1;
+  if (nextIteration > _lastIteration && (_info.iterationCount >= kAnimationIterationCountInfinite ||
+                                         nextIteration < _info.iterationCount)) {
+    CALayer* layer = _ui.view.layer;
+    double speed = 1;
+    for (CALayer* ancestor = layer; ancestor != nil; ancestor = ancestor.superlayer) {
+      speed *= ancestor.speed;
+    }
+    // Do not poll a frozen or backwards timeline; apply/resume recalculates its deadline.
+    if (speed > 0 && isfinite(speed)) {
+      CFTimeInterval boundary = _keyframeStartTime + _info.delay + nextIteration * _info.duration;
+      deadline = [layer convertTime:boundary toLayer:nil];
+    }
+  }
+  // Repeated apply must not postpone the same boundary.
+  if (_iterationTimer && deadline == _iterationTimerDeadline) {
+    return;
+  }
+  [_iterationTimer invalidate];
+  _iterationTimer = nil;
+  if (!isfinite(deadline)) {
+    return;
+  }
+  // Use absolute boundaries to avoid drift; batch short iterations at up to 60 wake-ups/second.
+  NSTimeInterval interval = MAX(kMinIterationTimerInterval, deadline - CACurrentMediaTime());
+  _iterationTimerDeadline = deadline;
+  if (!_iterationTimerTarget) {
+    _iterationTimerTarget = [LynxWeakProxy proxyWithTarget:self];
+  }
+  _iterationTimer = [NSTimer timerWithTimeInterval:interval
+                                            target:_iterationTimerTarget
+                                          selector:@selector(onIterationTimer:)
+                                          userInfo:nil
+                                           repeats:NO];
+  [[NSRunLoop mainRunLoop] addTimer:_iterationTimer forMode:NSRunLoopCommonModes];
+}
+
+- (void)onIterationTimer:(NSTimer*)timer {
+  if (timer != _iterationTimer || !_iterationTracking) {
+    return;
+  }
+  _iterationTimer = nil;
+  NSUInteger generation = _iterationGeneration;
+  [self dispatchIterationEvents:NO];
+  if (generation == _iterationGeneration) {
+    [self updateIterationTracking:NO];
+  }
+}
+
+- (void)dispatchIterationEvents:(BOOL)finished {
+  // Check eligibility before reading progress, including when a pending timer outlives its binding.
+  if (!_iterationTracking || ![self canTrackIterations] ||
+      [UIApplication sharedApplication].applicationState == UIApplicationStateBackground) {
+    return;
+  }
+  CFTimeInterval activeTime =
+      finished ? _info.duration * _info.iterationCount : [self iterationActiveTime];
+  // Each leg of autoreverses is one CSS iteration.
+  double iteration = [self iterationAtActiveTime:activeTime];
+  double previousIteration = _lastIteration;
+  if (iteration <= previousIteration) {
+    return;
+  }
+  // Advance before dispatch so reentrant lifecycle changes cannot dispatch these boundaries again.
+  _lastIteration = iteration;
+  NSUInteger generation = _iterationGeneration;
+  NSDictionary* params =
+      @{@"animation_type" : @"keyframe-animation", @"animation_name" : _info.name};
+  for (double boundary = previousIteration + 1; boundary <= iteration; ++boundary) {
+    [LynxAnimationDelegate sendAnimationEvent:_ui
+                                    eventName:kAnimationEventIteration
+                                  eventParams:params];
+    // A synchronous event handler may cancel, pause, or replace this animation.
+    if (generation != _iterationGeneration) {
+      return;
+    }
+  }
+}
+
 - (void)tryToResumeAnimation:(CADisplayLink*)link {
   _displayLink.paused = true;
   // If LynxView's window is nil, it means that LynxView has been removed from window. We are not
@@ -278,6 +450,17 @@ static const CATransform3D kEmptyCATransform3D = {0};
                    if (!strongSelf) {
                      return;
                    }
+
+                   LynxAnimationInfo* currentInfo = strongSelf.info;
+                   LynxKFAnimatorState currentState = strongSelf.state;
+                   if (finished) {
+                     // CA may deliver completion before the pending iteration timer fires.
+                     [strongSelf dispatchIterationEvents:YES];
+                     if (currentInfo != strongSelf.info || currentState != strongSelf.state) {
+                       return;
+                     }
+                   }
+                   [strongSelf stopIterationTracking];
 
                    // Send animation end event only if animator's state
                    // is running.
@@ -507,6 +690,12 @@ static const CATransform3D kEmptyCATransform3D = {0};
   NSAssert(info.playState == LynxAnimationPlayStatePaused, @"info.playState must be paused");
   NSAssert(_state == LynxKFAnimatorStateRunning, @"_state must be running");
 
+  LynxAnimationInfo* currentInfo = _info;
+  [self dispatchIterationEvents:NO];
+  if (_state != LynxKFAnimatorStateRunning || _info != currentInfo) {
+    return;
+  }
+  [self stopIterationTracking];
   _state = LynxKFAnimatorStatePaused;
   NSDictionary* layerStyles = [self recordPresentationLayerStyles];
 
@@ -553,9 +742,11 @@ static const CATransform3D kEmptyCATransform3D = {0};
   }
 
   _info = info;
+  [self updateIterationTracking:NO];
 }
 
 - (void)cancel {
+  [self stopIterationTracking];
   // Cancel may be called externally anytime, so check state here.
   if (_state != LynxKFAnimatorStateRunning && _state != LynxKFAnimatorStatePaused) {
     return;
@@ -571,6 +762,7 @@ static const CATransform3D kEmptyCATransform3D = {0};
 }
 
 - (void)finish {
+  [self stopIterationTracking];
   NSAssert(_state == LynxKFAnimatorStateRunning || _state == LynxKFAnimatorStateIdle,
            @"_state must be running");
   [self removeAllAnimationFromLayer:_info];
@@ -843,6 +1035,9 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
     return;
   }
 
+  [self stopIterationTracking];
+  _lastIteration = 0;
+
   BOOL firstTimeApplied = (_keyframeStartTime == kTimeNotInit);
 
   // If the state is `canceled`, clear all old animators firstly.
@@ -940,6 +1135,7 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
   }
 
   _info = info;
+  [self updateIterationTracking:firstTimeApplied];
 }
 
 - (void)addAnimationToLayer:(NSString*)key
