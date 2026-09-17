@@ -5,6 +5,8 @@
 #define PLATFORM_EMBEDDER_PUBLIC_LYNX_VIEW_H_
 
 #include <algorithm>
+#include <cstddef>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -317,6 +319,31 @@ class LynxView {
 
   NativeWindow GetNativeWindow() {
     return lynx_view_get_native_window(lynx_view_);
+  }
+
+  bool TakeSnapshot(size_t max_width, size_t max_height, int quality,
+                    lynx_view_snapshot_format_e format,
+                    std::function<void(std::string)> callback) {
+    if (!callback) {
+      return false;
+    }
+
+    auto* callback_holder =
+        new std::function<void(std::string)>(std::move(callback));
+    if (!lynx_view_take_snapshot(
+            lynx_view_, max_width, max_height, quality, format,
+            [](void* context, const char* data, size_t size) {
+              std::unique_ptr<std::function<void(std::string)>> callback(
+                  static_cast<std::function<void(std::string)>*>(context));
+              if (*callback) {
+                (*callback)(data ? std::string(data, size) : std::string());
+              }
+            },
+            callback_holder)) {
+      delete callback_holder;
+      return false;
+    }
+    return true;
   }
 
   /**

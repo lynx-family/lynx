@@ -4,6 +4,8 @@
 #ifndef PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CAPI_H_
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CAPI_H_
 
+#include <stddef.h>
+
 #include "lynx_export.h"
 #include "lynx_load_meta_capi.h"
 #include "lynx_runtime_lifecycle_observer_capi.h"
@@ -25,6 +27,15 @@ typedef struct lynx_devtool_target_t {
   // Owned by the LynxView and valid until the next target query or release.
   const char* url;
 } lynx_devtool_target_t;
+
+typedef void (*lynx_view_snapshot_callback)(void* context,
+                                            const char* base64_data,
+                                            size_t data_size);
+
+typedef enum lynx_view_snapshot_format_e {
+  kLynxViewSnapshotFormatPNG = 0,
+  kLynxViewSnapshotFormatJPEG,
+} lynx_view_snapshot_format_e;
 
 // Create lynx view with builder.
 LYNX_CAPI_EXPORT lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
@@ -115,6 +126,13 @@ LYNX_CAPI_EXPORT void lynx_view_set_parent(lynx_view_t*, NativeWindow parent);
 
 // Get the native window of the LynxView.
 LYNX_CAPI_EXPORT NativeWindow lynx_view_get_native_window(lynx_view_t*);
+
+// Takes an asynchronous snapshot of the LynxView. The encoded image is
+// returned as Base64 data through the callback.
+LYNX_CAPI_EXPORT bool lynx_view_take_snapshot(
+    lynx_view_t*, size_t max_width, size_t max_height, int quality,
+    lynx_view_snapshot_format_e format, lynx_view_snapshot_callback callback,
+    void* context);
 
 // Get the generic resource fetcher of the LynxView. This function increases the
 // reference count of the returned fetcher. The caller assumes ownership and is
