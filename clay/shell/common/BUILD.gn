@@ -14,8 +14,8 @@ source_set("common") {
   sources = [
     "context_options.cc",
     "context_options.h",
-    "devtools_instrumentation.cc",
-    "devtools_instrumentation.h",
+    "devtool/devtools_instrumentation.cc",
+    "devtool/devtools_instrumentation.h",
     "display.cc",
     "display.h",
     "display_manager.cc",

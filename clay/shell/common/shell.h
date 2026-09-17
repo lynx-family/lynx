@@ -41,7 +41,7 @@
 #include "base/include/fml/thread.h"
 #include "base/include/fml/time/time_point.h"
 #include "clay/fml/status.h"
-#include "clay/shell/common/devtools_instrumentation.h"
+#include "clay/shell/common/devtool/devtools_instrumentation.h"
 #include "clay/shell/common/display_manager.h"
 #include "clay/shell/common/engine.h"
 #include "clay/shell/common/platform_view.h"
