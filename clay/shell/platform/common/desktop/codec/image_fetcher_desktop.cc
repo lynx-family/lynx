@@ -5,11 +5,12 @@
 
 #include <utility>
 
+#include "clay/common/service/service_manager.h"
 #include "clay/gfx/graphics_isolate.h"
 #include "clay/net/loader/resource_loader.h"
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/shell/platform/common/desktop/codec/desktop_image.h"
-#include "skity/codec/codec.hpp"
+#include "clay/shell/platform/common/desktop/codec/desktop_image_codec_service.h"
 
 namespace clay {
 namespace {
@@ -20,6 +21,14 @@ std::shared_ptr<ResourceLoader> GetOrCreateResourceLoader(
   std::shared_ptr<ResourceLoader> loader = ResourceLoaderFactory::Create(
       url, task_runner, intercept, service_manager);
   return loader;
+}
+
+std::shared_ptr<DesktopImageCodecService> GetImageCodecService(
+    const std::shared_ptr<ServiceManager>& service_manager) {
+  if (!service_manager) {
+    return nullptr;
+  }
+  return service_manager->GetMultiThreadService<DesktopImageCodecService>();
 }
 }  // namespace
 fml::RefPtr<ImageFetcher> ImageFetcher::Create(
@@ -34,11 +43,13 @@ ImageFetcherDesktop::ImageFetcherDesktop(
     std::shared_ptr<ResourceLoaderIntercept> intercept,
     clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue,
     std::shared_ptr<ServiceManager> service_manager)
-    : ImageFetcher(intercept, task_runners, unref_queue, service_manager) {}
+    : ImageFetcher(intercept, task_runners, unref_queue, service_manager),
+      codec_service_(GetImageCodecService(service_manager)) {}
 void ImageFetcherDesktop::FetchImage(
     const std::string& url,
     const std::function<void(std::shared_ptr<PlatformImage>)>& callback,
     bool need_redirect) {
+  auto codec_service = codec_service_;
   std::shared_ptr<ResourceLoader> loader = GetOrCreateResourceLoader(
       resource_loader_intercept_, url, task_runners_.GetUITaskRunner(),
       service_manager_);
@@ -49,8 +60,9 @@ void ImageFetcherDesktop::FetchImage(
   url_loader_map_[url] = loader;
   loader->Load(
       url,
-      [callback, ui_task_runner = task_runners_.GetUITaskRunner()](
-          const uint8_t* data, size_t size) {
+      [callback, codec_service,
+       ui_task_runner = task_runners_.GetUITaskRunner()](const uint8_t* data,
+                                                         size_t size) {
         if (!data || size == 0) {
           callback(nullptr);
           return;
@@ -61,13 +73,13 @@ void ImageFetcherDesktop::FetchImage(
           return;
         }
         GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
-            [callback, raw_data, ui_task_runner]() {
-              auto codec = skity::Codec::MakeFromData(raw_data);
+            [callback, codec_service, raw_data, ui_task_runner]() {
+              auto codec = codec_service ? codec_service->CreateCodec(raw_data)
+                                         : nullptr;
               if (!codec) {
                 ui_task_runner->PostTask([callback]() { callback(nullptr); });
                 return;
               }
-              codec->SetData(raw_data);
               auto image = std::make_shared<DesktopImage>(std::move(codec));
               ui_task_runner->PostTask(
                   [image, callback]() { callback(image); });
