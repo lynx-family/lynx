@@ -510,6 +510,7 @@ subspec_target("UnitTests") {
     "LynxModuleManagerDarwinUnitTest.mm",
     "LynxRuntimeMetricsUnitTest.m",
     "LynxTemplateRenderMemoryUsageUnitTest.mm",
+    "LynxTemplateRenderRuntimeUnitTest.mm",
     "LynxUnitTestUtils.h",
     "LynxUnitTestUtils.mm",
     "base/LynxComponentStatisticUnitTest.m",

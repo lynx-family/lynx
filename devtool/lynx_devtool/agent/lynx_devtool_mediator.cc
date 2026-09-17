@@ -125,7 +125,16 @@ void LynxDevToolMediator::Init(
   runtime_observer->SetDevToolMediator(shared_from_this());
   shell->SetInspectorRuntimeObserver(runtime_observer);
   auto lepus_observer = lepus_debugger_->GetInspectorLepusObserver();
-  lepus_observer->SetConsolePostNeeded(!shell->IsRuntimeEnabled());
+  // A logic executor skips per-view BTS runtime creation, so the runtime flag
+  // should ideally be false. Keep it unchanged for now: hosts also use
+  // LynxTemplateRender's enableJSRuntime to gate global events, and changing
+  // the propagated runtime flag requires auditing its internal consumers.
+  // Enable direct Lepus console forwarding here to fix DevTool without changing
+  // those runtime semantics.
+  // TODO: Make the runtime flag reflect per-view runtime availability after
+  // decoupling global-event delivery and auditing the remaining consumers.
+  lepus_observer->SetConsolePostNeeded(
+      !shell->IsRuntimeEnabled() || shell->GetPageOptions().HasLogicExecutor());
   lepus_observer->SetDevToolMediator(shared_from_this());
   tasm->SetLepusObserver(lepus_observer);
   auto common_observer =
