@@ -8,6 +8,8 @@
 #include <map>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
+#include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 
 namespace lynx {
 namespace devtool {
@@ -15,12 +17,22 @@ namespace devtool {
 class InspectorHSRAgent : public CDPDomainAgentBase {
  public:
   InspectorHSRAgent();
+  // Injectable platform boundary for protocol tests; must outlive the agent.
+  explicit InspectorHSRAgent(GlobalDevToolPlatformFacade& facade);
+
   void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
   using HSRAgentMethod = void (InspectorHSRAgent::*)(
       const std::shared_ptr<CDPResponder>&, const Json::Value&);
+
+  DECLARE_DEVTOOL_CDP_METHOD(LoadScript);
+  DECLARE_DEVTOOL_CDP_METHOD(Evaluate);
+  void Execute(const std::shared_ptr<CDPResponder>& responder,
+               HSRScriptRequest request);
+
+  GlobalDevToolPlatformFacade& facade_;
 
   std::map<std::string, HSRAgentMethod> functions_map_;
 };
