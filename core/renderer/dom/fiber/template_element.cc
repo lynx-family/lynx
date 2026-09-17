@@ -45,60 +45,6 @@ fml::RefPtr<Element> ResolveInitialElementSlotChild(const lepus::Value& child) {
   return fml::static_ref_ptr_cast<Element>(ref_counted);
 }
 
-void RemoveElementFromSlotChildren(lepus::Value* slot_children,
-                                   Element* child) {
-  if (slot_children == nullptr || child == nullptr ||
-      !slot_children->IsArray()) {
-    return;
-  }
-  auto array = slot_children->Array();
-  for (size_t i = 0; i < array->size();) {
-    auto slot_child = ResolveInitialElementSlotChild(array->get(i));
-    if (slot_child != nullptr && slot_child.get() == child) {
-      array->Erase(static_cast<uint32_t>(i));
-      continue;
-    }
-    ++i;
-  }
-}
-
-size_t FindSlotChildIndex(const lepus::Value& slot_children, Element* child) {
-  if (child == nullptr || !slot_children.IsArray()) {
-    return static_cast<size_t>(slot_children.GetLength());
-  }
-  for (size_t i = 0; i < static_cast<size_t>(slot_children.GetLength()); ++i) {
-    auto slot_child = ResolveInitialElementSlotChild(
-        slot_children.GetProperty(static_cast<uint32_t>(i)));
-    if (slot_child != nullptr && slot_child.get() == child) {
-      return i;
-    }
-  }
-  return static_cast<size_t>(slot_children.GetLength());
-}
-
-void EnsureMutableArrayForWrite(lepus::Value* value) {
-  if (value == nullptr || !value->IsArray()) {
-    return;
-  }
-  auto array = value->Array();
-  if (array != nullptr && array->IsConst()) {
-    *value = lepus::Value::ShallowCopy(*value);
-  }
-}
-
-lepus::Value CopyArrayHeader(const lepus::Value& value) {
-  if (!value.IsArrayOrJSArray()) {
-    return value;
-  }
-
-  auto array = lepus::CArray::Create();
-  array->reserve(value.GetLength());
-  for (size_t i = 0; i < static_cast<size_t>(value.GetLength()); ++i) {
-    array->emplace_back(value.GetProperty(static_cast<uint32_t>(i)));
-  }
-  return lepus::Value(std::move(array));
-}
-
 lepus::Value CopyTemplateValueForStorage(const lepus::Value& value) {
   // Clone would deep-convert JS functions to empty values. Keep callables by
   // reference, while preserving snapshot semantics for ordinary attributes.
@@ -433,7 +379,6 @@ void TemplateElement::ResolveGeneratedElements() {
         std::move(generated.prepared_element_slot_insertions_);
     ApplyRootAttributes(lepus::Value());
     ApplyInitialElementSlots();
-    ApplyPendingOperations();
     return;
   }
 
@@ -464,7 +409,6 @@ void TemplateElement::ResolveGeneratedElements() {
   InitGeneratedElementTree(prepared_root_attributes,
                            prepared_root_attributes_generation);
   ApplyInitialElementSlots();
-  ApplyPendingOperations();
 }
 
 void TemplateElement::InitGeneratedElementTree(
@@ -586,40 +530,6 @@ void TemplateElement::ApplyRootAttributes(
                               root_attributes_);
 }
 
-void TemplateElement::ApplyAttributeSlotToTarget(
-    uint32_t slot_index, const lepus::Value& previous_attribute_slots) {
-  if (!IsActiveMaterialized() || slot_index >= attribute_slot_targets_.size()) {
-    return;
-  }
-  auto target = attribute_slot_targets_[slot_index];
-  if (target == nullptr) {
-    return;
-  }
-  TreeResolver::ApplyTemplateAttributesToElement(
-      target.get(), previous_attribute_slots, attribute_slots_);
-}
-
-void TemplateElement::ApplyPendingOperations() {
-  auto operations = std::move(pending_operations_);
-  pending_operations_.clear();
-
-  for (const auto& operation : operations) {
-    if (operation.type_ == PendingOperation::Type::kSetAttributeSlot) {
-      SetAttributeSlot(operation.slot_index_, operation.value_);
-      continue;
-    }
-    if (operation.type_ == PendingOperation::Type::kInsertElementSlotChild) {
-      InsertElementSlotChild(operation.slot_index_, operation.child_,
-                             operation.ref_node_);
-      continue;
-    }
-    if (operation.type_ == PendingOperation::Type::kRemoveElementSlotChild) {
-      RemoveElementSlotChild(operation.slot_index_, operation.child_);
-      continue;
-    }
-  }
-}
-
 void TemplateElement::ApplyInitialElementSlots() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_APPLY_INITIAL_ELEMENT_SLOTS,
               "template_key", template_key_.str(), "bundle_url",
@@ -650,101 +560,6 @@ void TemplateElement::InsertInitialElementSlotChild(
   }
 }
 
-void TemplateElement::MountElementSlotChild(
-    const ElementSlotMountPoint& mount_point, const fml::RefPtr<Element>& child,
-    const fml::RefPtr<Element>& ref_node) {
-  if (mount_point.parent_ == nullptr || child == nullptr) {
-    return;
-  }
-
-  auto mounted_child = child;
-  if (child->is_template()) {
-    auto* template_child = static_cast<TemplateElement*>(child.get());
-    if (template_child->IsActiveMaterialized()) {
-      mounted_child = template_child->result_;
-    }
-  }
-
-  auto mounted_ref_node = ref_node;
-  if (mounted_ref_node != nullptr && mounted_ref_node->is_template()) {
-    auto* template_ref = static_cast<TemplateElement*>(mounted_ref_node.get());
-    if (template_ref->IsActiveMaterialized()) {
-      mounted_ref_node = template_ref->result_;
-    }
-  }
-
-  auto target_ref_node =
-      mounted_ref_node != nullptr ? mounted_ref_node : mount_point.ref_node_;
-  if (target_ref_node.get() == mounted_child.get()) {
-    return;
-  }
-  if (mounted_child->parent() == mount_point.parent_.get()) {
-    if (mounted_child->next_sibling() == target_ref_node.get()) {
-      return;
-    }
-    mount_point.parent_->RemoveNode(mounted_child);
-  }
-
-  if (target_ref_node != nullptr) {
-    mount_point.parent_->InsertNodeBefore(mounted_child, target_ref_node);
-  } else {
-    mount_point.parent_->InsertNode(mounted_child);
-  }
-}
-
-void TemplateElement::UnmountElementSlotChild(
-    const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<Element>& child) {
-  if (mount_point.parent_ == nullptr || child == nullptr) {
-    return;
-  }
-
-  auto mounted_child = child;
-  if (child->is_template()) {
-    auto* template_child = static_cast<TemplateElement*>(child.get());
-    if (template_child->result_ != nullptr) {
-      mounted_child = template_child->result_;
-    }
-  }
-
-  if (mounted_child->parent() == mount_point.parent_.get()) {
-    mount_point.parent_->RemoveNode(mounted_child);
-  }
-}
-
-lepus::Value TemplateElement::GetOrCreateElementSlotChildren(
-    uint32_t slot_index) {
-  if (!element_slots_.IsArrayOrJSArray()) {
-    element_slots_ = lepus::Value(lepus::CArray::Create());
-  } else {
-    EnsureMutableArrayForWrite(&element_slots_);
-  }
-  auto slot_children = element_slots_.GetProperty(slot_index);
-  if (!slot_children.IsArrayOrJSArray()) {
-    slot_children = lepus::Value(lepus::CArray::Create());
-  } else {
-    EnsureMutableArrayForWrite(&slot_children);
-  }
-  element_slots_.SetProperty(slot_index, slot_children);
-  return slot_children;
-}
-
-void TemplateElement::RemoveElementSlotChildFromSlot(uint32_t slot_index,
-                                                     Element* child) {
-  if (child == nullptr || !element_slots_.IsArrayOrJSArray() ||
-      slot_index >= static_cast<uint32_t>(element_slots_.GetLength())) {
-    return;
-  }
-  EnsureMutableArrayForWrite(&element_slots_);
-  auto slot_children = element_slots_.GetProperty(slot_index);
-  if (!slot_children.IsArrayOrJSArray()) {
-    return;
-  }
-  EnsureMutableArrayForWrite(&slot_children);
-  RemoveElementFromSlotChildren(&slot_children, child);
-  element_slots_.SetProperty(slot_index, slot_children);
-}
-
 fml::RefPtr<Element> TemplateElement::GetRoot() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_GET_ROOT, "template_key",
               template_key_.str(), "bundle_url", bundle_url_.str());
@@ -764,91 +579,6 @@ fml::RefPtr<Element> TemplateElement::GetRoot() {
         prepare_node_f(result_.get());
       });
   return result_;
-}
-
-void TemplateElement::SetAttributeSlot(uint32_t slot_index,
-                                       const lepus::Value& value) {
-  if (IsTypedTemplate()) {
-    if (slot_index == kTypedTemplateRootSlotIndex) {
-      SetRootAttributes(value);
-    }
-    return;
-  }
-  const bool should_apply_to_result = IsActiveMaterialized();
-  if (!should_apply_to_result) {
-    pending_operations_.emplace_back(PendingOperation::Type::kSetAttributeSlot,
-                                     slot_index, value);
-    return;
-  }
-
-  auto previous_attribute_slots = CopyArrayHeader(attribute_slots_);
-  if (!attribute_slots_.IsArrayOrJSArray()) {
-    attribute_slots_ = lepus::Value(lepus::CArray::Create());
-  } else {
-    EnsureMutableArrayForWrite(&attribute_slots_);
-  }
-  attribute_slots_.SetProperty(slot_index, value);
-
-  ApplyAttributeSlotToTarget(slot_index, previous_attribute_slots);
-}
-
-void TemplateElement::InsertElementSlotChild(
-    uint32_t slot_index, const fml::RefPtr<Element>& child,
-    const fml::RefPtr<Element>& ref_node) {
-  if (child == nullptr || child.get() == ref_node.get()) {
-    return;
-  }
-  if (IsTypedTemplate() && slot_index != kTypedTemplateRootSlotIndex) {
-    return;
-  }
-
-  if (IsInTemplateTree() && child->is_template()) {
-    static_cast<TemplateElement*>(child.get())
-        ->MarkInTemplateTreeAndPrepareRecursively();
-  }
-
-  const bool should_apply_to_result = IsActiveMaterialized();
-  if (!should_apply_to_result) {
-    pending_operations_.emplace_back(
-        PendingOperation::Type::kInsertElementSlotChild, slot_index, child,
-        ref_node);
-    return;
-  }
-
-  // TODO(songshourui.null): Restore insert-or-move semantics by removing this
-  // child from existing element slot records before inserting it here, so
-  // Serialize() does not keep stale same-slot or cross-slot entries.
-  auto slot_children = GetOrCreateElementSlotChildren(slot_index);
-  auto insert_index = FindSlotChildIndex(slot_children, ref_node.get());
-  slot_children.Array()->Insert(static_cast<uint32_t>(insert_index),
-                                lepus::Value(child));
-  element_slots_.SetProperty(slot_index, slot_children);
-
-  if (slot_index < element_slot_targets_.size()) {
-    MountElementSlotChild(element_slot_targets_[slot_index], child, ref_node);
-  }
-}
-
-void TemplateElement::RemoveElementSlotChild(
-    uint32_t slot_index, const fml::RefPtr<Element>& child) {
-  if (child == nullptr) {
-    return;
-  }
-  if (IsTypedTemplate() && slot_index != kTypedTemplateRootSlotIndex) {
-    return;
-  }
-
-  const bool should_apply_to_result = IsActiveMaterialized();
-  if (!should_apply_to_result) {
-    pending_operations_.emplace_back(
-        PendingOperation::Type::kRemoveElementSlotChild, slot_index, child);
-    return;
-  }
-
-  RemoveElementSlotChildFromSlot(slot_index, child.get());
-  if (slot_index < element_slot_targets_.size()) {
-    UnmountElementSlotChild(element_slot_targets_[slot_index], child);
-  }
 }
 
 }  // namespace tasm
