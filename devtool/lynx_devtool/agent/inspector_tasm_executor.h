@@ -38,6 +38,7 @@ enum CSSPropertyID : int32_t;
 namespace lynx {
 namespace devtool {
 
+class CDPResponder;
 class LynxDevToolMediator;
 
 class InspectorTasmExecutor
@@ -163,13 +164,13 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(SetSupportsText)
 
   // overlay
-  DECLARE_DEVTOOL_METHOD(HighlightNode)
-  DECLARE_DEVTOOL_METHOD(HideHighlight)
+  DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);
+  DECLARE_DEVTOOL_CDP_METHOD(HideHighlight);
 
   // layer tree
-  DECLARE_DEVTOOL_METHOD(LayerTreeEnable)
-  DECLARE_DEVTOOL_METHOD(LayerTreeDisable)
-  DECLARE_DEVTOOL_METHOD(CompositingReasons)
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(LayerTreeDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
   // page domain
   DECLARE_DEVTOOL_METHOD(PageGetResourceContent)
@@ -178,7 +179,9 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)
   DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateApiInfo)
+
+  // template domain
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateApiInfo);
 
   // DOM ScrollIntoViewIfNeeded
   DECLARE_DEVTOOL_METHOD(ScrollIntoViewIfNeeded)
@@ -191,12 +194,12 @@ class InspectorTasmExecutor
   void GlobalPropsChanged();
 
   // WhiteBoard domain
-  DECLARE_DEVTOOL_METHOD(WhiteBoardEnable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardDisable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardSetSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardGetSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardRemoveSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardClear)
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardSetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardGetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardRemoveSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardClear);
 
  public:
   // layout domain event
@@ -233,7 +236,7 @@ class InspectorTasmExecutor
   bool dom_use_compression_;
   int dom_compression_threshold_;
   bool dom_enabled_{false};
-  size_t origin_node_id_ = 0;
+  int origin_node_id_ = 0;
 
   bool rule_usage_tracking_;
   bool layer_tree_enabled_ = false;

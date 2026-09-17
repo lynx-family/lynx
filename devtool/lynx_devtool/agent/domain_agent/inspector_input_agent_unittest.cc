@@ -17,9 +17,11 @@
 #include <vector>
 
 #include "base/include/fml/thread.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
-#include "devtool/lynx_devtool/agent/inspector_util.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/jsoncpp/include/json/value.h"
@@ -120,6 +122,12 @@ class InspectorInputAgentTest : public ::testing::Test {
     return message;
   }
 
+  void Dispatch(const Json::Value& message) {
+    auto responder = std::make_shared<CDPResponder>(message_sender_,
+                                                    message["id"].asInt64());
+    agent_->CallMethod(responder, message);
+  }
+
   Json::Value LastResponse() {
     const auto messages = message_sender_->Messages();
     EXPECT_FALSE(messages.empty());
@@ -140,7 +148,7 @@ TEST_F(InspectorInputAgentTest, InsertTextReturnsSuccess) {
   message["method"] = "Input.insertText";
   message["params"]["text"] = "hello";
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
 
   const Json::Value response = LastResponse();
@@ -148,8 +156,89 @@ TEST_F(InspectorInputAgentTest, InsertTextReturnsSuccess) {
   EXPECT_TRUE(response["result"].isObject());
 }
 
+TEST_F(InspectorInputAgentTest, EmulateTouchFromMouseEventReturnsSuccess) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 35;
+  message["method"] = "Input.emulateTouchFromMouseEvent";
+  message["params"]["button"] = "left";
+  message["params"]["clickCount"] = 1;
+  message["params"]["deltaX"] = 0;
+  message["params"]["deltaY"] = 0;
+  message["params"]["modifiers"] = 0;
+  message["params"]["type"] = "mousePressed";
+  message["params"]["x"] = 10;
+  message["params"]["y"] = 20;
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, UnknownMethodReturnsMethodNotFound) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 36;
+  message["method"] = "Input.unknown";
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::MethodNotFound));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "'Input.unknown' wasn't found");
+}
+
+TEST_F(InspectorInputAgentTest, InsertTextWithoutFacadeReturnsServerError) {
+  SetDevToolPlatformFacade(nullptr);
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 38;
+  message["method"] = "Input.insertText";
+  message["params"]["text"] = "hello";
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input target is unavailable");
+}
+
+TEST_F(InspectorInputAgentTest,
+       InsertTextWithNonStringTextReturnsInvalidParams) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 39;
+  message["method"] = "Input.insertText";
+  message["params"]["text"] = 42;
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Invalid params: expected string text");
+}
+
+TEST_F(InspectorInputAgentTest,
+       EmulateTouchFromMouseEventWithoutFacadeReturnsServerError) {
+  SetDevToolPlatformFacade(nullptr);
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 40;
+  message["method"] = "Input.emulateTouchFromMouseEvent";
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input target is unavailable");
+}
+
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureUsesDefaultTouchSource) {
-  agent_->CallMethod(message_sender_, BuildTapMessage(8));
+  Dispatch(BuildTapMessage(8));
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   const auto events = platform_facade_->mock_input_event_target_->Events();
@@ -164,7 +253,7 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGestureUsesDefaultDuration) {
   Json::Value message = BuildTapMessage(9);
   message["params"].removeMember("duration");
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   const auto events = platform_facade_->mock_input_event_target_->Events();
@@ -178,7 +267,7 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGestureUsesDefaultMouseSource) {
   capabilities.supports_mouse = true;
   platform_facade_->mock_input_event_target_->SetCapabilities(capabilities);
 
-  agent_->CallMethod(message_sender_, BuildTapMessage(10));
+  Dispatch(BuildTapMessage(10));
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   const auto events = platform_facade_->mock_input_event_target_->Events();
@@ -192,7 +281,7 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGestureSupportsExplicitTouch) {
   Json::Value message = BuildTapMessage(11);
   message["params"]["gestureSourceType"] = "touch";
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   const auto events = platform_facade_->mock_input_event_target_->Events();
@@ -204,7 +293,7 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGestureHonorsTapCount) {
   Json::Value message = BuildTapMessage(12);
   message["params"]["tapCount"] = 2;
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   const auto events = platform_facade_->mock_input_event_target_->Events();
@@ -221,8 +310,8 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGesturesAreQueued) {
   first["params"]["duration"] = 50;
   Json::Value second = BuildTapMessage(21, 30, 20);
 
-  agent_->CallMethod(message_sender_, first);
-  agent_->CallMethod(message_sender_, second);
+  Dispatch(first);
+  Dispatch(second);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
   const auto events = platform_facade_->mock_input_event_target_->Events();
@@ -238,13 +327,13 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGesturesAreQueued) {
 TEST_F(InspectorInputAgentTest,
        SynthesizeTapGestureUsesNewTargetAfterFacadeChanges) {
   auto original_target = platform_facade_->mock_input_event_target_;
-  agent_->CallMethod(message_sender_, BuildTapMessage(33, 10, 20));
+  Dispatch(BuildTapMessage(33, 10, 20));
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
 
   platform_facade_ =
       std::make_shared<lynx::testing::DevToolPlatformFacadeMock>();
   SetDevToolPlatformFacade(platform_facade_);
-  agent_->CallMethod(message_sender_, BuildTapMessage(34, 30, 40));
+  Dispatch(BuildTapMessage(34, 30, 40));
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
   EXPECT_EQ(original_target->Events().size(), 2u);
@@ -257,57 +346,75 @@ TEST_F(InspectorInputAgentTest,
 TEST_F(InspectorInputAgentTest, SynthesizeTapWaitsForProcessingResult) {
   platform_facade_->mock_input_event_target_->SetProcessingResult(false);
 
-  agent_->CallMethod(message_sender_, BuildTapMessage(22));
+  Dispatch(BuildTapMessage(22));
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Input.synthesizeTapGesture failed");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kServerError);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapReportsInjectionFailure) {
   platform_facade_->mock_input_event_target_->SetInjectionResult(false);
 
-  agent_->CallMethod(message_sender_, BuildTapMessage(23));
+  Dispatch(BuildTapMessage(23));
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Input.synthesizeTapGesture failed");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kServerError);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsUnsupportedSource) {
   Json::Value message = BuildTapMessage(24);
   message["params"]["gestureSourceType"] = "mouse";
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Not implemented: Input.synthesizeTapGesture source mouse");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kServerError);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsInvalidSource) {
   Json::Value message = BuildTapMessage(25);
   message["params"]["gestureSourceType"] = "pen";
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
   EXPECT_EQ(
       LastResponse()["error"]["message"].asString(),
       "Invalid params: expected gestureSourceType default, touch, or mouse");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kInvalidParams);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsMissingParams) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 42;
+  message["method"] = "Input.synthesizeTapGesture";
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Invalid params: expected finite numeric x and y");
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureAllowsZeroTapCount) {
   Json::Value message = BuildTapMessage(26);
   message["params"]["tapCount"] = 0;
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
@@ -319,62 +426,67 @@ TEST_F(InspectorInputAgentTest,
   Json::Value message =
       BuildTapMessage(27, std::numeric_limits<double>::infinity(), 20);
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Invalid params: expected finite numeric x and y");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kInvalidParams);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsNegativeDuration) {
   Json::Value message = BuildTapMessage(28);
   message["params"]["duration"] = -1;
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Invalid params: duration must be a non-negative integer");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kInvalidParams);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsExcessiveDuration) {
   Json::Value message = BuildTapMessage(29);
   message["params"]["duration"] = 10001;
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Invalid params: tap sequence duration exceeds 10000 ms");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kInvalidParams);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsExcessiveTapCount) {
   Json::Value message = BuildTapMessage(30);
   message["params"]["tapCount"] = 201;
 
-  agent_->CallMethod(message_sender_, message);
+  Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Invalid params: tapCount exceeds 200");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kInvalidParams);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsMissingTarget) {
   SetDevToolPlatformFacade(nullptr);
 
-  agent_->CallMethod(message_sender_, BuildTapMessage(31));
+  Dispatch(BuildTapMessage(31));
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Input target is unavailable");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kServerError);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsNullInputTarget) {
@@ -383,12 +495,13 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsNullInputTarget) {
   platform_facade->ResetInputEventTarget();
   SetDevToolPlatformFacade(platform_facade);
 
-  agent_->CallMethod(message_sender_, BuildTapMessage(32));
+  Dispatch(BuildTapMessage(32));
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
   EXPECT_EQ(LastResponse()["error"]["message"].asString(),
             "Not implemented: Input.synthesizeTapGesture");
-  EXPECT_EQ(LastResponse()["error"]["code"].asInt(), kServerError);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
 }
 
 }  // namespace testing

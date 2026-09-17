@@ -40,9 +40,11 @@
 #include "core/renderer/template_assembler.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng.h"
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -437,6 +439,176 @@ class InspectorTasmExecutorTest : public ::testing::Test {
       tasm_mediator_;
 };
 
+TEST_F(InspectorTasmExecutorTest, OverlayHighlightSwitchAndHideRestoreStyles) {
+  auto first = CreateInlineStyleUpdateTarget();
+  auto second = CreateInlineStyleUpdateTarget();
+  devtool::ElementHelper::SetInlineStyleTexts(first.get(), "width: 10px;",
+                                              devtool::Range());
+  devtool::ElementHelper::SetInlineStyleTexts(second.get(), "height: 20px;",
+                                              devtool::Range());
+  const auto first_style =
+      devtool::ElementHelper::GetInlineStyleTexts(first.get()).css_text_;
+  const auto second_style =
+      devtool::ElementHelper::GetInlineStyleTexts(second.get()).css_text_;
+  ASSERT_FALSE(first_style.empty());
+  ASSERT_FALSE(second_style.empty());
+
+  auto sender = std::make_shared<RecordingMessageSender>();
+  devtool_mediator_->element_executor_ = element_executor_;
+  devtool_mediator_->tasm_task_runner_ = ui_thread_->GetTaskRunner();
+  devtool::InspectorOverlayAgentNG agent(devtool_mediator_);
+  auto dispatch = [&](const std::string& method, int id,
+                      const Json::Value& params) {
+    Json::Value message(Json::objectValue);
+    message["id"] = id;
+    message["method"] = method;
+    message["params"] = params;
+    {
+      auto responder = std::make_shared<devtool::CDPResponder>(sender, id);
+      agent.CallMethod(responder, message);
+    }
+    FlushUITasks();
+  };
+  Json::Value params(Json::objectValue);
+  params["nodeId"] = devtool::ElementInspector::NodeId(first.get());
+  auto& color = params["highlightConfig"]["contentColor"];
+  color["r"] = 255;
+  color["g"] = 0;
+  color["b"] = 0;
+  color["a"] = 0.5;
+  dispatch("Overlay.highlightNode", 1, params);
+  EXPECT_NE(devtool::ElementHelper::GetInlineStyleTexts(first.get()).css_text_,
+            first_style);
+  EXPECT_EQ(element_executor_->origin_node_id_,
+            devtool::ElementInspector::NodeId(first.get()));
+
+  params["nodeId"] = devtool::ElementInspector::NodeId(second.get());
+  dispatch("Overlay.highlightNode", 2, params);
+  EXPECT_EQ(devtool::ElementHelper::GetInlineStyleTexts(first.get()).css_text_,
+            first_style);
+  EXPECT_NE(devtool::ElementHelper::GetInlineStyleTexts(second.get()).css_text_,
+            second_style);
+
+  dispatch("Overlay.hideHighlight", 3, Json::Value());
+  EXPECT_EQ(devtool::ElementHelper::GetInlineStyleTexts(second.get()).css_text_,
+            second_style);
+  EXPECT_EQ(element_executor_->origin_node_id_, 0);
+  ASSERT_EQ(sender->json_messages_.size(), 3u);
+  for (size_t i = 0; i < sender->json_messages_.size(); ++i) {
+    const auto& response = sender->json_messages_[i].second;
+    EXPECT_EQ(response["id"].asInt(), static_cast<int>(i + 1));
+    EXPECT_EQ(response["result"], Json::Value(Json::objectValue));
+    EXPECT_FALSE(response.isMember("error"));
+  }
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       OverlayHighlightUpdatesSameNodeAndDefaultsAlpha) {
+  auto target = CreateInlineStyleUpdateTarget();
+  auto sender = std::make_shared<RecordingMessageSender>();
+  Json::Value params(Json::objectValue);
+  params["nodeId"] = devtool::ElementInspector::NodeId(target.get());
+  auto& color = params["highlightConfig"]["contentColor"];
+  color["r"] = 255;
+  color["g"] = 0;
+  color["b"] = 0;
+  element_executor_->HighlightNode(
+      std::make_shared<devtool::CDPResponder>(sender, 1), params);
+  const auto first_highlight =
+      devtool::ElementHelper::GetInlineStyleTexts(target.get()).css_text_;
+  EXPECT_NE(first_highlight.find("rgba(255,0,0,1.000)"), std::string::npos);
+
+  color["r"] = 0;
+  color["g"] = 255;
+  element_executor_->HighlightNode(
+      std::make_shared<devtool::CDPResponder>(sender, 2), params);
+  const auto second_highlight =
+      devtool::ElementHelper::GetInlineStyleTexts(target.get()).css_text_;
+  EXPECT_NE(second_highlight.find("rgba(0,255,0,1.000)"), std::string::npos);
+  EXPECT_NE(second_highlight, first_highlight);
+  ASSERT_EQ(sender->json_messages_.size(), 2u);
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       OverlayMissingContentColorRestoresTransparentHighlight) {
+  auto target = CreateInlineStyleUpdateTarget();
+  devtool::ElementHelper::SetInlineStyleTexts(target.get(), "width: 10px;",
+                                              devtool::Range());
+  const auto original =
+      devtool::ElementHelper::GetInlineStyleTexts(target.get()).css_text_;
+  auto sender = std::make_shared<RecordingMessageSender>();
+  Json::Value params(Json::objectValue);
+  params["nodeId"] = devtool::ElementInspector::NodeId(target.get());
+  auto& color = params["highlightConfig"]["contentColor"];
+  color["r"] = 255;
+  color["g"] = 0;
+  color["b"] = 0;
+  element_executor_->HighlightNode(
+      std::make_shared<devtool::CDPResponder>(sender, 1), params);
+  ASSERT_NE(devtool::ElementHelper::GetInlineStyleTexts(target.get()).css_text_,
+            original);
+
+  params["highlightConfig"].removeMember("contentColor");
+  element_executor_->HighlightNode(
+      std::make_shared<devtool::CDPResponder>(sender, 2), params);
+  EXPECT_EQ(devtool::ElementHelper::GetInlineStyleTexts(target.get()).css_text_,
+            original);
+  EXPECT_EQ(element_executor_->origin_node_id_, 0);
+  ASSERT_EQ(sender->json_messages_.size(), 2u);
+  EXPECT_EQ(sender->json_messages_[1].second["result"],
+            Json::Value(Json::objectValue));
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       OverlayInvalidNodeIdDoesNotHighlightRealNode) {
+  auto target = CreateInlineStyleUpdateTarget();
+  const int node_id = devtool::ElementInspector::NodeId(target.get());
+  const auto original =
+      devtool::ElementHelper::GetInlineStyleTexts(target.get()).css_text_;
+  const std::vector<Json::Value> values = {
+      Json::Value(static_cast<Json::Int64>(node_id + (1LL << 32))),
+      Json::Value(static_cast<double>(node_id)),
+      Json::Value(static_cast<double>(node_id) + 0.5)};
+  for (const auto& value : values) {
+    Json::Value params(Json::objectValue);
+    params["nodeId"] = value;
+    auto sender = std::make_shared<RecordingMessageSender>();
+    element_executor_->HighlightNode(
+        std::make_shared<devtool::CDPResponder>(sender, 1), params);
+    ASSERT_EQ(sender->json_messages_.size(), 1u);
+    const auto& response = sender->json_messages_[0].second;
+    EXPECT_EQ(response["error"]["code"].asInt(),
+              static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+    EXPECT_FALSE(response.isMember("result"));
+    EXPECT_EQ(element_executor_->origin_node_id_, 0);
+    EXPECT_EQ(
+        devtool::ElementHelper::GetInlineStyleTexts(target.get()).css_text_,
+        original);
+  }
+}
+
+TEST_F(InspectorTasmExecutorTest, OverlayRejectsNodeMarkedForErasure) {
+  auto target = CreateInlineStyleUpdateTarget();
+  devtool::ElementInspector::SetIsNeedEraseId(target.get(), true);
+  Json::Value params(Json::objectValue);
+  params["nodeId"] = devtool::ElementInspector::NodeId(target.get());
+  auto& color = params["highlightConfig"]["contentColor"];
+  color["r"] = 255;
+  color["g"] = 0;
+  color["b"] = 0;
+  auto sender = std::make_shared<RecordingMessageSender>();
+  element_executor_->HighlightNode(
+      std::make_shared<devtool::CDPResponder>(sender, 1), params);
+
+  ASSERT_EQ(sender->json_messages_.size(), 1u);
+  const auto& response = sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"], 1);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"], "Node is not an Element");
+  EXPECT_FALSE(response.isMember("result"));
+}
+
 TEST_F(InspectorTasmExecutorTest, GlobalPropsEnableDisableCase) {
   Json::Value message(Json::ValueType::objectValue);
   message["id"] = 1;
@@ -611,34 +783,55 @@ TEST_F(InspectorTasmExecutorTest, SetDevtoolPlatformAbilityCase) {
 }
 
 TEST_F(InspectorTasmExecutorTest, LayerTreeEnableCase) {
-  LOGI("InspectorTasmExecutorTest LayerTreeEnableCase start");
-  Json::Value message;
-  message["id"] = 2;
-  element_executor_->LayerTreeEnable(message_sender_, message);
+  auto sender = std::make_shared<RecordingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 2);
+  element_executor_->LayerTreeEnable(responder, Json::Value());
+  responder.reset();
 
-  Json::Value res;
-  Json::Reader reader;
-  bool is_valid_json = reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res);
-
-  EXPECT_TRUE(is_valid_json);
+  ASSERT_EQ(sender->json_messages_.size(), 1u);
+  const auto& response = sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"], 2);
+  EXPECT_EQ(response["result"], Json::Value(Json::objectValue));
   EXPECT_TRUE(element_executor_->layer_tree_enabled_);
 }
 
 TEST_F(InspectorTasmExecutorTest, LayerTreeDisableCase) {
-  LOGI("InspectorTasmExecutorTest LayerTreeDisableCase start");
-  Json::Value message;
-  message["id"] = 6;
-  element_executor_->LayerTreeDisable(message_sender_, message);
+  element_executor_->layer_tree_enabled_ = true;
+  auto sender = std::make_shared<RecordingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 6);
+  element_executor_->LayerTreeDisable(responder, Json::Value());
+  responder.reset();
 
-  Json::Value res;
-  Json::Reader reader;
-  bool is_valid_json = reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, res);
-
-  EXPECT_TRUE(is_valid_json);
-  EXPECT_EQ(res["id"], 6);
+  ASSERT_EQ(sender->json_messages_.size(), 1u);
+  const auto& response = sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"], 6);
+  EXPECT_EQ(response["result"], Json::Value(Json::objectValue));
   EXPECT_FALSE(element_executor_->layer_tree_enabled_);
+}
+
+TEST_F(InspectorTasmExecutorTest, CompositingReasonsReturnsElementPayload) {
+  auto element = manager_->CreateFiberElement("view");
+  devtool::ElementInspector::InitForInspector(std::make_tuple(element.get()));
+  element_executor_->element_root_ = element.get();
+  const int node_id = devtool::ElementInspector::NodeId(element.get());
+  Json::Value params(Json::objectValue);
+  params["layerId"] = std::to_string(node_id);
+  auto sender = std::make_shared<RecordingMessageSender>();
+  auto responder = std::make_shared<devtool::CDPResponder>(sender, 7);
+
+  element_executor_->CompositingReasons(responder, params);
+  responder.reset();
+
+  ASSERT_EQ(sender->json_messages_.size(), 1u);
+  const auto& response = sender->json_messages_[0].second;
+  EXPECT_EQ(response["id"], 7);
+  EXPECT_FALSE(response.isMember("method"));
+  Json::Value expected(Json::objectValue);
+  expected["compositingReasons"].append("view");
+  expected["compositingReasonsIds"].append(node_id);
+  EXPECT_EQ(response["result"], expected);
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.second.empty());
 }
 
 TEST_F(InspectorTasmExecutorTest, GetLayersForNodeReturnsCanonicalLayerTree) {

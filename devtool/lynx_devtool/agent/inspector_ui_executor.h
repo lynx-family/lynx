@@ -10,6 +10,7 @@
 #include "base/include/closure.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/shell/lynx_shell.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
@@ -60,8 +61,10 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(LynxGetViewLocationOnScreen)
   DECLARE_DEVTOOL_METHOD(LynxSendEventToVM)
   DECLARE_DEVTOOL_METHOD(GetScreenshot)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateData)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateJsInfo)
+
+  // template domain
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateData);
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
 
   // Performance domain
   DECLARE_DEVTOOL_METHOD(PerformanceEnable)
@@ -70,9 +73,9 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
 
   // Input domain
-  DECLARE_DEVTOOL_METHOD(EmulateTouchFromMouseEvent)
-  DECLARE_DEVTOOL_METHOD(InsertText)
-  DECLARE_DEVTOOL_METHOD(SynthesizeTapGesture)
+  DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(InsertText);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
 
   // event
  public:
