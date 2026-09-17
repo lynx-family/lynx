@@ -43,7 +43,6 @@
 #include "core/renderer/dom/element_container.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/page_element.h"
-#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/vdom/radon/radon_types.h"
 #include "core/renderer/layout_scheduler/layout_scheduler.h"
 #include "core/renderer/pipeline/pipeline_layout_data.h"
@@ -683,15 +682,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   }
 
   bool GetEnableNativeListFromShell() const { return enable_native_list_; }
-  // Cache APIs used by TemplateElement to park and reclaim detached list-item
-  // template trees.
-  void CacheListItemTemplateElementTree(
-      const fml::RefPtr<TemplateElement> &element,
-      const base::String &bundle_url, const base::String &template_key);
-  fml::RefPtr<TemplateElement> TakeCachedTemplateElementTree(
-      TemplateElement *owner, const base::String &bundle_url,
-      const base::String &template_key);
-  void RemoveCachedTemplateElementTreeForOwner(TemplateElement *owner);
 
   bool GetEnableNativeListFromPageConfig() const {
     return config_ && config_->GetEnableNativeList() == TernaryBool::TRUE_VALUE;
@@ -1083,10 +1073,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       const lepus::Value &component_at_index,
       const lepus::Value &enqueue_component,
       const lepus::Value &component_at_indexes);
-  // List layout consumes materialized roots, while Element Template callbacks
-  // track list item state by the TemplateElement shell uid.
-  int32_t ResolveTemplateElementRootIdForList(int32_t id);
-  int32_t ResolveTemplateElementShellIdForList(int32_t id);
 
   /**
    * create None Element, it's just meaningless Node
@@ -1445,10 +1431,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   ElementManager(const ElementManager &) = delete;
   ElementManager &operator=(const ElementManager &) = delete;
   void OnListComponentUpdated(const std::shared_ptr<PipelineOptions> &options);
-  fml::RefPtr<TemplateElement> TakeCachedTemplateElementTreeForOwner(
-      TemplateElement *owner);
-  fml::RefPtr<TemplateElement> TakeCachedTemplateElementTreeForKey(
-      const base::String &bundle_url, const base::String &template_key);
 
   const int instance_id_;
   base::LogContext log_context_;
@@ -1565,10 +1547,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       std::make_shared<lynx::tasm::PropBundleCreatorDefault>();
 
   base::InlineLinearFlatSet<BaseElementContainer *, 4> dirty_stacking_contexts_;
-  std::unordered_map<int32_t, int32_t> list_template_root_id_to_shell_id_;
-  std::map<TemplateElementTreeCacheKey,
-           std::vector<fml::RefPtr<TemplateElement>>>
-      cached_template_element_trees_;
 
   // TODO(yuyang), check this
   // This set holds the unique_id of the already flushed keyframes to ensure
