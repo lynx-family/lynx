@@ -46,6 +46,7 @@ class ImageDrawable {
   void UpdateMode(ImageMode mode);
   void UpdateImageRendering(starlight::ImageRenderingType);
   void UpdateTintColor(uint32_t tint_color);
+  void UpdateBlurRadius(float radius) { blur_radius_ = radius; }
   void UpdateLoopCount(int32_t loop_count);
   void Render(OH_Drawing_Canvas* canvas);
   void DrawPixelMap(OH_Drawing_Canvas* canvas,
@@ -66,6 +67,7 @@ class ImageDrawable {
   void RemoveImageAnimationListener(ImageAnimationListener* listener);
 
  private:
+  void UpdateBlurFilter();
   std::unique_ptr<LynxBaseImage> pixel_maps_{nullptr};
   std::shared_ptr<ImageData> image_data_{nullptr};
   std::unique_ptr<base::TimedTaskManager> timer_task_manager_{nullptr};
@@ -75,6 +77,9 @@ class ImageDrawable {
   OH_Drawing_Rect* src_rect_{nullptr};
   OH_Drawing_Rect* dst_rect_{nullptr};
   OH_Drawing_ColorFilter* color_filter_{nullptr};
+  OH_Drawing_ImageFilter* blur_filter_{nullptr};
+  float blur_radius_{0.f};
+  float blur_sigma_{0.f};
   OH_Drawing_Filter* filter_{nullptr};
   OH_Drawing_SamplingOptions* sample_{nullptr};
   uint32_t image_width_{0};

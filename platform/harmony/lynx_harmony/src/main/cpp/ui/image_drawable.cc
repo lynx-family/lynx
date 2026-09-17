@@ -7,6 +7,7 @@
 #include <native_drawing/drawing_brush.h>
 #include <native_drawing/drawing_color_filter.h>
 #include <native_drawing/drawing_filter.h>
+#include <native_drawing/drawing_image_filter.h>
 #include <native_drawing/drawing_matrix.h>
 #include <native_drawing/drawing_rect.h>
 #include <native_drawing/drawing_sampling_options.h>
@@ -24,6 +25,17 @@ namespace harmony {
 static constexpr const int32_t kFrameIndexDone = -1;
 static constexpr const uint64_t kfFrameSchedulingDelay = 8;  // ms
 
+namespace {
+
+float ConvertRadiusToSigma(float radius) {
+  constexpr float kBlurSigmaScale = 0.57735f;
+  constexpr float kScaleHalf = 0.5f;
+  // Convert the physical blur radius to sigma, matching ArkUI's blur filter.
+  return radius > 0.f ? kBlurSigmaScale * radius + kScaleHalf : 0.f;
+}
+
+}  // namespace
+
 ImageDrawable::~ImageDrawable() {
   if (sample_) {
     OH_Drawing_SamplingOptionsDestroy(sample_);
@@ -39,6 +51,9 @@ ImageDrawable::~ImageDrawable() {
   }
   if (color_filter_) {
     OH_Drawing_ColorFilterDestroy(color_filter_);
+  }
+  if (blur_filter_) {
+    OH_Drawing_ImageFilterDestroy(blur_filter_);
   }
   if (brush_) {
     OH_Drawing_BrushDestroy(brush_);
@@ -485,9 +500,47 @@ uint64_t ImageDrawable::GetTargetRenderTimeForNextFrameMS(
   return animation_time_ms + time_until_next_frame_in_loop_ms;
 }
 
+void ImageDrawable::UpdateBlurFilter() {
+  float sigma = ConvertRadiusToSigma(blur_radius_);
+  if (matrix_ && sigma > 0.f) {
+    const float width_scale = (right_ - left_) / image_width_;
+    const float height_scale = (bottom_ - top_) / image_height_;
+    const float scale = mode_ == ImageMode::kAspectFit
+                            ? std::min(width_scale, height_scale)
+                            : std::max(width_scale, height_scale);
+    if (scale <= 0.f) {
+      return;
+    }
+    // The image matrix also scales the filter; keep blur in view pixels.
+    sigma /= scale;
+  }
+  if (base::FloatsEqual(sigma, blur_sigma_)) {
+    return;
+  }
+  blur_sigma_ = sigma;
+  if (blur_filter_) {
+    OH_Drawing_ImageFilterDestroy(blur_filter_);
+    blur_filter_ = nullptr;
+  }
+  if (sigma > 0.f) {
+    blur_filter_ =
+        OH_Drawing_ImageFilterCreateBlur(sigma, sigma, CLAMP, nullptr);
+  }
+  if (!filter_) {
+    filter_ = OH_Drawing_FilterCreate();
+  }
+  if (!brush_) {
+    brush_ = OH_Drawing_BrushCreate();
+    OH_Drawing_BrushSetAntiAlias(brush_, true);
+  }
+  OH_Drawing_FilterSetImageFilter(filter_, blur_filter_);
+  OH_Drawing_BrushSetFilter(brush_, filter_);
+}
+
 void ImageDrawable::DrawPixelMap(OH_Drawing_Canvas* canvas,
                                  OH_Drawing_PixelMap* draw_bitmap) {
   if (draw_bitmap) {
+    UpdateBlurFilter();
     OH_Drawing_CanvasAttachBrush(canvas, brush_);
     if (matrix_) {
       OH_Drawing_CanvasSave(canvas);
