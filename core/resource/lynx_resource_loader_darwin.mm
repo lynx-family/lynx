@@ -3,12 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/resource/lynx_resource_loader_darwin.h"
+
+#include <atomic>
+#include <memory>
+
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxSubErrorCode.h>
+#import "LynxResourceHandle+Internal.h"
 #import "LynxTemplateBundle+Converter.h"
 #include "base/trace/native/trace_event.h"
 #include "core/resource/lynx_resource_setting.h"
@@ -76,6 +81,45 @@ void VerifyLynxTemplateResource(const std::string& url, lynx::pub::LynxResourceR
       }
     }
   }
+}
+
+LynxGenericResourceHandleCompletionBlock CreateBytecodeHandleCallback(
+    lynx::fml::internal::CopyableLambda<
+        lynx::base::MoveOnlyClosure<void, lynx::pub::LynxResourceResponse&>>
+        callback) {
+  auto invoked = std::make_shared<std::atomic_bool>(false);
+  return ^(LynxResourceHandle* _Nullable handle, NSError* _Nullable error) {
+    if (invoked->exchange(true, std::memory_order_relaxed)) {
+      LLogWarn(@"[ResourceHandle] External bytecode failure_stage=handle_fetch_callback, "
+                "failure_reason=duplicate_callback");
+      return;
+    }
+
+    NSInteger errCode = 0;
+    NSString* errMsg = @"";
+    std::shared_ptr<lynx::pub::LynxResourceHandle> resourceHandle;
+    if (error != nil) {
+      LLogError(@"[ResourceHandle] External bytecode failure_stage=handle_fetch_callback, "
+                 "failure_reason=fetch_failed");
+      errCode = ECLynxResourceExternalResourceRequestFailed;
+      errMsg = error.localizedDescription ?: @"Error when fetch external resource";
+    } else if (handle == nil) {
+      LLogError(@"[ResourceHandle] External bytecode failure_stage=handle_fetch_callback, "
+                 "failure_reason=null_handle");
+      errCode = ECLynxResourceExternalResourceRequestFailed;
+      errMsg = kNullDataMsg;
+    } else if ((resourceHandle = [handle rawResourceHandle]) == nullptr) {
+      LLogError(@"[ResourceHandle] External bytecode failure_stage=handle_validation, "
+                 "failure_reason=invalidated_handle");
+      errCode = ECLynxResourceExternalResourceRequestFailed;
+      errMsg = kNullDataMsg;
+    }
+
+    lynx::pub::LynxResourceResponse resp{.resource_handle = std::move(resourceHandle),
+                                         .err_code = static_cast<int32_t>(errCode),
+                                         .err_msg = [errMsg UTF8String]};
+    callback(resp);
+  };
 }
 
 }  // namespace
@@ -350,6 +394,14 @@ void LynxResourceLoaderDarwin::LoadBytecode(
       LynxResourceRequest* resourceRequest = [[LynxResourceRequest alloc] initWithUrl:nsUrl
                                                                                  type:requestType];
       __block __weak id<LynxErrorReceiverProtocol> weakErrorReceiver = _errorReceiver;
+      if ([_genericResourceFetcher respondsToSelector:@selector(fetchBytecodeHandle:onComplete:)]) {
+        BOOL accepted = [_genericResourceFetcher
+            fetchBytecodeHandle:resourceRequest
+                     onComplete:CreateBytecodeHandleCallback(copyable_callback)];
+        if (accepted) {
+          return;
+        }
+      }
       if ([_genericResourceFetcher respondsToSelector:@selector(fetchBytecode:onComplete:)]) {
         [_genericResourceFetcher
             fetchBytecode:resourceRequest
