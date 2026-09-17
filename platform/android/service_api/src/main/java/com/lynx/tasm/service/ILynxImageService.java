@@ -232,6 +232,12 @@ public interface ILynxImageService extends IServiceProvider {
   void setSampleSize(@NonNull Object builder, int sampleSize);
 
   /**
+   * Sets whether a request may load an image with an unknown content.
+   * Unsupported image backends ignore this optional setting.
+   */
+  default void setSkipContentLengthCheck(@NonNull Object builder, boolean skip) {}
+
+  /**
    * Set the decode region for this image request.
    *
    * <p>The builder is passed as {@link Object} to avoid directly depending on Fresco classes in

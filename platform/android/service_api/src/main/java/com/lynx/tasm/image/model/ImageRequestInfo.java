@@ -26,6 +26,7 @@ public class ImageRequestInfo {
 
   // TODO(chengjunnan) Perhaps better abstraction is needed here
   private final boolean mEnableGifLiteDecoder;
+  private final boolean mSkipContentLengthCheck;
 
   private boolean mEnableDownSampling = true;
 
@@ -78,6 +79,7 @@ public class ImageRequestInfo {
     mLoopCount = builder.getLoopCount();
     mConfig = builder.getConfig();
     mEnableGifLiteDecoder = builder.enableGifLiteDecoder();
+    mSkipContentLengthCheck = builder.isSkipContentLengthCheck();
     mCustomParam = builder.getCustomParam();
     mCacheChoice = builder.getCacheChoice();
     mProcessors = builder.getProcessors();
@@ -119,6 +121,10 @@ public class ImageRequestInfo {
 
   public Bitmap.Config getConfig() {
     return mConfig;
+  }
+
+  public boolean isSkipContentLengthCheck() {
+    return mSkipContentLengthCheck;
   }
 
   public boolean isEnableGifLiteDecoder() {

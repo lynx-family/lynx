@@ -2590,6 +2590,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object builder, int width, int height);
   public void com.lynx.tasm.service.ILynxImageService.setCacheKeyUri(@NonNull Object builder, @NonNull Uri cacheKeyUri);
   public void com.lynx.tasm.service.ILynxImageService.setSampleSize(@NonNull Object builder, int sampleSize);
+  public default void com.lynx.tasm.service.ILynxImageService.setSkipContentLengthCheck(@NonNull Object builder, boolean skip);
   public void com.lynx.tasm.service.ILynxImageService.setImageDecodeRegion( @NonNull Object builder, @Nullable android.graphics.Rect regionToDecode);
 }
 
@@ -2972,6 +2973,7 @@ public class com::lynx::tasm::image::model::ImageRequestInfo :  {
   public int com.lynx.tasm.image.model.ImageRequestInfo.getResizeHeight();
   public int com.lynx.tasm.image.model.ImageRequestInfo.getLoopCount();
   public Bitmap.Config com.lynx.tasm.image.model.ImageRequestInfo.getConfig();
+  public boolean com.lynx.tasm.image.model.ImageRequestInfo.isSkipContentLengthCheck();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableGifLiteDecoder();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnablePremultiplied();
   public Map< String, String > com.lynx.tasm.image.model.ImageRequestInfo.getCustomParam();
@@ -3048,6 +3050,8 @@ public class com::lynx::tasm::image::model::ImageRequestInfoBuilder :  {
   public Map< String, String > com.lynx.tasm.image.model.ImageRequestInfoBuilder.getImageCustomParam();
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setImageSRScale(float scale);
   public float com.lynx.tasm.image.model.ImageRequestInfoBuilder.getmImageSRScale();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setSkipContentLengthCheck(boolean skip);
+  public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isSkipContentLengthCheck();
   public ImageRequestInfo com.lynx.tasm.image.model.ImageRequestInfoBuilder.build();
 }
 
@@ -6035,6 +6039,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setDeferInvalidation(boolean defer);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setDisableDefaultPlaceholder(boolean disable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEnableResourceHint(boolean enable);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setSkipContentLengthCheck(boolean skip);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEnableCustomGifDecoder(boolean enable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setSrc(String src);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setPlaceholder(String placeholder);
@@ -9518,6 +9523,7 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_RENDERING IMAGE_RENDERING;
   public final String com.lynx.tasm.behavior.PropsConstants.ENABLE_RESOURCE_HINT ENABLE_RESOURCE_HINT;
   public final String com.lynx.tasm.behavior.PropsConstants.ENABLE_CUSTOM_GIF_DECODER ENABLE_CUSTOM_GIF_DECODER;
+  public final String com.lynx.tasm.behavior.PropsConstants.ANDROID_SKIP_CONTENT_LENGTH_CHECK ANDROID_SKIP_CONTENT_LENGTH_CHECK;
   public final String com.lynx.tasm.behavior.PropsConstants.ENABLE_IMAGE_ASYNC_REQUEST ENABLE_IMAGE_ASYNC_REQUEST;
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_PRIORITY IMAGE_PRIORITY;
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_CACHE_CHOICE IMAGE_CACHE_CHOICE;
