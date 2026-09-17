@@ -17,18 +17,6 @@ namespace tasm {
 class TemplateAssembler;
 class TemplateEntry;
 
-struct TemplateElementTreeCacheKey {
-  base::String bundle_url;
-  base::String template_key;
-
-  bool operator<(const TemplateElementTreeCacheKey& other) const {
-    if (bundle_url.IsEqual(other.bundle_url)) {
-      return template_key < other.template_key;
-    }
-    return bundle_url < other.bundle_url;
-  }
-};
-
 class TemplateElement : public Element {
  public:
   explicit TemplateElement(ElementManager* element_manager = nullptr);
@@ -54,13 +42,10 @@ class TemplateElement : public Element {
     attribute_slots_ = attribute_slots;
   }
   void SetElementSlots(const lepus::Value& element_slots);
-  void SetOptions(const lepus::Value& options);
-  void SetUid(const lepus::Value& uid) { uid_ = uid; }
 
   void PrepareAsyncCreateElementTree();
   fml::RefPtr<Element> GetRoot();
   fml::RefPtr<Element> GetResolvedRoot() const { return result_; }
-  lepus::Value Serialize() const;
   void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
   void InsertElementSlotChild(uint32_t slot_index,
                               const fml::RefPtr<Element>& child,
@@ -95,7 +80,6 @@ class TemplateElement : public Element {
   enum class TemplateElementTreeState {
     kDetached,
     kInTemplateTree,
-    kInTemplateCache,
   };
 
   TemplateElement(const TemplateElement& element, bool clone_resolved_props)
@@ -108,9 +92,7 @@ class TemplateElement : public Element {
         root_attributes_(element.root_attributes_),
         root_attributes_generation_(element.root_attributes_generation_),
         attribute_slots_(element.attribute_slots_),
-        element_slots_(element.element_slots_),
-        options_(element.options_),
-        uid_(element.uid_) {}
+        element_slots_(element.element_slots_) {}
 
   // Builds a once task that may run either on the concurrent loop or on the
   // GetRoot caller. The task returns detached data; GetRoot is the only place
@@ -136,24 +118,7 @@ class TemplateElement : public Element {
   bool IsInTemplateTree() const {
     return template_tree_state_ == TemplateElementTreeState::kInTemplateTree;
   }
-  bool IsInTemplateCache() const {
-    return template_tree_state_ == TemplateElementTreeState::kInTemplateCache;
-  }
-  bool IsActiveMaterialized() const {
-    return result_ != nullptr && !IsInTemplateCache();
-  }
-  bool CanUseListItemTemplateTreeCache() const;
-  bool HasSameTemplateIdentity(const TemplateElement& other) const;
-  bool TryPrepareCachedTemplateTree();
-  bool ActivateCachedTemplateTreeIfNeeded();
-  bool MoveToTemplateTreeCacheIfNeeded();
-  void MarkCachedTemplateTreeInactiveRecursively();
-  void MarkCachedTemplateTreeActiveRecursively();
-  void TransferCachedTemplateTreeFrom(TemplateElement* cached);
-  void ClearCachedTemplateTreeShell();
-  void ReleaseCachedTemplateTreeRecursively();
-  void ReconcileElementSlotsFromCachedTree(
-      const lepus::Value& cached_element_slots);
+  bool IsActiveMaterialized() const { return result_ != nullptr; }
   void InsertInitialElementSlotChild(const ElementSlotMountPoint& mount_point,
                                      const fml::RefPtr<Element>& child);
   void MountElementSlotChild(const ElementSlotMountPoint& mount_point,
@@ -163,16 +128,6 @@ class TemplateElement : public Element {
                                const fml::RefPtr<Element>& child);
   lepus::Value GetOrCreateElementSlotChildren(uint32_t slot_index);
   void RemoveElementSlotChildFromSlot(uint32_t slot_index, Element* child);
-  lepus::Value SerializeElementSlots() const;
-  lepus::Value SerializeOptions() const;
-  lepus::Value SerializeTemplateOptionArray(const lepus::Value& value) const;
-  lepus::Value SerializeRootAttributes() const;
-  lepus::Value SerializeTypedTemplate() const;
-  lepus::Value SerializeCompiledTemplate() const;
-  lepus::Value SerializeElementSlotChildren(
-      const lepus::Value& slot_children) const;
-  lepus::Value SerializeElementSlotChild(const lepus::Value& child) const;
-
   TemplateAssembler* tasm_{nullptr};
   TemplateEntry* entry_{nullptr};
   base::String template_key_;
@@ -182,8 +137,6 @@ class TemplateElement : public Element {
   uint32_t root_attributes_generation_{0};
   lepus::Value attribute_slots_;
   lepus::Value element_slots_;
-  lepus::Value options_;
-  lepus::Value uid_;
   fml::RefPtr<Element> result_{nullptr};
   base::Vector<fml::RefPtr<Element>> attribute_slot_targets_;
   base::Vector<fml::RefPtr<Element>> event_attribute_slot_targets_;
@@ -192,7 +145,6 @@ class TemplateElement : public Element {
   base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
   base::Vector<PendingOperation> pending_operations_;
   base::OnceTaskRefptr<GeneratedElementsResult> async_create_task_{nullptr};
-  fml::RefPtr<TemplateElement> prepared_cached_template_tree_{nullptr};
   TemplateElementTreeState template_tree_state_{
       TemplateElementTreeState::kDetached};
 };
