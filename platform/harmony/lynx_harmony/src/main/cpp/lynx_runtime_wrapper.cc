@@ -365,6 +365,9 @@ napi_value LynxRuntimeWrapper::NativeEvaluateScript(napi_env env,
   }
   std::string url = base::NapiUtil::ConvertToString(env, args[0]);
   std::string sources = base::NapiUtil::ConvertToString(env, args[1]);
+  if (obj->inspector_owner_) {
+    obj->inspector_owner_->OnLoaded(url);
+  }
   obj->RuntimeStandalone().EvaluateScript(std::move(url), std::move(sources));
   return nullptr;
 }
@@ -391,6 +394,9 @@ napi_value LynxRuntimeWrapper::NativeEvaluateTemplateBundle(
     return nullptr;
   }
   std::string js_file = base::NapiUtil::ConvertToString(env, args[2]);
+  if (obj->inspector_owner_) {
+    obj->inspector_owner_->OnLoaded(url);
+  }
   obj->RuntimeStandalone().EvaluateScript(
       std::move(url), &(bundle->GetBundle()), std::move(js_file));
   return nullptr;
