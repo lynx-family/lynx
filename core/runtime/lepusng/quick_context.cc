@@ -614,7 +614,11 @@ QuickContext::~QuickContext() {
 
 void QuickContext::OnGC(std::string mem_info) {
 #if ENABLE_TRACE_PERFETTO
-  if (trace::TraceController::Instance()->IsTracingStarted()) {
+  auto* trace_controller = trace::TraceController::Instance();
+  auto config = trace_controller->IsTracingStarted()
+                    ? trace_controller->GetLastSessionTraceConfig()
+                    : nullptr;
+  if (config && config->enable_memory_trace) {
     auto usage = runtime::js::detail::QuickjsHelper::GetMemoryUsage(runtime_);
     std::unordered_map<std::string, std::string> info{
         {lynx::runtime::kRawRuntimeHeapSize, std::to_string(usage.heap_size)},
