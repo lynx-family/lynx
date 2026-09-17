@@ -5,13 +5,12 @@
 #define CLAY_SHELL_PLATFORM_COMMON_DESKTOP_CODEC_IMAGE_FETCHER_DESKTOP_H_
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "clay/gfx/shared_image/shared_image_sink.h"
 #include "clay/ui/resource/image_fetcher.h"
 
 namespace clay {
-class DesktopImageCodecService;
-
 class ImageFetcherDesktop : public ImageFetcher {
  public:
   ImageFetcherDesktop(std::shared_ptr<ResourceLoaderIntercept> intercept,
@@ -23,9 +22,6 @@ class ImageFetcherDesktop : public ImageFetcher {
       const std::string& url,
       const std::function<void(std::shared_ptr<PlatformImage>)>& callback,
       bool need_redirect) override;
-
- private:
-  std::shared_ptr<DesktopImageCodecService> codec_service_;
 };
 }  // namespace clay
 #endif  // CLAY_SHELL_PLATFORM_COMMON_DESKTOP_CODEC_IMAGE_FETCHER_DESKTOP_H_
