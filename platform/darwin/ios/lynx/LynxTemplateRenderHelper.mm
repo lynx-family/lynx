@@ -525,6 +525,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 - (lynx::shell::ShellOption)setUpShellOption {
   lynx::shell::ShellOption option;
   option.enable_js_ = self.enableJSRuntime;
+  option.enable_lepus_console_post_ = _lynxViewGroup.logicExecutor != nil;
   option.enable_js_group_thread_ = _enableJSGroupThread;
   if (_enableJSGroupThread) {
     option.js_group_thread_name_ = [_runtimeOptions groupThreadName];

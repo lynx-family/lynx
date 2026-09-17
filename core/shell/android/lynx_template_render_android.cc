@@ -335,6 +335,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;
   shell_option.enable_js_ = enable_js;
+  shell_option.enable_lepus_console_post_ = has_logic_executor;
   shell_option.enable_vsync_aligned_msg_loop_ = enable_vsync_aligned_msg_loop;
   shell_option.enable_async_hydration_ = enable_async_hydration;
   shell_option.enable_js_group_thread_ = enable_js_group_thread;

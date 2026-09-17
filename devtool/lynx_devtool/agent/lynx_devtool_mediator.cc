@@ -98,7 +98,7 @@ void LynxDevToolMediator::Init(
   runtime_observer->SetDevToolMediator(shared_from_this());
   shell->SetInspectorRuntimeObserver(runtime_observer);
   auto lepus_observer = lepus_debugger_->GetInspectorLepusObserver();
-  lepus_observer->SetConsolePostNeeded(!shell->IsRuntimeEnabled());
+  lepus_observer->SetConsolePostNeeded(shell->ShouldPostLepusConsole());
   lepus_observer->SetDevToolMediator(shared_from_this());
   tasm->SetLepusObserver(lepus_observer);
   tasm::replay::ReplayController::SetDevToolObserver(
