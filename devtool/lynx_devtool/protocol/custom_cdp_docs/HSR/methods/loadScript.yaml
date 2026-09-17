@@ -1,0 +1,29 @@
+summary: Loads or replaces the complete Host Script while preserving live View bindings.
+parameters:
+  - name: source
+    type: object
+    description: 'Exactly one source: {type: inline, script: string} or {type: url, url: string}. Empty inline scripts are allowed; resource URLs must be non-empty. File URLs also use type: url.'
+returns: []
+notes:
+  - Uses the global CDP channel (session -1), not a page Runtime.
+  - Runtime integration is pending. The default platform boundary returns ServerError (-32000), HSR runtime is not connected.
+  - Resource URLs are passed unchanged to the execution boundary, which reuses the platform ResourceFetcher for scheme handling and source loading. Supported schemes and file access depend on that fetcher; the transport does not parse or decode resource URLs.
+  - The execution boundary owns Runtime selection, replacement, cleanup, and View binding preservation. No production Runtime is installed by this protocol implementation.
+  - Once integrated, success means script installation completed, not merely queued and not that a business test passed.
+  - Missing, contradictory, or incorrectly typed source fields return InvalidParams (-32602). Unsupported platform file access is an execution error.
+  - Runtime failures and abandoned callbacks return ServerError (-32000); non-object completion results return InternalError (-32603).
+  - Client timeout does not cancel JavaScript. Concurrent loads and lifecycle behavior must be handled by the Runtime integration.
+examples:
+  - title: Inline source before Runtime integration
+    request:
+      id: 1
+      method: HSR.loadScript
+      params:
+        source:
+          type: inline
+          script: globalThis.count = 1;
+    response:
+      id: 1
+      error:
+        code: -32000
+        message: HSR runtime is not connected

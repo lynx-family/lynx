@@ -13,7 +13,7 @@ void GlobalDevToolPlatformFacade::HandleHSRScript(HSRScriptRequest request,
   // agreed. A load must replace the script while preserving live View bindings;
   // evaluate must run in the current context. Do not acknowledge either early.
   if (callback) {
-    std::move(callback)("", "HSR runtime is not connected");
+    std::move(callback)(Json::Value(), "HSR runtime is not connected");
   }
 }
 

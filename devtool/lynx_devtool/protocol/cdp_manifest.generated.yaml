@@ -326,6 +326,18 @@ domains:
         origin: lynx-extension
         since: '4.3'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_global_props_agent.cc
+  - name: HSR
+    origin: lynx-extension
+    scope: global
+    methods:
+      - name: evaluate
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_hsr_agent.cc
+      - name: loadScript
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_hsr_agent.cc
   - name: HeapProfiler
     origin: standard
     scope: instance

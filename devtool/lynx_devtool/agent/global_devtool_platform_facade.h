@@ -87,8 +87,9 @@ class GlobalDevToolPlatformFacade
   // resource fetcher for URL sources and owns Runtime selection, thread
   // dispatch, and completion (including teardown).
   // The callback may run on any thread. Report completion, not mere acceptance.
+  // Pass an owned JSON result directly; a non-empty error takes precedence.
   using HSRScriptCallback =
-      base::MoveOnlyClosure<void, const std::string&, const std::string&>;
+      base::MoveOnlyClosure<void, Json::Value, const std::string&>;
   virtual void HandleHSRScript(HSRScriptRequest request,
                                HSRScriptCallback callback);
 

@@ -5,9 +5,78 @@
 
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 import update_cdp_metadata
+
+
+class CdpMetadataScanTest(unittest.TestCase):
+    def setUp(self):
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        root = Path(temp_dir.name).resolve()
+        agents = root / "agents"
+        agents.mkdir()
+        primjs = root / "protocols.cc"
+        primjs.write_text(
+            'const debug_function_type& GetDebugFunctionMap() {\n'
+            '  return {{"Runtime.enable", Enable}};\n}\n',
+            encoding="utf-8",
+        )
+        self.paths = replace(
+            update_cdp_metadata.get_paths(),
+            source_root=root,
+            domain_agent_dir=agents,
+            primjs_protocols_source=primjs,
+        )
+
+    def test_scan_map_and_direct_dispatch_with_source_and_deduplication(self):
+        (self.paths.domain_agent_dir / "sample.cc").write_text(
+            'functions_map_["Sample.mapped"] = &SampleAgent::Mapped;\n'
+            'void SampleAgent::CallMethod(const Json::Value& message) {\n'
+            '  if (method == "Sample.direct") { Direct(); }\n'
+            '  else if (\n method == "Sample.mapped"\n) { Mapped(); }\n'
+            '  else if (method == "Runtime.forwarded") { Forward(); }\n'
+            '}\n'
+            'void SampleAgent::HandleNotification() {\n'
+            '  if (method == "Sample.notification") { Notify(); }\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        (self.paths.domain_agent_dir / "sample_unittest.cc").write_text(
+            'void TestAgent::CallMethod() {\n'
+            '  if (method == "Sample.testOnly") { Test(); }\n'
+            '}\n',
+            encoding="utf-8",
+        )
+
+        self.assertEqual(
+            update_cdp_metadata.scan_local_methods(self.paths),
+            [
+                update_cdp_metadata.LocalMethod("Runtime", "enable", "protocols.cc"),
+                update_cdp_metadata.LocalMethod("Sample", "direct", "agents/sample.cc"),
+                update_cdp_metadata.LocalMethod("Sample", "mapped", "agents/sample.cc"),
+            ],
+        )
+
+    def test_reject_duplicate_map_and_direct_dispatch_in_different_files(self):
+        (self.paths.domain_agent_dir / "mapped.cc").write_text(
+            'functions_map_["Sample.method"] = &SampleAgent::Method;\n',
+            encoding="utf-8",
+        )
+        (self.paths.domain_agent_dir / "direct.cc").write_text(
+            'void SampleAgent::CallMethod() {\n'
+            '  if (method == "Sample.method") { Method(); }\n'
+            '}\n',
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(
+            update_cdp_metadata.MetadataError,
+            r"duplicate method declaration for Sample\.method",
+        ):
+            update_cdp_metadata.scan_local_methods(self.paths)
 
 
 class CdpMetadataSinceTest(unittest.TestCase):
