@@ -4,6 +4,8 @@
 
 #include <memory>
 
+#include "base/include/fml/thread.h"
+#include "base/include/no_destructor.h"
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
@@ -53,6 +55,12 @@ void SetupLogBoxWrapper(lynx_view_t* view, NativeWindow parent) {
 #endif
 
 namespace {
+
+lynx::fml::RefPtr<lynx::fml::TaskRunner> GetSnapshotTaskRunner() {
+  static lynx::base::NoDestructor<lynx::fml::Thread> snapshot_thread(
+      "LynxViewSnapshotThread");
+  return snapshot_thread->GetTaskRunner();
+}
 
 class LynxViewEventSimulationTargetImpl final
     : public lynx::embedder::LynxViewEventSimulationTarget {
@@ -427,6 +435,37 @@ LYNX_EXTERN_C void lynx_view_set_parent(lynx_view_t* view,
 
 LYNX_EXTERN_C NativeWindow lynx_view_get_native_window(lynx_view_t* view) {
   return view->lynx_ui_renderer->GetNativeWindow();
+}
+
+LYNX_EXTERN_C bool lynx_view_take_snapshot(lynx_view_t* view, size_t max_width,
+                                           size_t max_height, int quality,
+                                           lynx_view_snapshot_format_e format,
+                                           lynx_view_snapshot_callback callback,
+                                           void* context) {
+  if (!view || !view->lynx_template_renderer || !callback) {
+    return false;
+  }
+
+  const char* format_string = nullptr;
+  switch (format) {
+    case kLynxViewSnapshotFormatPNG:
+      format_string = "png";
+      break;
+    case kLynxViewSnapshotFormatJPEG:
+      format_string = "jpeg";
+      break;
+    default:
+      return false;
+  }
+
+  auto* renderer = view->lynx_template_renderer.get();
+  renderer->TakeSnapshot(
+      max_width, max_height, quality, format_string,
+      renderer->GetScreenScaleFactor(), GetSnapshotTaskRunner(),
+      [callback, context](std::string data, float, float, float, float) {
+        callback(context, data.data(), data.size());
+      });
+  return true;
 }
 
 LYNX_CAPI_EXPORT lynx_generic_resource_fetcher_t*
