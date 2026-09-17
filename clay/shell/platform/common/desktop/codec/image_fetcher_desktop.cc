@@ -5,11 +5,12 @@
 
 #include <utility>
 
+#include "clay/common/service/service_manager.h"
 #include "clay/gfx/graphics_isolate.h"
 #include "clay/net/loader/resource_loader.h"
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/shell/platform/common/desktop/codec/desktop_image.h"
-#include "skity/codec/codec.hpp"
+#include "clay/shell/platform/common/desktop/codec/desktop_image_codec_service.h"
 
 namespace clay {
 namespace {
@@ -20,6 +21,14 @@ std::shared_ptr<ResourceLoader> GetOrCreateResourceLoader(
   std::shared_ptr<ResourceLoader> loader = ResourceLoaderFactory::Create(
       url, task_runner, intercept, service_manager);
   return loader;
+}
+
+std::shared_ptr<DesktopImageCodecService> GetImageCodecService(
+    const std::shared_ptr<ServiceManager>& service_manager) {
+  if (!service_manager) {
+    return nullptr;
+  }
+  return service_manager->GetMultiThreadService<DesktopImageCodecService>();
 }
 }  // namespace
 fml::RefPtr<ImageFetcher> ImageFetcher::Create(
@@ -34,11 +43,13 @@ ImageFetcherDesktop::ImageFetcherDesktop(
     std::shared_ptr<ResourceLoaderIntercept> intercept,
     clay::TaskRunners task_runners, fml::RefPtr<GPUUnrefQueue> unref_queue,
     std::shared_ptr<ServiceManager> service_manager)
-    : ImageFetcher(intercept, task_runners, unref_queue, service_manager) {}
+    : ImageFetcher(intercept, task_runners, unref_queue, service_manager),
+      codec_service_(GetImageCodecService(service_manager)) {}
 void ImageFetcherDesktop::FetchImage(const std::string& url,
                                      const std::string& request_key,
                                      const PlatformImageCallback& callback,
                                      bool need_redirect) {
+  auto codec_service = codec_service_;
   std::shared_ptr<ResourceLoader> loader = GetOrCreateResourceLoader(
       resource_loader_intercept_, url, task_runners_.GetUITaskRunner(),
       service_manager_);
@@ -49,7 +60,7 @@ void ImageFetcherDesktop::FetchImage(const std::string& url,
   url_loader_map_[request_key] = loader;
   loader->Load(
       url,
-      [self = GetWeakPtr(), request_key, callback,
+      [self = GetWeakPtr(), request_key, callback, codec_service,
        ui_task_runner = task_runners_.GetUITaskRunner()](const uint8_t* data,
                                                          size_t size) {
         if (!self) {
@@ -65,21 +76,26 @@ void ImageFetcherDesktop::FetchImage(const std::string& url,
           return;
         }
         static_cast<ImageFetcherDesktop*>(self.get())
-            ->DecodeWhenReady(request_key, [callback, raw_data,
+            ->DecodeWhenReady(request_key, [callback, codec_service, raw_data,
                                             ui_task_runner](Size decode_size) {
               GraphicsIsolate::Instance()
                   .GetConcurrentWorkerTaskRunner()
-                  ->PostTask([callback, raw_data, ui_task_runner,
+                  ->PostTask([callback, codec_service, raw_data, ui_task_runner,
                               decode_size]() {
-                    auto codec = skity::Codec::MakeFromData(raw_data);
+                    DesktopImage::CodecFactory codec_factory =
+                        [codec_service, raw_data, decode_size]() {
+                          return codec_service ? codec_service->CreateCodec(
+                                                     raw_data, decode_size)
+                                               : nullptr;
+                        };
+                    auto codec = codec_factory();
                     if (!codec) {
                       ui_task_runner->PostTask(
                           [callback]() { callback(nullptr, {}); });
                       return;
                     }
-                    codec->SetData(raw_data);
                     auto image = std::make_shared<DesktopImage>(
-                        std::move(codec), decode_size);
+                        std::move(codec), std::move(codec_factory));
                     ui_task_runner->PostTask([image, callback, decode_size]() {
                       callback(image, decode_size);
                     });

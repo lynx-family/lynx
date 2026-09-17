@@ -1,21 +1,24 @@
 // Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #ifndef CLAY_SHELL_PLATFORM_COMMON_DESKTOP_CODEC_DESKTOP_IMAGE_H_
 #define CLAY_SHELL_PLATFORM_COMMON_DESKTOP_CODEC_DESKTOP_IMAGE_H_
 
+#include <functional>
 #include <memory>
 
-#include "clay/gfx/geometry/size.h"
+#include "clay/gfx/image/codec.h"
 #include "clay/gfx/image/image_info.h"
 #include "clay/gfx/image/platform_image.h"
-#include "skity/codec/codec.hpp"
 
 namespace clay {
 
 class DesktopImage : public PlatformImage {
  public:
-  DesktopImage(std::shared_ptr<skity::Codec> codec, Size decode_size);
+  using CodecFactory = std::function<fml::RefPtr<Codec>()>;
+
+  DesktopImage(fml::RefPtr<Codec> codec, CodecFactory codec_factory);
   ~DesktopImage() override;
 
   int GetWidth() override;
@@ -33,9 +36,8 @@ class DesktopImage : public PlatformImage {
   bool is_animated_ = false;
   skity::ColorType color_type_ = skity::ColorType::kUnknown;
   skity::AlphaType alpha_type_ = skity::AlphaType::kUnknown_AlphaType;
-  std::shared_ptr<skity::Codec> codec_;
+  CodecFactory codec_factory_;
   std::shared_ptr<skity::Pixmap> current_pixmap_;
-  std::shared_ptr<skity::MultiFrameDecoder> decoder_;
 };
 
 }  // namespace clay
