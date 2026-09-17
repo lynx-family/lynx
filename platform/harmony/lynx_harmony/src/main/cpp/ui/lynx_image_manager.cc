@@ -6,15 +6,21 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 #include "base/include/float_comparison.h"
 #include "base/include/log/logging.h"
+#include "base/include/string/string_number_convert.h"
+#include "base/include/string/string_utils.h"
 #include "base/include/value/table.h"
+#include "core/renderer/css/css_color.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/image_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_effect_processor.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/image_drawable.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -23,6 +29,50 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 namespace {
+
+class CapInsetsImageData final : public ImageData {
+ public:
+  explicit CapInsetsImageData(OH_PixelmapNative* pixel_map)
+      : pixel_map_(pixel_map) {}
+
+  ~CapInsetsImageData() override { OH_PixelmapNative_Release(pixel_map_); }
+
+  OH_PixelmapNative* Pixelmap() const override { return pixel_map_; }
+  uint32_t FrameCount() const override { return 1; }
+  OH_PixelmapNative** PixelmapList() const override { return nullptr; }
+  int* DelayTimeList() const override { return nullptr; }
+
+ private:
+  OH_PixelmapNative* pixel_map_;
+};
+
+std::shared_ptr<ImageProcessor> CreateCapInsetsProcessor(
+    const ImagePaintInfo& paint_info, float width, float height,
+    float density) {
+  std::vector<std::string> values;
+  base::SplitString(paint_info.cap_insets.str(), ' ', values);
+  if (values.size() != 4) {
+    return nullptr;
+  }
+  float insets[4];
+  for (size_t i = 0; i < values.size(); ++i) {
+    const auto& value = values[i];
+    if (!base::EndsWith(value, "px") ||
+        !base::StringToFloat(value.substr(0, value.size() - 2), insets[i])) {
+      return nullptr;
+    }
+  }
+  // CUI supplies content-box dimensions, so padding is already excluded.
+  LynxImageEffectProcessor::CapInsetParams params{
+      insets[3],
+      insets[0],
+      insets[1],
+      insets[2],
+      paint_info.cap_insets_scale,
+      {width, height, 0.f, 0.f, 0.f, 0.f, density}};
+  return std::make_shared<LynxImageEffectProcessor>(
+      LynxImageEffectProcessor::ImageEffect::kCapInsets, params);
+}
 
 ImageDrawable::ImageMode ToImageDrawableMode(ImageFitMode mode) {
   switch (mode) {
@@ -62,14 +112,30 @@ void LynxImageManager::RequestImage(int32_t sign, std::string src, float width,
   }
 
   ImageRequestInfo request{.url = std::move(src)};
+  std::shared_ptr<ImageProcessor> cap_insets_processor;
+  if (!paint_info_.cap_insets.empty() && width > 0.f && height > 0.f) {
+    if (auto context = context_.lock()) {
+      cap_insets_processor = CreateCapInsetsProcessor(
+          paint_info_, width, height, context->ScaledDensity());
+    }
+  }
   image_service->DecodeImage(
       request,
-      [weak_self = weak_from_this()](const std::shared_ptr<ImageData>& image) {
+      [weak_self = weak_from_this(),
+       cap_insets_processor](const std::shared_ptr<ImageData>& image) {
         auto self = weak_self.lock();
         if (self == nullptr) {
           return;
         }
         self->image_ = image;
+        // Match LynxImageHelper: apply image effects only to static images.
+        if (image && image->FrameCount() == 1 && image->Pixelmap() &&
+            cap_insets_processor) {
+          if (auto* processed =
+                  cap_insets_processor->Process(image->Pixelmap())) {
+            self->image_ = std::make_shared<CapInsetsImageData>(processed);
+          }
+        }
         self->ApplyImage();
       },
       [weak_self = weak_from_this(), width, height](float image_width,
@@ -123,6 +189,25 @@ void LynxImageManager::ApplyPaintInfo() {
   }
   drawable_->UpdateMode(ToImageDrawableMode(paint_info_.mode));
   drawable_->UpdateLoopCount(std::max(paint_info_.loop_count, 0));
+  if (!paint_info_.blur_radius.empty()) {
+    if (auto context = context_.lock()) {
+      const auto& blur_radius = paint_info_.blur_radius.str();
+      CSSStringParser parser(blur_radius.data(),
+                             static_cast<uint32_t>(blur_radius.size()), {});
+      CSSValue radius;
+      parser.ParseLengthTo(radius);
+      if (!radius.IsEmpty()) {
+        drawable_->UpdateBlurRadius(radius.AsNumber() *
+                                    context->ScaledDensity());
+      }
+    }
+  }
+  if (!paint_info_.tint_color.empty()) {
+    CSSColor color;
+    if (CSSColor::Parse(paint_info_.tint_color.str(), color)) {
+      drawable_->UpdateTintColor(color.Cast());
+    }
+  }
 }
 
 void LynxImageManager::ApplyImage() {
