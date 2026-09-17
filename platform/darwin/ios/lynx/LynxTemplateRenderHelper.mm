@@ -578,6 +578,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
   }
   option.page_options_.SetInstanceID(option.instance_id_);
   option.page_options_.SetEmbeddedMode(static_cast<lynx::tasm::EmbeddedMode>(_embeddedMode));
+  option.page_options_.SetHasLogicExecutor(_lynxViewGroup.logicExecutor != nil);
   option.page_options_.SetDebuggable(_debuggable);
   // Experimental first-timeout scaling; scheduled to be removed on 2026-10-30.
   if ([_lynxUIRenderer respondsToSelector:@selector(getFirstTimeoutScaleTargetDelayMs:factor:)]) {
