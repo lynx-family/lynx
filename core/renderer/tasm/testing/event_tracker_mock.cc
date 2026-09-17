@@ -4,6 +4,7 @@
 
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
 
+#include <sstream>
 #include <utility>
 
 #include "core/services/event_report/event_tracker_platform_impl.h"
@@ -80,6 +81,25 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
   EventTrackerWaitableEvent::generic_int64_info_.insert({key, value});
   EventTrackerWaitableEvent::Await()->Signal();
 }
+
+std::string EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(
+    int32_t instance_id, const std::string& key) {
+  auto float_iter = EventTrackerWaitableEvent::generic_float_info_.find(key);
+  if (float_iter != EventTrackerWaitableEvent::generic_float_info_.end()) {
+    std::ostringstream stream;
+    stream << float_iter->second;
+    return stream.str();
+  }
+  auto int64_iter = EventTrackerWaitableEvent::generic_int64_info_.find(key);
+  if (int64_iter != EventTrackerWaitableEvent::generic_int64_info_.end()) {
+    return std::to_string(int64_iter->second);
+  }
+  auto string_iter = EventTrackerWaitableEvent::generic_info_.find(key);
+  return string_iter == EventTrackerWaitableEvent::generic_info_.end()
+             ? ""
+             : string_iter->second;
+}
+
 void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {
   EventTrackerWaitableEvent::instance_id_ = instance_id;
   EventTrackerWaitableEvent::Await()->Signal();

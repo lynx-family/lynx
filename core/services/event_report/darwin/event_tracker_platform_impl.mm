@@ -87,6 +87,28 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id, const std:
   [LynxEventReporter updateGenericInfo:valueNSNum key:keyNSStr instanceId:instance_id];
 }
 
+std::string EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(int32_t instance_id,
+                                                                 const std::string& key) {
+  NSString* key_ns_str = [NSString stringWithUTF8String:key.c_str()];
+  if (!key_ns_str) {
+    return {};
+  }
+
+  __block NSObject* value = nil;
+  [LynxEventReporter
+      getGenericInfoAndExtraParams:instance_id
+                        completion:^(NSDictionary* generic_info, NSDictionary* extra_params) {
+                          value = generic_info[key_ns_str];
+                          if (!value) {
+                            value = extra_params[key_ns_str];
+                          }
+                        }];
+  NSString* string_value =
+      [value isKindOfClass:NSString.class] ? (NSString*)value : value.description;
+  const char* utf8_value = string_value.UTF8String;
+  return utf8_value ? utf8_value : "";
+}
+
 void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {
   [LynxEventReporter clearCacheForInstanceId:instance_id];
 }

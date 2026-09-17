@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <memory>
+#include <sstream>
 #include <utility>
 
 #include "base/include/fml/thread.h"
@@ -176,6 +177,32 @@ void LynxEventReporter::GetAllGenericInfosInReportThread(
                 instance_id);
         on_get_generic_infos_cb(std::move(infos));
       });
+}
+
+std::string LynxEventReporter::GetGenericInfoOrExtraParam(
+    int32_t instance_id, const std::string& key) {
+  // TODO(yuyang.1024): embedded lacks extra param support.
+  const auto& generic_info =
+      GenericInfoStorage::Instance().GetGenericInfo(instance_id);
+
+  // Match the overwrite order used when generic info is merged into events.
+  const auto& float_infos = generic_info.GetFloatGenericInfos();
+  auto float_iter = float_infos.find(key);
+  if (float_iter != float_infos.end()) {
+    std::ostringstream stream;
+    stream << float_iter->second;
+    return stream.str();
+  }
+
+  const auto& int64_infos = generic_info.GetInt64GenericInfos();
+  auto int64_iter = int64_infos.find(key);
+  if (int64_iter != int64_infos.end()) {
+    return std::to_string(int64_iter->second);
+  }
+
+  const auto& string_infos = generic_info.GetStrGenericInfos();
+  auto string_iter = string_infos.find(key);
+  return string_iter == string_infos.end() ? "" : string_iter->second;
 }
 
 std::unique_ptr<const pub::Value>

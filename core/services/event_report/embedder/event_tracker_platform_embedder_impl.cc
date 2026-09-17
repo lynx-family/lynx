@@ -53,6 +53,12 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
   embedder::LynxEventReporter::UpdateGenericInfo(key, value, instance_id);
 }
 
+std::string EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(
+    int32_t instance_id, const std::string& key) {
+  return embedder::LynxEventReporter::GetGenericInfoOrExtraParam(instance_id,
+                                                                 key);
+}
+
 void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {
   embedder::LynxEventReporter::ClearCache(instance_id);
 }

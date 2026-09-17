@@ -37,6 +37,11 @@ void EventTracker::UpdateGenericInfo(int32_t instance_id, std::string key,
 void EventTracker::UpdateGenericInfo(int32_t instance_id, std::string key,
                                      float value) {}
 
+std::string EventTracker::GetGenericInfoOrExtraParam(int32_t instance_id,
+                                                     const std::string& key) {
+  return {};
+}
+
 void EventTracker::Flush(int32_t instance_id) {}
 
 void EventTracker::UpdateGenericInfo(

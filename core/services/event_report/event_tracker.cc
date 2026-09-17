@@ -6,6 +6,7 @@
 
 #include <map>
 
+#include "base/include/fml/macros.h"
 #include "base/trace/native/trace_event.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/trace/service_trace_event_def.h"
@@ -173,6 +174,16 @@ void EventTracker::UpdateGenericInfo(int32_t instance_id, std::string key,
         EventTrackerPlatformImpl::UpdateGenericInfo(instance_id, std::move(key),
                                                     value);
       });
+}
+
+std::string EventTracker::GetGenericInfoOrExtraParam(int32_t instance_id,
+                                                     const std::string& key) {
+  LYNX_BASE_DCHECK(EventTrackerPlatformImpl::GetReportTaskRunner()
+                       ->RunsTasksOnCurrentThread());
+  if (instance_id < 0) {
+    return {};
+  }
+  return EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(instance_id, key);
 }
 
 void EventTracker::ClearCache(int32_t instance_id) {

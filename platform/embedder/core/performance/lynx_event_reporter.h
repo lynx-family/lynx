@@ -42,6 +42,10 @@ class LynxEventReporter {
       base::MoveOnlyClosure<void, std::unique_ptr<const pub::Value>>
           on_get_generic_infos_cb);
 
+  // Must be called on the report thread.
+  static std::string GetGenericInfoOrExtraParam(int32_t instance_id,
+                                                const std::string& key);
+
   // make sure that this method is called in report thread
   static std::unique_ptr<const pub::Value> GetAllGenericInfosInReportThread(
       int32_t instance_id);

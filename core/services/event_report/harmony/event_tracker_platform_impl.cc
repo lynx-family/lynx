@@ -4,6 +4,11 @@
 
 #include "core/services/event_report/event_tracker_platform_impl.h"
 
+#include <memory>
+
+#include "base/include/fml/synchronization/waitable_event.h"
+#include "base/include/fml/time/time_delta.h"
+#include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
@@ -19,6 +24,7 @@ static napi_ref js_self_ref_{nullptr};
 static napi_ref js_on_event_func_{nullptr};
 static napi_ref js_update_generic_info_func_{nullptr};
 static napi_ref js_clear_cache_func_{nullptr};
+static napi_ref js_get_generic_info_or_extra_param_func_{nullptr};
 
 napi_value RegisterJSMethods(napi_env env, napi_callback_info info) {
   napi_value js_object;
@@ -27,8 +33,9 @@ napi_value RegisterJSMethods(napi_env env, napi_callback_info info) {
    * 1 - onEvent js function ref
    * 2 - updateGenericInfo js function ref
    * 3 - clearCache js function ref
+   * 4 - getGenericInfoOrExtraParam js function ref
    */
-  size_t argc = 4;
+  size_t argc = 5;
   napi_value argv[argc];
   env_ = env;
   napi_get_cb_info(env, info, &argc, argv, &js_object, nullptr);
@@ -36,6 +43,8 @@ napi_value RegisterJSMethods(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[1], 0, &js_on_event_func_);
   napi_create_reference(env, argv[2], 0, &js_update_generic_info_func_);
   napi_create_reference(env, argv[3], 0, &js_clear_cache_func_);
+  napi_create_reference(env, argv[4], 0,
+                        &js_get_generic_info_or_extra_param_func_);
   return js_object;
 }
 
@@ -86,6 +95,30 @@ napi_status CallJSUpdateGenericInfo(int32_t instance_id,
   // LynxEventReporter.onEventCallByNative(instanceId, eventName, props)
   return base::NapiUtil::InvokeJsMethod(
       env_, js_self_ref_, js_update_generic_info_func_, argc, argv);
+}
+
+std::string CallJSGetGenericInfoOrExtraParam(int32_t instance_id,
+                                             const std::string& key) {
+  if (!env_ || !js_self_ref_ || !js_get_generic_info_or_extra_param_func_) {
+    LOGE("EventReporter getter is not registered.");
+    return {};
+  }
+  base::NapiHandleScope scope(env_);
+  constexpr size_t kArgc = 2;
+  napi_value argv[kArgc];
+  argv[0] = base::NapiUtil::CreateInt32(env_, instance_id);
+  napi_create_string_utf8(env_, key.c_str(), key.length(), &argv[1]);
+
+  napi_value result = nullptr;
+  napi_status status = base::NapiUtil::InvokeJsMethod(
+      env_, js_self_ref_, js_get_generic_info_or_extra_param_func_, kArgc, argv,
+      &result);
+  if (status != napi_ok || result == nullptr ||
+      !base::NapiUtil::NapiIsType(env_, result, napi_string)) {
+    LOGE("Failed to get generic info or extra params.");
+    return {};
+  }
+  return base::NapiUtil::ConvertToString(env_, result);
 }
 
 void DoReportEvent(MoveOnlyEvent&& event) {
@@ -219,6 +252,29 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
           napi_set_named_property(env, js_map, key.c_str(), js_value);
         });
   });
+}
+
+std::string EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(
+    int32_t instance_id, const std::string& key) {
+  auto ui_task_runner = base::UIThread::GetRunner();
+  if (!ui_task_runner) {
+    return {};
+  }
+
+  struct QueryResult {
+    fml::AutoResetWaitableEvent event;
+    std::string value;
+  };
+  auto result = std::make_shared<QueryResult>();
+  ui_task_runner->PostTask([instance_id, key, result]() {
+    result->value = harmony::CallJSGetGenericInfoOrExtraParam(instance_id, key);
+    result->event.Signal();
+  });
+  if (result->event.WaitWithTimeout(fml::TimeDelta::FromSeconds(1))) {
+    LOGE("GetGenericInfoOrExtraParam timed out.");
+    return {};
+  }
+  return std::move(result->value);
 }
 
 void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {

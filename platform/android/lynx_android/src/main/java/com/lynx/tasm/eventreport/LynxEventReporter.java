@@ -15,6 +15,7 @@ import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.service.ILynxEventReporterService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -458,6 +459,29 @@ public class LynxEventReporter {
     }
     getGenericInfoInternal(instanceId).putAll(props.asHashMap());
     TraceEvent.endSection(TraceEventDef.EVENT_REPORTER_UPDATE_GENERIC_INFO);
+  }
+
+  /**
+   * Get a generic info or extra parameter value on the report thread.
+   */
+  @CalledByNative
+  protected static byte[] getGenericInfoOrExtraParam(int instanceId, String key) {
+    if (instanceId < 0 || key == null) {
+      return new byte[0];
+    }
+    LynxEventReporter reporter = LynxEventReporter.getInstance();
+    Object value = null;
+    HashMap<String, Object> genericInfo = reporter.mAllGenericInfos.get(instanceId);
+    if (genericInfo != null) {
+      value = genericInfo.get(key);
+    }
+    if (value == null) {
+      HashMap<String, Object> extraParams = reporter.mAllExtraParams.get(instanceId);
+      if (extraParams != null) {
+        value = extraParams.get(key);
+      }
+    }
+    return value == null ? new byte[0] : value.toString().getBytes(StandardCharsets.UTF_8);
   }
 
   /**

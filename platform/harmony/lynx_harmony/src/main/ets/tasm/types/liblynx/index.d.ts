@@ -359,7 +359,7 @@ export class NativeContent {
 
 export class EventReporter {
   static registerJSMethods(ref: Object, onEventFunc: Function, updateGenericInfoFunc: Function,
-    clearCacheFunc: Function): void;
+    clearCacheFunc: Function, getGenericInfoOrExtraParamFunc: Function): void;
 }
 
 export class PerformanceController {

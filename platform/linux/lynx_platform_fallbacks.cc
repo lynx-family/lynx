@@ -48,6 +48,11 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
                                                  const std::string& key,
                                                  const float value) {}
 
+std::string EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(
+    int32_t instance_id, const std::string& key) {
+  return {};
+}
+
 void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {}
 
 }  // namespace report
