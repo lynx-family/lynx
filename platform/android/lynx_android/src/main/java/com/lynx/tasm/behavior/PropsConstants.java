@@ -270,6 +270,8 @@ public class PropsConstants {
   public static final String ENABLE_RESOURCE_HINT = "enable-resource-hint";
 
   public static final String ENABLE_CUSTOM_GIF_DECODER = "enable-custom-gif-decoder";
+  public static final String ANDROID_SKIP_CONTENT_LENGTH_CHECK =
+      "android-skip-content-length-check";
 
   public static final String ENABLE_IMAGE_ASYNC_REQUEST = "async-request";
   public static final String IMAGE_PRIORITY = "fetch-priority";

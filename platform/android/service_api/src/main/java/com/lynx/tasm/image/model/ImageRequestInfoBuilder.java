@@ -22,6 +22,7 @@ public class ImageRequestInfoBuilder {
   private Bitmap.Config mConfig;
 
   private boolean mEnableGifLiteDecoder;
+  private boolean mSkipContentLengthCheck;
 
   private Map<String, String> mCustomParam;
 
@@ -296,6 +297,15 @@ public class ImageRequestInfoBuilder {
 
   public float getmImageSRScale() {
     return mImageSRScale;
+  }
+
+  public ImageRequestInfoBuilder setSkipContentLengthCheck(boolean skip) {
+    mSkipContentLengthCheck = skip;
+    return this;
+  }
+
+  public boolean isSkipContentLengthCheck() {
+    return mSkipContentLengthCheck;
   }
 
   public ImageRequestInfo build() {

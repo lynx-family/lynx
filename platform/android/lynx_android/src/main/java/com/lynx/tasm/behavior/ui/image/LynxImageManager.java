@@ -138,6 +138,7 @@ public class LynxImageManager implements Drawable.Callback {
   private boolean mEnableResourceHint;
 
   private boolean mEnableCustomGifDecoder;
+  private boolean mSkipContentLengthCheck;
 
   private LynxScaleTypeDrawable mImageDrawable;
 
@@ -530,6 +531,10 @@ public class LynxImageManager implements Drawable.Callback {
     mEnableResourceHint = enable;
   }
 
+  public void setSkipContentLengthCheck(boolean skip) {
+    mSkipContentLengthCheck = skip;
+  }
+
   public void setEnableCustomGifDecoder(boolean enable) {
     mEnableCustomGifDecoder = enable;
   }
@@ -752,6 +757,9 @@ public class LynxImageManager implements Drawable.Callback {
           break;
         case PropsConstants.DISABLE_DEFAULT_RESIZE:
           setDisableDefaultResize(props.getBoolean(name, false));
+          break;
+        case PropsConstants.ANDROID_SKIP_CONTENT_LENGTH_CHECK:
+          setSkipContentLengthCheck(props.getBoolean(name, false));
           break;
         case PropsConstants.ENABLE_CUSTOM_GIF_DECODER:
           setEnableCustomGifDecoder(props.getBoolean(name, false));
@@ -1102,6 +1110,7 @@ public class LynxImageManager implements Drawable.Callback {
         .setEnableDownSampling(!mDisableDefaultResize && !mAutoSize)
         .setEnableAsyncRequest(mEnableAsyncRequest)
         .setEnableGifLiteDecoder(mEnableCustomGifDecoder)
+        .setSkipContentLengthCheck(mSkipContentLengthCheck)
         .setEnableResourceHint(mEnableResourceHint)
         .setSmoothAnimation(mEnableSmoothAnimation)
         .setProgressiveRendering(mEnableProgressiveRendering)
