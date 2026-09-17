@@ -35,7 +35,6 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
-#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
@@ -1604,119 +1603,6 @@ void ElementManager::TickListIfNeeded(
   }
 }
 
-int32_t ElementManager::ResolveTemplateElementRootIdForList(int32_t id) {
-  if (id == 0 || node_manager_ == nullptr) {
-    return id;
-  }
-  auto *element = node_manager_->Get(id);
-  if (element == nullptr || !element->is_template()) {
-    return id;
-  }
-  auto *template_element = static_cast<TemplateElement *>(element);
-  auto root = template_element->GetResolvedRoot();
-  if (root == nullptr) {
-    return id;
-  }
-  list_template_root_id_to_shell_id_[root->impl_id()] = id;
-  return root->impl_id();
-}
-
-int32_t ElementManager::ResolveTemplateElementShellIdForList(int32_t id) {
-  if (id == 0 || node_manager_ == nullptr) {
-    return id;
-  }
-  auto mapping = list_template_root_id_to_shell_id_.find(id);
-  if (mapping == list_template_root_id_to_shell_id_.end()) {
-    return id;
-  }
-  auto *element = node_manager_->Get(mapping->second);
-  if (element == nullptr || !element->is_template()) {
-    list_template_root_id_to_shell_id_.erase(mapping);
-    return id;
-  }
-  auto *template_element = static_cast<TemplateElement *>(element);
-  auto root = template_element->GetResolvedRoot();
-  if (root == nullptr || root->impl_id() != id) {
-    list_template_root_id_to_shell_id_.erase(mapping);
-    return id;
-  }
-  return mapping->second;
-}
-
-void ElementManager::CacheListItemTemplateElementTree(
-    const fml::RefPtr<TemplateElement> &element, const base::String &bundle_url,
-    const base::String &template_key) {
-  if (element == nullptr || template_key.str().empty()) {
-    return;
-  }
-  cached_template_element_trees_[TemplateElementTreeCacheKey{bundle_url,
-                                                             template_key}]
-      .emplace_back(element);
-}
-
-fml::RefPtr<TemplateElement>
-ElementManager::TakeCachedTemplateElementTreeForOwner(TemplateElement *owner) {
-  if (owner == nullptr) {
-    return nullptr;
-  }
-  for (auto bucket_iter = cached_template_element_trees_.begin();
-       bucket_iter != cached_template_element_trees_.end(); ++bucket_iter) {
-    auto &bucket = bucket_iter->second;
-    for (size_t index = bucket.size(); index > 0; --index) {
-      auto iter = bucket.begin() + static_cast<ptrdiff_t>(index - 1);
-      if (iter->get() != owner) {
-        continue;
-      }
-      auto cached = std::move(*iter);
-      bucket.erase(iter);
-      if (bucket.empty()) {
-        cached_template_element_trees_.erase(bucket_iter);
-      }
-      return cached;
-    }
-  }
-  return nullptr;
-}
-
-fml::RefPtr<TemplateElement> ElementManager::TakeCachedTemplateElementTree(
-    TemplateElement *owner, const base::String &bundle_url,
-    const base::String &template_key) {
-  auto cached = TakeCachedTemplateElementTreeForOwner(owner);
-  if (cached != nullptr) {
-    return cached;
-  }
-  return TakeCachedTemplateElementTreeForKey(bundle_url, template_key);
-}
-
-void ElementManager::RemoveCachedTemplateElementTreeForOwner(
-    TemplateElement *owner) {
-  TakeCachedTemplateElementTreeForOwner(owner);
-}
-
-fml::RefPtr<TemplateElement>
-ElementManager::TakeCachedTemplateElementTreeForKey(
-    const base::String &bundle_url, const base::String &template_key) {
-  if (template_key.str().empty()) {
-    return nullptr;
-  }
-  auto bucket_iter = cached_template_element_trees_.find(
-      TemplateElementTreeCacheKey{bundle_url, template_key});
-  if (bucket_iter == cached_template_element_trees_.end()) {
-    return nullptr;
-  }
-  auto &bucket = bucket_iter->second;
-  if (bucket.empty()) {
-    cached_template_element_trees_.erase(bucket_iter);
-    return nullptr;
-  }
-  auto cached = std::move(bucket.back());
-  bucket.pop_back();
-  if (bucket.empty()) {
-    cached_template_element_trees_.erase(bucket_iter);
-  }
-  return cached;
-}
-
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
                                    Element *element) {
   if (element == nullptr) {
@@ -1842,11 +1728,6 @@ void ElementManager::OnPatchFinishForFiber(
   }
   FirePostMTSRenderTasks();
   element->FlushActionsAsRoot();
-  options->list_comp_id_ =
-      ResolveTemplateElementRootIdForList(options->list_comp_id_);
-  for (auto &list_item_id : options->list_item_ids_) {
-    list_item_id = ResolveTemplateElementRootIdForList(list_item_id);
-  }
 
   BindTimingFlagToPipelineOptions(options);
 
