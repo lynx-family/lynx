@@ -166,6 +166,71 @@ TEST_F(InspectorHSRAgentTest, ReportsMissingRuntimeForBothMethods) {
   }
 }
 
+TEST_F(InspectorHSRAgentTest, PublishesUnsolicitedEventsFromWorkerThread) {
+  for (const auto& message : std::vector<std::string>{
+           "ready", "", "line 1\n\"😀\"", std::string("a\0b", 3)}) {
+    auto snapshot =
+        std::make_shared<std::promise<std::pair<std::string, std::string>>>();
+    auto future = snapshot->get_future();
+    std::thread worker([&message] {
+      GlobalDevToolPlatformFacade::GetInstance().SendHSRMessageReceived(
+          message);
+    });
+    worker.join();
+    // Read and clear the global transport mock after the queued event.
+    LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner()->PostTask(
+        [snapshot] {
+          auto& receiver = MockReceiver::GetInstance();
+          auto received = receiver.received_message_;
+          receiver.ResetAll();
+          snapshot->set_value(std::move(received));
+        });
+    ASSERT_EQ(future.wait_for(std::chrono::seconds(2)),
+              std::future_status::ready);
+    const auto received = future.get();
+    EXPECT_EQ(received.first, "CDP");
+    auto event = Parse(received.second.c_str());
+    EXPECT_EQ(event["method"].asString(), "HSR.messageReceived");
+    EXPECT_EQ(event["params"]["message"].asString(), message);
+    EXPECT_FALSE(event.isMember("id"));
+    EXPECT_FALSE(event.isMember("result"));
+    EXPECT_EQ(dispatcher_.sender->MessageCount(), 0u);
+  }
+}
+
+TEST_F(InspectorHSRAgentTest, PublishesEventWithoutCompletingPendingCommand) {
+  auto accepted = std::make_shared<
+      std::promise<GlobalDevToolPlatformFacade::HSRScriptCallback>>();
+  auto future = accepted->get_future();
+  facade_.handler = [accepted](auto callback) {
+    // Already on the DevTool thread: the event is delivered immediately.
+    auto& receiver = MockReceiver::GetInstance();
+    receiver.ResetAll();
+    GlobalDevToolPlatformFacade::GetInstance().SendHSRMessageReceived(
+        "progress");
+    EXPECT_EQ(receiver.received_message_.first, "CDP");
+    auto event = Parse(receiver.received_message_.second.c_str());
+    EXPECT_EQ(event["method"].asString(), "HSR.messageReceived");
+    EXPECT_EQ(event["params"]["message"].asString(), "progress");
+    EXPECT_FALSE(event.isMember("id"));
+    receiver.ResetAll();
+    accepted->set_value(std::move(callback));
+  };
+  Send("HSR.evaluate", Parse(R"({"expression":"2 + 2"})"));
+  ASSERT_EQ(future.wait_for(std::chrono::seconds(2)),
+            std::future_status::ready);
+  auto callback = future.get();
+  Drain();
+  EXPECT_EQ(dispatcher_.sender->MessageCount(), 0u);
+  callback(Parse(R"({"valueType":"json","value":4})"), "");
+  auto response = dispatcher_.sender->WaitForResponse();
+  EXPECT_EQ(response["id"].asInt64(), 4294967297LL);
+  EXPECT_EQ(response["result"]["value"].asInt(), 4);
+  callback = nullptr;
+  Drain();
+  EXPECT_EQ(dispatcher_.sender->MessageCount(), 0u);
+}
+
 TEST_F(InspectorHSRAgentTest, ForwardsAllLoadSourcesWithoutChangingText) {
   facade_.handler = [](auto callback) {
     callback(Json::Value(Json::objectValue), "");
@@ -333,12 +398,16 @@ TEST_F(InspectorHSRAgentTest, ReportsCallbackAbandonedOnWorkerThread) {
 }
 
 TEST_F(InspectorHSRAgentTest, RejectsInvalidCompletionValues) {
-  for (const auto* result : {"null", "false", "0", R"("text")", "[]"}) {
+  for (const auto* result :
+       {"null", "false", "0", R"("text")", "[]", "{}",
+        R"({"valueType":"json"})", R"({"valueType":"undefined","value":null})",
+        R"({"valueType":0})", R"({"valueType":"promise"})"}) {
     facade_.handler = [result](auto callback) { callback(Parse(result), ""); };
     ExpectError(Dispatch("HSR.evaluate", Parse(R"({"expression":"0"})")),
                 CDPErrorCode::InternalError);
   }
-  for (const auto* result : {"null", "false", "0", R"("text")", "[]"}) {
+  for (const auto* result :
+       {"null", "false", "0", R"("text")", "[]", R"({"accepted":true})"}) {
     facade_.handler = [result](auto callback) { callback(Parse(result), ""); };
     ExpectError(Dispatch("HSR.loadScript",
                          Parse(R"({"source":{"type":"inline","script":""}})")),
@@ -365,6 +434,61 @@ TEST_F(InspectorHSRAgentTest, OwnsCompletionValuesAcrossThreads) {
       Dispatch("HSR.evaluate", Parse(R"({"expression":"globalThis.result"})"));
   EXPECT_EQ(response["result"], expected);
   EXPECT_EQ(dispatcher_.sender->ResponseThread(), facade_.request_thread);
+}
+
+TEST_F(InspectorHSRAgentTest, NormalizesSchemaIntoSameLoadRequest) {
+  facade_.handler = [](auto callback) {
+    callback(Json::Value(Json::objectValue), "");
+  };
+  for (const auto* params :
+       {R"({"target":"script","script":"globalThis.x = '😀';"})",
+        R"({"target":"url","url":"https://example.com/host.js"})",
+        R"({"target":"url","url":"file://host:/data/host.js"})",
+        R"({"target":"url","url":"file:///data/host%2520script.js"})",
+        R"({"target":"url","url":"assets://host.js"})",
+        R"({"target":"url","url":"content://scripts/host.js"})"}) {
+    const auto input = Parse(params);
+    HSRScriptRequest normalized;
+    std::string error;
+    ASSERT_TRUE(ParseHSRSchemaLoad(input, normalized, error));
+    const bool inline_source = input["target"].asString() == "script";
+    EXPECT_EQ(normalized.source_type,
+              inline_source ? HSRScriptRequest::SourceType::kInline
+                            : HSRScriptRequest::SourceType::kUrl);
+    EXPECT_EQ(normalized.source,
+              input[inline_source ? "script" : "url"].asString());
+    // Exercise the host entry, not only its parser.
+    bool completed = false;
+    facade_.LoadHSRScriptFromSchema(
+        input, [&completed](const auto& result, const auto& err) {
+          completed = true;
+          EXPECT_TRUE(result.isObject());
+          EXPECT_TRUE(result.empty());
+          EXPECT_TRUE(err.empty());
+        });
+    EXPECT_TRUE(completed);
+    EXPECT_EQ(facade_.last_request.operation,
+              HSRScriptRequest::Operation::kLoadScript);
+    EXPECT_EQ(facade_.last_request.source_type, normalized.source_type);
+    EXPECT_EQ(facade_.last_request.source, normalized.source);
+  }
+}
+
+TEST_F(InspectorHSRAgentTest, RejectsInvalidSchemaBeforeCallingRuntime) {
+  for (const auto* params :
+       {"null", "{}", R"({"target":"eval","script":"1"})",
+        R"({"target":"url","url":""})", R"({"target":"script","script":1})",
+        R"({"target":"script","script":"1","url":"u"})",
+        R"({"target":"url","url":"u","script":"1"})"}) {
+    bool completed = false;
+    facade_.LoadHSRScriptFromSchema(
+        Parse(params), [&completed](const auto& result, const auto& error) {
+          completed = true;
+          EXPECT_FALSE(error.empty());
+        });
+    EXPECT_TRUE(completed);
+  }
+  EXPECT_EQ(facade_.calls, 0);
 }
 
 }  // namespace testing

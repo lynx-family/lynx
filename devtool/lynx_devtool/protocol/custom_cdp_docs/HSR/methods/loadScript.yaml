@@ -11,7 +11,8 @@ notes:
   - The execution boundary owns Runtime selection, replacement, cleanup, and View binding preservation. No production Runtime is installed by this protocol implementation.
   - Once integrated, success means script installation completed, not merely queued and not that a business test passed.
   - Missing, contradictory, or incorrectly typed source fields return InvalidParams (-32602). Unsupported platform file access is an execution error.
-  - Runtime failures and abandoned callbacks return ServerError (-32000); non-object completion results return InternalError (-32603).
+  - Runtime failures and abandoned callbacks return ServerError (-32000); malformed completion results return InternalError (-32603).
+  - Host schema routers decode target=script with script or target=url with url into LoadHSRScriptFromSchema, sharing the same load boundary. Concrete app scheme registration is host-owned and pending integration.
   - Client timeout does not cancel JavaScript. Concurrent loads and lifecycle behavior must be handled by the Runtime integration.
 examples:
   - title: Inline source before Runtime integration

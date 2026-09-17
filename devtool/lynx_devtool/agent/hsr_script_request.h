@@ -29,6 +29,10 @@ bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,
                         std::string& error);
 bool ParseHSREvaluate(const Json::Value& params, HSRScriptRequest& request,
                       std::string& error);
+// The host performs URL decoding and rejects duplicate query parameters first.
+bool ParseHSRSchemaLoad(const Json::Value& params, HSRScriptRequest& request,
+                        std::string& error);
+
 }  // namespace devtool
 }  // namespace lynx
 

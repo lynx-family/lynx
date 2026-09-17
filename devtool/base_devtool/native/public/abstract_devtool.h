@@ -57,6 +57,9 @@ class BASE_DEVTOOL_EXPORT AbstractDevTool {
   // Get message sender, which will be used during dispatching message.
   std::shared_ptr<MessageSender> GetCurrentSender() const;
 
+  // Get the existing process-wide sender for unsolicited global events.
+  static std::shared_ptr<MessageSender> GetGlobalSender();
+
  protected:
   // for CDP domain agent
   void RegisterAgent(const std::string& agent_name,

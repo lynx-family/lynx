@@ -4,6 +4,9 @@
 
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 
+#include "devtool/base_devtool/native/public/abstract_devtool.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator_base.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -15,6 +18,36 @@ void GlobalDevToolPlatformFacade::HandleHSRScript(HSRScriptRequest request,
   if (callback) {
     std::move(callback)(Json::Value(), "HSR runtime is not connected");
   }
+}
+
+void GlobalDevToolPlatformFacade::SendHSRMessageReceived(
+    const std::string& message) {
+  auto runner = LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
+  if (!runner) {
+    return;
+  }
+  fml::TaskRunner::RunNowOrPostTask(runner, [message] {
+    auto sender = AbstractDevTool::GetGlobalSender();
+    if (sender) {
+      Json::Value event(Json::objectValue);
+      event["method"] = "HSR.messageReceived";
+      event["params"]["message"] = message;
+      sender->SendMessage("CDP", event);
+    }
+  });
+}
+
+void GlobalDevToolPlatformFacade::LoadHSRScriptFromSchema(
+    const Json::Value& params, HSRScriptCallback callback) {
+  HSRScriptRequest request;
+  std::string error;
+  if (!ParseHSRSchemaLoad(params, request, error)) {
+    if (callback) {
+      std::move(callback)(Json::Value(), error);
+    }
+    return;
+  }
+  HandleHSRScript(std::move(request), std::move(callback));
 }
 
 }  // namespace devtool

@@ -58,5 +58,35 @@ bool ParseHSREvaluate(const Json::Value& params, HSRScriptRequest& request,
   return true;
 }
 
+bool ParseHSRSchemaLoad(const Json::Value& params, HSRScriptRequest& request,
+                        std::string& error) {
+  if (!params.isObject() || !params["target"].isString()) {
+    error = "Expected schema target: script or url";
+    return false;
+  }
+  Json::Value normalized(Json::objectValue);
+  auto& source = normalized["source"];
+  const auto target = params["target"].asString();
+  if (target == "script") {
+    if (params.isMember("url")) {
+      error = "Unexpected schema url for target=script";
+      return false;
+    }
+    source["type"] = "inline";
+    source["script"] = params["script"];
+  } else if (target == "url") {
+    if (params.isMember("script")) {
+      error = "Unexpected schema script for target=url";
+      return false;
+    }
+    source["type"] = "url";
+    source["url"] = params["url"];
+  } else {
+    error = "Expected schema target: script or url";
+    return false;
+  }
+  return ParseHSRLoadScript(normalized, request, error);
+}
+
 }  // namespace devtool
 }  // namespace lynx

@@ -93,6 +93,17 @@ class GlobalDevToolPlatformFacade
   virtual void HandleHSRScript(HSRScriptRequest request,
                                HSRScriptCallback callback);
 
+  // Publishes HSR.messageReceived through the existing global CDP channel.
+  // May be called from any thread; delivery runs on the DevTool thread.
+  // The message is an opaque string, independent of command completion.
+  void SendHSRMessageReceived(const std::string& message);
+
+  // Host routers decode their scheme into target + script/url parameters.
+  // This entry shares the CDP load path; it does not register an app URL
+  // scheme. Call on the DevTool thread, just like HandleHSRScript.
+  void LoadHSRScriptFromSchema(const Json::Value& params,
+                               HSRScriptCallback callback);
+
   // The following functions are used for tracing agent.
   virtual lynx::trace::TraceController* GetTraceController() = 0;
   virtual lynx::trace::TracePlugin* GetFPSTracePlugin() = 0;

@@ -20,6 +20,10 @@ AbstractDevTool::GetGlobalMessageDispatcherInstance() {
   return **global_message_dispatcher;
 }
 
+std::shared_ptr<MessageSender> AbstractDevTool::GetGlobalSender() {
+  return GetGlobalMessageDispatcherInstance().GetSender();
+}
+
 class AbstractDevTool::Impl {
  public:
   /**

@@ -17,8 +17,11 @@ namespace {
 class PendingHSRResponse {
  public:
   PendingHSRResponse(std::shared_ptr<CDPResponder> responder,
-                     fml::RefPtr<fml::TaskRunner> runner)
-      : responder_(std::move(responder)), runner_(std::move(runner)) {}
+                     fml::RefPtr<fml::TaskRunner> runner,
+                     HSRScriptRequest::Operation operation)
+      : responder_(std::move(responder)),
+        runner_(std::move(runner)),
+        operation_(operation) {}
   PendingHSRResponse(PendingHSRResponse&&) = default;
 
   ~PendingHSRResponse() {
@@ -30,24 +33,36 @@ class PendingHSRResponse {
   void operator()(Json::Value&& result, const std::string& error) const {
     // Queue every reply so destruction on this thread cannot overtake a
     // completion already posted by another thread. CDPResponder replies once.
-    runner_->PostTask(
-        [responder = responder_, result = std::move(result), error]() mutable {
-          if (!error.empty()) {
-            responder->SendError(CDPErrorCode::ServerError, error);
-            return;
-          }
-          if (!result.isObject()) {
-            responder->SendError(CDPErrorCode::InternalError,
-                                 "Invalid HSR result JSON");
-            return;
-          }
-          responder->SendSuccess(std::move(result));
-        });
+    runner_->PostTask([responder = responder_, operation = operation_,
+                       result = std::move(result), error]() mutable {
+      if (!error.empty()) {
+        responder->SendError(CDPErrorCode::ServerError, error);
+        return;
+      }
+      bool valid = result.isObject();
+      if (valid && operation == HSRScriptRequest::Operation::kEvaluate) {
+        valid = result["valueType"].isString();
+        if (valid) {
+          const auto type = result["valueType"].asString();
+          valid = (type == "json" && result.isMember("value")) ||
+                  (type == "undefined" && !result.isMember("value"));
+        }
+      } else if (valid) {
+        valid = result.empty();
+      }
+      if (!valid) {
+        responder->SendError(CDPErrorCode::InternalError,
+                             "Invalid HSR result JSON");
+        return;
+      }
+      responder->SendSuccess(std::move(result));
+    });
   }
 
  private:
   std::shared_ptr<CDPResponder> responder_;
   fml::RefPtr<fml::TaskRunner> runner_;
+  HSRScriptRequest::Operation operation_;
 };
 
 }  // namespace
@@ -90,7 +105,7 @@ void InspectorHSRAgent::Execute(const std::shared_ptr<CDPResponder>& responder,
     return;
   }
   GlobalDevToolPlatformFacade::HSRScriptCallback callback(
-      PendingHSRResponse(responder, runner));
+      PendingHSRResponse(responder, runner, request.operation));
   fml::TaskRunner::RunNowOrPostTask(
       runner, [facade = &facade_, request = std::move(request),
                callback = std::move(callback)]() mutable {
