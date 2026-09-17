@@ -42,11 +42,7 @@ export abstract class ShadowNode {
   }
 
   markDirty() {
-    if (this.nativeShadowNode) {
-      this.nativeShadowNode.markDirty();
-    } else {
-      this.context.markDirty?.(this.sign);
-    }
+    this.nativeShadowNode?.markDirty();
   }
 
   getChildren(): ArrayBuffer {
@@ -64,11 +60,7 @@ export abstract class ShadowNode {
   }
 
   requestLayout(): void {
-    if (this.nativeShadowNode) {
-      this.nativeShadowNode.requestLayout();
-    } else {
-      this.context.requestLayout?.(this.sign);
-    }
+    this.nativeShadowNode?.requestLayout();
   }
 
   px2vpIfNeeded(px: number): number {
