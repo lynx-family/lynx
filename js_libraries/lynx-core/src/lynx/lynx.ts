@@ -333,8 +333,13 @@ export class Lynx {
     return data;
   };
 
+  // The subject is group-wide and outlives this page, so it is told which app
+  // registered the callback; `destroy` uses that to drop the leftovers.
   registerSharedDataObserver = <T>(callback: (data: T) => void): void =>
-    nativeGlobal.shareDataSubject.registerObserver(callback);
+    nativeGlobal.shareDataSubject.registerObserver(
+      callback,
+      this.getApp().nativeAppId
+    );
 
   removeSharedDataObserver = <T>(callback: (data: T) => void): void =>
     nativeGlobal.shareDataSubject.removeObserver(callback);
@@ -442,7 +447,7 @@ export class Lynx {
 
   fetch = (input: RequestInfo, init?: RequestInit): Promise<Response> => {
     return new this.Promise((resolve, reject) => {
-      const request = new nativeGlobal.Request(input, init);
+      const request = new (this.getApp().pageGlobal.Request)(input, init);
       const signal = request.signal;
       if (signal.aborted) {
         return reject(signal.reason);
@@ -477,7 +482,7 @@ export class Lynx {
           try {
             const streamingBodyReceiver = new (this.getApp()._ReadableStreamClass)();
 
-            const resp = new nativeGlobal.Response(
+            const resp = new (this.getApp().pageGlobal.Response)(
               useStreaming ? streamingBodyReceiver : response.body,
               response,
               enableFetchAPIStandardStreaming
@@ -564,10 +569,10 @@ export class Lynx {
   };
 
   getModuleLoader = (): LynxModuleLoader => {
-    // Read the runtime loader from the current page globalThis.
+    // The napi loader is installed by native on the page context, so it lives
+    // on the page realm, not on the realm corejs was evaluated in.
     const app = this.getApp();
-    const currentGlobal = app.params?.currentGlobalThis ?? nativeGlobal;
-    return currentGlobal['napiLoaderOnRT' + app.nativeAppId];
+    return app.pageGlobal['napiLoaderOnRT' + app.nativeAppId];
   };
 
   createAnimation = (
