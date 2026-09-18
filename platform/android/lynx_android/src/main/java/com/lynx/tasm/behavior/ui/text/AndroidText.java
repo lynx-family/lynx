@@ -98,6 +98,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private boolean mIsAdjustStartPos = false;
   private boolean mIsAdjustEndPos = false;
   private CheckForLongPress mCheckForLongPress = null;
+  private int mTouchSlop;
   private boolean mShouldResponseMove = false;
   private boolean mIsShowStartHandle = true;
   private boolean mIsShowEndHandle = true;
@@ -148,6 +149,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     setWillNotDraw(false);
     mTextSelectionColor = DEFAULT_TEXT_SELECTION_COLOR;
     mTextSelectionHandleColor = DEFAULT_TEXT_HANDLE_COLOR;
+    mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
     mHandleSize = mDefaultHandlePlatformLength =
         Math.round(((LynxContext) context).getScreenMetrics().density * DEFAULT_TEXT_HANDLE_SIZE);
   }
@@ -1045,7 +1047,8 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
 
   private void performMovingSelection(float x, float y) {
     if (mCheckForLongPress != null) {
-      if (Math.abs(x - mCheckForLongPress.mX) > 1.f || Math.abs(y - mCheckForLongPress.mY) > 1.f) {
+      if (Math.abs(x - mCheckForLongPress.mX) > mTouchSlop
+          || Math.abs(y - mCheckForLongPress.mY) > mTouchSlop) {
         // touch move before long-press timeout
         removeCheckLongPressCallback();
       }
