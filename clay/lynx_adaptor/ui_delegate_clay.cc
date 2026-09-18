@@ -24,8 +24,9 @@ namespace tasm {
 
 UIDelegateClay::UIDelegateClay(
     clay::ViewContext* view_context,
-    std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory)
-    : view_context_(view_context), module_factory_(std::move(module_factory)) {
+    NativeModuleFactoryCreator module_factory_creator)
+    : view_context_(view_context),
+      module_factory_creator_(std::move(module_factory_creator)) {
   event_dispatcher_ = std::make_unique<clay::LynxEventDispatcher>();
   view_context->SetEventDelegate(event_dispatcher_.get());
 }
@@ -57,7 +58,9 @@ std::unique_ptr<PropBundleCreator> UIDelegateClay::CreatePropBundleCreator() {
 
 std::unique_ptr<runtime::NativeModuleFactory>
 UIDelegateClay::GetCustomModuleFactory() {
-  return std::move(module_factory_);
+  auto module_factory =
+      module_factory_creator_ ? module_factory_creator_() : nullptr;
+  return module_factory;
 }
 
 bool UIDelegateClay::UsesLogicalPixels() const {
