@@ -2495,6 +2495,7 @@ public class LynxKeyframeAnimator : NSObject typedef enum LynxKFAnimatorState {
   public NSString* LynxKeyframeAnimator::kBackgroundColorStr kBackgroundColorStr;
   public NSMutableDictionary* LynxKeyframeAnimator::propertyOriginValue propertyOriginValue;
   public BOOL LynxKeyframeAnimator::autoResumeAnimation autoResumeAnimation;
+  public LynxPlatformAnimationPlayback* LynxKeyframeAnimator(TypedKeyframes)::platformPlayback platformPlayback;
   public instancetype LynxKeyframeAnimator::initWithUI:(LynxUI *ui);
   public void LynxKeyframeAnimator::apply:(LynxAnimationInfo *info);
   public void LynxKeyframeAnimator::destroy();
@@ -2506,6 +2507,18 @@ public class LynxKeyframeAnimator : NSObject typedef enum LynxKFAnimatorState {
   public void LynxKeyframeAnimator::tryToResumeAnimationOnNextFrame();
   public void LynxKeyframeAnimator::detachFromUI();
   public void LynxKeyframeAnimator::attachToUI:(LynxUI *ui);
+  public void LynxKeyframeAnimator(TypedKeyframes)::detachPlatformAnimation();
+  public void LynxKeyframeAnimator(TypedKeyframes)::applyAnimationInfo:keyframesProvider:reuseKeyframes:generation:(LynxAnimationInfo *info, [keyframesProvider] LynxTypedKeyframesProvider provider, [reuseKeyframes] BOOL reuseKeyframes, [generation] uint32_t generation);
+  public void LynxKeyframeAnimator(TypedKeyframes)::reapply();
+  public nullable LynxKeyframeParsedData * LynxKeyframeAnimator(TypedKeyframes)::buildParsedTransformKeyframes:times:ui:(NSArray< NSArray< LynxTransformRaw * > * > *keyframes, [times] NSArray< NSNumber * > *times, [ui] LynxUI *ui);
+}
+
+public interface LynxKeyframeAnimator(TypedKeyframes) {
+  public LynxPlatformAnimationPlayback* LynxKeyframeAnimator(TypedKeyframes)::platformPlayback platformPlayback;
+  public void LynxKeyframeAnimator(TypedKeyframes)::detachPlatformAnimation();
+  public void LynxKeyframeAnimator(TypedKeyframes)::applyAnimationInfo:keyframesProvider:reuseKeyframes:generation:(LynxAnimationInfo *info,[keyframesProvider] LynxTypedKeyframesProvider provider,[reuseKeyframes] BOOL reuseKeyframes,[generation] uint32_t generation);
+  public void LynxKeyframeAnimator(TypedKeyframes)::reapply();
+  public nullable LynxKeyframeParsedData * LynxKeyframeAnimator(TypedKeyframes)::buildParsedTransformKeyframes:times:ui:(NSArray< NSArray< LynxTransformRaw * > * > *keyframes,[times] NSArray< NSNumber * > *times,[ui] LynxUI *ui);
 }
 
 public class LynxKeyframeManager : NSObject {
@@ -2524,6 +2537,11 @@ public class LynxKeyframeManager : NSObject {
   public void LynxKeyframeManager::resumeAnimation();
   public void LynxKeyframeManager::detachFromUI();
   public void LynxKeyframeManager::attachToUI:(LynxUI *ui);
+  public void LynxKeyframeManager(TypedKeyframes)::applyAnimationInfo:keyframesProvider:reuseKeyframes:animationID:generation:cancel:detach:playback:(nullable LynxAnimationInfo *info, [keyframesProvider] nullable LynxTypedKeyframesProvider provider, [reuseKeyframes] BOOL reuseKeyframes, [animationID] uint64_t animationID, [generation] uint32_t generation, [cancel] BOOL cancel, [detach] BOOL detach, [playback] nullable LynxPlatformAnimationPlayback *playback);
+}
+
+public interface LynxKeyframeManager(TypedKeyframes) {
+  public void LynxKeyframeManager(TypedKeyframes)::applyAnimationInfo:keyframesProvider:reuseKeyframes:animationID:generation:cancel:detach:playback:(nullable LynxAnimationInfo *info,[keyframesProvider] nullable LynxTypedKeyframesProvider provider,[reuseKeyframes] BOOL reuseKeyframes,[animationID] uint64_t animationID,[generation] uint32_t generation,[cancel] BOOL cancel,[detach] BOOL detach,[playback] nullable LynxPlatformAnimationPlayback *playback);
 }
 
 public class LynxKeyframeParsedData : NSObject {
@@ -3371,6 +3389,12 @@ public class LynxPipelineInfo : NSObject {
   public NSInteger LynxPipelineInfo::pipelineOrigin pipelineOrigin;
   public nonnull instancetype LynxPipelineInfo::initWithUrl:(nullable NSString *url);
   public void LynxPipelineInfo::addPipelineOrigin:(NSInteger pipelineOrigin);
+}
+
+public class LynxPlatformAnimationPlayback : NSObject {
+  public NSTimeInterval(^ LynxPlatformAnimationPlayback::currentTime) (void) currentTime;
+  public BOOL(^ LynxPlatformAnimationPlayback::isCurrentExecutor) (void) isCurrentExecutor;
+  public BOOL(^ LynxPlatformAnimationPlayback::claimEvent) (NSString *event) claimEvent;
 }
 
 public class LynxPlatformLength : NSObject, <NSCopying> {
@@ -4554,12 +4578,17 @@ public class LynxTransformRaw : NSObject {
   public bool LynxTransformRaw::isRotateXY();
   public bool LynxTransformRaw::isMatrix();
   public void LynxTransformRaw::initTransformMatrixWithArray:(NSArray *array);
+  public instancetype LynxTransformRaw(PlatformAnimation)::initWithTranslationX:y:z:(LynxPlatformLength *x, [y] LynxPlatformLength *y, [z] LynxPlatformLength *z);
   public NSArray< LynxTransformRaw * > * LynxTransformRaw::toTransformRaw:(NSArray *arr);
   public bool LynxTransformRaw::hasPercent:(NSArray< LynxTransformRaw * > *arr);
   public bool LynxTransformRaw::hasScaleOrRotate:(NSArray< LynxTransformRaw * > *arr);
   public CGFloat LynxTransformRaw::getRotateZRad:(NSArray< LynxTransformRaw * > *arr);
   public CGFloat LynxTransformRaw::getTranslateX:(NSArray< LynxTransformRaw * > *arr);
   public CGFloat LynxTransformRaw::getTranslateY:(NSArray< LynxTransformRaw * > *arr);
+}
+
+public interface LynxTransformRaw(PlatformAnimation) {
+  public instancetype LynxTransformRaw(PlatformAnimation)::initWithTranslationX:y:z:(LynxPlatformLength *x,[y] LynxPlatformLength *y,[z] LynxPlatformLength *z);
 }
 
 public class LynxTransitionAnimationManager : NSObject {
@@ -4581,6 +4610,13 @@ public class LynxTransitionAnimationManager : NSObject {
   public BOOL LynxTransitionAnimationManager::isTransitionTransform:newTransform:(CATransform3D oldTransform,[newTransform] CATransform3D newTransform);
   public BOOL LynxTransitionAnimationManager::isTransitionTransformRotation:newTransformRotation:(LynxAnimationTransformRotation *oldTransformRotation,[newTransformRotation] LynxAnimationTransformRotation *newTransformRotation);
   public void LynxTransitionAnimationManager::applyTransitionAnimation();
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformOpacityTransition:fromOpacity:toOpacity:animationID:generation:cancel:(nullable LynxAnimationInfo *info, [fromOpacity] CGFloat fromOpacity, [toOpacity] CGFloat toOpacity, [animationID] uint64_t animationID, [generation] uint32_t generation, [cancel] BOOL cancel);
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformTransformTransition:fromTransformRaw:toTransformRaw:animationID:generation:cancel:(nullable LynxAnimationInfo *info, [fromTransformRaw] nullable NSArray< LynxTransformRaw * > *fromTransformRaw, [toTransformRaw] nullable NSArray< LynxTransformRaw * > *toTransformRaw, [animationID] uint64_t animationID, [generation] uint32_t generation, [cancel] BOOL cancel);
+}
+
+public interface LynxTransitionAnimationManager(TypedTransitions) {
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformOpacityTransition:fromOpacity:toOpacity:animationID:generation:cancel:(nullable LynxAnimationInfo *info,[fromOpacity] CGFloat fromOpacity,[toOpacity] CGFloat toOpacity,[animationID] uint64_t animationID,[generation] uint32_t generation,[cancel] BOOL cancel);
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformTransformTransition:fromTransformRaw:toTransformRaw:animationID:generation:cancel:(nullable LynxAnimationInfo *info,[fromTransformRaw] nullable NSArray< LynxTransformRaw * > *fromTransformRaw,[toTransformRaw] nullable NSArray< LynxTransformRaw * > *toTransformRaw,[animationID] uint64_t animationID,[generation] uint32_t generation,[cancel] BOOL cancel);
 }
 
 public class LynxUI : <__covariant V UIView> {
@@ -4664,6 +4700,7 @@ public class LynxUI : <__covariant V UIView> {
   public NSMutableArray<LynxPropsDidUpdateBlockReadyBlock>* LynxUI()::propsDidUpdateBlockArray propsDidUpdateBlockArray;
   public BOOL LynxUI(Fluency)::enableScrollMonitor enableScrollMonitor;
   public NSString* LynxUI(Fluency)::scrollMonitorTagName scrollMonitorTagName;
+  public LynxTransitionAnimationManager* LynxUI(TypedTransitions)::transitionAnimationManager transitionAnimationManager;
   public NSMutableArray *readyBlockArray LynxUI::__attribute__((deprecated("Do not use this after lynx 2.16, use nodeReadyBlockArray")));
   public instancetype LynxUI::init();
   public instancetype LynxUI::initWithView:(nullable V NS_DESIGNATED_INITIALIZER);
@@ -4779,6 +4816,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI(Gesture)::consumeInternalGesture:(BOOL consume);
   public void LynxUI(Gesture)::interceptGesture:(BOOL intercept);
   public void LynxUI(Gesture)::resetInterceptGesture();
+  public void LynxUI(TypedTransitions)::prepareTransitionAnimationManager();
   public BOOL LynxUI::needProcessDirection();
   public void LynxUI(AsyncDisplay)::drawRect:withParameters:(CGRect bounds, [withParameters] id drawParameters);
   public UIImage * LynxUI(AsyncDisplay)::imageWithActionBlock:opaque:scale:size:(LynxCGContextImageDrawingActions action, [opaque] BOOL opaque, [scale] CGFloat scale, [size] CGSize size);
@@ -4817,6 +4855,11 @@ public interface LynxUI(Gesture) {
 }
 
 public interface LynxUI(LynxHeroTransition) {
+}
+
+public interface LynxUI(TypedTransitions) {
+  public LynxTransitionAnimationManager* LynxUI(TypedTransitions)::transitionAnimationManager transitionAnimationManager;
+  public void LynxUI(TypedTransitions)::prepareTransitionAnimationManager();
 }
 
 public class LynxUICollection : LynxUIListLoader, <UICollectionView> {
@@ -7056,6 +7099,8 @@ public enum LynxSizeValueType {
 
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ StaticPageTaskDispatcher) (dispatch_block_t task) StaticPageTaskDispatcher;
+
+  typedef LynxKeyframeParsedData *_Nullable(^ LynxTypedKeyframesProvider) (LynxUI *ui)
 
 public enum LynxFPSRecordState {
   LynxFPSRecordStateNone

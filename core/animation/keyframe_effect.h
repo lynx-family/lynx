@@ -57,6 +57,9 @@ class KeyframeEffect {
   void SetStartTime(fml::TimePoint& time, bool reset_effect_state);
 
   void SetPauseTime(fml::TimePoint& time);
+  void RestoreTiming(fml::TimePoint start_time, fml::TimePoint sample_time,
+                     gfx::KeyframeModel::RunState run_state);
+  fml::TimeDelta CurrentTime(fml::TimePoint sample_time) const;
 
   static std::unique_ptr<KeyframeEffect> Create();
   void BindAnimationDelegate(AnimationDelegate* target) {
