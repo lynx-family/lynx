@@ -4,14 +4,11 @@
 
 #include "devtool/lynx_devtool/agent/input_request_handler.h"
 
-#include <cmath>
-#include <limits>
 #include <string>
 #include <utility>
 
-#include "base/include/log/logging.h"
+#include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
-#include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/base/mouse_event.h"
 #include "devtool/lynx_devtool/input/input_event_target.h"
@@ -30,9 +27,8 @@ constexpr int64_t kMaxSyntheticTapSequenceDurationMs = 10000;
 
 class TapGestureResponse {
  public:
-  TapGestureResponse(std::shared_ptr<MessageSender> sender, int64_t id,
-                     int tap_count)
-      : sender_(std::move(sender)), id_(id), remaining_(tap_count) {}
+  TapGestureResponse(std::shared_ptr<CDPResponder> responder, int tap_count)
+      : responder_(std::move(responder)), remaining_(tap_count) {}
 
   void OnGestureResult(input::SyntheticGestureResult result) {
     if (responded_) {
@@ -40,36 +36,21 @@ class TapGestureResponse {
     }
     if (result != input::SyntheticGestureResult::kDone) {
       responded_ = true;
-      sender_->SendErrorResponse(id_, kServerError,
-                                 "Input.synthesizeTapGesture failed");
+      responder_->SendError(CDPErrorCode::ServerError,
+                            "Input.synthesizeTapGesture failed");
       return;
     }
     if (--remaining_ == 0) {
       responded_ = true;
-      sender_->SendOKResponse(id_);
+      responder_->SendSuccess();
     }
   }
 
  private:
-  std::shared_ptr<MessageSender> sender_;
-  int64_t id_;
+  std::shared_ptr<CDPResponder> responder_;
   int remaining_;
   bool responded_{false};
 };
-
-bool ParseFiniteFloat(const Json::Value& value, float& result) {
-  if (!value.isNumeric()) {
-    return false;
-  }
-  const double parsed = value.asDouble();
-  if (!std::isfinite(parsed) ||
-      parsed < -static_cast<double>(std::numeric_limits<float>::max()) ||
-      parsed > static_cast<double>(std::numeric_limits<float>::max())) {
-    return false;
-  }
-  result = static_cast<float>(parsed);
-  return true;
-}
 
 const char* SourceTypeToString(input::PointerSourceType source_type) {
   switch (source_type) {
@@ -119,30 +100,30 @@ struct ValidatedTapGesture {
 bool IsValidGesture(
     const Json::Value& params,
     const std::shared_ptr<DevToolPlatformFacade>& platform_facade,
-    ValidatedTapGesture& gesture, LegacyCDPErrorCode& error_code,
+    ValidatedTapGesture& gesture, CDPErrorCode& error_code,
     std::string& error_message) {
-  if (!params.isObject() || !ParseFiniteFloat(params["x"], gesture.x) ||
-      !ParseFiniteFloat(params["y"], gesture.y)) {
-    error_code = kInvalidParams;
+  if (!params.isObject() || !ReadFiniteFloatParam(params["x"], gesture.x) ||
+      !ReadFiniteFloatParam(params["y"], gesture.y)) {
+    error_code = CDPErrorCode::InvalidParams;
     error_message = "Invalid params: expected finite numeric x and y";
     return false;
   }
 
   if (!platform_facade) {
-    error_code = kServerError;
+    error_code = CDPErrorCode::ServerError;
     error_message = "Input target is unavailable";
     return false;
   }
 
   gesture.target = platform_facade->GetInputEventTarget();
   if (!gesture.target) {
-    error_code = kServerError;
+    error_code = CDPErrorCode::ServerError;
     error_message = "Not implemented: Input.synthesizeTapGesture";
     return false;
   }
 
   if (!ParseGestureSourceType(params, gesture.source_type)) {
-    error_code = kInvalidParams;
+    error_code = CDPErrorCode::InvalidParams;
     error_message =
         "Invalid params: expected gestureSourceType default, touch, or mouse";
     return false;
@@ -154,7 +135,7 @@ bool IsValidGesture(
   }
   if (gesture.source_type == input::PointerSourceType::kDefault ||
       !capabilities.Supports(gesture.source_type)) {
-    error_code = kServerError;
+    error_code = CDPErrorCode::ServerError;
     error_message =
         std::string("Not implemented: Input.synthesizeTapGesture source ") +
         SourceTypeToString(gesture.source_type);
@@ -162,31 +143,31 @@ bool IsValidGesture(
   }
 
   if (params.isMember("duration")) {
-    if (!params["duration"].isInt() || params["duration"].asInt() < 0) {
-      error_code = kInvalidParams;
+    if (!ReadIntParam(params["duration"], gesture.duration_ms) ||
+        gesture.duration_ms < 0) {
+      error_code = CDPErrorCode::InvalidParams;
       error_message = "Invalid params: duration must be a non-negative integer";
       return false;
     }
-    gesture.duration_ms = params["duration"].asInt();
   }
   if (params.isMember("tapCount")) {
-    if (!params["tapCount"].isInt() || params["tapCount"].asInt() < 0) {
-      error_code = kInvalidParams;
+    if (!ReadIntParam(params["tapCount"], gesture.tap_count) ||
+        gesture.tap_count < 0) {
+      error_code = CDPErrorCode::InvalidParams;
       error_message = "Invalid params: tapCount must be a non-negative integer";
       return false;
     }
-    gesture.tap_count = params["tapCount"].asInt();
   }
 
   if (gesture.tap_count > kMaxSyntheticTapCount) {
-    error_code = kInvalidParams;
+    error_code = CDPErrorCode::InvalidParams;
     error_message = "Invalid params: tapCount exceeds 200";
     return false;
   }
   const int64_t sequence_duration_ms =
       static_cast<int64_t>(gesture.duration_ms) * gesture.tap_count;
   if (sequence_duration_ms > kMaxSyntheticTapSequenceDurationMs) {
-    error_code = kInvalidParams;
+    error_code = CDPErrorCode::InvalidParams;
     error_message = "Invalid params: tap sequence duration exceeds 10000 ms";
     return false;
   }
@@ -215,13 +196,15 @@ bool InputRequestHandler::SetDevToolPlatformFacade(
 void InputRequestHandler::Reset() { synthetic_gesture_controller_.reset(); }
 
 void InputRequestHandler::EmulateTouchFromMouseEvent(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!devtool_platform_facade_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input target is unavailable");
+    return;
+  }
+  // TODO(devtool): MouseEvent is a legacy input model. Consider migrating this
+  // handler onto the pointer-event pipeline used by SynthesizeTapGesture, which
+  // models pointer source types explicitly and validates its parameters.
   auto input = std::make_shared<MouseEvent>();
   input->button_ = params["button"].asString();
   input->click_count_ = params["clickCount"].asInt();
@@ -232,24 +215,23 @@ void InputRequestHandler::EmulateTouchFromMouseEvent(
   input->x_ = params["x"].asInt();
   input->y_ = params["y"].asInt();
   devtool_platform_facade_->EmulateTouch(input);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InputRequestHandler::InsertText(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!devtool_platform_facade_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input target is unavailable");
+    return;
+  }
+  if (!params.isObject() || !params["text"].isString()) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid params: expected string text");
+    return;
+  }
   devtool_platform_facade_->InsertText(params["text"].asString());
-
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InputRequestHandler::EnsureSyntheticGestureController(
@@ -262,33 +244,31 @@ void InputRequestHandler::EnsureSyntheticGestureController(
 }
 
 void InputRequestHandler::SynthesizeTapGesture(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  const int64_t id = message["id"].asInt64();
-  const Json::Value& params = message["params"];
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   ValidatedTapGesture gesture;
-  LegacyCDPErrorCode error_code = kServerError;
+  CDPErrorCode error_code = CDPErrorCode::ServerError;
   std::string error_message;
   if (!IsValidGesture(params, devtool_platform_facade_, gesture, error_code,
                       error_message)) {
-    sender->SendErrorResponse(id, error_code, error_message);
+    responder->SendError(error_code, error_message);
     return;
   }
   if (gesture.tap_count == 0) {
-    sender->SendOKResponse(id);
+    responder->SendSuccess();
     return;
   }
   auto devtool_mediator = devtool_mediator_wp_.lock();
   const auto task_runner =
       devtool_mediator ? devtool_mediator->GetUITaskRunner() : nullptr;
   if (!task_runner) {
-    sender->SendErrorResponse(id, kServerError,
-                              "Input UI task runner is unavailable");
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input UI task runner is unavailable");
     return;
   }
 
   EnsureSyntheticGestureController(task_runner);
   auto response =
-      std::make_shared<TapGestureResponse>(sender, id, gesture.tap_count);
+      std::make_shared<TapGestureResponse>(responder, gesture.tap_count);
   for (int tap_index = 0; tap_index < gesture.tap_count; ++tap_index) {
     synthetic_gesture_controller_->QueueSyntheticGesture(
         std::make_unique<input::SyntheticTapGesture>(
