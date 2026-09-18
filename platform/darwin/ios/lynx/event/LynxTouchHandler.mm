@@ -379,6 +379,7 @@
     return NO;
   }
 
+  _event = event;
   BOOL isFirstTouch = actionType == 0 && _platformUITouches.count == 0;
   if (isFirstTouch) {
     _target = nil;
@@ -390,7 +391,7 @@
     case 0:
       touchType = LynxEventTouchStart;
       for (UITouch* touch in touches) {
-        NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
+        NSString* key = [NSString stringWithFormat:@"%p", touch];
         if ([_touchesIDMap valueForKey:key] == nil) {
           int32_t identifier = 0;
           if (!reuse_touches_id_.empty()) {
@@ -453,7 +454,7 @@
     NSMutableArray* fEventData = [NSMutableArray arrayWithCapacity:pointerCount * 3];
     for (NSUInteger i = 0; i < pointerCount; i++) {
       UITouch* touch = touchArray[i];
-      NSString* key = [NSString stringWithFormat:@"%ld", touch.hash];
+      NSString* key = [NSString stringWithFormat:@"%p", touch];
       CGPoint point = [touch locationInView:_eventHandler.rootView];
       [fEventData addObject:[_touchesIDMap valueForKey:key]];
       [fEventData addObject:@(point.x)];
@@ -470,6 +471,9 @@
   }
   if (consumed && touchType != nil) {
     [_target dispatchTouch:touchType touches:touches withEvent:event];
+  }
+  if ((actionType == 1 || actionType == 3) && _platformUITouches.count == 0) {
+    _event = nil;
   }
   return YES;
 }
@@ -1017,7 +1021,7 @@
   NSArray* touchesArray = [touches allObjects];
   [touchesArray
       enumerateObjectsUsingBlock:^(UITouch* _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
-        NSString* key = [NSString stringWithFormat:@"%ld", obj.hash];
+        NSString* key = [NSString stringWithFormat:@"%p", obj];
         NSNumber* val = [_touchesIDMap valueForKey:key];
         if (val) {
           reuse_touches_id_.insert([val intValue]);
@@ -1130,16 +1134,8 @@
   if (![self dispatchPlatformUIEvent:touches withEvent:event forType:3]) {
     [self touchesCancelledInner:touches withEvent:event];
   }
-  NSArray* touchesArray = [touches allObjects];
-  [touchesArray
-      enumerateObjectsUsingBlock:^(UITouch* _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
-        NSString* key = [NSString stringWithFormat:@"%ld", obj.hash];
-        NSNumber* val = [_touchesIDMap valueForKey:key];
-        if (val) {
-          reuse_touches_id_.insert([val intValue]);
-          [_touchesIDMap removeObjectForKey:key];
-        }
-      }];
+  reuse_touches_id_.clear();
+  [_touchesIDMap removeAllObjects];
 }
 
 - (void)touchesCancelledInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
@@ -1404,8 +1400,14 @@
   }
 
   auto res = ![self isDescendantOfLynxView:otherGestureRecognizer];
-  if (res == YES && _touchBegin == YES && _touchEndOrCancel == NO) {
-    if (![self dispatchPlatformUIEvent:_touches withEvent:_event forType:3]) {
+  BOOL isFragmentLayerRenderOn =
+      _eventHandler.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn;
+  BOOL hasActiveTouchSequence = isFragmentLayerRenderOn
+                                    ? _platformUITouches.count > 0
+                                    : (_touchBegin == YES && _touchEndOrCancel == NO);
+  if (res == YES && hasActiveTouchSequence) {
+    NSSet<UITouch*>* activeTouches = isFragmentLayerRenderOn ? [_platformUITouches copy] : _touches;
+    if (![self dispatchPlatformUIEvent:activeTouches withEvent:_event forType:3]) {
       _timestamp = [[NSDate date] timeIntervalSince1970];
       if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
         [self showMessageOnConsole:
@@ -1452,6 +1454,7 @@
       [self onTouchEndOrCancel];
       [self resetTouchEnv];
     }
+    reuse_touches_id_.clear();
     [_touchesIDMap removeAllObjects];
   }
   return !res;
