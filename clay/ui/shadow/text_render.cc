@@ -958,12 +958,21 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
                 end_glyph_index.position > 0 ? end_glyph_index.position - 1 : 0;
           }
         }
+        size_t target_visible_line_index = 0;
+        if (truncation_node->ShouldPreserveEmptyTruncationLine() &&
+            line_metrics.size() > 1 &&
+            line_metrics[line_metrics.size() - 2].hard_break &&
+            line_metrics.back().width <= kLayoutTolerance) {
+          display_glyph_num =
+              std::min(line_metrics[line_metrics.size() - 2].end_index,
+                       end_glyph_position_);
+          target_visible_line_index = line_metrics.size() - 1;
+        }
         const size_t max_visible_glyph_num = display_glyph_num;
         const size_t original_end_glyph_position = end_glyph_position_;
         const std::optional<TextOverflow> overflow =
             measure_node_->text_style_->overflow;
-        size_t target_visible_line_index = 0;
-        if (max_visible_glyph_num > 0) {
+        if (target_visible_line_index == 0 && max_visible_glyph_num > 0) {
           const size_t target_glyph_index = max_visible_glyph_num - 1;
           for (size_t i = 0; i < line_metrics.size(); ++i) {
             if (target_glyph_index < line_metrics[i].end_index ||
