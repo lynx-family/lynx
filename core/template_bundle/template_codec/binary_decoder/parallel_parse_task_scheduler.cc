@@ -21,19 +21,19 @@ ParallelParseTaskScheduler::ParallelParseTaskScheduler() {}
 ParallelParseTaskScheduler::~ParallelParseTaskScheduler() {
   if (generate_element_template_parse_task_.get() != nullptr) {
     generate_element_template_parse_task_->Run();
-    generate_element_template_parse_task_->GetFuture().get();
+    (void)generate_element_template_parse_task_->GetFuture().get();
     generate_element_template_parse_task_ = nullptr;
   }
 
   for (auto& pair : element_template_parse_task_map_) {
     pair.second->Run();
-    pair.second->GetFuture().get();
+    (void)pair.second->GetFuture().get();
   }
   element_template_parse_task_map_.clear();
 
   for (auto& pair : construct_element_task_map_) {
     pair.second->Run();
-    pair.second->GetFuture().get();
+    (void)pair.second->GetFuture().get();
   }
   construct_element_task_map_.clear();
 }
@@ -96,7 +96,7 @@ ParallelParseTaskScheduler::TryGetElementTemplateParseResult(
     const std::string& key) {
   if (generate_element_template_parse_task_.get() != nullptr) {
     generate_element_template_parse_task_->Run();
-    generate_element_template_parse_task_->GetFuture().get();
+    (void)generate_element_template_parse_task_->GetFuture().get();
     generate_element_template_parse_task_ = nullptr;
   }
 
