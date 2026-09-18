@@ -1,0 +1,27 @@
+summary: Delivers an opaque string message to the process-wide runtime.
+parameters:
+  - name: message
+    type: string
+    description: Message to deliver unchanged. Empty strings are allowed.
+returns: []
+events:
+  - name: LynxAgent.messageReceived
+    description: An independent message published by the runtime, not an automatic echo or command response.
+notes:
+  - Uses the existing global CDP channel, not a page or Inspector session.
+  - After global domain registration, obtain InspectorLynxAgent from AbstractDevTool::GetGlobalMessageDispatcherInstance().GetAgent("LynxAgent") and bind the existing runtime with SetMessageHandler.
+  - The handler runs on the CDP dispatch thread. Copy the message into the runtime's task queue and return true when accepted, or false when unavailable. Do not retain the string reference.
+  - An empty result acknowledges acceptance only; it does not mean runtime execution has completed.
+  - Missing or non-string message values return InvalidParams (-32602). An unbound handler or a rejected message returns ServerError (-32000).
+  - Runtime integration is supplied by the host. This domain does not create or own a runtime.
+  - SetMessageHandler with an empty callback unbinds the runtime. A callback already in progress may still complete.
+examples:
+  - title: Deliver a message
+    request:
+      id: 1
+      method: LynxAgent.sendMessage
+      params:
+        message: hello
+    response:
+      id: 1
+      result: {}

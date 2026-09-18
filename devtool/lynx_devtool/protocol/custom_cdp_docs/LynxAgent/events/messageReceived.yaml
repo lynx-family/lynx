@@ -1,0 +1,16 @@
+summary: Publishes an opaque string message from the process-wide runtime.
+parameters:
+  - name: message
+    type: string
+    description: Message provided by the runtime, unchanged.
+notes:
+  - The host calls InspectorLynxAgent::SendMessageReceived to publish this event through the existing global MessageSender.
+  - Events may be sent without a preceding sendMessage command. There is no enable method or additional subscription in this domain.
+  - Delivery follows the existing global channel's connection behavior. This domain adds no buffering or replay.
+  - Events have no CDP request id and do not imply completion of a particular command. Applications may encode correlation information in the message string.
+examples:
+  - title: Runtime announces readiness
+    event:
+      method: LynxAgent.messageReceived
+      params:
+        message: ready

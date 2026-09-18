@@ -450,6 +450,14 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+  - name: LynxAgent
+    origin: lynx-extension
+    scope: global
+    methods:
+      - name: sendMessage
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent.cc
   - name: LynxNativeModule
     origin: lynx-extension
     scope: instance
