@@ -104,11 +104,13 @@ enum RouteEntryAdapter {
       components?.scheme?.lowercased() == "file"
       && components?.host?.lowercased() == "lynx"
       && components?.percentEncodedQuery?.lowercased().hasPrefix("local://") == true
+    let joinsGroup =
+      components?.queryItems?.contains { $0.name == "group" && !($0.value ?? "").isEmpty } == true
     return RouteEntryRequest(
       input: input,
       requestedContainer: .automatic,
       source: .debugBridge,
-      presentation: isLocalExplorerURL ? .replaceTop : .resetAndPush)
+      presentation: joinsGroup ? .push : (isLocalExplorerURL ? .replaceTop : .resetAndPush))
   }
 
   static func moduleRequest(

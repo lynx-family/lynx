@@ -18,7 +18,7 @@ object LynxContainerLauncher {
       is LaunchResource.Recorder -> resource.url
     }
     val flags = when {
-      descriptor.source == RouteSource.DEVTOOL ->
+      descriptor.source == RouteSource.DEVTOOL && !LynxViewShellActivity.joinsGroup(url) ->
         Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
       context is android.app.Activity -> 0
       else -> Intent.FLAG_ACTIVITY_NEW_TASK
