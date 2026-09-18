@@ -8,11 +8,14 @@
 #include "core/renderer/dom/fiber/element_template_instance.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <functional>
+#include <future>
 #include <limits>
 #include <map>
 #include <memory>
+#include <thread>
 #include <type_traits>
 #include <vector>
 
@@ -30,6 +33,7 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepus/js_object.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -120,7 +124,8 @@ class ElementTemplateInstanceTest : public FiberElementTest {
             Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
                       lepus::Value(), 0}});
     info->elements_.emplace_back(std::move(root_info));
-    entry->template_bundle_.element_template_infos_["spread_template"] = info;
+    entry->template_bundle_.element_template_info_store_
+        ->infos_["spread_template"] = info;
 
     auto instance = fml::AdoptRef<ElementTemplateInstance>(
         new ElementTemplateInstance(manager));
@@ -698,8 +703,8 @@ TEST_P(ElementTemplateInstanceTest,
   child_slot_info.slot_index_ = 2;
   root_info.children_.emplace_back(std::move(child_slot_info));
   template_info->elements_.emplace_back(std::move(root_info));
-  default_entry->template_bundle_.element_template_infos_["sparse_slot"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["sparse_slot"] = std::move(template_info);
 
   auto child = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));
@@ -1128,8 +1133,8 @@ TEST_P(ElementTemplateInstanceTest,
   root_info.children_.emplace_back(std::move(sentinel_info));
 
   template_info->elements_.emplace_back(std::move(root_info));
-  default_entry->template_bundle_.element_template_infos_["root_template"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["root_template"] = std::move(template_info);
 
   auto child = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));
@@ -1212,8 +1217,8 @@ TEST_P(ElementTemplateInstanceTest,
   root_info.children_.emplace_back(std::move(sentinel_info));
 
   template_info->elements_.emplace_back(std::move(root_info));
-  default_entry->template_bundle_.element_template_infos_["root_template"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["root_template"] = std::move(template_info);
 
   auto first = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));
@@ -1632,8 +1637,8 @@ TEST_P(ElementTemplateInstanceTest,
   sentinel_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
   root_info.children_.emplace_back(std::move(sentinel_info));
   template_info->elements_.emplace_back(std::move(root_info));
-  default_entry->template_bundle_.element_template_infos_["adjacent_slots"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["adjacent_slots"] = std::move(template_info);
 
   auto first = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));
@@ -1722,8 +1727,8 @@ TEST_P(ElementTemplateInstanceTest,
   root_info.children_.emplace_back(std::move(second_sentinel_info));
 
   template_info->elements_.emplace_back(std::move(root_info));
-  default_entry->template_bundle_.element_template_infos_["root_template"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["root_template"] = std::move(template_info);
 
   auto first = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));
@@ -2006,8 +2011,8 @@ TEST_P(ElementTemplateInstanceTest,
           Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("bindtap"),
                     lepus::Value("onStaticTap"), 0}});
   template_info->elements_.emplace_back(std::move(target_info));
-  default_entry->template_bundle_.element_template_infos_["root_template"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["root_template"] = std::move(template_info);
 
   auto root = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));
@@ -2024,6 +2029,312 @@ TEST_P(ElementTemplateInstanceTest,
   ASSERT_EQ(listeners->size(), 1u);
   EXPECT_FALSE(listeners->front()->GetOptions().IsCapture());
   EXPECT_FALSE(listeners->front()->GetOptions().IsCatch());
+}
+
+TEST_P(ElementTemplateInstanceTest, EarlyPreparationUsesCompleteFlatSnapshot) {
+  for (bool consume_before_worker : {false, true}) {
+    SCOPED_TRACE(consume_before_worker);
+    auto instance = CreateCompiledSpreadInstance();
+    auto attributes = lepus::Dictionary::Create();
+    attributes->SetValue(base::String("data-value"), lepus::Value("initial"));
+    auto slots = lepus::CArray::Create();
+    slots->emplace_back(attributes);
+    instance->SetAttributeSlots(lepus::Value(slots));
+    ASSERT_TRUE(instance->can_prepare_early_);
+
+    auto started = std::make_shared<std::promise<void>>();
+    auto release = std::make_shared<std::promise<void>>();
+    if (consume_before_worker) {
+      auto released =
+          std::make_shared<std::future<void>>(release->get_future());
+      manager->EnqueueEarlyElementTemplatePreparation([started, released]() {
+        started->set_value();
+        released->wait();
+      });
+      started->get_future().wait();
+    }
+    instance->PrepareElementsEarly();
+    EXPECT_FALSE(instance->materialization_requested_);
+    EXPECT_EQ(instance->result_, nullptr);
+    auto task = instance->create_element_tree_task_;
+    if (consume_before_worker) {
+      EXPECT_TRUE(task->Run());
+      release->set_value();
+    } else {
+      task->GetFuture().wait();
+      EXPECT_FALSE(task->Run());
+    }
+    EXPECT_EQ(instance->create_element_tree_task_, task);
+
+    auto root = instance->GetRoot();
+    ASSERT_NE(root, nullptr);
+    EXPECT_EQ(root->element_manager(), manager);
+    ASSERT_NE(DatasetValue(root.get(), "value"), nullptr);
+    EXPECT_EQ(DatasetValue(root.get(), "value")->StdString(), "initial");
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       EarlyPreparationIsolatedFromSerializedJSMutations) {
+  auto instance = CreateCompiledSpreadInstance();
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue("data-value", lepus::Value("initial"));
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(attributes);
+  instance->SetAttributeSlots(lepus::Value(slots));
+
+  std::promise<void> started;
+  std::promise<void> release;
+  auto released = release.get_future();
+  manager->EnqueueEarlyElementTemplatePreparation([&]() {
+    started.set_value();
+    released.wait();
+  });
+  started.get_future().wait();
+  instance->PrepareElementsEarly();
+  auto task = instance->create_element_tree_task_;
+
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  const runtime::RenderBindingFunction functions[] = {
+      {"__SerializeElementTemplate",
+       &RendererFunctions::FiberSerializeElementTemplate, true, true}};
+  ctx->RegisterGlobalFunction(functions, 1);
+  runtime->SetGlobalData("serializedHandle", lepus::Value(instance));
+  lepus::BytecodeGenerator::GenerateBytecode(
+      runtime->GetMTSContext(),
+      "let serialized = __SerializeElementTemplate(serializedHandle);"
+      "serialized.attributeSlots[0]['data-value'] = 'mutated';"
+      "serialized.attributeSlots[0]['data-callback'] = () => 42;"
+      "serialized.attributeSlots.length = 0;"
+      "let serializedMutationCompleted = true;",
+      runtime->GetSdkVersion(), "");
+  const bool executed = runtime->Execute(nullptr);
+  // Always release the worker before an assertion can return from the test.
+  release.set_value();
+  task->GetFuture().wait();
+  ASSERT_TRUE(executed);
+  ASSERT_TRUE(runtime->GetGlobalData("serializedMutationCompleted").IsBool());
+  EXPECT_TRUE(runtime->GetGlobalData("serializedMutationCompleted").Bool());
+
+  auto current = instance->Serialize().GetProperty("attributeSlots");
+  ASSERT_EQ(current.GetLength(), 1);
+  EXPECT_EQ(current.GetProperty(0).GetProperty("data-value").StdString(),
+            "initial");
+  EXPECT_FALSE(current.GetProperty(0).Contains("data-callback"));
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  ASSERT_NE(DatasetValue(root.get(), "value"), nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "value")->StdString(), "initial");
+  EXPECT_EQ(DatasetValue(root.get(), "callback"), nullptr);
+}
+
+TEST_P(ElementTemplateInstanceTest, EarlyPreparationKeepsLatestGeneration) {
+  auto instance = CreateCompiledSpreadInstance();
+  auto initial = lepus::Dictionary::Create();
+  initial->SetValue(base::String("data-stale"), lepus::Value("old"));
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(initial);
+  instance->SetAttributeSlots(lepus::Value(slots));
+  instance->PrepareElementsEarly();
+  auto task = instance->create_element_tree_task_;
+  task->GetFuture().wait();
+
+  auto runtime = CreatePAPIRuntime();
+  lepus::BytecodeGenerator::GenerateBytecode(runtime->GetMTSContext(),
+                                             "let preparedCallback = () => 42;",
+                                             runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+  auto callback = runtime->GetGlobalData("preparedCallback");
+  auto latest = lepus::Dictionary::Create();
+  latest->SetValue(base::String("data-current"), lepus::Value("new"));
+  latest->SetValue(base::String("main-thread:bindtap"), callback);
+  instance->SetAttributeSlot(0, lepus::Value(latest));
+  EXPECT_EQ(instance->create_element_tree_task_, task);
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "stale"), nullptr);
+  ASSERT_NE(DatasetValue(root.get(), "current"), nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "current")->StdString(), "new");
+  auto event = root->event_map().find("tap");
+  ASSERT_NE(event, root->event_map().end());
+  EXPECT_EQ(runtime->CallClosure(event->second->lepus_function()).Number(), 42);
+}
+
+TEST_P(ElementTemplateInstanceTest, EarlyPreparationRejectsComplexSnapshots) {
+  auto runtime = CreatePAPIRuntime();
+  lepus::BytecodeGenerator::GenerateBytecode(runtime->GetMTSContext(),
+                                             "let complexCallback = () => 42;",
+                                             runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+  auto callback = runtime->GetGlobalData("complexCallback");
+  auto nested = lepus::Dictionary::Create();
+  nested->SetValue(base::String("nested"), lepus::Value(1));
+  auto array = lepus::CArray::Create();
+  array->emplace_back(1);
+  std::vector<lepus::Value> complex_values{
+      callback, lepus::Value(nested), lepus::Value(array),
+      lepus::Value(lepus::LEPUSObject::Create())};
+  for (const auto& value : complex_values) {
+    auto instance = CreateCompiledSpreadInstance();
+    auto attributes = lepus::Dictionary::Create();
+    attributes->SetValue(base::String("data-complex"), value);
+    auto slots = lepus::CArray::Create();
+    slots->emplace_back(attributes);
+    instance->SetAttributeSlots(lepus::Value(slots));
+    EXPECT_FALSE(instance->can_prepare_early_);
+    instance->PrepareElementsEarly();
+    EXPECT_EQ(instance->create_element_tree_task_, nullptr);
+    auto stored = instance->Serialize().GetProperty("attributeSlots");
+    auto root = instance->GetRoot();
+    ASSERT_NE(root, nullptr);
+    ASSERT_NE(DatasetValue(root.get(), "complex"), nullptr);
+    EXPECT_TRUE(
+        DatasetValue(root.get(), "complex")
+            ->IsEqual(stored.GetProperty(0).GetProperty("data-complex")));
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, EarlyPreparationConvertsJSFlatInputs) {
+  auto runtime = CreatePAPIRuntime();
+  auto instance = CreateCompiledSpreadInstance();
+  lepus::BytecodeGenerator::GenerateBytecode(
+      runtime->GetMTSContext(),
+      "let flatInput = [{'data-a': 1, 'data-b': 's', 'data-c': true, "
+      "'data-d': null, 'data-e': undefined}, 2, 's', null, undefined, false];",
+      runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+  instance->SetAttributeSlots(runtime->GetGlobalData("flatInput"));
+  EXPECT_TRUE(instance->can_prepare_early_);
+  EXPECT_TRUE(instance->attribute_slots_.IsArray());
+  EXPECT_TRUE(instance->attribute_slots_.GetProperty(0).IsTable());
+  instance->PrepareElementsEarly();
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  EXPECT_EQ(DatasetValue(root.get(), "a")->Number(), 1);
+  EXPECT_EQ(DatasetValue(root.get(), "b")->StdString(), "s");
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       EarlyPreparationOwnsInputsAfterInstanceAndEntryAreDiscarded) {
+  auto instance = CreateCompiledSpreadInstance();
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue(base::String("data-value"), lepus::Value("detached"));
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(attributes);
+  instance->SetAttributeSlots(lepus::Value(slots));
+  auto started = std::make_shared<std::promise<void>>();
+  auto release = std::make_shared<std::promise<void>>();
+  auto released = std::make_shared<std::future<void>>(release->get_future());
+  manager->EnqueueEarlyElementTemplatePreparation([started, released]() {
+    started->set_value();
+    released->wait();
+  });
+  started->get_future().wait();
+  instance->PrepareElementsEarly();
+  auto task = instance->create_element_tree_task_;
+  instance = nullptr;
+  tasm->template_entries_.erase(DEFAULT_ENTRY_NAME);
+  release->set_value();
+  auto generated = task->GetFuture().get();
+  ASSERT_NE(generated.result_, nullptr);
+  EXPECT_EQ(generated.result_->element_manager(), nullptr);
+  ASSERT_NE(DatasetValue(generated.result_.get(), "value"), nullptr);
+  EXPECT_EQ(DatasetValue(generated.result_.get(), "value")->StdString(),
+            "detached");
+  EXPECT_EQ(generated.attribute_slots_generation_, 1u);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       EarlyPreparationDrainsWithOneConsumerWhileProducerAddsTasks) {
+  std::promise<void> started;
+  std::promise<void> release;
+  auto released = release.get_future();
+  auto finished = std::make_shared<std::promise<void>>();
+  std::atomic<int> running{0};
+  std::atomic<bool> overlapped{false};
+  std::mutex order_mutex;
+  std::vector<int> order;
+  manager->EnqueueEarlyElementTemplatePreparation([&]() {
+    running.fetch_add(1);
+    started.set_value();
+    released.wait();
+    running.fetch_sub(1);
+  });
+  started.get_future().wait();
+  for (int index = 0; index < 32; ++index) {
+    manager->EnqueueEarlyElementTemplatePreparation([&, index]() {
+      if (running.fetch_add(1) != 0) {
+        overlapped.store(true);
+      }
+      {
+        std::lock_guard<std::mutex> lock(order_mutex);
+        order.push_back(index);
+      }
+      running.fetch_sub(1);
+    });
+  }
+  manager->EnqueueEarlyElementTemplatePreparation(
+      [finished]() { finished->set_value(); });
+  release.set_value();
+  finished->get_future().wait();
+  EXPECT_FALSE(overlapped.load());
+  ASSERT_EQ(order.size(), 32u);
+  for (int index = 0; index < 32; ++index) {
+    EXPECT_EQ(order[index], index);
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PostMTSPreparationJoinsExistingEarlyConsumerAfterFire) {
+  std::promise<void> started;
+  std::promise<void> release;
+  auto released = release.get_future();
+  std::promise<void> post_finished;
+  std::promise<void> tail_finished;
+  std::atomic<bool> early_released{false};
+  bool post_observed_release = false;
+  std::thread::id early_worker;
+  std::thread::id post_worker;
+  std::mutex order_mutex;
+  std::vector<int> order;
+  manager->EnqueueEarlyElementTemplatePreparation([&]() {
+    early_worker = std::this_thread::get_id();
+    started.set_value();
+    released.wait();
+    early_released.store(true);
+    std::lock_guard<std::mutex> lock(order_mutex);
+    order.push_back(0);
+  });
+  started.get_future().wait();
+  manager->EnqueuePostMTSRenderTask([&]() {
+    post_worker = std::this_thread::get_id();
+    post_observed_release = early_released.load();
+    {
+      std::lock_guard<std::mutex> lock(order_mutex);
+      order.push_back(1);
+    }
+    post_finished.set_value();
+  });
+  EXPECT_EQ(manager->pending_post_mts_render_tasks_->size(), 1u);
+  manager->FirePostMTSRenderTasks();
+  EXPECT_EQ(manager->pending_post_mts_render_tasks_, nullptr);
+  // A separate pool task either uses a different worker, or must run after
+  // this tail when the original worker becomes available. Checking both
+  // identity and order detects either outcome without a scheduling delay.
+  manager->EnqueueEarlyElementTemplatePreparation([&]() {
+    {
+      std::lock_guard<std::mutex> lock(order_mutex);
+      order.push_back(2);
+    }
+    tail_finished.set_value();
+  });
+  release.set_value();
+  post_finished.get_future().wait();
+  tail_finished.get_future().wait();
+  EXPECT_TRUE(post_observed_release);
+  EXPECT_EQ(post_worker, early_worker);
+  EXPECT_EQ(order, (std::vector<int>{0, 1, 2}));
 }
 
 TEST_P(ElementTemplateInstanceTest,
@@ -2156,8 +2467,8 @@ TEST_P(ElementTemplateInstanceTest,
   child_slot_info.slot_index_ = 0;
   root_info.children_.emplace_back(std::move(child_slot_info));
   template_info->elements_.emplace_back(std::move(root_info));
-  default_entry->template_bundle_.element_template_infos_["prepared_child"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["prepared_child"] = std::move(template_info);
 
   auto grandchild_template_info = std::make_shared<ElementTemplateInfo>();
   grandchild_template_info->exist_ = true;
@@ -2166,9 +2477,8 @@ TEST_P(ElementTemplateInstanceTest,
   grandchild_root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
   grandchild_template_info->elements_.emplace_back(
       std::move(grandchild_root_info));
-  default_entry->template_bundle_
-      .element_template_infos_["prepared_grandchild"] =
-      std::move(grandchild_template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["prepared_grandchild"] = std::move(grandchild_template_info);
 
   auto grandchild = fml::AdoptRef<ElementTemplateInstance>(
       new ElementTemplateInstance(manager));

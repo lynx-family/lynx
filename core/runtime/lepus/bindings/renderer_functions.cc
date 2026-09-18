@@ -3901,6 +3901,7 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   instance->SetOptions(options);
   instance->SetUid(*arg4);
   instance->InitializeChildSlots(child_slots);
+  instance->PrepareElementsEarly();
 
   RETURN(lepus::Value(instance));
 }

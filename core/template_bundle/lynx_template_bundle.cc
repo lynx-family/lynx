@@ -276,7 +276,11 @@ void LynxTemplateBundle::EnsureParseTaskScheduler() {
 
 void LynxTemplateBundle::GreedyConstructElements() {
   EnsureParseTaskScheduler();
-  for (const auto &pair : element_template_infos_) {
+  // This preconstruction runs during initial greedy decoding, before rendering.
+  // ConstructElement uses the descriptor directly and does not reenter the
+  // store.
+  std::lock_guard<std::mutex> lock(element_template_info_store_->mutex_);
+  for (const auto &pair : element_template_info_store_->infos_) {
     task_schedular_->ConstructElement(pair.first, pair.second, true);
   }
 }
@@ -286,42 +290,54 @@ std::optional<Elements> LynxTemplateBundle::TryGetElements(
   if (task_schedular_ == nullptr) {
     return std::nullopt;
   }
-  return task_schedular_->TryGetElements(key, element_template_infos_[key]);
+  std::shared_ptr<ElementTemplateInfo> info;
+  {
+    std::lock_guard<std::mutex> lock(element_template_info_store_->mutex_);
+    info = element_template_info_store_->infos_[key];
+  }
+  return task_schedular_->TryGetElements(key, info);
+}
+
+ElementTemplateInfoStore::ElementTemplateInfoStore() = default;
+ElementTemplateInfoStore::~ElementTemplateInfoStore() = default;
+
+std::shared_ptr<ElementTemplateInfoStore>
+LynxTemplateBundle::GetElementTemplateInfoStore() {
+  auto store = element_template_info_store_;
+  std::lock_guard<std::mutex> lock(store->mutex_);
+  if (store->reader_ == nullptr && lazy_reader_ != nullptr) {
+    // TemplateBinaryReader is the lazy reader installed by FromBinary.
+    store->reader_ = static_cast<TemplateBinaryReader *>(lazy_reader_.get())
+                         ->CreateElementTemplateReader();
+  }
+  return store;
 }
 
 const ElementTemplateInfo &LynxTemplateBundle::GetElementTemplateInfo(
     const std::string &key) {
+  return *GetElementTemplateInfoStore()->Get(key);
+}
+
+std::shared_ptr<const ElementTemplateInfo> ElementTemplateInfoStore::Get(
+    const std::string &key) {
+  std::unique_ptr<ElementBinaryReader> reader;
   {
-    std::lock_guard<std::mutex> guard(element_template_info_mutex_.mutex_);
-    auto iter = element_template_infos_.find(key);
-    if (iter != element_template_infos_.end()) {
-      return *iter->second;
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = infos_.find(key);
+    if (iter != infos_.end()) {
+      return iter->second;
+    }
+    if (reader_ != nullptr) {
+      reader = reader_->CreateElementTemplateReader();
     }
   }
 
-  // Binary decode can be expensive, so keep the cache mutex scoped to map
-  // access and check the cache again before publishing the decoded result.
-  auto info = std::make_shared<ElementTemplateInfo>();
-  if (lazy_reader_) {
-    auto recycler = lazy_reader_->CreateRecycler();
-    if (recycler) {
-      // LynxTemplateBundle installs TemplateBinaryReader as the lazy reader.
-      auto *dedicated_reader =
-          static_cast<TemplateBinaryReader *>(recycler.get());
-      if (auto decoded_info =
-              dedicated_reader->DecodeElementTemplateInRender(key)) {
-        info = std::move(decoded_info);
-      }
-    }
-  }
-
-  std::lock_guard<std::mutex> guard(element_template_info_mutex_.mutex_);
-  auto iter = element_template_infos_.find(key);
-  if (iter != element_template_infos_.end()) {
-    return *iter->second;
-  }
-  auto res = element_template_infos_.emplace(key, std::move(info));
-  return *res.first->second;
+  // Each cache miss has its own cursor. Decode without the publication lock
+  // so unrelated templates and the rendering thread can continue concurrently.
+  auto info = reader != nullptr ? reader->DecodeTemplatesInfoWithKey(key)
+                                : std::make_shared<ElementTemplateInfo>();
+  std::lock_guard<std::mutex> lock(mutex_);
+  return infos_.emplace(key, std::move(info)).first->second;
 }
 
 const std::shared_ptr<ParsedStyles> &LynxTemplateBundle::GetParsedStyles(

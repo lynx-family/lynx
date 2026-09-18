@@ -416,6 +416,18 @@ ElementBinaryReader::DeriveElementBinaryReader() {
       element_templates_router_, string_key_parsed_styles_router_);
 }
 
+std::unique_ptr<ElementBinaryReader>
+ElementBinaryReader::CreateElementTemplateReader() {
+  auto reader = DeriveElementBinaryReader();
+  reader->enable_css_parser_ = enable_css_parser_;
+  reader->enable_css_variable_ = enable_css_variable_;
+  reader->enable_css_variable_multi_default_value_ =
+      enable_css_variable_multi_default_value_;
+  reader->enable_css_font_face_extension_ = enable_css_font_face_extension_;
+  reader->enable_pre_process_attributes_ = true;
+  return reader;
+}
+
 // These are the APIs used for decoding data and return element infos:
 // Lazy decode. Only decode templates router. The
 // decoding of the template waits until it is actually needed.

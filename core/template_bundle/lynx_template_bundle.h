@@ -50,6 +50,26 @@ struct TemplateVerification {
 
 class LynxBinaryLazyReaderDelegate;
 class LynxBinaryRecyclerDelegate;
+class ElementBinaryReader;
+
+// Shared immutable descriptors and the independent binary input needed to
+// decode them. Detached preparation can retain this store without retaining a
+// page, a TemplateEntry, or its VM.
+class ElementTemplateInfoStore {
+ public:
+  ElementTemplateInfoStore();
+  ~ElementTemplateInfoStore();
+
+  std::shared_ptr<const ElementTemplateInfo> Get(const std::string& key);
+
+ private:
+  std::mutex mutex_;
+  std::unordered_map<std::string, std::shared_ptr<ElementTemplateInfo>> infos_;
+  std::unique_ptr<ElementBinaryReader> reader_;
+
+  friend class LynxTemplateBundle;
+  friend class LynxBinaryReader;
+};
 
 class LepusChunkManager {
  public:
@@ -223,16 +243,13 @@ class LynxTemplateBundle final {
 
   std::optional<Elements> TryGetElements(const std::string& key);
 
-  // Returns element-template info for the given key from the bundle cache
-  // first. On a cache miss, decodes through the bundle-owned lazy reader when
-  // available and stores the decoded result back into the cache. Without a lazy
-  // reader, or when lazy decoding cannot produce a valid info, creates and
-  // caches a missing ElementTemplateInfo entry whose exist_ remains false. The
-  // returned reference is stable until this bundle is destroyed or the cache is
-  // externally mutated; cache lookup and publication are protected by
-  // element_template_info_mutex_, while callers must not retain the reference
-  // past the bundle lifetime.
+  // Returns a cached descriptor, decoding on a miss. The reference remains
+  // valid while the shared descriptor store is alive.
   const ElementTemplateInfo& GetElementTemplateInfo(const std::string& key);
+
+  // Called while the bundle is owned by its rendering thread. Captures only
+  // binary decode input; it does not decode an element template.
+  std::shared_ptr<ElementTemplateInfoStore> GetElementTemplateInfoStore();
 
   // Returns parsed styles for the given key from the bundle cache first. On a
   // cache miss, decodes through the bundle-owned lazy reader when available and
@@ -253,16 +270,6 @@ class LynxTemplateBundle final {
   }
 
  private:
-  struct CopyableMutex {
-    CopyableMutex() = default;
-    CopyableMutex(const CopyableMutex&) {}
-    CopyableMutex& operator=(const CopyableMutex&) { return *this; }
-    CopyableMutex(CopyableMutex&&) {}
-    CopyableMutex& operator=(CopyableMutex&&) { return *this; }
-
-    mutable std::mutex mutex_;
-  };
-
   void EnsureParseTaskScheduler();
 
   std::string BuildFromLynxMLSources(
@@ -335,9 +342,8 @@ class LynxTemplateBundle final {
   std::shared_ptr<LepusChunkManager> lepus_chunk_manager_;
 
   // fiber- element template info map
-  std::unordered_map<std::string, std::shared_ptr<ElementTemplateInfo>>
-      element_template_infos_{};
-  mutable CopyableMutex element_template_info_mutex_;
+  std::shared_ptr<ElementTemplateInfoStore> element_template_info_store_{
+      std::make_shared<ElementTemplateInfoStore>()};
 
   // fiber- parsed styles map
   ParsedStylesMap parsed_styles_map_;

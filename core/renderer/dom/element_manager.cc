@@ -57,6 +57,13 @@
 constexpr const static char *kEventDomSizeKey = "dom_size";
 namespace lynx {
 namespace tasm {
+
+struct ElementTemplatePreparationQueue {
+  std::mutex mutex;
+  std::list<base::closure> tasks;
+  bool draining{false};
+};
+
 namespace {
 
 // Rule sets visited while collecting layer trees. The set is small (intrinsic
@@ -85,22 +92,6 @@ void CollectLayerTreesFromRuleSet(const css::RuleSet *rule_set,
       map->MergeLayerTree(fragment->root_layer());
     }
   }
-}
-
-void PostTaskBatchToConcurrentLoop(
-    const std::shared_ptr<base::Vector<base::closure>> &batch) {
-  if (batch == nullptr || batch->empty()) {
-    return;
-  }
-  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
-      [batch]() {
-        for (const auto &task : *batch) {
-          if (task != nullptr) {
-            task();
-          }
-        }
-      },
-      base::ConcurrentTaskType::HIGH_PRIORITY);
 }
 
 void CollectElementContainerForReplay(
@@ -701,7 +692,55 @@ void ElementManager::FirePostMTSRenderTasks() {
     return;
   }
 
-  PostTaskBatchToConcurrentLoop(batch);
+  base::closure task = [batch = std::move(batch)]() {
+    for (const auto &task : *batch) {
+      if (task != nullptr) {
+        task();
+      }
+    }
+  };
+  if (early_element_template_preparation_queue_ != nullptr) {
+    EnqueueEarlyElementTemplatePreparation(std::move(task));
+  } else {
+    base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+        std::move(task), base::ConcurrentTaskType::HIGH_PRIORITY);
+  }
+}
+
+void ElementManager::EnqueueEarlyElementTemplatePreparation(
+    base::closure task) {
+  if (early_element_template_preparation_queue_ == nullptr) {
+    early_element_template_preparation_queue_ =
+        std::make_shared<ElementTemplatePreparationQueue>();
+  }
+  auto queue = early_element_template_preparation_queue_;
+  {
+    std::lock_guard<std::mutex> lock(queue->mutex);
+    queue->tasks.emplace_back(std::move(task));
+    if (queue->draining) {
+      return;
+    }
+    queue->draining = true;
+  }
+  // One consumer drains every ready task. It owns only the queue, so detached
+  // work can finish after the page is discarded without accessing its manager.
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [queue = std::move(queue)]() {
+        for (;;) {
+          base::closure next;
+          {
+            std::lock_guard<std::mutex> lock(queue->mutex);
+            if (queue->tasks.empty()) {
+              queue->draining = false;
+              return;
+            }
+            next = std::move(queue->tasks.front());
+            queue->tasks.pop_front();
+          }
+          next();
+        }
+      },
+      base::ConcurrentTaskType::HIGH_PRIORITY);
 }
 
 void ElementManager::EnqueuePendingElementTemplateChildMounts(

@@ -355,7 +355,10 @@ bool LynxBinaryReader::GreedyDecodeElementTemplateSection() {
   auto& tb = template_bundle();
   for (const auto& [key, offset] : element_templates_router_.start_offsets_) {
     auto info = DecodeTemplatesInfoWithKey(key);
-    tb.element_template_infos_.emplace(key, std::move(info));
+    // Recyclers share the descriptor store with active preparation tasks. Keep
+    // the first published descriptor so references already in use stay valid.
+    std::lock_guard<std::mutex> lock(tb.element_template_info_store_->mutex_);
+    tb.element_template_info_store_->infos_.emplace(key, std::move(info));
   }
   return true;
 }
