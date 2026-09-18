@@ -140,7 +140,9 @@ void PlatformRendererImpl::RemoveFromParent() {
     return;
   }
 
-  PlatformRendererImpl* parent = parent_;
+  // Keep both ends alive while the platform callback observes the relationship.
+  const auto self = fml::RefPtr<PlatformRendererImpl>(this);
+  const auto parent = fml::RefPtr<PlatformRendererImpl>(parent_);
   const bool should_update_ui_owner = is_ui_owner_child_;
 
   // Call platform-specific implementation
