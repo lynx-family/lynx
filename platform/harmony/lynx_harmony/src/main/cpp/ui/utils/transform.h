@@ -8,6 +8,7 @@
 #include <node_api.h>
 
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 #include "base/include/value/base_value.h"
@@ -33,6 +34,7 @@ class Transform {
  public:
   constexpr static size_t kIndexTranslationZ = 14;
   explicit Transform(const lepus::Value& value);
+  explicit Transform(std::vector<TransformRaw> raw) : raw_(std::move(raw)) {}
   gfx::Matrix44 GetTransformMatrix(float width, float height,
                                    float scaled_density = 1.0f,
                                    bool with_transform_origin = false) const;

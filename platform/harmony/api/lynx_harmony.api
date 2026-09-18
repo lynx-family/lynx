@@ -719,6 +719,8 @@ export class UIBase {
   constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function, layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function, onNodeReady: Function, customLayout: boolean, updateExtraData: Function, needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function, isScrollable: Function, scrollX: Function, scrollY: Function, isLayoutPlaceholder: boolean);
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
   static getContentSize(nativeContent: NativeContent): [number, number];
+  static setListItemTransformer(nativeContent: NativeContent, transformer: ((mainAxisSize: number, mainAxisOffset: number,
+      isVertical: boolean, isRTL: boolean) => number[]) | undefined, reset: (() => number[]) | undefined): boolean;
   getChildren(): ArrayBuffer;
   setFrameNode(node: FrameNode): void;
   sendGlobalEvent(name: string, params: Object[]): void;
@@ -737,6 +739,7 @@ export class UIBase {
 export class NativeContent {
   constructor(content: NodeContent);
   readonly content: NodeContent;
+  readonly uiTagName: string | undefined;
 }
 
 export class ExtensionModule {

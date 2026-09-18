@@ -26,6 +26,7 @@ class NativeNodeContent {
  private:
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value GetNodeContent(napi_env env, napi_callback_info info);
+  static napi_value GetUITagName(napi_env env, napi_callback_info info);
   napi_env env_{nullptr};
   napi_ref js_this_{nullptr};
   napi_ref js_node_content_{nullptr};
