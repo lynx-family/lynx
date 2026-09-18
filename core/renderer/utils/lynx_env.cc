@@ -680,6 +680,10 @@ bool LynxEnv::FixListWithSyncFlush() {
   return GetBoolEnv(Key::FIX_LIST_WITH_SYNC_FLUSH, false);
 }
 
+bool LynxEnv::FixResetNativeUpdateDataOrderForLoad() {
+  return GetBoolEnv(Key::FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD, false);
+}
+
 bool LynxEnv::EnableNativeList() {
   return GetBoolEnv(Key::ENABLE_NATIVE_LIST, false);
 }

@@ -739,10 +739,10 @@ bool LynxShell::IsDestroyed() { return is_destroyed_; }
 void LynxShell::ResetNativeUpdateDataOrderForLoad(
     const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) {
   // Pre-load updates without a real pipeline can leave the native order ahead
-  // of the first load in any rendering mode. Limit the reset to embedded mode
-  // while validating the behavior, and remove this guard once it is proven
-  // safe for all modes.
-  if (!page_options_.IsEmbeddedModeOn()) {
+  // of the first load. Keep the existing embedded-mode fix enabled, and gate
+  // the same behavior in other rendering modes while it is validated.
+  if (!page_options_.IsEmbeddedModeOn() &&
+      !tasm::LynxEnv::GetInstance().FixResetNativeUpdateDataOrderForLoad()) {
     return;
   }
   ui_operation_queue_->ResetNativeUpdateDataOrder();
