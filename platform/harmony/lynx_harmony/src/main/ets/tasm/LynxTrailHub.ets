@@ -76,6 +76,7 @@ export enum LynxTrailKey {
   ENABLE_TEXT_LAYOUT_SHAPER = 'lynx_canvas_enable_textlayout_shaper',
   ENABLE_SKITY_COVERAGE_AA = 'lynx_canvas_enable_skity_coverage_aa',
   ENABLE_SKITY_SIMPLE_SHAPE = 'lynx_canvas_enable_skity_simple_shape_pipeline',
+  ENABLE_SKITY_SURFACE_REUSE = 'lynx_canvas_enable_skity_surface_reuse',
   FORCE_USE_SHADER_REPLACE_BLIT_WORKAROUND_CANVAS = 'force_use_shader_replace_blit_workaround_canvas',
   TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS = 'try_to_fix_native_window_leak_harmony_canvas',
   ANIMAX_ENABLE_SYNC_CODEC_HARMONY = 'ANIMAX_ENABLE_SYNC_CODEC_HARMONY',
