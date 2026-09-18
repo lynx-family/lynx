@@ -14,6 +14,7 @@ namespace embedder {
 namespace {
 
 constexpr int32_t kSyntheticMouseDeviceId = 0;
+constexpr int32_t kSyntheticTouchDeviceId = 1;
 static constexpr const char* kMousePressed = "mousePressed";
 static constexpr const char* kMouseMoved = "mouseMoved";
 static constexpr const char* kMouseReleased = "mouseReleased";
@@ -45,18 +46,52 @@ int64_t ButtonMask(std::string_view button) {
 
 }  // namespace
 
-void LynxUIRenderer::DispatchSyntheticPointerEvent(
-    const char* event_type, float x, float y, const char* button, float delta_x,
-    float delta_y, int modifiers, int click_count) {
-  // ClayPointerEvent has no modifier or click-count fields. Supporting them
-  // requires separate key events or higher-level gesture handling; keep the
-  // parameters for compatibility with the DevTool interface.
+void LynxUIRenderer::DispatchSyntheticPointerEvent(ClayPointerEvent event) {
+  event.struct_size = sizeof(event);
+  event.x *= pixel_ratio_;
+  event.y *= pixel_ratio_;
+  event.scroll_delta_x *= pixel_ratio_;
+  event.scroll_delta_y *= pixel_ratio_;
+
+  const auto send = [this](ClayPointerEvent pointer_event) {
+    pointer_event.timestamp = base::CurrentTimeMicroseconds();
+    SendPointerEvent(pointer_event);
+  };
+  const auto send_lifecycle = [&event, &send](ClayPointerPhase phase) {
+    // Add/Remove events carry no button/scroll payload.
+    ClayPointerEvent lifecycle = event;
+    lifecycle.phase = phase;
+    lifecycle.buttons = 0;
+    lifecycle.signal_kind = kClayPointerSignalKindNone;
+    lifecycle.scroll_delta_x = 0;
+    lifecycle.scroll_delta_y = 0;
+    lifecycle.is_precise_scroll = 0;
+    send(lifecycle);
+  };
+
+  // Synthetic down/up bracket a gesture; hover (including wheel) is standalone.
+  if (event.phase == kClayPointerPhaseDown ||
+      event.phase == kClayPointerPhaseHover) {
+    send_lifecycle(kClayPointerPhaseAdd);
+  }
+  send(event);
+  if (event.phase == kClayPointerPhaseUp ||
+      event.phase == kClayPointerPhaseHover) {
+    send_lifecycle(kClayPointerPhaseRemove);
+  }
+}
+
+void LynxUIRenderer::EmulateMouseSyntheticEvent(const char* event_type, float x,
+                                                float y, const char* button,
+                                                float delta_x, float delta_y,
+                                                int modifiers,
+                                                int click_count) {
+  // ClayPointerEvent has no modifier/click-count fields; kept for API parity.
   (void)modifiers;
   (void)click_count;
   if (!event_type) {
     return;
   }
-
   const std::string_view type(event_type);
   if (type != kMousePressed && type != kMouseMoved && type != kMouseReleased &&
       type != kMouseWheel) {
@@ -64,67 +99,74 @@ void LynxUIRenderer::DispatchSyntheticPointerEvent(
   }
 
   ClayPointerEvent event = {};
-  event.struct_size = sizeof(event);
-  event.x = x * pixel_ratio_;
-  event.y = y * pixel_ratio_;
+  event.x = x;
+  event.y = y;
   event.device = kSyntheticMouseDeviceId;
   event.device_kind = kClayPointerDeviceKindMouse;
-
-  const auto send_event = [this](ClayPointerEvent pointer_event) {
-    pointer_event.timestamp = base::CurrentTimeMicroseconds();
-    SendPointerEvent(pointer_event);
-  };
-  const auto send_lifecycle_event = [&event,
-                                     &send_event](ClayPointerPhase phase) {
-    ClayPointerEvent lifecycle_event = event;
-    lifecycle_event.phase = phase;
-    lifecycle_event.buttons = 0;
-    lifecycle_event.signal_kind = kClayPointerSignalKindNone;
-    lifecycle_event.scroll_delta_x = 0;
-    lifecycle_event.scroll_delta_y = 0;
-    lifecycle_event.is_precise_scroll = 0;
-    send_event(lifecycle_event);
-  };
 
   const int64_t button_mask = ButtonMask(button ? button : "");
   if (type == kMousePressed) {
     event.phase = kClayPointerPhaseDown;
+    // Empty mask still means a primary click.
     event.buttons =
         button_mask != 0 ? button_mask : kClayPointerMouseButtonsMousePrimary;
   } else if (type == kMouseReleased) {
     event.phase = kClayPointerPhaseUp;
     event.buttons = 0;
   } else if (type == kMouseMoved) {
-    // Button state is supplied by the caller for every move. A zero mask is
-    // therefore an intentional hover; this renderer keeps no drag state.
+    // Zero mask on move is an intentional hover; caller owns drag state.
     event.phase =
         button_mask != 0 ? kClayPointerPhaseMove : kClayPointerPhaseHover;
     event.buttons = button_mask;
   } else {
     event.phase = kClayPointerPhaseHover;
     event.buttons = 0;
-  }
-
-  if (type == kMouseWheel) {
     event.signal_kind = kClayPointerSignalKindScroll;
-    event.scroll_delta_x = delta_x * pixel_ratio_;
-    event.scroll_delta_y = delta_y * pixel_ratio_;
+    event.scroll_delta_x = delta_x;
+    event.scroll_delta_y = delta_y;
     event.is_precise_scroll = 1;
   }
 
-  // Platform mouse adapters normally add a pointer before dispatching input
-  // and remove it when the pointer leaves. Synthetic events bypass those
-  // adapters, so provide a complete Clay pointer lifecycle here. A dedicated
-  // device ID keeps this lifecycle independent from the physical mouse.
-  if (type == kMousePressed || type == kMouseWheel ||
-      (type == kMouseMoved && button_mask == 0)) {
-    send_lifecycle_event(kClayPointerPhaseAdd);
+  DispatchSyntheticPointerEvent(event);
+}
+
+void LynxUIRenderer::EmulateTouchSyntheticEvent(const char* event_type, float x,
+                                                float y, const char* button,
+                                                float delta_x, float delta_y,
+                                                int modifiers,
+                                                int click_count) {
+  (void)modifiers;
+  (void)click_count;
+  (void)button;
+  (void)delta_x;
+  (void)delta_y;
+  if (!event_type) {
+    return;
   }
-  send_event(event);
-  if (type == kMouseReleased || type == kMouseWheel ||
-      (type == kMouseMoved && button_mask == 0)) {
-    send_lifecycle_event(kClayPointerPhaseRemove);
+  const std::string_view type(event_type);
+  // Clay touch has no wheel; wheel is downgraded upstream in the proxy.
+  if (type != kMousePressed && type != kMouseMoved && type != kMouseReleased) {
+    return;
   }
+
+  ClayPointerEvent event = {};
+  event.x = x;
+  event.y = y;
+  event.device = kSyntheticTouchDeviceId;
+  event.device_kind = kClayPointerDeviceKindTouch;
+  // Touch never carries mouse-button state on Clay.
+  event.buttons = 0;
+
+  if (type == kMousePressed) {
+    event.phase = kClayPointerPhaseDown;
+  } else if (type == kMouseReleased) {
+    event.phase = kClayPointerPhaseUp;
+  } else {
+    // Touch move is always a drag; no unpressed hover.
+    event.phase = kClayPointerPhaseMove;
+  }
+
+  DispatchSyntheticPointerEvent(event);
 }
 
 }  // namespace embedder
