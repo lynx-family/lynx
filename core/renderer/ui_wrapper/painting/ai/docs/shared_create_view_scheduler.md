@@ -82,7 +82,8 @@ and takes/activates the scheduled snapshot before normal UI operations.
 Another painting pipeline can supply its own JNI preparation callback, retain the
 `TaskRef`, and call `Consume` only at its first host dependency. It must own its own
 scheduler, flags, snapshot lifecycle, main-thread finalization, and teardown
-checks. No other pipeline is integrated by this extraction.
+checks. The Android fragment consumer is described in
+[`android-fragment-platform-rendering`](../../android/ai/docs/android-fragment-platform-rendering.md).
 
 ## Verification
 

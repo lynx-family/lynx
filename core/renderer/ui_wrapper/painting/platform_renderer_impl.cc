@@ -47,10 +47,15 @@ PlatformRendererImpl::~PlatformRendererImpl() {
 }
 
 base::String PlatformRendererImpl::GetExtendedRendererTagName() const {
-  if (!tag_name_.empty()) {
-    return tag_name_;
+  return GetExtendedRendererTagName(type_, tag_name_);
+}
+
+base::String PlatformRendererImpl::GetExtendedRendererTagName(
+    PlatformRendererType type, const base::String& tag_name) {
+  if (!tag_name.empty()) {
+    return tag_name;
   }
-  switch (type_) {
+  switch (type) {
     case PlatformRendererType::kScroll:
       return base::String(BASE_STATIC_STRING(kElementScrollViewTag));
     case PlatformRendererType::kList:
@@ -140,7 +145,10 @@ void PlatformRendererImpl::RemoveFromParent() {
     return;
   }
 
-  PlatformRendererImpl* parent = parent_;
+  // The platform callback may clear the context's renderer ownership. Keep
+  // both ends alive until the native relationship has been detached.
+  const auto self = fml::RefPtr<PlatformRendererImpl>(this);
+  const auto parent = fml::RefPtr<PlatformRendererImpl>(parent_);
   const bool should_update_ui_owner = is_ui_owner_child_;
 
   // Call platform-specific implementation

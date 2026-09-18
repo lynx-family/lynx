@@ -21,6 +21,35 @@ NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
 
 NativePaintingCtxAndroidRef::~NativePaintingCtxAndroidRef() { Destroy(); }
 
+PlatformRendererContext::PreparationScheduler::TaskRef
+NativePaintingCtxAndroidRef::PrepareRenderer(
+    int id, PlatformRendererType type, const base::String& tag_name,
+    const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return {};
+  }
+  return view_manager_->PreparePlatformRenderer(
+      id, PlatformRendererAndroid::PreparationTag(type, tag_name, init_config),
+      init_data);
+}
+
+void NativePaintingCtxAndroidRef::CreatePreparedRenderer(
+    int id, PlatformRendererType type, const base::String& tag_name,
+    const fml::RefPtr<PropBundle>& init_data,
+    const PlatformRendererInitConfig& init_config,
+    const PlatformRendererContext::PreparationScheduler::TaskRef& preparation) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
+  auto renderer = fml::MakeRefCounted<PlatformRendererAndroid>(
+      view_manager_.get(), id, type, tag_name, init_data, init_config,
+      preparation);
+  if (!destroyed_.load(std::memory_order_acquire)) {
+    renderers_.insert_or_assign(id, std::move(renderer));
+  }
+}
+
 std::vector<float> NativePaintingCtxAndroidRef::GetTransformValue(
     int32_t sign, const std::vector<float>& offsets) {
   return GetTransformValueForEventTarget(sign, offsets);

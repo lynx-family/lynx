@@ -14,6 +14,8 @@
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/tasm/react/android/mapbuffer/map_buffer_builder.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
+#include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/painting/android/paint_image_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
@@ -105,7 +107,8 @@ void PlatformRendererContext::CreatePlatformRenderer(
 }
 
 void PlatformRendererContext::CreatePlatformExtendedRenderer(
-    int32_t id, const base::String& tag_name, jobject init_data) {
+    int32_t id, const base::String& tag_name, jobject init_data,
+    jobject preparation) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -113,14 +116,58 @@ void PlatformRendererContext::CreatePlatformExtendedRenderer(
   JNIEnv* env = base::android::AttachCurrentThread();
   auto j_tag_name = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
       env, tag_name.c_str());
-  Java_PlatformRendererContext_createPlatformExtendedRenderer(
-      env, local_ref.Get(), id, j_tag_name.Get(), init_data);
+  Java_PlatformRendererContext_createPlatformExtendedRendererWithPreparation(
+      env, local_ref.Get(), id, j_tag_name.Get(), init_data, preparation);
+}
+
+PlatformRendererContext::PreparationScheduler::TaskRef
+PlatformRendererContext::PreparePlatformRenderer(
+    int32_t id, const base::String& tag_name,
+    const fml::RefPtr<PropBundle>& init_data) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref;
+  {
+    std::lock_guard<std::mutex> lock(preparation_mutex_);
+    local_ref = base::android::ScopedLocalJavaRef<jobject>(java_ref_);
+  }
+  if (local_ref.IsNull() || tag_name.empty()) {
+    return {};
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto j_tag = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, tag_name.c_str());
+  if (!Java_PlatformRendererContext_canPreparePlatformRenderer(
+          env, local_ref.Get(), j_tag.Get())) {
+    return {};
+  }
+  std::unique_ptr<PropBundleAndroid> bundle;
+  if (init_data) {
+    bundle = std::make_unique<PropBundleAndroid>(
+        *static_cast<NativePropBundle*>(init_data.get()));
+  }
+  using Result = base::android::ScopedGlobalJavaRef<jobject>;
+  return preparation_scheduler_->Schedule(
+      [context = Result(env, local_ref.Get()), tag = Result(env, j_tag.Get()),
+       data = Result(env, bundle ? bundle->jni_object() : nullptr), id]() {
+        JNIEnv* env = base::android::AttachCurrentThread();
+        auto runnable = Java_PlatformRendererContext_preparePlatformRenderer(
+            env, context.Get(), id, static_cast<jstring>(tag.Get()),
+            data.Get());
+        return Result(env, runnable.Get());
+      });
 }
 
 void PlatformRendererContext::InsertPlatformRenderer(
     int32_t parent, int32_t child, int32_t index, bool should_update_ui_owner) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
+    return;
+  }
+  EnsureAndroidViewCreated(parent);
+  if (destroyed_) {
+    return;
+  }
+  EnsureAndroidViewCreated(child);
+  if (destroyed_) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
@@ -134,12 +181,21 @@ void PlatformRendererContext::RemovePlatformRenderer(
   if (local_ref.IsNull()) {
     return;
   }
+  EnsureAndroidViewCreated(parent);
+  if (destroyed_) {
+    return;
+  }
+  EnsureAndroidViewCreated(target);
+  if (destroyed_) {
+    return;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_removePlatformRendererFromParent(
       env, local_ref.Get(), parent, target, should_update_ui_owner);
 }
 
 void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
+  UnregisterPlatformRenderer(target);
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -147,9 +203,6 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_destroyPlatformRenderer(env, local_ref.Get(),
                                                        target);
-
-  // Unregister the renderer
-  UnregisterPlatformRenderer(target);
 }
 
 fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
@@ -220,6 +273,10 @@ void PlatformRendererContext::FinishLayoutOperation(int32_t component_id,
   if (local_ref.IsNull()) {
     return;
   }
+  EnsureAndroidViewCreated(component_id);
+  if (destroyed_) {
+    return;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_finishLayoutOperation(
       env, local_ref.Get(), component_id, static_cast<jlong>(operation_id),
@@ -247,6 +304,12 @@ void PlatformRendererContext::OnNodeReady(const std::vector<int32_t>& ids) {
   if (local_ref.IsNull()) {
     return;
   }
+  for (int32_t id : ids) {
+    EnsureAndroidViewCreated(id);
+    if (destroyed_) {
+      return;
+    }
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   const auto size = static_cast<jsize>(ids.size());
   base::android::ScopedLocalJavaRef<jintArray> node_ready_ids(
@@ -266,9 +329,24 @@ PlatformRendererAndroid* PlatformRendererContext::GetPlatformRenderer(
   return (it != renderer_registry_.end()) ? it->second : nullptr;
 }
 
+void PlatformRendererContext::EnsureAndroidViewCreated(int32_t id) {
+  if (destroyed_) {
+    return;
+  }
+  if (auto* renderer = GetPlatformRenderer(id)) {
+    // The registry is non-owning; Java finalization can destroy the view and
+    // release the painting context's last reference to this renderer.
+    const auto retained_renderer =
+        fml::RefPtr<PlatformRendererAndroid>(renderer);
+    retained_renderer->EnsureAndroidViewCreated();
+  }
+}
+
 void PlatformRendererContext::RegisterPlatformRenderer(
     int32_t id, PlatformRendererAndroid* renderer) {
-  renderer_registry_[id] = renderer;
+  if (!destroyed_) {
+    renderer_registry_[id] = renderer;
+  }
 }
 
 void PlatformRendererContext::UnregisterPlatformRenderer(int32_t id) {
@@ -281,6 +359,10 @@ void PlatformRendererContext::UpdatePlatformRendererFrame(
     const float* borders) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
+    return;
+  }
+  EnsureAndroidViewCreated(target);
+  if (destroyed_) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
@@ -301,6 +383,10 @@ void PlatformRendererContext::UpdatePlatformRendererAttributes(
     int32_t id, jobject prop_bundle) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull() || !prop_bundle) {
+    return;
+  }
+  EnsureAndroidViewCreated(id);
+  if (destroyed_) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
@@ -378,6 +464,10 @@ std::vector<float> PlatformRendererContext::GetRendererHostScrollOffset(
     return res;
   }
 
+  EnsureAndroidViewCreated(sign);
+  if (destroyed_) {
+    return res;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   auto arr = Java_PlatformRendererContext_getRendererHostScrollOffset(
       env, local_ref.Get(), sign);
@@ -402,6 +492,10 @@ bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
     return false;
   }
 
+  EnsureAndroidViewCreated(sign);
+  if (destroyed_) {
+    return false;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   return Java_PlatformRendererContext_isRendererHostScrollable(
       env, local_ref.Get(), sign);
@@ -414,6 +508,10 @@ PlatformRendererContext::GetTextEventTargetRegions(
   PlatformTextEventTargetRegions regions;
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
+    return regions;
+  }
+  EnsureAndroidViewCreated(text_id);
+  if (destroyed_) {
     return regions;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
@@ -460,6 +558,15 @@ void PlatformRendererContext::InvokeUIMethod(
     return;
   }
 
+  EnsureAndroidViewCreated(id);
+  if (destroyed_) {
+    if (callback) {
+      callback(
+          LynxGetUIResult::UNKNOWN,
+          PubLepusValue(lepus::Value("PlatformRendererContext is destroyed")));
+    }
+    return;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   const auto j_method =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, method);
@@ -493,6 +600,10 @@ void PlatformRendererContext::UpdatePlatformRendererSubtreeProperties(
   if (local_ref.IsNull()) {
     return;
   }
+  EnsureAndroidViewCreated(id);
+  if (destroyed_) {
+    return;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   // Count total size
   const size_t total_bytes = count * sizeof(SubtreeProperty);
@@ -517,6 +628,10 @@ void PlatformRendererContext::UpdatePlatformRendererExtraData(
   if (local_ref.IsNull() || !extra_bundle) {
     return;
   }
+  EnsureAndroidViewCreated(id);
+  if (destroyed_) {
+    return;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
 
   Java_PlatformRendererContext_updatePlatformExtraData(env, local_ref.Get(), id,
@@ -524,7 +639,12 @@ void PlatformRendererContext::UpdatePlatformRendererExtraData(
 }
 
 void PlatformRendererContext::Destroy() {
-  java_ref_.Reset(nullptr, nullptr);
+  destroyed_ = true;
+  preparation_scheduler_->ResetBatch();
+  {
+    std::lock_guard<std::mutex> lock(preparation_mutex_);
+    java_ref_.Reset(nullptr, nullptr);
+  }
   renderer_registry_.clear();
   invoke_ui_method_callbacks_.clear();
 }

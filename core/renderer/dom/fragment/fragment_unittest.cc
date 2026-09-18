@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -252,6 +253,126 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
     destroyed_image_keys.push_back(image_key);
   }
 };
+
+// Simulates deferred Java property finalization destroying the painting context
+// from inside a host operation, with no external renderer ownership.
+class ReentrantTeardownRenderer : public TestPlatformRenderer {
+ public:
+  ReentrantTeardownRenderer(int id, bool& released)
+      : TestPlatformRenderer(id, PlatformRendererType::kView),
+        released_(released) {}
+  ~ReentrantTeardownRenderer() override { released_ = true; }
+
+  std::function<void()> on_host_operation;
+  int* display_list_updates = nullptr;
+
+ protected:
+  void OnAddChild(PlatformRenderer*, int, bool) override {
+    if (on_host_operation) {
+      on_host_operation();
+    }
+  }
+  void OnRemoveFromParent(bool) override {
+    if (on_host_operation) {
+      on_host_operation();
+    }
+  }
+  void OnUpdateAttributes(const fml::RefPtr<PropBundle>&) override {
+    if (on_host_operation) {
+      on_host_operation();
+    }
+  }
+  void OnUpdateDisplayList(DisplayList list) override {
+    if (display_list_updates) {
+      ++*display_list_updates;
+    }
+    TestPlatformRenderer::OnUpdateDisplayList(std::move(list));
+  }
+
+ private:
+  bool& released_;
+};
+
+TEST(NativePaintingCtxPlatformRefTest, StopsDisplayListAfterReentrantTeardown) {
+  TestNativePaintingCtxPlatformRef ref;
+  bool parent_released = false;
+  bool child_released = false;
+  int additions = 0;
+  int display_list_updates = 0;
+  auto parent =
+      fml::MakeRefCounted<ReentrantTeardownRenderer>(kRootId, parent_released);
+  parent->display_list_updates = &display_list_updates;
+  parent->on_host_operation = [&] {
+    ++additions;
+    ref.Destroy();
+    EXPECT_FALSE(parent_released);
+    EXPECT_FALSE(child_released);
+  };
+  ref.renderers_.insert_or_assign(kRootId, std::move(parent));
+  ref.renderers_.insert_or_assign(
+      1, fml::MakeRefCounted<ReentrantTeardownRenderer>(1, child_released));
+  ref.CreatePlatformRenderer(2, PlatformRendererType::kView, nullptr);
+
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .DrawView(1, 0.f, 0.f)
+      .DrawView(2, 0.f, 0.f)
+      .End();
+  ref.UpdateDisplayList(kRootId, builder.Build());
+
+  EXPECT_EQ(additions, 1);
+  EXPECT_EQ(display_list_updates, 0);
+  EXPECT_TRUE(parent_released);
+  EXPECT_TRUE(child_released);
+  EXPECT_TRUE(ref.renderers_.empty());
+}
+
+TEST(NativePaintingCtxPlatformRefTest, RetainsRendererAcrossAttributeTeardown) {
+  TestNativePaintingCtxPlatformRef ref;
+  bool released = false;
+  auto renderer = fml::MakeRefCounted<ReentrantTeardownRenderer>(1, released);
+  renderer->on_host_operation = [&] {
+    ref.Destroy();
+    EXPECT_FALSE(released);
+  };
+  ref.renderers_.insert_or_assign(1, std::move(renderer));
+
+  ref.UpdateAttributes(1, nullptr);
+
+  EXPECT_TRUE(released);
+  EXPECT_TRUE(ref.renderers_.empty());
+}
+
+TEST(NativePaintingCtxPlatformRefTest,
+     RetainsBothRenderersAcrossRemoveTeardown) {
+  for (bool destroy_node : {false, true}) {
+    TestNativePaintingCtxPlatformRef ref;
+    bool parent_released = false;
+    bool child_released = false;
+    auto parent = fml::MakeRefCounted<ReentrantTeardownRenderer>(
+        kRootId, parent_released);
+    auto child =
+        fml::MakeRefCounted<ReentrantTeardownRenderer>(1, child_released);
+    parent->AddChild(child);
+    child->on_host_operation = [&] {
+      ref.Destroy();
+      EXPECT_FALSE(parent_released);
+      EXPECT_FALSE(child_released);
+    };
+    ref.renderers_.insert_or_assign(kRootId, std::move(parent));
+    ref.renderers_.insert_or_assign(1, std::move(child));
+
+    if (destroy_node) {
+      ref.DestroyPaintingNode(kRootId, 1, 0);
+    } else {
+      ref.RemovePaintingNode(kRootId, 1, 0, false);
+    }
+
+    EXPECT_TRUE(parent_released);
+    EXPECT_TRUE(child_released);
+    EXPECT_TRUE(ref.renderers_.empty());
+  }
+}
 
 // Adapter that exposes the NativePaintingContext interface expected by
 // Fragment::Draw() and forwards to a TestNativePaintingCtxPlatformRef.

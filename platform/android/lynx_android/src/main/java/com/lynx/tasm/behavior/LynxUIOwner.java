@@ -19,6 +19,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.UiThread;
 import com.lynx.react.bridge.Callback;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
@@ -84,6 +85,7 @@ import java.util.concurrent.FutureTask;
 @UiThread
 public class LynxUIOwner {
   private int mRootSign;
+  private boolean mDestroyed;
   private UIBody mUIBody;
   private LynxContext mContext;
   // Record used components in LynxView.
@@ -584,6 +586,69 @@ public class LynxUIOwner {
     }
     destroy(-1, sign);
   }
+
+  /** Prepares an adapted view; the returned runnable publishes it on main. */
+  public Runnable prepareViewForRenderer(int sign, String tagName, ReadableMap initialProps,
+      ReadableArray eventListeners, ReadableArray gestureDetectors) {
+    StylesDiffMap styles = initialProps != null ? new StylesDiffMap(initialProps) : null;
+    JavaOnlyMap backgroundProps = null;
+    JavaOnlyMap mainThreadProps = new JavaOnlyMap();
+    if (initialProps != null) {
+      for (String key : RENDERER_MAIN_THREAD_PROPS) {
+        if (initialProps.hasKey(key)) {
+          if (backgroundProps == null) {
+            backgroundProps = JavaOnlyMap.shallowCopy(initialProps);
+          }
+          mainThreadProps.put(key, backgroundProps.remove(key));
+        }
+      }
+    }
+    UIParams params = new UIParams(sign, sign, false, tagName, styles,
+        EventsListener.convertEventListeners(eventListeners), null);
+    LynxBaseUI ui = createViewInterval(params);
+    if (ui == null) {
+      return null;
+    }
+    UIShadowProxy proxy = consumeInitialPropsInterval(
+        ui, backgroundProps != null ? new StylesDiffMap(backgroundProps) : styles);
+    return () -> {
+      UIThreadUtils.assertOnUiThread();
+      if (!canPublishPreparedRenderer()) {
+        return;
+      }
+      reportCreateViewConfig(sign, tagName, true);
+      for (Map.Entry<String, Object> entry : mainThreadProps.entrySet()) {
+        if (!canPublishPreparedRenderer()) {
+          return;
+        }
+        JavaOnlyMap property = new JavaOnlyMap();
+        property.put(entry.getKey(), entry.getValue());
+        ui.updatePropertiesInterval(new StylesDiffMap(property));
+      }
+      if (!canPublishPreparedRenderer()) {
+        return;
+      }
+      ui.setGestureDetectors(GestureDetector.convertGestureDetectors(gestureDetectors));
+      LynxBaseUI result = afterConsumeInitialProps(ui, proxy, styles);
+      if (!canPublishPreparedRenderer()) {
+        return;
+      }
+      reportStatistic(tagName);
+      updateComponentIdToUiIdMapIfNeeded(sign, tagName, styles);
+      mUIHolder.put(sign, result);
+    };
+  }
+
+  private boolean canPublishPreparedRenderer() {
+    return !mDestroyed && mContext.getLynxUIOwner() == this;
+  }
+
+  private static final String[] RENDERER_MAIN_THREAD_PROPS = {PropsConstants.ACCESSIBILITY_ELEMENTS,
+      PropsConstants.ACCESSIBILITY_ELEMENTS_A11Y, PropsConstants.ACCESSIBILITY_EXCLUSIVE_FOCUS,
+      PropsConstants.EXPOSURE_ID, PropsConstants.EXPOSURE_SCENE,
+      PropsConstants.INTERSECTION_OBSERVERS, PropsConstants.SHARED_ELEMENT,
+      PropsConstants.ENTER_TRANSITION_NAME, PropsConstants.EXIT_TRANSITION_NAME,
+      PropsConstants.PAUSE_TRANSITION_NAME, PropsConstants.RESUME_TRANSITION_NAME};
 
   // TODO(ZHOUZHITAO): REFACTOR CODE TO REUSE SHARED NODE SNIPPET
   public Runnable createViewAsyncRunnable(final int sign, final String tagName,
@@ -1152,6 +1217,7 @@ public class LynxUIOwner {
   }
 
   public void destroy() {
+    mDestroyed = true;
     TraceEvent.beginSection(TraceEventDef.UI_OWNER_DESTORY);
     for (Map.Entry<Integer, LynxBaseUI> e : mUIHolder.entrySet()) {
       if (!(e.getValue() instanceof LynxBaseUI)) {
