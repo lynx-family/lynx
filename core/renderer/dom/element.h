@@ -1282,6 +1282,7 @@ class Element : public lepus::RefCounted,
 
   void SetAnimationSampleTimeForNewPipeline(const fml::TimePoint& sample_time);
   base::flex_optional<fml::TimePoint> TakeAnimationSampleTimeForNewPipeline();
+  void HandleAnimationEventTask(base::MoveOnlyClosure<void> operation);
   void DispatchAnimationEventsForNewPipeline(
       const animation::AnimationEventRecordsForNewPipeline& event_records);
   void UpdateFinalStyleMap(const StyleMap& styles);
