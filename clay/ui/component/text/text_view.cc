@@ -747,7 +747,7 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
 
   BaseView* target = this;
   if (is_outside_x || is_outside_y) {
-    if (!is_inside_hit_slop) {
+    if (!is_inside_hit_slop || !AcceptsPointerEvents()) {
       return nullptr;
     }
     *relative_position = point_by_self;
@@ -758,9 +758,14 @@ BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
     *relative_position = point_by_paragraph;
     target = GetViewAtPosition(point_by_paragraph, position, relative_position,
                                platform_try_hit_id);
-    target = target ?: this;
+    if (!target || !target->AcceptsPointerEvents()) {
+      if (!AcceptsPointerEvents()) {
+        return nullptr;
+      }
+      target = this;
+      *relative_position = point_by_paragraph;
+    }
   }
-
   for (BaseView* view = target; view; view = view->Parent()) {
     const auto event_through = view->CanEventThrough();
     if (event_through.has_value()) {
