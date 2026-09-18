@@ -67,11 +67,20 @@ class LynxViewEventSimulationTargetImpl final
  public:
   explicit LynxViewEventSimulationTargetImpl(lynx_view_t* view) : view_(view) {}
 
-  void DispatchSyntheticPointerEvent(const std::string& event_type, int x,
-                                     int y, const std::string& button,
-                                     float delta_x, float delta_y,
-                                     int modifiers, int click_count) override {
-    view_->lynx_ui_renderer->DispatchSyntheticPointerEvent(
+  void EmulateMouseSyntheticEvent(const std::string& event_type, int x, int y,
+                                  const std::string& button, float delta_x,
+                                  float delta_y, int modifiers,
+                                  int click_count) override {
+    view_->lynx_ui_renderer->EmulateMouseSyntheticEvent(
+        event_type.c_str(), x, y, button.c_str(), delta_x, delta_y, modifiers,
+        click_count);
+  }
+
+  void EmulateTouchSyntheticEvent(const std::string& event_type, int x, int y,
+                                  const std::string& button, float delta_x,
+                                  float delta_y, int modifiers,
+                                  int click_count) override {
+    view_->lynx_ui_renderer->EmulateTouchSyntheticEvent(
         event_type.c_str(), x, y, button.c_str(), delta_x, delta_y, modifiers,
         click_count);
   }

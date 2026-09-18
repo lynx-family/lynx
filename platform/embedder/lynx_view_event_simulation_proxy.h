@@ -17,9 +17,14 @@ class LynxViewEventSimulationTarget {
  public:
   virtual ~LynxViewEventSimulationTarget() = default;
 
-  virtual void DispatchSyntheticPointerEvent(
-      const std::string& event_type, int x, int y, const std::string& button,
-      float delta_x, float delta_y, int modifiers, int click_count) = 0;
+  virtual void EmulateMouseSyntheticEvent(const std::string& event_type, int x,
+                                          int y, const std::string& button,
+                                          float delta_x, float delta_y,
+                                          int modifiers, int click_count) = 0;
+  virtual void EmulateTouchSyntheticEvent(const std::string& event_type, int x,
+                                          int y, const std::string& button,
+                                          float delta_x, float delta_y,
+                                          int modifiers, int click_count) = 0;
   virtual void Focus(int node_id) = 0;
   virtual void InsertText(const std::string& text) = 0;
 };

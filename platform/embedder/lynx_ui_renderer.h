@@ -61,10 +61,16 @@ class LynxUIRenderer {
                                  float delta_x, float delta_y) {}
 
   // Dispatches DevTool synthetic mouse input through Clay's pointer pipeline.
-  void DispatchSyntheticPointerEvent(const char* event_type, float x, float y,
-                                     const char* button, float delta_x,
-                                     float delta_y, int modifiers,
-                                     int click_count);
+  void EmulateMouseSyntheticEvent(const char* event_type, float x, float y,
+                                  const char* button, float delta_x,
+                                  float delta_y, int modifiers,
+                                  int click_count);
+
+  // Dispatches DevTool synthetic touch input through Clay's pointer pipeline.
+  void EmulateTouchSyntheticEvent(const char* event_type, float x, float y,
+                                  const char* button, float delta_x,
+                                  float delta_y, int modifiers,
+                                  int click_count);
 
   virtual void Focus(int node_id) {}
 
@@ -90,6 +96,11 @@ class LynxUIRenderer {
   float width_ = 0;
   float height_ = 0;
   float pixel_ratio_ = 1;
+
+ private:
+  // Converts logical coordinates to physical pixels and sends the event with
+  // its synthetic Add/Remove lifecycle.
+  void DispatchSyntheticPointerEvent(ClayPointerEvent event);
 };
 }  // namespace embedder
 }  // namespace lynx
