@@ -29,6 +29,7 @@ import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import androidx.core.view.ViewCompat;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -2630,7 +2631,18 @@ public abstract class LynxBaseUI
   }
 
   protected Map<String, Object> buildLayoutChangeEventDetail() {
-    return getPositionInfo(LynxEnv.inst().enableTransformForPositionCalculation());
+    JavaOnlyMap detail = getPositionInfo(LynxEnv.inst().enableTransformForPositionCalculation());
+    View rootView = mContext.getUIBody().getBodyView();
+    if (rootView != null && ViewCompat.isAttachedToWindow(rootView)) {
+      int[] rootLocation = new int[2];
+      rootView.getLocationInWindow(rootLocation);
+      float density = getLynxContext().getScreenMetrics().density;
+      if (density > 0.f) {
+        detail.putDouble("windowX", detail.getDouble("left") + rootLocation[0] / density);
+        detail.putDouble("windowY", detail.getDouble("top") + rootLocation[1] / density);
+      }
+    }
+    return detail;
   }
 
   protected void sendLayoutChangeEvent() {
