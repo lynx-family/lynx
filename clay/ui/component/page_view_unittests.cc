@@ -212,6 +212,30 @@ TEST(PageViewTest, TouchActivePseudoStatusPropagatesToAncestors) {
   EXPECT_EQ(event_delegate.active_changes_, expected);
 }
 
+TEST(PageViewTest, PointerDownActivatesPseudoStatusForSupportedDevices) {
+  for (auto device : {PointerEvent::kTouch, PointerEvent::kStylus,
+                      PointerEvent::kInvertedStylus, PointerEvent::kMouse}) {
+    SCOPED_TRACE(device);
+    TestPageView page(0, nullptr, nullptr);
+    RecordingEventDelegate delegate;
+    page.SetEventDelegate(&delegate);
+    page.SetBound(0, 0, 100, 100);
+    PointerEvent event(PointerEvent::EventType::kDownEvent);
+    event.device = device;
+    event.position = {50, 50};
+    std::vector<PointerEvent> events{event};
+    page.gesture_manager()->HandlePointerEvents(&page, events);
+#if defined(OS_WIN) || defined(OS_MAC)
+    const bool should_activate = device != PointerEvent::kMouse;
+#else
+    const bool should_activate = device == PointerEvent::kTouch;
+#endif
+    const std::vector<std::pair<int, bool>> expected(should_activate ? 1 : 0,
+                                                     {0, true});
+    EXPECT_EQ(delegate.active_changes_, expected);
+  }
+}
+
 TEST(PageViewTest, TouchActivePseudoStatusHonorsPropagationAttribute) {
   TestPageView page_view(0, nullptr, nullptr);
   RecordingEventDelegate event_delegate;
