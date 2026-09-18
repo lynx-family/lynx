@@ -2798,6 +2798,11 @@ public protocol LynxListItemHelperOwner-p : <NSObject> {
   public nullable NSArray< NSString * > * LynxListItemHelperOwner-p::itemKeysForListItemHelper();
 }
 
+public protocol LynxListItemTransformer-p : <NSObject> {
+  public void LynxListItemTransformer-p::transformItemInListContainer:itemView:isVertical:isRTL:mainAxisOffset:(UIScrollView *_Nonnull listContainerView,[itemView] UIView *_Nonnull itemView,[isVertical] BOOL isVertical,[isRTL] BOOL isRTL,[mainAxisOffset] CGFloat mainAxisOffset);
+  public void LynxListItemTransformer-p::resetItem:(UIView *_Nonnull itemView);
+}
+
 public protocol LynxListItemWrapper-p : <NSObject> {
   public LynxUIComponent* LynxListItemWrapper-p::holdingUI holdingUI;
 }
@@ -4882,6 +4887,7 @@ public class LynxUIComponent : LynxUIView {
 public protocol LynxUIComponentLayoutObserver-p : <NSObject> {
   public void LynxUIComponentLayoutObserver-p::onComponentLayoutUpdated:(LynxUIComponent *component);
   public void LynxUIComponentLayoutObserver-p::onAsyncComponentLayoutUpdated:operationID:(LynxUIComponent *component,[operationID] int64_t operationID);
+  public void LynxUIComponentLayoutObserver-p::onComponentFrameChanged:(LynxUIComponent *component);
 }
 
 public class LynxUIContext : NSObject {
@@ -5133,7 +5139,9 @@ public class LynxUIListContainer : LynxUIScroller, <LynxUIComponentLayoutObserve
   public CGFloat LynxUIListContainer::pagingAlignOffset pagingAlignOffset;
   public NSMutableArray<RestoreNativeStateBlock>* LynxUIListContainer::restoreNativeStateBlockArray restoreNativeStateBlockArray;
   public id<LynxUIListContainerDelegate> LynxUIListContainer::delegate delegate;
+  public id<LynxListItemTransformer> LynxUIListContainer::listItemTransformer listItemTransformer;
   public void LynxUIListContainer::updateScrollInfoWithEstimatedOffset:smooth:scrolling:(CGFloat estimatedOffset,[smooth] BOOL smooth,[scrolling] BOOL scrolling);
+  public void LynxUIListContainer::requestListItemTransform();
   public void LynxUIListContainer::insertListComponent:(LynxUIComponent *_Nonnull component);
   public void LynxUIListContainer::removeListComponent:(LynxUIComponent *_Nonnull component);
   public void LynxUIListContainer::detachedFromWindow();

@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)onComponentLayoutUpdated:(LynxUIComponent*)component;
 - (void)onAsyncComponentLayoutUpdated:(LynxUIComponent*)component operationID:(int64_t)operationID;
+- (void)onComponentFrameChanged:(LynxUIComponent*)component;
 
 @end
 
