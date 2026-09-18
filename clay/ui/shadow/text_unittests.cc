@@ -1442,6 +1442,32 @@ TEST_F_UI(TextTest, VerticalAlign) {
   EXPECT_EQ(baseline_shift, 20);
 }
 
+TEST_F_UI(TextTest, RootVerticalAlignFollowsTextRefactorCompatibility) {
+  const auto vertical_align = [] {
+    clay::Value::Array value;
+    value.emplace_back(
+        static_cast<int>(VerticalAlignType::kVerticalAlignLength));
+    value.emplace_back(20.f);
+    return clay::Value(std::move(value));
+  };
+
+  owner_->SetEnableTextRefactor(false);
+  text_shadow_node_->SetAttribute("vertical-align", vertical_align());
+  ASSERT_TRUE(text_shadow_node_->GetVerticalAlign().has_value());
+  EXPECT_EQ(text_shadow_node_->text_style_->baseline_shift, 20.f);
+
+  owner_->SetEnableTextRefactor(true);
+  auto refactored_text =
+      std::make_unique<TextShadowNode>(owner_, std::string("text"), -1);
+  refactored_text->SetAttribute("vertical-align", vertical_align());
+  EXPECT_FALSE(refactored_text->GetVerticalAlign().has_value());
+  EXPECT_FALSE(refactored_text->text_style_->baseline_shift.has_value());
+
+  inline_text_shadow_node_->SetAttribute("vertical-align", vertical_align());
+  ASSERT_TRUE(inline_text_shadow_node_->GetVerticalAlign().has_value());
+  EXPECT_EQ(inline_text_shadow_node_->text_style_->baseline_shift, 20.f);
+}
+
 TEST_F_UI(TextTest, CalculateBaselineOffsetCoversAllVerticalAlignModes) {
   const FontMetrics metrics{/* ascent */ -8.0,
                             /* descent */ 2.0,
