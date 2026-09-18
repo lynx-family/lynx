@@ -20,11 +20,13 @@ if (is_android) {
   source_set("lynx_android_unittests_jni") {
     sources = [
       "android/display_list_item_buffer_test.cc",
+      "android/fsp_report_dispatcher_test.cc",
       "android/native_display_list_builder.cc",
     ]
     deps = [
       ":lynx_test_jni_files",
       "../../core/renderer/dom/fragment:display_list",
+      "../../core/services/event_report:event_report",
     ]
   }
 }
