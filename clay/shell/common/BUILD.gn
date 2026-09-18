@@ -109,8 +109,9 @@ source_set("common") {
     ]
   }
 
+  # Node embedders provide their own timer-based VSync service.
   # Note that: macOS 14.0- needs fallback
-  if (is_mac) {
+  if (is_mac && !is_oliver_node_lynx) {
     sources += [
       "vsync_waiter_macos.h",
       "vsync_waiter_macos.mm",

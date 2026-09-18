@@ -7,6 +7,8 @@ import * as zlib from 'zlib';
 export type HeadlessRenderer = 'software';
 
 export interface HeadlessLynxViewOptions {
+  /** Enable the background JavaScript runtime. Defaults to true. */
+  enableJSRuntime?: boolean;
   width?: number;
   height?: number;
   devicePixelRatio?: number;
@@ -93,7 +95,8 @@ export type NativeBinding = {
     devicePixelRatio: number,
     resourceFetcher: ResourceFetcher,
     resourceRootPaths: string[],
-    groupName: string
+    groupName: string,
+    enableJSRuntime?: boolean
   ) => NativeHeadlessLynxView;
   initGlobalEnv(): void;
   LynxEnv: {
@@ -473,7 +476,8 @@ export class HeadlessLynxView {
       devicePixelRatio,
       defaultResourceFetcher,
       options.resourceRootPaths ?? [],
-      options.groupName ?? ''
+      options.groupName ?? '',
+      options.enableJSRuntime ?? true
     );
     if (options.onErrorOccurred) {
       this.native._setErrorHandler(options.onErrorOccurred);
