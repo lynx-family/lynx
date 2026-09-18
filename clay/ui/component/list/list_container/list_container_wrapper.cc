@@ -24,7 +24,7 @@
 namespace clay {
 namespace {
 
-constexpr std::array<KeywordID, 31> kProxyAttributes = {
+constexpr std::array<KeywordID, 32> kProxyAttributes = {
     {KeywordID::kSticky,
      KeywordID::kStickyOffset,
      KeywordID::kExperimentalRecycleStickyItem,
@@ -37,6 +37,7 @@ constexpr std::array<KeywordID, 31> kProxyAttributes = {
      KeywordID::kUpperThreshold,
      KeywordID::kEnableScroll,
      KeywordID::kEnableNestedScroll,
+     KeywordID::kScrollMonitorTag,
      KeywordID::kScrollTop,
      KeywordID::kScrollLeft,
      KeywordID::kScrollToIndex,
