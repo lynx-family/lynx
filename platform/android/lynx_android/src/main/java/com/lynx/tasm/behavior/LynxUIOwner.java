@@ -14,11 +14,15 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.SparseBooleanArray;
+import android.view.View;
+import android.view.ViewTreeObserver;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.UiThread;
+import androidx.core.view.ViewCompat;
 import com.lynx.react.bridge.Callback;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
@@ -57,6 +61,7 @@ import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.event.EventsListener;
+import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
@@ -67,6 +72,7 @@ import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -75,6 +81,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -112,6 +119,8 @@ public class LynxUIOwner {
   private boolean mIsRootLayoutAnimationRunning;
   private boolean mIsContextFree = false;
   private static final String TAG = "LynxUIOwner";
+  private static final String POSITION_CHANGE_EVENT = "positionchange";
+  private static final String GLOBAL_BIND_EVENT = "global-bindEvent";
   private static final int LEGACY_STICKY_INFO_COUNT = 4;
   private WeakReference<NativeFacade> mNativeFacade;
   private Boolean mSettingsEnableNewImage = null;
@@ -132,6 +141,15 @@ public class LynxUIOwner {
 
   private TextMeasurer mTextMeasurer;
   private IPaintingContext mPaintingContext;
+  private final HashSet<Integer> mPositionChangeListeners = new HashSet<>();
+  private final WeakHashMap<LynxBaseUI, double[]> mLastPositionChangeRects = new WeakHashMap<>();
+  private UIBodyView mPositionChangeObservedView;
+  private ViewTreeObserver mPositionChangeViewTreeObserver;
+  private boolean mPositionChangeDispatchPending;
+  private final Runnable mPositionChangeDispatchRunnable;
+  private final View.OnAttachStateChangeListener mPositionChangeAttachStateListener;
+  private final ViewTreeObserver.OnGlobalLayoutListener mPositionChangeGlobalLayoutListener;
+  private final ViewTreeObserver.OnScrollChangedListener mPositionChangeScrollChangedListener;
 
   public LynxUIOwner(
       LynxContext context, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body) {
@@ -158,6 +176,45 @@ public class LynxUIOwner {
     mIsFirstLayout = true;
     mIsRootLayoutAnimationRunning = true;
     mCachedBoundingClientRectUI = new HashSet<>();
+    WeakReference<LynxUIOwner> weakOwner = new WeakReference<>(this);
+    mPositionChangeDispatchRunnable = () -> {
+      LynxUIOwner owner = weakOwner.get();
+      if (owner != null && owner.mPositionChangeDispatchPending) {
+        owner.dispatchPositionChangeEventsNow();
+      }
+    };
+    mPositionChangeAttachStateListener = new View.OnAttachStateChangeListener() {
+      @Override
+      public void onViewAttachedToWindow(View view) {
+        LynxUIOwner owner = weakOwner.get();
+        if (owner != null) {
+          owner.ensurePositionChangeObservation();
+          owner.requestPositionChangeEvents();
+        }
+      }
+
+      @Override
+      public void onViewDetachedFromWindow(View view) {
+        LynxUIOwner owner = weakOwner.get();
+        if (owner != null) {
+          view.removeCallbacks(owner.mPositionChangeDispatchRunnable);
+          owner.mPositionChangeDispatchPending = false;
+          owner.removePositionChangeViewTreeObservation();
+        }
+      }
+    };
+    mPositionChangeGlobalLayoutListener = () -> {
+      LynxUIOwner owner = weakOwner.get();
+      if (owner != null) {
+        owner.requestPositionChangeEvents();
+      }
+    };
+    mPositionChangeScrollChangedListener = () -> {
+      LynxUIOwner owner = weakOwner.get();
+      if (owner != null) {
+        owner.requestPositionChangeEvents();
+      }
+    };
     mEnableReportCreateAsync =
         LynxEnv.getBooleanFromExternalEnv(LynxEnvKey.ENABLE_REPORT_CREATE_ASYNC_TAG, false);
     mCreateNodeConfigHasReportedMark = new HashMap<String, Boolean>();
@@ -177,6 +234,8 @@ public class LynxUIOwner {
    */
   public void attachUIBodyView(@Nullable UIBodyView view) {
     mUIBody.attachUIBodyView(view, mContext);
+    ensurePositionChangeObservation();
+    requestPositionChangeEvents();
     if (isContextFree()) {
       while (!mCreateNodeAsyncTasks.isEmpty()) {
         FutureTask<Runnable> task = mCreateNodeAsyncTasks.poll();
@@ -219,6 +278,7 @@ public class LynxUIOwner {
 
     if (eventsListenerMap != null) {
       ui.setEvents(eventsListenerMap);
+      updatePositionChangeListener(ui);
     }
 
     // update gesture detectors
@@ -549,6 +609,7 @@ public class LynxUIOwner {
         reportStatistic(tagName);
         updateComponentIdToUiIdMapIfNeeded(sign, tagName, initialProps);
         mUIHolder.put(sign, ui);
+        updatePositionChangeListener(ui);
       } else {
         LLog.e(TAG, "createUI got null ui for tag:" + tagName);
       }
@@ -627,6 +688,7 @@ public class LynxUIOwner {
           reportStatistic(tagName);
           updateComponentIdToUiIdMapIfNeeded(sign, tagName, styleMap);
           mUIHolder.put(sign, ui[0]);
+          updatePositionChangeListener(ui[0]);
           if (TraceEvent.isTracingStarted()) {
             TraceEvent.endSection(traceEvent);
           }
@@ -691,6 +753,7 @@ public class LynxUIOwner {
             reportStatistic(tagName);
             updateComponentIdToUiIdMapIfNeeded(sign, tagName, initialProps);
             mUIHolder.put(sign, ui[0]);
+            updatePositionChangeListener(ui[0]);
             if (TraceEvent.isTracingStarted()) {
               TraceEvent.endSection(traceEvent);
             }
@@ -880,6 +943,7 @@ public class LynxUIOwner {
     // Restore layout.
     newUI.updateLayoutInfo(oldUI);
     newUI.copyPropFromOldUiInUpdateFlatten(oldUI);
+    updatePositionChangeListener(newUI);
     newUI.measure();
     ((LynxUI) newUI).handleLayout();
     if (newUI instanceof UIGroup) {
@@ -1102,6 +1166,7 @@ public class LynxUIOwner {
         return;
       }
       mTranslateZParentHolder.remove(child);
+      removePositionChangeListener(childTag);
       // if child has no parent still need to be removed
       removeFromDrawList(child);
       removeUIFromHolder(childTag);
@@ -1129,6 +1194,8 @@ public class LynxUIOwner {
         && (baseUI.getParentBaseUI() instanceof UIList
             || baseUI.getParentBaseUI() instanceof UIListContainer)) {
       baseUI.onListCellPrepareForReuse(itemKey, baseUI.getParentBaseUI());
+      mLastPositionChangeRects.remove(baseUI);
+      requestPositionChangeEvents();
     }
   }
 
@@ -1153,6 +1220,9 @@ public class LynxUIOwner {
 
   public void destroy() {
     TraceEvent.beginSection(TraceEventDef.UI_OWNER_DESTORY);
+    removePositionChangeObservation();
+    mPositionChangeListeners.clear();
+    mLastPositionChangeRects.clear();
     for (Map.Entry<Integer, LynxBaseUI> e : mUIHolder.entrySet()) {
       if (!(e.getValue() instanceof LynxBaseUI)) {
         // In some unknown case, e.getValue() is instance of java.lang.Double.
@@ -1210,6 +1280,7 @@ public class LynxUIOwner {
         rootView.setIntrinsicContentSize(rootWidth, rootHeight);
       }
     }
+    requestPositionChangeEvents();
 
     if (operationId == 0) {
       return;
@@ -1232,12 +1303,190 @@ public class LynxUIOwner {
     return (int) (operationId >>> 32);
   }
 
+  private void updatePositionChangeListener(LynxBaseUI ui) {
+    boolean listens = hasResponseChainEvent(ui, POSITION_CHANGE_EVENT);
+    if (listens) {
+      if (mPositionChangeListeners.add(ui.getSign())) {
+        ensurePositionChangeObservation();
+      }
+      mLastPositionChangeRects.remove(ui);
+      requestPositionChangeEvents();
+    } else {
+      removePositionChangeListener(ui.getSign());
+    }
+  }
+
+  static boolean hasResponseChainEvent(
+      @Nullable Map<String, EventsListener> events, String eventName) {
+    EventsListener listener = events == null ? null : events.get(eventName);
+    return listener != null
+        && (isResponseChainEventType(listener.type)
+            || isResponseChainEventType(listener.lepusType));
+  }
+
+  private static boolean isResponseChainEventType(@Nullable String type) {
+    return type != null && !GLOBAL_BIND_EVENT.equals(type);
+  }
+
+  private boolean hasResponseChainEvent(LynxBaseUI ui, String eventName) {
+    Map<String, EventsListener> events = ui.getEvents();
+    if (hasResponseChainEvent(events, eventName)) {
+      return true;
+    }
+    if (ui instanceof UIShadowProxy) {
+      events = ((UIShadowProxy) ui).getChild().getEvents();
+      return hasResponseChainEvent(events, eventName);
+    }
+    return false;
+  }
+
+  private LynxBaseUI unwrapShadowProxy(LynxBaseUI ui) {
+    return ui instanceof UIShadowProxy ? ((UIShadowProxy) ui).getChild() : ui;
+  }
+
+  private void removePositionChangeListener(int sign) {
+    LynxBaseUI ui = mUIHolder.get(sign);
+    if (ui != null) {
+      mLastPositionChangeRects.remove(ui);
+    }
+    if (!mPositionChangeListeners.remove(sign) || !mPositionChangeListeners.isEmpty()) {
+      return;
+    }
+    removePositionChangeObservation();
+  }
+
+  private void ensurePositionChangeObservation() {
+    if (mPositionChangeListeners.isEmpty() || mUIBody == null) {
+      return;
+    }
+    UIBodyView rootView = mUIBody.getBodyView();
+    if (rootView == null) {
+      return;
+    }
+    if (rootView != mPositionChangeObservedView) {
+      if (mPositionChangeObservedView != null) {
+        mPositionChangeObservedView.removeCallbacks(mPositionChangeDispatchRunnable);
+        mPositionChangeObservedView.removeOnAttachStateChangeListener(
+            mPositionChangeAttachStateListener);
+        mPositionChangeDispatchPending = false;
+      }
+      removePositionChangeViewTreeObservation();
+      mPositionChangeObservedView = rootView;
+      rootView.addOnAttachStateChangeListener(mPositionChangeAttachStateListener);
+    }
+    if (!ViewCompat.isAttachedToWindow(rootView)) {
+      return;
+    }
+    ViewTreeObserver observer = rootView.getViewTreeObserver();
+    if (!observer.isAlive() || observer == mPositionChangeViewTreeObserver) {
+      return;
+    }
+    removePositionChangeViewTreeObservation();
+    mPositionChangeViewTreeObserver = observer;
+    observer.addOnGlobalLayoutListener(mPositionChangeGlobalLayoutListener);
+    observer.addOnScrollChangedListener(mPositionChangeScrollChangedListener);
+  }
+
+  private void removePositionChangeObservation() {
+    mPositionChangeDispatchPending = false;
+    if (mPositionChangeObservedView != null) {
+      mPositionChangeObservedView.removeCallbacks(mPositionChangeDispatchRunnable);
+      mPositionChangeObservedView.removeOnAttachStateChangeListener(
+          mPositionChangeAttachStateListener);
+      mPositionChangeObservedView = null;
+    }
+    removePositionChangeViewTreeObservation();
+  }
+
+  private void removePositionChangeViewTreeObservation() {
+    ViewTreeObserver observer = mPositionChangeViewTreeObserver;
+    mPositionChangeViewTreeObserver = null;
+    if (observer == null || !observer.isAlive()) {
+      return;
+    }
+    observer.removeOnGlobalLayoutListener(mPositionChangeGlobalLayoutListener);
+    observer.removeOnScrollChangedListener(mPositionChangeScrollChangedListener);
+  }
+
+  void requestPositionChangeEvents() {
+    if (mPositionChangeListeners.isEmpty() || mPositionChangeDispatchPending || mUIBody == null) {
+      return;
+    }
+    UIBodyView rootView = mUIBody.getBodyView();
+    if (rootView == null || !ViewCompat.isAttachedToWindow(rootView)) {
+      return;
+    }
+    mPositionChangeDispatchPending = true;
+    rootView.postOnAnimation(mPositionChangeDispatchRunnable);
+  }
+
+  void dispatchPositionChangeEventsNow() {
+    mPositionChangeDispatchPending = false;
+    if (mPositionChangeListeners.isEmpty()) {
+      return;
+    }
+    UIBodyView rootView = mUIBody == null ? null : mUIBody.getBodyView();
+    if (rootView == null || !ViewCompat.isAttachedToWindow(rootView)) {
+      return;
+    }
+    if (mContext == null || mContext.getEventEmitter() == null) {
+      return;
+    }
+    rootView.removeCallbacks(mPositionChangeDispatchRunnable);
+    int[] rootLocation = new int[2];
+    rootView.getLocationInWindow(rootLocation);
+    float density = mContext.getScreenMetrics().density;
+    if (density <= 0.f) {
+      return;
+    }
+    for (Integer sign : new ArrayList<>(mPositionChangeListeners)) {
+      LynxBaseUI holderUI = mUIHolder.get(sign);
+      if (holderUI == null || !isAttachedToRoot(holderUI)) {
+        continue;
+      }
+      if (!hasResponseChainEvent(holderUI, POSITION_CHANGE_EVENT)) {
+        removePositionChangeListener(sign);
+        continue;
+      }
+      LynxBaseUI ui = unwrapShadowProxy(holderUI);
+      JavaOnlyMap detail =
+          ui.getPositionInfo(LynxEnv.inst().enableTransformForPositionCalculation());
+      double windowX = detail.getDouble("left") + rootLocation[0] / density;
+      double windowY = detail.getDouble("top") + rootLocation[1] / density;
+      double[] rect = {windowX, windowY, detail.getDouble("width"), detail.getDouble("height")};
+      if (Arrays.equals(mLastPositionChangeRects.get(holderUI), rect)) {
+        continue;
+      }
+      mLastPositionChangeRects.put(holderUI, rect);
+      detail.putDouble("windowX", windowX);
+      detail.putDouble("windowY", windowY);
+      mContext.getEventEmitter().sendCustomEvent(
+          new LynxCustomEvent(sign, POSITION_CHANGE_EVENT, detail));
+    }
+    if (mPositionChangeListeners.isEmpty()) {
+      removePositionChangeObservation();
+    }
+  }
+
+  private boolean isAttachedToRoot(LynxBaseUI ui) {
+    LynxBaseUI current = ui;
+    while (current != null && current != mUIBody) {
+      current = current.getParentBaseUI();
+    }
+    return current == mUIBody;
+  }
+
+  boolean hasPositionChangeListenerForTesting(int sign) {
+    return mPositionChangeListeners.contains(sign);
+  }
+
   private void destroyChildrenRecursively(LynxBaseUI node) {
     for (int i = 0; i < node.getChildren().size(); i++) {
       LynxBaseUI child = node.getChildAt(i);
       child.destroy();
       removeUIFromHolder(child.getSign());
       mTranslateZParentHolder.remove(child);
+      removePositionChangeListener(child.getSign());
       mContext.removeUIFromExposedMap(child);
       destroyChildrenRecursively(child);
     }
@@ -1383,6 +1632,7 @@ public class LynxUIOwner {
   public void setNode(int sign, LynxBaseUI ui) {
     if (mUIHolder != null) {
       mUIHolder.put(sign, ui);
+      updatePositionChangeListener(ui);
     }
   }
 
