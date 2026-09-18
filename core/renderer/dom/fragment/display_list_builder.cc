@@ -208,9 +208,11 @@ DisplayListBuilder& DisplayListBuilder::RadialGradient(
 
 DisplayListBuilder& DisplayListBuilder::BackgroundImage(
     const fml::RefPtr<PaintImage>& image, int32_t tiling_index,
-    int32_t clip_index, int32_t repeat_x, int32_t repeat_y) {
+    int32_t clip_index, int32_t repeat_x, int32_t repeat_y, bool auto_width,
+    bool auto_height, float position_x, float position_y) {
+  const int32_t auto_size = (auto_width ? 1 : 0) | (auto_height ? 2 : 0);
   display_list_.AddBackgroundImage(image, tiling_index, clip_index, repeat_x,
-                                   repeat_y);
+                                   repeat_y, auto_size, position_x, position_y);
   return *this;
 }
 

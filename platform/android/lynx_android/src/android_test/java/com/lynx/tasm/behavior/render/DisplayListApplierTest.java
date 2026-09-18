@@ -27,6 +27,7 @@ import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.util.DisplayMetrics;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -37,9 +38,12 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
+import com.lynx.tasm.utils.DisplayMetricsHolder;
+import com.lynx.tasm.utils.PixelUtils;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
@@ -592,6 +596,228 @@ public class DisplayListApplierTest {
     verify(mockImageManager).updateDrawableBounds(eq(new Rect(80, 0, 120, 20)));
     verify(mockImageManager, times(3)).onDraw(mockCanvas);
     verify(mockCanvas, times(2)).restore();
+  }
+
+  @Test
+  public void testBackgroundImageAutoAutoUsesIntrinsicSizeAndDensity() throws Exception {
+    // PixelUtils reads the global screen metrics; replace only that test input and restore it.
+    Field metricsField = DisplayMetricsHolder.class.getDeclaredField("sScreenDisplayMetrics");
+    metricsField.setAccessible(true);
+    Object previousMetrics = metricsField.get(null);
+    DisplayMetrics metrics = new DisplayMetrics();
+    metrics.density = 2f;
+    try {
+      metricsField.set(null, metrics);
+      assertEquals(2f, PixelUtils.dipToPx(1f), 0f);
+      when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+      when(mockImageManager.getImageWidth()).thenReturn(30);
+      when(mockImageManager.getImageHeight()).thenReturn(20);
+      testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 240f, 160f)
+          .recordBox(10f, 12f, 200f, 120f)
+          .recordBox(0f, 0f, 240f, 160f)
+          .backgroundImage(321, 0, 1, 1, 1, true, true, 0.5f, 0.75f)
+          .end();
+
+      setDisplayList(testDisplayList);
+      displayListApplier.drawTillNextView(mockCanvas);
+
+      verify(mockImageManager).setRendererHost(mockRendererHost);
+      verify(mockImageManager).updateDrawableBounds(boundsCaptor.capture());
+      assertEquals(new Rect(80, 72, 140, 112), boundsCaptor.getValue());
+      verify(mockImageManager).onDraw(mockCanvas);
+      assertEquals(
+          new RectF(10f, 12f, 210f, 132f), getBoxArray(displayListApplier).get(0).getRectF());
+    } finally {
+      metricsField.set(null, previousMetrics);
+    }
+  }
+
+  @Test
+  public void testBackgroundImageAutoWidthPreservesRatioAndPercentOrAbsolutePosition() {
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+    when(mockImageManager.getImageWidth()).thenReturn(80);
+    when(mockImageManager.getImageHeight()).thenReturn(40);
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 240f, 160f)
+        .recordBox(10f, 7f, 200f, 30f)
+        .recordBox(0f, 0f, 240f, 160f)
+        .backgroundImage(321, 0, 1, 1, 1, true, false, 0.5f, 0f)
+        .backgroundImage(321, 0, 1, 1, 1, true, false, 0f, 0f)
+        .end();
+
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockImageManager, times(2)).updateDrawableBounds(boundsCaptor.capture());
+    assertEquals(Arrays.asList(new Rect(80, 7, 140, 37), new Rect(10, 7, 70, 37)),
+        boundsCaptor.getAllValues());
+    verify(mockImageManager, times(2)).onDraw(mockCanvas);
+  }
+
+  @Test
+  public void testBackgroundImageAutoHeightPreservesRatioAndPercentOrAbsolutePosition() {
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+    when(mockImageManager.getImageWidth()).thenReturn(80);
+    when(mockImageManager.getImageHeight()).thenReturn(40);
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 240f, 160f)
+        .recordBox(9f, 12f, 60f, 120f)
+        .recordBox(0f, 0f, 240f, 160f)
+        .backgroundImage(321, 0, 1, 1, 1, false, true, 0f, 1f)
+        .backgroundImage(321, 0, 1, 1, 1, false, true, 0f, 0f)
+        .end();
+
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockImageManager, times(2)).updateDrawableBounds(boundsCaptor.capture());
+    assertEquals(Arrays.asList(new Rect(9, 102, 69, 132), new Rect(9, 12, 69, 42)),
+        boundsCaptor.getAllValues());
+    verify(mockImageManager, times(2)).onDraw(mockCanvas);
+  }
+
+  @Test
+  public void testBackgroundImageAutoWidthRepeatUsesResolvedTileSizeAndPosition() {
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+    when(mockImageManager.getImageWidth()).thenReturn(80);
+    when(mockImageManager.getImageHeight()).thenReturn(40);
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 90f, 45f)
+        .recordBox(0f, 0f, 90f, 20f)
+        .recordBox(0f, 0f, 90f, 45f)
+        .backgroundImage(321, 0, 1, 0, 0, true, false, 0.5f, 0f)
+        .end();
+
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).clipRect(eq(new RectF(0f, 0f, 90f, 45f)));
+    verify(mockImageManager, times(9)).updateDrawableBounds(boundsCaptor.capture());
+    assertEquals(Arrays.asList(new Rect(-15, 0, 25, 20), new Rect(-15, 20, 25, 40),
+                     new Rect(-15, 40, 25, 60), new Rect(25, 0, 65, 20), new Rect(25, 20, 65, 40),
+                     new Rect(25, 40, 65, 60), new Rect(65, 0, 105, 20), new Rect(65, 20, 105, 40),
+                     new Rect(65, 40, 105, 60)),
+        boundsCaptor.getAllValues());
+    verify(mockImageManager, times(9)).onDraw(mockCanvas);
+  }
+
+  @Test
+  public void testBackgroundImageAutoHeightRepeatLargerThanClipBox() {
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+    when(mockImageManager.getImageWidth()).thenReturn(40);
+    when(mockImageManager.getImageHeight()).thenReturn(100);
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 90f, 60f)
+        .recordBox(0f, 0f, 40f, 60f)
+        .recordBox(0f, 0f, 90f, 60f)
+        .backgroundImage(321, 0, 1, 0, 0, false, true, 0f, 0.5f)
+        .end();
+
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).clipRect(eq(new RectF(0f, 0f, 90f, 60f)));
+    verify(mockImageManager, times(3)).updateDrawableBounds(boundsCaptor.capture());
+    assertEquals(Arrays.asList(new Rect(0, -20, 40, 80), new Rect(40, -20, 80, 80),
+                     new Rect(80, -20, 120, 80)),
+        boundsCaptor.getAllValues());
+    verify(mockImageManager, times(3)).onDraw(mockCanvas);
+  }
+
+  @Test
+  public void testBackgroundImageAutoUsesUnclippedTilingSizeAtRendererRoot() {
+    when(mockRendererHost.getRendererHostWidth()).thenReturn(100);
+    when(mockRendererHost.getRendererHostHeight()).thenReturn(80);
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+    when(mockImageManager.getImageWidth()).thenReturn(80);
+    when(mockImageManager.getImageHeight()).thenReturn(40);
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 80f)
+        .recordBox(10f, 0f, 200f, 80f)
+        .recordBox(0f, 0f, 100f, 80f)
+        .backgroundImage(321, 0, 1, 1, 1, false, true, 0f, 0.5f)
+        .end();
+
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).clipRect(eq(new RectF(0f, 0f, 100f, 80f)));
+    verify(mockImageManager).updateDrawableBounds(eq(new Rect(10, -10, 210, 90)));
+    verify(mockImageManager).onDraw(mockCanvas);
+  }
+
+  @Test
+  public void testBackgroundImageAutoRepaintUsesCurrentIntrinsicSizeWithoutMutatingBoxes() {
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 120f, 80f)
+        .recordBox(0f, 7f, 120f, 20f)
+        .recordBox(0f, 0f, 120f, 80f)
+        .backgroundImage(321, 0, 1, 1, 1, true, false, 0.5f, 0f)
+        .end();
+    ArrayList<Rect> drawnBounds = new ArrayList<>();
+    doAnswer(invocation -> {
+      drawnBounds.add(new Rect((Rect) invocation.getArgument(0)));
+      return null;
+    })
+        .when(mockImageManager)
+        .updateDrawableBounds(any(Rect.class));
+
+    // No decoded dimensions yet: registering the host still enables load invalidation.
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+    verify(mockImageManager).setRendererHost(mockRendererHost);
+    verify(mockImageManager, never()).updateDrawableBounds(any(Rect.class));
+    verify(mockImageManager, never()).onDraw(any(Canvas.class));
+    assertBackgroundImageFallbackBoxesUnchanged();
+
+    // A partially available or invalid intrinsic size must not produce a tile either.
+    when(mockImageManager.getImageWidth()).thenReturn(40);
+    when(mockImageManager.getImageHeight()).thenReturn(-1);
+    displayListApplier.reset();
+    displayListApplier.drawTillNextView(mockCanvas);
+    verify(mockImageManager, times(2)).setRendererHost(mockRendererHost);
+    verify(mockImageManager, never()).updateDrawableBounds(any(Rect.class));
+    verify(mockImageManager, never()).onDraw(any(Canvas.class));
+    assertBackgroundImageFallbackBoxesUnchanged();
+
+    when(mockImageManager.getImageHeight()).thenReturn(20);
+    for (int i = 0; i < 2; ++i) {
+      displayListApplier.reset();
+      displayListApplier.drawTillNextView(mockCanvas);
+      assertBackgroundImageFallbackBoxesUnchanged();
+    }
+    // Reuse the same native list and applier even when the resource dimensions change again.
+    when(mockImageManager.getImageWidth()).thenReturn(80);
+    displayListApplier.reset();
+    displayListApplier.drawTillNextView(mockCanvas);
+    assertBackgroundImageFallbackBoxesUnchanged();
+
+    assertEquals(
+        Arrays.asList(new Rect(40, 7, 80, 27), new Rect(40, 7, 80, 27), new Rect(20, 7, 100, 27)),
+        drawnBounds);
+    verify(mockImageManager, times(3)).onDraw(mockCanvas);
+  }
+
+  private void assertBackgroundImageFallbackBoxesUnchanged() {
+    ArrayList<RoundedRectangle> boxes = getBoxArray(displayListApplier);
+    assertEquals(2, boxes.size());
+    assertEquals(new RectF(0f, 7f, 120f, 27f), boxes.get(0).getRectF());
+    assertEquals(new RectF(0f, 0f, 120f, 80f), boxes.get(1).getRectF());
+  }
+
+  @Test
+  public void testBackgroundImageExplicitSizeDoesNotRequireIntrinsicDimensions() {
+    when(mockPlatformRendererContext.getImage(321)).thenReturn(mockImageManager);
+    when(mockImageManager.getImageWidth()).thenReturn(0);
+    when(mockImageManager.getImageHeight()).thenReturn(0);
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 120f, 80f)
+        .recordBox(9f, 7f, 60f, 30f)
+        .recordBox(0f, 0f, 120f, 80f)
+        .backgroundImage(321, 0, 1, 1, 1)
+        .end();
+
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockImageManager).setRendererHost(mockRendererHost);
+    verify(mockImageManager).updateDrawableBounds(boundsCaptor.capture());
+    assertEquals(new Rect(9, 7, 69, 37), boundsCaptor.getValue());
+    verify(mockImageManager).onDraw(mockCanvas);
   }
 
   @Test

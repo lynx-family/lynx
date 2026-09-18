@@ -32,6 +32,7 @@ import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import com.lynx.tasm.service.ILynxTextService.Page;
+import com.lynx.tasm.utils.PixelUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -82,6 +83,9 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int BACKGROUND_IMAGE_CLIP_INDEX_OFFSET = 12;
   static final int BACKGROUND_IMAGE_REPEAT_X_OFFSET = 16;
   static final int BACKGROUND_IMAGE_REPEAT_Y_OFFSET = 20;
+  static final int BACKGROUND_IMAGE_AUTO_SIZE_OFFSET = 24;
+  static final int BACKGROUND_IMAGE_POSITION_X_OFFSET = 28;
+  static final int BACKGROUND_IMAGE_POSITION_Y_OFFSET = 32;
   static final int BORDER_OUT_INDEX_OFFSET = 4;
   static final int BORDER_INNER_INDEX_OFFSET = 8;
   static final int BORDER_COLORS_OFFSET = 12;
@@ -346,14 +350,15 @@ public class DisplayListApplier implements Drawable.Callback {
     imageManager.onDraw(canvas);
   }
 
-  private void drawBackgroundImage(
-      Canvas canvas, int id, int tilingIndex, int clipIndex, int repeatX, int repeatY) {
+  private void drawBackgroundImage(Canvas canvas, int id, int tilingIndex, int clipIndex,
+      int repeatX, int repeatY, int autoSize, float positionX, float positionY) {
     LynxImageManager imageManager = mContext.getImage(id);
     if (imageManager == null) {
       return;
     }
 
-    RoundedRectangle tilingBox = getNormalizedRoundedRectangle(tilingIndex);
+    RoundedRectangle tilingBox = autoSize != 0 ? getRoundedRectangle(tilingIndex)
+                                               : getNormalizedRoundedRectangle(tilingIndex);
     if (tilingBox == null) {
       return;
     }
@@ -363,9 +368,38 @@ public class DisplayListApplier implements Drawable.Callback {
       return;
     }
 
-    RectF tilingRect = tilingBox.getRectF();
+    // Bind before deferring an unloaded image so load completion invalidates
+    // this renderer and the same display list can be drawn again.
+    imageManager.setRendererHost(getRendererHost());
+    RectF tilingRect = new RectF(tilingBox.getRectF());
     float width = tilingRect.width();
     float height = tilingRect.height();
+    if (autoSize != 0) {
+      int imageWidth = imageManager.getImageWidth();
+      int imageHeight = imageManager.getImageHeight();
+      if (imageWidth <= 0 || imageHeight <= 0) {
+        return;
+      }
+      boolean autoWidth = (autoSize & 1) != 0;
+      boolean autoHeight = (autoSize & 2) != 0;
+      if (autoWidth && autoHeight) {
+        float density = PixelUtils.dipToPx(1.f);
+        width = imageWidth * density;
+        height = imageHeight * density;
+      } else if (autoWidth) {
+        width = height * imageWidth / imageHeight;
+      } else if (autoHeight) {
+        height = width * imageHeight / imageWidth;
+      }
+      // Do not clip the fallback tile before resolving its size or position.
+      // Only the painting clip is restricted to the renderer's host bounds.
+      if (shouldNormalizeRootGeometry() && shouldIncludeScrollOffsetForHostBounds()) {
+        offsetRectForHostScroll(tilingRect);
+      }
+      float left = tilingRect.left + (tilingRect.width() - width) * positionX;
+      float top = tilingRect.top + (tilingRect.height() - height) * positionY;
+      tilingRect.set(left, top, left + width, top + height);
+    }
     if (width <= 0.f || height <= 0.f) {
       return;
     }
@@ -380,7 +414,6 @@ public class DisplayListApplier implements Drawable.Callback {
       canvas.clipRect(clipRect);
     }
 
-    imageManager.setRendererHost(getRendererHost());
     imageManager.updateInnerClipPathForBorderRadius(null);
 
     boolean repeatHorizontally = repeatX == StyleConstants.BACKGROUND_REPEAT_REPEAT
@@ -578,7 +611,11 @@ public class DisplayListApplier implements Drawable.Callback {
           int clipIndex = getIntAt(itemByteOffset + BACKGROUND_IMAGE_CLIP_INDEX_OFFSET);
           int repeatX = getIntAt(itemByteOffset + BACKGROUND_IMAGE_REPEAT_X_OFFSET);
           int repeatY = getIntAt(itemByteOffset + BACKGROUND_IMAGE_REPEAT_Y_OFFSET);
-          drawBackgroundImage(canvas, imageId, tilingIndex, clipIndex, repeatX, repeatY);
+          int autoSize = getIntAt(itemByteOffset + BACKGROUND_IMAGE_AUTO_SIZE_OFFSET);
+          float positionX = getFloatAt(itemByteOffset + BACKGROUND_IMAGE_POSITION_X_OFFSET);
+          float positionY = getFloatAt(itemByteOffset + BACKGROUND_IMAGE_POSITION_Y_OFFSET);
+          drawBackgroundImage(canvas, imageId, tilingIndex, clipIndex, repeatX, repeatY, autoSize,
+              positionX, positionY);
           break;
         }
 

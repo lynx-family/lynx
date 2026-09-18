@@ -97,7 +97,11 @@ class DisplayListBuilder {
 
   DisplayListBuilder& BackgroundImage(const fml::RefPtr<PaintImage>& image,
                                       int32_t tiling_index, int32_t clip_index,
-                                      int32_t repeat_x, int32_t repeat_y);
+                                      int32_t repeat_x, int32_t repeat_y,
+                                      bool auto_width = false,
+                                      bool auto_height = false,
+                                      float position_x = 0.f,
+                                      float position_y = 0.f);
 
   // Box-shadow clip mode enumeration
   // kOutset = 0 (clip to border-box for outside shadows)

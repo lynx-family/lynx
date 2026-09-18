@@ -1311,6 +1311,14 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
+  public int getImageWidth() {
+    return mImageWidth;
+  }
+
+  public int getImageHeight() {
+    return mImageHeight;
+  }
+
   public void updateDrawableBounds(Rect bounds) {
     if (mImageDrawable != null && !bounds.equals(mImageDrawable.getBounds())) {
       mImageDrawable.setBounds(bounds);

@@ -367,6 +367,48 @@ TEST_F(DisplayListBuilderTest, RecordBoxModelWithRadius) {
   EXPECT_FALSE(reader.HasNext());
 }
 
+TEST_F(DisplayListBuilderTest, BackgroundImageEncodesAutoSizeAxes) {
+  struct TestCase {
+    bool auto_width;
+    bool auto_height;
+    int32_t expected_mask;
+  };
+  const TestCase cases[] = {
+      {false, false, 0}, {true, false, 1}, {false, true, 2}, {true, true, 3}};
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.expected_mask);
+    DisplayListBuilder builder;
+    auto image = fml::MakeRefCounted<PaintImage>(42);
+    builder.BackgroundImage(image, 1, 2, 0, 1, test.auto_width,
+                            test.auto_height);
+    auto list = builder.Build();
+    DisplayListReader reader(list);
+    ASSERT_TRUE(reader.HasNext());
+    const auto& item = reader.Next();
+    ASSERT_EQ(item.type, DisplayListOpType::kBackgroundImage);
+    EXPECT_EQ(item.payload.background_image.auto_size, test.expected_mask);
+    EXPECT_EQ(item.payload.background_image.image_id, 42);
+    EXPECT_EQ(item.payload.background_image.tiling_index, 1);
+    EXPECT_EQ(item.payload.background_image.clip_index, 2);
+    EXPECT_EQ(item.payload.background_image.repeat_x, 0);
+    EXPECT_EQ(item.payload.background_image.repeat_y, 1);
+    EXPECT_FLOAT_EQ(item.payload.background_image.position_x, 0.f);
+    EXPECT_FLOAT_EQ(item.payload.background_image.position_y, 0.f);
+    EXPECT_FALSE(reader.HasNext());
+  }
+}
+
+TEST_F(DisplayListBuilderTest, BackgroundImageDefaultsToExplicitSize) {
+  builder_->BackgroundImage(fml::MakeRefCounted<PaintImage>(42), 1, 2, 0, 1);
+  auto list = builder_->Build();
+  DisplayListReader reader(list);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& image = reader.Next().payload.background_image;
+  EXPECT_EQ(image.auto_size, 0);
+  EXPECT_FLOAT_EQ(image.position_x, 0.f);
+  EXPECT_FLOAT_EQ(image.position_y, 0.f);
+}
+
 TEST_F(DisplayListBuilderTest, LinearGradientOperation) {
   base::Vector<uint32_t> colors;
   colors.push_back(0xFFFF0000);

@@ -66,7 +66,7 @@ lynx::tasm::DisplayList CreateDisplayListFixture() {
       .DrawImage(fml::MakeRefCounted<lynx::tasm::PaintImage>(303), 8)
       .DrawText(404, 9)
       .BackgroundImage(fml::MakeRefCounted<lynx::tasm::PaintImage>(505), 10, 11,
-                       1, 2)
+                       1, 2, true, true, 0.25f, 0.75f)
       .Border(12, 13, border)
       .ClipRect(clip_rect)
       .RecordBoxModel(record_box, record_box_index)

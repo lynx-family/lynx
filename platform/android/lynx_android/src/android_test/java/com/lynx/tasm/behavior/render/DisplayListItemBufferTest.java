@@ -46,6 +46,7 @@ public class DisplayListItemBufferTest {
     items.order(ByteOrder.nativeOrder());
     data.order(ByteOrder.nativeOrder());
 
+    assertEquals(56, DisplayListApplier.DISPLAY_LIST_ITEM_SIZE);
     assertEquals(DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, nativeGetDisplayListItemSize());
     assertEquals(13, nativeGetDisplayListItemCount());
     assertEquals(13 * DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, items.capacity());
@@ -81,6 +82,14 @@ public class DisplayListItemBufferTest {
     assertEquals(11, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_CLIP_INDEX_OFFSET));
     assertEquals(1, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_REPEAT_X_OFFSET));
     assertEquals(2, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_REPEAT_Y_OFFSET));
+    assertEquals(24, DisplayListApplier.BACKGROUND_IMAGE_AUTO_SIZE_OFFSET);
+    assertEquals(28, DisplayListApplier.BACKGROUND_IMAGE_POSITION_X_OFFSET);
+    assertEquals(32, DisplayListApplier.BACKGROUND_IMAGE_POSITION_Y_OFFSET);
+    assertEquals(3, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_AUTO_SIZE_OFFSET));
+    assertFloatEquals(
+        0.25f, getFloat(items, 5, DisplayListApplier.BACKGROUND_IMAGE_POSITION_X_OFFSET));
+    assertFloatEquals(
+        0.75f, getFloat(items, 5, DisplayListApplier.BACKGROUND_IMAGE_POSITION_Y_OFFSET));
 
     assertItemType(items, 6, DisplayListApplier.OP_BORDER);
     assertEquals(12, getInt(items, 6, DisplayListApplier.BORDER_OUT_INDEX_OFFSET));
@@ -150,6 +159,24 @@ public class DisplayListItemBufferTest {
     assertFloatEquals(0.75f, data.getFloat(stopOffset + Float.BYTES));
 
     assertItemType(items, 12, DisplayListApplier.OP_END);
+  }
+
+  @Test
+  public void testBackgroundImageLegacyOverloadDefaultsToFixedSize() {
+    NativeDisplayListBuilder.ensureRegistered();
+    try (NativeDisplayListBuilder builder = new NativeDisplayListBuilder()) {
+      builder.backgroundImage(505, 10, 11, 1, 2).end();
+      ByteBuffer items = builder.toItemsBuffer().order(ByteOrder.nativeOrder());
+
+      assertEquals(2 * DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, items.capacity());
+      assertItemType(items, 0, DisplayListApplier.OP_BACKGROUND_IMAGE);
+      assertEquals(0, getInt(items, 0, DisplayListApplier.BACKGROUND_IMAGE_AUTO_SIZE_OFFSET));
+      assertFloatEquals(
+          0f, getFloat(items, 0, DisplayListApplier.BACKGROUND_IMAGE_POSITION_X_OFFSET));
+      assertFloatEquals(
+          0f, getFloat(items, 0, DisplayListApplier.BACKGROUND_IMAGE_POSITION_Y_OFFSET));
+      assertItemType(items, 1, DisplayListApplier.OP_END);
+    }
   }
 
   private static void assertItemType(ByteBuffer buffer, int itemIndex, int expectedType) {
