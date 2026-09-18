@@ -86,6 +86,8 @@ class JSUIBase : public UIBase {
   static napi_value GetUIFromNativeContent(napi_env env,
                                            napi_callback_info info);
   static napi_value GetContentSize(napi_env env, napi_callback_info info);
+  static napi_value SetListItemTransformer(napi_env env,
+                                           napi_callback_info info);
 
   ~JSUIBase() override;
 

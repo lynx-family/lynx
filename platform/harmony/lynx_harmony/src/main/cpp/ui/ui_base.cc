@@ -1159,6 +1159,19 @@ void UIBase::SetTransformOrigin(const lepus::Value& value) {
   dirty_flags_ |= kFlagTransformOriginChanged;
 }
 
+// Clients directly update and apply a list-item node's transform through this
+// method.
+void UIBase::SetAndApplyListItemTransform(std::unique_ptr<Transform> transform,
+                                          const TransformOrigin& origin) {
+  transform_ = std::move(transform);
+  transform_origin_ = origin;
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      DrawNode(), NODE_TRANSFORM_CENTER, origin.x.GetValue(width_),
+      origin.y.GetValue(height_));
+  ApplyTransform();
+  Invalidate();
+}
+
 void UIBase::ApplyTransform() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_APPLY_TRANSFORM);
 

@@ -189,6 +189,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void GetTargetPoint(float target_point[2], float point[2], float scroll[2],
                       float target_origin_rect[4], Transform* target_transform);
   Transform* GetTransform() { return transform_.get(); }
+  void SetAndApplyListItemTransform(std::unique_ptr<Transform> transform,
+                                    const TransformOrigin& origin);
   float TranslateZ() const;
   virtual float ViewLeft() const;
   virtual float ViewTop() const;

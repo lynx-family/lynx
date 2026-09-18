@@ -8,6 +8,7 @@
 #include <node_api.h>
 
 #include "base/include/platform/harmony/napi_util.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
 namespace tasm {
@@ -17,12 +18,13 @@ napi_value NativeNodeContent::Init(napi_env env, napi_value exports) {
   napi_property_descriptor properties[] = {
       {"content", nullptr, nullptr, GetNodeContent, nullptr, nullptr,
        napi_default_jsproperty, nullptr},
+      {"uiTagName", nullptr, nullptr, GetUITagName, nullptr, nullptr,
+       napi_default_jsproperty, nullptr},
   };
   napi_value cons;
   napi_define_class(env, "NativeContent", NAPI_AUTO_LENGTH, Constructor,
                     nullptr, sizeof(properties) / sizeof(properties[0]),
                     properties, &cons);
-
   napi_set_named_property(env, exports, "NativeContent", cons);
   return exports;
 }
@@ -38,6 +40,33 @@ napi_value NativeNodeContent::GetNodeContent(napi_env env,
     return node->JSNodeContent();
   }
   return nullptr;
+}
+
+napi_value NativeNodeContent::GetUITagName(napi_env env,
+                                           napi_callback_info info) {
+  napi_value undefined{nullptr};
+  if (napi_get_undefined(env, &undefined) != napi_ok) {
+    return nullptr;
+  }
+  napi_value js_this{nullptr};
+  size_t argc = 0;
+  if (napi_get_cb_info(env, info, &argc, nullptr, &js_this, nullptr) !=
+      napi_ok) {
+    return undefined;
+  }
+  NativeNodeContent* native_node_content{nullptr};
+  if (napi_unwrap(env, js_this,
+                  reinterpret_cast<void**>(&native_node_content)) != napi_ok ||
+      !native_node_content || !native_node_content->UI()) {
+    return undefined;
+  }
+  const auto& tag = native_node_content->UI()->Tag();
+  napi_value result{nullptr};
+  if (napi_create_string_utf8(env, tag.c_str(), tag.size(), &result) !=
+      napi_ok) {
+    return undefined;
+  }
+  return result;
 }
 
 napi_value NativeNodeContent::Constructor(napi_env env,
