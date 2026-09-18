@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.2
+
+- Add desktop PointerEvent payload fields and bindings, available when `enableEventHandleRefactor` is enabled. CSS `pointer-events` remains independent of this setting.
+
 ## 4.4.1
 
 - Add `set-soft-input-mode` to `<input>` and `<textarea>` typings.

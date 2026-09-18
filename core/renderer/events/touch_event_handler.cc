@@ -9,8 +9,10 @@
 #include "base/include/value/array.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
+#include "build/build_config.h"
 #include "core/event/custom_event.h"
 #include "core/event/event_dispatcher.h"
+#include "core/event/pointer_event.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -557,6 +559,39 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
     // modify the `long_press_consumed_` variable of `TouchEvent` accordingly.
     event::TouchEvent::long_press_consumed_ = false;
   }
+#if defined(OS_WIN) || defined(OS_MAC)
+  const bool is_pointer_event =
+      name == "pointerdown" || name == "pointermove" || name == "pointerup" ||
+      name == "pointercancel" || name == "pointerenter" ||
+      name == "pointerleave" || name == "pointerover" || name == "pointerout";
+  if (is_pointer_event) {
+    if (!tasm->EnableEventHandleRefactor()) {
+      return;
+    }
+    BASE_STATIC_STRING_DECL(kType, "type");
+    BASE_STATIC_STRING_DECL(kTimestamp, "timestamp");
+    params->SetValue(kType, name);
+    int64_t pointer_timestamp = 0;
+    const auto &timestamp = params->GetValue(kTimestamp);
+    if (timestamp.IsNumber()) {
+      pointer_timestamp = static_cast<int64_t>(timestamp.Number());
+    }
+    auto target = node_manager_->Get(tag);
+    if (!target) {
+      LOGE("HandleBubbleEvent error: the target is null.");
+      return;
+    }
+    auto pointer_event = fml::MakeRefCounted<event::PointerEvent>(
+        name, lepus::Value(params), pointer_timestamp);
+    auto related_target =
+        node_manager_->Get(pointer_event->related_target_sign());
+    if (related_target) {
+      pointer_event->set_related_target(related_target->GetWeakTarget());
+    }
+    event::EventDispatcher::DispatchEvent(*target, std::move(pointer_event));
+    return;
+  }
+#endif
   bool bubbles = true;
   // According to the W3C specification, the `mouseenter` and `mouseleave`
   // events do not bubble. Therefore, bubbling needs to be disabled. See:
