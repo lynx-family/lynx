@@ -31,7 +31,10 @@ import {
   TextMetrics,
 } from '../modules/nativeModules';
 import { DEFAULT_ENTRY, SOURCE_MAP_RELEASE_ERROR_NAME } from '../common';
-import nativeGlobal from '../common/nativeGlobal';
+import nativeGlobal, {
+  PageGlobal,
+  resolvePageGlobal,
+} from '../common/nativeGlobal';
 import {
   CreateIntersectionObserverFunc,
   LynxClearTimeout,
@@ -54,6 +57,8 @@ export abstract class BaseApp<
   _nativeApp: NativeAppProxy;
   nativeAppId: string;
   _params: loadCardParams;
+  // globalThis of this page's realm; what native and the page bundle write to.
+  pageGlobal: PageGlobal;
   lynx: LynxImpl;
   modules: Record<string, Record<string, AMDModule>>;
   sharedConsole: typeof nativeConsole;
@@ -116,9 +121,10 @@ export abstract class BaseApp<
     this.addInternalEventListeners();
 
     // Use the current page globalThis injected by native to reach runtime hooks.
-    const currentGlobal = this._params?.currentGlobalThis ?? nativeGlobal;
-    currentGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId] &&
-      currentGlobal['notifyRuntimeReadyOnRT' + this.nativeAppId](this.lynx);
+    const notifyRuntimeReady = this.pageGlobal[
+      'notifyRuntimeReadyOnRT' + this.nativeAppId
+    ];
+    notifyRuntimeReady && notifyRuntimeReady(this.lynx);
   }
 
   private initWithReusedApp(
@@ -170,7 +176,7 @@ export abstract class BaseApp<
       this._nativeApp = CachedFunctionProxy.create<NativeAppProxy>(
         this._nativeApp
       );
-      this.sharedConsole = nativeConsole;
+      this.sharedConsole = this.pageGlobal.nativeConsole;
       this.dynamicComponentExports = {};
       this.loadedDynamicComponentsSet = new Set();
       this._lazyCallableModules = new Map();
@@ -218,6 +224,8 @@ export abstract class BaseApp<
     this.nativeAppId = nativeApp.id;
     this._params = params;
     this._nativeApp = nativeApp;
+    // Must be resolved before anything may touch a page-realm global.
+    this.pageGlobal = resolvePageGlobal(params);
 
     // init native NativeModules
     this.NativeModules = nativeApp.nativeModuleProxy;
@@ -297,25 +305,21 @@ export abstract class BaseApp<
     this._ReadableStreamClass = createReadableStreamClass(Promise);
     const enableReadableStreamMemoryFix =
       this.params?.pageConfigSubset?.enableReadableStreamMemoryFix ?? true;
-    if (!nativeGlobal.Request) {
-      nativeGlobal.Request = Request;
+    const pageGlobal = this.pageGlobal;
+    if (!pageGlobal.Request) {
+      pageGlobal.Request = Request;
     }
-    if (!nativeGlobal.Response) {
-      nativeGlobal.Response = Response;
+    if (!pageGlobal.Response) {
+      pageGlobal.Response = Response;
     }
-    if (!nativeGlobal.ReadableStream) {
-      if (!enableReadableStreamMemoryFix) {
-        nativeGlobal.ReadableStream = this._ReadableStreamClass;
+    if (!pageGlobal.ReadableStream) {
+      if (!enableReadableStreamMemoryFix || this.params?.currentGlobalThis) {
+        pageGlobal.ReadableStream = this._ReadableStreamClass;
         return;
       }
-      // Global ReadableStream still caches
-      // Object.values(nativeGlobal.multiApps)[0].lynx.Promise on the first
-      // `new ReadableStream()` call. This is a short-term mitigation and does
-      // not guarantee binding to the current caller app. When multiple apps
-      // share one context, the global API may still bind to the first app.
-      // The long-term migration target is `lynx.ReadableStream`.
+      // Legacy shared contexts lazily bind Promise to avoid retaining an app.
       let fixedPromise: PromiseConstructor | undefined;
-      nativeGlobal.ReadableStream = createReadableStreamClass({
+      pageGlobal.ReadableStream = createReadableStreamClass({
         getPromise: () => {
           if (fixedPromise) {
             return fixedPromise;
@@ -522,13 +526,17 @@ export abstract class BaseApp<
     }
   ): T {
     let factory: <T>(injected: { tt: BaseApp }) => T;
+    const pageGlobal = this.pageGlobal;
     if (exports && exports.init) {
       // app-service.js and common-chunk.js with new format will have init function
       factory = exports.init.bind(exports);
-    } else if (nativeGlobal.initBundle) {
-      // common-chunk.js with old format will set global.initBundle during loadScript
-      factory = nativeGlobal.initBundle.bind(nativeGlobal.initBundle);
-      delete nativeGlobal.initBundle; // should delete initBundle after used
+    } else if (pageGlobal.initBundle) {
+      // common-chunk.js with old format will set global.initBundle during
+      // loadScript. loadScript evaluates the bundle on the PAGE runtime, so
+      // `initBundle` always lands on the page realm - never on the realm corejs
+      // itself was evaluated in.
+      factory = pageGlobal.initBundle.bind(pageGlobal.initBundle);
+      delete pageGlobal.initBundle; // should delete initBundle after used
     } else {
       // no factory function found, probably loadScript failed.
       // TODO(wangqingyu): do not throw this when `nativeApp.loadScript` support exceptions
@@ -1077,10 +1085,10 @@ export abstract class BaseApp<
   }
 
   private isModuleCacheDisabled(): boolean {
-    return (
-      typeof __lynxDisableModuleCache !== 'undefined' &&
-      __lynxDisableModuleCache === true
-    );
+    // Installed by native on the page context, so it must be read off the page
+    // realm rather than through a bare global reference (which would resolve
+    // against the realm corejs was evaluated in).
+    return this.pageGlobal.__lynxDisableModuleCache === true;
   }
 
   /**
