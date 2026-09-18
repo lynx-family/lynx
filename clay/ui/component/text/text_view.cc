@@ -162,6 +162,10 @@ void TextView::SetAttribute(const char* attr, const clay::Value& value) {
     custom_context_menu_ = attribute_utils::GetBool(value);
   } else if (kw == KeywordID::kCustomTextSelection) {
     custom_text_selection_ = attribute_utils::GetBool(value);
+  } else if (kw == KeywordID::kSelectionBackgroundColor) {
+    SetSelectionBackgroundColor(
+        value.IsString() ? attribute_utils::GetColor(value)
+                         : Color(attribute_utils::GetUint(value, 0)));
   } else if (kw == KeywordID::kSelectionHandleColor) {
     SetSelectionHandleColor(value.IsString()
                                 ? attribute_utils::GetColor(value)
@@ -334,13 +338,15 @@ void TextView::ResetGestureRecognizers() {
     auto point = GetPointBySelf(up_event.position);
     point.Move(-BorderLeft() - PaddingLeft(), -BorderTop() - PaddingTop());
     RequestFocus();
+    if (tap_counts == 1) {
+      ClearSelection();
+      return;
+    }
     auto render_text = GetRenderText();
     auto glyph_pos = render_text->GetPainter()->GetGlyphPositionAtCoordinate(
         point.x(), point.y());
     TextRange range(glyph_pos.first, glyph_pos.first);
-    if (tap_counts == 1) {
-      render_text->SetSelection(range);
-    } else if (tap_counts == 2) {
+    if (tap_counts == 2) {
       range = SelectWord(glyph_pos.first, glyph_pos.second);
     } else if (tap_counts >= 3) {
       range = SelectParagraph(glyph_pos.first, glyph_pos.second);
@@ -518,6 +524,27 @@ void TextView::UpdateSelectionRange(int selection_start, int selection_end) {
   selection_end_pos_ = selection_end;
 }
 
+void TextView::ResetSelectionRange() {
+#ifndef ENABLE_CLAY_LITE
+  selection_start_pos_ = -1;
+  selection_end_pos_ = -1;
+  selection_direction_forward_ = true;
+#endif
+}
+
+void TextView::ClearSelection() {
+#ifndef ENABLE_CLAY_LITE
+  if (selection_start_pos_ != -1 || selection_end_pos_ != -1) {
+    auto range = TextRange(-1, -1);
+    GetRenderText()->SetSelection(range);
+    OnSelectionChanged(range.start(), range.end());
+  }
+  ResetSelectionRange();
+#endif
+  HideSelectionPopup();
+  HideSelectionHandle();
+}
+
 void TextView::PerformBeginSelection(FloatPoint point) {
 #ifndef ENABLE_CLAY_LITE
 #if defined(OS_WIN) || defined(OS_OSX)
@@ -562,10 +589,7 @@ void TextView::PerformMoveSelection(FloatPoint point,
 #endif
 }
 
-void TextView::PerformCancelSelection() {
-  HideSelectionPopup();
-  HideSelectionHandle();
-}
+void TextView::PerformCancelSelection() { ClearSelection(); }
 
 void TextView::OnSelectionChanged(int selection_start, int selection_end) {
   if (!is_text_selection_) {
@@ -592,6 +616,14 @@ void TextView::setTextSelection(const LynxModuleValues& args,
   auto end_index = render_text->GetPainter()
                        ->GetGlyphPositionAtCoordinate(end_x, end_y)
                        .first;
+  if (start_index == end_index) {
+    const auto text_length = render_text->GetText().length();
+    if (start_index >= text_length && start_index > 0) {
+      start_index--;
+    } else {
+      end_index++;
+    }
+  }
   UpdateSelectionRange(start_index, end_index);
   selection_start_pos_ = std::min(start_index, end_index);
   selection_end_pos_ = std::max(start_index, end_index);
@@ -697,15 +729,10 @@ void TextView::OnBoundsChanged(const FloatRect& old_bounds,
 }
 
 void TextView::FocusHasChanged(bool focused, bool is_leaf) {
-#ifndef ENABLE_CLAY_LITE
-  auto range = TextRange(selection_end_pos_, selection_end_pos_);
-  UpdateSelectionRange(range.start(), range.end());
-  GetRenderText()->SetSelection(range);
-  OnSelectionChanged(range.start(), range.end());
-#endif
   BaseView::FocusHasChanged(focused, is_leaf);
-  HideSelectionPopup();
-  HideSelectionHandle();
+  if (!focused) {
+    ClearSelection();
+  }
 }
 
 BaseView* TextView::GetTopViewToAcceptEvent(const FloatPoint& position,
@@ -885,10 +912,9 @@ std::vector<FloatPoint> TextView::GetAnchorPosition() {
   if (end_points.empty()) {
     return std::vector<FloatPoint>();
   }
-  FML_DCHECK(selection_handle_container_);
-  auto container_bounds_rect =
-      selection_handle_container_->BoundsRelativeTo(nullptr);
   auto bounds_rect = BoundsRelativeTo(nullptr);
+  auto visible_text_rect = bounds_rect;
+  visible_text_rect.Intersect(GetDisplayRect());
   auto start_point = FloatPoint(0 + bounds_rect.left(), 0 + bounds_rect.top());
   auto end_point =
       FloatPoint(width_ + bounds_rect.left(),
@@ -915,7 +941,7 @@ std::vector<FloatPoint> TextView::GetAnchorPosition() {
                           render_text->GetPainter()->GetLineHeightForPosition(
                               select_range[1]) +
                           editing_region.y(),
-                      container_bounds_rect.top()));
+                      visible_text_rect.top()));
   FloatPoint anchor_blow =
       FloatPoint(anchor_x, end_points.back().y() + editing_region.y());
   return std::vector<FloatPoint>{anchor_above, anchor_blow};
@@ -964,11 +990,25 @@ void TextView::HideSelectionPopup() {
 }
 
 FloatRect TextView::GetDisplayRect() {
-  FloatRect result = BoundsRelativeTo(nullptr);
+  FloatRect result = page_view()->BoundsRelativeTo(nullptr);
   auto parent = Parent();
   while (parent) {
-    auto parent_rect = parent->BoundsRelativeTo(nullptr);
-    result.Intersect(parent_rect);
+    int parent_overflow = parent->GetOverflow();
+    if (parent_overflow != CSSProperty::OVERFLOW_XY) {
+      auto parent_rect = parent->BoundsRelativeTo(nullptr);
+      if (!(parent_overflow & CSSProperty::OVERFLOW_X)) {
+        float left = std::max(result.x(), parent_rect.x());
+        float right = std::min(result.MaxX(), parent_rect.MaxX());
+        result.SetX(left);
+        result.SetWidth(std::max(0.0f, right - left));
+      }
+      if (!(parent_overflow & CSSProperty::OVERFLOW_Y)) {
+        float top = std::max(result.y(), parent_rect.y());
+        float bottom = std::min(result.MaxY(), parent_rect.MaxY());
+        result.SetY(top);
+        result.SetHeight(std::max(0.0f, bottom - top));
+      }
+    }
     parent = parent->Parent();
   }
   return result;
@@ -984,9 +1024,13 @@ void TextView::UpdateSelectionHandleLayout(SelectionHandleView* handle) {
   auto handle_x = handle->GetHandleType() == TextSelectionHandleType::kLeft
                       ? text_box.GetLeft()
                       : text_box.GetRight();
-  auto offset =
-      FloatPoint(handle_x + scroll_offset_.x() + stroke_width,
-                 text_box.GetTop() + scroll_offset_.y() + stroke_width);
+  auto text_bounds = BoundsRelativeTo(nullptr);
+  auto display_rect = GetDisplayRect();
+  auto handle_container_origin = FloatPoint(display_rect.left() - stroke_width,
+                                            display_rect.top() - stroke_width);
+  auto offset = FloatPoint(
+      text_bounds.left() + handle_x - handle_container_origin.x(),
+      text_bounds.top() + text_box.GetTop() - handle_container_origin.y());
   handle->BuildSelectionHandle(text_box.rect.height(), offset);
 #endif
 }
@@ -1071,9 +1115,10 @@ void TextView::ShowSelectionHandle(bool show_start_handle,
   if (!selection_handle_container_) {
     selection_handle_container_ =
         new OverlayView(-1, "handle_container", page_view());
-    selection_handle_container_->SetOverflow(CSSProperty::OVERFLOW_XY);
+    selection_handle_container_->SetAttribute("ignore-focus", Value(true));
     page_view()->AddChild(selection_handle_container_);
     auto display_rect = GetDisplayRect();
+    selection_handle_container_->SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
     selection_handle_container_->SetBound(
         display_rect.left() - stroke_width, display_rect.top() - stroke_width,
         display_rect.width() + 2 * stroke_width,
@@ -1179,6 +1224,12 @@ void TextView::SetSelectionHandleSize(float selection_handle_size) {
 #endif
 }
 
+void TextView::SetSelectionBackgroundColor(Color selection_background_color) {
+#ifndef ENABLE_CLAY_LITE
+  GetRenderText()->SetSelectionBackgroundColor(selection_background_color);
+#endif
+}
+
 void TextView::SetSelectionHandleColor(Color selection_handle_color) {
 #ifndef ENABLE_CLAY_LITE
   selection_handle_color_ = selection_handle_color;
@@ -1215,13 +1266,9 @@ void TextView::HandleCopy() {
 #ifndef ENABLE_CLAY_LITE
   auto editing_text = GetRenderText()->GetSelectionString();
   page_view()->SetClipboardData(editing_text);
-  auto range = TextRange(selection_end_pos_, selection_end_pos_);
-  UpdateSelectionRange(range.start(), range.end());
-  GetRenderText()->SetSelection(range);
-  OnSelectionChanged(range.start(), range.end());
   page_view()->GetTaskRunner()->PostTask([weak = weak_factory_.GetWeakPtr()]() {
     if (weak) {
-      weak->HideSelectionPopup();
+      weak->ClearSelection();
     }
   });
 #endif
@@ -1233,11 +1280,12 @@ void TextView::HandleSelectAll() {
   auto range = GetRenderText()->GetSelection();
   UpdateSelectionRange(range.start(), range.end());
   OnSelectionChanged(range.start(), range.end());
-  page_view()->GetTaskRunner()->PostTask([weak = weak_factory_.GetWeakPtr()]() {
-    if (weak) {
-      weak->HideSelectionPopup();
-    }
-  });
+  ShowSelectionHandle();
+  if (selection_popup_) {
+    auto anchor = GetAnchorPosition();
+    selection_popup_->SetAnchorOffset(std::move(anchor));
+    selection_popup_->UpdatePosition();
+  }
 #endif
 }
 
