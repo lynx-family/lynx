@@ -17,6 +17,12 @@
 #include "core/shell/runtime/bts/bts_runtime.h"
 
 namespace lynx {
+namespace tasm {
+namespace performance {
+class PerformanceController;
+}  // namespace performance
+}  // namespace tasm
+
 namespace shell {
 
 struct ExternalResourceInfo {
@@ -81,10 +87,19 @@ class ExternalResourceLoader
     runtime_actor_ = runtime_actor;
   }
 
+  inline void SetPerfControllerActor(
+      const std::shared_ptr<
+          LynxActor<tasm::performance::PerformanceController>>&
+          perf_controller_actor) {
+    perf_controller_actor_ = perf_controller_actor;
+  }
+
  private:
   std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
   std::weak_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::weak_ptr<LynxActor<BTSRuntime>> runtime_actor_;
+  std::weak_ptr<LynxActor<tasm::performance::PerformanceController>>
+      perf_controller_actor_;
 };
 
 }  // namespace shell
