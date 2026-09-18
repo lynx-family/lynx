@@ -25,6 +25,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
+#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
@@ -1162,6 +1163,24 @@ void UIBase::SetTransformOrigin(const lepus::Value& value) {
 void UIBase::ApplyTransform() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_APPLY_TRANSFORM);
 
+  if (fragment_transform_) {
+    const float density = context_->ScaledDensity();
+    ArkUI_NumberValue values[16];
+    for (size_t i = 0; i < 16; ++i) {
+      // Convert M to S * M * inverse(S), including perspective terms.
+      const float row_scale = i % 4 == 3 ? 1.f : density;
+      const float column_scale = i / 4 == 3 ? 1.f : density;
+      values[i].f32 = (*fragment_transform_)[i] * row_scale / column_scale;
+    }
+    auto& manager = NodeManager::Instance();
+    // The display-list matrix already includes transform-origin.
+    manager.SetAttributeWithNumberValue(DrawNode(), NODE_TRANSFORM_CENTER, 0.f,
+                                        0.f, 0.f, 0.f, 0.f, 0.f);
+    ArkUI_AttributeItem item{.value = values, .size = 16};
+    manager.SetAttribute(DrawNode(), NODE_TRANSFORM, &item);
+    return;
+  }
+
   if (offset_basic_shape_) {
     UpdateOffsetPathCacheIfNeeded();
   }
@@ -1436,6 +1455,41 @@ void UIBase::SetFragmentLayerClipBounds(bool need_clip) {
                                                       need_clip ? 1 : 0);
 }
 
+void UIBase::UpdateFragmentLayerSubtreeProperties(
+    const DisplayList& display_list) {
+  if (!draw_node_ && NeedDrawNode()) {
+    InitDrawNode();
+  }
+  auto& manager = NodeManager::Instance();
+  for (size_t i = 0; i < display_list.GetSubtreePropertiesSize(); ++i) {
+    const auto& property = display_list.GetSubtreePropertiesData()[i];
+    switch (property.type) {
+      case DisplayListSubtreePropertyOpType::kOpacity:
+        SetOpacity(lepus::Value(property.data.opacity));
+        manager.SetAttributeWithNumberValue(
+            DrawNode(), NODE_RENDER_GROUP,
+            (base::FloatsNotEqual(opacity_, 1.0) && HasOverlappingRendering())
+                ? 1
+                : 0);
+        break;
+      case DisplayListSubtreePropertyOpType::kTransform:
+        if (!fragment_transform_) {
+          fragment_transform_ = std::make_unique<std::array<float, 16>>();
+        }
+        std::copy_n(property.data.transform, 16, fragment_transform_->begin());
+        ApplyTransform();
+        break;
+      case DisplayListSubtreePropertyOpType::kFilter: {
+        auto filter = lepus::CArray::Create();
+        filter->emplace_back(property.data.filter.type);
+        filter->emplace_back(property.data.filter.amount);
+        SetFilter(lepus::Value(std::move(filter)));
+        break;
+      }
+    }
+  }
+}
+
 void UIBase::UpdateFragmentLayerOffset(float left, float top) {
   if (left_ == left && top_ == top) {
     return;
@@ -1573,11 +1627,12 @@ void UIBase::SetBoxShadow(const lepus::Value& value) {
 }
 
 void UIBase::SetFilter(const lepus::Value& value) {
+  const auto filter_node = renderer_ ? DrawNode() : node_;
   if (value.IsNil()) {
-    NodeManager::Instance().ResetAttribute(node_, NODE_GRAY_SCALE);
-    NodeManager::Instance().ResetAttribute(node_, NODE_BLUR);
-    NodeManager::Instance().ResetAttribute(node_, NODE_BRIGHTNESS);
-    NodeManager::Instance().ResetAttribute(node_, NODE_CONTRAST);
+    NodeManager::Instance().ResetAttribute(filter_node, NODE_GRAY_SCALE);
+    NodeManager::Instance().ResetAttribute(filter_node, NODE_BLUR);
+    NodeManager::Instance().ResetAttribute(filter_node, NODE_BRIGHTNESS);
+    NodeManager::Instance().ResetAttribute(filter_node, NODE_CONTRAST);
     return;
   }
   const auto& val_array = value.Array();
@@ -1586,38 +1641,38 @@ void UIBase::SetFilter(const lepus::Value& value) {
   double amount = 0;
   switch (type) {
     case starlight::FilterType::kNone:
-      NodeManager::Instance().ResetAttribute(node_, NODE_GRAY_SCALE);
-      NodeManager::Instance().ResetAttribute(node_, NODE_BLUR);
+      NodeManager::Instance().ResetAttribute(filter_node, NODE_GRAY_SCALE);
+      NodeManager::Instance().ResetAttribute(filter_node, NODE_BLUR);
       break;
     case starlight::FilterType::kGrayscale:
       amount = val_array->get(1).Number();
-      NodeManager::Instance().ResetAttribute(node_, NODE_BLUR);
+      NodeManager::Instance().ResetAttribute(filter_node, NODE_BLUR);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          node_, NODE_GRAY_SCALE, amount);
+          filter_node, NODE_GRAY_SCALE, amount);
       break;
     case starlight::FilterType::kBlur:
       amount = val_array->get(1).Number();
-      NodeManager::Instance().ResetAttribute(node_, NODE_GRAY_SCALE);
+      NodeManager::Instance().ResetAttribute(filter_node, NODE_GRAY_SCALE);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          node_, NODE_BLUR, amount * context_->ScaledDensity());
+          filter_node, NODE_BLUR, amount * context_->ScaledDensity());
       break;
     case starlight::FilterType::kBrightness:
       amount = val_array->get(1).Number();
       amount = std::clamp(amount, 0.0, 3.0);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          node_, NODE_BRIGHTNESS, amount);
+          filter_node, NODE_BRIGHTNESS, amount);
       break;
     case starlight::FilterType::kContrast:
       amount = val_array->get(1).Number();
       amount = std::clamp(amount, 0.0, 3.0);
-      NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_CONTRAST,
-                                                          amount);
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          filter_node, NODE_CONTRAST, amount);
       break;
     case starlight::FilterType::kSaturate:
       amount = val_array->get(1).Number();
       amount = (amount < 0.0) ? 1.0 : ((amount > 3.0) ? 3.0 : amount);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          node_, NODE_SATURATION, amount);
+          filter_node, NODE_SATURATION, amount);
       break;
     default:
       break;

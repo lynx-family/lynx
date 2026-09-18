@@ -171,7 +171,11 @@ void PlatformRendererHarmony::OnRemoveFromParent(bool should_update_ui_owner) {
 }
 
 void PlatformRendererHarmony::OnUpdateSubtreeProperties(
-    const DisplayList& subtree_properties) {}
+    const DisplayList& subtree_properties) {
+  if (auto host = host_.lock()) {
+    host->UpdateFragmentLayerSubtreeProperties(subtree_properties);
+  }
+}
 
 bool PlatformRendererHarmony::ShouldCreatePlatformExtendedRenderer(
     const PlatformRendererInitConfig& init_config) const {

@@ -124,6 +124,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void DetachFragmentLayerRenderer();
   void UpdateFragmentLayerDisplayList(const DisplayList* display_list);
   void SetFragmentLayerClipBounds(bool need_clip);
+  void UpdateFragmentLayerSubtreeProperties(const DisplayList& display_list);
   void OnAttachedToFragmentLayerTree();
   void UpdateFragmentLayerOffset(float left, float top);
   virtual void UpdateProps(PropBundleHarmony* props);
@@ -555,6 +556,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   static std::unordered_map<std::string, UIMethod> ui_method_map_;
   std::unique_ptr<BorderRadius> border_radius_;
   std::unique_ptr<Transform> transform_;
+  std::unique_ptr<std::array<float, 16>> fragment_transform_;
 
   std::string tag_;
   uint32_t dirty_flags_{0};
