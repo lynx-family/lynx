@@ -16,6 +16,7 @@ BaseImageInstance::BaseImageInstance(std::shared_ptr<BaseImage> image)
 BaseImageInstance::BaseImageInstance(const BaseImageInstance& other)
     : image_(other.image_),
       animation_frame_callback_(other.animation_frame_callback_),
+      animation_completed_callback_(other.animation_completed_callback_),
       visible_callback_(other.visible_callback_) {
   if (image_) {
     image_->OnInstanceCreated(this);
@@ -49,6 +50,11 @@ void BaseImageInstance::SetAnimationFrameCallback(std::function<void()> func) {
   animation_frame_callback_ = std::move(func);
 }
 
+void BaseImageInstance::SetAnimationCompletedCallback(
+    std::function<void()> func) {
+  animation_completed_callback_ = std::move(func);
+}
+
 void BaseImageInstance::SetVisibleCallback(std::function<bool()> func) {
   visible_callback_ = std::move(func);
 }
@@ -56,6 +62,12 @@ void BaseImageInstance::SetVisibleCallback(std::function<bool()> func) {
 void BaseImageInstance::OnNotifyAnimationFrame() {
   if (animation_frame_callback_) {
     animation_frame_callback_();
+  }
+}
+
+void BaseImageInstance::OnNotifyAnimationCompleted() {
+  if (animation_completed_callback_) {
+    animation_completed_callback_();
   }
 }
 
