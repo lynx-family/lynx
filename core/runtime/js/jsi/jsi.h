@@ -307,6 +307,10 @@ class LYNX_EXPORT Runtime {
   LYNX_EXPORT_FOR_DEVTOOL void setGroupId(const std::string& group_id) {
     external_params_.group_id = group_id;
   }
+  // Whether corejs runs on the group global context instead of this context.
+  bool getEnableNewShareGroup() const {
+    return external_params_.enable_new_share_group;
+  }
   // will override in quickjsruntime, this version just works as a sentinel
   virtual bool setPropertyValueGC(Object& object, const char* name,
                                   const Value& value) {

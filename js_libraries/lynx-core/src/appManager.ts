@@ -7,7 +7,7 @@
 import { BaseApp, loadCardParams, NativeApp } from './app';
 import { Lynx, NativeLynxProxy } from './lynx';
 import { alog } from './common/log';
-import nativeGlobal from './common/nativeGlobal';
+import nativeGlobal, { seedPageGlobal } from './common/nativeGlobal';
 import { APP_SERVICE_NAME, DEFAULT_ENTRY, LynxFeature } from './common';
 import { ReactApp } from './react/reactApp';
 import { InternalRuntimeError, reportError } from './modules/report';
@@ -23,6 +23,7 @@ export function loadCard(
   alog(`load card native app id: ${id}`);
   let loadSuccess: boolean = true;
   let tt: ReactApp | StandaloneApp;
+  seedPageGlobal(params);
   try {
     if (cardType == 'standalone') {
       tt = new StandaloneApp({ nativeApp, params, lynx }, params);
@@ -71,6 +72,10 @@ export function destroyCard(id: string): void {
   alog(`destroy ${id}`);
   const appInstance = nativeGlobal.multiApps[id];
   appInstance.destroy();
+  // The shared-data subject is group-wide and outlives this page. Any observer
+  // this page left behind is a function object of the page's own realm, which
+  // would keep that realm alive, so drop them all here.
+  nativeGlobal.shareDataSubject.removeObserversOfOwner(id);
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete nativeGlobal.multiApps[id];
 }
@@ -86,8 +91,10 @@ export function loadDynamicComponent<T>(tt: BaseApp, componentUrl: string): T {
     return tt.getDynamicComponentExports(componentUrl);
   }
 
-  const preEntry = nativeGlobal.globDynamicComponentEntry;
-  nativeGlobal.globDynamicComponentEntry = componentUrl;
+  // Scoped to the page being loaded, so it lives on that page's realm.
+  const pageGlobal = tt.pageGlobal;
+  const preEntry = pageGlobal.globDynamicComponentEntry;
+  pageGlobal.globDynamicComponentEntry = componentUrl;
 
   try {
     delete tt.lynx.requireModule.cache[APP_SERVICE_NAME];
@@ -101,7 +108,7 @@ export function loadDynamicComponent<T>(tt: BaseApp, componentUrl: string): T {
   } finally {
     // Here reset globDynamicComponentEntry to avoid affect other LynxView in the same LynxGroup
     // detail see: #8720
-    nativeGlobal.globDynamicComponentEntry = preEntry;
+    pageGlobal.globDynamicComponentEntry = preEntry;
   }
 }
 

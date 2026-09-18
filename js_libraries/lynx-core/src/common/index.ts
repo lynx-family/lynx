@@ -4,6 +4,7 @@
 
 import nativeGlobal from './nativeGlobal';
 export default nativeGlobal;
+export { seedPageGlobal } from './nativeGlobal';
 
 export * from './constants';
 export * from './amd';

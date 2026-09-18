@@ -26,3 +26,31 @@ _global.getNapiLoader = (): LynxNapiLoader | undefined => {
 
 export const { loadScript } = _global;
 export default _global;
+
+// globalThis of the realm a page's JS runs in. Same object as the default
+// export on the legacy path; a separate realm once corejs runs on the group
+// global context, where page-installed values are unreachable via nativeGlobal.
+export type PageGlobal = typeof _global;
+
+// Page realm injected by native as `currentGlobalThis`; absent on legacy path.
+export function resolvePageGlobal(params?: {
+  currentGlobalThis?: Record<string, any>;
+}): PageGlobal {
+  return (params?.currentGlobalThis as PageGlobal) ?? _global;
+}
+
+// Seed a page realm with the globals page bundles read off their own realm:
+// `globComponentRegistPath` is bare-assigned under 'use strict' (throws without
+// the slot), `globDynamicComponentEntry` needs its default, and bundles build
+// their Promise via `getPromise`, a stateless factory safe to share.
+export function seedPageGlobal(params?: {
+  currentGlobalThis?: Record<string, any>;
+}): void {
+  const pageGlobal = params?.currentGlobalThis;
+  if (!pageGlobal || pageGlobal === _global) {
+    return;
+  }
+  pageGlobal.globComponentRegistPath = '';
+  pageGlobal.globDynamicComponentEntry = DEFAULT_ENTRY;
+  pageGlobal.getPromise = _global.getPromise;
+}
