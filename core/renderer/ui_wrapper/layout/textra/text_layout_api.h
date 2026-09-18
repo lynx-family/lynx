@@ -121,6 +121,10 @@ class ParagraphBuilder {
   virtual void PopEventTarget() = 0;
   virtual void SetTextStyle(TextPropertyKeyID key, void *value,
                             size_t length) = 0;
+  // Keeps the text style being built as the default style of the paragraph.
+  // It is used to lay out a paragraph that has no content, for example to give
+  // an empty paragraph the height of one line.
+  virtual void SetParagraphDefaultStyle() {}
   virtual void AddText(const char *text, size_t length) = 0;
   virtual void AddInlineView(std::unique_ptr<InlineView> inline_view) = 0;
   virtual void AddImage(const char *src, size_t length) = 0;
