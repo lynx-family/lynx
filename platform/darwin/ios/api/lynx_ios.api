@@ -1742,10 +1742,6 @@ public class LynxEventReporter : NSObject {
   public void LynxEventReporter::delayRunOnReportThread:delayMs:(void(^ task)(void),[delayMs] int64_t delayMS);
 }
 
-public class LynxEventReporterUtils : NSObject {
-  public NSString * LynxEventReporterUtils::relativePathForURL:(NSString *urlStr);
-}
-
 public protocol LynxEventReportObserverProtocol-p : <NSObject> {
   public void LynxEventReportObserverProtocol-p::onReportEvent:instanceId:props:extraData:(NSString *eventName,[instanceId] NSInteger instanceId,[props] NSDictionary *_Nullable props,[extraData] NSDictionary *_Nullable extraData);
 }
@@ -6094,11 +6090,6 @@ public enum DevToolLogLevel {
 }
 
 
-  public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXTERN NSString* const kPropURL kPropURL;
-  public FOUNDATION_EXTERN NSString* const kPropRelativePath kPropRelativePath;
-  public FOUNDATION_EXTERN NSString* const kPropThreadMode kPropThreadMode;
-  public FOUNDATION_EXPORT NSString* const kPropEnableSSR kPropEnableSSR;
-
 public enum LynxFeature {
   LynxFeatureObjcImplicitAnimation
   LynxFeatureObjcPageRtl
@@ -6620,6 +6611,10 @@ public enum LynxPanInterceptScope {
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT int32_t const kUnknownInstanceId kUnknownInstanceId;
   public FOUNDATION_EXPORT NSString* const kLynxSDKErrorEvent kLynxSDKErrorEvent;
+  public FOUNDATION_EXPORT NSString* const kPropURL kPropURL;
+  public FOUNDATION_EXPORT NSString* const kPropRelativePath kPropRelativePath;
+  public FOUNDATION_EXPORT NSString* const kPropThreadMode kPropThreadMode;
+  public FOUNDATION_EXPORT NSString* const kPropEnableSSR kPropEnableSSR;
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxBytecodeResponseBlock) (NSString *_Nullable errorMsg, NSDictionary< NSString *, NSData * > *_Nullable buffers) LynxBytecodeResponseBlock;
 

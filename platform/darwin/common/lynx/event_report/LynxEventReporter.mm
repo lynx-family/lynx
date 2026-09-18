@@ -18,6 +18,17 @@ int32_t const kUnknownInstanceId = -1;
 static NSString *const kPropLynxSDKVersion = @"lynx_sdk_version";
 NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
 
+// GeneralInfo props name:
+// The last loaded URL in this lynxView, will be updated when lynxView render new template.
+NSString *const kPropURL = @"url";
+// the relative_path would be equivalent to the url to remove applicationExternalCacheDir,
+// applicationFilesDir and LocalDir.
+NSString *const kPropRelativePath = @"relative_path";
+// The last thread strategy this lynxView is using, will be updated when the lynxView is init.
+NSString *const kPropThreadMode = @"thread_mode";
+// Enable SSR.
+NSString *const kPropEnableSSR = @"enable_ssr";
+
 @interface LynxEventReporter ()
 
 /**

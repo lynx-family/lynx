@@ -15,7 +15,6 @@
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventReporter.h>
-#import <Lynx/LynxEventReporterUtils.h>
 #import <Lynx/LynxExposureModule.h>
 #import <Lynx/LynxFSPTracer.h>
 #import <Lynx/LynxFetchModule.h>

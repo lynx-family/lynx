@@ -76,8 +76,6 @@ common_lynx_shared_sources = [
   "event/LynxEvent.m",
   "event/LynxTouchEvent.m",
   "event_report/LynxEventReporter.mm",
-  "event_report/LynxEventReporterUtils.h",
-  "event_report/LynxEventReporterUtils.m",
   "feature_count/LynxFeature.h",
   "feature_count/LynxFeatureCounter.h",
   "feature_count/LynxFeatureCounter.mm",
