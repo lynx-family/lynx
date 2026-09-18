@@ -71,6 +71,7 @@ export enum LynxTrailKey {
   DISABLE_LIST_CALLBACK_IF_DETACHED = 'disable_list_callback_if_detached',
   ENABLE_USE_CONTEXT_POOL = 'enable_use_context_pool',
   ENABLE_LIST_NEW_ARCHITECTURE = 'enable_list_new_architecture',
+  FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD = 'fix_reset_native_update_data_order_for_load',
   FIX_LIST_WITH_SYNC_FLUSH = 'fix_list_with_sync_flush',
   ENABLE_TEXT_LAYOUT_SHAPER = 'lynx_canvas_enable_textlayout_shaper',
   ENABLE_SKITY_COVERAGE_AA = 'lynx_canvas_enable_skity_coverage_aa',

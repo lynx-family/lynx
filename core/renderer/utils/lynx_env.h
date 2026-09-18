@@ -170,6 +170,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_PROMISE_MEMORY_FIX,
     ENABLE_CANVAS_ENGINE_MEMORY_FIX,
     ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
+    FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -340,6 +341,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_FILTER_DYNAMIC_UPDATE_BUG,
              "fix_filter_dynamic_update_bug"},
             {Key::FIX_LIST_WITH_SYNC_FLUSH, "fix_list_with_sync_flush"},
+            {Key::FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD,
+             "fix_reset_native_update_data_order_for_load"},
             {Key::ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
              "enable_animation_forward_update_preservation"},
             {Key::ENABLE_NEW_STYLING_PIPELINE, "enable_new_styling_pipeline"},
@@ -538,6 +541,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFetchAPIStreamingStandard();
   bool FixNewFixedRemovalBug();
   bool FixListWithSyncFlush();
+  bool FixResetNativeUpdateDataOrderForLoad();
   bool FixOldFixedInsertSelfUseRenderParent();
   bool FixFiberReinsertDetachFromOldRenderParent();
   bool FixHarmonyFiberDestroyTargetOnly();
