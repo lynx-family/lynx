@@ -14,6 +14,8 @@ import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.Runnable;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class LynxEngineProxy {
   private static final String TAG = "LynxEngineProxy";
@@ -76,9 +78,23 @@ public final class LynxEngineProxy {
         LynxTouchEvent.Point clientPoint = event.getClientPoint();
         LynxTouchEvent.Point pagePoint = event.getPagePoint();
         LynxTouchEvent.Point viewPoint = event.getViewPoint();
+        HashMap<Integer, LynxTouchEvent.Point> pointMap = event.getCurrentTargetPointMap();
+        int[] elementIds = null;
+        float[] currentTargetPoints = null;
+        if (pointMap != null && !pointMap.isEmpty()) {
+          elementIds = new int[pointMap.size()];
+          currentTargetPoints = new float[pointMap.size() * 2];
+          int index = 0;
+          for (Map.Entry<Integer, LynxTouchEvent.Point> entry : pointMap.entrySet()) {
+            elementIds[index] = entry.getKey();
+            currentTargetPoints[index * 2] = entry.getValue().getX();
+            currentTargetPoints[index * 2 + 1] = entry.getValue().getY();
+            index++;
+          }
+        }
         nativeSendTouchEvent(mNativePtr, event.getName(), event.getTag(), clientPoint.getX(),
             clientPoint.getY(), pagePoint.getX(), pagePoint.getY(), viewPoint.getX(),
-            viewPoint.getY(), event.getTimestamp());
+            viewPoint.getY(), event.getTimestamp(), elementIds, currentTargetPoints);
       }
     });
   }
@@ -278,7 +294,8 @@ public final class LynxEngineProxy {
   private native void nativeReportExternalMemory(long nativePtr, long totalSize, long garbageSize);
 
   private native void nativeSendTouchEvent(long nativePtr, String name, int tag, float clientX,
-      float clientY, float pageX, float pageY, float viewX, float viewY, long timestamp);
+      float clientY, float pageX, float pageY, float viewX, float viewY, long timestamp,
+      int[] currentTargetElementIds, float[] currentTargetPoints);
 
   private native void nativeSendMultiTouchEvent(
       long nativePtr, String name, ByteBuffer params, int length, long timestamp);

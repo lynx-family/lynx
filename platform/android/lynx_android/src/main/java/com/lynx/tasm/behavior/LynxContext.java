@@ -447,6 +447,10 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  boolean getEnableCurrentTargetTouchPosition() {
+    return mPageConfig != null && mPageConfig.getEnableCurrentTargetTouchPosition();
+  }
+
   /**
    * @brief switch for enable VsyncAlignedFlush
    */
