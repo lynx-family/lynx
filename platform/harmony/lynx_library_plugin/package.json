@@ -1,5 +1,5 @@
 {
-  "name": "@lynx/lynx-library-plugin",
+  "name": "@lynx-js/lynx-library-plugin",
   "version": "0.1.0",
   "description": "HarmonyOS Hvigor plugin for Lynx library Autolink",
   "license": "Apache-2.0",
