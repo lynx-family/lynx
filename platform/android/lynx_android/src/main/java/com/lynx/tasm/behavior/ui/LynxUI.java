@@ -797,27 +797,38 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
           }
         }
       }
+      if (bitmap == null) {
+        callback.invoke(LynxUIMethodConstants.UNKNOWN, new JavaOnlyMap());
+        return;
+      }
       LynxThreadPool.getBriefIOExecutor().execute(new Runnable() {
         @Override
         public void run() {
-          final Bitmap scaledBitmap;
-          if (scale != 1.f) {
-            Matrix m = new Matrix();
-            m.setScale(scale, scale);
-            scaledBitmap =
-                Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
-            bitmap.recycle();
-          } else {
-            scaledBitmap = bitmap;
+          Bitmap scaledBitmap = bitmap;
+          try {
+            if (scale != 1.f) {
+              Matrix m = new Matrix();
+              m.setScale(scale, scale);
+              scaledBitmap =
+                  Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
+            }
+            String data =
+                BitmapUtils.bitmapToBase64(scaledBitmap, compressFormat, 100, Base64.NO_WRAP);
+            JavaOnlyMap result = new JavaOnlyMap();
+            result.putInt("width", scaledBitmap.getWidth());
+            result.putInt("height", scaledBitmap.getHeight());
+            result.putString("data", header + data);
+            callback.invoke(LynxUIMethodConstants.SUCCESS, result);
+          } catch (Throwable e) {
+            callback.invoke(LynxUIMethodConstants.UNKNOWN, new JavaOnlyMap());
+          } finally {
+            if (scaledBitmap != bitmap && !bitmap.isRecycled()) {
+              bitmap.recycle();
+            }
+            if (!scaledBitmap.isRecycled()) {
+              scaledBitmap.recycle();
+            }
           }
-          String data =
-              BitmapUtils.bitmapToBase64(scaledBitmap, compressFormat, 100, Base64.NO_WRAP);
-          JavaOnlyMap result = new JavaOnlyMap();
-          result.putInt("width", scaledBitmap.getWidth());
-          result.putInt("height", scaledBitmap.getHeight());
-          result.putString("data", header + data);
-          callback.invoke(LynxUIMethodConstants.SUCCESS, result);
-          scaledBitmap.recycle();
         }
       });
     } catch (Throwable e) {
