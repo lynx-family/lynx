@@ -52,7 +52,7 @@ The operation type selects the matching payload:
 | `kDrawView` | view id and final local offset |
 | `kText` | text id and box index |
 | `kImage` | image id and box index |
-| `kBackgroundImage` | image, tiling/clip indices, and repeat modes |
+| `kBackgroundImage` | image, tiling/clip indices, repeat modes, and optional auto-size/position metadata |
 | `kBorder` | box indices, four colors, and four styles |
 | `kClipRect` | rectangle and optional eight radii |
 | `kRecordBox` | rectangle and optional eight radii |
@@ -60,6 +60,32 @@ The operation type selects the matching payload:
 | `kBoxShadow` | box indices, color, blur radius, and clip mode |
 
 Unknown operation types can be skipped by advancing one fixed-size item.
+
+Background color is recorded before background images, using the bottommost
+CSS image layer's clip. Image layers are recorded from last to first, so the
+first CSS background is painted on top, as required by
+[CSS Backgrounds §2.1](https://www.w3.org/TR/css-backgrounds-3/#layering).
+Property lists (size, position, origin, clip, repeat) and image resources remain
+indexed by the original CSS layer index, not by painting order.
+
+Background images retain a fully resolved fallback tiling box. Builder callers
+provide `auto_width` and `auto_height` booleans; `DisplayListBuilder` owns their
+encoding into the display-list bit mask. The appended `auto_size` mask (bit 0: width, bit 1: height) identifies axes whose intrinsic
+size is only available after image loading. `position_x` and `position_y` store
+percentage-position coefficients (percentage / 100), or zero for absolute
+positions. These fields default to zero, fit within the existing 56-byte item,
+and do not move any existing fields. Readers without intrinsic-size support
+continue using the fallback box; gradients do not use this metadata.
+
+Android resolves auto/auto to the loaded image's dimensions scaled by density,
+and a single auto axis from the other dimension and intrinsic aspect ratio.
+After resolution, it shifts each coordinate by
+`(fallback_size - resolved_size) * position_coefficient` before clipping and
+repeating tiles. This preserves percentage positioning even when the bitmap
+is larger than the origin box. The recorded box is never mutated: image
+completion can invalidate the renderer and redraw the same display list.
+An unresolved image still binds its renderer host before drawing is deferred,
+so asynchronous load completion can schedule that redraw.
 
 ### 2.2 DisplayList storage
 

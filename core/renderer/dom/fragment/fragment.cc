@@ -682,8 +682,11 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
     return define_clip_index(image_clip_type);
   };
 
-  for (size_t i = 0; i + 1 < array->size(); i += 2) {
-    size_t i_image = i / 2;
+  // The first CSS background is the topmost layer. Paint back to front,
+  // retaining the original layer index for properties and image resources.
+  for (size_t remaining = array->size() / 2; remaining > 0; --remaining) {
+    const size_t i_image = remaining - 1;
+    const size_t i = i_image * 2;
     starlight::BackgroundOriginType origin_type =
         starlight::BackgroundOriginType::kPaddingBox;
 
@@ -762,9 +765,36 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
         if (!image) {
           break;
         }
+        // URL images acquire their intrinsic size asynchronously on the
+        // platform. Keep the fallback box and defer auto axes and the
+        // corresponding percentage-position adjustment to the image consumer.
+        bool auto_width = true;
+        bool auto_height = true;
+        if (!image_data->size.empty()) {
+          const size_t size_index = (i_image * 2) % image_data->size.size();
+          const auto& width = image_data->size[size_index];
+          const auto& height =
+              image_data->size[(size_index + 1) % image_data->size.size()];
+          auto_width =
+              !width.IsPercent() && width.GetRawValue() == BACKGROUND_SIZE_AUTO;
+          auto_height = !height.IsPercent() &&
+                        height.GetRawValue() == BACKGROUND_SIZE_AUTO;
+        }
+        float position_x = 0.f;
+        float position_y = 0.f;
+        if (!image_data->position.empty()) {
+          const size_t pos_index = (i_image * 2) % image_data->position.size();
+          const auto& pos_x = image_data->position[pos_index];
+          const auto& pos_y =
+              image_data
+                  ->position[(pos_index + 1) % image_data->position.size()];
+          position_x = pos_x.IsPercent() ? pos_x.GetRawValue() / 100.f : 0.f;
+          position_y = pos_y.IsPercent() ? pos_y.GetRawValue() / 100.f : 0.f;
+        }
         display_list_builder.BackgroundImage(
             image, tiling_index, define_image_clip_index(i_image),
-            static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y));
+            static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y),
+            auto_width, auto_height, position_x, position_y);
         break;
       }
       case starlight::BackgroundImageType::kLinearGradient: {

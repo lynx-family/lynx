@@ -74,8 +74,14 @@ final class NativeDisplayListBuilder implements AutoCloseable {
 
   NativeDisplayListBuilder backgroundImage(
       int imageId, int tilingIndex, int clipIndex, int repeatX, int repeatY) {
+    return backgroundImage(imageId, tilingIndex, clipIndex, repeatX, repeatY, false, false, 0f, 0f);
+  }
+
+  NativeDisplayListBuilder backgroundImage(int imageId, int tilingIndex, int clipIndex, int repeatX,
+      int repeatY, boolean autoWidth, boolean autoHeight, float positionX, float positionY) {
     ensureMutable();
-    nativeBackgroundImage(mNativePtr, imageId, tilingIndex, clipIndex, repeatX, repeatY);
+    nativeBackgroundImage(mNativePtr, imageId, tilingIndex, clipIndex, repeatX, repeatY, autoWidth,
+        autoHeight, positionX, positionY);
     return this;
   }
 
@@ -182,8 +188,9 @@ final class NativeDisplayListBuilder implements AutoCloseable {
       long nativePtr, int viewId, float offsetX, float offsetY);
   private static native void nativeText(long nativePtr, int textId, int boxIndex);
   private static native void nativeImage(long nativePtr, int imageId, int boxIndex);
-  private static native void nativeBackgroundImage(
-      long nativePtr, int imageId, int tilingIndex, int clipIndex, int repeatX, int repeatY);
+  private static native void nativeBackgroundImage(long nativePtr, int imageId, int tilingIndex,
+      int clipIndex, int repeatX, int repeatY, boolean autoWidth, boolean autoHeight,
+      float positionX, float positionY);
   private static native void nativeBorder(
       long nativePtr, int outIndex, int innerIndex, int[] colors, int[] styles);
   private static native void nativeClipRect(

@@ -2856,6 +2856,232 @@ TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
             native_context->created_images_[0].image_key);
 }
 
+TEST_F(FragmentDrawTest, BackgroundUrlPreservesAutoSizeAndPosition) {
+  const float auto_size =
+      -static_cast<float>(starlight::BackgroundSizeType::kAuto);
+  struct TestCase {
+    const char* name;
+    bool omit_size;
+    float width;
+    float height;
+    int32_t auto_axes;
+    float fallback_width;
+    float fallback_height;
+  };
+  const TestCase cases[] = {
+      {"initial", true, 0.f, 0.f, 3, 100.f, 80.f},
+      {"auto auto", false, auto_size, auto_size, 3, 100.f, 80.f},
+      {"auto length", false, auto_size, 20.f, 1, 100.f, 20.f},
+      {"length auto", false, 40.f, auto_size, 2, 40.f, 80.f},
+      {"length length", false, 40.f, 20.f, 0, 40.f, 20.f},
+  };
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.name);
+    auto element = manager->CreateFiberView();
+    Fragment fragment(element.get());
+    starlight::LayoutResultForRendering layout;
+    layout.border_ = starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f});
+    layout.padding_ = starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f});
+    layout.size_ = FloatSize(100.f, 80.f);
+    fragment.UpdateLayout(layout);
+
+    auto* style = element->computed_css_style();
+    style->background_data_ = starlight::BackgroundData();
+    style->background_data_->image_data =
+        starlight::BackgroundData::BackgroundImageData();
+    auto& image_data = *style->background_data_->image_data;
+    image_data.image_count = 1;
+    if (!test.omit_size) {
+      image_data.size.push_back(
+          starlight::NLength::MakeUnitNLength(test.width));
+      image_data.size.push_back(
+          starlight::NLength::MakeUnitNLength(test.height));
+    }
+    image_data.position.push_back(
+        starlight::NLength::MakePercentageNLength(50.f));
+    image_data.position.push_back(
+        starlight::NLength::MakePercentageNLength(25.f));
+    auto image_array = lepus::CArray::Create();
+    image_array->emplace_back(
+        static_cast<int32_t>(starlight::BackgroundImageType::kUrl));
+    image_array->emplace_back("https://example.com/background.png");
+    image_data.image = lepus::Value(std::move(image_array));
+
+    DisplayListBuilder builder;
+    fragment.DrawBackground(builder);
+    auto items = CollectDisplayListItems(builder.Build());
+    ASSERT_EQ(items.size(), 4u);
+    const auto& tiling = items[2].payload.record_box;
+    EXPECT_FLOAT_EQ(tiling.w, test.fallback_width);
+    EXPECT_FLOAT_EQ(tiling.h, test.fallback_height);
+    EXPECT_FLOAT_EQ(tiling.x, (100.f - test.fallback_width) * 0.5f);
+    EXPECT_FLOAT_EQ(tiling.y, (80.f - test.fallback_height) * 0.25f);
+    const auto& image = items[3].payload.background_image;
+    EXPECT_EQ(image.auto_size, test.auto_axes);
+    EXPECT_FLOAT_EQ(image.position_x, 0.5f);
+    EXPECT_FLOAT_EQ(image.position_y, 0.25f);
+
+    // Absolute positions must not move when the intrinsic size becomes known.
+    image_data.position.clear();
+    image_data.position.push_back(starlight::NLength::MakeUnitNLength(10.f));
+    image_data.position.push_back(starlight::NLength::MakeUnitNLength(15.f));
+    DisplayListBuilder repaint_builder;
+    fragment.DrawBackground(repaint_builder);
+    auto repaint_items = CollectDisplayListItems(repaint_builder.Build());
+    const auto& repainted_image = repaint_items.back().payload.background_image;
+    EXPECT_EQ(repainted_image.auto_size, test.auto_axes);
+    EXPECT_FLOAT_EQ(repainted_image.position_x, 0.f);
+    EXPECT_FLOAT_EQ(repainted_image.position_y, 0.f);
+  }
+}
+
+TEST_F(FragmentDrawTest, BackgroundLayersPaintBackToFrontWithOriginalIndices) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({5.f, 5.f, 5.f, 5.f});
+  layout.padding_ = starlight::DirectionValue<float>({7.f, 7.f, 7.f, 7.f});
+  layout.size_ = FloatSize(100.f, 80.f);
+  fragment.UpdateLayout(layout);
+
+  constexpr char kImages[] =
+      "url(https://example.com/top.png), linear-gradient(#222, #222), "
+      "radial-gradient(red, blue), url(https://example.com/bottom.png)";
+  CSSParserConfigs configs;
+  CSSStringParser parser(kImages, sizeof(kImages) - 1, configs);
+  auto value = parser.ParseBackgroundImage();
+  ASSERT_TRUE(value.IsArray());
+  auto* style = element->computed_css_style();
+  ASSERT_TRUE(
+      style->SetValue(CSSPropertyID::kPropertyIDBackgroundImage, value));
+  style->background_data_->color = 0xFF00FF00;
+  auto& data = *style->background_data_->image_data;
+  ASSERT_EQ(data.image_count, 4u);
+  // Short property lists repeat using CSS layer indices, not painting order.
+  data.origin = {starlight::BackgroundOriginType::kBorderBox,
+                 starlight::BackgroundOriginType::kPaddingBox};
+  data.clip = {starlight::BackgroundClipType::kBorderBox,
+               starlight::BackgroundClipType::kContentBox};
+  data.repeat = {starlight::BackgroundRepeatType::kRepeat,
+                 starlight::BackgroundRepeatType::kNoRepeat,
+                 starlight::BackgroundRepeatType::kNoRepeat,
+                 starlight::BackgroundRepeatType::kRepeat};
+  data.size = {starlight::NLength::MakeUnitNLength(40.f),
+               starlight::NLength::MakeUnitNLength(20.f),
+               starlight::NLength::MakeUnitNLength(60.f),
+               starlight::NLength::MakeUnitNLength(30.f)};
+  data.position = {starlight::NLength::MakeUnitNLength(10.f),
+                   starlight::NLength::MakeUnitNLength(15.f),
+                   starlight::NLength::MakePercentageNLength(25.f),
+                   starlight::NLength::MakePercentageNLength(50.f)};
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+  auto list = builder.Build();
+  std::vector<DisplayListItem> boxes;
+  std::vector<DisplayListItem> draws;
+  for (const auto& item : CollectDisplayListItems(list)) {
+    (item.type == DisplayListOpType::kRecordBox ? boxes : draws)
+        .push_back(item);
+  }
+  ASSERT_EQ(draws.size(), 5u);
+  ASSERT_EQ(draws[0].type, DisplayListOpType::kFill);
+  ASSERT_EQ(draws[1].type, DisplayListOpType::kBackgroundImage);
+  ASSERT_EQ(draws[2].type, DisplayListOpType::kRadialGradient);
+  ASSERT_EQ(draws[3].type, DisplayListOpType::kLinearGradient);
+  ASSERT_EQ(draws[4].type, DisplayListOpType::kBackgroundImage);
+  EXPECT_EQ(draws[0].payload.fill.color, 0xFF00FF00u);
+
+  const auto& bottom = draws[1].payload.background_image;
+  const auto& middle = draws[3].payload.linear_gradient;
+  const auto& top = draws[4].payload.background_image;
+  const auto& bottom_tile = boxes.at(bottom.tiling_index).payload.record_box;
+  EXPECT_FLOAT_EQ(bottom_tile.x, 12.5f);
+  EXPECT_FLOAT_EQ(bottom_tile.y, 25.f);
+  EXPECT_FLOAT_EQ(bottom_tile.w, 60.f);
+  EXPECT_FLOAT_EQ(bottom_tile.h, 30.f);
+  const auto& middle_tile = boxes.at(middle.tiling_index).payload.record_box;
+  EXPECT_FLOAT_EQ(middle_tile.x, bottom_tile.x);
+  EXPECT_FLOAT_EQ(middle_tile.y, bottom_tile.y);
+  EXPECT_FLOAT_EQ(middle_tile.w, bottom_tile.w);
+  EXPECT_FLOAT_EQ(middle_tile.h, bottom_tile.h);
+  const auto& top_tile = boxes.at(top.tiling_index).payload.record_box;
+  EXPECT_FLOAT_EQ(top_tile.x, 10.f);
+  EXPECT_FLOAT_EQ(top_tile.y, 15.f);
+  EXPECT_FLOAT_EQ(top_tile.w, 40.f);
+  EXPECT_FLOAT_EQ(top_tile.h, 20.f);
+  EXPECT_EQ(bottom.repeat_x,
+            static_cast<int32_t>(starlight::BackgroundRepeatType::kNoRepeat));
+  EXPECT_EQ(bottom.repeat_y,
+            static_cast<int32_t>(starlight::BackgroundRepeatType::kRepeat));
+  EXPECT_EQ(middle.repeat_x, bottom.repeat_x);
+  EXPECT_EQ(middle.repeat_y, bottom.repeat_y);
+  EXPECT_EQ(top.repeat_x, bottom.repeat_y);
+  EXPECT_EQ(top.repeat_y, bottom.repeat_x);
+  EXPECT_EQ(draws[0].payload.fill.clip_index, bottom.clip_index);
+  EXPECT_EQ(middle.clip_index, bottom.clip_index);
+  const auto& bottom_clip = boxes.at(bottom.clip_index).payload.record_box;
+  EXPECT_FLOAT_EQ(bottom_clip.x, 12.f);
+  EXPECT_FLOAT_EQ(bottom_clip.y, 12.f);
+  EXPECT_FLOAT_EQ(bottom_clip.w, 76.f);
+  EXPECT_FLOAT_EQ(bottom_clip.h, 56.f);
+  const auto& top_clip = boxes.at(top.clip_index).payload.record_box;
+  EXPECT_FLOAT_EQ(top_clip.x, 0.f);
+  EXPECT_FLOAT_EQ(top_clip.y, 0.f);
+  EXPECT_FLOAT_EQ(top_clip.w, 100.f);
+  EXPECT_FLOAT_EQ(top_clip.h, 80.f);
+  DisplayListReader reader(list);
+  ASSERT_NE(reader.Colors(draws[3]), nullptr);
+  EXPECT_EQ(reader.Colors(draws[3])[0], 0xFF222222u);
+
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  ASSERT_EQ(context->created_images_.size(), 2u);
+  EXPECT_EQ(context->created_images_[0].src.str(),
+            "https://example.com/bottom.png");
+  EXPECT_EQ(context->created_images_[1].src.str(),
+            "https://example.com/top.png");
+  EXPECT_EQ(bottom.image_id, context->created_images_[0].image_key);
+  EXPECT_EQ(top.image_id, context->created_images_[1].image_key);
+  ASSERT_EQ(fragment.background_image_resources_.size(), 4u);
+  EXPECT_EQ(fragment.background_image_resources_[0].image->image_key_,
+            top.image_id);
+  EXPECT_EQ(fragment.background_image_resources_[3].image->image_key_,
+            bottom.image_id);
+  EXPECT_EQ(fragment.background_image_resources_[2].image, nullptr);
+
+  DisplayListBuilder repaint;
+  fragment.DrawBackground(repaint);
+  EXPECT_EQ(context->created_images_.size(), 2u);
+  std::vector<int> repainted_images;
+  for (const auto& item : CollectDisplayListItems(repaint.Build())) {
+    if (item.type == DisplayListOpType::kBackgroundImage) {
+      repainted_images.push_back(item.payload.background_image.image_id);
+    }
+  }
+  EXPECT_EQ(repainted_images,
+            (std::vector<int>{bottom.image_id, top.image_id}));
+}
+
+TEST_F(FragmentTest, EmptyBackgroundImageListPaintsOnlyColor) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  auto* style = element->computed_css_style();
+  style->background_data_ = starlight::BackgroundData();
+  style->background_data_->image_data =
+      starlight::BackgroundData::BackgroundImageData();
+  style->background_data_->image_data->image =
+      lepus::Value(lepus::CArray::Create());
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+  auto items = CollectDisplayListItems(builder.Build());
+  ASSERT_EQ(items.size(), 2u);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kFill);
+  EXPECT_TRUE(fragment.background_image_resources_.empty());
+}
+
 TEST_F(FragmentTest, BackgroundColorUsesBottomImageLayerClip) {
   auto element = manager->CreateFiberView();
   Fragment fragment(element.get());

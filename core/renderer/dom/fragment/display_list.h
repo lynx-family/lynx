@@ -147,6 +147,13 @@ typedef struct DisplayListItem {
       int32_t clip_index;
       int32_t repeat_x;
       int32_t repeat_y;
+      // Optional intrinsic-size resolution: bit 0 = auto width, bit 1 = auto
+      // height. tiling_index retains the resolved fallback box for consumers
+      // that do not support intrinsic background sizing.
+      int32_t auto_size;
+      // Percentage position coefficients (percentage / 100), or 0 for lengths.
+      float position_x;
+      float position_y;
     } background_image;
     struct {
       int32_t out_index;
@@ -243,6 +250,12 @@ static_assert(offsetof(DisplayListItem, payload.background_image.repeat_x) ==
               16);
 static_assert(offsetof(DisplayListItem, payload.background_image.repeat_y) ==
               20);
+static_assert(offsetof(DisplayListItem, payload.background_image.auto_size) ==
+              24);
+static_assert(offsetof(DisplayListItem, payload.background_image.position_x) ==
+              28);
+static_assert(offsetof(DisplayListItem, payload.background_image.position_y) ==
+              32);
 static_assert(offsetof(DisplayListItem, payload.border.out_index) == 4);
 static_assert(offsetof(DisplayListItem, payload.border.inner_index) == 8);
 static_assert(offsetof(DisplayListItem, payload.border.colors) == 12);
@@ -381,7 +394,9 @@ class DisplayList {
 
   void AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
                           int32_t tiling_index, int32_t clip_index,
-                          int32_t repeat_x, int32_t repeat_y);
+                          int32_t repeat_x, int32_t repeat_y,
+                          int32_t auto_size = 0, float position_x = 0.f,
+                          float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
 
