@@ -279,8 +279,12 @@ void Animation::CreateEventAndSend(const base::String& event) {
                  is_transition_ ? BASE_STATIC_STRING(kTransitionAnimationName)
                                 : BASE_STATIC_STRING(kKeyframeAnimationName));
   dict->SetValue(kAnimationName, this->get_animation_data().name);
-  element_->element_manager()->SendAnimationEvent(
-      event.str(), element_->impl_id(), lepus::Value(std::move(dict)));
+  auto params = lepus::Value(std::move(dict));
+  element_->HandleAnimationEventTask([element = element_, type = event.str(),
+                                      tag = element_->impl_id(),
+                                      params = std::move(params)]() {
+    element->element_manager()->SendAnimationEvent(type, tag, params);
+  });
 }
 
 void Animation::SetKeyframeEffect(

@@ -3159,6 +3159,14 @@ void Element::HandleBeforeFlushActionsTask(
   }
 }
 
+void Element::HandleAnimationEventTask(base::MoveOnlyClosure<void> operation) {
+  if (ShouldProcessParallelTasks()) {
+    parallel_before_flush_action_tasks_->emplace_back(std::move(operation));
+  } else {
+    operation();
+  }
+}
+
 void Element::VerifyKeyframePropsChangedHandling() {
   if (has_keyframe_props_changed_) {
     // Throw exception on purpose in debug mode or UT to indicate that
