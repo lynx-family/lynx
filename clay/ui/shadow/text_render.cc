@@ -958,12 +958,34 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
                 end_glyph_index.position > 0 ? end_glyph_index.position - 1 : 0;
           }
         }
+        size_t target_visible_line_index = 0;
+        size_t last_visible_line_index = line_metrics.size() - 1;
+        if (measure_node_->text_style_->max_lines.has_value() &&
+            measure_node_->text_style_->max_lines.value() > 0) {
+          last_visible_line_index =
+              std::min(line_metrics.size(),
+                       static_cast<size_t>(
+                           measure_node_->text_style_->max_lines.value())) -
+              1;
+        }
+        if (truncation_node->ShouldPreserveEmptyTruncationLine() &&
+            last_visible_line_index > 0 &&
+            line_metrics[last_visible_line_index - 1].hard_break &&
+            line_metrics[last_visible_line_index].width <= kLayoutTolerance) {
+          // TODO: Normalize newline-inclusive line-end metrics across paragraph
+          // backends and use end_including_newline directly.
+          display_glyph_num = std::min(
+              std::max(line_metrics[last_visible_line_index - 1].end_index,
+                       line_metrics[last_visible_line_index - 1]
+                           .end_including_newline),
+              end_glyph_position_);
+          target_visible_line_index = last_visible_line_index;
+        }
         const size_t max_visible_glyph_num = display_glyph_num;
         const size_t original_end_glyph_position = end_glyph_position_;
         const std::optional<TextOverflow> overflow =
             measure_node_->text_style_->overflow;
-        size_t target_visible_line_index = 0;
-        if (max_visible_glyph_num > 0) {
+        if (target_visible_line_index == 0 && max_visible_glyph_num > 0) {
           const size_t target_glyph_index = max_visible_glyph_num - 1;
           for (size_t i = 0; i < line_metrics.size(); ++i) {
             if (target_glyph_index < line_metrics[i].end_index ||
