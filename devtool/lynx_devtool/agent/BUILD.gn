@@ -141,6 +141,7 @@ devtool_source_set("agent") {
   sources = devtool_agent_shared_sources + devtool_agent_ng_sources
   deps = [
     "../../../base/src:base_log_headers",
+    "../../base_devtool/native:base_devtool",
     "../input",
     "../native_module",
     "//third_party/modp_b64",

@@ -29,6 +29,8 @@
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/replay/replay_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
+#include "devtool/base_devtool/native/public/cdp_param_utils.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -2738,65 +2740,90 @@ void InspectorTasmExecutor::SetSupportsText(
 // Overlay protocol
 void InspectorTasmExecutor::RestoreOriginNodeInlineStyle() {
   if (origin_node_id_ == 0) return;
-  Element* origin_node = GetElementById(static_cast<int>(origin_node_id_));
-  CHECK_NULL_AND_LOG_RETURN(origin_node, "origin_node is null");
-  ElementHelper::SetInlineStyleSheet(origin_node, origin_inline_style_);
+  Element* origin_node = GetElementById(origin_node_id_);
+  if (origin_node != nullptr) {
+    ElementHelper::SetInlineStyleSheet(origin_node, origin_inline_style_);
+  } else {
+    LOGE("origin_node is null");
+  }
+  origin_node_id_ = 0;
+  origin_inline_style_ = InspectorStyleSheet();
 }
 
 void InspectorTasmExecutor::HighlightNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  if (!params.isNull()) {
-    auto node_id = static_cast<size_t>(params["nodeId"].asInt64());
-    auto highlight_config = params["highlightConfig"];
-    auto selector = params["selector"].asString();
-    auto* current_node = GetElementById(static_cast<int>(node_id));
-    if (current_node == nullptr || current_node->IsDetached() ||
-        !ElementInspector::HasDataModel(current_node) ||
-        ElementInspector::IsNeedEraseId(current_node)) {
-      Json::Value error = Json::Value(Json::ValueType::objectValue);
-      error["code"] = Json::Value(-32000);
-      error["message"] = Json::Value("Node is not an Element");
-      content["error"] = error;
-    } else {
-      if (node_id != origin_node_id_) {
-        RestoreOriginNodeInlineStyle();
-        origin_inline_style_ = ElementHelper::GetInlineStyleTexts(current_node);
-        origin_node_id_ = node_id;
-        auto json_content_color = highlight_config["contentColor"];
-        std::stringstream highlightStyle;
-        highlightStyle << "background-color:"
-                       << lynx::tasm::CSSDecoder::ToRgbaFromRgbaValue(
-                              json_content_color["r"].asString(),
-                              json_content_color["g"].asString(),
-                              json_content_color["b"].asString(),
-                              json_content_color["a"].asString())
-                       << ";";
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!ReadIntParam(params["nodeId"], node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid nodeId: expected integer");
+    return;
+  }
+  const Json::Value& highlight_config = params["highlightConfig"];
+  if (!highlight_config.isObject()) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid highlightConfig: expected object");
+    return;
+  }
 
-        std::string inline_style_str =
-            highlightStyle.str() + origin_inline_style_.css_text_;
-        ElementHelper::SetInlineStyleTexts(current_node, inline_style_str,
-                                           Range());
-      }
+  const bool has_content_color = highlight_config.isMember("contentColor");
+  int red = 0;
+  int green = 0;
+  int blue = 0;
+  double alpha = 1.0;
+  if (has_content_color) {
+    const Json::Value& content_color = highlight_config["contentColor"];
+    if (!content_color.isObject()) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "Invalid contentColor: expected object");
+      return;
+    }
+    if (!ReadIntParam(content_color["r"], red) || red < 0 || red > 255 ||
+        !ReadIntParam(content_color["g"], green) || green < 0 || green > 255 ||
+        !ReadIntParam(content_color["b"], blue) || blue < 0 || blue > 255) {
+      responder->SendError(
+          CDPErrorCode::InvalidParams,
+          "Invalid contentColor: expected r, g, and b integers in [0, 255]");
+      return;
+    }
+    if (content_color.isMember("a") &&
+        (!ReadFiniteNumberParam(content_color["a"], alpha) || alpha < 0.0 ||
+         alpha > 1.0)) {
+      responder->SendError(
+          CDPErrorCode::InvalidParams,
+          "Invalid contentColor.a: expected finite number in [0, 1]");
+      return;
     }
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+
+  auto* current_node = GetElementById(node_id);
+  if (current_node == nullptr || current_node->IsDetached() ||
+      !ElementInspector::HasDataModel(current_node) ||
+      ElementInspector::IsNeedEraseId(current_node)) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  RestoreOriginNodeInlineStyle();
+  if (has_content_color) {
+    origin_inline_style_ = ElementHelper::GetInlineStyleTexts(current_node);
+    origin_node_id_ = node_id;
+    std::stringstream highlightStyle;
+    highlightStyle << "background-color:"
+                   << lynx::tasm::CSSDecoder::ToRgbaFromRgbaValue(
+                          std::to_string(red), std::to_string(green),
+                          std::to_string(blue), std::to_string(alpha))
+                   << ";";
+
+    std::string inline_style_str =
+        highlightStyle.str() + origin_inline_style_.css_text_;
+    ElementHelper::SetInlineStyleTexts(current_node, inline_style_str, Range());
+  }
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::HideHighlight(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   RestoreOriginNodeInlineStyle();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 // Overlay protocol end
 
@@ -2884,9 +2911,8 @@ void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
 }
 
 void InspectorTasmExecutor::LayerTreeEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  sender->SendOKResponse(message["id"].asInt64());
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
   layer_tree_enabled_ = true;
 
   SendLayerPaintedEvent();
@@ -2894,9 +2920,8 @@ void InspectorTasmExecutor::LayerTreeEnable(
 }
 
 void InspectorTasmExecutor::LayerTreeDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  sender->SendOKResponse(message["id"].asInt64());
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
   layer_tree_enabled_ = false;
 }
 
@@ -2980,27 +3005,26 @@ void InspectorTasmExecutor::SendLayerPaintedEvent() {
 }
 
 void InspectorTasmExecutor::CompositingReasons(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int layer_id = 0;
+  if (!ReadIntStringParam(params["layerId"], layer_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid layerId: expected integer string");
+    return;
+  }
+
+  Json::Value result(Json::ValueType::objectValue);
   Json::Value compositingReasons(Json::ValueType::arrayValue);
   Json::Value compositingReasonsIds(Json::ValueType::arrayValue);
-  Json::Value params = message["params"];
-  int layerId = std::stoi(params["layerId"].asString());
-  auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
-  lynx::tasm::Element* element = GetElementById(layerId);
+  lynx::tasm::Element* element = GetElementById(layer_id);
 
   if (element) {
     compositingReasons.append(ElementInspector::LocalName(element));
     compositingReasonsIds.append(ElementInspector::NodeId(element));
   }
-  content["compositingReasons"] = compositingReasons;
-  content["compositingReasonsIds"] = compositingReasonsIds;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  devtool_mediator->SendCDPEvent(response);
+  result["compositingReasons"] = compositingReasons;
+  result["compositingReasonsIds"] = compositingReasonsIds;
+  responder->SendSuccess(std::move(result));
 }
 
 Json::Value InspectorTasmExecutor::GetLayerContentFromElement(

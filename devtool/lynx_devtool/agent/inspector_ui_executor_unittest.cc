@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -253,13 +254,11 @@ TEST_F(InspectorUIExecutorTest, InsertTextTest) {
       std::make_shared<testing::DevToolPlatformFacadeMock>();
   ui_executor_->SetDevToolPlatformFacade(facade);
 
-  Json::Value message;
-  message["id"] = 41;
   Json::Value params;
   params["text"] = "hello";
-  message["params"] = params;
 
-  ui_executor_->InsertText(message_sender_, message);
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 41);
+  ui_executor_->InsertText(responder, params);
 
   EXPECT_EQ(facade->inserted_text_, "hello");
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,

@@ -778,24 +778,22 @@ void LynxDevToolMediator::SetSupportsText(
 }
 
 void LynxDevToolMediator::HighlightNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->HighlightNode(sender, message);
-                    });
+    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
+                                        responder, params]() {
+      element_executor->HighlightNode(responder, params);
+    });
   }
 }
 
 void LynxDevToolMediator::HideHighlight(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->HideHighlight(sender, message);
-                    });
+    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
+                                        responder, params]() {
+      element_executor->HideHighlight(responder, params);
+    });
   }
 }
 
@@ -1238,26 +1236,23 @@ void LynxDevToolMediator::RemoveCDPEventListener(const std::string& name) {
 }
 
 void LynxDevToolMediator::EmulateTouchFromMouseEvent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->EmulateTouchFromMouseEvent(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->EmulateTouchFromMouseEvent(responder, params);
   });
 }
 
 void LynxDevToolMediator::InsertText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->InsertText(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->InsertText(responder, params);
   });
 }
 
 void LynxDevToolMediator::SynthesizeTapGesture(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->SynthesizeTapGesture(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->SynthesizeTapGesture(responder, params);
   });
 }
 
@@ -1416,18 +1411,16 @@ void LynxDevToolMediator::NetworkGetRequestPostData(
 }
 
 void LynxDevToolMediator::LayerTreeEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LayerTreeEnable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->LayerTreeEnable(responder, params);
   });
 }
 
 void LynxDevToolMediator::LayerTreeDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LayerTreeDisable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->LayerTreeDisable(responder, params);
   });
 }
 
@@ -1438,10 +1431,9 @@ void LynxDevToolMediator::SendLayerTreeDidChangeEvent() {
 }
 
 void LynxDevToolMediator::CompositingReasons(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->CompositingReasons(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->CompositingReasons(responder, params);
   });
 }
 
