@@ -67,7 +67,6 @@ public class LynxLog {
     if (sIsNativeLibLoad) {
       sALogMinLogLevel = level;
       nativeSetNativeMinLogLevel(level);
-      Log.w("lynx", "Reset minimum log level as " + level);
     }
   }
 
