@@ -5,6 +5,7 @@
 #include "clay/ui/gesture/gesture_manager.h"
 
 #include <cmath>
+#include <iterator>
 #include <memory>
 #include <utility>
 
@@ -263,6 +264,26 @@ void GestureManager::DispatchEvent(const PointerEvent& event,
   }
 
   if (hit_test_result) {
+#if OS_HARMONY
+    if (event_copy.device == PointerEvent::DeviceType::kTouch &&
+        event_copy.type == PointerEvent::EventType::kDownEvent) {
+      auto first_target = hit_test_result->begin();
+      bool has_clay_gesture = false;
+      if (first_target != hit_test_result->end() && *first_target) {
+        for (auto target = std::next(first_target);
+             target != hit_test_result->end(); ++target) {
+          if (*target && (*target)->HasGestureRecognizers()) {
+            has_clay_gesture = true;
+            break;
+          }
+        }
+      }
+
+      if (has_clay_gesture) {
+        (*first_target)->ArmPlatformGestureArbitration();
+      }
+    }
+#endif
     for (auto target : *hit_test_result) {
       if (target) {
         target->HandleEvent(event_copy);
