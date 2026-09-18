@@ -51,6 +51,7 @@
 
 #if OS_IOS
 #import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTextRendererCache.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
@@ -100,6 +101,10 @@ static void LynxClaySetup() {
       // Delay text prewarm until LynxEnv setup is fully finished to avoid pulling
       // trail/settings initialization into LynxEnv init.
       [_instance prewarmTextIfNeeded];
+      id<LynxServiceTextProtocol> textService = LynxService(LynxServiceTextProtocol);
+      if ([textService respondsToSelector:@selector(warm)]) {
+        [textService warm];
+      }
     });
 #endif
   });
