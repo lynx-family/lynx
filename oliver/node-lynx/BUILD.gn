@@ -73,6 +73,7 @@ source_set("node_lynx_native") {
   if (is_mac) {
     sources += [
       "../../clay/shell/platform/darwin/macos/framework/Source/KeyCodeMap.g.mm",
+      "native/darwin_clay_vsync_fallback.cc",
       "native/windowed_lynx_view_mac.mm",
     ]
     deps += [ ":node_lynx_darwin_error_codes" ]
