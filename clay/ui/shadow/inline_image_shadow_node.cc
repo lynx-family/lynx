@@ -31,7 +31,9 @@ void InlineImageShadowNode::TextLayout(LayoutContext* context) {
   builder->PushStyle(text_style_.value());
   txt::PlaceholderRun placeholder(
       Width(), Height() + MarginTop() + MarginBottom(),
-      txt::PlaceholderAlignment::kBaseline, txt::TextBaseline::kAlphabetic,
+      tag_ == "x-inline-image" ? txt::PlaceholderAlignment::kMiddle
+                               : txt::PlaceholderAlignment::kBaseline,
+      txt::TextBaseline::kAlphabetic,
       Height() + MarginTop() + MarginBottom() + baseline_offset_);
   auto* text_context = static_cast<LayoutContextText*>(context);
   start_glyph_ = text_context->TextSizeIncludingPlaceholders();
