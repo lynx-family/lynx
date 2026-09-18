@@ -7,6 +7,7 @@
 
 ## 4.3.2
 - Add `bindtextClick` and `MarkdownTextClickEvent` typings for `<markdown>` text attachment clicks.
+- Add Clay support metadata and callback result fields for `list.scrollBy`.
 
 ## 4.3.1
 - Add `ios-hide-keyboard-accessory-view` to `<webview>` typings.
