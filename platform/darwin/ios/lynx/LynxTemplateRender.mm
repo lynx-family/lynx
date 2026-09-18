@@ -41,7 +41,6 @@
 #import "LynxEngine.h"
 #import "LynxEnginePool.h"
 #import "LynxEngineProxy+Native.h"
-#import "LynxEventReporterUtils.h"
 #import "LynxExposureModule.h"
 #import "LynxFetchModule.h"
 #import "LynxGroup+Internal.h"
@@ -972,12 +971,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
   // Update template url to Generic Info.
   [LynxEventReporter updateGenericInfo:url key:kPropURL instanceId:_context.instanceId];
-  NSString* relativePath = [LynxEventReporterUtils relativePathForURL:url];
-  if (relativePath) {
-    [LynxEventReporter updateGenericInfo:relativePath
-                                     key:kPropRelativePath
-                              instanceId:_context.instanceId];
-  }
+  [LynxEventReporter updateGenericInfo:url key:kPropRelativePath instanceId:_context.instanceId];
 }
 
 - (void)notifyExtensionModulesTemplateLoad:(NSString*)url {

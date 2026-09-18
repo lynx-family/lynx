@@ -11,6 +11,18 @@ FOUNDATION_EXPORT int32_t const kUnknownInstanceId;
 // Event name of lynx erorr.
 FOUNDATION_EXPORT NSString *const kLynxSDKErrorEvent;
 
+// GeneralInfo props name:
+// The last loaded URL in this lynxView, will be updated when lynxView render new template.
+FOUNDATION_EXPORT NSString *const kPropURL;
+// the relative_path would be equivalent to the url to remove applicationExternalCacheDir,
+// applicationFilesDir and LocalDir.
+// It can be more accurate to filter info by relative_path than by url on the tea platform.
+FOUNDATION_EXPORT NSString *const kPropRelativePath;
+// The last thread strategy this lynxView is using, will be updated when the lynxView is init.
+FOUNDATION_EXPORT NSString *const kPropThreadMode;
+// Enable SSR.
+FOUNDATION_EXPORT NSString *const kPropEnableSSR;
+
 @protocol LynxEventReportObserverProtocol <NSObject>
 
 /// Callback method to listen and handle Lynx reporting events.
