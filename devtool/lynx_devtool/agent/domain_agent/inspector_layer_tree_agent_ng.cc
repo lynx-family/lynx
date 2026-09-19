@@ -4,7 +4,7 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_layer_tree_agent_ng.h"
 
-#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
@@ -20,30 +20,28 @@ InspectorLayerTreeAgentNG::InspectorLayerTreeAgentNG(
 }
 
 void InspectorLayerTreeAgentNG::Enable(
-    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  devtool_mediator_->LayerTreeEnable(responder, params);
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->LayerTreeEnable(sender, message);
 }
 
 void InspectorLayerTreeAgentNG::Disable(
-    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  devtool_mediator_->LayerTreeDisable(responder, params);
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->LayerTreeDisable(sender, message);
 }
 
 void InspectorLayerTreeAgentNG::CompositingReasons(
-    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  devtool_mediator_->CompositingReasons(responder, params);
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->CompositingReasons(sender, message);
 }
 
 void InspectorLayerTreeAgentNG::CallMethod(
-    const std::shared_ptr<CDPResponder>& responder,
-    const Json::Value& message) {
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    responder->SendError(CDPErrorCode::MethodNotFound,
-                         "'" + method + "' wasn't found");
+    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
   } else {
-    (this->*(iter->second))(responder, message["params"]);
+    (this->*(iter->second))(sender, message);
   }
 }
 }  // namespace devtool

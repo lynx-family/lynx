@@ -1416,16 +1416,18 @@ void LynxDevToolMediator::NetworkGetRequestPostData(
 }
 
 void LynxDevToolMediator::LayerTreeEnable(
-    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->LayerTreeEnable(responder, params);
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->LayerTreeEnable(sender, message);
   });
 }
 
 void LynxDevToolMediator::LayerTreeDisable(
-    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->LayerTreeDisable(responder, params);
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->LayerTreeDisable(sender, message);
   });
 }
 
@@ -1436,9 +1438,10 @@ void LynxDevToolMediator::SendLayerTreeDidChangeEvent() {
 }
 
 void LynxDevToolMediator::CompositingReasons(
-    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->CompositingReasons(responder, params);
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  RunOnTASMThread([sender, message, executor = element_executor_] {
+    executor->CompositingReasons(sender, message);
   });
 }
 
