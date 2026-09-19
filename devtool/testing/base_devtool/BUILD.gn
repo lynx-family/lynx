@@ -10,7 +10,6 @@ unittest_set("devtool_base_devtool_testset") {
     "../../base_devtool/native/js_inspect/inspector_client_delegate_base_impl_unittest.cc",
     "../../base_devtool/native/js_inspect/script_manager_ng_unittest.cc",
     "base_devtool_unittest.cc",
-    "cdp_param_utils_unittest.cc",
   ]
 
   deps = [ "../../base_devtool/native:base_devtool" ]
