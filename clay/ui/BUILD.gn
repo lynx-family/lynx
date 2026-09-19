@@ -42,6 +42,78 @@ config("ui_defines") {
   }
 }
 
+action("generate_keywords") {
+  keywords_input = "component/keywords.in"
+  keywords_header = "$root_gen_dir/clay/ui/component/keywords.h"
+  keywords_source = "$root_gen_dir/clay/ui/component/keywords.cc"
+
+  if (is_ios) {
+    keywords_codegen_script = "../../third_party/clay_keywords_codegen/run.py"
+    keywords_codegen_source = "../../third_party/clay_keywords_codegen/main.cc"
+    exec_script(keywords_codegen_script,
+                [
+                  rebase_path("$root_build_dir/clay_keywords_codegen_host",
+                              root_build_dir),
+                  rebase_path(keywords_codegen_source, root_build_dir),
+                  rebase_path(keywords_input, root_build_dir),
+                  rebase_path(keywords_header, root_build_dir),
+                  rebase_path(keywords_source, root_build_dir),
+                ],
+                "",
+                [
+                  keywords_codegen_source,
+                  keywords_input,
+                ])
+  }
+
+  inputs = [ keywords_input ]
+  outputs = [
+    keywords_header,
+    keywords_source,
+  ]
+  if (is_android) {
+    script = "../../third_party/clay_keywords_codegen/run.py"
+    codegen_source = "../../third_party/clay_keywords_codegen/main.cc"
+    codegen_executable = "$root_build_dir/clay_keywords_codegen_host"
+    inputs += [
+      codegen_source,
+      script,
+    ]
+    args = [
+      rebase_path(codegen_executable, root_build_dir),
+      rebase_path(codegen_source, root_build_dir),
+      rebase_path(keywords_input, root_build_dir),
+      rebase_path(keywords_header, root_build_dir),
+      rebase_path(keywords_source, root_build_dir),
+    ]
+  } else {
+    script = "//build/gn_run_binary.py"
+    codegen_label = "../../third_party/clay_keywords_codegen($host_toolchain)"
+    codegen_root_out_dir = get_label_info(codegen_label, "root_out_dir")
+    codegen_executable_suffix = ""
+    if (host_os == "win") {
+      codegen_executable_suffix = ".exe"
+    }
+    codegen_executable =
+        "$codegen_root_out_dir/clay_keywords_codegen$codegen_executable_suffix"
+    deps = [ codegen_label ]
+    args = [
+      rebase_path(codegen_executable, root_build_dir),
+      rebase_path(keywords_input, root_build_dir),
+      rebase_path(keywords_header, root_build_dir),
+      rebase_path(keywords_source, root_build_dir),
+    ]
+  }
+}
+
+source_set("keywords") {
+  sources = [
+    "$root_gen_dir/clay/ui/component/keywords.cc",
+    "$root_gen_dir/clay/ui/component/keywords.h",
+  ]
+  deps = [ ":generate_keywords" ]
+}
+
 source_set("ui") {
   sources = [
     "render_delegate.h",
@@ -104,6 +176,7 @@ source_set("ui") {
   }
 
   public_deps = [
+    ":keywords",
     "../fml:fml",
     "../net:net",
     "../third_party/txt",
