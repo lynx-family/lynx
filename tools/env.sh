@@ -6,7 +6,7 @@
 # Keep the no-side-effect environment setup used by both standalone Lynx and
 # downstream repositories in the open-source tree.
 LYNX_OSS_ENV_ANDROID_NDK_VERSION="21.1.6352462"
-LYNX_OSS_ENV_HARMONY_SDK_VERSION="6.0.0.868"
+LYNX_OSS_ENV_HARMONY_SDK_VERSION="6.1.1.300"
 LYNX_OSS_ENV_COMMON_PATH_SUFFIXES=(
   "tools_shared"
   "tools/gn_tools"
