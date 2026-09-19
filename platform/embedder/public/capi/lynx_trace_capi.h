@@ -22,6 +22,17 @@ LYNX_CAPI_EXPORT void lynx_trace_section_begin(const char* category,
 LYNX_CAPI_EXPORT void lynx_trace_section_end(const char* category,
                                              const char* name);
 
+// [Internal] Begins an asynchronous trace section. The same positive trace ID
+// must be passed to lynx_trace_async_section_end.
+LYNX_CAPI_EXPORT void lynx_trace_async_section_begin(const char* category,
+                                                     const char* name,
+                                                     uint64_t trace_id);
+
+// [Internal] Ends an asynchronous trace section.
+LYNX_CAPI_EXPORT void lynx_trace_async_section_end(const char* category,
+                                                   const char* name,
+                                                   uint64_t trace_id);
+
 // [Internal] Records an instant event.
 // This function is intended to be used via the LYNX_EXTENSION_TRACE_INSTANT
 // macro.
@@ -48,6 +59,12 @@ LYNX_EXTERN_C_END
 // Ends a trace section via C-API.
 #define LYNX_CAPI_TRACE_END(category, name) \
   lynx_trace_section_end(category, name)
+
+#define LYNX_CAPI_TRACE_ASYNC_BEGIN(category, name, trace_id) \
+  lynx_trace_async_section_begin(category, name, trace_id)
+
+#define LYNX_CAPI_TRACE_ASYNC_END(category, name, trace_id) \
+  lynx_trace_async_section_end(category, name, trace_id)
 
 // Records an instant event via C-API.
 // Example: LYNX_CAPI_TRACE_INSTANT("MyCategory", "ButtonClicked");
