@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/platform/android/process_memory_info.h"
 #include "base/trace/android/src/main/jni/gen/TraceController_jni.h"
 #include "base/trace/android/src/main/jni/gen/TraceController_register_jni.h"
 #include "base/trace/native/trace_event.h"
@@ -105,10 +106,7 @@ void TraceControllerDelegateAndroid::SetIsTracingStarted(
 }
 
 std::vector<std::string> TraceControllerDelegateAndroid::GetMemoryStats() {
-  JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  auto ref = Java_TraceController_getMemoryStats(env, weak_owner_.Get());
-  auto raw_stats = lynx::base::android::JNIConvertHelper::
-      ConvertJavaStringArrayToStringVector(env, ref.Get());
+  auto raw_stats = lynx::base::android::GetProcessMemoryInfo();
   std::vector<std::string> memory_stats;
   for (size_t i = 0; i + 1 < raw_stats.size(); i += 2) {
     if (raw_stats[i] == "summary.code" ||

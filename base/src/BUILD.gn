@@ -249,6 +249,7 @@ lynx_base_source_set("base_core") {
       "platform/android/java_type.cc",
       "platform/android/jni_convert_helper.cc",
       "platform/android/jni_utils.cc",
+      "platform/android/process_memory_info.cc",
       "platform/android/scoped_java_ref.cc",
     ]
     if (enable_unittests) {
