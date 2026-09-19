@@ -4,7 +4,6 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_io_agent.h"
 
-#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
 namespace lynx {
@@ -17,27 +16,25 @@ InspectorIOAgent::InspectorIOAgent() {
 
 InspectorIOAgent::~InspectorIOAgent() = default;
 
-void InspectorIOAgent::CallMethod(
-    const std::shared_ptr<CDPResponder>& responder,
-    const Json::Value& message) {
+void InspectorIOAgent::CallMethod(const std::shared_ptr<MessageSender>& sender,
+                                  const Json::Value& message) {
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    responder->SendError(CDPErrorCode::MethodNotFound,
-                         "'" + method + "' wasn't found");
+    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
   } else {
-    (this->*(iter->second))(responder, message["params"]);
+    (this->*(iter->second))(sender, message);
   }
 }
 
-void InspectorIOAgent::Read(const std::shared_ptr<CDPResponder>& responder,
-                            const Json::Value& params) {
-  LynxGlobalDevToolMediator::GetInstance().IORead(responder, params);
+void InspectorIOAgent::Read(const std::shared_ptr<MessageSender>& sender,
+                            const Json::Value& message) {
+  LynxGlobalDevToolMediator::GetInstance().IORead(sender, message);
 }
 
-void InspectorIOAgent::Close(const std::shared_ptr<CDPResponder>& responder,
-                             const Json::Value& params) {
-  LynxGlobalDevToolMediator::GetInstance().IOClose(responder, params);
+void InspectorIOAgent::Close(const std::shared_ptr<MessageSender>& sender,
+                             const Json::Value& message) {
+  LynxGlobalDevToolMediator::GetInstance().IOClose(sender, message);
 }
 
 }  // namespace devtool
