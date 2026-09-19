@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iterator>
 
+#include "core/shell/host_script/runtime/host_script_api.h"
 #include "core/shell/host_script/runtime/host_script_module.h"
 #include "third_party/binding/napi/callback_helper.h"
 
@@ -40,15 +41,21 @@ bool HostScriptSession::Attach(napi_env env) {
       return false;
     }
     dispatcher_ = std::move(dispatcher);
+    env_ = env;
     attached_ = true;
   }
   HostScriptModule::Register(env, shared_from_this());
+  if (!InstallHostScriptApi(Napi::Env(env), shared_from_this())) {
+    Detach();
+    return false;
+  }
   MaybePostReady();
   return true;
 }
 
 void HostScriptSession::Detach() {
   std::shared_ptr<HostScriptJsDispatcher> dispatcher;
+  napi_env env = nullptr;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     if (detached_) {
@@ -57,6 +64,11 @@ void HostScriptSession::Detach() {
     detached_ = true;
     attached_ = false;
     dispatcher = std::move(dispatcher_);
+    env = env_;
+    env_ = nullptr;
+  }
+  if (env) {
+    UninstallHostScriptApi(Napi::Env(env));
   }
   InvalidateView();
   SettleWaiters("The Host Script runtime was detached");

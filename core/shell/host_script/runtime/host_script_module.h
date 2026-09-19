@@ -23,6 +23,7 @@ class HostScriptModule final : public runtime::js::NapiEnvironment::Module {
   bool IsLazy() override;
   void OnEnvDetach(Napi::Env env) override;
   void OnLoad(Napi::Object& target) override;
+  void Populate(Napi::Object& target);
 
   static void Register(napi_env env,
                        const std::shared_ptr<HostScriptSession>& session);
