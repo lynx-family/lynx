@@ -134,6 +134,7 @@ if (is_android) {
     "platform/android/java_type.h",
     "platform/android/jni_convert_helper.h",
     "platform/android/jni_utils.h",
+    "platform/android/process_memory_info.h",
     "platform/android/scoped_java_ref.h",
   ]
 } else if (is_harmony) {
