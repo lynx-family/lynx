@@ -535,6 +535,7 @@ subspec_target("UnitTests") {
     "module/LynxAccessibilityModuleUnitTest.m",
     "module/LynxExposureModuleUnitTest.h",
     "module/LynxExposureModuleUnitTest.m",
+    "module/LynxFetchModuleUnitTest.m",
     "module/LynxHttpStreamingDelegateUnitTest.m",
     "module/LynxResourceModuleUnitTest.m",
     "renderer/LynxContainerViewUnitTest.mm",

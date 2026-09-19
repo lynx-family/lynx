@@ -5,7 +5,7 @@
 #import <Foundation/Foundation.h>
 #import <LynxService/LynxHttpService.h>
 
-@interface LynxNSUrlSessionDelegate : NSObject <NSURLSessionDelegate>
+@interface LynxNSUrlSessionDelegate : NSObject <NSURLSessionDataDelegate>
 - (instancetype)initWithDelegate:(LynxHttpStreamingDelegate *)httpDelegate
                     withCallback:(LynxHttpCallback)callback
     useDeprecatedStreamingConfig:(BOOL)useDeprecatedStreamingConfig;

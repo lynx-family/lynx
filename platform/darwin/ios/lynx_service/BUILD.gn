@@ -52,6 +52,7 @@ podspec_target("LynxService_podspec") {
     ":Http",
     ":Image",
     ":Log",
+    ":UnitTests",
   ]
   if (enable_trace == "perfetto") {
     global_variables = [ "\$enable_trace = 1" ]
@@ -120,4 +121,13 @@ subspec_target("Http") {
         "LynxServiceAPI",
         "$lynx_version",
       ] ]
+}
+
+subspec_target("UnitTests") {
+  test_subspec = true
+  sources = [ "http/LynxNSUrlSessionDelegateUnitTest.m" ]
+  dependency = [
+    "LynxService/Http",
+    "XcodeCoverage",
+  ]
 }

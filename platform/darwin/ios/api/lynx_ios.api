@@ -700,6 +700,7 @@ public class LynxBaseGestureHandler : NSObject {
 
 public protocol LynxBaseInspectorController-p : <NSObject> {
   public nonnull instancetype LynxBaseInspectorController-p::initWithLynxView:(nullable LynxView *view);
+  public nullable id< LynxNetworkRequestObserver > LynxBaseInspectorController-p::networkRequestObserver();
   public void LynxBaseInspectorController-p::setReloadHelper:(nullable LynxPageReloadHelper *reloadHelper);
   public void LynxBaseInspectorController-p::setDebugInfoInterceptor:(nonnull id< LynxDebugInfoRecorderProtocol > debugInfoRecorder);
   public void LynxBaseInspectorController-p::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
@@ -3242,6 +3243,15 @@ public protocol LynxNestedScrollProtocol-p : <NSObject> {
   public BOOL LynxNestedScrollProtocol-p::triggerLayoutForNestedScrollViews();
   public void LynxNestedScrollProtocol-p::tryToHandleNestedScroll();
   public void LynxNestedScrollProtocol-p::scrollOffsetUpdated:(UIScrollView *scrollView);
+}
+
+public protocol LynxNetworkRequestObserver-p : <NSObject> {
+  public BOOL LynxNetworkRequestObserver-p::isEnabled();
+  public NSString * LynxNetworkRequestObserver-p::requestWillBeSent:method:headers:body:(nullable NSString *url,[method] nullable NSString *method,[headers] nullable NSDictionary *headers,[body] nullable NSData *body);
+  public void LynxNetworkRequestObserver-p::responseReceived:url:status:statusText:headers:(NSString *requestId,[url] nullable NSString *url,[status] NSInteger status,[statusText] nullable NSString *statusText,[headers] nullable NSDictionary *headers);
+  public void LynxNetworkRequestObserver-p::dataReceived:data:(NSString *requestId,[data] nullable NSData *data);
+  public void LynxNetworkRequestObserver-p::loadingFinished:(NSString *requestId);
+  public void LynxNetworkRequestObserver-p::loadingFailed:errorText:canceled:(NSString *requestId,[errorText] nullable NSString *errorText,[canceled] BOOL canceled);
 }
 
 public protocol LynxNewGestureDelegate-p : <NSObject> {
