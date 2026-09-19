@@ -12,6 +12,8 @@ lynx_base_source_set("build") {
     "gen/LynxBaseTrace_register_jni.h",
     "gen/LynxLog_jni.h",
     "gen/LynxLog_register_jni.h",
+    "gen/ProcessMemoryInfo_jni.h",
+    "gen/ProcessMemoryInfo_register_jni.h",
     "gen/lynx_base_so_load.cc",
   ]
 }
