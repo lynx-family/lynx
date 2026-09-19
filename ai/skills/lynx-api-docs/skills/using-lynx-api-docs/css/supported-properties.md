@@ -133,7 +133,9 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 
 - `background-color` can be applied directly to ordinary `view` and `page` backgrounds. Common named colors, transparent colors, and the `inherit` global value are supported.
 - The `background` shorthand supports common background values. When migrating a Web shorthand with multiple components, split it into supported longhand properties to verify that Lynx supports each component.
-- `background-attachment` is not currently supported. If a Web shorthand contains an attachment keyword such as `fixed` or `scroll`, first determine whether its scroll-binding behavior is actually required. If only a color, image, repeat mode, or position is needed, specify the corresponding longhand properties explicitly:
+- `background-attachment` is not currently supported. Do not assume that an attachment keyword such as `fixed` or `scroll` is ignored independently inside a `background` shorthand: it can invalidate the entire declaration, so even an otherwise valid color or image in that declaration may not be applied. For example, `background: green scroll repeat-x` may not paint the green background in Lynx. If a Web shorthand contains an attachment keyword, first determine whether its scroll-binding behavior is actually required. If only a color, image, repeat mode, or position is needed, omit the attachment keyword and specify the corresponding longhand properties explicitly:
+
+  For a separate image-background example, the longhands could be:
 
   ```css
   .box {
@@ -143,6 +145,8 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
     background-color: transparent;
   }
   ```
+
+  Omitting the attachment keyword does not implement `background-attachment` or preserve its scroll-binding behavior. If that behavior is required, removing the keyword is not an equivalent migration.
 
 - On the Web, `html` and `body` backgrounds have special canvas painting and propagation rules. In Lynx, `page` is both the page root and the painting surface for the full-page background. For a full-page background, apply it to `page`. Move a Web `body` background to the root `view` only when the background belongs to the content container.
 - `background-image: url(...)` can be combined with `background-size`, `background-position`, and `background-repeat` to control the image's size, position, and tiling. When migrating comma-separated background layers, avoid using `none` as a transparent placeholder layer. On the Web, a `none` layer still participates in index alignment across the other `background-*` layer lists:
