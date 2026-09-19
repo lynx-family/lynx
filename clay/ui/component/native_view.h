@@ -5,12 +5,14 @@
 #ifndef CLAY_UI_COMPONENT_NATIVE_VIEW_H_
 #define CLAY_UI_COMPONENT_NATIVE_VIEW_H_
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
 
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_size.h"
+#include "clay/gfx/rendering_backend.h"
 #include "clay/public/value.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/base_view.h"
@@ -55,6 +57,11 @@ class NativeView : public WithTypeInfo<NativeView, BaseView>,
 
   MeasureResult Measure(const MeasureConstraint& constraint);
   void MarkLayoutDirty();
+
+  using RasterSnapshotCallback =
+      std::function<void(GrDataPtr, int32_t, int32_t, bool)>;
+  void RequestSubtreeRasterSnapshot(float scale,
+                                    RasterSnapshotCallback callback);
 
   void MarkAsEditing();
   void OnInsert(int parent_id, int index);

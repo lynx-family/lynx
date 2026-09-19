@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 import { LynxGenericResourceFetcher, LynxMediaResourceFetcher, NativeContent } from "../Index";
 import { LynxElement, LynxElementCallback } from './LynxElement';
+import { image } from '@kit.ImageKit';
 
 export interface IContext {
   setContextData(data?: Record<string, Object>): void;
@@ -17,6 +18,8 @@ export interface IContext {
   markDirty?(sign: number): void;
 
   requestLayout?(sign: number): void;
+
+  requestRasterSnapshot?(sign: number): Promise<image.PixelMap | undefined>;
 
   sendGlobalEvent(name: string, params: Object[]): void;
 
