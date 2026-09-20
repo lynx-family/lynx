@@ -150,6 +150,20 @@ export class TemplateBundle extends lynx.TemplateBundle {
   }
 
   /**
+   * Returns the custom section associated with the specified key.
+   * @apidoc
+   * @param key The key of the custom section.
+   * @returns The raw bytes of the custom section, or undefined when the bundle is invalid, the key
+   * does not exist, or the custom section has an unsupported type.
+   */
+  public getCustomSection(key: string): ArrayBuffer | undefined {
+    if (!this.isValid() || key.length === 0) {
+      return undefined;
+    }
+    return this.nativeGetCustomSection(key);
+  }
+
+  /**
    * Whether the current `TemplateBundle` contains a valid native bundle.
    * @apidoc
    * @returns True if the native bundle is valid, otherwise false.
