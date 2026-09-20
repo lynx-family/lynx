@@ -23,6 +23,19 @@ lynx_core_source_set("host_script") {
   ]
 }
 
+lynx_core_source_set("process_runtime") {
+  sources = [
+    "host_script_thread_bindings.cc",
+    "host_script_thread_bindings.h",
+    "process_runtime.cc",
+    "process_runtime.h",
+  ]
+  deps = [
+    "../../../../base/src:base_log_headers",
+    "../../../runtime/js:js",
+  ]
+}
+
 if (enable_unittests) {
   host_script_test_deps = [
     ":host_script",
@@ -38,6 +51,29 @@ if (enable_unittests) {
   }
 
   if (is_mac || is_linux || is_win) {
+    unittest_exec("process_runtime_unittests_exec") {
+      sources = [
+        "../../../renderer/tasm/config.cc",
+        "../../../renderer/tasm/sysinfo/sysinfo_default.cc",
+        "../../../renderer/tasm/testing/event_tracker_mock.cc",
+        "process_runtime_unittest.cc",
+      ]
+      deps = [
+        ":process_runtime",
+        "../../../../third_party/napi:env",
+        "../../../../third_party/napi:quickjs",
+        "../../../../third_party/quickjs",
+        "../../../runtime/common/napi:napi_binding_quickjs",
+        "../../../services/performance",
+        "//third_party/googletest:gtest",
+      ]
+      if (is_mac) {
+        ldflags = [ "-Wl,-dead_strip" ]
+      } else {
+        deps += [ "../../../runtime/js/jsi/quickjs:quickjs" ]
+      }
+    }
+
     unittest_exec("host_script_session_unittests_exec") {
       sources = [ "host_script_session_unittest.cc" ]
       deps = host_script_test_deps
