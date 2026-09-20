@@ -103,6 +103,7 @@ base_core_public_headers_list = [
   "lynx_actor.h",
   "md5.h",
   "memory/memory_pressure_level.h",
+  "memory/process_memory_info.h",
   "no_destructor.h",
   "notification_center.h",
   "path_utils.h",

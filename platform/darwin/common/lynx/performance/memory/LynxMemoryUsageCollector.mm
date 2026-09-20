@@ -10,8 +10,7 @@
 #import "LynxMemoryUsageFetcher.h"
 #import "LynxTraceEventDef.h"
 
-#include <mach/mach.h>
-
+#include "base/include/memory/process_memory_info.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
 
@@ -33,16 +32,8 @@ int64_t LynxMemoryUsageNowMs() {
 }
 
 int64_t LynxMemoryUsageAppBytes() {
-  // phys_footprint is the same app-level denominator used by iOS memory diagnostics. It is sampled
-  // only when the result is built so the ratio reflects the end of the request window.
-  task_vm_info_data_t info;
-  mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
-  kern_return_t result =
-      task_info(mach_task_self(), TASK_VM_INFO, reinterpret_cast<task_info_t>(&info), &count);
-  if (result != KERN_SUCCESS) {
-    return 0;
-  }
-  return static_cast<int64_t>(info.phys_footprint);
+  const int64_t pss_bytes = lynx::base::GetProcessPssBytes();
+  return pss_bytes > 0 ? pss_bytes : 0;
 }
 
 int64_t LynxNormalizeGlobalMemoryUsageTimeoutMs(int64_t timeoutMs) {

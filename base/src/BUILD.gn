@@ -231,6 +231,7 @@ lynx_base_source_set("base_core") {
               "fml/time/timer.cc",
               "fml/unique_fd.cc",
               "md5.cc",
+              "memory/process_memory_info.cc",
               "notification_center.cc",
               "thread/timed_task.cc",
               "vector.cc",
@@ -314,8 +315,14 @@ lynx_base_source_set("base_core") {
   if (is_android) {
     libs += [ "android" ]
   }
+  if (is_harmony) {
+    libs += [ "ohhidebug" ]
+  }
   if (is_win) {
-    libs += [ "user32.lib" ]
+    libs += [
+      "psapi.lib",
+      "user32.lib",
+    ]
   }
 }
 
@@ -362,6 +369,7 @@ if (enable_unittests) {
       "log/log_stream_unittest.cc",
       "log/logging_unittest.cc",
       "lynx_actor_unittest.cc",
+      "memory/process_memory_info_unittest.cc",
       "notification_center_unittest.cc",
       "path_utils_unittest.cc",
       "sorted_for_each_unittest.cc",
