@@ -82,6 +82,11 @@ LYNX_REGISTER_UI("frame")
   return view;
 }
 
+- (BOOL)hasSharedBackingLayer {
+  // A frame element's backing layer is also the embedded child page root's layer.
+  return YES;
+}
+
 - (void)setSign:(NSInteger)sign {
   [super setSign:sign];
   [[self view] setSign:sign];
