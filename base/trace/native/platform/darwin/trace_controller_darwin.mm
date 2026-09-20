@@ -9,27 +9,10 @@
 #import <string>
 #import <thread>
 
-#import <mach/mach.h>
-#import <mach/task_info.h>
+#include "base/include/memory/process_memory_info.h"
 
 namespace lynx {
 namespace trace {
-
-namespace {
-task_vm_info_data_t GetMemoryInfo() {
-  task_t task = mach_task_self();
-
-  task_vm_info_data_t info;
-  mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
-
-  kern_return_t kr = task_info(task, TASK_VM_INFO, (task_info_t)&info, &count);
-
-  if (kr != KERN_SUCCESS) {
-    return task_vm_info_data_t();
-  }
-  return info;
-}
-}  // namespace
 
 TraceController* GetTraceControllerInstance() {
   static bool should_init_delegate = true;
@@ -47,8 +30,8 @@ std::string TraceControllerDelegateDarwin::GenerateTracingFileDir() {
 }
 
 std::vector<std::string> TraceControllerDelegateDarwin::GetMemoryStats() {
-  auto memory_info = GetMemoryInfo();
-  return {"summary.total-pss", std::to_string(memory_info.phys_footprint)};
+  const int64_t pss_bytes = lynx::base::GetProcessPssBytes();
+  return {"summary.total-pss", std::to_string(pss_bytes > 0 ? pss_bytes : 0)};
 }
 
 }  // namespace trace
