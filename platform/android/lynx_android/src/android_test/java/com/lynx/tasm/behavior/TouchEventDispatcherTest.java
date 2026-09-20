@@ -47,6 +47,7 @@ public class TouchEventDispatcherTest {
 
   public static class MockEventTarget implements EventTarget {
     public int mSign;
+    public Map<String, EventsListener> mEvents;
 
     MockEventTarget(int sign) {
       mSign = sign;
@@ -93,7 +94,7 @@ public class TouchEventDispatcherTest {
 
     @Override
     public Map<String, EventsListener> getEvents() {
-      return null;
+      return mEvents;
     }
 
     @Override
@@ -263,6 +264,33 @@ public class TouchEventDispatcherTest {
 
     @Override
     public void onEventFire(boolean isStop, long eventID) {}
+  }
+
+  @Test
+  public void testShouldCollectCurrentTargetPoint() {
+    MockEventTarget target = new MockEventTarget(1);
+    MockEventTarget ancestor = new MockEventTarget(2);
+
+    assertFalse(TouchEventDispatcher.shouldCollectCurrentTargetPoint(target, "tap"));
+    assertFalse(TouchEventDispatcher.shouldCollectCurrentTargetPoint(ancestor, "tap"));
+
+    target.mEvents = new HashMap<>();
+    target.mEvents.put("tap", new EventsListener("tap", "bindEvent", "onTap", null, null));
+    assertTrue(TouchEventDispatcher.shouldCollectCurrentTargetPoint(target, "tap"));
+    target.mEvents.put(
+        "tap", new EventsListener("tap", "global-bindEvent", "onGlobalTap", null, null));
+    assertFalse(TouchEventDispatcher.shouldCollectCurrentTargetPoint(target, "tap"));
+    target.mEvents.put(
+        "tap", new EventsListener("tap", null, null, "global-bindEvent", "onGlobalTap"));
+    assertFalse(TouchEventDispatcher.shouldCollectCurrentTargetPoint(target, "tap"));
+    target.mEvents.put(
+        "tap", new EventsListener("tap", "global-bindEvent", "onGlobalTap", "bindEvent", "onTap"));
+    assertTrue(TouchEventDispatcher.shouldCollectCurrentTargetPoint(target, "tap"));
+
+    ancestor.mEvents = new HashMap<>();
+    ancestor.mEvents.put("tap", new EventsListener("tap", "bindEvent", "onTap", null, null));
+    assertTrue(TouchEventDispatcher.shouldCollectCurrentTargetPoint(ancestor, "tap"));
+    assertFalse(TouchEventDispatcher.shouldCollectCurrentTargetPoint(ancestor, "click"));
   }
 
   private static class MockGestureArenaManager extends GestureArenaManager {

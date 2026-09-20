@@ -82,6 +82,8 @@ public class PageConfig {
   private static final String KEY_ENABLE_TEXT_LAYOUT_CACHE = "enableTextLayoutCache";
   private static final String KEY_ENABLE_TRANSFORMED_TOUCH_POSITION =
       "enableTransformedTouchPosition";
+  private static final String KEY_ENABLE_CURRENT_TARGET_TOUCH_POSITION =
+      "enableCurrentTargetTouchPosition";
   private static final String KEY_ENABLE_NEW_STICKY = "enableNewSticky";
   private static final String KEY_ENABLE_DISPATCH_CUSTOM_EVENT_FOR_UI =
       "enableDispatchCustomEventForUI";
@@ -149,6 +151,7 @@ public class PageConfig {
   private boolean mEnableFSP = LynxEnv.inst().enableFSP();
   private boolean mEnableTextLayoutCache = true;
   private boolean mEnableTransformedTouchPosition = false;
+  private boolean mEnableCurrentTargetTouchPosition = false;
   private boolean mEnableNewSticky = false;
   private boolean mEnableDispatchCustomEventForUI = false;
   private boolean mEnableNativeInteraction = false;
@@ -386,6 +389,11 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_TRANSFORMED_TOUCH_POSITION)) {
         mEnableTransformedTouchPosition = map.getBoolean(KEY_ENABLE_TRANSFORMED_TOUCH_POSITION);
+      }
+
+      if (map.hasKey(KEY_ENABLE_CURRENT_TARGET_TOUCH_POSITION)) {
+        mEnableCurrentTargetTouchPosition =
+            map.getBoolean(KEY_ENABLE_CURRENT_TARGET_TOUCH_POSITION);
       }
 
       if (map.hasKey(KEY_ENABLE_NEW_STICKY)) {
@@ -640,6 +648,10 @@ public class PageConfig {
 
   public boolean getEnableTransformedTouchPosition() {
     return mEnableTransformedTouchPosition;
+  }
+
+  public boolean getEnableCurrentTargetTouchPosition() {
+    return mEnableCurrentTargetTouchPosition;
   }
 
   public boolean getEnableNewSticky() {

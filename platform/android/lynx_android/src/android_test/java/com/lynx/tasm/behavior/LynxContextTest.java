@@ -9,6 +9,8 @@ import static org.junit.Assert.assertTrue;
 import android.content.Context;
 import android.util.DisplayMetrics;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import org.junit.After;
 import org.junit.Before;
@@ -47,5 +49,16 @@ public class LynxContextTest {
 
     mContext.markFallbackProcess(false);
     assertFalse(mContext.isFallbackProcess());
+  }
+
+  @Test
+  public void currentTargetTouchPositionFollowsPageConfig() {
+    assertFalse(mContext.getEnableCurrentTargetTouchPosition());
+
+    JavaOnlyMap config = new JavaOnlyMap();
+    config.putBoolean("enableCurrentTargetTouchPosition", true);
+    mContext.onPageConfigDecoded(new PageConfig(config));
+
+    assertTrue(mContext.getEnableCurrentTargetTouchPosition());
   }
 }
