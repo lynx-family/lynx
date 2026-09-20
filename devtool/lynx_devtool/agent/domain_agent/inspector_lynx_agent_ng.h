@@ -5,13 +5,15 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LYNX_AGENT_NG_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LYNX_AGENT_NG_H_
 
+#include <map>
+
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
-#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
 
 class DevToolAgentNG;
+class LynxDevToolMediator;
 
 class InspectorLynxAgentNG : public CDPDomainAgentBase {
  public:
@@ -24,6 +26,11 @@ class InspectorLynxAgentNG : public CDPDomainAgentBase {
  private:
   typedef void (InspectorLynxAgentNG::*LynxAgentMethod)(
       const std::shared_ptr<MessageSender>& sender, const Json::Value& params);
+
+  void GetLogLevel(const std::shared_ptr<MessageSender>& sender,
+                   const Json::Value& message);
+  void SetLogLevel(const std::shared_ptr<MessageSender>& sender,
+                   const Json::Value& message);
 
   void GetProperties(const std::shared_ptr<MessageSender>& sender,
                      const Json::Value& message);

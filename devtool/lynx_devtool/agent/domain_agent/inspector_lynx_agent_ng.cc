@@ -4,14 +4,24 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.h"
 
-#include "devtool/lynx_devtool/element/element_helper.h"
+#include "base/include/log/logging.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
+namespace {
+int ParseLogLevel(const Json::Value& params) {
+  return params.isObject() && params["level"].isString()
+             ? base::logging::ParseLogLevel(params["level"].asString())
+             : -1;
+}
+}  // namespace
 
 InspectorLynxAgentNG::InspectorLynxAgentNG(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : devtool_mediator_(devtool_mediator) {
+  functions_map_["Lynx.getLogLevel"] = &InspectorLynxAgentNG::GetLogLevel;
+  functions_map_["Lynx.setLogLevel"] = &InspectorLynxAgentNG::SetLogLevel;
   functions_map_["Lynx.getProperties"] = &InspectorLynxAgentNG::GetProperties;
   functions_map_["Lynx.getData"] = &InspectorLynxAgentNG::GetData;
   functions_map_["Lynx.getComponentId"] = &InspectorLynxAgentNG::GetComponentId;
@@ -36,6 +46,32 @@ void InspectorLynxAgentNG::CallMethod(
     SendNotImplementedResponse(sender, message["id"].asInt64(), method);
   } else {
     (this->*(iter->second))(sender, message);
+  }
+}
+
+void InspectorLynxAgentNG::GetLogLevel(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  Json::Value result;
+  result["runtimeLevel"] = base::logging::GetMinLogLevelName();
+  result["nativeCompileLevel"] = base::logging::GetCompileMinLogLevelName();
+  CDPResponder(sender, message["id"].asInt64()).SendSuccess(result);
+}
+
+void InspectorLynxAgentNG::SetLogLevel(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  auto responder =
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64());
+  const int level = ParseLogLevel(message["params"]);
+  if (level < 0) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "level must be VERBOSE, DEBUG, MONITOR, OBSERVE, "
+                         "INFO, WARNING or ERROR");
+    return;
+  }
+  if (!devtool_mediator_ ||
+      !devtool_mediator_->LynxSetLogLevel(responder, level)) {
+    responder->SendError(CDPErrorCode::InternalError,
+                         "The UI thread is not available");
   }
 }
 

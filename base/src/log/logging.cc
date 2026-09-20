@@ -34,6 +34,18 @@ namespace {
 const char* const kLogSeverityNames[LOG_NUM_SEVERITIES] = {
     "VERBOSE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL"};
 
+// These values configure filtering; output severities remain the original six.
+constexpr struct {
+  const char* name;
+  int level;
+} kLogLevels[] = {{"VERBOSE", LOG_VERBOSE},
+                  {"DEBUG", LOG_DEBUG},
+                  {"MONITOR", detail::LOG_MONITOR},
+                  {"OBSERVE", detail::LOG_OBSERVE},
+                  {"INFO", LOG_INFO},
+                  {"WARNING", LOG_WARNING},
+                  {"ERROR", LOG_ERROR}};
+
 static bool isLogOutputByPlatform = false;
 static bool kHasInitedLynxLog = false;
 static bool kHasInitedLynxLogWriteFunction = false;
@@ -125,6 +137,28 @@ const char* LogSeverityName(int32_t severity) {
 }
 
 }  // namespace
+
+int ParseLogLevel(const std::string& name) {
+  for (const auto& entry : kLogLevels) {
+    if (name == entry.name) return entry.level;
+  }
+  return -1;
+}
+
+const char* GetMinLogLevelName() {
+  const int level = GetMinLogLevel();
+  if (level == LOG_INFO) {
+    const int info_level = GetInfoLogLevel();
+    if (info_level <= detail::INFO_LEVEL_MONITOR) return "MONITOR";
+    if (info_level <= detail::INFO_LEVEL_OBSERVE) return "OBSERVE";
+  }
+  return LogSeverityName(level);
+}
+
+const char* GetCompileMinLogLevelName() {
+  return LYNX_MIN_LOG_LEVEL == LOG_INFO ? "MONITOR"
+                                        : LogSeverityName(LYNX_MIN_LOG_LEVEL);
+}
 
 [[maybe_unused]] bool HasInitedLynxLogWriteFunction() {
   return kHasInitedLynxLogWriteFunction;

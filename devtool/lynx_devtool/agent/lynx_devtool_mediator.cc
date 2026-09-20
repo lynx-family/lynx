@@ -1583,6 +1583,14 @@ void LynxDevToolMediator::LynxSetTraceMode(
   });
 }
 
+bool LynxDevToolMediator::LynxSetLogLevel(
+    const std::shared_ptr<CDPResponder>& responder, int level) {
+  return ui_executor_ &&
+         RunOnUIThread([executor = ui_executor_, responder, level] {
+           executor->LynxSetLogLevel(responder, level);
+         });
+}
+
 void LynxDevToolMediator::LynxGetRectToWindow(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

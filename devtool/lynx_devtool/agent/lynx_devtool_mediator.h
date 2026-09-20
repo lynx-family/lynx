@@ -182,6 +182,8 @@ class LynxDevToolMediator
   void AddNativeModuleRecord(const lepus::Value& record);
 
   // Lynx domain
+  bool LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
+                       int level);
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)
   DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
@@ -268,6 +270,7 @@ class LynxDevToolMediator
   }
 
  public:
+  bool RunOnUIThread(lynx::base::closure&& closure, bool run_now = true);
   void RunOnJSThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnTASMThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnDevToolThread(lynx::base::closure&& closure, bool run_now = true);
@@ -304,8 +307,6 @@ class LynxDevToolMediator
       const std::shared_ptr<WhiteBoardInspectorDelegate>& inspector_delegate);
 
  private:
-  bool RunOnUIThread(lynx::base::closure&& closure, bool run_now = true);
-
   lynx::fml::RefPtr<lynx::fml::TaskRunner> tasm_task_runner_;
   lynx::fml::RefPtr<lynx::fml::TaskRunner> ui_task_runner_;
   lynx::fml::RefPtr<lynx::fml::TaskRunner> js_task_runner_;

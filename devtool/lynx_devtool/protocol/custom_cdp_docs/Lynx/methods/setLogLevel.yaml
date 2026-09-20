@@ -1,0 +1,25 @@
+summary: Sets the process-wide runtime log threshold shared with host logging APIs.
+parameters:
+  - name: level
+    type: string
+    description: One of VERBOSE, DEBUG, MONITOR, OBSERVE, INFO, WARNING or ERROR (case-sensitive).
+returns: []
+events: []
+notes:
+  - Select an active LynxView session to send this command; its effect is process-wide.
+  - Updates use the DevTool UI runner on every platform and execute directly when already on that thread. An empty success result is sent after the setter returns. Query Lynx.getLogLevel for runtimeLevel and nativeCompileLevel.
+  - CDP and host setters change the same threshold; the last update wins. No separate CDP override or settings threshold is introduced.
+  - The threshold is not persisted and is not restored on session disconnect.
+  - MONITOR enables M/O/I, OBSERVE enables O/I, and INFO enables ordinary INFO. Accepted M/O logs use the original INFO output severity.
+  - Compiled-out logs cannot be enabled at runtime. ERROR is the highest configurable threshold, keeping ERROR and FATAL enabled where compiled in.
+  - Missing or invalid levels return InvalidParams. An unavailable UI runner returns InternalError.
+examples:
+  - title: Enable observation logs
+    request:
+      id: 1
+      method: Lynx.setLogLevel
+      params:
+        level: OBSERVE
+    response:
+      id: 1
+      result: {}
