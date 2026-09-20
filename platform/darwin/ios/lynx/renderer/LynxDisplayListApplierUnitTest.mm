@@ -21,6 +21,7 @@ using namespace lynx::tasm;
 
 @interface LynxImageManager (LynxDisplayListApplierUnitTest)
 - (void)updatePaintInfo:(const ImagePaintInfo &)paintInfo;
+- (void)applyImage:(UIImage *)image withType:(LynxImageRequestType)type;
 @end
 
 namespace {
@@ -836,6 +837,61 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
       [applier reset];
       XCTAssertEqual(view.layer.sublayers.count, 0u);
     }
+  }
+}
+
+- (void)testBackgroundImageAutoSizeOnLoad {
+  for (int32_t autoSize : {1, 2, 3}) {
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+    view.contentScaleFactor = 2;
+    id context = OCMClassMock([LynxRendererContext class]);
+    LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+    OCMStub([context imageManagerForID:123]).andReturn(manager);
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:context];
+    DisplayList list;
+    AppendRecordBox(list, 0, 0, 100, 80);
+    DisplayListItem item{};
+    item.type = DisplayListOpType::kBackgroundImage;
+    item.payload.background_image.image_id = 123;
+    item.payload.background_image.auto_size = autoSize;
+    item.payload.background_image.position_x = 0.5;
+    item.payload.background_image.position_y = 0.5;
+    item.payload.background_image.repeat_x = LynxBackgroundRepeatRepeat;
+    item.payload.background_image.repeat_y = LynxBackgroundRepeatRepeat;
+    list.AppendItem(item);
+    [applier applyDisplayList:&list];
+    XCTAssertTrue(view.layer.sublayers.firstObject.hidden);
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(40, 20), NO, 2);
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    NSMutableDictionary *images = [manager valueForKey:@"images"];
+    images[@(LynxImageRequestSrc)] = image;
+    [manager applyImage:image withType:LynxImageRequestSrc];
+    CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+    CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+    CALayer *target = horizontal.sublayers.firstObject;
+    XCTAssertFalse(vertical.hidden);
+    CGFloat width = autoSize == 1 ? 160 : (autoSize == 2 ? 100 : 40);
+    CGFloat height = autoSize == 1 ? 80 : (autoSize == 2 ? 50 : 20);
+    XCTAssertEqualWithAccuracy(target.frame.size.width, width, 0.001);
+    XCTAssertEqualWithAccuracy(target.frame.size.height, height, 0.001);
+    if (autoSize == 3) {
+      XCTAssertEqualWithAccuracy(target.frame.origin.x, -10, 0.001);
+      XCTAssertEqualWithAccuracy(target.frame.origin.y, -10, 0.001);
+      XCTAssertEqual(horizontal.instanceCount, 3);
+      XCTAssertEqual(vertical.instanceCount, 5);
+    }
+    [applier reset];
+    [manager applyImage:image withType:LynxImageRequestSrc];
+    XCTAssertEqual(view.layer.sublayers.count, 0u);
+    // Rebinding a new target must immediately apply the cached intrinsic size.
+    [applier applyDisplayList:&list];
+    CALayer *cachedTarget =
+        view.layer.sublayers.firstObject.sublayers.firstObject.sublayers.firstObject;
+    XCTAssertEqualWithAccuracy(cachedTarget.frame.size.width, width, 0.001);
+    XCTAssertEqualWithAccuracy(cachedTarget.frame.size.height, height, 0.001);
+    [applier reset];
   }
 }
 

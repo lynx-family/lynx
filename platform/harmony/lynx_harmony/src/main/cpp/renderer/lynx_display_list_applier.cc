@@ -589,7 +589,9 @@ void LynxDisplayListApplier::ProcessContentOperations(
         const auto& background = item.payload.background_image;
         DrawBackgroundImage(canvas, background.image_id,
                             background.tiling_index, background.clip_index,
-                            background.repeat_x, background.repeat_y, density);
+                            background.repeat_x, background.repeat_y,
+                            background.auto_size, background.position_x,
+                            background.position_y, density);
         break;
       }
       default:
@@ -605,7 +607,8 @@ void LynxDisplayListApplier::ProcessContentOperations(
 
 void LynxDisplayListApplier::DrawBackgroundImage(
     OH_Drawing_Canvas* canvas, int32_t image_id, int32_t tiling_index,
-    int32_t clip_index, int32_t repeat_x, int32_t repeat_y, float density) {
+    int32_t clip_index, int32_t repeat_x, int32_t repeat_y, int32_t auto_size,
+    float position_x, float position_y, float density) {
   if (tiling_index < 0 || clip_index < 0 ||
       static_cast<size_t>(tiling_index) >= boxes_.size() ||
       static_cast<size_t>(clip_index) >= boxes_.size() || density <= 0.f) {
@@ -617,13 +620,40 @@ void LynxDisplayListApplier::DrawBackgroundImage(
     return;
   }
 
-  const auto& tiling_box = boxes_[tiling_index];
+  // Bind before deferring an unloaded image so completion schedules a redraw.
+  image_manager->SetTarget(host);
+  auto tiling_box = boxes_[tiling_index];
+  if (auto_size != 0) {
+    const float image_width = image_manager->GetImageWidth();
+    const float image_height = image_manager->GetImageHeight();
+    if (image_width <= 0.f || image_height <= 0.f) {
+      return;
+    }
+    float width = tiling_box.GetWidth();
+    float height = tiling_box.GetHeight();
+    const bool auto_width = (auto_size & 1) != 0;
+    const bool auto_height = (auto_size & 2) != 0;
+    if (auto_width && auto_height) {
+      // Boxes use logical units; DrawTiled applies density once below.
+      width = image_width;
+      height = image_height;
+    } else if (auto_width) {
+      width = height * image_width / image_height;
+    } else if (auto_height) {
+      height = width * image_height / image_width;
+    }
+    tiling_box.SetX(tiling_box.GetX() +
+                    (tiling_box.GetWidth() - width) * position_x);
+    tiling_box.SetY(tiling_box.GetY() +
+                    (tiling_box.GetHeight() - height) * position_y);
+    tiling_box.SetWidth(width);
+    tiling_box.SetHeight(height);
+  }
   const auto& clip_box = boxes_[clip_index];
   if (tiling_box.GetWidth() <= 0.f || tiling_box.GetHeight() <= 0.f ||
       clip_box.GetWidth() <= 0.f || clip_box.GetHeight() <= 0.f) {
     return;
   }
-  image_manager->SetTarget(host);
   DrawTiled(canvas, tiling_box, clip_box, repeat_x, repeat_y, density,
             [&](float tile_width, float tile_height) {
               image_manager->UpdateBounds(tile_width / density,

@@ -314,40 +314,80 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         const CGFloat scale = _view.window.screen.scale ?: _view.contentScaleFactor;
         const bool repeatX = background.repeat_x == LynxBackgroundRepeatRepeat;
         const bool repeatY = background.repeat_y == LynxBackgroundRepeatRepeat;
-        const CGFloat width =
-            repeatX ? MAX(1, round(tilingBox.GetWidth() * scale)) / scale : tilingBox.GetWidth();
-        const CGFloat height =
-            repeatY ? MAX(1, round(tilingBox.GetHeight() * scale)) / scale : tilingBox.GetHeight();
-        // Align in host drawing pixels, then convert back to the clip's local coordinates.
-        auto firstTile = [scale](CGFloat origin, CGFloat clipStart, CGFloat size) {
-          const CGFloat pixelSize = round(size * scale);
-          const CGFloat clipPixel = floor(clipStart * scale);
-          CGFloat phase = fmod(clipPixel - round(origin * scale), pixelSize);
-          if (phase < 0) {
-            phase += pixelSize;
-          }
-          return (clipPixel - phase) / scale - clipStart;
-        };
-        CGFloat x = tilingBox.GetX() - clipBox.GetX();
-        CGFloat y = tilingBox.GetY() - clipBox.GetY();
         CAReplicatorLayer *horizontal = [CAReplicatorLayer layer];
         CAReplicatorLayer *vertical = [CAReplicatorLayer layer];
         horizontal.frame = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
         vertical.frame = clipRect;
-        horizontal.instanceTransform = CATransform3DMakeTranslation(width, 0, 0);
-        vertical.instanceTransform = CATransform3DMakeTranslation(0, height, 0);
-        if (repeatX) {
-          x = firstTile(tilingBox.GetX() + left_offset_, clipRect.origin.x, width);
-          horizontal.instanceCount = ceil((clipRect.size.width - x) / width);
-        }
-        if (repeatY) {
-          y = firstTile(tilingBox.GetY() + top_offset_, clipRect.origin.y, height);
-          vertical.instanceCount = ceil((clipRect.size.height - y) / height);
-        }
-
         CALayer *imageLayer = [CALayer layer];
-        imageLayer.frame = CGRectMake(x, y, width, height);
-        [imageManager setLayerTarget:imageLayer];
+        __weak CALayer *weakImageLayer = imageLayer;
+        __weak CAReplicatorLayer *weakHorizontal = horizontal;
+        __weak CAReplicatorLayer *weakVertical = vertical;
+        // Capture geometry by value; the display list may change before loading completes.
+        const CGRect fallbackRect = CGRectMake(tilingBox.GetX(), tilingBox.GetY(),
+                                               tilingBox.GetWidth(), tilingBox.GetHeight());
+        const CGPoint clipOrigin = CGPointMake(clipBox.GetX(), clipBox.GetY());
+        const CGPoint hostOffset = CGPointMake(left_offset_, top_offset_);
+        const int32_t autoSize = background.auto_size;
+        const CGPoint position = CGPointMake(background.position_x, background.position_y);
+        void (^updateGeometry)(CGSize) = ^(CGSize imageSize) {
+          CALayer *target = weakImageLayer;
+          CAReplicatorLayer *horizontalLayer = weakHorizontal;
+          CAReplicatorLayer *verticalLayer = weakVertical;
+          if (!target || !horizontalLayer || !verticalLayer) {
+            return;
+          }
+          if (autoSize != 0 && (imageSize.width <= 0 || imageSize.height <= 0)) {
+            verticalLayer.hidden = YES;
+            return;
+          }
+          CGFloat width = fallbackRect.size.width;
+          CGFloat height = fallbackRect.size.height;
+          const bool autoWidth = (autoSize & 1) != 0;
+          const bool autoHeight = (autoSize & 2) != 0;
+          if (autoWidth && autoHeight) {
+            width = imageSize.width;
+            height = imageSize.height;
+          } else if (autoWidth) {
+            width = height * imageSize.width / imageSize.height;
+          } else if (autoHeight) {
+            height = width * imageSize.height / imageSize.width;
+          }
+          CGPoint origin =
+              CGPointMake(fallbackRect.origin.x + (fallbackRect.size.width - width) * position.x,
+                          fallbackRect.origin.y + (fallbackRect.size.height - height) * position.y);
+          width = repeatX ? MAX(1, round(width * scale)) / scale : width;
+          height = repeatY ? MAX(1, round(height * scale)) / scale : height;
+          // Align in host drawing pixels, then convert to the clip's local coordinates.
+          auto firstTile = [scale](CGFloat origin, CGFloat clipStart, CGFloat size) {
+            const CGFloat pixelSize = round(size * scale);
+            const CGFloat clipPixel = floor(clipStart * scale);
+            CGFloat phase = fmod(clipPixel - round(origin * scale), pixelSize);
+            if (phase < 0) {
+              phase += pixelSize;
+            }
+            return (clipPixel - phase) / scale - clipStart;
+          };
+          CGFloat x = origin.x - clipOrigin.x;
+          CGFloat y = origin.y - clipOrigin.y;
+          horizontalLayer.instanceTransform = CATransform3DMakeTranslation(width, 0, 0);
+          verticalLayer.instanceTransform = CATransform3DMakeTranslation(0, height, 0);
+          if (repeatX) {
+            x = firstTile(origin.x + hostOffset.x, clipRect.origin.x, width);
+            horizontalLayer.instanceCount = ceil((clipRect.size.width - x) / width);
+          }
+          if (repeatY) {
+            y = firstTile(origin.y + hostOffset.y, clipRect.origin.y, height);
+            verticalLayer.instanceCount = ceil((clipRect.size.height - y) / height);
+          }
+          target.frame = CGRectMake(x, y, width, height);
+          verticalLayer.hidden = NO;
+        };
+        if (autoSize != 0) {
+          [imageManager setLayerTarget:imageLayer imageSizeDidChange:updateGeometry];
+        } else {
+          updateGeometry(CGSizeZero);
+          [imageManager setLayerTarget:imageLayer];
+        }
         // Replicate one image target so asynchronous updates reach every tile.
         [horizontal addSublayer:imageLayer];
         [vertical addSublayer:horizontal];
