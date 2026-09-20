@@ -17,6 +17,7 @@
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxEvent.h>
 #import <Lynx/LynxEventHandler+Internal.h>
+#import <Lynx/LynxEventSpec.h>
 #import <Lynx/LynxGestureArenaMember.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxGlobalObserver.h>
@@ -62,6 +63,10 @@
 #import "LynxUI+Gesture.h"
 #import "LynxUIIntersectionObserver.h"
 #import "list/container/LynxUIListContainer+Internal.h"
+
+@interface LynxEventSpec (ResponseChainEvent)
+@property(nonatomic, readonly) BOOL hasResponseChainListener;
+@end
 
 static const short OVERFLOW_X_VAL = 0x01;
 static const short OVERFLOW_Y_VAL = 0x02;
@@ -1217,6 +1222,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 - (void)setRawEvents:(NSSet<NSString*>*)events andLepusRawEvents:(NSSet<NSString*>*)lepusEvents {
   _eventSet = [LynxEventSpec convertRawEvents:events andRwaLepusEvents:lepusEvents];
   [self eventDidSet];
+}
+
+- (BOOL)hasResponseChainEvent:(NSString*)eventName {
+  return [_eventSet objectForKey:eventName].hasResponseChainListener;
 }
 
 #pragma mark - LynxUIMeaningfulContentProtocol
@@ -3800,7 +3809,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 
 - (NSDictionary*)buildLayoutChangeEventDetail {
   CGRect rect = [self getBoundingClientRect];
-  return @{
+  NSMutableDictionary* detail = [@{
     @"id" : _idSelector ?: @"",
     @"dataset" : _dataset,
     @"left" : @(rect.origin.x),
@@ -3809,7 +3818,14 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
     @"bottom" : @(rect.origin.y + rect.size.height),
     @"width" : @(rect.size.width),
     @"height" : @(rect.size.height)
-  };
+  } mutableCopy];
+  UIWindow* window = self.view.window;
+  if (window != nil) {
+    CGRect windowRect = [self.view convertRect:self.view.bounds toView:window];
+    detail[@"windowX"] = @(windowRect.origin.x);
+    detail[@"windowY"] = @(windowRect.origin.y);
+  }
+  return detail;
 }
 
 - (void)sendLayoutChangeEvent {
