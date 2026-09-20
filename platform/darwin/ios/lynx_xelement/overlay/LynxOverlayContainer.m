@@ -5,6 +5,7 @@
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxView+Internal.h>
 #import <XElement/LynxOverlayContainer.h>
 
@@ -171,29 +172,36 @@
   LynxUI *rootUI = self.uiDelegate.overlayRootUI;
   UIView *view = [super hitTest:point withEvent:event];
   if (!view) {
+    self.eventHandler.touchRecognizer.platformEventBehavior = LynxPlatformEventBehaviorNone;
     return nil;
   }
   BOOL eventPassed = [self.uiDelegate eventPassed:point];
   if (eventPassed && view == self) {
+    self.eventHandler.touchRecognizer.platformEventBehavior = LynxPlatformEventBehaviorNone;
     return nil;
   }
 
   if (rootUI.context.lynxContext.isFragmentLayerRenderOn) {
     UIView *rootView = rootUI.context.rootView;
     if (![rootView isKindOfClass:LynxView.class]) {
+      self.eventHandler.touchRecognizer.platformEventBehavior = LynxPlatformEventBehaviorNone;
       return view;
     }
     NSInteger eventRootSign = [self.uiDelegate getSign];
     LynxTemplateRender *templateRender = ((LynxView *)rootView).templateRender;
-    BOOL ignoreFocus = [templateRender IsPlatformEventTargetIgnoreFocus:eventRootSign point:point];
-    [self.eventHandler handleFocusOnView:view
-                           withContainer:self
-                                andPoint:point
-                                andEvent:event
-                             ignoreFocus:ignoreFocus];
-    BOOL platformEventThrough = [templateRender IsPlatformEventTargetEventThrough:eventRootSign
-                                                                            point:point];
-    if (platformEventThrough) {
+    LynxTouchHandler *touchHandler = self.eventHandler.touchRecognizer;
+    LynxPlatformEventBehavior eventBehavior =
+        touchHandler.hasActivePlatformTouches
+            ? touchHandler.platformEventBehavior
+            : [templateRender HitTestAndCachePlatformEventBehavior:eventRootSign point:point];
+    touchHandler.platformEventBehavior = eventBehavior;
+    [self.eventHandler
+        handleFocusOnView:view
+            withContainer:self
+                 andPoint:point
+                 andEvent:event
+              ignoreFocus:(eventBehavior & LynxPlatformEventBehaviorIgnoreFocus) != 0];
+    if ((eventBehavior & LynxPlatformEventBehaviorEventThrough) != 0) {
       return nil;
     }
     return view;

@@ -3980,8 +3980,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender()::DispatchPlatformTap();
   public void LynxTemplateRender()::SetPlatformEventRootActive:active:(NSInteger rootSign, [active] BOOL active);
   public void LynxTemplateRender()::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign, [offsetX] CGFloat offsetX, [offsetY] CGFloat offsetY);
-  public BOOL LynxTemplateRender()::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign, [point] CGPoint point);
-  public BOOL LynxTemplateRender()::IsPlatformEventTargetIgnoreFocus:point:(NSInteger rootSign, [point] CGPoint point);
+  public LynxPlatformEventBehavior LynxTemplateRender()::HitTestAndCachePlatformEventBehavior:point:(NSInteger rootSign, [point] CGPoint point);
   public lynx::runtime::js::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
   public LynxLifecycleDispatcher * LynxTemplateRender()::getLifecycleDispatcher();
   public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
@@ -4364,6 +4363,8 @@ public class LynxTouchHandler : UIGestureRecognizer {
   public NSMutableArray<LynxWeakProxy *>* LynxTouchHandler()::touchDeque touchDeque;
   public int32_t LynxTouchHandler()::tapSlop tapSlop;
   public BOOL LynxTouchHandler()::hasMultiTouch hasMultiTouch;
+  public LynxPlatformEventBehavior LynxTouchHandler()::platformEventBehavior platformEventBehavior;
+  public BOOL LynxTouchHandler()::hasActivePlatformTouches hasActivePlatformTouches;
   public LynxGestureArenaManager* _Nullable LynxTouchHandler()::gestureArenaManager gestureArenaManager;
   public instancetype LynxTouchHandler::initWithEventHandler:(LynxEventHandler *eventHandler);
   public void LynxTouchHandler::onGestureRecognized();
@@ -5296,8 +5297,7 @@ public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
   public void LynxUIRenderer::DispatchPlatformTap();
   public void LynxUIRenderer::SetPlatformEventRootActive:active:(NSInteger rootSign,[active] BOOL active);
   public void LynxUIRenderer::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign,[offsetX] CGFloat offsetX,[offsetY] CGFloat offsetY);
-  public BOOL LynxUIRenderer::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign,[point] CGPoint point);
-  public BOOL LynxUIRenderer::IsPlatformEventTargetIgnoreFocus:point:(NSInteger rootSign,[point] CGPoint point);
+  public LynxPlatformEventBehavior LynxUIRenderer::HitTestAndCachePlatformEventBehavior:point:(NSInteger rootSign,[point] CGPoint point);
 }
 
 public class LynxUIRendererCreator : NSObject, <LynxUIRendererCreatorProtocol> {
@@ -6936,6 +6936,8 @@ public enum LynxEngineState {
   LynxEngineStateDestroyed
 }
 
+
+  public typedef NS_OPTIONS(NSUInteger, LynxPlatformEventBehavior);
 
   typedef void(^ DidAnimationStop) (CAAnimation *__nullable animation, BOOL finished)
   public DidAnimationStart didStart didStart;
