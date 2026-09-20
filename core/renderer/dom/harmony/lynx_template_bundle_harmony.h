@@ -33,6 +33,7 @@ class LynxTemplateBundleHarmony {
   static napi_value GetExtraInfo(napi_env env, napi_callback_info info);
   static napi_value GetContainsElementTree(napi_env env,
                                            napi_callback_info info);
+  static napi_value GetCustomSection(napi_env env, napi_callback_info info);
   static napi_value InitWithOption(napi_env env, napi_callback_info info);
   static napi_value PostJsCacheGenerationTask(napi_env env,
                                               napi_callback_info info);
@@ -43,6 +44,7 @@ class LynxTemplateBundleHarmony {
                                 std::vector<uint8_t>& template_buffer);
   napi_value GetExtraInfo(napi_env env);
   napi_value GetContainsElementTree(napi_env env);
+  napi_value GetCustomSection(napi_env env, const std::string& key);
   napi_value InitWithOption(napi_env env, int32_t count, bool enable);
   napi_value PostJsCacheGenerationTask(napi_env env,
                                        std::string bytecode_source_url,

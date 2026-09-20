@@ -1069,6 +1069,7 @@ export class TemplateBundle extends lynx.TemplateBundle {
   public static async fromTemplateAsyncWithOption(template: ArrayBuffer, option: TemplateBundleOption): Promise<TemplateBundle>;
   public getExtraInfo(): Map<string, Object>;
   public isElementBundleValid(): boolean;
+  public getCustomSection(key: string): ArrayBuffer | undefined;
   public isValid(): boolean;
   public getTemplateSize(): number;
   public postJsCacheGenerationTask(bytecodeSourceUrl: string, useV8: boolean): void;
