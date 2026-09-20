@@ -52,6 +52,8 @@ class ImageDrawable {
   void DrawPixelMap(OH_Drawing_Canvas* canvas,
                     OH_Drawing_PixelMap* draw_bitmap);
   bool HasContent() { return pixel_maps_ != nullptr || image_data_ != nullptr; }
+  uint32_t GetImageWidth() const { return image_width_; }
+  uint32_t GetImageHeight() const { return image_height_; }
   bool IsAnimate();
   bool IsAnimateRunning() { return is_running_; };
   void StartAnimation();

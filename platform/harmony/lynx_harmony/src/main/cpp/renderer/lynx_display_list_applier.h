@@ -56,7 +56,9 @@ class LynxDisplayListApplier {
                                 const DisplayListSegment& segment);
   void DrawBackgroundImage(OH_Drawing_Canvas* canvas, int32_t image_id,
                            int32_t tiling_index, int32_t clip_index,
-                           int32_t repeat_x, int32_t repeat_y, float density);
+                           int32_t repeat_x, int32_t repeat_y,
+                           int32_t auto_size, float position_x,
+                           float position_y, float density);
 
   LynxRendererContext* context_{nullptr};
   std::weak_ptr<UIBase> host_;

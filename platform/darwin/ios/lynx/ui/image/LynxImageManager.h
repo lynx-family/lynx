@@ -26,6 +26,10 @@ struct ImagePaintInfo;
 // Sets the target layer for displaying background images.
 - (void)setLayerTarget:(CALayer* _Nullable)layer;
 
+// Updates background geometry for cached images and asynchronous loads.
+- (void)setLayerTarget:(CALayer* _Nullable)layer
+    imageSizeDidChange:(void (^_Nullable)(CGSize size))imageSizeDidChange;
+
 - (void)setSign:(NSInteger)sign;
 
 - (void)setEventMask:(NSInteger)eventMask;

@@ -33,6 +33,8 @@ class LynxImageManager : public std::enable_shared_from_this<LynxImageManager> {
   void SetTarget(const std::weak_ptr<UIBase>& target);
   void UpdateBounds(float width, float height, float scale_density);
   void Draw(OH_Drawing_Canvas* canvas);
+  uint32_t GetImageWidth() const;
+  uint32_t GetImageHeight() const;
 
  private:
   void ApplyPaintInfo();

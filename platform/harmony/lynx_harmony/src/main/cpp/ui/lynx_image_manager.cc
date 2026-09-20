@@ -183,6 +183,14 @@ void LynxImageManager::Draw(OH_Drawing_Canvas* canvas) {
   }
 }
 
+uint32_t LynxImageManager::GetImageWidth() const {
+  return drawable_ && drawable_->HasContent() ? drawable_->GetImageWidth() : 0;
+}
+
+uint32_t LynxImageManager::GetImageHeight() const {
+  return drawable_ && drawable_->HasContent() ? drawable_->GetImageHeight() : 0;
+}
+
 void LynxImageManager::ApplyPaintInfo() {
   if (drawable_ == nullptr) {
     return;

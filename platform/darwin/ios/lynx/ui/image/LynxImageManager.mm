@@ -93,6 +93,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 
   __weak UIImageView* _imageView;
   __weak CALayer* _imageLayer;
+  void (^_imageSizeDidChange)(CGSize);
   __weak LynxUIContext* _context;
   NSInteger _sign;
   NSInteger _eventMask;
@@ -261,6 +262,9 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   BOOL animated = contents.count > 1 && image.duration > 0;
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
+  if (_imageSizeDidChange) {
+    _imageSizeDidChange(image != nil ? image.size : CGSizeZero);
+  }
   layer.contents = contents.firstObject;
   layer.contentsScale = image != nil ? image.scale : 1;
   layer.contentsGravity = kCAGravityResize;
@@ -322,6 +326,11 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)setLayerTarget:(CALayer*)layer {
+  [self setLayerTarget:layer imageSizeDidChange:nil];
+}
+
+- (void)setLayerTarget:(CALayer*)layer imageSizeDidChange:(void (^)(CGSize))imageSizeDidChange {
+  _imageSizeDidChange = [imageSizeDidChange copy];
   _imageLayer = layer;
   if (_images[@(LynxImageRequestSrc)] != nil) {
     [self applyImage:_images[@(LynxImageRequestSrc)] withType:LynxImageRequestSrc];
@@ -346,6 +355,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 - (void)reset {
   [_imageLayer removeAnimationForKey:kBackgroundImageAnimationKey];
   _imageLayer = nil;
+  _imageSizeDidChange = nil;
   _imageView = nil;
   [_cancelBlocks enumerateKeysAndObjectsUsingBlock:^(id key, dispatch_block_t block, BOOL* stop) {
     if (block) {
