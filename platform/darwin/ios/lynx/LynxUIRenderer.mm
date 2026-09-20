@@ -81,6 +81,10 @@ lynx::tasm::NativePaintingCtxPlatformDarwinRef *CastToNativePaintingCtxPlatformR
     (const std::shared_ptr<lynx::shell::LynxActor<lynx::shell::LynxEngine>> &)engineActor;
 @end
 
+@interface LynxTouchHandler (CurrentTargetTouchPosition)
+- (void)setEnableCurrentTargetTouchPosition:(BOOL)enable;
+@end
+
 static id<LynxServiceTextProtocol> getTextService() {
   static id<LynxServiceTextProtocol> sService = nil;
   static dispatch_once_t onceToken;
@@ -260,6 +264,8 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler.touchRecognizer setEnableTouchPseudo:pageConfig->GetEnableFiberArch()];
   // Enable support multi-finger events.
   [_eventHandler.touchRecognizer setEnableMultiTouch:pageConfig->GetEnableMultiTouch()];
+  [_eventHandler.touchRecognizer
+      setEnableCurrentTargetTouchPosition:pageConfig->GetEnableCurrentTargetTouchPosition()];
 
   // Set config to LynxUIExposure
   [_uiOwner.uiContext.uiExposure

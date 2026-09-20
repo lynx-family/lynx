@@ -29,6 +29,10 @@
 #include <map>
 #include <set>
 
+@interface LynxUI (ResponseChainEvent)
+- (BOOL)hasResponseChainEvent:(NSString*)eventName;
+@end
+
 @interface EventTargetDetail : NSObject
 
 @property(nonatomic) CGPoint downPoint;
@@ -69,6 +73,7 @@
   BOOL _enableEndGestureAtLastFingerUp;
   BOOL _enableTouchPseudo;
   BOOL _enableMultiTouch;
+  BOOL _enableCurrentTargetTouchPosition;
   BOOL _panGestureRecognized;
   UITouch* _primaryGestureTouch;
   __weak id<LynxEventTarget> _primaryGestureTarget;
@@ -151,6 +156,10 @@
 
 - (void)setEnableMultiTouch:(BOOL)enable {
   _enableMultiTouch = enable;
+}
+
+- (void)setEnableCurrentTargetTouchPosition:(BOOL)enable {
+  _enableCurrentTargetTouchPosition = enable;
 }
 
 - (BOOL)isEnableAndGetMultiTouch {
@@ -296,6 +305,31 @@
   [_eventHandler.eventEmitter dispatchMultiTouchEvent:event];
 }
 
+- (NSDictionary<NSNumber*, NSValue*>*)currentTargetPointMapForTarget:(id<LynxEventTarget>)target
+                                                           pagePoint:(CGPoint)pagePoint
+                                                           eventName:(NSString*)eventName {
+  if (!_enableCurrentTargetTouchPosition) {
+    return nil;
+  }
+  NSMutableDictionary<NSNumber*, NSValue*>* points = [NSMutableDictionary dictionary];
+  id<LynxEventTarget> currentTarget = target;
+  while (currentTarget != nil) {
+    if ([currentTarget isKindOfClass:[LynxUI class]]) {
+      LynxUI* ui = (LynxUI*)currentTarget;
+      if ([ui hasResponseChainEvent:eventName]) {
+        CGPoint point = [_eventHandler.rootView convertPoint:pagePoint toView:ui.view];
+        points[@(currentTarget.signature)] = [NSValue valueWithCGPoint:point];
+      }
+    }
+    id<LynxEventTarget> parent = currentTarget.parentTarget;
+    if (parent == currentTarget) {
+      break;
+    }
+    currentTarget = parent;
+  }
+  return points;
+}
+
 - (LynxTouchEvent*)initialTouchEvent:(NSString*)eventName
                             toTarget:(id<LynxEventTarget>)target
                                touch:(UITouch*)touch {
@@ -312,6 +346,9 @@
                                                    clientPoint:clientPoint
                                                      pagePoint:pagePoint
                                                      viewPoint:targetViewPoint];
+  event.currentTargetPointMap = [self currentTargetPointMapForTarget:target
+                                                           pagePoint:pagePoint
+                                                           eventName:eventName];
   return event;
 }
 
@@ -346,6 +383,9 @@
                                                    clientPoint:clientPoint
                                                      pagePoint:pagePoint
                                                      viewPoint:viewPoint];
+  event.currentTargetPointMap = [self currentTargetPointMapForTarget:target
+                                                           pagePoint:pagePoint
+                                                           eventName:eventName];
   event.eventTarget = target;
   event.timestamp = _timestamp;
   [_eventHandler markDispatchInCurrentLynxPageOnlyIfNeeded:event];

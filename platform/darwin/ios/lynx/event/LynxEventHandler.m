@@ -24,6 +24,12 @@
 
 #include <stdint.h>
 
+@interface LynxTouchHandler (CurrentTargetTouchPosition)
+- (NSDictionary<NSNumber*, NSValue*>*)currentTargetPointMapForTarget:(id<LynxEventTarget>)target
+                                                           pagePoint:(CGPoint)pagePoint
+                                                           eventName:(NSString*)eventName;
+@end
+
 static const int64_t kCurrentLynxPageOnlyEventID = INT64_MIN;
 
 static BOOL ShouldDispatchTouchEventInCurrentLynxPageOnly(LynxUI* rootUI) {
@@ -570,6 +576,10 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
                                  clientPoint:clientPoint
                                    pagePoint:pagePoint
                                    viewPoint:viewPoint];
+    event.currentTargetPointMap =
+        [_touchRecognizer currentTargetPointMapForTarget:_touchRecognizer.preTarget
+                                               pagePoint:pagePoint
+                                               eventName:LynxEventTap];
     event.eventTarget = _touchRecognizer.preTarget;
     event.timestamp = [[NSDate date] timeIntervalSince1970];
     [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
@@ -634,6 +644,10 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
                                                      clientPoint:clientPoint
                                                        pagePoint:pagePoint
                                                        viewPoint:viewPoint];
+    event.currentTargetPointMap =
+        [_touchRecognizer currentTargetPointMapForTarget:_touchTarget
+                                               pagePoint:pagePoint
+                                               eventName:LynxEventLongPress];
     event.eventTarget = _touchTarget;
     event.timestamp = [[NSDate date] timeIntervalSince1970];
     [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
@@ -666,6 +680,10 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
                                    clientPoint:clientPoint
                                      pagePoint:pagePoint
                                      viewPoint:viewPoint];
+      event.currentTargetPointMap =
+          [_touchRecognizer currentTargetPointMapForTarget:_touchRecognizer.preTarget
+                                                 pagePoint:pagePoint
+                                                 eventName:LynxEventTap];
       event.eventTarget = _touchRecognizer.preTarget;
       event.timestamp = [[NSDate date] timeIntervalSince1970];
       [self markDispatchInCurrentLynxPageOnlyIfNeeded:event];
