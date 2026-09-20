@@ -52,6 +52,9 @@ struct Pointer {
 struct PointerEvent {
   PointerSourceType source_type = PointerSourceType::kDefault;
   PointerEventType type = PointerEventType::kMove;
+  // For multi-pointer input, this is the full active pointer set. A down or up
+  // event includes its action pointer so platform adapters can derive their
+  // native pointer-action index from action_pointer_id.
   std::vector<Pointer> pointers;
   int32_t action_pointer_id = 0;
   float delta_x = 0.f;
@@ -75,6 +78,9 @@ struct PointerCapabilities {
   PointerSourceType default_source_type = PointerSourceType::kDefault;
   bool supports_touch = false;
   bool supports_mouse = false;
+  // Existing targets are single-pointer unless they explicitly opt in to a
+  // larger touch set.
+  int32_t max_touch_points = 1;
 
   bool Supports(PointerSourceType source_type) const {
     switch (source_type) {

@@ -16,6 +16,7 @@
 #include "devtool/lynx_devtool/input/synthetic_gesture_controller.h"
 #undef private
 #include "devtool/lynx_devtool/input/synthetic_tap_gesture.h"
+#include "devtool/lynx_devtool/input/synthetic_touch_pinch_gesture.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -121,6 +122,7 @@ TEST(PointerCapabilitiesTest, SupportsOnlyConcreteSources) {
   EXPECT_TRUE(capabilities.Supports(PointerSourceType::kTouch));
   EXPECT_FALSE(capabilities.Supports(PointerSourceType::kMouse));
   EXPECT_FALSE(capabilities.Supports(PointerSourceType::kDefault));
+  EXPECT_EQ(capabilities.max_touch_points, 1);
 }
 
 TEST(SyntheticTapGestureTest, EmitsDownAndUpThroughInputTarget) {
@@ -193,6 +195,103 @@ TEST(SyntheticTapGestureTest, CancelReleasesAnActivePointer) {
   EXPECT_EQ(events[0].type, PointerEventType::kDown);
   EXPECT_EQ(events[1].type, PointerEventType::kCancel);
   EXPECT_EQ(events[0].action_pointer_id, events[1].action_pointer_id);
+}
+
+TEST(SyntheticTouchPinchGestureTest, EmitsTwoPointerPinchSequence) {
+  RecordingInputEventTarget target;
+  SyntheticTouchPinchGesture gesture(100.f, 200.f, 2.f, 1000);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  auto events = target.Events();
+  ASSERT_EQ(events.size(), 2u);
+  EXPECT_EQ(events[0].type, PointerEventType::kDown);
+  EXPECT_EQ(events[0].source_type, PointerSourceType::kTouch);
+  ASSERT_EQ(events[0].pointers.size(), 1u);
+  EXPECT_FLOAT_EQ(events[0].pointers[0].x, 50.f);
+  EXPECT_FLOAT_EQ(events[0].pointers[0].y, 200.f);
+  EXPECT_EQ(events[0].action_pointer_id, events[0].pointers[0].id);
+
+  EXPECT_EQ(events[1].type, PointerEventType::kDown);
+  ASSERT_EQ(events[1].pointers.size(), 2u);
+  EXPECT_EQ(events[1].action_pointer_id, events[1].pointers[1].id);
+  EXPECT_EQ(events[0].pointers[0].id, events[1].pointers[0].id);
+  EXPECT_FLOAT_EQ(events[1].pointers[1].x, 150.f);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(101000, &target),
+            SyntheticGestureResult::kDone);
+  events = target.Events();
+  ASSERT_EQ(events.size(), 5u);
+  EXPECT_EQ(events[2].type, PointerEventType::kMove);
+  ASSERT_EQ(events[2].pointers.size(), 2u);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].x, 0.f);
+  EXPECT_FLOAT_EQ(events[2].pointers[1].x, 200.f);
+
+  EXPECT_EQ(events[3].type, PointerEventType::kUp);
+  ASSERT_EQ(events[3].pointers.size(), 2u);
+  EXPECT_EQ(events[3].action_pointer_id, events[3].pointers[1].id);
+  EXPECT_EQ(events[4].type, PointerEventType::kUp);
+  ASSERT_EQ(events[4].pointers.size(), 1u);
+  EXPECT_EQ(events[4].action_pointer_id, events[4].pointers[0].id);
+}
+
+TEST(SyntheticTouchPinchGestureTest, InterpolatesEachPointerAtRelativeSpeed) {
+  RecordingInputEventTarget target;
+  SyntheticTouchPinchGesture gesture(100.f, 200.f, 2.f, 1000);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(51000, &target),
+            SyntheticGestureResult::kRunning);
+
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 3u);
+  EXPECT_EQ(events[2].type, PointerEventType::kMove);
+  ASSERT_EQ(events[2].pointers.size(), 2u);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].x, 25.f);
+  EXPECT_FLOAT_EQ(events[2].pointers[1].x, 175.f);
+}
+
+TEST(SyntheticTouchPinchGestureTest, CancelsAllActivePointers) {
+  RecordingInputEventTarget target;
+  SyntheticTouchPinchGesture gesture(100.f, 200.f, 2.f, 1000);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  gesture.Cancel(51000, &target);
+
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 3u);
+  EXPECT_EQ(events[2].type, PointerEventType::kCancel);
+  ASSERT_EQ(events[2].pointers.size(), 2u);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].x, 25.f);
+  EXPECT_FLOAT_EQ(events[2].pointers[1].x, 175.f);
+}
+
+TEST(SyntheticTouchPinchGestureTest, CancelsFirstPointerWhenSecondPressFails) {
+  RecordingInputEventTarget target;
+  target.fail_on_injection_index_ = 1;
+  SyntheticTouchPinchGesture gesture(100.f, 200.f, 2.f, 1000);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kFailed);
+
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 3u);
+  EXPECT_EQ(events[0].type, PointerEventType::kDown);
+  EXPECT_EQ(events[1].type, PointerEventType::kDown);
+  EXPECT_EQ(events[2].type, PointerEventType::kCancel);
+  ASSERT_EQ(events[2].pointers.size(), 1u);
+  EXPECT_EQ(events[2].action_pointer_id, events[0].action_pointer_id);
+}
+
+TEST(SyntheticTouchPinchGestureTest, CompletesWithoutInputWhenScaleIsOne) {
+  RecordingInputEventTarget target;
+  SyntheticTouchPinchGesture gesture(100.f, 200.f, 1.f, 1000);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kDone);
+  EXPECT_TRUE(target.Events().empty());
 }
 
 TEST(SyntheticGestureControllerTest, CompletesWhenVSyncDoesNotRespond) {
