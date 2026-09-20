@@ -87,20 +87,34 @@ void EventTracker::UpdateGenericInfoByPageConfig(
   if (instance_id < 0) {
     return;
   }
-  EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask([instance_id,
-                                                             config]() {
-    std::unordered_map<std::string, std::string> info;
-    info.insert({kLynxEnableAir, std::to_string(config->GetEnableLynxAir())});
-    info.insert(
-        {kLynxEnableFiberArch, std::to_string(config->GetEnableFiberArch())});
-    info.insert({kLynxTargetSDKVersion, config->GetTargetSDKVersion()});
-    auto dsl = GetDSLName(config);
-    info.insert({kLynxDSL, dsl});
-    info.insert({kLynxLepusType,
-                 config->GetEnableLepusNG() ? kLynxLepusNG : kLynxLepus});
-    info.insert({kLynxPageVersion, config->GetVersion()});
-    EventTrackerPlatformImpl::UpdateGenericInfo(instance_id, std::move(info));
-  });
+  // Snapshot scheduler inputs on the engine thread before posting the report.
+  const bool template_parallel = config->GetTemplateEnableParallelElement();
+  const uint64_t scheduler_config = config->GetPipelineSchedulerConfig();
+  const bool level_order_env = config->GetLevelOrderTraversingEnv();
+  EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+      [instance_id, config, template_parallel, scheduler_config,
+       level_order_env]() {
+        std::unordered_map<std::string, std::string> info;
+        info.insert(
+            {kLynxEnableAir, std::to_string(config->GetEnableLynxAir())});
+        info.insert({kLynxEnableFiberArch,
+                     std::to_string(config->GetEnableFiberArch())});
+        info.insert({kLynxTargetSDKVersion, config->GetTargetSDKVersion()});
+        auto dsl = GetDSLName(config);
+        info.insert({kLynxDSL, dsl});
+        info.insert({kLynxLepusType,
+                     config->GetEnableLepusNG() ? kLynxLepusNG : kLynxLepus});
+        info.insert({kLynxPageVersion, config->GetVersion()});
+        info.insert({"template_enable_parallel_element",
+                     std::to_string(template_parallel)});
+        // A decimal string preserves all bits across numeric event backends.
+        info.insert(
+            {"pipeline_scheduler_config", std::to_string(scheduler_config)});
+        info.insert(
+            {"enable_level_order_traversing", std::to_string(level_order_env)});
+        EventTrackerPlatformImpl::UpdateGenericInfo(instance_id,
+                                                    std::move(info));
+      });
 }
 
 void EventTracker::UpdateGenericInfo(
