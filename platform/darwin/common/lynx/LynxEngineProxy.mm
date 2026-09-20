@@ -8,6 +8,7 @@
 #import <Lynx/LynxTouchEvent.h>
 #import "LynxEngineProxy+Native.h"
 
+#include "core/public/event/touch_event_data.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"
@@ -60,10 +61,18 @@
 
 - (void)sendSyncTouchEvent:(LynxTouchEvent *)event {
   if (native_engine_proxy_ && event) {
-    native_engine_proxy_->SendTouchEvent([event.eventName UTF8String], (int)event.targetSign,
-                                         event.viewPoint.x, event.viewPoint.y, event.clientPoint.x,
-                                         event.clientPoint.y, event.pagePoint.x, event.pagePoint.y,
-                                         (int64_t)(event.timestamp * 1000));
+    lynx::event::TouchEventTargetPoints currentTargetPoints;
+    currentTargetPoints.reserve(event.currentTargetPointMap.count);
+    for (NSNumber *elementId in event.currentTargetPointMap) {
+      CGPoint point = CGPointZero;
+      [event.currentTargetPointMap[elementId] getValue:&point];
+      currentTargetPoints.push_back(lynx::event::TouchEventTargetPoint{
+          elementId.intValue, static_cast<float>(point.x), static_cast<float>(point.y)});
+    }
+    native_engine_proxy_->SendTouchEvent(
+        [event.eventName UTF8String], (int)event.targetSign, event.viewPoint.x, event.viewPoint.y,
+        event.clientPoint.x, event.clientPoint.y, event.pagePoint.x, event.pagePoint.y,
+        (int64_t)(event.timestamp * 1000), std::move(currentTargetPoints));
   }
 }
 
