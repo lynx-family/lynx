@@ -30,6 +30,46 @@ namespace test {
   page_config.Set##func_name(TernaryBool::FALSE_VALUE);                        \
   EXPECT_EQ(expect_false_value, page_config.Get##func_name());
 
+TEST(PageConfigTest, SchedulerReportingKeepsTemplateFlagSeparateFromOverrides) {
+  PageConfig config;
+  config.SetEnableParallelElement(false);
+  config.SetPipelineSchedulerConfig(kEnableParallelElementMask);
+  EXPECT_FALSE(config.GetTemplateEnableParallelElement());
+  EXPECT_TRUE(config.GetEnableParallelElement());
+  config.SetEnableParallelElement(true);
+  config.DecodePageConfigFromJsonStringWhileUndefined(
+      "{\"pipelineSchedulerConfig\":131072}");
+  EXPECT_TRUE(config.GetTemplateEnableParallelElement());
+  EXPECT_FALSE(config.GetEnableParallelElement());
+  EXPECT_EQ(config.GetPipelineSchedulerConfig(), kDisableParallelElementMask);
+}
+
+TEST(PageConfigTest,
+     SchedulerReportingRetainsExternalValueAcrossExplicitOverride) {
+  auto& env = LynxEnv::GetInstance();
+  const auto key = LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING;
+  auto previous = env.external_env_map_.find(key);
+  std::optional<std::string> previous_value;
+  if (previous != env.external_env_map_.end()) {
+    previous_value = previous->second;
+  }
+  env.external_env_map_[key] = "true";
+  PageConfig config;
+  config.SetPipelineSchedulerConfig(kDisableParallelElementLevelOrderMask);
+  EXPECT_TRUE(config.GetLevelOrderTraversingEnv());
+  EXPECT_FALSE(config.GetEnableLevelOrderTraversing());
+  env.external_env_map_[key] = "false";
+  EXPECT_TRUE(config.GetLevelOrderTraversingEnv());
+  EXPECT_FALSE(config.GetEnableLevelOrderTraversing());
+  PageConfig new_config;
+  EXPECT_FALSE(new_config.GetLevelOrderTraversingEnv());
+  if (previous_value) {
+    env.external_env_map_[key] = *previous_value;
+  } else {
+    env.external_env_map_.erase(key);
+  }
+}
+
 TEST(PageConfigTest, EnableParallelParseElementTemplate) {
   PageConfig page_config;
   EXPECT_FALSE(page_config.GetEnableParallelParseElementTemplate());
@@ -292,6 +332,7 @@ TEST(PageConfigTest, GetEnableLevelOrderTraversing) {
 
   LynxEnv::GetInstance()
       .external_env_map_[LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING] = "true";
+  page_config.level_order_traversing_env_.reset();
   page_config.enable_level_order_traversing_ = TernaryBool::UNDEFINE_VALUE;
   page_config.pipeline_scheduler_config_ =
       kDisableParallelElementLevelOrderMask;
@@ -303,6 +344,7 @@ TEST(PageConfigTest, GetEnableLevelOrderTraversing) {
 
   LynxEnv::GetInstance()
       .external_env_map_[LynxEnv::Key::ENABLE_LEVEL_ORDER_TRAVERSING] = "false";
+  page_config.level_order_traversing_env_.reset();
   page_config.enable_level_order_traversing_ = TernaryBool::UNDEFINE_VALUE;
   page_config.pipeline_scheduler_config_ = 0;
   EXPECT_EQ(page_config.GetEnableLevelOrderTraversing(), false);
