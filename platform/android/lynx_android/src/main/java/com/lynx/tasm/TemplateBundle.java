@@ -5,6 +5,7 @@
 package com.lynx.tasm;
 
 import android.text.TextUtils;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.devtoolwrapper.LynxDevToolPool;
@@ -315,6 +316,21 @@ public final class TemplateBundle implements ILynxSecurityTarget {
   }
 
   /**
+   * @apidoc
+   * @brief Returns the custom section associated with the specified key.
+   * @param key The key of the custom section.
+   * @return The raw bytes of the custom section, or {@code null} when the bundle is invalid, the
+   *     key does not exist, or the custom section has an unsupported type.
+   */
+  @Nullable
+  public byte[] getCustomSection(@NonNull String key) {
+    if (!checkIfEnvPrepared() || !isValid() || TextUtils.isEmpty(key)) {
+      return null;
+    }
+    return nativeGetCustomSection(getNativePtr(), key);
+  }
+
+  /**
    * Get the size of current template.
    * @apidoc
    * @returns Template size.
@@ -455,6 +471,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
   private static native void nativeReleaseBundle(long ptr);
   private static native Object nativeGetExtraInfo(long ptr);
   private static native boolean nativeGetContainsElementTree(long ptr);
+  private static native byte[] nativeGetCustomSection(long ptr, String key);
 
   private static native boolean nativeConstructContext(long ptr, int count);
 

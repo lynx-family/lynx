@@ -3837,6 +3837,7 @@ public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public NSString *_Nullable LynxTemplateBundle::errorMsg();
   public NSDictionary *_Nullable LynxTemplateBundle::extraInfo();
   public BOOL LynxTemplateBundle::isElementBundleValid();
+  public NSData *_Nullable LynxTemplateBundle::customSectionForKey:(nonnull NSString *key);
   public void LynxTemplateBundle::postJsCacheGenerationTask:(nonnull NSString *bytecodeSourceUrl);
   public void LynxTemplateBundle::postJsCacheGenerationTask:callback:(nonnull NSString *bytecodeSourceUrl,[callback] nullable LynxBytecodeResponseBlock callback);
   public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:(init(template:) NS_SWIFT_NAME);

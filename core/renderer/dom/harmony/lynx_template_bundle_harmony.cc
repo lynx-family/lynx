@@ -7,6 +7,7 @@
 #include <js_native_api.h>
 #include <js_native_api_types.h>
 
+#include <cstring>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -16,6 +17,7 @@
 #include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/byte_array.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #include "core/template_bundle/lynx_template_bundle.h"
@@ -87,6 +89,7 @@ napi_value LynxTemplateBundleHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_STATIC_FUNCTION("nativeGetExtraInfo", GetExtraInfo),
       DECLARE_NAPI_STATIC_FUNCTION("nativeGetContainsElementTree",
                                    GetContainsElementTree),
+      DECLARE_NAPI_STATIC_FUNCTION("nativeGetCustomSection", GetCustomSection),
       DECLARE_NAPI_STATIC_FUNCTION("nativeInitWithOption", InitWithOption),
       DECLARE_NAPI_STATIC_FUNCTION("nativePostJsCacheGenerationTask",
                                    PostJsCacheGenerationTask),
@@ -349,6 +352,70 @@ napi_value LynxTemplateBundleHarmony::GetContainsElementTree(napi_env env) {
     LOGE("fail to get boolean " << status);
   }
   return result_value;
+}
+
+napi_value LynxTemplateBundleHarmony::GetCustomSection(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_value js_this = nullptr;
+  napi_status status =
+      napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+  if (status != napi_ok || argc < 1) {
+    LOGE("fail to get callback info " << status);
+    return nullptr;
+  }
+
+  LynxTemplateBundleHarmony* bundle = nullptr;
+  status = napi_unwrap(env, js_this, reinterpret_cast<void**>(&bundle));
+  if (status != napi_ok || bundle == nullptr) {
+    LOGE("fail to unwrap bundle from js_this " << status);
+    return nullptr;
+  }
+
+  return bundle->GetCustomSection(
+      env, base::NapiUtil::ConvertToString(env, args[0]));
+}
+
+napi_value LynxTemplateBundleHarmony::GetCustomSection(napi_env env,
+                                                       const std::string& key) {
+  if (!bundle_ || key.empty()) {
+    return nullptr;
+  }
+
+  lepus::Value section = bundle_->GetCustomSection(key);
+  const void* data = nullptr;
+  size_t length = 0;
+  if (section.IsString()) {
+    const std::string& value = section.StdString();
+    data = value.data();
+    length = value.size();
+  } else if (section.IsByteArray()) {
+    auto value = section.ByteArray();
+    if (!value) {
+      return nullptr;
+    }
+    data = value->GetPtr();
+    length = value->GetLength();
+  } else {
+    return nullptr;
+  }
+  if (length > 0 && data == nullptr) {
+    return nullptr;
+  }
+
+  void* result_data = nullptr;
+  napi_value result = nullptr;
+  napi_status status =
+      napi_create_arraybuffer(env, length, &result_data, &result);
+  if (status != napi_ok) {
+    LOGE("fail to create custom section array buffer " << status);
+    return nullptr;
+  }
+  if (length > 0) {
+    std::memcpy(result_data, data, length);
+  }
+  return result;
 }
 
 napi_value LynxTemplateBundleHarmony::InitWithOption(napi_env env,
