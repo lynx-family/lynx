@@ -4,9 +4,12 @@
 package com.lynx.tasm.behavior;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Rect;
 import android.os.Build;
@@ -17,9 +20,12 @@ import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.event.EventsListener;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -98,5 +104,57 @@ public class LynxUIOwnerTest {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void testPositionChangeListenerRegistration() {
+    LynxUIOwner uiOwner = new LynxUIOwner(mContext, new BehaviorRegistry(), mUIBody.getBodyView());
+    LynxBaseUI observedUI = mock(LynxBaseUI.class);
+    Map<String, EventsListener> events = new HashMap<>();
+    events.put("positionchange",
+        new EventsListener("positionchange", "bindEvent", "onPositionChange", null, null));
+    when(observedUI.getSign()).thenReturn(42);
+    when(observedUI.getEvents()).thenReturn(events);
+
+    uiOwner.setNode(42, observedUI);
+
+    assertTrue(uiOwner.hasPositionChangeListenerForTesting(42));
+
+    LynxBaseUI replacementUI = mock(LynxBaseUI.class);
+    when(replacementUI.getSign()).thenReturn(42);
+    when(replacementUI.getEvents()).thenReturn(new HashMap<>());
+    uiOwner.setNode(42, replacementUI);
+
+    assertFalse(uiOwner.hasPositionChangeListenerForTesting(42));
+
+    LynxBaseUI globalBindUI = mock(LynxBaseUI.class);
+    Map<String, EventsListener> globalEvents = new HashMap<>();
+    globalEvents.put("positionchange",
+        new EventsListener("positionchange", "global-bindEvent", "onPositionChange", null, null));
+    when(globalBindUI.getSign()).thenReturn(42);
+    when(globalBindUI.getEvents()).thenReturn(globalEvents);
+    uiOwner.setNode(42, globalBindUI);
+
+    assertFalse(uiOwner.hasPositionChangeListenerForTesting(42));
+  }
+
+  @Test
+  public void testHasResponseChainEvent() {
+    Map<String, EventsListener> events = new HashMap<>();
+
+    events.put("tap", new EventsListener("tap", "", "", null, null));
+    assertTrue(LynxUIOwner.hasResponseChainEvent(events, "tap"));
+
+    events.put("tap", new EventsListener("tap", null, null, "", ""));
+    assertTrue(LynxUIOwner.hasResponseChainEvent(events, "tap"));
+
+    events.put("tap", new EventsListener("tap", null, null, null, null));
+    assertFalse(LynxUIOwner.hasResponseChainEvent(events, "tap"));
+
+    events.put("tap", new EventsListener("tap", "global-bindEvent", "onTap", null, null));
+    assertFalse(LynxUIOwner.hasResponseChainEvent(events, "tap"));
+
+    assertFalse(LynxUIOwner.hasResponseChainEvent(events, "missing"));
+    assertFalse(LynxUIOwner.hasResponseChainEvent(null, "tap"));
   }
 }
