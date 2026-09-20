@@ -84,6 +84,7 @@ import java.util.concurrent.FutureTask;
 @UiThread
 public class LynxUIOwner {
   private int mRootSign;
+  private boolean mDestroyed;
   private UIBody mUIBody;
   private LynxContext mContext;
   // Record used components in LynxView.
@@ -583,6 +584,41 @@ public class LynxUIOwner {
       return;
     }
     destroy(-1, sign);
+  }
+
+  /** Prepares an adapted view; the returned runnable publishes it on main. */
+  public Runnable prepareViewForRenderer(int sign, String tagName, ReadableMap initialProps,
+      ReadableArray eventListeners, ReadableArray gestureDetectors) {
+    // Match legacy async creation: gestures and the whole property pass run during
+    // preparation. Shared-registry setter side effects retain legacy responsibility;
+    // the completion guards protect UIHolder publication, not those side effects.
+    reportCreateViewConfig(sign, tagName, true);
+    final StylesDiffMap styles = initialProps != null ? new StylesDiffMap(initialProps) : null;
+    UIParams params = new UIParams(sign, sign, false, tagName, styles,
+        EventsListener.convertEventListeners(eventListeners),
+        GestureDetector.convertGestureDetectors(gestureDetectors));
+    final LynxBaseUI ui = createViewInterval(params);
+    if (ui == null) {
+      return null;
+    }
+    final UIShadowProxy proxy = consumeInitialPropsInterval(ui, styles);
+    return () -> {
+      UIThreadUtils.assertOnUiThread();
+      if (!canPublishPreparedRenderer()) {
+        return;
+      }
+      LynxBaseUI result = afterConsumeInitialProps(ui, proxy, styles);
+      if (!canPublishPreparedRenderer()) {
+        return;
+      }
+      reportStatistic(tagName);
+      updateComponentIdToUiIdMapIfNeeded(sign, tagName, styles);
+      mUIHolder.put(sign, result);
+    };
+  }
+
+  private boolean canPublishPreparedRenderer() {
+    return !mDestroyed && mContext.getLynxUIOwner() == this;
   }
 
   // TODO(ZHOUZHITAO): REFACTOR CODE TO REUSE SHARED NODE SNIPPET
@@ -1152,6 +1188,7 @@ public class LynxUIOwner {
   }
 
   public void destroy() {
+    mDestroyed = true;
     TraceEvent.beginSection(TraceEventDef.UI_OWNER_DESTORY);
     for (Map.Entry<Integer, LynxBaseUI> e : mUIHolder.entrySet()) {
       if (!(e.getValue() instanceof LynxBaseUI)) {
