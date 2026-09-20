@@ -23,6 +23,19 @@ lynx_core_source_set("host_script") {
   ]
 }
 
+lynx_core_source_set("process_runtime") {
+  sources = [
+    "host_script_thread_bindings.cc",
+    "host_script_thread_bindings.h",
+    "process_runtime.cc",
+    "process_runtime.h",
+  ]
+  deps = [
+    "../../../../base/src:base_log_headers",
+    "../../../runtime/js:js",
+  ]
+}
+
 if (enable_unittests) {
   host_script_test_deps = [
     ":host_script",
