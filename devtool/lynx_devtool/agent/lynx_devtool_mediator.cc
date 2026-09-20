@@ -1278,6 +1278,13 @@ void LynxDevToolMediator::SynthesizeTapGesture(
   });
 }
 
+void LynxDevToolMediator::SynthesizePinchGesture(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->SynthesizePinchGesture(responder, params);
+  });
+}
+
 void LynxDevToolMediator::InspectorEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
