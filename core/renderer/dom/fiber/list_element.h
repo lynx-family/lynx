@@ -13,7 +13,7 @@
 
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/ui_component/list/list_container_delegate_internal.h"
+#include "core/renderer/ui_component/list/list_types.h"
 #include "core/renderer/ui_component/list/mediator/list_mediator.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
@@ -141,11 +141,6 @@ class ListElement : public Element, public tasm::ListNode {
                ? *disable_list_platform_implementation_
                : false;
   }
-  void SetEventHandler(const base::String& name,
-                       EventHandler* handler) override;
-
-  void ResetEventHandlers() override;
-
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
   bool ResolveStyleValue(CSSPropertyID id, const CSSValue& value) override;
@@ -209,10 +204,8 @@ class ListElement : public Element, public tasm::ListNode {
  private:
   void ResolveEnableNativeList();
   void ResolvePlatformNodeTag();
-  void ResolveEnableDecoupledList();
   bool NeedAsyncResolveListItem();
-  bool UseDecoupledList() const;
-  bool UseInternalList() const;
+  bool UseNativeList() const;
   void SetListOrientation(starlight::LinearOrientationType orientation);
   void ResolveListAxisGapStyle(CSSPropertyID id);
   list::BatchRenderStrategy
@@ -227,14 +220,11 @@ class ListElement : public Element, public tasm::ListNode {
   lepus::Value enqueue_component_{};
   lepus::Value component_at_indexes_{};
   std::optional<bool> disable_list_platform_implementation_;
-  std::optional<bool> enable_decoupled_list_;
   base::String platform_node_tag_{BASE_STATIC_STRING(kListNodeTag)};
   std::optional<ListElementSSRHelper> ssr_helper_;
   bool batch_render_strategy_flushed_{false};
   bool enable_native_list_only_from_env_{false};
   std::unique_ptr<ListMediator> list_mediator_{nullptr};
-  std::unique_ptr<ListContainerDelegateInternal>
-      list_container_delegate_internal_{nullptr};
   base::auto_create_optional<StyleMap> committed_styles_from_attributes_;
   list::BatchRenderStrategy batch_render_strategy_{
       list::BatchRenderStrategy::kDefault};
