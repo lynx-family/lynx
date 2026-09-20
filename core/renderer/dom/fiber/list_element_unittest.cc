@@ -12,7 +12,6 @@
 #include "core/list/decoupled_list_container_impl.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
-#include "core/renderer/ui_component/list/list_container_impl.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -91,7 +90,7 @@ class ListElementTest : public ::testing::Test {
     list_element_->set_tasm(tasm_.get());
   }
 
-  fml::RefPtr<ListElement> CreateNewStylingNativeList(bool decoupled) {
+  fml::RefPtr<ListElement> CreateNewStylingNativeList() {
     page_config_->SetEnableNativeList(TernaryBool::TRUE_VALUE);
     page_config_->SetEnableNewStylingPipeline(true);
     manager_->SetConfig(page_config_);
@@ -101,8 +100,6 @@ class ListElementTest : public ::testing::Test {
 
     auto list = manager_->CreateFiberList(tasm_.get(), "list", lepus::Value(),
                                           lepus::Value(), lepus::Value());
-    list->SetAttribute(lynx::list::kPropEnableDecoupledList,
-                       lepus::Value(decoupled));
     list->SetRawInlineStyles(
         "list-main-axis-gap: 12px; list-cross-axis-gap: 4px;");
     page_->InsertNode(list);
@@ -111,14 +108,6 @@ class ListElementTest : public ::testing::Test {
   }
 
   std::pair<float, float> ListAxisGaps(ListElement* list) {
-    if (list->UseInternalList()) {
-      auto* container = static_cast<ListContainerImpl*>(
-          list->list_container_delegate_internal_.get());
-      auto* layout_manager = container->list_layout_manager();
-      return {layout_manager->main_axis_gap(),
-              layout_manager->cross_axis_gap()};
-    }
-
     auto* container = static_cast<lynx::list::ListContainerImpl*>(
         list->list_mediator_->list_container_delegate_.get());
     auto* layout_manager = container->list_layout_manager();
@@ -126,14 +115,6 @@ class ListElementTest : public ::testing::Test {
   }
 
   std::pair<bool, bool> ListScrollDirections(ListElement* list) {
-    if (list->UseInternalList()) {
-      auto* container = static_cast<ListContainerImpl*>(
-          list->list_container_delegate_internal_.get());
-      auto* layout_manager = container->list_layout_manager();
-      return {layout_manager->CanScrollHorizontally(),
-              layout_manager->CanScrollVertically()};
-    }
-
     auto* container = static_cast<lynx::list::ListContainerImpl*>(
         list->list_mediator_->list_container_delegate_.get());
     auto* layout_manager = container->list_layout_manager();
@@ -142,12 +123,6 @@ class ListElementTest : public ::testing::Test {
   }
 
   int ListSpanCount(ListElement* list) {
-    if (list->UseInternalList()) {
-      auto* container = static_cast<ListContainerImpl*>(
-          list->list_container_delegate_internal_.get());
-      return container->list_layout_manager()->span_count();
-    }
-
     auto* container = static_cast<lynx::list::ListContainerImpl*>(
         list->list_mediator_->list_container_delegate_.get());
     return container->list_layout_manager()->span_count();
@@ -309,23 +284,8 @@ TEST_F(ListElementTest,
   EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), list::kListContainer);
 }
 
-TEST_F(ListElementTest, NewStylingInternalListReplaysListAxisGap) {
-  auto list = CreateNewStylingNativeList(false);
-
-  EXPECT_EQ(ListAxisGaps(list.get()), std::make_pair(12.f, 4.f));
-
-  list->SetRawInlineStyles(
-      "list-main-axis-gap: 20px; list-cross-axis-gap: 6px;");
-  page_->FlushActionsAsRoot();
-  EXPECT_EQ(ListAxisGaps(list.get()), std::make_pair(20.f, 6.f));
-
-  list->RemoveAllInlineStyles();
-  page_->FlushActionsAsRoot();
-  EXPECT_EQ(ListAxisGaps(list.get()), std::make_pair(0.f, 0.f));
-}
-
 TEST_F(ListElementTest, NewStylingDecoupledListReplaysListAxisGap) {
-  auto list = CreateNewStylingNativeList(true);
+  auto list = CreateNewStylingNativeList();
 
   EXPECT_EQ(ListAxisGaps(list.get()), std::make_pair(12.f, 4.f));
 
@@ -337,34 +297,11 @@ TEST_F(ListElementTest, NewStylingDecoupledListReplaysListAxisGap) {
   list->RemoveAllInlineStyles();
   page_->FlushActionsAsRoot();
   EXPECT_EQ(ListAxisGaps(list.get()), std::make_pair(0.f, 0.f));
-}
-
-TEST_F(ListElementTest,
-       NewStylingInternalListResolvesAttributeDerivedLayoutInputs) {
-  auto list = CreateNewStylingNativeList(false);
-
-  list->SetAttribute(list::kScrollOrientation, lepus::Value("horizontal"));
-  list->SetAttribute(list::kSpanCount, lepus::Value(3));
-  page_->FlushActionsAsRoot();
-
-  EXPECT_EQ(ListScrollDirections(list.get()), std::make_pair(true, false));
-  EXPECT_TRUE(ResolvedStyleHasValue(
-      list.get(), kPropertyIDLinearOrientation,
-      CSSValue(starlight::LinearOrientationType::kHorizontal)));
-  EXPECT_EQ(ListSpanCount(list.get()), 3);
-
-  list->SetAttribute(list::kScrollOrientation, lepus::Value("vertical"));
-  page_->FlushActionsAsRoot();
-
-  EXPECT_EQ(ListScrollDirections(list.get()), std::make_pair(false, true));
-  EXPECT_TRUE(ResolvedStyleHasValue(
-      list.get(), kPropertyIDLinearOrientation,
-      CSSValue(starlight::LinearOrientationType::kVertical)));
 }
 
 TEST_F(ListElementTest,
        NewStylingDecoupledListResolvesAttributeDerivedLayoutInputs) {
-  auto list = CreateNewStylingNativeList(true);
+  auto list = CreateNewStylingNativeList();
 
   list->SetAttribute(list::kScrollOrientation, lepus::Value("horizontal"));
   list->SetAttribute(list::kSpanCount, lepus::Value(3));
@@ -385,18 +322,9 @@ TEST_F(ListElementTest,
       CSSValue(starlight::LinearOrientationType::kVertical)));
 }
 
-TEST_F(ListElementTest, NewStylingInternalListKeepsAxisGapAfterListTypeChange) {
-  auto list = CreateNewStylingNativeList(false);
-
-  list->SetAttribute(list::kListType, lepus::Value(list::kListTypeFlow));
-  page_->FlushActionsAsRoot();
-
-  EXPECT_EQ(ListAxisGaps(list.get()), std::make_pair(12.f, 4.f));
-}
-
 TEST_F(ListElementTest,
        NewStylingDecoupledListKeepsAxisGapAfterListTypeChange) {
-  auto list = CreateNewStylingNativeList(true);
+  auto list = CreateNewStylingNativeList();
 
   list->SetAttribute(list::kListType, lepus::Value(list::kListTypeFlow));
   page_->FlushActionsAsRoot();

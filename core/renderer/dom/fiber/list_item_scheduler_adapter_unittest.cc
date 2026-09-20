@@ -130,7 +130,6 @@ class ListItemSchedulerAdapterTest : public ::testing::TestWithParam<int32_t> {
     auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                          lepus::Value(), lepus::Value());
     list->disable_list_platform_implementation_ = true;
-    list->enable_decoupled_list_ = true;
     list->list_mediator_ = std::make_unique<ListMediator>(list.get());
     return list;
   }
