@@ -137,69 +137,77 @@ inline PlatformEventName PlatformEventNameFromString(std::string_view name) {
   return PlatformEventName::kUnknown;
 }
 
-inline std::string_view PlatformEventNameToString(PlatformEventName name) {
-  if (name == PlatformEventName::kTouchStart) {
-    return "touchstart";
-  }
-  if (name == PlatformEventName::kTouchMove) {
-    return "touchmove";
-  }
-  if (name == PlatformEventName::kTouchEnd) {
-    return "touchend";
-  }
-  if (name == PlatformEventName::kTouchCancel) {
-    return "touchcancel";
-  }
-  if (name == PlatformEventName::kTap) {
-    return "tap";
-  }
-  if (name == PlatformEventName::kClick) {
-    return "click";
-  }
-  if (name == PlatformEventName::kLongPress) {
-    return "longpress";
-  }
-  if (name == PlatformEventName::kUIAppear) {
-    return "uiappear";
-  }
-  if (name == PlatformEventName::kUIDisappear) {
-    return "uidisappear";
-  }
-  return "";
-}
-
 enum class PlatformEventPropName : int32_t {
   kUnknown = -1,
-  kUserInteractionEnabled = 0,
-  kNativeInteractionEnabled = 1,
-  kExposureScreenMarginLeft = 2,
-  kExposureScreenMarginRight = 3,
-  kExposureScreenMarginTop = 4,
-  kExposureScreenMarginBottom = 5,
-  kExposureUIMarginLeft = 6,
-  kExposureUIMarginRight = 7,
-  kExposureUIMarginTop = 8,
-  kExposureUIMarginBottom = 9,
-  kExposureArea = 10,
-  kEnableExposureUIClip = 11,
-  kIDSelector = 12,
-  kExposureId = 13,
-  kExposureScene = 14,
-  kDataset = 15,
-  kEventThrough = 16,
-  kEventThroughActiveRegions = 17,
-  kEventsPassThrough = 18,
-  kIgnoreFocus = 19,
-  kEnableTouchPseudoPropagation = 20,
+  kIDSelector = 0,
+  kDataset = 1,
+  kExposureId = 2,
+  kExposureScene = 3,
+  kExposureArea = 4,
+  kUserInteractionEnabled = 5,
+  kNativeInteractionEnabled = 6,
+  kEventThrough = 7,
+  kBlockNativeEvent = 8,
+  kIgnoreFocus = 9,
+  kEventsPassThrough = 10,
+  kEnableSimultaneousTouch = 11,
+  kEnableTouchPseudoPropagation = 12,
+  kBlockNativeEventAreas = 13,
+  kExposureScreenMarginLeft = 14,
+  kExposureScreenMarginRight = 15,
+  kExposureScreenMarginTop = 16,
+  kExposureScreenMarginBottom = 17,
+  kExposureUIMarginLeft = 18,
+  kExposureUIMarginRight = 19,
+  kExposureUIMarginTop = 20,
+  kExposureUIMarginBottom = 21,
+  kEnableExposureUIClip = 22,
+  kEventThroughActiveRegions = 23,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
     std::string_view name) {
+  if (name == "idSelector") {
+    return PlatformEventPropName::kIDSelector;
+  }
+  if (name == "dataset") {
+    return PlatformEventPropName::kDataset;
+  }
+  if (name == "exposure-id") {
+    return PlatformEventPropName::kExposureId;
+  }
+  if (name == "exposure-scene") {
+    return PlatformEventPropName::kExposureScene;
+  }
+  if (name == "exposure-area") {
+    return PlatformEventPropName::kExposureArea;
+  }
   if (name == "user-interaction-enabled") {
     return PlatformEventPropName::kUserInteractionEnabled;
   }
   if (name == "native-interaction-enabled") {
     return PlatformEventPropName::kNativeInteractionEnabled;
+  }
+  if (name == "event-through") {
+    return PlatformEventPropName::kEventThrough;
+  }
+  if (name == "block-native-event") {
+    return PlatformEventPropName::kBlockNativeEvent;
+  }
+  if (name == "ignore-focus") {
+    return PlatformEventPropName::kIgnoreFocus;
+  }
+  if (name == "events-pass-through") {
+    return PlatformEventPropName::kEventsPassThrough;
+  }
+  if (name == "ios-enable-simultaneous-touch") {
+    return PlatformEventPropName::kEnableSimultaneousTouch;
+  }
+  if (name == "enable-touch-pseudo-propagation") {
+    return PlatformEventPropName::kEnableTouchPseudoPropagation;
+  }
+  if (name == "block-native-event-areas") {
+    return PlatformEventPropName::kBlockNativeEventAreas;
   }
   if (name == "exposure-screen-margin-left") {
     return PlatformEventPropName::kExposureScreenMarginLeft;
@@ -225,108 +233,13 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   if (name == "exposure-ui-margin-bottom") {
     return PlatformEventPropName::kExposureUIMarginBottom;
   }
-  if (name == "exposure-area") {
-    return PlatformEventPropName::kExposureArea;
-  }
   if (name == "enable-exposure-ui-clip") {
     return PlatformEventPropName::kEnableExposureUIClip;
-  }
-  if (name == "idSelector") {
-    return PlatformEventPropName::kIDSelector;
-  }
-  if (name == "exposure-id") {
-    return PlatformEventPropName::kExposureId;
-  }
-  if (name == "exposure-scene") {
-    return PlatformEventPropName::kExposureScene;
-  }
-  if (name == "dataset") {
-    return PlatformEventPropName::kDataset;
-  }
-  if (name == "event-through") {
-    return PlatformEventPropName::kEventThrough;
   }
   if (name == "event-through-active-regions") {
     return PlatformEventPropName::kEventThroughActiveRegions;
   }
-  if (name == "events-pass-through") {
-    return PlatformEventPropName::kEventsPassThrough;
-  }
-  if (name == "ignore-focus") {
-    return PlatformEventPropName::kIgnoreFocus;
-  }
-  if (name == "enable-touch-pseudo-propagation") {
-    return PlatformEventPropName::kEnableTouchPseudoPropagation;
-  }
   return PlatformEventPropName::kUnknown;
-}
-
-inline std::string_view PlatformEventPropNameToString(
-    PlatformEventPropName name) {
-  if (name == PlatformEventPropName::kUserInteractionEnabled) {
-    return "user-interaction-enabled";
-  }
-  if (name == PlatformEventPropName::kNativeInteractionEnabled) {
-    return "native-interaction-enabled";
-  }
-  if (name == PlatformEventPropName::kExposureScreenMarginLeft) {
-    return "exposure-screen-margin-left";
-  }
-  if (name == PlatformEventPropName::kExposureScreenMarginRight) {
-    return "exposure-screen-margin-right";
-  }
-  if (name == PlatformEventPropName::kExposureScreenMarginTop) {
-    return "exposure-screen-margin-top";
-  }
-  if (name == PlatformEventPropName::kExposureScreenMarginBottom) {
-    return "exposure-screen-margin-bottom";
-  }
-  if (name == PlatformEventPropName::kExposureUIMarginLeft) {
-    return "exposure-ui-margin-left";
-  }
-  if (name == PlatformEventPropName::kExposureUIMarginRight) {
-    return "exposure-ui-margin-right";
-  }
-  if (name == PlatformEventPropName::kExposureUIMarginTop) {
-    return "exposure-ui-margin-top";
-  }
-  if (name == PlatformEventPropName::kExposureUIMarginBottom) {
-    return "exposure-ui-margin-bottom";
-  }
-  if (name == PlatformEventPropName::kExposureArea) {
-    return "exposure-area";
-  }
-  if (name == PlatformEventPropName::kEnableExposureUIClip) {
-    return "enable-exposure-ui-clip";
-  }
-  if (name == PlatformEventPropName::kIDSelector) {
-    return "idSelector";
-  }
-  if (name == PlatformEventPropName::kExposureId) {
-    return "exposure-id";
-  }
-  if (name == PlatformEventPropName::kExposureScene) {
-    return "exposure-scene";
-  }
-  if (name == PlatformEventPropName::kDataset) {
-    return "dataset";
-  }
-  if (name == PlatformEventPropName::kEventThrough) {
-    return "event-through";
-  }
-  if (name == PlatformEventPropName::kEventThroughActiveRegions) {
-    return "event-through-active-regions";
-  }
-  if (name == PlatformEventPropName::kEventsPassThrough) {
-    return "events-pass-through";
-  }
-  if (name == PlatformEventPropName::kIgnoreFocus) {
-    return "ignore-focus";
-  }
-  if (name == PlatformEventPropName::kEnableTouchPseudoPropagation) {
-    return "enable-touch-pseudo-propagation";
-  }
-  return "";
 }
 
 using PlatformEventPropMap =

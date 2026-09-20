@@ -89,6 +89,56 @@ bool PlatformEventHandler::OnInputEvent(
   return true;
 }
 
+uint32_t PlatformEventHandler::HitTestAndCacheEventBehavior(
+    fml::RefPtr<PlatformEventTarget> target_tree, float root_point[2],
+    const PlatformEventThroughConfig& config) {
+  auto hit_target = target_tree ? target_tree->HitTest(root_point) : nullptr;
+  event_behavior_ =
+      ResolveEventBehavior(target_tree, hit_target, root_point, config);
+  pending_event_behavior_root_sign_ = target_tree ? target_tree->Sign() : -1;
+  return event_behavior_;
+}
+
+uint32_t PlatformEventHandler::ResolveEventBehavior(
+    const fml::RefPtr<PlatformEventTarget>& target_tree,
+    const fml::RefPtr<PlatformEventTarget>& hit_target, float root_point[2],
+    const PlatformEventThroughConfig& config) {
+  if (!target_tree || !hit_target ||
+      hit_target->RootId() != target_tree->Sign()) {
+    return kEventBehaviorNone;
+  }
+
+  auto* helper = platform_ref_->GetEventTargetHelper();
+  float target_point[2] = {root_point[0], root_point[1]};
+  helper->ConvertPointFromAncestorToDescendant(target_point, target_tree,
+                                               hit_target, root_point);
+  uint32_t behavior = hit_target->IgnoreFocus() ? kEventBehaviorIgnoreFocus
+                                                : kEventBehaviorNone;
+  if (hit_target->EventThrough(target_point, config)) {
+    behavior |= kEventBehaviorEventThrough;
+  }
+
+  auto current = hit_target;
+  while (current && current->RootId() == target_tree->Sign()) {
+    if (current->BlockNativeEvent(target_point)) {
+      behavior |= kEventBehaviorBlockNativeEvent;
+    }
+    if (current->EnableSimultaneousTouch()) {
+      behavior |= kEventBehaviorEnableSimultaneousTouch;
+    }
+    auto parent = current->ParentTarget();
+    if (current->IsRoot() || !parent || parent == current ||
+        parent->RootId() != target_tree->Sign()) {
+      break;
+    }
+    // Region coordinates are local to each ancestor, before its own transform.
+    helper->ConvertPointFromAncestorToDescendant(target_point, target_tree,
+                                                 parent, root_point);
+    current = std::move(parent);
+  }
+  return behavior;
+}
+
 void PlatformEventHandler::OnTap() {
   float root_point[2] = {first_pointer_down_point_[0],
                          first_pointer_down_point_[1]};
@@ -143,10 +193,6 @@ void PlatformEventHandler::DispatchPointerEvent(
     const std::string& name, const lepus::Value& target_pointer_map) {
   auto first_target = GetEventTarget(first_target_sign_);
   if (!first_target) {
-    LOGE(
-        "PlatformEventHandler::DispatchPointerEvent target is missing for "
-        "event: " +
-        name);
     return;
   }
   auto event = fml::MakeRefCounted<event::TouchEvent>(name, target_pointer_map);
@@ -154,15 +200,7 @@ void PlatformEventHandler::DispatchPointerEvent(
 }
 
 bool PlatformEventHandler::EventThrough() {
-  auto first_target = GetEventTarget(first_target_sign_);
-  if (!first_target) {
-    return false;
-  }
-  float target_point[2] = {first_pointer_down_point_[0],
-                           first_pointer_down_point_[1]};
-  GetTargetPoint(first_target, target_point, first_pointer_down_point_);
-  return first_target->EventThrough(target_point,
-                                    platform_ref_->GetEventThroughConfig());
+  return event_behavior_ & kEventBehaviorEventThrough;
 }
 
 void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {
@@ -184,6 +222,8 @@ void PlatformEventHandler::SetHasPointerPseudo(bool has_pointer_pseudo) {
 }
 
 void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
+  // Pointer identifiers can be reused while another pointer remains active.
+  const bool starts_pointer_sequence = target_pointer_map_.empty();
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     int pointer_id = event.PointerID()[i];
@@ -195,15 +235,20 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
          " y:" + std::to_string(pointer_y) + " target:" +
          (hit_target ? std::to_string(hit_target->Sign()) : "null"))
     float down_point[2] = {pointer_x, pointer_y};
-    if (pointer_id == 0) {
-      ResetFocusInfo();
-      first_target_sign_ = hit_target ? hit_target->Sign() : -1;
-      memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
-      if (hit_target != nullptr) {
-        hit_target_sign_ = hit_target->Sign();
-        renderer_host_sign_ = hit_target->RendererHostSign();
-        ignore_focus_ = hit_target->IgnoreFocus();
+    if (starts_pointer_sequence && pointer_id == 0) {
+      // Resolve once for the sequence, before touchstart or :active can rebuild
+      // the target tree. Additional pointers must not change native
+      // arbitration.
+      if (pending_event_behavior_root_sign_ != target_tree_sign_) {
+        event_behavior_ =
+            ResolveEventBehavior(GetTargetTree(), hit_target, down_point,
+                                 platform_ref_->GetEventThroughConfig());
       }
+      pending_event_behavior_root_sign_ = -1;
+      first_target_sign_ = hit_target ? hit_target->Sign() : -1;
+      first_renderer_host_sign_ =
+          hit_target ? hit_target->RendererHostSign() : -1;
+      memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
     }
     target_pointer_map_.insert_or_assign(
         pointer_id, PlatformEventTargetDetail(
@@ -458,12 +503,6 @@ fml::RefPtr<PlatformEventTarget> PlatformEventHandler::FindTarget(
   }
   float point[] = {pointer_x, pointer_y};
   return target_tree->HitTest(point);
-}
-
-void PlatformEventHandler::ResetFocusInfo() {
-  hit_target_sign_ = -1;
-  renderer_host_sign_ = -1;
-  ignore_focus_ = false;
 }
 
 bool PlatformEventHandler::CanRespondFocus() {
