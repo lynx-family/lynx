@@ -21,7 +21,6 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
-#include "core/renderer/dom/fiber/template_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
