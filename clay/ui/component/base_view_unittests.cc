@@ -895,6 +895,39 @@ TEST_F_UI(BaseViewTest, PointerEventsSelectEligibleHitTarget) {
   expect_target(1);
 }
 
+TEST_F_UI(BaseViewTest, PointerEventsAutoPreservesDisabledInteraction) {
+  auto* fallback = new View(1, page_.get());
+  auto* parent = new View(2, page_.get());
+  auto* child = new View(3, page_.get());
+  page_->AddChild(fallback);
+  page_->AddChild(parent);
+  parent->AddChild(child);
+  for (auto* view : {fallback, parent, child}) {
+    view->SetBound(0, 0, 200, 200);
+    view->OnLayoutUpdated();
+  }
+  parent->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  child->SetAttribute("pointer-events", Value(kPointerEventsAuto));
+
+  for (bool enabled : {true, false, true}) {
+    SCOPED_TRACE(enabled);
+    parent->SetAttribute("user-interaction-enabled", Value(enabled));
+    BaseView* expected = enabled ? child : fallback;
+    for (auto device : {PointerEvent::kTouch, PointerEvent::kMouse}) {
+      SCOPED_TRACE(device);
+      auto event = CreateDownPointer(50, 50);
+      event.device = device;
+      HitTestResult result;
+      EXPECT_TRUE(page_->HitTest(event, result));
+      ASSERT_FALSE(result.empty());
+      EXPECT_EQ(result.front().get(), expected);
+    }
+    FloatPoint relative_position;
+    EXPECT_EQ(page_->GetTopViewToAcceptEvent({50, 50}, &relative_position),
+              expected);
+  }
+}
+
 TEST_F_UI(BaseViewTest, PointerEventsInheritanceStopsAtOverlay) {
   auto* overlay = new OverlayView(1, page_.get());
   auto* child = new View(2, page_.get());

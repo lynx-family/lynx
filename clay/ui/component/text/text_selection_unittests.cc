@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "clay/fml/icu_util.h"
 #include "clay/ui/component/text/inline_text_view.h"
@@ -712,6 +713,167 @@ TEST_F_UI(TextSelectionTest, SelectWordSupportsMixedChineseEnglishAndEmoji) {
             second_chinese_boundary);
   EXPECT_EQ(text_view_->SelectWord(21), TextRange(21, 23));
   EXPECT_EQ(text_view_->SelectWord(23, Affinity::kUpstream), TextRange(21, 23));
+}
+
+TEST_F_UI(TextSelectionTest, PointerEventsUseNearestEligibleInlineAncestor) {
+  auto paragraph = CreateParagraph(u"nested text");
+  auto boxes =
+      paragraph->GetRectsForRange(1, 2, txt::Paragraph::RectHeightStyle::kTight,
+                                  txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_FALSE(boxes.empty());
+  const auto& rect = boxes.front().rect;
+  FloatPoint point((rect.Left() + rect.Right()) / 2,
+                   (rect.Top() + rect.Bottom()) / 2);
+  text_view_->SetBound(0, 0, 1000, 100);
+  text_view_->SetParagraph(std::move(paragraph), u"nested text");
+  auto outer = std::make_unique<InlineTextView>(2, page_.get());
+  auto inner = std::make_unique<InlineTextView>(3, page_.get());
+  std::list<TextRange> outer_ranges{TextRange(0, 11)};
+  std::list<TextRange> inner_ranges{TextRange(0, 11)};
+  outer->SetTextRange(outer_ranges);
+  inner->SetTextRange(inner_ranges);
+  text_view_->AddChild(outer.get());
+  outer->AddChild(inner.get());
+  BaseView* text = text_view_.get();
+  FloatPoint relative_position;
+  EXPECT_EQ(text->GetTopViewToAcceptEvent(point, &relative_position),
+            inner.get());
+  text_view_->SetAttribute("pointer-events", Value(uint32_t{1}));
+  outer->SetAttribute("pointer-events", Value(uint32_t{0}));
+  inner->SetAttribute("pointer-events", Value(uint32_t{1}));
+
+  EXPECT_EQ(text->GetTopViewToAcceptEvent(point, &relative_position),
+            outer.get());
+  EXPECT_EQ(relative_position, point);
+  text->SetAttribute("pointer-events", Value(uint32_t{0}));
+  EXPECT_EQ(text->GetTopViewToAcceptEvent(point, &relative_position),
+            outer.get());
+  outer->SetAttribute("pointer-events", Value(uint32_t{1}));
+  EXPECT_EQ(text->GetTopViewToAcceptEvent(point, &relative_position), text);
+  text->SetAttribute("pointer-events", Value(uint32_t{1}));
+  EXPECT_EQ(text->GetTopViewToAcceptEvent(point, &relative_position), nullptr);
+
+  outer->RemoveChild(inner.get());
+  text->RemoveChild(outer.get());
+}
+
+TEST_F_UI(TextSelectionTest, PointerEventsPreserveInlineParagraphCoordinates) {
+  auto paragraph = CreateParagraph(u"nested text");
+  auto boxes =
+      paragraph->GetRectsForRange(1, 2, txt::Paragraph::RectHeightStyle::kTight,
+                                  txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_FALSE(boxes.empty());
+  const auto& rect = boxes.front().rect;
+  const FloatPoint paragraph_point((rect.Left() + rect.Right()) / 2,
+                                   (rect.Top() + rect.Bottom()) / 2);
+  text_view_->SetBound(40, 60, 1000, 150);
+  text_view_->SetPaddings(20, 15, 0, 0);
+  text_view_->SetParagraph(std::move(paragraph), u"nested text");
+  auto outer = std::make_unique<InlineTextView>(2, page_.get());
+  auto inner = std::make_unique<InlineTextView>(3, page_.get());
+  std::list<TextRange> ranges{TextRange(0, 11)};
+  outer->SetTextRange(ranges);
+  inner->SetTextRange(ranges);
+  page_->AddChild(text_view_.get());
+  text_view_->AddChild(outer.get());
+  outer->AddChild(inner.get());
+  text_view_->OnLayoutUpdated();
+  page_->SetAttribute("pointer-events", Value(uint32_t{1}));
+  outer->SetAttribute("pointer-events", Value(uint32_t{0}));
+  inner->SetAttribute("pointer-events", Value(uint32_t{1}));
+
+  FloatPoint page_point = paragraph_point;
+  page_point.Move(60, 75);
+  for (auto device : {PointerEvent::kTouch, PointerEvent::kMouse}) {
+    SCOPED_TRACE(device);
+    PointerEvent event(PointerEvent::EventType::kDownEvent);
+    event.device = device;
+    event.position = page_point;
+    HitTestResult result;
+    EXPECT_TRUE(page_->HitTest(event, result));
+    ASSERT_FALSE(result.empty());
+    EXPECT_EQ(result.front().get(), text_view_.get());
+    FloatPoint relative_position;
+    EXPECT_EQ(page_->GetTopViewToAcceptEvent(page_point, &relative_position),
+              outer.get());
+    EXPECT_EQ(relative_position, paragraph_point);
+
+    for (auto blank : {FloatPoint(45, 65), FloatPoint(940, 140)}) {
+      SCOPED_TRACE(blank);
+      event.position = blank;
+      result.clear();
+      EXPECT_FALSE(page_->HitTest(event, result));
+      EXPECT_TRUE(result.empty());
+      EXPECT_EQ(page_->GetTopViewToAcceptEvent(blank, &relative_position),
+                nullptr);
+    }
+  }
+
+  outer->RemoveChild(inner.get());
+  text_view_->RemoveChild(outer.get());
+  page_->RemoveChild(text_view_.get());
+}
+
+TEST_F_UI(TextSelectionTest, PointerEventsIncludeInlineGlyphsInGestureHitTest) {
+  auto paragraph = CreateParagraph(u"inline text");
+  auto boxes =
+      paragraph->GetRectsForRange(1, 2, txt::Paragraph::RectHeightStyle::kTight,
+                                  txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_FALSE(boxes.empty());
+  const auto& rect = boxes.front().rect;
+  FloatPoint point((rect.Left() + rect.Right()) / 2,
+                   (rect.Top() + rect.Bottom()) / 2);
+  text_view_->SetBound(0, 0, 1000, 100);
+  text_view_->SetParagraph(std::move(paragraph), u"inline text");
+  auto span = std::make_unique<InlineTextView>(2, page_.get());
+  std::list<TextRange> ranges{TextRange(0, 11)};
+  span->SetTextRange(ranges);
+  text_view_->AddChild(span.get());
+  page_->AddChild(text_view_.get());
+  page_->SetAttribute("pointer-events", Value(uint32_t{1}));
+  span->SetAttribute("pointer-events", Value(uint32_t{0}));
+
+  for (auto device : {PointerEvent::kTouch, PointerEvent::kMouse}) {
+    SCOPED_TRACE(device);
+    PointerEvent event(PointerEvent::EventType::kDownEvent);
+    event.position = point;
+    event.device = device;
+    HitTestResult result;
+    EXPECT_TRUE(page_->HitTest(event, result));
+    EXPECT_EQ(result.size(), 2u);
+    if (!result.empty()) {
+      EXPECT_EQ(result.front().get(), text_view_.get());
+    }
+    FloatPoint relative_position;
+    EXPECT_EQ(page_->GetTopViewToAcceptEvent(point, &relative_position),
+              span.get());
+
+    result.clear();
+    event.position = {900, 80};
+    EXPECT_FALSE(page_->HitTest(event, result));
+    EXPECT_TRUE(result.empty());
+    span->SetAttribute("pointer-events", Value::Null());
+    event.position = point;
+    EXPECT_FALSE(page_->HitTest(event, result));
+    EXPECT_TRUE(result.empty());
+    span->SetAttribute("pointer-events", Value(uint32_t{0}));
+  }
+
+  find_view_by_id_callback_ = [&](int id) -> BaseView* {
+    return id == span->id() ? span.get() : nullptr;
+  };
+  std::vector<std::string> records;
+  touch_event_callback_ = [&](const std::string& name, int id) {
+    records.push_back(name + ":" + std::to_string(id));
+  };
+  DispatchTapEvent(point);
+  EXPECT_EQ(records,
+            (std::vector<std::string>{"touchstart:2", "touchend:2", "tap:2"}));
+  touch_event_callback_ = nullptr;
+  find_view_by_id_callback_ = nullptr;
+
+  page_->RemoveChild(text_view_.get());
+  text_view_->RemoveChild(span.get());
 }
 
 TEST_F_UI(TextSelectionTest, SelectWordCrossesNestedInlineTextBoundaries) {
