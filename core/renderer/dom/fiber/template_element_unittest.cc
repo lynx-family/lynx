@@ -790,8 +790,8 @@ TEST_P(FiberElementTest,
           Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("bindtap"),
                     lepus::Value(), 1}});
   template_info->elements_.emplace_back(std::move(root_info));
-  default_entry->template_bundle_.element_template_infos_["root_template"] =
-      std::move(template_info);
+  default_entry->template_bundle_.element_template_info_store_
+      ->infos_["root_template"] = std::move(template_info);
 
   auto attribute_slots = lepus::CArray::Create();
   attribute_slots->emplace_back(lepus::Value("compiled-value"));

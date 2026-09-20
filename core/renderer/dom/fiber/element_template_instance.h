@@ -44,6 +44,7 @@ class ElementTemplateInstance
   void InitializeChildSlots(const lepus::Value& child_slots);
   void SetOptions(const lepus::Value& options);
   void SetUid(const lepus::Value& uid);
+  void PrepareElementsEarly();
 
   fml::RefPtr<Element> GetRoot();
   lepus::Value Serialize() const;
@@ -116,6 +117,7 @@ class ElementTemplateInstance
   uint32_t logical_parent_slot_index_{0};
 
   bool materialization_requested_{false};
+  bool can_prepare_early_{false};
   base::OnceTaskRefptr<GeneratedElementsResult> create_element_tree_task_{
       nullptr};
   fml::RefPtr<Element> result_{nullptr};

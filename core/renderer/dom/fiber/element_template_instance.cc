@@ -96,18 +96,31 @@ lepus::Value CopyTemplateValueForStorage(const lepus::Value& value) {
   return value.IsCallable() ? value : lepus::Value::Clone(value);
 }
 
-lepus::Value CopyTemplateObjectForStorage(const lepus::Value& value) {
+bool IsNativePreparationScalar(const lepus::Value& value) {
+  return !value.IsJSValue() &&
+         (value.IsNil() || value.IsUndefined() || value.IsBool() ||
+          value.IsNumber() || value.IsNaN() || value.IsString());
+}
+
+lepus::Value CopyTemplateObjectForStorage(const lepus::Value& value,
+                                          bool* can_prepare_early = nullptr) {
   auto object = lepus::Dictionary::Create();
-  lepus::Value::ForEachLepusValue(
-      value, [&object](const lepus::Value& key, const lepus::Value& item) {
-        if (key.IsString()) {
-          object->SetValue(key.String(), CopyTemplateValueForStorage(item));
-        }
-      });
+  lepus::Value::ForEachLepusValue(value, [&object, can_prepare_early](
+                                             const lepus::Value& key,
+                                             const lepus::Value& item) {
+    if (key.IsString()) {
+      auto copied = CopyTemplateValueForStorage(item);
+      if (can_prepare_early != nullptr && !IsNativePreparationScalar(copied)) {
+        *can_prepare_early = false;
+      }
+      object->SetValue(key.String(), std::move(copied));
+    }
+  });
   return lepus::Value(std::move(object));
 }
 
-lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots) {
+lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots,
+                                          bool& can_prepare_early) {
   if (!attribute_slots.IsArrayOrJSArray()) {
     return lepus::Value();
   }
@@ -116,9 +129,16 @@ lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots) {
   for (size_t index = 0;
        index < static_cast<size_t>(attribute_slots.GetLength()); ++index) {
     auto slot = attribute_slots.GetProperty(static_cast<uint32_t>(index));
-    copied_slots->emplace_back(slot.IsObject()
-                                   ? CopyTemplateObjectForStorage(slot)
-                                   : CopyTemplateValueForStorage(slot));
+    if (slot.IsObject()) {
+      copied_slots->emplace_back(
+          CopyTemplateObjectForStorage(slot, &can_prepare_early));
+    } else {
+      auto copied = CopyTemplateValueForStorage(slot);
+      if (!IsNativePreparationScalar(copied)) {
+        can_prepare_early = false;
+      }
+      copied_slots->emplace_back(std::move(copied));
+    }
   }
   return lepus::Value(std::move(copied_slots));
 }
@@ -190,12 +210,17 @@ void ApplyStaticEventAttributes(
 }
 
 GeneratedElementsResult GeneratePreparedElementsResult(
-    TemplateEntry* entry, const base::String& template_key,
+    ElementTemplateInfoStore* store, const base::String& template_key,
     const lepus::Value& attribute_slots, uint32_t attribute_slots_generation) {
   GeneratedElementsResult generated;
-  if (entry != nullptr) {
-    auto& info = entry->GetElementTemplateInfo(template_key.str());
-    generated = TreeResolver::GenerateElementsFromTemplateInfo(info);
+  if (store != nullptr) {
+    std::shared_ptr<const ElementTemplateInfo> info;
+    {
+      TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                  TEMPLATE_ENTRY_GET_ELEMENT_TEMPLATE_INFO);
+      info = store->Get(template_key.str());
+    }
+    generated = TreeResolver::GenerateElementsFromTemplateInfo(*info);
   }
   ApplyInitialNonEventAttributeSlots(generated.attribute_slot_targets_,
                                      attribute_slots);
@@ -272,6 +297,31 @@ class ElementTemplateInstanceSerializer {
     return lepus::Value(std::move(serialized));
   }
 
+  lepus::Value SerializeAttributeSlots(const lepus::Value& slots) {
+    if (!slots.IsArray()) {
+      return slots;
+    }
+    // The JS bridge exposes native containers by reference. Copy the array and
+    // slot objects so serialization cannot mutate an early preparation input.
+    // Eligible worker snapshots contain only scalars inside these objects.
+    auto copied_slots = lepus::CArray::Create();
+    copied_slots->reserve(slots.GetLength());
+    for (int index = 0; index < slots.GetLength(); ++index) {
+      const auto& slot = slots.Array()->get(index);
+      if (slot.IsTable()) {
+        auto copied_object = lepus::Dictionary::Create();
+        slot.Table()->for_each(
+            [&copied_object](const auto& key, const auto& value) {
+              copied_object->SetValue(key, value);
+            });
+        copied_slots->emplace_back(std::move(copied_object));
+      } else {
+        copied_slots->emplace_back(slot);
+      }
+    }
+    return lepus::Value(std::move(copied_slots));
+  }
+
   lepus::Value SerializeCompiledTemplate(
       const ElementTemplateInstance& instance) {
     auto serialized = lepus::Dictionary::Create();
@@ -280,7 +330,7 @@ class ElementTemplateInstanceSerializer {
     serialized->SetValue(BASE_STATIC_STRING(kTemplateBundleUrl),
                          instance.bundle_url_);
     serialized->SetValue(BASE_STATIC_STRING(kTemplateAttributeSlots),
-                         instance.attribute_slots_);
+                         SerializeAttributeSlots(instance.attribute_slots_));
     serialized->SetValue(BASE_STATIC_STRING(kTemplateChildSlots),
                          SerializeChildSlots(instance));
     SetSerializedOptions(instance, serialized);
@@ -321,7 +371,9 @@ void ElementTemplateInstance::SetAttributes(const lepus::Value& attributes) {
 
 void ElementTemplateInstance::SetAttributeSlots(
     const lepus::Value& attribute_slots) {
-  attribute_slots_ = CopyAttributeSlotsForStorage(attribute_slots);
+  can_prepare_early_ = true;
+  attribute_slots_ =
+      CopyAttributeSlotsForStorage(attribute_slots, can_prepare_early_);
   ++attribute_slots_generation_;
 }
 
@@ -367,6 +419,23 @@ void ElementTemplateInstance::SetOptions(const lepus::Value& options) {
 }
 
 void ElementTemplateInstance::SetUid(const lepus::Value& uid) { uid_ = uid; }
+
+void ElementTemplateInstance::PrepareElementsEarly() {
+  if (!can_prepare_early_ || IsTypedTemplate() || result_ != nullptr ||
+      create_element_tree_task_ != nullptr) {
+    return;
+  }
+  // Unregistered logical handles remain usable for serialization; preserve
+  // delayed materialization until their bundle becomes available.
+  auto entry = tasm_->FindTemplateEntry(bundle_url_.str());
+  if (entry == nullptr) {
+    return;
+  }
+  entry_ = entry.get();
+  create_element_tree_task_ = CreateElementTreeTask(entry_);
+  element_manager_->EnqueueEarlyElementTemplatePreparation(
+      [task = create_element_tree_task_]() { task->Run(); });
+}
 
 void ElementTemplateInstance::RequestMaterializationRecursively() {
   if (materialization_requested_) {
@@ -414,17 +483,21 @@ void ElementTemplateInstance::EnsureCreateElementTreeTaskScheduled() {
 
 base::OnceTaskRefptr<GeneratedElementsResult>
 ElementTemplateInstance::CreateElementTreeTask(TemplateEntry* entry) {
+  auto store = entry != nullptr
+                   ? entry->template_bundle().GetElementTemplateInfoStore()
+                   : nullptr;
   std::promise<GeneratedElementsResult> promise;
   auto future = promise.get_future();
   auto template_key = template_key_;
   auto attribute_slots = attribute_slots_;
   auto attribute_slots_generation = attribute_slots_generation_;
   return fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
-      [entry, template_key = std::move(template_key),
+      [store = std::move(store), template_key = std::move(template_key),
        attribute_slots = std::move(attribute_slots), attribute_slots_generation,
        promise = std::move(promise)]() mutable {
         promise.set_value(GeneratePreparedElementsResult(
-            entry, template_key, attribute_slots, attribute_slots_generation));
+            store.get(), template_key, attribute_slots,
+            attribute_slots_generation));
       },
       std::move(future));
 }
@@ -822,6 +895,7 @@ lepus::Value ElementTemplateInstance::Serialize() const {
 
 void ElementTemplateInstance::SetAttributeSlot(uint32_t slot_index,
                                                const lepus::Value& value) {
+  can_prepare_early_ = false;
   if (IsTypedTemplate()) {
     if (slot_index == kTypedTemplateAttributeSlotIndex) {
       SetAttributes(value);

@@ -418,6 +418,9 @@ LynxTemplateBundle& TemplateBinaryReader::template_bundle() {
 std::unique_ptr<LynxBinaryRecyclerDelegate>
 TemplateBinaryReader::CreateRecycler() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_BINARY_READER_COMPLETE_DECODE);
+  // The recycled bundle can outlive the source bundle referenced by its lazy
+  // reader. Capture independent descriptor input before copying that bundle.
+  template_bundle().GetElementTemplateInfoStore();
   // 0. copy the binary the template bundle
   auto recycler =
       std::make_unique<TemplateBinaryReader>(stream_->DeriveInputStream());

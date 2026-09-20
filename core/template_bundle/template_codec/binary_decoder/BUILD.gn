@@ -51,6 +51,7 @@ lynx_core_source_set("binary_decoder") {
 unittest_set("binary_decoder_testset") {
   public_configs = [ "../../../:lynx_public_config" ]
   sources = [
+    "element_template_info_store_unittest.cc",
     "lynx_binary_config_decoder_unittest.cc",
     "lynx_binary_config_decoder_unittest.h",
   ]

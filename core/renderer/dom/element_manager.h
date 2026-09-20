@@ -77,6 +77,7 @@ class PaintingContext;
 class PropBundle;
 class Element;
 class ElementTemplateInstance;
+struct ElementTemplatePreparationQueue;
 class ComponentElement;
 class ImageElement;
 class ListElement;
@@ -1408,6 +1409,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   void EnqueuePostMTSRenderTask(base::closure task);
   void FirePostMTSRenderTasks();
+  void EnqueueEarlyElementTemplatePreparation(base::closure task);
   void EnqueuePendingElementTemplateChildMounts(
       ElementTemplateInstance &instance);
   void DrainPendingElementTemplateChildMounts(Element *flush_root);
@@ -1596,6 +1598,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // consuming path must still run/wait on the same OnceTask before using data.
   using PendingPostMTSRenderTasks = base::Vector<base::closure>;
   std::shared_ptr<PendingPostMTSRenderTasks> pending_post_mts_render_tasks_;
+  std::shared_ptr<ElementTemplatePreparationQueue>
+      early_element_template_preparation_queue_;
   base::Vector<fml::WeakPtr<ElementTemplateInstance>>
       pending_element_template_child_mounts_;
 

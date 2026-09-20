@@ -57,6 +57,10 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
 
   std::unique_ptr<ElementBinaryReader> DeriveElementBinaryReader();
 
+  // Independent descriptor reader with the same options as lazy recycling,
+  // including static attribute preprocessing. No bundle or VM is retained.
+  std::unique_ptr<ElementBinaryReader> CreateElementTemplateReader();
+
  protected:
   // These are the APIs used for decoding data into elements.
   virtual bool DecodeElementChildrenSection(fml::RefPtr<Element>& element,
