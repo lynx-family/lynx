@@ -18,7 +18,11 @@ export enum LynxBaseLogLevel {
   ERROR = 4,
 }
 
+// Internal INFO sublevels. NOTE: 0 means original INFO; future sublevels must be nonzero.
+enum LynxInfoLogLevel { MONITOR = 5, OBSERVE = 10, INFO = 15 }
+
 export class LynxLog {
+  private static mInfoLogLevel: number = BuildProfile.DEBUG ? LynxInfoLogLevel.MONITOR : LynxInfoLogLevel.INFO;
   private static format: string = '%{public}s';
   private static mMinLogLevel: number = BuildProfile.DEBUG ? LynxBaseLogLevel.DEBUG : LynxBaseLogLevel.INFO;
   private static mService: ILynxBaseLogService | undefined;
@@ -41,10 +45,21 @@ export class LynxLog {
   }
 
   static setMinimumLoggingLevel(level: LynxBaseLogLevel): void {
-    level = Math.max(LynxBaseLogLevel.VERBOSE, Math.min(LynxBaseLogLevel.ERROR, level));
-    LynxLog.mMinLogLevel = level;
+    LynxLog.updateLogLevels(level);
     lynxbase.nativeSetMinLogLevel(level);
-    hilog.warn(DOMAIN, "lynxbase", LynxLog.format, `Reset minimum log level as ${level}`);
+    hilog.warn(DOMAIN, "lynxbase", LynxLog.format, `Reset minimum log level as ${LynxLog.mMinLogLevel}`);
+  }
+
+  private static updateLogLevels(level: LynxBaseLogLevel): void {
+    const infoLevel = level >>> 16;
+    if (level >= 0 && (level & 0xffff) == LynxBaseLogLevel.INFO && infoLevel != 0) {
+      LynxLog.mMinLogLevel = LynxBaseLogLevel.INFO;
+      LynxLog.mInfoLogLevel = Math.max(LynxInfoLogLevel.MONITOR, Math.min(LynxInfoLogLevel.INFO, infoLevel));
+      return;
+    }
+    LynxLog.mMinLogLevel = Math.max(LynxBaseLogLevel.VERBOSE, Math.min(LynxBaseLogLevel.ERROR, level));
+    LynxLog.mInfoLogLevel = LynxLog.mMinLogLevel < LynxBaseLogLevel.INFO
+      ? LynxInfoLogLevel.MONITOR : LynxInfoLogLevel.INFO;
   }
 
   static v(tag: string, message: string): void {
@@ -53,6 +68,14 @@ export class LynxLog {
 
   static d(tag: string, message: string): void {
     LynxLog.internalLynxLog(LynxBaseLogLevel.DEBUG, tag, message);
+  }
+
+  // TODO: Preserve M/O identity if output consumers need it in the future.
+  static m(tag: string, message: string): void {
+    if (LynxLog.mInfoLogLevel <= LynxInfoLogLevel.MONITOR) { LynxLog.i(tag, message); }
+  }
+  static o(tag: string, message: string): void {
+    if (LynxLog.mInfoLogLevel <= LynxInfoLogLevel.OBSERVE) { LynxLog.i(tag, message); }
   }
 
   static i(tag: string, message: string): void {

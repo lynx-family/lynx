@@ -22,8 +22,10 @@ namespace detail {
 
 #ifdef NDEBUG
 int32_t g_min_log_level = LOG_INFO;
+int32_t g_info_log_level = INFO_LEVEL_INFO;
 #else
 int32_t g_min_log_level = LOG_DEBUG;
+int32_t g_info_log_level = INFO_LEVEL_MONITOR;
 #endif
 
 }  // namespace detail
@@ -140,7 +142,17 @@ void InitLynxLogging(InitAlogCallBack initAlogCallback,
 }
 
 void SetMinLogLevel(int level) {
-  detail::g_min_log_level = std::clamp(level, LOG_VERBOSE, LOG_ERROR);
+  // Decode before clamping: a packed INFO sublevel is not an ERROR threshold.
+  const bool has_info_sublevel =
+      level >= 0 && (level & 0xffff) == LOG_INFO && (level >> 16) != 0;
+  detail::g_min_log_level =
+      std::clamp(has_info_sublevel ? LOG_INFO : level, LOG_VERBOSE, LOG_ERROR);
+  detail::g_info_log_level =
+      has_info_sublevel
+          ? std::clamp(level >> 16, int(detail::INFO_LEVEL_MONITOR),
+                       int(detail::INFO_LEVEL_INFO))
+      : detail::g_min_log_level < LOG_INFO ? detail::INFO_LEVEL_MONITOR
+                                           : detail::INFO_LEVEL_INFO;
 }
 
 void PrintLogToLynxLogging(int level, const char* tag, const char* message) {

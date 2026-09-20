@@ -35,11 +35,20 @@ BASE_EXPORT void SetMinLogLevel(int level);
 BASE_EXPORT void SetPlatformMinLogLevel(int level);
 
 namespace detail {
+// Internal INFO sublevels. NOTE: 0 is reserved for the original INFO value;
+// future INFO sublevels must be nonzero to avoid that ambiguity.
+enum InfoLogLevel {
+  INFO_LEVEL_MONITOR = 5,
+  INFO_LEVEL_OBSERVE = 10,
+  INFO_LEVEL_INFO = 15
+};
 // Shared storage for the inline getter. Update through SetMinLogLevel().
 BASE_EXPORT extern int32_t g_min_log_level;
+BASE_EXPORT extern int32_t g_info_log_level;
 }  // namespace detail
 
 inline int GetMinLogLevel() { return detail::g_min_log_level; }
+inline int GetInfoLogLevel() { return detail::g_info_log_level; }
 
 BASE_EXPORT void PrintLogToLynxLogging(int level, const char* tag,
                                        const char* message);
@@ -69,6 +78,13 @@ const LogSeverity LOG_ERROR = LYNX_LOG_LEVEL_ERROR;
 #endif
 const LogSeverity LOG_FATAL = LYNX_LOG_LEVEL_FATAL;
 const LogSeverity LOG_NUM_SEVERITIES = LYNX_LOG_LEVEL_NUM;
+
+namespace detail {
+// Internal configuration values only, not output severities or client APIs.
+// Low 16 bits retain INFO; high 16 bits select its nonzero sublevel.
+constexpr int LOG_MONITOR = (INFO_LEVEL_MONITOR << 16) | LOG_INFO;
+constexpr int LOG_OBSERVE = (INFO_LEVEL_OBSERVE << 16) | LOG_INFO;
+}  // namespace detail
 
 // !!! Need to be aligned with platform layer. !!!
 // !!! in file <LogSource.java> !!!
@@ -175,6 +191,27 @@ class LogMessageVoidify {
   { LAZY_STREAM(LOG_STREAM(DEBUG), LOG_IS_ON(DEBUG)) << msg; }
 #else
 #define LOGD(msg)
+#endif
+
+// TODO: Preserve M/O identity if output consumers need it in the future.
+#if LYNX_MIN_LOG_LEVEL <= LYNX_LOG_LEVEL_INFO
+#define LOGM(msg)                                          \
+  do {                                                     \
+    if (lynx::base::logging::GetInfoLogLevel() <=          \
+        lynx::base::logging::detail::INFO_LEVEL_MONITOR) { \
+      LOGI(msg);                                           \
+    }                                                      \
+  } while (0)
+#define LOGO(msg)                                          \
+  do {                                                     \
+    if (lynx::base::logging::GetInfoLogLevel() <=          \
+        lynx::base::logging::detail::INFO_LEVEL_OBSERVE) { \
+      LOGI(msg);                                           \
+    }                                                      \
+  } while (0)
+#else
+#define LOGM(msg)
+#define LOGO(msg)
 #endif
 
 #if LYNX_MIN_LOG_LEVEL <= LYNX_LOG_LEVEL_INFO

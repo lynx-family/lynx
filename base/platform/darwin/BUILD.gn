@@ -107,6 +107,7 @@ lynx_base_source_set("base") {
   public = base_darwin_public_headers
   sources = base_darwin_public_headers + [
               "LynxBaseEnv.mm",
+              "log/LynxLog+Private.h",
               "log/LynxLog.mm",
               "trace/LynxBaseTrace.mm",
             ]

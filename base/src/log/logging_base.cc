@@ -4,7 +4,6 @@
 
 #include "base/include/log/logging_base.h"
 
-#include <algorithm>
 #include <iostream>
 #include <map>
 #include <string>
@@ -125,10 +124,9 @@ void RemoveLoggingDelegate(int delegate_id) {
 }
 
 void SetMinimumLoggingLevel(int min_log_level) {
-  min_log_level = std::clamp(min_log_level, base::logging::LOG_VERBOSE,
-                             base::logging::LOG_ERROR);
-  lynx_alog_min_level_ = min_log_level;
-  lynx::base::logging::SetMinLogLevel(min_log_level);
+  // Decode INFO sublevels, then cache the original six-level threshold.
+  base::logging::SetMinLogLevel(min_log_level);
+  lynx_alog_min_level_ = base::logging::GetMinLogLevel();
 }
 
 void SetJSLogsFromExternalChannels(bool is_open) {

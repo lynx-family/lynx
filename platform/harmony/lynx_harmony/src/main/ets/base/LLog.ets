@@ -43,6 +43,9 @@ export class LLog {
     LynxLog.setMinimumLoggingLevel(LLog.logLevelToLynxBaseLogLevel(level));
   }
 
+  static m(tag: string, message: string): void { LynxLog.m(tag, message); }
+  static o(tag: string, message: string): void { LynxLog.o(tag, message); }
+
   static v(tag: string, message: string): void {
     LynxLog.v(tag, message);
   }
