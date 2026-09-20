@@ -13,6 +13,15 @@ static_library("base_static") {
     "../platform/windows/lynx_base_env.cc",
     "../platform/windows/lynx_base_env.h",
   ]
+  if (is_mac) {
+    # Native desktop consumers and tests do not link the Objective-C logger.
+    # Keep the fallback in the archive so platform-provided symbols take
+    # precedence when the platform logger is linked.
+    sources += [
+      "log/logging_base.cc",
+      "log/logging_platform_default.cc",
+    ]
+  }
   deps = [ ":base_group" ]
   configs += [ ":base_private_config" ]
 }

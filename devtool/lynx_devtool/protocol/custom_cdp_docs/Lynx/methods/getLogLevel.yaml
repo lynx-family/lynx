@@ -1,0 +1,25 @@
+summary: Reads the process-wide runtime log threshold, including INFO sublevels.
+parameters: []
+returns:
+  - name: runtimeLevel
+    type: string
+    description: VERBOSE, DEBUG, MONITOR, OBSERVE, INFO, WARNING or ERROR.
+  - name: nativeCompileLevel
+    type: string
+    description: Lowest LOG macro level retained by the native logging build. VERBOSE, DEBUG, MONITOR, WARNING, ERROR or FATAL. A compiled INFO threshold is reported as MONITOR because it retains MONITOR, OBSERVE and INFO.
+events: []
+notes:
+  - nativeCompileLevel is fixed by the native SDK build, not the DevTool build. It does not describe platform logging APIs or separately compiled callers with different macro settings.
+  - Select an active LynxView session. The result describes the shared native threshold, not a per-view override or an output severity.
+  - Reads immediately without switching threads. Wait for a setLogLevel response before querying its result.
+  - Reads current logging state rather than a CDP cache, including changes made through host setters.
+examples:
+  - title: Read the current threshold
+    request:
+      id: 2
+      method: Lynx.getLogLevel
+    response:
+      id: 2
+      result:
+        runtimeLevel: INFO
+        nativeCompileLevel: MONITOR

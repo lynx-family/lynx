@@ -7,8 +7,10 @@
 #include <utility>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/log/logging.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/runtime/lepus/json_parser.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/input_request_handler.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -446,6 +448,12 @@ void InspectorUIExecutor::GetScreenshot(
   devtool_platform_facade_->GetLynxScreenShot();
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content = Json::Value(Json::ValueType::objectValue);
+}
+
+void InspectorUIExecutor::LynxSetLogLevel(
+    const std::shared_ptr<CDPResponder>& responder, int level) {
+  base::logging::SetPlatformMinLogLevel(level);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::LynxGetRectToWindow(

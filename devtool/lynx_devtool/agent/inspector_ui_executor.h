@@ -17,6 +17,7 @@
 namespace lynx {
 namespace devtool {
 
+class CDPResponder;
 class InputRequestHandler;
 class LynxDevToolMediator;
 
@@ -55,6 +56,8 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(SetUIStyle)
 
   // lynx domain
+  void LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
+                       int level);
   DECLARE_DEVTOOL_METHOD(LynxGetRectToWindow)
   DECLARE_DEVTOOL_METHOD(LynxTransferData)
   DECLARE_DEVTOOL_METHOD(LynxGetViewLocationOnScreen)

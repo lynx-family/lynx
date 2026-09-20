@@ -50,6 +50,14 @@ BASE_EXPORT extern int32_t g_info_log_level;
 inline int GetMinLogLevel() { return detail::g_min_log_level; }
 inline int GetInfoLogLevel() { return detail::g_info_log_level; }
 
+// Converts a configurable threshold name (including MONITOR/OBSERVE).
+// Returns -1 for unknown names; FATAL is not a configurable threshold.
+BASE_EXPORT int ParseLogLevel(const std::string& name);
+BASE_EXPORT const char* GetMinLogLevelName();
+// Lowest LOG macro level retained by the native logging build. INFO includes
+// MONITOR/OBSERVE, so its lowest retained level is reported as MONITOR.
+BASE_EXPORT const char* GetCompileMinLogLevelName();
+
 BASE_EXPORT void PrintLogToLynxLogging(int level, const char* tag,
                                        const char* message);
 

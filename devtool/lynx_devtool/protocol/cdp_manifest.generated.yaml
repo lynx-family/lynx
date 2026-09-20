@@ -418,6 +418,10 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+      - name: getLogLevel
+        origin: lynx-extension
+        since: '4.4'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: getProperties
         origin: lynx-extension
         since: '4.1'
@@ -441,6 +445,10 @@ domains:
       - name: sendVMEvent
         origin: lynx-extension
         since: '4.1'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+      - name: setLogLevel
+        origin: lynx-extension
+        since: '4.4'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: setTraceMode
         origin: lynx-extension
