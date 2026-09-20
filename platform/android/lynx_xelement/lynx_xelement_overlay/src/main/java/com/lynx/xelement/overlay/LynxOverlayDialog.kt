@@ -132,7 +132,7 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
      */
     fun innerDispatchTouchEvent(ev: MotionEvent): Boolean {
         var consumed = false
-        if (handleTouchEvent(ev.x,ev.y)) {
+        if (handleTouchEvent(ev)) {
             val offsetX = overlay.getTransLeft().toFloat()
             val offsetY = overlay.getTransTop().toFloat()
             ev.offsetLocation(-offsetX, -offsetY)
@@ -415,8 +415,9 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
             0
         }
 
-    private fun handleTouchEvent(x: Float, y: Float): Boolean {
-        return overlay.needHandleEvent(x, y)
+    private fun handleTouchEvent(event: MotionEvent): Boolean {
+        return overlay.needHandleEvent(
+            event.x, event.y, event.actionMasked == MotionEvent.ACTION_DOWN)
     }
 
     fun checkContextErrorCode(context: Context): Int {
