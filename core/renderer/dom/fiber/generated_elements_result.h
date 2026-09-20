@@ -17,11 +17,6 @@ struct ElementSlotMountPoint {
   fml::RefPtr<Element> ref_node_;
 };
 
-struct PreparedElementSlotInsertion {
-  uint32_t slot_index_{0};
-  fml::RefPtr<Element> child_;
-};
-
 // Aggregated output of one Element Template materialization task.
 //
 // The task always produces a detached single-root tree plus its slot target
@@ -44,7 +39,6 @@ struct GeneratedElementsResult {
   base::Vector<fml::RefPtr<Element>> event_attribute_slot_targets_;
   base::Vector<fml::RefPtr<Element>> static_event_targets_;
   base::Vector<ElementSlotMountPoint> element_slot_targets_;
-  base::Vector<PreparedElementSlotInsertion> prepared_element_slot_insertions_;
   lepus::Value prepared_attribute_slots_;
   uint32_t attribute_slots_generation_{0};
   lepus::Value prepared_root_attributes_;
