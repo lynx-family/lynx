@@ -18,9 +18,10 @@
 #import <Lynx/LynxServiceImageProtocol.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUnitUtils.h>
 #import "LynxConvertUtils.h"
-#import "LynxUIContext+Internal.h"
+#import "LynxLayerCornerRadii.h"
 
 @interface LynxBackgroundBorderInfo : NSObject
 @property(nonatomic, assign) LynxBorderRadii borderRadius;
@@ -267,9 +268,9 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 - (void)clearSimpleBorder {
   CALayer* layer = _ui.view.layer;
   [layer setBorderWidth:0.0];
-  [layer setCornerRadius:0.0];
+  LynxSetLayerCornerRadii(layer, (LynxLayerCornerRadii){0});
   [_borderLayer setBorderWidth:0.0];
-  [_borderLayer setCornerRadius:0.0];
+  LynxSetLayerCornerRadii(_borderLayer, (LynxLayerCornerRadii){0});
 }
 
 - (void)autoAddOpacityViewWithOpacity:(CGFloat)opacity {
@@ -768,7 +769,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
       [self autoAddBackgroundLayer:YES];
     } else {
       _backgroundLayer.type = LynxBgTypeComplex;
-      _backgroundLayer.cornerRadius = 0;
+      LynxSetLayerCornerRadii(_backgroundLayer, (LynxLayerCornerRadii){0});
       _backgroundLayer.backgroundColor = [UIColor clearColor].CGColor;
     }
     [self applyComplexBackground];
@@ -837,9 +838,10 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 }
 
 /// Apply border related props to the corresponding layer. When the view's 4 borders have same
-/// `border-color`, `border-width`, `border-radius` and `border-style`, the border can be presented
-/// via `CALayer`'s props. We use `borderLayer` to manage the layer hierarchy, `borderLayer` could
-/// be above or below `view.layer`. Always put borders on `borderLayer` if it exists.
+/// `border-color`, `border-width` and `border-style`, and CALayer-compatible radii, it can be
+/// presented via `CALayer`'s props. We use `borderLayer` to manage the layer hierarchy,
+/// `borderLayer` could be above or below `view.layer`. Always put borders on `borderLayer` if it
+/// exists.
 - (void)applySimpleBorder {
   CALayer* layer = _ui.view.layer;
   // If borderLayer exists, all border related props (radius, borderWidth, borderColor) should be
@@ -855,10 +857,6 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   } else {
     layer.borderWidth = 0.0;
   }
-  // Adjust radius, radius should smaller than half of the corresponding edge's length.
-  // Simple border means all cornerRadius are the same.
-  layer.cornerRadius = [self adjustRadius:[_backgroundInfo borderRadius].topLeftX.val
-                                   bySize:layer.frame.size];
   if ([_backgroundInfo borderBottomColor]) {
     layer.borderColor = [_backgroundInfo borderBottomColor].CGColor;
   }
@@ -984,8 +982,6 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 
   _ui.view.layer.backgroundColor = [UIColor clearColor].CGColor;
   if (!complex) {
-    _backgroundLayer.cornerRadius = [self adjustRadius:[_backgroundInfo borderRadius].topLeftX.val
-                                                bySize:_backgroundLayer.frame.size];
     _backgroundLayer.backgroundColor = _backgroundInfo.backgroundColor.CGColor;
   }
 
@@ -1004,7 +1000,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 
 - (void)applyComplexBackground {
   _backgroundLayer.backgroundColor = [UIColor clearColor].CGColor;
-  _backgroundLayer.cornerRadius = 0;
+  LynxSetLayerCornerRadii(_backgroundLayer, (LynxLayerCornerRadii){0});
   if (_isBGChangedImage || [_backgroundInfo BGChangedImage]) {
     _backgroundLayer.isAnimated = NO;
     [self tryToLoadBackgroundImagesAutoRefresh:YES onlyGradient:&_onlyGradient];
@@ -1103,14 +1099,13 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   return NO;
 }
 
-- (BOOL)isSimpleBackground {
+- (BOOL)isSimpleBackground:(BOOL)hasNativeRadii {
   if ([self hasBackgroundClip]) {
     // should clip background color
     return NO;
   }
 
-  if ([_backgroundInfo hasDifferentBorderRadius]) {
-    // normal layer do not support different radius
+  if (!hasNativeRadii) {
     return NO;
   }
 
@@ -1137,14 +1132,12 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     return nil;  // allow implicit animations
 }
 
-- (float)adjustRadius:(float)radius bySize:(CGSize)size {
-  if (radius + radius > size.width) {
-    radius = size.width * 0.5f;
-  }
-  if (radius + radius > size.height) {
-    radius = size.height * 0.5f;
-  }
-  return radius;
+- (BOOL)isSimpleBorder:(BOOL)hasNativeRadii {
+  if ([_backgroundInfo isSimpleBorder]) return YES;
+  CGSize size = _ui.view.bounds.size;
+  CGFloat width = _backgroundInfo.borderWidth.bottom;
+  return [_backgroundInfo canUseBorderShapeLayer] && width >= 1 &&
+         width * 2 <= MIN(size.width, size.height) && hasNativeRadii;
 }
 
 - (UIEdgeInsets)getAdjustedBorderWidth {
@@ -1243,11 +1236,15 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   }
   _ui.view.layer.transform = layerTransform;
 
-  const BOOL hasDifferentBorderRadius = [_backgroundInfo hasDifferentBorderRadius];
-  const BOOL isSimpleBorder = [_backgroundInfo isSimpleBorder];
+  const LynxBorderRadii resolvedRadii = _backgroundInfo.borderRadius;
+  const BOOL hasDifferentRadii = !internalHasSameBorderRadius(resolvedRadii);
+  LynxLayerCornerRadii radii = LynxGetLayerCornerRadii(
+      resolvedRadii, newViewSize, !hasDifferentRadii || !_ui.hasSharedBackingLayer);
+  // Masks compose with native rounded painting; their presence does not change radius eligibility.
+  const BOOL isSimpleBorder = [self isSimpleBorder:radii.eligible];
   const BOOL noBorderLayer = isSimpleBorder && ![self toAddSubLayerOnBorderLayer] &&
                              (OVERFLOW_HIDDEN_VAL == _ui.overflow || ![_backgroundInfo hasBorder]);
-  const BOOL isSimpleBackground = [self isSimpleBackground];
+  const BOOL isSimpleBackground = [self isSimpleBackground:radii.eligible];
   const BOOL noBackgroundLayer =
       isSimpleBackground && ![self toAddSubLayerOnBackgroundLayer:!noBorderLayer];
   // noMaskLayer = the view shouldn't contain a mask layer
@@ -1256,10 +1253,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   BOOL borderChanged = NO;
   if (isSizeChanged) {
     _backgroundSize = newViewSize;
-    if (!noBorderLayer) {
-      // size changed, we need to recalculate border size
-      borderChanged = YES;
-    }
+    borderChanged = !noBorderLayer;
     if (!noBackgroundLayer) {
       _isBGChangedImage = YES;
     }
@@ -1274,7 +1268,12 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
           ? LynxBgTypeShape
           : LynxBgTypeComplex;
 
-  if (borderChanged || [_backgroundInfo borderChanged] || forceRedraw) {
+  // Native-radius eligibility can change after a size update without changing border
+  // properties. Reconcile both the border layer's presence and renderer type before reusing it.
+  const BOOL borderLayerChanged =
+      noBorderLayer != (_borderLayer == nil) || (_borderLayer && _borderLayer.type != borderType);
+  if (borderChanged || [_backgroundInfo borderChanged] || borderLayerChanged || forceRedraw) {
+    BOOL didPaintBorder = YES;
     if (noBorderLayer) {
       [self removeBorderLayer];
       [self applySimpleBorder];
@@ -1299,21 +1298,21 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
         LynxUpdateLayerWithImage(_borderLayer, image);
       }
       [self autoAddOutlineLayer];
+    } else {
+      didPaintBorder = NO;
     }
-    borderChanged = NO;
-    _backgroundInfo.borderChanged = NO;
+    _backgroundInfo.borderChanged = !didPaintBorder;
   }
 
-  // If UI previously has no border, background layer will not be created. If then the borders are
-  // added, we need create backgroundLayer to ensure background is below border.
-  const BOOL needToCreateBackgroundLayer = _backgroundLayer == nil && !noBackgroundLayer;
+  const BOOL backgroundLayerChanged =
+      noBackgroundLayer != (_backgroundLayer == nil) ||
+      (_backgroundLayer &&
+       _backgroundLayer.type != (isSimpleBackground ? LynxBgTypeSimple : LynxBgTypeComplex));
   if (_isBGChangedImage || _isBGChangedNoneImage || [_backgroundInfo BGChangedImage] ||
-      [_backgroundInfo BGChangedNoneImage] || needToCreateBackgroundLayer || forceRedraw) {
+      [_backgroundInfo BGChangedNoneImage] || backgroundLayerChanged || forceRedraw) {
     if (noBackgroundLayer) {
       [self removeBackgroundLayer];
       _ui.view.layer.backgroundColor = [_backgroundInfo backgroundColor].CGColor;
-      _ui.view.layer.cornerRadius = [self adjustRadius:[_backgroundInfo borderRadius].topLeftX.val
-                                                bySize:newViewSize];
       _isBGChangedImage = _isBGChangedNoneImage = NO;
       _backgroundInfo.BGChangedImage = _backgroundInfo.BGChangedNoneImage = NO;
     } else if (_backgroundSize.width > 0 || _backgroundSize.height > 0 || isSizeChanged) {
@@ -1340,13 +1339,8 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     }
   }
 
-  if (hasDifferentBorderRadius) {
-    _ui.view.layer.cornerRadius = 0;
-  } else {
-    // if radius values of all corners are same, just use layer cornerRadius
-    _ui.view.layer.cornerRadius = [self adjustRadius:[_backgroundInfo borderRadius].topLeftX.val
-                                              bySize:newViewSize];
-  }
+  CALayer* viewLayer = _ui.view.layer;
+  LynxSetLayerCornerRadii(viewLayer, radii);
 
   if (!CGSizeEqualToSize(newViewSize, CGSizeZero) || _withAnimation) {
     // if lynxUI has sticky attribute, transform = _transform + stickyTransform
@@ -1361,8 +1355,8 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
       _backgroundLayer.transform = CATransform3DIdentity;
       // All properties should set with the original frame size without UI transformation.
       _backgroundLayer.frame = _ui.view.layer.frame;
-      _backgroundLayer.cornerRadius = [self adjustRadius:[_backgroundInfo borderRadius].topLeftX.val
-                                                  bySize:_backgroundLayer.frame.size];
+      LynxSetLayerCornerRadii(_backgroundLayer,
+                              isSimpleBackground ? radii : (LynxLayerCornerRadii){0});
       _backgroundLayer.mask = nil;
       if (_ui.clipPath) {
         CAShapeLayer* mask = [[CAShapeLayer alloc] init];
@@ -1377,8 +1371,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
       _borderLayer.transform = CATransform3DIdentity;
       // All properties should set with the original frame size without UI transformation.
       _borderLayer.frame = _ui.view.layer.frame;
-      _borderLayer.cornerRadius = [self adjustRadius:[_backgroundInfo borderRadius].topLeftX.val
-                                              bySize:_borderLayer.frame.size];
+      LynxSetLayerCornerRadii(_borderLayer, isSimpleBorder ? radii : (LynxLayerCornerRadii){0});
       _borderLayer.mask = nil;
       if (_ui.clipPath) {
         CAShapeLayer* mask = [[CAShapeLayer alloc] init];
