@@ -52,7 +52,6 @@ class TransformKeyframe : public lynx::gfx::TransformKeyframe {
       fml::TimeDelta time,
       std::unique_ptr<lynx::gfx::TimingFunction> timing_function);
   ~TransformKeyframe() override = default;
-
   bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                 tasm::Element* element);
 
@@ -61,6 +60,8 @@ class TransformKeyframe : public lynx::gfx::TransformKeyframe {
   void NotifyElementSizeUpdated();
 
   void NotifyUnitValuesUpdated(uint32_t css_value_pattern);
+
+  bool HasDynamicDependencies() const;
 
   TransformKeyframe(fml::TimeDelta time,
                     std::unique_ptr<gfx::TimingFunction> timing_function);
