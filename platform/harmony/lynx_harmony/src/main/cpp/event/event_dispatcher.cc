@@ -1866,9 +1866,8 @@ bool EventDispatcher::EventThrough() {
     auto context = ui_owner_->Context()->GetNativePaintingContext();
     auto root = root_target_.lock();
     return context && root &&
-           context->IsPlatformEventTargetEventThrough(
-               root->Sign(), first_finger_down_point_[0],
-               first_finger_down_point_[1]);
+           (context->GetCachedPlatformEventBehavior() &
+            kEventBehaviorEventThrough);
   }
   auto target = first_active_target_.lock();
   if (!target) {
@@ -1907,6 +1906,13 @@ bool EventDispatcher::ContainGestureNode() {
 }
 
 bool EventDispatcher::ShouldBlockNativeEvent() {
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    auto context = ui_owner_->Context()->GetNativePaintingContext();
+    auto root = root_target_.lock();
+    return context && root &&
+           (context->GetCachedPlatformEventBehavior() &
+            kEventBehaviorBlockNativeEvent);
+  }
   if (first_active_target_.expired()) {
     return false;
   }
@@ -1999,8 +2005,9 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
     context->SetPlatformEventRootOffset(root->Sign(),
                                         page_x - root_screen_offset[0],
                                         page_y - root_screen_offset[1]);
-    const bool can_consume = !context->IsPlatformEventTargetEventThrough(
-        root->Sign(), point[0], point[1]);
+    const bool can_consume = !(context->HitTestAndCachePlatformEventBehavior(
+                                   root->Sign(), point[0], point[1]) &
+                               kEventBehaviorEventThrough);
     UpdateOverlayPassThroughState(root, can_consume);
     return can_consume;
   }

@@ -46,21 +46,29 @@ class PlatformEventHandler {
 
   bool OnInputEvent(fml::RefPtr<PlatformEventTarget> target_tree,
                     int int_event_data[], float float_event_data[]);
+  // Hit-tests and caches behavior for the next pointer-down sequence.
+  uint32_t HitTestAndCacheEventBehavior(
+      fml::RefPtr<PlatformEventTarget> target_tree, float root_point[2],
+      const PlatformEventThroughConfig& config);
   void OnTap();
   void OnLongPress();
   void DispatchPointerEvent(const std::string& name,
                             const lepus::Value& target_pointer_map);
 
   bool EventThrough();
-  int32_t HitTargetSign() const { return hit_target_sign_; }
-  int32_t RendererHostSign() const { return renderer_host_sign_; }
-  bool IgnoreFocus() const { return ignore_focus_; }
+  int32_t FirstTargetSign() const { return first_target_sign_; }
+  int32_t FirstRendererHostSign() const { return first_renderer_host_sign_; }
+  uint32_t EventBehavior() const { return event_behavior_; }
   bool CanRespondFocus();
 
   void SetTapSlop(const std::string& tap_slop);
   void SetHasPointerPseudo(bool has_pointer_pseudo);
 
  private:
+  uint32_t ResolveEventBehavior(
+      const fml::RefPtr<PlatformEventTarget>& target_tree,
+      const fml::RefPtr<PlatformEventTarget>& hit_target, float root_point[2],
+      const PlatformEventThroughConfig& config);
   void InitPointerEnv(PlatformPointerEvent& event);
   void ResetPointerEnv(PlatformPointerEvent& event);
   void InitClickEnv();
@@ -82,7 +90,6 @@ class PlatformEventHandler {
   fml::RefPtr<PlatformEventTarget> GetTargetTree() const;
   fml::RefPtr<PlatformEventTarget> GetEventTarget(int32_t sign) const;
   fml::RefPtr<PlatformEventTarget> FindTarget(float pointer_x, float pointer_y);
-  void ResetFocusInfo();
   bool CanRespondTap(fml::RefPtr<PlatformEventTarget> target);
   void ActivePseudoStatus();
   void DeactivatePseudoStatus(LynxPseudoStatus status);
@@ -104,9 +111,9 @@ class PlatformEventHandler {
   std::deque<int32_t> click_target_chain_;
   std::unordered_map<int, PlatformEventTargetDetail> target_pointer_map_;
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offset_for_tap_;
-  int32_t hit_target_sign_{-1};
-  int32_t renderer_host_sign_{-1};
-  bool ignore_focus_{false};
+  int32_t first_renderer_host_sign_{-1};
+  uint32_t event_behavior_{kEventBehaviorNone};
+  int32_t pending_event_behavior_root_sign_{-1};
   bool has_pointer_moved_{false};
   bool first_pointer_moved_{false};
   bool first_pointer_outside_{false};

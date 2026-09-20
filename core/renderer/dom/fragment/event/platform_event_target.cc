@@ -317,19 +317,21 @@ bool PlatformEventTarget::EventThroughInternal(
   }
 
   if (event_through_active_regions_) {
-    is_event_through = HitEventThroughActiveRegions(point) ? is_event_through
-                                                           : !is_event_through;
+    is_event_through = HitEventRegions(*event_through_active_regions_, point)
+                           ? is_event_through
+                           : !is_event_through;
   }
 
   return is_event_through;
 }
 
-bool PlatformEventTarget::HitEventThroughActiveRegions(float point[2]) const {
-  for (const auto& region : *event_through_active_regions_) {
-    const float left = ConvertEventThroughSizeValue(region[0], true);
-    const float top = ConvertEventThroughSizeValue(region[1], false);
-    const float right = left + ConvertEventThroughSizeValue(region[2], true);
-    const float bottom = top + ConvertEventThroughSizeValue(region[3], false);
+bool PlatformEventTarget::HitEventRegions(
+    const std::vector<EventRegion>& regions, float point[2]) const {
+  for (const auto& region : regions) {
+    const float left = ConvertEventRegionSizeValue(region[0], true);
+    const float top = ConvertEventRegionSizeValue(region[1], false);
+    const float right = left + ConvertEventRegionSizeValue(region[2], true);
+    const float bottom = top + ConvertEventRegionSizeValue(region[3], false);
     if (point[0] >= left && point[0] < right && point[1] >= top &&
         point[1] < bottom) {
       return true;
@@ -338,12 +340,12 @@ bool PlatformEventTarget::HitEventThroughActiveRegions(float point[2]) const {
   return false;
 }
 
-float PlatformEventTarget::ConvertEventThroughSizeValue(
-    const EventThroughSizeValue& value, bool is_horizontal) const {
-  if (value.type == EventThroughSizeValue::Type::kPercentage) {
+float PlatformEventTarget::ConvertEventRegionSizeValue(
+    const EventRegionSizeValue& value, bool is_horizontal) const {
+  if (value.type == EventRegionSizeValue::Type::kPercentage) {
     return value.value * (is_horizontal ? Width() : Height());
   }
-  return value.value;
+  return value.value * target_helper_->GetDevicePixelRatio();
 }
 
 bool PlatformEventTarget::IgnoreFocus() const {
@@ -372,7 +374,9 @@ LynxPointerEventsValue PlatformEventTarget::PointerEvents() const {
 }
 
 bool PlatformEventTarget::BlockNativeEvent(float point[2]) const {
-  return false;
+  return block_native_event_ ||
+         (block_native_event_areas_ &&
+          HitEventRegions(*block_native_event_areas_, point));
 }
 
 LynxConsumeSlideDirection PlatformEventTarget::ConsumeSlideEvent() const {

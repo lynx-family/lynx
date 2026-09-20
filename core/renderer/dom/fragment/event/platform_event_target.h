@@ -40,6 +40,15 @@ struct PlatformEventThroughConfig {
   bool enable_event_through_inherit_from_page{false};
 };
 
+// Shared bit layout for the Android and Darwin event behavior bridges.
+enum PlatformEventBehavior : uint32_t {
+  kEventBehaviorNone = 0,
+  kEventBehaviorIgnoreFocus = 1 << 0,
+  kEventBehaviorEventThrough = 1 << 1,
+  kEventBehaviorBlockNativeEvent = 1 << 2,
+  kEventBehaviorEnableSimultaneousTouch = 1 << 3,
+};
+
 enum class LynxPointerEventsValue {
   kAuto,
   kNone,
@@ -76,7 +85,7 @@ class PlatformEventTarget
       base::InlineVector<fml::RefPtr<PlatformEventTarget>, 4>;
 
  public:
-  struct EventThroughSizeValue {
+  struct EventRegionSizeValue {
     enum class Type {
       kDevicePx,
       kPercentage,
@@ -85,7 +94,9 @@ class PlatformEventTarget
     Type type{Type::kDevicePx};
     float value{0.f};
   };
-  using EventThroughRegion = std::array<EventThroughSizeValue, 4>;
+  using EventRegion = std::array<EventRegionSizeValue, 4>;
+  using EventThroughSizeValue = EventRegionSizeValue;
+  using EventThroughRegion = EventRegion;
 
   struct HitTestRegion {
     float left{0.f};
@@ -213,6 +224,7 @@ class PlatformEventTarget
   bool EventThrough(float point[2],
                     const PlatformEventThroughConfig& config = {}) const;
   bool IgnoreFocus() const;
+  bool EnableSimultaneousTouch() const { return enable_simultaneous_touch_; }
   LynxPointerEventsValue PointerEvents() const;
   bool BlockNativeEvent(float point[2]) const;
   LynxConsumeSlideDirection ConsumeSlideEvent() const;
@@ -299,13 +311,12 @@ class PlatformEventTarget
   void SetLayoutOnly(bool is_layout_only) { is_layout_only_ = is_layout_only; }
   void SetTransform(const float transform[16]);
   void SetEventThrough(LynxEventPropStatus value) { event_through_ = value; }
-  void SetEventThroughActiveRegions(
-      std::vector<EventThroughRegion> event_through_active_regions) {
-    if (event_through_active_regions.empty()) {
+  void SetEventThroughActiveRegions(std::vector<EventRegion> regions) {
+    if (regions.empty()) {
       event_through_active_regions_.reset();
       return;
     }
-    *event_through_active_regions_ = std::move(event_through_active_regions);
+    *event_through_active_regions_ = std::move(regions);
   }
   void SetEventsPassThrough(LynxEventPropStatus value) {
     events_pass_through_ = value;
@@ -313,6 +324,17 @@ class PlatformEventTarget
   void SetIgnoreFocus(LynxEventPropStatus value) { ignore_focus_ = value; }
   void SetTouchPseudoPropagation(bool value) {
     touch_pseudo_propagation_ = value;
+  }
+  void SetBlockNativeEvent(bool value) { block_native_event_ = value; }
+  void SetBlockNativeEventAreas(std::vector<EventRegion> areas) {
+    if (areas.empty()) {
+      block_native_event_areas_.reset();
+      return;
+    }
+    *block_native_event_areas_ = std::move(areas);
+  }
+  void SetEnableSimultaneousTouch(bool value) {
+    enable_simultaneous_touch_ = value;
   }
   void AddHitTestRegion(HitTestRegion region) {
     hit_test_regions_->push_back(std::move(region));
@@ -332,9 +354,10 @@ class PlatformEventTarget
   void UpdateScrollOffsetIfNeeded();
   bool EventThroughInternal(float point[2],
                             const PlatformEventThroughConfig& config) const;
-  bool HitEventThroughActiveRegions(float point[2]) const;
-  float ConvertEventThroughSizeValue(const EventThroughSizeValue& value,
-                                     bool is_horizontal) const;
+  bool HitEventRegions(const std::vector<EventRegion>& regions,
+                       float point[2]) const;
+  float ConvertEventRegionSizeValue(const EventRegionSizeValue& value,
+                                    bool is_horizontal) const;
 
   void GetOrUpdateTargetScreenRect(
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
@@ -377,8 +400,12 @@ class PlatformEventTarget
   LynxEventPropStatus events_pass_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
   bool touch_pseudo_propagation_{true};
-  base::auto_create_optional<std::vector<EventThroughRegion>>
+  base::auto_create_optional<std::vector<EventRegion>>
       event_through_active_regions_;
+  bool block_native_event_{false};
+  bool enable_simultaneous_touch_{false};
+  base::auto_create_optional<std::vector<EventRegion>>
+      block_native_event_areas_;
   base::auto_create_optional<base::Vector<HitTestRegion>> hit_test_regions_;
   base::auto_create_optional<std::string> id_selector_;
   base::auto_create_optional<std::string> exposure_id_;

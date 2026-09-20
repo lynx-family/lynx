@@ -20,6 +20,7 @@ import com.lynx.react.bridge.ReadableType
 import com.lynx.tasm.LynxError
 import com.lynx.tasm.LynxSubErrorCode
 import com.lynx.tasm.base.LLog
+import com.lynx.tasm.behavior.IPaintingContext
 import com.lynx.tasm.behavior.LynxContext
 import com.lynx.tasm.behavior.LynxProp
 import com.lynx.tasm.behavior.PropsConstants
@@ -68,6 +69,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     private var mEventState = 0 //state 0-begin, 1-move, 2-up
+    private var mPlatformEventBehavior = IPaintingContext.EVENT_BEHAVIOR_NONE
     private var mVisible = false
     private var mOverlayScope = OverlayScope.GLOBAL
     private var mAppliedOverlayScope = OverlayScope.GLOBAL
@@ -956,18 +958,24 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mShowEventSentForVisibleCycle = false
     }
 
-    fun needHandleEvent(x: Float, y: Float): Boolean {
+    fun needHandleEvent(x: Float, y: Float, isFirstEvent: Boolean): Boolean {
         // when the overlay is invisible, will not handle any events
         if (!mVisible || mPresentationState != PresentationState.PRESENTED) {
             return false
         }
-        if (lynxContext.isFragmentLayerRenderOn &&
-            lynxContext.isPlatformEventTargetEventThrough(
-                sign,
-                x - getTransLeft().toFloat(),
-                y - getTransTop().toFloat()
-            )) {
-            return false
+        if (lynxContext.isFragmentLayerRenderOn) {
+            if (isFirstEvent) {
+                mPlatformEventBehavior =
+                    lynxContext.hitTestAndCachePlatformEventBehavior(
+                        sign,
+                        x - getTransLeft().toFloat(),
+                        y - getTransTop().toFloat()
+                    )
+            }
+            if ((mPlatformEventBehavior and
+                    IPaintingContext.EVENT_BEHAVIOR_EVENT_THROUGH) != 0) {
+                return false
+            }
         }
 
         val through = eventThrough(x, y)
