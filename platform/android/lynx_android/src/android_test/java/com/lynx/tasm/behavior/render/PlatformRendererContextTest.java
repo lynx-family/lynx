@@ -123,6 +123,32 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testRendererMemoryUsesCompatibleUIEstimateOnce() {
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(2)).thenReturn(ui);
+    when(ui.getMemoryUsageBytes()).thenReturn(2048L);
+
+    assertEquals(2048L, rendererContext.getPlatformRendererMemoryUsage(2));
+    verify(ui, times(1)).getMemoryUsageBytes();
+    assertEquals(0L, rendererContext.getPlatformRendererMemoryUsage(3));
+  }
+
+  @Test
+  public void testRendererMemoryIgnoresNegativeEstimateAndDestroyedContext() {
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
+    when(owner.getNode(2)).thenReturn(ui);
+    when(ui.getMemoryUsageBytes()).thenReturn(-1L);
+    assertEquals(0L, rendererContext.getPlatformRendererMemoryUsage(2));
+    rendererContext.destroy();
+    assertEquals(0L, rendererContext.getPlatformRendererMemoryUsage(2));
+    verify(ui, times(1)).getMemoryUsageBytes();
+  }
+
+  @Test
   public void testSetRootView() {
     UIBody.UIBodyView newBodyView = mock(UIBody.UIBodyView.class);
     rendererContext.setRootView(newBodyView);

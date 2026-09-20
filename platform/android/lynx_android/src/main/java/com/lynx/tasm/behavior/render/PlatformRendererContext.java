@@ -1012,6 +1012,19 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
+  long getPlatformRendererMemoryUsage(int sign) {
+    if (mDestroyed) {
+      return 0;
+    }
+    // The C++ renderer and display-list buffers are counted natively. Reuse
+    // the existing resource estimate for compatible UI hosts exactly once.
+    // Java object sizes and shared caches are not included in this estimate.
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
+    return ui != null ? Math.max(0L, ui.getMemoryUsageBytes()) : 0;
+  }
+
+  @CalledByNative
   void removePlatformRendererFromParent(int parent, int sign, boolean shouldUpdateUIOwner) {
     LynxUIOwner owner = mContext.getLynxUIOwner();
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;

@@ -224,6 +224,9 @@ class NativePaintingCtxPlatformRef
       text_event_target_ranges_;
   std::atomic_bool scheduled_event_target_tree_update_{false};
   std::atomic_bool destroyed_{false};
+  // Invalidates asynchronous reports when the context moves to another engine.
+  std::shared_ptr<std::atomic_uint64_t> engine_generation_ =
+      std::make_shared<std::atomic_uint64_t>(0);
   std::unordered_set<int32_t> dirty_event_root_ids_;
 };
 

@@ -49,6 +49,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   const float* GetLayoutMargins() const { return layout_margins_; }
   const float* GetLayoutBorders() const { return layout_borders_; }
 
+  int64_t GetMemoryUsageBytes() const override;
   void RemoveFromParent() override;
   void AddChild(fml::RefPtr<PlatformRenderer> child, int index = -1) override;
 
@@ -100,6 +101,9 @@ class PlatformRendererImpl : public PlatformRenderer {
   virtual void OnAddChild(PlatformRenderer* child, int index,
                           bool should_update_ui_owner) = 0;
   virtual void OnRemoveFromParent(bool should_update_ui_owner) = 0;
+  // Runs after detaching, for both renderer hosts and compatible components.
+  // Reparenting also reaches this hook; it is not proof of garbage.
+  virtual void OnRemovedFromParent() {}
   virtual void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) = 0;
 

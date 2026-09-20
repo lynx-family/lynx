@@ -282,6 +282,8 @@ NativePaintingCtxAndroid::NativePaintingCtxAndroid(
   platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(
       std::make_unique<PlatformRendererAndroidFactory>(view_manager_),
       std::unique_ptr<PlatformRendererContext>(view_manager_));
+  view_manager_->SetPaintingContextRef(
+      std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_));
   if (textra != 0) {
     text_layout_impl_ =
         std::make_unique<TextLayoutTextra>(static_cast<intptr_t>(textra));

@@ -22,6 +22,8 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
       std::unique_ptr<PlatformRendererContext> view_manager);
   ~NativePaintingCtxAndroidRef() override;
 
+  void RequestExternalMemoryReport(int64_t delay_ms) override;
+
   std::vector<float> GetTransformValue(
       int32_t sign, const std::vector<float>& offsets) override;
   void GetRootViewLocationOnScreen(float location[2]) override;
@@ -42,6 +44,8 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
 
  private:
   std::unique_ptr<PlatformRendererContext> view_manager_;
+  const bool enable_external_memory_report_;
+  bool external_memory_report_pending_{false};
 };
 
 }  // namespace tasm

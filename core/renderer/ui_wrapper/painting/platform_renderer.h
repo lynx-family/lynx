@@ -39,6 +39,9 @@ struct PlatformRendererInitConfig {
 class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
  public:
   ~PlatformRenderer() override = default;
+  // Shallow estimate plus owned storage; excludes child renderers.
+  virtual int64_t GetMemoryUsageBytes() const { return 0; }
+
   // Update the display list for this renderer
   virtual void UpdateDisplayList(DisplayList display_list) = 0;
 

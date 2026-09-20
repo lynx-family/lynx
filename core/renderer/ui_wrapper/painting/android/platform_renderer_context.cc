@@ -16,6 +16,7 @@
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
 #include "core/renderer/ui_wrapper/painting/android/paint_image_android.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
@@ -523,7 +524,24 @@ void PlatformRendererContext::UpdatePlatformRendererExtraData(
                                                        extra_bundle);
 }
 
+void PlatformRendererContext::RequestExternalMemoryReport() {
+  if (auto context = painting_context_.lock()) {
+    // Match the delayed, coalesced reporting used by the platform UI backend.
+    context->RequestExternalMemoryReport(1000);
+  }
+}
+
+int64_t PlatformRendererContext::GetPlatformRendererMemoryUsage(int32_t id) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return 0;
+  }
+  return Java_PlatformRendererContext_getPlatformRendererMemoryUsage(
+      base::android::AttachCurrentThread(), local_ref.Get(), id);
+}
+
 void PlatformRendererContext::Destroy() {
+  painting_context_.reset();
   java_ref_.Reset(nullptr, nullptr);
   renderer_registry_.clear();
   invoke_ui_method_callbacks_.clear();

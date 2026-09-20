@@ -135,6 +135,14 @@ void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child,
   }
 }
 
+int64_t PlatformRendererImpl::GetMemoryUsageBytes() const {
+  return sizeof(*this) + display_list_.GetOwnedMemoryUsageBytes() +
+         (children_.is_static_buffer()
+              ? 0
+              : children_.capacity() * sizeof(ChildVecT::value_type)) +
+         (transform_.has_value() ? sizeof(SubtreeProperty) : 0);
+}
+
 void PlatformRendererImpl::RemoveFromParent() {
   if (parent_ == nullptr) {
     return;
@@ -160,6 +168,7 @@ void PlatformRendererImpl::RemoveFromParent() {
   // Clear parent relationship
   parent_ = nullptr;
   is_ui_owner_child_ = false;
+  OnRemovedFromParent();
 }
 
 void PlatformRendererImpl::ReleaseSelf() const { delete this; }
