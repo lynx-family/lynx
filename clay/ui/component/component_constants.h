@@ -90,6 +90,9 @@ extern const char* kEventReady;
 extern const char* kEventUpdate;
 extern const char* kEventFps;
 extern const char* kEventFirstFrame;
+extern const char* kEventCompositionReady;
+extern const char* kEventTapLayers;
+extern const char* kEventWarning;
 
 // audio
 extern const char* kEventPlaybackStateChanged;
