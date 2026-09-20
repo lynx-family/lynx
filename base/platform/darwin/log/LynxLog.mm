@@ -2,9 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <LynxBase/LynxLog.h>
 #include <algorithm>
+#include <limits>
 #include <map>
+#import "LynxLog+Private.h"
 
 #import <LynxServiceAPI/LynxServiceLogProtocol.h>  // nogncheck
 #import <LynxServiceAPI/ServiceAPI.h>              // nogncheck
@@ -39,8 +40,10 @@ static NSInteger gCurrentId = 0;
 static NSMutableDictionary *gDelegateDic = [[NSMutableDictionary alloc] init];
 #ifdef DEBUG
 static LynxLogLevel gLogMinLevel = LynxLogLevelDebug;
+static NSInteger gInfoLogLevel = LynxInfoLogLevelMonitor;
 #else
 static LynxLogLevel gLogMinLevel = LynxLogLevelInfo;
+static NSInteger gInfoLogLevel = LynxInfoLogLevelInfo;
 #endif
 static bool gIsJSLogsFromExternalChannelsOpen = false;
 static LynxLogDelegate *gDebugLoggingDelegate;
@@ -146,12 +149,26 @@ void RemoveLoggingDelegate(NSInteger delegateId) {
 
 NSArray<LynxLogDelegate *> *GetLoggingDelegates(void) { LOCKED(return [gDelegateDic allValues]); }
 
+NSInteger GetInfoLoggingLevel(void) { return gInfoLogLevel; }
+
+static void UpdateLogLevels(int level) {
+  const int infoLevel = static_cast<unsigned int>(level) >> 16;
+  if (level >= 0 && (level & 0xffff) == LynxLogLevelInfo && infoLevel != 0) {
+    gLogMinLevel = LynxLogLevelInfo;
+    gInfoLogLevel = std::clamp<int>(infoLevel, LynxInfoLogLevelMonitor, LynxInfoLogLevelInfo);
+    return;
+  }
+  gLogMinLevel =
+      static_cast<LynxLogLevel>(std::clamp<int>(level, LynxLogLevelVerbose, LynxLogLevelError));
+  gInfoLogLevel = gLogMinLevel < LynxLogLevelInfo ? LynxInfoLogLevelMonitor : LynxInfoLogLevelInfo;
+}
+
 void SetMinimumLoggingLevel(LynxLogLevel minLogLevel) {
-  minLogLevel = static_cast<LynxLogLevel>(
-      std::clamp<NSInteger>(minLogLevel, LynxLogLevelVerbose, LynxLogLevelError));
-  gLogMinLevel = minLogLevel;
-  lynx::base::logging::SetLynxLogMinLevel(static_cast<int>(minLogLevel));
-  NSLog(@"W/lynx: Reset minimum log level as %d", static_cast<int>(minLogLevel));
+  const int level = static_cast<int>(
+      std::clamp<NSInteger>(minLogLevel, LynxLogLevelVerbose, std::numeric_limits<int>::max()));
+  UpdateLogLevels(level);
+  lynx::base::logging::SetLynxLogMinLevel(level);
+  NSLog(@"W/lynx: Reset minimum log level as %d", static_cast<int>(gLogMinLevel));
 }
 
 namespace lynx::base::logging {

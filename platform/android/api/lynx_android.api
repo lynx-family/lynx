@@ -3827,6 +3827,8 @@ public class com::lynx::tasm::base::LLog :  {
   public static void com.lynx.tasm.base.LLog.setJSLogsFromExternalChannels(boolean isOpen);
   public static void com.lynx.tasm.base.LLog.v(String tag, String msg);
   public static void com.lynx.tasm.base.LLog.d(String tag, String msg);
+  public static void com.lynx.tasm.base.LLog.m(String tag, String msg);
+  public static void com.lynx.tasm.base.LLog.o(String tag, String msg);
   public static void com.lynx.tasm.base.LLog.i(String tag, String msg);
   public static void com.lynx.tasm.base.LLog.w(String tag, String msg);
   public static void com.lynx.tasm.base.LLog.e(String tag, String msg);

@@ -992,6 +992,8 @@ export class LLog {
   static useSysLog(useSysLog: boolean): void;
   static initLynxLog(): void;
   static setMinimumLoggingLevel(level: LogLevel): void;
+  static m(tag: string, message: string): void;
+  static o(tag: string, message: string): void;
   static v(tag: string, message: string): void;
   static d(tag: string, message: string): void;
   static i(tag: string, message: string): void;

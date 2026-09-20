@@ -55,6 +55,13 @@ public class LLog {
     LynxLog.d(tag, msg);
   }
 
+  public static void m(String tag, String msg) {
+    LynxLog.m(tag, msg);
+  }
+  public static void o(String tag, String msg) {
+    LynxLog.o(tag, msg);
+  }
+
   public static void i(String tag, String msg) {
     LynxLog.i(tag, msg);
   }

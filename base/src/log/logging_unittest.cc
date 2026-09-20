@@ -63,6 +63,39 @@ TEST_F(LogLevelTest, EvaluatesPayloadOnlyAfterRestoringThreshold) {
   EXPECT_EQ(evaluations, 1);
 }
 
+TEST_F(LogLevelTest, PackedInfoSublevelsFilterAtEntry) {
+  for (int level :
+       {detail::LOG_MONITOR, detail::LOG_OBSERVE, LOG_INFO, LOG_WARNING}) {
+    SetMinLogLevel(level);
+    int m = 0, o = 0, i = 0;
+    LOGM(++m);
+    LOGO(++o);
+    LOGI(++i);
+    const bool compiled = LYNX_MIN_LOG_LEVEL <= LYNX_LOG_LEVEL_INFO;
+    EXPECT_EQ(m, compiled && level == detail::LOG_MONITOR);
+    EXPECT_EQ(o, compiled && (level == detail::LOG_MONITOR ||
+                              level == detail::LOG_OBSERVE));
+    EXPECT_EQ(i, compiled && level != LOG_WARNING);
+    EXPECT_EQ(GetMinLogLevel(), level == LOG_WARNING ? LOG_WARNING : LOG_INFO);
+  }
+}
+
+TEST_F(LogLevelTest, ZeroSublevelMeansOriginalInfo) {
+  SetMinLogLevel(detail::LOG_MONITOR);
+  SetMinLogLevel(LOG_INFO);
+  EXPECT_EQ(GetInfoLogLevel(), detail::INFO_LEVEL_INFO);
+  SetMinLogLevel(LOG_DEBUG);
+  EXPECT_EQ(GetInfoLogLevel(), detail::INFO_LEVEL_MONITOR);
+  SetMinLogLevel((7 << 16) | LOG_INFO);
+  EXPECT_EQ(GetInfoLogLevel(), 7);
+  SetMinLogLevel((100 << 16) | LOG_INFO);
+  EXPECT_EQ(GetInfoLogLevel(), detail::INFO_LEVEL_INFO);
+  SetMinLogLevel(-100);
+  EXPECT_EQ(GetMinLogLevel(), LOG_VERBOSE);
+  SetMinLogLevel(std::numeric_limits<int>::max());
+  EXPECT_EQ(GetMinLogLevel(), LOG_ERROR);
+}
+
 TEST(LogContextTest, DefaultsToUnavailableEntities) {
   LogContext context;
 

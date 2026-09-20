@@ -25,6 +25,12 @@ public class LynxLog {
   public static final int WARN = 3;
   public static final int ERROR = 4;
 
+  // Internal INFO sublevels. NOTE: 0 means original INFO; future sublevels must be nonzero.
+  private static final int INFO_LEVEL_MONITOR = 5;
+  private static final int INFO_LEVEL_OBSERVE = 10;
+  private static final int INFO_LEVEL_INFO = 15;
+  private static int sInfoLogLevel = BuildConfig.DEBUG ? INFO_LEVEL_MONITOR : INFO_LEVEL_INFO;
+
   private static AbsBaseLogDelegate sDebugLoggingDelegate;
   private static int sALogMinLogLevel = BuildConfig.DEBUG ? DEBUG : INFO;
 
@@ -62,15 +68,25 @@ public class LynxLog {
 
   @CalledByNative
   public static void setMinimumLoggingLevel(int level) {
-    level = Math.max(VERBOSE, Math.min(ERROR, level));
     if (!sIsNativeLibLoad) {
       sIsNativeLibLoad = LynxBaseEnv.inst().isNativeLibraryLoaded();
     }
     if (sIsNativeLibLoad) {
-      sALogMinLogLevel = level;
+      updateLogLevels(level);
       nativeSetNativeMinLogLevel(level);
-      Log.w("lynx", "Reset minimum log level as " + level);
+      Log.w("lynx", "Reset minimum log level as " + sALogMinLogLevel);
     }
+  }
+
+  private static void updateLogLevels(int level) {
+    int infoLevel = level >>> 16;
+    if (level >= 0 && (level & 0xffff) == INFO && infoLevel != 0) {
+      sALogMinLogLevel = INFO;
+      sInfoLogLevel = Math.max(INFO_LEVEL_MONITOR, Math.min(INFO_LEVEL_INFO, infoLevel));
+      return;
+    }
+    sALogMinLogLevel = Math.max(VERBOSE, Math.min(ERROR, level));
+    sInfoLogLevel = sALogMinLogLevel < INFO ? INFO_LEVEL_MONITOR : INFO_LEVEL_INFO;
   }
 
   public static int getMinimumLoggingLevel() {
@@ -91,6 +107,18 @@ public class LynxLog {
 
   public static void d(String tag, String msg) {
     internalLog(DEBUG, tag, msg);
+  }
+
+  // TODO: Preserve M/O identity if output consumers need it in the future.
+  public static void m(String tag, String msg) {
+    if (sInfoLogLevel <= INFO_LEVEL_MONITOR) {
+      i(tag, msg);
+    }
+  }
+  public static void o(String tag, String msg) {
+    if (sInfoLogLevel <= INFO_LEVEL_OBSERVE) {
+      i(tag, msg);
+    }
   }
 
   public static void i(String tag, String msg) {
