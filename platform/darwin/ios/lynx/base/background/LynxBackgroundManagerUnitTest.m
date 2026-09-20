@@ -6,9 +6,9 @@
 #import <Lynx/LynxGradientUtils.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIView.h>
 #import <XCTest/XCTest.h>
-#import "LynxUI+Private.h"
 
 @interface LynxBackgroundManagerUnitTest : XCTestCase {
   LynxUIView* _view;
@@ -303,6 +303,121 @@
   CALayer* shadowLayer = [sublayers objectAtIndex:2];
   XCTAssertTrue([shadowLayer shadowPath]);
   [_view.view removeFromSuperview];
+}
+
+- (void)setCornerValues:(NSArray<NSArray*>*)values {
+  NSArray* keys = @[
+    @"border-top-left-radius", @"border-top-right-radius", @"border-bottom-left-radius",
+    @"border-bottom-right-radius"
+  ];
+  for (NSUInteger i = 0; i < keys.count; ++i) {
+    [LynxPropsProcessor updateProp:values[i] withKey:keys[i] forUI:_view];
+  }
+  [_view propsDidUpdate];
+  [_view onNodeReadyForUIOwner];
+}
+
+- (void)setCornerSubset:(NSUInteger)subset radius:(NSNumber*)radius {
+  NSMutableArray* values = [NSMutableArray array];
+  for (NSUInteger i = 0; i < 4; ++i) {
+    NSNumber* value = (subset & (1 << i)) ? radius : @0;
+    [values addObject:@[ value, @0, value, @0 ]];
+  }
+  [self setCornerValues:values];
+}
+
+- (void)testMaskedCornerSubsetsUseSimpleLayers {
+  if (@available(iOS 11.0, *)) {
+    CACornerMask corners[] = {kCALayerMinXMinYCorner, kCALayerMaxXMinYCorner,
+                              kCALayerMinXMaxYCorner, kCALayerMaxXMaxYCorner};
+    [LynxPropsProcessor updateProp:@0xFFFF0000 withKey:@"background-color" forUI:_view];
+
+    for (NSUInteger subset = 1; subset < 15; ++subset) {
+      [self setCornerSubset:subset radius:@10];
+      CACornerMask expected = 0;
+      for (NSUInteger i = 0; i < 4; ++i) {
+        if (subset & (1 << i)) expected |= corners[i];
+      }
+
+      XCTAssertEqual(_view.view.layer.cornerRadius, 10);
+      XCTAssertEqual(_view.view.layer.maskedCorners, expected);
+      XCTAssertEqual(_view.backgroundManager.borderLayer.type, LynxBgTypeSimple);
+      XCTAssertEqual(_view.backgroundManager.backgroundLayer.type, LynxBgTypeSimple);
+      XCTAssertEqual(_view.backgroundManager.borderLayer.maskedCorners, expected);
+      XCTAssertEqual(_view.backgroundManager.backgroundLayer.maskedCorners, expected);
+    }
+
+    NSArray* uniform = @[ @10, @0, @10, @0 ];
+    [self setCornerValues:@[ uniform, uniform, uniform, uniform ]];
+    XCTAssertEqual(_view.view.layer.cornerRadius, 10);
+    XCTAssertEqual(_view.view.layer.maskedCorners, kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner |
+                                                       kCALayerMinXMaxYCorner |
+                                                       kCALayerMaxXMaxYCorner);
+  }
+}
+
+- (void)testPartialCornerOverflowHiddenAvoidsShapeMask {
+  if (@available(iOS 11.0, *)) {
+    [LynxPropsProcessor updateProp:@(LynxOverflowHidden) withKey:@"overflow" forUI:_view];
+    [self setCornerSubset:3 radius:@10];
+
+    XCTAssertNil(_view.view.layer.mask);
+    XCTAssertTrue(_view.view.clipsToBounds);
+    XCTAssertEqual(_view.view.layer.cornerRadius, 10);
+    XCTAssertEqual(_view.view.layer.maskedCorners, kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner);
+    XCTAssertNil(_view.backgroundManager.borderLayer);
+  }
+}
+
+- (void)testExternalMaskPreservesNativeCornerPainting {
+  if (@available(iOS 11.0, *)) {
+    [LynxPropsProcessor updateProp:@0xFFFF0000 withKey:@"background-color" forUI:_view];
+    [self setCornerSubset:3 radius:@10];
+    CALayer* borderLayer = _view.backgroundManager.borderLayer;
+    CALayer* backgroundLayer = _view.backgroundManager.backgroundLayer;
+    CAShapeLayer* externalMask = [CAShapeLayer layer];
+    externalMask.path = [UIBezierPath bezierPathWithRect:_view.view.bounds].CGPath;
+    _view.view.layer.mask = externalMask;
+
+    // A standalone clipping update must not clear rounded painting or replace its layers.
+    [_view updateLayerMaskOnFrameChanged];
+    XCTAssertEqual(_view.view.layer.cornerRadius, 10);
+    XCTAssertEqual(_view.view.layer.mask, externalMask);
+    [_view.backgroundManager applyEffect];
+    XCTAssertEqual(_view.backgroundManager.borderLayer, borderLayer);
+    XCTAssertEqual(_view.backgroundManager.backgroundLayer, backgroundLayer);
+    XCTAssertEqual(_view.backgroundManager.borderLayer.type, LynxBgTypeSimple);
+    XCTAssertEqual(_view.backgroundManager.backgroundLayer.type, LynxBgTypeSimple);
+    XCTAssertEqual(_view.view.layer.maskedCorners, kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner);
+
+    [LynxPropsProcessor updateProp:@(LynxOverflowHidden) withKey:@"overflow" forUI:_view];
+    [self setCornerSubset:3 radius:@10];
+    XCTAssertTrue(_view.view.clipsToBounds);
+    XCTAssertEqual(_view.view.layer.mask, externalMask);
+    XCTAssertEqual(_view.view.layer.cornerRadius, 10);
+
+    _view.view.layer.mask = nil;
+    [_view updateLayerMaskOnFrameChanged];
+    [_view.backgroundManager applyEffect];
+    XCTAssertNil(_view.view.layer.mask);
+    XCTAssertEqual(_view.view.layer.cornerRadius, 10);
+  }
+}
+
+- (void)testUnsupportedPartialRadiiKeepPathRenderingAndResetNativeState {
+  if (@available(iOS 11.0, *)) {
+    [self setCornerSubset:2 radius:@10];
+    NSArray* zero = @[ @0, @0, @0, @0 ];
+    [self setCornerValues:@[ @[ @10, @0, @20, @0 ], zero, zero, zero ]];
+
+    XCTAssertEqual(_view.view.layer.cornerRadius, 0);
+    XCTAssertEqual(_view.backgroundManager.backgroundLayer.cornerRadius, 0);
+    XCTAssertNotEqual(_view.backgroundManager.borderLayer.type, LynxBgTypeSimple);
+    XCTAssertEqual(_view.backgroundManager.backgroundLayer.type, LynxBgTypeComplex);
+    XCTAssertEqual(_view.view.layer.maskedCorners, kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner |
+                                                       kCALayerMinXMaxYCorner |
+                                                       kCALayerMaxXMaxYCorner);
+  }
 }
 
 @end
