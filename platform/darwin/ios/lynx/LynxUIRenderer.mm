@@ -56,6 +56,15 @@ typedef NS_ENUM(NSUInteger, BoxModelOffset) {
 
 namespace {
 
+static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorIgnoreFocus) ==
+              lynx::tasm::kEventBehaviorIgnoreFocus);
+static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorEventThrough) ==
+              lynx::tasm::kEventBehaviorEventThrough);
+static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorBlockNativeEvent) ==
+              lynx::tasm::kEventBehaviorBlockNativeEvent);
+static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorEnableSimultaneousTouch) ==
+              lynx::tasm::kEventBehaviorEnableSimultaneousTouch);
+
 lynx::tasm::NativePaintingCtxPlatformDarwinRef *CastToNativePaintingCtxPlatformRef(
     const std::shared_ptr<lynx::tasm::PaintingCtxPlatformRef> &platform_ref) {
   if (platform_ref == nullptr || !platform_ref->IsNativePaintingCtxPlatformRef()) {
@@ -424,8 +433,8 @@ static id<LynxServiceTextProtocol> getTextService() {
 
 - (LynxUI *)platformTouchTarget {
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
-    auto focus_info = platform_ref->GetPlatformFocusInfo();
-    return [_uiOwner findUIBySign:focus_info[0]];
+    auto event_target_info = platform_ref->GetPlatformEventTargetInfo();
+    return [_uiOwner findUIBySign:event_target_info[0]];
   }
   return nil;
 }
@@ -456,20 +465,14 @@ static id<LynxServiceTextProtocol> getTextService() {
   }
 }
 
-- (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point {
+- (LynxPlatformEventBehavior)HitTestAndCachePlatformEventBehavior:(NSInteger)rootSign
+                                                            point:(CGPoint)point {
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
-    return platform_ref->IsPlatformEventTargetEventThrough(static_cast<int32_t>(rootSign), point.x,
-                                                           point.y);
+    return static_cast<LynxPlatformEventBehavior>(
+        platform_ref->HitTestAndCachePlatformEventBehavior(static_cast<int32_t>(rootSign), point.x,
+                                                           point.y));
   }
-  return NO;
-}
-
-- (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point {
-  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
-    return platform_ref->IsPlatformEventTargetIgnoreFocus(static_cast<int32_t>(rootSign), point.x,
-                                                          point.y);
-  }
-  return NO;
+  return LynxPlatformEventBehaviorNone;
 }
 
 - (LynxGestureArenaManager *)getGestureArenaManager {

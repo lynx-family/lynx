@@ -351,6 +351,16 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
+  public int getPlatformEventBehavior() {
+    return EVENT_BEHAVIOR_NONE;
+  }
+
+  @Override
+  public int hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY) {
+    return EVENT_BEHAVIOR_NONE;
+  }
+
+  @Override
   public void dispatchPlatformLongPress() {}
 
   @Override
@@ -358,11 +368,6 @@ public final class PaintingContext implements IPaintingContext {
 
   @Override
   public void dispatchPlatformFocus() {}
-
-  @Override
-  public boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY) {
-    return false;
-  }
 
   @CalledByNative
   public void rebuildViewTree() {

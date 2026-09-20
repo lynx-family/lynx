@@ -223,41 +223,26 @@ void NativePaintingCtxPlatformRef::DispatchPlatformTap() {
   event_handler_->OnTap();
 }
 
-bool NativePaintingCtxPlatformRef::IsPlatformEventTargetEventThrough(
+uint32_t NativePaintingCtxPlatformRef::HitTestAndCachePlatformEventBehavior(
     int32_t event_target_root_id, float point_x, float point_y) {
   auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
   if (event_target_tree == nullptr) {
-    return false;
+    return kEventBehaviorNone;
   }
 
   float root_point[2] = {point_x, point_y};
-  auto hit_target = event_target_tree->HitTest(root_point);
-  if (hit_target == nullptr) {
-    return false;
-  }
-
-  float target_point[2] = {root_point[0], root_point[1]};
-  event_target_helper_->ConvertPointFromAncestorToDescendant(
-      target_point, event_target_tree, hit_target, root_point);
-  return hit_target->EventThrough(target_point);
+  return event_handler_->HitTestAndCacheEventBehavior(event_target_tree,
+                                                      root_point);
 }
 
-bool NativePaintingCtxPlatformRef::IsPlatformEventTargetIgnoreFocus(
-    int32_t event_target_root_id, float point_x, float point_y) {
-  auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
-  if (event_target_tree == nullptr) {
-    return false;
-  }
-
-  float root_point[2] = {point_x, point_y};
-  auto hit_target = event_target_tree->HitTest(root_point);
-  return hit_target != nullptr && hit_target->IgnoreFocus();
+std::array<int32_t, 2>
+NativePaintingCtxPlatformRef::GetPlatformEventTargetInfo() const {
+  return {event_handler_->FirstTargetSign(),
+          event_handler_->FirstRendererHostSign()};
 }
 
-std::array<int32_t, 4> NativePaintingCtxPlatformRef::GetPlatformFocusInfo() {
-  return {event_handler_->HitTargetSign(), event_handler_->RendererHostSign(),
-          event_handler_->IgnoreFocus() ? 1 : 0,
-          event_handler_->CanRespondFocus() ? 1 : 0};
+bool NativePaintingCtxPlatformRef::CanRespondPlatformFocus() {
+  return event_handler_->CanRespondFocus();
 }
 
 void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,

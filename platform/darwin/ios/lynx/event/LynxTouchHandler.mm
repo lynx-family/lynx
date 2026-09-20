@@ -75,6 +75,7 @@
   __weak id<LynxEventTarget> _primaryGestureTarget;
   NSMutableSet<UITouch*>* _touches;
   NSMutableSet<UITouch*>* _platformUITouches;
+  LynxPlatformEventBehavior _platformEventBehavior;
   // In single-finger mode, when multiple fingers are raised at the same time, touches need to be
   // tracked in touchesBegan to ensure that touches received by touchesEnded are not missed.
   NSSet<UITouch*>* _other_touches;
@@ -178,6 +179,7 @@
   touches_map_.clear();
   [active_target_map_ removeAllObjects];
   [_platformUITouches removeAllObjects];
+  _platformEventBehavior = LynxPlatformEventBehaviorNone;
   reuse_id_pool_.clear();
   reuse_touches_id_.clear();
   [_touchesIDMap removeAllObjects];
@@ -232,6 +234,7 @@
   _gestureRecognized = NO;
   [_touches removeAllObjects];
   [_platformUITouches removeAllObjects];
+  _platformEventBehavior = LynxPlatformEventBehaviorNone;
   _event = nil;
   _preTarget = _target;
   _target = nil;
@@ -383,6 +386,8 @@
   BOOL isFirstTouch = actionType == 0 && _platformUITouches.count == 0;
   if (isFirstTouch) {
     _target = nil;
+    // The enclosing view captured event behavior during hitTest, before UIKit
+    // establishes gesture failure dependencies. Keep that decision on down.
     reuse_touches_id_.clear();
     [_touchesIDMap removeAllObjects];
   }
@@ -404,6 +409,7 @@
         }
       }
       [_platformUITouches unionSet:touches];
+      // Gesture arbitration uses the behavior already captured by hitTest.
       [super touchesBegan:touches withEvent:event];
       if (self.state == UIGestureRecognizerStatePossible) {
         self.state = UIGestureRecognizerStateBegan;
@@ -1312,7 +1318,25 @@
   return [gesture.view isDescendantOfView:_eventHandler.rootView];
 }
 
+- (BOOL)hasActivePlatformTouches {
+  return _platformUITouches.count > 0;
+}
+
+- (LynxPlatformEventBehavior)platformEventBehavior {
+  return _platformEventBehavior;
+}
+
+- (void)setPlatformEventBehavior:(LynxPlatformEventBehavior)behavior {
+  if (!self.hasActivePlatformTouches) {
+    _platformEventBehavior = behavior;
+  }
+}
+
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer {
+  if (_eventHandler.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
+    return (_platformEventBehavior & LynxPlatformEventBehaviorBlockNativeEvent) != 0 &&
+           (_platformEventBehavior & LynxPlatformEventBehaviorEventThrough) == 0;
+  }
   id<LynxEventTarget> target = _eventHandler.touchTarget;
   BOOL res = NO;
   while (target != nil) {
@@ -1329,6 +1353,9 @@
 }
 
 - (BOOL)enableSimultaneousTouch {
+  if (_eventHandler.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
+    return (_platformEventBehavior & LynxPlatformEventBehaviorEnableSimultaneousTouch) != 0;
+  }
   id<LynxEventTarget> target = _eventHandler.touchTarget;
   BOOL res = NO;
   while (target != nil) {
