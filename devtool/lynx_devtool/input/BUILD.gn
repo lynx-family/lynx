@@ -17,6 +17,8 @@ devtool_source_set("input") {
     "synthetic_gesture_controller.h",
     "synthetic_tap_gesture.cc",
     "synthetic_tap_gesture.h",
+    "synthetic_touch_pinch_gesture.cc",
+    "synthetic_touch_pinch_gesture.h",
   ]
 
   public_deps = [ ":input_types" ]
