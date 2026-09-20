@@ -6,6 +6,7 @@
 #define CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_PAGE_CONFIG_H_
 
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <tuple>
@@ -245,6 +246,12 @@ class PageConfig final : public LynxConfig {
   }
 
   bool GetEnableParallelElement() const;
+  // Original template parallel/concurrent flag before scheduler overrides.
+  bool GetTemplateEnableParallelElement() const {
+    return enable_parallel_element_;
+  }
+  // External setting snapshot, independent of scheduler bitmask overrides.
+  bool GetLevelOrderTraversingEnv();
 
   inline void SetEnableParallelElement(bool enable) {
     enable_parallel_element_ = enable;
@@ -424,6 +431,7 @@ class PageConfig final : public LynxConfig {
   // Indicates whether the parallel flush of Element has been enabled. And the
   // default value is false.
   bool enable_parallel_element_{false};
+  std::optional<bool> level_order_traversing_env_;
 
   bool auto_non_flatten_platform_supported_{false};
 
