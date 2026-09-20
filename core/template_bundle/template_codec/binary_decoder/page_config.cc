@@ -22,6 +22,14 @@ bool PageConfig::GetEnableParallelElement() const {
             enable_level_order_traversing_ == TernaryBool::TRUE_VALUE)));
 }
 
+bool PageConfig::GetLevelOrderTraversingEnv() {
+  if (!level_order_traversing_env_.has_value()) {
+    level_order_traversing_env_ =
+        LynxEnv::GetInstance().EnableLevelOrderTraversing();
+  }
+  return *level_order_traversing_env_;
+}
+
 bool PageConfig::GetEnableLevelOrderTraversing() {
   if (enable_level_order_traversing_ != TernaryBool::UNDEFINE_VALUE) {
     return enable_level_order_traversing_ == TernaryBool::TRUE_VALUE;
@@ -40,7 +48,7 @@ bool PageConfig::GetEnableLevelOrderTraversing() {
     return true;
   }
 
-  auto value_from_config = LynxEnv::GetInstance().EnableLevelOrderTraversing();
+  auto value_from_config = GetLevelOrderTraversingEnv();
   enable_level_order_traversing_ =
       value_from_config ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE;
   return value_from_config;
