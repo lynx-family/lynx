@@ -94,6 +94,52 @@ bool PlatformEventHandler::OnInputEvent(
   return true;
 }
 
+uint32_t PlatformEventHandler::HitTestAndCacheEventBehavior(
+    fml::RefPtr<PlatformEventTarget> target_tree, float root_point[2]) {
+  auto hit_target = target_tree ? target_tree->HitTest(root_point) : nullptr;
+  event_behavior_ = ResolveEventBehavior(target_tree, hit_target, root_point);
+  pending_event_behavior_root_sign_ = target_tree ? target_tree->Sign() : -1;
+  return event_behavior_;
+}
+
+uint32_t PlatformEventHandler::ResolveEventBehavior(
+    const fml::RefPtr<PlatformEventTarget>& target_tree,
+    const fml::RefPtr<PlatformEventTarget>& hit_target, float root_point[2]) {
+  if (!target_tree || !hit_target ||
+      hit_target->RootId() != target_tree->Sign()) {
+    return kEventBehaviorNone;
+  }
+
+  auto* helper = platform_ref_->GetEventTargetHelper();
+  float target_point[2] = {root_point[0], root_point[1]};
+  helper->ConvertPointFromAncestorToDescendant(target_point, target_tree,
+                                               hit_target, root_point);
+  uint32_t behavior = hit_target->IgnoreFocus() ? kEventBehaviorIgnoreFocus
+                                                : kEventBehaviorNone;
+  if (hit_target->EventThrough(target_point)) {
+    behavior |= kEventBehaviorEventThrough;
+  }
+
+  auto current = hit_target;
+  while (current && current->RootId() == target_tree->Sign()) {
+    if (current->BlockNativeEvent(target_point)) {
+      behavior |= kEventBehaviorBlockNativeEvent;
+    }
+    if (current->EnableSimultaneousTouch()) {
+      behavior |= kEventBehaviorEnableSimultaneousTouch;
+    }
+    auto parent = current->ParentTarget();
+    if (current->IsRoot() || !parent || parent == current ||
+        parent->RootId() != target_tree->Sign()) {
+      break;
+    }
+    helper->ConvertPointFromAncestorToDescendant(target_point, target_tree,
+                                                 parent, root_point);
+    current = std::move(parent);
+  }
+  return behavior;
+}
+
 void PlatformEventHandler::OnTap() {
   float root_point[2] = {first_pointer_down_point_[0],
                          first_pointer_down_point_[1]};
@@ -156,13 +202,7 @@ void PlatformEventHandler::DispatchPointerEvent(
 }
 
 bool PlatformEventHandler::EventThrough() {
-  if (!first_target_) {
-    return false;
-  }
-  float target_point[2] = {first_pointer_down_point_[0],
-                           first_pointer_down_point_[1]};
-  GetTargetPoint(first_target_, target_point, first_pointer_down_point_);
-  return first_target_->EventThrough(target_point);
+  return event_behavior_ & kEventBehaviorEventThrough;
 }
 
 void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {
@@ -186,6 +226,8 @@ void PlatformEventHandler::SetHasPointerPseudo(bool has_pointer_pseudo) {
 }
 
 void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
+  // Pointer identifiers can be reused while another pointer remains active.
+  const bool starts_pointer_sequence = target_pointer_map_.empty();
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     int pointer_id = event.PointerID()[i];
@@ -197,15 +239,16 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
          " y:" + std::to_string(pointer_y) + " target:" +
          (hit_target ? std::to_string(hit_target->Sign()) : "null"))
     float down_point[2] = {pointer_x, pointer_y};
-    if (pointer_id == 0) {
-      ResetFocusInfo();
-      first_target_ = hit_target;
-      memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
-      if (hit_target != nullptr) {
-        hit_target_sign_ = hit_target->Sign();
-        renderer_host_sign_ = hit_target->RendererHostSign();
-        ignore_focus_ = hit_target->IgnoreFocus();
+    if (starts_pointer_sequence && pointer_id == 0) {
+      if (pending_event_behavior_root_sign_ != target_tree_->Sign()) {
+        event_behavior_ =
+            ResolveEventBehavior(target_tree_, hit_target, down_point);
       }
+      pending_event_behavior_root_sign_ = -1;
+      first_target_ = hit_target;
+      first_renderer_host_sign_ =
+          hit_target ? hit_target->RendererHostSign() : -1;
+      memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
     }
     target_pointer_map_.insert_or_assign(
         pointer_id, PlatformEventTargetDetail(hit_target, down_point));
@@ -444,12 +487,6 @@ fml::RefPtr<PlatformEventTarget> PlatformEventHandler::FindTarget(
   }
   float point[] = {pointer_x, pointer_y};
   return target_tree_->HitTest(point);
-}
-
-void PlatformEventHandler::ResetFocusInfo() {
-  hit_target_sign_ = -1;
-  renderer_host_sign_ = -1;
-  ignore_focus_ = false;
 }
 
 bool PlatformEventHandler::CanRespondFocus() {
