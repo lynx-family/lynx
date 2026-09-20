@@ -742,6 +742,11 @@ void InspectorUIExecutor::SynthesizeTapGesture(
   input_request_handler_->SynthesizeTapGesture(responder, params);
 }
 
+void InspectorUIExecutor::SynthesizePinchGesture(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  input_request_handler_->SynthesizePinchGesture(responder, params);
+}
+
 // end input protocol
 
 // The following three functions are used for handling Layout Nodes

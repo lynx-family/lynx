@@ -402,6 +402,10 @@ domains:
         origin: standard
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
+      - name: synthesizePinchGesture
+        origin: standard
+        since: '4.5'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_input_agent.cc
       - name: synthesizeTapGesture
         origin: standard
         since: '4.4'
