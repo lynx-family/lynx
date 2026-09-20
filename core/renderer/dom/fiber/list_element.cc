@@ -89,7 +89,7 @@ ListNode* ListElement::GetListNode() {
 }
 
 bool ListElement::NeedAsyncResolveListItem() {
-  auto batch_render_strategy = (UseDecoupledList() || UseInternalList())
+  auto batch_render_strategy = UseNativeList()
                                    ? batch_render_strategy_
                                    : list::BatchRenderStrategy::kDefault;
   return batch_render_strategy ==
@@ -320,10 +320,8 @@ void ListElement::EnqueueComponent(int32_t sign) {
 }
 
 void ListElement::TickElement(fml::TimePoint& time) {
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->OnNextFrame();
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->OnNextFrame();
   }
 }
 
@@ -443,21 +441,6 @@ void ListElement::ResolvePlatformNodeTag() {
   }
 }
 
-void ListElement::ResolveEnableDecoupledList() {
-  if (!enable_decoupled_list_) {
-    const auto& attr_map = updated_attr_map();
-    auto it =
-        attr_map.find(BASE_STATIC_STRING(lynx::list::kPropEnableDecoupledList));
-    // Priority: attribute > settings.
-    if (it != attr_map.end() && it->second.IsBool()) {
-      enable_decoupled_list_ = it->second.Bool();
-    } else {
-      // Return true from env by default.
-      enable_decoupled_list_ = LynxEnv::GetInstance().EnableDecoupledList();
-    }
-  }
-}
-
 ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
   const auto& attr_map = updated_attr_map();
   // Use optional to make sure only run once.
@@ -466,8 +449,6 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
     ResolveEnableNativeList();
     // Resolve platform node tag.
     ResolvePlatformNodeTag();
-    // Resolve whether to use decoupled list.
-    ResolveEnableDecoupledList();
     // Report feature count.
     HandleDelayTask([platform_node_tag = platform_node_tag_,
                      disable_list_platform_implementation =
@@ -498,24 +479,17 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
     });
     LOGI("[List] ListElement::PrepareForCreateOrUpdate: this="
          << this << ", impl_id=" << impl_id()
-         << ", enable_native_list=" << *disable_list_platform_implementation_
-         << ", enable_decoupled_list=" << *enable_decoupled_list_);
+         << ", enable_native_list=" << *disable_list_platform_implementation_);
     if (*disable_list_platform_implementation_) {
       UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kListContainer,
                                 lepus::Value(true));
-      // Note: Because we move create ListMediator or ListContainerImpl in
-      // resolving attr, so in ListMediator's constructor or ListContainerImpl's
-      // constructor can get PhysicalPixelsPerLayoutUnit from element manager.
-      if (*enable_decoupled_list_) {
-        list_mediator_ = std::make_unique<ListMediator>(this);
-        // Note: if enable native list only from env, we should not send scroll
-        // to threshold event on diff layout to avoid breaking change.
-        list_mediator_->SetEnableScrollToThresholdEventOnDiffLayout(
-            !enable_native_list_only_from_env_);
-      } else {
-        list_container_delegate_internal_ =
-            list::CreateListContainerDelegateInternal(this);
-      }
+      // Create the mediator after resolving attributes so its constructor can
+      // get PhysicalPixelsPerLayoutUnit from the element manager.
+      list_mediator_ = std::make_unique<ListMediator>(this);
+      // Note: if enable native list only from env, we should not send scroll
+      // to threshold event on diff layout to avoid breaking change.
+      list_mediator_->SetEnableScrollToThresholdEventOnDiffLayout(
+          !enable_native_list_only_from_env_);
     }
   }
 
@@ -547,13 +521,10 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
     // Flush to platform ui and list container once time.
     bool enable_batch_render =
         batch_render_strategy_ > list::BatchRenderStrategy::kDefault;
-    if (UseDecoupledList()) {
+    if (UseNativeList()) {
       list_mediator_->SetEnableBatchRender(enable_batch_render);
       list_mediator_->SetEnableParallelElement(
           element_manager()->GetEnableParallelElement());
-    } else if (UseInternalList()) {
-      list_container_delegate_internal_->SetEnableBatchRender(
-          enable_batch_render);
     }
     Element::SetAttributeInternal(
         BASE_STATIC_STRING(list::kExperimentalBatchRenderStrategy),
@@ -586,21 +557,8 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
 bool ListElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
   if (!DisableListPlatformImplementation() ||
-      (UseDecoupledList() && list_mediator_->ResolveAttribute(key, value)) ||
-      (UseInternalList() &&
-       list_container_delegate_internal_->ResolveAttribute(key, value))) {
+      (UseNativeList() && list_mediator_->ResolveAttribute(key, value))) {
     Element::SetAttributeInternal(key, value);
-  } else if (UseInternalList() && (key.IsEqual(list::kFiberListDiffInfo) ||
-                                   key.IsEqual(list::kListPlatformInfo))) {
-    // Note: Only use internal list, we need to create and generate
-    // list_container_info here. If use decoupled list, the decoupled list will
-    // flush list_container_info by using
-    // lynx::list::ElementDelegate::FlushListContainerInfo() method.
-    auto list_container_info = lepus::Dictionary::Create();
-    list_container_delegate_internal_->UpdateListContainerDataSource(
-        list_container_info);
-    Element::SetAttributeInternal(BASE_STATIC_STRING(list::kListContainerInfo),
-                                  lepus::Value(list_container_info));
   }
 
   if (key.IsEqual(kColumnCount) || key.IsEqual(kSpanCount)) {
@@ -646,10 +604,8 @@ void ListElement::ResetAttribute(const base::String& key) {
 }
 
 void ListElement::PropsUpdateFinish() {
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->PropsUpdateFinish();
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->PropsUpdateFinish();
   }
 }
 
@@ -661,10 +617,8 @@ void ListElement::PropsUpdateFinish() {
 void ListElement::OnListElementUpdated(
     const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ON_ELEMENT_UPDATED);
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->OnLayoutChildren(options);
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->OnLayoutChildren(options);
   }
 }
 
@@ -679,21 +633,16 @@ void ListElement::OnListElementUpdated(
 void ListElement::OnComponentFinished(
     Element* component, const std::shared_ptr<PipelineOptions>& option) {
   if (component && option->operation_id != 0) {
-    if (UseDecoupledList()) {
+    if (UseNativeList()) {
       list_mediator_->FinishBindItemHolder(component, option);
-    } else if (UseInternalList()) {
-      list_container_delegate_internal_->FinishBindItemHolder(component,
-                                                              option);
     }
   }
 }
 
 void ListElement::OnListItemLayoutUpdated(Element* component) {
   if (component) {
-    if (UseDecoupledList()) {
+    if (UseNativeList()) {
       list_mediator_->OnListItemLayoutUpdated(component);
-    } else if (UseInternalList()) {
-      list_container_delegate_internal_->OnListItemLayoutUpdated(component);
     }
   }
 }
@@ -705,11 +654,8 @@ void ListElement::OnListItemBatchFinished(
     list_items.emplace_back(
         element_manager()->node_manager()->Get(list_item_id));
   }
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->FinishBindItemHolders(list_items, options);
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->FinishBindItemHolders(list_items,
-                                                             options);
   }
 }
 
@@ -721,11 +667,8 @@ void ListElement::OnListItemBatchFinished(
 void ListElement::ScrollByListContainer(float content_offset_x,
                                         float content_offset_y,
                                         float original_x, float original_y) {
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->ScrollByPlatformContainer(
-        content_offset_x, content_offset_y, original_x, original_y);
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->ScrollByPlatformContainer(
         content_offset_x, content_offset_y, original_x, original_y);
   }
 }
@@ -739,11 +682,8 @@ void ListElement::ScrollByListContainer(float content_offset_x,
  **/
 void ListElement::ScrollToPosition(int index, float offset, int align,
                                    bool smooth) {
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->ScrollToPosition(index, offset, align, smooth);
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->ScrollToPosition(index, offset, align,
-                                                        smooth);
   }
 }
 
@@ -751,25 +691,8 @@ void ListElement::ScrollToPosition(int index, float offset, int align,
  * @description: Finish ScrollToPosition
  **/
 void ListElement::ScrollStopped() {
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->ScrollStopped();
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->ScrollStopped();
-  }
-}
-
-void ListElement::SetEventHandler(const base::String& name,
-                                  EventHandler* handler) {
-  Element::SetEventHandler(name, handler);
-  if (UseInternalList()) {
-    list_container_delegate_internal_->AddEvent(name);
-  }
-}
-
-void ListElement::ResetEventHandlers() {
-  Element::ResetEventHandlers();
-  if (UseInternalList()) {
-    list_container_delegate_internal_->ClearEvents();
   }
 }
 
@@ -788,21 +711,15 @@ void ListElement::ResolveListAxisGapStyle(CSSPropertyID id) {
     case CSSPropertyID::kPropertyIDListMainAxisGap: {
       float main_axis_gap =
           computed_css_style()->GetLayoutComputedStyle()->GetListMainAxisGap();
-      if (UseDecoupledList()) {
+      if (UseNativeList()) {
         list_mediator_->ResolveListAxisGap(id, main_axis_gap);
-      } else if (UseInternalList()) {
-        list_container_delegate_internal_->ResolveListAxisGap(id,
-                                                              main_axis_gap);
       }
     } break;
     case CSSPropertyID::kPropertyIDListCrossAxisGap: {
       float cross_axis_gap =
           computed_css_style()->GetLayoutComputedStyle()->GetListCrossAxisGap();
-      if (UseDecoupledList()) {
+      if (UseNativeList()) {
         list_mediator_->ResolveListAxisGap(id, cross_axis_gap);
-      } else if (UseInternalList()) {
-        list_container_delegate_internal_->ResolveListAxisGap(id,
-                                                              cross_axis_gap);
       }
     } break;
     default:
@@ -824,10 +741,8 @@ void ListElement::AttachToElementManager(
           manager->GetConfig()->GetPipelineSchedulerConfig(),
           manager->GetEnableParallelElement(),
           manager->EnableNewStylingPipeline());
-  if (UseDecoupledList()) {
+  if (UseNativeList()) {
     list_mediator_->OnAttachToElementManager();
-  } else if (UseInternalList()) {
-    list_container_delegate_internal_->OnAttachToElementManager(manager);
   }
 }
 
@@ -963,14 +878,8 @@ ListElement::ResolveBatchRenderStrategyFromPipelineSchedulerConfig(
   return list::BatchRenderStrategy::kBatchRender;
 }
 
-bool ListElement::UseDecoupledList() const {
-  return DisableListPlatformImplementation() && enable_decoupled_list_ &&
-         (*enable_decoupled_list_) && list_mediator_;
-}
-
-bool ListElement::UseInternalList() const {
-  return DisableListPlatformImplementation() && enable_decoupled_list_ &&
-         !(*enable_decoupled_list_) && list_container_delegate_internal_;
+bool ListElement::UseNativeList() const {
+  return DisableListPlatformImplementation() && list_mediator_;
 }
 
 void ListElement::FlushListContainerInfo(const base::String& key,
