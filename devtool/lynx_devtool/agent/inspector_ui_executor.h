@@ -80,6 +80,7 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_CDP_METHOD(DispatchMouseEvent);
   DECLARE_DEVTOOL_CDP_METHOD(InsertText);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizePinchGesture);
 
   // event
  public:
