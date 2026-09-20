@@ -1012,13 +1012,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     }
   }
 
-  public boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY) {
+  public int hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY) {
     LynxUIOwner owner = mLynxUIOwner.get();
-    if (owner != null && owner.getPaintingContext() instanceof NativePaintingContext) {
-      return ((NativePaintingContext) owner.getPaintingContext())
-          .isPlatformEventTargetEventThrough(rootSign, pointX, pointY);
+    IPaintingContext paintingContext = owner != null ? owner.getPaintingContext() : null;
+    if (paintingContext == null) {
+      return IPaintingContext.EVENT_BEHAVIOR_NONE;
     }
-    return false;
+    return paintingContext.hitTestAndCachePlatformEventBehavior(rootSign, pointX, pointY);
   }
 
   public LynxBaseUI findLynxUIByName(@NonNull String name) {
