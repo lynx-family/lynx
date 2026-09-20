@@ -14,12 +14,17 @@ export default class StandaloneApp extends BaseApp {
       if (params.srcName) {
         delete this.lynx.requireModule.cache[params.srcName];
         delete BaseApp._$factoryCache[params.srcName];
+        delete BaseApp._$sharedModules[params.srcName];
         this.lynx.requireModule(params.srcName, DEFAULT_ENTRY);
         this.dataTypeSet.add('undefined');
       }
     } catch (e) {
       this.handleUserError(e);
     }
+  }
+
+  protected _$isStandaloneApp(): boolean {
+    return true;
   }
 
   createLynx(nativeLynx: NativeLynxProxy, promise: PromiseConstructor): Lynx {

@@ -2103,7 +2103,10 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
           card_bundle_.enable_reuse_load_script_exports) ||
       !page_config_subset.setProperty(
           *rt, runtime::kEnableFetchAPIStandardStreaming,
-          card_bundle_.enable_fetch_api_standard_streaming)) {
+          card_bundle_.enable_fetch_api_standard_streaming) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableLynxGroupModuleSharing,
+          card_bundle_.enable_lynx_group_module_sharing)) {
     HandleLoadAppFailed(" App::LoadApp error! page_config_subset init fail.");
     return;
   }
