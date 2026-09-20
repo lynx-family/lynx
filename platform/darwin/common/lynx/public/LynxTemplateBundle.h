@@ -109,6 +109,15 @@
 
 /**
  * @apidoc
+ * @brief Returns the custom section associated with the specified key.
+ * @param key The key of the custom section.
+ * @return The raw bytes of the custom section, or `nil` when the bundle is invalid, the key does
+ * not exist, or the custom section has an unsupported type.
+ */
+- (NSData* _Nullable)customSectionForKey:(nonnull NSString*)key;
+
+/**
+ * @apidoc
  * @brief Start a sub-thread task to generate the `js code cache` of the current template.
  * @param bytecodeSourceUrl The source url of the template.
  */

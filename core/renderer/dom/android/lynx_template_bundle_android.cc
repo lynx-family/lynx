@@ -4,12 +4,14 @@
 
 #include "core/renderer/dom/android/lynx_template_bundle_android.h"
 
+#include <limits>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "base/include/value/byte_array.h"
 #include "core/base/android/java_only_map.h"
 #include "core/base/android/jni_helper.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
@@ -128,6 +130,33 @@ jboolean GetContainsElementTree(JNIEnv* env, jclass jcaller, jlong ptr) {
     return bundle->GetContainsElementTree();
   }
   return false;
+}
+
+jbyteArray GetCustomSection(JNIEnv* env, jclass jcaller, jlong ptr,
+                            jstring j_key) {
+  auto* bundle = reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(ptr);
+  if (!bundle || !j_key) {
+    return nullptr;
+  }
+
+  auto section = bundle->GetCustomSection(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, j_key));
+  lynx::base::android::ScopedLocalJavaRef<jbyteArray> result;
+  if (section.IsString()) {
+    result = lynx::base::android::JNIConvertHelper::ConvertToJNIByteArray(
+        env, section.StdString());
+  } else if (section.IsByteArray()) {
+    auto bytes = section.ByteArray();
+    if (bytes) {
+      if (bytes->GetLength() >
+          static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
+        return nullptr;
+      }
+      result = lynx::base::android::JNIConvertHelper::ConvertToJNIByteArray(
+          env, bytes->GetPtr(), static_cast<int32_t>(bytes->GetLength()));
+    }
+  }
+  return static_cast<jbyteArray>(env->NewLocalRef(result.Get()));  // NOLINT
 }
 
 void ReleaseBundle(JNIEnv* env, jclass jcaller, jlong ptr) {

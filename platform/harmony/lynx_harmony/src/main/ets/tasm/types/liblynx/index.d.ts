@@ -395,6 +395,8 @@ export class TemplateBundle {
 
   nativeGetContainsElementTree(): boolean;
 
+  nativeGetCustomSection(key: string): ArrayBuffer | undefined;
+
   nativeInitWithOption(contextPoolSize: number, enableContextAutoRefill: boolean): void;
 
   nativePostJsCacheGenerationTask(bytecodeSourceUrl: string, useV8: boolean): void;

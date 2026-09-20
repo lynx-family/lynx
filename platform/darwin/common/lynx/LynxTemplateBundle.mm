@@ -14,6 +14,7 @@
 
 #import "LynxBytecodeResponseBlock+Converter.h"
 #import "LynxTemplateBundle+Converter.h"
+#include "base/include/value/byte_array.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #import "core/shell/ios/data_utils.h"
@@ -206,6 +207,30 @@
 
 - (BOOL)isElementBundleValid {
   return template_bundle_ && template_bundle_->GetContainsElementTree();
+}
+
+- (NSData* _Nullable)customSectionForKey:(nonnull NSString*)key {
+  if (!template_bundle_ || key.length == 0) {
+    return nil;
+  }
+
+  NSData* keyData = [key dataUsingEncoding:NSUTF8StringEncoding];
+  if (keyData == nil) {
+    return nil;
+  }
+  std::string keyString(static_cast<const char*>(keyData.bytes), keyData.length);
+  lynx::lepus::Value section = template_bundle_->GetCustomSection(keyString);
+  if (section.IsString()) {
+    const std::string& value = section.StdString();
+    return [NSData dataWithBytes:value.data() length:value.size()];
+  }
+  if (section.IsByteArray()) {
+    auto value = section.ByteArray();
+    if (value) {
+      return [NSData dataWithBytes:value->GetPtr() length:value->GetLength()];
+    }
+  }
+  return nil;
 }
 
 - (void)postJsCacheGenerationTask:(NSString*)bytecodeSourceUrl {
