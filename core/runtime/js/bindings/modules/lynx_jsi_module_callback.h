@@ -75,16 +75,17 @@ class ModuleCallback : public LynxModuleCallback {
 
   void SetArgs(std::unique_ptr<pub::Value> args) override;
 
+#if ENABLE_INSPECTOR
+  void SetInvocationContext(
+      std::shared_ptr<NativeModuleInvocationContext> context, int index) {
+    invocation_context_ = std::move(context);
+    invocation_argument_index_ = index;
+  }
+#endif  // ENABLE_INSPECTOR
+
   void SetModuleInterceptor(std::shared_ptr<GroupInterceptor> interceptor) {
     group_interceptor_ = std::move(interceptor);
   }
-
-#if ENABLE_INSPECTOR
-  void SetNativeModuleInvocationContext(
-      std::shared_ptr<NativeModuleInvocationContext> context) {
-    invocation_context_ = std::move(context);
-  }
-#endif  // ENABLE_INSPECTOR
 
   void SetArgsConverter(std::function<std::unique_ptr<pub::Value>(
                             Runtime* rt, ModuleCallback* callback)>
@@ -102,9 +103,16 @@ class ModuleCallback : public LynxModuleCallback {
  protected:
   std::vector<base::LynxError> errors_;
   std::shared_ptr<GroupInterceptor> group_interceptor_;
+#if ENABLE_INSPECTOR
   std::shared_ptr<NativeModuleInvocationContext> invocation_context_ = nullptr;
+#endif  // ENABLE_INSPECTOR
 
  private:
+#if ENABLE_INSPECTOR
+  // Native Promise callbacks inherit the call but have no explicit argument
+  // position. They remain outside the DevTool callback record coverage.
+  int invocation_argument_index_ = -1;
+#endif  // ENABLE_INSPECTOR
   std::unique_ptr<pub::Value> args_ = nullptr;
   std::function<std::unique_ptr<pub::Value>(Runtime* rt,
                                             ModuleCallback* callback)>

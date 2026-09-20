@@ -26,7 +26,11 @@ ModuleCallbackFunctionHolder::ModuleCallbackFunctionHolder(Function&& func)
     : function_(std::move(func)) {}
 
 ModuleCallback::ModuleCallback(int64_t callback_id)
-    : LynxModuleCallback(callback_id) {}
+    : LynxModuleCallback(callback_id) {
+#if ENABLE_INSPECTOR
+  invocation_context_ = NativeModuleInvocationContext::Current();
+#endif  // ENABLE_INSPECTOR
+}
 
 void ModuleCallback::Invoke(Runtime* runtime,
                             ModuleCallbackFunctionHolder* holder) {
@@ -48,16 +52,18 @@ void ModuleCallback::Invoke(Runtime* runtime,
   if (!args_ || !args_->IsArray()) {
     LOGW("NativeModule: Callback's args is invalid.");
   }
+  if (!args_ || !args_->IsArray()) return;
+#if ENABLE_INSPECTOR
+  auto observer_result = invocation_context_
+                             ? invocation_context_->PrepareCallback(
+                                   invocation_argument_index_, args_)
+                             : std::nullopt;
+#endif  // ENABLE_INSPECTOR
   size_t size = static_cast<size_t>(args_->Length());
   Value values[size];
   args_->ForeachArray([&values, runtime](int64_t index, const pub::Value& val) {
     values[index] = pub::ValueUtils::ConvertValueToPiperValue(*runtime, val);
   });
-#if ENABLE_INSPECTOR
-  lepus::Value observer_result =
-      invocation_context_ ? pub::ValueUtils::ConvertValueToLepusValue(*args_)
-                          : lepus::Value();
-#endif  // ENABLE_INSPECTOR
   // Directly destroy `args_` to avoid issues caused by the unstable destruction
   // order of `shared_ptr`, which can lead to `args_` being destroyed by other
   // threads.
@@ -65,9 +71,10 @@ void ModuleCallback::Invoke(Runtime* runtime,
   uint64_t convert_params_end = base::CurrentSystemTimeMilliseconds();
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
 #if ENABLE_TESTBENCH_RECORDER
+  const Value empty_args = Value::undefined();
   tasm::recorder::NativeModuleRecorder::GetInstance().RecordCallback(
-      module_name_.c_str(), method_name_.c_str(), values[0], runtime,
-      callback_id(), record_id_);
+      module_name_.c_str(), method_name_.c_str(), size ? values[0] : empty_args,
+      runtime, callback_id(), record_id_);
 #endif  // ENABLE_TESTBENCH_RECORDER
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_INVOKE_CALLBACK);
@@ -76,9 +83,8 @@ void ModuleCallback::Invoke(Runtime* runtime,
 
 #if ENABLE_INSPECTOR
   if (invocation_context_) {
-    lepus::Value callback_record =
-        invocation_context_->BuildCallbackRecord(std::move(observer_result));
-    invocation_context_->EmitRecord(callback_record);
+    invocation_context_->RecordCallback(invocation_argument_index_,
+                                        std::move(observer_result));
   }
 #endif  // ENABLE_INSPECTOR
 

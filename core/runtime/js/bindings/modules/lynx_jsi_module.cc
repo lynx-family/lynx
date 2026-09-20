@@ -19,7 +19,8 @@
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #if ENABLE_INSPECTOR
-#include "core/inspector/observer/native_module_record_observer.h"
+#include <unordered_set>
+
 #include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
 #endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
@@ -87,6 +88,20 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   LOGI(GetLogContext() << " NativeModule: invoke " << name_ << "."
                        << method.name);
   Scope scope(*rt);
+#if ENABLE_INSPECTOR
+  auto invocation_context = NativeModuleInvocationContext::Create(
+      native_module_record_observer_, name_, method.name,
+      GetLogContext().view_id);
+  std::vector<Value> rewritten_args;
+  shell::InterceptResult decision;
+  if (invocation_context) {
+    decision = invocation_context->Call(*rt, args, count, rewritten_args);
+    if (!rewritten_args.empty()) args = rewritten_args.data();
+  }
+  bool mock = !decision.failed && decision.mock.IsTable();
+#else
+  constexpr bool mock = false;
+#endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
   std::vector<int64_t> callback_ids;
 #endif  // ENABLE_TESTBENCH_RECORDER
@@ -99,11 +114,6 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   NativeModuleInfoCollectorPtr timing_collector =
       std::make_shared<NativeModuleInfoCollector>(
           delegate_, name_, method.name, first_arg_str, rt->GetPageUrl());
-
-#if ENABLE_INSPECTOR
-  auto invocation_context = std::make_shared<NativeModuleInvocationContext>(
-      native_module_record_observer_, name_, method.name);
-#endif  // ENABLE_INSPECTOR
 
   if (invoke_method_frequency_monitor_) {
     std::string monitor_method_name;
@@ -194,9 +204,7 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
         callback->SetCallbackFlowId(callback_flow_id);
         callback->SetFirstArg(first_arg_str);
 #if ENABLE_INSPECTOR
-        callback->SetNativeModuleInvocationContext(
-            invocation_context->WithCallbackArgumentIndex(
-                static_cast<int32_t>(i)));
+        callback->SetInvocationContext(invocation_context, static_cast<int>(i));
 #endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
         callback->SetRecordID(record_id_);
@@ -227,8 +235,9 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   timing_collector->EndFuncParamsConvert(convert_params_start);
 #if ENABLE_INSPECTOR
   lepus::Value observer_arguments =
-      args_array ? pub::ValueUtils::ConvertValueToLepusValue(*args_array)
-                 : lepus::Value();
+      invocation_context && invocation_context->HasObserver() && args_array
+          ? pub::ValueUtils::ConvertValueToLepusValue(*args_array)
+          : lepus::Value();
   std::optional<lepus::Value> observer_result;
 #endif  // ENABLE_INSPECTOR
   // issue: #1510
@@ -240,16 +249,30 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
 #if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
     (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
   // TODO(liyanbo.monster): after remove native promise, delete this.
-  native_module_->EnterInvokeScope(rt, delegate_);
+  if (!mock) native_module_->EnterInvokeScope(rt, delegate_);
 #endif
-  if (group_interceptor_) {
+  if (!mock && group_interceptor_) {
     group_interceptor_->BeforeInvokeMethod(method, args_array,
                                            timing_collector);
   }
 
   base::expected<Value, JSINativeException> response;
-  bool has_intercept = false;
-  if (group_interceptor_) {
+  bool has_intercept = mock;
+#if ENABLE_INSPECTOR
+  if (mock) {
+    response =
+        decision.mock.Contains("returnValue")
+            ? pub::ValueUtils::ConvertValueToPiperValue(
+                  *rt,
+                  pub::ValueImplLepus(decision.mock.GetProperty("returnValue")))
+            : Value::undefined();
+    if (decision.mock.Contains("returnValue"))
+      observer_result = decision.mock.GetProperty("returnValue");
+    InvokeMockCallbacks(*rt, args, decision.mock.GetProperty("callbacks"),
+                        callback_map, invocation_context);
+  }
+#endif  // ENABLE_INSPECTOR
+  if (!mock && group_interceptor_) {
     auto interceptor_result = group_interceptor_->InterceptModuleMethod(
         shared_from_this(), method, rt, delegate_, args, count, args_array,
         callback_map, timing_collector);
@@ -259,6 +282,10 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
   if (!has_intercept) {
+#if ENABLE_INSPECTOR
+    // Native promise resolvers created by the platform inherit this call.
+    NativeModuleInvocationContext::Scope invocation_scope(invocation_context);
+#endif  // ENABLE_INSPECTOR
     // call method by native module
     auto ret = native_module_->InvokeMethod(method.name, std::move(args_array),
                                             count, callback_map);
@@ -282,8 +309,10 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
         response = Value::undefined();
       } else {
 #if ENABLE_INSPECTOR
-        observer_result =
-            pub::ValueUtils::ConvertValueToLepusValue(*(ret.value().get()));
+        if (invocation_context && invocation_context->HasObserver()) {
+          observer_result =
+              pub::ValueUtils::ConvertValueToLepusValue(*(ret.value().get()));
+        }
 #endif  // ENABLE_INSPECTOR
         response = pub::ValueUtils::ConvertValueToPiperValue(
             *rt, *(ret.value().get()));
@@ -291,6 +320,12 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
 
+#if ENABLE_INSPECTOR
+  if (invocation_context && response.has_value()) {
+    auto intercepted_result = invocation_context->Result(*rt, response.value());
+    if (intercepted_result) observer_result = std::move(intercepted_result);
+  }
+#endif  // ENABLE_INSPECTOR
 #if ENABLE_TESTBENCH_RECORDER
   if (response.has_value()) {
     tasm::recorder::NativeModuleRecorder::GetInstance().RecordFunctionCall(
@@ -302,18 +337,20 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   timing_collector->EndPlatformMethodInvoke(invoke_facade_method_start);
   timing_collector->EndCallFunc(call_func_start);
 #if ENABLE_INSPECTOR
-  lepus::Value invoke_record;
-  if (response.has_value()) {
-    invoke_record = invocation_context->BuildInvokeRecord(
-        std::move(observer_arguments), callback_map, /*success=*/true,
-        std::move(observer_result), error::E_SUCCESS, std::string());
-  } else {
-    const auto& exception = response.error();
-    invoke_record = invocation_context->BuildInvokeRecord(
-        std::move(observer_arguments), callback_map, /*success=*/false,
-        std::nullopt, exception.errorCode(), exception.message());
+  if (invocation_context && invocation_context->HasObserver()) {
+    lepus::Value invoke_record;
+    if (response.has_value()) {
+      invoke_record = invocation_context->BuildInvokeRecord(
+          std::move(observer_arguments), callback_map, /*success=*/true,
+          std::move(observer_result), error::E_SUCCESS, std::string());
+    } else {
+      const auto& exception = response.error();
+      invoke_record = invocation_context->BuildInvokeRecord(
+          std::move(observer_arguments), callback_map, /*success=*/false,
+          std::nullopt, exception.errorCode(), exception.message());
+    }
+    invocation_context->EmitRecord(invoke_record);
   }
-  invocation_context->EmitRecord(invoke_record);
 #endif  // ENABLE_INSPECTOR
   if (!invoke_info.has_error) {
     delegate_->OnMethodInvoked(name_, method.name, error::E_SUCCESS);
@@ -327,6 +364,41 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   }
   return response;
 }
+
+#if ENABLE_INSPECTOR
+void LynxJSIModule::InvokeMockCallbacks(
+    Runtime& rt, const Value* args, const lepus::Value& deliveries,
+    const CallbackMap& callbacks,
+    const std::shared_ptr<NativeModuleInvocationContext>& invocation) {
+  std::unordered_set<int> delivered_indices;
+  for (int i = 0; deliveries.IsArray() && i < deliveries.GetLength(); ++i) {
+    auto item = deliveries.GetProperty(i);
+    int index = static_cast<int>(item.GetProperty("argumentIndex").Number());
+    const auto& original = callbacks.at(index);
+    const auto original_jsi =
+        std::static_pointer_cast<ModuleCallback>(original);
+    // Each delivery owns its arguments and callback registration so repeated
+    // deliveries cannot overwrite one another on the original BTS channel.
+    auto callback_id = delivered_indices.insert(index).second
+                           ? original->CallbackId()
+                           : delegate_->RegisterJSCallbackFunction(
+                                 args[index].getObject(rt).getFunction(rt));
+    auto callback = std::make_shared<ModuleCallback>(callback_id);
+    callback->SetModuleName(name_);
+    callback->SetMethodName(original_jsi->method_name_);
+    callback->SetInvocationContext(invocation, index);
+    callback->SetCallbackFlowId(original->CallbackFlowId());
+    callback->timing_collector_ = original_jsi->timing_collector_;
+    callback->SetFirstArg(original_jsi->FirstArg());
+#if ENABLE_TESTBENCH_RECORDER
+    callback->SetRecordID(record_id_);
+#endif
+    callback->SetArgs(
+        std::make_unique<pub::ValueImplLepus>(item.GetProperty("args")));
+    InvokeCallback(callback);
+  }
+}
+#endif  // ENABLE_INSPECTOR
 
 void LynxJSIModule::InvokeCallback(
     const std::shared_ptr<LynxModuleCallback>& callback,
