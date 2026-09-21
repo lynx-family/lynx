@@ -387,6 +387,35 @@ TEST_F_UI(TextTest, FontVariationAttributesPropagateToTxtStyle) {
       static_cast<float>(txt_style.font_size));
 }
 
+TEST_F_UI(TextTest, BaselineShiftPropagatesAndInherits) {
+  for (const float baseline_shift : {12.f, -8.f, 0.f}) {
+    TextStyle style;
+    style.font_size = 16.f;
+    style.align_type = kVerticalAlignBaseline;
+    style.baseline_shift = baseline_shift;
+
+    TextParagraphBuilder builder(true, style);
+    builder.PushStyle(style);
+
+    EXPECT_FLOAT_EQ(builder.PeekStyleForTesting().text_baseline_shift,
+                    baseline_shift);
+  }
+
+  TextStyle parent;
+  parent.font_size = 16.f;
+  parent.align_type = kVerticalAlignBaseline;
+  parent.baseline_shift = 12.f;
+  TextStyle child;
+  child.font_size = 16.f;
+  child.align_type = kVerticalAlignBaseline;
+  TextParagraphBuilder builder(true, parent);
+  builder.PushStyle(parent);
+  builder.PushStyle(child);
+  EXPECT_FLOAT_EQ(builder.PeekStyleForTesting().text_baseline_shift, 12.f);
+  builder.Pop();
+  EXPECT_FLOAT_EQ(builder.PeekStyleForTesting().text_baseline_shift, 12.f);
+}
+
 TEST_F_UI(TextTest, TextGradientAndSolidColorUpdatePaintState) {
   const Gradient gradient;
 
