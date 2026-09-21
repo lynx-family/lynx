@@ -304,6 +304,27 @@ TEST_F(TransformAnimationCurveTest, SetValueWithoutElementDefersResolve) {
   EXPECT_EQ(test_frame->ResolvedValue().size(), static_cast<size_t>(1));
 }
 
+TEST_F(TransformAnimationCurveTest, ReportsDynamicDependenciesForRouting) {
+  auto test_element_ptr = InitTestElement();
+  auto* test_element = test_element_ptr.get();
+  const auto id = lynx::tasm::CSSPropertyID::kPropertyIDTransform;
+  lynx::tasm::CSSParserConfigs configs;
+
+  const auto has_dynamic_dependencies = [&](const char* transform) {
+    lynx::tasm::StyleMap output;
+    EXPECT_TRUE(lynx::tasm::UnitHandler::Process(id, lepus::Value(transform),
+                                                 output, configs));
+    auto keyframe = TransformKeyframe::Create(fml::TimeDelta(), nullptr);
+    EXPECT_TRUE(keyframe->SetValue(id, output[id], test_element));
+    return keyframe->HasDynamicDependencies();
+  };
+
+  EXPECT_FALSE(has_dynamic_dependencies("translateX(100px) scale(2)"));
+  EXPECT_FALSE(has_dynamic_dependencies("translateX(50%)"));
+  EXPECT_TRUE(has_dynamic_dependencies("translateX(calc(50% + 10px))"));
+  EXPECT_TRUE(has_dynamic_dependencies("translateX(1rem)"));
+}
+
 TEST_F(TransformAnimationCurveTest, NotificationsReResolveRawCSSValue) {
   auto test_element_ptr = InitTestElement();
   auto test_element = test_element_ptr.get();
