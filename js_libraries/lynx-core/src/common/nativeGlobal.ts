@@ -50,6 +50,9 @@ export function seedPageGlobal(params?: {
   if (!pageGlobal || pageGlobal === _global) {
     return;
   }
+  // Keep the current app available while reloading this page.
+  pageGlobal.multiApps ??= {};
+  pageGlobal.currentAppId ??= '';
   pageGlobal.globComponentRegistPath = '';
   pageGlobal.globDynamicComponentEntry = DEFAULT_ENTRY;
   pageGlobal.getPromise = _global.getPromise;

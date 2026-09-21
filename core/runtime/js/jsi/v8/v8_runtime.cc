@@ -75,6 +75,17 @@ void V8Runtime::InitRuntime(std::shared_ptr<JSIContext> sharedContext) {
   isolate_wrapper_ =
       std::static_pointer_cast<V8IsolateInstance>(sharedContext->getVM());
   context_ = std::static_pointer_cast<V8ContextWrapper>(sharedContext);
+  if (getEnableNewShareGroup() && getGroupId() != "-1") {
+    // Core functions access the page global passed to loadCard. Permit that
+    // access only between contexts belonging to the same opted-in group.
+    v8::Isolate::Scope isolate_scope(getIsolate());
+    v8::HandleScope handle_scope(getIsolate());
+    const std::string token = "lynx:new-share-group:" + getGroupId();
+    getContext()->SetSecurityToken(
+        v8::String::NewFromUtf8(getIsolate(), token.c_str(),
+                                v8::NewStringType::kInternalized)
+            .ToLocalChecked());
+  }
 }
 
 std::shared_ptr<VMInstance> V8Runtime::createVM(const StartupData* data) const {
