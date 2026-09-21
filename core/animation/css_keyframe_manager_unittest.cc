@@ -133,6 +133,25 @@ class CSSKeyframeManagerTest : public ::testing::Test {
         *element->keyframes_map_, name, lepus::Value(keyframes), configs);
   }
 
+  void UpdateOpacityKeyframeTiming(tasm::Element* element,
+                                   const base::String& name,
+                                   const char* timing) {
+    auto keyframes = lepus::Dictionary::Create();
+    const std::pair<const char*, double> frames[] = {
+        {"0", 0.0}, {"50", 0.5}, {"100", 1.0}};
+    for (const auto& [offset, opacity] : frames) {
+      auto frame = lepus::Dictionary::Create();
+      frame->SetValue("opacity", lepus::Value(opacity));
+      if (timing != nullptr) {
+        frame->SetValue("animation-timing-function", lepus::Value(timing));
+      }
+      keyframes->SetValue(offset, lepus::Value(frame));
+    }
+    starlight::CSSStyleUtils::UpdateCSSKeyframes(
+        *element->keyframes_map_, name, lepus::Value(keyframes),
+        element->element_manager()->GetCSSParserConfigs());
+  }
+
   void UpdateToOnlyOpacityKeyframes(tasm::Element* element,
                                     const base::String& name, double to) {
     auto keyframes = lepus::Dictionary::Create();
@@ -264,17 +283,17 @@ class CSSKeyframeManagerTest : public ::testing::Test {
 TEST_F(CSSKeyframeManagerTest, ConstructModel) {
   auto test_element = manager->CreateFiberElement("view");
   const auto underlying_opacity = CSSValue(0.75f, CSSValuePattern::NUMBER);
-  ASSERT_TRUE(test_element->computed_css_style()->SetValue(kPropertyIDOpacity,
-                                                           underlying_opacity));
+  ASSERT_TRUE(test_element->computed_css_style()->SetValue(
+      kPropertyIDOpacity, CSSValue(0.2f, CSSValuePattern::NUMBER)));
   auto test_manager = InitTestKeyframeManager(test_element.get());
   auto test_curve = animation::KeyframedOpacityAnimationCurve::Create();
+  test_curve->SetUnderlyingValue(underlying_opacity);
   auto test_type = animation::AnimationCurve::CurveType::OPACITY;
   auto test_animation = InitTestAnimation();
   auto test_model = test_manager->ConstructModel(
       std::move(test_curve), test_type, test_animation.get());
   EXPECT_EQ(test_model->animation_curve()->Type(), test_type);
-  EXPECT_EQ(test_model->animation_curve()->timing_function()->GetType(),
-            gfx::TimingFunction::Type::LINEAR);
+  EXPECT_EQ(test_model->animation_curve()->timing_function(), nullptr);
   EXPECT_EQ(test_model->animation_curve()->scaled_duration(),
             test_animation->get_animation_data().duration / 1000.0);
   EXPECT_EQ(test_model->animation_curve()->underlying_value_,
@@ -413,96 +432,268 @@ TEST_F(CSSKeyframeManagerTest,
   EXPECT_NEAR(100.f, curve->GetValue(mid_time).AsNumber(), 0.001);
 }
 
-TEST_F(CSSKeyframeManagerTest, InitCurveAndModelAndKeyframe) {
-  auto test_element = manager->CreateFiberElement("view");
-  auto test_manager = InitTestKeyframeManager(test_element.get());
-  auto test_offset = 0.0;
-
-  auto id1 = lynx::tasm::CSSPropertyID::kPropertyIDLeft;
-  lynx::tasm::StyleMap output1;
-  lynx::tasm::CSSParserConfigs configs;
-  auto impl1 = lepus::Value("100px");
-  lynx::tasm::UnitHandler::Process(id1, impl1, output1, configs);
-  auto raw_value1 = output1[id1];
-  auto test_animation1 = InitTestAnimation();
-  auto test_timing_function1 = gfx::LinearTimingFunction::Create();
-  auto test_type1 = animation::AnimationCurve::CurveType::LEFT;
-  bool init_success1 = test_manager->InitCurveAndModelAndKeyframe(
-      test_type1, test_animation1.get(), test_offset,
-      std::move(test_timing_function1), id1, raw_value1);
-  EXPECT_EQ(init_success1, true);
-  auto* model1 = test_animation1->keyframe_effect()->keyframe_models()[0].get();
-  ASSERT_NE(nullptr, model1);
-  EXPECT_TRUE(model1->HasAnimationData());
-  EXPECT_TRUE(model1->get_animation_data() ==
-              test_animation1->get_animation_data());
-
-  auto id2 = lynx::tasm::CSSPropertyID::kPropertyIDOpacity;
-  lynx::tasm::StyleMap output2;
-  auto impl2 = lepus::Value("1");
-  lynx::tasm::UnitHandler::Process(id2, impl2, output2, configs);
-  auto raw_value2 = output2[id2];
-  auto test_animation2 = InitTestAnimation();
-  auto test_timing_function2 = gfx::LinearTimingFunction::Create();
-  auto test_type2 = animation::AnimationCurve::CurveType::OPACITY;
-  bool init_success2 = test_manager->InitCurveAndModelAndKeyframe(
-      test_type2, test_animation2.get(), test_offset,
-      std::move(test_timing_function2), id2, raw_value2);
-  EXPECT_EQ(init_success2, true);
-  auto* model2 = test_animation2->keyframe_effect()->keyframe_models()[0].get();
-  ASSERT_NE(nullptr, model2);
-  EXPECT_TRUE(model2->HasAnimationData());
-  EXPECT_TRUE(model2->get_animation_data() ==
-              test_animation2->get_animation_data());
-
-  auto id3 = lynx::tasm::CSSPropertyID::kPropertyIDColor;
-  lynx::tasm::StyleMap output3;
-  auto impl3 = lepus::Value("blue");
-  lynx::tasm::UnitHandler::Process(id3, impl3, output3, configs);
-  auto raw_value3 = output3[id3];
-  auto test_animation3 = InitTestAnimation();
-  auto test_timing_function3 = gfx::LinearTimingFunction::Create();
-  auto test_type3 = animation::AnimationCurve::CurveType::TEXTCOLOR;
-  bool init_success3 = test_manager->InitCurveAndModelAndKeyframe(
-      test_type3, test_animation3.get(), test_offset,
-      std::move(test_timing_function3), id3, raw_value3);
-  EXPECT_EQ(init_success3, true);
-  auto* model3 = test_animation3->keyframe_effect()->keyframe_models()[0].get();
-  ASSERT_NE(nullptr, model3);
-  EXPECT_TRUE(model3->HasAnimationData());
-  EXPECT_TRUE(model3->get_animation_data() ==
-              test_animation3->get_animation_data());
-
-  auto id4 = lynx::tasm::CSSPropertyID::kPropertyIDColor;
-  lynx::tasm::StyleMap output4;
-  auto impl4 = lepus::Value("");
-  lynx::tasm::UnitHandler::Process(id4, impl4, output4, configs);
-  auto raw_value4 = output4[id4];
-  auto test_animation4 = InitTestAnimation();
-  auto test_timing_function4 = gfx::LinearTimingFunction::Create();
-  auto test_type4 = animation::AnimationCurve::CurveType::UNSUPPORT;
-  bool init_success4 = test_manager->InitCurveAndModelAndKeyframe(
-      test_type4, test_animation4.get(), test_offset,
-      std::move(test_timing_function4), id4, raw_value4);
-  EXPECT_EQ(init_success4, false);
+TEST_F(CSSKeyframeManagerTest, BuilderRejectsNonNumericOpacityLikeLegacy) {
+  auto target = InitElement();
+  auto keyframe_manager = InitTestKeyframeManager(target.get());
+  UpdateOpacityKeyframes(target.get(), base::String("test"), 0.0, 1.0);
+  auto& keyframes =
+      (*target->keyframes_map_)[base::String("test")]->GetKeyframesContent();
+  (*keyframes.at(0.0))[tasm::kPropertyIDOpacity] =
+      tasm::CSSValue(2.f, tasm::CSSValuePattern::REM);
+  (*keyframes.at(1.0))[tasm::kPropertyIDOpacity] =
+      tasm::CSSValue("calc(1rem + 10px)", tasm::CSSValuePattern::CALC,
+                     tasm::CSSValueType::DEFAULT);
+  base::Vector<starlight::AnimationData> data{InitAnimationData(
+      base::String("test"), 1000, 0, starlight::TimingFunctionData(), 1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning)};
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  EXPECT_TRUE(keyframe_manager->animations_map().empty());
 }
 
-TEST_F(CSSKeyframeManagerTest, OpacityKeyframeRejectsNonNumberLikeLegacy) {
-  auto test_element = manager->CreateFiberElement("view");
-  auto test_manager = InitTestKeyframeManager(test_element.get());
-  const auto type = animation::AnimationCurve::CurveType::OPACITY;
-  const auto id = tasm::kPropertyIDOpacity;
+TEST_F(CSSKeyframeManagerTest, CSSKeyframeTimingOverridesDefaultPerInterval) {
+  auto target = InitElement();
+  auto keyframe_manager = InitTestKeyframeManager(target.get());
+  base::Vector<starlight::AnimationData> data(1);
+  data[0].name = base::String("test");
+  data[0].duration = 1000;
+  data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+  UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-out");
+  // Only the first interval has an explicit timing override.
+  (*target->keyframes_map_)[data[0].name]->GetKeyframesContent().at(0.5)->erase(
+      kPropertyIDAnimationTimingFunction);
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  auto anim = keyframe_manager->animations_map()[data[0].name];
+  ASSERT_NE(anim, nullptr);
+  auto* curve = anim->keyframe_effect()
+                    ->GetKeyframeModelByCurveType(
+                        animation::AnimationCurve::CurveType::OPACITY)
+                    ->animation_curve();
+  auto sample = [&](double seconds) {
+    auto time = fml::TimeDelta::FromSecondsF(seconds);
+    return curve->GetValue(time).AsNumber();
+  };
+  auto ease_in = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_IN);
+  auto ease_out = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_OUT);
+  EXPECT_NEAR(sample(0.25), 0.5 * ease_out->GetValue(0.5), 1e-6);
+  EXPECT_NEAR(sample(0.5), 0.5, 1e-6);
+  EXPECT_NEAR(sample(0.75), 0.5 + 0.5 * ease_in->GetValue(0.5), 1e-6);
 
-  auto rem_animation = InitTestAnimation();
-  EXPECT_FALSE(test_manager->InitCurveAndModelAndKeyframe(
-      type, rem_animation.get(), 0.0, gfx::LinearTimingFunction::Create(), id,
-      tasm::CSSValue(2.f, tasm::CSSValuePattern::REM)));
+  // A duration-only update preserves the resolved interval timing objects and
+  // must not apply animation-level easing to the timeline again.
+  auto* typed_curve =
+      static_cast<animation::KeyframedOpacityAnimationCurve*>(curve);
+  const auto* default_timing = typed_curve->keyframes_[1]->timing_function();
+  data[0].duration = 2000;
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  EXPECT_EQ(typed_curve->keyframes_[1]->timing_function(), default_timing);
+  EXPECT_NEAR(sample(0.5), 0.5 * ease_out->GetValue(0.5), 1e-6);
+  data[0].duration = 1000;
 
-  auto calc_animation = InitTestAnimation();
-  EXPECT_FALSE(test_manager->InitCurveAndModelAndKeyframe(
-      type, calc_animation.get(), 0.0, gfx::LinearTimingFunction::Create(), id,
-      tasm::CSSValue("calc(1rem + 10px)", tasm::CSSValuePattern::CALC,
-                     tasm::CSSValueType::DEFAULT)));
+  data[0].timing_func.timing_func = starlight::TimingFunctionType::kLinear;
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  EXPECT_EQ(keyframe_manager->animations_map()[data[0].name], anim);
+  EXPECT_NEAR(sample(0.25), 0.5 * ease_out->GetValue(0.5), 1e-6);
+  EXPECT_NEAR(sample(0.75), 0.75, 1e-6);
+
+  // The caller can mutate the same AnimationData instance before updating the
+  // model. Compare against the model's snapshot, not the borrowed pointer.
+  auto* model = anim->keyframe_effect()->GetKeyframeModelByCurveType(
+      animation::AnimationCurve::CurveType::OPACITY);
+  auto& model_data = anim->get_animation_data();
+  model_data.timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+  model->UpdateAnimationData(&model_data);
+  EXPECT_NEAR(sample(0.25), 0.5 * ease_out->GetValue(0.5), 1e-6);
+  EXPECT_NEAR(sample(0.75), 0.5 + 0.5 * ease_in->GetValue(0.5), 1e-6);
+
+  default_timing = typed_curve->keyframes_[1]->timing_function();
+  model->UpdateAnimationData(nullptr);
+  model->UpdateAnimationData(&model_data);
+  EXPECT_EQ(typed_curve->keyframes_[1]->timing_function(), default_timing);
+  EXPECT_NEAR(sample(0.75), 0.5 + 0.5 * ease_in->GetValue(0.5), 1e-6);
+
+  model->UpdateAnimationData(nullptr);
+  model_data.timing_func.timing_func = starlight::TimingFunctionType::kLinear;
+  model->UpdateAnimationData(&model_data);
+  EXPECT_NEAR(sample(0.25), 0.5 * ease_out->GetValue(0.5), 1e-6);
+  EXPECT_NEAR(sample(0.75), 0.75, 1e-6);
+}
+
+TEST_F(CSSKeyframeManagerTest, EqualTimingValuesPreserveDistinctSources) {
+  auto target = InitElement();
+  auto keyframe_manager = InitTestKeyframeManager(target.get());
+  base::Vector<starlight::AnimationData> data(1);
+  data[0].name = base::String("test");
+  data[0].duration = 1000;
+  UpdateOpacityKeyframeTiming(target.get(), data[0].name, "linear");
+  (*target->keyframes_map_)[data[0].name]->GetKeyframesContent().at(0.5)->erase(
+      kPropertyIDAnimationTimingFunction);
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  auto anim = keyframe_manager->animations_map()[data[0].name];
+  ASSERT_NE(anim, nullptr);
+  auto* curve = anim->keyframe_effect()
+                    ->GetKeyframeModelByCurveType(
+                        animation::AnimationCurve::CurveType::OPACITY)
+                    ->animation_curve();
+  auto sample = [&](double seconds) {
+    auto time = fml::TimeDelta::FromSecondsF(seconds);
+    return curve->GetValue(time).AsNumber();
+  };
+  EXPECT_NEAR(sample(0.25), 0.25, 1e-6);
+  EXPECT_NEAR(sample(0.75), 0.75, 1e-6);
+
+  // Both intervals initially use linear, but only the second follows changes
+  // to the animation's timing. Updating a resolved value must retain its
+  // source.
+  for (auto timing : {starlight::TimingFunctionType::kEaseIn,
+                      starlight::TimingFunctionType::kEaseOut}) {
+    data[0].timing_func.timing_func = timing;
+    keyframe_manager->SyncAnimationDataForNewPipeline(data);
+    EXPECT_EQ(keyframe_manager->animations_map()[data[0].name], anim);
+    auto expected = gfx::CreateTimingFunction(
+        animation::ToGfxTimingFunctionData(data[0].timing_func));
+    EXPECT_NEAR(sample(0.25), 0.25, 1e-6);
+    EXPECT_NEAR(sample(0.75), 0.5 + 0.5 * expected->GetValue(0.5), 1e-6);
+  }
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       SynthesizedEndpointsUseUnderlyingValueAndAnimationTiming) {
+  auto target = InitElement();
+  ASSERT_TRUE(target->computed_css_style()->SetValue(
+      kPropertyIDOpacity, CSSValue(0.0f, CSSValuePattern::NUMBER)));
+  auto keyframe_manager = InitTestKeyframeManager(target.get());
+  base::Vector<starlight::AnimationData> data(1);
+  data[0].name = base::String("test");
+  data[0].duration = 1000;
+  data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+  UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-out");
+  auto& keyframes =
+      (*target->keyframes_map_)[data[0].name]->GetKeyframesContent();
+  keyframes.erase(0.0);
+  keyframes.erase(1.0);
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  auto anim = keyframe_manager->animations_map()[data[0].name];
+  ASSERT_NE(anim, nullptr);
+  auto* curve = anim->keyframe_effect()
+                    ->GetKeyframeModelByCurveType(
+                        animation::AnimationCurve::CurveType::OPACITY)
+                    ->animation_curve();
+  auto time = fml::TimeDelta::FromSecondsF(0.25);
+  auto ease_in = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_IN);
+  EXPECT_NEAR(curve->GetValue(time).AsNumber(), 0.5 * ease_in->GetValue(0.5),
+              1e-6);
+
+  data[0].timing_func.timing_func = starlight::TimingFunctionType::kLinear;
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  EXPECT_EQ(keyframe_manager->animations_map()[data[0].name], anim);
+  time = fml::TimeDelta::FromSecondsF(0.25);
+  EXPECT_NEAR(curve->GetValue(time).AsNumber(), 0.25, 1e-6);
+  time = fml::TimeDelta::FromSecondsF(0.75);
+  auto ease_out = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_OUT);
+  EXPECT_NEAR(curve->GetValue(time).AsNumber(),
+              0.5 * (1.0 - ease_out->GetValue(0.5)), 1e-6);
+
+  // Both synthesized endpoints continue to use the current underlying value.
+  keyframe_manager->UpdateUnderlyingValue(
+      kPropertyIDOpacity, CSSValue(0.2f, CSSValuePattern::NUMBER));
+  time = fml::TimeDelta::FromSecondsF(0.25);
+  EXPECT_NEAR(curve->GetValue(time).AsNumber(), 0.35, 1e-6);
+  time = fml::TimeDelta::FromSecondsF(0.75);
+  EXPECT_NEAR(curve->GetValue(time).AsNumber(),
+              0.5 - 0.3 * ease_out->GetValue(0.5), 1e-6);
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       ParserOrdersKeyframesStablyBeforeAddingEndpoints) {
+  auto target = InitElement();
+  auto keyframe_manager = InitTestKeyframeManager(target.get());
+  const base::String name("test");
+  UpdateOpacityKeyframes(target.get(), name, 0.0, 1.0);
+  auto& keyframes = (*target->keyframes_map_)[name]->GetKeyframesContent();
+  keyframes.clear();
+  // The two small offsets normalize to the same time. Preserve their input
+  // order even though their original offsets are in descending order.
+  const std::pair<float, float> frames[] = {
+      {0.75f, 0.75f}, {2.75e-9f, 0.3f}, {0.25f, 0.25f}, {2.25e-9f, 0.7f}};
+  for (const auto& [offset, value] : frames) {
+    auto styles = std::make_shared<tasm::StyleMap>();
+    (*styles)[kPropertyIDOpacity] = CSSValue(value, CSSValuePattern::NUMBER);
+    (*styles)[kPropertyIDLeft] = CSSValue(value * 100.f, CSSValuePattern::PX);
+    keyframes[offset] = std::move(styles);
+  }
+
+  auto properties = keyframe_manager->ParseKeyframes(name, nullptr);
+  ASSERT_EQ(properties.size(), 2u);
+  const auto opacity =
+      properties.find(animation::AnimationCurve::CurveType::OPACITY);
+  ASSERT_NE(opacity, properties.end());
+  const auto& parsed = opacity->second.keyframes;
+  ASSERT_EQ(parsed.size(), 6u);
+  EXPECT_EQ(parsed.front().keyframe->Time(), fml::TimeDelta());
+  EXPECT_TRUE(parsed.front().keyframe->IsEmpty());
+  EXPECT_EQ(parsed.back().keyframe->Time(), fml::TimeDelta::FromSecondsF(1.0));
+  EXPECT_TRUE(parsed.back().keyframe->IsEmpty());
+  EXPECT_EQ(parsed[1].keyframe->Time(), parsed[2].keyframe->Time());
+  const std::pair<float, float> expected[] = {frames[1], frames[3], frames[2],
+                                              frames[0]};
+  for (size_t i = 0; i < 4; ++i) {
+    const auto* keyframe =
+        static_cast<const gfx::FloatKeyframe*>(parsed[i + 1].keyframe.get());
+    EXPECT_EQ(keyframe->Time(),
+              fml::TimeDelta::FromSecondsF(expected[i].first));
+    EXPECT_FLOAT_EQ(keyframe->Value(), expected[i].second);
+  }
+  // Property insertion and frame insertion can move their owning records.
+  // Notification callbacks must still point to the original heap keyframes.
+  const auto layout_property =
+      properties.find(animation::AnimationCurve::CurveType::LEFT);
+  ASSERT_NE(layout_property, properties.end());
+  const auto& layout = layout_property->second.keyframes;
+  ASSERT_EQ(layout.size(), parsed.size());
+  for (const auto& frame : layout) {
+    EXPECT_EQ(frame.callbacks.keyframe, frame.keyframe.get());
+    EXPECT_NE(frame.callbacks.notify_unit_values_updated, nullptr);
+  }
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       BuilderCreatesNewAnimatorModelsWithAnimationData) {
+  auto target = InitElement();
+  auto keyframe_manager = InitTestKeyframeManager(target.get());
+  UpdateOpacityKeyframes(target.get(), base::String("test"), 0.0, 1.0);
+  auto& keyframes =
+      (*target->keyframes_map_)[base::String("test")]->GetKeyframesContent();
+  tasm::CSSParserConfigs configs;
+  for (auto& [offset, styles] : keyframes) {
+    tasm::UnitHandler::Process(tasm::kPropertyIDLeft, lepus::Value("100px"),
+                               *styles, configs);
+    tasm::UnitHandler::Process(tasm::kPropertyIDColor, lepus::Value("blue"),
+                               *styles, configs);
+  }
+  base::Vector<starlight::AnimationData> data{InitAnimationData(
+      base::String("test"), 1000, 0, starlight::TimingFunctionData(), 1,
+      starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning)};
+  keyframe_manager->SyncAnimationDataForNewPipeline(data);
+  auto animation = keyframe_manager->animations_map()[data[0].name];
+  ASSERT_NE(animation, nullptr);
+  ASSERT_EQ(animation->keyframe_effect()->keyframe_models().size(), 3u);
+  for (auto type : {animation::AnimationCurve::CurveType::LEFT,
+                    animation::AnimationCurve::CurveType::OPACITY,
+                    animation::AnimationCurve::CurveType::TEXTCOLOR}) {
+    auto* model =
+        animation->keyframe_effect()->GetKeyframeModelByCurveType(type);
+    ASSERT_NE(model, nullptr);
+    EXPECT_TRUE(model->HasAnimationData());
+    EXPECT_EQ(model->get_animation_data(), data[0]);
+  }
 }
 
 TEST_F(CSSKeyframeManagerTest, GetDefaultValue) {
