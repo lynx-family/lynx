@@ -23,9 +23,12 @@ class EventTrackerWaitableEvent {
   static std::shared_ptr<fml::AutoResetWaitableEvent> Await();
   static int32_t instance_id_;
   static std::vector<MoveOnlyEvent> stack_;
-  static std::unordered_map<std::string, std::string> generic_info_;
-  static std::unordered_map<std::string, float> generic_float_info_;
-  static std::unordered_map<std::string, int64_t> generic_int64_info_;
+  // Query storage must distinguish instances even when their URLs match.
+  using InstanceParams =
+      std::unordered_map<int32_t, std::unordered_map<std::string, std::string>>;
+  static InstanceParams generic_info_by_instance_;
+  static InstanceParams extra_params_by_instance_;
+  static std::unordered_map<int32_t, uint32_t> query_count_by_instance_;
 };
 }  // namespace report
 }  // namespace tasm

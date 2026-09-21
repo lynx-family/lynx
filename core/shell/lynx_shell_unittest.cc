@@ -225,7 +225,8 @@ TEST_F(LynxShellTest, InitRuntimeUpdatesBTSGroupIdGenericInfo) {
   event->Reset();
   tasm::report::EventTrackerWaitableEvent::instance_id_ =
       tasm::report::kUnknownInstanceId;
-  tasm::report::EventTrackerWaitableEvent::generic_info_.clear();
+  tasm::report::EventTrackerWaitableEvent::generic_info_by_instance_.erase(
+      shell_->GetInstanceId());
 
   shell_->enable_runtime_ = false;
   shell_->InitRuntime(
@@ -237,7 +238,8 @@ TEST_F(LynxShellTest, InitRuntimeUpdatesBTSGroupIdGenericInfo) {
   EXPECT_EQ(tasm::report::EventTrackerWaitableEvent::instance_id_,
             shell_->GetInstanceId());
   const auto& generic_info =
-      tasm::report::EventTrackerWaitableEvent::generic_info_;
+      tasm::report::EventTrackerWaitableEvent::generic_info_by_instance_.at(
+          shell_->GetInstanceId());
   auto bts_group_id = generic_info.find(tasm::report::kPropBTSGroupId);
   ASSERT_NE(bts_group_id, generic_info.end());
   EXPECT_EQ(bts_group_id->second, kGroupId);
