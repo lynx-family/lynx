@@ -7,6 +7,7 @@
 #include <arkui/native_node_napi.h>
 #include <node_api.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -14,6 +15,8 @@
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/js_shadow_node.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/list_item_transformer.h"
 
 namespace lynx {
 namespace tasm {
@@ -358,6 +361,62 @@ napi_value JSUIBase::GetContentSize(napi_env env, napi_callback_info info) {
   return ret;
 }
 
+napi_value JSUIBase::SetListItemTransformer(napi_env env,
+                                            napi_callback_info info) {
+  napi_value result{nullptr};
+  if (napi_get_boolean(env, false, &result) != napi_ok) {
+    return nullptr;
+  }
+  // argv[0]: NativeContent
+  // argv[1]: Transform callback
+  // argv[2]: Reset callback
+  size_t argc = 3;
+  napi_value argv[3]{nullptr, nullptr, nullptr};
+  if (napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr) != napi_ok ||
+      argc < 3) {
+    return result;
+  }
+  NativeNodeContent* content{nullptr};
+  if (napi_unwrap(env, argv[0], reinterpret_cast<void**>(&content)) !=
+          napi_ok ||
+      !content || !content->UI() || !content->UI()->IsList()) {
+    return result;
+  }
+  napi_valuetype transform_type = napi_undefined;
+  napi_valuetype reset_type = napi_undefined;
+  if (napi_typeof(env, argv[1], &transform_type) != napi_ok ||
+      napi_typeof(env, argv[2], &reset_type) != napi_ok) {
+    return result;
+  }
+  // Register two functions, or clear both callbacks with undefined.
+  if (transform_type != reset_type ||
+      (transform_type != napi_function && transform_type != napi_undefined)) {
+    return result;
+  }
+  std::unique_ptr<ListItemTransformer> list_item_transformer{nullptr};
+  if (transform_type == napi_function) {
+    napi_ref transform_callback{nullptr};
+    napi_ref reset_callback{nullptr};
+    if (napi_create_reference(env, argv[1], 1, &transform_callback) !=
+        napi_ok) {
+      return result;
+    }
+    if (napi_create_reference(env, argv[2], 1, &reset_callback) != napi_ok) {
+      napi_delete_reference(env, transform_callback);
+      return result;
+    }
+    list_item_transformer = std::make_unique<ListItemTransformer>(
+        env, transform_callback, reset_callback);
+  }
+  const bool success =
+      static_cast<UIList*>(content->UI())
+          ->SetListItemTransformer(std::move(list_item_transformer));
+  if (napi_get_boolean(env, success, &result) != napi_ok) {
+    return nullptr;
+  }
+  return result;
+}
+
 napi_value JSUIBase::SetChildrenManagementFuncs(napi_env env,
                                                 napi_callback_info info) {
   napi_value js_this;
@@ -489,6 +548,8 @@ napi_value JSUIBase::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_STATIC_FUNCTION("getUIFromNativeContent",
                                    GetUIFromNativeContent),
       DECLARE_NAPI_STATIC_FUNCTION("getContentSize", GetContentSize),
+      DECLARE_NAPI_STATIC_FUNCTION("setListItemTransformer",
+                                   SetListItemTransformer),
   };
 #undef DECLARE_NAPI_FUNCTION
 #undef DECLARE_NAPI_STATIC_FUNCTION

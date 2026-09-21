@@ -320,6 +320,23 @@ export class UIBase {
   static getContentSize(nativeContent: NativeContent): [number, number];
 
   /**
+   * Sets or clears the list item transformer; returns false for invalid input or a sticky conflict.
+   * Installing while sticky is enabled is rejected. Enabling sticky clears the transformer.
+   * Called after item layout (LTR only). Size and viewport-relative offset use vp.
+   * Returns [scaleX, scaleY, translationX, translationY], with center scaling and vp translations.
+   * Results replace the current transform and may be replaced by later CSS updates.
+   * Reset is required with a transformer and returns the same four values to restore an item.
+   * Pass undefined for both callbacks to clear the transformer.
+   * The previous reset callback runs before replacement or clearing, and when an item is removed.
+   * Failed calls or invalid return types leave the last transform unchanged.
+   */
+  static setListItemTransformer(
+    nativeContent: NativeContent,
+    transformer: ((mainAxisSize: number, mainAxisOffset: number,
+      isVertical: boolean, isRTL: boolean) => number[]) | undefined,
+    reset: (() => number[]) | undefined): boolean;
+
+  /**
    * Retrieves the children of the current node.
    *
    * @returns {ArrayBuffer} - An ArrayBuffer containing the integer signature of each child.
@@ -353,6 +370,8 @@ export class UIBase {
 
 export class NativeContent {
   readonly content: NodeContent;
+
+  readonly uiTagName: string | undefined;
 
   constructor(content: NodeContent);
 }
