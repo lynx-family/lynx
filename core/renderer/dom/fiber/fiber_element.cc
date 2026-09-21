@@ -4840,7 +4840,11 @@ void Element::DoFullCSSResolving() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_DO_FULL_STYLE_RESOLVE);
 
   CSSVariableMap changed_css_vars;
-  ResolveStyle(parsed_styles_map_, &changed_css_vars);
+  // Initial ET styles need the variables, but no change notification is
+  // consumed until the element has completed its first flush.
+  ResolveStyle(parsed_styles_map_, HasTemplateAttributes() && IsNewlyCreated()
+                                       ? nullptr
+                                       : &changed_css_vars);
   HandlePseudoElement();
 
   if (!(dirty_ & kDirtyCreated) && !changed_css_vars.empty()) {

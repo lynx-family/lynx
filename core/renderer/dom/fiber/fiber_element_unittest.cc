@@ -8601,6 +8601,11 @@ TEST_P(FiberElementTest, UpdateCSSVariables_1) {
   fiber_element_4->SetClass("three");
   fiber_element_4->SetIdSelector("test1");
 
+  fiber_element_1->SetTemplateAttributes(
+      std::make_shared<TemplateAttributes>());
+  fiber_element_4->SetTemplateAttributes(
+      std::make_shared<TemplateAttributes>());
+
   page->FlushActionsAsRoot();
   auto painting_context = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->impl());
@@ -8857,6 +8862,9 @@ TEST_P(FiberElementTest, UpdateIndirectCSSVariableAfterParentClassChange) {
   child->SetClasses({"text", "text2"});
   parent->InsertNode(child);
 
+  parent->SetTemplateAttributes(std::make_shared<TemplateAttributes>());
+  child->SetTemplateAttributes(std::make_shared<TemplateAttributes>());
+
   page->FlushActionsAsRoot();
   auto* painting_context = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->impl());
@@ -8889,6 +8897,18 @@ TEST_P(FiberElementTest, UpdateIndirectCSSVariableAfterParentClassChange) {
   theme_color = updated_related.find("--theme-color");
   ASSERT_NE(theme_color, updated_related.end());
   EXPECT_TRUE(theme_color->second.IsEqual("green"));
+
+  parent->SetRawInlineStyles("--theme-color: blue;");
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  EXPECT_EQ(painting_node->props_.at("color"),
+            lepus::Value(static_cast<uint32_t>(kTestColorMap["blue"])));
+
+  parent->SetRawInlineStyles("width: 10px;");
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  EXPECT_EQ(painting_node->props_.at("color"),
+            lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
 }
 
 TEST_P(FiberElementTest, UpdateMultipleCSSVariables) {
