@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/fml/time/time_point.h"
+#include "base/include/vector.h"
 #include "core/animation/animation.h"
 #include "core/animation/animation_delegate.h"
 #include "core/animation/keyframe_effect.h"
@@ -131,11 +132,6 @@ class CSSKeyframeManager : public AnimationDelegate {
                             tasm::CSSPropertyID css_id) override;
   void SetNeedsAnimationStyleRecalc(const base::String& name) override;
 
-  bool InitCurveAndModelAndKeyframe(
-      AnimationCurve::CurveType type, Animation* animation, double offset,
-      std::unique_ptr<gfx::TimingFunction> timing_function,
-      tasm::CSSPropertyID id, const tasm::CSSValue& value);
-
   KeyframeModel* ConstructModel(std::unique_ptr<AnimationCurve> curve,
                                 AnimationCurve::CurveType type,
                                 Animation* animation);
@@ -208,11 +204,40 @@ class CSSKeyframeManager : public AnimationDelegate {
   AnimationEventRecordsForNewPipeline pending_event_records_;
 
  private:
-  void MakeKeyframeModel(
-      Animation* animation, const base::String& animation_name,
-      const tasm::CustomPropertiesMap* base_custom_properties = nullptr);
+  struct ParsedKeyframe {
+    std::unique_ptr<gfx::Keyframe> keyframe;
+    KeyframeCallbacks callbacks;
 
- private:
+    // The default-deleter pointer owns a heap object. Callbacks refer to that
+    // object, never to this record, so base containers can relocate it intact.
+    using TriviallyRelocatable = bool;
+  };
+
+  struct ParsedPropertyKeyframes {
+    AnimationCurve::CurveType curve_type{AnimationCurve::CurveType::UNSUPPORT};
+    tasm::CSSPropertyID css_id{tasm::kPropertyStart};
+    base::Vector<ParsedKeyframe> keyframes;
+    tasm::CSSValue underlying_value;
+
+    // Vector owns heap storage and CSSValue supports relocation. Keep members
+    // independent of this record's address when extending it.
+    using TriviallyRelocatable = bool;
+  };
+
+  using ParsedPropertyMap =
+      base::OrderedFlatMap<AnimationCurve::CurveType, ParsedPropertyKeyframes>;
+
+  ParsedKeyframe CreateParsedKeyframe(
+      AnimationCurve::CurveType type, double offset,
+      std::unique_ptr<gfx::TimingFunction> timing_function,
+      tasm::CSSPropertyID id, const tasm::CSSValue* value);
+  std::unique_ptr<AnimationCurve> CreateCurve(AnimationCurve::CurveType type);
+  void AddParsedPropertyToNewAnimator(ParsedPropertyKeyframes&& property,
+                                      Animation* animation);
+  ParsedPropertyMap ParseKeyframes(
+      const base::String& animation_name,
+      const tasm::CustomPropertiesMap* base_custom_properties);
+  tasm::CSSValue ResolveUnderlyingValue(tasm::CSSPropertyID id) const;
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
 };
 
