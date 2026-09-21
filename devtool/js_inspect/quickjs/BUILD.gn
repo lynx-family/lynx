@@ -28,6 +28,7 @@ source_set("quickjs_debug") {
   deps = [
     "../:inspector_const",
     "../../../base/src:base_log_headers",
+    "../../../third_party/rapidjson:rapidjson",
     "../../fundamentals/js_inspect:js_inspect_interface",
   ]
   include_dirs = [ "../../../third_party" ]

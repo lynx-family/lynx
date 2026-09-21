@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "devtool/fundamentals/js_inspect/inspector_client_ng.h"
@@ -73,11 +74,12 @@ class V8InspectorClientImpl : public v8_inspector::V8InspectorClient,
   int InitInspector(v8::Isolate* isolate, v8::Local<v8::Context> ctx,
                     const std::string& group_id, const std::string& name = "");
   // The param group_id is the value after mapping.
-  void ConnectSession(int instance_id, int group_id);
+  void ConnectSession(int instance_id, int group_id, int context_id = 0);
   void DisconnectSession(int instance_id);
   // Only be called when preparing to destroy v8::Context. The param is the
   // group_id after mapping.
   void DestroyContext(int group_id);
+  void DestroyContext(int group_id, int context_id);
   // Only be called when preparing to destroy v8::Context. The param is the
   // group_id before mapping(cannot be "-1").
   void DestroyContext(const std::string& group_id);
@@ -100,7 +102,9 @@ class V8InspectorClientImpl : public v8_inspector::V8InspectorClient,
   std::unique_ptr<v8_inspector::V8Inspector> inspector_;
 
   std::unordered_map<int, std::shared_ptr<V8ChannelImpl>> channels_;
-  std::unordered_map<int, v8::Global<v8::Context>> contexts_;
+  std::unordered_map<int, int> session_contexts_;
+  int current_context_id_{0};
+  std::unordered_map<int, std::vector<v8::Global<v8::Context>>> contexts_;
 
   std::unordered_map<std::string, int> group_string_to_number_;
   std::unordered_map<int, std::string> group_number_to_string_;

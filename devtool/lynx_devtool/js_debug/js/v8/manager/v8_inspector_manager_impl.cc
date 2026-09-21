@@ -21,6 +21,8 @@ void V8InspectorManagerImpl::InitInspector(
       devtool::V8InspectorClientProvider::GetInstance()->GetInspectorClient();
   auto v8_runtime = static_cast<V8Runtime *>(runtime);
   group_id_ = v8_runtime->getGroupId();
+  is_shared_global_context_ = v8_runtime->isSharedGlobalContext();
+  enable_new_share_group_ = v8_runtime->getEnableNewShareGroup();
   instance_id_ = observer->GetViewId();
   runtime_id_ = v8_runtime->getRuntimeId();
 
@@ -28,7 +30,12 @@ void V8InspectorManagerImpl::InitInspector(
   inspector_group_id_ = inspector_client_->InitInspector(
       v8_runtime->getIsolate(), v8_runtime->getContext(), group_id_,
       devtool::kTargetJSPrefix + group_id_);
-  inspector_client_->ConnectSession(instance_id_, inspector_group_id_);
+  context_id_ =
+      v8_inspector::V8ContextInfo::executionContextId(v8_runtime->getContext());
+  if (!is_shared_global_context_) {
+    inspector_client_->ConnectSession(instance_id_, inspector_group_id_,
+                                      context_id_);
+  }
 
   static thread_local std::once_flag set_release_vm_callback;
   static thread_local std::once_flag set_release_ctx_callback;
@@ -54,12 +61,19 @@ void V8InspectorManagerImpl::InitInspector(
     });
   }
 
+  if (is_shared_global_context_) {
+    observer_wp_.reset();
+    return;
+  }
   observer->OnInspectorInited(
       devtool::kKeyEngineV8, runtime_id_, std::to_string(inspector_group_id_),
       group_id_ == devtool::kSingleGroupStr, inspector_client_);
 }
 
 void V8InspectorManagerImpl::DestroyInspector() {
+  if (is_shared_global_context_) {
+    return;
+  }
   auto sp = observer_wp_.lock();
   if (sp != nullptr) {
     sp->OnRuntimeDestroyed(runtime_id_);
@@ -70,6 +84,8 @@ void V8InspectorManagerImpl::DestroyInspector() {
     // v8::Context will be destroyed.
     if (group_id_ == devtool::kSingleGroupStr) {
       inspector_client_->DestroyContext(inspector_group_id_);
+    } else if (enable_new_share_group_) {
+      inspector_client_->DestroyContext(inspector_group_id_, context_id_);
     }
   }
 }

@@ -102,6 +102,7 @@ void QuickjsDebugger::RemoveEnableState(int32_t session_id) {
 
 void QuickjsDebugger::DebuggerSendNotification(const char *message,
                                                int32_t session_id) {
+  inspector_->RecordScript(message, context_->GetContext());
   if (session_id == -1) {
     // only send to session which is not null and enabled
     for (const auto &session : inspector_->GetSessions()) {

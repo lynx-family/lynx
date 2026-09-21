@@ -23,7 +23,8 @@ class QJSChannelImplNG : public quickjs_inspector::QJSInspector::QJSChannel {
   QJSChannelImplNG(
       const std::unique_ptr<quickjs_inspector::QJSInspector>& inspector,
       const std::shared_ptr<QJSInspectorClientImpl>& client,
-      const std::string& group_id, int instance_id);
+      const std::string& group_id, int instance_id,
+      LEPUSContext* context = nullptr);
   ~QJSChannelImplNG() override = default;
 
   const std::string& GroupId() { return group_id_; }
@@ -70,11 +71,13 @@ class QJSInspectorClientImpl : public quickjs_inspector::QJSInspectorClient,
 
   std::string InitInspector(LEPUSContext* context, const std::string& group_id,
                             const std::string& name = "");
-  void ConnectSession(int instance_id, const std::string& group_id);
+  void ConnectSession(int instance_id, const std::string& group_id,
+                      LEPUSContext* context = nullptr);
   void DisconnectSession(int instance_id);
   // Only be called when preparing to destroy LEPUSContext. The param is the
   // group_id after mapping.
   void DestroyInspector(const std::string& group_id);
+  void DestroyContext(const std::string& group_id, LEPUSContext* context);
 
   // Set a callback to determine whether need to use the full functionality.
   // If the callback return false, the Quickjs can send scriptParsed and

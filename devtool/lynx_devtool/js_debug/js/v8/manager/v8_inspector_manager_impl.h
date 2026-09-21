@@ -27,6 +27,9 @@ class V8InspectorManagerImpl : public V8InspectorManager {
   std::shared_ptr<devtool::V8InspectorClientImpl> inspector_client_;
   std::weak_ptr<InspectorRuntimeObserverNG> observer_wp_;
 
+  bool is_shared_global_context_{false};
+  bool enable_new_share_group_{false};
+  int context_id_{0};
   int64_t runtime_id_{-1};
   int inspector_group_id_{0};
   std::string group_id_;
