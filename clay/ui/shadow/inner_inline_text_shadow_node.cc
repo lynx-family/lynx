@@ -24,7 +24,7 @@ void InnerInlineTextShadowNode::LayoutRange(txt::Paragraph* paragraph) {
           for (const auto& range : range_in_paragraph_) {
             auto boxes = paragraph->GetRectsForRange(
                 range.start(), range.end(),
-                txt::Paragraph::RectHeightStyle::kTight,
+                txt::Paragraph::RectHeightStyle::kMax,
                 txt::Paragraph::RectWidthStyle::kTight);
             for (auto& box : boxes) {
               static_cast<RenderInlineText*>(render_object)

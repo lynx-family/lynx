@@ -116,6 +116,7 @@ class ParagraphTTText : public Paragraph {
   friend class ParagraphTTTextTest_KeepsIndexesInSyncForEmbeddedNull_Test;
   friend class
       ParagraphTTTextTest_DefaultPlaceholderUsesAlphabeticBaseline_Test;
+  friend class ParagraphTTTextReuseTest_ReturnsNormalAndTightRangeRects_Test;
 
   std::shared_ptr<FontCollection> font_collection_;
 #ifdef ENABLE_SKITY
