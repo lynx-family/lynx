@@ -10,10 +10,13 @@ if (is_android && is_debug) {
       "lynx_view/host_script_lynx_view_binding_android.cc",
       "runtime/host_script_android_session.h",
       "runtime/host_script_runtime_binding_android.cc",
+      "runtime/process_runtime_android.cc",
+      "runtime/process_runtime_android.h",
     ]
     deps = [
       "../../../base:base",
       "../runtime:host_script",
+      "../runtime:process_runtime",
     ]
   }
 }
