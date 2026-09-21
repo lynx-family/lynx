@@ -4,8 +4,6 @@
 
 #include "core/list/animation/animation_manager_default.h"
 
-#include <memory>
-
 namespace lynx {
 namespace list {
 
@@ -28,11 +26,6 @@ void AnimationManagerDefault::CancelAnimationTransaction(
     AnimationCancelReason reason) {}
 
 void AnimationManagerDefault::Destroy() {}
-
-std::unique_ptr<AnimationManager> CreateAnimationManager(
-    ListContainerImpl* list_container) {
-  return std::make_unique<AnimationManagerDefault>();
-}
 
 }  // namespace list
 }  // namespace lynx

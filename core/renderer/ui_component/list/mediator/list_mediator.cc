@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/include/value/base_string.h"
+#include "core/list/decoupled_list_container_factory.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/ui_component/list/mediator/list_item_mediator.h"

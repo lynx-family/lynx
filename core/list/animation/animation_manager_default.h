@@ -10,7 +10,8 @@
 namespace lynx {
 namespace list {
 
-// No-op implementation used by builds that compile out list item animation.
+// No-op implementation used by containers constructed without animation
+// support.
 class AnimationManagerDefault final : public AnimationManager {
  public:
   AnimationManagerDefault() = default;

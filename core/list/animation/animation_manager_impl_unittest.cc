@@ -51,7 +51,8 @@ class AnimationManagerImplTest : public ::testing::Test {
     value_factory_ = std::make_shared<pub::PubValueFactoryDefault>();
     mock_list_element_ = std::make_unique<MockListElement>();
     list_container_ = std::make_unique<ListContainerImpl>(
-        mock_list_element_.get(), value_factory_);
+        mock_list_element_.get(), value_factory_, CreateListAnimationManager,
+        CreateAnimationManager);
     animation_manager_ = static_cast<AnimationManagerImpl*>(
         list_container_->animation_manager());
   }

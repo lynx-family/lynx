@@ -861,7 +861,10 @@ subspec_target("lepus") {
 }
 
 subspec_target("list_container") {
-  deps = [ "../../../../core/list:list_container" ]
+  deps = [
+    "../../../../core/list:list_container",
+    "../../../../core/list:list_container_base",
+  ]
 }
 
 subspec_target("parser") {
