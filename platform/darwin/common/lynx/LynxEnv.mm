@@ -618,6 +618,15 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
   return enableImageAsyncLayout;
 }
 
+- (BOOL)enableImageLoadSVG {
+  static dispatch_once_t onceToken;
+  static BOOL enableImageLoadSVG = YES;
+  dispatch_once(&onceToken, ^{
+    enableImageLoadSVG = [self boolFromExternalEnv:LynxEnvEnableImageLoadSVG defaultValue:YES];
+  });
+  return enableImageLoadSVG;
+}
+
 - (BOOL)enableImageCancelRequest {
   static dispatch_once_t onceToken;
   static BOOL enableImageCancelRequest = NO;
@@ -859,6 +868,7 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
     @(LynxEnvEnableCreateUIAsync) : @"enable_create_ui_async",
     @(LynxEnvEnableImageEventReport) : @"enable_image_event_report",
     @(LynxEnvEnableImageAsyncLayout) : @"enable_image_async_layout",
+    @(LynxEnvEnableImageLoadSVG) : @"enable_image_load_svg",
     @(LynxEnvEnableImageCancelRequest) : @"enable_image_cancel_request",
     @(LynxEnvEnableImagePlaceholderResetFix) : @"enable_image_placeholder_reset_fix",
     @(LynxEnvEnableImageCIGaussianBlur) : @"enable_image_ci_gaussian_blur",

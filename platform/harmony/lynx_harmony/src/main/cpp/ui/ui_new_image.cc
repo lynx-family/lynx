@@ -16,6 +16,7 @@
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/image_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node.h"
@@ -489,7 +490,9 @@ bool UINewImage::LoadImage() {
 }
 
 bool UINewImage::UpdateSvgImageLoader() {
-  if (!IsSvgSource(src_)) {
+  static const bool enable_image_load_svg =
+      LynxEnv::GetInstance().EnableImageLoadSVG();
+  if (!enable_image_load_svg || !IsSvgSource(src_)) {
     svg_image_loader_.reset();
     return false;
   }

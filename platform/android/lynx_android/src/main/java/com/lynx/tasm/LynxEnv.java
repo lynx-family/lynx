@@ -173,6 +173,8 @@ public class LynxEnv {
 
   protected boolean mEnableImageEventReport = false;
 
+  protected boolean mEnableImageLoadSVG = false;
+
   protected boolean mEnableImageAsyncLayout = false;
 
   // Whether enable reporting image memory with new protocol
@@ -1386,6 +1388,10 @@ public class LynxEnv {
     return mEnableImageEventReport;
   }
 
+  public boolean enableImageLoadSVG() {
+    return mEnableImageLoadSVG;
+  }
+
   public boolean enableImageAsyncRedirect() {
     return mEnableImageAsyncRedirect;
   }
@@ -1433,6 +1439,7 @@ public class LynxEnv {
     mEnableFlattenImageFlickerFix =
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_FLATTEN_IMAGE_FLICKER_FIX, true);
     mDisableBigImageHelper = getBooleanFromExternalEnv(LynxEnvKey.DISABLE_BIG_IMAGE_HELPER, false);
+    mEnableImageLoadSVG = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_IMAGE_LOAD_SVG, true);
   }
 
   /**

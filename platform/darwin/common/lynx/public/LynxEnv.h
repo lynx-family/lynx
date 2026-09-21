@@ -178,6 +178,8 @@ typedef NS_ENUM(NSInteger, LynxMTSContextType) {
 
 - (BOOL)enableImageAsyncLayout;
 
+- (BOOL)enableImageLoadSVG;
+
 - (BOOL)enableImageCancelRequest;
 
 - (BOOL)enableImagePlaceholderResetFix;

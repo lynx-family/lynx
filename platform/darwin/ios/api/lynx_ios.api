@@ -1539,6 +1539,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableComponentStatisticReport();
   public BOOL LynxEnv::enableImageEventReport();
   public BOOL LynxEnv::enableImageAsyncLayout();
+  public BOOL LynxEnv::enableImageLoadSVG();
   public BOOL LynxEnv::enableImageCancelRequest();
   public BOOL LynxEnv::enableImagePlaceholderResetFix();
   public BOOL LynxEnv::enableImageCIGaussianBlur();
@@ -6677,6 +6678,7 @@ public enum LynxEnvKey {
   LynxEnvEnableImagePlaceholderResetFix
   LynxEnvEnableTextStrokeInheritanceFix
   LynxEnvEnablePlatformThreadSchedulingPolicy
+  LynxEnvEnableImageLoadSVG
   LynxEnvKeyEndMark
 }
 

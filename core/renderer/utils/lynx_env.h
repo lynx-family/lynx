@@ -132,6 +132,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     LYNX_DEBUG_ENABLED,
     ENABLE_HARMONY_DRAW_BEHIND,
     ENABLE_HARMONY_NEW_IMAGE,
+    ENABLE_IMAGE_LOAD_SVG,
     ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA,
     ENABLE_UNIFY_FIXED_BEHAVIOR,
     ENABLE_ANIMATION_FORWARD_UPDATE_PRESERVATION,
@@ -307,6 +308,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_level_order_traversing"},
             {Key::ENABLE_HARMONY_DRAW_BEHIND, "enable_harmony_draw_behind"},
             {Key::ENABLE_HARMONY_NEW_IMAGE, "enable_harmony_new_image"},
+            {Key::ENABLE_IMAGE_LOAD_SVG, "enable_image_load_svg"},
             {Key::ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA,
              "enable_harmony_gesture_interrupter_user_data"},
             {Key::ENABLE_UNIFY_FIXED_BEHAVIOR, "enable_unify_fixed_behavior"},
@@ -511,6 +513,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableLevelOrderTraversing();
   bool EnableHarmonyDrawBehind();
   bool EnableHarmonyNewImage();
+  bool EnableImageLoadSVG();
   bool EnableHarmonyGestureInterrupterUserData();
   bool EnableUnifyFixedBehavior();
   bool FixRadonInlineConvertBug();

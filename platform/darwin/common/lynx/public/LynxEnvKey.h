@@ -53,6 +53,7 @@ typedef NS_ENUM(uint64_t, LynxEnvKey) {
   LynxEnvEnableImagePlaceholderResetFix,
   LynxEnvEnableTextStrokeInheritanceFix,
   LynxEnvEnablePlatformThreadSchedulingPolicy,
+  LynxEnvEnableImageLoadSVG,
 
   // Please add new enum values above
   LynxEnvKeyEndMark,  // Keep this as the last enum value, and do not use
