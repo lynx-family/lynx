@@ -22,6 +22,17 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
       std::unique_ptr<PlatformRendererContext> view_manager);
   ~NativePaintingCtxAndroidRef() override;
 
+  PlatformRendererContext::PreparationScheduler::TaskRef PrepareRenderer(
+      int id, PlatformRendererType type, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config);
+  void CreatePreparedRenderer(
+      int id, PlatformRendererType type, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config,
+      const PlatformRendererContext::PreparationScheduler::TaskRef&
+          preparation);
+
   std::vector<float> GetTransformValue(
       int32_t sign, const std::vector<float>& offsets) override;
   void GetRootViewLocationOnScreen(float location[2]) override;

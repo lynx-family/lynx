@@ -24,12 +24,19 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
       const fml::RefPtr<PropBundle>& init_data,
       const PlatformRendererInitConfig& init_config =
           PlatformRendererInitConfig());
-  PlatformRendererAndroid(PlatformRendererContext* context, int id,
-                          PlatformRendererType type,
-                          const base::String& tag_name,
-                          const fml::RefPtr<PropBundle>& init_data,
-                          const PlatformRendererInitConfig& init_config =
-                              PlatformRendererInitConfig());
+  PlatformRendererAndroid(
+      PlatformRendererContext* context, int id, PlatformRendererType type,
+      const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data,
+      const PlatformRendererInitConfig& init_config =
+          PlatformRendererInitConfig(),
+      PlatformRendererContext::PreparationScheduler::TaskRef preparation =
+          nullptr);
+  // UI-thread only. Native creation and layout caching do not consume the task.
+  void EnsureAndroidViewCreated();
+  bool HasPendingPreparation() const { return preparation_ != nullptr; }
+  static base::String PreparationTag(
+      PlatformRendererType type, const base::String& tag_name,
+      const PlatformRendererInitConfig& init_config);
   ~PlatformRendererAndroid() override;
 
  protected:
@@ -45,13 +52,16 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
  private:
   // Android-specific context for managing native views via JNI
   PlatformRendererContext* context_;
+  PlatformRendererContext::PreparationScheduler::TaskRef preparation_;
+  bool android_view_created_{false};
 
   // Initialize the Android view
-  void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data);
+  void InitializeAndroidView(const fml::RefPtr<PropBundle>& init_data,
+                             jobject preparation);
+  void CleanupAndroidView();
+  void ClearPreparation();
   bool ShouldCreatePlatformExtendedRenderer(
       const PlatformRendererInitConfig& init_config) const;
-  // Clean up Android resources
-  void CleanupAndroidView();
 };
 
 // Android-specific factory

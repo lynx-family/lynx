@@ -6,8 +6,10 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/closure.h"
@@ -16,6 +18,7 @@
 #include "core/public/platform_renderer_type.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
+#include "core/renderer/ui_wrapper/painting/create_view_scheduler.h"
 
 namespace lynx {
 namespace lepus {
@@ -32,14 +35,32 @@ class NativePaintingCtxPlatformRef;
 
 class PlatformRendererContext {
  public:
-  PlatformRendererContext(JNIEnv* env, jobject j_this)
-      : java_ref_(env, j_this) {}
+  using PreparationScheduler =
+      CreateViewScheduler<base::android::ScopedGlobalJavaRef<jobject>>;
+
+  PlatformRendererContext(JNIEnv* env, jobject j_this,
+                          std::shared_ptr<PreparationScheduler> scheduler =
+                              std::make_shared<PreparationScheduler>())
+      : preparation_scheduler_(std::move(scheduler)), java_ref_(env, j_this) {}
+
+  std::shared_ptr<PreparationScheduler> GetPreparationScheduler() const {
+    return preparation_scheduler_;
+  }
 
   void Destroy();
+  // Like renderer_registry_, this state is only accessed on the UI thread.
+  bool IsDestroyed() const { return destroyed_; }
+  bool HasPendingPreparations() const {
+    return pending_preparation_count_ != 0;
+  }
 
   void CreatePlatformRenderer(int32_t id, PlatformRendererType type);
   void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name,
-                                      jobject init_data);
+                                      jobject init_data,
+                                      jobject preparation = nullptr);
+  PreparationScheduler::TaskRef PreparePlatformRenderer(
+      int32_t id, const base::String& tag_name,
+      const fml::RefPtr<PropBundle>& init_data);
 
   void InsertPlatformRenderer(int32_t parent, int32_t child, int32_t index,
                               bool should_update_ui_owner);
@@ -107,6 +128,23 @@ class PlatformRendererContext {
                               const lepus::Value& data);
 
  private:
+  friend class PlatformRendererAndroid;
+  void OnPreparationCleared() {
+    // Destroy() already clears the count for renderers released afterwards.
+    if (!destroyed_) {
+      --pending_preparation_count_;
+    }
+  }
+
+  // Guard all host-dependent JNI routes, including calls bypassing a renderer.
+  void EnsureAndroidViewCreated(int32_t id);
+
+  std::shared_ptr<PreparationScheduler> preparation_scheduler_;
+  bool destroyed_{false};
+  // UI-thread only. Counts registered renderers that still retain a
+  // preparation.
+  size_t pending_preparation_count_{0};
+  std::mutex preparation_mutex_;
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;
   base::InlineOrderedFlatMap<int32_t, PlatformRendererAndroid*, 64>
       renderer_registry_;
