@@ -211,6 +211,96 @@ TEST_F(AnimationTest, UpdateAnimationData) {
   EXPECT_TRUE(test_animation->get_animation_data() == test_animation_data);
 }
 
+TEST_F(AnimationTest, PlatformHandoffKeepsTimeFromTickAndSample) {
+  for (bool use_sample_at : {false, true}) {
+    auto a = InitTestAnimation();
+    auto data = InitAnimationData(base::String("test_animation"), 1000, 0,
+                                  starlight::TimingFunctionData(), 5,
+                                  starlight::AnimationFillModeType::kBoth,
+                                  starlight::AnimationDirectionType::kNormal,
+                                  starlight::AnimationPlayStateType::kRunning);
+    a->UpdateAnimationData(data);
+    a->Play(false);
+    // Deliberately use a frame epoch unrelated to the system monotonic clock.
+    auto frame_time = fml::TimePoint::FromTicks(1000);
+    auto sample = [&]() {
+      if (use_sample_at) {
+        a->SampleAt(frame_time);
+      } else {
+        a->DoFrame(frame_time);
+      }
+    };
+    sample();
+    frame_time = frame_time + fml::TimeDelta::FromMilliseconds(2500);
+    sample();
+    a->Pause();
+    const auto paused_time = a->GetCurrentTime();
+    EXPECT_GE(paused_time, fml::TimeDelta::FromMilliseconds(2500));
+    EXPECT_EQ(a->playback(), nullptr);
+    sample();
+    EXPECT_EQ(a->GetCurrentTime(), paused_time);
+
+    a->SetPlatformExecution(true);
+    ASSERT_NE(a->playback(), nullptr);
+    EXPECT_EQ(a->keyframe_effect(), nullptr);
+    EXPECT_EQ(a->playback()->CurrentTime(), paused_time);
+    frame_time = frame_time + fml::TimeDelta::FromSeconds(10);
+    sample();  // Ignore a C++ tick queued before the platform handoff.
+    EXPECT_EQ(a->GetCurrentTime(), paused_time);
+  }
+}
+
+TEST_F(AnimationTest, PausedFallbackKeepsTimeThroughDummyAndRealFrames) {
+  for (bool apply_initial_frame : {false, true}) {
+    auto a = InitTestAnimation();
+    auto data = InitAnimationData(base::String("test_animation"), 1000, 0,
+                                  starlight::TimingFunctionData(), 5,
+                                  starlight::AnimationFillModeType::kBoth,
+                                  starlight::AnimationDirectionType::kNormal,
+                                  starlight::AnimationPlayStateType::kPaused);
+    a->UpdateAnimationData(data);
+    a->SetPlatformExecution(true);
+    a->UpdatePlaybackState();
+    const auto id = a->id();
+    const auto old_executor = a->executor();
+    auto playback = a->playback();
+    const auto paused_time = fml::TimeDelta::FromMilliseconds(2500);
+    playback->SetCurrentTime(paused_time);
+    using EventState = gfx::AnimationPlaybackState::EventState;
+    ASSERT_TRUE(playback->ClaimEvent(old_executor, EventState::kStarted));
+
+    animation::MockCSSKeyframeManager delegate(element_.get());
+    a->BindDelegate(&delegate);
+    auto replacement =
+        std::make_shared<animation::MockAnimation>("test_animation");
+    auto effect = animation::KeyframeEffect::Create();
+    InitTestEffect(*effect);
+    effect->BindAnimationDelegate(&delegate);
+    replacement->SetKeyframeEffect(std::move(effect));
+    replacement->UpdateAnimationData(data);
+    a->ReplaceEffectFrom(*replacement);
+    EXPECT_EQ(a->id(), id);
+    EXPECT_EQ(a->playback(), playback);
+    EXPECT_FALSE(playback->ClaimEvent(old_executor, EventState::kFinished));
+    EXPECT_EQ(a->GetCurrentTime(), paused_time);
+
+    a->Pause(apply_initial_frame);
+    EXPECT_EQ(delegate.has_flush_animated_style(), apply_initial_frame);
+    auto frame_time = fml::TimePoint::FromTicks(100000);
+    for (int i = 0; i < 2; ++i) {
+      auto result = a->SampleAt(frame_time);
+      ASSERT_NE(result.styles.find(kPropertyIDOpacity), result.styles.end());
+      EXPECT_NEAR(result.styles.at(kPropertyIDOpacity).AsNumber(), 0.5, 0.001);
+      EXPECT_FALSE(result.should_send_start_event);
+      EXPECT_FALSE(result.should_send_end_event);
+      EXPECT_EQ(result.iteration_events_due, 0);
+      EXPECT_EQ(a->GetCurrentTime(), paused_time);
+      frame_time = frame_time + fml::TimeDelta::FromSeconds(1);
+    }
+    EXPECT_FALSE(playback->ClaimEvent(a->executor(), EventState::kStarted));
+  }
+}
+
 TEST_F(AnimationTest, CheckStartTime) {
   auto test_animation = InitTestAnimation();
   auto test_effect = animation::KeyframeEffect::Create();
