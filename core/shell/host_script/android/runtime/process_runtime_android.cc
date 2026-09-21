@@ -8,12 +8,14 @@
 
 #include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/utils/devtool_lifecycle.h"
 
 namespace lynx {
 namespace shell {
 
 bool InitializeHostScriptRuntime(ProcessRuntime::Completion ready,
                                  std::string bootstrap) {
+  if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return false;
   base::TaskRunnerManufactor runners(base::MOST_ON_TASM, false, false);
   DCHECK(runners.GetUITaskRunner()->RunsTasksOnCurrentThread());
   return ProcessRuntime::GetInstance().Initialize(

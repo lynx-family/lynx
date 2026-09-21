@@ -14,6 +14,8 @@
 #include <vector>
 
 #include "base/include/fml/thread.h"
+#include "core/renderer/utils/devtool_lifecycle.h"
+#include "core/renderer/utils/devtool_state.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -56,6 +58,8 @@ ProcessRuntime::Completion Collect(const std::shared_ptr<Results>& results) {
 class ProcessRuntimeTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+        tasm::DevToolState::ENABLED);
     threads_[0] = std::make_unique<fml::Thread>("hsr_test_bts");
     threads_[1] = std::make_unique<fml::Thread>("hsr_test_mts");
     threads_[2] = std::make_unique<fml::Thread>("hsr_test_ui");
@@ -71,6 +75,8 @@ class ProcessRuntimeTest : public ::testing::Test {
     for (auto& thread : threads_) {
       thread->Join();
     }
+    tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+        tasm::DevToolState::UNAVAILABLE);
   }
 
   std::shared_ptr<Results> Initialize(const std::string& bootstrap) {

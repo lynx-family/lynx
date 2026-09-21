@@ -146,6 +146,9 @@ if (is_android) {
 
 lynx_core_source_set("shell") {
   sources = shell_shared_sources
+  if (is_android) {
+    deps = [ "host_script/android:host_script_init" ]
+  }
   public_deps = [
     "../../third_party/rapidjson",
     "../resource",

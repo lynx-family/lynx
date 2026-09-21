@@ -29,6 +29,7 @@ namespace shell {
 class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
  public:
   enum class Domain { kBTS, kMTS, kUI };
+  enum class InitializationMode { kEager, kLazy };
 
   // Optional capabilities are created, attached and destroyed on their owner.
   // They do not participate in cross-runtime scheduling.
@@ -69,15 +70,23 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   static ProcessRuntime& GetInstance();
   static const char* DomainName(Domain domain);
 
-  // Initializes exactly three contexts on the supplied runners. Accepted
-  // initialization installs bootstrap before reporting once per domain on its
-  // runner. Bootstrap must complete synchronously. Callers must wait for
-  // readiness before submitting scripts; early requests are rejected.
+  // Publishes three fixed execution domains on the supplied runners. Eager
+  // initialization creates all contexts before accepting scripts. Lazy
+  // initialization creates a context, installs its bindings and runs bootstrap
+  // on InitializeBindings or the first Evaluate/RunOnThread for that domain.
+  // Readiness is reported once per domain on its owner. An unused lazy domain
+  // reports cancellation at shutdown without creating a context. Bootstrap
+  // must complete synchronously.
   // Runners must remain alive and service tasks until Shutdown completes.
   bool Initialize(Runners runners, Completion per_domain_ready,
                   BindingFactory binding_factory = {},
-                  std::string bootstrap = {});
-  // Atomic snapshot only. Never posts or waits for another runner.
+                  std::string bootstrap = {},
+                  InitializationMode mode = InitializationMode::kEager);
+  // Requests context/binding initialization on all three owners without
+  // evaluating a script. Repeated calls reuse the current generation.
+  void InitializeBindings();
+  // Whether this domain's context and bindings are initialized. In lazy mode,
+  // false does not prevent submission. Never posts or waits for another runner.
   bool IsReady(Domain domain) const;
 
   // Executes source synchronously on the selected runtime without blocking the

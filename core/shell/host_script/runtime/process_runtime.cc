@@ -15,6 +15,7 @@
 #include "base/include/log/logging.h"
 #include "base/include/lynx_actor.h"
 #include "base/include/string/string_utils.h"
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/shell/host_script/runtime/host_script_thread_bindings.h"
 
@@ -27,6 +28,7 @@ using Result = ProcessRuntime::Result;
 using Completion = ProcessRuntime::Completion;
 using Guard = ProcessRuntime::Guard;
 using BindingFactory = ProcessRuntime::BindingFactory;
+using InitializationMode = ProcessRuntime::InitializationMode;
 enum class ProcessState { kRunning, kStopping, kStopped };
 
 std::string CurrentThread() {
@@ -80,6 +82,8 @@ class DomainRuntime final {
 
   Result Initialize() {
     DCHECK(runner_->RunsTasksOnCurrentThread());
+    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled())
+      return WithError(Identity(), "HSR_DEBUG_DISABLED");
     identity_.owner_thread = CurrentThread();
     executor_ =
         std::make_unique<runtime::js::JSExecutor>("-1", nullptr, nullptr, true);
@@ -130,6 +134,9 @@ class DomainRuntime final {
   Result Execute(const std::string& source, const std::string& url,
                  bool serialize_result = true) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
+    // Recheck on the owner: the host can disable debugging after submission.
+    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled())
+      return WithError(Identity(), "HSR_DEBUG_DISABLED");
     if (executing_) return WithError(Identity(), "REENTRANT_EVALUATION");
     executing_ = true;
     struct Reset {
@@ -215,8 +222,9 @@ class DomainState final {
         binding_factory_(std::move(binding_factory)),
         bootstrap_(std::move(bootstrap)) {}
 
-  void Initialize() {
+  Result Initialize() {
     AssertOwner();
+    if (initialization_result_) return *initialization_result_;
     identity_.owner_thread = CurrentThread();
     Result result = WithError(Identity(), "RUNTIME_SHUTDOWN");
     if (IsRunning()) {
@@ -237,8 +245,14 @@ class DomainState final {
     std::atomic_store(&publication_->initialized_identity,
                       std::make_shared<const Result>(identity_));
     publication_->ready.store(result.success, std::memory_order_release);
+    initialization_result_ = result;
+    LOGI("Host Script initialized: domain="
+         << result.domain << " runtime=" << result.runtime_id << " owner="
+         << result.owner_thread << " executing=" << result.executing_thread
+         << " success=" << result.success);
     auto ready = std::move(ready_callback_);
-    if (ready) ready(std::move(result));
+    if (ready) ready(result);
+    return result;
   }
 
   void Evaluate(const std::string& source, const std::string& url,
@@ -252,10 +266,15 @@ class DomainState final {
     } else if (!IsRunning()) {
       // A guard is allowed to request shutdown.
       result = WithError(Identity(), "RUNTIME_SHUTDOWN");
-    } else if (!runtime_) {
-      result = WithError(Identity(), "RUNTIME_NOT_READY");
     } else {
-      result = runtime_->Execute(source, url);
+      result = Initialize();
+      // Bootstrap or the readiness callback may have detached the source.
+      if (result.success && guard && !guard()) {
+        result = WithError(Identity(), "SOURCE_RUNTIME_DETACHED");
+      }
+      if (result.success && IsRunning()) {
+        result = runtime_->Execute(source, url);
+      }
       if (!IsRunning()) result = WithError(Identity(), "RUNTIME_SHUTDOWN");
     }
     LOGI("Host Script execution: domain="
@@ -268,6 +287,8 @@ class DomainState final {
 
   void Stop() {
     AssertOwner();
+    // Complete readiness for unused lazy domains without allocating a VM.
+    Initialize();
     publication_->ready.store(false, std::memory_order_release);
     runtime_.reset();
   }
@@ -291,6 +312,7 @@ class DomainState final {
   // own completion, while Promise handles remain on the calling runtime.
   Result identity_;
   Completion ready_callback_;
+  std::optional<Result> initialization_result_;
   const Domain domain_;
   BindingFactory binding_factory_;
   std::string bootstrap_;
@@ -318,10 +340,11 @@ class RuntimeGeneration final
   RuntimeGeneration(std::array<fml::RefPtr<fml::TaskRunner>, 3> owners,
                     uint64_t first_id, const Completion& ready,
                     const BindingFactory& binding_factory,
-                    const std::string& bootstrap)
+                    const std::string& bootstrap, InitializationMode mode)
       : control_(owners[2]),
         state_(std::make_shared<std::atomic<ProcessState>>(
-            ProcessState::kRunning)) {
+            ProcessState::kRunning)),
+        mode_(mode) {
     for (size_t i = 0; i < endpoints_.size(); ++i) {
       auto domain = static_cast<Domain>(i);
       auto publication =
@@ -336,6 +359,7 @@ class RuntimeGeneration final
   }
 
   ProcessState State() const { return state_->load(std::memory_order_acquire); }
+  bool IsLazy() const { return mode_ == InitializationMode::kLazy; }
 
   const Endpoint* Find(Domain domain) const {
     return IsValidDomain(domain) ? &endpoints_[DomainIndex(domain)] : nullptr;
@@ -362,6 +386,15 @@ class RuntimeGeneration final
     control_->PostTask([self = shared_from_this()] { self->StartOnControl(); });
   }
 
+  void InitializeBindings() {
+    if (State() != ProcessState::kRunning ||
+        initialization_posted_.exchange(true))
+      return;
+    for (const auto& endpoint : endpoints_) {
+      Post(endpoint, [] { return [](auto& owner) { owner->Initialize(); }; });
+    }
+  }
+
   void Shutdown(Completion completion) {
     auto expected = ProcessState::kRunning;
     state_->compare_exchange_strong(expected, ProcessState::kStopping,
@@ -378,9 +411,7 @@ class RuntimeGeneration final
     DCHECK(control_->RunsTasksOnCurrentThread());
     if (started_) return;
     started_ = true;
-    for (const auto& endpoint : endpoints_) {
-      endpoint.actor->ActAsync([](auto& owner) { owner->Initialize(); });
-    }
+    if (!IsLazy()) InitializeBindings();
   }
 
   void ShutdownOnControl(Completion completion) {
@@ -424,8 +455,10 @@ class RuntimeGeneration final
 
   static constexpr uint64_t kClosed = uint64_t{1} << 63;
   std::atomic<uint64_t> postings_{0};
+  std::atomic<bool> initialization_posted_{false};
   const fml::RefPtr<fml::TaskRunner> control_;
   const std::shared_ptr<std::atomic<ProcessState>> state_;
+  const InitializationMode mode_;
   std::array<Endpoint, 3> endpoints_;
   // Only control_ accesses these fields. No per-request process registry.
   std::vector<Completion> shutdown_waiters_;
@@ -440,7 +473,9 @@ class RuntimeGeneration final
 class ProcessRuntime::Impl {
  public:
   bool Initialize(Runners runners, Completion ready,
-                  BindingFactory binding_factory, std::string bootstrap) {
+                  BindingFactory binding_factory, std::string bootstrap,
+                  InitializationMode mode) {
+    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return false;
     if (!bootstrap.empty() && !NormalizeScriptSource(bootstrap)) return false;
     if (!runners.bts || !runners.mts || !runners.ui) return false;
     auto current = Current();
@@ -449,18 +484,24 @@ class ProcessRuntime::Impl {
         std::array<fml::RefPtr<fml::TaskRunner>, 3>{std::move(runners.bts),
                                                     std::move(runners.mts),
                                                     std::move(runners.ui)},
-        next_runtime_id_.fetch_add(3) + 1, ready, binding_factory, bootstrap);
+        next_runtime_id_.fetch_add(3) + 1, ready, binding_factory, bootstrap,
+        mode);
     if (!std::atomic_compare_exchange_strong(&current_, &current, next))
       return false;
     next->Start();
     return true;
   }
 
+  void InitializeBindings() {
+    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
+    if (auto generation = Current()) generation->InitializeBindings();
+  }
+
   bool IsReady(Domain domain) const {
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
-    return generation && generation->State() == ProcessState::kRunning &&
-           endpoint &&
+    return tasm::DevToolLifecycle::GetInstance().IsEnabled() && generation &&
+           generation->State() == ProcessState::kRunning && endpoint &&
            endpoint->publication->ready.load(std::memory_order_acquire);
   }
 
@@ -469,10 +510,13 @@ class ProcessRuntime::Impl {
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
     const char* error =
-        !IsValidDomain(domain) ? "INVALID_DOMAIN"
+        !tasm::DevToolLifecycle::GetInstance().IsEnabled()
+            ? "HSR_DEBUG_DISABLED"
+        : !IsValidDomain(domain) ? "INVALID_DOMAIN"
         : !generation || generation->State() != ProcessState::kRunning
             ? "RUNTIME_NOT_RUNNING"
-        : !endpoint->publication->ready.load(std::memory_order_acquire)
+        : !generation->IsLazy() &&
+                !endpoint->publication->ready.load(std::memory_order_acquire)
             ? "RUNTIME_NOT_READY"
             : nullptr;
     auto identity = endpoint ? endpoint->publication->Snapshot() : Result{};
@@ -541,10 +585,14 @@ ProcessRuntime::~ProcessRuntime() = default;
 
 bool ProcessRuntime::Initialize(Runners runners, Completion per_domain_ready,
                                 BindingFactory binding_factory,
-                                std::string bootstrap) {
+                                std::string bootstrap,
+                                InitializationMode mode) {
   return impl_->Initialize(std::move(runners), std::move(per_domain_ready),
-                           std::move(binding_factory), std::move(bootstrap));
+                           std::move(binding_factory), std::move(bootstrap),
+                           mode);
 }
+
+void ProcessRuntime::InitializeBindings() { impl_->InitializeBindings(); }
 
 bool ProcessRuntime::IsReady(Domain domain) const {
   return impl_->IsReady(domain);

@@ -23,6 +23,9 @@ lynx_core_source_set("lynx_env") {
     "../../../base/src:base_log_headers",
     "../../../third_party/rapidjson:rapidjson",
   ]
+  if (is_android) {
+    deps += [ "../../shell/host_script/android:host_script_init" ]
+  }
 }
 
 lynx_core_source_set("renderer_dom_utils") {
@@ -46,6 +49,9 @@ lynx_core_source_set("renderer_utils") {
   ]
   if (is_headless) {
     defines = [ "ENABLE_HEADLESS" ]
+  }
+  if (is_android) {
+    deps += [ "../../shell/host_script/android:host_script_init" ]
   }
 }
 
