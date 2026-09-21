@@ -477,6 +477,9 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
   }
 }
 
+- (void)onComponentFrameChanged:(LynxUIComponent *)component {
+}
+
 - (void)onComponentLayoutUpdated:(LynxUIComponent *)component {
   UIView *cellView = component.view.superview.superview;
   if (![cellView isKindOfClass:[LynxCollectionViewCell class]]) {
