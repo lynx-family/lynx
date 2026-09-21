@@ -337,9 +337,9 @@ gfx::ColorInterpolation ToColorInterpolationMode(
     return gfx::ColorInterpolation::kSRGB;
   }
 #if OS_IOS
-  return gfx::ColorInterpolation::kLinearRGB;
-#else
   return gfx::ColorInterpolation::kSRGB;
+#else
+  return gfx::ColorInterpolation::kLinearRGB;
 #endif
 }
 
