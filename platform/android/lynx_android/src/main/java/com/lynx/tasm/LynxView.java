@@ -27,6 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.UiThread;
+import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
@@ -112,6 +113,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   private boolean isInPrePainting = false;
   private boolean mDestroyed = false;
+  private boolean mReportedCreation = false;
   private final LynxTransferManager mTransferManager = new LynxTransferManager();
 
   public LynxView(Context context) {
@@ -172,6 +174,11 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
     initLynxTemplateRender(context, builder);
     mDisableDrawChildHook = mLynxUIRender.disableBindDrawChildHook();
+    // Process-wide effective LynxEnv debug state, not a per-View switch.
+    if (DevToolLifecycle.getInstance().isEnabled() && !mReportedCreation) {
+      mReportedCreation = true;
+      LynxEnv.inst().getLynxViewClient().onLynxViewCreated(this);
+    }
   }
 
   private void initLynxViewWithRuntime(Context context, LynxViewBuilder builder) {
