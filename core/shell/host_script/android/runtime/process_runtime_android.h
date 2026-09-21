@@ -23,6 +23,10 @@ LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
     ProcessRuntime::Domain domain, std::string source, std::string url,
     ProcessRuntime::Completion completion);
 
+LYNX_EXPORT_FOR_DEVTOOL bool HasHostScriptRuntime();
+LYNX_EXPORT_FOR_DEVTOOL void ShutdownHostScriptRuntime(
+    ProcessRuntime::Completion completion);
+
 }  // namespace shell
 }  // namespace lynx
 

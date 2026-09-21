@@ -10,9 +10,18 @@
 namespace lynx {
 namespace shell {
 
-void PrepareHostScriptRuntime() {}
+bool PrepareHostScriptRuntime() { return false; }
 void OnHostScriptViewCreated() {}
 void UpdateHostScriptDebugState(bool enabled) {}
+uint64_t HostScriptDebugEpoch() { return 0; }
+
+bool HasHostScriptRuntime() { return false; }
+
+void ShutdownHostScriptRuntime(ProcessRuntime::Completion completion) {
+  ProcessRuntime::Result result;
+  result.error = "HSR_DEBUG_LIBRARY_REQUIRED";
+  if (completion) completion(std::move(result));
+}
 
 void EvaluateHostScriptRuntime(ProcessRuntime::Domain, std::string, std::string,
                                ProcessRuntime::Completion completion) {

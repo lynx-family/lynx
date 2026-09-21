@@ -123,6 +123,7 @@ if (is_android) {
       "android/android_input_event_target.h",
       "android/devtool_platform_android.cc",
       "android/devtool_platform_android.h",
+      "android/global_devtool_hsr_android.h",
       "android/global_devtool_platform_android.cc",
       "android/global_devtool_platform_android.h",
     ]

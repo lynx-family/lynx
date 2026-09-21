@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include "devtool/lynx_devtool/agent/android/global_devtool_hsr_android.h"
 #include "devtool/lynx_devtool/agent/android/global_devtool_platform_android.h"
 
 namespace lynx {
@@ -13,5 +14,6 @@ void GlobalDevToolPlatformAndroid::HandleHSRScript(HSRScriptRequest request,
   GlobalDevToolPlatformFacade::HandleHSRScript(std::move(request),
                                                std::move(callback));
 }
+void CompleteHSRScriptSource(int64_t, std::string, std::string) {}
 }  // namespace devtool
 }  // namespace lynx
