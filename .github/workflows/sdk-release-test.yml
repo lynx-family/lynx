@@ -54,7 +54,7 @@ jobs:
           ./gradlew getArtifactList -Pversion=0.0.1-alpha.1
 
   ios-sdk-release-test:
-    timeout-minutes: 15
+    timeout-minutes: 120
     runs-on: macos-14
     env:
       LOCAL_POD_NAME: 'local_pod'
@@ -71,14 +71,20 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
+      - name: Install Ruby runtime dependencies
+        run: brew install openssl@3 readline libyaml gmp
       - name: Set up Ruby + specify Bundler version
         uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
-          ruby-version: '2.6.10'
+          ruby-version: '4.0.5'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: github
+      - name: Install CocoaPods dependencies
+        run: |-
+          bundle config set path .bundle
+          SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" bundle install
       - name: Prepare cocoapods publish source
         run: |-
           source tools/envsetup.sh
@@ -91,3 +97,39 @@ jobs:
           git config --global user.name "lynx.authors"
           git config --global user.email "lynx.authors@users.noreply.github.com"
           python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
+      - name: Test SwiftPM publishing helpers
+        run: python3 -m unittest tools.ios_tools.spm_publish_helper_test
+      - name: Build SwiftPM XCFramework artifacts
+        run: |-
+          source tools/envsetup.sh
+          python3 tools/ios_tools/spm_publish_helper.py build \
+            --version "$POD_VERSION" \
+            --output-dir out/ios-spm/dist
+      - name: Generate SwiftPM wrapper payload
+        run: |-
+          source_revision="$(git rev-parse HEAD)"
+          python3 tools/ios_tools/spm_publish_helper.py set-github-release \
+            --manifest out/ios-spm/dist/PackageArtifacts.json \
+            --repository "$GITHUB_REPOSITORY" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-revision "$source_revision"
+          python3 tools/ios_tools/spm_publish_helper.py generate-package \
+            --manifest out/ios-spm/dist/PackageArtifacts.json \
+            --repo-root out/ios-spm/wrapper
+          python3 tools/ios_tools/spm_publish_helper.py validate-manifest \
+            --manifest out/ios-spm/wrapper/spm/PackageArtifacts.json \
+            --version "$POD_VERSION" \
+            --repository "$GITHUB_REPOSITORY" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-revision "$source_revision"
+          swift package --package-path out/ios-spm/wrapper dump-package > /dev/null
+      - name: Upload SwiftPM test artifacts
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ios-spm-release-test
+          path: |-
+            lynx/out/ios-spm/dist/*.xcframework.zip
+            lynx/out/ios-spm/dist/PackageArtifacts.json
+            lynx/out/ios-spm/wrapper
+          if-no-files-found: error
+          retention-days: 7

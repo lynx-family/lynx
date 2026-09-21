@@ -271,19 +271,11 @@ def get_enable_trace_param(version: str) -> str:
         return '--enable-trace'
     return ''
 
-def prepare_cocoapods_publish_source(
-        version,
-        tag,
-        component,
-        storage_type=STORAGE_TYPE_GITHUB_RELEASE):
-    validate_storage_type_options(storage_type)
-
+def prepare_cocoapods_build_metadata(version):
     root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    # change to root path
     os.chdir(root_path)
 
-    print('Start prepare cocoapods publish source')
+    print('Start prepare cocoapods build metadata')
     print('1. Replace lynx version')
     replace_lynx_version(version)
 
@@ -292,6 +284,16 @@ def prepare_cocoapods_publish_source(
 
     print('3. Generate lynx_core.js')
     run_command(f'python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js --version {version}')
+
+    return root_path
+
+def prepare_cocoapods_publish_source(
+        version,
+        tag,
+        component,
+        storage_type=STORAGE_TYPE_GITHUB_RELEASE):
+    validate_storage_type_options(storage_type)
+    root_path = prepare_cocoapods_build_metadata(version)
 
     print('4. Generate zip files')
     generate_zip_file(root_path, tag, component)
@@ -472,6 +474,11 @@ def main():
     parser.add_argument(
         "--prepare-source", action="store_true", help="Prepare the source for publishing"
     )
+    parser.add_argument(
+        "--prepare-build-metadata",
+        action="store_true",
+        help="Generate versioned podspecs and iOS JavaScript resources",
+    )
     # When publishing a dev version, the tag does not match the version. The version is formatted as version="{tag}-dev"
     parser.add_argument('--tag', type=str, help='the release tag of lynx', required=False)
     parser.add_argument('--version', type=str, help='the pod version of lynx', required=False)
@@ -498,6 +505,8 @@ def main():
             )
         except ValueError as error:
             parser.error(str(error))
+    elif args.prepare_build_metadata:
+        prepare_cocoapods_build_metadata(args.version)
     elif args.publish:
         try:
             validate_publish_options()
@@ -509,7 +518,8 @@ def main():
     elif args.publish_local:
         publish_to_local(args.component, args.publish_local)
     else:
-        print('Please specify --prepare-source , --publish, --pod_lint or --publish_local')
+        print('Please specify --prepare-source, --prepare-build-metadata, '
+              '--publish, --pod_lint or --publish_local')
         exit(1)
 
 
