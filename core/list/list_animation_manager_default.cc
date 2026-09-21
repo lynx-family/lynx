@@ -4,21 +4,12 @@
 
 #include "core/list/list_animation_manager_default.h"
 
-#include <memory>
-
-#include "core/list/decoupled_list_container_impl.h"
-
 namespace lynx {
 namespace list {
 
 ListAnimationManagerDefault::ListAnimationManagerDefault(
     ListContainerImpl* list_container_impl)
     : ListAnimationManager(list_container_impl) {}
-
-std::unique_ptr<ListAnimationManager> CreateListAnimationManager(
-    ListContainerImpl* list_container_impl) {
-  return std::make_unique<ListAnimationManagerDefault>(list_container_impl);
-}
 
 }  // namespace list
 }  // namespace lynx
