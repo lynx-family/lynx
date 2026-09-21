@@ -518,6 +518,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 
   pageConfig_.reset();
+  const int32_t instanceId = [self instanceId];
+  _context.instanceId = kUnknownInstanceId;
   // ios block cannot capture std::unique_ptr, tricky...
   auto* shell = shell_.release();
   if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
@@ -525,9 +527,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     // so need just release LynxShell delay, avoid crash
     dispatch_async(dispatch_get_main_queue(), ^{
       delete shell;
+      if (instanceId != kUnknownInstanceId) {
+        [LynxEventReporter clearCacheForInstanceId:instanceId];
+      }
     });
   } else {
     delete shell;
+    if (instanceId != kUnknownInstanceId) {
+      [LynxEventReporter clearCacheForInstanceId:instanceId];
+    }
   }
 }
 
