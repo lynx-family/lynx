@@ -2,6 +2,16 @@
 
 All notable changes to the public Lynx API documentation bundle.
 
+## 0.3.9 — 2026-09-04
+
+### Documentation
+
+- Documented the verified single-layer `background` shorthand forms for an
+  image, a color and image in either order, and an inert repeat token followed
+  by a color when no image is present.
+- Kept other shorthand combinations subject to per-component verification and
+  preserved the existing attachment and page-background migration boundaries.
+
 ## 0.3.8 — 2026-07-16
 
 ### Features
