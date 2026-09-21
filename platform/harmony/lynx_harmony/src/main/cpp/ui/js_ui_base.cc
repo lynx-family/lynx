@@ -645,6 +645,31 @@ float JSUIBase::ScrollY() {
   return static_cast<float>(offset);
 }
 
+int64_t JSUIBase::GetMemoryUsageBytes() const {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
+  if (!js_recv) {
+    return UIBase::GetMemoryUsageBytes();
+  }
+  napi_value get_memory_usage_bytes{nullptr};
+  if (napi_get_named_property(env_, js_recv, "getMemoryUsageBytes",
+                              &get_memory_usage_bytes) != napi_ok ||
+      !get_memory_usage_bytes) {
+    return UIBase::GetMemoryUsageBytes();
+  }
+  napi_value result{nullptr};
+  if (napi_call_function(env_, js_recv, get_memory_usage_bytes, 0, nullptr,
+                         &result) != napi_ok) {
+    return UIBase::GetMemoryUsageBytes();
+  }
+  int64_t memory_usage_bytes = 0;
+  if (napi_get_value_int64(env_, result, &memory_usage_bytes) != napi_ok ||
+      memory_usage_bytes <= 0) {
+    return UIBase::GetMemoryUsageBytes();
+  }
+  return memory_usage_bytes;
+}
+
 void JSUIBase::OnFocusChange(bool has_focus, bool is_focus_transition) {
   base::NapiHandleScope scope(env_);
   size_t argc = 2;
