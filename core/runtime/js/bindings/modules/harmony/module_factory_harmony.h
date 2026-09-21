@@ -10,7 +10,6 @@
 
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -30,9 +29,12 @@ class ModuleFactoryHarmony : public runtime::NativeModuleFactory {
   std::shared_ptr<runtime::LynxNativeModule> CreateModule(
       const std::string& name) override;
 
+  std::shared_ptr<PlatformModuleManager> GetPlatformModuleManager() const {
+    return platform_module_manager_;
+  }
+
  private:
   std::shared_ptr<PlatformModuleManager> platform_module_manager_;
-  std::mutex mutex_;
 };
 
 }  // namespace harmony

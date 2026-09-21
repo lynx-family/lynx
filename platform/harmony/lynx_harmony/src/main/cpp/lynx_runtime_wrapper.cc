@@ -164,6 +164,7 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
   // but expose it to attach-time callers only as a weak reference.
   auto module_manager = std::make_shared<runtime::js::LynxModuleManager>();
   module_manager_ = module_manager;
+  platform_module_manager_ = module_factory->GetPlatformModuleManager();
   module_manager->SetModuleFactory(std::move(module_factory));
 
   auto on_runtime_actor_created = [this, module_manager](auto& actor,
@@ -235,6 +236,7 @@ napi_value LynxRuntimeWrapper::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("nativeTransitionToFullRuntime",
                             NativeTransitionToFullRuntime),
       DECLARE_NAPI_FUNCTION("nativeCallJSFunction", NativeCallJSFunction),
+      DECLARE_NAPI_FUNCTION("nativeRegisterModule", NativeRegisterModule),
       DECLARE_NAPI_FUNCTION("nativeSetSessionStorageItem",
                             NativeSetSessionStorageItem),
       DECLARE_NAPI_FUNCTION("nativeGetSessionStorageItem",
@@ -444,6 +446,39 @@ napi_value LynxRuntimeWrapper::NativeCallJSFunction(napi_env env,
     return nullptr;
   }
   obj->runtime_proxy_->CallJSFunction(module_id, method, std::move(params));
+  return nullptr;
+}
+
+napi_value LynxRuntimeWrapper::NativeRegisterModule(napi_env env,
+                                                    napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 3;
+  napi_value args[3] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+  if (argc < 2 || !base::NapiUtil::IsArray(env, args[1])) {
+    return nullptr;
+  }
+
+  LynxRuntimeWrapper* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "RegisterModule failed") ||
+      !obj->platform_module_manager_) {
+    return nullptr;
+  }
+
+  std::string name = base::NapiUtil::ConvertToShortString(env, args[0]);
+  if (name.empty()) {
+    return nullptr;
+  }
+  std::vector<std::string> methods;
+  std::vector<std::string> sync_methods;
+  base::NapiUtil::ConvertToArrayString(env, args[1], methods);
+  if (base::NapiUtil::IsArray(env, args[2])) {
+    base::NapiUtil::ConvertToArrayString(env, args[2], sync_methods);
+  }
+  obj->platform_module_manager_->RegisterModule(name, std::move(methods),
+                                                std::move(sync_methods));
   return nullptr;
 }
 
