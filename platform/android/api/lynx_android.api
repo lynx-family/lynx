@@ -5432,6 +5432,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.disableImagePostProcessor();
   public boolean com.lynx.tasm.LynxEnv.enableLoadImageFromService();
   public boolean com.lynx.tasm.LynxEnv.enableImageEventReport();
+  public boolean com.lynx.tasm.LynxEnv.enableImageLoadSVG();
   public boolean com.lynx.tasm.LynxEnv.enableImageAsyncRedirect();
   public boolean com.lynx.tasm.LynxEnv.enableImageAsyncRedirectOnCreate();
   public boolean com.lynx.tasm.LynxEnv.enableImageAsyncRequest();
@@ -5488,6 +5489,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_REPORT_CREATE_ASYNC_TAG ENABLE_REPORT_CREATE_ASYNC_TAG;
   public com.lynx.tasm.LynxEnvKey.ENABLE_SVG_ASYNC ENABLE_SVG_ASYNC;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_EVENT_REPORT ENABLE_IMAGE_EVENT_REPORT;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_LOAD_SVG ENABLE_IMAGE_LOAD_SVG;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_ASYNC_LAYOUT ENABLE_IMAGE_ASYNC_LAYOUT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_ASYNC_REDIRECT ENABLE_IMAGE_ASYNC_REDIRECT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_ASYNC_REDIRECT_ON_CREATE ENABLE_IMAGE_ASYNC_REDIRECT_ON_CREATE;

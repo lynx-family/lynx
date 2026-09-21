@@ -29,6 +29,7 @@ public enum LynxEnvKey {
   ENABLE_REPORT_CREATE_ASYNC_TAG("enable_report_create_async_tag"),
   ENABLE_SVG_ASYNC("enable_svg_async"),
   ENABLE_IMAGE_EVENT_REPORT("enable_image_event_report"),
+  ENABLE_IMAGE_LOAD_SVG("enable_image_load_svg"),
   ENABLE_IMAGE_ASYNC_LAYOUT("enable_image_async_layout"),
   ENABLE_IMAGE_ASYNC_REDIRECT("enable_image_async_redirect"),
 

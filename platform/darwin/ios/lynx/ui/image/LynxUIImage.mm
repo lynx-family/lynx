@@ -263,6 +263,7 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
 @property(nonatomic) CGSize lastFrameSize;
 @property(nonatomic, assign) BOOL enableImageEventReport;
 @property(nonatomic, assign) BOOL enableImageAsyncLayout;
+@property(nonatomic, assign) BOOL enableImageLoadSVG;
 @property(nonatomic, assign) BOOL enableImageCancelRequest;
 @property(nonatomic, assign) BOOL enableImagePlaceholderResetFix;
 @property(nonatomic, assign) BOOL enableGenericFetcher;
@@ -308,6 +309,7 @@ LYNX_REGISTER_UI("image")
   _isDirty = YES;
   _enableImageEventReport = [LynxEnv.sharedInstance enableImageEventReport];
   _enableImageAsyncLayout = [LynxEnv.sharedInstance enableImageAsyncLayout];
+  _enableImageLoadSVG = [LynxEnv.sharedInstance enableImageLoadSVG];
   _enableImageCancelRequest = [LynxEnv.sharedInstance enableImageCancelRequest];
   _enableImagePlaceholderResetFix = [LynxEnv.sharedInstance enableImagePlaceholderResetFix];
   _frameCacheAutomatically = LynxBooleanOptionUnset;
@@ -732,7 +734,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 }
 
 - (BOOL)isSVGSource:(LynxURL*)requestUrl {
-  if (requestUrl.type != LynxImageRequestSrc) {
+  if (!_enableImageLoadSVG || requestUrl.type != LynxImageRequestSrc) {
     return NO;
   }
   NSURL* url = requestUrl.url;

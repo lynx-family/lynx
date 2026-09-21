@@ -630,6 +630,10 @@ bool LynxEnv::EnableHarmonyNewImage() {
   return GetBoolEnv(Key::ENABLE_HARMONY_NEW_IMAGE, true);
 }
 
+bool LynxEnv::EnableImageLoadSVG() {
+  return GetBoolEnv(Key::ENABLE_IMAGE_LOAD_SVG, true);
+}
+
 bool LynxEnv::EnableHarmonyGestureInterrupterUserData() {
   return GetBoolEnv(Key::ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA, false);
 }
