@@ -236,11 +236,11 @@ Migration guidance:
 /* Web default */
 box-sizing: content-box;
 
-/* Lynx default */
-box-sizing: border-box;
+/* Lynx initial value: normally uses border-box sizing */
+box-sizing: auto;
 ```
 
-> **Note**: Lynx uses `border-box` by default, so `width` and `height` include padding and borders. This differs fundamentally from the Web default, `content-box`, where `width` and `height` apply only to the content box.
+> **Note**: Lynx initially uses `auto`, which normally resolves to `border-box` sizing: `width` and `height` include padding and borders. Legacy Web-aligned configuration can instead resolve `auto` as `content-box`. Set `border-box` or `content-box` explicitly for configuration-independent sizing. The Web initial value is `content-box`, where `width` and `height` apply only to the content box.
 >
 > When migrating from the Web, you can preserve the original box-model behavior with a global reset:
 >
@@ -625,7 +625,7 @@ scroll-coordinator-header {
 **Not supported**:
 
 - ❌ Newer selectors such as `:is()`, `:where()`, and `:has()`
-- ❌ Complex attribute selectors such as `[attr^="val"]` and `[attr$="val"]`; support is partial
+- ❌ Attribute selectors in stylesheets, including `[attr]` and `[attr="val"]`: parsed but not matched for CSS styling. Use explicit classes; attribute support in node queries does not imply CSS support.
 - ❌ The general sibling combinator may be limited in complex cases
 
 ### 13. Custom Fonts

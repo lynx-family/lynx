@@ -104,24 +104,20 @@ h3 {
 
 ## Attribute selectors
 
+Attribute selectors are **not supported for CSS styling**. The CSS parser recognizes forms such as `[attr]`, `[attr="value"]`, `[attr*="value"]`, `[attr^="value"]`, `[attr$="value"]`, `[attr~="value"]`, and `[attr|="value"]`, but the stylesheet matcher does not implement these attribute match types. They cannot select elements to apply styles.
+
+Use an explicit class for attribute-driven state, and update that class when the state changes:
+
 ```css
-/* Elements with this attribute */
-[disabled] {
+/* Add this class while the element is disabled. */
+.button-disabled {
   opacity: 0.5;
-}
-
-/* Exact match */
-[type='text'] {
-  border: 1px solid #ccc;
-}
-
-/* Value contains a substring (partial support) */
-[class*='active'] {
-  color: red;
 }
 ```
 
-> **Note:** `[class~='val']`, which matches an item in a whitespace-separated list, is unsupported. Use `[class*='val']`, which performs substring matching, instead.
+For class-token matching, use `.active`. Do not substitute `[class*="active"]` for `[class~="active"]`: neither works for CSS styling, and substring matching would also match `inactive` rather than preserving class-token semantics.
+
+**Node queries are a separate capability.** The DOM element-query matcher supports a subset of attribute syntax, including `[attr]`, `[attr=value]`, `[attr*=value]`, `[attr^=value]`, and `[attr$=value]` for stored attributes or `data-*` values. These are unquoted query forms; do not infer full Web selector syntax or stylesheet support from this query implementation.
 
 ## Pseudo-classes
 
@@ -219,6 +215,6 @@ The following selectors are unsupported:
 - ❌ `:nth-of-type()` / `:only-child` / `:empty` - Structural pseudo-classes
 - ❌ `:disabled` / `:enabled` - Form state pseudo-classes
 - ❌ `::before` / `::after` - Pseudo-elements
-- ❌ Complex attribute selectors such as `[attr~="val"]` (whitespace-separated list matching)
+- ❌ Attribute selectors in stylesheets, including existence, exact, substring, prefix, suffix, token-list, and hyphen matching
 
 **Note:** All selectors marked with ❌ above are unsupported.

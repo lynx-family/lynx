@@ -21,7 +21,7 @@ Do not rely on web CSS knowledge. Do not assume standard HTML behavior. Do not g
 Lynx is **not** a web browser. Web assumptions produce broken Lynx code:
 
 - **Elements**: `<view>`, `<text>`, `<image>` — not `<div>`, `<span>`, `<img>`
-- **CSS defaults**: `border-box`, no margin collapsing, Linear layout (not Flow)
+- **CSS defaults**: `box-sizing: auto` normally uses border-box sizing; no margin collapsing; Linear layout (not Flow)
 - **Properties**: Many CSS properties are unsupported or behave differently — always check `css/` docs
 
 **Every web assumption is a potential bug.**
@@ -51,7 +51,7 @@ Lynx is **not** a web browser. Web assumptions produce broken Lynx code:
 The compact layout decision rules and key CSS constraints are documented in `quick-reference.md`. Most critical:
 
 - **Text** must use `<text>` component
-- **Default box-sizing** is `border-box` (not `content-box`)
+- **Box sizing** initially uses `auto`, normally with border-box sizing; set an explicit value when compatibility settings may differ
 - **No margin collapsing**
 - **Use `rem` + `vw`** for screen adaptation
 
@@ -59,7 +59,7 @@ The compact layout decision rules and key CSS constraints are documented in `qui
 
 - Adding a `<div>` or `<span>` → Lynx uses `<view>`, `<text>`
 - Using `margin` without checking if margin collapsing applies → It doesn't
-- Assuming `content-box` → Default is `border-box`
+- Assuming `content-box` → `auto` normally uses border-box sizing; check `css/supported-properties.md#box-model`
 - Using web CSS properties without checking `css/supported-properties.md`
 - Guessing element attributes → Read `elements/<name>.md`
 - Choosing `rpx` for web-portable code → `rpx` is Lynx-specific; use `rem` + `vw` for web compatibility
