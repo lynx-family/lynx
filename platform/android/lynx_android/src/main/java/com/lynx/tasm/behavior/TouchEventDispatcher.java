@@ -37,6 +37,7 @@ import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.event.LynxEventDetail;
 import com.lynx.tasm.event.LynxEventDetail.EVENT_TYPE;
@@ -839,6 +840,10 @@ public class TouchEventDispatcher {
     LynxTouchEvent.Point clientPoint = new Point(point.x, point.y);
     mFirstLynxTouchEvent =
         new LynxTouchEvent(target.getSign(), eventName, clientPoint, pagePoint, mTargetPoint);
+    if (mUIOwner.getContext().getEnableCurrentTargetTouchPosition()) {
+      mFirstLynxTouchEvent.setCurrentTargetPointMap(
+          buildCurrentTargetPointMap(target, pagePoint, eventName));
+    }
     mFirstLynxTouchEvent.setMotionEvent(ev);
     mFirstLynxTouchEvent.setTarget(mActiveUI);
     mFirstLynxTouchEvent.setTimestamp(mTimestamp);
@@ -1457,13 +1462,43 @@ public class TouchEventDispatcher {
     return pagePoint;
   }
 
+  private HashMap<Integer, LynxTouchEvent.Point> buildCurrentTargetPointMap(
+      EventTarget target, LynxTouchEvent.Point pagePoint, String eventName) {
+    HashMap<Integer, LynxTouchEvent.Point> pointMap = new HashMap<>();
+    EventTarget current = target;
+    while (current != null) {
+      if (current instanceof LynxBaseUI && shouldCollectCurrentTargetPoint(current, eventName)) {
+        LynxBaseUI coordinateTarget = (LynxBaseUI) current;
+        if (coordinateTarget instanceof UIShadowProxy) {
+          coordinateTarget = ((UIShadowProxy) coordinateTarget).getChild();
+        }
+        pointMap.put(current.getSign(), convertToViewPoint(coordinateTarget, pagePoint));
+      }
+      EventTarget parent = current.parent();
+      if (parent == current) {
+        break;
+      }
+      current = parent;
+    }
+    return pointMap;
+  }
+
+  static boolean shouldCollectCurrentTargetPoint(EventTarget current, String eventName) {
+    return LynxUIOwner.hasResponseChainEvent(current.getEvents(), eventName);
+  }
+
   private LynxTouchEvent initialFirstLynxTouchEvent(
       EventTarget activeUI, String type, MotionEvent ev) {
     LynxTouchEvent.Point pagePoint = new LynxTouchEvent.Point(ev.getX(), ev.getY());
     PointF point = LynxUIHelper.convertPointFromUIToScreen(
         mUIOwner.getRootUI(), new PointF(pagePoint.getX(), pagePoint.getY()));
     LynxTouchEvent.Point clientPoint = new Point(point.x, point.y);
-    return new LynxTouchEvent(activeUI.getSign(), type, clientPoint, pagePoint, mTargetPoint);
+    LynxTouchEvent event =
+        new LynxTouchEvent(activeUI.getSign(), type, clientPoint, pagePoint, mTargetPoint);
+    if (mUIOwner.getContext().getEnableCurrentTargetTouchPosition()) {
+      event.setCurrentTargetPointMap(buildCurrentTargetPointMap(activeUI, pagePoint, type));
+    }
+    return event;
   }
 
   private EventEmitter eventEmitter() {

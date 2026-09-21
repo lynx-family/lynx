@@ -7250,6 +7250,8 @@ public class com::lynx::tasm::event::LynxTouchEvent : com.lynx.tasm.event.LynxEv
   public MotionEvent com.lynx.tasm.event.LynxTouchEvent.getMotionEvent();
   public void com.lynx.tasm.event.LynxTouchEvent.setActiveTargetMap(HashMap< Integer, EventTargetBase > activeTargetMap);
   public HashMap< Integer, EventTargetBase > com.lynx.tasm.event.LynxTouchEvent.getActiveTargetMap();
+  public void com.lynx.tasm.event.LynxTouchEvent.setCurrentTargetPointMap(HashMap< Integer, Point > pointMap);
+  public HashMap< Integer, Point > com.lynx.tasm.event.LynxTouchEvent.getCurrentTargetPointMap();
   public ArrayList< Object > com.lynx.tasm.event.LynxTouchEvent.getEventParams();
 }
 
@@ -8663,6 +8665,7 @@ public class com::lynx::tasm::PageConfig :  {
   public double com.lynx.tasm.PageConfig.getEnableLynxScrollFluency();
   public boolean com.lynx.tasm.PageConfig.isFSPEnabled();
   public boolean com.lynx.tasm.PageConfig.getEnableTransformedTouchPosition();
+  public boolean com.lynx.tasm.PageConfig.getEnableCurrentTargetTouchPosition();
   public boolean com.lynx.tasm.PageConfig.getEnableNewSticky();
   public boolean com.lynx.tasm.PageConfig.getEnableDispatchCustomEventForUI();
   public boolean com.lynx.tasm.PageConfig.getEnableNativeInteraction();
