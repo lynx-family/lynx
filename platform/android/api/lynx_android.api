@@ -3748,6 +3748,11 @@ public class com::lynx::tasm::behavior::ui::list::ListLayoutManager::ListGridLay
   public boolean com.lynx.tasm.behavior.ui.list.ListLayoutManager.ListGridLayoutManager.canScrollHorizontally();
 }
 
+public interface com::lynx::tasm::behavior::ui::list::container::ListItemTransformer {
+  public void com.lynx.tasm.behavior.ui.list.container.ListItemTransformer.transformItem(@NonNull ListContainerView listContainerView, @NonNull View itemView, boolean isVertical, boolean isRTL, int mainAxisOffset);
+  public void com.lynx.tasm.behavior.ui.list.container.ListItemTransformer.resetItem(@NonNull View itemView);
+}
+
 public interface com::lynx::tasm::behavior::ui::list::ListLayoutManager::ListLayoutInfo {
   public float com.lynx.tasm.behavior.ui.list.ListLayoutManager.ListLayoutInfo.getConsumedY();
   public float com.lynx.tasm.behavior.ui.list.ListLayoutManager.ListLayoutInfo.getConsumedX();
@@ -11601,6 +11606,8 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public Map<String, HashSet<String> > com.lynx.tasm.behavior.ui.list.container.UIListContainer.initialFlushPropCache initialFlushPropCache;
   public com.lynx.tasm.behavior.ui.list.container.UIListContainer.UIListContainer(LynxContext context);
   public com.lynx.tasm.behavior.ui.list.container.UIListContainer.UIListContainer(LynxContext context, Object params);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setListItemTransformer(@Nullable ListItemTransformer transformer);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.requestListItemTransform();
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.isScrollContainer();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.insertChild(LynxBaseUI child, int index);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onComponentNodeReady(UIComponent component);
