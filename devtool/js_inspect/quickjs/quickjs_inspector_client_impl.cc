@@ -34,9 +34,9 @@ int GenerateGroupId() {
 QJSChannelImplNG::QJSChannelImplNG(
     const std::unique_ptr<quickjs_inspector::QJSInspector> &inspector,
     const std::shared_ptr<QJSInspectorClientImpl> &client,
-    const std::string &group_id, int instance_id)
+    const std::string &group_id, int instance_id, LEPUSContext *context)
     : client_wp_(client), instance_id_(instance_id), group_id_(group_id) {
-  session_ = inspector->Connect(this, group_id_, instance_id_);
+  session_ = inspector->Connect(this, group_id_, instance_id_, context);
 }
 
 void QJSChannelImplNG::SendResponse(int call_id, const std::string &message) {
@@ -163,7 +163,8 @@ std::string QJSInspectorClientImpl::InitInspector(LEPUSContext *context,
 }
 
 void QJSInspectorClientImpl::ConnectSession(int instance_id,
-                                            const std::string &group_id) {
+                                            const std::string &group_id,
+                                            LEPUSContext *context) {
   if (channels_.find(instance_id) == channels_.end()) {
     auto it = inspectors_.find(group_id);
     if (it != inspectors_.end()) {
@@ -172,7 +173,7 @@ void QJSInspectorClientImpl::ConnectSession(int instance_id,
                             it->second,
                             std::static_pointer_cast<QJSInspectorClientImpl>(
                                 shared_from_this()),
-                            group_id, instance_id));
+                            group_id, instance_id, context));
     }
   }
 }
@@ -200,6 +201,14 @@ void QJSInspectorClientImpl::DestroyInspector(const std::string &group_id) {
     if (sp != nullptr) {
       sp->OnContextDestroyed(group_id, context_id);
     }
+  }
+}
+
+void QJSInspectorClientImpl::DestroyContext(const std::string &group_id,
+                                            LEPUSContext *context) {
+  auto it = inspectors_.find(group_id);
+  if (it != inspectors_.end()) {
+    it->second->RemoveContext(context);
   }
 }
 
@@ -246,6 +255,8 @@ void QJSInspectorClientImpl::CreateQJSInspector(LEPUSContext *context,
   if (it == inspectors_.end()) {
     inspectors_.emplace(group_id, quickjs_inspector::QJSInspector::Create(
                                       context, this, group_id, name));
+  } else {
+    it->second->AddContext(context, name);
   }
 }
 

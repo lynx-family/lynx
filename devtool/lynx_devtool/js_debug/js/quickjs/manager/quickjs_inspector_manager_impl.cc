@@ -23,6 +23,9 @@ void QuickjsInspectorManagerImpl::InitInspector(
   runtime_id_ = quickjs_runtime->getRuntimeId();
   instance_id_ = observer->GetViewId();
   group_id_ = quickjs_runtime->getGroupId();
+  is_shared_global_context_ = quickjs_runtime->isSharedGlobalContext();
+  enable_new_share_group_ = quickjs_runtime->getEnableNewShareGroup();
+  context_ = quickjs_runtime->getJSContext();
 
   static thread_local std::once_flag set_full_func_callback;
   std::call_once(
@@ -34,7 +37,10 @@ void QuickjsInspectorManagerImpl::InitInspector(
   inspector_group_id_ = inspector_client_->InitInspector(
       quickjs_runtime->getJSContext(), group_id_,
       devtool::kTargetJSPrefix + group_id_);
-  inspector_client_->ConnectSession(instance_id_, inspector_group_id_);
+  if (!is_shared_global_context_) {
+    inspector_client_->ConnectSession(instance_id_, inspector_group_id_,
+                                      context_);
+  }
 
   static thread_local std::once_flag set_release_ctx_callback;
   if (group_id_ != devtool::kSingleGroupStr) {
@@ -51,12 +57,19 @@ void QuickjsInspectorManagerImpl::InitInspector(
                    });
   }
 
+  if (is_shared_global_context_) {
+    observer_wp_.reset();
+    return;
+  }
   observer->OnInspectorInited(
       devtool::kKeyEngineQuickjs, runtime_id_, inspector_group_id_,
       group_id_ == devtool::kSingleGroupStr, inspector_client_);
 }
 
 void QuickjsInspectorManagerImpl::DestroyInspector() {
+  if (is_shared_global_context_) {
+    return;
+  }
   auto sp = observer_wp_.lock();
   if (sp != nullptr) {
     sp->OnRuntimeDestroyed(runtime_id_);
@@ -67,6 +80,8 @@ void QuickjsInspectorManagerImpl::DestroyInspector() {
     // LEPUSContext will be destroyed.
     if (group_id_ == devtool::kSingleGroupStr) {
       inspector_client_->DestroyInspector(inspector_group_id_);
+    } else if (enable_new_share_group_) {
+      inspector_client_->DestroyContext(inspector_group_id_, context_);
     } else {
       // Remove scripts and console messages saved in inspector when using
       // shared-context.

@@ -516,6 +516,8 @@ RuntimeManager::EnsureNewShareGroupGlobalContext(
       unique_global.release());
   runtime::js::JSRuntimeExternalParams global_params{};
   global_params.group_id = group_id;
+  global_params.enable_new_share_group = true;
+  global_params.is_shared_global_context = true;
   global_runtime->SetExternalParams(std::move(global_params));
   auto global_context = CreateJSIContext(*global_runtime, group_id);
   global_runtime->InitRuntime(global_context);
@@ -551,6 +553,13 @@ RuntimeManager::EnsureNewShareGroupGlobalContext(
   // them.
   wrapper->initGlobal(global_runtime, post_man, page_options);
   wrapper->EnsureConsole(post_man, page_options);
+
+  // Register corejs before evaluation without attaching a page session to
+  // this group-owned runtime.
+  if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
+    runtime_manager_delegate_->OnRuntimeReady(executor, *global_rt_ptr,
+                                              group_id);
+  }
 
   runtime::js::GCPauseSuppressionMode mode(global_rt_ptr);
   auto js_pre_sources = js_pre_sources_getter();

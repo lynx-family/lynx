@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "devtool/js_inspect/quickjs/quickjs_internal/quickjs_inspected_context.h"
 #include "devtool/js_inspect/quickjs/quickjs_internal/quickjs_inspector.h"
@@ -31,6 +32,7 @@ class QJSInspectorSessionImpl : public QJSInspectorSession {
   void SetEnableConsoleInspect(bool enable) override;
 
   void SendProtocolResponse(int call_id, const std::string& message);
+  void SetContext(LEPUSContext* context) { context_ = context; }
   void SendProtocolNotification(const std::string& message);
   void OnConsoleMessage(const std::string& message, const std::string& url);
 
@@ -41,6 +43,8 @@ class QJSInspectorSessionImpl : public QJSInspectorSession {
   QJSInspector::QJSChannel* channel_;
   QJSInspectorImpl* inspector_;
   int32_t session_id_;
+  LEPUSContext* context_{nullptr};
+  bool suppress_response_{false};
 };
 
 using InspectorSessionMap =
@@ -53,12 +57,19 @@ class QJSInspectorImpl : public QJSInspector {
                    const std::string& group_id, const std::string& name);
   ~QJSInspectorImpl() override = default;
 
-  std::unique_ptr<QJSInspectorSession> Connect(QJSChannel* channel,
-                                               const std::string& group_id,
-                                               int32_t session_id) override;
+  std::unique_ptr<QJSInspectorSession> Connect(
+      QJSChannel* channel, const std::string& group_id, int32_t session_id,
+      LEPUSContext* context = nullptr) override;
 
   QJSInspectorClient* GetClient() { return client_; }
-  const std::unique_ptr<QJSInspectedContext>& GetContext() { return context_; }
+  QJSInspectedContext* GetContext(LEPUSContext* context = nullptr);
+  const auto& GetContexts() const { return contexts_; }
+  void AddContext(LEPUSContext* ctx, const std::string& name) override;
+  void RemoveContext(LEPUSContext* ctx) override;
+  LEPUSContext* FindScriptContext(const std::string& script_id);
+  LEPUSContext* FindScriptURLContext(const std::string& url);
+  void RecordScript(const std::string& message, LEPUSContext* context);
+  QJSInspectedContext* GetPausedContext();
   const std::string& GetGroupID() { return group_id_; }
   QJSInspectorSessionImpl* GetSession(int32_t session_id);
   // get all the sessions
@@ -70,7 +81,9 @@ class QJSInspectorImpl : public QJSInspector {
 
  private:
   QJSInspectorClient* client_;
-  std::unique_ptr<QJSInspectedContext> context_;
+  std::vector<std::unique_ptr<QJSInspectedContext>> contexts_;
+  std::unordered_map<std::string, LEPUSContext*> script_contexts_;
+  std::unordered_map<std::string, LEPUSContext*> script_url_contexts_;
   InspectorSessionMap sessions_;
   std::string group_id_;
 };

@@ -40,6 +40,8 @@ class QJSInspector {
                                               const std::string& group_id,
                                               const std::string& name);
   virtual ~QJSInspector() = default;
+  virtual void AddContext(LEPUSContext* ctx, const std::string& name) = 0;
+  virtual void RemoveContext(LEPUSContext* ctx) = 0;
   class QJSChannel {
    public:
     virtual ~QJSChannel() = default;
@@ -49,7 +51,8 @@ class QJSInspector {
                                   const std::string& url) = 0;
   };
   virtual std::unique_ptr<QJSInspectorSession> Connect(
-      QJSChannel* channel, const std::string& group_id, int32_t session_id) = 0;
+      QJSChannel* channel, const std::string& group_id, int32_t session_id,
+      LEPUSContext* context = nullptr) = 0;
 };
 }  // namespace quickjs_inspector
 

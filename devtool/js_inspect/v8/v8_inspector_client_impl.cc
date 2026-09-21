@@ -124,8 +124,15 @@ void V8InspectorClientImpl::quitMessageLoopOnPause() {
 v8::Local<v8::Context> V8InspectorClientImpl::ensureDefaultContextInGroup(
     int contextGroupId) {
   auto it = contexts_.find(contextGroupId);
-  if (it != contexts_.end()) {
-    return it->second.Get(isolate_);
+  if (it != contexts_.end() && !it->second.empty()) {
+    for (const auto& ctx : it->second) {
+      auto context = ctx.Get(isolate_);
+      if (v8_inspector::V8ContextInfo::executionContextId(context) ==
+          current_context_id_) {
+        return context;
+      }
+    }
+    return it->second.back().Get(isolate_);
   }
   return v8::Local<v8::Context>();
 }
@@ -173,7 +180,10 @@ void V8InspectorClientImpl::DispatchMessage(const std::string& message,
 #if V8_MAJOR_VERSION >= 9
     v8::Isolate::Scope scope(isolate_);
 #endif
+    const int previous_context_id = current_context_id_;
+    current_context_id_ = session_contexts_[instance_id];
     it->second->DispatchProtocolMessage(message);
+    current_context_id_ = previous_context_id;
   }
 }
 
@@ -190,7 +200,9 @@ int V8InspectorClientImpl::InitInspector(v8::Isolate* isolate,
   return group_num;
 }
 
-void V8InspectorClientImpl::ConnectSession(int instance_id, int group_id) {
+void V8InspectorClientImpl::ConnectSession(int instance_id, int group_id,
+                                           int context_id) {
+  session_contexts_[instance_id] = context_id;
   if (channels_.find(instance_id) == channels_.end()) {
     channels_.emplace(
         instance_id,
@@ -206,6 +218,7 @@ void V8InspectorClientImpl::DisconnectSession(int instance_id) {
   if (it != channels_.end()) {
     int group_id = it->second->GroupId();
     channels_.erase(it);
+    session_contexts_.erase(instance_id);
     auto sp = delegate_wp_.lock();
     if (sp != nullptr) {
       sp->OnSessionDestroyed(instance_id, std::to_string(group_id));
@@ -274,40 +287,57 @@ void V8InspectorClientImpl::CreateV8Inspector() {
 void V8InspectorClientImpl::ContextCreated(v8::Local<v8::Context> context,
                                            int group_id,
                                            const std::string& name) {
-  if (contexts_.find(group_id) != contexts_.end()) {
-    return;
+  auto& contexts = contexts_[group_id];
+  for (const auto& existing : contexts) {
+    if (existing.Get(isolate_) == context) {
+      return;
+    }
   }
-  contexts_.emplace(group_id, v8::Global<v8::Context>(isolate_, context));
+  contexts.emplace_back(isolate_, context);
   v8_inspector::V8ContextInfo info(context, group_id, Utf8ToStringView(name));
   inspector_->contextCreated(info);
   LOGI("js debug: ContextCreated, group_id: " << group_id);
 }
 
-void V8InspectorClientImpl::ContextDestroyed(int group_id) {
+void V8InspectorClientImpl::DestroyContext(int group_id, int context_id) {
   auto it = contexts_.find(group_id);
-  if (it == contexts_.end()) {
-    LOGI(
-        "js debug: V8InspectorClientImpl::ContextDestroyed, cannot find the "
-        "context with the specific group_id!");
+  if (it == contexts_.end() || !isolate_ || !inspector_) {
     return;
   }
-  LOGI("js debug: V8InspectorClientImpl::ContextDestroyed, context IsEmpty: "
-       << it->second.IsEmpty() << ", inspector: " << inspector_);
-  if (isolate_ != nullptr && inspector_ != nullptr && !it->second.IsEmpty()) {
-    v8::Isolate::Scope isolate_scope(isolate_);
-    v8::HandleScope handle_scope(isolate_);
-    auto context = it->second.Get(isolate_);
-    v8::Context::Scope context_scope(context);
-    int context_id = v8_inspector::V8ContextInfo::executionContextId(context);
-    inspector_->contextDestroyed(context);
-    inspector_->resetContextGroup(group_id);
-    it->second.Reset();
-    contexts_.erase(it);
-    RemoveGroupMapping(group_id);
-    auto sp = delegate_wp_.lock();
-    if (sp != nullptr) {
-      sp->OnContextDestroyed(std::to_string(group_id), context_id);
+  v8::Isolate::Scope isolate_scope(isolate_);
+  v8::HandleScope handle_scope(isolate_);
+  auto& contexts = it->second;
+  for (auto ctx = contexts.begin(); ctx != contexts.end(); ++ctx) {
+    auto context = ctx->Get(isolate_);
+    if (v8_inspector::V8ContextInfo::executionContextId(context) ==
+        context_id) {
+      inspector_->contextDestroyed(context);
+      contexts.erase(ctx);
+      break;
     }
+  }
+  // Other pages and the core realm still belong to this inspector group.
+}
+
+void V8InspectorClientImpl::ContextDestroyed(int group_id) {
+  auto it = contexts_.find(group_id);
+  if (it == contexts_.end() || !isolate_ || !inspector_) {
+    return;
+  }
+  v8::Isolate::Scope isolate_scope(isolate_);
+  v8::HandleScope handle_scope(isolate_);
+  int context_id = 0;
+  for (auto& ctx : it->second) {
+    auto context = ctx.Get(isolate_);
+    context_id = v8_inspector::V8ContextInfo::executionContextId(context);
+    inspector_->contextDestroyed(context);
+  }
+  inspector_->resetContextGroup(group_id);
+  contexts_.erase(it);
+  RemoveGroupMapping(group_id);
+  auto sp = delegate_wp_.lock();
+  if (sp != nullptr) {
+    sp->OnContextDestroyed(std::to_string(group_id), context_id);
   }
 }
 
@@ -320,6 +350,7 @@ void V8InspectorClientImpl::DestroyAllSessions() {
     }
   }
   channels_.clear();
+  session_contexts_.clear();
 }
 
 int V8InspectorClientImpl::MapGroupStrToNum(const std::string& group_string) {

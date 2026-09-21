@@ -33,6 +33,9 @@ class QuickjsInspectorManagerImpl : public QuickjsInspectorManager {
   std::shared_ptr<devtool::QJSInspectorClientImpl> inspector_client_;
   std::weak_ptr<InspectorRuntimeObserverNG> observer_wp_;
 
+  bool is_shared_global_context_{false};
+  bool enable_new_share_group_{false};
+  LEPUSContext* context_{nullptr};
   int64_t runtime_id_{-1};
   std::string group_id_;
   std::string inspector_group_id_;

@@ -125,6 +125,8 @@ struct JSRuntimeExternalParams {
   // isolated Context" scheme instead of the legacy cross-page shared Context.
   // Only meaningful for shared (non "-1") groups.
   bool enable_new_share_group = false;
+  // The group-owned runtime that loads corejs without a page session.
+  bool is_shared_global_context = false;
   std::string bytecode_source_url;
   std::weak_ptr<JSRuntimeDelegate> delegate;
 };
@@ -310,6 +312,9 @@ class LYNX_EXPORT Runtime {
   // Whether corejs runs on the group global context instead of this context.
   bool getEnableNewShareGroup() const {
     return external_params_.enable_new_share_group;
+  }
+  bool isSharedGlobalContext() const {
+    return external_params_.is_shared_global_context;
   }
   // will override in quickjsruntime, this version just works as a sentinel
   virtual bool setPropertyValueGC(Object& object, const char* name,
