@@ -4,10 +4,7 @@
 
 #include "platform/embedder/resource/js_source_loader_desktop.h"
 
-#include <fstream>
-
 #import <Foundation/Foundation.h>
-#include "base/include/log/logging.h"
 #include "core/renderer/utils/lynx_env.h"
 
 @interface JSSourceLoaderMac : NSObject
@@ -71,14 +68,33 @@ std::string JSSourceLoaderDesktop::LoadJSSource(const std::string& name) {
   } else if ([str length] > [FILE_SCHEME length] && [str hasPrefix:FILE_SCHEME]) {
     NSString* filePath = [str substringFromIndex:[FILE_SCHEME length]];
     if ([filePath hasPrefix:@"/"]) {
-      path = filePath;
+      // URL parsing removes the query/fragment and decodes the path once.
+      path = [NSURL URLWithString:str].path;
     } else {
+      // Preserve the legacy file://<cache-relative-path> convention.
+      NSRange suffix = [filePath
+          rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@"?#"]];
+      if (suffix.location != NSNotFound) {
+        filePath = [filePath substringToIndex:suffix.location];
+      }
+      filePath = filePath.stringByRemovingPercentEncoding;
+      if (filePath.length == 0) {
+        return "";
+      }
       NSString* cachePath = [NSSearchPathForDirectoriesInDomains(
           NSCachesDirectory, NSUserDomainMask, YES) firstObject];
       path = [cachePath stringByAppendingPathComponent:filePath];
     }
   } else if ([str length] > [ASSETS_SCHEME length] && [str hasPrefix:ASSETS_SCHEME]) {
+    NSRange suffix =
+        [str rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@"?#"]];
+    if (suffix.location != NSNotFound) {
+      str = [str substringToIndex:suffix.location];
+    }
     NSRange range = [str rangeOfString:@"." options:NSBackwardsSearch];
+    if (range.location == NSNotFound) {
+      return "";
+    }
     str = [str substringToIndex:range.location];
     path = [[NSBundle mainBundle]
         pathForResource:[@"Resource/"
@@ -86,10 +102,8 @@ std::string JSSourceLoaderDesktop::LoadJSSource(const std::string& name) {
                  ofType:@"js"];
   }
   if (path) {
-    NSString* jsScript = [NSString stringWithContentsOfFile:path
-                                                   encoding:NSUTF8StringEncoding
-                                                      error:nil];
-    return jsScript.length ? std::string([jsScript UTF8String]) : "";
+    NSData* data = [NSData dataWithContentsOfFile:path];
+    return data.length ? std::string(static_cast<const char*>(data.bytes), data.length) : "";
   }
   return "";
 }
