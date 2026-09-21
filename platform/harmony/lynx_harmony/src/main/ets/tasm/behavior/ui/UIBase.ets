@@ -70,6 +70,13 @@ export abstract class UIBase {
     return 0;
   }
 
+  /**
+   * Returns the memory owned by the ArkTS UI implementation, in bytes.
+   */
+  getMemoryUsageBytes(): number {
+    return 0;
+  }
+
   updateExtraData(data: Object): void {
   }
 
