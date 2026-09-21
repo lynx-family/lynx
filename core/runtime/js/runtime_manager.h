@@ -82,6 +82,12 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
   static bool IsSingleJSContext(const std::string& group_id);
 
+  // One VM per runtime type in this manager, regardless of the page's group.
+  static inline bool IsVMSharedAcrossGroups(runtime::js::JSRuntimeType type) {
+    return type == runtime::js::JSRuntimeType::v8 ||
+           type == runtime::js::JSRuntimeType::jsvm;
+  }
+
   base::UnsafeOwningPtr<runtime::js::Runtime> CreateJSRuntime(
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
@@ -164,6 +170,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       bool force_use_lightweight_js_engine, bool use_shared_context,
       const tasm::PageOptions& page_options);
 #if ENABLE_TRACE_PERFETTO
+  void CheckAutotakeSnapshot(const std::string& group_id);
   void TakeVMSnapshot(const std::string& group_id, bool initial);
   void ScheduleVMSnapshot(const std::string& group_id);
   std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(

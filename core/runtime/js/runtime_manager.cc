@@ -176,9 +176,9 @@ std::shared_ptr<runtime::js::VMInstance> VMInstancePool::DoCreateVMInstance(
 // Log tag for the new "shared Isolate/VM + per-page isolated Context" scheme.
 constexpr const char* kNewShareGroupTag = "new_share_group:";
 
-void AlignRuntimeEngineWithVM(std::shared_ptr<runtime::js::VMInstance> vm,
-                              bool& force_use_lightweight_js_engine,
-                              const char* log_prefix) {
+void AlignRuntimeEngineWithVM(
+    const std::shared_ptr<runtime::js::VMInstance>& vm,
+    bool& force_use_lightweight_js_engine, const char* log_prefix) {
   if (!vm) {
     return;
   }
@@ -205,6 +205,14 @@ void AlignRuntimeEngineWithVM(std::shared_ptr<runtime::js::VMInstance> vm,
   } else {
     LOGI(log_prefix << " with none-v8, none-jsc and none-jsvm");
   }
+}
+
+void RegisterVMForTraceAndMonitor(
+    const std::shared_ptr<runtime::js::VMInstance>& vm,
+    const std::string& group_id, int32_t instance_id) {
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_BTS_VM, "group_id",
+                      group_id, "instance_id", instance_id, "desc",
+                      vm->GetDebugDescription(), "ptr", vm.get());
 }
 
 }  // namespace
@@ -281,10 +289,8 @@ RuntimeManager::CreateNewShareGroupJSRuntime(
   page_runtime->setCreatedType(runtime::js::JSRuntimeCreatedType::context);
   auto page_context = page_runtime->createContext(vm);
 
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_BTS_VM, "group_id",
-                      group_id, "instance_id", page_options.GetInstanceID(),
-                      "desc", vm ? vm->GetDebugDescription() : "", "ptr",
-                      vm.get());
+  RegisterVMForTraceAndMonitor(page_context->getVM(), group_id,
+                               page_options.GetInstanceID());
 
   EnsureConsolePostMan(page_context, executor, force_use_lightweight_js_engine,
                        page_options);
@@ -309,6 +315,10 @@ RuntimeManager::CreateNewShareGroupJSRuntime(
     runtime_manager_delegate_->OnRuntimeReady(executor, *page_runtime,
                                               group_id);
   }
+
+#if ENABLE_TRACE_PERFETTO
+  CheckAutotakeSnapshot(group_id);
+#endif
 
   return page_runtime;
 }
@@ -381,10 +391,8 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     }
   }
 
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LYNX_PAGE_USES_BTS_VM, "group_id",
-                      group_id, "instance_id", page_options.GetInstanceID(),
-                      "desc", js_context->getVM()->GetDebugDescription(), "ptr",
-                      js_context->getVM().get());
+  RegisterVMForTraceAndMonitor(js_context->getVM(), group_id,
+                               page_options.GetInstanceID());
 
   EnsureConsolePostMan(js_context, executor, force_use_lightweight_js_engine,
                        page_options);
@@ -465,17 +473,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   }
 
 #if ENABLE_TRACE_PERFETTO
-  if (!is_single_context) {
-    // Take snapshot before loading pages using this shared runtime.
-    if (auto config =
-            trace::TraceController::Instance()->GetLastSessionTraceConfig();
-        config && config->enable_memory_trace && config->auto_take_snapshot) {
-      if (config->auto_take_snapshot_group_id.empty() ||
-          config->auto_take_snapshot_group_id == group_id) {
-        TakeVMSnapshot(group_id, true);
-      }
-    }
-  }
+  CheckAutotakeSnapshot(group_id);
 #endif
 
   return js_runtime;
@@ -658,8 +656,7 @@ std::shared_ptr<runtime::js::JSIContext> RuntimeManager::CreateJSIContext(
     runtime::js::Runtime& rt, const std::string& group_id) {
   std::shared_ptr<runtime::js::JSIContext> js_context;
   bool need_create_vm = false;
-  if (rt.type() == runtime::js::JSRuntimeType::jsc ||
-      rt.type() == runtime::js::JSRuntimeType::quickjs) {
+  if (!IsVMSharedAcrossGroups(rt.type())) {
     need_create_vm = true;
 #if JS_ENGINE_TYPE == 1 || JS_ENGINE_TYPE == 2
     auto vm_instance = VMInstancePool::Instance().TakeVMInstance(rt.type());
@@ -810,6 +807,19 @@ std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
 }
 
 #if ENABLE_TRACE_PERFETTO
+void RuntimeManager::CheckAutotakeSnapshot(const std::string& group_id) {
+  if (!IsSingleJSContext(group_id)) {
+    if (auto config =
+            trace::TraceController::Instance()->GetLastSessionTraceConfig();
+        config && config->enable_memory_trace && config->auto_take_snapshot) {
+      if (config->auto_take_snapshot_group_id.empty() ||
+          config->auto_take_snapshot_group_id == group_id) {
+        TakeVMSnapshot(group_id, true);
+      }
+    }
+  }
+}
+
 void RuntimeManager::TakeVMSnapshot(const std::string& group_id, bool initial) {
   auto* ctx_wrap = GetContextWrapper(group_id);
   if (ctx_wrap) {
