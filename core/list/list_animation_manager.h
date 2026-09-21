@@ -41,6 +41,7 @@ class ListAnimationManager : public ItemHolder::AnimationDelegate {
   ListContainerImpl* list_container_impl_{nullptr};
 };
 
+// Creates the real animation manager; provided by the list_container target.
 std::unique_ptr<ListAnimationManager> CreateListAnimationManager(
     ListContainerImpl* list_container_impl);
 

@@ -15,8 +15,8 @@ namespace list {
 class ListContainerImpl;
 
 // Defines the integration contract between ListContainerImpl and the list item
-// animation pipeline. The concrete implementation is selected at build time by
-// CreateAnimationManager().
+// animation pipeline. The concrete implementation is selected when the
+// container is constructed.
 class AnimationManager {
  public:
   AnimationManager() = default;
@@ -60,6 +60,7 @@ class AnimationManager {
   virtual void Destroy() = 0;
 };
 
+// Creates the real animation manager; provided by the list_container target.
 std::unique_ptr<AnimationManager> CreateAnimationManager(
     ListContainerImpl* list_container);
 

@@ -5,7 +5,7 @@
 import("../../testing/test.gni")
 import("../Lynx.gni")
 
-list_container_shared_sources = [
+list_container_base_shared_sources = [
   "decoupled_list_types.h",
   "list_container_delegate.h",
   "list_element_delegate.h",
@@ -13,7 +13,7 @@ list_container_shared_sources = [
 ]
 
 if (disable_list_platform_implementation) {
-  list_container_shared_sources += [
+  list_container_base_shared_sources += [
     "animation/animation_manager.h",
     "animation/animation_target.h",
     "animation/animation_types.h",
@@ -49,9 +49,31 @@ if (disable_list_platform_implementation) {
     "list_animation_manager.cc",
     "list_animation_manager.h",
   ]
-  if (!defined(enable_list_container_animation) ||
-      enable_list_container_animation) {
-    list_container_shared_sources += [
+  list_container_base_shared_sources += [
+    "animation/animation_manager_default.cc",
+    "animation/animation_manager_default.h",
+    "list_animation_manager_default.cc",
+    "list_animation_manager_default.h",
+  ]
+} else {
+  list_container_base_shared_sources += [ "decoupled_list_container_default.h" ]
+}
+
+# Shared container implementation with no dependency on the animation backend.
+lynx_core_source_set("list_container_base") {
+  sources = list_container_base_shared_sources
+  public_deps = [
+    "../build:build",
+    "../renderer/trace:renderer_trace",
+  ]
+}
+
+# Adds real update animation managers and the animated container factory.
+lynx_core_source_set("list_container") {
+  sources = [ "decoupled_list_container_factory.h" ]
+  public_deps = [ ":list_container_base" ]
+  if (disable_list_platform_implementation) {
+    sources += [
       "animation/animation_manager_impl.cc",
       "animation/animation_manager_impl.h",
       "animation/animation_transaction.cc",
@@ -64,33 +86,13 @@ if (disable_list_platform_implementation) {
       "animation/item_animator_base.h",
       "animation/item_animator_default.cc",
       "animation/item_animator_default.h",
+      "decoupled_list_container_factory_impl.cc",
       "list_animation_manager_impl.cc",
       "list_animation_manager_impl.h",
     ]
-  } else {
-    list_container_shared_sources += [
-      "animation/animation_manager_default.cc",
-      "animation/animation_manager_default.h",
-      "list_animation_manager_default.cc",
-      "list_animation_manager_default.h",
-    ]
-  }
-} else {
-  list_container_shared_sources += [
-    "decoupled_list_container_default.cc",
-    "decoupled_list_container_default.h",
-  ]
-}
-
-lynx_core_source_set("list_container") {
-  sources = list_container_shared_sources
-  public_deps = [
-    "../build:build",
-    "../renderer/trace:renderer_trace",
-  ]
-  if (!defined(enable_list_container_animation) ||
-      enable_list_container_animation) {
     deps = [ "../animation/lynx_basic_animator:lynx_basic_animator" ]
+  } else {
+    sources += [ "decoupled_list_container_factory_default.cc" ]
   }
 }
 
@@ -112,22 +114,19 @@ if (disable_list_platform_implementation) {
     "testing/radon_data_source.h",
     "testing/utils.h",
   ]
-  if (!defined(enable_list_container_animation) ||
-      enable_list_container_animation) {
-    list_container_testset_shared_sources += [
-      "animation/animation_manager_impl_unittest.cc",
-      "animation/animation_transaction_unittest.cc",
-      "animation/animation_types_unittest.cc",
-      "animation/item_animation_recorder_unittest.cc",
-      "animation/item_animator_base_unittest.cc",
-      "animation/item_animator_default_unittest.cc",
-      "animation/item_animator_unittest.cc",
-      "testing/mock_animation_manager.h",
-      "testing/mock_animation_target.h",
-      "testing/mock_item_animator.h",
-      "testing/mock_vsync_monitor.h",
-    ]
-  }
+  list_container_testset_shared_sources += [
+    "animation/animation_manager_impl_unittest.cc",
+    "animation/animation_transaction_unittest.cc",
+    "animation/animation_types_unittest.cc",
+    "animation/item_animation_recorder_unittest.cc",
+    "animation/item_animator_base_unittest.cc",
+    "animation/item_animator_default_unittest.cc",
+    "animation/item_animator_unittest.cc",
+    "testing/mock_animation_manager.h",
+    "testing/mock_animation_target.h",
+    "testing/mock_item_animator.h",
+    "testing/mock_vsync_monitor.h",
+  ]
 }
 
 unittest_set("list_container_testset") {
