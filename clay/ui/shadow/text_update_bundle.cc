@@ -50,7 +50,7 @@ void TextUpdateBundle::UpdateExtraData(BaseView* view) {
             for (auto range : info.range_.value()) {
               auto boxes = paragraph_->GetRectsForRange(
                   range.start(), range.end(),
-                  txt::Paragraph::RectHeightStyle::kTight,
+                  txt::Paragraph::RectHeightStyle::kMax,
                   txt::Paragraph::RectWidthStyle::kTight);
               for (auto& box : boxes) {
                 static_cast<RenderInlineText*>(render_object)
