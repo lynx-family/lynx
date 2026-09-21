@@ -21,6 +21,12 @@ import javax.xml.transform.Transformer;
  */
 public abstract class LynxViewClient
     extends LynxBackgroundRuntimeClient implements ImageInterceptor {
+  /**
+   * Called for newly initialized Views when this client is registered with {@link LynxEnv}.
+   * The View may not have a template URL yet. Observers must not block page loading.
+   */
+  void onLynxViewCreated(@NonNull LynxView view) {}
+
   // issue: #1510
   /**
    * @apidoc

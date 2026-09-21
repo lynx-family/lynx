@@ -36,6 +36,13 @@ public class LynxViewClientGroup extends LynxViewClient {
   }
 
   @Override
+  void onLynxViewCreated(@NonNull LynxView view) {
+    for (LynxViewClient client : mClients) {
+      client.onLynxViewCreated(view);
+    }
+  }
+
+  @Override
   public void onPageStart(String url) {
     for (LynxViewClient client : mClients) {
       client.onPageStart(url);

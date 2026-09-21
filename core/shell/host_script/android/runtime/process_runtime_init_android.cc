@@ -9,6 +9,7 @@
 #include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
+#include "core/shell/host_script/android/lynx_view/host_script_view_observer_android.h"
 #include "core/shell/host_script/runtime/process_runtime.h"
 
 namespace lynx {
@@ -24,6 +25,7 @@ void PrepareHostScriptRuntime() {
   if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
   base::TaskRunnerManufactor runners(base::MOST_ON_TASM, false, false);
   DCHECK(runners.GetUITaskRunner()->RunsTasksOnCurrentThread());
+  InstallHostScriptViewObserver();
   auto& runtime = ProcessRuntime::GetInstance();
   runtime.Initialize({runners.GetJSTaskRunner(), runners.GetTASMTaskRunner(),
                       runners.GetUITaskRunner()},
@@ -49,6 +51,8 @@ void UpdateHostScriptDebugState(bool enabled) {
   if (enabled) {
     prepare();
   } else {
+    fml::TaskRunner::RunNowOrPostTask(
+        ui, [] { UninstallHostScriptViewObserver(); });
     ProcessRuntime::GetInstance().Shutdown(
         [prepare](ProcessRuntime::Result) { prepare(); });
   }

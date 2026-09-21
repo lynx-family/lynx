@@ -34,11 +34,14 @@ if (is_android && is_debug) {
 if (is_android && lynx_in_debug) {
   lynx_core_source_set("process_runtime_android") {
     sources = [
+      "lynx_view/host_script_view_observer_android.cc",
+      "lynx_view/host_script_view_observer_android.h",
       "runtime/process_runtime_android.cc",
       "runtime/process_runtime_android.h",
     ]
     deps = [
       ":host_script_init",
+      "../../../../third_party/rapidjson:rapidjson",
       "../../../base:base",
       "../runtime:process_runtime",
     ]

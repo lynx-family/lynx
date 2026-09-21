@@ -72,6 +72,8 @@ lynx_core_source_set("build") {
     "gen/LynxHostScriptLynxViewBinding_register_jni.h",
     "gen/LynxHostScriptRuntimeBinding_jni.h",
     "gen/LynxHostScriptRuntimeBinding_register_jni.h",
+    "gen/LynxHostScriptViewObserver_jni.h",
+    "gen/LynxHostScriptViewObserver_register_jni.h",
     "gen/LynxJSIObjectHub_jni.h",
     "gen/LynxJSIObjectHub_register_jni.h",
     "gen/LynxJavaScriptExecutionCallback_jni.h",

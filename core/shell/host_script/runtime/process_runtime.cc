@@ -131,6 +131,28 @@ class DomainRuntime final {
     return result;
   }
 
+  void NotifyEvent(const ProcessRuntime::Event& event) {
+    DCHECK(runner_->RunsTasksOnCurrentThread());
+    auto& runtime = *executor_->GetJSRuntime().Lock();
+    runtime::js::Scope scope(runtime);
+    runtime::js::JSINativeExceptionCollector::Scope exceptions;
+    auto dispatch =
+        runtime.global().getProperty(runtime, "__hostScriptDispatchEvent");
+    if (!dispatch || !dispatch->isObject() ||
+        !dispatch->getObject(runtime).isFunction(runtime))
+      return;
+    auto result = dispatch->getObject(runtime).getFunction(runtime).call(
+        runtime, runtime::js::String::createFromUtf8(runtime, event.name),
+        runtime::js::String::createFromUtf8(runtime, event.payload_json),
+        runtime::js::String::createFromUtf8(runtime, identity_.domain));
+    if (!result) {
+      UNUSED_LOG_VARIABLE const auto& error =
+          runtime::js::JSINativeExceptionCollector::Instance()->GetException();
+      LOGE("Host Script event callback: "
+           << (error ? error->message() : "JAVASCRIPT_CALL_FAILED"));
+    }
+  }
+
   Result Execute(const std::string& source, const std::string& url,
                  bool serialize_result = true) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
@@ -293,6 +315,13 @@ class DomainState final {
     runtime_.reset();
   }
 
+  void NotifyEvent(const ProcessRuntime::Event& event) {
+    AssertOwner();
+    if (tasm::DevToolLifecycle::GetInstance().IsEnabled() && IsRunning() &&
+        runtime_)
+      runtime_->NotifyEvent(event);
+  }
+
  private:
   void AssertOwner() const { DCHECK(runner_->RunsTasksOnCurrentThread()); }
   bool IsRunning() const {
@@ -365,16 +394,21 @@ class RuntimeGeneration final
     return IsValidDomain(domain) ? &endpoints_[DomainIndex(domain)] : nullptr;
   }
 
-  // Count only submissions between admission and enqueueing. Closing never
-  // waits on the calling thread: the last poster wakes the lifecycle runner.
+  // Count admission until work is queued or an inline event returns. Closing
+  // never waits: the last submission wakes the lifecycle runner.
   template <typename Factory>
-  bool Post(const Endpoint& endpoint, Factory&& task) {
+  bool Post(const Endpoint& endpoint, Factory&& task,
+            bool allow_inline = false) {
     auto postings = postings_.load(std::memory_order_acquire);
     do {
       if (postings & kClosed) return false;
     } while (!postings_.compare_exchange_weak(postings, postings + 1,
                                               std::memory_order_acq_rel));
-    endpoint.actor->ActAsync(task());
+    if (allow_inline) {
+      endpoint.actor->Act(task());
+    } else {
+      endpoint.actor->ActAsync(task());
+    }
     if (postings_.fetch_sub(1, std::memory_order_acq_rel) == kClosed + 1) {
       control_->PostTask(
           [self = shared_from_this()] { self->StopOnControl(); });
@@ -544,6 +578,20 @@ class ProcessRuntime::Impl {
     }
   }
 
+  void NotifyEvent(const Event& event) {
+    auto generation = Current();
+    if (!generation || generation->State() != ProcessState::kRunning) return;
+    for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+      const auto* endpoint = generation->Find(domain);
+      if (!endpoint->publication->ready.load(std::memory_order_acquire))
+        continue;
+      generation->Post(
+          *endpoint,
+          [&] { return [event](auto& owner) { owner->NotifyEvent(event); }; },
+          /*allow_inline=*/true);
+    }
+  }
+
   void Shutdown(Completion completion) {
     auto generation = Current();
     if (generation) {
@@ -597,6 +645,8 @@ void ProcessRuntime::InitializeBindings() { impl_->InitializeBindings(); }
 bool ProcessRuntime::IsReady(Domain domain) const {
   return impl_->IsReady(domain);
 }
+
+void ProcessRuntime::NotifyEvent(Event event) { impl_->NotifyEvent(event); }
 
 void ProcessRuntime::Evaluate(Domain domain, std::string source,
                               std::string url, Completion completion) {

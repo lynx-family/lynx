@@ -48,6 +48,12 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
     fml::RefPtr<fml::TaskRunner> ui;
   };
 
+  // Copied event data only. JS owns event routing and callback registration.
+  struct Event {
+    std::string name;
+    std::string payload_json;
+  };
+
   struct Result {
     bool success = false;
     // Undefined has no value; JSON null has value_json == "null".
@@ -97,6 +103,11 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
                 Completion completion);
   void RunOnThread(Domain domain, std::string source, std::string url,
                    Completion completion, Guard guard = {});
+
+  // Delivers to initialized domains: inline on the current owner runner,
+  // posted otherwise. Callbacks may reenter on that runner; no cross-thread
+  // waiting, replay, or initialization of unused runtimes. Only JSON is copied.
+  void NotifyEvent(Event event);
 
   // Closes admission immediately, then frees each VM on its owner. Completes
   // on the UI lifecycle runner after all three owners acknowledge cleanup.
