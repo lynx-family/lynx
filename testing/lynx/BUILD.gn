@@ -19,6 +19,7 @@ if (is_android) {
 
   source_set("lynx_android_unittests_jni") {
     sources = [
+      "android/deferred_renderer_preparation_unittest.cc",
       "android/display_list_item_buffer_test.cc",
       "android/native_display_list_builder.cc",
     ]

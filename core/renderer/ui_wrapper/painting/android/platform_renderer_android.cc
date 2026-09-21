@@ -39,22 +39,48 @@ PlatformRendererAndroid::PlatformRendererAndroid(
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
     const base::String& tag_name, const fml::RefPtr<PropBundle>& init_data,
-    const PlatformRendererInitConfig& init_config)
-    : PlatformRendererImpl(id, type, tag_name), context_(context) {
+    const PlatformRendererInitConfig& init_config,
+    PlatformRendererContext::PreparationScheduler::TaskRef preparation)
+    : PlatformRendererImpl(id, type, tag_name),
+      context_(context),
+      preparation_(std::move(preparation)) {
   SetDirectChildOfCompatibleComponent(
       init_config.is_direct_child_of_compatible_component);
   SetFragmentParentId(init_config.fragment_parent_id);
   if (ShouldCreatePlatformExtendedRenderer(init_config)) {
     is_platform_extended_renderer_ = true;
   }
-  InitializeAndroidView(init_data);
-  // Register this renderer with the context
+  if (!preparation_) {
+    InitializeAndroidView(init_data, nullptr);
+  }
   if (context_) {
     context_->RegisterPlatformRenderer(id, this);
   }
 }
 
+void PlatformRendererAndroid::EnsureAndroidViewCreated() {
+  if (!preparation_) {
+    return;
+  }
+  if (!context_ || context_->IsDestroyed()) {
+    ClearPreparation();
+    return;
+  }
+  auto scheduler = context_->GetPreparationScheduler();
+  auto runnable = scheduler->Consume(preparation_);
+  if (!runnable) {
+    return;
+  }
+  ClearPreparation();
+  if (!runnable->IsNull()) {
+    InitializeAndroidView(nullptr, runnable->Get());
+  }
+}
+
 void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
+  if (!context_ || context_->IsDestroyed()) {
+    return;
+  }
   if (display_list.GetContentItemsSize() > 0) {
     display_list_ = std::move(display_list);
 
@@ -93,19 +119,20 @@ void PlatformRendererAndroid::OnRemoveFromParent(bool should_update_ui_owner) {
 }
 
 void PlatformRendererAndroid::InitializeAndroidView(
-    const fml::RefPtr<PropBundle>& init_data) {
-  if (!context_) {
+    const fml::RefPtr<PropBundle>& init_data, jobject preparation) {
+  if (!context_ || context_->IsDestroyed()) {
     return;
   }
+  android_view_created_ = true;
   if (IsPlatformExtendedRenderer()) {
     const base::String extended_renderer_tag_name =
         GetExtendedRendererTagName();
     NativePropBundle* native_bundle =
         static_cast<NativePropBundle*>(init_data.get());
 
-    if (!native_bundle) {
+    if (preparation || !native_bundle) {
       context_->CreatePlatformExtendedRenderer(
-          GetId(), extended_renderer_tag_name, nullptr);
+          GetId(), extended_renderer_tag_name, nullptr, preparation);
       return;
     }
     // Create PropBundleAndroid from NativePropBundle
@@ -116,7 +143,7 @@ void PlatformRendererAndroid::InitializeAndroidView(
     jobject j_prop_bundle = prop_bundle_android.jni_object();
 
     context_->CreatePlatformExtendedRenderer(
-        GetId(), extended_renderer_tag_name, j_prop_bundle);
+        GetId(), extended_renderer_tag_name, j_prop_bundle, preparation);
 
   } else {
     // This is a standard platform renderer with a known type
@@ -135,15 +162,40 @@ bool PlatformRendererAndroid::ShouldCreatePlatformExtendedRenderer(
       type_ == PlatformRendererType::kPage) {
     return false;
   }
-  if (type_ != PlatformRendererType::kUnknown) {
-    return true;
+  return type_ != PlatformRendererType::kUnknown || !tag_name_.empty();
+}
+
+base::String PlatformRendererAndroid::PreparationTag(
+    PlatformRendererType type, const base::String& tag_name,
+    const PlatformRendererInitConfig& init_config) {
+  if (!init_config.is_direct_child_of_compatible_component &&
+      (type == PlatformRendererType::kText ||
+       type == PlatformRendererType::kImage ||
+       type == PlatformRendererType::kView ||
+       type == PlatformRendererType::kPage)) {
+    return {};
   }
-  return !tag_name_.empty();
+  return GetExtendedRendererTagName(type, tag_name);
 }
 
 void PlatformRendererAndroid::CleanupAndroidView() {
+  ClearPreparation();
   if (context_) {
-    context_->DestroyPlatformRenderer(PlatformRendererImpl::GetId());
+    if (android_view_created_) {
+      context_->DestroyPlatformRenderer(GetId());
+    } else {
+      context_->UnregisterPlatformRenderer(GetId());
+    }
+  }
+}
+
+void PlatformRendererAndroid::ClearPreparation() {
+  if (!preparation_) {
+    return;
+  }
+  preparation_ = nullptr;
+  if (context_) {
+    context_->OnPreparationCleared();
   }
 }
 

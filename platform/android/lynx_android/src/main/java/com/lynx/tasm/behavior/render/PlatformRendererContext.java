@@ -427,7 +427,6 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     };
   }
 
-  @CalledByNative
   public void createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData) {
     createPlatformExtendedRenderer(sign, tagName, initData, null);
   }
