@@ -32,8 +32,10 @@ width, height, min-width, min-height, max-width, max-height
 margin, margin-top, margin-right, margin-bottom, margin-left
 padding, padding-top, padding-right, padding-bottom, padding-left
 border, border-radius
-box-sizing (default: auto)
+box-sizing: border-box | content-box | auto  /* initial: auto; normally border-box sizing */
 ```
+
+See [box-model compatibility](./css/supported-properties.md#box-model) for how `auto` resolves.
 
 ### Flex Layout
 
@@ -138,7 +140,7 @@ text-overflow: clip | ellipsis
 | `display: inline-block`   | ❌ Not supported                 | Use Flex/Grid                                        |
 | `float`                   | ❌ Not supported                 | Use Flex/Grid                                        |
 | `position: static`        | ❌ Not supported                 | Use `position: relative`                             |
-| `box-sizing: content-box` | ⚠️ Supported but not default | Default is `border-box` (Web default is `content-box`) |
+| `box-sizing: content-box` | ✅ Supported | Lynx initially uses `auto`, normally with `border-box` sizing; set the value explicitly to avoid compatibility-dependent behavior |
 | `min-content`             | ❌ Unsupported for width/height  | `flex-basis: min-content` degrades to `0px`          |
 | `max-content`             | ✅ Supported                     | Available                                            |
 | `fit-content`             | ✅ Supported                     | Available                                            |
@@ -156,7 +158,6 @@ text-overflow: clip | ellipsis
 ✅ Child selectors: .parent > .child
 ✅ Adjacent sibling: .prev + .next
 ✅ General sibling: .prev ~ .sibling
-✅ Attribute selectors: [type="text"]
 ✅ Pseudo-classes: :hover, :active, :focus, :not(), :root
 ✅ Pseudo-elements: ::placeholder, ::selection
 ```
@@ -164,6 +165,7 @@ text-overflow: clip | ellipsis
 ### Not Supported (Parsed but NOT Matched)
 
 ```
+❌ Attribute selectors: [attr], [attr="value"], and all other attribute operators
 ❌ Structural pseudo-classes: :first-child, :last-child, :nth-child()
 ❌ Pseudo-elements: ::before, ::after
 ```

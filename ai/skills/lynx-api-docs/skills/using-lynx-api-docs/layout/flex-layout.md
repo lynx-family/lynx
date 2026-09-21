@@ -230,11 +230,22 @@ A shorthand for `flex-grow`, `flex-shrink`, and `flex-basis`.
 
 ```css
 .item {
-  flex: 1; /* Equivalent to flex: 1 1 0% */
+  flex: 1; /* The omitted basis depends on enableFlexBasisZeroPercent; see below. */
   flex: auto; /* Equivalent to flex: 1 1 auto */
   flex: none; /* Equivalent to flex: 0 0 auto */
 }
 ```
+
+When the basis is omitted, as in `flex: 1` or `flex: 1 1`, its value depends on `enableFlexBasisZeroPercent`:
+
+| Effective configuration | Expansion of `flex: 1` |
+| --- | --- |
+| `false` | `flex: 1 1 0` (a zero length) |
+| `true` | `flex: 1 1 0%` (a zero percentage) |
+
+The option is supported from LynxSDK 3.8 on Android, iOS, and HarmonyOS, with a base default of `false`. In runtimes implementing the target SDK 4.1 default override, an omitted option becomes `true` for target SDK 4.1 or later; an explicit `false` retains the zero-length basis. Check the effective page configuration and target SDK rather than inferring behavior from the installed runtime version alone.
+
+A zero length and a zero percentage can behave differently when the container's main-axis size is indefinite. Specify all three components, such as `flex: 1 1 0px` or `flex: 1 1 0%`, when that distinction matters.
 
 ### `flex-grow`
 

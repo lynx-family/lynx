@@ -111,7 +111,8 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 
 ### Box model
 
-- `box-sizing: border-box | content-box | auto` (defaults to `border-box`)
+- `box-sizing: border-box | content-box | auto` (initial value: `auto`; normally uses `border-box` sizing)
+  - `auto` follows the layout compatibility configuration: it normally includes padding and borders in the specified size, but legacy Web-aligned configuration can resolve it as `content-box`. Set `border-box` or `content-box` explicitly when sizing must not depend on configuration.
   - Both explicit `border-box` and `content-box` values are supported. When migrating a Web layout, do not evaluate compatibility based on `box-sizing` alone. Pixel-level differences between Lynx and the Web may remain if the original page also relies on floats, the browser's default `body` margin or line height, the containing block for absolutely positioned elements, or min/max size clamping.
 - `overflow: visible | hidden | scroll` (partial support)
 - `clip-path`

@@ -120,7 +120,7 @@ const loadContext = (intent: string) => {
 
 1. **Layout selection**: Use Linear for simple lists, Flex for complex layouts, and Grid for two-dimensional layouts.
 2. **Default behavior**: An element with no `display` declaration uses Linear Layout by default, and text content must be placed in a `<text>` element.
-3. **Box model**: The default is `border-box`, and margins do not collapse.
+3. **Box model**: `box-sizing` initially uses `auto`, normally with border-box sizing. Set an explicit value for configuration-independent sizing. Margins do not collapse.
 4. **Recommended units**: Use `rem` and `vw` for screen adaptation. `rpx` is Lynx-specific and fully supported, but is not Web-compatible.
 5. **Performance first**: Minimize nesting, use CSS classes, and avoid dynamic layout changes.
 6. **Element selection**: Read the corresponding element reference before using platform-specific capabilities.

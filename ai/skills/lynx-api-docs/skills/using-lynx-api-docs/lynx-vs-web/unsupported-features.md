@@ -40,6 +40,12 @@ The CSS parser recognizes the following selectors without reporting an error, bu
 - ⚠️ `::first-letter`
 - ⚠️ `::backdrop`
 
+### Attribute Selectors: Parsed but Not Matched for Styling
+
+- ❌ `[attr]`, `[attr="value"]`, `[attr~="value"]`, `[attr|="value"]`, `[attr^="value"]`, `[attr$="value"]`, and `[attr*="value"]`
+
+Use explicit classes for attribute-driven styles. The separate DOM element-query matcher supports some attribute queries, but those capabilities do not apply to stylesheets. See [attribute selector guidance](../css/selectors.md#attribute-selectors).
+
 ### Selectors That Work: Seven in Total
 
 | Selector          | Status              | Description                         |
@@ -257,10 +263,6 @@ if (viewportWidth >= 768) {
 
 - ⚠️ `flex-basis: min-content` - Treated as `0px`
 - ⚠️ `flex-basis: max-content` - Treated as `auto`
-
-### Selectors
-
-- ⚠️ Attribute selectors: `[attr^="val"]`, `[attr$="val"]`, and `[attr*="val"]`
 
 ### Text
 

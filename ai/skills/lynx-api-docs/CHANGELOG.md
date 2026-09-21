@@ -2,6 +2,14 @@
 
 All notable changes to the public Lynx API documentation bundle.
 
+## 0.3.9 — 2026-09-21
+
+### Documentation
+
+- Correct attribute-selector support for CSS styling, distinguish it from DOM query matching, and recommend explicit state classes.
+- Document the configuration and target SDK conditions for an omitted flex basis, and show explicit shorthand alternatives.
+- Distinguish the initial `box-sizing: auto` value from its usual border-box sizing behavior across references and summaries.
+
 ## 0.3.8 — 2026-07-16
 
 ### Features
