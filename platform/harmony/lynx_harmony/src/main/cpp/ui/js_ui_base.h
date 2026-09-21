@@ -40,6 +40,7 @@ class JSUIBase : public UIBase {
   bool IsScrollable() override;
   float ScrollX() override;
   float ScrollY() override;
+  int64_t GetMemoryUsageBytes() const override;
   void OnFocusChange(bool has_focus, bool is_focus_transition) override;
   bool ShouldHitTest() override;
   JSUIBase(LynxContext* context, ArkUI_NodeHandle node, int sign,

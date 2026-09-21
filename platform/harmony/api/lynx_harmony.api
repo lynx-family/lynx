@@ -616,6 +616,7 @@ export abstract class UIBase {
   isScrollable(): boolean;
   scrollX(): number;
   scrollY(): number;
+  getMemoryUsageBytes(): number;
   updateExtraData(data: Object): void;
   attachToNative(uiContext: UIContext, context: number[]): void;
   attachToPlatformView(uiContext: UIContext): FrameNode | null;
