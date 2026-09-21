@@ -2103,21 +2103,7 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
           card_bundle_.enable_reuse_load_script_exports) ||
       !page_config_subset.setProperty(
           *rt, runtime::kEnableFetchAPIStandardStreaming,
-          card_bundle_.enable_fetch_api_standard_streaming) ||
-      !page_config_subset.setProperty(
-          *rt, runtime::kEnableReleaseAppInstance,
-          tasm::LynxEnv::GetInstance().GetBoolEnv(
-              tasm::LynxEnv::Key::ENABLE_RELEASE_APP_INSTANCE, true)) ||
-      !page_config_subset.setProperty(
-          *rt, runtime::kEnableReadableStreamMemFix,
-          tasm::LynxEnv::GetInstance().EnableReadableStreamMemFix()) ||
-      // TODO(yuyang.1024), remove these
-      !page_config_subset.setProperty(
-          *rt, runtime::kEnablePromiseMemoryFix,
-          tasm::LynxEnv::GetInstance().EnablePromiseMemoryFix()) ||
-      !page_config_subset.setProperty(
-          *rt, runtime::kEnableCanvasEngineMemoryFix,
-          tasm::LynxEnv::GetInstance().EnableCanvasEngineMemoryFix())) {
+          card_bundle_.enable_fetch_api_standard_streaming)) {
     HandleLoadAppFailed(" App::LoadApp error! page_config_subset init fail.");
     return;
   }

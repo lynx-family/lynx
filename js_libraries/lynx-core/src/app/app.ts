@@ -303,8 +303,6 @@ export abstract class BaseApp<
   setupFetchAPI(Promise: PromiseConstructor) {
     this._createReadableStreamClass = createReadableStreamClass;
     this._ReadableStreamClass = createReadableStreamClass(Promise);
-    const enableReadableStreamMemoryFix =
-      this.params?.pageConfigSubset?.enableReadableStreamMemoryFix ?? true;
     const pageGlobal = this.pageGlobal;
     if (!pageGlobal.Request) {
       pageGlobal.Request = Request;
@@ -313,7 +311,7 @@ export abstract class BaseApp<
       pageGlobal.Response = Response;
     }
     if (!pageGlobal.ReadableStream) {
-      if (!enableReadableStreamMemoryFix || this.params?.currentGlobalThis) {
+      if (this.params?.currentGlobalThis) {
         pageGlobal.ReadableStream = this._ReadableStreamClass;
         return;
       }
@@ -919,43 +917,25 @@ export abstract class BaseApp<
     clearTimeout: LynxClearTimeout,
     lynx: NativeLynxProxy
   ) {
-    const enablePromiseMemoryFix =
-      this.params.pageConfigSubset?.enablePromiseMemoryFix ?? true;
     const nativeAppId = this.nativeAppId;
     const pageGlobal = this.pageGlobal;
-    const onUnhandled = enablePromiseMemoryFix
-      ? (id, reason: Error) => {
-          try {
-            if (reason) {
-              if (!reason.stack) {
-                reason = new Error(JSON.stringify(reason));
-              }
-              reason.name = 'unhandled rejection';
+    const onUnhandled = (_id: number, reason: Error) => {
+      try {
+        if (reason) {
+          if (!reason.stack) {
+            reason = new Error(JSON.stringify(reason));
+          }
+          reason.name = 'unhandled rejection';
 
-              const app = pageGlobal.multiApps[nativeAppId] as
-                | BaseApp
-                | undefined;
-              if (app) {
-                app.handleUserError(reason);
-              }
-            }
-          } catch (err) {
-            // just ignore
+          const app = pageGlobal.multiApps[nativeAppId] as BaseApp | undefined;
+          if (app) {
+            app.handleUserError(reason);
           }
         }
-      : (id, reason: Error) => {
-          try {
-            if (reason) {
-              if (!reason.stack) {
-                reason = new Error(JSON.stringify(reason));
-              }
-              reason.name = 'unhandled rejection';
-              this.handleUserError(reason);
-            }
-          } catch (err) {
-            // just ignore
-          }
-        };
+      } catch (err) {
+        // just ignore
+      }
+    };
 
     const PromiseConstructor = getPromiseMaybePolyfill(
       setTimeout,

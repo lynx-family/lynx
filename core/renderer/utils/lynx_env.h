@@ -148,7 +148,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_LIST_NEW_ARCHITECTURE,
     FIX_LIST_WITH_SYNC_FLUSH,
     ENABLE_FETCH_API_STANDARD_STREAMING,
-    ENABLE_RELEASE_APP_INSTANCE,
     ENABLE_JS_CALL_NATIVE_FREQUENCY_MONITOR,
     JS_CALL_NATIVE_FREQUENCY_WINDOW_MS,
     JS_CALL_NATIVE_FREQUENCY_THRESHOLD_COMMON,
@@ -156,7 +155,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_NEW_STYLING_PIPELINE,
     ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION,
     ENABLE_FRAME_NATIVE_DATA,
-    ENABLE_READABLE_STREAM_MEM_FIX,
     ENABLE_ELEMENT_API_NEW_REGISTRATION,
     ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
     ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK,
@@ -164,9 +162,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_AUTO_NON_FLATTEN,
     ENABLE_FIBER_UPDATE_METADATA,
     JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
-    // TODO(yuyang.1024), remove the following two enums.
-    ENABLE_PROMISE_MEMORY_FIX,
-    ENABLE_CANVAS_ENGINE_MEMORY_FIX,
     ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
     FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD,
     // Please add new enum values above
@@ -325,7 +320,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_LIST_NEW_ARCHITECTURE, "enable_list_new_architecture"},
             {Key::ENABLE_FETCH_API_STANDARD_STREAMING,
              "enable_fetch_api_standard_streaming"},
-            {Key::ENABLE_RELEASE_APP_INSTANCE, "enable_release_app_instance"},
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
             {Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
              "fix_old_fixed_insert_self_use_render_parent"},
@@ -345,8 +339,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION,
              "enable_simple_style_no_patch_optimization"},
             {Key::ENABLE_FRAME_NATIVE_DATA, "enable_frame_native_data"},
-            {Key::ENABLE_READABLE_STREAM_MEM_FIX,
-             "enable_readable_stream_mem_fix"},
             {Key::ENABLE_ELEMENT_API_NEW_REGISTRATION,
              "enable_element_api_new_registration"},
             {Key::ENABLE_HARMONY_TEXT_CUSTOM_EMOJI,
@@ -361,10 +353,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             // NOLINT(harmony-trail-key): Android-only configuration.
             {Key::JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
              "js_coverage_page_sampling_basis_points"},
-            // TODO(yuyang.1024), remove the following two enums.
-            {Key::ENABLE_PROMISE_MEMORY_FIX, "enable_promise_memory_fix"},
-            {Key::ENABLE_CANVAS_ENGINE_MEMORY_FIX,
-             "enable_canvas_engine_memory_fix"},
             // NOLINT(harmony-trail-key): iOS-only configuration.
             {Key::ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
              "enable_platform_thread_scheduling_policy"},
@@ -540,9 +528,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableNewStylingPipeline();
   bool EnableSimpleStyleNoPatchOptimization();
   bool EnableFrameNativeData();
-  bool EnableReadableStreamMemFix();
-  bool EnablePromiseMemoryFix();
-  bool EnableCanvasEngineMemoryFix();
   bool EnableHarmonyTextCustomEmoji();
   bool EnableHarmonyMessageLoopPromiseMicrotask();
   bool EnableElementApiNewRegistration();
