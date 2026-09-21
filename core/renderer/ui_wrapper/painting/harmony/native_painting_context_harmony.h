@@ -78,6 +78,7 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
   bool NeedAnimationProps() override;
   void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override;
+  bool DefaultOverflowAlwaysVisible() override { return true; }
   bool EnableUIOperationQueue() override { return true; }
 
   NativePaintingContext* CastToNativeCtx() override { return this; }
