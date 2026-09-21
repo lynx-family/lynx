@@ -15,12 +15,12 @@ namespace report {
 
 int32_t EventTrackerWaitableEvent::instance_id_ = -1;
 std::vector<MoveOnlyEvent> EventTrackerWaitableEvent::stack_;
-std::unordered_map<std::string, std::string>
-    EventTrackerWaitableEvent::generic_info_;
-std::unordered_map<std::string, float>
-    EventTrackerWaitableEvent::generic_float_info_;
-std::unordered_map<std::string, int64_t>
-    EventTrackerWaitableEvent::generic_int64_info_;
+EventTrackerWaitableEvent::InstanceParams
+    EventTrackerWaitableEvent::generic_info_by_instance_;
+EventTrackerWaitableEvent::InstanceParams
+    EventTrackerWaitableEvent::extra_params_by_instance_;
+std::unordered_map<int32_t, uint32_t>
+    EventTrackerWaitableEvent::query_count_by_instance_;
 
 std::shared_ptr<fml::AutoResetWaitableEvent>
 EventTrackerWaitableEvent::Await() {
@@ -48,14 +48,21 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(
     int32_t instance_id,
     std::unordered_map<std::string, std::string> generic_info) {
   EventTrackerWaitableEvent::instance_id_ = instance_id;
-  EventTrackerWaitableEvent::generic_info_ = std::move(generic_info);
+  for (const auto& [key, value] : generic_info)
+    EventTrackerWaitableEvent::generic_info_by_instance_[instance_id][key] =
+        value;
   EventTrackerWaitableEvent::Await()->Signal();
 }
 
 void EventTrackerPlatformImpl::UpdateGenericInfo(
     int32_t instance_id, std::unordered_map<std::string, float> generic_info) {
   EventTrackerWaitableEvent::instance_id_ = instance_id;
-  EventTrackerWaitableEvent::generic_float_info_ = std::move(generic_info);
+  for (const auto& [key, value] : generic_info) {
+    std::ostringstream stream;
+    stream << value;
+    EventTrackerWaitableEvent::generic_info_by_instance_[instance_id][key] =
+        stream.str();
+  }
   EventTrackerWaitableEvent::Await()->Signal();
 }
 
@@ -63,7 +70,8 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
                                                  const std::string& key,
                                                  const std::string& value) {
   EventTrackerWaitableEvent::instance_id_ = instance_id;
-  EventTrackerWaitableEvent::generic_info_.insert({key, value});
+  EventTrackerWaitableEvent::generic_info_by_instance_[instance_id][key] =
+      value;
   EventTrackerWaitableEvent::Await()->Signal();
 }
 
@@ -71,37 +79,39 @@ void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
                                                  const std::string& key,
                                                  float value) {
   EventTrackerWaitableEvent::instance_id_ = instance_id;
-  EventTrackerWaitableEvent::generic_float_info_.insert({key, value});
+  std::ostringstream stream;
+  stream << value;
+  EventTrackerWaitableEvent::generic_info_by_instance_[instance_id][key] =
+      stream.str();
   EventTrackerWaitableEvent::Await()->Signal();
 }
 void EventTrackerPlatformImpl::UpdateGenericInfo(int32_t instance_id,
                                                  const std::string& key,
                                                  int64_t value) {
   EventTrackerWaitableEvent::instance_id_ = instance_id;
-  EventTrackerWaitableEvent::generic_int64_info_.insert({key, value});
+  EventTrackerWaitableEvent::generic_info_by_instance_[instance_id][key] =
+      std::to_string(value);
   EventTrackerWaitableEvent::Await()->Signal();
 }
 
 std::string EventTrackerPlatformImpl::GetGenericInfoOrExtraParam(
     int32_t instance_id, const std::string& key) {
-  auto float_iter = EventTrackerWaitableEvent::generic_float_info_.find(key);
-  if (float_iter != EventTrackerWaitableEvent::generic_float_info_.end()) {
-    std::ostringstream stream;
-    stream << float_iter->second;
-    return stream.str();
+  ++EventTrackerWaitableEvent::query_count_by_instance_[instance_id];
+  for (const auto* store :
+       {&EventTrackerWaitableEvent::generic_info_by_instance_,
+        &EventTrackerWaitableEvent::extra_params_by_instance_}) {
+    const auto instance = store->find(instance_id);
+    if (instance == store->end()) continue;
+    const auto value = instance->second.find(key);
+    if (value != instance->second.end()) return value->second;
   }
-  auto int64_iter = EventTrackerWaitableEvent::generic_int64_info_.find(key);
-  if (int64_iter != EventTrackerWaitableEvent::generic_int64_info_.end()) {
-    return std::to_string(int64_iter->second);
-  }
-  auto string_iter = EventTrackerWaitableEvent::generic_info_.find(key);
-  return string_iter == EventTrackerWaitableEvent::generic_info_.end()
-             ? ""
-             : string_iter->second;
+  return {};
 }
 
 void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {
   EventTrackerWaitableEvent::instance_id_ = instance_id;
+  EventTrackerWaitableEvent::generic_info_by_instance_.erase(instance_id);
+  EventTrackerWaitableEvent::extra_params_by_instance_.erase(instance_id);
   EventTrackerWaitableEvent::Await()->Signal();
 }
 

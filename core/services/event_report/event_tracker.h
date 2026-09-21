@@ -58,11 +58,23 @@ class EventProp {
         type_(Type::kString),
         string_value_(std::move(value)) {}
 
+  EventProp(const char* key, std::string value)
+      : key_(key), type_(Type::kString), string_value_(std::move(value)) {}
+
+  EventProp(const char* key, const char* value)
+      : key_(key), type_(Type::kString), string_value_(value) {}
+
   EventProp(std::string key, int32_t value)
       : key_(std::move(key)), type_(Type::kInt32), int_value_(value) {}
 
+  EventProp(const char* key, int32_t value)
+      : key_(key), type_(Type::kInt32), int_value_(value) {}
+
   EventProp(std::string key, double value)
       : key_(std::move(key)), type_(Type::kDouble), double_value_(value) {}
+
+  EventProp(const char* key, double value)
+      : key_(key), type_(Type::kDouble), double_value_(value) {}
 
   const std::string& GetKey() const { return key_; }
   Type GetType() const { return type_; }
@@ -122,7 +134,7 @@ struct MoveOnlyEvent {
   }
 
   void SetProps(const char* key, const char* value) {
-    props_.emplace_back(key, std::string(value));
+    props_.emplace_back(key, value);
   }
 
   void SetProps(const char* key, const std::string& value) {
@@ -147,6 +159,8 @@ struct MoveOnlyEvent {
     }
     return props;
   }
+
+  void Reserve(size_t count) { props_.reserve(count); }
 
   MoveOnlyEvent() = default;
   ~MoveOnlyEvent() = default;
