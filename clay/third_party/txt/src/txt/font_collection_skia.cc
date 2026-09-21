@@ -23,14 +23,15 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #if defined(CLAY_ENABLE_MINIKIN)
-#include "font_skia.h"
+#include "clay/third_party/txt/src/txt/font_skia.h"
 #endif
-#include "txt/platform.h"
-#include "txt/text_style.h"
+#include "clay/third_party/txt/src/txt/platform.h"
+#include "clay/third_party/txt/src/txt/text_style.h"
 
 namespace txt {
 
@@ -82,43 +83,48 @@ size_t FontCollection::GetFontManagersCount() const {
 
 void FontCollection::SetupDefaultFontManager(
     uint32_t font_initialization_data) {
-  default_font_manager_ = GetDefaultFontManager(font_initialization_data);
+  SetDefaultFontManager(GetDefaultFontManager(font_initialization_data));
 }
 
 void FontCollection::SetDefaultFontManager(sk_sp<SkFontMgr> font_manager) {
+  std::scoped_lock lock(mutex_);
   default_font_manager_ = font_manager;
 
-#if CLAY_ENABLE_SKSHAPER
+#if defined(CLAY_ENABLE_SKSHAPER) || defined(CLAY_ENABLE_TTTEXT)
   skt_collection_.reset();
 #endif
 }
 
 void FontCollection::SetAssetFontManager(sk_sp<SkFontMgr> font_manager) {
+  std::scoped_lock lock(mutex_);
   asset_font_manager_ = font_manager;
 
-#if CLAY_ENABLE_SKSHAPER
+#if defined(CLAY_ENABLE_SKSHAPER) || defined(CLAY_ENABLE_TTTEXT)
   skt_collection_.reset();
 #endif
 }
 
 void FontCollection::SetDynamicFontManager(sk_sp<SkFontMgr> font_manager) {
+  std::scoped_lock lock(mutex_);
   dynamic_font_manager_ = font_manager;
 
-#if CLAY_ENABLE_SKSHAPER
+#if defined(CLAY_ENABLE_SKSHAPER) || defined(CLAY_ENABLE_TTTEXT)
   skt_collection_.reset();
 #endif
 }
 
 void FontCollection::SetTestFontManager(sk_sp<SkFontMgr> font_manager) {
+  std::scoped_lock lock(mutex_);
   test_font_manager_ = font_manager;
 
-#if CLAY_ENABLE_SKSHAPER
+#if defined(CLAY_ENABLE_SKSHAPER) || defined(CLAY_ENABLE_TTTEXT)
   skt_collection_.reset();
 #endif
 }
 
 // Return the available font managers in the order they should be queried.
 std::vector<sk_sp<SkFontMgr>> FontCollection::GetFontManagerOrder() const {
+  std::scoped_lock lock(mutex_);
   std::vector<sk_sp<SkFontMgr>> order;
   if (dynamic_font_manager_)
     order.push_back(dynamic_font_manager_);
@@ -132,12 +138,12 @@ std::vector<sk_sp<SkFontMgr>> FontCollection::GetFontManagerOrder() const {
 }
 
 void FontCollection::DisableFontFallback() {
+  std::scoped_lock lock(mutex_);
   enable_font_fallback_ = false;
 
-#if CLAY_ENABLE_SKSHAPER
-  if (skt_collection_) {
-    skt_collection_->disableFontFallback();
-  }
+#if defined(CLAY_ENABLE_SKSHAPER) || defined(CLAY_ENABLE_TTTEXT)
+  // Existing paragraphs retain their configuration; new ones use the update.
+  skt_collection_.reset();
 #endif
 }
 
@@ -389,6 +395,7 @@ FontCollection::GetFallbackFontFamily(const sk_sp<SkFontMgr>& manager,
 #endif  // CLAY_ENABLE_SKSHAPER
 
 void FontCollection::ClearFontFamilyCache() {
+  std::scoped_lock lock(mutex_);
 #if defined(CLAY_ENABLE_MINIKIN)
   font_collections_cache_.clear();
 #endif  // CLAY_ENABLE_MINIKIN
@@ -404,32 +411,34 @@ void FontCollection::ClearFontFamilyCache() {
 
 std::shared_ptr<ttoffice::tttext::FontmgrCollection>
 FontCollection::CreateTTFontCollection() {
+  std::scoped_lock lock(mutex_);
   if (!skt_collection_) {
-    skt_collection_ = std::make_shared<ttoffice::tttext::FontmgrCollection>();
+    auto collection = std::make_shared<ttoffice::tttext::FontmgrCollection>();
 
     if (default_font_manager_ != nullptr) {
-      skt_collection_->SetDefaultFontManager(
+      collection->SetDefaultFontManager(
           std::make_shared<ttoffice::tttext::SkiaFontManager>(
               default_font_manager_));
     }
     if (asset_font_manager_ != nullptr) {
-      skt_collection_->SetAssetFontManager(
+      collection->SetAssetFontManager(
           std::make_shared<ttoffice::tttext::SkiaFontManager>(
               asset_font_manager_));
     }
     if (dynamic_font_manager_ != nullptr) {
-      skt_collection_->SetDynamicFontManager(
+      collection->SetDynamicFontManager(
           std::make_shared<ttoffice::tttext::SkiaFontManager>(
               dynamic_font_manager_));
     }
     if (test_font_manager_ != nullptr) {
-      skt_collection_->SetTestFontManager(
+      collection->SetTestFontManager(
           std::make_shared<ttoffice::tttext::SkiaFontManager>(
               test_font_manager_));
     }
     if (!enable_font_fallback_) {
-      skt_collection_->disableFontFallback();
+      collection->disableFontFallback();
     }
+    skt_collection_ = std::move(collection);
   }
 
   return skt_collection_;
@@ -441,21 +450,24 @@ FontCollection::CreateTTFontCollection() {
 
 sk_sp<skia::textlayout::FontCollection>
 FontCollection::CreateSktFontCollection() {
+  std::scoped_lock lock(mutex_);
   if (!skt_collection_) {
-    skt_collection_ = sk_make_sp<skia::textlayout::FontCollection>();
+    auto collection = sk_make_sp<skia::textlayout::FontCollection>();
 
     std::vector<SkString> default_font_families;
     for (const std::string& family : GetDefaultFontFamilies()) {
       default_font_families.emplace_back(family);
     }
-    skt_collection_->setDefaultFontManager(default_font_manager_,
-                                           default_font_families);
-    skt_collection_->setAssetFontManager(asset_font_manager_);
-    skt_collection_->setDynamicFontManager(dynamic_font_manager_);
-    skt_collection_->setTestFontManager(test_font_manager_);
+    collection->setDefaultFontManager(default_font_manager_,
+                                      default_font_families);
+    collection->setAssetFontManager(asset_font_manager_);
+    collection->setDynamicFontManager(dynamic_font_manager_);
+    collection->setTestFontManager(test_font_manager_);
     if (!enable_font_fallback_) {
-      skt_collection_->disableFontFallback();
+      collection->disableFontFallback();
     }
+    // Publish only after every manager and fallback setting is initialized.
+    skt_collection_ = std::move(collection);
   }
 
   return skt_collection_;
