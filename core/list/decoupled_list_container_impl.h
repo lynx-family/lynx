@@ -27,8 +27,18 @@ namespace list {
 
 class ListContainerImpl : public ContainerDelegate {
  public:
-  ListContainerImpl(ElementDelegate* list_delegate,
-                    const std::shared_ptr<pub::PubValueFactory>& value_factory);
+  using ListAnimationManagerFactory =
+      std::unique_ptr<ListAnimationManager> (*)(ListContainerImpl*);
+  using AnimationManagerFactory =
+      std::unique_ptr<AnimationManager> (*)(ListContainerImpl*);
+
+  // Without factories, the container uses no-op animation managers. Factories
+  // select animation implementations per container without global state.
+  ListContainerImpl(
+      ElementDelegate* list_delegate,
+      const std::shared_ptr<pub::PubValueFactory>& value_factory,
+      ListAnimationManagerFactory list_animation_manager_factory = nullptr,
+      AnimationManagerFactory animation_manager_factory = nullptr);
   ~ListContainerImpl() override;
 
   // Implement ContainerDelegate
@@ -198,10 +208,6 @@ class ListContainerImpl : public ContainerDelegate {
   ListAdapterDiffResult animation_diff_result_{ListAdapterDiffResult::kNone};
   std::shared_ptr<pub::PubValueFactory> value_factory_;
 };
-
-std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(
-    ElementDelegate* list_delegate,
-    const std::shared_ptr<pub::PubValueFactory>& value_factory);
 
 }  // namespace list
 }  // namespace lynx

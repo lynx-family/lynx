@@ -11,11 +11,13 @@
 
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/list/animation/animation_manager_default.h"
 #include "core/list/decoupled_batch_list_adapter.h"
 #include "core/list/decoupled_default_list_adapter.h"
 #include "core/list/decoupled_grid_layout_manager.h"
 #include "core/list/decoupled_linear_layout_manager.h"
 #include "core/list/decoupled_staggered_grid_layout_manager.h"
+#include "core/list/list_animation_manager_default.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
@@ -188,14 +190,21 @@ UpdateAnimationConfig ParseUpdateAnimationConfig(const pub::Value& value) {
 
 ListContainerImpl::ListContainerImpl(
     ElementDelegate* list_delegate,
-    const std::shared_ptr<pub::PubValueFactory>& value_factory)
+    const std::shared_ptr<pub::PubValueFactory>& value_factory,
+    ListAnimationManagerFactory list_animation_manager_factory,
+    AnimationManagerFactory animation_manager_factory)
     : list_delegate_(list_delegate),
       list_layout_manager_(std::make_unique<LinearLayoutManager>(this)),
       list_adapter_(std::make_unique<DefaultListAdapter>(this)),
       list_children_helper_(std::make_unique<ListChildrenHelper>()),
       list_event_manager_(std::make_unique<ListEventManager>(this)),
-      list_animation_manager_(CreateListAnimationManager(this)),
-      animation_manager_(CreateAnimationManager(this)),
+      list_animation_manager_(
+          list_animation_manager_factory
+              ? list_animation_manager_factory(this)
+              : std::make_unique<ListAnimationManagerDefault>(this)),
+      animation_manager_(animation_manager_factory
+                             ? animation_manager_factory(this)
+                             : std::make_unique<AnimationManagerDefault>()),
       value_factory_(value_factory) {
   DLIST_LOGI("ListContainerImpl::ListContainerImpl() this=" << this);
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
@@ -840,12 +849,6 @@ void ListContainerImpl::ResolveListAxisGap(tasm::CSSPropertyID id, float gap) {
     animation_manager_->CancelAnimationTransaction(
         AnimationCancelReason::kLayoutInvalidated);
   }
-}
-
-std::unique_ptr<ContainerDelegate> CreateListContainerDelegate(
-    ElementDelegate* list_delegate,
-    const std::shared_ptr<pub::PubValueFactory>& value_factory) {
-  return std::make_unique<ListContainerImpl>(list_delegate, value_factory);
 }
 
 }  // namespace list
