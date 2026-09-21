@@ -19,6 +19,7 @@
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #include "core/services/ssr/ssr_type_info.h"
 #include "core/services/timing_handler/timing.h"
+#include "core/shell/host_script/android/runtime/process_runtime_init_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxEnv_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxEnv_register_jni.h"
 
@@ -99,7 +100,12 @@ jstring GetDebugEnvDescription(JNIEnv* env, jobject jcaller) {
   return env->NewStringUTF(envJsonString.c_str());  // NOLINT
 }
 
-void InitUIThread(JNIEnv* env, jclass jcaller) { lynx::base::UIThread::Init(); }
+void InitUIThread(JNIEnv* env, jclass jcaller) {
+  lynx::base::UIThread::Init();
+  // Records UI readiness even while debugging is off. Prepare checks the
+  // effective LynxEnv debug state before creating any routing or bindings.
+  lynx::shell::PrepareHostScriptRuntime();
+}
 
 void OnMemoryPressure(JNIEnv* env, jclass jcaller, jint pressure) {
   if (static_cast<lynx::base::MemoryPressureLevel>(pressure) !=

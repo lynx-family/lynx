@@ -88,6 +88,10 @@ group("lynx_android_lib") {
     "../../../gfx:gfx_headers",
     "../../../third_party/rapidjson:rapidjson",
   ]
+  if (lynx_in_debug) {
+    public_deps +=
+        [ "../../../core/shell/host_script/android:process_runtime_android" ]
+  }
   if (is_debug) {
     public_deps +=
         [ "../../../core/shell/host_script/android:host_script_android" ]

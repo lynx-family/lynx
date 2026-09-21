@@ -4,19 +4,46 @@
 
 import("../../../Lynx.gni")
 
+# LynxEnv only needs the startup declaration. The Android library links the
+# runtime implementation, avoiding a renderer-utils -> JS-runtime cycle.
+lynx_core_source_set("host_script_init") {
+  sources = [ "runtime/process_runtime_init_android.h" ]
+
+  # Regular libraries and standalone test/SSR binaries keep empty entry points.
+  if (!is_android || !lynx_in_debug || enable_unittests || is_oliver_ssr) {
+    sources += [ "runtime/process_runtime_init_android_stub.cc" ]
+  }
+}
+
 if (is_android && is_debug) {
   lynx_core_source_set("host_script_android") {
     sources = [
       "lynx_view/host_script_lynx_view_binding_android.cc",
       "runtime/host_script_android_session.h",
       "runtime/host_script_runtime_binding_android.cc",
-      "runtime/process_runtime_android.cc",
-      "runtime/process_runtime_android.h",
     ]
     deps = [
       "../../../base:base",
       "../runtime:host_script",
+    ]
+  }
+}
+
+# Use the existing debugMode library flavor, including optimized debug libraries.
+# Runtime admission still requires the host to enable the DevTool lifecycle.
+if (is_android && lynx_in_debug) {
+  lynx_core_source_set("process_runtime_android") {
+    sources = [
+      "runtime/process_runtime_android.cc",
+      "runtime/process_runtime_android.h",
+    ]
+    deps = [
+      ":host_script_init",
+      "../../../base:base",
       "../runtime:process_runtime",
     ]
+    if (!enable_unittests && !is_oliver_ssr) {
+      sources += [ "runtime/process_runtime_init_android.cc" ]
+    }
   }
 }

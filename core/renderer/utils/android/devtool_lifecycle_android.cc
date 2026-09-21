@@ -11,6 +11,7 @@
 #include "base/include/no_destructor.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/devtool_state.h"
+#include "core/shell/host_script/android/runtime/process_runtime_init_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/DevToolLifecycle_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/DevToolLifecycle_register_jni.h"
 
@@ -29,6 +30,10 @@ bool RegisterJNIForDevToolLifecycle(JNIEnv* env) {
 void SyncStateToNative(JNIEnv* env, jobject jcaller, jint value) {
   lynx::tasm::DevToolState state = static_cast<lynx::tasm::DevToolState>(value);
   lynx::tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(state);
+  // LynxEnv.enableLynxDebug updates this process-wide lifecycle. ATTACHED
+  // means disabled; ENABLED/INITIALIZED/CONNECTED mean enabled.
+  lynx::shell::UpdateHostScriptDebugState(state >=
+                                          lynx::tasm::DevToolState::ENABLED);
 }
 
 namespace lynx {
@@ -37,6 +42,8 @@ namespace tasm {
 void DevToolLifecycleAndroid::SyncStateToPlatform(DevToolState state) {
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_DevToolLifecycle_syncStateFromNative(env, static_cast<int>(state));
+  // Forward this transition, including disable, rather than caching true.
+  shell::UpdateHostScriptDebugState(state >= DevToolState::ENABLED);
 }
 
 }  // namespace tasm
