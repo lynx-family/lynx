@@ -22,8 +22,6 @@ class ScrollWrapper : public WithTypeInfo<ScrollWrapper, ScrollbarWrapper>,
 
   // UI Method
   void scrollTo(const LynxModuleValues& args);
-  void scrollBy(const LynxModuleValues& args,
-                const LynxUIMethodCallback& callback);
   void autoScroll(const LynxModuleValues& args);
   void getScrollInfo(const LynxModuleValues& args,
                      const LynxUIMethodCallback& callback);
