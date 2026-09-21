@@ -5,12 +5,14 @@
 #include "core/shell/host_script/android/runtime/process_runtime_init_android.h"
 
 #include <atomic>
+#include <string>
+#include <utility>
 
 #include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/shell/host_script/android/lynx_view/host_script_view_observer_android.h"
-#include "core/shell/host_script/runtime/process_runtime.h"
+#include "core/shell/host_script/android/runtime/process_runtime_android.h"
 
 namespace lynx {
 namespace shell {
@@ -18,6 +20,13 @@ namespace {
 std::atomic<bool> ui_initialized{false};
 std::atomic<bool> view_created{false};
 }  // namespace
+
+void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
+                               std::string source, std::string url,
+                               ProcessRuntime::Completion completion) {
+  ProcessRuntime::GetInstance().Evaluate(domain, std::move(source),
+                                         std::move(url), std::move(completion));
+}
 
 void PrepareHostScriptRuntime() {
   ui_initialized.store(true, std::memory_order_release);
