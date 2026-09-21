@@ -160,6 +160,37 @@ public class DeferredRendererPreparationTest {
     });
   }
 
+  @Test
+  public void coalescedFlushesAssistOnlyTheirSnapshotAndRetainReentrantPreparation()
+      throws Exception {
+    runOnMainSync(() -> {
+      doCallRealMethod().when(context).createPlatformExtendedRendererWithPreparation(
+          anyInt(), eq("deferred-test"), isNull(), same(completion));
+      assertTrue(nativeCheckFlushBatches(context, completion));
+      InOrder order = inOrder(context, completion);
+      order.verify(context).createPlatformExtendedRendererWithPreparation(
+          101, "deferred-test", null, completion);
+      order.verify(completion).run();
+      order.verify(context).createPlatformExtendedRendererWithPreparation(
+          201, "deferred-test", null, completion);
+      order.verify(completion).run();
+      order.verify(context).createPlatformExtendedRendererWithPreparation(
+          103, "deferred-test", null, completion);
+      order.verify(completion).run();
+      verify(completion, times(3)).run();
+      verify(context, never())
+          .createPlatformExtendedRendererWithPreparation(eq(102), anyString(), any(), any());
+    });
+  }
+
+  @Test
+  public void layoutOnlyFlushResetsAssistanceWithoutTasmFinish() throws Exception {
+    runOnMainSync(() -> {
+      assertTrue(nativeCheckFlushReset(context));
+      verifyNoInteractions(context, completion);
+    });
+  }
+
   // Direct JNI exports live in testing/lynx/android/deferred_renderer_preparation_unittest.cc.
   private static native long nativeCreate(PlatformRendererContext context, Runnable completion);
   private static native boolean nativeCacheLayout(long ptr);
@@ -170,4 +201,7 @@ public class DeferredRendererPreparationTest {
   private static native void nativeUpdateDisplayList(long ptr);
   private static native boolean nativeTearDownRenderer(long ptr, boolean destroyContext);
   private static native void nativeDestroy(long ptr);
+  private static native boolean nativeCheckFlushBatches(
+      PlatformRendererContext context, Runnable completion);
+  private static native boolean nativeCheckFlushReset(PlatformRendererContext context);
 }
