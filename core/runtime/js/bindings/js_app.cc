@@ -1948,10 +1948,10 @@ App::~App() {
 
     auto destroyCard = global.getPropertyAsFunction(*rt, "destroyCard");
     if (destroyCard) {
-      size_t count = 1;
+      size_t count = rt->getEnableNewShareGroup() ? 2 : 1;
       String id_str = String::createFromUtf8(*rt, app_guid_);
       Value id_value(*rt, id_str);
-      const Value args[1] = {std::move(id_value)};
+      const Value args[2] = {std::move(id_value), Value(*rt, global)};
       destroyCard->call(*rt, args, count);
       LOGI("App::Destroy end " << this);
     }
@@ -1979,10 +1979,10 @@ void App::CallDestroyLifetimeFun() {
     auto on_destroy =
         global.getPropertyAsFunction(*rt, "callDestroyLifetimeFun");
     if (on_destroy) {
-      size_t count = 1;
+      size_t count = rt->getEnableNewShareGroup() ? 2 : 1;
       String id_str = String::createFromUtf8(*rt, app_guid_);
       Value id_value(*rt, id_str);
-      const Value args[1] = {std::move(id_value)};
+      const Value args[2] = {std::move(id_value), Value(*rt, global)};
       on_destroy->call(*rt, args, count);
     }
   }

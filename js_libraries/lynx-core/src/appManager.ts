@@ -7,7 +7,11 @@
 import { BaseApp, loadCardParams, NativeApp } from './app';
 import { Lynx, NativeLynxProxy } from './lynx';
 import { alog } from './common/log';
-import nativeGlobal, { seedPageGlobal } from './common/nativeGlobal';
+import nativeGlobal, {
+  PageGlobal,
+  resolvePageGlobal,
+  seedPageGlobal,
+} from './common/nativeGlobal';
 import { APP_SERVICE_NAME, DEFAULT_ENTRY, LynxFeature } from './common';
 import { ReactApp } from './react/reactApp';
 import { InternalRuntimeError, reportError } from './modules/report';
@@ -24,6 +28,7 @@ export function loadCard(
   let loadSuccess: boolean = true;
   let tt: ReactApp | StandaloneApp;
   seedPageGlobal(params);
+  const pageGlobal = resolvePageGlobal(params);
   try {
     if (cardType == 'standalone') {
       tt = new StandaloneApp({ nativeApp, params, lynx }, params);
@@ -34,11 +39,11 @@ export function loadCard(
           params,
           lynx,
         },
-        nativeGlobal?.multiApps[id]
+        pageGlobal.multiApps[id]
       );
     }
-    nativeGlobal.currentAppId = id;
-    nativeGlobal.multiApps[id] = tt;
+    pageGlobal.currentAppId = id;
+    pageGlobal.multiApps[id] = tt;
 
     if (cardType === 'standalone') {
       nativeApp.setCard(tt);
@@ -68,21 +73,27 @@ export function loadCard(
   return loadSuccess;
 }
 
-export function destroyCard(id: string): void {
+export function destroyCard(
+  id: string,
+  pageGlobal: PageGlobal = nativeGlobal
+): void {
   alog(`destroy ${id}`);
-  const appInstance = nativeGlobal.multiApps[id];
+  const appInstance = pageGlobal.multiApps[id];
   appInstance.destroy();
   // The shared-data subject is group-wide and outlives this page. Any observer
   // this page left behind is a function object of the page's own realm, which
   // would keep that realm alive, so drop them all here.
   nativeGlobal.shareDataSubject.removeObserversOfOwner(id);
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-  delete nativeGlobal.multiApps[id];
+  delete pageGlobal.multiApps[id];
 }
 
-export function callDestroyLifetimeFun(id: string): void {
+export function callDestroyLifetimeFun(
+  id: string,
+  pageGlobal: PageGlobal = nativeGlobal
+): void {
   alog(`callDestroyLifetimeFun ${id}`);
-  const appInstance = nativeGlobal.multiApps[id];
+  const appInstance = pageGlobal.multiApps[id];
   appInstance.callDestroyLifetimeFun();
 }
 

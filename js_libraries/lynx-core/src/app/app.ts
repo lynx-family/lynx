@@ -922,6 +922,7 @@ export abstract class BaseApp<
     const enablePromiseMemoryFix =
       this.params.pageConfigSubset?.enablePromiseMemoryFix ?? true;
     const nativeAppId = this.nativeAppId;
+    const pageGlobal = this.pageGlobal;
     const onUnhandled = enablePromiseMemoryFix
       ? (id, reason: Error) => {
           try {
@@ -931,7 +932,7 @@ export abstract class BaseApp<
               }
               reason.name = 'unhandled rejection';
 
-              const app = nativeGlobal.multiApps[nativeAppId] as
+              const app = pageGlobal.multiApps[nativeAppId] as
                 | BaseApp
                 | undefined;
               if (app) {
