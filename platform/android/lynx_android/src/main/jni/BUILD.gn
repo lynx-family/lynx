@@ -26,6 +26,8 @@ lynx_core_source_set("build") {
     "gen/DisplayMetricsHolder_register_jni.h",
     "gen/EnvUtils_jni.h",
     "gen/EnvUtils_register_jni.h",
+    "gen/FSPReportDispatcher_jni.h",
+    "gen/FSPReportDispatcher_register_jni.h",
     "gen/FluencySample_jni.h",
     "gen/FluencySample_register_jni.h",
     "gen/GradientUtils_jni.h",
