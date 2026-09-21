@@ -84,9 +84,6 @@ const char* kEventReady = "ready";
 const char* kEventUpdate = "update";
 const char* kEventFps = "fps";
 const char* kEventFirstFrame = "firstframe";
-const char* kEventCompositionReady = "compositionready";
-const char* kEventTapLayers = "taplayers";
-const char* kEventWarning = "warning";
 
 const char* kEventPlaybackStateChanged = "playbackstatechanged";
 const char* kEventLoadingStateChanged = "loadingstatechanged";
