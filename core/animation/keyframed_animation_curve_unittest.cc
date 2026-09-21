@@ -366,12 +366,60 @@ TEST_F(KeyframedAnimationCurveTest, TwoColorKeyFrame) {
   EXPECT_EQ(::lynx::tasm::CSSValue(4294901760u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value1));
-  EXPECT_EQ(::lynx::tasm::CSSValue(4290427392u,
+  EXPECT_EQ(::lynx::tasm::CSSValue(0xff808000u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value2));
   EXPECT_EQ(::lynx::tasm::CSSValue(4278255360u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value3));
+}
+
+TEST_F(KeyframedAnimationCurveTest, ColorInterpolationModes) {
+  using Mode = starlight::XAnimationColorInterpolationType;
+  for (auto mode : {Mode::kSRGB, Mode::kLinearRGB, Mode::kAuto}) {
+    SCOPED_TRACE(static_cast<int>(mode));
+    auto curve = KeyframedColorAnimationCurve::Create(mode);
+    curve->type_ = AnimationCurve::CurveType::BGCOLOR;
+    auto start = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+    start->SetValue(0xff000000);
+    curve->AddKeyframe(std::move(start));
+    auto end =
+        gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    end->SetValue(0xffffffff);
+    curve->AddKeyframe(std::move(end));
+
+    uint32_t expected = 0xff808080;
+    if (mode == Mode::kLinearRGB) {
+      expected = 0xffbcbcbc;
+    } else if (mode == Mode::kAuto) {
+#if !OS_IOS
+      expected = 0xffbcbcbc;
+#endif
+    }
+    auto time = fml::TimeDelta::FromSecondsF(0.5);
+    EXPECT_EQ(expected,
+              static_cast<uint32_t>(curve->GetValue(time).AsNumber()));
+  }
+}
+
+TEST_F(KeyframedAnimationCurveTest, ColorInterpolationPremultipliesAlpha) {
+  using Mode = starlight::XAnimationColorInterpolationType;
+  for (auto mode : {Mode::kSRGB, Mode::kLinearRGB, Mode::kAuto}) {
+    SCOPED_TRACE(static_cast<int>(mode));
+    auto curve = KeyframedColorAnimationCurve::Create(mode);
+    curve->type_ = AnimationCurve::CurveType::BGCOLOR;
+    auto start = gfx::ColorKeyframe::Create(fml::TimeDelta(), nullptr);
+    start->SetValue(0x00ff0000);
+    curve->AddKeyframe(std::move(start));
+    auto end =
+        gfx::ColorKeyframe::Create(fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    end->SetValue(0xff0000ff);
+    curve->AddKeyframe(std::move(end));
+
+    auto time = fml::TimeDelta::FromSecondsF(0.5);
+    EXPECT_EQ(0x800000ffu,
+              static_cast<uint32_t>(curve->GetValue(time).AsNumber()));
+  }
 }
 
 // Tests that a color animation with three keyframes works as expected.
@@ -402,13 +450,13 @@ TEST_F(KeyframedAnimationCurveTest, ThreeColorKeyFrame) {
   EXPECT_EQ(::lynx::tasm::CSSValue(4294901760u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value1));
-  EXPECT_EQ(::lynx::tasm::CSSValue(4290427392u,
+  EXPECT_EQ(::lynx::tasm::CSSValue(0xff808000u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value2));
   EXPECT_EQ(::lynx::tasm::CSSValue(4278255360u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value3));
-  EXPECT_EQ(::lynx::tasm::CSSValue(4278237882u,
+  EXPECT_EQ(::lynx::tasm::CSSValue(0xff008080u,
                                    ::lynx::tasm::CSSValuePattern::NUMBER),
             curve->GetValue(value4));
   EXPECT_EQ(::lynx::tasm::CSSValue(4278190335u,

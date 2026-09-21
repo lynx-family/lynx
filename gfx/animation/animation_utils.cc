@@ -71,10 +71,23 @@ uint8_t ClampToByte(double v) {
 
 ColorARGB32 InterpColor(ColorARGB32 a, ColorARGB32 b, double p,
                         ColorInterpolation mode) {
-  double gamma = 1.0;
-  if (mode == ColorInterpolation::kSRGB || mode == ColorInterpolation::kAuto) {
-    gamma = 2.2;
-  }
+  const bool linear_rgb = mode == ColorInterpolation::kLinearRGB ||
+                          mode == ColorInterpolation::kAuto;
+  const auto decode = [linear_rgb](double channel) {
+    if (linear_rgb) {
+      return channel <= 0.04045 ? channel / 12.92
+                                : std::pow((channel + 0.055) / 1.055, 2.4);
+    }
+    return channel;
+  };
+  const auto encode = [linear_rgb](double channel) {
+    if (linear_rgb) {
+      return channel <= 0.0031308
+                 ? channel * 12.92
+                 : 1.055 * std::pow(channel, 1.0 / 2.4) - 0.055;
+    }
+    return channel;
+  };
 
   auto aA = ((a >> 24) & 0xff) / 255.0;
   auto aR = ((a >> 16) & 0xff) / 255.0;
@@ -85,27 +98,18 @@ ColorARGB32 InterpColor(ColorARGB32 a, ColorARGB32 b, double p,
   auto bG = ((b >> 8) & 0xff) / 255.0;
   auto bB = ((b) & 0xff) / 255.0;
 
-  if (mode == ColorInterpolation::kLinearRGB ||
-      mode == ColorInterpolation::kSRGB || mode == ColorInterpolation::kAuto) {
-    aR = std::pow(aR, gamma);
-    aG = std::pow(aG, gamma);
-    aB = std::pow(aB, gamma);
-    bR = std::pow(bR, gamma);
-    bG = std::pow(bG, gamma);
-    bB = std::pow(bB, gamma);
-  }
-
   double oA = Lerp(aA, bA, p);
-  double oR = Lerp(aR, bR, p);
-  double oG = Lerp(aG, bG, p);
-  double oB = Lerp(aB, bB, p);
-
-  if (mode == ColorInterpolation::kLinearRGB ||
-      mode == ColorInterpolation::kSRGB || mode == ColorInterpolation::kAuto) {
-    oR = std::pow(oR, 1.0 / gamma);
-    oG = std::pow(oG, 1.0 / gamma);
-    oB = std::pow(oB, 1.0 / gamma);
+  if (oA <= 0.0) {
+    return 0;
   }
+  // Premultiply in the interpolation space, then unpremultiply before encoding.
+  // Use the unrounded alpha so even very small alpha preserves the color.
+  const auto interpolate_channel = [&](double start, double end) {
+    return encode(Lerp(decode(start) * aA, decode(end) * bA, p) / oA);
+  };
+  double oR = interpolate_channel(aR, bR);
+  double oG = interpolate_channel(aG, bG);
+  double oB = interpolate_channel(aB, bB);
 
   uint32_t A = ClampToByte(oA * 255.0);
   uint32_t R = ClampToByte(oR * 255.0);

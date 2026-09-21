@@ -417,6 +417,74 @@ TEST_F(KeyframeEffectTest, TickSamplesBoxShadowAnimationCurve) {
   EXPECT_EQ(0x80000000u, GetBoxShadowColor(sampled_value));
 }
 
+TEST_F(KeyframeEffectTest, BoxShadowUsesColorInterpolationStyle) {
+  using Mode = starlight::XAnimationColorInterpolationType;
+  for (auto mode : {Mode::kSRGB, Mode::kLinearRGB, Mode::kAuto}) {
+    SCOPED_TRACE(static_cast<int>(mode));
+    element_ = manager->CreateFiberElement("view");
+    element_->computed_css_style()->SetValue(
+        kPropertyIDXAnimationColorInterpolation,
+        CSSValue(static_cast<int>(mode), CSSValuePattern::ENUM));
+    ASSERT_EQ(mode,
+              element_->computed_css_style()->new_animator_interpolation());
+    auto curve = animation::KeyframedBoxShadowAnimationCurve::Create();
+    curve->type_ = animation::AnimationCurve::CurveType::BOX_SHADOW;
+    curve->SetElement(element_.get());
+    auto start =
+        animation::BoxShadowKeyframe::Create(fml::TimeDelta(), nullptr);
+    start->SetBoxShadow(MakeBoxShadowValue(0.f, 0.f, 0.f, 0.f, 0xff000000));
+    curve->AddKeyframe(std::move(start));
+    auto end = animation::BoxShadowKeyframe::Create(
+        fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    end->SetBoxShadow(MakeBoxShadowValue(0.f, 0.f, 0.f, 0.f, 0xffffffff));
+    curve->AddKeyframe(std::move(end));
+
+    uint32_t expected = 0xff808080;
+    if (mode == Mode::kLinearRGB) {
+      expected = 0xffbcbcbc;
+    } else if (mode == Mode::kAuto) {
+#if !OS_IOS
+      expected = 0xffbcbcbc;
+#endif
+    }
+    auto time = fml::TimeDelta::FromSecondsF(0.5);
+    auto value = curve->GetValue(time);
+    ASSERT_TRUE(value.IsArray());
+    ASSERT_EQ(1u, value.GetArray()->size());
+    EXPECT_EQ(expected, GetBoxShadowColor(value));
+  }
+}
+
+TEST_F(KeyframeEffectTest, BoxShadowInterpolationPremultipliesAlpha) {
+  using Mode = starlight::XAnimationColorInterpolationType;
+  for (auto mode : {Mode::kSRGB, Mode::kLinearRGB, Mode::kAuto}) {
+    SCOPED_TRACE(static_cast<int>(mode));
+    element_ = manager->CreateFiberElement("view");
+    element_->computed_css_style()->SetValue(
+        kPropertyIDXAnimationColorInterpolation,
+        CSSValue(static_cast<int>(mode), CSSValuePattern::ENUM));
+    ASSERT_EQ(mode,
+              element_->computed_css_style()->new_animator_interpolation());
+    auto curve = animation::KeyframedBoxShadowAnimationCurve::Create();
+    curve->type_ = animation::AnimationCurve::CurveType::BOX_SHADOW;
+    curve->SetElement(element_.get());
+    auto start =
+        animation::BoxShadowKeyframe::Create(fml::TimeDelta(), nullptr);
+    start->SetBoxShadow(MakeBoxShadowValue(0.f, 0.f, 0.f, 0.f, 0x00ff0000));
+    curve->AddKeyframe(std::move(start));
+    auto end = animation::BoxShadowKeyframe::Create(
+        fml::TimeDelta::FromSecondsF(1.0), nullptr);
+    end->SetBoxShadow(MakeBoxShadowValue(0.f, 0.f, 0.f, 0.f, 0xff0000ff));
+    curve->AddKeyframe(std::move(end));
+
+    auto time = fml::TimeDelta::FromSecondsF(0.5);
+    auto value = curve->GetValue(time);
+    ASSERT_TRUE(value.IsArray());
+    ASSERT_EQ(1u, value.GetArray()->size());
+    EXPECT_EQ(0x800000ffu, GetBoxShadowColor(value));
+  }
+}
+
 TEST_F(KeyframeEffectTest, GetKeyframeModelByCurveType) {
   animation::KeyframeEffect* test_effect = InitTestEffect();
   animation::KeyframeModel* opacity_model =

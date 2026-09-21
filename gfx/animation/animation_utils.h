@@ -27,6 +27,8 @@ enum class DiscreteFallback : uint8_t {
 };
 
 enum class ColorInterpolation : uint8_t {
+  // Falls back to linearRGB if passed directly to the interpolator.
+  // CSS callers resolve auto to a platform-specific mode before calling.
   kAuto = 0,
   kLinearRGB,
   kSRGB,
