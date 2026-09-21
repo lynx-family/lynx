@@ -193,6 +193,9 @@ static inline bool LynxHasBorderRadii(LynxBorderRadii radii) {
 #pragma mark access info functions
 // TODO(fangzhou):implement [backgroundManager getInfo] and remove these functions
 - (BOOL)hasDifferentBorderRadius;
+// Tracks native nonuniform-radius state on the current view, independently of external clip
+// changes.
+- (BOOL)hasPartialCornerViewState;
 - (void)makeCssDefaultValueToFitW3c;
 - (BOOL)hasDifferentBackgroundColor:(UIColor*)color;
 
