@@ -56,17 +56,26 @@ void Interceptor::Detach(const Interceptor* provider) {
   }
 }
 
-std::shared_ptr<Interceptor> Interceptor::Current(InterceptKind kind,
-                                                  Domain domain) {
+std::shared_ptr<Interceptor> Interceptor::Current(
+    std::initializer_list<InterceptKind> kinds, Domain domain) {
   if (auto provider = current[static_cast<size_t>(domain)].lock()) {
-    return provider->IsAttached() && provider->HasHandlers(kind) ? provider
-                                                                 : nullptr;
+    if (provider->IsAttached()) {
+      for (auto kind : kinds) {
+        if (provider->HasHandlers(kind)) {
+          return provider;
+        }
+      }
+    }
+    return nullptr;
   }
-  if (GetState()
-          .handlers[static_cast<size_t>(domain)][static_cast<size_t>(kind)]
-          .load()) {
-    ReportCoverageGap(
-        kind, "No interceptor environment on the calling thread/domain");
+  for (auto kind : kinds) {
+    if (GetState()
+            .handlers[static_cast<size_t>(domain)][static_cast<size_t>(kind)]
+            .load()) {
+      ReportCoverageGap(
+          kind, "No interceptor environment on the calling thread/domain");
+      break;
+    }
   }
   return nullptr;
 }

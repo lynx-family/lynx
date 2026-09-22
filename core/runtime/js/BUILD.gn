@@ -16,6 +16,8 @@ lynx_core_source_set("js_common") {
 }
 
 js_sources = [
+  "bindings/modules/host_script_jsb_call.cc",
+  "bindings/modules/host_script_jsb_call.h",
   "bindings/modules/lynx_jsi_module.cc",
   "bindings/modules/lynx_jsi_module.h",
   "bindings/modules/lynx_jsi_module_binding.cc",
@@ -93,6 +95,7 @@ lynx_core_source_set("js") {
   deps = [
     ":utils",
     "../../../third_party/rapidjson",
+    "../../shell/host_script/runtime:interceptor_core",
     "../common:common",
     "../common:reporter",
     "../common/bindings/modules:native_modules",

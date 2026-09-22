@@ -653,6 +653,7 @@ subspec_target("JSRuntime") {
     "../../../../core/runtime/profile:profile",
     "../../../../core/runtime/profile/quickjs:quickjs_profile",
     "../../../../core/runtime/trace:runtime_trace",
+    "../../../../core/shell/host_script/runtime:interceptor_core",
   ]
 
   libraries = [ "stdc++" ]

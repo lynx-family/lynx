@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstring>
 #include <optional>
+#include <unordered_set>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -210,6 +211,7 @@ bool ValidMock(const Value& mock, const Value& event) {
   auto callbacks = mock.GetProperty("callbacks");
   if (!callbacks.IsArray()) return false;
   auto indices = event.GetProperty("callbackIndices");
+  std::unordered_set<int> delivered_indices;
   for (int i = 0; i < callbacks.GetLength(); ++i) {
     auto callback = callbacks.GetProperty(i);
     if (!callback.IsTable() || callback.GetLength() != 2 ||
@@ -219,6 +221,10 @@ bool ValidMock(const Value& mock, const Value& event) {
     for (int j = 0; j < indices.GetLength(); ++j)
       found |= callback.GetProperty("argumentIndex") == indices.GetProperty(j);
     if (!found) return false;
+    // A callback registration is consumed by one delivery.
+    auto index =
+        static_cast<int>(callback.GetProperty("argumentIndex").Number());
+    if (!delivered_indices.insert(index).second) return false;
   }
   return true;
 }
