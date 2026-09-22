@@ -377,6 +377,10 @@ class DisplayList {
 
   bool RootNeedClipBounds() const { return root_need_clip_bounds_; }
 
+  // Heap storage owned by this list, excluding sizeof(DisplayList) and
+  // shared image resources. Sampling must not allocate lazy buffers.
+  int64_t GetOwnedMemoryUsageBytes() const;
+
   void Clear();
 
   void ClearSubtreeProperties();

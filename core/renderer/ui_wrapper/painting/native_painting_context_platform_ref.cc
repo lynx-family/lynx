@@ -194,6 +194,7 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
 
 void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
     std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
+  engine_generation_->fetch_add(1);
   engine_actor_ = engine_actor;
   // Event geometry uses layout units, which may differ from physical pixels.
   float layouts_unit_per_px = 1.0f;
@@ -800,6 +801,7 @@ void NativePaintingCtxPlatformRef::Destroy() {
   if (destroyed_.exchange(true, std::memory_order_acq_rel)) {
     return;
   }
+  engine_generation_->fetch_add(1);
   renderers_.clear();
   platform_event_bundles_.clear();
   text_event_target_ranges_.clear();

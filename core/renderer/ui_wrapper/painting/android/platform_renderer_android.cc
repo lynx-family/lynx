@@ -92,6 +92,18 @@ void PlatformRendererAndroid::OnRemoveFromParent(bool should_update_ui_owner) {
   }
 }
 
+int64_t PlatformRendererAndroid::GetMemoryUsageBytes() const {
+  return PlatformRendererImpl::GetMemoryUsageBytes() + sizeof(*this) -
+         sizeof(PlatformRendererImpl) +
+         (context_ ? context_->GetPlatformRendererMemoryUsage(GetId()) : 0);
+}
+
+void PlatformRendererAndroid::OnRemovedFromParent() {
+  if (context_) {
+    context_->RequestExternalMemoryReport();
+  }
+}
+
 void PlatformRendererAndroid::InitializeAndroidView(
     const fml::RefPtr<PropBundle>& init_data) {
   if (!context_) {

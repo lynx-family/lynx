@@ -17,6 +17,25 @@ void DisplayList::Reserve(int32_t capacity) {
   content_data_->reserve(capacity * kPreAllocatedCapacityForData);
 }
 
+int64_t DisplayList::GetOwnedMemoryUsageBytes() const {
+  auto heap_bytes = [](const auto& buffer) -> int64_t {
+    return buffer.is_static_buffer()
+               ? 0
+               : buffer.capacity() * sizeof(*buffer.data());
+  };
+  int64_t bytes = heap_bytes(sub_layers_) + heap_bytes(images_);
+  if (const auto* items = content_items_.get()) {
+    bytes += sizeof(*items) + heap_bytes(*items);
+  }
+  if (const auto* data = content_data_.get()) {
+    bytes += sizeof(*data) + heap_bytes(*data);
+  }
+  if (const auto* properties = subtree_properties_.get()) {
+    bytes += sizeof(*properties) + heap_bytes(*properties);
+  }
+  return bytes;
+}
+
 void DisplayList::Clear() {
   if (content_items_.has_value()) {
     content_items_->clear();

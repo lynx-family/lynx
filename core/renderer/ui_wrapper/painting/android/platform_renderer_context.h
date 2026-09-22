@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/closure.h"
@@ -36,6 +37,13 @@ class PlatformRendererContext {
       : java_ref_(env, j_this) {}
 
   void Destroy();
+
+  void SetPaintingContextRef(
+      std::weak_ptr<NativePaintingCtxPlatformRef> painting_context) {
+    painting_context_ = std::move(painting_context);
+  }
+  void RequestExternalMemoryReport();
+  int64_t GetPlatformRendererMemoryUsage(int32_t id);
 
   void CreatePlatformRenderer(int32_t id, PlatformRendererType type);
   void CreatePlatformExtendedRenderer(int32_t id, const base::String& tag_name,
@@ -107,6 +115,7 @@ class PlatformRendererContext {
                               const lepus::Value& data);
 
  private:
+  std::weak_ptr<NativePaintingCtxPlatformRef> painting_context_;
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;
   base::InlineOrderedFlatMap<int32_t, PlatformRendererAndroid*, 64>
       renderer_registry_;

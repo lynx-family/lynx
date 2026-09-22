@@ -29,6 +29,33 @@ TEST_F(DisplayListTest, EmptyDisplayList) {
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
 }
 
+TEST_F(DisplayListTest,
+       MemorySamplingDoesNotAllocateAndTracksRetainedCapacity) {
+  EXPECT_EQ(display_list_->GetOwnedMemoryUsageBytes(), 0);
+  EXPECT_EQ(display_list_->GetOwnedMemoryUsageBytes(), 0);
+  DisplayListItem item{};
+  for (int i = 0; i < 32; ++i) {
+    display_list_->AppendItem(item);
+  }
+  const auto allocated = display_list_->GetOwnedMemoryUsageBytes();
+  EXPECT_GE(allocated, 32 * sizeof(DisplayListItem));
+  display_list_->Clear();
+  EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
+  EXPECT_EQ(display_list_->GetOwnedMemoryUsageBytes(), allocated);
+  DisplayList moved(std::move(*display_list_));
+  EXPECT_EQ(moved.GetOwnedMemoryUsageBytes(), allocated);
+  EXPECT_EQ(display_list_->GetOwnedMemoryUsageBytes(), 0);
+}
+
+TEST_F(DisplayListTest, MemoryEstimateExcludesInlineSublayers) {
+  for (int i = 0; i < 16; ++i) {
+    display_list_->AddSubLayer(i);
+  }
+  EXPECT_EQ(display_list_->GetOwnedMemoryUsageBytes(), 0);
+  display_list_->AddSubLayer(16);
+  EXPECT_GE(display_list_->GetOwnedMemoryUsageBytes(), 17 * sizeof(int));
+}
+
 TEST_F(DisplayListTest, AddSingleItem) {
   DisplayListItem item;
   item.type = DisplayListOpType::kFill;

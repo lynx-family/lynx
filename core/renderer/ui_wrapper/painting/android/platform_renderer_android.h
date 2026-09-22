@@ -32,6 +32,8 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
                               PlatformRendererInitConfig());
   ~PlatformRendererAndroid() override;
 
+  int64_t GetMemoryUsageBytes() const override;
+
  protected:
   // PlatformRendererImpl interface
   void OnUpdateDisplayList(DisplayList display_list) override;
@@ -39,6 +41,7 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   void OnAddChild(PlatformRenderer* child, int index,
                   bool should_update_ui_owner) override;
   void OnRemoveFromParent(bool should_update_ui_owner) override;
+  void OnRemovedFromParent() override;
   void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) override;
 
