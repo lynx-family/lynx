@@ -9,35 +9,28 @@ lynx_core_source_set("host_script") {
   sources = [
     "../lynx_view/lynx_view_ref_proxy.h",
     "../lynx_view/lynx_view_ref_types.h",
+    "host_script_interceptor.cc",
+    "host_script_interceptor.h",
     "host_script_js_dispatcher.cc",
     "host_script_js_dispatcher.h",
+    "host_script_jsb_call.cc",
+    "host_script_jsb_call.h",
     "host_script_module.cc",
     "host_script_module.h",
     "host_script_session.cc",
     "host_script_session.h",
-  ]
-
-  deps = [
-    "../../../../third_party/binding/napi:napi_binding_base",
-    "../../../runtime/common/napi:napi_binding_core",
-  ]
-}
-
-lynx_core_source_set("interceptor_core") {
-  sources = [
     "interceptor.cc",
     "interceptor.h",
   ]
-  public_deps = [ "../../../../base/src:base_values" ]
-}
 
-lynx_core_source_set("interceptor") {
-  public_deps = [ ":interceptor_core" ]
-  sources = [
-    "host_script_interceptor.cc",
-    "host_script_interceptor.h",
+  public_deps = [ "../../../../base/src:base_values" ]
+  deps = [
+    "../../../../third_party/binding/napi:napi_binding_base",
+    "../../../build",
+    "../../../runtime/common/napi:napi_binding_core",
+    "../../../runtime/js/jsi",
+    "../../../value_wrapper:value_wrapper",
   ]
-  deps = [ "../../../runtime/common/napi:napi_binding_core" ]
 }
 
 lynx_core_source_set("process_runtime") {
@@ -54,9 +47,25 @@ lynx_core_source_set("process_runtime") {
 }
 
 if (enable_unittests) {
+  if (is_android) {
+    unittest_exec("host_script_jsb_call_unittests_exec") {
+      sources = [ "host_script_jsb_call_unittest.cc" ]
+      deps = [
+        ":host_script",
+        "../../../inspector:inspector",
+        "../../../renderer/dom:dom",
+        "../../../runtime",
+      ]
+      if (enable_testbench_recorder) {
+        deps += [
+          "../../../../base/src:base_group",
+          "../../../services/recorder:recorder",
+        ]
+      }
+    }
+  }
   host_script_test_deps = [
     ":host_script",
-    ":interceptor",
     "../../../../third_party/napi:quickjs",
     "../../../../third_party/quickjs",
     "../../../runtime/common/napi:napi_binding_quickjs",
