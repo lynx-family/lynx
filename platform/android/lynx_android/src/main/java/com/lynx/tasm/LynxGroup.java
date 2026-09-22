@@ -22,6 +22,7 @@ public class LynxGroup {
   public static String SINGNLE_GROUP = "-1";
 
   private String mGroupName;
+  private boolean mIDWasGenerated;
 
   /**
    * The `mID` property should ideally be set to `SINGLE_GROUP`
@@ -52,7 +53,8 @@ public class LynxGroup {
 
   private LynxGroup(LynxGroupBuilder builder) {
     this.mGroupName = builder.mGroupName;
-    this.mID = builder.mID != null ? builder.mID : generateID();
+    this.mIDWasGenerated = builder.mID == null;
+    this.mID = mIDWasGenerated ? generateID() : builder.mID;
     this.mPreloadJSPaths = builder.mPreloadJSPaths;
     this.mEnableNewShareGroup = builder.mEnableNewShareGroup;
 
@@ -92,6 +94,11 @@ public class LynxGroup {
 
   public String getID() {
     return mID;
+  }
+
+  @Nullable
+  String getMonitoringGroupLabel() {
+    return mIDWasGenerated ? mGroupName : null;
   }
 
   @Nullable

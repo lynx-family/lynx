@@ -172,6 +172,7 @@ class BTSRuntime final {
 
   void SetEnableBytecode(bool enable, const std::string& bytecode_source_url);
 
+  void SetMonitoringGroupLabel(std::string monitoring_group_label);
   void SetPageOptions(const tasm::PageOptions& page_options);
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
 
@@ -265,6 +266,7 @@ class BTSRuntime final {
   static int64_t GenerateRuntimeId();
 
   base::LogContext log_context_;
+  std::string monitoring_group_label_;
   const std::string group_id_;
   const int32_t instance_id_;
   const std::unique_ptr<runtime::TemplateDelegate> delegate_;

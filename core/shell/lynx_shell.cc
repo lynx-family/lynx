@@ -566,7 +566,8 @@ void LynxShell::InitRuntime(
     std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
     const std::string& code_cache_source_url,
     const std::shared_ptr<base::VSyncMonitorPlatformImpl>&
-        vsync_monitor_platform_impl) {
+        vsync_monitor_platform_impl,
+    std::string monitoring_group_label) {
   [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_INIT_RUNTIME,
               [flow_id](lynx::perfetto::EventContext ctx) {
@@ -616,6 +617,7 @@ void LynxShell::InitRuntime(
   auto runtime = std::make_unique<BTSRuntime>(
       group_id, runtime_context, instance_id_, std::move(delegate),
       code_cache_source_url, runtime_flags, page_options_);
+  runtime->SetMonitoringGroupLabel(std::move(monitoring_group_label));
   runtime->SetPageOptions(page_options_);
   runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       std::move(runtime), js_task_runner, instance_id_, enable_runtime_);

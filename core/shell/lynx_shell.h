@@ -124,7 +124,8 @@ class LynxShell {
       std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
       const std::string& bytecode_source_url,
       const std::shared_ptr<base::VSyncMonitorPlatformImpl>&
-          vsync_monitor_platform_impl = nullptr);
+          vsync_monitor_platform_impl = nullptr,
+      std::string monitoring_group_label = {});
 
   // This method attaches a pre-created LynxRuntime to the LynxShell:
   // so only one of `AttachRuntime` and `InitRuntime` will be called

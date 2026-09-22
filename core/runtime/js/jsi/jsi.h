@@ -118,6 +118,11 @@ class JSRuntimeDelegate;
 struct JSRuntimeExternalParams {
   int64_t runtime_id = 0;
   std::string group_id;
+  // Caller-provided label for monitoring. On Android, this is initialized from
+  // the LynxGroup name. For historical compatibility, group_id may be a
+  // semantically meaningless auto-generated numeric string when no explicit
+  // ID is provided, so it should not be used as the monitoring label.
+  std::string monitoring_group_label;
   bool enable_user_bytecode = false;
   bool enable_js_call_timeout_guard = false;
   uint32_t js_call_timeout_ms = 0;

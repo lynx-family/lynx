@@ -305,6 +305,7 @@ INSTANTIATE_TEST_SUITE_P(WithAndWithoutBTSRuntime, LynxShellBuilderRecorderTest,
 #endif
 
 TEST_F(LynxShellBuilderTest, InitRuntimePublishesCompleteLogContext) {
+  constexpr char kMonitoringGroupLabel[] = "monitoring-group";
   auto facade = std::make_unique<MockNativeFacade>();
   auto* facade_ptr = facade.get();
   auto painting_context =
@@ -325,7 +326,7 @@ TEST_F(LynxShellBuilderTest, InitRuntimePublishesCompleteLogContext) {
   shell_->InitRuntime(
       "group", nullptr, nullptr,
       [](const std::shared_ptr<LynxActor<BTSRuntime>>&) {}, {},
-      LynxRuntimeFlags::PENDING_JS_TASK, "");
+      LynxRuntimeFlags::PENDING_JS_TASK, "", nullptr, kMonitoringGroupLabel);
 
   const auto context = shell_->GetLogContextSnapshot();
   EXPECT_NE(context.runtime_id, base::kUnavailableLynxEntityId);
@@ -348,6 +349,9 @@ TEST_F(LynxShellBuilderTest, InitRuntimePublishesCompleteLogContext) {
     return runtime->GetLogContext().runtime_id;
   }),
             context.runtime_id);
+  EXPECT_EQ(shell_->runtime_actor_->ActSync(
+                [](auto& runtime) { return runtime->monitoring_group_label_; }),
+            kMonitoringGroupLabel);
   EXPECT_EQ(shell_->perf_controller_actor_->ActSync([](auto& controller) {
     return controller->GetLogContext().runtime_id;
   }),

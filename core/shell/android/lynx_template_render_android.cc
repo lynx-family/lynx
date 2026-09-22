@@ -506,9 +506,9 @@ void AttachRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 
 void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
                  jobject resource_loader, jobject java_module_factory,
-                 jstring java_group_id, jobjectArray preload_js_paths,
-                 jstring bytecode_source_url, jint runtime_flag,
-                 jlong ui_delegate_ptr) {
+                 jstring java_group_id, jstring java_monitoring_group_label,
+                 jobjectArray preload_js_paths, jstring bytecode_source_url,
+                 jint runtime_flag, jlong ui_delegate_ptr) {
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   // Create native module manager
   std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
@@ -526,6 +526,8 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
         ui_delegate->GetCustomModuleFactory());
   }
   std::string group_id = JNIConvertHelper::ConvertToString(env, java_group_id);
+  std::string monitoring_group_label =
+      JNIConvertHelper::ConvertToString(env, java_monitoring_group_label);
   std::string source_url =
       JNIConvertHelper::ConvertToString(env, bytecode_source_url);
   auto paths = JNIConvertHelper::ConvertJavaStringArrayToStringVector(
@@ -540,7 +542,8 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
   };
   shell->InitRuntime(group_id, loader, native_module_manager,
                      std::move(on_runtime_actor_created), std::move(paths),
-                     runtime_flag, source_url);
+                     runtime_flag, source_url, nullptr,
+                     std::move(monitoring_group_label));
 }
 
 void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
