@@ -99,6 +99,30 @@ TEST(BTSRuntimeMediatorTest,
   EXPECT_EQ(lazy_bundle_loader->fetch_bundle_call_count_, 0);
 }
 
+TEST(BTSRuntimeMediatorTest,
+     FetchBundleShouldFailImmediatelyWhenEngineIsDestroyed) {
+  auto task_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
+  auto engine_actor = std::make_shared<LynxActor<LynxEngine>>(
+      std::unique_ptr<LynxEngine>(), task_runner);
+  auto external_resource_loader = std::make_unique<ExternalResourceLoader>();
+  auto mediator =
+      BTSRuntimeMediator(nullptr, engine_actor, nullptr, nullptr, task_runner,
+                         std::move(external_resource_loader));
+  mediator.runtime_standalone_mode_ = false;
+
+  constexpr const char kBundleUrl[] = "https://example.com/lazy.bundle";
+  auto response_promise =
+      std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+  mediator.FetchBundle(kBundleUrl, response_promise);
+  auto result = response_promise->Wait(0);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->url, kBundleUrl);
+  EXPECT_EQ(result->code, tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED);
+  EXPECT_EQ(result->error_msg,
+            "fetchBundle failed: Lynx engine has been destroyed");
+}
+
 TEST(JsBundleHolderImplTest, TemplateBundleCacheIsClearedWhenJSBundleInserted) {
   EmptyBundleProxy proxy;
   tasm::JsBundleHolderImpl holder(proxy);
