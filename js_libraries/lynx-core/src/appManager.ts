@@ -50,6 +50,13 @@ export function loadCard(
       return true;
     }
 
+    tt.onAppReload = (
+      updateData?: object,
+      options?: { processorName?: string }
+    ): void => {
+      reloadCard(tt as BaseApp, updateData, options);
+    };
+
     alog(
       `load card native app load app-service.js params.bundleSupportLoadScript ${params.bundleSupportLoadScript}`
     );
@@ -71,6 +78,36 @@ export function loadCard(
     loadSuccess = false;
   }
   return loadSuccess;
+}
+
+/**
+ * Reload a card by evaluating its entry again, instead of re-rendering whatever
+ * the framework kept from the previous render.
+ *
+ * {@link loadCard} installs this as the default `onAppReload`, so native's
+ * `App::OnAppReload` lands here unless the framework overrides it. The old app
+ * is torn down first, then {@link loadCard} builds a fresh app that reuses the
+ * native plumbing (`nativeApp`, `lynx`, the event emitter) while app-service.js
+ * and the bundles it pulls in are evaluated again, so their module scoped state
+ * starts over.
+ */
+export function reloadCard(
+  tt: BaseApp,
+  updateData?: object,
+  options?: { processorName?: string }
+): boolean {
+  alog(`reload card native app id: ${tt.nativeAppId}`);
+  tt.callDestroyLifetimeFun?.();
+  return loadCard(
+    tt.nativeApp,
+    {
+      ...tt.params,
+      updateData,
+      processorName: options?.processorName,
+      isReload: true,
+    },
+    tt.lynx.getNativeLynx()
+  );
 }
 
 export function destroyCard(
