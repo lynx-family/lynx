@@ -3358,8 +3358,7 @@ void Element::PrepareChildren() {
       element_child->PrepareForCreateOrUpdate();
     }
 
-    if (element_child->IsLayoutOnly() && !element_child->is_raw_text() &&
-        element_child->flush_required()) {
+    if (element_child->IsLayoutOnly() && !element_child->is_raw_text()) {
       element_child->PrepareChildren();
     }
   }

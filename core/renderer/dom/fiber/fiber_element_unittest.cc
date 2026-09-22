@@ -6,7 +6,6 @@
 #define protected public
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <functional>
 #include <map>
@@ -19895,56 +19894,6 @@ TEST_P(FiberElementTest,
 
   EXPECT_TRUE(grandchild->dirty_when_prepared_ &
               Element::kDirtyPropagateInherited);
-}
-
-TEST_P(FiberElementTest, PrepareChildrenSkipsCleanLayoutOnlySubtrees) {
-  class RecordingViewElement final : public ViewElement {
-   public:
-    explicit RecordingViewElement(ElementManager* manager)
-        : ViewElement(manager) {}
-
-    void PrepareChildren() override {
-      ++prepare_children_count_;
-      ViewElement::PrepareChildren();
-    }
-
-    int prepare_children_count_{0};
-  };
-
-  manager->SetEnableParallelElement(false);
-  manager->SetEnableLevelOrderTraversing(false);
-
-  auto page = manager->CreateFiberPage("page", 11);
-  auto parent = manager->CreateFiberView();
-  page->InsertNode(parent);
-
-  std::array<fml::RefPtr<RecordingViewElement>, 3> rows;
-  std::array<fml::RefPtr<ViewElement>, 3> leaves;
-  for (size_t i = 0; i < rows.size(); ++i) {
-    rows[i] =
-        fml::AdoptRef<RecordingViewElement>(new RecordingViewElement(manager));
-    leaves[i] = manager->CreateFiberView();
-    rows[i]->InsertNode(leaves[i]);
-    parent->InsertNode(rows[i]);
-  }
-  page->FlushActionsAsRoot();
-
-  for (const auto& row : rows) {
-    row->is_layout_only_ = true;
-    row->prepare_children_count_ = 0;
-  }
-
-  parent->MarkDirty(Element::kDirtyTree);
-  parent->PrepareChildren();
-  for (const auto& row : rows) {
-    EXPECT_EQ(row->prepare_children_count_, 0);
-  }
-
-  leaves[1]->SetAttribute("data-dirty", lepus::Value("true"));
-  parent->PrepareChildren();
-  EXPECT_EQ(rows[0]->prepare_children_count_, 0);
-  EXPECT_EQ(rows[1]->prepare_children_count_, 1);
-  EXPECT_EQ(rows[2]->prepare_children_count_, 0);
 }
 
 // Helper: create a SharedCSSFragment with CSS selector support and add a rule.
