@@ -29,9 +29,15 @@ void InlineImageShadowNode::TextLayout(LayoutContext* context) {
   TextParagraphBuilder* builder =
       static_cast<LayoutContextText*>(context)->builder();
   builder->PushStyle(text_style_.value());
+  const auto vertical_align = GetVerticalAlign();
+  const auto placeholder_alignment =
+      vertical_align.has_value() && vertical_align->type == kVerticalAlignMiddle
+          ? txt::PlaceholderAlignment::kMiddle
+          : txt::PlaceholderAlignment::kBaseline;
   txt::PlaceholderRun placeholder(
-      Width(), Height() + MarginTop() + MarginBottom(),
-      txt::PlaceholderAlignment::kBaseline, txt::TextBaseline::kAlphabetic,
+      Width() + MarginLeft() + MarginRight(),
+      Height() + MarginTop() + MarginBottom(), placeholder_alignment,
+      txt::TextBaseline::kAlphabetic,
       Height() + MarginTop() + MarginBottom() + baseline_offset_);
   auto* text_context = static_cast<LayoutContextText*>(context);
   start_glyph_ = text_context->TextSizeIncludingPlaceholders();

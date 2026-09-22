@@ -247,6 +247,11 @@ void ParagraphBuilderTTText::ToTTParaStyle(const ParagraphStyle& para_style) {
   tt_para_style.SetLineHeightInPx(
       para_style.height,
       static_cast<ttoffice::tttext::RulerType>(para_style.height_type));
+  if (para_style.has_height_override &&
+      para_style.height_type == txt::RulerType::kExact) {
+    tt_para_style.SetInlineVerticalAlignmentMode(
+        tttext::InlineVerticalAlignmentMode::kLineBox);
+  }
   tt_para_style.EnableTextBounds(para_style.enable_text_bounds);
   tt_para_style.SetDefaultStyle(ToTTStyle(text_style));
   tt_para_style.SetLineSpaceAfterPx(para_style.line_spacing);
