@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "devtool/lynx_devtool/js_debug/js/runtime_manager_delegate_impl.h"
+#include "devtool/lynx_devtool/js_debug/js/js_realm_manager_delegate_impl.h"
 
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/js_executor.h"
@@ -15,18 +15,18 @@
 namespace lynx {
 namespace devtool {
 
-RuntimeManagerDelegateImpl::~RuntimeManagerDelegateImpl() {
+JSRealmManagerDelegateImpl::~JSRealmManagerDelegateImpl() {
   for (const auto& item : release_vm_callback_) {
     (item.second)();
   }
 }
 
-void RuntimeManagerDelegateImpl::BeforeRuntimeCreate(
+void JSRealmManagerDelegateImpl::BeforeRuntimeCreate(
     bool force_use_lightweight_js_engine) {
   JSDebugHelper::GetInstance()->RegisterNapiRuntimeProxy();
 }
 
-void RuntimeManagerDelegateImpl::OnRuntimeReady(
+void JSRealmManagerDelegateImpl::OnRuntimeReady(
     runtime::js::JSExecutor& executor, runtime::js::Runtime& current_runtime,
     const std::string& group_id) {
   // `enable_bytecode` and `bytecode_source_url` parameters are ignored
@@ -36,12 +36,12 @@ void RuntimeManagerDelegateImpl::OnRuntimeReady(
   current_runtime.InitInspector(executor.GetRuntimeObserver());
 }
 
-void RuntimeManagerDelegateImpl::AfterSharedContextCreate(
+void JSRealmManagerDelegateImpl::AfterSharedContextCreate(
     const std::string& group_id, runtime::js::JSRuntimeType type) {
   group_to_engine_type_.emplace(group_id, type);
 }
 
-void RuntimeManagerDelegateImpl::OnRelease(const std::string& group_id) {
+void JSRealmManagerDelegateImpl::OnRelease(const std::string& group_id) {
   auto engine_it = group_to_engine_type_.find(group_id);
   if (engine_it != group_to_engine_type_.end()) {
     auto callback_it = release_context_callback_.find(engine_it->second);
@@ -51,7 +51,7 @@ void RuntimeManagerDelegateImpl::OnRelease(const std::string& group_id) {
   }
 }
 
-std::unique_ptr<runtime::js::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
+std::unique_ptr<runtime::js::Runtime> JSRealmManagerDelegateImpl::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
   // When using a shared js context, create a runtime of the same type as the
@@ -82,7 +82,7 @@ std::unique_ptr<runtime::js::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
 }
 
 std::unique_ptr<runtime::js::Runtime>
-RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
+JSRealmManagerDelegateImpl::MakeRuntimeForSharedContext(
     bool force_use_lightweight_js_engine) {
   LOGI("js debug: create runtime for shared js context!")
   if (force_use_lightweight_js_engine) {
@@ -104,7 +104,7 @@ RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
 
 #if ENABLE_TRACE_PERFETTO
 std::shared_ptr<runtime::profile::RuntimeProfiler>
-RuntimeManagerDelegateImpl::MakeRuntimeProfiler(
+JSRealmManagerDelegateImpl::MakeRuntimeProfiler(
     std::shared_ptr<runtime::js::JSIContext> js_context,
     bool force_use_lightweight_js_engine,
     const tasm::PageOptions& page_options) {
@@ -136,12 +136,12 @@ RuntimeManagerDelegateImpl::MakeRuntimeProfiler(
 }
 #endif  // ENABLE_TRACE_PERFETTO
 
-void RuntimeManagerDelegateImpl::SetReleaseContextCallback(
+void JSRealmManagerDelegateImpl::SetReleaseContextCallback(
     runtime::js::JSRuntimeType type, const ReleaseContextCallback& callback) {
   release_context_callback_[type] = callback;
 }
 
-void RuntimeManagerDelegateImpl::SetReleaseVMCallback(
+void JSRealmManagerDelegateImpl::SetReleaseVMCallback(
     runtime::js::JSRuntimeType type, const ReleaseVMCallback& callback) {
   release_vm_callback_[type] = callback;
 }

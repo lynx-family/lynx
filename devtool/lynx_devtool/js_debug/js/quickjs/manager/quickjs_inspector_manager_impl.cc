@@ -5,8 +5,8 @@
 #include "devtool/lynx_devtool/js_debug/js/quickjs/manager/quickjs_inspector_manager_impl.h"
 
 #include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/js_realm_manager.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
-#include "core/runtime/js/runtime_manager.h"
 #include "devtool/js_inspect/quickjs/quickjs_inspector_client_provider.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 
@@ -46,10 +46,10 @@ void QuickjsInspectorManagerImpl::InitInspector(
   if (group_id_ != devtool::kSingleGroupStr) {
     std::call_once(set_release_ctx_callback,
                    [inspector_client = inspector_client_] {
-                     auto runtime_manager_delegate =
-                         JSExecutor::GetCurrentRuntimeManagerInstance()
-                             ->GetRuntimeManagerDelegate();
-                     runtime_manager_delegate->SetReleaseContextCallback(
+                     auto js_realm_manager_delegate =
+                         JSExecutor::GetCurrentRealmManagerInstance()
+                             ->GetRealmManagerDelegate();
+                     js_realm_manager_delegate->SetReleaseContextCallback(
                          JSRuntimeType::quickjs,
                          [inspector_client](const std::string &group_id) {
                            inspector_client->DestroyInspector(group_id);

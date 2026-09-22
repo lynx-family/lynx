@@ -27,10 +27,10 @@
 namespace lynx {
 
 namespace runtime {
-class RuntimeManager;
+class JSRealmManager;
 class TemplateDelegate;
 class LynxApiHandler;
-class RuntimeManagerDelegate;
+class JSRealmManagerDelegate;
 }  // namespace runtime
 
 namespace runtime {
@@ -70,7 +70,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   void invokeCallback(std::shared_ptr<ModuleCallback> callback,
                       ModuleCallbackFunctionHolder* holder);
 
-  runtime::RuntimeManager* runtimeManagerInstance();
+  runtime::JSRealmManager* realmManagerInstance();
 
   base::UnsafeOwningPtr<App> createNativeAppInstance(
       int64_t rt_id, runtime::TemplateDelegate*,
@@ -86,7 +86,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   std::shared_ptr<ConsoleMessagePostMan> CreateConsoleMessagePostMan();
 
-  static runtime::RuntimeManager* GetCurrentRuntimeManagerInstance();
+  static runtime::JSRealmManager* GetCurrentRealmManagerInstance();
 
   const std::shared_ptr<InspectorRuntimeObserverNG> GetRuntimeObserver() {
     return runtime_observer_ng_;

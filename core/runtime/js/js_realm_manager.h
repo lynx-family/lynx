@@ -1,8 +1,8 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
-#define CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
+#ifndef CORE_RUNTIME_JS_JS_REALM_MANAGER_H_
+#define CORE_RUNTIME_JS_JS_REALM_MANAGER_H_
 
 #include <cstdint>
 #include <memory>
@@ -19,7 +19,7 @@
 #include "core/base/lynx_export.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
-#include "core/runtime/js/js_context_wrapper.h"
+#include "core/runtime/js/js_realm.h"
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
@@ -32,13 +32,13 @@ class JSExecutor;
 }  // namespace runtime
 namespace runtime {
 
-class LYNX_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
+class LYNX_EXPORT_FOR_DEVTOOL JSRealmManagerDelegate {
  public:
   using ReleaseContextCallback =
       std::function<void(const std::string& group_str)>;
   using ReleaseVMCallback = std::function<void()>;
 
-  virtual ~RuntimeManagerDelegate() = default;
+  virtual ~JSRealmManagerDelegate() = default;
 
   virtual void BeforeRuntimeCreate(bool force_use_lightweight_js_engine) = 0;
   virtual void OnRuntimeReady(runtime::js::JSExecutor& executor,
@@ -71,14 +71,14 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
                                     const ReleaseVMCallback& callback) {}
 };
 
-class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
-    : public SharedJSContextWrapper::ReleaseListener {
+class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
+    : public SharedJSRealm::ReleaseListener {
  public:
-  static RuntimeManager* Instance();
-  typedef std::unordered_map<std::string, std::shared_ptr<JSContextWrapper>>
+  static JSRealmManager* Instance();
+  typedef std::unordered_map<std::string, std::shared_ptr<JSRealm>>
       Shared_Context_Map;
 
-  ~RuntimeManager() override;
+  ~JSRealmManager() override;
 
   static bool IsSingleJSContext(const std::string& group_id);
 
@@ -99,33 +99,33 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
   void OnRelease(const std::string& group_id) override;
 
-  RuntimeManagerDelegate* GetRuntimeManagerDelegate() {
-    return runtime_manager_delegate_.get();
+  JSRealmManagerDelegate* GetRealmManagerDelegate() {
+    return js_realm_manager_delegate_.get();
   }
 
-  void SetRuntimeManagerDelegate(
-      std::unique_ptr<RuntimeManagerDelegate> runtime_manager_delegate) {
-    runtime_manager_delegate_ = std::move(runtime_manager_delegate);
+  void SetRealmManagerDelegate(
+      std::unique_ptr<JSRealmManagerDelegate> js_realm_manager_delegate) {
+    js_realm_manager_delegate_ = std::move(js_realm_manager_delegate);
   }
 
-  JSContextWrapper* GetContextWrapper(const std::string& group_id,
-                                      bool enable_new_share_group = false);
+  JSRealm* GetSharedRealm(const std::string& group_id,
+                          bool enable_new_share_group = false);
 
  private:
-  RuntimeManager();
+  JSRealmManager();
 
   // Release listener bound to new-share-group page contexts. Composed (not
-  // inherited by RuntimeManager) so the legacy shared-context release path and
+  // inherited by JSRealmManager) so the legacy shared-context release path and
   // the new-share-group page release path stay dispatched through distinct
   // listener objects, avoiding any group-id ambiguity between the two schemes.
   class NewShareGroupPageReleaseObserver
-      : public SharedJSContextWrapper::ReleaseListener {
+      : public SharedJSRealm::ReleaseListener {
    public:
-    explicit NewShareGroupPageReleaseObserver(RuntimeManager* manager);
+    explicit NewShareGroupPageReleaseObserver(JSRealmManager* manager);
     void OnRelease(const std::string& group_id) override;
 
    private:
-    RuntimeManager* manager_;
+    JSRealmManager* manager_;
   };
 
   void OnNewShareGroupPageRelease(const std::string& group_id);
@@ -152,7 +152,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   // Ensure the group's global context exists (created and corejs loaded once),
   // returning the owning wrapper. The wrapper owns the group's global runtime
   // (and thus the shared VM + global context) and tracks the live page count.
-  NewShareGroupGlobalContextWrapper* EnsureNewShareGroupGlobalContext(
+  SharedVMGlobalRealm* EnsureNewShareGroupGlobalContext(
       bool force_use_lightweight_js_engine,
       const runtime::js::JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options,
@@ -204,8 +204,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   // Each wrapper owns the group's global runtime (shared VM + global context)
   // and tracks the group's live page count; erasing the entry tears the group
   // down.
-  std::unordered_map<std::string,
-                     base::UnsafeOwningPtr<NewShareGroupGlobalContextWrapper>>
+  std::unordered_map<std::string, base::UnsafeOwningPtr<SharedVMGlobalRealm>>
       new_share_group_map_;
   // Observer forwarded to new-share-group page contexts as their release
   // listener; forwards back to OnNewShareGroupPageRelease.
@@ -213,7 +212,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   std::unordered_map<runtime::js::JSRuntimeType,
                      std::shared_ptr<runtime::js::VMInstance>>
       mVMContainer_;
-  std::unique_ptr<RuntimeManagerDelegate> runtime_manager_delegate_;
+  std::unique_ptr<JSRealmManagerDelegate> js_realm_manager_delegate_;
 
   // for memory pressure callback
   std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> weak_runtimes_;
@@ -221,7 +220,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   base::NotificationCallback memory_pressure_callback_;
 
   // These two member variables are only used in snapshot-related methods when
-  // the ENABLE_TRACE_PERFETTO macro is enabled. However, RuntimeManager is an
+  // the ENABLE_TRACE_PERFETTO macro is enabled. However, JSRealmManager is an
   // exported class, and including member variables in a macro could lead to a
   // crash.
   std::mutex pending_vm_snapshot_mutex_;
@@ -231,4 +230,4 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
 
 }  // namespace runtime
 }  // namespace lynx
-#endif  // CORE_RUNTIME_JS_RUNTIME_MANAGER_H_
+#endif  // CORE_RUNTIME_JS_JS_REALM_MANAGER_H_

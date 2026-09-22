@@ -9,8 +9,8 @@
 #include "devtool/lynx_devtool/js_debug/helper/js_debug_helper.h"
 #include "devtool/lynx_devtool/js_debug/js/console_message_postman_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
+#include "devtool/lynx_devtool/js_debug/js/js_realm_manager_delegate_impl.h"
 #include "devtool/lynx_devtool/js_debug/js/native_module_record_observer_impl.h"
-#include "devtool/lynx_devtool/js_debug/js/runtime_manager_delegate_impl.h"
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
 namespace lynx {
@@ -22,15 +22,15 @@ InspectorRuntimeObserverImpl::InspectorRuntimeObserverImpl(
   view_id_ = debugger->GetViewId();
 }
 
-std::unique_ptr<runtime::RuntimeManagerDelegate>
-InspectorRuntimeObserverImpl::CreateRuntimeManagerDelegate() {
+std::unique_ptr<runtime::JSRealmManagerDelegate>
+InspectorRuntimeObserverImpl::CreateRealmManagerDelegate() {
   if (!JSDebugHelper::GetInstance()->IsJSDebugAvailable()) {
     LOGI(
-        "js debug: CreateRuntimeManagerDelegate failed, JS debugging is not "
+        "js debug: CreateRealmManagerDelegate failed, JS debugging is not "
         "available");
     return nullptr;
   }
-  return std::make_unique<RuntimeManagerDelegateImpl>();
+  return std::make_unique<JSRealmManagerDelegateImpl>();
 }
 
 std::unique_ptr<runtime::js::RuntimeInspectorManager>

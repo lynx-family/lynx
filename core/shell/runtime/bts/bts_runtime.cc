@@ -22,9 +22,9 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/js_realm_manager.h"
 #include "core/runtime/js/lynx_api_handler.h"
 #include "core/runtime/js/runtime_constant.h"
-#include "core/runtime/js/runtime_manager.h"
 #include "core/runtime/js/template_delegate.h"
 #include "core/runtime/js/utils.h"
 #include "core/runtime/lepus/json_parser.h"
@@ -308,8 +308,8 @@ void BTSRuntime::TransitionToFullRuntime() {
   std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>
       preload_js_sources;
   ReadCoreJS(preload_js_sources);
-  if (!runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
-    auto* wrapper = runtime::RuntimeManager::Instance()->GetContextWrapper(
+  if (!runtime::JSRealmManager::IsSingleJSContext(group_id_)) {
+    auto* wrapper = runtime::JSRealmManager::Instance()->GetSharedRealm(
         group_id_, runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
     if (wrapper != nullptr) {
       wrapper->EnsureCoreJSLoaded(*rt, preload_js_sources);
@@ -764,17 +764,16 @@ void BTSRuntime::OnJSSourcePrepared(
     // bind icu for js env
     if (bundle.enable_bind_icu) {
 #if ENABLE_NAPI_BINDING
-      if (runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
+      if (runtime::JSRealmManager::IsSingleJSContext(group_id_)) {
         Napi::Env env = napi_environment_->proxy()->Env();
         tasm::I18n::Bind(
             reinterpret_cast<intptr_t>(static_cast<napi_env>(env)));
       } else {
         if (tasm::LynxEnv::GetInstance().GetBoolEnv(
                 tasm::LynxEnv::Key::ENABLE_SHARE_CONTEXT_ICU, false)) {
-          auto* wrapper =
-              runtime::RuntimeManager::Instance()->GetContextWrapper(
-                  group_id_,
-                  runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
+          auto* wrapper = runtime::JSRealmManager::Instance()->GetSharedRealm(
+              group_id_,
+              runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
           if (wrapper) {
             auto napi_environment = wrapper->GetNapiEnvironment();
             if (napi_environment) {
@@ -1235,8 +1234,8 @@ void BTSRuntime::AddLifecycleListener(
   if (listener &&
       listener->Type() ==
           runtime::RuntimeLifecycleListenerDelegate::DelegateType::PART &&
-      !runtime::RuntimeManager::IsSingleJSContext(group_id_)) {
-    auto* wrapper = runtime::RuntimeManager::Instance()->GetContextWrapper(
+      !runtime::JSRealmManager::IsSingleJSContext(group_id_)) {
+    auto* wrapper = runtime::JSRealmManager::Instance()->GetSharedRealm(
         group_id_, runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
     if (wrapper) {
       wrapper->AddLifecycleListener(std::move(listener));
