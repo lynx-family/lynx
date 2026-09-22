@@ -72,19 +72,19 @@ public class RoundedRectangle {
   }
 
   public float getBottomLeftRadiusX() {
-    return mBorderRadii != null ? mBorderRadii[4] : 0.0f;
-  }
-
-  public float getBottomLeftRadiusY() {
-    return mBorderRadii != null ? mBorderRadii[5] : 0.0f;
-  }
-
-  public float getBottomRightRadiusX() {
     return mBorderRadii != null ? mBorderRadii[6] : 0.0f;
   }
 
-  public float getBottomRightRadiusY() {
+  public float getBottomLeftRadiusY() {
     return mBorderRadii != null ? mBorderRadii[7] : 0.0f;
+  }
+
+  public float getBottomRightRadiusX() {
+    return mBorderRadii != null ? mBorderRadii[4] : 0.0f;
+  }
+
+  public float getBottomRightRadiusY() {
+    return mBorderRadii != null ? mBorderRadii[5] : 0.0f;
   }
 
   @Override
