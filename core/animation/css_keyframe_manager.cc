@@ -303,6 +303,28 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
   return true;
 }
 
+fml::TimePoint CSSKeyframeManager::ProcessAnimationEvents(
+    fml::TimePoint& frame_time, bool dispatch_events) {
+  auto next = fml::TimePoint::Max();
+  // Retain animations during event dispatch, keeping the frame queue intact.
+  std::vector<std::shared_ptr<Animation>> animations;
+  animations.reserve(animations_map_.size());
+  for (const auto& entry : animations_map_) {
+    if (entry.second) {
+      animations.push_back(entry.second);
+    }
+  }
+  for (const auto& animation : animations) {
+    auto time = animation->GetNextEventTime(frame_time);
+    if (dispatch_events && time <= frame_time) {
+      animation->TickEvents(frame_time);
+      time = animation->GetNextEventTime(frame_time);
+    }
+    next = std::min(next, time);
+  }
+  return next;
+}
+
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_MANAGER_TICK_ALL_ANIMATION);
   auto temp_vec = std::vector<std::weak_ptr<Animation>>();

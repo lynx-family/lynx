@@ -17,6 +17,7 @@
 #include "core/base/threading/vsync_monitor.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
+#include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
@@ -120,6 +121,8 @@ class LynxShellTest : public ::testing::Test {
         lynx::shell::LynxShellBuilder()
             .SetNativeFacade(std::unique_ptr<NativeFacade>(facade_))
             .SetLayoutContextPlatformImpl(nullptr)
+            .SetPaintingContextPlatformImpl(
+                std::make_unique<tasm::PaintingContextPlatformImpl>())
             .SetStrategy(base::ThreadStrategyForRendering::ALL_ON_UI)
             .SetShellOption(option)
             .SetPropBundleCreator(
@@ -147,6 +150,7 @@ class LynxShellTest : public ::testing::Test {
 
     // check call after destroy, no crash is ok
     shell_->OnEnterForeground();
+    shell_->OnEnterBackground();
 
     shell_ = nullptr;
     auto& env = lynx::tasm::LynxEnv::GetInstance();
@@ -159,6 +163,22 @@ class LynxShellTest : public ::testing::Test {
   TasmMediator* tasm_mediator_ = nullptr;
   std::shared_ptr<fml::AutoResetWaitableEvent> arwe_;
 };
+
+TEST_F(LynxShellTest, LifecycleControlsElementVsyncOnEngineThread) {
+  auto is_paused = [this]() {
+    return shell_->engine_actor_->ActSync([](auto& engine) {
+      return engine->GetTasm()
+          ->page_proxy()
+          ->element_manager()
+          ->IsElementVsyncPaused();
+    });
+  };
+  EXPECT_FALSE(is_paused());
+  shell_->OnEnterBackground();
+  EXPECT_TRUE(is_paused());
+  shell_->OnEnterForeground();
+  EXPECT_FALSE(is_paused());
+}
 
 TEST_F(LynxShellTest, ResetLoadOrderOnlyForEmbeddedMode) {
   shell_->ui_operation_queue_->is_engine_async_ = true;

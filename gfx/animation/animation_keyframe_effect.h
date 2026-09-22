@@ -56,7 +56,7 @@ class GFX_EXPORT KeyframeEffect {
 
   void EnsureFromAndToKeyframe();
 
-  TickResult Tick(fml::TimePoint monotonic_time);
+  TickResult Tick(fml::TimePoint monotonic_time, bool events_only = false);
 
  private:
   friend class lynx::animation::KeyframeEffect;
