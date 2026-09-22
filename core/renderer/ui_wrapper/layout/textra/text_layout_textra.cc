@@ -438,6 +438,11 @@ void TextLayoutTextra::BuildParagraphRecursively(Element* element,
     // no raw-text case
     TextElement* text_element = static_cast<TextElement*>(element);
     ApplyTextStyle(text_element);
+    if (!element->is_inline_element()) {
+      // The paragraph element is the outermost text element, so its style is
+      // the default style of the paragraph.
+      paragraph_builder_->SetParagraphDefaultStyle();
+    }
     auto element_content = text_element->content();
     if (!element_content.empty()) {
       std::string decoded_content = DecodeTextContent(element_content);
@@ -664,6 +669,7 @@ void TextLayoutTextra::BuildInlineTruncation(Element* element,
 
   paragraph_builder_->PushTextStyle();
   ApplyTextStyle(element, CreateTextStylePropertyBits(element));
+  paragraph_builder_->SetParagraphDefaultStyle();
 
   bool pushed_truncation_event_target =
       PushEventTargetIfNeeded(paragraph_builder_, element);
