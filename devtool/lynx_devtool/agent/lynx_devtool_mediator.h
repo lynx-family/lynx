@@ -169,10 +169,10 @@ class LynxDevToolMediator
       const lynx::runtime::js::ConsoleMessage& message);
 
   // Network domain -> devtool executor
-  DECLARE_DEVTOOL_METHOD(NetworkEnable)
-  DECLARE_DEVTOOL_METHOD(NetworkDisable)
-  DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
-  DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetResponseBody);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetRequestPostData);
 
   // LynxNativeModule domain -> native module record manager
   DECLARE_DEVTOOL_CDP_METHOD(NativeModuleEnable);

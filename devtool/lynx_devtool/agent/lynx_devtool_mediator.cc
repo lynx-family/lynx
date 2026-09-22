@@ -1376,34 +1376,30 @@ void LynxDevToolMediator::NativeModuleGetRecords(
 
 // Network protocol
 void LynxDevToolMediator::NetworkEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkEnable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkEnable(responder, params);
   });
 }
 
 void LynxDevToolMediator::NetworkDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkDisable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkDisable(responder, params);
   });
 }
 
 void LynxDevToolMediator::NetworkGetResponseBody(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkGetResponseBody(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkGetResponseBody(responder, params);
   });
 }
 
 void LynxDevToolMediator::NetworkGetRequestPostData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkGetRequestPostData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkGetRequestPostData(responder, params);
   });
 }
 

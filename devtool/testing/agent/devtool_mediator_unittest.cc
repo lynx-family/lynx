@@ -1054,9 +1054,9 @@ TEST_F(DevToolMediatorTest, NetworkCaptureEnqueuedAfterDisableIsDropped) {
   auto observer = devtool_mediator_->devtool_executor_->network_observer_;
   devtool::MockReceiver::GetInstance().ResetAll();
 
-  Json::Value enable_message;
-  enable_message["id"] = 1;
-  devtool_mediator_->NetworkEnable(message_sender_, enable_message);
+  devtool_mediator_->NetworkEnable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1),
+      Json::Value());
   FlushDevToolTasks();
   ASSERT_TRUE(observer->IsEnabled());
 
@@ -1076,9 +1076,9 @@ TEST_F(DevToolMediatorTest, NetworkCaptureEnqueuedAfterDisableIsDropped) {
   // The producer side may still pass the enabled fast-path while a disable is
   // racing: the capture is enqueued behind the disable command and must be
   // dropped by the execution-time enabled check.
-  Json::Value disable_message;
-  disable_message["id"] = 2;
-  devtool_mediator_->NetworkDisable(message_sender_, disable_message);
+  devtool_mediator_->NetworkDisable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 2),
+      Json::Value());
 
   devtool::NetworkRequestInfo request;
   request.url = "https://example.com/network-after-disable";
