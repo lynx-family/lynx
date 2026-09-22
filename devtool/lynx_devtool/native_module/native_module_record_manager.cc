@@ -91,7 +91,7 @@ void NativeModuleRecordManager::Enable() { enable_ = true; }
 void NativeModuleRecordManager::Disable() { enable_ = false; }
 
 void NativeModuleRecordManager::GetRecords(
-    const std::shared_ptr<MessageSender>& sender, int64_t id) {
+    const std::shared_ptr<CDPResponder>& responder) {
   Json::Value records(Json::ValueType::arrayValue);
   for (const auto& entry : history_) {
     records.append(entry);
@@ -100,10 +100,7 @@ void NativeModuleRecordManager::GetRecords(
   result[kRecordsKey] = std::move(records);
   result[kLatestSequenceKey] = static_cast<Json::Int64>(latest_sequence_);
 
-  Json::Value response;
-  response["id"] = id;
-  response["result"] = std::move(result);
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void NativeModuleRecordManager::EnforceHistoryBounds() {

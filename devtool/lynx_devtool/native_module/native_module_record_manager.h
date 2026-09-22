@@ -9,10 +9,9 @@
 #include <deque>
 #include <memory>
 #include <mutex>
-#include <vector>
 
 #include "base/include/value/base_value.h"
-#include "devtool/base_devtool/native/public/message_sender.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "third_party/jsoncpp/include/json/value.h"
 
 namespace lynx {
@@ -53,7 +52,7 @@ class NativeModuleRecordManager
   void Disable();
 
   // Writes the history snapshot and `latestSequence` into a CDP response.
-  void GetRecords(const std::shared_ptr<MessageSender>& sender, int64_t id);
+  void GetRecords(const std::shared_ptr<CDPResponder>& responder);
 
   int64_t latest_sequence() const { return latest_sequence_; }
 
