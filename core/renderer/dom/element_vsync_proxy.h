@@ -9,6 +9,7 @@
 #include <string>
 
 #include "base/include/fml/time/time_point.h"
+#include "base/include/fml/time/timer.h"
 constexpr char kPreferredFpsHigh[] = "high";
 constexpr char kPreferredFpsAuto[] = "auto";
 constexpr char kPreferredFpsLow[] = "low";
@@ -35,9 +36,14 @@ class ElementVsyncProxy
   void TickAllElement(fml::TimePoint &time);
 
   void RequestNextFrame();
+  void CancelBackgroundFrame() {
+    background_timer_.Stop();
+    background_frame_time_ = fml::TimePoint::Max();
+  }
 
   // Prevent queued callbacks from entering a page being destroyed.
   void Invalidate() {
+    CancelBackgroundFrame();
     element_manager_ = nullptr;
     has_requested_next_frame_ = false;
   }
@@ -61,6 +67,11 @@ class ElementVsyncProxy
   inline fml::TimePoint last_tick_time() { return last_tick_time_; }
 
  private:
+  void ScheduleBackgroundFrame(fml::TimePoint next);
+
+  fml::OneshotTimer background_timer_;
+  fml::TimePoint background_frame_time_{fml::TimePoint::Max()};
+  fml::TimePoint last_background_event_time_{fml::TimePoint::Min()};
   // It marks whether has requested next frame time.
   bool has_requested_next_frame_ = false;
   ElementManager *element_manager_;

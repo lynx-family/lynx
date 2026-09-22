@@ -140,13 +140,15 @@ void KeyframeModel::SetRunState(RunState run_state,
 }
 
 fml::TimeDelta KeyframeModel::TrimTimeToCurrentIteration(
-    fml::TimePoint monotonic_time, int& current_iteration_count) const {
+    fml::TimePoint monotonic_time, int& current_iteration_count,
+    bool events_only) const {
   if (!animation_data_ || !curve_) {
     current_iteration_count = 0;
     return fml::TimeDelta();
   }
-  auto trimmed = gfx::TrimTimeToCurrentIteration(
-      CreateTimingInput(), monotonic_time, current_iteration_count);
+  auto trimmed =
+      gfx::TrimTimeToCurrentIteration(CreateTimingInput(), monotonic_time,
+                                      current_iteration_count, events_only);
   current_iteration_count = trimmed.current_iteration_count;
   return trimmed.time;
 }

@@ -78,12 +78,13 @@ class GFX_EXPORT KeyframeModel {
   std::tuple<bool, bool> UpdateState(const fml::TimePoint& monotonic_time);
   bool InEffect(fml::TimePoint monotonic_time) const;
   fml::TimeDelta TrimTimeToCurrentIteration(fml::TimePoint monotonic_time,
-                                            int& current_iteration_count) const;
+                                            int& current_iteration_count,
+                                            bool events_only = false) const;
   void EnsureFromAndToKeyframe();
 
- private:
   AnimationTimingInput CreateTimingInput() const;
 
+ private:
   RunState run_state_;
   const AnimationData* animation_data_{nullptr};
   fml::TimePoint start_time_;
