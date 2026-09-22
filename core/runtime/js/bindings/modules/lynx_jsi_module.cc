@@ -22,9 +22,7 @@
 #include "core/inspector/observer/native_module_record_observer.h"
 #include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
 #endif  // ENABLE_INSPECTOR
-#if ENABLE_TESTBENCH_RECORDER
-#include "core/services/recorder/native_module_recorder.h"
-#endif
+#include "core/services/recorder/record.h"
 
 namespace lynx {
 namespace runtime {
@@ -87,9 +85,7 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   LOGI(GetLogContext() << " NativeModule: invoke " << name_ << "."
                        << method.name);
   Scope scope(*rt);
-#if ENABLE_TESTBENCH_RECORDER
-  std::vector<int64_t> callback_ids;
-#endif  // ENABLE_TESTBENCH_RECORDER
+  [[maybe_unused]] std::vector<int64_t> callback_ids;
 
   // timing
   std::string first_arg_str;
@@ -198,10 +194,8 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
             invocation_context->WithCallbackArgumentIndex(
                 static_cast<int32_t>(i)));
 #endif  // ENABLE_INSPECTOR
-#if ENABLE_TESTBENCH_RECORDER
         callback->SetRecordID(record_id_);
         callback_ids.push_back(callback_id);
-#endif  // ENABLE_TESTBENCH_RECORDER
         callback_map.emplace(static_cast<int>(i), std::move(callback));
         args_array->PushInt64ToArray(callback_id);
       } else {
@@ -291,14 +285,11 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
 
-#if ENABLE_TESTBENCH_RECORDER
-  if (response.has_value()) {
-    tasm::recorder::NativeModuleRecorder::GetInstance().RecordFunctionCall(
-        name_.c_str(), method.name.c_str(), static_cast<uint32_t>(count), args,
-        callback_ids.data(), static_cast<uint32_t>(callback_ids.size()),
-        response.value(), rt, record_id_);
-  }
-#endif  // ENABLE_TESTBENCH_RECORDER
+  RECORD_OPTIONAL(response.has_value(), NativeModuleFunctionCall, name_.c_str(),
+                  method.name.c_str(), static_cast<uint32_t>(count), args,
+                  callback_ids.data(),
+                  static_cast<uint32_t>(callback_ids.size()), response.value(),
+                  rt, record_id_);
   timing_collector->EndPlatformMethodInvoke(invoke_facade_method_start);
   timing_collector->EndCallFunc(call_func_start);
 #if ENABLE_INSPECTOR

@@ -94,9 +94,7 @@ class ModuleCallback : public LynxModuleCallback {
 
   Type GetType() const override { return Type::JSI; }
 
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordID(int64_t record_id);
-#endif
   int64_t record_id_ = 0;
 
  protected:

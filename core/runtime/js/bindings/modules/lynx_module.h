@@ -79,25 +79,18 @@ class LynxModule : public HostObject,
     group_interceptor_ = std::move(interceptor);
   }
 
-#if ENABLE_TESTBENCH_RECORDER
-  /*
-   *SetRecordID, GetRecordID, EndRecordFunction and StartRecordFunction only
-   *used by TestBench
-   */
   virtual void SetRecordID(int64_t record_id) { record_id_ = record_id; }
   int64_t GetRecordID() { return record_id_; }
+
   virtual void EndRecordFunction(const std::string& method_name, size_t count,
                                  const Value* js_args, Runtime* rt,
                                  Value& res) {}
   virtual void StartRecordFunction(const std::string& method_name = "") {}
-#endif  // ENABLE_TESTBENCH_RECORDER
 
  protected:
   std::unordered_map<std::string, std::shared_ptr<MethodMetadata>> methodMap_;
   std::shared_ptr<GroupInterceptor> group_interceptor_;
-#if ENABLE_TESTBENCH_RECORDER
   ALLOW_UNUSED_TYPE int64_t record_id_ = 0;
-#endif  // ENABLE_TESTBENCH_RECORDER
 
  private:
   base::LogContext log_context_;

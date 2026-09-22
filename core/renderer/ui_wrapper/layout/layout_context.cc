@@ -36,6 +36,7 @@
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
+#include "core/services/recorder/record.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
 
@@ -658,10 +659,7 @@ void LayoutContext::AttachLayoutNodeTypeInner(
     if (!(type & INLINE)) {
       node_type_recorder_.emplace(tag, type);
     }
-#if ENABLE_TESTBENCH_RECORDER
-    tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordComponent(
-        tag.c_str(), type, record_id_);
-#endif
+    RECORD(Component, tag.c_str(), type, record_id_);
   }
 }
 

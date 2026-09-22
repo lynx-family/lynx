@@ -42,6 +42,7 @@
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
+#include "core/services/recorder/record.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/timing_handler/timing_utils.h"
@@ -53,11 +54,6 @@
 #include "third_party/rapidjson/reader.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
-
-#if ENABLE_TESTBENCH_RECORDER
-#include "core/services/recorder/native_module_recorder.h"
-#include "core/services/recorder/testbench_base_recorder.h"
-#endif
 
 #if ENABLE_INSPECTOR
 #include "core/inspector/observer/native_module_record_observer.h"
@@ -1755,25 +1751,23 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         *rt, PropNameID::forAscii(*rt, "recordSharedData"), 2,
         [this](Runtime& rt, const Value& this_val, const Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-#if ENABLE_TESTBENCH_RECORDER
-          auto* ptr = native_app_.Lock();
-          if (!ptr || ptr->IsDestroying()) {
-            return Value::undefined();
-          }
-          if (count < 2) {
-            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                "recordSharedData args count must be 2"));
-          }
-          if (!(args[0].isString())) {
-            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                "recordSharedData args type is error"));
-          }
-          tasm::recorder::NativeModuleRecorder::GetInstance().RecordSharedData(
-              args, &rt, ptr->record_id_);
-#else
-          (void)this;  // To suppress unused variable/capture warnings during
-                       // compilation.
-#endif
+          // clang-format off
+          RECORD_WITH_EARLY_RETURN(
+              auto* ptr = native_app_.Lock();
+              if (!ptr || ptr->IsDestroying()) {
+                return Value::undefined();
+              }
+              if (count < 2) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "recordSharedData args count must be 2"));
+              }
+              if (!args[0].isString()) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "recordSharedData args type is error"));
+              },
+              SharedData, args, &rt, ptr->GetRecordId());
+          // clang-format on
+          (void)this;  // The recorder-free build does not use this capture.
           return Value::undefined();
         });
   }
@@ -2203,10 +2197,7 @@ void App::EvaluateScript(const std::string& url, std::string script,
                          ApiCallBack callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_EVAL_SCRIPT, "url", url);
   LOGI("App::EvaluateScript:" << url << " length: " << script.length());
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
-      url, script, record_id_);
-#endif
+  RECORD(Scripts, url, script, record_id_);
 
   auto rt = rt_.Lock();
   if (rt) {

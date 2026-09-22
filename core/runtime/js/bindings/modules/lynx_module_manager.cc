@@ -64,9 +64,7 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
     lynx_jsi_module->SetNativeModuleRecordObserver(
         native_module_record_observer_);
 #endif  // ENABLE_INSPECTOR
-#if ENABLE_TESTBENCH_RECORDER
     lynx_jsi_module->SetRecordID(record_id_);
-#endif
     itr = module_map_.emplace(name, std::move(lynx_jsi_module)).first;
     return itr->second;
   }

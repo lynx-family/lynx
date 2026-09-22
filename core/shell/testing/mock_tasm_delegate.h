@@ -211,9 +211,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
               GetSubTreeLayoutInfo, (int32_t root_id, Viewport Viewport),
               (override));
 
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordId(int64_t record_id) {}
-#endif
   void SetTiming(tasm::Timing timing) override {}
   virtual void BindPipelineIDWithTimingFlag(
       const tasm::PipelineID& pipeline_id,

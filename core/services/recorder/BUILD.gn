@@ -70,7 +70,10 @@ unittest_set("record_testset") {
 
 unittest_exec("record_unittest_exec") {
   sources = []
-  deps = [ ":record_testset" ]
+  deps = [
+    ":record_disabled_testset",
+    ":record_testset",
+  ]
 }
 
 config("enable_testbench_recorder_for_test") {
@@ -130,4 +133,23 @@ group("record_unit_test") {
     ":record_testset",
     ":record_unittest_exec",
   ]
+}
+
+config("disable_testbench_recorder_for_test") {
+  if (is_win) {
+    cflags = [
+      "/UENABLE_TESTBENCH_RECORDER",
+      "/DENABLE_TESTBENCH_RECORDER=0",
+    ]
+  } else {
+    cflags = [
+      "-UENABLE_TESTBENCH_RECORDER",
+      "-DENABLE_TESTBENCH_RECORDER=0",
+    ]
+  }
+}
+
+unittest_set("record_disabled_testset") {
+  configs = [ ":disable_testbench_recorder_for_test" ]
+  sources = [ "record_disabled_unittest.cc" ]
 }

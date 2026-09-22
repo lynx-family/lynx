@@ -277,9 +277,7 @@ class LynxEngine {
       const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
           response_promise);
 
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordID(int64_t record_id);
-#endif
 
   void UpdateI18nResource(const std::string& key, const std::string& new_data);
 

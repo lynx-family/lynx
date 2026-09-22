@@ -59,6 +59,7 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
+#include "core/services/recorder/record.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/ssr/client/ssr_client_utils.h"
 #include "core/services/ssr/client/ssr_data_update_manager.h"
@@ -253,10 +254,7 @@ void TemplateAssembler::TriggerVmGC() {
 void TemplateAssembler::UpdateGlobalProps(
     const lepus::Value& data, bool need_render,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordSetGlobalProps(data,
-                                                                  record_id_);
-#endif
+  RECORD(SetGlobalProps, data, record_id_);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_GLOBAL_PROPS,
               [&need_render, &data](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("need_render",
@@ -564,8 +562,7 @@ TemplateData TemplateAssembler::OnRenderTemplate(
       tasm::timing::kSetInitDataEnd);
 
   // Before render element, execute screen metrics override.
-  auto& client = page_proxy_.element_manager();
-  if (client != nullptr) {
+  if (auto& client = page_proxy_.element_manager(); client != nullptr) {
     OnScreenMetricsSet(client->GetLynxEnvConfig().ScreenWidth(),
                        client->GetLynxEnvConfig().ScreenHeight(),
                        client->GetLynxEnvConfig().DevicePixelRatio());
@@ -861,14 +858,9 @@ void TemplateAssembler::LoadTemplateBundle(
     const std::shared_ptr<TemplateData>& template_data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
   // TODO (nihao.royal) add testbench for LoadTemplateBundle.
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordLoadTemplateBundle(
-      url, template_bundle.GetBinary(), template_data, record_id_);
-  auto& client = page_proxy_.element_manager();
-  if (client != nullptr) {
-    client->SetRecordId(record_id_);
-  }
-#endif
+  RECORD(LoadTemplateBundle, url, template_bundle.GetBinary(), template_data,
+         record_id_);
+  SyncRecordIdToElementManager();
   pre_painting_ = pipeline_options->enable_pre_painting;
   if (pre_painting_) {
     page_proxy_.SetPrePaintingStage(PrePaintingStage::kStartPrePainting);
@@ -899,15 +891,8 @@ void TemplateAssembler::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     const std::shared_ptr<TemplateData>& template_data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_TESTBENCH_RECORDER
-  // test-bench actions
-  tasm::recorder::TemplateAssemblerRecorder::RecordLoadTemplate(
-      url, source, template_data, record_id_);
-  auto& client = page_proxy_.element_manager();
-  if (client != nullptr) {
-    client->SetRecordId(record_id_);
-  }
-#endif
+  RECORD(LoadTemplate, url, source, template_data, record_id_);
+  SyncRecordIdToElementManager();
   source_size_ = source.size();
   url_ = url;
   pre_painting_ = pipeline_options->enable_pre_painting;
@@ -1146,11 +1131,7 @@ void TemplateAssembler::ReloadTemplate(
     const std::shared_ptr<TemplateData>& template_data,
     UpdatePageOption& update_page_option,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_TESTBENCH_RECORDER
-  // test-bench actions
-  tasm::recorder::TemplateAssemblerRecorder::RecordReloadTemplate(template_data,
-                                                                  record_id_);
-#endif
+  RECORD(ReloadTemplate, template_data, record_id_);
   Scope scope(this);
   // Reload update major version.
   PipelineScope pipeline_scope(this, pipeline_options,
@@ -1410,22 +1391,13 @@ void TemplateAssembler::DidFetchBundle(
   }
 
   if (callback_info.Success() && callback_info.bundle) {
-#if ENABLE_TESTBENCH_RECORDER
-    // Record bundle binary for JS API `fetchBundle` so that TestBench replay
-    // can serve the bundle from recorded data even if the original url is not a
-    // fully-qualified network url (e.g. "/xxx.template.js").
-    if (callback_info.request.response_promise != nullptr &&
-        callback_info.request.resource_type ==
-            pub::LynxResourceType::kLazyBundle &&
-        tasm::recorder::TestBenchBaseRecorder::GetInstance()
-            .IsRecordingProcess() &&
-        !callback_info.bundle->GetBinary().empty()) {
-      std::vector<uint8_t> binary = callback_info.bundle->GetBinary();
-      tasm::recorder::TemplateAssemblerRecorder::
-          RecordLoadComponentWithCallback(callback_info.component_url, binary,
-                                          false, -1, record_id_);
-    }
-#endif  // ENABLE_TESTBENCH_RECORDER
+    // Record fetched bundle binaries so replay does not depend on the URL.
+    RECORD_OPTIONAL(callback_info.request.response_promise != nullptr &&
+                        callback_info.request.resource_type ==
+                            pub::LynxResourceType::kLazyBundle &&
+                        !callback_info.bundle->GetBinary().empty(),
+                    LoadComponentWithCallback, callback_info.component_url,
+                    callback_info.bundle->GetBinary(), false, -1, record_id_);
 
     // TODO(yangguangzhao.solace): remove this check when resource loader
     // refactor is done.
@@ -1461,10 +1433,8 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
                 ctx.event()->add_debug_annotations(INSTANCE_ID,
                                                    std::to_string(instance_id));
               });
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordLoadComponentWithCallback(
-      url, callback_info.data, sync, callback_id, record_id_);
-#endif  // ENABLE_TESTBENCH_RECORDER
+  RECORD(LoadComponentWithCallback, url, callback_info.data, sync, callback_id,
+         record_id_);
   LOGI("TemplateAssembler::LoadComponentWithCallback: "
        << url << " sync: " << sync << " callback_id: " << callback_id);
   std::shared_ptr<TemplateEntry> component_entry = FindTemplateEntry(url);
@@ -2104,13 +2074,10 @@ lepus::Value TemplateAssembler::GetComponentPathMap(
 
 void TemplateAssembler::SendBubbleEvent(const std::string& name, int tag,
                                         lepus::DictionaryPtr dict) {
-#if ENABLE_TESTBENCH_RECORDER
-  if (page_proxy()->element_manager()->root()) {
-    tasm::recorder::TemplateAssemblerRecorder::RecordBubbleEvent(
-        name, tag, page_proxy()->element_manager()->root()->impl_id(),
-        lepus::Value(dict), record_id_);
-  }
-#endif
+  RECORD_OPTIONAL(page_proxy()->element_manager()->root() != nullptr,
+                  BubbleEvent, name, tag,
+                  page_proxy()->element_manager()->root()->impl_id(),
+                  lepus::Value(dict), record_id_);
   if (!template_loaded_) {
     LOGI("Lynx SendBubbleEvent failed, template_loaded_=false"
          << " this:" << this);
@@ -2146,13 +2113,10 @@ void TemplateAssembler::SendGestureEvent(int tag, int gesture_id,
 void TemplateAssembler::SendCustomEvent(const std::string& name, int tag,
                                         const lepus::Value& params,
                                         const std::string& pname) {
-#if ENABLE_TESTBENCH_RECORDER
-  if (page_proxy()->element_manager()->root()) {
-    tasm::recorder::TemplateAssemblerRecorder::RecordCustomEvent(
-        name, tag, page_proxy()->element_manager()->root()->impl_id(), params,
-        pname, record_id_);
-  }
-#endif
+  RECORD_OPTIONAL(page_proxy()->element_manager()->root() != nullptr,
+                  CustomEvent, name, tag,
+                  page_proxy()->element_manager()->root()->impl_id(), params,
+                  pname, record_id_);
   if (destroyed()) {
     LOGI("Lynx SendCustomEvent failed, destroyed=true"
          << " this:" << this);
@@ -2199,13 +2163,9 @@ void TemplateAssembler::SendTouchEvent(const std::string& name,
   EnsureTouchEventHandler();
   touch_event_handler_->HandleTouchEvent(
       this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), name, info);
-#if ENABLE_TESTBENCH_RECORDER
-  Element* root = page_proxy()->element_manager()->root();
-  if (root != nullptr) {
-    tasm::recorder::TemplateAssemblerRecorder::RecordTouchEvent(
-        name, root->impl_id(), info, record_id_);
-  }
-#endif
+  RECORD_OPTIONAL(
+      page_proxy()->element_manager()->root() != nullptr, TouchEvent, name,
+      page_proxy()->element_manager()->root()->impl_id(), info, record_id_);
 }
 
 void TemplateAssembler::StartEventGenerate(const lepus::Value& event_params) {
@@ -2338,10 +2298,8 @@ void TemplateAssembler::UpdateDataByPreParsedData(
     const std::shared_ptr<TemplateData>& template_data,
     UpdatePageOption& update_page_option,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordUpdateDataByPreParsedData(
-      template_data, update_page_option, record_id_);
-#endif
+  RECORD(UpdateDataByPreParsedData, template_data, update_page_option,
+         record_id_);
   if (template_data == nullptr || destroyed()) {
     return;
   }
@@ -2429,10 +2387,7 @@ void TemplateAssembler::UpdateDataByPreParsedData(
 bool TemplateAssembler::UpdateConfig(
     const lepus::Value& config, bool noticeDelegate,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordUpdateConfig(
-      config, noticeDelegate, record_id_);
-#endif
+  RECORD(UpdateConfig, config, noticeDelegate, record_id_);
   if (destroyed()) {
     return false;
   }
@@ -2570,10 +2525,7 @@ void TemplateAssembler::EnsureTouchEventHandler() {
 void TemplateAssembler::EnsureAirTouchEventHandler() {}
 
 void TemplateAssembler::OnFontScaleChanged(float scale) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordUpdateFontScale(
-      scale, "updateFontScale", record_id_);
-#endif
+  RECORD(UpdateFontScale, scale, "updateFontScale", record_id_);
   if (scale == font_scale_) {
     return;
   }
@@ -2655,10 +2607,7 @@ void TemplateAssembler::SendGlobalEvent(const std::string& name,
 
 void TemplateAssembler::SetFontScale(float scale) {
   LOGI("TemplateAssembler::SetFontScale:" << scale);
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordUpdateFontScale(
-      scale, "setFontScale", record_id_);
-#endif
+  RECORD(UpdateFontScale, scale, "setFontScale", record_id_);
   font_scale_ = scale;
 }
 
@@ -2779,22 +2728,11 @@ void TemplateAssembler::FetchBundle(
   auto bundle = FindTemplateBundle(bundle_url);
   if (bundle) {
     // bundle already loaded;
-#if ENABLE_TESTBENCH_RECORDER
     LOGI("TemplateAssembler::FetchBundle, bundle already loaded, bundle_url: "
          << bundle_url);
-    // JS API `fetchBundle` may preload dynamic component bundles without
-    // triggering `RequireTemplateEntry/LoadComponentWithCallback`. For
-    // TestBench replay, record the bundle binary so replay can mock the
-    // DynamicComponentFetcher result and avoid network/protocol dependency.
-    if (tasm::recorder::TestBenchBaseRecorder::GetInstance()
-            .IsRecordingProcess() &&
-        !bundle->GetBinary().empty()) {
-      std::vector<uint8_t> binary = bundle->GetBinary();
-      tasm::recorder::TemplateAssemblerRecorder::
-          RecordLoadComponentWithCallback(bundle_url, binary, false, -1,
-                                          record_id_);
-    }
-#endif  // ENABLE_TESTBENCH_RECORDER
+    // A cached bundle still needs its binary recorded for replay.
+    RECORD_OPTIONAL(!bundle->GetBinary().empty(), LoadComponentWithCallback,
+                    bundle_url, bundle->GetBinary(), false, -1, record_id_);
 
     response_promise->SetValue(
         {.url = bundle_url, .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
@@ -2814,10 +2752,6 @@ std::shared_ptr<TemplateEntry> TemplateAssembler::RequireTemplateEntry(
                 debug->set_string_value(url);
               });
 
-#if ENABLE_TESTBENCH_RECORDER
-  // To record every template require for lazy bundle
-  tasm::recorder::RecordRequireTemplateScope scope(this, url, record_id_);
-#endif  // ENABLE_TESTBENCH_RECORDER
   LOGI("LoadLazyBundle RequireTemplate: " << url);
   auto lifecycle_option = std::make_unique<LazyBundleLifecycleOption>(
       url, instance_id_, EnableEventReporter());
@@ -2862,11 +2796,16 @@ std::shared_ptr<TemplateEntry> TemplateAssembler::RequireTemplateEntry(
                               url, true, entry->GetBinaryEvalResult(), state));
     }
     lifecycle_option->mode = state;
+    RECORD_OPTIONAL(state == LazyBundleState::STATE_PRELOAD, RequireTemplate,
+                    url, FindTemplateEntry(url) != nullptr, record_id_);
     return entry;
   }
 
   LOGI("RequireTemplate: Request Template: " << url);
-  return RequestTemplateEntryInternal(std::move(lifecycle_option), lazy_bundle);
+  entry =
+      RequestTemplateEntryInternal(std::move(lifecycle_option), lazy_bundle);
+  RECORD(RequireTemplate, url, FindTemplateEntry(url) != nullptr, record_id_);
+  return entry;
 }
 
 std::shared_ptr<TemplateEntry> TemplateAssembler::BuildTemplateEntryFromPreload(
@@ -3326,12 +3265,16 @@ void TemplateAssembler::SendLazyBundleBindEvent(const std::string& url,
                                           lazy_bundle::kDetail);
 }
 
-#if ENABLE_TESTBENCH_RECORDER
 void TemplateAssembler::SetRecordID(int64_t record_id) {
   record_id_ = record_id;
 }
 int64_t TemplateAssembler::GetRecordID() const { return record_id_; }
-#endif
+
+void TemplateAssembler::SyncRecordIdToElementManager() {
+  if (auto& client = page_proxy_.element_manager(); client != nullptr) {
+    client->SetRecordId(record_id_);
+  }
+}
 
 void TemplateAssembler::SetLepusEventListener(const std::string& name,
                                               const lepus::Value& listener) {
@@ -3528,14 +3471,8 @@ void TemplateAssembler::RenderPageWithSSRData(
     std::vector<uint8_t> ssr_byte_array,
     const std::shared_ptr<TemplateData>& template_data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordLoadTemplate(
-      "", ssr_byte_array, template_data, record_id_, false);
-  auto& client = page_proxy_.element_manager();
-  if (client != nullptr) {
-    client->SetRecordId(record_id_);
-  }
-#endif
+  RECORD(LoadTemplate, "", ssr_byte_array, template_data, record_id_, false);
+  SyncRecordIdToElementManager();
 
   LOGI(GetLogContext()
        << " start TemplateAssembler::RenderPageWithSSRData, this:" << this

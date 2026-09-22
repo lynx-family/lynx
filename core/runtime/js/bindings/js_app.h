@@ -301,10 +301,8 @@ class App {
                          const lepus::Value& arguments);
 #endif  // ENABLE_INSPECTOR
 
-#if ENABLE_TESTBENCH_RECORDER
-  int64_t record_id_ = 0;
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
-#endif
+  int64_t GetRecordId() const { return record_id_; }
 
  private:
   App(int64_t rt_id, base::UnsafeWeakPtr<Runtime> rt,
@@ -359,6 +357,7 @@ class App {
 
   base::UnsafeWeakPtr<App> weak_self_;
   std::string app_guid_;
+  int64_t record_id_ = 0;
   base::UnsafeWeakPtr<Runtime> rt_;
   std::string i18_resource_;
   Value js_app_;

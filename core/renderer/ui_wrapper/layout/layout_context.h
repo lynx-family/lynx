@@ -191,9 +191,7 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
 
   std::unordered_map<int32_t, LayoutInfoArray> GetSubTreeLayoutInfo(
       int32_t root_id, Viewport viewport = Viewport{});
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
-#endif
 
   void PauseLayout();
 
@@ -292,9 +290,7 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
   LynxEnvConfig lynx_env_config_;
   PageOptions page_options_;
 
-#if ENABLE_TESTBENCH_RECORDER
-  int64_t record_id_;
-#endif
+  int64_t record_id_ = 0;
 
   CalculatedViewport calculated_viewport_;
 

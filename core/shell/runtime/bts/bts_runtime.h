@@ -159,9 +159,7 @@ class BTSRuntime final {
   }
 #endif
 
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
-#endif
 
   void I18nResourceChanged(const std::string& msg);
 
@@ -279,9 +277,7 @@ class BTSRuntime final {
   std::unique_ptr<bool> napi_environment_placeholder_;
 #endif
 
-#if ENABLE_TESTBENCH_RECORDER
   int64_t record_id_ = 0;
-#endif
 
   // Once the dynamic delivery of core.js is complete, lynx_thread_local should
   // be reset.

@@ -23,10 +23,6 @@
 #include "core/runtime/js/bindings/modules/android/lynx_promise_impl.h"
 #include "core/runtime/js/js_executor.h"
 
-#if ENABLE_TESTBENCH_RECORDER
-#include <stack>
-#endif
-
 namespace lynx {
 namespace runtime {
 namespace js {

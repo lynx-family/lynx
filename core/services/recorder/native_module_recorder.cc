@@ -5,6 +5,7 @@
 #include "core/services/recorder/native_module_recorder.h"
 
 #include <cmath>
+#include <utility>
 #include <vector>
 
 #include "core/runtime/js/jsi/jsi.h"
@@ -123,14 +124,23 @@ void NativeModuleRecorder::RecordCallback(
       module_name, js_method_name, params_val, callback_id, record_id);
 }
 
-void NativeModuleRecorder::RecordGlobalEvent(std::string module_id,
-                                             std::string method_id,
-                                             const runtime::js::Value* args,
-                                             uint64_t count,
-                                             runtime::js::Runtime* rt,
-                                             int64_t record_id) {
+void NativeModuleRecorder::RecordGlobalEvent(
+    std::string module_id, std::string method_id,
+    const runtime::js::Array& arguments, runtime::js::Runtime* rt,
+    int64_t record_id) {
   if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess()) {
     return;
+  }
+  auto size = arguments.length(*rt);
+  if (!size) {
+    return;
+  }
+  std::vector<runtime::js::Value> values(*size);
+  for (size_t index = 0; index < *size; ++index) {
+    auto item = arguments.getValueAtIndex(*rt, index);
+    if (item) {
+      values[index] = std::move(*item);
+    }
   }
   rapidjson::Document::AllocatorType& allocator =
       TestBenchBaseRecorder::GetInstance().GetAllocator();
@@ -142,9 +152,9 @@ void NativeModuleRecorder::RecordGlobalEvent(std::string module_id,
   rapidjson::Value return_val(rapidjson::kArrayType);
 
   std::vector<const runtime::js::Object*> visited_objs;
-  for (uint32_t index = 0; index < count; ++index) {
+  for (uint32_t index = 0; index < *size; ++index) {
     rapidjson::Value value =
-        ParsePiperValueToJsonValue(args[index], rt, &visited_objs);
+        ParsePiperValueToJsonValue(values[index], rt, &visited_objs);
     return_val.PushBack(value, allocator);
   }
 
