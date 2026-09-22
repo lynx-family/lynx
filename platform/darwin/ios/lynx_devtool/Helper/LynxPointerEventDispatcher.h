@@ -7,9 +7,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// Mirrors lynx::devtool::input::PointerEventType. Only Down/Up/Cancel are driven
-// by tap gestures today; Move and Scroll are part of the typed contract and are
-// reserved for future scroll support.
+// Mirrors lynx::devtool::input::PointerEventType. Scroll remains reserved for
+// future wheel support.
 typedef NS_ENUM(NSInteger, LynxDevToolPointerEventType) {
   LynxDevToolPointerEventTypeDown,
   LynxDevToolPointerEventTypeMove,
@@ -30,9 +29,9 @@ typedef NS_ENUM(NSInteger, LynxDevToolPointerEventType) {
  */
 @interface LynxPointerEventDispatcher : NSObject
 
-// Live synthetic touch and its backing event for the active sequence. The
+// Live synthetic touches and their backing event for the active sequence. The
 // optional platform-specific injection implementation manages their lifecycle.
-@property(nonatomic, strong, nullable) UITouch *activeTouch;
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, UITouch *> *activeTouches;
 @property(nonatomic, strong, nullable) UIEvent *activeEvent;
 
 - (nonnull instancetype)initWithLynxView:(nullable LynxView *)view;
@@ -43,16 +42,17 @@ typedef NS_ENUM(NSInteger, LynxDevToolPointerEventType) {
 // Returns YES when the platform-specific injection path is linked and available.
 - (BOOL)isPointerEventInjectionAvailable;
 
-// Injects one pointer event. Coordinates are UIWindow logical points, matching
-// the CDP Input domain contract. deltaX/deltaY/modifiers/timestampUs are carried
-// to match the native InputEventTarget signature and are reserved for future
-// scroll support; tap ignores them. Returns YES when the event was dispatched.
+// Injects a complete active-pointer set. Down and up include the action pointer
+// in the arrays so the dispatcher can preserve native multi-touch semantics.
+// Coordinates are UIWindow logical points, matching the CDP Input domain
+// contract. deltaX/deltaY/modifiers/timestampUs are reserved for future scroll
+// support. Returns YES when the event was dispatched.
 - (BOOL)injectPointerEvent:(LynxDevToolPointerEventType)type
-               coordinateX:(CGFloat)x
-               coordinateY:(CGFloat)y
+                pointerIds:(NSArray<NSNumber *> *)pointerIds
+               coordinates:(NSArray<NSValue *> *)coordinates
+           actionPointerId:(int32_t)actionPointerId
                     deltaX:(CGFloat)deltaX
                     deltaY:(CGFloat)deltaY
-                 pointerId:(int32_t)pointerId
                  modifiers:(int32_t)modifiers
                timestampUs:(int64_t)timestampUs;
 
