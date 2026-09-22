@@ -373,14 +373,14 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
-  public boolean injectPointerEvent(final int type, final float x, final float y,
-      final float deltaX, final float deltaY, final int pointerId, final int modifiers,
-      final long timestampUs) {
+  public boolean injectPointerEvent(final int type, final int[] pointerIds, final float[] xs,
+      final float[] ys, final int actionPointerId, final float deltaX, final float deltaY,
+      final int modifiers, final long timestampUs) {
     // Cache to a local so a concurrent destroy() cannot null the field between check and use.
     final PointerEventDispatcher dispatcher = mInputEventDispatcher;
     return dispatcher != null
         && dispatcher.injectPointerEvent(
-            type, x, y, deltaX, deltaY, pointerId, modifiers, timestampUs);
+            type, pointerIds, xs, ys, actionPointerId, modifiers, timestampUs);
   }
 
   @CalledByNative
