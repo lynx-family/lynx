@@ -483,6 +483,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     const uint8_t feature_flags = (wrapper && wrapper->fragment_)
                                       ? wrapper->fragment_->GetFeatureFlags()
                                       : css::RuleSet::kNoFeatures;
+    const bool has_touch_pseudo = wrapper && wrapper->fragment_ &&
+                                  wrapper->fragment_->HasTouchPseudoToken();
     std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
     adopted_stylesheets_.push_back(std::move(wrapper));
     if (feature_flags) {
@@ -492,6 +494,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
                                    std::memory_order_release);
     }
     cascade_layer_map_cache_.clear();
+    if (has_touch_pseudo) {
+      UpdateTouchPseudoStatus(true);
+    }
   }
 
   void ClearAdoptedStyleSheets() {
@@ -1459,6 +1464,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // operation, additional information related to pseudo-class will be pushed to
   // the platform.
   bool push_touch_pseudo_flag_{false};
+  // The platform keeps this setting enabled for the lifetime of this manager.
+  bool touch_pseudo_status_pushed_{false};
 
   bool enable_native_list_{false};
   // Indicate whether in parallel-element mode with sync layout(ALL_ON_UI,
