@@ -32,12 +32,14 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class LynxUIOwnerTest {
   private static final String MEMORY_UI_TAG = "memory-ui";
+  private static final String EVENT_LOOKUP_UI_TAG = "event-lookup-ui";
 
   static final class MemoryUI extends UIView {
     MemoryUI(LynxContext context) {
@@ -61,11 +63,53 @@ public class LynxUIOwnerTest {
     }
   }
 
+  static final class EventLookupUI extends UIView {
+    private int mGetEventsCallCount;
+
+    EventLookupUI(LynxContext context) {
+      super(context);
+    }
+
+    @Override
+    public Map<String, EventsListener> getEvents() {
+      mGetEventsCallCount++;
+      return super.getEvents();
+    }
+
+    int getEventsCallCount() {
+      return mGetEventsCallCount;
+    }
+  }
+
+  private static final class EventLookupUIBehavior extends Behavior {
+    private EventLookupUI mLastCreatedUI;
+
+    EventLookupUIBehavior() {
+      super(EVENT_LOOKUP_UI_TAG);
+    }
+
+    @Override
+    public LynxUI createUI(LynxContext context) {
+      mLastCreatedUI = new EventLookupUI(context);
+      return mLastCreatedUI;
+    }
+  }
+
   private static int getExternalMemoryCandidateCount(LynxUIOwner uiOwner) {
     try {
       Field field = LynxUIOwner.class.getDeclaredField("mRemovedUICandidateIds");
       field.setAccessible(true);
       return ((SparseBooleanArray) field.get(uiOwner)).size();
+    } catch (NoSuchFieldException | IllegalAccessException exception) {
+      throw new AssertionError(exception);
+    }
+  }
+
+  private static WeakHashMap<LynxBaseUI, double[]> getPositionChangeRectCache(LynxUIOwner uiOwner) {
+    try {
+      Field field = LynxUIOwner.class.getDeclaredField("mLastPositionChangeRects");
+      field.setAccessible(true);
+      return (WeakHashMap<LynxBaseUI, double[]>) field.get(uiOwner);
     } catch (NoSuchFieldException | IllegalAccessException exception) {
       throw new AssertionError(exception);
     }
@@ -274,6 +318,69 @@ public class LynxUIOwnerTest {
     when(globalBindUI.getEvents()).thenReturn(globalEvents);
     uiOwner.setNode(42, globalBindUI);
 
+    assertFalse(uiOwner.hasPositionChangeListenerForTesting(42));
+
+    UIShadowProxy proxy = mock(UIShadowProxy.class);
+    LynxBaseUI proxyChild = mock(LynxBaseUI.class);
+    when(proxy.getSign()).thenReturn(43);
+    when(proxy.getEvents()).thenReturn(new HashMap<>());
+    when(proxy.getChild()).thenReturn(proxyChild);
+    when(proxyChild.getEvents()).thenReturn(events);
+    uiOwner.setNode(43, proxy);
+
+    assertTrue(uiOwner.hasPositionChangeListenerForTesting(43));
+  }
+
+  @Test
+  public void testInitialPositionChangeListenerUsesEventMetadata() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      List<Behavior> behaviors = new BuiltInBehavior().create();
+      EventLookupUIBehavior behavior = new EventLookupUIBehavior();
+      behaviors.add(behavior);
+      LynxContext contextSpy = spy(mContext);
+      LynxUIOwner uiOwner =
+          new LynxUIOwner(contextSpy, new BehaviorRegistry(behaviors), mUIBody.getBodyView());
+      contextSpy.setLynxUIOwner(uiOwner);
+
+      Map<String, EventsListener> events = new HashMap<>();
+      events.put("positionchange",
+          new EventsListener("positionchange", "bindEvent", "onPositionChange", null, null));
+      uiOwner.createViewInternal(41, EVENT_LOOKUP_UI_TAG, null, events, false, 0, null);
+
+      assertTrue(uiOwner.hasPositionChangeListenerForTesting(41));
+      assertEquals(0, behavior.mLastCreatedUI.getEventsCallCount());
+
+      uiOwner.createViewInternal(42, EVENT_LOOKUP_UI_TAG, null, null, false, 0, null);
+
+      assertFalse(uiOwner.hasPositionChangeListenerForTesting(42));
+      assertEquals(0, behavior.mLastCreatedUI.getEventsCallCount());
+    });
+  }
+
+  @Test
+  public void testFreshPositionChangeListenerDoesNotClearRectCache() {
+    LynxUIOwner uiOwner = new LynxUIOwner(mContext, new BehaviorRegistry(), mUIBody.getBodyView());
+    WeakHashMap<LynxBaseUI, double[]> rectCache = getPositionChangeRectCache(uiOwner);
+
+    LynxBaseUI ui = mock(LynxBaseUI.class);
+    when(ui.getSign()).thenReturn(41);
+    when(ui.getEvents()).thenReturn(new HashMap<>());
+    rectCache.put(ui, new double[] {1, 2, 3, 4});
+    uiOwner.setNode(41, ui);
+
+    assertTrue(rectCache.containsKey(ui));
+    assertFalse(uiOwner.hasPositionChangeListenerForTesting(41));
+
+    UIShadowProxy proxy = mock(UIShadowProxy.class);
+    LynxBaseUI child = mock(LynxBaseUI.class);
+    when(proxy.getSign()).thenReturn(42);
+    when(proxy.getEvents()).thenReturn(new HashMap<>());
+    when(proxy.getChild()).thenReturn(child);
+    when(child.getEvents()).thenReturn(new HashMap<>());
+    rectCache.put(proxy, new double[] {5, 6, 7, 8});
+    uiOwner.setNode(42, proxy);
+
+    assertTrue(rectCache.containsKey(proxy));
     assertFalse(uiOwner.hasPositionChangeListenerForTesting(42));
   }
 
