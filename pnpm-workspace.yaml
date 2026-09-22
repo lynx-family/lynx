@@ -1,6 +1,7 @@
 packages:
   - '.'
   - 'js_libraries/*'
+  - 'platform/harmony/lynx_library_plugin'
   - devtool/base_devtool/js_libraries/logbox-types
   - devtool/base_devtool/js_libraries/logbox
   - devtool/lynx_devtool/resources/devtool-switch
