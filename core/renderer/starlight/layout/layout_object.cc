@@ -531,6 +531,14 @@ bool LayoutObject::FetchEarlyReturnResultForMeasure(
   if (cache.cache_) {
     // Matching cache is found
 
+    if (measure_func_ && !GetChildCount() && !is_trying &&
+        cache.is_cache_in_sync_with_current_state) {
+      result.width_ = cache.cache_->border_bound_width_;
+      result.height_ = cache.cache_->border_bound_height_;
+      inflow_sub_tree_in_sync_with_last_measurement_ = true;
+      return true;
+    }
+
     if (!is_trying &&
         ((!IsInflowSubTreeInSyncWithLastMeasurement() && GetChildCount()) ||
          !cache.is_cache_in_sync_with_current_state)) {
@@ -636,6 +644,25 @@ bool LayoutObject::CanReuseLayoutWithSameSizeAsGivenConstraint(
   return true;
 }
 
+bool LayoutObject::HasDefaultMeasureBox() const {
+  return base::FloatsEqual(box_info_.padding_[kLeft], 0.f) &&
+         base::FloatsEqual(box_info_.padding_[kRight], 0.f) &&
+         base::FloatsEqual(box_info_.padding_[kTop], 0.f) &&
+         base::FloatsEqual(box_info_.padding_[kBottom], 0.f) &&
+         base::FloatsEqual(css_style_->GetBorderFinalLeftWidth(), 0.f) &&
+         base::FloatsEqual(css_style_->GetBorderFinalRightWidth(), 0.f) &&
+         base::FloatsEqual(css_style_->GetBorderFinalTopWidth(), 0.f) &&
+         base::FloatsEqual(css_style_->GetBorderFinalBottomWidth(), 0.f) &&
+         base::FloatsEqual(box_info_.min_size_[kHorizontal],
+                           DefaultLayoutStyle::kDefaultMinSize) &&
+         base::FloatsEqual(box_info_.min_size_[kVertical],
+                           DefaultLayoutStyle::kDefaultMinSize) &&
+         base::FloatsEqual(box_info_.max_size_[kHorizontal],
+                           DefaultLayoutStyle::kDefaultMaxSize) &&
+         base::FloatsEqual(box_info_.max_size_[kVertical],
+                           DefaultLayoutStyle::kDefaultMaxSize);
+}
+
 FloatSize LayoutObject::UpdateMeasureByPlatform(const Constraints& constraints,
                                                 bool final_measure) {
   Constraints item_constraints =
@@ -662,7 +689,16 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
                                       bool final_measure,
                                       const SLNodeSet* fixed_node_set) {
   Constraints constraints = given_constraints;
-  property_utils::ApplyMinMaxToConstraints(constraints, *this);
+  if (base::FloatsNotEqual(box_info_.min_size_[kHorizontal],
+                           DefaultLayoutStyle::kDefaultMinSize) ||
+      base::FloatsNotEqual(box_info_.min_size_[kVertical],
+                           DefaultLayoutStyle::kDefaultMinSize) ||
+      base::FloatsNotEqual(box_info_.max_size_[kHorizontal],
+                           DefaultLayoutStyle::kDefaultMaxSize) ||
+      base::FloatsNotEqual(box_info_.max_size_[kVertical],
+                           DefaultLayoutStyle::kDefaultMaxSize)) {
+    property_utils::ApplyMinMaxToConstraints(constraints, *this);
+  }
 
   final_measure_ = final_measure;
 
@@ -706,6 +742,9 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
   if (!algorithm_) {
     const auto type = css_style_->GetDisplay(configs_, attr_map());
     if (type == DisplayType::kNone) {
+      if (final_measure) {
+        LayoutDisplayNone();
+      }
       return ReturnCurrentSizeAndInsertToCache();
     }
 
@@ -733,6 +772,13 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
 
     algorithm_->Initialize(constraints, fixed_node_set);
   } else {
+    const auto type = css_style_->GetDisplay(configs_, attr_map());
+    if (type == DisplayType::kNone) {
+      if (final_measure) {
+        LayoutDisplayNone();
+      }
+      return ReturnCurrentSizeAndInsertToCache();
+    }
     algorithm_->Update(constraints);
     // TODO: Handling boxdata and flexinfo when using cache.
   }
@@ -752,6 +798,66 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
 
 void LayoutObject::UpdateMeasureWithMeasureFunc(const Constraints& constraints,
                                                 bool final_measure) {
+  if (HasDefaultMeasureBox()) {
+    float inner_width = 0.f;
+    float inner_height = 0.f;
+    if (!IsSLIndefiniteMode(constraints[kHorizontal].Mode())) {
+      inner_width = std::max(constraints[kHorizontal].Size(), 0.f);
+    }
+    if (!IsSLIndefiniteMode(constraints[kVertical].Mode())) {
+      inner_height = std::max(constraints[kVertical].Size(), 0.f);
+    }
+
+    if (base::FloatsEqual(std::ceil(inner_width), inner_width)) {
+      inner_width = std::ceil(inner_width);
+    }
+
+    if (base::FloatsEqual(std::floor(inner_width), inner_width)) {
+      inner_width = std::floor(inner_width);
+    }
+
+    const SLMeasureMode width_mode = constraints[kHorizontal].Mode();
+    const SLMeasureMode height_mode = constraints[kVertical].Mode();
+
+    Constraints inner_constraints;
+    inner_constraints[kHorizontal] = OneSideConstraint(inner_width, width_mode);
+    inner_constraints[kVertical] = OneSideConstraint(inner_height, height_mode);
+
+    FloatSize size = measure_func_(context_, inner_constraints, final_measure);
+    SetBaseline(size.baseline_);
+
+    const float physical_pixels_per_layout_unit =
+        css_style_->PhysicalPixelsPerLayoutUnit();
+    if (width_mode == SLMeasureModeDefinite) {
+      size.width_ = inner_width;
+    } else {
+      size.width_ = std::ceil(size.width_ * physical_pixels_per_layout_unit) /
+                    physical_pixels_per_layout_unit;
+    }
+    if (height_mode == SLMeasureModeDefinite) {
+      size.height_ = inner_height;
+    } else {
+      size.height_ = std::ceil(size.height_ * physical_pixels_per_layout_unit) /
+                     physical_pixels_per_layout_unit;
+    }
+
+    const float layout_width = std::max(size.width_, 0.f);
+    const float layout_height = std::max(size.height_, 0.f);
+
+    if (!GetLayoutConfigs().IsFullQuirksMode() &&
+        (base::FloatsLarger(layout_width, size.width_) ||
+         base::FloatsLarger(layout_height, size.height_))) {
+      inner_constraints[kHorizontal] =
+          OneSideConstraint::Definite(layout_width);
+      inner_constraints[kVertical] = OneSideConstraint::Definite(layout_height);
+      measure_func_(context_, inner_constraints, final_measure);
+    }
+
+    SetBorderBoundWidth(layout_width);
+    SetBorderBoundHeight(layout_height);
+    return;
+  }
+
   // Adapter code will be a little bit dirty but fine. It is unavoidable
   // anyways.
   float width = 0.f, height = 0.f;
@@ -888,6 +994,7 @@ void LayoutObject::HideLayoutObject() {
   Constraints constraints;
   constraints[kHorizontal] = constraints[kVertical] =
       OneSideConstraint::Definite(-1.f);
+  ClearCache();
   cache_manager_.InsertCacheEntry(constraints, 0.f, 0.f);
 }
 
