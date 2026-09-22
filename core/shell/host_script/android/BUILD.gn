@@ -4,7 +4,7 @@
 
 import("../../../Lynx.gni")
 
-if (is_android && is_debug) {
+if (enable_host_script_runtime && is_android && is_debug) {
   lynx_core_source_set("host_script_android") {
     sources = [
       "lynx_view/host_script_lynx_view_binding_android.cc",

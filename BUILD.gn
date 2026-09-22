@@ -34,7 +34,7 @@ group("default") {
 
   if (enable_unittests) {
     deps += [ "tools/gn_tools/test:gn_tools_test" ]
-    if (is_mac || is_linux || is_win) {
+    if (enable_host_script_runtime && (is_mac || is_linux || is_win)) {
       deps += [
         "core/shell/host_script/runtime:host_script_session_unittests_exec",
       ]

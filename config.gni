@@ -137,3 +137,8 @@ if (enable_lite) {
   enable_v8 = false
   enable_lepusng_worklet = false
 }
+
+# Match the resolved Inspector default, while allowing independent builds.
+declare_args() {
+  enable_host_script_runtime = enable_inspector
+}
