@@ -73,13 +73,14 @@ void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
       render_info_ = orig_info_;
     }
 
+    bool need_mipmapped = IsMipmapped() && HasResized();
     auto image = skity::Image::MakeDeferredTextureImage(
         skity::Texture::FormatFromColorType(pixmap->GetColorType()),
         render_info_.width(), render_info_.height(), pixmap->GetAlphaType());
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
     unref_queue->GetTaskRunner()->PostTask(
         [context = unref_queue->GetContext(), image, pixmap,
-         render_info = render_info_, mipmapped = mipmapped_,
+         render_info = render_info_, mipmapped = need_mipmapped,
          weak = weak_from_this()]() {
           if (auto self = weak.lock()) {
             auto final_pixmap = ScaleImage(pixmap, render_info);
