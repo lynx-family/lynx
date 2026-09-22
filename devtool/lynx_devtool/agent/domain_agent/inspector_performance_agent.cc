@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.h"
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -21,33 +23,35 @@ InspectorPerformanceAgent::InspectorPerformanceAgent(
 InspectorPerformanceAgent::~InspectorPerformanceAgent() = default;
 
 void InspectorPerformanceAgent::Enable(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PerformanceEnable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PerformanceEnable(responder, params);
 }
 
 void InspectorPerformanceAgent::Disable(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PerformanceDisable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PerformanceDisable(responder, params);
 }
 
 void InspectorPerformanceAgent::getAllTimingInfo(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->getAllTimingInfo(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->getAllTimingInfo(responder, params);
 }
 
 void InspectorPerformanceAgent::getAllPerformanceEntries(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->getAllPerformanceEntries(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->getAllPerformanceEntries(responder, params);
 }
 
 void InspectorPerformanceAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& content) {
-  std::string method = content["method"].asString();
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter != functions_map_.end()) {
-    (this->*(iter->second))(sender, content);
+    (this->*(iter->second))(responder, message["params"]);
   } else {
-    SendNotImplementedResponse(sender, content["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   }
 }
 

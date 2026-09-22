@@ -978,21 +978,21 @@ TEST_F(DevToolMediatorTest, HighlightTest) {
 }
 
 TEST_F(DevToolMediatorTest, GetAllTimingInfoTest) {
-  Json::Value param;
-  param["id"] = 1;
-  devtool_mediator_->getAllTimingInfo(message_sender_, param);
+  devtool_mediator_->getAllTimingInfo(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1),
+      Json::Value());
   ui_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"id\" : 1\n}\n");
+            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, GetAllPerformanceEntriesTest) {
-  Json::Value param;
-  param["id"] = 1;
-  devtool_mediator_->getAllPerformanceEntries(message_sender_, param);
+  devtool_mediator_->getAllPerformanceEntries(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1),
+      Json::Value());
   ui_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"id\" : 1\n}\n");
+            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, AddCDPEventListener) {
