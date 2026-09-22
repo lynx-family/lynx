@@ -61,6 +61,43 @@ public class RoundedRectangleTest {
   }
 
   @Test
+  public void testAsymmetricCornerRadii() {
+    RoundedRectangle roundedRect = new RoundedRectangle(
+        new RectF(0, 0, 200, 100), new float[] {11, 12, 21, 22, 31, 32, 41, 42});
+
+    assertEquals(11, roundedRect.getTopLeftRadiusX(), 0);
+    assertEquals(12, roundedRect.getTopLeftRadiusY(), 0);
+    assertEquals(21, roundedRect.getTopRightRadiusX(), 0);
+    assertEquals(22, roundedRect.getTopRightRadiusY(), 0);
+    assertEquals(31, roundedRect.getBottomRightRadiusX(), 0);
+    assertEquals(32, roundedRect.getBottomRightRadiusY(), 0);
+    assertEquals(41, roundedRect.getBottomLeftRadiusX(), 0);
+    assertEquals(42, roundedRect.getBottomLeftRadiusY(), 0);
+  }
+
+  @Test
+  public void testOnlyBottomLeftCornerRounded() {
+    RoundedRectangle roundedRect =
+        new RoundedRectangle(new RectF(0, 0, 200, 100), new float[] {0, 0, 0, 0, 0, 0, 60, 40});
+
+    assertEquals(60, roundedRect.getBottomLeftRadiusX(), 0);
+    assertEquals(40, roundedRect.getBottomLeftRadiusY(), 0);
+    assertEquals(0, roundedRect.getBottomRightRadiusX(), 0);
+    assertEquals(0, roundedRect.getBottomRightRadiusY(), 0);
+  }
+
+  @Test
+  public void testOnlyBottomRightCornerRounded() {
+    RoundedRectangle roundedRect =
+        new RoundedRectangle(new RectF(0, 0, 200, 100), new float[] {0, 0, 0, 0, 60, 40, 0, 0});
+
+    assertEquals(60, roundedRect.getBottomRightRadiusX(), 0);
+    assertEquals(40, roundedRect.getBottomRightRadiusY(), 0);
+    assertEquals(0, roundedRect.getBottomLeftRadiusX(), 0);
+    assertEquals(0, roundedRect.getBottomLeftRadiusY(), 0);
+  }
+
+  @Test
   public void testEquals() {
     RectF rectF = new RectF(1.1f, 1.1f, 2.2f, 2.2f);
     RoundedRectangle roundedRect0 = new RoundedRectangle(rectF, null);
