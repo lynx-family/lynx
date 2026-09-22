@@ -52,6 +52,7 @@ import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityHelper;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.scroll.AbsLynxUIScroll;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.scroll.IScrollSticky;
 import com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
@@ -1154,6 +1155,13 @@ public abstract class LynxBaseUI
     if (rootView == null) {
       return new Rect(left, top, left + getWidth(), top + getHeight());
     }
+    if (LynxEnv.inst().enableTransformForPositionCalculation()) {
+      RectF rect =
+          LynxUIHelper.convertRectFromUIToRootUI(this, new RectF(0, 0, getWidth(), getHeight()));
+      Rect outRect = new Rect();
+      rect.roundOut(outRect);
+      return outRect;
+    }
     if (this instanceof LynxUI) {
       View uiView = ((LynxUI) this).mView;
       // When box-shadow is applied, the original view will be
@@ -1171,7 +1179,12 @@ public abstract class LynxBaseUI
       }
       try {
         rootView.offsetDescendantRectToMyCoords(uiView, offsetViewBounds);
-        offsetViewBounds.offset(uiView.getScrollX(), uiView.getScrollY());
+        if (uiView instanceof AndroidScrollView) {
+          offsetViewBounds.offset(((AndroidScrollView) uiView).getRealScrollX(),
+              ((AndroidScrollView) uiView).getRealScrollY());
+        } else {
+          offsetViewBounds.offset(uiView.getScrollX(), uiView.getScrollY());
+        }
       } catch (IllegalArgumentException e) {
         // when LynxBaseUI is detached,
         // `offsetDescendantRectToMyCoords` throw exception.
