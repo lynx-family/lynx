@@ -11,6 +11,10 @@
 #ifndef Lynx_POD_VERSION
 #define Lynx_POD_VERSION @"9999_1.4.0"
 #endif
-  return [Lynx_POD_VERSION substringFromIndex:5];
+  NSRange separatorRange = [Lynx_POD_VERSION rangeOfString:@"_"];
+  if (separatorRange.location == NSNotFound) {
+    return Lynx_POD_VERSION;
+  }
+  return [Lynx_POD_VERSION substringFromIndex:separatorRange.location + separatorRange.length];
 }
 @end
