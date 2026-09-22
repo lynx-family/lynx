@@ -325,12 +325,12 @@ QuickjsHelper::MemoryUsage QuickjsHelper::GetMemoryUsage(
   QuickjsHelper::MemoryUsage result;
   memset(&result, 0, sizeof(result));
   if (runtime) {
-    LEPUSMemoryUsage usage;
-    LEPUS_ComputeMemoryUsage(runtime, &usage);
+    LEPUSMemoryUsageBrief usage;
+    LEPUS_ComputeMemoryUsageBrief(runtime, &usage);
     result.base_size = usage.base_malloc_size;
     result.heap_size = usage.malloc_size;
     result.page_rss_size =
-        LEPUS_IsGCModeRT(runtime) ? usage.memory_used_size : usage.malloc_size;
+        LEPUS_IsGCModeRT(runtime) ? usage.page_rss_size : usage.malloc_size;
   }
   if (result.heap_size == 0 && runtime != nullptr) {
     result.heap_size = LEPUS_GetHeapSize(runtime);
