@@ -9690,7 +9690,8 @@ public class com::lynx::tasm::utils::RunOnceRunnable : Runnable {
 }
 
 public interface com::lynx::jsbridge::RuntimeLifecycleListener {
-  public void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeAttach(long napiEnv, String runtimeType);
+  public default void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeAttach(long napiEnv);
+  public default void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeAttach(long napiEnv, String runtimeType);
   public void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeDetach();
 }
 

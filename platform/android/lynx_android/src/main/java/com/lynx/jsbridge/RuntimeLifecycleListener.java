@@ -4,7 +4,24 @@
 package com.lynx.jsbridge;
 
 public interface RuntimeLifecycleListener {
-  void onRuntimeAttach(long napiEnv, String runtimeType);
+  /**
+   * Called when the runtime is attached. Kept for listeners using the original callback signature.
+   *
+   * @param napiEnv the attached NAPI environment
+   */
+  default void onRuntimeAttach(long napiEnv) {}
+
+  /**
+   * Called when the runtime is attached, with its runtime type.
+   * The default implementation forwards to the original callback for compatibility with existing
+   * listeners.
+   *
+   * @param napiEnv the attached NAPI environment
+   * @param runtimeType the JavaScript runtime type
+   */
+  default void onRuntimeAttach(long napiEnv, String runtimeType) {
+    onRuntimeAttach(napiEnv);
+  }
 
   void onRuntimeDetach();
 }
