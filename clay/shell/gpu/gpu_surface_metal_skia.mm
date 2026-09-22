@@ -78,6 +78,14 @@ sk_sp<SkSurface> CreateSurfaceFromMetalTexture(GrDirectContext* context, id<MTLT
       context, backend_texture, origin, static_cast<int>(sample_cnt), color_type,
       std::move(color_space), props, release_proc, release_context);
 }
+
+void FlushAndSubmit(const SurfaceFrame& surface_frame) {
+  auto surface = surface_frame.GetSurface();
+  if (surface) {
+    TRACE_EVENT("clay", "SkSurface::FlushAndSubmit");
+    surface->flushAndSubmit();
+  }
+}
 }  // namespace
 
 GPUSurfaceMetalSkia::GPUSurfaceMetalSkia(GPUSurfaceMetalDelegate* delegate,
@@ -177,10 +185,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromCAMetalLayer(
       return false;
     }
 
-    {
-      TRACE_EVENT("clay", "SkCanvas::Flush");
-      canvas->flush();
-    }
+    FlushAndSubmit(surface_frame);
 
     if (delegate_->EnablePartialRepaint()) {
       intptr_t texture = reinterpret_cast<intptr_t>(drawable.get().texture);
@@ -256,10 +261,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
       return false;
     }
 
-    {
-      TRACE_EVENT("clay", "SkCanvas::Flush");
-      canvas->flush();
-    }
+    FlushAndSubmit(surface_frame);
 
     if (delegate_->EnablePartialRepaint()) {
       for (auto& [current_texture_id, damage] : damage_) {
