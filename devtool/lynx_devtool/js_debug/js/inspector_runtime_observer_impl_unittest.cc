@@ -80,9 +80,9 @@ TEST_F(InspectorRuntimeObserverImplTest, NativeModuleRecordReachesHistory) {
     record_observer->OnGlobalEvent("customEvent",
                                    lepus::Value(std::move(event_arguments)));
 
-    Json::Value request;
-    request["id"] = 7;
-    mediator->NativeModuleGetRecords(devtool_->message_sender_, request);
+    mediator->NativeModuleGetRecords(
+        std::make_shared<CDPResponder>(devtool_->message_sender_, 7),
+        Json::Value());
     mediator->RunOnDevToolThread([&done] { done.set_value(); });
   });
   ASSERT_EQ(completed.wait_for(std::chrono::seconds(5)),
