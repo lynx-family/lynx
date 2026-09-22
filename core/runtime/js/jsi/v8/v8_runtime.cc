@@ -67,7 +67,6 @@ V8Runtime::~V8Runtime() {
   // ctx_.Reset();
   Finalize();
 
-  context_->Release();
   context_.reset();
 }
 

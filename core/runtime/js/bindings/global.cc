@@ -103,15 +103,6 @@ void Global::EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
 
 void Global::Release() { LOGI("lynx Global::Release"); }
 
-void SharedContextGlobal::SetJSRuntime(
-    base::UnsafeOwningPtr<Runtime>& js_runtime) {
-  js_runtime_ = std::move(js_runtime);
-}
-
-Runtime* SharedContextGlobal::GetJSRuntime() { return js_runtime_.get(); }
-
-void SharedContextGlobal::Release() { js_runtime_.Reset(); }
-
 SingleGlobal::~SingleGlobal() { LOGI("lynx ~SingleGlobal"); }
 
 void SingleGlobal::SetJSRuntime(base::UnsafeOwningPtr<Runtime>& js_runtime) {

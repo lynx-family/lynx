@@ -1795,12 +1795,6 @@ class JSIObserver {
 
 class JSIContext {
  public:
-  class Observer {
-   public:
-    virtual ~Observer() = default;
-
-    virtual void Def() = 0;
-  };
   JSIContext(std::shared_ptr<VMInstance> vm) : vm_(vm), postman_(nullptr) {}
   virtual std::shared_ptr<VMInstance> getVM() { return vm_; }
   virtual ~JSIContext() { LOGE("~JSIContext;"); };
@@ -1809,21 +1803,9 @@ class JSIContext {
     postman_ = postman;
   }
 
-  void SetReleaseObserver(std::shared_ptr<Observer> observer) {
-    observer_ = observer;
-  }
-
-  void Release() {
-    LOGI("JSIContext Release");
-    if (observer_) {
-      observer_->Def();
-    }
-  }
-
   std::shared_ptr<ConsoleMessagePostMan>& GetPostMan() { return postman_; }
 
  protected:
-  std::shared_ptr<Observer> observer_;
   std::shared_ptr<VMInstance> vm_;
   std::shared_ptr<ConsoleMessagePostMan> postman_;
 };

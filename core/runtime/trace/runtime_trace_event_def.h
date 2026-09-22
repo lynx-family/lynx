@@ -265,7 +265,7 @@ inline constexpr const char* const CALL_PLATFORM_IMPLEMENTATION =
 inline constexpr const char* const NATIVE_MODULE_PLATFORM_CALLBACK_START =
     "NativeModule::PlatformCallbackStart";
 /**
- * @trace_description: Create a JSB callback wrapper that can be invoked from
+ * @trace_description: Create a JSB callback realm that can be invoked from
  * native and forwarded to JS.
  */
 inline constexpr const char* const CREATE_JSB_CALLBACK = "CreateJSB Callback";
@@ -362,8 +362,8 @@ inline constexpr const char* const JS_EXECUTOR_LOAD_PRE_JS_BUNDLE =
  * @trace_description: Create a JS runtime according to @args{group_id} and
  * page options, including selecting engine type and sharing context if needed.
  */
-inline constexpr const char* const JS_REALM_MANAGER_CREATE_JS_RUNTIME =
-    "JSRealmManager::CreateJSRuntime";
+inline constexpr const char* const JS_REALM_MANAGER_CREATE_REALM =
+    "JSRealmManager::CreateRealm";
 /**
  * @trace_description: Create a runtime in single-context mode (no shared
  * JSContext across pages).
@@ -397,7 +397,7 @@ inline constexpr const char* const JS_REALM_MANAGER_REALM_INIT_GLOBAL =
     "JSRealmManager::JSRealmInitGlobal";
 /**
  * @trace_description: Prepare JS environment by evaluating preloaded scripts
- * (e.g., core JS) inside the context wrapper.
+ * (e.g., core JS) inside the context realm.
  */
 inline constexpr const char* const JS_REALM_MANAGER_REALM_PREPARE_JS_ENV =
     "JSRealmManager::JSRealmPrepareJSEnv";
@@ -1501,7 +1501,7 @@ inline constexpr const char* const QUICK_CONTEXT_GET_AND_CALL =
     "QuickContext::GetAndCall";
 
 /**
- * @trace_description: Create a <wrapper/> element, a special
+ * @trace_description: Create a <realm/> element, a special
  * element provided by the FiberElement API designed to serve as a low-cost
  * container.
  */

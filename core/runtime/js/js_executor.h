@@ -18,6 +18,7 @@
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_binding.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
+#include "core/runtime/js/js_realm.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
 #if ENABLE_TESTBENCH_REPLAY
@@ -28,9 +29,9 @@ namespace lynx {
 
 namespace runtime {
 class JSRealmManager;
+class JSRealmManagerTest;
 class TemplateDelegate;
 class LynxApiHandler;
-class JSRealmManagerDelegate;
 }  // namespace runtime
 
 namespace runtime {
@@ -95,13 +96,11 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<LynxModuleManager>& GetModuleManager() {
     return module_manager_;
   }
-  void TriggerVmGC() {
-    if (js_runtime_) {
-      js_runtime_->RequestGC();
-    }
-  }
+  void TriggerVmGC();
 
  private:
+  friend class runtime::JSRealmManagerTest;
+
   base::LogContext log_context_;
   std::string group_id_;
   std::shared_ptr<InspectorRuntimeObserverNG> runtime_observer_ng_;
@@ -111,8 +110,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<ModuleManagerTestBench> module_manager_testBench_;
 #endif
 
-  // set by  the child class
-  base::UnsafeOwningPtr<Runtime> js_runtime_;
+  JSRealmState realm_state_{nullptr, nullptr, JSRealmState::Sharing::kNone};
 };
 
 }  // namespace js
