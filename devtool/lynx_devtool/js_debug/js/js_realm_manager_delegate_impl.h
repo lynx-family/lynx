@@ -2,19 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_RUNTIME_MANAGER_DELEGATE_IMPL_H_
-#define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_RUNTIME_MANAGER_DELEGATE_IMPL_H_
+#ifndef DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_JS_REALM_MANAGER_DELEGATE_IMPL_H_
+#define DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_JS_REALM_MANAGER_DELEGATE_IMPL_H_
 
 #include "core/base/memory/unsafe_owning_ptr.h"
-#include "core/runtime/js/runtime_manager.h"
+#include "core/runtime/js/js_realm_manager.h"
 
 namespace lynx {
 namespace devtool {
 
-class RuntimeManagerDelegateImpl : public runtime::RuntimeManagerDelegate {
+class JSRealmManagerDelegateImpl : public runtime::JSRealmManagerDelegate {
  public:
-  RuntimeManagerDelegateImpl() = default;
-  ~RuntimeManagerDelegateImpl() override;
+  JSRealmManagerDelegateImpl() = default;
+  ~JSRealmManagerDelegateImpl() override;
 
   void BeforeRuntimeCreate(bool force_use_lightweight_js_engine) override;
   void OnRuntimeReady(runtime::js::JSExecutor& executor,
@@ -54,4 +54,4 @@ class RuntimeManagerDelegateImpl : public runtime::RuntimeManagerDelegate {
 }  // namespace devtool
 }  // namespace lynx
 
-#endif  // DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_RUNTIME_MANAGER_DELEGATE_IMPL_H_
+#endif  // DEVTOOL_LYNX_DEVTOOL_JS_DEBUG_JS_JS_REALM_MANAGER_DELEGATE_IMPL_H_

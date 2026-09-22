@@ -5,8 +5,8 @@
 #include "devtool/lynx_devtool/js_debug/js/v8/manager/v8_inspector_manager_impl.h"
 
 #include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/js_realm_manager.h"
 #include "core/runtime/js/jsi/v8/v8_runtime.h"
-#include "core/runtime/js/runtime_manager.h"
 #include "devtool/js_inspect/v8/v8_inspector_client_provider.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
 
@@ -39,22 +39,21 @@ void V8InspectorManagerImpl::InitInspector(
 
   static thread_local std::once_flag set_release_vm_callback;
   static thread_local std::once_flag set_release_ctx_callback;
-  std::call_once(
-      set_release_vm_callback, [inspector_client = inspector_client_] {
-        auto runtime_manager_delegate =
-            JSExecutor::GetCurrentRuntimeManagerInstance()
-                ->GetRuntimeManagerDelegate();
-        runtime_manager_delegate->SetReleaseVMCallback(
-            JSRuntimeType::v8,
-            [inspector_client]() { inspector_client->DestroyInspector(); });
-      });
+  std::call_once(set_release_vm_callback, [inspector_client =
+                                               inspector_client_] {
+    auto js_realm_manager_delegate =
+        JSExecutor::GetCurrentRealmManagerInstance()->GetRealmManagerDelegate();
+    js_realm_manager_delegate->SetReleaseVMCallback(
+        JSRuntimeType::v8,
+        [inspector_client]() { inspector_client->DestroyInspector(); });
+  });
   if (group_id_ != devtool::kSingleGroupStr) {
     std::call_once(set_release_ctx_callback, [inspector_client =
                                                   inspector_client_] {
-      auto runtime_manager_delegate =
-          JSExecutor::GetCurrentRuntimeManagerInstance()
-              ->GetRuntimeManagerDelegate();
-      runtime_manager_delegate->SetReleaseContextCallback(
+      auto js_realm_manager_delegate =
+          JSExecutor::GetCurrentRealmManagerInstance()
+              ->GetRealmManagerDelegate();
+      js_realm_manager_delegate->SetReleaseContextCallback(
           JSRuntimeType::v8, [inspector_client](const std::string &group_id) {
             inspector_client->DestroyContext(group_id);
           });

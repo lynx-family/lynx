@@ -29,8 +29,8 @@ class InspectorRuntimeObserverImpl
   }
 
   int GetViewId() override { return view_id_; }
-  std::unique_ptr<runtime::RuntimeManagerDelegate>
-  CreateRuntimeManagerDelegate() override;
+  std::unique_ptr<runtime::JSRealmManagerDelegate> CreateRealmManagerDelegate()
+      override;
   std::unique_ptr<runtime::js::RuntimeInspectorManager>
   CreateRuntimeInspectorManager(const std::string& vm_type) override;
   std::shared_ptr<runtime::js::ConsoleMessagePostMan>

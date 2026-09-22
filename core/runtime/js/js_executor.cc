@@ -7,7 +7,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/console.h"
-#include "core/runtime/js/runtime_manager.h"
+#include "core/runtime/js/js_realm_manager.h"
 #include "core/runtime/js/utils.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
@@ -53,19 +53,19 @@ void JSExecutor::Destroy() {
   js_runtime_.Reset();
 }
 
-runtime::RuntimeManager* JSExecutor::runtimeManagerInstance() {
+runtime::JSRealmManager* JSExecutor::realmManagerInstance() {
   if (runtime_observer_ng_ != nullptr) {
-    if (runtime::RuntimeManager::Instance()->GetRuntimeManagerDelegate() ==
+    if (runtime::JSRealmManager::Instance()->GetRealmManagerDelegate() ==
         nullptr) {
-      runtime::RuntimeManager::Instance()->SetRuntimeManagerDelegate(
-          runtime_observer_ng_->CreateRuntimeManagerDelegate());
+      runtime::JSRealmManager::Instance()->SetRealmManagerDelegate(
+          runtime_observer_ng_->CreateRealmManagerDelegate());
     }
   }
-  return runtime::RuntimeManager::Instance();
+  return runtime::JSRealmManager::Instance();
 }
 
-runtime::RuntimeManager* JSExecutor::GetCurrentRuntimeManagerInstance() {
-  return runtime::RuntimeManager::Instance();
+runtime::JSRealmManager* JSExecutor::GetCurrentRealmManagerInstance() {
+  return runtime::JSRealmManager::Instance();
 }
 
 void JSExecutor::loadPreJSBundle(
@@ -76,7 +76,7 @@ void JSExecutor::loadPreJSBundle(
     const tasm::PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_EXECUTOR_LOAD_PRE_JS_BUNDLE);
   const int64_t runtime_id = create_params.runtime_id;
-  js_runtime_ = runtimeManagerInstance()->CreateJSRuntime(
+  js_runtime_ = realmManagerInstance()->CreateJSRuntime(
       std::move(js_pre_sources_getter), force_use_light_weight_js_engine_,
       ensure_console, *this, create_params, page_options);
   if (runtime_observer_ng_ != nullptr) {

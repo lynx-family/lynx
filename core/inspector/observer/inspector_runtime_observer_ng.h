@@ -13,7 +13,7 @@
 
 namespace lynx {
 namespace runtime {
-class RuntimeManagerDelegate;
+class JSRealmManagerDelegate;
 }
 
 namespace tasm {
@@ -39,8 +39,8 @@ class InspectorRuntimeObserverNG {
 
   // The following functions are used to create some instances which implemented
   // in LynxDevtool.
-  virtual std::unique_ptr<runtime::RuntimeManagerDelegate>
-  CreateRuntimeManagerDelegate() {
+  virtual std::unique_ptr<runtime::JSRealmManagerDelegate>
+  CreateRealmManagerDelegate() {
     return nullptr;
   }
   virtual std::unique_ptr<RuntimeInspectorManager>

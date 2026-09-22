@@ -1,7 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/js/runtime_manager.h"
+#include "core/runtime/js/js_realm_manager.h"
 
 #include <memory>
 #include <mutex>
@@ -218,21 +218,21 @@ void RegisterVMForTraceAndMonitor(
 
 }  // namespace
 
-RuntimeManager* RuntimeManager::Instance() {
-  static thread_local RuntimeManager instance_;
+JSRealmManager* JSRealmManager::Instance() {
+  static thread_local JSRealmManager instance_;
   return &instance_;
 }
 
-RuntimeManager::NewShareGroupPageReleaseObserver::
-    NewShareGroupPageReleaseObserver(RuntimeManager* manager)
+JSRealmManager::NewShareGroupPageReleaseObserver::
+    NewShareGroupPageReleaseObserver(JSRealmManager* manager)
     : manager_(manager) {}
 
-void RuntimeManager::NewShareGroupPageReleaseObserver::OnRelease(
+void JSRealmManager::NewShareGroupPageReleaseObserver::OnRelease(
     const std::string& group_id) {
   manager_->OnNewShareGroupPageRelease(group_id);
 }
 
-RuntimeManager::RuntimeManager()
+JSRealmManager::JSRealmManager()
     : memory_pressure_callback_(base::NotificationCallback::CallbackList{
           {base::MEMORY_PRESSURE_NOTIFICATION,
            [this](const std::string& tag, intptr_t data) {
@@ -255,22 +255,22 @@ RuntimeManager::RuntimeManager()
 #endif
 }
 
-RuntimeManager::~RuntimeManager() {
+JSRealmManager::~JSRealmManager() {
   for (const auto& [type, vm] : mVMContainer_) {
     if (type == runtime::js::JSRuntimeType::v8) {
       UnregisterVMInstance(vm.get());
     }
   }
-  // Should destroy runtime_manager_delegate_ before mVMContainer_
-  runtime_manager_delegate_.reset();
+  // Should destroy js_realm_manager_delegate_ before mVMContainer_
+  js_realm_manager_delegate_.reset();
 }
 
-bool RuntimeManager::IsSingleJSContext(const std::string& group_id) {
+bool JSRealmManager::IsSingleJSContext(const std::string& group_id) {
   return group_id == "-1";
 }
 
 base::UnsafeOwningPtr<runtime::js::Runtime>
-RuntimeManager::CreateNewShareGroupJSRuntime(
+JSRealmManager::CreateNewShareGroupJSRuntime(
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
         js_pre_sources_getter,
@@ -301,13 +301,13 @@ RuntimeManager::CreateNewShareGroupJSRuntime(
                        page_options);
   page_runtime->InitRuntime(page_context);
 
-  auto page_wrapper = std::make_shared<NewShareGroupPageContextWrapper>(
+  auto page_wrapper = std::make_shared<SharedVMPageRealm>(
       page_context, group_id, &new_share_group_page_release_observer_);
   page_context->SetReleaseObserver(page_wrapper);
   global_wrapper->IncLivePageCount();
   std::shared_ptr<runtime::js::ConsoleMessagePostMan> page_post_man =
       page_context->GetPostMan();
-  page_wrapper->initGlobal(page_runtime, page_post_man, page_options);
+  page_wrapper->InitGlobal(page_runtime, page_post_man, page_options);
   if (ensure_console) {
     page_wrapper->EnsureConsole(page_post_man, page_options);
   }
@@ -317,8 +317,8 @@ RuntimeManager::CreateNewShareGroupJSRuntime(
   // Each page has its own runtime, so the devtool delegate needs to be
   // notified per page just like the legacy shared-context reuse path.
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-    runtime_manager_delegate_->OnRuntimeReady(executor, *page_runtime,
-                                              group_id);
+    js_realm_manager_delegate_->OnRuntimeReady(executor, *page_runtime,
+                                               group_id);
   }
 
 #if ENABLE_TRACE_PERFETTO
@@ -328,7 +328,7 @@ RuntimeManager::CreateNewShareGroupJSRuntime(
   return page_runtime;
 }
 
-base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
+base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
         js_pre_sources_getter,
@@ -337,11 +337,11 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options) {
   const auto& group_id = create_params.group_id;
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_CREATE_JS_RUNTIME,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_CREATE_JS_RUNTIME,
               "group_id", group_id);
   // call inspect's prepare
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-    runtime_manager_delegate_->BeforeRuntimeCreate(
+    js_realm_manager_delegate_->BeforeRuntimeCreate(
         force_use_lightweight_js_engine);
   }
   const bool is_single_context = IsSingleJSContext(group_id);
@@ -360,14 +360,14 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   bool need_create_context_wrapper = true;
   if (is_single_context) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                RUNTIME_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME);
+                JS_REALM_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME);
     js_runtime = CreateRuntime(force_use_lightweight_js_engine, false,
                                create_params, page_options);
     js_context = CreateJSIContext(*js_runtime, create_params);
     LOGI("create single_context:" << js_context.get());
   } else {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                RUNTIME_MANAGER_GET_SHARED_JS_CONTEXT);
+                JS_REALM_MANAGER_GET_SHARED_JS_CONTEXT);
     js_context = GetSharedJSContext(group_id);
     if (js_context) {
       auto vm = js_context->getVM();
@@ -376,7 +376,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
       AlignRuntimeEngineWithVM(vm, force_use_lightweight_js_engine,
                                "use shared jscontext");
       TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                  RUNTIME_MANAGER_SHARED_CONTEXT_REUSED);
+                  JS_REALM_MANAGER_SHARED_CONTEXT_REUSED);
       need_create_context_wrapper = false;
       js_runtime = CreateRuntime(force_use_lightweight_js_engine, true,
                                  create_params, page_options);
@@ -386,7 +386,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
                                                   << ", group:" << group_id);
     } else {
       TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                  RUNTIME_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
+                  JS_REALM_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
       // share context first create.
       js_runtime = CreateRuntime(force_use_lightweight_js_engine, false,
                                  create_params, page_options);
@@ -405,21 +405,21 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
 
   // none share context and first create share context.
   if (need_create_context_wrapper) {
-    std::shared_ptr<JSContextWrapper> context_wrapper;
+    std::shared_ptr<JSRealm> context_wrapper;
     base::UnsafeOwningPtr<runtime::js::Runtime> owned_global_runtime;
     if (is_single_context) {
-      context_wrapper = std::make_shared<NoneSharedJSContextWrapper>(
-          js_context, runtime_manager_delegate_ == nullptr ? this : nullptr);
+      context_wrapper = std::make_shared<SingleJSRealm>(
+          js_context, js_realm_manager_delegate_ == nullptr ? this : nullptr);
     } else {
       context_wrapper =
-          std::make_shared<SharedJSContextWrapper>(js_context, group_id, this);
+          std::make_shared<SharedJSRealm>(js_context, group_id, this);
       shared_context_map_.insert(std::make_pair(group_id, context_wrapper));
       if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-        runtime_manager_delegate_->AfterSharedContextCreate(group_id,
-                                                            js_runtime->type());
+        js_realm_manager_delegate_->AfterSharedContextCreate(
+            group_id, js_runtime->type());
       }
       // In shared-context mode the global runtime is a SEPARATE runtime
-      // instance owned by SharedJSContextWrapper.
+      // instance owned by SharedJSRealm.
       auto unique_global =
           MakeRuntime(js_runtime->type() == runtime::js::JSRuntimeType::quickjs,
                       false, page_options);
@@ -443,37 +443,36 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
     if (!IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       post_man = js_context->GetPostMan();
     }
-    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                RUNTIME_MANAGER_CONTEXT_WRAPPER_INIT_GLOBAL);
-    context_wrapper->initGlobal(global_runtime, post_man, page_options);
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_REALM_INIT_GLOBAL);
+    context_wrapper->InitGlobal(global_runtime, post_man, page_options);
     if (ensure_console) {
       context_wrapper->EnsureConsole(post_man, page_options);
     }
 
     // should call brefore loadPreJS.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-      runtime_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
-                                                group_id);
+      js_realm_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
+                                                 group_id);
     }
 
     runtime::js::GCPauseSuppressionMode mode(js_runtime.get());
     auto js_pre_sources = js_pre_sources_getter();
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                RUNTIME_MANAGER_CONTEXT_WRAPPER_PREPARE_JS_ENV);
-    context_wrapper->prepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
+                JS_REALM_MANAGER_REALM_PREPARE_JS_ENV);
+    context_wrapper->PrepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
   } else {
     // Shared context reused. If corejs was deferred on the first creation,
     // we need to try to load it here to ensure the current runtime runs with
     // a fully-initialized shared JSIContext.
-    auto* context_wrapper = GetContextWrapper(group_id);
-    if (context_wrapper != nullptr && !context_wrapper->isJSCoreLoaded()) {
+    auto* context_wrapper = GetSharedRealm(group_id);
+    if (context_wrapper != nullptr && !context_wrapper->IsCoreJSLoaded()) {
       auto js_pre_sources = js_pre_sources_getter();
       context_wrapper->EnsureCoreJSLoaded(*js_runtime, js_pre_sources);
     }
     // share context also need call this, because lynx_runtime is different.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-      runtime_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
-                                                group_id);
+      js_realm_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
+                                                 group_id);
     }
   }
 
@@ -484,8 +483,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   return js_runtime;
 }
 
-NewShareGroupGlobalContextWrapper*
-RuntimeManager::EnsureNewShareGroupGlobalContext(
+SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
     bool force_use_lightweight_js_engine,
     const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options,
@@ -497,23 +495,22 @@ RuntimeManager::EnsureNewShareGroupGlobalContext(
   auto it = new_share_group_map_.find(group_id);
   if (it != new_share_group_map_.end()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                RUNTIME_MANAGER_SHARED_CONTEXT_REUSED);
+                JS_REALM_MANAGER_SHARED_CONTEXT_REUSED);
     auto* wrapper = it->second.get();
     auto* global_runtime = wrapper ? wrapper->GetGlobalRuntime() : nullptr;
     if (wrapper != nullptr && global_runtime != nullptr &&
-        !wrapper->isJSCoreLoaded()) {
+        !wrapper->IsCoreJSLoaded()) {
       auto js_pre_sources = js_pre_sources_getter();
-      wrapper->JSContextWrapper::EnsureCoreJSLoaded(*global_runtime,
-                                                    js_pre_sources);
+      wrapper->JSRealm::EnsureCoreJSLoaded(*global_runtime, js_pre_sources);
     }
     return it->second.get();
   }
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-              RUNTIME_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
+              JS_REALM_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
 
   // Create the group's global runtime + shared VM/context. Ownership of this
-  // runtime is handed to the global-context wrapper (via initGlobal) so it
+  // runtime is handed to the global-context wrapper (via InitGlobal) so it
   // outlives every page in the group. It carries only the group id as external
   // params; napi is intentionally NOT installed on the global context (per-page
   // contexts own their own napi hooks).
@@ -529,19 +526,19 @@ RuntimeManager::EnsureNewShareGroupGlobalContext(
   auto global_context = CreateJSIContext(*global_runtime, create_params);
   global_runtime->InitRuntime(global_context);
   runtime::js::Runtime* global_rt_ptr = global_runtime.get();
-  // Capture a weak handle before initGlobal moves the owning pointer into the
-  // wrapper; used to drive prepareJSEnv below.
+  // Capture a weak handle before InitGlobal moves the owning pointer into the
+  // wrapper; used to drive PrepareJSEnv below.
   base::UnsafeWeakPtr<runtime::js::Runtime> global_runtime_weak =
       global_runtime.GetWeakPtr();
 
-  auto wrapper = base::MakeUnsafeOwning<NewShareGroupGlobalContextWrapper>(
-      global_context, group_id);
+  auto wrapper =
+      base::MakeUnsafeOwning<SharedVMGlobalRealm>(global_context, group_id);
   // Register the engine type with the devtool delegate so the matching release
   // callback fires when the group's global context is torn down, mirroring the
   // legacy shared-context first-create path.
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-    runtime_manager_delegate_->AfterSharedContextCreate(group_id,
-                                                        global_rt_ptr->type());
+    js_realm_manager_delegate_->AfterSharedContextCreate(group_id,
+                                                         global_rt_ptr->type());
   }
 #if ENABLE_TRACE_PERFETTO
   auto runtime_profiler = MakeRuntimeProfiler(
@@ -555,33 +552,33 @@ RuntimeManager::EnsureNewShareGroupGlobalContext(
     post_man = global_context->GetPostMan();
   }
 
-  // initGlobal moves ownership of `global_runtime` into the wrapper and
+  // InitGlobal moves ownership of `global_runtime` into the wrapper and
   // installs the full set of shared host objects so page contexts can copy
   // them.
-  wrapper->initGlobal(global_runtime, post_man, page_options);
+  wrapper->InitGlobal(global_runtime, post_man, page_options);
   wrapper->EnsureConsole(post_man, page_options);
 
   // Register corejs before evaluation without attaching a page session to
   // this group-owned runtime.
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-    runtime_manager_delegate_->OnRuntimeReady(executor, *global_rt_ptr,
-                                              group_id);
+    js_realm_manager_delegate_->OnRuntimeReady(executor, *global_rt_ptr,
+                                               group_id);
   }
 
   runtime::js::GCPauseSuppressionMode mode(global_rt_ptr);
   auto js_pre_sources = js_pre_sources_getter();
-  wrapper->prepareJSEnv(global_runtime_weak, js_pre_sources);
+  wrapper->PrepareJSEnv(global_runtime_weak, js_pre_sources);
 
   auto emplaced =
       new_share_group_map_.insert_or_assign(group_id, std::move(wrapper));
   return emplaced.first->second.get();
 }
 
-base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
+base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_CREATE_RUNTIME);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_CREATE_RUNTIME);
   auto unique_runtime = MakeRuntime(force_use_lightweight_js_engine,
                                     use_shared_context, page_options);
   base::UnsafeOwningPtr<runtime::js::Runtime> js_runtime(
@@ -595,7 +592,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
   return js_runtime;
 }
 
-void RuntimeManager::TrackRuntimeForMemoryPressure(
+void JSRealmManager::TrackRuntimeForMemoryPressure(
     base::UnsafeWeakPtr<runtime::js::Runtime> runtime) {
   if (!memory_task_runner_) {
     return;
@@ -606,7 +603,7 @@ void RuntimeManager::TrackRuntimeForMemoryPressure(
   });
 }
 
-void RuntimeManager::CompactWeakRuntimes() {
+void JSRealmManager::CompactWeakRuntimes() {
   std::vector<base::UnsafeWeakPtr<runtime::js::Runtime>> alive;
   alive.reserve(weak_runtimes_.size());
   for (auto& w : weak_runtimes_) {
@@ -617,22 +614,22 @@ void RuntimeManager::CompactWeakRuntimes() {
   weak_runtimes_.swap(alive);
 }
 
-void RuntimeManager::OnRelease(const std::string& group_id) {
+void JSRealmManager::OnRelease(const std::string& group_id) {
   auto it = shared_context_map_.find(group_id);
   if (it != shared_context_map_.end()) {
-    if (runtime_manager_delegate_) {
-      runtime_manager_delegate_->OnRelease(group_id);
+    if (js_realm_manager_delegate_) {
+      js_realm_manager_delegate_->OnRelease(group_id);
     }
-    LOGI("RuntimeManager remove context:" << group_id);
+    LOGI("JSRealmManager remove context:" << group_id);
     shared_context_map_.erase(it);
   } else {
-    LOGI("RuntimeManager::OnRelease : not find shared jscontext in group:"
+    LOGI("JSRealmManager::OnRelease : not find shared jscontext in group:"
          << group_id << " It may has been released in global runtime.");
   }
 }
 
-void RuntimeManager::OnNewShareGroupPageRelease(const std::string& group_id) {
-  // Dispatched only from NewShareGroupPageContextWrapper through
+void JSRealmManager::OnNewShareGroupPageRelease(const std::string& group_id) {
+  // Dispatched only from SharedVMPageRealm through
   // new_share_group_page_release_observer_, so this never collides with a
   // legacy shared context that happens to reuse the same group id. Decrement
   // the group's live page count; when the last page is gone drop the group's
@@ -645,15 +642,15 @@ void RuntimeManager::OnNewShareGroupPageRelease(const std::string& group_id) {
   if (ng_it->second->DecLivePageCount() > 0) {
     return;
   }
-  if (runtime_manager_delegate_) {
-    runtime_manager_delegate_->OnRelease(group_id);
+  if (js_realm_manager_delegate_) {
+    js_realm_manager_delegate_->OnRelease(group_id);
   }
   LOGI(kNewShareGroupTag << " release global context group:" << group_id);
   new_share_group_map_.erase(ng_it);
 }
 
-JSContextWrapper* RuntimeManager::GetContextWrapper(
-    const std::string& group_id, bool enable_new_share_group) {
+JSRealm* JSRealmManager::GetSharedRealm(const std::string& group_id,
+                                        bool enable_new_share_group) {
   if (enable_new_share_group) {
     auto ng_it = new_share_group_map_.find(group_id);
     return ng_it == new_share_group_map_.end() ? nullptr : ng_it->second.get();
@@ -662,13 +659,13 @@ JSContextWrapper* RuntimeManager::GetContextWrapper(
   return it == shared_context_map_.end() ? nullptr : it->second.get();
 }
 
-std::shared_ptr<runtime::js::JSIContext> RuntimeManager::GetSharedJSContext(
+std::shared_ptr<runtime::js::JSIContext> JSRealmManager::GetSharedJSContext(
     const std::string& group_id) {
   auto it = shared_context_map_.find(group_id);
-  return it == shared_context_map_.end() ? nullptr : it->second->getJSContext();
+  return it == shared_context_map_.end() ? nullptr : it->second->GetJSContext();
 }
 
-std::shared_ptr<runtime::js::JSIContext> RuntimeManager::CreateJSIContext(
+std::shared_ptr<runtime::js::JSIContext> JSRealmManager::CreateJSIContext(
     runtime::js::Runtime& rt,
     const runtime::js::JSRuntimeExternalParams& create_params) {
   std::shared_ptr<runtime::js::JSIContext> js_context;
@@ -690,7 +687,7 @@ std::shared_ptr<runtime::js::JSIContext> RuntimeManager::CreateJSIContext(
   return js_context;
 }
 
-void RuntimeManager::InitJSRuntimeCreatedType(bool need_create_vm,
+void JSRealmManager::InitJSRuntimeCreatedType(bool need_create_vm,
                                               runtime::js::Runtime& rt) {
   runtime::js::JSRuntimeCreatedType type =
       need_create_vm ? runtime::js::JSRuntimeCreatedType::vm_context
@@ -698,7 +695,7 @@ void RuntimeManager::InitJSRuntimeCreatedType(bool need_create_vm,
   rt.setCreatedType(type);
 }
 
-bool RuntimeManager::EnsureVM(runtime::js::Runtime& rt) {
+bool JSRealmManager::EnsureVM(runtime::js::Runtime& rt) {
   if (mVMContainer_.find(rt.type()) == mVMContainer_.end()) {
     runtime::js::StartupData* data = nullptr;
 
@@ -711,7 +708,7 @@ bool RuntimeManager::EnsureVM(runtime::js::Runtime& rt) {
   return false;
 }
 
-void RuntimeManager::EnsureConsolePostMan(
+void JSRealmManager::EnsureConsolePostMan(
     std::shared_ptr<runtime::js::JSIContext>& context,
     runtime::js::JSExecutor& executor, bool force_use_lightweight_js_engine,
     const tasm::PageOptions& page_options) {
@@ -729,12 +726,12 @@ void RuntimeManager::EnsureConsolePostMan(
   }
 }
 
-std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
+std::unique_ptr<runtime::js::Runtime> JSRealmManager::MakeRuntime(
     bool force_use_lightweight_js_engine, bool use_shared_context,
     const tasm::PageOptions& page_options) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_MAKE_RUNTIME);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_MAKE_RUNTIME);
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-    return runtime_manager_delegate_->MakeRuntime(
+    return js_realm_manager_delegate_->MakeRuntime(
         force_use_lightweight_js_engine, use_shared_context, page_options);
   }
 
@@ -827,7 +824,7 @@ std::unique_ptr<runtime::js::Runtime> RuntimeManager::MakeRuntime(
 }
 
 #if ENABLE_TRACE_PERFETTO
-void RuntimeManager::CheckAutotakeSnapshot(const std::string& group_id) {
+void JSRealmManager::CheckAutotakeSnapshot(const std::string& group_id) {
   if (!IsSingleJSContext(group_id)) {
     if (auto config =
             trace::TraceController::Instance()->GetLastSessionTraceConfig();
@@ -840,10 +837,10 @@ void RuntimeManager::CheckAutotakeSnapshot(const std::string& group_id) {
   }
 }
 
-void RuntimeManager::TakeVMSnapshot(const std::string& group_id, bool initial) {
-  auto* ctx_wrap = GetContextWrapper(group_id);
+void JSRealmManager::TakeVMSnapshot(const std::string& group_id, bool initial) {
+  auto* ctx_wrap = GetSharedRealm(group_id);
   if (ctx_wrap) {
-    auto ctx = ctx_wrap->getJSContext();
+    auto ctx = ctx_wrap->GetJSContext();
     if (ctx) {
       std::string identifier = group_id + "(shared bts)";
       intptr_t payload[3] = {reinterpret_cast<intptr_t>(ctx.get()),
@@ -855,7 +852,7 @@ void RuntimeManager::TakeVMSnapshot(const std::string& group_id, bool initial) {
   }
 }
 
-void RuntimeManager::ScheduleVMSnapshot(const std::string& group_id) {
+void JSRealmManager::ScheduleVMSnapshot(const std::string& group_id) {
   if (!memory_task_runner_) {
     return;
   }
@@ -880,12 +877,12 @@ void RuntimeManager::ScheduleVMSnapshot(const std::string& group_id) {
       fml::TimeDelta::FromMilliseconds(500));
 }
 
-std::shared_ptr<profile::RuntimeProfiler> RuntimeManager::MakeRuntimeProfiler(
+std::shared_ptr<profile::RuntimeProfiler> JSRealmManager::MakeRuntimeProfiler(
     std::shared_ptr<runtime::js::JSIContext> js_context,
     bool force_use_lightweight_js_engine,
     const tasm::PageOptions& page_options) {
-  if (runtime_manager_delegate_) {
-    return runtime_manager_delegate_->MakeRuntimeProfiler(
+  if (js_realm_manager_delegate_) {
+    return js_realm_manager_delegate_->MakeRuntimeProfiler(
         js_context, force_use_lightweight_js_engine, page_options);
   }
 #if OS_ANDROID
@@ -906,15 +903,15 @@ std::shared_ptr<profile::RuntimeProfiler> RuntimeManager::MakeRuntimeProfiler(
 }
 #endif  // ENABLE_TRACE_PERFETTO
 
-bool RuntimeManager::IsInspectEnabled(bool force_use_lightweight_js_engine,
+bool JSRealmManager::IsInspectEnabled(bool force_use_lightweight_js_engine,
                                       const tasm::PageOptions& page_options) {
   bool debuggable = page_options.GetDebuggable();
-  return runtime_manager_delegate_ &&
+  return js_realm_manager_delegate_ &&
          tasm::LynxEnv::GetInstance().IsJsDebugEnabled(
              force_use_lightweight_js_engine, debuggable);
 }
 
-void RuntimeManager::OnMemoryPressure(base::MemoryPressureLevel level) {
+void JSRealmManager::OnMemoryPressure(base::MemoryPressureLevel level) {
   if (!memory_task_runner_) {
     return;
   }

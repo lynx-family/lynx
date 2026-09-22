@@ -362,69 +362,68 @@ inline constexpr const char* const JS_EXECUTOR_LOAD_PRE_JS_BUNDLE =
  * @trace_description: Create a JS runtime according to @args{group_id} and
  * page options, including selecting engine type and sharing context if needed.
  */
-inline constexpr const char* const RUNTIME_MANAGER_CREATE_JS_RUNTIME =
-    "RuntimeManager::CreateJSRuntime";
+inline constexpr const char* const JS_REALM_MANAGER_CREATE_JS_RUNTIME =
+    "JSRealmManager::CreateJSRuntime";
 /**
  * @trace_description: Create a runtime in single-context mode (no shared
  * JSContext across pages).
  */
 inline constexpr const char* const
-    RUNTIME_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME =
-        "RuntimeManager::CreateSingleContextRuntime";
+    JS_REALM_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME =
+        "JSRealmManager::CreateSingleContextRuntime";
 /**
  * @trace_description: Lookup an existing shared JSContext by @args{group_id}.
  */
-inline constexpr const char* const RUNTIME_MANAGER_GET_SHARED_JS_CONTEXT =
-    "RuntimeManager::GetSharedJSContext";
+inline constexpr const char* const JS_REALM_MANAGER_GET_SHARED_JS_CONTEXT =
+    "JSRealmManager::GetSharedJSContext";
 /**
  * @trace_description: Reuse an already-created shared JSContext for the same
  * @args{group_id}.
  */
-inline constexpr const char* const RUNTIME_MANAGER_SHARED_CONTEXT_REUSED =
-    "RuntimeManager::SharedContextReused";
+inline constexpr const char* const JS_REALM_MANAGER_SHARED_CONTEXT_REUSED =
+    "JSRealmManager::SharedContextReused";
 /**
  * @trace_description: Create the shared JSContext for @args{group_id} for the
  * first time and register it for subsequent reuse.
  */
 inline constexpr const char* const
-    RUNTIME_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME =
-        "RuntimeManager::CreateSharedContextFirstTime";
+    JS_REALM_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME =
+        "JSRealmManager::CreateSharedContextFirstTime";
 /**
  * @trace_description: Initialize the global object/builtins for a new
- * JSContextWrapper (global runtime setup).
+ * JSRealm (global runtime setup).
  */
-inline constexpr const char* const RUNTIME_MANAGER_CONTEXT_WRAPPER_INIT_GLOBAL =
-    "RuntimeManager::JSContextWrapperInitGlobal";
+inline constexpr const char* const JS_REALM_MANAGER_REALM_INIT_GLOBAL =
+    "JSRealmManager::JSRealmInitGlobal";
 /**
  * @trace_description: Prepare JS environment by evaluating preloaded scripts
  * (e.g., core JS) inside the context wrapper.
  */
-inline constexpr const char* const
-    RUNTIME_MANAGER_CONTEXT_WRAPPER_PREPARE_JS_ENV =
-        "RuntimeManager::JSContextWrapperPrepareJSEnv";
+inline constexpr const char* const JS_REALM_MANAGER_REALM_PREPARE_JS_ENV =
+    "JSRealmManager::JSRealmPrepareJSEnv";
 /**
  * @trace_description: Create an engine runtime instance by (MakeRuntime), and
  * set some runtime params.
  */
-inline constexpr const char* const RUNTIME_MANAGER_CREATE_RUNTIME =
-    "RuntimeManager::CreateRuntime";
+inline constexpr const char* const JS_REALM_MANAGER_CREATE_RUNTIME =
+    "JSRealmManager::CreateRuntime";
 /**
  * @trace_description: Real make js engine's runtime.
  */
-inline constexpr const char* const RUNTIME_MANAGER_MAKE_RUNTIME =
-    "RuntimeManager::MakeRuntime";
+inline constexpr const char* const JS_REALM_MANAGER_MAKE_RUNTIME =
+    "JSRealmManager::MakeRuntime";
 /**
  * @trace_description: Evaluate the preloaded JS scripts in the JS runtime to
  * finish JS environment initialization.
  */
-inline constexpr const char* const JS_CONTEXT_WRAPPER_PREPARE_JS_ENV =
-    "JSContextWrapper::prepareJSEnv";
+inline constexpr const char* const JS_REALM_PREPARE_JS_ENV =
+    "JSRealm::PrepareJSEnv";
 /**
  * @trace_description: Ensure lynx_core.js (and related preload sources) are
- * evaluated in the JS runtime for an existing JSContextWrapper.
+ * evaluated in the JS runtime for an existing JSRealm.
  */
-inline constexpr const char* const JS_CONTEXT_WRAPPER_ENSURE_CORE_JS_LOADED =
-    "JSContextWrapper::EnsureCoreJSLoaded";
+inline constexpr const char* const JS_REALM_ENSURE_CORE_JS_LOADED =
+    "JSRealm::EnsureCoreJSLoaded";
 /**
  * @trace_description: Notify runtime lifecycle observers that the JS runtime
  * is attached and native modules can bind to it.

@@ -21,9 +21,9 @@
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/js_bundle_holder.h"
+#include "core/runtime/js/js_realm_manager.h"
 #include "core/runtime/js/jsi/heap_snapshot.h"
 #include "core/runtime/js/runtime_constant.h"
-#include "core/runtime/js/runtime_manager.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -528,7 +528,7 @@ void LynxShell::Destroy() {
             trace::TraceController::Instance()->GetLastSessionTraceConfig();
         config && config->enable_memory_trace) {
       if (config->auto_take_snapshot && !group_id.empty() &&
-          !runtime::RuntimeManager::IsSingleJSContext(group_id) &&
+          !runtime::JSRealmManager::IsSingleJSContext(group_id) &&
           (config->auto_take_snapshot_group_id.empty() ||
            config->auto_take_snapshot_group_id == group_id)) {
         base::NotificationCallback::Notify(
@@ -920,7 +920,7 @@ void LynxShell::RegisterNotificationCallbacks() {
                      auto bts_rt = bts_js_executor->GetJSRuntime().Lock();
                      if (bts_rt) {
                        std::string identifier;
-                       if (runtime::RuntimeManager::IsSingleJSContext(
+                       if (runtime::JSRealmManager::IsSingleJSContext(
                                group_id)) {
                          identifier = "instance_" +
                                       std::to_string(this->instance_id_) +
