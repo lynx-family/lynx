@@ -12,6 +12,12 @@ NS_ASSUME_NONNULL_BEGIN
  */
 static NSString* const UI_EXPOSURE_HANDLER = @"LynxUIExposure.exposureHandler";
 /**
+ * @trace_description: Publish a native-renderer exposure, disexposure,
+ * uiappear, or uidisappear event. The route identifies custom, global, or
+ * compatibility delivery.
+ */
+static NSString* const UI_EXPOSURE_PUBLISH_EVENT = @"LynxUIExposure.publishEvent";
+/**
  * @trace_description:  Layout of <text> element's platform layout node, where the preview text
  * are `@args{preview_text}`.
  * @history_name{text.TextShadowNode.measure}

@@ -35,6 +35,11 @@ class CocoapodsPublishHelperTest(unittest.TestCase):
         with open(f'{component}.podspec.json', 'r', encoding='utf8') as f:
             return json.load(f)
 
+    def test_get_enable_trace_param_enables_all_version_types(self):
+        for version in ('4.0.0', '4.0.0-alpha.1', '4.0.0-rc.1', '4.0.0-dev'):
+            with self.subTest(version=version):
+                self.assertEqual(helper.get_enable_trace_param(version), '--enable-trace')
+
     def test_use_local_pod_source_keeps_http_source_format(self):
         self.write_podspec_json('Lynx', {
             'version': '1.2.3',
