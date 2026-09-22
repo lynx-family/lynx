@@ -32,8 +32,11 @@ PipelineContext* PipelineContextManager::CreateAndUpdateCurrentPipelineContext(
     return nullptr;
   }
 
-  if (pipeline_options->HeldByContext()) {
-    return GetPipelineContextByVersion(*pipeline_options->version);
+  if (pipeline_options->version) {
+    if (auto* context =
+            GetPipelineContextByVersion(*pipeline_options->version)) {
+      return context;
+    }
   }
 
   auto pipeline_context =
@@ -46,10 +49,10 @@ PipelineContext* PipelineContextManager::CreateAndUpdateCurrentPipelineContext(
   pipeline_options->enable_unified_pixel_pipeline =
       enable_unified_pixel_pipeline_;
 
-  // Set pipeline options to pipeline context, and mark options as held by
-  // context.
+  // Bind the options to the context and keep a copy of its version. Layout
+  // completions can retain the options after this context is removed.
   pipeline_context->SetOptions(pipeline_options);
-  pipeline_options->version = &(pipeline_context->GetVersion());
+  pipeline_options->version = pipeline_context->GetVersion();
 
   current_pipeline_context_ = pipeline_context.get();
   DCHECK(pipeline_contexts_.count(current_pipeline_context_->GetVersion()) ==
@@ -81,8 +84,6 @@ PipelineContext* PipelineContextManager::GetPipelineContextByVersion(
       it != pipeline_contexts_.end()) {
     return it->second.get();
   }
-
-  LOGE("pipeline context not found by version: " << version.ToString())
   return nullptr;
 }
 
@@ -90,7 +91,6 @@ void PipelineContextManager::RemovePipelineContextByVersion(
     const PipelineVersion& version) {
   if (auto it = pipeline_contexts_.find(version);
       it != pipeline_contexts_.end()) {
-    it->second->GetOptions()->version = nullptr;
     pipeline_contexts_.erase(it);
   }
 }

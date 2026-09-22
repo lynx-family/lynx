@@ -26,7 +26,7 @@ This directory contains the renderer pipeline coordination layer of Lynx: versio
 
 - Keep `pipeline/` focused on sequencing, state, and observer coordination. Do not move DOM mutation, style-resolution logic, or layout implementation into this directory.
 - Preserve lifecycle validity. If you add or loosen transitions, update the lifecycle rules, related tests, and `README.md` together.
-- Treat `PipelineOptions` and `PipelineVersion` ownership carefully. `PipelineOptions::version` is a borrowed pointer to versioned context state and must stay aligned with context creation and removal.
+- Treat `PipelineOptions` and `PipelineVersion` ownership carefully. `PipelineOptions::version` is a value snapshot that remains valid after context removal; check manager membership to determine whether its context is still active.
 - Observer lifetime is aligned with the `TemplateAssembler` instance. Do not reintroduce public per-context observer registration from external callers.
 - When observer callbacks can re-enter, preserve snapshot semantics for the observer list for the current notification. Callback data is already built as a per-transition value snapshot before dispatch.
 - Be explicit about the difference between resetting `current_pipeline_context_` and removing a versioned context from the manager; these happen at different points in async layout flows.
@@ -35,7 +35,7 @@ This directory contains the renderer pipeline coordination layer of Lynx: versio
 
 - Missing or duplicate lifecycle callbacks usually point to manager-level notification, snapshot iteration, or deduplication drift.
 - Incorrect `prev_state`, `cur_state`, or `is_state_executed` values usually point to lifecycle gating or callback snapshot regressions.
-- Context lookup failures or stale `PipelineOptions::version` pointers after layout usually point to removal/reset sequencing bugs.
+- Unexpected context lookup failures after layout usually point to removal/reset sequencing bugs. A late completion may carry a valid version for an already removed context.
 - Pipelines that stop too early, skip flush, or never reach `kStopped` usually point to `RunPixelPipeline()` and `OnLayoutAfter()` coordination drift.
 - Async layout regressions where the current context is cleared too early or too late usually point to reset timing around `RequestLayout()` and `OnLayoutAfter()`.
 
