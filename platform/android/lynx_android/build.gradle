@@ -8,6 +8,10 @@ import org.json.simple.JSONObject
 
 ext.ABI_FILTERS = ['armeabi-v7a', 'armeabi', 'arm64-v8a', 'x86']
 def js_engine_type = "quickjs"
+// Keep Java entry points and native compilation on the same feature setting.
+def hostScriptRuntimeEnabled = project.hasProperty("enable_host_script_runtime")
+        ? project.property("enable_host_script_runtime").toString().toBoolean()
+        : !enable_lite_production.toString().toBoolean()
 android {
     publishNonDefault true
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -25,6 +29,7 @@ android {
         buildConfigField("Boolean","enable_frozen_mode",enable_frozen_mode)
         buildConfigField("Boolean","disable_nanbox", disable_nanbox)
         buildConfigField("Boolean","enable_lite_production", enable_lite_production)
+        buildConfigField("boolean", "enable_host_script_runtime", hostScriptRuntimeEnabled.toString())
         buildConfigField("Boolean","enable_lite",enable_lite)
         buildConfigField("Boolean","enable_packrel",enable_packrel)
         buildConfigField("Boolean","enable_lepusng_worklet",enable_lepusng_worklet)
@@ -275,6 +280,7 @@ task configGnCompileParas {
             gnBuildArgs_list.put("enable_lite", "\"$enable_lite\"")
             gnBuildArgs_list.put("enable_lto", "\"$enable_lto\"")
             gnBuildArgs_list.put("enable_lite_production", "\"$enable_lite_production\"")
+            gnBuildArgs_list.put("enable_host_script_runtime", hostScriptRuntimeEnabled.toString())
             gnBuildArgs_list.put("disable_base_export", "\"$enable_lite_production\"")
             gnBuildArgs_list.put("disable_nanbox", "\"$disable_nanbox\"")
             gnBuildArgs_list.put("disable_list_platform_implementation", "\"$disable_list_platform_implementation\"")

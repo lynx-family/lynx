@@ -5,100 +5,102 @@
 import("../../../../testing/test.gni")
 import("../../../Lynx.gni")
 
-lynx_core_source_set("host_script") {
-  sources = [
-    "../lynx_view/lynx_view_ref_proxy.h",
-    "../lynx_view/lynx_view_ref_types.h",
-    "host_script_js_dispatcher.cc",
-    "host_script_js_dispatcher.h",
-    "host_script_module.cc",
-    "host_script_module.h",
-    "host_script_session.cc",
-    "host_script_session.h",
-  ]
+if (enable_host_script_runtime) {
+  lynx_core_source_set("host_script") {
+    sources = [
+      "../lynx_view/lynx_view_ref_proxy.h",
+      "../lynx_view/lynx_view_ref_types.h",
+      "host_script_js_dispatcher.cc",
+      "host_script_js_dispatcher.h",
+      "host_script_module.cc",
+      "host_script_module.h",
+      "host_script_session.cc",
+      "host_script_session.h",
+    ]
 
-  deps = [
-    "../../../../third_party/binding/napi:napi_binding_base",
-    "../../../runtime/common/napi:napi_binding_core",
-  ]
-}
-
-lynx_core_source_set("interceptor_core") {
-  sources = [
-    "interceptor.cc",
-    "interceptor.h",
-  ]
-  public_deps = [ "../../../../base/src:base_values" ]
-}
-
-lynx_core_source_set("interceptor") {
-  public_deps = [ ":interceptor_core" ]
-  sources = [
-    "host_script_interceptor.cc",
-    "host_script_interceptor.h",
-  ]
-  deps = [ "../../../runtime/common/napi:napi_binding_core" ]
-}
-
-lynx_core_source_set("process_runtime") {
-  sources = [
-    "host_script_thread_bindings.cc",
-    "host_script_thread_bindings.h",
-    "process_runtime.cc",
-    "process_runtime.h",
-  ]
-  deps = [
-    "../../../../base/src:base_log_headers",
-    "../../../runtime/js:js",
-  ]
-}
-
-if (enable_unittests) {
-  host_script_test_deps = [
-    ":host_script",
-    ":interceptor",
-    "../../../../third_party/napi:quickjs",
-    "../../../../third_party/quickjs",
-    "../../../runtime/common/napi:napi_binding_quickjs",
-    "//third_party/googletest:gtest",
-  ]
-
-  unittest_set("host_script_session_unittests_testset") {
-    sources = [ "host_script_session_unittest.cc" ]
-    deps = host_script_test_deps
+    deps = [
+      "../../../../third_party/binding/napi:napi_binding_base",
+      "../../../runtime/common/napi:napi_binding_core",
+    ]
   }
 
-  if (is_mac || is_linux || is_win) {
-    unittest_exec("process_runtime_unittests_exec") {
-      sources = [
-        "../../../renderer/tasm/config.cc",
-        "../../../renderer/tasm/sysinfo/sysinfo_default.cc",
-        "../../../renderer/tasm/testing/event_tracker_mock.cc",
-        "process_runtime_unittest.cc",
-      ]
-      deps = [
-        ":process_runtime",
-        "../../../../third_party/napi:env",
-        "../../../../third_party/napi:quickjs",
-        "../../../../third_party/quickjs",
-        "../../../runtime/common/napi:napi_binding_quickjs",
-        "../../../services/performance",
-        "//third_party/googletest:gtest",
-      ]
-      if (is_mac) {
-        ldflags = [ "-Wl,-dead_strip" ]
-      } else {
-        deps += [ "../../../runtime/js/jsi/quickjs:quickjs" ]
-      }
-    }
+  lynx_core_source_set("interceptor_core") {
+    sources = [
+      "interceptor.cc",
+      "interceptor.h",
+    ]
+    public_deps = [ "../../../../base/src:base_values" ]
+  }
 
-    unittest_exec("host_script_session_unittests_exec") {
+  lynx_core_source_set("interceptor") {
+    public_deps = [ ":interceptor_core" ]
+    sources = [
+      "host_script_interceptor.cc",
+      "host_script_interceptor.h",
+    ]
+    deps = [ "../../../runtime/common/napi:napi_binding_core" ]
+  }
+
+  lynx_core_source_set("process_runtime") {
+    sources = [
+      "host_script_thread_bindings.cc",
+      "host_script_thread_bindings.h",
+      "process_runtime.cc",
+      "process_runtime.h",
+    ]
+    deps = [
+      "../../../../base/src:base_log_headers",
+      "../../../runtime/js:js",
+    ]
+  }
+
+  if (enable_unittests) {
+    host_script_test_deps = [
+      ":host_script",
+      ":interceptor",
+      "../../../../third_party/napi:quickjs",
+      "../../../../third_party/quickjs",
+      "../../../runtime/common/napi:napi_binding_quickjs",
+      "//third_party/googletest:gtest",
+    ]
+
+    unittest_set("host_script_session_unittests_testset") {
       sources = [ "host_script_session_unittest.cc" ]
       deps = host_script_test_deps
-      if (is_mac) {
-        ldflags = [ "-Wl,-undefined,dynamic_lookup" ]
-      } else {
-        deps += [ "../../../runtime/js/jsi/quickjs:quickjs" ]
+    }
+
+    if (is_mac || is_linux || is_win) {
+      unittest_exec("process_runtime_unittests_exec") {
+        sources = [
+          "../../../renderer/tasm/config.cc",
+          "../../../renderer/tasm/sysinfo/sysinfo_default.cc",
+          "../../../renderer/tasm/testing/event_tracker_mock.cc",
+          "process_runtime_unittest.cc",
+        ]
+        deps = [
+          ":process_runtime",
+          "../../../../third_party/napi:env",
+          "../../../../third_party/napi:quickjs",
+          "../../../../third_party/quickjs",
+          "../../../runtime/common/napi:napi_binding_quickjs",
+          "../../../services/performance",
+          "//third_party/googletest:gtest",
+        ]
+        if (is_mac) {
+          ldflags = [ "-Wl,-dead_strip" ]
+        } else {
+          deps += [ "../../../runtime/js/jsi/quickjs:quickjs" ]
+        }
+      }
+
+      unittest_exec("host_script_session_unittests_exec") {
+        sources = [ "host_script_session_unittest.cc" ]
+        deps = host_script_test_deps
+        if (is_mac) {
+          ldflags = [ "-Wl,-undefined,dynamic_lookup" ]
+        } else {
+          deps += [ "../../../runtime/js/jsi/quickjs:quickjs" ]
+        }
       }
     }
   }

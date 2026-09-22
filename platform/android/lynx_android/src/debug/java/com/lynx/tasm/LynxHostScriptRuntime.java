@@ -8,6 +8,7 @@ import androidx.annotation.AnyThread;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.BuildConfig;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
@@ -66,6 +67,9 @@ public final class LynxHostScriptRuntime {
     }
     if (!UIThreadUtils.isOnUiThread()) {
       throw new IllegalStateException("LynxHostScriptRuntime.create must run on the UI thread");
+    }
+    if (!BuildConfig.enable_host_script_runtime) {
+      throw new IllegalStateException("Host Script Runtime is disabled in this build");
     }
     return new LynxHostScriptRuntime(
         context, new LynxBackgroundRuntimeOptions(options), debuggable);
