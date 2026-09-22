@@ -23,6 +23,23 @@ lynx_core_source_set("host_script") {
   ]
 }
 
+lynx_core_source_set("interceptor_core") {
+  sources = [
+    "interceptor.cc",
+    "interceptor.h",
+  ]
+  public_deps = [ "../../../../base/src:base_values" ]
+}
+
+lynx_core_source_set("interceptor") {
+  public_deps = [ ":interceptor_core" ]
+  sources = [
+    "host_script_interceptor.cc",
+    "host_script_interceptor.h",
+  ]
+  deps = [ "../../../runtime/common/napi:napi_binding_core" ]
+}
+
 lynx_core_source_set("process_runtime") {
   sources = [
     "host_script_thread_bindings.cc",
@@ -39,6 +56,7 @@ lynx_core_source_set("process_runtime") {
 if (enable_unittests) {
   host_script_test_deps = [
     ":host_script",
+    ":interceptor",
     "../../../../third_party/napi:quickjs",
     "../../../../third_party/quickjs",
     "../../../runtime/common/napi:napi_binding_quickjs",
