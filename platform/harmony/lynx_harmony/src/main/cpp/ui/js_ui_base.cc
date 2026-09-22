@@ -700,7 +700,8 @@ int64_t JSUIBase::GetMemoryUsageBytes() const {
       memory_usage_bytes <= 0) {
     return UIBase::GetMemoryUsageBytes();
   }
-  return memory_usage_bytes;
+  return AddMemoryUsageBytes(memory_usage_bytes,
+                             GetBackgroundImageMemoryUsageBytes());
 }
 
 void JSUIBase::OnFocusChange(bool has_focus, bool is_focus_transition) {

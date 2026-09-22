@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 
 #include "base/include/float_comparison.h"
@@ -308,6 +309,20 @@ void LayerManager::Reset() {
 }
 
 bool LayerManager::HasImageLayers() { return !image_layer_list_.empty(); }
+
+int64_t LayerManager::GetMemoryUsageBytes() const {
+  int64_t size = 0;
+  for (const auto& layer : image_layer_list_) {
+    if (layer) {
+      int64_t layer_size = layer->GetMemoryUsageBytes();
+      if (layer_size > std::numeric_limits<int64_t>::max() - size) {
+        return std::numeric_limits<int64_t>::max();
+      }
+      size += layer_size;
+    }
+  }
+  return size;
+}
 
 void LayerManager::SetLayerImage(const lepus::Value& data) {
   image_layer_list_.clear();

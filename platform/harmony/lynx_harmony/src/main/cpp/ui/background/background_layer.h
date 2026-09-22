@@ -7,6 +7,7 @@
 
 #include <native_drawing/drawing_canvas.h>
 
+#include <cstdint>
 #include <memory>
 
 namespace lynx {
@@ -18,6 +19,7 @@ class BackgroundLayer : public std::enable_shared_from_this<BackgroundLayer> {
   virtual bool IsReady();
   virtual float GetWidth() { return width_; };
   virtual float GetHeight() { return height_; };
+  virtual int64_t GetMemoryUsageBytes() const { return 0; }
   virtual void OnSizeChange(float width, float height, float scale_density);
   virtual void Draw(OH_Drawing_Canvas* canvas, OH_Drawing_Path* path);
   virtual bool IsGradient() { return false; };

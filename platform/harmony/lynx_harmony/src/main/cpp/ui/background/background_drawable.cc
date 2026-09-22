@@ -1374,6 +1374,10 @@ void BackgroundDrawable::InitLayerManager() {
 bool BackgroundDrawable::HasImageLayers() {
   return layer_manager_ && layer_manager_->HasImageLayers();
 }
+
+int64_t BackgroundDrawable::GetMemoryUsageBytes() const {
+  return layer_manager_ ? layer_manager_->GetMemoryUsageBytes() : 0;
+}
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

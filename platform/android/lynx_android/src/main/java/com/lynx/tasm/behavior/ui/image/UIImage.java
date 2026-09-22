@@ -78,7 +78,7 @@ public class UIImage extends UIView {
     if (mLynxImageManager == null) {
       return size;
     }
-    return mLynxImageManager.getBitmapMemorySizeBytes() + size;
+    return addMemoryUsageBytes(size, mLynxImageManager.getBitmapMemorySizeBytes());
   }
 
   @Override
