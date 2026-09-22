@@ -1388,9 +1388,10 @@ autoExpose:
     - HarmonyOS
     - iOS
 disableQuickTracingGC:
-  description: Controls tracing GC mode for LepusNG Quick contexts. When enabled, context construction marks the runtime as the reference-counting variant and skips global Quick context pool reuse that requires tracing GC.
+  description: Controls tracing GC mode for LepusNG Quick contexts. When enabled through page or native config, context construction marks the runtime as the reference-counting variant and skips global Quick context pool reuse that requires tracing GC.
   defaultValue: 'false'
   valueType: bool
+  readNative: true
   author: zys777
   since: '3.2'
   supportPlatform:
