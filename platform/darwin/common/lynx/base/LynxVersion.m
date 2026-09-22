@@ -6,11 +6,24 @@
 
 @implementation LynxVersion
 
++ (NSString*)versionStringFromPodVersion:(NSString*)podVersion {
+  NSRange separatorRange = [podVersion rangeOfString:@"_"];
+  if (separatorRange.location == NSNotFound || NSMaxRange(separatorRange) >= podVersion.length) {
+    return podVersion;
+  }
+  NSString* appId = [podVersion substringToIndex:separatorRange.location];
+  NSCharacterSet* nonDigitSet = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+  if (appId.length == 0 || [appId rangeOfCharacterFromSet:nonDigitSet].location != NSNotFound) {
+    return podVersion;
+  }
+  return [podVersion substringFromIndex:NSMaxRange(separatorRange)];
+}
+
 + (NSString*)versionString {
 // source build will define Lynx_POD_VERSION
 #ifndef Lynx_POD_VERSION
 #define Lynx_POD_VERSION @"9999_1.4.0"
 #endif
-  return [Lynx_POD_VERSION substringFromIndex:5];
+  return [self versionStringFromPodVersion:Lynx_POD_VERSION];
 }
 @end
