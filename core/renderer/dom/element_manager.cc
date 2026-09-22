@@ -913,6 +913,7 @@ void ElementManager::OnFinishUpdateProps(
 void ElementManager::PatchEventRelatedInfo() {
   if (push_touch_pseudo_flag_) {
     catalyzer_->painting_context()->UpdateEventInfo(true);
+    touch_pseudo_status_pushed_ = true;
     push_touch_pseudo_flag_ = false;
   }
 }
@@ -1219,18 +1220,15 @@ void ElementManager::AttachLayoutNodeType(
 }
 
 void ElementManager::UpdateTouchPseudoStatus(bool value) {
-  push_touch_pseudo_flag_ = value;
+  if (!touch_pseudo_status_pushed_) {
+    push_touch_pseudo_flag_ = value;
+  }
 }
 
 void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
   config_ = config;
 
   if (IsFragmentLayerRenderModeOn()) {
-    // FLR is based on FiberElement, but its element architecture can still be
-    // Radon. FiberArch always needs TASM pseudo callbacks; Radon enables them
-    // later when a stylesheet containing touch pseudo tokens is observed.
-    painting_context()->UpdateEventInfo(config_ != nullptr &&
-                                        config_->GetEnableFiberArch());
     painting_context()->SetEventThroughConfig(
         config_ != nullptr && config_->GetEnableEventThrough(),
         config_ != nullptr && config_->GetEnableEventThroughInheritFromPage());
@@ -1749,6 +1747,7 @@ void ElementManager::OnPatchFinishForFiber(
         base::CurrentTimeMicroseconds();
   }
 
+  PatchEventRelatedInfo();
   if (root() && root()->EnableFragmentLayerRender()) {
     root()->element_container()->FinishTasmOperation(options);
   } else {
@@ -1794,7 +1793,6 @@ void ElementManager::OnPatchFinishForFiber(
         context->UpdateZIndexList();
       }
     }
-    PatchEventRelatedInfo();
     dirty_stacking_contexts_.clear();
     if (need_layout_ && !(options->has_layout)) {
       options->has_layout = need_layout_;

@@ -1123,7 +1123,8 @@ CSSFragment *Element::GetRelatedCSSFragment() {
               : nullptr;
       style_sheet_ =
           std::make_unique<CSSFragmentDecorator>(fragment, element_manager());
-      if (style_sheet_ && style_sheet_->HasTouchPseudoToken()) {
+      if (style_sheet_ &&
+          style_sheet_->IntrinsicStyleSheetHasTouchPseudoToken()) {
         element_manager()->UpdateTouchPseudoStatus(true);
       }
     }
@@ -4970,14 +4971,6 @@ void Element::OnPseudoStatusChanged(PseudoState prev_status,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  auto current_context =
-      element_manager_->element_manager_delegate()->GetCurrentPipelineContext();
-  std::shared_ptr<PipelineOptions> pipeline_options;
-  if (current_context) {
-    pipeline_options = current_context->GetOptions();
-  } else {
-    pipeline_options = std::make_shared<PipelineOptions>();
-  }
   // FIXME: Every element will emit the OnPseudoStatusChanged event
   auto *css_fragment = GetRelatedCSSFragment();
   if (css_fragment && css_fragment->enable_css_selector()) {
@@ -4990,9 +4983,11 @@ void Element::OnPseudoStatusChanged(PseudoState prev_status,
         css_fragment, invalidation_lists, prev_status, current_status);
     data_model_->SetPseudoState(current_status);
     bool inheritance_invalidated = false;
+    bool needs_resolve = false;
     for (auto *invalidation_set : invalidation_lists.descendants) {
       if (invalidation_set->InvalidatesSelf()) {
         MarkStyleDirty(false);
+        needs_resolve = true;
         if (!inheritance_invalidated && IsCSSInheritanceEnabled()) {
           inheritance_invalidated = true;
           // Self-mark ensures the element re-inherits from ancestors when
@@ -5009,7 +5004,14 @@ void Element::OnPseudoStatusChanged(PseudoState prev_status,
           MarkDirtyLite(kDirtyPropagateInherited);
         }
       }
-      InvalidateChildren(invalidation_set);
+      needs_resolve |= InvalidateChildren(invalidation_set, true);
+    }
+    if (needs_resolve) {
+      auto current_context = element_manager_->element_manager_delegate()
+                                 ->GetCurrentPipelineContext();
+      auto pipeline_options = current_context
+                                  ? current_context->GetOptions()
+                                  : std::make_shared<PipelineOptions>();
       element_manager_->RequestResolve(pipeline_options);
     }
     return;
@@ -5029,6 +5031,10 @@ void Element::OnPseudoStatusChanged(PseudoState prev_status,
   has_extreme_parsed_styles_ = false;
 
   data_model_->SetPseudoState(current_status);
+  auto current_context =
+      element_manager_->element_manager_delegate()->GetCurrentPipelineContext();
+  auto pipeline_options = current_context ? current_context->GetOptions()
+                                          : std::make_shared<PipelineOptions>();
   element_manager_->RequestResolve(pipeline_options);
 }
 
@@ -5218,15 +5224,27 @@ bool Element::CheckHasInvalidationForClass(const ClassList &old_classes,
   return invalidation_lists_.descendants.size() != old_size;
 }
 
-void Element::InvalidateChildren(css::InvalidationSet *invalidation_set) {
+bool Element::InvalidateChildren(css::InvalidationSet *invalidation_set,
+                                 bool match_dirty_children) {
+  bool invalidated = false;
   if (invalidation_set->WholeSubtreeInvalid() || !invalidation_set->IsEmpty()) {
-    VisitChildren([invalidation_set](Element *child) {
-      if (!child->StyleDirty() && !child->is_raw_text() &&
-          invalidation_set->InvalidatesElement(*child->data_model())) {
-        child->MarkStyleDirty(false);
-      }
-    });
+    VisitChildren(
+        [invalidation_set, match_dirty_children, &invalidated](Element *child) {
+          if (child->is_raw_text()) {
+            return;
+          }
+          const bool style_dirty = child->StyleDirty();
+          if ((!match_dirty_children && style_dirty) ||
+              !invalidation_set->InvalidatesElement(*child->data_model())) {
+            return;
+          }
+          invalidated = true;
+          if (!style_dirty) {
+            child->MarkStyleDirty(false);
+          }
+        });
   }
+  return invalidated;
 }
 
 void Element::VisitChildren(
