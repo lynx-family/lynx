@@ -2,13 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <any>
+#include <sstream>
+
 #define private public
 #define protected public
 
-#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder_unittest.h"
-
 #include "core/renderer/css/unit_handler.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder_unittest.h"
 #include "template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
 
 namespace lynx {
@@ -259,6 +261,24 @@ TEST_F(LynxBinaryConfigDecoderTest,
   page_config_->DecodePageConfigFromJsonStringWhileUndefined(
       "{\n  \"enableFSP\" : true\n}");
   EXPECT_EQ(page_config_->GetEnableFSP(), TernaryBool::FALSE_VALUE);
+}
+
+TEST_F(LynxBinaryConfigDecoderTest, NativeDisableQuickTracingGC) {
+  EXPECT_FALSE(page_config_->GetDisableQuickTracingGC());
+
+  page_config_->DecodePageConfigFromJsonStringWhileUndefined(
+      "{\n  \"disableQuickTracingGC\" : true\n}");
+  EXPECT_TRUE(page_config_->GetDisableQuickTracingGC());
+
+  auto second_page_config = std::make_shared<PageConfig>();
+  second_page_config->SetDisableQuickTracingGC(true);
+  second_page_config->DecodePageConfigFromJsonStringWhileUndefined(
+      "{\n  \"disableQuickTracingGC\" : false\n}");
+  EXPECT_FALSE(second_page_config->GetDisableQuickTracingGC());
+
+  page_config_->DecodePageConfigFromJsonStringWhileUndefined(
+      "{\n  \"disableQuickTracingGC\" : \"true\"\n}");
+  EXPECT_TRUE(page_config_->GetDisableQuickTracingGC());
 }
 
 TEST_F(LynxBinaryConfigDecoderTest,
