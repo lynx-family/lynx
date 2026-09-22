@@ -16,9 +16,9 @@ namespace input {
 
 class AndroidInputEventTarget final : public InputEventTarget {
  public:
-  using JavaPointerEventInjector = bool (*)(JNIEnv*, jobject, jint, jfloat,
-                                            jfloat, jfloat, jfloat, jint, jint,
-                                            jlong);
+  using JavaPointerEventInjector = bool (*)(JNIEnv*, jobject, jint, jintArray,
+                                            jfloatArray, jfloatArray, jint,
+                                            jfloat, jfloat, jint, jlong);
 
   AndroidInputEventTarget(JNIEnv* env, jobject delegate,
                           JavaPointerEventInjector injector);
