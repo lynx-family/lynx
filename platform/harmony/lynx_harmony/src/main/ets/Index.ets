@@ -89,7 +89,9 @@ export { MemoryPressureLevel } from './base/memory/MemoryPressureLevel'
 
 export * from './tasm/service/Index'
 
-export { LynxReportEventPropValue } from './tasm/eventreport/ILynxEventReportObserver'
+export { LynxEventReporter } from './tasm/eventreport/LynxEventReporter'
+
+export { ILynxEventReportObserver, LynxReportEventPropValue } from './tasm/eventreport/ILynxEventReportObserver'
 
 export { LynxInfoReporterHelper } from './tasm/eventreport/LynxInfoReporterHelper'
 
