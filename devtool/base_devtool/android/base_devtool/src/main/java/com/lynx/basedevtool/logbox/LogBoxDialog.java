@@ -8,6 +8,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
+import androidx.annotation.Keep;
 import com.lynx.basedevtool.utils.DevToolFileLoadCallback;
 import com.lynx.basedevtool.utils.DownloadCallback;
 import com.lynx.basedevtool.utils.UIThreadUtils;
@@ -138,6 +139,7 @@ class LogBoxDialog extends LogBoxDialogBase {
     private static final String CASE_QUERY_RESOURCE = "queryResource";
     private static final String CASE_LOAD_ERROR_PARSER = "loadErrorParser";
 
+    @Keep
     @JavascriptInterface
     public void postMessage(String strParams) {
       try {
