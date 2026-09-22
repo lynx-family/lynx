@@ -11,6 +11,17 @@
 namespace lynx {
 namespace tasm {
 
+base::logging::LogStream& operator<<(base::logging::LogStream& output,
+                                     const LynxEnvConfig& config) {
+  return output << "screenWidth=" << static_cast<double>(config.ScreenWidth())
+                << " screenHeight="
+                << static_cast<double>(config.ScreenHeight())
+                << " layoutsUnitPerPx="
+                << static_cast<double>(config.LayoutsUnitPerPx())
+                << " physicalPixelsPerLayoutUnit="
+                << config.PhysicalPixelsPerLayoutUnit();
+}
+
 LynxEnvConfig::LynxEnvConfig(float width, float height,
                              float layouts_unit_per_px,
                              double physical_pixels_per_layout_unit) {

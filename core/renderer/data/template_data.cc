@@ -4,10 +4,17 @@
 
 #include "core/renderer/data/template_data.h"
 
+#include <ostream>
 #include <utility>
 
 namespace lynx {
 namespace tasm {
+
+std::ostream& operator<<(std::ostream& output, const TemplateData& data) {
+  return output << "value=" << data.GetValue()
+                << " preprocessorName=" << data.PreprocessorName()
+                << " readOnly=" << data.IsReadOnly();
+}
 
 TemplateData TemplateData::CopyPlatformData(
     const std::shared_ptr<TemplateData>& other) {

@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "base/include/log/log_stream.h"
 #include "core/renderer/css/ng/media_query/media_values.h"
 #include "core/renderer/starlight/layout/layout_global.h"
 #include "core/renderer/starlight/types/layout_unit.h"
@@ -85,6 +86,9 @@ class LynxEnvConfig {
       const {
     return vhbase_for_font_size_to_align_with_legacy_bug_;
   }
+
+  friend base::logging::LogStream& operator<<(base::logging::LogStream& output,
+                                              const LynxEnvConfig& config);
 
  private:
   // The unit of this two values is layout unit.
