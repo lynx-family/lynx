@@ -17,8 +17,6 @@ InspectorOwnerEmbedderHarmony::InspectorOwnerEmbedderHarmony(napi_env env,
                                                              napi_ref ref)
     : env_(env), ref_(ref) {}
 
-InspectorOwnerEmbedderHarmony::~InspectorOwnerEmbedderHarmony() { Destroy(); }
-
 void InspectorOwnerEmbedderHarmony::OnConsoleMessage(
     const std::string& message) {
   auto ui_task_runner = GetUITaskRunner();

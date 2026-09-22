@@ -5,6 +5,8 @@
 #ifndef PLATFORM_HARMONY_LYNX_DEVTOOL_SRC_MAIN_CPP_HARMONY_INPUT_EVENT_TARGET_H_
 #define PLATFORM_HARMONY_LYNX_DEVTOOL_SRC_MAIN_CPP_HARMONY_INPUT_EVENT_TARGET_H_
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -68,9 +70,12 @@ class HarmonyInputEventTarget final : public input::InputEventTarget {
   void InvalidateWindow();
 
  private:
+  static constexpr std::size_t kMaxTouchPoints = 2;
+
   struct ActivePointer {
     bool active = false;
     int32_t pointer_id = 0;
+    int32_t platform_pointer_id = 0;
     int32_t window_x = 0;
     int32_t window_y = 0;
     int32_t display_x = 0;
@@ -78,16 +83,24 @@ class HarmonyInputEventTarget final : public input::InputEventTarget {
     HarmonyInputWindowInfo window_info;
   };
 
-  bool BuildTouchEventLocked(const input::PointerEvent& event,
-                             HarmonyTouchEventAction action,
-                             HarmonyTouchEvent& touch_event);
-  bool CancelActivePointerLocked(int64_t timestamp_us);
-  void ResetActivePointerLocked();
+  std::size_t ActivePointerCountLocked() const;
+  bool IsValidTransitionLocked(const input::PointerEvent& event,
+                               HarmonyTouchEventAction action) const;
+  bool PreparePointersLocked(
+      const input::PointerEvent& event, HarmonyTouchEventAction action,
+      std::array<ActivePointer, kMaxTouchPoints>& pointers) const;
+  bool UpdatePointerCoordinatesLocked(const input::Pointer& pointer,
+                                      ActivePointer& active_pointer) const;
+  HarmonyTouchEvent BuildTouchEventLocked(const ActivePointer& pointer,
+                                          HarmonyTouchEventAction action,
+                                          int64_t timestamp_us) const;
+  bool CancelActivePointersLocked(int64_t timestamp_us);
+  void ResetActivePointersLocked();
 
   std::shared_ptr<HarmonyTouchEventInjector> injector_;
   mutable std::mutex mutex_;
   HarmonyInputWindowInfo window_info_;
-  ActivePointer active_pointer_;
+  std::array<ActivePointer, kMaxTouchPoints> active_pointers_;
 };
 
 }  // namespace devtool

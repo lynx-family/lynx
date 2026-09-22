@@ -57,6 +57,19 @@ input::PointerEvent MakePointerEvent(input::PointerEventType type,
   return event;
 }
 
+input::PointerEvent MakeTwoPointerEvent(input::PointerEventType type,
+                                        int32_t action_pointer_id,
+                                        float first_x, float second_x) {
+  auto event = MakePointerEvent(type, 5, first_x, 20.f);
+  input::Pointer second_pointer;
+  second_pointer.id = 6;
+  second_pointer.x = second_x;
+  second_pointer.y = 20.f;
+  event.pointers.push_back(second_pointer);
+  event.action_pointer_id = action_pointer_id;
+  return event;
+}
+
 TEST(HarmonyInputEventTargetTest, ReportsCapabilitiesForValidWindow) {
   auto injector = std::make_shared<RecordingHarmonyTouchEventInjector>();
   HarmonyInputEventTarget target(injector);
@@ -69,10 +82,95 @@ TEST(HarmonyInputEventTargetTest, ReportsCapabilitiesForValidWindow) {
   EXPECT_EQ(capabilities.default_source_type, input::PointerSourceType::kTouch);
   EXPECT_TRUE(capabilities.supports_touch);
   EXPECT_FALSE(capabilities.supports_mouse);
+  EXPECT_EQ(capabilities.max_touch_points, 2);
 
   injector->available = false;
   capabilities = target.GetPointerCapabilities();
   EXPECT_FALSE(capabilities.supports_touch);
+}
+
+TEST(HarmonyInputEventTargetTest, InjectsMultiPointerSequence) {
+  auto injector = std::make_shared<RecordingHarmonyTouchEventInjector>();
+  HarmonyInputEventTarget target(injector);
+  target.UpdateWindowInfo(MakeWindowInfo());
+
+  EXPECT_TRUE(target.InjectPointerEvent(
+      MakePointerEvent(input::PointerEventType::kDown, 5, 10.f, 20.f)));
+  EXPECT_TRUE(target.InjectPointerEvent(
+      MakeTwoPointerEvent(input::PointerEventType::kDown, 6, 10.f, 30.f)));
+  EXPECT_TRUE(target.InjectPointerEvent(
+      MakeTwoPointerEvent(input::PointerEventType::kMove, 5, 11.f, 31.f)));
+  EXPECT_TRUE(target.InjectPointerEvent(
+      MakeTwoPointerEvent(input::PointerEventType::kUp, 6, 12.f, 32.f)));
+  EXPECT_TRUE(target.InjectPointerEvent(
+      MakePointerEvent(input::PointerEventType::kUp, 5, 12.f, 20.f)));
+
+  ASSERT_EQ(injector->events.size(), 6u);
+  EXPECT_EQ(injector->events[0].action, HarmonyTouchEventAction::kDown);
+  EXPECT_EQ(injector->events[0].pointer_id, 0);
+  EXPECT_EQ(injector->events[1].action, HarmonyTouchEventAction::kDown);
+  EXPECT_EQ(injector->events[1].pointer_id, 1);
+  EXPECT_EQ(injector->events[2].action, HarmonyTouchEventAction::kMove);
+  EXPECT_EQ(injector->events[2].pointer_id, 0);
+  EXPECT_EQ(injector->events[2].window_x, 22);
+  EXPECT_EQ(injector->events[3].action, HarmonyTouchEventAction::kMove);
+  EXPECT_EQ(injector->events[3].pointer_id, 1);
+  EXPECT_EQ(injector->events[3].window_x, 62);
+  EXPECT_EQ(injector->events[4].action, HarmonyTouchEventAction::kUp);
+  EXPECT_EQ(injector->events[4].pointer_id, 1);
+  EXPECT_EQ(injector->events[5].action, HarmonyTouchEventAction::kUp);
+  EXPECT_EQ(injector->events[5].pointer_id, 0);
+}
+
+TEST(HarmonyInputEventTargetTest, CancelsAllActivePointers) {
+  auto injector = std::make_shared<RecordingHarmonyTouchEventInjector>();
+  HarmonyInputEventTarget target(injector);
+  target.UpdateWindowInfo(MakeWindowInfo());
+
+  ASSERT_TRUE(target.InjectPointerEvent(
+      MakePointerEvent(input::PointerEventType::kDown, 5)));
+  ASSERT_TRUE(target.InjectPointerEvent(
+      MakeTwoPointerEvent(input::PointerEventType::kDown, 6, 10.f, 30.f)));
+
+  EXPECT_TRUE(target.InjectPointerEvent(
+      MakeTwoPointerEvent(input::PointerEventType::kCancel, 5, 11.f, 31.f)));
+
+  ASSERT_EQ(injector->events.size(), 4u);
+  EXPECT_EQ(injector->events[2].action, HarmonyTouchEventAction::kCancel);
+  EXPECT_EQ(injector->events[2].pointer_id, 0);
+  EXPECT_EQ(injector->events[2].window_x, 22);
+  EXPECT_EQ(injector->events[3].action, HarmonyTouchEventAction::kCancel);
+  EXPECT_EQ(injector->events[3].pointer_id, 1);
+  EXPECT_EQ(injector->events[3].window_x, 62);
+
+  EXPECT_TRUE(target.InjectPointerEvent(
+      MakePointerEvent(input::PointerEventType::kDown, 7)));
+  EXPECT_EQ(injector->events.back().pointer_id, 0);
+}
+
+TEST(HarmonyInputEventTargetTest, CancelsAllPointersWhenMoveInjectionFails) {
+  auto injector = std::make_shared<RecordingHarmonyTouchEventInjector>();
+  HarmonyInputEventTarget target(injector);
+  target.UpdateWindowInfo(MakeWindowInfo());
+
+  ASSERT_TRUE(target.InjectPointerEvent(
+      MakePointerEvent(input::PointerEventType::kDown, 5)));
+  ASSERT_TRUE(target.InjectPointerEvent(
+      MakeTwoPointerEvent(input::PointerEventType::kDown, 6, 10.f, 30.f)));
+  injector->fail_on_index = 3;
+
+  EXPECT_FALSE(target.InjectPointerEvent(
+      MakeTwoPointerEvent(input::PointerEventType::kMove, 5, 11.f, 31.f)));
+
+  ASSERT_EQ(injector->events.size(), 6u);
+  EXPECT_EQ(injector->events[2].action, HarmonyTouchEventAction::kMove);
+  EXPECT_EQ(injector->events[2].pointer_id, 0);
+  EXPECT_EQ(injector->events[3].action, HarmonyTouchEventAction::kMove);
+  EXPECT_EQ(injector->events[3].pointer_id, 1);
+  EXPECT_EQ(injector->events[4].action, HarmonyTouchEventAction::kCancel);
+  EXPECT_EQ(injector->events[4].pointer_id, 0);
+  EXPECT_EQ(injector->events[5].action, HarmonyTouchEventAction::kCancel);
+  EXPECT_EQ(injector->events[5].pointer_id, 1);
 }
 
 TEST(HarmonyInputEventTargetTest, ConvertsCssPixelsAndInjectsSequence) {
