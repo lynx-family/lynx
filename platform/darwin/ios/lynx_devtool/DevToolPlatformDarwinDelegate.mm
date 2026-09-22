@@ -36,6 +36,8 @@ namespace lynx {
 namespace devtool {
 namespace {
 
+constexpr size_t kMaxTouchPoints = 2;
+
 bool ToDarwinPointerEventType(input::PointerEventType type,
                               LynxDevToolPointerEventType* darwin_type) {
   if (darwin_type == nullptr) {
@@ -87,17 +89,21 @@ class DarwinInputEventTarget final : public input::InputEventTarget {
     if (available) {
       capabilities.default_source_type = input::PointerSourceType::kTouch;
       capabilities.supports_touch = true;
+      capabilities.max_touch_points = kMaxTouchPoints;
     }
     return capabilities;
   }
 
   bool InjectPointerEvent(const input::PointerEvent& event) override {
-    if (event.source_type != input::PointerSourceType::kTouch || event.pointers.size() != 1) {
+    if (event.source_type != input::PointerSourceType::kTouch || event.pointers.empty() ||
+        event.pointers.size() > kMaxTouchPoints ||
+        event.FindPointer(event.action_pointer_id) == nullptr) {
       return false;
     }
-    const input::Pointer* pointer = event.FindPointer(event.action_pointer_id);
-    if (pointer == nullptr || !std::isfinite(pointer->x) || !std::isfinite(pointer->y)) {
-      return false;
+    for (const auto& pointer : event.pointers) {
+      if (!std::isfinite(pointer.x) || !std::isfinite(pointer.y)) {
+        return false;
+      }
     }
 
     __strong typeof(_delegate) delegate = _delegate;
@@ -744,17 +750,23 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     return NO;
   }
 
-  const lynx::devtool::input::Pointer* pointer = event.FindPointer(event.action_pointer_id);
   LynxDevToolPointerEventType darwinType;
-  if (pointer == nullptr || !lynx::devtool::ToDarwinPointerEventType(event.type, &darwinType)) {
+  if (!lynx::devtool::ToDarwinPointerEventType(event.type, &darwinType)) {
     return NO;
   }
+
+  NSMutableArray<NSNumber*>* pointerIds = [NSMutableArray arrayWithCapacity:event.pointers.size()];
+  NSMutableArray<NSValue*>* coordinates = [NSMutableArray arrayWithCapacity:event.pointers.size()];
+  for (const auto& pointer : event.pointers) {
+    [pointerIds addObject:@(pointer.id)];
+    [coordinates addObject:[NSValue valueWithCGPoint:CGPointMake(pointer.x, pointer.y)]];
+  }
   return [_pointerEventDispatcher injectPointerEvent:darwinType
-                                         coordinateX:pointer->x
-                                         coordinateY:pointer->y
+                                          pointerIds:pointerIds
+                                         coordinates:coordinates
+                                     actionPointerId:event.action_pointer_id
                                               deltaX:event.delta_x
                                               deltaY:event.delta_y
-                                           pointerId:event.action_pointer_id
                                            modifiers:event.modifiers
                                          timestampUs:event.timestamp_us];
 }
