@@ -76,6 +76,7 @@ export enum LynxTrailKey {
   TRY_TO_FIX_NATIVE_WINDOW_LEAK_HARMONY_CANVAS = 'try_to_fix_native_window_leak_harmony_canvas',
   ANIMAX_ENABLE_SYNC_CODEC_HARMONY = 'ANIMAX_ENABLE_SYNC_CODEC_HARMONY',
   FIX_LIST_CALLBACK_LEAK_BUG = 'fix_list_callback_leak',
+  ENABLE_LEVEL_ORDER_TRAVERSING = 'enable_level_order_traversing',
   ENABLE_HARMONY_NEW_IMAGE = 'enable_harmony_new_image',
   ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA = 'enable_harmony_gesture_interrupter_user_data',
   ENABLE_HARMONY_MESSAGE_LOOP_PROMISE_MICROTASK = 'enable_harmony_message_loop_promise_microtask',
