@@ -218,6 +218,13 @@ void BTSRuntimeMediator::FetchBundle(
         .response_promise = response_promise});
     return;
   }
+  if (!engine_actor_ || !engine_actor_->Impl()) {
+    response_promise->SetValue(
+        {.url = bundle_url,
+         .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED,
+         .error_msg = "fetchBundle failed: Lynx engine has been destroyed"});
+    return;
+  }
   engine_actor_->ActAsync(
       [bundle_url,
        response_promise](const std::unique_ptr<LynxEngine>& engine) mutable {
