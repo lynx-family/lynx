@@ -13,6 +13,30 @@
 
 namespace clay {
 
+namespace {
+
+void AccumulateFrameDamage(bool& has_accumulated_frame,
+                           std::optional<skity::Rect>& accumulated_damage,
+                           bool has_frame,
+                           const std::optional<skity::Rect>& frame_damage) {
+  if (!has_frame) {
+    return;
+  }
+  if (!has_accumulated_frame) {
+    has_accumulated_frame = true;
+    accumulated_damage = frame_damage;
+    return;
+  }
+  // One unknown frame makes the accumulated damage unknown as well.
+  if (!accumulated_damage || !frame_damage) {
+    accumulated_damage.reset();
+    return;
+  }
+  accumulated_damage->Join(*frame_damage);
+}
+
+}  // namespace
+
 SharedImageSink::SharedImageSink(UpdateFrontMode update_front_mode)
     : update_front_mode_(update_front_mode) {}
 
@@ -75,6 +99,8 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFront(
   auto& curr_front = front_backings_.front();
 
   curr_front.is_current = true;
+  curr_front.shared_image->SetFrameDamage(
+      curr_front.has_pending_frame ? curr_front.frame_damage : std::nullopt);
 
   return curr_front.shared_image;
 }
@@ -85,6 +111,18 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFrontToLatest(
   if (front_backings_.empty()) {
     return nullptr;
   }
+
+  bool has_accumulated_frame = false;
+  std::optional<skity::Rect> accumulated_damage;
+  for (const auto& slot : front_backings_) {
+    // The current front was already consumed. Only pending frames contribute
+    // to the difference between the displayed image and the latest image.
+    if (!slot.is_current) {
+      AccumulateFrameDamage(has_accumulated_frame, accumulated_damage,
+                            slot.has_pending_frame, slot.frame_damage);
+    }
+  }
+
   while (front_backings_.size() > 1) {
     front_backings_.front().is_current = true;
     // The fence sync is in fact only moved once for the head of front backings
@@ -93,6 +131,12 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFrontToLatest(
   auto& curr_front = front_backings_.front();
 
   curr_front.is_current = true;
+  if (has_accumulated_frame) {
+    curr_front.has_pending_frame = true;
+    curr_front.frame_damage = accumulated_damage;
+  }
+  curr_front.shared_image->SetFrameDamage(
+      curr_front.has_pending_frame ? curr_front.frame_damage : std::nullopt);
 
   return curr_front.shared_image;
 }
@@ -282,7 +326,8 @@ SharedImageSinkManaged::AcquireBackForced(
   return std::make_tuple(curr_backing.shared_image, buffer_age);
 }
 
-bool SharedImageSinkManaged::SwapBack(std::unique_ptr<FenceSync> fence_sync) {
+bool SharedImageSinkManaged::SwapBack(std::unique_ptr<FenceSync> fence_sync,
+                                      std::optional<skity::Rect> frame_damage) {
   std::lock_guard<std::mutex> l(mutex_);
   if (!frame_available_callback_) {
     return false;
@@ -296,6 +341,10 @@ bool SharedImageSinkManaged::SwapBack(std::unique_ptr<FenceSync> fence_sync) {
   auto& curr_backing = back_backings_.front();
 
   curr_backing.shared_image->SetFenceSync(std::move(fence_sync));
+  // A forced acquire may steal an unconsumed front buffer. Preserve that
+  // frame's damage before adding the newly rendered frame.
+  AccumulateFrameDamage(curr_backing.has_pending_frame,
+                        curr_backing.frame_damage, true, frame_damage);
   curr_backing.swap_id = swap_counter_++;
   curr_backing.is_current = false;
 
@@ -336,6 +385,9 @@ void SharedImageSinkManaged::InternalReleaseCurrentFront(
     auto& curr_front = front_backings_.front();
     curr_front.is_current = false;
     curr_front.shared_image->SetFenceSync(std::move(fence_sync));
+    curr_front.shared_image->SetFrameDamage(std::nullopt);
+    curr_front.has_pending_frame = false;
+    curr_front.frame_damage.reset();
     back_backings_.splice(back_backings_.end(), front_backings_,
                           front_backings_.begin(), ++front_backings_.begin());
   }
@@ -395,7 +447,13 @@ SharedImageSinkUnmanaged::AcquireBack(
   return std::make_tuple(buffer_unmanaged_, buffer_unmanaged_->AcquireBack());
 }
 
-bool SharedImageSinkUnmanaged::SwapBack(std::unique_ptr<FenceSync> fence_sync) {
+bool SharedImageSinkUnmanaged::SwapBack(
+    std::unique_ptr<FenceSync> fence_sync,
+    std::optional<skity::Rect> frame_damage) {
+  // An unmanaged backing represents a platform-owned buffer queue rather than
+  // one concrete slot, so adjacent-frame damage cannot be associated with the
+  // buffer that UpdateFront will expose. Keep it unknown.
+  buffer_unmanaged_->SetFrameDamage(std::nullopt);
   return buffer_unmanaged_->SwapBack();
 }
 
