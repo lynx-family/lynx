@@ -34,8 +34,11 @@ int GenerateGroupId() {
 QJSChannelImplNG::QJSChannelImplNG(
     const std::unique_ptr<quickjs_inspector::QJSInspector> &inspector,
     const std::shared_ptr<QJSInspectorClientImpl> &client,
-    const std::string &group_id, int instance_id)
-    : client_wp_(client), instance_id_(instance_id), group_id_(group_id) {
+    const std::string &group_id, int instance_id, int64_t owner_runtime_id)
+    : client_wp_(client),
+      instance_id_(instance_id),
+      group_id_(group_id),
+      owner_runtime_id_(owner_runtime_id) {
   session_ = inspector->Connect(this, group_id_, instance_id_);
 }
 
@@ -163,24 +166,36 @@ std::string QJSInspectorClientImpl::InitInspector(LEPUSContext *context,
 }
 
 void QJSInspectorClientImpl::ConnectSession(int instance_id,
-                                            const std::string &group_id) {
-  if (channels_.find(instance_id) == channels_.end()) {
-    auto it = inspectors_.find(group_id);
-    if (it != inspectors_.end()) {
-      channels_.emplace(instance_id,
-                        std::make_shared<QJSChannelImplNG>(
-                            it->second,
-                            std::static_pointer_cast<QJSInspectorClientImpl>(
-                                shared_from_this()),
-                            group_id, instance_id));
-    }
+                                            const std::string &group_id,
+                                            int64_t owner_runtime_id) {
+  auto inspector = inspectors_.find(group_id);
+  if (inspector == inspectors_.end()) {
+    return;
   }
+
+  auto channel = channels_.find(instance_id);
+  if (channel != channels_.end()) {
+    if (channel->second->OwnerRuntimeId() == owner_runtime_id &&
+        channel->second->GroupId() == group_id) {
+      return;
+    }
+    channels_.erase(channel);
+  }
+
+  channels_.emplace(
+      instance_id,
+      std::make_shared<QJSChannelImplNG>(
+          inspector->second,
+          std::static_pointer_cast<QJSInspectorClientImpl>(shared_from_this()),
+          group_id, instance_id, owner_runtime_id));
 }
 
-void QJSInspectorClientImpl::DisconnectSession(int instance_id) {
+void QJSInspectorClientImpl::DisconnectSession(int instance_id,
+                                               int64_t owner_runtime_id) {
   auto it = channels_.find(instance_id);
-  if (it != channels_.end()) {
-    auto &group_id = it->second->GroupId();
+  if (it != channels_.end() &&
+      it->second->OwnerRuntimeId() == owner_runtime_id) {
+    std::string group_id = it->second->GroupId();
     channels_.erase(it);
     auto sp = delegate_wp_.lock();
     if (sp != nullptr) {
