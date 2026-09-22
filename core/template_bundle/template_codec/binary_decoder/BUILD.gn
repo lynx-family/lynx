@@ -51,10 +51,12 @@ lynx_core_source_set("binary_decoder") {
 unittest_set("binary_decoder_testset") {
   public_configs = [ "../../../:lynx_public_config" ]
   sources = [
+    "lynx_binary_base_css_reader_unittest.cc",
     "lynx_binary_config_decoder_unittest.cc",
     "lynx_binary_config_decoder_unittest.h",
   ]
   deps = [
+    "../../../../third_party/aes",
     "../../../../third_party/quickjs",
     "../../../../third_party/rapidjson:rapidjson",
     "../../../renderer:tasm",
@@ -63,6 +65,7 @@ unittest_set("binary_decoder_testset") {
     "../../../renderer/starlight",
     "../../../runtime/lepus/bindings:bindings",
     "../../../shell/testing:mock_tasm_delegate_testset",
+    "../binary_encoder:binary_encoder",
   ]
   public_deps = [ ":binary_decoder" ]
 }

@@ -2112,7 +2112,8 @@ class Element : public lepus::RefCounted,
   void InvalidateChildrenFontSizeRecursively();
   void MarkDirectChildrenStyleDirtyForInheritedPropertyMutation();
   void RecursivelyMarkCustomPropertiesDirty();
-  void InvalidateChildren(css::InvalidationSet* invalidation_set);
+  bool InvalidateChildren(css::InvalidationSet* invalidation_set,
+                          bool match_dirty_children = false);
   void VisitChildren(const base::MoveOnlyClosure<void, Element*>& visitor);
   void SetFontSizeForAllElement(double cur_node_font_size,
                                 double root_node_font_size);
