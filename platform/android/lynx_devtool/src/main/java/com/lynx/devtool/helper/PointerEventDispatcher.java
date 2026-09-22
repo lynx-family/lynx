@@ -34,15 +34,16 @@ public class PointerEventDispatcher {
   public static final int POINTER_EVENT_SCROLL = 4;
 
   private static final int MAX_POINTER_ID = 31;
+  private static final int MAX_TOUCH_POINTS = 2;
 
   private WeakReference<LynxView> mLynxView;
   private boolean mPointerSequenceActive;
-  private int mActivePointerId;
+  private int[] mActivePointerIds = new int[0];
   private long mDownTime;
   private long mLastEventTime;
   private long mTimestampOffsetMs;
-  private float mLastX;
-  private float mLastY;
+  private float[] mLastXs = new float[0];
+  private float[] mLastYs = new float[0];
   private int mLastModifiers;
   private WeakReference<View> mActiveRoot;
   private IBinder mActiveWindowToken;
@@ -61,12 +62,12 @@ public class PointerEventDispatcher {
     mLynxView.clear();
   }
 
-  public boolean injectPointerEvent(int type, float x, float y, float deltaX, float deltaY,
-      int pointerId, int modifiers, long timestampUs) {
-    // deltaX/deltaY are unused for tap down/up/cancel; they are kept to match the JNI-called
-    // signature and reserved for future scroll support (POINTER_EVENT_SCROLL).
+  // Scroll injection is reserved for future support. DevToolPlatformAndroidDelegate still accepts
+  // deltaX/deltaY from native, but this dispatcher only forwards touch pointer sequences for now.
+  public boolean injectPointerEvent(int type, int[] pointerIds, float[] xs, float[] ys,
+      int actionPointerId, int modifiers, long timestampUs) {
     LynxView lynxView = mLynxView.get();
-    if (lynxView == null || pointerId < 0 || pointerId > MAX_POINTER_ID) {
+    if (lynxView == null || !isValidPointerData(pointerIds, xs, ys)) {
       return false;
     }
 
@@ -80,96 +81,165 @@ public class PointerEventDispatcher {
       return false;
     }
 
-    if (type == POINTER_EVENT_DOWN && mPointerSequenceActive) {
-      return false;
-    }
-    if (type != POINTER_EVENT_DOWN && !hasActivePointer(pointerId)) {
+    int actionIndex = indexOf(pointerIds, actionPointerId);
+    if (!isValidTransition(type, pointerIds, actionPointerId, actionIndex)) {
       return false;
     }
 
     float density = resolveDensity(lynxView);
-    float rootX = x * density;
-    float rootY = y * density;
-    if (!isFinite(rootX) || !isFinite(rootY) || !target.contains(rootX, rootY)) {
-      if (mPointerSequenceActive) {
-        cancelActiveSequence(SystemClock.uptimeMillis());
+    float[] rootXs = new float[xs.length];
+    float[] rootYs = new float[ys.length];
+    for (int index = 0; index < pointerIds.length; ++index) {
+      rootXs[index] = xs[index] * density;
+      rootYs[index] = ys[index] * density;
+      if (!isFinite(rootXs[index]) || !isFinite(rootYs[index])
+          || !target.contains(rootXs[index], rootYs[index])) {
+        if (mPointerSequenceActive) {
+          cancelActiveSequence(SystemClock.uptimeMillis());
+        }
+        return false;
+      }
+    }
+
+    boolean startsSequence = type == POINTER_EVENT_DOWN && !mPointerSequenceActive;
+    long eventTime = toEventTime(timestampUs, startsSequence);
+    int action = toMotionEventAction(type, actionIndex);
+    if (action < 0) {
+      return false;
+    }
+
+    if (startsSequence) {
+      mPointerSequenceActive = true;
+      mDownTime = eventTime;
+      mActiveRoot = new WeakReference<>(target.root);
+      mActiveWindowToken = target.windowToken;
+    }
+    boolean dispatched =
+        dispatchMotionEvent(target.root, action, rootXs, rootYs, eventTime, modifiers, pointerIds);
+    if (!dispatched) {
+      if (startsSequence) {
+        resetActiveSequence();
+      } else {
+        cancelActiveSequence(eventTime);
       }
       return false;
     }
 
-    long eventTime = toEventTime(timestampUs, type == POINTER_EVENT_DOWN);
+    mLastModifiers = modifiers;
     switch (type) {
       case POINTER_EVENT_DOWN:
-        return startSequence(target, rootX, rootY, eventTime, pointerId, modifiers);
+      case POINTER_EVENT_MOVE:
+        setActivePointers(pointerIds, rootXs, rootYs);
+        return true;
       case POINTER_EVENT_UP:
-        return finishActiveSequence(
-            target, MotionEvent.ACTION_UP, rootX, rootY, eventTime, modifiers);
+        if (pointerIds.length == 1) {
+          resetActiveSequence();
+        } else {
+          removeActivePointer(pointerIds, rootXs, rootYs, actionPointerId);
+        }
+        return true;
       case POINTER_EVENT_CANCEL:
-        return finishActiveSequence(
-            target, MotionEvent.ACTION_CANCEL, rootX, rootY, eventTime, modifiers);
+        resetActiveSequence();
+        return true;
       default:
         return false;
     }
   }
 
-  private boolean startSequence(
-      WindowTarget target, float x, float y, long eventTime, int pointerId, int modifiers) {
-    mPointerSequenceActive = true;
-    mActivePointerId = pointerId;
-    mDownTime = eventTime;
-    mLastEventTime = eventTime;
-    mLastX = x;
-    mLastY = y;
-    mLastModifiers = modifiers;
-    mActiveRoot = new WeakReference<>(target.root);
-    mActiveWindowToken = target.windowToken;
-    boolean dispatched = dispatchMotionEvent(
-        target.root, MotionEvent.ACTION_DOWN, x, y, eventTime, modifiers, pointerId);
-    if (!dispatched) {
-      resetActiveSequence();
+  private boolean isValidPointerData(int[] pointerIds, float[] xs, float[] ys) {
+    if (pointerIds == null || xs == null || ys == null || pointerIds.length == 0
+        || pointerIds.length > MAX_TOUCH_POINTS || pointerIds.length != xs.length
+        || pointerIds.length != ys.length) {
+      return false;
     }
-    return dispatched;
+    for (int index = 0; index < pointerIds.length; ++index) {
+      if (pointerIds[index] < 0 || pointerIds[index] > MAX_POINTER_ID || !isFinite(xs[index])
+          || !isFinite(ys[index])) {
+        return false;
+      }
+      for (int previous = 0; previous < index; ++previous) {
+        if (pointerIds[previous] == pointerIds[index]) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
-  private boolean finishActiveSequence(
-      WindowTarget target, int action, float x, float y, long eventTime, int modifiers) {
-    mLastX = x;
-    mLastY = y;
-    mLastModifiers = modifiers;
-    boolean dispatched =
-        dispatchMotionEvent(target.root, action, x, y, eventTime, modifiers, mActivePointerId);
-    resetActiveSequence();
-    return dispatched;
+  private boolean isValidTransition(
+      int type, int[] pointerIds, int actionPointerId, int actionIndex) {
+    if (actionIndex < 0) {
+      return false;
+    }
+    if (type == POINTER_EVENT_DOWN) {
+      if (!mPointerSequenceActive) {
+        return pointerIds.length == 1;
+      }
+      return pointerIds.length == mActivePointerIds.length + 1 && !hasActivePointer(actionPointerId)
+          && containsAll(pointerIds, mActivePointerIds);
+    }
+    return mPointerSequenceActive && pointerIds.length == mActivePointerIds.length
+        && containsAll(pointerIds, mActivePointerIds)
+        && (type == POINTER_EVENT_MOVE || type == POINTER_EVENT_UP || type == POINTER_EVENT_CANCEL);
+  }
+
+  private int toMotionEventAction(int type, int actionIndex) {
+    switch (type) {
+      case POINTER_EVENT_DOWN:
+        return mPointerSequenceActive ? MotionEvent.ACTION_POINTER_DOWN
+                | (actionIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT)
+                                      : MotionEvent.ACTION_DOWN;
+      case POINTER_EVENT_MOVE:
+        return MotionEvent.ACTION_MOVE;
+      case POINTER_EVENT_UP:
+        return mActivePointerIds.length == 1 ? MotionEvent.ACTION_UP
+                                             : MotionEvent.ACTION_POINTER_UP
+                | (actionIndex << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
+      case POINTER_EVENT_CANCEL:
+        return MotionEvent.ACTION_CANCEL;
+      default:
+        return -1;
+    }
   }
 
   private void cancelActiveSequence(long eventTime) {
     if (mPointerSequenceActive && mActiveRoot != null) {
       View root = mActiveRoot.get();
       if (root != null) {
-        dispatchMotionEvent(root, MotionEvent.ACTION_CANCEL, mLastX, mLastY,
-            Math.max(eventTime, mLastEventTime), mLastModifiers, mActivePointerId);
+        dispatchMotionEvent(root, MotionEvent.ACTION_CANCEL, mLastXs, mLastYs,
+            Math.max(eventTime, mLastEventTime), mLastModifiers, mActivePointerIds);
       }
     }
     resetActiveSequence();
   }
 
-  private boolean dispatchMotionEvent(
-      View root, int action, float x, float y, long eventTime, int modifiers, int pointerId) {
-    MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
-    properties.id = pointerId;
-    properties.toolType = MotionEvent.TOOL_TYPE_FINGER;
+  private boolean dispatchMotionEvent(View root, int action, float[] xs, float[] ys, long eventTime,
+      int modifiers, int[] pointerIds) {
+    int pointerCount = pointerIds.length;
+    MotionEvent.PointerProperties[] properties = new MotionEvent.PointerProperties[pointerCount];
+    MotionEvent.PointerCoords[] coordinates = new MotionEvent.PointerCoords[pointerCount];
+    int actionMasked = action & MotionEvent.ACTION_MASK;
+    int actionIndex =
+        (action & MotionEvent.ACTION_POINTER_INDEX_MASK) >> MotionEvent.ACTION_POINTER_INDEX_SHIFT;
+    for (int index = 0; index < pointerCount; ++index) {
+      properties[index] = new MotionEvent.PointerProperties();
+      properties[index].id = pointerIds[index];
+      properties[index].toolType = MotionEvent.TOOL_TYPE_FINGER;
 
-    MotionEvent.PointerCoords coordinates = new MotionEvent.PointerCoords();
-    coordinates.x = x;
-    coordinates.y = y;
-    coordinates.pressure =
-        action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ? 0.f : 1.f;
-    coordinates.size = 1.f;
+      coordinates[index] = new MotionEvent.PointerCoords();
+      coordinates[index].x = xs[index];
+      coordinates[index].y = ys[index];
+      coordinates[index].pressure = actionMasked == MotionEvent.ACTION_CANCEL
+              || (actionMasked == MotionEvent.ACTION_UP
+                     || actionMasked == MotionEvent.ACTION_POINTER_UP)
+                  && index == actionIndex
+          ? 0.f
+          : 1.f;
+      coordinates[index].size = 1.f;
+    }
 
-    MotionEvent event = MotionEvent.obtain(mDownTime, eventTime, action, 1,
-        new MotionEvent.PointerProperties[] {properties},
-        new MotionEvent.PointerCoords[] {coordinates}, toMetaState(modifiers), 0, 1.f, 1.f, 0, 0,
-        InputDevice.SOURCE_TOUCHSCREEN, 0);
+    MotionEvent event = MotionEvent.obtain(mDownTime, eventTime, action, pointerCount, properties,
+        coordinates, toMetaState(modifiers), 0, 1.f, 1.f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
     try {
       return root.dispatchTouchEvent(event);
     } finally {
@@ -208,7 +278,49 @@ public class PointerEventDispatcher {
   }
 
   private boolean hasActivePointer(int pointerId) {
-    return mPointerSequenceActive && pointerId == mActivePointerId;
+    return mPointerSequenceActive && indexOf(mActivePointerIds, pointerId) >= 0;
+  }
+
+  private static boolean containsAll(int[] values, int[] expected) {
+    for (int value : expected) {
+      if (indexOf(values, value) < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static int indexOf(int[] values, int value) {
+    for (int index = 0; index < values.length; ++index) {
+      if (values[index] == value) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  private void setActivePointers(int[] pointerIds, float[] xs, float[] ys) {
+    mActivePointerIds = pointerIds.clone();
+    mLastXs = xs.clone();
+    mLastYs = ys.clone();
+  }
+
+  private void removeActivePointer(int[] pointerIds, float[] xs, float[] ys, int actionPointerId) {
+    int remainingCount = pointerIds.length - 1;
+    int[] remainingIds = new int[remainingCount];
+    float[] remainingXs = new float[remainingCount];
+    float[] remainingYs = new float[remainingCount];
+    int outputIndex = 0;
+    for (int index = 0; index < pointerIds.length; ++index) {
+      if (pointerIds[index] == actionPointerId) {
+        continue;
+      }
+      remainingIds[outputIndex] = pointerIds[index];
+      remainingXs[outputIndex] = xs[index];
+      remainingYs[outputIndex] = ys[index];
+      ++outputIndex;
+    }
+    setActivePointers(remainingIds, remainingXs, remainingYs);
   }
 
   private long toEventTime(long timestampUs, boolean startsSequence) {
@@ -248,12 +360,12 @@ public class PointerEventDispatcher {
 
   private void resetActiveSequence() {
     mPointerSequenceActive = false;
-    mActivePointerId = 0;
+    mActivePointerIds = new int[0];
     mDownTime = 0;
     mLastEventTime = 0;
     mTimestampOffsetMs = 0;
-    mLastX = 0.f;
-    mLastY = 0.f;
+    mLastXs = new float[0];
+    mLastYs = new float[0];
     mLastModifiers = 0;
     mActiveRoot = null;
     mActiveWindowToken = null;

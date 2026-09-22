@@ -50,9 +50,9 @@ public class PointerEventDispatcherTest {
 
   @Test
   public void injectsCoordinatesOutsideLynxViewThroughWindowRoot() {
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 300.f, 400.f, 0.f, 0.f, 7, 0, 1000));
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_UP, 300.f, 400.f, 0.f, 0.f, 7, 0, 2000));
 
     assertEquals(2, mEvents.size());
@@ -67,23 +67,52 @@ public class PointerEventDispatcherTest {
 
   @Test
   public void rejectsCoordinatesOutsideWindowBounds() {
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, -1.f, 20.f, 0.f, 0.f, 7, 0, 1000));
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 400.f, 20.f, 0.f, 0.f, 7, 0, 1000));
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 20.f, 600.f, 0.f, 0.f, 7, 0, 1000));
 
     assertTrue(mEvents.isEmpty());
   }
 
   @Test
+  public void injectsMultiPointerSequence() {
+    assertTrue(mDispatcher.injectPointerEvent(PointerEventDispatcher.POINTER_EVENT_DOWN,
+        new int[] {7}, new float[] {10.f}, new float[] {20.f}, 7, 0, 1000));
+    assertTrue(mDispatcher.injectPointerEvent(PointerEventDispatcher.POINTER_EVENT_DOWN,
+        new int[] {7, 8}, new float[] {10.f, 30.f}, new float[] {20.f, 40.f}, 8, 0, 2000));
+    assertTrue(mDispatcher.injectPointerEvent(PointerEventDispatcher.POINTER_EVENT_MOVE,
+        new int[] {7, 8}, new float[] {12.f, 32.f}, new float[] {22.f, 42.f}, 7, 0, 3000));
+    assertTrue(mDispatcher.injectPointerEvent(PointerEventDispatcher.POINTER_EVENT_UP,
+        new int[] {7, 8}, new float[] {12.f, 32.f}, new float[] {22.f, 42.f}, 8, 0, 4000));
+    assertTrue(mDispatcher.injectPointerEvent(PointerEventDispatcher.POINTER_EVENT_UP,
+        new int[] {7}, new float[] {12.f}, new float[] {22.f}, 7, 0, 5000));
+
+    assertEquals(5, mEvents.size());
+    assertEquals(MotionEvent.ACTION_DOWN, mEvents.get(0).action);
+    assertEquals(MotionEvent.ACTION_POINTER_DOWN, mEvents.get(1).action);
+    assertEquals(1, mEvents.get(1).actionIndex);
+    assertEquals(2, mEvents.get(1).pointerIds.length);
+    assertEquals(7, mEvents.get(1).pointerIds[0]);
+    assertEquals(8, mEvents.get(1).pointerIds[1]);
+    assertEquals(MotionEvent.ACTION_MOVE, mEvents.get(2).action);
+    assertEquals(24.f, mEvents.get(2).xs[0], 0.f);
+    assertEquals(64.f, mEvents.get(2).xs[1], 0.f);
+    assertEquals(MotionEvent.ACTION_POINTER_UP, mEvents.get(3).action);
+    assertEquals(1, mEvents.get(3).actionIndex);
+    assertEquals(MotionEvent.ACTION_UP, mEvents.get(4).action);
+    assertEquals(mEvents.get(0).downTime, mEvents.get(4).downTime);
+  }
+
+  @Test
   public void rejectsRepeatedDownAndPreservesActivePointer() {
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 7, 0, 1000));
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 20.f, 30.f, 0.f, 0.f, 8, 0, 2000));
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_UP, 10.f, 20.f, 0.f, 0.f, 7, 0, 3000));
 
     assertEquals(2, mEvents.size());
@@ -93,11 +122,11 @@ public class PointerEventDispatcherTest {
 
   @Test
   public void rejectsWrongPointerIdAndAcceptsOriginalPointer() {
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 7, 0, 1000));
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_UP, 20.f, 30.f, 0.f, 0.f, 8, 0, 2000));
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_UP, 10.f, 20.f, 0.f, 0.f, 7, 0, 4000));
 
     assertEquals(2, mEvents.size());
@@ -107,7 +136,7 @@ public class PointerEventDispatcherTest {
 
   @Test
   public void detachCancelsActiveSequence() {
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 7, 0, 1000));
 
     mDispatcher.detach();
@@ -115,13 +144,13 @@ public class PointerEventDispatcherTest {
     assertEquals(2, mEvents.size());
     assertEquals(MotionEvent.ACTION_CANCEL, mEvents.get(1).action);
     assertEquals(7, mEvents.get(1).pointerId);
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 8, 0, 2000));
   }
 
   @Test
   public void attachCancelsOldWindowAndUsesCurrentWindow() {
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 7, 0, 1000));
 
     LynxView nextLynxView = mock(LynxView.class);
@@ -131,9 +160,9 @@ public class PointerEventDispatcherTest {
     List<CapturedEvent> nextEvents = nextWindowRoot.getCapturedEvents();
     mDispatcher.attach(nextLynxView);
 
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 30.f, 40.f, 0.f, 0.f, 8, 0, 2000));
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_UP, 30.f, 40.f, 0.f, 0.f, 8, 0, 3000));
 
     assertEquals(2, mEvents.size());
@@ -146,11 +175,11 @@ public class PointerEventDispatcherTest {
   public void returnsWindowDispatchResult() {
     mWindowRoot.setDispatchResult(false);
 
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 7, 0, 1000));
 
     mWindowRoot.setDispatchResult(true);
-    assertTrue(mDispatcher.injectPointerEvent(
+    assertTrue(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 7, 0, 2000));
   }
 
@@ -158,9 +187,15 @@ public class PointerEventDispatcherTest {
   public void rejectsDetachedLynxView() {
     when(mLynxView.getWindowToken()).thenReturn(null);
 
-    assertFalse(mDispatcher.injectPointerEvent(
+    assertFalse(injectSinglePointerEvent(
         PointerEventDispatcher.POINTER_EVENT_DOWN, 10.f, 20.f, 0.f, 0.f, 7, 0, 1000));
     assertTrue(mEvents.isEmpty());
+  }
+
+  private boolean injectSinglePointerEvent(int type, float x, float y, float deltaX, float deltaY,
+      int pointerId, int modifiers, long timestampUs) {
+    return mDispatcher.injectPointerEvent(type, new int[] {pointerId}, new float[] {x},
+        new float[] {y}, pointerId, modifiers, timestampUs);
   }
 
   private static void configureWindow(LynxView lynxView, View root, IBinder windowToken) {
@@ -197,8 +232,17 @@ public class PointerEventDispatcherTest {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-      mEvents.add(new CapturedEvent(event.getActionMasked(), event.getX(), event.getY(),
-          event.getPointerId(0), event.getDownTime()));
+      int pointerCount = event.getPointerCount();
+      int[] pointerIds = new int[pointerCount];
+      float[] xs = new float[pointerCount];
+      float[] ys = new float[pointerCount];
+      for (int index = 0; index < pointerCount; ++index) {
+        pointerIds[index] = event.getPointerId(index);
+        xs[index] = event.getX(index);
+        ys[index] = event.getY(index);
+      }
+      mEvents.add(new CapturedEvent(event.getActionMasked(), event.getActionIndex(), pointerIds, xs,
+          ys, event.getDownTime()));
       return mDispatchResult;
     }
 
@@ -213,16 +257,25 @@ public class PointerEventDispatcherTest {
 
   private static class CapturedEvent {
     final int action;
+    final int actionIndex;
+    final int[] pointerIds;
+    final float[] xs;
+    final float[] ys;
     final float x;
     final float y;
     final int pointerId;
     final long downTime;
 
-    CapturedEvent(int action, float x, float y, int pointerId, long downTime) {
+    CapturedEvent(
+        int action, int actionIndex, int[] pointerIds, float[] xs, float[] ys, long downTime) {
       this.action = action;
-      this.x = x;
-      this.y = y;
-      this.pointerId = pointerId;
+      this.actionIndex = actionIndex;
+      this.pointerIds = pointerIds;
+      this.xs = xs;
+      this.ys = ys;
+      this.x = xs[0];
+      this.y = ys[0];
+      this.pointerId = pointerIds[0];
       this.downTime = downTime;
     }
   }

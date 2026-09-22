@@ -138,12 +138,13 @@ namespace devtool {
 namespace {
 
 bool InjectPointerEventToJava(JNIEnv* env, jobject delegate, jint type,
-                              jfloat x, jfloat y, jfloat delta_x,
-                              jfloat delta_y, jint pointer_id, jint modifiers,
+                              jintArray pointer_ids, jfloatArray xs,
+                              jfloatArray ys, jint action_pointer_id,
+                              jfloat delta_x, jfloat delta_y, jint modifiers,
                               jlong timestamp_us) {
   return Java_DevToolPlatformAndroidDelegate_injectPointerEvent(
-             env, delegate, type, x, y, delta_x, delta_y, pointer_id, modifiers,
-             timestamp_us) == JNI_TRUE;
+             env, delegate, type, pointer_ids, xs, ys, action_pointer_id,
+             delta_x, delta_y, modifiers, timestamp_us) == JNI_TRUE;
 }
 
 }  // namespace
