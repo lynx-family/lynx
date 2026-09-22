@@ -650,68 +650,51 @@ void InspectorUIExecutor::TemplateGetTemplateJsInfo(
 
 // start performance protocol
 void InspectorUIExecutor::PerformanceEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   performance_ready_ = true;
+  responder->SendSuccess();
   LOGI("performance_ready_ : " << performance_ready_);
 }
 
 void InspectorUIExecutor::PerformanceDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   performance_ready_ = false;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
   LOGI("performance_ready_ : " << performance_ready_);
 }
 
 void InspectorUIExecutor::getAllTimingInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  if (!ShellIsDestroyed()) {
-    Json::Value value;
-    Json::Reader reader;
-
-    lynx::lepus::Value timing_info = shell_->GetAllTimingInfo();
-    std::string timing_info_string =
-        lynx::devtool::ConvertLepusValueToJsonValue(timing_info);
-
-    reader.parse(timing_info_string, value);
-    response["result"] = value;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (ShellIsDestroyed()) {
+    responder->SendSuccess();
+    return;
   }
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+
+  Json::Value result;
+  Json::Reader reader;
+  lynx::lepus::Value timing_info = shell_->GetAllTimingInfo();
+  std::string timing_info_string = ConvertLepusValueToJsonValue(timing_info);
+  reader.parse(timing_info_string, result);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::getAllPerformanceEntries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  if (!ShellIsDestroyed()) {
-    Json::Value entries;
-    Json::Value result(Json::ValueType::objectValue);
-    Json::Reader reader;
-
-    lynx::lepus::Value all_performance_entries =
-        shell_->GetAllPerformanceEntries();
-    std::string entries_string =
-        lynx::devtool::ConvertLepusValueToJsonValue(all_performance_entries);
-
-    reader.parse(entries_string, entries);
-    result["entries"] = entries;
-    response["result"] = result;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (ShellIsDestroyed()) {
+    responder->SendSuccess();
+    return;
   }
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+
+  Json::Value entries;
+  Json::Value result(Json::ValueType::objectValue);
+  Json::Reader reader;
+  lynx::lepus::Value all_performance_entries =
+      shell_->GetAllPerformanceEntries();
+  std::string entries_string =
+      ConvertLepusValueToJsonValue(all_performance_entries);
+  reader.parse(entries_string, entries);
+  result["entries"] = std::move(entries);
+  responder->SendSuccess(std::move(result));
 }
 
 // end performance protocol

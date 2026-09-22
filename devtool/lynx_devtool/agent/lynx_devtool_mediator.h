@@ -144,10 +144,10 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(SetSupportsText);
 
   // Performance domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(PerformanceEnable)
-  DECLARE_DEVTOOL_METHOD(PerformanceDisable)
-  DECLARE_DEVTOOL_METHOD(getAllTimingInfo)
-  DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllTimingInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllPerformanceEntries);
 
   // Input domain -> ui executor
   DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
