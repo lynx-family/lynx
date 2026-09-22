@@ -98,6 +98,17 @@ export function reloadCard(
 ): boolean {
   alog(`reload card native app id: ${tt.nativeAppId}`);
   tt.callDestroyLifetimeFun?.();
+
+  // The next app reuses this lynx, and with it the modules this one required.
+  // `loadCard` only busts the app-service entry, which for a bundled app is a
+  // stub that requires the real entry chunk, so drop the whole page's cache or
+  // that chunk comes back from it instead of being evaluated again.
+  const cache = tt.lynx.requireModule.cache;
+  for (const path of Object.keys(cache)) {
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete cache[path];
+  }
+
   return loadCard(
     tt.nativeApp,
     {
