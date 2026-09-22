@@ -999,57 +999,52 @@ void LynxDevToolMediator::GetScreenshot(
 }
 
 void LynxDevToolMediator::UITree_Enable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->UITree_Enable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->UITree_Enable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::UITree_Disable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->UITree_Disable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->UITree_Disable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetLynxUITree(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->GetLynxUITree(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->GetLynxUITree(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetUIInfoForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->GetUIInfoForNode(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->GetUIInfoForNode(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetUIStyle(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->SetUIStyle(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->SetUIStyle(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 

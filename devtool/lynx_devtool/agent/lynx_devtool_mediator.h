@@ -232,11 +232,11 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(PageNavigate)
 
   // UITree domain - > ui executor
-  DECLARE_DEVTOOL_METHOD(UITree_Enable)
-  DECLARE_DEVTOOL_METHOD(UITree_Disable)
-  DECLARE_DEVTOOL_METHOD(GetLynxUITree)
-  DECLARE_DEVTOOL_METHOD(GetUIInfoForNode)
-  DECLARE_DEVTOOL_METHOD(SetUIStyle)
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLynxUITree);
+  DECLARE_DEVTOOL_CDP_METHOD(GetUIInfoForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
   // WhiteBoard domain:
   // When tasm_executor_ is not nullptr, dispatch to tasm_executor_.
