@@ -5383,7 +5383,10 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   auto self = GET_TASM_POINTER();
 
   std::shared_ptr<PipelineOptions> current_option = nullptr;
-  if (self->GetCurrentPipelineContext() != nullptr) {
+  // List items must finish their own patch before another item overwrites the
+  // completion metadata. Keep the enclosing scripting pipeline unchanged.
+  if (!(element && element->is_list_item()) &&
+      self->GetCurrentPipelineContext() != nullptr) {
     current_option = self->GetCurrentPipelineContext()->GetOptions();
   } else {
     current_option = std::make_shared<PipelineOptions>();
