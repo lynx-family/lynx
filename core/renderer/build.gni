@@ -8,6 +8,7 @@ import("../../config.gni")
 # TODO(chenyouhui): Remove this
 import("../../oliver/oliver.gni")
 lynx_tasm_shared_sources = [
+                             "../services/recorder/record.h",
                              "../services/replay/replay_controller.cc",
                              "../services/replay/replay_controller.h",
                              "element_manager_delegate_impl.cc",

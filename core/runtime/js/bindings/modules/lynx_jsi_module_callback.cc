@@ -14,9 +14,7 @@
 #if ENABLE_INSPECTOR
 #include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
 #endif  // ENABLE_INSPECTOR
-#if ENABLE_TESTBENCH_RECORDER
-#include "core/services/recorder/native_module_recorder.h"
-#endif
+#include "core/services/recorder/record.h"
 
 namespace lynx {
 namespace runtime {
@@ -64,11 +62,8 @@ void ModuleCallback::Invoke(Runtime* runtime,
   args_.reset();
   uint64_t convert_params_end = base::CurrentSystemTimeMilliseconds();
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::NativeModuleRecorder::GetInstance().RecordCallback(
-      module_name_.c_str(), method_name_.c_str(), values[0], runtime,
-      callback_id(), record_id_);
-#endif  // ENABLE_TESTBENCH_RECORDER
+  RECORD(NativeModuleCallback, module_name_.c_str(), method_name_.c_str(),
+         values[0], runtime, callback_id(), record_id_);
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_INVOKE_CALLBACK);
   uint64_t invoke_js_callback_start = base::CurrentSystemTimeMilliseconds();
@@ -100,9 +95,7 @@ void ModuleCallback::ReportLynxErrors(runtime::TemplateDelegate* delegate) {
   errors_.clear();
 }
 
-#if ENABLE_TESTBENCH_RECORDER
 void ModuleCallback::SetRecordID(int64_t record_id) { record_id_ = record_id; }
-#endif
 
 void ModuleCallback::SetArgs(std::unique_ptr<pub::Value> args) {
   args_ = std::move(args);

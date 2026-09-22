@@ -471,7 +471,7 @@ void TemplateAssemblerRecorder::RecordSwitchEngineFromUIThread(
 
 rapidjson::Value
 TemplateAssemblerRecorder::CreateJSONFromLoadComponentWithCallback(
-    const std::string& url, std::vector<uint8_t>& source, bool sync,
+    const std::string& url, const std::vector<uint8_t>& source, bool sync,
     int32_t callback_id) {
   auto& allocator = TestBenchBaseRecorder::GetInstance().GetAllocator();
   rapidjson::Value url_val(rapidjson::kStringType);
@@ -479,7 +479,7 @@ TemplateAssemblerRecorder::CreateJSONFromLoadComponentWithCallback(
   url_val.SetString(url.c_str(), url_size, allocator);
 
   auto source_size = static_cast<uint32_t>(source.size());
-  const char* buff = reinterpret_cast<char*>(source.data());
+  const char* buff = reinterpret_cast<const char*>(source.data());
   size_t encode_length = lynx_modp_b64_encode_len(source_size);
   std::unique_ptr<char[]> encode_buff = std::make_unique<char[]>(encode_length);
   encode_length = lynx_modp_b64_encode(encode_buff.get(), buff, source_size);
@@ -500,7 +500,7 @@ TemplateAssemblerRecorder::CreateJSONFromLoadComponentWithCallback(
 }
 
 void TemplateAssemblerRecorder::RecordLoadComponentWithCallback(
-    const std::string& url, std::vector<uint8_t>& source, bool sync,
+    const std::string& url, const std::vector<uint8_t>& source, bool sync,
     int32_t callback_id, int64_t record_id) {
   if (!TestBenchBaseRecorder::GetInstance().IsRecordingProcess()) {
     return;
@@ -523,26 +523,6 @@ void TemplateAssemblerRecorder::RecordExternalScriptAsLoadComponent(
   }
   std::vector<uint8_t> source(content.begin(), content.end());
   RecordLoadComponentWithCallback(url, source, false, -1, record_id);
-}
-
-RecordRequireTemplateScope::RecordRequireTemplateScope(TemplateAssembler* tasm,
-                                                       const std::string& url,
-                                                       int64_t record_id)
-    : tasm_(tasm), url_(url), record_id_(record_id) {
-  contain_target_entry_ = tasm_->FindTemplateEntry(url) != nullptr;
-}
-
-RecordRequireTemplateScope::~RecordRequireTemplateScope() {
-  // We must check the containment twice,
-  // because if the requirement is sync or async is controlled by app,
-  // we cannot get it directly.
-  if (!contain_target_entry_) {
-    // If tasm does not contain target entry, it must send a requirement.
-    TemplateAssemblerRecorder::RecordRequireTemplate(
-        url_, tasm_->FindTemplateEntry(url_) != nullptr, record_id_);
-    // If tasm contains target entry at this time, it means the requirement is
-    // sync, else the requirement is async.
-  }
 }
 
 }  // namespace recorder

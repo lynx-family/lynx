@@ -13,13 +13,7 @@
 
 #include "base/include/closure.h"
 #include "core/base/lynx_export.h"
-
-#if defined(ENABLE_TESTBENCH_RECORDER) && ENABLE_TESTBENCH_RECORDER
-#include "core/services/recorder/lynxview_init_recorder.h"
-#include "core/services/recorder/native_module_recorder.h"
-#include "core/services/recorder/template_assembler_recorder.h"
-#include "core/services/recorder/testbench_base_recorder.h"
-#endif
+#include "core/services/recorder/record.h"
 
 namespace lynx {
 namespace tasm {

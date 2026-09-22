@@ -10,10 +10,7 @@
 #include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/common/bindings/modules/lynx_native_module_manager.h"
-#if ENABLE_TESTBENCH_RECORDER
-#include "core/services/recorder/recorder_constants.h"
-#include "core/services/recorder/testbench_base_recorder.h"
-#endif
+#include "core/services/recorder/record.h"
 #include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -248,14 +245,14 @@ class LynxShellBuilderRecorderTest
     auto& recorder = tasm::recorder::TestBenchBaseRecorder::GetInstance();
     recorder.thread_.GetTaskRunner()->PostSyncTask([]() {});
     recorder.is_recording_ = false;
-    recorder.Clear();
+    recorder.ResetForTesting();
   }
 };
 
 TEST_P(LynxShellBuilderRecorderTest,
        InitializesRecorderBeforeOptionalBTSRuntime) {
   auto& recorder = tasm::recorder::TestBenchBaseRecorder::GetInstance();
-  recorder.Clear();
+  recorder.ResetForTesting();
   recorder.StartRecord();
 
   option_->enable_js_ = GetParam();
@@ -292,7 +289,8 @@ TEST_P(LynxShellBuilderRecorderTest,
   auto& actions =
       recorder.lynx_view_table_[record_id][tasm::recorder::kActionList];
   ASSERT_TRUE(actions.IsArray());
-  ASSERT_EQ(actions.Size(), 1u);
+  // Engine and optional runtime initialization each record the thread strategy.
+  ASSERT_EQ(actions.Size(), GetParam() ? 2u : 1u);
   EXPECT_STREQ(actions[0][tasm::recorder::kFunctionName].GetString(),
                tasm::recorder::kFuncSetThreadStrategy);
   const auto& params = actions[0][tasm::recorder::kParams];

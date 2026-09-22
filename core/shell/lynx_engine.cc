@@ -905,11 +905,9 @@ void LynxEngine::UnsubscribeClientSessionStorage(const std::string& key,
   }
 }
 
-#if ENABLE_TESTBENCH_RECORDER
 void LynxEngine::SetRecordID(int64_t record_id) {
   tasm_->SetRecordID(record_id);
 }
-#endif
 
 void LynxEngine::PreloadLazyBundles(const std::vector<std::string>& urls) {
   tasm_->PreloadLazyBundles(urls);

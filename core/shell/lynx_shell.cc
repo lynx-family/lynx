@@ -27,6 +27,7 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
+#include "core/services/recorder/record.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/services/watch_dog/watch_dog.h"
@@ -305,9 +306,8 @@ void LynxShell::BuildEngineActor(
       instance_id_, engine_build_options_.enable_unified_pipeline_,
       page_options_);
   tasm->SetEnableBTSRuntime(enable_runtime_);
-#if ENABLE_TESTBENCH_RECORDER
+  // TODO(songshourui.null): Replace SetRecordID with LogContext.
   tasm->SetRecordID(reinterpret_cast<int64_t>(this));
-#endif
   tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
   if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
     tasm->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);
@@ -351,7 +351,8 @@ void LynxShell::OnLynxEngineBuilt(
     return;
   }
 
-#if ENABLE_TESTBENCH_RECORDER
+  // TODO(songshourui.null): Use LogContext to avoid extra ActLite/Act calls
+  // solely for propagating record IDs.
   const int64_t record_id = reinterpret_cast<int64_t>(this);
   engine_actor_->ActLite(
       [record_id](auto& engine) { engine->SetRecordID(record_id); });
@@ -360,9 +361,8 @@ void LynxShell::OnLynxEngineBuilt(
   if (native_module_manager != nullptr) {
     native_module_manager->SetRecordID(record_id);
   }
-  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
-      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
-#endif
+  RECORD(ThreadStrategy, static_cast<int32_t>(current_strategy_), record_id,
+         enable_runtime_);
 
   ui_operation_queue_->SetErrorCallback(
       [facade_actor = facade_actor_](base::LynxError error) {
@@ -458,10 +458,7 @@ void LynxShell::Destroy() {
 
   is_destroyed_ = true;
 
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::RecorderController::RemoveRecord(
-      reinterpret_cast<int64_t>(this));
-#endif
+  RECORD(Remove, reinterpret_cast<int64_t>(this));
 
   if (perf_controller_actor_) {
     perf_controller_actor_->ActAsync(
@@ -582,16 +579,16 @@ void LynxShell::InitRuntime(
         instance_id_, tasm::report::kPropBTSGroupId, group_id);
   }
 
-#if ENABLE_TESTBENCH_RECORDER
   const int64_t record_id = reinterpret_cast<int64_t>(this);
+  // TODO(songshourui.null): Use LogContext to avoid extra ActLite/Act calls
+  // solely for propagating record IDs.
   layout_actor_->ActLite(
       [record_id](auto& layout) { layout->SetRecordId(record_id); });
   if (native_module_manager != nullptr) {
     native_module_manager->SetRecordID(record_id);
   }
-  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
-      static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
-#endif
+  RECORD(ThreadStrategy, static_cast<int32_t>(current_strategy_), record_id,
+         enable_runtime_);
   std::shared_ptr<base::VSyncMonitor> vsync_monitor;
   if (vsync_monitor_platform_impl) {
     vsync_monitor =
@@ -608,9 +605,8 @@ void LynxShell::InitRuntime(
       facade_actor_, engine_actor_, perf_controller_actor_,
       card_cached_data_mgr_, js_task_runner,
       std::move(external_resource_loader));
-#if ENABLE_TESTBENCH_RECORDER
+  // TODO(songshourui.null): Replace SetRecordID with LogContext.
   delegate->SetRecordID(record_id);
-#endif
   delegate->SetPropBundleCreator(prop_bundle_creator_);
   auto* delegate_raw_ptr = delegate.get();
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);
@@ -639,11 +635,11 @@ void LynxShell::InitRuntime(
     perf_mediator_->SetRuntimeActor(runtime_actor_);
   }
 
-#if ENABLE_TESTBENCH_RECORDER
+  // TODO(songshourui.null): Use LogContext to avoid extra ActLite/Act calls
+  // solely for propagating record IDs.
   runtime_actor_->Act([record_id](std::unique_ptr<BTSRuntime>& runtime) {
     runtime->SetRecordId(record_id);
   });
-#endif
 
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   start_js_runtime_task_ =
@@ -1129,10 +1125,7 @@ void LynxShell::UpdateDataByParsedData(
 void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
                                const lepus::Value& global_props,
                                LynxUpdateMode update_mode) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordUpdateMetaData(
-      data, global_props, reinterpret_cast<int64_t>(this));
-#endif
+  RECORD(UpdateMetaData, data, global_props, reinterpret_cast<int64_t>(this));
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
   pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   OnPipelineStart(pipeline_options->pipeline_id,
@@ -1262,11 +1255,8 @@ void LynxShell::UpdateGlobalProps(const lepus::Value& global_props) {
 
 void LynxShell::UpdateViewport(float width, int32_t width_mode, float height,
                                int32_t height_mode, bool need_layout) {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::LynxViewInitRecorder::GetInstance().RecordViewPort(
-      height_mode, width_mode, height, width, height, width,
-      tasm::Config::pixelRatio(), reinterpret_cast<int64_t>(this));
-#endif
+  RECORD(ViewPort, height_mode, width_mode, height, width, height, width,
+         tasm::Config::pixelRatio(), reinterpret_cast<int64_t>(this));
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY, LYNX_SHELL_UPDATE_VIEWPORT,
       [&](lynx::perfetto::EventContext ctx) {
@@ -1802,10 +1792,7 @@ void LynxShell::RunOnTasmThread(std::function<void(void)>&& task) {
 }
 
 void LynxShell::AttachEngineToUIThread() {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordSwitchEngineFromUIThread(
-      true, reinterpret_cast<int64_t>(this));
-#endif
+  RECORD(SwitchEngineFromUIThread, true, reinterpret_cast<int64_t>(this));
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD);
   if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
     engine_actor_->ActEmergency([](auto& engine) {
@@ -1830,10 +1817,7 @@ void LynxShell::AttachEngineToUIThread() {
 }
 
 void LynxShell::DetachEngineFromUIThread() {
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordSwitchEngineFromUIThread(
-      false, reinterpret_cast<int64_t>(this));
-#endif
+  RECORD(SwitchEngineFromUIThread, false, reinterpret_cast<int64_t>(this));
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD);
   if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
     engine_actor_->Act([](auto& engine) {

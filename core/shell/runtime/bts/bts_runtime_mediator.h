@@ -247,10 +247,8 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void SubscribeSessionStorage(
       const std::string& key, double listener_id,
       const runtime::js::ApiCallBack& callback) override;
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordID(int64_t record_id) { record_id_ = record_id; }
   int64_t record_id_ = 0;
-#endif
 
   fml::RefPtr<fml::TaskRunner> GetJSRunner() override { return js_runner_; }
 

@@ -40,11 +40,7 @@
 #include "core/runtime/js/napi/napi_loader_js.h"
 #endif
 #include "core/runtime/js/bindings/modules/module_delegate.h"
-
-#if ENABLE_TESTBENCH_RECORDER
-#include "core/services/recorder/native_module_recorder.h"
-#include "core/services/recorder/testbench_base_recorder.h"
-#endif
+#include "core/services/recorder/record.h"
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/primjs_napi_defines.h"
@@ -240,9 +236,7 @@ void BTSRuntime::Init(
   app_ = js_executor_->createNativeAppInstance(
       GetRuntimeId(), delegate_.get(), runtime_delegate_,
       std::make_unique<runtime::LynxApiHandler>(), page_options_);
-#if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
-#endif
   LOGI(log_context_ << " LynxRuntime:" << this << " create APP " << app_.get());
   AddEventListeners();
 
@@ -334,10 +328,7 @@ void BTSRuntime::ReadPreloadJSSource(
   for (auto&& path : preload_js_paths) {
     std::string res = delegate_->LoadJSSource(path);
     if (res.length() > 0) {
-#if ENABLE_TESTBENCH_RECORDER
-      tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordPreloadScript(
-          path, res, record_id_);
-#endif
+      RECORD(PreloadScript, path, res, record_id_);
       ret.emplace_back(
           std::move(path),
           std::make_shared<runtime::js::StringBuffer>(std::move(res)));
@@ -658,22 +649,8 @@ void BTSRuntime::CallFunction(const std::string& module_id,
     LOGW(log_context_ << " js_runtime is nullptr!");
     return;
   }
-#if ENABLE_TESTBENCH_RECORDER
-  if (module_id == "GlobalEventEmitter") {
-    auto size = arguments.length(*js_runtime);
-    if (size) {
-      runtime::js::Value values[*size];
-      for (size_t index = 0; index < *size; index++) {
-        auto item_opt = arguments.getValueAtIndex(*js_runtime, index);
-        if (item_opt) {
-          values[index] = std::move(*item_opt);
-        }
-      }
-      tasm::recorder::NativeModuleRecorder::GetInstance().RecordGlobalEvent(
-          module_id, method_id, values, *size, js_runtime, record_id_);
-    }
-  }
-#endif
+  RECORD_OPTIONAL(module_id == "GlobalEventEmitter", GlobalEvent, module_id,
+                  method_id, arguments, js_runtime, record_id_);
   // GlobalEventEmitter.emit already receives the JSModule argument shape
   // [name, params]. Snapshot it for CoreContext without replacing the original
   // JS call, since standalone runtimes do not have a CoreContext target.

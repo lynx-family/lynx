@@ -330,9 +330,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   void OnUpdateViewport(float width, int width_mode, float height,
                         int height_mode, bool need_layout);
   LYNX_EXPORT_FOR_DEVTOOL void SetRootOnLayout(int32_t id);
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
-#endif
 
   // delegate for class element
   void CreateLayoutNode(int id, const base::String &tag);

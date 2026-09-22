@@ -402,10 +402,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   bool destroyed() { return destroyed_; }
 
-#if ENABLE_TESTBENCH_RECORDER
   void SetRecordID(int64_t record_id);
   int64_t GetRecordID() const;
-#endif
 
   void UpdateMetaData(const std::shared_ptr<TemplateData>& template_data,
                       const lepus::Value& global_props,
@@ -881,6 +879,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   }
 
  private:
+  void SyncRecordIdToElementManager();
+
   void ExecuteOnLayoutReadyHooks();
   void EnsureOnLayoutReadyHooksFinish();
   void DrainDeferredTasks();

@@ -51,7 +51,7 @@ class NativeModuleRecorder {
                       int64_t record_id);
 
   void RecordGlobalEvent(std::string module_id, std::string method_id,
-                         const runtime::js::Value* args, uint64_t count,
+                         const runtime::js::Array& arguments,
                          runtime::js::Runtime* rt, int64_t record_id);
 
   // event_type: 0 stands for touch event (or MotionEvent), and 1 for key event.

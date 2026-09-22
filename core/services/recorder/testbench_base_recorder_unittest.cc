@@ -786,7 +786,7 @@ TEST(TestBenchBaseRecorder, RecordComponent) {
 
   ark.RecordComponent(component_name, type, record_id);
   wait(ark.thread_);
-  EXPECT_EQ(component_list.Size(), 1);
+  ASSERT_EQ(component_list.Size(), 1);
   rapidjson::Value& component = component_list[0];
   ASSERT_TRUE(component.IsObject());
   EXPECT_EQ(component.MemberCount(), 2);

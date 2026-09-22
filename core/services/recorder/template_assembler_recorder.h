@@ -7,10 +7,14 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/template_assembler.h"
+#include "core/services/recorder/lynxview_init_recorder.h"
+#include "core/services/recorder/native_module_recorder.h"
+#include "core/services/recorder/record.h"
 #include "core/services/recorder/recorder_constants.h"
 #include "core/services/recorder/testbench_base_recorder.h"
 namespace lynx {
@@ -23,6 +27,78 @@ namespace recorder {
 
 class TemplateAssemblerRecorder {
  public:
+  // Dispatch at compile time so each action retains its typed arguments and
+  // default parameters. The implementations keep their own recording checks.
+  template <RecordType type, typename... Args>
+  static void Record(Args&&... args) {
+    if constexpr (type == RecordType::OnlyObserve) {
+      return;
+    } else if constexpr (type == RecordType::Remove) {
+      TestBenchBaseRecorder::GetInstance().RemoveRecord(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::ViewPort) {
+      LynxViewInitRecorder::GetInstance().RecordViewPort(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::ThreadStrategy) {
+      LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::Component) {
+      TestBenchBaseRecorder::GetInstance().RecordComponent(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::Scripts) {
+      TestBenchBaseRecorder::GetInstance().RecordScripts(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::PreloadScript) {
+      TestBenchBaseRecorder::GetInstance().RecordPreloadScript(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::SharedData) {
+      NativeModuleRecorder::GetInstance().RecordSharedData(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::GlobalEvent) {
+      NativeModuleRecorder::GetInstance().RecordGlobalEvent(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::NativeModuleCallback) {
+      NativeModuleRecorder::GetInstance().RecordCallback(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::NativeModuleFunctionCall) {
+      NativeModuleRecorder::GetInstance().RecordFunctionCall(
+          std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::LoadTemplateBundle) {
+      RecordLoadTemplateBundle(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::LoadTemplate) {
+      RecordLoadTemplate(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::ReloadTemplate) {
+      RecordReloadTemplate(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::SetGlobalProps) {
+      RecordSetGlobalProps(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::UpdateMetaData) {
+      RecordUpdateMetaData(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::UpdateConfig) {
+      RecordUpdateConfig(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::UpdateFontScale) {
+      RecordUpdateFontScale(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::UpdateDataByPreParsedData) {
+      RecordUpdateDataByPreParsedData(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::TouchEvent) {
+      RecordTouchEvent(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::CustomEvent) {
+      RecordCustomEvent(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::BubbleEvent) {
+      RecordBubbleEvent(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::RequireTemplate) {
+      RecordRequireTemplate(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::LoadComponentWithCallback) {
+      RecordLoadComponentWithCallback(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::ExternalScriptAsLoadComponent) {
+      RecordExternalScriptAsLoadComponent(std::forward<Args>(args)...);
+    } else if constexpr (type == RecordType::SwitchEngineFromUIThread) {
+      RecordSwitchEngineFromUIThread(std::forward<Args>(args)...);
+    } else {
+      static_assert(type != type,
+                    "Unsupported TemplateAssemblerRecorder action");
+    }
+  }
+
   static void RecordLoadTemplateBundle(
       const std::string& url, const std::vector<uint8_t>& source,
       const std::shared_ptr<TemplateData> template_data, int64_t record_id,
@@ -60,10 +136,9 @@ class TemplateAssemblerRecorder {
   static void RecordRequireTemplate(const std::string& url, bool sync,
                                     int64_t record_id);
 
-  static void RecordLoadComponentWithCallback(const std::string& url,
-                                              std::vector<uint8_t>& source,
-                                              bool sync, int32_t callback_id,
-                                              int64_t record_id);
+  static void RecordLoadComponentWithCallback(
+      const std::string& url, const std::vector<uint8_t>& source, bool sync,
+      int32_t callback_id, int64_t record_id);
   // Dual-write external JS (e.g. /doubao-apps-api.template.js) into the
   // Action List as a LoadComponentWithCallback action so replay can serve
   // them from the recording without going to the network. Duplicate loads
@@ -99,21 +174,8 @@ class TemplateAssemblerRecorder {
   static rapidjson::Value CreateJSONFromRequireTemplate(const std::string& url,
                                                         bool sync);
   static rapidjson::Value CreateJSONFromLoadComponentWithCallback(
-      const std::string& url, std::vector<uint8_t>& source, bool sync,
+      const std::string& url, const std::vector<uint8_t>& source, bool sync,
       int32_t callback_id);
-};
-
-class RecordRequireTemplateScope {
- public:
-  RecordRequireTemplateScope(TemplateAssembler* tasm, const std::string& url,
-                             int64_t record_id);
-  ~RecordRequireTemplateScope();
-
- private:
-  TemplateAssembler* tasm_;
-  std::string url_;
-  int64_t record_id_;
-  bool contain_target_entry_{false};
 };
 
 }  // namespace recorder

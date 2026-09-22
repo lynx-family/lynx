@@ -11,13 +11,10 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lazy_bundle/lazy_bundle_request.h"
 #include "core/runtime/js/js_bundle_holder.h"
+#include "core/services/recorder/record.h"
 #include "core/services/timing_handler/timing_mediator.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/common/shell_trace_event_def.h"
-#if ENABLE_TESTBENCH_RECORDER
-#include "core/services/recorder/template_assembler_recorder.h"
-#include "core/services/recorder/testbench_base_recorder.h"
-#endif
 
 namespace lynx {
 namespace shell {
@@ -121,18 +118,11 @@ runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
   } else {
     external_resource_content = info.err_msg;
   }
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
-      name.c_str(), external_resource_content.c_str(), record_id_);
-  if (type == runtime::js::JsContent::Type::SOURCE) {
-    tasm::recorder::TemplateAssemblerRecorder::
-        RecordExternalScriptAsLoadComponent(name, external_resource_content,
-                                            record_id_);
-  }
+  RECORD(Scripts, name.c_str(), external_resource_content.c_str(), record_id_);
+  RECORD_OPTIONAL(type == runtime::js::JsContent::Type::SOURCE,
+                  ExternalScriptAsLoadComponent, name,
+                  external_resource_content, record_id_);
   return {std::move(external_resource_content), type};
-#else
-  return {std::move(external_resource_content), type};
-#endif
 }
 
 void BTSRuntimeMediator::GetComponentContextDataAsync(
