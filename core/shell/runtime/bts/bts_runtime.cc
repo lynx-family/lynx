@@ -179,6 +179,10 @@ void BTSRuntime::SetLogContext(const base::LogContext& context) {
   }
 }
 
+void BTSRuntime::SetMonitoringGroupLabel(std::string monitoring_group_label) {
+  monitoring_group_label_ = std::move(monitoring_group_label);
+}
+
 void BTSRuntime::Init(
     const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
         native_module_manager,
@@ -267,6 +271,7 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   runtime::js::JSRuntimeExternalParams create_params{};
   create_params.runtime_id = GetRuntimeId();
   create_params.group_id = group_id_;
+  create_params.monitoring_group_label = std::move(monitoring_group_label_);
 #if ENABLE_TRACE_PERFETTO
   create_params.enable_js_call_timeout_guard =
       tasm::LynxEnv::GetInstance().IsLynxDebugEnabled();

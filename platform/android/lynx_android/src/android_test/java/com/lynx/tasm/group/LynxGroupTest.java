@@ -5,6 +5,7 @@
 package com.lynx.tasm;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
@@ -17,7 +18,8 @@ public class LynxGroupTest {
   @Test
   public void testCreate() {
     LynxGroup.LynxGroupBuilder builder = new LynxGroup.LynxGroupBuilder();
-    builder.setID("test_id");
+    builder.setGroupName("test_group");
+    builder.setID("123");
     builder.setStringConfig("string_key", "string_value");
     builder.setBoolConfig("bool_key", true);
     builder.setEnableV8(true);
@@ -29,6 +31,14 @@ public class LynxGroupTest {
     assertTrue(boolValue);
     assertTrue(group.enableV8());
     assertEquals(stringValue, "string_value");
-    assertEquals(group.getID(), "test_id");
+    assertEquals(group.getID(), "123");
+    assertNull(group.getMonitoringGroupLabel());
+  }
+
+  @Test
+  public void testMonitoringGroupLabelWithGeneratedID() {
+    LynxGroup group = new LynxGroup.LynxGroupBuilder().setGroupName("test_group").build();
+
+    assertEquals(group.getMonitoringGroupLabel(), "test_group");
   }
 }

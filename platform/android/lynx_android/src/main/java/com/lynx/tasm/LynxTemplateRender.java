@@ -4235,8 +4235,8 @@ public class LynxTemplateRender
       LLog.i(TAG, "useQuickJSEngine is false");
     }
 
-    nativeInitRuntime(mNativePtr, mResourceLoader, mModuleFactory, getGroupID(), getPreloadJSPath(),
-        mLynxRuntimeOptions.getBytecodeSourceUrl(),
+    nativeInitRuntime(mNativePtr, mResourceLoader, mModuleFactory, getGroupID(),
+        getMonitoringGroupLabel(), getPreloadJSPath(), mLynxRuntimeOptions.getBytecodeSourceUrl(),
         mLynxRuntimeOptions.calcRuntimeFlags(false, mEnablePendingJsTask),
         lynxUIRenderer().getUIDelegatePtr());
     String jsGroupThreadName = getJSGroupThreadNameIfNeed();
@@ -4562,6 +4562,14 @@ public class LynxTemplateRender
     return mGroup != null ? mGroup.getID() : LynxGroup.SINGNLE_GROUP;
   }
 
+  private String getMonitoringGroupLabel() {
+    if (mGroup == null) {
+      return "";
+    }
+    String groupLabel = mGroup.getMonitoringGroupLabel();
+    return groupLabel != null ? groupLabel : "";
+  }
+
   @Nullable
   private String[] getPreloadJSPath() {
     return mGroup != null ? mGroup.getPreloadJSPaths() : null;
@@ -4810,8 +4818,8 @@ public class LynxTemplateRender
   private static native void nativeAttachRuntime(long ptr, long lifecycle, long backgroundRuntime);
 
   private static native void nativeInitRuntime(long ptr, LynxResourceLoader resourceLoader,
-      LynxModuleFactory moduleFactory, String groupId, String[] preloadJSPaths,
-      String bytecodeSourceUrl, int runtimeFlags, long uiDelegate);
+      LynxModuleFactory moduleFactory, String groupId, String monitoringGroupLabel,
+      String[] preloadJSPaths, String bytecodeSourceUrl, int runtimeFlags, long uiDelegate);
 
   private static native void nativeOnLynxEngineCreated(long ptr, long uiDelegatePtr);
 
