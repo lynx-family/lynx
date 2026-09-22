@@ -175,9 +175,9 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
 
   // LynxNativeModule domain -> native module record manager
-  DECLARE_DEVTOOL_METHOD(NativeModuleEnable)
-  DECLARE_DEVTOOL_METHOD(NativeModuleDisable)
-  DECLARE_DEVTOOL_METHOD(NativeModuleGetRecords)
+  DECLARE_DEVTOOL_CDP_METHOD(NativeModuleEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(NativeModuleDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(NativeModuleGetRecords);
   // Hops a NativeModule record from the JS thread to the DevTool thread and
   // stores it in the per-instance record manager.
   void AddNativeModuleRecord(const lepus::Value& record);
