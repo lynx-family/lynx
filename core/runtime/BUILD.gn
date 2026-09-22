@@ -78,17 +78,32 @@ lynx_core_source_set("runtime") {
   }
 }
 
+unittest_set("native_module_invocation_testset") {
+  sources =
+      [ "js/bindings/modules/native_module_invocation_context_unittest.cc" ]
+  deps = [
+    ":runtime",
+    "../renderer/dom:dom",
+    "../renderer/utils:renderer_utils",
+    "js/jsi/quickjs:quickjs",
+  ]
+}
+
+unittest_exec("native_module_invocation_unittests_exec") {
+  deps = [ ":native_module_invocation_testset" ]
+}
+
 unittest_set("runtime_testset") {
   sources = [
     "common/bindings/modules/lynx_native_module_manager_unittest.cc",
     "js/bindings/modules/lynx_module_manager_unittest.cc",
     "js/bindings/modules/native_module_factory_unittest.cc",
-    "js/bindings/modules/native_module_invocation_context_unittest.cc",
     "js/js_bundle_unittest.cc",
     "js/runtime_lifecycle_observer_unittest.cc",
   ]
 
   deps = [
+    ":native_module_invocation_testset",
     ":runtime",
     "../renderer/dom:dom",
     "../renderer/utils:renderer_utils",

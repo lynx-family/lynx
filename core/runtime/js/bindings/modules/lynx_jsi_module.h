@@ -22,6 +22,7 @@ class JsCallNativeFrequencyMonitor;
 namespace js {
 struct InvokeInfo;
 class NativeModuleRecordObserver;
+class NativeModuleInvocationContext;
 
 class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
  public:
@@ -62,6 +63,12 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
 #endif  // ENABLE_INSPECTOR
 
  private:
+#if ENABLE_INSPECTOR
+  void InvokeMockCallbacks(
+      Runtime& rt, const Value* args, const lepus::Value& deliveries,
+      const CallbackMap& callbacks,
+      const std::shared_ptr<NativeModuleInvocationContext>& invocation);
+#endif  // ENABLE_INSPECTOR
   void SetMethodMetadata();
   InvokeInfo* CurrentInvokeInfo();
 

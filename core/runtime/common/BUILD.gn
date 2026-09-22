@@ -18,8 +18,11 @@ lynx_core_source_set("common") {
     "js_call_native_frequency_monitor.cc",
     "js_call_native_frequency_monitor.h",
     "lynx_console_helper.h",
+    "native_module_interception.cc",
+    "native_module_interception.h",
   ]
   deps = [ "../../build:build" ]
+  public_deps = [ "../../shell/host_script/runtime:interceptor_core" ]
 }
 
 unittest_set("reporter_unittests_testset") {

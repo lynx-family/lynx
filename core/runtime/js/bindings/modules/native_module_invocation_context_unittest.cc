@@ -31,6 +31,44 @@ class CapturingNativeModuleRecordObserver : public NativeModuleRecordObserver {
   std::vector<lepus::Value> records_;
 };
 
+class TestBTSInterceptor : public shell::Interceptor {
+ public:
+  bool HasHandlers(shell::InterceptKind kind) const override {
+    ++handler_queries;
+    return kind == shell::InterceptKind::kCall;
+  }
+  shell::InterceptResult Dispatch(shell::InterceptKind,
+                                  const lepus::Value&) override {
+    return {};
+  }
+  void ReportError(const std::string&) override {}
+  mutable int handler_queries = 0;
+};
+
+TEST(NativeModuleInvocationContextTest, InterceptionRequiresInspector) {
+  auto provider = std::make_shared<TestBTSInterceptor>();
+  ASSERT_TRUE(
+      shell::Interceptor::Attach(provider, shell::Interceptor::Domain::kBTS));
+  constexpr base::LynxEntityId view = 42;
+  shell::Interceptor::RegisterView(view);
+  EXPECT_TRUE(shell::Interceptor::IsEnabled());
+
+  auto invocation =
+      NativeModuleInvocationContext::Create({}, "Example", "echo", view);
+  EXPECT_EQ(invocation != nullptr, static_cast<bool>(ENABLE_INSPECTOR));
+  EXPECT_EQ(provider->handler_queries > 0, static_cast<bool>(ENABLE_INSPECTOR));
+
+  shell::Interceptor::DestroyView(view);
+  shell::Interceptor::Detach(provider.get());
+}
+
+TEST(NativeModuleInvocationContextTest, ObservationRequiresInspector) {
+  auto observer = std::make_shared<CapturingNativeModuleRecordObserver>();
+  auto invocation = NativeModuleInvocationContext::Create(
+      observer, "Example", "echo", base::kUnavailableLynxEntityId);
+  EXPECT_EQ(invocation != nullptr, static_cast<bool>(ENABLE_INSPECTOR));
+}
+
 TEST(NativeModuleInvocationContextTest,
      BuildsAndEmitsInvokeAndCallbackRecords) {
   auto observer = std::make_shared<CapturingNativeModuleRecordObserver>();
@@ -54,10 +92,9 @@ TEST(NativeModuleInvocationContextTest,
   EXPECT_TRUE(invoke->GetValue("result")->Table()->GetValue("success")->Bool());
   EXPECT_EQ(invoke->GetValue("result")->Table()->GetValue("value")->Int32(), 7);
 
-  auto callback = invocation.WithCallbackArgumentIndex(1);
   lepus::Value callback_record =
-      callback->BuildCallbackRecord(lepus::Value(42));
-  callback->EmitRecord(callback_record);
+      invocation.BuildCallbackRecord(1, lepus::Value(42));
+  invocation.EmitRecord(callback_record);
 
   ASSERT_EQ(observer->records_.size(), 2U);
   EXPECT_EQ(callback_record.Table()->GetValue("phase")->StdString(),
@@ -105,14 +142,14 @@ TEST(NativeModuleInvocationContextTest, FailedResultDoesNotExposeValue) {
 }
 
 TEST(NativeModuleInvocationContextTest,
-     CallbackContextInheritsInvocationIdentity) {
-  auto observer = std::make_shared<CapturingNativeModuleRecordObserver>();
-  NativeModuleInvocationContext invocation(observer, "LynxTestModule", "echo");
-  auto callback = invocation.WithCallbackArgumentIndex(2);
-  EXPECT_EQ(callback->invocation_id(), invocation.invocation_id());
-  EXPECT_EQ(callback->module_name(), invocation.module_name());
-  EXPECT_EQ(callback->method_name(), invocation.method_name());
-  EXPECT_EQ(callback->callback_argument_index(), 2);
+     CallbacksShareIdentityAndOwnTheirIndex) {
+  NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
+  auto first = invocation.BuildCallbackRecord(0, lepus::Value(1));
+  auto second = invocation.BuildCallbackRecord(2, lepus::Value(2));
+  EXPECT_EQ(first.GetProperty("invocationId"),
+            second.GetProperty("invocationId"));
+  EXPECT_EQ(first.GetProperty("callbackArgumentIndex").Number(), 0);
+  EXPECT_EQ(second.GetProperty("callbackArgumentIndex").Number(), 2);
 }
 
 TEST(NativeModuleInvocationContextTest, EmitRecordIsNoopWithoutObserver) {
@@ -141,6 +178,42 @@ TEST(NativeModuleInvocationContextTest,
   auto placeholder = args->get(1).Table();
   EXPECT_EQ(placeholder->GetValue("$type")->StdString(), "callback");
   EXPECT_EQ(placeholder->GetValue("argumentIndex")->Int32(), 1);
+}
+
+TEST(NativeModuleInvocationContextTest,
+     PlaceholderDoesNotMutateSharedArguments) {
+  NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
+  auto values = lepus::CArray::Create();
+  values->push_back(lepus::Value(int64_t{42}));
+  lepus::Value arguments(values);
+  CallbackMap callbacks{{0, nullptr}};
+  auto record = invocation.BuildInvokeRecord(arguments, callbacks, true,
+                                             std::nullopt, 0, "");
+  EXPECT_EQ(arguments.GetProperty(0).Number(), 42);
+  EXPECT_TRUE(record.GetProperty("arguments").GetProperty(0).IsTable());
+}
+
+TEST(NativeModuleInvocationContextTest, NestedScopesRestoreOriginalInvocation) {
+  auto outer = std::make_shared<NativeModuleInvocationContext>(
+      std::weak_ptr<NativeModuleRecordObserver>{}, "Example", "outer");
+  auto inner = std::make_shared<NativeModuleInvocationContext>(
+      std::weak_ptr<NativeModuleRecordObserver>{}, "Example", "inner");
+  EXPECT_EQ(NativeModuleInvocationContext::Current(), nullptr);
+  {
+    NativeModuleInvocationContext::Scope outer_scope(outer);
+    EXPECT_EQ(NativeModuleInvocationContext::Current(), outer);
+    {
+      NativeModuleInvocationContext::Scope inner_scope(inner);
+      EXPECT_EQ(NativeModuleInvocationContext::Current(), inner);
+    }
+    EXPECT_EQ(NativeModuleInvocationContext::Current(), outer);
+    {
+      NativeModuleInvocationContext::Scope no_scope(nullptr);
+      EXPECT_EQ(NativeModuleInvocationContext::Current(), nullptr);
+    }
+    EXPECT_EQ(NativeModuleInvocationContext::Current(), outer);
+  }
+  EXPECT_EQ(NativeModuleInvocationContext::Current(), nullptr);
 }
 
 TEST(NativeModuleRecordBuilderTest, BuildsGlobalEventRecord) {
