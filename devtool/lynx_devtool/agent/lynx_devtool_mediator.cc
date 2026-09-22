@@ -1341,40 +1341,34 @@ void LynxDevToolMediator::AddNativeModuleRecord(const lepus::Value& record) {
 }
 
 void LynxDevToolMediator::NativeModuleEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread(
-      [sender, message, manager = native_module_record_manager_] {
-        if (manager != nullptr) {
-          manager->Enable();
-        }
-        sender->SendOKResponse(message["id"].asInt64());
-      });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDevToolThread([responder, manager = native_module_record_manager_] {
+    if (manager != nullptr) {
+      manager->Enable();
+    }
+    responder->SendSuccess();
+  });
 }
 
 void LynxDevToolMediator::NativeModuleDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread(
-      [sender, message, manager = native_module_record_manager_] {
-        if (manager != nullptr) {
-          manager->Disable();
-        }
-        sender->SendOKResponse(message["id"].asInt64());
-      });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDevToolThread([responder, manager = native_module_record_manager_] {
+    if (manager != nullptr) {
+      manager->Disable();
+    }
+    responder->SendSuccess();
+  });
 }
 
 void LynxDevToolMediator::NativeModuleGetRecords(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread(
-      [sender, message, manager = native_module_record_manager_] {
-        if (manager != nullptr) {
-          manager->GetRecords(sender, message["id"].asInt64());
-        } else {
-          sender->SendOKResponse(message["id"].asInt64());
-        }
-      });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDevToolThread([responder, manager = native_module_record_manager_] {
+    if (manager != nullptr) {
+      manager->GetRecords(responder);
+    } else {
+      responder->SendSuccess();
+    }
+  });
 }
 
 // Network protocol
