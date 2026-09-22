@@ -145,7 +145,7 @@ class FrameElementTest : public ::testing::Test {
         context, LifecycleState::kInPerformLayout);
     auto version = context->GetVersion();
     PipelineLayoutData data;
-    data.pipeline_version = &version;
+    data.pipeline_version = version;
     tasm_->OnLayoutAfter(data);
   }
 
