@@ -610,7 +610,9 @@ public class LynxUIOwner {
         reportStatistic(tagName);
         updateComponentIdToUiIdMapIfNeeded(sign, tagName, initialProps);
         mUIHolder.put(sign, ui);
-        updatePositionChangeListener(ui);
+        if (hasPositionChangeResponseChainListener(eventsListenerMap)) {
+          addPositionChangeListener(sign);
+        }
       } else {
         LLog.e(TAG, "createUI got null ui for tag:" + tagName);
       }
@@ -695,6 +697,7 @@ public class LynxUIOwner {
     Map<String, EventsListener> listeners = EventsListener.convertEventListeners(eventListeners);
     Map<Integer, GestureDetector> detectors =
         GestureDetector.convertGestureDetectors(gestureDetectors);
+    final boolean hasPositionChangeListener = hasPositionChangeResponseChainListener(listeners);
 
     UIParams params =
         new UIParams(sign, nodeIndex, isFlatten, tagName, styles, listeners, detectors);
@@ -724,7 +727,9 @@ public class LynxUIOwner {
           reportStatistic(tagName);
           updateComponentIdToUiIdMapIfNeeded(sign, tagName, styleMap);
           mUIHolder.put(sign, ui[0]);
-          updatePositionChangeListener(ui[0]);
+          if (hasPositionChangeListener) {
+            addPositionChangeListener(sign);
+          }
           if (TraceEvent.isTracingStarted()) {
             TraceEvent.endSection(traceEvent);
           }
@@ -760,6 +765,8 @@ public class LynxUIOwner {
       @Nullable final StylesDiffMap initialProps,
       @Nullable final Map<String, EventsListener> eventsListenerMap, final boolean flatten,
       int nodeIndex, @Nullable final Map<Integer, GestureDetector> gestureDetectors) {
+    final boolean hasPositionChangeListener =
+        hasPositionChangeResponseChainListener(eventsListenerMap);
     Callable<Runnable> createViewAsyncTask = () -> {
       try {
         String traceEvent = null;
@@ -789,7 +796,9 @@ public class LynxUIOwner {
             reportStatistic(tagName);
             updateComponentIdToUiIdMapIfNeeded(sign, tagName, initialProps);
             mUIHolder.put(sign, ui[0]);
-            updatePositionChangeListener(ui[0]);
+            if (hasPositionChangeListener) {
+              addPositionChangeListener(sign);
+            }
             if (TraceEvent.isTracingStarted()) {
               TraceEvent.endSection(traceEvent);
             }
@@ -1341,16 +1350,29 @@ public class LynxUIOwner {
   }
 
   private void updatePositionChangeListener(LynxBaseUI ui) {
+    int sign = ui.getSign();
     boolean listens = hasResponseChainEvent(ui, POSITION_CHANGE_EVENT);
-    if (listens) {
-      if (mPositionChangeListeners.add(ui.getSign())) {
-        ensurePositionChangeObservation();
+    if (!listens) {
+      if (mPositionChangeListeners.contains(sign)) {
+        removePositionChangeListener(sign);
       }
-      mLastPositionChangeRects.remove(ui);
-      requestPositionChangeEvents();
-    } else {
-      removePositionChangeListener(ui.getSign());
+      return;
     }
+    addPositionChangeListener(sign);
+    mLastPositionChangeRects.remove(ui);
+  }
+
+  private void addPositionChangeListener(int sign) {
+    if (mPositionChangeListeners.add(sign)) {
+      ensurePositionChangeObservation();
+    }
+    requestPositionChangeEvents();
+  }
+
+  private static boolean hasPositionChangeResponseChainListener(
+      @Nullable Map<String, EventsListener> events) {
+    return events != null && !events.isEmpty()
+        && hasResponseChainEvent(events, POSITION_CHANGE_EVENT);
   }
 
   static boolean hasResponseChainEvent(
