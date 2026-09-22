@@ -65,8 +65,34 @@ class ScopedExternalBoolEnv {
   std::optional<std::string> previous_value_;
 };
 
+class RecordingMockPaintingContextPlatformRef
+    : public MockPaintingContextPlatformRef {
+ public:
+  explicit RecordingMockPaintingContextPlatformRef(
+      std::vector<std::string>* completion_events)
+      : completion_events_(completion_events) {}
+
+  void UpdateEventInfo(bool has_touch_pseudo) override {
+    if (has_touch_pseudo) {
+      ++touch_pseudo_update_count_;
+      completion_events_->push_back("UpdateEventInfo");
+    }
+  }
+
+  int touch_pseudo_update_count_{0};
+
+ private:
+  std::vector<std::string>* completion_events_;
+};
+
 class RecordingMockPaintingContext : public MockPaintingContext {
  public:
+  RecordingMockPaintingContext() {
+    event_info_ref_ = std::make_shared<RecordingMockPaintingContextPlatformRef>(
+        &completion_events_);
+    platform_ref_ = event_info_ref_;
+  }
+
   void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) override {
     completion_events_.push_back("FinishTasm");
@@ -89,6 +115,7 @@ class RecordingMockPaintingContext : public MockPaintingContext {
 
   std::vector<InitialLynxUITreeNodeForReplay> initial_tree_nodes_;
   std::vector<std::string> completion_events_;
+  std::shared_ptr<RecordingMockPaintingContextPlatformRef> event_info_ref_;
 };
 
 const InitialLynxUITreeNodeForReplay* FindInitialTreeNode(
@@ -743,6 +770,76 @@ TEST_F(ElementManagerTest, AdoptStyleSheet_Basic) {
   const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
   EXPECT_EQ(adopted_sheets.size(), 1);
   EXPECT_EQ(adopted_sheets[0].get(), wrapper.get());
+}
+
+TEST_F(ElementManagerTest, AdoptStyleSheetEnablesTouchPseudoCallbacks) {
+  auto plain_wrapper = fml::AdoptRef<SharedCSSFragmentWrapper>(
+      new SharedCSSFragmentWrapper(std::make_unique<SharedCSSFragment>()));
+  manager->AdoptStyleSheet(std::move(plain_wrapper));
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+
+  auto fragment = std::make_unique<SharedCSSFragment>();
+  fragment->MarkHasTouchPseudoToken();
+  auto wrapper = fml::AdoptRef<SharedCSSFragmentWrapper>(
+      new SharedCSSFragmentWrapper(std::move(fragment)));
+
+  manager->AdoptStyleSheet(std::move(wrapper));
+  EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+}
+
+TEST_F(ElementManagerTest,
+       AdoptStyleSheetPushesTouchPseudoInfoBeforeNoPatchCompletion) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  manager->painting_context()->OnFirstScreen();
+  painting_context->completion_events_.clear();
+  manager->need_layout_ = false;
+
+  auto fragment = std::make_unique<SharedCSSFragment>();
+  fragment->MarkHasTouchPseudoToken();
+  auto wrapper = fml::AdoptRef<SharedCSSFragmentWrapper>(
+      new SharedCSSFragmentWrapper(std::move(fragment)));
+  manager->AdoptStyleSheet(std::move(wrapper));
+  page->ApplyFunctionRecursive(
+      [](auto* element) { element->MarkStyleDirty(false); });
+
+  auto options = std::make_shared<PipelineOptions>();
+  bool callback_called = false;
+  manager->OnPatchFinishForFiber(
+      options,
+      [&callback_called](bool has_patch) {
+        callback_called = true;
+        EXPECT_FALSE(has_patch);
+      },
+      page.get());
+
+  EXPECT_TRUE(callback_called);
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+  EXPECT_EQ(painting_context->event_info_ref_->touch_pseudo_update_count_, 1);
+  EXPECT_EQ(painting_context->completion_events_,
+            (std::vector<std::string>{"UpdateEventInfo", "FinishTasm",
+                                      "FinishLayout"}));
+}
+
+TEST_F(ElementManagerTest, TouchPseudoEventInfoIsPushedOnce) {
+  manager->UpdateTouchPseudoStatus(true);
+  manager->UpdateTouchPseudoStatus(true);
+  EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+  EXPECT_EQ(painting_context->event_info_ref_->touch_pseudo_update_count_, 0);
+
+  manager->PatchEventRelatedInfo();
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+  EXPECT_EQ(painting_context->event_info_ref_->touch_pseudo_update_count_, 1);
+  EXPECT_EQ(painting_context->completion_events_,
+            (std::vector<std::string>{"UpdateEventInfo"}));
+
+  manager->UpdateTouchPseudoStatus(true);
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+  manager->PatchEventRelatedInfo();
+  EXPECT_EQ(painting_context->event_info_ref_->touch_pseudo_update_count_, 1);
 }
 
 TEST_F(ElementManagerTest, AdoptStyleSheet_Multiple) {

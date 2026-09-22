@@ -10495,6 +10495,80 @@ TEST_P(FiberElementTest, TestOnPseudoStatusChanged) {
   EXPECT_TRUE(mock_painting_node_->props_.at(opa) == lepus::Value(0.8));
 }
 
+TEST_P(FiberElementTest, NestedActivePseudoUpdatesStyle) {
+  CSSParserConfigs configs;
+  auto fragment = std::make_shared<SharedCSSFragment>();
+  fragment->SetEnableCSSInvalidation();
+  fragment->SetEnableCSSSelector();
+
+  auto add_opacity_rule = [&](const std::string& selector_text,
+                              double opacity) {
+    auto token = fml::MakeRefCounted<CSSParseToken>(configs);
+    token->raw_attributes_[CSSPropertyID::kPropertyIDOpacity] =
+        CSSValue(lepus::Value(opacity), CSSValuePattern::STRING);
+
+    css::CSSParserContext context;
+    css::CSSTokenizer tokenizer(selector_text);
+    const auto parser_tokens = tokenizer.TokenizeToEOF();
+    css::CSSParserTokenRange range(parser_tokens);
+    auto selector_vector =
+        css::CSSSelectorParser::ParseSelector(range, &context);
+    const size_t flattened_size =
+        css::CSSSelectorParser::FlattenedSize(selector_vector);
+    auto selector_array =
+        std::make_unique<css::LynxCSSSelector[]>(flattened_size);
+    css::CSSSelectorParser::AdoptSelectorVector(
+        selector_vector, selector_array.get(), flattened_size);
+    fragment->AddStyleRule(std::move(selector_array), std::move(token));
+  };
+  add_opacity_rule(".button", 1);
+  add_opacity_rule(".button:not(:active)", 0.5);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+  auto element = manager->CreateFiberView();
+  element->parent_component_element_ = page.get();
+  element->SetClass("button");
+  page->InsertNode(element);
+
+  page->FlushActionsAsRoot();
+  auto* painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+  painting_context->Flush();
+  auto* painting_node =
+      painting_context->node_map_.at(element->impl_id()).get();
+  ASSERT_NE(painting_node, nullptr);
+  EXPECT_EQ(painting_node->props_.at("opacity"), lepus::Value(0.5));
+
+  element->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateActive);
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  EXPECT_EQ(painting_node->props_.at("opacity"), lepus::Value(1));
+
+  element->OnPseudoStatusChanged(kPseudoStateActive, kPseudoStateNone);
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  EXPECT_EQ(painting_node->props_.at("opacity"), lepus::Value(0.5));
+}
+
+TEST_P(FiberElementTest, IntrinsicTouchPseudoEnablesPlatformCallback) {
+  constexpr int32_t kCssId = 11;
+  auto fragment = std::make_unique<SharedCSSFragment>(kCssId);
+  fragment->MarkHasTouchPseudoToken();
+
+  auto page = manager->CreateFiberPage("page", kCssId);
+  auto style_sheet_manager = tasm->style_sheet_manager(DEFAULT_ENTRY_NAME);
+  style_sheet_manager->AddSharedCSSFragment(std::move(fragment));
+  page->set_style_sheet_manager(style_sheet_manager);
+  auto element = manager->CreateFiberView();
+  element->SetCSSID(kCssId);
+  element->set_style_sheet_manager(style_sheet_manager);
+
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+  EXPECT_NE(element->GetRelatedCSSFragment(), nullptr);
+  EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+}
+
 TEST_P(FiberElementTest, TestPseudoStatusChangeInheritance) {
   // Verifies that OnPseudoStatusChanged marks the element with
   // kDirtyPropagateInherited so inherited properties re-flow to children.
@@ -20000,6 +20074,114 @@ static std::shared_ptr<SharedCSSFragment> MakeFragmentWithRule(
                                               flattened_size);
   fragment->AddStyleRule(std::move(selector_array), nullptr);
   return fragment;
+}
+
+static std::shared_ptr<SharedCSSFragment> MakePseudoInvalidationFragment(
+    const std::vector<std::string>& selectors) {
+  auto fragment = std::make_shared<SharedCSSFragment>();
+  fragment->SetEnableCSSInvalidation();
+  fragment->SetEnableCSSSelector();
+  fragment->MarkHasTouchPseudoToken();
+  for (const auto& selector_text : selectors) {
+    css::CSSParserContext context;
+    css::CSSTokenizer tokenizer(selector_text);
+    const auto tokens = tokenizer.TokenizeToEOF();
+    css::CSSParserTokenRange range(tokens);
+    css::LynxCSSSelectorVector vector =
+        css::CSSSelectorParser::ParseSelector(range, &context);
+    size_t flattened_size = css::CSSSelectorParser::FlattenedSize(vector);
+    auto selector_array =
+        std::make_unique<css::LynxCSSSelector[]>(flattened_size);
+    css::CSSSelectorParser::AdoptSelectorVector(vector, selector_array.get(),
+                                                flattened_size);
+    fragment->AddStyleRule(std::move(selector_array), nullptr);
+  }
+  return fragment;
+}
+
+TEST_P(FiberElementTest, PseudoInvalidationSkipsResolveWithoutMatchedNodes) {
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto options = std::make_shared<PipelineOptions>();
+  ASSERT_NE(tasm->CreateAndUpdateCurrentPipelineContext(options), nullptr);
+
+  auto fragment = MakePseudoInvalidationFragment({":active .target"});
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+  auto parent = manager->CreateFiberView();
+  parent->parent_component_element_ = page.get();
+  page->InsertNode(parent);
+  auto child = manager->CreateFiberView();
+  child->parent_component_element_ = page.get();
+  parent->InsertNode(child);
+  parent->ResetAllDirtyBits();
+  child->ResetAllDirtyBits();
+  options->resolve_requested = false;
+
+  parent->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateActive);
+  EXPECT_EQ(parent->data_model_->GetPseudoState(), kPseudoStateActive);
+  EXPECT_FALSE(parent->StyleDirty());
+  EXPECT_FALSE(child->StyleDirty());
+  EXPECT_FALSE(options->resolve_requested);
+
+  child->SetClass("target");
+  ASSERT_TRUE(child->StyleDirty());
+  options->resolve_requested = false;
+  parent->OnPseudoStatusChanged(kPseudoStateActive, kPseudoStateNone);
+  EXPECT_FALSE(parent->StyleDirty());
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_TRUE(options->resolve_requested);
+}
+
+TEST_P(FiberElementTest,
+       DescendantInvalidationSkipsDirtyChildrenUnlessRequested) {
+  auto fragment = MakePseudoInvalidationFragment({".theme .row"});
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+  auto parent = manager->CreateFiberView();
+  parent->parent_component_element_ = page.get();
+  page->InsertNode(parent);
+  auto child = manager->CreateFiberView();
+  child->parent_component_element_ = page.get();
+  child->SetClass("row");
+  parent->InsertNode(child);
+  parent->ResetAllDirtyBits();
+  child->ResetAllDirtyBits();
+  child->MarkStyleDirty(false);
+
+  ClassList old_classes;
+  ClassList new_classes = {"theme"};
+  ASSERT_TRUE(parent->CheckHasInvalidationForClass(old_classes, new_classes));
+  ASSERT_EQ(parent->invalidation_lists_.descendants.size(), 1u);
+  auto* invalidation_set = parent->invalidation_lists_.descendants.front();
+
+  EXPECT_FALSE(parent->InvalidateChildren(invalidation_set));
+  EXPECT_TRUE(parent->InvalidateChildren(invalidation_set, true));
+}
+
+TEST_P(FiberElementTest, PseudoInvalidationMarksSelfAndMatchingDescendant) {
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto options = std::make_shared<PipelineOptions>();
+  ASSERT_NE(tasm->CreateAndUpdateCurrentPipelineContext(options), nullptr);
+
+  auto fragment =
+      MakePseudoInvalidationFragment({":active", ":active .target"});
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+  auto parent = manager->CreateFiberView();
+  parent->parent_component_element_ = page.get();
+  page->InsertNode(parent);
+  auto child = manager->CreateFiberView();
+  child->parent_component_element_ = page.get();
+  child->SetClass("target");
+  parent->InsertNode(child);
+  parent->ResetAllDirtyBits();
+  child->ResetAllDirtyBits();
+  options->resolve_requested = false;
+
+  parent->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateActive);
+  EXPECT_TRUE(parent->StyleDirty());
+  EXPECT_TRUE(child->StyleDirty());
+  EXPECT_TRUE(options->resolve_requested);
 }
 
 // Verify that removing a child marks its next sibling as style-dirty when
