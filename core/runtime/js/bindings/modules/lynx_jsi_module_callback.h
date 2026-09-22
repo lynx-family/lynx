@@ -26,6 +26,9 @@ namespace lynx {
 namespace runtime {
 namespace js {
 class GroupInterceptor;
+#if ENABLE_HOST_SCRIPT_RUNTIME
+class HostScriptJSBCall;
+#endif
 class NativeModuleInvocationContext;
 
 class ModuleCallbackFunctionHolder {
@@ -79,6 +82,12 @@ class ModuleCallback : public LynxModuleCallback {
   void SetModuleInterceptor(std::shared_ptr<GroupInterceptor> interceptor) {
     group_interceptor_ = std::move(interceptor);
   }
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  void SetHostScriptCall(std::shared_ptr<HostScriptJSBCall> call, int index) {
+    host_call_ = std::move(call);
+    host_argument_index_ = index;
+  }
+#endif
 
   void SetNativeModuleInvocationContext(
       std::shared_ptr<NativeModuleInvocationContext> context) {
@@ -107,6 +116,10 @@ class ModuleCallback : public LynxModuleCallback {
   std::shared_ptr<NativeModuleInvocationContext> invocation_context_ = nullptr;
 
  private:
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  std::shared_ptr<HostScriptJSBCall> host_call_;
+  int host_argument_index_ = -1;
+#endif
   std::unique_ptr<pub::Value> args_ = nullptr;
   std::function<std::unique_ptr<pub::Value>(Runtime* rt,
                                             ModuleCallback* callback)>

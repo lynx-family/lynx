@@ -38,6 +38,10 @@ class ModuleDelegate {
       const std::shared_ptr<ModuleCallback>& callback,
       base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
       int64_t id_to_delete = ModuleCallback::kInvalidCallbackId) = 0;
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  // Override to enqueue mock callbacks, even when already on the JS thread.
+  virtual void PostJSCallback(const std::shared_ptr<ModuleCallback>&) {}
+#endif
   virtual void OnErrorOccurred(base::LynxError error) = 0;
   virtual void OnMethodInvoked(const std::string& module_name,
                                const std::string& method_name,

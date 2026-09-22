@@ -17,6 +17,11 @@ void ModuleDelegateImpl::CallJSCallback(
     const std::shared_ptr<runtime::js::ModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete) {}
 
+#if ENABLE_HOST_SCRIPT_RUNTIME
+void ModuleDelegateImpl::PostJSCallback(
+    const std::shared_ptr<runtime::js::ModuleCallback>& callback) {}
+#endif
+
 void ModuleDelegateImpl::OnErrorOccurred(base::LynxError error) {}
 
 void ModuleDelegateImpl::OnMethodInvoked(const std::string& module_name,

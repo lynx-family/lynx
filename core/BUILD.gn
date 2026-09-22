@@ -47,6 +47,9 @@ config("lynx_public_config") {
   ]
 
   if (is_android) {
+    if (lynx_in_debug && enable_napi_binding) {
+      defines += [ "ENABLE_HOST_SCRIPT_RUNTIME=1" ]
+    }
     if (is_debug) {
       defines += [ "DEBUG_MEMORY" ]
     }

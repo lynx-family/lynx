@@ -14,6 +14,10 @@
 #include "core/services/recorder/record.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
+#if ENABLE_HOST_SCRIPT_RUNTIME
+#include "core/shell/host_script/runtime/host_script_jsb_call.h"
+#endif
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -43,7 +47,13 @@ void ModuleCallback::Invoke(Runtime* runtime,
   }
   if (!args_ || !args_->IsArray()) {
     LOGW("NativeModule: Callback's args is invalid.");
+    return;
   }
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  if (host_call_) {
+    host_call_->OnCallback(host_argument_index_, args_);
+  }
+#endif
   size_t size = static_cast<size_t>(args_->Length());
   Value values[size];
   args_->ForeachArray([&values, runtime](int64_t index, const pub::Value& val) {
