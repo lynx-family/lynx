@@ -15,6 +15,7 @@
 #include "core/renderer/css/ng/font_face/font_face_rule.h"
 #include "core/renderer/css/ng/media_query/media_query.h"
 #include "core/renderer/css/ng/media_query/media_query_set.h"
+#include "core/renderer/css/ng/selector/lynx_css_selector_list.h"
 #include "core/renderer/css/ng/supports/supports_condition.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/runtime/lepus/base_binary_reader.h"
@@ -50,6 +51,27 @@ std::shared_ptr<CSSFontFaceRule> CreateLegacyFontFaceRule(
   token->second["font-family"] = rule.Family();
   token->second["src"] = FormatFontSources(rule.Sources());
   return token;
+}
+
+bool HasTouchPseudo(const css::LynxCSSSelector& selector) {
+  if (selector.GetPseudoType() == css::LynxCSSSelector::kPseudoActive) {
+    return true;
+  }
+
+  const auto* selector_list = selector.SelectorList();
+  if (!selector_list) {
+    return false;
+  }
+
+  for (const auto* current = selector_list->First(); current; ++current) {
+    if (HasTouchPseudo(*current)) {
+      return true;
+    }
+    if (current->IsLastInTagHistory() && current->IsLastInSelectorList()) {
+      break;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -149,8 +171,7 @@ bool LynxBinaryBaseCSSReader::DecodeCSSFragment(SharedCSSFragment* fragment,
           std::make_unique<css::LynxCSSSelector[]>(flattened_size);
       for (size_t i = 0; i < flattened_size; i++) {
         DecodeCSSSelector(&selector_array[i]);
-        if (selector_array[i].GetPseudoType() ==
-            css::LynxCSSSelector::kPseudoActive) {
+        if (HasTouchPseudo(selector_array[i])) {
           fragment->MarkHasTouchPseudoToken();
         }
       }
@@ -285,8 +306,7 @@ bool LynxBinaryBaseCSSReader::DecodeStyleRuleData(
       std::make_unique<css::LynxCSSSelector[]>(flattened_size);
   for (size_t i = 0; i < flattened_size; i++) {
     DecodeCSSSelector(&selector_array[i]);
-    if (selector_array[i].GetPseudoType() ==
-        css::LynxCSSSelector::kPseudoActive) {
+    if (HasTouchPseudo(selector_array[i])) {
       fragment->MarkHasTouchPseudoToken();
     }
   }
