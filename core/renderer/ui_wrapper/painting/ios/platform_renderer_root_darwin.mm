@@ -17,6 +17,11 @@ PlatformRendererRootDarwin::PlatformRendererRootDarwin(PlatformRendererContextDa
   _view = nil;
 }
 
+PlatformRendererRootDarwin::~PlatformRendererRootDarwin() {
+  // The base destructor can no longer dispatch GetUIView() to this class.
+  RestoreNativeInteractionEnabledIfOwned();
+}
+
 UIView<LynxRendererHost>* PlatformRendererRootDarwin::GetUIView() { return _rootView; }
 
 }  // namespace tasm

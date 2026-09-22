@@ -354,6 +354,7 @@ public class com::lynx::tasm::behavior::ui::view::AndroidView : ViewGroup, com.l
   public boolean com.lynx.tasm.behavior.ui.view.AndroidView.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.ui.view.AndroidView.onTouchEvent(MotionEvent event);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setNativeInteractionEnabled(boolean enabled);
+  public void com.lynx.tasm.behavior.ui.view.AndroidView.setNativeInteractionEnabledForRenderer(Boolean enabled);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setPanInterceptSelf(boolean panInterceptSelf);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setPanInterceptAncestors(boolean panInterceptAncestors);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setPanInterceptDescendants(boolean panInterceptDescendants);
@@ -1381,6 +1382,8 @@ public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup, c
   public Renderer com.lynx.tasm.behavior.render.ContainerRenderer.getRenderer();
   public View com.lynx.tasm.behavior.render.ContainerRenderer.getView();
   public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context);
+  public void com.lynx.tasm.behavior.render.ContainerRenderer.setNativeInteractionEnabledForRenderer(Boolean enabled);
+  public boolean com.lynx.tasm.behavior.render.ContainerRenderer.onTouchEvent(MotionEvent event);
   public void com.lynx.tasm.behavior.render.ContainerRenderer.applyRendererHostFilter(int type, float amount);
 }
 
@@ -3210,6 +3213,7 @@ public interface com::lynx::tasm::behavior::IPaintingContext {
   public int com.lynx.tasm.behavior.IPaintingContext.EVENT_BEHAVIOR_EVENT_THROUGH EVENT_BEHAVIOR_EVENT_THROUGH;
   public int com.lynx.tasm.behavior.IPaintingContext.EVENT_BEHAVIOR_BLOCK_NATIVE_EVENT EVENT_BEHAVIOR_BLOCK_NATIVE_EVENT;
   public int com.lynx.tasm.behavior.IPaintingContext.EVENT_BEHAVIOR_ENABLE_SIMULTANEOUS_TOUCH EVENT_BEHAVIOR_ENABLE_SIMULTANEOUS_TOUCH;
+  public int com.lynx.tasm.behavior.IPaintingContext.EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT;
   public void com.lynx.tasm.behavior.IPaintingContext.destroy();
   public long com.lynx.tasm.behavior.IPaintingContext.getNativePaintingContextPtr();
   public PointF com.lynx.tasm.behavior.IPaintingContext.convertPointInViewToScreen(int sign, PointF point);
@@ -3219,6 +3223,7 @@ public interface com::lynx::tasm::behavior::IPaintingContext {
   public boolean com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public int com.lynx.tasm.behavior.IPaintingContext.getPlatformTouchTargetSign();
   public int com.lynx.tasm.behavior.IPaintingContext.getPlatformEventBehavior();
+  public float[] com.lynx.tasm.behavior.IPaintingContext.getPlatformConsumeSlideEventAngles();
   public int com.lynx.tasm.behavior.IPaintingContext.hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY);
   public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformLongPress();
   public void com.lynx.tasm.behavior.IPaintingContext.dispatchPlatformTap();
@@ -3248,6 +3253,7 @@ public interface com::lynx::tasm::behavior::render::IRendererHost {
   public Renderer com.lynx.tasm.behavior.render.IRendererHost.getRenderer();
   public View com.lynx.tasm.behavior.render.IRendererHost.getView();
   public Renderer com.lynx.tasm.behavior.render.IRendererHost.createRenderer(PlatformRendererContext platformRendererContext, int sign);
+  public default void com.lynx.tasm.behavior.render.IRendererHost.setNativeInteractionEnabledForRenderer(Boolean enabled);
   public default boolean com.lynx.tasm.behavior.render.IRendererHost.invokeUIMethod(String method, ReadableMap params, Callback callback);
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostWidth();
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostHeight();
@@ -8394,6 +8400,7 @@ public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx
   public void com.lynx.tasm.behavior.render.NativePaintingContext.setLynxEngineActorForPlatformContextRef(long ptr);
   public boolean com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public int com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformEventBehavior();
+  public float[] com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformConsumeSlideEventAngles();
   public int com.lynx.tasm.behavior.render.NativePaintingContext.hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY);
   public int com.lynx.tasm.behavior.render.NativePaintingContext.getPlatformTouchTargetSign();
   public void com.lynx.tasm.behavior.render.NativePaintingContext.dispatchPlatformLongPress();
@@ -8775,6 +8782,7 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public boolean com.lynx.tasm.behavior.PaintingContext.dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
   public int com.lynx.tasm.behavior.PaintingContext.getPlatformTouchTargetSign();
   public int com.lynx.tasm.behavior.PaintingContext.getPlatformEventBehavior();
+  public float[] com.lynx.tasm.behavior.PaintingContext.getPlatformConsumeSlideEventAngles();
   public int com.lynx.tasm.behavior.PaintingContext.hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY);
   public void com.lynx.tasm.behavior.PaintingContext.dispatchPlatformLongPress();
   public void com.lynx.tasm.behavior.PaintingContext.dispatchPlatformTap();

@@ -70,8 +70,7 @@ void SetUserInteractionEnabled(PlatformEventTarget* target,
 
 void SetNativeInteractionEnabled(PlatformEventTarget* target,
                                  const lepus::Value& value) {
-  target->SetNativeInteractionEnabled(
-      !base::IsZero(EventPropValueToFloat(value)));
+  target->SetNativeInteractionEnabled(EventPropValueToStatus(value));
 }
 
 void SetExposureScreenMarginLeft(PlatformEventTarget* target,
@@ -189,6 +188,72 @@ bool ParseEventRegionSizeValue(
   return true;
 }
 
+bool ParseHitSlopSizeValue(const lepus::Value& value,
+                           PlatformEventTarget::EventRegionSizeValue* result) {
+  if (result == nullptr) {
+    return false;
+  }
+  if (value.IsNumber() && std::isfinite(value.Number())) {
+    const float parsed = static_cast<float>(value.Number());
+    if (std::isfinite(parsed)) {
+      result->type =
+          PlatformEventTarget::EventRegionSizeValue::Type::kLayoutUnit;
+      result->value = parsed;
+      return true;
+    }
+  }
+  if (!value.IsString()) {
+    return false;
+  }
+  const std::string text = value.StdString();
+  if (text.empty()) {
+    return false;
+  }
+  auto type = PlatformEventTarget::EventRegionSizeValue::Type::kLayoutUnit;
+  size_t suffix_length = 0;
+  if (text.back() == '%') {
+    type = PlatformEventTarget::EventRegionSizeValue::Type::kPercentage;
+    suffix_length = 1;
+  } else if (text.size() >= 3 && text.compare(text.size() - 3, 3, "rpx") == 0) {
+    type = PlatformEventTarget::EventRegionSizeValue::Type::kRpx;
+    suffix_length = 3;
+  } else if (text.size() >= 3 && text.compare(text.size() - 3, 3, "ppx") == 0) {
+    type = PlatformEventTarget::EventRegionSizeValue::Type::kPhysicalPx;
+    suffix_length = 3;
+  } else if (text.size() >= 2 && text.compare(text.size() - 2, 2, "px") == 0) {
+    type = PlatformEventTarget::EventRegionSizeValue::Type::kDevicePx;
+    suffix_length = 2;
+  }
+  const std::string number = text.substr(0, text.size() - suffix_length);
+  float parsed = 0.f;
+  if (!base::StringToFloat(number, parsed, true) || !std::isfinite(parsed)) {
+    return false;
+  }
+  result->type = type;
+  result->value =
+      type == PlatformEventTarget::EventRegionSizeValue::Type::kPercentage
+          ? parsed / 100.f
+          : parsed;
+  return true;
+}
+
+void SetHitSlop(PlatformEventTarget* target, const lepus::Value& value) {
+  std::array<PlatformEventTarget::EventRegionSizeValue, 4> hit_slop{};
+  if (value.IsObject()) {
+    const char* names[] = {"left", "top", "right", "bottom"};
+    for (size_t i = 0; i < hit_slop.size(); ++i) {
+      ParseHitSlopSizeValue(value.GetProperty(base::String(names[i])),
+                            &hit_slop[i]);
+    }
+  } else {
+    PlatformEventTarget::EventRegionSizeValue uniform;
+    if (ParseHitSlopSizeValue(value, &uniform)) {
+      hit_slop.fill(uniform);
+    }
+  }
+  target->SetHitSlop(hit_slop);
+}
+
 void ParseEventRegions(const lepus::Value& value,
                        std::vector<PlatformEventTarget::EventRegion>* regions) {
   if (regions == nullptr || !value.IsArray()) {
@@ -245,6 +310,43 @@ void SetEnableSimultaneousTouch(PlatformEventTarget* target,
                                 const lepus::Value& value) {
   target->SetEnableSimultaneousTouch(
       !base::IsZero(EventPropValueToFloat(value)));
+}
+
+void SetPointerEvents(PlatformEventTarget* target, const lepus::Value& value) {
+  auto pointer_events = LynxPointerEventsValue::kUnset;
+  if (value.IsNumber()) {
+    const double number = value.Number();
+    if (number == static_cast<int>(LynxPointerEventsValue::kAuto) ||
+        number == static_cast<int>(LynxPointerEventsValue::kNone)) {
+      pointer_events =
+          static_cast<LynxPointerEventsValue>(static_cast<int>(number));
+    }
+  }
+  target->SetPointerEvents(pointer_events);
+}
+
+void SetConsumeSlideEvent(PlatformEventTarget* target,
+                          const lepus::Value& value) {
+  std::vector<std::array<float, 2>> angles;
+  if (value.IsArrayOrJSArray()) {
+    for (size_t i = 0; i < value.GetLength(); ++i) {
+      const auto& range = value.GetProperty(i);
+      if (!range.IsArrayOrJSArray() || range.GetLength() != 2) {
+        continue;
+      }
+      const auto& begin = range.GetProperty(0);
+      const auto& end = range.GetProperty(1);
+      if (begin.IsNumber() && end.IsNumber() && std::isfinite(begin.Number()) &&
+          std::isfinite(end.Number())) {
+        const float begin_angle = static_cast<float>(begin.Number());
+        const float end_angle = static_cast<float>(end.Number());
+        if (std::isfinite(begin_angle) && std::isfinite(end_angle)) {
+          angles.push_back({begin_angle, end_angle});
+        }
+      }
+    }
+  }
+  target->SetConsumeSlideEventAngles(std::move(angles));
 }
 
 void SetEventsPassThrough(PlatformEventTarget* target,
@@ -321,6 +423,7 @@ GetEventPropSetterMap() {
            &SetEventThroughActiveRegions},
           {PlatformEventPropName::kEventsPassThrough, &SetEventsPassThrough},
           {PlatformEventPropName::kIgnoreFocus, &SetIgnoreFocus},
+          {PlatformEventPropName::kHitSlop, &SetHitSlop},
           {PlatformEventPropName::kEnableTouchPseudoPropagation,
            &SetTouchPseudoPropagation},
           {PlatformEventPropName::kBlockNativeEvent, &SetBlockNativeEvent},
@@ -328,6 +431,8 @@ GetEventPropSetterMap() {
            &SetBlockNativeEventAreas},
           {PlatformEventPropName::kEnableSimultaneousTouch,
            &SetEnableSimultaneousTouch},
+          {PlatformEventPropName::kPointerEvents, &SetPointerEvents},
+          {PlatformEventPropName::kConsumeSlideEvent, &SetConsumeSlideEvent},
       };
   return map;
 }

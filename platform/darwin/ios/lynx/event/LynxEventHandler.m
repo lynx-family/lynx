@@ -364,6 +364,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   LynxCustomGestureRecognizer* _customPlatformGesture;
   UIPanGestureRecognizer* _panGestureRecognizer;
   PanGestureRecognizerDelegate* _panGestureDelegate;
+  NSArray<NSNumber*>* _platformConsumeSlideEventAngles;
   float range_;
   NSMutableSet* _set;
   NSMutableSet* _setOfPropsChanged;
@@ -455,9 +456,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     if (_customPlatformGesture != nil) {
       [_rootView addGestureRecognizer:_customPlatformGesture];
     }
-    if (_panGestureRecognizer != nil) {
-      [_rootView addGestureRecognizer:_panGestureRecognizer];
-    }
+  }
+  if (_panGestureRecognizer != nil) {
+    [_rootView addGestureRecognizer:_panGestureRecognizer];
   }
 }
 
@@ -469,9 +470,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     if (_customPlatformGesture != nil) {
       [_rootView removeGestureRecognizer:_customPlatformGesture];
     }
-    if (_panGestureRecognizer != nil) {
-      [_rootView removeGestureRecognizer:_panGestureRecognizer];
-    }
+  }
+  if (_panGestureRecognizer != nil) {
+    [_rootView removeGestureRecognizer:_panGestureRecognizer];
   }
 }
 
@@ -705,10 +706,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   }
 }
 
-// Only when a LynxUI has "consume-slide-event" property, needCheckConsumeSlideEvent could be
-// executed. Otherwise, needCheckConsumeSlideEvent will not be executed, which causes the
-// UIPanGestureRecognizer will not be added to the LynxView, consistent with the previous behavior,
-// to avoid breaking changes.
+// Install the pan recognizer only when consume-slide-event is present. In
+// FragmentLayerRenderer mode, the page renderer calls this before the first
+// touch; the legacy path calls it when an eligible LynxUI becomes ready.
 - (void)needCheckConsumeSlideEvent {
   if (_panGestureRecognizer && _panGestureDelegate) {
     return;
@@ -724,7 +724,20 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   [_rootView addGestureRecognizer:_panGestureRecognizer];
 }
 
+- (void)updatePlatformConsumeSlideEventAngles:(NSArray<NSNumber*>*)angles {
+  if (!_isFragmentLayerRendererOn) {
+    return;
+  }
+  _platformConsumeSlideEventAngles = [angles copy];
+  if (_platformConsumeSlideEventAngles.count >= 2) {
+    [self needCheckConsumeSlideEvent];
+  }
+}
+
 - (BOOL)hasConsumeSlideEvent {
+  if (_isFragmentLayerRendererOn) {
+    return _platformConsumeSlideEventAngles.count >= 2;
+  }
   id<LynxEventTarget> target = _touchTarget;
   BOOL res = NO;
   while (target != nil) {
@@ -800,6 +813,15 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 }
 
 - (BOOL)consumeSlideEvents:(CGFloat)angle {
+  if (_isFragmentLayerRendererOn) {
+    for (NSUInteger i = 0; i + 1 < _platformConsumeSlideEventAngles.count; i += 2) {
+      if (angle >= _platformConsumeSlideEventAngles[i].doubleValue &&
+          angle <= _platformConsumeSlideEventAngles[i + 1].doubleValue) {
+        return YES;
+      }
+    }
+    return NO;
+  }
   id<LynxEventTarget> target = _touchTarget;
   while (target != nil && target != target.parentTarget) {
     if ([target consumeSlideEvent:angle]) {

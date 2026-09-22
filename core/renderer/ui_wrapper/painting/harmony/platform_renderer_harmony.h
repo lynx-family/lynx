@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_HARMONY_PLATFORM_RENDERER_HARMONY_H_
 
 #include <memory>
+#include <optional>
 
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
@@ -27,6 +28,8 @@ class PlatformRendererHarmony : public PlatformRendererImpl {
                           const fml::RefPtr<PropBundle>& init_data,
                           const PlatformRendererInitConfig& init_config);
   ~PlatformRendererHarmony() override;
+
+  void UpdateNativeInteractionEnabled(std::optional<bool> enabled) override;
 
  private:
   PlatformRendererHarmony(std::shared_ptr<harmony::LynxRendererContext> context,
@@ -55,6 +58,7 @@ class PlatformRendererHarmony : public PlatformRendererImpl {
 
   std::shared_ptr<harmony::LynxRendererContext> context_;
   std::weak_ptr<harmony::UIBase> host_;
+  std::optional<bool> native_interaction_enabled_;
 };
 
 class PlatformRendererHarmonyFactory : public PlatformRendererFactory {

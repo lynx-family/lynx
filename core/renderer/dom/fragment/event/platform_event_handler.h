@@ -59,6 +59,12 @@ class PlatformEventHandler {
   int32_t FirstTargetSign() const { return first_target_sign_; }
   int32_t FirstRendererHostSign() const { return first_renderer_host_sign_; }
   uint32_t EventBehavior() const { return event_behavior_; }
+  const std::vector<float>& ConsumeSlideEventAngles() const {
+    return consume_slide_event_angles_;
+  }
+  const std::vector<int32_t>& ResponseChainSigns() const {
+    return response_chain_signs_;
+  }
   bool CanRespondFocus();
 
   void SetTapSlop(const std::string& tap_slop);
@@ -113,6 +119,9 @@ class PlatformEventHandler {
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offset_for_tap_;
   int32_t first_renderer_host_sign_{-1};
   uint32_t event_behavior_{kEventBehaviorNone};
+  // The hit target's complete response-chain state, captured at hit test/DOWN.
+  std::vector<float> consume_slide_event_angles_;
+  std::vector<int32_t> response_chain_signs_;
   int32_t pending_event_behavior_root_sign_{-1};
   bool has_pointer_moved_{false};
   bool first_pointer_moved_{false};

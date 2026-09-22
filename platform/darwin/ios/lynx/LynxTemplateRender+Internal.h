@@ -83,6 +83,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (LynxPlatformEventBehavior)HitTestAndCachePlatformEventBehavior:(NSInteger)rootSign
                                                             point:(CGPoint)point;
 
+- (NSArray<NSNumber *> *)cachedConsumeSlideEventAngles;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -323,6 +323,21 @@ void Element::AttachToElementManagerInner(
 }
 
 void Element::PushStyleToBundle() {
+  if (EnableFragmentLayerRender() && computed_css_style()) {
+    // Custom shadow nodes still flush styles to PropBundle below, clearing
+    // the dirty bits. Copy CSS hit-test state to the event bundle first.
+    auto* style = computed_css_style();
+    if (auto* fragment = fragment_impl()) {
+      if (style->HasResetProperty(kPropertyIDPointerEvents)) {
+        fragment->SetEventProp(PlatformEventPropName::kPointerEvents,
+                               lepus::Value());
+      } else if (style->HasChangedProperty(kPropertyIDPointerEvents)) {
+        fragment->SetEventProp(
+            PlatformEventPropName::kPointerEvents,
+            lepus::Value(static_cast<int32_t>(style->GetPointerEvents())));
+      }
+    }
+  }
   if (EnableFragmentLayerRender() && !IsShadowNodeCustom()) {
     // TODO(renzhongyue): After EnableFragmentLayerRender(), style changes do
     // not need to be written to the PropBundle. computed_css_style() remains
@@ -835,7 +850,10 @@ void Element::ResetAttribute(const base::String& key) {
             name == PlatformEventPropName::kEventThroughActiveRegions ||
             name == PlatformEventPropName::kEventsPassThrough ||
             name == PlatformEventPropName::kIgnoreFocus ||
-            name == PlatformEventPropName::kEnableTouchPseudoPropagation) {
+            name == PlatformEventPropName::kEnableTouchPseudoPropagation ||
+            name == PlatformEventPropName::kNativeInteractionEnabled ||
+            name == PlatformEventPropName::kConsumeSlideEvent ||
+            name == PlatformEventPropName::kHitSlop) {
           fragment->SetEventProp(name, lepus::Value());
         } else {
           fragment->SetEventProp(name, lepus::Value(0));

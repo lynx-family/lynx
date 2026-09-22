@@ -398,6 +398,17 @@ void PlatformRendererContext::UpdatePlatformRendererAttributes(
       env, local_ref.Get(), id, prop_bundle);
 }
 
+void PlatformRendererContext::UpdatePlatformRendererNativeInteractionEnabled(
+    int32_t id, std::optional<bool> enabled) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_updatePlatformRendererNativeInteractionEnabled(
+      env, local_ref.Get(), id, enabled.has_value() ? (*enabled ? 1 : 0) : -1);
+}
+
 int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
