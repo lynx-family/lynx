@@ -91,7 +91,13 @@ bool D3DImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
     static_cast<D3DImageRepresentation*>(user_data)->Release();
   };
 
-  return LockKeyedMutex();
+  if (LockKeyedMutex()) {
+    return true;
+  }
+  out->d3d_texture.destruction_callback(out->d3d_texture.user_data);
+  out->d3d_texture.destruction_callback = nullptr;
+  out->d3d_texture.user_data = nullptr;
+  return false;
 }
 
 bool D3DImageRepresentation::EndRead() { return UnlockKeyedMutex(); }
@@ -113,7 +119,13 @@ bool D3DImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
     static_cast<D3DImageRepresentation*>(user_data)->Release();
   };
 
-  return LockKeyedMutex();
+  if (LockKeyedMutex()) {
+    return true;
+  }
+  out->d3d_texture.destruction_callback(out->d3d_texture.user_data);
+  out->d3d_texture.destruction_callback = nullptr;
+  out->d3d_texture.user_data = nullptr;
+  return false;
 }
 
 bool D3DImageRepresentation::EndWrite() { return UnlockKeyedMutex(); }
@@ -124,8 +136,13 @@ bool D3DImageRepresentation::LockKeyedMutex() {
   }
   if (scoped_keyed_mutex_) {
     FML_LOG(ERROR) << "Keyed mutex is already locked.";
+    return false;
   }
   scoped_keyed_mutex_.emplace(keyed_mutex_.Get());
+  if (!scoped_keyed_mutex_->Valid()) {
+    scoped_keyed_mutex_.reset();
+    return false;
+  }
   return true;
 }
 

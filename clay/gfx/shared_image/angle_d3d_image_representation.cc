@@ -153,7 +153,13 @@ bool AngleD3DImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
   if (!GLImageRepresentation::BeginRead(out)) {
     return false;
   }
-  return LockKeyedMutex();
+  if (LockKeyedMutex()) {
+    return true;
+  }
+  out->opengl_texture.destruction_callback(out->opengl_texture.user_data);
+  out->opengl_texture.destruction_callback = nullptr;
+  out->opengl_texture.user_data = nullptr;
+  return false;
 }
 
 bool AngleD3DImageRepresentation::EndRead() {
@@ -167,7 +173,14 @@ bool AngleD3DImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
   if (!GLImageRepresentation::BeginWrite(out)) {
     return false;
   }
-  return LockKeyedMutex();
+  if (LockKeyedMutex()) {
+    return true;
+  }
+  out->opengl_framebuffer.destruction_callback(
+      out->opengl_framebuffer.user_data);
+  out->opengl_framebuffer.destruction_callback = nullptr;
+  out->opengl_framebuffer.user_data = nullptr;
+  return false;
 }
 
 bool AngleD3DImageRepresentation::EndWrite() {
@@ -183,8 +196,13 @@ bool AngleD3DImageRepresentation::LockKeyedMutex() {
   }
   if (scoped_keyed_mutex_) {
     FML_LOG(ERROR) << "Keyed mutex is already locked.";
+    return false;
   }
   scoped_keyed_mutex_.emplace(keyed_mutex_.Get());
+  if (!scoped_keyed_mutex_->Valid()) {
+    scoped_keyed_mutex_.reset();
+    return false;
+  }
   return true;
 }
 
