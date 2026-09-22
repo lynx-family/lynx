@@ -81,6 +81,24 @@ public class LayerManagerTest {
     assertEquals(StyleConstants.BACKGROUND_CLIP_PADDING_BOX, layerManager.getLayerClip());
   }
 
+  @Test
+  public void memoryUsageIncludesAllImageLayers() {
+    TestLayerManager layerManager = new TestLayerManager();
+    layerManager.addLayer(new TestBackgroundLayerDrawable(100));
+    layerManager.addLayer(new TestBackgroundLayerDrawable(200));
+
+    assertEquals(300, layerManager.getMemoryUsageBytes());
+  }
+
+  @Test
+  public void memoryUsageSaturatesOnOverflow() {
+    TestLayerManager layerManager = new TestLayerManager();
+    layerManager.addLayer(new TestBackgroundLayerDrawable(Long.MAX_VALUE));
+    layerManager.addLayer(new TestBackgroundLayerDrawable(1));
+
+    assertEquals(Long.MAX_VALUE, layerManager.getMemoryUsageBytes());
+  }
+
   private static class TestLayerManager extends LayerManager {
     TestLayerManager() {
       super(null, new ColorDrawable(), 14f);
@@ -130,6 +148,16 @@ public class LayerManagerTest {
   }
 
   private static class TestBackgroundLayerDrawable extends BackgroundLayerDrawable {
+    private final long mMemoryUsageBytes;
+
+    TestBackgroundLayerDrawable() {
+      this(0);
+    }
+
+    TestBackgroundLayerDrawable(long memoryUsageBytes) {
+      mMemoryUsageBytes = memoryUsageBytes;
+    }
+
     @Override
     public boolean isReady() {
       return true;
@@ -143,6 +171,11 @@ public class LayerManagerTest {
     @Override
     public int getImageHeight() {
       return 1;
+    }
+
+    @Override
+    protected long getMemoryUsageBytes() {
+      return mMemoryUsageBytes;
     }
 
     @Override

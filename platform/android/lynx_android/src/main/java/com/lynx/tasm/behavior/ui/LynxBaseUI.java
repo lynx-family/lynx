@@ -54,6 +54,7 @@ import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.scroll.AbsLynxUIScroll;
 import com.lynx.tasm.behavior.ui.scroll.IScrollSticky;
 import com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal;
+import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.LynxBackground;
 import com.lynx.tasm.behavior.ui.utils.LynxMask;
@@ -559,7 +560,12 @@ public abstract class LynxBaseUI
    * @return memory usage in bytes, or {@code 0} if not implemented/unavailable
    */
   public long getMemoryUsageBytes() {
-    return 0;
+    BackgroundDrawable background = mLynxBackground == null ? null : mLynxBackground.getDrawable();
+    return background == null ? 0 : background.getMemoryUsageBytes();
+  }
+
+  protected static long addMemoryUsageBytes(long currentSize, long extraSize) {
+    return extraSize > Long.MAX_VALUE - currentSize ? Long.MAX_VALUE : currentSize + extraSize;
   }
 
   /**

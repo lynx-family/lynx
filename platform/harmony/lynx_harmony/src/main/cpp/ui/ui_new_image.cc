@@ -69,8 +69,9 @@ bool IsSvgSource(const std::string& source) {
 }  // namespace
 
 int64_t UINewImage::GetMemoryUsageBytes() const {
-  return UIBase::GetMemoryUsageBytes() +
-         EstimateRasterMemoryUsageBytes(image_width_, image_height_);
+  return AddMemoryUsageBytes(
+      UIBase::GetMemoryUsageBytes(),
+      EstimateRasterMemoryUsageBytes(image_width_, image_height_));
 }
 
 using ImagePropSetter = void (UINewImage::*)(const lepus::Value& value);

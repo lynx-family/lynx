@@ -51,6 +51,7 @@
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/UIView+Lynx.h>
+#import <limits.h>
 #import <malloc/malloc.h>
 #import <math.h>
 #import "LBSCoreGraphicsPathParser.h"
@@ -80,6 +81,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   return LynxIsEncodedAutoOffsetRotate(rotate) ? OFFSET_ROTATE_AUTO_WITH_ANGLE_BASE - rotate : 0.f;
 }
 
+static int64_t LynxSaturatedAddMemoryUsageBytes(int64_t lhs, int64_t rhs) {
+  return rhs > INT64_MAX - lhs ? INT64_MAX : lhs + rhs;
+}
+
 #define IS_ZERO(num) (fabs(num) < 0.0000000001)
 
 @interface LynxUILastInfo : NSObject
@@ -91,6 +96,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 @property(nonatomic, readwrite) CGFloat lastOffsetX;
 @property(nonatomic, readwrite) CGFloat lastOffsetY;
 @property(nonatomic, readwrite) BOOL hasOffsetEffect;
+@end
+
+@interface LynxBackgroundManager (MemoryUsage)
+- (int64_t)backgroundImageMemoryUsageBytes;
 @end
 
 @interface StickyRange : NSObject
@@ -345,7 +354,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 }
 
 - (int64_t)memoryUsageBytes {
-  return (int64_t)malloc_size((__bridge void*)self);
+  size_t objectSize = malloc_size((__bridge void*)self);
+  int64_t sizeBytes = objectSize > INT64_MAX ? INT64_MAX : (int64_t)objectSize;
+  return LynxSaturatedAddMemoryUsageBytes(sizeBytes,
+                                          [self.backgroundManager backgroundImageMemoryUsageBytes]);
 }
 
 - (NSDictionary<NSString*, NSString*>*)memoryUsageDetail {

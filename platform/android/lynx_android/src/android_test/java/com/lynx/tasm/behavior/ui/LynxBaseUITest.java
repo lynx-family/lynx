@@ -9,6 +9,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Matrix;
 import android.graphics.Rect;
@@ -16,6 +18,8 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
+import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
+import com.lynx.tasm.behavior.ui.utils.LynxBackground;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.testing.base.TestingUtils;
 import org.junit.After;
@@ -80,6 +84,18 @@ public class LynxBaseUITest {
 
     ui.setDisplayNone(false);
     assertTrue(ui.getVisibility());
+  }
+
+  @Test
+  public void memoryUsageIncludesBackgroundImages() {
+    LynxBaseUI ui = new UIView(mContext);
+    LynxBackground background = mock(LynxBackground.class);
+    BackgroundDrawable drawable = mock(BackgroundDrawable.class);
+    when(background.getDrawable()).thenReturn(drawable);
+    when(drawable.getMemoryUsageBytes()).thenReturn(300L);
+    ui.setLynxBackground(background);
+
+    assertEquals(300, ui.getMemoryUsageBytes());
   }
 
   @Test

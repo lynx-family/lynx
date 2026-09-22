@@ -687,6 +687,7 @@ public class com::lynx::tasm::behavior::ui::background::BackgroundConicGradientL
 
 public class com::lynx::tasm::behavior::ui::utils::BackgroundDrawable : com.lynx.tasm.behavior.ui.utils.LayerDrawable< BackgroundLayerManager > {
   public com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.BackgroundDrawable(LynxContext lynxContext, float curFontSize);
+  public long com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.getMemoryUsageBytes();
   public void com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.draw(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.drawBackGround(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.setAlpha(int alpha);
@@ -3528,6 +3529,7 @@ public class abstract com::lynx::tasm::behavior::ui::background::LayerManager : 
   public void com.lynx.tasm.behavior.ui.background.LayerManager.reset();
   public void com.lynx.tasm.behavior.ui.background.LayerManager.resetLayers();
   public boolean com.lynx.tasm.behavior.ui.background.LayerManager.hasImageLayers();
+  public long com.lynx.tasm.behavior.ui.background.LayerManager.getMemoryUsageBytes();
   public void com.lynx.tasm.behavior.ui.background.LayerManager.setBitmapConfig(@Nullable Bitmap.Config config);
   public void com.lynx.tasm.behavior.ui.background.LayerManager.setLayerImage(ReadableArray bgImage, LynxBaseUI ui);
   public void com.lynx.tasm.behavior.ui.background.LayerManager.setLayerPosition(ReadableArray bgImgPosition);
