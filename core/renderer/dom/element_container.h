@@ -89,8 +89,6 @@ class ElementContainer : public BaseElementContainer {
   virtual void AddChild(ElementContainer* child, int index);
   void RemoveSelf(bool destroy);
   void RemoveChild(ElementContainer* child);
-  Element* LastAddedNormalUIChild() const;
-  bool CanAppendUIChildWithoutIndexCalculation(Element* child) const;
   void InsertSelf();
   void RemoveFromParent(bool is_move);
 
@@ -127,9 +125,6 @@ class ElementContainer : public BaseElementContainer {
   bool is_layouted_{false};
   // true if the Element's props has changed during this patch
   bool props_changed_{true};
-  // Whether the last normal UI child in insertion order is also the platform
-  // tail. Ambiguous mutations clear this hint and use the full index path.
-  bool last_normal_ui_child_is_tail_{false};
 
  private:
   void CalcUIIndexForFixed(ElementContainer* child, int& index);
