@@ -1030,6 +1030,30 @@ export enum MemoryPressureLevel {
   MAX_VALUE = CRITICAL
 }
 
+export class LynxEventReporter {
+  static initialize(): void;
+  public static getInstance(): LynxEventReporter;
+  public static onEvent(eventName: string, instanceId: InstanceId, props: Map<string, LynxReportEventPropValue>): void;
+  public static onEventSync(eventName: string, instanceId: InstanceId, props: Map<string, LynxReportEventPropValue>): void;
+  public static onEventWithBuilder(eventName: string, instanceId: InstanceId, builder: PropsBuilder): void;
+  public static updateGenericInfo(key: string, value: LynxReportEventPropValue, instanceId: InstanceId): void;
+  public static putExtraParams(params: ReadonlyMap<string, LynxReportEventPropValue>, instanceId: InstanceId): void;
+  public static addObserver(observer: ILynxEventReportObserver): void;
+  public static removeObserver(observer: ILynxEventReportObserver): void;
+  public static runOnReportThread(runnable: () => void): void;
+  public static getGenericInfo(instanceId: InstanceId): Map<string, LynxReportEventPropValue>;
+  public static readonly PROP_NAME_LYNX_SDK_VERSION: string; = 'lynx_sdk_version'
+  public static readonly PROP_NAME_URL: string; = 'url'
+  public static readonly PROP_NAME_RELATIVE_PATH: string; = 'relative_path'
+  public static readonly LYNX_SDK_OPEN_PAGE_EVENT: string; = 'lynxsdk_open_page'
+  public static readonly INSTANCE_ID_UNKNOWN: InstanceId; = -1
+}
+
+export interface ILynxEventReportObserver {
+  onReportEvent(eventName: string, instanceId: number, props: ReadonlyMap<string, LynxReportEventPropValue>, extraData: ReadonlyMap<string, LynxReportEventPropValue>): void;
+  onReportEventSync(eventName: string, instanceId: number, props: ReadonlyMap<string, LynxReportEventPropValue>, extraData: ReadonlyMap<string, LynxReportEventPropValue>): void;
+}
+
 export type LynxReportEventPropValue = string | number | boolean {
 }
 
