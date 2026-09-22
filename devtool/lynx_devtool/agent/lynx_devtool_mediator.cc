@@ -1273,35 +1273,43 @@ void LynxDevToolMediator::InspectorDetached(
 }
 
 void LynxDevToolMediator::PerformanceEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->PerformanceEnable(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->PerformanceEnable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::PerformanceDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->PerformanceDisable(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->PerformanceDisable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::getAllTimingInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->getAllTimingInfo(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->getAllTimingInfo(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::getAllPerformanceEntries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->getAllPerformanceEntries(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->getAllPerformanceEntries(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LogEnable(

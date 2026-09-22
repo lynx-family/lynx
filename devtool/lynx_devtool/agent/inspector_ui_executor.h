@@ -70,10 +70,10 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
 
   // Performance domain
-  DECLARE_DEVTOOL_METHOD(PerformanceEnable)
-  DECLARE_DEVTOOL_METHOD(PerformanceDisable)
-  DECLARE_DEVTOOL_METHOD(getAllTimingInfo)
-  DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllTimingInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllPerformanceEntries);
 
   // Input domain
   DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
