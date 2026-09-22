@@ -21,13 +21,15 @@ class InspectorOwnerHarmony;
 class InspectorOwnerEmbedderHarmony : public InspectorOwnerEmbedder {
  public:
   InspectorOwnerEmbedderHarmony(napi_env env, napi_ref ref);
-  ~InspectorOwnerEmbedderHarmony() override;
+  ~InspectorOwnerEmbedderHarmony() override = default;
 
   void OnConsoleMessage(const std::string& message) override;
   void OnConsoleObject(const std::string& detail, int callback_id) override;
 
   void UpdateInputWindowInfo(const HarmonyInputWindowInfo& window_info);
   void InvalidateInputWindow();
+  // InspectorOwnerHarmony calls this explicitly during N-API teardown. The
+  // destructor stays default to avoid repeating the same cleanup.
   void Destroy();
 
  protected:
