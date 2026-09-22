@@ -5,12 +5,14 @@
 #ifndef CORE_RENDERER_DATA_TEMPLATE_DATA_H_
 #define CORE_RENDERER_DATA_TEMPLATE_DATA_H_
 
+#include <iosfwd>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/data/platform_data.h"
 #include "core/renderer/utils/lynx_env.h"
 
@@ -78,6 +80,9 @@ class TemplateData {
 
     return std::move(platform_data_);
   }
+
+  LYNX_EXPORT_FOR_DEVTOOL friend std::ostream& operator<<(
+      std::ostream& output, const TemplateData& data);
 
  protected:
   lepus::Value value_;
