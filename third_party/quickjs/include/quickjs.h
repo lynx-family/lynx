@@ -181,6 +181,11 @@ typedef struct LEPUSRefCountHeader {
   int ref_count;
 } LEPUSRefCountHeader;
 
+#define LEPUS_MEMORY_SIZE_SLOTS 256
+#define LEPUS_MEMORY_CATEGORY_UNKNOWN 0
+#define LEPUS_MEMORY_CATEGORY_COMMON 1
+#define LEPUS_MEMORY_CATEGORY_SLOT_OVERFLOW 2
+
 #if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
 
 #define LEPUS_FLOAT64_NAN_BITS UINT64_C(0x7ff8000000000000)
@@ -720,7 +725,6 @@ typedef LEPUSValue LEPUSCFunctionData(LEPUSContext *ctx,
                                       LEPUSValueConst *argv, int magic,
                                       LEPUSValue *func_data);
 
-struct LEPUSMallocFunctions;
 // <Primjs begin>
 typedef void LEPUS_MarkFunc(LEPUSRuntime *rt, LEPUSValueConst val,
                             uint64_t trace_tool);
@@ -780,6 +784,47 @@ typedef enum LEPUSGCMemoryPolicyLevel {
 
 LEPUSRuntime *LEPUS_NewRuntime(void);
 LEPUSRuntime *LEPUS_NewRuntimeWithMode(uint32_t mode);
+/*
+ * Creates a Runtime with per-instance memory accounting when
+ * ptr_to_current_slot is non-null. Runtime creation sets
+ * *ptr_to_current_slot to LEPUS_MEMORY_CATEGORY_COMMON. The caller may later
+ * select a slot before entering another page instance. Each allocation retains
+ * that slot index and charges allocator-consumed bytes to the corresponding
+ * Runtime-owned counter until the allocation is freed.
+ *
+ * Slot 0 is reserved for unknown ownership, slot 1 for Runtime-wide common
+ * memory, and slot 2 for pages loaded after page-instance slots are exhausted.
+ * ptr_to_current_slot must outlive the Runtime. RC accounting runs on the
+ * Runtime's owning thread; GC accounting may be updated by concurrent sweep.
+ * In RC mode, platforms without a usable-size API, including Android targets
+ * below API 17 (or without __ANDROID_API__), ignore the selector and create a
+ * Runtime without memory tracking. The selector value is unchanged.
+ * GC mode stores the slot in the object header and has no usable-size
+ * dependency.
+ */
+LEPUSRuntime *LEPUS_NewRuntimeWithModeMemoryTrackSlot(
+    uint32_t mode, int32_t *ptr_to_current_slot);
+/* Rebinds an already tracked Runtime on its owning thread. Null selectors and
+ * untracked Runtimes are ignored. The new selector must outlive the Runtime.
+ * Call only when no VM/API invocation or internal common-memory scope is
+ * active. The caller selects the slot value before rebinding. */
+void LEPUS_RebindRuntimeMemoryTrackSlot(LEPUSRuntime *rt,
+                                        int32_t *ptr_to_current_slot);
+/* Returns 1 if this Runtime has slot accounting enabled, or 0 if it is disabled
+ * or rt is NULL. Slot exhaustion does not disable accounting.
+ * Must be called from the Runtime's owning thread. Does not flush pending
+ * bytes. */
+LEPUS_BOOL LEPUS_IsMemorySlotTrackingEnabled(LEPUSRuntime *rt);
+/* Returns a new page-instance memory slot, or -1 if tracking is disabled or
+ * all slots are in use. After exhaustion, the caller must select
+ * LEPUS_MEMORY_CATEGORY_SLOT_OVERFLOW for this and all subsequent pages on the
+ * Runtime. Must be called from the Runtime's owning thread. */
+int32_t LEPUS_AllocateMemorySlot(LEPUSRuntime *rt);
+/* Copies the current per-slot memory usage without freeing the Runtime.
+ * Must be called from the Runtime's owning thread when concurrent GC is not
+ * running. Returns max_slot_index. */
+int32_t LEPUS_DumpMemorySlots(
+    LEPUSRuntime *rt, size_t memory_size_slots[LEPUS_MEMORY_SIZE_SLOTS]);
 /* info lifetime must exceed that of rt */
 /* Enable or disable LepusNG bytecode size optimizations.
    Only effective when is_lepusng is also true. Default: enabled. */
@@ -789,9 +834,8 @@ void LEPUS_SetMemoryLimit(LEPUSRuntime *rt, size_t limit);
 /* Must be called from the owning thread of rt. */
 int LEPUS_SetGCMemoryPolicyLevel(LEPUSRuntime *rt,
                                  LEPUSGCMemoryPolicyLevel level);
+LEPUSGCMemoryPolicyLevel LEPUS_GetGCMemoryPolicyLevel(LEPUSRuntime *rt);
 void LEPUS_SetGCThreshold(LEPUSRuntime *rt, size_t gc_threshold);
-LEPUSRuntime *LEPUS_NewRuntime2(const struct LEPUSMallocFunctions *mf,
-                                void *opaque, uint32_t mode);
 void LEPUS_FreeRuntime(LEPUSRuntime *rt);
 void LEPUS_MarkValue(LEPUSRuntime *rt, LEPUSValueConst val,
                      LEPUS_MarkFunc *mark_func, uint64_t trace_tool);
@@ -805,6 +849,14 @@ void *LEPUS_GetContextOpaque(LEPUSContext *ctx);
 void LEPUS_SetContextOpaque(LEPUSContext *ctx, void *opaque);
 LEPUSRuntime *LEPUS_GetRuntime(LEPUSContext *ctx);
 void LEPUS_SetMaxStackSize(LEPUSContext *ctx, size_t stack_size);
+
+// Embedder hook: register a callback invoked after LEPUS_FreeContext (or
+// JS_FreeContext_GC under GC mode) has completed all internal cleanup for a
+// given LEPUSContext. Used to release per-context native resources owned by
+// the embedder. Registered callbacks are process-global, additive, and must be
+// idempotent. Registering the same callback more than once has no effect.
+typedef void (*LEPUSContextFreedCallback)(LEPUSContext *ctx);
+void LEPUS_SetContextFreedCallback(LEPUSContextFreedCallback cb);
 void LEPUS_SetClassProto(LEPUSContext *ctx, LEPUSClassID class_id,
                          LEPUSValue obj);
 LEPUSValue LEPUS_GetClassProto(LEPUSContext *ctx, LEPUSClassID class_id);
@@ -884,7 +936,17 @@ typedef struct LEPUSMemoryUsage {
   int64_t binary_object_count, binary_object_size;
 } LEPUSMemoryUsage;
 
+typedef struct LEPUSMemoryUsageBrief {
+  int64_t base_malloc_size;
+  int64_t malloc_size;    // Heap size accumulating each object.
+  int64_t page_rss_size;  // In GC mode, it represents the physical memory
+                          // footprint memory pages (the RSS footprint
+                          // obtained by using mincore on the mmap region).
+  int64_t malloc_count;   // Only available in RC mode.
+} LEPUSMemoryUsageBrief;
+
 void LEPUS_ComputeMemoryUsage(LEPUSRuntime *rt, LEPUSMemoryUsage *s);
+void LEPUS_ComputeMemoryUsageBrief(LEPUSRuntime *rt, LEPUSMemoryUsageBrief *s);
 void LEPUS_DumpMemoryUsage(FILE *fp, const LEPUSMemoryUsage *s,
                            LEPUSRuntime *rt);
 
@@ -1080,6 +1142,7 @@ void LEPUS_FreeValue(LEPUSContext *ctx, LEPUSValue v);
 QJS_HIDE void __JS_FreeValueRT(LEPUSRuntime *rt, LEPUSValue v);
 void LEPUS_FreeValueRT(LEPUSRuntime *rt, LEPUSValue v);
 
+bool LEPUS_IsGCModeDefault();
 bool LEPUS_IsGCMode(LEPUSContext *ctx);
 bool LEPUS_IsGCModeRT(LEPUSRuntime *rt);
 bool LEPUS_IsMarkedLEPUSValue(LEPUSRuntime *rt, LEPUSValue *val);
