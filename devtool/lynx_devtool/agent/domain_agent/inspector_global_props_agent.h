@@ -5,10 +5,11 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_GLOBAL_PROPS_AGENT_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_GLOBAL_PROPS_AGENT_H_
 
+#include <map>
 #include <memory>
-#include <unordered_map>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
@@ -20,24 +21,21 @@ class InspectorGlobalPropsAgent : public CDPDomainAgentBase {
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorGlobalPropsAgent() override = default;
 
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
   using GlobalPropsAgentMethod = void (InspectorGlobalPropsAgent::*)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
 
-  void Enable(const std::shared_ptr<MessageSender>& sender,
-              const Json::Value& message);
-  void Disable(const std::shared_ptr<MessageSender>& sender,
-               const Json::Value& message);
-  void Get(const std::shared_ptr<MessageSender>& sender,
-           const Json::Value& message);
-  void Replace(const std::shared_ptr<MessageSender>& sender,
-               const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(Get);
+  DECLARE_DEVTOOL_CDP_METHOD(Replace);
 
-  std::unordered_map<std::string, GlobalPropsAgentMethod> functions_map_;
-  std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
+  std::map<std::string, GlobalPropsAgentMethod> functions_map_;
+  const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };
 
 }  // namespace devtool
