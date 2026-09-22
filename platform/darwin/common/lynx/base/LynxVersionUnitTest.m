@@ -5,26 +5,41 @@
 #import <Lynx/LynxVersion.h>
 #import <XCTest/XCTest.h>
 
+@interface LynxVersion (UnitTest)
+
++ (NSString*)versionStringFromPodVersion:(NSString*)podVersion;
+
+@end
+
 @interface LynxVersionUnitTest : XCTestCase
 
 @end
 
 @implementation LynxVersionUnitTest
 
-- (void)setUp {
-  // Put setup code here. This method is called before the invocation of each test method in the
-  // class.
-}
-
-- (void)tearDown {
-  // Put teardown code here. This method is called after the invocation of each test method in the
-  // class.
-}
-
 - (void)testLynxVersion {
-  // This is an example of a functional test case.
-  // Use XCTAssert and related functions to verify your tests produce the correct results.
   XCTAssertEqualObjects(LynxVersion.versionString, @"1.4.0");
+}
+
+- (void)testLynxVersionWithSixDigitAppIdPrefix {
+  XCTAssertEqualObjects([LynxVersion versionStringFromPodVersion:@"999901_4.3.1-debug"],
+                        @"4.3.1-debug");
+}
+
+- (void)testLynxVersionWithLegacyAppIdPrefix {
+  XCTAssertEqualObjects([LynxVersion versionStringFromPodVersion:@"9999_4.3.1"], @"4.3.1");
+}
+
+- (void)testLynxVersionWithoutAppIdPrefix {
+  XCTAssertEqualObjects([LynxVersion versionStringFromPodVersion:@"4.3.1"], @"4.3.1");
+}
+
+- (void)testLynxVersionWithNonNumericPrefix {
+  XCTAssertEqualObjects([LynxVersion versionStringFromPodVersion:@"debug_4.3.1"], @"debug_4.3.1");
+}
+
+- (void)testLynxVersionWithEmptyVersionSuffix {
+  XCTAssertEqualObjects([LynxVersion versionStringFromPodVersion:@"999901_"], @"999901_");
 }
 
 @end
