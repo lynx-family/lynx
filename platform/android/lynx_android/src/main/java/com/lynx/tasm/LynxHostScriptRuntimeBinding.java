@@ -10,7 +10,11 @@ import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.utils.UIThreadUtils;
 
-/** Owns the native Host Script Session for one debug Host Script Runtime. */
+/**
+ * Owns the native Host Script Session for one Host Script Runtime.
+ *
+ * @hide
+ */
 @Keep
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 final class LynxHostScriptRuntimeBinding implements RuntimeLifecycleListener {
