@@ -589,24 +589,6 @@ TEST_F_UI(TextTest, TextMaxLineAttributeHandlesZeroAndPositiveValues) {
   EXPECT_EQ(text_shadow_node_->text_style_->max_lines.value(), 3u);
 }
 
-TEST_F_UI(TextTest, XTextMapsEllipsizeModeToTextOverflow) {
-  auto text = std::make_unique<TextShadowNode>(owner_, std::string("text"), -1);
-  auto x_text =
-      std::make_unique<TextShadowNode>(owner_, std::string("x-text"), -1);
-
-  text->SetAttribute("ellipsize-mode", clay::Value("tail"));
-  EXPECT_FALSE(text->text_style_->overflow.has_value());
-
-  x_text->SetAttribute("ellipsize-mode", clay::Value("tail"));
-  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kEllipsis);
-
-  x_text->SetAttribute("ellipsize-mode", clay::Value("head"));
-  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kEllipsis);
-
-  x_text->SetAttribute("ellipsize-mode", clay::Value("clip"));
-  EXPECT_EQ(x_text->text_style_->overflow, TextOverflow::kClip);
-}
-
 TEST_F_UI(TextTest, TextMaxLengthAttributeLimitsInitialLayout) {
   MeasureConstraint constraint{1000.f, MeasureMode::kAtMost, std::nullopt,
                                MeasureMode::kIndefinite};
@@ -1263,72 +1245,6 @@ TEST_F_UI(TextTest, InlineTruncationDoesNotMountWhenContentFits) {
 
   EXPECT_FALSE(inline_truncation_node->IfNeedMount());
   EXPECT_TRUE(raw_text_shadow_node_->Text() == u"short");
-}
-
-TEST_F_UI(TextTest, XInlineTruncationMeasuresPrefixedEllipsisForTailMode) {
-  auto inline_truncation_node = std::make_unique<InlineTruncationShadowNode>(
-      owner_, std::string("x-inline-truncation"), -1);
-  auto inline_text_node = std::make_unique<InlineTextShadowNode>(
-      owner_, std::string("x-inline-text"), -1);
-  auto inline_raw_text_shadow_node =
-      std::make_unique<RawTextShadowNode>(owner_, std::string("raw-text"), -1);
-  inline_raw_text_shadow_node->SetText("more");
-  inline_text_node->AddChild(inline_raw_text_shadow_node.get());
-  inline_truncation_node->AddChild(inline_text_node.get());
-  text_shadow_node_->AddChild(inline_truncation_node.get());
-
-  text_shadow_node_->text_style_->overflow = TextOverflow::kClip;
-  const auto marker_only = inline_truncation_node->CalculateTruncatedSize();
-  text_shadow_node_->text_style_->overflow = TextOverflow::kEllipsis;
-  const auto ellipsis_and_marker =
-      inline_truncation_node->CalculateTruncatedSize();
-
-  EXPECT_GT(ellipsis_and_marker.width(), marker_only.width());
-}
-
-TEST_F_UI(TextTest, InlineTruncationDoesNotPrefixEllipsisForTailMode) {
-  auto inline_truncation_node = std::make_unique<InlineTruncationShadowNode>(
-      owner_, std::string("inline-truncation"), -1);
-  auto inline_text_node = std::make_unique<InlineTextShadowNode>(
-      owner_, std::string("inline-text"), -1);
-  auto inline_raw_text_shadow_node =
-      std::make_unique<RawTextShadowNode>(owner_, std::string("raw-text"), -1);
-  inline_raw_text_shadow_node->SetText("more");
-  inline_text_node->AddChild(inline_raw_text_shadow_node.get());
-  inline_truncation_node->AddChild(inline_text_node.get());
-  text_shadow_node_->AddChild(inline_truncation_node.get());
-
-  text_shadow_node_->text_style_->overflow = TextOverflow::kClip;
-  const auto clip_size = inline_truncation_node->CalculateTruncatedSize();
-  text_shadow_node_->text_style_->overflow = TextOverflow::kEllipsis;
-  const auto ellipsis_size = inline_truncation_node->CalculateTruncatedSize();
-
-  EXPECT_EQ(ellipsis_size, clip_size);
-}
-
-TEST_F_UI(TextTest, XInlineTruncationUsesEmptyLastLineForMarker) {
-  MeasureConstraint constraint{500, MeasureMode::kDefinite, 100,
-                               MeasureMode::kDefinite};
-  auto x_truncation = std::make_unique<InlineTruncationShadowNode>(
-      owner_, std::string("x-inline-truncation"), -1);
-  auto marker = std::make_unique<RawTextShadowNode>(owner_, "raw-text", -1);
-  marker->SetText("more");
-  x_truncation->AddChild(marker.get());
-  text_shadow_node_->AddChild(x_truncation.get());
-  text_shadow_node_->SetTextMaxLine(2);
-  const std::string text = "first line\n\nhidden text";
-  raw_text_shadow_node_->SetText(text);
-  TextRender text_render(text_shadow_node_.get());
-  text_render.SetUpdateFlag(TextUpdateFlag::kUpdateFlagChildren);
-  auto context = text_shadow_node_->CreateLayoutContext(constraint);
-
-  text_render.Measure(constraint, &context);
-
-  EXPECT_TRUE(x_truncation->IfNeedMount());
-  EXPECT_EQ(raw_text_shadow_node_->GetEndIndex(),
-            std::string("first line\n").size());
-  ASSERT_NE(text_render.GetCacheParagraph(), nullptr);
-  EXPECT_EQ(text_render.GetCacheParagraph()->GetLineMetrics().size(), 2u);
 }
 
 TEST_F_UI(TextTest, InlineTruncationDoesNotMountMarkerWiderThanContainer) {
