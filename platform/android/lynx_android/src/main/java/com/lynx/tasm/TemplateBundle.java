@@ -183,10 +183,7 @@ public final class TemplateBundle implements ILynxSecurityTarget {
    * an invalid `TemplateBundle` is returned.
    */
   public static TemplateBundle fromTemplate(byte[] template) {
-    if (template == null) {
-      return null;
-    }
-    return internalBuildTemplate(new TemplateBundle(), template, null, null, null);
+    return fromTemplate(template, null);
   }
 
   /**
@@ -273,11 +270,11 @@ public final class TemplateBundle implements ILynxSecurityTarget {
   }
 
   private void initWithOption(TemplateBundleOption option) {
-    if (!isValid() || option == null) {
+    if (!isValid()) {
       return;
     }
-    nativeInitWithOption(
-        getNativePtr(), option.getContextPoolSize(), option.getEnableContextAutoRefill());
+    nativeInitWithOption(getNativePtr(), option != null ? option.getContextPoolSize() : 0,
+        option != null && option.getEnableContextAutoRefill());
   }
 
   /**
