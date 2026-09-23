@@ -252,7 +252,7 @@ static void SetFSPTimingInfo(JNIEnv* env, jobject jcaller, jlong j_native_ptr,
 }
 
 static jboolean IsMemoryMonitorEnabled(JNIEnv* env, jclass jcaller) {
-  return lynx::tasm::performance::MemoryMonitor::Enable();
+  return lynx::tasm::performance::MemoryMonitor::GetSettings().lynx_ui.enabled;
 }
 
 static jlong CurrentSystemTimeMicroseconds(JNIEnv* env, jclass jcaller) {

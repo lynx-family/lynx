@@ -462,7 +462,7 @@ int TraceControllerImpl::StartTracing(
   // file path
   if (config->file_path.empty() && delegate_) {
     if (trace_file_dir_.empty()) {
-      trace_file_dir_ = delegate_->GenerateTracingFileDir();
+      trace_file_dir_ = GenerateTracingFileDir();
     }
     config->file_path = GenerateTraceFilePath(trace_file_dir_);
   }
@@ -720,7 +720,7 @@ void TraceControllerImpl::StartStartupTracingIfNeeded() {
 
 void TraceControllerImpl::SetStartupTracingConfig(std::string config) {
   if (trace_file_dir_.empty()) {
-    trace_file_dir_ = delegate_->GenerateTracingFileDir();
+    trace_file_dir_ = GenerateTracingFileDir();
     if (trace_file_dir_.empty()) {
       return;
     }
@@ -738,7 +738,7 @@ void TraceControllerImpl::SetStartupTracingConfig(std::string config) {
 
 std::string TraceControllerImpl::GetStartupTracingConfig() {
   if (trace_file_dir_.empty()) {
-    trace_file_dir_ = delegate_->GenerateTracingFileDir();
+    trace_file_dir_ = GenerateTracingFileDir();
     if (trace_file_dir_.empty()) {
       return "";
     }

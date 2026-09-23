@@ -245,7 +245,13 @@ class PageConfig final : public LynxConfig {
     return enable_parallel_element_;
   }
   // External setting snapshot, independent of scheduler bitmask overrides.
-  bool GetLevelOrderTraversingEnv();
+  bool GetLevelOrderTraversingEnv() {
+    if (!level_order_traversing_env_.has_value()) {
+      level_order_traversing_env_ =
+          LynxEnv::GetInstance().EnableLevelOrderTraversing();
+    }
+    return *level_order_traversing_env_;
+  }
 
   inline void SetEnableParallelElement(bool enable) {
     enable_parallel_element_ = enable;

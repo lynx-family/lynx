@@ -6,6 +6,7 @@
 #define CORE_SHELL_RUNTIME_MTS_MTS_RUNTIME_POOL_H_
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -79,10 +80,11 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
   // The local pool in TemplateBundle hold context_bundle_ and have no need to
   // check settings.
   MTSRuntimePool(runtime::ContextType context_type, bool disable_tracing_gc)
-      : context_type_(context_type), disable_tracing_gc_(disable_tracing_gc) {
-#if ENABLE_TRACE_PERFETTO
+      : context_type_(context_type),
+        is_global_pool_(true),
+        disable_tracing_gc_(disable_tracing_gc) {
     InitReportPoolState();
-#endif
+    ReportPoolState();
   }
 
   MTSRuntimePool(runtime::ContextType context_type,
@@ -104,15 +106,17 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
         target_sdk_version_(compile_options.target_sdk_version_),
         context_bundle_(context_bundle),
         debug_info_url_(compile_options.template_debug_url_) {
-#if ENABLE_TRACE_PERFETTO
     InitReportPoolState();
-#endif
+    ReportPoolState();
   }
 
   void AddMTSRuntimeSafely(int32_t count);
+  void InitReportPoolState();
+  void ReportPoolState();
 
   const runtime::ContextType context_type_{
       runtime::ContextType::LepusNGContextType};
+  const bool is_global_pool_{false};
   const tasm::ArchOption arch_option_{tasm::RADON_ARCH};
   bool enable_auto_generate_{true};
   const bool disable_tracing_gc_{false};
@@ -131,11 +135,10 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
   std::shared_ptr<devtool::DevToolPool> devtool_pool_;
   std::string debug_info_url_;
 
+  int32_t pool_instance_id_{-1};
+  int64_t created_at_ms_{0};
 #if ENABLE_TRACE_PERFETTO
-  int32_t pool_instance_id_;
   std::unique_ptr<base::NotificationCallback> report_pool_state_;
-  void InitReportPoolState();
-  void ReportPoolState();
 #endif
 };
 

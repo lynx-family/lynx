@@ -20,7 +20,7 @@ static constexpr int kInvalidTraceSessionId = -1;
 
 // static
 jlong CreateTraceController(JNIEnv* env, jobject jcaller) {
-  return reinterpret_cast<jlong>(lynx::trace::TraceController::Instance());
+  return reinterpret_cast<jlong>(lynx::trace::GetTraceControllerInstance());
 }
 
 // static
@@ -40,6 +40,10 @@ void StartStartupTracingIfNeeded(JNIEnv* env, jobject jcaller, jlong ptr) {}
 
 namespace lynx {
 namespace trace {
+
+TraceController* GetTraceControllerInstance() {
+  return TraceController::Instance();
+}
 
 std::string TraceControllerDelegateAndroid::GenerateTracingFileDir() {
   return "";

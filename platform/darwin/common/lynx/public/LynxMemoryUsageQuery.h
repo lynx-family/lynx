@@ -15,8 +15,8 @@ typedef void (^LynxGlobalMemoryUsageCallback)(LynxGlobalMemoryUsageResult *resul
  * Process-level entry point for active Lynx memory queries.
  *
  * Hosts use this singleton when they want a one-shot snapshot of the current
- * Lynx-attributed memory usage. Instance registration, timeout handling, and
- * aggregation stay inside the internal collector.
+ * Lynx-attributed memory usage. The implementation reads the native global
+ * memory monitor directly.
  */
 @interface LynxMemoryUsageQuery : NSObject
 
@@ -29,18 +29,16 @@ typedef void (^LynxGlobalMemoryUsageCallback)(LynxGlobalMemoryUsageResult *resul
  * update UIKit must dispatch back to the main thread.
  *
  * The current implementation accepts nil as a no-op. When a callback is
- * provided, the collector snapshots the live Lynx instance fetchers at request
- * start, queries them asynchronously, and returns either a completed result or a
- * timeout result containing the partial instance list collected before the
- * timeout fired. If no live instance fetchers exist, the callback still receives
- * an asynchronous completed result with zero Lynx-attributed bytes.
+ * provided, it receives a completed native snapshot. If no live instances
+ * exist, the callback receives zero Lynx-attributed bytes.
  */
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
 
 /**
- * Queries the current Lynx-attributed memory usage with a custom collection timeout.
+ * Queries memory usage while retaining the timeout value as result metadata.
  *
- * When timeoutMs is less than or equal to 0, the collector uses the default timeout of 2000ms.
+ * The native global query has no per-instance fan-out and does not wait for
+ * this timeout. Values less than or equal to 0 use 2000ms.
  */
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
                               timeoutMs:(int64_t)timeoutMs;

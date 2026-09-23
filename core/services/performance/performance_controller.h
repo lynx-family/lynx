@@ -15,6 +15,7 @@
 #include "core/public/pub_value.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/performance_event_sender.h"
 #include "core/services/timing_handler/timing_handler.h"
@@ -44,7 +45,12 @@ class PerformanceController : public PerformanceEventSender {
             std::make_shared<JSBlockingMonitor>(this, initial_context)),
         memory_monitor_(this, initial_context, instance_id),
         timing_handler_(
-            timing::TimingHandler(std::move(timing_delegate), this)) {}
+            timing::TimingHandler(std::move(timing_delegate), this)) {
+    GlobalMemoryMonitor::GetInstance().WithInstance(
+        instance_id, [memory_monitor = &memory_monitor_](auto& state) {
+          state.memory_monitor = memory_monitor;
+        });
+  }
   ~PerformanceController() override = default;
 
   static fml::RefPtr<fml::TaskRunner> GetTaskRunner();

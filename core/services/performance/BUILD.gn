@@ -6,13 +6,18 @@ import("//${lynx_dir}/build_overrides/services_files.gni")
 import("../../Lynx.gni")
 
 performance_shared_sources = [
+  "//${lynx_dir}/core/services/performance/memory_page_key.cc",
   "js_blocking_monitor/js_blocking_monitor.cc",
   "js_blocking_monitor/js_blocking_monitor.h",
   "js_blocking_monitor/js_blocking_trace_event_def.h",
+  "memory_monitor/global_memory_monitor.cc",
+  "memory_monitor/global_memory_monitor.h",
   "memory_monitor/memory_monitor.cc",
   "memory_monitor/memory_monitor.h",
+  "memory_monitor/memory_monitor_data.h",
   "memory_monitor/memory_record.cc",
   "memory_monitor/memory_record.h",
+  "memory_page_key.h",
   "performance_controller.cc",
   "performance_controller.h",
   "performance_event_sender.h",
@@ -48,6 +53,7 @@ if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests &&
     ]
   } else if (is_android) {
     performance_shared_sources += [
+      "android/memory_usage_query_android.cc",
       "android/performance_controller_android.cc",
       "android/performance_controller_android.h",
     ]
@@ -59,6 +65,7 @@ lynx_core_source_set("performance") {
   deps = [
     "../../../base/src:base_log_headers",
     "../../../third_party/rapidjson",
+    "../event_report",
     "../timing_handler",
   ]
 }

@@ -98,18 +98,6 @@
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
-@interface LynxTemplateRender (MemoryUsage)
-
-// Registers this template render as an internal memory usage fetcher after the instance identity is
-// ready. Registration is idempotent because the registry keys by object identity.
-- (void)registerMemoryUsageFetcherIfNeeded;
-
-// Removes the internal memory usage fetcher by object identity. This method is safe to call
-// repeatedly during teardown.
-- (void)unregisterMemoryUsageFetcherIfNeeded;
-
-@end
-
 #ifdef LynxElement
 #pragma push_macro("LynxElement")
 #undef LynxElement
@@ -231,7 +219,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     /// Timing
     _initEndTiming = [[NSDate date] timeIntervalSince1970] * 1000 * 1000;
     [self setUpTiming];
-    [self registerMemoryUsageFetcherIfNeeded];
   }
 
   // Destruction of Runtime inside wrapper will be handled by LynxShell. Since after
@@ -419,7 +406,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 #pragma mark - Clean & Reuse
 
 - (void)reset {
-  [self unregisterMemoryUsageFetcherIfNeeded];
   if (_delegate) {
     __weak LynxTemplateRender* weakSelf = self;
     [LynxTemplateRender runOnMainThread:^() {
@@ -457,7 +443,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 
   [self reset:lastInstanceId];
-  [self registerMemoryUsageFetcherIfNeeded];
   // Update info
   [self updateNativeTheme];
   [self updateNativeGlobalProps];
@@ -470,7 +455,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (shell_) {
     shell_->PrepareEngineHandoff();
   }
-  [self unregisterMemoryUsageFetcherIfNeeded];
   _lynxEngine = nil;
 }
 
@@ -494,7 +478,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   @synchronized(self) {
     _isDestroyed = YES;
   }
-  [self unregisterMemoryUsageFetcherIfNeeded];
   [_lynxUIRenderer reset];
   [_lynxViewGroup
       destroyForInstance:[NSString
@@ -507,7 +490,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (void)dealloc {
   [self destroyStaticPageHost];
-  [self unregisterMemoryUsageFetcherIfNeeded];
   if (_lynxEngine == nil) {
     [_lynxUIRenderer reset];
     [_shadowNodeOwner destroySelf];
@@ -2173,7 +2155,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     }];
 
     [LynxEventReporter clearCacheForInstanceId:_context.instanceId];
-    [self unregisterMemoryUsageFetcherIfNeeded];
     _context.instanceId = kUnknownInstanceId;
     shell_->Destroy();
     if (onError) {

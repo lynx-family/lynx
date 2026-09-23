@@ -27,6 +27,7 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/recorder/record.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
@@ -36,7 +37,6 @@
 #include "core/shell/list_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/lynx_entity_id_generator.h"
-#include "core/shell/performance/native_memory_usage_query.h"
 #include "core/shell/runtime/bts/bts_runtime_mediator.h"
 #include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
 #include "core/shell/tasm_operation_queue_async.h"
@@ -155,6 +155,11 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
       enable_js_group_thread_(shell_option.enable_js_group_thread_),
       page_options_(shell_option.page_options_) {
   LOGI("LynxShell create, this:" << this);
+  tasm::performance::GlobalMemoryMonitor::GetInstance().OnInstanceCreated(
+      instance_id_, tasm::performance::MemoryNowMs(),
+      [expected = enable_runtime_](auto& state) {
+        state.bts_expected = expected;
+      });
   page_options_.SetInstanceID(instance_id_);
   ui_operation_queue_->SetPageOptions(page_options_);
   engine_thread_switch_ = std::make_shared<EngineThreadSwitch>(
@@ -457,12 +462,28 @@ void LynxShell::Destroy() {
   LOGI("LynxShell Destroy, this:" << this);
 
   is_destroyed_ = true;
+  const auto memory_exit_time = tasm::performance::MemoryNowMs();
+  tasm::performance::GlobalMemoryMonitor::GetInstance().OnInstanceDestroyed(
+      instance_id_, memory_exit_time);
 
   RECORD(Remove, GetLogContextSnapshot(), reinterpret_cast<int64_t>(this));
 
   if (perf_controller_actor_) {
     perf_controller_actor_->ActAsync(
-        [](auto& performance_controller) { performance_controller = nullptr; });
+        [instance_id = instance_id_,
+         memory_exit_time](auto& performance_controller) {
+          if (performance_controller) {
+            // Only bound which scheduled points were due. Destruction sends
+            // saved sample statistics, never an exit memory measurement, so
+            // runtime teardown does not have to wait for this actor.
+            performance_controller->GetMemoryMonitor().SetExitTime(
+                memory_exit_time);
+          }
+          performance_controller = nullptr;
+          // Flush the saved summary and any pending scheduled events.
+          // PerformanceController has no actor mixin to do this automatically.
+          tasm::report::EventTracker::Flush(instance_id);
+        });
   }
 
   facade_actor_->Act([instance_id = instance_id_](auto& facade) {
@@ -754,7 +775,11 @@ void LynxShell::ResetShouldSendEventToMainThread() {
       [](auto& facade) { facade->OnShouldSendEventToMainThreadChanged(true); });
 }
 
-void LynxShell::SetUrl(const std::string& url) { url_ = url; }
+void LynxShell::SetUrl(const std::string& url) {
+  url_ = url;
+  tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+      instance_id_, [url](auto& state) { state.SetUrl(url); });
+}
 
 void LynxShell::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
@@ -968,7 +993,7 @@ void LynxShell::RegisterNotificationCallbacks() {
                // existed before the trace started.
                if (this->perf_controller_actor_) {
                  this->perf_controller_actor_->ActAsync([](auto& performance) {
-                   performance->GetMemoryMonitor().ReportMemory(true);
+                   performance->GetMemoryMonitor().ReportMemoryForTrace(true);
                  });
                }
 
@@ -1769,22 +1794,6 @@ void LynxShell::GetLynxElementTreeAsJSONStringAsync(
             facade_actor, std::move(callback_holder),
             lepus::Value(engine->GetLynxElementTreeAsJSONString(sign)));
       });
-}
-
-void LynxShell::QueryNativeMemoryUsageAsync(
-    tasm::performance::NativeMemoryUsageCallback callback) {
-  if (!callback) {
-    return;
-  }
-  // Keep LynxShell as a thin boundary. The stateless query command receives
-  // actors only for immediate task dispatch; ActAsync owns actor lifetime for
-  // the posted tasks, so no raw shell pointer is carried into async closures.
-  tasm::performance::NativeMemoryUsageQuery query;
-  if (IsDestroyed()) {
-    query.CollectAsync(nullptr, nullptr, std::move(callback));
-    return;
-  }
-  query.CollectAsync(engine_actor_, runtime_actor_, std::move(callback));
 }
 
 tasm::TemplateAssembler* LynxShell::GetTasm() {

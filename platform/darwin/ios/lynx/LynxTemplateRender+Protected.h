@@ -36,7 +36,6 @@
 @class LynxLifecycleDispatcher;
 @class LynxLogContext;
 @class LynxViewGroup;
-@class LynxTemplateRenderMemoryUsageFetcher;
 @class StaticPageHost;
 typedef NS_ENUM(NSInteger, LynxBooleanOption);
 
@@ -86,7 +85,6 @@ NS_ASSUME_NONNULL_BEGIN
   PaintingContextProxy* _paintingContextProxy;
   LynxSSRHelper* _lynxSSRHelper;
   LynxPerformanceController* _performanceController;
-  LynxTemplateRenderMemoryUsageFetcher* _memoryUsageFetcher;
   LynxEngine* _lynxEngine;
   LynxViewGroup* _lynxViewGroup;
   CGFloat _fontScale;

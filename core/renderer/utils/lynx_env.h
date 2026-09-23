@@ -165,6 +165,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
     ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
     FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD,
+    MEMORY_MONITOR_CONFIG,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -358,6 +359,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             // NOLINT(harmony-trail-key): iOS-only configuration.
             {Key::ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
              "enable_platform_thread_scheduling_policy"},
+            {Key::MEMORY_MONITOR_CONFIG, "memory_monitor_config"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());

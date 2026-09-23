@@ -577,7 +577,8 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
 }
 
 - (void)setEnableMemoryMonitor:(BOOL)value {
-  lynx::tasm::performance::MemoryMonitor::SetForceEnable(value);
+  lynx::tasm::performance::MemoryMonitor::ForceEnableForTesting(
+      lynx::tasm::performance::MemoryMonitor::ForceEnableMode::kCurrentProcess);
 }
 
 - (BOOL)enableMemoryMonitor {

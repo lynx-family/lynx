@@ -24,6 +24,7 @@ extern "C" {
 #include "core/runtime/js/jsi/quickjs/quickjs_host_object.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 
 namespace lynx {
@@ -213,6 +214,21 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
 #if ENABLE_TRACE_PERFETTO
   ReportMemoryForTrace(is_full_gc);
 #endif
+
+  if (tasm::performance::MemoryMonitor::Enable()) {
+    // Copy on the owner JS thread. Only a completed full GC can qualify
+    // exited-page residuals; scheduled reporting never forces collection.
+    tasm::performance::BtsMemorySample sample;
+    // Timestamp before the dump so an exit during collection cannot qualify.
+    sample.measured_at_ms = tasm::performance::MemoryNowMs();
+    sample.is_full_gc = is_full_gc;
+    sample.slots_valid = GetMemoryStatus(sample.heap_size, sample.slots.data());
+    sample.heap_valid = true;
+    sample.slots_valid &= sample.heap_valid;
+    tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMMemoryUpdate(
+        this, std::move(sample));
+  }
+
   for (auto* observer : obs_set_ptr_) {
     observer->OnRuntimeGC(
         {{kRawRuntimeHeapSize, std::to_string(LEPUS_GetHeapSize(rt_))}});
@@ -320,6 +336,8 @@ void QuickjsRuntimeInstance::RebindMemoryTrackSlot() {
 int32_t QuickjsRuntimeInstance::AllocatePageMemorySlot() {
   if (per_instance_memory_track_) {
     auto slot = LEPUS_AllocateMemorySlot(rt_);
+    tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMSlotAllocate(
+        this, slot);
     if (slot == -1) {
       // All slots are occupied. Previous pages continue to be counted, but new
       // pages are no longer counted. Memory usage is uniformly calculated on

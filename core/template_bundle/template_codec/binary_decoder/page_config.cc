@@ -22,14 +22,6 @@ bool PageConfig::GetEnableParallelElement() const {
             enable_level_order_traversing_ == TernaryBool::TRUE_VALUE)));
 }
 
-bool PageConfig::GetLevelOrderTraversingEnv() {
-  if (!level_order_traversing_env_.has_value()) {
-    level_order_traversing_env_ =
-        LynxEnv::GetInstance().EnableLevelOrderTraversing();
-  }
-  return *level_order_traversing_env_;
-}
-
 bool PageConfig::GetEnableLevelOrderTraversing() {
   if (enable_level_order_traversing_ != TernaryBool::UNDEFINE_VALUE) {
     return enable_level_order_traversing_ == TernaryBool::TRUE_VALUE;
