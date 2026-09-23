@@ -117,6 +117,7 @@ class BackgroundDrawable {
   std::array<float, 4> GetBoxShadowOutset(float scale_density) const;
   bool HasBorder() { return has_border_; }
   bool HasImage();
+  int64_t GetMemoryUsageBytes() const;
   bool UseClipPath() {
     return has_border_ || HasImageLayers() || !border_radius_->IsZero();
   }

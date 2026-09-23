@@ -233,6 +233,22 @@
                  LynxBackgroundClipContentBox);
 }
 
+- (void)testMemoryUsageIncludesBackgroundImages {
+  int64_t baseSize = [_view memoryUsageBytes];
+  UIGraphicsBeginImageContextWithOptions(CGSizeMake(10, 20), NO, 2);
+  UIImage* image = UIGraphicsGetImageFromCurrentImageContext();
+  UIGraphicsEndImageContext();
+  XCTAssertNotNil(image);
+  XCTAssertEqualWithAccuracy(image.scale, 2, 0.001);
+
+  LynxBackgroundImageDrawable* imageDrawable =
+      [[LynxBackgroundImageDrawable alloc] initWithString:@"test.png"];
+  imageDrawable.image = image;
+  [_view.backgroundManager.backgroundDrawable addObject:imageDrawable];
+
+  XCTAssertEqual([_view memoryUsageBytes], baseSize + 10 * 20 * 2 * 2 * 4);
+}
+
 // Tests that shadow layers are positioned correctly in the layer hierarchy
 // Verifies shadow layers are above background color and gradient layers
 - (void)testShadowLayerStackingOrder {

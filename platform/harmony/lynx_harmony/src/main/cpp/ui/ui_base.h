@@ -99,7 +99,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void DetachFromNodeContent();
   const std::string& Tag() const { return tag_; }
   int Sign() const override { return sign_; }
-  virtual int64_t GetMemoryUsageBytes() const { return sizeof(UIBase); }
+  virtual int64_t GetMemoryUsageBytes() const;
   const std::string& IdSelector() const { return id_selector_; }
   bool IsComponent() const { return is_component_; }
   virtual void UpdateLayout(float left, float top, float width, float height,
@@ -351,6 +351,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
 
  protected:
   static int64_t EstimateRasterMemoryUsageBytes(float width, float height);
+  static int64_t AddMemoryUsageBytes(int64_t current_size, int64_t extra_size);
+  int64_t GetBackgroundImageMemoryUsageBytes() const;
 
   EventTarget* HitTestInternal(float point[2],
                                const std::vector<UIBase*>* excluded_roots);

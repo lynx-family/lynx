@@ -51,6 +51,7 @@ class LayerManager {
   void OnUpdateBounds();
   void Reset();
   bool HasImageLayers();
+  int64_t GetMemoryUsageBytes() const;
   void SetLayerImage(const lepus::Value& data);
   void SetLayerPosition(const lepus::Value& data);
   void SetLayerOrigin(const lepus::Value& data);

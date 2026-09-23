@@ -32,6 +32,7 @@ class BackgroundImageLayer : public BackgroundLayer {
   void HandleImageData(LynxImageHelper::ImageResponse& response);
   float GetWidth() override;
   float GetHeight() override;
+  int64_t GetMemoryUsageBytes() const override;
   bool IsReady() override;
   void OnUpdateBounds() override;
   void LoadImage();

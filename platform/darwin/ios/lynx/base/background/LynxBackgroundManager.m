@@ -20,6 +20,8 @@
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUnitUtils.h>
+#import <limits.h>
+#import <math.h>
 #import "LynxConvertUtils.h"
 #import "LynxLayerCornerRadii.h"
 
@@ -101,7 +103,21 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 @interface LynxBackgroundManager ()
 @property(nonatomic, nullable) LynxBackgroundBorderInfo* borderInfo;
 - (LynxBackgroundClipType)backgroundClipForBackgroundColor;
+- (int64_t)backgroundImageMemoryUsageBytes;
 @end
+
+static int64_t LynxEstimateBackgroundImageMemoryUsageBytes(UIImage* image) {
+  if (!image) {
+    return 0;
+  }
+  double width = image.size.width * image.scale;
+  double height = image.size.height * image.scale;
+  double bytes = width * height * 4;
+  if (!isfinite(bytes) || bytes >= INT64_MAX) {
+    return INT64_MAX;
+  }
+  return bytes > 0 ? (int64_t)bytes : 0;
+}
 
 #pragma mark LynxBackgroundSubLayer
 @implementation LynxBackgroundSubLayer
@@ -1625,6 +1641,22 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     _backgroundDrawable = [[NSMutableArray alloc] init];
   }
   return _backgroundDrawable;
+}
+
+- (int64_t)backgroundImageMemoryUsageBytes {
+  int64_t sizeBytes = 0;
+  for (LynxBackgroundDrawable* drawable in _backgroundDrawable) {
+    if (![drawable isKindOfClass:[LynxBackgroundImageDrawable class]]) {
+      continue;
+    }
+    int64_t imageSizeBytes =
+        LynxEstimateBackgroundImageMemoryUsageBytes(((LynxBackgroundImageDrawable*)drawable).image);
+    if (imageSizeBytes > INT64_MAX - sizeBytes) {
+      return INT64_MAX;
+    }
+    sizeBytes += imageSizeBytes;
+  }
+  return sizeBytes;
 }
 
 - (NSMutableArray*)backgroundOrigin {

@@ -39,8 +39,9 @@ namespace tasm {
 namespace harmony {
 
 int64_t UIFlattenImage::GetMemoryUsageBytes() const {
-  return UIBase::GetMemoryUsageBytes() +
-         EstimateRasterMemoryUsageBytes(image_width_, image_height_);
+  return AddMemoryUsageBytes(
+      UIBase::GetMemoryUsageBytes(),
+      EstimateRasterMemoryUsageBytes(image_width_, image_height_));
 }
 
 using ImagePropSetter = void (UIFlattenImage::*)(const lepus::Value& value);
