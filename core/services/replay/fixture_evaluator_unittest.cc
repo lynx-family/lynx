@@ -4,89 +4,103 @@
 
 #include "core/services/replay/fixture_evaluator.h"
 
-#include <cctype>
-#include <filesystem>
+#include <sys/stat.h>
+
+#include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <limits>
-#include <random>
 #include <string>
-#include <system_error>
+#include <unordered_set>
 
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/rapidjson/document.h"
+
+#if defined(OS_WIN)
+#include <direct.h>
+
+#include <random>
+#else
+#include <unistd.h>
+#endif
 
 namespace lynx {
 namespace tasm {
 namespace replay {
 namespace {
 
-std::string SanitizeTestName(std::string name) {
-  for (char& character : name) {
-    const auto value = static_cast<unsigned char>(character);
-    if (!std::isalnum(value) && character != '_' && character != '-') {
-      character = '_';
-    }
-  }
-  return name;
-}
-
-std::filesystem::path CreateFixtureDirectory(const char* test_name) {
-  std::random_device random;
-  const std::string prefix =
-      "lynx_fixture_evaluator_" + SanitizeTestName(test_name) + "_";
-  for (int attempt = 0; attempt < 16; ++attempt) {
-    auto candidate = std::filesystem::temp_directory_path() /
-                     (prefix + std::to_string(random()));
-    std::error_code error;
-    if (std::filesystem::create_directory(candidate, error)) {
-      return candidate;
-    }
-  }
-  return {};
+bool CreateDirectory(const std::string& path) {
+#if defined(OS_WIN)
+  return _mkdir(path.c_str()) == 0;
+#else
+  return mkdir(path.c_str(), 0700) == 0;
+#endif
 }
 
 class FixtureEvaluatorTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    const auto* test_info =
-        ::testing::UnitTest::GetInstance()->current_test_info();
-    fixture_directory_ = CreateFixtureDirectory(test_info->name());
+#if defined(OS_WIN)
+    // Windows has no mkdtemp; mkdir still creates the directory exclusively.
+    std::random_device random;
+    for (int attempt = 0; attempt < 16; ++attempt) {
+      auto candidate = ::testing::TempDir() + "lynx_fixture_evaluator_" +
+                       std::to_string(random());
+      if (CreateDirectory(candidate)) {
+        fixture_directory_ = candidate;
+        break;
+      }
+    }
+#else
+    std::string directory_template =
+        ::testing::TempDir() + "lynx_fixture_evaluator_XXXXXX";
+    char* directory = mkdtemp(directory_template.data());
+    ASSERT_NE(directory, nullptr);
+    fixture_directory_ = directory;
+#endif
     ASSERT_FALSE(fixture_directory_.empty());
-    ASSERT_TRUE(
-        std::filesystem::create_directory(fixture_directory_ / "assets"));
+    ASSERT_TRUE(CreateDirectory(fixture_directory_ + "/assets"));
   }
 
   void TearDown() override {
     if (!fixture_directory_.empty()) {
-      std::error_code error;
-      std::filesystem::remove_all(fixture_directory_, error);
+      for (const auto& path : written_files_) {
+        EXPECT_EQ(std::remove(path.c_str()), 0) << path;
+      }
+#if defined(OS_WIN)
+      _rmdir((fixture_directory_ + "/assets").c_str());
+      EXPECT_EQ(_rmdir(fixture_directory_.c_str()), 0);
+#else
+      rmdir((fixture_directory_ + "/assets").c_str());
+      EXPECT_EQ(rmdir(fixture_directory_.c_str()), 0);
+#endif
     }
   }
 
   void WriteFixture(const std::string& source) {
-    WriteFile(fixture_directory_ / "fixture.js", source);
+    WriteFile(fixture_directory_ + "/fixture.js", source);
   }
 
   void WriteAsset(const std::string& path, const std::string& content) {
-    auto file_path = fixture_directory_ / "assets" / path;
-    std::filesystem::create_directories(file_path.parent_path());
+    auto file_path = fixture_directory_ + "/assets/" + path;
     WriteFile(file_path, content);
   }
 
-  std::filesystem::path fixture_directory_;
+  std::string fixture_directory_;
+  std::unordered_set<std::string> written_files_;
 
  private:
-  static void WriteFile(const std::filesystem::path& path,
-                        const std::string& content) {
+  void WriteFile(const std::string& path, const std::string& content) {
     std::ofstream stream(path, std::ios::binary);
     ASSERT_TRUE(stream.is_open());
+    written_files_.insert(path);
     stream << content;
     ASSERT_TRUE(stream.good());
   }
 };
 
 TEST_F(FixtureEvaluatorTest, ReportsMissingFixtureScript) {
-  auto result = EvaluateFixture(fixture_directory_.string());
+  auto result = EvaluateFixture(fixture_directory_);
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), "fixture.js is missing or empty");
@@ -105,7 +119,7 @@ export default function(ctx) {
 }
 )");
 
-  auto result = EvaluateFixture(fixture_directory_.string());
+  auto result = EvaluateFixture(fixture_directory_);
 
   ASSERT_TRUE(result.has_value()) << result.error();
   ASSERT_EQ(result.value().actions.size(), 4u);
@@ -150,7 +164,7 @@ export default function(ctx) {
 }
 )");
 
-  auto result = EvaluateFixture(fixture_directory_.string());
+  auto result = EvaluateFixture(fixture_directory_);
 
   ASSERT_TRUE(result.has_value()) << result.error();
   ASSERT_EQ(result.value().actions.size(), 1u);
@@ -168,7 +182,7 @@ ctx.after(Infinity, () => ctx.dispatch("infinity"));
 ctx.after(Number.MAX_VALUE, () => ctx.dispatch("overflow"));
 )");
 
-  auto result = EvaluateFixture(fixture_directory_.string());
+  auto result = EvaluateFixture(fixture_directory_);
 
   ASSERT_TRUE(result.has_value()) << result.error();
   ASSERT_EQ(result.value().actions.size(), 4u);
@@ -179,16 +193,63 @@ ctx.after(Number.MAX_VALUE, () => ctx.dispatch("overflow"));
             std::numeric_limits<int64_t>::max());
 }
 
+TEST_F(FixtureEvaluatorTest, EnforcesScriptAndAssetByteBudgets) {
+  const std::string source =
+      "ctx.sharedData('data', ctx.readAsset('data.txt'));";
+  WriteFixture(source);
+  WriteAsset("data.txt", "1234");
+  FixtureEvaluationLimits limits;
+  limits.max_script_bytes = source.size();
+  limits.max_asset_bytes = 4;
+  auto exact = EvaluateFixture(fixture_directory_, limits);
+  ASSERT_TRUE(exact.has_value()) << exact.error();
+  ASSERT_EQ(exact->shared_data.size(), 1u);
+  EXPECT_EQ(exact->shared_data[0].value_json, "\"1234\"");
+
+  limits.max_asset_bytes = 3;
+  auto oversized_asset = EvaluateFixture(fixture_directory_, limits);
+  ASSERT_TRUE(oversized_asset.has_value()) << oversized_asset.error();
+  EXPECT_EQ(oversized_asset->shared_data[0].value_json, "null");
+  --limits.max_script_bytes;
+  EXPECT_FALSE(EvaluateFixture(fixture_directory_, limits).has_value());
+}
+
+TEST_F(FixtureEvaluatorTest, PreservesDslAndRecordedEventNames) {
+  WriteFixture(R"(
+ctx.sendGlobalEvent({value: 1});
+ctx.sendCustomEvent({value: 2});
+ctx.sendTouchEvent({value: 3});
+ctx.sendEventAndroid({value: 4});
+ctx.reloadTemplate({value: 5});
+ctx.sharedData('methods', Object.keys(ctx).sort());
+)");
+  auto result = EvaluateFixture(fixture_directory_);
+  ASSERT_TRUE(result.has_value()) << result.error();
+  ASSERT_EQ(result->actions.size(), 5u);
+  EXPECT_EQ(result->actions[0].function_name, "sendGlobalEvent");
+  EXPECT_EQ(result->actions[1].function_name, "SendCustomEvent");
+  EXPECT_EQ(result->actions[2].function_name, "SendTouchEvent");
+  EXPECT_EQ(result->actions[3].function_name, "sendEventAndroid");
+  EXPECT_EQ(result->actions[4].function_name, "reloadTemplate");
+  ASSERT_EQ(result->shared_data.size(), 1u);
+  EXPECT_EQ(
+      result->shared_data[0].value_json,
+      "[\"after\",\"dispatch\",\"loadTemplate\",\"readAsset\",\"register\","
+      "\"reloadTemplate\",\"sendCustomEvent\",\"sendEventAndroid\","
+      "\"sendGlobalEvent\",\"sendTouchEvent\",\"setGlobalProps\","
+      "\"setThreadStrategy\",\"sharedData\",\"updateViewPort\"]");
+}
+
 TEST_F(FixtureEvaluatorTest, SupportsPlainScriptsAndReportsEvaluationErrors) {
   WriteFixture("ctx.updateViewPort({width: 320});");
-  auto plain_script_result = EvaluateFixture(fixture_directory_.string());
+  auto plain_script_result = EvaluateFixture(fixture_directory_);
   ASSERT_TRUE(plain_script_result.has_value()) << plain_script_result.error();
   ASSERT_EQ(plain_script_result.value().actions.size(), 1u);
   EXPECT_EQ(plain_script_result.value().actions[0].function_name,
             "updateViewPort");
 
   WriteFixture("throw new Error('broken fixture');");
-  auto invalid_script_result = EvaluateFixture(fixture_directory_.string());
+  auto invalid_script_result = EvaluateFixture(fixture_directory_);
   ASSERT_FALSE(invalid_script_result.has_value());
   EXPECT_EQ(invalid_script_result.error(), "fixture.js evaluation failed");
 }
@@ -204,7 +265,7 @@ try {
 ctx.dispatch("afterError");
 )");
 
-  auto result = EvaluateFixture(fixture_directory_.string());
+  auto result = EvaluateFixture(fixture_directory_);
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), "fixture.js evaluation failed");
@@ -215,7 +276,7 @@ TEST_F(FixtureEvaluatorTest, InterruptsScriptsThatExceedTheDeadline) {
   FixtureEvaluationLimits limits;
   limits.timeout_ms = 10;
 
-  auto result = EvaluateFixture(fixture_directory_.string(), limits);
+  auto result = EvaluateFixture(fixture_directory_, limits);
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), "fixture.js evaluation timed out");
@@ -231,7 +292,7 @@ try {
   FixtureEvaluationLimits limits;
   limits.max_result_entries = 1;
 
-  auto result = EvaluateFixture(fixture_directory_.string(), limits);
+  auto result = EvaluateFixture(fixture_directory_, limits);
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), "fixture.js evaluation output limit exceeded");
@@ -244,15 +305,14 @@ for (let i = 0; i < 128; ++i) {
   values.push(new ArrayBuffer(65536));
 }
 )");
-  auto result_with_default_limits =
-      EvaluateFixture(fixture_directory_.string());
+  auto result_with_default_limits = EvaluateFixture(fixture_directory_);
   ASSERT_TRUE(result_with_default_limits.has_value())
       << result_with_default_limits.error();
 
   FixtureEvaluationLimits limits;
   limits.memory_limit_bytes = 4 * 1024 * 1024;
 
-  auto result = EvaluateFixture(fixture_directory_.string(), limits);
+  auto result = EvaluateFixture(fixture_directory_, limits);
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), "fixture.js evaluation failed");

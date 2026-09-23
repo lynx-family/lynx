@@ -8,8 +8,12 @@ import("../../Lynx.gni")
 replay_shared_sources = [
   #TOOD(@dupengcheng.ptrdu) move to other file later.
   "//${lynx_dir}/core/services/replay/lynx_module_binding_testbench.h",
+  "fixture_common.cc",
+  "fixture_common.h",
   "fixture_evaluator.cc",
   "fixture_evaluator.h",
+  "fixture_js_runtime.cc",
+  "fixture_js_runtime.h",
   "layout_tree_testbench.cc",
   "layout_tree_testbench.h",
   "lynx_callback_testbench.cc",
@@ -69,6 +73,7 @@ unittest_set("replay_testset") {
   public_configs = [ "../../:lynx_public_config" ]
   sources = [
     "fixture_evaluator_unittest.cc",
+    "fixture_replay_helper_unittest.cc",
     "layout_tree_testbench_unittest.cc",
     "lynx_module_testbench_unittest.cc",
     "lynx_replay_helper_unittest.cc",

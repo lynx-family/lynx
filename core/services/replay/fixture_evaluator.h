@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/expected.h"
+#include "core/services/replay/fixture_common.h"
 
 namespace lynx {
 namespace tasm {
@@ -35,12 +36,12 @@ struct FixtureEvaluationResult {
 struct FixtureEvaluationLimits {
   // These defaults bound one synchronous evaluation. Callers may provide
   // tighter limits for tests or constrained replay environments.
-  int64_t timeout_ms = 5000;
-  size_t memory_limit_bytes = 64 * 1024 * 1024;
+  int64_t timeout_ms = kDefaultFixtureTimeoutMs;
+  size_t memory_limit_bytes = kDefaultFixtureMemoryLimitBytes;
   size_t max_result_entries = 10000;
   size_t max_result_bytes = 16 * 1024 * 1024;
-  size_t max_script_bytes = 4 * 1024 * 1024;
-  size_t max_asset_bytes = 16 * 1024 * 1024;
+  size_t max_script_bytes = kDefaultFixtureMaxScriptBytes;
+  size_t max_asset_bytes = kDefaultFixtureMaxAssetBytes;
 };
 
 // Evaluates <fixture_directory>/fixture.js in an isolated runtime and returns
