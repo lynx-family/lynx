@@ -415,7 +415,6 @@ void DataBindingLoadTemplateBundleShell::TasmLoadTemplate(
   base::TaskRunnerManufactor::GetConcurrentLoop(
       base::ConcurrentTaskType::NORMAL_PRIORITY)
       .Terminate();
-  template_bundle.PrepareVMByConfigs();
   template_bundle.PrepareLepusContext(1);
 
   auto pipeline_options = std::make_shared<PipelineOptions>();

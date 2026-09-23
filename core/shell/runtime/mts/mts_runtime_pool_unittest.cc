@@ -25,13 +25,13 @@ TEST(MTSRuntimePoolTest, PreserveExactContextType) {
             quick_pool->context_type_);
 }
 
-TEST(MTSRuntimePoolTest, PrepareVMByConfigsKeepsLegacyVmAndQuickSemantics) {
+TEST(MTSRuntimePoolTest, EnsureMTSRuntimePoolKeepsLegacyVmAndQuickSemantics) {
   tasm::LynxTemplateBundle vm_bundle;
   vm_bundle.is_lepusng_binary_ = false;
   vm_bundle.context_type_ = runtime::ContextType::VMContextType;
   vm_bundle.context_bundle_ =
       runtime::ContextBundle::Create(runtime::ContextType::VMContextType);
-  vm_bundle.PrepareVMByConfigs();
+  vm_bundle.EnsureMTSRuntimePool();
   ASSERT_TRUE(vm_bundle.mts_runtime_pool_ != nullptr);
   ASSERT_EQ(runtime::ContextType::VMContextType,
             vm_bundle.mts_runtime_pool_->context_type_);
@@ -41,7 +41,7 @@ TEST(MTSRuntimePoolTest, PrepareVMByConfigsKeepsLegacyVmAndQuickSemantics) {
   quick_bundle.context_type_ = runtime::ContextType::LepusNGContextType;
   quick_bundle.context_bundle_ =
       runtime::ContextBundle::Create(runtime::ContextType::LepusNGContextType);
-  quick_bundle.PrepareVMByConfigs();
+  quick_bundle.EnsureMTSRuntimePool();
   ASSERT_TRUE(quick_bundle.mts_runtime_pool_ != nullptr);
   ASSERT_EQ(runtime::ContextType::LepusNGContextType,
             quick_bundle.mts_runtime_pool_->context_type_);
@@ -52,19 +52,15 @@ TEST(MTSRuntimePoolTest, PrepareLepusContextRejectsRtsPools) {
   rts_bundle.context_type_ = runtime::ContextType::RTSContextType;
   rts_bundle.context_bundle_ =
       runtime::ContextBundle::Create(runtime::ContextType::RTSContextType);
-  rts_bundle.PrepareVMByConfigs();
-  ASSERT_NE(nullptr, rts_bundle.mts_runtime_pool_);
-  ASSERT_TRUE(rts_bundle.mts_runtime_pool_->mts_runtimes_.empty());
 
   EXPECT_FALSE(rts_bundle.PrepareLepusContext(5));
   EXPECT_FALSE(rts_bundle.EnableUseContextPool());
-  EXPECT_TRUE(rts_bundle.mts_runtime_pool_->mts_runtimes_.empty());
+  EXPECT_EQ(nullptr, rts_bundle.mts_runtime_pool_);
 
   tasm::LynxTemplateBundle rts_native_bundle;
   rts_native_bundle.context_type_ = runtime::ContextType::RTSNativeContextType;
   rts_native_bundle.context_bundle_ = runtime::ContextBundle::Create(
       runtime::ContextType::RTSNativeContextType);
-  rts_native_bundle.PrepareVMByConfigs();
   EXPECT_EQ(nullptr, rts_native_bundle.mts_runtime_pool_);
 
   EXPECT_FALSE(rts_native_bundle.PrepareLepusContext(5));
@@ -76,7 +72,7 @@ TEST(MTSRuntimePoolTest, PrepareLepusContextKeepsLegacyExplicitPools) {
   vm_bundle.context_type_ = runtime::ContextType::VMContextType;
   vm_bundle.context_bundle_ =
       runtime::ContextBundle::Create(runtime::ContextType::VMContextType);
-  vm_bundle.PrepareVMByConfigs();
+  vm_bundle.EnsureMTSRuntimePool();
   ASSERT_TRUE(vm_bundle.mts_runtime_pool_ != nullptr);
 
   EXPECT_TRUE(vm_bundle.PrepareLepusContext(1));
@@ -86,11 +82,35 @@ TEST(MTSRuntimePoolTest, PrepareLepusContextKeepsLegacyExplicitPools) {
   quick_bundle.context_type_ = runtime::ContextType::LepusNGContextType;
   quick_bundle.context_bundle_ =
       runtime::ContextBundle::Create(runtime::ContextType::LepusNGContextType);
-  quick_bundle.PrepareVMByConfigs();
+  quick_bundle.EnsureMTSRuntimePool();
   ASSERT_TRUE(quick_bundle.mts_runtime_pool_ != nullptr);
 
   EXPECT_TRUE(quick_bundle.PrepareLepusContext(1));
   EXPECT_TRUE(quick_bundle.EnableUseContextPool());
+}
+
+TEST(MTSRuntimePoolTest, PoolCreationDoesNotEnablePool) {
+  tasm::LynxTemplateBundle bundle;
+  bundle.context_type_ = runtime::ContextType::LepusNGContextType;
+  bundle.context_bundle_ =
+      runtime::ContextBundle::Create(runtime::ContextType::LepusNGContextType);
+  bundle.page_configs_ = std::make_shared<tasm::PageConfig>();
+  bundle.page_configs_->SetEnableUseContextPool(tasm::TernaryBool::FALSE_VALUE);
+
+  bundle.EnsureMTSRuntimePool();
+  ASSERT_NE(nullptr, bundle.mts_runtime_pool_);
+  auto pool = bundle.mts_runtime_pool_;
+  EXPECT_TRUE(pool->mts_runtimes_.empty());
+  EXPECT_FALSE(bundle.EnableUseContextPool());
+
+  EXPECT_FALSE(bundle.PrepareLepusContextByConfigs(0));
+  bundle.SetEnableVMAutoGenerate(false);
+  EXPECT_FALSE(bundle.mts_runtime_pool_->enable_auto_generate_);
+
+  ASSERT_TRUE(bundle.PrepareLepusContext(1));
+  EXPECT_EQ(pool, bundle.mts_runtime_pool_);
+  EXPECT_TRUE(bundle.EnableUseContextPool());
+  EXPECT_FALSE(bundle.mts_runtime_pool_->enable_auto_generate_);
 }
 
 TEST(MTSRuntimePoolTest, QuickContextPoolTest) {
