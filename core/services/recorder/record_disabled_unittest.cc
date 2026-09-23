@@ -3,11 +3,22 @@
 // LICENSE file in the root directory of this source tree.
 
 // This source has its own recorder-disabled GN configuration.
+#include "core/renderer/utils/devtool_lifecycle.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/record.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx::tasm::recorder {
 namespace {
+struct Props {
+  int* formatted;
+  int GetLength() const { return ++*formatted; }
+  friend std::ostream& operator<<(std::ostream& stream, const Props& props) {
+    ++*props.formatted;
+    return stream << "props";
+  }
+};
+
 class RecordMacro : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -56,10 +67,6 @@ TEST_F(RecordMacro, FilteredPreludeDoesNotRunOrReturn) {
 TEST_F(RecordMacro, ObservationWorksWithoutRecorderAndEvaluatesOnce) {
   base::logging::SetMinLogLevel(base::logging::detail::LOG_OBSERVE);
   int contexts = 0, arguments = 0, formatted = 0;
-  struct Props {
-    int* formatted;
-    int GetLength() const { return ++*formatted; }
-  };
   auto get_context = [&] {
     ++contexts;
     return base::LogContext{1, 2, 3};
@@ -76,6 +83,74 @@ TEST_F(RecordMacro, ObservationWorksWithoutRecorderAndEvaluatesOnce) {
   EXPECT_EQ(contexts, 1);
   EXPECT_EQ(arguments, 1);
   EXPECT_EQ(formatted, 1);
+}
+
+TEST_F(RecordMacro, PayloadRequiresLoggingAndDevToolSwitches) {
+  using namespace base::logging;
+  auto& env = LynxEnv::GetInstance();
+  const bool previous = env.GetBoolEnv("enable_devtool", false);
+  env.SetBoolLocalEnv("enable_devtool", true);
+  DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      DevToolState::CONNECTED);
+  SetRecordPayloadCallback([](const base::LogContext&, const char*,
+                              std::string payload) -> std::string {
+    EXPECT_EQ(payload, "props");
+    return "test-id";
+  });
+  SetObservationPayloadEnabled(true);
+  const base::LogContext context{123, 2, 3};
+  int formatted = 0;
+  Props props{&formatted};
+  EXPECT_TRUE(ObservePayload(context, "test", "data", props).empty());
+  SetMinLogLevel(detail::LOG_OBSERVE);
+  SetObservationPayloadEnabled(false);
+  EXPECT_TRUE(ObservePayload(context, "test", "data", props).empty());
+  SetObservationPayloadEnabled(true);
+  env.SetBoolLocalEnv("enable_devtool", false);
+  EXPECT_TRUE(ObservePayload(context, "test", "data", props).empty());
+  EXPECT_EQ(formatted, 0);
+  env.SetBoolLocalEnv("enable_devtool", true);
+  EXPECT_EQ(ObservePayload(context, "test", "data", props),
+            " dataPayloadId:test-id");
+  EXPECT_EQ(formatted, 1);
+  SetRecordPayloadCallback(nullptr);
+  EXPECT_TRUE(ObservePayload(context, "test", "data", props).empty());
+  EXPECT_EQ(formatted, 1);
+  SetObservationPayloadEnabled(false);
+  env.SetBoolLocalEnv("enable_devtool", previous);
+  DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      DevToolState::UNAVAILABLE);
+}
+
+TEST_F(RecordMacro, UpdateMetaDataSendsGlobalPropsWithoutTemplateData) {
+  auto& env = LynxEnv::GetInstance();
+  const bool previous = env.GetBoolEnv("enable_devtool", false);
+  env.SetBoolLocalEnv("enable_devtool", true);
+  DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      DevToolState::CONNECTED);
+  SetRecordPayloadCallback([](const base::LogContext&, const char*,
+                              std::string payload) -> std::string {
+    EXPECT_EQ(payload, "props");
+    return "test-id";
+  });
+  SetObservationPayloadEnabled(true);
+  base::logging::SetMinLogLevel(base::logging::detail::LOG_OBSERVE);
+
+  int data_formatted = 0, props_formatted = 0;
+  Props data{&data_formatted}, global_props{&props_formatted};
+  const Props* no_data = nullptr;
+  RECORD(UpdateMetaData, base::LogContext{}, no_data, global_props, 0);
+  EXPECT_EQ(data_formatted, 0);
+  EXPECT_EQ(props_formatted, 1);
+  RECORD(UpdateMetaData, base::LogContext{}, &data, global_props, 0);
+  EXPECT_EQ(data_formatted, 1);
+  EXPECT_EQ(props_formatted, 2);
+
+  SetRecordPayloadCallback(nullptr);
+  SetObservationPayloadEnabled(false);
+  env.SetBoolLocalEnv("enable_devtool", previous);
+  DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      DevToolState::UNAVAILABLE);
 }
 
 TEST_F(RecordMacro, ObservationPreludeReturnsFromCaller) {

@@ -494,6 +494,10 @@ domains:
         origin: lynx-extension
         since: '4.4'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+      - name: setObservePayloadEnabled
+        origin: lynx-extension
+        since: '4.3'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: setTraceMode
         origin: lynx-extension
         since: '4.1'

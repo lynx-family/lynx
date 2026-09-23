@@ -9,6 +9,8 @@ import("../../config.gni")
 import("../../oliver/oliver.gni")
 lynx_tasm_shared_sources = [
                              "../services/recorder/record.h",
+                             "../services/recorder/record_payload.cc",
+                             "../services/recorder/record_payload.h",
                              "../services/replay/replay_controller.cc",
                              "../services/replay/replay_controller.h",
                              "element_manager_delegate_impl.cc",

@@ -1,0 +1,29 @@
+summary: Sets the process-wide observation payload switch.
+parameters:
+  - name: enabled
+    type: boolean
+    description: True enables payload delivery; false disables it.
+returns: []
+events:
+  - name: Lynx.observePayload
+    description: Delivers full payloads associated with payload IDs in observation logs.
+notes:
+  - Does not change the runtime log threshold. Payloads require LOGO to be enabled.
+  - Missing or non-boolean enabled values return InvalidParams without changing the switch.
+  - Setting false stops serialization and delivery while disabled. Already sent events cannot be recalled.
+  - The global switch defaults to false and applies to all existing and future views. It lasts until explicitly disabled or the process exits; it is not a per-view subscription.
+  - Full DevTool must also be enabled and its transport connected. A connected restricted debugging session alone does not enable payload delivery.
+  - Events use the global DevTool channel, independent of view lifecycle. Earlier observations are not replayed.
+  - Serialization runs on the calling thread; the owned bytes are sent asynchronously.
+  - Each payload produces one complete event; this layer does not impose a payload-size or pending-byte limit.
+  - A payload ID indicates local acceptance, not delivery or persistence. Disconnection or disabling may drop pending events.
+examples:
+  - title: Enable payloads globally without changing the log threshold
+    request:
+      id: 1
+      method: Lynx.setObservePayloadEnabled
+      params:
+        enabled: true
+    response:
+      id: 1
+      result: {}

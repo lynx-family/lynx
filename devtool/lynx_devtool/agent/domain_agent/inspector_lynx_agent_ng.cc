@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.h"
 
 #include "base/include/log/logging.h"
+#include "core/services/recorder/record_payload.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
@@ -20,6 +21,8 @@ int ParseLogLevel(const Json::Value& params) {
 InspectorLynxAgentNG::InspectorLynxAgentNG(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : devtool_mediator_(devtool_mediator) {
+  functions_map_["Lynx.setObservePayloadEnabled"] =
+      &InspectorLynxAgentNG::SetObservePayloadEnabled;
   functions_map_["Lynx.getLogLevel"] = &InspectorLynxAgentNG::GetLogLevel;
   functions_map_["Lynx.setLogLevel"] = &InspectorLynxAgentNG::SetLogLevel;
   functions_map_["Lynx.getProperties"] = &InspectorLynxAgentNG::GetProperties;
@@ -47,6 +50,19 @@ void InspectorLynxAgentNG::CallMethod(
   } else {
     (this->*(iter->second))(sender, message);
   }
+}
+
+void InspectorLynxAgentNG::SetObservePayloadEnabled(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  CDPResponder responder(sender, message["id"].asInt64());
+  const auto& params = message["params"];
+  if (!params.isObject() || !params["enabled"].isBool()) {
+    responder.SendError(CDPErrorCode::InvalidParams,
+                        "enabled must be a boolean");
+    return;
+  }
+  tasm::recorder::SetObservationPayloadEnabled(params["enabled"].asBool());
+  responder.SendSuccess();
 }
 
 void InspectorLynxAgentNG::GetLogLevel(

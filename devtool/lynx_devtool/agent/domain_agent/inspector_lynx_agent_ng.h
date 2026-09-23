@@ -27,6 +27,8 @@ class InspectorLynxAgentNG : public CDPDomainAgentBase {
   typedef void (InspectorLynxAgentNG::*LynxAgentMethod)(
       const std::shared_ptr<MessageSender>& sender, const Json::Value& params);
 
+  void SetObservePayloadEnabled(const std::shared_ptr<MessageSender>& sender,
+                                const Json::Value& message);
   void GetLogLevel(const std::shared_ptr<MessageSender>& sender,
                    const Json::Value& message);
   void SetLogLevel(const std::shared_ptr<MessageSender>& sender,

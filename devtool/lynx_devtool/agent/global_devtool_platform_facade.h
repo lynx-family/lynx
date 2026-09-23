@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "base/include/closure.h"
+#include "base/include/log/log_context.h"
 #include "base/trace/native/trace_controller.h"
 #include "devtool/lynx_devtool/agent/hsr_script_request.h"
 
@@ -97,6 +98,10 @@ class GlobalDevToolPlatformFacade
   // May be called from any thread; delivery runs on the DevTool thread.
   // The message is an opaque string, independent of command completion.
   void SendHSRMessageReceived(const std::string& message);
+
+  static std::string SendRecordPayload(const base::LogContext& context,
+                                       const char* version,
+                                       std::string payload);
 
   // Host routers decode their scheme into target + script/url parameters.
   // This entry shares the CDP load path; it does not register an app URL
