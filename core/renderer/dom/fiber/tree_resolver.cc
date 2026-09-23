@@ -146,20 +146,20 @@ void RegisterElementSlotMountPoint(base::Vector<ElementSlotMountPoint>* targets,
 // TODO(songshourui.null): Unify this class application path with Render
 // Functions when both paths can share the same attribute setter.
 void ApplyTemplateClassAttribute(Element* element, const lepus::Value& value) {
+  ClassList old_classes = element->ReleaseClasses();
   element->RemoveAllClass();
-  if (!value.IsString()) {
-    return;
+  if (value.IsString()) {
+    ClassList classes;
+    base::SplitString(value.String().str(), ' ', true,
+                      [&classes](const char* s, size_t length, int index) {
+                        classes.emplace_back(s, length);
+                        return true;
+                      });
+    if (!classes.empty()) {
+      element->SetClasses(std::move(classes));
+    }
   }
-
-  ClassList classes;
-  base::SplitString(value.String().str(), ' ', true,
-                    [&classes](const char* s, size_t length, int index) {
-                      classes.emplace_back(s, length);
-                      return true;
-                    });
-  if (!classes.empty()) {
-    element->SetClasses(std::move(classes));
-  }
+  element->OnClassChanged(old_classes, element->classes());
 }
 
 // TODO(songshourui.null): Unify this style application path with Render
