@@ -904,6 +904,32 @@ public class DisplayListApplierTest {
     verify(mockCanvas).restore();
   }
 
+  @Test
+  public void testOpacityBoundsIncludeOutsetBlurAndResetWithDisplayList() {
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f)
+        .recordBox(0f, 0f, 100f, 50f)
+        .recordBox(-20f, -10f, 100f, 50f)
+        .boxShadow(1, 0, 0xFF000000, 5f, 0)
+        .recordBox(-100f, -100f, 300f, 300f)
+        .boxShadow(2, 0, 0xFF000000, 5f, 1)
+        .clipRect(0f, 0f, 100f, 50f)
+        .begin(1, VIEW_TYPE, 0f, 0f, 100f, 50f)
+        .boxShadow(2, 0, 0xFF000000, 5f, 0)
+        .end()
+        .end();
+    setDisplayList(testDisplayList);
+    RectF bounds = new RectF(0f, 0f, 100f, 50f);
+    displayListApplier.includeRootShadowBounds(bounds);
+    assertEquals(new RectF(-35f, -25f, 100f, 55f), bounds);
+
+    NativeDisplayListBuilder withoutShadow = createDisplayList();
+    withoutShadow.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f).end();
+    setDisplayList(withoutShadow);
+    bounds.set(0f, 0f, 100f, 50f);
+    displayListApplier.includeRootShadowBounds(bounds);
+    assertEquals(new RectF(0f, 0f, 100f, 50f), bounds);
+  }
+
   /** Verifies OP_BOX_SHADOW reads the typed payload and draws the shadow. */
   @Test
   public void testOpBoxShadow() {

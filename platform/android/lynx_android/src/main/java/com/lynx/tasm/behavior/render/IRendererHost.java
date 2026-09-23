@@ -91,9 +91,14 @@ public interface IRendererHost {
   }
 
   default void applyRendererOpacity(float opacity) {
-    View view = getView();
-    if (view != null) {
-      view.setAlpha(opacity);
+    Renderer renderer = getRenderer();
+    if (renderer != null) {
+      renderer.applyOpacity(opacity);
+    } else {
+      View view = getView();
+      if (view != null) {
+        view.setAlpha(opacity);
+      }
     }
   }
 

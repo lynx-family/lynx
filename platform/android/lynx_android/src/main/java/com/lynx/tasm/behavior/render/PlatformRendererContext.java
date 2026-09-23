@@ -275,7 +275,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (host == null || host.getView() == null) {
       return 1.f;
     }
-    return host.getView().getAlpha();
+    Renderer renderer = host.getRenderer();
+    return renderer != null ? renderer.getOpacity() : host.getView().getAlpha();
   }
 
   public float getMeaningfulPaintingAreaScaleX(int sign) {

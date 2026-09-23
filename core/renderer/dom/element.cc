@@ -2074,7 +2074,9 @@ void Element::CheckHasNonFlattenCSSProps(CSSPropertyID id) {
        id == CSSPropertyID::kPropertyIDOffsetRotate ||
        id == CSSPropertyID::kPropertyIDPerspective);
   if (id == CSSPropertyID::kPropertyIDFilter || id == kPropertyIDVisibility ||
-      id == kPropertyIDClipPath || id == CSSPropertyID::kPropertyIDBoxShadow ||
+      id == kPropertyIDClipPath ||
+      (id == CSSPropertyID::kPropertyIDBoxShadow &&
+       !EnableFragmentLayerRender()) ||
       id == CSSPropertyID::kPropertyIDTransform ||
       id == CSSPropertyID::kPropertyIDTransformOrigin ||
       id == CSSPropertyID::kPropertyIDMaskImage ||

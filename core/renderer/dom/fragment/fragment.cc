@@ -1806,9 +1806,20 @@ void Fragment::UpdateLayoutWithoutChange() {
 
 void Fragment::CheckRootIfNeedClipBounds(
     DisplayListBuilder& display_list_builder) {
-  if (element()->computed_css_style()->IsOverflowHidden()) {
-    display_list_builder.MarkRootNeedClipBounds();
+  auto* style = element()->computed_css_style();
+  if (!style->IsOverflowHidden()) {
+    return;
   }
+  const auto& shadows = style->GetBoxShadowData();
+  if (shadows.has_value() &&
+      std::any_of(shadows->begin(), shadows->end(), [](const auto& shadow) {
+        return shadow.option != starlight::ShadowOption::kInset;
+      })) {
+    // Clipping the entire platform layer would also clip its own outset
+    // shadows. DrawClip still clips contents and children after the shadows.
+    return;
+  }
+  display_list_builder.MarkRootNeedClipBounds();
 }
 
 void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
