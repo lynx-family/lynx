@@ -466,6 +466,7 @@ subspec_target("lynx") {
     # Extension module headers
     "LynxTemplateRender+Internal.h",
     "event/LynxEventHandler+Internal.h",
+    "event/LynxTouchHandler+Internal.h",
     "ui/LynxUI+Private.h",
     "ui/LynxUIContext+Internal.h",
     "fluency/LynxScrollFluency.h",
