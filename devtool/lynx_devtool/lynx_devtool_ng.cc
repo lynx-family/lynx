@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
 #include "core/devtool_wrapper/devtool_pool.h"
+#include "core/services/recorder/record_payload.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/base_devtool/native/public/abstract_devtool.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_agent.h"
@@ -37,6 +38,7 @@
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.h"
 #include "devtool/lynx_devtool/agent/domain_agent/system_info_agent.h"
+#include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/message_handler/fetch_debug_info_handler.h"
 #include "devtool/lynx_devtool/message_handler/stop_at_entry_handler.h"
@@ -64,6 +66,9 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
   std::call_once(flag, [] {
     auto& global_dispatcher =
         lynx::devtool::AbstractDevTool::GetGlobalMessageDispatcherInstance();
+
+    tasm::recorder::SetRecordPayloadCallback(
+        GlobalDevToolPlatformFacade::SendRecordPayload);
 
     if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
         lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
