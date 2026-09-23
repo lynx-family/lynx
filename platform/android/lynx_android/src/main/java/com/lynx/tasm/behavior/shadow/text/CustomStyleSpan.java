@@ -52,12 +52,14 @@ public class CustomStyleSpan extends MetricAffectingSpan {
     if (o == null || getClass() != o.getClass())
       return false;
     CustomStyleSpan that = (CustomStyleSpan) o;
-    return mStyle == that.mStyle && mWeight == that.mWeight;
+    return mStyle == that.mStyle && mWeight == that.mWeight
+        && Objects.equals(mFontVariationSettings, that.mFontVariationSettings)
+        && Objects.equals(mFontFeatureSettings, that.mFontFeatureSettings);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(mStyle, mWeight);
+    return Objects.hash(mStyle, mWeight, mFontVariationSettings, mFontFeatureSettings);
   }
 
   public int getStyle() {
