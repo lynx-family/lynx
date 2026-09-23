@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <stack>
 #include <string>
 #include <unordered_map>
@@ -23,6 +24,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/style_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 
 namespace lynx {
 namespace tasm {
@@ -49,6 +51,9 @@ UIText::UIText(LynxContext* context, int sign, const std::string& tag)
 }
 
 UIText::~UIText() {
+  DetachHandlesFromContextMenu();
+  text_selection_menu_manager_.reset();
+
   // Main gestures.
   if (long_press_gesture_) {
     g_recognizer_to_text.erase(long_press_gesture_);
@@ -148,6 +153,7 @@ void UIText::FrameDidChanged() {
     SetAccessibilityLabelDirtyFlag();
 
     UpdateHandleNodes();
+    UpdateContextMenuNode();
   }
 }
 
@@ -234,7 +240,11 @@ void UIText::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   if (name == "text-selection") {
     if (value.IsBool()) {
       enable_text_selection_ = value.Bool();
-      Invalidate();
+      if (enable_text_selection_) {
+        Invalidate();
+      } else {
+        ClearSelection();
+      }
     }
     return;
   }
@@ -262,6 +272,11 @@ void UIText::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   if (name == "custom-context-menu") {
     if (value.IsBool()) {
       enable_custom_context_menu_ = value.Bool();
+      if (enable_custom_context_menu_) {
+        HideContextMenu();
+      } else if (HasValidSelection() && !enable_custom_text_selection_) {
+        ShowContextMenu();
+      }
       Invalidate();
     }
     return;
@@ -269,6 +284,7 @@ void UIText::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   if (name == "custom-text-selection") {
     if (value.IsBool()) {
       enable_custom_text_selection_ = value.Bool();
+      HideContextMenu();
       Invalidate();
     }
     return;
@@ -302,7 +318,10 @@ void UIText::InitSelectionGestures() {
   if (long_press_gesture_) {
     g_recognizer_to_text[long_press_gesture_] = this;
     NodeManager::Instance().SetGestureEventTarget(
-        long_press_gesture_, GESTURE_EVENT_ACTION_ACCEPT, this, OnLongPress);
+        long_press_gesture_,
+        GESTURE_EVENT_ACTION_ACCEPT | GESTURE_EVENT_ACTION_END |
+            GESTURE_EVENT_ACTION_CANCEL,
+        this, OnLongPress);
     NodeManager::Instance().AddGestureToNode(DrawNode(), long_press_gesture_,
                                              PARALLEL, NORMAL_GESTURE_MASK);
   }
@@ -512,6 +531,7 @@ bool UIText::HasValidSelection() const {
 }
 
 void UIText::ClearSelection() {
+  HideContextMenu();
   select_start_ = -1;
   select_end_ = -1;
   last_select_start_ = -1;
@@ -657,7 +677,12 @@ void UIText::HandleLongPress(ArkUI_GestureEventActionType action) {
     if (track_long_press_) {
       PerformEndSelection(long_press_x_, long_press_y_);
       track_long_press_ = false;
+      ShowContextMenu();
     }
+  } else if (action & GESTURE_EVENT_ACTION_CANCEL) {
+    track_long_press_ = false;
+    is_adjust_start_ = false;
+    is_adjust_end_ = false;
   }
 }
 
@@ -667,6 +692,7 @@ void UIText::HandlePan(ArkUI_GestureEventActionType action, float x, float y) {
   }
   if (is_in_selection_) {
     if (action & GESTURE_EVENT_ACTION_UPDATE) {
+      HideContextMenu();
       if (is_adjust_start_) {
         AdjustStartPosition(x, y);
       } else if (is_adjust_end_) {
@@ -674,6 +700,9 @@ void UIText::HandlePan(ArkUI_GestureEventActionType action, float x, float y) {
       }
     } else if (action & GESTURE_EVENT_ACTION_END) {
       PerformEndSelection(x, y);
+      ShowContextMenu();
+    } else if (action & GESTURE_EVENT_ACTION_CANCEL) {
+      ShowContextMenu();
     }
 
     track_long_press_ = false;
@@ -1009,20 +1038,8 @@ void UIText::GetSelectedText(
     return;
   }
 
-  std::string selected;
-  if (select_start_ >= 0 && select_end_ > select_start_) {
-    // UTF-16 indices -> slice.
-    auto u16 = base::U8StringToU16(paragraph_->GetText());
-    const int32_t len = static_cast<int32_t>(u16.size());
-    const int32_t s = std::clamp(select_start_, 0, len);
-    const int32_t e = std::clamp(select_end_, 0, len);
-    if (e > s) {
-      selected = base::U16StringToU8(std::u16string_view(u16).substr(
-          static_cast<size_t>(s), static_cast<size_t>(e - s)));
-    }
-  }
   auto ret = lepus::Dictionary::Create();
-  ret->SetValue("selectedText", std::move(selected));
+  ret->SetValue("selectedText", GetSelectedTextValue());
   callback(LynxGetUIResult::SUCCESS, lepus_value(ret));
 }
 
@@ -1242,9 +1259,14 @@ void UIText::EnsureHandleNodesAttached() {
   if (!start_handle_dot_node_ || !end_handle_dot_node_) {
     return;
   }
-  // Attach handle nodes to the same parent as DrawNode() so they scroll
-  // together.
-  auto parent = NodeManager::Instance().GetParent(DrawNode());
+  ArkUI_NodeHandle menu_overlay =
+      text_selection_menu_manager_ ? text_selection_menu_manager_->OverlayNode()
+                                   : nullptr;
+  auto parent = text_selection_menu_manager_ &&
+                        text_selection_menu_manager_->IsVisible() &&
+                        menu_overlay
+                    ? menu_overlay
+                    : NodeManager::Instance().GetParent(DrawNode());
   if (!parent) {
     return;
   }
@@ -1268,12 +1290,46 @@ void UIText::EnsureHandleNodesAttached() {
   handle_parent_clip_value_ =
       NodeManager::Instance().GetAttribute<int32_t>(parent, NODE_CLIP, 0);
 
-  NodeManager::Instance().InsertNodeAfter(parent, start_handle_dot_node_,
-                                          DrawNode());
-  NodeManager::Instance().InsertNodeAfter(parent, end_handle_dot_node_,
-                                          start_handle_dot_node_);
+  if (parent == menu_overlay) {
+    NodeManager::Instance().InsertNodeAfter(
+        parent, start_handle_dot_node_,
+        text_selection_menu_manager_->BackdropNode());
+    NodeManager::Instance().InsertNodeAfter(parent, end_handle_dot_node_,
+                                            start_handle_dot_node_);
+  } else {
+    NodeManager::Instance().InsertNodeAfter(parent, start_handle_dot_node_,
+                                            DrawNode());
+    NodeManager::Instance().InsertNodeAfter(parent, end_handle_dot_node_,
+                                            start_handle_dot_node_);
+  }
   handle_nodes_attached_ = true;
   handle_parent_ = parent;
+}
+
+void UIText::GetTextOffsetInHandleParent(float* left, float* top) const {
+  *left = left_;
+  *top = top_;
+  if (!text_selection_menu_manager_ ||
+      handle_parent_ != text_selection_menu_manager_->OverlayNode() ||
+      !context_ || !context_->Root()) {
+    return;
+  }
+
+  ArkUI_IntOffset text_offset{};
+  ArkUI_IntOffset root_offset{};
+  if (OH_ArkUI_NodeUtils_GetPositionWithTranslateInWindow(DrawNode(),
+                                                          &text_offset) != 0 ||
+      OH_ArkUI_NodeUtils_GetPositionWithTranslateInWindow(
+          context_->Root()->RootNode(), &root_offset) != 0) {
+    return;
+  }
+
+  float density = context_->ScaledDensity();
+  if (density <= 0.f) {
+    density = 1.f;
+  }
+  *left = (text_offset.x - root_offset.x) / density;
+  *top = (text_offset.y - root_offset.y) / density;
 }
 
 void UIText::HideHandleNodes() {
@@ -1372,6 +1428,19 @@ void UIText::UpdateHandleNodes() {
     end_dot_top_vp_ = top_ + (begin_center_vp_y - dot_node_size_vp_ / 2.f);
   }
 
+  if (text_selection_menu_manager_ &&
+      handle_parent_ == text_selection_menu_manager_->OverlayNode()) {
+    float text_left = 0.f;
+    float text_top = 0.f;
+    GetTextOffsetInHandleParent(&text_left, &text_top);
+    const float offset_x = text_left - left_;
+    const float offset_y = text_top - top_;
+    start_dot_left_vp_ += offset_x;
+    start_dot_top_vp_ += offset_y;
+    end_dot_left_vp_ += offset_x;
+    end_dot_top_vp_ += offset_y;
+  }
+
   if (handle_parent_clip_node_ && !handle_parent_clip_overridden_ &&
       handle_parent_clip_value_ != 0) {
     // Handles may extend outside the text node bounds; disable clipping while
@@ -1461,6 +1530,14 @@ void UIText::HandlePanOnHandleNode(bool is_start, ArkUI_GestureEvent* event) {
       (handle_pan_accept_y_ - padding_top_ - GetBorderTopWidth() - top_) *
           density +
       y_px;
+  if (text_selection_menu_manager_ &&
+      handle_parent_ == text_selection_menu_manager_->OverlayNode()) {
+    float text_left = 0.f;
+    float text_top = 0.f;
+    GetTextOffsetInHandleParent(&text_left, &text_top);
+    local_x -= (text_left - left_) * density;
+    local_y -= (text_top - top_) * density;
+  }
 
   if ((action & GESTURE_EVENT_ACTION_ACCEPT) ||
       (action & GESTURE_EVENT_ACTION_UPDATE)) {
@@ -1469,9 +1546,174 @@ void UIText::HandlePanOnHandleNode(bool is_start, ArkUI_GestureEvent* event) {
     } else {
       AdjustEndPosition(local_x, local_y);
     }
+    UpdateHandleNodes();
+    UpdateContextMenuNode();
   } else if (action & GESTURE_EVENT_ACTION_END) {
     PerformEndSelection(local_x, local_y);
+    UpdateHandleNodes();
+    UpdateContextMenuNode();
+  } else if (action & GESTURE_EVENT_ACTION_CANCEL) {
+    UpdateSelectStartEnd();
+    is_adjust_start_ = false;
+    is_adjust_end_ = false;
+    UpdateHandleNodes();
+    UpdateContextMenuNode();
   }
+}
+
+void UIText::ShowContextMenu() {
+  if (enable_custom_context_menu_ || enable_custom_text_selection_ ||
+      !HasValidSelection() || select_start_ == select_end_) {
+    HideContextMenu();
+    return;
+  }
+  TextSelectionMenu::LayoutInfo layout;
+  if (!GetContextMenuLayout(&layout)) {
+    HideContextMenu();
+    return;
+  }
+  EnsureTextSelectionMenuManager();
+  if (!text_selection_menu_manager_) {
+    return;
+  }
+  text_selection_menu_manager_->Show(layout);
+}
+
+void UIText::EnsureTextSelectionMenuManager() {
+  if (text_selection_menu_manager_) {
+    return;
+  }
+  if (!text_selection_menu_factory_) {
+    return;
+  }
+  TextSelectionMenu::Callbacks callbacks;
+  callbacks.get_selected_text = [this]() { return GetSelectedTextValue(); };
+  callbacks.on_overlay_will_show = [this]() {
+    EnsureHandleNodesAttached();
+    UpdateHandleNodes();
+  };
+  callbacks.on_hidden = [this]() { OnContextMenuHidden(); };
+  callbacks.on_copy_succeeded = [this]() { ClearSelection(); };
+  callbacks.on_select_all = [this]() { SelectAllText(); };
+  callbacks.on_dismiss = [this]() { ClearSelection(); };
+  text_selection_menu_manager_ =
+      text_selection_menu_factory_(std::move(callbacks));
+}
+
+void UIText::HideContextMenu() {
+  if (text_selection_menu_manager_) {
+    text_selection_menu_manager_->Hide();
+  }
+}
+
+bool UIText::GetContextMenuLayout(TextSelectionMenu::LayoutInfo* layout) const {
+  if (!layout || !paragraph_ || !context_ || !context_->Root()) {
+    return false;
+  }
+  const auto boxes = GetTextBoundingBoxes(std::min(select_start_, select_end_),
+                                          std::max(select_start_, select_end_));
+  if (boxes.empty()) {
+    return false;
+  }
+
+  float density = context_->ScaledDensity();
+  if (density <= 0.f) {
+    density = 1.f;
+  }
+
+  layout->selection_left_px = boxes.front().X();
+  layout->selection_right_px = boxes.front().MaxX();
+  layout->selection_top_px = boxes.front().Y();
+  layout->selection_bottom_px = boxes.front().MaxY();
+  for (const auto& box : boxes) {
+    layout->selection_left_px = std::min(layout->selection_left_px, box.X());
+    layout->selection_right_px =
+        std::max(layout->selection_right_px, box.MaxX());
+    layout->selection_top_px = std::min(layout->selection_top_px, box.Y());
+    layout->selection_bottom_px =
+        std::max(layout->selection_bottom_px, box.MaxY());
+  }
+  layout->text_node = DrawNode();
+  layout->root_node = context_->Root()->RootNode();
+  layout->density = density;
+  layout->content_left_vp = padding_left_ + GetBorderLeftWidth() +
+                            paragraph_->GetTranslateLeftOffset() / density;
+  layout->content_top_vp = padding_top_ + GetBorderTopWidth();
+  return true;
+}
+
+void UIText::UpdateContextMenuNode() {
+  if (!text_selection_menu_manager_ ||
+      !text_selection_menu_manager_->IsVisible()) {
+    return;
+  }
+  if (enable_custom_context_menu_ || enable_custom_text_selection_ ||
+      !HasValidSelection() || select_start_ == select_end_) {
+    HideContextMenu();
+    return;
+  }
+  TextSelectionMenu::LayoutInfo layout;
+  if (!GetContextMenuLayout(&layout)) {
+    HideContextMenu();
+    return;
+  }
+  text_selection_menu_manager_->Update(layout);
+}
+
+void UIText::OnContextMenuHidden() {
+  if (text_selection_menu_manager_ &&
+      handle_parent_ == text_selection_menu_manager_->OverlayNode() &&
+      HasValidSelection()) {
+    EnsureHandleNodesAttached();
+    UpdateHandleNodes();
+  }
+}
+
+void UIText::DetachHandlesFromContextMenu() {
+  if (!text_selection_menu_manager_ ||
+      handle_parent_ != text_selection_menu_manager_->OverlayNode()) {
+    return;
+  }
+  if (start_handle_dot_node_) {
+    NodeManager::Instance().RemoveNode(handle_parent_, start_handle_dot_node_);
+  }
+  if (end_handle_dot_node_) {
+    NodeManager::Instance().RemoveNode(handle_parent_, end_handle_dot_node_);
+  }
+  handle_nodes_attached_ = false;
+  handle_parent_ = nullptr;
+}
+
+std::string UIText::GetSelectedTextValue() const {
+  if (!paragraph_ || select_start_ < 0 || select_end_ <= select_start_) {
+    return {};
+  }
+  const std::u16string text = base::U8StringToU16(paragraph_->GetText());
+  const int32_t len = static_cast<int32_t>(text.size());
+  const int32_t start = std::clamp(select_start_, 0, len);
+  const int32_t end = std::clamp(select_end_, 0, len);
+  if (end <= start) {
+    return {};
+  }
+  return base::U16StringToU8(std::u16string_view(text).substr(
+      static_cast<size_t>(start), static_cast<size_t>(end - start)));
+}
+
+void UIText::SelectAllText() {
+  const int32_t length = GetTextChar16Count();
+  if (length <= 0) {
+    ClearSelection();
+    return;
+  }
+  is_in_selection_ = true;
+  is_adjust_start_ = false;
+  is_adjust_end_ = false;
+  show_start_handle_ = true;
+  show_end_handle_ = true;
+  UpdateSelectionRange(0, length);
+  UpdateSelectStartEnd();
+  UpdateHandleNodes();
+  ShowContextMenu();
 }
 
 void UIText::DrawHandleNode(OH_Drawing_Canvas* canvas, int32_t type) const {
