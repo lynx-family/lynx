@@ -28,10 +28,12 @@ struct TasmVerificationResult {
 class LYNX_SERVICE_DECLARE(LynxSecurityService)
     : public BaseService<LynxSecurityService> {
  public:
-  // The input is borrowed for this synchronous call and is never retained.
+  // Input and platform_target are borrowed only for this synchronous call.
+  // The result includes the host policy decision and is final for decoding.
   virtual TasmVerificationResult VerifyTASM(const uint8_t* data, size_t size,
                                             const std::string& url,
-                                            LynxTasmType type) = 0;
+                                            LynxTasmType type,
+                                            void* platform_target) = 0;
 };
 
 }  // namespace security_service

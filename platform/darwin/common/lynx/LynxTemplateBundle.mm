@@ -143,6 +143,7 @@
         auto snapshot = std::move(data.value());
         lynx::tasm::TemplateVerification verification;
         verification.enabled = true;
+        verification.platform_target = (__bridge void*)self;
         if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
           _devtool_pool = [[LynxDevToolPool alloc] initWithURL:_url debuggable:option.debuggable];
         }
