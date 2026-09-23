@@ -1124,6 +1124,24 @@ TEST_F_UI(BaseViewTest, PointerEventsControlTouchScroll) {
   EXPECT_GT(scroll->GetScrollOffset().y(), 0);
 }
 
+TEST_F_UI(BaseViewTest, PointerEventsUsageLatchIsMonotonic) {
+  auto* child = new View(1, page_.get());
+  page_->AddChild(child);
+
+  EXPECT_FALSE(page_->HasExplicitPointerEvents());
+  EXPECT_TRUE(child->AcceptsPointerEvents());
+
+  child->SetAttribute("pointer-events", Value(kPointerEventsNone));
+  EXPECT_TRUE(page_->HasExplicitPointerEvents());
+  EXPECT_FALSE(child->AcceptsPointerEvents());
+
+  child->SetAttribute("pointer-events", Value::Null());
+  EXPECT_TRUE(page_->HasExplicitPointerEvents());
+  EXPECT_TRUE(child->AcceptsPointerEvents());
+
+  page_->ResetPageView(/*recycle=*/true);
+  EXPECT_TRUE(page_->HasExplicitPointerEvents());
+}
 class BaseViewWithChildrenTest : public UITest {
  protected:
   void UISetUp() override {
