@@ -145,6 +145,7 @@ public class DisplayListApplier implements Drawable.Callback {
   private PlatformRendererContext mContext;
   private int mItemIndex;
   private int mFragmentDepth;
+  private RectF mRootShadowBounds;
 
   private WeakReference<IRendererHost> mHostLayer;
 
@@ -169,12 +170,52 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   public void drawTillNextView(Canvas canvas) {
-    if (mItemsBuffer == null) {
-      return;
-    }
+    drawTillNextView(canvas, 0);
+  }
 
-    // Process content operations
-    processContentOperations(canvas);
+  void drawTillNextView(Canvas canvas, int viewportSaveCount) {
+    int remainingSaveCount = processContentOperations(canvas, viewportSaveCount);
+    if (remainingSaveCount != 0) {
+      canvas.restoreToCount(remainingSaveCount);
+    }
+  }
+
+  void includeRootShadowBounds(RectF bounds) {
+    if (mRootShadowBounds == null) {
+      mRootShadowBounds = new RectF();
+      if (mItemsBuffer == null || mItemsBuffer.capacity() < DISPLAY_LIST_ITEM_SIZE
+          || mItemsBuffer.capacity() % DISPLAY_LIST_ITEM_SIZE != 0) {
+        return;
+      }
+      mItemsBuffer.order(ByteOrder.nativeOrder());
+      ArrayList<RectF> boxes = new ArrayList<>();
+      // Root decorations precede its contents and nested fragments.
+      for (int offset = DISPLAY_LIST_ITEM_SIZE; offset < mItemsBuffer.capacity();
+           offset += DISPLAY_LIST_ITEM_SIZE) {
+        int op = getIntAt(offset + TYPE_OFFSET);
+        if (op == OP_BEGIN || op == OP_END || op == OP_DRAW_VIEW) {
+          break;
+        }
+        if (op == OP_RECORD_BOX) {
+          float x = getFloatAt(offset + RECORD_BOX_X_OFFSET);
+          float y = getFloatAt(offset + RECORD_BOX_Y_OFFSET);
+          boxes.add(new RectF(x, y, x + getFloatAt(offset + RECORD_BOX_W_OFFSET),
+              y + getFloatAt(offset + RECORD_BOX_H_OFFSET)));
+        } else if (op == OP_BOX_SHADOW && getIntAt(offset + BOX_SHADOW_CLIP_MODE_OFFSET) == 0) {
+          int index = getIntAt(offset + BOX_SHADOW_SHADOW_BOX_INDEX_OFFSET);
+          if (index >= 0 && index < boxes.size()) {
+            RectF shadow = new RectF(boxes.get(index));
+            // Include the blur tail as well as the spread and offset already
+            // encoded in the shadow box.
+            float blurOutset =
+                Math.max(0f, getFloatAt(offset + BOX_SHADOW_BLUR_RADIUS_OFFSET)) * 3f;
+            shadow.inset(-blurOutset, -blurOutset);
+            mRootShadowBounds.union(shadow);
+          }
+        }
+      }
+    }
+    bounds.union(mRootShadowBounds);
   }
 
   private static final class BorderBoxes {
@@ -524,9 +565,9 @@ public class DisplayListApplier implements Drawable.Callback {
     return mItemsBuffer.getFloat(byteOffset);
   }
 
-  private void processContentOperations(Canvas canvas) {
+  private int processContentOperations(Canvas canvas, int viewportSaveCount) {
     if (mItemsBuffer == null) {
-      return;
+      return viewportSaveCount;
     }
 
     mItemsBuffer.order(ByteOrder.nativeOrder());
@@ -536,11 +577,12 @@ public class DisplayListApplier implements Drawable.Callback {
 
     if (mItemsBuffer.capacity() < DISPLAY_LIST_ITEM_SIZE
         || mItemsBuffer.capacity() % DISPLAY_LIST_ITEM_SIZE != 0) {
-      return;
+      return viewportSaveCount;
     }
     int itemsCount = mItemsBuffer.capacity() / DISPLAY_LIST_ITEM_SIZE;
 
     int currentItemIndex = mItemIndex;
+    int viewportFragmentDepth = mFragmentDepth;
 
     while (currentItemIndex < itemsCount) {
       int itemByteOffset = currentItemIndex * DISPLAY_LIST_ITEM_SIZE;
@@ -560,6 +602,12 @@ public class DisplayListApplier implements Drawable.Callback {
         }
 
         case OP_END: {
+          if (viewportSaveCount != 0 && mFragmentDepth == viewportFragmentDepth) {
+            // The host saved its viewport inside this fragment. Restore that
+            // clip before End restores the fragment's own Canvas state.
+            canvas.restoreToCount(viewportSaveCount);
+            viewportSaveCount = 0;
+          }
           canvas.restore();
           if (mFragmentDepth > 0) {
             mFragmentDepth--;
@@ -589,7 +637,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
         case OP_DRAW_VIEW: {
           mItemIndex = currentItemIndex + 1;
-          return;
+          return viewportSaveCount;
         }
 
         case OP_TEXT: {
@@ -781,6 +829,7 @@ public class DisplayListApplier implements Drawable.Callback {
     }
 
     mItemIndex = currentItemIndex;
+    return viewportSaveCount;
   }
 
   private void drawLinearGradient(Canvas canvas, float angle, int[] colors, float[] stops,
@@ -1053,6 +1102,7 @@ public class DisplayListApplier implements Drawable.Callback {
   public void setBuffer(ByteBuffer itemsBuffer, ByteBuffer dataBuffer) {
     mItemsBuffer = itemsBuffer;
     mDataBuffer = dataBuffer;
+    mRootShadowBounds = null;
     reset();
   }
 

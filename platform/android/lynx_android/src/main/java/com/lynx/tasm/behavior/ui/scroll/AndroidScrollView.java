@@ -661,9 +661,10 @@ public class AndroidScrollView
       if (mRenderer != null) {
         // Fragment Layer Renderer draws flattened descendants after the platform children. Keep
         // those display-list draws inside the scroll viewport clip as well.
-        mRenderer.afterDispatchDraw(canvas);
+        mRenderer.afterDispatchDraw(canvas, count);
+      } else {
+        canvas.restoreToCount(count);
       }
-      canvas.restoreToCount(count);
       return;
     }
     if (mRenderer != null) {

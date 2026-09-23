@@ -1684,6 +1684,74 @@ TEST_F(FragmentTest, ValidExposureEventPropsBypassEqualCheck) {
   EXPECT_FALSE(fragment.event_bundle_dirty_);
 }
 
+TEST_F(FragmentDrawTest, FlattenedBoxShadowUpdatesParentDisplayList) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto view = manager->CreateFiberView();
+  view->SetStyle(kPropertyIDBoxShadow, lepus::Value("3px 4px 5px red"));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+  auto initial_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(initial_options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* view_fragment = view->fragment_impl();
+  ASSERT_FALSE(view->HasUIPrimitive());
+  ASSERT_TRUE(view->TendToFlatten());
+
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  view_fragment->UpdateLayout(layout);
+  page_fragment->UpdateLayout(0.f, 0.f);
+
+  auto* platform_ref = static_cast<NativeMockPaintingContext*>(
+                           manager->painting_context()->impl())
+                           ->GetNativePlatformRef();
+  auto expect_shadow = [&](size_t count, uint32_t color, int32_t clip_mode) {
+    EXPECT_FALSE(view->HasUIPrimitive());
+    EXPECT_FALSE(view_fragment->has_platform_renderer_);
+    const auto* display_list =
+        platform_ref->GetDisplayListForRenderer(page_fragment->id());
+    ASSERT_NE(display_list, nullptr);
+    auto items = CollectDisplayListItems(*display_list);
+    size_t shadow_count = 0;
+    for (const auto& item : items) {
+      EXPECT_NE(item.type, DisplayListOpType::kDrawView);
+      if (item.type == DisplayListOpType::kBoxShadow) {
+        ++shadow_count;
+        EXPECT_EQ(item.payload.box_shadow.color, color);
+        EXPECT_EQ(item.payload.box_shadow.clip_mode, clip_mode);
+      }
+    }
+    EXPECT_EQ(shadow_count, count);
+  };
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options);
+    page_fragment->Draw();
+  };
+
+  page_fragment->Draw();
+  expect_shadow(1u, 0xFFFF0000u, 0);
+
+  view->SetStyle(kPropertyIDBoxShadow, lepus::Value("inset 2px 3px 4px blue"));
+  flush();
+  expect_shadow(1u, 0xFF0000FFu, 1);
+
+  view->ResetStyle({kPropertyIDBoxShadow});
+  flush();
+  expect_shadow(0u, 0u, 0);
+
+  view->SetStyle(kPropertyIDBoxShadow, lepus::Value("3px 4px 5px red"));
+  flush();
+  expect_shadow(1u, 0xFFFF0000u, 0);
+
+  view->SetStyle(kPropertyIDTransform, lepus::Value("translateX(10px)"));
+  flush();
+  EXPECT_TRUE(view->HasUIPrimitive());
+  EXPECT_TRUE(view_fragment->has_platform_renderer_);
+}
+
 TEST_F(FragmentTest, DrawBoxShadowWithOutsetShadow) {
   auto element = manager->CreateFiberView();
   Fragment fragment(element.get());
@@ -2556,6 +2624,85 @@ TEST_F(FragmentTest, TestCheckRootIfNeedClipBounds1) {
 
   DisplayList list = builder.Build();
   EXPECT_FALSE(list.RootNeedClipBounds());
+}
+
+TEST_F(FragmentDrawTest, PlatformShadowPreservesContentClipAfterShadow) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto view = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  view->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
+  view->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
+  view->SetStyle(kPropertyIDBorderRadius, lepus::Value("8px"));
+  view->SetStyle(kPropertyIDBoxShadow, lepus::Value("3px 4px 5px red"));
+  child->SetStyle(kPropertyIDTransform, lepus::Value("translateX(10px)"));
+  page->InsertNode(view);
+  view->InsertNode(child);
+  page->FlushActionsAsRoot();
+  auto initial_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(initial_options);
+
+  auto* fragment = view->fragment_impl();
+  ASSERT_TRUE(view->HasUIPrimitive());
+  ASSERT_TRUE(child->HasUIPrimitive());
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment->UpdateLayout(layout);
+  page->fragment_impl()->UpdateLayout(0.f, 0.f);
+
+  auto* platform_ref = static_cast<NativeMockPaintingContext*>(
+                           manager->painting_context()->impl())
+                           ->GetNativePlatformRef();
+  auto expect_clip = [&](bool clip_bounds, size_t shadow_count) {
+    const auto* list = platform_ref->GetDisplayListForRenderer(fragment->id());
+    ASSERT_NE(list, nullptr);
+    EXPECT_EQ(list->RootNeedClipBounds(), clip_bounds);
+    auto items = CollectDisplayListItems(*list);
+    size_t shadows_before_clip = 0;
+    bool has_content_clip = false;
+    bool has_child = false;
+    for (const auto& item : items) {
+      if (item.type == DisplayListOpType::kBoxShadow) {
+        EXPECT_FALSE(has_content_clip);
+        ++shadows_before_clip;
+      } else if (item.type == DisplayListOpType::kClipRect) {
+        EXPECT_EQ(shadows_before_clip, shadow_count);
+        EXPECT_TRUE(item.payload.clip_rect.has_radii);
+        has_content_clip = true;
+      } else if (item.type == DisplayListOpType::kDrawView) {
+        EXPECT_TRUE(has_content_clip);
+        EXPECT_EQ(item.payload.draw_view.view_id, child->impl_id());
+        has_child = true;
+      }
+    }
+    EXPECT_EQ(shadows_before_clip, shadow_count);
+    EXPECT_TRUE(has_content_clip);
+    EXPECT_TRUE(has_child);
+  };
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options);
+    page->fragment_impl()->Draw();
+  };
+
+  page->fragment_impl()->Draw();
+  expect_clip(false, 1u);
+
+  view->SetStyle(kPropertyIDBoxShadow, lepus::Value("inset 3px 4px 5px red"));
+  flush();
+  expect_clip(true, 1u);
+
+  view->SetStyle(kPropertyIDBoxShadow,
+                 lepus::Value("inset 3px 4px 5px red, 3px 4px 5px blue"));
+  view->ResetStyle({kPropertyIDOpacity});
+  view->SetStyle(kPropertyIDTransform, lepus::Value("translateX(10px)"));
+  flush();
+  EXPECT_TRUE(view->HasUIPrimitive());
+  expect_clip(false, 2u);
+
+  view->ResetStyle({kPropertyIDBoxShadow});
+  flush();
+  expect_clip(true, 0u);
 }
 
 TEST_F(FragmentTest, TestDrawNodeCapacity) {

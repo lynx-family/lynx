@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
@@ -38,6 +39,11 @@ public class Renderer {
   private LynxBaseUI mUIHost;
 
   private int mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
+  private float mOpacity = 1f;
+  private boolean mHasDrawCallbacks;
+  private boolean mNeedsOutsetOpacityLayer;
+  private RectF mOpacityLayerBounds;
+  private int mOpacityLayerSaveCount;
 
   public void setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy) {
     mLynxFrame.set(l + dx, t + dy, r + dx, b + dy);
@@ -147,6 +153,59 @@ public class Renderer {
   }
 
   public void onDraw(Canvas canvas) {
+    mOpacityLayerSaveCount = 0;
+    mHasDrawCallbacks = true;
+    prepareDisplayList();
+    mDisplayListApplier.reset();
+    updateOpacityLayer();
+    if (mNeedsOutsetOpacityLayer) {
+      mOpacityLayerSaveCount =
+          canvas.saveLayerAlpha(mOpacityLayerBounds, (int) (mOpacity * 255), Canvas.ALL_SAVE_FLAG);
+    }
+  }
+
+  void applyOpacity(float opacity) {
+    boolean opacityChanged = mOpacity != opacity;
+    boolean wasUsingLayer = mNeedsOutsetOpacityLayer;
+    mOpacity = opacity;
+    updateOpacityLayer();
+    if ((opacityChanged && mNeedsOutsetOpacityLayer) || wasUsingLayer != mNeedsOutsetOpacityLayer) {
+      mRenderHost.invalidateForRenderer();
+    }
+  }
+
+  float getOpacity() {
+    return mNeedsOutsetOpacityLayer ? mOpacity : mRenderHost.getView().getAlpha();
+  }
+
+  private void updateOpacityLayer() {
+    View view = mRenderHost != null ? mRenderHost.getView() : null;
+    if (view == null) {
+      return;
+    }
+    mNeedsOutsetOpacityLayer = false;
+    if (mHasDrawCallbacks && mOpacity < 1f) {
+      prepareDisplayList();
+      if (mOpacityLayerBounds == null) {
+        mOpacityLayerBounds = new RectF();
+      }
+      mOpacityLayerBounds.set(0, 0, mLynxFrame.width(), mLynxFrame.height());
+      mDisplayListApplier.includeRootShadowBounds(mOpacityLayerBounds);
+      mNeedsOutsetOpacityLayer = mOpacityLayerBounds.left < 0 || mOpacityLayerBounds.top < 0
+          || mOpacityLayerBounds.right > mLynxFrame.width()
+          || mOpacityLayerBounds.bottom > mLynxFrame.height();
+    }
+    // Android's automatic alpha layer clips to the View bounds. Draw overflowing
+    // shadows and native host contents together in the shared Renderer callbacks.
+    // Content without outset shadows keeps the RenderNode property update path.
+    // Native-only hosts that do not invoke these callbacks also keep View alpha.
+    float viewAlpha = mNeedsOutsetOpacityLayer && mOpacity > 0f ? 1f : mOpacity;
+    if (view.getAlpha() != viewAlpha) {
+      view.setAlpha(viewAlpha);
+    }
+  }
+
+  private void prepareDisplayList() {
     if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
       mDisplayListItemsBuffer = mPlatformRendererContext.getDisplayListItemsBuffer(mSign);
       mDisplayListDataBuffer = mPlatformRendererContext.getDisplayListDataBuffer(mSign);
@@ -154,7 +213,7 @@ public class Renderer {
     if (mDisplayListApplier == null) {
       mDisplayListApplier = new DisplayListApplier(
           mDisplayListItemsBuffer, mDisplayListDataBuffer, mPlatformRendererContext, mRenderHost);
-    } else {
+    } else if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
       mDisplayListApplier.setBuffer(mDisplayListItemsBuffer, mDisplayListDataBuffer);
     }
     mRepaintType = REPAINT_TYPE_DRAW_ONLY;
@@ -187,24 +246,36 @@ public class Renderer {
   }
 
   public void afterDispatchDraw(Canvas canvas) {
+    afterDispatchDraw(canvas, 0);
+  }
+
+  public void afterDispatchDraw(Canvas canvas, int viewportSaveCount) {
     if (mDisplayListApplier == null) {
+      if (viewportSaveCount != 0) {
+        canvas.restoreToCount(viewportSaveCount);
+      }
       return;
     }
-    mDisplayListApplier.drawTillNextView(canvas);
+    mDisplayListApplier.drawTillNextView(canvas, viewportSaveCount);
     mDisplayListApplier.reset();
+    if (mOpacityLayerSaveCount != 0) {
+      canvas.restoreToCount(mOpacityLayerSaveCount);
+      mOpacityLayerSaveCount = 0;
+    }
   }
 
   public void invalidate(int invalidateMask) {
     if (getRendererHost() == null) {
       return;
     }
+    if ((invalidateMask & INVALIDATE_DISPLAY_LIST) != 0) {
+      mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
+      updateOpacityLayer();
+    }
     mRenderHost.invalidateForRenderer();
     if ((invalidateMask & INVALIDATE_PARENT) != 0 && mRenderHost.getView() != null
         && mRenderHost.getView().getParent() instanceof View) {
       ((View) mRenderHost.getView().getParent()).invalidate();
-    }
-    if ((invalidateMask & INVALIDATE_DISPLAY_LIST) != 0) {
-      mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
     }
   }
 

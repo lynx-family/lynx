@@ -9,12 +9,22 @@ import static org.mockito.Mockito.*;
 
 import android.app.Application;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.HardwareRenderer;
 import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.graphics.RecordingCanvas;
 import android.graphics.Rect;
+import android.graphics.RenderNode;
+import android.media.Image;
+import android.media.ImageReader;
 import android.os.Build;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.LynxContext;
@@ -129,6 +139,245 @@ public class ContainerRendererTest {
   public void testConstructor() {
     assertNotNull("ContainerRenderer should be created", containerRenderer);
     assertFalse("WillNotDraw should be false", containerRenderer.willNotDraw());
+  }
+
+  @Test
+  public void testDrawWithoutOpacityLayerSkipsCanvasStateCalls() {
+    NativeDisplayListBuilder displayList = createDisplayList();
+    displayList.begin(TEST_SIGN, 0, 0f, 0f, 100f, 50f)
+        .recordBox(0f, 0f, 100f, 50f)
+        .fill(Color.RED, 0)
+        .end();
+    when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+        .thenReturn(displayList.toItemsBuffer());
+    when(mockPlatformRendererContext.getDisplayListDataBuffer(TEST_SIGN))
+        .thenReturn(displayList.toDataBuffer());
+    Renderer renderer = containerRenderer.getRenderer();
+    renderer.setLynxFrame(false, 0, 0, 100, 50, 0, 0);
+
+    for (float opacity : new float[] {1f, 0.5f, 1f}) {
+      containerRenderer.applyRendererOpacity(opacity);
+      renderer.onDraw(mockCanvas);
+      renderer.afterDispatchDraw(mockCanvas);
+    }
+
+    verify(mockCanvas, never()).getSaveCount();
+    verify(mockCanvas, never()).saveLayerAlpha(any(), anyInt(), anyInt());
+    verify(mockCanvas, never()).restoreToCount(anyInt());
+  }
+
+  @Test
+  public void testOpacityCompositesOutsetShadowAndOverlappingContents() {
+    NativeDisplayListBuilder displayList = createDisplayList();
+    displayList.begin(TEST_SIGN, 0, 0f, 0f, 100f, 50f)
+        .recordBox(0f, 0f, 100f, 50f)
+        .fill(Color.RED, 0)
+        .recordBox(-20f, -10f, 100f, 50f)
+        .boxShadow(1, 0, Color.BLUE, 0f, 0)
+        .clipRect(0f, 0f, 100f, 50f)
+        .begin(TEST_SIGN + 1, 0, 0f, 0f, 100f, 50f)
+        .recordBox(50f, 0f, 100f, 80f)
+        .fill(Color.GREEN, 2)
+        .end()
+        .end();
+    when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+        .thenReturn(displayList.toItemsBuffer());
+    when(mockPlatformRendererContext.getDisplayListDataBuffer(TEST_SIGN))
+        .thenReturn(displayList.toDataBuffer());
+    containerRenderer.getRenderer().setLynxFrame(false, 0, 0, 100, 50, 0, 0);
+    containerRenderer.layout(0, 0, 100, 50);
+
+    Bitmap bitmap = Bitmap.createBitmap(200, 120, Bitmap.Config.ARGB_8888);
+    Canvas canvas = new Canvas(bitmap);
+    canvas.translate(40f, 30f);
+    containerRenderer.applyRendererOpacity(0.5f);
+    bitmap.eraseColor(Color.WHITE);
+    containerRenderer.draw(canvas);
+
+    assertColorNear("Outset shadow must survive opacity", 0xFF8080FF, bitmap.getPixel(25, 25));
+    assertColorNear("Background receives group opacity", 0xFFFF8080, bitmap.getPixel(60, 50));
+    assertColorNear(
+        "Overlapping child receives opacity only once", 0xFF80FF80, bitmap.getPixel(100, 50));
+    assertEquals("Overflowing content remains clipped", Color.WHITE, bitmap.getPixel(160, 50));
+
+    containerRenderer.applyRendererOpacity(0f);
+    bitmap.eraseColor(Color.WHITE);
+    containerRenderer.draw(canvas);
+    assertEquals(Color.WHITE, bitmap.getPixel(25, 25));
+    assertEquals(Color.WHITE, bitmap.getPixel(100, 50));
+
+    containerRenderer.applyRendererOpacity(1f);
+    containerRenderer.draw(canvas);
+    assertEquals(Color.BLUE, bitmap.getPixel(25, 25));
+    assertEquals(Color.GREEN, bitmap.getPixel(100, 50));
+    bitmap.recycle();
+  }
+
+  private static class NativeContentRendererHost extends TestRendererHostView {
+    private final Paint paint = new Paint();
+    boolean clipViewport;
+
+    NativeContentRendererHost(Context context) {
+      super(context);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+      getRenderer().onDraw(canvas);
+      getRenderer().beforeDrawHost(canvas);
+      paint.setColor(Color.GREEN);
+      canvas.drawRect(50f, 0f, 150f, 80f, paint);
+    }
+
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+      if (clipViewport) {
+        int count = canvas.save();
+        canvas.clipRect(0f, 0f, 100f, 50f);
+        super.dispatchDraw(canvas);
+        getRenderer().afterDispatchDraw(canvas, count);
+        return;
+      }
+      super.dispatchDraw(canvas);
+      getRenderer().afterDispatchDraw(canvas);
+    }
+  }
+
+  @Test
+  public void testNativeOnlyHostKeepsViewOpacity() {
+    TestRendererHostView host = new TestRendererHostView(realLynxContext);
+    Renderer renderer = host.createRenderer(mockPlatformRendererContext, TEST_SIGN);
+    renderer.setRenderHost(host);
+    host.setRenderer(renderer);
+    renderer.setLynxFrame(false, 0, 0, 100, 50, 0, 0);
+    NativeDisplayListBuilder displayList = createDisplayList();
+    displayList.begin(TEST_SIGN, 0, 0f, 0f, 100f, 50f)
+        .recordBox(0f, 0f, 100f, 50f)
+        .recordBox(-20f, -10f, 100f, 50f)
+        .boxShadow(1, 0, Color.BLUE, 0f, 0)
+        .end();
+    when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+        .thenReturn(displayList.toItemsBuffer());
+    host.applyRendererOpacity(0.5f);
+    renderer.invalidate(Renderer.INVALIDATE_DISPLAY_LIST);
+    assertEquals("A native-only host must retain its alpha", 0.5f, host.getAlpha(), 0f);
+  }
+
+  @Test
+  @SdkSuppress(minSdkVersion = 29)
+  public void testNativeHostOpacitySwitchesWhenShadowChanges() {
+    NativeContentRendererHost host = new NativeContentRendererHost(realLynxContext);
+    Renderer renderer = host.createRenderer(mockPlatformRendererContext, TEST_SIGN);
+    renderer.setRenderHost(host);
+    host.setRenderer(renderer);
+    renderer.setLynxFrame(false, 0, 0, 100, 50, 0, 0);
+    host.layout(0, 0, 100, 50);
+
+    // Exercise ordinary alpha, outset shadow, inset-only shadow, and removal
+    // without changing opacity or requiring draw/onSetAlpha overrides on the host.
+    for (int shadowMode : new int[] {-1, 0, 1, -1, 0}) {
+      NativeDisplayListBuilder displayList = createDisplayList();
+      displayList.begin(TEST_SIGN, 0, 0f, 0f, 100f, 50f)
+          .recordBox(0f, 0f, 100f, 50f)
+          .fill(Color.RED, 0);
+      if (shadowMode >= 0) {
+        displayList.recordBox(-20f, -10f, 100f, 50f).boxShadow(1, 0, Color.BLUE, 0f, shadowMode);
+      }
+      displayList.clipRect(0f, 0f, 100f, 50f).drawView(TEST_SIGN, 0f, 0f).end();
+      when(mockPlatformRendererContext.getDisplayListItemsBuffer(TEST_SIGN))
+          .thenReturn(displayList.toItemsBuffer());
+      when(mockPlatformRendererContext.getDisplayListDataBuffer(TEST_SIGN))
+          .thenReturn(displayList.toDataBuffer());
+      renderer.invalidate(Renderer.INVALIDATE_DISPLAY_LIST);
+      if (renderer.getOpacity() == 1f) {
+        host.applyRendererOpacity(0.5f);
+      }
+      assertEquals(
+          "CSS opacity survives switching composition paths", 0.5f, renderer.getOpacity(), 0f);
+      assertEquals("Only outset shadows bypass RenderNode alpha", shadowMode == 0 ? 1f : 0.5f,
+          host.getAlpha(), 0f);
+      Bitmap bitmap = drawHardwareHost(host);
+      assertColorNear(
+          "Native content receives group opacity once", 0xFF80FF80, bitmap.getPixel(100, 50));
+      assertEquals(
+          "Native content still obeys overflow clipping", Color.WHITE, bitmap.getPixel(160, 50));
+      if (shadowMode == 0) {
+        assertColorNear(
+            "Native host outset shadow survives opacity", 0xFF8080FF, bitmap.getPixel(25, 25));
+      } else {
+        assertEquals(Color.WHITE, bitmap.getPixel(25, 25));
+      }
+      bitmap.recycle();
+    }
+
+    for (float opacity : new float[] {0.25f, 0f, 1f, 0.5f}) {
+      host.clipViewport = true;
+      host.applyRendererOpacity(opacity);
+      Bitmap bitmap = drawHardwareHost(host);
+      int transparentChannel = 255 - (int) (opacity * 255);
+      assertColorNear("Updated opacity applies to native content",
+          Color.rgb(transparentChannel, 255, transparentChannel), bitmap.getPixel(100, 50));
+      assertColorNear("Updated opacity applies to outset shadows",
+          Color.rgb(transparentChannel, transparentChannel, 255), bitmap.getPixel(25, 25));
+      bitmap.recycle();
+    }
+  }
+
+  private Bitmap drawHardwareHost(View host) {
+    // Use the hardware RenderNode alpha path that clips translucent Views on
+    // Android, including the transition between native and Renderer opacity.
+    RenderNode content = new RenderNode("opacity-host");
+    content.setPosition(40, 30, 140, 80);
+    content.setClipToBounds(false);
+    content.setHasOverlappingRendering(true);
+    RecordingCanvas canvas = content.beginRecording(100, 50);
+    int saveCount = canvas.getSaveCount();
+    host.draw(canvas);
+    assertEquals("Renderer callbacks must balance the Canvas", saveCount, canvas.getSaveCount());
+    content.endRecording();
+    content.setAlpha(host.getAlpha());
+
+    RenderNode root = new RenderNode("opacity-root");
+    root.setPosition(0, 0, 200, 120);
+    canvas = root.beginRecording(200, 120);
+    canvas.drawColor(Color.WHITE);
+    canvas.drawRenderNode(content);
+    root.endRecording();
+
+    HardwareRenderer hardwareRenderer = new HardwareRenderer();
+    try (ImageReader reader = ImageReader.newInstance(200, 120, PixelFormat.RGBA_8888, 2)) {
+      hardwareRenderer.setSurface(reader.getSurface());
+      hardwareRenderer.setContentRoot(root);
+      hardwareRenderer.createRenderRequest().setWaitForPresent(true).syncAndDraw();
+      try (Image image = reader.acquireNextImage()) {
+        assertNotNull("Hardware frame must be available", image);
+        Image.Plane plane = image.getPlanes()[0];
+        ByteBuffer pixels = plane.getBuffer();
+        int[] colors = new int[200 * 120];
+        for (int y = 0; y < 120; y++) {
+          for (int x = 0; x < 200; x++) {
+            int offset = y * plane.getRowStride() + x * plane.getPixelStride();
+            colors[y * 200 + x] = Color.argb(pixels.get(offset + 3) & 255, pixels.get(offset) & 255,
+                pixels.get(offset + 1) & 255, pixels.get(offset + 2) & 255);
+          }
+        }
+        return Bitmap.createBitmap(colors, 200, 120, Bitmap.Config.ARGB_8888);
+      }
+    } finally {
+      hardwareRenderer.destroy();
+      content.discardDisplayList();
+      root.discardDisplayList();
+    }
+  }
+
+  private static void assertColorNear(String message, int expected, int actual) {
+    message +=
+        " expected=" + Integer.toHexString(expected) + " actual=" + Integer.toHexString(actual);
+    assertEquals(message, Color.alpha(expected), Color.alpha(actual));
+    // Canvas premultiplication may round a half-opacity channel by one level.
+    assertTrue(message, Math.abs(Color.red(expected) - Color.red(actual)) <= 1);
+    assertTrue(message, Math.abs(Color.green(expected) - Color.green(actual)) <= 1);
+    assertTrue(message, Math.abs(Color.blue(expected) - Color.blue(actual)) <= 1);
   }
 
   IRendererHost getRenderHost(Renderer renderer) {
