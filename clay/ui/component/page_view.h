@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_COMPONENT_PAGE_VIEW_H_
 #define CLAY_UI_COMPONENT_PAGE_VIEW_H_
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -514,6 +515,13 @@ class PageView : public BaseView,
   uint8_t DefaultOverflow() const { return default_overflow_; }
   void SetDefaultOverflow(uint8_t overflow) { default_overflow_ = overflow; }
 
+  void MarkPointerEventsUsed() {
+    pointer_events_used_.store(true, std::memory_order_release);
+  }
+  bool HasExplicitPointerEvents() const {
+    return pointer_events_used_.load(std::memory_order_acquire);
+  }
+
   void SetTapSlop(float slop);
   void SetLongPressDuration(uint64_t duration);
   bool ShouldPreserveFocusForTouchTarget(BaseView* target);
@@ -678,6 +686,8 @@ class PageView : public BaseView,
   bool align_mouse_event_with_w3c_ = false;
   bool enable_mouse_drag_scroll_ = true;
   uint8_t default_overflow_ = CSSProperty::OVERFLOW_XY;
+  // Never clear this latch: a false negative would bypass hit testing.
+  std::atomic<bool> pointer_events_used_{false};
 
   TapGestureRecognizer* tap_gesture_recognizer_ = nullptr;
   uint64_t last_mouse_click_timestamp_ = 0;

@@ -2857,6 +2857,9 @@ bool BaseView::IsPointInsideHitSlop(const FloatPoint& point_by_self) const {
 }
 
 bool BaseView::AcceptsPointerEvents() const {
+  if (!page_view_->HasExplicitPointerEvents()) {
+    return true;
+  }
   if (pointer_events_mode_ != PointerEventsMode::kUnset) {
     return pointer_events_mode_ == PointerEventsMode::kAuto;
   }
@@ -3283,6 +3286,7 @@ bool BaseView::HandleCommonAttribute(const char* attr,
         pointer_events_mode_ = utils::GetInt(value) == 0
                                    ? PointerEventsMode::kAuto
                                    : PointerEventsMode::kNone;
+        page_view_->MarkPointerEventsUsed();
       }
       break;
     case KeywordID::kBlockNativeEvent:
