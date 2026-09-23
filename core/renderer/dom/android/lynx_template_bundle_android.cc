@@ -64,7 +64,7 @@ jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
       auto devtool_pool = *devtool_pool_ptr;
       native_bundle->SetDevToolPool(devtool_pool);
     }
-    native_bundle->PrepareVMByConfigs();
+    native_bundle->EnsureMTSRuntimePool();
     auto page_config = GetPageConfigMap(env, native_bundle);
     env->SetObjectArrayElement(
         options, 1, page_config ? page_config->jni_object() : nullptr);
@@ -193,7 +193,7 @@ void InitWithOption(JNIEnv* env, jclass jcaller, jlong ptr,
   if (!bundle) {
     return;
   }
-  bundle->PrepareLepusContext(context_pool_size);
+  bundle->PrepareLepusContextByConfigs(context_pool_size);
   bundle->SetEnableVMAutoGenerate(enable_context_auto_generate);
 }
 
