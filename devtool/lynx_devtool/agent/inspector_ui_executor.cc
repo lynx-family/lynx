@@ -10,6 +10,7 @@
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/runtime/lepus/json_parser.h"
+#include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/input_request_handler.h"
@@ -309,120 +310,145 @@ void InspectorUIExecutor::PageNavigate(
 }
 
 void InspectorUIExecutor::UITree_Enable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value params = message["params"];
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  bool use_compression = uitree_use_compression_;
+  int compression_threshold = uitree_compression_threshold_;
   if (params.isMember("useCompression")) {
-    uitree_use_compression_ = params["useCompression"].asBool();
+    if (!ReadBoolParam(params["useCompression"], use_compression)) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "Invalid useCompression: expected boolean");
+      return;
+    }
   }
   if (params.isMember("compressionThreshold")) {
-    uitree_compression_threshold_ = params["compressionThreshold"].asInt();
+    if (!ReadIntParam(params["compressionThreshold"], compression_threshold) ||
+        compression_threshold < 0) {
+      responder->SendError(
+          CDPErrorCode::InvalidParams,
+          "Invalid compressionThreshold: expected non-negative integer");
+      return;
+    }
   }
+  uitree_use_compression_ = use_compression;
+  uitree_compression_threshold_ = compression_threshold;
   uitree_enabled_ = true;
-
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::UITree_Disable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   uitree_enabled_ = false;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::GetLynxUITree(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (!uitree_enabled_) return;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content = Json::Value(Json::ValueType::objectValue);
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
-  std::string tree_str = devtool_platform_facade_->GetLynxUITree();
-
-  Json::Value tree;
-  Json::Reader reader;
-  if (tree_str.size()) {
-    reader.parse(tree_str, tree, false);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (!uitree_enabled_) {
+    responder->SendError(CDPErrorCode::ServerError, "UITree is not enabled");
+    return;
   }
-  content["root"] = tree;
-  content["compress"] = false;
-
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
+    return;
+  }
+  std::string tree_str = devtool_platform_facade_->GetLynxUITree();
+  const bool use_compression = uitree_use_compression_;
+  const int compression_threshold = uitree_compression_threshold_;
 
   auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
-  devtool_mediator->RunOnDevToolThread(
-      [sender, self = shared_from_this(), content, response]() mutable {
-        std::string root_str = content["root"].toStyledString();
-        if (self->uitree_use_compression_ &&
-            root_str.size() >
-                static_cast<size_t>(self->uitree_compression_threshold_)) {
-          InspectorUtil::CompressData("getLynxUITree", root_str, content,
-                                      "root");
-        }
-        response["result"] = content;
-        sender->SendMessage("CDP", response);
-      },
-      true);
+  if (devtool_mediator == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
+    return;
+  }
+  // The platform facade is UI-thread-affine. Parse, format, and compress large
+  // UITrees on the DevTool thread to avoid blocking the UI thread.
+  if (!devtool_mediator->RunOnDevToolThread(
+          [responder, tree_str = std::move(tree_str), use_compression,
+           compression_threshold]() mutable {
+            Json::Value result(Json::ValueType::objectValue);
+            Json::Value tree;
+            Json::Reader reader;
+            if (!tree_str.empty() && !reader.parse(tree_str, tree, false)) {
+              responder->SendError(CDPErrorCode::InternalError,
+                                   "Invalid UITree data");
+              return;
+            }
+            result["root"] = std::move(tree);
+            result["compress"] = false;
+            std::string root_str = result["root"].toStyledString();
+            if (use_compression &&
+                root_str.size() > static_cast<size_t>(compression_threshold)) {
+              InspectorUtil::CompressData("getLynxUITree", root_str, result,
+                                          "root");
+            }
+            responder->SendSuccess(std::move(result));
+          },
+          true)) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
+  }
 }
 
 void InspectorUIExecutor::GetUIInfoForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (!uitree_enabled_) return;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content = Json::Value(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  int id = static_cast<int>(params["UINodeId"].asInt64());
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!uitree_enabled_) {
+    responder->SendError(CDPErrorCode::ServerError, "UITree is not enabled");
+    return;
+  }
+  int id = 0;
+  if (!ReadIntParam(params["UINodeId"], id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid UINodeId: expected integer");
+    return;
+  }
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
+    return;
+  }
   std::string info_str = devtool_platform_facade_->GetUINodeInfo(id);
 
+  Json::Value result(Json::ValueType::objectValue);
   Json::Reader reader;
-  if (info_str.size()) {
-    reader.parse(info_str, content, false);
+  if (!info_str.empty() && !reader.parse(info_str, result, false)) {
+    responder->SendError(CDPErrorCode::InternalError, "Invalid UI node data");
+    return;
   }
-
-  response["id"] = message["id"].asInt64();
-  response["result"] = content;
-
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::SetUIStyle(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (!uitree_enabled_) return;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  int id = static_cast<int>(params["UINodeId"].asInt64());
-  std::string style_name = params["styleName"].asString();
-  std::string style_content = params["styleContent"].asString();
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!uitree_enabled_) {
+    responder->SendError(CDPErrorCode::ServerError, "UITree is not enabled");
+    return;
+  }
+  int id = 0;
+  std::string style_name;
+  std::string style_content;
+  if (!ReadIntParam(params["UINodeId"], id) ||
+      !ReadStringParam(params["styleName"], style_name) ||
+      !ReadStringParam(params["styleContent"], style_content)) {
+    responder->SendError(
+        CDPErrorCode::InvalidParams,
+        "Invalid params: expected integer UINodeId and string style values");
+    return;
+  }
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
+    return;
+  }
   int ret = devtool_platform_facade_->SetUIStyle(id, style_name, style_content);
 
   if (ret == -1) {
-    Json::Value error = Json::Value(Json::ValueType::objectValue);
-    error["code"] = Json::Value(-32000);
-    error["message"] = Json::Value("set ui style fail");
-    content["error"] = error;
+    responder->SendError(CDPErrorCode::ServerError, "Failed to set UI style");
+    return;
   }
 
-  response["id"] = message["id"].asInt64();
-  response["result"] = content;
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::ScreencastFrameAck(
@@ -610,113 +636,90 @@ void InspectorUIExecutor::LynxSendEventToVM(
 }
 
 void InspectorUIExecutor::TemplateGetTemplateData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Template target is unavailable");
+    return;
+  }
   Json::Value result(Json::ValueType::objectValue);
-
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
   lynx::lepus::Value* value =
       devtool_platform_facade_->GetLepusValueFromTemplateData();
   if (value != nullptr) {
     std::string template_data_str = lynx::lepus::lepusValueToString(*value);
     result["content"] = template_data_str;
   }
-
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::TemplateGetTemplateJsInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value result(Json::ValueType::objectValue);
-  const auto& params = message["params"];
-  const auto id = message["id"].asInt();
-  if (params.isMember("offset") && params.isMember("size")) {
-    const uint32_t offset = params["offset"].asUInt();
-    const uint32_t size = params["size"].asUInt();
-    CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                              "devtool_platform_facade_ is null");
-    std::string content =
-        devtool_platform_facade_->GetTemplateJsInfo(offset, size);
-    result["data"] = content;
-    response["result"] = result;
-    response["id"] = id;
-    sender->SendMessage("CDP", response);
-  } else {
-    sender->SendErrorResponse(id,
-                              "Params must have offset and size properties");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Template target is unavailable");
+    return;
   }
+  int offset = 0;
+  int size = 0;
+  if (!ReadIntParam(params["offset"], offset) || offset < 0 ||
+      !ReadIntParam(params["size"], size) || size < 0) {
+    responder->SendError(
+        CDPErrorCode::InvalidParams,
+        "Invalid params: offset and size must be non-negative integers");
+    return;
+  }
+  Json::Value result(Json::ValueType::objectValue);
+  result["data"] = devtool_platform_facade_->GetTemplateJsInfo(offset, size);
+  responder->SendSuccess(std::move(result));
 }
 
 // start performance protocol
 void InspectorUIExecutor::PerformanceEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   performance_ready_ = true;
+  responder->SendSuccess();
   LOGI("performance_ready_ : " << performance_ready_);
 }
 
 void InspectorUIExecutor::PerformanceDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   performance_ready_ = false;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
   LOGI("performance_ready_ : " << performance_ready_);
 }
 
 void InspectorUIExecutor::getAllTimingInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  if (!ShellIsDestroyed()) {
-    Json::Value value;
-    Json::Reader reader;
-
-    lynx::lepus::Value timing_info = shell_->GetAllTimingInfo();
-    std::string timing_info_string =
-        lynx::devtool::ConvertLepusValueToJsonValue(timing_info);
-
-    reader.parse(timing_info_string, value);
-    response["result"] = value;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (ShellIsDestroyed()) {
+    responder->SendSuccess();
+    return;
   }
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+
+  Json::Value result;
+  Json::Reader reader;
+  lynx::lepus::Value timing_info = shell_->GetAllTimingInfo();
+  std::string timing_info_string = ConvertLepusValueToJsonValue(timing_info);
+  reader.parse(timing_info_string, result);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::getAllPerformanceEntries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  if (!ShellIsDestroyed()) {
-    Json::Value entries;
-    Json::Value result(Json::ValueType::objectValue);
-    Json::Reader reader;
-
-    lynx::lepus::Value all_performance_entries =
-        shell_->GetAllPerformanceEntries();
-    std::string entries_string =
-        lynx::devtool::ConvertLepusValueToJsonValue(all_performance_entries);
-
-    reader.parse(entries_string, entries);
-    result["entries"] = entries;
-    response["result"] = result;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (ShellIsDestroyed()) {
+    responder->SendSuccess();
+    return;
   }
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+
+  Json::Value entries;
+  Json::Value result(Json::ValueType::objectValue);
+  Json::Reader reader;
+  lynx::lepus::Value all_performance_entries =
+      shell_->GetAllPerformanceEntries();
+  std::string entries_string =
+      ConvertLepusValueToJsonValue(all_performance_entries);
+  reader.parse(entries_string, entries);
+  result["entries"] = std::move(entries);
+  responder->SendSuccess(std::move(result));
 }
 
 // end performance protocol

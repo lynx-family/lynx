@@ -49,7 +49,7 @@ notes:
   - TimingHandler returns TimingInfo::GetAllTimingInfoAsMicrosecond(), so timestamp and duration values in timing maps are microseconds.
   - The nested timing maps are extensible. Their keys are produced by the Timing API and may vary by page lifecycle, pipeline type, platform, and frontend framework markers.
   - The native implementation does not read request params and does not require the CDP Performance.enable method.
-  - If the shell has already been destroyed, the current handler sends a response with the request id and no result object.
+  - If the shell has already been destroyed, the handler returns an empty result object.
 examples:
   - title: Read all timing info
     request:

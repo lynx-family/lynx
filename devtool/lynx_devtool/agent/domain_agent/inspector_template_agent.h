@@ -5,32 +5,35 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_TEMPLATE_AGENT_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_TEMPLATE_AGENT_H_
 
+#include <map>
+#include <memory>
+#include <string>
+
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
-#include "devtool/base_devtool/native/public/message_sender.h"
-#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
 
+class LynxDevToolMediator;
+
 class InspectorTemplateAgent : public CDPDomainAgentBase {
  public:
-  InspectorTemplateAgent(
+  explicit InspectorTemplateAgent(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   virtual ~InspectorTemplateAgent();
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message) override;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                  const Json::Value& message) override;
 
  private:
-  typedef void (InspectorTemplateAgent::*TemplateAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
-  void GetTemplateData(const std::shared_ptr<MessageSender>& sender,
-                       const Json::Value& message);
-  void GetTemplateConfigInfo(const std::shared_ptr<MessageSender>& sender,
-                             const Json::Value& message);
-  void GetTemplateApiInfo(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message);
-  void GetTemplateJsInfo(const std::shared_ptr<MessageSender>& sender,
-                         const Json::Value& message);
+  using TemplateAgentMethod = void (InspectorTemplateAgent::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
+
+  DECLARE_DEVTOOL_CDP_METHOD(GetTemplateData);
+  DECLARE_DEVTOOL_CDP_METHOD(GetTemplateConfigInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(GetTemplateApiInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(GetTemplateJsInfo);
 
   std::map<std::string, TemplateAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;

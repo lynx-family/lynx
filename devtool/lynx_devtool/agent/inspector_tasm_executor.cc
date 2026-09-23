@@ -42,17 +42,6 @@
 namespace lynx {
 namespace devtool {
 
-#define HANDLE_WHITE_BOARD_METHOD(method, cur_func_name)                     \
-  do {                                                                       \
-    CHECK_NULL_AND_LOG_RETURN(white_board_inspector_delegate_,               \
-                              "InspectorTasmExecutor::" #cur_func_name       \
-                              ", white_board_inspector_delegate_ is null");  \
-    std::string response = white_board_inspector_delegate_->method(message); \
-    if (!response.empty()) {                                                 \
-      sender->SendMessage("CDP", response);                                  \
-    }                                                                        \
-  } while (0)
-
 namespace {
 
 Json::Value GetGlobalProps(tasm::TemplateAssembler* tasm) {
@@ -1938,47 +1927,42 @@ void InspectorTasmExecutor::DOM_Focus(
 }
 
 void InspectorTasmExecutor::GlobalPropsEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   global_props_enabled_ = true;
-  sender->SendOKResponse(message["id"].asInt64());
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::GlobalPropsDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   global_props_enabled_ = false;
-  sender->SendOKResponse(message["id"].asInt64());
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::GlobalPropsGet(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  response["id"] = message["id"].asInt64();
-  response["result"]["globalProps"] = GetGlobalProps(tasm_);
-  response["result"]["timestamp"] =
-      Json::Value::UInt64(last_global_props_timestamp_ms_);
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  Json::Value result(Json::ValueType::objectValue);
+  result["globalProps"] = GetGlobalProps(tasm_);
+  result["timestamp"] =
+      static_cast<Json::Value::UInt64>(last_global_props_timestamp_ms_);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::GlobalPropsReplace(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  const Json::Value& global_props = message["params"]["globalProps"];
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  const Json::Value& global_props = params["globalProps"];
   if (!global_props.isObject()) {
-    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
-                              "globalProps must be an object");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "globalProps must be an object");
     return;
   }
   if (tasm_ == nullptr) {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "GlobalProps.replace is unavailable");
+    responder->SendError(CDPErrorCode::ServerError,
+                         "GlobalProps.replace is unavailable");
     return;
   }
 
   UpdateGlobalProps(tasm_, global_props);
-  sender->SendOKResponse(message["id"].asInt64());
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::GlobalPropsChanged() {
@@ -1995,46 +1979,53 @@ void InspectorTasmExecutor::GlobalPropsChanged() {
   Json::Value event(Json::ValueType::objectValue);
   event["method"] = "GlobalProps.changed";
   event["params"]["timestamp"] =
-      Json::Value::UInt64(last_global_props_timestamp_ms_);
+      static_cast<Json::Value::UInt64>(last_global_props_timestamp_ms_);
   event["params"]["changes"][0]["operation"] = "replace";
   devtool_mediator->SendCDPEvent(event);
 }
 
+#define HANDLE_WHITE_BOARD_METHOD(method, cur_func_name)                 \
+  do {                                                                   \
+    if (white_board_inspector_delegate_ == nullptr) {                    \
+      responder->SendError(CDPErrorCode::ServerError,                    \
+                           "InspectorTasmExecutor::" #cur_func_name      \
+                           ", white_board_inspector_delegate_ is null"); \
+      return;                                                            \
+    }                                                                    \
+    white_board_inspector_delegate_->method(responder, params);          \
+  } while (0)
+
 void InspectorTasmExecutor::WhiteBoardEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(Enable, WhiteBoardEnable);
 }
 
 void InspectorTasmExecutor::WhiteBoardDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(Disable, WhiteBoardDisable);
 }
 
 void InspectorTasmExecutor::WhiteBoardSetSharedData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(SetSharedData, WhiteBoardSetSharedData);
 }
 
 void InspectorTasmExecutor::WhiteBoardGetSharedData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(GetSharedData, WhiteBoardGetSharedData);
 }
 
 void InspectorTasmExecutor::WhiteBoardRemoveSharedData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(RemoveSharedData, WhiteBoardRemoveSharedData);
 }
 
 void InspectorTasmExecutor::WhiteBoardClear(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(Clear, WhiteBoardClear);
 }
+
+#undef HANDLE_WHITE_BOARD_METHOD
 
 void InspectorTasmExecutor::DOMEnableDomTree(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
@@ -2885,9 +2876,7 @@ void InspectorTasmExecutor::LynxGetComponentId(
 }
 
 void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   Json::Value result(Json::ValueType::objectValue);
   if (tasm_) {
     lynx::lepus::Value default_processor_value = tasm_->GetDefaultProcessor();
@@ -2904,10 +2893,7 @@ void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
   } else {
     result["useDefault"] = false;
   }
-
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::LayerTreeEnable(
