@@ -3741,6 +3741,9 @@ void TemplateAssembler::RunPixelPipeline() {
     // trigger resolve;
     // TODO(nihao.royal): remove page_proxy, and make LynxEngine owns
     // element_manager;
+    // Deferred resolve can outlive the caller's timing scope. Collect its
+    // timestamps for this pipeline and submit them before layout begins.
+    TimingCollector::Scope<Delegate> timing_scope(&delegate_, pipeline_option);
     page_proxy()->element_manager()->ResolveStyle(pipeline_option,
                                                   pipeline_option->target_node);
     current_pipeline_context->ResetResolveRequested();
