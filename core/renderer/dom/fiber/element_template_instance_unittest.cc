@@ -342,6 +342,101 @@ TEST_P(ElementTemplateInstanceTest,
   EXPECT_EQ(width->second.GetValue().Number(), 23);
 }
 
+TEST_P(ElementTemplateInstanceTest, ClassUpdatesInvalidateDescendantSelectors) {
+  for (bool new_styling : {false, true}) {
+    for (bool typed : {false, true}) {
+      SCOPED_TRACE(new_styling);
+      SCOPED_TRACE(typed);
+      manager->config_->SetEnableStandardCSSSelector(true);
+      manager->config_->SetEnableNewStylingPipeline(new_styling);
+      manager->SetConfig(manager->config_);
+      auto styles = std::make_shared<CSSStyleSheetManager>(nullptr);
+      auto fragment = std::make_unique<SharedCSSFragment>(0);
+      fragment->SetEnableCSSInvalidation();
+      fragment->SetEnableCSSSelector();
+      auto add_rule = [&](const char* selector, double opacity) {
+        auto token = fml::MakeRefCounted<CSSParseToken>(CSSParserConfigs{});
+        token->raw_attributes_[kPropertyIDOpacity] =
+            CSSValue(opacity, CSSValuePattern::NUMBER);
+        css::CSSParserContext context;
+        css::CSSTokenizer tokenizer(selector);
+        const auto tokens = tokenizer.TokenizeToEOF();
+        css::CSSParserTokenRange range(tokens);
+        auto selectors = css::CSSSelectorParser::ParseSelector(range, &context);
+        const auto size = css::CSSSelectorParser::FlattenedSize(selectors);
+        auto selector_array = std::make_unique<css::LynxCSSSelector[]>(size);
+        css::CSSSelectorParser::AdoptSelectorVector(selectors,
+                                                    selector_array.get(), size);
+        fragment->AddStyleRule(std::move(selector_array), token);
+      };
+      add_rule(".child", 0.75);
+      add_rule(".active .child", 0.5);
+      styles->AddSharedCSSFragment(std::move(fragment));
+      auto page = manager->CreateFiberPage("page", 0);
+      page->set_style_sheet_manager(styles);
+      manager->SetFiberPageElement(page);
+      auto instance = CreateCompiledSpreadInstance();
+      // Compiled roots use their owning entry's CSS, while typed nodes use page
+      // CSS. Both paths must resolve the fixture's descendant rules.
+      tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+          ->template_bundle_.css_style_manager_ = styles;
+      if (typed) {
+        instance->SetTypedTag(base::String("view"));
+      } else {
+        auto info = tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+                        ->template_bundle_.element_template_infos_.at(
+                            "spread_template");
+        info->elements_[0].attributes_ =
+            std::make_shared<const TemplateAttributes>(TemplateAttributes{
+                Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("class"),
+                          lepus::Value("active"), 0},
+                Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                          lepus::Value(), 0}});
+      }
+      auto set_class = [&](const lepus::Value& value) {
+        auto attributes = lepus::Dictionary::Create();
+        attributes->SetValue("class", value);
+        instance->SetAttributeSlot(0, lepus::Value(attributes));
+      };
+      set_class(lepus::Value("other"));
+      auto root = instance->GetRoot();
+      ASSERT_NE(root, nullptr);
+      auto child = manager->CreateFiberNode("view");
+      root->SetParentComponentUniqueIdForFiber(page->impl_id());
+      child->SetParentComponentUniqueIdForFiber(page->impl_id());
+      child->SetClass(base::String("child"));
+      root->InsertNode(child);
+      page->InsertNode(root);
+      auto expect_opacity = [&](double expected) {
+        SCOPED_TRACE(expected);
+        page->FlushActionsAsRoot();
+        platform_impl_->Flush();
+        auto node = platform_impl_->node_map_.find(child->impl_id());
+        ASSERT_NE(node, platform_impl_->node_map_.end());
+        auto opacity = node->second->props_.find("opacity");
+        ASSERT_NE(opacity, node->second->props_.end());
+        EXPECT_DOUBLE_EQ(opacity->second.Number(), expected);
+        ASSERT_FALSE(child->StyleDirty());
+      };
+      expect_opacity(0.75);
+      set_class(lepus::Value("active other"));
+      expect_opacity(0.5);
+      set_class(lepus::Value("other"));
+      expect_opacity(0.75);
+      instance->SetAttributeSlot(0, lepus::Value(lepus::Dictionary::Create()));
+      expect_opacity(typed ? 0.75 : 0.5);
+      set_class(lepus::Value());
+      expect_opacity(0.75);
+      set_class(lepus::Value("active"));
+      expect_opacity(0.5);
+      set_class(lepus::Value(""));
+      expect_opacity(0.75);
+      instance->SetAttributeSlot(0, lepus::Value());
+      expect_opacity(typed ? 0.75 : 0.5);
+    }
+  }
+}
+
 TEST_P(ElementTemplateInstanceTest, PAPIHandlesRoundTripThroughJSChildSlots) {
   auto runtime = CreatePAPIRuntime();
   auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
