@@ -13,6 +13,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -130,6 +131,83 @@ class ElementTemplateInstanceTest : public FiberElementTest {
     return instance;
   }
 };
+
+TEST_P(ElementTemplateInstanceTest, SpreadCleanupPreservesClassTransmission) {
+  for (bool class_first : {false, true}) {
+    SCOPED_TRACE(class_first);
+    for (const char* fallback : {"none", "static", "dynamic"}) {
+      SCOPED_TRACE(fallback);
+      auto instance = CreateCompiledSpreadInstance();
+      auto info =
+          tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+              ->template_bundle_.element_template_infos_.at("spread_template");
+      TemplateAttributes attributes{Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                              base::String("class"),
+                                              lepus::Value(), 0}};
+      const bool has_fallback = std::string_view(fallback) != "none";
+      if (has_fallback) {
+        attributes.emplace_back(Attribute{std::string_view(fallback) == "static"
+                                              ? ATTRIBUTE_BINDING_TYPE_STATIC
+                                              : ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                          base::String("transmit-class-change"),
+                                          lepus::Value(true), 3});
+        instance->SetAttributeSlot(3, lepus::Value(true));
+      }
+      for (uint32_t slot : {1u, 2u}) {
+        attributes.emplace_back(Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                                          base::String("spread"),
+                                          lepus::Value(), slot});
+      }
+      if (!class_first) {
+        std::rotate(attributes.begin(), attributes.begin() + 1,
+                    attributes.end());
+      }
+      info->elements_[0].attributes_ =
+          std::make_shared<const TemplateAttributes>(std::move(attributes));
+      auto flag = [](const lepus::Value& value) {
+        auto spread = lepus::Dictionary::Create();
+        spread->SetValue("transmit-class-change", value);
+        return lepus::Value(std::move(spread));
+      };
+      instance->SetAttributeSlot(0, lepus::Value("before"));
+      instance->SetAttributeSlot(1, flag(lepus::Value(true)));
+      instance->SetAttributeSlot(2, flag(lepus::Value(true)));
+      auto root = instance->GetRoot();
+      auto child = manager->CreateFiberNode("view");
+      root->InsertNode(child);
+      auto page = manager->CreateFiberPage("page", 0);
+      page->InsertNode(root);
+      int update = 0;
+      auto expect_transmission = [&](bool enabled) {
+        page->FlushActionsAsRoot();
+        platform_impl_->Flush();
+        ASSERT_FALSE(child->StyleDirty());
+        EXPECT_EQ(root->enable_class_change_transmit_, enabled);
+        instance->SetAttributeSlot(0, lepus::Value(std::to_string(++update)));
+        EXPECT_EQ(child->StyleDirty(), enabled);
+      };
+      expect_transmission(true);
+      // Removing one source must retain another spread or an explicit fallback.
+      instance->SetAttributeSlot(2, lepus::Value());
+      expect_transmission(true);
+      instance->SetAttributeSlot(1, lepus::Value());
+      expect_transmission(has_fallback);
+      instance->SetAttributeSlot(2, flag(lepus::Value(true)));
+      expect_transmission(true);
+      // Explicit null overrides the fallback; an absent key reveals it again.
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      ASSERT_FALSE(child->StyleDirty());
+      instance->SetAttributeSlot(2, flag(lepus::Value()));
+      // Observe the update before flush: null must run at its declaration
+      // position.
+      EXPECT_EQ(child->StyleDirty(), class_first);
+      expect_transmission(false);
+      instance->SetAttributeSlot(2, lepus::Value(lepus::Dictionary::Create()));
+      expect_transmission(has_fallback);
+    }
+  }
+}
 
 TEST_P(ElementTemplateInstanceTest, PAPIHandlesRoundTripThroughJSChildSlots) {
   auto runtime = CreatePAPIRuntime();
