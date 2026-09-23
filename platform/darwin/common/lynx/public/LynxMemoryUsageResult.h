@@ -18,9 +18,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 /**
  * Memory attribution for one completed Lynx instance query.
  *
- * The object intentionally keeps the instance-level raw samples. The global
- * result may deduplicate shared background runtime bytes when calculating the
- * global total, but this object continues to expose what the instance sampled.
+ * The object keeps page-attributed samples. The global result replaces shared
+ * page BTS slots with each owning VM's whole heap exactly once.
  */
 @interface LynxInstanceMemoryUsage : NSObject
 
@@ -43,9 +42,9 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, copy) NSDictionary<NSString *, LynxMemoryRecord *> *viewDetail;
 // Main-thread runtime heap snapshot bytes. The query reads current heap stats without GC.
 @property(nonatomic, assign) int64_t mainThreadRuntimeBytes;
-// Background-thread runtime heap snapshot bytes. The query reads current heap stats without GC.
+// Background-thread bytes attributed to this page.
 @property(nonatomic, assign) int64_t backgroundThreadRuntimeBytes;
-// Background runtime group id. The global total deduplicates non-empty shared group ids.
+// Background runtime group id for diagnostics. It is not a unique VM identity.
 @property(nonatomic, copy) NSString *btsRuntimeGroupId;
 
 @end
@@ -53,25 +52,24 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 /**
  * Typed result returned by LynxMemoryUsageQuery's global memory query API.
  *
- * The result is a single request snapshot. expectedInstanceCount is frozen at
- * request start, completedInstanceCount counts only fetchers that returned a
- * complete instance result, and instances is sorted by totalBytes descending.
+ * The result is one native global snapshot. Both instance count fields equal
+ * the active instance count, and instances is sorted by totalBytes descending.
  */
 @interface LynxGlobalMemoryUsageResult : NSObject
 
 // Wall-clock collection start time in milliseconds.
 @property(nonatomic, assign) int64_t collectionStartMs;
-// Whether all expected fetchers completed or the fixed timeout produced a partial result.
+// The direct native global snapshot completes as one operation.
 @property(nonatomic, assign) LynxMemoryCollectionStatus collectionStatus;
 // Elapsed collection time in milliseconds.
 @property(nonatomic, assign) int64_t collectionDurationMs;
-// Fixed timeout used by the first iOS implementation.
+// Timeout metadata retained for API compatibility.
 @property(nonatomic, assign) int64_t collectionTimeoutMs;
-// Number of live fetchers snapshotted at request start.
+// Number of active native instances in the snapshot.
 @property(nonatomic, assign) NSInteger expectedInstanceCount;
-// Number of completed instance results included in this result.
+// Number of instance results included in this result.
 @property(nonatomic, assign) NSInteger completedInstanceCount;
-// Global Lynx-attributed total bytes. This excludes appBytes and deduplicates shared BTS runtime.
+// Global Lynx-attributed total bytes. This excludes appBytes.
 @property(nonatomic, assign) int64_t totalBytes;
 // Current app physical footprint sampled when the global result is built.
 @property(nonatomic, assign) int64_t appBytes;
@@ -85,7 +83,7 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int64_t viewBytes;
 // Aggregated main-thread runtime bytes across completed instances.
 @property(nonatomic, assign) int64_t mainThreadRuntimeBytes;
-// Aggregated background runtime bytes with shared btsRuntimeGroupId values deduplicated.
+// All active BTS VM heaps, counted once by native VM identity.
 @property(nonatomic, assign) int64_t backgroundThreadRuntimeBytes;
 // Completed instance list, sorted by instance totalBytes descending.
 @property(nonatomic, copy) NSArray<LynxInstanceMemoryUsage *> *instances;

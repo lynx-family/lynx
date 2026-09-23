@@ -4,10 +4,13 @@
 
 #include "core/shell/runtime/mts/mts_runtime_pool.h"
 
+#include <algorithm>
+
 #include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/devtool_wrapper/devtool_pool.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 
 namespace lynx {
@@ -32,6 +35,15 @@ std::shared_ptr<MTSRuntimePool> MTSRuntimePool::Create(
 
 MTSRuntimePool::~MTSRuntimePool() {
   is_destroying_.store(true, std::memory_order_release);
+  {
+    // ReportPoolState posts its update while holding this mutex. Crossing the
+    // mutex here guarantees that destruction is queued after every update.
+    std::lock_guard<std::mutex> lock{mtx_};
+  }
+  if (!is_global_pool_) {
+    tasm::performance::GlobalMemoryMonitor::GetInstance()
+        .OnMTSRuntimePoolDestroy(pool_instance_id_);
+  }
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, MTS_VM_POOL_STATE_EVENT,
                       "pool_instance_id", pool_instance_id_, "destroyed", "1");
 }
@@ -95,6 +107,7 @@ bool MTSRuntimePool::Preload(std::string url, std::vector<uint8_t> bytecode,
             }
           }
         }
+        pool->ReportPoolState();
 
         if (!success) {
           LOGE("MTSRuntimePool preload failed");
@@ -159,14 +172,13 @@ void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
   }
 
   // lock and insert
-  std::lock_guard<std::mutex> lock{mtx_};
-  for (auto& r : temp_mts_runtimes) {
-    mts_runtimes_.emplace_back(std::move(r));
+  {
+    std::lock_guard<std::mutex> lock{mtx_};
+    for (auto& r : temp_mts_runtimes) {
+      mts_runtimes_.emplace_back(std::move(r));
+    }
   }
-
-#if ENABLE_TRACE_PERFETTO
   ReportPoolState();
-#endif
 }
 
 std::shared_ptr<runtime::MTSRuntime> MTSRuntimePool::TakeMTSRuntimeSafely() {
@@ -180,6 +192,7 @@ std::shared_ptr<runtime::MTSRuntime> MTSRuntimePool::TakeMTSRuntimeSafely() {
     mts_runtime.swap(mts_runtimes_.back());
     mts_runtimes_.pop_back();
   }
+  ReportPoolState();
 
   // generate a new context
   if (enable_auto_generate_ &&
@@ -194,30 +207,52 @@ void MTSRuntimePool::SetEnableAutoGenerate(bool enable) {
   enable_auto_generate_ = enable;
 }
 
-#if ENABLE_TRACE_PERFETTO
 void MTSRuntimePool::InitReportPoolState() {
   static std::atomic<int32_t> id{0};
-  pool_instance_id_ = id++;
+  pool_instance_id_ = id.fetch_add(1, std::memory_order_relaxed);
+  created_at_ms_ = tasm::performance::MemoryNowMs();
+#if ENABLE_TRACE_PERFETTO
   report_pool_state_ = std::make_unique<base::NotificationCallback>(
       LYNX_ON_TRACE_BEGIN_NOTIFICATION,
       [&](const std::string& tag, intptr_t data) { ReportPoolState(); });
+#endif
 }
 
 void MTSRuntimePool::ReportPoolState() {
+  if (is_destroying_.load(std::memory_order_acquire)) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock{mtx_};
+  if (is_destroying_.load(std::memory_order_acquire)) {
+    return;
+  }
+  int64_t heap_bytes = 0;
+  for (const auto& runtime : mts_runtimes_) {
+    if (runtime) {
+      heap_bytes += std::max<int64_t>(0, runtime->GetCurrentHeapSizeBytes());
+    }
+  }
+  if (!is_global_pool_) {
+    tasm::performance::GlobalMemoryMonitor::GetInstance()
+        .OnMTSRuntimePoolUpdate(pool_instance_id_, template_url_, context_type_,
+                                created_at_ms_, mts_runtimes_.size(),
+                                heap_bytes);
+  }
+#if ENABLE_TRACE_PERFETTO
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, MTS_VM_POOL_STATE_EVENT,
                       [&](lynx::perfetto::EventContext ctx) {
                         ctx.event()->add_debug_annotations(
                             "pool_instance_id",
                             std::to_string(pool_instance_id_));
                         int index = 0;
-                        for (auto& vm_inst : mts_runtimes_) {
+                        for (const auto& runtime : mts_runtimes_) {
                           ctx.event()->add_debug_annotations(
                               std::string("id_") + std::to_string(index++),
-                              vm_inst->GetMTSContext()->GetDebugDescription());
+                              runtime->GetMTSContext()->GetDebugDescription());
                         }
                       });
-}
 #endif
+}
 
 }  // namespace shell
 }  // namespace lynx
