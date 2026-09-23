@@ -84,13 +84,27 @@ export interface TimingListener {
   onUpdate: (info: TimingInfo) => void;
 }
 
+export interface MemoryUsage {
+  totalBytes: number;
+  elementBytes: number;
+  elementCount: number;
+  mtsBytes: number;
+  btsBytes: number;
+  btsHeapBytes: number;
+  uiBytes: number;
+  btsShared: boolean;
+}
+
 export interface Performance extends CommonPerformance {
   addTimingListener(listener: TimingListener): void;
   removeTimingListener(listener: TimingListener): void;
   removeAllTimingListener(): void;
   createObserver(callback: PerformanceCallback): PerformanceObserver;
+  /**
+   * Asynchronously reads the current page memory usage in bytes.
+   */
+  getMemoryUsage(callback: (usage: MemoryUsage) => void): void;
 }
-
 
 export type PerformanceCallback = (entry: PerformanceEntry) => void;
 export interface PerformanceObserver {

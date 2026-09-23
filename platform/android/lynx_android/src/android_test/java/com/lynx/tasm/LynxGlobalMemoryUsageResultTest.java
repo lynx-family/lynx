@@ -29,16 +29,47 @@ public class LynxGlobalMemoryUsageResultTest {
   }
 
   @Test
-  public void aggregatesInstancesAndDeduplicatesSharedRuntime() {
-    LynxInstanceMemoryUsage first = createInstance(1, 187L, 10L, 1L, 100L, 7L, 70L, "shared");
-    LynxInstanceMemoryUsage second = createInstance(2, 308L, 20L, 2L, 200L, 8L, 80L, "shared");
-    LynxInstanceMemoryUsage third = createInstance(3, 359L, 30L, 3L, 300L, 9L, 20L, "-1");
+  public void mapsNativeGlobalAndInstanceSnapshots() {
+    long[] globalValues = {784L, 60L, 6L, 600L, 24L, 100L};
+    long[] instanceValues = {
+        1L,
+        187L,
+        10L,
+        1L,
+        100L,
+        7L,
+        70L,
+        2L,
+        308L,
+        20L,
+        2L,
+        200L,
+        8L,
+        80L,
+        3L,
+        359L,
+        30L,
+        3L,
+        300L,
+        9L,
+        20L,
+    };
+    String[] instanceStrings = {
+        "page-1",
+        "url-1",
+        "same-name",
+        "page-2",
+        "url-2",
+        "same-name",
+        "page-3",
+        "url-3",
+        "-1",
+    };
 
-    LynxGlobalMemoryUsageResult result =
-        LynxGlobalMemoryUsageResult.build(100L, LynxMemoryCollectionStatus.COMPLETED, 50L, 2000L, 4,
-            0L, Arrays.asList(first, second, third));
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
+        100L, 50L, 2000L, globalValues, instanceValues, instanceStrings);
 
-    assertEquals(4, result.getExpectedInstanceCount());
+    assertEquals(3, result.getExpectedInstanceCount());
     assertEquals(3, result.getCompletedInstanceCount());
     assertEquals(50L, result.getCollectionDurationMs());
     assertEquals(60L, result.getElementBytes());
@@ -47,9 +78,45 @@ public class LynxGlobalMemoryUsageResultTest {
     assertEquals(24L, result.getMainThreadRuntimeBytes());
     assertEquals(100L, result.getBackgroundThreadRuntimeBytes());
     assertEquals(784L, result.getTotalBytes());
-    assertEquals(third, result.getInstances().get(0));
-    assertEquals(second, result.getInstances().get(1));
-    assertEquals(first, result.getInstances().get(2));
+    assertEquals(3, result.getInstances().get(0).getInstanceId());
+    assertEquals(2, result.getInstances().get(1).getInstanceId());
+    assertEquals(1, result.getInstances().get(2).getInstanceId());
+    assertEquals("same-name", result.getInstances().get(2).getBtsRuntimeGroupId());
+  }
+
+  @Test
+  public void fallsBackToEmptyResultForIncompleteGlobalSnapshot() {
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
+        100L, 50L, 20L, new long[] {1L}, new long[] {1L, 2L}, new String[] {"page-1"});
+
+    assertEquals(100L, result.getCollectionStartMs());
+    assertEquals(LynxMemoryCollectionStatus.COMPLETED, result.getCollectionStatus());
+    assertEquals(50L, result.getCollectionDurationMs());
+    assertEquals(20L, result.getCollectionTimeoutMs());
+    assertEquals(0, result.getExpectedInstanceCount());
+    assertEquals(0, result.getCompletedInstanceCount());
+    assertEquals(0L, result.getTotalBytes());
+    assertEquals(0L, result.getRatioToApp(), 0L);
+    assertEquals(0L, result.getElementBytes());
+    assertEquals(0L, result.getElementNodeCount());
+    assertEquals(0L, result.getViewBytes());
+    assertEquals(0L, result.getMainThreadRuntimeBytes());
+    assertEquals(0L, result.getBackgroundThreadRuntimeBytes());
+    assertEquals(0, result.getInstances().size());
+  }
+
+  @Test
+  public void ignoresIncompleteNativeInstanceSnapshot() {
+    long[] globalValues = {10L, 1L, 2L, 3L, 4L, 5L};
+    long[] instanceValues = {1L, 10L, 1L, 2L, 3L, 4L, 5L};
+
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
+        100L, 50L, 20L, globalValues, instanceValues, new String[] {"page-1", "url-1"});
+
+    assertEquals(0, result.getExpectedInstanceCount());
+    assertEquals(0, result.getCompletedInstanceCount());
+    assertEquals(10L, result.getTotalBytes());
+    assertEquals(0, result.getInstances().size());
   }
 
   @Test

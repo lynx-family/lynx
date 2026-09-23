@@ -5,12 +5,19 @@
 package com.lynx.tasm;
 
 import androidx.annotation.AnyThread;
+import androidx.annotation.Keep;
 import androidx.annotation.Nullable;
+import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.core.LynxThreadPool;
+import java.util.Collections;
 
 /**
  * Public entry for querying current global Lynx memory usage across live Lynx instances.
  */
 public final class LynxMemoryUsageQuery {
+  private static final String TAG = "LynxMemoryUsageQuery";
+  private static final long DEFAULT_TIMEOUT_MS = 2000L;
   private static final LynxMemoryUsageQuery INSTANCE = new LynxMemoryUsageQuery();
 
   private LynxMemoryUsageQuery() {}
@@ -22,29 +29,61 @@ public final class LynxMemoryUsageQuery {
   /**
    * Queries current global Lynx memory usage asynchronously.
    *
-   * <p>Threading: when the Lynx native library is available, the callback is invoked on the Lynx
-   * report thread. Before the native report thread is available, the callback is invoked
-   * asynchronously on a background executor with an empty completed result. Callers must dispatch
-   * to the main thread before touching platform View objects.
+   * <p>The callback runs on the Lynx report thread after native initialization. Before that, it
+   * runs asynchronously on a background executor with an empty completed result.
    */
   @AnyThread
   public void queryLynxGlobalMemoryUsageAsync(@Nullable LynxGlobalMemoryUsageCallback callback) {
-    LynxGlobalMemoryUsageCollector.getInstance().queryMemoryUsageAsync(callback);
+    queryLynxGlobalMemoryUsageAsync(callback, DEFAULT_TIMEOUT_MS);
   }
 
   /**
-   * Queries current global Lynx memory usage asynchronously with a custom collection timeout.
+   * Queries current global Lynx memory usage asynchronously with a retained timeout metadata value.
    *
-   * <p>When {@code timeoutMs <= 0}, the collector uses the default timeout of 2000ms.
-   *
-   * <p>Threading: when the Lynx native library is available, the callback is invoked on the Lynx
-   * report thread. Before the native report thread is available, the callback is invoked
-   * asynchronously on a background executor with an empty completed result. Callers must dispatch
-   * to the main thread before touching platform View objects.
+   * <p>The native global snapshot no longer fans out to per-instance fetchers, so it does not wait
+   * for this timeout. Values less than or equal to zero use 2000ms for API compatibility.
    */
   @AnyThread
   public void queryLynxGlobalMemoryUsageAsync(
       @Nullable LynxGlobalMemoryUsageCallback callback, long timeoutMs) {
-    LynxGlobalMemoryUsageCollector.getInstance().queryMemoryUsageAsync(callback, timeoutMs);
+    if (callback == null) {
+      return;
+    }
+    final long collectionStartMs = System.currentTimeMillis();
+    final long collectionTimeoutMs = timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
+    if (!LynxEnv.inst().isNativeLibraryLoaded()) {
+      LynxThreadPool.getAsyncServiceExecutor().execute(
+          ()
+              -> invokeCallbackSafely(callback,
+                  LynxGlobalMemoryUsageResult.build(collectionStartMs,
+                      LynxMemoryCollectionStatus.COMPLETED,
+                      System.currentTimeMillis() - collectionStartMs, collectionTimeoutMs, 0, 0L,
+                      Collections.emptyList())));
+      return;
+    }
+    nativeQueryGlobalMemoryUsageAsync(callback, collectionStartMs, collectionTimeoutMs);
   }
+
+  @Keep
+  @CalledByNative
+  private static void onNativeMemoryUsageResult(LynxGlobalMemoryUsageCallback callback,
+      long collectionStartMs, long collectionTimeoutMs, long[] globalValues, long[] instanceValues,
+      String[] instanceStrings) {
+    invokeCallbackSafely(callback,
+        LynxGlobalMemoryUsageResult.fromNative(collectionStartMs,
+            System.currentTimeMillis() - collectionStartMs, collectionTimeoutMs, globalValues,
+            instanceValues, instanceStrings));
+  }
+
+  private static void invokeCallbackSafely(
+      LynxGlobalMemoryUsageCallback callback, LynxGlobalMemoryUsageResult result) {
+    try {
+      callback.onResult(result);
+    } catch (Throwable throwable) {
+      LLog.e(TAG, "Failed to deliver memory usage result: " + throwable.getMessage());
+    }
+  }
+
+  private static native void nativeQueryGlobalMemoryUsageAsync(
+      LynxGlobalMemoryUsageCallback callback, long collectionStartMs, long collectionTimeoutMs);
 }

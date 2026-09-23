@@ -15,6 +15,8 @@
 
 #include "base/include/debug/lynx_error.h"
 #include "base/include/expected.h"
+#include "base/include/fml/memory/js_memory_track_scope.h"
+#include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/to_underlying.h"
@@ -43,6 +45,7 @@
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/recorder/record.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
@@ -365,6 +368,28 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             native_app->SetJsAppObj(args[0].getObject(rt));
           }
 
+          return Value::undefined();
+        });
+  } else if (methodName == "getMemoryUsage") {
+    return Function::createFromHostFunction(
+        *rt, PropNameID::forAscii(*rt, "getMemoryUsage"), 1,
+        [this](Runtime& rt, const Value& thisVal, const Value* args,
+               size_t count) -> base::expected<Value, JSINativeException> {
+          if (count != 1 || !args[0].isObject()) {
+            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                "getMemoryUsage expects one callback"));
+          }
+          auto callback = args[0].getObject(rt).asFunction(rt);
+          if (!callback) {
+            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                "getMemoryUsage callback isn't a function"));
+          }
+          auto* native_app = native_app_.Lock();
+          if (!native_app || native_app->IsDestroying()) {
+            return Value::undefined();
+          }
+          native_app->GetMemoryUsage(
+              native_app->CreateCallBack(std::move(*callback)));
           return Value::undefined();
         });
   } else if (methodName == "setTimeout") {
@@ -1813,6 +1838,7 @@ std::vector<PropNameID> AppProxy::getPropertyNames(Runtime& rt) {
       "onPipelineStart",
       "bindPipelineIdWithTimingFlag",
       "markPipelineTiming",
+      "getMemoryUsage",
       "__SetSourceMapRelease",
       "__GetSourceMapRelease",
       "requestAnimationFrame",
@@ -3008,6 +3034,44 @@ base::expected<Value, JSINativeException> App::ReadScript(
   } else {
     return Value(String::createFromUtf8(*rt, throwing_source));
   }
+}
+
+void App::GetMemoryUsage(ApiCallBack callback) {
+  auto rt = rt_.Lock();
+  if (!rt) return;
+  auto js_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+  const auto alloc_slot = js_runner->GetCurrentAllocSlot();
+  tasm::performance::GlobalMemoryMonitor::GetInstance().GetInstanceMemoryUsage(
+      static_cast<int32_t>(rt->getRuntimeId()),
+      [weak_app = WeakFromThis(), js_runner, alloc_slot,
+       callback](tasm::performance::InstanceMemoryUsage usage) mutable {
+        js_runner->PostTask([weak_app, js_runner, alloc_slot, callback,
+                             usage = std::move(usage)]() mutable {
+          auto* app = weak_app.get();
+          if (!app || app->IsDestroying()) return;
+          fml::JSMemoryTrackSlot alloc_slot_scope(js_runner.get(), alloc_slot);
+          BASE_STATIC_STRING_DECL(kTotalBytes, "totalBytes");
+          BASE_STATIC_STRING_DECL(kElementBytes, "elementBytes");
+          BASE_STATIC_STRING_DECL(kElementCount, "elementCount");
+          BASE_STATIC_STRING_DECL(kMTSBytes, "mtsBytes");
+          BASE_STATIC_STRING_DECL(kBTSBytes, "btsBytes");
+          BASE_STATIC_STRING_DECL(kBTSHeapBytes, "btsHeapBytes");
+          BASE_STATIC_STRING_DECL(kUIBytes, "uiBytes");
+          BASE_STATIC_STRING_DECL(kBTSShared, "btsShared");
+          const auto& page = usage.page;
+          auto result = lepus::Dictionary::Create();
+          result->SetValue(kTotalBytes, page.total_bytes);
+          result->SetValue(kElementBytes, page.element_bytes);
+          result->SetValue(kElementCount, page.element_count);
+          result->SetValue(kMTSBytes, page.mts_bytes);
+          result->SetValue(kBTSBytes, page.bts_bytes);
+          result->SetValue(kBTSHeapBytes, usage.bts_heap_bytes);
+          result->SetValue(kUIBytes, page.ui_bytes);
+          result->SetValue(kBTSShared, page.bts_shared);
+          app->InvokeApiCallBackWithValue(callback,
+                                          lepus::Value(std::move(result)));
+        });
+      });
 }
 
 Value App::SetTimeout(Function func, int time) {

@@ -4,11 +4,7 @@
 
 package com.lynx.tasm;
 
-import static org.junit.Assert.assertFalse;
-
 import androidx.annotation.NonNull;
-import com.lynx.tasm.base.LynxConsumer;
-import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 final class LynxMemoryUsageTestUtils {
@@ -20,13 +16,6 @@ final class LynxMemoryUsageTestUtils {
     return new LynxInstanceMemoryUsage(instanceId, "page-" + instanceId, "url-" + instanceId,
         totalBytes, elementBytes, elementNodeCount, viewBytes, null, mainThreadRuntimeBytes,
         backgroundThreadRuntimeBytes, groupId);
-  }
-
-  static LynxMemoryUsageFetcher createNoOpFetcher() {
-    return new LynxMemoryUsageFetcher() {
-      @Override
-      void queryMemoryUsageAsync(@NonNull LynxConsumer<LynxInstanceMemoryUsage> callback) {}
-    };
   }
 
   static LynxGlobalMemoryUsageCallback createResultCallback(
@@ -52,45 +41,5 @@ final class LynxMemoryUsageTestUtils {
 
   interface ThrowingRunnable {
     void run() throws Exception;
-  }
-
-  static class TestCollector extends LynxGlobalMemoryUsageCollector {
-    private final ArrayList<Runnable> mReportTasks = new ArrayList<>();
-    private final ArrayList<Runnable> mDelayedTasks = new ArrayList<>();
-    private final ArrayList<Long> mDelayedMsList = new ArrayList<>();
-
-    @Override
-    void runOnReportThread(@NonNull Runnable runnable) {
-      mReportTasks.add(runnable);
-    }
-
-    @Override
-    void delayRunOnReportThread(@NonNull Runnable runnable, long delayMs) {
-      mDelayedTasks.add(runnable);
-      mDelayedMsList.add(delayMs);
-    }
-
-    void runNextReportTask() {
-      assertFalse(mReportTasks.isEmpty());
-      mReportTasks.remove(0).run();
-    }
-
-    void runNextDelayedTask() {
-      assertFalse(mDelayedTasks.isEmpty());
-      mDelayedMsList.remove(0);
-      mDelayedTasks.remove(0).run();
-    }
-
-    int getReportTaskCount() {
-      return mReportTasks.size();
-    }
-
-    int getDelayedTaskCount() {
-      return mDelayedTasks.size();
-    }
-
-    long getDelayedMs(int index) {
-      return mDelayedMsList.get(index);
-    }
   }
 }
