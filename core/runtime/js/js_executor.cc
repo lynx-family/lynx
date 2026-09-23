@@ -97,6 +97,7 @@ void JSExecutor::SetObserver(JSIObserver* observer) {
 void JSExecutor::invokeCallback(std::shared_ptr<ModuleCallback> callback,
                                 ModuleCallbackFunctionHolder* holder) {
   Scope scope(*js_runtime_);
+  callback->SetLogContext(GetLogContext());
   callback->Invoke(js_runtime_.get(), holder);
 }
 

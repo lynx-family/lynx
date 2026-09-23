@@ -5,7 +5,21 @@
 #ifndef CORE_SERVICES_RECORDER_RECORD_H_
 #define CORE_SERVICES_RECORDER_RECORD_H_
 
+#include <string_view>
+#include <tuple>
+#include <utility>
+
+#include "base/include/log/log_context.h"
+#include "base/include/log/logging.h"
+
 namespace lynx::tasm::recorder {
+// Version of the observation log format, independent of the SDK version.
+// Bump this version when adding a RecordType or changing the log output of
+// ObserveRecord. Update the parsing script to handle the new version while
+// retaining support for older versions. Refactoring that preserves the output
+// and comment-only changes do not require a version bump.
+inline constexpr char kObservationLogVersion[] = "0.0.1";
+
 // Compile-time actions; values are not part of the recorded file format.
 enum class RecordType {
   // Reserved for observation-only events; never creates a recording action.
@@ -37,37 +51,153 @@ enum class RecordType {
   SwitchEngineFromUIThread,
 };
 
+// These helpers only inspect cheap metadata. Payload serialization stays at
+// the call site when needed; observation never changes the recorded arguments.
+template <RecordType type, typename... Args>
+void ObserveRecord(const char* name, const base::LogContext& context,
+                   const Args&... args) {
+  [[maybe_unused]] auto values = std::forward_as_tuple(args...);
+  if constexpr (type == RecordType::LoadTemplate ||
+                type == RecordType::LoadTemplateBundle) {
+    // TODO(songshourui): Send template bytes and data through DevTool when
+    // DevTool is enabled instead of writing payloads to files.
+    LOGO(context << ' ' << name << " logVersion:" << kObservationLogVersion
+                 << " url:" << std::get<0>(values)
+                 << " bytes:" << std::get<1>(values).size()
+                 << " hasData:" << (std::get<2>(values) != nullptr));
+  } else if constexpr (type == RecordType::Scripts ||
+                       type == RecordType::PreloadScript ||
+                       type == RecordType::ExternalScriptAsLoadComponent) {
+    // TODO(songshourui): Send script content through DevTool when
+    // DevTool is enabled instead of writing payloads to files.
+    LOGO(context << ' ' << name << " url:" << std::get<0>(values)
+                 << " bytes:" << std::string_view(std::get<1>(values)).size());
+  } else if constexpr (type == RecordType::ThreadStrategy) {
+    LOGO(context << ' ' << name << " logVersion:" << kObservationLogVersion
+                 << " strategy:" << std::get<0>(values)
+                 << " enableRuntime:" << std::get<2>(values));
+  } else if constexpr (type == RecordType::ViewPort) {
+    LOGO(context << ' ' << name << " width:" << std::get<3>(values)
+                 << " height:" << std::get<2>(values) << " widthMode:"
+                 << std::get<1>(values) << " heightMode:" << std::get<0>(values)
+                 << " pixelRatio:" << std::get<6>(values));
+  } else if constexpr (type == RecordType::Component) {
+    LOGO(context << ' ' << name << " tag:" << std::get<0>(values)
+                 << " type:" << static_cast<int>(std::get<1>(values)));
+  } else if constexpr (type == RecordType::SetGlobalProps ||
+                       type == RecordType::UpdateConfig) {
+    // TODO(songshourui): Send properties and configuration through DevTool when
+    // DevTool is enabled instead of writing payloads to files.
+    LOGO(context << ' ' << name
+                 << " entries:" << std::get<0>(values).GetLength());
+  } else if constexpr (type == RecordType::ReloadTemplate ||
+                       type == RecordType::UpdateMetaData ||
+                       type == RecordType::UpdateDataByPreParsedData) {
+    // TODO(songshourui): Send template data through DevTool when
+    // DevTool is enabled instead of writing payloads to files.
+    LOGO(context << ' ' << name
+                 << " hasData:" << (std::get<0>(values) != nullptr));
+  } else if constexpr (type == RecordType::UpdateFontScale) {
+    LOGO(context << ' ' << name << " scale:" << std::get<0>(values)
+                 << " source:" << std::get<1>(values));
+  } else if constexpr (type == RecordType::RequireTemplate) {
+    LOGO(context << ' ' << name << " url:" << std::get<0>(values)
+                 << " sync:" << std::get<1>(values));
+  } else if constexpr (type == RecordType::LoadComponentWithCallback) {
+    // TODO(songshourui): Send component bytes through DevTool when
+    // DevTool is enabled instead of writing payloads to files.
+    LOGO(context << ' ' << name << " url:" << std::get<0>(values)
+                 << " bytes:" << std::get<1>(values).size() << " sync:"
+                 << std::get<2>(values) << " callback:" << std::get<3>(values));
+  } else if constexpr (type == RecordType::CustomEvent ||
+                       type == RecordType::BubbleEvent) {
+    // TODO(songshourui): Send event parameters through DevTool when
+    // DevTool is enabled instead of writing payloads to files.
+    LOGO(context << ' ' << name << " name:" << std::get<0>(values) << " tag:"
+                 << std::get<1>(values) << " rootTag:" << std::get<2>(values)
+                 << " paramsCount:" << std::get<3>(values).GetLength());
+  } else if constexpr (type == RecordType::TouchEvent) {
+    if constexpr (sizeof...(Args) == 4) {
+      [[maybe_unused]] const auto& event = std::get<2>(values);
+      LOGO(context << ' ' << name << " name:" << std::get<0>(values)
+                   << " rootTag:" << std::get<1>(values) << " tag:" << event.tag
+                   << " x:" << event.x << " y:" << event.y
+                   << " multiFinger:" << event.is_multi_finger
+                   << " timestamp:" << event.timestamp);
+    } else {
+      LOGO(context << ' ' << name << " name:" << std::get<0>(values) << " tag:"
+                   << std::get<1>(values) << " rootTag:" << std::get<2>(values)
+                   << " x:" << std::get<3>(values)
+                   << " y:" << std::get<4>(values));
+    }
+  } else if constexpr (type == RecordType::NativeModuleFunctionCall) {
+    // TODO(songshourui): Send native module arguments through DevTool when
+    // DevTool is enabled instead of writing payloads to files.
+    LOGO(context << ' ' << name << " module:" << std::get<0>(values)
+                 << " method:" << std::get<1>(values)
+                 << " argc:" << std::get<2>(values)
+                 << " callbacks:" << std::get<5>(values));
+  } else if constexpr (type == RecordType::NativeModuleCallback) {
+    LOGO(context << ' ' << name << " module:" << std::get<0>(values)
+                 << " method:" << std::get<1>(values)
+                 << " callback:" << std::get<sizeof...(Args) - 2>(values));
+  } else if constexpr (type == RecordType::GlobalEvent) {
+    LOGO(context << ' ' << name << " module:" << std::get<0>(values)
+                 << " method:" << std::get<1>(values));
+  } else if constexpr (type == RecordType::SwitchEngineFromUIThread) {
+    LOGO(context << ' ' << name << " attach:" << std::get<0>(values));
+  } else {
+    LOGO(context << ' ' << name);
+  }
+}
+
 }  // namespace lynx::tasm::recorder
 
 #if defined(ENABLE_TESTBENCH_RECORDER) && ENABLE_TESTBENCH_RECORDER
-
 // Recorder implementation headers may be absent when the optional recorder
 // target is not packaged. Keep those dependencies behind this single entry.
 #include "core/services/recorder/lynxview_init_recorder.h"
 #include "core/services/recorder/template_assembler_recorder.h"
-#define RECORD(type, ...)                                    \
+#define LYNX_RECORD_ENABLED() true
+#define LYNX_RECORD_CALL(type, ...)                          \
   ::lynx::tasm::recorder::TemplateAssemblerRecorder::Record< \
       ::lynx::tasm::recorder::RecordType::type>(__VA_ARGS__)
+#else
+#define LYNX_RECORD_ENABLED() LOGO_IS_ON()
+#define LYNX_RECORD_CALL(type, ...)
+#endif
 
-#define RECORD_OPTIONAL(flag, type, ...) \
-  do {                                   \
-    if (flag) {                          \
-      RECORD(type, __VA_ARGS__);         \
-    }                                    \
+// Evaluate the context and arguments once, only when at least one consumer is
+// enabled. The existing record ID remains in args until Recorder uses context.
+#define RECORD(type, context, ...)                                             \
+  do {                                                                         \
+    if (LYNX_RECORD_ENABLED()) {                                               \
+      [&](const ::lynx::base::LogContext& record_context, auto&&... args) {    \
+        if (LOGO_IS_ON()) {                                                    \
+          ::lynx::tasm::recorder::ObserveRecord<                               \
+              ::lynx::tasm::recorder::RecordType::type>(#type, record_context, \
+                                                        args...);              \
+        }                                                                      \
+        LYNX_RECORD_CALL(type, std::forward<decltype(args)>(args)...);         \
+      }(context, ##__VA_ARGS__);                                               \
+    }                                                                          \
   } while (0)
+
+#define RECORD_OPTIONAL(flag, type, context, ...) \
+  do {                                            \
+    if (LYNX_RECORD_ENABLED() && (flag)) {        \
+      RECORD(type, context, ##__VA_ARGS__);       \
+    }                                             \
+  } while (0)
+
 // Keep the prelude and recording call in the same scope. A return in the
 // prelude exits the enclosing function, not a helper or lambda.
-#define RECORD_WITH_EARLY_RETURN(before, type, ...) \
-  do {                                              \
-    before;                                         \
-    RECORD(type, __VA_ARGS__);                      \
+#define RECORD_WITH_EARLY_RETURN(before, type, context, ...) \
+  do {                                                       \
+    if (LYNX_RECORD_ENABLED()) {                             \
+      before;                                                \
+      RECORD(type, context, ##__VA_ARGS__);                  \
+    }                                                        \
   } while (0)
-
-#else
-// Neither the condition nor arguments are evaluated in a recorder-free build.
-#define RECORD(type, ...)
-#define RECORD_OPTIONAL(flag, type, ...)
-#define RECORD_WITH_EARLY_RETURN(before, type, ...)
-#endif
 
 #endif  // CORE_SERVICES_RECORDER_RECORD_H_

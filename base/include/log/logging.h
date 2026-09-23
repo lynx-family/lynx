@@ -203,6 +203,10 @@ class LogMessageVoidify {
 
 // TODO: Preserve M/O identity if output consumers need it in the future.
 #if LYNX_MIN_LOG_LEVEL <= LYNX_LOG_LEVEL_INFO
+// Include compile-time availability so callers can skip preparing arguments.
+#define LOGO_IS_ON()                                            \
+  (LOG_IS_ON(INFO) && lynx::base::logging::GetInfoLogLevel() <= \
+                          lynx::base::logging::detail::INFO_LEVEL_OBSERVE)
 #define LOGM(msg)                                          \
   do {                                                     \
     if (lynx::base::logging::GetInfoLogLevel() <=          \
@@ -210,14 +214,12 @@ class LogMessageVoidify {
       LOGI(msg);                                           \
     }                                                      \
   } while (0)
-#define LOGO(msg)                                          \
-  do {                                                     \
-    if (lynx::base::logging::GetInfoLogLevel() <=          \
-        lynx::base::logging::detail::INFO_LEVEL_OBSERVE) { \
-      LOGI(msg);                                           \
-    }                                                      \
+#define LOGO(msg)                                      \
+  do {                                                 \
+    LAZY_STREAM(LOG_STREAM_INFO, LOGO_IS_ON()) << msg; \
   } while (0)
 #else
+#define LOGO_IS_ON() false
 #define LOGM(msg)
 #define LOGO(msg)
 #endif

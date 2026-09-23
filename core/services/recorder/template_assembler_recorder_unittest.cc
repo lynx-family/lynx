@@ -88,21 +88,38 @@ lepus::Value buildLepusValueFromString(const std::string str) {
 
 #if ENABLE_TESTBENCH_RECORDER
 TEST(TemplateAssemblerRecorder, OptionalConditionIsLazy) {
-  RECORD(OnlyObserve);
+  RECORD(OnlyObserve, base::LogContext{});
   int conditions = 0, arguments = 0;
   // A false condition must not evaluate any recording arguments.
-  RECORD_OPTIONAL(++conditions == 0, UpdateFontScale,
+  RECORD_OPTIONAL(++conditions == 0, UpdateFontScale, base::LogContext{},
                   static_cast<float>(++arguments), "test", 0);
   EXPECT_EQ(conditions, 1);
   EXPECT_EQ(arguments, 0);
+}
+
+TEST(TemplateAssemblerRecorder, ObservationAndRecorderEvaluateArgumentsOnce) {
+  const int min_level = base::logging::GetMinLogLevel();
+  const int info_level = base::logging::GetInfoLogLevel();
+  base::logging::SetMinLogLevel(base::logging::detail::LOG_OBSERVE);
+  int contexts = 0, arguments = 0;
+  auto context = [&] {
+    ++contexts;
+    return base::LogContext{};
+  };
+  RECORD(UpdateFontScale, context(), static_cast<float>(++arguments), "test",
+         0);
+  EXPECT_EQ(contexts, 1);
+  EXPECT_EQ(arguments, 1);
+  base::logging::SetMinLogLevel(min_level);
+  base::logging::detail::g_info_log_level = info_level;
 }
 
 TEST(TemplateAssemblerRecorder, PreludeCanReturnFromCaller) {
   int evaluated = 0;
   auto invoke = [&evaluated](bool stop) {
     RECORD_WITH_EARLY_RETURN(
-        int value = 7;
-        if (stop) { return value; }, OnlyObserve, evaluated += value);
+        int value = 7; if (stop) { return value; }, OnlyObserve,
+                       base::LogContext{}, evaluated += value);
     return 11;
   };
   EXPECT_EQ(invoke(true), 7);

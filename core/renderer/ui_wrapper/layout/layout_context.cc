@@ -659,7 +659,7 @@ void LayoutContext::AttachLayoutNodeTypeInner(
     if (!(type & INLINE)) {
       node_type_recorder_.emplace(tag, type);
     }
-    RECORD(Component, tag.c_str(), type, record_id_);
+    RECORD(Component, GetLogContext(), tag.c_str(), type, record_id_);
   }
 }
 

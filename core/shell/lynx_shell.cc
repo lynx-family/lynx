@@ -361,8 +361,8 @@ void LynxShell::OnLynxEngineBuilt(
   if (native_module_manager != nullptr) {
     native_module_manager->SetRecordID(record_id);
   }
-  RECORD(ThreadStrategy, static_cast<int32_t>(current_strategy_), record_id,
-         enable_runtime_);
+  RECORD(ThreadStrategy, GetLogContextSnapshot(),
+         static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
 
   ui_operation_queue_->SetErrorCallback(
       [facade_actor = facade_actor_](base::LynxError error) {
@@ -458,7 +458,7 @@ void LynxShell::Destroy() {
 
   is_destroyed_ = true;
 
-  RECORD(Remove, reinterpret_cast<int64_t>(this));
+  RECORD(Remove, GetLogContextSnapshot(), reinterpret_cast<int64_t>(this));
 
   if (perf_controller_actor_) {
     perf_controller_actor_->ActAsync(
@@ -588,8 +588,8 @@ void LynxShell::InitRuntime(
   if (native_module_manager != nullptr) {
     native_module_manager->SetRecordID(record_id);
   }
-  RECORD(ThreadStrategy, static_cast<int32_t>(current_strategy_), record_id,
-         enable_runtime_);
+  RECORD(ThreadStrategy, GetLogContextSnapshot(),
+         static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
   std::shared_ptr<base::VSyncMonitor> vsync_monitor;
   if (vsync_monitor_platform_impl) {
     vsync_monitor =
@@ -1127,7 +1127,8 @@ void LynxShell::UpdateDataByParsedData(
 void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
                                const lepus::Value& global_props,
                                LynxUpdateMode update_mode) {
-  RECORD(UpdateMetaData, data, global_props, reinterpret_cast<int64_t>(this));
+  RECORD(UpdateMetaData, GetLogContextSnapshot(), data, global_props,
+         reinterpret_cast<int64_t>(this));
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
   pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   OnPipelineStart(pipeline_options->pipeline_id,
@@ -1257,8 +1258,9 @@ void LynxShell::UpdateGlobalProps(const lepus::Value& global_props) {
 
 void LynxShell::UpdateViewport(float width, int32_t width_mode, float height,
                                int32_t height_mode, bool need_layout) {
-  RECORD(ViewPort, height_mode, width_mode, height, width, height, width,
-         tasm::Config::pixelRatio(), reinterpret_cast<int64_t>(this));
+  RECORD(ViewPort, GetLogContextSnapshot(), height_mode, width_mode, height,
+         width, height, width, tasm::Config::pixelRatio(),
+         reinterpret_cast<int64_t>(this));
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY, LYNX_SHELL_UPDATE_VIEWPORT,
       [&](lynx::perfetto::EventContext ctx) {
@@ -1794,7 +1796,8 @@ void LynxShell::RunOnTasmThread(std::function<void(void)>&& task) {
 }
 
 void LynxShell::AttachEngineToUIThread() {
-  RECORD(SwitchEngineFromUIThread, true, reinterpret_cast<int64_t>(this));
+  RECORD(SwitchEngineFromUIThread, GetLogContextSnapshot(), true,
+         reinterpret_cast<int64_t>(this));
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD);
   if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
     engine_actor_->ActEmergency([](auto& engine) {
@@ -1819,7 +1822,8 @@ void LynxShell::AttachEngineToUIThread() {
 }
 
 void LynxShell::DetachEngineFromUIThread() {
-  RECORD(SwitchEngineFromUIThread, false, reinterpret_cast<int64_t>(this));
+  RECORD(SwitchEngineFromUIThread, GetLogContextSnapshot(), false,
+         reinterpret_cast<int64_t>(this));
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD);
   if (tasm::LynxEnv::GetInstance().EnableQuickJsThreadChecker()) {
     engine_actor_->Act([](auto& engine) {

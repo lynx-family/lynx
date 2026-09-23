@@ -1765,9 +1765,8 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                     "recordSharedData args type is error"));
               },
-              SharedData, args, &rt, ptr->GetRecordId());
+              SharedData, ptr->GetLogContext(), args, &rt, ptr->GetRecordId());
           // clang-format on
-          (void)this;  // The recorder-free build does not use this capture.
           return Value::undefined();
         });
   }
@@ -2197,7 +2196,7 @@ void App::EvaluateScript(const std::string& url, std::string script,
                          ApiCallBack callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_EVAL_SCRIPT, "url", url);
   LOGI("App::EvaluateScript:" << url << " length: " << script.length());
-  RECORD(Scripts, url, script, record_id_);
+  RECORD(Scripts, delegate_->GetLogContext(), url, script, record_id_);
 
   auto rt = rt_.Lock();
   if (rt) {

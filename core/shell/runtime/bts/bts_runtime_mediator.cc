@@ -118,9 +118,9 @@ runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
   } else {
     external_resource_content = info.err_msg;
   }
-  RECORD(Scripts, name.c_str(), external_resource_content.c_str(), record_id_);
+  RECORD(Scripts, GetLogContext(), name, external_resource_content, record_id_);
   RECORD_OPTIONAL(type == runtime::js::JsContent::Type::SOURCE,
-                  ExternalScriptAsLoadComponent, name,
+                  ExternalScriptAsLoadComponent, GetLogContext(), name,
                   external_resource_content, record_id_);
   return {std::move(external_resource_content), type};
 }
