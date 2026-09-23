@@ -190,9 +190,20 @@ class LynxTemplateBundle final {
 
   lepus::Value GetExtraInfo();
 
-  // Calling to prepare lepusNg context by pageConfig or settings;
-  // It should be called after decode success;
-  void PrepareVMByConfigs();
+  // Creates an empty pool after decoding and setting the devtool pool, if the
+  // context type and reuse policy allow it. Does not pre-create runtimes.
+  void EnsureMTSRuntimePool();
+
+  // Used during bundle initialization to resolve the initial pool size. A
+  // positive client count takes precedence over the FE context-pool setting.
+  // For count <= 0, prepares one context if FE enables pooling; otherwise
+  // returns false without creating a pool.
+  bool PrepareLepusContextByConfigs(int32_t count);
+
+  // Used by explicit client constructContext requests and by the initialization
+  // path above after resolving the count. Does not consult the FE pool setting:
+  // count <= 0 returns false; a positive count requests up to 20 contexts,
+  // creating the pool on demand if the context type and reuse policy allow it.
   bool PrepareLepusContext(int32_t count);
 
   bool EnableUseContextPool() const { return force_use_context_pool_; }
@@ -317,6 +328,9 @@ class LynxTemplateBundle final {
   std::shared_ptr<runtime::ContextBundle> context_bundle_{nullptr};
   std::shared_ptr<shell::MTSRuntimePool> mts_runtime_pool_{nullptr};
 
+  // Whether the bundle-level context pool should be used at runtime.
+  bool force_use_context_pool_{false};
+
   // fiber - lepus chunk binary
   std::shared_ptr<LepusChunkManager> lepus_chunk_manager_;
 
@@ -336,9 +350,6 @@ class LynxTemplateBundle final {
   std::vector<uint8_t> binary_;
 
   ElementBundle element_bundle_;
-
-  // force to use context pool in runtime
-  bool force_use_context_pool_{false};
 
   lepus::Value custom_sections_{};
 

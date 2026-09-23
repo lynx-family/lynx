@@ -47,17 +47,7 @@ export class TemplateBundle extends lynx.TemplateBundle {
    * @returns The `TemplateBundle` object.
    */
   public static fromTemplate(template: ArrayBuffer): TemplateBundle {
-    let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
-    if (bundle.getErrorMessage() != '') {
-      return bundle;
-    }
-
-    let errMsg: string | undefined = bundle.nativeParseTemplate(template);
-    if (errMsg === undefined) {
-      errMsg = 'native parse template failed';
-    }
-    bundle.setErrMsg(errMsg);
-    return bundle;
+    return TemplateBundle.fromTemplateWithOption(template, new TemplateBundleOption(0, false));
   }
 
   /**
@@ -70,7 +60,16 @@ export class TemplateBundle extends lynx.TemplateBundle {
    */
   public static fromTemplateWithOption(template: ArrayBuffer,
     option: TemplateBundleOption): TemplateBundle {
-    let bundle: TemplateBundle = TemplateBundle.fromTemplate(template);
+    let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
+    if (bundle.getErrorMessage() != '') {
+      return bundle;
+    }
+
+    let errMsg: string | undefined = bundle.nativeParseTemplate(template);
+    if (errMsg === undefined) {
+      errMsg = 'native parse template failed';
+    }
+    bundle.setErrMsg(errMsg);
     bundle.initWithOption(option);
     return bundle;
   }
@@ -86,17 +85,7 @@ export class TemplateBundle extends lynx.TemplateBundle {
    * developers can decide whether to run on a background thread without requiring a special asynchronous API.
    */
   public static async fromTemplateAsync(template: ArrayBuffer): Promise<TemplateBundle> {
-    let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
-    if (bundle.getErrorMessage() != '') {
-      return bundle;
-    }
-
-    let errMsg: string | undefined = await bundle.nativeAsyncParseTemplate(template);
-    if (errMsg === undefined) {
-      errMsg = "native parse template bundle failed";
-    }
-    bundle.setErrMsg(errMsg);
-    return bundle;
+    return TemplateBundle.fromTemplateAsyncWithOption(template, new TemplateBundleOption(0, false));
   }
 
   /**
@@ -112,13 +101,24 @@ export class TemplateBundle extends lynx.TemplateBundle {
    */
   public static async fromTemplateAsyncWithOption(template: ArrayBuffer,
     option: TemplateBundleOption): Promise<TemplateBundle> {
-    let bundle: TemplateBundle = await TemplateBundle.fromTemplateAsync(template);
+    let bundle: TemplateBundle = TemplateBundle.createTemplateBundle(template);
+    if (bundle.getErrorMessage() != '') {
+      return bundle;
+    }
+
+    let errMsg: string | undefined = await bundle.nativeAsyncParseTemplate(template);
+    if (errMsg === undefined) {
+      errMsg = "native parse template bundle failed";
+    }
+    bundle.setErrMsg(errMsg);
     bundle.initWithOption(option);
     return bundle;
   }
 
   private initWithOption(option: TemplateBundleOption): void {
-    this.nativeInitWithOption(option.getContextPoolSize(), option.getEnableContextAutoRefill());
+    if (this.isValid()) {
+      this.nativeInitWithOption(option.getContextPoolSize(), option.getEnableContextAutoRefill());
+    }
   }
 
   /**

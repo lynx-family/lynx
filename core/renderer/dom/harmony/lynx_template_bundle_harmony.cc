@@ -184,7 +184,7 @@ napi_value LynxTemplateBundleHarmony::ParseTemplate(napi_env env,
     return error_value;
   }
 
-  template_bundle.PrepareVMByConfigs();
+  template_bundle.EnsureMTSRuntimePool();
   bundle->SetBundle(std::move(template_bundle));
   napi_create_string_utf8(env, "", 0, &error_value);
 
@@ -248,7 +248,7 @@ napi_value LynxTemplateBundleHarmony::AsyncParseTemplate(
           std::move(context->template_buffer), "");
       context->decode_success = context->error_msg.empty();
       if (context->decode_success) {
-        template_bundle.PrepareVMByConfigs();
+        template_bundle.EnsureMTSRuntimePool();
         context->bundle_result = std::move(template_bundle);
       }
     }
@@ -459,7 +459,7 @@ napi_value LynxTemplateBundleHarmony::InitWithOption(napi_env env,
   if (!bundle_) {
     return nullptr;
   }
-  bundle_->PrepareLepusContext(count);
+  bundle_->PrepareLepusContextByConfigs(count);
   bundle_->SetEnableVMAutoGenerate(enable);
   return nullptr;
 }

@@ -50,7 +50,7 @@
     // decode success.
     template_bundle_ = std::move(template_bundle);
     [_devtool_pool onTemplateBundleCreated:reinterpret_cast<intptr_t>(template_bundle_.get())];
-    template_bundle_->PrepareVMByConfigs();
+    template_bundle_->EnsureMTSRuntimePool();
   } else {
     // decode failed.
     _error = [NSString stringWithUTF8String:error.c_str()];
@@ -62,6 +62,7 @@
                                 debuggable:(BOOL)debuggable {
   if (self = [super init]) {
     [self decodeTemplate:tem url:url debuggable:debuggable skipCSS:NO];
+    [self initWithOption:nil];
   }
   return self;
 }
@@ -109,10 +110,10 @@
 }
 
 - (void)initWithOption:(nullable LynxTemplateBundleOption*)option {
-  if (!template_bundle_ || option == nil) {
+  if (!template_bundle_) {
     return;
   }
-  [self constructContext:[option contextPoolSize]];
+  template_bundle_->PrepareLepusContextByConfigs(option ? option.contextPoolSize : 0);
   template_bundle_->SetEnableVMAutoGenerate([option enableContextAutoRefill]);
 }
 
