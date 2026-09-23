@@ -98,7 +98,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private boolean mIsUpdatedConfig;
   private String mTapSlop = TouchEventDispatcher.mTapSlopDefault;
   private boolean mEnableMultiTouch;
-  private boolean mEnableFiberArc;
   private boolean mEnableNewGesture;
   private boolean mEnablePlatformGesture;
   private boolean mHasInited;
@@ -238,7 +237,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       }
     }
     mEnableMultiTouch = config.getEnableMultiTouch();
-    mEnableFiberArc = config.getEnableFiberArc();
     mEnablePlatformGesture = config.isEnablePlatformGesture();
     mEnableNewGesture = config.isEnableNewGesture();
     if (mEnableNewGesture && LynxLiteConfigs.enableNewGesture()) {
@@ -397,6 +395,10 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     if (mLynxUIOwner != null && mEventDispatcher == null) {
       mEventDispatcher = new TouchEventDispatcher(mLynxUIOwner);
       mEventDispatcher.setHasTouchPseudo(mLynxUIOwner.getHasTouchPseudo());
+      LynxContext lynxContext = mLynxUIOwner.getContext();
+      if (lynxContext != null) {
+        lynxContext.setTouchEventDispatcher(mEventDispatcher);
+      }
       if (mIsUpdatedConfig) {
         mIsUpdatedConfig = false;
         updateEventDispatcherConfig();
@@ -407,8 +409,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private void updateEventDispatcherConfig() {
     if (mLynxUIOwner.getContext() != null) {
       LynxContext lynxContext = mLynxUIOwner.getContext();
-      lynxContext.setTouchEventDispatcher(mEventDispatcher);
-
       // c++ layer will send tapSlop = "50px" by default,
       // and TouchEventDispatcher has default tapSlop = PixelUtils.dipToPx(50);
       // which results the same float when calls toPxWithDisplayMetrics("50px")
@@ -419,8 +419,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
             tapSlop, 0, 0, 0, 0, 0, 0, lynxContext.getScreenMetrics()));
       }
 
-      // Enable touch pseudo if it is fiber arch.
-      mEventDispatcher.setHasTouchPseudo(mEnableFiberArc);
       // Enable support multi-finger events.
       mEventDispatcher.setEnableMultiTouch(mEnableMultiTouch);
       // Enable platform gesture

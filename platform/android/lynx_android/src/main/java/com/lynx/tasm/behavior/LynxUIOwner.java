@@ -1640,7 +1640,16 @@ public class LynxUIOwner {
   }
 
   public void setHasTouchPseudo(boolean hasTouchPseudo) {
-    mHasTouchPseudo = hasTouchPseudo;
+    if (mHasTouchPseudo || !hasTouchPseudo) {
+      return;
+    }
+    mHasTouchPseudo = true;
+    if (mContext != null) {
+      TouchEventDispatcher dispatcher = mContext.getTouchEventDispatcher();
+      if (dispatcher != null) {
+        dispatcher.setHasTouchPseudo(true);
+      }
+    }
   }
 
   public boolean getHasTouchPseudo() {

@@ -8,7 +8,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.graphics.Rect;
@@ -94,6 +96,25 @@ public class LynxUIOwnerTest {
   @After
   public void tearDown() throws Exception {
     mLynxUI = null;
+  }
+
+  @Test
+  public void testTouchPseudoEnabledAfterDispatcherCreation() {
+    LynxContext contextSpy = spy(mContext);
+    LynxUIOwner uiOwner = new LynxUIOwner(
+        contextSpy, new BehaviorRegistry(new BuiltInBehavior().create()), mUIBody.getBodyView());
+    TouchEventDispatcher dispatcher = mock(TouchEventDispatcher.class);
+    contextSpy.setTouchEventDispatcher(dispatcher);
+
+    assertFalse(uiOwner.getHasTouchPseudo());
+    uiOwner.setHasTouchPseudo(false);
+    uiOwner.setHasTouchPseudo(true);
+    uiOwner.setHasTouchPseudo(false);
+    uiOwner.setHasTouchPseudo(true);
+
+    assertTrue(uiOwner.getHasTouchPseudo());
+    verify(dispatcher).setHasTouchPseudo(true);
+    verify(dispatcher, never()).setHasTouchPseudo(false);
   }
 
   @Test

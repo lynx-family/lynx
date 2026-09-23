@@ -258,10 +258,7 @@ public class TouchEventDispatcher {
   }
 
   public void setHasTouchPseudo(boolean value) {
-    // When disable fiber arch, setHasTouchPseudo will be exec twice.
-    // Normally, it will exec setHasTouchPseudo in onPageConfigDecoded first.
-    // In case not following this order in the future and exec setHasTouchPseudo in updateEventInfo
-    // first, let mHasTouchPseudo = mHasTouchPseudo || value;
+    // Keep the engine callback enabled once a touch pseudo selector is found.
     mHasTouchPseudo = mHasTouchPseudo || value;
   }
 
@@ -730,7 +727,6 @@ public class TouchEventDispatcher {
   // When ActionDown, generate event target response chain. And traversed the event target response
   // chain to make the target's touch state pseudo-class take effect.
   private void onActionDown(MotionEvent ev) {
-    // TODO(songshourui.null): for fiber Arch, need to enable mHasTouchPseudo by default
     if (eventEmitter() == null) {
       return;
     }

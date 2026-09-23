@@ -247,8 +247,6 @@ static id<LynxServiceTextProtocol> getTextService() {
       setEnableEndGestureAtLastFingerUp:pageConfig->GetEnableEndGestureAtLastFingerUp()];
   _eventHandler.touchRecognizer.enableNewGesture = pageConfig->GetEnableNewGesture();
   [_uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()];
-  // If enable fiber arch, enable touch pseudo as default.
-  [_eventHandler.touchRecognizer setEnableTouchPseudo:pageConfig->GetEnableFiberArch()];
   // Enable support multi-finger events.
   [_eventHandler.touchRecognizer setEnableMultiTouch:pageConfig->GetEnableMultiTouch()];
 

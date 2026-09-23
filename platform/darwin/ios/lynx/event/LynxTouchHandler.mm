@@ -141,10 +141,7 @@
 }
 
 - (void)setEnableTouchPseudo:(BOOL)enable {
-  // When disable fiber arch, setHasTouchPseudo will be exec twice.
-  // Normally, it will exec setHasTouchPseudo in onPageConfigDecoded first.
-  // In case not following this order in the future and exec setHasTouchPseudo in updateEventInfo
-  // first, let _enableTouchPseudo = _enableTouchPseudo || enable;
+  // Keep forwarding enabled once a style sheet needs touch pseudo events.
   _enableTouchPseudo = _enableTouchPseudo || enable;
 }
 
@@ -604,7 +601,6 @@
 // chain to make the target's touch state pseudo-class take effect.
 - (void)onTouchesBegan {
   id<LynxEventTarget> target = _target;
-  // TODO(songshourui.null): for fiber Arch, need to set enableTouchPseudo YES by default
   if (target == nil) {
     return;
   }
