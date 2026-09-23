@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/debug/lynx_error.h"
+#include "base/include/log/log_context.h"
 #include "core/public/jsb/lynx_module_callback.h"
 #include "core/runtime/js/bindings/modules/lynx_module_timing.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -94,10 +95,15 @@ class ModuleCallback : public LynxModuleCallback {
 
   Type GetType() const override { return Type::JSI; }
 
+  void SetLogContext(const base::LogContext& context) {
+    log_context_ = context;
+  }
+
   void SetRecordID(int64_t record_id);
   int64_t record_id_ = 0;
 
  protected:
+  base::LogContext log_context_;
   std::vector<base::LynxError> errors_;
   std::shared_ptr<GroupInterceptor> group_interceptor_;
   std::shared_ptr<NativeModuleInvocationContext> invocation_context_ = nullptr;

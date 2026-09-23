@@ -89,6 +89,10 @@ class App {
 
   base::UnsafeWeakPtr<App> GetWeakPtr() const { return weak_self_; }
 
+  const base::LogContext& GetLogContext() const {
+    return delegate_->GetLogContext();
+  }
+
   ~App();
   void CallDestroyLifetimeFun();
 

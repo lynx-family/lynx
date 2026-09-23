@@ -285,9 +285,9 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
 
-  RECORD_OPTIONAL(response.has_value(), NativeModuleFunctionCall, name_.c_str(),
-                  method.name.c_str(), static_cast<uint32_t>(count), args,
-                  callback_ids.data(),
+  RECORD_OPTIONAL(response.has_value(), NativeModuleFunctionCall,
+                  GetLogContext(), name_.c_str(), method.name.c_str(),
+                  static_cast<uint32_t>(count), args, callback_ids.data(),
                   static_cast<uint32_t>(callback_ids.size()), response.value(),
                   rt, record_id_);
   timing_collector->EndPlatformMethodInvoke(invoke_facade_method_start);

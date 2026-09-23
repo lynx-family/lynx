@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/log/log_context.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/prop_bundle.h"
 #include "core/public/vsync_observer_interface.h"
@@ -81,6 +82,11 @@ class TemplateDelegate : public ContextProxy::Delegate,
  public:
   TemplateDelegate() {}
   virtual ~TemplateDelegate() override = default;
+
+  void SetLogContext(const base::LogContext& context) {
+    log_context_ = context;
+  }
+  const base::LogContext& GetLogContext() const { return log_context_; }
 
   virtual void OnRuntimeGC(
       std::unordered_map<std::string, std::string> mem_info) override = 0;
@@ -239,6 +245,9 @@ class TemplateDelegate : public ContextProxy::Delegate,
       const runtime::js::ApiCallBack& callback) = 0;
 
   virtual fml::RefPtr<fml::TaskRunner> GetJSRunner() = 0;
+
+ private:
+  base::LogContext log_context_;
 };
 }  // namespace runtime
 }  // namespace lynx

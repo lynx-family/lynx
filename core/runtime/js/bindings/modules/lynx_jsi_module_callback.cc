@@ -62,8 +62,9 @@ void ModuleCallback::Invoke(Runtime* runtime,
   args_.reset();
   uint64_t convert_params_end = base::CurrentSystemTimeMilliseconds();
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
-  RECORD(NativeModuleCallback, module_name_.c_str(), method_name_.c_str(),
-         values[0], runtime, callback_id(), record_id_);
+  RECORD_OPTIONAL(size != 0, NativeModuleCallback, log_context_,
+                  module_name_.c_str(), method_name_.c_str(), values[0],
+                  runtime, callback_id(), record_id_);
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_INVOKE_CALLBACK);
   uint64_t invoke_js_callback_start = base::CurrentSystemTimeMilliseconds();

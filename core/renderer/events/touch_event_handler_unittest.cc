@@ -7,6 +7,7 @@
 
 #include "core/renderer/events/touch_event_handler.h"
 
+#include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
 #include "build/build_config.h"
 #include "core/event/pointer_event.h"
@@ -60,6 +61,21 @@ void TouchEventHandlerTest::SetUp() {
 }
 
 void TouchEventHandlerTest::TearDown() {}
+
+TEST_F(TouchEventHandlerTest, DestroyedAssemblerIgnoresObservedEvents) {
+  const int min_level = base::logging::GetMinLogLevel();
+  const int info_level = base::logging::GetInfoLogLevel();
+  base::logging::SetMinLogLevel(base::logging::detail::LOG_OBSERVE);
+  tasm_->template_loaded_ = true;
+  tasm_->Destroy();
+  EXPECT_EQ(tasm_->page_proxy()->element_manager(), nullptr);
+
+  tasm_->SendCustomEvent("tap", 1, lepus::Value(), "detail");
+  tasm_->SendBubbleEvent("tap", 1, lepus::Dictionary::Create());
+
+  base::logging::SetMinLogLevel(min_level);
+  base::logging::detail::g_info_log_level = info_level;
+}
 
 TEST_F(TouchEventHandlerTest, TestGetCustomEventParamName) {
   EventOption option = {.bubbles_ = false,

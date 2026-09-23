@@ -20,6 +20,9 @@ LynxModuleManager::~LynxModuleManager() {
 
 void LynxModuleManager::SetLogContext(const base::LogContext &log_context) {
   log_context_ = log_context;
+  if (auto delegate = GetModuleDelegate()) {
+    delegate->SetLogContext(log_context);
+  }
   for (auto &module : module_map_) {
     module.second->SetLogContext(log_context);
   }
@@ -31,6 +34,9 @@ void LynxModuleManager::initBindingPtr(
   bindingPtr = std::make_shared<LynxJSIModuleBinding>(
       BindingFunc(weak_manager, delegate));
   pub::LynxNativeModuleManager::SetModuleDelegate(delegate);
+  if (delegate) {
+    delegate->SetLogContext(log_context_);
+  }
 #if ENABLE_TESTBENCH_REPLAY
   this->delegate_ = delegate;
 #endif

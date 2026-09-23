@@ -164,6 +164,7 @@ BTSRuntime::BTSRuntime(const std::string& group_id,
       lifecycle_observer_(
           std::make_unique<runtime::RuntimeLifecycleObserverImpl>()),
       page_options_(page_options) {
+  delegate_->SetLogContext(log_context_);
   cached_tasks_.reserve(8);
 #if OS_IOS
   is_running_foreground_ = std::make_shared<bool>(false);
@@ -174,6 +175,7 @@ BTSRuntime::~BTSRuntime() { Destroy(); }
 
 void BTSRuntime::SetLogContext(const base::LogContext& context) {
   log_context_ = context;
+  delegate_->SetLogContext(context);
   if (js_executor_) {
     js_executor_->SetLogContext(context);
   }
@@ -333,7 +335,7 @@ void BTSRuntime::ReadPreloadJSSource(
   for (auto&& path : preload_js_paths) {
     std::string res = delegate_->LoadJSSource(path);
     if (res.length() > 0) {
-      RECORD(PreloadScript, path, res, record_id_);
+      RECORD(PreloadScript, GetLogContext(), path, res, record_id_);
       ret.emplace_back(
           std::move(path),
           std::make_shared<runtime::js::StringBuffer>(std::move(res)));
@@ -654,8 +656,9 @@ void BTSRuntime::CallFunction(const std::string& module_id,
     LOGW(log_context_ << " js_runtime is nullptr!");
     return;
   }
-  RECORD_OPTIONAL(module_id == "GlobalEventEmitter", GlobalEvent, module_id,
-                  method_id, arguments, js_runtime, record_id_);
+  RECORD_OPTIONAL(module_id == "GlobalEventEmitter", GlobalEvent,
+                  GetLogContext(), module_id, method_id, arguments, js_runtime,
+                  record_id_);
   // GlobalEventEmitter.emit already receives the JSModule argument shape
   // [name, params]. Snapshot it for CoreContext without replacing the original
   // JS call, since standalone runtimes do not have a CoreContext target.

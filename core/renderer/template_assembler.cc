@@ -254,7 +254,7 @@ void TemplateAssembler::TriggerVmGC() {
 void TemplateAssembler::UpdateGlobalProps(
     const lepus::Value& data, bool need_render,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  RECORD(SetGlobalProps, data, record_id_);
+  RECORD(SetGlobalProps, GetLogContext(), data, record_id_);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_GLOBAL_PROPS,
               [&need_render, &data](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("need_render",
@@ -858,8 +858,8 @@ void TemplateAssembler::LoadTemplateBundle(
     const std::shared_ptr<TemplateData>& template_data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
   // TODO (nihao.royal) add testbench for LoadTemplateBundle.
-  RECORD(LoadTemplateBundle, url, template_bundle.GetBinary(), template_data,
-         record_id_);
+  RECORD(LoadTemplateBundle, GetLogContext(), url, template_bundle.GetBinary(),
+         template_data, record_id_);
   SyncRecordIdToElementManager();
   pre_painting_ = pipeline_options->enable_pre_painting;
   if (pre_painting_) {
@@ -891,7 +891,7 @@ void TemplateAssembler::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     const std::shared_ptr<TemplateData>& template_data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  RECORD(LoadTemplate, url, source, template_data, record_id_);
+  RECORD(LoadTemplate, GetLogContext(), url, source, template_data, record_id_);
   SyncRecordIdToElementManager();
   source_size_ = source.size();
   url_ = url;
@@ -1131,7 +1131,7 @@ void TemplateAssembler::ReloadTemplate(
     const std::shared_ptr<TemplateData>& template_data,
     UpdatePageOption& update_page_option,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  RECORD(ReloadTemplate, template_data, record_id_);
+  RECORD(ReloadTemplate, GetLogContext(), template_data, record_id_);
   Scope scope(this);
   // Reload update major version.
   PipelineScope pipeline_scope(this, pipeline_options,
@@ -1396,7 +1396,8 @@ void TemplateAssembler::DidFetchBundle(
                         callback_info.request.resource_type ==
                             pub::LynxResourceType::kLazyBundle &&
                         !callback_info.bundle->GetBinary().empty(),
-                    LoadComponentWithCallback, callback_info.component_url,
+                    LoadComponentWithCallback, GetLogContext(),
+                    callback_info.component_url,
                     callback_info.bundle->GetBinary(), false, -1, record_id_);
 
     // TODO(yangguangzhao.solace): remove this check when resource loader
@@ -1433,8 +1434,8 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
                 ctx.event()->add_debug_annotations(INSTANCE_ID,
                                                    std::to_string(instance_id));
               });
-  RECORD(LoadComponentWithCallback, url, callback_info.data, sync, callback_id,
-         record_id_);
+  RECORD(LoadComponentWithCallback, GetLogContext(), url, callback_info.data,
+         sync, callback_id, record_id_);
   LOGI("TemplateAssembler::LoadComponentWithCallback: "
        << url << " sync: " << sync << " callback_id: " << callback_id);
   std::shared_ptr<TemplateEntry> component_entry = FindTemplateEntry(url);
@@ -2074,10 +2075,6 @@ lepus::Value TemplateAssembler::GetComponentPathMap(
 
 void TemplateAssembler::SendBubbleEvent(const std::string& name, int tag,
                                         lepus::DictionaryPtr dict) {
-  RECORD_OPTIONAL(page_proxy()->element_manager()->root() != nullptr,
-                  BubbleEvent, name, tag,
-                  page_proxy()->element_manager()->root()->impl_id(),
-                  lepus::Value(dict), record_id_);
   if (!template_loaded_) {
     LOGI("Lynx SendBubbleEvent failed, template_loaded_=false"
          << " this:" << this);
@@ -2088,6 +2085,10 @@ void TemplateAssembler::SendBubbleEvent(const std::string& name, int tag,
          << " this:" << this);
     return;
   }
+  RECORD_OPTIONAL(page_proxy()->element_manager()->root() != nullptr,
+                  BubbleEvent, GetLogContext(), name, tag,
+                  page_proxy()->element_manager()->root()->impl_id(),
+                  lepus::Value(dict), record_id_);
   EnsureTouchEventHandler();
 
   touch_event_handler_->HandleBubbleEvent(
@@ -2113,15 +2114,15 @@ void TemplateAssembler::SendGestureEvent(int tag, int gesture_id,
 void TemplateAssembler::SendCustomEvent(const std::string& name, int tag,
                                         const lepus::Value& params,
                                         const std::string& pname) {
-  RECORD_OPTIONAL(page_proxy()->element_manager()->root() != nullptr,
-                  CustomEvent, name, tag,
-                  page_proxy()->element_manager()->root()->impl_id(), params,
-                  pname, record_id_);
   if (destroyed()) {
     LOGI("Lynx SendCustomEvent failed, destroyed=true"
          << " this:" << this);
     return;
   }
+  RECORD_OPTIONAL(page_proxy()->element_manager()->root() != nullptr,
+                  CustomEvent, GetLogContext(), name, tag,
+                  page_proxy()->element_manager()->root()->impl_id(), params,
+                  pname, record_id_);
   EnsureTouchEventHandler();
   touch_event_handler_->HandleCustomEvent(this, name, tag, params, pname);
 }
@@ -2160,12 +2161,13 @@ void TemplateAssembler::SendTouchEvent(const std::string& name,
     return;
   }
 
+  RECORD_OPTIONAL(page_proxy()->element_manager()->root() != nullptr,
+                  TouchEvent, GetLogContext(), name,
+                  page_proxy()->element_manager()->root()->impl_id(), info,
+                  record_id_);
   EnsureTouchEventHandler();
   touch_event_handler_->HandleTouchEvent(
       this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), name, info);
-  RECORD_OPTIONAL(
-      page_proxy()->element_manager()->root() != nullptr, TouchEvent, name,
-      page_proxy()->element_manager()->root()->impl_id(), info, record_id_);
 }
 
 void TemplateAssembler::StartEventGenerate(const lepus::Value& event_params) {
@@ -2298,8 +2300,8 @@ void TemplateAssembler::UpdateDataByPreParsedData(
     const std::shared_ptr<TemplateData>& template_data,
     UpdatePageOption& update_page_option,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  RECORD(UpdateDataByPreParsedData, template_data, update_page_option,
-         record_id_);
+  RECORD(UpdateDataByPreParsedData, GetLogContext(), template_data,
+         update_page_option, record_id_);
   if (template_data == nullptr || destroyed()) {
     return;
   }
@@ -2387,7 +2389,7 @@ void TemplateAssembler::UpdateDataByPreParsedData(
 bool TemplateAssembler::UpdateConfig(
     const lepus::Value& config, bool noticeDelegate,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  RECORD(UpdateConfig, config, noticeDelegate, record_id_);
+  RECORD(UpdateConfig, GetLogContext(), config, noticeDelegate, record_id_);
   if (destroyed()) {
     return false;
   }
@@ -2525,7 +2527,8 @@ void TemplateAssembler::EnsureTouchEventHandler() {
 void TemplateAssembler::EnsureAirTouchEventHandler() {}
 
 void TemplateAssembler::OnFontScaleChanged(float scale) {
-  RECORD(UpdateFontScale, scale, "updateFontScale", record_id_);
+  RECORD(UpdateFontScale, GetLogContext(), scale, "updateFontScale",
+         record_id_);
   if (scale == font_scale_) {
     return;
   }
@@ -2607,7 +2610,7 @@ void TemplateAssembler::SendGlobalEvent(const std::string& name,
 
 void TemplateAssembler::SetFontScale(float scale) {
   LOGI("TemplateAssembler::SetFontScale:" << scale);
-  RECORD(UpdateFontScale, scale, "setFontScale", record_id_);
+  RECORD(UpdateFontScale, GetLogContext(), scale, "setFontScale", record_id_);
   font_scale_ = scale;
 }
 
@@ -2732,7 +2735,8 @@ void TemplateAssembler::FetchBundle(
          << bundle_url);
     // A cached bundle still needs its binary recorded for replay.
     RECORD_OPTIONAL(!bundle->GetBinary().empty(), LoadComponentWithCallback,
-                    bundle_url, bundle->GetBinary(), false, -1, record_id_);
+                    GetLogContext(), bundle_url, bundle->GetBinary(), false, -1,
+                    record_id_);
 
     response_promise->SetValue(
         {.url = bundle_url, .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
@@ -2797,14 +2801,16 @@ std::shared_ptr<TemplateEntry> TemplateAssembler::RequireTemplateEntry(
     }
     lifecycle_option->mode = state;
     RECORD_OPTIONAL(state == LazyBundleState::STATE_PRELOAD, RequireTemplate,
-                    url, FindTemplateEntry(url) != nullptr, record_id_);
+                    GetLogContext(), url, FindTemplateEntry(url) != nullptr,
+                    record_id_);
     return entry;
   }
 
   LOGI("RequireTemplate: Request Template: " << url);
   entry =
       RequestTemplateEntryInternal(std::move(lifecycle_option), lazy_bundle);
-  RECORD(RequireTemplate, url, FindTemplateEntry(url) != nullptr, record_id_);
+  RECORD(RequireTemplate, GetLogContext(), url,
+         FindTemplateEntry(url) != nullptr, record_id_);
   return entry;
 }
 
@@ -3471,7 +3477,8 @@ void TemplateAssembler::RenderPageWithSSRData(
     std::vector<uint8_t> ssr_byte_array,
     const std::shared_ptr<TemplateData>& template_data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  RECORD(LoadTemplate, "", ssr_byte_array, template_data, record_id_, false);
+  RECORD(LoadTemplate, GetLogContext(), "", ssr_byte_array, template_data,
+         record_id_, false);
   SyncRecordIdToElementManager();
 
   LOGI(GetLogContext()

@@ -9,6 +9,7 @@
 #include <string>
 
 #include "base/include/closure.h"
+#include "base/include/log/log_context.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 
 namespace lynx {
@@ -26,6 +27,11 @@ class ModuleDelegate {
   ModuleDelegate(ModuleDelegate&&) = delete;
   ModuleDelegate& operator=(ModuleDelegate&&) = delete;
 
+  void SetLogContext(const base::LogContext& context) {
+    log_context_ = context;
+  }
+  const base::LogContext& GetLogContext() const { return log_context_; }
+
   virtual int64_t RegisterJSCallbackFunction(Function func) = 0;
   // ret just is post to js thread or not
   virtual void CallJSCallback(
@@ -41,6 +47,9 @@ class ModuleDelegate {
   // on js thread, have no choice but provide this method
   virtual void RunOnJSThread(base::closure func) = 0;
   virtual void RunOnPlatformThread(base::closure func) = 0;
+
+ private:
+  base::LogContext log_context_;
 };
 
 }  // namespace js
