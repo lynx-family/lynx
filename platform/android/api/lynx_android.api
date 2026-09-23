@@ -9757,6 +9757,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.beforeDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas, int viewportSaveCount);
   public void com.lynx.tasm.behavior.render.Renderer.invalidate(int invalidateMask);
   public void com.lynx.tasm.behavior.render.Renderer.updateAttributes(PropBundle props);
   public void com.lynx.tasm.behavior.render.Renderer.updateExtraData(Object extraData);

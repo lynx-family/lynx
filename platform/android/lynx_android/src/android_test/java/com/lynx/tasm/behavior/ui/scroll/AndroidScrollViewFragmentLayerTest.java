@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.ui.scroll;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
@@ -62,15 +63,20 @@ public class AndroidScrollViewFragmentLayerTest {
     doAnswer(invocation -> {
       Canvas canvas = invocation.getArgument(0);
       canvas.drawColor(Color.RED);
-      return null;
+      // Restore the viewport through the real Renderer callback after drawing test content.
+      return invocation.callRealMethod();
     })
         .when(renderer)
-        .afterDispatchDraw(any(Canvas.class));
+        .afterDispatchDraw(any(Canvas.class), anyInt());
     scrollView.setRenderer(renderer);
 
     Bitmap bitmap = Bitmap.createBitmap(BITMAP_WIDTH, VIEWPORT_SIZE, Bitmap.Config.ARGB_8888);
-    scrollView.dispatchDrawForTest(new Canvas(bitmap));
+    Canvas bitmapCanvas = new Canvas(bitmap);
+    int saveCount = bitmapCanvas.getSaveCount();
+    scrollView.dispatchDrawForTest(bitmapCanvas);
 
+    assertEquals("The viewport clip should be restored after drawing", saveCount,
+        bitmapCanvas.getSaveCount());
     assertEquals("FLR content inside the rounded viewport should be visible", Color.RED,
         bitmap.getPixel(VIEWPORT_SIZE / 2, VIEWPORT_SIZE / 2));
     assertEquals("FLR content should be clipped at rounded corners", Color.TRANSPARENT,
