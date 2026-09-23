@@ -56,7 +56,8 @@ unittest_set("jsi_unittests_testset") {
 
   if (is_mac) {
     public_deps = [ "//${lynx_dir}/third_party/NativeScript" ]
-    sources += js_v8_bridge_shared_sources
+    sources += js_v8_bridge_shared_sources +
+               [ "v8/v8_isolate_wrapper_impl_unittest.cc" ]
     include_dirs = [ v8_headers_search_path ]
   }
 }
