@@ -28,6 +28,7 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/template_entry.h"
 #include "core/renderer/utils/base/element_template_info.h"
@@ -95,6 +96,18 @@ const lepus::Value* DatasetValue(const Element* element,
   }
   return &it->second;
 }
+
+lepus::Value EventWorklet(const char* label) {
+  auto context = lepus::Dictionary::Create();
+  context->SetValue("_workletType", lepus::Value("main-thread"));
+  if (label != nullptr) {
+    context->SetValue("label", lepus::Value(label));
+  }
+  auto callback = lepus::Dictionary::Create();
+  callback->SetValue("type", lepus::Value("worklet"));
+  callback->SetValue("value", lepus::Value(std::move(context)));
+  return lepus::Value(std::move(callback));
+}
 }  // namespace
 
 class ElementTemplateInstanceTest : public FiberElementTest {
@@ -107,6 +120,31 @@ class ElementTemplateInstanceTest : public FiberElementTest {
         BASE_STATIC_STRING(tasm::kTemplateAssembler),
         lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
     return runtime;
+  }
+
+  void ExpectTemplateEventBindings(Element* element, const char* label) {
+    const auto background = element->event_map().find("tap");
+    ASSERT_NE(background, element->event_map().end());
+    EXPECT_EQ(background->second->function(), base::String("onTap"));
+    const auto main_thread = element->lepus_event_map().find("tap");
+    ASSERT_NE(main_thread, element->lepus_event_map().end());
+    const auto& context = main_thread->second->lepus_object();
+    EXPECT_EQ(context.GetProperty("_workletType"), lepus::Value("main-thread"));
+    EXPECT_EQ(context.GetProperty("label"),
+              label == nullptr ? lepus::Value() : lepus::Value(label));
+    if (manager->EnableEventHandleRefactor()) {
+      const auto* listeners = element->GetEventListenerMap()->Find("tap");
+      ASSERT_NE(listeners, nullptr);
+      EXPECT_EQ(
+          std::count_if(listeners->begin(), listeners->end(),
+                        [](const auto& listener) {
+                          return static_cast<event::ClosureEventListener*>(
+                                     listener.get())
+                                     ->closure_type() ==
+                                 event::ClosureEventListener::ClosureType::kJS;
+                        }),
+          1);
+    }
   }
 
   fml::RefPtr<ElementTemplateInstance> CreateCompiledSpreadInstance() {
@@ -434,6 +472,105 @@ TEST_P(ElementTemplateInstanceTest, ClassUpdatesInvalidateDescendantSelectors) {
       instance->SetAttributeSlot(0, lepus::Value());
       expect_opacity(typed ? 0.75 : 0.5);
     }
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, MainThreadNullPreservesBackgroundBinding) {
+  for (bool event_refactor : {false, true}) {
+    for (bool typed : {false, true}) {
+      SCOPED_TRACE(event_refactor);
+      SCOPED_TRACE(typed);
+      manager->config_->SetEnableEventHandleRefactor(event_refactor);
+      manager->SetConfig(manager->config_);
+      auto instance = CreateCompiledSpreadInstance();
+      if (typed) {
+        instance->SetTypedTag(base::String("view"));
+      } else {
+        auto info = tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+                        ->template_bundle_.element_template_infos_.at(
+                            "spread_template");
+        info->elements_[0].attributes_ =
+            std::make_shared<const TemplateAttributes>(TemplateAttributes{
+                Attribute{ATTRIBUTE_BINDING_TYPE_STATIC,
+                          base::String("bindtap"), lepus::Value("onTap"), 0},
+                Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                          base::String("main-thread:bindtap"), lepus::Value(),
+                          0}});
+      }
+      auto set_main_thread = [&](const lepus::Value& value) {
+        if (typed) {
+          auto attributes = lepus::Dictionary::Create();
+          attributes->SetValue("bindtap", lepus::Value("onTap"));
+          attributes->SetValue("main-thread:bindtap", value);
+          instance->SetAttributes(lepus::Value(std::move(attributes)));
+        } else {
+          instance->SetAttributeSlot(0, value);
+        }
+      };
+      auto page = manager->CreateFiberPage("page", 0);
+      manager->SetFiberPageElement(page);
+      set_main_thread(EventWorklet("active"));
+      auto root = instance->GetRoot();
+      page->InsertNode(root);
+      page->FlushActionsAsRoot();
+      ExpectTemplateEventBindings(root.get(), "active");
+
+      set_main_thread(lepus::Value());
+      page->FlushActionsAsRoot();
+      ExpectTemplateEventBindings(root.get(), nullptr);
+      set_main_thread(EventWorklet("restored"));
+      page->FlushActionsAsRoot();
+      ExpectTemplateEventBindings(root.get(), "restored");
+      if (typed) {
+        auto only_background = lepus::Dictionary::Create();
+        only_background->SetValue("bindtap", lepus::Value("onTap"));
+        instance->SetAttributes(lepus::Value(std::move(only_background)));
+        page->FlushActionsAsRoot();
+        ExpectTemplateEventBindings(root.get(), nullptr);
+      }
+    }
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, SpreadMainThreadRemovalPreservesFallback) {
+  for (bool event_refactor : {false, true}) {
+    SCOPED_TRACE(event_refactor);
+    manager->config_->SetEnableEventHandleRefactor(event_refactor);
+    manager->SetConfig(manager->config_);
+    auto instance = CreateCompiledSpreadInstance();
+    auto info =
+        tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+            ->template_bundle_.element_template_infos_.at("spread_template");
+    info->elements_[0].attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("bindtap"),
+                      lepus::Value("onTap"), 0},
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("main-thread:bindtap"), lepus::Value(), 1},
+            Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                      lepus::Value(), 0}});
+    auto page = manager->CreateFiberPage("page", 0);
+    manager->SetFiberPageElement(page);
+    auto spread = lepus::Dictionary::Create();
+    spread->SetValue("main-thread:bindtap", EventWorklet("spread"));
+    instance->SetAttributeSlot(1, EventWorklet("base"));
+    instance->SetAttributeSlot(0, lepus::Value(spread));
+    auto root = instance->GetRoot();
+    page->InsertNode(root);
+    page->FlushActionsAsRoot();
+    ExpectTemplateEventBindings(root.get(), "spread");
+
+    instance->SetAttributeSlot(0, lepus::Value(lepus::Dictionary::Create()));
+    page->FlushActionsAsRoot();
+    ExpectTemplateEventBindings(root.get(), "base");
+    auto cleared = lepus::Dictionary::Create();
+    cleared->SetValue("main-thread:bindtap", lepus::Value());
+    instance->SetAttributeSlot(0, lepus::Value(std::move(cleared)));
+    page->FlushActionsAsRoot();
+    ExpectTemplateEventBindings(root.get(), nullptr);
+    instance->SetAttributeSlot(0, lepus::Value());
+    page->FlushActionsAsRoot();
+    ExpectTemplateEventBindings(root.get(), "base");
   }
 }
 
@@ -2273,6 +2410,7 @@ TEST_P(ElementTemplateInstanceTest, CompiledSpreadUpdatesPreserveCallbacks) {
     auto instance = CreateCompiledSpreadInstance();
     auto initial = lepus::Dictionary::Create();
     initial->SetValue(base::String("main-thread:bindtap"), initial_callback);
+    initial->SetValue("main-thread:global-bindtap", initial_callback);
     auto slots = lepus::CArray::Create();
     slots->emplace_back(lepus::Value(initial));
     instance->SetAttributeSlots(lepus::Value(slots));
@@ -2285,6 +2423,7 @@ TEST_P(ElementTemplateInstanceTest, CompiledSpreadUpdatesPreserveCallbacks) {
 
     auto updated = lepus::Dictionary::Create();
     updated->SetValue(base::String("main-thread:bindtap"), updated_callback);
+    updated->SetValue("main-thread:global-bindtap", updated_callback);
     instance->SetAttributeSlot(0, lepus::Value(updated));
 
     auto stored_callback = instance->Serialize()
@@ -2303,6 +2442,14 @@ TEST_P(ElementTemplateInstanceTest, CompiledSpreadUpdatesPreserveCallbacks) {
     ASSERT_TRUE(handler.IsCallable());
     EXPECT_TRUE(handler.IsEqual(updated_callback));
     EXPECT_EQ(lepus_runtime->CallClosure(handler).Number(), 2);
+
+    const auto global_event = root->global_bind_event_map().find("tap");
+    ASSERT_NE(global_event, root->global_bind_event_map().end());
+    EXPECT_TRUE(
+        global_event->second->lepus_function().IsEqual(updated_callback));
+    instance->SetAttributeSlot(0, lepus::Value());
+    EXPECT_EQ(root->event_map().count("tap"), 0u);
+    EXPECT_EQ(root->global_bind_event_map().count("tap"), 0u);
   }
 }
 
