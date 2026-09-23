@@ -9,10 +9,14 @@
 #include <chrono>
 #include <future>
 
+#include "base/include/fml/synchronization/waitable_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepusng/quick_context.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 #include "quickjs/include/quickjs.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -41,6 +45,27 @@ std::vector<uint8_t> GenerateBytecode(const char* source) {
     lepus_free(compiler_context.context(), bytecode);
   }
   return result;
+}
+
+template <typename Task>
+void OnReporter(Task&& task) {
+  fml::AutoResetWaitableEvent done;
+  tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+      [&task, &done] {
+        task();
+        done.Signal();
+      });
+  done.Wait();
+}
+
+void WaitForNormalWorker() {
+  std::promise<void> completion;
+  auto future = completion.get_future();
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [&completion] { completion.set_value(); },
+      base::ConcurrentTaskType::NORMAL_PRIORITY);
+  ASSERT_EQ(std::future_status::ready,
+            future.wait_for(std::chrono::seconds(5)));
 }
 
 }  // namespace
@@ -145,6 +170,8 @@ TEST(MTSRuntimePoolTest, PoolCreationDoesNotEnablePool) {
 }
 
 TEST(MTSRuntimePoolTest, PreloadWaitsForFillAndLoadsCurrentRuntimes) {
+  tasm::performance::MemoryMonitor::ForceEnableForTesting(
+      tasm::performance::MemoryMonitor::ForceEnableMode::kCurrentProcess);
   auto quick_bundle = std::make_shared<lepus::QuickContextBundle>();
   quick_bundle->SetSource("function main() {}");
   std::shared_ptr<runtime::ContextBundle> context_bundle = quick_bundle;
@@ -152,11 +179,19 @@ TEST(MTSRuntimePoolTest, PreloadWaitsForFillAndLoadsCurrentRuntimes) {
   tasm::CompileOptions compile_options;
   tasm::PageConfig page_config;
   auto pool = MTSRuntimePool::Create(runtime::ContextType::LepusNGContextType,
-                                     "", false, context_bundle, compile_options,
-                                     &page_config);
-  // FillPool is intentionally asynchronous. Preload uses the same single
-  // normal-priority worker, so it must run after this fill task.
+                                     "app/preload", false, context_bundle,
+                                     compile_options, &page_config);
+  // FillPool is intentionally asynchronous. Wait with a task on the same
+  // worker, then poison the reporter cache so only Preload can repair it.
   pool->FillPool(2);
+  WaitForNormalWorker();
+  ASSERT_EQ(2U, pool->mts_runtimes_.size());
+  OnReporter([&] {
+    auto& global = tasm::performance::GlobalMemoryMonitor::GetInstance();
+    ASSERT_EQ(global.mts_runtime_pool_state_.count(pool->pool_instance_id_),
+              1u);
+    global.mts_runtime_pool_state_.at(pool->pool_instance_id_).heap_bytes = -1;
+  });
   auto bytecode = GenerateBytecode(
       "globalThis.preloaded = (globalThis.preloaded || 0) + 1;");
   ASSERT_FALSE(bytecode.empty());
@@ -171,6 +206,19 @@ TEST(MTSRuntimePoolTest, PreloadWaitsForFillAndLoadsCurrentRuntimes) {
             future.wait_for(std::chrono::seconds(5)));
   EXPECT_TRUE(future.get());
   EXPECT_EQ(2U, pool->mts_runtimes_.size());
+  int64_t expected_heap = 0;
+  for (const auto& runtime : pool->mts_runtimes_) {
+    const auto heap_bytes = runtime->GetCurrentHeapSizeBytes();
+    EXPECT_GE(heap_bytes, 0);
+    expected_heap += heap_bytes;
+  }
+  OnReporter([&] {
+    const auto& state =
+        tasm::performance::GlobalMemoryMonitor::GetInstance()
+            .mts_runtime_pool_state_.at(pool->pool_instance_id_);
+    EXPECT_EQ(state.heap_bytes, expected_heap);
+    EXPECT_EQ(state.runtime_count, 2u);
+  });
 }
 
 TEST(MTSRuntimePoolTest, PreloadRequiresAutoRefillDisabled) {
@@ -180,6 +228,68 @@ TEST(MTSRuntimePoolTest, PreloadRequiresAutoRefillDisabled) {
   ASSERT_FALSE(bytecode.empty());
 
   EXPECT_FALSE(pool->Preload("preload.js", std::move(bytecode), nullptr));
+}
+
+TEST(MTSRuntimePoolTest,
+     BundleLocalPoolReportsLifecycleAndGlobalPoolIsIgnored) {
+  tasm::performance::MemoryMonitor::ForceEnableForTesting(
+      tasm::performance::MemoryMonitor::ForceEnableMode::kCurrentProcess);
+  auto global_pool =
+      MTSRuntimePool::Create(runtime::ContextType::LepusNGContextType, false);
+  global_pool->ReportPoolState();
+  const auto global_pool_id = global_pool->pool_instance_id_;
+  OnReporter([&] {
+    EXPECT_EQ(tasm::performance::GlobalMemoryMonitor::GetInstance()
+                  .mts_runtime_pool_state_.count(global_pool_id),
+              0u);
+  });
+
+  auto quick_bundle = std::make_shared<lepus::QuickContextBundle>();
+  quick_bundle->SetSource("function main() {}");
+  std::shared_ptr<runtime::ContextBundle> context_bundle = quick_bundle;
+  tasm::CompileOptions compile_options;
+  tasm::PageConfig page_config;
+  auto pool = MTSRuntimePool::Create(runtime::ContextType::LepusNGContextType,
+                                     "app/local-pool", false, context_bundle,
+                                     compile_options, &page_config);
+  const auto pool_id = pool->pool_instance_id_;
+  EXPECT_NE(pool_id, global_pool_id);
+  OnReporter([&] {
+    const auto& state = tasm::performance::GlobalMemoryMonitor::GetInstance()
+                            .mts_runtime_pool_state_.at(pool_id);
+    EXPECT_EQ(state.template_url, "app/local-pool");
+    EXPECT_EQ(state.context_type,
+              static_cast<int32_t>(runtime::ContextType::LepusNGContextType));
+    EXPECT_EQ(state.runtime_count, 0u);
+    EXPECT_EQ(state.heap_bytes, 0);
+  });
+
+  pool->SetEnableAutoGenerate(false);
+  pool->FillPoolSync(1);
+  ASSERT_EQ(pool->mts_runtimes_.size(), 1u);
+  const auto heap_bytes =
+      pool->mts_runtimes_.front()->GetCurrentHeapSizeBytes();
+  OnReporter([&] {
+    const auto& state = tasm::performance::GlobalMemoryMonitor::GetInstance()
+                            .mts_runtime_pool_state_.at(pool_id);
+    EXPECT_EQ(state.runtime_count, 1u);
+    EXPECT_EQ(state.heap_bytes, heap_bytes);
+  });
+
+  ASSERT_NE(pool->TakeMTSRuntimeSafely(), nullptr);
+  OnReporter([&] {
+    const auto& state = tasm::performance::GlobalMemoryMonitor::GetInstance()
+                            .mts_runtime_pool_state_.at(pool_id);
+    EXPECT_EQ(state.runtime_count, 0u);
+    EXPECT_EQ(state.heap_bytes, 0);
+  });
+
+  pool.reset();
+  OnReporter([&] {
+    EXPECT_EQ(tasm::performance::GlobalMemoryMonitor::GetInstance()
+                  .mts_runtime_pool_state_.count(pool_id),
+              0u);
+  });
 }
 
 TEST(MTSRuntimePoolTest, QuickContextPoolTest) {

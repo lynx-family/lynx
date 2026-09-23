@@ -82,6 +82,8 @@ lynx_core_source_set("build") {
     "gen/LynxLayoutProxy_register_jni.h",
     "gen/LynxLongTaskMonitor_jni.h",
     "gen/LynxLongTaskMonitor_register_jni.h",
+    "gen/LynxMemoryUsageQuery_jni.h",
+    "gen/LynxMemoryUsageQuery_register_jni.h",
     "gen/LynxModuleFactory_jni.h",
     "gen/LynxModuleFactory_register_jni.h",
     "gen/LynxModuleWrapper_jni.h",

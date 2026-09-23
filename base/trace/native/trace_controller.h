@@ -96,6 +96,10 @@ class TRACE_EXPORT TraceController {
     delegate_ = std::move(delegate);
   }
   Delegate* GetDelegate() const { return delegate_.get(); }
+  // Returns the platform trace directory after the delegate is initialized.
+  std::string GenerateTracingFileDir() const {
+    return delegate_ ? delegate_->GenerateTracingFileDir() : "";
+  }
 
   virtual int StartTracing(const std::shared_ptr<TraceConfig>& config) {
     return -1;
@@ -127,6 +131,9 @@ class TRACE_EXPORT TraceController {
   std::unique_ptr<Delegate> delegate_ = nullptr;
 };
 
+// Returns the platform trace controller and initializes its delegate when the
+// platform can do so without caller state. Android installs the delegate from
+// the JNI CreateTraceController entry because it requires a Java owner.
 [[maybe_unused]] TRACE_EXPORT TraceController* GetTraceControllerInstance();
 
 }  // namespace trace

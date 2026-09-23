@@ -326,8 +326,6 @@ public class LynxTemplateRender
   @Nullable private LynxEngine mLynxEngineRef;
 
   private LynxModuleFactory mMainThreadModuleFactory;
-  @Nullable private LynxMemoryUsageFetcher mMemoryUsageFetcher;
-
   @Keep
   public LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder) {
     init(context, bodyView, builder);
@@ -1111,8 +1109,6 @@ public class LynxTemplateRender
       mLynxContext.setInstanceId(instanceId);
       mPerformanceController.setInstanceId(instanceId);
     }
-    registerMemoryUsageFetcherIfNeeded();
-
     if (mBodyView != null) {
       mBodyView.setInstanceId(mLynxContext.getInstanceId());
       mClient.setInstanceId(mLynxContext.getInstanceId());
@@ -1797,7 +1793,6 @@ public class LynxTemplateRender
         LLog.i(TAG, "call nativeReattachLynxEngineWrapper." + this);
         nativeReattachLynxEngineWrapper(mNativePtr, mNativeLifecycle, mLynxEngineRef.getNativePtr(),
             mEngineProxy != null ? mEngineProxy.getNativePtr() : 0);
-        registerMemoryUsageFetcherIfNeeded();
         updateGenericInfoURL(mUrl);
         if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
             && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
@@ -2088,7 +2083,6 @@ public class LynxTemplateRender
           nativeReattachLynxEngineWrapper(mNativePtr, mNativeLifecycle,
               mLynxEngineRef.getNativePtr(),
               mEngineProxy != null ? mEngineProxy.getNativePtr() : 0);
-          registerMemoryUsageFetcherIfNeeded();
           if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
               && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
             attachEngineToUIThread();
@@ -4366,39 +4360,6 @@ public class LynxTemplateRender
     return "";
   }
 
-  private void registerMemoryUsageFetcherIfNeeded() {
-    if (EmbeddedMode.isBaseModeEnable(mEmbeddedMode)) {
-      return;
-    }
-    if (mMemoryUsageFetcher == null) {
-      mMemoryUsageFetcher = new LynxTemplateRenderMemoryUsageFetcher(this);
-    }
-    LynxGlobalMemoryUsageCollector.getInstance().registerMemoryUsageFetcher(mMemoryUsageFetcher);
-  }
-
-  private void unregisterMemoryUsageFetcherIfNeeded() {
-    if (mMemoryUsageFetcher == null) {
-      return;
-    }
-    LynxGlobalMemoryUsageCollector.getInstance().unregisterMemoryUsageFetcher(mMemoryUsageFetcher);
-  }
-
-  void queryNativeMemoryUsageForGlobalCollectorAsync(
-      @NonNull LynxTemplateRenderMemoryUsageFetcher.InstanceMemoryUsageQuery receiver) {
-    UIThreadUtils.runOnUiThread(() -> {
-      // Keep native pointer/lifecycle access inside TemplateRender. The fetcher owns orchestration,
-      // but this class owns the private native bridge and reads these UI-thread-owned fields here.
-      long nativePtr = mNativePtr;
-      long nativeLifecycle = mNativeLifecycle;
-      if (nativePtr == 0 || !isNativeLifecycleValid(nativeLifecycle) || mIsDestroyed.get()
-          || mHasDestroy || mDestroying) {
-        nativeQueryNativeMemoryUsageAsync(0L, 0L, receiver);
-        return;
-      }
-      nativeQueryNativeMemoryUsageAsync(nativePtr, nativeLifecycle, receiver);
-    });
-  }
-
   private void destroyLynxEngine() {
     synchronized (mNativeShellLifecycleLock) {
       if (!mIsDestroyed.compareAndSet(false, true)) {
@@ -4406,8 +4367,6 @@ public class LynxTemplateRender
       }
     }
     boolean shouldCacheLynxEngine = shouldCacheLynxEngine();
-    unregisterMemoryUsageFetcherIfNeeded();
-
     if (mLynxUIRender != null && !shouldCacheLynxEngine) {
       mLynxUIRender.onDestroyTemplateRenderer();
     }
@@ -4706,7 +4665,6 @@ public class LynxTemplateRender
       getLynxContext().getUIBody().detachUIBodyView();
     }
     if (mLynxEngineRef != null) {
-      unregisterMemoryUsageFetcherIfNeeded();
       mLynxUIRender = null;
       if (mBodyView != null) {
         mBodyView.setLynxUIRendererInternal(null);
@@ -4932,9 +4890,6 @@ public class LynxTemplateRender
 
   private static native boolean nativeTakeBTSHeapSnapshotToFile(
       long ptr, long lifecycle, String outputPath, Object callback);
-
-  private static native void nativeQueryNativeMemoryUsageAsync(
-      long ptr, long lifecycle, Object receiver);
 
   // list methods
   private static native void nativeRenderChild(

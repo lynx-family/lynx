@@ -24,6 +24,7 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/shell/lynx_actor_specialization.h"
 
 #ifndef JS_ENGINE_TYPE
@@ -220,6 +221,8 @@ void AllocateSlotForTrackableVM(
                     ->AllocatePageMemorySlot();
     fml::MessageLoop::GetCurrent().GetTaskRunner()->SetInstanceMemorySlot(
         instance_id, slot);
+    tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+        instance_id, [slot](auto& state) { state.slot = slot; });
   }
 }
 
@@ -231,6 +234,15 @@ void RegisterVMForTraceAndMonitor(
       "instance_id", instance_id, "desc", vm->GetDebugDescription(), "ptr",
       vm.get(), "slot",
       fml::MessageLoop::GetCurrent().GetTaskRunner()->GetCurrentAllocSlot());
+
+  tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+      instance_id,
+      [group_id, type = vm->GetRuntimeType(), vm_ptr = vm.get()](auto& state) {
+        state.group_id = group_id;
+        state.bts_runtime_type = type;
+        state.bts_known = true;
+        state.bts_vm = vm_ptr;
+      });
 }
 
 }  // namespace
@@ -706,6 +718,12 @@ std::shared_ptr<runtime::js::JSIContext> JSRealmManager::CreateJSIContext(
           ->RebindMemoryTrackSlot();
     }
 
+    if (!IsSingleJSContext(create_params.group_id)) {
+      tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
+          create_params.group_id, create_params.monitoring_group_label,
+          vm_instance);
+    }
+
     if (rt.type() == runtime::js::JSRuntimeType::quickjs) {
       AllocateSlotForTrackableVM(vm_instance,
                                  rt.GetPageOptions().GetInstanceID());
@@ -716,6 +734,11 @@ std::shared_ptr<runtime::js::JSIContext> JSRealmManager::CreateJSIContext(
     }
 #else
     auto vm_instance = rt.createVM(nullptr);
+    if (!IsSingleJSContext(create_params.group_id)) {
+      tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
+          create_params.group_id, create_params.monitoring_group_label,
+          vm_instance);
+    }
     return rt.createContext(vm_instance);
 #endif
   } else {
@@ -742,6 +765,10 @@ bool JSRealmManager::EnsureVM(runtime::js::Runtime& rt) {
     if (rt.type() == runtime::js::JSRuntimeType::v8) {
       RegisterVMInstance(it->second);
     }
+    // This VM is shared across groups. The monitor derives its reporting
+    // name from the runtime type and uses the VM object for local identity.
+    tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
+        "", "", it->second);
     return true;
   }
   return false;

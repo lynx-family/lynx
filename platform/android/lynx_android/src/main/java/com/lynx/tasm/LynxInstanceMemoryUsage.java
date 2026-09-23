@@ -59,7 +59,7 @@ public final class LynxInstanceMemoryUsage {
     return mPageId;
   }
 
-  /** Current template URL captured when the instance fetcher completes. */
+  /** Current template URL captured in the native global snapshot. */
   @Nullable
   public String getUrl() {
     return mUrl;
@@ -107,12 +107,12 @@ public final class LynxInstanceMemoryUsage {
     return mMainThreadRuntimeBytes;
   }
 
-  /** Background-thread runtime heap snapshot bytes. */
+  /** Background-thread bytes attributed to this page. */
   public long getBackgroundThreadRuntimeBytes() {
     return mBackgroundThreadRuntimeBytes;
   }
 
-  /** Background runtime group id used by global result deduplication. */
+  /** Background runtime group id for diagnostics. It is not a unique VM identity. */
   @Nullable
   public String getBtsRuntimeGroupId() {
     return mBtsRuntimeGroupId;

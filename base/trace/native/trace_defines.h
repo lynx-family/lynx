@@ -10,6 +10,9 @@ static constexpr const char* const LYNX_TRACE_CATEGORY = "lynx";
 static constexpr const char* const LYNX_ON_TRACE_BEGIN_NOTIFICATION =
     "lynx_on_trace_begin";
 
+static constexpr const char* const LYNX_ON_DEVTOOL_CONNECTED_NOTIFICATION =
+    "lynx_on_devtool_connected";
+
 static constexpr const char* const LYNX_TRACE_MEMORY_PLUGIN_GC_NOTIFICATION =
     "lynx_trace_memory_plugin_gc";
 
