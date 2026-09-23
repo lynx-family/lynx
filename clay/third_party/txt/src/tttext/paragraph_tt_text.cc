@@ -418,6 +418,22 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
   std::vector<TextBox> result;
   start = index_mapper_.ToTTTextPosition(start);
   end = index_mapper_.ToTTTextRangeEnd(end);
+
+  float max_line_right = std::numeric_limits<float>::lowest();
+  uint32_t last_selected_line = 0;
+  if (rect_width_style == RectWidthStyle::kMax) {
+    for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
+      auto* text_line = region_->GetLine(k);
+      float line_rect[4] = {0};
+      text_line->GetBoundingRectForLine(line_rect);
+      max_line_right = std::max(max_line_right, line_rect[0] + line_rect[2]);
+      if (text_line->GetStartCharPos() < end &&
+          text_line->GetEndCharPos() > start) {
+        last_selected_line = k;
+      }
+    }
+  }
+
   for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
     auto* text_line = region_->GetLine(k);
     size_t start_index = text_line->GetStartCharPos();
@@ -430,12 +446,22 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
     if (end_index <= start)
       continue;
 
+    const auto range_start = std::max(start, start_index);
+    const auto range_end = std::min(end, end_index);
     float rect[4] = {0};
-    text_line->GetBoundingRectByCharRange(rect, std::max(start, start_index),
-                                          std::min(end, end_index));
-    result.push_back(
-        TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
-                TextDirection::ltr));
+    text_line->GetBoundingRectByCharRange(rect, range_start, range_end);
+    auto text_rect = skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]);
+    if (rect_height_style == RectHeightStyle::kMax) {
+      text_rect =
+          skity::Rect::MakeLTRB(text_rect.Left(), text_line->GetLineTop(),
+                                text_rect.Right(), text_line->GetLineBottom());
+    }
+    if (rect_width_style == RectWidthStyle::kMax && k != last_selected_line &&
+        text_rect.Right() < max_line_right) {
+      text_rect = skity::Rect::MakeLTRB(text_rect.Left(), text_rect.Top(),
+                                        max_line_right, text_rect.Bottom());
+    }
+    result.emplace_back(text_rect, TextDirection::ltr);
   }
   return result;
 }

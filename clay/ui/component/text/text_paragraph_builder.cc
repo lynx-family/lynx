@@ -39,6 +39,8 @@ ttoffice::tttext::CharacterVerticalAlignment ToTTTextAlign(
     return ttoffice::tttext::CharacterVerticalAlignment::kSubScript;
   } else if (type == VerticalAlignType::kVerticalAlignSuper) {
     return ttoffice::tttext::CharacterVerticalAlignment::kSuperScript;
+  } else if (type == VerticalAlignType::kVerticalAlignBaseline) {
+    txt_style.text_baseline_shift = clay_style.baseline_shift.value_or(0);
   } else if (type == VerticalAlignType::kVerticalAlignLength) {
     txt_style.text_baseline_shift -= clay_style.baseline_shift.value_or(0);
   } else if (type == VerticalAlignType::kVerticalAlignPercent) {

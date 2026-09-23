@@ -16,6 +16,7 @@
 #include <textra/layout_region.h>
 #include <textra/paragraph.h>
 #include <textra/style.h>
+#include <textra/text_line.h>
 #if defined(ENABLE_SKITY)
 #include "clay/fml/paths.h"
 #include "clay/testing/testing.h"
@@ -274,6 +275,148 @@ class ParagraphTTTextReuseTest : public ::testing::Test {
   ParagraphStyle style_;
   WordBreak word_break_ = WordBreak::kNormal;
 };
+
+TEST_F(ParagraphTTTextReuseTest, ReturnsNormalAndTightRangeRects) {
+  auto paragraph = Build(u"Ag");
+  paragraph->Layout(100);
+
+  auto& tt_paragraph = static_cast<ParagraphTTText&>(*paragraph);
+  ASSERT_EQ(tt_paragraph.region_->GetLineCount(), 1u);
+  const auto* line = tt_paragraph.region_->GetLine(0);
+  ASSERT_NE(line, nullptr);
+
+  float expected_rect[4] = {};
+  line->GetBoundingRectByCharRange(expected_rect, 1, 2);
+  const auto tight_boxes =
+      paragraph->GetRectsForRange(1, 2, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(tight_boxes.size(), 1u);
+  EXPECT_EQ(tight_boxes[0].rect,
+            skity::Rect::MakeXYWH(expected_rect[0], expected_rect[1],
+                                  expected_rect[2], expected_rect[3]));
+
+  const auto leading_boxes =
+      paragraph->GetRectsForRange(0, 1, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(leading_boxes.size(), 1u);
+  EXPECT_FLOAT_EQ(leading_boxes[0].rect.Top(), tight_boxes[0].rect.Top());
+  EXPECT_FLOAT_EQ(leading_boxes[0].rect.Bottom(), tight_boxes[0].rect.Bottom());
+  EXPECT_FLOAT_EQ(leading_boxes[0].rect.Right(), tight_boxes[0].rect.Left());
+
+  const auto max_boxes =
+      paragraph->GetRectsForRange(1, 2, Paragraph::RectHeightStyle::kMax,
+                                  Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(max_boxes.size(), 1u);
+  EXPECT_FLOAT_EQ(max_boxes[0].rect.Left(), tight_boxes[0].rect.Left());
+  EXPECT_FLOAT_EQ(max_boxes[0].rect.Right(), tight_boxes[0].rect.Right());
+  EXPECT_FLOAT_EQ(max_boxes[0].rect.Top(), line->GetLineTop());
+  EXPECT_FLOAT_EQ(max_boxes[0].rect.Bottom(), line->GetLineBottom());
+}
+
+TEST_F(ParagraphTTTextReuseTest, MergesDifferentStyleRunsIntoLineRangeBox) {
+  ParagraphBuilderTTText builder(style_, fonts_);
+  auto large_style = style_.GetTextStyle();
+  large_style.font_size = 40;
+  builder.PushStyle(large_style);
+  builder.AddText(u"A");
+  builder.Pop();
+  auto small_style = style_.GetTextStyle();
+  small_style.font_size = 16;
+  builder.PushStyle(small_style);
+  builder.AddText(u"g");
+  builder.Pop();
+  auto paragraph = builder.Build();
+  paragraph->Layout(100);
+
+  const auto leading =
+      paragraph->GetRectsForRange(0, 1, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+  const auto trailing =
+      paragraph->GetRectsForRange(1, 2, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+  const auto combined =
+      paragraph->GetRectsForRange(0, 2, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+
+  ASSERT_EQ(leading.size(), 1u);
+  ASSERT_EQ(trailing.size(), 1u);
+  ASSERT_EQ(combined.size(), 1u);
+  auto expected = leading[0].rect;
+  expected.Join(trailing[0].rect);
+  EXPECT_EQ(combined[0].rect, expected);
+}
+
+TEST_F(ParagraphTTTextReuseTest, ReturnsTightRectForPlaceholder) {
+  ParagraphBuilderTTText builder(style_, fonts_);
+  PlaceholderRun placeholder;
+  placeholder.width = 20;
+  placeholder.height = 30;
+  builder.AddPlaceholder(placeholder);
+  auto paragraph = builder.Build();
+  paragraph->Layout(100);
+
+  const auto placeholder_boxes = paragraph->GetRectsForPlaceholders();
+  const auto tight_boxes =
+      paragraph->GetRectsForRange(0, 1, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+
+  ASSERT_EQ(placeholder_boxes.size(), 1u);
+  ASSERT_EQ(tight_boxes.size(), 1u);
+  EXPECT_EQ(tight_boxes[0].rect, placeholder_boxes[0].rect);
+}
+
+TEST_F(ParagraphTTTextReuseTest, JoinsTextAndPlaceholderTightRects) {
+  ParagraphBuilderTTText builder(style_, fonts_);
+  builder.AddText(u"A");
+  PlaceholderRun placeholder;
+  placeholder.width = 20;
+  placeholder.height = 30;
+  builder.AddPlaceholder(placeholder);
+  builder.AddText(u"g");
+  auto paragraph = builder.Build();
+  paragraph->Layout(100);
+
+  const auto leading_text =
+      paragraph->GetRectsForRange(0, 1, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+  const auto placeholder_boxes = paragraph->GetRectsForPlaceholders();
+  const auto trailing_text =
+      paragraph->GetRectsForRange(2, 3, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+  const auto combined =
+      paragraph->GetRectsForRange(0, 3, Paragraph::RectHeightStyle::kTight,
+                                  Paragraph::RectWidthStyle::kTight);
+
+  ASSERT_EQ(leading_text.size(), 1u);
+  ASSERT_EQ(placeholder_boxes.size(), 1u);
+  ASSERT_EQ(trailing_text.size(), 1u);
+  ASSERT_EQ(combined.size(), 1u);
+  auto expected = leading_text[0].rect;
+  expected.Join(placeholder_boxes[0].rect);
+  expected.Join(trailing_text[0].rect);
+  EXPECT_EQ(combined[0].rect, expected);
+}
+
+TEST_F(ParagraphTTTextReuseTest, ExtendsMaxWidthExceptForLastSelectedLine) {
+  const std::u16string text = u"x\nlonger\nz";
+  auto paragraph = Build(text);
+  paragraph->Layout(100);
+
+  for (const auto height_style :
+       {Paragraph::RectHeightStyle::kTight, Paragraph::RectHeightStyle::kMax}) {
+    const auto tight_boxes = paragraph->GetRectsForRange(
+        0, text.size(), height_style, Paragraph::RectWidthStyle::kTight);
+    const auto max_boxes = paragraph->GetRectsForRange(
+        0, text.size(), height_style, Paragraph::RectWidthStyle::kMax);
+
+    ASSERT_EQ(tight_boxes.size(), 3u);
+    ASSERT_EQ(max_boxes.size(), tight_boxes.size());
+    const float max_line_right = tight_boxes[1].rect.Right();
+    EXPECT_FLOAT_EQ(max_boxes[0].rect.Right(), max_line_right);
+    EXPECT_FLOAT_EQ(max_boxes[1].rect.Right(), max_line_right);
+    EXPECT_FLOAT_EQ(max_boxes[2].rect.Right(), tight_boxes[2].rect.Right());
+  }
+}
 
 TEST_F(ParagraphTTTextReuseTest, ShrinkingPreservesRealLayoutGeometry) {
   // Compare independent real layouts with a fixture font, not mocked metrics.

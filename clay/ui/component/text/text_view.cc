@@ -915,7 +915,7 @@ bool TextView::ClickOnText(size_t glyph_index,
       auto text_boxes = paragraph->GetRectsForRange(
           std::max(int(glyph_index) - 1, int(line_metric.start_index)),
           std::min(glyph_index + 1, line_metric.end_index),
-          txt::Paragraph::RectHeightStyle::kTight,
+          txt::Paragraph::RectHeightStyle::kMax,
           txt::Paragraph::RectWidthStyle::kTight);
       for (auto box : text_boxes) {
         if (point_by_paragraph.x() >= box.rect.Left() &&
