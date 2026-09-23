@@ -1703,7 +1703,6 @@ LYNX_PROPS_GROUP_DECLARE(
                       BOOL),
     LYNX_PROP_DECLARE("accessibility-attached-cell-class", setAccessibilityAttachedCellClass,
                       NSString*),
-    LYNX_PROP_DECLARE("should-rasterize-shadow", setShouldRasterizeShadow, BOOL),
     LYNX_PROP_DECLARE("transform", setTransform, NSArray*),
     LYNX_PROP_DECLARE("transform-origin", setTransformOrigin, NSArray*),
     LYNX_PROP_DECLARE("async-display", setAsyncDisplay, BOOL),
@@ -4418,21 +4417,6 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
     [self.backgroundManager.borderLayer setValue:value forKeyPath:keyPath];
     [self.backgroundManager.maskLayer setValue:value forKeyPath:keyPath];
   }
-}
-
-/**
- * @name: should-rasterize-shadow
- * @description: Use bitmap backend to draw shadows, avoiding off-screen rendering.
- * @note: box-shadow
- * @category: different
- * @standardAction: keep
- * @supportVersion: 2.8
- **/
-LYNX_PROP_DEFINE("should-rasterize-shadow", setShouldRasterizeShadow, BOOL) {
-  if (requestReset) {
-    value = NO;
-  }
-  _backgroundManager.shouldRasterizeShadow = value;
 }
 
 /**

@@ -432,7 +432,6 @@ public class LynxBackgroundManager : NSObject, <CALayerDelegate> {
   public BOOL LynxBackgroundManager::allowsEdgeAntialiasing allowsEdgeAntialiasing;
   public BOOL LynxBackgroundManager::overlapRendering overlapRendering;
   public LynxBgShapeLayerProp LynxBackgroundManager::uiBackgroundShapeLayerEnabled uiBackgroundShapeLayerEnabled;
-  public BOOL LynxBackgroundManager::shouldRasterizeShadow shouldRasterizeShadow;
   public BOOL LynxBackgroundManager::isPixelated isPixelated;
   public BOOL LynxBackgroundManager::skipRedirection skipRedirection;
   public instancetype LynxBackgroundManager::initWithUI:(LynxUI *ui);
@@ -877,18 +876,6 @@ public class LynxBoxShadow : NSObject {
   public BOOL LynxBoxShadow::inset inset;
   public CALayer* LynxBoxShadow::layer layer;
   public BOOL LynxBoxShadow::isEqualToBoxShadow:(LynxBoxShadow *other);
-}
-
-public class LynxBoxShadowLayer : CALayer {
-  public UIColor* LynxBoxShadowLayer::customShadowColor customShadowColor;
-  public CGFloat LynxBoxShadowLayer::customShadowBlur customShadowBlur;
-  public CGSize LynxBoxShadowLayer::customShadowOffset customShadowOffset;
-  public CGPathRef LynxBoxShadowLayer::maskPath maskPath;
-  public CGPathRef LynxBoxShadowLayer::customShadowPath customShadowPath;
-  public LynxUI* LynxBoxShadowLayer::ui ui;
-  public BOOL LynxBoxShadowLayer::inset inset;
-  public id LynxBoxShadowLayer::initWithUi:(LynxUI *_Nullable ui);
-  public void LynxBoxShadowLayer::invalidate();
 }
 
 public class LynxCallStackUtil : NSObject {

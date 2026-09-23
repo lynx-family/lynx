@@ -8,7 +8,6 @@
 #import <Lynx/LynxBackgroundRenderer.h>
 #import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxBasicShape.h>
-#import <Lynx/LynxBoxShadowLayer.h>
 #import <Lynx/LynxBoxShadowManager.h>
 #import <Lynx/LynxColorUtils.h>
 #import <Lynx/LynxEnv.h>
@@ -164,7 +163,6 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     _implicitAnimation = true;
     _overlapRendering = NO;
     _uiBackgroundShapeLayerEnabled = LynxBgShapeLayerPropUndefine;
-    _shouldRasterizeShadow = NO;
     _onlyGradient = YES;
     _isPixelated = NO;
     _skipRedirection = NO;
@@ -1472,28 +1470,12 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     if (shadow.layer != nil) {
       [shadow.layer removeFromSuperlayer];
     }
-    // TODO(renzhongyue): rasterize shadow with spreadRadius. Now the shouldRasterizeShadow will
-    // only shadows without spread radius on bitmap backends.
-    // -[LynxBackgroundManager shouldRasterize] is an attribute set by front end.
-    const BOOL hasSpreadRadius = shadow.spreadRadius != 0;
-    const BOOL rasterizeShadow = _shouldRasterizeShadow && !hasSpreadRadius;
+    CALayer* layer = [CALayer new];
+    layer.shadowColor = shadow.shadowColor.CGColor;
+    layer.shadowOpacity = 1.0f;
+    layer.shadowRadius = shadow.blurRadius * 0.5f;
+    layer.shadowOffset = CGSizeMake(shadow.offsetX, shadow.offsetY);
 
-    CALayer* layer;
-    if (!rasterizeShadow) {
-      layer = [CALayer new];
-      layer.shadowColor = shadow.shadowColor.CGColor;
-      layer.shadowOpacity = 1.0f;
-      layer.shadowRadius = shadow.blurRadius * 0.5f;
-      layer.shadowOffset = CGSizeMake(shadow.offsetX, shadow.offsetY);
-    } else {
-      layer = [[LynxBoxShadowLayer alloc] initWithUi:_ui];
-      [(LynxBoxShadowLayer*)layer setCustomShadowBlur:shadow.blurRadius];
-      [(LynxBoxShadowLayer*)layer setCustomShadowColor:shadow.shadowColor];
-      [(LynxBoxShadowLayer*)layer setCustomShadowOffset:CGSizeMake(shadow.offsetX, shadow.offsetY)];
-      [(LynxBoxShadowLayer*)layer setInset:shadow.inset];
-    }
-
-    // Common props for rasterized shadow and UIKit shadowPath.
     shadow.layer = layer;
     layer.frame = self.backgroundLayer.bounds;  // sub layer
     _backgroundLayer.shadowsBounds = self.backgroundLayer.bounds;
@@ -1526,22 +1508,11 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
           -300, -300);
       LynxPathAddRect(path, outerRect, true);
 
-      // Set path to layer, LynxShadowLayer use customized rendering function to avoid off-screen
-      // rendering, don't set value to CALayer's props. But CoreGraphics don't have blur effect or
-      // shadow spread effect. Shadows with spreadRadius should still use CALayer's shadowPath
-      // property.
-      if (!rasterizeShadow) {
-        layer.shadowPath = path;
-        // clip by the real round rect
-        CAShapeLayer* shapeLayer = [[CAShapeLayer alloc] init];
-        shapeLayer.path = maskPath;
-        layer.mask = shapeLayer;
-      } else {
-        [(LynxBoxShadowLayer*)layer setCustomShadowPath:path];
-        [(LynxBoxShadowLayer*)layer setMaskPath:maskPath];
-        layer.frame = outerRect;
-        [(LynxBoxShadowLayer*)layer invalidate];
-      }
+      layer.shadowPath = path;
+      // clip by the real round rect
+      CAShapeLayer* shapeLayer = [[CAShapeLayer alloc] init];
+      shapeLayer.path = maskPath;
+      layer.mask = shapeLayer;
 
       // add above all background images, keep the order
       if (lastInsetLayer != nil) {
@@ -1580,19 +1551,12 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
           CGRectOffset(CGRectInset(layer.bounds, inset, inset), shadow.offsetX, shadow.offsetY);
       CGPathAddRect(maskPath, nil, CGRectInset(CGRectUnion(layer.bounds, shadowOuterRect), -5, -5));
 
-      if (!rasterizeShadow) {
-        // clip area between outerRect and real shadow inner rect
-        CAShapeLayer* shapeLayer = [[CAShapeLayer alloc] init];
-        shapeLayer.path = maskPath;
-        shapeLayer.fillRule = kCAFillRuleEvenOdd;
-        layer.mask = shapeLayer;
-        layer.shadowPath = path;
-      } else {
-        [(LynxBoxShadowLayer*)layer setCustomShadowPath:path];
-        [(LynxBoxShadowLayer*)layer setMaskPath:maskPath];
-        layer.frame = shadowOuterRect;
-        [(LynxBoxShadowLayer*)layer invalidate];
-      }
+      // clip area between outerRect and real shadow inner rect
+      CAShapeLayer* shapeLayer = [[CAShapeLayer alloc] init];
+      shapeLayer.path = maskPath;
+      shapeLayer.fillRule = kCAFillRuleEvenOdd;
+      layer.mask = shapeLayer;
+      layer.shadowPath = path;
 
       // always below border-layer, image layers, keep the order
       [self.backgroundLayer insertSublayer:layer atIndex:shadowLayerInsetOffset];

@@ -17,7 +17,6 @@
         "LynxAccessibilityModuleUnitTest",
         "LynxBackgroundManagerUnitTest",
         "LynxBasicShapeUnitTest",
-        "LynxBoxShadowLayerUnitTest",
         "LynxColorUnitsUnitTest",
         "LynxComponentStatisticUnitTest",
         "LynxConvertUtilsUnitTest",
