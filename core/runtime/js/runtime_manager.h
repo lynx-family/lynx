@@ -94,7 +94,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
           js_pre_sources_getter,
       bool forceUseLightweightJSEngine, bool ensure_console,
       runtime::js::JSExecutor& executor,
-      runtime::js::JSRuntimeExternalParams create_params,
+      const runtime::js::JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options);
 
   void OnRelease(const std::string& group_id) override;
@@ -136,13 +136,13 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
           js_pre_sources_getter,
       bool force_use_lightweight_js_engine, bool ensure_console,
       runtime::js::JSExecutor& executor,
-      runtime::js::JSRuntimeExternalParams create_params,
+      const runtime::js::JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options);
 
   base::UnsafeOwningPtr<runtime::js::Runtime> CreateRuntime(
-      bool force_use_lightweight_js_engine,
-      const tasm::PageOptions& page_options, bool use_shared_context,
-      runtime::js::JSRuntimeExternalParams external_params = {});
+      bool force_use_lightweight_js_engine, bool use_shared_context,
+      const runtime::js::JSRuntimeExternalParams& create_params,
+      const tasm::PageOptions& page_options);
 
   // -------- New "shared Isolate/VM + per-page isolated Context" scheme
   // -------- Everything below is only reachable when the caller opts in through
@@ -153,7 +153,8 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   // returning the owning wrapper. The wrapper owns the group's global runtime
   // (and thus the shared VM + global context) and tracks the live page count.
   NewShareGroupGlobalContextWrapper* EnsureNewShareGroupGlobalContext(
-      const std::string& group_id, bool force_use_lightweight_js_engine,
+      bool force_use_lightweight_js_engine,
+      const runtime::js::JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options,
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
@@ -164,7 +165,8 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
       const std::string& group_id);
 
   std::shared_ptr<runtime::js::JSIContext> CreateJSIContext(
-      runtime::js::Runtime& rt, const std::string& group_id);
+      runtime::js::Runtime& rt,
+      const runtime::js::JSRuntimeExternalParams& create_params);
 
   std::unique_ptr<runtime::js::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine, bool use_shared_context,
