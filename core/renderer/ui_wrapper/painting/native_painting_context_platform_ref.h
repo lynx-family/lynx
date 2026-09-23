@@ -87,6 +87,12 @@ class NativePaintingCtxPlatformRef
   uint32_t GetCachedPlatformEventBehavior() const {
     return event_handler_->EventBehavior();
   }
+  const std::vector<float> &GetCachedConsumeSlideEventAngles() const {
+    return event_handler_->ConsumeSlideEventAngles();
+  }
+  const std::vector<int32_t> &GetCachedResponseChainSigns() const {
+    return event_handler_->ResponseChainSigns();
+  }
   // Dispatch a longpress recognized by the platform layer. The event payload is
   // derived from the active platform pointer state in PlatformEventHandler.
   void DispatchPlatformLongPress();
@@ -114,6 +120,7 @@ class NativePaintingCtxPlatformRef
   void UpdatePlatformEventBundle(int32_t id, PlatformEventBundle bundle);
   // Get the platform event bundle of the target element.
   const PlatformEventBundle *GetPlatformEventBundle(int32_t id) const;
+  fml::RefPtr<PlatformRenderer> GetPlatformRenderer(int32_t id) const;
   void SetEventThroughConfig(
       bool enable_event_through,
       bool enable_event_through_inherit_from_page) override;

@@ -130,6 +130,19 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testUpdatePlatformRendererNativeInteractionEnabled() {
+    IRendererHost host = mock(IRendererHost.class);
+    rendererContext.mViewHolder.put(10, host);
+
+    rendererContext.updatePlatformRendererNativeInteractionEnabled(10, 1);
+    verify(host).setNativeInteractionEnabledForRenderer(Boolean.TRUE);
+    rendererContext.updatePlatformRendererNativeInteractionEnabled(10, 0);
+    verify(host).setNativeInteractionEnabledForRenderer(Boolean.FALSE);
+    rendererContext.updatePlatformRendererNativeInteractionEnabled(10, -1);
+    verify(host).setNativeInteractionEnabledForRenderer(null);
+  }
+
+  @Test
   public void testSetNeedMarkPaintEndTiming() {
     PerformanceController performanceController = mock(PerformanceController.class);
     when(mockLynxContext.getPerfController()).thenReturn(performanceController);

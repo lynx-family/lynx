@@ -13,6 +13,8 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.os.Build;
+import android.os.SystemClock;
+import android.view.MotionEvent;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -20,6 +22,7 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.ui.PropBundle;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -129,6 +132,50 @@ public class ContainerRendererTest {
   public void testConstructor() {
     assertNotNull("ContainerRenderer should be created", containerRenderer);
     assertFalse("WillNotDraw should be false", containerRenderer.willNotDraw());
+  }
+
+  @Test
+  public void testNativeInteractionEnabledUsesRendererOverrideAndPageDefault() {
+    long time = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, 0, 0, 0);
+    try {
+      assertFalse(containerRenderer.onTouchEvent(down));
+      containerRenderer.setNativeInteractionEnabledForRenderer(true);
+      assertTrue(containerRenderer.onTouchEvent(down));
+      containerRenderer.setNativeInteractionEnabledForRenderer(false);
+      assertFalse(containerRenderer.onTouchEvent(down));
+      doReturn(true).when(realLynxContext).getEnableNativeInteraction();
+      containerRenderer.setNativeInteractionEnabledForRenderer(null);
+      assertTrue(containerRenderer.onTouchEvent(down));
+    } finally {
+      down.recycle();
+    }
+  }
+
+  @Test
+  public void testAndroidViewRendererNativeInteractionDoesNotChangeLegacyState() {
+    AndroidView view = new AndroidView(realLynxContext);
+    Renderer renderer = mock(Renderer.class);
+    when(renderer.getLynxContext()).thenReturn(realLynxContext);
+    long time = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, 0, 0, 0);
+    try {
+      view.setNativeInteractionEnabled(true);
+      assertTrue(view.onTouchEvent(down));
+      view.setRenderer(renderer);
+      assertFalse(view.onTouchEvent(down));
+      view.setNativeInteractionEnabledForRenderer(true);
+      assertTrue(view.onTouchEvent(down));
+      view.setNativeInteractionEnabledForRenderer(false);
+      assertFalse(view.onTouchEvent(down));
+      doReturn(true).when(realLynxContext).getEnableNativeInteraction();
+      view.setNativeInteractionEnabledForRenderer(null);
+      assertTrue(view.onTouchEvent(down));
+      view.setRenderer(null);
+      assertTrue(view.onTouchEvent(down));
+    } finally {
+      down.recycle();
+    }
   }
 
   IRendererHost getRenderHost(Renderer renderer) {

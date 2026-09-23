@@ -122,6 +122,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void AttachFragmentLayerRenderer(std::shared_ptr<LynxRendererContext> context,
                                    int32_t sign);
   void DetachFragmentLayerRenderer();
+  void SetFragmentLayerNativeInteractionEnabled(std::optional<bool> enabled);
   void UpdateFragmentLayerDisplayList(const DisplayList* display_list);
   void SetFragmentLayerClipBounds(bool need_clip);
   void UpdateFragmentLayerSubtreeProperties(const DisplayList& display_list);
@@ -571,6 +572,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   bool is_overlay_content_{false};
   bool overlay_content_active_{true};
   bool native_interaction_enabled_{true};
+  std::optional<bool> fragment_layer_native_interaction_enabled_;
   float hit_slop_left_{0};
   float hit_slop_right_{0};
   float hit_slop_top_{0};

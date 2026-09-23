@@ -11,6 +11,7 @@ typedef NS_OPTIONS(NSUInteger, LynxPlatformEventBehavior) {
   LynxPlatformEventBehaviorEventThrough = 1 << 1,
   LynxPlatformEventBehaviorBlockNativeEvent = 1 << 2,
   LynxPlatformEventBehaviorEnableSimultaneousTouch = 1 << 3,
+  LynxPlatformEventBehaviorHasConsumeSlideEvent = 1 << 4,
 };
 
 NS_ASSUME_NONNULL_BEGIN
@@ -27,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
                            offsetY:(CGFloat)offsetY;
 - (LynxPlatformEventBehavior)HitTestAndCachePlatformEventBehavior:(NSInteger)rootSign
                                                             point:(CGPoint)point;
+- (NSArray<NSNumber*>*)cachedConsumeSlideEventAngles;
 
 @end
 

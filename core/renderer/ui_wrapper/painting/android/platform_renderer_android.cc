@@ -22,6 +22,13 @@ constexpr float kZeroMetrics[4] = {0.f, 0.f, 0.f, 0.f};
 
 PlatformRendererAndroid::~PlatformRendererAndroid() { CleanupAndroidView(); }
 
+void PlatformRendererAndroid::UpdateNativeInteractionEnabled(
+    std::optional<bool> enabled) {
+  if (context_) {
+    context_->UpdatePlatformRendererNativeInteractionEnabled(GetId(), enabled);
+  }
+}
+
 PlatformRendererAndroid::PlatformRendererAndroid(
     PlatformRendererContext* context, int id, PlatformRendererType type,
     const fml::RefPtr<PropBundle>& init_data,

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -83,6 +84,9 @@ class PlatformRendererContext {
 
   // Update platform renderer attributes
   void UpdatePlatformRendererAttributes(int32_t id, jobject prop_bundle);
+
+  void UpdatePlatformRendererNativeInteractionEnabled(
+      int32_t id, std::optional<bool> enabled);
 
   void UpdatePlatformRendererExtraData(int32_t id, jobject extra_bundle);
 

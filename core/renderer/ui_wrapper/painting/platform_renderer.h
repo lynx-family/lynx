@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include "base/include/closure.h"
@@ -45,6 +46,8 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   // Update attribute bundle for this renderer. Default implementation is
   // provided in PlatformRendererImpl.
   virtual void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes) = 0;
+  // Apply incremental native-interaction state to a real renderer-host view.
+  virtual void UpdateNativeInteractionEnabled(std::optional<bool>) {}
   // Add a child renderer
   virtual void AddChild(fml::RefPtr<PlatformRenderer> child,
                         int index = -1) = 0;

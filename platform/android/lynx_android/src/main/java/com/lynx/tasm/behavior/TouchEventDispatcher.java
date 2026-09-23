@@ -104,6 +104,7 @@ public class TouchEventDispatcher {
 
   private EventTarget.EnableStatus mConsumeSlideEvent = EventTarget.EnableStatus.Undefined;
   private boolean mCanConsumeSlideEvent = false;
+  private float[] mPlatformConsumeSlideEventAngles;
   private PointF mDownPoint;
   private float mTapSlop;
   public static final String mTapSlopDefault = "50px";
@@ -316,16 +317,16 @@ public class TouchEventDispatcher {
   }
 
   public boolean consumeSlideEvent(MotionEvent ev) {
-    if (mUIOwner.getContext().isFragmentLayerRenderOn()) {
-      // TODO: Support consume-slide-event in fragment layer rendering.
-      return false;
-    }
+    boolean isFragmentLayerRenderOn = mUIOwner.getContext().isFragmentLayerRenderOn();
     switch (ev.getAction()) {
       case MotionEvent.ACTION_DOWN: {
         // When the finger is pressed, set mConsumeSlideEvent to Undefined.
         mConsumeSlideEvent = EventTarget.EnableStatus.Undefined;
         mCanConsumeSlideEvent = false;
-        if (mActiveUI != null) {
+        if (isFragmentLayerRenderOn) {
+          mCanConsumeSlideEvent = mPlatformConsumeSlideEventAngles != null
+              && mPlatformConsumeSlideEventAngles.length >= 2;
+        } else if (mActiveUI != null) {
           EventTarget target = mActiveUI;
           while (target != null && target.parent() != target) {
             // Only when there is a node on the responder chain that has consume-slide-event set,
@@ -379,13 +380,23 @@ public class TouchEventDispatcher {
         // Use atan2(y, x) * 180 / PI to calculate the angle.
         float semicircleAngle = 180;
         double angle = Math.atan2(distanceY, distanceX) * semicircleAngle / Math.PI;
-        EventTarget target = mActiveUI;
-        while (target != null && target.parent() != target) {
-          if (target.consumeSlideEvent((float) angle)) {
-            mConsumeSlideEvent = EventTarget.EnableStatus.Enable;
-            break;
+        if (isFragmentLayerRenderOn) {
+          for (int i = 0; i + 1 < mPlatformConsumeSlideEventAngles.length; i += 2) {
+            if (angle >= mPlatformConsumeSlideEventAngles[i]
+                && angle <= mPlatformConsumeSlideEventAngles[i + 1]) {
+              mConsumeSlideEvent = EventTarget.EnableStatus.Enable;
+              break;
+            }
           }
-          target = target.parent();
+        } else {
+          EventTarget target = mActiveUI;
+          while (target != null && target.parent() != target) {
+            if (target.consumeSlideEvent((float) angle)) {
+              mConsumeSlideEvent = EventTarget.EnableStatus.Enable;
+              break;
+            }
+            target = target.parent();
+          }
         }
         break;
       }
@@ -1303,6 +1314,13 @@ public class TouchEventDispatcher {
           && (paintingContext.getPlatformEventBehavior()
                  & IPaintingContext.EVENT_BEHAVIOR_BLOCK_NATIVE_EVENT)
               != 0;
+      mPlatformConsumeSlideEventAngles = consumed
+              && (paintingContext.getPlatformEventBehavior()
+                     & IPaintingContext.EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT)
+                  != 0
+          ? paintingContext.getPlatformConsumeSlideEventAngles()
+          : null;
+      mDownPoint = new PointF(ev.getX(), ev.getY());
       // Keep the native hit target for the whole touch sequence, including additional pointers.
       mActiveUI =
           consumed ? mUIOwner.findLynxUIBySign(paintingContext.getPlatformTouchTargetSign()) : null;
@@ -1566,6 +1584,9 @@ public class TouchEventDispatcher {
 
   public void reset() {
     mBlockNativeEvent = false;
+    mPlatformConsumeSlideEventAngles = null;
+    mCanConsumeSlideEvent = false;
+    mConsumeSlideEvent = EventTarget.EnableStatus.Undefined;
     mActiveUI = null;
     mFocusedUI = null;
     mActiveClickList.clear();

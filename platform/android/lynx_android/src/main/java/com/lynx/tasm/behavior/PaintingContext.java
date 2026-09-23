@@ -356,6 +356,11 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
+  public float[] getPlatformConsumeSlideEventAngles() {
+    return null;
+  }
+
+  @Override
   public int hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY) {
     return EVENT_BEHAVIOR_NONE;
   }

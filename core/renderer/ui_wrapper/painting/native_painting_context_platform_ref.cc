@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -31,6 +32,27 @@ int32_t ToInt(float value) { return static_cast<int32_t>(value); }
 constexpr int64_t kEventTargetTreeUpdateIntervalMs = 50;
 constexpr int32_t kUnknownEventTargetRootId = -1;
 
+std::optional<bool> NativeInteractionEnabledFromBundle(
+    const PlatformEventBundle *bundle) {
+  if (bundle == nullptr) {
+    return std::nullopt;
+  }
+  auto it = bundle->EventProps().find(
+      PlatformEventPropName::kNativeInteractionEnabled);
+  if (it == bundle->EventProps().end()) {
+    return std::nullopt;
+  }
+  switch (EventPropValueToStatus(it->second)) {
+    case LynxEventPropStatus::kEnable:
+      return true;
+    case LynxEventPropStatus::kDisable:
+      return false;
+    case LynxEventPropStatus::kUndefined:
+      return std::nullopt;
+  }
+  return std::nullopt;
+}
+
 }  // namespace
 
 NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
@@ -50,6 +72,11 @@ void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
   }
   renderers_.insert_or_assign(
       id, view_factory_->CreateRenderer(id, type, init_data, init_config));
+  auto enabled = NativeInteractionEnabledFromBundle(GetPlatformEventBundle(id));
+  if (auto renderer = GetPlatformRenderer(id);
+      renderer && enabled.has_value()) {
+    renderer->UpdateNativeInteractionEnabled(enabled);
+  }
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
@@ -61,6 +88,11 @@ void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
   }
   renderers_.insert_or_assign(id, view_factory_->CreateExtendedRenderer(
                                       id, tag_name, init_data, init_config));
+  auto enabled = NativeInteractionEnabledFromBundle(GetPlatformEventBundle(id));
+  if (auto renderer = GetPlatformRenderer(id);
+      renderer && enabled.has_value()) {
+    renderer->UpdateNativeInteractionEnabled(enabled);
+  }
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayList(
@@ -197,15 +229,22 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
   engine_actor_ = engine_actor;
   // Event geometry uses layout units, which may differ from physical pixels.
   float layouts_unit_per_px = 1.0f;
+  float physical_pixels_per_layout_unit = 1.0f;
+  float screen_width = 0.f;
   if (engine_actor_ != nullptr) {
     const auto &element_manager =
         engine_actor_->Impl()->GetTasm()->page_proxy()->element_manager();
     if (element_manager != nullptr) {
-      layouts_unit_per_px =
-          element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+      const auto &config = element_manager->GetLynxEnvConfig();
+      layouts_unit_per_px = config.LayoutsUnitPerPx();
+      physical_pixels_per_layout_unit = config.PhysicalPixelsPerLayoutUnit();
+      screen_width = config.ScreenWidth();
     }
   }
   event_target_helper_->SetDevicePixelRatio(layouts_unit_per_px);
+  event_target_helper_->SetPhysicalPixelsPerLayoutUnit(
+      physical_pixels_per_layout_unit);
+  event_target_helper_->SetScreenWidth(screen_width);
 }
 
 void NativePaintingCtxPlatformRef::SetTapSlop(const std::string &tap_slop) {
@@ -307,13 +346,26 @@ void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
     int32_t id, PlatformEventBundle bundle) {
   // TODO(hexionghui): When an Attribute does not trigger a rebuild, the
   // ApplyEventBundle needs to be executed actively for the PlatformEventTarget.
+  auto previous =
+      NativeInteractionEnabledFromBundle(GetPlatformEventBundle(id));
+  auto current = NativeInteractionEnabledFromBundle(&bundle);
   if (bundle.Empty()) {
     platform_event_bundles_.erase(id);
-    MarkEventTargetTreeDirty(id);
-    return;
+  } else {
+    platform_event_bundles_.insert_or_assign(id, std::move(bundle));
   }
-  platform_event_bundles_.insert_or_assign(id, std::move(bundle));
+  if (previous != current) {
+    if (auto renderer = GetPlatformRenderer(id)) {
+      renderer->UpdateNativeInteractionEnabled(current);
+    }
+  }
   MarkEventTargetTreeDirty(id);
+}
+
+fml::RefPtr<PlatformRenderer> NativePaintingCtxPlatformRef::GetPlatformRenderer(
+    int32_t id) const {
+  auto it = renderers_.find(id);
+  return it != renderers_.end() ? it->second : nullptr;
 }
 
 const PlatformEventBundle *NativePaintingCtxPlatformRef::GetPlatformEventBundle(
