@@ -458,8 +458,8 @@ class LYNX_EXPORT Runtime {
     return external_params_.delegate.lock();
   }
 
-  void SetExternalParams(JSRuntimeExternalParams external_params) {
-    external_params_ = std::move(external_params);
+  void SetExternalParams(const JSRuntimeExternalParams& external_params) {
+    external_params_ = external_params;
   }
 
   // Reads the runtime's current heap statistics without triggering GC. Runtimes

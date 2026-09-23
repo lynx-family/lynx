@@ -62,7 +62,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
       base::MoveOnlyClosure<
           std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>>
           js_pre_sources_getter,
-      bool ensure_console, JSRuntimeExternalParams create_params,
+      bool ensure_console, const JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options);
 
   void SetObserver(JSIObserver* observer);

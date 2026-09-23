@@ -290,7 +290,7 @@ void BTSRuntime::InitExecutor(bool is_full_runtime,
   // here NeedGlobalConsole always return true...
   // bool need_console = delegate_->NeedGlobalConsole();
   js_executor_->loadPreJSBundle(std::move(preload_js_sources_getter), true,
-                                std::move(create_params), page_options_);
+                                create_params, page_options_);
   js_executor_->SetObserver(delegate_.get());
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreEnd);

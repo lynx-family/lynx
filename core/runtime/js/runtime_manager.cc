@@ -270,11 +270,11 @@ RuntimeManager::CreateNewShareGroupJSRuntime(
         js_pre_sources_getter,
     bool force_use_lightweight_js_engine, bool ensure_console,
     runtime::js::JSExecutor& executor,
-    runtime::js::JSRuntimeExternalParams create_params,
+    const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options) {
-  const std::string group_id = create_params.group_id;
+  const auto& group_id = create_params.group_id;
   auto* global_wrapper = EnsureNewShareGroupGlobalContext(
-      group_id, force_use_lightweight_js_engine, page_options,
+      force_use_lightweight_js_engine, create_params, page_options,
       js_pre_sources_getter, executor);
 
   auto vm = global_wrapper->GetVM();
@@ -283,9 +283,8 @@ RuntimeManager::CreateNewShareGroupJSRuntime(
   AlignRuntimeEngineWithVM(vm, force_use_lightweight_js_engine,
                            "use new share group");
 
-  auto page_runtime =
-      CreateRuntime(force_use_lightweight_js_engine, page_options, true,
-                    std::move(create_params));
+  auto page_runtime = CreateRuntime(force_use_lightweight_js_engine, true,
+                                    create_params, page_options);
   page_runtime->setCreatedType(runtime::js::JSRuntimeCreatedType::context);
   auto page_context = page_runtime->createContext(vm);
 
@@ -329,9 +328,9 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
         js_pre_sources_getter,
     bool force_use_lightweight_js_engine, bool ensure_console,
     runtime::js::JSExecutor& executor,
-    runtime::js::JSRuntimeExternalParams create_params,
+    const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options) {
-  const std::string group_id = create_params.group_id;
+  const auto& group_id = create_params.group_id;
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_CREATE_JS_RUNTIME,
               "group_id", group_id);
   // call inspect's prepare
@@ -346,7 +345,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   if (create_params.enable_new_share_group && !is_single_context) {
     return CreateNewShareGroupJSRuntime(
         js_pre_sources_getter, force_use_lightweight_js_engine, ensure_console,
-        executor, std::move(create_params), page_options);
+        executor, create_params, page_options);
   }
   base::UnsafeOwningPtr<runtime::js::Runtime> js_runtime;
   std::shared_ptr<runtime::js::JSIContext> js_context;
@@ -356,9 +355,9 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
   if (is_single_context) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                 RUNTIME_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME);
-    js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
-                               false, std::move(create_params));
-    js_context = CreateJSIContext(*js_runtime, group_id);
+    js_runtime = CreateRuntime(force_use_lightweight_js_engine, false,
+                               create_params, page_options);
+    js_context = CreateJSIContext(*js_runtime, create_params);
     LOGI("create single_context:" << js_context.get());
   } else {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
@@ -373,8 +372,8 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
       TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                   RUNTIME_MANAGER_SHARED_CONTEXT_REUSED);
       need_create_context_wrapper = false;
-      js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
-                                 true, std::move(create_params));
+      js_runtime = CreateRuntime(force_use_lightweight_js_engine, true,
+                                 create_params, page_options);
       js_runtime->setCreatedType(
           runtime::js::JSRuntimeCreatedType::none_vm_none_context);
       LOGI("get shared_context success, context:" << js_context.get()
@@ -383,9 +382,9 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
       TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                   RUNTIME_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
       // share context first create.
-      js_runtime = CreateRuntime(force_use_lightweight_js_engine, page_options,
-                                 false, std::move(create_params));
-      js_context = CreateJSIContext(*js_runtime, group_id);
+      js_runtime = CreateRuntime(force_use_lightweight_js_engine, false,
+                                 create_params, page_options);
+      js_context = CreateJSIContext(*js_runtime, create_params);
       LOGI("get shared_context failed, create context:"
            << js_context.get() << ", group:" << group_id);
     }
@@ -481,12 +480,14 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateJSRuntime(
 
 NewShareGroupGlobalContextWrapper*
 RuntimeManager::EnsureNewShareGroupGlobalContext(
-    const std::string& group_id, bool force_use_lightweight_js_engine,
+    bool force_use_lightweight_js_engine,
+    const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options,
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
         js_pre_sources_getter,
     runtime::js::JSExecutor& executor) {
+  const auto& group_id = create_params.group_id;
   auto it = new_share_group_map_.find(group_id);
   if (it != new_share_group_map_.end()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
@@ -517,7 +518,7 @@ RuntimeManager::EnsureNewShareGroupGlobalContext(
   runtime::js::JSRuntimeExternalParams global_params{};
   global_params.group_id = group_id;
   global_runtime->SetExternalParams(std::move(global_params));
-  auto global_context = CreateJSIContext(*global_runtime, group_id);
+  auto global_context = CreateJSIContext(*global_runtime, create_params);
   global_runtime->InitRuntime(global_context);
   runtime::js::Runtime* global_rt_ptr = global_runtime.get();
   // Capture a weak handle before initGlobal moves the owning pointer into the
@@ -562,9 +563,9 @@ RuntimeManager::EnsureNewShareGroupGlobalContext(
 }
 
 base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
-    bool force_use_lightweight_js_engine, const tasm::PageOptions& page_options,
-    bool use_shared_context,
-    runtime::js::JSRuntimeExternalParams external_params) {
+    bool force_use_lightweight_js_engine, bool use_shared_context,
+    const runtime::js::JSRuntimeExternalParams& create_params,
+    const tasm::PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RUNTIME_MANAGER_CREATE_RUNTIME);
   auto unique_runtime = MakeRuntime(force_use_lightweight_js_engine,
                                     use_shared_context, page_options);
@@ -575,7 +576,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> RuntimeManager::CreateRuntime(
   }
   TrackRuntimeForMemoryPressure(js_runtime.GetWeakPtr());
   js_runtime->SetPageOptions(page_options);
-  js_runtime->SetExternalParams(std::move(external_params));
+  js_runtime->SetExternalParams(create_params);
   return js_runtime;
 }
 
@@ -653,7 +654,8 @@ std::shared_ptr<runtime::js::JSIContext> RuntimeManager::GetSharedJSContext(
 }
 
 std::shared_ptr<runtime::js::JSIContext> RuntimeManager::CreateJSIContext(
-    runtime::js::Runtime& rt, const std::string& group_id) {
+    runtime::js::Runtime& rt,
+    const runtime::js::JSRuntimeExternalParams& create_params) {
   std::shared_ptr<runtime::js::JSIContext> js_context;
   bool need_create_vm = false;
   if (!IsVMSharedAcrossGroups(rt.type())) {

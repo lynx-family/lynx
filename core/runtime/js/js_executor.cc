@@ -72,13 +72,13 @@ void JSExecutor::loadPreJSBundle(
     base::MoveOnlyClosure<
         std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>>
         js_pre_sources_getter,
-    bool ensure_console, JSRuntimeExternalParams create_params,
+    bool ensure_console, const JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_EXECUTOR_LOAD_PRE_JS_BUNDLE);
   const int64_t runtime_id = create_params.runtime_id;
   js_runtime_ = runtimeManagerInstance()->CreateJSRuntime(
       std::move(js_pre_sources_getter), force_use_light_weight_js_engine_,
-      ensure_console, *this, std::move(create_params), page_options);
+      ensure_console, *this, create_params, page_options);
   if (runtime_observer_ng_ != nullptr) {
     runtime_observer_ng_->OnRuntimeCreated(js_runtime_->type());
   }
