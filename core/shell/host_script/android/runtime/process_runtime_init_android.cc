@@ -31,6 +31,10 @@ void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
 
 bool HasHostScriptRuntime() { return true; }
 
+bool IsHostScriptRuntimeReady(ProcessRuntime::Domain domain) {
+  return ProcessRuntime::GetInstance().IsReady(domain);
+}
+
 void ShutdownHostScriptRuntime(ProcessRuntime::Completion completion) {
   ProcessRuntime::GetInstance().Shutdown(std::move(completion));
 }

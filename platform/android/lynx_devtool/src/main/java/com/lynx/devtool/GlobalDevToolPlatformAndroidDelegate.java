@@ -190,6 +190,8 @@ public class GlobalDevToolPlatformAndroidDelegate {
     return LynxEnv.inst().getLynxVersion();
   }
 
+  static native void nativeInvokeHSR(String message, CDPResultCallbackWrapper callback);
+
   private static native void nativeOnHSRScriptSource(
       long requestId, byte[] source, String errorMessage);
 

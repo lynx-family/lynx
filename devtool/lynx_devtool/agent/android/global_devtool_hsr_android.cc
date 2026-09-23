@@ -7,6 +7,7 @@
 #include <deque>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/include/no_destructor.h"
 #include "base/include/string/string_utils.h"
@@ -22,6 +23,23 @@ namespace {
 using shell::ProcessRuntime;
 using Callback = GlobalDevToolPlatformFacade::HSRScriptCallback;
 using Operation = HSRScriptRequest::Operation;
+
+Json::Value Status() {
+  Json::Value result(Json::objectValue);
+  result["available"] = shell::HasHostScriptRuntime();
+  result["enabled"] = tasm::DevToolLifecycle::GetInstance().IsEnabled();
+  for (auto domain :
+       {ProcessRuntime::Domain::kBTS, ProcessRuntime::Domain::kMTS,
+        ProcessRuntime::Domain::kUI}) {
+    constexpr const char* names[] = {"bts", "mts", "ui"};
+    result["ready"][names[static_cast<size_t>(domain)]] =
+        shell::IsHostScriptRuntimeReady(domain);
+  }
+  result["loaded"] = false;
+  result["stopping"] = false;
+  result["pending"] = 0;
+  return result;
+}
 
 ProcessRuntime::Domain RuntimeDomain(HSRScriptRequest::Thread thread) {
   switch (thread) {
@@ -74,6 +92,19 @@ class AndroidHSR {
   }
 
   void Enqueue(HSRScriptRequest request, Callback callback, uint64_t epoch) {
+    if (request.operation == Operation::kGetStatus) {
+      auto result = Status();
+      result["loaded"] =
+          loaded_ && shell::HostScriptDebugEpoch() == loaded_epoch_;
+      result["stopping"] = stopping_;
+      result["pending"] = static_cast<Json::UInt64>(requests_.size());
+      std::move(callback)(std::move(result), "");
+      return;
+    }
+    if (request.operation == Operation::kStop) {
+      Stop(std::move(callback));
+      return;
+    }
     requests_.push_back(
         {++next_id_, std::move(request), std::move(callback), {}, epoch});
     if (requests_.size() == 1) Start();
@@ -92,6 +123,32 @@ class AndroidHSR {
   }
 
  private:
+  void Stop(Callback callback) {
+    stopped_ = true;
+    loaded_ = false;
+    const bool already_stopping = stopping_;
+    stopping_ = true;
+    stop_callbacks_.push_back(std::move(callback));
+    // Invalidate downloads and replies before shutdown. Old IDs cannot complete
+    // a request submitted by a later load, even if its URL is identical.
+    auto cancelled = std::move(requests_);
+    requests_.clear();
+    for (auto& pending : cancelled) {
+      std::move(pending.callback)(Json::Value(), "HSR_STOPPED");
+    }
+    if (already_stopping) return;
+    shell::ShutdownHostScriptRuntime([](ProcessRuntime::Result result) {
+      auto& self = Get();
+      self.stopping_ = false;
+      auto callbacks = std::move(self.stop_callbacks_);
+      self.stop_callbacks_.clear();
+      for (auto& callback : callbacks) {
+        std::move(callback)(Json::Value(Json::objectValue), result.error);
+      }
+      self.Start();
+    });
+  }
+
   struct Request {
     int64_t id;
     HSRScriptRequest request;
@@ -115,11 +172,15 @@ class AndroidHSR {
   }
 
   void Start() {
-    if (requests_.empty() || requests_.front().started) return;
+    if (stopping_ || requests_.empty() || requests_.front().started) return;
     if (RejectIfDisabled()) return;
     auto& pending = requests_.front();
     pending.started = true;
     if (pending.request.operation == Operation::kEvaluate) {
+      if (stopped_) {
+        Complete(pending.id, Json::Value(), "HSR_STOPPED");
+        return;
+      }
       Execute();
     } else if (pending.request.source_type ==
                HSRScriptRequest::SourceType::kUrl) {
@@ -153,6 +214,7 @@ class AndroidHSR {
       return;
     }
     // Resolve and validate resource bytes before invalidating the old script.
+    loaded_ = false;
     shell::ShutdownHostScriptRuntime([id](ProcessRuntime::Result result) {
       auto& self = Get();
       if (!self.Current(id)) return;
@@ -181,6 +243,12 @@ class AndroidHSR {
 
   void Complete(int64_t id, Json::Value result, const std::string& error) {
     if (!Current(id)) return;
+    if (requests_.front().request.operation == Operation::kLoadScript &&
+        error.empty()) {
+      loaded_ = true;
+      stopped_ = false;
+      loaded_epoch_ = requests_.front().debug_epoch;
+    }
     auto callback = std::move(requests_.front().callback);
     requests_.pop_front();
     std::move(callback)(std::move(result), error);
@@ -188,6 +256,11 @@ class AndroidHSR {
   }
 
   int64_t next_id_ = 0;
+  uint64_t loaded_epoch_ = 0;
+  bool loaded_ = false;
+  bool stopped_ = false;
+  bool stopping_ = false;
+  std::vector<Callback> stop_callbacks_;
   std::deque<Request> requests_;
 };
 }  // namespace
@@ -196,11 +269,15 @@ void GlobalDevToolPlatformAndroid::HandleHSRScript(HSRScriptRequest request,
                                                    HSRScriptCallback callback) {
   if (!callback) return;
   if (!shell::HasHostScriptRuntime()) {
-    std::move(callback)(Json::Value(), "HSR_DEBUG_LIBRARY_REQUIRED");
+    const bool status = request.operation == Operation::kGetStatus;
+    std::move(callback)(status ? Status() : Json::Value(),
+                        status ? "" : "HSR_DEBUG_LIBRARY_REQUIRED");
     return;
   }
   const auto epoch = shell::HostScriptDebugEpoch();
-  if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+  if (!tasm::DevToolLifecycle::GetInstance().IsEnabled() &&
+      request.operation != Operation::kGetStatus &&
+      request.operation != Operation::kStop) {
     std::move(callback)(Json::Value(), "HSR_DEBUG_DISABLED");
     return;
   }

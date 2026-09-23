@@ -17,6 +17,8 @@ uint64_t HostScriptDebugEpoch() { return 0; }
 
 bool HasHostScriptRuntime() { return false; }
 
+bool IsHostScriptRuntimeReady(ProcessRuntime::Domain) { return false; }
+
 void ShutdownHostScriptRuntime(ProcessRuntime::Completion completion) {
   ProcessRuntime::Result result;
   result.error = "HSR_DEBUG_LIBRARY_REQUIRED";

@@ -47,7 +47,8 @@ class PendingHSRResponse {
           valid = (type == "json" && result.isMember("value")) ||
                   (type == "undefined" && !result.isMember("value"));
         }
-      } else if (valid) {
+      } else if (valid &&
+                 operation != HSRScriptRequest::Operation::kGetStatus) {
         valid = result.empty();
       }
       if (!valid) {
@@ -84,6 +85,13 @@ void InspectorHSRAgent::CallMethod(
     valid = ParseHSRLoadScript(message["params"], request, error);
   } else if (method == "HSR.evaluate") {
     valid = ParseHSREvaluate(message["params"], request, error);
+  } else if (method == "HSR.stop" || method == "HSR.getStatus") {
+    valid = message["params"].isNull() ||
+            (message["params"].isObject() && message["params"].empty());
+    error = "Expected empty params";
+    request.operation = method == "HSR.stop"
+                            ? HSRScriptRequest::Operation::kStop
+                            : HSRScriptRequest::Operation::kGetStatus;
   } else {
     responder->SendError(CDPErrorCode::MethodNotFound,
                          "'" + method + "' wasn't found");

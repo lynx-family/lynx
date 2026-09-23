@@ -24,6 +24,9 @@ LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
     ProcessRuntime::Completion completion);
 
 LYNX_EXPORT_FOR_DEVTOOL bool HasHostScriptRuntime();
+// Non-blocking readiness snapshot; never creates a context.
+LYNX_EXPORT_FOR_DEVTOOL bool IsHostScriptRuntimeReady(
+    ProcessRuntime::Domain domain);
 LYNX_EXPORT_FOR_DEVTOOL void ShutdownHostScriptRuntime(
     ProcessRuntime::Completion completion);
 

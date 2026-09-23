@@ -14,12 +14,30 @@
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/jni_helper.h"
+#include "devtool/base_devtool/native/public/abstract_devtool.h"
+#include "devtool/base_devtool/native/public/devtool_message_dispatcher.h"
 #include "devtool/lynx_devtool/agent/android/global_devtool_hsr_android.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_hsr_agent.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
+#include "devtool/lynx_devtool/android/invoke_cdp_from_sdk_sender_android.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h"
 
 namespace {
+
+class HSRControlDispatcher final : public lynx::devtool::AbstractDevTool {
+ public:
+  static void Dispatch(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const std::string& source) {
+    auto& dispatcher = GetGlobalMessageDispatcherInstance();
+    // Status remains queryable when debugging was disabled at bootstrap.
+    // Registration is idempotent; script admission stays in the platform.
+    dispatcher.RegisterAgent(
+        "HSR", std::make_unique<lynx::devtool::InspectorHSRAgent>());
+    dispatcher.DispatchMessage(sender, "CDP", source);
+  }
+};
 
 using MemoryUsageCallback =
     lynx::devtool::GlobalDevToolPlatformFacade::MemoryUsageCallback;
@@ -68,6 +86,18 @@ bool IsMemoryUsageCallbackPending(
 }
 
 }  // namespace
+
+static void InvokeHSR(JNIEnv* env, jclass, jstring message, jobject callback) {
+  auto sender = std::make_shared<lynx::devtool::InvokeCDPFromSDKSenderAndroid>(
+      env, callback);
+  auto source =
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, message);
+  lynx::devtool::LynxDevToolMediatorBase::GetDevToolsThread()
+      .GetTaskRunner()
+      ->PostTask([sender, source = std::move(source)] {
+        HSRControlDispatcher::Dispatch(sender, source);
+      });
+}
 
 static void OnHSRScriptSource(JNIEnv* env, jclass, jlong request_id,
                               jbyteArray bytes, jstring error_message) {
