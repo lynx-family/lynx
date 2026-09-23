@@ -10,12 +10,15 @@
 #include <node_api.h>
 
 #include <algorithm>
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/geometry/rect.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/text_selection_menu.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
@@ -125,10 +128,22 @@ class UIText : public UIBase {
 
   void EnsureHandleNodesCreated();
   void EnsureHandleNodesAttached();
+  void GetTextOffsetInHandleParent(float* left, float* top) const;
   void UpdateHandleNodes();
   void HideHandleNodes();
   void DrawHandleNode(OH_Drawing_Canvas* canvas, int32_t type) const;
   void HandlePanOnHandleNode(bool is_start, ArkUI_GestureEvent* event);
+
+  // Default context menu.
+  void EnsureTextSelectionMenuManager();
+  bool GetContextMenuLayout(TextSelectionMenu::LayoutInfo* layout) const;
+  void ShowContextMenu();
+  void HideContextMenu();
+  void UpdateContextMenuNode();
+  void OnContextMenuHidden();
+  void DetachHandlesFromContextMenu();
+  std::string GetSelectedTextValue() const;
+  void SelectAllText();
 
   fml::RefPtr<ParagraphHarmony> paragraph_{nullptr};
   float translate_left_offset_{0.f};
@@ -192,6 +207,11 @@ class UIText : public UIBase {
   float dot_radius_px_{0.f};
   float handle_pan_accept_x_{0.f};
   float handle_pan_accept_y_{0.f};
+
+  std::function<std::shared_ptr<TextSelectionMenu>(
+      TextSelectionMenu::Callbacks)>
+      text_selection_menu_factory_;
+  std::shared_ptr<TextSelectionMenu> text_selection_menu_manager_;
 };
 
 }  // namespace harmony
