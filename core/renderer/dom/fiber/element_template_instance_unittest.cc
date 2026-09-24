@@ -57,7 +57,13 @@ class RecordingInspectorElementObserver final
     removed_node_parents.push_back(ptr != nullptr ? ptr->parent() : nullptr);
   }
   void OnCharacterDataModified(Element* ptr) override {}
-  void OnElementDataModelSet(Element* ptr) override {}
+  void OnElementDataModelSet(Element* ptr) override {
+    modified_nodes.push_back(ptr);
+    const auto& attributes = ptr->data_model()->attributes();
+    auto text = attributes.find(base::String("text"));
+    modified_texts.push_back(text == attributes.end() ? lepus::Value()
+                                                      : text->second);
+  }
   void OnElementManagerWillDestroy() override {}
   void OnCSSStyleSheetAdded(Element* ptr) override {}
   void OnComponentUselessUpdate(const std::string& component_name,
@@ -71,7 +77,13 @@ class RecordingInspectorElementObserver final
   GetDevToolFunction() override {
     auto noop = [](const base::any&) {};
     return {
-        {lynx::devtool::DevToolFunction::InitForInspector, noop},
+        {lynx::devtool::DevToolFunction::InitForInspector,
+         [this](const base::any& data) {
+           auto* node = std::get<0>(base::any_cast<std::tuple<Element*>>(data));
+           node->set_inspector_attribute(
+               std::make_unique<InspectorAttribute>());
+           initialized_nodes.push_back(node);
+         }},
         {lynx::devtool::DevToolFunction::InitPlugForInspector, noop},
         {lynx::devtool::DevToolFunction::InitStyleValueElement, noop},
         {lynx::devtool::DevToolFunction::InitStyleRoot, noop},
@@ -85,6 +97,9 @@ class RecordingInspectorElementObserver final
   std::vector<Element*> added_node_parents;
   std::vector<Element*> removed_nodes;
   std::vector<Element*> removed_node_parents;
+  std::vector<Element*> modified_nodes;
+  std::vector<Element*> initialized_nodes;
+  std::vector<lepus::Value> modified_texts;
 };
 
 const lepus::Value* DatasetValue(const Element* element,
@@ -109,7 +124,8 @@ class ElementTemplateInstanceTest : public FiberElementTest {
     return runtime;
   }
 
-  fml::RefPtr<ElementTemplateInstance> CreateCompiledSpreadInstance() {
+  fml::RefPtr<ElementTemplateInstance> CreateCompiledSpreadInstance(
+      bool nested_target = false) {
     auto entry = std::make_shared<TemplateEntry>();
     entry->SetName(DEFAULT_ENTRY_NAME);
     tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
@@ -123,7 +139,14 @@ class ElementTemplateInstanceTest : public FiberElementTest {
         std::make_shared<const TemplateAttributes>(TemplateAttributes{
             Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
                       lepus::Value(), 0}});
-    info->elements_.emplace_back(std::move(root_info));
+    if (nested_target) {
+      ElementInfo parent;
+      parent.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+      parent.children_.emplace_back(std::move(root_info));
+      info->elements_.emplace_back(std::move(parent));
+    } else {
+      info->elements_.emplace_back(std::move(root_info));
+    }
     entry->template_bundle_.element_template_infos_["spread_template"] = info;
 
     auto instance = fml::AdoptRef<ElementTemplateInstance>(
@@ -2618,6 +2641,81 @@ TEST_P(ElementTemplateInstanceTest, ListSchedulerFlushMountsCompiledChild) {
     EXPECT_EQ(child_root->parent(), parent_root.get());
     EXPECT_FALSE(parent->HasPendingChildMounts());
   }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       InspectorReceivesFinalTypedAndCompiledAttributeUpdates) {
+  if (!ENABLE_INSPECTOR) {
+    GTEST_SKIP();
+  }
+  auto observer = std::make_shared<RecordingInspectorElementObserver>();
+  manager->SetInspectorElementObserver(observer);
+  manager->devtool_flag_ = true;
+  manager->dom_tree_enabled_ = true;
+
+  auto typed = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  typed->SetTypedTag(base::String("raw-text"));
+  auto compiled = CreateCompiledSpreadInstance(true);
+  for (const auto& instance : {typed, compiled}) {
+    auto attributes = lepus::Dictionary::Create();
+    attributes->SetValue("text", lepus::Value("before"));
+    auto style = lepus::Dictionary::Create();
+    style->SetValue("width", lepus::Value("10px"));
+    attributes->SetValue("style", lepus::Value(style));
+    instance->SetAttributeSlot(0, lepus::Value(attributes));
+    observer->modified_nodes.clear();
+    instance->RequestMaterializationRecursively();
+    EXPECT_TRUE(observer->modified_nodes.empty());
+    auto root = instance->GetRoot();
+    ASSERT_NE(root, nullptr);
+    auto* target = instance == typed ? root.get() : root->children()[0].get();
+    ASSERT_NE(root->inspector_attribute(), nullptr);
+    EXPECT_TRUE(observer->modified_nodes.empty());
+    EXPECT_NE(target->data_model()->inline_styles().find(kPropertyIDWidth),
+              target->data_model()->inline_styles().end());
+
+    const auto initialized_count = observer->initialized_nodes.size();
+    auto* inspector = root->inspector_attribute();
+    EXPECT_EQ(instance->GetRoot(), root);
+    EXPECT_EQ(root->inspector_attribute(), inspector);
+    EXPECT_EQ(observer->initialized_nodes.size(), initialized_count);
+
+    attributes = lepus::Dictionary::Create();
+    attributes->SetValue("text", lepus::Value("after"));
+    instance->SetAttributeSlot(0, lepus::Value(attributes));
+    ASSERT_EQ(observer->modified_nodes.size(), 1u);
+    EXPECT_EQ(observer->modified_nodes.back(), target);
+    EXPECT_EQ(observer->modified_texts.back().StdString(), "after");
+    EXPECT_EQ(instance->PeekMaterializedRoot(), root);
+    instance->SetAttributeSlot(0, lepus::Value());
+    ASSERT_EQ(observer->modified_nodes.size(), 2u);
+    EXPECT_EQ(observer->modified_nodes.back(), target);
+    EXPECT_TRUE(observer->modified_texts.back().IsEmpty());
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       InspectorStringStyleUsesExistingFlushNotification) {
+  if (!ENABLE_INSPECTOR) {
+    GTEST_SKIP();
+  }
+  auto observer = std::make_shared<RecordingInspectorElementObserver>();
+  manager->SetInspectorElementObserver(observer);
+  manager->devtool_flag_ = true;
+  manager->dom_tree_enabled_ = true;
+  auto instance = CreateCompiledSpreadInstance();
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue("style", lepus::Value("width: 23px"));
+  instance->SetAttributeSlot(0, lepus::Value(attributes));
+  EXPECT_TRUE(observer->modified_nodes.empty());
+  root->ProcessFullRawInlineStyle(nullptr);
+  ASSERT_EQ(observer->modified_nodes.size(), 1u);
+  EXPECT_EQ(observer->modified_nodes.back(), root.get());
+  root->ProcessFullRawInlineStyle(nullptr);
+  EXPECT_EQ(observer->modified_nodes.size(), 1u);
 }
 
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
