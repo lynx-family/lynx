@@ -14,12 +14,14 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/debug/lynx_assert.h"
 #include "base/include/float_comparison.h"
 #include "base/include/fml/time/time_delta.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/services/fluency/fluency_tracer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
@@ -142,6 +144,9 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   }
 
   if (ui == nullptr) {
+    LYNX_ERROR(error::E_EXCEPTION_PLATFORM,
+               "Failed to create UI for unregistered tag: " + tag,
+               "Register a native behavior for this tag before using it.");
     ui = UIView::Make(context_.get(), sign, tag);
   }
 
