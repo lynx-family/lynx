@@ -8,6 +8,7 @@ import androidx.annotation.AnyThread;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
@@ -18,9 +19,12 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
 /**
- * A debug-only runtime that executes one Host Script and exposes runtime-local Lynx capabilities.
+ * Executes one Host Script and exposes runtime-local Lynx capabilities.
+ *
+ * @hide
  */
 @Keep
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class LynxHostScriptRuntime {
   public interface ScriptCallback {
     void onSuccess();

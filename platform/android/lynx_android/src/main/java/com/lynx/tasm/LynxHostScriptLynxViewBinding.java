@@ -13,7 +13,11 @@ import com.lynx.tasm.base.CalledByNative;
 import java.lang.ref.WeakReference;
 import org.json.JSONArray;
 
-/** Runtime-local, non-owning LynxView binding used by the debug Host Script Runtime. */
+/**
+ * Runtime-local, non-owning LynxView binding used by the Host Script Runtime.
+ *
+ * @hide
+ */
 @Keep
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 final class LynxHostScriptLynxViewBinding {

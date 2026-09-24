@@ -92,10 +92,8 @@ group("lynx_android_lib") {
     public_deps +=
         [ "../../../core/shell/host_script/android:process_runtime_android" ]
   }
-  if (is_debug) {
-    public_deps +=
-        [ "../../../core/shell/host_script/android:host_script_android" ]
-  }
+  public_deps +=
+      [ "../../../core/shell/host_script/android:host_script_android" ]
   if (enable_testbench_recorder) {
     public_deps += [ "../../../core/services/recorder:recorder" ]
   }

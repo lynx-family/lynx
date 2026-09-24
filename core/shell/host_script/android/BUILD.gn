@@ -15,7 +15,7 @@ lynx_core_source_set("host_script_init") {
   }
 }
 
-if (is_android && is_debug) {
+if (is_android) {
   lynx_core_source_set("host_script_android") {
     sources = [
       "lynx_view/host_script_lynx_view_binding_android.cc",
