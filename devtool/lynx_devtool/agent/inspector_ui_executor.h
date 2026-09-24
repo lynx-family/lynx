@@ -53,8 +53,8 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_CDP_METHOD(UITree_Enable);
   DECLARE_DEVTOOL_CDP_METHOD(UITree_Disable);
   DECLARE_DEVTOOL_CDP_METHOD(GetLynxUITree);
-  DECLARE_DEVTOOL_METHOD(GetUIInfoForNode)
-  DECLARE_DEVTOOL_METHOD(SetUIStyle)
+  DECLARE_DEVTOOL_CDP_METHOD(GetUIInfoForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
   // lynx domain
   void LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
