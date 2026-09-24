@@ -291,6 +291,22 @@ ctx.handler = () => ({
   EXPECT_TRUE(fixture->timed_out());
 }
 
+TEST(FixtureReplayRuntimeTest, CountsInstalledBindingsBeforeScriptCompilation) {
+  FixtureRuntimeLimits limits;
+  limits.memory_limit_bytes = 1024 * 1024;
+  auto fixture = CreateQuickJsFixtureRuntime(limits);
+  ASSERT_NE(fixture, nullptr);
+  {
+    auto& runtime = fixture->runtime();
+    Scope scope(runtime);
+    runtime.global().setProperty(
+        runtime, "retained",
+        runtime::js::String::createFromUtf8(runtime,
+                                            std::string(2 * 1024 * 1024, 'x')));
+  }
+  EXPECT_FALSE(fixture->EvaluateScript("return 1;").has_value());
+}
+
 TEST(FixtureReplayRuntimeTest, RejectsDisabledLimitsAndAcceptsLongDeadlines) {
   FixtureRuntimeLimits limits;
   limits.timeout_ms = 0;
@@ -299,6 +315,9 @@ TEST(FixtureReplayRuntimeTest, RejectsDisabledLimitsAndAcceptsLongDeadlines) {
   EXPECT_EQ(CreateQuickJsFixtureRuntime(limits), nullptr);
   limits.timeout_ms = kDefaultFixtureTimeoutMs;
   limits.memory_limit_bytes = 0;
+  EXPECT_EQ(CreateQuickJsFixtureRuntime(limits), nullptr);
+
+  limits.memory_limit_bytes = 1;
   EXPECT_EQ(CreateQuickJsFixtureRuntime(limits), nullptr);
 
   limits = FixtureRuntimeLimits{};

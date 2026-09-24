@@ -57,6 +57,7 @@ class FixtureJsRuntime {
   friend class ScopedFixtureExecution;
   void BeginExecution();
   void EndExecution();
+  virtual bool IsHeapWithinLimit() = 0;
   virtual void ArmExecutionDeadline() = 0;
   virtual void DisarmExecutionDeadline() = 0;
 
@@ -82,7 +83,8 @@ class ScopedFixtureExecution {
 
 // Currently the only backend. Further engines can implement FixtureJsRuntime
 // without changing the resource helpers, DSL bindings or evaluation logic.
-// Returns null for invalid limits. Neither limit can be disabled with zero.
+// Returns null for invalid limits or a budget below engine startup usage.
+// Neither limit can be disabled with zero.
 std::unique_ptr<FixtureJsRuntime> CreateQuickJsFixtureRuntime(
     const FixtureRuntimeLimits& limits = FixtureRuntimeLimits{});
 
