@@ -389,52 +389,63 @@ void InspectorUIExecutor::GetLynxUITree(
 }
 
 void InspectorUIExecutor::GetUIInfoForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (!uitree_enabled_) return;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content = Json::Value(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  int id = static_cast<int>(params["UINodeId"].asInt64());
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!uitree_enabled_) {
+    responder->SendError(CDPErrorCode::ServerError, "UITree is not enabled");
+    return;
+  }
+  int id = 0;
+  if (!ReadIntParam(params["UINodeId"], id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid UINodeId: expected integer");
+    return;
+  }
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
+    return;
+  }
   std::string info_str = devtool_platform_facade_->GetUINodeInfo(id);
 
+  Json::Value result(Json::ValueType::objectValue);
   Json::Reader reader;
-  if (info_str.size()) {
-    reader.parse(info_str, content, false);
+  if (!info_str.empty() && !reader.parse(info_str, result, false)) {
+    responder->SendError(CDPErrorCode::InternalError, "Invalid UI node data");
+    return;
   }
-
-  response["id"] = message["id"].asInt64();
-  response["result"] = content;
-
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::SetUIStyle(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (!uitree_enabled_) return;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  int id = static_cast<int>(params["UINodeId"].asInt64());
-  std::string style_name = params["styleName"].asString();
-  std::string style_content = params["styleContent"].asString();
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!uitree_enabled_) {
+    responder->SendError(CDPErrorCode::ServerError, "UITree is not enabled");
+    return;
+  }
+  int id = 0;
+  std::string style_name;
+  std::string style_content;
+  if (!ReadIntParam(params["UINodeId"], id) ||
+      !ReadStringParam(params["styleName"], style_name) ||
+      !ReadStringParam(params["styleContent"], style_content)) {
+    responder->SendError(
+        CDPErrorCode::InvalidParams,
+        "Invalid params: expected integer UINodeId and string style values");
+    return;
+  }
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
+    return;
+  }
   int ret = devtool_platform_facade_->SetUIStyle(id, style_name, style_content);
 
   if (ret == -1) {
-    Json::Value error = Json::Value(Json::ValueType::objectValue);
-    error["code"] = Json::Value(-32000);
-    error["message"] = Json::Value("set ui style fail");
-    content["error"] = error;
+    responder->SendError(CDPErrorCode::ServerError, "Failed to set UI style");
+    return;
   }
 
-  response["id"] = message["id"].asInt64();
-  response["result"] = content;
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::ScreencastFrameAck(
