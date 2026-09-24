@@ -748,7 +748,7 @@ void LynxShell::ResetNativeUpdateDataOrderForLoad(
 }
 
 void LynxShell::ResetShouldSendEventToMainThread() {
-  facade_actor_->ActSync(
+  facade_actor_->ActLite(
       [](auto& facade) { facade->OnShouldSendEventToMainThreadChanged(true); });
 }
 
