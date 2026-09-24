@@ -10,6 +10,7 @@
 #include "core/runtime/lepus/json_parser.h"
 #include "core/shared_data/lynx_white_board.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/testing/mock/white_board_inspector_delegate_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -67,33 +68,32 @@ TEST_F(WhiteBoardInspectorImplTest, InsertDelegate) {
 }
 
 TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
-  int error_code = 0;
   std::string error_msg;
 
   std::string key1 = "key1";
   std::string value1 = "value1";
-  inspector_->SetSharedData(key1, value1, error_code, error_msg);
-  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
+  auto error_code = inspector_->SetSharedData(key1, value1, error_msg);
+  ASSERT_TRUE(error_code.has_value());
+  EXPECT_EQ(*error_code, CDPErrorCode::ServerError);
   EXPECT_EQ(error_msg, "Failed to set shared data!");
 
-  error_code = 0;
   error_msg.clear();
 
   inspector_->SetWhiteBoard(white_board_);
   std::string key2 = "key2";
   std::string value2 = "value2";
-  inspector_->SetSharedData(key2, value2, error_code, error_msg);
-  EXPECT_EQ(error_code, LegacyCDPErrorCode::kInvalidParams);
+  error_code = inspector_->SetSharedData(key2, value2, error_msg);
+  ASSERT_TRUE(error_code.has_value());
+  EXPECT_EQ(*error_code, CDPErrorCode::InvalidParams);
   EXPECT_EQ(error_msg, "The value must be a valid JSON string!");
 
-  error_code = 0;
   error_msg.clear();
 
   // string value
   std::string key3 = "key3";
   std::string value3 = "\"value3\"";
-  inspector_->SetSharedData(key3, value3, error_code, error_msg);
-  EXPECT_EQ(error_code, 0);
+  error_code = inspector_->SetSharedData(key3, value3, error_msg);
+  EXPECT_FALSE(error_code.has_value());
   EXPECT_EQ(error_msg, "");
   auto result3 = white_board_->GetGlobalSharedData(key3);
   auto lepus_result3 = pub::ValueUtils::ConvertValueToLepusValue(*(result3));
@@ -103,8 +103,8 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
   // number value
   std::string key4 = "key4";
   std::string value4 = "123";
-  inspector_->SetSharedData(key4, value4, error_code, error_msg);
-  EXPECT_EQ(error_code, 0);
+  error_code = inspector_->SetSharedData(key4, value4, error_msg);
+  EXPECT_FALSE(error_code.has_value());
   EXPECT_EQ(error_msg, "");
   auto result4 = white_board_->GetGlobalSharedData(key4);
   auto lepus_result4 = pub::ValueUtils::ConvertValueToLepusValue(*(result4));
@@ -114,8 +114,8 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
   // object value
   std::string key5 = "key5";
   std::string value5 = "{\"number\":123,\"string\":\"123\"}";
-  inspector_->SetSharedData(key5, value5, error_code, error_msg);
-  EXPECT_EQ(error_code, 0);
+  error_code = inspector_->SetSharedData(key5, value5, error_msg);
+  EXPECT_FALSE(error_code.has_value());
   EXPECT_EQ(error_msg, "");
   auto result5 = white_board_->GetGlobalSharedData(key5);
   auto lepus_result5 = pub::ValueUtils::ConvertValueToLepusValue(*(result5));
@@ -125,8 +125,8 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
   // json string value
   std::string key6 = "key6";
   std::string value6 = "\"{\\\"number\\\":123,\\\"string\\\":\\\"123\\\"}\"";
-  inspector_->SetSharedData(key6, value6, error_code, error_msg);
-  EXPECT_EQ(error_code, 0);
+  error_code = inspector_->SetSharedData(key6, value6, error_msg);
+  EXPECT_FALSE(error_code.has_value());
   EXPECT_EQ(error_msg, "");
   auto result6 = white_board_->GetGlobalSharedData(key6);
   auto lepus_result6 = pub::ValueUtils::ConvertValueToLepusValue(*(result6));

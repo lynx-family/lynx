@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_impl.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
@@ -26,9 +28,12 @@ class WhiteBoardInspectorDelegate {
 
   bool IsEnabled() { return enabled_; }
 
-  std::string Enable(const Json::Value& message);
-  std::string Disable(const Json::Value& message);
-  std::string SetSharedData(const Json::Value& message);
+  // Handles migrated WhiteBoard commands and produces their responses through
+  // |responder| for both the TASM-executor and JS-debugger paths.
+  DECLARE_DEVTOOL_CDP_METHOD(Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(SetSharedData);
+  // Temporary legacy handlers retained until patch2 migrates these commands.
   std::string GetSharedData(const Json::Value& message);
   std::string RemoveSharedData(const Json::Value& message);
   std::string Clear(const Json::Value& message);
@@ -41,6 +46,7 @@ class WhiteBoardInspectorDelegate {
   virtual void SendEvent(const Json::Value& msg) = 0;
 
  protected:
+  // Temporary response helpers needed by the patch2 legacy handlers.
   std::string GenResponseMessage(int message_id, const Json::Value& result);
   Json::Value GenEventMessage(const std::string& method,
                               const Json::Value& params);
