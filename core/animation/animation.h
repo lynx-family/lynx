@@ -51,6 +51,9 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void DoFrame(fml::TimePoint& frame_time);
 
+  void TickEvents(fml::TimePoint& frame_time);
+  fml::TimePoint GetNextEventTime(fml::TimePoint now) const;
+
   void SendStartEvent();
 
   void SendEndEvent();
@@ -58,6 +61,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void SendCancelEvent();
 
   void SendIterationEvent();
+  void SendIterationEvents(int count);
 
   const base::String& name() { return name_; }
 
@@ -105,6 +109,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
   fml::TimePoint start_time_{fml::TimePoint::Min()};
 
  private:
+  bool HasIterationEvent() const;
   void CreateEventAndSend(const base::String& event);
   void Tick(fml::TimePoint& time);
   void RequestNextFrame();

@@ -4,9 +4,11 @@
 
 #include "core/renderer/dom/element_vsync_proxy.h"
 
+#include <algorithm>
 #include <memory>
 #include <set>
 
+#include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
@@ -21,9 +23,14 @@ namespace tasm {
 ElementVsyncProxy::ElementVsyncProxy(
     ElementManager *element_manager,
     const std::shared_ptr<base::VSyncMonitor> &vsync_monitor)
-    : element_manager_(element_manager), vsync_monitor_(vsync_monitor){};
+    : element_manager_(element_manager),
+      vsync_monitor_(vsync_monitor),
+      background_timer_(fml::MessageLoop::GetCurrent().GetTaskRunner()){};
 
 void ElementVsyncProxy::TickAllElement(fml::TimePoint &frame_time) {
+  if (element_manager_->IsElementVsyncPaused()) {
+    return;
+  }
   timing::LongTaskMonitor::Scope longTaskScope(
       element_manager_->GetPageOptions(), timing::kAnimationTask,
       timing::kTaskNameAnimationVSyncTickAllElement);
@@ -55,6 +62,12 @@ void ElementVsyncProxy::RequestNextFrame() {
   if (element_manager_->IsPause()) {
     return;
   }
+  if (element_manager_->IsElementVsyncPaused()) {
+    auto now = fml::TimePoint::Now();
+    ScheduleBackgroundFrame(
+        element_manager_->ProcessAnimationEvents(now, false));
+    return;
+  }
   if (!has_requested_next_frame_ && vsync_monitor_) {
     std::weak_ptr<ElementVsyncProxy> weak_ptr{shared_from_this()};
     vsync_monitor_->ScheduleVSyncSecondaryCallback(
@@ -73,11 +86,54 @@ void ElementVsyncProxy::RequestNextFrame() {
             shared_ptr->MarkNextFrameHasArrived();
             fml::TimePoint frame_time = fml::TimePoint::FromEpochDelta(
                 fml::TimeDelta::FromNanoseconds(frame_start));
+            const auto now = fml::TimePoint::Now();
+            // Keep time ahead of background events. iOS and custom embedders
+            // may also report VSync timestamps in another clock domain.
+            if (frame_time < shared_ptr->last_background_event_time_ ||
+                frame_time < now - fml::TimeDelta::FromSeconds(1) ||
+                frame_time > now + fml::TimeDelta::FromSeconds(1)) {
+              frame_time = now;
+            }
             shared_ptr->TickAllElement(frame_time);
           }
         });
     has_requested_next_frame_ = true;
   }
+}
+
+void ElementVsyncProxy::ScheduleBackgroundFrame(fml::TimePoint next) {
+  if (element_manager_->IsPause() ||
+      !element_manager_->IsElementVsyncPaused()) {
+    return;
+  }
+  if (next == fml::TimePoint::Max()) {
+    CancelBackgroundFrame();
+    return;
+  }
+  if (!background_timer_.Stopped() && background_frame_time_ <= next) {
+    return;
+  }
+  background_frame_time_ = next;
+  background_timer_.Start(
+      std::max(next - fml::TimePoint::Now(),
+               fml::TimeDelta::FromMilliseconds(1)),
+      [weak = weak_from_this()]() {
+        auto proxy = weak.lock();
+        if (!proxy) {
+          return;
+        }
+        proxy->background_frame_time_ = fml::TimePoint::Max();
+        if (proxy->element_manager_->IsPause() ||
+            !proxy->element_manager_->IsElementVsyncPaused()) {
+          return;
+        }
+        auto time = fml::TimePoint::Now();
+        proxy->last_background_event_time_ = time;
+        auto next = proxy->element_manager_->ProcessAnimationEvents(time, true);
+        // Event callbacks may request a new animation during dispatch.
+        proxy->ScheduleBackgroundFrame(
+            std::min(next, proxy->background_frame_time_));
+      });
 }
 
 }  // namespace tasm

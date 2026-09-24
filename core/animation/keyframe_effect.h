@@ -34,6 +34,11 @@ class KeyframeEffect {
 
   void TickKeyframeModel(fml::TimePoint monotonic_time);
 
+  // Advance lifecycle events without sampling or applying animated styles.
+  bool TickEvents(fml::TimePoint monotonic_time);
+  fml::TimePoint GetNextEventTime(fml::TimePoint now,
+                                  bool needs_iteration_event) const;
+
   void AddKeyframeModel(std::unique_ptr<KeyframeModel> keyframe_model);
 
   KeyframeModel* GetKeyframeModelByCurveType(AnimationCurve::CurveType type);
