@@ -4,9 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_ui_tree_agent.h"
 
-#include <queue>
-
-#include "devtool/lynx_devtool/element/element_inspector.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
@@ -17,24 +16,25 @@ InspectorUITreeAgent::InspectorUITreeAgent(
   functions_map_["UITree.enable"] = &InspectorUITreeAgent::Enable;
   functions_map_["UITree.disable"] = &InspectorUITreeAgent::Disable;
   functions_map_["UITree.getLynxUITree"] = &InspectorUITreeAgent::GetLynxUITree;
-  functions_map_["UITree.getUIInfoForNode"] =
+  legacy_functions_map_["UITree.getUIInfoForNode"] =
       &InspectorUITreeAgent::GetUIInfoForNode;
-  functions_map_["UITree.setUIStyle"] = &InspectorUITreeAgent::SetUIStyle;
+  legacy_functions_map_["UITree.setUIStyle"] =
+      &InspectorUITreeAgent::SetUIStyle;
 }
 
-void InspectorUITreeAgent::Enable(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  devtool_mediator_->UITree_Enable(sender, message);
+void InspectorUITreeAgent::Enable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->UITree_Enable(responder, params);
 }
 
-void InspectorUITreeAgent::Disable(const std::shared_ptr<MessageSender>& sender,
-                                   const Json::Value& message) {
-  devtool_mediator_->UITree_Disable(sender, message);
+void InspectorUITreeAgent::Disable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->UITree_Disable(responder, params);
 }
 
 void InspectorUITreeAgent::GetLynxUITree(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetLynxUITree(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetLynxUITree(responder, params);
 }
 
 void InspectorUITreeAgent::GetUIInfoForNode(
@@ -50,12 +50,25 @@ void InspectorUITreeAgent::SetUIStyle(
 void InspectorUITreeAgent::CallMethod(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   std::string method = message["method"].asString();
-  auto iter = functions_map_.find(method);
-  if (iter == functions_map_.end()) {
+  auto iter = legacy_functions_map_.find(method);
+  if (iter == legacy_functions_map_.end()) {
     SendNotImplementedResponse(sender, message["id"].asInt64(), method);
   } else {
     (this->*(iter->second))(sender, message);
   }
+}
+
+void InspectorUITreeAgent::CallMethod(
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  const std::string method = message["method"].asString();
+  const auto iter = functions_map_.find(method);
+  if (iter == functions_map_.end()) {
+    // Fall back only while patch2 commands still use MessageSender.
+    CallMethod(responder->RetrieveSender(), message);
+    return;
+  }
+  (this->*(iter->second))(responder, message["params"]);
 }
 
 }  // namespace devtool
