@@ -126,6 +126,13 @@ if (is_android) {
       "android/global_devtool_platform_android.cc",
       "android/global_devtool_platform_android.h",
     ]
+    if (enable_inspector && !enable_unittests && !is_oliver_ssr) {
+      devtool_agent_shared_sources +=
+          [ "android/global_devtool_hsr_android.cc" ]
+    } else {
+      devtool_agent_shared_sources +=
+          [ "android/global_devtool_hsr_android_stub.cc" ]
+    }
   } else {
     not_needed([
                  "../android/cdp_event_listener_sender_android.cc",
