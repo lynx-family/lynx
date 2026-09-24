@@ -217,7 +217,7 @@ std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
   desc.sample_count = delegate_->GetSampleCount();
   desc.content_scale = 1;
   desc.gl_id = fbo_info.fbo_id;
-  desc.has_stencil_attachment = true;
+  desc.has_stencil_attachment = fbo_info.has_depth_stencil_attachment;
   desc.surface_type = skity::GLSurfaceType::kFramebuffer;
 
   gpu_surface_ = gpu_context_->CreateSurface(&desc);
