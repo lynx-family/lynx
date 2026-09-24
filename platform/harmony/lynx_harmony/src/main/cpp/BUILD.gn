@@ -214,6 +214,9 @@ lynx_core_source_set("cpp") {
     "ui/scroll/lynx_ui_scroll_view.h",
     "ui/scroll/lynx_ui_scroll_view_internal.cc",
     "ui/scroll/lynx_ui_scroll_view_internal.h",
+    "ui/text_selection_menu.h",
+    "ui/text_selection_utils.cc",
+    "ui/text_selection_utils.h",
     "ui/ui_base.cc",
     "ui/ui_base.h",
     "ui/ui_bounce.cc",
@@ -293,6 +296,8 @@ lynx_core_source_set("cpp") {
     "image_packer",
     "ohresmgr",
     "ohpreferences",
+    "pasteboard",
+    "udmf",
   ]
 
   deps += [ "../../../../lynx_jsvm_initializer" ]
