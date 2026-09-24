@@ -728,7 +728,8 @@ GLFBOInfo FlutterWindowsEngine::GLContextFBO(GLFrameInfo frame_info) const {
   auto damage_rect = view_->GetDamageRegion();
   return {
       .fbo_id = view_->GetFrameBufferId(frame_info.width, frame_info.height),
-      .existing_damage = damage_rect};
+      .existing_damage = damage_rect,
+      .has_depth_stencil_attachment = true};
 }
 
 bool FlutterWindowsEngine::GLContextFBOResetAfterPresent() const {
