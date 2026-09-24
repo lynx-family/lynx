@@ -14,6 +14,7 @@
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/jni_helper.h"
+#include "devtool/lynx_devtool/agent/android/global_devtool_hsr_android.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h"
@@ -67,6 +68,32 @@ bool IsMemoryUsageCallbackPending(
 }
 
 }  // namespace
+
+static void OnHSRScriptSource(JNIEnv* env, jclass, jlong request_id,
+                              jbyteArray bytes, jstring error_message) {
+  std::string error =
+      error_message ? lynx::base::android::JNIConvertHelper::ConvertToString(
+                          env, error_message)
+                    : "";
+  std::string source;
+  if (bytes) {
+    const auto length = env->GetArrayLength(bytes);
+    if (length > 512 * 1024) {
+      error = "HSR source exceeds 512 KiB";
+    } else {
+      source.resize(length);
+      env->GetByteArrayRegion(bytes, 0, length,
+                              reinterpret_cast<jbyte*>(source.data()));
+      if (lynx::base::android::HasJNIException()) {
+        error = "Cannot read HSR resource bytes";
+      }
+    }
+  } else if (error.empty()) {
+    error = "HSR resource provider returned no source";
+  }
+  lynx::devtool::CompleteHSRScriptSource(request_id, std::move(source),
+                                         std::move(error));
+}
 
 static void OnMemoryUsageResult(JNIEnv* env, jclass jcaller, jlong callback_ptr,
                                 jstring result_json, jstring error_message) {
@@ -132,6 +159,15 @@ namespace devtool {
 GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
   static base::NoDestructor<GlobalDevToolPlatformAndroid> instance;
   return *(instance.get());
+}
+
+bool FetchHSRScriptSource(const std::string& url, int64_t request_id) {
+  auto* env = base::android::AttachCurrentThread();
+  auto java_url =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, url);
+  Java_GlobalDevToolPlatformAndroidDelegate_fetchHSRScript(env, java_url.Get(),
+                                                           request_id);
+  return !base::android::HasJNIException();
 }
 
 void GlobalDevToolPlatformAndroid::StartMemoryTracing() {
