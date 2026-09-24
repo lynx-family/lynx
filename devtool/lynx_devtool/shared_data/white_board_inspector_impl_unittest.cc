@@ -11,7 +11,6 @@
 #include "core/shared_data/lynx_white_board.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "devtool/base_devtool/native/public/cdp_error_code.h"
-#include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/testing/mock/white_board_inspector_delegate_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -135,22 +134,21 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
 }
 
 TEST_F(WhiteBoardInspectorImplTest, GetSharedData) {
-  int error_code = 0;
   std::string error_msg;
   std::vector<std::pair<std::string, std::string>> result;
 
-  inspector_->GetSharedData(result, error_code, error_msg);
+  auto error_code = inspector_->GetSharedData(result, error_msg);
   EXPECT_TRUE(result.empty());
-  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
+  ASSERT_TRUE(error_code.has_value());
+  EXPECT_EQ(*error_code, CDPErrorCode::ServerError);
   EXPECT_EQ(error_msg, "Failed to get shared data!");
 
-  error_code = 0;
   error_msg.clear();
   inspector_->SetWhiteBoard(white_board_);
 
-  inspector_->GetSharedData(result, error_code, error_msg);
+  error_code = inspector_->GetSharedData(result, error_msg);
   std::sort(result.begin(), result.end());
-  EXPECT_EQ(error_code, 0);
+  EXPECT_FALSE(error_code.has_value());
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(result.size(), 2);
   EXPECT_EQ(result[0].first, "key1");
@@ -160,27 +158,26 @@ TEST_F(WhiteBoardInspectorImplTest, GetSharedData) {
 }
 
 TEST_F(WhiteBoardInspectorImplTest, RemoveSharedData) {
-  int error_code = 0;
   std::string error_msg;
   std::string error_key = "error_key";
 
-  inspector_->RemoveSharedData(error_key, error_code, error_msg);
-  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
+  auto error_code = inspector_->RemoveSharedData(error_key, error_msg);
+  ASSERT_TRUE(error_code.has_value());
+  EXPECT_EQ(*error_code, CDPErrorCode::ServerError);
   EXPECT_EQ(error_msg, "Failed to remove shared data!");
 
-  error_code = 0;
   error_msg.clear();
   inspector_->SetWhiteBoard(white_board_);
 
-  inspector_->RemoveSharedData(error_key, error_code, error_msg);
-  EXPECT_EQ(error_code, LegacyCDPErrorCode::kInvalidParams);
+  error_code = inspector_->RemoveSharedData(error_key, error_msg);
+  ASSERT_TRUE(error_code.has_value());
+  EXPECT_EQ(*error_code, CDPErrorCode::InvalidParams);
   EXPECT_EQ(error_msg, "The key does not exist!");
 
-  error_code = 0;
   error_msg.clear();
 
-  inspector_->RemoveSharedData("key1", error_code, error_msg);
-  EXPECT_EQ(error_code, 0);
+  error_code = inspector_->RemoveSharedData("key1", error_msg);
+  EXPECT_FALSE(error_code.has_value());
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(white_board_->data_center_.size(), 1);
   EXPECT_EQ(white_board_->data_center_.find("key1"),
@@ -188,19 +185,18 @@ TEST_F(WhiteBoardInspectorImplTest, RemoveSharedData) {
 }
 
 TEST_F(WhiteBoardInspectorImplTest, ClearSharedData) {
-  int error_code = 0;
   std::string error_msg;
 
-  inspector_->ClearSharedData(error_code, error_msg);
-  EXPECT_EQ(error_code, LegacyCDPErrorCode::kServerError);
+  auto error_code = inspector_->ClearSharedData(error_msg);
+  ASSERT_TRUE(error_code.has_value());
+  EXPECT_EQ(*error_code, CDPErrorCode::ServerError);
   EXPECT_EQ(error_msg, "Failed to clear shared data!");
 
-  error_code = 0;
   error_msg.clear();
   inspector_->SetWhiteBoard(white_board_);
 
-  inspector_->ClearSharedData(error_code, error_msg);
-  EXPECT_EQ(error_code, 0);
+  error_code = inspector_->ClearSharedData(error_msg);
+  EXPECT_FALSE(error_code.has_value());
   EXPECT_EQ(error_msg, "");
   EXPECT_TRUE(white_board_->data_center_.empty());
 }

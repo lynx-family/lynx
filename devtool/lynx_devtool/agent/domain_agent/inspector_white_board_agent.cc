@@ -4,7 +4,6 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_white_board_agent.h"
 
-#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
@@ -17,11 +16,11 @@ InspectorWhiteBoardAgent::InspectorWhiteBoardAgent(
   functions_map_["WhiteBoard.disable"] = &InspectorWhiteBoardAgent::Disable;
   functions_map_["WhiteBoard.setSharedData"] =
       &InspectorWhiteBoardAgent::SetSharedData;
-  legacy_functions_map_["WhiteBoard.getSharedData"] =
+  functions_map_["WhiteBoard.getSharedData"] =
       &InspectorWhiteBoardAgent::GetSharedData;
-  legacy_functions_map_["WhiteBoard.removeSharedData"] =
+  functions_map_["WhiteBoard.removeSharedData"] =
       &InspectorWhiteBoardAgent::RemoveSharedData;
-  legacy_functions_map_["WhiteBoard.clear"] = &InspectorWhiteBoardAgent::Clear;
+  functions_map_["WhiteBoard.clear"] = &InspectorWhiteBoardAgent::Clear;
 }
 
 void InspectorWhiteBoardAgent::CallMethod(
@@ -30,21 +29,10 @@ void InspectorWhiteBoardAgent::CallMethod(
   std::string method = message["method"].asString();
   auto it = functions_map_.find(method);
   if (it == functions_map_.end()) {
-    // Fall back only while patch2 commands still use MessageSender.
-    CallMethod(responder->RetrieveSender(), message);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   } else {
     (this->*(it->second))(responder, message["params"]);
-  }
-}
-
-void InspectorWhiteBoardAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  std::string method = message["method"].asString();
-  auto it = legacy_functions_map_.find(method);
-  if (it == legacy_functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
-  } else {
-    (this->*(it->second))(sender, message);
   }
 }
 
@@ -64,18 +52,18 @@ void InspectorWhiteBoardAgent::SetSharedData(
 }
 
 void InspectorWhiteBoardAgent::GetSharedData(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->WhiteBoardGetSharedData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->WhiteBoardGetSharedData(responder, params);
 }
 
 void InspectorWhiteBoardAgent::RemoveSharedData(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->WhiteBoardRemoveSharedData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->WhiteBoardRemoveSharedData(responder, params);
 }
 
 void InspectorWhiteBoardAgent::Clear(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->WhiteBoardClear(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->WhiteBoardClear(responder, params);
 }
 
 }  // namespace devtool
