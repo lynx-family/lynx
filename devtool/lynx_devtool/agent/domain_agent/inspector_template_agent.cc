@@ -4,7 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_template_agent.h"
 
-#include "core/runtime/lepus/json_parser.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
@@ -21,42 +22,37 @@ InspectorTemplateAgent::InspectorTemplateAgent(
       &InspectorTemplateAgent::GetTemplateJsInfo;
 }
 
-InspectorTemplateAgent::~InspectorTemplateAgent() = default;
-
 void InspectorTemplateAgent::GetTemplateData(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->TemplateGetTemplateData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->TemplateGetTemplateData(responder, params);
 }
 
 void InspectorTemplateAgent::GetTemplateConfigInfo(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value result(Json::ValueType::objectValue);
-
-  // ConfigInfo has benn removed
-  response["result"] = "";
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  // ConfigInfo has been removed; the response result is intentionally empty.
+  responder->SendSuccess(Json::Value(""));
 }
 
 void InspectorTemplateAgent::GetTemplateApiInfo(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->TemplateGetTemplateApiInfo(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->TemplateGetTemplateApiInfo(responder, params);
 }
 
 void InspectorTemplateAgent::GetTemplateJsInfo(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->TemplateGetTemplateJsInfo(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->TemplateGetTemplateJsInfo(responder, params);
 }
 
 void InspectorTemplateAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& content) {
-  std::string method = content["method"].asString();
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
-  if (iter != functions_map_.end()) {
-    (this->*(iter->second))(sender, content);
+  if (iter == functions_map_.end()) {
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   } else {
-    SendNotImplementedResponse(sender, content["id"].asInt64(), method);
+    (this->*(iter->second))(responder, message["params"]);
   }
 }
 
