@@ -1594,10 +1594,23 @@ void LynxShell::EnqueueListNode(int32_t tag, uint32_t component_tag) {
   });
 }
 
+void LynxShell::SetElementVsyncPaused(bool paused) {
+  if (IsDestroyed() || !engine_actor_) {
+    return;
+  }
+  engine_actor_->Act([paused](auto& engine) {
+    auto* tasm = engine->GetTasm();
+    if (tasm && tasm->page_proxy()->element_manager()) {
+      tasm->page_proxy()->element_manager()->SetElementVsyncPaused(paused);
+    }
+  });
+}
+
 void LynxShell::OnEnterForeground() {
   if (IsDestroyed()) {
     return;
   }
+  SetElementVsyncPaused(false);
   if (app_state_ == AppState::kForeground) {
     return;
   }
@@ -1628,6 +1641,7 @@ void LynxShell::OnEnterBackground() {
   if (IsDestroyed()) {
     return;
   }
+  SetElementVsyncPaused(true);
   if (app_state_ == AppState::kBackground) {
     return;
   }

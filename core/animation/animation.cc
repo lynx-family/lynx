@@ -375,14 +375,49 @@ void Animation::DoFrame(fml::TimePoint& frame_time) {
   }
 }
 
+bool Animation::HasIterationEvent() const {
+  const auto& event = BASE_STATIC_STRING(kKeyframeIterationEventName);
+  return !is_transition_ && element_ &&
+         (element_->event_map().count(event) ||
+          element_->lepus_event_map().count(event) ||
+          element_->global_bind_event_map().count(event));
+}
+
+fml::TimePoint Animation::GetNextEventTime(fml::TimePoint now) const {
+  if (state_ != State::kPlay || !keyframe_effect_) {
+    return fml::TimePoint::Max();
+  }
+  if (start_time_ == fml::TimePoint::Min() ||
+      start_time_ == GetAnimationDummyStartTime() || was_paused_ ||
+      suppress_next_sample_events_) {
+    return now;
+  }
+  return keyframe_effect_->GetNextEventTime(now, HasIterationEvent());
+}
+
+bool Animation::TickEvents(fml::TimePoint& frame_time) {
+  if (state_ != State::kPlay) {
+    return false;
+  }
+  auto result = SampleAt(frame_time, true);
+  if (result.should_send_start_event) {
+    SendStartEvent();
+  }
+  SendIterationEvents(result.iteration_events_due);
+  if (result.should_send_end_event) {
+    SendEndEvent();
+  }
+  return state_ == State::kPlay;
+}
+
 KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
-    fml::TimePoint& frame_time) {
+    fml::TimePoint& frame_time, bool events_only) {
   KeyframeEffect::KeyframeSampleResult result;
   // Invalid time and missing effect produce no sampled style changes.
   if (frame_time == fml::TimePoint::Min() || !keyframe_effect_) {
     return result;
   }
-  if (state_ == State::kStop) {
+  if (state_ == State::kStop && !pending_final_sample_) {
     // A just-finished animation may be sampled repeatedly at the same timestamp
     // in one pipeline pass. Keep style output stable, but do not replay events
     // or fill side effects.
@@ -461,22 +496,26 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     // Repeated sampling at the same timestamp must not advance timeline state
     // or re-emit one-shot events. Reuse the sampled styles but clear event
     // and fill side-effect bits.
-    result = cached_sample_result_;
-    SuppressSampleSideEffects(result);
+    if (!events_only) {
+      result = cached_sample_result_;
+      SuppressSampleSideEffects(result);
+    }
     return result;
   }
 
   // Perform a fresh sample. The result is saved for repeated sampling at this
   // timestamp and, while history is kept, for future paused dummy-time
   // resolves.
-  result = keyframe_effect_->SampleKeyframeModel(sample_time);
+  result = keyframe_effect_->SampleKeyframeModel(sample_time, events_only);
   if (suppress_next_sample_events_) {
     SuppressSampleEvents(result);
     suppress_next_sample_events_ = false;
   }
-  has_last_sample_ = true;
-  last_sample_time_ = sample_time;
-  last_sample_result_ = result;
+  if (!events_only) {
+    has_last_sample_ = true;
+    last_sample_time_ = sample_time;
+    last_sample_result_ = result;
+  }
   if (suppress_paused_dummy_side_effects) {
     SuppressSampleSideEffects(result);
   }
@@ -489,9 +528,13 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     ClearTransitionPreviousEndValue();
   }
 
-  has_cached_sample_ = true;
-  cached_sample_time_ = sample_time;
-  cached_sample_result_ = result;
+  // Background completion still needs one foreground sample for fill styles.
+  pending_final_sample_ = events_only && state_ == State::kStop;
+  if (!events_only) {
+    has_cached_sample_ = true;
+    cached_sample_time_ = sample_time;
+    cached_sample_result_ = result;
+  }
   return result;
 }
 
@@ -542,6 +585,7 @@ void Animation::InvalidateSampleCache() {
 }
 
 void Animation::ClearSampleHistory() {
+  pending_final_sample_ = false;
   InvalidateSampleCache();
   suppress_next_sample_events_ = false;
   has_last_sample_ = false;
@@ -578,8 +622,14 @@ void Animation::SendCancelEvent() {
                          : BASE_STATIC_STRING(kKeyframeCancelEventName));
 }
 
-void Animation::SendIterationEvent() {
-  CreateEventAndSend(BASE_STATIC_STRING(kKeyframeIterationEventName));
+void Animation::SendIterationEvents(int count) {
+  // Unobserved animations can cross many iterations while backgrounded.
+  if (count <= 0 || !HasIterationEvent()) {
+    return;
+  }
+  for (int i = 0; i < count; ++i) {
+    CreateEventAndSend(BASE_STATIC_STRING(kKeyframeIterationEventName));
+  }
 }
 
 void Animation::NotifyInspectorCreated() {
