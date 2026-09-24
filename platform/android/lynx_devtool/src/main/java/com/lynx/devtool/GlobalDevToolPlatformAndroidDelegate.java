@@ -11,10 +11,18 @@ import com.lynx.devtool.tracing.FPSTrace;
 import com.lynx.devtool.tracing.FrameViewTrace;
 import com.lynx.devtool.tracing.InstanceTrace;
 import com.lynx.devtool.tracing.MemoryTrace;
+import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceController;
+import com.lynx.tasm.core.LynxThreadPool;
+import com.lynx.tasm.provider.AbsTemplateProvider;
+import com.lynx.tasm.provider.LynxProviderRegistry;
+import com.lynx.tasm.provider.LynxResourceCallback;
+import com.lynx.tasm.provider.LynxResourceProvider;
+import com.lynx.tasm.provider.LynxResourceRequest;
+import com.lynx.tasm.provider.LynxResourceResponse;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Keep
@@ -86,6 +94,72 @@ public class GlobalDevToolPlatformAndroidDelegate {
     }
   }
 
+  // Resource adaptation only; the native owner coordinates replacement and completion.
+  @CalledByNative
+  private static void fetchHSRScript(String url, long requestId) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      nativeOnHSRScriptSource(requestId, null, "HSR_DEBUG_DISABLED");
+      return;
+    }
+    try {
+      LynxThreadPool.getBriefIOExecutor().execute(() -> fetchHSRScriptOnIO(url, requestId));
+    } catch (RuntimeException error) {
+      nativeOnHSRScriptSource(requestId, null, error.toString());
+    }
+  }
+
+  private static void fetchHSRScriptOnIO(String url, long requestId) {
+    if (!DevToolLifecycle.getInstance().isEnabled()) {
+      nativeOnHSRScriptSource(requestId, null, "HSR_DEBUG_DISABLED");
+      return;
+    }
+    AtomicBoolean completed = new AtomicBoolean(false);
+    AbsTemplateProvider.Callback callback = new AbsTemplateProvider.Callback() {
+      @Override
+      public void onSuccess(byte[] bytes) {
+        if (!DevToolLifecycle.getInstance().isEnabled()) {
+          onFailed("HSR_DEBUG_DISABLED");
+          return;
+        }
+        if (completed.compareAndSet(false, true)) {
+          nativeOnHSRScriptSource(requestId, bytes, null);
+        }
+      }
+      @Override
+      public void onFailed(String error) {
+        if (completed.compareAndSet(false, true)) {
+          nativeOnHSRScriptSource(
+              requestId, null, error == null ? "HSR resource request failed" : error);
+        }
+      }
+    };
+    try {
+      LynxResourceProvider provider = LynxEnv.inst().getResourceProvider().get(
+          LynxProviderRegistry.LYNX_PROVIDER_TYPE_EXTERNAL_JS);
+      if (provider != null) {
+        provider.request(new LynxResourceRequest(url), new LynxResourceCallback<byte[]>() {
+          @Override
+          public void onResponse(LynxResourceResponse<byte[]> response) {
+            if (response != null && response.success()) {
+              callback.onSuccess(response.getData());
+            } else {
+              callback.onFailed(response != null && response.getError() != null
+                      ? response.getError().toString()
+                      : "HSR resource request failed");
+            }
+          }
+        });
+      } else if (LynxEnv.inst().getTemplateProvider() != null) {
+        // The existing host provider owns URL schemes; do not rewrite the URL.
+        LynxEnv.inst().getTemplateProvider().loadTemplate(url, callback);
+      } else {
+        callback.onFailed("No HSR resource provider is installed");
+      }
+    } catch (RuntimeException error) {
+      callback.onFailed(error.toString());
+    }
+  }
+
   @CalledByNative
   public static long getTraceController() {
     return TraceController.getInstance().getNativeTraceController();
@@ -115,6 +189,11 @@ public class GlobalDevToolPlatformAndroidDelegate {
   public static String getLynxVersion() {
     return LynxEnv.inst().getLynxVersion();
   }
+
+  static native void nativeInvokeHSR(String message, CDPResultCallbackWrapper callback);
+
+  private static native void nativeOnHSRScriptSource(
+      long requestId, byte[] source, String errorMessage);
 
   private static native void nativeOnMemoryUsageResult(
       long callbackPtr, String resultJson, String errorMessage);

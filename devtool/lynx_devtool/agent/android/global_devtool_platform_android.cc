@@ -14,11 +14,30 @@
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/jni_helper.h"
+#include "devtool/base_devtool/native/public/abstract_devtool.h"
+#include "devtool/base_devtool/native/public/devtool_message_dispatcher.h"
+#include "devtool/lynx_devtool/agent/android/global_devtool_hsr_android.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_hsr_agent.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
+#include "devtool/lynx_devtool/android/invoke_cdp_from_sdk_sender_android.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h"
 
 namespace {
+
+class HSRControlDispatcher final : public lynx::devtool::AbstractDevTool {
+ public:
+  static void Dispatch(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      const std::string& source) {
+    auto& dispatcher = GetGlobalMessageDispatcherInstance();
+    // Status remains queryable when debugging was disabled at bootstrap.
+    // Registration is idempotent; script admission stays in the platform.
+    dispatcher.RegisterAgent(
+        "HSR", std::make_unique<lynx::devtool::InspectorHSRAgent>());
+    dispatcher.DispatchMessage(sender, "CDP", source);
+  }
+};
 
 using MemoryUsageCallback =
     lynx::devtool::GlobalDevToolPlatformFacade::MemoryUsageCallback;
@@ -67,6 +86,44 @@ bool IsMemoryUsageCallbackPending(
 }
 
 }  // namespace
+
+static void InvokeHSR(JNIEnv* env, jclass, jstring message, jobject callback) {
+  auto sender = std::make_shared<lynx::devtool::InvokeCDPFromSDKSenderAndroid>(
+      env, callback);
+  auto source =
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, message);
+  lynx::devtool::LynxDevToolMediatorBase::GetDevToolsThread()
+      .GetTaskRunner()
+      ->PostTask([sender, source = std::move(source)] {
+        HSRControlDispatcher::Dispatch(sender, source);
+      });
+}
+
+static void OnHSRScriptSource(JNIEnv* env, jclass, jlong request_id,
+                              jbyteArray bytes, jstring error_message) {
+  std::string error =
+      error_message ? lynx::base::android::JNIConvertHelper::ConvertToString(
+                          env, error_message)
+                    : "";
+  std::string source;
+  if (bytes) {
+    const auto length = env->GetArrayLength(bytes);
+    if (length > 512 * 1024) {
+      error = "HSR source exceeds 512 KiB";
+    } else {
+      source.resize(length);
+      env->GetByteArrayRegion(bytes, 0, length,
+                              reinterpret_cast<jbyte*>(source.data()));
+      if (lynx::base::android::HasJNIException()) {
+        error = "Cannot read HSR resource bytes";
+      }
+    }
+  } else if (error.empty()) {
+    error = "HSR resource provider returned no source";
+  }
+  lynx::devtool::CompleteHSRScriptSource(request_id, std::move(source),
+                                         std::move(error));
+}
 
 static void OnMemoryUsageResult(JNIEnv* env, jclass jcaller, jlong callback_ptr,
                                 jstring result_json, jstring error_message) {
@@ -132,6 +189,15 @@ namespace devtool {
 GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
   static base::NoDestructor<GlobalDevToolPlatformAndroid> instance;
   return *(instance.get());
+}
+
+bool FetchHSRScriptSource(const std::string& url, int64_t request_id) {
+  auto* env = base::android::AttachCurrentThread();
+  auto java_url =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, url);
+  Java_GlobalDevToolPlatformAndroidDelegate_fetchHSRScript(env, java_url.Get(),
+                                                           request_id);
+  return !base::android::HasJNIException();
 }
 
 void GlobalDevToolPlatformAndroid::StartMemoryTracing() {

@@ -17,6 +17,19 @@ namespace shell {
 LYNX_EXPORT_FOR_DEVTOOL bool InitializeHostScriptRuntime(
     ProcessRuntime::Completion ready, std::string bootstrap);
 
+// DevTool links this entry in both library variants. Regular libraries reject
+// the request without allocating a process runtime.
+LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
+    ProcessRuntime::Domain domain, std::string source, std::string url,
+    ProcessRuntime::Completion completion);
+
+LYNX_EXPORT_FOR_DEVTOOL bool HasHostScriptRuntime();
+// Non-blocking readiness snapshot; never creates a context.
+LYNX_EXPORT_FOR_DEVTOOL bool IsHostScriptRuntimeReady(
+    ProcessRuntime::Domain domain);
+LYNX_EXPORT_FOR_DEVTOOL void ShutdownHostScriptRuntime(
+    ProcessRuntime::Completion completion);
+
 }  // namespace shell
 }  // namespace lynx
 

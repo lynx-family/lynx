@@ -14,8 +14,9 @@ namespace devtool {
 
 // Transport-owned boundary, independent of Runtime ownership and lifecycle.
 struct HSRScriptRequest {
-  enum class Operation { kLoadScript, kEvaluate };
+  enum class Operation { kLoadScript, kEvaluate, kStop, kGetStatus };
   enum class SourceType { kInline, kUrl };
+  enum class Thread { kBTS, kMTS, kUI };
 
   Operation operation = Operation::kLoadScript;
   SourceType source_type = SourceType::kInline;
@@ -23,6 +24,8 @@ struct HSRScriptRequest {
   // passed unchanged to the platform's existing resource fetcher, which owns
   // scheme handling (including file URLs). Never parse a business envelope.
   std::string source;
+  // Evaluation selects a process runtime, independently of any View.
+  Thread thread = Thread::kBTS;
 };
 
 bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,
