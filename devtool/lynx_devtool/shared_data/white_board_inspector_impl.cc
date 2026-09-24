@@ -36,25 +36,23 @@ void WhiteBoardInspectorImpl::RemoveDelegate(int view_id) {
   delegates_.erase(view_id);
 }
 
-void WhiteBoardInspectorImpl::SetSharedData(const std::string& key,
-                                            const std::string& value,
-                                            int& error_code,
-                                            std::string& error_message) {
+std::optional<CDPErrorCode> WhiteBoardInspectorImpl::SetSharedData(
+    const std::string& key, const std::string& value,
+    std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to set shared data!";
-    return;
+    return CDPErrorCode::ServerError;
   }
   rapidjson::Document document;
   if (document.Parse(value).HasParseError()) {
-    error_code = LegacyCDPErrorCode::kInvalidParams;
     error_message = "The value must be a valid JSON string!";
-    return;
+    return CDPErrorCode::InvalidParams;
   }
   lepus::Value lepus_value = lepus::jsonValueTolepusValue(document);
   auto data = std::make_shared<pub::ValueImplLepus>(lepus_value);
   sp->SetGlobalSharedData(key, data);
+  return std::nullopt;
 }
 
 void WhiteBoardInspectorImpl::GetSharedData(
