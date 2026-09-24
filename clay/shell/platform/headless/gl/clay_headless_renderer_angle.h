@@ -13,7 +13,9 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
+#include <cstdint>
 #include <memory>
+#include <unordered_map>
 
 #include "base/include/fml/macros.h"
 #include "clay/fml/native_library.h"
@@ -80,11 +82,23 @@ class ClayHeadlessRendererAngle final
   // |GPUSurfaceGLDelegate|
   GLProcResolver GetGLProcResolver() const override;
 
+  // |GPUSurfaceGLDelegate|
+  GLFBOInfo GLContextFBO(GLFrameInfo frame_info) const override;
+
   bool MakeCurrent() override;
   bool ClearCurrent() override;
 
+ protected:
+  int64_t FBO(const ClayFrameInfo& frame_info) override;
+  void CleanupGPUResources() override;
+
  private:
+  void ClearDepthStencilAttachments();
+
   std::unique_ptr<HeadlessAngleSurfaceManager> surface_manager_;
+  std::unordered_map<int64_t, uint32_t> depth_stencil_attachments_;
+  uint32_t attachment_width_ = 0;
+  uint32_t attachment_height_ = 0;
 };
 
 }  // namespace clay

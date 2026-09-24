@@ -7,6 +7,8 @@
 
 #include "clay/shell/platform/headless/gl/clay_headless_renderer_angle.h"
 
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 #include <Windows.h>
 #include <dxgi.h>
 
@@ -324,8 +326,8 @@ bool HeadlessAngleSurfaceManager::Initialize() {
   }
 
   // The pbuffer is only used as the draw/read surface when making the context
-  // current. Actual rendering targets a SharedImage-backed FBO, so the pbuffer
-  // does not need depth/stencil buffers.
+  // current. Actual rendering targets a SharedImage-backed FBO with its own
+  // depth/stencil attachment.
   const EGLint attribs[] = {EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE};
 
   egl_surface_ = eglCreatePbufferSurface(egl_display_, egl_config_, attribs);
@@ -442,12 +444,89 @@ ClayHeadlessRendererAngle::GetGLProcResolver() const {
   };
 }
 
+GLFBOInfo ClayHeadlessRendererAngle::GLContextFBO(
+    GLFrameInfo frame_info) const {
+  GLFBOInfo info = ClayHeadlessRendererSharedImageGL::GLContextFBO(frame_info);
+  info.has_depth_stencil_attachment = info.fbo_id >= 0;
+  return info;
+}
+
 bool ClayHeadlessRendererAngle::MakeCurrent() {
   return surface_manager_->MakeCurrent();
 }
 
 bool ClayHeadlessRendererAngle::ClearCurrent() {
   return surface_manager_->ClearContext();
+}
+
+int64_t ClayHeadlessRendererAngle::FBO(const ClayFrameInfo& frame_info) {
+  const int64_t fbo_id = ClayHeadlessRendererSharedImageGL::FBO(frame_info);
+  if (fbo_id < 0) {
+    return fbo_id;
+  }
+
+  if (attachment_width_ != frame_info.width ||
+      attachment_height_ != frame_info.height) {
+    ClearDepthStencilAttachments();
+    attachment_width_ = frame_info.width;
+    attachment_height_ = frame_info.height;
+  }
+
+  if (depth_stencil_attachments_.find(fbo_id) !=
+      depth_stencil_attachments_.end()) {
+    return fbo_id;
+  }
+
+  while (glGetError() != GL_NO_ERROR) {
+  }
+
+  GLint previous_fbo = 0;
+  GLint previous_renderbuffer = 0;
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previous_fbo);
+  glGetIntegerv(GL_RENDERBUFFER_BINDING, &previous_renderbuffer);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(fbo_id));
+  GLuint depth_stencil_id = 0;
+  glGenRenderbuffers(1, &depth_stencil_id);
+  glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_id);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES,
+                        frame_info.width, frame_info.height);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, depth_stencil_id);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+                            GL_RENDERBUFFER, depth_stencil_id);
+
+  const GLenum framebuffer_status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  const GLenum gl_error = glGetError();
+
+  glBindRenderbuffer(GL_RENDERBUFFER, previous_renderbuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER, previous_fbo);
+
+  if (depth_stencil_id == 0 || gl_error != GL_NO_ERROR ||
+      framebuffer_status != GL_FRAMEBUFFER_COMPLETE) {
+    FML_LOG(ERROR) << "Failed to attach the headless depth/stencil buffer, "
+                   << "GL error: " << gl_error
+                   << ", framebuffer status: " << framebuffer_status;
+    if (depth_stencil_id != 0) {
+      glDeleteRenderbuffers(1, &depth_stencil_id);
+    }
+    return -1;
+  }
+
+  depth_stencil_attachments_.emplace(fbo_id, depth_stencil_id);
+  return fbo_id;
+}
+
+void ClayHeadlessRendererAngle::CleanupGPUResources() {
+  ClayHeadlessRendererSharedImageGL::CleanupGPUResources();
+  ClearDepthStencilAttachments();
+}
+
+void ClayHeadlessRendererAngle::ClearDepthStencilAttachments() {
+  for (const auto& attachment : depth_stencil_attachments_) {
+    glDeleteRenderbuffers(1, &attachment.second);
+  }
+  depth_stencil_attachments_.clear();
 }
 
 std::unique_ptr<ClayHeadlessRenderer> ClayHeadlessRenderer::CreateGL(
