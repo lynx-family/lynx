@@ -2014,6 +2014,7 @@ public protocol LynxGenericResourceFetcher-p : <NSObject> {
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResource:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResourcePath:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourcePathCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchBytecode:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
+  public BOOL LynxGenericResourceFetcher-p::fetchBytecodeHandle:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceHandleCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchStream:withStream:(nonnull LynxResourceRequest *request,[withStream] nonnull id< LynxResourceStreamLoadDelegate > delegate);
 }
 
@@ -3390,6 +3391,15 @@ public protocol LynxResourceFetcher-p : <NSObject> {
   public void LynxResourceFetcher-p::loadResourceWithURLString:completion:(NSString *urlString,[completion] LynxResourceLoadCompletionBlock completionBlock);
   public _Nullable dispatch_block_t LynxResourceFetcher-p::requestAsyncWithResourceRequest:type:lynxResourceLoadCompletedBlock:(LynxResourceRequest *lynxResourceRequest,[type] LynxFetchResType type,[lynxResourceLoadCompletedBlock] LynxResourceLoadCompletedBlock loadCompletedBlock);
   public nonnull LynxResourceResponse * LynxResourceFetcher-p::requestSyncWithResourceRequest:type:(LynxResourceRequest *lynxResourceRequest,[type] LynxFetchResType type);
+}
+
+public class LynxResourceHandle : NSObject {
+  public NSString* LynxResourceHandle::filePath filePath;
+  public NSInteger LynxResourceHandle::size size;
+  public BOOL LynxResourceHandle::valid valid;
+  public nullable instancetype LynxResourceHandle::initWithFilePath:(NSString *NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxResourceHandle::NS_UNAVAILABLE();
+  public void LynxResourceHandle::invalidate();
 }
 
 public protocol LynxResourceLoadDelegate-p : <NSObject> {
@@ -6800,6 +6810,7 @@ public enum LynxUIMeaningfulContentStatus {
   public instancetype initWithDictionary initWithDictionary;
 
   typedef void(^ LynxGenericResourcePathCompletionBlock) (NSString *_Nullable path, NSError *_Nullable error)
+  typedef void(^ LynxGenericResourceHandleCompletionBlock) (LynxResourceHandle *_Nullable handle, NSError *_Nullable error)
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxGenericResourceCompletionBlock) (NSData *_Nullable data, NSError *_Nullable error) LynxGenericResourceCompletionBlock;
 
 public enum LynxResourceOptionalBool {
