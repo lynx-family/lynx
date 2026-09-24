@@ -111,6 +111,19 @@ TEST_F(InspectorUITreeAgentTest, DispatchesAllMethods) {
   Json::Value response = Dispatch("UITree.getLynxUITree", 2);
   EXPECT_EQ(response["result"]["root"]["name"], "page");
 
+  Json::Value node_params(Json::objectValue);
+  node_params["UINodeId"] = 2;
+  response = Dispatch("UITree.getUIInfoForNode", 3, node_params);
+  EXPECT_EQ(response["result"]["view"]["name"], "MockView");
+
+  Json::Value style_params(Json::objectValue);
+  style_params["UINodeId"] = 2;
+  style_params["styleName"] = "visible";
+  style_params["styleContent"] = "false";
+  EXPECT_EQ(Dispatch("UITree.setUIStyle", 4, style_params)["result"],
+            Json::Value(Json::objectValue));
+  EXPECT_EQ(facade_->last_style_name_, "visible");
+
   EXPECT_EQ(Dispatch("UITree.disable", 5)["result"],
             Json::Value(Json::objectValue));
   EXPECT_FALSE(ui_executor_->uitree_enabled_);
@@ -128,6 +141,15 @@ TEST_F(InspectorUITreeAgentTest, RejectsInvalidParams) {
   response = Dispatch("UITree.enable", 7, enable_params);
   EXPECT_EQ(response["error"]["code"].asInt(),
             static_cast<int>(CDPErrorCode::InvalidParams));
+
+  Dispatch("UITree.enable", 8);
+  response = Dispatch("UITree.getUIInfoForNode", 9);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
+
+  response = Dispatch("UITree.setUIStyle", 10);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
 }
 
 TEST_F(InspectorUITreeAgentTest, ReportsCommandErrors) {
@@ -135,6 +157,17 @@ TEST_F(InspectorUITreeAgentTest, ReportsCommandErrors) {
   EXPECT_EQ(response["error"]["code"].asInt(),
             static_cast<int>(CDPErrorCode::ServerError));
   EXPECT_EQ(response["error"]["message"], "UITree is not enabled");
+
+  Dispatch("UITree.enable", 12);
+  facade_->set_style_result_ = -1;
+  Json::Value style_params(Json::objectValue);
+  style_params["UINodeId"] = 2;
+  style_params["styleName"] = "visible";
+  style_params["styleContent"] = "false";
+  response = Dispatch("UITree.setUIStyle", 13, style_params);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"], "Failed to set UI style");
 }
 
 TEST_F(InspectorUITreeAgentTest, ReportsInvalidPlatformData) {
@@ -144,6 +177,14 @@ TEST_F(InspectorUITreeAgentTest, ReportsInvalidPlatformData) {
   EXPECT_EQ(response["error"]["code"].asInt(),
             static_cast<int>(CDPErrorCode::InternalError));
   EXPECT_EQ(response["error"]["message"], "Invalid UITree data");
+
+  facade_->node_info_ = "not json";
+  Json::Value params(Json::objectValue);
+  params["UINodeId"] = 2;
+  response = Dispatch("UITree.getUIInfoForNode", 16, params);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InternalError));
+  EXPECT_EQ(response["error"]["message"], "Invalid UI node data");
 }
 
 TEST_F(InspectorUITreeAgentTest, ReportsUnavailableTargets) {
@@ -166,7 +207,7 @@ TEST_F(InspectorUITreeAgentTest, RejectsUnknownMethod) {
   Json::Value response = Dispatch("UITree.unknown", 20);
   EXPECT_EQ(response["error"]["code"].asInt(),
             static_cast<int>(CDPErrorCode::MethodNotFound));
-  EXPECT_EQ(response["error"]["message"], "Not implemented: UITree.unknown");
+  EXPECT_EQ(response["error"]["message"], "'UITree.unknown' wasn't found");
 }
 
 TEST_F(InspectorUITreeAgentTest, ReportsUnavailableUIThread) {
