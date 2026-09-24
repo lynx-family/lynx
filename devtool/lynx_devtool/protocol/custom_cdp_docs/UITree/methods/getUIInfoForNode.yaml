@@ -66,12 +66,14 @@ returns:
     description: Darwin-only layer metadata for the view and Lynx background or border layers.
 events: []
 notes:
-  - Requires UITree.enable first. If UI tree inspection is not enabled, the current handler returns without sending a CDP response.
+  - Requires UITree.enable first. If UI tree inspection is not enabled, the handler returns ServerError.
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
+  - A missing or non-integer UINodeId returns InvalidParams.
   - The platform facade returns a JSON string, and the executor parses that string directly into result.
   - If the platform returns an empty string or the node id cannot be resolved, the current handler returns an empty result object.
   - Native Android, Darwin, native Harmony, and Clay renderers expose different platform-owned details. Consumers should tolerate missing optional fields.
-  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+  - If the mediator has no UI task runner or the platform facade is unavailable, the handler returns ServerError.
+  - Invalid non-empty JSON returned by the platform facade produces InternalError.
 examples:
   - title: Read UI information for one node
     request:

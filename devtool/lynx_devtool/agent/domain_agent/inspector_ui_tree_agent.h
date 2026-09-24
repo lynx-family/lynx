@@ -20,16 +20,10 @@ class InspectorUITreeAgent : public CDPDomainAgentBase {
   explicit InspectorUITreeAgent(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorUITreeAgent() override = default;
-  // Temporary compatibility entry point for commands migrated in patch2.
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message) override;
   void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  // Temporary compatibility type for commands migrated in patch2.
-  using LegacyUITreeAgentMethod = void (InspectorUITreeAgent::*)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
   using UITreeAgentMethod = void (InspectorUITreeAgent::*)(
       const std::shared_ptr<CDPResponder>& responder,
       const Json::Value& params);
@@ -37,16 +31,11 @@ class InspectorUITreeAgent : public CDPDomainAgentBase {
   DECLARE_DEVTOOL_CDP_METHOD(Enable);
   DECLARE_DEVTOOL_CDP_METHOD(Disable);
   DECLARE_DEVTOOL_CDP_METHOD(GetLynxUITree);
-  // Temporary legacy handlers retained until patch2 migrates these commands.
-  void GetUIInfoForNode(const std::shared_ptr<MessageSender>& sender,
-                        const Json::Value& message);
-  void SetUIStyle(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(GetUIInfoForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
  private:
   std::map<std::string, UITreeAgentMethod> functions_map_;
-  // Temporary compatibility map removed after the remaining commands migrate.
-  std::map<std::string, LegacyUITreeAgentMethod> legacy_functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };
 }  // namespace devtool
