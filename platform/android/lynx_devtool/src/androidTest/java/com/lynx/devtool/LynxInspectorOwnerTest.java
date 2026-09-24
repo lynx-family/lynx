@@ -272,4 +272,13 @@ public class LynxInspectorOwnerTest {
     Object result = mInspectorOwner.getGlobalSwitch(message.toString());
     assertTrue((Boolean) result);
   }
+
+  @Test
+  public void testCDPMethodsAfterDestroyAreNoOp() {
+    mInspectorOwner.destroy();
+
+    mInspectorOwner.invokeCDPFromSDK("", result -> {});
+    mInspectorOwner.addCDPEventListener("test", event -> {});
+    mInspectorOwner.removeCDPEventListener("test");
+  }
 }
