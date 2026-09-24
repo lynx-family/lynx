@@ -19,6 +19,7 @@
 #include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/event/custom_event.h"
 #include "core/event/event_dispatcher.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -73,6 +74,10 @@
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/services/event_report/event_tracker.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "core/services/replay/replay_controller.h"
+#include "core/services/replay/testbench_test_replay.h"
+#endif  // ENABLE_TESTBENCH_REPLAY
 #include "core/shell/lynx_ui_operation_queue.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/tasm_operation_queue.h"
@@ -83,6 +88,9 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "third_party/rapidjson/document.h"
+#endif  // ENABLE_TESTBENCH_REPLAY
 
 namespace lynx {
 namespace tasm {
@@ -331,6 +339,31 @@ size_t CountClosureEventListeners(
                    ->closure_type() == closure_type;
       });
 }
+
+#if ENABLE_TESTBENCH_REPLAY
+class ScopedTestBenchReplayCapture {
+ public:
+  ScopedTestBenchReplayCapture()
+      : replay_(replay::TestBenchTestReplay::GetInstance()),
+        previous_observer_(replay_.observer_) {
+    replay_.SetDevToolObserver(nullptr);
+    replay_.StartTest();
+  }
+
+  ~ScopedTestBenchReplayCapture() {
+    replay_.EndTest("");
+    replay_.SetDevToolObserver(previous_observer_);
+  }
+
+  const std::map<std::string, std::vector<std::string>>& records() const {
+    return replay_.dump_file_;
+  }
+
+ private:
+  replay::TestBenchTestReplay& replay_;
+  std::shared_ptr<InspectorCommonObserver> previous_observer_;
+};
+#endif  // ENABLE_TESTBENCH_REPLAY
 
 class RecordingInspectorElementObserver final
     : public InspectorElementObserver {
@@ -935,6 +968,259 @@ TEST_P(FiberElementTest, RadonEventListenersPreserveDifferentClosureTypes) {
   EXPECT_EQ(empty_callback_node.element()->GetEventListenerMap()->Find("tap"),
             nullptr);
 }
+
+TEST_P(FiberElementTest, RadonDiffOnlyUpdatesChangedEventListeners) {
+  tasm->page_config_->SetEnableEventHandleRefactor(true);
+  auto lepus_ctx = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_TRUE(lepus_ctx);
+  lepus_ctx->Initialize();
+
+  RadonNode initial(tasm->page_proxy(), "view", 1);
+  initial.SetTasm(tasm.get());
+  initial.SetStaticEvent("bindEvent", "tap", "onTap");
+  initial.SetWorkletEvent("bindEvent", "tap", lepus::Value("worklet"),
+                          lepus_ctx.get());
+  ASSERT_TRUE(initial.CreateElementIfNeeded());
+  initial.DispatchFirstTime();
+
+  auto element = initial.element_;
+  auto find_listener = [&element](event::ClosureEventListener::ClosureType type)
+      -> std::shared_ptr<event::EventListener> {
+    auto* listeners = element->GetEventListenerMap()->Find("tap");
+    if (listeners == nullptr) {
+      return nullptr;
+    }
+    auto it = std::find_if(
+        listeners->begin(), listeners->end(),
+        [type](const std::shared_ptr<event::EventListener>& listener) {
+          return listener->type() ==
+                     event::EventListener::Type::kClosureEventListener &&
+                 static_cast<event::ClosureEventListener*>(listener.get())
+                         ->closure_type() == type;
+        });
+    return it == listeners->end() ? nullptr : *it;
+  };
+  auto advance = [&element](RadonNode& old_node, RadonNode& new_node) {
+    new_node.element_ = element;
+    element->SetAttributeHolder(new_node.attribute_holder_);
+    element->ResetAllDirtyBits();
+    new_node.ProcessEvents(&old_node);
+  };
+
+  auto js_listener =
+      find_listener(event::ClosureEventListener::ClosureType::kJS);
+  auto core_listener =
+      find_listener(event::ClosureEventListener::ClosureType::kCore);
+  ASSERT_NE(js_listener, nullptr);
+  ASSERT_NE(core_listener, nullptr);
+
+  RadonNode unchanged(tasm->page_proxy(), "view", 1);
+  unchanged.SetTasm(tasm.get());
+  unchanged.SetStaticEvent("bindEvent", "tap", "onTap");
+  unchanged.SetWorkletEvent("bindEvent", "tap", lepus::Value("worklet"),
+                            lepus_ctx.get());
+  advance(initial, unchanged);
+  EXPECT_FALSE(element->dirty() & Element::kDirtyEvent);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kJS),
+            js_listener);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kCore),
+            core_listener);
+
+  RadonNode changed_js(tasm->page_proxy(), "view", 1);
+  changed_js.SetTasm(tasm.get());
+  changed_js.SetStaticEvent("bindEvent", "tap", "onTap2");
+  changed_js.SetWorkletEvent("bindEvent", "tap", lepus::Value("worklet"),
+                             lepus_ctx.get());
+  advance(unchanged, changed_js);
+  EXPECT_TRUE(element->dirty() & Element::kDirtyEvent);
+  EXPECT_NE(find_listener(event::ClosureEventListener::ClosureType::kJS),
+            js_listener);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kCore),
+            core_listener);
+
+  RadonNode removed_js(tasm->page_proxy(), "view", 1);
+  removed_js.SetTasm(tasm.get());
+  removed_js.SetWorkletEvent("bindEvent", "tap", lepus::Value("worklet"),
+                             lepus_ctx.get());
+  advance(changed_js, removed_js);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kJS),
+            nullptr);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kCore),
+            core_listener);
+  EXPECT_TRUE(element->data_model()->static_events().empty());
+  EXPECT_EQ(element->data_model()->lepus_events().size(), 1u);
+
+  RadonNode restored_js(tasm->page_proxy(), "view", 1);
+  restored_js.SetTasm(tasm.get());
+  restored_js.SetStaticEvent("bindEvent", "tap", "onTap2");
+  restored_js.SetWorkletEvent("bindEvent", "tap", lepus::Value("worklet"),
+                              lepus_ctx.get());
+  advance(removed_js, restored_js);
+  js_listener = find_listener(event::ClosureEventListener::ClosureType::kJS);
+  ASSERT_NE(js_listener, nullptr);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kCore),
+            core_listener);
+
+  RadonNode removed_worklet(tasm->page_proxy(), "view", 1);
+  removed_worklet.SetTasm(tasm.get());
+  removed_worklet.SetStaticEvent("bindEvent", "tap", "onTap2");
+  advance(restored_js, removed_worklet);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kJS),
+            js_listener);
+  EXPECT_EQ(find_listener(event::ClosureEventListener::ClosureType::kCore),
+            nullptr);
+  EXPECT_EQ(element->data_model()->static_events().size(), 1u);
+  EXPECT_TRUE(element->data_model()->lepus_events().empty());
+}
+
+#if ENABLE_TESTBENCH_REPLAY
+TEST_P(FiberElementTest, RefactoredGlobalAndBridgeEventsRecordForReplay) {
+  tasm->page_config_->SetEnableEventHandleRefactor(true);
+  ScopedTestBenchReplayCapture capture;
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  page->MarkAttached();
+  page->CheckTriggerGlobalEvent("trigger-global-event", lepus::Value(true));
+
+  auto first_args = lepus::Dictionary::Create();
+  first_args->SetValue("index", lepus::Value(1));
+  auto second_args = lepus::Dictionary::Create();
+  second_args->SetValue("index", lepus::Value(2));
+  std::vector<std::pair<base::String, lepus::Value>> touch_bridges;
+  touch_bridges.emplace_back("first", lepus::Value(first_args));
+  touch_bridges.emplace_back("second", lepus::Value(second_args));
+  page->FiberAddPiperEvent("bindEvent", "tap", std::move(touch_bridges));
+
+  EXPECT_TRUE(event::EventDispatcher::DispatchEvent(
+                  *page, fml::MakeRefCounted<event::TouchEvent>("tap"))
+                  .consumed);
+  const auto& records = capture.records();
+  ASSERT_EQ(records.count("GlobalTouchEvent"), 1u);
+  ASSERT_EQ(records.at("GlobalTouchEvent").size(), 1u);
+  rapidjson::Document global_touch;
+  global_touch.Parse(records.at("GlobalTouchEvent")[0].c_str());
+  ASSERT_TRUE(global_touch.IsObject());
+  ASSERT_TRUE(global_touch.HasMember("type"));
+  ASSERT_TRUE(global_touch["type"].IsString());
+  EXPECT_NE(std::string(global_touch["type"].GetString()).find("tap"),
+            std::string::npos);
+  ASSERT_EQ(records.count("BridgeTouchEvent"), 1u);
+  ASSERT_EQ(records.at("BridgeTouchEvent").size(), 2u);
+  rapidjson::Document first_bridge;
+  first_bridge.Parse(records.at("BridgeTouchEvent")[0].c_str());
+  ASSERT_TRUE(first_bridge.IsObject());
+  ASSERT_TRUE(first_bridge.HasMember("index"));
+  ASSERT_TRUE(first_bridge["index"].IsInt());
+  EXPECT_EQ(first_bridge["index"].GetInt(), 1);
+  rapidjson::Document second_bridge;
+  second_bridge.Parse(records.at("BridgeTouchEvent")[1].c_str());
+  ASSERT_TRUE(second_bridge.IsObject());
+  ASSERT_TRUE(second_bridge.HasMember("index"));
+  ASSERT_TRUE(second_bridge["index"].IsInt());
+  EXPECT_EQ(second_bridge["index"].GetInt(), 2);
+
+  auto custom_args = lepus::Dictionary::Create();
+  custom_args->SetValue("source", lepus::Value(3));
+  std::vector<std::pair<base::String, lepus::Value>> custom_bridges;
+  custom_bridges.emplace_back("custom", lepus::Value(custom_args));
+  page->FiberAddPiperEvent("bindEvent", "focus", std::move(custom_bridges));
+  auto event_params = lepus::Dictionary::Create();
+  event_params->SetValue("timestamp", lepus::Value(10));
+  event_params->SetValue("source", lepus::Value(4));
+  EXPECT_TRUE(event::EventDispatcher::DispatchEvent(
+                  *page, fml::MakeRefCounted<event::CustomEvent>(
+                             "focus", lepus::Value(event_params), "detail"))
+                  .consumed);
+  ASSERT_EQ(records.count("GlobalCustomEvent"), 1u);
+  ASSERT_EQ(records.at("GlobalCustomEvent").size(), 1u);
+  rapidjson::Document global_custom;
+  global_custom.Parse(records.at("GlobalCustomEvent")[0].c_str());
+  ASSERT_TRUE(global_custom.IsObject());
+  ASSERT_TRUE(global_custom.HasMember("type"));
+  ASSERT_TRUE(global_custom["type"].IsString());
+  EXPECT_NE(std::string(global_custom["type"].GetString()).find("focus"),
+            std::string::npos);
+  ASSERT_EQ(records.count("BridgeCustomEvent"), 1u);
+  ASSERT_EQ(records.at("BridgeCustomEvent").size(), 1u);
+  rapidjson::Document custom_bridge;
+  custom_bridge.Parse(records.at("BridgeCustomEvent")[0].c_str());
+  ASSERT_TRUE(custom_bridge.IsObject());
+  ASSERT_TRUE(custom_bridge.HasMember("source"));
+  ASSERT_TRUE(custom_bridge["source"].IsInt());
+  EXPECT_EQ(custom_bridge["source"].GetInt(), 3);
+
+  auto frontend_event = fml::MakeRefCounted<event::CustomEvent>(
+      "focus", lepus::Value(lepus::Dictionary::Create()), "detail");
+  frontend_event->set_from_frontend(true);
+  EXPECT_TRUE(
+      event::EventDispatcher::DispatchEvent(*page, frontend_event).consumed);
+  EXPECT_EQ(records.at("GlobalCustomEvent").size(), 1u);
+  EXPECT_EQ(records.at("BridgeCustomEvent").size(), 1u);
+}
+
+TEST_P(FiberElementTest, RefactoredWorkletEventsRecordForReplay) {
+  tasm->page_config_->SetEnableEventHandleRefactor(true);
+  auto context = CreateRendererRuntime(tasm.get());
+  ASSERT_NE(context, nullptr);
+  const std::string source =
+      "let runWorklet = (_worklet, _params, _options) => "
+      "({eventReturnResult: 0});";
+  lepus::BytecodeGenerator::GenerateBytecode(context->GetMTSContext(), source,
+                                             context->GetSdkVersion(), "");
+  ASSERT_TRUE(context->Execute(nullptr));
+
+  ScopedTestBenchReplayCapture capture;
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  page->MarkAttached();
+  auto worklet_info = lepus::Dictionary::Create();
+  worklet_info->SetValue("type", lepus::Value(tasm::kWorklet));
+  worklet_info->SetValue("value", lepus::Value("worklet"));
+  page->FiberAddEvent("bindEvent", "tap", lepus::Value(worklet_info),
+                      DEFAULT_ENTRY_NAME, context.get());
+  page->FiberAddEvent("bindEvent", "focus", lepus::Value(worklet_info),
+                      DEFAULT_ENTRY_NAME, context.get());
+
+  EXPECT_TRUE(event::EventDispatcher::DispatchEvent(
+                  *page, fml::MakeRefCounted<event::TouchEvent>("tap"))
+                  .consumed);
+  const auto& records = capture.records();
+  ASSERT_EQ(records.count("LepusTouchEvent"), 1u);
+  ASSERT_EQ(records.at("LepusTouchEvent").size(), 1u);
+  rapidjson::Document worklet_touch;
+  worklet_touch.Parse(records.at("LepusTouchEvent")[0].c_str());
+  ASSERT_TRUE(worklet_touch.IsObject());
+  ASSERT_TRUE(worklet_touch.HasMember("type"));
+  ASSERT_TRUE(worklet_touch["type"].IsString());
+  EXPECT_NE(std::string(worklet_touch["type"].GetString()).find("tap"),
+            std::string::npos);
+
+  auto event_params = lepus::Dictionary::Create();
+  event_params->SetValue("timestamp", lepus::Value(10));
+  event_params->SetValue("source", lepus::Value(4));
+  EXPECT_TRUE(event::EventDispatcher::DispatchEvent(
+                  *page, fml::MakeRefCounted<event::CustomEvent>(
+                             "focus", lepus::Value(event_params), "detail"))
+                  .consumed);
+  ASSERT_EQ(records.count("LepusCustomEvent"), 1u);
+  ASSERT_EQ(records.at("LepusCustomEvent").size(), 1u);
+  rapidjson::Document worklet_custom;
+  worklet_custom.Parse(records.at("LepusCustomEvent")[0].c_str());
+  ASSERT_TRUE(worklet_custom.IsObject());
+  ASSERT_TRUE(worklet_custom.HasMember("type"));
+  ASSERT_TRUE(worklet_custom["type"].IsString());
+  EXPECT_NE(std::string(worklet_custom["type"].GetString()).find("focus"),
+            std::string::npos);
+
+  auto frontend_event = fml::MakeRefCounted<event::CustomEvent>(
+      "focus", lepus::Value(lepus::Dictionary::Create()), "detail");
+  frontend_event->set_from_frontend(true);
+  EXPECT_TRUE(
+      event::EventDispatcher::DispatchEvent(*page, frontend_event).consumed);
+  EXPECT_EQ(records.at("LepusCustomEvent").size(), 1u);
+}
+#endif  // ENABLE_TESTBENCH_REPLAY
 
 TEST_P(FiberElementTest, TestSetOverflow) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
@@ -21932,6 +22218,7 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
 
 TEST_P(FiberElementTest,
        SetComposeModifierBindsSupportedLocalEventsAndReplacesThem) {
+  tasm->page_config_->SetEnableEventHandleRefactor(false);
   EXPECT_FALSE(manager->EnableEventHandleRefactor());
 
   auto renderer_runtime = CreateRendererRuntime(tasm.get());
@@ -22059,6 +22346,7 @@ TEST_P(FiberElementTest,
 }
 
 TEST_P(FiberElementTest, SetComposeModifierBindsClickThroughEventListener) {
+  tasm->page_config_->SetEnableEventHandleRefactor(false);
   EXPECT_FALSE(manager->EnableEventHandleRefactor());
 
   auto renderer_runtime = CreateRendererRuntime(tasm.get());

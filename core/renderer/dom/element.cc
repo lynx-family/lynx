@@ -57,6 +57,9 @@
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "core/services/replay/replay_controller.h"
+#endif
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -2732,6 +2735,26 @@ void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
       event->set_current_target(current_target->GetWeakTarget());
       event->HandleEventBaseDetail();
       delegate->SendGlobalEvent(event->type(), event->detail());
+#if ENABLE_TESTBENCH_REPLAY
+      const char* replay_event_type = nullptr;
+      switch (event->event_type()) {
+        case event::Event::EventType::kTouchEvent:
+          replay_event_type = "GlobalTouchEvent";
+          break;
+        case event::Event::EventType::kCustomEvent:
+          if (!event->from_frontend()) {
+            replay_event_type = "GlobalCustomEvent";
+          }
+          break;
+        default:
+          break;
+      }
+      if (replay_event_type != nullptr) {
+        replay::ReplayController::SendFileByAgent(
+            replay_event_type,
+            replay::ReplayController::ConvertEventInfo(event->detail()));
+      }
+#endif
     }
   }
 

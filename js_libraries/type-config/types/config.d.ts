@@ -113,7 +113,7 @@ export interface Config {
    *
    * Since: LynxSDK 3.5
    *
-   * @defaultValue false
+   * @defaultValue true
    */
   enableEventHandleRefactor?: boolean;
 
