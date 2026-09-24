@@ -82,22 +82,23 @@ class NativePaintingCtxPlatformRef
   bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[],
                                   int32_t event_target_root_id);
-  // Returns behavior cached for the current or next pointer sequence.
-  uint32_t GetCachedPlatformEventBehavior() const {
-    return event_handler_->EventBehavior();
-  }
   // Dispatch a longpress recognized by the platform layer. The event payload is
   // derived from the active platform pointer state in PlatformEventHandler.
   void DispatchPlatformLongPress();
   // Dispatch a tap recognized by the platform layer. The event payload is
   // derived from the pending platform pointer state in PlatformEventHandler.
   void DispatchPlatformTap();
-  // Hit-tests once and caches behavior for the next pointer-down sequence.
-  uint32_t HitTestAndCachePlatformEventBehavior(int32_t event_target_root_id,
-                                                float point_x, float point_y);
-  // Returns [hit target sign, renderer host sign] for platform-side caching.
-  std::array<int32_t, 2> GetPlatformEventTargetInfo() const;
-  bool CanRespondPlatformFocus();
+  // Hit-tests inside the given platform event root and returns whether the hit
+  // target lets the event pass through.
+  bool IsPlatformEventTargetEventThrough(int32_t event_target_root_id,
+                                         float point_x, float point_y);
+  // Hit-tests inside the given platform event root and returns whether the hit
+  // target ignores focus changes.
+  bool IsPlatformEventTargetIgnoreFocus(int32_t event_target_root_id,
+                                        float point_x, float point_y);
+  // Returns [hit target sign, renderer host sign, ignore focus,
+  // can respond focus] for the first pointer tracked by PlatformEventHandler.
+  std::array<int32_t, 4> GetPlatformFocusInfo();
   // Send event to the target element.
   void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
   // Update the pseudo status of the target element.

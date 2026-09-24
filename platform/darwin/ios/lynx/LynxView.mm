@@ -26,7 +26,6 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxThreadManager.h>
-#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxUIOwner.h>
@@ -442,23 +441,15 @@
         [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:view];
     id<LynxUIRendererProtocol> uiRenderer = _templateRender.lynxUIRenderer;
     LynxEventHandler* eventHandler = uiRenderer.uiOwner.uiContext.eventHandler;
-    BOOL isFragmentLayerRender = uiRenderer.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn;
-    LynxPlatformEventBehavior eventBehavior = LynxPlatformEventBehaviorNone;
-    if (isFragmentLayerRender) {
-      LynxTouchHandler* touchHandler = eventHandler.touchRecognizer;
-      if (touchHandler.hasActivePlatformTouches) {
-        eventBehavior = touchHandler.platformEventBehavior;
-      } else if (eventHandler != nil && view != nil) {
-        eventBehavior =
-            [_templateRender HitTestAndCachePlatformEventBehavior:eventHandler.eventRootSign
-                                                            point:point];
-      }
-      touchHandler.platformEventBehavior = eventBehavior;
+    if (uiRenderer.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
+      BOOL ignoreFocus =
+          eventHandler != nil &&
+          [_templateRender IsPlatformEventTargetIgnoreFocus:eventHandler.eventRootSign point:point];
       [eventHandler handleFocusOnView:view
                         withContainer:self
                              andPoint:point
                              andEvent:event
-                          ignoreFocus:(eventBehavior & LynxPlatformEventBehaviorIgnoreFocus) != 0];
+                          ignoreFocus:ignoreFocus];
     } else {
       [uiRenderer handleFocus:touchTarget
                        onView:view
@@ -467,17 +458,11 @@
                      andEvent:event];
     }
     // If target eventThrough, return nil to let event through LynxView.
-    BOOL isEventThrough = NO;
-    if (isFragmentLayerRender) {
-      isEventThrough = (eventBehavior & LynxPlatformEventBehaviorEventThrough) != 0;
-    } else {
-      CGPoint targetPoint = point;
-      if (touchTarget.view) {
-        targetPoint = [self convertPoint:point toView:touchTarget.view];
-      }
-      isEventThrough = [touchTarget eventThrough:targetPoint];
+    CGPoint targetPoint = point;
+    if (touchTarget.view) {
+      targetPoint = [self convertPoint:point toView:touchTarget.view];
     }
-    if (isEventThrough) {
+    if ([touchTarget eventThrough:targetPoint]) {
       _LogI(@"LynxView: hit event through in %ld", [touchTarget signature]);
       return nil;
     } else {

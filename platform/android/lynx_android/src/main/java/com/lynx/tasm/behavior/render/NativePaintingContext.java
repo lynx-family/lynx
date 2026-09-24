@@ -21,13 +21,13 @@ import java.util.List;
  * by the pipeline.
  */
 public class NativePaintingContext implements IPaintingContext {
-  private static final int PLATFORM_EVENT_TARGET_INFO_SIZE = 2;
-  private static final int PLATFORM_EVENT_TARGET_SIGN_INDEX = 0;
-  private static final int PLATFORM_EVENT_RENDERER_HOST_SIGN_INDEX = 1;
+  private static final int PLATFORM_FOCUS_INFO_SIZE = 4;
+  private static final int PLATFORM_FOCUS_TARGET_SIGN_INDEX = 0;
+  private static final int PLATFORM_FOCUS_RENDERER_HOST_SIGN_INDEX = 1;
+  private static final int PLATFORM_FOCUS_IGNORE_INDEX = 2;
+  private static final int PLATFORM_FOCUS_CAN_RESPOND_INDEX = 3;
 
   private long mNativePtr = 0;
-  private int mEventBehavior = EVENT_BEHAVIOR_NONE;
-  @Nullable private int[] mPlatformEventTargetInfo;
 
   @NonNull private final PlatformRendererContext mPlatformRendererContext;
   private boolean mDestroyed = false;
@@ -51,8 +51,6 @@ public class NativePaintingContext implements IPaintingContext {
       return;
     }
     mDestroyed = true;
-    mEventBehavior = EVENT_BEHAVIOR_NONE;
-    mPlatformEventTargetInfo = null;
 
     if (mNativePtr != 0) {
       nativeDestroy(mNativePtr);
@@ -96,10 +94,6 @@ public class NativePaintingContext implements IPaintingContext {
 
   @Override
   public boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign) {
-    if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
-      mEventBehavior = EVENT_BEHAVIOR_NONE;
-      mPlatformEventTargetInfo = null;
-    }
     if (mNativePtr == 0 || mDestroyed) {
       return false;
     }
@@ -121,34 +115,7 @@ public class NativePaintingContext implements IPaintingContext {
       fEventData[base + 1] = ev.getX(pointerIndex);
       fEventData[base + 2] = ev.getY(pointerIndex);
     }
-    int eventBehavior = nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
-    if (actionMasked == MotionEvent.ACTION_DOWN) {
-      mEventBehavior = eventBehavior;
-    }
-    boolean consumed = (mEventBehavior & EVENT_BEHAVIOR_EVENT_THROUGH) == 0;
-    if (actionMasked == MotionEvent.ACTION_DOWN) {
-      if (consumed) {
-        mPlatformEventTargetInfo = nativeGetPlatformEventTargetInfo(mNativePtr);
-      }
-    }
-    return consumed;
-  }
-
-  @Override
-  public int getPlatformEventBehavior() {
-    return mEventBehavior;
-  }
-
-  @Override
-  public int hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY) {
-    mEventBehavior = EVENT_BEHAVIOR_NONE;
-    mPlatformEventTargetInfo = null;
-    if (mNativePtr == 0 || mDestroyed) {
-      return mEventBehavior;
-    }
-    mEventBehavior =
-        nativeHitTestAndCachePlatformEventBehavior(mNativePtr, rootSign, pointX, pointY);
-    return mEventBehavior;
+    return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
   }
 
   @Override
@@ -156,9 +123,9 @@ public class NativePaintingContext implements IPaintingContext {
     if (mNativePtr == 0 || mDestroyed) {
       return -1;
     }
-    return mPlatformEventTargetInfo != null
-            && mPlatformEventTargetInfo.length >= PLATFORM_EVENT_TARGET_INFO_SIZE
-        ? mPlatformEventTargetInfo[PLATFORM_EVENT_TARGET_SIGN_INDEX]
+    int[] focusInfo = nativeGetPlatformFocusInfo(mNativePtr);
+    return focusInfo != null && focusInfo.length >= PLATFORM_FOCUS_INFO_SIZE
+        ? focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX]
         : -1;
   }
 
@@ -180,15 +147,28 @@ public class NativePaintingContext implements IPaintingContext {
 
   @Override
   public void dispatchPlatformFocus() {
-    if (mNativePtr == 0 || mDestroyed || mPlatformEventTargetInfo == null
-        || mPlatformEventTargetInfo.length < PLATFORM_EVENT_TARGET_INFO_SIZE
-        || (mEventBehavior & EVENT_BEHAVIOR_IGNORE_FOCUS) != 0
-        || !nativeCanRespondPlatformFocus(mNativePtr)) {
+    if (mNativePtr == 0 || mDestroyed) {
       return;
     }
-    mPlatformRendererContext.updatePlatformFocus(
-        mPlatformEventTargetInfo[PLATFORM_EVENT_TARGET_SIGN_INDEX],
-        mPlatformEventTargetInfo[PLATFORM_EVENT_RENDERER_HOST_SIGN_INDEX]);
+    handlePlatformFocusInfo(nativeGetPlatformFocusInfo(mNativePtr));
+  }
+
+  void handlePlatformFocusInfo(@Nullable int[] focusInfo) {
+    if (focusInfo == null || focusInfo.length < PLATFORM_FOCUS_INFO_SIZE
+        || focusInfo[PLATFORM_FOCUS_IGNORE_INDEX] != 0
+        || focusInfo[PLATFORM_FOCUS_CAN_RESPOND_INDEX] == 0) {
+      return;
+    }
+    mPlatformRendererContext.updatePlatformFocus(focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX],
+        focusInfo[PLATFORM_FOCUS_RENDERER_HOST_SIGN_INDEX]);
+  }
+
+  @Override
+  public boolean isPlatformEventTargetEventThrough(int rootSign, float pointX, float pointY) {
+    if (mNativePtr == 0 || mDestroyed) {
+      return false;
+    }
+    return nativeIsPlatformEventTargetEventThrough(mNativePtr, rootSign, pointX, pointY);
   }
 
   private static int getPlatformActionType(int actionMasked) {
@@ -234,23 +214,22 @@ public class NativePaintingContext implements IPaintingContext {
 
   native void nativeSetLynxEngineActorForPlatformContextRef(long nativePtr, long ptr);
 
-  native int nativeDispatchPlatformInputEvent(long nativePtr, int[] iEventData, float[] fEventData);
+  native boolean nativeDispatchPlatformInputEvent(
+      long nativePtr, int[] iEventData, float[] fEventData);
 
   native void nativeDispatchPlatformLongPress(long nativePtr);
 
   native void nativeDispatchPlatformTap(long nativePtr);
 
-  native int[] nativeGetPlatformEventTargetInfo(long nativePtr);
-
-  native int nativeHitTestAndCachePlatformEventBehavior(
-      long nativePtr, int rootSign, float pointX, float pointY);
-
-  native boolean nativeCanRespondPlatformFocus(long nativePtr);
+  native int[] nativeGetPlatformFocusInfo(long nativePtr);
 
   native void nativeSetPlatformEventRootActive(long nativePtr, int rootSign, boolean active);
 
   native void nativeSetPlatformEventRootOffset(
       long nativePtr, int rootSign, float offsetX, float offsetY);
+
+  native boolean nativeIsPlatformEventTargetEventThrough(
+      long nativePtr, int rootSign, float pointX, float pointY);
 
   native void nativeDestroy(long nativePtr);
 

@@ -4,15 +4,6 @@
 
 #import <Lynx/LynxUIRendererProtocol.h>
 
-// Keep in sync with native PlatformEventBehavior.
-typedef NS_OPTIONS(NSUInteger, LynxPlatformEventBehavior) {
-  LynxPlatformEventBehaviorNone = 0,
-  LynxPlatformEventBehaviorIgnoreFocus = 1 << 0,
-  LynxPlatformEventBehaviorEventThrough = 1 << 1,
-  LynxPlatformEventBehaviorBlockNativeEvent = 1 << 2,
-  LynxPlatformEventBehaviorEnableSimultaneousTouch = 1 << 3,
-};
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxUIRenderer : NSObject <LynxUIRendererProtocol>
@@ -25,8 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)SetPlatformEventRootOffset:(NSInteger)rootSign
                            offsetX:(CGFloat)offsetX
                            offsetY:(CGFloat)offsetY;
-- (LynxPlatformEventBehavior)HitTestAndCachePlatformEventBehavior:(NSInteger)rootSign
-                                                            point:(CGPoint)point;
+- (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point;
+- (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point;
 
 @end
 

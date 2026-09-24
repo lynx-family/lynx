@@ -137,7 +137,6 @@ public class TouchEventDispatcher {
   private boolean mDispatchingGestureArena = false;
   private boolean mPendingPlatformGestureStatusCheck = false;
   private boolean mPanGestureRecognized = false;
-  private boolean mBlockNativeEvent = false;
 
   private static final String TAG = "LynxTouchEventDispatcher";
 
@@ -397,7 +396,8 @@ public class TouchEventDispatcher {
 
   public boolean blockNativeEvent(MotionEvent ev) {
     if (mUIOwner.getContext().isFragmentLayerRenderOn()) {
-      return mBlockNativeEvent;
+      // TODO: Support block-native-event in fragment layer rendering.
+      return false;
     }
     if (mActiveUI == null) {
       return false;
@@ -1294,10 +1294,6 @@ public class TouchEventDispatcher {
     boolean consumed = paintingContext.dispatchPlatformMotionEvent(ev, rootSign);
     int action = ev.getActionMasked();
     if (action == MotionEvent.ACTION_DOWN) {
-      mBlockNativeEvent = consumed
-          && (paintingContext.getPlatformEventBehavior()
-                 & IPaintingContext.EVENT_BEHAVIOR_BLOCK_NATIVE_EVENT)
-              != 0;
       // Keep the native hit target for the whole touch sequence, including additional pointers.
       mActiveUI =
           consumed ? mUIOwner.findLynxUIBySign(paintingContext.getPlatformTouchTargetSign()) : null;
@@ -1530,7 +1526,6 @@ public class TouchEventDispatcher {
   }
 
   public void reset() {
-    mBlockNativeEvent = false;
     mActiveUI = null;
     mFocusedUI = null;
     mActiveClickList.clear();

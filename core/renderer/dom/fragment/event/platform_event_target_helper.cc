@@ -5,15 +5,14 @@
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 
 #include <algorithm>
-#include <cmath>
 #include <cstring>
 #include <stack>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "base/include/float_comparison.h"
-#include "base/include/string/string_number_convert.h"
 #include "base/include/value/array.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
@@ -151,44 +150,47 @@ void SetIgnoreFocus(PlatformEventTarget* target, const lepus::Value& value) {
   target->SetIgnoreFocus(EventPropValueToStatus(value));
 }
 
-void SetTouchPseudoPropagation(PlatformEventTarget* target,
-                               const lepus::Value& value) {
-  target->SetTouchPseudoPropagation(!value.IsBool() || value.Bool());
-}
-
-bool ParseEventRegionSizeValue(
+bool ParseEventThroughSizeValue(
     const lepus::Value& value,
-    PlatformEventTarget::EventRegionSizeValue* result) {
-  if (result == nullptr || !value.IsString()) {
+    PlatformEventTarget::EventThroughSizeValue* result) {
+  if (result == nullptr) {
+    return false;
+  }
+  if (!value.IsString()) {
     return false;
   }
 
-  const auto string_value = value.StdString();
-  const bool percentage = !string_value.empty() && string_value.back() == '%';
-  const bool pixel =
-      string_value.size() >= 2 &&
-      string_value.compare(string_value.size() - 2, 2, "px") == 0;
-  if (!percentage && !pixel) {
-    return false;
+  const std::string string_value = value.StdString();
+  const std::string_view string_view = string_value;
+  if (string_view.size() >= 2 &&
+      string_view.rfind("px") == string_view.size() - 2) {
+    int32_t number = 0;
+    if (!ParseIntStrict(string_view.substr(0, string_view.size() - 2),
+                        &number)) {
+      return false;
+    }
+    result->type = PlatformEventTarget::EventThroughSizeValue::Type::kDevicePx;
+    result->value = static_cast<float>(number);
+    return true;
   }
-
-  const auto number_string =
-      string_value.substr(0, string_value.size() - (percentage ? 1 : 2));
-  float number = 0.f;
-  if (!base::StringToFloat(number_string, number, true) ||
-      !std::isfinite(number)) {
-    return false;
+  if (!string_view.empty() &&
+      string_view.rfind("%") == string_view.size() - 1) {
+    int32_t number = 0;
+    if (!ParseIntStrict(string_view.substr(0, string_view.size() - 1),
+                        &number)) {
+      return false;
+    }
+    result->type =
+        PlatformEventTarget::EventThroughSizeValue::Type::kPercentage;
+    result->value = static_cast<float>(number) / 100.f;
+    return true;
   }
-
-  result->type =
-      percentage ? PlatformEventTarget::EventRegionSizeValue::Type::kPercentage
-                 : PlatformEventTarget::EventRegionSizeValue::Type::kDevicePx;
-  result->value = percentage ? number / 100.f : number;
-  return true;
+  return false;
 }
 
-void ParseEventRegions(const lepus::Value& value,
-                       std::vector<PlatformEventTarget::EventRegion>* regions) {
+void ParseEventThroughRegions(
+    const lepus::Value& value,
+    std::vector<PlatformEventTarget::EventThroughRegion>* regions) {
   if (regions == nullptr || !value.IsArray()) {
     return;
   }
@@ -206,10 +208,10 @@ void ParseEventRegions(const lepus::Value& value,
     if (!region_array || region_array->size() != 4) {
       continue;
     }
-    PlatformEventTarget::EventRegion region;
+    PlatformEventTarget::EventThroughRegion region;
     bool valid_region = true;
     for (size_t j = 0; j < region.size(); ++j) {
-      if (!ParseEventRegionSizeValue(region_array->get(j), &region[j])) {
+      if (!ParseEventThroughSizeValue(region_array->get(j), &region[j])) {
         valid_region = false;
         break;
       }
@@ -222,27 +224,9 @@ void ParseEventRegions(const lepus::Value& value,
 
 void SetEventThroughActiveRegions(PlatformEventTarget* target,
                                   const lepus::Value& value) {
-  std::vector<PlatformEventTarget::EventRegion> regions;
-  ParseEventRegions(value, &regions);
+  std::vector<PlatformEventTarget::EventThroughRegion> regions;
+  ParseEventThroughRegions(value, &regions);
   target->SetEventThroughActiveRegions(std::move(regions));
-}
-
-void SetBlockNativeEvent(PlatformEventTarget* target,
-                         const lepus::Value& value) {
-  target->SetBlockNativeEvent(!base::IsZero(EventPropValueToFloat(value)));
-}
-
-void SetBlockNativeEventAreas(PlatformEventTarget* target,
-                              const lepus::Value& value) {
-  std::vector<PlatformEventTarget::EventRegion> regions;
-  ParseEventRegions(value, &regions);
-  target->SetBlockNativeEventAreas(std::move(regions));
-}
-
-void SetEnableSimultaneousTouch(PlatformEventTarget* target,
-                                const lepus::Value& value) {
-  target->SetEnableSimultaneousTouch(
-      !base::IsZero(EventPropValueToFloat(value)));
 }
 
 void SetEventsPassThrough(PlatformEventTarget* target,
@@ -319,13 +303,6 @@ GetEventPropSetterMap() {
            &SetEventThroughActiveRegions},
           {PlatformEventPropName::kEventsPassThrough, &SetEventsPassThrough},
           {PlatformEventPropName::kIgnoreFocus, &SetIgnoreFocus},
-          {PlatformEventPropName::kEnableTouchPseudoPropagation,
-           &SetTouchPseudoPropagation},
-          {PlatformEventPropName::kBlockNativeEvent, &SetBlockNativeEvent},
-          {PlatformEventPropName::kBlockNativeEventAreas,
-           &SetBlockNativeEventAreas},
-          {PlatformEventPropName::kEnableSimultaneousTouch,
-           &SetEnableSimultaneousTouch},
       };
   return map;
 }

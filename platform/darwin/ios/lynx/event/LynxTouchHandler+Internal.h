@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxTouchHandler.h>
-#import <Lynx/LynxUIRenderer.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -14,8 +13,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) NSMutableArray<LynxWeakProxy *> *touchDeque;
 @property(nonatomic) int32_t tapSlop;
 @property(nonatomic) BOOL hasMultiTouch;
-@property(nonatomic) LynxPlatformEventBehavior platformEventBehavior;
-@property(nonatomic, readonly) BOOL hasActivePlatformTouches;
 @property(nonatomic, weak) LynxGestureArenaManager *_Nullable gestureArenaManager;
 
 - (void)setupVelocityTracker:(UIView *)rootView;

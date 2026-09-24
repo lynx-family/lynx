@@ -5,7 +5,6 @@
 #import <Lynx/LynxRuntimeLifecycleListener.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIOwner.h>
-#import <Lynx/LynxUIRenderer.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -80,8 +79,9 @@ NS_ASSUME_NONNULL_BEGIN
                            offsetX:(CGFloat)offsetX
                            offsetY:(CGFloat)offsetY;
 
-- (LynxPlatformEventBehavior)HitTestAndCachePlatformEventBehavior:(NSInteger)rootSign
-                                                            point:(CGPoint)point;
+- (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point;
+
+- (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point;
 
 @end
 
