@@ -917,58 +917,38 @@ void LynxDevToolMediator::ScreencastFrameAck(
 }
 
 void LynxDevToolMediator::PageEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageEnable(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageEnable(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageCanEmulate(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageCanEmulate(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageCanEmulate(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageCanScreencast(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageCanScreencast(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageCanScreencast(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageGetResourceContent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message] {
-                      element_executor->PageGetResourceContent(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([element_executor = element_executor_, responder, params] {
+    element_executor->PageGetResourceContent(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageGetResourceTree(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageGetResourceTree(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageGetResourceTree(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageReload(

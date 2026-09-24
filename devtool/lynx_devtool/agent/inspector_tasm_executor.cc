@@ -3073,19 +3073,15 @@ void InspectorTasmExecutor::SendLayoutTreeWithCallback(
 }
 
 void InspectorTasmExecutor::PageGetResourceContent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["base64Encoded"] = false;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  Json::Value result(Json::ValueType::objectValue);
+  result["base64Encoded"] = false;
   std::string html_content = "";
   if (element_root_ != nullptr) {
     html_content = ElementHelper::GetElementContent(element_root_, 0);
   }
-  content["content"] = html_content;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  result["content"] = html_content;
+  responder->SendSuccess(std::move(result));
 }
 
 Json::Value InspectorTasmExecutor::GetDocumentBodyFromNodeWithBoxModel(

@@ -18,6 +18,7 @@ unittest_set("devtool_agent_testset") {
     "../../lynx_devtool/agent/domain_agent/inspector_memory_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_network_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng_unittest.cc",
+    "../../lynx_devtool/agent/domain_agent/inspector_page_agent_ng_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_performance_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_template_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_ui_tree_agent_unittest.cc",

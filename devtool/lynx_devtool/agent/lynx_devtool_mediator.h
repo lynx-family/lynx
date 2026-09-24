@@ -227,17 +227,19 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(AnimationSetPaused);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationReleaseAnimations);
 
-  // Page domain - > ui executor
+  // Page domain
+  // -> ui executor
   DECLARE_DEVTOOL_METHOD(StartScreencast)
   DECLARE_DEVTOOL_METHOD(StopScreencast)
   DECLARE_DEVTOOL_METHOD(ScreencastFrameAck)
-  DECLARE_DEVTOOL_METHOD(PageEnable)
-  DECLARE_DEVTOOL_METHOD(PageCanEmulate)
-  DECLARE_DEVTOOL_METHOD(PageCanScreencast)
-  DECLARE_DEVTOOL_METHOD(PageGetResourceContent)
-  DECLARE_DEVTOOL_METHOD(PageGetResourceTree)
+  DECLARE_DEVTOOL_CDP_METHOD(PageEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanEmulate);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceTree);
   DECLARE_DEVTOOL_METHOD(PageReload)
   DECLARE_DEVTOOL_METHOD(PageNavigate)
+  // -> tasm executor
+  DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceContent);
 
   // UITree domain - > ui executor
   DECLARE_DEVTOOL_CDP_METHOD(UITree_Enable);
