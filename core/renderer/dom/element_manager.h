@@ -760,6 +760,11 @@ class ElementManager : public ElementContextDelegate {
   // Element notify element_manager to regist itself to set.
   void RequestNextFrame(Element *element);
 
+  void SetElementVsyncPaused(bool paused);
+  bool IsElementVsyncPaused() const { return element_vsync_paused_; }
+  fml::TimePoint ProcessAnimationEvents(fml::TimePoint &time,
+                                        bool dispatch_events);
+
   // Element notify element_manager to logout itself from set.
   void NotifyElementDestroy(Element *element);
 
@@ -1257,6 +1262,7 @@ class ElementManager : public ElementContextDelegate {
   bool need_layout_{false};
 
   bool animations_paused_{false};
+  bool element_vsync_paused_{false};
 
   // Enable new animator for current lynx view by default for radon/fiber, the
   // initial values here are defined to show the default values and serve as a

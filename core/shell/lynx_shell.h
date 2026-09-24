@@ -422,6 +422,8 @@ class LynxShell {
   std::shared_ptr<LayoutResultManager> layout_result_manager_;
 
  private:
+  void SetElementVsyncPaused(bool paused);
+
   friend class LynxEngineWrapper;
   std::weak_ptr<piper::JsBundleHolder> GetWeakJsBundleHolder();
 };

@@ -175,6 +175,40 @@ void Animation::DoFrame(fml::TimePoint& frame_time) {
   }
 }
 
+bool Animation::HasIterationEvent() const {
+  const auto& event = BASE_STATIC_STRING(kKeyframeIterationEventName);
+  return !is_transition_ && element_ &&
+         (element_->event_map().count(event) ||
+          element_->lepus_event_map().count(event) ||
+          element_->global_bind_event_map().count(event));
+}
+
+fml::TimePoint Animation::GetNextEventTime(fml::TimePoint now) const {
+  if (state_ != State::kPlay || !keyframe_effect_) {
+    return fml::TimePoint::Max();
+  }
+  if (start_time_ == fml::TimePoint::Min() ||
+      start_time_ == GetAnimationDummyStartTime()) {
+    return now;
+  }
+  return keyframe_effect_->GetNextEventTime(now, HasIterationEvent());
+}
+
+void Animation::TickEvents(fml::TimePoint& frame_time) {
+  if (state_ != State::kPlay || !keyframe_effect_) {
+    return;
+  }
+  if (start_time_ == fml::TimePoint::Min() ||
+      start_time_ == GetAnimationDummyStartTime()) {
+    start_time_ = frame_time;
+    keyframe_effect_->SetStartTime(frame_time);
+  }
+  if (keyframe_effect_->TickEvents(frame_time) && state_ == State::kPlay) {
+    Stop();
+    ClearTransitionPreviousEndValue();
+  }
+}
+
 void Animation::UpdateAnimationData(starlight::AnimationData& data) {
   animation_data_ = data;
   if (keyframe_effect_) {
@@ -225,6 +259,15 @@ void Animation::SendCancelEvent() {
 
 void Animation::SendIterationEvent() {
   CreateEventAndSend(BASE_STATIC_STRING(kKeyframeIterationEventName));
+}
+
+void Animation::SendIterationEvents(int count) {
+  if (!HasIterationEvent()) {
+    return;
+  }
+  for (int i = 0; i < count; ++i) {
+    SendIterationEvent();
+  }
 }
 
 }  // namespace animation

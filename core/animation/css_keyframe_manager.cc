@@ -150,6 +150,32 @@ void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
   // After traversing the set, the final_animator_maps_ is now assembled.
 }
 
+fml::TimePoint CSSKeyframeManager::ProcessAnimationEvents(
+    fml::TimePoint& frame_time, bool dispatch_events) {
+  auto next = fml::TimePoint::Max();
+  // Event callbacks may replace animations in the map.
+  std::vector<std::shared_ptr<Animation>> animations;
+  animations.reserve(animations_map_.size());
+  for (const auto& entry : animations_map_) {
+    if (entry.second) {
+      animations.push_back(entry.second);
+    }
+  }
+  for (const auto& animation : animations) {
+    auto entry = animations_map_.find(animation->name());
+    if (entry == animations_map_.end() || entry->second != animation) {
+      continue;
+    }
+    auto time = animation->GetNextEventTime(frame_time);
+    if (dispatch_events && time <= frame_time) {
+      animation->TickEvents(frame_time);
+      time = animation->GetNextEventTime(frame_time);
+    }
+    next = std::min(next, time);
+  }
+  return next;
+}
+
 void CSSKeyframeManager::SetAnimationDataAndPlay(
     base::Vector<starlight::AnimationData>& anim_data) {
   if (anim_data.size() == animation_data_.size() &&

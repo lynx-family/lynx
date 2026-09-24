@@ -147,6 +147,39 @@ TEST(KeyframeModelTest, CalculateActiveTime) {
   EXPECT_EQ(active_time, fml::TimeDelta::Min());
 }
 
+TEST(KeyframeModelTest, EventDeadlinesIgnoreFillMode) {
+  auto model = InitTestModel();
+  starlight::AnimationData data;
+  data.duration = 1000;
+  data.delay = 200;
+  data.iteration_count = 3;
+  data.fill_mode = starlight::AnimationFillModeType::kNone;
+  model->UpdateAnimationData(&data);
+  auto at = [](int milliseconds) {
+    return fml::TimePoint::FromEpochDelta(
+        fml::TimeDelta::FromMilliseconds(milliseconds));
+  };
+  auto start = at(0);
+  model->set_start_time(start);
+
+  EXPECT_EQ(model->GetNextEventTime(at(0), 0, true), at(200));
+  model->UpdateState(at(200));
+  EXPECT_EQ(model->GetNextEventTime(at(200), 0, true), at(1200));
+
+  int iteration = 0;
+  bool report_over_time = false;
+  model->TrimTimeToCurrentIteration(at(2200), iteration, report_over_time,
+                                    true);
+  EXPECT_EQ(iteration, 2);
+  EXPECT_EQ(model->GetNextEventTime(at(2200), iteration, true), at(3200));
+  model->UpdateState(at(3200));
+  model->TrimTimeToCurrentIteration(at(3200), iteration, report_over_time,
+                                    true);
+  EXPECT_EQ(iteration, 2);
+  EXPECT_EQ(model->GetNextEventTime(at(3200), iteration, true),
+            fml::TimePoint::Max());
+}
+
 TEST(KeyframeModelTest, TrimTimeToCurrentIteration) {
   std::unique_ptr<KeyframeModel> test_model = InitTestModel();
   starlight::AnimationData default_data = starlight::AnimationData();
