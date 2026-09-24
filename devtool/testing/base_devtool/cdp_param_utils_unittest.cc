@@ -73,6 +73,45 @@ TEST(CDPParamUtilsTest, ReadIntRejectsNonFiniteNumbers) {
   }
 }
 
+TEST(CDPParamUtilsTest, ReadBoolAcceptsOnlyBooleanValues) {
+  bool result = false;
+  EXPECT_TRUE(ReadBoolParam(Json::Value(true), result));
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(ReadBoolParam(Json::Value(false), result));
+  EXPECT_FALSE(result);
+
+  const std::vector<Json::Value> values = {Json::Value(),
+                                           Json::Value(0),
+                                           Json::Value(1),
+                                           Json::Value("true"),
+                                           Json::Value(Json::arrayValue),
+                                           Json::Value(Json::objectValue)};
+  for (const auto& value : values) {
+    result = true;
+    EXPECT_FALSE(ReadBoolParam(value, result));
+    EXPECT_TRUE(result);
+  }
+}
+
+TEST(CDPParamUtilsTest, ReadStringAcceptsOnlyStringValues) {
+  const std::string expected("value\0with-null", 15);
+  std::string result = "unchanged";
+  EXPECT_TRUE(ReadStringParam(Json::Value(expected), result));
+  EXPECT_EQ(result, expected);
+
+  const std::vector<Json::Value> values = {Json::Value(),
+                                           Json::Value(true),
+                                           Json::Value(1),
+                                           Json::Value(1.0),
+                                           Json::Value(Json::arrayValue),
+                                           Json::Value(Json::objectValue)};
+  for (const auto& value : values) {
+    result = "unchanged";
+    EXPECT_FALSE(ReadStringParam(value, result));
+    EXPECT_EQ(result, "unchanged");
+  }
+}
+
 TEST(CDPParamUtilsTest, ReadIntStringAcceptsDecimalValuesWithinIntRange) {
   const int values[] = {std::numeric_limits<int>::min(), -1, 0, 1,
                         std::numeric_limits<int>::max()};
