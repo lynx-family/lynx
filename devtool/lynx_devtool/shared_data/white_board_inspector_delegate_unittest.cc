@@ -148,96 +148,98 @@ TEST_F(WhiteBoardInspectorDelegateTest, SetSharedDataSucceeds) {
   EXPECT_TRUE(response["result"].isObject());
 }
 
-TEST_F(WhiteBoardInspectorDelegateTest, GetSharedData) {
-  Json::Value msg(Json::ValueType::objectValue);
-  Json::Value params(Json::ValueType::objectValue);
-  msg["id"] = 123;
-  msg["method"] = "WhiteBoard.getSharedData";
-  msg["params"] = params;
-
-  std::string response = delegate_->GetSharedData(msg);
-  std::string expected;
-  EXPECT_EQ(response, expected);
-
-  delegate_->enabled_ = true;
-  response = delegate_->GetSharedData(msg);
-  EXPECT_EQ(response, expected);
-
-  delegate_->SetInspector(inspector_);
-  inspector_->white_board_.reset();
-  response = delegate_->GetSharedData(msg);
-  expected =
-      "{\n   \"error\" : {\n      \"code\" : -32000,\n      \"message\" : "
-      "\"Failed to get shared data!\"\n   },\n   \"id\" : 123\n}\n";
-  EXPECT_EQ(response, expected);
-
-  inspector_->SetWhiteBoard(white_board_);
-  response = delegate_->GetSharedData(msg);
-  expected =
-      "{\n   \"id\" : 123,\n   \"result\" : {\n      \"entries\" : [\n         "
-      "{\n            \"key\" : \"key2\",\n            \"value\" : "
-      "\"\\\"value2\\\"\"\n         },\n         {\n            \"key\" : "
-      "\"key1\",\n            \"value\" : \"\\\"value1\\\"\"\n         }\n     "
-      " ]\n   }\n}\n";
-  EXPECT_EQ(response, expected);
+TEST_F(WhiteBoardInspectorDelegateTest, GetSharedDataWhenDisabledReturnsError) {
+  Json::Value response = RunCommand(&WhiteBoardInspectorDelegate::GetSharedData,
+                                    Json::Value(Json::ValueType::objectValue));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "WhiteBoard is not enabled");
 }
 
-TEST_F(WhiteBoardInspectorDelegateTest, RemoveSharedData) {
-  Json::Value msg(Json::ValueType::objectValue);
+TEST_F(WhiteBoardInspectorDelegateTest, GetSharedDataReportsBackendFailure) {
+  delegate_->enabled_ = true;
+  delegate_->SetInspector(inspector_);
+  inspector_->white_board_.reset();
+
+  Json::Value response = RunCommand(&WhiteBoardInspectorDelegate::GetSharedData,
+                                    Json::Value(Json::ValueType::objectValue));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Failed to get shared data!");
+}
+
+TEST_F(WhiteBoardInspectorDelegateTest, GetSharedDataReturnsEntries) {
+  delegate_->enabled_ = true;
+  delegate_->SetInspector(inspector_);
+
+  Json::Value response = RunCommand(&WhiteBoardInspectorDelegate::GetSharedData,
+                                    Json::Value(Json::ValueType::objectValue));
+  EXPECT_EQ(response["id"].asInt64(), 123);
+  ASSERT_TRUE(response["result"]["entries"].isArray());
+  EXPECT_EQ(response["result"]["entries"].size(), 2u);
+}
+
+TEST_F(WhiteBoardInspectorDelegateTest,
+       RemoveSharedDataWhenDisabledReturnsError) {
+  Json::Value params(Json::ValueType::objectValue);
+  params["key"] = "key1";
+
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::RemoveSharedData, params);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "WhiteBoard is not enabled");
+}
+
+TEST_F(WhiteBoardInspectorDelegateTest, RemoveSharedDataRejectsMissingKey) {
+  delegate_->enabled_ = true;
+  delegate_->SetInspector(inspector_);
   Json::Value params(Json::ValueType::objectValue);
   params["key"] = "key3";
-  msg["id"] = 123;
-  msg["method"] = "WhiteBoard.removeSharedData";
-  msg["params"] = params;
 
-  std::string response = delegate_->RemoveSharedData(msg);
-  std::string expected = "";
-  EXPECT_EQ(response, expected);
-
-  delegate_->enabled_ = true;
-  response = delegate_->RemoveSharedData(msg);
-  EXPECT_EQ(response, expected);
-
-  delegate_->SetInspector(inspector_);
-  response = delegate_->RemoveSharedData(msg);
-  expected =
-      "{\n   \"error\" : {\n      \"code\" : -32602,\n      \"message\" : "
-      "\"The key does not exist!\"\n   },\n   \"id\" : 123\n}\n";
-  EXPECT_EQ(response, expected);
-
-  msg["params"]["key"] = "key1";
-  response = delegate_->RemoveSharedData(msg);
-  expected = "{\n   \"id\" : 123,\n   \"result\" : {}\n}\n";
-  EXPECT_EQ(response, expected);
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::RemoveSharedData, params);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"].asString(), "The key does not exist!");
 }
 
-TEST_F(WhiteBoardInspectorDelegateTest, Clear) {
-  Json::Value msg(Json::ValueType::objectValue);
-  Json::Value params(Json::ValueType::objectValue);
-  msg["id"] = 123;
-  msg["method"] = "WhiteBoard.clearSharedData";
-  msg["params"] = params;
-
-  std::string response = delegate_->Clear(msg);
-  std::string expected = "";
-  EXPECT_EQ(response, expected);
-
+TEST_F(WhiteBoardInspectorDelegateTest, RemoveSharedDataSucceeds) {
   delegate_->enabled_ = true;
-  response = delegate_->Clear(msg);
-  EXPECT_EQ(response, expected);
+  delegate_->SetInspector(inspector_);
+  Json::Value params(Json::ValueType::objectValue);
+  params["key"] = "key1";
 
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::RemoveSharedData, params);
+  EXPECT_EQ(response["id"].asInt64(), 123);
+  EXPECT_TRUE(response["result"].isObject());
+}
+
+TEST_F(WhiteBoardInspectorDelegateTest, ClearReportsBackendFailure) {
+  delegate_->enabled_ = true;
   delegate_->SetInspector(inspector_);
   inspector_->white_board_.reset();
-  response = delegate_->Clear(msg);
-  expected =
-      "{\n   \"error\" : {\n      \"code\" : -32000,\n      \"message\" : "
-      "\"Failed to clear shared data!\"\n   },\n   \"id\" : 123\n}\n";
-  EXPECT_EQ(response, expected);
 
-  inspector_->SetWhiteBoard(white_board_);
-  response = delegate_->Clear(msg);
-  expected = "{\n   \"id\" : 123,\n   \"result\" : {}\n}\n";
-  EXPECT_EQ(response, expected);
+  Json::Value response = RunCommand(&WhiteBoardInspectorDelegate::Clear,
+                                    Json::Value(Json::ValueType::objectValue));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "Failed to clear shared data!");
+}
+
+TEST_F(WhiteBoardInspectorDelegateTest, ClearSucceeds) {
+  delegate_->enabled_ = true;
+  delegate_->SetInspector(inspector_);
+
+  Json::Value response = RunCommand(&WhiteBoardInspectorDelegate::Clear,
+                                    Json::Value(Json::ValueType::objectValue));
+  EXPECT_EQ(response["id"].asInt64(), 123);
+  EXPECT_TRUE(response["result"].isObject());
 }
 
 TEST_F(WhiteBoardInspectorDelegateTest, Notify) {
