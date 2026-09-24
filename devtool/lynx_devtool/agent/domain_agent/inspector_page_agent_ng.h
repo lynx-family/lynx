@@ -21,17 +21,10 @@ class InspectorPageAgentNG : public CDPDomainAgentBase {
   explicit InspectorPageAgentNG(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorPageAgentNG() override;
-  // Temporary compatibility entry point for commands migrated in later
-  // patches.
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message) override;
   void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  // Temporary compatibility type for commands migrated in later patches.
-  using LegacyPageAgentMethod = void (InspectorPageAgentNG::*)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
   using PageAgentMethod = void (InspectorPageAgentNG::*)(
       const std::shared_ptr<CDPResponder>& responder,
       const Json::Value& params);
@@ -41,21 +34,13 @@ class InspectorPageAgentNG : public CDPDomainAgentBase {
   DECLARE_DEVTOOL_CDP_METHOD(CanEmulate);
   DECLARE_DEVTOOL_CDP_METHOD(GetResourceTree);
   DECLARE_DEVTOOL_CDP_METHOD(GetResourceContent);
-  // Temporary legacy handlers retained until the remaining commands migrate.
-  void StartScreencast(const std::shared_ptr<MessageSender>& sender,
-                       const Json::Value& message);
-  void StopScreencast(const std::shared_ptr<MessageSender>& sender,
-                      const Json::Value& message);
-  void ScreencastFrameAck(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message);
-  void Reload(const std::shared_ptr<MessageSender>& sender,
-              const Json::Value& message);
-  void Navigate(const std::shared_ptr<MessageSender>& sender,
-                const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(StartScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(StopScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(ScreencastFrameAck);
+  DECLARE_DEVTOOL_CDP_METHOD(Reload);
+  DECLARE_DEVTOOL_CDP_METHOD(Navigate);
 
   std::map<std::string, PageAgentMethod> functions_map_;
-  // Temporary compatibility map removed after the remaining commands migrate.
-  std::map<std::string, LegacyPageAgentMethod> legacy_functions_map_;
   std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };
 }  // namespace devtool
