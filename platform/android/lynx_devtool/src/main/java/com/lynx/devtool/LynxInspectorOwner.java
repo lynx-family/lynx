@@ -163,17 +163,23 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
 
   @Override
   public void invokeCDPFromSDK(String cdpMsg, CDPResultCallback callback) {
-    mLynxDevToolNG.invokeCDPFromSDK(cdpMsg, callback);
+    if (mLynxDevToolNG != null) {
+      mLynxDevToolNG.invokeCDPFromSDK(cdpMsg, callback);
+    }
   }
 
   @Override
   public void addCDPEventListener(final String name, final CDPEventListener listener) {
-    mLynxDevToolNG.addCDPEventListener(name, listener);
+    if (mLynxDevToolNG != null) {
+      mLynxDevToolNG.addCDPEventListener(name, listener);
+    }
   }
 
   @Override
   public void removeCDPEventListener(final String name) {
-    mLynxDevToolNG.removeCDPEventListener(name);
+    if (mLynxDevToolNG != null) {
+      mLynxDevToolNG.removeCDPEventListener(name);
+    }
   }
 
   public boolean isDebugging() {
