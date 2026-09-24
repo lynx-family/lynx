@@ -7,9 +7,16 @@
 
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_delegate.h"
 
+#include <memory>
+#include <string>
+
 #include "core/runtime/lepus/json_parser.h"
 #include "core/shared_data/lynx_white_board.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/base_devtool/native/test/message_sender_mock.h"
+#include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/testing/mock/white_board_inspector_delegate_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -22,11 +29,13 @@ class WhiteBoardInspectorDelegateTest : public ::testing::Test {
   WhiteBoardInspectorDelegateTest() {}
   ~WhiteBoardInspectorDelegateTest() override {}
   void SetUp() override {
+    MockReceiver::GetInstance().ResetAll();
     delegate_ = std::make_shared<WhiteBoardInspectorDelegateMock>(1);
     inspector_ = std::make_shared<WhiteBoardInspectorImpl>();
     white_board_ = std::make_shared<tasm::WhiteBoard>();
     inspector_->SetWhiteBoard(white_board_);
     white_board_->SetInspector(inspector_);
+    message_sender_ = std::make_shared<MessageSenderMock>();
 
     std::string key1 = "key1";
     std::string value1 = "\"value1\"";
@@ -41,60 +50,102 @@ class WhiteBoardInspectorDelegateTest : public ::testing::Test {
     white_board_->SetGlobalSharedData(key2, data2);
   }
 
- private:
+ protected:
+  // Runs a delegate command handler through a fresh CDPResponder and returns
+  // the parsed CDP envelope the responder emitted.
+  Json::Value RunCommand(void (WhiteBoardInspectorDelegate::*method)(
+                             const std::shared_ptr<CDPResponder>&,
+                             const Json::Value&),
+                         const Json::Value& params, int64_t id = 123) {
+    MockReceiver::GetInstance().ResetAll();
+    auto responder = std::make_shared<CDPResponder>(message_sender_, id);
+    (delegate_.get()->*method)(responder, params);
+    responder.reset();
+    Json::Value response;
+    Json::Reader reader;
+    reader.parse(MockReceiver::GetInstance().received_message_.second, response,
+                 false);
+    return response;
+  }
+
   std::shared_ptr<WhiteBoardInspectorDelegateMock> delegate_;
   std::shared_ptr<WhiteBoardInspectorImpl> inspector_;
   std::shared_ptr<tasm::WhiteBoard> white_board_;
+  std::shared_ptr<MessageSenderMock> message_sender_;
 };
 
 TEST_F(WhiteBoardInspectorDelegateTest, Enable) {
-  Json::Value msg(Json::ValueType::objectValue);
-  msg["id"] = 123;
-
-  std::string response = delegate_->Enable(msg);
-  std::string expected = "{\n   \"id\" : 123,\n   \"result\" : {}\n}\n";
-  EXPECT_EQ(response, expected);
-  EXPECT_EQ(delegate_->enabled_, true);
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::Enable, Json::Value(), 123);
+  EXPECT_EQ(response["id"].asInt64(), 123);
+  EXPECT_TRUE(response["result"].isObject());
+  EXPECT_TRUE(response["result"].empty());
+  EXPECT_TRUE(delegate_->enabled_);
 }
 
 TEST_F(WhiteBoardInspectorDelegateTest, Disable) {
-  Json::Value msg(Json::ValueType::objectValue);
-  msg["id"] = 123;
-
-  std::string response = delegate_->Disable(msg);
-  std::string expected = "{\n   \"id\" : 123,\n   \"result\" : {}\n}\n";
-  EXPECT_EQ(response, expected);
-  EXPECT_EQ(delegate_->enabled_, false);
+  delegate_->enabled_ = true;
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::Disable, Json::Value(), 123);
+  EXPECT_EQ(response["id"].asInt64(), 123);
+  EXPECT_TRUE(response["result"].isObject());
+  EXPECT_FALSE(delegate_->enabled_);
 }
 
-TEST_F(WhiteBoardInspectorDelegateTest, SetSharedData) {
-  Json::Value msg(Json::ValueType::objectValue);
+TEST_F(WhiteBoardInspectorDelegateTest, SetSharedDataWhenDisabledReturnsError) {
   Json::Value params(Json::ValueType::objectValue);
   params["key"] = "key3";
   params["value"] = "value3";
-  msg["id"] = 123;
-  msg["method"] = "WhiteBoard.setSharedData";
-  msg["params"] = params;
 
-  std::string response = delegate_->SetSharedData(msg);
-  std::string expected;
-  EXPECT_EQ(response, expected);
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::SetSharedData, params);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "WhiteBoard is not enabled");
+}
 
+TEST_F(WhiteBoardInspectorDelegateTest,
+       SetSharedDataWithoutInspectorReturnsError) {
   delegate_->enabled_ = true;
-  response = delegate_->SetSharedData(msg);
-  EXPECT_EQ(response, expected);
+  Json::Value params(Json::ValueType::objectValue);
+  params["key"] = "key3";
+  params["value"] = "\"value3\"";
 
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::SetSharedData, params);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "WhiteBoard inspector is unavailable");
+}
+
+TEST_F(WhiteBoardInspectorDelegateTest, SetSharedDataRejectsInvalidJson) {
+  delegate_->enabled_ = true;
   delegate_->SetInspector(inspector_);
-  response = delegate_->SetSharedData(msg);
-  expected =
-      "{\n   \"error\" : {\n      \"code\" : -32602,\n      \"message\" : "
-      "\"The value must be a valid JSON string!\"\n   },\n   \"id\" : 123\n}\n";
-  EXPECT_EQ(response, expected);
+  Json::Value params(Json::ValueType::objectValue);
+  params["key"] = "key3";
+  params["value"] = "value3";
 
-  msg["params"]["value"] = "\"value3\"";
-  response = delegate_->SetSharedData(msg);
-  expected = "{\n   \"id\" : 123,\n   \"result\" : {}\n}\n";
-  EXPECT_EQ(response, expected);
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::SetSharedData, params);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"].asString(),
+            "The value must be a valid JSON string!");
+}
+
+TEST_F(WhiteBoardInspectorDelegateTest, SetSharedDataSucceeds) {
+  delegate_->enabled_ = true;
+  delegate_->SetInspector(inspector_);
+  Json::Value params(Json::ValueType::objectValue);
+  params["key"] = "key3";
+  params["value"] = "\"value3\"";
+
+  Json::Value response =
+      RunCommand(&WhiteBoardInspectorDelegate::SetSharedData, params);
+  EXPECT_EQ(response["id"].asInt64(), 123);
+  EXPECT_TRUE(response["result"].isObject());
 }
 
 TEST_F(WhiteBoardInspectorDelegateTest, GetSharedData) {
