@@ -221,9 +221,9 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardEnable);
   DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardDisable);
   DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardSetSharedData);
-  DECLARE_DEVTOOL_METHOD(WhiteBoardGetSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardRemoveSharedData)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardClear)
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardGetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardRemoveSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardClear);
 
  public:
   // layout domain event

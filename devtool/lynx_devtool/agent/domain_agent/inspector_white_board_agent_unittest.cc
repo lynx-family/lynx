@@ -137,13 +137,27 @@ class InspectorWhiteBoardAgentTest : public ::testing::Test {
     EXPECT_FALSE(response.isMember("error"));
   }
 
-  void RunMigratedCommandSequence() {
+  void RunCommandSequence() {
     ExpectSuccess("WhiteBoard.enable");
 
     Json::Value set_params(Json::objectValue);
     set_params["key"] = "key";
     set_params["value"] = "\"value\"";
     ExpectSuccess("WhiteBoard.setSharedData", set_params);
+
+    const Json::Value get_response = Dispatch("WhiteBoard.getSharedData");
+    ASSERT_TRUE(get_response["result"]["entries"].isArray());
+    ASSERT_EQ(get_response["result"]["entries"].size(), 1u);
+    EXPECT_EQ(get_response["result"]["entries"][0]["key"], "key");
+    EXPECT_EQ(get_response["result"]["entries"][0]["value"], "\"value\"");
+
+    Json::Value remove_params(Json::objectValue);
+    remove_params["key"] = "key";
+    ExpectSuccess("WhiteBoard.removeSharedData", remove_params);
+
+    set_params["key"] = "key-to-clear";
+    ExpectSuccess("WhiteBoard.setSharedData", set_params);
+    ExpectSuccess("WhiteBoard.clear");
     ExpectSuccess("WhiteBoard.disable");
   }
 
@@ -159,9 +173,9 @@ class InspectorWhiteBoardAgentTest : public ::testing::Test {
   std::unique_ptr<InspectorWhiteBoardAgent> agent_;
 };
 
-TEST_F(InspectorWhiteBoardAgentTest, TasmPathHandlesMigratedCommands) {
+TEST_F(InspectorWhiteBoardAgentTest, TasmPathHandlesAllCommands) {
   ConfigureTasmPath();
-  RunMigratedCommandSequence();
+  RunCommandSequence();
 }
 
 TEST_F(InspectorWhiteBoardAgentTest, TasmPathReportsMissingDelegate) {
@@ -176,9 +190,9 @@ TEST_F(InspectorWhiteBoardAgentTest, TasmPathReportsMissingDelegate) {
             "white_board_inspector_delegate_ is null");
 }
 
-TEST_F(InspectorWhiteBoardAgentTest, JSPathHandlesMigratedCommands) {
+TEST_F(InspectorWhiteBoardAgentTest, JSPathHandlesAllCommands) {
   ConfigureJSPath();
-  RunMigratedCommandSequence();
+  RunCommandSequence();
 }
 
 TEST_F(InspectorWhiteBoardAgentTest, JSPathReportsMissingDelegate) {
@@ -193,12 +207,11 @@ TEST_F(InspectorWhiteBoardAgentTest, JSPathReportsMissingDelegate) {
             "white_board_inspector_delegate_ is null");
 }
 
-TEST_F(InspectorWhiteBoardAgentTest, UnknownMethodUsesLegacyFallback) {
+TEST_F(InspectorWhiteBoardAgentTest, UnknownMethodReturnsMethodNotFound) {
   const Json::Value response = Dispatch("WhiteBoard.unknown");
   EXPECT_EQ(response["error"]["code"].asInt(),
             static_cast<int>(CDPErrorCode::MethodNotFound));
-  EXPECT_EQ(response["error"]["message"],
-            "Not implemented: WhiteBoard.unknown");
+  EXPECT_EQ(response["error"]["message"], "'WhiteBoard.unknown' wasn't found");
 }
 
 }  // namespace testing
