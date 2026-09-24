@@ -1016,11 +1016,26 @@ void ElementManager::BindTimingFlagToPipelineOptions(
 
 void ElementManager::SetNeedsLayout() { need_layout_ = true; }
 
+void ElementManager::SetElementVsyncPaused(bool paused) {
+  if (element_vsync_paused_ == paused) {
+    return;
+  }
+  element_vsync_paused_ = paused;
+  if (element_vsync_proxy_) {
+    if (!paused) {
+      element_vsync_proxy_->CancelBackgroundFrame();
+    }
+    if (!animation_element_set_.empty()) {
+      element_vsync_proxy_->RequestNextFrame();
+    }
+  }
+}
+
 void ElementManager::RequestNextFrame(Element *element) {
   animation_element_set_.insert(element);
   if (element_vsync_proxy_ == nullptr) {
-    element_vsync_proxy_ = std::make_shared<ElementVsyncProxy>(
-        ElementVsyncProxy(this, vsync_monitor_));
+    element_vsync_proxy_ =
+        std::make_shared<ElementVsyncProxy>(this, vsync_monitor_);
   }
   element_vsync_proxy_->SetPreferredFps(config_->GetPreferredFps());
   element_vsync_proxy_->RequestNextFrame();
@@ -1029,6 +1044,28 @@ void ElementManager::RequestNextFrame(Element *element) {
 void ElementManager::NotifyElementDestroy(Element *element) {
   animation_element_set_.erase(element);
   paused_animation_element_set_.erase(element);
+}
+
+fml::TimePoint ElementManager::ProcessAnimationEvents(
+    fml::TimePoint &frame_time, bool dispatch_events) {
+  auto next = fml::TimePoint::Max();
+  std::vector<fml::RefPtr<Element>> elements;
+  elements.reserve(animation_element_set_.size());
+  for (auto *element : animation_element_set_) {
+    elements.emplace_back(element);
+  }
+  for (const auto &element : elements) {
+    // Dispatching an event may remove another element from the pending set.
+    if (!animation_element_set_.contains(element.get())) {
+      continue;
+    }
+    if (!element->is_fiber_element() ||
+        !static_cast<FiberElement *>(element.get())->IsDetached()) {
+      next = std::min(
+          next, element->ProcessAnimationEvents(frame_time, dispatch_events));
+    }
+  }
+  return next;
 }
 
 void ElementManager::TickAllElement(fml::TimePoint &frame_time) {

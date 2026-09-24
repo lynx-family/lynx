@@ -86,6 +86,10 @@ class ElementVsyncProxyTest : public ::testing::Test {
 TEST_F(ElementVsyncProxyTest, RequestNextFrame) {
   auto test_vsync_proxy = InitTestVSyncProxy();
   EXPECT_TRUE(!test_vsync_proxy->HasRequestedNextFrame());
+  manager->SetElementVsyncPaused(true);
+  test_vsync_proxy->RequestNextFrame();
+  EXPECT_FALSE(test_vsync_proxy->HasRequestedNextFrame());
+  manager->SetElementVsyncPaused(false);
   test_vsync_proxy->RequestNextFrame();
   EXPECT_TRUE(test_vsync_proxy->HasRequestedNextFrame());
   vsync_monitor_->TriggerVsync();

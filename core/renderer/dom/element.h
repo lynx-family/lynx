@@ -556,6 +556,9 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   bool TickAllAnimation(fml::TimePoint& time,
                         std::shared_ptr<PipelineOptions>& options);
 
+  fml::TimePoint ProcessAnimationEvents(fml::TimePoint& time,
+                                        bool dispatch_events);
+
   void ClearTransitionPreviousEndValue(const base::String&);
 
   virtual void RequestLayout() = 0;

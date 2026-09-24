@@ -65,6 +65,9 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   virtual void TickAllAnimation(fml::TimePoint& time);
 
+  fml::TimePoint ProcessAnimationEvents(fml::TimePoint& time,
+                                        bool dispatch_events);
+
   void RequestNextFrame(std::weak_ptr<Animation> ptr) override;
 
   void UpdateFinalStyleMap(const tasm::StyleMap& styles) override;

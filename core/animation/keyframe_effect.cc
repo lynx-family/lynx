@@ -103,6 +103,41 @@ void KeyframeEffect::TickKeyframeModel(fml::TimePoint monotonic_time) {
   }
 }
 
+bool KeyframeEffect::TickEvents(fml::TimePoint monotonic_time) {
+  if (keyframe_models_.empty()) {
+    return true;
+  }
+  bool start_due = false;
+  bool end_due = false;
+  for (auto& model : keyframe_models_) {
+    auto [start, end] = model->UpdateState(monotonic_time);
+    start_due |= start;
+    end_due |= end;
+  }
+  const int old_iteration_count = current_iteration_count_;
+  keyframe_models_.front()->TrimTimeToCurrentIteration(
+      monotonic_time, current_iteration_count_, need_report_over_time_, true);
+  if (animation_) {
+    if (start_due) {
+      animation_->SendStartEvent();
+    }
+    animation_->SendIterationEvents(current_iteration_count_ -
+                                    old_iteration_count);
+    if (end_due) {
+      animation_->SendEndEvent();
+    }
+  }
+  return keyframe_models_.front()->is_finished();
+}
+
+fml::TimePoint KeyframeEffect::GetNextEventTime(
+    fml::TimePoint now, bool needs_iteration_event) const {
+  return keyframe_models_.empty()
+             ? fml::TimePoint::Max()
+             : keyframe_models_.front()->GetNextEventTime(
+                   now, current_iteration_count_, needs_iteration_event);
+}
+
 bool KeyframeEffect::CheckHasFinished(fml::TimePoint& monotonic_time) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_EFFECT_CHECK_HAS_FINISHED);
   // As all keyframe models share the same animation parameters, once one of

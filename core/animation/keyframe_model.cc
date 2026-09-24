@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <utility>
@@ -175,10 +176,70 @@ fml::TimeDelta KeyframeModel::CalculateActiveTime(
   }
 }
 
+fml::TimeDelta KeyframeModel::CalculateEventTime(
+    fml::TimePoint monotonic_time) const {
+  const auto elapsed = ConvertMonotonicTimeToLocalTime(monotonic_time) -
+                       fml::TimeDelta::FromMilliseconds(animation_data_->delay);
+  const auto active_duration = GetRepeatDuration() / std::abs(playback_rate_);
+  return std::max(std::min(elapsed, active_duration), fml::TimeDelta::Zero());
+}
+
+fml::TimePoint KeyframeModel::GetNextEventTime(
+    fml::TimePoint now, int current_iteration_count,
+    bool needs_iteration_event) const {
+  if (!animation_data_ || !curve_) {
+    return fml::TimePoint::Max();
+  }
+  if (run_state_ == PAUSED) {
+    return now;
+  }
+  const long double origin =
+      static_cast<long double>(start_time_.ToEpochDelta().ToNanoseconds()) +
+      total_paused_duration_.ToNanoseconds();
+  auto deadline = [origin, now](long double offset) {
+    const long double ticks = origin + offset;
+    if (ticks >= std::numeric_limits<int64_t>::max()) {
+      return fml::TimePoint::Max();
+    }
+    return ticks <= now.ToEpochDelta().ToNanoseconds()
+               ? now
+               : fml::TimePoint::FromTicks(
+                     static_cast<int64_t>(std::ceil(ticks)));
+  };
+  const long double delay =
+      static_cast<long double>(animation_data_->delay) * 1000000;
+  if (run_state_ == STARTING) {
+    return deadline(std::max(delay, 0.L));
+  }
+  if (run_state_ == FINISHED || curve_->Duration() <= fml::TimeDelta::Zero() ||
+      playback_rate_ == 0) {
+    return fml::TimePoint::Max();
+  }
+  const long double duration =
+      curve_->Duration().ToNanoseconds() / std::abs(playback_rate_);
+  auto next =
+      animation_data_->iteration_count < 0
+          ? fml::TimePoint::Max()
+          : deadline(std::max(
+                delay + duration * animation_data_->iteration_count, 0.L));
+  if (needs_iteration_event &&
+      (animation_data_->iteration_count < 0 ||
+       current_iteration_count < animation_data_->iteration_count - 1)) {
+    next = std::min(
+        next,
+        deadline(delay +
+                 duration *
+                     (static_cast<int64_t>(current_iteration_count) + 1)));
+  }
+  return next;
+}
+
 fml::TimeDelta KeyframeModel::TrimTimeToCurrentIteration(
     fml::TimePoint monotonic_time, int& current_iteration_count,
-    bool& need_report_over_time) const {
-  fml::TimeDelta active_time = CalculateActiveTime(monotonic_time);
+    bool& need_report_over_time, bool events_only) const {
+  fml::TimeDelta active_time = events_only
+                                   ? CalculateEventTime(monotonic_time)
+                                   : CalculateActiveTime(monotonic_time);
   if (need_report_over_time == true &&
       active_time.ToSeconds() > kThirtyMinutesInSeconds) {
     need_report_over_time = false;

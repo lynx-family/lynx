@@ -1473,6 +1473,20 @@ void Element::ClearTransitionPreviousEndValue(
   }
 }
 
+fml::TimePoint Element::ProcessAnimationEvents(fml::TimePoint& frame_time,
+                                               bool dispatch_events) {
+  auto next = fml::TimePoint::Max();
+  if (css_transition_manager_) {
+    next = std::min(next, css_transition_manager_->ProcessAnimationEvents(
+                              frame_time, dispatch_events));
+  }
+  if (css_keyframe_manager_) {
+    next = std::min(next, css_keyframe_manager_->ProcessAnimationEvents(
+                              frame_time, dispatch_events));
+  }
+  return next;
+}
+
 bool Element::TickAllAnimation(fml::TimePoint& frame_time,
                                std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_TICK_ALL_ANIMATION);

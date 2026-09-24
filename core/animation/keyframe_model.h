@@ -64,9 +64,17 @@ class KeyframeModel {
 
   fml::TimeDelta CalculateActiveTime(fml::TimePoint monotonic_time) const;
 
+  // Event timing is independent of CSS fill mode.
+  fml::TimeDelta CalculateEventTime(fml::TimePoint monotonic_time) const;
+
+  fml::TimePoint GetNextEventTime(fml::TimePoint now,
+                                  int current_iteration_count,
+                                  bool needs_iteration_event) const;
+
   fml::TimeDelta TrimTimeToCurrentIteration(fml::TimePoint monotonic_time,
                                             int& current_iteration_count,
-                                            bool& need_report_over_time) const;
+                                            bool& need_report_over_time,
+                                            bool events_only = false) const;
 
   AnimationCurve* curve() { return curve_.get(); }
   const AnimationCurve* curve() const { return curve_.get(); }
