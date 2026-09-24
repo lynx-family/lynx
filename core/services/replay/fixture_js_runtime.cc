@@ -52,6 +52,10 @@ class QuickJsFixtureRuntime final : public FixtureJsRuntime {
     return 1;
   }
 
+  bool IsHeapWithinLimit() override {
+    return LEPUS_GetHeapSize(GetRuntime()) < limits_.memory_limit_bytes;
+  }
+
   void ArmExecutionDeadline() override {
     LEPUS_SetMemoryLimit(GetRuntime(), limits_.memory_limit_bytes);
     timed_out_ = false;
@@ -140,6 +144,11 @@ FixtureJsRuntime::EvaluateScript(std::string source) {
   auto buffer = std::make_shared<runtime::js::StringBuffer>(
       WrapFixtureSource(std::move(source)));
   ScopedFixtureExecution execution(*this);
+  // Caller-installed bindings also count toward the engine budget.
+  if (!IsHeapWithinLimit()) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("Fixture runtime memory limit exceeded"));
+  }
   return runtime_->evaluateJavaScript(buffer, "fixture.js");
 }
 
@@ -175,6 +184,13 @@ std::unique_ptr<FixtureJsRuntime> CreateQuickJsFixtureRuntime(
   auto vm = js_runtime->createVM(&startup_data);
   auto context = js_runtime->createContext(vm);
   js_runtime->InitRuntime(context);
+  // Reject budgets that cannot hold even the initialized engine. In particular,
+  // do not enter the compiler with a heap already above its allocation limit.
+  if (LEPUS_GetHeapSize(static_cast<runtime::js::QuickjsRuntime&>(*js_runtime)
+                            .getJSRuntime()) >= limits.memory_limit_bytes) {
+    js_runtime->BeforeDestroy();
+    return nullptr;
+  }
   return std::make_unique<QuickJsFixtureRuntime>(std::move(js_runtime), limits);
 }
 
