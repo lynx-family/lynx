@@ -158,7 +158,6 @@ static inline bool LynxHasBorderRadii(LynxBorderRadii radii) {
 @property(nonatomic, assign) BOOL allowsEdgeAntialiasing;
 @property(nonatomic, assign) BOOL overlapRendering;
 @property(nonatomic, assign) LynxBgShapeLayerProp uiBackgroundShapeLayerEnabled;
-@property(nonatomic, assign) BOOL shouldRasterizeShadow;
 @property(nonatomic, assign) BOOL isPixelated;
 @property(nonatomic, assign) BOOL skipRedirection;
 

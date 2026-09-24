@@ -60,7 +60,6 @@ public_shared_sources = [
   "base/background/LynxBackgroundRenderer+Internal.h",
   "base/background/LynxBackgroundRenderer.h",
   "base/background/LynxBackgroundUtils.h",
-  "base/background/LynxBoxShadowLayer.h",
   "event/LynxEventDetail.h",
   "event/LynxEventEmitter.h",
   "event/LynxEventHandler.h",
