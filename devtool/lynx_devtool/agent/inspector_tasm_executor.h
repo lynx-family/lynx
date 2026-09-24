@@ -197,7 +197,7 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
   // page domain
-  DECLARE_DEVTOOL_METHOD(PageGetResourceContent)
+  DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceContent);
 
   // Lynx domain
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)

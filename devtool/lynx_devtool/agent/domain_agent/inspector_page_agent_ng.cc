@@ -4,12 +4,11 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.h"
 
-#include "devtool/lynx_devtool/element/element_helper.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
-
-#define BANNER ""
 
 InspectorPageAgentNG::InspectorPageAgentNG(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
@@ -21,40 +20,41 @@ InspectorPageAgentNG::InspectorPageAgentNG(
       &InspectorPageAgentNG::GetResourceTree;
   functions_map_["Page.getResourceContent"] =
       &InspectorPageAgentNG::GetResourceContent;
-  functions_map_["Page.startScreencast"] =
+  legacy_functions_map_["Page.startScreencast"] =
       &InspectorPageAgentNG::StartScreencast;
-  functions_map_["Page.stopScreencast"] = &InspectorPageAgentNG::StopScreencast;
-  functions_map_["Page.screencastFrameAck"] =
+  legacy_functions_map_["Page.stopScreencast"] =
+      &InspectorPageAgentNG::StopScreencast;
+  legacy_functions_map_["Page.screencastFrameAck"] =
       &InspectorPageAgentNG::ScreencastFrameAck;
-  functions_map_["Page.reload"] = &InspectorPageAgentNG::Reload;
-  functions_map_["Page.navigate"] = &InspectorPageAgentNG::Navigate;
+  legacy_functions_map_["Page.reload"] = &InspectorPageAgentNG::Reload;
+  legacy_functions_map_["Page.navigate"] = &InspectorPageAgentNG::Navigate;
 }
 
 InspectorPageAgentNG::~InspectorPageAgentNG() = default;
 
-void InspectorPageAgentNG::Enable(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  devtool_mediator_->PageEnable(sender, message);
+void InspectorPageAgentNG::Enable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageEnable(responder, params);
 }
 
 void InspectorPageAgentNG::CanScreencast(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageCanScreencast(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageCanScreencast(responder, params);
 }
 
 void InspectorPageAgentNG::CanEmulate(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageCanEmulate(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageCanEmulate(responder, params);
 }
 
 void InspectorPageAgentNG::GetResourceTree(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageGetResourceTree(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageGetResourceTree(responder, params);
 }
 
 void InspectorPageAgentNG::GetResourceContent(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageGetResourceContent(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageGetResourceContent(responder, params);
 }
 
 void InspectorPageAgentNG::StartScreencast(
@@ -85,12 +85,25 @@ void InspectorPageAgentNG::Navigate(
 void InspectorPageAgentNG::CallMethod(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   std::string method = message["method"].asString();
-  auto iter = functions_map_.find(method);
-  if (iter == functions_map_.end()) {
+  auto iter = legacy_functions_map_.find(method);
+  if (iter == legacy_functions_map_.end()) {
     SendNotImplementedResponse(sender, message["id"].asInt64(), method);
   } else {
     (this->*(iter->second))(sender, message);
   }
+}
+
+void InspectorPageAgentNG::CallMethod(
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  const std::string method = message["method"].asString();
+  const auto iter = functions_map_.find(method);
+  if (iter == functions_map_.end()) {
+    // Fall back only while later patches still use MessageSender.
+    CallMethod(responder->RetrieveSender(), message);
+    return;
+  }
+  (this->*(iter->second))(responder, message["params"]);
 }
 
 }  // namespace devtool
