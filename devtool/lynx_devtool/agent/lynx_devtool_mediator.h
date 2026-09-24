@@ -229,15 +229,15 @@ class LynxDevToolMediator
 
   // Page domain
   // -> ui executor
-  DECLARE_DEVTOOL_METHOD(StartScreencast)
-  DECLARE_DEVTOOL_METHOD(StopScreencast)
-  DECLARE_DEVTOOL_METHOD(ScreencastFrameAck)
+  DECLARE_DEVTOOL_CDP_METHOD(StartScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(StopScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(ScreencastFrameAck);
   DECLARE_DEVTOOL_CDP_METHOD(PageEnable);
   DECLARE_DEVTOOL_CDP_METHOD(PageCanEmulate);
   DECLARE_DEVTOOL_CDP_METHOD(PageCanScreencast);
   DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceTree);
-  DECLARE_DEVTOOL_METHOD(PageReload)
-  DECLARE_DEVTOOL_METHOD(PageNavigate)
+  DECLARE_DEVTOOL_CDP_METHOD(PageReload);
+  DECLARE_DEVTOOL_CDP_METHOD(PageNavigate);
   // -> tasm executor
   DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceContent);
 

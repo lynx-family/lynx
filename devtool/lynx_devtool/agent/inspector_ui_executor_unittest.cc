@@ -142,7 +142,9 @@ TEST_F(InspectorUIExecutorTest, PageReloadTest) {
     Json::Value message;
     message["id"] = 21;
 
-    ui_executor_->PageReload(message_sender_, message);
+    ui_executor_->PageReload(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 21),
+        message["params"]);
 
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 21,\n   \"result\" : {}\n}\n");
@@ -155,7 +157,9 @@ TEST_F(InspectorUIExecutorTest, PageReloadTest) {
     Json::Value params;
     params["ignoreCache"] = false;
     message["params"] = params;
-    ui_executor_->PageReload(message_sender_, message);
+    ui_executor_->PageReload(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 22),
+        message["params"]);
 
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 22,\n   \"result\" : {}\n}\n");
@@ -172,7 +176,9 @@ TEST_F(InspectorUIExecutorTest, PageReloadTest) {
     params["pageDataLength"] = 2048;
     params["url"] = "http://test.example.com/reload";
     message["params"] = params;
-    ui_executor_->PageReload(message_sender_, message);
+    ui_executor_->PageReload(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 23),
+        message["params"]);
 
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 23,\n   \"result\" : {}\n}\n");
@@ -193,7 +199,9 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
   {
     Json::Value message;
     message["id"] = 31;
-    ui_executor_->StartScreencast(message_sender_, message);
+    ui_executor_->StartScreencast(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 31),
+        message["params"]);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 31,\n   \"result\" : {}\n}\n");
     ASSERT_EQ(facade->screen_cast_requests_.size(), 1U);
@@ -210,7 +218,9 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     params["format"] = "jpeg";
     params["quality"] = 80;
     message["params"] = params;
-    ui_executor_->StartScreencast(message_sender_, message);
+    ui_executor_->StartScreencast(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 32),
+        message["params"]);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 32,\n   \"result\" : {}\n}\n");
     ASSERT_EQ(facade->screen_cast_requests_.size(), 2U);
@@ -231,7 +241,9 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     params["everyNthFrame"] = 2;
     params["mode"] = "fullscreen";
     message["params"] = params;
-    ui_executor_->StartScreencast(message_sender_, message);
+    ui_executor_->StartScreencast(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 33),
+        message["params"]);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 33,\n   \"result\" : {}\n}\n");
     ASSERT_EQ(facade->screen_cast_requests_.size(), 3U);

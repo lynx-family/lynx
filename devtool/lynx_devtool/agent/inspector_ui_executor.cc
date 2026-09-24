@@ -29,6 +29,10 @@ extern const char* kLynxMimeType;
 
 namespace {
 
+bool IsValidScreencastFormat(const std::string& format) {
+  return format == "jpeg" || format == "png";
+}
+
 bool IsValidScreencastMode(const std::string& mode) {
   return mode == DevToolStatus::SCREENSHOT_MODE_FULLSCREEN ||
          mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW;
@@ -139,52 +143,81 @@ void InspectorUIExecutor::PageReload(bool ignore_cache,
 }
 
 void InspectorUIExecutor::StartScreencast(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   ScreenshotRequest screen_request;
-  if (params["format"].isString()) {
-    std::string format = params["format"].asString();
-    if (format == "png") {
-      screen_request.format_ = format;
-      screen_request.type_ = ScreenshotType::PNG;
-    }
+  auto& format = screen_request.format_;
+  auto& quality = screen_request.quality_;
+  int max_width = 0;
+  int max_height = 0;
+  auto& every_nth_frame = screen_request.every_nth_frame_;
+  std::string mode;
+  if ((params.isMember("format") &&
+       !ReadStringParam(params["format"], format)) ||
+      (params.isMember("quality") &&
+       !ReadIntParam(params["quality"], quality)) ||
+      (params.isMember("maxWidth") &&
+       !ReadIntParam(params["maxWidth"], max_width)) ||
+      (params.isMember("maxHeight") &&
+       !ReadIntParam(params["maxHeight"], max_height)) ||
+      (params.isMember("everyNthFrame") &&
+       !ReadIntParam(params["everyNthFrame"], every_nth_frame)) ||
+      (params.isMember("mode") && !ReadStringParam(params["mode"], mode))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid screencast parameter type");
+    return;
   }
-  if (params["quality"].isInt()) {
-    screen_request.quality_ = params["quality"].asInt();
+  if (!IsValidScreencastFormat(format)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid format: expected jpeg or png");
+    return;
   }
-  screen_request.max_width_ = params["maxWidth"].asInt();
-  screen_request.max_height_ = params["maxHeight"].asInt();
-  screen_request.every_nth_frame_ = params["everyNthFrame"].asInt();
-  if (params["mode"].isString()) {
-    std::string mode = params["mode"].asString();
-    if (IsValidScreencastMode(mode)) {
-      lynx::devtool::DevToolStatus::GetInstance().SetStatus(
-          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode, mode);
-    }
+  if (quality < 0 || quality > 100) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid quality: expected integer from 0 to 100");
+    return;
   }
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
-  devtool_platform_facade_->StartScreenCast(std::move(screen_request));
+  if (max_width < 0 || max_height < 0) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid dimensions: expected non-negative integers");
+    return;
+  }
+  if (params.isMember("everyNthFrame") && every_nth_frame <= 0) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid everyNthFrame: expected positive integer");
+    return;
+  }
+  if (params.isMember("mode") && !IsValidScreencastMode(mode)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid mode: expected fullscreen or lynxview");
+    return;
+  }
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Page target is unavailable");
+    return;
+  }
 
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  screen_request.type_ =
+      format == "png" ? ScreenshotType::PNG : ScreenshotType::JPEG;
+  screen_request.max_width_ = static_cast<size_t>(max_width);
+  screen_request.max_height_ = static_cast<size_t>(max_height);
+  if (!mode.empty()) {
+    DevToolStatus::GetInstance().SetStatus(
+        DevToolStatus::kDevToolStatusKeyScreenShotMode, mode);
+  }
+  devtool_platform_facade_->StartScreenCast(std::move(screen_request));
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::StopScreencast(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Page target is unavailable");
+    return;
+  }
   devtool_platform_facade_->StopScreenCast();
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::PageEnable(
@@ -243,50 +276,66 @@ void InspectorUIExecutor::PageGetResourceTree(
 }
 
 void InspectorUIExecutor::PageReload(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-
-  bool ignore_cache = false;
-  std::string template_bin = "";
-  bool from_template_fragments = false;
-  int32_t template_size = 0;
-  std::string reload_url = "";
-  if (!params.empty()) {
-    ignore_cache = params["ignoreCache"].asBool();
-    template_bin = params["pageData"].asString();
-    from_template_fragments = params["fromPageDataFragments"].asBool();
-    template_size = params["pageDataLength"].asInt();
-    reload_url = params["url"].asString();
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Page target is unavailable");
+    return;
   }
 
-  PageReload(ignore_cache, template_bin, reload_url, from_template_fragments,
-             template_size);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  if (!params.empty()) {
+    bool ignore_cache = false;
+    std::string template_binary;
+    bool from_template_fragments = false;
+    int template_size = 0;
+    std::string reload_url;
+    if ((params.isMember("ignoreCache") &&
+         !ReadBoolParam(params["ignoreCache"], ignore_cache)) ||
+        (params.isMember("pageData") &&
+         !ReadStringParam(params["pageData"], template_binary)) ||
+        (params.isMember("fromPageDataFragments") &&
+         !ReadBoolParam(params["fromPageDataFragments"],
+                        from_template_fragments)) ||
+        (params.isMember("pageDataLength") &&
+         (!ReadIntParam(params["pageDataLength"], template_size) ||
+          template_size < 0)) ||
+        (params.isMember("url") &&
+         !ReadStringParam(params["url"], reload_url))) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "Invalid reload parameters");
+      return;
+    }
+    PageReload(ignore_cache, template_binary, reload_url,
+               from_template_fragments, template_size);
+  } else {
+    PageReload(false);
+  }
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::PageNavigate(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  auto url = params["url"].asString();
-  content["loaderId"] = "";
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
-  if (url == "about:blank") {
-    SendPageFrameNavigatedEvent(url);
-  } else {
-    CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                              "devtool_platform_facade_ is null");
-    devtool_platform_facade_->Navigate(url);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string url;
+  if (!ReadStringParam(params["url"], url) || url.empty()) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid url: expected non-empty string");
+    return;
   }
+
+  Json::Value result(Json::ValueType::objectValue);
+  result["frameId"] = "";
+  if (url == "about:blank") {
+    responder->SendSuccess(std::move(result));
+    SendPageFrameNavigatedEvent(url);
+    return;
+  }
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Page target is unavailable");
+    return;
+  }
+  devtool_platform_facade_->Navigate(url);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::UITree_Enable(
@@ -432,18 +481,14 @@ void InspectorUIExecutor::SetUIStyle(
 }
 
 void InspectorUIExecutor::ScreencastFrameAck(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Page target is unavailable");
+    return;
+  }
   devtool_platform_facade_->OnAckReceived();
-
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::GetScreenshot(

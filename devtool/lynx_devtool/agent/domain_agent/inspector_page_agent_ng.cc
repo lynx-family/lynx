@@ -20,14 +20,13 @@ InspectorPageAgentNG::InspectorPageAgentNG(
       &InspectorPageAgentNG::GetResourceTree;
   functions_map_["Page.getResourceContent"] =
       &InspectorPageAgentNG::GetResourceContent;
-  legacy_functions_map_["Page.startScreencast"] =
+  functions_map_["Page.startScreencast"] =
       &InspectorPageAgentNG::StartScreencast;
-  legacy_functions_map_["Page.stopScreencast"] =
-      &InspectorPageAgentNG::StopScreencast;
-  legacy_functions_map_["Page.screencastFrameAck"] =
+  functions_map_["Page.stopScreencast"] = &InspectorPageAgentNG::StopScreencast;
+  functions_map_["Page.screencastFrameAck"] =
       &InspectorPageAgentNG::ScreencastFrameAck;
-  legacy_functions_map_["Page.reload"] = &InspectorPageAgentNG::Reload;
-  legacy_functions_map_["Page.navigate"] = &InspectorPageAgentNG::Navigate;
+  functions_map_["Page.reload"] = &InspectorPageAgentNG::Reload;
+  functions_map_["Page.navigate"] = &InspectorPageAgentNG::Navigate;
 }
 
 InspectorPageAgentNG::~InspectorPageAgentNG() = default;
@@ -58,39 +57,28 @@ void InspectorPageAgentNG::GetResourceContent(
 }
 
 void InspectorPageAgentNG::StartScreencast(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StartScreencast(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->StartScreencast(responder, params);
 }
 
 void InspectorPageAgentNG::StopScreencast(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StopScreencast(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->StopScreencast(responder, params);
 }
 
 void InspectorPageAgentNG::ScreencastFrameAck(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->ScreencastFrameAck(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->ScreencastFrameAck(responder, params);
 }
 
-void InspectorPageAgentNG::Reload(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  devtool_mediator_->PageReload(sender, message);
+void InspectorPageAgentNG::Reload(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageReload(responder, params);
 }
 
 void InspectorPageAgentNG::Navigate(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageNavigate(sender, message);
-}
-
-void InspectorPageAgentNG::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  std::string method = message["method"].asString();
-  auto iter = legacy_functions_map_.find(method);
-  if (iter == legacy_functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
-  } else {
-    (this->*(iter->second))(sender, message);
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageNavigate(responder, params);
 }
 
 void InspectorPageAgentNG::CallMethod(
@@ -99,8 +87,8 @@ void InspectorPageAgentNG::CallMethod(
   const std::string method = message["method"].asString();
   const auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    // Fall back only while later patches still use MessageSender.
-    CallMethod(responder->RetrieveSender(), message);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
     return;
   }
   (this->*(iter->second))(responder, message["params"]);
