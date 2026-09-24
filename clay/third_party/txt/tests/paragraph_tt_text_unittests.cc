@@ -26,6 +26,32 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace txt {
+
+TEST(ParagraphTTTextTest, GraphemeBoundariesUseUTF16Positions) {
+  tttext::ParagraphStyle paragraph_style;
+#if defined(ENABLE_SKITY)
+  ParagraphTTText paragraph(nullptr, paragraph_style, nullptr);
+#else
+  ParagraphTTText paragraph(nullptr, paragraph_style);
+#endif
+  tttext::Style style;
+  paragraph.AddTextRun(style,
+                       u"A\U0001F44D\U0001F3FB"
+                       u"e\u0301B");
+
+  EXPECT_EQ(paragraph.GetTextSize(), 8u);
+  for (size_t offset : {1u, 2u, 3u, 4u}) {
+    const auto boundary = paragraph.GetGraphemeBoundary(offset);
+    EXPECT_EQ(boundary.start, 1u);
+    EXPECT_EQ(boundary.end, 5u);
+  }
+  for (size_t offset : {5u, 6u}) {
+    const auto boundary = paragraph.GetGraphemeBoundary(offset);
+    EXPECT_EQ(boundary.start, 5u);
+    EXPECT_EQ(boundary.end, 7u);
+  }
+}
+
 #if defined(ENABLE_SKITY)
 namespace {
 

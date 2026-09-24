@@ -94,6 +94,8 @@ class ParagraphTTText : public Paragraph {
 
   Range<size_t> GetWordBoundary(size_t offset) override;
 
+  Range<size_t> GetGraphemeBoundary(size_t offset) const;
+
 #ifdef ENABLE_SKITY
   void UpdateForegroundPaint(size_t text_size, skity::Paint paint);
   void UpdateForegroundPaint(size_t start, size_t end, skity::Paint paint);
