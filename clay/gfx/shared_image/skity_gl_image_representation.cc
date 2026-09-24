@@ -59,14 +59,13 @@ std::shared_ptr<SkityImage> SkityGLImageRepresentation::GetSkityImage() {
       // GL_TEXTURE_2D texture is owned by Skity.
       result.opengl_texture.target == GL_TEXTURE_EXTERNAL_OES ? true : false};
 
-  auto texture = skity_context_->WrapTexture(&texture_info);
-  // TODO(yudingqian): This is a workaround that we create a `SkityImage` which
-  // wraps the `skity::Image`. Because we need the `destruction_callback` to
-  // release the texture and Skity doesn't provide this parameter for now.
-  return std::make_shared<SkityImage>(
-      skity::Image::MakeHWImage(texture),
-      result.opengl_texture.destruction_callback,
+  // A shader or a pending draw can retain the GPU texture after the
+  // SkityImage wrapper is released. Keep the GL representation alive until
+  // Skity releases the GPU texture, just as the Skia borrowing path does.
+  auto texture = skity_context_->WrapTexture(
+      &texture_info, result.opengl_texture.destruction_callback,
       result.opengl_texture.user_data);
+  return std::make_shared<SkityImage>(skity::Image::MakeHWImage(texture));
 }
 
 bool SkityGLImageRepresentation::EndRead() {
