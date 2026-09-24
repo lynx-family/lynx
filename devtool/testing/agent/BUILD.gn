@@ -25,6 +25,7 @@ unittest_set("devtool_agent_testset") {
     "../../lynx_devtool/lynx_devtool_ng_unittest.cc",
     "../../lynx_devtool/native_module/native_module_record_manager_unittest.cc",
     "devtool_mediator_unittest.cc",
+    "record_payload_unittest.cc",
   ]
 
   public_deps = [

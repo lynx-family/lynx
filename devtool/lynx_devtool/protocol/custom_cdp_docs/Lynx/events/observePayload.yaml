@@ -1,0 +1,31 @@
+summary: Delivers the complete payload referenced by an observation log.
+parameters:
+  - name: payloadId
+    type: string
+    description: Shared identifier printed in the corresponding log field, such as dataPayloadId.
+  - name: logVersion
+    type: string
+    description: Observation format version, currently 0.0.1.
+  - name: viewId
+    type: integer
+    description: View ID from LogContext.
+  - name: engineId
+    type: integer
+    description: Engine ID from LogContext, or -1 if unavailable.
+  - name: runtimeId
+    type: integer
+    description: Runtime ID from LogContext, or -1 if unavailable.
+  - name: bytes
+    type: integer
+    description: Total unencoded payload length.
+  - name: encoding
+    type: string
+    description: utf8 for valid UTF-8 data; base64 otherwise.
+  - name: data
+    type: string
+    description: Complete payload, decoded according to encoding.
+notes:
+  - Requires observation logging, full DevTool, the process-wide payload switch, and a connected transport.
+  - Events use the global DevTool channel. LogContext fields identify the data source without binding delivery to a view.
+  - Associate each event with its log using payloadId; bytes is the original payload size.
+  - This is a best-effort stream without acknowledgement or crash persistence.

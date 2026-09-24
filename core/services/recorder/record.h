@@ -5,17 +5,19 @@
 #ifndef CORE_SERVICES_RECORDER_RECORD_H_
 #define CORE_SERVICES_RECORDER_RECORD_H_
 
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <utility>
 
 #include "base/include/log/log_context.h"
 #include "base/include/log/logging.h"
+#include "core/services/recorder/record_payload.h"
 
 namespace lynx::tasm::recorder {
 // Version of the observation log format, independent of the SDK version.
-// Bump this version when adding a RecordType or changing the log output of
-// ObserveRecord. Update the parsing script to handle the new version while
+// Once the format is released, bump this version when adding a RecordType or
+// changing the log output of ObserveRecord. Update the parsing script while
 // retaining support for older versions. Refactoring that preserves the output
 // and comment-only changes do not require a version bump.
 inline constexpr char kObservationLogVersion[] = "0.0.1";
@@ -59,19 +61,26 @@ void ObserveRecord(const char* name, const base::LogContext& context,
   [[maybe_unused]] auto values = std::forward_as_tuple(args...);
   if constexpr (type == RecordType::LoadTemplate ||
                 type == RecordType::LoadTemplateBundle) {
-    // TODO(songshourui): Send template bytes and data through DevTool when
-    // DevTool is enabled instead of writing payloads to files.
     LOGO(context << ' ' << name << " logVersion:" << kObservationLogVersion
                  << " url:" << std::get<0>(values)
                  << " bytes:" << std::get<1>(values).size()
-                 << " hasData:" << (std::get<2>(values) != nullptr));
+                 << " hasData:" << (std::get<2>(values) != nullptr)
+                 << ObservePayload(
+                        context, kObservationLogVersion, "template",
+                        std::string_view(reinterpret_cast<const char*>(
+                                             std::get<1>(values).data()),
+                                         std::get<1>(values).size()))
+                 << (std::get<2>(values)
+                         ? ObservePayload(context, kObservationLogVersion,
+                                          "data", *std::get<2>(values))
+                         : std::string{}));
   } else if constexpr (type == RecordType::Scripts ||
                        type == RecordType::PreloadScript ||
                        type == RecordType::ExternalScriptAsLoadComponent) {
-    // TODO(songshourui): Send script content through DevTool when
-    // DevTool is enabled instead of writing payloads to files.
     LOGO(context << ' ' << name << " url:" << std::get<0>(values)
-                 << " bytes:" << std::string_view(std::get<1>(values)).size());
+                 << " bytes:" << std::string_view(std::get<1>(values)).size()
+                 << ObservePayload(context, kObservationLogVersion, "script",
+                                   std::get<1>(values)));
   } else if constexpr (type == RecordType::ThreadStrategy) {
     LOGO(context << ' ' << name << " logVersion:" << kObservationLogVersion
                  << " strategy:" << std::get<0>(values)
@@ -86,17 +95,27 @@ void ObserveRecord(const char* name, const base::LogContext& context,
                  << " type:" << static_cast<int>(std::get<1>(values)));
   } else if constexpr (type == RecordType::SetGlobalProps ||
                        type == RecordType::UpdateConfig) {
-    // TODO(songshourui): Send properties and configuration through DevTool when
-    // DevTool is enabled instead of writing payloads to files.
     LOGO(context << ' ' << name
-                 << " entries:" << std::get<0>(values).GetLength());
+                 << " entries:" << std::get<0>(values).GetLength()
+                 << ObservePayload(context, kObservationLogVersion, "data",
+                                   std::get<0>(values)));
+  } else if constexpr (type == RecordType::UpdateMetaData) {
+    LOGO(context << ' ' << name
+                 << " hasData:" << (std::get<0>(values) != nullptr)
+                 << (std::get<0>(values)
+                         ? ObservePayload(context, kObservationLogVersion,
+                                          "data", *std::get<0>(values))
+                         : std::string{})
+                 << ObservePayload(context, kObservationLogVersion,
+                                   "globalProps", std::get<1>(values)));
   } else if constexpr (type == RecordType::ReloadTemplate ||
-                       type == RecordType::UpdateMetaData ||
                        type == RecordType::UpdateDataByPreParsedData) {
-    // TODO(songshourui): Send template data through DevTool when
-    // DevTool is enabled instead of writing payloads to files.
     LOGO(context << ' ' << name
-                 << " hasData:" << (std::get<0>(values) != nullptr));
+                 << " hasData:" << (std::get<0>(values) != nullptr)
+                 << (std::get<0>(values)
+                         ? ObservePayload(context, kObservationLogVersion,
+                                          "data", *std::get<0>(values))
+                         : std::string{}));
   } else if constexpr (type == RecordType::UpdateFontScale) {
     LOGO(context << ' ' << name << " scale:" << std::get<0>(values)
                  << " source:" << std::get<1>(values));
@@ -104,18 +123,21 @@ void ObserveRecord(const char* name, const base::LogContext& context,
     LOGO(context << ' ' << name << " url:" << std::get<0>(values)
                  << " sync:" << std::get<1>(values));
   } else if constexpr (type == RecordType::LoadComponentWithCallback) {
-    // TODO(songshourui): Send component bytes through DevTool when
-    // DevTool is enabled instead of writing payloads to files.
     LOGO(context << ' ' << name << " url:" << std::get<0>(values)
                  << " bytes:" << std::get<1>(values).size() << " sync:"
-                 << std::get<2>(values) << " callback:" << std::get<3>(values));
+                 << std::get<2>(values) << " callback:" << std::get<3>(values)
+                 << ObservePayload(
+                        context, kObservationLogVersion, "component",
+                        std::string_view(reinterpret_cast<const char*>(
+                                             std::get<1>(values).data()),
+                                         std::get<1>(values).size())));
   } else if constexpr (type == RecordType::CustomEvent ||
                        type == RecordType::BubbleEvent) {
-    // TODO(songshourui): Send event parameters through DevTool when
-    // DevTool is enabled instead of writing payloads to files.
     LOGO(context << ' ' << name << " name:" << std::get<0>(values) << " tag:"
                  << std::get<1>(values) << " rootTag:" << std::get<2>(values)
-                 << " paramsCount:" << std::get<3>(values).GetLength());
+                 << " paramsCount:" << std::get<3>(values).GetLength()
+                 << ObservePayload(context, kObservationLogVersion, "params",
+                                   std::get<3>(values)));
   } else if constexpr (type == RecordType::TouchEvent) {
     if constexpr (sizeof...(Args) == 4) {
       [[maybe_unused]] const auto& event = std::get<2>(values);
