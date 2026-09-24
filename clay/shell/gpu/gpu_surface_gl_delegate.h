@@ -33,6 +33,9 @@ struct GLFBOInfo {
   int64_t fbo_id;
   // The frame buffer's existing damage (i.e. damage since it was last used).
   const std::optional<skity::Rect> existing_damage;
+  // Whether the frame buffer has a depth/stencil attachment with a stencil
+  // plane available for direct rendering.
+  bool has_depth_stencil_attachment = false;
 };
 
 // Information passed during presentation of a frame.
