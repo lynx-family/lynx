@@ -4,9 +4,6 @@
 
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_delegate.h"
 
-#include "base/include/log/logging.h"
-#include "devtool/lynx_devtool/agent/inspector_util.h"
-
 namespace lynx {
 namespace devtool {
 
@@ -58,25 +55,29 @@ void WhiteBoardInspectorDelegate::SetSharedData(
   responder->SendSuccess();
 }
 
-std::string WhiteBoardInspectorDelegate::GetSharedData(
-    const Json::Value& message) {
+void WhiteBoardInspectorDelegate::GetSharedData(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (!enabled_) {
-    return "";
+    responder->SendError(CDPErrorCode::ServerError,
+                         "WhiteBoard is not enabled");
+    return;
   }
   auto sp = inspector_.lock();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(
-      sp, "WhiteBoardInspectorDelegate::GetSharedData, inspector_ is null", "");
-  int message_id = message["id"].asInt64();
+  if (sp == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "WhiteBoard inspector is unavailable");
+    return;
+  }
   std::vector<std::pair<std::string, std::string>> data;
-  int error_code = 0;
   std::string error_msg;
-  sp->GetSharedData(data, error_code, error_msg);
+  auto error_code = sp->GetSharedData(data, error_msg);
 
-  if (error_code != 0) {
-    return GenErrorMessage(message_id, error_code, error_msg);
+  if (error_code.has_value()) {
+    responder->SendError(*error_code, error_msg);
+    return;
   }
 
-  Json::Value content(Json::ValueType::objectValue);
+  Json::Value result(Json::ValueType::objectValue);
   Json::Value entries(Json::ValueType::arrayValue);
   for (const auto& item : data) {
     Json::Value entry(Json::ValueType::objectValue);
@@ -84,52 +85,57 @@ std::string WhiteBoardInspectorDelegate::GetSharedData(
     entry["value"] = item.second;
     entries.append(entry);
   }
-  content["entries"] = entries;
-  return GenResponseMessage(message_id, content);
+  result["entries"] = entries;
+  responder->SendSuccess(std::move(result));
 }
 
-std::string WhiteBoardInspectorDelegate::RemoveSharedData(
-    const Json::Value& message) {
+void WhiteBoardInspectorDelegate::RemoveSharedData(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (!enabled_) {
-    return "";
+    responder->SendError(CDPErrorCode::ServerError,
+                         "WhiteBoard is not enabled");
+    return;
   }
   auto sp = inspector_.lock();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(
-      sp, "WhiteBoardInspectorDelegate::RemoveSharedData, inspector_ is null",
-      "");
-  Json::Value params = message["params"];
-  int message_id = message["id"].asInt64();
+  if (sp == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "WhiteBoard inspector is unavailable");
+    return;
+  }
   std::string key = params["key"].asString();
-  int error_code = 0;
   std::string error_msg;
-  sp->RemoveSharedData(key, error_code, error_msg);
+  auto error_code = sp->RemoveSharedData(key, error_msg);
 
-  if (error_code != 0) {
-    return GenErrorMessage(message_id, error_code, error_msg);
+  if (error_code.has_value()) {
+    responder->SendError(*error_code, error_msg);
+    return;
   }
 
-  return GenResponseMessage(message_id,
-                            Json::Value(Json::ValueType::objectValue));
+  responder->SendSuccess();
 }
 
-std::string WhiteBoardInspectorDelegate::Clear(const Json::Value& message) {
+void WhiteBoardInspectorDelegate::Clear(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (!enabled_) {
-    return "";
+    responder->SendError(CDPErrorCode::ServerError,
+                         "WhiteBoard is not enabled");
+    return;
   }
   auto sp = inspector_.lock();
-  CHECK_NULL_AND_LOG_RETURN_VALUE(
-      sp, "WhiteBoardInspectorDelegate::Clear, inspector_ is null", "");
-  int message_id = message["id"].asInt64();
-  int error_code = 0;
+  if (sp == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "WhiteBoard inspector is unavailable");
+    return;
+  }
   std::string error_msg;
-  sp->ClearSharedData(error_code, error_msg);
+  auto error_code = sp->ClearSharedData(error_msg);
 
-  if (error_code != 0) {
-    return GenErrorMessage(message_id, error_code, error_msg);
+  if (error_code.has_value()) {
+    responder->SendError(*error_code, error_msg);
+    return;
   }
 
-  return GenResponseMessage(message_id,
-                            Json::Value(Json::ValueType::objectValue));
+  responder->SendSuccess();
 }
 
 void WhiteBoardInspectorDelegate::OnSharedDataAdded(const std::string& key,
@@ -160,31 +166,12 @@ void WhiteBoardInspectorDelegate::OnSharedDataCleared() {
   SendEvent(msg);
 }
 
-std::string WhiteBoardInspectorDelegate::GenResponseMessage(
-    int message_id, const Json::Value& result) {
-  Json::Value response(Json::ValueType::objectValue);
-  response["id"] = message_id;
-  response["result"] = result;
-  return response.toStyledString();
-}
-
 Json::Value WhiteBoardInspectorDelegate::GenEventMessage(
     const std::string& method, const Json::Value& params) {
   Json::Value msg(Json::ValueType::objectValue);
   msg["method"] = method;
   msg["params"] = params;
   return msg;
-}
-
-std::string WhiteBoardInspectorDelegate::GenErrorMessage(
-    int message_id, int code, const std::string& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value error(Json::ValueType::objectValue);
-  error["code"] = code;
-  error["message"] = message;
-  response["id"] = message_id;
-  response["error"] = error;
-  return response.toStyledString();
 }
 
 }  // namespace devtool

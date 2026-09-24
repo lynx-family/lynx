@@ -30,12 +30,12 @@ class WhiteBoardInspectorImpl : public tasm::WhiteBoardInspector {
   std::optional<CDPErrorCode> SetSharedData(const std::string& key,
                                             const std::string& value,
                                             std::string& error_message);
-  void GetSharedData(
+  std::optional<CDPErrorCode> GetSharedData(
       std::vector<std::pair<std::string, std::string>>& shared_data,
-      int& error_code, std::string& error_message);
-  void RemoveSharedData(const std::string& key, int& error_code,
-                        std::string& error_message);
-  void ClearSharedData(int& error_code, std::string& error_message);
+      std::string& error_message);
+  std::optional<CDPErrorCode> RemoveSharedData(const std::string& key,
+                                               std::string& error_message);
+  std::optional<CDPErrorCode> ClearSharedData(std::string& error_message);
 
   void OnSharedDataAdded(const std::string& key,
                          const pub::Value& value) override;

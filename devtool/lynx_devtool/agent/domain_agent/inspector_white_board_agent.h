@@ -24,14 +24,8 @@ class InspectorWhiteBoardAgent : public CDPDomainAgentBase {
 
   void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
-  // Temporary compatibility entry point for commands migrated in patch2.
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message) override;
 
  private:
-  // Temporary compatibility type for commands migrated in patch2.
-  using LegacyWhiteBoardAgentMethod = void (InspectorWhiteBoardAgent::*)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
   using WhiteBoardAgentMethod = void (InspectorWhiteBoardAgent::*)(
       const std::shared_ptr<CDPResponder>& responder,
       const Json::Value& params);
@@ -39,16 +33,11 @@ class InspectorWhiteBoardAgent : public CDPDomainAgentBase {
   DECLARE_DEVTOOL_CDP_METHOD(Enable);
   DECLARE_DEVTOOL_CDP_METHOD(Disable);
   DECLARE_DEVTOOL_CDP_METHOD(SetSharedData);
-  void GetSharedData(const std::shared_ptr<MessageSender>& sender,
-                     const Json::Value& message);
-  void RemoveSharedData(const std::shared_ptr<MessageSender>& sender,
-                        const Json::Value& message);
-  void Clear(const std::shared_ptr<MessageSender>& sender,
-             const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(GetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(RemoveSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(Clear);
 
   std::map<std::string, WhiteBoardAgentMethod> functions_map_;
-  // Temporary compatibility map removed after the remaining commands migrate.
-  std::map<std::string, LegacyWhiteBoardAgentMethod> legacy_functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };
 

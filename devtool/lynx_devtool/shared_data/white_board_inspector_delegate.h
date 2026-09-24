@@ -28,15 +28,17 @@ class WhiteBoardInspectorDelegate {
 
   bool IsEnabled() { return enabled_; }
 
-  // Handles migrated WhiteBoard commands and produces their responses through
-  // |responder| for both the TASM-executor and JS-debugger paths.
+  // Handles a WhiteBoard command and produces its response through |responder|.
+  // These are the terminal handlers shared by the TASM-executor and
+  // JS-debugger paths, so routing the response through the responder here is
+  // what guarantees both paths emit identical envelopes. Disabled commands
+  // report ServerError instead of dropping the request silently.
   DECLARE_DEVTOOL_CDP_METHOD(Enable);
   DECLARE_DEVTOOL_CDP_METHOD(Disable);
   DECLARE_DEVTOOL_CDP_METHOD(SetSharedData);
-  // Temporary legacy handlers retained until patch2 migrates these commands.
-  std::string GetSharedData(const Json::Value& message);
-  std::string RemoveSharedData(const Json::Value& message);
-  std::string Clear(const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(GetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(RemoveSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(Clear);
 
   void OnSharedDataAdded(const std::string& key, const std::string& value);
   void OnSharedDataUpdated(const std::string& key, const std::string& value);
@@ -46,12 +48,8 @@ class WhiteBoardInspectorDelegate {
   virtual void SendEvent(const Json::Value& msg) = 0;
 
  protected:
-  // Temporary response helpers needed by the patch2 legacy handlers.
-  std::string GenResponseMessage(int message_id, const Json::Value& result);
   Json::Value GenEventMessage(const std::string& method,
                               const Json::Value& params);
-  std::string GenErrorMessage(int message_id, int code,
-                              const std::string& message);
 
   bool enabled_{false};
   int view_id_;
