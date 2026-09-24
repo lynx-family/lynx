@@ -173,7 +173,10 @@ lepus::Value LynxTemplateBundle::GetExtraInfo() {
   return lepus::Value();
 }
 
-void LynxTemplateBundle::PrepareVMByConfigs() {
+void LynxTemplateBundle::EnsureMTSRuntimePool() {
+  if (mts_runtime_pool_) {
+    return;
+  }
   // Contexts cannot be pre-created in following case:
   // will reuse context (dynamic component && no-diff)
   if (ShouldReuseLepusContext()) {
@@ -192,13 +195,17 @@ void LynxTemplateBundle::PrepareVMByConfigs() {
       context_type_, disable_tracing_gc, context_bundle_, compile_options_,
       page_configs_.get());
   mts_runtime_pool_->SetDevToolPool(devtool_pool_);
+}
 
-  // if FE disables it in card, do not pre-create contexts. However, we reserve
-  // the ability for the client to force pre-creation
-  if (page_configs_ && page_configs_->GetEnableUseContextPool()) {
-    constexpr int32_t kLocalQuickContextPoolSize = 1;
-    mts_runtime_pool_->FillPool(kLocalQuickContextPoolSize);
+bool LynxTemplateBundle::PrepareLepusContextByConfigs(int32_t count) {
+  if (count > 0) {
+    return PrepareLepusContext(count);
   }
+  if (!page_configs_ || !page_configs_->GetEnableUseContextPool()) {
+    return false;
+  }
+  constexpr int32_t kLocalQuickContextPoolSize = 1;
+  return PrepareLepusContext(kLocalQuickContextPoolSize);
 }
 
 bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
@@ -207,7 +214,12 @@ bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
   // the engine thread until RTS supports an explicit thread handoff.
   if (context_type_ == runtime::ContextType::RTSContextType ||
       context_type_ == runtime::ContextType::RTSNativeContextType ||
-      !mts_runtime_pool_ || count <= 0) {
+      count <= 0) {
+    return false;
+  }
+
+  EnsureMTSRuntimePool();
+  if (!mts_runtime_pool_) {
     return false;
   }
 
