@@ -289,21 +289,23 @@ TEST_F(InspectorUIExecutorTest, ClayDesktopUITreeMethodsTest) {
   EXPECT_EQ(response["result"]["root"]["name"].asString(), "page");
   EXPECT_EQ(response["result"]["root"]["children"][0]["id"].asInt(), 2);
 
-  Json::Value node_message;
-  node_message["id"] = 53;
-  node_message["params"]["UINodeId"] = 2;
-  ui_executor_->GetUIInfoForNode(message_sender_, node_message);
+  Json::Value node_params;
+  node_params["UINodeId"] = 2;
+  ui_executor_->GetUIInfoForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 53),
+      node_params);
   ASSERT_TRUE(reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, response));
   EXPECT_EQ(facade->last_node_id_, 2);
   EXPECT_EQ(response["result"]["view"]["name"].asString(), "ClayView");
 
-  Json::Value style_message;
-  style_message["id"] = 54;
-  style_message["params"]["UINodeId"] = 2;
-  style_message["params"]["styleName"] = "visible";
-  style_message["params"]["styleContent"] = "false";
-  ui_executor_->SetUIStyle(message_sender_, style_message);
+  Json::Value style_params;
+  style_params["UINodeId"] = 2;
+  style_params["styleName"] = "visible";
+  style_params["styleContent"] = "false";
+  ui_executor_->SetUIStyle(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 54),
+      style_params);
   EXPECT_EQ(facade->last_node_id_, 2);
   EXPECT_EQ(facade->last_style_name_, "visible");
   EXPECT_EQ(facade->last_style_content_, "false");
@@ -313,14 +315,15 @@ TEST_F(InspectorUIExecutorTest, ClayDesktopUITreeMethodsTest) {
   EXPECT_FALSE(response["result"].isMember("error"));
 
   facade->set_style_result_ = -1;
-  style_message["id"] = 55;
-  ui_executor_->SetUIStyle(message_sender_, style_message);
+  ui_executor_->SetUIStyle(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 55),
+      style_params);
   ASSERT_TRUE(reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, response));
   EXPECT_EQ(response["id"].asInt(), 55);
-  EXPECT_EQ(response["result"]["error"]["code"].asInt(), -32000);
-  EXPECT_EQ(response["result"]["error"]["message"].asString(),
-            "set ui style fail");
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(), "Failed to set UI style");
 }
 
 TEST_F(InspectorUIExecutorTest, DefersUITreePayloadProcessingToDevToolThread) {
