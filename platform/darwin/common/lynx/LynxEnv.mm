@@ -576,14 +576,6 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
   _cronetServerConfig = config;
 }
 
-- (void)setEnableMemoryMonitor:(BOOL)value {
-  lynx::tasm::performance::MemoryMonitor::SetForceEnable(value);
-}
-
-- (BOOL)enableMemoryMonitor {
-  return lynx::tasm::performance::MemoryMonitor::Enable();
-}
-
 - (void)enableFluencyTracer:(BOOL)value {
   lynx::tasm::FluencyTracer::SetForceEnable(value);
 }
@@ -703,33 +695,6 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
                                                   defaultValue:YES];
   });
   return enableTextStrokeInheritanceFix;
-}
-
-- (int)memoryAcquisitionDelaySec {
-  static dispatch_once_t onceToken;
-  static int delaySecond = 0;
-  dispatch_once(&onceToken, ^{
-    delaySecond = lynx::tasm::LynxEnv::GetInstance().GetMemoryAcquisitionDelaySec();
-  });
-  return delaySecond;
-}
-
-- (int)memoryReportIntervalSec {
-  static dispatch_once_t onceToken;
-  static int delayMin = 0;
-  dispatch_once(&onceToken, ^{
-    delayMin = lynx::tasm::LynxEnv::GetInstance().GetMemoryReportIntervalSec();
-  });
-  return delayMin;
-}
-
-- (int)globalMemoryReportThresholdMB {
-  static dispatch_once_t onceToken;
-  static int thresholdMB = 0;
-  dispatch_once(&onceToken, ^{
-    thresholdMB = [self intFromExternalEnv:LynxEnvGlobalMemoryReportThresholdMB defaultValue:30];
-  });
-  return thresholdMB;
 }
 
 #pragma mark - FSP Config
@@ -880,11 +845,9 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
     @(LynxEnvEnableTextContainerOpt) : @"enable_text_container_opt",
     @(LynxEnvEnableJSGroupThreadByDefault) : @"enable_multi_js_thread_by_default",
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
-    @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
     @(LynxEnvEnableTextFontCascadeOpt) : @"lynx_text_font_cascade_opt",
     @(LynxEnvEnableTextStrokeInheritanceFix) : @"enable_text_stroke_inheritance_fix",
-    @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
     @(LynxEnvFSPEnable) : @"enable_fsp",
     @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string",
     @(LynxEnvSetupCanvasSurfaceEarlier) : @"setup_canvas_surface_earlier",

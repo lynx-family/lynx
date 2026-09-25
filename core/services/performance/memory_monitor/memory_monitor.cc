@@ -70,8 +70,8 @@ enum BoolValue : uint8_t { Unset = 0, False = 1, True = 2 };
 struct MemoryMonitorArgs {
   MemoryMonitorArgs() {
     force_enable_ = Unset;
-    env_enable_ = LynxEnv::GetInstance().EnableMemoryMonitor();
-    threshold_mb_ = LynxEnv::GetInstance().GetMemoryChangeThresholdMb();
+    env_enable_ = true;
+    threshold_mb_ = 2;
   }
   // Highest priority setting
   BoolValue force_enable_ = Unset;
@@ -101,12 +101,6 @@ void MemoryMonitor::SetForceEnable(bool enable) {
   args.force_enable_ = enable ? True : False;
 }
 
-uint32_t MemoryMonitor::MemoryChangeThresholdMb() {
-  static uint32_t threshold_mb =
-      LynxEnv::GetInstance().GetMemoryChangeThresholdMb();
-  return threshold_mb;
-}
-
 uint32_t MemoryMonitor::ScriptingEngineMode(bool is_mts) {
   (void)is_mts;
   uint32_t mode = 0;
@@ -117,7 +111,7 @@ uint32_t MemoryMonitor::ScriptingEngineMode(bool is_mts) {
 
   // Maximum allowed value for memory threshold (8-bit unsigned max)
   constexpr uint32_t kMaxMemThreshold = std::numeric_limits<uint8_t>::max();
-  uint32_t mem_increment_threshold_mb = MemoryChangeThresholdMb();
+  uint32_t mem_increment_threshold_mb = 2;
   // Cap memory threshold at 8-bit maximum (255 MB)
   if (mem_increment_threshold_mb > kMaxMemThreshold) {
     mem_increment_threshold_mb = kMaxMemThreshold;
@@ -198,8 +192,7 @@ void MemoryMonitor::ReportMemory(bool force_report) {
   }
 
   // Throttle reporting: only report if memory change exceeds the threshold.
-  int64_t memory_report_threshold_bytes =
-      static_cast<int64_t>(MemoryChangeThresholdMb()) * 1024 * 1024;
+  int64_t memory_report_threshold_bytes = static_cast<int64_t>(2) * 1024 * 1024;
 #if ENABLE_TRACE_PERFETTO
   if (trace::TraceController::Instance()->IsTracingStarted()) {
     auto now = fml::TimePoint::Now();

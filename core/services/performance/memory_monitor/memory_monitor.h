@@ -60,10 +60,6 @@ class MemoryMonitor {
   // settings.
   static void SetForceEnable(bool force_enable);
 
-  // The threshold for memory increase and decrease that triggers collection, in
-  // MB. This is configured through Settings.
-  static uint32_t MemoryChangeThresholdMb();
-
   /// @brief Generates a bitmask for scripting engine memory monitoring
   /// configuration This method combines memory monitoring status and memory
   /// increment threshold into a uint32_t bitmask:
@@ -77,11 +73,7 @@ class MemoryMonitor {
                          int32_t instance_id = report::kUninitializedInstanceId)
       : instance_id_(instance_id),
         sender_(observer),
-        log_context_(log_context) {
-    LOGI(log_context_ << " [memory_monitor.h] new MemoryMonitor, this:" << this
-                      << ", Enable:" << Enable() << ", MemoryChangeThresholdMb:"
-                      << MemoryChangeThresholdMb());
-  };
+        log_context_(log_context){};
   ~MemoryMonitor();
   MemoryMonitor(const MemoryMonitor& timing) = delete;
   MemoryMonitor& operator=(const MemoryMonitor&) = delete;

@@ -166,10 +166,6 @@ typedef NS_ENUM(NSInteger, LynxMTSContextType) {
 - (void)setCronetEngine:(void *)engine;
 - (void)setCronetServerConfig:(void *)config;
 
-- (void)setEnableMemoryMonitor:(BOOL)value;
-
-- (BOOL)enableMemoryMonitor;
-
 - (void)enableFluencyTracer:(BOOL)value;
 
 - (BOOL)enableComponentStatisticReport;
@@ -195,12 +191,6 @@ typedef NS_ENUM(NSInteger, LynxMTSContextType) {
 - (BOOL)enableTextGradientOpt;
 
 - (BOOL)enableTextFontCascadeOpt;
-
-- (int)memoryAcquisitionDelaySec;
-
-- (int)memoryReportIntervalSec;
-
-- (int)globalMemoryReportThresholdMB;
 
 /**
  * Dispatches a memory pressure signal to registered callbacks.
