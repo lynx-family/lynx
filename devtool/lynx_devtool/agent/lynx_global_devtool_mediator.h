@@ -30,6 +30,8 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
  public:
   static LynxGlobalDevToolMediator& GetInstance();
 
+  void SendCDPEvent(const Json::Value& event) const;
+
   // Called by native replay code after the replay dump has been saved to
   // |file_path|. Remembers the path and emits the Replay.end event.
   void EndReplayTest(
@@ -74,7 +76,7 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
 
   friend class lynx::base::NoDestructor<LynxGlobalDevToolMediator>;
   LynxGlobalDevToolMediator();
-  ~LynxGlobalDevToolMediator() = default;
+  ~LynxGlobalDevToolMediator() override = default;
 
  private:
   void RunOnDefaultTaskRunnerOrSendError(

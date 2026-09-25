@@ -3,13 +3,13 @@ parameters:
   - name: params
     type: object
     optional: true
-    description: Opaque payload copied from the request params field into the outgoing Component.uselessUpdate message.
+    description: Opaque payload copied from the request params field into the Component.uselessUpdate notification.
 returns: []
 events:
   - Component.uselessUpdate
 notes:
-  - The handler does not send a normal CDP response with id and result fields.
-  - The outgoing CDP message has method Component.uselessUpdate and params copied from the request.
+  - The handler first sends a Component.uselessUpdate notification with params copied from the request.
+  - The handler then returns an empty CDP result object with the request id.
   - The native implementation does not inspect or validate the params payload.
 examples:
   - title: Echo a component update payload
@@ -19,6 +19,10 @@ examples:
       params:
         componentId: comp-1
         reason: debug
+    response:
+      id: 1
+      result: {}
+  - title: Component update notification
     response:
       method: Component.uselessUpdate
       params:

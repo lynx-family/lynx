@@ -11,6 +11,7 @@ unittest_set("devtool_agent_testset") {
     "../../embedder/core/global_devtool_platform_embedder_memory.cc",
     "../../embedder/core/global_devtool_platform_embedder_memory_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_agent_unittest.cc",
+    "../../lynx_devtool/agent/domain_agent/inspector_component_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_dom_agent_ng_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_hsr_agent_unittest.cc",
     "../../lynx_devtool/agent/domain_agent/inspector_input_agent_unittest.cc",
