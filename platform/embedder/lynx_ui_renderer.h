@@ -13,6 +13,11 @@
 #include "platform/embedder/lynx_view_builder_priv.h"
 
 namespace lynx {
+namespace devtool {
+namespace input {
+class InputEventTarget;
+}  // namespace input
+}  // namespace devtool
 namespace embedder {
 
 class LynxViewClients;
@@ -38,6 +43,13 @@ class LynxUIRenderer {
   virtual void SetParent(NativeWindow parent) = 0;
 
   virtual NativeWindow GetNativeWindow() = 0;
+
+#if ENABLE_INSPECTOR
+  virtual std::shared_ptr<devtool::input::InputEventTarget>
+  GetInputEventTarget() {
+    return nullptr;
+  }
+#endif
 
   virtual void SetPixelRatio(float pixel_ratio) { pixel_ratio_ = pixel_ratio; }
   virtual void SetFrame(float x, float y, float width, float height) {

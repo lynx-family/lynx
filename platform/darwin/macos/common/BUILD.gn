@@ -22,4 +22,7 @@ lynx_core_source_set("common") {
     "../../../../third_party/rapidjson",
     "../../../embedder:embedder",
   ]
+  if (enable_inspector) {
+    deps += [ "../lynx_devtool:input_events" ]
+  }
 }

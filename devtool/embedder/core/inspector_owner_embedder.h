@@ -31,6 +31,10 @@ class DevToolNGDelegateEmbedder;
 class ScreenCastHelperEmbedder;
 struct ScreenMetadata;
 
+namespace input {
+class InputEventTarget;
+}  // namespace input
+
 class InspectorOwnerEmbedder
     : public std::enable_shared_from_this<InspectorOwnerEmbedder>,
       public devtool::LynxInspectorOwner {
@@ -51,6 +55,9 @@ class InspectorOwnerEmbedder
   void AttachProxy(devtool::LynxDevToolProxy* proxy);
   void DetachProxy();
   void InitDevToolNGDelegate();
+  // Bind or release the native input target on the UI thread.
+  void SetInputEventTarget(
+      const std::shared_ptr<input::InputEventTarget>& target);
   void DispatchDocumentUpdated();
   void DispatchScreencastVisibilityChanged(bool status);
 

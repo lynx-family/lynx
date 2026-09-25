@@ -15,12 +15,18 @@ namespace lynx {
 
 namespace devtool {
 
+namespace input {
+class InputEventTarget;
+}  // namespace input
+
 class DevtoolsEmbedder {
  public:
   explicit DevtoolsEmbedder(devtool::LynxDevToolProxy* proxy);
   virtual ~DevtoolsEmbedder() = default;
 
   devtool::LynxInspectorOwner* GetInspectorOwner() { return owner_.get(); }
+  void SetInputEventTarget(
+      const std::shared_ptr<input::InputEventTarget>& target);
 
  private:
   std::shared_ptr<devtool::LynxInspectorOwner> owner_;
