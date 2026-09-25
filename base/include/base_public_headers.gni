@@ -64,6 +64,8 @@ base_core_public_headers_list = [
   "fml/fml_trace_event_def.h",
   "fml/macros.h",
   "fml/make_copyable.h",
+  "fml/memory/js_memory_track_define.h",
+  "fml/memory/js_memory_track_scope.h",
   "fml/memory/ref_counted.h",
   "fml/memory/ref_counted_internal.h",
   "fml/memory/ref_ptr.h",

@@ -44,7 +44,7 @@ template <>
 inline constexpr const char* kActorTag<tasm::LayoutContext> = "LayoutContext";
 
 template <typename C, typename T>
-class LynxActorMixin<C, T, typename std::enable_if_t<kIsLynxActor<T>>> {
+class LynxActorMixinBase {
  public:
   void BeforeInvoked() {
     int32_t instance_id =
@@ -91,9 +91,36 @@ class LynxActorMixin<C, T, typename std::enable_if_t<kIsLynxActor<T>>> {
   static inline constexpr const char* kTag = kActorTag<T>;
 };
 
+template <typename C, typename T>
+class LynxActorMixin<
+    C, T,
+    typename std::enable_if_t<kIsLynxActor<T> &&
+                              !std::is_same_v<T, shell::BTSRuntime>>>
+    : public LynxActorMixinBase<C, T> {};
+
+template <typename C>
+class LynxActorMixin<C, shell::BTSRuntime, void>
+    : public LynxActorMixinBase<C, shell::BTSRuntime> {
+ public:
+  void BeforeInvoked() {
+    LynxActorMixinBase<C, shell::BTSRuntime>::BeforeInvoked();
+    int32_t instance_id =
+        static_cast<std::add_pointer_t<C>>(this)->GetInstanceId();
+    auto& runner = static_cast<std::add_pointer_t<C>>(this)->GetRunner();
+    runner->PushCurrentAllocSlot(runner->GetInstanceMemorySlot(instance_id));
+  }
+
+  void AfterInvoked() {
+    auto& runner = static_cast<std::add_pointer_t<C>>(this)->GetRunner();
+    runner->PopCurrentAllocSlot();
+    LynxActorMixinBase<C, shell::BTSRuntime>::AfterInvoked();
+  }
+};
+
 template <>
-inline void LynxActorMixin<LynxActor<LynxEngine>,
-                           LynxEngine>::ConsumeImplIfNeeded(LynxEngine* impl) {
+inline void
+LynxActorMixinBase<LynxActor<LynxEngine>, LynxEngine>::ConsumeImplIfNeeded(
+    LynxEngine* impl) {
   impl->Flush();
 }
 

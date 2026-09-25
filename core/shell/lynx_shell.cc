@@ -730,6 +730,8 @@ void LynxShell::DestroyRuntime(int32_t instance_id,
                                std::unique_ptr<BTSRuntime>& runtime) {
   runtime = nullptr;
   tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
+  fml::MessageLoop::GetCurrent().GetTaskRunner()->RemoveInstanceMemorySlot(
+      instance_id);
 }
 
 bool LynxShell::IsDestroyed() { return is_destroyed_; }
