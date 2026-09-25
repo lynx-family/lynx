@@ -1225,22 +1225,6 @@ void LynxDevToolMediator::SynthesizeScrollGesture(
   });
 }
 
-void LynxDevToolMediator::InspectorEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->InspectorEnable(sender, message);
-  });
-}
-
-void LynxDevToolMediator::InspectorDetached(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->InspectorDetached(sender, message);
-  });
-}
-
 void LynxDevToolMediator::PerformanceEnable(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (!RunOnUIThread([responder, params, executor = ui_executor_] {
