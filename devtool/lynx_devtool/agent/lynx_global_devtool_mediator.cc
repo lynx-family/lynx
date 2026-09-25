@@ -12,6 +12,7 @@
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/recorder/recorder_types.h"
 #include "core/services/replay/replay_controller.h"
+#include "devtool/base_devtool/native/public/abstract_devtool.h"
 #include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 #include "devtool/lynx_devtool/base/file_stream.h"
@@ -115,6 +116,13 @@ LynxGlobalDevToolMediator::LynxGlobalDevToolMediator()
 LynxGlobalDevToolMediator& LynxGlobalDevToolMediator::GetInstance() {
   static lynx::base::NoDestructor<LynxGlobalDevToolMediator> instance;
   return *instance;
+}
+
+void LynxGlobalDevToolMediator::SendCDPEvent(const Json::Value& event) const {
+  auto sender = AbstractDevTool::GetGlobalSender();
+  if (sender) {
+    sender->SendMessage("CDP", event);
+  }
 }
 
 bool LynxGlobalDevToolMediator::IsRecorderEnabled() const {
