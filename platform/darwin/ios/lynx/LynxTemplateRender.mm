@@ -2387,7 +2387,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
   _isMemoryCollecting = YES;
   __weak __typeof(self) weakSelf = self;
-  int delay = [[LynxEnv sharedInstance] memoryAcquisitionDelaySec];
+  int delay = 2;
   // Since resources are usually loaded asynchronously, such as images downloaded asynchronously
   // from the network, it is necessary to delay the collection of memory so as to collect as much
   // resource memory as possible.
