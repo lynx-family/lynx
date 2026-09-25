@@ -2850,7 +2850,7 @@ public class LynxTemplateRender
     }
     mIsMemoryCollecting = true;
 
-    long delayMs = PerformanceController.getMemoryAcquisitionDelaySec() * 1000;
+    long delayMs = 2000;
     // Since resources are usually loaded asynchronously, such as images downloaded
     // asynchronously
     // from the network, it is necessary to delay the collection of memory so as to
