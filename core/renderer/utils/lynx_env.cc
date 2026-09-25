@@ -316,10 +316,6 @@ bool LynxEnv::EnableLongTaskTiming() {
   return GetBoolEnv(Key::ENABLE_LONG_TASK_TIMING, false);
 }
 
-bool LynxEnv::EnableMemoryMonitor() {
-  return GetBoolEnv(Key::ENABLE_MEMORY_MONITOR, false);
-}
-
 bool LynxEnv::EnableJSBlockingMonitor() {
   return GetBoolEnv(Key::ENABLE_JS_BLOCKING_MONITOR, false);
 }
@@ -363,20 +359,6 @@ uint32_t LynxEnv::GetJSCallNativeFrequencyMonitorCooldownMs() {
 
 uint32_t LynxEnv::TimingMapExceededSize() {
   return static_cast<uint32_t>(GetLongEnv(Key::TIMING_MAP_EXCEEDED_SIZE, 1000));
-}
-
-uint32_t LynxEnv::GetMemoryChangeThresholdMb() {
-  return static_cast<uint32_t>(GetLongEnv(Key::MEMORY_CHANGE_THRESHOLD_MB, 0));
-}
-
-uint32_t LynxEnv::GetMemoryAcquisitionDelaySec() {
-  return static_cast<uint32_t>(
-      GetLongEnv(Key::MEMORY_ACQUISITION_DELAY_SEC, 2));
-}
-
-uint32_t LynxEnv::GetMemoryReportIntervalSec() {
-  return static_cast<uint32_t>(
-      GetLongEnv(Key::MEMORY_REPORT_INTERVAL_SEC, 20 * 60));
 }
 
 bool LynxEnv::IsDevToolConnected() {

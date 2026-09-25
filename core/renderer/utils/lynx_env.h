@@ -42,14 +42,10 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     JSB_TIMING_URL_LIST,
     ENABLE_ASYNC_JSB_TIMING,
     ENABLE_LONG_TASK_TIMING,
-    ENABLE_MEMORY_MONITOR,
     ENABLE_JS_BLOCKING_MONITOR,
     JS_BLOCKING_THRESHOLD_MS,
     JS_BLOCKING_REPORT_INTERVAL_MS,
     TIMING_MAP_EXCEEDED_SIZE,
-    MEMORY_CHANGE_THRESHOLD_MB,
-    MEMORY_ACQUISITION_DELAY_SEC,
-    MEMORY_REPORT_INTERVAL_SEC,
     DEVTOOL_CONNECTED,
     ENABLE_QUICKJS_DEBUG,
     ENABLE_TABLE_DEEP_CHECK,
@@ -196,16 +192,11 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_FEATURE_COUNTER, "ENABLE_FEATURE_COUNTER"},
             {Key::ENABLE_ASYNC_JSB_TIMING, "enable_async_jsb_timing"},
             {Key::ENABLE_LONG_TASK_TIMING, "enable_long_task_timing"},
-            {Key::ENABLE_MEMORY_MONITOR, "enable_memory_monitor"},
             {Key::ENABLE_JS_BLOCKING_MONITOR, "enable_js_blocking_monitor"},
             {Key::JS_BLOCKING_THRESHOLD_MS, "js_blocking_threshold_ms"},
             {Key::JS_BLOCKING_REPORT_INTERVAL_MS,
              "js_blocking_report_interval_ms"},
             {Key::TIMING_MAP_EXCEEDED_SIZE, "timing_map_exceeded_size"},
-            {Key::MEMORY_CHANGE_THRESHOLD_MB, "memory_change_threshold_mb"},
-            {Key::MEMORY_ACQUISITION_DELAY_SEC,
-             "memory_acquisition_delay_second"},
-            {Key::MEMORY_REPORT_INTERVAL_SEC, "memory_report_interval_sec"},
             {Key::DEVTOOL_CONNECTED, "devtool_connected"},
             {Key::STORAGE_DIR, "storage_dir"},
             {Key::ENABLE_QUICKJS_DEBUG, "enable_quickjs_debug"},
@@ -459,7 +450,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableAsyncJSBTiming();
   bool EnableAsyncJSBTiming(const std::string& page_url);
   bool EnableLongTaskTiming();
-  bool EnableMemoryMonitor();
   bool EnableJSBlockingMonitor();
   uint32_t GetJSBlockingThresholdMs();
   uint32_t GetJSBlockingReportIntervalMs();
@@ -468,9 +458,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   uint32_t GetJSCallNativeFrequencyMonitorThresholdCommon();
   uint32_t GetJSCallNativeFrequencyMonitorCooldownMs();
   uint32_t TimingMapExceededSize();
-  uint32_t GetMemoryChangeThresholdMb();
-  uint32_t GetMemoryAcquisitionDelaySec();
-  uint32_t GetMemoryReportIntervalSec();
   int64_t GetV8HeapSize();
   std::unordered_set<std::string> GetActivatedCDPDomains();
   bool IsDebugModeEnabled();

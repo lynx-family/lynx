@@ -1521,8 +1521,6 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::getEnableNewTransformOrigin();
   public void LynxEnv::setCronetEngine:(void *engine);
   public void LynxEnv::setCronetServerConfig:(void *config);
-  public void LynxEnv::setEnableMemoryMonitor:(BOOL value);
-  public BOOL LynxEnv::enableMemoryMonitor();
   public void LynxEnv::enableFluencyTracer:(BOOL value);
   public BOOL LynxEnv::enableComponentStatisticReport();
   public BOOL LynxEnv::enableImageEventReport();
@@ -1536,9 +1534,6 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableTextContainerOpt();
   public BOOL LynxEnv::enableTextGradientOpt();
   public BOOL LynxEnv::enableTextFontCascadeOpt();
-  public int LynxEnv::memoryAcquisitionDelaySec();
-  public int LynxEnv::memoryReportIntervalSec();
-  public int LynxEnv::globalMemoryReportThresholdMB();
   public void LynxEnv::trimMemory:(LynxMemoryPressureLevel pressure);
   public BOOL LynxEnv::enableFSP();
   public NSDictionary< NSString *, id > *_Nullable LynxEnv::fspConfig();
@@ -6676,10 +6671,8 @@ public enum LynxEnvKey {
   LynxEnvEnableTextContainerOpt
   LynxEnvEnableJSGroupThreadByDefault
   LynxEnvEnableTextLayoutCache
-  LynxEnvEnableForceMemoryMonitorOnOom
   LynxEnvEnableTextGradientOpt
   LynxEnvEnableTextFontCascadeOpt
-  LynxEnvGlobalMemoryReportThresholdMB
   LynxEnvFSPEnable
   LynxEnvFSPConfigJsonString
   LynxEnvSetupCanvasSurfaceEarlier
