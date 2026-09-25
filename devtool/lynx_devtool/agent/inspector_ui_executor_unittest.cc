@@ -54,9 +54,7 @@ class UnavailableRectDevToolPlatformFacadeMock
 class ClayDesktopUITreePlatformFacadeMock
     : public testing::DevToolPlatformFacadeMock {
  public:
-  std::string GetLynxUITree() override {
-    return R"({"name":"page","id":1,"frame":[0,0,800,650],"children":[{"name":"view","id":2,"frame":[10,20,100,50],"children":[]}]})";
-  }
+  std::string GetLynxUITree() override { return tree_; }
 
   std::string GetUINodeInfo(int id) override {
     last_node_id_ = id;
@@ -74,6 +72,8 @@ class ClayDesktopUITreePlatformFacadeMock
   std::string last_style_name_;
   std::string last_style_content_;
   int set_style_result_ = 0;
+  std::string tree_ =
+      R"({"name":"page","id":1,"frame":[0,0,800,650],"children":[{"name":"view","id":2,"frame":[10,20,100,50],"children":[]}]})";
 };
 
 class InspectorUIExecutorTest : public ::testing::Test {
@@ -116,12 +116,12 @@ class InspectorUIExecutorTest : public ::testing::Test {
 };
 
 TEST_F(InspectorUIExecutorTest, UITreeEnableUsesIntegerCompressionThreshold) {
-  Json::Value message;
-  message["id"] = 1;
-  message["params"]["useCompression"] = true;
-  message["params"]["compressionThreshold"] = 4096;
+  Json::Value params;
+  params["useCompression"] = true;
+  params["compressionThreshold"] = 4096;
 
-  ui_executor_->UITree_Enable(message_sender_, message);
+  ui_executor_->UITree_Enable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1), params);
 
   EXPECT_TRUE(ui_executor_->uitree_enabled_);
   EXPECT_TRUE(ui_executor_->uitree_use_compression_);
@@ -142,7 +142,9 @@ TEST_F(InspectorUIExecutorTest, PageReloadTest) {
     Json::Value message;
     message["id"] = 21;
 
-    ui_executor_->PageReload(message_sender_, message);
+    ui_executor_->PageReload(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 21),
+        message["params"]);
 
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 21,\n   \"result\" : {}\n}\n");
@@ -155,7 +157,9 @@ TEST_F(InspectorUIExecutorTest, PageReloadTest) {
     Json::Value params;
     params["ignoreCache"] = false;
     message["params"] = params;
-    ui_executor_->PageReload(message_sender_, message);
+    ui_executor_->PageReload(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 22),
+        message["params"]);
 
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 22,\n   \"result\" : {}\n}\n");
@@ -172,7 +176,9 @@ TEST_F(InspectorUIExecutorTest, PageReloadTest) {
     params["pageDataLength"] = 2048;
     params["url"] = "http://test.example.com/reload";
     message["params"] = params;
-    ui_executor_->PageReload(message_sender_, message);
+    ui_executor_->PageReload(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 23),
+        message["params"]);
 
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 23,\n   \"result\" : {}\n}\n");
@@ -193,7 +199,9 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
   {
     Json::Value message;
     message["id"] = 31;
-    ui_executor_->StartScreencast(message_sender_, message);
+    ui_executor_->StartScreencast(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 31),
+        message["params"]);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 31,\n   \"result\" : {}\n}\n");
     ASSERT_EQ(facade->screen_cast_requests_.size(), 1U);
@@ -210,7 +218,9 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     params["format"] = "jpeg";
     params["quality"] = 80;
     message["params"] = params;
-    ui_executor_->StartScreencast(message_sender_, message);
+    ui_executor_->StartScreencast(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 32),
+        message["params"]);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 32,\n   \"result\" : {}\n}\n");
     ASSERT_EQ(facade->screen_cast_requests_.size(), 2U);
@@ -231,7 +241,9 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     params["everyNthFrame"] = 2;
     params["mode"] = "fullscreen";
     message["params"] = params;
-    ui_executor_->StartScreencast(message_sender_, message);
+    ui_executor_->StartScreencast(
+        std::make_shared<devtool::CDPResponder>(message_sender_, 33),
+        message["params"]);
     EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
               "{\n   \"id\" : 33,\n   \"result\" : {}\n}\n");
     ASSERT_EQ(facade->screen_cast_requests_.size(), 3U);
@@ -269,15 +281,15 @@ TEST_F(InspectorUIExecutorTest, ClayDesktopUITreeMethodsTest) {
   auto facade = std::make_shared<ClayDesktopUITreePlatformFacadeMock>();
   ui_executor_->SetDevToolPlatformFacade(facade);
 
-  Json::Value enable_message;
-  enable_message["id"] = 51;
-  ui_executor_->UITree_Enable(message_sender_, enable_message);
+  ui_executor_->UITree_Enable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 51),
+      Json::Value());
   EXPECT_TRUE(ui_executor_->uitree_enabled_);
 
   devtool::MockReceiver::GetInstance().ResetAll();
-  Json::Value tree_message;
-  tree_message["id"] = 52;
-  ui_executor_->GetLynxUITree(message_sender_, tree_message);
+  ui_executor_->GetLynxUITree(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 52),
+      Json::Value());
   FlushDevtoolTasks();
 
   Json::Value response;
@@ -289,21 +301,23 @@ TEST_F(InspectorUIExecutorTest, ClayDesktopUITreeMethodsTest) {
   EXPECT_EQ(response["result"]["root"]["name"].asString(), "page");
   EXPECT_EQ(response["result"]["root"]["children"][0]["id"].asInt(), 2);
 
-  Json::Value node_message;
-  node_message["id"] = 53;
-  node_message["params"]["UINodeId"] = 2;
-  ui_executor_->GetUIInfoForNode(message_sender_, node_message);
+  Json::Value node_params;
+  node_params["UINodeId"] = 2;
+  ui_executor_->GetUIInfoForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 53),
+      node_params);
   ASSERT_TRUE(reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, response));
   EXPECT_EQ(facade->last_node_id_, 2);
   EXPECT_EQ(response["result"]["view"]["name"].asString(), "ClayView");
 
-  Json::Value style_message;
-  style_message["id"] = 54;
-  style_message["params"]["UINodeId"] = 2;
-  style_message["params"]["styleName"] = "visible";
-  style_message["params"]["styleContent"] = "false";
-  ui_executor_->SetUIStyle(message_sender_, style_message);
+  Json::Value style_params;
+  style_params["UINodeId"] = 2;
+  style_params["styleName"] = "visible";
+  style_params["styleContent"] = "false";
+  ui_executor_->SetUIStyle(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 54),
+      style_params);
   EXPECT_EQ(facade->last_node_id_, 2);
   EXPECT_EQ(facade->last_style_name_, "visible");
   EXPECT_EQ(facade->last_style_content_, "false");
@@ -313,14 +327,57 @@ TEST_F(InspectorUIExecutorTest, ClayDesktopUITreeMethodsTest) {
   EXPECT_FALSE(response["result"].isMember("error"));
 
   facade->set_style_result_ = -1;
-  style_message["id"] = 55;
-  ui_executor_->SetUIStyle(message_sender_, style_message);
+  ui_executor_->SetUIStyle(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 55),
+      style_params);
   ASSERT_TRUE(reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, response));
   EXPECT_EQ(response["id"].asInt(), 55);
-  EXPECT_EQ(response["result"]["error"]["code"].asInt(), -32000);
-  EXPECT_EQ(response["result"]["error"]["message"].asString(),
-            "set ui style fail");
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"].asString(), "Failed to set UI style");
+}
+
+TEST_F(InspectorUIExecutorTest, DefersUITreePayloadProcessingToDevToolThread) {
+  auto facade = std::make_shared<ClayDesktopUITreePlatformFacadeMock>();
+  facade->tree_ = "not json";
+  ui_executor_->SetDevToolPlatformFacade(facade);
+  ui_executor_->UITree_Enable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 56),
+      Json::Value());
+
+  auto devtool_thread = std::make_unique<fml::Thread>("devtool");
+  const auto original_runner = devtool_mediator_->default_task_runner_;
+  devtool_mediator_->default_task_runner_ = devtool_thread->GetTaskRunner();
+  std::promise<void> task_started;
+  const auto started = task_started.get_future();
+  std::promise<void> allow_tasks;
+  auto allowed = allow_tasks.get_future();
+  devtool_thread->GetTaskRunner()->PostTask([&task_started, &allowed]() {
+    task_started.set_value();
+    allowed.wait();
+  });
+  ASSERT_EQ(started.wait_for(std::chrono::seconds(5)),
+            std::future_status::ready);
+
+  devtool::MockReceiver::GetInstance().ResetAll();
+  ui_executor_->GetLynxUITree(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 57),
+      Json::Value());
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.second.empty());
+
+  allow_tasks.set_value();
+  FlushDevtoolTasks();
+  devtool_mediator_->default_task_runner_ = original_runner;
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InternalError));
+  EXPECT_EQ(response["error"]["message"].asString(), "Invalid UITree data");
 }
 
 TEST_F(InspectorUIExecutorTest, GetRectToWindowReturnsErrorWhenUnavailable) {

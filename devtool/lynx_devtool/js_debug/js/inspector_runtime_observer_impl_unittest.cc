@@ -75,9 +75,9 @@ TEST_F(InspectorRuntimeObserverImplTest, NativeModuleRecordReachesHistory) {
         lepus::Value("payload"), 0, "");
     record_observer->OnRecord(record);
 
-    Json::Value request;
-    request["id"] = 7;
-    mediator->NativeModuleGetRecords(devtool_->message_sender_, request);
+    mediator->NativeModuleGetRecords(
+        std::make_shared<CDPResponder>(devtool_->message_sender_, 7),
+        Json::Value());
     mediator->RunOnDevToolThread([&done] { done.set_value(); });
   });
   ASSERT_EQ(completed.wait_for(std::chrono::seconds(5)),
