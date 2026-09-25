@@ -18,9 +18,17 @@ lynx_core_source_set("common") {
   ]
 
   deps = [
+    "../../../../base/src:base_group",
+    "../../../../clay/common/service:service",
+    "../../../../clay/lynx_adaptor:lynx_adaptor",
+    "../../../../clay/lynx_adaptor:resource_loader_embedder",
+    "../../../../clay/shell/common:common",
+    "../../../../clay/shell/platform/darwin/macos:flutter_framework_source",
     "../../../../clay/ui:ui",
+    "../../../../core/base:base",
     "../../../../third_party/rapidjson",
     "../../../embedder:embedder",
+    "../../../embedder:lynx_embedder_capi",
   ]
   if (enable_inspector) {
     deps += [ "../lynx_devtool:input_events" ]
