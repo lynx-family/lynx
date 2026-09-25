@@ -13,6 +13,9 @@
 #include "platform/embedder/lynx_ui_renderer.h"
 
 namespace lynx {
+namespace devtool {
+class MacOSInputEventTarget;
+}  // namespace devtool
 namespace embedder {
 class LynxUIRendererImpl : public LynxUIRenderer {
  public:
@@ -22,6 +25,11 @@ class LynxUIRendererImpl : public LynxUIRenderer {
   void SetParent(NativeWindow parent) override;
 
   NativeWindow GetNativeWindow() override;
+
+#if ENABLE_INSPECTOR
+  std::shared_ptr<devtool::input::InputEventTarget> GetInputEventTarget()
+      override;
+#endif
 
   void SetFrame(float x, float y, float width, float height) override;
 
@@ -56,6 +64,9 @@ class LynxUIRendererImpl : public LynxUIRenderer {
   std::unique_ptr<lynx::tasm::UIDelegateClay> ui_delegate_;
 
   std::shared_ptr<FrameTimingListenerImpl> frame_timing_listener_;
+#if ENABLE_INSPECTOR
+  std::shared_ptr<devtool::MacOSInputEventTarget> input_event_target_;
+#endif
 };
 }  // namespace embedder
 }  // namespace lynx

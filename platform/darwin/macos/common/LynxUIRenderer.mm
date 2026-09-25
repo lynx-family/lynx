@@ -19,6 +19,9 @@
 #include "platform/embedder/lynx_view_clients.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
+#if ENABLE_INSPECTOR
+#include "platform/darwin/macos/lynx_devtool/macos_input_event_target.h"
+#endif
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"
@@ -225,6 +228,10 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
   ui_delegate_ =
       std::make_unique<lynx::tasm::UIDelegateClay>(view_context, std::move(module_factory));
   lynx_ui_renderer_ = (__bridge_retained void*)lynx_ui_renderer;
+#if ENABLE_INSPECTOR
+  input_event_target_ = std::make_shared<devtool::MacOSInputEventTarget>(
+      (__bridge void*)lynx_ui_renderer.clayViewProvider.flutterView);
+#endif
   CGRect frame = CGRectMake(0, 0, builder->frame.width, builder->frame.height);
   [lynx_ui_renderer setFrame:frame];
   [lynx_ui_renderer setParent:builder->parent];
@@ -272,6 +279,9 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererImpl::~LynxUIRendererImpl() {
+#if ENABLE_INSPECTOR
+  input_event_target_->Invalidate();
+#endif
   if (lynx_ui_renderer_) {
     LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
     [lynx_ui_renderer.clayViewProvider setParent:nil];
@@ -287,6 +297,9 @@ void LynxUIRendererImpl::SetParent(NativeWindow parent) {
   if (!lynx_ui_renderer_) {
     return;
   }
+#if ENABLE_INSPECTOR
+  input_event_target_->CancelActivePointer();
+#endif
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   [lynx_ui_renderer setParent:parent];
 }
@@ -298,6 +311,12 @@ NativeWindow LynxUIRendererImpl::GetNativeWindow() {
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   return (__bridge NativeWindow)lynx_ui_renderer.clayViewProvider.flutterView;
 }
+
+#if ENABLE_INSPECTOR
+std::shared_ptr<devtool::input::InputEventTarget> LynxUIRendererImpl::GetInputEventTarget() {
+  return input_event_target_;
+}
+#endif
 
 void LynxUIRendererImpl::SetFrame(float x, float y, float width, float height) {
   if (!lynx_ui_renderer_) {
@@ -312,6 +331,9 @@ void LynxUIRendererImpl::Reset() {
   if (!lynx_ui_renderer_) {
     return;
   }
+#if ENABLE_INSPECTOR
+  input_event_target_->CancelActivePointer();
+#endif
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);

@@ -61,8 +61,8 @@ void InspectorUIExecutor::RunOnUIThreadOrNow(lynx::base::closure task) {
 void InspectorUIExecutor::SetDevToolPlatformFacade(
     const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade) {
   devtool_platform_facade_ = devtool_platform_facade;
-  // The facade is stored synchronously; only the gesture controller reset that
-  // a facade change triggers needs to run on the UI thread.
+  // Store the facade synchronously; reset the gesture controller on the UI
+  // thread when the facade or its input target changes.
   if (input_request_handler_->SetDevToolPlatformFacade(
           devtool_platform_facade)) {
     auto self = shared_from_this();

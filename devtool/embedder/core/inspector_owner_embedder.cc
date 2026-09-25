@@ -82,6 +82,21 @@ void InspectorOwnerEmbedder::InitDevToolNGDelegate() {
   devtoolng_delegate_ = std::make_shared<DevToolNGDelegateEmbedder>();
 }
 
+void InspectorOwnerEmbedder::SetInputEventTarget(
+    const std::shared_ptr<input::InputEventTarget>& target) {
+  if (!platform_embedder_) {
+    return;
+  }
+  const auto facade = platform_embedder_->GetDevtoolPlatformFacade();
+  if (facade->GetInputEventTarget() == target) {
+    return;
+  }
+  facade->SetInputEventTarget(target);
+  if (devtoolng_delegate_) {
+    devtoolng_delegate_->SetDevtoolPlatformAbility(facade);
+  }
+}
+
 void InspectorOwnerEmbedder::OnLoadTemplate(
     const std::string& url, const std::vector<uint8_t>& tem,
     const std::shared_ptr<tasm::TemplateData>& init_data) {
