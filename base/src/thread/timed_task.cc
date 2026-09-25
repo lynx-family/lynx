@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/include/fml/make_copyable.h"
+#include "base/include/fml/memory/js_memory_track_scope.h"
 #include "base/include/fml/message_loop.h"
 
 namespace lynx {
@@ -30,9 +31,12 @@ uint32_t TimedTaskManager::SetTimeout(closure closure, int64_t delay) {
 
   runner_->PostDelayedTask(
       fml::MakeCopyable([this, current = current_,
+                         alloc_slot = runner_->GetCurrentAllocSlot(),
                          controller = std::move(controller)]() mutable {
         if (controller->closure) {
           Scope scope(this, current);
+          fml::JSMemoryTrackSlot alloc_slot_scope(this->runner_.get(),
+                                                  alloc_slot);
           controller->closure();
           controllers_.erase(current);
         }
@@ -54,15 +58,18 @@ void TimedTaskManager::SetInterval(
     std::unique_ptr<TimedTaskManager::Controller> controller, int64_t delay,
     uint32_t current) {
   runner_->PostDelayedTask(
-      fml::MakeCopyable(
-          [this, controller = std::move(controller), delay, current]() mutable {
-            if (controller->closure) {
-              Scope scope(this, current, true);
-              auto& closure = controller->closure;
-              SetInterval(std::move(controller), delay, current);
-              closure();
-            }
-          }),
+      fml::MakeCopyable([this, alloc_slot = runner_->GetCurrentAllocSlot(),
+                         controller = std::move(controller), delay,
+                         current]() mutable {
+        if (controller->closure) {
+          Scope scope(this, current, true);
+          fml::JSMemoryTrackSlot alloc_slot_scope(this->runner_.get(),
+                                                  alloc_slot);
+          auto& closure = controller->closure;
+          SetInterval(std::move(controller), delay, current);
+          closure();
+        }
+      }),
       fml::TimeDelta::FromMilliseconds(delay));
 }
 

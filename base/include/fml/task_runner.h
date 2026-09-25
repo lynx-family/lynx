@@ -13,6 +13,7 @@
 #include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/fml/macros.h"
+#include "base/include/fml/memory/js_memory_track_define.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/message_loop_task_queues.h"
@@ -39,7 +40,8 @@ class BasicTaskRunner {
 ///
 /// \see fml::MessageLoop
 class BASE_EXPORT TaskRunner : public fml::RefCountedThreadSafe<TaskRunner>,
-                               public BasicTaskRunner {
+                               public BasicTaskRunner,
+                               public JSMemoryTrackOwner {
  public:
   virtual ~TaskRunner();
 
