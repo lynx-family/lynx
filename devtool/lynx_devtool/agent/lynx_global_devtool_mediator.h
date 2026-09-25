@@ -30,6 +30,8 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
  public:
   static LynxGlobalDevToolMediator& GetInstance();
 
+  void SendCDPEvent(const Json::Value& event) const;
+
   void EndReplayTest(
       const std::shared_ptr<lynx::devtool::MessageSender>& sender,
       const std::string& file_path);
@@ -72,7 +74,7 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
 
   friend class lynx::base::NoDestructor<LynxGlobalDevToolMediator>;
   LynxGlobalDevToolMediator();
-  ~LynxGlobalDevToolMediator() = default;
+  ~LynxGlobalDevToolMediator() override = default;
 
  private:
   void RunOnDefaultTaskRunnerOrSendError(

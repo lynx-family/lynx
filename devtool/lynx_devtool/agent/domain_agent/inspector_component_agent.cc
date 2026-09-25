@@ -4,37 +4,42 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_component_agent.h"
 
-#include "core/renderer/utils/lynx_env.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
 
-using lynx::tasm::LynxEnv;
+InspectorComponentAgent::InspectorComponentAgent()
+    : InspectorComponentAgent(LynxGlobalDevToolMediator::GetInstance()) {}
 
-InspectorComponentAgent::InspectorComponentAgent() {
+InspectorComponentAgent::InspectorComponentAgent(
+    const LynxGlobalDevToolMediator& global_devtool_mediator)
+    : global_devtool_mediator_(global_devtool_mediator) {
   functions_map_["Component.uselessUpdate"] =
       &InspectorComponentAgent::UselessUpdate;
 }
 
-InspectorComponentAgent::~InspectorComponentAgent() = default;
-
 void InspectorComponentAgent::UselessUpdate(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  Json::Value content(Json::ValueType::objectValue);
-  content["method"] = "Component.uselessUpdate";
-  content["params"] = message["params"];
-  sender->SendMessage("CDP", content);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  Json::Value event(Json::objectValue);
+  event["method"] = "Component.uselessUpdate";
+  event["params"] = params;
+  global_devtool_mediator_.SendCDPEvent(event);
+  responder->SendSuccess();
 }
 
 void InspectorComponentAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& content) {
-  std::string method = content["method"].asString();
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  const std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
-  if (iter != functions_map_.end()) {
-    (this->*(iter->second))(sender, content);
-  } else {
-    SendNotImplementedResponse(sender, content["id"].asInt64(), method);
+  if (iter == functions_map_.end()) {
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
+    return;
   }
+  (this->*(iter->second))(responder, message["params"]);
 }
 
 }  // namespace devtool
