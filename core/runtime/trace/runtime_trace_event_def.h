@@ -1569,6 +1569,11 @@ inline constexpr const char* const MTS_VM_POOL_STATE_EVENT =
  * @trace_description: A event to report that global GC triggered.
  */
 inline constexpr const char* const RUN_GC_EVENT = "RunGC";
+/**
+ * @trace_description: A event indicates that a GC event has occurred
+ * in a VM, whether triggered proactively or passively during runtime.
+ */
+inline constexpr const char* const VM_GC_EVENT = "VM_GC";
 
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 

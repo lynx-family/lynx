@@ -9,6 +9,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/fml/make_copyable.h"
+#include "base/include/fml/memory/js_memory_track_scope.h"
 #include "base/include/fml/message_loop.h"
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/js/runtime_constant.h"
@@ -77,12 +78,17 @@ void JsTaskAdapter::QueueMicrotask(Function func, uint64_t trace_flow_id) {
   auto current_id = current_micro_task_id_++;
   micro_tasks_->emplace(current_id, std::move(task));
   runner_->PostMicroTask(fml::MakeCopyable(
-      [current_id, weak_tasks = micro_tasks_.GetWeakPtr()]() mutable {
+      [current_id, weak_tasks = micro_tasks_.GetWeakPtr(),
+       runner = runner_.get(),
+       alloc_slot = runner_->GetCurrentAllocSlot()]() mutable {
         auto* tasks = weak_tasks.Lock();
         if (tasks) {
           auto it = tasks->find(current_id);
           if (it != tasks->end()) {
-            it->second();
+            {
+              fml::JSMemoryTrackSlot alloc_slot_scope(runner, alloc_slot);
+              it->second();
+            }
             tasks->erase(it);
           }
         }

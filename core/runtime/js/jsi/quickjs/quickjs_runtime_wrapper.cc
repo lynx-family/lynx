@@ -23,8 +23,19 @@ extern "C" {
 #include "core/runtime/js/jsi/quickjs/quickjs_host_function.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_host_object.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 
 namespace lynx {
+
+static_assert(fml::JSMemoryTrackSlotType::Count == LEPUS_MEMORY_SIZE_SLOTS);
+static_assert(fml::JSMemoryTrackSlotType::Unknown ==
+              LEPUS_MEMORY_CATEGORY_UNKNOWN);
+static_assert(fml::JSMemoryTrackSlotType::Common ==
+              LEPUS_MEMORY_CATEGORY_COMMON);
+static_assert(fml::JSMemoryTrackSlotType::Overflow ==
+              LEPUS_MEMORY_CATEGORY_SLOT_OVERFLOW);
+
 namespace runtime {
 namespace js {
 using detail::QuickjsHostFunctionProxy;
@@ -90,7 +101,7 @@ QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
 
   rt_ = nullptr;
 #if ENABLE_TRACE_PERFETTO
-  ReportMemoryForTrace();
+  ReportMemoryForTrace(false);
 #endif
 }
 
@@ -107,22 +118,43 @@ LepusIdContainer& QuickjsRuntimeInstance::GetFunctionIdContainer() {
 void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
                                                 uint32_t runtime_mode) {
   LEPUSRuntime* rt;
-  rt = LEPUS_NewRuntimeWithMode(runtime_mode);
+  bool gc_mode = LEPUS_IsGCModeDefault() &&
+                 !tasm::LynxEnv::GetInstance().IsDisableTracingGC();
+
+  per_instance_memory_track_ = tasm::performance::MemoryMonitor::Enable();
+
+#if ENABLE_TRACE_PERFETTO
+  bool tracing_started = trace::TraceController::Instance()->IsTracingStarted();
+  bool tracing_memory = false;
+  if (auto config =
+          trace::TraceController::Instance()->GetLastSessionTraceConfig();
+      config && config->enable_memory_trace) {
+    tracing_memory = true;
+  }
+  per_instance_memory_track_ |= (tracing_started && tracing_memory);
+#endif
+
+  if (per_instance_memory_track_) {
+    auto& alloc_slot_variable =
+        fml::MessageLoop::GetCurrent().GetTaskRunner()->GetCurrentAllocSlot();
+    rt = LEPUS_NewRuntimeWithModeMemoryTrackSlot(runtime_mode,
+                                                 &alloc_slot_variable);
+    per_instance_memory_track_ = LEPUS_IsMemorySlotTrackingEnabled(rt);
+  } else {
+    rt = LEPUS_NewRuntimeWithMode(runtime_mode);
+  }
+
   if (!rt) {
     LOGE("init quickjs runtime failed!");
     return;
   }
-  if (tasm::LynxEnv::GetInstance().IsDisableTracingGC()) {
-    LEPUS_SetRuntimeInfo(rt, "Lynx_JS_RC");
-  } else {
-    LEPUS_SetRuntimeInfo(rt, "Lynx_JS");
-  }
+  LEPUS_SetRuntimeInfo(rt, gc_mode ? "Lynx_JS" : "Lynx_JS_RC");
   rt_ = rt;
 
   LEPUS_SetGCObserver(rt_, static_cast<GCObserver*>(this));
 
 #if ENABLE_TRACE_PERFETTO
-  if (trace::TraceController::Instance()->IsTracingStarted()) {
+  if (tracing_started) {
     LEPUS_SetGCInfoThreshold(rt_,
                              lynx::runtime::kMemoryReportDeltaThresholdInTrace);
   }
@@ -176,8 +208,10 @@ void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
 }
 
 void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
+  [[maybe_unused]] bool is_full_gc =
+      mem_info.find("is_full_gc") != std::string::npos;
 #if ENABLE_TRACE_PERFETTO
-  ReportMemoryForTrace();
+  ReportMemoryForTrace(is_full_gc);
 #endif
   for (auto* observer : obs_set_ptr_) {
     observer->OnRuntimeGC(
@@ -186,7 +220,7 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
 }
 
 #if ENABLE_TRACE_PERFETTO
-void QuickjsRuntimeInstance::ReportMemoryForTrace() {
+void QuickjsRuntimeInstance::ReportMemoryForTrace(bool is_full_gc) {
   if (!trace::TraceController::Instance()->IsTracingStarted()) {
     return;
   }
@@ -194,6 +228,11 @@ void QuickjsRuntimeInstance::ReportMemoryForTrace() {
   auto config = trace::TraceController::Instance()->GetLastSessionTraceConfig();
   if (!(config && config->enable_memory_trace)) {
     return;
+  }
+
+  if (is_full_gc) {
+    TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, VM_GC_EVENT, "ptr",
+                        static_cast<VMInstance*>(this));
   }
 
   // When Lynx Trace is enabled, memory data is reported directly on the JS
@@ -209,10 +248,26 @@ void QuickjsRuntimeInstance::ReportMemoryForTrace() {
       std::to_string(creation_time_as_unique_.ToEpochDelta().ToNanoseconds());
 
   auto usage = detail::QuickjsHelper::GetMemoryUsage(rt_);
-  TRACE_COUNTER(LYNX_TRACE_CATEGORY, track_name.c_str(), usage.heap_size,
-                kRawRuntimeBaseMemoryInfo, usage.base_size,
-                kRawRuntimePageRssMemoryInfo, usage.page_rss_size, "ptr",
-                static_cast<VMInstance*>(this));
+  TRACE_COUNTER(
+      LYNX_TRACE_CATEGORY, track_name.c_str(), usage.heap_size,
+      [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(kRawRuntimeBaseMemoryInfo,
+                                           std::to_string(usage.base_size));
+        ctx.event()->add_debug_annotations(kRawRuntimePageRssMemoryInfo,
+                                           std::to_string(usage.page_rss_size));
+        ctx.event()->add_debug_annotations("ptr",
+                                           static_cast<VMInstance*>(this));
+
+        if (per_instance_memory_track_) {
+          size_t memory_size_slots[LEPUS_MEMORY_SIZE_SLOTS];
+          auto max_slot = LEPUS_DumpMemorySlots(rt_, memory_size_slots);
+          for (int i = 0; i <= max_slot; i++) {
+            ctx.event()->add_debug_annotations(
+                "slot_" + std::to_string(i),
+                std::to_string(memory_size_slots[i]));
+          }
+        }
+      });
 }
 #endif
 
@@ -228,6 +283,52 @@ void QuickjsRuntimeInstance::RemoveObserver(JSIObserver* obs) {
     return;
   }
   obs_set_ptr_.erase(obs);
+#ifdef DEBUG
+  // In debug mode, when the page exits and its BTS runtime is destroyed,
+  // check if any memory allocations with unknown ownership were generated.
+  // All unclaimed memory should be eliminated during the development and
+  // debugging phase.
+  if (per_instance_memory_track_) {
+    size_t memory_size_slots[LEPUS_MEMORY_SIZE_SLOTS];
+    LEPUS_DumpMemorySlots(rt_, memory_size_slots);
+    assert(memory_size_slots[LEPUS_MEMORY_CATEGORY_UNKNOWN] == 0);
+  }
+#endif
+}
+
+bool QuickjsRuntimeInstance::GetMemoryStatus(size_t& heap_size,
+                                             size_t* memory_size_slots) {
+  heap_size = 0;
+  memset(memory_size_slots, 0,
+         sizeof(memory_size_slots[0]) * LEPUS_MEMORY_SIZE_SLOTS);
+  if (rt_) {
+    if (per_instance_memory_track_) {
+      LEPUS_DumpMemorySlots(rt_, memory_size_slots);
+    }
+    heap_size = LEPUS_GetHeapSize(rt_);
+  }
+  return per_instance_memory_track_;
+}
+
+void QuickjsRuntimeInstance::RebindMemoryTrackSlot() {
+  // Invoked on target JS thread and rebind.
+  auto& alloc_slot_variable =
+      fml::MessageLoop::GetCurrent().GetTaskRunner()->GetCurrentAllocSlot();
+  LEPUS_RebindRuntimeMemoryTrackSlot(rt_, &alloc_slot_variable);
+}
+
+int32_t QuickjsRuntimeInstance::AllocatePageMemorySlot() {
+  if (per_instance_memory_track_) {
+    auto slot = LEPUS_AllocateMemorySlot(rt_);
+    if (slot == -1) {
+      // All slots are occupied. Previous pages continue to be counted, but new
+      // pages are no longer counted. Memory usage is uniformly calculated on
+      // Overflow-Slot.
+      slot = fml::JSMemoryTrackSlotType::Overflow;
+    }
+    return slot;
+  }
+  return fml::JSMemoryTrackSlotType::Unknown;
 }
 
 std::string QuickjsRuntimeInstance::GetDebugDescription() const {
