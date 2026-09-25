@@ -6,9 +6,11 @@
 #define DEVTOOL_LYNX_DEVTOOL_SHARED_DATA_WHITE_BOARD_INSPECTOR_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 #include "core/shared_data/white_board_inspector.h"
+#include "devtool/base_devtool/native/public/cdp_error_code.h"
 
 namespace lynx {
 namespace devtool {
@@ -25,8 +27,9 @@ class WhiteBoardInspectorImpl : public tasm::WhiteBoardInspector {
       int view_id);
   void RemoveDelegate(int view_id);
 
-  void SetSharedData(const std::string& key, const std::string& value,
-                     int& error_code, std::string& error_message);
+  std::optional<CDPErrorCode> SetSharedData(const std::string& key,
+                                            const std::string& value,
+                                            std::string& error_message);
   void GetSharedData(
       std::vector<std::pair<std::string, std::string>>& shared_data,
       int& error_code, std::string& error_message);

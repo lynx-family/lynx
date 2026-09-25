@@ -1124,46 +1124,43 @@ void LynxDevToolMediator::GlobalPropsChanged() {
 }
 
 void LynxDevToolMediator::WhiteBoardEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (tasm_task_runner_) {
     RunOnTaskRunner(tasm_task_runner_,
-                    [executor = element_executor_, sender, message] {
-                      executor->WhiteBoardEnable(sender, message);
+                    [executor = element_executor_, responder, params] {
+                      executor->WhiteBoardEnable(responder, params);
                     });
   } else if (js_task_runner_) {
-    RunOnJSThread([js_debugger = js_debugger_, sender, message] {
-      js_debugger->WhiteBoardEnable(sender, message);
+    RunOnJSThread([js_debugger = js_debugger_, responder, params] {
+      js_debugger->WhiteBoardEnable(responder, params);
     });
   }
 }
 
 void LynxDevToolMediator::WhiteBoardDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (tasm_task_runner_) {
     RunOnTaskRunner(tasm_task_runner_,
-                    [executor = element_executor_, sender, message] {
-                      executor->WhiteBoardDisable(sender, message);
+                    [executor = element_executor_, responder, params] {
+                      executor->WhiteBoardDisable(responder, params);
                     });
   } else if (js_task_runner_) {
-    RunOnJSThread([js_debugger = js_debugger_, sender, message] {
-      js_debugger->WhiteBoardDisable(sender, message);
+    RunOnJSThread([js_debugger = js_debugger_, responder, params] {
+      js_debugger->WhiteBoardDisable(responder, params);
     });
   }
 }
 
 void LynxDevToolMediator::WhiteBoardSetSharedData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (tasm_task_runner_) {
     RunOnTaskRunner(tasm_task_runner_,
-                    [executor = element_executor_, sender, message] {
-                      executor->WhiteBoardSetSharedData(sender, message);
+                    [executor = element_executor_, responder, params] {
+                      executor->WhiteBoardSetSharedData(responder, params);
                     });
   } else if (js_task_runner_) {
-    RunOnJSThread([js_debugger = js_debugger_, sender, message] {
-      js_debugger->WhiteBoardSetSharedData(sender, message);
+    RunOnJSThread([js_debugger = js_debugger_, responder, params] {
+      js_debugger->WhiteBoardSetSharedData(responder, params);
     });
   }
 }
@@ -1674,26 +1671,23 @@ void LynxDevToolMediator::LynxSendEventToVM(
 }
 
 void LynxDevToolMediator::TemplateGetTemplateData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->TemplateGetTemplateData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->TemplateGetTemplateData(responder, params);
   });
 }
 
 void LynxDevToolMediator::TemplateGetTemplateJsInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->TemplateGetTemplateJsInfo(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->TemplateGetTemplateJsInfo(responder, params);
   });
 }
 
 void LynxDevToolMediator::TemplateGetTemplateApiInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->TemplateGetTemplateApiInfo(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([responder, params, executor = element_executor_] {
+    executor->TemplateGetTemplateApiInfo(responder, params);
   });
 }
 
