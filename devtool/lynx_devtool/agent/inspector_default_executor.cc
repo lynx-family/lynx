@@ -14,37 +14,18 @@ namespace devtool {
 
 InspectorDefaultExecutor::InspectorDefaultExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
-    : devtool_mediator_wp_(devtool_mediator),
-      console_msg_manager_(std::make_unique<ConsoleMessageManager>(
+    : console_msg_manager_(std::make_unique<ConsoleMessageManager>(
           std::weak_ptr<LynxDevToolMediator>{devtool_mediator})),
       network_observer_(
           std::make_shared<NetworkRequestObserver>(devtool_mediator)) {}
 
+void InspectorDefaultExecutor::SetDevToolPlatformFacade(
+    const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade) {
+  devtool_platform_facade_ = devtool_platform_facade;
+}
+
 void InspectorDefaultExecutor::Reset() {
   console_msg_manager_->ClearConsoleMessages();
-}
-
-// start inspector protocl
-void InspectorDefaultExecutor::InspectorEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  LOGI("InspectorEnable");
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
-}
-
-void InspectorDefaultExecutor::InspectorDetached(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  LOGI("InspectorDetached");
-  Json::Value content;
-  content["method"] = "Inspector.detached";
-  content["params"] = Json::ValueType::objectValue;
-  content["params"]["reason"] = "";
-  sender->SendMessage("CDP", content);
 }
 
 void InspectorDefaultExecutor::LynxSetTraceMode(
@@ -73,13 +54,6 @@ void InspectorDefaultExecutor::LynxGetVersion(
   response["id"] = message["id"].asInt64();
   sender->SendMessage("CDP", response);
 }
-
-void InspectorDefaultExecutor::SetDevToolPlatformFacade(
-    const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade) {
-  devtool_platform_facade_ = devtool_platform_facade;
-}
-
-// end inspector protocl
 
 // start log protocol
 void InspectorDefaultExecutor::LogEnable(

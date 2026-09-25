@@ -55,14 +55,10 @@ class InspectorDefaultExecutor
   DECLARE_DEVTOOL_CDP_METHOD(NetworkGetResponseBody);
   DECLARE_DEVTOOL_CDP_METHOD(NetworkGetRequestPostData);
 
-  DECLARE_DEVTOOL_METHOD(InspectorEnable)
-  DECLARE_DEVTOOL_METHOD(InspectorDetached)
-
   DECLARE_DEVTOOL_METHOD(LynxSetTraceMode)
   DECLARE_DEVTOOL_METHOD(LynxGetVersion)
 
  private:
-  std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
   std::unique_ptr<ConsoleMessageManager> console_msg_manager_;
   std::shared_ptr<NetworkRequestObserver> network_observer_;

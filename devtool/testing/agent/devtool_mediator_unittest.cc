@@ -25,6 +25,7 @@
 #include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_agent.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
@@ -118,25 +119,6 @@ class DevToolMediatorTest : public ::testing::Test {
   std::unique_ptr<fml::Thread> devtool_thread_;
   std::unique_ptr<fml::Thread> cdp_event_listener_thread_;
 };
-
-TEST_F(DevToolMediatorTest, InspectorEnableCase) {
-  LOGI("InspectorEnableCase start");
-  Json::Value param;
-  devtool_mediator_->InspectorEnable(message_sender_, param);
-  devtool_thread_->Join();
-  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"id\" : 0,\n   \"result\" : {}\n}\n");
-}
-
-TEST_F(DevToolMediatorTest, InspectorDetachedCase) {
-  LOGI("InspectorDetachedCase start");
-  Json::Value param;
-  devtool_mediator_->InspectorDetached(message_sender_, param);
-  devtool_thread_->Join();
-  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
-            "{\n   \"method\" : \"Inspector.detached\",\n   \"params\" : {\n   "
-            "   \"reason\" : \"\"\n   }\n}\n");
-}
 
 TEST_F(DevToolMediatorTest, RecordingStartDefaultsToJson) {
   EXPECT_TRUE(lynx::tasm::recorder::RecorderController::Enable());
@@ -1048,6 +1030,30 @@ TEST_F(DevToolMediatorTest, SendCDPEventString) {
   cdp_event_listener_thread_->Join();
   EXPECT_EQ(listener_sender->received_msg_.second,
             "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, InspectorDetachedEmitsEventAndReturnsSuccess) {
+  auto listener_sender =
+      std::make_shared<devtool::CDPEventListenerSenderMock>();
+  devtool_mediator_->AddCDPEventListener("InspectorTest", listener_sender);
+  devtool::InspectorAgent agent(devtool_mediator_);
+  Json::Value message(Json::objectValue);
+  message["method"] = "Inspector.detached";
+
+  agent.CallMethod(std::make_shared<devtool::CDPResponder>(message_sender_, 2),
+                   message);
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"].asInt64(), 2);
+  EXPECT_EQ(response["result"], Json::Value(Json::objectValue));
+
+  Json::Value event;
+  ASSERT_TRUE(reader.parse(listener_sender->received_msg_.second, event));
+  EXPECT_EQ(event["method"], "Inspector.detached");
+  EXPECT_EQ(event["params"]["reason"], "");
 }
 
 TEST_F(DevToolMediatorTest, NetworkCaptureEnqueuedAfterDisableIsDropped) {

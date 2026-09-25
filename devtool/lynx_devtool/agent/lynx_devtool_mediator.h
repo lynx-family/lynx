@@ -157,10 +157,6 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizePinchGesture);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizeScrollGesture);
 
-  // Inspector domain -> devtools executor
-  DECLARE_DEVTOOL_METHOD(InspectorEnable)
-  DECLARE_DEVTOOL_METHOD(InspectorDetached)
-
   // Log domain -> devtool executor
   DECLARE_DEVTOOL_CDP_METHOD(LogEnable);
   DECLARE_DEVTOOL_CDP_METHOD(LogDisable);
