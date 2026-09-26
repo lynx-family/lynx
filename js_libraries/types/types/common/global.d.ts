@@ -46,9 +46,12 @@ declare global {
   function cancelAnimationFrame(requestID?: number): void;
 
   function getNapiLoader(): LynxNapiLoader | undefined;
-}
 
-declare function setTimeout(callback: (...args: unknown[]) => unknown, number: number): number;
-declare function setInterval(callback: (...args: unknown[]) => unknown, number: number): number;
-declare function clearTimeout(timeoutId: number): void;
-declare function clearInterval(timeoutId: number): void;
+  function setTimeout(callback: (...args: unknown[]) => unknown, delay?: number): number;
+
+  function setInterval(callback: (...args: unknown[]) => unknown, delay?: number): number;
+
+  function clearTimeout(timeoutId: number): void;
+
+  function clearInterval(intervalId: number): void;
+}
