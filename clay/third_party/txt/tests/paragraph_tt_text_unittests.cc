@@ -304,6 +304,33 @@ TEST_F(ParagraphTTTextReuseTest, ShrinkingPreservesRealCjkGeometry) {
   }
 }
 
+TEST(ParagraphTTTextTest, MaxIntrinsicWidthIsIndependentOfLayoutWidth) {
+  tttext::ParagraphStyle paragraph_style;
+  auto font_collection = std::make_shared<FontCollection>();
+#if defined(ENABLE_SKITY)
+  ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+#else
+  ParagraphTTText paragraph(font_collection, paragraph_style);
+#endif
+  tttext::Style style;
+  PlaceholderRun placeholder(30.f, 10.f, PlaceholderAlignment::kBaseline,
+                             TextBaseline::kAlphabetic, 0.f);
+  paragraph.AddPlaceholder(style, placeholder, false);
+  paragraph.AddPlaceholder(style, placeholder, false);
+  paragraph.AddPlaceholder(style, placeholder, false);
+
+  paragraph.Layout(40);
+  const double narrow_longest_line = paragraph.GetLongestLine();
+  const double narrow_max_intrinsic_width = paragraph.GetMaxIntrinsicWidth();
+
+  ASSERT_GT(narrow_max_intrinsic_width, narrow_longest_line);
+
+  paragraph.Layout(1000);
+  EXPECT_GT(paragraph.GetLongestLine(), narrow_longest_line);
+  EXPECT_DOUBLE_EQ(paragraph.GetMaxIntrinsicWidth(),
+                   narrow_max_intrinsic_width);
+}
+
 TEST_F(ParagraphTTTextReuseTest, WidthBoundaryAndInvalidValues) {
   auto paragraph = Build(u"Text");
   EXPECT_STREQ(Reject(*paragraph, 100), "no_layout");
