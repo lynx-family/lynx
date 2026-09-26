@@ -10,6 +10,7 @@ import {
   loadCardParams,
   NativeApp,
   requireParamObj,
+  StandaloneRuntimeGlobals,
 } from './interface';
 import { AMDFactory, AMDModule } from '../common';
 import {
@@ -89,6 +90,8 @@ export abstract class BaseApp<
   setInterval: LynxSetTimeout;
   clearInterval: (intervalId: number) => void;
   clearTimeout: (timeoutId: number) => void;
+  requestAnimationFrame: (callback: () => void) => number;
+  cancelAnimationFrame: (animationId: number) => void;
 
   _createReadableStreamClass: (
     provider: PromiseConstructor | { getPromise: () => PromiseConstructor }
@@ -156,6 +159,9 @@ export abstract class BaseApp<
       this.setInterval = otherApp.setInterval;
       this.clearInterval = otherApp.clearInterval;
       this.clearTimeout = otherApp.clearTimeout;
+      this.requestAnimationFrame = otherApp.requestAnimationFrame;
+      this.cancelAnimationFrame = otherApp.cancelAnimationFrame;
+      this.NativeModules = otherApp.NativeModules;
       this.resolvedPromise = otherApp.resolvedPromise;
       // fetch api related
       this._createReadableStreamClass = otherApp._createReadableStreamClass;
@@ -163,10 +169,27 @@ export abstract class BaseApp<
     } else {
       const { lynx } = options;
 
-      this.setTimeout = this.nativeApp.setTimeout;
-      this.setInterval = this.nativeApp.setInterval;
-      this.clearInterval = this.nativeApp.clearInterval;
-      this.clearTimeout = this.nativeApp.clearTimeout;
+      // Reuse from the standalone runtime for global APIs that depend on the
+      // LynxView lifecycle.
+      const standalone = this._$setupStandaloneRuntime();
+      if (standalone) {
+        this.setTimeout = standalone.setTimeout;
+        this.setInterval = standalone.setInterval;
+        this.clearInterval = standalone.clearInterval;
+        this.clearTimeout = standalone.clearTimeout;
+        this.requestAnimationFrame = standalone.requestAnimationFrame;
+        this.cancelAnimationFrame = standalone.cancelAnimationFrame;
+        this.NativeModules = standalone.NativeModules;
+      } else {
+        this.setTimeout = this.nativeApp.setTimeout;
+        this.setInterval = this.nativeApp.setInterval;
+        this.clearInterval = this.nativeApp.clearInterval;
+        this.clearTimeout = this.nativeApp.clearTimeout;
+        this.requestAnimationFrame = (callback: () => void) =>
+          this._nativeApp.requestAnimationFrame(callback);
+        this.cancelAnimationFrame = (animationId: number) =>
+          this._nativeApp.cancelAnimationFrame(animationId);
+      }
 
       this.modules = {};
       this._apiList = {};
@@ -205,8 +228,8 @@ export abstract class BaseApp<
       );
 
       const promiseCtor = this.setupPromise(
-        this.nativeApp.setTimeout,
-        this.nativeApp.clearTimeout,
+        this.setTimeout,
+        this.clearTimeout,
         lynx
       );
 
@@ -499,6 +522,15 @@ export abstract class BaseApp<
   /**
    * @internal
    * @static
+   * The LynxGroup level cache for evaluated module exports, keyed like
+   * {@link _$factoryCache}. Only populated when `enableLynxGroupModuleSharing`
+   * is on.
+   */
+  static _$sharedModules: Record<string, unknown> = {};
+
+  /**
+   * @internal
+   * @static
    * The LynxGroup level cache for loadScript
    */
   static _$loadScriptCache: Record<string, BundleInitReturnObj | Function> = {};
@@ -552,6 +584,9 @@ export abstract class BaseApp<
       // Only then we cache the factory.
       if (shouldCacheFactory) {
         BaseApp._$factoryCache[path] = factory;
+        if (this._$shouldShareModules()) {
+          BaseApp._$sharedModules[path] = ret;
+        }
       }
       addLoadScriptCache(cacheKey, exports);
 
@@ -583,6 +618,10 @@ export abstract class BaseApp<
     entryName?: string,
     options?: { timeout: number }
   ): T {
+    if (this._$shouldShareModules() && path in BaseApp._$sharedModules) {
+      return BaseApp._$sharedModules[path] as T;
+    }
+
     const init = BaseApp._$factoryCache[path];
     if (this.shouldUseModuleCache() && init) {
       // cache hit
@@ -619,6 +658,11 @@ export abstract class BaseApp<
     path: string,
     callback: (error?: Error, exports?: T) => void
   ): void {
+    if (this._$shouldShareModules() && path in BaseApp._$sharedModules) {
+      callback(null, BaseApp._$sharedModules[path] as T);
+      return;
+    }
+
     const init = BaseApp._$factoryCache[path];
     if (this.shouldUseModuleCache() && init) {
       // cache hit
@@ -948,12 +992,6 @@ export abstract class BaseApp<
     return PromiseConstructor;
   }
 
-  requestAnimationFrame = (callback: () => void) =>
-    this._nativeApp.requestAnimationFrame(callback);
-
-  cancelAnimationFrame = (animationId: number) =>
-    this._nativeApp.cancelAnimationFrame(animationId);
-
   protected addInternalEventListener(
     contextProxyType: ContextProxyType,
     type: string,
@@ -1061,8 +1099,67 @@ export abstract class BaseApp<
     return cacheKey;
   }
 
+  /**
+   * Whether this App is the standalone runtime of its JS context: a
+   * background runtime not attached to any LynxView, which outlives every
+   * card. {@link StandaloneApp} overrides this.
+   */
+  protected _$isStandaloneApp(): boolean {
+    return false;
+  }
+
+  /**
+   * Publishes the standalone runtime's global APIs on the JS context, or picks
+   * up the ones already published. Returns undefined when this card does not
+   * share modules.
+   *
+   * @throws {InternalRuntimeError} when this card shares modules but the host
+   * created no standalone runtime.
+   */
+  private _$setupStandaloneRuntime(): StandaloneRuntimeGlobals | undefined {
+    if (this._$isStandaloneApp()) {
+      return (nativeGlobal._$standaloneRuntime = {
+        setTimeout: this.nativeApp.setTimeout,
+        clearTimeout: this.nativeApp.clearTimeout,
+        setInterval: this.nativeApp.setInterval,
+        clearInterval: this.nativeApp.clearInterval,
+        requestAnimationFrame: (callback: () => void) =>
+          this.nativeApp.requestAnimationFrame(callback),
+        cancelAnimationFrame: (animationId: number) =>
+          this.nativeApp.cancelAnimationFrame(animationId),
+        NativeModules: this.nativeApp.nativeModuleProxy,
+      });
+    }
+    if (!this._$shouldShareModules()) {
+      return undefined;
+    }
+    const standalone = nativeGlobal._$standaloneRuntime;
+    if (!standalone) {
+      throw new InternalRuntimeError(
+        'enableLynxGroupModuleSharing needs a standalone runtime in the ' +
+          'LynxGroup, but the host created none'
+      );
+    }
+    return standalone;
+  }
+
   private shouldUseModuleCache(): boolean {
     return NODE_ENV !== 'development' && !this.isModuleCacheDisabled();
+  }
+
+  /**
+   * Whether module exports are shared across the cards of this JS context.
+   * Cards that leave the page config off neither read nor write the shared
+   * cache, so mixing opted-in and opted-out cards in one group keeps the
+   * opted-out ones on their own module instances.
+   */
+  private _$shouldShareModules(): boolean {
+    // The standalone app is the context's own runtime rather than a card, so
+    // the modules it loads are the ones cards are meant to share.
+    return (
+      this._$isStandaloneApp() ||
+      Boolean(this.params.pageConfigSubset?.enableLynxGroupModuleSharing)
+    );
   }
 
   private isModuleCacheDisabled(): boolean {
