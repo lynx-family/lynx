@@ -127,6 +127,12 @@ if (enable_unittests) {
       "testing_utils.h",
     ]
 
+    if (is_ios) {
+      sources += [ "animation/fling_animator_ios_unittests.cc" ]
+    } else {
+      sources += [ "animation/fling_animator_unittests.cc" ]
+    }
+
     if (enable_skity) {
       sources += [ "paint_recorder_skity_unittests.cc" ]
     }

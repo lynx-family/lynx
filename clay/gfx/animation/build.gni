@@ -36,7 +36,6 @@ gfx_animation_sources = [
   "decelerate_interpolator.h",
   "dynamic_animator.cc",
   "dynamic_animator.h",
-  "fling_animator.cc",
   "fling_animator.h",
   "interpolator.cc",
   "interpolator.h",
@@ -67,3 +66,9 @@ gfx_animation_sources = [
   "viscous_fluid_interpolator.cc",
   "viscous_fluid_interpolator.h",
 ]
+
+if (is_ios) {
+  gfx_animation_sources += [ "fling_animator_ios.cc" ]
+} else {
+  gfx_animation_sources += [ "fling_animator.cc" ]
+}
