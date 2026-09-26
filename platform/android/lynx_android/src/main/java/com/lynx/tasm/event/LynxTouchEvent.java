@@ -7,6 +7,7 @@ package com.lynx.tasm.event;
 import android.graphics.Rect;
 import android.view.MotionEvent;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import java.util.ArrayList;
@@ -100,6 +101,7 @@ public class LynxTouchEvent extends LynxEvent {
   private Map<Integer, Point> mTouchMap;
   private JavaOnlyMap mUITouchMap;
   private HashMap<Integer, EventTargetBase> mActiveTargetMap;
+  private HashMap<Integer, Point> mCurrentTargetPointMap;
   private MotionEvent mMotionEvent;
 
   public LynxTouchEvent(int tag, String name) {
@@ -177,6 +179,15 @@ public class LynxTouchEvent extends LynxEvent {
     return mActiveTargetMap;
   }
 
+  public void setCurrentTargetPointMap(HashMap<Integer, Point> pointMap) {
+    mCurrentTargetPointMap = pointMap;
+  }
+
+  @Nullable
+  public HashMap<Integer, Point> getCurrentTargetPointMap() {
+    return mCurrentTargetPointMap;
+  }
+
   @Override
   public ArrayList<Object> getEventParams() {
     ArrayList<Object> params = super.getEventParams();
@@ -191,6 +202,17 @@ public class LynxTouchEvent extends LynxEvent {
       detail.add(mPagePoint.y);
       detail.add(mViewPoint.x);
       detail.add(mViewPoint.y);
+      if (mCurrentTargetPointMap != null) {
+        ArrayList<Object> currentTargetPoints = new ArrayList<>();
+        for (Map.Entry<Integer, Point> entry : mCurrentTargetPointMap.entrySet()) {
+          ArrayList<Object> point = new ArrayList<>();
+          point.add(entry.getKey());
+          point.add(entry.getValue().getX());
+          point.add(entry.getValue().getY());
+          currentTargetPoints.add(point);
+        }
+        detail.add(currentTargetPoints);
+      }
     }
     params.add(detail);
     return params;

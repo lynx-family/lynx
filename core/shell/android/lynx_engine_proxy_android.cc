@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/string/string_utils.h"
@@ -13,6 +14,7 @@
 #include "core/base/android/java_only_map.h"
 #include "core/base/android/java_value.h"
 #include "core/base/android/jni_helper.h"
+#include "core/public/event/touch_event_data.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -109,13 +111,34 @@ void InvokeLepusApiCallback(JNIEnv *env, jobject jcaller, jlong nativePtr,
 static void SendTouchEvent(JNIEnv *env, jobject jcaller, jlong ptr,
                            jstring name, jint tag, jfloat client_x,
                            jfloat client_y, jfloat page_x, jfloat page_y,
-                           jfloat view_x, jfloat view_y, jlong timestamp) {
+                           jfloat view_x, jfloat view_y, jlong timestamp,
+                           jintArray current_target_element_ids,
+                           jfloatArray current_target_points) {
   lynx::shell::LynxEngineProxyAndroid *engine_proxy =
       reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+  lynx::event::TouchEventTargetPoints points;
+  if (current_target_element_ids != nullptr &&
+      current_target_points != nullptr) {
+    const jsize point_count = env->GetArrayLength(current_target_element_ids);
+    if (env->GetArrayLength(current_target_points) == point_count * 2) {
+      std::vector<jint> element_ids(point_count);
+      std::vector<jfloat> values(point_count * 2);
+      env->GetIntArrayRegion(current_target_element_ids, 0, point_count,
+                             element_ids.data());
+      env->GetFloatArrayRegion(current_target_points, 0, point_count * 2,
+                               values.data());
+      points.reserve(point_count);
+      for (jsize index = 0; index < point_count; ++index) {
+        points.push_back(lynx::event::TouchEventTargetPoint{
+            static_cast<int32_t>(element_ids[index]), values[index * 2],
+            values[index * 2 + 1]});
+      }
+    }
+  }
   engine_proxy->SendTouchEvent(
       lynx::base::android::JNIConvertHelper::ConvertToString(env, name),
       static_cast<int32_t>(tag), view_x, view_y, client_x, client_y, page_x,
-      page_y, static_cast<int64_t>(timestamp));
+      page_y, static_cast<int64_t>(timestamp), std::move(points));
 }
 
 static void SendMultiTouchEvent(JNIEnv *env, jobject jcaller, jlong ptr,

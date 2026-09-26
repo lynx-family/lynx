@@ -17,6 +17,7 @@ import com.lynx.tasm.event.LynxInternalEvent;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
 import org.junit.Before;
@@ -198,6 +199,25 @@ public class LynxEventEmitterTest {
     assertEquals(mLynxEvent, tapEvent);
     assertEquals(mTapCount, 1);
     assertEquals(mTouchEvent, tapEvent);
+  }
+
+  @Test
+  public void testTouchEventSerializesCurrentTargetPoints() {
+    LynxTouchEvent event = new LynxTouchEvent(11, "tap", 12, 13);
+    ArrayList<Object> legacyDetail = (ArrayList<Object>) event.getEventParams().get(5);
+    assertEquals(7, legacyDetail.size());
+
+    HashMap<Integer, LynxTouchEvent.Point> points = new HashMap<>();
+    points.put(11, new LynxTouchEvent.Point(7.5f, 8.5f));
+    event.setCurrentTargetPointMap(points);
+
+    ArrayList<Object> detail = (ArrayList<Object>) event.getEventParams().get(5);
+    ArrayList<Object> serializedPoints = (ArrayList<Object>) detail.get(7);
+    ArrayList<Object> point = (ArrayList<Object>) serializedPoints.get(0);
+
+    assertEquals(11, point.get(0));
+    assertEquals(7.5f, (Float) point.get(1), 0.0f);
+    assertEquals(8.5f, (Float) point.get(2), 0.0f);
   }
 
   @Test
