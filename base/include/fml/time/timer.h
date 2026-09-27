@@ -54,7 +54,6 @@ class BASE_EXPORT Timer : public EnableWeakFromThis<Timer> {
 
  private:
   fml::RefPtr<fml::TaskRunner> task_runner_;
-  const bool repeating_ = true;
   Task user_task_;
   fml::TimeDelta delay_;
 
@@ -63,6 +62,7 @@ class BASE_EXPORT Timer : public EnableWeakFromThis<Timer> {
   // scheduled within one period of delay.
   uint64_t validator_ = 0;
   bool running_ = false;
+  const bool repeating_ = true;
 };
 
 class RepeatingTimer : public Timer {
