@@ -123,24 +123,32 @@ TEST(NativeModuleInvocationContextTest, EmitRecordIsNoopWithoutObserver) {
 }
 
 TEST(NativeModuleInvocationContextTest,
-     ReplacesCallbackArgumentsWithPlaceholder) {
+     ReplacesCallbackArgumentsWithoutMutatingInvocationArguments) {
   NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
   auto arguments = lepus::CArray::Create();
   arguments->emplace_back("value");
   arguments->emplace_back(int64_t{1024});
+  auto payload = lepus::Dictionary::Create();
+  payload->SetValue("key", "value");
+  arguments->emplace_back(payload);
   CallbackMap callbacks;
   callbacks.emplace(1, nullptr);
 
-  auto record = invocation.BuildInvokeRecord(
-      lepus::Value(std::move(arguments)), callbacks, true, std::nullopt, 0, "");
+  auto record = invocation.BuildInvokeRecord(lepus::Value(arguments), callbacks,
+                                             true, std::nullopt, 0, "");
+  ASSERT_TRUE(arguments->get(1).IsInt64());
+  EXPECT_EQ(arguments->get(1).Int64(), 1024);
+  EXPECT_FALSE(payload->IsConst());
   ASSERT_TRUE(record.Table()->GetValue("arguments")->IsArray());
   auto args = record.Table()->GetValue("arguments")->Array();
-  ASSERT_EQ(args->size(), 2U);
+  ASSERT_EQ(args->size(), 3U);
   EXPECT_EQ(args->get(0).StdString(), "value");
   ASSERT_TRUE(args->get(1).IsTable());
   auto placeholder = args->get(1).Table();
   EXPECT_EQ(placeholder->GetValue("$type")->StdString(), "callback");
   EXPECT_EQ(placeholder->GetValue("argumentIndex")->Int32(), 1);
+  ASSERT_TRUE(args->get(2).IsTable());
+  EXPECT_EQ(args->get(2).Table()->GetValue("key")->StdString(), "value");
 }
 
 TEST(NativeModuleRecordBuilderTest, BuildsGlobalEventRecord) {
