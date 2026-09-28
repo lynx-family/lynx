@@ -26,7 +26,14 @@ import org.json.JSONObject;
 public class LynxDevtoolGlobalHelper {
   private static final String TAG = "LynxDevtoolGlobalHelper";
 
-  private static ILynxDevToolService sDevToolService = null;
+  private static volatile ILynxDevToolService sDevToolService = null;
+
+  static ILynxDevToolService getDevToolService() {
+    if (sDevToolService == null) {
+      sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    }
+    return sDevToolService;
+  }
 
   // Remote debug stuff
   private boolean remoteDebugAvailable = false;
@@ -46,7 +53,6 @@ public class LynxDevtoolGlobalHelper {
     mAppInfo.put("sdkVersion", LynxEnv.inst().getLynxVersion());
     if (LynxEnv.inst().isLynxDebugEnabled()) {
       initRemoteDebugIfNecessary();
-      sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
     }
   }
 
@@ -77,8 +83,9 @@ public class LynxDevtoolGlobalHelper {
       return;
     }
 
-    if (sDevToolService != null) {
-      sDevToolService.globalDebugBridgeSetAppInfo(context, mAppInfo);
+    ILynxDevToolService devToolService = getDevToolService();
+    if (devToolService != null) {
+      devToolService.globalDebugBridgeSetAppInfo(context, mAppInfo);
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
@@ -104,8 +111,9 @@ public class LynxDevtoolGlobalHelper {
     if (!initRemoteDebugIfNecessary()) {
       return false;
     }
-    if (sDevToolService != null) {
-      return sDevToolService.globalDebugBridgeShouldPrepareRemoteDebug(url);
+    ILynxDevToolService devToolService = getDevToolService();
+    if (devToolService != null) {
+      return devToolService.globalDebugBridgeShouldPrepareRemoteDebug(url);
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
@@ -127,8 +135,9 @@ public class LynxDevtoolGlobalHelper {
       return false;
     }
 
-    if (sDevToolService != null) {
-      return sDevToolService.globalDebugBridgePrepareRemoteDebug(scheme);
+    ILynxDevToolService devToolService = getDevToolService();
+    if (devToolService != null) {
+      return devToolService.globalDebugBridgePrepareRemoteDebug(scheme);
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
@@ -139,8 +148,9 @@ public class LynxDevtoolGlobalHelper {
     if (!initRemoteDebugIfNecessary()) {
       return;
     }
-    if (sDevToolService != null) {
-      sDevToolService.globalDebugBridgeRegisterCardListener(listener);
+    ILynxDevToolService devToolService = getDevToolService();
+    if (devToolService != null) {
+      devToolService.globalDebugBridgeRegisterCardListener(listener);
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
@@ -151,8 +161,9 @@ public class LynxDevtoolGlobalHelper {
     if (!remoteDebugAvailable) {
       return;
     }
-    if (sDevToolService != null) {
-      sDevToolService.globalDebugBridgeOnPerfMetricsEvent(eventName, data, instanceId);
+    ILynxDevToolService devToolService = getDevToolService();
+    if (devToolService != null) {
+      devToolService.globalDebugBridgeOnPerfMetricsEvent(eventName, data, instanceId);
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
