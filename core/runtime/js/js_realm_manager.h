@@ -150,7 +150,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
   // It never runs on the legacy shared-context path.
 
   // Ensure the group's global context exists (created and corejs loaded once),
-  // returning the owning wrapper. The wrapper owns the group's global runtime
+  // returning the owning realm. The realm owns the group's global runtime
   // (and thus the shared VM + global context) and tracks the live page count.
   SharedVMGlobalRealm* EnsureNewShareGroupGlobalContext(
       bool force_use_lightweight_js_engine,
@@ -201,7 +201,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
   Shared_Context_Map shared_context_map_;
   // Per-group global-context wrappers for the new isolated-context scheme.
   // Keyed by group id, only populated when `enable_new_share_group` is used.
-  // Each wrapper owns the group's global runtime (shared VM + global context)
+  // Each realm owns the group's global runtime (shared VM + global context)
   // and tracks the group's live page count; erasing the entry tears the group
   // down.
   std::unordered_map<std::string, base::UnsafeOwningPtr<SharedVMGlobalRealm>>
