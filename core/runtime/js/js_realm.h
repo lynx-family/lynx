@@ -29,7 +29,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm
   JSRealm(std::shared_ptr<js::JSIContext>);
   virtual ~JSRealm();
 
-  virtual void Def() = 0;
+  void Def() override {}
   void EnsureConsole(std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                      const tasm::PageOptions& page_options);
   virtual void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& js_runtime,
@@ -76,6 +76,14 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm
 #endif
 };
 
+struct JSRealmState {
+  enum class Sharing { kNone, kContext, kVM };
+
+  base::UnsafeOwningPtr<js::Runtime> runtime;
+  base::UnsafeOwningPtr<JSRealm> local_realm;
+  Sharing sharing;
+};
+
 class LYNX_EXPORT_FOR_DEVTOOL SharedJSRealm : public JSRealm {
  public:
   class ReleaseListener {
@@ -116,18 +124,13 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSRealm : public JSRealm {
 class LYNX_EXPORT_FOR_DEVTOOL SingleJSRealm : public JSRealm {
  public:
   SingleJSRealm(std::shared_ptr<js::JSIContext>);
-  SingleJSRealm(std::shared_ptr<js::JSIContext>,
-                SharedJSRealm::ReleaseListener* listener);
   ~SingleJSRealm() = default;
-
-  virtual void Def() override;
 
   void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& js_runtime,
                   std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                   const tasm::PageOptions& page_options) override;
 
  protected:
-  SharedJSRealm::ReleaseListener* listener_ = nullptr;
 };
 
 // Runs corejs once per shared VM; the manager retains it for live pages.
@@ -135,7 +138,6 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedVMGlobalRealm : public JSRealm {
  public:
   SharedVMGlobalRealm(std::shared_ptr<js::JSIContext> context,
                       const std::string& group_id);
-  ~SharedVMGlobalRealm() override;
 
   // The global context is torn down explicitly by JSRealmManager, never through
   // the JSIContext release-observer path, so Def() is a no-op.

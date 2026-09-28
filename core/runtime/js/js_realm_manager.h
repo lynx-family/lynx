@@ -88,7 +88,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
            type == runtime::js::JSRuntimeType::jsvm;
   }
 
-  base::UnsafeOwningPtr<runtime::js::Runtime> CreateJSRuntime(
+  JSRealmState CreateRealm(
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
           js_pre_sources_getter,
@@ -130,7 +130,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
 
   void OnNewShareGroupPageRelease(const std::string& group_id);
 
-  base::UnsafeOwningPtr<runtime::js::Runtime> CreateNewShareGroupJSRuntime(
+  JSRealmState CreateSharedVMRealm(
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
           js_pre_sources_getter,

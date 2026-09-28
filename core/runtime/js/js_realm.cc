@@ -52,7 +52,14 @@ JSRealm::JSRealm(std::shared_ptr<js::JSIContext> context)
       js_core_loaded_(false),
       global_inited_(false) {}
 
-JSRealm::~JSRealm() = default;
+JSRealm::~JSRealm() {
+#if ENABLE_TRACE_PERFETTO
+  // Stop profiling while the context and global runtime are still alive.
+  profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
+      runtime_profiler_);
+  runtime_profiler_.reset();
+#endif
+}
 
 void JSRealm::InitGlobalObject(
     base::UnsafeOwningPtr<js::Runtime>& runtime,
@@ -203,21 +210,6 @@ void SharedJSRealm::AddLifecycleListener(
 SingleJSRealm::SingleJSRealm(std::shared_ptr<js::JSIContext> context)
     : JSRealm(context) {}
 
-SingleJSRealm::SingleJSRealm(std::shared_ptr<js::JSIContext> context,
-                             SharedJSRealm::ReleaseListener* listener)
-    : JSRealm(context), listener_(listener) {}
-
-void SingleJSRealm::Def() {
-  if (js_context_.use_count() == 1) {
-    global_.Reset();
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
-  }
-}
-
 void SingleJSRealm::InitGlobal(
     base::UnsafeOwningPtr<js::Runtime>& runtime,
     std::shared_ptr<js::ConsoleMessagePostMan> post_man,
@@ -230,14 +222,6 @@ void SingleJSRealm::InitGlobal(
 SharedVMGlobalRealm::SharedVMGlobalRealm(
     std::shared_ptr<js::JSIContext> context, const std::string& group_id)
     : JSRealm(context), group_id_(group_id) {}
-
-SharedVMGlobalRealm::~SharedVMGlobalRealm() {
-#if ENABLE_TRACE_PERFETTO
-  profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-      runtime_profiler_);
-  runtime_profiler_ = nullptr;
-#endif
-}
 
 void SharedVMGlobalRealm::EnsureCoreJSLoaded(
     js::Runtime& js_runtime,
