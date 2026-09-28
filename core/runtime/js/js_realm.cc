@@ -47,10 +47,7 @@ constexpr const char* kNewShareGroupCoreJSExports[] = {
 }  // namespace
 
 JSRealm::JSRealm(std::shared_ptr<js::JSIContext> context)
-    : js_context_(context),
-      js_env_prepared_(false),
-      js_core_loaded_(false),
-      global_inited_(false) {}
+    : js_context_(std::move(context)) {}
 
 JSRealm::~JSRealm() {
 #if ENABLE_TRACE_PERFETTO
@@ -108,7 +105,7 @@ void JSRealm::PrepareJSEnv(
     return;
   }
 
-  // Prepare the JS env once per context wrapper.
+  // Prepare the JS env once per realm.
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_PREPARE_JS_ENV);
   bool has_core_js = js::EvaluatePreloadSources(*rt, js_preload);
   js_env_prepared_ = true;
@@ -189,7 +186,7 @@ void SharedJSRealm::AddLifecycleListener(
 }
 
 SingleJSRealm::SingleJSRealm(std::shared_ptr<js::JSIContext> context)
-    : JSRealm(context) {}
+    : JSRealm(std::move(context)) {}
 
 void SingleJSRealm::InitGlobal(
     base::UnsafeOwningPtr<js::Runtime>& runtime,
@@ -197,8 +194,6 @@ void SingleJSRealm::InitGlobal(
     const tasm::PageOptions& page_options) {
   InitGlobalObject(runtime, post_man, page_options, true);
 }
-
-// -------- New "shared Isolate/VM + per-page isolated Context" scheme --------
 
 SharedVMGlobalRealm::SharedVMGlobalRealm(
     std::shared_ptr<js::JSIContext> context, const std::string& group_id)

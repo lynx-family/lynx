@@ -128,14 +128,8 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager {
       const runtime::js::JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options);
 
-  // -------- New "shared Isolate/VM + per-page isolated Context" scheme
-  // -------- Everything below is only reachable when the caller opts in through
-  // the `enable_new_share_group` runtime flag (LynxGroup#enableNewShareGroup).
-  // It never runs on the legacy shared-context path.
-
-  // Ensure the group's global context exists (created and corejs loaded once),
-  // returning the owning realm. The realm owns the group's global runtime
-  // (and thus the shared VM + global context) and tracks the live page count.
+  // Create the opt-in shared global realm once and retain it for live
+  // executors.
   SharedVMGlobalRealm* EnsureNewShareGroupGlobalContext(
       bool force_use_lightweight_js_engine,
       const runtime::js::JSRuntimeExternalParams& create_params,
