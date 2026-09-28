@@ -34,20 +34,6 @@ class Global : public HostGlobal {
   virtual Runtime* GetJSRuntime() = 0;
 };
 
-class SharedContextGlobal : public Global {
- public:
-  SharedContextGlobal() = default;
-  ~SharedContextGlobal() override = default;
-
-  void Release() override;
-
- private:
-  virtual void SetJSRuntime(
-      base::UnsafeOwningPtr<Runtime>& js_runtime_) override;
-  virtual Runtime* GetJSRuntime() override;
-  base::UnsafeOwningPtr<Runtime> js_runtime_;
-};
-
 class SingleGlobal : public Global {
  public:
   SingleGlobal() {}
