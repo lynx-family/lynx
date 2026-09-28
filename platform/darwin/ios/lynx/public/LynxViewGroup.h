@@ -41,6 +41,9 @@ typedef void (^LynxTemplateBundleResultBlock)(LynxTemplateBundle *_Nullable data
 
 #pragma mark - Init
 
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
 - (instancetype)initWithUrl:(NSString *)url
             templateFetcher:(id<LynxTemplateResourceFetcher>)templateFetcher;
 
