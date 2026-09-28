@@ -348,9 +348,11 @@ class Element : public lepus::RefCounted,
   // only for fiber arch, indicate current real render tree hierarchy
   Element* render_parent() { return render_parent_; }
   Element* first_render_child() { return first_render_child_; }
+  Element* last_render_child() { return last_render_child_; }
   virtual Element* first_child() const;
   virtual Element* last_child() const;
   Element* next_render_sibling() { return next_render_sibling_; }
+  Element* previous_render_sibling() { return previous_render_sibling_; }
 
   const auto& children() const { return scoped_children_; }
   const auto& logical_children() const { return logical_children_; }

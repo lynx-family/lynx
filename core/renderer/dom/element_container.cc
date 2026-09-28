@@ -32,6 +32,7 @@ ElementContainer::~ElementContainer() {
   }
   // Remove self from parent's children.
   if (parent()) {
+    element_container_parent()->EraseMountedChild(this);
     auto it = std::find(element_container_parent()->children_.begin(),
                         element_container_parent()->children_.end(), this);
     if (it != element_container_parent()->children_.end())
@@ -110,14 +111,33 @@ void ElementContainer::CalcUIIndexForFixed(ElementContainer* child,
 }
 
 void ElementContainer::AddChild(ElementContainer* child, int index) {
+  AddChildAt(child, index, nullptr);
+}
+
+bool ElementContainer::TracksMountedChildren() const {
+  return element() == element_manager()->root() && element()->IsFiberArch() &&
+         element_manager()->GetEnableUnifyFixedOrderFix() &&
+         element()->IsFixedUnifiedEnabled() && !element()->GetEnableFixedNew();
+}
+
+void ElementContainer::EraseMountedChild(ElementContainer* child) {
+  if (!mounted_children_) return;
+  auto& mounted = *mounted_children_;
+  for (size_t i = mounted.size(); i > 0; --i) {
+    if (mounted[i - 1] == child) {
+      mounted.erase(mounted.begin() + i - 1);
+      return;
+    }
+  }
+}
+
+void ElementContainer::AddChildAt(ElementContainer* child, int index,
+                                  const InsertionPoint* point) {
   if (child->parent()) {
-    child->RemoveFromParent(true);
+    child->RemoveFromParent(true, true);
   }
   children_.push_back(child);
 
-  if (!child->element()->IsLayoutOnly()) {
-    none_layout_only_children_size_++;
-  }
   // If the index is equal to -1 should add to the last. The node could be
   // position: fixed or with z-index.
   if (index != -1) {
@@ -125,6 +145,57 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
   }
 
   CalcUIIndexForFixed(child, index);
+
+  if (TracksMountedChildren()) {
+    if (!mounted_children_) {
+      mounted_children_ = std::make_unique<base::Vector<ElementContainer*>>();
+    }
+    auto& mounted = *mounted_children_;
+    size_t slot = mounted.size();
+    if (point) {
+      // Count only the suffix that the platform will shift. Appending to the
+      // physical tail does not scan the existing root children.
+      index = none_layout_only_children_size_;
+      if (point->kind != InsertionPoint::Kind::kAppend) {
+        while (slot > 0) {
+          auto* entry = mounted[slot - 1];
+          if (entry == point->anchor &&
+              point->kind == InsertionPoint::Kind::kAfter) {
+            break;
+          }
+          --slot;
+          index -= !entry->element()->IsLayoutOnly();
+          if (entry == point->anchor) break;
+        }
+        DCHECK(point->kind == InsertionPoint::Kind::kBefore
+                   ? slot < mounted.size() && mounted[slot] == point->anchor
+                   : slot > 0 && mounted[slot - 1] == point->anchor);
+      }
+    } else if (index != -1) {
+      // Legacy numeric insertion goes before empty boundaries sharing its
+      // index. A newly registered fixed boundary follows existing boundaries.
+      if (child->element()->IsFixedUnifiedOnly() && child->ZIndex() == 0) {
+        index += static_cast<int>(negative_z_children_.size());
+      }
+      int remaining = none_layout_only_children_size_ - index;
+      const bool before_empty =
+          !child->element()->IsFixedUnifiedOnly() || child->ZIndex() != 0;
+      while (slot > 0 &&
+             (remaining > 0 ||
+              (before_empty && mounted[slot - 1]->element()->IsLayoutOnly()))) {
+        --slot;
+        remaining -= !mounted[slot]->element()->IsLayoutOnly();
+      }
+    }
+    if (!child->element()->IsLayoutOnly() ||
+        child->element()->IsFixedUnifiedOnly()) {
+      mounted.insert(mounted.begin() + slot, child);
+    }
+  }
+
+  if (!child->element()->IsLayoutOnly()) {
+    none_layout_only_children_size_++;
+  }
 
   child->set_parent(this);
   if ((child->ZIndex() != 0 || child->IsSticky()) && need_update_) {
@@ -136,10 +207,12 @@ void ElementContainer::AddChild(ElementContainer* child, int index) {
 }
 
 void ElementContainer::RemoveChild(ElementContainer* child) {
+  EraseMountedChild(child);
   auto it = std::find(children_.begin(), children_.end(), child);
   if (it != children_.end()) {
     children_.erase(it);
-    if (child->element()->ZIndex() < 0) {
+    // The style may already have changed when a negative-z child is removed.
+    if (child->ZIndex() < 0 || child->old_z_index() < 0) {
       auto z_it = std::find(negative_z_children_.begin(),
                             negative_z_children_.end(), child);
       if (z_it != negative_z_children_.end()) {
@@ -166,15 +239,21 @@ void ElementContainer::RemoveChild(ElementContainer* child) {
   }
 }
 
-void ElementContainer::RemoveFromParent(bool is_move) {
+void ElementContainer::RemoveFromParent(bool is_move, bool preserve_fixed) {
   if (!parent()) return;
+  auto* root = element_manager()->root();
+  preserve_fixed = preserve_fixed && root &&
+                   root->element_container_impl()->TracksMountedChildren();
   if (!element()->IsLayoutOnly()) {
     painting_context()->RemovePaintingNode(parent()->id(), id(), 0, is_move);
   } else {
     // Layout only node remove children from parent recursively.
     auto* child = element()->first_render_child();
     while (child) {
-      child->element_container_impl()->RemoveFromParent(is_move);
+      if (!preserve_fixed || !child->IsFixedNewOrUnified()) {
+        child->element_container_impl()->RemoveFromParent(is_move,
+                                                          preserve_fixed);
+      }
       child = child->next_render_sibling();
     }
   }
@@ -255,7 +334,8 @@ std::pair<ElementContainer*, int> ElementContainer::FindParentForChild(
 }
 
 void ElementContainer::AttachChildToTargetContainerRecursive(
-    ElementContainer* parent, Element* child, int& index) {
+    ElementContainer* parent, Element* child, int& index,
+    InsertionPoint* point) {
   if (child->ZIndex() != 0 || child->IsFixedNewOrUnified()) {
     if (child->IsFixedNewOrUnified()) {
       // fixed node should attach to page root.
@@ -263,9 +343,18 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
                    ->element_manager()
                    ->root()
                    ->element_container_impl();
+      if (parent->TracksMountedChildren()) {
+        // Nested fixed subtrees have their own root position. A pending Fiber
+        // reattachment must first refresh their insertion order.
+        if (child->element_container_impl()->parent() ||
+            (child->dirty() & Element::kDirtyReAttachContainer)) {
+          return;
+        }
+        parent->InsertElementContainerAccordingToElement(child);
+        return;
+      }
     }
-    auto ui_parent =
-        parent->EnclosingStackingContextNode()->CastToElementContainer();
+    auto* ui_parent = parent->EnclosingNativeStackingContextNode();
     ui_parent->AddChild(child->element_container_impl(), -1);
     return;
   }
@@ -286,15 +375,18 @@ void ElementContainer::AttachChildToTargetContainerRecursive(
       !child->is_wrapper() && !child->is_virtual()) {
     child->TransitionToNativeView();
   }
-  parent->AddChild(child->element_container_impl(), index);
+  parent->AddChildAt(child->element_container_impl(), index, point);
   if (!child->IsLayoutOnly()) {
     ++index;
+    if (point) {
+      *point = {InsertionPoint::Kind::kAfter, child->element_container_impl()};
+    }
     return;
   }
   // Layout only node should add subtree to parent recursively.
   auto* grand = child->first_render_child();
   while (grand) {
-    AttachChildToTargetContainerRecursive(parent, grand, index);
+    AttachChildToTargetContainerRecursive(parent, grand, index, point);
     grand = grand->next_render_sibling();
   }
 }
@@ -316,16 +408,35 @@ bool ElementContainer::HasUIPrimitive() const {
   return element() && !element()->CanBeLayoutOnly();
 }
 
+ElementContainer* ElementContainer::EnclosingNativeStackingContextNode() {
+  auto* context = EnclosingStackingContextNode()->CastToElementContainer();
+  if (context->element()->IsLayoutOnly() &&
+      context->element()->IsFixedUnifiedOnly()) {
+    // A layout-only unified fixed node has no native stacking container.
+    // Its descendants mount at the page root, outside logical ancestors.
+    return element_manager()->root()->element_container_impl();
+  }
+  return context;
+}
+
 void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
                                                                 Element* ref) {
   if (child->IsFixedNewOrUnified()) {
-    element_manager()->root()->element_container_impl()->AddChild(
-        child->element_container_impl(), -1);
+    auto* root = element_manager()->root()->element_container_impl();
+    root->AddChild(child->element_container_impl(), -1);
+    if (root->TracksMountedChildren() && child->IsLayoutOnly()) {
+      InsertionPoint point{InsertionPoint::Kind::kAfter,
+                           child->element_container_impl()};
+      int index = 0;
+      for (auto* grand = child->first_render_child(); grand;
+           grand = grand->next_render_sibling()) {
+        AttachChildToTargetContainerRecursive(root, grand, index, &point);
+      }
+    }
     return;
   }
   if (child->ZIndex() != 0) {
-    auto* enclosing_stacking_node =
-        EnclosingStackingContextNode()->CastToElementContainer();
+    auto* enclosing_stacking_node = EnclosingNativeStackingContextNode();
     enclosing_stacking_node->AddChild(child->element_container_impl(), -1);
     return;
   }
@@ -337,12 +448,126 @@ void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
       return;
     }
   }
+  InsertionPoint point;
+  if (FindRootInsertionPoint(child, ref, point)) {
+    int index = 0;
+    AttachChildToTargetContainerRecursive(
+        element_manager()->root()->element_container_impl(), child, index,
+        &point);
+    return;
+  }
   std::pair<ElementContainer*, int> result;
   result = FindParentAndIndexForChildForFiber(element(), child, ref);
   if (result.first) {
     int index = result.second;
     AttachChildToTargetContainerRecursive(result.first, child, index);
   }
+}
+
+ElementContainer* ElementContainer::FindLastMountedChild(Element* node) {
+  if (node->IsFixedNewOrUnified() || node->ZIndex() != 0) return nullptr;
+  if (!node->IsLayoutOnly()) {
+    auto* container = node->element_container_impl();
+    return !node->is_sticky() && container->parent() == this ? container
+                                                             : nullptr;
+  }
+  for (auto* child = node->last_render_child(); child;
+       child = child->previous_render_sibling()) {
+    if (auto* found = FindLastMountedChild(child)) return found;
+  }
+  return nullptr;
+}
+
+ElementContainer* ElementContainer::FindFirstMountedChild(
+    Element* node, bool& contains_fixed) {
+  if (node->IsFixedNewOrUnified()) {
+    contains_fixed = true;
+    return nullptr;
+  }
+  if (node->ZIndex() != 0) return nullptr;
+  if (!node->IsLayoutOnly()) {
+    return FindLastMountedChild(node);
+  }
+  for (auto* child = node->first_render_child(); child;
+       child = child->next_render_sibling()) {
+    if (auto* found = FindFirstMountedChild(child, contains_fixed))
+      return found;
+  }
+  return nullptr;
+}
+
+bool ElementContainer::FindRootInsertionPoint(Element* child, Element* ref,
+                                              InsertionPoint& point) {
+  if (!element_manager()->root()) return false;
+  auto* root = element_manager()->root()->element_container_impl();
+  if (!root->TracksMountedChildren()) return false;
+  auto* owner = element();
+  while (owner && owner->IsLayoutOnly() && !owner->IsFixedUnifiedOnly()) {
+    if (!ref) ref = owner->next_render_sibling();
+    owner = owner->render_parent();
+  }
+  if (!owner || (owner != root->element() &&
+                 !(owner->IsLayoutOnly() && owner->IsFixedUnifiedOnly()))) {
+    return false;
+  }
+  while (ref) {
+    bool contains_fixed = false;
+    if (auto* mounted = root->FindFirstMountedChild(ref, contains_fixed)) {
+      point = {InsertionPoint::Kind::kBefore, mounted};
+      return true;
+    }
+    // An empty ordinary wrapper has no boundary of its own. Use its following
+    // render sibling, stopping at independent fixed references so their
+    // historical numeric insertion semantics remain intact.
+    if (!ref->IsLayoutOnly() || contains_fixed) {
+      break;
+    }
+    auto* next = ref;
+    while (next != owner && !next->next_render_sibling()) {
+      next = next->render_parent();
+      if (!next) break;
+    }
+    ref = next && next != owner ? next->next_render_sibling() : nullptr;
+  }
+  if (owner->IsFixedUnifiedOnly()) {
+    // Use render links, not scoped sibling lookups: appending repeatedly to a
+    // fixed subtree must not rescan its growing prefix.
+    for (auto* node = child; node != owner; node = node->render_parent()) {
+      if (!node) return false;
+      for (auto* prev = node->previous_render_sibling(); prev;
+           prev = prev->previous_render_sibling()) {
+        if (auto* mounted = root->FindLastMountedChild(prev)) {
+          point = {InsertionPoint::Kind::kAfter, mounted};
+          return true;
+        }
+      }
+    }
+    if (owner->element_container_impl()->parent() != root) return false;
+    point = {InsertionPoint::Kind::kAfter, owner->element_container_impl()};
+    return true;
+  }
+  if (!ref) {
+    point = {InsertionPoint::Kind::kAppend};
+    if (root->mounted_children_) {
+      // Sorted positive-z and native sticky nodes remain after ordinary UIs.
+      for (size_t i = root->mounted_children_->size(); i > 0; --i) {
+        auto* entry = (*root->mounted_children_)[i - 1];
+        if (entry->ZIndex() < 0 ||
+            (entry->ZIndex() == 0 &&
+             (entry->element()->IsLayoutOnly() || !entry->IsSticky()))) {
+          if (i != root->mounted_children_->size()) {
+            point = {InsertionPoint::Kind::kAfter, entry};
+          }
+          break;
+        }
+        point = {InsertionPoint::Kind::kBefore, entry};
+      }
+    }
+    return true;
+  }
+  // Preserve the existing numeric semantics of ordinary fixed references and
+  // layout-only wrappers, including coincident empty fixed boundaries.
+  return false;
 }
 
 ElementContainer::PlatformLayout ElementContainer::CalculatePlatformLayout(
@@ -619,8 +844,34 @@ void ElementContainer::TransitionToNativeView(
   LOGI("[ElementContainer] TransitionToNativeView tag:"
        << element()->GetTag().str() << ",id:" << element()->impl_id());
 
+  auto* root_element = element_manager()->root();
+  auto* root = root_element ? root_element->element_container_impl() : nullptr;
+  const bool retain_boundary = root && root->TracksMountedChildren() &&
+                               parent() == root &&
+                               element()->IsFixedUnifiedOnly();
+  InsertionPoint point{InsertionPoint::Kind::kAppend};
+  if (retain_boundary) {
+    // Remove ordinary descendants first: negative-z children can precede our
+    // marker. Independent nested fixed entries keep their root positions.
+    for (auto* child = element()->first_render_child(); child;
+         child = child->next_render_sibling()) {
+      if (!child->IsFixedNewOrUnified()) {
+        child->element_container_impl()->RemoveFromParent(true, true);
+      }
+    }
+    auto& mounted = *root->mounted_children_;
+    for (size_t i = mounted.size(); i > 0; --i) {
+      if (mounted[i - 1] == this) {
+        if (i < mounted.size()) {
+          point = {InsertionPoint::Kind::kBefore, mounted[i]};
+        }
+        break;
+      }
+    }
+  }
+
   // Remove from current parent.
-  RemoveFromParent(true);
+  RemoveFromParent(true, true);
 
   // Create LynxUI in impl layer.
   element()->set_is_layout_only(false);
@@ -635,7 +886,11 @@ void ElementContainer::TransitionToNativeView(
       element()->NodeIndex());
 
   // Insert children to this.
-  InsertSelf();
+  if (retain_boundary) {
+    root->AddChildAt(this, -1, &point);
+  } else {
+    InsertSelf();
+  }
 
   // Mark need update layout value to impl layer.
   element()->MarkFrameChanged();
@@ -660,7 +915,7 @@ void ElementContainer::MoveContainers(ElementContainer* old_parent,
   if (!new_parent) return;
   if (old_parent == new_parent) return;
 
-  RemoveFromParent(true);
+  RemoveFromParent(true, true);
   new_parent->AddChild(this, -1);
 }
 
@@ -699,9 +954,8 @@ void ElementContainer::ZIndexChanged() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_Z_INDEX_CHANGED);
   Element* element_parent = element()->render_parent();
   bool is_stacking_context = IsStackingContextNode();
-  auto* parent_stacking_context = element_container_parent()
-                                      ->EnclosingStackingContextNode()
-                                      ->CastToElementContainer();
+  auto* parent_stacking_context =
+      element_container_parent()->EnclosingNativeStackingContextNode();
   auto z = ZIndex();
   // The stacking context changed, need to move the z-index children
   if (was_stacking_context_ != is_stacking_context) {
@@ -821,7 +1075,7 @@ void ElementContainer::StickyChanged() {
   }
   bool is_sticky = IsSticky();
   if (was_sticky_ != is_sticky) {
-    RemoveFromParent(true);
+    RemoveFromParent(true, true);
     element()
         ->parent()
         ->element_container_impl()
@@ -985,7 +1239,7 @@ void ElementContainer::PositionFixedChanged() {
   }
   bool is_position_fixed = element()->is_fixed();
   if (was_position_fixed_ != is_position_fixed) {
-    RemoveFromParent(true);
+    RemoveFromParent(true, true);
     element()
         ->parent()
         ->element_container_impl()
