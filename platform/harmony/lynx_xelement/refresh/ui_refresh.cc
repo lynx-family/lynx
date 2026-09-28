@@ -194,6 +194,11 @@ void UIRefresh::OnNodeEvent(ArkUI_NodeEvent* event) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           Node(), NODE_REFRESH_REFRESHING, 0);
     } else {
+      if (Tag() == "refresh") {
+        // Persist the gesture-started state across subsequent layout updates.
+        NodeManager::Instance().SetAttributeWithNumberValue(
+            Node(), NODE_REFRESH_REFRESHING, 1);
+      }
       auto dict = lepus::Dictionary::Create();
       dict->SetValue("isManual", action_last_loop_ == UI_TOUCH_EVENT_ACTION_UP);
       CustomEvent custom_event{Sign(), "startrefresh", "detail",
