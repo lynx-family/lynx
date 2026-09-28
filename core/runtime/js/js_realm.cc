@@ -19,14 +19,7 @@ namespace runtime {
 
 namespace {
 
-// The corejs-exported globals that a page context needs. lynx_core.js is only
-// executed on the group's global context; each page context copies references
-// to these entries instead of re-running corejs. Keep this list curated to the
-// values corejs statically assigns onto `nativeGlobal`/globalThis (see
-// lynx-core index.card.ts / nativeGlobal.ts) plus the native-installed shared
-// host objects. Page-level stateful objects reached through the per-page `app`
-// object (publishEvent / callFunction / onAppReload ...) are intentionally
-// excluded: they live on the app object created by loadCard, not on globalThis.
+// Copy only stateless corejs exports and host objects into page contexts.
 constexpr const char* kNewShareGroupCoreJSExports[] = {
     // corejs functions statically installed on nativeGlobal (index.card.ts).
     "loadCard",
@@ -43,15 +36,9 @@ constexpr const char* kNewShareGroupCoreJSExports[] = {
     "AbortSignal",
     "URL",
     "URLSearchParams",
-    // Flag corejs installs on globalThis (nativeGlobal.ts); the app-service.js
-    // bundle wrapper reads it from its own realm's globalThis to decide whether
-    // to return an `init` factory.
+    // Lets the page bundle return an init factory.
     "bundleSupportLoadScript",
-    // Stateless shared host objects. The page context skips creating them
-    // (Global::Init install_shared_host_objects=false) and instead references
-    // the single instances installed on the group's global context. All page
-    // runtimes share the same VM/Isolate, so referencing the same JS values
-    // across contexts is safe.
+    // Host objects shared by reference within the same VM.
     "SystemInfo",
     "LynxJSBI",
     "TextCodecHelper",
@@ -92,10 +79,7 @@ void JSRealm::PrepareJSEnv(
     return;
   }
 
-  // This method may be invoked multiple times (e.g. multiple runtimes created
-  // for the same shared context). We must guarantee the env preparation is
-  // executed only once, while allowing a deferred corejs load to be completed
-  // later without replaying other preload scripts.
+  // Allow deferred corejs loading without replaying other preload scripts.
   if (js_env_prepared_) {
     EnsureCoreJSLoaded(*rt, js_preload);
     return;
