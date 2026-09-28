@@ -85,6 +85,13 @@ enum class TokenType {
   PATH,             // path
   AT,               // at
   DATA,             // data
+  /* corner-shape keywords */
+  SQUIRCLE,
+  SQUARE,
+  BEVEL,
+  SCOOP,
+  NOTCH,
+  SUPERELLIPSE,
   /* border keywords */
   THIN,    // thin
   MEDIUM,  // medium
@@ -377,6 +384,7 @@ enum class TokenType {
 
   INFINITE,
   INFINITY_TOKEN,
+  NEGATIVE_INFINITY,
 
   PAUSED,
   RUNNING,

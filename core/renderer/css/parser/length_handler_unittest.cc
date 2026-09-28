@@ -102,6 +102,34 @@ TEST(LengthHandler, NumericLengthUsesPxPattern) {
   EXPECT_EQ(css_value.GetNumber(), 10);
 }
 
+TEST(LengthHandler, ScientificNotation) {
+  struct TestCase {
+    const char* input;
+    double value;
+    CSSValuePattern pattern;
+  };
+  const TestCase cases[] = {{"1e2px", 100, CSSValuePattern::PX},
+                            {"1E+2px", 100, CSSValuePattern::PX},
+                            {"1E-2em", 0.01, CSSValuePattern::EM},
+                            {".5e2px", 50, CSSValuePattern::PX},
+                            {"6E-1%", 0.6, CSSValuePattern::PERCENT}};
+  CSSParserConfigs configs;
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.input);
+    CSSValue value;
+    ASSERT_TRUE(
+        LengthHandler::Process(lepus::Value(test.input), value, configs));
+    EXPECT_EQ(value.GetPattern(), test.pattern);
+    EXPECT_DOUBLE_EQ(value.GetNumber(), test.value);
+  }
+
+  for (const auto* input : {"1e+px", "1E-", "1e++2px"}) {
+    SCOPED_TRACE(input);
+    CSSValue value;
+    EXPECT_FALSE(LengthHandler::Process(lepus::Value(input), value, configs));
+  }
+}
+
 TEST(LengthHandler, TextDecorationPatternLengths) {
   StyleMap output;
   CSSParserConfigs configs;
