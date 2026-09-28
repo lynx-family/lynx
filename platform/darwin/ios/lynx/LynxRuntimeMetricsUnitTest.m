@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxScreenMetrics.h>
+#import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxViewBuilder.h>
@@ -13,10 +14,15 @@
 @interface LynxScreenMetricsUnitTest : XCTestCase
 @end
 
+static LynxViewGroup* CreateLynxViewGroup(NSString* url) {
+  LynxTemplateBundle* bundle = [[LynxTemplateBundle alloc] initWithTemplate:[NSData data]];
+  return [[LynxViewGroup alloc] initWithUrl:url templateBundle:bundle];
+}
+
 @implementation LynxScreenMetricsUnitTest
 
 - (void)testBuilderScreenMetricsOverrideGroup {
-  LynxViewGroup* group = [[LynxViewGroup alloc] init];
+  LynxViewGroup* group = CreateLynxViewGroup(@"unit-test://screen-metrics");
   group.screenSize = CGSizeMake(390, 844);
   group.screenScale = 3;
 
@@ -32,7 +38,7 @@
 }
 
 - (void)testInvalidBuilderScreenMetricsFallBackToGroup {
-  LynxViewGroup* group = [[LynxViewGroup alloc] init];
+  LynxViewGroup* group = CreateLynxViewGroup(@"unit-test://invalid-screen-metrics");
   group.screenSize = CGSizeMake(390, 844);
   group.screenScale = 3;
 

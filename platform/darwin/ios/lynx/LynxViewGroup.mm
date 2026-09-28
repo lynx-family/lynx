@@ -40,11 +40,10 @@
   _nextLynxViewId = 1;
   _viewMap = [NSMapTable strongToWeakObjectsMapTable];
   pthread_rwlock_init(&_viewMapLock, nil);
-  _fetch_task = dispatch_group_create();
   pthread_mutex_init(&_callbacksLock, NULL);
   _callbacks = [[NSMutableArray alloc] init];
-  if (bundle == nil) {
-    // no template bundle provided, start a fetch task
+  if (bundle == nil && templateFetcher != nil) {
+    _fetch_task = dispatch_group_create();
     dispatch_group_enter(_fetch_task);
     [self fetchTemplateInternal];
   }
@@ -52,7 +51,7 @@
 }
 
 - (instancetype)initWithUrl:(nonnull NSString *)url
-            templateFetcher:(id<LynxTemplateResourceFetcher>)templateFetcher {
+            templateFetcher:(nonnull id<LynxTemplateResourceFetcher>)templateFetcher {
   return [[LynxViewGroup alloc] init:url templateBundle:nil templateFetcher:templateFetcher];
 }
 
@@ -173,6 +172,7 @@
     callback(nil, _fetchError);
     return;
   }
+  BOOL shouldStartFetch = NO;
   @try {
     pthread_mutex_lock(&_callbacksLock);
     // double check
@@ -185,8 +185,16 @@
       return;
     }
     [_callbacks addObject:[callback copy]];
+    if (_fetch_task == nil && self.templateResourceFetcher != nil) {
+      _fetch_task = dispatch_group_create();
+      dispatch_group_enter(_fetch_task);
+      shouldStartFetch = YES;
+    }
   } @finally {
     pthread_mutex_unlock(&_callbacksLock);
+  }
+  if (shouldStartFetch) {
+    [self fetchTemplateInternal];
   }
 }
 
@@ -196,6 +204,9 @@
   }
   if (_hasTimeout) {
     // If waiting timeout has occurred previously, return early to avoid redundant waits
+    return nil;
+  }
+  if (_fetch_task == nil) {
     return nil;
   }
   dispatch_time_t wait = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);

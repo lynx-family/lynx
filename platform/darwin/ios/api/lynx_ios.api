@@ -5852,6 +5852,7 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public LynxTemplateData* LynxViewGroup::globalProps globalProps;
   public LynxTemplateBundle* LynxViewGroup::templateBundle templateBundle;
   public id<LynxLogicExecutor> LynxViewGroup::logicExecutor logicExecutor;
+  public instancetype LynxViewGroup::NS_UNAVAILABLE();
   public instancetype LynxViewGroup::initWithUrl:templateFetcher:(NSString *url,[templateFetcher] id< LynxTemplateResourceFetcher > templateFetcher);
   public instancetype LynxViewGroup::initWithUrl:templateBundle:(NSString *url,[templateBundle] LynxTemplateBundle *bundle);
   public bool LynxViewGroup::isTemplateBundleReady();
@@ -5866,6 +5867,7 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public void LynxViewGroup::registerModule:(Class< LynxModule > module);
   public void LynxViewGroup::registerModule:param:(Class< LynxModule > module,[param] nullable id param);
   public LynxTemplateBundle *_Nullable LynxViewGroup()::getTemplateBundleNonBlocking();
+  public instancetype LynxViewGroup::NS_UNAVAILABLE();
 }
 
 public protocol LynxViewLifecycle-p : <NSObject>, <LynxTimingListener>, <LynxJSBTimingListener>, <LynxViewBaseLifecycle> {
