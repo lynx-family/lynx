@@ -108,7 +108,6 @@ QuickjsRuntime::~QuickjsRuntime() {
   if (quickjs_runtime_wrapper_) {
     quickjs_runtime_wrapper_->RemoveObserver(this);
   }
-  context_->Release();
   context_.reset();
   LOGI("LYNX free quickjs context");
 }
