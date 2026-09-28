@@ -9,9 +9,15 @@ import com.lynx.tasm.service.ILynxDevToolService;
 import com.lynx.tasm.service.LynxServiceCenter;
 
 public class LynxDevToolUtils {
-  private static final ILynxDevToolService DEVTOOL_SERVICE =
-      LynxServiceCenter.inst().getService(ILynxDevToolService.class);
   private static final String TAG = "LynxDevToolUtils";
+  private static volatile ILynxDevToolService sDevToolService = null;
+
+  static ILynxDevToolService getDevToolService() {
+    if (sDevToolService == null) {
+      sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    }
+    return sDevToolService;
+  }
 
   // set custom native loader for devtool.
   // the loader will be used to load v8 and devtool library.
@@ -19,8 +25,9 @@ public class LynxDevToolUtils {
   // the method is optional, if user does not set devtool loader,
   // devtool will load v8 and devtool native library by default way.
   static public void setDevToolLibraryLoader(INativeLibraryLoader loader) {
-    if (DEVTOOL_SERVICE != null) {
-      DEVTOOL_SERVICE.devtoolEnvSetDevToolLibraryLoader(loader);
+    ILynxDevToolService devToolService = getDevToolService();
+    if (devToolService != null) {
+      devToolService.devtoolEnvSetDevToolLibraryLoader(loader);
     } else {
       LLog.e(TAG, "failed to get DevToolService");
     }
