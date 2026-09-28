@@ -118,6 +118,7 @@ public class AndroidView extends ViewGroup
   private Renderer mRenderer;
   private boolean mConsumeHoverEvent = false;
   private boolean nativeInteractionEnabled = false;
+  private boolean mRendererNativeInteractionEnabled = false;
   private boolean mPanInterceptSelf = false;
   private boolean mPanInterceptAncestors = false;
   private boolean mHasSetPanInterceptAncestors = false;
@@ -135,6 +136,9 @@ public class AndroidView extends ViewGroup
   @Override
   public void setRenderer(Renderer renderer) {
     mRenderer = renderer;
+    if (renderer != null) {
+      mRendererNativeInteractionEnabled = renderer.getLynxContext().getEnableNativeInteraction();
+    }
   }
 
   @Override
@@ -249,7 +253,7 @@ public class AndroidView extends ViewGroup
     if (mPanInterceptSelf) {
       return false;
     }
-    if (this.nativeInteractionEnabled) {
+    if (mRenderer != null ? mRendererNativeInteractionEnabled : nativeInteractionEnabled) {
       return true;
     }
     if (isInterceptGestureNotNull()) {
@@ -275,6 +279,13 @@ public class AndroidView extends ViewGroup
 
   public void setNativeInteractionEnabled(boolean enabled) {
     this.nativeInteractionEnabled = enabled;
+  }
+
+  @Override
+  public void setNativeInteractionEnabledForRenderer(Boolean enabled) {
+    mRendererNativeInteractionEnabled = enabled != null
+        ? enabled
+        : mRenderer != null && mRenderer.getLynxContext().getEnableNativeInteraction();
   }
 
   public void setPanInterceptSelf(boolean panInterceptSelf) {

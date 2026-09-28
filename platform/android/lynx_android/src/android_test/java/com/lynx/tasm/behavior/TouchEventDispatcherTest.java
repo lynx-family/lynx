@@ -8,6 +8,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Matrix;
 import android.graphics.PointF;
@@ -16,6 +19,7 @@ import android.view.MotionEvent;
 import com.lynx.react.bridge.DynamicFromArray;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.LynxEventEmitter;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.behavior.event.EventTarget;
@@ -424,6 +428,108 @@ public class TouchEventDispatcherTest {
     } catch (Throwable e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  @Test
+  public void testFragmentLayerConsumeSlideEventUsesDownSnapshot() {
+    mContext.setEmbeddedMode(EmbeddedMode.FRAGMENT_LAYER_RENDER);
+    IPaintingContext paintingContext = mock(IPaintingContext.class);
+    mOwner.setPaintingContext(paintingContext);
+    when(paintingContext.dispatchPlatformMotionEvent(
+             org.mockito.ArgumentMatchers.any(MotionEvent.class),
+             org.mockito.ArgumentMatchers.anyInt()))
+        .thenReturn(true);
+    when(paintingContext.getPlatformEventBehavior())
+        .thenReturn(IPaintingContext.EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT);
+    when(paintingContext.getPlatformConsumeSlideEventAngles())
+        .thenReturn(new float[] {80.f, 100.f, -10.f, 10.f});
+    when(paintingContext.getPlatformTouchTargetSign()).thenReturn(-1);
+
+    UIBody.UIBodyView rootView = mOwner.getRootUI().getView();
+    final ArrayList<Boolean> disallowIntercept = new ArrayList<>();
+    AndroidView parentView = new AndroidView(mContext) {
+      @Override
+      public void requestDisallowInterceptTouchEvent(boolean disallow) {
+        disallowIntercept.add(disallow);
+        super.requestDisallowInterceptTouchEvent(disallow);
+      }
+    };
+    parentView.addView(rootView);
+
+    long time = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, 100, 100, 0);
+    MotionEvent smallMove =
+        MotionEvent.obtain(time, time + 1, MotionEvent.ACTION_MOVE, 105, 100, 0);
+    MotionEvent move = MotionEvent.obtain(time, time + 2, MotionEvent.ACTION_MOVE, 130, 100, 0);
+    try {
+      assertTrue(mDispatcher.onTouchEvent(down, mOwner.getRootUI()));
+      assertFalse(mDispatcher.consumeSlideEvent(down));
+      assertTrue(disallowIntercept.get(disallowIntercept.size() - 1));
+
+      assertTrue(mDispatcher.onTouchEvent(smallMove, mOwner.getRootUI()));
+      assertFalse(mDispatcher.consumeSlideEvent(smallMove));
+      assertTrue(disallowIntercept.get(disallowIntercept.size() - 1));
+
+      assertTrue(mDispatcher.onTouchEvent(move, mOwner.getRootUI()));
+      assertTrue(mDispatcher.consumeSlideEvent(move));
+      assertTrue(disallowIntercept.get(disallowIntercept.size() - 1));
+      verify(paintingContext, times(1)).getPlatformConsumeSlideEventAngles();
+
+      mDispatcher.reset();
+      assertFalse(mDispatcher.consumeSlideEvent(move));
+    } finally {
+      down.recycle();
+      smallMove.recycle();
+      move.recycle();
+    }
+  }
+
+  @Test
+  public void testFragmentLayerConsumeSlideEventRejectsOutsideAngle() {
+    mContext.setEmbeddedMode(EmbeddedMode.FRAGMENT_LAYER_RENDER);
+    IPaintingContext paintingContext = mock(IPaintingContext.class);
+    mOwner.setPaintingContext(paintingContext);
+    when(paintingContext.dispatchPlatformMotionEvent(
+             org.mockito.ArgumentMatchers.any(MotionEvent.class),
+             org.mockito.ArgumentMatchers.anyInt()))
+        .thenReturn(true);
+    when(paintingContext.getPlatformEventBehavior())
+        .thenReturn(IPaintingContext.EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT);
+    when(paintingContext.getPlatformConsumeSlideEventAngles())
+        .thenReturn(new float[] {80.f, 100.f});
+    when(paintingContext.getPlatformTouchTargetSign()).thenReturn(-1);
+
+    UIBody.UIBodyView rootView = mOwner.getRootUI().getView();
+    final ArrayList<Boolean> disallowIntercept = new ArrayList<>();
+    AndroidView parentView = new AndroidView(mContext) {
+      @Override
+      public void requestDisallowInterceptTouchEvent(boolean disallow) {
+        disallowIntercept.add(disallow);
+        super.requestDisallowInterceptTouchEvent(disallow);
+      }
+    };
+    parentView.addView(rootView);
+
+    long time = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, 100, 100, 0);
+    MotionEvent move = MotionEvent.obtain(time, time + 1, MotionEvent.ACTION_MOVE, 130, 100, 0);
+    MotionEvent secondMove =
+        MotionEvent.obtain(time, time + 2, MotionEvent.ACTION_MOVE, 100, 130, 0);
+    try {
+      assertTrue(mDispatcher.onTouchEvent(down, mOwner.getRootUI()));
+      assertFalse(mDispatcher.consumeSlideEvent(down));
+      assertTrue(mDispatcher.onTouchEvent(move, mOwner.getRootUI()));
+      assertFalse(mDispatcher.consumeSlideEvent(move));
+      assertFalse(disallowIntercept.get(disallowIntercept.size() - 1));
+      assertTrue(mDispatcher.onTouchEvent(secondMove, mOwner.getRootUI()));
+      assertFalse(mDispatcher.consumeSlideEvent(secondMove));
+      assertFalse(disallowIntercept.get(disallowIntercept.size() - 1));
+      verify(paintingContext, times(1)).getPlatformConsumeSlideEventAngles();
+    } finally {
+      down.recycle();
+      move.recycle();
+      secondMove.recycle();
     }
   }
 

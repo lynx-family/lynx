@@ -437,9 +437,6 @@
   } else {
     id<LynxEventTarget> touchTarget = nil;
     RUN_RENDER_SAFELY(touchTarget = [_templateRender hitTestInEventHandler:point withEvent:event];);
-    UIView* view = [super hitTest:point withEvent:event];
-    self.nestedScrollViewsChain =
-        [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:view];
     id<LynxUIRendererProtocol> uiRenderer = _templateRender.lynxUIRenderer;
     LynxEventHandler* eventHandler = uiRenderer.uiOwner.uiContext.eventHandler;
     BOOL isFragmentLayerRender = uiRenderer.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn;
@@ -448,11 +445,23 @@
       LynxTouchHandler* touchHandler = eventHandler.touchRecognizer;
       if (touchHandler.hasActivePlatformTouches) {
         eventBehavior = touchHandler.platformEventBehavior;
-      } else if (eventHandler != nil && view != nil) {
+      } else if (eventHandler != nil) {
         eventBehavior =
             [_templateRender HitTestAndCachePlatformEventBehavior:eventHandler.eventRootSign
                                                             point:point];
+        [eventHandler
+            updatePlatformConsumeSlideEventAngles:(eventBehavior &
+                                                   LynxPlatformEventBehaviorHasConsumeSlideEvent)
+                                                      ? [_templateRender
+                                                            cachedConsumeSlideEventAngles]
+                                                      : nil];
       }
+    }
+    UIView* view = [super hitTest:point withEvent:event];
+    self.nestedScrollViewsChain =
+        [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:view];
+    if (isFragmentLayerRender) {
+      LynxTouchHandler* touchHandler = eventHandler.touchRecognizer;
       touchHandler.platformEventBehavior = eventBehavior;
       [eventHandler handleFocusOnView:view
                         withContainer:self

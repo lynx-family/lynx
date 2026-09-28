@@ -45,6 +45,14 @@ PlatformRendererHarmony::PlatformRendererHarmony(
 
 PlatformRendererHarmony::~PlatformRendererHarmony() { CleanupRenderer(); }
 
+void PlatformRendererHarmony::UpdateNativeInteractionEnabled(
+    std::optional<bool> enabled) {
+  native_interaction_enabled_ = enabled;
+  if (auto host = host_.lock()) {
+    host->SetFragmentLayerNativeInteractionEnabled(enabled);
+  }
+}
+
 void PlatformRendererHarmony::InitializePlatformRenderer(
     const fml::RefPtr<PropBundle>& init_data) {
   if (context_ == nullptr) {
@@ -74,6 +82,7 @@ bool PlatformRendererHarmony::InitializeUIOwnerRenderer(
     return false;
   }
   host_ = ui->weak_from_this();
+  ui->SetFragmentLayerNativeInteractionEnabled(native_interaction_enabled_);
   return true;
 }
 
@@ -94,6 +103,7 @@ bool PlatformRendererHarmony::AttachRendererToUI(harmony::UIBase* ui) {
   }
   ui->AttachFragmentLayerRenderer(context_, GetId());
   host_ = ui->weak_from_this();
+  ui->SetFragmentLayerNativeInteractionEnabled(native_interaction_enabled_);
   return true;
 }
 

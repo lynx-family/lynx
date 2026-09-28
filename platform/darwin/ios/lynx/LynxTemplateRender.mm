@@ -1513,6 +1513,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return LynxPlatformEventBehaviorNone;
 }
 
+- (NSArray<NSNumber*>*)cachedConsumeSlideEventAngles {
+  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
+    return [(LynxUIRenderer*)_lynxUIRenderer cachedConsumeSlideEventAngles];
+  }
+  return @[];
+}
+
 #pragma mark - Life Cycle
 
 - (void)dispatchViewDidStartLoading {

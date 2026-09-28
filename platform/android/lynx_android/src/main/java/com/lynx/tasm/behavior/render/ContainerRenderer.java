@@ -16,6 +16,7 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import com.lynx.tasm.behavior.LynxContext;
@@ -30,6 +31,8 @@ public class ContainerRenderer extends ViewGroup implements IRendererHost {
 
   private Renderer mRenderer;
   private int mRendererHostFilterType = FILTER_TYPE_NONE;
+  private final LynxContext mContext;
+  private boolean mNativeInteractionEnabled;
 
   @Override
   public void setRenderer(Renderer renderer) {
@@ -48,8 +51,20 @@ public class ContainerRenderer extends ViewGroup implements IRendererHost {
 
   public ContainerRenderer(LynxContext context) {
     super(context);
+    mContext = context;
+    mNativeInteractionEnabled = context.getEnableNativeInteraction();
     setWillNotDraw(false);
     setClipChildren(false);
+  }
+
+  @Override
+  public void setNativeInteractionEnabledForRenderer(Boolean enabled) {
+    mNativeInteractionEnabled = enabled != null ? enabled : mContext.getEnableNativeInteraction();
+  }
+
+  @Override
+  public boolean onTouchEvent(MotionEvent event) {
+    return mNativeInteractionEnabled || super.onTouchEvent(event);
   }
 
   @Override

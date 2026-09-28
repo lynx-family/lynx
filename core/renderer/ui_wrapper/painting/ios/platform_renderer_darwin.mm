@@ -19,11 +19,23 @@
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIOwner+Private.h>
 #import <Lynx/LynxUIOwner.h>
+#import <objc/runtime.h>
 
 namespace lynx {
 namespace tasm {
 
 namespace {
+
+char kNativeInteractionDefaultKey;
+
+void RestoreNativeInteractionDefault(UIView* view) {
+  NSNumber* original = objc_getAssociatedObject(view, &kNativeInteractionDefaultKey);
+  if (original != nil) {
+    view.userInteractionEnabled = original.boolValue;
+    objc_setAssociatedObject(view, &kNativeInteractionDefaultKey, nil,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  }
+}
 
 bool IsOverlayRendererTag(const base::String& tag) {
   return tag.IsEqual("overlay") || tag.IsEqual("x-overlay-ng");
@@ -180,6 +192,44 @@ void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& a
     UIView<LynxRendererHost>* update_view = GetUIView();
     [[update_view renderer] updateAttributes:props];
   }
+}
+
+void PlatformRendererDarwin::UpdateNativeInteractionEnabled(std::optional<bool> enabled) {
+  native_interaction_enabled_override_ = enabled;
+  UIView<LynxRendererHost>* view = GetUIView();
+  if (view == nil || installed_renderer_ == nil || view.renderer != installed_renderer_) {
+    // A renderer may receive event props before its host is available. Apply
+    // the latest value when InitializeRendererForView installs the host. An
+    // old renderer must not mutate a host already rebound to a new renderer.
+    has_native_interaction_override_ = false;
+    return;
+  }
+  if (enabled.has_value()) {
+    if (!has_native_interaction_override_) {
+      native_interaction_enabled_before_override_ =
+          IsPlatformExtendedRenderer() && HasUIOwnerNode(GetId()) ? YES
+                                                                  : view.userInteractionEnabled;
+      objc_setAssociatedObject(view, &kNativeInteractionDefaultKey,
+                               @(native_interaction_enabled_before_override_),
+                               OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+      has_native_interaction_override_ = true;
+    }
+    view.userInteractionEnabled = *enabled;
+    return;
+  }
+  RestoreNativeInteractionEnabledIfOwned();
+}
+
+void PlatformRendererDarwin::RestoreNativeInteractionEnabledIfOwned() {
+  UIView<LynxRendererHost>* view = GetUIView();
+  if (!has_native_interaction_override_ || view == nil ||
+      (view.renderer != nil && view.renderer != installed_renderer_)) {
+    return;
+  }
+  view.userInteractionEnabled = native_interaction_enabled_before_override_;
+  objc_setAssociatedObject(view, &kNativeInteractionDefaultKey, nil,
+                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  has_native_interaction_override_ = false;
 }
 
 void PlatformRendererDarwin::OnRebuildSubRenderers() {
@@ -445,11 +495,22 @@ void PlatformRendererDarwin::InitializeRendererForView(UIView<LynxRendererHost>*
   if (view == nil || context_ == nullptr) {
     return;
   }
+  // The page renderer may reuse an externally owned LynxView. A new renderer
+  // can be constructed before the old one is destroyed, so restore the old
+  // override before binding the new host renderer.
+  if (installed_renderer_ == nil || view.renderer != installed_renderer_) {
+    RestoreNativeInteractionDefault(view);
+    has_native_interaction_override_ = false;
+  }
   LynxRenderer* renderer = [view createRendererWithSign:GetId()
                                              andContext:context_->GetRendererContext()];
   [view setRenderer:renderer];
+  installed_renderer_ = renderer;
   if (initial_props != nil) {
     [renderer updateAttributes:initial_props];
+  }
+  if (native_interaction_enabled_override_.has_value()) {
+    UpdateNativeInteractionEnabled(native_interaction_enabled_override_);
   }
 }
 
@@ -502,6 +563,11 @@ bool PlatformRendererDarwin::HasUIOwnerNode(int sign) const {
 }
 
 void PlatformRendererDarwin::CleanupUIView() {
+  UIView<LynxRendererHost>* view = GetUIView();
+  if (view != nil && view.renderer != nil && view.renderer != installed_renderer_) {
+    return;
+  }
+  RestoreNativeInteractionEnabledIfOwned();
   LynxUIOwner* owner = ui_owner_;
   bool should_remove_from_native_parent = true;
   if (HasUIOwnerNode(GetId())) {
@@ -509,12 +575,9 @@ void PlatformRendererDarwin::CleanupUIView() {
     [owner recycleNode:GetId()];
   }
 
-  UIView<LynxRendererHost>* view = GetUIView();
-  if (view != nil) {
-    [[view renderer] detachHostDecorationLayers];
-    if (should_remove_from_native_parent) {
-      [view removeFromSuperview];
-    }
+  [[view renderer] detachHostDecorationLayers];
+  if (should_remove_from_native_parent) {
+    [view removeFromSuperview];
   }
 }
 

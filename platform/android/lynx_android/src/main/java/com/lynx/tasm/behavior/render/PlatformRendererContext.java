@@ -85,6 +85,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   WeakReference<UIBody.UIBodyView> mRootView = null;
 
   HashMap<Integer, IRendererHost> mViewHolder = new HashMap<>();
+  private final HashMap<Integer, Boolean> mRendererNativeInteractionOverrides = new HashMap<>();
 
   @Nullable private PlatformFocusTarget mFocusedTarget = null;
 
@@ -322,7 +323,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         Renderer renderer = view.createRenderer(this, sign);
         renderer.setRenderHost(view);
         view.setRenderer(renderer);
-        mViewHolder.put(sign, view);
+        registerRendererHost(sign, view);
         view.invalidate();
         break;
       }
@@ -340,7 +341,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           renderer.setUIHost((LynxUI) mContext.getUIBody());
           renderer.setRenderHost(view);
           view.setRenderer(renderer);
-          mViewHolder.put(sign, view);
+          registerRendererHost(sign, view);
         }
         break;
       }
@@ -455,9 +456,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           Renderer renderer = host.createRenderer(this, sign);
           renderer.setRenderHost(host);
           host.setRenderer(renderer);
-          mViewHolder.put(sign, host);
+          registerRendererHost(sign, host);
           host.getView().invalidate();
           renderer.updateAttributes(initData);
+          applyRendererNativeInteractionOverride(sign, host);
           return;
         }
       }
@@ -485,11 +487,12 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         renderer.setUIHost(rendererHostUI);
         renderer.setRenderHost(host);
         host.setRenderer(renderer);
-        mViewHolder.put(sign, host);
+        registerRendererHost(sign, host);
         host.setWillNotDrawForRenderer(false);
         host.setClipChildrenForRenderer(false);
         host.invalidateForRenderer();
         renderer.updateAttributes(initData);
+        applyRendererNativeInteractionOverride(sign, host);
         return;
       }
       owner.cleanupCreatedView(sign, tagName, initialProps);
@@ -502,7 +505,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     Renderer renderer = view.createRenderer(this, sign);
     renderer.setRenderHost(view);
     view.setRenderer(renderer);
-    mViewHolder.put(sign, view);
+    registerRendererHost(sign, view);
     view.invalidate();
   }
 
@@ -526,6 +529,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       return (IRendererHost) ((LynxUI) ui).getView();
     }
     return null;
+  }
+
+  private void registerRendererHost(int sign, IRendererHost host) {
+    mViewHolder.put(sign, host);
+    applyRendererNativeInteractionOverride(sign, host);
+  }
+
+  private void applyRendererNativeInteractionOverride(int sign, IRendererHost host) {
+    if (mRendererNativeInteractionOverrides.containsKey(sign)) {
+      host.setNativeInteractionEnabledForRenderer(mRendererNativeInteractionOverrides.get(sign));
+    }
   }
 
   void updatePlatformFocus(int targetSign, int rendererHostSign) {
@@ -651,6 +665,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       }
     } finally {
       mViewHolder.remove(sign);
+      mRendererNativeInteractionOverrides.remove(sign);
     }
   }
 
@@ -759,6 +774,20 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     Renderer renderer = host.getRenderer();
     if (renderer != null) {
       renderer.updateAttributes(propBundle);
+    }
+  }
+
+  @CalledByNative
+  void updatePlatformRendererNativeInteractionEnabled(int sign, int enabled) {
+    Boolean value = enabled < 0 ? null : enabled != 0;
+    if (value == null) {
+      mRendererNativeInteractionOverrides.remove(sign);
+    } else {
+      mRendererNativeInteractionOverrides.put(sign, value);
+    }
+    IRendererHost host = mViewHolder.get(sign);
+    if (host != null) {
+      host.setNativeInteractionEnabledForRenderer(value);
     }
   }
 
@@ -1113,6 +1142,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     mNativePtr = 0;
     mFocusedTarget = null;
     mViewHolder.clear();
+    mRendererNativeInteractionOverrides.clear();
 
     for (Object value : mExtraDatas.values()) {
       if (value instanceof Page) {

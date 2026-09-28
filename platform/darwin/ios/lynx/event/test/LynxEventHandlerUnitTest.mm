@@ -25,6 +25,10 @@
 @property(nonatomic, weak) LynxEventHandler* eventHandler;
 @end
 
+@interface LynxEventHandler (ConsumeSlideEventTesting)
+- (BOOL)consumeSlideEvents:(CGFloat)angle;
+@end
+
 @interface LynxPanInterceptUnitTestGesture : UIGestureRecognizer
 @property(nonatomic, assign) UIGestureRecognizerState testState;
 @end
@@ -242,6 +246,44 @@ static const NSInteger kLynxPanInterceptUnitTestViewTag = 1001;
   OCMVerify([mockView2 addGestureRecognizer:[OCMArg isKindOfClass:[LynxTouchHandler class]]]);
   OCMVerify(
       [mockView2 addGestureRecognizer:[OCMArg isKindOfClass:[UILongPressGestureRecognizer class]]]);
+}
+
+- (void)testFragmentLayerConsumeSlideEventUsesCachedAngles {
+  UIView* view = [UIView new];
+  LynxEventHandler* handler = [[LynxEventHandler alloc] initWithRootView:view andFlag:YES];
+  XCTAssertFalse([handler hasConsumeSlideEvent]);
+  XCTAssertNil([handler valueForKey:@"_panGestureRecognizer"]);
+
+  [handler updatePlatformConsumeSlideEventAngles:@[ @(-30), @30, @90, @120 ]];
+  UIPanGestureRecognizer* pan = [handler valueForKey:@"_panGestureRecognizer"];
+  XCTAssertNotNil(pan);
+  XCTAssertTrue([view.gestureRecognizers containsObject:pan]);
+  XCTAssertTrue([handler hasConsumeSlideEvent]);
+  XCTAssertTrue([pan.delegate gestureRecognizerShouldBegin:pan]);
+  XCTAssertTrue([handler consumeSlideEvents:-30]);
+  XCTAssertTrue([handler consumeSlideEvents:30]);
+  XCTAssertTrue([handler consumeSlideEvents:100]);
+  XCTAssertFalse([handler consumeSlideEvents:31]);
+
+  [handler updatePlatformConsumeSlideEventAngles:nil];
+  XCTAssertFalse([handler hasConsumeSlideEvent]);
+  XCTAssertFalse([pan.delegate gestureRecognizerShouldBegin:pan]);
+  XCTAssertFalse([handler consumeSlideEvents:0]);
+}
+
+- (void)testFragmentLayerConsumeSlideEventPanReattachesWithContainer {
+  UIView* firstView = [UIView new];
+  UIView* secondView = [UIView new];
+  LynxEventHandler* handler = [[LynxEventHandler alloc] initWithRootView:firstView andFlag:YES];
+  [handler needCheckConsumeSlideEvent];
+  [handler updatePlatformConsumeSlideEventAngles:@[ @(-20), @20 ]];
+  UIPanGestureRecognizer* pan = [handler valueForKey:@"_panGestureRecognizer"];
+  XCTAssertTrue([firstView.gestureRecognizers containsObject:pan]);
+
+  [handler removeEventGestures];
+  XCTAssertFalse([firstView.gestureRecognizers containsObject:pan]);
+  [handler attachContainerView:secondView];
+  XCTAssertTrue([secondView.gestureRecognizers containsObject:pan]);
 }
 
 - (LynxUIView*)configuredPanInterceptTargetUIWithViewTag:(BOOL)hasViewTag {

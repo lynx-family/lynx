@@ -38,6 +38,7 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
       PlatformRendererType type, const base::String& tag_name,
       const PlatformRendererInitConfig& init_config);
   ~PlatformRendererAndroid() override;
+  void UpdateNativeInteractionEnabled(std::optional<bool> enabled) override;
 
  protected:
   // PlatformRendererImpl interface

@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_RENDERER_DARWIN_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_RENDERER_DARWIN_H_
 
+#include <optional>
+
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
@@ -12,6 +14,7 @@
 #import <UIKit/UIKit.h>
 
 @class LynxUIOwner;
+@class LynxRenderer;
 
 namespace lynx {
 
@@ -50,6 +53,7 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   void OnAddChild(PlatformRenderer* child, int index, bool should_update_ui_owner) override;
   void OnRemoveFromParent(bool should_update_ui_owner) override;
   void OnUpdateSubtreeProperties(const DisplayList& subtree_properties) override;
+  void UpdateNativeInteractionEnabled(std::optional<bool> enabled) override;
   void UpdatePlatformExtraBundle(id platform_extra_bundle);
 
   void InitializeUIView();
@@ -66,8 +70,13 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   void UpdateUIOwnerLayout(CGRect frame);
   bool HasUIOwnerNode(int sign) const;
   void CleanupUIView();
+  __weak LynxRenderer* installed_renderer_ = nil;
+  std::optional<bool> native_interaction_enabled_override_;
+  bool native_interaction_enabled_before_override_ = true;
+  bool has_native_interaction_override_ = false;
 
  protected:
+  void RestoreNativeInteractionEnabledIfOwned();
   UIView<LynxRendererHost>* _view = nil;
   PlatformRendererContextDarwin* context_ = nullptr;
   LynxUIOwner* ui_owner_ = nil;

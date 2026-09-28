@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -114,6 +115,14 @@ class TestPlatformRenderer : public PlatformRendererImpl {
  public:
   TestPlatformRenderer(int id, PlatformRendererType type)
       : PlatformRendererImpl(id, type, base::String()) {}
+
+  void UpdateNativeInteractionEnabled(std::optional<bool> enabled) override {
+    native_interaction_enabled = enabled;
+    ++native_interaction_update_count;
+  }
+
+  std::optional<bool> native_interaction_enabled;
+  int native_interaction_update_count = 0;
 
  protected:
   void OnUpdateDisplayList(DisplayList display_list) override {
@@ -1123,6 +1132,228 @@ TEST_F(FragmentTest, PlatformEventTargetHitTestUsesDisjointRegions) {
   EXPECT_TRUE(target->ContainsPoint(second_line));
   float gap[2] = {50.f, 30.f};
   EXPECT_FALSE(target->ContainsPoint(gap));
+}
+
+TEST_F(FragmentTest, FragmentPointerEventsStylePreservesUnsetAndAuto) {
+  auto element = manager->CreateFiberView();
+  auto* fragment = element->fragment_impl();
+  ASSERT_NE(fragment, nullptr);
+  EXPECT_EQ(fragment->event_props_.find(PlatformEventPropName::kPointerEvents),
+            fragment->event_props_.end());
+
+  element->SetStyleInternal(kPropertyIDPointerEvents,
+                            CSSValue(1, CSSValuePattern::ENUM));
+  element->PushStyleToBundle();
+  const auto pointer_events = PlatformEventPropName::kPointerEvents;
+  EXPECT_EQ(fragment->event_props_.find(pointer_events)->second.Number(), 1);
+
+  element->computed_css_style()->ClearDirtyBits();
+  element->SetStyleInternal(kPropertyIDPointerEvents,
+                            CSSValue(0, CSSValuePattern::ENUM));
+  element->PushStyleToBundle();
+  EXPECT_EQ(fragment->event_props_.find(pointer_events)->second.Number(), 0);
+
+  element->computed_css_style()->ClearDirtyBits();
+  element->ResetStyleInternal(kPropertyIDPointerEvents);
+  element->PushStyleToBundle();
+  EXPECT_TRUE(fragment->event_props_.find(pointer_events)->second.IsNil());
+}
+
+TEST_F(FragmentTest, PlatformEventPropNamesFollowHitTestOrdering) {
+  EXPECT_LT(static_cast<int>(PlatformEventPropName::kPointerEvents),
+            static_cast<int>(PlatformEventPropName::kUserInteractionEnabled));
+  EXPECT_EQ(static_cast<int>(PlatformEventPropName::kConsumeSlideEvent),
+            static_cast<int>(PlatformEventPropName::kBlockNativeEvent) + 1);
+  EXPECT_EQ(static_cast<int>(PlatformEventPropName::kHitSlop),
+            static_cast<int>(PlatformEventPropName::kIgnoreFocus) + 1);
+  EXPECT_EQ(PlatformEventPropNameFromString("pointer-events"),
+            PlatformEventPropName::kPointerEvents);
+  EXPECT_EQ(PlatformEventPropNameFromString("consume-slide-event"),
+            PlatformEventPropName::kConsumeSlideEvent);
+  EXPECT_EQ(PlatformEventPropNameFromString("hit-slop"),
+            PlatformEventPropName::kHitSlop);
+}
+
+TEST_F(FragmentTest, PlatformEventTargetPointerEventsInheritsAndFallsThrough) {
+  TestNativePaintingCtxPlatformRef platform_ref;
+  auto* helper = platform_ref.GetEventTargetHelper();
+  auto root = fml::MakeRefCounted<PlatformEventTarget>(helper, kRootId, kRootId,
+                                                       0.f, 0.f, 100.f, 100.f);
+  auto lower = fml::MakeRefCounted<PlatformEventTarget>(helper, kRootId, 1, 0.f,
+                                                        0.f, 100.f, 100.f);
+  auto upper = fml::MakeRefCounted<PlatformEventTarget>(helper, kRootId, 2, 0.f,
+                                                        0.f, 100.f, 100.f);
+  auto child = fml::MakeRefCounted<PlatformEventTarget>(helper, kRootId, 3, 0.f,
+                                                        0.f, 100.f, 100.f);
+  root->AddChildTarget(lower);
+  root->AddChildTarget(upper);
+  upper->AddChildTarget(child);
+  upper->SetPointerEvents(LynxPointerEventsValue::kNone);
+  EXPECT_EQ(child->PointerEvents(), LynxPointerEventsValue::kNone);
+
+  float point[2] = {20.f, 20.f};
+  EXPECT_EQ(root->HitTest(point)->Sign(), lower->Sign());
+  child->SetPointerEvents(LynxPointerEventsValue::kAuto);
+  EXPECT_EQ(root->HitTest(point)->Sign(), child->Sign());
+  child->SetPointerEvents(LynxPointerEventsValue::kUnset);
+  EXPECT_EQ(root->HitTest(point)->Sign(), lower->Sign());
+  root->SetPointerEvents(LynxPointerEventsValue::kNone);
+  lower->SetPointerEvents(LynxPointerEventsValue::kAuto);
+  EXPECT_EQ(root->HitTest(point)->Sign(), lower->Sign());
+  lower->SetPointerEvents(LynxPointerEventsValue::kUnset);
+  EXPECT_EQ(root->HitTest(point), nullptr);
+}
+
+TEST_F(FragmentTest, PlatformEventTargetCachesConsumeSlideAnglesOnDown) {
+  TestNativePaintingCtxPlatformRef platform_ref;
+  auto* helper = platform_ref.GetEventTargetHelper();
+  auto root = fml::MakeRefCounted<PlatformEventTarget>(helper, kRootId, kRootId,
+                                                       0.f, 0.f, 100.f, 100.f);
+  auto child = fml::MakeRefCounted<PlatformEventTarget>(helper, kRootId, 1, 0.f,
+                                                        0.f, 100.f, 100.f);
+  root->AddChildTarget(child);
+  root->SetConsumeSlideEventAngles({{-90.f, -45.f}});
+  child->SetConsumeSlideEventAngles({{20.f, 60.f}});
+
+  float point[2] = {20.f, 20.f};
+  EXPECT_EQ(platform_ref.event_handler_->HitTestAndCacheEventBehavior(
+                root, point, {}),
+            kEventBehaviorHasConsumeSlideEvent);
+  EXPECT_EQ(platform_ref.GetCachedConsumeSlideEventAngles(),
+            (std::vector<float>{20.f, 60.f, -90.f, -45.f}));
+  EXPECT_EQ(platform_ref.GetCachedResponseChainSigns(),
+            (std::vector<int32_t>{1, kRootId}));
+  EXPECT_TRUE(child->ConsumeSlideEvent(20.f));
+  EXPECT_FALSE(child->ConsumeSlideEvent(-50.f));
+
+  child->SetConsumeSlideEventAngles({});
+  root->SetConsumeSlideEventAngles({});
+  EXPECT_EQ(platform_ref.GetCachedConsumeSlideEventAngles(),
+            (std::vector<float>{20.f, 60.f, -90.f, -45.f}));
+  EXPECT_EQ(platform_ref.event_handler_->HitTestAndCacheEventBehavior(
+                root, point, {}),
+            kEventBehaviorNone);
+  EXPECT_TRUE(platform_ref.GetCachedConsumeSlideEventAngles().empty());
+  EXPECT_EQ(platform_ref.GetCachedResponseChainSigns(),
+            (std::vector<int32_t>{1, kRootId}));
+}
+
+TEST_F(FragmentTest, PlatformEventBundleAppliesNativeInteractionAndAngles) {
+  TestNativePaintingCtxPlatformRef platform_ref;
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 100.f, 100.f)
+      .End();
+  renderer->UpdateDisplayList(builder.Build());
+  platform_ref.renderers_.insert_or_assign(kRootId, renderer);
+
+  auto range = lepus::CArray::Create();
+  range->emplace_back(-30);
+  range->emplace_back(30);
+  auto invalid_range = lepus::CArray::Create();
+  invalid_range->emplace_back("bad");
+  invalid_range->emplace_back(90);
+  auto angles = lepus::CArray::Create();
+  angles->emplace_back(lepus::Value(range));
+  angles->emplace_back(lepus::Value(invalid_range));
+
+  PlatformEventPropMap props;
+  props.insert_or_assign(PlatformEventPropName::kNativeInteractionEnabled,
+                         lepus::Value(false));
+  props.insert_or_assign(PlatformEventPropName::kConsumeSlideEvent,
+                         lepus::Value(angles));
+  platform_ref.UpdatePlatformEventBundle(kRootId,
+                                         PlatformEventBundle(props, {}));
+  EXPECT_EQ(renderer->native_interaction_update_count, 1);
+  EXPECT_EQ(renderer->native_interaction_enabled, std::optional<bool>(false));
+
+  auto target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(target, nullptr);
+  EXPECT_FALSE(target->NativeInteractionEnabled());
+  EXPECT_EQ(target->ConsumeSlideEventAngles().size(), 1u);
+  EXPECT_TRUE(target->ConsumeSlideEvent(30.f));
+  EXPECT_FALSE(target->ConsumeSlideEvent(31.f));
+  float point[2] = {20.f, 20.f};
+  EXPECT_EQ(platform_ref.event_handler_->HitTestAndCacheEventBehavior(
+                target, point, {}),
+            kEventBehaviorHasConsumeSlideEvent);
+
+  props.insert_or_assign(PlatformEventPropName::kNativeInteractionEnabled,
+                         lepus::Value());
+  props.insert_or_assign(PlatformEventPropName::kConsumeSlideEvent,
+                         lepus::Value());
+  platform_ref.UpdatePlatformEventBundle(kRootId,
+                                         PlatformEventBundle(props, {}));
+  EXPECT_EQ(renderer->native_interaction_update_count, 2);
+  EXPECT_EQ(renderer->native_interaction_enabled, std::nullopt);
+  target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(target, nullptr);
+  EXPECT_TRUE(target->NativeInteractionEnabled());
+  EXPECT_FALSE(target->NativeInteractionEnabled(false));
+  EXPECT_TRUE(target->ConsumeSlideEventAngles().empty());
+  EXPECT_EQ(platform_ref.event_handler_->HitTestAndCacheEventBehavior(
+                target, point, {}),
+            kEventBehaviorNone);
+
+  props.insert_or_assign(PlatformEventPropName::kConsumeSlideEvent,
+                         lepus::Value(2));
+  platform_ref.UpdatePlatformEventBundle(kRootId,
+                                         PlatformEventBundle(props, {}));
+  EXPECT_EQ(renderer->native_interaction_update_count, 2);
+  target = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(target, nullptr);
+  EXPECT_EQ(platform_ref.event_handler_->HitTestAndCacheEventBehavior(
+                target, point, {}),
+            kEventBehaviorNone);
+  EXPECT_TRUE(platform_ref.GetCachedConsumeSlideEventAngles().empty());
+  EXPECT_EQ(platform_ref.GetPlatformEventBundle(kRootId)
+                ->EventProps()
+                .find(PlatformEventPropName::kConsumeSlideEvent)
+                ->second.Number(),
+            2);
+}
+
+TEST_F(FragmentTest, PlatformEventTargetHitSlopExpandsAndShrinks) {
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.GetEventTargetHelper()->SetDevicePixelRatio(2.f);
+  platform_ref.GetEventTargetHelper()->SetPhysicalPixelsPerLayoutUnit(2.f);
+  platform_ref.GetEventTargetHelper()->SetScreenWidth(750.f);
+  auto root = fml::MakeRefCounted<PlatformEventTarget>(
+      platform_ref.GetEventTargetHelper(), kRootId, kRootId, 0.f, 0.f, 100.f,
+      100.f);
+  PlatformEventPropMap props;
+  props.insert_or_assign(PlatformEventPropName::kHitSlop, lepus::Value("10px"));
+  PlatformEventBundle bundle(props, {});
+  platform_ref.GetEventTargetHelper()->ApplyEventBundle(root, &bundle);
+  float expanded[2] = {-5.f, 50.f};
+  EXPECT_TRUE(root->ContainsPoint(expanded));
+  float expanded_px[2] = {-15.f, 50.f};
+  EXPECT_TRUE(root->ContainsPoint(expanded_px));
+
+  auto sides = lepus::Dictionary::Create();
+  sides->SetValue("left", lepus::Value("-10px"));
+  sides->SetValue("right", lepus::Value("20%"));
+  props.insert_or_assign(PlatformEventPropName::kHitSlop, lepus::Value(sides));
+  bundle = PlatformEventBundle(props, {});
+  platform_ref.GetEventTargetHelper()->ApplyEventBundle(root, &bundle);
+  EXPECT_FALSE(root->ContainsPoint(expanded));
+  float shrunk[2] = {5.f, 50.f};
+  EXPECT_FALSE(root->ContainsPoint(shrunk));
+  float right_expanded[2] = {115.f, 50.f};
+  EXPECT_TRUE(root->ContainsPoint(right_expanded));
+
+  sides->SetValue("left", lepus::Value("10rpx"));
+  sides->SetValue("right", lepus::Value("20ppx"));
+  props.insert_or_assign(PlatformEventPropName::kHitSlop, lepus::Value(sides));
+  bundle = PlatformEventBundle(props, {});
+  platform_ref.GetEventTargetHelper()->ApplyEventBundle(root, &bundle);
+  float rpx_expanded[2] = {-9.f, 50.f};
+  EXPECT_TRUE(root->ContainsPoint(rpx_expanded));
+  float physical_px_expanded[2] = {109.f, 50.f};
+  EXPECT_TRUE(root->ContainsPoint(physical_px_expanded));
+  float physical_px_outside[2] = {111.f, 50.f};
+  EXPECT_FALSE(root->ContainsPoint(physical_px_outside));
 }
 
 TEST_F(FragmentTest, PlatformEventTargetHitTestPrefersNestedInlineTarget) {

@@ -20,6 +20,9 @@ public interface IRendererHost {
   View getView();
   Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign);
 
+  // Hosts with native touch handling can apply the C++ event property's override.
+  default void setNativeInteractionEnabledForRenderer(Boolean enabled) {}
+
   default boolean invokeUIMethod(String method, ReadableMap params, Callback callback) {
     return false;
   }

@@ -22,6 +22,7 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/lynx_console_helper.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/consume_slide_event_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -1565,6 +1566,8 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay) {
   auto context = ui_owner_->Context()->GetNativePaintingContext();
   if (!context || !root) {
+    cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
+    platform_touch_active_ = false;
     return;
   }
 
@@ -1592,6 +1595,10 @@ void EventDispatcher::DispatchPlatformTouchEvent(
 
   auto pointer_data = CollectPlatformTouchPoints(event);
   if (pointer_data.empty()) {
+    if (action != UI_TOUCH_EVENT_ACTION_MOVE) {
+      cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
+      platform_touch_active_ = false;
+    }
     return;
   }
   int event_data[] = {0, action_type,
@@ -1599,6 +1606,17 @@ void EventDispatcher::DispatchPlatformTouchEvent(
                       static_cast<int>(pointer_data.size() / 3)};
   context->DispatchPlatformInputEvent(event_data, pointer_data.data(),
                                       root->Sign());
+  if (action == UI_TOUCH_EVENT_ACTION_DOWN) {
+    CacheConsumeSlideDirection(*context);
+    platform_touch_active_ = true;
+  } else if (action == UI_TOUCH_EVENT_ACTION_UP ||
+             action == UI_TOUCH_EVENT_ACTION_CANCEL) {
+    if (action == UI_TOUCH_EVENT_ACTION_CANCEL ||
+        OH_ArkUI_PointerEvent_GetPointerCount(event) <= 1) {
+      cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
+      platform_touch_active_ = false;
+    }
+  }
 }
 
 void EventDispatcher::InitPlatformTouchEnv(
@@ -1928,6 +1946,9 @@ bool EventDispatcher::ShouldBlockNativeEvent() {
 }
 
 ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    return cached_consume_slide_direction_;
+  }
   if (first_active_target_.expired()) {
     return ConsumeSlideDirection::kNone;
   }
@@ -1941,6 +1962,33 @@ ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
     target = target->ParentTarget();
   }
   return ConsumeSlideDirection::kNone;
+}
+
+void EventDispatcher::CacheConsumeSlideDirection(
+    const NativePaintingCtxPlatformRef& context) {
+  int direction_mask = ConsumeSlideDirectionMaskFromAngleRanges(
+      context.GetCachedConsumeSlideEventAngles());
+  for (int32_t sign : context.GetCachedResponseChainSigns()) {
+    const auto* bundle = context.GetPlatformEventBundle(sign);
+    if (!bundle) {
+      continue;
+    }
+    auto it =
+        bundle->EventProps().find(PlatformEventPropName::kConsumeSlideEvent);
+    if (it == bundle->EventProps().end() || !it->second.IsNumber()) {
+      continue;
+    }
+    const double number = it->second.Number();
+    if (std::isfinite(number) &&
+        number >= static_cast<int>(ConsumeSlideDirection::kHorizontal) &&
+        number <= static_cast<int>(ConsumeSlideDirection::kAll) &&
+        number == std::trunc(number)) {
+      direction_mask |= ConsumeSlideDirectionMask(
+          static_cast<ConsumeSlideDirection>(static_cast<int>(number)));
+    }
+  }
+  cached_consume_slide_direction_ =
+      ConsumeSlideDirectionFromMask(direction_mask);
 }
 
 void EventDispatcher::UpdateRootTarget(UIBase* root) {
@@ -2005,9 +2053,12 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
     context->SetPlatformEventRootOffset(root->Sign(),
                                         page_x - root_screen_offset[0],
                                         page_y - root_screen_offset[1]);
-    const bool can_consume = !(context->HitTestAndCachePlatformEventBehavior(
-                                   root->Sign(), point[0], point[1]) &
-                               kEventBehaviorEventThrough);
+    const uint32_t behavior = context->HitTestAndCachePlatformEventBehavior(
+        root->Sign(), point[0], point[1]);
+    const bool can_consume = !(behavior & kEventBehaviorEventThrough);
+    if (can_consume && !platform_touch_active_) {
+      CacheConsumeSlideDirection(*context);
+    }
     UpdateOverlayPassThroughState(root, can_consume);
     return can_consume;
   }
@@ -2109,7 +2160,14 @@ void EventDispatcher::UpdateNativeInteractionEnabledForTree(UIBase* root) {
     return;
   }
 
-  TraverseAndUpdateHitTestBehavior(root, false);
+  bool has_disabled_ancestor = false;
+  for (UIBase* parent = root->Parent(); parent; parent = parent->Parent()) {
+    if (!parent->NativeInteractionEnabled()) {
+      has_disabled_ancestor = true;
+      break;
+    }
+  }
+  TraverseAndUpdateHitTestBehavior(root, has_disabled_ancestor);
 }
 
 void EventDispatcher::TraverseAndUpdateHitTestBehavior(

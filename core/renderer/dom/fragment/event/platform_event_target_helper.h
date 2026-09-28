@@ -18,6 +18,9 @@ namespace tasm {
 class PlatformRendererImpl;
 class NativePaintingCtxPlatformRef;
 
+// Shared conversion for event-target state and native host synchronization.
+LynxEventPropStatus EventPropValueToStatus(const lepus::Value& value);
+
 class PlatformEventTargetHelper {
  public:
   explicit PlatformEventTargetHelper(NativePaintingCtxPlatformRef* platform_ref)
@@ -119,6 +122,15 @@ class PlatformEventTargetHelper {
 
   float GetDevicePixelRatio() { return device_pixel_ratio_; }
 
+  void SetPhysicalPixelsPerLayoutUnit(float value) {
+    physical_pixels_per_layout_unit_ = value;
+  }
+  float GetPhysicalPixelsPerLayoutUnit() const {
+    return physical_pixels_per_layout_unit_;
+  }
+  void SetScreenWidth(float value) { screen_width_ = value; }
+  float GetScreenWidth() const { return screen_width_; }
+
   void GetRootViewLocationOnScreen(float location[2]);
   void GetScreenSize(float size[2]);
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]);
@@ -158,6 +170,8 @@ class PlatformEventTargetHelper {
       event_root_offsets_to_page_root_;
   // device pixel ratio of the current display.
   float device_pixel_ratio_{1.0f};
+  float physical_pixels_per_layout_unit_{1.0f};
+  float screen_width_{0.f};
   // Keep platform query results across event-tree rebuilds until the renderer
   // is destroyed. Cache both scrollable and non-scrollable hosts.
   std::unordered_map<int32_t, bool> scroll_container_cache_;

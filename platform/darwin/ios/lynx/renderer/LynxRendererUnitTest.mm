@@ -6,6 +6,7 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContainerView.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
+#import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
@@ -15,10 +16,12 @@
 #import <XCTest/XCTest.h>
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
+#include <optional>
 #include <utility>
 #include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
+#include "core/renderer/ui_wrapper/painting/ios/platform_renderer_root_darwin.h"
 
 @interface LynxRenderer (Testing)
 - (void)ensureLynxDisplayListApplier;
@@ -31,6 +34,19 @@
 @end
 
 @implementation LynxScopedRendererHost
+@end
+
+@interface LynxTouchDisabledRendererHost : LynxContainerView
+@end
+
+@implementation LynxTouchDisabledRendererHost
+- (instancetype)initWithRendererContext:(LynxRendererContext*)context {
+  self = [super initWithRendererContext:context];
+  if (self) {
+    self.userInteractionEnabled = NO;
+  }
+  return self;
+}
 @end
 
 @implementation LynxRendererUnitTest
@@ -255,6 +271,60 @@
   XCTAssertEqualObjects(parentView.subviews, (@[ firstView, secondView, insertedView, thirdView ]));
   XCTAssertLessThan([parentView.layer.sublayers indexOfObject:insertedView.layer],
                     [parentView.layer.sublayers indexOfObject:thirdView.layer]);
+}
+
+- (void)testPlatformRendererDarwinAppliesNativeInteractionEnabled {
+  lynx::tasm::PlatformRendererContextDarwin context(nil);
+  lynx::tasm::PlatformRendererDarwin renderer(&context, 10, PlatformRendererType::kView);
+  UIView<LynxRendererHost>* view = renderer.GetUIView();
+  XCTAssertNotNil(view);
+  XCTAssertTrue(view.userInteractionEnabled);
+
+  renderer.UpdateNativeInteractionEnabled(false);
+  XCTAssertFalse(view.userInteractionEnabled);
+  renderer.UpdateNativeInteractionEnabled(true);
+  XCTAssertTrue(view.userInteractionEnabled);
+  renderer.UpdateNativeInteractionEnabled(false);
+  renderer.UpdateNativeInteractionEnabled(std::nullopt);
+  XCTAssertTrue(view.userInteractionEnabled);
+}
+
+- (void)testPlatformRendererDarwinRestoresPageInteractionDefault {
+  LynxView* pageHost = [[LynxView alloc] initWithoutRender];
+  lynx::tasm::PlatformRendererContextDarwin context((UIView<LUIBodyView>*)pageHost);
+  lynx::tasm::PlatformRendererRootDarwin renderer(&context, 13, PlatformRendererType::kPage);
+  pageHost.userInteractionEnabled = NO;
+
+  renderer.UpdateNativeInteractionEnabled(true);
+  XCTAssertTrue(pageHost.userInteractionEnabled);
+  renderer.UpdateNativeInteractionEnabled(std::nullopt);
+  XCTAssertFalse(pageHost.userInteractionEnabled);
+}
+
+- (void)testFragmentLayerHitTestInstallsConsumeSlidePan {
+  LynxView* pageHost = [[LynxView alloc] initWithoutRender];
+  LynxEventHandler* handler = [[LynxEventHandler alloc] initWithRootView:pageHost andFlag:YES];
+  XCTAssertNil([handler valueForKey:@"_panGestureRecognizer"]);
+
+  [handler updatePlatformConsumeSlideEventAngles:@[ @0, @90 ]];
+  UIPanGestureRecognizer* pan = [handler valueForKey:@"_panGestureRecognizer"];
+  XCTAssertNotNil(pan);
+  XCTAssertTrue([pageHost.gestureRecognizers containsObject:pan]);
+}
+
+- (void)testPlatformRendererDarwinRestoresCustomHostInteractionDefault {
+  NSString* tagName = @"touch-disabled-renderer-host-for-platform-renderer-test";
+  LynxComponentScopeRegistry* registry = [LynxComponentScopeRegistry new];
+  [registry registerRendererHost:LynxTouchDisabledRendererHost.class withName:tagName];
+  lynx::tasm::PlatformRendererContextDarwin context(nil, nil, registry);
+  lynx::tasm::PlatformRendererDarwin renderer(&context, 13, lynx::base::String(tagName.UTF8String));
+  UIView<LynxRendererHost>* view = renderer.GetUIView();
+  XCTAssertFalse(view.userInteractionEnabled);
+
+  renderer.UpdateNativeInteractionEnabled(true);
+  XCTAssertTrue(view.userInteractionEnabled);
+  renderer.UpdateNativeInteractionEnabled(std::nullopt);
+  XCTAssertFalse(view.userInteractionEnabled);
 }
 
 - (void)testPlatformRendererDarwinUsesScopedRendererHostRegistry {

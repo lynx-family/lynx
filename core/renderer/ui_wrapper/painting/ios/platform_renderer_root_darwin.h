@@ -14,7 +14,7 @@ class PlatformRendererRootDarwin : public PlatformRendererDarwin {
  public:
   explicit PlatformRendererRootDarwin(PlatformRendererContextDarwin* context, int id,
                                       PlatformRendererType type);
-  ~PlatformRendererRootDarwin() override = default;
+  ~PlatformRendererRootDarwin() override;
 
   UIView<LynxRendererHost>* GetUIView() override;
 

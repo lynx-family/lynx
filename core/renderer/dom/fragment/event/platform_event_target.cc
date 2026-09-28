@@ -109,7 +109,9 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
   if (hit_target) {
     return hit_target;
   }
-  return is_layout_only_ ? nullptr : fml::RefPtr<PlatformEventTarget>(this);
+  return is_layout_only_ || PointerEvents() == LynxPointerEventsValue::kNone
+             ? nullptr
+             : fml::RefPtr<PlatformEventTarget>(this);
 }
 
 bool PlatformEventTarget::ShouldHitTest() const {
@@ -136,13 +138,18 @@ bool PlatformEventTarget::ContainsPoint(float point[2]) {
     }
     return false;
   }
-  if (x >= 0.f && x <= Width() && y >= 0.f && y <= Height()) {
+  const float left = -ConvertEventRegionSizeValue(hit_slop_[0], true);
+  const float top = -ConvertEventRegionSizeValue(hit_slop_[1], false);
+  const float right = Width() + ConvertEventRegionSizeValue(hit_slop_[2], true);
+  const float bottom =
+      Height() + ConvertEventRegionSizeValue(hit_slop_[3], false);
+  if (x >= left && x <= right && y >= top && y <= bottom) {
     return true;
   }
-  if (overflow_x_ && !overflow_y_ && (y < 0.f || y > Height())) {
+  if (overflow_x_ && !overflow_y_ && (y < top || y > bottom)) {
     return false;
   }
-  if (overflow_y_ && !overflow_x_ && (x < 0.f || x > Width())) {
+  if (overflow_y_ && !overflow_x_ && (x < left || x > right)) {
     return false;
   }
   if (overflow_x_ || overflow_y_) {
@@ -345,7 +352,19 @@ float PlatformEventTarget::ConvertEventRegionSizeValue(
   if (value.type == EventRegionSizeValue::Type::kPercentage) {
     return value.value * (is_horizontal ? Width() : Height());
   }
-  return value.value * target_helper_->GetDevicePixelRatio();
+  if (!target_helper_) {
+    return value.value;
+  }
+  switch (value.type) {
+    case EventRegionSizeValue::Type::kDevicePx:
+      return value.value * target_helper_->GetDevicePixelRatio();
+    case EventRegionSizeValue::Type::kPhysicalPx:
+      return value.value / target_helper_->GetPhysicalPixelsPerLayoutUnit();
+    case EventRegionSizeValue::Type::kRpx:
+      return value.value * target_helper_->GetScreenWidth() / 750.f;
+    default:
+      return value.value;
+  }
 }
 
 bool PlatformEventTarget::IgnoreFocus() const {
@@ -370,7 +389,12 @@ bool PlatformEventTarget::IgnoreFocus() const {
 }
 
 LynxPointerEventsValue PlatformEventTarget::PointerEvents() const {
-  return LynxPointerEventsValue::kAuto;
+  if (pointer_events_ != LynxPointerEventsValue::kUnset) {
+    return pointer_events_;
+  }
+  auto parent = ParentTarget();
+  return parent && parent.get() != this ? parent->PointerEvents()
+                                        : LynxPointerEventsValue::kAuto;
 }
 
 bool PlatformEventTarget::BlockNativeEvent(float point[2]) const {
@@ -379,8 +403,13 @@ bool PlatformEventTarget::BlockNativeEvent(float point[2]) const {
           HitEventRegions(*block_native_event_areas_, point));
 }
 
-LynxConsumeSlideDirection PlatformEventTarget::ConsumeSlideEvent() const {
-  return LynxConsumeSlideDirection::kNone;
+bool PlatformEventTarget::ConsumeSlideEvent(float angle) const {
+  for (const auto& range : ConsumeSlideEventAngles()) {
+    if (angle >= range[0] && angle <= range[1]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace tasm
