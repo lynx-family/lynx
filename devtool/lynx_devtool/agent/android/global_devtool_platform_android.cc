@@ -68,6 +68,12 @@ bool IsMemoryUsageCallbackPending(
 
 }  // namespace
 
+static void OnHSRScriptFetched(JNIEnv* env, jclass, jlong request_id,
+                               jbyteArray source, jbyteArray error) {
+  lynx::devtool::GlobalDevToolPlatformAndroid::OnHSRScriptFetched(
+      env, request_id, source, error);
+}
+
 static void OnMemoryUsageResult(JNIEnv* env, jclass jcaller, jlong callback_ptr,
                                 jstring result_json, jstring error_message) {
   std::unique_ptr<AndroidMemoryUsageCallbackStateHandle> callback_state(
@@ -132,6 +138,15 @@ namespace devtool {
 GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
   static base::NoDestructor<GlobalDevToolPlatformAndroid> instance;
   return *(instance.get());
+}
+
+void GlobalDevToolPlatformAndroid::FetchHSRScript(const std::string& source_url,
+                                                  uint64_t request_id) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto url =
+      base::android::JNIConvertHelper::ConvertToJNIByteArray(env, source_url);
+  Java_GlobalDevToolPlatformAndroidDelegate_fetchHSRScript(env, url.Get(),
+                                                           request_id);
 }
 
 void GlobalDevToolPlatformAndroid::StartMemoryTracing() {

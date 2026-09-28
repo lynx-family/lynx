@@ -286,6 +286,32 @@ TEST_F(InspectorHSRAgentTest, ReturnsJsonValuesAndUndefined) {
   }
 }
 
+TEST_F(InspectorHSRAgentTest, SelectsEvaluateThreadAndDefaultsToBTS) {
+  facade_.handler = [](auto callback) {
+    callback(Parse(R"({"valueType":"undefined"})"), "");
+  };
+  Dispatch("HSR.evaluate", Parse(R"({"expression":""})"));
+  EXPECT_EQ(facade_.last_request.thread, HSRScriptRequest::Thread::kBTS);
+  for (const auto& entry :
+       {std::make_pair("bts", HSRScriptRequest::Thread::kBTS),
+        std::make_pair("mts", HSRScriptRequest::Thread::kMTS),
+        std::make_pair("ui", HSRScriptRequest::Thread::kUI)}) {
+    auto params = Parse(R"({"expression":"1"})");
+    params["thread"] = entry.first;
+    EXPECT_TRUE(Dispatch("HSR.evaluate", params).isMember("result"));
+    EXPECT_EQ(facade_.last_request.thread, entry.second);
+  }
+  const auto calls = facade_.calls;
+  for (const auto& thread :
+       {Json::Value("BTS"), Json::Value(""), Json::Value(1), Json::Value(),
+        Json::Value(std::string("bts\0junk", 8))}) {
+    auto params = Parse(R"({"expression":"1"})");
+    params["thread"] = thread;
+    ExpectError(Dispatch("HSR.evaluate", params), CDPErrorCode::InvalidParams);
+  }
+  EXPECT_EQ(facade_.calls, calls);
+}
+
 TEST_F(InspectorHSRAgentTest, RejectsInvalidLoadSourcesBeforeCallingRuntime) {
   for (
       const auto* params :

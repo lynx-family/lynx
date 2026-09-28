@@ -6,16 +6,19 @@ parameters:
 returns: []
 notes:
   - Uses the global CDP channel (session -1), not a page Runtime.
-  - Runtime integration is pending. The default platform boundary returns ServerError (-32000), HSR runtime is not connected.
+  - Android requires the debugMode engine and an enabled debugging lifecycle. Script execution in ordinary engines reports HSR_DEBUG_LIBRARY_REQUIRED; other platforms retain their default runtime-not-connected response.
   - Resource URLs are passed unchanged to the execution boundary, which reuses the platform ResourceFetcher for scheme handling and source loading. Supported schemes and file access depend on that fetcher; the transport does not parse or decode resource URLs.
-  - The execution boundary owns Runtime selection, replacement, cleanup, and View binding preservation. No production Runtime is installed by this protocol implementation.
-  - Once integrated, success means script installation completed, not merely queued and not that a business test passed.
+  - Android uses the process-wide external JS resource provider registered in LynxEnv. A missing provider or unsupported scheme is an execution error. Source fetching runs on the existing IO executor and expires after 30 seconds; late resource callbacks are ignored.
+  - Source must be valid UTF-8 and at most 512 KiB. Fetching and byte validation happen before replacing the old contexts, so resource failures preserve the previous script.
+  - Replacement clears all three Host Script control contexts and their old callbacks, reuses the configured runners and bindings, and executes the new entry only on BTS. Live Views and page JS contexts are not destroyed.
+  - Success means synchronous entry execution finished. The entry completion value is ignored, including Promise values; asynchronous work is not awaited. A script exception cleans up the failed replacement without restoring the previous script; another load can retry.
   - Missing, contradictory, or incorrectly typed source fields return InvalidParams (-32602). Unsupported platform file access is an execution error.
   - Runtime failures and abandoned callbacks return ServerError (-32000); malformed completion results return InternalError (-32603).
   - Host schema routers decode target=script with script or target=url with url into LoadHSRScriptFromSchema, sharing the same load boundary. Concrete app scheme registration is host-owned and pending integration.
-  - Client timeout does not cancel JavaScript. Concurrent loads and lifecycle behavior must be handled by the Runtime integration.
+  - Another load is rejected with HSR_LOAD_IN_PROGRESS until the current request completes. Evaluation during replacement is rejected with RUNTIME_LOADING. Disabling debugging cancels replacement. Resource loads use the debug state at execution time and are not tied to the debug lifecycle in which fetching began.
+  - Client timeout does not cancel running JavaScript.
 examples:
-  - title: Inline source before Runtime integration
+  - title: Replace the entry script on Android
     request:
       id: 1
       method: HSR.loadScript
@@ -25,6 +28,4 @@ examples:
           script: globalThis.count = 1;
     response:
       id: 1
-      error:
-        code: -32000
-        message: HSR runtime is not connected
+      result: {}

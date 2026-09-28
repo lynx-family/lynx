@@ -3,6 +3,10 @@ parameters:
   - name: expression
     type: string
     description: JavaScript source to evaluate. Empty strings are allowed.
+  - name: thread
+    type: string
+    optional: true
+    description: 'Host Script control context: bts (default), mts, or ui. These are independent process contexts, not page contexts.'
 returns:
   - name: valueType
     type: string
@@ -13,7 +17,8 @@ returns:
     description: Present only when valueType is json; JSON null is distinct from JavaScript undefined.
 notes:
   - Uses the global CDP channel (session -1), not the page Runtime.evaluate method.
-  - Runtime integration is pending. The default platform boundary returns ServerError (-32000), HSR runtime is not connected.
+  - Android requires the debugMode engine and an enabled debugging lifecycle. Ordinary engines report HSR_DEBUG_LIBRARY_REQUIRED; other platforms retain their default runtime-not-connected response.
+  - Source must be valid UTF-8 and at most 512 KiB. During Runtime replacement, evaluation fails with RUNTIME_LOADING. While a resource is still being fetched, evaluation can use the previous context.
   - The execution boundary must return the synchronous evaluation value. JavaScript exceptions, Promise values, and non-serializable values are execution errors, not successful empty results.
   - Evaluation may mutate state and does not roll back side effects. It does not expose lexical variables inside previously executed functions.
   - Store asynchronous progress on the script global object and evaluate it again, or publish HSR.messageReceived through the native facade. Events do not complete this request. There is no probe-specific command language.
@@ -21,7 +26,7 @@ notes:
   - Runtime failures and abandoned callbacks return ServerError (-32000); malformed completion results return InternalError (-32603).
   - The original CDP id identifies the single terminal response. Client timeout does not cancel execution.
 examples:
-  - title: Result after a Runtime adapter is integrated
+  - title: Evaluate in the default BTS control context
     request:
       id: 2
       method: HSR.evaluate
