@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -22,6 +21,7 @@
 namespace lynx {
 namespace runtime {
 
+// The manager owns shared realms; each executor owns its page-local realm.
 class LYNX_EXPORT_FOR_DEVTOOL JSRealm {
  public:
   JSRealm(std::shared_ptr<js::JSIContext>);
@@ -33,46 +33,48 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm {
                           std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                           const tasm::PageOptions& page_options) = 0;
   virtual void AddLifecycleListener(
-      std::unique_ptr<RuntimeLifecycleListenerDelegate> listener){};
-  virtual js::NapiEnvironment* GetNapiEnvironment() { return nullptr; };
+      std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) {}
+  virtual js::NapiEnvironment* GetNapiEnvironment() { return nullptr; }
 
-  bool IsCoreJSLoaded() { return js_core_loaded_; }
-
-  // Evaluate all scripts from `js_preload` if corejs hasn't been loaded for
-  // this context wrapper yet. If `/lynx_core.js` is present in the list, this
-  // method will also update the `js_core_loaded_` state.
+  bool IsCoreJSLoaded() const { return js_core_loaded_; }
   virtual void EnsureCoreJSLoaded(
-      js::Runtime& js_runtime,
+      js::Runtime& runtime,
       std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>&
-          js_preload);
+          sources);
   void PrepareJSEnv(
-      base::UnsafeWeakPtr<js::Runtime> js_runtime,
+      base::UnsafeWeakPtr<js::Runtime> runtime,
       std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>&
-          js_preload);
-  std::shared_ptr<js::JSIContext> GetJSContext() { return js_context_; }
+          sources);
+  const std::shared_ptr<js::JSIContext>& GetJSContext() const {
+    return js_context_;
+  }
 #if ENABLE_TRACE_PERFETTO
-  void SetRuntimeProfiler(
-      std::shared_ptr<profile::RuntimeProfiler> runtime_profiler);
+  void SetRuntimeProfiler(std::shared_ptr<profile::RuntimeProfiler> profiler);
 #endif
+
  protected:
+  virtual void InitNapi(base::UnsafeWeakPtr<js::Runtime> runtime) {}
   void InitGlobalObject(base::UnsafeOwningPtr<js::Runtime>& runtime,
                         std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                         const tasm::PageOptions& page_options,
                         bool install_shared_host_objects);
-  virtual void InitNapi(base::UnsafeWeakPtr<js::Runtime> js_runtime){};
+
+  // JSI contexts remain shared with backend runtimes and profiler interfaces.
   std::shared_ptr<js::JSIContext> js_context_;
-  // Whether we've run `PrepareJSEnv()` once for this context wrapper.
-  // This is different from `js_core_loaded_` because corejs might be deferred.
-  bool js_env_prepared_;
-  bool js_core_loaded_;
-  bool global_inited_;
+  // Shared realms own this runtime; page-local globals borrow the executor
+  // runtime.
   base::UnsafeOwningPtr<js::Runtime> owned_global_runtime_;
   base::UnsafeOwningPtr<js::SingleGlobal> global_;
+  bool js_env_prepared_ = false;
+  bool js_core_loaded_ = false;
+  bool global_inited_ = false;
 #if ENABLE_TRACE_PERFETTO
+  // RuntimeProfilerManager accesses profilers from tracing threads.
   std::shared_ptr<profile::RuntimeProfiler> runtime_profiler_;
 #endif
 };
 
+// Declare the local realm last so its globals die before the page runtime.
 struct JSRealmState {
   enum class Sharing { kNone, kContext, kVM };
 
@@ -86,10 +88,9 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSRealm : public JSRealm {
   explicit SharedJSRealm(std::shared_ptr<js::JSIContext> context);
   ~SharedJSRealm() override;
 
-  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& rt,
+  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& runtime,
                   std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                   const tasm::PageOptions& page_options) override;
-
   void AddLifecycleListener(
       std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) override;
   js::NapiEnvironment* GetNapiEnvironment() override {
@@ -98,10 +99,10 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSRealm : public JSRealm {
 #else
     return nullptr;
 #endif
-  };
+  }
 
  protected:
-  void InitNapi(base::UnsafeWeakPtr<js::Runtime> js_runtime) override;
+  void InitNapi(base::UnsafeWeakPtr<js::Runtime> runtime) override;
 #if ENABLE_NAPI_BINDING
   std::unique_ptr<js::NapiEnvironment> napi_environment_;
   std::unique_ptr<RuntimeLifecycleObserverImpl> lifecycle_observer_;
@@ -110,59 +111,39 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSRealm : public JSRealm {
 
 class LYNX_EXPORT_FOR_DEVTOOL SingleJSRealm : public JSRealm {
  public:
-  SingleJSRealm(std::shared_ptr<js::JSIContext>);
-  ~SingleJSRealm() = default;
-
-  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& js_runtime,
+  explicit SingleJSRealm(std::shared_ptr<js::JSIContext> context);
+  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& runtime,
                   std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                   const tasm::PageOptions& page_options) override;
-
- protected:
 };
 
-// Runs corejs once per shared VM; the manager retains it for live pages.
+// Runs corejs once per shared VM and remains alive until its last page exits.
 class LYNX_EXPORT_FOR_DEVTOOL SharedVMGlobalRealm : public JSRealm {
  public:
   SharedVMGlobalRealm(std::shared_ptr<js::JSIContext> context,
                       const std::string& group_id);
-
   void EnsureCoreJSLoaded(
-      js::Runtime& js_runtime,
-      std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>&
-          js_preload) override;
-  // Takes ownership of `rt` (keeping the shared VM + global context alive for
-  // the whole group) and installs the full set of shared host objects so
-  // per-page contexts can reference them.
-  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& rt,
+      js::Runtime& runtime,
+      std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>& sources)
+      override;
+  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& runtime,
                   std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                   const tasm::PageOptions& page_options) override;
-
-  // The shared VM every page context in this group is created on.
   std::shared_ptr<js::VMInstance> GetVM();
-  // The global runtime, used to read corejs exports when copying them onto a
-  // page context. Owned by this wrapper via `owned_global_runtime_`.
   js::Runtime* GetGlobalRuntime() { return owned_global_runtime_.get(); }
   void CopyGlobalsTo(js::Runtime& page_runtime);
 
  private:
-  // Owns the global runtime (and therefore the shared VM + global context),
-  // keeping the group alive until JSRealmManager releases this wrapper.
   std::string group_id_;
 };
 
-// Page-local globals borrow shared host objects and corejs exports.
+// Page globals borrow shared exports; the page runtime shell owns NAPI.
 class LYNX_EXPORT_FOR_DEVTOOL SharedVMPageRealm : public JSRealm {
  public:
   explicit SharedVMPageRealm(std::shared_ptr<js::JSIContext> context);
-  ~SharedVMPageRealm() override = default;
-
-  // Installs page-local globals but skips the shared host objects; they are
-  // copied by reference from the group's global context instead.
-  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& js_runtime,
+  void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& runtime,
                   std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                   const tasm::PageOptions& page_options) override;
-
- private:
 };
 
 }  // namespace runtime

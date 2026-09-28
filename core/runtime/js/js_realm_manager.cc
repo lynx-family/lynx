@@ -364,9 +364,7 @@ JSRealmState JSRealmManager::CreateRealm(
         force_use_lightweight_js_engine);
   }
   const bool is_single_context = IsSingleJSContext(group_id);
-  // New "shared Isolate/VM + per-page isolated Context" scheme. Only reachable
-  // when the LynxGroup opts in AND this is a shared (non "-1") group. Falls
-  // through to the legacy path otherwise so existing behavior is untouched.
+  // Use isolated page contexts only for opted-in shared groups.
   if (create_params.enable_new_share_group && !is_single_context) {
     return CreateSharedVMRealm(js_pre_sources_getter,
                                force_use_lightweight_js_engine, ensure_console,
@@ -440,8 +438,7 @@ JSRealmState JSRealmManager::CreateRealm(
         js_realm_manager_delegate_->AfterSharedContextCreate(
             group_id, js_runtime->type());
       }
-      // In shared-context mode the global runtime is a SEPARATE runtime
-      // instance owned by SharedJSRealm.
+      // Shared contexts need a separate global runtime owned by the realm.
       auto unique_global =
           MakeRuntime(js_runtime->type() == runtime::js::JSRuntimeType::quickjs,
                       false, page_options);
@@ -492,9 +489,7 @@ JSRealmState JSRealmManager::CreateRealm(
     initializing_realm->PrepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
   } else {
     RetainSharedRealm(group_id, false);
-    // Shared context reused. If corejs was deferred on the first creation,
-    // we need to try to load it here to ensure the current runtime runs with
-    // a fully-initialized shared JSIContext.
+    // Complete deferred corejs loading when a shared context is reused.
     auto* realm = GetSharedRealm(group_id);
     if (realm != nullptr && !realm->IsCoreJSLoaded()) {
       auto js_pre_sources = js_pre_sources_getter();
@@ -659,8 +654,7 @@ void JSRealmManager::ReleaseSharedRealm(const std::string& group_id,
   if (--it->second.live_executors != 0) {
     return;
   }
-  // Remove the entry before teardown so detach callbacks cannot find a realm
-  // that is already being destroyed.
+  // Erase before teardown so callbacks cannot find a partially destroyed realm.
   auto realm = std::move(it->second.realm);
   realms.erase(it);
   if (js_realm_manager_delegate_) {
