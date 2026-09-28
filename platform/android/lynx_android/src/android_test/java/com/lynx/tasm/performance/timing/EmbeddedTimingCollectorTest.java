@@ -132,12 +132,12 @@ public class EmbeddedTimingCollectorTest {
     collector.setEmbeddedTimingClient(new WeakReference<>(timingClient));
 
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
-      collector.markTiming(TimingConstants.LOAD_BUNDLE_START, 1000);
-      collector.markTiming("loadBundleEnd", 2000);
+      collector.markTiming(TimingConstants.LOAD_BUNDLE_START, 1999);
+      collector.markTiming("loadBundleEnd", 2500);
       assertTrue(timingClient.mSetupTimingEvents.isEmpty());
       assertFalse(collector.hasEmitLoadBundleEvent());
 
-      collector.markTiming(TimingConstants.PAINT_END, 3000);
+      collector.markTiming(TimingConstants.PAINT_END, 3001);
       assertTrue(timingClient.mSetupTimingEvents.isEmpty());
     });
 
@@ -155,15 +155,20 @@ public class EmbeddedTimingCollectorTest {
     assertNotNull(updateTimings);
     assertTrue(updateTimings.isEmpty());
     assertNotNull(metrics);
-    assertEquals(1.0, (Double) setupTiming.get("load_template_start"), 0.0);
-    assertEquals(2.0, (Double) setupTiming.get("load_template_end"), 0.0);
-    assertEquals(3.0, (Double) setupTiming.get("draw_end"), 0.0);
-    assertEquals(2.0, (Double) metrics.get("lynx_fcp"), 0.0);
+    assertEquals(Long.valueOf(1), setupTiming.get("load_template_start"));
+    assertEquals(Long.valueOf(2), setupTiming.get("load_template_end"));
+    assertEquals(Long.valueOf(3), setupTiming.get("draw_end"));
+    assertEquals(Long.valueOf(1), metrics.get("lynx_fcp"));
     assertEquals(Boolean.FALSE, timingInfo.get("has_reload"));
     assertEquals(1, observer.mEntries.size());
+    Map<String, Object> observerTiming = observer.mEntries.get(0).toHashMap();
+    assertEquals(1.999, ((Number) observerTiming.get("loadBundleStart")).doubleValue(), 0.0);
+    assertEquals(2.5, ((Number) observerTiming.get("loadBundleEnd")).doubleValue(), 0.0);
+    assertEquals(3.001, ((Number) observerTiming.get("paintEnd")).doubleValue(), 0.0);
     assertTrue(collector.hasEmitLoadBundleEvent());
 
     collector.markTiming(TimingConstants.PAINT_END, 4000);
+    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     assertEquals(1, timingClient.mSetupTimingEvents.size());
   }
 
