@@ -28,9 +28,31 @@ namespace lynx {
 
 namespace runtime {
 class JSRealmManager;
+class JSRealmManagerTest;
+class JSRealm;
 class TemplateDelegate;
 class LynxApiHandler;
-class JSRealmManagerDelegate;
+
+// One executor's binding to a realm. A shared context still has a distinct
+// page runtime per executor, so that runtime cannot live in the shared realm.
+// Keep the local realm after the runtime so its globals/profiler die first.
+struct JSRealmState {
+  enum class Sharing { kNone, kContext, kVM };
+
+  JSRealmState();
+  JSRealmState(base::UnsafeOwningPtr<js::Runtime> runtime,
+               base::UnsafeOwningPtr<JSRealm> local_realm, Sharing sharing);
+  JSRealmState(JSRealmState&&) noexcept;
+  JSRealmState& operator=(JSRealmState&&) noexcept;
+  ~JSRealmState();
+
+  JSRealmState(const JSRealmState&) = delete;
+  JSRealmState& operator=(const JSRealmState&) = delete;
+
+  base::UnsafeOwningPtr<js::Runtime> runtime;
+  base::UnsafeOwningPtr<JSRealm> local_realm;
+  Sharing sharing = Sharing::kNone;
+};
 }  // namespace runtime
 
 namespace runtime {
@@ -95,13 +117,11 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<LynxModuleManager>& GetModuleManager() {
     return module_manager_;
   }
-  void TriggerVmGC() {
-    if (js_runtime_) {
-      js_runtime_->RequestGC();
-    }
-  }
+  void TriggerVmGC();
 
  private:
+  friend class runtime::JSRealmManagerTest;
+
   base::LogContext log_context_;
   std::string group_id_;
   std::shared_ptr<InspectorRuntimeObserverNG> runtime_observer_ng_;
@@ -111,8 +131,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<ModuleManagerTestBench> module_manager_testBench_;
 #endif
 
-  // set by  the child class
-  base::UnsafeOwningPtr<Runtime> js_runtime_;
+  JSRealmState realm_state_;
 };
 
 }  // namespace js

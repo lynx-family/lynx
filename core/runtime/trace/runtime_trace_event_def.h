@@ -362,8 +362,8 @@ inline constexpr const char* const JS_EXECUTOR_LOAD_PRE_JS_BUNDLE =
  * @trace_description: Create a JS runtime according to @args{group_id} and
  * page options, including selecting engine type and sharing context if needed.
  */
-inline constexpr const char* const JS_REALM_MANAGER_CREATE_JS_RUNTIME =
-    "JSRealmManager::CreateJSRuntime";
+inline constexpr const char* const JS_REALM_MANAGER_CREATE_REALM =
+    "JSRealmManager::CreateRealm";
 /**
  * @trace_description: Create a runtime in single-context mode (no shared
  * JSContext across pages).
@@ -397,7 +397,7 @@ inline constexpr const char* const JS_REALM_MANAGER_REALM_INIT_GLOBAL =
     "JSRealmManager::JSRealmInitGlobal";
 /**
  * @trace_description: Prepare JS environment by evaluating preloaded scripts
- * (e.g., core JS) inside the context wrapper.
+ * (e.g., core JS) inside the realm.
  */
 inline constexpr const char* const JS_REALM_MANAGER_REALM_PREPARE_JS_ENV =
     "JSRealmManager::JSRealmPrepareJSEnv";

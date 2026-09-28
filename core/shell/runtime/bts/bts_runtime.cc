@@ -309,13 +309,13 @@ void BTSRuntime::TransitionToFullRuntime() {
       preload_js_sources;
   ReadCoreJS(preload_js_sources);
   if (!runtime::JSRealmManager::IsSingleJSContext(group_id_)) {
-    auto* wrapper = runtime::JSRealmManager::Instance()->GetSharedRealm(
+    auto* realm = runtime::JSRealmManager::Instance()->GetSharedRealm(
         group_id_, runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
-    if (wrapper != nullptr) {
-      wrapper->EnsureCoreJSLoaded(*rt, preload_js_sources);
+    if (realm != nullptr) {
+      realm->EnsureCoreJSLoaded(*rt, preload_js_sources);
     }
   } else {
-    // load the lynx_core.js (single context has no shared wrapper entry)
+    // load the lynx_core.js (single context has no shared realm entry)
     runtime::js::EvaluatePreloadSources(*rt, preload_js_sources);
   }
   UpdateState(State::kJsCoreLoaded);
@@ -771,11 +771,11 @@ void BTSRuntime::OnJSSourcePrepared(
       } else {
         if (tasm::LynxEnv::GetInstance().GetBoolEnv(
                 tasm::LynxEnv::Key::ENABLE_SHARE_CONTEXT_ICU, false)) {
-          auto* wrapper = runtime::JSRealmManager::Instance()->GetSharedRealm(
+          auto* realm = runtime::JSRealmManager::Instance()->GetSharedRealm(
               group_id_,
               runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
-          if (wrapper) {
-            auto napi_environment = wrapper->GetNapiEnvironment();
+          if (realm) {
+            auto napi_environment = realm->GetNapiEnvironment();
             if (napi_environment) {
               LOGI(log_context_ << " register icu on shared context.");
               tasm::I18n::Bind(reinterpret_cast<intptr_t>(
@@ -1235,10 +1235,10 @@ void BTSRuntime::AddLifecycleListener(
       listener->Type() ==
           runtime::RuntimeLifecycleListenerDelegate::DelegateType::PART &&
       !runtime::JSRealmManager::IsSingleJSContext(group_id_)) {
-    auto* wrapper = runtime::JSRealmManager::Instance()->GetSharedRealm(
+    auto* realm = runtime::JSRealmManager::Instance()->GetSharedRealm(
         group_id_, runtime_flags_ & LynxRuntimeFlags::ENABLE_NEW_SHARE_GROUP);
-    if (wrapper) {
-      wrapper->AddLifecycleListener(std::move(listener));
+    if (realm) {
+      realm->AddLifecycleListener(std::move(listener));
     }
   } else {
     lifecycle_observer_->AddEventListener(std::move(listener));

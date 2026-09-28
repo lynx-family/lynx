@@ -4,6 +4,7 @@
 #ifndef CORE_RUNTIME_JS_JS_REALM_MANAGER_H_
 #define CORE_RUNTIME_JS_JS_REALM_MANAGER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -31,6 +32,8 @@ class JSExecutor;
 }
 }  // namespace runtime
 namespace runtime {
+
+struct JSRealmState;
 
 class LYNX_EXPORT_FOR_DEVTOOL JSRealmManagerDelegate {
  public:
@@ -71,14 +74,11 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManagerDelegate {
                                     const ReleaseVMCallback& callback) {}
 };
 
-class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
-    : public SharedJSRealm::ReleaseListener {
+class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager {
  public:
   static JSRealmManager* Instance();
-  typedef std::unordered_map<std::string, std::shared_ptr<JSRealm>>
-      Shared_Context_Map;
 
-  ~JSRealmManager() override;
+  ~JSRealmManager();
 
   static bool IsSingleJSContext(const std::string& group_id);
 
@@ -88,7 +88,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
            type == runtime::js::JSRuntimeType::jsvm;
   }
 
-  base::UnsafeOwningPtr<runtime::js::Runtime> CreateJSRuntime(
+  JSRealmState CreateRealm(
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
           js_pre_sources_getter,
@@ -97,7 +97,9 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
       const runtime::js::JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options);
 
-  void OnRelease(const std::string& group_id) override;
+  // Called by JSExecutor after its page runtime and local realm are destroyed.
+  void ReleaseSharedRealm(const std::string& group_id,
+                          bool enable_new_share_group);
 
   JSRealmManagerDelegate* GetRealmManagerDelegate() {
     return js_realm_manager_delegate_.get();
@@ -114,23 +116,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
  private:
   JSRealmManager();
 
-  // Release listener bound to new-share-group page contexts. Composed (not
-  // inherited by JSRealmManager) so the legacy shared-context release path and
-  // the new-share-group page release path stay dispatched through distinct
-  // listener objects, avoiding any group-id ambiguity between the two schemes.
-  class NewShareGroupPageReleaseObserver
-      : public SharedJSRealm::ReleaseListener {
-   public:
-    explicit NewShareGroupPageReleaseObserver(JSRealmManager* manager);
-    void OnRelease(const std::string& group_id) override;
-
-   private:
-    JSRealmManager* manager_;
-  };
-
-  void OnNewShareGroupPageRelease(const std::string& group_id);
-
-  base::UnsafeOwningPtr<runtime::js::Runtime> CreateNewShareGroupJSRuntime(
+  JSRealmState CreateSharedVMRealm(
       base::MoveOnlyClosure<std::vector<
           std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
           js_pre_sources_getter,
@@ -150,8 +136,9 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
   // It never runs on the legacy shared-context path.
 
   // Ensure the group's global context exists (created and corejs loaded once),
-  // returning the owning wrapper. The wrapper owns the group's global runtime
-  // (and thus the shared VM + global context) and tracks the live page count.
+  // returning the realm. The realm owns the group's global runtime
+  // (and thus the shared VM + global context) and is retained by live
+  // executors.
   SharedVMGlobalRealm* EnsureNewShareGroupGlobalContext(
       bool force_use_lightweight_js_engine,
       const runtime::js::JSRuntimeExternalParams& create_params,
@@ -198,17 +185,20 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
 
   void OnMemoryPressure(base::MemoryPressureLevel level);
 
-  Shared_Context_Map shared_context_map_;
-  // Per-group global-context wrappers for the new isolated-context scheme.
-  // Keyed by group id, only populated when `enable_new_share_group` is used.
-  // Each wrapper owns the group's global runtime (shared VM + global context)
-  // and tracks the group's live page count; erasing the entry tears the group
-  // down.
-  std::unordered_map<std::string, base::UnsafeOwningPtr<SharedVMGlobalRealm>>
-      new_share_group_map_;
-  // Observer forwarded to new-share-group page contexts as their release
-  // listener; forwards back to OnNewShareGroupPageRelease.
-  NewShareGroupPageReleaseObserver new_share_group_page_release_observer_{this};
+  friend class JSRealmManagerTest;
+
+  struct SharedRealmEntry {
+    base::UnsafeOwningPtr<JSRealm> realm;
+    size_t live_executors = 0;
+  };
+  using SharedRealmMap = std::unordered_map<std::string, SharedRealmEntry>;
+
+  void RetainSharedRealm(const std::string& group_id,
+                         bool enable_new_share_group);
+
+  // Separate maps allow both sharing modes to use the same group id.
+  SharedRealmMap shared_realm_map_;
+  SharedRealmMap shared_vm_realm_map_;
   std::unordered_map<runtime::js::JSRuntimeType,
                      std::shared_ptr<runtime::js::VMInstance>>
       mVMContainer_;
