@@ -198,6 +198,14 @@ class LynxTemplateBundle final {
   // creating the pool on demand if the context type and reuse policy allow it.
   bool PrepareLepusContext(int32_t count);
 
+  // Loads bytecode into the MTSRuntime instances pre-created for this bundle.
+  // Auto-refill must be disabled before calling this method, and no additional
+  // runtimes may be constructed after it is accepted. Returns whether the
+  // asynchronous preload task was accepted. The callback is invoked only after
+  // every pooled runtime has loaded the bytecode.
+  bool Preload(std::string url, std::vector<uint8_t> bytecode,
+               base::MoveOnlyClosure<> callback);
+
   bool EnableUseContextPool() const { return force_use_context_pool_; }
 
   void SetEnableVMAutoGenerate(bool enable);

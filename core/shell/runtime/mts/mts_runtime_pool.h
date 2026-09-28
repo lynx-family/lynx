@@ -10,7 +10,9 @@
 #include <mutex>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/vector.h"
 #if ENABLE_TRACE_PERFETTO
 #include "base/include/notification_center.h"
@@ -49,6 +51,13 @@ class MTSRuntimePool : public std::enable_shared_from_this<MTSRuntimePool> {
 
   void FillPool(int32_t count);
   void FillPoolSync(int32_t count);
+
+  // Loads bytecode into every runtime currently owned by this pool. The work
+  // is serialized with FillPool on the normal-priority worker. Preload is only
+  // accepted after auto-refill has been disabled. The callback is invoked
+  // after every pooled runtime has successfully loaded the bytecode.
+  bool Preload(std::string url, std::vector<uint8_t> bytecode,
+               base::MoveOnlyClosure<> callback);
 
   std::shared_ptr<runtime::MTSRuntime> TakeMTSRuntimeSafely();
 
