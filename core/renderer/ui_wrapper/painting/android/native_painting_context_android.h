@@ -135,10 +135,9 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 #pragma endregion  // NativePaintingContext
 
  private:
-  void Enqueue(shell::UIOperation op);
-  void BeforeFlush();
-  struct PreparationBatch;
-  std::shared_ptr<PreparationBatch> preparation_batch_;
+  void Enqueue(shell::UIOperation op) {
+    queue_->EnqueueUIOperation(std::move(op));
+  }
 
   std::shared_ptr<std::atomic_bool> event_target_tree_update_enqueued_ =
       std::make_shared<std::atomic_bool>(false);
