@@ -17,6 +17,7 @@
 #include "core/renderer/dom/android/lepus_message_consumer.h"
 #include "core/runtime/js/bytecode/android/bytecode_callback.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
+#include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateBundle_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/TemplateBundle_register_jni.h"
@@ -177,6 +178,33 @@ void PostJsCacheGenerationTask(JNIEnv* env, jclass jcaller, jlong bundle,
       useV8 ? lynx::runtime::js::JSRuntimeType::v8
             : lynx::runtime::js::JSRuntimeType::quickjs,
       lynx::runtime::js::cache::CreateBytecodeCallback(env, callback));
+}
+
+jboolean Preload(JNIEnv* env, jclass jcaller, jlong ptr, jstring url,
+                 jbyteArray bytecode, jobject callback) {
+  auto* bundle = reinterpret_cast<lynx::tasm::LynxTemplateBundle*>(ptr);
+  if (!bundle || !url || !bytecode) {
+    return false;
+  }
+
+  std::string source_url =
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, url);
+  std::vector<uint8_t> bytecode_data =
+      lynx::base::android::JNIConvertHelper::ConvertJavaBinary(env, bytecode);
+
+  lynx::base::MoveOnlyClosure<> completion;
+  if (callback) {
+    auto platform_callback =
+        std::make_unique<lynx::shell::PlatformCallBackStrongRefAndroid>(
+            env, callback);
+    completion = lynx::base::MoveOnlyClosure<>(
+        [callback = std::move(platform_callback)]() mutable {
+          callback->InvokeWithValue(lynx::lepus::Value(true));
+        });
+  }
+
+  return bundle->Preload(std::move(source_url), std::move(bytecode_data),
+                         std::move(completion));
 }
 
 jboolean ConstructContext(JNIEnv* env, jclass jcaller, jlong ptr, jint count) {

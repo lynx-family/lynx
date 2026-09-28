@@ -194,6 +194,25 @@ export class TemplateBundle extends lynx.TemplateBundle {
   }
 
   /**
+   * Asynchronously loads LepusNG bytecode into every MTSRuntime pre-created for this bundle.
+   * The callback is invoked after all runtimes load successfully.
+   * @apidoc
+   * @param url Source URL associated with the bytecode.
+   * @param bytecode LepusNG bytecode to load.
+   * @param callback Invoked on the preload worker after all pre-created runtimes load successfully.
+   * @note Context auto-refill must be disabled through TemplateBundleOption. Construct all required
+   * contexts before calling this method; no additional contexts may be constructed after preload is
+   * accepted.
+   * @returns Whether the preload task was accepted. Returns false when context auto-refill is enabled.
+   */
+  public preload(url: string, bytecode: ArrayBuffer, callback: () => void): boolean {
+    if (!this.isValid() || url.length === 0 || bytecode.byteLength === 0) {
+      return false;
+    }
+    return this.nativePreload(url, bytecode, callback);
+  }
+
+  /**
    * When `TemplateBundle` is an invalid object, use this method to
    * obtain the exception information that occurred during template parsing.
    * @apidoc
