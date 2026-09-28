@@ -20,6 +20,7 @@
 #include "base/include/value/byte_array.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
+#include "core/shell/harmony/platform_call_back_harmony.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
@@ -93,6 +94,7 @@ napi_value LynxTemplateBundleHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_STATIC_FUNCTION("nativeInitWithOption", InitWithOption),
       DECLARE_NAPI_STATIC_FUNCTION("nativePostJsCacheGenerationTask",
                                    PostJsCacheGenerationTask),
+      DECLARE_NAPI_STATIC_FUNCTION("nativePreload", Preload),
   };
 #undef DECLARE_NAPI_FUNCTION
   constexpr size_t size = std::size(properties);
@@ -496,6 +498,53 @@ napi_value LynxTemplateBundleHarmony::PostJsCacheGenerationTask(
     return nullptr;
   }
   return bundle->PostJsCacheGenerationTask(env, bytecode_source_url, use_v8);
+}
+
+napi_value LynxTemplateBundleHarmony::Preload(napi_env env,
+                                              napi_callback_info info) {
+  size_t argc = 3;
+  napi_value args[argc];
+  napi_value js_this = nullptr;
+  napi_status status =
+      napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+  if (status != napi_ok || argc < 3) {
+    LOGE("fail to get preload arguments " << status);
+    return nullptr;
+  }
+
+  LynxTemplateBundleHarmony* bundle = nullptr;
+  status = napi_unwrap(env, js_this, reinterpret_cast<void**>(&bundle));
+  if (status != napi_ok || bundle == nullptr) {
+    LOGE("fail to unwrap bundle from js_this " << status);
+    return nullptr;
+  }
+
+  std::vector<uint8_t> bytecode;
+  if (!base::NapiUtil::ConvertToArrayBuffer(env, args[1], bytecode)) {
+    return nullptr;
+  }
+  return bundle->Preload(env, base::NapiUtil::ConvertToString(env, args[0]),
+                         std::move(bytecode), args[2]);
+}
+
+napi_value LynxTemplateBundleHarmony::Preload(napi_env env, std::string url,
+                                              std::vector<uint8_t> bytecode,
+                                              napi_value callback) {
+  napi_value result = nullptr;
+  if (!bundle_ || url.empty() || bytecode.empty()) {
+    napi_get_boolean(env, false, &result);
+    return result;
+  }
+
+  auto platform_callback =
+      std::make_unique<shell::PlatformCallBackHarmony>(env, callback);
+  bool accepted =
+      bundle_->Preload(std::move(url), std::move(bytecode),
+                       [callback = std::move(platform_callback)]() mutable {
+                         callback->InvokeWithValue(lepus::Value(true));
+                       });
+  napi_get_boolean(env, accepted, &result);
+  return result;
 }
 
 napi_value LynxTemplateBundleHarmony::PostJsCacheGenerationTask(

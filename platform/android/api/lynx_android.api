@@ -10523,6 +10523,7 @@ public class com::lynx::tasm::TemplateBundle : com.lynx.tasm.service.security.IL
   public boolean com.lynx.tasm.TemplateBundle.isInitialized();
   public void com.lynx.tasm.TemplateBundle.postJsCacheGenerationTask(String bytecodeSourceUrl, boolean useV8, @Nullable LynxBytecodeCallback callback);
   public void com.lynx.tasm.TemplateBundle.postJsCacheGenerationTask(String bytecodeSourceUrl, boolean useV8);
+  public boolean com.lynx.tasm.TemplateBundle.preload(String url, byte[] bytecode, @Nullable PlatformCallBack callback);
   public String com.lynx.tasm.TemplateBundle.getErrorMessage();
   public String com.lynx.tasm.TemplateBundle.getUrl();
   public boolean com.lynx.tasm.TemplateBundle.constructContext(int count);
