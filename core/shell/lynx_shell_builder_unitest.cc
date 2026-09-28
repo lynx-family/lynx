@@ -5,6 +5,10 @@
 #define private public
 #define protected public
 
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
@@ -52,6 +56,24 @@ bool EngineTreeLogContextEquals(LynxEngine* engine,
          LogContextEquals(element_manager->painting_context()->GetLogContext(),
                           context);
 }
+
+class TransferOrderTaskRunner : public fml::TaskRunner {
+ public:
+  TransferOrderTaskRunner(std::vector<std::string>* transfer_order,
+                          std::string actor_name)
+      : fml::TaskRunner(nullptr),
+        transfer_order_(transfer_order),
+        actor_name_(std::move(actor_name)) {}
+
+  bool RunsTasksOnCurrentThread() override {
+    transfer_order_->emplace_back(actor_name_);
+    return true;
+  }
+
+ private:
+  std::vector<std::string>* transfer_order_;
+  std::string actor_name_;
+};
 
 }  // namespace
 
@@ -578,6 +600,29 @@ TEST_F(LynxShellBuilderTest, EngineHandoffPreservesEngineIdentity) {
   const auto new_updates = new_facade->GetLogContextUpdates();
   ASSERT_EQ(new_updates.size(), 2u);
   EXPECT_EQ(new_updates.back().engine_id, engine_id);
+}
+
+TEST_F(LynxShellBuilderTest, EngineHandoffTransfersLayoutActorFirst) {
+  std::vector<std::string> transfer_order;
+  LynxEngineWrapper engine_wrapper;
+  MockNativeFacade* old_facade = nullptr;
+  auto old_shell =
+      BuildShellForEngineHandoff(101, &engine_wrapper, &old_facade);
+
+  engine_wrapper.engine_actor_->ActSync([](auto&) {});
+  engine_wrapper.layout_actor_->ActSync([](auto&) {});
+  engine_wrapper.engine_actor_->runner_ =
+      fml::MakeRefCounted<TransferOrderTaskRunner>(&transfer_order, "engine");
+  engine_wrapper.layout_actor_->runner_ =
+      fml::MakeRefCounted<TransferOrderTaskRunner>(&transfer_order, "layout");
+
+  MockNativeFacade* new_facade = nullptr;
+  auto new_shell = BuildShellForEngineHandoff(202, nullptr, &new_facade);
+  new_shell->ReattachLynxEngineWrapper(&engine_wrapper);
+
+  ASSERT_EQ(transfer_order.size(), 2u);
+  EXPECT_EQ(transfer_order[0], "layout");
+  EXPECT_EQ(transfer_order[1], "engine");
 }
 
 }  // namespace shell
