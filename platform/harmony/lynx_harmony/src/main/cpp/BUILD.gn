@@ -215,6 +215,8 @@ lynx_core_source_set("cpp") {
     "ui/scroll/lynx_ui_scroll_view_internal.cc",
     "ui/scroll/lynx_ui_scroll_view_internal.h",
     "ui/text_selection_menu.h",
+    "ui/text_selection_menu_manager.cc",
+    "ui/text_selection_menu_manager.h",
     "ui/text_selection_utils.cc",
     "ui/text_selection_utils.h",
     "ui/ui_base.cc",
