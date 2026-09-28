@@ -1076,6 +1076,7 @@ export class TemplateBundle extends lynx.TemplateBundle {
   public isValid(): boolean;
   public getTemplateSize(): number;
   public postJsCacheGenerationTask(bytecodeSourceUrl: string, useV8: boolean): void;
+  public preload(url: string, bytecode: ArrayBuffer, callback: () => void): boolean;
   public getErrorMessage(): string;
 }
 
