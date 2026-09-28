@@ -100,7 +100,7 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // A submitted task completes on its target runner. Admission errors complete
   // on the calling thread; callers must marshal callbacks to their own owner.
   void Evaluate(Domain domain, std::string source, std::string url,
-                Completion completion);
+                Completion completion, Guard guard = {});
   void RunOnThread(Domain domain, std::string source, std::string url,
                    Completion completion, Guard guard = {});
 

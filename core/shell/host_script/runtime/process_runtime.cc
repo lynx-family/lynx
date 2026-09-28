@@ -812,9 +812,10 @@ bool ProcessRuntime::IsReady(Domain domain) const {
 void ProcessRuntime::NotifyEvent(Event event) { impl_->NotifyEvent(event); }
 
 void ProcessRuntime::Evaluate(Domain domain, std::string source,
-                              std::string url, Completion completion) {
+                              std::string url, Completion completion,
+                              Guard guard) {
   impl_->Evaluate(domain, std::move(source), std::move(url),
-                  std::move(completion), {});
+                  std::move(completion), std::move(guard));
 }
 
 void ProcessRuntime::RunOnThread(Domain domain, std::string source,

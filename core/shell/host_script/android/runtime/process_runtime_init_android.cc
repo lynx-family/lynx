@@ -19,13 +19,22 @@ namespace shell {
 namespace {
 std::atomic<bool> ui_initialized{false};
 std::atomic<bool> view_created{false};
+std::atomic<uint64_t> debug_epoch{0};
 }  // namespace
+
+bool HasHostScriptRuntime() { return true; }
+
+uint64_t HostScriptDebugEpoch() {
+  return debug_epoch.load(std::memory_order_acquire);
+}
 
 void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
                                std::string source, std::string url,
                                ProcessRuntime::Completion completion) {
-  ProcessRuntime::GetInstance().Evaluate(domain, std::move(source),
-                                         std::move(url), std::move(completion));
+  const auto epoch = HostScriptDebugEpoch();
+  ProcessRuntime::GetInstance().Evaluate(
+      domain, std::move(source), std::move(url), std::move(completion),
+      [epoch] { return epoch == HostScriptDebugEpoch(); });
 }
 
 void LoadHostScriptRuntime(std::string source, std::string url,
@@ -36,10 +45,17 @@ void LoadHostScriptRuntime(std::string source, std::string url,
     if (completion) completion(std::move(result));
     return;
   }
+  const auto epoch = HostScriptDebugEpoch();
   fml::TaskRunner::RunNowOrPostTask(
       base::UIThread::GetRunner(),
-      [source = std::move(source), url = std::move(url),
+      [source = std::move(source), url = std::move(url), epoch,
        completion = std::move(completion)]() mutable {
+        if (epoch != HostScriptDebugEpoch()) {
+          ProcessRuntime::Result result;
+          result.error = "HSR_DEBUG_DISABLED";
+          if (completion) completion(std::move(result));
+          return;
+        }
         ProcessRuntime::GetInstance().LoadScript(
             std::move(source), std::move(url), std::move(completion));
       });
@@ -70,6 +86,7 @@ void OnHostScriptViewCreated() {
 }
 
 void UpdateHostScriptDebugState(bool enabled) {
+  if (!enabled) debug_epoch.fetch_add(1, std::memory_order_acq_rel);
   // GetRunner can wait before UI setup. LynxEnv handles that initial case.
   if (!ui_initialized.load(std::memory_order_acquire)) return;
   auto ui = base::UIThread::GetRunner();
