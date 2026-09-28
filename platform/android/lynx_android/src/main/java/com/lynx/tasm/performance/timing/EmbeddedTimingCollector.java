@@ -126,12 +126,12 @@ public class EmbeddedTimingCollector {
       }
 
       JavaOnlyMap setupTiming = new JavaOnlyMap();
-      setupTiming.putDouble(LOAD_BUNDLE_START_POLYFILL, (double) loadBundleStartUs / 1000);
-      setupTiming.putDouble(LOAD_BUNDLE_END_POLYFILL, (double) loadBundleEndUs / 1000);
-      setupTiming.putDouble(PAINT_END_POLYFILL, (double) paintEndUs / 1000);
+      setupTiming.putLong(LOAD_BUNDLE_START_POLYFILL, loadBundleStartUs / 1000);
+      setupTiming.putLong(LOAD_BUNDLE_END_POLYFILL, loadBundleEndUs / 1000);
+      setupTiming.putLong(PAINT_END_POLYFILL, paintEndUs / 1000);
 
       JavaOnlyMap metrics = new JavaOnlyMap();
-      metrics.putDouble(LYNX_FCP_POLYFILL, (double) (paintEndUs - loadBundleStartUs) / 1000);
+      metrics.putLong(LYNX_FCP_POLYFILL, (paintEndUs - loadBundleStartUs) / 1000);
 
       JavaOnlyMap timingInfo = new JavaOnlyMap();
       timingInfo.putMap(SETUP_TIMING, setupTiming);
