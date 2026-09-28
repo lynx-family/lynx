@@ -298,8 +298,7 @@ bool JSRealmManager::IsSingleJSContext(const std::string& group_id) {
   return group_id == "-1";
 }
 
-base::UnsafeOwningPtr<runtime::js::Runtime>
-JSRealmManager::CreateNewShareGroupJSRuntime(
+JSRealmState JSRealmManager::CreateSharedVMRealm(
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>&
         js_pre_sources_getter,
@@ -355,10 +354,10 @@ JSRealmManager::CreateNewShareGroupJSRuntime(
   CheckAutotakeSnapshot(group_id);
 #endif
 
-  return page_runtime;
+  return {std::move(page_runtime), nullptr, JSRealmState::Sharing::kNone};
 }
 
-base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
+JSRealmState JSRealmManager::CreateRealm(
     base::MoveOnlyClosure<std::vector<
         std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>>
         js_pre_sources_getter,
@@ -367,7 +366,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
     const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options) {
   const auto& group_id = create_params.group_id;
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_CREATE_JS_RUNTIME,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_CREATE_REALM,
               "group_id", group_id);
   // call inspect's prepare
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
@@ -379,11 +378,12 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
   // when the LynxGroup opts in AND this is a shared (non "-1") group. Falls
   // through to the legacy path otherwise so existing behavior is untouched.
   if (create_params.enable_new_share_group && !is_single_context) {
-    return CreateNewShareGroupJSRuntime(
-        js_pre_sources_getter, force_use_lightweight_js_engine, ensure_console,
-        executor, create_params, page_options);
+    return CreateSharedVMRealm(js_pre_sources_getter,
+                               force_use_lightweight_js_engine, ensure_console,
+                               executor, create_params, page_options);
   }
   base::UnsafeOwningPtr<runtime::js::Runtime> js_runtime;
+  base::UnsafeOwningPtr<JSRealm> local_realm;
   std::shared_ptr<runtime::js::JSIContext> js_context;
   // This variable indicates 'false' only when it has been created previously
   // and the context is being shared.
@@ -440,14 +440,17 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
 
   // none share context and first create share context.
   if (need_create_realm) {
-    std::shared_ptr<JSRealm> realm;
+    std::shared_ptr<JSRealm> shared_realm;
+    JSRealm* realm;
     base::UnsafeOwningPtr<runtime::js::Runtime> owned_global_runtime;
     if (is_single_context) {
-      realm = std::make_shared<SingleJSRealm>(
-          js_context, js_realm_manager_delegate_ == nullptr ? this : nullptr);
+      local_realm = base::MakeUnsafeOwning<SingleJSRealm>(js_context);
+      realm = local_realm.get();
     } else {
-      realm = std::make_shared<SharedJSRealm>(js_context, group_id, this);
-      shared_context_map_.insert(std::make_pair(group_id, realm));
+      shared_realm =
+          std::make_shared<SharedJSRealm>(js_context, group_id, this);
+      realm = shared_realm.get();
+      shared_context_map_.insert(std::make_pair(group_id, shared_realm));
       if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
         js_realm_manager_delegate_->AfterSharedContextCreate(
             group_id, js_runtime->type());
@@ -472,7 +475,9 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
         js_context, force_use_lightweight_js_engine, page_options);
     realm->SetRuntimeProfiler(runtime_profiler);
 #endif
-    js_context->SetReleaseObserver(realm);
+    if (shared_realm) {
+      js_context->SetReleaseObserver(shared_realm);
+    }
     std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man = nullptr;
     if (!IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       post_man = js_context->GetPostMan();
@@ -514,7 +519,8 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
   CheckAutotakeSnapshot(group_id);
 #endif
 
-  return js_runtime;
+  return {std::move(js_runtime), std::move(local_realm),
+          JSRealmState::Sharing::kNone};
 }
 
 SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(

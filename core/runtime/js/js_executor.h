@@ -28,6 +28,7 @@ namespace lynx {
 
 namespace runtime {
 class JSRealmManager;
+struct JSRealmState;
 class TemplateDelegate;
 class LynxApiHandler;
 class JSRealmManagerDelegate;
@@ -107,8 +108,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<ModuleManagerTestBench> module_manager_testBench_;
 #endif
 
-  // set by  the child class
-  base::UnsafeOwningPtr<Runtime> js_runtime_;
+  std::unique_ptr<JSRealmState> realm_state_;
 };
 
 }  // namespace js
