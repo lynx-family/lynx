@@ -56,14 +56,23 @@ lepus::Value NativeModuleInvocationContext::BuildInvokeRecord(
     const std::string& error_message) const {
   if (arguments.IsArray() && !callbacks.empty()) {
     auto arguments_array = arguments.Array();
+    auto record_arguments = lepus::CArray::Create();
+    record_arguments->reserve(arguments_array->size());
+
+    for (size_t i = 0; i < arguments_array->size(); ++i) {
+      record_arguments->push_back(arguments_array->get(i));
+    }
+
+    // Keep callback placeholders out of the actual invocation arguments.
     for (const auto& [index, _] : callbacks) {
-      if (index < 0 || static_cast<size_t>(index) >= arguments_array->size()) {
+      if (index < 0 || static_cast<size_t>(index) >= record_arguments->size()) {
         continue;
       }
-      arguments_array->set(
+      record_arguments->set(
           static_cast<size_t>(index),
           BuildCallbackPlaceholder(static_cast<int32_t>(index)));
     }
+    arguments = lepus::Value(std::move(record_arguments));
   }
   return js::BuildInvokeRecord(invocation_id_, module_name_, method_name_,
                                std::move(arguments), success, std::move(result),
