@@ -95,11 +95,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<LynxModuleManager>& GetModuleManager() {
     return module_manager_;
   }
-  void TriggerVmGC() {
-    if (js_runtime_) {
-      js_runtime_->RequestGC();
-    }
-  }
+  void TriggerVmGC();
 
  private:
   base::LogContext log_context_;

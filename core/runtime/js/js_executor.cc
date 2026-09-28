@@ -77,26 +77,32 @@ void JSExecutor::loadPreJSBundle(
   js_runtime_ = realmManagerInstance()->CreateJSRuntime(
       std::move(js_pre_sources_getter), force_use_light_weight_js_engine_,
       ensure_console, *this, create_params, page_options);
-  if (runtime_observer_ng_ != nullptr) {
-    runtime_observer_ng_->OnRuntimeCreated(js_runtime_->type());
-  }
+  auto* runtime = GetJSRuntime().Lock();
+  if (runtime) {
+    if (runtime_observer_ng_ != nullptr) {
+      runtime_observer_ng_->OnRuntimeCreated(runtime->type());
+    }
 
-  tasm::report::EventTracker::UpdateGenericInfo(
-      static_cast<int32_t>(runtime_id), "js_runtime_type",
-      static_cast<int64_t>(js_runtime_->type()));
+    tasm::report::EventTracker::UpdateGenericInfo(
+        static_cast<int32_t>(runtime_id), "js_runtime_type",
+        static_cast<int64_t>(runtime->type()));
+  }
 }
 
 void JSExecutor::SetObserver(JSIObserver* observer) {
-  if (js_runtime_) {
-    js_runtime_->SetObserver(observer);
+  if (auto* runtime = GetJSRuntime().Lock()) {
+    runtime->SetObserver(observer);
   }
 }
 
 void JSExecutor::invokeCallback(std::shared_ptr<ModuleCallback> callback,
                                 ModuleCallbackFunctionHolder* holder) {
-  Scope scope(*js_runtime_);
-  callback->SetLogContext(GetLogContext());
-  callback->Invoke(js_runtime_.get(), holder);
+  auto* runtime = GetJSRuntime().Lock();
+  if (runtime) {
+    Scope scope(*runtime);
+    callback->SetLogContext(GetLogContext());
+    callback->Invoke(runtime, holder);
+  }
 }
 
 base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
@@ -104,13 +110,17 @@ base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
     std::shared_ptr<JSRuntimeDelegate> runtime_delegate,
     std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
     const tasm::PageOptions& page_options) {
-  Scope scope(*js_runtime_);
-  Object nativeModuleProxy = Object::createFromHostObject(
-      *js_runtime_, module_manager_.get()->bindingPtr);
+  auto runtime_weak = GetJSRuntime();
+  auto* runtime = runtime_weak.Lock();
+  if (!runtime) {
+    return nullptr;
+  }
+  Scope scope(*runtime);
+  Object nativeModuleProxy =
+      Object::createFromHostObject(*runtime, module_manager_.get()->bindingPtr);
 #if ENABLE_TESTBENCH_REPLAY
   Value module = module_manager_->bindingPtr->get(
-      js_runtime_.get(),
-      PropNameID::forAscii(*js_runtime_, "LynxRecorderReplayDataModule"));
+      runtime, PropNameID::forAscii(*runtime, "LynxRecorderReplayDataModule"));
   if (!module.isNull()) {
     module_manager_testBench_ = std::make_shared<ModuleManagerTestBench>();
     module_manager_testBench_->SetGroupInterceptor(
@@ -118,14 +128,14 @@ base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
     module_manager_testBench_.get()->initBindingPtr(
         module_manager_testBench_, module_manager_.get()->delegate_,
         module_manager_.get()->bindingPtr);
-    module_manager_testBench_.get()->initRecordModuleData(js_runtime_.get());
+    module_manager_testBench_.get()->initRecordModuleData(runtime);
     nativeModuleProxy = Object::createFromHostObject(
-        *js_runtime_, module_manager_testBench_.get()->bindingPtr);
+        *runtime, module_manager_testBench_.get()->bindingPtr);
   }
 #endif
-  auto app = App::Create(rt_id, js_runtime_.GetWeakPtr(), delegate,
-                         runtime_delegate, std::move(nativeModuleProxy),
-                         std::move(api_handler), group_id_, page_options);
+  auto app = App::Create(rt_id, runtime_weak, delegate, runtime_delegate,
+                         std::move(nativeModuleProxy), std::move(api_handler),
+                         group_id_, page_options);
   if (app && module_manager_) {
     app->SetNativeModuleRecordObserver(
         module_manager_->GetNativeModuleRecordObserver());
@@ -134,8 +144,8 @@ base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
 }
 
 JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {
-  if (js_runtime_) {
-    return js_runtime_->getCreatedType();
+  if (auto* runtime = GetJSRuntime().Lock()) {
+    return runtime->getCreatedType();
   }
   return JSRuntimeCreatedType::unknown;
 }
@@ -146,8 +156,14 @@ base::UnsafeWeakPtr<Runtime> JSExecutor::GetJSRuntime() {
 
 void JSExecutor::SetUrl(const std::string& url) {
   module_manager_->SetTemplateUrl(url);
-  if (js_runtime_) {
-    js_runtime_->SetPageUrl(url);
+  if (auto* runtime = GetJSRuntime().Lock()) {
+    runtime->SetPageUrl(url);
+  }
+}
+
+void JSExecutor::TriggerVmGC() {
+  if (auto* runtime = GetJSRuntime().Lock()) {
+    runtime->RequestGC();
   }
 }
 
