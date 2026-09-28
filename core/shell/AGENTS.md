@@ -29,6 +29,13 @@ This directory contains Lynx's multi-threaded shell layer: actor ownership, shel
 - Keep platform-specific behavior in `android/`, `ios/`, or `harmony/` instead of branching through shared shell code.
 - Queueing and mediator changes often affect ordering guarantees. Inspect both producer and consumer sides before making "local" fixes.
 
+## Actor Dispatch Rules
+
+- Choose `Act()` vs `ActLite()` by the callee side effects, not by call frequency alone. `Act()` runs actor `BeforeInvoked()`/`AfterInvoked()`; for `LynxEngine` this includes flushing pending painting operations.
+- Use `Act()` for engine tasks that may load/update data, dispatch events, change style/layout state, resume animations, run lifecycle/teardown flows, or execute caller-provided arbitrary closures.
+- Use `ActLite()` only for proven lightweight work that does not need actor after-hooks, such as pure state/config setters, read-only queries, or `LayoutContext` setters that do not trigger layout updates.
+- When changing an actor dispatch call, inspect the target method and downstream calls for UI operation enqueueing, pipeline/layout requests, event dispatch, `EventTracker`/`FeatureCounter` expectations, and lifecycle ordering.
+
 ## Common Regression Symptoms
 
 - Work executes on the wrong thread, arrives too early, or never arrives after queue/mediator changes.

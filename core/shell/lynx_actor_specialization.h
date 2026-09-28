@@ -74,6 +74,9 @@ class LynxActorMixinBase {
           });
       auto* impl = static_cast<std::add_pointer_t<C>>(this)->Impl();
       if (impl != nullptr) {
+        // Some actor types need to consume work queued during the task before
+        // reporting hooks are flushed. For LynxEngine this flushes the pending
+        // painting context operations.
         ConsumeImplIfNeeded(impl);
         tasm::report::EventTracker::Flush(
             static_cast<std::add_pointer_t<C>>(this)->GetInstanceId());
@@ -121,6 +124,8 @@ template <>
 inline void
 LynxActorMixinBase<LynxActor<LynxEngine>, LynxEngine>::ConsumeImplIfNeeded(
     LynxEngine* impl) {
+  // Keep engine actor tasks paired with a painting flush. Tasks dispatched with
+  // ActLite() skip this hook and must not depend on this flush.
   impl->Flush();
 }
 

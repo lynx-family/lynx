@@ -53,8 +53,9 @@ class LynxActor : public LynxActorMixin<LynxActor<T>, T>,
     }
   }
 
-  // Warning: ONlY for LynxActor<LayoutContext>! Don't use it in other
-  // LynxActors.
+  // Lightweight dispatch that intentionally skips BeforeInvoked() and
+  // AfterInvoked(). Use it only when the task does not rely on actor hooks,
+  // such as tracing/report flushing or LynxEngine painting flushes.
   template <typename F>
   void ActLite(F&& func) {
     if (!enable_) {
