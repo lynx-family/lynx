@@ -134,18 +134,7 @@ class LYNX_EXPORT_FOR_DEVTOOL SingleJSRealm : public JSRealm {
   SharedJSRealm::ReleaseListener* listener_ = nullptr;
 };
 
-// -------- New "shared Isolate/VM + per-page isolated Context" scheme --------
-// The two wrappers below are dedicated to the opt-in new-share-group scheme and
-// are intentionally kept separate from the legacy Shared/NoneShared wrappers so
-// the legacy refcount-based teardown (JSIContext use_count() checks) is not
-// reused here.
-
-// Global context of a new share group. It owns the group's global runtime (the
-// one that created the shared VM) and runs lynx_core.js exactly once. It does
-// NOT install napi (per-page contexts reach their own runtime hooks through the
-// page globalThis passed to loadCard) and is NOT registered as its own
-// context's release observer; JSRealmManager tears it down explicitly once the
-// group's last page is gone.
+// Runs corejs once per shared VM; the manager retains it for live pages.
 class LYNX_EXPORT_FOR_DEVTOOL SharedVMGlobalRealm : public JSRealm {
  public:
   SharedVMGlobalRealm(std::shared_ptr<js::JSIContext> context,
@@ -188,11 +177,7 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedVMGlobalRealm : public JSRealm {
   int live_page_count_ = 0;
 };
 
-// Per-page isolated context of a new share group. The page runtime owns the
-// context; this wrapper only observes release to notify JSRealmManager so the
-// group's live page count can be decremented. It installs page-local globals
-// WITHOUT the shared host objects (copied from the global context instead) and
-// WITHOUT napi.
+// Page-local globals borrow shared host objects and corejs exports.
 class LYNX_EXPORT_FOR_DEVTOOL SharedVMPageRealm : public JSRealm {
  public:
   SharedVMPageRealm(std::shared_ptr<js::JSIContext> context,
