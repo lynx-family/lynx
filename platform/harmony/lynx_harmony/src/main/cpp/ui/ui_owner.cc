@@ -1583,6 +1583,7 @@ void UIOwner::SetEnableSyncXElementRegistry() {
     std::unordered_map<std::string, std::string> tag_map = {
         {"x-viewpager-ng", "viewpager"},
         {"x-viewpager-item-ng", "viewpager-item"},
+        {"x-webview", "webview"},
         {"x-overlay-ng", "overlay"},
         {"x-refresh-view", "refresh"},
         {"x-refresh-header", "refresh-header"},
