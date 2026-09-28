@@ -125,39 +125,20 @@ void JSRealm::SetRuntimeProfiler(
 }
 #endif
 
-//////////////////////
-SharedJSRealm::SharedJSRealm(std::shared_ptr<js::JSIContext> context,
-                             const std::string& group_id,
-                             ReleaseListener* listener)
-    : JSRealm(context), group_id_(group_id), listener_(listener) {}
+SharedJSRealm::SharedJSRealm(std::shared_ptr<js::JSIContext> context)
+    : JSRealm(std::move(context)) {}
 
-void SharedJSRealm::Def() {
-  // global has owner the js context, when only global own the js context, can
-  // release now
-  if (js_context_.use_count() == 2) {  // TODO : be trick, global has one, and
-                                       // the Runtime call this has one...
-    // TODO : release of global_ will trigger another Def() call
-    if (global_ != nullptr) {
-      global_.Reset();
-      owned_global_runtime_.Reset();
-      if (listener_ != nullptr) {
-        listener_->OnRelease(group_id_);
-      }
-    }
+SharedJSRealm::~SharedJSRealm() {
 #if ENABLE_NAPI_BINDING
-    if (napi_environment_) {
-      LOGI("global napi detaching runtime");
+  if (napi_environment_) {
+    LOGI("global napi detaching runtime");
+    if (lifecycle_observer_) {
       lifecycle_observer_->OnRuntimeDetach();
-      napi_environment_->Detach();
-      napi_environment_.reset();
     }
-#endif
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
+    napi_environment_->Detach();
+    napi_environment_.reset();
   }
+#endif
 }
 
 void SharedJSRealm::InitGlobal(

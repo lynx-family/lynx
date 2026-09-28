@@ -22,14 +22,11 @@
 namespace lynx {
 namespace runtime {
 
-class LYNX_EXPORT_FOR_DEVTOOL JSRealm
-    : public js::JSIContext::Observer,
-      public std::enable_shared_from_this<JSRealm> {
+class LYNX_EXPORT_FOR_DEVTOOL JSRealm {
  public:
   JSRealm(std::shared_ptr<js::JSIContext>);
   virtual ~JSRealm();
 
-  void Def() override {}
   void EnsureConsole(std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                      const tasm::PageOptions& page_options);
   virtual void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& js_runtime,
@@ -52,7 +49,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm
       base::UnsafeWeakPtr<js::Runtime> js_runtime,
       std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>&
           js_preload);
-  std::shared_ptr<js::JSIContext> GetJSContext() { return js_context_.lock(); }
+  std::shared_ptr<js::JSIContext> GetJSContext() { return js_context_; }
 #if ENABLE_TRACE_PERFETTO
   void SetRuntimeProfiler(
       std::shared_ptr<profile::RuntimeProfiler> runtime_profiler);
@@ -63,7 +60,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm
                         const tasm::PageOptions& page_options,
                         bool install_shared_host_objects);
   virtual void InitNapi(base::UnsafeWeakPtr<js::Runtime> js_runtime){};
-  std::weak_ptr<js::JSIContext> js_context_;
+  std::shared_ptr<js::JSIContext> js_context_;
   // Whether we've run `PrepareJSEnv()` once for this context wrapper.
   // This is different from `js_core_loaded_` because corejs might be deferred.
   bool js_env_prepared_;
@@ -86,16 +83,8 @@ struct JSRealmState {
 
 class LYNX_EXPORT_FOR_DEVTOOL SharedJSRealm : public JSRealm {
  public:
-  class ReleaseListener {
-   public:
-    virtual void OnRelease(const std::string& group_id) = 0;
-    virtual ~ReleaseListener() = default;
-  };
-  SharedJSRealm(std::shared_ptr<js::JSIContext>, const std::string& group_id,
-                ReleaseListener* listener);
-  ~SharedJSRealm() override = default;
-
-  virtual void Def() override;
+  explicit SharedJSRealm(std::shared_ptr<js::JSIContext> context);
+  ~SharedJSRealm() override;
 
   void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& rt,
                   std::shared_ptr<js::ConsoleMessagePostMan> post_man,
@@ -113,8 +102,6 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSRealm : public JSRealm {
 
  protected:
   void InitNapi(base::UnsafeWeakPtr<js::Runtime> js_runtime) override;
-  std::string group_id_;
-  ReleaseListener* listener_;
 #if ENABLE_NAPI_BINDING
   std::unique_ptr<js::NapiEnvironment> napi_environment_;
   std::unique_ptr<RuntimeLifecycleObserverImpl> lifecycle_observer_;
@@ -139,9 +126,6 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedVMGlobalRealm : public JSRealm {
   SharedVMGlobalRealm(std::shared_ptr<js::JSIContext> context,
                       const std::string& group_id);
 
-  // The global context is torn down explicitly by JSRealmManager, never through
-  // the JSIContext release-observer path, so Def() is a no-op.
-  void Def() override {}
   void EnsureCoreJSLoaded(
       js::Runtime& js_runtime,
       std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>&

@@ -279,6 +279,7 @@ JSRealmManager::~JSRealmManager() {
     }
   }
   // Release realms before the inspector delegate.
+  shared_realm_map_.clear();
   shared_vm_realm_map_.clear();
   // Should destroy js_realm_manager_delegate_ before mVMContainer_
   js_realm_manager_delegate_.reset();
@@ -321,7 +322,7 @@ JSRealmState JSRealmManager::CreateSharedVMRealm(
   page_runtime->InitRuntime(page_context);
 
   auto page_realm = base::MakeUnsafeOwning<SharedVMPageRealm>(page_context);
-  ++shared_vm_realm_map_.at(group_id).live_executors;
+  RetainSharedRealm(group_id, true);
   std::shared_ptr<runtime::js::ConsoleMessagePostMan> page_post_man =
       page_context->GetPostMan();
   page_realm->InitGlobal(page_runtime, page_post_man, page_options);
@@ -429,17 +430,12 @@ JSRealmState JSRealmManager::CreateRealm(
 
   // none share context and first create share context.
   if (need_create_realm) {
-    std::shared_ptr<JSRealm> shared_realm;
-    JSRealm* realm;
+    base::UnsafeOwningPtr<JSRealm> realm;
     base::UnsafeOwningPtr<runtime::js::Runtime> owned_global_runtime;
     if (is_single_context) {
-      local_realm = base::MakeUnsafeOwning<SingleJSRealm>(js_context);
-      realm = local_realm.get();
+      realm = base::MakeUnsafeOwning<SingleJSRealm>(js_context);
     } else {
-      shared_realm =
-          std::make_shared<SharedJSRealm>(js_context, group_id, this);
-      realm = shared_realm.get();
-      shared_context_map_.insert(std::make_pair(group_id, shared_realm));
+      realm = base::MakeUnsafeOwning<SharedJSRealm>(js_context);
       if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
         js_realm_manager_delegate_->AfterSharedContextCreate(
             group_id, js_runtime->type());
@@ -464,9 +460,6 @@ JSRealmState JSRealmManager::CreateRealm(
         js_context, force_use_lightweight_js_engine, page_options);
     realm->SetRuntimeProfiler(runtime_profiler);
 #endif
-    if (shared_realm) {
-      js_context->SetReleaseObserver(shared_realm);
-    }
     std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man = nullptr;
     if (!IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       post_man = js_context->GetPostMan();
@@ -477,7 +470,16 @@ JSRealmState JSRealmManager::CreateRealm(
       realm->EnsureConsole(post_man, page_options);
     }
 
-    // should call brefore loadPreJS.
+    auto* initializing_realm = realm.get();
+    if (is_single_context) {
+      local_realm = std::move(realm);
+    } else {
+      shared_realm_map_.emplace(group_id,
+                                SharedRealmEntry{std::move(realm), 0});
+      RetainSharedRealm(group_id, false);
+    }
+
+    // Notify the inspector before evaluating preloaded sources.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       js_realm_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
                                                  group_id);
@@ -487,8 +489,9 @@ JSRealmState JSRealmManager::CreateRealm(
     auto js_pre_sources = js_pre_sources_getter();
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                 JS_REALM_MANAGER_REALM_PREPARE_JS_ENV);
-    realm->PrepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
+    initializing_realm->PrepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
   } else {
+    RetainSharedRealm(group_id, false);
     // Shared context reused. If corejs was deferred on the first creation,
     // we need to try to load it here to ensure the current runtime runs with
     // a fully-initialized shared JSIContext.
@@ -509,7 +512,8 @@ JSRealmState JSRealmManager::CreateRealm(
 #endif
 
   return {std::move(js_runtime), std::move(local_realm),
-          JSRealmState::Sharing::kNone};
+          is_single_context ? JSRealmState::Sharing::kNone
+                            : JSRealmState::Sharing::kContext};
 }
 
 SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
@@ -634,32 +638,31 @@ void JSRealmManager::CompactWeakRuntimes() {
   weak_runtimes_.swap(alive);
 }
 
-void JSRealmManager::OnRelease(const std::string& group_id) {
-  auto it = shared_context_map_.find(group_id);
-  if (it != shared_context_map_.end()) {
-    if (js_realm_manager_delegate_) {
-      js_realm_manager_delegate_->OnRelease(group_id);
-    }
-    LOGI("JSRealmManager remove context:" << group_id);
-    shared_context_map_.erase(it);
-  } else {
-    LOGI("JSRealmManager::OnRelease : not find shared jscontext in group:"
-         << group_id << " It may has been released in global runtime.");
-  }
+void JSRealmManager::RetainSharedRealm(const std::string& group_id,
+                                       bool enable_new_share_group) {
+  auto& realms =
+      enable_new_share_group ? shared_vm_realm_map_ : shared_realm_map_;
+  auto it = realms.find(group_id);
+  DCHECK(it != realms.end());
+  ++it->second.live_executors;
 }
 
-void JSRealmManager::OnNewShareGroupPageRelease(const std::string& group_id) {
-  auto it = shared_vm_realm_map_.find(group_id);
-  if (it == shared_vm_realm_map_.end()) {
+void JSRealmManager::ReleaseSharedRealm(const std::string& group_id,
+                                        bool enable_new_share_group) {
+  auto& realms =
+      enable_new_share_group ? shared_vm_realm_map_ : shared_realm_map_;
+  auto it = realms.find(group_id);
+  if (it == realms.end()) {
     return;
   }
   DCHECK(it->second.live_executors > 0);
   if (--it->second.live_executors != 0) {
     return;
   }
-  // Erase before teardown so callbacks cannot find a partially destroyed realm.
+  // Remove the entry before teardown so detach callbacks cannot find a realm
+  // that is already being destroyed.
   auto realm = std::move(it->second.realm);
-  shared_vm_realm_map_.erase(it);
+  realms.erase(it);
   if (js_realm_manager_delegate_) {
     js_realm_manager_delegate_->OnRelease(group_id);
   }
@@ -673,14 +676,15 @@ JSRealm* JSRealmManager::GetSharedRealm(const std::string& group_id,
     return ng_it == shared_vm_realm_map_.end() ? nullptr
                                                : ng_it->second.realm.get();
   }
-  auto it = shared_context_map_.find(group_id);
-  return it == shared_context_map_.end() ? nullptr : it->second.get();
+  auto it = shared_realm_map_.find(group_id);
+  return it == shared_realm_map_.end() ? nullptr : it->second.realm.get();
 }
 
 std::shared_ptr<runtime::js::JSIContext> JSRealmManager::GetSharedJSContext(
     const std::string& group_id) {
-  auto it = shared_context_map_.find(group_id);
-  return it == shared_context_map_.end() ? nullptr : it->second->GetJSContext();
+  auto it = shared_realm_map_.find(group_id);
+  return it == shared_realm_map_.end() ? nullptr
+                                       : it->second.realm->GetJSContext();
 }
 
 std::shared_ptr<runtime::js::JSIContext> JSRealmManager::CreateJSIContext(

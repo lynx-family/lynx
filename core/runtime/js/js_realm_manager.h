@@ -72,14 +72,11 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManagerDelegate {
                                     const ReleaseVMCallback& callback) {}
 };
 
-class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
-    : public SharedJSRealm::ReleaseListener {
+class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager {
  public:
   static JSRealmManager* Instance();
-  typedef std::unordered_map<std::string, std::shared_ptr<JSRealm>>
-      Shared_Context_Map;
 
-  ~JSRealmManager() override;
+  ~JSRealmManager();
 
   static bool IsSingleJSContext(const std::string& group_id);
 
@@ -98,14 +95,9 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
       const runtime::js::JSRuntimeExternalParams& create_params,
       const tasm::PageOptions& page_options);
 
-  void OnRelease(const std::string& group_id) override;
-
-  // Transitional entry point for executor-owned shared-VM pages.
-  void ReleaseSharedRealm(const std::string& group_id, bool shared_vm) {
-    if (shared_vm) {
-      OnNewShareGroupPageRelease(group_id);
-    }
-  }
+  // Called after the executor destroys its local realm and page runtime.
+  void ReleaseSharedRealm(const std::string& group_id,
+                          bool enable_new_share_group);
 
   JSRealmManagerDelegate* GetRealmManagerDelegate() {
     return js_realm_manager_delegate_.get();
@@ -121,8 +113,6 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
 
  private:
   JSRealmManager();
-
-  void OnNewShareGroupPageRelease(const std::string& group_id);
 
   JSRealmState CreateSharedVMRealm(
       base::MoveOnlyClosure<std::vector<
@@ -192,12 +182,15 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
 
   void OnMemoryPressure(base::MemoryPressureLevel level);
 
-  Shared_Context_Map shared_context_map_;
   struct SharedRealmEntry {
     base::UnsafeOwningPtr<JSRealm> realm;
     size_t live_executors = 0;
   };
   using SharedRealmMap = std::unordered_map<std::string, SharedRealmEntry>;
+  void RetainSharedRealm(const std::string& group_id,
+                         bool enable_new_share_group);
+  // Separate maps allow both sharing modes to use the same group id.
+  SharedRealmMap shared_realm_map_;
   SharedRealmMap shared_vm_realm_map_;
   std::unordered_map<runtime::js::JSRuntimeType,
                      std::shared_ptr<runtime::js::VMInstance>>
