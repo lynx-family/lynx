@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "base/include/log/logging.h"
 #include "base/include/timer/time_utils.h"
 #include "core/renderer/simple_styling/style_object.h"
 #include "core/runtime/js/runtime_constant.h"
@@ -229,6 +230,16 @@ bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
 
   force_use_context_pool_ = true;
   return true;
+}
+
+bool LynxTemplateBundle::Preload(std::string url, std::vector<uint8_t> bytecode,
+                                 base::MoveOnlyClosure<> callback) {
+  if (!mts_runtime_pool_) {
+    LOGE("TemplateBundle preload failed");
+    return false;
+  }
+  return mts_runtime_pool_->Preload(std::move(url), std::move(bytecode),
+                                    std::move(callback));
 }
 
 void LynxTemplateBundle::SetEnableVMAutoGenerate(bool enable) {

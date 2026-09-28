@@ -6,13 +6,44 @@
 
 #include "core/shell/runtime/mts/mts_runtime_pool.h"
 
+#include <chrono>
+#include <future>
+
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/lynx_global_pool.h"
+#include "core/runtime/lepus/bytecode_generator.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/template_bundle/lynx_template_bundle.h"
+#include "quickjs/include/quickjs.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace shell {
+
+namespace {
+
+std::vector<uint8_t> GenerateBytecode(const char* source) {
+  lepus::QuickContext compiler_context;
+  if (!lepus::BytecodeGenerator::GenerateBytecode(&compiler_context, source,
+                                                  "2.0")
+           .empty()) {
+    return {};
+  }
+  size_t bytecode_size = 0;
+  uint8_t* bytecode = LEPUS_WriteObject(
+      compiler_context.context(), &bytecode_size,
+      compiler_context.GetTopLevelFunction(), LEPUS_WRITE_OBJ_BYTECODE);
+  if (!bytecode) {
+    return {};
+  }
+  std::vector<uint8_t> result(bytecode, bytecode + bytecode_size);
+  if (!compiler_context.GetGCFlag()) {
+    lepus_free(compiler_context.context(), bytecode);
+  }
+  return result;
+}
+
+}  // namespace
 
 TEST(MTSRuntimePoolTest, PreserveExactContextType) {
   auto vm_pool =
@@ -111,6 +142,44 @@ TEST(MTSRuntimePoolTest, PoolCreationDoesNotEnablePool) {
   EXPECT_EQ(pool, bundle.mts_runtime_pool_);
   EXPECT_TRUE(bundle.EnableUseContextPool());
   EXPECT_FALSE(bundle.mts_runtime_pool_->enable_auto_generate_);
+}
+
+TEST(MTSRuntimePoolTest, PreloadWaitsForFillAndLoadsCurrentRuntimes) {
+  auto quick_bundle = std::make_shared<lepus::QuickContextBundle>();
+  quick_bundle->SetSource("function main() {}");
+  std::shared_ptr<runtime::ContextBundle> context_bundle = quick_bundle;
+
+  tasm::CompileOptions compile_options;
+  tasm::PageConfig page_config;
+  auto pool =
+      MTSRuntimePool::Create(runtime::ContextType::LepusNGContextType, false,
+                             context_bundle, compile_options, &page_config);
+  // FillPool is intentionally asynchronous. Preload uses the same single
+  // normal-priority worker, so it must run after this fill task.
+  pool->FillPool(2);
+  auto bytecode = GenerateBytecode(
+      "globalThis.preloaded = (globalThis.preloaded || 0) + 1;");
+  ASSERT_FALSE(bytecode.empty());
+  pool->SetEnableAutoGenerate(false);
+
+  std::promise<bool> completion;
+  auto future = completion.get_future();
+  ASSERT_TRUE(pool->Preload("preload.js", std::move(bytecode),
+                            [&completion]() { completion.set_value(true); }));
+  EXPECT_FALSE(pool->enable_auto_generate_);
+  ASSERT_EQ(std::future_status::ready,
+            future.wait_for(std::chrono::seconds(5)));
+  EXPECT_TRUE(future.get());
+  EXPECT_EQ(2U, pool->mts_runtimes_.size());
+}
+
+TEST(MTSRuntimePoolTest, PreloadRequiresAutoRefillDisabled) {
+  auto pool =
+      MTSRuntimePool::Create(runtime::ContextType::LepusNGContextType, false);
+  auto bytecode = GenerateBytecode("globalThis.preloaded = true;");
+  ASSERT_FALSE(bytecode.empty());
+
+  EXPECT_FALSE(pool->Preload("preload.js", std::move(bytecode), nullptr));
 }
 
 TEST(MTSRuntimePoolTest, QuickContextPoolTest) {
