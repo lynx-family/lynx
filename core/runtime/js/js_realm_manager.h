@@ -176,6 +176,8 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager {
 
   void OnMemoryPressure(base::MemoryPressureLevel level);
 
+  friend class JSRealmManagerTest;
+
   struct SharedRealmEntry {
     base::UnsafeOwningPtr<JSRealm> realm;
     size_t live_executors = 0;

@@ -29,9 +29,9 @@ namespace lynx {
 namespace runtime {
 class JSRealmManager;
 struct JSRealmState;
+class JSRealmManagerTest;
 class TemplateDelegate;
 class LynxApiHandler;
-class JSRealmManagerDelegate;
 }  // namespace runtime
 
 namespace runtime {
@@ -99,6 +99,10 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   void TriggerVmGC();
 
  private:
+  friend class runtime::JSRealmManagerTest;
+
+  friend class runtime::JSRealmManagerTest;
+
   base::LogContext log_context_;
   std::string group_id_;
   std::shared_ptr<InspectorRuntimeObserverNG> runtime_observer_ng_;
