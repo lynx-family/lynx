@@ -861,6 +861,7 @@ void BTSRuntime::Destroy() {
 void BTSRuntime::DestroyAppAndNapi() {
   LOGI(log_context_ << " LynxRuntime::DestroyAppAndNapi this:" << this);
   // Releasing app_ runs App teardown before NAPI detaches.
+  app_->Destroy();
   app_ = nullptr;
 #if ENABLE_NAPI_BINDING
   lifecycle_observer_->OnRuntimeDetach();
