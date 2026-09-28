@@ -125,6 +125,8 @@ public class GlobalDevToolPlatformAndroidDelegate {
                 callbackId, source, error == null ? null : error.getBytes(StandardCharsets.UTF_8)));
   }
 
+  static native void nativeInvokeHSR(String message, CDPResultCallbackWrapper callback);
+
   private static native void nativeOnHSRScriptFetched(long callbackId, byte[] source, byte[] error);
 
   private static native void nativeOnMemoryUsageResult(

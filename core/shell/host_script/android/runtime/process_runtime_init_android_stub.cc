@@ -15,6 +15,13 @@ void OnHostScriptViewCreated() {}
 void UpdateHostScriptDebugState(bool enabled) {}
 
 bool HasHostScriptRuntime() { return false; }
+bool IsHostScriptUIInitialized() { return false; }
+bool IsHostScriptRuntimeReady(ProcessRuntime::Domain) { return false; }
+void ShutdownHostScriptRuntime(ProcessRuntime::Completion completion) {
+  ProcessRuntime::Result result;
+  result.error = "HSR_DEBUG_LIBRARY_REQUIRED";
+  if (completion) completion(std::move(result));
+}
 uint64_t HostScriptDebugEpoch() { return 0; }
 
 void LoadHostScriptRuntime(std::string, std::string,
@@ -25,7 +32,8 @@ void LoadHostScriptRuntime(std::string, std::string,
 }
 
 void EvaluateHostScriptRuntime(ProcessRuntime::Domain, std::string, std::string,
-                               ProcessRuntime::Completion completion) {
+                               ProcessRuntime::Completion completion,
+                               ProcessRuntime::Guard) {
   ProcessRuntime::Result result;
   result.error = "HSR_DEBUG_LIBRARY_REQUIRED";
   if (completion) completion(std::move(result));

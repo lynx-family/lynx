@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include "core/renderer/utils/devtool_lifecycle.h"
 #include "devtool/lynx_devtool/agent/android/global_devtool_platform_android.h"
 
 namespace lynx {
@@ -13,6 +14,19 @@ void GlobalDevToolPlatformAndroid::OnHSRScriptFetched(JNIEnv*, jlong,
 
 void GlobalDevToolPlatformAndroid::HandleHSRScript(HSRScriptRequest request,
                                                    HSRScriptCallback callback) {
+  if (callback &&
+      request.operation == HSRScriptRequest::Operation::kGetStatus) {
+    Json::Value result(Json::objectValue);
+    result["available"] = false;
+    result["enabled"] = tasm::DevToolLifecycle::GetInstance().IsEnabled();
+    for (const char* domain : {"bts", "mts", "ui"})
+      result["ready"][domain] = false;
+    result["loaded"] = false;
+    result["stopping"] = false;
+    result["pending"] = 0;
+    std::move(callback)(std::move(result), "");
+    return;
+  }
   GlobalDevToolPlatformFacade::HandleHSRScript(std::move(request),
                                                std::move(callback));
 }

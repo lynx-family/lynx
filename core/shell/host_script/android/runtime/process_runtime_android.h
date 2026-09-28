@@ -21,12 +21,18 @@ LYNX_EXPORT_FOR_DEVTOOL bool InitializeHostScriptRuntime(
 // the request without allocating a process runtime.
 LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
     ProcessRuntime::Domain domain, std::string source, std::string url,
-    ProcessRuntime::Completion completion);
+    ProcessRuntime::Completion completion, ProcessRuntime::Guard guard = {});
 
 LYNX_EXPORT_FOR_DEVTOOL void LoadHostScriptRuntime(
     std::string source, std::string url, ProcessRuntime::Completion completion);
 
 LYNX_EXPORT_FOR_DEVTOOL bool HasHostScriptRuntime();
+// Nonblocking UI publication check; does not require initialized JS contexts.
+LYNX_EXPORT_FOR_DEVTOOL bool IsHostScriptUIInitialized();
+LYNX_EXPORT_FOR_DEVTOOL bool IsHostScriptRuntimeReady(
+    ProcessRuntime::Domain domain);
+LYNX_EXPORT_FOR_DEVTOOL void ShutdownHostScriptRuntime(
+    ProcessRuntime::Completion completion);
 // Invalidate resource requests across disabling and re-enabling debugging.
 LYNX_EXPORT_FOR_DEVTOOL uint64_t HostScriptDebugEpoch();
 

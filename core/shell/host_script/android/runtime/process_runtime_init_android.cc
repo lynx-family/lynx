@@ -24,17 +24,32 @@ std::atomic<uint64_t> debug_epoch{0};
 
 bool HasHostScriptRuntime() { return true; }
 
+bool IsHostScriptUIInitialized() {
+  return ui_initialized.load(std::memory_order_acquire);
+}
+
+bool IsHostScriptRuntimeReady(ProcessRuntime::Domain domain) {
+  return ProcessRuntime::GetInstance().IsReady(domain);
+}
+
+void ShutdownHostScriptRuntime(ProcessRuntime::Completion completion) {
+  ProcessRuntime::GetInstance().Shutdown(std::move(completion));
+}
+
 uint64_t HostScriptDebugEpoch() {
   return debug_epoch.load(std::memory_order_acquire);
 }
 
 void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
                                std::string source, std::string url,
-                               ProcessRuntime::Completion completion) {
+                               ProcessRuntime::Completion completion,
+                               ProcessRuntime::Guard guard) {
   const auto epoch = HostScriptDebugEpoch();
   ProcessRuntime::GetInstance().Evaluate(
       domain, std::move(source), std::move(url), std::move(completion),
-      [epoch] { return epoch == HostScriptDebugEpoch(); });
+      [epoch, guard = std::move(guard)] {
+        return epoch == HostScriptDebugEpoch() && (!guard || guard());
+      });
 }
 
 void LoadHostScriptRuntime(std::string source, std::string url,

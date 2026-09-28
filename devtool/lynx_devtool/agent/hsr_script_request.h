@@ -14,7 +14,7 @@ namespace devtool {
 
 // Transport-owned boundary, independent of Runtime ownership and lifecycle.
 struct HSRScriptRequest {
-  enum class Operation { kLoadScript, kEvaluate };
+  enum class Operation { kLoadScript, kEvaluate, kStop, kGetStatus };
   enum class SourceType { kInline, kUrl };
   enum class Thread { kBTS, kMTS, kUI };
 

@@ -5,13 +5,15 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_INIT_ANDROID_H_
 #define CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_INIT_ANDROID_H_
 
+#include "core/base/lynx_export.h"
+
 namespace lynx {
 namespace shell {
 
 // Called by LynxEnv on Android UI. Prepares fixed process routing without
 // creating JS contexts or bindings until a View is created. Repeated calls
 // leave the generation intact.
-void PrepareHostScriptRuntime();
+LYNX_EXPORT_FOR_DEVTOOL void PrepareHostScriptRuntime();
 
 // Reuses the native View renderer creation path. Initializes each domain's
 // bindings on its owner, including after debugging is enabled later.
