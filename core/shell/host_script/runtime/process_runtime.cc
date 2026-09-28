@@ -6,6 +6,7 @@
 
 #include <array>
 #include <atomic>
+#include <mutex>
 #include <optional>
 #include <sstream>
 #include <thread>
@@ -30,6 +31,7 @@ using Guard = ProcessRuntime::Guard;
 using BindingFactory = ProcessRuntime::BindingFactory;
 using InitializationMode = ProcessRuntime::InitializationMode;
 enum class ProcessState { kRunning, kStopping, kStopped };
+enum class CompletionValue { kJSON, kSynchronous, kIgnored };
 
 std::string CurrentThread() {
   std::ostringstream stream;
@@ -41,14 +43,14 @@ size_t DomainIndex(Domain domain) { return static_cast<size_t>(domain); }
 bool IsValidDomain(Domain domain) { return DomainIndex(domain) < 3; }
 
 // Input-byte normalization only; JavaScript syntax belongs to the engine.
-bool NormalizeScriptSource(std::string& source) {
+bool NormalizeScriptSource(std::string& source, bool allow_empty = false) {
   constexpr size_t kMaxSourceBytes = 512 * 1024;
-  if (source.empty() || source.size() > kMaxSourceBytes ||
+  if ((!allow_empty && source.empty()) || source.size() > kMaxSourceBytes ||
       !base::IsValidUtf8(reinterpret_cast<const uint8_t*>(source.data()),
                          source.size()))
     return false;
   if (source.compare(0, 3, "\xEF\xBB\xBF") == 0) source.erase(0, 3);
-  return !source.empty();
+  return allow_empty || !source.empty();
 }
 
 Result WithError(Result result, std::string error) {
@@ -154,7 +156,7 @@ class DomainRuntime final {
   }
 
   Result Execute(const std::string& source, const std::string& url,
-                 bool serialize_result = true) {
+                 CompletionValue completion_value = CompletionValue::kJSON) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
     // Recheck on the owner: the host can disable debugging after submission.
     if (!tasm::DevToolLifecycle::GetInstance().IsEnabled())
@@ -173,13 +175,13 @@ class DomainRuntime final {
     if (!value.has_value())
       return WithError(Identity(), value.error().message());
     Result result = Identity();
-    if (value->isObject()) {
+    if (completion_value != CompletionValue::kIgnored && value->isObject()) {
       auto then = value->getObject(runtime).getProperty(runtime, "then");
       if (!then) return FailedCall();
       if (then->isObject() && then->getObject(runtime).isFunction(runtime))
         return WithError(Identity(), "ASYNC_RESULT_UNSUPPORTED");
     }
-    if (serialize_result && !value->isUndefined()) {
+    if (completion_value == CompletionValue::kJSON && !value->isUndefined()) {
       auto encoded = stringify_->call(
           runtime, static_cast<const runtime::js::Value*>(&*value), size_t{1});
       if (!encoded) return FailedCall();
@@ -255,8 +257,8 @@ class DomainState final {
           binding_factory_ ? binding_factory_(domain_) : nullptr);
       result = runtime_->Initialize();
       if (result.success && !bootstrap_.empty()) {
-        result =
-            runtime_->Execute(bootstrap_, "host-script-bootstrap.js", false);
+        result = runtime_->Execute(bootstrap_, "host-script-bootstrap.js",
+                                   CompletionValue::kSynchronous);
       }
       bootstrap_.clear();
       identity_ = runtime_->Identity();
@@ -278,7 +280,8 @@ class DomainState final {
   }
 
   void Evaluate(const std::string& source, const std::string& url,
-                Completion completion, const Guard& guard) {
+                Completion completion, const Guard& guard,
+                CompletionValue completion_value = CompletionValue::kJSON) {
     AssertOwner();
     Result result;
     if (!IsRunning()) {
@@ -295,7 +298,7 @@ class DomainState final {
         result = WithError(Identity(), "SOURCE_RUNTIME_DETACHED");
       }
       if (result.success && IsRunning()) {
-        result = runtime_->Execute(source, url);
+        result = runtime_->Execute(source, url, completion_value);
       }
       if (!IsRunning()) result = WithError(Identity(), "RUNTIME_SHUTDOWN");
     }
@@ -512,41 +515,47 @@ class ProcessRuntime::Impl {
     if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return false;
     if (!bootstrap.empty() && !NormalizeScriptSource(bootstrap)) return false;
     if (!runners.bts || !runners.mts || !runners.ui) return false;
+    std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+    if (load_) return false;
     auto current = Current();
     if (current && current->State() != ProcessState::kStopped) return false;
     auto next = std::make_shared<RuntimeGeneration>(
-        std::array<fml::RefPtr<fml::TaskRunner>, 3>{std::move(runners.bts),
-                                                    std::move(runners.mts),
-                                                    std::move(runners.ui)},
+        std::array<fml::RefPtr<fml::TaskRunner>, 3>{runners.bts, runners.mts,
+                                                    runners.ui},
         next_runtime_id_.fetch_add(3) + 1, ready, binding_factory, bootstrap,
         mode);
-    if (!std::atomic_compare_exchange_strong(&current_, &current, next))
-      return false;
+    runners_ = runners;
+    binding_factory_ = std::move(binding_factory);
+    bootstrap_ = std::move(bootstrap);
+    std::atomic_store(&current_, next);
     next->Start();
     return true;
   }
 
   void InitializeBindings() {
-    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
+    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled() || loading_.load())
+      return;
     if (auto generation = Current()) generation->InitializeBindings();
   }
 
   bool IsReady(Domain domain) const {
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
-    return tasm::DevToolLifecycle::GetInstance().IsEnabled() && generation &&
+    return tasm::DevToolLifecycle::GetInstance().IsEnabled() &&
+           !loading_.load() && generation &&
            generation->State() == ProcessState::kRunning && endpoint &&
            endpoint->publication->ready.load(std::memory_order_acquire);
   }
 
   void Evaluate(Domain domain, std::string source, std::string url,
-                Completion completion, Guard guard) {
+                Completion completion, Guard guard, bool from_binding = false) {
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
     const char* error =
         !tasm::DevToolLifecycle::GetInstance().IsEnabled()
             ? "HSR_DEBUG_DISABLED"
-        : !IsValidDomain(domain) ? "INVALID_DOMAIN"
+        : loading_.load() && !from_binding ? "RUNTIME_LOADING"
+        : !IsValidDomain(domain)           ? "INVALID_DOMAIN"
         : !generation || generation->State() != ProcessState::kRunning
             ? "RUNTIME_NOT_RUNNING"
         : !generation->IsLazy() &&
@@ -593,21 +602,175 @@ class ProcessRuntime::Impl {
   }
 
   void Shutdown(Completion completion) {
-    auto generation = Current();
+    std::shared_ptr<RuntimeGeneration> generation;
+    std::shared_ptr<Load> load;
+    {
+      std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+      generation = Current();
+      load = load_;
+      if (load) load->cancelled = true;
+      runners_ = {};
+      binding_factory_ = {};
+      bootstrap_.clear();
+    }
     if (generation) {
-      generation->Shutdown(std::move(completion));
+      generation->Shutdown([this, load, completion = std::move(completion)](
+                               Result result) mutable {
+        if (load) FinishLoad(load, WithError({}, "RUNTIME_SHUTDOWN"));
+        if (completion) completion(std::move(result));
+      });
     } else if (completion) {
       completion(ShutdownResult());
     }
   }
 
+  void LoadScript(std::string source, std::string url, Completion completion) {
+    if (!NormalizeScriptSource(source, true) || url.empty()) {
+      if (completion) completion(WithError({}, "INVALID_SCRIPT_SOURCE"));
+      return;
+    }
+    auto load = std::make_shared<Load>();
+    load->source = std::move(source);
+    load->url = std::move(url);
+    load->completion = std::move(completion);
+    std::shared_ptr<RuntimeGeneration> generation;
+    const char* error = nullptr;
+    {
+      std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+      generation = Current();
+      error = !tasm::DevToolLifecycle::GetInstance().IsEnabled()
+                  ? "HSR_DEBUG_DISABLED"
+              : load_ ? "RUNTIME_LOADING"
+              : !runners_.bts || !generation ||
+                      generation->State() == ProcessState::kStopping
+                  ? "RUNTIME_NOT_RUNNING"
+                  : nullptr;
+      if (!error) {
+        load_ = load;
+        loading_.store(true);
+      }
+    }
+    if (error) {
+      if (load->completion) load->completion(WithError({}, error));
+      return;
+    }
+    generation->Shutdown([this, load](Result) { RestartLoad(load); });
+  }
+
  private:
+  struct Load {
+    std::string source;
+    std::string url;
+    Completion completion;
+    Result initialization_error;
+    size_t initialized_domains = 0;
+    bool cancelled = false;
+  };
+
+  void RestartLoad(const std::shared_ptr<Load>& load) {
+    std::shared_ptr<RuntimeGeneration> next;
+    {
+      std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+      if (load_ != load) return;
+      if (!load->cancelled &&
+          tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+        next = std::make_shared<RuntimeGeneration>(
+            std::array<fml::RefPtr<fml::TaskRunner>, 3>{
+                runners_.bts, runners_.mts, runners_.ui},
+            next_runtime_id_.fetch_add(3) + 1,
+            [this, load](Result result) { LoadDomainReady(load, result); },
+            binding_factory_, bootstrap_, InitializationMode::kEager);
+        std::atomic_store(&current_, next);
+      }
+    }
+    if (next) {
+      next->Start();
+    } else {
+      FinishLoad(load, WithError({}, "HSR_DEBUG_DISABLED"));
+    }
+  }
+
+  void LoadDomainReady(const std::shared_ptr<Load>& load, const Result& ready) {
+    std::shared_ptr<RuntimeGeneration> generation;
+    {
+      std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+      if (load_ != load || load->cancelled) return;
+      if (!ready.success && load->initialization_error.error.empty())
+        load->initialization_error = ready;
+      if (++load->initialized_domains != 3) return;
+      generation = Current();
+    }
+    if (!load->initialization_error.error.empty()) {
+      StopFailedLoad(load, load->initialization_error);
+      return;
+    }
+    if (!generation->Post(*generation->Find(Domain::kBTS), [this, load] {
+          return [this, load](auto& owner) {
+            owner->Evaluate(
+                load->source, load->url,
+                [this, load](Result result) {
+                  if (result.success) {
+                    FinishLoad(load, std::move(result));
+                  } else {
+                    StopFailedLoad(load, std::move(result));
+                  }
+                },
+                {}, CompletionValue::kIgnored);
+          };
+        })) {
+      StopFailedLoad(load, WithError({}, "RUNTIME_SHUTDOWN"));
+    }
+  }
+
+  void StopFailedLoad(const std::shared_ptr<Load>& load, Result result) {
+    std::shared_ptr<RuntimeGeneration> generation;
+    {
+      std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+      if (load_ != load) return;
+      generation = Current();
+    }
+    generation->Shutdown(
+        [this, load, result = std::move(result)](Result) mutable {
+          FinishLoad(load, std::move(result));
+        });
+  }
+
+  void FinishLoad(const std::shared_ptr<Load>& load, Result result) {
+    Completion completion;
+    bool cleanup = false;
+    {
+      std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+      if (load_ != load) return;
+      cleanup = result.success &&
+                (load->cancelled ||
+                 !tasm::DevToolLifecycle::GetInstance().IsEnabled());
+      if (load->cancelled)
+        result = WithError(std::move(result), "RUNTIME_SHUTDOWN");
+      else if (cleanup)
+        result = WithError(std::move(result), "HSR_DEBUG_DISABLED");
+      if (!cleanup) {
+        completion = std::move(load->completion);
+        load_.reset();
+        loading_.store(false);
+      }
+    }
+    if (cleanup) StopFailedLoad(load, std::move(result));
+    if (completion) completion(std::move(result));
+  }
+
   std::shared_ptr<RuntimeGeneration> Current() const {
     return std::atomic_load(&current_);
   }
   // Publish immutable routing only; no process-level request registry.
   std::shared_ptr<RuntimeGeneration> current_;
   std::atomic<uint64_t> next_runtime_id_{0};
+  // Serializes replacement with explicit initialization/shutdown, never JS.
+  std::mutex lifecycle_mutex_;
+  std::atomic<bool> loading_{false};
+  std::shared_ptr<Load> load_;
+  Runners runners_;
+  BindingFactory binding_factory_;
+  std::string bootstrap_;
 };
 
 ProcessRuntime& ProcessRuntime::GetInstance() {
@@ -658,7 +821,12 @@ void ProcessRuntime::RunOnThread(Domain domain, std::string source,
                                  std::string url, Completion completion,
                                  Guard guard) {
   impl_->Evaluate(domain, std::move(source), std::move(url),
-                  std::move(completion), std::move(guard));
+                  std::move(completion), std::move(guard), true);
+}
+
+void ProcessRuntime::LoadScript(std::string source, std::string url,
+                                Completion completion) {
+  impl_->LoadScript(std::move(source), std::move(url), std::move(completion));
 }
 
 void ProcessRuntime::Shutdown(Completion completion) {
