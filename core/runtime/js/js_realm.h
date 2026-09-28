@@ -160,29 +160,18 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedVMGlobalRealm : public JSRealm {
   js::Runtime* GetGlobalRuntime() { return owned_global_runtime_.get(); }
   void CopyGlobalsTo(js::Runtime& page_runtime);
 
-  void IncLivePageCount() { ++live_page_count_; }
-  // Returns the remaining live page count after the decrement.
-  int DecLivePageCount() { return --live_page_count_; }
-
  private:
   // Owns the global runtime (and therefore the shared VM + global context),
   // keeping the group alive until JSRealmManager releases this wrapper.
   std::string group_id_;
-  int live_page_count_ = 0;
 };
 
 // Page-local globals borrow shared host objects and corejs exports.
 class LYNX_EXPORT_FOR_DEVTOOL SharedVMPageRealm : public JSRealm {
  public:
-  SharedVMPageRealm(std::shared_ptr<js::JSIContext> context,
-                    const std::string& group_id,
-                    SharedJSRealm::ReleaseListener* listener);
+  explicit SharedVMPageRealm(std::shared_ptr<js::JSIContext> context);
   ~SharedVMPageRealm() override = default;
 
-  // A page context is 1:1 with its page runtime, so releasing it always means
-  // this page is gone; unconditionally notify the listener to decrement the
-  // group's page count.
-  void Def() override;
   // Installs page-local globals but skips the shared host objects; they are
   // copied by reference from the group's global context instead.
   void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& js_runtime,
@@ -190,8 +179,6 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedVMPageRealm : public JSRealm {
                   const tasm::PageOptions& page_options) override;
 
  private:
-  std::string group_id_;
-  SharedJSRealm::ReleaseListener* listener_ = nullptr;
 };
 
 }  // namespace runtime

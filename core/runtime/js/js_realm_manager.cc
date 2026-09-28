@@ -178,9 +178,6 @@ std::shared_ptr<runtime::js::VMInstance> VMInstancePool::DoCreateVMInstance(
 
 #endif  // JS_ENGINE_TYPE
 
-// Log tag for the new "shared Isolate/VM + per-page isolated Context" scheme.
-constexpr const char* kNewShareGroupTag = "new_share_group:";
-
 void AlignRuntimeEngineWithVM(
     const std::shared_ptr<runtime::js::VMInstance>& vm,
     bool& force_use_lightweight_js_engine, const char* log_prefix) {
@@ -252,15 +249,6 @@ JSRealmManager* JSRealmManager::Instance() {
   return &instance_;
 }
 
-JSRealmManager::NewShareGroupPageReleaseObserver::
-    NewShareGroupPageReleaseObserver(JSRealmManager* manager)
-    : manager_(manager) {}
-
-void JSRealmManager::NewShareGroupPageReleaseObserver::OnRelease(
-    const std::string& group_id) {
-  manager_->OnNewShareGroupPageRelease(group_id);
-}
-
 JSRealmManager::JSRealmManager()
     : memory_pressure_callback_(base::NotificationCallback::CallbackList{
           {base::MEMORY_PRESSURE_NOTIFICATION,
@@ -290,6 +278,8 @@ JSRealmManager::~JSRealmManager() {
       UnregisterVMInstance(vm.get());
     }
   }
+  // Release realms before the inspector delegate.
+  shared_vm_realm_map_.clear();
   // Should destroy js_realm_manager_delegate_ before mVMContainer_
   js_realm_manager_delegate_.reset();
 }
@@ -330,10 +320,8 @@ JSRealmState JSRealmManager::CreateSharedVMRealm(
                        page_options);
   page_runtime->InitRuntime(page_context);
 
-  auto page_realm = std::make_shared<SharedVMPageRealm>(
-      page_context, group_id, &new_share_group_page_release_observer_);
-  page_context->SetReleaseObserver(page_realm);
-  global_realm->IncLivePageCount();
+  auto page_realm = base::MakeUnsafeOwning<SharedVMPageRealm>(page_context);
+  ++shared_vm_realm_map_.at(group_id).live_executors;
   std::shared_ptr<runtime::js::ConsoleMessagePostMan> page_post_man =
       page_context->GetPostMan();
   page_realm->InitGlobal(page_runtime, page_post_man, page_options);
@@ -354,7 +342,8 @@ JSRealmState JSRealmManager::CreateSharedVMRealm(
   CheckAutotakeSnapshot(group_id);
 #endif
 
-  return {std::move(page_runtime), nullptr, JSRealmState::Sharing::kNone};
+  return {std::move(page_runtime), std::move(page_realm),
+          JSRealmState::Sharing::kVM};
 }
 
 JSRealmState JSRealmManager::CreateRealm(
@@ -532,28 +521,24 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
         js_pre_sources_getter,
     runtime::js::JSExecutor& executor) {
   const auto& group_id = create_params.group_id;
-  auto it = new_share_group_map_.find(group_id);
-  if (it != new_share_group_map_.end()) {
+  auto it = shared_vm_realm_map_.find(group_id);
+  if (it != shared_vm_realm_map_.end()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                 JS_REALM_MANAGER_SHARED_CONTEXT_REUSED);
-    auto* realm = it->second.get();
+    auto* realm = static_cast<SharedVMGlobalRealm*>(it->second.realm.get());
     auto* global_runtime = realm ? realm->GetGlobalRuntime() : nullptr;
     if (realm != nullptr && global_runtime != nullptr &&
         !realm->IsCoreJSLoaded()) {
       auto js_pre_sources = js_pre_sources_getter();
       realm->JSRealm::EnsureCoreJSLoaded(*global_runtime, js_pre_sources);
     }
-    return it->second.get();
+    return realm;
   }
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
               JS_REALM_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
 
-  // Create the group's global runtime + shared VM/context. Ownership of this
-  // runtime is handed to the global-context realm (via InitGlobal) so it
-  // outlives every page in the group. It carries only the group id as external
-  // params; napi is intentionally NOT installed on the global context (per-page
-  // contexts own their own napi hooks).
+  // The global realm owns the shared VM; each page installs its own NAPI.
   auto unique_global =
       MakeRuntime(force_use_lightweight_js_engine, false, page_options);
   base::UnsafeOwningPtr<runtime::js::Runtime> global_runtime(
@@ -566,16 +551,13 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
   auto global_context = CreateJSIContext(*global_runtime, create_params);
   global_runtime->InitRuntime(global_context);
   runtime::js::Runtime* global_rt_ptr = global_runtime.get();
-  // Capture a weak handle before InitGlobal moves the owning pointer into the
-  // realm; used to drive PrepareJSEnv below.
+  // Keep a weak handle for initialization after ownership moves to the realm.
   base::UnsafeWeakPtr<runtime::js::Runtime> global_runtime_weak =
       global_runtime.GetWeakPtr();
 
   auto realm =
       base::MakeUnsafeOwning<SharedVMGlobalRealm>(global_context, group_id);
-  // Register the engine type with the devtool delegate so the matching release
-  // callback fires when the group's global context is torn down, mirroring the
-  // legacy shared-context first-create path.
+  // Register the engine type for the inspector release callback.
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
     js_realm_manager_delegate_->AfterSharedContextCreate(group_id,
                                                          global_rt_ptr->type());
@@ -592,9 +574,7 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
     post_man = global_context->GetPostMan();
   }
 
-  // InitGlobal moves ownership of `global_runtime` into the realm and
-  // installs the full set of shared host objects so page contexts can copy
-  // them.
+  // Initialize shared globals and transfer runtime ownership to the realm.
   realm->InitGlobal(global_runtime, post_man, page_options);
   realm->EnsureConsole(post_man, page_options);
 
@@ -609,9 +589,9 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
   auto js_pre_sources = js_pre_sources_getter();
   realm->PrepareJSEnv(global_runtime_weak, js_pre_sources);
 
-  auto emplaced =
-      new_share_group_map_.insert_or_assign(group_id, std::move(realm));
-  return emplaced.first->second.get();
+  auto emplaced = shared_vm_realm_map_.emplace(
+      group_id, SharedRealmEntry{std::move(realm), 0});
+  return static_cast<SharedVMGlobalRealm*>(emplaced.first->second.realm.get());
 }
 
 base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateRuntime(
@@ -669,31 +649,29 @@ void JSRealmManager::OnRelease(const std::string& group_id) {
 }
 
 void JSRealmManager::OnNewShareGroupPageRelease(const std::string& group_id) {
-  // Dispatched only from SharedVMPageRealm through
-  // new_share_group_page_release_observer_, so this never collides with a
-  // legacy shared context that happens to reuse the same group id. Decrement
-  // the group's live page count; when the last page is gone drop the group's
-  // global-context realm, which owns the global runtime and thus tears down
-  // the shared VM + global context.
-  auto ng_it = new_share_group_map_.find(group_id);
-  if (ng_it == new_share_group_map_.end()) {
+  auto it = shared_vm_realm_map_.find(group_id);
+  if (it == shared_vm_realm_map_.end()) {
     return;
   }
-  if (ng_it->second->DecLivePageCount() > 0) {
+  DCHECK(it->second.live_executors > 0);
+  if (--it->second.live_executors != 0) {
     return;
   }
+  // Erase before teardown so callbacks cannot find a partially destroyed realm.
+  auto realm = std::move(it->second.realm);
+  shared_vm_realm_map_.erase(it);
   if (js_realm_manager_delegate_) {
     js_realm_manager_delegate_->OnRelease(group_id);
   }
-  LOGI(kNewShareGroupTag << " release global context group:" << group_id);
-  new_share_group_map_.erase(ng_it);
+  LOGI("JSRealmManager release realm group:" << group_id);
 }
 
 JSRealm* JSRealmManager::GetSharedRealm(const std::string& group_id,
                                         bool enable_new_share_group) {
   if (enable_new_share_group) {
-    auto ng_it = new_share_group_map_.find(group_id);
-    return ng_it == new_share_group_map_.end() ? nullptr : ng_it->second.get();
+    auto ng_it = shared_vm_realm_map_.find(group_id);
+    return ng_it == shared_vm_realm_map_.end() ? nullptr
+                                               : ng_it->second.realm.get();
   }
   auto it = shared_context_map_.find(group_id);
   return it == shared_context_map_.end() ? nullptr : it->second.get();

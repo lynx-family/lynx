@@ -44,10 +44,18 @@ void JSExecutor::Destroy() {
   LOGI(GetLogContext() << " JSExecutor::Destroy");
   // Destroy module objects before their runtime.
   module_manager_.reset();
+
+  // The shell calls Destroy on the JS thread after destroying app and NAPI.
   if (auto* runtime = GetJSRuntime().Lock()) {
     runtime->BeforeDestroy();
   }
+  auto sharing =
+      realm_state_ ? realm_state_->sharing : JSRealmState::Sharing::kNone;
   realm_state_.reset();
+  if (sharing != JSRealmState::Sharing::kNone) {
+    runtime::JSRealmManager::Instance()->ReleaseSharedRealm(
+        group_id_, sharing == JSRealmState::Sharing::kVM);
+  }
 }
 
 runtime::JSRealmManager* JSExecutor::realmManagerInstance() {

@@ -4,6 +4,7 @@
 #ifndef CORE_RUNTIME_JS_JS_REALM_MANAGER_H_
 #define CORE_RUNTIME_JS_JS_REALM_MANAGER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -99,6 +100,13 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
 
   void OnRelease(const std::string& group_id) override;
 
+  // Transitional entry point for executor-owned shared-VM pages.
+  void ReleaseSharedRealm(const std::string& group_id, bool shared_vm) {
+    if (shared_vm) {
+      OnNewShareGroupPageRelease(group_id);
+    }
+  }
+
   JSRealmManagerDelegate* GetRealmManagerDelegate() {
     return js_realm_manager_delegate_.get();
   }
@@ -113,20 +121,6 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
 
  private:
   JSRealmManager();
-
-  // Release listener bound to new-share-group page contexts. Composed (not
-  // inherited by JSRealmManager) so the legacy shared-context release path and
-  // the new-share-group page release path stay dispatched through distinct
-  // listener objects, avoiding any group-id ambiguity between the two schemes.
-  class NewShareGroupPageReleaseObserver
-      : public SharedJSRealm::ReleaseListener {
-   public:
-    explicit NewShareGroupPageReleaseObserver(JSRealmManager* manager);
-    void OnRelease(const std::string& group_id) override;
-
-   private:
-    JSRealmManager* manager_;
-  };
 
   void OnNewShareGroupPageRelease(const std::string& group_id);
 
@@ -199,16 +193,12 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager
   void OnMemoryPressure(base::MemoryPressureLevel level);
 
   Shared_Context_Map shared_context_map_;
-  // Per-group global-context wrappers for the new isolated-context scheme.
-  // Keyed by group id, only populated when `enable_new_share_group` is used.
-  // Each realm owns the group's global runtime (shared VM + global context)
-  // and tracks the group's live page count; erasing the entry tears the group
-  // down.
-  std::unordered_map<std::string, base::UnsafeOwningPtr<SharedVMGlobalRealm>>
-      new_share_group_map_;
-  // Observer forwarded to new-share-group page contexts as their release
-  // listener; forwards back to OnNewShareGroupPageRelease.
-  NewShareGroupPageReleaseObserver new_share_group_page_release_observer_{this};
+  struct SharedRealmEntry {
+    base::UnsafeOwningPtr<JSRealm> realm;
+    size_t live_executors = 0;
+  };
+  using SharedRealmMap = std::unordered_map<std::string, SharedRealmEntry>;
+  SharedRealmMap shared_vm_realm_map_;
   std::unordered_map<runtime::js::JSRuntimeType,
                      std::shared_ptr<runtime::js::VMInstance>>
       mVMContainer_;
