@@ -4,6 +4,7 @@
 
 #include "core/shell/runtime/mts/mts_runtime_pool.h"
 
+#include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/devtool_wrapper/devtool_pool.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
@@ -55,6 +56,53 @@ void MTSRuntimePool::FillPoolSync(int32_t count) {
     return;
   }
   AddMTSRuntimeSafely(count);
+}
+
+bool MTSRuntimePool::Preload(std::string url, std::vector<uint8_t> bytecode,
+                             base::MoveOnlyClosure<> callback) {
+  if (context_type_ != runtime::ContextType::LepusNGContextType ||
+      url.empty() || bytecode.empty() || enable_auto_generate_ ||
+      is_destroying_.load(std::memory_order_acquire)) {
+    LOGE("MTSRuntimePool preload failed");
+    return false;
+  }
+
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [url = std::move(url), bytecode = std::move(bytecode),
+       callback = std::move(callback),
+       weak_pool =
+           std::weak_ptr<MTSRuntimePool>(shared_from_this())]() mutable {
+        auto pool = weak_pool.lock();
+        if (!pool || pool->is_destroying_.load(std::memory_order_acquire)) {
+          LOGE("MTSRuntimePool preload failed");
+          return;
+        }
+
+        bool success = true;
+        {
+          std::lock_guard<std::mutex> lock{pool->mtx_};
+          if (pool->mts_runtimes_.empty()) {
+            success = false;
+          }
+          for (const auto& runtime : pool->mts_runtimes_) {
+            lepus::Value result;
+            if (!runtime ||
+                !runtime->EvalBinary(bytecode.data(), bytecode.size(), result,
+                                     url.c_str())) {
+              success = false;
+              break;
+            }
+          }
+        }
+
+        if (!success) {
+          LOGE("MTSRuntimePool preload failed");
+        } else if (callback) {
+          callback();
+        }
+      },
+      base::ConcurrentTaskType::NORMAL_PRIORITY);
+  return true;
 }
 
 void MTSRuntimePool::AddMTSRuntimeSafely(int32_t count) {
