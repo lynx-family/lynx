@@ -405,6 +405,7 @@ LYNX_PROP_SETTER("hold-keyboard", setHoldKeyboard, BOOL) {
 }
 
 - (void)propsDidUpdate {
+  [super propsDidUpdate];
   _font = [[LynxFontFaceManager sharedManager]
                   generateFontWithSize:self.fontSize
                   weight:self.fontWeight
