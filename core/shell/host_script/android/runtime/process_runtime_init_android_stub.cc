@@ -14,6 +14,9 @@ void PrepareHostScriptRuntime() {}
 void OnHostScriptViewCreated() {}
 void UpdateHostScriptDebugState(bool enabled) {}
 
+bool HasHostScriptRuntime() { return false; }
+uint64_t HostScriptDebugEpoch() { return 0; }
+
 void LoadHostScriptRuntime(std::string, std::string,
                            ProcessRuntime::Completion completion) {
   ProcessRuntime::Result result;

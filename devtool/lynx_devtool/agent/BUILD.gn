@@ -126,8 +126,10 @@ if (is_android) {
       "android/global_devtool_platform_android.cc",
       "android/global_devtool_platform_android.h",
     ]
-    if (lynx_in_debug && enable_inspector && !enable_unittests &&
-        !is_oliver_ssr) {
+
+    # The DevTool adapter uses exported engine entry points. Ordinary engines
+    # provide stubs; only the engine's debug flavor includes the runtime.
+    if (enable_inspector && !enable_unittests && !is_oliver_ssr) {
       devtool_agent_shared_sources +=
           [ "android/global_devtool_hsr_android.cc" ]
     } else {

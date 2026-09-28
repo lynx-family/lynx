@@ -26,6 +26,10 @@ LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
 LYNX_EXPORT_FOR_DEVTOOL void LoadHostScriptRuntime(
     std::string source, std::string url, ProcessRuntime::Completion completion);
 
+LYNX_EXPORT_FOR_DEVTOOL bool HasHostScriptRuntime();
+// Invalidate resource requests across disabling and re-enabling debugging.
+LYNX_EXPORT_FOR_DEVTOOL uint64_t HostScriptDebugEpoch();
+
 }  // namespace shell
 }  // namespace lynx
 
