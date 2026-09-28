@@ -9,6 +9,8 @@ import android.view.MotionEvent;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.LynxView;
+import com.lynx.tasm.event.LynxCustomEvent;
+import com.lynx.tasm.event.LynxTouchEvent;
 import java.util.Iterator;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -68,6 +70,36 @@ public class LynxRecorderEventSend {
       }
     }
     return result;
+  }
+
+  static void sendFixtureEvent(JSONObject params, LynxView view) {
+    if (view == null)
+      return;
+    try {
+      int tag = params.getInt("tag");
+      String name = params.getString("name");
+      if ("SendCustomEvent".equals(params.getString("fixtureEventType"))) {
+        final String parameterName = params.optString("pname", "params");
+        LynxCustomEvent event = new LynxCustomEvent(
+            tag, name, jsonObjectToJavaOnlyMap(params.getJSONObject("params"))) {
+          @Override
+          public String paramsName() {
+            return parameterName;
+          }
+        };
+        view.getLynxContext().getEventEmitter().sendCustomEvent(event);
+      } else {
+        LynxTouchEvent event = new LynxTouchEvent(tag, name,
+            new LynxTouchEvent.Point(
+                (float) params.getDouble("client_x"), (float) params.getDouble("client_y")),
+            new LynxTouchEvent.Point(
+                (float) params.getDouble("page_x"), (float) params.getDouble("page_y")),
+            new LynxTouchEvent.Point((float) params.getDouble("x"), (float) params.getDouble("y")));
+        view.getLynxContext().getEventEmitter().sendTouchEvent(event);
+      }
+    } catch (JSONException e) {
+      android.util.Log.e("LynxRecorder", "Invalid fixture event", e);
+    }
   }
 
   // send tap/longtap/drag.etc native gesture event

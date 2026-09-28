@@ -93,10 +93,13 @@ public class LynxRecorderActionManager {
   private static final int UPDATE_META_DATA = 13;
   private static final int ON_TESTBENCH_COMPLETE = 14;
   private static final int SWITCH_ENGINE_FROM_UI_THREAD = 15;
+  private static final int SEND_FIXTURE_EVENT = 16;
   private static final int IS_VIRTUAL_NODE = 1 << 1;
   private static final int IS_FLATTEN_NODE = 1 << 3;
   private final static HashMap<String, Integer> mCanMockFuncMap = new HashMap<>();
   static {
+    mCanMockFuncMap.put("SendCustomEvent", SEND_FIXTURE_EVENT);
+    mCanMockFuncMap.put("SendTouchEvent", SEND_FIXTURE_EVENT);
     mCanMockFuncMap.put("setGlobalProps", SET_GLOBAL_PROPS);
     mCanMockFuncMap.put("updateViewPort", UPDATE_VIEW_PORT);
     mCanMockFuncMap.put("loadTemplate", LOAD_TEMPLATE);
@@ -124,6 +127,15 @@ public class LynxRecorderActionManager {
     public JSONObject jsbSettings;
 
     public JSONObject sharedData;
+    public LynxRecorderFixture fixture;
+    public synchronized LynxRecorderFixture acquireFixture() {
+      return fixture != null ? fixture.retain() : null;
+    }
+    synchronized void setFixture(LynxRecorderFixture value) {
+      if (fixture != null)
+        fixture.release();
+      fixture = value;
+    }
 
     public JSONArray getFunctionCall() {
       return functionCall;
@@ -274,6 +286,7 @@ public class LynxRecorderActionManager {
     JSONArray componentList;
     JSONArray actionList;
     JSONObject scripts;
+    LynxRecorderFixture fixture;
   }
 
   private interface RecordedInputStreamProvider {
@@ -489,6 +502,30 @@ public class LynxRecorderActionManager {
     }
   }
 
+  private ParsedRecordData parseRecord(RecordedInputStreamProvider provider)
+      throws IOException, JSONException {
+    try (InputStream input = provider.open()) {
+      if (input.read() == 'P' && input.read() == 'K' && input.read() == 3 && input.read() == 4) {
+        LynxRecorderFixture fixture;
+        try (InputStream zip = provider.open()) {
+          fixture = LynxRecorderFixture.open(zip, mContext.getCacheDir());
+        }
+        ParsedRecordData data = new ParsedRecordData();
+        data.fixture = fixture;
+        data.config = fixture.config;
+        data.jsbIgnoredInfo = fixture.config.optJSONArray("jsbIgnoredInfo");
+        data.jsbSettings = fixture.config.optJSONObject("jsbSettings");
+        data.actionList = fixture.actions;
+        data.sharedData = fixture.sharedData;
+        data.componentList = fixture.components;
+        data.functionCall = new JSONArray();
+        data.callbackData = new JSONObject();
+        return data;
+      }
+    }
+    return parseRecordedStream(provider);
+  }
+
   private static ParsedRecordData parseRecordedBody(byte[] body) throws IOException, JSONException {
     return parseRecordedStream(() -> new ByteArrayInputStream(body));
   }
@@ -508,6 +545,8 @@ public class LynxRecorderActionManager {
   private void handleParsedRecordData(ParsedRecordData parsedRecordData, int replayGeneration) {
     UIThreadUtils.runOnUiThreadImmediately(() -> {
       if (!isReplayGenerationActive(replayGeneration)) {
+        if (parsedRecordData.fixture != null)
+          parsedRecordData.fixture.release();
         return;
       }
       try {
@@ -531,6 +570,7 @@ public class LynxRecorderActionManager {
 
   private void applyParsedRecordData(ParsedRecordData parsedRecordData) throws JSONException {
     mainThreadChecker("applyParsedRecordData");
+    mDataProvider.setFixture(parsedRecordData.fixture);
 
     if (parsedRecordData.config != null) {
       mConfig = parsedRecordData.config;
@@ -645,7 +685,7 @@ public class LynxRecorderActionManager {
       mStateView.setReplayState(LynxRecorderReplayStateView.PARSING_JSON_FILE);
       ThreadUtils.getThreadPool().execute(() -> {
         try {
-          ParsedRecordData parsedRecordData = parseRecordedBody(body);
+          ParsedRecordData parsedRecordData = parseRecord(() -> new ByteArrayInputStream(body));
           handleParsedRecordData(parsedRecordData, mReplayGeneration);
         } catch (Exception e) {
           onRecordedFileParseFailed(e, mReplayGeneration);
@@ -708,6 +748,9 @@ public class LynxRecorderActionManager {
       @Override
       public void handleMessage(Message msg) {
         switch (msg.what) {
+          case SEND_FIXTURE_EVENT:
+            LynxRecorderEventSend.sendFixtureEvent((JSONObject) msg.obj, mLynxView);
+            break;
           case SET_THREAD_STRATEGY:
             initialLynxView((JSONObject) msg.obj);
             break;
@@ -930,6 +973,15 @@ public class LynxRecorderActionManager {
     }
   }
 
+  void prepareReplayTimeScript() {
+    mPreloadScripts.clear();
+    // Fixture actions carry relative delays, not an absolute recording time.
+    // Keep the page clock unchanged when no wall-clock origin is available.
+    if (!mForbidTimeFreeze && mDataProvider.fixture == null) {
+      mPreloadScripts.add(replayTimeEnvJScript());
+    }
+  }
+
   private String replayTimeEnvJScript() {
     InputStream in = null;
     try {
@@ -1002,7 +1054,7 @@ public class LynxRecorderActionManager {
         }
 
         try {
-          ParsedRecordData parsedRecordData = parseRecordedStream(inputStreamProvider);
+          ParsedRecordData parsedRecordData = parseRecord(inputStreamProvider);
           handleParsedRecordData(parsedRecordData, replayGeneration);
         } catch (Exception e) {
           onRecordedFileParseFailed(e, replayGeneration);
@@ -1043,9 +1095,22 @@ public class LynxRecorderActionManager {
 
   private void handleActionList(JSONArray actionList) {
     long recordTime = 0;
+    final boolean fixture = mDataProvider.fixture != null;
+    boolean hasAndroidEvents = false;
+    if (fixture) {
+      for (int i = 0; i < actionList.length(); ++i) {
+        JSONObject action = actionList.optJSONObject(i);
+        if (action != null && "sendEventAndroid".equals(action.optString("Function Name"))) {
+          hasAndroidEvents = true;
+          break;
+        }
+      }
+    }
     if (mPreDecode) {
       preDecodeTemplate(mTemplateBundleParams);
     }
+    final long fixtureStartTime = android.os.SystemClock.uptimeMillis();
+    long fixtureEndTime = fixtureStartTime;
     for (int i = 0; i < actionList.length(); ++i) {
       try {
         JSONObject action = actionList.getJSONObject(i);
@@ -1059,26 +1124,41 @@ public class LynxRecorderActionManager {
           recordTime = action.getLong("RecordMillisecond");
         }
         JSONObject params = action.getJSONObject("Params");
+        // Android recordings contain both raw input and its semantic events.
+        // Prefer raw input; semantic events support fixtures without that stream.
+        if ((functionName.equals("SendCustomEvent") || functionName.equals("SendTouchEvent"))
+            && (!fixture || hasAndroidEvents))
+          continue;
         if (!mCanMockFuncMap.containsKey(functionName)) {
           continue;
         }
 
-        if (functionName.equals("sendEventAndroid") && !mReplayGesture) {
+        if ((functionName.equals("sendEventAndroid") || functionName.equals("SendTouchEvent"))
+            && !mReplayGesture) {
           continue;
         }
 
-        if (mStartTime == 0) {
+        if (!fixture && mStartTime == 0) {
           mStartTime = recordTime;
         }
+        if (functionName.equals("SendTouchEvent") || functionName.equals("SendCustomEvent")) {
+          params.put("fixtureEventType", functionName);
+        }
         // convert delay time from s to ms
-        long delay = recordTime - mStartTime;
-        // if this function will be called when reload, save to the ArrayList: mReloadFuncSet
-        if (mReloadFuncSet.contains(functionName)) {
+        long delay = fixture ? recordTime : recordTime - mStartTime;
+        // Use one absolute time origin so Handler cannot overflow by adding a later uptime.
+        if (fixture) {
+          long actionTime = fixtureTimeAfter(fixtureStartTime, delay);
+          fixtureEndTime = Math.max(fixtureEndTime, actionTime);
+          mHandler.sendMessageAtTime(
+              mHandler.obtainMessage(mCanMockFuncMap.get(functionName), params), actionTime);
+        } else if (mReloadFuncSet.contains(functionName)) {
+          // Save actions that should run again when the legacy replay reloads.
           mReloadList.add(new ReloadAction(params, mCanMockFuncMap.get(functionName), delay));
         } else {
           dispatchAction(functionName, params, delay);
         }
-        if (i == actionList.length() - 1) {
+        if (!fixture && i == actionList.length() - 1) {
           Message completeMsg = Message.obtain();
           completeMsg.what = ON_TESTBENCH_COMPLETE;
           mHandler.sendMessageDelayed(completeMsg, delay);
@@ -1087,6 +1167,15 @@ public class LynxRecorderActionManager {
         e.printStackTrace();
       }
     }
+    if (fixture) {
+      mHandler.sendEmptyMessageAtTime(ON_TESTBENCH_COMPLETE, fixtureEndTime);
+      mHandler.sendEmptyMessageAtTime(
+          END_TESTBENCH, fixtureTimeAfter(fixtureEndTime, mDelayEndInterval));
+    }
+  }
+
+  static long fixtureTimeAfter(long uptime, long delay) {
+    return uptime + Math.min(Math.max(0, delay), Long.MAX_VALUE - uptime);
   }
 
   public void dispatchAction(String functionName, JSONObject params, long delay) {
@@ -1387,9 +1476,7 @@ public class LynxRecorderActionManager {
         if (mRawFontScale != -1) {
           builder.setFontScale(mRawFontScale);
         }
-        if (!mForbidTimeFreeze) {
-          mPreloadScripts.add(replayTimeEnvJScript());
-        }
+        prepareReplayTimeScript();
         onLynxViewWillBuild(this, builder);
         mLynxView = builder.build(mContext);
         mLynxView.getLynxContext().setLynxView(mLynxView);
@@ -1487,9 +1574,7 @@ public class LynxRecorderActionManager {
         if (mRawFontScale != -1) {
           builder.setFontScale(mRawFontScale);
         }
-        if (!mForbidTimeFreeze) {
-          mPreloadScripts.add(replayTimeEnvJScript());
-        }
+        prepareReplayTimeScript();
         onLynxViewWillBuild(this, builder);
         mLynxView = builder.build(mContext);
         mLynxView.getLynxContext().setLynxView(mLynxView);
@@ -1742,7 +1827,7 @@ public class LynxRecorderActionManager {
   }
 
   public void load() {
-    if (mCreateWhenReload) {
+    if (mCreateWhenReload || mDataProvider.fixture != null) {
       create();
     } else {
       if (mLoadTemplateURL != null && mLoadTemplateData != null) {
@@ -1772,6 +1857,8 @@ public class LynxRecorderActionManager {
 
   // when page reload, execute these functions in order
   public void reloadAction() {
+    if (mDataProvider.fixture != null)
+      return;
     long mLastDelayTime = 1000;
     for (int index = 0; index < mReloadList.size(); index++) {
       mReloadList.get(index).run();
@@ -1806,5 +1893,7 @@ public class LynxRecorderActionManager {
       mLynxView.destroy();
     }
     mHandler.removeCallbacksAndMessages(null);
+    if (mDataProvider != null)
+      mDataProvider.setFixture(null);
   }
 }

@@ -66,25 +66,6 @@ class NativeModuleRecorder {
   NativeModuleRecorder(const NativeModuleRecorder&) = delete;
   NativeModuleRecorder& operator=(const NativeModuleRecorder&) = delete;
 
-  struct VisitedGuard {
-    std::vector<const runtime::js::Object*>* collection;
-    const runtime::js::Object* current_val;
-
-    VisitedGuard(std::vector<const runtime::js::Object*>* c,
-                 const runtime::js::Object* current)
-        : collection(c), current_val(current) {
-      if (collection && current_val) {
-        collection->push_back(current_val);
-      }
-    }
-    ~VisitedGuard() {
-      if (collection && current_val && !collection->empty()) {
-        // Remove the last element (which should be current_val)
-        collection->pop_back();
-      }
-    }
-  };
-
   static rapidjson::Value ParsePiperValueToJsonValue(
       const runtime::js::Value& res, runtime::js::Runtime* rt,
       std::vector<const runtime::js::Object*>* visited_objs);

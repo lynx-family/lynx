@@ -36,6 +36,9 @@ public class LynxRecorderReplayDataModule extends LynxContextModule {
   private JSONArray mJsbIgnoredInfo;
   private JSONObject mJsbSettings;
   private JSONObject mSharedData;
+  private LynxRecorderFixture mFixture;
+  private int mFixtureUsers;
+  private boolean mDestroyed;
 
   public LynxRecorderReplayDataModule(LynxContext context) {
     super(context);
@@ -50,6 +53,37 @@ public class LynxRecorderReplayDataModule extends LynxContextModule {
     mJsbIgnoredInfo = provider.getJsbIgnoredInfo();
     mJsbSettings = provider.getJsbSettings();
     mSharedData = provider.getSharedData();
+    mFixture = provider.acquireFixture();
+  }
+
+  @LynxMethod
+  public synchronized String getFixtureDirectory() {
+    if (mFixture == null || mDestroyed)
+      return "";
+    mFixture.retain();
+    ++mFixtureUsers;
+    return mFixture.directory();
+  }
+
+  // Called on the JS thread after FixtureContext has stopped reading assets.
+  @LynxMethod
+  public synchronized void releaseFixture() {
+    if (mFixtureUsers > 0) {
+      --mFixtureUsers;
+      mFixture.release();
+    }
+    if (mDestroyed && mFixtureUsers == 0)
+      mFixture = null;
+  }
+
+  @Override
+  public synchronized void destroy() {
+    if (!mDestroyed && mFixture != null)
+      mFixture.release();
+    mDestroyed = true;
+    if (mFixtureUsers == 0)
+      mFixture = null;
+    super.destroy();
   }
 
   @LynxMethod

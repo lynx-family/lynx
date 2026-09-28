@@ -15,6 +15,36 @@ using namespace lynx::tasm::report::test;
 using namespace cache::testing;
 class QuickjsRuntimeTest : public JSITestBase {};
 
+TEST_P(QuickjsRuntimeTest, PreservesEmbeddedNullInStringsAndPropertyReads) {
+  Scope scope(rt);
+  auto result = eval(R"(({key:'prefix', 'key\u0000suffix':'a\u0000b'}))");
+  ASSERT_TRUE(result);
+  auto object = result->getObject(rt);
+  const std::string name("key\0suffix", 10);
+  auto string_name = String::createFromUtf8(rt, name);
+  auto prop_name = PropNameID::forUtf8(rt, name);
+  EXPECT_EQ(string_name.utf8(rt), name);
+  EXPECT_EQ(prop_name.utf8(rt), name);
+  for (const auto& value : {object.getProperty(rt, string_name),
+                            object.getProperty(rt, prop_name)}) {
+    ASSERT_TRUE(value);
+    ASSERT_TRUE(value->isString());
+    EXPECT_EQ(value->getString(rt).utf8(rt), std::string("a\0b", 3));
+  }
+  EXPECT_EQ(object.getProperty(rt, "key")->getString(rt).utf8(rt), "prefix");
+}
+
+TEST_P(QuickjsRuntimeTest, ReportsPropertyGetterFailure) {
+  Scope scope(rt);
+  auto result = eval(R"(({get value() { throw Error('getter failed'); }}))");
+  ASSERT_TRUE(result);
+  auto object = result->getObject(rt);
+  EXPECT_CALL(*exception_handler_, OnJSIException).Times(2);
+  EXPECT_FALSE(object.getProperty(rt, String::createFromUtf8(rt, "value")));
+  EXPECT_FALSE(object.getProperty(rt, PropNameID::forAscii(rt, "value")));
+  EXPECT_EQ(eval("1 + 1")->getNumber(), 2);
+}
+
 TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
   rt.prepareJavaScript(std::make_unique<StringBuffer>("var foo = 0;"),
                        "/foo.js");

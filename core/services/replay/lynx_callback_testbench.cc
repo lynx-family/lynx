@@ -13,8 +13,18 @@ ModuleCallbackTestBench::ModuleCallbackTestBench(int64_t callback_id)
 
 void ModuleCallbackTestBench::Invoke(Runtime *runtime,
                                      ModuleCallbackFunctionHolder *holder) {
+  if (guarded && lifetime.expired()) {
+    return;
+  }
   if (runtime == nullptr) {
     LOGE("lynx ModuleCallback has null runtime or null function");
+    return;
+  }
+  if (guarded) {
+    auto value = Value::createFromJsonUtf8(
+        *runtime, reinterpret_cast<const uint8_t *>(fixture_json.data()),
+        fixture_json.size());
+    if (value) holder->function_.call(*runtime, *value);
     return;
   }
   Runtime *rt = runtime;

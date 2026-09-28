@@ -4,11 +4,11 @@
 
 #include "core/services/recorder/native_module_recorder.h"
 
-#include <cmath>
 #include <utility>
 #include <vector>
 
 #include "core/runtime/js/jsi/jsi.h"
+#include "core/services/recorder/native_module_json.h"
 
 namespace lynx {
 namespace tasm {
@@ -202,131 +202,9 @@ void NativeModuleRecorder::RecordEventAndroid(
 rapidjson::Value NativeModuleRecorder::ParsePiperValueToJsonValue(
     const runtime::js::Value& res, runtime::js::Runtime* rt,
     std::vector<const runtime::js::Object*>* visited_objs) {
-  runtime::js::Scope scope(*rt);
-  rapidjson::Document::AllocatorType& allocator =
-      TestBenchBaseRecorder::GetInstance().GetAllocator();
-
-  rapidjson::Value return_val(rapidjson::kNullType);
-
-  if (res.isBool()) {
-    return_val.SetBool(res.getBool());
-  } else if (res.isNumber()) {
-    double number = res.getNumber();
-    if (std::isnan(number)) {
-      return_val.SetString("NaN", allocator);
-    } else {
-      return_val.SetDouble(number);
-    }
-  } else if (res.isString()) {
-    return_val.SetString(res.getString(*rt).utf8(*rt).c_str(), allocator);
-  } else if (res.isSymbol()) {
-    return_val.SetString(res.getSymbol(*rt).toString(*rt)->c_str(), allocator);
-  } else if (res.isObject()) {
-    runtime::js::Object piper_obj = res.getObject(*rt);
-
-    // Circular reference detection: prevents infinite recursion and stack
-    // overflow
-    //
-    // - Add visited object tracking using vector<const Object*> and
-    // VisitedGuard RAII
-    // - Use Object::strictEquals() official API for reliable object identity
-    // check
-    // - Return "[Circular Reference]" placeholder when circular reference is
-    // detected
-    if (visited_objs != nullptr) {
-      for (const auto* obj : *visited_objs) {
-        if (obj && runtime::js::Object::strictEquals(*rt, *obj, piper_obj)) {
-          LOGD(
-              "NativeModuleRecorder::ParsePiperValueToJsonValue: Circular "
-              "reference detected when serializing JS object.");
-          return_val.SetString("[Circular Reference]", allocator);
-          return return_val;
-        }
-      }
-    }
-    // Add current Object to visited set
-    VisitedGuard guard(visited_objs, &piper_obj);
-
-    if (piper_obj.isArray(*rt)) {
-      // Parse Array
-      return_val.SetArray();
-      runtime::js::Array piper_array = piper_obj.getArray(*rt);
-      auto array_size = piper_array.size(*rt);
-      if (array_size) {
-        for (size_t index = 0; index != *array_size; index++) {
-          auto val_opt = piper_array.getValueAtIndex(*rt, index);
-          if (!val_opt) {
-            return return_val;
-          }
-          return_val.PushBack(
-              ParsePiperValueToJsonValue(*val_opt, rt, visited_objs),
-              allocator);
-        }
-      }
-    } else if (piper_obj.isArrayBuffer(*rt)) {
-      // Parse Array Buffer
-      auto buffer = piper_obj.getArrayBuffer(*rt);
-      return_val.SetUint(static_cast<uint32_t>(*buffer.data(*rt)));
-
-    } else if (piper_obj.isFunction(*rt)) {
-      // TODO(kechenglong): parse function if needed
-      return_val.SetString(kParamFunction, allocator);
-
-    } else if (piper_obj.isHostObject(*rt)) {
-      // Parse HostObject
-      return_val.SetObject();
-      auto weak_host_obj = piper_obj.getHostObject(*rt);
-      auto host_obj = weak_host_obj.lock();
-      if (!host_obj) {
-        return return_val;
-      }
-      auto property_names = host_obj->getPropertyNames(*rt);
-      for (auto& property_name : property_names) {
-        rapidjson::Value key(rapidjson::kStringType);
-        key.SetString(property_name.utf8(*rt).c_str(), allocator);
-        runtime::js::Value piper_val = host_obj->get(rt, property_name);
-        rapidjson::Value val =
-            ParsePiperValueToJsonValue(piper_val, rt, visited_objs);
-        return_val.AddMember(key, val, allocator);
-      }
-
-    } else {
-      // Parse Object
-      auto property_names_array_opt = piper_obj.getPropertyNames(*rt);
-      if (!property_names_array_opt) {
-        return return_val;
-      }
-      auto array_size_opt = property_names_array_opt->size(*rt);
-      if (!array_size_opt) {
-        return return_val;
-      }
-      return_val.SetObject();
-      for (size_t index = 0; index != *array_size_opt; index++) {
-        auto property_name =
-            property_names_array_opt->getValueAtIndex(*rt, index);
-        if (!property_name) {
-          return return_val;
-        }
-        rapidjson::Value key =
-            ParsePiperValueToJsonValue(*property_name, rt, visited_objs);
-        auto piper_val = piper_obj.getProperty(*rt, key.GetString());
-        if (!piper_val) {
-          return return_val;
-        }
-        rapidjson::Value val =
-            ParsePiperValueToJsonValue(*piper_val, rt, visited_objs);
-        return_val.AddMember(key, val, allocator);
-      }
-    }
-  } else {
-    if (res.isNull()) {
-      return_val.SetNull();
-    } else {
-      return_val.SetString(res.toString(*rt)->utf8(*rt).c_str(), allocator);
-    }
-  }
-
-  return return_val;
+  return NativeModuleValueToJson(
+      res, rt, TestBenchBaseRecorder::GetInstance().GetAllocator(),
+      visited_objs);
 }
 
 }  // namespace recorder

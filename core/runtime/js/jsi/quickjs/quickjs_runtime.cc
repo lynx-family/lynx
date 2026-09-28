@@ -58,6 +58,31 @@ void reportLepusToCStringError(Runtime &rt, const std::string &func_name,
   rt.reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(error));
 }
 
+std::optional<Value> GetPropertyWithLength(QuickjsRuntime &runtime,
+                                           LEPUSValue object, LEPUSValue name) {
+  LEPUSContext *ctx = runtime.getJSContext();
+  size_t length = 0;
+  const char *prop = LEPUS_ToCStringLen(ctx, &length, name);
+  if (!prop) {
+    reportLepusToCStringError(runtime, "QuickjsRuntime::getProperty",
+                              static_cast<int>(LEPUS_VALUE_GET_TAG(name)));
+    return Value::undefined();
+  }
+  HandleScope scope(ctx, &prop, HANDLE_TYPE_CSTRING);
+  LEPUSAtom atom = LEPUS_NewAtomLen(ctx, prop, length);
+  scope.PushLEPUSAtom(atom);
+  LEPUSValue result =
+      atom ? LEPUS_GetProperty(ctx, object, atom) : LEPUS_EXCEPTION;
+  if (!LEPUS_IsGCMode(ctx)) {
+    LEPUS_FreeAtom(ctx, atom);
+    LEPUS_FreeCString(ctx, prop);
+  }
+  if (!QuickjsException::ReportExceptionIfNeeded(runtime, result)) {
+    return std::nullopt;
+  }
+  return QuickjsHelper::createValue(result, &runtime);
+}
+
 bool SampleJSCoverageForPage() {
   // This function is called once while constructing a QuickjsRuntime. The
   // returned page-level decision is stored as a bool for the lifetime of the
@@ -515,54 +540,14 @@ std::weak_ptr<HostObject> QuickjsRuntime::getHostObject(const Object &object) {
 
 std::optional<Value> QuickjsRuntime::getProperty(const Object &object,
                                                  const PropNameID &name) {
-  LEPUSValue v = QuickjsHelper::objectRef(object);
-  LEPUSContext *ctx = context_->getContext();
-
-  const char *prop = LEPUS_ToCString(ctx, QuickjsHelper::valueRef(name));
-  if (!prop) {
-    int64_t tag = LEPUS_VALUE_GET_TAG(QuickjsHelper::valueRef(name));
-    reportLepusToCStringError(*this, "QuickjsRuntime::getProperty",
-                              static_cast<int>(tag));
-    return QuickjsHelper::createValue(LEPUS_UNDEFINED, this);
-  }
-  LEPUSValue result;
-  if (gc_flag_) {
-    HandleScope func_scope(ctx, static_cast<void *>(&prop),
-                           HANDLE_TYPE_CSTRING);
-    result = LEPUS_GetPropertyStr(context_->getContext(), v, prop);
-  } else {
-    result = LEPUS_GetPropertyStr(context_->getContext(), v, prop);
-    LEPUS_FreeCString(context_->getContext(), prop);
-  }
-  QuickjsException::ReportExceptionIfNeeded(*this, result);
-  auto ret = QuickjsHelper::createValue(result, this);
-  return ret;
+  return GetPropertyWithLength(*this, QuickjsHelper::objectRef(object),
+                               QuickjsHelper::valueRef(name));
 }
 
 std::optional<Value> QuickjsRuntime::getProperty(const Object &object,
                                                  const String &name) {
-  LEPUSValue v = QuickjsHelper::objectRef(object);
-  LEPUSContext *ctx = context_->getContext();
-
-  const char *prop = LEPUS_ToCString(ctx, QuickjsHelper::stringRef(name));
-  if (!prop) {
-    int64_t tag = LEPUS_VALUE_GET_TAG(QuickjsHelper::stringRef(name));
-    reportLepusToCStringError(*this, "QuickjsRuntime::getProperty",
-                              static_cast<int>(tag));
-    return QuickjsHelper::createValue(LEPUS_UNDEFINED, this);
-  }
-  LEPUSValue result;
-  if (gc_flag_) {
-    HandleScope func_scope(ctx, static_cast<void *>(&prop),
-                           HANDLE_TYPE_CSTRING);
-    result = LEPUS_GetPropertyStr(context_->getContext(), v, prop);
-  } else {
-    result = LEPUS_GetPropertyStr(context_->getContext(), v, prop);
-    LEPUS_FreeCString(context_->getContext(), prop);
-  }
-  QuickjsException::ReportExceptionIfNeeded(*this, result);
-  auto ret = QuickjsHelper::createValue(result, this);
-  return ret;
+  return GetPropertyWithLength(*this, QuickjsHelper::objectRef(object),
+                               QuickjsHelper::stringRef(name));
 }
 
 bool QuickjsRuntime::hasProperty(const Object &object, const PropNameID &name) {

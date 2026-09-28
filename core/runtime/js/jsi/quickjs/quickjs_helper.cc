@@ -141,7 +141,8 @@ LEPUSValue QuickjsHelper::objectRef(const Object &sym) {
 
 std::string QuickjsHelper::LEPUSStringToSTLString(LEPUSContext *ctx,
                                                   LEPUSValue s) {
-  const char *c = LEPUS_ToCString(ctx, s);
+  size_t length = 0;
+  const char *c = LEPUS_ToCStringLen(ctx, &length, s);
   if (c == nullptr) {
     if (LEPUS_IsGCMode(ctx))
       LEPUS_GetException(ctx);  // just disconnect the reference-relation from
@@ -151,7 +152,7 @@ std::string QuickjsHelper::LEPUSStringToSTLString(LEPUSContext *ctx,
 
     return "Error!";
   }
-  std::string ret(c);
+  std::string ret(c, length);
   if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, c);
   return ret;
 }
