@@ -187,6 +187,21 @@
   }
 }
 
+- (BOOL)preload:(nonnull NSString*)url
+       bytecode:(nonnull NSData*)bytecode
+       callback:(nullable dispatch_block_t)callback {
+  if (!template_bundle_ || url.length == 0 || bytecode.length == 0) {
+    return NO;
+  }
+  std::vector<uint8_t> bytes = ConvertNSBinary(bytecode);
+  dispatch_block_t completion_block = [callback copy];
+  lynx::base::MoveOnlyClosure<> completion;
+  if (completion_block) {
+    completion = lynx::base::MoveOnlyClosure<>([completion_block]() { completion_block(); });
+  }
+  return template_bundle_->Preload([url UTF8String], std::move(bytes), std::move(completion));
+}
+
 std::shared_ptr<lynx::tasm::LynxTemplateBundle> LynxGetRawTemplateBundle(
     LynxTemplateBundle* bundle) {
   if ([bundle errorMsg]) {

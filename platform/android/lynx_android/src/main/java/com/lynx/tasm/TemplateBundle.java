@@ -414,6 +414,27 @@ public final class TemplateBundle implements ILynxSecurityTarget {
 
   /**
    * @apidoc
+   * @brief Asynchronously loads LepusNG bytecode into every MTSRuntime pre-created for this
+   *     TemplateBundle.
+   * @param url Source URL associated with the bytecode.
+   * @param bytecode LepusNG bytecode to load.
+   * @param callback Invoked on the preload worker after all pre-created runtimes load successfully.
+   *     It is not invoked when validation or loading fails.
+   * @note Context auto-refill must be disabled through TemplateBundleOption before calling this
+   *     method. All required contexts must be constructed first; do not call constructContext after
+   *     preload is accepted.
+   * @return Whether the preload task was accepted. Returns false when context auto-refill is
+   *     enabled.
+   */
+  public boolean preload(String url, byte[] bytecode, @Nullable PlatformCallBack callback) {
+    if (!isValid() || TextUtils.isEmpty(url) || bytecode == null || bytecode.length == 0) {
+      return false;
+    }
+    return nativePreload(getNativePtr(), url, bytecode, callback);
+  }
+
+  /**
+   * @apidoc
    * @brief When `TemplateBundle` is an invalid object, use this method to
    * obtain the exception information that occurred during template parsing
    * @return The exception information.
@@ -460,6 +481,8 @@ public final class TemplateBundle implements ILynxSecurityTarget {
   }
   private static native void nativePostJsCacheGenerationTask(
       long bundle, String bytecodeSourceUrl, boolean useV8, LynxBytecodeCallback callback);
+  private static native boolean nativePreload(
+      long bundle, String url, byte[] bytecode, PlatformCallBack callback);
 
   private static native long nativeParseTemplateFromByteArray(
       byte[] temp, Object[] options, boolean skipCSS, long devToolPoolPtr);

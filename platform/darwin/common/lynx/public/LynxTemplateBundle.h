@@ -103,6 +103,21 @@
 - (void)postJsCacheGenerationTask:(nonnull NSString*)bytecodeSourceUrl
                          callback:(nullable LynxBytecodeResponseBlock)callback;
 
+/**
+ * @apidoc
+ * @brief Asynchronously loads LepusNG bytecode into every MTSRuntime pre-created for this bundle.
+ * @param url Source URL associated with the bytecode.
+ * @param bytecode LepusNG bytecode to load.
+ * @param callback Invoked on the preload worker after all pre-created runtimes load successfully.
+ * @note `LynxTemplateBundleOption.enableContextAutoRefill` must be `NO`. Construct all required
+ * contexts before calling this method, and do not call `constructContext:` after preload is
+ * accepted.
+ * @return Whether the preload task was accepted. Returns `NO` when context auto-refill is enabled.
+ */
+- (BOOL)preload:(nonnull NSString*)url
+       bytecode:(nonnull NSData*)bytecode
+       callback:(nullable dispatch_block_t)callback;
+
 @end
 
 #endif  // DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
