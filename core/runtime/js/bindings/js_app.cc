@@ -1929,8 +1929,7 @@ void App::Init() {
           [this](lepus::Value args) { OnBTSConsoleEvent(args); }));
 }
 
-App::~App() {
-  LOGI("~App()");
+void App::Destroy() {
   auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     LOGI("App::Destroy " << this);

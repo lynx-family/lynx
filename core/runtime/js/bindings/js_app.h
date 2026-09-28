@@ -93,7 +93,8 @@ class App {
     return delegate_->GetLogContext();
   }
 
-  ~App();
+  ~App() = default;
+  void Destroy();
   void CallDestroyLifetimeFun();
 
   void SetJsAppObj(Object&& obj);
