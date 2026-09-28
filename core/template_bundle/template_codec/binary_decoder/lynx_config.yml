@@ -1869,6 +1869,18 @@ enableUnifyFixedBehavior:
     - Android
     - HarmonyOS
     - iOS
+enableUnifyFixedOrderFix:
+  description: Controls mounted-order tracking, descendant reattachment, and native-view transitions for Fiber unified fixed containers when enableUnifyFixedBehavior is enabled and enableFixedNew is disabled. When false, preserves the legacy insertion and reattachment paths. Resolved at page load; changing settings takes effect on subsequent page loads. If omitted, falls back to settings.
+  defaultValue: 'false'
+  valueType: bool
+  readSettings: true
+  readNative: true
+  author: liuzhenyue
+  since: '4.3'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enableTransformedTouchPosition:
   description: Controls whether touch event coordinates account for element transforms. When enabled, Lynx and Canvas touch dispatch convert root touch points into the transformed target view coordinate space; when disabled, touch positions keep the legacy untransformed calculation.
   defaultValue: 'false'

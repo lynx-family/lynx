@@ -864,6 +864,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return config_ && config_->GetEnableUnifyFixedBehavior();
   }
 
+  bool GetEnableUnifyFixedOrderFix() const {
+    return config_ && config_->GetEnableUnifyFixedOrderFix();
+  }
+
   bool GetEnableAutoNonFlatten() const {
     return config_ && config_->IsAutoNonFlattenPlatformSupported() &&
            config_->GetEnableAutoNonFlatten();

@@ -632,6 +632,10 @@ bool LynxEnv::EnableUnifyFixedBehavior() {
   return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_BEHAVIOR, false);
 }
 
+bool LynxEnv::EnableUnifyFixedOrderFix() {
+  return GetBoolEnv(Key::ENABLE_UNIFY_FIXED_ORDER_FIX, false);
+}
+
 bool LynxEnv::FixRadonInlineConvertBug() {
   static bool fix_radon_inline_convert_bug =
       GetBoolEnv(Key::FIX_RADON_INLINE_CONVERT_BUG, true);
