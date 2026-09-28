@@ -392,6 +392,42 @@ class AppTest : public JSITestBase {
 
 TEST_P(AppTest, CreateAppTest) { EXPECT_TRUE(app); }
 
+TEST_P(AppTest, DestroyKeepsNativeBindingsAliveAndRunsOnce) {
+  auto weak_app = app->GetWeakPtr();
+  auto lynx_proxy = std::make_shared<LynxProxy>(weak_app);
+  ASSERT_TRUE(rt.global().setProperty(
+      rt, "teardownLynx", Object::createFromHostObject(rt, lynx_proxy)));
+  ASSERT_TRUE(eval(R"(
+    globalThis.destroyCount = 0;
+    globalThis.destroyCard = function() {
+      // Internal listener cleanup needs this binding during destroyCard.
+      teardownLynx.getCoreContext();
+      ++globalThis.destroyCount;
+    };
+  )"));
+
+  app->Destroy();
+  EXPECT_TRUE(weak_app.Lock());
+  EXPECT_EQ(eval("globalThis.destroyCount")->getNumber(), 1);
+
+  app->Destroy();
+  app = nullptr;
+  EXPECT_FALSE(weak_app.Lock());
+  EXPECT_EQ(eval("globalThis.destroyCount")->getNumber(), 1);
+}
+
+TEST_P(AppTest, DestructorFallsBackToDestroy) {
+  ASSERT_TRUE(eval(R"(
+    globalThis.destroyCount = 0;
+    globalThis.destroyCard = function() {
+      ++globalThis.destroyCount;
+    };
+  )"));
+
+  app = nullptr;
+  EXPECT_EQ(eval("globalThis.destroyCount")->getNumber(), 1);
+}
+
 TEST_P(AppTest, NativeLynxContextProxyTest) {
   EXPECT_TRUE(app);
 

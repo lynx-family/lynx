@@ -1931,6 +1931,14 @@ void App::Init() {
 
 App::~App() {
   LOGI("~App()");
+  Destroy();
+}
+
+void App::Destroy() {
+  if (destroyed_) {
+    return;
+  }
+  destroyed_ = true;
   auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     LOGI("App::Destroy " << this);

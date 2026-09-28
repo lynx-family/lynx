@@ -94,6 +94,8 @@ class App {
   }
 
   ~App();
+  // Run before releasing the owner so JS cleanup can still lock App observers.
+  void Destroy();
   void CallDestroyLifetimeFun();
 
   void SetJsAppObj(Object&& obj);
@@ -358,6 +360,7 @@ class App {
     kDestroying,     // app is destroying
   };
   State state_ = State::kNotStarted;
+  bool destroyed_{false};
 
   base::UnsafeWeakPtr<App> weak_self_;
   std::string app_guid_;
