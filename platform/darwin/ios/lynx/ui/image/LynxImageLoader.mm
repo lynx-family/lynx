@@ -130,10 +130,13 @@ BOOL LynxImageFetchherSupportsProcessor(id<LynxImageFetcher> fetcher) {
 
 + (id<LynxServiceImageProtocol>)imageService {
   static id<LynxServiceImageProtocol> _imageService;
-  if (!_imageService) {
-    _imageService = LynxService(LynxServiceImageProtocol);
+  // Share the lock across subclasses and allow retries until the service is registered.
+  @synchronized([LynxImageLoader class]) {
+    if (!_imageService) {
+      _imageService = LynxService(LynxServiceImageProtocol);
+    }
+    return _imageService;
   }
-  return _imageService;
 }
 
 - (dispatch_block_t)loadImageWithOptions:(LynxImageLoadOptions*)options {
