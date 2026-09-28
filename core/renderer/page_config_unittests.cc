@@ -166,6 +166,57 @@ TEST(PageConfigTest, EnableSimpleStyleNoPatchOptimization) {
       LynxEnv::Key::ENABLE_SIMPLE_STYLE_NO_PATCH_OPTIMIZATION);
 }
 
+TEST(PageConfigTest, EnableUnifyFixedOrderFix) {
+  auto& env = LynxEnv::GetInstance();
+  const auto key = LynxEnv::Key::ENABLE_UNIFY_FIXED_ORDER_FIX;
+  auto previous = env.external_env_map_.find(key);
+  std::optional<std::string> previous_value;
+  if (previous != env.external_env_map_.end()) {
+    previous_value = previous->second;
+  }
+  env.external_env_map_.erase(key);
+
+  auto decode = [](const char* json) {
+    rapidjson::Document doc;
+    doc.Parse(json);
+    auto config = std::make_shared<PageConfig>();
+    LynxConfigDecoder::DecodePageConfig(config, doc, "");
+    return config;
+  };
+  EXPECT_FALSE(PageConfig().GetEnableUnifyFixedOrderFix());
+  EXPECT_FALSE(decode("{}")->GetEnableUnifyFixedOrderFix());
+
+  env.external_env_map_[key] = "true";
+  auto enabled = decode("{}");
+  EXPECT_TRUE(enabled->GetEnableUnifyFixedOrderFix());
+  EXPECT_FALSE(decode(R"({"enableUnifyFixedOrderFix":false})")
+                   ->GetEnableUnifyFixedOrderFix());
+
+  env.external_env_map_[key] = "false";
+  EXPECT_FALSE(decode("{}")->GetEnableUnifyFixedOrderFix());
+  EXPECT_TRUE(decode(R"({"enableUnifyFixedOrderFix":true})")
+                  ->GetEnableUnifyFixedOrderFix());
+  // Settings changes apply to the next load, not an already decoded page.
+  EXPECT_TRUE(enabled->GetEnableUnifyFixedOrderFix());
+  // Native JSON follows the same override semantics as
+  // enableUnifyFixedBehavior.
+  enabled->DecodePageConfigFromJsonStringWhileUndefined(
+      R"({"enableUnifyFixedOrderFix":false})");
+  EXPECT_FALSE(enabled->GetEnableUnifyFixedOrderFix());
+  enabled->DecodePageConfigFromJsonStringWhileUndefined(
+      R"({"enableUnifyFixedOrderFix":true})");
+  EXPECT_TRUE(enabled->GetEnableUnifyFixedOrderFix());
+  enabled->DecodePageConfigFromJsonStringWhileUndefined(
+      R"({"enableUnifyFixedOrderFix":"false"})");
+  EXPECT_TRUE(enabled->GetEnableUnifyFixedOrderFix());
+
+  if (previous_value) {
+    env.external_env_map_[key] = *previous_value;
+  } else {
+    env.external_env_map_.erase(key);
+  }
+}
+
 TEST(PageConfigTest, EnableEventTargetInfoNodeIndex) {
   std::shared_ptr<PageConfig> page_config = std::make_shared<PageConfig>();
   EXPECT_FALSE(page_config->GetEnableEventTargetInfoNodeIndex());

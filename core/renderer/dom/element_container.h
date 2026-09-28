@@ -75,6 +75,12 @@ class ElementContainer : public BaseElementContainer {
                                            bool from_layout) override;
 
  protected:
+  struct InsertionPoint {
+    enum class Kind { kBefore, kAfter, kAppend };
+    Kind kind{Kind::kAppend};
+    ElementContainer* anchor{nullptr};
+  };
+
   void ReInsertChildForLayoutOnlyTransition(Element* child, int& index);
 
   bool IsStackingContextNode();
@@ -84,13 +90,14 @@ class ElementContainer : public BaseElementContainer {
   void StickyChanged();
 
   void AttachChildToTargetContainerRecursive(ElementContainer* parent,
-                                             Element* child, int& index);
+                                             Element* child, int& index,
+                                             InsertionPoint* point = nullptr);
 
   virtual void AddChild(ElementContainer* child, int index);
   void RemoveSelf(bool destroy);
   void RemoveChild(ElementContainer* child);
   void InsertSelf();
-  void RemoveFromParent(bool is_move);
+  void RemoveFromParent(bool is_move, bool preserve_fixed = false);
 
   // below helper functions to calculate the correct parent and UI index for
   // fiber element
@@ -127,6 +134,21 @@ class ElementContainer : public BaseElementContainer {
   bool props_changed_{true};
 
  private:
+  ElementContainer* EnclosingNativeStackingContextNode();
+  bool TracksMountedChildren() const;
+  void AddChildAt(ElementContainer* child, int index,
+                  const InsertionPoint* point);
+  void EraseMountedChild(ElementContainer* child);
+  bool FindRootInsertionPoint(Element* child, Element* ref,
+                              InsertionPoint& point);
+  ElementContainer* FindLastMountedChild(Element* node);
+  ElementContainer* FindFirstMountedChild(Element* node, bool& contains_fixed);
+
+  // Only the unified-fixed Fiber root needs this sequence. Native entries
+  // follow painting order; layout-only fixed entries retain empty boundaries.
+  // Keep children_ in insertion order for stable equal-z sorting.
+  std::unique_ptr<base::Vector<ElementContainer*>> mounted_children_;
+
   void CalcUIIndexForFixed(ElementContainer* child, int& index);
   void CalcUIIndexForFixedNew(ElementContainer* child, int& index);
   void CalcUIIndexForFixedUnified(ElementContainer* child, int& index);
