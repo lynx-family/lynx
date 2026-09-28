@@ -233,6 +233,31 @@ bool ApplyTemplateEventAttribute(Element* element, const base::String& key,
     return false;
   }
 
+  if (value.IsEmpty() &&
+      StartsWith(key.string_view(), kMainThreadEventPrefix)) {
+    const auto& events = event_type == kEventGlobalBind
+                             ? element->global_bind_event_map()
+                             : element->event_map();
+    const auto handler = events.find(event_name);
+    // Native callable handlers use the ordinary event map and retain its
+    // existing removal behavior. Worklet updates must keep their channel so
+    // clearing a main-thread handler does not also clear a background handler.
+    if (handler == events.end() ||
+        !handler->second->lepus_function().IsCallable()) {
+      static constexpr char kWorkletType[] = "_workletType";
+      static constexpr char kValue[] = "value";
+      auto context = lepus::Dictionary::Create();
+      context->SetValue(BASE_STATIC_STRING(kWorkletType), "main-thread");
+      auto callback = lepus::Dictionary::Create();
+      callback->SetValue(BASE_STATIC_STRING(kType), kWorklet);
+      callback->SetValue(BASE_STATIC_STRING(kValue), std::move(context));
+      element->FiberAddEvent(event_type, event_name,
+                             lepus::Value(std::move(callback)),
+                             DEFAULT_ENTRY_NAME);
+      return true;
+    }
+  }
+
   // Element Template is only used by RL3, whose template event handlers are
   // always registered under the default entry context.
   element->FiberAddEvent(event_type, event_name, value, DEFAULT_ENTRY_NAME);
