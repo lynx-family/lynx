@@ -2840,6 +2840,10 @@ public class LynxListReusePool : NSObject {
   public void LynxListReusePool::registerClass:forCellReuseIdentifier:(Class cellClass,[forCellReuseIdentifier] nonnull NSString *identifier);
 }
 
+public class LynxListScrollComponentWrapper : UIView, <LynxListItemWrapper> {
+  public LynxUIComponent* LynxListScrollComponentWrapper::holdingUI holdingUI;
+}
+
 public class LynxListScrollEventEmitter : NSObject, <UIScrollViewDelegate> {
   public id<LynxListScrollEventEmitterDelegate> LynxListScrollEventEmitter::delegate delegate;
   public BOOL LynxListScrollEventEmitter::enableScrollEvent enableScrollEvent;
@@ -5276,6 +5280,26 @@ public class LynxUIListLoader : <NSObject__covariant V UIView> {
   public void LynxUIListLoader::markIsNewArch();
   public BOOL LynxUIListLoader::isAsync();
   public BOOL LynxUIListLoader::isPartOnLayout();
+}
+
+public class LynxUIListScroll : LynxUI, <LynxUIComponentLayoutObserver>, <LynxListContainerInternal> {
+  public id<LynxUIListScrollDelegate> LynxUIListScroll::delegate delegate;
+  public BOOL LynxUIListScroll::needAdjustContentOffset needAdjustContentOffset;
+  public CGPoint LynxUIListScroll::targetDelta targetDelta;
+  public CGFloat LynxUIListScroll::targetContentSize targetContentSize;
+  public NSMutableDictionary* LynxUIListScroll::listNativeStateCache listNativeStateCache;
+  public NSMutableArray<void (^)(void)>* LynxUIListScroll::restoreNativeStateBlockArray restoreNativeStateBlockArray;
+  public LynxListScrollView * LynxUIListScroll::view();
+  public void LynxUIListScroll::insertListComponent:(LynxUIComponent *component);
+  public void LynxUIListScroll::removeListComponent:(LynxUIComponent *component);
+  public NSInteger LynxUIListScroll::getIndexFromItemKey:(NSString *itemKey);
+  public NSArray< UIView< LynxListItemWrapper > * > * LynxUIListScroll::visibleCells();
+  public NSArray< NSDictionary * > * LynxUIListScroll::visibleCellsInfo();
+}
+
+public protocol LynxUIListScrollDelegate-p : <NSObject> {
+  public void LynxUIListScrollDelegate-p::insertListComponent:wrapper:(LynxUIComponent *component,[wrapper] LynxListScrollComponentWrapper *wrapper);
+  public void LynxUIListScrollDelegate-p::removeListComponent:(LynxUIComponent *component);
 }
 
 public protocol LynxUIListScrollEvent-p : <NSObject> {
