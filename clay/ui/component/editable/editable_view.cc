@@ -1287,12 +1287,13 @@ void EditableView::setValue(const LynxModuleValues& args,
   int index = -1;
   CastNamedLynxModuleArgs({"value", "index"}, args, content, index);
   auto text_editing_value = GetTextEditingValue();
+  const auto content_u16 = lynx::base::U8StringToU16(content);
   text_editing_value.SetText(
-      content,
+      content_u16,
       TextRange(
           index >= 0
-              ? std::min<size_t>(static_cast<size_t>(index), content.size())
-              : std::min(content.size(),
+              ? std::min<size_t>(static_cast<size_t>(index), content_u16.size())
+              : std::min(content_u16.size(),
                          text_editing_value.selection().extent())));
   FilterInputIfNeeded(&text_editing_value);
   SetTextEditingValue(text_editing_value);

@@ -81,4 +81,20 @@ TEST_F_UI(TextAreaNGViewTest, enableScrollBar) {
   EXPECT_EQ(text_area->editable_scroll_wrapper_->child_count(), 1u);
 }
 
+TEST_F_UI(TextAreaNGViewTest, setValueClampsIndexToUtf16Length) {
+  TextAreaNGView *text_area = new TextAreaNGView(-1, page_.get());
+  page_->AddChild(text_area);
+
+  LynxModuleValues params;
+  params.names.emplace_back("value");
+  params.values.emplace_back("@\xe6\xb5\x8b\xe8\xaf\x95");
+  params.names.emplace_back("index");
+  params.values.emplace_back(6);
+  text_area->setValue(params, [](LynxUIMethodResult code, clay::Value data) {});
+
+  const auto &value = text_area->editable_view_->GetTextEditingValue();
+  EXPECT_EQ(value.GetU16Length(), 3u);
+  EXPECT_EQ(value.selection(), TextRange(3));
+}
+
 };  // namespace clay
