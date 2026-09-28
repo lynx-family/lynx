@@ -180,7 +180,7 @@ std::shared_ptr<runtime::MTSRuntime> MTSRuntimePool::TakeMTSRuntimeSafely() {
     mts_runtimes_.pop_back();
   }
 
-  // generate a new context
+  // Keep the pool warm after handing out a runtime.
   if (enable_auto_generate_ &&
       !is_destroying_.load(std::memory_order_acquire)) {
     FillPool(1);
