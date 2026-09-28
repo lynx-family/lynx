@@ -37,6 +37,7 @@ class LynxTemplateBundleHarmony {
   static napi_value InitWithOption(napi_env env, napi_callback_info info);
   static napi_value PostJsCacheGenerationTask(napi_env env,
                                               napi_callback_info info);
+  static napi_value Preload(napi_env env, napi_callback_info info);
   static napi_value CreateFromNative(napi_env env,
                                      const tasm::LynxTemplateBundle& bundle);
 
@@ -49,6 +50,8 @@ class LynxTemplateBundleHarmony {
   napi_value PostJsCacheGenerationTask(napi_env env,
                                        std::string bytecode_source_url,
                                        bool use_v8);
+  napi_value Preload(napi_env env, std::string url,
+                     std::vector<uint8_t> bytecode, napi_value callback);
 
  private:
   std::unique_ptr<tasm::LynxTemplateBundle> bundle_;
