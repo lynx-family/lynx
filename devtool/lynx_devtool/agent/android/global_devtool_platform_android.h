@@ -23,6 +23,11 @@ class GlobalDevToolPlatformAndroid : public GlobalDevToolPlatformFacade {
                          MemoryUsageCallback callback) override;
   void HandleLynxSetting(LynxSettingRequest request,
                          LynxSettingCallback callback) override;
+  void HandleHSRScript(HSRScriptRequest request,
+                       HSRScriptCallback callback) override;
+  static void OnHSRScriptFetched(JNIEnv* env, jlong request_id,
+                                 jbyteArray source, jbyteArray error);
+  static void FetchHSRScript(const std::string& url, uint64_t request_id);
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   // The following functions are used for tracing agent.

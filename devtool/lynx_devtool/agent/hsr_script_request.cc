@@ -52,9 +52,24 @@ bool ParseHSREvaluate(const Json::Value& params, HSRScriptRequest& request,
     error = "Expected string expression";
     return false;
   }
-  request = {HSRScriptRequest::Operation::kEvaluate,
-             HSRScriptRequest::SourceType::kInline,
-             params["expression"].asString()};
+  HSRScriptRequest parsed{HSRScriptRequest::Operation::kEvaluate,
+                          HSRScriptRequest::SourceType::kInline,
+                          params["expression"].asString()};
+  if (params.isMember("thread")) {
+    const auto& value = params["thread"];
+    const auto thread = value.isString() ? value.asString() : std::string();
+    if (thread == "bts") {
+      parsed.thread = HSRScriptRequest::Thread::kBTS;
+    } else if (thread == "mts") {
+      parsed.thread = HSRScriptRequest::Thread::kMTS;
+    } else if (thread == "ui") {
+      parsed.thread = HSRScriptRequest::Thread::kUI;
+    } else {
+      error = "Expected thread: bts, mts or ui";
+      return false;
+    }
+  }
+  request = std::move(parsed);
   return true;
 }
 

@@ -15,6 +15,7 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceController;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Keep
@@ -115,6 +116,16 @@ public class GlobalDevToolPlatformAndroidDelegate {
   public static String getLynxVersion() {
     return LynxEnv.inst().getLynxVersion();
   }
+
+  @CalledByNative
+  public static void fetchHSRScript(byte[] url, long callbackId) {
+    HSRScriptSourceFetcher.fetch(new String(url, StandardCharsets.UTF_8),
+        (source, error)
+            -> nativeOnHSRScriptFetched(
+                callbackId, source, error == null ? null : error.getBytes(StandardCharsets.UTF_8)));
+  }
+
+  private static native void nativeOnHSRScriptFetched(long callbackId, byte[] source, byte[] error);
 
   private static native void nativeOnMemoryUsageResult(
       long callbackPtr, String resultJson, String errorMessage);
