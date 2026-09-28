@@ -296,11 +296,11 @@ JSRealmManager::CreateNewShareGroupJSRuntime(
     const runtime::js::JSRuntimeExternalParams& create_params,
     const tasm::PageOptions& page_options) {
   const auto& group_id = create_params.group_id;
-  auto* global_wrapper = EnsureNewShareGroupGlobalContext(
+  auto* global_realm = EnsureNewShareGroupGlobalContext(
       force_use_lightweight_js_engine, create_params, page_options,
       js_pre_sources_getter, executor);
 
-  auto vm = global_wrapper->GetVM();
+  auto vm = global_realm->GetVM();
   // The page runtime must use the same engine type as the shared VM, matching
   // the legacy shared-context reuse rule.
   AlignRuntimeEngineWithVM(vm, force_use_lightweight_js_engine,
@@ -319,18 +319,18 @@ JSRealmManager::CreateNewShareGroupJSRuntime(
                        page_options);
   page_runtime->InitRuntime(page_context);
 
-  auto page_wrapper = std::make_shared<SharedVMPageRealm>(
+  auto page_realm = std::make_shared<SharedVMPageRealm>(
       page_context, group_id, &new_share_group_page_release_observer_);
-  page_context->SetReleaseObserver(page_wrapper);
-  global_wrapper->IncLivePageCount();
+  page_context->SetReleaseObserver(page_realm);
+  global_realm->IncLivePageCount();
   std::shared_ptr<runtime::js::ConsoleMessagePostMan> page_post_man =
       page_context->GetPostMan();
-  page_wrapper->InitGlobal(page_runtime, page_post_man, page_options);
+  page_realm->InitGlobal(page_runtime, page_post_man, page_options);
   if (ensure_console) {
-    page_wrapper->EnsureConsole(page_post_man, page_options);
+    page_realm->EnsureConsole(page_post_man, page_options);
   }
 
-  global_wrapper->CopyGlobalsTo(*page_runtime);
+  global_realm->CopyGlobalsTo(*page_runtime);
 
   // Each page has its own runtime, so the devtool delegate needs to be
   // notified per page just like the legacy shared-context reuse path.
@@ -375,7 +375,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
   std::shared_ptr<runtime::js::JSIContext> js_context;
   // This variable indicates 'false' only when it has been created previously
   // and the context is being shared.
-  bool need_create_context_wrapper = true;
+  bool need_create_realm = true;
   if (is_single_context) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                 JS_REALM_MANAGER_CREATE_SINGLE_CONTEXT_RUNTIME);
@@ -396,7 +396,7 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
       AllocateSlotForTrackableVM(vm, page_options.GetInstanceID());
       TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                   JS_REALM_MANAGER_SHARED_CONTEXT_REUSED);
-      need_create_context_wrapper = false;
+      need_create_realm = false;
       js_runtime = CreateRuntime(force_use_lightweight_js_engine, true,
                                  create_params, page_options);
       js_runtime->setCreatedType(
@@ -427,16 +427,15 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
   fml::JSMemoryTrackAsCommon vm_common_memory_scope;
 
   // none share context and first create share context.
-  if (need_create_context_wrapper) {
-    std::shared_ptr<JSRealm> context_wrapper;
+  if (need_create_realm) {
+    std::shared_ptr<JSRealm> realm;
     base::UnsafeOwningPtr<runtime::js::Runtime> owned_global_runtime;
     if (is_single_context) {
-      context_wrapper = std::make_shared<SingleJSRealm>(
+      realm = std::make_shared<SingleJSRealm>(
           js_context, js_realm_manager_delegate_ == nullptr ? this : nullptr);
     } else {
-      context_wrapper =
-          std::make_shared<SharedJSRealm>(js_context, group_id, this);
-      shared_context_map_.insert(std::make_pair(group_id, context_wrapper));
+      realm = std::make_shared<SharedJSRealm>(js_context, group_id, this);
+      shared_context_map_.insert(std::make_pair(group_id, realm));
       if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
         js_realm_manager_delegate_->AfterSharedContextCreate(
             group_id, js_runtime->type());
@@ -459,17 +458,17 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
 #if ENABLE_TRACE_PERFETTO
     auto runtime_profiler = MakeRuntimeProfiler(
         js_context, force_use_lightweight_js_engine, page_options);
-    context_wrapper->SetRuntimeProfiler(runtime_profiler);
+    realm->SetRuntimeProfiler(runtime_profiler);
 #endif
-    js_context->SetReleaseObserver(context_wrapper);
+    js_context->SetReleaseObserver(realm);
     std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man = nullptr;
     if (!IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
       post_man = js_context->GetPostMan();
     }
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_REALM_INIT_GLOBAL);
-    context_wrapper->InitGlobal(global_runtime, post_man, page_options);
+    realm->InitGlobal(global_runtime, post_man, page_options);
     if (ensure_console) {
-      context_wrapper->EnsureConsole(post_man, page_options);
+      realm->EnsureConsole(post_man, page_options);
     }
 
     // should call brefore loadPreJS.
@@ -482,15 +481,15 @@ base::UnsafeOwningPtr<runtime::js::Runtime> JSRealmManager::CreateJSRuntime(
     auto js_pre_sources = js_pre_sources_getter();
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                 JS_REALM_MANAGER_REALM_PREPARE_JS_ENV);
-    context_wrapper->PrepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
+    realm->PrepareJSEnv(js_runtime.GetWeakPtr(), js_pre_sources);
   } else {
     // Shared context reused. If corejs was deferred on the first creation,
     // we need to try to load it here to ensure the current runtime runs with
     // a fully-initialized shared JSIContext.
-    auto* context_wrapper = GetSharedRealm(group_id);
-    if (context_wrapper != nullptr && !context_wrapper->IsCoreJSLoaded()) {
+    auto* realm = GetSharedRealm(group_id);
+    if (realm != nullptr && !realm->IsCoreJSLoaded()) {
       auto js_pre_sources = js_pre_sources_getter();
-      context_wrapper->EnsureCoreJSLoaded(*js_runtime, js_pre_sources);
+      realm->EnsureCoreJSLoaded(*js_runtime, js_pre_sources);
     }
     // share context also need call this, because lynx_runtime is different.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
@@ -519,12 +518,12 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
   if (it != new_share_group_map_.end()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
                 JS_REALM_MANAGER_SHARED_CONTEXT_REUSED);
-    auto* wrapper = it->second.get();
-    auto* global_runtime = wrapper ? wrapper->GetGlobalRuntime() : nullptr;
-    if (wrapper != nullptr && global_runtime != nullptr &&
-        !wrapper->IsCoreJSLoaded()) {
+    auto* realm = it->second.get();
+    auto* global_runtime = realm ? realm->GetGlobalRuntime() : nullptr;
+    if (realm != nullptr && global_runtime != nullptr &&
+        !realm->IsCoreJSLoaded()) {
       auto js_pre_sources = js_pre_sources_getter();
-      wrapper->JSRealm::EnsureCoreJSLoaded(*global_runtime, js_pre_sources);
+      realm->JSRealm::EnsureCoreJSLoaded(*global_runtime, js_pre_sources);
     }
     return it->second.get();
   }
@@ -533,7 +532,7 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
               JS_REALM_MANAGER_CREATE_SHARED_CONTEXT_FIRST_TIME);
 
   // Create the group's global runtime + shared VM/context. Ownership of this
-  // runtime is handed to the global-context wrapper (via InitGlobal) so it
+  // runtime is handed to the global-context realm (via InitGlobal) so it
   // outlives every page in the group. It carries only the group id as external
   // params; napi is intentionally NOT installed on the global context (per-page
   // contexts own their own napi hooks).
@@ -550,11 +549,11 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
   global_runtime->InitRuntime(global_context);
   runtime::js::Runtime* global_rt_ptr = global_runtime.get();
   // Capture a weak handle before InitGlobal moves the owning pointer into the
-  // wrapper; used to drive PrepareJSEnv below.
+  // realm; used to drive PrepareJSEnv below.
   base::UnsafeWeakPtr<runtime::js::Runtime> global_runtime_weak =
       global_runtime.GetWeakPtr();
 
-  auto wrapper =
+  auto realm =
       base::MakeUnsafeOwning<SharedVMGlobalRealm>(global_context, group_id);
   // Register the engine type with the devtool delegate so the matching release
   // callback fires when the group's global context is torn down, mirroring the
@@ -566,7 +565,7 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
 #if ENABLE_TRACE_PERFETTO
   auto runtime_profiler = MakeRuntimeProfiler(
       global_context, force_use_lightweight_js_engine, page_options);
-  wrapper->SetRuntimeProfiler(runtime_profiler);
+  realm->SetRuntimeProfiler(runtime_profiler);
 #endif
   EnsureConsolePostMan(global_context, executor,
                        force_use_lightweight_js_engine, page_options);
@@ -575,11 +574,11 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
     post_man = global_context->GetPostMan();
   }
 
-  // InitGlobal moves ownership of `global_runtime` into the wrapper and
+  // InitGlobal moves ownership of `global_runtime` into the realm and
   // installs the full set of shared host objects so page contexts can copy
   // them.
-  wrapper->InitGlobal(global_runtime, post_man, page_options);
-  wrapper->EnsureConsole(post_man, page_options);
+  realm->InitGlobal(global_runtime, post_man, page_options);
+  realm->EnsureConsole(post_man, page_options);
 
   // Register corejs before evaluation without attaching a page session to
   // this group-owned runtime.
@@ -590,10 +589,10 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
 
   runtime::js::GCPauseSuppressionMode mode(global_rt_ptr);
   auto js_pre_sources = js_pre_sources_getter();
-  wrapper->PrepareJSEnv(global_runtime_weak, js_pre_sources);
+  realm->PrepareJSEnv(global_runtime_weak, js_pre_sources);
 
   auto emplaced =
-      new_share_group_map_.insert_or_assign(group_id, std::move(wrapper));
+      new_share_group_map_.insert_or_assign(group_id, std::move(realm));
   return emplaced.first->second.get();
 }
 
@@ -656,7 +655,7 @@ void JSRealmManager::OnNewShareGroupPageRelease(const std::string& group_id) {
   // new_share_group_page_release_observer_, so this never collides with a
   // legacy shared context that happens to reuse the same group id. Decrement
   // the group's live page count; when the last page is gone drop the group's
-  // global-context wrapper, which owns the global runtime and thus tears down
+  // global-context realm, which owns the global runtime and thus tears down
   // the shared VM + global context.
   auto ng_it = new_share_group_map_.find(group_id);
   if (ng_it == new_share_group_map_.end()) {
@@ -877,9 +876,9 @@ void JSRealmManager::CheckAutotakeSnapshot(const std::string& group_id) {
 }
 
 void JSRealmManager::TakeVMSnapshot(const std::string& group_id, bool initial) {
-  auto* ctx_wrap = GetSharedRealm(group_id);
-  if (ctx_wrap) {
-    auto ctx = ctx_wrap->GetJSContext();
+  auto* realm = GetSharedRealm(group_id);
+  if (realm) {
+    auto ctx = realm->GetJSContext();
     if (ctx) {
       std::string identifier = group_id + "(shared bts)";
       intptr_t payload[3] = {reinterpret_cast<intptr_t>(ctx.get()),
