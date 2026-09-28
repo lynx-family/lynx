@@ -162,6 +162,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
     FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD,
     MEMORY_MONITOR_CONFIG,
+    ENABLE_UNIFY_FIXED_ORDER_FIX,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -304,6 +305,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_HARMONY_GESTURE_INTERRUPTER_USER_DATA,
              "enable_harmony_gesture_interrupter_user_data"},
             {Key::ENABLE_UNIFY_FIXED_BEHAVIOR, "enable_unify_fixed_behavior"},
+            // NOLINT(harmony-trail-key): Settings-only on Harmony.
+            {Key::ENABLE_UNIFY_FIXED_ORDER_FIX, "enable_unify_fixed_order_fix"},
             {Key::ENABLE_SHARE_CONTEXT_ICU, "enable_share_context_icu"},
             {Key::FIX_RADON_INLINE_CONVERT_BUG, "fix_radon_inline_convert_bug"},
             {Key::FIX_DYNAMIC_UPDATE_TRANSITION_CONSUME_BUG,
@@ -505,6 +508,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableImageLoadSVG();
   bool EnableHarmonyGestureInterrupterUserData();
   bool EnableUnifyFixedBehavior();
+  bool EnableUnifyFixedOrderFix();
   bool FixRadonInlineConvertBug();
   bool FixDynamicUpdateTransitionConsumeBug();
   bool FixFilterDynamicUpdateBug();
