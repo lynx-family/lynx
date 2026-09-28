@@ -276,27 +276,8 @@ std::shared_ptr<js::VMInstance> SharedVMGlobalRealm::GetVM() {
   return context ? context->getVM() : nullptr;
 }
 
-SharedVMPageRealm::SharedVMPageRealm(std::shared_ptr<js::JSIContext> context,
-                                     const std::string& group_id,
-                                     SharedJSRealm::ReleaseListener* listener)
-    : JSRealm(context), group_id_(group_id), listener_(listener) {}
-
-void SharedVMPageRealm::Def() {
-  if (js_context_.use_count() == 1) {
-    global_.Reset();
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
-    // A page context is 1:1 with its page runtime; releasing it means this page
-    // is gone. Notify JSRealmManager so the group's live page count can be
-    // decremented and the global context released after the last page.
-    if (listener_ != nullptr) {
-      listener_->OnRelease(group_id_);
-    }
-  }
-}
+SharedVMPageRealm::SharedVMPageRealm(std::shared_ptr<js::JSIContext> context)
+    : JSRealm(std::move(context)) {}
 
 void SharedVMPageRealm::InitGlobal(
     base::UnsafeOwningPtr<js::Runtime>& runtime,
