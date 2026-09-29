@@ -14,7 +14,7 @@ lynx_core_source_set("resource") {
   ]
   if (is_win || is_linux) {
     sources += [ "js_source_loader_desktop.cc" ]
-  } else if (is_mac) {
+  } else if (is_mac || is_ios) {
     sources += [ "js_source_loader_desktop.mm" ]
   }
   deps = [ "../fetcher:fetcher" ]

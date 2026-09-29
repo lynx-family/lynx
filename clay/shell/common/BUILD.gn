@@ -94,7 +94,7 @@ source_set("common") {
     ]
   }
 
-  if (is_win || is_mac || is_headless) {
+  if (is_win || is_mac || (is_headless && !is_ios)) {
     sources += [
       "services/drag_drop_service.cc",
       "services/drag_drop_service.h",

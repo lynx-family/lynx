@@ -38,6 +38,7 @@ typedef enum lynx_view_snapshot_format_e {
 } lynx_view_snapshot_format_e;
 
 // Create lynx view with builder.
+// On iOS, the builder must have a windowless renderer; otherwise returns NULL.
 LYNX_CAPI_EXPORT lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                                void* user_data);
 LYNX_CAPI_EXPORT void* lynx_view_get_user_data(lynx_view_t*);
