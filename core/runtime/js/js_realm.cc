@@ -67,8 +67,13 @@ JSRealm::JSRealm(std::shared_ptr<runtime::js::JSIContext> context)
 
 JSRealm::~JSRealm() = default;
 
-void JSRealm::EnsureConsole(std::shared_ptr<runtime::js::ConsoleMessagePostMan>,
-                            const tasm::PageOptions&) {}
+void JSRealm::EnsureConsole(
+    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
+  if (global_) {
+    global_->EnsureConsole(post_man, page_options);
+  }
+}
 
 void JSRealm::EnsureCoreJSLoaded(
     runtime::js::Runtime& js_runtime,
