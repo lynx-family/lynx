@@ -80,12 +80,10 @@ class ModuleCallback : public LynxModuleCallback {
     group_interceptor_ = std::move(interceptor);
   }
 
-#if ENABLE_INSPECTOR
   void SetNativeModuleInvocationContext(
       std::shared_ptr<NativeModuleInvocationContext> context) {
     invocation_context_ = std::move(context);
   }
-#endif  // ENABLE_INSPECTOR
 
   void SetArgsConverter(std::function<std::unique_ptr<pub::Value>(
                             Runtime* rt, ModuleCallback* callback)>

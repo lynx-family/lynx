@@ -13,13 +13,10 @@ inspector_shared_sources = [
   "observer/inspector_element_observer.h",
   "observer/inspector_lepus_observer.h",
   "observer/inspector_runtime_observer_ng.h",
+  "observer/native_module_record_observer.h",
   "runtime_inspector_manager.h",
   "style_sheet.h",
 ]
-
-if (enable_inspector) {
-  inspector_shared_sources += [ "observer/native_module_record_observer.h" ]
-}
 
 if (!disable_rts_devtool) {
   inspector_shared_sources += [ "rts_inspector_manager.h" ]

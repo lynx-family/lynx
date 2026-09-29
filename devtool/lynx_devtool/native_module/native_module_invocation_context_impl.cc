@@ -2,18 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
+#include "devtool/lynx_devtool/native_module/native_module_invocation_context_impl.h"
 
 #include <atomic>
 #include <utility>
 
 #include "base/include/value/array.h"
 #include "core/inspector/observer/native_module_record_observer.h"
-#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
+#include "devtool/lynx_devtool/native_module/native_module_record_builder.h"
 
 namespace lynx {
-namespace runtime {
-namespace js {
+using runtime::js::NativeModuleRecordObserver;
+
+namespace devtool {
 namespace {
 
 int64_t GenerateInvocationId() {
@@ -23,7 +24,7 @@ int64_t GenerateInvocationId() {
 
 }  // namespace
 
-NativeModuleInvocationContext::NativeModuleInvocationContext(
+NativeModuleInvocationContextImpl::NativeModuleInvocationContextImpl(
     std::weak_ptr<NativeModuleRecordObserver> observer, std::string module_name,
     std::string method_name)
     : observer_(std::move(observer)),
@@ -32,7 +33,7 @@ NativeModuleInvocationContext::NativeModuleInvocationContext(
       method_name_(std::move(method_name)),
       callback_argument_index_(-1) {}
 
-NativeModuleInvocationContext::NativeModuleInvocationContext(
+NativeModuleInvocationContextImpl::NativeModuleInvocationContextImpl(
     std::weak_ptr<NativeModuleRecordObserver> observer, int64_t invocation_id,
     std::string module_name, std::string method_name,
     int32_t callback_argument_index)
@@ -42,18 +43,23 @@ NativeModuleInvocationContext::NativeModuleInvocationContext(
       method_name_(std::move(method_name)),
       callback_argument_index_(callback_argument_index) {}
 
-std::shared_ptr<NativeModuleInvocationContext>
-NativeModuleInvocationContext::WithCallbackArgumentIndex(
+std::shared_ptr<runtime::js::NativeModuleInvocationContext>
+NativeModuleInvocationContextImpl::WithCallbackArgumentIndex(
     int32_t callback_argument_index) const {
-  return std::shared_ptr<NativeModuleInvocationContext>(
-      new NativeModuleInvocationContext(observer_, invocation_id_, module_name_,
-                                        method_name_, callback_argument_index));
+  return std::shared_ptr<runtime::js::NativeModuleInvocationContext>(
+      new NativeModuleInvocationContextImpl(observer_, invocation_id_,
+                                            module_name_, method_name_,
+                                            callback_argument_index));
 }
 
-lepus::Value NativeModuleInvocationContext::BuildInvokeRecord(
-    lepus::Value arguments, const CallbackMap& callbacks, bool success,
+void NativeModuleInvocationContextImpl::OnInvoke(
+    lepus::Value arguments, const runtime::CallbackMap& callbacks, bool success,
     std::optional<lepus::Value> result, int32_t error_code,
     const std::string& error_message) const {
+  auto observer = observer_.lock();
+  if (!observer) {
+    return;
+  }
   if (arguments.IsArray() && !callbacks.empty()) {
     auto arguments_array = arguments.Array();
     auto record_arguments = lepus::CArray::Create();
@@ -74,24 +80,18 @@ lepus::Value NativeModuleInvocationContext::BuildInvokeRecord(
     }
     arguments = lepus::Value(std::move(record_arguments));
   }
-  return js::BuildInvokeRecord(invocation_id_, module_name_, method_name_,
-                               std::move(arguments), success, std::move(result),
-                               error_code, error_message);
+  observer->OnRecord(BuildInvokeRecord(
+      invocation_id_, module_name_, method_name_, std::move(arguments), success,
+      std::move(result), error_code, error_message));
 }
 
-lepus::Value NativeModuleInvocationContext::BuildCallbackRecord(
-    lepus::Value result) const {
-  return js::BuildCallbackRecord(invocation_id_, module_name_, method_name_,
-                                 callback_argument_index_, std::move(result));
-}
-
-void NativeModuleInvocationContext::EmitRecord(
-    const lepus::Value& record) const {
+void NativeModuleInvocationContextImpl::OnCallback(lepus::Value result) const {
   if (auto observer = observer_.lock()) {
-    observer->OnRecord(record);
+    observer->OnRecord(
+        BuildCallbackRecord(invocation_id_, module_name_, method_name_,
+                            callback_argument_index_, std::move(result)));
   }
 }
 
-}  // namespace js
-}  // namespace runtime
+}  // namespace devtool
 }  // namespace lynx

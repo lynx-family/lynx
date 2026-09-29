@@ -21,6 +21,7 @@
 #include "base/include/value/base_string.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/inspector/observer/native_module_record_observer.h"
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/events/closure_event_listener.h"
@@ -54,11 +55,6 @@
 #include "third_party/rapidjson/reader.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
-
-#if ENABLE_INSPECTOR
-#include "core/inspector/observer/native_module_record_observer.h"
-#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
-#endif  // ENABLE_INSPECTOR
 
 namespace lynx {
 namespace runtime {
@@ -2362,23 +2358,19 @@ void App::SendGlobalEvent(const std::string& name,
     }
     CallFunction(kGlobalEventModuleName, kGlobalEventMethodName,
                  std::move(*arg));
-#if ENABLE_INSPECTOR
     // Core events deliver the payload as a single listener argument.
     auto listener_args = lepus::CArray::Create();
     listener_args->push_back(arguments);
     RecordGlobalEvent(name, lepus::Value(std::move(listener_args)));
-#endif  // ENABLE_INSPECTOR
   }
 }
 
-#if ENABLE_INSPECTOR
 void App::RecordGlobalEvent(const std::string& name,
                             const lepus::Value& arguments) {
   if (auto observer = native_module_record_observer_.lock()) {
-    observer->OnRecord(BuildGlobalEventRecord(name, arguments));
+    observer->OnGlobalEvent(name, arguments);
   }
 }
-#endif  // ENABLE_INSPECTOR
 
 void App::SetupSsrJsEnv() {
   constexpr char kCreateGlobalEventEmitter[] = "__createEventEmitter";

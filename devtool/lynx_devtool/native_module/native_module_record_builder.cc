@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
+#include "devtool/lynx_devtool/native_module/native_module_record_builder.h"
 
 #include <string>
 #include <utility>
@@ -11,8 +11,7 @@
 #include "base/include/value/table.h"
 
 namespace lynx {
-namespace runtime {
-namespace js {
+namespace devtool {
 namespace {
 
 // Type / phase values.
@@ -127,6 +126,5 @@ lepus::Value BuildCallbackPlaceholder(int32_t argument_index) {
   return lepus::Value(std::move(placeholder));
 }
 
-}  // namespace js
-}  // namespace runtime
+}  // namespace devtool
 }  // namespace lynx

@@ -66,10 +66,8 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
     native_module->SetContextID(context_id_);
     // set interceptor
     lynx_jsi_module->SetModuleInterceptor(group_interceptor_);
-#if ENABLE_INSPECTOR
     lynx_jsi_module->SetNativeModuleRecordObserver(
         native_module_record_observer_);
-#endif  // ENABLE_INSPECTOR
     lynx_jsi_module->SetRecordID(record_id_);
     itr = module_map_.emplace(name, std::move(lynx_jsi_module)).first;
     return itr->second;

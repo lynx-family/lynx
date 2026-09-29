@@ -11,7 +11,6 @@
 #include "base/include/fml/thread.h"
 #include "base/include/value/array.h"
 #include "core/inspector/observer/native_module_record_observer.h"
-#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
@@ -70,10 +69,16 @@ TEST_F(InspectorRuntimeObserverImplTest, NativeModuleRecordReachesHistory) {
   js_thread.GetTaskRunner()->PostTask([&, record_observer] {
     auto arguments = lepus::CArray::Create();
     arguments->emplace_back("payload");
-    auto record = runtime::js::BuildInvokeRecord(
-        1, "LynxTestModule", "echo", lepus::Value(std::move(arguments)), true,
-        lepus::Value("payload"), 0, "");
-    record_observer->OnRecord(record);
+    auto invocation =
+        record_observer->CreateInvocation("LynxTestModule", "echo");
+    invocation->OnInvoke(lepus::Value(std::move(arguments)), {}, true,
+                         lepus::Value("payload"), 0, "");
+    auto callback = invocation->WithCallbackArgumentIndex(1);
+    callback->OnCallback(lepus::Value("callback payload"));
+    auto event_arguments = lepus::CArray::Create();
+    event_arguments->emplace_back("event payload");
+    record_observer->OnGlobalEvent("customEvent",
+                                   lepus::Value(std::move(event_arguments)));
 
     Json::Value request;
     request["id"] = 7;
@@ -89,11 +94,11 @@ TEST_F(InspectorRuntimeObserverImplTest, NativeModuleRecordReachesHistory) {
   Json::Reader reader;
   ASSERT_TRUE(reader.parse(received.second, response));
   EXPECT_EQ(response["id"].asInt(), 7);
-  EXPECT_EQ(response["result"]["latestSequence"].asInt64(), 1);
+  EXPECT_EQ(response["result"]["latestSequence"].asInt64(), 3);
   const auto& records = response["result"]["records"];
-  ASSERT_EQ(records.size(), 1U);
+  ASSERT_EQ(records.size(), 3U);
   EXPECT_EQ(records[0]["sequence"].asInt64(), 1);
-  EXPECT_EQ(records[0]["invocationId"].asString(), "1");
+  EXPECT_FALSE(records[0]["invocationId"].asString().empty());
   EXPECT_EQ(records[0]["method"].asString(), "LynxTestModule.echo");
   EXPECT_EQ(records[0]["type"].asString(), "call");
   EXPECT_EQ(records[0]["phase"].asString(), "invoke");
@@ -101,6 +106,13 @@ TEST_F(InspectorRuntimeObserverImplTest, NativeModuleRecordReachesHistory) {
   EXPECT_EQ(records[0]["arguments"][0].asString(), "payload");
   EXPECT_TRUE(records[0]["result"]["success"].asBool());
   EXPECT_EQ(records[0]["result"]["value"].asString(), "payload");
+  EXPECT_EQ(records[1]["invocationId"], records[0]["invocationId"]);
+  EXPECT_EQ(records[1]["phase"].asString(), "callback");
+  EXPECT_EQ(records[1]["callbackArgumentIndex"].asInt(), 1);
+  EXPECT_EQ(records[1]["result"]["value"].asString(), "callback payload");
+  EXPECT_EQ(records[2]["type"].asString(), "event");
+  EXPECT_EQ(records[2]["method"].asString(), "customEvent");
+  EXPECT_EQ(records[2]["arguments"][0].asString(), "event payload");
 }
 
 TEST_F(InspectorRuntimeObserverImplTest, OnRuntimeCreated) {

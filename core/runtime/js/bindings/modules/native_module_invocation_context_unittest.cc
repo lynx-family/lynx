@@ -2,8 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/js/bindings/modules/native_module_invocation_context.h"
-
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -14,7 +12,8 @@
 #include "base/include/value/table.h"
 #include "core/inspector/observer/native_module_record_observer.h"
 #include "core/public/jsb/lynx_module_callback.h"
-#include "core/runtime/js/bindings/modules/native_module_record_builder.h"
+#include "devtool/lynx_devtool/native_module/native_module_invocation_context_impl.h"
+#include "devtool/lynx_devtool/native_module/native_module_record_builder.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -22,11 +21,21 @@ namespace runtime {
 namespace js {
 namespace {
 
+using devtool::BuildCallbackPlaceholder;
+using devtool::BuildGlobalEventRecord;
+using InvocationContext = devtool::NativeModuleInvocationContextImpl;
+
 class CapturingNativeModuleRecordObserver : public NativeModuleRecordObserver {
  public:
   void OnRecord(const lepus::Value& record) override {
     records_.push_back(record);
   }
+
+  std::shared_ptr<NativeModuleInvocationContext> CreateInvocation(
+      const std::string&, const std::string&) override {
+    return nullptr;
+  }
+  void OnGlobalEvent(const std::string&, const lepus::Value&) override {}
 
   std::vector<lepus::Value> records_;
 };
@@ -34,14 +43,14 @@ class CapturingNativeModuleRecordObserver : public NativeModuleRecordObserver {
 TEST(NativeModuleInvocationContextTest,
      BuildsAndEmitsInvokeAndCallbackRecords) {
   auto observer = std::make_shared<CapturingNativeModuleRecordObserver>();
-  NativeModuleInvocationContext invocation(observer, "LynxTestModule", "echo");
+  InvocationContext invocation(observer, "LynxTestModule", "echo");
 
   auto arguments = lepus::CArray::Create();
   arguments->emplace_back("value");
-  lepus::Value invoke_record = invocation.BuildInvokeRecord(
-      lepus::Value(std::move(arguments)), CallbackMap{}, true,
-      lepus::Value(int32_t{7}), 0, "");
-  invocation.EmitRecord(invoke_record);
+  invocation.OnInvoke(lepus::Value(std::move(arguments)), CallbackMap{}, true,
+                      lepus::Value(int32_t{7}), 0, "");
+  ASSERT_EQ(observer->records_.size(), 1U);
+  auto invoke_record = observer->records_.back();
 
   ASSERT_TRUE(invoke_record.IsTable());
   auto invoke = invoke_record.Table();
@@ -55,17 +64,18 @@ TEST(NativeModuleInvocationContextTest,
   EXPECT_EQ(invoke->GetValue("result")->Table()->GetValue("value")->Int32(), 7);
 
   auto callback = invocation.WithCallbackArgumentIndex(1);
-  lepus::Value callback_record =
-      callback->BuildCallbackRecord(lepus::Value(42));
-  callback->EmitRecord(callback_record);
+  callback->OnCallback(lepus::Value(42));
 
   ASSERT_EQ(observer->records_.size(), 2U);
+  auto callback_record = observer->records_.back();
   EXPECT_EQ(callback_record.Table()->GetValue("phase")->StdString(),
             "callback");
   EXPECT_EQ(callback_record.Table()->GetValue("callbackArgumentIndex")->Int32(),
             1);
   EXPECT_EQ(callback_record.Table()->GetValue("invocationId")->StdString(),
             invoke->GetValue("invocationId")->StdString());
+  EXPECT_EQ(callback_record.Table()->GetValue("method")->StdString(),
+            invoke->GetValue("method")->StdString());
   EXPECT_EQ(callback_record.Table()
                 ->GetValue("result")
                 ->Table()
@@ -74,29 +84,27 @@ TEST(NativeModuleInvocationContextTest,
             42);
 }
 
-TEST(NativeModuleInvocationContextTest, PreservesExplicitNullResult) {
-  NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
-  auto record = invocation.BuildInvokeRecord(lepus::Value(), CallbackMap{},
-                                             true, lepus::Value(), 0, "");
+TEST(NativeModuleRecordBuilderTest, PreservesExplicitNullResult) {
+  auto record = devtool::BuildInvokeRecord(
+      1, "LynxTestModule", "echo", lepus::Value(), true, lepus::Value(), 0, "");
   auto result = record.Table()->GetValue("result")->Table();
   EXPECT_TRUE(result->GetValue("success")->Bool());
   ASSERT_TRUE(result->Contains("value"));
   EXPECT_TRUE(result->GetValue("value")->IsNil());
 }
 
-TEST(NativeModuleInvocationContextTest, OmitsResultWhenNotCaptured) {
-  NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
-  auto record = invocation.BuildInvokeRecord(lepus::Value(), CallbackMap{},
-                                             true, std::nullopt, 0, "");
+TEST(NativeModuleRecordBuilderTest, OmitsResultWhenNotCaptured) {
+  auto record = devtool::BuildInvokeRecord(
+      1, "LynxTestModule", "echo", lepus::Value(), true, std::nullopt, 0, "");
   auto result = record.Table()->GetValue("result")->Table();
   EXPECT_TRUE(result->GetValue("success")->Bool());
   EXPECT_FALSE(result->Contains("value"));
 }
 
-TEST(NativeModuleInvocationContextTest, FailedResultDoesNotExposeValue) {
-  NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
-  auto record = invocation.BuildInvokeRecord(
-      lepus::Value(), CallbackMap{}, false, lepus::Value(), 42, "failure");
+TEST(NativeModuleRecordBuilderTest, FailedResultDoesNotExposeValue) {
+  auto record =
+      devtool::BuildInvokeRecord(1, "LynxTestModule", "echo", lepus::Value(),
+                                 false, lepus::Value(), 42, "failure");
   auto result = record.Table()->GetValue("result")->Table();
   EXPECT_FALSE(result->GetValue("success")->Bool());
   EXPECT_FALSE(result->Contains("value"));
@@ -104,27 +112,16 @@ TEST(NativeModuleInvocationContextTest, FailedResultDoesNotExposeValue) {
   EXPECT_EQ(result->GetValue("errMsg")->StdString(), "failure");
 }
 
-TEST(NativeModuleInvocationContextTest,
-     CallbackContextInheritsInvocationIdentity) {
-  auto observer = std::make_shared<CapturingNativeModuleRecordObserver>();
-  NativeModuleInvocationContext invocation(observer, "LynxTestModule", "echo");
-  auto callback = invocation.WithCallbackArgumentIndex(2);
-  EXPECT_EQ(callback->invocation_id(), invocation.invocation_id());
-  EXPECT_EQ(callback->module_name(), invocation.module_name());
-  EXPECT_EQ(callback->method_name(), invocation.method_name());
-  EXPECT_EQ(callback->callback_argument_index(), 2);
-}
-
-TEST(NativeModuleInvocationContextTest, EmitRecordIsNoopWithoutObserver) {
-  NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
-  auto record = invocation.BuildInvokeRecord(lepus::Value(), CallbackMap{},
-                                             true, std::nullopt, 0, "");
-  invocation.EmitRecord(record);
+TEST(NativeModuleInvocationContextTest, DoesNotRecordWithoutObserver) {
+  InvocationContext invocation({}, "LynxTestModule", "echo");
+  invocation.OnInvoke(lepus::Value(), CallbackMap{}, true, std::nullopt, 0, "");
+  invocation.OnCallback(lepus::Value());
 }
 
 TEST(NativeModuleInvocationContextTest,
      ReplacesCallbackArgumentsWithoutMutatingInvocationArguments) {
-  NativeModuleInvocationContext invocation({}, "LynxTestModule", "echo");
+  auto observer = std::make_shared<CapturingNativeModuleRecordObserver>();
+  InvocationContext invocation(observer, "LynxTestModule", "echo");
   auto arguments = lepus::CArray::Create();
   arguments->emplace_back("value");
   arguments->emplace_back(int64_t{1024});
@@ -134,8 +131,10 @@ TEST(NativeModuleInvocationContextTest,
   CallbackMap callbacks;
   callbacks.emplace(1, nullptr);
 
-  auto record = invocation.BuildInvokeRecord(lepus::Value(arguments), callbacks,
-                                             true, std::nullopt, 0, "");
+  invocation.OnInvoke(lepus::Value(arguments), callbacks, true, std::nullopt, 0,
+                      "");
+  ASSERT_EQ(observer->records_.size(), 1U);
+  auto record = observer->records_.back();
   ASSERT_TRUE(arguments->get(1).IsInt64());
   EXPECT_EQ(arguments->get(1).Int64(), 1024);
   EXPECT_FALSE(payload->IsConst());
