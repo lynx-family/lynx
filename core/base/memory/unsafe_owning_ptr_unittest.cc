@@ -46,6 +46,17 @@ struct SelfWeakNode {
   }
 };
 
+struct WeakLockInDestructor {
+  UnsafeWeakPtr<WeakLockInDestructor>* weak;
+  bool* lock_succeeded;
+
+  WeakLockInDestructor(UnsafeWeakPtr<WeakLockInDestructor>* weak_ptr,
+                       bool* result)
+      : weak(weak_ptr), lock_succeeded(result) {}
+
+  ~WeakLockInDestructor() { *lock_succeeded = weak->Lock() != nullptr; }
+};
+
 }  // namespace
 
 TEST(UnsafeOwningPtrTest, DefaultConstructIsNull) {
@@ -119,6 +130,18 @@ TEST(UnsafeWeakPtrTest, ObservesOwnerLifetime) {
   EXPECT_TRUE(weak.Expired());
   EXPECT_EQ(weak.Lock(), nullptr);
   EXPECT_EQ(alive, 0);
+}
+
+TEST(UnsafeWeakPtrTest, ExpiresBeforeManagedObjectDestructor) {
+  UnsafeWeakPtr<WeakLockInDestructor> weak;
+  bool lock_succeeded = true;
+  auto owner = MakeUnsafeOwning<WeakLockInDestructor>(&weak, &lock_succeeded);
+  weak = owner.GetWeakPtr();
+
+  owner.Reset();
+
+  EXPECT_FALSE(lock_succeeded);
+  EXPECT_TRUE(weak.Expired());
 }
 
 TEST(UnsafeWeakPtrTest, MultipleWeakShareControlBlock) {
