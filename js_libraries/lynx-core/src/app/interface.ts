@@ -4,7 +4,7 @@
 
 import { Lynx, NativeLynxProxy } from '../lynx';
 import { AMDFactory } from '../common';
-import { LynxSetTimeout } from '@lynx-js/types';
+import { LynxClearTimeout, LynxSetTimeout } from '@lynx-js/types';
 import { BaseApp } from '.';
 import { LynxFeature } from '../common';
 import { IdentifierType } from '../modules/selectorQuery';
@@ -348,4 +348,18 @@ export interface NativeApp {
    * add custom info for error.
    */
   __addReporterCustomInfo: (info: Record<string, string>) => void;
+}
+
+/**
+ * Global APIs published by the standalone App runtime on the JS context, so
+ * that what a shared module captures outlives the card that evaluated it.
+ */
+export interface StandaloneRuntimeGlobals {
+  setTimeout: LynxSetTimeout;
+  clearTimeout: LynxClearTimeout;
+  setInterval: LynxSetTimeout;
+  clearInterval: LynxClearTimeout;
+  requestAnimationFrame: (callback: () => void) => number;
+  cancelAnimationFrame: (animationId: number) => void;
+  NativeModules: NativeModule;
 }
