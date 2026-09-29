@@ -27,12 +27,12 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm
       public std::enable_shared_from_this<JSRealm> {
  public:
   JSRealm(std::shared_ptr<runtime::js::JSIContext>);
-  ~JSRealm() = default;
+  virtual ~JSRealm();
 
   virtual void Def() = 0;
   virtual void EnsureConsole(
       std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
-      const tasm::PageOptions& page_options) = 0;
+      const tasm::PageOptions& page_options);
   virtual void InitGlobal(
       base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
       std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
