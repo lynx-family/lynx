@@ -25,6 +25,7 @@ public class LynxDevtoolEnv {
   private final String TAG = "LynxDevtoolEnv";
   private volatile static LynxDevtoolEnv sInstance;
   private Context mContext;
+  private boolean mHasInitialized = false;
   // be used to load devtool native library
   private INativeLibraryLoader mDevtoolLibraryLoader = null;
 
@@ -48,7 +49,11 @@ public class LynxDevtoolEnv {
     return BuildConfig.LYNX_SDK_VERSION;
   }
 
-  public void init(Context context) {
+  public synchronized void init(Context context) {
+    if (mHasInitialized) {
+      updateDevToolLifecycle();
+      return;
+    }
     try {
       if (!LynxEnv.inst().isNativeLibraryLoaded()) {
         if (tryLoadDebugLynxLibrary(
@@ -75,13 +80,21 @@ public class LynxDevtoolEnv {
       throw t;
     }
     // All initializations are done. Let's notify DevToolLifecycle.
-    DevToolLifecycle.getInstance().onInitialized();
+    updateDevToolLifecycle();
     // Synchronize settings to native after initialization
     DevToolSettings.inst().syncToNative();
+    mHasInitialized = true;
+  }
+
+  private void updateDevToolLifecycle() {
+    // init() can be called again after DevTool is disabled and re-enabled. The environment does not
+    // need to be initialized again, but the lifecycle must return to INITIALIZED or CONNECTED.
+    DevToolLifecycle.getInstance().onInitialized();
     if (LynxGlobalDebugBridge.getInstance().isEnabled()) {
       DevToolLifecycle.getInstance().onConnected();
     }
   }
+
   private void setDefaultAppInfo(Context context) {
     Map<String, String> appInfo = new HashMap<>();
     try {
