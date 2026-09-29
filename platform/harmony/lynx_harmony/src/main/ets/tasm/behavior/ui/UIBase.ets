@@ -55,6 +55,22 @@ export abstract class UIBase {
     return false;
   }
 
+  /**
+   * Whether to observe descendant invalidation, read once at native creation.
+   * Observers must not nest. Descendants must not move to another observer,
+   * including after detaching from their original observer.
+   */
+  protected observeInvalidation(): boolean {
+    return false;
+  }
+
+  /**
+   * Called once on the UI thread after a node-ready batch changes this observer's
+   * descendants, or separately after an asynchronous image update.
+   */
+  invalidate(): void {
+  }
+
   focusable(): boolean {
     return false;
   }
@@ -106,7 +122,7 @@ export abstract class UIBase {
         this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
         this.needWindowStateChangeEvent(),
         this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY,
-        this.isLayoutPlaceholder());
+        this.isLayoutPlaceholder(), this.observeInvalidation(), this.invalidate);
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }

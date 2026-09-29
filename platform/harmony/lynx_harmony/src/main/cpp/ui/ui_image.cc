@@ -201,6 +201,7 @@ void UIImage::OnNodeEvent(ArkUI_NodeEvent* event) {
 
 void UIImage::HandleImageSuccessCallback(float image_width,
                                          float image_height) {
+  NotifyInvalidationObserver();
   image_width_ = image_width;
   image_height_ = image_height;
   load_finish_ = lynx::base::CurrentSystemTimeMilliseconds();

@@ -195,11 +195,17 @@ std::unordered_map<std::string, UIBase::UIMethod> UIBase::ui_method_map_ = {
 
 UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
                const std::string& tag, bool has_customized_layout)
+    : UIBase(context, type, sign, tag, has_customized_layout, false) {}
+
+UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
+               const std::string& tag, bool has_customized_layout,
+               bool observe_invalidation)
     : context_(context),
       node_type_(type),
       sign_(sign),
       tag_(tag),
-      has_customized_layout_(has_customized_layout) {
+      has_customized_layout_(has_customized_layout),
+      observe_invalidation_(observe_invalidation) {
   if (type != ARKUI_NODE_UNDEFINED) {
     ArkUI_NodeHandle node = NodeManager::Instance().CreateNode(type);
     InitNode(node);
@@ -437,6 +443,14 @@ void UIBase::SendPositionEvent(const char* event_name,
 }
 
 void UIBase::SetParent(UIBase* parent) { parent_ = parent; }
+
+void UIBase::NotifyInvalidationObserver() {
+  if (invalidation_observer_sign_ < 0 || !context_ || !context_->GetUIOwner()) {
+    return;
+  }
+  context_->GetUIOwner()->NotifyInvalidationObserver(
+      invalidation_observer_sign_);
+}
 
 void UIBase::AddChild(UIBase* child, int index) {
   if (index > static_cast<int>(children_.size())) {

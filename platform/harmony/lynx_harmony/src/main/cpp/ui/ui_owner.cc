@@ -147,6 +147,9 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
 
   bool is_root_ui = ui->IsRoot();
   ui_holder_[sign] = is_root_ui ? root_ : std::shared_ptr<UIBase>(ui);
+  if (ui->IsInvalidationObserver()) {
+    ++invalidation_observer_count_;
+  }
   if (is_root_ui) {
     root_ui_created_ = true;
   }
@@ -217,10 +220,18 @@ void UIOwner::InsertUI(int parent, int child, int index) {
   if (child_it == ui_holder_.end()) {
     return;
   }
-  const auto& parent_ui = parent_it->second;
-  const auto& child_ui = child_it->second;
+  auto parent_ui = parent_it->second;
+  auto child_ui = child_it->second;
   MarkHasUIOperations(parent_ui.get());
   parent_ui->AddChild(child_ui.get(), index);
+  // AddChild may reject the child. Color attached nodes before the node-ready
+  // batch collects their observers.
+  if (HasInvalidationObservers() && child_ui->Parent() == parent_ui.get()) {
+    UpdateInvalidationObserver(child_ui.get(),
+                               parent_ui->IsInvalidationObserver()
+                                   ? parent_ui->Sign()
+                                   : parent_ui->GetInvalidationObserverSign());
+  }
 }
 
 void UIOwner::RemoveUI(int parent, int child, int index, bool is_move) {
@@ -228,8 +239,16 @@ void UIOwner::RemoveUI(int parent, int child, int index, bool is_move) {
   if (child_it == ui_holder_.end()) {
     return;
   }
-  MarkHasUIOperationsBottomUp(child_it->second.get());
-  child_it->second->RemoveFromParent();
+  UIBase* ui = child_it->second.get();
+  if (HasInvalidationObservers()) {
+    // The removed UI may be destroyed before the node-ready batch is processed.
+    QueueInvalidationObserver(ui->GetInvalidationObserverSign());
+    if (!is_move) {
+      UpdateInvalidationObserver(ui, -1);
+    }
+  }
+  MarkHasUIOperationsBottomUp(ui);
+  ui->RemoveFromParent();
 }
 
 void UIOwner::UpdateUI(int sign, PropBundleHarmony* props) {
@@ -301,11 +320,71 @@ void UIOwner::UpdateNodeReadyPatching(
     external_memory_report_candidate_ids_.insert(remove_ids.begin(),
                                                  remove_ids.end());
   }
+  if (HasInvalidationObservers()) {
+    // Collect ready nodes before platform callbacks can change the UI tree.
+    for (int32_t id : ready_ids) {
+      if (auto* ui = FindUIBySign(id)) {
+        QueueInvalidationObserver(ui->GetInvalidationObserverSign());
+      }
+    }
+  }
   for (int32_t id : ready_ids) {
     OnNodeReady(id);
   }
   for (int32_t id : remove_ids) {
     OnNodeRemoved(id);
+  }
+  if (HasInvalidationObservers()) {
+    FlushInvalidationObservers();
+  }
+}
+
+void UIOwner::UpdateInvalidationObserver(UIBase* ui, int observer_sign) {
+  // Moving an observer preserves its subtree. Ordinary nodes only recolor
+  // descendants when their observing ancestor changes.
+  if (ui->IsInvalidationObserver() ||
+      ui->GetInvalidationObserverSign() == observer_sign) {
+    return;
+  }
+  std::vector<UIBase*> pending{ui};
+  while (!pending.empty()) {
+    auto* node = pending.back();
+    pending.pop_back();
+    node->SetInvalidationObserverSign(observer_sign);
+    const auto& children = node->ChildrenRef();
+    pending.insert(pending.end(), children.begin(), children.end());
+  }
+}
+
+void UIOwner::QueueInvalidationObserver(int observer_sign) {
+  if (destroyed_ || !HasInvalidationObservers() || observer_sign < 0) {
+    return;
+  }
+  pending_invalidation_observers_.insert(observer_sign);
+}
+
+void UIOwner::NotifyInvalidationObserver(int observer_sign) {
+  if (destroyed_ || !HasInvalidationObservers() || observer_sign < 0) {
+    return;
+  }
+  auto it = ui_holder_.find(observer_sign);
+  if (it == ui_holder_.end()) {
+    return;
+  }
+  // Asynchronous image updates do not consume the pending node-ready batch.
+  auto observer = it->second;
+  observer->OnDescendantInvalidated();
+}
+
+void UIOwner::FlushInvalidationObservers() {
+  if (pending_invalidation_observers_.empty()) {
+    return;
+  }
+  // Clear the pending batch before dispatch so callbacks cannot erase new work.
+  std::unordered_set<int> pending = std::move(pending_invalidation_observers_);
+  pending_invalidation_observers_.clear();
+  for (int observer_sign : pending) {
+    NotifyInvalidationObserver(observer_sign);
   }
 }
 
@@ -376,6 +455,13 @@ void UIOwner::DestroyTarget(UIBase* target) {
   }
   external_memory_report_candidate_ids_.erase(target->Sign());
   UpdatePositionChangeListener(target->Sign(), false);
+  if (target->IsInvalidationObserver()) {
+    --invalidation_observer_count_;
+    pending_invalidation_observers_.erase(target->Sign());
+    if (!HasInvalidationObservers()) {
+      pending_invalidation_observers_.clear();
+    }
+  }
   ui_holder_.erase(target->Sign());
 }
 
@@ -937,6 +1023,8 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->accessibility_exclusive_.clear();
   obj->ui_holder_.clear();
   obj->layout_changed_nodes_.clear();
+  obj->invalidation_observer_count_ = 0;
+  obj->pending_invalidation_observers_.clear();
   obj->keyboard_event_observers_.clear();
   obj->window_state_listeners_.clear();
   obj->external_memory_report_candidate_ids_.clear();
