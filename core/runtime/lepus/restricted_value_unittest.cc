@@ -31,6 +31,13 @@ class ElementTemplateRefForTest : public lepus::RefCounted {
     return lepus::RefType::kElementTemplate;
   }
 };
+
+class RefCountedForTest : public lepus::RefCounted {
+ public:
+  lepus::RefType GetRefType() const override {
+    return lepus::RefType::kOtherType;
+  }
+};
 }  // namespace
 
 class RestrictedValueTest : public ::testing::Test {
@@ -265,8 +272,8 @@ TEST_F(RestrictedValueTest, RestrictedValueArrayBuffer) {
 
 TEST_F(RestrictedValueTest, RestrictedValueRefCounted) {
   {
-    auto js_object = lepus::LEPUSObject::Create();
-    fml::RefPtr<lepus::RefCounted> ref_counted = js_object;
+    fml::RefPtr<lepus::RefCounted> ref_counted =
+        fml::AdoptRef(new RefCountedForTest());
     RestrictedValue v1(ref_counted);
     ASSERT_TRUE(v1.IsRefCounted());
     RestrictedValue v2;

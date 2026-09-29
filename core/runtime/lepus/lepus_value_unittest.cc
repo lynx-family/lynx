@@ -33,6 +33,13 @@ class ElementTemplateRefForTest : public lepus::RefCounted {
     return lepus::RefType::kElementTemplate;
   }
 };
+
+class RefCountedForTest : public lepus::RefCounted {
+ public:
+  lepus::RefType GetRefType() const override {
+    return lepus::RefType::kOtherType;
+  }
+};
 }  // namespace
 
 class LepusValueTest : public ::testing::Test {
@@ -525,8 +532,8 @@ TEST_F(LepusValueTest, LepusValueRefCounted) {
     ASSERT_TRUE(v4.Type() == Value_JSObject);
   }
   {
-    auto js_object = lepus::LEPUSObject::Create();
-    fml::RefPtr<lepus::RefCounted> ref_counted = js_object;
+    fml::RefPtr<lepus::RefCounted> ref_counted =
+        fml::AdoptRef(new RefCountedForTest());
     lepus::Value v1(ref_counted);
     ASSERT_TRUE(v1.IsRefCounted());
     lepus::Value v2;
@@ -1116,7 +1123,8 @@ TEST_F(LepusValueTest, LepusValueToJSValue) {
     auto ret5 = v6.ToLepusValue();
     ASSERT_TRUE(ret5.IsArray());
 
-    fml::RefPtr<lepus::RefCounted> ref_counted = lepus::LEPUSObject::Create();
+    fml::RefPtr<lepus::RefCounted> ref_counted =
+        fml::AdoptRef(new RefCountedForTest());
     lepus::Value v7(ref_counted);
     ASSERT_TRUE(v7.IsRefCounted());
     LEPUSValue ret6 =

@@ -1242,7 +1242,7 @@ TEST_F(LepusValueMethods, ToJSONString) {
   lepus::lepusValueToJSONString(s4, js_obj, true);
 
   ASSERT_FALSE(s3.str().compare(s4.str()));
-  ASSERT_FALSE(s2.str().compare(s4.str()));
+  ASSERT_FALSE(s1.str().compare(s2.str()));
 }
 TEST_F(LepusValueMethods, SetConstValuePropertyRC) {
   if (LEPUS_IsGCMode(ctx_.context())) return;
