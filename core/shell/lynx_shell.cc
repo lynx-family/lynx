@@ -124,7 +124,7 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
     : runners_(MapThreadStrategyForTemporaryAsync(
                    strategy, DoAsyncHydration(strategy, shell_option)),
                // Multi tasm thread is necessary for auto concurrency or async
-               // hydrations, beacause they have to merge the tasm runner to ui.
+               // hydrations, because they have to merge the tasm runner to ui.
                shell_option.enable_multi_tasm_thread_ ||
                    DoAsyncHydration(strategy, shell_option),
                shell_option.enable_multi_layout_thread_,

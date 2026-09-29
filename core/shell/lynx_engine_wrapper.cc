@@ -23,10 +23,15 @@ void LynxEngineWrapper::SetupCore(
 }
 
 void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
-  shell->engine_actor_ = this->engine_actor_->TransferToNewActor(
-      shell->runners_.GetTASMTaskRunner());
+  // Transfer the layout actor first so all layout tasks from the previous
+  // shell finish while its engine actor is still available. A finishing
+  // layout task may post OnLayoutAfter work to the engine actor; transferring
+  // the engine actor first would leave that work on an actor whose impl has
+  // already been moved.
   shell->layout_actor_ = this->layout_actor_->TransferToNewActor(
       shell->runners_.GetLayoutTaskRunner());
+  shell->engine_actor_ = this->engine_actor_->TransferToNewActor(
+      shell->runners_.GetTASMTaskRunner());
   shell->tasm_mediator_ = this->tasm_mediator_;
   shell->layout_mediator_ = this->layout_mediator_;
   shell->tasm_mediator_->ResetMediatorActor(shell->layout_actor_,
