@@ -4,6 +4,8 @@
 package com.lynx.devtool;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import android.app.Application;
 import android.content.Context;
@@ -46,5 +48,16 @@ public class LynxDevtoolEnvTest {
 
     LynxDevtoolEnv.inst().enableV8(-1);
     assertEquals(DevToolSettings.V8_OFF, LynxDevtoolEnv.inst().getV8Enabled());
+  }
+
+  @Test
+  public void testRepeatedInitDoesNotReinitializeWithNewContext() {
+    // setUp() has already initialized LynxDevtoolEnv with the application context.
+    Context newContext = mock(Context.class);
+
+    LynxDevtoolEnv.inst().init(newContext);
+
+    // A repeated init should return before using the newly supplied context.
+    verifyNoInteractions(newContext);
   }
 }
