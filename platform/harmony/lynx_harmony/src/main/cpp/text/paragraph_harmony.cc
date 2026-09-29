@@ -35,6 +35,7 @@ void DrawInlineEmoji(OH_Drawing_Canvas* canvas, const InlineEmojiInfo& emoji,
           emoji.name, image, [emoji_invalidate_target] {
             if (auto target = emoji_invalidate_target.lock()) {
               target->Invalidate();
+              target->NotifyInvalidationObserver();
             }
           });
     }

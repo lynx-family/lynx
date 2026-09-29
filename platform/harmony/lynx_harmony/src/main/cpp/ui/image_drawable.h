@@ -60,6 +60,7 @@ class ImageDrawable {
   void ResetContent();
   void DestroyMatrix();
   void InvalidateSelf();
+  void NotifyInvalidationObserver();
 
   void AddImageAnimationListener(ImageAnimationListener* listener);
   void RemoveImageAnimationListener(ImageAnimationListener* listener);

@@ -143,6 +143,7 @@ void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
       }
       auto image = std::static_pointer_cast<UINewImage>(self);
       image->AutoSizeIfNeeded();
+      image->NotifyInvalidationObserver();
     });
 
     if ((event_flags_ & image::kFlagImageLoadEvent) != 0 &&
@@ -501,6 +502,7 @@ bool UINewImage::UpdateSvgImageLoader() {
         [weak_self = weak_from_this()] {
           if (auto self = weak_self.lock()) {
             NodeManager::Instance().Invalidate(self->Node());
+            static_cast<UINewImage*>(self.get())->NotifyInvalidationObserver();
           }
         },
         context_->ScaledDensity());

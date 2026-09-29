@@ -46,8 +46,10 @@ class JSUIBase : public UIBase {
   JSUIBase(LynxContext* context, ArkUI_NodeHandle node, int sign,
            const std::string& tag, bool has_customized_layout,
            const bool need_window_state_change_event,
-           const bool is_layout_placeholder)
-      : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag, has_customized_layout),
+           const bool is_layout_placeholder,
+           const bool observe_invalidation = false)
+      : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag, has_customized_layout,
+               observe_invalidation),
         need_window_state_change_event_(need_window_state_change_event),
         is_layout_placeholder_(is_layout_placeholder) {
     if (node) {
@@ -68,8 +70,10 @@ class JSUIBase : public UIBase {
   }
   void OnEnterForeground() override;
   void OnEnterBackground() override;
+  void OnDestroy() override { destroyed_ = true; }
 
  private:
+  void OnDescendantInvalidated() override;
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value GetChildren(napi_env env, napi_callback_info info);
   static napi_value SetFrameNode(napi_env env, napi_callback_info info);
@@ -107,10 +111,12 @@ class JSUIBase : public UIBase {
   napi_ref js_update_extra_data_{nullptr};
   napi_ref js_on_enter_foreground_{nullptr};
   napi_ref js_on_enter_background_{nullptr};
+  napi_ref js_invalidate_{nullptr};
   ArkUI_NodeHandle frame_node_{nullptr};
   const bool need_window_state_change_event_{false};
   const bool is_layout_placeholder_{false};
   bool is_reused_by_client_{false};
+  bool destroyed_{false};
 };
 
 }  // namespace harmony
