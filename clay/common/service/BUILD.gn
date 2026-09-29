@@ -18,7 +18,7 @@ source_set("service") {
   # additions here could result in added app sizes across embeddings.
   public_deps = [ "../../fml:fml" ]
 
-  if (is_headless) {
+  if (is_headless && !is_ios) {
     defines = [ "ENABLE_HEADLESS" ]
   }
 }

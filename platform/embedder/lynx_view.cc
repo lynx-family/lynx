@@ -27,6 +27,10 @@
 #include "platform/embedder/module/global_module_registry.h"
 #include "platform/embedder/resource/lynx_resource_loader_embedder.h"
 
+#if defined(OS_IOS) && ENABLE_NAPI_BINDING
+extern "C" void InstallPrimJSWeakNodeApiBridgeForApple();
+#endif
+
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
 namespace {
 
@@ -122,6 +126,15 @@ std::shared_ptr<lynx::tasm::TemplateData> MergeGlobalProps(
 
 LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                             void* user_data) {
+#if defined(OS_IOS) && defined(ENABLE_WINDOWLESS)
+  // The iOS C API hosts offscreen views; UIView uses its native entry point.
+  if (!builder || !builder->windowless_renderer) {
+    return nullptr;
+  }
+#if ENABLE_NAPI_BINDING
+  InstallPrimJSWeakNodeApiBridgeForApple();
+#endif
+#endif
   lynx_view_t* view = new lynx_view_t;
   view->user_data = user_data;
   const char* webview_fixed_runtime_path =
@@ -129,7 +142,15 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   view->webview2_fixed_runtime_path =
       webview_fixed_runtime_path ? webview_fixed_runtime_path : "";
   // Construct ui renderer with builder.
+#if defined(OS_IOS)
 #if defined(ENABLE_WINDOWLESS)
+  view->lynx_ui_renderer =
+      lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);
+#else
+  delete view;
+  return nullptr;
+#endif
+#elif defined(ENABLE_WINDOWLESS)
   if (builder->windowless_renderer) {
     view->lynx_ui_renderer =
         lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);

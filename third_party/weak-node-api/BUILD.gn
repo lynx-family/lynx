@@ -95,7 +95,9 @@ group("setup_napi_deps") {
 # Source set for direct source code reference
 source_set("weak_node_api_source") {
   deps = [ ":setup_napi_deps" ]
-  sources = weak_node_api_sources
+
+  # Source Pod packaging collects sources rather than GN's public list.
+  sources = weak_node_api_sources + weak_node_api_public_headers
   public_configs = [ ":weak_node_api_config" ]
   public = weak_node_api_public_headers
   if (is_win) {
@@ -124,6 +126,7 @@ copy("copy_win_dll") {
 
 source_set("weak_node_api_prebuilt") {
   deps = [ ":setup_napi_deps" ]
+  sources = weak_node_api_public_headers
   public_configs = [ ":weak_node_api_config" ]
   public = weak_node_api_public_headers
 
