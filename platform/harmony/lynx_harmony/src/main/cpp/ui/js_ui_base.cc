@@ -105,7 +105,7 @@ void JSUIBase::SetFrameNode(ArkUI_NodeHandle frame_node) {
 }
 
 napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
-  size_t argc = 21;
+  size_t argc = 23;
   /** 0 - js ref
    *  1 - context ptr array
    *  2 - FrameNode napi_value
@@ -127,6 +127,8 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
    *  18 - scrollX func ref
    *  19 - scrollY func ref
    *  20 - layout placeholder bool
+   *  21 - observe descendant invalidation bool, fixed for this instance
+   *  22 - invalidate func ref
    */
   napi_value argv[argc];
   napi_value js_this;
@@ -147,9 +149,13 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   napi_get_value_bool(env, argv[14], &need_window_state_change_event);
   bool is_layout_placeholder = false;
   napi_get_value_bool(env, argv[20], &is_layout_placeholder);
-  auto* ui =
-      new JSUIBase(context, node, sign, tag, has_customized_layout,
-                   need_window_state_change_event, is_layout_placeholder);
+  bool observe_invalidation = false;
+  if (argc > 21) {
+    napi_get_value_bool(env, argv[21], &observe_invalidation);
+  }
+  auto* ui = new JSUIBase(context, node, sign, tag, has_customized_layout,
+                          need_window_state_change_event, is_layout_placeholder,
+                          observe_invalidation);
   ui->env_ = env;
   napi_create_reference(env, argv[0], 1, &ui->js_ref_);
   napi_create_reference(env, argv[5], 1, &ui->js_update_);
@@ -165,11 +171,35 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[17], 1, &ui->js_is_scrollable_);
   napi_create_reference(env, argv[18], 1, &ui->js_scroll_x_);
   napi_create_reference(env, argv[19], 1, &ui->js_scroll_y_);
+  if (observe_invalidation && argc > 22) {
+    napi_create_reference(env, argv[22], 1, &ui->js_invalidate_);
+  }
 
   napi_wrap(
       env, js_this, ui, [](napi_env env, void* data, void*) {}, nullptr,
       nullptr);
   return js_this;
+}
+
+void JSUIBase::OnDescendantInvalidated() {
+  if (!js_invalidate_ || destroyed_ || !context_) {
+    return;
+  }
+  // Bind to the observer at event time. Keep only a weak reference so queued
+  // notifications cannot retain a removed or destroyed UI instance.
+  context_->PostTaskOnUIThread([weak_self = weak_from_this()] {
+    auto self = weak_self.lock();
+    if (!self) {
+      return;
+    }
+    auto ui = std::static_pointer_cast<JSUIBase>(self);
+    if (ui->destroyed_ || !ui->context_->GetUIOwner()) {
+      return;
+    }
+    base::NapiHandleScope scope(ui->env_);
+    base::NapiUtil::InvokeJsMethod(ui->env_, ui->js_ref_, ui->js_invalidate_, 0,
+                                   nullptr, nullptr);
+  });
 }
 
 void JSUIBase::UpdateProps(PropBundleHarmony* props) {
@@ -403,6 +433,9 @@ JSUIBase::~JSUIBase() {
   napi_delete_reference(env_, js_update_extra_data_);
   napi_delete_reference(env_, js_on_enter_foreground_);
   napi_delete_reference(env_, js_on_enter_background_);
+  if (js_invalidate_) {
+    napi_delete_reference(env_, js_invalidate_);
+  }
   napi_value js_object = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
   if (js_object) {
     napi_remove_wrap(env_, js_object, nullptr);
