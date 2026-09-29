@@ -3,8 +3,24 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../../../testing/test.gni")
+import("../../../tools/css_generator/css_keywords.gni")
 import("../../Lynx.gni")
 import("build.gni")
+
+action("generate_css_keywords") {
+  script = css_keywords_generator
+  inputs = [
+    css_keywords_template,
+    gperf_executable,
+  ]
+  outputs = [ css_keywords_generated ]
+  args = css_keywords_generator_args
+}
+
+lynx_core_source_set("css_keywords") {
+  sources = [ "css_keywords.h" ] + get_target_outputs(":generate_css_keywords")
+  deps = [ ":generate_css_keywords" ]
+}
 
 lynx_core_source_set("css") {
   check_includes = false
@@ -23,6 +39,7 @@ lynx_core_source_set("css") {
               "list lines")
 
   public_deps = [
+    ":css_keywords",
     "../../../gfx:gfx",
     "../../../third_party/rapidjson",
     "../../base",

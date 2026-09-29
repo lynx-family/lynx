@@ -199,6 +199,7 @@ if (build_lynx_lepus_node || is_encoder_ut) {
       "../../core/base:json_utils",
       "../../core/base:observer",
       "../../core/build:build",
+      "../../core/renderer/css:css_keywords",
       "../../core/renderer/events:events_tasm",
       "../../core/runtime/common:reporter",
       "../../core/runtime/js:js_common",

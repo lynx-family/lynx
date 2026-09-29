@@ -1,0 +1,33 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+declare_args() {
+  # Path to a gperf executable for the build host, including cross builds.
+  gperf_executable = ""
+}
+
+css_keywords_generator = get_path_info("generate_css_keywords.py", "abspath")
+css_keywords_template =
+    get_path_info("../../core/renderer/css/css_keywords.tmpl", "abspath")
+css_keywords_generated =
+    get_label_info("../../core/renderer/css:generate_css_keywords",
+                   "target_gen_dir") + "/css_keywords.cc"
+
+if (gperf_executable == "") {
+  gperf_executable = exec_script(css_keywords_generator,
+                                 [
+                                   "--find-gperf",
+                                   rebase_path("//buildtools"),
+                                 ],
+                                 "trim string")
+}
+
+css_keywords_generator_args = [
+  "--gperf",
+  rebase_path(gperf_executable, root_build_dir),
+  "--input",
+  rebase_path(css_keywords_template, root_build_dir),
+  "--output",
+  rebase_path(css_keywords_generated, root_build_dir),
+]

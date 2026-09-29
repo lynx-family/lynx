@@ -84,6 +84,31 @@ deps = {
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows']
     },
+    'buildtools/gperf': {
+        "type": "git",
+        "url": "https://chromium.googlesource.com/chromium/deps/gperf",
+        "commit": "e9eeea862a18e77b945d98eff7e1bf065d3daf8e",
+        "ignore_in_git": True,
+        "condition": system == "windows" and machine in ["x86", "i386", "i686", "x86_64"],
+    },
+    'buildtools/gperf-linux.zip': {
+        "type": "http",
+        "url": "https://chrome-infra-packages.appspot.com/dl/infra/3pp/tools/gperf/linux-amd64/+/version:3@3.2",
+        "sha256": "a2dad151e1d0afdce5c6d4f8b097d226ab29cad056afd2243eb859f1b1689676",
+        "decompress": False,
+        "ignore_in_git": True,
+        "condition": system == "linux" and machine == "x86_64",
+    },
+    'unpack_gperf': {
+        "type": "action",
+        "cwd": root_dir,
+        "commands": [
+            "python3 -m zipfile -e buildtools/gperf-linux.zip buildtools/gperf",
+            "chmod +x buildtools/gperf/bin/gperf",
+        ],
+        "require": ["buildtools/gperf-linux.zip"],
+        "condition": system == "linux" and machine == "x86_64",
+    },
     'buildtools/node': {
         "type": "http",
         "url": {

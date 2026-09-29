@@ -18,7 +18,6 @@ lynx_css_core_sources = [
   "css_fragment_decorator.h",
   "css_keyframes_token.cc",
   "css_keyframes_token.h",
-  "css_keywords.cc",
   "css_keywords.h",
   "css_parse_token.cc",
   "css_parser_token.h",

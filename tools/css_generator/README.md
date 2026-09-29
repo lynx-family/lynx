@@ -6,6 +6,7 @@ This package serves as the source of truth for all CSS APIs defined in the Lynx 
 
 - [CSS Generator](#css-generator)
   - [Table of Contents](#table-of-contents)
+  - [CSS Keyword Lookup](#css-keyword-lookup)
   - [CSS Property Definition](#css-property-definition)
     - [Property vs Attribute](#property-vs-attribute)
     - [Vendor Prefix](#vendor-prefix)
@@ -16,6 +17,24 @@ This package serves as the source of truth for all CSS APIs defined in the Lynx 
     - [Usage](#usage)
   - [Schema](#schema)
   - [Tutorial: Implementing a CSS Property](#tutorial-implementing-a-css-property)
+
+## CSS Keyword Lookup
+
+Edit `core/renderer/css/css_keywords.tmpl` and the declarations in
+`css_keywords.h` when adding keywords. GN's `generate_css_keywords` action
+generates `css_keywords.cc` under the build directory's `gen` tree; generated
+keyword tables are not checked into Git. Core, encoder, and DevTool targets
+share the `css_keywords` source set.
+
+On macOS, generation calls `/usr/bin/gperf` directly. On Windows x86/x64 and
+Linux x86_64, dependency sync installs the host tool under
+`buildtools/gperf/bin`. Other hosts can install gperf on `PATH`. Set
+`gperf_executable` in `args.gn` to an absolute path to override tool discovery.
+Cross builds always use a host executable. The generator supports gperf 3.0.x
+and newer and normalizes legacy output for C++17.
+
+CocoaPods generation also creates the table while exporting the Podspec, and
+the Podspec's prepare command regenerates it when a source pod is downloaded.
 
 ## CSS Property Definition
 

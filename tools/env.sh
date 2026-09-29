@@ -15,6 +15,7 @@ LYNX_OSS_ENV_BUILDTOOLS_PATH_SUFFIXES=(
   "llvm/bin"
   "gn"
   "ninja"
+  "gperf/bin"
   "sccache"
   "emsdk"
   "emsdk/upstream/emscripten"
@@ -27,6 +28,7 @@ LYNX_OSS_ENV_PYTHONPATH_SUFFIXES=(
 LYNX_OSS_ENV_TOOL_CANDIDATES=(
   gn
   ninja
+  gperf
   sccache
   node
   npm
