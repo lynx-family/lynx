@@ -26,7 +26,12 @@ class JSClosureEventListenerTest : public JSITestBase {
 
   void SetUp() override;
 
-  void TearDown() override {}
+  void TearDown() override {
+    if (app_) {
+      app_->Destroy();
+      app_ = nullptr;
+    }
+  }
 
  protected:
   base::UnsafeOwningPtr<App> app_;

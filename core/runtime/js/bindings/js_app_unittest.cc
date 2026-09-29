@@ -364,6 +364,13 @@ class AppTest : public JSITestBase {
     app->SetJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
   }
 
+  void TearDown() override {
+    if (app) {
+      app->Destroy();
+      app = nullptr;
+    }
+  }
+
   void InitModuleManager() {
     module_manager_ = std::make_shared<LynxModuleManager>();
     module_delegate_ = std::make_shared<MockModuleDelegate>(&rt);
@@ -391,6 +398,40 @@ class AppTest : public JSITestBase {
 };
 
 TEST_P(AppTest, CreateAppTest) { EXPECT_TRUE(app); }
+
+TEST_P(AppTest, DestroyKeepsNativeBindingsAliveUntilOwnerReset) {
+  auto weak_app = app->GetWeakPtr();
+  auto lynx_proxy = std::make_shared<LynxProxy>(weak_app);
+  ASSERT_TRUE(rt.global().setProperty(
+      rt, "teardownLynx", Object::createFromHostObject(rt, lynx_proxy)));
+  ASSERT_TRUE(eval(R"(
+    globalThis.destroyCount = 0;
+    globalThis.destroyCard = function() {
+      // Internal listener cleanup needs this binding during destroyCard.
+      teardownLynx.getCoreContext();
+      ++globalThis.destroyCount;
+    };
+  )"));
+
+  app->Destroy();
+  EXPECT_TRUE(weak_app.Lock());
+  EXPECT_EQ(eval("globalThis.destroyCount")->getNumber(), 1);
+
+  app = nullptr;
+  EXPECT_FALSE(weak_app.Lock());
+  EXPECT_EQ(eval("globalThis.destroyCount")->getNumber(), 1);
+}
+
+TEST_P(AppTest, ExplicitDestroyBeforeOwnerResetExpiresWeakReference) {
+  auto weak_app = app->GetWeakPtr();
+  ASSERT_TRUE(weak_app.Lock());
+
+  app->Destroy();
+  EXPECT_TRUE(weak_app.Lock());
+
+  app = nullptr;
+  EXPECT_FALSE(weak_app.Lock());
+}
 
 TEST_P(AppTest, NativeLynxContextProxyTest) {
   EXPECT_TRUE(app);

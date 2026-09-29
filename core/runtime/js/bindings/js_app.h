@@ -93,7 +93,10 @@ class App {
     return delegate_->GetLogContext();
   }
 
-  ~App() = default;
+  ~App() {
+    DCHECK(destroyed_)
+        << "App::Destroy() must be called before App destruction";
+  }
   void Destroy();
   void CallDestroyLifetimeFun();
 
@@ -359,6 +362,7 @@ class App {
     kDestroying,     // app is destroying
   };
   State state_ = State::kNotStarted;
+  bool destroyed_{false};
 
   base::UnsafeWeakPtr<App> weak_self_;
   std::string app_guid_;

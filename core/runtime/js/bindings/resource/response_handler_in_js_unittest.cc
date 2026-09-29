@@ -105,6 +105,8 @@ TEST_P(ResponseHandlerInJSTest, ThenCallbackFiresWithoutHoldingHandler) {
   promise->SetValue(info);
 
   EXPECT_TRUE(resource_callback_called);
+  app->Destroy();
+  app = nullptr;
 }
 
 TEST_P(ResponseHandlerInJSTest, PromiseResolutionDispatchesBeforeAccessingApp) {
@@ -145,6 +147,8 @@ TEST_P(ResponseHandlerInJSTest, PromiseResolutionDispatchesBeforeAccessingApp) {
 
   EXPECT_TRUE(resource_callback_called);
   EXPECT_EQ(callback_thread, owner_thread);
+  app->Destroy();
+  app = nullptr;
 }
 
 INSTANTIATE_TEST_SUITE_P(

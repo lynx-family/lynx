@@ -1930,6 +1930,9 @@ void App::Init() {
 }
 
 void App::Destroy() {
+  DCHECK(!destroyed_) << "App::Destroy() must only be called once";
+  destroyed_ = true;
+
   auto rt = rt_.Lock();
   if (rt && js_app_.isObject()) {
     LOGI("App::Destroy " << this);

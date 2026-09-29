@@ -58,7 +58,12 @@ class ContextProxyInJSTest : public JSITestBase {
   ~ContextProxyInJSTest() override = default;
 
   void SetUp() override;
-  void TearDown() override {}
+  void TearDown() override {
+    if (app_) {
+      app_->Destroy();
+      app_ = nullptr;
+    }
+  }
 
   std::shared_ptr<JSRuntimeTestMockJSApp> mock_js_app_;
   base::UnsafeOwningPtr<App> app_;
