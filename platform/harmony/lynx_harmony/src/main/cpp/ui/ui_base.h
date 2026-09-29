@@ -90,6 +90,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
  public:
   UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
          const std::string& tag, bool has_customized_layout = false);
+  UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
+         const std::string& tag, bool has_customized_layout,
+         bool observe_invalidation);
   void InitNode(ArkUI_NodeHandle node);
   ~UIBase() override;
   static bool CanDrawBehind();
@@ -160,6 +163,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                        bool traverse_children = true);
   void SetIsComponent(bool value) { is_component_ = value; }
   std::vector<UIBase*> Children() const { return children_; }
+  const std::vector<UIBase*>& ChildrenRef() const { return children_; }
   void SetVisibility(bool visible);
   std::weak_ptr<EventTarget> WeakTarget() override { return weak_from_this(); }
 
@@ -348,6 +352,18 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   float GetArkUIProperty(AnimationProperty type) const;
   void SetAnimationProperty(AnimationProperty type, float value);
   void SendAnimationEvent(const char* event, const std::string& name);
+
+  // UIOwner dispatches UI operations at the end of UpdateNodeReadyPatching.
+  virtual void OnDescendantInvalidated() {}
+  bool IsInvalidationObserver() const { return observe_invalidation_; }
+  int GetInvalidationObserverSign() const {
+    return invalidation_observer_sign_;
+  }
+  void SetInvalidationObserverSign(int observer_sign) {
+    invalidation_observer_sign_ = observer_sign;
+  }
+  // Report an asynchronous image change without flushing pending UI operations.
+  void NotifyInvalidationObserver();
 
  protected:
   static int64_t EstimateRasterMemoryUsageBytes(float width, float height);
@@ -579,6 +595,12 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   PseudoStatus pseudo_status_{PseudoStatus::kNone};
   bool is_on_response_chain_{false};
   const bool has_customized_layout_;
+  // Fixed at construction. Observers never nest, and their descendants never
+  // move to another observer, even after detaching.
+  const bool observe_invalidation_;
+  // The sole observing ancestor; -1 on observers and unobserved nodes.
+  // Moves retain this ID until insertion updates the observing ancestor.
+  int invalidation_observer_sign_{-1};
   std::string exposure_id_;
   std::string exposure_scene_;
   float exposure_screen_margin_left_{0};

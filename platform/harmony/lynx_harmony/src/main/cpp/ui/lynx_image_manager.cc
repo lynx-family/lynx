@@ -137,6 +137,9 @@ void LynxImageManager::RequestImage(int32_t sign, std::string src, float width,
           }
         }
         self->ApplyImage();
+        if (self->drawable_) {
+          self->drawable_->NotifyInvalidationObserver();
+        }
       },
       [weak_self = weak_from_this(), width, height](float image_width,
                                                     float image_height) {
