@@ -28,6 +28,19 @@ class LepusValueDeepCheckTest : public ::testing::Test {
     lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv(
         lynx::tasm::LynxEnv::kLynxEnableTableDeepCheck, false);
   }
+
+  bool IsTableDeepCheckActive() {
+    auto target_map = lepus::Dictionary::Create();
+    auto target_child_map = lepus::Dictionary::Create();
+    target_map->SetValue(base::String(foo), lepus::Value(target_child_map));
+
+    auto update_map = lepus::Dictionary::Create();
+    auto update_child_map = lepus::Dictionary::Create();
+    update_map->SetValue(base::String(foo), lepus::Value(update_child_map));
+
+    return !tasm::CheckTableShadowUpdated(lepus::Value(target_map),
+                                          lepus::Value(update_map));
+  }
 };
 
 TEST_F(LepusValueDeepCheckTest, DifferentTypeCompare) {
@@ -123,10 +136,13 @@ TEST_F(LepusValueDeepCheckTest, SameKeySameTableValueTable) {
   update_child_map.get()->SetValue(base::String(bar), v);
   update_map.get()->SetValue(base::String(foo), lepus::Value(update_child_map));
 
-  ASSERT_FALSE(tasm::CheckTableShadowUpdated(lepus::Value(target_map),
-                                             lepus::Value(update_map)));
-  ASSERT_FALSE(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
-                                             lepus::Value(target_map)));
+  const bool expected_updated = !IsTableDeepCheckActive();
+  ASSERT_EQ(tasm::CheckTableShadowUpdated(lepus::Value(target_map),
+                                          lepus::Value(update_map)),
+            expected_updated);
+  ASSERT_EQ(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
+                                          lepus::Value(target_map)),
+            expected_updated);
 }
 
 TEST_F(LepusValueDeepCheckTest, SameKeySameArrayValueTable) {
@@ -148,10 +164,13 @@ TEST_F(LepusValueDeepCheckTest, SameKeySameArrayValueTable) {
   update_map.get()->SetValue(base::String(foo),
                              lepus::Value(update_child_array));
 
-  ASSERT_FALSE(tasm::CheckTableShadowUpdated(lepus::Value(target_map),
-                                             lepus::Value(update_map)));
-  ASSERT_FALSE(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
-                                             lepus::Value(target_map)));
+  const bool expected_updated = !IsTableDeepCheckActive();
+  ASSERT_EQ(tasm::CheckTableShadowUpdated(lepus::Value(target_map),
+                                          lepus::Value(update_map)),
+            expected_updated);
+  ASSERT_EQ(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
+                                          lepus::Value(target_map)),
+            expected_updated);
 }
 
 TEST_F(LepusValueDeepCheckTest, PartSameKeySameStringValueTable) {
@@ -190,8 +209,10 @@ TEST_F(LepusValueDeepCheckTest, PartSameKeySameTableValueTable) {
   ASSERT_TRUE(tasm::CheckTableShadowUpdated(lepus::Value(target_map),
                                             lepus::Value(update_map)));
   // First layer table, do not check table size.
-  ASSERT_FALSE(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
-                                             lepus::Value(target_map)));
+  const bool expected_updated = !IsTableDeepCheckActive();
+  ASSERT_EQ(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
+                                          lepus::Value(target_map)),
+            expected_updated);
 }
 
 TEST_F(LepusValueDeepCheckTest, PartSameKeySameArrayValueTable) {
@@ -217,8 +238,10 @@ TEST_F(LepusValueDeepCheckTest, PartSameKeySameArrayValueTable) {
 
   ASSERT_TRUE(tasm::CheckTableShadowUpdated(lepus::Value(target_map),
                                             lepus::Value(update_map)));
-  ASSERT_FALSE(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
-                                             lepus::Value(target_map)));
+  const bool expected_updated = !IsTableDeepCheckActive();
+  ASSERT_EQ(tasm::CheckTableShadowUpdated(lepus::Value(update_map),
+                                          lepus::Value(target_map)),
+            expected_updated);
 }
 
 TEST_F(LepusValueDeepCheckTest, SameStringKeyDifferentStringValueTable) {

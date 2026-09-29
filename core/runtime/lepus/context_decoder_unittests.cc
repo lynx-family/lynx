@@ -193,6 +193,8 @@ class LynxBinaryReaderTest : public LynxBinaryReader {
       : LynxBinaryReader(std::move(stream)) {
     compile_options_.target_sdk_version_ = target_sdk_version;
     is_lepusng_binary_ = is_lepusng_binary;
+    context_type_ = is_lepusng_binary ? runtime::ContextType::LepusNGContextType
+                                      : runtime::ContextType::VMContextType;
   }
 
   ~LynxBinaryReaderTest() override = default;
