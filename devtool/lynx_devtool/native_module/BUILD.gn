@@ -7,6 +7,10 @@ import("../devtool.gni")
 
 devtool_source_set("native_module") {
   sources = [
+    "native_module_invocation_context_impl.cc",
+    "native_module_invocation_context_impl.h",
+    "native_module_record_builder.cc",
+    "native_module_record_builder.h",
     "native_module_record_manager.cc",
     "native_module_record_manager.h",
   ]

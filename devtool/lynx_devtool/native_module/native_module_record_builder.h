@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_JS_BINDINGS_MODULES_NATIVE_MODULE_RECORD_BUILDER_H_
-#define CORE_RUNTIME_JS_BINDINGS_MODULES_NATIVE_MODULE_RECORD_BUILDER_H_
+#ifndef DEVTOOL_LYNX_DEVTOOL_NATIVE_MODULE_NATIVE_MODULE_RECORD_BUILDER_H_
+#define DEVTOOL_LYNX_DEVTOOL_NATIVE_MODULE_NATIVE_MODULE_RECORD_BUILDER_H_
 
 #include <cstdint>
 #include <optional>
@@ -12,8 +12,7 @@
 #include "base/include/value/base_value.h"
 
 namespace lynx {
-namespace runtime {
-namespace js {
+namespace devtool {
 
 // Builds an invoke-phase NativeModule record. |result| == nullopt means no
 // result was captured; an engaged Nil represents an explicit null.
@@ -40,8 +39,7 @@ lepus::Value BuildGlobalEventRecord(const std::string& name,
 // serialized invoke record, replacing the raw registered callback id.
 lepus::Value BuildCallbackPlaceholder(int32_t argument_index);
 
-}  // namespace js
-}  // namespace runtime
+}  // namespace devtool
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_JS_BINDINGS_MODULES_NATIVE_MODULE_RECORD_BUILDER_H_
+#endif  // DEVTOOL_LYNX_DEVTOOL_NATIVE_MODULE_NATIVE_MODULE_RECORD_BUILDER_H_

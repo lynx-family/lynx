@@ -13,16 +13,20 @@ namespace lynx {
 namespace devtool {
 class InspectorRuntimeObserverImpl;
 
-// JS-thread observer that forwards immutable records to the runtime observer,
-// which then hops them to the DevTool thread.
 class NativeModuleRecordObserverImpl
-    : public runtime::js::NativeModuleRecordObserver {
+    : public runtime::js::NativeModuleRecordObserver,
+      public std::enable_shared_from_this<NativeModuleRecordObserverImpl> {
  public:
   explicit NativeModuleRecordObserverImpl(
       const std::shared_ptr<InspectorRuntimeObserverImpl>& observer);
   ~NativeModuleRecordObserverImpl() override = default;
 
   void OnRecord(const lepus::Value& record) override;
+
+  std::shared_ptr<runtime::js::NativeModuleInvocationContext> CreateInvocation(
+      const std::string& module_name, const std::string& method_name) override;
+  void OnGlobalEvent(const std::string& name,
+                     const lepus::Value& arguments) override;
 
  private:
   std::weak_ptr<InspectorRuntimeObserverImpl> observer_wp_;

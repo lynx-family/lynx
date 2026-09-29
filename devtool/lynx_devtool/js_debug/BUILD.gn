@@ -117,6 +117,7 @@ devtool_source_set("devtool_js_debug") {
   deps = [
     ":devtool_common_js_debug",
     "../../../base/src:base_log_headers",
+    "../native_module",
   ]
 }
 

@@ -67,7 +67,6 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
 
   void InitModuleInterceptor();
   void SetTemplateUrl(const std::string &url);
-#if ENABLE_INSPECTOR
   void SetNativeModuleRecordObserver(
       std::shared_ptr<NativeModuleRecordObserver> observer) {
     native_module_record_observer_ = std::move(observer);
@@ -76,7 +75,6 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
   GetNativeModuleRecordObserver() const {
     return native_module_record_observer_;
   }
-#endif  // ENABLE_INSPECTOR
   void SetRecordID(int64_t record_id) override {
     LynxNativeModuleManager::SetRecordID(record_id);
     record_id_ = record_id;

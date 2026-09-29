@@ -300,14 +300,12 @@ class App {
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
   runtime::TemplateDelegate& GetDelegate() { return *delegate_; }
 
-#if ENABLE_INSPECTOR
   void SetNativeModuleRecordObserver(
       std::weak_ptr<NativeModuleRecordObserver> observer) {
     native_module_record_observer_ = std::move(observer);
   }
   void RecordGlobalEvent(const std::string& name,
                          const lepus::Value& arguments);
-#endif  // ENABLE_INSPECTOR
 
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
   int64_t GetRecordId() const { return record_id_; }

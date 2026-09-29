@@ -30,12 +30,10 @@ JSExecutor::JSExecutor(
 #endif
   if (module_manager_) {
     module_manager_->InitModuleInterceptor();
-#if ENABLE_INSPECTOR
     if (runtime_observer_ng_) {
       module_manager_->SetNativeModuleRecordObserver(
           runtime_observer_ng_->CreateNativeModuleRecordObserver());
     }
-#endif  // ENABLE_INSPECTOR
   }
 }
 
@@ -128,12 +126,10 @@ base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
   auto app = App::Create(rt_id, js_runtime_.GetWeakPtr(), delegate,
                          runtime_delegate, std::move(nativeModuleProxy),
                          std::move(api_handler), group_id_, page_options);
-#if ENABLE_INSPECTOR
   if (app && module_manager_) {
     app->SetNativeModuleRecordObserver(
         module_manager_->GetNativeModuleRecordObserver());
   }
-#endif  // ENABLE_INSPECTOR
   return app;
 }
 

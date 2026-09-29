@@ -54,12 +54,10 @@ class LynxJSIModule : public LynxModule, public LynxNativeModule::Delegate {
 
   Value getAttributeValue(Runtime* rt, std::string propName) override;
 
-#if ENABLE_INSPECTOR
   void SetNativeModuleRecordObserver(
       std::weak_ptr<NativeModuleRecordObserver> observer) {
     native_module_record_observer_ = std::move(observer);
   }
-#endif  // ENABLE_INSPECTOR
 
  private:
   void SetMethodMetadata();
