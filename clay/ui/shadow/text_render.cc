@@ -483,9 +483,7 @@ std::vector<LineInfo> TextRender::GetLineInfo() {
 std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
     double layout_width) {
   TRACE_EVENT("clay", "TextRender::LayoutParagraph");
-#ifndef CLAY_ENABLE_TTTEXT
   ReprocessAttributeIfNeeded(layout_width);
-#endif
   auto text_style = measure_node_->text_style_.value();
   if (text_style.white_space == WhiteSpace::kNoWrap) {
     text_style.max_lines = 1;
@@ -602,12 +600,18 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
   prev_layout_width_ = layout_width;
 }
 
-#ifndef CLAY_ENABLE_TTTEXT
 void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
   // Determine if the baseline_shift property needs to be set
   for (auto* child : measure_node_->GetChildren()) {
     if (!child->IsRawTextShadowNode() &&
         child->GetVerticalAlign().has_value()) {
+#ifdef CLAY_ENABLE_TTTEXT
+      // TTText handles vertical-align for inline text through text styles.
+      // Reprocess only placeholders that need an explicit baseline offset.
+      if (child->IsInlineTextShadowNode()) {
+        continue;
+      }
+#endif
       if (child->GetVerticalAlign()->type ==
           VerticalAlignType::kVerticalAlignLength) {
         child->SetBaselineOffset(child->GetVerticalAlign()->length);
@@ -624,16 +628,30 @@ void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
       if (line_metrics.empty()) {
         return;
       }
+#ifndef CLAY_ENABLE_TTTEXT
       auto parent_run_metrics = line_metrics.front().run_metrics;
       if (parent_run_metrics.empty()) {
         return;
       }
+#endif
       auto box = parent_paragraph->GetRectsForRange(
           0, 1, txt::Paragraph::RectHeightStyle::kTight,
           txt::Paragraph::RectWidthStyle::kTight);
       if (box.empty()) {
         return;
       }
+#ifdef CLAY_ENABLE_TTTEXT
+      const auto& parent_line_metrics = line_metrics.front();
+      FontMetrics parent_metrics{
+          -parent_line_metrics.ascent,
+          parent_line_metrics.descent,
+          static_cast<float>(box[0].rect.Height()),
+          measure_node_->text_style_->line_height.value_or(0.f),
+          0.f,
+          static_cast<float>(parent_paragraph->GetHeight()),
+          box[0].rect.Top(),
+          box[0].rect.Bottom()};
+#else
       FontMetrics parent_metrics{
           0 - parent_paragraph->GetLineMetrics().front().ascent,
           parent_paragraph->GetLineMetrics().front().descent,
@@ -643,7 +661,9 @@ void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
           static_cast<float>(parent_paragraph->GetHeight()),
           box[0].rect.Top(),
           box[0].rect.Bottom()};
+#endif
       if (child->IsInlineTextShadowNode()) {
+#ifndef CLAY_ENABLE_TTTEXT
         static_cast<InlineTextShadowNode*>(child)->EnsureDefaultStyle();
         TextStyle child_text_style =
             static_cast<InlineTextShadowNode*>(child)->text_style_.value();
@@ -660,6 +680,7 @@ void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
             parent_metrics,
             child_run_metrics.begin()->second.font_metrics.fDescent,
             child_run_metrics.begin()->second.font_metrics.fAscent);
+#endif
       } else {
         // inline-image need to get real width and height from lynx
         if (child->IsInlineImageShadowNode()) {
@@ -672,7 +693,6 @@ void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
     }
   }
 }
-#endif
 
 std::shared_ptr<txt::Paragraph> TextRender::LayoutXCharacter(
     double layout_width, const TextStyle& style) {
