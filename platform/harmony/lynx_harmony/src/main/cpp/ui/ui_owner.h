@@ -244,9 +244,16 @@ class UIOwner {
   void AddKeyboardEventObserver(int32_t sign);
   void OnResourceLoadCallback(const lepus::Value& value) const;
   LynxImageConfig* GetLynxImageConfig() const;
+  bool HasInvalidationObservers() const {
+    return invalidation_observer_count_ > 0;
+  }
+  void QueueInvalidationObserver(int observer_sign);
+  void NotifyInvalidationObserver(int observer_sign);
 
  private:
   struct PositionChangeDispatchState;
+  void UpdateInvalidationObserver(UIBase* ui, int observer_sign);
+  void FlushInvalidationObservers();
 
   static const std::unordered_map<std::string, UICreatorFunc> behaviors_;
   static napi_value Constructor(napi_env env, napi_callback_info info);
@@ -290,6 +297,8 @@ class UIOwner {
   std::unordered_set<int32_t> accessibility_exclusive_;
   std::unordered_map<std::string, int32_t> component_map_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> layout_changed_nodes_;
+  int invalidation_observer_count_{0};
+  std::unordered_set<int> pending_invalidation_observers_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> keyboard_event_observers_;
   std::unordered_set<UIBase*> window_state_listeners_;
   std::unordered_set<int32_t> position_change_listeners_;

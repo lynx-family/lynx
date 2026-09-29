@@ -598,6 +598,7 @@ void UIFlattenImage::HandleImageWithProcessor(
           ui_image->placeholder_image_drawable_->UpdateDrawCurrent(
               std::move(response.data));
         }
+        ui_image->NotifyInvalidationObserver();
       },
       LynxImageEffectProcessor(effect_type, params));
 }

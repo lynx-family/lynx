@@ -433,6 +433,12 @@ void ImageDrawable::InvalidateSelf() {
   }
 }
 
+void ImageDrawable::NotifyInvalidationObserver() {
+  if (auto ui = ui_base_.lock()) {
+    ui->NotifyInvalidationObserver();
+  }
+}
+
 void ImageDrawable::ScheduleNextFrame(uint64_t target_animation_time_ms) {
   expected_render_time_ms_ = start_time_ms_ + target_animation_time_ms;
   const auto target_delay =
@@ -442,6 +448,7 @@ void ImageDrawable::ScheduleNextFrame(uint64_t target_animation_time_ms) {
         auto ui = weak_ui.lock();
         if (ui) {
           ui->Invalidate();
+          ui->NotifyInvalidationObserver();
         }
       },
       target_delay);
