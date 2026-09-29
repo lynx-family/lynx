@@ -97,7 +97,7 @@ declare_args() {
   # Otherwise, no symbols from this library are exported.
   lynx_export_symbols = true
 
-  # Whether to enable headless engine with host compiling.
+  # Whether to enable the headless engine. On iOS, package it alongside UIView.
   is_headless = false
 
   # Whether to enable embedder layer for desktop.

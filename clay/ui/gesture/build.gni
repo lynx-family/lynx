@@ -37,7 +37,7 @@ ui_gesture_sources = [
   "velocity_tracker.h",
 ]
 
-if (is_win || is_mac || is_headless) {
+if (is_win || is_mac || (is_headless && !is_ios)) {
   ui_gesture_sources += [
     "drag_drop_manager.cc",
     "drag_drop_manager.h",

@@ -40,7 +40,8 @@ source_set("headless") {
     ]
   }
 
-  if (shell_enable_gl) {
+  # The iOS shell GPU configuration supports Metal and software only.
+  if (shell_enable_gl && !is_ios) {
     sources += [
       "gl/clay_headless_renderer_gl.cc",
       "gl/clay_headless_renderer_gl.h",
