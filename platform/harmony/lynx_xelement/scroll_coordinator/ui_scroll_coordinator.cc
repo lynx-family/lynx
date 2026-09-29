@@ -397,7 +397,7 @@ EventTarget* UIScrollCoordinator::HitTest(float point[2]) {
       foldview_, NODE_SCROLL_OFFSET, 1);
 
   for (auto ui : hit_test_children) {
-    if (!ui->ShouldHitTest()) {
+    if (ui == nullptr || !ui->ShouldHitTest()) {
       continue;
     }
     scroll[1] = ui == toolbar_ ? 0 : current_offset;
