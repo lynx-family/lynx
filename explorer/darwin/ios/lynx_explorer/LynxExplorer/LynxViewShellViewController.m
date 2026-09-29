@@ -458,7 +458,26 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
   [lynxView updateGlobalPropsWithTemplateData:[self getGlobalPropsForScreenSize:screenSize]];
 
   LynxTemplateData *initData = [self initialTemplateData];
-  if (self.data) {
+  NSString *extension = [NSURLComponents componentsWithString:url].path.pathExtension;
+  if ([extension.lowercaseString isEqualToString:@"lynxml"]) {
+    void (^loadLynxML)(NSData *) = ^(NSData *sourceData) {
+      NSString *source = [[NSString alloc] initWithData:sourceData encoding:NSUTF8StringEncoding];
+      [lynxView loadLynxML:source withURL:url initData:initData];
+    };
+    if (data) {
+      loadLynxML(data);
+    } else {
+      [[LynxEnv sharedInstance].config.templateProvider
+          loadTemplateWithUrl:url
+                   onComplete:^(NSData *sourceData, NSError *error) {
+                     if (error) {
+                       [self.loadingView showError:error.localizedDescription];
+                       return;
+                     }
+                     loadLynxML(sourceData);
+                   }];
+    }
+  } else if (data) {
     [lynxView loadTemplate:data withURL:url initData:initData];
   } else {
     [lynxView loadTemplateFromURL:url initData:initData];

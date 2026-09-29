@@ -23,8 +23,9 @@
       res.query = [subSourceUrl query];
       NSString *localUrl =
           [NSString stringWithFormat:@"Resource/%@%@", subSourceUrl.host, subSourceUrl.path];
+      NSString *extension = localUrl.pathExtension;
       res.url = [[NSBundle mainBundle] pathForResource:[localUrl stringByDeletingPathExtension]
-                                                ofType:@"bundle"];
+                                                ofType:extension];
       if (res.url == nil) {
         Class inspectorOwnerClass = [LynxService(LynxServiceDevToolProtocol) inspectorOwnerClass];
         NSBundle *devtoolFrameworkBundle = [NSBundle bundleForClass:inspectorOwnerClass];
@@ -33,7 +34,7 @@
         NSBundle *bundle = [NSBundle bundleWithURL:debugBundleUrl];
         localUrl = [NSString stringWithFormat:@"%@%@", subSourceUrl.host, subSourceUrl.path];
         res.url = [bundle pathForResource:[localUrl stringByDeletingPathExtension]
-                                   ofType:@"bundle"];
+                                   ofType:extension];
       }
       res.data = [NSData dataWithContentsOfFile:res.url];
     } else if ([url hasPrefix:[LynxRecorderEnv sharedInstance].lynxRecorderUrlPrefix]) {
