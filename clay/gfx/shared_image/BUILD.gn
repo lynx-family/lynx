@@ -31,7 +31,7 @@ source_set("shared_image") {
   public_deps = [ "../../fml:fml" ]
 
   defines = []
-  if (is_headless) {
+  if (is_headless && !is_ios) {
     defines += [ "ENABLE_HEADLESS" ]
   }
 

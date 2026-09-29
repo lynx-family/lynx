@@ -5,7 +5,7 @@
 #ifndef CLAY_SHELL_PLATFORM_HEADLESS_METAL_CLAY_HEADLESS_RENDERER_METAL_H_
 #define CLAY_SHELL_PLATFORM_HEADLESS_METAL_CLAY_HEADLESS_RENDERER_METAL_H_
 
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 
 #include "base/include/fml/memory/ref_ptr.h"

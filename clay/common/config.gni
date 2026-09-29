@@ -151,11 +151,13 @@ if (use_accessbility) {
   feature_defines_list += [ "ENABLE_ACCESSIBILITY" ]
 }
 
-if (is_headless) {
+# On iOS the flag controls packaging, preserving the UIView service paths.
+if (is_headless && !is_ios) {
   feature_defines_list += [ "ENABLE_HEADLESS" ]
 }
 
-if (is_win || is_mac || is_headless || (is_android && !enable_clay_lite)) {
+if (is_win || is_mac || (is_headless && !is_ios) ||
+    (is_android && !enable_clay_lite)) {
   feature_defines_list += [ "ENABLE_MOUSE_TRACKING" ]
 }
 

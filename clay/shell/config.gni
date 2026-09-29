@@ -24,8 +24,7 @@ declare_args() {
   test_enable_software = shell_enable_software
 }
 
-# TODO(Jinsong): Temporarily Headless only supports OpenGL, more rendering
-# backends will be supported soon.
-if (is_headless) {
+# iOS headless uses Metal alongside UIView and must not force OpenGL on.
+if (is_headless && !is_ios) {
   shell_enable_gl = true
 }
