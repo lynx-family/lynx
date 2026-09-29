@@ -5,6 +5,7 @@
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("//${lynx_dir}/build_overrides/resource_file.gni")
 import("../../../../core/Lynx.gni")
+import("../../../../tools/css_generator/css_keywords_podspec.gni")
 import("Podspecs.gni")
 
 assert(is_ios)
@@ -59,6 +60,7 @@ podspec_target("lynx_podspec") {
       ]
     }
     prepare_command = [
+      css_keywords_prepare_command,
       "if [ -f \"./tools/js_tools/build.py\" ]; then",
       "  python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
       "fi",
@@ -844,6 +846,7 @@ subspec_target("amoeba") {
       [ "../../../../core/renderer/css/ng/selector/lynx_css_selector_impl.cc" ]
   deps = [
     "../../../../core/renderer/css",
+    "../../../../core/renderer/css:css_keywords",
     "../../../../core/renderer/css:css_parser",
     "../../../../core/renderer/simple_styling",
   ]

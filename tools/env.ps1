@@ -21,6 +21,7 @@ $LynxOssEnvBuildtoolsPathSuffixes = @(
   "llvm",
   "gn",
   "ninja",
+  "gperf\bin",
   "sccache",
   "emsdk",
   "emsdk\upstream\emscripten",
@@ -34,6 +35,7 @@ $LynxOssEnvPythonPathSuffixes = @(
 $LynxOssEnvToolCandidates = @(
   "gn",
   "ninja",
+  "gperf",
   "sccache",
   "node",
   "npm",

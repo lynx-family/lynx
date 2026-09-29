@@ -15,8 +15,6 @@ devtool_source_set("lynx_devtool_lib") {
   sources = [
     "../../../core/renderer/css/css_color.cc",
     "../../../core/renderer/css/css_color.h",
-    "../../../core/renderer/css/css_keywords.cc",
-    "../../../core/renderer/css/css_keywords.h",
   ]
 
   include_dirs = [ "../../../third_party/debug_router/src/" ]
@@ -24,6 +22,7 @@ devtool_source_set("lynx_devtool_lib") {
   deps = [
     ":native",
     "../../../core/build:build",
+    "../../../core/renderer/css:css_keywords",
     "../../../devtool/embedder/core:lynx_devtool_embedder_core",
     "../../../devtool/lynx_devtool:lynx_devtool_group",
     "../../../third_party/debug_router/src/debug_router/common:debug_router_source",

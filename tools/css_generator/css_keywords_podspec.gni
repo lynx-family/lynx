@@ -1,0 +1,21 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("css_keywords.gni")
+
+# Podspec generation collects sources without running Ninja. Materialize the
+# generated source for local pods, and repeat generation when fetching a pod.
+exec_script(css_keywords_generator,
+            css_keywords_generator_args,
+            "",
+            [
+              css_keywords_template,
+              gperf_executable,
+            ])
+
+_generator = rebase_path(css_keywords_generator, "//")
+_template = rebase_path(css_keywords_template, "//")
+_output = rebase_path(css_keywords_generated, "//")
+css_keywords_prepare_command =
+    "python3 \"${_generator}\" --input \"${_template}\" --output \"${_output}\""
