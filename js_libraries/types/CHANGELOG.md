@@ -1,20 +1,14 @@
 # CHANGELOG
 
-## 4.4.2
-
-- Add structured `MarkdownTextAttachment` typings for `text-mark-attachments`, including range, click target, background, and border styles.
-- Complete missing Element property declarations with platform versions and default values.
-- Add `InlineImageProps` for `<inline-image>` while preserving `NoProps` for `<inline-truncation>`.
-- Add desktop PointerEvent payload fields and bindings, available when `enableEventHandleRefactor` is enabled. CSS `pointer-events` remains independent of this setting.
-
-## 4.4.1
-
-- Add `set-soft-input-mode` to `<input>` and `<textarea>` typings.
-
 ## 4.4.0
 
 - Add `experimental-use-new-update-animation` and `experimental-new-update-animation` to `<list>` typings.
 - Add `bindlistanimationstart`, `bindlistanimationend`, `bindlistanimationcancel`, and `bindlistanimationupdate` typings with their event details and platform annotations.
+- Add `set-soft-input-mode` to `<input>` and `<textarea>` typings.
+- Add structured `MarkdownTextAttachment` typings for `text-mark-attachments`, including range, click target, background, and border styles.
+- Complete missing Element property declarations with platform versions and default values.
+- Add `InlineImageProps` for `<inline-image>` while preserving `NoProps` for `<inline-truncation>`.
+- Add desktop PointerEvent payload fields and bindings, available when `enableEventHandleRefactor` is enabled. CSS `pointer-events` remains independent of this setting.
 
 ## 4.3.2
 - Add `bindtextClick` and `MarkdownTextClickEvent` typings for `<markdown>` text attachment clicks.
