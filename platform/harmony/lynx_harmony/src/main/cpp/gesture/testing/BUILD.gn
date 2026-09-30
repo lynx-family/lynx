@@ -1,0 +1,43 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../../../../../testing/test.gni")
+
+unittest_set("harmony_gesture_baseline_testset") {
+  sources = [
+    "../../event/touch_event.cc",
+    "../arena/gesture_arena_manager.cc",
+    "../common/gesture_extra_bundle.cc",
+    "../detector/gesture_detector_manager.cc",
+    "../handler/base_gesture_handler.cc",
+    "../handler/default_gesture_handler.cc",
+    "../handler/fling_gesture_handler.cc",
+    "../handler/fling_scroller.cc",
+    "../handler/gesture_handler_trigger.cc",
+    "../handler/longpress_gesture_handler.cc",
+    "../handler/native_gesture_handler.cc",
+    "../handler/pan_gesture_handler.cc",
+    "../handler/tap_gesture_handler.cc",
+    "gesture_handler_baseline_unittest.cc",
+    "stubs/arkui/native_type.h",
+    "stubs/arkui/ui_input_event.h",
+    "stubs/platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h",
+  ]
+  include_dirs = [ "stubs" ]
+
+  # Resolve the context boundary before the repository's quoted include paths.
+  cflags_cc = [ "-iquote" + rebase_path("stubs", root_build_dir) ]
+  configs = [ "../../../../../../../../core:lynx_public_config" ]
+  deps = [
+    "../../../../../../../../base/src:base_group",
+    "../../../../../../../../core/animation/lynx_basic_animator",
+    "../../../../../../../../core/renderer/dom",
+    "../../../../../../../../core/value_wrapper",
+  ]
+}
+
+unittest_exec("harmony_gesture_baseline_unittests_exec") {
+  sources = []
+  deps = [ ":harmony_gesture_baseline_testset" ]
+}
