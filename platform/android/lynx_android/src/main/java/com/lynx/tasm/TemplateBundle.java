@@ -151,9 +151,9 @@ public final class TemplateBundle implements ILynxSecurityTarget {
           long ptr = 0;
           long devToolPoolPtr = devToolPool != null ? devToolPool.getNativePtr() : 0;
           if (buffer != null) {
-            ptr = nativeParseTemplateFromByteBuffer(buffer, options, skipCSS, devToolPoolPtr);
+            ptr = nativeParseTemplateFromByteBuffer(buffer, url, options, skipCSS, devToolPoolPtr);
           } else {
-            ptr = nativeParseTemplateFromByteArray(template, options, skipCSS, devToolPoolPtr);
+            ptr = nativeParseTemplateFromByteArray(template, url, options, skipCSS, devToolPoolPtr);
           }
           result.initialize(ptr, length, url, (String) options[0], (ReadableMap) options[1]);
           if (result.isValid()) {
@@ -462,9 +462,9 @@ public final class TemplateBundle implements ILynxSecurityTarget {
       long bundle, String bytecodeSourceUrl, boolean useV8, LynxBytecodeCallback callback);
 
   private static native long nativeParseTemplateFromByteArray(
-      byte[] temp, Object[] options, boolean skipCSS, long devToolPoolPtr);
+      byte[] temp, String url, Object[] options, boolean skipCSS, long devToolPoolPtr);
   private static native long nativeParseTemplateFromByteBuffer(
-      ByteBuffer bytes, Object[] options, boolean skipCSS, long devToolPoolPtr);
+      ByteBuffer bytes, String url, Object[] options, boolean skipCSS, long devToolPoolPtr);
   private static native void nativeReleaseBundle(long ptr);
   private static native Object nativeGetExtraInfo(long ptr);
   private static native boolean nativeGetContainsElementTree(long ptr);

@@ -931,8 +931,8 @@ void TemplateAssembler::LoadLynxML(
   }
   LoadTemplateInternal(
       url, template_data, pipeline_options,
-      [this, source = std::move(source)](
-          const std::shared_ptr<TemplateEntry>& card_entry) mutable {
+      [this, source = std::move(source),
+       url](const std::shared_ptr<TemplateEntry>& card_entry) mutable {
         auto report_decode_error =
             [this, &card_entry](const std::string& error_message) {
               auto message = ConstructDecodeErrorMessage(
@@ -941,7 +941,7 @@ void TemplateAssembler::LoadLynxML(
                                           std::move(message)));
             };
         std::string error_message =
-            card_entry->template_bundle().FromLynxML(source);
+            card_entry->template_bundle().FromLynxML(source, url);
         if (!error_message.empty()) {
           report_decode_error(error_message);
           return false;
@@ -2472,8 +2472,8 @@ bool TemplateAssembler::FromBinary(const std::shared_ptr<TemplateEntry>& entry,
     return false;
   }
 
-  std::string error_message = entry->template_bundle().FromBinary(
-      std::move(source), is_card, url_.substr(0, url_.find("?")));
+  std::string error_message =
+      entry->template_bundle().FromBinary(std::move(source), is_card, url_);
   if (!error_message.empty()) {
     ReportDecodeError(is_card, entry, error_message);
     return false;

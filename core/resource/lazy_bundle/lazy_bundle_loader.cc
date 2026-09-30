@@ -35,8 +35,9 @@ void DecodeBundle(LazyBundleLoader::CallBackInfo& callback_info, bool is_card) {
   }
   if (callback_info.Success()) {
     lynx::tasm::LynxTemplateBundle bundle;
-    std::string error = bundle.FromBinaryGreedy(std::move(callback_info.data),
-                                                "", false, is_card);
+    std::string error =
+        bundle.FromBinaryGreedy(std::move(callback_info.data),
+                                callback_info.component_url, false, is_card);
     if (error.empty()) {
       callback_info.bundle = std::move(bundle);
     } else {
