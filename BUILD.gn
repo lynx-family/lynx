@@ -34,6 +34,9 @@ group("default") {
 
   if (enable_unittests) {
     deps += [ "tools/gn_tools/test:gn_tools_test" ]
+    if (is_mac || is_linux) {
+      deps += [ "platform/harmony/lynx_harmony/src/main/cpp/gesture/testing:harmony_gesture_baseline_unittests_exec" ]
+    }
     if (is_mac || is_linux || is_win) {
       deps += [
         "core/shell/host_script/runtime:host_script_session_unittests_exec",
