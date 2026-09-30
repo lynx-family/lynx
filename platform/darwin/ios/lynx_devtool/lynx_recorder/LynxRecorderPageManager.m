@@ -42,6 +42,7 @@
 
 - (void)clear;
 - (void)loadDescribeFile:(NSString *)url;
+- (BOOL)commitRouteForLabel:(NSString *)label popLast:(BOOL *)popLast;
 @end
 
 @implementation LynxRecorderPageManager
@@ -90,21 +91,37 @@
     return;
   }
 
+  BOOL popLast = NO;
+  if (![self commitRouteForLabel:[params objectForKey:@"label"] popLast:&popLast]) {
+    return;
+  }
+  [self replayCurrPage:popLast];
+}
+
+- (BOOL)commitRouteForLabel:(NSString *)label popLast:(BOOL *)popLast {
   NSString *currPageName = [[self pageStack] lastObject];
+  if (currPageName.length == 0) {
+    return NO;
+  }
   NSString *currRawPageName = [self getRawName:currPageName];
-  NSString *label = [params objectForKey:@"label"];
-
-  NSDictionary *nextPageInfo = [[[self routers] objectForKey:currRawPageName] objectForKey:label];
-
-  BOOL popLast = [[nextPageInfo objectForKey:@"popLast"] boolValue];
+  NSDictionary *pageRouters = [[self routers] objectForKey:currRawPageName];
+  NSDictionary *nextPageInfo = [pageRouters objectForKey:label];
   NSString *nextRawPageName = [nextPageInfo objectForKey:@"next"];
-  if (popLast) {
+  if (label.length == 0 || nextRawPageName.length == 0 ||
+      [self getPageInfo:nextRawPageName] == nil) {
+    return NO;
+  }
+
+  BOOL shouldPopLast = [[nextPageInfo objectForKey:@"popLast"] boolValue];
+  if (shouldPopLast) {
     [[[self viewControllers] objectForKey:currPageName] setHasBeenPop:YES];
     [[self pageStack] removeLastObject];
   }
   [[self pageStack] addObject:[self buildPageName:nextRawPageName]];
-
-  [self replayCurrPage:popLast];
+  if (popLast != NULL) {
+    *popLast = shouldPopLast;
+  }
+  return YES;
 }
 
 - (void)removeCurrTestBenchVC:(NSString *)pageName hasBeenPop:(BOOL)hasBeenPop {
