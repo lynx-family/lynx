@@ -338,6 +338,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
   _templateBundleOption = [[LynxTemplateBundleOption alloc] init];
   [_templateBundleOption setContextPoolSize:5];
   [_templateBundleOption setEnableContextAutoRefill:true];
+  _templateBundleOption.url = url;
   _templateBundleParams = nil;
   _preloadScriptPaths = @[];
   _componentList = @[];

@@ -111,7 +111,8 @@ class LynxTemplateBundle final {
   // interleave, but each type may occur at most once. At least one non-empty
   // main script is required to build a TemplateBundle. Returns an empty string
   // on success, or an error message on failure.
-  std::string FromLynxML(const std::string& source);
+  std::string FromLynxML(const std::string& source,
+                         const std::string& template_url);
 
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
@@ -300,6 +301,8 @@ class LynxTemplateBundle final {
   bool enable_css_variable_{false};
   bool enable_css_parser_{false};
   bool support_component_js_{false};
+
+  std::string url_;
 
   // app type.
   std::string app_type_{};

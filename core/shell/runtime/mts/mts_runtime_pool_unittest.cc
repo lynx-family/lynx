@@ -151,9 +151,9 @@ TEST(MTSRuntimePoolTest, PreloadWaitsForFillAndLoadsCurrentRuntimes) {
 
   tasm::CompileOptions compile_options;
   tasm::PageConfig page_config;
-  auto pool =
-      MTSRuntimePool::Create(runtime::ContextType::LepusNGContextType, false,
-                             context_bundle, compile_options, &page_config);
+  auto pool = MTSRuntimePool::Create(runtime::ContextType::LepusNGContextType,
+                                     "", false, context_bundle, compile_options,
+                                     &page_config);
   // FillPool is intentionally asynchronous. Preload uses the same single
   // normal-priority worker, so it must run after this fill task.
   pool->FillPool(2);

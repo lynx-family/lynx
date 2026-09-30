@@ -30,12 +30,11 @@ std::string LynxTemplateBundle::FromBinary(std::vector<uint8_t> binary,
   auto reader =
       std::make_unique<TemplateBinaryReader>(std::move(input_stream), this);
   reader->SetIsCardType(is_card);
-  reader->SetTemplateUrl(template_url);
-
   if (!reader->Decode()) {
     return reader->error_message_;
   }
 
+  url_ = template_url;
   lazy_reader_ =
       std::shared_ptr<LynxBinaryLazyReaderDelegate>(std::move(reader));
   return "";
@@ -73,12 +72,12 @@ std::string LynxTemplateBundle::FromBinaryGreedy(
   if (is_card.has_value()) {
     reader.SetIsCardType(*is_card);
   }
-  reader.SetTemplateUrl(template_url);
   reader.SetSkipCSSDecode(skip_css_decode);
   if (!reader.Decode()) {
     return reader.error_message_;
   }
   *this = reader.GetTemplateBundle();
+  url_ = template_url;
   return "";
 }
 
@@ -144,7 +143,8 @@ std::string LynxTemplateBundle::BuildFromLynxMLSources(
   return "";
 }
 
-std::string LynxTemplateBundle::FromLynxML(const std::string &source) {
+std::string LynxTemplateBundle::FromLynxML(const std::string &source,
+                                           const std::string &template_url) {
   decode_start_timestamp_ = base::CurrentSystemTimeMicroseconds();
   decode_end_timestamp_ = 0;
 
@@ -161,6 +161,7 @@ std::string LynxTemplateBundle::FromLynxML(const std::string &source) {
     return error;
   }
 
+  url_ = template_url;
   decode_end_timestamp_ = base::CurrentSystemTimeMicroseconds();
   return "";
 }
@@ -218,8 +219,8 @@ void LynxTemplateBundle::EnsureMTSRuntimePool() {
       page_configs_ && page_configs_->GetDisableQuickTracingGC();
 
   mts_runtime_pool_ = shell::MTSRuntimePool::Create(
-      context_type_, disable_tracing_gc, context_bundle_, compile_options_,
-      page_configs_.get());
+      context_type_, url_, disable_tracing_gc, context_bundle_,
+      compile_options_, page_configs_.get());
   mts_runtime_pool_->SetDevToolPool(devtool_pool_);
 }
 

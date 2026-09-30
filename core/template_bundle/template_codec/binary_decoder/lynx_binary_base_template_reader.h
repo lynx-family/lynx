@@ -67,8 +67,6 @@ class LynxBinaryBaseTemplateReader : public ElementBinaryReader {
 
   size_t GetPageConfigOffset() { return page_config_offset_; }
 
-  void SetTemplateUrl(const std::string& url) { url_ = url; }
-
  protected:
   // Perform some check or set method after decode header.
   virtual bool DidDecodeHeader() = 0;
@@ -145,9 +143,6 @@ class LynxBinaryBaseTemplateReader : public ElementBinaryReader {
   std::optional<AppType> app_type_check_{std::nullopt};
   // config decoder
   std::unique_ptr<LynxBinaryConfigDecoder> config_decoder_;
-
-  // template url
-  std::string url_{};
 
   // header fields.
   uint32_t total_size_;

@@ -51,10 +51,13 @@ std::optional<lynx::base::android::JavaOnlyMap> GetPageConfigMap(
 }  // namespace
 
 jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
-                            std::vector<uint8_t>&& binary, jobjectArray options,
-                            jboolean skip_css, jlong devToolPoolPtr) {
+                            std::vector<uint8_t>&& binary,
+                            const std::string& template_url,
+                            jobjectArray options, jboolean skip_css,
+                            jlong devToolPoolPtr) {
   lynx::tasm::LynxTemplateBundle bundle;
-  std::string error = bundle.FromBinaryGreedy(std::move(binary), "", skip_css);
+  std::string error =
+      bundle.FromBinaryGreedy(std::move(binary), template_url, skip_css);
   if (error.empty()) {
     // decode success.
     auto* native_bundle = new lynx::tasm::LynxTemplateBundle(std::move(bundle));
@@ -82,17 +85,21 @@ jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
 }
 
 jlong ParseTemplateFromByteArray(JNIEnv* env, jclass jcaller,
-                                 jbyteArray j_binary, jobjectArray options,
-                                 jboolean skip_css, jlong devToolPoolPtr) {
+                                 jbyteArray j_binary, jstring j_url,
+                                 jobjectArray options, jboolean skip_css,
+                                 jlong devToolPoolPtr) {
   auto binary =
       lynx::base::android::JNIConvertHelper::ConvertJavaBinary(env, j_binary);
-  return ParseTemplateInternal(env, jcaller, std::move(binary), options,
-                               skip_css, devToolPoolPtr);
+  auto template_url =
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, j_url);
+  return ParseTemplateInternal(env, jcaller, std::move(binary), template_url,
+                               options, skip_css, devToolPoolPtr);
 }
 
 jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
-                                  jobject bufferPtr, jobjectArray options,
-                                  jboolean skip_css, jlong devToolPoolPtr) {
+                                  jobject bufferPtr, jstring j_url,
+                                  jobjectArray options, jboolean skip_css,
+                                  jlong devToolPoolPtr) {
   auto* buffer_ptr =
       static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr));
   if (buffer_ptr == nullptr) {
@@ -107,8 +114,10 @@ jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
   }
 
   std::vector<uint8_t> buffer(buffer_ptr, buffer_ptr + capacity);
-  return ParseTemplateInternal(env, jcaller, std::move(buffer), options,
-                               skip_css, devToolPoolPtr);
+  auto template_url =
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, j_url);
+  return ParseTemplateInternal(env, jcaller, std::move(buffer), template_url,
+                               options, skip_css, devToolPoolPtr);
 }
 
 jobject GetExtraInfo(JNIEnv* env, jclass jcaller, jlong ptr) {
