@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxFrameView.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxSizeValue.h>
@@ -32,6 +33,11 @@
 
 - (UIView *)view {
   return _rootView;
+}
+
+- (BOOL)hasSharedBackingLayer {
+  // An embedded page root shares its backing layer with the host frame element.
+  return [_rootView isKindOfClass:[LynxFrameView class]];
 }
 
 - (void)updateFrame:(CGRect)frame

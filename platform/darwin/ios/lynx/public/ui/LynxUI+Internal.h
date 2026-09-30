@@ -69,6 +69,15 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 @property(nonatomic, assign, readonly) BOOL alignHeight;
 @property(nonatomic, assign, readonly) BOOL alignWidth;
 
+// Whether this UI's backing layer is shared with another document. Native
+// partial-corner state must not be stored on a shared layer; such UIs keep
+// path-based rendering for partial radii.
+//
+// Only LynxUIFrame (host side) and an embedded LynxRootUI (child page root)
+// can ever return YES - they are the only UIs whose view can be a
+// LynxFrameView. Keep the default NO for everything else.
+@property(nonatomic, readonly) BOOL hasSharedBackingLayer;
+
 @property(nonatomic) uint32_t nodeIndex;
 
 @property(nonatomic, strong)
