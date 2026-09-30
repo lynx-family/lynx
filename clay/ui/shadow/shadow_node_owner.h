@@ -55,6 +55,8 @@ class ShadowNodeOwner {
   void RemoveNode(int id);
   ShadowNode* GetNode(int id);
   void ClearNodes();
+  bool EnableTextRefactor() const { return enable_text_refactor_; }
+  void SetEnableTextRefactor(bool enabled) { enable_text_refactor_ = enabled; }
 
   void MarkDirty(ShadowNode* node) const;
 #if defined(OS_WIN) && !defined(ENABLE_SKITY)
@@ -70,6 +72,7 @@ class ShadowNodeOwner {
   ViewContext* context_ = nullptr;
   RenderDelegate* delegate_ = nullptr;
   LayoutDelegate* layout_delegate_ = nullptr;
+  bool enable_text_refactor_ = false;
 
   std::unordered_map<int, ShadowNode*> shadow_node_map_;
 };

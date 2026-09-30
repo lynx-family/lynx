@@ -242,6 +242,7 @@ void UIDelegateClay::OnPageConfigDecoded(
     page_view->SetAlignMouseEventWithW3C(config->GetAlignMouseEventWithW3C());
     page_view->SetEnablePointerEvents(config->GetEnableEventHandleRefactor());
     page_view->SetEnableMouseDragScroll(config->GetEnableMouseDragScroll());
+    view_context_->SetEnableTextRefactor(config->GetEnableTextRefactor());
     // Set exposure props.
     int observer_frame_rate = config->GetObserverFrameRate();
     bool enable_exposure_ui_margin = config->GetEnableExposureUIMargin();
