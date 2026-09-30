@@ -191,7 +191,7 @@ double ParagraphTTText::GetLongestLine() {
   return GetMaxWidth();
 }
 double ParagraphTTText::GetMinIntrinsicWidth() {
-  return GetMaxWidth();
+  return paragraph_->GetMinIntrinsicWidth();
 }
 double ParagraphTTText::GetMaxIntrinsicWidth() {
   return GetMaxWidth();
