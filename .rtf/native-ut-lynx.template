@@ -7,6 +7,8 @@
 # builders sharing one directory means the last one silently wins: the other
 # builder's args are dropped and its targets are built with the wrong
 # configuration.
+import platform
+
 builder({
     "default" :{
         "args": [
@@ -84,6 +86,13 @@ coverage({
 })
 
 targets({
+    "harmony_gesture_baseline_unittests_exec": {
+        "cwd": ".",
+        "owners": ["luochangan.adrian"],
+        "coverage": True,
+        "enable_parallel": True,
+        "enable": platform.system() in ("Darwin", "Linux"),
+    },
     "create_view_scheduler_unittest_exec": {
         "cwd": ".",
         "owners":["renzhongyue"],
