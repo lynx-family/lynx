@@ -46,4 +46,21 @@
   XCTAssertEqual(3, [[pendingData dictionary][@"value"] intValue]);
 }
 
+- (void)testUserInteractionEnabledUpdatesFrameView {
+  LynxUIFrame *uiFrame = [[LynxUIFrame alloc] initWithView:nil];
+
+  [LynxPropsProcessor updateProp:@NO withKey:@"user-interaction-enabled" forUI:uiFrame];
+
+  XCTAssertFalse(uiFrame.view.userInteractionEnabled);
+}
+
+- (void)testUserInteractionEnabledResetRestoresFrameView {
+  LynxUIFrame *uiFrame = [[LynxUIFrame alloc] initWithView:nil];
+  [LynxPropsProcessor updateProp:@NO withKey:@"user-interaction-enabled" forUI:uiFrame];
+
+  [LynxPropsProcessor updateProp:nil withKey:@"user-interaction-enabled" forUI:uiFrame];
+
+  XCTAssertTrue(uiFrame.view.userInteractionEnabled);
+}
+
 @end
