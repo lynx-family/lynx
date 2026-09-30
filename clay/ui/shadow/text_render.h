@@ -110,8 +110,8 @@ class TextRender {
   TextShadowNode* measure_node_;
   float prev_layout_width_ = std::numeric_limits<float>::quiet_NaN();
   TextUpdateFlag update_flag_ = TextUpdateFlag::kUpdateFlagNone;
-  int measured_width_;
-  int measured_height_;
+  float measured_width_ = 0.f;
+  float measured_height_ = 0.f;
   std::unique_ptr<txt::Paragraph> cache_paragraph_;
   bool cache_uses_auto_font_size_ = false;
   size_t end_glyph_position_ = 0;
