@@ -5,6 +5,7 @@
 #include "clay/gfx/animation/fling_animator.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "base/include/fml/time/time_point.h"
 #include "clay/fml/logging.h"
@@ -56,6 +57,8 @@ void FlingAnimator::InitParams() {
   kSplinePosition[kNBSamples] = 1.0f;
   param_setup = true;
 }
+
+void FlingAnimator::SetDevicePixelRatio(float pixel_ratio) {}
 
 void FlingAnimator::SetFriction(float friction) { friction_ = friction; }
 
