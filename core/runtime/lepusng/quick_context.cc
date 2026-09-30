@@ -41,12 +41,12 @@ static LEPUSValue LepusConvertToObjectCallBack(LEPUSContext* ctx,
                                                LEPUSValue val);
 
 // register for quickjs to free LepusRef
-static LEPUSValue LepusRefFreeCallBack(LEPUSRuntime* rt, LEPUSValue val) {
+static LEPUSValue LepusRefFreeCallBack(LEPUSRuntime*, LEPUSValue val) {
   LEPUSLepusRef* pref = static_cast<LEPUSLepusRef*>(LEPUS_VALUE_GET_PTR(val));
-  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(pref->p)->Release();
-  if (!LEPUS_IsGCModeRT(rt)) {
-    LEPUS_FreeValueRT(rt, pref->lepus_val);
-    lepus_free_rt(rt, pref);
+  void* payload = pref->p;
+  pref->p = nullptr;
+  if (payload != nullptr) {
+    reinterpret_cast<fml::RefCountedThreadSafeStorage*>(payload)->Release();
   }
   return LEPUS_UNDEFINED;
 }
