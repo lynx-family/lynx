@@ -782,10 +782,15 @@ static char markerKey;
   if (_activeModel == nullptr) {
     return nil;
   }
+  NSString* text = [NSString stringWithUTF8String:_activeModel->GetText().c_str()];
+  // The input system may request a range that extends beyond the available text.
+  if (range.location >= text.length) {
+    return nil;
+  }
+  range.length = std::min(range.length, text.length - range.location);
   if (actualRange != nil) {
     *actualRange = range;
   }
-  NSString* text = [NSString stringWithUTF8String:_activeModel->GetText().c_str()];
   NSString* substring = [text substringWithRange:range];
   return [[NSAttributedString alloc] initWithString:substring attributes:nil];
 }
