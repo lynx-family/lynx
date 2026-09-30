@@ -8,20 +8,20 @@ exec_script("../../tools/skity_build_gni.py",
               "--build-dir",
               rebase_path("$root_out_dir/skity_build", root_build_dir),
               "--skity-root",
-              rebase_path("//third_party/skity", root_build_dir),
+              rebase_path("//third_party/skity/skity", root_build_dir),
               "--build-type",
               "Release",
               "--generate-gni",
             ],
             "string")
 
-import("//third_party/skity/pugixml-static.gni")
-import("//third_party/skity/skity-codec.gni")
+import("//third_party/skity/skity/pugixml-static.gni")
+import("//third_party/skity/skity/skity-codec.gni")
 
 # Target that uses the installed skity library
 # Only import in the default toolchain to avoid circular dependencies
-import("//third_party/skity/skity.gni")
-import("//third_party/skity/wgsl-cross.gni")
+import("//third_party/skity/skity/skity.gni")
+import("//third_party/skity/skity/wgsl-cross.gni")
 config("skity_config") {
   include_dirs = [
     "//third_party/libpng",
