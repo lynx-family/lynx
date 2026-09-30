@@ -65,7 +65,7 @@ jobs:
 
   ios-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     needs: get-version
     strategy:
       matrix:
@@ -369,7 +369,7 @@ jobs:
 
   macos-explorer-release:
     timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-15.6.1-medium
     needs: get-version
     strategy:
       matrix:
