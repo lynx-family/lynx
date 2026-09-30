@@ -533,6 +533,7 @@ subspec_target("UnitTests") {
     "gesture/LynxGestureArenaManagerUnitTest.m",
     "gesture/LynxGestureExtraBundleUnitTest.m",
     "gesture/LynxGestureFlingTriggerUnitTest.m",
+    "gesture/LynxGestureHandlerBaselineUnitTest.m",
     "gesture/LynxGestureHandlerTriggerUnitTest.m",
     "gesture/LynxLongPressGestureHandlerUnitTest.m",
     "gesture/LynxPanGestureHandlerUnitTest.m",
