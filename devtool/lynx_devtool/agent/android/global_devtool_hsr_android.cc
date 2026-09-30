@@ -22,6 +22,7 @@ using Callback = GlobalDevToolPlatformFacade::HSRScriptCallback;
 // after timeout, without passing native callback pointers through Java.
 struct PendingLoad {
   uint64_t id = 0;
+  uint64_t debug_epoch = 0;
   bool fetching = false;
   std::string url;
   Callback callback;
@@ -36,9 +37,11 @@ auto DevToolRunner() {
   return LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
 }
 
-void FinishLoad(uint64_t id, const std::string& error) {
+void FinishLoad(uint64_t id, std::string error) {
   auto& load = Load();
   if (load.id != id || !load.callback) return;
+  if (load.debug_epoch != shell::HostScriptDebugEpoch())
+    error = "HSR_DEBUG_DISABLED";
   auto callback = std::move(load.callback);
   load.fetching = false;
   load.url.clear();
@@ -49,6 +52,10 @@ void SourceLoaded(uint64_t id, std::string source, const std::string& error) {
   auto& load = Load();
   if (load.id != id || !load.callback || !load.fetching) return;
   load.fetching = false;
+  if (load.debug_epoch != shell::HostScriptDebugEpoch()) {
+    FinishLoad(id, "HSR_DEBUG_DISABLED");
+    return;
+  }
   if (!error.empty()) {
     FinishLoad(id, error);
     return;
@@ -69,6 +76,7 @@ void StartLoad(HSRScriptRequest request, Callback callback) {
     return;
   }
   const auto id = ++load.id;
+  load.debug_epoch = shell::HostScriptDebugEpoch();
   load.fetching = true;
   load.callback = std::move(callback);
   load.url = request.source_type == HSRScriptRequest::SourceType::kUrl
@@ -137,11 +145,15 @@ void Evaluate(HSRScriptRequest request, Callback callback) {
 void GlobalDevToolPlatformAndroid::HandleHSRScript(HSRScriptRequest request,
                                                    HSRScriptCallback callback) {
   if (!callback) return;
+  const auto epoch = shell::HostScriptDebugEpoch();
   // Schema callers may arrive from a platform thread. CDP already runs here.
   fml::TaskRunner::RunNowOrPostTask(
-      DevToolRunner(),
-      [request = std::move(request), callback = std::move(callback)]() mutable {
-        if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+      DevToolRunner(), [request = std::move(request),
+                        callback = std::move(callback), epoch]() mutable {
+        if (!shell::HasHostScriptRuntime()) {
+          std::move(callback)(Json::Value(), "HSR_DEBUG_LIBRARY_REQUIRED");
+        } else if (epoch != shell::HostScriptDebugEpoch() ||
+                   !tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
           std::move(callback)(Json::Value(), "HSR_DEBUG_DISABLED");
         } else if (request.operation ==
                    HSRScriptRequest::Operation::kLoadScript) {
