@@ -59,16 +59,36 @@ constexpr const char* kNewShareGroupCoreJSExports[] = {
 
 }  // namespace
 
-JSRealm::JSRealm(std::shared_ptr<runtime::js::JSIContext> context)
-    : js_context_(context),
-      js_env_prepared_(false),
-      js_core_loaded_(false),
-      global_inited_(false) {}
+JSRealm::JSRealm(std::shared_ptr<js::JSIContext> context)
+    : js_context_(std::move(context)) {}
 
-JSRealm::~JSRealm() = default;
+JSRealm::~JSRealm() {
+#if ENABLE_TRACE_PERFETTO
+  // Stop profiling while the context and global runtime are still alive.
+  profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
+      runtime_profiler_);
+  runtime_profiler_.reset();
+#endif
+}
 
-void JSRealm::EnsureConsole(std::shared_ptr<runtime::js::ConsoleMessagePostMan>,
-                            const tasm::PageOptions&) {}
+void JSRealm::EnsureConsole(std::shared_ptr<js::ConsoleMessagePostMan> post_man,
+                            const tasm::PageOptions& page_options) {
+  if (global_) {
+    global_->EnsureConsole(post_man, page_options);
+  }
+}
+
+void JSRealm::InitGlobalObject(
+    base::UnsafeOwningPtr<js::Runtime>& runtime,
+    std::shared_ptr<js::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options, bool install_shared_host_objects) {
+  if (global_inited_) {
+    return;
+  }
+  global_ = base::MakeUnsafeOwning<js::SingleGlobal>();
+  global_->Init(runtime, post_man, page_options, install_shared_host_objects);
+  global_inited_ = true;
+}
 
 void JSRealm::EnsureCoreJSLoaded(
     runtime::js::Runtime& js_runtime,
@@ -101,7 +121,7 @@ void JSRealm::PrepareJSEnv(
     return;
   }
 
-  // Prepare the JS env once per context wrapper.
+  // Prepare the JS env once per realm.
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_PREPARE_JS_ENV);
   bool has_core_js = runtime::js::EvaluatePreloadSources(*rt, js_preload);
   js_env_prepared_ = true;
@@ -118,61 +138,31 @@ void JSRealm::SetRuntimeProfiler(
 }
 #endif
 
-//////////////////////
-SharedJSRealm::SharedJSRealm(std::shared_ptr<runtime::js::JSIContext> context,
-                             const std::string& group_id,
-                             ReleaseListener* listener)
-    : JSRealm(context), group_id_(group_id), listener_(listener) {}
+SharedJSRealm::SharedJSRealm(std::shared_ptr<js::JSIContext> context)
+    : JSRealm(std::move(context)) {}
 
-void SharedJSRealm::Def() {
-  // global has owner the js context, when only global own the js context, can
-  // release now
-  if (js_context_.use_count() == 2) {  // TODO : be trick, global has one, and
-                                       // the Runtime call this has one...
-    // TODO : release of global_ will trigger another Def() call
-    if (global_ != nullptr) {
-      global_.reset();
-      if (listener_ != nullptr) {
-        listener_->OnRelease(group_id_);
-      }
-    }
+SharedJSRealm::~SharedJSRealm() {
 #if ENABLE_NAPI_BINDING
-    if (napi_environment_) {
-      LOGI("global napi detaching runtime");
+  if (napi_environment_) {
+    LOGI("global napi detaching runtime");
+    if (lifecycle_observer_) {
       lifecycle_observer_->OnRuntimeDetach();
-      napi_environment_->Detach();
-      napi_environment_.reset();
     }
-#endif
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
+    napi_environment_->Detach();
+    napi_environment_.reset();
   }
-}
-
-void SharedJSRealm::EnsureConsole(
-    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
-    const tasm::PageOptions& page_options) {
-  if (isGlobalInited() && global_) {
-    global_->EnsureConsole(post_man, page_options);
-  }
+#endif
 }
 
 void SharedJSRealm::InitGlobal(
-    base::UnsafeOwningPtr<runtime::js::Runtime>& rt,
-    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+    base::UnsafeOwningPtr<js::Runtime>& runtime,
+    std::shared_ptr<js::ConsoleMessagePostMan> post_man,
     const tasm::PageOptions& page_options) {
   if (global_inited_) {
     return;
   }
-  std::shared_ptr<runtime::js::SharedContextGlobal> global =
-      std::make_shared<runtime::js::SharedContextGlobal>();
-  global->Init(rt, post_man, page_options,
-               /*install_shared_host_objects=*/true);
-  global_inited_ = true;
-  global_ = global;
+  owned_global_runtime_ = std::move(runtime);
+  InitGlobalObject(owned_global_runtime_, post_man, page_options, true);
 }
 
 void SharedJSRealm::InitNapi(
@@ -212,31 +202,8 @@ void SharedJSRealm::AddLifecycleListener(
 #endif
 }
 
-SingleJSRealm::SingleJSRealm(std::shared_ptr<runtime::js::JSIContext> context)
-    : JSRealm(context) {}
-
-SingleJSRealm::SingleJSRealm(std::shared_ptr<runtime::js::JSIContext> context,
-                             SharedJSRealm::ReleaseListener* listener)
-    : JSRealm(context), listener_(listener) {}
-
-void SingleJSRealm::Def() {
-  if (js_context_.use_count() == 1) {
-    global_.reset();
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
-  }
-}
-
-void SingleJSRealm::EnsureConsole(
-    std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
-    const tasm::PageOptions& page_options) {
-  if (isGlobalInited() && global_) {
-    global_->EnsureConsole(post_man, page_options);
-  }
-}
+SingleJSRealm::SingleJSRealm(std::shared_ptr<js::JSIContext> context)
+    : JSRealm(std::move(context)) {}
 
 void SingleJSRealm::InitGlobal(
     base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
