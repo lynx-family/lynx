@@ -6,6 +6,7 @@
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -16,7 +17,8 @@ namespace tasm {
 namespace {
 
 fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
-                                          ComposeElementKind kind) {
+                                          ComposeElementKind kind,
+                                          TemplateAssembler* tasm) {
   switch (kind) {
     case ComposeElementKind::kView:
       return manager->CreateFiberView();
@@ -24,6 +26,9 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
       return manager->CreateFiberText(BASE_STATIC_STRING(kElementTextTag));
     case ComposeElementKind::kImage:
       return manager->CreateFiberImage(BASE_STATIC_STRING(kElementImageTag));
+    case ComposeElementKind::kList:
+      return manager->CreateFiberList(tasm, BASE_STATIC_STRING(kElementListTag),
+                                      {}, {}, {});
   }
   return nullptr;
 }
@@ -31,9 +36,15 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
 }  // namespace
 
 ComposeElementHandle::ComposeElementHandle(ElementManager* manager,
-                                           ComposeElementKind kind)
-    : content_element_(CreateContentElement(manager, kind)),
+                                           ComposeElementKind kind,
+                                           TemplateAssembler* tasm)
+    : content_element_(CreateContentElement(manager, kind, tasm)),
       mount_root_(content_element_) {}
+
+void ComposeElementHandle::visitor(void* rt, void* mark_func,
+                                   uint64_t trace_tool) {
+  content_element_->visitor(rt, mark_func, trace_tool);
+}
 
 }  // namespace tasm
 }  // namespace lynx
