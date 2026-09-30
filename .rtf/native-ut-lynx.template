@@ -84,6 +84,12 @@ coverage({
 })
 
 targets({
+    "harmony_gesture_baseline_unittests_exec": {
+        "cwd": ".",
+        "owners": ["luochangan.adrian"],
+        "coverage": True,
+        "enable_parallel": True,
+    },
     "create_view_scheduler_unittest_exec": {
         "cwd": ".",
         "owners":["renzhongyue"],
