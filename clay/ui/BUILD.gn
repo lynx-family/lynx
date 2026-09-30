@@ -215,6 +215,7 @@ if (enable_unittests) {
       "gesture_handler/handler/default_gesture_handler_unittests.cc",
       "gesture_handler/handler/fling_gesture_handler_unittests.cc",
       "gesture_handler/handler/fling_scroller_unittests.cc",
+      "gesture_handler/handler/gesture_handler_baseline_unittests.cc",
       "gesture_handler/handler/gesture_handler_trigger_unittests.cc",
       "gesture_handler/handler/longpress_gesture_handler_unittests.cc",
       "gesture_handler/handler/native_gesture_handler_unittests.cc",

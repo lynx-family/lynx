@@ -18,7 +18,7 @@
 #include "clay/ui/gesture_handler/handler/pan_gesture_handler.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
-// Access changes alter MSVC linker names; load dependencies before this macro.
+// Expose fields only; changing method access alters MSVC linker names.
 #define private public
 #include "clay/ui/gesture_handler/handler/gesture_handler_trigger.h"
 #undef private
@@ -537,6 +537,86 @@ TEST_F(GestureHandlerTriggerTest,
 
   EXPECT_NE(trigger.winner_, fml::WeakPtr<GestureArenaMember>());
 }
+
+TEST_F(GestureHandlerTriggerTest, PanReleaseDoesNotDiscardSameNodeFling) {
+  auto runner = TestTaskRunner::Create();
+  auto page = MakeTestPageView(0, runner);
+  ::testing::NiceMock<MockEventDelegate> delegate;
+  page->SetEventDelegate(&delegate);
+  auto arena = std::make_shared<GestureArenaManager>(true, page.get());
+  auto manager = std::make_shared<GestureDetectorManager>(arena);
+  GestureHandlerTrigger trigger(page.get(), manager);
+  TestGestureArenaMember member(1);
+  GestureMap detectors{{1, MakeDetector(1, GestureHandlerType::Pan)},
+                       {2, MakeDetector(2, GestureHandlerType::Fling,
+                                        {GestureConstants::ON_BEGIN,
+                                         GestureConstants::ON_UPDATE})}};
+  member.SetGestureDetectorMap(detectors);
+  member.SetGestureHandlers(BaseGestureHandler::ConvertToGestureHandler(
+      1, page.get(), member.GetWeakPtr(), detectors));
+  trigger.InitCurrentWinnerWhenDown(member.GetWeakPtr());
+  std::vector<fml::WeakPtr<GestureArenaMember>> compete{member.GetWeakPtr()};
+  std::vector<fml::WeakPtr<GestureArenaMember>> bubble{member.GetWeakPtr()};
+  trigger.SetVelocity(1000, -1000);
+  for (auto event :
+       {MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}),
+        MakePointerEvent(PointerEvent::EventType::kMoveEvent, {20, 0}),
+        MakePointerEvent(PointerEvent::EventType::kUpEvent, {20, 0})}) {
+    trigger.ResolveTouchEvent(&event, compete, bubble);
+  }
+  ASSERT_EQ(trigger.winner_.get(), &member);
+  EXPECT_EQ(member.GetGestureHandlers().at(1)->GetGestureStatus(),
+            GestureConstants::LYNX_STATE_FAIL);
+  ASSERT_EQ(member.GetGestureHandlers().at(2)->GetGestureStatus(),
+            GestureConstants::LYNX_STATE_BEGIN);
+  EXPECT_CALL(delegate,
+              OnGestureHandlerEvent(
+                  ::testing::StrEq(GestureConstants::ON_UPDATE), Eq(1), Eq(2),
+                  ::testing::_, ::testing::_, ::testing::_, ::testing::_,
+                  ::testing::_, ::testing::_))
+      .Times(1);
+  auto& animation_handler = *page->GetAnimationHandler();
+  animation_handler.DoAnimationFrame(16);
+}
+
+TEST_F(GestureHandlerTriggerTest,
+       FailedParentReentersWhenChildReachesBoundary) {
+  auto runner = TestTaskRunner::Create();
+  auto page = MakeTestPageView(0, runner);
+  auto arena = std::make_shared<GestureArenaManager>(true, page.get());
+  auto manager = std::make_shared<GestureDetectorManager>(arena);
+  GestureHandlerTrigger trigger(page.get(), manager);
+  TestGestureArenaMember parent(1);
+  TestGestureArenaMember child(2);
+  for (auto member : {&parent, &child}) {
+    GestureMap detectors{
+        {static_cast<uint32_t>(member->Sign()),
+         MakeDetector(member->Sign(), GestureHandlerType::Pan)}};
+    member->SetGestureDetectorMap(detectors);
+    member->SetGestureHandlers(BaseGestureHandler::ConvertToGestureHandler(
+        member->Sign(), page.get(), member->GetWeakPtr(), detectors));
+  }
+  std::vector<fml::WeakPtr<GestureArenaMember>> chain{parent.GetWeakPtr(),
+                                                      child.GetWeakPtr()};
+  std::vector<fml::WeakPtr<GestureArenaMember>> bubble{parent.GetWeakPtr(),
+                                                       child.GetWeakPtr()};
+  trigger.InitCurrentWinnerWhenDown(parent.GetWeakPtr());
+  auto down = MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0});
+  auto move = MakePointerEvent(PointerEvent::EventType::kMoveEvent, {0, 0});
+  trigger.ResolveTouchEvent(&down, chain, bubble);
+  parent.GetGestureHandlers().at(1)->Fail();
+  trigger.ResolveTouchEvent(&move, chain, bubble);
+  ASSERT_EQ(trigger.winner_.get(), &child);
+  child.GetGestureHandlers().at(2)->Fail();
+  trigger.ResolveTouchEvent(&move, chain, bubble);
+  ASSERT_EQ(trigger.winner_.get(), &parent);
+  EXPECT_EQ(parent.GetGestureHandlers().at(1)->GetGestureStatus(),
+            GestureConstants::LYNX_STATE_BEGIN);
+  parent.GetGestureHandlers().at(1)->End();
+  trigger.ResolveTouchEvent(&move, chain, bubble);
+  EXPECT_FALSE(trigger.winner_);
+}
+
 }  // namespace testing
 
 }  // namespace clay
