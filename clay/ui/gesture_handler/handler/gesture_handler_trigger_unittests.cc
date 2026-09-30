@@ -537,6 +537,75 @@ TEST_F(GestureHandlerTriggerTest,
 
   EXPECT_NE(trigger.winner_, fml::WeakPtr<GestureArenaMember>());
 }
+
+TEST_F(GestureHandlerTriggerTest, PanReleaseDoesNotDiscardSameNodeFling) {
+  auto runner = TestTaskRunner::Create();
+  auto page = MakeTestPageView(0, runner);
+  ::testing::NiceMock<MockEventDelegate> delegate;
+  page->SetEventDelegate(&delegate);
+  auto arena = std::make_shared<GestureArenaManager>(true, page.get());
+  auto manager = std::make_shared<GestureDetectorManager>(arena);
+  GestureHandlerTrigger trigger(page.get(), manager);
+  TestGestureArenaMember member(1);
+  GestureMap detectors{{1, MakeDetector(1, GestureHandlerType::Pan)},
+                       {2, MakeDetector(2, GestureHandlerType::Fling,
+                                        {GestureConstants::ON_BEGIN,
+                                         GestureConstants::ON_UPDATE})}};
+  member.SetGestureDetectorMap(detectors);
+  member.SetGestureHandlers(BaseGestureHandler::ConvertToGestureHandler(
+      1, page.get(), member.GetWeakPtr(), detectors));
+  trigger.InitCurrentWinnerWhenDown(member.GetWeakPtr());
+  for (auto event :
+       {MakePointerEvent(PointerEvent::EventType::kDownEvent, {0, 0}),
+        MakePointerEvent(PointerEvent::EventType::kMoveEvent, {20, 0}),
+        MakePointerEvent(PointerEvent::EventType::kUpEvent, {20, 0})}) {
+    trigger.DispatchMotionEventWithSimultaneous(member.GetWeakPtr(), 0, 0,
+                                                &event);
+  }
+  EXPECT_EQ(trigger.GetCurrentMemberState(member.GetWeakPtr()),
+            GestureConstants::LYNX_STATE_BEGIN);
+  EXPECT_CALL(delegate,
+              OnGestureHandlerEvent(
+                  ::testing::StrEq(GestureConstants::ON_UPDATE), Eq(1), Eq(2),
+                  ::testing::_, ::testing::_, ::testing::_, ::testing::_,
+                  ::testing::_, ::testing::_))
+      .Times(1);
+  trigger.DispatchMotionEventWithSimultaneous(member.GetWeakPtr(), 8, -9,
+                                              nullptr);
+}
+
+TEST_F(GestureHandlerTriggerTest,
+       FailedParentReentersWhenChildReachesBoundary) {
+  auto runner = TestTaskRunner::Create();
+  auto page = MakeTestPageView(0, runner);
+  auto arena = std::make_shared<GestureArenaManager>(true, page.get());
+  auto manager = std::make_shared<GestureDetectorManager>(arena);
+  GestureHandlerTrigger trigger(page.get(), manager);
+  TestGestureArenaMember parent(1);
+  TestGestureArenaMember child(2);
+  for (auto member : {&parent, &child}) {
+    GestureMap detectors{
+        {static_cast<uint32_t>(member->Sign()),
+         MakeDetector(member->Sign(), GestureHandlerType::Pan)}};
+    member->SetGestureDetectorMap(detectors);
+    member->SetGestureHandlers(BaseGestureHandler::ConvertToGestureHandler(
+        member->Sign(), page.get(), member->GetWeakPtr(), detectors));
+  }
+  std::vector<fml::WeakPtr<GestureArenaMember>> chain{parent.GetWeakPtr(),
+                                                      child.GetWeakPtr()};
+  trigger.InitCurrentWinnerWhenDown(parent.GetWeakPtr());
+  parent.GetGestureHandlers().at(1)->Fail();
+  EXPECT_EQ(trigger.ReCompeteByGestures(chain, parent.GetWeakPtr()).get(),
+            &child);
+  child.GetGestureHandlers().at(2)->Fail();
+  EXPECT_EQ(trigger.ReCompeteByGestures(chain, child.GetWeakPtr()).get(),
+            &parent);
+  EXPECT_EQ(parent.GetGestureHandlers().at(1)->GetGestureStatus(),
+            GestureConstants::LYNX_STATE_INIT);
+  parent.GetGestureHandlers().at(1)->End();
+  EXPECT_FALSE(trigger.ReCompeteByGestures(chain, parent.GetWeakPtr()));
+}
+
 }  // namespace testing
 
 }  // namespace clay
