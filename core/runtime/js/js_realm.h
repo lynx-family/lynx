@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -21,65 +22,57 @@
 namespace lynx {
 namespace runtime {
 
-// A JS context and its global environment. Shared realms are owned by the
-// thread-local JSRealmManager; page-local realms are owned by JSExecutor.
-// Destruction is explicit and never inferred from JSIContext reference counts.
 class LYNX_EXPORT_FOR_DEVTOOL JSRealm
-    : public js::JSIContext::Observer,
+    : public runtime::js::JSIContext::Observer,
       public std::enable_shared_from_this<JSRealm> {
  public:
-  explicit JSRealm(std::shared_ptr<js::JSIContext> context);
+  JSRealm(std::shared_ptr<runtime::js::JSIContext>);
   virtual ~JSRealm();
 
-  // Kept until JSRealmManager switches from release observers to explicit
-  // retain/release accounting.
   virtual void Def() = 0;
   virtual void EnsureConsole(
-      std::shared_ptr<js::ConsoleMessagePostMan> post_man,
+      std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
       const tasm::PageOptions& page_options);
-  virtual void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& runtime,
-                          std::shared_ptr<js::ConsoleMessagePostMan> post_man,
-                          const tasm::PageOptions& page_options) = 0;
-  // Embedder NAPI notifications; these listeners do not own or release realms.
+  virtual void InitGlobal(
+      base::UnsafeOwningPtr<runtime::js::Runtime>& js_runtime,
+      std::shared_ptr<runtime::js::ConsoleMessagePostMan> post_man,
+      const tasm::PageOptions& page_options) = 0;
   virtual void AddLifecycleListener(
-      std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) {}
-  virtual js::NapiEnvironment* GetNapiEnvironment() { return nullptr; }
+      std::unique_ptr<RuntimeLifecycleListenerDelegate> listener){};
+  virtual runtime::js::NapiEnvironment* GetNapiEnvironment() {
+    return nullptr;
+  };
 
-  bool isGlobalInited() const { return global_inited_; }
-  bool IsCoreJSLoaded() const { return js_core_loaded_; }
+  bool isGlobalInited() { return global_inited_; }
+  bool IsCoreJSLoaded() { return js_core_loaded_; }
+
+  // Evaluate all scripts from `js_preload` if corejs hasn't been loaded for
+  // this context wrapper yet. If `/lynx_core.js` is present in the list, this
+  // method will also update the `js_core_loaded_` state.
   virtual void EnsureCoreJSLoaded(
-      js::Runtime& runtime,
-      std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>&
-          sources);
+      runtime::js::Runtime& js_runtime,
+      std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+          js_preload);
   void PrepareJSEnv(
-      base::UnsafeWeakPtr<js::Runtime> runtime,
-      std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>>&
-          sources);
-  const std::shared_ptr<js::JSIContext>& GetJSContext() const {
-    return js_context_;
+      base::UnsafeWeakPtr<runtime::js::Runtime> js_runtime,
+      std::vector<std::pair<std::string, std::shared_ptr<runtime::js::Buffer>>>&
+          js_preload);
+  std::shared_ptr<runtime::js::JSIContext> GetJSContext() {
+    return js_context_.lock();
   }
 #if ENABLE_TRACE_PERFETTO
-  void SetRuntimeProfiler(std::shared_ptr<profile::RuntimeProfiler> profiler);
+  void SetRuntimeProfiler(
+      std::shared_ptr<profile::RuntimeProfiler> runtime_profiler);
 #endif
-
  protected:
-  virtual void InitNapi(base::UnsafeWeakPtr<js::Runtime> runtime) {}
-  void InitGlobalObject(base::UnsafeOwningPtr<js::Runtime>& runtime,
-                        std::shared_ptr<js::ConsoleMessagePostMan> post_man,
-                        const tasm::PageOptions& page_options,
-                        bool install_shared_host_objects);
-
-  // JSI contexts remain shared with backend runtimes and profiler interfaces.
-  std::shared_ptr<js::JSIContext> js_context_;
-  // Shared realms own a dedicated runtime. Page-local realms borrow the
-  // executor's runtime through SingleGlobal's UnsafeWeakPtr.
-  base::UnsafeOwningPtr<js::Runtime> owned_global_runtime_;
-  base::UnsafeOwningPtr<js::SingleGlobal> global_;
-  bool js_env_prepared_ = false;
-  bool js_core_loaded_ = false;
-  bool global_inited_ = false;
+  virtual void InitNapi(base::UnsafeWeakPtr<runtime::js::Runtime> js_runtime){};
+  std::weak_ptr<runtime::js::JSIContext> js_context_;
+  // Whether we've run `PrepareJSEnv()` once for this context wrapper.
+  // This is different from `js_core_loaded_` because corejs might be deferred.
+  bool js_env_prepared_;
+  bool js_core_loaded_;
+  bool global_inited_;
 #if ENABLE_TRACE_PERFETTO
-  // RuntimeProfilerManager accesses profilers from tracing threads.
   std::shared_ptr<profile::RuntimeProfiler> runtime_profiler_;
 #endif
 };
