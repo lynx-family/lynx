@@ -269,6 +269,8 @@ bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
       TernaryBool::TRUE_VALUE);
   SetEnableReuseLoadScriptExports(
       page_config->GetEnableReuseLoadScriptExports());
+  SetEnableLynxGroupModuleSharing(
+      page_config->GetEnableLynxGroupModuleSharing());
 
   auto page_config_val = page_config->GetEnableFetchAPIStandardStreaming();
   SetEnableFetchApiStandard(
@@ -578,6 +580,7 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
           enable_microtask_promise_polyfill_,
           enable_reuse_load_script_exports_,
           enable_fetch_api_standard_,
+          enable_lynx_group_module_sharing_,
           template_bundle().custom_sections_};
 }
 
