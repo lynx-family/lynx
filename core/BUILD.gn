@@ -110,6 +110,7 @@ config("lynx_public_config") {
   }
 
   if (is_harmony) {
+    cflags += [ "-Wno-vla-cxx-extension" ]
     defines += [ "OS_HARMONY=1" ]
     if (enable_inspector) {
       defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
