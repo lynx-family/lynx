@@ -400,6 +400,8 @@ export class TemplateBundle {
   nativeInitWithOption(contextPoolSize: number, enableContextAutoRefill: boolean): void;
 
   nativePostJsCacheGenerationTask(bytecodeSourceUrl: string, useV8: boolean): void;
+
+  nativePreload(url: string, bytecode: ArrayBuffer, callback: () => void): boolean;
 }
 
 
