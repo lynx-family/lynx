@@ -4,11 +4,18 @@
 
 #import <Lynx/LynxEventSpec.h>
 
+@interface LynxEventSpec ()
+
+@property(nonatomic) BOOL hasResponseChainListener;
+
+@end
+
 @implementation LynxEventSpec
 
 - (instancetype)initWithRawEvent:(NSString*)event withJSEvent:(BOOL)isJSEvent {
   self = [super init];
   if (self) {
+    _hasResponseChainListener = YES;
     if ([event characterAtIndex:event.length - 1] != ')') {
       _name = event;
     } else {
@@ -18,6 +25,10 @@
       // Find type
       NSRange typeSearchRange =
           NSMakeRange(leftBracketLocation, event.length - leftBracketLocation);
+      _hasResponseChainListener = [event rangeOfString:@"global-bindEvent"
+                                               options:NSLiteralSearch
+                                                 range:typeSearchRange]
+                                      .location == NSNotFound;
       void (^block)(BOOL*, BOOL*, BOOL) = ^(BOOL* prop, BOOL* lepusProp, BOOL isJSEvent) {
         if (isJSEvent) {
           *prop = YES;
@@ -62,6 +73,7 @@
   _shouldLepusCaptureBubble |= [spec shouldLepusCaptureBubble];
   _interestedInLepusCatch |= [spec interestedInLepusCatch];
   _interestedInLepusBubble |= [spec interestedInLepusBubble];
+  _hasResponseChainListener |= [spec hasResponseChainListener];
 }
 
 + (nullable NSDictionary<NSString*, LynxEventSpec*>*)
