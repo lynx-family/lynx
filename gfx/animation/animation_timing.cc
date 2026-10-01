@@ -108,6 +108,20 @@ fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
   return fml::TimeDelta::Min();
 }
 
+fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
+                                  fml::TimePoint monotonic_time) {
+  if (!input.animation_data) {
+    return fml::TimeDelta::Min();
+  }
+  const auto elapsed =
+      ConvertMonotonicTimeToLocalTime(input, monotonic_time) -
+      fml::TimeDelta::FromMilliseconds(input.animation_data->delay);
+  const auto active_duration =
+      GetRepeatDuration(input.animation_data, input.duration) /
+      std::abs(input.playback_rate);
+  return std::max(std::min(elapsed, active_duration), fml::TimeDelta::Zero());
+}
+
 AnimationTimingStateUpdate UpdateTimingState(const AnimationTimingInput& input,
                                              fml::TimePoint monotonic_time) {
   AnimationTimingStateUpdate update;
@@ -161,7 +175,7 @@ bool IsInEffect(const AnimationTimingInput& input,
 
 TrimmedAnimationTime TrimTimeToCurrentIteration(
     const AnimationTimingInput& input, fml::TimePoint monotonic_time,
-    int current_iteration_count) {
+    int current_iteration_count, bool events_only) {
   TrimmedAnimationTime result;
   result.current_iteration_count = current_iteration_count;
   if (input.animation_data == nullptr || input.duration <= fml::TimeDelta()) {
@@ -169,8 +183,10 @@ TrimmedAnimationTime TrimTimeToCurrentIteration(
     return result;
   }
 
-  fml::TimeDelta active_time = CalculateActiveTime(input, monotonic_time);
-  if (active_time < fml::TimeDelta()) {
+  const auto elapsed_time = events_only
+                                ? CalculateEventTime(input, monotonic_time)
+                                : CalculateActiveTime(input, monotonic_time);
+  if (elapsed_time < fml::TimeDelta()) {
     return result;
   }
   if (!input.animation_data->iteration_count) {
@@ -184,9 +200,9 @@ TrimmedAnimationTime TrimTimeToCurrentIteration(
 
   fml::TimeDelta scaled_active_time;
   if (input.playback_rate < 0) {
-    scaled_active_time = (active_time - active_duration) * input.playback_rate;
+    scaled_active_time = (elapsed_time - active_duration) * input.playback_rate;
   } else {
-    scaled_active_time = active_time * input.playback_rate;
+    scaled_active_time = elapsed_time * input.playback_rate;
   }
 
   fml::TimeDelta iteration_time;
@@ -226,6 +242,61 @@ int CountIterationEventsDue(int old_iteration_count,
     return 0;
   }
   return current_iteration_count - old_iteration_count;
+}
+
+fml::TimePoint GetNextAnimationEventTime(const AnimationTimingInput& input,
+                                         fml::TimePoint now,
+                                         int current_iteration_count,
+                                         bool needs_iteration_event) {
+  if (!input.animation_data) {
+    return fml::TimePoint::Max();
+  }
+  // A resumed model first needs to leave its held timing state.
+  auto update = UpdateTimingState(input, now);
+  if (input.is_paused || update.run_state != input.run_state ||
+      update.start_event_due || update.end_event_due) {
+    return now;
+  }
+  const auto& data = *input.animation_data;
+  // Calculate deadlines without overflowing TimePoint/TimeDelta arithmetic.
+  const long double origin =
+      static_cast<long double>(
+          input.start_time.ToEpochDelta().ToNanoseconds()) +
+      input.total_paused_duration.ToNanoseconds();
+  auto deadline = [origin, now](long double offset) {
+    const long double ticks = origin + offset;
+    if (ticks >= std::numeric_limits<int64_t>::max()) {
+      return fml::TimePoint::Max();
+    }
+    return ticks <= now.ToEpochDelta().ToNanoseconds()
+               ? now
+               : fml::TimePoint::FromTicks(
+                     static_cast<int64_t>(std::ceil(ticks)));
+  };
+  const long double delay = static_cast<long double>(data.delay) * 1000000;
+  if (input.run_state == TimingRunState::STARTING) {
+    return deadline(std::max(delay, 0.L));
+  }
+  if (input.run_state == TimingRunState::FINISHED ||
+      input.duration <= fml::TimeDelta::Zero() || input.playback_rate == 0) {
+    return fml::TimePoint::Max();
+  }
+  const long double duration =
+      input.duration.ToNanoseconds() / std::abs(input.playback_rate);
+  auto next =
+      data.iteration_count < 0
+          ? fml::TimePoint::Max()
+          : deadline(std::max(delay + duration * data.iteration_count, 0.L));
+  if (needs_iteration_event &&
+      (data.iteration_count < 0 ||
+       current_iteration_count < data.iteration_count - 1)) {
+    next = std::min(
+        next,
+        deadline(delay +
+                 duration *
+                     (static_cast<int64_t>(current_iteration_count) + 1)));
+  }
+  return next;
 }
 
 }  // namespace gfx

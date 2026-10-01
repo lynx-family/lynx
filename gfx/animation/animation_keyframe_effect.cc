@@ -73,7 +73,8 @@ bool KeyframeEffect::HasFinishedAll() const {
   return has_finished;
 }
 
-KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time) {
+KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time,
+                                                bool events_only) {
   TickResult result;
 
   for (auto* model : models_) {
@@ -88,7 +89,7 @@ KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time) {
     result.start_event_due = start_event_due;
     result.end_event_due = end_event_due;
 
-    if (!model->InEffect(monotonic_time)) {
+    if (!events_only && !model->InEffect(monotonic_time)) {
       continue;
     }
 
@@ -100,10 +101,12 @@ KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time) {
     }
     const int old_iteration_count = current_iteration_count_;
     fml::TimeDelta trimmed = model->TrimTimeToCurrentIteration(
-        monotonic_time, current_iteration_count_);
+        monotonic_time, current_iteration_count_, events_only);
     result.iteration_events_due +=
         CountIterationEventsDue(old_iteration_count, current_iteration_count_);
-    result.samples.push_back({model->curve(), trimmed});
+    if (!events_only) {
+      result.samples.push_back({model->curve(), trimmed});
+    }
   }
   result.has_finished_all = HasFinishedAll();
 

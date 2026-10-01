@@ -515,6 +515,9 @@ class LynxShell {
  private:
   friend class LynxEngineWrapper;
 
+  // Control animation and List frame scheduling independently of runtime rAF.
+  void SetElementVsyncPaused(bool paused);
+
   void SetUrl(const std::string& url);
 
   void ResetNativeUpdateDataOrderForLoad(

@@ -64,7 +64,11 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void Destroy(bool need_clear_effect = true);
 
   void DoFrame(fml::TimePoint& frame_time);
-  KeyframeEffect::KeyframeSampleResult SampleAt(fml::TimePoint& frame_time);
+  KeyframeEffect::KeyframeSampleResult SampleAt(fml::TimePoint& frame_time,
+                                                bool events_only = false);
+  // Advance lifecycle events without sampling or applying animated styles.
+  bool TickEvents(fml::TimePoint& frame_time);
+  fml::TimePoint GetNextEventTime(fml::TimePoint now) const;
 
   void SendStartEvent();
 
@@ -72,7 +76,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void SendCancelEvent();
 
-  void SendIterationEvent();
+  void SendIterationEvents(int count);
 
   const base::String& name() { return name_; }
 
@@ -175,7 +179,9 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void MaybeReportOverTime(fml::TimeDelta active_time);
   void ReportAnimationOverTime();
   void CreateEventAndSend(const base::String& event);
+  bool HasIterationEvent() const;
   bool Tick(fml::TimePoint& time);
+  bool pending_final_sample_{false};
   void RequestNextFrame();
   void ResetPauseTiming();
   fml::TimeDelta GetCurrentTimeAt(fml::TimePoint reference_time) const;
