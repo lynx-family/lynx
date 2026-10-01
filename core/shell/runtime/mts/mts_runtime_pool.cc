@@ -20,13 +20,14 @@ std::shared_ptr<MTSRuntimePool> MTSRuntimePool::Create(
 }
 
 std::shared_ptr<MTSRuntimePool> MTSRuntimePool::Create(
-    runtime::ContextType context_type, bool disable_tracing_gc,
+    runtime::ContextType context_type, const std::string& template_url,
+    bool disable_tracing_gc,
     const std::shared_ptr<runtime::ContextBundle>& context_bundle,
     const tasm::CompileOptions& compile_options,
     tasm::PageConfig* page_configs) {
   return std::shared_ptr<MTSRuntimePool>(
-      new MTSRuntimePool(context_type, disable_tracing_gc, context_bundle,
-                         compile_options, page_configs));
+      new MTSRuntimePool(context_type, template_url, disable_tracing_gc,
+                         context_bundle, compile_options, page_configs));
 }
 
 MTSRuntimePool::~MTSRuntimePool() {

@@ -683,10 +683,7 @@ public class LynxRecorderActionManager {
     mLoadTemplateURL = null;
     mViewClient = null;
     mTemplateBundle = null;
-    mTemplateBundleOptions = new TemplateBundleOption.Builder()
-                                 .setContextPoolSize(5)
-                                 .setEnableContextAutoRefill(true)
-                                 .build();
+    mTemplateBundleOptions = null;
     mDataProvider = new LynxRecorderReplayDataProviderInternal();
     mRecordedScripts = null;
     mTemplateBundleParams = null;
@@ -823,6 +820,11 @@ public class LynxRecorderActionManager {
       mViewGroup.addView(mStateView);
       return;
     }
+    mTemplateBundleOptions = new TemplateBundleOption.Builder()
+                                 .setContextPoolSize(5)
+                                 .setEnableContextAutoRefill(true)
+                                 .setUrl(url)
+                                 .build();
     mRawUrl = url;
     QueryMapUtils queryMap = new QueryMapUtils();
     queryMap.parse(url);

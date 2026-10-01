@@ -14,6 +14,7 @@
 
 #import "LynxBytecodeResponseBlock+Converter.h"
 #import "LynxTemplateBundle+Converter.h"
+#include "base/include/string/string_utils.h"
 #include "base/include/value/byte_array.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
@@ -52,7 +53,8 @@
   }
   auto source = ConvertNSBinary(tem);
   auto template_bundle = std::make_shared<lynx::tasm::LynxTemplateBundle>();
-  std::string error = template_bundle->FromBinaryGreedy(std::move(source), "", skipCSS);
+  std::string error = template_bundle->FromBinaryGreedy(
+      std::move(source), lynx::base::SafeStringConvert([url UTF8String]), skipCSS);
   if (error.empty()) {
     // decode success.
     template_bundle_ = std::move(template_bundle);
@@ -147,12 +149,10 @@
         if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
           _devtool_pool = [[LynxDevToolPool alloc] initWithURL:_url debuggable:option.debuggable];
         }
-        NSData* url = [_url dataUsingEncoding:NSUTF8StringEncoding];
-        std::string templateURL;
-        if (url.length) templateURL.assign(static_cast<const char*>(url.bytes), url.length);
         auto bundle = std::make_shared<lynx::tasm::LynxTemplateBundle>();
-        auto error = bundle->FromBinaryGreedy(std::move(snapshot), templateURL, option.skipCSS,
-                                              std::nullopt, verification);
+        auto error = bundle->FromBinaryGreedy(std::move(snapshot),
+                                              lynx::base::SafeStringConvert([_url UTF8String]),
+                                              option.skipCSS, std::nullopt, verification);
         if (error.empty()) {
           template_bundle_ = std::move(bundle);
           [_devtool_pool
