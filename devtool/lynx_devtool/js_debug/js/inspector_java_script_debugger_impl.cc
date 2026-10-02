@@ -140,9 +140,26 @@ void InspectorJavaScriptDebuggerImpl::DispatchMessage(
   if (delegate_ != nullptr) {
     delegate_->DispatchMessageAsync(message, view_id_);
   } else {
+    Json::Value request;
+    Json::Reader reader;
+    if (!reader.parse(message, request, false) || !request.isObject() ||
+        !request["method"].isString()) {
+      return;
+    }
+
     // TODO(lqy): Delete after e2e can send Page.getResourceTree message.
-    if (message.find(kMethodRuntimeEnable) != std::string::npos) {
+    if (request["method"].asString() == kMethodRuntimeEnable) {
       SetRuntimeEnableNeeded(true);
+      return;
+    }
+
+    if (request.isMember("id")) {
+      Json::Value response(Json::objectValue);
+      response["id"] = request["id"];
+      response["error"]["code"] = kServerError;
+      response["error"]["message"] =
+          "Background JavaScript runtime is unavailable.";
+      SendResponse(response.toStyledString());
     }
   }
 }
