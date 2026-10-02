@@ -50,6 +50,24 @@ void PerformanceController::OnPerformanceEvent(
   delegate_->OnPerformanceEvent(std::move(entry), type);
 }
 
+void PerformanceController::MarkMTSLazyBundleUrl(const std::string& url) {
+  mts_lazy_bundle_urls_.insert(url);
+}
+
+void PerformanceController::OnMTSLazyBundlePerformanceEvent(
+    const std::string& url, std::unique_ptr<pub::Value> entry, EventType type) {
+  MarkMTSLazyBundleUrl(url);
+  OnPerformanceEvent(std::move(entry), type);
+}
+
+void PerformanceController::OnBTSLazyBundlePerformanceEvent(
+    const std::string& url, std::unique_ptr<pub::Value> entry, EventType type) {
+  if (mts_lazy_bundle_urls_.find(url) != mts_lazy_bundle_urls_.end()) {
+    return;
+  }
+  OnPerformanceEvent(std::move(entry), type);
+}
+
 std::unique_ptr<pub::Value> PerformanceController::GetAllPerformanceEntries()
     const {
   auto entries = value_factory_->CreateArray();
@@ -65,6 +83,7 @@ std::unique_ptr<pub::Value> PerformanceController::GetAllPerformanceEntries()
 void PerformanceController::ResetStateBeforeReload() {
   timing_handler_.ResetTimingBeforeReload();
   performance_entries_.clear();
+  mts_lazy_bundle_urls_.clear();
 }
 
 }  // namespace performance
