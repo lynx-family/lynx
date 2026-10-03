@@ -21,6 +21,10 @@ export interface Config {
    * {{ tag }}
    {% endfor %}
    {% endif %}
+   {% if export and config.type_package_since %}
+   *
+   * Type package availability: `@lynx-js/type-config` {{ config.type_package_since }} or later
+   {% endif %}
    {% if config.since %}
    *
    * Since: LynxSDK {{ config.since }}
