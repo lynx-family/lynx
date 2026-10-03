@@ -5,6 +5,7 @@
 #include "clay/ui/shadow/text_shadow_node.h"
 
 #include <algorithm>
+#include <cstring>
 #include <limits>
 #include <map>
 #include <string>
@@ -15,6 +16,7 @@
 #include "base/include/fml/make_copyable.h"
 #include "clay/fml/logging.h"
 #include "clay/public/value.h"
+#include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/common/value_utils.h"
@@ -56,6 +58,22 @@ TextShadowNode::TextShadowNode(ShadowNodeOwner* owner, std::string tag, int id)
 }
 
 TextShadowNode::~TextShadowNode() { text_render_ = nullptr; }
+
+void TextShadowNode::SetAttribute(const char* attr_c,
+                                  const clay::Value& value) {
+  if (tag_ == "x-text" && std::strcmp(attr_c, "ellipsize-mode") == 0) {
+    const std::string mode = attribute_utils::GetCString(value);
+    if (mode == "tail") {
+      SetTextOverflow(TextOverflow::kEllipsis);
+      return;
+    }
+    if (mode == "clip") {
+      SetTextOverflow(TextOverflow::kClip);
+      return;
+    }
+  }
+  BaseTextShadowNode::SetAttribute(attr_c, value);
+}
 
 void TextShadowNode::OnLayout(float width, TextMeasureMode width_mode,
                               float height, TextMeasureMode height_mode,

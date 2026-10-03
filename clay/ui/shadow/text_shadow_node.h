@@ -34,6 +34,9 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
   TextShadowNode(ShadowNodeOwner* owner, std::string tag, int id);
   ~TextShadowNode() override;
 
+  using BaseTextShadowNode::SetAttribute;
+  void SetAttribute(const char* attr_c, const clay::Value& value) override;
+
   bool IsTextShadowNode() override { return true; }
   CustomMeasurable* GetCustomMeasurable() override { return this; }
 
