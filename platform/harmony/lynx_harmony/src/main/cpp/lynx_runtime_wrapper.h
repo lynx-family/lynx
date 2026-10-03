@@ -146,6 +146,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   static napi_value NativeTransitionToFullRuntime(napi_env env,
                                                   napi_callback_info info);
   static napi_value NativeCallJSFunction(napi_env env, napi_callback_info info);
+  static napi_value NativeRegisterModule(napi_env env, napi_callback_info info);
   static napi_value NativeSetSessionStorageItem(napi_env env,
                                                 napi_callback_info info);
   static napi_value NativeGetSessionStorageItem(napi_env env,
@@ -162,6 +163,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   void DestroyRuntime();
   std::unique_ptr<shell::BTSRuntimeStandalone> runtime_standalone_;
   std::shared_ptr<shell::LynxBTSRuntimeProxyImpl> runtime_proxy_;
+  std::shared_ptr<PlatformModuleManager> platform_module_manager_;
   std::weak_ptr<runtime::js::LynxModuleManager> module_manager_;
   bool is_attached_{false};
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;

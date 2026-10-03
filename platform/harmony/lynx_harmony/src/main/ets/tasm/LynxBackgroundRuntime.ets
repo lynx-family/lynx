@@ -8,7 +8,7 @@ import { LynxErrorLevel } from './gen/LynxSubErrorCode';
 import { LynxResourceProvider } from '../provider/LynxResourceProvider';
 import { LynxBackgroundRuntimeOptions } from '../jsbridge/LynxBackgroundRuntimeOptions';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
-import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
+import { convertModuleArgs, getModuleMetadata, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { LynxGenericResourceFetcher } from '../provider/LynxGenericResourceFetcher';
 import { LynxMediaResourceFetcher } from '../provider/LynxMediaResourceFetcher';
 import { LynxTemplateResourceFetcher } from '../provider/LynxTemplateResourceFetcher';
@@ -22,6 +22,20 @@ import { LynxFetchModule } from '../jsbridge/network/LynxFetchModule';
 const TAG = 'LynxBackgroundRuntime';
 const INVALID_SESSION_STORAGE_LISTENER_ID = -1;
 
+class BackgroundRuntimeModuleManager extends LynxModuleManager {
+  private moduleUpdater?: (name: string, methods: string[], syncMethods?: string[]) => void;
+
+  setModuleUpdater(updater: (name: string, methods: string[], syncMethods?: string[]) => void): void {
+    this.moduleUpdater = updater;
+  }
+
+  override registerModule(name: string, wrapper: ModuleClassWrapper): void {
+    super.registerModule(name, wrapper);
+    const [methods, syncMethods] = getModuleMetadata(wrapper);
+    this.moduleUpdater?.(name, methods, syncMethods);
+  }
+}
+
 export abstract class LynxBackgroundRuntimeClient {
   public onReceivedError(error: LynxError) : void {}
   public onModuleMethodInvoked(module: string, method: string, error_code: number) : void {}
@@ -33,7 +47,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   private providers: (LynxResourceProvider | undefined)[];
   private backgroundRuntimeOptions: LynxBackgroundRuntimeOptions;
   private lynxDevTool?: LynxDevTool;
-  private moduleManager: LynxModuleManager = new LynxModuleManager(undefined);
+  private moduleManager: BackgroundRuntimeModuleManager = new BackgroundRuntimeModuleManager(undefined);
   private sendableModuleManager: SendableLynxModuleManager = new SendableLynxModuleManager();
   private lastScriptUrl?: string;
   private nativePtr: bigint = BigInt(0);
@@ -63,6 +77,9 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
       data?.templateData?.getDataForNative(), data?.templateData?.readOnly,
       data?.globalProps?.getDataForNative(),
       this.backgroundRuntimeOptions.enableNewShareGroup());
+    this.moduleManager.setModuleUpdater((name, methods, syncMethods) => {
+      this.nativeRegisterModule(name, methods, syncMethods);
+    });
   }
 
   addLifecycleClient(client: LynxBackgroundRuntimeClient) {

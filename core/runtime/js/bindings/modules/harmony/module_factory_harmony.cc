@@ -19,17 +19,13 @@ ModuleFactoryHarmony::ModuleFactoryHarmony(napi_env env,
 
 std::shared_ptr<runtime::LynxNativeModule> ModuleFactoryHarmony::CreateModule(
     const std::string& name) {
-  std::lock_guard<std::mutex> lock(mutex_);
-
-  auto js_it = platform_module_manager_->JSModuleMap().find(name);
-  if (js_it != platform_module_manager_->JSModuleMap().end()) {
-    const auto& info = js_it->second;
-    auto local_module = std::make_shared<NativeModuleHarmony>(
-        platform_module_manager_, platform_module_manager_->Env(), name,
-        info.sendable, info.methods, info.sync_methods);
-    return local_module;
+  PlatformModuleManager::ModuleInfo info;
+  if (!platform_module_manager_->GetModuleInfo(name, info)) {
+    return std::shared_ptr<runtime::LynxNativeModule>(nullptr);
   }
-  return std::shared_ptr<runtime::LynxNativeModule>(nullptr);
+  return std::make_shared<NativeModuleHarmony>(
+      platform_module_manager_, platform_module_manager_->Env(), name,
+      info.sendable, info.methods, info.sync_methods);
 }
 
 }  // namespace harmony

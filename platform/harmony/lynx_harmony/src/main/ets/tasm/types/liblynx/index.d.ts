@@ -449,6 +449,8 @@ export class LynxRuntimeWrapper {
 
   protected nativeCallJSFunction(module: string, method: string, params: Object[]): void;
 
+  protected nativeRegisterModule(name: string, methods: string[], syncMethods?: string[]): void;
+
   protected nativeSetSessionStorageItem(key: string, data?: Object | string): void;
 
   protected nativeGetSessionStorageItem(key: string, callback: Function): void;
