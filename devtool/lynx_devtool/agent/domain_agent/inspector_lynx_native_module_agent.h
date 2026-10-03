@@ -10,6 +10,7 @@
 #include <string>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
@@ -25,18 +26,17 @@ class InspectorLynxNativeModuleAgent : public CDPDomainAgentBase {
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorLynxNativeModuleAgent() override;
 
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  typedef void (InspectorLynxNativeModuleAgent::*NativeModuleAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
-  void Enable(const std::shared_ptr<MessageSender>& sender,
-              const Json::Value& message);
-  void Disable(const std::shared_ptr<MessageSender>& sender,
-               const Json::Value& message);
-  void GetRecords(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message);
+  using NativeModuleAgentMethod = void (InspectorLynxNativeModuleAgent::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
+
+  DECLARE_DEVTOOL_CDP_METHOD(Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(GetRecords);
 
   std::map<std::string, NativeModuleAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;

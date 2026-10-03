@@ -31,7 +31,7 @@ notes:
   - Cached entries are cleared by PerformanceController::ResetStateBeforeReload().
   - The entry object is extensible. Fields beyond entryType, instanceId, name, frameworkRenderingTiming, and hostPlatformTiming are owned by the Timing API and may vary by pipeline type.
   - The native implementation does not read request params.
-  - If the shell has already been destroyed, the current handler sends a response with the request id and no result object.
+  - If the shell has already been destroyed, the handler returns an empty result object.
 examples:
   - title: Read recorded performance entries
     request:

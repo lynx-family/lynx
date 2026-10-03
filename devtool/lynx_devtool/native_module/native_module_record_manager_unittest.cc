@@ -64,7 +64,7 @@ class NativeModuleRecordManagerTest : public ::testing::Test {
 
 TEST_F(NativeModuleRecordManagerTest, EnableDisableAndReplayHistory) {
   AddRecord(1);
-  manager_->GetRecords(sender_, 7);
+  manager_->GetRecords(std::make_shared<CDPResponder>(sender_, 7));
 
   Json::Value response = ReceivedMessage();
   ASSERT_EQ(response["id"].asInt64(), 7);
@@ -86,7 +86,7 @@ TEST_F(NativeModuleRecordManagerTest, EnableDisableAndReplayHistory) {
   AddRecord(3);
   EXPECT_TRUE(MockReceiver::GetInstance().received_message_.second.empty());
 
-  manager_->GetRecords(sender_, 8);
+  manager_->GetRecords(std::make_shared<CDPResponder>(sender_, 8));
   response = ReceivedMessage();
   EXPECT_EQ(response["id"].asInt64(), 8);
   EXPECT_EQ(response["result"]["latestSequence"].asInt64(), 3);
@@ -99,7 +99,7 @@ TEST_F(NativeModuleRecordManagerTest, EvictsOldestHistoryRecord) {
     AddRecord(static_cast<int32_t>(i));
   }
 
-  manager_->GetRecords(sender_, 1);
+  manager_->GetRecords(std::make_shared<CDPResponder>(sender_, 1));
   Json::Value response = ReceivedMessage();
   const Json::Value& records = response["result"]["records"];
   ASSERT_EQ(records.size(), NativeModuleRecordManager::kMaxHistoryCount);

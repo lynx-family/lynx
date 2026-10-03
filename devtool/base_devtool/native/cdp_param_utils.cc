@@ -23,6 +23,22 @@ bool ReadIntParam(const Json::Value& value, int& result) {
   return true;
 }
 
+bool ReadBoolParam(const Json::Value& value, bool& result) {
+  if (!value.isBool()) {
+    return false;
+  }
+  result = value.asBool();
+  return true;
+}
+
+bool ReadStringParam(const Json::Value& value, std::string& result) {
+  if (!value.isString()) {
+    return false;
+  }
+  result = value.asString();
+  return true;
+}
+
 bool ReadIntStringParam(const Json::Value& value, int& result) {
   if (!value.isString()) {
     return false;

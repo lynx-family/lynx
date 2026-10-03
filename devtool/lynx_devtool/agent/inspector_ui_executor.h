@@ -50,11 +50,11 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(PageNavigate)
 
   // uitree domain
-  DECLARE_DEVTOOL_METHOD(UITree_Enable)
-  DECLARE_DEVTOOL_METHOD(UITree_Disable)
-  DECLARE_DEVTOOL_METHOD(GetLynxUITree)
-  DECLARE_DEVTOOL_METHOD(GetUIInfoForNode)
-  DECLARE_DEVTOOL_METHOD(SetUIStyle)
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLynxUITree);
+  DECLARE_DEVTOOL_CDP_METHOD(GetUIInfoForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
   // lynx domain
   void LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
@@ -64,14 +64,16 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(LynxGetViewLocationOnScreen)
   DECLARE_DEVTOOL_METHOD(LynxSendEventToVM)
   DECLARE_DEVTOOL_METHOD(GetScreenshot)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateData)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateJsInfo)
+
+  // template domain
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateData);
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
 
   // Performance domain
-  DECLARE_DEVTOOL_METHOD(PerformanceEnable)
-  DECLARE_DEVTOOL_METHOD(PerformanceDisable)
-  DECLARE_DEVTOOL_METHOD(getAllTimingInfo)
-  DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllTimingInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllPerformanceEntries);
 
   // Input domain
   DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);

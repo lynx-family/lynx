@@ -4,11 +4,9 @@
 
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_impl.h"
 
-#include "base/include/log/logging.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/shared_data/lynx_white_board.h"
 #include "core/value_wrapper/value_impl_lepus.h"
-#include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_delegate.h"
 
 namespace lynx {
@@ -36,35 +34,32 @@ void WhiteBoardInspectorImpl::RemoveDelegate(int view_id) {
   delegates_.erase(view_id);
 }
 
-void WhiteBoardInspectorImpl::SetSharedData(const std::string& key,
-                                            const std::string& value,
-                                            int& error_code,
-                                            std::string& error_message) {
+std::optional<CDPErrorCode> WhiteBoardInspectorImpl::SetSharedData(
+    const std::string& key, const std::string& value,
+    std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to set shared data!";
-    return;
+    return CDPErrorCode::ServerError;
   }
   rapidjson::Document document;
   if (document.Parse(value).HasParseError()) {
-    error_code = LegacyCDPErrorCode::kInvalidParams;
     error_message = "The value must be a valid JSON string!";
-    return;
+    return CDPErrorCode::InvalidParams;
   }
   lepus::Value lepus_value = lepus::jsonValueTolepusValue(document);
   auto data = std::make_shared<pub::ValueImplLepus>(lepus_value);
   sp->SetGlobalSharedData(key, data);
+  return std::nullopt;
 }
 
-void WhiteBoardInspectorImpl::GetSharedData(
+std::optional<CDPErrorCode> WhiteBoardInspectorImpl::GetSharedData(
     std::vector<std::pair<std::string, std::string>>& shared_data,
-    int& error_code, std::string& error_message) {
+    std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to get shared data!";
-    return;
+    return CDPErrorCode::ServerError;
   }
   const auto& data = sp->GetAllGlobalSharedData();
   for (const auto& item : data) {
@@ -73,34 +68,33 @@ void WhiteBoardInspectorImpl::GetSharedData(
     auto str_value = lepus::lepusValueToString(lepus_value, false, true);
     shared_data.emplace_back(std::make_pair(item.first, str_value));
   }
+  return std::nullopt;
 }
 
-void WhiteBoardInspectorImpl::RemoveSharedData(const std::string& key,
-                                               int& error_code,
-                                               std::string& error_message) {
+std::optional<CDPErrorCode> WhiteBoardInspectorImpl::RemoveSharedData(
+    const std::string& key, std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to remove shared data!";
-    return;
+    return CDPErrorCode::ServerError;
   }
   if (sp->GetGlobalSharedData(key) == nullptr) {
-    error_code = LegacyCDPErrorCode::kInvalidParams;
     error_message = "The key does not exist!";
-    return;
+    return CDPErrorCode::InvalidParams;
   }
   sp->RemoveGlobalSharedData(key);
+  return std::nullopt;
 }
 
-void WhiteBoardInspectorImpl::ClearSharedData(int& error_code,
-                                              std::string& error_message) {
+std::optional<CDPErrorCode> WhiteBoardInspectorImpl::ClearSharedData(
+    std::string& error_message) {
   auto sp = white_board_.lock();
   if (sp == nullptr) {
-    error_code = LegacyCDPErrorCode::kServerError;
     error_message = "Failed to clear shared data!";
-    return;
+    return CDPErrorCode::ServerError;
   }
   sp->ClearGlobalSharedData();
+  return std::nullopt;
 }
 
 void WhiteBoardInspectorImpl::OnSharedDataAdded(const std::string& key,
@@ -124,6 +118,8 @@ void WhiteBoardInspectorImpl::OnSharedDataRemoved(const std::string& key) {
 void WhiteBoardInspectorImpl::OnSharedDataCleared() {
   NOTIFY_DELEGATES(OnSharedDataCleared);
 }
+
+#undef NOTIFY_DELEGATES
 
 }  // namespace devtool
 }  // namespace lynx
