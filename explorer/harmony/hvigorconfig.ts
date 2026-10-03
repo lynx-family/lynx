@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import * as hvigorApi from '@ohos/hvigor';
-import { enableHarmonyLynxAutolink } from '@lynx/lynx-library-plugin';
+import { enableHarmonyLynxAutolink } from '@lynx-js/lynx-library-plugin';
 
 enableHarmonyLynxAutolink(hvigorApi, {
   moduleName: 'lynx_explorer',
