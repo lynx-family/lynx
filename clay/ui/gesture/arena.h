@@ -32,6 +32,9 @@ struct Arena {
   bool has_pending_sweep = false;
   // Temp record the member who declared to be accepted.
   fml::WeakPtr<ArenaMember> eager_winner;
+  // A platform recognizer may decide after the local recognizers. While it
+  // waits, remember local acceptance requests without committing a winner.
+  fml::WeakPtr<ArenaMember> deferred_member;
 };
 
 }  // namespace clay

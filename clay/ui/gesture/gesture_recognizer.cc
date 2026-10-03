@@ -59,7 +59,9 @@ void OneSequenceGestureRecognizer::ResolveAll(GestureDisposition disposition) {
   OnResolveAll(disposition);
   decltype(arena_entries_) local_entries = std::move(arena_entries_);
   for (auto& pair : local_entries) {
-    pair.second->Resolve(disposition);
+    if (pair.second->Resolve(disposition)) {
+      arena_entries_.emplace(pair.first, std::move(pair.second));
+    }
   }
 }
 
@@ -70,7 +72,9 @@ void OneSequenceGestureRecognizer::ResolveOne(int pointer_id,
   if (iter != arena_entries_.end()) {
     std::unique_ptr<ArenaEntry> entry = std::move(iter->second);
     arena_entries_.erase(iter);
-    entry->Resolve(disposition);
+    if (entry->Resolve(disposition)) {
+      arena_entries_.emplace(pointer_id, std::move(entry));
+    }
   }
 }
 

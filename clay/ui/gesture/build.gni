@@ -37,6 +37,13 @@ ui_gesture_sources = [
   "velocity_tracker.h",
 ]
 
+if (is_harmony) {
+  ui_gesture_sources += [
+    "platform_view_gesture_recognizer.cc",
+    "platform_view_gesture_recognizer.h",
+  ]
+}
+
 if (is_win || is_mac || is_headless) {
   ui_gesture_sources += [
     "drag_drop_manager.cc",

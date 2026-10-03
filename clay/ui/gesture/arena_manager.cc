@@ -57,13 +57,33 @@ std::unique_ptr<ArenaEntry> ArenaManager::Add(
   return std::make_unique<ArenaEntry>(this, pointer_id, std::move(member));
 }
 
-void ArenaEntry::Resolve(GestureDisposition disposition) {
+bool ArenaEntry::Resolve(GestureDisposition disposition) {
   GESTURE_LOG << "pointer " << pointer_id_ << " of " << member_->GetMemberTag()
               << member_.get() << " resolved with "
               << (disposition == GestureDisposition::kAccept ? "ACCEPT"
                                                              : "REJECT");
-  arena_manager_->Resolve(pointer_id_, member_, disposition);
+  return arena_manager_->Resolve(pointer_id_, member_, disposition);
 }
+
+#if OS_HARMONY
+void ArenaEntry::DeferToThisMember() {
+  arena_manager_->DeferToMember(pointer_id_, member_);
+}
+
+bool ArenaEntry::IsPlatformArbitrationActive() const {
+  auto it = arena_manager_->arenas_.find(pointer_id_);
+  return member_ && it != arena_manager_->arenas_.end() &&
+         !it->second->is_open && it->second->deferred_member == member_;
+}
+
+void ArenaManager::DeferToMember(int pointer_id,
+                                 const fml::WeakPtr<ArenaMember>& member) {
+  auto it = arenas_.find(pointer_id);
+  FML_DCHECK(member);
+
+  it->second->deferred_member = member;
+}
+#endif
 
 void ArenaManager::Close(const PointerEvent& event) {
   int pointer_id = event.pointer_id;
@@ -80,6 +100,18 @@ void ArenaManager::Close(const PointerEvent& event) {
   }
 
   arena->is_open = false;
+  if (arena->deferred_member && arena->members.size() == 1) {
+    FML_DCHECK(arena->members.front() == arena->deferred_member);
+    // No cross-layer competition. Remove the provisional platform member
+    // without declaring a winner or starting native recognizer observation.
+    auto holder = TakeArenaOwnership(pointer_id);
+    for (auto& member : holder->members) {
+      if (member) {
+        member->OnGestureRejected(pointer_id);
+      }
+    }
+    return;
+  }
   TryResolve(pointer_id, arena);
 }
 
@@ -93,7 +125,7 @@ void ArenaManager::Sweep(int pointer_id) {
   Arena* arena = iter->second.get();
   FML_DCHECK(!arena->is_open);
 
-  if (arena->is_held) {
+  if (arena->is_held || arena->deferred_member) {
     arena->has_pending_sweep = true;
     // Arena will be swept when released.
     GESTURE_LOG << "[sweep] arena was held.";
@@ -144,19 +176,19 @@ void ArenaManager::Release(int pointer_id) {
   }
 }
 
-void ArenaManager::Resolve(int pointer_id,
+bool ArenaManager::Resolve(int pointer_id,
                            const fml::WeakPtr<ArenaMember>& member,
                            GestureDisposition disposition) {
   auto iter = arenas_.find(pointer_id);
   if (iter == arenas_.end()) {
     GESTURE_LOG << "pointer_id=" << pointer_id << " already been resolved.";
-    return;
+    return false;
   }
 
   Arena* arena = iter->second.get();
   if (!member) {
     arena->RemoveMember(member);
-    return;
+    return false;
   }
 
   GESTURE_LOG << "arena member " << member->GetMemberTag() << member.get()
@@ -167,29 +199,55 @@ void ArenaManager::Resolve(int pointer_id,
 
   // FML_DCHECK(arena->members.find(member) != arena->members.end());
   if (disposition == GestureDisposition::kReject) {
+    const bool releases_deferred_member = arena->deferred_member == member;
+    if (releases_deferred_member) {
+      arena->deferred_member.reset();
+    }
+    if (arena->eager_winner == member) {
+      arena->eager_winner.reset();
+    }
     arena->RemoveMember(member);
     GESTURE_LOG << "arena member " << member->GetMemberTag() << member.get()
                 << " was removed. Members count: " << arena->members.size();
     member->OnGestureRejected(pointer_id);
     if (!arena->is_open) {
       TryResolve(pointer_id, arena);
+      if (releases_deferred_member) {
+        auto pending = arenas_.find(pointer_id);
+        if (pending != arenas_.end() && pending->second->has_pending_sweep) {
+          Sweep(pointer_id);
+        }
+      }
     }
+    return false;
   } else {
-    if (arena->is_open) {
-      GESTURE_LOG << "arena wasn't closed. set as eager winner.";
+    const bool waits_for_platform =
+        arena->deferred_member && arena->deferred_member != member;
+    if (arena->deferred_member == member) {
+      arena->deferred_member.reset();
+      // The platform's decision takes precedence over deferred local requests.
+      arena->eager_winner = member;
+    }
+    if (arena->is_open || arena->deferred_member) {
+      GESTURE_LOG << "arena cannot resolve yet. set as eager winner.";
       // If arena is not closed, we need to set the member as eager winner,
-      // which will be resolved immediately when the arena is closed. Do not
-      // overwrite the previous winner.
+      // which will be resolved immediately when the arena is closed. A
+      // deferred platform member also keeps the winner pending until the
+      // platform responds. Do not overwrite the previous winner.
       if (!arena->eager_winner) {
         arena->eager_winner = member;
       }
     } else {
       ResolveInFavorOf(pointer_id, arena, member);
     }
+    return waits_for_platform;
   }
 }
 
 void ArenaManager::TryResolve(int pointer_id, Arena* arena) {
+  if (arena->deferred_member) {
+    return;
+  }
   if (arena->members.size() == 1 && !has_outer_gestures_) {
     ResolveByDefault(pointer_id, arena);
   } else if (arena->members.empty()) {

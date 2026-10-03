@@ -25,6 +25,23 @@ Out of scope:
 
 Those live in `map_view_spec.md`.
 
+## Harmony Platform Gesture Arbitration
+
+On Harmony, `NativeView` arbitrates with Clay gestures only on mixed hit paths.
+
+The Harmony bridge uses these `NativeView` interfaces:
+
+- `HasPendingPlatformGesture(pointer_id)` reports whether the arena is waiting
+  for this platform pointer's decision after Close.
+- `UpdatePlatformGestureDecision(pointer_id, disposition)` forwards accept/reject
+  to the arena for a pending platform pointer.
+
+Pointer records are removed when the platform member wins or is rejected.
+
+The bridge interfaces use pointer IDs; no per-sequence callback token is tracked.
+
+The adapter is cleaned up when the NativeView detaches or is destroyed.
+
 ## 1. Design Goal
 
 The intended lifecycle is:
