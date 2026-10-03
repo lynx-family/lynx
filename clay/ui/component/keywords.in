@@ -75,6 +75,7 @@ line-height
 line-spacing
 white-space
 text-maxline
+tail-color-convert
 maxlines
 text-maxlength
 letter-spacing
