@@ -5,50 +5,40 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_PAGE_AGENT_NG_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_PAGE_AGENT_NG_H_
 
+#include <map>
 #include <memory>
-#include <unordered_map>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
-#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
+
+class LynxDevToolMediator;
 
 class InspectorPageAgentNG : public CDPDomainAgentBase {
  public:
   explicit InspectorPageAgentNG(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
-  virtual ~InspectorPageAgentNG();
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  ~InspectorPageAgentNG() override;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  typedef void (InspectorPageAgentNG::*PageAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
-  void Enable(const std::shared_ptr<MessageSender>& sender,
-              const Json::Value& message);
-  void CanScreencast(const std::shared_ptr<MessageSender>& sender,
-                     const Json::Value& message);
-  void CanEmulate(const std::shared_ptr<MessageSender>& sender,
-                  const Json::Value& message);
-  void GetResourceTree(const std::shared_ptr<MessageSender>& sender,
-                       const Json::Value& message);
-  void GetResourceContent(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message);
-  void GetNavigationHistory(const std::shared_ptr<MessageSender>& sender,
-                            const Json::Value& message);
-  void SetShowViewportSizeOnResize(const std::shared_ptr<MessageSender>& sender,
-                                   const Json::Value& message);
-  void StartScreencast(const std::shared_ptr<MessageSender>& sender,
-                       const Json::Value& message);
-  void StopScreencast(const std::shared_ptr<MessageSender>& sender,
-                      const Json::Value& message);
-  void ScreencastFrameAck(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message);
-  void Reload(const std::shared_ptr<MessageSender>& sender,
-              const Json::Value& message);
-  void Navigate(const std::shared_ptr<MessageSender>& sender,
-                const Json::Value& message);
+  using PageAgentMethod = void (InspectorPageAgentNG::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
+
+  DECLARE_DEVTOOL_CDP_METHOD(Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(CanScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(CanEmulate);
+  DECLARE_DEVTOOL_CDP_METHOD(GetResourceTree);
+  DECLARE_DEVTOOL_CDP_METHOD(GetResourceContent);
+  DECLARE_DEVTOOL_CDP_METHOD(StartScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(StopScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(ScreencastFrameAck);
+  DECLARE_DEVTOOL_CDP_METHOD(Reload);
+  DECLARE_DEVTOOL_CDP_METHOD(Navigate);
 
   std::map<std::string, PageAgentMethod> functions_map_;
   std::shared_ptr<LynxDevToolMediator> devtool_mediator_;

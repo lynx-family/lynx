@@ -50,10 +50,10 @@ class InspectorDefaultExecutor
   DECLARE_DEVTOOL_CDP_METHOD(LogClear);
 
   // Network domain
-  DECLARE_DEVTOOL_METHOD(NetworkEnable)
-  DECLARE_DEVTOOL_METHOD(NetworkDisable)
-  DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
-  DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetResponseBody);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetRequestPostData);
 
   DECLARE_DEVTOOL_METHOD(InspectorEnable)
   DECLARE_DEVTOOL_METHOD(InspectorDetached)

@@ -15,7 +15,7 @@ namespace testing {
 
 class WhiteBoardInspectorDelegateMock : public WhiteBoardInspectorDelegate {
  public:
-  WhiteBoardInspectorDelegateMock(int view_id)
+  explicit WhiteBoardInspectorDelegateMock(int view_id)
       : WhiteBoardInspectorDelegate(view_id) {}
   ~WhiteBoardInspectorDelegateMock() override = default;
 

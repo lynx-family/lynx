@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/fml/thread.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -84,8 +85,10 @@ class InspectorNetworkAgentTest : public ::testing::Test {
     if (!params.isNull()) {
       message["params"] = params;
     }
-    agent_->CallMethod(sender_, message);
-    FlushDevToolTasks();
+    agent_->CallMethod(std::make_shared<CDPResponder>(sender_, id), message);
+    if (mediator_->default_task_runner_ != nullptr) {
+      FlushDevToolTasks();
+    }
   }
 
   void Enable(const Json::Value& params = Json::Value()) {
@@ -539,8 +542,10 @@ TEST_F(InspectorNetworkAgentTest, RejectsInvalidParametersAndUnknownMethods) {
   EXPECT_EQ(sender_->LastMessage()["error"]["code"].asInt(), -32602);
 
   Call(3, "Network.unknown");
+  EXPECT_EQ(sender_->LastMessage()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::MethodNotFound));
   EXPECT_EQ(sender_->LastMessage()["error"]["message"].asString(),
-            "Not implemented: Network.unknown");
+            "'Network.unknown' wasn't found");
 }
 
 }  // namespace testing

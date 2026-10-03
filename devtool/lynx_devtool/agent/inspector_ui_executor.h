@@ -39,22 +39,22 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(GetNodeForLocation)
 
   // page domain
-  DECLARE_DEVTOOL_METHOD(StartScreencast)
-  DECLARE_DEVTOOL_METHOD(StopScreencast)
-  DECLARE_DEVTOOL_METHOD(ScreencastFrameAck)
-  DECLARE_DEVTOOL_METHOD(PageEnable)
-  DECLARE_DEVTOOL_METHOD(PageCanEmulate)
-  DECLARE_DEVTOOL_METHOD(PageCanScreencast)
-  DECLARE_DEVTOOL_METHOD(PageGetResourceTree)
-  DECLARE_DEVTOOL_METHOD(PageReload)
-  DECLARE_DEVTOOL_METHOD(PageNavigate)
+  DECLARE_DEVTOOL_CDP_METHOD(StartScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(StopScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(ScreencastFrameAck);
+  DECLARE_DEVTOOL_CDP_METHOD(PageEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanEmulate);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceTree);
+  DECLARE_DEVTOOL_CDP_METHOD(PageReload);
+  DECLARE_DEVTOOL_CDP_METHOD(PageNavigate);
 
   // uitree domain
-  DECLARE_DEVTOOL_METHOD(UITree_Enable)
-  DECLARE_DEVTOOL_METHOD(UITree_Disable)
-  DECLARE_DEVTOOL_METHOD(GetLynxUITree)
-  DECLARE_DEVTOOL_METHOD(GetUIInfoForNode)
-  DECLARE_DEVTOOL_METHOD(SetUIStyle)
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLynxUITree);
+  DECLARE_DEVTOOL_CDP_METHOD(GetUIInfoForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
   // lynx domain
   void LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
@@ -64,14 +64,16 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(LynxGetViewLocationOnScreen)
   DECLARE_DEVTOOL_METHOD(LynxSendEventToVM)
   DECLARE_DEVTOOL_METHOD(GetScreenshot)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateData)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateJsInfo)
+
+  // template domain
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateData);
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
 
   // Performance domain
-  DECLARE_DEVTOOL_METHOD(PerformanceEnable)
-  DECLARE_DEVTOOL_METHOD(PerformanceDisable)
-  DECLARE_DEVTOOL_METHOD(getAllTimingInfo)
-  DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllTimingInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllPerformanceEntries);
 
   // Input domain
   DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
@@ -107,8 +109,8 @@ class InspectorUIExecutor
   SLNode* GetLayoutObjectById(int32_t id);
 
  protected:
-  lynx::shell::LynxShell* shell_;
-  bool performance_ready_;
+  lynx::shell::LynxShell* shell_{nullptr};
+  bool performance_ready_{false};
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
 
@@ -120,9 +122,9 @@ class InspectorUIExecutor
   // every caller.
   void RunOnUIThreadOrNow(lynx::base::closure task);
 
-  bool uitree_enabled_;
-  bool uitree_use_compression_;
-  int uitree_compression_threshold_;
+  bool uitree_enabled_{false};
+  bool uitree_use_compression_{false};
+  int uitree_compression_threshold_{10240};
   std::unique_ptr<InputRequestHandler> input_request_handler_;
   std::unordered_map<int32_t, SLNode*> layout_objects_;
 };

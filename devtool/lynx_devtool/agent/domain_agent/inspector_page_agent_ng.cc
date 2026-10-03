@@ -4,12 +4,11 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_page_agent_ng.h"
 
-#include "devtool/lynx_devtool/element/element_helper.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
-
-#define BANNER ""
 
 InspectorPageAgentNG::InspectorPageAgentNG(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
@@ -32,65 +31,67 @@ InspectorPageAgentNG::InspectorPageAgentNG(
 
 InspectorPageAgentNG::~InspectorPageAgentNG() = default;
 
-void InspectorPageAgentNG::Enable(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  devtool_mediator_->PageEnable(sender, message);
+void InspectorPageAgentNG::Enable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageEnable(responder, params);
 }
 
 void InspectorPageAgentNG::CanScreencast(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageCanScreencast(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageCanScreencast(responder, params);
 }
 
 void InspectorPageAgentNG::CanEmulate(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageCanEmulate(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageCanEmulate(responder, params);
 }
 
 void InspectorPageAgentNG::GetResourceTree(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageGetResourceTree(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageGetResourceTree(responder, params);
 }
 
 void InspectorPageAgentNG::GetResourceContent(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageGetResourceContent(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageGetResourceContent(responder, params);
 }
 
 void InspectorPageAgentNG::StartScreencast(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StartScreencast(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->StartScreencast(responder, params);
 }
 
 void InspectorPageAgentNG::StopScreencast(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StopScreencast(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->StopScreencast(responder, params);
 }
 
 void InspectorPageAgentNG::ScreencastFrameAck(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->ScreencastFrameAck(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->ScreencastFrameAck(responder, params);
 }
 
-void InspectorPageAgentNG::Reload(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  devtool_mediator_->PageReload(sender, message);
+void InspectorPageAgentNG::Reload(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageReload(responder, params);
 }
 
 void InspectorPageAgentNG::Navigate(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->PageNavigate(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->PageNavigate(responder, params);
 }
 
 void InspectorPageAgentNG::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  std::string method = message["method"].asString();
-  auto iter = functions_map_.find(method);
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  const std::string method = message["method"].asString();
+  const auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
-  } else {
-    (this->*(iter->second))(sender, message);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
+    return;
   }
+  (this->*(iter->second))(responder, message["params"]);
 }
 
 }  // namespace devtool

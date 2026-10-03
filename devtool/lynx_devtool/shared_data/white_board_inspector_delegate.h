@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/shared_data/white_board_inspector_impl.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
@@ -26,12 +28,17 @@ class WhiteBoardInspectorDelegate {
 
   bool IsEnabled() { return enabled_; }
 
-  std::string Enable(const Json::Value& message);
-  std::string Disable(const Json::Value& message);
-  std::string SetSharedData(const Json::Value& message);
-  std::string GetSharedData(const Json::Value& message);
-  std::string RemoveSharedData(const Json::Value& message);
-  std::string Clear(const Json::Value& message);
+  // Handles a WhiteBoard command and produces its response through |responder|.
+  // These are the terminal handlers shared by the TASM-executor and
+  // JS-debugger paths, so routing the response through the responder here is
+  // what guarantees both paths emit identical envelopes. Disabled commands
+  // report ServerError instead of dropping the request silently.
+  DECLARE_DEVTOOL_CDP_METHOD(Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(SetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(GetSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(RemoveSharedData);
+  DECLARE_DEVTOOL_CDP_METHOD(Clear);
 
   void OnSharedDataAdded(const std::string& key, const std::string& value);
   void OnSharedDataUpdated(const std::string& key, const std::string& value);
@@ -41,11 +48,8 @@ class WhiteBoardInspectorDelegate {
   virtual void SendEvent(const Json::Value& msg) = 0;
 
  protected:
-  std::string GenResponseMessage(int message_id, const Json::Value& result);
   Json::Value GenEventMessage(const std::string& method,
                               const Json::Value& params);
-  std::string GenErrorMessage(int message_id, int code,
-                              const std::string& message);
 
   bool enabled_{false};
   int view_id_;

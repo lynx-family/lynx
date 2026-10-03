@@ -43,8 +43,10 @@ class InspectorLynxNativeModuleAgentTest : public ::testing::Test {
     Json::Value message(Json::ValueType::objectValue);
     message["id"] = static_cast<Json::Int64>(id);
     message["method"] = method;
-    agent_->CallMethod(sender_, message);
-    FlushDevToolTasks();
+    agent_->CallMethod(std::make_shared<CDPResponder>(sender_, id), message);
+    if (mediator_->default_task_runner_ != nullptr) {
+      FlushDevToolTasks();
+    }
 
     Json::Value response;
     Json::Reader reader;
@@ -106,9 +108,24 @@ TEST_F(InspectorLynxNativeModuleAgentTest, RejectsUnknownMethod) {
   Json::Value response = Dispatch("LynxNativeModule.unknown", 9);
 
   EXPECT_EQ(response["id"].asInt64(), 9);
-  EXPECT_EQ(response["error"]["code"].asInt(), kInspectorErrorCode);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::MethodNotFound));
   EXPECT_EQ(response["error"]["message"].asString(),
-            "Not implemented: LynxNativeModule.unknown");
+            "'LynxNativeModule.unknown' wasn't found");
+}
+
+TEST_F(InspectorLynxNativeModuleAgentTest,
+       CommandsAcceptUnavailableRecordManager) {
+  mediator_->native_module_record_manager_ = nullptr;
+
+  Json::Value response = Dispatch("LynxNativeModule.enable", 10);
+  EXPECT_TRUE(response["result"].isObject());
+
+  response = Dispatch("LynxNativeModule.disable", 11);
+  EXPECT_TRUE(response["result"].isObject());
+
+  response = Dispatch("LynxNativeModule.getRecords", 12);
+  EXPECT_TRUE(response["result"].isObject());
 }
 
 }  // namespace testing
