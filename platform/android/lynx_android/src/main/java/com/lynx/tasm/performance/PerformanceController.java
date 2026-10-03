@@ -53,7 +53,6 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private static final String TAG = "PerformanceController";
   private static volatile boolean sIsNativeLibraryLoaded = false;
   private static volatile LynxBooleanOption sIsMemoryMonitorEnabled = LynxBooleanOption.UNSET;
-  private static volatile long sMemoryAcquisitionDelaySec = -1;
   private EmbeddedTimingCollector mEmbeddedTimingCollector;
   private volatile long mNativePerformanceActorPtr = 0;
   private WeakReference<IPerformanceObserver> mObserver;
@@ -115,23 +114,6 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       return true;
     }
     return false;
-  }
-
-  public static long getMemoryAcquisitionDelaySec() {
-    if (sMemoryAcquisitionDelaySec >= 0) {
-      return sMemoryAcquisitionDelaySec;
-    }
-    String value = LynxEnv.inst().getMemoryAcquisitionDelaySec();
-    // default is 2 second.
-    long delay = 2;
-    if (value != null && !value.isEmpty()) {
-      try {
-        delay = Long.parseLong(value);
-        sMemoryAcquisitionDelaySec = delay;
-      } catch (NumberFormatException ignored) {
-      }
-    }
-    return delay;
   }
 
   public void setPerformanceObserver(IPerformanceObserver observer) {

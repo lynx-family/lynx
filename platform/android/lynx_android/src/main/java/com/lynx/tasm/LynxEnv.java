@@ -1063,31 +1063,6 @@ public class LynxEnv {
     return mCreateViewAsync;
   }
 
-  public Boolean getEnableMemoryMonitor() {
-    return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_MEMORY_MONITOR, false);
-  }
-
-  public String getMemoryAcquisitionDelaySec() {
-    return getStringFromExternalEnv(LynxEnvKey.MEMORY_ACQUISITION_DELAY_SEC);
-  }
-
-  public long getMemoryReportIntervalSec() {
-    String value = getStringFromExternalEnv(LynxEnvKey.MEMORY_REPORT_INTERVAL_SEC);
-    // default is 20 min.
-    long delay = 20 * 60;
-    if (value != null && !value.isEmpty()) {
-      try {
-        delay = Long.parseLong(value);
-      } catch (NumberFormatException ignored) {
-      }
-    }
-    return delay;
-  }
-
-  public int getGlobalMemoryReportThresholdMB() {
-    return getIntFromExternalEnv(LynxEnvKey.GLOBAL_MEMORY_REPORT_THRESHOLD_MB, 30);
-  }
-
   public static int getIntFromExternalEnv(LynxEnvKey key, int defaultValue) {
     final String value = getStringFromExternalEnv(key.getDescription());
     if (value != null && !value.isEmpty()) {
