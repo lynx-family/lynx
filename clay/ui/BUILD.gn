@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//build/config/templates/templates.gni")
 import("../../config.gni")
 import("../../oliver/oliver.gni")
 import("../testing/testing.gni")
@@ -40,6 +41,65 @@ config("ui_defines") {
 
     cflags = [ "-Wno-c99-designator" ]
   }
+}
+
+keywords_input = "component/keywords.in"
+keywords_header = "$root_gen_dir/clay/ui/component/keywords.h"
+keywords_source = "$root_gen_dir/clay/ui/component/keywords.cc"
+keywords_template_script = "../tools/keywords_codegen/template_variables.py"
+keywords_header_template = "../tools/keywords_codegen/keywords.h.template"
+keywords_codegen_script = "../tools/keywords_codegen/run.py"
+keywords_codegen_source = "../tools/keywords_codegen/main.cc"
+
+exec_script(keywords_template_script,
+            [
+              rebase_path(keywords_input, root_build_dir),
+              rebase_path(keywords_header_template, root_build_dir),
+              rebase_path(keywords_header, root_build_dir),
+            ],
+            "",
+            [
+              keywords_input,
+              keywords_header_template,
+              keywords_template_script,
+            ])
+
+exec_script(keywords_codegen_script,
+            [
+              rebase_path("$root_build_dir/clay_keywords_codegen_host",
+                          root_build_dir),
+              rebase_path(keywords_codegen_source, root_build_dir),
+              rebase_path(keywords_input, root_build_dir),
+              rebase_path(keywords_source, root_build_dir),
+            ],
+            "",
+            [
+              keywords_codegen_script,
+              keywords_codegen_source,
+              keywords_input,
+            ])
+
+action("generate_keywords") {
+  script = "../tools/keywords_codegen/verify_outputs.py"
+  inputs = [
+    keywords_input,
+    keywords_header_template,
+    keywords_codegen_script,
+    keywords_codegen_source,
+  ]
+  outputs = [
+    keywords_header,
+    keywords_source,
+  ]
+  args = rebase_path(outputs, root_build_dir)
+}
+
+source_set("keywords") {
+  sources = [
+    "$root_gen_dir/clay/ui/component/keywords.cc",
+    "$root_gen_dir/clay/ui/component/keywords.h",
+  ]
+  deps = [ ":generate_keywords" ]
 }
 
 source_set("ui") {
@@ -104,6 +164,7 @@ source_set("ui") {
   }
 
   public_deps = [
+    ":keywords",
     "../fml:fml",
     "../net:net",
     "../third_party/txt",
