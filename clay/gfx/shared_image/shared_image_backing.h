@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 
@@ -119,6 +120,12 @@ class SharedImageBacking
   void SetFenceSync(std::unique_ptr<FenceSync> fence_sync);
   std::unique_ptr<FenceSync> GetFenceSync();
 
+  // Damage between this frame and the last frame consumed from the same sink.
+  // A null value means the damage is unknown and the consumer must redraw the
+  // full destination clip. An empty rect means that no pixels changed.
+  void SetFrameDamage(std::optional<skity::Rect> frame_damage);
+  std::optional<skity::Rect> GetFrameDamage() const;
+
   static fml::RefPtr<SharedImageBacking> Create(
       BackingType backing_type, PixelFormat pixel_format, skity::Vec2 size,
       std::optional<GraphicsMemoryHandle> gfx_handle);
@@ -134,6 +141,8 @@ class SharedImageBacking
   skity::Vec2 size_;
   skity::Matrix transformation_;
   std::unique_ptr<FenceSync> fence_sync_;
+  mutable std::mutex frame_damage_mutex_;
+  std::optional<skity::Rect> frame_damage_;
 };
 
 class SharedImageBackingUnmanaged : public SharedImageBacking {
