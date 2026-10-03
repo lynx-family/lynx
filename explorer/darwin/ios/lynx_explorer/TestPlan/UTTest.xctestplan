@@ -13,7 +13,7 @@
   },
   "testTargets" : [
     {
-      "enabled" : false,
+      "enabled" : true,
       "target" : {
         "containerPath" : "container:LynxExplorer.xcodeproj",
         "identifier" : "2B736B882D096F8A000A35F6",
