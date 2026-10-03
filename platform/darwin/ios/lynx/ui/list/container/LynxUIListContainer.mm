@@ -33,7 +33,6 @@ static const NSInteger kDefaultMaxSnapCount = 1;
 @end
 
 @implementation LynxListContainerComponentWrapper
-
 @end
 
 @interface LynxListContainerView : LynxScrollView <LynxListScrollHelperView>
@@ -158,6 +157,79 @@ LYNX_REGISTER_UI("list-container")
   return YES;
 }
 
+- (void)setListItemTransformer:(id<LynxListItemTransformer>)listItemTransformer {
+  // Reject non-null transformers while sticky positioning is enabled.
+  if (self.stickyManager.enabled && listItemTransformer != nil) {
+    [self.context
+        reportLynxError:[LynxError lynxErrorWithCode:ECLynxComponentListInvalidPropsArg
+                                             message:@"Cannot set listItemTransformer while sticky "
+                                                     @"is enabled."
+                                       fixSuggestion:@"Disable sticky before setting "
+                                                     @"listItemTransformer."
+                                               level:LynxErrorLevelWarn]];
+    return;
+  }
+  // Reset the old effects before applying the new transformer. Assigning the same instance does not
+  // refresh its effects; call requestListItemTransform explicitly after changing its parameters.
+  if (_listItemTransformer != listItemTransformer) {
+    [self resetListItemTransforms];
+    _listItemTransformer = listItemTransformer;
+    [self requestListItemTransform];
+  }
+}
+
+- (void)requestListItemTransform {
+  [self transformListItems];
+}
+
+- (void)transformListItems {
+  if (_listItemTransformer) {
+    for (UIView *subview in self.view.subviews) {
+      if ([subview isKindOfClass:LynxListContainerComponentWrapper.class]) {
+        [self transformListItem:subview];
+      }
+    }
+  }
+}
+
+- (void)transformListItem:(UIView *)itemView {
+  if (!_listItemTransformer || ![itemView isKindOfClass:LynxListContainerComponentWrapper.class] ||
+      itemView.superview != self.view) {
+    return;
+  }
+  CGRect itemFrame = itemView.frame;
+  CGFloat mainAxisOffset;
+  if (self.verticalOrientation) {
+    mainAxisOffset = CGRectGetMinY(itemFrame) - self.view.contentOffset.y;
+  } else if (self.isRtl) {
+    CGFloat viewportRight = self.view.contentOffset.x + CGRectGetWidth(self.view.bounds);
+    mainAxisOffset = viewportRight - CGRectGetMaxX(itemFrame);
+  } else {
+    mainAxisOffset = CGRectGetMinX(itemFrame) - self.view.contentOffset.x;
+  }
+  [_listItemTransformer transformItemInListContainer:self.view
+                                            itemView:itemView
+                                          isVertical:self.verticalOrientation
+                                               isRTL:self.isRtl
+                                      mainAxisOffset:mainAxisOffset];
+}
+
+- (void)resetListItemTransforms {
+  if (_listItemTransformer) {
+    for (UIView *subview in self.view.subviews) {
+      if ([subview isKindOfClass:LynxListContainerComponentWrapper.class]) {
+        [_listItemTransformer resetItem:subview];
+      }
+    }
+  }
+}
+
+- (void)resetListItemTransform:(UIView *)itemView {
+  if (_listItemTransformer && itemView) {
+    [_listItemTransformer resetItem:itemView];
+  }
+}
+
 - (void)onNodeReady {
   [super onNodeReady];
 
@@ -188,6 +260,7 @@ LYNX_REGISTER_UI("list-container")
   }
   _shouldBlockScrollByListContainer = NO;
   [self.stickyManager updateStickyItems];
+  [self requestListItemTransform];
 }
 
 - (void)detachedFromWindow {
@@ -224,6 +297,17 @@ LYNX_REGISTER_UI("list-container")
 }
 
 #pragma mark component update
+- (void)onComponentFrameChanged:(LynxUIComponent *)component {
+  LynxListContainerComponentWrapper *wrapper =
+      (LynxListContainerComponentWrapper *)component.view.superview;
+  if ([wrapper isKindOfClass:LynxListContainerComponentWrapper.class] && _listItemTransformer) {
+    // Apply the component frame to its wrapper before calculating the transformer's item offset.
+    [self.itemHelper updateLayoutForComponent:component inWrapper:wrapper];
+    wrapper.layer.zPosition = component.zIndex;
+    [self transformListItem:wrapper];
+  }
+}
+
 - (void)onComponentLayoutUpdated:(LynxUIComponent *)component {
   LynxListContainerComponentWrapper *wrapper =
       (LynxListContainerComponentWrapper *)component.view.superview;
@@ -268,12 +352,19 @@ LYNX_REGISTER_UI("list-container")
     [self.delegate insertListComponent:component wrapper:wrapper];
   }
   [self.stickyManager didAttachComponent:component];
+  [self transformListItem:component.view.superview];
 }
 
 - (void)removeListComponent:(LynxUIComponent *)component {
+  UIView *wrapper = component.view.superview;
+  BOOL isAttachedWrapper = [wrapper isKindOfClass:LynxListContainerComponentWrapper.class] &&
+                           wrapper.superview == self.view;
+  if (isAttachedWrapper) {
+    [self resetListItemTransform:wrapper];
+  }
   [self.stickyManager willDetachComponent:component];
-  if (component.view.superview.superview == self.view) {
-    [component.view.superview removeFromSuperview];
+  if (isAttachedWrapper) {
+    [wrapper removeFromSuperview];
     [component.view removeFromSuperview];
     [self.delegate removeListComponent:component];
   }
@@ -367,7 +458,20 @@ LYNX_PROP_SETTER("ios-scrolls-to-top", iosScrollsToTop, BOOL) {
 }
 
 // Sticky for horizontal layout is not supported.
-LYNX_PROP_SETTER("sticky", setEnableSticky, BOOL) { self.stickyManager.enabled = value; }
+LYNX_PROP_SETTER("sticky", setEnableSticky, BOOL) {
+  // Clear the transformer when enabling sticky positioning.
+  if (value && _listItemTransformer) {
+    [self.context
+        reportLynxError:[LynxError lynxErrorWithCode:ECLynxComponentListInvalidPropsArg
+                                             message:@"Cannot set listItemTransformer while sticky "
+                                                     @"is enabled."
+                                       fixSuggestion:@"Disable sticky before setting "
+                                                     @"listItemTransformer."
+                                               level:LynxErrorLevelWarn]];
+    self.listItemTransformer = nil;
+  }
+  self.stickyManager.enabled = value;
+}
 
 LYNX_PROP_SETTER("sticky-offset", setStickyOffset, CGFloat) { self.stickyManager.offset = value; }
 
@@ -687,6 +791,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
   if (scrollView == self.view &&
       ![self.view respondToScrollViewDidScroll:self.view.gestureConsumer]) {
+    [self requestListItemTransform];
     return;
   }
   [self updateLayerMaskOnFrameChanged];
@@ -721,6 +826,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 
     [self.stickyManager updateStickyItems];
   }
+  [self requestListItemTransform];
 }
 
 - (void)updatePreviousContentOffset {

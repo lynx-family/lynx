@@ -369,6 +369,9 @@ LYNX_UI_METHOD(scrollToPosition) {
 }
 
 #pragma mark component render callback
+- (void)onComponentFrameChanged:(LynxUIComponent *)component {
+}
+
 - (void)onComponentLayoutUpdated:(LynxUIComponent *)component {
   [(LynxListViewLight *)self.view onComponentLayoutUpdated:component];
 }

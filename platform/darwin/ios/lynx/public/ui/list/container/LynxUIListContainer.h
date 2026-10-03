@@ -9,6 +9,34 @@
 
 typedef void (^RestoreNativeStateBlock)(void);
 
+/** Applies parent-owned visual transformations to attached list-item wrappers. */
+@protocol LynxListItemTransformer <NSObject>
+
+/**
+ * Applies a visual transformation to one attached list item.
+ *
+ * @param listContainerView The scroll view presenting the item.
+ * @param itemView The attached list-item wrapper to transform.
+ * @param isVertical Whether the list's main scroll axis is vertical.
+ * @param isRTL Whether the list uses right-to-left layout. The vertical main axis is unchanged.
+ * @param mainAxisOffset The signed distance from the viewport's logical start to the item's
+ *                       logical start, in points. Uses top edges for vertical lists, left edges
+ *                       for horizontal LTR lists, and right edges for horizontal RTL lists.
+ *                       Positive values follow the layout direction. Horizontal translations
+ *                       calculated along this logical axis must be negated for RTL before
+ *                       applying them to the view's physical X axis.
+ */
+- (void)transformItemInListContainer:(UIScrollView *_Nonnull)listContainerView
+                            itemView:(UIView *_Nonnull)itemView
+                          isVertical:(BOOL)isVertical
+                               isRTL:(BOOL)isRTL
+                      mainAxisOffset:(CGFloat)mainAxisOffset;
+
+/** Clears visual properties previously written by this transformer. */
+- (void)resetItem:(UIView *_Nonnull)itemView;
+
+@end
+
 @interface LynxListContainerComponentWrapper : UIView
 @property(nonatomic, weak, nullable) LynxUIComponent *holdingUI;
 @end
@@ -39,10 +67,14 @@ typedef void (^RestoreNativeStateBlock)(void);
     NSMutableArray<RestoreNativeStateBlock> *restoreNativeStateBlockArray;
 
 @property(nonatomic, weak, nullable) id<LynxUIListContainerDelegate> delegate;
+/** Replacing this property resets the old transformer before applying the new one. */
+@property(nonatomic, strong, nullable) id<LynxListItemTransformer> listItemTransformer;
 
 - (void)updateScrollInfoWithEstimatedOffset:(CGFloat)estimatedOffset
                                      smooth:(BOOL)smooth
                                   scrolling:(BOOL)scrolling;
+/** Reapplies the current transformer without requiring the list to scroll. */
+- (void)requestListItemTransform;
 - (void)insertListComponent:(LynxUIComponent *_Nonnull)component;
 - (void)removeListComponent:(LynxUIComponent *_Nonnull)component;
 - (void)detachedFromWindow;
