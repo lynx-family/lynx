@@ -42,17 +42,6 @@
 namespace lynx {
 namespace devtool {
 
-#define HANDLE_WHITE_BOARD_METHOD(method, cur_func_name)                     \
-  do {                                                                       \
-    CHECK_NULL_AND_LOG_RETURN(white_board_inspector_delegate_,               \
-                              "InspectorTasmExecutor::" #cur_func_name       \
-                              ", white_board_inspector_delegate_ is null");  \
-    std::string response = white_board_inspector_delegate_->method(message); \
-    if (!response.empty()) {                                                 \
-      sender->SendMessage("CDP", response);                                  \
-    }                                                                        \
-  } while (0)
-
 namespace {
 
 Json::Value GetGlobalProps(tasm::TemplateAssembler* tasm) {
@@ -2010,41 +1999,48 @@ void InspectorTasmExecutor::GlobalPropsChanged() {
   devtool_mediator->SendCDPEvent(event);
 }
 
+#define HANDLE_WHITE_BOARD_METHOD(method, cur_func_name)                 \
+  do {                                                                   \
+    if (white_board_inspector_delegate_ == nullptr) {                    \
+      responder->SendError(CDPErrorCode::ServerError,                    \
+                           "InspectorTasmExecutor::" #cur_func_name      \
+                           ", white_board_inspector_delegate_ is null"); \
+      return;                                                            \
+    }                                                                    \
+    white_board_inspector_delegate_->method(responder, params);          \
+  } while (0)
+
 void InspectorTasmExecutor::WhiteBoardEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(Enable, WhiteBoardEnable);
 }
 
 void InspectorTasmExecutor::WhiteBoardDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(Disable, WhiteBoardDisable);
 }
 
 void InspectorTasmExecutor::WhiteBoardSetSharedData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(SetSharedData, WhiteBoardSetSharedData);
 }
 
 void InspectorTasmExecutor::WhiteBoardGetSharedData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(GetSharedData, WhiteBoardGetSharedData);
 }
 
 void InspectorTasmExecutor::WhiteBoardRemoveSharedData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(RemoveSharedData, WhiteBoardRemoveSharedData);
 }
 
 void InspectorTasmExecutor::WhiteBoardClear(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   HANDLE_WHITE_BOARD_METHOD(Clear, WhiteBoardClear);
 }
+
+#undef HANDLE_WHITE_BOARD_METHOD
 
 void InspectorTasmExecutor::DOMEnableDomTree(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
@@ -2894,32 +2890,30 @@ void InspectorTasmExecutor::LynxGetComponentId(
   sender->SendMessage("CDP", response);
 }
 
+// start template protocol
 void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   Json::Value result(Json::ValueType::objectValue);
   if (tasm_) {
     lynx::lepus::Value default_processor_value = tasm_->GetDefaultProcessor();
     result["useDefault"] = default_processor_value.IsClosure();
-    std::unordered_map<std::string, lynx::lepus::Value> processor_map =
-        tasm_->GetProcessorMap();
+    const auto& processor_map = tasm_->GetProcessorMap();
     if (!processor_map.empty()) {
       Json::Value keys(Json::ValueType::arrayValue);
-      for (auto& element : processor_map) {
+      for (const auto& element : processor_map) {
         keys.append(element.first);
       }
-      result["processMapKeys"] = keys;
+      result["processMapKeys"] = std::move(keys);
     }
   } else {
     result["useDefault"] = false;
   }
-
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
+// end template protocol
+
+// start layer tree protocol
 void InspectorTasmExecutor::LayerTreeEnable(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   responder->SendSuccess();
@@ -3036,6 +3030,8 @@ void InspectorTasmExecutor::CompositingReasons(
   result["compositingReasonsIds"] = compositingReasonsIds;
   responder->SendSuccess(std::move(result));
 }
+
+// end layer tree protocol
 
 Json::Value InspectorTasmExecutor::GetLayerContentFromElement(
     lynx::tasm::Element* element) {
