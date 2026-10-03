@@ -31,15 +31,14 @@ static constexpr uint64_t kBytesPerKB = 1024;
 
 // static
 jlong CreateTraceController(JNIEnv* env, jobject jcaller) {
-  static bool should_init_delegate = true;
-  if (should_init_delegate) {
+  auto* controller = lynx::trace::GetTraceControllerInstance();
+  if (!controller->GetDelegate()) {
     auto delegate =
         std::make_unique<lynx::trace::TraceControllerDelegateAndroid>(env,
                                                                       jcaller);
-    lynx::trace::TraceController::Instance()->SetDelegate(std::move(delegate));
-    should_init_delegate = false;
+    controller->SetDelegate(std::move(delegate));
   }
-  return reinterpret_cast<jlong>(lynx::trace::TraceController::Instance());
+  return reinterpret_cast<jlong>(controller);
 }
 
 // static
@@ -85,6 +84,12 @@ void StartStartupTracingIfNeeded(JNIEnv* env, jobject jcaller, jlong ptr) {
 
 namespace lynx {
 namespace trace {
+
+TraceController* GetTraceControllerInstance() {
+  // Android needs the Java owner passed to CreateTraceController to construct
+  // its delegate. Normal callers reach this after LynxEnv initializes tracing.
+  return TraceController::Instance();
+}
 
 std::string TraceControllerDelegateAndroid::GenerateTracingFileDir() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();

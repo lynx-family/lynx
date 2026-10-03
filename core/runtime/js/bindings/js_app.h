@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/log/logging.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/public/page_options.h"
@@ -67,7 +68,7 @@ class AppProxy : public HostObject {
   base::UnsafeWeakPtr<App> native_app_;
 };
 
-class App {
+class App : public fml::EnableWeakFromThis<App> {
  public:
   static base::UnsafeOwningPtr<App> Create(
       int64_t rt_id, base::UnsafeWeakPtr<Runtime> rt,
@@ -190,6 +191,7 @@ class App {
   Value SetTimeout(Function func, int time);
   Value SetInterval(Function func, int time);
   void ClearTimeout(double task);
+  void GetMemoryUsage(ApiCallBack callback);
   Value NativeModuleProxy();
 
   void RunOnJSThreadWhenIdle(base::closure closure);

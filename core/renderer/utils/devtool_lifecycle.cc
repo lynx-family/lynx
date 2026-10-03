@@ -5,6 +5,8 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 
 #include "base/include/log/logging.h"
+#include "base/include/notification_center.h"
+#include "base/trace/native/trace_defines.h"
 
 namespace lynx {
 namespace tasm {
@@ -124,6 +126,8 @@ void DevToolLifecycle::OnConnected() {
     }
   }
   if (changed) {
+    base::NotificationCallback::Notify(LYNX_ON_DEVTOOL_CONNECTED_NOTIFICATION,
+                                       0);
     if (auto delegate = delegate_.load()) {
       delegate->SyncStateToPlatform(DevToolState::CONNECTED);
     }
