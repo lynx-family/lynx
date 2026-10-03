@@ -10,6 +10,30 @@ import org.gradle.api.GradleException
 class LynxLibraryScanner {
     private static final String ADDON_NAME_PATTERN = '[A-Za-z0-9_.-]+'
 
+    static final String SOURCE_NODE_MODULES = 'node_modules'
+    static final String SOURCE_LOCAL_PROJECT = 'local_project'
+    static final String SOURCE_AAR = 'aar'
+    static final List<String> KNOWN_SOURCES =
+        [SOURCE_NODE_MODULES, SOURCE_LOCAL_PROJECT, SOURCE_AAR].asImmutable()
+    static final String SOURCES_PROPERTY = 'lynx.autolink.sources'
+
+    // Resolve which sources are enabled. A missing/blank property enables all
+    // known sources; otherwise only the comma-separated subset is enabled.
+    static List<String> enabledSources(Object propertyValue) {
+        String raw = propertyValue?.toString()?.trim()
+        if (raw == null || raw.isEmpty()) {
+            return new ArrayList<>(KNOWN_SOURCES)
+        }
+        List<String> requested = raw.split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+        List<String> unknown = requested - KNOWN_SOURCES
+        if (!unknown.isEmpty()) {
+            throw new GradleException(
+                "Unknown ${SOURCES_PROPERTY} value(s): ${unknown.join(', ')}; " +
+                "known sources: ${KNOWN_SOURCES.join(', ')}")
+        }
+        requested.unique()
+    }
+
     static List<LynxLibraryInfo> scan(File startDir) {
         Set<File> nodeModulesDirs = findNodeModulesDirs(startDir)
         List<LynxLibraryInfo> result = []
@@ -147,6 +171,48 @@ class LynxLibraryScanner {
         providerClassName.trim()
     }
 
+    // Build a LynxLibraryInfo for a host-included local project. Unlike
+    // node_modules, the project dir itself is the Android library (it already
+    // has a build.gradle Gradle could include), so `sourceDir` is not used and
+    // the dependency stays host-owned (source = SOURCE_LOCAL_PROJECT).
+    // NOTE: the JSON-parse + platforms.android validation below is similar across
+    // parseManifest / scanLocalProject / parseAarManifest, but each flow diverges
+    // on error handling (source flows throw; aar skip+warns) and on which fields
+    // it fills. Kept inline on purpose: the shared part is only a few lines of
+    // boilerplate, and a shared helper would need an error-strategy callback that
+    // hurts readability more than the duplication does.
+    static LynxLibraryInfo scanLocalProject(File projectDir, String projectPath) {
+        File manifest = new File(projectDir, 'lynx.lib.json')
+        if (!manifest.isFile()) {
+            return null
+        }
+        Object json
+        try {
+            json = new JsonSlurper().parse(manifest)
+        } catch (Exception e) {
+            throw new GradleException("Failed to parse ${manifest}: ${e.message}", e)
+        }
+
+        Object android = json?.platforms?.android
+        if (android == null) {
+            return null
+        }
+        if (!(android instanceof Map)) {
+            throw new GradleException("Invalid android platform entry in ${manifest}")
+        }
+        String packageName = android.packageName
+        if (packageName == null || packageName.trim().isEmpty()) {
+            throw new GradleException("Missing platforms.android.packageName in ${manifest}")
+        }
+
+        List<LynxNodeApiAddonInfo> nodeApiAddons = parseNodeApiAddons(
+            android.nodeApiAddons, projectDir, manifest)
+        String providerClassName = parseProviderClassName(
+            android, packageName.trim(), manifest)
+        new LynxLibraryInfo(projectPath, projectDir, manifest, packageName.trim(), null,
+            projectDir, projectPath, providerClassName, nodeApiAddons, SOURCE_LOCAL_PROJECT)
+    }
+
     private static List<LynxNodeApiAddonInfo> parseNodeApiAddons(
         Object addons, File packageDir, File manifest) {
         if (addons == null) {
@@ -187,6 +253,86 @@ class LynxLibraryScanner {
             result << new LynxNodeApiAddonInfo(name, libraryName, jniLibsDir, required)
         }
         result
+    }
+
+    // Parse a lynx.lib.json read from an AAR's top-level META-INF/lynx/. Unlike
+    // source flows, an AAR is a resolved, pre-built dependency: there is no
+    // package dir to validate against and no source to include, so this path is
+    // skip+warn (returns null) instead of throwing, because a consumer's
+    // dependency graph contains many unrelated AARs that must not break the build.
+    // `identifier` is the resolved component id (group:name:version) for diagnostics.
+    static LynxLibraryInfo parseAarManifest(String jsonText, String identifier) {
+        Object json
+        try {
+            json = new JsonSlurper().parseText(jsonText)
+        } catch (Exception e) {
+            warn("skipped '${identifier}': failed to parse lynx.lib.json: ${e.message}")
+            return null
+        }
+        Object android = json?.platforms?.android
+        if (android == null) {
+            // The AAR ships a manifest but declares no android platform: not an
+            // Android autolink library, skip silently (not an error).
+            return null
+        }
+        if (!(android instanceof Map)) {
+            warn("skipped '${identifier}': platforms.android is not an object")
+            return null
+        }
+        String packageName = android.packageName
+        if (packageName == null || packageName.trim().isEmpty()) {
+            warn("skipped '${identifier}': missing platforms.android.packageName")
+            return null
+        }
+        String providerClassName
+        List<LynxNodeApiAddonInfo> nodeApiAddons
+        try {
+            // Reuse the source-flow provider resolution (default from packageName,
+            // overridable, or explicit null). It may throw on an invalid value; the
+            // aar flow turns that into skip+warn below to keep the consumer build alive.
+            providerClassName = parseProviderClassName(android, packageName.trim(), null)
+            nodeApiAddons = parseAarNodeApiAddons(android.nodeApiAddons, identifier)
+        } catch (Exception e) {
+            warn("skipped '${identifier}': ${e.message}")
+            return null
+        }
+        // AAR libraries have no package dir / source dir / project path; the .so
+        // is already inside the AAR, so addons carry no jniLibsDir.
+        new LynxLibraryInfo(identifier, null, null, packageName.trim(), null,
+            null, null, providerClassName, nodeApiAddons, SOURCE_AAR)
+    }
+
+    // Parse nodeApiAddons for an AAR. The .so is already packaged in the AAR, so
+    // jniLibsDir stays null (only System.loadLibrary is emitted, no copy).
+    private static List<LynxNodeApiAddonInfo> parseAarNodeApiAddons(
+        Object addons, String identifier) {
+        if (addons == null) {
+            return []
+        }
+        if (!(addons instanceof List)) {
+            throw new IllegalArgumentException("nodeApiAddons must be an array")
+        }
+        List<LynxNodeApiAddonInfo> result = []
+        addons.eachWithIndex { Object addon, int index ->
+            if (!(addon instanceof Map)) {
+                throw new IllegalArgumentException("nodeApiAddons[${index}] must be an object")
+            }
+            String name = addon.name?.trim()
+            if (name == null || name.isEmpty() || !(name ==~ ADDON_NAME_PATTERN)) {
+                throw new IllegalArgumentException("invalid nodeApiAddons[${index}].name")
+            }
+            String libraryName = (addon.libraryName ?: name)?.trim()
+            if (libraryName == null || libraryName.isEmpty() || !(libraryName ==~ ADDON_NAME_PATTERN)) {
+                throw new IllegalArgumentException("invalid nodeApiAddons[${index}].libraryName")
+            }
+            boolean required = addon.containsKey('required') ? addon.required as boolean : true
+            result << new LynxNodeApiAddonInfo(name, libraryName, null, required)
+        }
+        result
+    }
+
+    private static void warn(String message) {
+        System.err.println("[LynxLibrary] ${message}")
     }
 
     private static void validateAddonName(String name, String fieldName, File manifest) {
