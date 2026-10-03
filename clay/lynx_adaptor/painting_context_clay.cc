@@ -311,22 +311,19 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
   auto task = [view_context = view_context_, tag, x, y, width, height,
                paddings_copy, margins_copy, sticky_copy, has_sticky,
                display_none]() {
-    // Set margins, bounds, paddings.
-    // Margins should be earlier then bounds because of it may be used during
-    // bounds setting.
-    view_context->SetMargins(tag, margins_copy[0], margins_copy[1],
-                             margins_copy[2], margins_copy[3]);
-    view_context->SetBounds(
-        tag, MaybeRoundLayoutMetric(x), MaybeRoundLayoutMetric(y),
-        MaybeRoundLayoutMetric(width), MaybeRoundLayoutMetric(height));
-    view_context->SetPaddings(tag, MaybeRoundLayoutMetric(paddings_copy[0]),
-                              MaybeRoundLayoutMetric(paddings_copy[1]),
-                              MaybeRoundLayoutMetric(paddings_copy[2]),
-                              MaybeRoundLayoutMetric(paddings_copy[3]));
+    const std::array<float, 4> bounds = {
+        MaybeRoundLayoutMetric(x), MaybeRoundLayoutMetric(y),
+        MaybeRoundLayoutMetric(width), MaybeRoundLayoutMetric(height)};
+    const std::array<float, 4> rounded_paddings = {
+        MaybeRoundLayoutMetric(paddings_copy[0]),
+        MaybeRoundLayoutMetric(paddings_copy[1]),
+        MaybeRoundLayoutMetric(paddings_copy[2]),
+        MaybeRoundLayoutMetric(paddings_copy[3])};
+    view_context->UpdateLayout(tag, margins_copy, bounds, rounded_paddings,
+                               has_sticky ? sticky_copy.data() : nullptr);
     if (auto* view = view_context->FindViewByViewId(tag)) {
       view->SetDisplayNone(display_none);
     }
-    view_context->UpdateSticky(tag, has_sticky ? sticky_copy.data() : nullptr);
   };
   if (ui_operation_queue_ref_) {
     Enqueue(std::move(task));
