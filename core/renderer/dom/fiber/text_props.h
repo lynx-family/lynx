@@ -38,6 +38,9 @@ enum TextPropertyKeyID {
   kTextPropTextDecorationThickness = 20,
   kTextPropTextDecorationWidth = 21,
   kTextPropTextDecorationGap = 22,
+  // Text layout service payload: a borrowed text::TextGradient.
+  // The receiving builder must copy it before SetTextStyle returns.
+  kTextPropTextGradient = 23,
 
   // attributes
   kTextPropTextMaxLine = 99,

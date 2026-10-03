@@ -43,6 +43,17 @@ class InlineView {
   virtual void HideView() = 0;
 };
 
+// Owned, engine-independent data passed across the text layout service
+// boundary. Stop positions are percentages, matching CSS gradient data.
+struct TextGradient {
+  starlight::BackgroundImageType type{starlight::BackgroundImageType::kNone};
+  // Linear: angle, side/corner. Radial: 14-slot resolved shape data.
+  // Conic: angle, center-x, x-unit, center-y, y-unit.
+  std::vector<float> geometry;
+  std::vector<uint32_t> colors;
+  std::vector<float> stops;
+};
+
 struct Radius {
   float top_left;
   int top_left_type;  // 0:number, 1:percentage
