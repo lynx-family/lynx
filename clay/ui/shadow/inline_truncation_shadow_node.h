@@ -6,6 +6,7 @@
 #define CLAY_UI_SHADOW_INLINE_TRUNCATION_SHADOW_NODE_H_
 
 #include <string>
+#include <utility>
 
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_size.h"
@@ -29,9 +30,18 @@ class InlineTruncationShadowNode : public BaseTextShadowNode {
   void SetNeedMount(bool need_mount) { need_mount_ = need_mount; }
   bool IfNeedMount() const { return need_mount_; }
 
+  void SetEllipsis(std::u16string ellipsis) { ellipsis_ = std::move(ellipsis); }
+  size_t StartGlyph() const { return start_glyph_; }
+  size_t EndGlyph() const { return end_glyph_; }
+
   bool IsVirtual() override { return true; }
 
  private:
+  void LayoutTruncation(LayoutContext* context);
+
+  std::u16string ellipsis_;
+  size_t start_glyph_ = 0;
+  size_t end_glyph_ = 0;
   bool need_layout_ = false;
   bool need_mount_ = false;
 };
