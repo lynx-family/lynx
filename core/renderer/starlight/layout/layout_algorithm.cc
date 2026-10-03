@@ -44,8 +44,6 @@ void LayoutAlgorithm::Initialize(const Constraints& constraints,
 
 void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
   bool need_order = false;
-  const auto container_display = container_->GetCSSStyle()->GetDisplay(
-      container_->GetLayoutConfigs(), container_->attr_map());
   if (container_->GetEnableFixedNew()) {
     InitializeFixedNode(fixed_node_set);
   }
@@ -57,39 +55,10 @@ void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
   }
   for (Node* node = container_->FirstChild(); node != nullptr;
        node = node->Next()) {
-    LayoutObject* child = static_cast<LayoutObject*>(node);
-    const LayoutComputedStyle* child_style = child->GetCSSStyle();
-    if (child->IsNewFixed()) {
-      continue;
-    }
-
-    if (child_style->GetDisplay(container_->GetLayoutConfigs(),
-                                container_->attr_map()) == DisplayType::kNone) {
-      child->LayoutDisplayNone();
-      continue;
-    }
-
-    Constraints containing_block = container_constraints_;
-    if (child->IsFixedOrAbsolute() &&
-        !container_->GetLayoutConfigs().IsAbsoluteAndFixedBoxInfoQuirksMode()) {
-      containing_block = position_utils::GetContainingBlockForAbsoluteAndFixed(
-          container_, container_constraints_);
-    }
-    child->GetBoxInfo()->InitializeBoxInfo(containing_block, *child,
-                                           child->GetLayoutConfigs());
-    if (!(container_->GetLayoutConfigs().IsFullQuirksMode() &&
-          container_display != DisplayType::kFlex) &&
-        child->IsFixedOrAbsolute()) {
-      absolute_or_fixed_items_.push_back(child);
-      continue;
-    } else if (child_style->GetPosition() == PositionType::kSticky) {
-      sticky_items.push_back(child);
-    }
-
-    inflow_items_.push_back(child);
-
-    if (child_style->GetOrder()) need_order = true;
+    LayoutObject* const child = static_cast<LayoutObject*>(node);
+    CollectLayoutableChildren(child, need_order);
   }
+
   if (need_order) {
     std::stable_sort(inflow_items_.begin(), inflow_items_.end(),
                      [](LayoutObject* obj1, LayoutObject* obj2) -> bool {
@@ -124,8 +93,64 @@ void LayoutAlgorithm::InitializeFixedNode(const SLNodeSet* fixed_node_set) {
         item->GetBoxInfo()->InitializeBoxInfo(containing_block, *item,
                                               item->GetLayoutConfigs());
         absolute_or_fixed_items_.push_back(item);
+        item->SetContainingBlockEstablisher(container_);
       }
     }
+  }
+}
+
+void LayoutAlgorithm::HandleDisplayContents(LayoutObject* const item,
+                                            bool& need_order) {
+  item->HideLayoutObject();
+  item->SetContainingBlockEstablisher(nullptr);
+  for (int i = 0; i < item->GetChildCount(); ++i) {
+    LayoutObject* child = static_cast<LayoutObject*>(item->Find(i));
+    CollectLayoutableChildren(child, need_order);
+  }
+}
+
+void LayoutAlgorithm::CollectLayoutableChildren(LayoutObject* const item,
+                                                bool& need_order) {
+  if (item->IsNewFixed()) {
+    return;
+  }
+  const DisplayType display_type = item->GetCSSStyle()->GetDisplay(
+      item->GetLayoutConfigs(), item->attr_map());
+  if (display_type == DisplayType::kNone) {
+    item->LayoutDisplayNone();
+    return;
+  } else if (display_type == DisplayType::kContents) {
+    HandleDisplayContents(item, need_order);
+    return;
+  }
+
+  Constraints containing_block = container_constraints_;
+  if (item->IsFixedOrAbsolute() &&
+      !container_->GetLayoutConfigs().IsAbsoluteAndFixedBoxInfoQuirksMode()) {
+    containing_block = position_utils::GetContainingBlockForAbsoluteAndFixed(
+        container_, container_constraints_);
+  }
+
+  item->GetBoxInfo()->InitializeBoxInfo(containing_block, *item,
+                                        item->GetLayoutConfigs());
+
+  if (!(container_->GetLayoutConfigs().IsFullQuirksMode() &&
+        container_->GetCSSStyle()->GetDisplay(container_->GetLayoutConfigs(),
+                                              container_->attr_map()) !=
+            DisplayType::kFlex) &&
+      item->IsFixedOrAbsolute()) {
+    absolute_or_fixed_items_.push_back(item);
+    item->SetContainingBlockEstablisher(container_);
+    return;
+  } else if (item->GetCSSStyle()->GetPosition() == PositionType::kSticky) {
+    sticky_items.push_back(item);
+  }
+
+  inflow_items_.push_back(item);
+  item->SetContainingBlockEstablisher(container_);
+
+  if (item->GetCSSStyle()->GetOrder()) {
+    need_order = true;
   }
 }
 

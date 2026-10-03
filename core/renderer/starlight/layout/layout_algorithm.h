@@ -34,6 +34,9 @@ class LayoutAlgorithm : public DirectionSelector {
 
   void Initialize(const Constraints& constraints,
                   const SLNodeSet* fixed_node_set = nullptr);
+  void HandleDisplayContents(LayoutObject* const item, bool& need_order);
+  void CollectLayoutableChildren(LayoutObject* const item, bool& need_order);
+
   FloatSize SizeDetermination();
   void Alignment();
 
@@ -45,6 +48,8 @@ class LayoutAlgorithm : public DirectionSelector {
                                      const LayoutUnit& percent_base);
 
   const NLength& GapStyle(Dimension dimension) const;
+
+  LayoutItems& GetInflowItems() { return inflow_items_; }
 
  protected:
   virtual void Reset(){};
