@@ -265,6 +265,11 @@ public class BackgroundDrawable extends LayerDrawable<BackgroundLayerManager> {
     return new BackgroundLayerManager(mContext, this, mCurFontSize);
   }
 
+  /** Returns the decoded memory usage of all background image layers in bytes. */
+  public long getMemoryUsageBytes() {
+    return mLayerManager == null ? 0 : mLayerManager.getMemoryUsageBytes();
+  }
+
   @Override
   public void draw(Canvas canvas) {
     boolean needUpdateContentBox = mPaddingWidthChanged || mBorderWidthChanged;

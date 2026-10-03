@@ -57,7 +57,7 @@ public class FlattenUIImage extends LynxFlattenUI {
     if (mLynxImageManager == null) {
       return size;
     }
-    return mLynxImageManager.getBitmapMemorySizeBytes() + size;
+    return addMemoryUsageBytes(size, mLynxImageManager.getBitmapMemorySizeBytes());
   }
 
   @Override

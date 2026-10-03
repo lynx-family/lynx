@@ -207,6 +207,21 @@ UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
   }
 }
 
+int64_t UIBase::GetMemoryUsageBytes() const {
+  return AddMemoryUsageBytes(static_cast<int64_t>(sizeof(UIBase)),
+                             GetBackgroundImageMemoryUsageBytes());
+}
+
+int64_t UIBase::AddMemoryUsageBytes(int64_t current_size, int64_t extra_size) {
+  return extra_size > std::numeric_limits<int64_t>::max() - current_size
+             ? std::numeric_limits<int64_t>::max()
+             : current_size + extra_size;
+}
+
+int64_t UIBase::GetBackgroundImageMemoryUsageBytes() const {
+  return background_drawable_ ? background_drawable_->GetMemoryUsageBytes() : 0;
+}
+
 int64_t UIBase::EstimateRasterMemoryUsageBytes(float width, float height) {
   // RGBA8888 stores four 8-bit channels for each pixel.
   static constexpr int64_t kRgba8888BytesPerPixel = 4;

@@ -320,6 +320,21 @@ public abstract class LayerManager implements Drawable.Callback {
     return !mImageLayerDrawableList.isEmpty();
   }
 
+  /** Returns the decoded memory usage of all background image layers in bytes. */
+  public long getMemoryUsageBytes() {
+    long size = 0;
+    for (BackgroundLayerDrawable layer : mImageLayerDrawableList) {
+      if (layer != null) {
+        long layerSize = layer.getMemoryUsageBytes();
+        if (layerSize > Long.MAX_VALUE - size) {
+          return Long.MAX_VALUE;
+        }
+        size += layerSize;
+      }
+    }
+    return size;
+  }
+
   public void setBitmapConfig(@Nullable Bitmap.Config config) {
     mBitmapConfig = config;
     if (mImageLayerDrawableList == null) {

@@ -52,4 +52,8 @@ public abstract class BackgroundLayerDrawable extends Drawable {
   public void setLynxUI(LynxBaseUI ui) {}
 
   public void onLynxUIPropsUpdated() {}
+
+  protected long getMemoryUsageBytes() {
+    return 0;
+  }
 }

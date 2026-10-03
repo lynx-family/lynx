@@ -10,6 +10,7 @@
 #include <native_drawing/drawing_sampling_options.h>
 
 #include <algorithm>
+#include <limits>
 
 #include "core/renderer/utils/lynx_env.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
@@ -82,6 +83,20 @@ void BackgroundImageLayer::OnUpdateBounds() {
 float BackgroundImageLayer::GetWidth() { return image_width_; }
 
 float BackgroundImageLayer::GetHeight() { return image_height_; }
+
+int64_t BackgroundImageLayer::GetMemoryUsageBytes() const {
+  static constexpr uint64_t kRgba8888BytesPerPixel = 4;
+  if (image_width_ == 0 || image_height_ == 0 ||
+      image_width_ >
+          static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) /
+              kRgba8888BytesPerPixel / image_height_) {
+    return image_width_ == 0 || image_height_ == 0
+               ? 0
+               : std::numeric_limits<int64_t>::max();
+  }
+  return static_cast<int64_t>(static_cast<uint64_t>(image_width_) *
+                              image_height_ * kRgba8888BytesPerPixel);
+}
 
 BackgroundImageLayer::~BackgroundImageLayer() {
   DestroyDrawStruct();

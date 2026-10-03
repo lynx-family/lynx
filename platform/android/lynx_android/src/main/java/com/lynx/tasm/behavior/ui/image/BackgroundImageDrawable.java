@@ -100,6 +100,11 @@ public class BackgroundImageDrawable extends BackgroundLayerDrawable {
   }
 
   @Override
+  protected long getMemoryUsageBytes() {
+    return mLynxImageManager.getBitmapMemorySizeBytes();
+  }
+
+  @Override
   public void setBitmapConfig(@Nullable Bitmap.Config config) {
     mLynxImageManager.setImageConfig(config);
   }
