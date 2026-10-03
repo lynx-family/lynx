@@ -49,4 +49,7 @@ group("devtool_ng_unit_test") {
   if (is_mac || is_linux || is_win) {
     deps += [ ":harmony_input_event_target_unittests_exec" ]
   }
+  if (is_mac) {
+    deps += [ "../../platform/darwin/macos/lynx_devtool:macos_input_event_target_unittests_exec" ]
+  }
 }

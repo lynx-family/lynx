@@ -243,6 +243,8 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
           std::move(runtime_proxy_callback));
   view->lynx_template_renderer = std::move(lynx_template_renderer);
 #if ENABLE_INSPECTOR
+  view->lynx_template_renderer->SetInputEventTarget(
+      view->lynx_ui_renderer->GetInputEventTarget());
   view->lynx_template_renderer->SetTemplateRendererEventSimulationProxy(
       std::make_unique<lynx::embedder::LynxViewEventSimulationProxy>(
           std::make_unique<LynxViewEventSimulationTargetImpl>(view)));

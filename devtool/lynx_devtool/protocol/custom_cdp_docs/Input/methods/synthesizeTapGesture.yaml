@@ -29,7 +29,9 @@ returns: []
 events: []
 notes:
   - Lynx interprets x and y as window-local logical coordinates rather than the main-frame viewport CSS coordinates described by upstream CDP.
-  - Android and Harmony convert logical coordinates to native pixels using the window density or pixel ratio before injection. Darwin targets use window points only when an optional platform-specific pointer injection implementation is linked; otherwise they advertise no touch support.
+  - Android and Harmony convert logical coordinates to native pixels using the window density or pixel ratio before injection. iOS targets use window points only when an optional platform-specific pointer injection implementation is linked; otherwise they advertise no touch support.
+  - macOS defaults to mouse input and does not advertise touch support. Its coordinates are points measured from the top-left of the containing window's content view, excluding the title bar, regardless of the LynxView's position or the display backing scale.
+  - macOS requires an ordered, visible window and queues native mouse events through the application event loop, allowing native controls in the same window to receive the tap. Cancellation releases the mouse outside the content area to end tracking without activating a button.
   - Coordinates are not absolute screen coordinates or physical screenshot pixels. Convert LynxView-local coordinates to the containing window coordinate space before sending the request.
   - Injection is dispatched through the native window or root view. A native overlay above the LynxView can receive the tap, and the request cannot target content in a different native window.
   - The target LynxView must be attached to a valid native window, and the point must fall inside that window. Otherwise the request fails.

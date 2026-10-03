@@ -18,6 +18,7 @@ class DevToolPlatformFacade;
 class LynxDevToolMediator;
 
 namespace input {
+class InputEventTarget;
 class SyntheticGestureController;
 }  // namespace input
 
@@ -28,9 +29,9 @@ class InputRequestHandler {
       const std::weak_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InputRequestHandler();
 
-  // Updates the platform facade synchronously and returns true when it
-  // changed. The caller must run Reset() on the UI thread in that case, because
-  // the gesture controller is UI-thread-bound.
+  // Updates the facade synchronously and returns true when it or its input
+  // target changed. The caller must run Reset() on the UI thread in that case,
+  // because the gesture controller is UI-thread-bound.
   bool SetDevToolPlatformFacade(
       const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade);
   // Releases the gesture controller. Must run on the UI thread.
@@ -47,6 +48,7 @@ class InputRequestHandler {
 
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
+  std::weak_ptr<input::InputEventTarget> input_event_target_wp_;
   std::shared_ptr<input::SyntheticGestureController>
       synthetic_gesture_controller_;
 };

@@ -203,13 +203,16 @@ InputRequestHandler::~InputRequestHandler() = default;
 
 bool InputRequestHandler::SetDevToolPlatformFacade(
     const std::shared_ptr<DevToolPlatformFacade>& devtool_platform_facade) {
-  const bool facade_changed =
-      devtool_platform_facade_ != devtool_platform_facade;
+  const auto target = devtool_platform_facade
+                          ? devtool_platform_facade->GetInputEventTarget()
+                          : nullptr;
+  const bool changed = devtool_platform_facade_ != devtool_platform_facade ||
+                       input_event_target_wp_.lock() != target;
   devtool_platform_facade_ = devtool_platform_facade;
-  // The caller resets the gesture controller on the UI thread when the facade
-  // changed; the facade itself is updated synchronously so touch/insert
-  // requests observe it immediately.
-  return facade_changed;
+  input_event_target_wp_ = target;
+  // Reset on the UI thread so an active gesture releases its original target.
+  // The facade is updated synchronously for touch/insert requests.
+  return changed;
 }
 
 void InputRequestHandler::Reset() { synthetic_gesture_controller_.reset(); }

@@ -212,6 +212,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
   if (is_devtool_enabled) {
     if (!devtools_) {
       devtools_ = std::make_unique<devtool::DevtoolsEmbedder>(this);
+      devtools_->SetInputEventTarget(input_event_target_);
     }
     devtools_->GetInspectorOwner()->OnTemplateAssemblerCreated(
         reinterpret_cast<intptr_t>(shell_.get()));
@@ -475,6 +476,14 @@ bool LynxTemplateRenderer::SendTouchEvent(const std::string& name, int32_t tag,
 }
 
 #if ENABLE_INSPECTOR
+void LynxTemplateRenderer::SetInputEventTarget(
+    const std::shared_ptr<devtool::input::InputEventTarget>& target) {
+  input_event_target_ = target;
+  if (devtools_) {
+    devtools_->SetInputEventTarget(target);
+  }
+}
+
 void LynxTemplateRenderer::InvokeCDPFromSDK(
     const std::string& cdp_msg,
     std::function<void(const std::string&)>&& callback) {

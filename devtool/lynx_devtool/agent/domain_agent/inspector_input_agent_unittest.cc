@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <future>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -402,6 +403,73 @@ TEST_F(InspectorInputAgentTest,
   ASSERT_EQ(events.size(), 2u);
   EXPECT_FLOAT_EQ(events[0].pointers[0].x, 30.f);
   EXPECT_FLOAT_EQ(events[0].pointers[0].y, 40.f);
+}
+
+TEST_F(InspectorInputAgentTest, RebindingInputTargetUsesNewTarget) {
+  const auto original = platform_facade_->mock_input_event_target_;
+  Dispatch(BuildTapMessage(43));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+
+  auto replacement = std::make_shared<lynx::testing::InputEventTargetMock>();
+  GetUIThread().GetTaskRunner()->PostSyncTask([&]() {
+    platform_facade_->SetInputEventTarget(replacement);
+    devtool_mediator_->SetDevToolPlatformFacade(platform_facade_);
+  });
+  Dispatch(BuildTapMessage(44, 30.5, 40.5));
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
+  EXPECT_EQ(original->Events().size(), 2u);
+  const auto events = replacement->Events();
+  ASSERT_EQ(events.size(), 2u);
+  EXPECT_FLOAT_EQ(events[0].pointers[0].x, 30.5f);
+  EXPECT_FLOAT_EQ(events[0].pointers[0].y, 40.5f);
+}
+
+TEST_F(InspectorInputAgentTest,
+       RebindingInputTargetCancelsActiveAndQueuedTaps) {
+  class PressObserver : public lynx::testing::InputEventTargetMock {
+   public:
+    bool InjectPointerEvent(const input::PointerEvent& event) override {
+      const bool result = InputEventTargetMock::InjectPointerEvent(event);
+      if (event.type == input::PointerEventType::kDown) {
+        pressed.set_value();
+      }
+      return result;
+    }
+    std::promise<void> pressed;
+  };
+  auto original = std::make_shared<PressObserver>();
+  auto pressed = original->pressed.get_future();
+  GetUIThread().GetTaskRunner()->PostSyncTask([&]() {
+    platform_facade_->SetInputEventTarget(original);
+    devtool_mediator_->SetDevToolPlatformFacade(platform_facade_);
+  });
+  auto message = BuildTapMessage(45);
+  message["params"]["duration"] = 1000;
+  Dispatch(message);
+  Dispatch(BuildTapMessage(46));
+  ASSERT_EQ(pressed.wait_for(std::chrono::seconds(1)),
+            std::future_status::ready);
+
+  auto replacement = std::make_shared<lynx::testing::InputEventTargetMock>();
+  GetUIThread().GetTaskRunner()->PostSyncTask([&]() {
+    platform_facade_->SetInputEventTarget(replacement);
+    devtool_mediator_->SetDevToolPlatformFacade(platform_facade_);
+  });
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
+  for (const auto& response : message_sender_->Messages()) {
+    EXPECT_TRUE(response.second.isMember("error"));
+  }
+  const auto events = original->Events();
+  ASSERT_EQ(events.size(), 2u);
+  EXPECT_EQ(events[0].type, input::PointerEventType::kDown);
+  EXPECT_EQ(events[1].type, input::PointerEventType::kCancel);
+  EXPECT_TRUE(replacement->Events().empty());
+
+  Dispatch(BuildTapMessage(47));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(3));
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+  EXPECT_EQ(replacement->Events().size(), 2u);
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapWaitsForProcessingResult) {

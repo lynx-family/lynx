@@ -17,5 +17,11 @@ DevtoolsEmbedder::DevtoolsEmbedder(devtool::LynxDevToolProxy* proxy) {
   owner_->Init(proxy, owner_);
 }
 
+void DevtoolsEmbedder::SetInputEventTarget(
+    const std::shared_ptr<input::InputEventTarget>& target) {
+  std::static_pointer_cast<InspectorOwnerEmbedder>(owner_)->SetInputEventTarget(
+      target);
+}
+
 }  // namespace devtool
 }  // namespace lynx

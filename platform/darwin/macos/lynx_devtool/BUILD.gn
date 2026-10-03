@@ -1,0 +1,37 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../devtool/lynx_devtool/devtool.gni")
+import("../../../../testing/test.gni")
+
+devtool_source_set("input_events") {
+  sources = [
+    "macos_input_event_target.h",
+    "macos_input_event_target.mm",
+  ]
+  cflags_objcc = [ "-fobjc-arc" ]
+  frameworks = [ "AppKit.framework" ]
+  public_deps = [ "../../../../devtool/lynx_devtool/input:input_types" ]
+}
+
+if (enable_unittests) {
+  unittest_set("macos_input_event_target_testset") {
+    sources = [ "macos_input_event_target_unittest.mm" ]
+    cflags_objcc = [ "-fobjc-arc" ]
+    deps = [
+      ":input_events",
+      "../../../../devtool/lynx_devtool/input:input",
+    ]
+  }
+
+  unittest_exec("macos_input_event_target_unittests_exec") {
+    sources = []
+    frameworks = [ "AppKit.framework" ]
+    deps = [
+      ":macos_input_event_target_testset",
+      "../../../../core/base:base",
+      "../../../../core/renderer/utils:lynx_env",
+    ]
+  }
+}
