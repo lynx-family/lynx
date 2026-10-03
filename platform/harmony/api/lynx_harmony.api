@@ -1255,6 +1255,7 @@ export interface IContext {
   setFocusedUI(sign: number): void;
   markDirty(sign: number): void;
   requestLayout(sign: number): void;
+  requestRasterSnapshot(sign: number): Promise<image.PixelMap | undefined>;
   sendGlobalEvent(name: string, params: Object[]): void;
   getLynxElementRoot(callback: LynxElementCallback<LynxElement | null>): void;
   measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): [number, number, number] | undefined;
