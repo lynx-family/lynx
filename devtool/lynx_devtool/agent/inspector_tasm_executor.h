@@ -203,7 +203,9 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(LynxGetProperties)
   DECLARE_DEVTOOL_METHOD(LynxGetData)
   DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateApiInfo)
+
+  // template domain
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateApiInfo);
 
   // DOM ScrollIntoViewIfNeeded
   DECLARE_DEVTOOL_METHOD(ScrollIntoViewIfNeeded)
@@ -216,9 +218,9 @@ class InspectorTasmExecutor
   void GlobalPropsChanged();
 
   // WhiteBoard domain
-  DECLARE_DEVTOOL_METHOD(WhiteBoardEnable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardDisable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardSetSharedData)
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardSetSharedData);
   DECLARE_DEVTOOL_METHOD(WhiteBoardGetSharedData)
   DECLARE_DEVTOOL_METHOD(WhiteBoardRemoveSharedData)
   DECLARE_DEVTOOL_METHOD(WhiteBoardClear)

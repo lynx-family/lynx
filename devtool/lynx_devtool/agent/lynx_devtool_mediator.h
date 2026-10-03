@@ -204,9 +204,11 @@ class LynxDevToolMediator
   void GlobalPropsChanged();
 
   // Template domain
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateData)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateJsInfo)
-  DECLARE_DEVTOOL_METHOD(TemplateGetTemplateApiInfo)
+  // -> ui executor
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateData);
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
+  // -> tasm executor
+  DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateApiInfo);
 
   // Overlay domain -> tasm executor
   DECLARE_DEVTOOL_CDP_METHOD(HighlightNode);
@@ -245,11 +247,11 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(SetUIStyle)
 
   // WhiteBoard domain:
-  // When tasm_executor_ is not nullptr, dispatch to tasm_executor_. Otherwise,
-  // dispatch to js_debugger_.
-  DECLARE_DEVTOOL_METHOD(WhiteBoardEnable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardDisable)
-  DECLARE_DEVTOOL_METHOD(WhiteBoardSetSharedData)
+  // When tasm_executor_ is not nullptr, dispatch to tasm_executor_.
+  // Otherwise, dispatch to js_debugger_.
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(WhiteBoardSetSharedData);
   DECLARE_DEVTOOL_METHOD(WhiteBoardGetSharedData)
   DECLARE_DEVTOOL_METHOD(WhiteBoardRemoveSharedData)
   DECLARE_DEVTOOL_METHOD(WhiteBoardClear)
