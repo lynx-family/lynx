@@ -24,6 +24,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/style_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/text_selection_menu_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 
 namespace lynx {
@@ -44,6 +45,9 @@ static std::unordered_map<ArkUI_GestureRecognizer*, UIText*>
 
 UIText::UIText(LynxContext* context, int sign, const std::string& tag)
     : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag) {
+  text_selection_menu_factory_ = [context](TextSelectionMenu::Callbacks cb) {
+    return std::make_shared<TextSelectionMenuManager>(context, std::move(cb));
+  };
   if (context->IsEnableTextOverflow()) {
     overflow_ = {true, true};
   }

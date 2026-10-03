@@ -1,16 +1,12 @@
 {
   "string": [
     {
-      "name": "shared_desc",
-      "value": "description"
-    },
-    {
       "name": "lynx_text_selection_copy",
-      "value": "Copy"
+      "value": "复制"
     },
     {
       "name": "lynx_text_selection_select_all",
-      "value": "Select all"
+      "value": "全选"
     }
   ]
 }
