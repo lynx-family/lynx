@@ -34,8 +34,6 @@ public abstract class LayerManager implements Drawable.Callback {
   protected Drawable mDrawable;
   protected float mCurFontSize;
   protected Bitmap.Config mBitmapConfig = null;
-  // Use bitmap shader to draw linear gradient
-  protected boolean mEnableBitmapGradient = false;
 
   private ILynxImageService mImageService = null;
   private ILynxImageServiceExtension mLynxImageService = null;
@@ -232,7 +230,6 @@ public abstract class LayerManager implements Drawable.Callback {
         repeatXType = mImageRepeatList.get(usedRepeatIndex * 2);
         repeatYType = mImageRepeatList.get(usedRepeatIndex * 2 + 1);
       }
-      bgLayerDrawable.setEnableBitmapGradient(mEnableBitmapGradient);
       // LayerManager draws in Android physical pixels. Keep repeated tile offsets in sync with
       // the integer drawable bounds to avoid subpixel seams between bitmap tiles.
       final int pixelAlignedWidth = Math.round(width);
@@ -496,10 +493,6 @@ public abstract class LayerManager implements Drawable.Callback {
       borderAreaPath.addRect(paddingRect, Path.Direction.CCW);
     }
     return borderAreaPath;
-  }
-
-  public void setEnableBitmapGradient(boolean enable) {
-    mEnableBitmapGradient = enable;
   }
 
   public void onLynxUIPropsUpdated() {
