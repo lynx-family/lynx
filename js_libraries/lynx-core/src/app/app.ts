@@ -1104,6 +1104,22 @@ export abstract class BaseApp<
   ): void {}
 
   /**
+   * Tear down what this app registered on anything it shares with the next app
+   * of the same page. Set by the framework.
+   */
+  callDestroyLifetimeFun: () => void;
+
+  /**
+   * Called by native when the template is reloaded. {@link loadCard} installs a
+   * default that reloads the card by evaluating its entry again; a framework
+   * that would rather keep its own state overrides it.
+   */
+  onAppReload: (
+    updateData?: object,
+    options?: { processorName?: string }
+  ) => void;
+
+  /**
    *  override by subclass
    * @param newData
    */
