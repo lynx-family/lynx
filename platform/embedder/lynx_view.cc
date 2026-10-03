@@ -118,6 +118,28 @@ std::shared_ptr<lynx::tasm::TemplateData> MergeGlobalProps(
   return merged_global_props;
 }
 
+void PrepareForTemplateLoad(lynx_view_t* view) {
+  if (!view->has_loaded_template) {
+    view->has_loaded_template = true;
+    return;
+  }
+
+  view->lynx_ui_renderer->Reset();
+  view->lynx_template_renderer->Reset(true);
+  if (view->global_props) {
+    view->lynx_template_renderer->UpdateGlobalProps(
+        view->global_props->GetValue());
+  }
+
+  // Update screen metrics & viewport
+  auto& settings = view->lynx_template_renderer->GetSettings();
+  lynx_view_update_screen_metrics(view, settings.screen_size.cx,
+                                  settings.screen_size.cy,
+                                  settings.device_pixel_ratio);
+  lynx_view_set_frame(view, 0, 0, view->lynx_ui_renderer->GetWidth(),
+                      view->lynx_ui_renderer->GetHeight());
+}
+
 }  // namespace
 
 LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
@@ -337,6 +359,7 @@ LYNX_EXTERN_C void lynx_view_register_runtime_lifecycle_observer(
 
 LYNX_EXTERN_C void lynx_view_load_template(lynx_view_t* view,
                                            lynx_load_meta_t* load_meta) {
+  PrepareForTemplateLoad(view);
   if (load_meta->global_props) {
     view->global_props = load_meta->global_props;
     view->lynx_template_renderer->UpdateGlobalProps(
