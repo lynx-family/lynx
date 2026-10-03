@@ -170,8 +170,9 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   options.context = _context;
 
   NSMutableDictionary* contextInfo = [NSMutableDictionary new];
-  contextInfo[LynxEnableGenericFetcher] = @YES;
-  contextInfo[LynxShouldUseImageService] = @YES;
+  contextInfo[LynxEnableGenericFetcher] = @(_context.mediaResourceFetcher != nil);
+  contextInfo[LynxShouldUseImageService] = @(_context.imageFetcher == nil);
+  contextInfo[LynxImageEnableFetchUIImage] = @(_context.enableFetchUIImage);
   contextInfo[LynxImageSkipRedirection] = @(_skipRedirection);
   options.contextInfo = contextInfo;
 
