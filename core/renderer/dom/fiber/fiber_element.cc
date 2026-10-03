@@ -90,6 +90,9 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "core/services/replay/replay_controller.h"
+#endif
 #include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -108,6 +111,31 @@ template <typename T>
 void EraseValue(std::vector<T> &values, const T &value) {
   values.erase(std::remove(values.begin(), values.end(), value), values.end());
 }
+
+#if ENABLE_TESTBENCH_REPLAY
+void RecordRefactoredEventForReplay(const char *prefix,
+                                    event::Event *dispatched_event,
+                                    const lepus::Value &info) {
+  if (dispatched_event == nullptr || dispatched_event->from_frontend()) {
+    return;
+  }
+
+  const char *event_type = nullptr;
+  switch (dispatched_event->event_type()) {
+    case event::Event::EventType::kTouchEvent:
+      event_type = "TouchEvent";
+      break;
+    case event::Event::EventType::kCustomEvent:
+      event_type = "CustomEvent";
+      break;
+    default:
+      return;
+  }
+  replay::ReplayController::SendFileByAgent(
+      std::string(prefix) + event_type,
+      replay::ReplayController::ConvertEventInfo(info));
+}
+#endif
 
 void MergeAnimationSampleForNewPipeline(
     animation::AnimationSampleForNewPipeline &target,
@@ -721,9 +749,15 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
 
                 auto call_method_name =
                     !support_component_js || event_info_array->get(0).Bool();
+                auto dispatched_event = fml::static_ref_ptr_cast<event::Event>(
+                    args_array->get(2).RefCounted());
                 auto page_name_or_component_id =
-                    call_method_name ? default_entry_name
-                                     : event_info_array->get(1).StdString();
+                    call_method_name
+                        ? (dispatched_event->event_type() ==
+                                   event::Event::EventType::kCustomEvent
+                               ? std::string()
+                               : default_entry_name)
+                        : event_info_array->get(1).StdString();
                 TRACE_EVENT(
                     LYNX_TRACE_CATEGORY, CLOSURE_EVENT_LISTENER_CLOSURE,
                     [&event_name, &handler_name, &page_name_or_component_id](
@@ -750,6 +784,27 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
                     std::make_unique<pub::ValueImplLepus>(
                         lepus::Value(std::move(message))));
                 element->DispatchMessageEvent(std::move(event));
+#if ENABLE_TESTBENCH_REPLAY
+                const char *replay_event_type = nullptr;
+                switch (dispatched_event->event_type()) {
+                  case event::Event::EventType::kTouchEvent:
+                    replay_event_type = "TouchEvent";
+                    break;
+                  case event::Event::EventType::kCustomEvent:
+                    if (!dispatched_event->from_frontend()) {
+                      replay_event_type = "CustomEvent";
+                    }
+                    break;
+                  default:
+                    break;
+                }
+                if (replay_event_type != nullptr) {
+                  replay::ReplayController::SendFileByAgent(
+                      std::string(call_method_name ? "Page" : "Component") +
+                          replay_event_type,
+                      replay::ReplayController::ConvertEventInfo(event_detail));
+                }
+#endif
               },
               event_options, event::ClosureEventListener::ClosureType::kJS));
     }
@@ -788,14 +843,16 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
                   return;
                 }
 
-                auto task_handler =
-                    std::make_shared<worklet::LepusApiHandler>();
                 auto current_option = std::make_shared<PipelineOptions>();
                 EventResult result =
                     manager->FireElementWorkletAndRequestResolve(
                         component_id, entry_name, callback_value, script_value,
-                        event_detail, task_handler, element_id, current_option);
+                        event_detail, element_id, current_option);
                 ApplyEventResult(event, result);
+#if ENABLE_TESTBENCH_REPLAY
+                RecordRefactoredEventForReplay("Lepus", event.get(),
+                                               event_detail);
+#endif
               },
               event_options, event::ClosureEventListener::ClosureType::kCore));
 #endif  // ENABLE_LEPUSNG_WORKLET
@@ -871,6 +928,10 @@ void Element::FiberAddEvent(const base::String &type, const base::String &name,
                       call_result_value.GetProperty(kEventResult).Number());
                 }
                 ApplyEventResult(event, result);
+#if ENABLE_TESTBENCH_REPLAY
+                RecordRefactoredEventForReplay("Lepus", event.get(),
+                                               event_detail);
+#endif
               },
               event_options, event::ClosureEventListener::ClosureType::kCore));
     }
@@ -910,13 +971,25 @@ void Element::FiberAddPiperEvent(
       event_name,
       std::make_unique<event::ClosureEventListener>(
           [element = this,
-           piper_event_content = std::move(piper_event_content)](lepus::Value) {
+           piper_event_content = std::move(piper_event_content)](
+              [[maybe_unused]] lepus::Value args) {
             auto *manager = element->element_manager();
             if (manager == nullptr) {
               return;
             }
+#if ENABLE_TESTBENCH_REPLAY
+            fml::RefPtr<event::Event> dispatched_event;
+            if (args.IsArray() && args.Array()->size() == 3) {
+              dispatched_event = fml::static_ref_ptr_cast<event::Event>(
+                  args.Array()->get(2).RefCounted());
+            }
+#endif
             for (const auto &event : piper_event_content) {
               manager->TriggerLepusBridgeAsync(event.first.str(), event.second);
+#if ENABLE_TESTBENCH_REPLAY
+              RecordRefactoredEventForReplay("Bridge", dispatched_event.get(),
+                                             event.second);
+#endif
             }
           },
           event_options, event::ClosureEventListener::ClosureType::kJS));

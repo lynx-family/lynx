@@ -1791,7 +1791,7 @@ enableTextGradientOpt:
     - iOS
 enableEventHandleRefactor:
   description: Controls whether runtime uses the refactored event-listener and dispatch path. When enabled, element decode, Radon event processing, and touch dispatch use the newer listener registration flow that supports rebinding and interception; when disabled, runtime stays on the legacy event hookup path. If the field is omitted, decoder falls back to the settings source.
-  defaultValue: 'false'
+  defaultValue: 'true'
   valueType: bool
   since: '3.5'
   readSettings: true

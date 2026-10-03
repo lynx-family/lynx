@@ -47,6 +47,45 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+
+bool IsSameEventHandler(EventHandler* left, EventHandler* right) {
+  if (left == nullptr || right == nullptr) {
+    return left == right;
+  }
+  if (left->type() != right->type() ||
+      left->is_js_event() != right->is_js_event() ||
+      left->is_piper_event() != right->is_piper_event()) {
+    return false;
+  }
+
+  if (left->is_piper_event()) {
+    const auto& left_events = *left->piper_event_vec();
+    const auto& right_events = *right->piper_event_vec();
+    if (left_events.size() != right_events.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < left_events.size(); ++i) {
+      if (left_events[i].piper_func_name_ != right_events[i].piper_func_name_ ||
+          left_events[i].piper_func_args_ != right_events[i].piper_func_args_) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (left->is_js_event()) {
+    return left->function() == right->function();
+  }
+
+  return left->lepus_context() == right->lepus_context() &&
+         left->lepus_object() == right->lepus_object() &&
+         left->lepus_script() == right->lepus_script() &&
+         left->lepus_function() == right->lepus_function();
+}
+
+}  // namespace
+
 RadonNode::RadonNode(PageProxy* page_proxy, const base::String& tag_name,
                      uint32_t node_index)
     : RadonBase(kRadonNode, tag_name, node_index), page_proxy_(page_proxy) {
@@ -480,7 +519,7 @@ bool RadonNode::ShouldFlush(const std::unique_ptr<RadonBase>& old_radon_base,
       NotifyElementNodeSetted();
     }
   });
-  ProcessEvents();
+  ProcessEvents(old_radon_node);
   id_dirty_ = false;
   class_dirty_ = false;
   style_invalidated_ = true;
@@ -698,21 +737,62 @@ void RadonNode::MarkChildStyleDirtyRecursively(bool mark_whole_tree) {
   }
 }
 
-void RadonNode::ProcessEvents() {
-  if (element() && tasm_ && tasm_->EnableEventHandleRefactor()) {
-    if (!static_events().empty() || !lepus_events().empty() ||
-        !global_bind_events().empty()) {
-      for (const auto& static_event : static_events()) {
-        SetEventListeners(static_event);
-      }
-      for (const auto& lepus_event : lepus_events()) {
-        SetEventListeners(lepus_event);
-      }
-      for (const auto& global_bind_event : global_bind_events()) {
-        SetEventListeners(global_bind_event);
+void RadonNode::ProcessEvents(const RadonNode* old_radon_node) {
+  if (!element() || !tasm_ || !tasm_->EnableEventHandleRefactor()) {
+    return;
+  }
+
+  auto remove_changed_events = [this](const EventMap& events,
+                                      const EventMap& old_events) {
+    for (const auto& [name, old_handler] : old_events) {
+      auto it = events.find(name);
+      if (it == events.end() ||
+          !IsSameEventHandler(old_handler.get(), it->second.get())) {
+        // JS and Lepus listeners can share an event name. Remove only the
+        // listener being replaced, preserving the other kind of listener.
+        element()->RemoveEventListener(
+            name.str(),
+            std::make_unique<event::ClosureEventListener>(
+                [](lepus::Value) {},
+                GetEventListenerOptions(old_handler->type()),
+                old_handler->is_js_event()
+                    ? event::ClosureEventListener::ClosureType::kJS
+                    : event::ClosureEventListener::ClosureType::kCore));
+        // The new AttributeHolder already contains the current event map.
+        // Resolve its complete contents, including removals, on this patch.
+        element()->MarkDirty(Element::kDirtyEvent);
       }
     }
+  };
+  auto add_changed_events = [this](const EventMap& events,
+                                   const EventMap* old_events) {
+    for (const auto& event_entry : events) {
+      if (old_events != nullptr) {
+        auto it = old_events->find(event_entry.first);
+        if (it != old_events->end() &&
+            IsSameEventHandler(it->second.get(), event_entry.second.get())) {
+          continue;
+        }
+      }
+      SetEventListeners(event_entry);
+    }
+  };
+
+  if (old_radon_node != nullptr) {
+    remove_changed_events(static_events(), old_radon_node->static_events());
+    remove_changed_events(lepus_events(), old_radon_node->lepus_events());
+    remove_changed_events(global_bind_events(),
+                          old_radon_node->global_bind_events());
   }
+  add_changed_events(static_events(), old_radon_node
+                                          ? &old_radon_node->static_events()
+                                          : nullptr);
+  add_changed_events(lepus_events(), old_radon_node
+                                         ? &old_radon_node->lepus_events()
+                                         : nullptr);
+  add_changed_events(
+      global_bind_events(),
+      old_radon_node ? &old_radon_node->global_bind_events() : nullptr);
 }
 
 void RadonNode::SetEventListeners(

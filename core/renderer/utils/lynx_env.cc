@@ -549,7 +549,7 @@ bool LynxEnv::EnableUnifiedPixelPipeline() {
 }
 
 bool LynxEnv::EnableEventHandleRefactor() {
-  return GetBoolEnv(Key::ENABLE_EVENT_HANDLE_REFACTOR, false);
+  return GetBoolEnv(Key::ENABLE_EVENT_HANDLE_REFACTOR, true);
 }
 
 bool LynxEnv::EnableDecoupledList() {

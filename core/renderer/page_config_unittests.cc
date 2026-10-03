@@ -82,6 +82,34 @@ TEST(PageConfigTest, EnableUseContextPool) {
   CHECK_CONFIG_VALUE(EnableUseContextPool, true, true, false);
 }
 
+TEST(PageConfigTest, EnableEventHandleRefactor) {
+  auto& env = LynxEnv::GetInstance();
+  env.external_env_map_.erase(LynxEnv::Key::ENABLE_EVENT_HANDLE_REFACTOR);
+
+  auto page_config = std::make_shared<PageConfig>();
+  EXPECT_TRUE(page_config->GetEnableEventHandleRefactor());
+
+  rapidjson::Document doc;
+  doc.Parse("{}");
+  LynxConfigDecoder::DecodePageConfig(page_config, doc, "");
+  EXPECT_TRUE(page_config->GetEnableEventHandleRefactor());
+
+  env.external_env_map_[LynxEnv::Key::ENABLE_EVENT_HANDLE_REFACTOR] = "false";
+  LynxConfigDecoder::DecodePageConfig(page_config, doc, "");
+  EXPECT_FALSE(page_config->GetEnableEventHandleRefactor());
+
+  doc.Parse(R"({"enableEventHandleRefactor": true})");
+  LynxConfigDecoder::DecodePageConfig(page_config, doc, "");
+  EXPECT_TRUE(page_config->GetEnableEventHandleRefactor());
+
+  env.external_env_map_[LynxEnv::Key::ENABLE_EVENT_HANDLE_REFACTOR] = "true";
+  doc.Parse(R"({"enableEventHandleRefactor": false})");
+  LynxConfigDecoder::DecodePageConfig(page_config, doc, "");
+  EXPECT_FALSE(page_config->GetEnableEventHandleRefactor());
+
+  env.external_env_map_.erase(LynxEnv::Key::ENABLE_EVENT_HANDLE_REFACTOR);
+}
+
 TEST(PageConfigTest, EnableFrameNativeData) {
   auto& env = LynxEnv::GetInstance();
   env.external_env_map_.erase(LynxEnv::Key::ENABLE_FRAME_NATIVE_DATA);

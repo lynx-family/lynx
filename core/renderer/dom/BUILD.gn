@@ -120,6 +120,7 @@ unittest_set("dom_testset") {
   ]
   deps = [
     "../../runtime/lepus/tasks:tasks_testset",
+    "../../services/replay:replay",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../../template_bundle/template_codec/binary_encoder/css_encoder:css_encoder",
   ]
