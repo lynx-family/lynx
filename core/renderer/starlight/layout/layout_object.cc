@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "base/trace/native/trace_event.h"
 #include "core/renderer/starlight/layout/flex_layout_algorithm.h"
 #include "core/renderer/starlight/layout/grid_layout_algorithm.h"
 #include "core/renderer/starlight/layout/layout_algorithm.h"
@@ -18,6 +19,7 @@
 #include "core/renderer/starlight/style/default_layout_style.h"
 #include "core/renderer/starlight/style/layout_style_utils.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace starlight {
@@ -735,7 +737,12 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
   }
   inflow_sub_tree_in_sync_with_last_measurement_ = true;
 
-  FloatSize size = algorithm_->SizeDetermination();
+  FloatSize size;
+  {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_OBJECT_SIZE_DETERMINATION,
+                "child_count", GetChildCount());
+    size = algorithm_->SizeDetermination();
+  }
   inflow_sub_tree_in_sync_with_last_measurement_ =
       algorithm_->IsInflowSubTreeInSync();
 
@@ -779,7 +786,14 @@ void LayoutObject::UpdateMeasureWithMeasureFunc(const Constraints& constraints,
   inner_constraints[kHorizontal] = OneSideConstraint(inner_width, width_mode);
   inner_constraints[kVertical] = OneSideConstraint(inner_height, height_mode);
 
-  FloatSize size = measure_func_(context_, inner_constraints, final_measure);
+  FloatSize size;
+  {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_OBJECT_MEASURE_FUNC, "width",
+                inner_width, "width_mode", static_cast<int>(width_mode),
+                "height", inner_height, "height_mode",
+                static_cast<int>(height_mode), "final_measure", final_measure);
+    size = measure_func_(context_, inner_constraints, final_measure);
+  }
 
   SetBaseline(size.baseline_);
 
@@ -814,6 +828,9 @@ void LayoutObject::UpdateMeasureWithMeasureFunc(const Constraints& constraints,
        base::FloatsLarger(inner_height, size.height_))) {
     inner_constraints[kHorizontal] = OneSideConstraint::Definite(inner_width);
     inner_constraints[kVertical] = OneSideConstraint::Definite(inner_height);
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_OBJECT_REMEASURE_FUNC, "width",
+                inner_width, "height", inner_height, "final_measure",
+                final_measure);
     measure_func_(context_, inner_constraints, final_measure);
   }
 

@@ -287,8 +287,9 @@ void LynxEngine::SendAirPageEvent(const std::string& name,
 
 void LynxEngine::SendCustomEvent(const std::string& name, int32_t tag,
                                  const lepus::Value& params,
-                                 const std::string& params_name) {
-  tasm_->SendCustomEvent(name, tag, params, params_name);
+                                 const std::string& params_name,
+                                 uint64_t trace_flow_id) {
+  tasm_->SendCustomEvent(name, tag, params, params_name, trace_flow_id);
 }
 
 void LynxEngine::SendTouchEvent(const std::string& name,

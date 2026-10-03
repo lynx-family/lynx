@@ -2051,7 +2051,8 @@ void TemplateAssembler::SendGestureEvent(int tag, int gesture_id,
 
 void TemplateAssembler::SendCustomEvent(const std::string& name, int tag,
                                         const lepus::Value& params,
-                                        const std::string& pname) {
+                                        const std::string& pname,
+                                        uint64_t trace_flow_id) {
 #if ENABLE_TESTBENCH_RECORDER
   if (page_proxy()->element_manager()->root()) {
     tasm::recorder::TemplateAssemblerRecorder::RecordCustomEvent(
@@ -2065,7 +2066,8 @@ void TemplateAssembler::SendCustomEvent(const std::string& name, int tag,
     return;
   }
   EnsureTouchEventHandler();
-  touch_event_handler_->HandleCustomEvent(this, name, tag, params, pname);
+  touch_event_handler_->HandleCustomEvent(this, name, tag, params, pname,
+                                          trace_flow_id);
 }
 
 void TemplateAssembler::SendAirComponentEvent(const std::string& event_name,

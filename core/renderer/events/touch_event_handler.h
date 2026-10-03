@@ -145,7 +145,7 @@ class TouchEventHandler {
 
   void HandleCustomEvent(TemplateAssembler *tasm, const std::string &name,
                          int tag, const lepus::Value &params,
-                         const std::string &pname);
+                         const std::string &pname, uint64_t trace_flow_id = 0);
   void HandlePseudoStatusChanged(int32_t id, PseudoState pre_status,
                                  PseudoState current_status);
   static lepus::Value GetTargetInfo(int32_t impl_id,

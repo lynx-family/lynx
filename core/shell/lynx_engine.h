@@ -140,7 +140,8 @@ class LynxEngine {
 
   void SendCustomEvent(const std::string& name, int32_t tag,
                        const lepus::Value& params,
-                       const std::string& params_name);
+                       const std::string& params_name,
+                       uint64_t trace_flow_id = 0);
 
   void SendTouchEvent(const std::string& name, const tasm::EventInfo& info);
 

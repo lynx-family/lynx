@@ -12,6 +12,12 @@ NS_ASSUME_NONNULL_BEGIN
  */
 static NSString* const UI_EXPOSURE_HANDLER = @"LynxUIExposure.exposureHandler";
 /**
+ * @trace_description: Dispatch a UI exposure custom event to the Lynx event emitter. The renderer,
+ * event name, target sign, exposure metadata, and optional dataset correlation identifiers are
+ * recorded as debug annotations.
+ */
+static NSString* const UI_EXPOSURE_DISPATCH_CUSTOM_EVENT = @"LynxExposure.dispatchCustomEvent";
+/**
  * @trace_description:  Layout of <text> element's platform layout node, where the preview text
  * are `@args{preview_text}`.
  * @history_name{text.TextShadowNode.measure}
@@ -128,6 +134,15 @@ static const char* const TEMPLATE_RENDER_SETUP_FRAME = "LynxTemplateRender::setU
 static const char* const TEMPLATE_RENDER_SETUP_EVENT_HANDLER =
     "LynxTemplateRender::setUpEventHandler";
 static const char* const TEMPLATE_RENDER_SETUP_SHELL = "LynxTemplateRender::setUpLynxShell";
+/**
+ * @trace_description: Record the renderer backend selected for one iOS Lynx
+ * instance after its instance id is assigned. The bounded capability fields
+ * attest which client diagnostic schema is compiled into the running SDK;
+ * sdk_version is package identity evidence but not a source revision. This is
+ * renderer identity evidence, not a render-complete or pixel-present signal.
+ */
+static const char* const TEMPLATE_RENDER_RENDERER_BACKEND_SELECTED =
+    "LynxTemplateRender::RendererBackendSelected";
 static const char* const TEMPLATE_RENDER_SETUP_RUNTIME = "LynxTemplateRender::setUpRuntime";
 static const char* const TEMPLATE_RENDER_INIT_RUNTIME =
     "LynxTemplateRender::setUpRuntime:InitRuntime";
