@@ -85,6 +85,9 @@
   if (!value || [value isEqual:[NSNull null]]) {
     return 0;
   }
+  if (![value respondsToSelector:@selector(unsignedIntegerValue)]) {
+    return 0;
+  }
   @try {
     return [value unsignedIntegerValue];
   } @catch (__unused NSException *e) {
