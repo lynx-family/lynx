@@ -10,6 +10,8 @@ replay_shared_sources = [
   "//${lynx_dir}/core/services/replay/lynx_module_binding_testbench.h",
   "fixture_common.cc",
   "fixture_common.h",
+  "fixture_context.cc",
+  "fixture_context.h",
   "fixture_evaluator.cc",
   "fixture_evaluator.h",
   "fixture_js_runtime.cc",
@@ -72,6 +74,7 @@ lynx_core_source_set("replay") {
 unittest_set("replay_testset") {
   public_configs = [ "../../:lynx_public_config" ]
   sources = [
+    "fixture_context_unittest.cc",
     "fixture_evaluator_unittest.cc",
     "fixture_replay_helper_unittest.cc",
     "layout_tree_testbench_unittest.cc",
