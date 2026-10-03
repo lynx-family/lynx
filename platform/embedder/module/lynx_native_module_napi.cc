@@ -230,6 +230,10 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
   if (method_iter == method_refs_.end()) {
     return std::unique_ptr<pub::Value>(nullptr);
   }
+  if (!env_) {
+    return base::unexpected(
+        "NativeModule: Native module environment is unavailable.");
+  }
   napi_handle_scope scope = nullptr;
   if (napi_open_handle_scope(env_, &scope) != napi_ok || scope == nullptr) {
     return base::unexpected("NativeModule: Failed to open napi handle scope.");
@@ -239,6 +243,23 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
     napi_close_handle_scope(env_, scope);
     return base::unexpected(error);
   };
+  napi_value func = nullptr;
+  napi_value receiver = nullptr;
+#if OS_OSX
+  // Older JavaScriptCore versions require an object receiver in
+  // JSObjectCallAsFunction. The NAPI adapter casts undefined to JSObjectRef,
+  // which can crash. Use the global object, as in the legacy JSC call path.
+  // Strict functions will also observe the global object as their receiver.
+  napi_status receiver_status = napi_get_global(env_, &receiver);
+#else
+  napi_status receiver_status = napi_get_undefined(env_, &receiver);
+#endif
+  if (receiver_status != napi_ok || !receiver ||
+      napi_get_reference_value(env_, method_iter->second, &func) != napi_ok ||
+      !func) {
+    return close_scope_with_error(
+        "NativeModule: Failed to resolve napi method or receiver.");
+  }
   std::vector<napi_value> capi_args;
   for (size_t i = 0; i < count; i++) {
     auto arg = args->GetValueAtIndex(static_cast<uint32_t>(i));
@@ -280,17 +301,7 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
     capi_args.push_back(capi_arg);
   }
   napi_value ret = nullptr;
-  napi_value func;
-  napi_value undefined;
-  if (napi_get_undefined(env_, &undefined) != napi_ok) {
-    return close_scope_with_error("NativeModule: Failed to get undefined.");
-  }
-  if (napi_get_reference_value(env_, method_iter->second, &func) != napi_ok ||
-      func == nullptr) {
-    return close_scope_with_error(
-        "NativeModule: Failed to get napi method reference.");
-  }
-  if (napi_call_function(env_, undefined, func, capi_args.size(),
+  if (napi_call_function(env_, receiver, func, capi_args.size(),
                          capi_args.data(), &ret) != napi_ok) {
     return close_scope_with_error("NativeModule: Failed to call napi method.");
   }
