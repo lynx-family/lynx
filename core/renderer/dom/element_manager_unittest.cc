@@ -65,8 +65,26 @@ class ScopedExternalBoolEnv {
   std::optional<std::string> previous_value_;
 };
 
+class RecordingMockPaintingContextPlatformRef
+    : public MockPaintingContextPlatformRef {
+ public:
+  void UpdateEventInfo(bool has_touch_pseudo) override {
+    if (has_touch_pseudo) {
+      ++touch_pseudo_update_count_;
+    }
+  }
+
+  int touch_pseudo_update_count_{0};
+};
+
 class RecordingMockPaintingContext : public MockPaintingContext {
  public:
+  RecordingMockPaintingContext() {
+    event_info_ref_ =
+        std::make_shared<RecordingMockPaintingContextPlatformRef>();
+    platform_ref_ = event_info_ref_;
+  }
+
   void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) override {
     completion_events_.push_back("FinishTasm");
@@ -89,6 +107,7 @@ class RecordingMockPaintingContext : public MockPaintingContext {
 
   std::vector<InitialLynxUITreeNodeForReplay> initial_tree_nodes_;
   std::vector<std::string> completion_events_;
+  std::shared_ptr<RecordingMockPaintingContextPlatformRef> event_info_ref_;
 };
 
 const InitialLynxUITreeNodeForReplay* FindInitialTreeNode(
@@ -743,6 +762,37 @@ TEST_F(ElementManagerTest, AdoptStyleSheet_Basic) {
   const auto& adopted_sheets = manager->GetAdoptedStyleSheets();
   EXPECT_EQ(adopted_sheets.size(), 1);
   EXPECT_EQ(adopted_sheets[0].get(), wrapper.get());
+}
+
+TEST_F(ElementManagerTest, AdoptStyleSheetEnablesTouchPseudoCallbacks) {
+  auto plain_wrapper = fml::AdoptRef<SharedCSSFragmentWrapper>(
+      new SharedCSSFragmentWrapper(std::make_unique<SharedCSSFragment>()));
+  manager->AdoptStyleSheet(std::move(plain_wrapper));
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+
+  auto fragment = std::make_unique<SharedCSSFragment>();
+  fragment->MarkHasTouchPseudoToken();
+  auto wrapper = fml::AdoptRef<SharedCSSFragmentWrapper>(
+      new SharedCSSFragmentWrapper(std::move(fragment)));
+
+  manager->AdoptStyleSheet(std::move(wrapper));
+  EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+}
+
+TEST_F(ElementManagerTest, TouchPseudoEventInfoIsPushedOnce) {
+  manager->UpdateTouchPseudoStatus(true);
+  manager->UpdateTouchPseudoStatus(true);
+  EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+  EXPECT_EQ(painting_context->event_info_ref_->touch_pseudo_update_count_, 0);
+
+  manager->PatchEventRelatedInfo();
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+  EXPECT_EQ(painting_context->event_info_ref_->touch_pseudo_update_count_, 1);
+
+  manager->UpdateTouchPseudoStatus(true);
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+  manager->PatchEventRelatedInfo();
+  EXPECT_EQ(painting_context->event_info_ref_->touch_pseudo_update_count_, 1);
 }
 
 TEST_F(ElementManagerTest, AdoptStyleSheet_Multiple) {
