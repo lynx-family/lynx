@@ -4,6 +4,8 @@
 
 #include "clay/shell/platform/common/desktop/codec/desktop_image_codec_service.h"
 
+#include <algorithm>
+
 #include "clay/shell/platform/common/desktop/codec/skity_image_codec.h"
 
 namespace clay {
@@ -11,10 +13,22 @@ namespace clay {
 DesktopImageCodecService::DesktopImageCodecService() {
   // Skity is the built-in codec and always has the highest priority.
   RegisterGeneratorFactory(&SkityImageCodecGenerator::Create);
+  for (auto factory : DesktopImageCodecRegistry::GetInstance().GetFactories()) {
+    RegisterGeneratorFactory(factory);
+  }
 }
 
 std::shared_ptr<DesktopImageCodecService> DesktopImageCodecService::Create() {
   return std::make_shared<DesktopImageCodecService>();
+}
+
+void DesktopImageCodecService::RegisterGeneratorFactory(
+    ImageCodecGeneratorFactory factory) {
+  if (!factory || std::find(factories_.begin(), factories_.end(), factory) !=
+                      factories_.end()) {
+    return;
+  }
+  factories_.push_back(factory);
 }
 
 }  // namespace clay
