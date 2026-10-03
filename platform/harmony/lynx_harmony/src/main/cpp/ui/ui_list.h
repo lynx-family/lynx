@@ -7,6 +7,7 @@
 #include <arkui/native_animate.h>
 #include <native_vsync/native_vsync.h>
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -33,6 +34,7 @@ static constexpr ArkUI_NodeEventType LIST_NODE_EVENT_TYPES[] = {
     NODE_SCROLL_EVENT_ON_SCROLL_STOP, NODE_SCROLL_EVENT_ON_WILL_SCROLL};
 
 class AutoScroller;
+class ListItemTransformer;
 class UIList : public BaseScrollContainer,
                public UIComponent::NodeReadyListener {
  private:
@@ -80,12 +82,25 @@ class UIList : public BaseScrollContainer,
   // --------------------   list-element -> ui-list   end    ---------------//
   void AutoScrollStopped() override;
   void OnComponentNodeReady(UIComponent* ui_component) override;
+  // Stores and immediately applies the callbacks to attached items.
+  // Clearing or replacing it delegates item reset to the previous transformer.
+  // Returns false when installing a transformer while sticky is enabled.
+  // The callback is expected to be a pure computation of the item transform.
+  bool SetListItemTransformer(std::unique_ptr<ListItemTransformer> transformer);
 
  protected:
   UIList(LynxContext* context, int sign, const std::string& tag);
   void UpdateContentSize(float width, float height) override;
 
  private:
+  void TransformListItems();
+  void TransformListItems(float offset_x, float offset_y);
+  void TransformListItem(UIBase* item);
+  void TransformListItem(UIBase* item, float offset_x, float offset_y);
+  void ApplyListItemTransform(UIComponent* item,
+                              const std::array<float, 4>& transform);
+  void ResetListItemTransforms();
+  void ResetListItemTransform(UIComponent* item);
   void UpdateStickyComponentInfoForUpdateAction(UIComponent* component);
   void UpdateStickyComponentForRemoveAction(UIComponent* component);
   UIComponent* GetStickyItemWithIndex(int index, bool isStickyTop);
@@ -183,6 +198,7 @@ class UIList : public BaseScrollContainer,
       smooth_scroller_animator_;
 
   std::unique_ptr<shell::ListContainerProxy> list_container_proxy_;
+  std::unique_ptr<ListItemTransformer> list_item_transformer_{nullptr};
 };
 
 }  // namespace harmony

@@ -10,7 +10,10 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "base/include/float_comparison.h"
 #include "base/include/platform/harmony/harmony_vsync_manager.h"
@@ -24,6 +27,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/auto_scroller.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/list_item_transformer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 
 namespace lynx {
@@ -142,6 +146,15 @@ void UIList::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   } else if (name == list::kExperimentalRecycleStickyItem && value.IsBool()) {
     enable_recycle_sticky_item_ = value.Bool();
   } else if (name == list::kSticky && value.IsBool()) {
+    if (value.Bool() && list_item_transformer_) {
+      auto error = lynx::base::LynxError(
+          error::E_COMPONENT_LIST_INVALID_PROPS_ARG,
+          std::string("listItemTransformer is cleared when sticky is enabled."),
+          "Disable sticky before setting listItemTransformer.",
+          base::LynxErrorLevel::Warn);
+      lynx::base::ErrorStorage::GetInstance().SetError(std::move(error));
+      SetListItemTransformer(nullptr);
+    }
     enable_list_sticky_ = value.Bool();
   } else if (name == list::kStickyOffset && value.IsNumber()) {
     sticky_offset_ = value.Number();
@@ -235,6 +248,7 @@ void UIList::OnNodeReady() {
   }
   BaseScrollContainer::OnNodeReady();
   UpdateStickyView();
+  TransformListItems();
 }
 
 void UIList::UpdateStickyView() {
@@ -1082,6 +1096,7 @@ void UIList::HandleWillScrollEvent(ArkUI_NodeEvent* event) {
     delta_offset_ = 0;
     UpdateStickyStartView(scroll_offset_x, scroll_offset_y);
     UpdateStickyEndView(scroll_offset_x, scroll_offset_y);
+    TransformListItems(scroll_offset_x, scroll_offset_y);
     context_->NotifyUIScroll();
   }
 }
@@ -1306,12 +1321,14 @@ void UIList::InsertListItemNode(lynx::tasm::harmony::UIComponent* child) {
     }
   }
   NodeManager::Instance().InsertNode(container_layout_, child->DrawNode(), -1);
+  TransformListItem(child);
 }
 
 void UIList::RemoveListItemNode(lynx::tasm::harmony::UIComponent* child) {
   if (!child) {
     return;
   }
+  ResetListItemTransform(child);
   child->SetIsListItem(false);
   if (enable_list_sticky_) {
     if (update_sticky_for_diff_) {
@@ -1655,6 +1672,111 @@ fml::RefPtr<lepus::CArray> UIList::GetVisibleCells() const {
     }
   }
   return array;
+}
+
+bool UIList::SetListItemTransformer(
+    std::unique_ptr<ListItemTransformer> transformer) {
+  if (enable_list_sticky_ && transformer) {
+    auto error = lynx::base::LynxError(
+        error::E_COMPONENT_LIST_INVALID_PROPS_ARG,
+        std::string("Cannot set listItemTransformer while sticky is enabled."),
+        "Disable sticky before setting listItemTransformer.",
+        base::LynxErrorLevel::Warn);
+    lynx::base::ErrorStorage::GetInstance().SetError(std::move(error));
+    return false;
+  }
+  ResetListItemTransforms();
+  list_item_transformer_ = std::move(transformer);
+  TransformListItems();
+  return true;
+}
+
+void UIList::TransformListItems() {
+  if (!list_item_transformer_) {
+    return;
+  }
+  const auto offset = GetScrollOffset();
+  TransformListItems(offset.first, offset.second);
+}
+
+void UIList::TransformListItems(float offset_x, float offset_y) {
+  if (!list_item_transformer_) {
+    return;
+  }
+  for (UIBase* child : children_) {
+    TransformListItem(child, offset_x, offset_y);
+  }
+}
+
+void UIList::TransformListItem(UIBase* item) {
+  if (!list_item_transformer_) {
+    return;
+  }
+  const auto offset = GetScrollOffset();
+  TransformListItem(item, offset.first, offset.second);
+}
+
+void UIList::TransformListItem(UIBase* item, float offset_x, float offset_y) {
+  if (!list_item_transformer_ || !IsListItem(item) ||
+      NodeManager::Instance().GetParent(item->DrawNode()) !=
+          container_layout_) {
+    // Skip items that are not attached to the native content container.
+    return;
+  }
+  auto* component = static_cast<UIComponent*>(item);
+  float item_size = is_horizontal_ ? item->width_ : item->height_;
+  float content_offset =
+      is_horizontal_ ? item->left_ - offset_x : item->top_ - offset_y;
+  auto transform = list_item_transformer_->TransformItem(
+      item_size, content_offset, !is_horizontal_, false);
+  if (transform) {
+    ApplyListItemTransform(component, *transform);
+  }
+}
+
+void UIList::ApplyListItemTransform(UIComponent* item,
+                                    const std::array<float, 4>& transform) {
+  // Share transform state with CSS and hit testing. Translations remain in vp.
+  std::vector<TransformRaw> raw = {
+      {starlight::TransformType::kTranslate,
+       {{transform[2], PlatformLengthType::kNumber},
+        {transform[3], PlatformLengthType::kNumber},
+        {0.f, PlatformLengthType::kNumber}}},
+      {starlight::TransformType::kScale,
+       {{transform[0], PlatformLengthType::kNumber},
+        {transform[1], PlatformLengthType::kNumber},
+        {1.f, PlatformLengthType::kNumber}}},
+  };
+  // The default origin is the item center, including for an identity result.
+  item->SetAndApplyListItemTransform(
+      std::make_unique<Transform>(std::move(raw)), TransformOrigin{});
+  // Applying the visual matrix must preserve the component's stacking order.
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      item->DrawNode(), NODE_Z_INDEX, item->z_index());
+}
+
+void UIList::ResetListItemTransforms() {
+  if (!list_item_transformer_) {
+    return;
+  }
+  for (UIBase* child : children_) {
+    if (IsListItem(child) && child->Parent() == this) {
+      ResetListItemTransform(static_cast<UIComponent*>(child));
+    }
+  }
+}
+
+void UIList::ResetListItemTransform(UIComponent* item) {
+  if (!list_item_transformer_ || !IsListItem(item) ||
+      NodeManager::Instance().GetParent(item->DrawNode()) !=
+          container_layout_) {
+    // Skip items that are not attached to the native content container.
+    return;
+  }
+  auto transform = list_item_transformer_->ResetItem();
+  if (transform) {
+    ApplyListItemTransform(item, *transform);
+  }
 }
 
 bool UIList::IsVisibleCellVertical(UIComponent* component) const {
