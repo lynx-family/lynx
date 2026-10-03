@@ -177,7 +177,9 @@ void ShadowNode::OnPropsUpdate(const std::string& name,
 }
 
 void ShadowNode::SetPointerEvents(const lepus::Value& value) {
-  if (value.IsNumber() || value.IsEmpty()) {
+  if (value.IsEmpty()) {
+    pointer_events_ = LynxPointerEventsValue::kUnset;
+  } else if (value.IsNumber()) {
     int int_value = value.Number();
     if (int_value >= static_cast<int>(LynxPointerEventsValue::kAuto) &&
         int_value < static_cast<int>(LynxPointerEventsValue::kUnset)) {
