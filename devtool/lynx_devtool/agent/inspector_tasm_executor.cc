@@ -2894,32 +2894,30 @@ void InspectorTasmExecutor::LynxGetComponentId(
   sender->SendMessage("CDP", response);
 }
 
+// start template protocol
 void InspectorTasmExecutor::TemplateGetTemplateApiInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   Json::Value result(Json::ValueType::objectValue);
   if (tasm_) {
     lynx::lepus::Value default_processor_value = tasm_->GetDefaultProcessor();
     result["useDefault"] = default_processor_value.IsClosure();
-    std::unordered_map<std::string, lynx::lepus::Value> processor_map =
-        tasm_->GetProcessorMap();
+    const auto& processor_map = tasm_->GetProcessorMap();
     if (!processor_map.empty()) {
       Json::Value keys(Json::ValueType::arrayValue);
-      for (auto& element : processor_map) {
+      for (const auto& element : processor_map) {
         keys.append(element.first);
       }
-      result["processMapKeys"] = keys;
+      result["processMapKeys"] = std::move(keys);
     }
   } else {
     result["useDefault"] = false;
   }
-
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
+// end template protocol
+
+// start layer tree protocol
 void InspectorTasmExecutor::LayerTreeEnable(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   responder->SendSuccess();
@@ -3036,6 +3034,8 @@ void InspectorTasmExecutor::CompositingReasons(
   result["compositingReasonsIds"] = compositingReasonsIds;
   responder->SendSuccess(std::move(result));
 }
+
+// end layer tree protocol
 
 Json::Value InspectorTasmExecutor::GetLayerContentFromElement(
     lynx::tasm::Element* element) {
