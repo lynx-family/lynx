@@ -142,7 +142,7 @@ TEST_F(ItemAnimatorDefaultTest, StoresRemoveAnimationInPendingQueue) {
 
   // 2. The pending entry retains the same weak target and full PRE snapshot.
   ASSERT_EQ(item_animator_->pending_removals_.size(), 1u);
-  const ItemAnimatorDefault::RemoveInfo& pending_remove =
+  const ItemAnimatorDefault::PendingAnimationInfo& pending_remove =
       item_animator_->pending_removals_.front();
   EXPECT_EQ(pending_remove.target.get(), &target);
   ExpectLayoutInfoEquals(pending_remove.pre_layout_info, pre_layout_info);
@@ -166,7 +166,7 @@ TEST_F(ItemAnimatorDefaultTest, StoresAddAnimationInPendingQueue) {
 
   // 2. The pending entry retains the same weak target and full POST snapshot.
   ASSERT_EQ(item_animator_->pending_adds_.size(), 1u);
-  const ItemAnimatorDefault::AddInfo& pending_add =
+  const ItemAnimatorDefault::PendingAnimationInfo& pending_add =
       item_animator_->pending_adds_.front();
   EXPECT_EQ(pending_add.target.get(), &target);
   ExpectLayoutInfoEquals(pending_add.post_layout_info, post_layout_info);
@@ -194,7 +194,7 @@ TEST_F(ItemAnimatorDefaultTest, StoresMoveAnimationInPendingQueue) {
 
   // 2. The pending entry retains the same weak target and full snapshots.
   ASSERT_EQ(item_animator_->pending_moves_.size(), 1u);
-  const ItemAnimatorDefault::MoveInfo& pending_move =
+  const ItemAnimatorDefault::PendingAnimationInfo& pending_move =
       item_animator_->pending_moves_.front();
   EXPECT_EQ(pending_move.target.get(), &target);
   ExpectLayoutInfoEquals(pending_move.pre_layout_info, pre_layout_info);
