@@ -28,6 +28,8 @@ LYNX_SETTING_KEY(CLAY_ENABLE_IMAGE_DOWN_SAMPLING, bool,
                  "clay_enable_image_down_sampling", false);
 LYNX_SETTING_KEY(CLAY_DISABLE_IMAGE_MEM_CACHE, bool,
                  "clay_disable_image_mem_cache", false);
+LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
+                 "clay_ios_use_tt_video_engine", false);
 LYNX_SETTING_KEY(OPT_THREAD, bool, "opt_thread");
 LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
                  "clay_ios_use_tt_video_engine", false);
