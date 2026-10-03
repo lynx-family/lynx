@@ -862,6 +862,12 @@ inline constexpr const char* const TOUCH_EVENT_HANDLE_EVENT_INTERNAL =
 
 inline constexpr const char* const EVENT_DISPATCHER_DISPATCH =
     "EventDispatcher::Dispatch";
+/**
+ * @trace_description: Record the final stage and result of an event dispatch.
+ * The flow id links this event to its dispatch and listener invocations.
+ */
+inline constexpr const char* const EVENT_DISPATCHER_DISPATCH_RESULT =
+    "EventDispatcher::DispatchResult";
 inline constexpr const char* const TOUCH_EVENT_CUSTOM_DETAIL =
     "TouchEvent::HandleEventCustomDetail";
 inline constexpr const char* const CUSTOM_EVENT_CUSTOM_DETAIL =

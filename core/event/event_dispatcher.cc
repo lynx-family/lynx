@@ -31,6 +31,7 @@
 
 #include "core/event/event_dispatcher.h"
 
+#include <string>
 #include <utility>
 
 #include "base/include/fml/memory/weak_ptr.h"
@@ -69,6 +70,38 @@ bool HasBubbleEventListener(EventTarget& target, Event& event) {
   return false;
 }
 
+DispatchEventResult TraceDispatchResult(const fml::RefPtr<Event>& event,
+                                        DispatchEventResult result,
+                                        const char* stage) {
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH_RESULT,
+      [event, result, stage](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("name", event->type());
+        ctx.event()->add_debug_annotations("stage", stage);
+        ctx.event()->add_debug_annotations(
+            "cancel_type",
+            std::to_string(static_cast<uint32_t>(result.cancel_type)));
+        ctx.event()->add_debug_annotations("consumed",
+                                           result.consumed ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "stop_propagation",
+            event->is_stop_propagation() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "stop_immediate_propagation",
+            event->is_stop_immediate_propagation() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "phase",
+            std::to_string(static_cast<uint32_t>(event->event_phase())));
+        ctx.event()->add_terminating_flow_ids(event->TraceFlowId());
+      });
+#else
+  (void)event;
+  (void)stage;
+#endif
+  return result;
+}
+
 }  // namespace
 
 DispatchEventResult EventDispatcher::DispatchEvent(EventTarget& target,
@@ -83,21 +116,44 @@ EventDispatcher::EventDispatcher(EventTarget& target, fml::RefPtr<Event> event)
 }
 
 DispatchEventResult EventDispatcher::Dispatch() {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH,
+      [this, target = target_](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("name", event_->type());
+        ctx.event()->add_debug_annotations(
+            "event_type",
+            std::to_string(static_cast<uint32_t>(event_->event_type())));
+        ctx.event()->add_debug_annotations(
+            "timestamp", std::to_string(event_->time_stamp()));
+        ctx.event()->add_debug_annotations(
+            "capture", event_->capture() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "bubbles", event_->bubbles() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "cancelable", event_->cancelable() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "composed", event_->composed() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "from_frontend", event_->from_frontend() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "path_size", std::to_string(event_->event_path().size()));
+        ctx.event()->add_debug_annotations(
+            "target",
+            target ? target->GetUniqueID() : std::string("unavailable"));
+        ctx.event()->add_flow_ids(event_->TraceFlowId());
+      });
   if (!target_) {
     LOGE("EventDispatcher::Dispatch error: the target is null.")
-    return {EventCancelType::kCanceledBeforeDispatch, false};
+    return TraceDispatchResult(
+        event_, {EventCancelType::kCanceledBeforeDispatch, false},
+        "target_unavailable");
   }
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH,
-              [this, target = target_](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("name", event_->type());
-                ctx.event()->add_debug_annotations("target",
-                                                   target->GetUniqueID());
-              });
   LOGI("EventDispatcher::Dispatch name: " << event_->type() << " target: "
                                           << target_->GetUniqueID())
   // handle conflic and param
   if (event_->HandleEventConflictAndParam()) {
-    return {EventCancelType::kCanceledByEventHandler, false};
+    return TraceDispatchResult(
+        event_, {EventCancelType::kCanceledByEventHandler, false}, "conflict");
   }
   event_->set_target(target_->GetWeakTarget());
   event_->HandleEventCustomDetail();
@@ -127,7 +183,7 @@ DispatchEventResult EventDispatcher::Dispatch() {
       auto result = (*item)->DispatchEvent(event_);
       consumed |= result.consumed;
       if (result.IsCanceled()) {
-        return result;
+        return TraceDispatchResult(event_, result, "capture");
       }
     }
   }
@@ -142,7 +198,7 @@ DispatchEventResult EventDispatcher::Dispatch() {
     auto result = target_->DispatchEvent(event_);
     consumed |= result.consumed;
     if (result.IsCanceled()) {
-      return result;
+      return TraceDispatchResult(event_, result, "target");
     }
   }
 
@@ -162,7 +218,8 @@ DispatchEventResult EventDispatcher::Dispatch() {
       auto result = item->DispatchEvent(event_);
       consumed |= result.consumed;
       if (result.IsCanceled()) {
-        return result;
+        return TraceDispatchResult(event_, result,
+                                   "frontend_bubble_compatible");
       }
       if (result.consumed) {
         break;
@@ -188,12 +245,13 @@ DispatchEventResult EventDispatcher::Dispatch() {
       auto result = item->DispatchEvent(event_);
       consumed |= result.consumed;
       if (result.IsCanceled()) {
-        return result;
+        return TraceDispatchResult(event_, result, "bubble");
       }
     }
   }
 
-  return {EventCancelType::kNotCanceled, consumed};
+  return TraceDispatchResult(event_, {EventCancelType::kNotCanceled, consumed},
+                             "complete");
 }
 
 }  // namespace event

@@ -7,9 +7,11 @@
 #include <memory>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/lynx_adaptor/base_def.h"
 #include "clay/lynx_adaptor/clay_value.h"
 #include "clay/public/value.h"
+#include "core/base/trace/trace_event_def.h"
 
 #if OS_WIN
 #include <Windows.h>
@@ -404,8 +406,27 @@ void LynxEventDispatcher::OnSendCustomEvent(int view_id,
                                             const std::string& event_name,
                                             clay::Value::Map args) {
   if (!engine_proxy_) {
+    TRACE_EVENT_INSTANT(
+        LYNX_TRACE_CATEGORY, CLAY_LYNX_EVENT_DISPATCHER_FORWARD_EVENT,
+        [&event_name, view_id](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_debug_annotations("name", event_name);
+          ctx.event()->add_debug_annotations("route", "custom");
+          ctx.event()->add_debug_annotations("renderer", "clay");
+          ctx.event()->add_debug_annotations("target", std::to_string(view_id));
+          ctx.event()->add_debug_annotations("status", "dropped");
+          ctx.event()->add_debug_annotations("reason", "missing_engine_proxy");
+        });
     return;
   }
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, CLAY_LYNX_EVENT_DISPATCHER_FORWARD_EVENT,
+      [&event_name, view_id](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("name", event_name);
+        ctx.event()->add_debug_annotations("route", "custom");
+        ctx.event()->add_debug_annotations("renderer", "clay");
+        ctx.event()->add_debug_annotations("target", std::to_string(view_id));
+        ctx.event()->add_debug_annotations("status", "forwarded");
+      });
   auto params = lynx::ClayValue(clay::Value{std::move(args)});
   engine_proxy_->SendCustomEvent(event_name, view_id, params, "detail");
 }
@@ -413,8 +434,31 @@ void LynxEventDispatcher::OnSendCustomEvent(int view_id,
 void LynxEventDispatcher::OnSendGlobalEvent(const std::string& event_name,
                                             clay::Value args) {
   if (!runtime_proxy_) {
+    TRACE_EVENT_INSTANT(
+        LYNX_TRACE_CATEGORY, CLAY_LYNX_EVENT_DISPATCHER_FORWARD_EVENT,
+        [&event_name, &args](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_debug_annotations("name", event_name);
+          ctx.event()->add_debug_annotations("route", "global");
+          ctx.event()->add_debug_annotations("renderer", "clay");
+          ctx.event()->add_debug_annotations(
+              "batch_size",
+              std::to_string(args.IsArray() ? args.GetArray().size() : 1));
+          ctx.event()->add_debug_annotations("status", "dropped");
+          ctx.event()->add_debug_annotations("reason", "missing_runtime_proxy");
+        });
     return;
   }
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, CLAY_LYNX_EVENT_DISPATCHER_FORWARD_EVENT,
+      [&event_name, &args](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("name", event_name);
+        ctx.event()->add_debug_annotations("route", "global");
+        ctx.event()->add_debug_annotations("renderer", "clay");
+        ctx.event()->add_debug_annotations(
+            "batch_size",
+            std::to_string(args.IsArray() ? args.GetArray().size() : 1));
+        ctx.event()->add_debug_annotations("status", "forwarded");
+      });
   clay::Value::Array array_wrapper(2);
   array_wrapper[0] = clay::Value(event_name);
   clay::Value::Array array_args(1);
