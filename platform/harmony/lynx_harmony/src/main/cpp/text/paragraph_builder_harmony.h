@@ -92,7 +92,8 @@ class ParagraphBuilderHarmony {
   void SetRichType(std::string_view rich_type);
 
  private:
-  static constexpr std::string_view kObjectReplacementCharacter = u8"\uFFFC";
+  static constexpr std::string_view kObjectReplacementCharacter =
+      "\xEF\xBF\xBC";
 
   struct EmojiParseRule {
     char left_delimiter{0};
